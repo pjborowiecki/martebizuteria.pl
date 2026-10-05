@@ -19,7 +19,7 @@ import {
 
 const { cancelFn, deliverFn, fulfillFn, refundFn, shipFn, syncQueryInvalidation, toastError, toastSuccess, toastWarning } = vi.hoisted(
   () => ({
-    cancelFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+    cancelFn: vi.fn<(input: { orderId: string }) => Promise<{ cancelledEmailSent: boolean; ok: true; orderId: string }>>(),
     deliverFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
     fulfillFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
     refundFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
@@ -63,7 +63,7 @@ describe("admin order action mutations", () => {
     vi.clearAllMocks()
     fulfillFn.mockResolvedValue({ ok: true, orderId: "order-1" })
     shipFn.mockResolvedValue({ ok: true, orderId: "order-1", shippedEmailSent: true })
-    cancelFn.mockResolvedValue({ ok: true, orderId: "order-1" })
+    cancelFn.mockResolvedValue({ cancelledEmailSent: true, ok: true, orderId: "order-1" })
     deliverFn.mockResolvedValue({ ok: true, orderId: "order-1" })
     refundFn.mockResolvedValue({ ok: true, orderId: "order-1" })
   })
@@ -164,6 +164,24 @@ describe("admin order action mutations", () => {
     expect(toastSuccess).toHaveBeenCalledWith("Order updated", {
       description: "Order cancelled and its items returned to stock. A paid order shows the refund once Stripe confirms it.",
     })
+    expect(toastWarning).not.toHaveBeenCalled()
+  })
+
+  it("warns the admin separately when the cancellation email to the customer failed", async () => {
+    cancelFn.mockResolvedValue({ cancelledEmailSent: false, ok: true, orderId: "order-1" })
+    const { result } = renderHook(() => useCancelOrder(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastWarning).toHaveBeenCalledOnce()
+    })
+
+    expect(toastSuccess).toHaveBeenCalledExactlyOnceWith("Order updated", {
+      description: "Order cancelled and its items returned to stock. A paid order shows the refund once Stripe confirms it.",
+    })
+    expect(toastWarning).toHaveBeenCalledWith("Cancellation email not sent", {
+      description: "The customer was not emailed about the cancellation. See the order's Activity card for the error.",
+    })
   })
 
   it("invalidates the admin order list once the mutation settles", async () => {
@@ -183,7 +201,7 @@ describe("admin order action failures", () => {
     vi.clearAllMocks()
     fulfillFn.mockResolvedValue({ ok: true, orderId: "order-1" })
     shipFn.mockResolvedValue({ ok: true, orderId: "order-1", shippedEmailSent: true })
-    cancelFn.mockResolvedValue({ ok: true, orderId: "order-1" })
+    cancelFn.mockResolvedValue({ cancelledEmailSent: true, ok: true, orderId: "order-1" })
   })
 
   it("explains a missing order rather than showing the raw error", async () => {

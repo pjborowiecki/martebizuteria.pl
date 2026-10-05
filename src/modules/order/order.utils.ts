@@ -91,17 +91,23 @@ export const prepareRefundBatch = (
   settled: Order["settled"],
   { fullyRefunded, refundedAmount }: Order["refundInput"],
   restockLines: readonly RestockLine[],
-): BatchItem<"sqlite">[] => [
-  db
-    .update(payment)
-    .set({
-      refundedAmount,
-      refundedAt: new Date(),
-      status: fullyRefunded ? "refunded" : "succeeded",
-    })
-    .where(eq(payment.id, settled.paymentId)),
-  ...(fullyRefunded && settled.orderId !== undefined ? prepareFullOrderRefund(settled.orderId, restockLines) : []),
-]
+) =>
+  [
+    db
+      .select({ orderStatus: order.status, refundedAmount: payment.refundedAmount })
+      .from(payment)
+      .leftJoin(order, eq(order.paymentId, payment.id))
+      .where(eq(payment.id, settled.paymentId)),
+    db
+      .update(payment)
+      .set({
+        refundedAmount: sql`max(${payment.refundedAmount}, ${refundedAmount})`,
+        refundedAt: new Date(),
+        status: fullyRefunded ? "refunded" : "succeeded",
+      })
+      .where(eq(payment.id, settled.paymentId)),
+    ...(fullyRefunded && settled.orderId !== undefined ? prepareFullOrderRefund(settled.orderId, restockLines) : []),
+  ] as const
 
 interface RestockLine {
   readonly quantity: number

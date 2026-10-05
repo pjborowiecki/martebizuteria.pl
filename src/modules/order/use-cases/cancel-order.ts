@@ -1,10 +1,12 @@
 import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
+import { getRequest } from "@tanstack/react-start/server"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
+import { notifyOrderCancelled } from "~/src/integrations/resend/order-cancelled.notification.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordOrderCancelledAudit } from "~/src/modules/audit-log/audit-log.events.server"
@@ -17,10 +19,14 @@ import { requestFullOrderRefund } from "~/src/modules/order/order.refund.server"
 import { prepareCancelOrderBatch } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
+import { scheduleBackgroundWork } from "~/src/lib/background"
+import { resolveRequestOrigin } from "~/src/lib/request"
+
 export const cancelOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
   .handler(async ({ data: { orderId } }) => {
+    const origin = resolveRequestOrigin(getRequest())
     const target = assertOrderActionState(await getAdminOrderRefundTarget(orderId), canCancelAdminOrder)
     const orderLines = await getRestockLinesForOrder(orderId)
     const restockLines = orderLines.filter(
@@ -33,9 +39,9 @@ export const cancelOrder = createServerFn({ method: "POST" })
     )
 
     const paymentUiKey = resolveAdminOrderPaymentUiKey(target.paymentStatus)
-    if (cancelRefundsAdminOrderPayment({ paymentUiKey, totalMinorUnits: target.total })) {
-      await requestFullOrderRefund(orderId, target)
-    }
+    const refundedAmount = cancelRefundsAdminOrderPayment({ paymentUiKey, totalMinorUnits: target.total })
+      ? await requestFullOrderRefund(orderId, target)
+      : undefined
 
     const [first, ...rest] = prepareCancelOrderBatch(orderId, restockLines)
     const results = await db.batch([first, ...rest])
@@ -46,8 +52,11 @@ export const cancelOrder = createServerFn({ method: "POST" })
 
     recordOrderCancelledAudit(orderId)
     scheduleProductCatalogInvalidation()
+    const cancelledEmailDelivery = notifyOrderCancelled({ orderId, refundedAmount }, origin)
+    scheduleBackgroundWork(cancelledEmailDelivery)
+    const cancelledEmailSent = await cancelledEmailDelivery
 
-    return { ok: true, orderId }
+    return { cancelledEmailSent, ok: true, orderId }
   })
 
 export const cancelOrderMutation = mutationOptions({

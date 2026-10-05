@@ -1,0 +1,18 @@
+{
+  "subject": "Zwrot środków jest w drodze — M'Arte",
+  "preview": "Zwróciliśmy Twoją płatność. Oto szczegóły.",
+  "heading": "Zwrot środków",
+  "messageFull": "Zwróciliśmy całą kwotę za Twoje zamówienie.",
+  "messagePartial": "Zwróciliśmy część kwoty za Twoje zamówienie.",
+  "messageSecondary": "Poniżej znajdziesz szczegóły zwrotu.",
+  "orderLabel": "Numer zamówienia",
+  "refundLabel": "Zwrot",
+  "orderTotalLabel": "Wartość zamówienia",
+  "refundNote": "Zwróciliśmy tę kwotę na metodę płatności, której użyto przy zamówieniu. W zależności od banku pieniądze pojawiają się zwykle w ciągu 5–10 dni roboczych.",
+  "closingNote": "Jeśli masz pytania dotyczące zwrotu, odpowiedz na tę wiadomość — chętnie pomożemy.",
+  "createAccountCta": "Załóż konto i zobacz swoje zamówienia",
+  "viewOrderCta": "Zobacz zamówienie",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

@@ -96,14 +96,16 @@ describe("findPendingCheckoutByTransaction", () => {
 })
 
 describe("releaseCheckout", () => {
-  it("fails the payment and the checkout and returns the reserved stock", async () => {
-    await releaseCheckout({
-      lines: [
-        { qty: 2, variantId: "var-1" },
-        { qty: 1, variantId: "var-2" },
-      ],
-      transactionId: TRANSACTION_ID,
-    })
+  it("fails the payment and the checkout, returns the reserved stock and reports the release", async () => {
+    await expect(
+      releaseCheckout({
+        lines: [
+          { qty: 2, variantId: "var-1" },
+          { qty: 1, variantId: "var-2" },
+        ],
+        transactionId: TRANSACTION_ID,
+      }),
+    ).resolves.toBe(true)
 
     expect(statusOf("payment", "transaction_id", TRANSACTION_ID)).toEqual({ status: "failed" })
     expect(statusOf("checkout", "id", "chk-1")).toEqual({ status: "failed" })
@@ -117,19 +119,19 @@ describe("releaseCheckout", () => {
     expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 
-  it("does not release another reservation when the failed checkout is delivered again", async () => {
+  it("does not release another reservation, and reports no release, when the failed checkout is delivered again", async () => {
     const input = { lines: [{ qty: 2, variantId: "var-1" }], transactionId: TRANSACTION_ID }
 
-    await releaseCheckout(input)
-    await releaseCheckout(input)
+    await expect(releaseCheckout(input)).resolves.toBe(true)
+    await expect(releaseCheckout(input)).resolves.toBe(false)
 
     expect(statusOf("payment", "transaction_id", TRANSACTION_ID)).toEqual({ status: "failed" })
     expect(statusOf("checkout", "id", "chk-1")).toEqual({ status: "failed" })
     expect(inventoryRow("var-1")).toEqual({ available: 7, reserved: 1 })
   })
 
-  it("leaves everything untouched for a transaction with no pending checkout", async () => {
-    await releaseCheckout({ lines: [{ qty: 2, variantId: "var-1" }], transactionId: "pi_unknown" })
+  it("leaves everything untouched, and reports no release, for a transaction with no pending checkout", async () => {
+    await expect(releaseCheckout({ lines: [{ qty: 2, variantId: "var-1" }], transactionId: "pi_unknown" })).resolves.toBe(false)
 
     expect(statusOf("payment", "transaction_id", TRANSACTION_ID)).toEqual({ status: "pending" })
     expect(statusOf("checkout", "id", "chk-1")).toEqual({ status: "pending" })

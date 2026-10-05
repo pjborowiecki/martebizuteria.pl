@@ -130,6 +130,28 @@ test.describe("admin", () => {
     expect(linkIn(shipped, /\/auth\/sign-up/u).origin).toBe("http://127.0.0.1:3000")
   })
 
+  test("cancelling a paid order emails the shopper the refund it issued", async ({ adminOrderPage, browser, page, request }, testInfo) => {
+    const shopper = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(shopper)
+    const email = uniqueEmail(testInfo, "cancel")
+    const { orderNumber } = await placeOrder({ email, handle: PRODUCTS.onyx.handle, page: await shopper.newPage(), request })
+    await shopper.close()
+
+    await adminOrderPage.gotoOrderFor(email)
+    await expect(adminOrderPage.heading()).toHaveText(orderNumber)
+    await adminOrderPage.action("Cancel order").click()
+    await page.getByRole("alertdialog", { name: "Cancel this order?" }).getByRole("button", { name: "Cancel order" }).click()
+
+    await expect(page.getByRole("main")).toContainText("Cancelled")
+    const cancelled = await waitForEmail(request, email, "Your order has been cancelled — M'Arte")
+    expect(cancelled.html).toContain(orderNumber)
+    expect(cancelled.html).toMatch(/PLN\s398\.99/u)
+    expect(linkIn(cancelled, /\/auth\/sign-up/u).origin).toBe("http://127.0.0.1:3000")
+  })
+
   test("an admin back on the order list sees the order a colleague shipped while they had it open", async ({
     adminOrderPage,
     browser,

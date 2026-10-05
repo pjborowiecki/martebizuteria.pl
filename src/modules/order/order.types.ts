@@ -199,6 +199,12 @@ interface SettledOrder {
   paymentStatus: string
 }
 
+interface UnannouncedOrderRefund {
+  readonly amount: number
+  readonly fullyRefunded: boolean
+  readonly orderId: string
+}
+
 export interface Order {
   adminExportInput: Omit<AdminOrdersPageInput, "page" | "pageSize">
   adminListFilters: AdminOrdersListFilters
@@ -216,4 +222,5 @@ export interface Order {
   refundInput: OrderRefundInput
   select: typeof order.$inferSelect
   settled: SettledOrder
+  unannouncedRefund: UnannouncedOrderRefund
 }

@@ -558,8 +558,8 @@
       "cancel": "Anuluj zamówienie",
       "cancelDialog": {
         "title": "Anulować zamówienie?",
-        "description": "Zamówienie #{id} zostanie anulowane, a jego produkty wrócą na stan magazynowy. Nie ma płatności do zwrotu. Sklep nie wysyła klientowi e-maila w tej sprawie. Tej operacji nie można cofnąć.",
-        "refundDescription": "Zamówienie #{id} zostanie anulowane, jego produkty wrócą na stan magazynowy, a Stripe zwróci klientowi całą płatność. Sklep nie wysyła klientowi e-maila w tej sprawie. Tej operacji nie można cofnąć.",
+        "description": "Zamówienie #{id} zostanie anulowane, a jego produkty wrócą na stan magazynowy. Nie ma płatności do zwrotu. Klient otrzyma e-mail o anulowaniu. Tej operacji nie można cofnąć.",
+        "refundDescription": "Zamówienie #{id} zostanie anulowane, jego produkty wrócą na stan magazynowy, a Stripe zwróci klientowi całą płatność. Klient otrzyma e-mail o anulowaniu i zwrocie. Tej operacji nie można cofnąć.",
         "cancel": "Zostaw zamówienie",
         "confirm": "Anuluj zamówienie"
       },
@@ -570,6 +570,8 @@
         "shipEmailFailedTitle": "Klient nie otrzymał e-maila",
         "shipEmailFailedDescription": "Nie udało się wysłać wiadomości o nadaniu przesyłki. Szczegóły błędu znajdziesz w sekcji „Aktywność” zamówienia.",
         "cancelSuccessDescription": "Zamówienie anulowane, a jego produkty wróciły na stan magazynowy. Opłacone zamówienie pokaże zwrot po potwierdzeniu przez Stripe.",
+        "cancelEmailFailedTitle": "Klient nie otrzymał e-maila",
+        "cancelEmailFailedDescription": "Nie udało się wysłać wiadomości o anulowaniu zamówienia. Szczegóły błędu znajdziesz w sekcji „Aktywność” zamówienia.",
         "errorTitle": "Nie udało się zaktualizować zamówienia",
         "errorDescription": "Spróbuj ponownie za chwilę.",
         "notFoundDescription": "To zamówienie już nie istnieje.",
@@ -720,7 +722,7 @@
     },
     "refundDialog": {
       "title": "Zwrócić to zamówienie?",
-      "description": "Spowoduje to pełny zwrot za zamówienie {id} przez Stripe. Stan magazynowy zostanie przywrócony automatycznie po potwierdzeniu zwrotu przez Stripe.",
+      "description": "Spowoduje to pełny zwrot za zamówienie {id} przez Stripe. Po potwierdzeniu zwrotu przez Stripe stan magazynowy zostanie przywrócony automatycznie, a klient otrzyma e-mail o zwrocie.",
       "cancel": "Zachowaj zamówienie",
       "confirm": "Zwróć zamówienie"
     },
@@ -730,8 +732,8 @@
     },
     "cancelDialog": {
       "title": "Anulować to zamówienie?",
-      "description": "Zamówienie {id} zostanie anulowane, a jego produkty wrócą na stan magazynowy. Nie ma płatności do zwrotu. Sklep nie wysyła klientowi e-maila w tej sprawie. Tej operacji nie można cofnąć.",
-      "refundDescription": "Zamówienie {id} zostanie anulowane, jego produkty wrócą na stan magazynowy, a Stripe zwróci klientowi całą płatność. Sklep nie wysyła klientowi e-maila w tej sprawie. Tej operacji nie można cofnąć.",
+      "description": "Zamówienie {id} zostanie anulowane, a jego produkty wrócą na stan magazynowy. Nie ma płatności do zwrotu. Klient otrzyma e-mail o anulowaniu. Tej operacji nie można cofnąć.",
+      "refundDescription": "Zamówienie {id} zostanie anulowane, jego produkty wrócą na stan magazynowy, a Stripe zwróci klientowi całą płatność. Klient otrzyma e-mail o anulowaniu i zwrocie. Tej operacji nie można cofnąć.",
       "cancel": "Zachowaj zamówienie",
       "confirm": "Anuluj zamówienie"
     }

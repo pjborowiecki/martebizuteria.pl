@@ -77,8 +77,23 @@ export const useMarkOrderShipped = (): UseMutationResult<ShipOrderResult, Error,
 export const useMarkOrderDelivered = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
   useAdminOrderActionMutation(markOrderDeliveredMutation, "toast.markDeliveredSuccessDescription")
 
-export const useCancelOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
-  useAdminOrderActionMutation(cancelOrderMutation, "toast.cancelSuccessDescription")
+export const useCancelOrder = (): UseMutationResult<CancelOrderResult, Error, OrderIdInput> => {
+  const t = useTranslations("pages.admin.orders.rowActions")
+
+  return useAdminOrderActionMutation(
+    {
+      ...cancelOrderMutation,
+      onSuccess: ({ cancelledEmailSent }) => {
+        if (!cancelledEmailSent) {
+          toast.warning(t("toast.cancelEmailFailedTitle"), {
+            description: t("toast.cancelEmailFailedDescription"),
+          })
+        }
+      },
+    },
+    "toast.cancelSuccessDescription",
+  )
+}
 
 export const useRefundOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
   useAdminOrderActionMutation(refundAdminOrderMutation, "toast.refundSuccessDescription")
@@ -106,4 +121,8 @@ interface OrderActionResult {
 
 interface ShipOrderResult extends OrderActionResult {
   readonly shippedEmailSent: boolean
+}
+
+interface CancelOrderResult extends OrderActionResult {
+  readonly cancelledEmailSent: boolean
 }

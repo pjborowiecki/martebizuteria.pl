@@ -1,3 +1,5 @@
+import { type ReactElement } from "react"
+
 import { MutationObserver, QueryClient } from "@tanstack/react-query"
 import type Stripe from "stripe"
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
@@ -14,20 +16,30 @@ import { ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/orde
 import { cancelOrder, cancelOrderMutation } from "~/src/modules/order/use-cases/cancel-order"
 import { refundAdminOrder } from "~/src/modules/order/use-cases/refund-admin-order"
 
-const { audit, catalogInvalidated, sqlite, stripeApi } = await vi.hoisted(async () => {
+import cancelledCopy from "~/messages/pl-PL/emails.order-cancelled.json"
+import refundedCopy from "~/messages/pl-PL/emails.order-refunded.json"
+
+const { audit, catalogInvalidated, sendEmail, sqlite, stripeApi } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
   return {
-    audit: { cancelled: vi.fn(), refund: vi.fn() },
+    audit: { cancelled: vi.fn(), email: vi.fn(), refund: vi.fn() },
     catalogInvalidated: vi.fn(),
+    sendEmail: vi.fn<(options: Readonly<SentEmail>) => Promise<string | undefined>>(),
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
     stripeApi: {
-      refundsCreate: vi.fn<(params: object, options: object) => Promise<{ id: string }>>(),
-      sessionsList: vi.fn<(params: object) => Promise<{ data: { id: string }[] }>>(),
+      refundsCreate: vi.fn<(params: object, options: object) => Promise<{ amount: number; id: string }>>(),
+      sessionsList: vi.fn<(params: object) => Promise<{ data: { id: string; return_url: string }[] }>>(),
       sessionsRetrieve: vi.fn<(id: string) => Promise<{ payment_intent: string; payment_status: "paid" }>>(),
     },
   }
 })
+
+interface SentEmail {
+  readonly react: ReactElement<Record<string, unknown>>
+  readonly subject: string
+  readonly to: string
+}
 
 vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
@@ -44,7 +56,7 @@ vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
 vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
   const actual = await importOriginal()
 
-  return { ...actual, getRequest: () => new Request("https://marte.test/admin/orders") }
+  return { ...actual, getRequest: () => new Request(`${SHOP_ORIGIN}/en-US/admin/orders`) }
 })
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({
   getRequestSession: () => Promise.resolve({ user: { role: ROLES.ADMIN } }),
@@ -63,15 +75,18 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
     refunds: { create: stripeApi.refundsCreate },
   },
 }))
-vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: vi.fn() }))
+vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: catalogInvalidated,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderCancelledAudit: audit.cancelled,
+  recordOrderEmailOutcome: audit.email,
   recordOrderRefundAudit: audit.refund,
 }))
+
+const SHOP_ORIGIN = "http://127.0.0.1:3000"
 
 const PAID_ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
 
@@ -136,8 +151,8 @@ const readPaidPayment = () =>
     .object({ refunded_amount: z.number(), status: z.string() })
     .parse(sqlite.prepare(`select status, refunded_amount from payment where id = 'payment-paid'`).get())
 
-const confirmRefundFromStripe = async (): Promise<void> => {
-  const event: Stripe.Event = chargeRefundedEvent(charge({ amount: PAID_AMOUNT, amountRefunded: PAID_AMOUNT, paymentIntent: "pi_paid" }))
+const confirmRefundFromStripe = async (amountRefunded = PAID_AMOUNT): Promise<void> => {
+  const event: Stripe.Event = chargeRefundedEvent(charge({ amount: PAID_AMOUNT, amountRefunded, paymentIntent: "pi_paid" }))
   const handler = webhookHandlers[event.type]
   if (handler === undefined) {
     throw new Error("No webhook handler records charge.refunded")
@@ -147,6 +162,12 @@ const confirmRefundFromStripe = async (): Promise<void> => {
 }
 
 const cancelPaidOrder = () => cancelOrder({ data: { orderId: PAID_ORDER_ID } })
+
+const sentEmails = (): SentEmail[] => sendEmail.mock.calls.map(([email]) => email)
+
+const sentSubjects = (): string[] => sentEmails().map((email) => email.subject)
+
+const sentProps = (): Record<string, unknown>[] => sentEmails().map((email) => email.react.props)
 
 beforeAll(() => {
   applyMigrationHistory(sqlite)
@@ -161,9 +182,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, "info").mockImplementation(() => {})
   seedOrders()
-  stripeApi.sessionsList.mockResolvedValue({ data: [{ id: "cs_paid" }] })
+  stripeApi.sessionsList.mockResolvedValue({ data: [{ id: "cs_paid", return_url: `${SHOP_ORIGIN}/pl-PL/checkout?success=true` }] })
   stripeApi.sessionsRetrieve.mockResolvedValue({ payment_intent: "pi_paid", payment_status: "paid" })
-  stripeApi.refundsCreate.mockResolvedValue({ id: "re_paid" })
+  stripeApi.refundsCreate.mockResolvedValue({ amount: PAID_AMOUNT, id: "re_paid" })
+  sendEmail.mockResolvedValue(undefined)
 })
 
 afterAll(() => {
@@ -172,7 +194,7 @@ afterAll(() => {
 
 describe("cancelling a paid order", () => {
   it("asks Stripe for the full refund under the same key as the Refund button", async () => {
-    await expect(cancelPaidOrder()).resolves.toStrictEqual({ ok: true, orderId: PAID_ORDER_ID })
+    await expect(cancelPaidOrder()).resolves.toStrictEqual({ cancelledEmailSent: true, ok: true, orderId: PAID_ORDER_ID })
 
     expect(stripeApi.sessionsRetrieve).toHaveBeenCalledExactlyOnceWith("cs_paid")
     expect(stripeApi.refundsCreate).toHaveBeenCalledExactlyOnceWith(REFUND_REQUEST, REFUND_KEY)
@@ -232,7 +254,7 @@ describe("cancelling a paid order", () => {
     stripeApi.refundsCreate.mockImplementation(async () => {
       await confirmRefundFromStripe()
 
-      return { id: "re_paid" }
+      return { amount: PAID_AMOUNT, id: "re_paid" }
     })
 
     await expect(cancelPaidOrder()).rejects.toMatchObject(INVALID_STATE)
@@ -275,12 +297,108 @@ describe("refunds before and after a cancellation", () => {
     expect(readOrder(PAID_ORDER_ID).status).toBe("cancelled")
     expect(readStock()).toStrictEqual(STOCK_RETURNED)
     expect(audit.refund).toHaveBeenCalledOnce()
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+})
+
+describe("emails to the customer", () => {
+  it("tells the customer once that the order was cancelled and refunded, and nothing more when Stripe confirms that refund", async () => {
+    await cancelPaidOrder()
+    await confirmRefundFromStripe()
+    await confirmRefundFromStripe()
+
+    expect(sentSubjects()).toStrictEqual([cancelledCopy.subject])
+    expect(sentEmails()[0]?.to).toBe("ada@marte.test")
+    expect(sentProps()[0]).toMatchObject({ currency: "PLN", locale: "pl-PL", orderNumber: "MRT-2026-00001", refundedAmount: PAID_AMOUNT })
+  })
+
+  it("links the cancellation to the deployment the admin cancelled the order on", async () => {
+    await cancelPaidOrder()
+
+    expect(sentProps()[0]).toMatchObject({ accountCta: { href: `${SHOP_ORIGIN}/auth/sign-up`, isGuest: true } })
+  })
+
+  it("tells the customer of a free order that it was cancelled with nothing to refund", async () => {
+    await cancelOrder({ data: { orderId: FREE_ORDER_ID } })
+
+    expect(sentSubjects()).toStrictEqual([cancelledCopy.subject])
+    expect(sentEmails()[0]?.to).toBe("grace@marte.test")
+    expect(sentProps()[0]?.["refundedAmount"]).toBeUndefined()
+  })
+
+  it("cancels the order and records the failure when the cancellation email cannot be sent", async () => {
+    sendEmail.mockResolvedValue("The marte.test domain is not verified")
+
+    await expect(cancelPaidOrder()).resolves.toStrictEqual({ cancelledEmailSent: false, ok: true, orderId: PAID_ORDER_ID })
+    expect(readOrder(PAID_ORDER_ID).status).toBe("cancelled")
+    expect(audit.email).toHaveBeenCalledExactlyOnceWith({
+      failure: "The marte.test domain is not verified",
+      label: "Order cancelled → ada@marte.test",
+      orderId: PAID_ORDER_ID,
+    })
+  })
+
+  it("tells the customer once about the Refund button's refund, however often Stripe delivers its confirmation", async () => {
+    await refundAdminOrder({ data: { orderId: PAID_ORDER_ID } })
+    await confirmRefundFromStripe()
+    await confirmRefundFromStripe()
+
+    expect(sentSubjects()).toStrictEqual([refundedCopy.subject])
+    expect(sentProps()[0]).toMatchObject({ fullyRefunded: true, orderTotal: PAID_AMOUNT, refundedAmount: PAID_AMOUNT })
+    expect(audit.email).toHaveBeenCalledExactlyOnceWith({
+      failure: undefined,
+      label: "Order refunded → ada@marte.test",
+      orderId: PAID_ORDER_ID,
+    })
+  })
+
+  it("tells the customer about each partial refund made in the Stripe dashboard once, with the amount of that refund", async () => {
+    await confirmRefundFromStripe(10_000)
+    await confirmRefundFromStripe(10_000)
+    await confirmRefundFromStripe(PAID_AMOUNT)
+
+    expect(sentSubjects()).toStrictEqual([refundedCopy.subject, refundedCopy.subject])
+    expect(sentProps()).toMatchObject([
+      { fullyRefunded: false, refundedAmount: 10_000 },
+      { fullyRefunded: true, refundedAmount: PAID_AMOUNT - 10_000 },
+    ])
+  })
+
+  it("tells the customer once about dashboard refunds whose confirmations arrive out of order and again, and only the new amount of a later one", async () => {
+    await confirmRefundFromStripe(30_000)
+    await confirmRefundFromStripe(10_000)
+    await confirmRefundFromStripe(30_000)
+
+    expect(readPaidPayment()).toStrictEqual({ refunded_amount: 30_000, status: "succeeded" })
+    expect(sentProps()).toMatchObject([{ fullyRefunded: false, refundedAmount: 30_000 }])
+
+    await confirmRefundFromStripe(PAID_AMOUNT)
+
+    expect(sentProps()).toMatchObject([
+      { fullyRefunded: false, refundedAmount: 30_000 },
+      { fullyRefunded: true, refundedAmount: PAID_AMOUNT - 30_000 },
+    ])
+  })
+
+  it("sends only the refund email when the refund's confirmation closes the order before the cancellation can", async () => {
+    stripeApi.refundsCreate.mockImplementation(async () => {
+      await confirmRefundFromStripe()
+
+      return { amount: PAID_AMOUNT, id: "re_paid" }
+    })
+
+    await expect(cancelPaidOrder()).rejects.toMatchObject(INVALID_STATE)
+    expect(sentSubjects()).toStrictEqual([refundedCopy.subject])
   })
 })
 
 describe("cancelling an order with nothing to refund", () => {
   it("cancels a free order and returns its stock without calling Stripe", async () => {
-    await expect(cancelOrder({ data: { orderId: FREE_ORDER_ID } })).resolves.toStrictEqual({ ok: true, orderId: FREE_ORDER_ID })
+    await expect(cancelOrder({ data: { orderId: FREE_ORDER_ID } })).resolves.toStrictEqual({
+      cancelledEmailSent: true,
+      ok: true,
+      orderId: FREE_ORDER_ID,
+    })
 
     expect(stripeApi.sessionsRetrieve).not.toHaveBeenCalled()
     expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
@@ -306,6 +424,7 @@ describe("cancelOrder requests", () => {
   it("cancels the order its mutation was handed, keyed by the shared cancel key", async () => {
     expect(cancelOrderMutation.mutationKey).toStrictEqual(ORDER_MUTATION_KEYS.CANCEL)
     await expect(new MutationObserver(new QueryClient(), cancelOrderMutation).mutate({ orderId: FREE_ORDER_ID })).resolves.toStrictEqual({
+      cancelledEmailSent: true,
       ok: true,
       orderId: FREE_ORDER_ID,
     })
