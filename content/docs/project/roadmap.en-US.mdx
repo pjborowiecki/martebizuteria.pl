@@ -23,9 +23,9 @@ await releaseInventoryForItems(reserved).catch((error: unknown) => {
 
 The rollback's own failure is caught and logged. A failed rollback therefore leaves stock reserved against nothing, with no alert and no reconciliation pass to find it. This is a saga with a known hole, and closing it needs either a compensation log or the reconciliation job below.
 
-### Partial refunds do not restock
+### A partial return has no restock path
 
-`refundOrder` in `src/modules/order/use-cases/refund-order.ts` collects restock lines only when `input.restock && input.fullyRefunded` is true. `handleChargeRefunded` in `src/integrations/stripe/stripe.webhooks.tsx` always passes `restock: true`, and sets `fullyRefunded` from `charge.amount_refunded >= charge.amount` — so a partial refund records the money and leaves the stock decremented.
+Stock goes back per order, every line at once: `returnOrderToStock` in `src/modules/order/order.restock.server.ts` runs when the admin ticks "The items came back to stock" in the Refund dialog or presses Return to stock, and `canRestockAdminOrder` in `src/modules/order/order.admin-actions.utils.ts` offers Return to stock only for an order whose status is `refunded`. A partial refund made in the Stripe dashboard keeps the order open, so when one piece of a larger order comes back, the admin has to raise that variant's stock in the product editor by hand.
 
 ### The confirmation email is attempted once
 

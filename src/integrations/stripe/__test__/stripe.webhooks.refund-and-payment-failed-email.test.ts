@@ -218,7 +218,7 @@ describe("refund email", () => {
   it("announces a refund the order had not announced, linked through the session's return URL", async () => {
     await dispatch(chargeRefundedEvent(charge({ amount: AMOUNT_TOTAL, amountRefunded: 5000, paymentIntent: "pi_test_1" })))
 
-    expect(refundOrder).toHaveBeenCalledWith({ fullyRefunded: false, refundedAmount: 5000, restock: true, transactionId: "cs_resolved_1" })
+    expect(refundOrder).toHaveBeenCalledWith({ fullyRefunded: false, refundedAmount: 5000, transactionId: "cs_resolved_1" })
     expect(notifyOrderRefunded).toHaveBeenCalledExactlyOnceWith(PARTIAL_REFUND, RETURN_URL)
   })
 

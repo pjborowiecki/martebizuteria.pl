@@ -13,6 +13,7 @@ import {
   getAdminOrderItemRows,
   getAdminOrderTimelineRows,
 } from "~/src/modules/order/order.accessors"
+import { canRestockAdminOrder } from "~/src/modules/order/order.admin-actions.utils"
 import { ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
 import {
   buildAdminOrderDetailCustomer,
@@ -49,6 +50,7 @@ const buildAdminOrderDetail = ({
   const customerNote = orderRow.customerNote?.trim()
   const { deliveryMethod } = orderRow
   const paymentRow = orderRow.payment
+  const restockedAt = orderRow.restockedAt ?? undefined
   const { billingAddress, billingSameAsShipping, shippingAddress } = resolveAdminOrderDetailAddresses(orderRow)
 
   return {
@@ -105,12 +107,14 @@ const buildAdminOrderDetail = ({
             transactionId: paymentRow.transactionId ?? undefined,
           },
     paymentUiKey: resolveAdminOrderPaymentUiKey(paymentRow?.status),
+    restockedAt,
     shippedAt: orderRow.shippedAt ?? undefined,
     shippingAddress,
     shippingTotalMinorUnits: orderRow.shippingTotal,
     status: orderRow.status,
     subtotalMinorUnits: orderRow.subtotal,
     tags: resolveAdminOrderDetailTags({
+      awaitsRestock: canRestockAdminOrder({ restockedAt, status: orderRow.status }),
       customerOrderCount: customerStats.orderCount,
       deliveryType: deliveryMethod?.type,
       hasCustomerNote: customerNote !== undefined && customerNote !== "",

@@ -10,6 +10,7 @@ import { cancelOrderMutation } from "~/src/modules/order/use-cases/cancel-order"
 import { fulfillOrderMutation } from "~/src/modules/order/use-cases/fulfill-order"
 import { markOrderDeliveredMutation } from "~/src/modules/order/use-cases/mark-order-delivered"
 import { refundAdminOrderMutation } from "~/src/modules/order/use-cases/refund-admin-order"
+import { restockOrderMutation } from "~/src/modules/order/use-cases/restock-order"
 import { shipOrderMutation } from "~/src/modules/order/use-cases/ship-order"
 
 const resolveOrderActionErrorMessage = (error: Error, t: ReturnType<typeof useTranslations<"pages.admin.orders.rowActions">>): string => {
@@ -95,18 +96,26 @@ export const useCancelOrder = (): UseMutationResult<CancelOrderResult, Error, Or
   )
 }
 
-export const useRefundOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
+export const useRefundOrder = (): UseMutationResult<OrderActionResult, Error, RefundOrderInput> =>
   useAdminOrderActionMutation(refundAdminOrderMutation, "toast.refundSuccessDescription")
+
+export const useRestockOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
+  useAdminOrderActionMutation(restockOrderMutation, "toast.restockSuccessDescription")
 
 type OrderActionSuccessKey =
   | "toast.cancelSuccessDescription"
   | "toast.fulfillSuccessDescription"
   | "toast.markDeliveredSuccessDescription"
   | "toast.refundSuccessDescription"
+  | "toast.restockSuccessDescription"
   | "toast.shipSuccessDescription"
 
 interface OrderIdInput {
   readonly orderId: string
+}
+
+interface RefundOrderInput extends OrderIdInput {
+  readonly restock: boolean
 }
 
 interface ShipOrderInput extends OrderIdInput {

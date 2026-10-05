@@ -365,6 +365,15 @@ export const recordOrderRefundAudit = (orderId: string, options?: AuditEventOpti
   })
 }
 
+export const recordOrderRestockedAudit = (orderId: string, options?: AuditEventOptions): void => {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.ORDER_RESTOCKED,
+    category: "orders",
+    severity: "info",
+    ...withResourceId(orderId, options),
+  })
+}
+
 export const recordOrderReleasedAudit = (sessionId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_RELEASED,

@@ -48,6 +48,7 @@ describe("order table", () => {
       "metadata",
       "order_number",
       "payment_id",
+      "restocked_at",
       "shipped_at",
       "shipping_total",
       "status",
@@ -104,7 +105,7 @@ describe("order table", () => {
     },
   )
 
-  it.each(["canceled_at", "delivered_at", "shipped_at"])("keeps %s unset until that moment happens", (name) => {
+  it.each(["canceled_at", "delivered_at", "restocked_at", "shipped_at"])("keeps %s unset until that moment happens", (name) => {
     expect(columnByName.get(name)?.notNull).toBe(false)
     expect(columnByName.get(name)?.hasDefault).toBe(false)
     expect(columnByName.get(name)?.getSQLType()).toBe("integer")

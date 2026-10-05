@@ -7,7 +7,7 @@ import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { type Order } from "~/src/modules/order/order.types"
-import { prepareCancelOrderBatch, prepareRefundBatch } from "~/src/modules/order/order.utils"
+import { prepareCancelOrderBatch, prepareRefundBatch, prepareRestockOrderBatch } from "~/src/modules/order/order.utils"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -38,7 +38,7 @@ const STOCK_RETURNED = { "variant-chain": 5, "variant-ring": 1 }
 
 const SETTLED: Order["settled"] = { checkoutId: "checkout-1", orderId: ORDER_ID, paymentId: "payment-1", paymentStatus: "succeeded" }
 
-const FULL_REFUND: Order["refundInput"] = { fullyRefunded: true, refundedAmount: PAID_AMOUNT, restock: true, transactionId: "cs_paid" }
+const FULL_REFUND: Order["refundInput"] = { fullyRefunded: true, refundedAmount: PAID_AMOUNT, transactionId: "cs_paid" }
 
 const seedOrder = (status: Order["select"]["status"], fulfillmentStatus: Order["select"]["fulfillmentStatus"]): void => {
   sqlite.exec(`
@@ -73,6 +73,10 @@ const readOrder = () =>
     .object({ canceled_at: z.number().nullable(), fulfillment_status: z.string(), status: z.string() })
     .parse(sqlite.prepare(`select status, fulfillment_status, canceled_at from "order" where id = ?`).get(ORDER_ID))
 
+const readRestockedAt = () =>
+  z.object({ restocked_at: z.number().nullable() }).parse(sqlite.prepare(`select restocked_at from "order" where id = ?`).get(ORDER_ID))
+    .restocked_at
+
 const readPayment = () =>
   z
     .object({ refunded_amount: z.number(), refunded_at: z.number().nullable(), status: z.string() })
@@ -80,6 +84,13 @@ const readPayment = () =>
 
 const runCancelBatch = async (): Promise<unknown> => {
   const [first, ...rest] = prepareCancelOrderBatch(ORDER_ID, LINES)
+  const results = await db.batch([first, ...rest])
+
+  return results.at(-1)
+}
+
+const runRestockBatch = async (): Promise<unknown> => {
+  const [first, ...rest] = prepareRestockOrderBatch(ORDER_ID, LINES)
   const results = await db.batch([first, ...rest])
 
   return results.at(-1)
@@ -112,24 +123,35 @@ describe("prepareCancelOrderBatch against the database", () => {
     expect(cancelled.canceled_at).not.toBeNull()
   })
 
-  it("returns each line to the stock of its own variant", async () => {
+  it("returns each line to the stock of its own variant and stamps the order restocked", async () => {
     await runCancelBatch()
 
     expect(readStock()).toStrictEqual(STOCK_RETURNED)
+    expect(readRestockedAt()).not.toBeNull()
   })
 
   it.each<[Order["select"]["status"], Order["select"]["fulfillmentStatus"]]>([
     ["processing", "shipped"],
     ["completed", "delivered"],
     ["cancelled", "cancelled"],
-    ["refunded", "not_fulfilled"],
   ])("leaves a %s order that is %s, and its stock, untouched", async (status, fulfillmentStatus) => {
     seedOrder(status, fulfillmentStatus)
 
     await expect(runCancelBatch()).resolves.toStrictEqual([])
 
     expect(readOrder()).toStrictEqual({ canceled_at: null, fulfillment_status: fulfillmentStatus, status })
+    expect(readRestockedAt()).toBeNull()
     expect(readStock()).toStrictEqual(STOCK_BEFORE)
+  })
+
+  it("returns the stock of an unshipped order its own refund closed first, without cancelling it", async () => {
+    seedOrder("refunded", "not_fulfilled")
+
+    await expect(runCancelBatch()).resolves.toStrictEqual([])
+
+    expect(readOrder()).toStrictEqual({ canceled_at: null, fulfillment_status: "not_fulfilled", status: "refunded" })
+    expect(readStock()).toStrictEqual(STOCK_RETURNED)
+    expect(readRestockedAt()).not.toBeNull()
   })
 
   it("returns the stock of an order cancelled twice only once", async () => {
@@ -138,35 +160,85 @@ describe("prepareCancelOrderBatch against the database", () => {
     await expect(runCancelBatch()).resolves.toStrictEqual([])
     expect(readStock()).toStrictEqual(STOCK_RETURNED)
   })
+
+  it("cancels an order whose items a refund already returned without returning them again", async () => {
+    await runRestockBatch()
+
+    await expect(runCancelBatch()).resolves.toStrictEqual([{ id: ORDER_ID }])
+    expect(readOrder().status).toBe("cancelled")
+    expect(readStock()).toStrictEqual(STOCK_RETURNED)
+  })
+})
+
+describe("prepareRestockOrderBatch against the database", () => {
+  it.each<[Order["select"]["status"], Order["select"]["fulfillmentStatus"]]>([
+    ["refunded", "delivered"],
+    ["processing", "shipped"],
+    ["completed", "delivered"],
+    ["processing", "not_fulfilled"],
+  ])("returns the lines of a %s order that is %s to stock and names it in the batch's last result", async (status, fulfillmentStatus) => {
+    seedOrder(status, fulfillmentStatus)
+
+    await expect(runRestockBatch()).resolves.toStrictEqual([{ id: ORDER_ID }])
+
+    expect(readStock()).toStrictEqual(STOCK_RETURNED)
+    expect(readRestockedAt()).not.toBeNull()
+    expect(readOrder()).toMatchObject({ fulfillment_status: fulfillmentStatus, status })
+  })
+
+  it("returns an order's stock only once, however often it is asked", async () => {
+    seedOrder("refunded", "delivered")
+
+    await runRestockBatch()
+
+    await expect(runRestockBatch()).resolves.toStrictEqual([])
+    expect(readStock()).toStrictEqual(STOCK_RETURNED)
+  })
+
+  it("leaves the stock its cancellation returned when a cancelled order is asked again", async () => {
+    seedOrder("processing", "not_fulfilled")
+    await runCancelBatch()
+
+    await expect(runRestockBatch()).resolves.toStrictEqual([])
+    expect(readStock()).toStrictEqual(STOCK_RETURNED)
+  })
+
+  it("never returns the stock of a cancelled order, even one with no restock recorded", async () => {
+    seedOrder("cancelled", "cancelled")
+
+    await expect(runRestockBatch()).resolves.toStrictEqual([])
+    expect(readStock()).toStrictEqual(STOCK_BEFORE)
+  })
 })
 
 describe("prepareRefundBatch against the database", () => {
-  it("records a full refund, closes the order and returns its stock", async () => {
+  it("records a full refund and closes the order, leaving its stock and restock stamp alone", async () => {
     seedOrder("processing", "not_fulfilled")
 
-    await runDrizzleBatch(prepareRefundBatch(SETTLED, FULL_REFUND, LINES))
+    await runDrizzleBatch(prepareRefundBatch(SETTLED, FULL_REFUND))
 
     const refunded = readPayment()
 
     expect(refunded).toMatchObject({ refunded_amount: PAID_AMOUNT, status: "refunded" })
     expect(refunded.refunded_at).not.toBeNull()
     expect(readOrder().status).toBe("refunded")
-    expect(readStock()).toStrictEqual(STOCK_RETURNED)
+    expect(readStock()).toStrictEqual(STOCK_BEFORE)
+    expect(readRestockedAt()).toBeNull()
   })
 
-  it("returns the stock of a delivered order refunded in full, as before", async () => {
+  it("keeps the goods of a delivered order refunded in full out of stock", async () => {
     seedOrder("completed", "delivered")
 
-    await runDrizzleBatch(prepareRefundBatch(SETTLED, FULL_REFUND, LINES))
+    await runDrizzleBatch(prepareRefundBatch(SETTLED, FULL_REFUND))
 
     expect(readOrder().status).toBe("refunded")
-    expect(readStock()).toStrictEqual(STOCK_RETURNED)
+    expect(readStock()).toStrictEqual(STOCK_BEFORE)
   })
 
   it("records a partial refund on the payment alone", async () => {
     seedOrder("processing", "not_fulfilled")
 
-    await runDrizzleBatch(prepareRefundBatch(SETTLED, { ...FULL_REFUND, fullyRefunded: false, refundedAmount: 500 }, LINES))
+    await runDrizzleBatch(prepareRefundBatch(SETTLED, { ...FULL_REFUND, fullyRefunded: false, refundedAmount: 500 }))
 
     expect(readPayment()).toMatchObject({ refunded_amount: 500, status: "succeeded" })
     expect(readOrder().status).toBe("processing")
@@ -176,7 +248,7 @@ describe("prepareRefundBatch against the database", () => {
   it("keeps a cancelled order cancelled and leaves the stock its cancellation returned", async () => {
     seedOrder("cancelled", "cancelled")
 
-    await runDrizzleBatch(prepareRefundBatch(SETTLED, FULL_REFUND, LINES))
+    await runDrizzleBatch(prepareRefundBatch(SETTLED, FULL_REFUND))
 
     expect(readPayment().status).toBe("refunded")
     expect(readOrder()).toMatchObject({ fulfillment_status: "cancelled", status: "cancelled" })
@@ -186,7 +258,7 @@ describe("prepareRefundBatch against the database", () => {
   it("leaves the stock of an order a lost dispute already closed", async () => {
     seedOrder("refunded", "not_fulfilled")
 
-    await runDrizzleBatch(prepareRefundBatch(SETTLED, FULL_REFUND, LINES))
+    await runDrizzleBatch(prepareRefundBatch(SETTLED, FULL_REFUND))
 
     expect(readOrder().status).toBe("refunded")
     expect(readStock()).toStrictEqual(STOCK_BEFORE)
@@ -196,7 +268,7 @@ describe("prepareRefundBatch against the database", () => {
     seedOrder("cancelled", "cancelled")
     sqlite.exec(`update payment set refunded_amount = 500 where id = 'payment-1'`)
 
-    const [recorded] = await db.batch(prepareRefundBatch(SETTLED, FULL_REFUND, LINES))
+    const [recorded] = await db.batch(prepareRefundBatch(SETTLED, FULL_REFUND))
 
     expect(recorded).toStrictEqual([{ orderStatus: "cancelled", refundedAmount: 500 }])
     expect(readPayment()).toMatchObject({ refunded_amount: PAID_AMOUNT, status: "refunded" })
@@ -206,7 +278,7 @@ describe("prepareRefundBatch against the database", () => {
     seedOrder("processing", "not_fulfilled")
     sqlite.exec(`update payment set refunded_amount = 30000 where id = 'payment-1'`)
 
-    const [recorded] = await db.batch(prepareRefundBatch(SETTLED, { ...FULL_REFUND, fullyRefunded: false, refundedAmount: 10_000 }, LINES))
+    const [recorded] = await db.batch(prepareRefundBatch(SETTLED, { ...FULL_REFUND, fullyRefunded: false, refundedAmount: 10_000 }))
 
     expect(recorded).toStrictEqual([{ orderStatus: "processing", refundedAmount: 30_000 }])
     expect(readPayment()).toMatchObject({ refunded_amount: 30_000, status: "succeeded" })
@@ -215,7 +287,7 @@ describe("prepareRefundBatch against the database", () => {
   it("records a refund whose payment has no order on the payment alone", async () => {
     seedOrder("processing", "not_fulfilled")
 
-    await runDrizzleBatch(prepareRefundBatch({ ...SETTLED, orderId: undefined }, FULL_REFUND, LINES))
+    await runDrizzleBatch(prepareRefundBatch({ ...SETTLED, orderId: undefined }, FULL_REFUND))
 
     expect(readPayment().status).toBe("refunded")
     expect(readOrder().status).toBe("processing")

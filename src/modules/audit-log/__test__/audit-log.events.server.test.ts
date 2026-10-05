@@ -40,6 +40,7 @@ import {
   recordOrderPlacedAudit,
   recordOrderRefundAudit,
   recordOrderReleasedAudit,
+  recordOrderRestockedAudit,
   recordOrderShippedAudit,
   resolveAuthAuditActor,
 } from "~/src/modules/audit-log/audit-log.events.server"
@@ -415,6 +416,7 @@ const ORDER_CASES: readonly TargetAuditCase[] = [
   { action: AUDIT_LOG_ACTION.ORDER_SHIPPED, name: "a shipped order", record: recordOrderShippedAudit, severity: "success" },
   { action: AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED, name: "a started refund", record: recordOrderRefundAudit, severity: "warning" },
   { action: AUDIT_LOG_ACTION.ORDER_RELEASED, name: "a released reservation", record: recordOrderReleasedAudit, severity: "info" },
+  { action: AUDIT_LOG_ACTION.ORDER_RESTOCKED, name: "items returned to stock", record: recordOrderRestockedAudit, severity: "info" },
   { action: AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED, name: "an opened dispute", record: recordOrderDisputeOpenedAudit, severity: "warning" },
   { action: AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED, name: "a closed dispute", record: recordOrderDisputeClosedAudit, severity: "info" },
   {

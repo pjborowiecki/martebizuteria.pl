@@ -23,7 +23,7 @@ const { audit, catalogInvalidated, sendEmail, sqlite, stripeApi } = await vi.hoi
   const { DatabaseSync } = await import("node:sqlite")
 
   return {
-    audit: { cancelled: vi.fn(), email: vi.fn(), refund: vi.fn() },
+    audit: { cancelled: vi.fn(), email: vi.fn(), refund: vi.fn(), restocked: vi.fn() },
     catalogInvalidated: vi.fn(),
     sendEmail: vi.fn<(options: Readonly<SentEmail>) => Promise<string | undefined>>(),
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
@@ -84,6 +84,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderCancelledAudit: audit.cancelled,
   recordOrderEmailOutcome: audit.email,
   recordOrderRefundAudit: audit.refund,
+  recordOrderRestockedAudit: audit.restocked,
 }))
 
 const SHOP_ORIGIN = "http://127.0.0.1:3000"
@@ -273,13 +274,24 @@ describe("cancelling a paid order", () => {
 })
 
 describe("refunds before and after a cancellation", () => {
-  it("refuses to cancel an order the Refund button already refunded, so its stock is not returned twice", async () => {
-    await refundAdminOrder({ data: { orderId: PAID_ORDER_ID } })
+  it("refuses to cancel an order the Refund button already refunded and restocked, so its stock is not returned twice", async () => {
+    await refundAdminOrder({ data: { orderId: PAID_ORDER_ID, restock: true } })
     await confirmRefundFromStripe()
 
     await expect(cancelPaidOrder()).rejects.toMatchObject(INVALID_STATE)
     expect(stripeApi.refundsCreate).toHaveBeenCalledExactlyOnceWith(REFUND_REQUEST, REFUND_KEY)
     expect(readOrder(PAID_ORDER_ID).status).toBe("refunded")
+    expect(readStock()).toStrictEqual(STOCK_RETURNED)
+  })
+
+  it("cancels an order the Refund button restocked before Stripe confirmed, without returning its stock again", async () => {
+    await refundAdminOrder({ data: { orderId: PAID_ORDER_ID, restock: true } })
+
+    await expect(cancelPaidOrder()).resolves.toMatchObject({ ok: true })
+    await confirmRefundFromStripe()
+
+    expect(stripeApi.refundsCreate).toHaveBeenNthCalledWith(2, REFUND_REQUEST, REFUND_KEY)
+    expect(readOrder(PAID_ORDER_ID).status).toBe("cancelled")
     expect(readStock()).toStrictEqual(STOCK_RETURNED)
   })
 
@@ -339,7 +351,7 @@ describe("emails to the customer", () => {
   })
 
   it("tells the customer once about the Refund button's refund, however often Stripe delivers its confirmation", async () => {
-    await refundAdminOrder({ data: { orderId: PAID_ORDER_ID } })
+    await refundAdminOrder({ data: { orderId: PAID_ORDER_ID, restock: false } })
     await confirmRefundFromStripe()
     await confirmRefundFromStripe()
 

@@ -75,7 +75,7 @@ Both lists are built from the modules' own `*_QUERY_KEYS` constants and typed `a
 
 The `schedule*` form hands the publish to `scheduleBackgroundWork`, so it runs under `waitUntil` and never delays the response. `publishRealtimeInvalidation` is the awaited form, used where there is no request to return from — the audit-log queue consumer awaits it after a successful batch insert.
 
-Callers worth knowing: the Stripe webhook handlers (`scheduleAdminOrdersInvalidation` and `scheduleProductCatalogInvalidation` after a fulfil, refund or dispute), `handleCreateCheckoutSession` and `handleUpdateCheckoutSession` (product catalog, because inventory moved), Better Auth's user create/update/delete hooks (`scheduleAdminCustomersInvalidation`), and the admin catalog mutations.
+Callers worth knowing: the Stripe webhook handlers (`scheduleAdminOrdersInvalidation` after a fulfil, refund or dispute, and `scheduleProductCatalogInvalidation` after a fulfil or release, since a refund leaves stock alone), the admin order actions that return stock (`cancelOrder` and `returnOrderToStock`, product catalog), `handleCreateCheckoutSession` and `handleUpdateCheckoutSession` (product catalog, because inventory moved), Better Auth's user create/update/delete hooks (`scheduleAdminCustomersInvalidation`), and the admin catalog mutations.
 
 ## The client side
 

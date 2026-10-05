@@ -16,6 +16,7 @@ const mutations = vi.hoisted(() => ({
   fulfill: vi.fn<Mutate>(),
   pending: { current: false },
   refund: vi.fn<Mutate>(),
+  restock: vi.fn<Mutate>(),
   ship: vi.fn<Mutate>(),
 }))
 
@@ -25,6 +26,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order
   useMarkOrderDelivered: () => ({ isPending: false, mutate: mutations.deliver }),
   useMarkOrderShipped: () => ({ isPending: false, mutate: mutations.ship }),
   useRefundOrder: () => ({ isPending: false, mutate: mutations.refund }),
+  useRestockOrder: () => ({ isPending: false, mutate: mutations.restock }),
 }))
 
 import {
@@ -50,7 +52,7 @@ const fulfilled = () => buildAdminOrderDetail({ fulfillmentStatus: "fulfilled", 
 beforeEach(() => {
   vi.clearAllMocks()
   mutations.pending.current = false
-  for (const mutate of [mutations.cancel, mutations.deliver, mutations.fulfill, mutations.refund, mutations.ship]) {
+  for (const mutate of [mutations.cancel, mutations.deliver, mutations.fulfill, mutations.refund, mutations.restock, mutations.ship]) {
     mutate.mockImplementation(succeed)
   }
 })
@@ -59,14 +61,55 @@ afterEach(() => {
   cleanup()
 })
 
+const refunded = () => buildAdminOrderDetail({ paymentUiKey: "refunded", status: "refunded", tags: ["notRestocked"] })
+
 describe("OrderDetailActions refund", () => {
-  it("confirms and refunds a paid order", async () => {
+  it("refunds a shipped order without returning its items to stock unless the admin says they came back", async () => {
     renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail()} />)
 
     await userEvent.click(screen.getByRole("button", { name: "Refund" }))
-    await userEvent.click(await screen.findByRole("button", { name: "Refund order" }))
 
-    expect(mutations.refund).toHaveBeenCalledWith({ orderId: ORDER_ID }, expect.anything())
+    expect(await screen.findByRole("checkbox", { name: "The items came back to stock" })).not.toBeChecked()
+
+    await userEvent.click(screen.getByRole("button", { name: "Refund order" }))
+
+    expect(mutations.refund).toHaveBeenCalledWith({ orderId: ORDER_ID, restock: false }, expect.anything())
+  })
+
+  it("returns a shipped order's items to stock when the admin ticks that they came back", async () => {
+    renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail()} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Refund" }))
+    await userEvent.click(await screen.findByRole("checkbox", { name: "The items came back to stock" }))
+    await userEvent.click(screen.getByRole("button", { name: "Refund order" }))
+
+    expect(mutations.refund).toHaveBeenCalledWith({ orderId: ORDER_ID, restock: true }, expect.anything())
+  })
+
+  it("expects the items of an order that never left the shop back in stock unless the admin clears it", async () => {
+    renderWithProviders(<OrderDetailActions order={unfulfilled()} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Refund" }))
+    const restock = await screen.findByRole("checkbox", { name: "The items came back to stock" })
+
+    expect(restock).toBeChecked()
+
+    await userEvent.click(restock)
+    await userEvent.click(screen.getByRole("button", { name: "Refund order" }))
+
+    expect(mutations.refund).toHaveBeenCalledWith({ orderId: ORDER_ID, restock: false }, expect.anything())
+  })
+
+  it("starts every refund confirmation from the order's default again", async () => {
+    renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail()} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Refund" }))
+    await userEvent.click(await screen.findByRole("checkbox", { name: "The items came back to stock" }))
+    await userEvent.click(screen.getByRole("button", { name: "Keep order" }))
+    await userEvent.click(screen.getByRole("button", { name: "Refund" }))
+
+    expect(await screen.findByRole("checkbox", { name: "The items came back to stock" })).not.toBeChecked()
+    expect(mutations.refund).not.toHaveBeenCalled()
   })
 
   it("keeps the refund confirmation closed while the order has an open dispute", async () => {
@@ -91,6 +134,46 @@ describe("OrderDetailActions refund", () => {
     renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail({ paymentUiKey: "refunded", status: "refunded" })} />)
 
     expect(screen.queryByRole("button", { name: "Refund" })).toBeNull()
+  })
+})
+
+describe("OrderDetailActions return to stock", () => {
+  it("returns the items of a refunded order to stock once the admin confirms, and closes the confirmation", async () => {
+    renderWithProviders(<OrderDetailActions order={refunded()} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Return to stock" }))
+
+    expect(
+      await screen.findByText(
+        "The items of order #A1B2C3D4 go back on sale. Do this only once the goods are back in the shop. An order's items return to stock only once.",
+      ),
+    ).toBeInTheDocument()
+
+    await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Return to stock" }))
+
+    expect(mutations.restock).toHaveBeenCalledWith({ orderId: ORDER_ID }, expect.anything())
+    expect(screen.queryByText("Return the items to stock?")).toBeNull()
+  })
+
+  it("keeps the items out of stock when the admin backs out", async () => {
+    renderWithProviders(<OrderDetailActions order={refunded()} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Return to stock" }))
+    await userEvent.click(await screen.findByRole("button", { name: "Not now" }))
+
+    expect(mutations.restock).not.toHaveBeenCalled()
+  })
+
+  it("offers no return to stock once the order's items are back", () => {
+    renderWithProviders(<OrderDetailActions order={{ ...refunded(), restockedAt: new Date("2026-10-05T10:00:00.000Z") }} />)
+
+    expect(screen.queryByRole("button", { name: "Return to stock" })).toBeNull()
+  })
+
+  it("offers no return to stock for an order that still has its money", () => {
+    renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail()} />)
+
+    expect(screen.queryByRole("button", { name: "Return to stock" })).toBeNull()
   })
 })
 
