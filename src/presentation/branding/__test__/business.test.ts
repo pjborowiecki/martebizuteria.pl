@@ -5,6 +5,7 @@ import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migratio
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
+import { APP_DOMAIN } from "~/src/presentation/branding/app"
 import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 
 const seededBody = (handle: string, locale: string): string => {
@@ -19,6 +20,10 @@ const seededBody = (handle: string, locale: string): string => {
 }
 
 describe("published business details", () => {
+  it("takes customer replies to every email at a mailbox on the shop's own domain", () => {
+    expect(BUSINESS.EMAIL.split("@").at(1)).toBe(APP_DOMAIN)
+  })
+
   it.each(I18N.SUPPORTED_LOCALES)("keeps the %s privacy controller consistent with the business identity", (locale) => {
     const privacy = seededBody("privacy-policy", locale)
 

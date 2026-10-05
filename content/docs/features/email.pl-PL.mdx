@@ -16,7 +16,7 @@ const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): 
 const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({ ...message, from: sender })
+    const { error } = await resend.emails.send({ ...message, from: sender, replyTo: BUSINESS.EMAIL })
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -42,7 +42,7 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 }
 ```
 
-Wiadomość, czyli `react`, `subject`, `to` i ewentualne `attachments`, trafia do Resend w takiej postaci, w jakiej ją przekazano. Załącznik ma tylko potwierdzenie zamówienia.
+Wiadomość, czyli `react`, `subject`, `to` i ewentualne `attachments`, trafia do Resend w takiej postaci, w jakiej ją przekazano. Załącznik ma tylko potwierdzenie zamówienia. `sendEmail` dodaje do każdej wiadomości `replyTo: BUSINESS.EMAIL`, więc odpowiedź klienta trafia na adres kontaktowy sklepu `kontakt@martebizuteria.pl`, a nie na `RESEND_EMAIL_FROM`; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 
 Zwróć uwagę na kontrakt: **nigdy nie rzuca wyjątku.** Zwraca `undefined` przy sukcesie, a w przeciwnym razie komunikat błędu jako napis. SDK Resend nie ma własnego limitu czasu, więc `sendEmail` rezygnuje po `SEND_EMAIL_TIMEOUT_MS` (10 sekund) i zwraca `Resend did not answer within 10000 ms`; zawieszony Resend nie może bez końca blokować zapisu ani webhooka. Każdy wywołujący jest więc napisany jako `const failure = await sendEmail(...)`, po czym decyduje, co zrobić z `failure` — awaria poczty nie może wycofać zamówienia ani usunięcia konta.
 

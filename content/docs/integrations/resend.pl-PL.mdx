@@ -21,7 +21,7 @@ Plik `resend.send.ts` jest jedynym, który go wywołuje, i nigdy nie rzuca wyją
 const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({ ...message, from: sender })
+    const { error } = await resend.emails.send({ ...message, from: sender, replyTo: BUSINESS.EMAIL })
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -47,7 +47,7 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 }
 ```
 
-Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. SDK Resend nie ma limitu czasu i nie przyjmuje sygnału przerwania, więc wywołanie, na które nie przyszła odpowiedź po `SEND_EMAIL_TIMEOUT_MS` (10 sekund), też jest porażką, zgłaszaną jako `Resend did not answer within 10000 ms`. Ta sygnatura niesie ciężar projektowy: awaria poczty nigdy nie może wycofać rejestracji ani zamówienia. Wywołujący logują komunikat albo zapisują go w dzienniku audytu i idą dalej. Domyślne `from` to `M'Arte <${env.RESEND_EMAIL_FROM}>`, zbudowane z `APP_NAME` w `src/presentation/branding/app.ts`.
+Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. SDK Resend nie ma limitu czasu i nie przyjmuje sygnału przerwania, więc wywołanie, na które nie przyszła odpowiedź po `SEND_EMAIL_TIMEOUT_MS` (10 sekund), też jest porażką, zgłaszaną jako `Resend did not answer within 10000 ms`. Ta sygnatura niesie ciężar projektowy: awaria poczty nigdy nie może wycofać rejestracji ani zamówienia. Wywołujący logują komunikat albo zapisują go w dzienniku audytu i idą dalej. Domyślne `from` to `M'Arte <${env.RESEND_EMAIL_FROM}>`, zbudowane z `APP_NAME` w `src/presentation/branding/app.ts`. Każda wiadomość niesie też `replyTo: BUSINESS.EMAIL`, czyli adres kontaktowy sklepu `kontakt@martebizuteria.pl` z `src/presentation/branding/business.ts`, więc klient, który odpowie na e-mail, do czego zachęcają potwierdzenie zamówienia, informacja o wysyłce i informacja o usunięciu konta, pisze do sklepu bez względu na to, jaki adres wskazuje `RESEND_EMAIL_FROM`. `SendEmailOptions` nie ma na to pola, więc żaden wywołujący nie wyśle wiadomości bez niego.
 
 ### Załączniki
 
@@ -226,6 +226,8 @@ Bez parametru `template` renderowany jest indeks z odnośnikami do każdego szab
 Resend odrzuca każdą wiadomość, której domena w polu `from` nie jest zweryfikowana na koncie, do którego należy `RESEND_API_KEY`. Odmowa to `validation_error` z kodem 403, `The <domain> domain is not verified. Please, add and verify your domain on https://resend.com/domains`, i powtarza się przy każdym e-mailu, dopóki domena nie zostanie zweryfikowana. Sklep widzi ją w logu serwera i w dzienniku audytu; osoba, która czekała na e-mail, widzi błąd albo nie widzi niczego.
 
 `RESEND_API_KEY` i `RESEND_EMAIL_FROM` są w `secrets.required` dla wszystkich trzech środowisk w `wrangler.jsonc`. `RESEND_EMAIL_FROM` to sam adres, na przykład `noreply@martebizuteria.pl`, bez nazwy wyświetlanej, bo nazwę dodaje `sendEmail` i wysyła jako `M'Arte <noreply@martebizuteria.pl>`. Jego domena musi dokładnie odpowiadać domenie zweryfikowanej w Resend: subdomena, na przykład `mail.martebizuteria.pl`, to w Resend osobna domena z własnymi rekordami.
+
+Odpowiedzi nigdy nie trafiają na ten adres. `sendEmail` przekazuje przy każdej wiadomości `replyTo: BUSINESS.EMAIL`, więc każdy e-mail niesie nagłówek `Reply-To: kontakt@martebizuteria.pl`, a program pocztowy odbiorcy kieruje tam odpowiedź. `RESEND_EMAIL_FROM` może więc być adresem, którego nikt nie czyta, a `kontakt@martebizuteria.pl` musi być skrzynką, którą sklep czyta: klienci wysyłają na nią pytania, anulowania, odstąpienia od umowy i reklamacje. To, z jakiej domeny sklep wysyła pocztę, jest ustawieniem właściciela. [Kontrola przed wdrożeniem](#kontrola-przed-wdrożeniem) sprawdza, czy Resend wyśle e-mail jako `RESEND_EMAIL_FROM`, a nie, czy jego domeną jest `martebizuteria.pl`.
 
 ### Weryfikacja domeny
 

@@ -19,6 +19,7 @@ vi.mock("resend", () => ({
 import { SEND_EMAIL_TIMEOUT_MS, sendEmail } from "~/src/integrations/resend/resend.send"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
+import { BUSINESS } from "~/src/presentation/branding/business"
 
 const body = createElement("p", undefined, "Your order is on its way")
 
@@ -53,6 +54,7 @@ describe("sendEmail", () => {
     expect(emailsSend).toHaveBeenCalledWith({
       from: `${APP_NAME} <atelier@marte.test>`,
       react: body,
+      replyTo: BUSINESS.EMAIL,
       subject: "Order shipped",
       to: "anna@example.com",
     })
@@ -68,6 +70,7 @@ describe("sendEmail", () => {
       attachments,
       from: `${APP_NAME} <atelier@marte.test>`,
       react: body,
+      replyTo: BUSINESS.EMAIL,
       subject: "Order confirmation",
       to: "anna@example.com",
     })
@@ -79,6 +82,14 @@ describe("sendEmail", () => {
     await sendEmail({ from: "support@marte.test", react: body, subject: "Order shipped", to: "anna@example.com" })
 
     expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: "support@marte.test" }))
+  })
+
+  it("sends the customer's reply to the shop's contact address when the email comes from another address", async () => {
+    emailsSend.mockResolvedValueOnce({ data: { id: "email_1" }, error: null })
+
+    await sendEmail({ from: "noreply@marte.test", react: body, subject: "Order shipped", to: "anna@example.com" })
+
+    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: "noreply@marte.test", replyTo: BUSINESS.EMAIL }))
   })
 
   it("surfaces the message Resend rejected the email with", async () => {

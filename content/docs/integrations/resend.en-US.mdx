@@ -21,7 +21,7 @@ export const resend = new Resend(env.RESEND_API_KEY)
 const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({ ...message, from: sender })
+    const { error } = await resend.emails.send({ ...message, from: sender, replyTo: BUSINESS.EMAIL })
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -47,7 +47,7 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 }
 ```
 
-It returns `undefined` on success and the failure message otherwise. The Resend SDK has no timeout and accepts no abort signal, so a call that has not answered after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) is also a failure, reported as `Resend did not answer within 10000 ms`. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`.
+It returns `undefined` on success and the failure message otherwise. The Resend SDK has no timeout and accepts no abort signal, so a call that has not answered after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) is also a failure, reported as `Resend did not answer within 10000 ms`. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`. Every message also carries `replyTo: BUSINESS.EMAIL`, the shop's contact address `kontakt@martebizuteria.pl` from `src/presentation/branding/business.ts`, so a customer who answers an e-mail, as the order confirmation, the shipping notice and the account-deleted notice invite them to, writes to the shop whatever address `RESEND_EMAIL_FROM` names. `SendEmailOptions` has no field for it, so no caller can send without it.
 
 ### Attachments
 
@@ -226,6 +226,8 @@ With no `template` parameter it renders an index linking every previewed templat
 Resend refuses every message whose `from` domain is not verified in the account that owns `RESEND_API_KEY`. The refusal is a 403 `validation_error`, `The <domain> domain is not verified. Please, add and verify your domain on https://resend.com/domains`, and it repeats for every e-mail until the domain is verified. The shop sees it in the server log and the audit log; the person who was waiting for the e-mail sees an error or nothing at all.
 
 `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in `secrets.required` for all three environments in `wrangler.jsonc`. `RESEND_EMAIL_FROM` is a bare address such as `noreply@martebizuteria.pl`, with no display name, because `sendEmail` adds the name itself and sends as `M'Arte <noreply@martebizuteria.pl>`. Its domain must match a domain verified in Resend exactly: a subdomain such as `mail.martebizuteria.pl` is a separate Resend domain with its own records.
+
+Replies never go to that address. `sendEmail` passes `replyTo: BUSINESS.EMAIL` with every message, so each e-mail carries `Reply-To: kontakt@martebizuteria.pl` and the recipient's mail client addresses an answer there. `RESEND_EMAIL_FROM` can therefore be an address nobody reads, and `kontakt@martebizuteria.pl` must be a mailbox the shop does read: customers send questions, cancellations, withdrawals and complaints there. Which domain the shop sends from is a setting for the owner. The [deploy check](#deploy-check) confirms that Resend would send as `RESEND_EMAIL_FROM`, not that its domain is `martebizuteria.pl`.
 
 ### Verifying a domain
 
