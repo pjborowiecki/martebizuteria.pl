@@ -5,13 +5,13 @@ description: "Pliki .env, wartości docierające do przeglądarki i te wysyłane
 
 ## Pliki środowiskowe
 
-| Plik               | Wersjonowany w Git | Wczytywany przez                                                                                                                                                             |
-| ------------------ | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.env.example`     | Tak                | Nic — to szablon do skopiowania                                                                                                                                              |
-| `.env.development` | Nie                | `bun run dev` (tryb Vite `development`, `CLOUDFLARE_ENV=development`) oraz `bun run email:verify development`                                                                |
-| `.env.preview`     | Nie                | `bun run build:preview`, `bun run start`, `scripts/verify-email-sender.ts preview` oraz `scripts/prepare-deploy-secrets.ts preview`; dwa ostatnie uruchamia `deploy:preview` |
-| `.env.production`  | Nie                | `bun run build:production`, `scripts/verify-email-sender.ts production` oraz `scripts/prepare-deploy-secrets.ts production`; wszystkie trzy uruchamia `deploy:production`    |
-| `.env.test`        | Tak                | `vite.config.ts` przez `loadEnv("test", …)` dla projektów Vitest oraz buildy w CI                                                                                            |
+| Plik               | Wersjonowany w Git | Wczytywany przez                                                                                                                                                                                                        |
+| ------------------ | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Tak                | Nic — to szablon do skopiowania                                                                                                                                                                                         |
+| `.env.development` | Nie                | `bun run dev` (tryb Vite `development`, `CLOUDFLARE_ENV=development`), `bun run email:verify development` oraz `scripts/verify-stripe-keys.ts development`                                                              |
+| `.env.preview`     | Nie                | `bun run build:preview`, `bun run start`, `scripts/verify-stripe-keys.ts preview`, `scripts/verify-email-sender.ts preview` oraz `scripts/prepare-deploy-secrets.ts preview`; trzy ostatnie uruchamia `deploy:preview`  |
+| `.env.production`  | Nie                | `bun run build:production`, `scripts/verify-stripe-keys.ts production`, `scripts/verify-email-sender.ts production` oraz `scripts/prepare-deploy-secrets.ts production`; wszystkie cztery uruchamia `deploy:production` |
+| `.env.test`        | Tak                | `vite.config.ts` przez `loadEnv("test", …)` dla projektów Vitest oraz buildy w CI                                                                                                                                       |
 
 `.gitignore` realizuje dokładnie ten podział:
 
@@ -46,10 +46,10 @@ Ten podział jest tu ważniejszy niż sama lista nazw.
 
 **1. Wejścia buildu widoczne w przeglądarce (prefiks `VITE_`).** Vite wstawia je do bundle'a klienckiego na etapie budowania. Nigdy nie umieszczaj sekretu pod nazwą z prefiksem `VITE_`.
 
-| Zmienna                       | Odczytywana w                                                                              |
-| ----------------------------- | ------------------------------------------------------------------------------------------ |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts` — `import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY` |
-| `VITE_R2_URL`                 | `src/lib/url.ts` — gałąź klienta w `getAssetCdnBase()`                                     |
+| Zmienna                       | Odczytywana w                                                                                                                                                                                                                                                    |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts` — `import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY`; `pk_live_` na produkcji i `pk_test_` gdzie indziej, przed wdrożeniem sprawdza go `scripts/verify-stripe-keys.ts`, zobacz [Stripe](/docs/integrations/stripe#sekrety) |
+| `VITE_R2_URL`                 | `src/lib/url.ts` — gałąź klienta w `getAssetCdnBase()`                                                                                                                                                                                                           |
 
 **2. Sekrety Workera.** Deklarowane osobno dla każdego środowiska w sekcji `secrets.required` w `wrangler.jsonc` i odczytywane na serwerze przez `import { env } from "cloudflare:workers"`. Wszystkie trzy środowiska deklarują te same dziesięć:
 
@@ -62,7 +62,7 @@ Ten podział jest tu ważniejszy niż sama lista nazw.
 | `AUTH_GITHUB_CLIENT_SECRET` | `socialProviders.github` w `auth.server.ts`                                                                                                                                                                                            |
 | `RESEND_API_KEY`            | `src/integrations/resend/resend.config.ts`; przed wdrożeniem sprawdza go `scripts/verify-email-sender.ts`, zobacz [Resend](/docs/integrations/resend#domena-nadawcy)                                                                   |
 | `RESEND_EMAIL_FROM`         | `src/integrations/resend/resend.send.ts`, opakowany jako `M'Arte <…>`; sam adres w zweryfikowanej domenie, który przed wdrożeniem sprawdza `scripts/verify-email-sender.ts`, zobacz [Resend](/docs/integrations/resend#domena-nadawcy) |
-| `STRIPE_SECRET_KEY`         | `src/integrations/stripe/stripe.server.ts`                                                                                                                                                                                             |
+| `STRIPE_SECRET_KEY`         | `src/integrations/stripe/stripe.server.ts`; `sk_live_` albo `rk_live_` na produkcji i klucz testowy gdzie indziej, przed wdrożeniem sprawdza go `scripts/verify-stripe-keys.ts`, zobacz [Stripe](/docs/integrations/stripe#sekrety)    |
 | `STRIPE_WEBHOOK_SECRET`     | `src/routes/api/webhooks.stripe.ts`, do weryfikacji podpisu                                                                                                                                                                            |
 | `VITE_R2_URL`               | `src/lib/url.ts` — gałąź serwera w `getAssetCdnBase()`                                                                                                                                                                                 |
 

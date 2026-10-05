@@ -207,6 +207,17 @@ export const CHECKOUT_ERROR_CODES = {
 
 `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` are Worker secrets listed in `wrangler.jsonc`; `VITE_STRIPE_PUBLISHABLE_KEY` is a browser variable in the environment files.
 
+The two keys have to come from the same Stripe mode, and the mode has to match the environment. `deploy:preview` and `deploy:production` run `scripts/verify-stripe-keys.ts <environment>` right after `verify-bindings.ts` and before the build, and it stops the deploy unless both keys pass `verifyStripeKeys` in `stripe.keys.ts`:
+
+| Environment              | `VITE_STRIPE_PUBLISHABLE_KEY` | `STRIPE_SECRET_KEY`      |
+| ------------------------ | ----------------------------- | ------------------------ |
+| `production`             | `pk_live_`                    | `sk_live_` or `rk_live_` |
+| `preview`, `development` | `pk_test_`                    | `sk_test_` or `rk_test_` |
+
+A live publishable key next to a test secret key, or the reverse, is refused in every environment, because the payment form could not open the Checkout Sessions the server creates. Test keys in production would accept Stripe's test cards for real orders, and live keys in preview would charge a real card for a test order. A missing or blank key, or a value that is not the kind of key its variable holds, such as a secret key in `VITE_STRIPE_PUBLISHABLE_KEY`, is refused too. The script reads each key from the process environment first and `.env.<environment>` second, as the deploy workflows supply it, and prints the variables and their mode, never a key. `bun scripts/verify-stripe-keys.ts development` runs the same check against `.env.development`. The rules are unit tested in `__test__/stripe.keys.test.ts`.
+
+The check reads only the prefixes. It does not ask Stripe whether the keys are still valid, whether a restricted key may write the Checkout Sessions, coupons, customers, payment methods, refunds and SetupIntents the shop manages and read its PaymentIntents, or whether the live webhook endpoint exists. Before the first production deploy, create the live endpoint at `https://<host>/api/webhooks/stripe`, subscribe it to the eight events in `STRIPE_WEBHOOK_EVENTS`, store its own `whsec_` as the production `STRIPE_WEBHOOK_SECRET`, and turn on BLIK and Przelewy24 in live mode.
+
 ## Related pages
 
 - [Checkout and payments](/docs/features/checkout)
