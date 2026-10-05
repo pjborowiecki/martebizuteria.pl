@@ -58,6 +58,17 @@ export const recordServerFunctionRequests = (page: Page, id: string): readonly R
 export const waitForServerFunctionResponse = (page: Page, id: string): Promise<Response> =>
   page.waitForResponse((response) => calledServerFunction(response.url()) === id)
 
+export const rewriteNextServerFunctionRequest = async (page: Page, id: string, rewrite: (body: string) => string): Promise<void> => {
+  await page.route(
+    (url) => calledServerFunction(url.href) === id,
+    async (route) => {
+      const body = route.request().postData()
+      await route.continue(body === null ? undefined : { postData: rewrite(body) })
+    },
+    { times: 1 },
+  )
+}
+
 export const runBeforeServerFunction = async (page: Page, id: string, run: () => Promise<void>): Promise<void> => {
   await page.route(
     (url) => calledServerFunction(url.href) === id,

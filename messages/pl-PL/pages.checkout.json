@@ -159,10 +159,14 @@
       "cityRequired": "Miasto jest wymagane",
       "postCodeRequired": "Kod pocztowy jest wymagany",
       "countryRequired": "Kraj jest wymagany",
+      "countryNotDelivered": "Obecnie wysyłamy zamówienia wyłącznie na terenie Polski",
       "deliveryRequired": "Wybierz metodę dostawy",
+      "lockerIdRequired": "Wybierz paczkomat",
       "paymentRequired": "Wybierz metodę płatności"
     },
     "errors": {
+      "deliveryMethodUnavailable": "Wybrana metoda dostawy nie jest już dostępna. Wybierz inną.",
+      "lockerRequired": "Wybierz paczkomat dla tej metody dostawy.",
       "insufficientInventory": "Niektórych produktów z koszyka brakuje na stanie.",
       "invalidPrice": "Jeden z produktów w koszyku ma nieprawidłową cenę. Usuń go i spróbuj ponownie.",
       "productNotFound": "Produkt z koszyka nie jest już dostępny.",

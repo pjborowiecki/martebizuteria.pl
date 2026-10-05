@@ -5,7 +5,7 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
   ensureStripeCustomer: vi.fn<() => Promise<string>>(),
-  getActiveDeliveryMethodByIdQuery: vi.fn(),
+  getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
   getRequest: vi.fn<() => Request>(),
@@ -50,7 +50,7 @@ vi.mock("~/src/modules/checkout/use-cases/update-checkout-delivery.server", () =
 }))
 vi.mock("~/src/modules/discount/discount.checkout.server", () => ({ resolveCheckoutDiscount: mocked.resolveCheckoutDiscount }))
 vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
-  getActiveDeliveryMethodByIdQuery: mocked.getActiveDeliveryMethodByIdQuery,
+  getOfferedDeliveryMethodByIdQuery: mocked.getOfferedDeliveryMethodByIdQuery,
 }))
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: vi.fn() }))
 vi.mock("~/src/modules/inventory/inventory.utils", () => ({
@@ -92,7 +92,7 @@ beforeEach(() => {
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
   mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
-  mocked.getActiveDeliveryMethodByIdQuery.mockResolvedValue({ id: "dpd-courier", price: 1500 })
+  mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1500, type: "courier" })
   mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_300, client_secret: "cs_secret_1", id: "cs_new" })
   mocked.checkoutSessionsExpire.mockResolvedValue({})
   mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: { items: JSON.stringify(HELD_LINES) }, status: "open" })

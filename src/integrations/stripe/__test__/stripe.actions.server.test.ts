@@ -14,7 +14,7 @@ const mocked = vi.hoisted(() => ({
     vi.fn<(input: { checkoutValues: { email: string }; discountId?: string; userEmail: string; userId?: string }) => Promise<string>>(),
   createPendingPayment: vi.fn(),
   ensureStripeCustomer: vi.fn<() => Promise<string>>(),
-  getActiveDeliveryMethodByIdQuery: vi.fn(),
+  getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
   getRequest: vi.fn<() => Request>(),
@@ -63,7 +63,7 @@ vi.mock("~/src/modules/checkout/use-cases/update-checkout-delivery.server", () =
 }))
 vi.mock("~/src/modules/discount/discount.checkout.server", () => ({ resolveCheckoutDiscount: mocked.resolveCheckoutDiscount }))
 vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
-  getActiveDeliveryMethodByIdQuery: mocked.getActiveDeliveryMethodByIdQuery,
+  getOfferedDeliveryMethodByIdQuery: mocked.getOfferedDeliveryMethodByIdQuery,
 }))
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: mocked.releaseInventoryForItems }))
 vi.mock("~/src/modules/inventory/inventory.utils", () => ({
@@ -127,7 +127,7 @@ beforeEach(() => {
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
   mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
-  mocked.getActiveDeliveryMethodByIdQuery.mockResolvedValue({ id: "dpd-courier", price: 1500 })
+  mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1500, type: "courier" })
   mocked.createCheckout.mockResolvedValue("checkout-1")
   mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_300, client_secret: "cs_secret_1", id: "cs_new" })
   mocked.checkoutSessionsExpire.mockResolvedValue({})
@@ -228,26 +228,8 @@ describe("handleCreateCheckoutSession", () => {
     )
   })
 
-  it("skips the delivery lookup entirely when the checkout carries no delivery method", async () => {
-    const input = createInput()
-
-    await handleCreateCheckoutSession({ ...input, checkoutValues: { ...input.checkoutValues, deliveryMethod: "" } })
-
-    expect(mocked.getActiveDeliveryMethodByIdQuery).not.toHaveBeenCalled()
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        line_items: [
-          {
-            price_data: { currency: "pln", product_data: { name: "Bransoletka Aurora — Rozmiar M" }, unit_amount: 24_900 },
-            quantity: 2,
-          },
-        ],
-      }),
-    )
-  })
-
-  it("treats a delivery method without a price as free shipping", async () => {
-    mocked.getActiveDeliveryMethodByIdQuery.mockResolvedValue(undefined)
+  it("adds no shipping line for a free delivery method", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 0, type: "in_store" })
 
     await handleCreateCheckoutSession(createInput())
 

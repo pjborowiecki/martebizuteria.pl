@@ -1,10 +1,16 @@
 import { type APIRequestContext, type Page, type Request } from "@playwright/test"
 
-import { COURIER, IN_STORE_PICKUP, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
+import { COURIER, IN_STORE_PICKUP, PARCEL_LOCKER, PRODUCTS, SHIPPING_ADDRESS, WITHDRAWN_DELIVERY_METHOD } from "../data/catalog"
 import { rememberPriceWhenAdded } from "../fixtures/cart"
+import { keepCheckoutDraft } from "../fixtures/checkout-draft"
 import { registerCustomer } from "../fixtures/customers"
 import { linkIn, waitForEmail } from "../fixtures/emails"
-import { SERVER_FUNCTIONS, recordServerFunctionRequests, runBeforeServerFunction } from "../fixtures/server-functions"
+import {
+  SERVER_FUNCTIONS,
+  recordServerFunctionRequests,
+  rewriteNextServerFunctionRequest,
+  runBeforeServerFunction,
+} from "../fixtures/server-functions"
 import {
   type CheckoutSession,
   type SignedStripeEvent,
@@ -28,6 +34,12 @@ const CHECKOUT_HOLD_SECONDS = 1920
 const PRICE_WHEN_ADDED = 29_900
 
 const PAYMENT_NOT_COMPLETED = "Your payment was not completed. Choose a payment method to try again."
+
+const DELIVERY_METHOD_UNAVAILABLE = "The delivery method you chose is no longer available. Please choose another one."
+
+const LOCKER_REQUIRED = "Please choose a parcel locker for this delivery method."
+
+const DELIVERY_STEP_URL = /\/en-US\/checkout\?step=3$/u
 
 const fillCheckoutUpToPayment = async (checkoutPage: CheckoutPage, email: string): Promise<void> => {
   await checkoutPage.gotoCheckout()
@@ -369,6 +381,56 @@ test.describe("guest checkout", () => {
 
     await expect(page).toHaveURL(/\/en-US\/checkout\?step=2$/u)
     await expect(checkoutPage.field("Postal Code *")).toHaveAttribute("aria-invalid", "true")
+  })
+
+  test("a guest whose saved checkout names a delivery method the shop withdrew is sent back to choose another, with nothing held", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "withdrawn-delivery")
+    await keepCheckoutDraft(page, {
+      ...SHIPPING_ADDRESS,
+      countryCode: "PL",
+      deliveryMethod: WITHDRAWN_DELIVERY_METHOD.id,
+      deliveryMethodType: "courier",
+      email,
+      sameAsShipping: true,
+    })
+
+    await checkoutPage.open("/en-US/checkout?step=4")
+
+    await expect(checkoutPage.notification(DELIVERY_METHOD_UNAVAILABLE)).toBeVisible()
+    await expect(page).toHaveURL(DELIVERY_STEP_URL)
+    expect(await openCheckoutSessions(request, email)).toStrictEqual([])
+
+    await checkoutPage.chooseDelivery(IN_STORE_PICKUP.name)
+    const session = await waitForOpenCheckoutSession(request, email)
+    expect(session.amount_total).toBe(37_900)
+  })
+
+  test("a request that turns the courier into the parcel locker without a locker opens no payment", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "locker-without-locker")
+    await rewriteNextServerFunctionRequest(page, SERVER_FUNCTIONS.createCheckoutSession, (body) =>
+      body.replaceAll(COURIER.id, PARCEL_LOCKER.id),
+    )
+    await checkoutPage.gotoCheckout()
+    await checkoutPage.fillContact(email, SHIPPING_ADDRESS.phone)
+    await checkoutPage.fillAddress(SHIPPING_ADDRESS)
+
+    await checkoutPage.chooseDelivery(COURIER.name)
+
+    await expect(checkoutPage.notification(LOCKER_REQUIRED)).toBeVisible()
+    await expect(page).toHaveURL(DELIVERY_STEP_URL)
+    expect(await openCheckoutSessions(request, email)).toStrictEqual([])
+
+    await checkoutPage.chooseDelivery(COURIER.name)
+    const session = await waitForOpenCheckoutSession(request, email)
+    expect(session.amount_total).toBe(39_899)
   })
 })
 

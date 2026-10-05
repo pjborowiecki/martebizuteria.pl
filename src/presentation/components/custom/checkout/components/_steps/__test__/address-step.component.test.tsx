@@ -177,6 +177,30 @@ describe("AddressStep saved addresses", () => {
     expect(screen.getByLabelText(/City/u)).toHaveValue("Warszawa")
   })
 
+  it("offers only the saved addresses in a country the shop delivers to as a shipping address", async () => {
+    sessionState.signedIn = true
+    addressState.rows = [
+      savedAddress(),
+      savedAddress({ city: "Berlin", countryCode: "DE", firstName: "Jan", id: "address-2", lastName: "Nowak" }),
+    ]
+
+    renderWithProviders(<AddressStepHarness />)
+
+    expect(await screen.findByRole("button", { name: /Anna Kowalska/u })).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: /Jan Nowak/u })).not.toBeInTheDocument()
+  })
+
+  it("still offers a saved address abroad as the billing address", async () => {
+    sessionState.signedIn = true
+    addressState.rows = [savedAddress({ city: "Berlin", countryCode: "DE", firstName: "Jan", id: "address-2", lastName: "Nowak" })]
+    renderWithProviders(<AddressStepHarness sameAsShipping={false} />)
+
+    await userEvent.click(await screen.findByRole("button", { name: /Jan Nowak/u }))
+
+    expect(observed.form?.getValues("billingCountryCode")).toBe("DE")
+    expect(observed.form?.getValues("countryCode")).toBe("")
+  })
+
   it("replaces missing name parts and postal codes with empty strings", async () => {
     sessionState.signedIn = true
     addressState.rows = [savedAddress({ firstName: null, lastName: null, postalCode: null })]

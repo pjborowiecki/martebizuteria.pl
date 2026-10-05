@@ -97,8 +97,31 @@ describe("checkoutSchema postal code format", () => {
     expect(issuePaths({ ...VALID_SHIPPING, postalCode: " 00-548 " })).toStrictEqual([])
   })
 
-  it("does not police the format of a country it has no pattern for", () => {
-    expect(issuePaths({ ...VALID_SHIPPING, countryCode: "DE", postalCode: "10115" })).toStrictEqual([])
+  it("does not police the format of a billing country it has no pattern for", () => {
+    expect(
+      issuePaths({
+        ...VALID_SHIPPING,
+        billingAddress1: "Unter den Linden 1",
+        billingCity: "Berlin",
+        billingCountryCode: "DE",
+        billingFirstName: "Jan",
+        billingLastName: "Nowak",
+        billingPostalCode: "10117",
+        sameAsShipping: false,
+      }),
+    ).toStrictEqual([])
+  })
+})
+
+describe("checkoutSchema destination country", () => {
+  it("refuses to ship to a country the shop does not deliver to", () => {
+    expect(issueMessagesFor({ ...VALID_SHIPPING, countryCode: "DE", postalCode: "10115" }, "countryCode")).toStrictEqual([
+      "validation.countryNotDelivered",
+    ])
+  })
+
+  it("reports a missing country once, as required", () => {
+    expect(issueMessagesFor({ ...VALID_SHIPPING, countryCode: "" }, "countryCode")).toStrictEqual(["validation.countryRequired"])
   })
 })
 

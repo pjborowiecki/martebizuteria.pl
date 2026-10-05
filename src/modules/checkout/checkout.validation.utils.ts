@@ -2,6 +2,7 @@ import { isValidPhoneNumber } from "libphonenumber-js/mobile"
 import type zod from "zod/v4"
 
 import { type CheckoutValues } from "~/src/modules/checkout/checkout.zod"
+import { DELIVERY_COUNTRY_CODES } from "~/src/modules/delivery-method/delivery-method.constants"
 
 const DEFAULT_COUNTRY = "PL"
 
@@ -47,6 +48,10 @@ const refineBillingAddress = (data: CheckoutValues, ctx: zod.RefinementCtx): voi
 export const isValidCheckoutPhone = (value: string): boolean => isValidPhoneNumber(value, DEFAULT_COUNTRY)
 
 export const refineCheckout = (data: CheckoutValues, ctx: zod.RefinementCtx): void => {
+  if (data.countryCode.length > 0 && !DELIVERY_COUNTRY_CODES.has(data.countryCode)) {
+    addCheckoutIssue(ctx, "countryCode", "validation.countryNotDelivered")
+  }
+
   if (data.postalCode.length > 0 && !isValidPostalCode(data.countryCode, data.postalCode)) {
     addCheckoutIssue(ctx, "postalCode", "validation.postCodeInvalid")
   }

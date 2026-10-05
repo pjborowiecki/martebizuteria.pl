@@ -1,4 +1,4 @@
-import { type JSX, type MouseEvent, useCallback } from "react"
+import { type JSX, type MouseEvent, useCallback, useMemo } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { cn } from "cn"
@@ -10,6 +10,7 @@ import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.sess
 
 import { type Address } from "~/src/modules/address/address.types"
 import { listUserAddressesQuery } from "~/src/modules/address/use-cases/list-user-addresses"
+import { DELIVERY_COUNTRY_CODES } from "~/src/modules/delivery-method/delivery-method.constants"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { FieldGroup } from "~/src/presentation/components/shadcn/field"
@@ -33,6 +34,10 @@ export const AddressStep = (): JSX.Element => {
 
   const { data: session } = useQuery(getCurrentSessionQuery)
   const { data: addresses } = useQuery({ ...listUserAddressesQuery(), enabled: session !== null && session !== undefined })
+  const deliverableAddresses = useMemo(
+    () => (addresses ?? NO_SAVED_ADDRESSES).filter((addr) => DELIVERY_COUNTRY_CODES.has(addr.countryCode)),
+    [addresses],
+  )
 
   const handleContinue = useCallback(
     (event: MouseEvent) => {
@@ -58,12 +63,7 @@ export const AddressStep = (): JSX.Element => {
 
   return (
     <div className="flex flex-col gap-6">
-      <SavedAddresses
-        addresses={addresses ?? NO_SAVED_ADDRESSES}
-        heading={t("shippingAddress")}
-        onSelect={populateAddress}
-        prefix="shipping"
-      />
+      <SavedAddresses addresses={deliverableAddresses} heading={t("shippingAddress")} onSelect={populateAddress} prefix="shipping" />
 
       <FieldGroup className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
         <CheckoutTextField control={control} name="firstName" label={t("firstName")} autoComplete="shipping given-name" required />
