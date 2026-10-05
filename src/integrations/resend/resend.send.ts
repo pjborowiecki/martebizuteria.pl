@@ -12,6 +12,7 @@ import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
 import { scheduleBackgroundWork } from "~/src/lib/background"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
+import { BUSINESS } from "~/src/presentation/branding/business"
 
 export const SEND_EMAIL_TIMEOUT_MS = 10_000
 
@@ -33,7 +34,7 @@ const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): 
 const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
   try {
-    const { error } = await resend.emails.send({ ...message, from: sender })
+    const { error } = await resend.emails.send({ ...message, from: sender, replyTo: BUSINESS.EMAIL })
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
