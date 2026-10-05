@@ -300,7 +300,7 @@ describe("prepareCatalogReplacePayload for a simple product", () => {
   it("opens the inventory row at the requested quantity with nothing reserved", () => {
     const [inventoryRow] = prepareCatalogReplacePayload("product-1", catalogInput(), new Set()).inventoryRows
 
-    expect(inventoryRow).toMatchObject({ quantityAvailable: 5, quantityReserved: 0, version: 1 })
+    expect(inventoryRow).toMatchObject({ quantityAvailable: 5, quantityReserved: 0 })
   })
 
   it("links the inventory row to the variant it was created for", () => {

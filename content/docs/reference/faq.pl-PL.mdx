@@ -57,7 +57,7 @@ Test w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` to
 
 ## Dlaczego nie ma transakcji bazodanowych?
 
-D1 nie ma transakcji interaktywnych. `db.batch()` jest atomowe, więc wszystko, co ma być „albo całość, albo nic", buduje się jako listę instrukcji i uruchamia przez `runDrizzleBatch`. Tam, gdzie odczyt musi poprzedzić zapis, kod używa strzeżonego `UPDATE` — rezerwacja magazynu porównuje zarówno `version`, jak i `quantityAvailable >= quantity` — plus unikalnego indeksu, który sprawia, że `INSERT` przegrywającej gałęzi wywala cały wsad.
+D1 nie ma transakcji interaktywnych. `db.batch()` jest atomowe, więc wszystko, co ma być „albo całość, albo nic", buduje się jako listę instrukcji i uruchamia przez `runDrizzleBatch`. Tam, gdzie odczyt musi poprzedzić zapis, kod używa strzeżonego `UPDATE` — rezerwacja magazynu wymaga `quantityAvailable >= quantity` w tej samej instrukcji, która zajmuje towar — plus unikalnego indeksu, który sprawia, że `INSERT` przegrywającej gałęzi wywala cały wsad.
 
 ## Jak przechowywane są pieniądze?
 

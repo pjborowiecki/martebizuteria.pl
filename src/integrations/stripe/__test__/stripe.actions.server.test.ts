@@ -302,13 +302,12 @@ describe("handleCreateCheckoutSession", () => {
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ metadata }))
   })
 
-  it("reserves the catalogue price, inventory version and catalogue variant title, not the values the client sent", async () => {
+  it("reserves the catalogue price, stock row and catalogue variant title, not the values the client sent", async () => {
     await handleCreateCheckoutSession(createInput())
 
     expect(mocked.reserveInventoryForItems).toHaveBeenCalledWith([
       {
         ...CART_ITEM,
-        currentVersion: 7,
         inventoryId: "inventory-1",
         lineTitle: "Bransoletka Aurora — Rozmiar M",
         priceCents: 24_900,
@@ -448,7 +447,7 @@ describe("checkout validation failures", () => {
   })
 
   it("refuses a quantity larger than the available stock", async () => {
-    const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1, version: 7 } }
+    const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1 } }
     mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject({

@@ -2,7 +2,7 @@ import { type SQL } from "drizzle-orm"
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { getAvailabilityByVariantIds, getInventoryByVariantIds } from "~/src/modules/inventory/inventory.accessors"
+import { getAvailabilityByVariantIds, getInventoryIdsByVariantIds } from "~/src/modules/inventory/inventory.accessors"
 
 const access = vi.hoisted(() => ({
   selectWhere: vi.fn<(condition: SQL | undefined) => Promise<Record<string, number | string>[]>>(),
@@ -24,27 +24,27 @@ const query = (condition: SQL | undefined) => {
   return dialect.sqlToQuery(condition)
 }
 
-describe("getInventoryByVariantIds", () => {
+describe("getInventoryIdsByVariantIds", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it("answers an empty request without querying", async () => {
-    await expect(getInventoryByVariantIds([])).resolves.toStrictEqual(new Map())
+    await expect(getInventoryIdsByVariantIds([])).resolves.toStrictEqual(new Map())
 
     expect(access.selectWhere).not.toHaveBeenCalled()
   })
 
-  it("keys each stock row and its version by variant, in one query for every variant", async () => {
+  it("keys each stock row id by variant, in one query for every variant", async () => {
     access.selectWhere.mockResolvedValue([
-      { id: "inventory-a", variantId: "variant-a", version: 3 },
-      { id: "inventory-b", variantId: "variant-b", version: 7 },
+      { id: "inventory-a", variantId: "variant-a" },
+      { id: "inventory-b", variantId: "variant-b" },
     ])
 
-    await expect(getInventoryByVariantIds(["variant-a", "variant-b"])).resolves.toStrictEqual(
+    await expect(getInventoryIdsByVariantIds(["variant-a", "variant-b"])).resolves.toStrictEqual(
       new Map([
-        ["variant-a", { id: "inventory-a", version: 3 }],
-        ["variant-b", { id: "inventory-b", version: 7 }],
+        ["variant-a", "inventory-a"],
+        ["variant-b", "inventory-b"],
       ]),
     )
     expect(access.selectWhere).toHaveBeenCalledOnce()

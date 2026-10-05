@@ -9,13 +9,7 @@ import { productVariant } from "~/src/modules/product-variant/product-variant.sc
 import { PRODUCT_STATUS } from "~/src/modules/product/product.constants"
 import { product } from "~/src/modules/product/product.schema"
 
-interface ReleaseInventoryItem {
-  inventoryId: string
-  qty: number
-}
-
-interface ReserveInventoryInput {
-  currentVersion: number
+interface InventoryRowQuantity {
   inventoryId: string
   qty: number
 }
@@ -23,21 +17,17 @@ interface ReserveInventoryInput {
 export const inventoryReleaseValues = (qty: number) => ({
   quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qty})`,
   quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qty})`,
-  version: sql`${inventory.version} + 1`,
 })
 
-export const reserveInventoryRows = async (items: readonly ReserveInventoryInput[]): Promise<ReadonlySet<string>> => {
+export const reserveInventoryRows = async (items: readonly InventoryRowQuantity[]): Promise<ReadonlySet<string>> => {
   const [first, ...rest] = items.map((item) =>
     db
       .update(inventory)
       .set({
         quantityAvailable: sql`${inventory.quantityAvailable} - ${item.qty}`,
         quantityReserved: sql`${inventory.quantityReserved} + ${item.qty}`,
-        version: sql`${inventory.version} + 1`,
       })
-      .where(
-        and(eq(inventory.id, item.inventoryId), eq(inventory.version, item.currentVersion), gte(inventory.quantityAvailable, item.qty)),
-      )
+      .where(and(eq(inventory.id, item.inventoryId), gte(inventory.quantityAvailable, item.qty)))
       .returning({ id: inventory.id }),
   )
   if (first === undefined) {
@@ -49,22 +39,20 @@ export const reserveInventoryRows = async (items: readonly ReserveInventoryInput
   return new Set(results.flat().map((row) => row.id))
 }
 
-export const releaseInventoryForItems = (items: ReleaseInventoryItem[]): Promise<void> =>
+export const releaseInventoryForItems = (items: InventoryRowQuantity[]): Promise<void> =>
   runDrizzleBatch(items.map((item) => db.update(inventory).set(inventoryReleaseValues(item.qty)).where(eq(inventory.id, item.inventoryId))))
 
-export const getInventoryByVariantIds = async (
-  variantIds: readonly string[],
-): Promise<ReadonlyMap<string, { readonly id: string; readonly version: number }>> => {
+export const getInventoryIdsByVariantIds = async (variantIds: readonly string[]): Promise<ReadonlyMap<string, string>> => {
   if (variantIds.length === 0) {
     return new Map()
   }
 
   const rows = await db
-    .select({ id: inventory.id, variantId: inventory.variantId, version: inventory.version })
+    .select({ id: inventory.id, variantId: inventory.variantId })
     .from(inventory)
     .where(inJsonList(inventory.variantId, variantIds))
 
-  return new Map(rows.map((row) => [row.variantId, { id: row.id, version: row.version }]))
+  return new Map(rows.map((row) => [row.variantId, row.id]))
 }
 
 export const getAvailabilityByVariantIds = async (variantIds: readonly string[]): Promise<Map<string, number>> => {

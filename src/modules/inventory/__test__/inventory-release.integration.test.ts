@@ -17,13 +17,11 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-const inventoryRowSchema = z.object({ available: z.number(), reserved: z.number(), version: z.number() })
+const inventoryRowSchema = z.object({ available: z.number(), reserved: z.number() })
 
 const readInventory = (inventoryId = "inv_a") =>
   inventoryRowSchema.parse(
-    sqlite
-      .prepare("select quantity_available as available, quantity_reserved as reserved, version from inventory where id = ?")
-      .get(inventoryId),
+    sqlite.prepare("select quantity_available as available, quantity_reserved as reserved from inventory where id = ?").get(inventoryId),
   )
 
 beforeEach(() => {
@@ -51,8 +49,8 @@ describe("releaseInventoryForItems", () => {
   ])("conserves stock when releasing $qty units", async ({ available, qty, reserved }) => {
     await releaseInventoryForItems([{ inventoryId: "inv_a", qty }])
 
-    expect(readInventory()).toStrictEqual({ available, reserved, version: 2 })
-    expect(readInventory("inv_b")).toStrictEqual({ available: 8, reserved: 2, version: 1 })
+    expect(readInventory()).toStrictEqual({ available, reserved })
+    expect(readInventory("inv_b")).toStrictEqual({ available: 8, reserved: 2 })
   })
 
   it("does not create stock when no units remain reserved", async () => {
@@ -60,7 +58,7 @@ describe("releaseInventoryForItems", () => {
 
     await releaseInventoryForItems([{ inventoryId: "inv_a", qty: 4 }])
 
-    expect(readInventory()).toStrictEqual({ available: 10, reserved: 0, version: 2 })
+    expect(readInventory()).toStrictEqual({ available: 10, reserved: 0 })
   })
 
   it("keeps quantities unchanged when an exhausted release is retried", async () => {
@@ -69,7 +67,7 @@ describe("releaseInventoryForItems", () => {
     await releaseInventoryForItems(lines)
     await releaseInventoryForItems(lines)
 
-    expect(readInventory()).toStrictEqual({ available: 10, reserved: 0, version: 3 })
+    expect(readInventory()).toStrictEqual({ available: 10, reserved: 0 })
   })
 
   it("caps overlapping release requests at the remaining reservation", async () => {
@@ -78,7 +76,7 @@ describe("releaseInventoryForItems", () => {
       releaseInventoryForItems([{ inventoryId: "inv_a", qty: 3 }]),
     ])
 
-    expect(readInventory()).toStrictEqual({ available: 10, reserved: 0, version: 3 })
+    expect(readInventory()).toStrictEqual({ available: 10, reserved: 0 })
   })
 
   it("releases each row independently without transferring stock between variants", async () => {
@@ -87,13 +85,13 @@ describe("releaseInventoryForItems", () => {
       { inventoryId: "inv_b", qty: 5 },
     ])
 
-    expect(readInventory()).toStrictEqual({ available: 8, reserved: 2, version: 2 })
-    expect(readInventory("inv_b")).toStrictEqual({ available: 10, reserved: 0, version: 2 })
+    expect(readInventory()).toStrictEqual({ available: 8, reserved: 2 })
+    expect(readInventory("inv_b")).toStrictEqual({ available: 10, reserved: 0 })
   })
 
   it("ignores a missing inventory row", async () => {
     await releaseInventoryForItems([{ inventoryId: "missing", qty: 4 }])
 
-    expect(readInventory()).toStrictEqual({ available: 6, reserved: 4, version: 1 })
+    expect(readInventory()).toStrictEqual({ available: 6, reserved: 4 })
   })
 })

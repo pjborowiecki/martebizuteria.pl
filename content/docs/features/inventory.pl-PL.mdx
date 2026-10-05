@@ -1,6 +1,6 @@
 ---
 title: "Stany magazynowe"
-description: "Jeden wiersz na wariant, kontrola współbieżności przez kolumnę version i cykl rezerwacja → zamiana → zwolnienie wokół sesji Stripe."
+description: "Jeden wiersz na wariant, rezerwacja warunkowana dostępnym stanem i cykl rezerwacja → zamiana → zwolnienie wokół sesji Stripe."
 ---
 
 ## Tabela
@@ -33,7 +33,7 @@ export const inventory = sqliteTable(
 
 Ograniczenie `inventory_quantity_available_non_negative` (`INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK`, dodane przez `20261005300000_inventory_available_never_negative.sql`) utrzymuje `quantity_available` na poziomie zera lub wyżej. Instrukcja, która zeszłaby poniżej zera, kończy się błędem, a razem z nią cały wsad D1, w którym działa. Rezerwacja nigdy go nie narusza, bo jej własny warunek wymaga wystarczającego stanu; to ono odrzuca zapis produktu, którego zmianę stanu wyprzedził klient (zobacz [Zmiana stanu](#zmiana-stanu)).
 
-Nie ma magazynów, lokalizacji ani księgi ruchów — dwa liczniki i wersja to cały model.
+Nie ma magazynów, lokalizacji ani księgi ruchów — dwa liczniki to cały model. Kolumna `version` została po dawnym warunku rezerwacji (zobacz [Rezerwacja stanu](#rezerwacja-stanu)): nic jej już nie porównuje ani nie zwiększa, a nowy wiersz dostaje wartość domyślną. Zostaje w tabeli i w schemacie Drizzle, dopóki nie usunie jej osobna migracja, zastosowana dopiero po wdrożeniu kodu, który przestał ją deklarować, bo Worker z wcześniejszym kodem odczytuje ją z każdym wczytywanym wierszem stanu.
 
 Wiersze powstają razem z wariantami: `prepareProductCatalogBatch` w `product.mutations.ts` wstawia wiersz stanu na podstawie pola `quantity` z formularza produktu, w tym samym wsadzie D1, który wstawia warianty, dla każdego wariantu, który jeszcze go nie ma, a istniejący wiersz zostawia w spokoju (`onConflictDoNothing` po `variant_id`). Każdy wariant jest zapisywany z `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` w `product.utils.ts`), więc kolumna `product_variant.manage_inventory` istnieje, ale w praktyce nigdy nie jest `false`.
 
@@ -53,7 +53,7 @@ Brakujący wiersz `inventory` jest więc odczytywany jako zero, a nie jako warto
 
 `getAvailabilityByVariantIds(variantIds)` w `inventory.accessors.ts` zwraca `Map<variantId, quantityAvailable>` dla partii identyfikatorów i z tego korzysta sprawdzenie dostępności koszyka, doliczając przez `sumHeldQuantity` sztuki trzymane przez otwarty checkout samego kupującego. Łączy `product_variant` i `product` i zostawia tylko produkty `published`, więc stan produktu zarchiwizowanego albo szkicu nigdy nie jest w sprzedaży: archiwizacja nie zmienia `inventory`, a koszyk zgłasza taką linię jako już niedostępną, nawet gdy trzyma ją checkout.
 
-## Rezerwacja optymistyczna
+## Rezerwacja stanu
 
 `reserveInventoryRows` w `inventory.accessors.ts` buduje jeden warunkowy `UPDATE` na linię, a jego `WHERE` pełni rolę kontroli współbieżności:
 
@@ -62,19 +62,18 @@ db.update(inventory)
   .set({
     quantityAvailable: sql`${inventory.quantityAvailable} - ${item.qty}`,
     quantityReserved: sql`${inventory.quantityReserved} + ${item.qty}`,
-    version: sql`${inventory.version} + 1`,
   })
-  .where(and(eq(inventory.id, item.inventoryId), eq(inventory.version, item.currentVersion), gte(inventory.quantityAvailable, item.qty)))
+  .where(and(eq(inventory.id, item.inventoryId), gte(inventory.quantityAvailable, item.qty)))
   .returning({ id: inventory.id })
 ```
 
-Muszą zajść trzy warunki: wiersz istnieje, jego `version` nadal równa się wersji odczytanej przez wywołującego i dostępnych sztuk jest dość. Instrukcje wszystkich linii trafiają do D1 w jednym `db.batch`, więc koszyk dowolnej wielkości kosztuje jedną podróż do bazy, a funkcja zwraca zbiór identyfikatorów stanów, których aktualizacja trafiła w wiersz. Przegrany wyścig zostawia swój identyfikator poza zbiorem, zamiast doprowadzić do nadsprzedaży. Każdy udany zapis zwiększa `version`.
+Muszą zajść dwa warunki: wiersz istnieje, a w chwili wykonania instrukcji dostępnych sztuk jest dość. SQLite sprawdza warunek i wprowadza zmianę w tej samej instrukcji, a D1 ma jednego zapisującego, więc dwa checkouty, które chwilę po sobie odczytały ten sam stan, dostają swoje sztuki, gdy stan wystarcza dla obu, a odmowę dostaje tylko późniejszy, gdy nie wystarcza. Odrzucona linia zostawia swój identyfikator poza zbiorem, zamiast doprowadzić do nadsprzedaży, a za warunkiem stoi jeszcze ograniczenie nieujemności. Instrukcje wszystkich linii trafiają do D1 w jednym `db.batch`, więc koszyk dowolnej wielkości kosztuje jedną podróż do bazy, a funkcja zwraca zbiór identyfikatorów stanów, których aktualizacja trafiła w wiersz.
 
-Wersję, z którą porównuje wywołujący, przechwytuje `validateAndCalculateItems` (`src/integrations/stripe/stripe.actions.server.ts`), zwracając obok zwalidowanej linii `currentVersion: inv.version` oraz `inventoryId: inv.id`.
+Dawniej warunek wymagał też, by `version` nadal równała się wartości odczytanej przez checkout podczas walidacji. Checkout był wtedy odrzucany za każdym razem, gdy inny zarezerwował ten sam wariant między jego odczytem a zapisem, a kupujący widział „Nie udało się przygotować płatności”, choć towaru zostało dużo. Nic poza tym porównaniem nie korzystało z tej kolumny, więc porównanie zniknęło i nic już nie zwiększa `version`. Odczyt przed zapisem tylko odnajduje wiersz: `validateAndCalculateItems` (`src/integrations/stripe/stripe.actions.server.ts`) zwraca obok zwalidowanej linii `inventoryId: inv.id`, a stan, który przy tym sprawdza, warunek sprawdza jeszcze raz.
 
 ## Wszystko albo nic dla wielu linii
 
-`reserveInventoryForItems` w `inventory.utils.ts` najpierw scala linie wskazujące ten sam wiersz stanu, więc dwie linie jednego wariantu proszą o łączną ilość, zamiast żeby druga przegrała na wersji, którą właśnie przesunęła pierwsza. Potem rezerwuje wszystkie linie jednym wsadem i wycofuje całość, gdy którykolwiek warunek zawiódł:
+`reserveInventoryForItems` w `inventory.utils.ts` najpierw scala linie wskazujące ten sam wiersz stanu, więc dwie linie jednego wariantu proszą o łączną ilość: wynik zawiera jeden identyfikator na wiersz i nie odróżniłby odrzuconej linii od zarezerwowanej linii tego samego wiersza. Potem rezerwuje wszystkie linie jednym wsadem i wycofuje całość, gdy którykolwiek warunek zawiódł:
 
 ```ts
 const firstFailure = lines.find((line) => !reservedIds.has(line.inventoryId))
@@ -84,13 +83,13 @@ if (firstFailure !== undefined) {
     console.error("Failed to roll back partial inventory reservation:", error)
   })
 
-  throw new Error(`Inventory reservation failed for ${firstFailure.title}. Stock changed or unavailable.`)
+  throw new Error(`Inventory reservation failed for ${firstFailure.title}. Not enough stock available.`)
 }
 ```
 
 Warunek, który nie trafia w żaden wiersz, nie jest błędem, więc D1 zatwierdza linie, które trafiły; tę lukę zamyka kompensujące zwolnienie, samo będące jednym wsadem, a nie baza danych.
 
-`reserveInventoryByVariantLines(lines)` to wariant oparty na identyfikatorach wariantów, który rezerwuje edytowany koszyk podczas aktualizacji checkoutu, po zwolnieniu linii starej sesji i zwiększeniu ich `version`: jednym zapytaniem przez `getInventoryByVariantIds` czyta wiersz stanu i aktualną `version` każdej linii, a potem deleguje do `reserveInventoryForItems`.
+`reserveInventoryByVariantLines(lines)` to wariant oparty na identyfikatorach wariantów, który rezerwuje edytowany koszyk podczas aktualizacji checkoutu, po zwolnieniu linii starej sesji: jednym zapytaniem przez `getInventoryIdsByVariantIds` odnajduje wiersz stanu każdej linii, a potem deleguje do `reserveInventoryForItems`.
 
 ## Zwolnienie jest ograniczone
 
@@ -100,30 +99,27 @@ Obie instrukcje zwolnienia używają `min`/`max`, więc podwójne zwolnienie nie
 .set({
   quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qty})`,
   quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qty})`,
-  version: sql`${inventory.version} + 1`,
 })
 ```
 
-`releaseInventoryForItems(items)` operuje po `inventoryId` i wysyła wszystkie linie jednym wsadem. `supersedeCheckoutSession` stosuje te same `inventoryReleaseValues`, po `variantId`, do linii trzymanych przez zastąpioną sesję checkoutu. W przeciwieństwie do rezerwacji zwolnienie nie jest warunkowane przez `version` — musi się zawsze udać.
+`releaseInventoryForItems(items)` operuje po `inventoryId` i wysyła wszystkie linie jednym wsadem. `supersedeCheckoutSession` stosuje te same `inventoryReleaseValues`, po `variantId`, do linii trzymanych przez zastąpioną sesję checkoutu. W przeciwieństwie do rezerwacji zwolnienie nie ma warunku — musi się zawsze udać, a ograniczenie sprawia, że powtórzone niczego nie psuje.
 
 ## Pełny cykl
 
 | Moment                                                                                           | Efekt na wierszu                                                                                          |
 | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| utworzenie sesji Stripe (`handleCreateCheckoutSession`)                                          | `available -= qty`, `reserved += qty`, `version += 1`                                                     |
+| utworzenie sesji Stripe (`handleCreateCheckoutSession`)                                          | `available -= qty`, `reserved += qty`, tylko gdy `available >= qty`                                       |
 | edycja checkoutu (`handleUpdateCheckoutSession`)                                                 | stare linie zwolnione przy przeniesieniu płatności (`supersedeCheckoutSession`), potem nowe zarezerwowane |
 | sesja opłacona (`prepareFulfillCheckoutBatch`)                                                   | `reserved -= qty`; `available` bez zmian — rezerwacja jest skonsumowana                                   |
 | sesja wygasła albo płatność asynchroniczna nieudana (`prepareReleaseCheckoutBatch`)              | `available += min(reserved, qty)`, `reserved -= qty`                                                      |
 | anulowanie zamówienia przez administratora (`prepareCancelOrderBatch`)                           | `available += quantity`, dopóki zamówienie jest niewysłane, a jego towar jeszcze nie wrócił na stan       |
 | administrator potwierdza, że produkty zwróconego zamówienia wróciły (`prepareRestockOrderBatch`) | `available += quantity`, z `getRestockLinesForOrder(orderId)`, raz na zamówienie                          |
 | sam zwrot pieniędzy, z przycisku Zwrot, z panelu Stripe albo po przegranym sporze                | nic — `refundOrder` nigdy nie przywraca stanu                                                             |
-| zmiana stanu przez administratora w edytorze produktu (`prepareProductCatalogBatch`)             | `available += nowy − wczytany`, `version += 1`; odrzucona, gdy zeszłaby poniżej zera                      |
+| zmiana stanu przez administratora w edytorze produktu (`prepareProductCatalogBatch`)             | `available += nowy − wczytany`; odrzucona, gdy zeszłaby poniżej zera                                      |
 
 Rezerwacja trwa tylko tak długo, jak długo jej sesję Checkout da się opłacić. Każda sesja wygasa `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minuty, ze `stripe.constants.ts`) po otwarciu, a nie po domyślnych 24 godzinach Stripe, a jej webhook `checkout.session.expired` zwalnia linie. Aktualizacja checkoutu, która zastaje sesję już wygaszoną przez Stripe, sama najpierw uruchamia to samo strzeżone zwolnienie, podobnie jak sprawdzenie zapisanej sesji, które wykonuje strona kasy, więc nowy checkout kupującego nie czeka na webhook. Przeglądarka trzyma jedną otwartą sesję: kasa kontynuuje zapisaną sesję ścieżką aktualizacji, która zwalnia stare linie, rezerwując nowe, zamiast rezerwować koszyk ponownie po odświeżeniu, w drugiej karcie albo po wizycie w koszyku.
 
 Każde przywrócenie na stan przechodzi przez `prepareRestockOrderBatch` (`order.utils.ts`), które dodaje każdą linię tylko wtedy, gdy zamówienie nie jest `cancelled`, a jego `restocked_at` jest puste, i w tym samym wsadzie ustawia `restocked_at`, więc towar zamówienia wraca na stan najwyżej raz, niezależnie od tego, co przyjdzie pierwsze: anulowanie, okno zwrotu czy Przywróć na stan, i jak często każde z nich zostanie powtórzone. Anulowanie wymaga też, by zamówienie nie zostało wysłane. Sam zwrot pieniędzy niczego nie przywraca, bo nie mówi, gdzie jest towar: zwrot za zagubioną przesyłkę albo zwrot z dobrej woli nie może wystawić unikatowego egzemplarza z powrotem na sprzedaż. Administrator odpowiada na to pytanie w oknie zwrotu, którego pole jest na początku zaznaczone tylko dla zamówienia niewysłanego, albo później przyciskiem Przywróć na stan w zamówieniu (zobacz [Zamówienia](/docs/features/orders#akcje-w-panelu)).
-
-Zwróć uwagę, że wsady realizacji i zwolnienia aktualizują `inventory` **bez** zwiększania `version`, bo działają wewnątrz wsadu D1 razem z zapisami zamówienia, a nie przez `reserveInventoryRows` i funkcje zwalniające.
 
 Lokalna obsługa błędów w `stripe.actions.server.ts` zawsze kompensuje: porażka po rezerwacji wywołuje `releaseInventoryForItems`. Aktualizacja checkoutu zwalnia stare linie dopiero po wygaszeniu starej sesji, w tym samym wsadzie, który przenosi płatność, i tylko dopóki checkout jest nadal `pending`. Wsad zwolnienia z webhooka wygaśnięcia ma ten sam warunek na oczekującą płatność sesji, więc stare linie zwraca ten wsad, który zatwierdzi się pierwszy, a drugi nie znajduje nic, niezależnie od tego, jak przeplotą się oba żądania. Porażka po tym momencie nie przywraca ich: starej sesji nie da się już opłacić, więc `releaseCheckout` oznacza checkout jako nieudany i oddaje to, co zarezerwował edytowany koszyk.
 
@@ -179,12 +175,12 @@ Produkty nieopublikowane są zawsze raportowane jako `ok`, więc szkic bez stanu
 
 - `mapProductDetailToFormValues` (`product-form.utils.ts`) wczytuje `quantityAvailable` do pola i zachowuje je jako `loadedQuantity`, a `quantityReserved` zachowuje jako `quantityInCheckout`. Edytor pokazuje tę liczbę pod polem („1 szt. w trakcie płatności”, „1 in checkout”), a podpowiedź mówi, że pole to stan dostępny do sprzedaży. `quantityInCheckout` istnieje tylko w schemacie formularza, więc `parseCatalogUpsertInput` je odrzuca; `loadedQuantity` jest wysyłane razem z `quantity`.
 - `prepareCatalogReplacePayload` (`product.utils.ts`) zamienia wariant, który produkt już ma i którego `quantity` różni się od `loadedQuantity`, we wpis `inventoryAdjustments` równy `quantity − loadedQuantity`. Nieruszone pole albo wariant, którego stanu edytor nie wczytał, nie zapisuje stanu.
-- `prepareProductCatalogBatch` stosuje każdą korektę we wsadzie zapisu jako `quantity_available = quantity_available + zmiana` i `version = version + 1`, więc rezerwacja, zwolnienie albo sprzedaż, które nastąpiły przy otwartym edytorze, pozostają policzone. Nowy produkt albo nowy wariant nadal dostaje pierwszy stan z wpisanej liczby; istniejący wiersz nigdy nie jest nadpisywany.
+- `prepareProductCatalogBatch` stosuje każdą korektę we wsadzie zapisu jako `quantity_available = quantity_available + zmiana`, więc rezerwacja, zwolnienie albo sprzedaż, które nastąpiły przy otwartym edytorze, pozostają policzone. Nowy produkt albo nowy wariant nadal dostaje pierwszy stan z wpisanej liczby; istniejący wiersz nigdy nie jest nadpisywany.
 - Gdy klient w międzyczasie zarezerwował albo kupił towar i korekta zeszłaby z `quantity_available` poniżej zera, ograniczenie kończy instrukcję błędem, a D1 wycofuje cały wsad, więc nic z produktu nie zostaje zapisane. `rethrowProductMutationError` zamienia ten błąd na `ERROR_CODES.CONFLICT` z `PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING`; edytor zostaje otwarty z danymi administratora i pokazuje `toast.stockChangedWhileEditing`, który mówi, że nic nie zostało zapisane, i każe odświeżyć stronę, aby zobaczyć aktualny stan.
 
 Wszystko pozostałe — rezerwacja, zamiana, zwolnienie — dzieje się automatycznie wokół checkoutu, a produkty zamówienia wracają na stan, gdy administrator je anuluje albo potwierdzi, że wróciły.
 
-Jeśli potrzebny jest ekran korekty stanu, właściwym miejscem jest nowy use case w `src/modules/inventory/use-cases/` z `authorized({ product: ["update"] })`, korzystający z tej samej przygotowanej instrukcji z kontrolą wersji, żeby nie mógł przegrać wyścigu z trwającym checkoutem, a po zapisie wywołujący `scheduleProductCatalogInvalidation()`.
+Jeśli potrzebny jest ekran korekty stanu, właściwym miejscem jest nowy use case w `src/modules/inventory/use-cases/` z `authorized({ product: ["update"] })`, zapisujący zmianę w SQL jako różnicę, tak jak zapis produktu, żeby nie mógł cofnąć rezerwacji, którą w międzyczasie zrobił trwający checkout, a ograniczenie nieujemności odrzuciło korektę zabierającą towar zarezerwowany albo sprzedany, i po zapisie wywołujący `scheduleProductCatalogInvalidation()`.
 
 ## Powiązane strony
 

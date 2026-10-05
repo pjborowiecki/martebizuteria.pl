@@ -1,6 +1,6 @@
 ---
 title: "Inventory"
-description: "One row per variant, optimistic concurrency on a version column, and the reserve → convert → release cycle around a Stripe session."
+description: "One row per variant, a reservation guarded on the stock available, and the reserve → convert → release cycle around a Stripe session."
 ---
 
 ## The table
@@ -33,7 +33,7 @@ export const inventory = sqliteTable(
 
 The check `inventory_quantity_available_non_negative` (`INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK`, added by `20261005300000_inventory_available_never_negative.sql`) keeps `quantity_available` at zero or above. A statement that would take it below zero fails, and so does the D1 batch it runs in. A reservation never trips it, because its own guard asks for enough available stock; it is what refuses a product save whose stock change a customer overtook (see [Changing stock](#changing-stock)).
 
-There are no warehouses, no locations and no stock ledger — the two counters and the version are the whole model.
+There are no warehouses, no locations and no stock ledger — the two counters are the whole model. The `version` column is left from an earlier reservation guard (see [Reserving stock](#reserving-stock)): nothing compares or bumps it any more, and a new row takes its default. It stays in the table and in the Drizzle schema until a migration of its own drops it, applied only after code that no longer declares it is deployed, because a Worker still running older code selects it with every stock row it loads.
 
 Rows are created alongside variants: `prepareProductCatalogBatch` in `product.mutations.ts` inserts a stock row from the `quantity` field of the product form, in the same D1 batch that inserts the variants, for every variant that has none yet, and leaves an existing row alone (`onConflictDoNothing` on `variant_id`). Every variant is persisted with `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` in `product.utils.ts`), so the `product_variant.manage_inventory` column exists but is never `false` in practice.
 
@@ -53,7 +53,7 @@ A missing `inventory` row therefore reads as zero rather than as unknown.
 
 `getAvailabilityByVariantIds(variantIds)` in `inventory.accessors.ts` returns a `Map<variantId, quantityAvailable>` for a batch of ids and is what the cart's availability check uses, adding back with `sumHeldQuantity` the units the shopper's own open checkout holds. It joins `product_variant` and `product` and keeps only `published` products, so the stock of an archived or draft product is never on sale: archiving does not touch `inventory`, and the basket reports such a line as no longer available even while a checkout holds it.
 
-## Optimistic reservation
+## Reserving stock
 
 `reserveInventoryRows` in `inventory.accessors.ts` builds one guarded `UPDATE` per line, and the `WHERE` is the concurrency control:
 
@@ -62,19 +62,18 @@ db.update(inventory)
   .set({
     quantityAvailable: sql`${inventory.quantityAvailable} - ${item.qty}`,
     quantityReserved: sql`${inventory.quantityReserved} + ${item.qty}`,
-    version: sql`${inventory.version} + 1`,
   })
-  .where(and(eq(inventory.id, item.inventoryId), eq(inventory.version, item.currentVersion), gte(inventory.quantityAvailable, item.qty)))
+  .where(and(eq(inventory.id, item.inventoryId), gte(inventory.quantityAvailable, item.qty)))
   .returning({ id: inventory.id })
 ```
 
-Three conditions must hold: the row exists, its `version` still equals the version the caller read, and there is enough available. The statements for every line go to D1 in one `db.batch`, so a cart of any size costs one round trip, and the function returns the set of inventory ids whose update matched. A lost race leaves its id out of the set instead of overselling. Every successful write bumps `version`.
+Two conditions must hold: the row exists, and there is enough available when the statement runs. SQLite checks the guard and applies the change in the same statement, and D1 has a single writer, so two checkouts that read the same stock a moment apart both get their units when it covers both, and only the later one is refused when it does not. A refused line leaves its id out of the set instead of overselling, and the non-negative check stands behind the guard. The statements for every line go to D1 in one `db.batch`, so a cart of any size costs one round trip, and the function returns the set of inventory ids whose update matched.
 
-The version the caller compares against is captured in `validateAndCalculateItems` (`src/integrations/stripe/stripe.actions.server.ts`), which returns `currentVersion: inv.version` and `inventoryId: inv.id` alongside the validated line.
+The guard used to require as well that `version` still equal the value the checkout read during validation. A checkout was then refused whenever another one reserved the same variant between its read and its write, and the shopper saw "We couldn't prepare your payment" while plenty of stock remained. Nothing else relied on that comparison or on the column, so it is gone and nothing bumps `version` any more. The read before the write only finds the row: `validateAndCalculateItems` (`src/integrations/stripe/stripe.actions.server.ts`) returns `inventoryId: inv.id` alongside the validated line, and its own stock check is repeated by the guard.
 
 ## All-or-nothing across lines
 
-`reserveInventoryForItems` in `inventory.utils.ts` first merges lines that point at the same inventory row, so two lines of one variant ask for their combined quantity instead of the second failing on the version the first just moved. It then reserves every line in one batch and rolls back if any guard failed:
+`reserveInventoryForItems` in `inventory.utils.ts` first merges lines that point at the same inventory row, so two lines of one variant ask for their combined quantity: the result holds one id per row, and it could not tell a refused line apart from a reserved line on the same row. It then reserves every line in one batch and rolls back if any guard failed:
 
 ```ts
 const firstFailure = lines.find((line) => !reservedIds.has(line.inventoryId))
@@ -84,13 +83,13 @@ if (firstFailure !== undefined) {
     console.error("Failed to roll back partial inventory reservation:", error)
   })
 
-  throw new Error(`Inventory reservation failed for ${firstFailure.title}. Stock changed or unavailable.`)
+  throw new Error(`Inventory reservation failed for ${firstFailure.title}. Not enough stock available.`)
 }
 ```
 
 A guard that matches no row is not an error, so D1 commits the lines that did match; the compensating release, itself a single batch, closes that gap rather than the database.
 
-`reserveInventoryByVariantLines(lines)` is the variant-id-based variant that reserves the edited cart during a checkout update, after the old session's lines were released and their `version` bumped: it reads every line's inventory row and current `version` in one query through `getInventoryByVariantIds`, then delegates to `reserveInventoryForItems`.
+`reserveInventoryByVariantLines(lines)` is the variant-id-based variant that reserves the edited cart during a checkout update, after the old session's lines were released: it finds every line's inventory row in one query through `getInventoryIdsByVariantIds`, then delegates to `reserveInventoryForItems`.
 
 ## Release is clamped
 
@@ -100,30 +99,27 @@ Both release statements use `min`/`max` so a duplicate release cannot invent sto
 .set({
   quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${qty})`,
   quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${qty})`,
-  version: sql`${inventory.version} + 1`,
 })
 ```
 
-`releaseInventoryForItems(items)` keys on `inventoryId` and sends every line in one batch. `supersedeCheckoutSession` applies the same `inventoryReleaseValues`, keyed on `variantId`, to the lines a replaced checkout session held. Unlike reservation, release is unconditional on `version` — it must always succeed.
+`releaseInventoryForItems(items)` keys on `inventoryId` and sends every line in one batch. `supersedeCheckoutSession` applies the same `inventoryReleaseValues`, keyed on `variantId`, to the lines a replaced checkout session held. Unlike reservation, release has no guard — it must always succeed, and the clamp keeps a repeated one harmless.
 
 ## The full cycle
 
 | Moment                                                                            | Effect on the row                                                                             |
 | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Stripe session created (`handleCreateCheckoutSession`)                            | `available -= qty`, `reserved += qty`, `version += 1`                                         |
+| Stripe session created (`handleCreateCheckoutSession`)                            | `available -= qty`, `reserved += qty`, only while `available >= qty`                          |
 | Checkout edited (`handleUpdateCheckoutSession`)                                   | Old lines released as the payment moves (`supersedeCheckoutSession`), then new lines reserved |
 | Session paid (`prepareFulfillCheckoutBatch`)                                      | `reserved -= qty`; `available` untouched — the reservation is consumed                        |
 | Session expired or async payment failed (`prepareReleaseCheckoutBatch`)           | `available += min(reserved, qty)`, `reserved -= qty`                                          |
 | Order cancelled by an admin (`prepareCancelOrderBatch`)                           | `available += quantity` while the order is unshipped and its stock has not gone back yet      |
 | Admin says a refunded order's items came back (`prepareRestockOrderBatch`)        | `available += quantity`, from `getRestockLinesForOrder(orderId)`, once per order              |
 | Refund on its own, from the Refund button, the Stripe dashboard or a lost dispute | Nothing — `refundOrder` never restocks                                                        |
-| Admin changes the stock in the product editor (`prepareProductCatalogBatch`)      | `available += new − loaded`, `version += 1`; refused when it would go below zero              |
+| Admin changes the stock in the product editor (`prepareProductCatalogBatch`)      | `available += new − loaded`; refused when it would go below zero                              |
 
 A reservation lasts only as long as its Checkout Session can be paid. Every session expires `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minutes, from `stripe.constants.ts`) after it opens, instead of after Stripe's 24-hour default, and its `checkout.session.expired` webhook releases the lines. A checkout update that finds Stripe already reporting the session expired runs the same guarded release first, and so does the session check the checkout page runs on a stored session, so the fresh checkout the shopper starts does not wait for the webhook. A browser keeps one open session: the checkout continues the session it stored through the update path, which releases the old lines as it reserves the new ones, rather than reserving the basket again on a reload, in a second tab or after a visit to the basket.
 
 Every restock goes through `prepareRestockOrderBatch` (`order.utils.ts`), which adds each line back only while the order is not `cancelled` and its `restocked_at` is empty, and sets `restocked_at` in the same batch, so an order's stock goes back at most once, whichever of a cancellation, the Refund dialog and Return to stock comes first and however often each is repeated. A cancellation also requires the order to be unshipped. A refund on its own returns nothing, because it says nothing about where the goods are: a refund for a lost parcel or a goodwill refund must not put a one-off piece back on sale. The admin answers that question in the Refund dialog, whose box starts ticked only for an order that has not shipped, or later with Return to stock on the order (see [Orders](/docs/features/orders#admin-actions)).
-
-Note that the fulfilment and release batches update `inventory` **without** bumping `version`, because they run inside a D1 batch alongside the order writes rather than through `reserveInventoryRows` and the release helpers.
 
 Local error handling in `stripe.actions.server.ts` always compensates: a failure after reserving calls `releaseInventoryForItems`. A checkout update releases the old lines only after its old session is expired and in the same batch that moves the payment, and only while the checkout is still `pending`. The expiry webhook's release batch has the same condition on the session's pending payment, so whichever batch commits first returns the lines and the other finds nothing, however the two requests interleave. A failure after that point does not put them back: the old session can no longer be paid, so `releaseCheckout` fails the checkout and returns whatever the edited cart had reserved.
 
@@ -179,12 +175,12 @@ There is **no dedicated stock adjustment use case**. Stock is changed in the pro
 
 - `mapProductDetailToFormValues` (`product-form.utils.ts`) loads `quantityAvailable` into the field and keeps it as `loadedQuantity`, and keeps `quantityReserved` as `quantityInCheckout`. The editor shows that count under the field ("1 in checkout", "1 szt. w trakcie płatności"), and the help text says the field is the stock available for sale. `quantityInCheckout` is only in the form schema, so `parseCatalogUpsertInput` drops it; `loadedQuantity` is sent with `quantity`.
 - `prepareCatalogReplacePayload` (`product.utils.ts`) turns a variant the product already owns, whose `quantity` differs from its `loadedQuantity`, into an `inventoryAdjustments` entry of `quantity − loadedQuantity`. An untouched field, or a variant whose stock the editor never loaded, writes no stock.
-- `prepareProductCatalogBatch` applies each adjustment in the save's batch as `quantity_available = quantity_available + change` and `version = version + 1`, so a reservation, release or sale that happened while the editor was open stays counted. A new product or a new variant still gets its first stock from the typed quantity; an existing row is never overwritten.
+- `prepareProductCatalogBatch` applies each adjustment in the save's batch as `quantity_available = quantity_available + change`, so a reservation, release or sale that happened while the editor was open stays counted. A new product or a new variant still gets its first stock from the typed quantity; an existing row is never overwritten.
 - When a customer reserved or bought the stock meanwhile and the adjustment would take `quantity_available` below zero, the check fails the statement and D1 rolls back the whole batch, so nothing about the product is saved. `rethrowProductMutationError` turns the failure into `ERROR_CODES.CONFLICT` with `PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING`; the editor stays open with the admin's input and shows `toast.stockChangedWhileEditing`, which says that nothing was saved and to reload the page to see the current stock.
 
 Everything else — reserve, convert, release — happens automatically around a checkout, and an order's items go back to stock when an admin cancels it or says they came back.
 
-If you need a stock-adjustment screen, the place to add it is a new use case under `src/modules/inventory/use-cases/` with `authorized({ product: ["update"] })`, using the same version-guarded prepared statement so it cannot race a live checkout, followed by `scheduleProductCatalogInvalidation()`.
+If you need a stock-adjustment screen, the place to add it is a new use case under `src/modules/inventory/use-cases/` with `authorized({ product: ["update"] })`, writing the change as a difference in SQL the way the product save does, so it cannot undo a reservation a live checkout made meanwhile and the non-negative check refuses one that would take reserved or sold stock, followed by `scheduleProductCatalogInvalidation()`.
 
 ## Related pages
 

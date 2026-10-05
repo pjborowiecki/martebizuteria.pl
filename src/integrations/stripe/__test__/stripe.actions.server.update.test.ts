@@ -293,14 +293,14 @@ describe("handleUpdateCheckoutSession", () => {
       metadata: { items: JSON.stringify([{ qty: 1, variantId: "variant-1" }]) },
       status: "open",
     })
-    const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1, version: 7 } }
+    const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1 } }
     mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
 
     await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
   })
 
   it("keeps the old session untouched when the edited cart needs more stock than is left", async () => {
-    const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1, version: 7 } }
+    const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1 } }
     mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
@@ -432,7 +432,7 @@ describe("handleUpdateCheckoutSession on a checkout that can no longer change", 
 
 describe("handleUpdateCheckoutSession compensation", () => {
   it("fails the checkout and discards the replacement when the edited cart can no longer be reserved", async () => {
-    const failure = new Error("Inventory reservation failed for variant-1. Stock changed or unavailable.")
+    const failure = new Error("Inventory reservation failed for variant-1. Not enough stock available.")
     mocked.reserveInventoryByVariantLines.mockRejectedValue(failure)
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(failure)

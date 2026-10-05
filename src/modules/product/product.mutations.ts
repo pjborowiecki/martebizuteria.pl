@@ -90,7 +90,6 @@ export const prepareProductCatalogBatch = (productId: string, payload: ProductCa
         .update(inventory)
         .set({
           quantityAvailable: sql`${inventory.quantityAvailable} + ${quantityChange}`,
-          version: sql`${inventory.version} + 1`,
         })
         .where(eq(inventory.variantId, variantId)),
     ),

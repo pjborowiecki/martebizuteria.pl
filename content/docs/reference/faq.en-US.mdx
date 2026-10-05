@@ -57,7 +57,7 @@ A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts`
 
 ## Why are there no database transactions?
 
-D1 has no interactive transactions. `db.batch()` is atomic, so anything that must be all-or-nothing is built as a list of statements and run through `runDrizzleBatch`. Where a read has to happen before the write, the code uses a guarded `UPDATE` — inventory reservation compares on both `version` and `quantityAvailable >= quantity` — plus a unique index that makes the losing branch's `INSERT` fail the whole batch.
+D1 has no interactive transactions. `db.batch()` is atomic, so anything that must be all-or-nothing is built as a list of statements and run through `runDrizzleBatch`. Where a read has to happen before the write, the code uses a guarded `UPDATE` — inventory reservation asks for `quantityAvailable >= quantity` in the statement that takes the stock — plus a unique index that makes the losing branch's `INSERT` fail the whole batch.
 
 ## How is money stored?
 

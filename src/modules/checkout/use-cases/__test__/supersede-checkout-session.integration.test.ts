@@ -59,9 +59,7 @@ const supersedeApplying = (discountId: string) =>
   })
 
 const inventoryRow = (variantId: string) =>
-  sqlite
-    .prepare("select quantity_available as available, quantity_reserved as reserved, version from inventory where variant_id = ?")
-    .get(variantId)
+  sqlite.prepare("select quantity_available as available, quantity_reserved as reserved from inventory where variant_id = ?").get(variantId)
 
 const paymentRow = (paymentId: string) =>
   sqlite.prepare("select amount, status, transaction_id as transactionId from payment where id = ?").get(paymentId)
@@ -129,8 +127,8 @@ describe("supersedeCheckoutSession", () => {
 
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
     expect(checkoutStatus("chk-1")).toEqual({ status: "pending" })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2, version: 2 })
-    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0, version: 2 })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
+    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 
   it("records on the moved payment the lines the replacement session reserves", async () => {
@@ -161,7 +159,7 @@ describe("supersedeCheckoutSession", () => {
     ).resolves.toBe(true)
 
     expect(paymentRow("pay-1")).toEqual({ amount: 0, status: "pending", transactionId: NEW_SESSION })
-    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4, version: 1 })
+    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4 })
   })
 
   it("releases the old lines only once when the same session is superseded twice", async () => {
@@ -169,7 +167,7 @@ describe("supersedeCheckoutSession", () => {
     await expect(supersede(OLD_SESSION, "cs_newer")).resolves.toBe(false)
 
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2, version: 2 })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
   })
 
   it.each([
@@ -185,14 +183,14 @@ describe("supersedeCheckoutSession", () => {
     await expect(supersede()).resolves.toBe(false)
 
     expect(paymentRow("pay-1")).toEqual({ amount: 49_800, status: payment, transactionId: OLD_SESSION })
-    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4, version: 1 })
-    expect(inventoryRow("var-2")).toEqual({ available: 0, reserved: 1, version: 1 })
+    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4 })
+    expect(inventoryRow("var-2")).toEqual({ available: 0, reserved: 1 })
   })
 
   it("refuses a session that has no payment", async () => {
     await expect(supersede("cs_unknown")).resolves.toBe(false)
 
-    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4, version: 1 })
+    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4 })
   })
 
   it("leaves nothing for the old session's expiry webhook to release once it has been superseded", async () => {
@@ -201,7 +199,7 @@ describe("supersedeCheckoutSession", () => {
 
     expect(checkoutStatus("chk-1")).toEqual({ status: "pending" })
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2, version: 2 })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
   })
 
   it("leaves the stock as the expiry webhook released it when that webhook got there first", async () => {
@@ -210,8 +208,8 @@ describe("supersedeCheckoutSession", () => {
     await expect(supersede()).resolves.toBe(false)
 
     expect(checkoutStatus("chk-1")).toEqual({ status: "failed" })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2, version: 1 })
-    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0, version: 1 })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
+    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 
   it("returns the old lines once when the expiry webhook's release was prepared before the supersede and runs after it", async () => {
@@ -222,8 +220,8 @@ describe("supersedeCheckoutSession", () => {
 
     expect(checkoutStatus("chk-1")).toEqual({ status: "pending" })
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2, version: 2 })
-    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0, version: 2 })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
+    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 
   it("gives a guest's checkout to the account that signed in and continued it", async () => {
@@ -265,7 +263,7 @@ describe("supersedeCheckoutSession", () => {
 
     expect(checkoutStatus("chk-1")).toEqual({ status: "failed" })
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "failed", transactionId: NEW_SESSION })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2, version: 2 })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
   })
 })
 

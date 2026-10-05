@@ -79,12 +79,12 @@ const TRANSACTION_ID = "cs_onyx"
 
 const HELD_LINE = { qty: 1, variantId: VARIANT_ID }
 
-const stockSchema = z.object({ available: z.number(), reserved: z.number(), version: z.number() })
+const stockSchema = z.object({ available: z.number(), reserved: z.number() })
 
 const readStock = () =>
   stockSchema.parse(
     sqlite
-      .prepare("select quantity_available as available, quantity_reserved as reserved, version from inventory where variant_id = ?")
+      .prepare("select quantity_available as available, quantity_reserved as reserved from inventory where variant_id = ?")
       .get(VARIANT_ID),
   )
 
