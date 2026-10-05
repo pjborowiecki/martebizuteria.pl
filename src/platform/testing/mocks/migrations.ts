@@ -16,6 +16,7 @@ export const MIGRATION = {
   ORDER_RESTOCKED_AT: "20261005410000_order_restocked_at",
   RETURNS_AND_COMPLAINTS_PAGE: "20261005210000_returns_and_complaints_page",
   STOREFRONT_SEARCH: "20261002100000_storefront_search",
+  STORE_SETTINGS: "20261005420000_store_settings",
   TERMS_OF_SERVICE_PAGE: "20261005200000_terms_of_service_page",
 } as const
 

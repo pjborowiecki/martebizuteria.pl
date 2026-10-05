@@ -23,6 +23,7 @@ const PUBLIC_USE_CASES = new Set([
   "product/use-cases/get-product.ts",
   "product/use-cases/get-related-products.ts",
   "product/use-cases/get-storefront-products-page.ts",
+  "store-setting/use-cases/get-sales-status.ts",
   "storefront-search/use-cases/get-trending-searches.ts",
   "storefront-search/use-cases/search-storefront.ts",
 ])

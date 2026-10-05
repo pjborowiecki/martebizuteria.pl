@@ -196,6 +196,22 @@
   "dashboard": {
     "title": "Dashboard",
     "description": "Overview of your store's performance and recent activity.",
+    "sales": {
+      "title": "Sales",
+      "statusOpen": "Open",
+      "statusPaused": "Paused",
+      "open": "Customers can check out and pay.",
+      "paused": "The storefront shows a notice and checkout refuses new payments. A payment a customer had already started still becomes an order.",
+      "switchLabel": "Pause sales",
+      "toast": {
+        "pausedTitle": "Sales paused",
+        "pausedDescription": "Customers see a notice and cannot start a new checkout.",
+        "resumedTitle": "Sales resumed",
+        "resumedDescription": "Customers can check out again.",
+        "errorTitle": "Could not change sales",
+        "errorDescription": "Please try again in a moment."
+      }
+    },
     "stats": {
       "vsPrevious": "vs previous 30 days",
       "revenue": {
@@ -382,6 +398,8 @@
       "order_fulfillment_started": "Fulfillment started",
       "order_refund_initiated": "Refund initiated",
       "settings_updated": "Settings updated",
+      "sales_paused": "Sales paused",
+      "sales_resumed": "Sales resumed",
       "product_updated": "Product updated",
       "product_created": "Product created",
       "product_deleted": "Product deleted",

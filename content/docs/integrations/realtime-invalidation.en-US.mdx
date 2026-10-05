@@ -15,10 +15,10 @@ It is deliberately _not_ a data channel. Nothing but query keys crosses the wire
 export const REALTIME_INVALIDATION_HUB = { ADMIN: "admin", STOREFRONT: "storefront" } as const
 ```
 
-| Hub          | Subscribed prefixes                                                                                                                                                                                                                                |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — the audit log page and stats, admin orders, admin customers, the `ALL` and `STATS` keys of categories, collections, products and product attributes, and the content page `ADMIN.ALL` and `ADMIN.BY_HANDLE` keys |
-| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY`, category and collection `ALL` / `BY_HANDLE`, and content page `BY_HANDLE`                |
+| Hub          | Subscribed prefixes                                                                                                                                                                                                                                                                     |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — the audit log page and stats, admin orders, admin customers, the `ALL` and `STATS` keys of categories, collections, products and product attributes, the content page `ADMIN.ALL` and `ADMIN.BY_HANDLE` keys, and the store setting `ADMIN.SALES` key |
+| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY`, category and collection `ALL` / `BY_HANDLE`, content page `BY_HANDLE`, and store setting `SALES`                              |
 
 Both are `as const satisfies readonly QueryKey[]`, so a renamed key constant is a type error rather than a silently dead subscription. The split matters for privacy as well as noise: the storefront hub never carries an `["admin", …]` prefix, so a customer's browser learns nothing about admin activity.
 
@@ -87,6 +87,7 @@ Server code almost never calls either of these directly. `realtime-invalidation.
 | `scheduleProductAttributeCatalogInvalidation()` | product-attribute `ALL`, `STATS`   | —                                                                                                                 |
 | `scheduleAdminCustomersInvalidation()`          | user `CUSTOMERS`, `CUSTOMERS_PAGE` | —                                                                                                                 |
 | `scheduleAdminOrdersInvalidation()`             | order `ORDERS`                     | —                                                                                                                 |
+| `scheduleSalesStatusInvalidation()`             | store-setting `ADMIN.SALES`        | store-setting `SALES`                                                                                             |
 
 Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefront's new-arrivals key, because the landing section is driven by the `nowosci` collection, and the catalogue page key, because a collection's `status` and `handle` decide which products its storefront grid lists; and that `scheduleProductCatalogInvalidation` invalidates the cart's availability key, because a stock change can make a cart line unpurchasable.
 
@@ -97,6 +98,7 @@ Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefron
 - **Webhooks.** `stripe.webhooks.tsx` calls `scheduleAdminOrdersInvalidation()` on fulfilment, refund and dispute, and `scheduleProductCatalogInvalidation()` on fulfilment and release. A refund does not refresh the catalogue, because it never returns stock; `cancelOrder` and `returnOrderToStock` do when the admin puts an order's items back.
 - **Identity.** `auth.server.ts` calls `scheduleAdminCustomersInvalidation()` from the `user` create, update and delete hooks.
 - **Content pages.** `update-content-page.ts` calls `scheduleContentPageInvalidation()` after a save.
+- **Sales switch.** `set-sales-paused.ts` calls `scheduleSalesStatusInvalidation()` when an admin pauses or resumes sales, so the paused notice appears or goes in every open storefront tab and other admin tabs move their switch.
 - **Audit.** `audit-log.queue.server.ts` and `delete-audit-logs.ts`.
 
 ## The Durable Object

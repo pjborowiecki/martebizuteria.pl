@@ -1,6 +1,7 @@
 import { type JSX } from "react"
 
-import { cleanup, screen, waitFor } from "@testing-library/react"
+import { focusManager, onlineManager } from "@tanstack/react-query"
+import { act, cleanup, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -13,6 +14,8 @@ const entry = vi.hoisted(() => ({
   check: vi.fn<(search: { readonly session_id?: string | undefined; readonly success?: boolean | undefined }) => void>(),
   view: "checkout" as "checking" | "checkout" | "confirmation",
 }))
+
+const sales = vi.hoisted(() => ({ fetchStatus: vi.fn<() => Promise<{ salesPaused: boolean }>>() }))
 
 const navigation = vi.hoisted(() => ({
   navigate: vi.fn<(options: { readonly params?: (previous: Record<string, never>) => unknown; readonly to: string }) => Promise<void>>(),
@@ -29,6 +32,12 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 })
 
 vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", () => ({ listDeliveryMethodsQuery: vi.fn() }))
+
+vi.mock("~/src/modules/store-setting/use-cases/get-sales-status", async () => {
+  const { STORE_SETTING_QUERY_KEYS: keys } = await import("~/src/modules/store-setting/store-setting.constants")
+
+  return { getSalesStatusQuery: () => ({ queryFn: sales.fetchStatus, queryKey: keys.SALES }) }
+})
 
 vi.mock("~/src/hooks/use-cart-availability", () => ({
   useCartAvailability: () => {
@@ -50,6 +59,10 @@ vi.mock("~/src/presentation/components/custom/checkout/components/checkout-form.
 
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-form-skeleton", () => ({
   CheckoutFormSkeleton: (): JSX.Element => <div data-testid="checkout-skeleton" />,
+}))
+
+vi.mock("~/src/presentation/components/custom/checkout/components/checkout-sales-paused", () => ({
+  CheckoutSalesPaused: (): JSX.Element => <div data-testid="checkout-sales-paused" />,
 }))
 
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-success", () => ({
@@ -102,6 +115,7 @@ beforeEach(() => {
   availability.isChecking = false
   availability.isFirstCheck = false
   navigation.navigate.mockReset()
+  sales.fetchStatus.mockReset().mockResolvedValue({ salesPaused: false })
   useCartStore.getState().clearCart()
 })
 
@@ -116,6 +130,20 @@ describe("checkout page after payment", () => {
 
     expect(screen.getByTestId("checkout-success")).toHaveAttribute("data-session-id", "cs_paid")
     expect(screen.queryByTestId("checkout-form")).toBeNull()
+  })
+
+  it("still shows the confirmation of a session paid before sales were paused", async () => {
+    sales.fetchStatus.mockResolvedValue({ salesPaused: true })
+    search.session_id = "cs_paid"
+    search.success = true
+    entry.view = "confirmation"
+    const { queryClient } = renderCheckout()
+
+    await waitFor(() => {
+      expect(queryClient.isFetching()).toBe(0)
+    })
+    expect(screen.getByTestId("checkout-success")).toBeInTheDocument()
+    expect(screen.queryByTestId("checkout-sales-paused")).toBeNull()
   })
 
   it("does not send the shopper back to the cart", () => {
@@ -212,5 +240,43 @@ describe("checkout page guard", () => {
       expect(navigation.navigate.mock.calls[0]?.[0]).toMatchObject({ to: "/cart" })
     })
     expect(screen.getByTestId("checkout-skeleton")).toBeInTheDocument()
+  })
+})
+
+describe("checkout page while sales are paused", () => {
+  it("explains that orders are paused instead of opening the checkout form", async () => {
+    sales.fetchStatus.mockResolvedValue({ salesPaused: true })
+    useCartStore.setState({ items: [cartLine()] })
+    renderCheckout()
+
+    expect(await screen.findByTestId("checkout-sales-paused")).toBeInTheDocument()
+    expect(screen.queryByTestId("checkout-form")).toBeNull()
+    expect(navigation.navigate).not.toHaveBeenCalled()
+  })
+
+  it("does not ask again when the shopper comes back from the banking app, so a payment in progress keeps its form", async () => {
+    useCartStore.setState({ items: [cartLine()] })
+    renderCheckout()
+    expect(await screen.findByTestId("checkout-form")).toBeInTheDocument()
+    expect(sales.fetchStatus).toHaveBeenCalledOnce()
+
+    await act(async () => {
+      focusManager.setFocused(false)
+      onlineManager.setOnline(false)
+      onlineManager.setOnline(true)
+      focusManager.setFocused(true)
+      await Promise.resolve()
+    })
+
+    expect(sales.fetchStatus).toHaveBeenCalledOnce()
+    focusManager.setFocused(undefined)
+  })
+
+  it("opens the checkout form while sales are open", async () => {
+    useCartStore.setState({ items: [cartLine()] })
+    renderCheckout()
+
+    expect(await screen.findByTestId("checkout-form")).toBeInTheDocument()
+    expect(screen.queryByTestId("checkout-sales-paused")).toBeNull()
   })
 })

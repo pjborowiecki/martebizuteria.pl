@@ -30,6 +30,7 @@ import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { checkoutSessionStatusQuery } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
 import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
+import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
@@ -247,6 +248,10 @@ const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
       if (error instanceof Error && REFUSED_DELIVERY_ERROR_CODES.has(error.message)) {
         void queryClient.invalidateQueries({ queryKey: DELIVERY_METHOD_QUERY_KEYS.ALL })
         onEdit(CHECKOUT_STEP_ID.DELIVERY)
+      }
+
+      if (error instanceof Error && error.message === CHECKOUT_ERROR_CODES.SALES_PAUSED) {
+        void queryClient.invalidateQueries({ queryKey: STORE_SETTING_QUERY_KEYS.SALES })
       }
     },
     [onEdit, queryClient, t],

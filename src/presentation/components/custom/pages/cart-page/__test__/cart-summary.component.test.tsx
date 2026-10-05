@@ -44,6 +44,22 @@ describe("CartSummary", () => {
     expect(blocked).toHaveClass("cursor-not-allowed")
   })
 
+  it("explains that checkout is closed while sales are paused and offers no way through", () => {
+    renderWithProviders(<CartSummary salesPaused subtotal="PLN 340.00" />)
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Orders are paused for now, so checkout is closed. Your cart will wait here until we reopen.",
+    )
+    expect(screen.queryByRole("link", { name: "Proceed to Checkout" })).not.toBeInTheDocument()
+    expect(screen.getByText("Proceed to Checkout")).toHaveAttribute("aria-disabled", "true")
+  })
+
+  it("says nothing about paused sales while the shop is open", () => {
+    renderWithProviders(<CartSummary checkoutDisabled subtotal="PLN 340.00" />)
+
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
+  })
+
   it("keeps the payment and returns reassurance visible either way", () => {
     renderWithProviders(<CartSummary checkoutDisabled subtotal="PLN 0.00" />)
 

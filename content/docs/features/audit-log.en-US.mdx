@@ -27,7 +27,7 @@ The audit log is the shop's event history and doubles as its analytics store. It
 
 Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` and the composite `audit_log_resource_idx` on (`category`, `resource_id`) — which is what makes "everything that happened to this order" cheap.
 
-## The 40 actions
+## The 42 actions
 
 `AUDIT_LOG_ACTION` in `audit-log.constants.ts`:
 
@@ -39,13 +39,13 @@ Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_se
 | `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                                                                                                  |
 | `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`                                                                                                                                                                                              |
 | `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                                                                                    |
-| `settings`  | `settings.updated`, `discount.created/updated/deleted`                                                                                                                                                                                                                                            |
+| `settings`  | `settings.updated`, `discount.created/updated/deleted`, `sales.paused`, `sales.resumed`                                                                                                                                                                                                           |
 
 `email.deferred` and `settings.updated` are declared but nothing emits them.
 
 ## Writing an event
 
-Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 38 exported `record*` functions, which is 37 action recorders plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
+Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 41 exported `record*` functions, which is 40 action recorders plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
 
 | Scheduler                     | Actor resolution                                                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |

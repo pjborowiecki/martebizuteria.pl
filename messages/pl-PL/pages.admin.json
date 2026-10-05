@@ -196,6 +196,22 @@
   "dashboard": {
     "title": "Podsumowanie",
     "description": "Przegląd wyników Twojego sklepu i ostatniej aktywności.",
+    "sales": {
+      "title": "Sprzedaż",
+      "statusOpen": "Otwarta",
+      "statusPaused": "Wstrzymana",
+      "open": "Klienci mogą przejść do kasy i zapłacić.",
+      "paused": "Sklep wyświetla komunikat, a kasa odrzuca nowe płatności. Płatność, którą klient już rozpoczął, nadal staje się zamówieniem.",
+      "switchLabel": "Wstrzymaj sprzedaż",
+      "toast": {
+        "pausedTitle": "Sprzedaż wstrzymana",
+        "pausedDescription": "Klienci widzą komunikat i nie mogą rozpocząć nowej płatności.",
+        "resumedTitle": "Sprzedaż wznowiona",
+        "resumedDescription": "Klienci znów mogą przejść do kasy.",
+        "errorTitle": "Nie udało się zmienić sprzedaży",
+        "errorDescription": "Spróbuj ponownie za chwilę."
+      }
+    },
     "stats": {
       "vsPrevious": "względem poprzednich 30 dni",
       "revenue": {
@@ -382,6 +398,8 @@
       "order_fulfillment_started": "Realizacja rozpoczęta",
       "order_refund_initiated": "Zwrot zainicjowany",
       "settings_updated": "Ustawienia zaktualizowane",
+      "sales_paused": "Sprzedaż wstrzymana",
+      "sales_resumed": "Sprzedaż wznowiona",
       "product_updated": "Produkt zaktualizowany",
       "product_created": "Produkt utworzony",
       "product_deleted": "Produkt usunięty",

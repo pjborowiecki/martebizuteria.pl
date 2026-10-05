@@ -106,6 +106,7 @@ return {
 | `.../custom/pages/cart-page/cart-item-card.tsx`                          | jedna linia: zdjęcie, tytuły, zmiana ceny, ilość, usunięcie          |
 | `.../custom/pages/cart-page/cart-summary.tsx`                            | podsumowanie i odnośnik do kasy                                      |
 | `.../custom/cart-availability-banner.tsx`                                | banner na całą witrynę, renderowany przez layout `_storefront`       |
+| `.../custom/sales-paused-banner.tsx`                                     | komunikat o wstrzymanej sprzedaży, nad bannerem                      |
 | `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | licznik w nagłówku, `items.reduce((sum, item) => sum + item.qty, 0)` |
 
 Strona koszyka formatuje własne kwoty, nie korzystając z `useFormatter`:
@@ -131,14 +132,14 @@ const subtotal = new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "curre
 
 Koszt dostawy nie jest znany, dopóki nie wybrano metody dostawy, a to dzieje się w kasie. Prawdziwą sumę z dostawą wylicza Stripe z pozycji sesji.
 
-Gdy `checkoutDisabled` jest prawdziwe, odnośnik do kasy zastępuje nieinteraktywny `<span aria-disabled="true">`, więc nie ma przycisku, który daje się kliknąć, ale nic nie robi.
+Gdy `checkoutDisabled` albo `salesPaused` jest prawdziwe, odnośnik do kasy zastępuje nieinteraktywny `<span aria-disabled="true">`, więc nie ma przycisku, który daje się kliknąć, ale nic nie robi. Przy `salesPaused` podsumowanie nad nim mówi też dlaczego, w akapicie z `role="status"` i `pages.cart.salesPaused.checkoutClosed`: „Przyjmowanie zamówień jest wstrzymane, więc kasa jest teraz zamknięta. Twój koszyk poczeka tu do wznowienia sprzedaży.”
 
 ## Blokowanie niepoprawnego koszyka
 
 Wynik sprawdzenia dostępności wykorzystują trzy strażniki:
 
-- `/cart` blokuje odnośnik do kasy, dopóki `hasUnavailableItems || isChecking`.
-- `CartAvailabilityBanner` renderuje pasek z `role="alert"` i komunikatem `pages.cart.availability.banner`, gdy linie są niedostępne.
+- `/cart` blokuje odnośnik do kasy, dopóki `hasUnavailableItems || isChecking`, a także dopóki `getSalesStatusQuery()` zgłasza wstrzymaną sprzedaż, co przekazuje podsumowaniu jako `salesPaused`. Sam koszyk działa dalej, więc kupujący może trzymać w nim produkty do wznowienia sprzedaży.
+- `CartAvailabilityBanner` renderuje pasek z `role="alert"` i komunikatem `pages.cart.availability.banner`, gdy linie są niedostępne. Nad nim `SalesPausedBanner` renderuje na każdej stronie sklepu pasek z `role="status"` i komunikatem `pages.cart.salesPaused.banner`, dopóki sprzedaż jest wstrzymana. Zobacz [Kasa: wstrzymanie sprzedaży](/docs/features/checkout#wstrzymanie-sprzedaży).
 - `/checkout` przekierowuje z powrotem na `/cart`, gdy zhydratowany koszyk jest pusty albo ma problemy ze stanem. Zobacz [Kasa](/docs/features/checkout).
 
 ## Śledzenie porzucenia koszyka

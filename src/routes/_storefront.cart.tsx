@@ -1,5 +1,6 @@
 import { Fragment, type JSX, useMemo } from "react"
 
+import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { ArrowRight, ShoppingBag } from "lucide-react"
 import { useLocale, useTranslations } from "use-intl/react"
@@ -9,6 +10,7 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { useCartStore } from "~/src/modules/cart/cart.store"
+import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
 
@@ -28,6 +30,7 @@ const CartPage = (): JSX.Element => {
   const locale = useLocale()
   const { items, cartTotal } = useCartStore()
   const { hasUnavailableItems, isChecking } = useCartAvailability()
+  const { data: salesStatus } = useQuery(getSalesStatusQuery())
   const checkoutDisabled = hasUnavailableItems || isChecking
   const itemCount = items.reduce((sum, item) => sum + item.qty, 0)
   const tParams = useMemo(
@@ -76,7 +79,7 @@ const CartPage = (): JSX.Element => {
           </LocalizedLink>
         </div>
 
-        <CartSummary checkoutDisabled={checkoutDisabled} subtotal={subtotal} />
+        <CartSummary checkoutDisabled={checkoutDisabled} salesPaused={salesStatus?.salesPaused === true} subtotal={subtotal} />
       </div>
     </main>
   )

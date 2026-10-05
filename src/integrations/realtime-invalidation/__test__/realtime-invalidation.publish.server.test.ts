@@ -8,6 +8,7 @@ import {
   scheduleContentPageInvalidation,
   scheduleProductAttributeCatalogInvalidation,
   scheduleProductCatalogInvalidation,
+  scheduleSalesStatusInvalidation,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { resolveInvalidatedQueryKeys } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 import {
@@ -26,6 +27,7 @@ import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/pr
 import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
 import { COLLECTION_QUERY_KEYS } from "~/src/modules/product-collection/product-collection.constants"
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
+import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 const { hub } = vi.hoisted(() => ({
@@ -153,6 +155,14 @@ describe("catalog invalidation scheduling", () => {
     expect(topicsFor("storefront")).toStrictEqual(serialized([[...CONTENT_PAGE_QUERY_KEYS.BY_HANDLE]]))
   })
 
+  it("tells admins and every open storefront tab that sales were paused or resumed", async () => {
+    scheduleSalesStatusInvalidation()
+    await Promise.all(background.scheduled)
+
+    expect(topicsFor("admin")).toStrictEqual(serialized([[...STORE_SETTING_QUERY_KEYS.ADMIN.SALES]]))
+    expect(topicsFor("storefront")).toStrictEqual(serialized([[...STORE_SETTING_QUERY_KEYS.SALES]]))
+  })
+
   it.each([
     [
       "attributes",
@@ -208,6 +218,11 @@ describe("catalog invalidation scheduling", () => {
         admin: [CONTENT_PAGE_QUERY_KEYS.ADMIN.ALL, CONTENT_PAGE_QUERY_KEYS.ADMIN.BY_HANDLE],
         storefront: [CONTENT_PAGE_QUERY_KEYS.BY_HANDLE],
       },
+    ],
+    [
+      "sales status",
+      scheduleSalesStatusInvalidation,
+      { admin: [STORE_SETTING_QUERY_KEYS.ADMIN.SALES], storefront: [STORE_SETTING_QUERY_KEYS.SALES] },
     ],
     ["attribute", scheduleProductAttributeCatalogInvalidation, { admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL] }],
     ["customers", scheduleAdminCustomersInvalidation, { admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS] }],

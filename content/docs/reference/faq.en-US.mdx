@@ -53,7 +53,7 @@ Better Auth's cookie cache is turned off, and `getRequestSession` also passes `d
 
 Because a server function is a public HTTP endpoint. It can be called directly, without the route that normally calls it ever being loaded, so a `beforeLoad` guard cannot protect it — and guards also run in the browser. The `authorized` middleware runs on the server, before any database access. Route guards exist for navigation only.
 
-A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` enforces this: every use case with a `createServerFn` must contain `authorized(` unless it is on the 19-entry public allowlist.
+A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` enforces this: every use case with a `createServerFn` must contain `authorized(` unless it is on the 21-entry public allowlist.
 
 ## Why are there no database transactions?
 
