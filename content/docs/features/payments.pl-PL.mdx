@@ -197,7 +197,7 @@ if (input.restock && input.fullyRefunded && settled.orderId !== undefined) {
 }
 ```
 
-`prepareRefundBatch` zapisuje `refundedAmount`, `refundedAt` i `status` (`refunded` przy pełnym zwrocie, w przeciwnym razie powrót do `succeeded`), przy pełnym zwrocie ustawia zamówienie na `refunded` i dodaje `quantityAvailable + quantity` dla każdej linii zwracanej do magazynu.
+`prepareRefundBatch` zapisuje `refundedAmount`, `refundedAt` i `status` (`refunded` przy pełnym zwrocie, w przeciwnym razie powrót do `succeeded`). Przy pełnym zwrocie płatności, która ma zamówienie, dodaje potem `quantityAvailable + quantity` dla każdej linii zwracanej do magazynu i ustawia zamówienie na `refunded`, ale tylko dopóki zamówienie wciąż trzyma swój towar, czyli dopóki jego status nie jest ani `cancelled`, ani `refunded`. Wsad sprawdza ten warunek w SQL i zwiększa stan przed zmianą statusu, więc towar zamówienia wraca na stan najwyżej raz, niezależnie od tego, czy zamówienie anulowano, zwrócono przyciskiem Zwrot, czy w panelu Stripe, nawet gdy Stripe dostarczy zdarzenie dwa razy jednocześnie. Anulowane zamówienie zachowuje status `cancelled`, a `refunded` dostaje tylko jego płatność.
 
 Spory są zapisywane w `order.metadata`, a nie w kolumnach: `flagOrderDispute` scala `{ id, reason, status, amount }` do JSON-a przez `mergeDisputeMetadata` (`order.display.utils.ts`). Przegrany spór jest traktowany jak pełny zwrot z `restock: false` i loguje `review inventory manually` — towar przepadł, więc stan nie jest przywracany. `clearOrderDispute` usuwa flagę, gdy spór zamyka się w inny sposób, a dopóki flaga istnieje, zwrot z panelu jest odrzucany (zobacz [Zwroty z panelu](#zwroty-z-panelu)).
 
@@ -234,7 +234,7 @@ Brak zamówienia rzuca `ERROR_CODES.NOT_FOUND` z `ORDER_NOT_FOUND`. Każdy odrzu
 
 Strona uruchamia te same predykaty na wczytanym zamówieniu. Zwrot pojawia się, gdy pozwala na to `canRefundAdminOrder`. Gdy `resolveAdminOrderRefundBlocker` zwraca blokadę, `order-refund-button.tsx` pozostawia przycisk widoczny, ale wyłączony i nadal osiągalny klawiaturą, a jego podpowiedź wyjaśnia blokadę komunikatami z `pages.admin.orderDetail.refundBlocked`.
 
-`refundAdminOrder` niczego nie zapisuje w bazie. Statusy płatności i zamówienia, wpis audytu i zwrot do magazynu przychodzą z wynikowym zdarzeniem `charge.refunded`, tą samą ścieżką `refundOrder` co zwrot wykonany w panelu Stripe. Uprawnienie `order: ["refund"]` w `auth.access.ts` wciąż nie jest używane przez żadną funkcję serwerową.
+`refundAdminOrder` niczego nie zapisuje w bazie. Statusy płatności i zamówienia, wpis audytu i zwrot do magazynu przychodzą z wynikowym zdarzeniem `charge.refunded`, tą samą ścieżką `refundOrder` co zwrot wykonany w panelu Stripe. Sprawdzenia blokady, `transaction_id` i sesji oraz wywołanie `stripe.refunds.create` leżą w `requestFullOrderRefund` (`src/modules/order/order.refund.server.ts`), które wywołuje też Anuluj zamówienie dla opłaconego zamówienia przed jego anulowaniem, z tym samym kluczem idempotencji, więc Zwrot i Anulowanie jednego zamówienia również nie zwrócą za nie pieniędzy dwa razy. Uprawnienie `order: ["refund"]` w `auth.access.ts` wciąż nie jest używane przez żadną funkcję serwerową.
 
 ## Powiązane strony
 

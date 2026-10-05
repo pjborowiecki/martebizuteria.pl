@@ -10,6 +10,7 @@ import {
   canMarkAdminOrderShipped,
   canPrintAdminOrderInvoice,
   canRefundAdminOrder,
+  cancelRefundsAdminOrderPayment,
 } from "~/src/modules/order/order.admin-actions.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -26,6 +27,7 @@ const resolveOrderRowActionAvailability = (order: Order["adminListItem"]): Order
   canPrint: canPrintAdminOrderInvoice(order),
   canRefund: canRefundAdminOrder(order),
   canShip: canMarkAdminOrderShipped(order),
+  cancelRefundsPayment: cancelRefundsAdminOrderPayment(order),
 })
 
 export const useOrdersRowActionHandlers = (
@@ -135,6 +137,7 @@ interface OrderRowActionAvailability {
   readonly canPrint: boolean
   readonly canRefund: boolean
   readonly canShip: boolean
+  readonly cancelRefundsPayment: boolean
 }
 
 interface UseOrdersRowActionHandlersResult extends OrderRowActionAvailability {

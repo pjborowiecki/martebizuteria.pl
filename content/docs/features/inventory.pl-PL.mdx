@@ -109,10 +109,13 @@ Obie instrukcje zwolnienia używają `min`/`max`, więc podwójne zwolnienie nie
 | edycja checkoutu (`handleUpdateCheckoutSession`)                                    | stare linie zwolnione przy przeniesieniu płatności (`supersedeCheckoutSession`), potem nowe zarezerwowane |
 | sesja opłacona (`prepareFulfillCheckoutBatch`)                                      | `reserved -= qty`; `available` bez zmian — rezerwacja jest skonsumowana                                   |
 | sesja wygasła albo płatność asynchroniczna nieudana (`prepareReleaseCheckoutBatch`) | `available += min(reserved, qty)`, `reserved -= qty`                                                      |
+| anulowanie zamówienia przez administratora (`prepareCancelOrderBatch`)              | `available += quantity`, dopóki zamówienie jest otwarte i niewysłane                                      |
 | pełny zwrot z powrotem na magazyn (`prepareRefundBatch`)                            | `available += quantity`, z `getRestockLinesForOrder(orderId)`                                             |
 | przegrany spór                                                                      | nic — `refundOrder` jest wywoływane z `restock: false`                                                    |
 
 Rezerwacja trwa tylko tak długo, jak długo jej sesję Checkout da się opłacić. Każda sesja wygasa `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minuty, ze `stripe.constants.ts`) po otwarciu, a nie po domyślnych 24 godzinach Stripe, a jej webhook `checkout.session.expired` zwalnia linie. Aktualizacja checkoutu, która zastaje sesję już wygaszoną przez Stripe, sama najpierw uruchamia to samo strzeżone zwolnienie, więc nowy checkout kupującego nie czeka na webhook. Przeglądarka trzyma jedną otwartą sesję: kasa kontynuuje zapisaną sesję ścieżką aktualizacji, która zwalnia stare linie, rezerwując nowe, zamiast rezerwować koszyk ponownie po odświeżeniu, w drugiej karcie albo po wizycie w koszyku.
+
+Oba zwroty na stan sprawdzają zamówienie w tym samym wsadzie, zanim zmieni się jego status, więc towar zamówienia wraca na stan najwyżej raz. Anulowanie pasuje tylko do otwartego zamówienia, które nie zostało wysłane, a pełny zwrot tylko do zamówienia, które nie jest ani `cancelled`, ani `refunded`, więc zwrot pieniędzy za anulowane zamówienie i ponowne dostarczenie tego samego zwrotu niczego nie przywracają.
 
 Zwróć uwagę, że wsady realizacji i zwolnienia aktualizują `inventory` **bez** zwiększania `version`, bo działają wewnątrz wsadu D1 razem z zapisami zamówienia, a nie przez `reserveInventoryRows` i funkcje zwalniające.
 

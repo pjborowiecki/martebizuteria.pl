@@ -9,7 +9,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import { type Order } from "~/src/modules/order/order.types"
 
 const handlers = vi.hoisted(() => ({
-  availability: { canCancel: true, canFulfill: true, canPrint: true, canRefund: true, canShip: true },
+  availability: { canCancel: true, canFulfill: true, canPrint: true, canRefund: true, canShip: true, cancelRefundsPayment: true },
   calls: [] as string[],
   isPending: false,
 }))
@@ -70,7 +70,7 @@ const openMenu = async () => {
 }
 
 beforeEach(() => {
-  handlers.availability = { canCancel: true, canFulfill: true, canPrint: true, canRefund: true, canShip: true }
+  handlers.availability = { canCancel: true, canFulfill: true, canPrint: true, canRefund: true, canShip: true, cancelRefundsPayment: true }
   handlers.calls.length = 0
   handlers.isPending = false
 })
@@ -109,7 +109,14 @@ describe("OrdersRowActions menu", () => {
 
 describe("OrdersRowActions availability", () => {
   it("disables the state changing actions the order does not allow", async () => {
-    handlers.availability = { canCancel: false, canFulfill: false, canPrint: false, canRefund: false, canShip: false }
+    handlers.availability = {
+      canCancel: false,
+      canFulfill: false,
+      canPrint: false,
+      canRefund: false,
+      canShip: false,
+      cancelRefundsPayment: false,
+    }
     await openMenu()
 
     expect(await screen.findByRole("menuitem", { name: "Fulfill order" })).toHaveAttribute("data-disabled")
@@ -120,7 +127,14 @@ describe("OrdersRowActions availability", () => {
   })
 
   it("leaves reading the order possible even when nothing can be changed", async () => {
-    handlers.availability = { canCancel: false, canFulfill: false, canPrint: false, canRefund: false, canShip: false }
+    handlers.availability = {
+      canCancel: false,
+      canFulfill: false,
+      canPrint: false,
+      canRefund: false,
+      canShip: false,
+      cancelRefundsPayment: false,
+    }
     await openMenu()
 
     expect(await screen.findByRole("menuitem", { name: "View order" })).not.toHaveAttribute("data-disabled")
@@ -139,13 +153,29 @@ describe("OrdersRowActions availability", () => {
 })
 
 describe("OrdersRowActions cancellation", () => {
-  it("asks for confirmation naming the order", async () => {
+  it("asks for confirmation naming the order and the refund its cancellation issues", async () => {
     await openMenu()
     await userEvent.click(await screen.findByRole("menuitem", { name: "Cancel order" }))
 
     expect(await screen.findByText("Cancel order?")).toBeInTheDocument()
-    expect(screen.getByText("Order #order-1 will be cancelled. This action cannot be undone.")).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        "Order #order-1 will be cancelled, its items returned to stock and the customer's payment refunded in full through Stripe. The shop does not email the customer about it. This action cannot be undone.",
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Keep order" })).toBeInTheDocument()
+  })
+
+  it("says there is no payment to refund when the order cost nothing", async () => {
+    handlers.availability = { ...handlers.availability, cancelRefundsPayment: false }
+    await openMenu()
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Cancel order" }))
+
+    expect(
+      await screen.findByText(
+        "Order #order-1 will be cancelled and its items returned to stock. There is no payment to refund. The shop does not email the customer about it. This action cannot be undone.",
+      ),
+    ).toBeInTheDocument()
   })
 
   it("cancels the order only once the dialog is confirmed", async () => {

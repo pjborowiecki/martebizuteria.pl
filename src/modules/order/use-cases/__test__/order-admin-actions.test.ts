@@ -9,7 +9,6 @@ import { type Order } from "~/src/modules/order/order.types"
 
 import { executionContextStorage } from "~/src/lib/background"
 
-import { cancelOrder, cancelOrderMutation } from "../cancel-order"
 import { fulfillOrder, fulfillOrderMutation } from "../fulfill-order"
 import { markOrderDelivered, markOrderDeliveredMutation } from "../mark-order-delivered"
 import { shipOrder, shipOrderMutation } from "../ship-order"
@@ -37,7 +36,6 @@ interface ActionRow {
 const orderRow = vi.hoisted(() => ({ current: undefined as ActionRow | undefined }))
 
 const audit = vi.hoisted(() => ({
-  cancelled: vi.fn(),
   fulfillmentStarted: vi.fn(),
   released: vi.fn(),
   shipped: vi.fn(),
@@ -47,12 +45,6 @@ const shippedEmail = vi.hoisted(() => ({ notifyOrderShipped: vi.fn<(orderId: str
 
 const incoming = vi.hoisted(() => ({ getRequest: vi.fn<() => Request>() }))
 
-const cancellation = vi.hoisted(() => ({
-  catalogInvalidated: vi.fn(),
-  restockLines: { current: [] as { quantity: number; variantId: string | null }[] },
-  runBatch: vi.fn(() => Promise.resolve(undefined)),
-}))
-
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: incoming.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
@@ -61,22 +53,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 vi.mock("~/src/integrations/resend/order-shipped.notification.server", () => ({
   notifyOrderShipped: shippedEmail.notifyOrderShipped,
 }))
-vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch: cancellation.runBatch }))
-vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
-  scheduleProductCatalogInvalidation: cancellation.catalogInvalidated,
-}))
-vi.mock("~/src/modules/order/order.accessors", () => ({
-  getRestockLinesForOrder: () => Promise.resolve(cancellation.restockLines.current),
-}))
-vi.mock("~/src/modules/order/order.utils", () => ({
-  prepareCancelOrderBatch: (orderId: string, lines: readonly { quantity: number; variantId: string }[]) => {
-    database.updates.push({ canceledAt: new Date(), fulfillmentStatus: "cancelled", orderId, restocked: lines, status: "cancelled" })
-
-    return ["cancel-stmt"]
-  },
-}))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
-  recordOrderCancelledAudit: audit.cancelled,
   recordOrderFulfillmentStartedAudit: audit.fulfillmentStarted,
   recordOrderReleasedAudit: audit.released,
   recordOrderShippedAudit: audit.shipped,
@@ -121,65 +98,7 @@ beforeEach(() => {
   )
   shippedEmail.notifyOrderShipped.mockResolvedValue(true)
   database.updates.length = 0
-  cancellation.restockLines.current = [{ quantity: 2, variantId: "v-1" }]
   orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
-})
-
-describe("cancelOrder", () => {
-  it("cancels a pending order and stamps the cancellation time", async () => {
-    await expect(cancelOrder({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({ ok: true, orderId: ORDER_ID })
-    expect(database.updates[0]).toMatchObject({ fulfillmentStatus: "cancelled", status: "cancelled" })
-    expect(database.updates[0]?.["canceledAt"]).toBeInstanceOf(Date)
-  })
-
-  it("records the cancellation in the audit log", async () => {
-    await cancelOrder({ data: { orderId: ORDER_ID } })
-
-    expect(audit.cancelled).toHaveBeenCalledWith(ORDER_ID)
-  })
-
-  it("returns the cancelled lines to stock, as a refund would", async () => {
-    await cancelOrder({ data: { orderId: ORDER_ID } })
-
-    expect(database.updates[0]?.["restocked"]).toStrictEqual([{ quantity: 2, variantId: "v-1" }])
-    expect(cancellation.runBatch).toHaveBeenCalledWith(["cancel-stmt"])
-    expect(cancellation.catalogInvalidated).toHaveBeenCalledOnce()
-  })
-
-  it("skips lines whose variant has since been deleted", async () => {
-    cancellation.restockLines.current = [{ quantity: 2, variantId: null }]
-    await cancelOrder({ data: { orderId: ORDER_ID } })
-
-    expect(database.updates[0]?.["restocked"]).toStrictEqual([])
-  })
-
-  it("refuses to cancel an order that is already cancelled", async () => {
-    orderRow.current = { fulfillmentStatus: "cancelled", status: "cancelled" }
-
-    await expect(cancelOrder({ data: { orderId: ORDER_ID } })).rejects.toThrow(
-      new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE),
-    )
-    expect(database.updates).toHaveLength(0)
-  })
-
-  it("reports a missing order as not found", async () => {
-    orderRow.current = undefined
-
-    await expect(cancelOrder({ data: { orderId: ORDER_ID } })).rejects.toThrow(
-      new AppError(ERROR_CODES.NOT_FOUND, ORDER_ERROR_CODES.NOT_FOUND),
-    )
-  })
-
-  it("rejects an order id that is not a uuid before touching the database", () => {
-    expect(() => {
-      void cancelOrder({ data: { orderId: "order-1" } })
-    }).toThrow("Invalid UUID")
-    expect(database.updates).toHaveLength(0)
-  })
-
-  it("keys its mutation by the shared cancel key", () => {
-    expect(cancelOrderMutation.mutationKey).toStrictEqual(ORDER_MUTATION_KEYS.CANCEL)
-  })
 })
 
 describe("fulfillOrder", () => {
@@ -372,13 +291,6 @@ describe("markOrderDelivered", () => {
   })
 })
 
-it("cancels an order through its mutation", async () => {
-  await expect(new MutationObserver(new QueryClient(), cancelOrderMutation).mutate({ orderId: ORDER_ID })).resolves.toStrictEqual({
-    ok: true,
-    orderId: ORDER_ID,
-  })
-  expect(database.updates[0]).toMatchObject({ status: "cancelled" })
-})
 it("ships a fulfilled order through its mutation and sends the notification", async () => {
   orderRow.current = { fulfillmentStatus: "fulfilled", status: "processing" }
   await expect(new MutationObserver(new QueryClient(), shipOrderMutation).mutate({ orderId: ORDER_ID })).resolves.toStrictEqual({

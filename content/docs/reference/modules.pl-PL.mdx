@@ -104,7 +104,7 @@ Kilka tabel nie ma własnych przypadków użycia, bo są zapisywane wyłącznie 
 
 - `product_option`, `product_option_value`, `product_variant`, `option_on_variant`, `product_image`, `category_on_product`, `collection_on_product` i `attribute_on_product` są podmieniane w całości przez `product/use-cases/create-complete-product.ts` oraz `update-complete-product.ts`.
 - `order`, `order_item`, `order_address` i `payment` zapisuje `checkout/use-cases/fulfill-checkout.server.ts`, który budowanie instrukcji zleca `prepareFulfillCheckoutBatch`, a następnie uruchamia je przez `runDrizzleBatch`. Przed wsadem pobiera kolejny numer z `order_number_sequence` przez `allocateOrderNumber`, a po nim, jeśli zastosowano rabat, `recordDiscountRedemption` zapisuje `discount_redemption` jako pracę w tle.
-- `inventory` jest rezerwowana, konsumowana i zwalniana przez wsady budowane w `checkout/checkout.utils.ts` (`prepareCreateCheckoutBatch`, `prepareFulfillCheckoutBatch`, `prepareReleaseCheckoutBatch`), a uzupełniana przez `prepareRefundBatch` w `order/order.utils.ts`.
+- `inventory` jest rezerwowana, konsumowana i zwalniana przez wsady budowane w `checkout/checkout.utils.ts` (`prepareCreateCheckoutBatch`, `prepareFulfillCheckoutBatch`, `prepareReleaseCheckoutBatch`), a uzupełniana przez `prepareCancelOrderBatch` i `prepareRefundBatch` w `order/order.utils.ts`, najwyżej raz na zamówienie.
 - `account`, `session`, `verification` i `two_factor` to tabele Better Auth. Kod aplikacji je czyta, ale nigdy nie zapisuje bezpośrednio.
 
 ## Powiązane strony

@@ -104,11 +104,12 @@ describe("admin order detail route", () => {
   })
 
   it("offers refund, cancel and ship for a paid order already in fulfillment", () => {
-    renderRoute()
+    renderRoute({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "unfulfilled" })
 
     expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Refund" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Cancel order" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Mark shipped" })).toBeInTheDocument()
   })
 
   it("offers fulfillment only while the order is unfulfilled", () => {
@@ -118,11 +119,12 @@ describe("admin order detail route", () => {
     expect(screen.queryByRole("button", { name: "Mark delivered" })).not.toBeInTheDocument()
   })
 
-  it("offers the delivery hand-off once the parcel has shipped", () => {
+  it("offers the delivery hand-off once the parcel has shipped, and no cancellation", () => {
     renderRoute({ fulfillmentStatus: "shipped" })
 
     expect(screen.getByRole("button", { name: "Mark delivered" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Fulfill" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument()
   })
 
   it("withholds every state-changing action from a cancelled order", () => {

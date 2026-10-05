@@ -357,6 +357,7 @@ export const getAdminOrderCustomerStats = async (userId: string): Promise<AdminO
 export const getAdminOrderRefundTarget = async (orderId: string): Promise<AdminOrderRefundTarget | undefined> => {
   const [row] = await db
     .select({
+      fulfillmentStatus: order.fulfillmentStatus,
       metadata: order.metadata,
       paymentStatus: payment.status,
       status: order.status,
@@ -372,6 +373,7 @@ export const getAdminOrderRefundTarget = async (orderId: string): Promise<AdminO
 }
 
 export interface AdminOrderRefundTarget {
+  readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly metadata: string | null
   readonly paymentStatus: (typeof payment.$inferSelect)["status"] | null
   readonly status: Order["select"]["status"]

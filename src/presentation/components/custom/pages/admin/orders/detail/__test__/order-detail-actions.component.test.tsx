@@ -131,12 +131,11 @@ describe("OrderDetailActions refund confirmation", () => {
 
 describe("OrderDetailActions cancel", () => {
   it("cancels an open order once the admin confirms and closes the confirmation", async () => {
-    renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail()} />)
+    renderWithProviders(<OrderDetailActions order={unfulfilled()} />)
 
     await userEvent.click(screen.getByRole("button", { name: "Cancel order" }))
 
     expect(await screen.findByText("Cancel this order?")).toBeInTheDocument()
-    expect(screen.getByText(/Order #A1B2C3D4 will be marked cancelled/u)).toBeInTheDocument()
 
     await userEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Cancel order" }))
 
@@ -144,8 +143,42 @@ describe("OrderDetailActions cancel", () => {
     expect(screen.queryByText("Cancel this order?")).toBeNull()
   })
 
+  it("tells the admin that cancelling a paid order refunds it in full through Stripe", async () => {
+    renderWithProviders(<OrderDetailActions order={unfulfilled()} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel order" }))
+
+    expect(
+      await screen.findByText(
+        "Order #A1B2C3D4 will be cancelled, its items returned to stock and the customer's payment refunded in full through Stripe. The shop does not email the customer about it. This cannot be undone.",
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it("tells the admin that a free order has no payment to refund", async () => {
+    renderWithProviders(
+      <OrderDetailActions
+        order={buildAdminOrderDetail({ fulfillmentStatus: "not_fulfilled", fulfillmentUiKey: "unfulfilled", totalMinorUnits: 0 })}
+      />,
+    )
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel order" }))
+
+    expect(
+      await screen.findByText(
+        "Order #A1B2C3D4 will be cancelled and its items returned to stock. There is no payment to refund. The shop does not email the customer about it. This cannot be undone.",
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it("offers no cancellation once the parcel has shipped", () => {
+    renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail({ fulfillmentStatus: "shipped" })} />)
+
+    expect(screen.queryByRole("button", { name: "Cancel order" })).toBeNull()
+  })
+
   it("keeps the order when the admin backs out of the cancellation", async () => {
-    renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail()} />)
+    renderWithProviders(<OrderDetailActions order={unfulfilled()} />)
 
     await userEvent.click(screen.getByRole("button", { name: "Cancel order" }))
     await userEvent.click(await screen.findByRole("button", { name: "Keep order" }))

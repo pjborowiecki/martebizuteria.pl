@@ -6,6 +6,7 @@ import {
   canMarkAdminOrderShipped,
   canPrintAdminOrderInvoice,
   canRefundAdminOrder,
+  cancelRefundsAdminOrderPayment,
   resolveAdminOrderRefundBlocker,
 } from "~/src/modules/order/order.admin-actions.utils"
 import { ADMIN_ORDER_REFUND_BLOCKER, type AdminOrderPaymentUiKey } from "~/src/modules/order/order.constants"
@@ -22,6 +23,10 @@ const ALREADY_FULFILLED: FulfillmentStatus[] = ["fulfilled", "shipped", "deliver
 const SHIPPABLE: FulfillmentStatus[] = ["fulfilled", "partially_fulfilled"]
 
 const TERMINAL: FulfillmentStatus[] = ["shipped", "delivered", "cancelled"]
+
+const STILL_IN_THE_SHOP: FulfillmentStatus[] = ["not_fulfilled", "partially_fulfilled", "fulfilled"]
+
+const DISPATCHED: FulfillmentStatus[] = ["shipped", "delivered"]
 
 const CLOSED_STATUSES: OrderStatus[] = ["cancelled", "refunded"]
 
@@ -65,11 +70,33 @@ describe("canMarkAdminOrderShipped", () => {
 
 describe("canCancelAdminOrder", () => {
   it.each(OPEN_STATUSES)("allows cancelling an open %s order", (status) => {
-    expect(canCancelAdminOrder({ status })).toBe(true)
+    expect(canCancelAdminOrder({ fulfillmentStatus: "not_fulfilled", status })).toBe(true)
   })
 
   it.each(FINAL_STATUSES)("refuses to cancel a closed %s order", (status) => {
-    expect(canCancelAdminOrder({ status })).toBe(false)
+    expect(canCancelAdminOrder({ fulfillmentStatus: "not_fulfilled", status })).toBe(false)
+  })
+
+  it.each(STILL_IN_THE_SHOP)("allows cancelling an order whose parcel is still %s in the shop", (fulfillmentStatus) => {
+    expect(canCancelAdminOrder({ fulfillmentStatus, status: "processing" })).toBe(true)
+  })
+
+  it.each(DISPATCHED)("refuses to cancel an order that was already %s", (fulfillmentStatus) => {
+    expect(canCancelAdminOrder({ fulfillmentStatus, status: "processing" })).toBe(false)
+  })
+})
+
+describe("cancelRefundsAdminOrderPayment", () => {
+  it("refunds the payment of a paid order that cost something", () => {
+    expect(cancelRefundsAdminOrderPayment({ paymentUiKey: "paid", totalMinorUnits: 12_900 })).toBe(true)
+  })
+
+  it("has nothing to refund for a free order", () => {
+    expect(cancelRefundsAdminOrderPayment({ paymentUiKey: "paid", totalMinorUnits: 0 })).toBe(false)
+  })
+
+  it.each<AdminOrderPaymentUiKey>(["authorized", "refunded"])("has nothing to refund when the payment is %s", (paymentUiKey) => {
+    expect(cancelRefundsAdminOrderPayment({ paymentUiKey, totalMinorUnits: 12_900 })).toBe(false)
   })
 })
 

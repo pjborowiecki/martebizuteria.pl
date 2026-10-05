@@ -557,7 +557,8 @@
       "cancel": "Cancel order",
       "cancelDialog": {
         "title": "Cancel order?",
-        "description": "Order #{id} will be cancelled. This action cannot be undone.",
+        "description": "Order #{id} will be cancelled and its items returned to stock. There is no payment to refund. The shop does not email the customer about it. This action cannot be undone.",
+        "refundDescription": "Order #{id} will be cancelled, its items returned to stock and the customer's payment refunded in full through Stripe. The shop does not email the customer about it. This action cannot be undone.",
         "cancel": "Keep order",
         "confirm": "Cancel order"
       },
@@ -567,7 +568,7 @@
         "shipSuccessDescription": "Order marked as shipped.",
         "shipEmailFailedTitle": "Shipping email not sent",
         "shipEmailFailedDescription": "The customer was not emailed about the shipment. See the order's Activity card for the error.",
-        "cancelSuccessDescription": "Order cancelled.",
+        "cancelSuccessDescription": "Order cancelled and its items returned to stock. A paid order shows the refund once Stripe confirms it.",
         "errorTitle": "Could not update order",
         "errorDescription": "Please try again in a moment.",
         "notFoundDescription": "This order no longer exists.",
@@ -728,7 +729,8 @@
     },
     "cancelDialog": {
       "title": "Cancel this order?",
-      "description": "Order {id} will be marked cancelled. This does not refund the payment.",
+      "description": "Order {id} will be cancelled and its items returned to stock. There is no payment to refund. The shop does not email the customer about it. This cannot be undone.",
+      "refundDescription": "Order {id} will be cancelled, its items returned to stock and the customer's payment refunded in full through Stripe. The shop does not email the customer about it. This cannot be undone.",
       "cancel": "Keep order",
       "confirm": "Cancel order"
     }

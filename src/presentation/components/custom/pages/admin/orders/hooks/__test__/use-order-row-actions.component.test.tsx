@@ -161,7 +161,9 @@ describe("admin order action mutations", () => {
       expect(toastSuccess).toHaveBeenCalledOnce()
     })
 
-    expect(toastSuccess).toHaveBeenCalledWith("Order updated", { description: "Order cancelled." })
+    expect(toastSuccess).toHaveBeenCalledWith("Order updated", {
+      description: "Order cancelled and its items returned to stock. A paid order shows the refund once Stripe confirms it.",
+    })
   })
 
   it("invalidates the admin order list once the mutation settles", async () => {
