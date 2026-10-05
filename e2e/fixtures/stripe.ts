@@ -30,11 +30,14 @@ const openSessions = async (request: APIRequestContext, email: string): Promise<
   return checkoutSessionsSchema.parse(await response.json()).filter((session) => session.status === "open")
 }
 
-export const waitForOpenCheckoutSession = async (request: APIRequestContext, email: string): Promise<CheckoutSession> => {
-  await expect
-    .poll(async () => (await openSessions(request, email)).length, { message: `Waiting for a Stripe session for ${email}` })
-    .toBeGreaterThan(0)
-  const session = (await openSessions(request, email)).at(-1)
+export const waitForOpenCheckoutSession = async (
+  request: APIRequestContext,
+  email: string,
+  replacing?: CheckoutSession,
+): Promise<CheckoutSession> => {
+  const candidates = async () => (await openSessions(request, email)).filter((session) => session.id !== replacing?.id)
+  await expect.poll(async () => (await candidates()).length, { message: `Waiting for a Stripe session for ${email}` }).toBeGreaterThan(0)
+  const session = (await candidates()).at(-1)
   if (session === undefined) {
     throw new Error(`No open Stripe session for ${email}`)
   }
@@ -42,8 +45,8 @@ export const waitForOpenCheckoutSession = async (request: APIRequestContext, ema
   return session
 }
 
-export const completeCheckoutSession = async (request: APIRequestContext, sessionId: string): Promise<void> => {
-  const signing = await request.post(`/__test/stripe/checkout-sessions/${sessionId}/complete`)
+const settleCheckoutSession = async (request: APIRequestContext, sessionId: string, outcome: "complete" | "expire"): Promise<void> => {
+  const signing = await request.post(`/__test/stripe/checkout-sessions/${sessionId}/${outcome}`)
   expect(signing.ok()).toBe(true)
   const { payload, signature } = signedEventSchema.parse(await signing.json())
   const webhook = await request.post("/api/webhooks/stripe", {
@@ -52,6 +55,12 @@ export const completeCheckoutSession = async (request: APIRequestContext, sessio
   })
   expect(webhook.status(), await webhook.text()).toBe(200)
 }
+
+export const completeCheckoutSession = (request: APIRequestContext, sessionId: string): Promise<void> =>
+  settleCheckoutSession(request, sessionId, "complete")
+
+export const expireCheckoutSession = (request: APIRequestContext, sessionId: string): Promise<void> =>
+  settleCheckoutSession(request, sessionId, "expire")
 
 const openSetupIntents = async (request: APIRequestContext, email: string): Promise<string[]> => {
   const response = await request.get("/__test/stripe/setup-intents", { params: { email } })

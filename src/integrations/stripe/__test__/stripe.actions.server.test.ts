@@ -20,14 +20,14 @@ const mocked = vi.hoisted(() => ({
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
   getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
-  releaseInventoryByVariantLines: vi.fn(),
+  releaseCheckout: vi.fn(),
   releaseInventoryForItems: vi.fn(),
-  repointPayment: vi.fn(),
   requestLocale: { value: "pl-PL" },
   reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
   resolveCheckoutDiscount: vi.fn<() => Promise<{ amountMinorUnits: number; code: string; discountId: string } | undefined>>(),
   scheduleProductCatalogInvalidation: vi.fn(),
+  supersedeCheckoutSession: vi.fn(),
   updateCheckoutDelivery: vi.fn(),
 }))
 
@@ -54,6 +54,10 @@ vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => mocked.requestLocale.value }))
 vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ createCheckout: mocked.createCheckout }))
+vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout: mocked.releaseCheckout }))
+vi.mock("~/src/modules/checkout/use-cases/supersede-checkout-session.server", () => ({
+  supersedeCheckoutSession: mocked.supersedeCheckoutSession,
+}))
 vi.mock("~/src/modules/checkout/use-cases/update-checkout-delivery.server", () => ({
   updateCheckoutDelivery: mocked.updateCheckoutDelivery,
 }))
@@ -61,10 +65,7 @@ vi.mock("~/src/modules/discount/discount.checkout.server", () => ({ resolveCheck
 vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
   getActiveDeliveryMethodByIdQuery: mocked.getActiveDeliveryMethodByIdQuery,
 }))
-vi.mock("~/src/modules/inventory/inventory.accessors", () => ({
-  releaseInventoryByVariantLines: mocked.releaseInventoryByVariantLines,
-  releaseInventoryForItems: mocked.releaseInventoryForItems,
-}))
+vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: mocked.releaseInventoryForItems }))
 vi.mock("~/src/modules/inventory/inventory.utils", () => ({
   reserveInventoryByVariantLines: mocked.reserveInventoryByVariantLines,
   reserveInventoryForItems: mocked.reserveInventoryForItems,
@@ -72,14 +73,22 @@ vi.mock("~/src/modules/inventory/inventory.utils", () => ({
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
   createPendingPayment: mocked.createPendingPayment,
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
-  repointPayment: mocked.repointPayment,
 }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
   getProductsWithInventoryByHandles: mocked.getProductsWithInventoryByHandles,
 }))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
-import { createCheckoutSessionInputSchema, updateCheckoutSessionInputSchema } from "~/src/integrations/stripe/stripe.actions.schemas"
+import {
+  CART_ITEM,
+  HELD_LINES,
+  availableVariant,
+  catalogueProduct,
+  createInput,
+  pendingContext,
+  requestOn,
+  updateInput,
+} from "~/src/integrations/stripe/__test__/fixtures/checkout-session-inputs"
 import { handleCreateCheckoutSession, handleUpdateCheckoutSession } from "~/src/integrations/stripe/stripe.actions.server"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
@@ -89,62 +98,6 @@ import {
   readCheckoutSessionItemsJson,
   toCheckoutSessionItemsMetadata,
 } from "~/src/modules/checkout/checkout-metadata.zod"
-
-const CHECKOUT_VALUES = {
-  address1: "ul. Mokotowska 12/4",
-  city: "Warszawa",
-  countryCode: "PL",
-  deliveryMethod: "dpd-courier",
-  email: "anna@example.com",
-  firstName: "Anna",
-  lastName: "Kowalska",
-  phone: "+48600123456",
-  postalCode: "00-640",
-}
-
-const CART_ITEM = {
-  id: "line-1",
-  image: "products/bracelet.jpg",
-  price: "249,00 zł",
-  qty: 2,
-  rawPrice: 24_900,
-  slug: "bransoletka-aurora",
-  title: "Bransoletka Aurora",
-  variantId: "variant-1",
-  variantTitle: "Rozmiar M",
-}
-
-interface Inventory {
-  id: string
-  quantityAvailable: number
-  version: number
-}
-
-interface Variant {
-  id: string
-  inventory: Inventory | null
-  price: number
-  title: string
-}
-
-const catalogueProduct = (variants: Variant[]) => ({ handle: CART_ITEM.slug, id: "product-1", variants })
-
-const availableVariant = (): Variant => ({
-  id: CART_ITEM.variantId,
-  inventory: { id: "inventory-1", quantityAvailable: 5, version: 7 },
-  price: 24_900,
-  title: "Rozmiar M (katalog)",
-})
-
-const createInput = (values: Record<string, unknown> = {}, items: Record<string, unknown>[] = [CART_ITEM]) =>
-  createCheckoutSessionInputSchema.parse({ checkoutValues: { ...CHECKOUT_VALUES, ...values }, items })
-
-const updateInput = (values: Record<string, unknown> = {}, items: Record<string, unknown>[] = [CART_ITEM]) =>
-  updateCheckoutSessionInputSchema.parse({
-    checkoutValues: { ...CHECKOUT_VALUES, ...values },
-    items,
-    sessionId: "cs_old",
-  })
 
 const STRIPE_METADATA_VALUE_LENGTH = 500
 
@@ -166,20 +119,20 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {})
   mocked.getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))
   signInCustomerWithStripeAccount()
-  mocked.releaseInventoryByVariantLines.mockResolvedValue(undefined)
+  mocked.releaseCheckout.mockResolvedValue(undefined)
   mocked.releaseInventoryForItems.mockResolvedValue(undefined)
   mocked.reserveInventoryByVariantLines.mockResolvedValue(undefined)
   mocked.reserveInventoryForItems.mockResolvedValue(undefined)
   mocked.createPendingPayment.mockResolvedValue(undefined)
-  mocked.repointPayment.mockResolvedValue(undefined)
+  mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
   mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
   mocked.getActiveDeliveryMethodByIdQuery.mockResolvedValue({ id: "dpd-courier", price: 1500 })
   mocked.createCheckout.mockResolvedValue("checkout-1")
   mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_300, client_secret: "cs_secret_1", id: "cs_new" })
   mocked.checkoutSessionsExpire.mockResolvedValue({})
-  mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: { items: JSON.stringify([{ qty: 1, variantId: "variant-old" }]) } })
-  mocked.getPaymentContextByTransactionId.mockResolvedValue({ checkoutId: "checkout-1", email: "anna@example.com", userId: "user-1" })
+  mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: { items: JSON.stringify(HELD_LINES) }, status: "open" })
+  mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext())
   mocked.resolveCheckoutDiscount.mockResolvedValue(undefined)
   mocked.couponsCreate.mockResolvedValue({ id: "coupon_1" })
 })
@@ -213,9 +166,6 @@ const signInCustomerWithStripeAccount = (): void => {
   mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
   mocked.getStripeCustomerId.mockResolvedValue("cus_1")
 }
-
-const requestOn = (origin: string): Request =>
-  new Request(`${origin}/_serverFn/checkout`, { headers: { origin: "https://store.test", referer: "https://store.test/cart" } })
 
 const createdSessionMetadata = (): Record<string, string> => mocked.checkoutSessionsCreate.mock.lastCall?.[0].metadata ?? {}
 
@@ -384,7 +334,7 @@ describe("checkout session return URL", () => {
     expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
     expect(mocked.getPaymentContextByTransactionId).not.toHaveBeenCalled()
     expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
-    expect(mocked.releaseInventoryByVariantLines).not.toHaveBeenCalled()
+    expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
     expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()
   })
 })
@@ -487,40 +437,6 @@ describe("checkout session creation failures", () => {
     await expect(handleCreateCheckoutSession(createInput())).rejects.toBe(failure)
 
     expect(console.error).toHaveBeenCalledWith("Failed to release inventory after checkout error:", expect.any(Error))
-  })
-})
-
-describe("handleUpdateCheckoutSession authorization", () => {
-  it("refuses a session id that belongs to no payment", async () => {
-    mocked.getPaymentContextByTransactionId.mockResolvedValue(undefined)
-
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({ code: ERROR_CODES.NOT_FOUND })
-    expect(mocked.checkoutSessionsRetrieve).not.toHaveBeenCalled()
-  })
-
-  it("refuses to update another signed-in customer's checkout", async () => {
-    mocked.getRequestSession.mockResolvedValue({ user: { id: "user-2" } })
-
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
-  })
-
-  it("refuses an anonymous request against a checkout owned by a user", async () => {
-    mocked.getRequestSession.mockResolvedValue(undefined)
-
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
-  })
-
-  it("does not ask for a session when the checkout has no owner", async () => {
-    mocked.getPaymentContextByTransactionId.mockResolvedValue({
-      checkoutId: "checkout-1",
-      email: "guest@example.com",
-      userId: undefined,
-    })
-
-    await handleUpdateCheckoutSession(updateInput())
-
-    expect(mocked.getRequestSession).not.toHaveBeenCalled()
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ customer_email: CHECKOUT_VALUES.email }))
   })
 })
 
@@ -628,131 +544,6 @@ describe("checkout session discounts", () => {
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toThrow("Stripe is unavailable")
     expect(mocked.couponsDel).toHaveBeenCalledExactlyOnceWith("coupon_1")
     expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
-  })
-})
-
-describe("handleUpdateCheckoutSession", () => {
-  it("uses the edited checkout email for both the new session and its payment receipt", async () => {
-    const input = updateInput({ email: "updated@example.com" })
-
-    await handleUpdateCheckoutSession(input)
-
-    expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).toMatchObject({
-      customer: "cus_1",
-      payment_intent_data: { receipt_email: "updated@example.com" },
-    })
-    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", input.checkoutValues, undefined)
-  })
-
-  it("swaps the previous reservation for the new cart before creating a session", async () => {
-    await handleUpdateCheckoutSession(updateInput())
-
-    expect(mocked.checkoutSessionsRetrieve).toHaveBeenCalledWith("cs_old")
-    expect(mocked.releaseInventoryByVariantLines).toHaveBeenCalledWith([{ qty: 1, variantId: "variant-old" }])
-    expect(mocked.reserveInventoryForItems).toHaveBeenCalledOnce()
-  })
-
-  it("treats a previous session without item metadata as having nothing reserved", async () => {
-    mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: null })
-
-    await handleUpdateCheckoutSession(updateInput())
-
-    expect(mocked.releaseInventoryByVariantLines).toHaveBeenCalledWith([])
-  })
-
-  it("persists the delivery change, repoints the payment and expires the old session", async () => {
-    const result = await handleUpdateCheckoutSession(updateInput())
-
-    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith(
-      "checkout-1",
-      expect.objectContaining({ deliveryMethod: "dpd-courier" }),
-      undefined,
-    )
-    expect(mocked.repointPayment).toHaveBeenCalledWith({ amount: 51_300, newTransactionId: "cs_new", oldTransactionId: "cs_old" })
-    expect(mocked.checkoutSessionsExpire).toHaveBeenCalledWith("cs_old")
-    expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
-    expect(result).toStrictEqual({ amount: 51_300, clientSecret: "cs_secret_1", sessionId: "cs_new" })
-  })
-
-  it("keeps the updated session even when the old one cannot be expired", async () => {
-    mocked.checkoutSessionsExpire.mockRejectedValue(new Error("already expired"))
-
-    await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
-
-    expect(console.error).toHaveBeenCalledWith("Failed to expire previous Checkout Session:", expect.any(Error))
-    expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
-  })
-
-  it("does not repoint the payment when the update is rejected by validation", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([])
-
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
-      message: CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND,
-    })
-    expect(mocked.repointPayment).not.toHaveBeenCalled()
-  })
-})
-
-describe("handleUpdateCheckoutSession compensation", () => {
-  it("restores the previous reservation when the new cart fails validation", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([])])
-
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
-      message: CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND,
-    })
-
-    expect(mocked.reserveInventoryByVariantLines).toHaveBeenCalledWith([{ qty: 1, variantId: "variant-old" }])
-    expect(mocked.updateCheckoutDelivery).not.toHaveBeenCalled()
-  })
-
-  it("logs and rethrows the validation error when the restore also fails", async () => {
-    mocked.getProductsWithInventoryByHandles.mockResolvedValue([])
-    mocked.reserveInventoryByVariantLines.mockRejectedValue(new Error("restore failed"))
-
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
-      message: CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND,
-    })
-
-    expect(console.error).toHaveBeenCalledWith(
-      "Failed to restore prior inventory after checkout update validation error:",
-      expect.any(Error),
-    )
-  })
-
-  it("releases the new reservation and restores the old one when Stripe rejects the new session", async () => {
-    const failure = new Error("stripe rejected the session")
-    mocked.checkoutSessionsCreate.mockRejectedValue(failure)
-
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(failure)
-
-    expect(mocked.releaseInventoryForItems).toHaveBeenCalledWith(
-      expect.arrayContaining([expect.objectContaining({ inventoryId: "inventory-1" })]),
-    )
-    expect(mocked.reserveInventoryByVariantLines).toHaveBeenLastCalledWith([{ qty: 1, variantId: "variant-old" }])
-    expect(console.error).toHaveBeenCalledWith("Stripe/DB error during checkout session update:", failure)
-  })
-
-  it("compensates when repointing the payment fails after the session was created", async () => {
-    const failure = new Error("payment row is gone")
-    mocked.repointPayment.mockRejectedValue(failure)
-
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(failure)
-
-    expect(mocked.releaseInventoryForItems).toHaveBeenCalledOnce()
-    expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
-    expect(mocked.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
-  })
-
-  it("logs both compensation failures and still rethrows", async () => {
-    const failure = new Error("delivery update failed")
-    mocked.updateCheckoutDelivery.mockRejectedValue(failure)
-    mocked.releaseInventoryForItems.mockRejectedValue(new Error("release failed"))
-    mocked.reserveInventoryByVariantLines.mockRejectedValue(new Error("restore failed"))
-
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(failure)
-
-    expect(console.error).toHaveBeenCalledWith("Failed to release inventory after checkout update error:", expect.any(Error))
-    expect(console.error).toHaveBeenCalledWith("Failed to restore prior inventory after checkout update error:", expect.any(Error))
   })
 })
 

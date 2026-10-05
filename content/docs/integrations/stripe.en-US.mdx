@@ -123,13 +123,15 @@ export const buildCheckoutValuesFingerprint = (values: CheckoutFormSchema): stri
 
 Server-side, `handleUpdateCheckoutSession` is the most delicate function in the codebase:
 
-1. `getPaymentContextByTransactionId(sessionId)` resolves the `checkout` and owning `userId`; a session that belongs to a signed-in user can only be updated by that user, otherwise `FORBIDDEN`.
-2. The old Stripe session is retrieved and its `items*` metadata parsed into release lines.
-3. `swapCheckoutInventory` releases the old reservation, validates and reserves the new one, and **restores the old reservation if the new one fails**.
-4. After the shipping cost and the discount are resolved again, `persistCheckoutSessionUpdate` updates the checkout's delivery and `discount_id`, creates the replacement Stripe session, calls `repointPayment({ amount, newTransactionId, oldTransactionId })`, and expires the old Stripe session with `stripe.checkout.sessions.expire(...)` — a failure to expire is logged, not thrown.
-5. On any failure it releases the new reservation and restores the old one.
+1. `getPaymentContextByTransactionId(sessionId)` resolves the `checkout`, its owning `userId` and the statuses of the checkout and its payment. A session that belongs to a signed-in user can only be updated by that user, otherwise `FORBIDDEN`. An unknown session id is refused with `NOT_FOUND`, and a checkout or payment that is no longer `pending` with `CONFLICT`, both carrying the reason `SESSION_CLOSED`.
+2. The old Stripe session is retrieved. Unless its `status` is `open`, the update is refused with `SESSION_CLOSED` too. Its `items*` metadata is parsed into the lines it holds.
+3. `validateAndCalculateItems` checks the edited cart against the available stock plus what the old session holds, the shipping cost and the discount are resolved again, and the replacement Stripe session is created. Nothing has changed yet, so a failure here leaves the old session open and its stock reserved.
+4. `retireCheckoutSession` expires the old session with `stripe.checkout.sessions.expire(...)`, so it can no longer be paid, then calls `supersedeCheckoutSession`. That use case moves the `payment` row onto the replacement session and releases the old lines in one D1 batch, only while the payment and its checkout are still `pending`. If either step fails, or the expiry webhook released the checkout first, the replacement is expired and the update fails. Expiring the old session sends its `checkout.session.expired` webhook while the update is still running, and `prepareReleaseCheckoutBatch` acts only while the session's payment and its checkout are `pending`: a release that commits before the move fails the checkout and `supersedeCheckoutSession` refuses, and one that commits after it finds no payment on the old session and changes nothing. The old lines are never released twice.
+5. `reserveReplacementCheckout` reserves the edited cart with `reserveInventoryByVariantLines` and updates the checkout's delivery and `discount_id`. If either fails, `releaseCheckout` on the replacement session fails the checkout and returns what was reserved, and the replacement is expired.
 
-Preserve this ordering when you touch it. The `payment` row is repointed rather than recreated because `20260924120000_checkout_idempotency_constraints.sql` puts a unique index on `payment.transaction_id` (and on `order.checkout_id`); inserting a second payment row for the replacement session would violate it.
+When `updateCheckoutSessionFn` answers with `SESSION_CLOSED`, `ensureCheckoutSession` and `resetCheckoutSession` call `createCheckoutSessionFn` for a fresh checkout instead of failing.
+
+Preserve this ordering when you touch it. The `payment` row is moved rather than recreated because `20260924120000_checkout_idempotency_constraints.sql` puts a unique index on `payment.transaction_id` (and on `order.checkout_id`); inserting a second payment row for the replacement session would violate it.
 
 ## Confirming in the browser
 
@@ -192,6 +194,7 @@ export const CHECKOUT_ERROR_CODES = {
   INSUFFICIENT_INVENTORY: "INSUFFICIENT_INVENTORY",
   INVALID_PRICE: "INVALID_PRICE",
   PRODUCT_NOT_FOUND: "PRODUCT_NOT_FOUND",
+  SESSION_CLOSED: "SESSION_CLOSED",
   UNKNOWN_ERROR: "UNKNOWN_ERROR",
   VARIANT_NOT_FOUND: "VARIANT_NOT_FOUND",
 } as const

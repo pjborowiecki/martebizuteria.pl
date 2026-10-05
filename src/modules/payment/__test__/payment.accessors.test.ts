@@ -2,19 +2,18 @@ import { type SQL } from "drizzle-orm"
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import {
-  createPendingPayment,
-  getPaymentByTransactionId,
-  getPaymentContextByTransactionId,
-  repointPayment,
-} from "~/src/modules/payment/payment.accessors"
+import { createPendingPayment, getPaymentByTransactionId, getPaymentContextByTransactionId } from "~/src/modules/payment/payment.accessors"
 
 const access = vi.hoisted(() => ({
-  checkoutFindFirst: vi.fn<(input: { where: SQL | undefined }) => Promise<{ email: string; userId: string | null } | undefined>>(),
+  checkoutFindFirst:
+    vi.fn<
+      (input: {
+        columns?: Record<string, boolean>
+        where: SQL | undefined
+      }) => Promise<{ email: string; status: string; userId: string | null } | undefined>
+    >(),
   insertValues: vi.fn<(values: Record<string, unknown>) => Promise<void>>(),
   paymentFindFirst: vi.fn<(input: { columns?: Record<string, boolean>; where: SQL | undefined }) => Promise<unknown>>(),
-  set: vi.fn(),
-  where: vi.fn<(condition: SQL | undefined) => Promise<void>>(),
 }))
 
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
@@ -24,7 +23,6 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
       checkout: { findFirst: access.checkoutFindFirst },
       payment: { findFirst: access.paymentFindFirst },
     },
-    update: () => ({ set: access.set }),
   },
 }))
 
@@ -104,26 +102,38 @@ describe("getPaymentContextByTransactionId", () => {
   })
 
   it("returns nothing when the payment points at a checkout that is gone", async () => {
-    access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1" })
+    access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1", status: "pending" })
     access.checkoutFindFirst.mockResolvedValue(undefined)
 
     await expect(getPaymentContextByTransactionId("pi_123")).resolves.toBeUndefined()
   })
 
-  it("joins the payment to its checkout email and owner", async () => {
-    access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1" })
-    access.checkoutFindFirst.mockResolvedValue({ email: "shopper@example.com", userId: "customer-1" })
+  it("joins the payment to its checkout email, owner and both statuses", async () => {
+    access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1", status: "succeeded" })
+    access.checkoutFindFirst.mockResolvedValue({ email: "shopper@example.com", status: "completed", userId: "customer-1" })
 
     await expect(getPaymentContextByTransactionId("pi_123")).resolves.toStrictEqual({
       checkoutId: "checkout-1",
+      checkoutStatus: "completed",
       email: "shopper@example.com",
+      paymentStatus: "succeeded",
       userId: "customer-1",
     })
   })
 
+  it("reads the statuses alongside the columns that identify the checkout", async () => {
+    access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1", status: "pending" })
+    access.checkoutFindFirst.mockResolvedValue({ email: "shopper@example.com", status: "pending", userId: null })
+
+    await getPaymentContextByTransactionId("pi_123")
+
+    expect(access.paymentFindFirst.mock.calls[0]?.[0].columns).toStrictEqual({ checkoutId: true, status: true })
+    expect(access.checkoutFindFirst.mock.calls[0]?.[0].columns).toStrictEqual({ email: true, status: true, userId: true })
+  })
+
   it("reports a guest checkout as having no owner", async () => {
-    access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1" })
-    access.checkoutFindFirst.mockResolvedValue({ email: "guest@example.com", userId: null })
+    access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1", status: "pending" })
+    access.checkoutFindFirst.mockResolvedValue({ email: "guest@example.com", status: "pending", userId: null })
 
     const context = await getPaymentContextByTransactionId("pi_123")
 
@@ -131,37 +141,14 @@ describe("getPaymentContextByTransactionId", () => {
   })
 
   it("scopes the checkout lookup to the id the payment carries", async () => {
-    access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1" })
-    access.checkoutFindFirst.mockResolvedValue({ email: "shopper@example.com", userId: null })
+    access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1", status: "pending" })
+    access.checkoutFindFirst.mockResolvedValue({ email: "shopper@example.com", status: "pending", userId: null })
 
     await getPaymentContextByTransactionId("pi_123")
 
     expect(query(access.checkoutFindFirst.mock.calls[0]?.[0].where)).toMatchObject({
       params: ["checkout-1"],
       sql: '"checkout"."id" = ?',
-    })
-  })
-})
-
-describe("repointPayment", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    access.where.mockResolvedValue()
-    access.set.mockReturnValue({ where: access.where })
-  })
-
-  it("moves the payment onto the new provider transaction and amount", async () => {
-    await repointPayment({ amount: 150_000, newTransactionId: "pi_new", oldTransactionId: "pi_old" })
-
-    expect(access.set).toHaveBeenCalledWith({ amount: 150_000, transactionId: "pi_new" })
-  })
-
-  it("only touches the row that still carries the old transaction id", async () => {
-    await repointPayment({ amount: 150_000, newTransactionId: "pi_new", oldTransactionId: "pi_old" })
-
-    expect(query(access.where.mock.calls[0]?.[0])).toMatchObject({
-      params: ["pi_old"],
-      sql: '"payment"."transaction_id" = ?',
     })
   })
 })

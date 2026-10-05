@@ -24,6 +24,7 @@ import {
   ensureCheckoutSession,
   resetCheckoutSession,
 } from "~/src/integrations/stripe/stripe.checkout"
+import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { type CartItem } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
@@ -234,6 +235,34 @@ describe("ensureCheckoutSession", () => {
 
     expect(session.sessionId).toBe("cs_replacement")
   })
+
+  it("starts a fresh checkout when the server refuses to change a session that has closed", async () => {
+    updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_CLOSED))
+    createCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_fresh", sessionId: "cs_fresh" })
+
+    await expect(
+      ensureCheckoutSession({ amount: 99_600, existing: existingSession, items, values: shippingValues }),
+    ).resolves.toStrictEqual({
+      amount: 99_600,
+      clientSecret: "cs_secret_fresh",
+      linesFingerprint: "variant-a:2|variant-b:1",
+      sessionId: "cs_fresh",
+      valuesFingerprint: buildCheckoutValuesFingerprint(shippingValues),
+    })
+    expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({ data: { checkoutValues: shippingValues, items } })
+  })
+
+  it.each([new Error(CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY), "SESSION_CLOSED"])(
+    "reports any other update failure instead of starting over: %s",
+    async (failure) => {
+      updateCheckoutSessionFn.mockRejectedValue(failure)
+
+      await expect(ensureCheckoutSession({ amount: 99_600, existing: existingSession, items, values: shippingValues })).rejects.toBe(
+        failure,
+      )
+      expect(createCheckoutSessionFn).not.toHaveBeenCalled()
+    },
+  )
 })
 
 describe("resetCheckoutSession", () => {
@@ -262,6 +291,16 @@ describe("resetCheckoutSession", () => {
     const session = await resetCheckoutSession({ amount: 1, items: [], session: existingSession, values: shippingValues })
 
     expect(session.linesFingerprint).toBe("")
+  })
+
+  it("starts a fresh checkout when the session it was paying has expired or completed", async () => {
+    updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_CLOSED))
+    createCheckoutSessionFn.mockResolvedValue({ clientSecret: "cs_secret_fresh", sessionId: "cs_fresh" })
+
+    const session = await resetCheckoutSession({ amount: existingSession.amount, items, session: existingSession, values: shippingValues })
+
+    expect(session).toMatchObject({ clientSecret: "cs_secret_fresh", sessionId: "cs_fresh" })
+    expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({ data: { checkoutValues: shippingValues, items } })
   })
 })
 

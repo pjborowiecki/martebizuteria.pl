@@ -1,5 +1,6 @@
 import {
   completeCheckoutSession,
+  expireCheckoutSession,
   getSentEmails,
   installProviderMocks,
   listCheckoutSessions,
@@ -16,7 +17,7 @@ installProviderMocks()
 
 const applicationModule = import("~/src/server")
 
-const COMPLETE_SESSION_PATTERN = /^\/__test\/stripe\/checkout-sessions\/(?<sessionId>cs_[\w-]+)\/complete$/u
+const SETTLE_SESSION_PATTERN = /^\/__test\/stripe\/checkout-sessions\/(?<sessionId>cs_[\w-]+)\/(?<outcome>complete|expire)$/u
 
 const SUCCEED_SETUP_INTENT_PATTERN = /^\/__test\/stripe\/setup-intents\/(?<setupIntentId>seti_[\w-]+)\/succeed$/u
 
@@ -32,8 +33,8 @@ const requiredParam = (url: URL, name: string): string | undefined => {
   return value === null || value === "" ? undefined : value
 }
 
-const signCompletedCheckout = async (sessionId: string, webhookSecret: string): Promise<Response> => {
-  const payload = completeCheckoutSession(sessionId)
+const signSettledCheckout = async (sessionId: string, outcome: string, webhookSecret: string): Promise<Response> => {
+  const payload = outcome === "expire" ? expireCheckoutSession(sessionId) : completeCheckoutSession(sessionId)
   if (payload === undefined) {
     return Response.json({ error: `No checkout session ${sessionId}` }, { status: HTTP_STATUS.NOT_FOUND })
   }
@@ -82,9 +83,9 @@ const handleTestRequest = (request: Request, env: Env, url: URL): Promise<Respon
       : Response.json(listCheckoutSessions(email))
   }
 
-  const sessionId = COMPLETE_SESSION_PATTERN.exec(url.pathname)?.groups?.["sessionId"]
-  if (sessionId !== undefined && request.method === "POST") {
-    return signCompletedCheckout(sessionId, env.STRIPE_WEBHOOK_SECRET)
+  const settlement = SETTLE_SESSION_PATTERN.exec(url.pathname)?.groups
+  if (settlement?.["sessionId"] !== undefined && settlement["outcome"] !== undefined && request.method === "POST") {
+    return signSettledCheckout(settlement["sessionId"], settlement["outcome"], env.STRIPE_WEBHOOK_SECRET)
   }
 
   return handleSetupIntentTestRequest(request, url)

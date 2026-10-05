@@ -407,19 +407,39 @@ export const prepareFulfillCheckoutBatch = (
   }
 }
 
-export const prepareReleaseCheckoutBatch = (
-  context: PendingCheckout,
-  { lines, transactionId }: ReleaseCheckoutInput,
-): BatchItem<"sqlite">[] => [
-  db.update(payment).set({ status: "failed" }).where(eq(payment.transactionId, transactionId)),
-  db.update(checkout).set({ status: "failed" }).where(eq(checkout.id, context.checkoutId)),
-  ...lines.map((line) =>
+export const prepareReleaseCheckoutBatch = ({ lines, transactionId }: ReleaseCheckoutInput): BatchItem<"sqlite">[] => {
+  const pendingSessionPayment = and(eq(payment.transactionId, transactionId), eq(payment.status, "pending"))
+  const releasableSession = db
+    .select({ id: payment.id })
+    .from(payment)
+    .innerJoin(checkout, eq(checkout.id, payment.checkoutId))
+    .where(and(pendingSessionPayment, eq(checkout.status, "pending")))
+  const sessionPaymentOfCheckout = db
+    .select({ id: payment.id })
+    .from(payment)
+    .where(and(eq(payment.checkoutId, checkout.id), pendingSessionPayment))
+  const failedCheckoutOfPayment = db
+    .select({ id: checkout.id })
+    .from(checkout)
+    .where(and(eq(checkout.id, payment.checkoutId), eq(checkout.status, "failed")))
+
+  return [
+    ...lines.map((line) =>
+      db
+        .update(inventory)
+        .set({
+          quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${line.qty})`,
+          quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${line.qty})`,
+        })
+        .where(and(eq(inventory.variantId, line.variantId), exists(releasableSession))),
+    ),
     db
-      .update(inventory)
-      .set({
-        quantityAvailable: sql`${inventory.quantityAvailable} + min(${inventory.quantityReserved}, ${line.qty})`,
-        quantityReserved: sql`max(0, ${inventory.quantityReserved} - ${line.qty})`,
-      })
-      .where(eq(inventory.variantId, line.variantId)),
-  ),
-]
+      .update(checkout)
+      .set({ status: "failed" })
+      .where(and(eq(checkout.status, "pending"), exists(sessionPaymentOfCheckout))),
+    db
+      .update(payment)
+      .set({ status: "failed" })
+      .where(and(pendingSessionPayment, exists(failedCheckoutOfPayment))),
+  ]
+}

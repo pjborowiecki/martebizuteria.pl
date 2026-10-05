@@ -84,7 +84,7 @@ if (firstFailure !== undefined) {
 
 A guard that matches no row is not an error, so D1 commits the lines that did match; the compensating release, itself a single batch, closes that gap rather than the database.
 
-`reserveInventoryByVariantLines(lines)` is the variant-id-based variant used when restoring a previous reservation during a checkout update: it reads every line's inventory row and current `version` in one query through `getInventoryByVariantIds`, then delegates to `reserveInventoryForItems`.
+`reserveInventoryByVariantLines(lines)` is the variant-id-based variant that reserves the edited cart during a checkout update, after the old session's lines were released and their `version` bumped: it reads every line's inventory row and current `version` in one query through `getInventoryByVariantIds`, then delegates to `reserveInventoryForItems`.
 
 ## Release is clamped
 
@@ -98,22 +98,22 @@ Both release statements use `min`/`max` so a duplicate release cannot invent sto
 })
 ```
 
-`releaseInventoryForItems(items)` keys on `inventoryId`; `releaseInventoryByVariantLines(lines)` keys on `variantId`. Each sends every line in one batch. Unlike reservation, release is unconditional on `version` — it must always succeed.
+`releaseInventoryForItems(items)` keys on `inventoryId` and sends every line in one batch. `supersedeCheckoutSession` applies the same `inventoryReleaseValues`, keyed on `variantId`, to the lines a replaced checkout session held. Unlike reservation, release is unconditional on `version` — it must always succeed.
 
 ## The full cycle
 
-| Moment                                                                  | Effect on the row                                                      |
-| ----------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Stripe session created (`handleCreateCheckoutSession`)                  | `available -= qty`, `reserved += qty`, `version += 1`                  |
-| Checkout edited (`handleUpdateCheckoutSession`)                         | Old lines released, new lines reserved (`swapCheckoutInventory`)       |
-| Session paid (`prepareFulfillCheckoutBatch`)                            | `reserved -= qty`; `available` untouched — the reservation is consumed |
-| Session expired or async payment failed (`prepareReleaseCheckoutBatch`) | `available += min(reserved, qty)`, `reserved -= qty`                   |
-| Full refund with restock (`prepareRefundBatch`)                         | `available += quantity`, from `getRestockLinesForOrder(orderId)`       |
-| Lost dispute                                                            | Nothing — `refundOrder` is called with `restock: false`                |
+| Moment                                                                  | Effect on the row                                                                             |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Stripe session created (`handleCreateCheckoutSession`)                  | `available -= qty`, `reserved += qty`, `version += 1`                                         |
+| Checkout edited (`handleUpdateCheckoutSession`)                         | Old lines released as the payment moves (`supersedeCheckoutSession`), then new lines reserved |
+| Session paid (`prepareFulfillCheckoutBatch`)                            | `reserved -= qty`; `available` untouched — the reservation is consumed                        |
+| Session expired or async payment failed (`prepareReleaseCheckoutBatch`) | `available += min(reserved, qty)`, `reserved -= qty`                                          |
+| Full refund with restock (`prepareRefundBatch`)                         | `available += quantity`, from `getRestockLinesForOrder(orderId)`                              |
+| Lost dispute                                                            | Nothing — `refundOrder` is called with `restock: false`                                       |
 
 Note that the fulfilment and release batches update `inventory` **without** bumping `version`, because they run inside a D1 batch alongside the order writes rather than through `reserveInventoryRows` and the release helpers.
 
-Local error handling in `stripe.actions.server.ts` always compensates: a failure after reserving calls `releaseInventoryForItems`, and a failure during a checkout update additionally calls `reserveInventoryByVariantLines(oldReservedLines)` to put the previous reservation back.
+Local error handling in `stripe.actions.server.ts` always compensates: a failure after reserving calls `releaseInventoryForItems`. A checkout update releases the old lines only after its old session is expired and in the same batch that moves the payment, and only while the checkout is still `pending`. The expiry webhook's release batch has the same condition on the session's pending payment, so whichever batch commits first returns the lines and the other finds nothing, however the two requests interleave. A failure after that point does not put them back: the old session can no longer be paid, so `releaseCheckout` fails the checkout and returns whatever the edited cart had reserved.
 
 ## Stock decides visibility
 

@@ -143,4 +143,37 @@ describe("releaseCheckout", () => {
     expect(statusOf("checkout", "id", "chk-1")).toEqual({ status: "failed" })
     expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 3 })
   })
+
+  it("leaves a completed checkout, its payment and the stock alone", async () => {
+    await releaseCheckout({ lines: [{ qty: 2, variantId: "var-1" }], transactionId: "pi_done" })
+
+    expect(statusOf("payment", "transaction_id", "pi_done")).toEqual({ status: "pending" })
+    expect(statusOf("checkout", "id", "chk-done")).toEqual({ status: "completed" })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 3 })
+  })
+
+  it("returns no stock for a payment whose checkout no longer exists", async () => {
+    await releaseCheckout({ lines: [{ qty: 2, variantId: "var-1" }], transactionId: "pi_orphan" })
+
+    expect(statusOf("payment", "transaction_id", "pi_orphan")).toEqual({ status: "pending" })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 3 })
+  })
+
+  it("keeps the checkout and its stock when the session's payment is no longer pending", async () => {
+    sqlite.exec("update payment set status = 'failed' where id = 'pay-1'")
+
+    await releaseCheckout({ lines: [{ qty: 2, variantId: "var-1" }], transactionId: TRANSACTION_ID })
+
+    expect(statusOf("checkout", "id", "chk-1")).toEqual({ status: "pending" })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 3 })
+  })
+
+  it("fails a payment left pending on an already failed checkout without returning stock again", async () => {
+    sqlite.exec("update checkout set status = 'failed' where id = 'chk-1'")
+
+    await releaseCheckout({ lines: [{ qty: 2, variantId: "var-1" }], transactionId: TRANSACTION_ID })
+
+    expect(statusOf("payment", "transaction_id", TRANSACTION_ID)).toEqual({ status: "failed" })
+    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 3 })
+  })
 })

@@ -84,7 +84,7 @@ if (firstFailure !== undefined) {
 
 Warunek, który nie trafia w żaden wiersz, nie jest błędem, więc D1 zatwierdza linie, które trafiły; tę lukę zamyka kompensujące zwolnienie, samo będące jednym wsadem, a nie baza danych.
 
-`reserveInventoryByVariantLines(lines)` to wariant oparty na identyfikatorach wariantów, używany przy przywracaniu poprzedniej rezerwacji podczas aktualizacji checkoutu: jednym zapytaniem przez `getInventoryByVariantIds` czyta wiersz stanu i aktualną `version` każdej linii, a potem deleguje do `reserveInventoryForItems`.
+`reserveInventoryByVariantLines(lines)` to wariant oparty na identyfikatorach wariantów, który rezerwuje edytowany koszyk podczas aktualizacji checkoutu, po zwolnieniu linii starej sesji i zwiększeniu ich `version`: jednym zapytaniem przez `getInventoryByVariantIds` czyta wiersz stanu i aktualną `version` każdej linii, a potem deleguje do `reserveInventoryForItems`.
 
 ## Zwolnienie jest ograniczone
 
@@ -98,22 +98,22 @@ Obie instrukcje zwolnienia używają `min`/`max`, więc podwójne zwolnienie nie
 })
 ```
 
-`releaseInventoryForItems(items)` operuje po `inventoryId`, a `releaseInventoryByVariantLines(lines)` po `variantId`. Każda wysyła wszystkie linie jednym wsadem. W przeciwieństwie do rezerwacji zwolnienie nie jest warunkowane przez `version` — musi się zawsze udać.
+`releaseInventoryForItems(items)` operuje po `inventoryId` i wysyła wszystkie linie jednym wsadem. `supersedeCheckoutSession` stosuje te same `inventoryReleaseValues`, po `variantId`, do linii trzymanych przez zastąpioną sesję checkoutu. W przeciwieństwie do rezerwacji zwolnienie nie jest warunkowane przez `version` — musi się zawsze udać.
 
 ## Pełny cykl
 
-| Moment                                                                              | Efekt na wierszu                                                        |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| utworzenie sesji Stripe (`handleCreateCheckoutSession`)                             | `available -= qty`, `reserved += qty`, `version += 1`                   |
-| edycja checkoutu (`handleUpdateCheckoutSession`)                                    | stare linie zwolnione, nowe zarezerwowane (`swapCheckoutInventory`)     |
-| sesja opłacona (`prepareFulfillCheckoutBatch`)                                      | `reserved -= qty`; `available` bez zmian — rezerwacja jest skonsumowana |
-| sesja wygasła albo płatność asynchroniczna nieudana (`prepareReleaseCheckoutBatch`) | `available += min(reserved, qty)`, `reserved -= qty`                    |
-| pełny zwrot z powrotem na magazyn (`prepareRefundBatch`)                            | `available += quantity`, z `getRestockLinesForOrder(orderId)`           |
-| przegrany spór                                                                      | nic — `refundOrder` jest wywoływane z `restock: false`                  |
+| Moment                                                                              | Efekt na wierszu                                                                                          |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| utworzenie sesji Stripe (`handleCreateCheckoutSession`)                             | `available -= qty`, `reserved += qty`, `version += 1`                                                     |
+| edycja checkoutu (`handleUpdateCheckoutSession`)                                    | stare linie zwolnione przy przeniesieniu płatności (`supersedeCheckoutSession`), potem nowe zarezerwowane |
+| sesja opłacona (`prepareFulfillCheckoutBatch`)                                      | `reserved -= qty`; `available` bez zmian — rezerwacja jest skonsumowana                                   |
+| sesja wygasła albo płatność asynchroniczna nieudana (`prepareReleaseCheckoutBatch`) | `available += min(reserved, qty)`, `reserved -= qty`                                                      |
+| pełny zwrot z powrotem na magazyn (`prepareRefundBatch`)                            | `available += quantity`, z `getRestockLinesForOrder(orderId)`                                             |
+| przegrany spór                                                                      | nic — `refundOrder` jest wywoływane z `restock: false`                                                    |
 
 Zwróć uwagę, że wsady realizacji i zwolnienia aktualizują `inventory` **bez** zwiększania `version`, bo działają wewnątrz wsadu D1 razem z zapisami zamówienia, a nie przez `reserveInventoryRows` i funkcje zwalniające.
 
-Lokalna obsługa błędów w `stripe.actions.server.ts` zawsze kompensuje: porażka po rezerwacji wywołuje `releaseInventoryForItems`, a porażka podczas aktualizacji checkoutu dodatkowo wywołuje `reserveInventoryByVariantLines(oldReservedLines)`, żeby przywrócić poprzednią rezerwację.
+Lokalna obsługa błędów w `stripe.actions.server.ts` zawsze kompensuje: porażka po rezerwacji wywołuje `releaseInventoryForItems`. Aktualizacja checkoutu zwalnia stare linie dopiero po wygaszeniu starej sesji, w tym samym wsadzie, który przenosi płatność, i tylko dopóki checkout jest nadal `pending`. Wsad zwolnienia z webhooka wygaśnięcia ma ten sam warunek na oczekującą płatność sesji, więc stare linie zwraca ten wsad, który zatwierdzi się pierwszy, a drugi nie znajduje nic, niezależnie od tego, jak przeplotą się oba żądania. Porażka po tym momencie nie przywraca ich: starej sesji nie da się już opłacić, więc `releaseCheckout` oznacza checkout jako nieudany i oddaje to, co zarezerwował edytowany koszyk.
 
 ## Stan decyduje o widoczności
 

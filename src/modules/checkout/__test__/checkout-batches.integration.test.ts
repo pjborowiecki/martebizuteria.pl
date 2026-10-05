@@ -6,7 +6,6 @@ import { type TestD1Query } from "~/src/platform/testing/mocks/d1"
 import { runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
 import {
-  type PendingCheckout,
   prepareCreateCheckoutBatch,
   prepareReleaseCheckoutBatch,
   prepareUpdateCheckoutDeliveryBatch,
@@ -382,38 +381,44 @@ describe("prepareUpdateCheckoutDeliveryBatch", () => {
 })
 
 describe("prepareReleaseCheckoutBatch", () => {
-  const context: PendingCheckout = { checkoutId: "chk_1", email: "buyer@example.com", paymentId: "pay_1", userId: USER_ID }
-
   beforeEach(() => {
     resetSchema()
     sqlite.exec(`insert into checkout (id, status, email) values ('chk_1', 'pending', 'buyer@example.com')`)
   })
 
   it("fails the payment and the checkout together", async () => {
-    await runDrizzleBatch(prepareReleaseCheckoutBatch(context, { lines: [], transactionId: TRANSACTION_ID }))
+    await runDrizzleBatch(prepareReleaseCheckoutBatch({ lines: [], transactionId: TRANSACTION_ID }))
 
     expect(readPaymentStatus(TRANSACTION_ID)).toBe("failed")
     expect(readCheckout("chk_1").status).toBe("failed")
   })
 
   it("returns the reserved stock to availability", async () => {
-    await runDrizzleBatch(
-      prepareReleaseCheckoutBatch(context, { lines: [{ qty: 2, variantId: VARIANT_ID }], transactionId: TRANSACTION_ID }),
-    )
+    await runDrizzleBatch(prepareReleaseCheckoutBatch({ lines: [{ qty: 2, variantId: VARIANT_ID }], transactionId: TRANSACTION_ID }))
 
     expect(readInventory(VARIANT_ID)).toStrictEqual({ quantity_available: 7, quantity_reserved: 1 })
   })
 
   it("conserves stock when the requested release exceeds the remaining reservation", async () => {
-    await runDrizzleBatch(
-      prepareReleaseCheckoutBatch(context, { lines: [{ qty: 10, variantId: VARIANT_ID }], transactionId: TRANSACTION_ID }),
-    )
+    await runDrizzleBatch(prepareReleaseCheckoutBatch({ lines: [{ qty: 10, variantId: VARIANT_ID }], transactionId: TRANSACTION_ID }))
 
     expect(readInventory(VARIANT_ID)).toStrictEqual({ quantity_available: 8, quantity_reserved: 0 })
   })
 
+  it("returns the stock once when two deliveries of the same release were prepared before either ran", async () => {
+    const input = { lines: [{ qty: 2, variantId: VARIANT_ID }], transactionId: TRANSACTION_ID }
+    const firstDelivery = prepareReleaseCheckoutBatch(input)
+    const secondDelivery = prepareReleaseCheckoutBatch(input)
+
+    await runDrizzleBatch(firstDelivery)
+    await runDrizzleBatch(secondDelivery)
+
+    expect(readInventory(VARIANT_ID)).toStrictEqual({ quantity_available: 7, quantity_reserved: 1 })
+    expect(readPaymentStatus(TRANSACTION_ID)).toBe("failed")
+  })
+
   it("emits one inventory statement per line plus the two status updates", () => {
-    const statements = prepareReleaseCheckoutBatch(context, {
+    const statements = prepareReleaseCheckoutBatch({
       lines: [
         { qty: 1, variantId: VARIANT_ID },
         { qty: 1, variantId: "var_2" },

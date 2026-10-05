@@ -150,7 +150,7 @@ Przy przenoszeniu kodu zachowuj wartości krotek. Z tych samych stałych korzyst
 
 ## Funkcje serwerowe bez granicy RPC
 
-Nie każda operacja jest funkcją serwerową. Cztery pliki w `src/modules/checkout/use-cases/*.server.ts` eksportują zwykłe funkcje asynchroniczne. `fulfillCheckout` i `releaseCheckout` wołane są wyłącznie z handlera webhooka Stripe, który jest już uwierzytelniony weryfikacją podpisu. `createCheckout` i `updateCheckoutDelivery` wołane są z `src/integrations/stripe/stripe.actions.server.ts`, za objętymi limitem żądań `createCheckoutSessionFn` i `updateCheckoutSessionFn`. Wystawienie którejkolwiek z nich jako osobnego endpointu tylko poszerzyłoby powierzchnię ataku.
+Nie każda operacja jest funkcją serwerową. Pięć plików w `src/modules/checkout/use-cases/*.server.ts` eksportuje zwykłe funkcje asynchroniczne. `fulfillCheckout` wołany jest wyłącznie z handlera webhooka Stripe, który jest już uwierzytelniony weryfikacją podpisu. `createCheckout`, `supersedeCheckoutSession` i `updateCheckoutDelivery` wołane są z `src/integrations/stripe/stripe.actions.server.ts`, za objętymi limitem żądań `createCheckoutSessionFn` i `updateCheckoutSessionFn`. `releaseCheckout` wołany jest z obu miejsc: przez handler webhooka oraz przez aktualizację checkoutu, która nie powiodła się po wygaszeniu starej sesji. Wystawienie którejkolwiek z nich jako osobnego endpointu tylko poszerzyłoby powierzchnię ataku.
 
 ## Wywołanie przypadku użycia z komponentu
 
