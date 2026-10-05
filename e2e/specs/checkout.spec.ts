@@ -1,6 +1,7 @@
 import { type APIRequestContext } from "@playwright/test"
 
 import { COURIER, IN_STORE_PICKUP, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
+import { rememberPriceWhenAdded } from "../fixtures/cart"
 import { registerCustomer } from "../fixtures/customers"
 import { linkIn, waitForEmail } from "../fixtures/emails"
 import { SERVER_FUNCTIONS, recordServerFunctionRequests } from "../fixtures/server-functions"
@@ -20,6 +21,8 @@ const STRIPE_MINIMUM_SESSION_SECONDS = 1800
 const ORDER_NUMBER = /MRT-\d{4}-\d{5}/u
 
 const CHECKOUT_HOLD_SECONDS = 1920
+
+const PRICE_WHEN_ADDED = 29_900
 
 const fillCheckoutUpToPayment = async (checkoutPage: CheckoutPage, email: string): Promise<void> => {
   await checkoutPage.gotoCheckout()
@@ -84,6 +87,18 @@ test.describe("guest checkout", () => {
 
     await cartPage.gotoCart()
     await expect(cartPage.heading()).toHaveText("Your cart is empty")
+  })
+
+  test("a guest whose cart remembers an older price is shown the price Stripe charges", async ({ checkoutPage, page, request }, testInfo) => {
+    const email = uniqueEmail(testInfo, "repriced")
+    await rememberPriceWhenAdded(page, PRICE_WHEN_ADDED)
+
+    const session = await reachPayment(checkoutPage, request, email)
+
+    expect(session.amount_total).toBe(39_899)
+    await expect(checkoutPage.summary()).toContainText(/Total\s*PLN\s398\.99/u)
+    await expect(checkoutPage.summary()).toContainText("1 x PLN 379.00")
+    await expect(checkoutPage.summary().getByText("The price has changed since you added this piece to your cart.")).toBeVisible()
   })
 
   test("a guest who switches delivery on the payment step pays the replacement session and gets the order", async ({

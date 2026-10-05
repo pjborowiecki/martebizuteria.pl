@@ -18,7 +18,6 @@ type CheckoutSession = StripeCheckout.CheckoutSession
 type ConfirmOutcome = StripeCheckout.ConfirmOutcome
 
 interface SessionRequest {
-  amount: number
   existing: CheckoutSession | undefined
   heldSessionId: string | undefined
   items: readonly { qty: number; variantId: string }[]
@@ -32,7 +31,6 @@ interface NavigateOptions {
 
 const {
   confirmCheckoutSession,
-  deliveryMethods,
   elementsStatus,
   ensureCheckoutSession,
   getStripe,
@@ -46,7 +44,6 @@ const {
   uiTheme,
 } = vi.hoisted(() => ({
   confirmCheckoutSession: vi.fn<() => Promise<ConfirmOutcome>>(),
-  deliveryMethods: { current: [{ id: "courier", name: "Courier", price: 1500 }] },
   elementsStatus: { current: "success" },
   ensureCheckoutSession: vi.fn<(request: SessionRequest) => Promise<CheckoutSession>>(),
   getStripe: vi.fn<(locale: string) => Promise<null>>(),
@@ -96,12 +93,6 @@ vi.mock("~/src/integrations/stripe/stripe.checkout", async () => {
 
   return { ...actual, confirmCheckoutSession, ensureCheckoutSession, resetCheckoutSession }
 })
-vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", () => ({
-  listDeliveryMethodsQuery: () => ({
-    queryFn: () => Promise.resolve(deliveryMethods.current),
-    queryKey: ["delivery-method", "all"],
-  }),
-}))
 vi.mock("~/src/hooks/use-cart-availability", () => ({
   useCartAvailability: () => ({ hasUnavailableItems: false, isChecking: false, issues: [], issuesByVariantId: new Map() }),
 }))
@@ -143,7 +134,9 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({
     return <div data-testid="payment-element" />
   },
   useCheckoutElements: () =>
-    elementsStatus.current === "success" ? { checkout: { id: "checkout-object" }, type: "success" } : { type: elementsStatus.current },
+    elementsStatus.current === "success"
+      ? { checkout: { id: "checkout-object", total: { total: { amount: "PLN 215.00", minorUnitsAmount: 21_500 } } }, type: "success" }
+      : { type: elementsStatus.current },
 }))
 
 import { buildCheckoutValuesFingerprint } from "~/src/integrations/stripe/stripe.checkout"
@@ -153,16 +146,16 @@ import { useCartStore } from "~/src/modules/cart/cart.store"
 
 import { PaymentStep } from "~/src/presentation/components/custom/checkout/components/_steps/payment-step.client"
 
-const PAY_BUTTON = "Order & Pay"
+const PAY_BUTTON = /^Order & Pay/u
 
 const SESSION_LIFETIME_MS = 1_920_000
 
 const session: CheckoutSession = {
-  amount: 21_500,
   clientSecret: "cs_test_secret",
   expiresAt: Date.now() + SESSION_LIFETIME_MS,
-  linesFingerprint: "v-1:1",
+  lines: [{ qty: 1, unitPrice: 20_000, variantId: "v-1" }],
   sessionId: "cs_test_1",
+  totals: { discountTotal: 0, shippingTotal: 1500, subtotal: 20_000, taxTotal: 4020, total: 21_500, vatBasisPoints: 2300 },
   valuesFingerprint: buildCheckoutValuesFingerprint(completeValues),
 }
 
@@ -211,7 +204,6 @@ beforeEach(() => {
   paymentElementReady.current = true
   providerOptions.current = undefined
   uiTheme.current = "light"
-  deliveryMethods.current = [{ id: "courier", name: "Courier", price: 1500 }]
   formState.session = undefined
   formState.values = completeValues
   localStorage.clear()
@@ -228,15 +220,19 @@ afterEach(() => {
 })
 
 describe("PaymentStep session bootstrap", () => {
-  it("creates a session for the cart total plus the selected delivery price", async () => {
+  it("creates a session for the cart and the checkout details without sending a price", async () => {
     renderWithProviders(<PaymentStep />)
 
     await waitFor(() => {
       expect(ensureCheckoutSession).toHaveBeenCalledTimes(1)
     })
 
-    expect(ensureCheckoutSession.mock.calls[0]?.[0].amount).toBe(21_500)
-    expect(ensureCheckoutSession.mock.calls[0]?.[0].existing).toBeUndefined()
+    expect(ensureCheckoutSession.mock.calls[0]?.[0]).toStrictEqual({
+      existing: undefined,
+      heldSessionId: undefined,
+      items: useCartStore.getState().items,
+      values: completeValues,
+    })
     expect(setCheckoutSession).toHaveBeenCalledWith(session)
   })
 
@@ -263,20 +259,19 @@ describe("PaymentStep session bootstrap", () => {
     expect(ensureCheckoutSession).not.toHaveBeenCalled()
   })
 
-  it("does not open a session when the payable amount is zero", async () => {
+  it("does not open a session for an empty cart", async () => {
     useCartStore.setState({ items: [] })
-    deliveryMethods.current = [{ id: "courier", name: "Atelier pickup", price: 0 }]
-    const { queryClient } = renderWithProviders(<PaymentStep />)
+    renderWithProviders(<PaymentStep />)
 
-    await waitFor(() => {
-      expect(queryClient.getQueryData(["delivery-method", "all"])).toBeDefined()
+    await act(async () => {
+      await Promise.resolve()
     })
 
     expect(ensureCheckoutSession).not.toHaveBeenCalled()
     expect(screen.queryByTestId("payment-element")).not.toBeInTheDocument()
   })
 
-  it("reuses an existing session whose amount and lines still match", async () => {
+  it("reuses an existing session quoted for the same lines, prices and details", async () => {
     formState.session = session
     renderWithProviders(<PaymentStep />)
 
@@ -291,17 +286,15 @@ describe("PaymentStep session bootstrap", () => {
     { address1: "ul. Nowa 42" },
     { email: "new-email@example.com" },
     { deliveryMethod: "other-courier" },
-  ])("refreshes the saved session when checkout details change at the same total: %j", async (changes) => {
+  ])("refreshes the saved session when checkout details change with the same cart: %j", async (changes) => {
     formState.session = session
     formState.values = { ...completeValues, ...changes }
-    deliveryMethods.current.push({ id: "other-courier", name: "Other courier", price: 1500 })
     const updatedSession = { ...session, valuesFingerprint: buildCheckoutValuesFingerprint(formState.values) }
     ensureCheckoutSession.mockResolvedValue(updatedSession)
     renderWithProviders(<PaymentStep />)
 
     await waitFor(() => {
       expect(ensureCheckoutSession).toHaveBeenCalledWith({
-        amount: session.amount,
         existing: session,
         heldSessionId: undefined,
         items: useCartStore.getState().items,
@@ -370,6 +363,36 @@ describe("PaymentStep session bootstrap", () => {
   })
 })
 
+describe("PaymentStep prices", () => {
+  it("puts the prices the session was quoted at into the cart, so the cart and the payment agree", async () => {
+    const quoted = { ...session, lines: [{ qty: 1, unitPrice: 21_000, variantId: "v-1" }] }
+    ensureCheckoutSession.mockResolvedValue(quoted)
+    renderWithProviders(<PaymentStep />)
+
+    expect(await screen.findByTestId("payment-element")).toBeInTheDocument()
+    expect(useCartStore.getState().items[0]).toMatchObject({ priceChanged: true, rawPrice: 21_000 })
+    expect(setCheckoutSession).toHaveBeenCalledExactlyOnceWith(quoted)
+    expect(ensureCheckoutSession).toHaveBeenCalledOnce()
+  })
+
+  it("opens a replacement when the shop changes a price while the payment step is open", async () => {
+    formState.session = session
+    const requoted = { ...session, lines: [{ qty: 1, unitPrice: 18_000, variantId: "v-1" }], sessionId: "cs_test_requoted" }
+    ensureCheckoutSession.mockResolvedValue(requoted)
+    renderWithProviders(<PaymentStep />)
+    await screen.findByTestId("payment-element")
+
+    act(() => {
+      useCartStore.getState().applyCurrentPrices([{ unitPrice: 18_000, variantId: "v-1" }])
+    })
+
+    await waitFor(() => {
+      expect(setCheckoutSession).toHaveBeenCalledExactlyOnceWith(requoted)
+    })
+    expect(ensureCheckoutSession).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ existing: session }))
+  })
+})
+
 describe("PaymentStep with a session the browser already holds", () => {
   beforeEach(() => {
     localStorage.setItem("marte-checkout-session", "cs_test_held")
@@ -420,7 +443,7 @@ describe("PaymentStep when the session expires", () => {
       expect(setCheckoutSession).toHaveBeenCalledWith(refreshedSession)
     })
     expect(resetCheckoutSession).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ amount: 21_500, heldSessionId: undefined, session: formState.session }),
+      expect.objectContaining({ heldSessionId: undefined, items: useCartStore.getState().items, session: formState.session }),
     )
     expect(await screen.findByTestId("payment-element")).toBeInTheDocument()
     expect(screen.queryByText("Your payment session has expired")).not.toBeInTheDocument()
@@ -533,12 +556,12 @@ describe("PaymentStep session failures", () => {
 })
 
 describe("PaymentStep payment form", () => {
-  it("labels the submit button with the place-order copy once the element is ready", async () => {
+  it("labels the submit button with the place-order copy and the total Stripe will take", async () => {
     formState.session = session
     renderWithProviders(<PaymentStep />)
 
     await waitFor(() => {
-      expect(payButton()).toBeEnabled()
+      expect(screen.getByRole("button", { name: "Order & Pay PLN 215.00" })).toBeEnabled()
     })
   })
 
@@ -675,7 +698,7 @@ describe("PaymentStep confirmation", () => {
     expect(screen.queryByTestId("payment-element")).not.toBeInTheDocument()
   })
 
-  it("keeps the submit button disabled while Stripe is still loading the checkout object", async () => {
+  it("keeps the submit button disabled and names no amount while Stripe is still loading the checkout object", async () => {
     formState.session = session
     elementsStatus.current = "loading"
     renderWithProviders(<PaymentStep />)
@@ -684,7 +707,7 @@ describe("PaymentStep confirmation", () => {
       expect(screen.getByTestId("payment-element")).toBeInTheDocument()
     })
 
-    expect(payButton()).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Order & Pay" })).toBeDisabled()
   })
 
   it("takes no payment from a form submitted before Stripe has produced the checkout object", async () => {
@@ -712,25 +735,24 @@ const renderWithPendingConfirmation = async () => {
   formState.session = session
   confirmCheckoutSession.mockReturnValueOnce(confirmation.promise)
   ensureCheckoutSession.mockReturnValueOnce(replacement.promise)
-  const { queryClient } = renderWithProviders(<PaymentStep />)
+  renderWithProviders(<PaymentStep />)
   await clickPay()
 
-  return { confirmation, queryClient, replacement }
+  return { confirmation, replacement }
 }
 
 describe("PaymentStep confirmation races", () => {
   it("keeps an in-flight replacement when the previous confirmation requests a session reset", async () => {
-    const { confirmation, queryClient, replacement } = await renderWithPendingConfirmation()
+    const { confirmation, replacement } = await renderWithPendingConfirmation()
     expect(confirmCheckoutSession).toHaveBeenCalledTimes(1)
 
-    deliveryMethods.current = [{ id: "courier", name: "Courier", price: 2000 }]
-    await act(async () => {
-      await queryClient.refetchQueries({ queryKey: ["delivery-method", "all"] })
+    act(() => {
+      useCartStore.getState().applyCurrentPrices([{ unitPrice: 20_500, variantId: "v-1" }])
     })
     await waitFor(() => {
       expect(ensureCheckoutSession).toHaveBeenCalledTimes(1)
     })
-    expect(ensureCheckoutSession.mock.calls[0]?.[0]).toMatchObject({ amount: 22_000, existing: session })
+    expect(ensureCheckoutSession.mock.calls[0]?.[0]).toMatchObject({ existing: session })
     expect(screen.queryByRole("button", { name: PAY_BUTTON })).not.toBeInTheDocument()
 
     await act(async () => {
@@ -741,7 +763,11 @@ describe("PaymentStep confirmation races", () => {
     expect(resetCheckoutSession).not.toHaveBeenCalled()
     expect(setCheckoutSession).not.toHaveBeenCalled()
     expect(navigate).not.toHaveBeenCalled()
-    const replacementSession = { ...refreshedSession, amount: 22_000, clientSecret: "replacement-secret" }
+    const replacementSession = {
+      ...refreshedSession,
+      clientSecret: "replacement-secret",
+      lines: [{ qty: 1, unitPrice: 20_500, variantId: "v-1" }],
+    }
     await act(async () => {
       replacement.resolve(replacementSession)
       await replacement.promise

@@ -5,25 +5,34 @@ import { createCheckoutSessionFn, updateCheckoutSessionFn } from "~/src/integrat
 import { CHECKOUT_SESSION_LIFETIME_SECONDS } from "~/src/integrations/stripe/stripe.constants"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
+import { type CartUnitPrice, getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 import { type CartItem } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { type OrderTotals } from "~/src/modules/order/order.totals"
 
 const MILLISECONDS_PER_SECOND = 1000
 
+export interface CheckoutSessionLine extends CartUnitPrice {
+  readonly qty: number
+}
+
 export interface CheckoutSession {
-  amount: number
   clientSecret: string
   expiresAt: number
-  linesFingerprint: string
+  lines: readonly CheckoutSessionLine[]
   sessionId: string
+  totals: OrderTotals
   valuesFingerprint: string
 }
 
-export const buildCheckoutLinesFingerprint = (items: readonly { qty: number; variantId: string }[]): string =>
-  items
-    .map((item) => `${item.variantId}:${item.qty}`)
+export const buildCheckoutLinesFingerprint = (lines: readonly CheckoutSessionLine[]): string =>
+  lines
+    .map((line) => `${line.variantId}:${line.qty}:${line.unitPrice}`)
     .toSorted((left, right) => left.localeCompare(right))
     .join("|")
+
+const toCheckoutSessionLines = (items: readonly CartItem[]): CheckoutSessionLine[] =>
+  items.map((item) => ({ qty: item.qty, unitPrice: getCartLineUnitPriceCents(item), variantId: item.variantId }))
 
 export const buildCheckoutValuesFingerprint = (values: CheckoutFormSchema): string =>
   JSON.stringify(Object.fromEntries(Object.entries(values).toSorted(([left], [right]) => left.localeCompare(right))))
@@ -63,40 +72,40 @@ const updateOrRestartCheckoutSession = async ({ checkoutValues, items, sessionId
 }
 
 interface CheckoutSessionRequest {
-  amount: number
   items: CartItem[]
   values: CheckoutFormSchema
 }
 
-const toCheckoutSession = (
-  opened: Readonly<{ clientSecret: string; sessionId: string }>,
-  { amount, items, values }: CheckoutSessionRequest,
-): CheckoutSession => ({
-  amount,
+type OpenedCheckoutSession = Awaited<ReturnType<typeof createCheckoutSessionFn>>
+
+const toCheckoutSession = (opened: Readonly<OpenedCheckoutSession>, values: CheckoutFormSchema): CheckoutSession => ({
   clientSecret: opened.clientSecret,
   expiresAt: Date.now() + CHECKOUT_SESSION_LIFETIME_SECONDS * MILLISECONDS_PER_SECOND,
-  linesFingerprint: buildCheckoutLinesFingerprint(items),
+  lines: opened.lines,
   sessionId: opened.sessionId,
+  totals: opened.totals,
   valuesFingerprint: buildCheckoutValuesFingerprint(values),
 })
+
+export const isCheckoutSessionFor = (session: CheckoutSession, { items, values }: Readonly<CheckoutSessionRequest>): boolean =>
+  buildCheckoutLinesFingerprint(session.lines) === buildCheckoutLinesFingerprint(toCheckoutSessionLines(items)) &&
+  session.valuesFingerprint === buildCheckoutValuesFingerprint(values)
 
 interface EnsureSessionArgs extends CheckoutSessionRequest {
   existing: CheckoutSession | undefined
   heldSessionId: string | undefined
 }
 
-const matchesRequest = (session: CheckoutSession, { amount, items, values }: CheckoutSessionRequest): boolean =>
-  session.amount === amount &&
-  session.linesFingerprint === buildCheckoutLinesFingerprint(items) &&
-  session.valuesFingerprint === buildCheckoutValuesFingerprint(values)
-
 export const ensureCheckoutSession = async ({ existing, heldSessionId, ...request }: EnsureSessionArgs): Promise<CheckoutSession> => {
   const continuedSessionId = heldSessionId ?? existing?.sessionId
   if (continuedSessionId === undefined) {
-    return toCheckoutSession(await createCheckoutSessionFn({ data: { checkoutValues: request.values, items: request.items } }), request)
+    return toCheckoutSession(
+      await createCheckoutSessionFn({ data: { checkoutValues: request.values, items: request.items } }),
+      request.values,
+    )
   }
 
-  if (existing?.sessionId === continuedSessionId && matchesRequest(existing, request)) {
+  if (existing?.sessionId === continuedSessionId && isCheckoutSessionFor(existing, request)) {
     return existing
   }
 
@@ -106,7 +115,7 @@ export const ensureCheckoutSession = async ({ existing, heldSessionId, ...reques
     sessionId: continuedSessionId,
   })
 
-  return toCheckoutSession(continued, request)
+  return toCheckoutSession(continued, request.values)
 }
 
 interface ResetSessionArgs extends CheckoutSessionRequest {
@@ -121,7 +130,7 @@ export const resetCheckoutSession = async ({ heldSessionId, session, ...request 
     sessionId: heldSessionId ?? session.sessionId,
   })
 
-  return toCheckoutSession(updated, request)
+  return toCheckoutSession(updated, request.values)
 }
 
 const PAYMENT_FAILED_CODE = "paymentFailed"

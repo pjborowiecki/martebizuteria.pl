@@ -74,6 +74,11 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
               {item.title}
             </LocalizedLink>
             {item.variantTitle !== "" && <p className="mt-1 text-xs text-muted-foreground">{item.variantTitle}</p>}
+            {item.priceChanged === true && (
+              <p className="mt-2 text-xs text-muted-foreground" role="status">
+                {t("priceChanged")}
+              </p>
+            )}
             {isUnavailable && (
               <p className="mt-2 text-xs text-destructive">
                 {availabilityIssue.available <= 0

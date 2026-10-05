@@ -1,8 +1,13 @@
 import { MENU_SHOWCASE, PRODUCTS } from "../data/catalog"
+import { rememberPriceWhenAdded } from "../fixtures/cart"
 import { SERVER_FUNCTIONS, recordServerFunctionCalls } from "../fixtures/server-functions"
 import { expect, muteRealtime, test } from "../fixtures/test"
 
 const CART_PAGE_SERVER_FUNCTIONS = new Set<string>([SERVER_FUNCTIONS.checkCartAvailability, SERVER_FUNCTIONS.getCurrentSession])
+
+const PRICE_WHEN_ADDED = 29_900
+
+const PRICE_CHANGED_NOTE = "The price has changed since you added this piece to your cart."
 
 test.describe("cart", () => {
   test.beforeEach(async ({ productPage }) => {
@@ -24,6 +29,16 @@ test.describe("cart", () => {
     await cartPage.removeButton().click()
     await expect(cartPage.heading()).toHaveText("Your cart is empty")
     await expect(cartPage.cartLink()).toContainText("0")
+  })
+
+  test("a piece the shop repriced after it was added shows the price it sells for now and says so", async ({ cartPage, page }) => {
+    await rememberPriceWhenAdded(page, PRICE_WHEN_ADDED)
+
+    await cartPage.gotoCart()
+
+    await expect(cartPage.summary()).toContainText(/Total\s*PLN\s379\.00/u)
+    await expect(page.getByRole("main").getByText(PRICE_CHANGED_NOTE)).toBeVisible()
+    await expect(page.getByRole("main")).not.toContainText("PLN 299.00")
   })
 
   test("the cart is still there after a reload", async ({ cartPage, page }) => {

@@ -60,7 +60,7 @@ Plik `stripe.actions.schemas.ts` definiuje ładunek: `{ checkoutValues: checkout
 
 Funkcja `handleCreateCheckoutSession` w `stripe.actions.server.ts` wykonuje następującą sekwencję:
 
-1. `validateAndCalculateItems(items)` ładuje produkty wraz ze stanem magazynowym po identyfikatorze `handle`, rozwiązuje każdy wariant i **ponownie czyta cenę z bazy** — `rawPrice` od klienta nigdy nie jest zaufane. Odrzuca z błędem `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (przez `isSellPriceCentsValid`) lub `INSUFFICIENT_INVENTORY`, a zwraca każdą pozycję wzbogaconą o `inventoryId` i `currentVersion`.
+1. `validateAndCalculateItems(items)` ładuje produkty wraz ze stanem magazynowym po identyfikatorze `handle`, rozwiązuje każdy wariant i **czyta cenę z bazy** — `cartItemSchema` nie ma `price` ani `rawPrice`, więc cena z koszyka w ogóle nie dociera do handlera. Odrzuca z błędem `PRODUCT_NOT_FOUND`, `VARIANT_NOT_FOUND`, `INVALID_PRICE` (przez `isSellPriceCentsValid`) lub `INSUFFICIENT_INVENTORY`, a zwraca każdą pozycję wzbogaconą o `inventoryId` i `currentVersion`.
 2. `resolveShippingCost(deliveryMethodId)` czyta cenę z `delivery_method` albo zero, gdy nie wybrano metody.
 3. `resolveCheckoutDiscount(...)` ponownie sprawdza `checkoutValues.discountCode` względem sumy cen z bazy i kosztu dostawy; kod, który nie obowiązuje, jest pomijany. Zobacz [Rabaty](/docs/features/discounts).
 4. `reserveInventoryForItems(validatedItems)` zajmuje stan magazynowy, korzystając z optymistycznej kolumny `version`.
@@ -110,9 +110,9 @@ const session = await stripe.checkout.sessions.create(params).catch(async (error
 Gdy zmieni się koszyk lub formularz, klient nie tworzy drugiej sesji — aktualizuje istniejącą. `stripe.checkout.ts` decyduje o tym na podstawie dwóch odcisków:
 
 ```ts
-export const buildCheckoutLinesFingerprint = (items: readonly { qty: number; variantId: string }[]): string =>
-  items
-    .map((item) => `${item.variantId}:${item.qty}`)
+export const buildCheckoutLinesFingerprint = (lines: readonly CheckoutSessionLine[]): string =>
+  lines
+    .map((line) => `${line.variantId}:${line.qty}:${line.unitPrice}`)
     .toSorted((left, right) => left.localeCompare(right))
     .join("|")
 
@@ -120,7 +120,7 @@ export const buildCheckoutValuesFingerprint = (values: CheckoutFormSchema): stri
   JSON.stringify(Object.fromEntries(Object.entries(values).toSorted(([left], [right]) => left.localeCompare(right))))
 ```
 
-`ensureCheckoutSession` przyjmuje sesję z ekranu oraz `heldSessionId`, czyli identyfikator, który przeglądarka zapisała dla swojej otwartej sesji. Kontynuuje trzymaną sesję albo tę z ekranu, gdy nic nie zapisano, wywołując `updateCheckoutSessionFn`, gdy zmieniła się kwota lub którykolwiek odcisk albo gdy trzymana sesja nie jest tą z ekranu, a tworzy sesję tylko wtedy, gdy przeglądarka żadnej nie trzyma. Dzięki temu odświeżenie, druga karta czy powrót z koszyka zastępują otwartą sesję, zamiast ponownie rezerwować koszyk. `resetCheckoutSession` wymusza aktualizację trzymanej sesji — interfejs korzysta z tego po odrzuconej płatności i wtedy, gdy kupujący ponawia płatność, której sesja wygasła. Każda zwrócona sesja niesie `expiresAt`, `CHECKOUT_SESSION_LIFETIME_SECONDS` od chwili odebrania, z którego krok płatności korzysta, by pokazać, że sesja wygasła.
+`ensureCheckoutSession` przyjmuje sesję z ekranu oraz `heldSessionId`, czyli identyfikator, który przeglądarka zapisała dla swojej otwartej sesji. Kontynuuje trzymaną sesję albo tę z ekranu, gdy nic nie zapisano, wywołując `updateCheckoutSessionFn`, gdy zmienił się którykolwiek odcisk albo gdy trzymana sesja nie jest tą z ekranu, a tworzy sesję tylko wtedy, gdy przeglądarka żadnej nie trzyma. Dzięki temu odświeżenie, druga karta czy powrót z koszyka zastępują otwartą sesję, zamiast ponownie rezerwować koszyk. `isCheckoutSessionFor` buduje odcisk linii sesji z `lines` wycenionych przez serwer, a odcisk koszyka z jego aktualnych cen, więc cena zmieniona przez sklep, którą sprawdzenie dostępności zapisuje w koszyku, również zastępuje sesję. `resetCheckoutSession` wymusza aktualizację trzymanej sesji — interfejs korzysta z tego po odrzuconej płatności i wtedy, gdy kupujący ponawia płatność, której sesja wygasła. Każda zwrócona sesja zachowuje `lines` i `totals` z serwera, z których podsumowanie kasy i koszyk biorą ceny, oraz niesie `expiresAt`, `CHECKOUT_SESSION_LIFETIME_SECONDS` od chwili odebrania, z którego krok płatności korzysta, by pokazać, że sesja wygasła.
 
 Po stronie serwera `handleUpdateCheckoutSession` jest najdelikatniejszą funkcją w bazie kodu:
 

@@ -142,6 +142,61 @@ describe("removeItem and clearCart", () => {
   })
 })
 
+describe("applyCurrentPrices", () => {
+  beforeEach(() => {
+    useCartStore.getState().addItem({ ...line(), qty: 2 })
+    useCartStore.getState().addItem(line({ id: "variant-2", rawPrice: 5000, variantId: "variant-2" }))
+  })
+
+  it("takes the price the shop charges now and marks the line whose price moved", () => {
+    useCartStore.getState().applyCurrentPrices([{ unitPrice: 13_500, variantId: "variant-1" }])
+
+    expect(useCartStore.getState().items).toStrictEqual([
+      { ...line(), priceChanged: true, qty: 2, rawPrice: 13_500 },
+      { ...line({ id: "variant-2", rawPrice: 5000, variantId: "variant-2" }), qty: 1 },
+    ])
+    expect(useCartStore.getState().cartTotal()).toBe(32_000)
+  })
+
+  it("marks a price that went down as well as one that went up", () => {
+    useCartStore.getState().applyCurrentPrices([{ unitPrice: 4500, variantId: "variant-2" }])
+
+    expect(useCartStore.getState().items[1]).toMatchObject({ priceChanged: true, rawPrice: 4500 })
+  })
+
+  it("leaves the cart untouched when every price is still current", () => {
+    const before = useCartStore.getState().items
+
+    useCartStore.getState().applyCurrentPrices([
+      { unitPrice: 12_000, variantId: "variant-1" },
+      { unitPrice: 5000, variantId: "variant-2" },
+    ])
+
+    expect(useCartStore.getState().items).toBe(before)
+  })
+
+  it("keeps the remembered price of a line the shop reported no price for", () => {
+    useCartStore.getState().applyCurrentPrices([{ unitPrice: 9900, variantId: "variant-9" }])
+
+    expect(useCartStore.getState().items.map((item) => item.rawPrice)).toStrictEqual([12_000, 5000])
+  })
+
+  it("compares against the price the shopper was shown, so a line kept only by its display price is not marked", () => {
+    useCartStore.setState({ items: [{ ...line({ price: "120.00", rawPrice: 0 }), qty: 1 }] })
+
+    useCartStore.getState().applyCurrentPrices([{ unitPrice: 12_000, variantId: "variant-1" }])
+
+    expect(useCartStore.getState().items[0]?.priceChanged).toBeUndefined()
+  })
+
+  it("keeps the mark when the price later moves back", () => {
+    useCartStore.getState().applyCurrentPrices([{ unitPrice: 13_500, variantId: "variant-1" }])
+    useCartStore.getState().applyCurrentPrices([{ unitPrice: 12_000, variantId: "variant-1" }])
+
+    expect(useCartStore.getState().items[0]).toMatchObject({ priceChanged: true, rawPrice: 12_000 })
+  })
+})
+
 describe("itemCount", () => {
   it("sums the quantities rather than counting the lines", () => {
     useCartStore.getState().addItem({ ...line(), qty: 2 })
@@ -209,6 +264,18 @@ describe("rehydrating a persisted cart", () => {
 
   it("drops persisted entries that are not objects at all", async () => {
     await rehydrate({ state: { items: [null, "variant-1", 42] }, version: 1 })
+
+    expect(useCartStore.getState().items).toStrictEqual([])
+  })
+
+  it("restores the mark on a line whose price changed while it sat in the cart", async () => {
+    await rehydrate({ state: { items: [{ ...line(), priceChanged: true, qty: 1 }] }, version: 1 })
+
+    expect(useCartStore.getState().items).toStrictEqual([{ ...line(), priceChanged: true, qty: 1 }])
+  })
+
+  it("drops a persisted line whose price mark is not a flag", async () => {
+    await rehydrate({ state: { items: [{ ...line(), priceChanged: "yes", qty: 1 }] }, version: 1 })
 
     expect(useCartStore.getState().items).toStrictEqual([])
   })

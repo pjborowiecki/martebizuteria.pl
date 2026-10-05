@@ -11,3 +11,8 @@ export const getCartLineUnitPriceCents = (item: { readonly price: string; readon
 
 export const getCartLineTotalCents = (item: { readonly price: string; readonly qty: number; readonly rawPrice: number }): number =>
   getCartLineUnitPriceCents(item) * item.qty
+
+export interface CartUnitPrice {
+  readonly unitPrice: number
+  readonly variantId: string
+}

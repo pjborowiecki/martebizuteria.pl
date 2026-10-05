@@ -14,6 +14,7 @@
     "edit": "Edit",
     "free": "Free",
     "itemsCount": "Products ({count})",
+    "priceChanged": "The price has changed since you added this piece to your cart.",
     "title": "Your order",
     "vatIncluded": "Includes VAT ({rate}%)"
   },
@@ -137,6 +138,7 @@
     "lockerChoosePoint": "Click to choose this point",
     "cardSummary": "Card ending in {endingDigits}",
     "placeOrder": "Order & Pay",
+    "placeOrderFor": "Order & Pay {amount}",
     "termsAgreement": "By placing your order you agree to our <terms>Terms of Service</terms> and <privacy>Privacy Policy</privacy>.",
     "placeholderItemName": "Aura Hoop I",
     "placeholderItemDetails": "925 silver / mirror finish · One Size",

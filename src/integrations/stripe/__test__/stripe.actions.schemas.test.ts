@@ -23,9 +23,7 @@ const checkoutValues = {
 const cartItem = {
   id: "line-1",
   image: "https://assets.test/bracelet.jpg",
-  price: "249,00 zł",
   qty: 2,
-  rawPrice: 24_900,
   slug: "bransoletka-aurora",
   title: "Bransoletka Aurora",
   variantId: "variant-1",
@@ -42,9 +40,8 @@ describe("cartItemSchema", () => {
     expect(cartItemSchema.parse(cartItem)).toStrictEqual(cartItem)
   })
 
-  it("accepts a free item but rejects a negative price", () => {
-    expect(cartItemSchema.safeParse({ ...cartItem, rawPrice: 0 }).success).toBe(true)
-    expect(cartItemSchema.safeParse({ ...cartItem, rawPrice: -1 }).success).toBe(false)
+  it("drops the prices the browser remembers, so the server can only charge what the catalogue says", () => {
+    expect(cartItemSchema.parse({ ...cartItem, price: "1,00 zł", priceChanged: true, rawPrice: 100 })).toStrictEqual(cartItem)
   })
 
   it("rejects a quantity of zero so an empty line cannot reach Stripe", () => {
@@ -59,7 +56,7 @@ describe("cartItemSchema", () => {
   })
 
   it("allows the display-only fields to be blank", () => {
-    const blankDisplay = { ...cartItem, image: "", price: "", title: "", variantTitle: "" }
+    const blankDisplay = { ...cartItem, image: "", title: "", variantTitle: "" }
 
     expect(cartItemSchema.safeParse(blankDisplay).success).toBe(true)
   })

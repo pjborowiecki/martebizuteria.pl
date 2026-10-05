@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useSyncExternalStore } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 
@@ -13,6 +13,7 @@ import { loadCheckoutSessionId, subscribeToCheckoutSessionId } from "~/src/prese
 
 export const useCartAvailability = (): CartAvailabilityState => {
   const items = useCartStore((state) => state.items)
+  const applyCurrentPrices = useCartStore((state) => state.applyCurrentPrices)
   const lines = useMemo(
     (): CartAvailabilityLine[] =>
       items.length === 0
@@ -26,6 +27,12 @@ export const useCartAvailability = (): CartAvailabilityState => {
 
   const heldSessionId = useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, readNoHeldSessionId)
   const { data, isFetching, isPending } = useQuery(checkCartAvailabilityQuery(lines, heldSessionId))
+  const currentPrices = data?.prices
+  useEffect(() => {
+    if (currentPrices !== undefined) {
+      applyCurrentPrices(currentPrices)
+    }
+  }, [applyCurrentPrices, currentPrices])
   const issues = data?.issues ?? EMPTY_ISSUES
   const issuesByVariantId = useMemo(() => new Map(issues.map((issue) => [issue.variantId, issue])), [issues])
 

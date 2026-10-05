@@ -1,7 +1,7 @@
 import { type JSX, type ReactNode } from "react"
 
 import type * as TanStackRouter from "@tanstack/react-router"
-import { cleanup, fireEvent, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -28,6 +28,7 @@ vi.mock("~/src/lib/url", () => ({
   resolveAssetURL: (src: string) => src,
 }))
 vi.mock("~/src/modules/discount/discount.accessors", () => ({ getDiscountByCodeForCustomerQuery }))
+vi.mock("~/src/integrations/stripe/stripe.actions", () => ({ createCheckoutSessionFn: vi.fn(), updateCheckoutSessionFn: vi.fn() }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: () => Promise.resolve(undefined) }))
 vi.mock("@tanstack/react-router", async () => {
   const actual = await vi.importActual<typeof TanStackRouter>("@tanstack/react-router")
@@ -35,8 +36,11 @@ vi.mock("@tanstack/react-router", async () => {
   return { ...actual, useNavigate: () => vi.fn(), useSearch: () => search }
 })
 
+import { type CheckoutSession, buildCheckoutValuesFingerprint } from "~/src/integrations/stripe/stripe.checkout"
+
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type Discount } from "~/src/modules/discount/discount.types"
+import { type OrderTotals } from "~/src/modules/order/order.totals"
 
 import { CheckoutTextField } from "~/src/presentation/components/custom/checkout/components/checkout-fields"
 import { CheckoutFormProvider, useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
@@ -65,6 +69,39 @@ const EmailField = (): JSX.Element => {
   const { control } = useCheckoutForm()
 
   return <CheckoutTextField control={control} label="Email" name="email" />
+}
+
+const SessionOpener = ({ lines, totals }: Readonly<Pick<CheckoutSession, "lines" | "totals">>): JSX.Element => {
+  const { getValues, setCheckoutSession } = useCheckoutForm()
+  const open = (): void => {
+    setCheckoutSession({
+      clientSecret: "cs_test_secret",
+      expiresAt: Date.now() + 1_920_000,
+      lines,
+      sessionId: "cs_test_quoted",
+      totals,
+      valuesFingerprint: buildCheckoutValuesFingerprint(getValues()),
+    })
+  }
+
+  return (
+    <button type="button" onClick={open}>
+      Open the payment session
+    </button>
+  )
+}
+
+const QUOTED_TOTALS: OrderTotals = {
+  discountTotal: 3000,
+  shippingTotal: 2500,
+  subtotal: 24_900,
+  taxTotal: 4563,
+  total: 24_400,
+  vatBasisPoints: 2300,
+}
+
+const openPaymentSession = (): void => {
+  fireEvent.click(screen.getByRole("button", { name: "Open the payment session" }))
 }
 
 const renderSummary = (field?: ReactNode) =>
@@ -403,5 +440,62 @@ describe("CheckoutSummary discount code and the shopper's email", () => {
     expect(getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING", "ada@marte.test")
     expect(screen.queryByText("Discount")).not.toBeInTheDocument()
     expect(screen.getAllByText("PLN 249.00")).toHaveLength(2)
+  })
+})
+
+describe("CheckoutSummary once the payment session is open", () => {
+  it("shows the delivery, discount and total the session was quoted at, which are what Stripe takes", async () => {
+    addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
+    chooseDeliveryMethod("courier")
+    renderSummary(<SessionOpener lines={[{ qty: 1, unitPrice: 24_900, variantId: "variant-a" }]} totals={QUOTED_TOTALS} />)
+    await screen.findByText("PLN 268.00")
+
+    openPaymentSession()
+
+    expect(screen.getByText("PLN 25.00")).toBeInTheDocument()
+    expect(screen.getByText("−PLN 30.00")).toBeInTheDocument()
+    expect(screen.getByText("PLN 244.00")).toBeInTheDocument()
+    expect(screen.getByText(/Includes VAT \(23%\)\s*PLN 45\.63/u)).toBeInTheDocument()
+    expect(screen.queryByText("PLN 268.00")).not.toBeInTheDocument()
+  })
+
+  it("goes back to the cart's own figures once the cart no longer matches what the session was quoted for", async () => {
+    addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
+    chooseDeliveryMethod("courier")
+    renderSummary(<SessionOpener lines={[{ qty: 1, unitPrice: 24_900, variantId: "variant-a" }]} totals={QUOTED_TOTALS} />)
+    await screen.findByText("PLN 268.00")
+    openPaymentSession()
+
+    act(() => {
+      useCartStore.getState().applyCurrentPrices([{ unitPrice: 26_900, variantId: "variant-a" }])
+    })
+
+    expect(screen.getByText("PLN 288.00")).toBeInTheDocument()
+    expect(screen.queryByText("PLN 244.00")).not.toBeInTheDocument()
+  })
+
+  it("ignores a session quoted at another price than the cart shows", async () => {
+    addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
+    chooseDeliveryMethod("courier")
+    renderSummary(<SessionOpener lines={[{ qty: 1, unitPrice: 22_900, variantId: "variant-a" }]} totals={QUOTED_TOTALS} />)
+    await screen.findByText("PLN 268.00")
+
+    openPaymentSession()
+
+    expect(screen.getByText("PLN 268.00")).toBeInTheDocument()
+    expect(screen.queryByText("PLN 244.00")).not.toBeInTheDocument()
+  })
+})
+
+describe("CheckoutSummary lines whose price changed", () => {
+  it("tells the shopper which piece the shop repriced since it was added", () => {
+    addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
+    addLine({ qty: 1, rawPrice: 18_900, variantId: "variant-b" })
+    useCartStore.getState().applyCurrentPrices([{ unitPrice: 26_900, variantId: "variant-a" }])
+    renderSummary()
+
+    expect(screen.getByRole("status")).toHaveTextContent("The price has changed since you added this piece to your cart.")
+    expect(screen.getByText("1 x PLN 269.00")).toBeInTheDocument()
+    expect(screen.getAllByText("PLN 458.00")).toHaveLength(2)
   })
 })

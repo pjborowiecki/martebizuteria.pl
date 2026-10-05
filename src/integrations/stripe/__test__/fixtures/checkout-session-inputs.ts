@@ -15,9 +15,7 @@ export const CHECKOUT_VALUES = {
 export const CART_ITEM = {
   id: "line-1",
   image: "products/bracelet.jpg",
-  price: "249,00 zł",
   qty: 2,
-  rawPrice: 24_900,
   slug: "bransoletka-aurora",
   title: "Bransoletka Aurora",
   variantId: "variant-1",

@@ -4,6 +4,8 @@ import { useQuery } from "@tanstack/react-query"
 import { useWatch } from "react-hook-form"
 import { useFormatter, useTranslations } from "use-intl/react"
 
+import { isCheckoutSessionFor } from "~/src/integrations/stripe/stripe.checkout"
+
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
@@ -20,25 +22,13 @@ import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/c
 import { CHECKOUT_STEP_DEFINITIONS, CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
 import { Image } from "~/src/presentation/components/custom/image"
 
-export const CheckoutSummary = (): JSX.Element => {
-  const t = useTranslations("pages.checkout")
-  const format = useFormatter()
-  const { items, cartTotal, itemCount } = useCartStore()
-  const { activeStepIndex, control, setValue } = useCheckoutForm()
+const useCheckoutSummaryFigures = () => {
+  const { activeStepIndex, checkoutSession, control, getValues } = useCheckoutForm()
+  const { items, cartTotal } = useCartStore()
   const [deliveryMethodId, email, discountCode] = useWatch({
     control,
     name: ["deliveryMethod", "email", "discountCode"],
   })
-  const handleDiscountApplied = useCallback(
-    (code: string) => {
-      setValue("discountCode", code, { shouldDirty: true })
-    },
-    [setValue],
-  )
-  const handleDiscountCleared = useCallback(() => {
-    setValue("discountCode", "", { shouldDirty: true })
-  }, [setValue])
-
   const { data: deliveryMethods = [] } = useQuery(listDeliveryMethodsQuery())
   const selectedDeliveryMethod = deliveryMethods.find((m) => m.id === deliveryMethodId)
   const deliveryCostCents = selectedDeliveryMethod?.price ?? 0
@@ -52,25 +42,60 @@ export const CheckoutSummary = (): JSX.Element => {
       shippingTotal: deliveryCostCents,
     }),
   )
-  const hasDiscountCode = discountCode !== undefined && discountCode !== ""
-  const isTotalFinal = !hasDiscountCode || discountCheck.isSuccess
+  const enteredCode = discountCode === "" ? undefined : discountCode
+  const shared = {
+    deliveryCostCents,
+    discountCheck,
+    enteredCode,
+    hasDeliveryMethod: selectedDeliveryMethod !== undefined,
+    redemptionEmail,
+    subtotalCents,
+  }
+  if (checkoutSession !== undefined && isCheckoutSessionFor(checkoutSession, { items, values: getValues() })) {
+    return { ...shared, isTotalFinal: true, totals: checkoutSession.totals }
+  }
+
   const applied = discountCheck.isSuccess ? discountCheck.data.applied : undefined
-  const totals = computeOrderTotals({
-    discountTotal: applied?.amountMinorUnits,
-    itemsSubtotal: subtotalCents,
-    shippingTotal: deliveryCostCents,
-  })
+
+  return {
+    ...shared,
+    isTotalFinal: enteredCode === undefined || discountCheck.isSuccess,
+    totals: computeOrderTotals({
+      discountTotal: applied?.amountMinorUnits,
+      itemsSubtotal: subtotalCents,
+      shippingTotal: deliveryCostCents,
+    }),
+  }
+}
+
+export const CheckoutSummary = (): JSX.Element => {
+  const t = useTranslations("pages.checkout")
+  const format = useFormatter()
+  const { items, itemCount } = useCartStore()
+  const { setValue } = useCheckoutForm()
+  const { deliveryCostCents, discountCheck, enteredCode, hasDeliveryMethod, isTotalFinal, redemptionEmail, subtotalCents, totals } =
+    useCheckoutSummaryFigures()
+  const handleDiscountApplied = useCallback(
+    (code: string) => {
+      setValue("discountCode", code, { shouldDirty: true })
+    },
+    [setValue],
+  )
+  const handleDiscountCleared = useCallback(() => {
+    setValue("discountCode", "", { shouldDirty: true })
+  }, [setValue])
+
   const money = (cents: number) =>
     format.number(centsToDisplayAmount(cents), {
       currency: "PLN",
       style: "currency",
     })
   const deliveryLabel = (() => {
-    if (selectedDeliveryMethod === undefined) {
+    if (!hasDeliveryMethod) {
       return t("checkoutSummary.deliveryCalculated")
     }
 
-    return deliveryCostCents === 0 ? t("checkoutSummary.free") : money(deliveryCostCents)
+    return totals.shippingTotal === 0 ? t("checkoutSummary.free") : money(totals.shippingTotal)
   })()
 
   return (
@@ -82,9 +107,9 @@ export const CheckoutSummary = (): JSX.Element => {
               count: itemCount(),
             })}
           </span>
-          <span className="font-light tracking-wider text-foreground tabular-nums">{money(subtotalCents)}</span>
+          <span className="font-light tracking-wider text-foreground tabular-nums">{money(totals.subtotal)}</span>
         </div>
-        {applied !== undefined && (
+        {totals.discountTotal > 0 && (
           <div className="flex justify-between gap-4 text-emerald-600">
             <span className="font-medium tracking-[0.18em] uppercase">{t("checkoutSummary.discount")}</span>
             <span className="font-light tracking-wider tabular-nums">−{money(totals.discountTotal)}</span>
@@ -109,8 +134,8 @@ export const CheckoutSummary = (): JSX.Element => {
       </div>
 
       <div className="mt-6 border-t border-border/30 pt-6">
-        {hasDiscountCode && <CheckoutDiscountCode check={discountCheck} code={discountCode} onRemove={handleDiscountCleared} />}
-        {!hasDiscountCode && (
+        {enteredCode !== undefined && <CheckoutDiscountCode check={discountCheck} code={enteredCode} onRemove={handleDiscountCleared} />}
+        {enteredCode === undefined && (
           <CheckoutDiscountField
             email={redemptionEmail}
             itemsSubtotal={subtotalCents}
@@ -132,6 +157,11 @@ export const CheckoutSummary = (): JSX.Element => {
               <p className="pt-2 text-[13px] font-light tracking-wide text-foreground tabular-nums">
                 {item.qty} x {money(getCartLineUnitPriceCents(item))}
               </p>
+              {item.priceChanged === true && (
+                <p className="text-[11px] text-muted-foreground" role="status">
+                  {t("checkoutSummary.priceChanged")}
+                </p>
+              )}
             </div>
           </div>
         ))}

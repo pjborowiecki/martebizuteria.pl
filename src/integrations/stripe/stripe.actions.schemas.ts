@@ -10,9 +10,7 @@ const MIN_CART_FIELD_LENGTH = 1
 export const cartItemSchema = z.object({
   id: z.string().min(MIN_CART_FIELD_LENGTH),
   image: z.string(),
-  price: z.string(),
   qty: z.number().int().positive(),
-  rawPrice: z.number().nonnegative(),
   slug: z.string().min(MIN_CART_FIELD_LENGTH),
   title: z.string(),
   variantId: z.string().min(MIN_CART_FIELD_LENGTH),
