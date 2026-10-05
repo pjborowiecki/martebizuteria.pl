@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test"
 
 import {
   CHECKOUT_PAYMENT_METHOD_ORDER,
+  CHECKOUT_SESSION_LIFETIME_SECONDS,
   STRIPE_API_VERSION,
   STRIPE_CURRENCY,
   STRIPE_WEBHOOK_EVENTS,
@@ -20,6 +21,10 @@ describe("stripe constants", () => {
 
   it("offers the Polish payment methods in the order the storefront promotes them", () => {
     expect(CHECKOUT_PAYMENT_METHOD_ORDER).toStrictEqual(["card", "blik", "p24"])
+  })
+
+  it("holds checkout stock for Stripe's 30-minute minimum session life plus a two-minute margin", () => {
+    expect(CHECKOUT_SESSION_LIFETIME_SECONDS).toBe(32 * 60)
   })
 
   it("names every webhook event exactly as Stripe emits it", () => {

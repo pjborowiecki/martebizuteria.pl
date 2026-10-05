@@ -1,4 +1,5 @@
 import { type inventory } from "~/src/modules/inventory/inventory.schema"
+import { type ReserveInventoryVariantLine } from "~/src/modules/inventory/inventory.utils"
 import { type productVariant } from "~/src/modules/product-variant/product-variant.schema"
 
 export type VariantWithInventory = typeof productVariant.$inferSelect & {
@@ -19,3 +20,6 @@ export const resolveProductTotalAvailableStock = (variants: readonly VariantWith
   variants.reduce((sum, variant) => sum + getVariantQuantityAvailable(variant), 0)
 
 export const isProductInStock = (variants: readonly VariantWithInventory[]): boolean => resolveProductTotalAvailableStock(variants) > 0
+
+export const sumHeldQuantity = (heldLines: readonly ReserveInventoryVariantLine[], variantId: string): number =>
+  heldLines.reduce((total, line) => (line.variantId === variantId ? total + line.qty : total), 0)

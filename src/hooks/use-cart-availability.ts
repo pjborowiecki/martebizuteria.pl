@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useMemo, useSyncExternalStore } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 
@@ -8,6 +8,8 @@ import {
   type CartAvailabilityLine,
   checkCartAvailabilityQuery,
 } from "~/src/modules/cart/use-cases/check-cart-availability"
+
+import { loadCheckoutSessionId, subscribeToCheckoutSessionId } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 
 export const useCartAvailability = (): CartAvailabilityState => {
   const items = useCartStore((state) => state.items)
@@ -22,7 +24,8 @@ export const useCartAvailability = (): CartAvailabilityState => {
     [items],
   )
 
-  const { data, isFetching, isPending } = useQuery(checkCartAvailabilityQuery(lines))
+  const heldSessionId = useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, readNoHeldSessionId)
+  const { data, isFetching, isPending } = useQuery(checkCartAvailabilityQuery(lines, heldSessionId))
   const issues = data?.issues ?? EMPTY_ISSUES
   const issuesByVariantId = useMemo(() => new Map(issues.map((issue) => [issue.variantId, issue])), [issues])
 
@@ -36,6 +39,8 @@ export const useCartAvailability = (): CartAvailabilityState => {
 }
 
 const EMPTY_LINES: CartAvailabilityLine[] = []
+
+const readNoHeldSessionId = (): string | undefined => undefined
 
 const EMPTY_ISSUES: CartAvailabilityIssue[] = []
 

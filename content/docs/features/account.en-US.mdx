@@ -208,7 +208,7 @@ For a signed-in customer, `handleCreateCheckoutSession` (`src/integrations/strip
   : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 ```
 
-A guest gets `customer_email` instead and has no Stripe customer to save a card to. `handleUpdateCheckoutSession` reuses an existing customer through `getStripeCustomerId` and never creates one. See [Payments](/docs/features/payments).
+A guest gets `customer_email` instead and has no Stripe customer to save a card to. `handleUpdateCheckoutSession` reuses the customer of an account that already owns the checkout through `getStripeCustomerId` and creates none for it. A guest who reaches the payment step and then signs in gets the same offer as a shopper who signed in first: the update hands the guest's checkout to the account and calls `ensureStripeCustomer`. See [Payments](/docs/features/payments).
 
 ### On the account page
 

@@ -303,9 +303,35 @@ describe("handleCreateCheckoutSession", () => {
       checkoutId: "checkout-1",
       currency: "PLN",
       provider: "stripe",
+      reservedLines: [{ qty: 2, variantId: "variant-1" }],
       transactionId: "cs_new",
     })
     expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
+  })
+})
+
+describe("checkout session hold", () => {
+  const OPENED_AT = Date.UTC(2026, 9, 5, 12, 0, 0, 900)
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(OPENED_AT)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("asks Stripe to expire a new session 32 minutes after it opens instead of after its 24-hour default", async () => {
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ expires_at: 1_791_201_600 + 1920 }))
+  })
+
+  it("gives the replacement session for an edited checkout the same hold", async () => {
+    await handleUpdateCheckoutSession(updateInput())
+
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ expires_at: 1_791_201_600 + 1920 }))
   })
 })
 

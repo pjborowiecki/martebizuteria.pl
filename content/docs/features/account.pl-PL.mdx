@@ -208,7 +208,7 @@ Dla zalogowanego klienta `handleCreateCheckoutSession` (`src/integrations/stripe
   : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 ```
 
-Gość dostaje zamiast tego `customer_email` i nie ma klienta Stripe, do którego można by zapisać kartę. `handleUpdateCheckoutSession` korzysta z istniejącego klienta przez `getStripeCustomerId` i nigdy go nie tworzy. Zobacz [Płatności](/docs/features/payments).
+Gość dostaje zamiast tego `customer_email` i nie ma klienta Stripe, do którego można by zapisać kartę. `handleUpdateCheckoutSession` korzysta przez `getStripeCustomerId` z klienta konta, do którego checkout już należy, i nie tworzy dla niego nowego. Gość, który dojdzie do kroku płatności, a potem się zaloguje, dostaje tę samą propozycję co kupujący zalogowany od początku: aktualizacja przekazuje checkout gościa kontu i wywołuje `ensureStripeCustomer`. Zobacz [Płatności](/docs/features/payments).
 
 ### Na stronie konta
 

@@ -4,6 +4,7 @@ import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqli
 import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { checkout } from "~/src/modules/checkout/checkout.schema"
+import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
 
 export const payment = sqliteTable(
   "payment",
@@ -19,6 +20,7 @@ export const payment = sqliteTable(
     provider: text("provider").notNull(),
     refundedAmount: integer("refunded_amount").default(0).notNull(),
     refundedAt: timestamp("refunded_at"),
+    reservedLines: text("reserved_lines", { mode: "json" }).$type<readonly ReleaseLine[]>().default([]).notNull(),
     status: text("status", {
       enum: ["pending", "succeeded", "failed", "refunded"],
     })

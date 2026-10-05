@@ -1,3 +1,4 @@
+import { keepPreviousData } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { CART_LINES_MAX, CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
@@ -7,8 +8,13 @@ const captured = vi.hoisted((): { validate?: (input: unknown) => unknown } => ({
 
 const inventory = vi.hoisted(() => ({ availability: vi.fn(() => Promise.resolve(new Map<string, number>())) }))
 
+const payments = vi.hoisted(() => ({
+  heldLines: vi.fn<(transactionId: string) => Promise<{ qty: number; variantId: string }[]>>(() => Promise.resolve([])),
+}))
+
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ getAvailabilityByVariantIds: inventory.availability }))
+vi.mock("~/src/modules/payment/payment.accessors", () => ({ getHeldLinesByTransactionId: payments.heldLines }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -125,6 +131,63 @@ describe("checkCartAvailability", () => {
     expect(result).toStrictEqual({ hasUnavailableItems: false, issues: [] })
     expect(inventory.availability).toHaveBeenCalledWith([])
   })
+
+  it("never looks for held stock when the browser holds no checkout", async () => {
+    withAvailability([["variant-a", 1]])
+
+    await checkCartAvailability({ data: { lines: [{ qty: 1, variantId: "variant-a" }] } })
+
+    expect(payments.heldLines).not.toHaveBeenCalled()
+  })
+})
+
+describe("checkCartAvailability for a browser that holds an open checkout", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("counts the units its own checkout holds as still available to it", async () => {
+    withAvailability([["variant-a", 0]])
+    payments.heldLines.mockResolvedValue([{ qty: 1, variantId: "variant-a" }])
+
+    const result = await checkCartAvailability({ data: { heldSessionId: "cs_test_held", lines: [{ qty: 1, variantId: "variant-a" }] } })
+
+    expect(result).toStrictEqual({ hasUnavailableItems: false, issues: [] })
+    expect(payments.heldLines).toHaveBeenCalledExactlyOnceWith("cs_test_held")
+  })
+
+  it("still reports a line the held units and the free stock together cannot cover", async () => {
+    withAvailability([["variant-a", 1]])
+    payments.heldLines.mockResolvedValue([
+      { qty: 1, variantId: "variant-a" },
+      { qty: 2, variantId: "variant-b" },
+    ])
+
+    const result = await checkCartAvailability({ data: { heldSessionId: "cs_test_held", lines: [{ qty: 3, variantId: "variant-a" }] } })
+
+    expect(result.issues).toStrictEqual([{ available: 2, qty: 3, variantId: "variant-a" }])
+  })
+
+  it("adds up every held line of the same variant", async () => {
+    withAvailability([["variant-a", 0]])
+    payments.heldLines.mockResolvedValue([
+      { qty: 1, variantId: "variant-a" },
+      { qty: 1, variantId: "variant-a" },
+    ])
+
+    const result = await checkCartAvailability({ data: { heldSessionId: "cs_test_held", lines: [{ qty: 2, variantId: "variant-a" }] } })
+
+    expect(result.hasUnavailableItems).toBe(false)
+  })
+
+  it("counts nothing extra for a session that no longer holds stock", async () => {
+    withAvailability([["variant-a", 0]])
+    payments.heldLines.mockResolvedValue([])
+
+    const result = await checkCartAvailability({ data: { heldSessionId: "cs_test_expired", lines: [{ qty: 1, variantId: "variant-a" }] } })
+
+    expect(result.issues).toStrictEqual([{ available: 0, qty: 1, variantId: "variant-a" }])
+  })
 })
 
 describe("checkCartAvailability input validation", () => {
@@ -132,6 +195,10 @@ describe("checkCartAvailability input validation", () => {
     const lines = Array.from({ length: CART_LINES_MAX }, (_, index) => ({ qty: 1, variantId: `variant-${String(index)}` }))
 
     expect(captured.validate?.({ lines })).toStrictEqual({ lines })
+  })
+
+  it("accepts the id of the checkout session the browser holds", () => {
+    expect(captured.validate?.({ heldSessionId: "cs_test_held", lines: [] })).toStrictEqual({ heldSessionId: "cs_test_held", lines: [] })
   })
 
   it("accepts well formed lines", () => {
@@ -151,6 +218,8 @@ describe("checkCartAvailability input validation", () => {
       { lines: Array.from({ length: CART_LINES_MAX + 1 }, (_, index) => ({ qty: 1, variantId: `variant-${String(index)}` })) },
     ],
     ["a missing lines array", {}],
+    ["an empty held session id", { heldSessionId: "", lines: [] }],
+    ["a held session id longer than Stripe issues", { heldSessionId: "c".repeat(256), lines: [] }],
     ["lines that are not an array", { lines: "variant-a" }],
   ])("rejects %s", (_name, input) => {
     expect(() => captured.validate?.(input)).toThrow()
@@ -159,18 +228,22 @@ describe("checkCartAvailability input validation", () => {
 
 describe("checkCartAvailabilityQuery", () => {
   it("is disabled for an empty cart", () => {
-    expect(checkCartAvailabilityQuery([]).enabled).toBe(false)
+    expect(checkCartAvailabilityQuery([], undefined).enabled).toBe(false)
   })
 
   it("is enabled once there is a line", () => {
-    expect(checkCartAvailabilityQuery([{ qty: 1, variantId: "variant-a" }]).enabled).toBe(true)
+    expect(checkCartAvailabilityQuery([{ qty: 1, variantId: "variant-a" }], undefined).enabled).toBe(true)
   })
 
-  it("keys the query by the cart lines and never caches the answer", () => {
+  it("keys the query by the cart lines and the held session and never caches the answer", () => {
     const lines = [{ qty: 1, variantId: "variant-a" }]
-    const options = checkCartAvailabilityQuery(lines)
+    const options = checkCartAvailabilityQuery(lines, "cs_test_held")
 
-    expect(options.queryKey).toStrictEqual([...CART_QUERY_KEYS.AVAILABILITY, lines])
+    expect(options.queryKey).toStrictEqual([...CART_QUERY_KEYS.AVAILABILITY, lines, "cs_test_held"])
     expect(options.staleTime).toBe(0)
+  })
+
+  it("keeps the last answer on screen while a changed key is checked again", () => {
+    expect(checkCartAvailabilityQuery([{ qty: 1, variantId: "variant-a" }], "cs_test_held").placeholderData).toBe(keepPreviousData)
   })
 })

@@ -31,8 +31,20 @@ const HELD_LINES = [
   { qty: 1, variantId: "var-2" },
 ]
 
+const RESERVED_LINES = [{ qty: 3, variantId: "var-1" }]
+
+const continueAs = (userId: string | undefined, oldTransactionId: string, newTransactionId = NEW_SESSION) =>
+  supersedeCheckoutSession({
+    amount: 51_300,
+    heldLines: HELD_LINES,
+    newTransactionId,
+    oldTransactionId,
+    reservedLines: RESERVED_LINES,
+    userId,
+  })
+
 const supersede = (oldTransactionId = OLD_SESSION, newTransactionId = NEW_SESSION) =>
-  supersedeCheckoutSession({ amount: 51_300, heldLines: HELD_LINES, newTransactionId, oldTransactionId })
+  continueAs("user-1", oldTransactionId, newTransactionId)
 
 const inventoryRow = (variantId: string) =>
   sqlite
@@ -43,6 +55,8 @@ const paymentRow = (paymentId: string) =>
   sqlite.prepare("select amount, status, transaction_id as transactionId from payment where id = ?").get(paymentId)
 
 const checkoutStatus = (checkoutId: string) => sqlite.prepare("select status from checkout where id = ?").get(checkoutId)
+
+const checkoutOwner = (checkoutId: string) => sqlite.prepare("select user_id as userId from checkout where id = ?").get(checkoutId)
 
 beforeEach(() => {
   sqlite.exec(`
@@ -57,7 +71,7 @@ beforeEach(() => {
     );
     create table payment (
       id text primary key, amount integer not null, checkout_id text not null, currency text not null default 'PLN',
-      provider text not null, refunded_amount integer not null default 0, refunded_at integer,
+      provider text not null, refunded_amount integer not null default 0, refunded_at integer, reserved_lines text not null default '[]',
       status text not null default 'pending', transaction_id text unique, created_at integer not null, updated_at integer not null
     );
     create table inventory (
@@ -93,6 +107,14 @@ describe("supersedeCheckoutSession", () => {
     expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0, version: 2 })
   })
 
+  it("records on the moved payment the lines the replacement session reserves", async () => {
+    await supersede()
+
+    expect(sqlite.prepare("select reserved_lines as reservedLines from payment where id = 'pay-1'").get()).toEqual({
+      reservedLines: JSON.stringify(RESERVED_LINES),
+    })
+  })
+
   it("leaves other checkouts' payments alone", async () => {
     await supersede()
 
@@ -101,7 +123,14 @@ describe("supersedeCheckoutSession", () => {
 
   it("still moves the payment when the old session held no lines", async () => {
     await expect(
-      supersedeCheckoutSession({ amount: 0, heldLines: [], newTransactionId: NEW_SESSION, oldTransactionId: OLD_SESSION }),
+      supersedeCheckoutSession({
+        amount: 0,
+        heldLines: [],
+        newTransactionId: NEW_SESSION,
+        oldTransactionId: OLD_SESSION,
+        reservedLines: [],
+        userId: "user-1",
+      }),
     ).resolves.toBe(true)
 
     expect(paymentRow("pay-1")).toEqual({ amount: 0, status: "pending", transactionId: NEW_SESSION })
@@ -168,6 +197,33 @@ describe("supersedeCheckoutSession", () => {
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
     expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2, version: 2 })
     expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0, version: 2 })
+  })
+
+  it("gives a guest's checkout to the account that signed in and continued it", async () => {
+    await expect(continueAs("user-2", "cs_other")).resolves.toBe(true)
+
+    expect(checkoutOwner("chk-other")).toEqual({ userId: "user-2" })
+    expect(checkoutOwner("chk-1")).toEqual({ userId: "user-1" })
+  })
+
+  it("keeps a guest's checkout without an owner while nobody is signed in", async () => {
+    await expect(continueAs(undefined, "cs_other")).resolves.toBe(true)
+
+    expect(checkoutOwner("chk-other")).toEqual({ userId: null })
+  })
+
+  it("never moves a checkout that already has an owner to another account", async () => {
+    await expect(continueAs("user-2", OLD_SESSION)).resolves.toBe(true)
+
+    expect(checkoutOwner("chk-1")).toEqual({ userId: "user-1" })
+  })
+
+  it("leaves a guest's checkout without an owner when its payment could not be moved", async () => {
+    sqlite.exec("update checkout set status = 'failed' where id = 'chk-other'")
+
+    await expect(continueAs("user-2", "cs_other")).resolves.toBe(false)
+
+    expect(checkoutOwner("chk-other")).toEqual({ userId: null })
   })
 
   it("lets the replacement session return the edited cart's reservation after a late expiry release of the old one", async () => {

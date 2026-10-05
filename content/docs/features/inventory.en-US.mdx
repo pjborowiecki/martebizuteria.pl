@@ -36,16 +36,17 @@ Rows are created alongside variants: `product.mutations.ts` pushes `db.insert(in
 
 `inventory.availability.utils.ts` holds the pure helpers used by both the storefront and the cart:
 
-| Function                                      | Meaning                                      |
-| --------------------------------------------- | -------------------------------------------- |
-| `getVariantQuantityAvailable(variant)`        | `variant?.inventory?.quantityAvailable ?? 0` |
-| `isVariantPurchasable(variant, qty)`          | `qty > 0` and available `>= qty`             |
-| `resolveProductTotalAvailableStock(variants)` | Sum across variants                          |
-| `isProductInStock(variants)`                  | Total above zero                             |
+| Function                                      | Meaning                                            |
+| --------------------------------------------- | -------------------------------------------------- |
+| `getVariantQuantityAvailable(variant)`        | `variant?.inventory?.quantityAvailable ?? 0`       |
+| `isVariantPurchasable(variant, qty)`          | `qty > 0` and available `>= qty`                   |
+| `resolveProductTotalAvailableStock(variants)` | Sum across variants                                |
+| `isProductInStock(variants)`                  | Total above zero                                   |
+| `sumHeldQuantity(heldLines, variantId)`       | Units of the variant that a checkout session holds |
 
 A missing `inventory` row therefore reads as zero rather than as unknown.
 
-`getAvailabilityByVariantIds(variantIds)` in `inventory.accessors.ts` returns a `Map<variantId, quantityAvailable>` for a batch of ids and is what the cart's availability check uses.
+`getAvailabilityByVariantIds(variantIds)` in `inventory.accessors.ts` returns a `Map<variantId, quantityAvailable>` for a batch of ids and is what the cart's availability check uses, adding back with `sumHeldQuantity` the units the shopper's own open checkout holds.
 
 ## Optimistic reservation
 
@@ -110,6 +111,8 @@ Both release statements use `min`/`max` so a duplicate release cannot invent sto
 | Session expired or async payment failed (`prepareReleaseCheckoutBatch`) | `available += min(reserved, qty)`, `reserved -= qty`                                          |
 | Full refund with restock (`prepareRefundBatch`)                         | `available += quantity`, from `getRestockLinesForOrder(orderId)`                              |
 | Lost dispute                                                            | Nothing — `refundOrder` is called with `restock: false`                                       |
+
+A reservation lasts only as long as its Checkout Session can be paid. Every session expires `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minutes, from `stripe.constants.ts`) after it opens, instead of after Stripe's 24-hour default, and its `checkout.session.expired` webhook releases the lines. A checkout update that finds Stripe already reporting the session expired runs the same guarded release first, so the fresh checkout the shopper starts does not wait for the webhook. A browser keeps one open session: the checkout continues the session it stored through the update path, which releases the old lines as it reserves the new ones, rather than reserving the basket again on a reload, in a second tab or after a visit to the basket.
 
 Note that the fulfilment and release batches update `inventory` **without** bumping `version`, because they run inside a D1 batch alongside the order writes rather than through `reserveInventoryRows` and the release helpers.
 
