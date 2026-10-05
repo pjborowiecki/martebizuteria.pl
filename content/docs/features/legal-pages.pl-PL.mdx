@@ -1,9 +1,9 @@
 ---
 title: "Strony prawne"
-description: "Polityka prywatności i strona o wymianach i zwrotach: wiersze Markdown w D1, edytowane w panelu przez MDXEditor i renderowane w sklepie."
+description: "Regulamin, polityka prywatności i strona o wymianach i zwrotach: wiersze Markdown w D1, edytowane w panelu przez MDXEditor i renderowane w sklepie."
 ---
 
-M'Arte ma dwa prawdziwe dokumenty prawne: politykę prywatności pod `/privacy-policy` i zasady zwrotów pod `/exchanges-and-returns`. Każdy z nich to wiersz w tabeli D1 `content_page`. Administratorzy edytują je pod `/admin/content` w edytorze tekstu sformatowanego, który zapisuje Markdown, a sklep renderuje ten Markdown z tą samą typografią, którą pokazuje edytor.
+M'Arte ma trzy dokumenty prawne: regulamin pod `/terms-of-service`, politykę prywatności pod `/privacy-policy` i zasady zwrotów pod `/exchanges-and-returns`. Każdy z nich to wiersz w tabeli D1 `content_page`. Administratorzy edytują je pod `/admin/content` w edytorze tekstu sformatowanego, który zapisuje Markdown, a sklep renderuje ten Markdown z tą samą typografią, którą pokazuje edytor.
 
 ## Tabela
 
@@ -11,7 +11,7 @@ M'Arte ma dwa prawdziwe dokumenty prawne: politykę prywatności pod `/privacy-p
 
 | Kolumna        | Zawiera                                                                        |
 | -------------- | ------------------------------------------------------------------------------ |
-| `handle`       | `privacy-policy` lub `exchanges-and-returns`, unikalny                         |
+| `handle`       | `terms-of-service`, `privacy-policy` lub `exchanges-and-returns`, unikalny     |
 | `titles`       | Mapę JSON z języka na tytuł strony                                             |
 | `descriptions` | Mapę JSON z języka na opis meta                                                |
 | `bodies`       | Mapę JSON z języka na treść w Markdownie                                       |
@@ -20,13 +20,29 @@ M'Arte ma dwa prawdziwe dokumenty prawne: politykę prywatności pod `/privacy-p
 
 Kolumna `handle` jest enumem nad `CONTENT_PAGE_HANDLES` z `content-page.constants.ts`, więc strony, której kod nie zna, nie da się zapisać ani pobrać.
 
-Migracja `20261002120000_content_pages.sql` tworzy tabelę i wypełnia obie strony tekstem, który wcześniej leżał w `content/legal`. Wstawia wiersze z `ON CONFLICT(handle) DO NOTHING`, więc ponowne uruchomienie nigdy nie nadpisze tekstu, który administrator już zmienił.
+Migracja `20261002120000_content_pages.sql` tworzy tabelę i wypełnia politykę prywatności oraz stronę zwrotów tekstem, który wcześniej leżał w `content/legal`. `20261005200000_terms_of_service_page.sql` dodaje regulamin. Obie wstawiają wiersze z `ON CONFLICT(handle) DO NOTHING`, więc ponowne uruchomienie nigdy nie nadpisze tekstu, który administrator już zmienił.
 
 Wiążące są dokumenty polskie. Powołują się wprost na polskie przepisy, takie jak 14-dniowe prawo odstąpienia, art. 556⁴ Kodeksu cywilnego i artykuł RODO dla każdego celu przetwarzania, oraz wskazują administratora danych. Wersje angielskie utrzymuj jako tłumaczenia, a nie osobne teksty.
 
+## Regulamin
+
+Regulamin to dokument wymagany przez art. 8 ustawy o świadczeniu usług drogą elektroniczną. Zawiera też informacje przedumowne z art. 12 ustawy o prawach konsumenta, których kasa sama nie pokazuje. Kasa, formularz rejestracji i formularz newslettera proszą klienta o jego akceptację. Każdy fakt w regulaminie pochodzi z kodu, więc zmiana któregoś z tych źródeł wymaga odpowiedniej zmiany regulaminu w `/admin/content`:
+
+| Paragraf | Co stwierdza                                                                                                          | Skąd pochodzi                                                                                                      |
+| -------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| § 1      | Nazwę sprzedawcy, adres, NIP, REGON, e-mail i telefon                                                                 | `BUSINESS` w `src/presentation/branding/business.ts`                                                               |
+| § 4      | Konto, listę życzeń do 200 produktów, newsletter potwierdzany e-mailem i koszyk przechowywany w przeglądarce          | Better Auth, `WISHLIST_MAX_ITEMS`, przypadki użycia newslettera i `cart.store.ts`                                  |
+| § 5      | Kroki kasy, przycisk „Zamawiam i płacę” i zawarcie umowy z chwilą przyjęcia opłaconego zamówienia                     | Kroki kasy, `placeOrder` i `handleFulfillCheckoutSession`                                                          |
+| § 6      | Kartę, BLIK i Przelewy24 przez Stripe, płatność z góry i jeden kod rabatowy na zamówienie                             | `CHECKOUT_PAYMENT_METHOD_ORDER` i moduł rabatów                                                                    |
+| § 7      | Dostawę wyłącznie w Polsce przez Kuriera InPost, Paczkomat InPost albo bezpłatny odbiór w Bochni w godz. 09:00–17:00  | Stały kraj `PL`, `delivery-methods.sql` i `BUSINESS.OPENING_HOURS_*`                                               |
+| § 7      | Czas realizacji ze strony produktu, 10 dni roboczych, gdy go nie podano, i do 4 dni roboczych doręczenia przez InPost | Atrybut `czas-realizacji`, jego `fallbackTime` w `pages.product` i najdłuższy czas doręczenia obiecany w e-mailach |
+| § 8–10   | Odstąpienie od umowy, zgodność z umową, reklamacje i pozasądowe sposoby dochodzenia roszczeń                          | Ustawa; strona zwrotów, polityka prywatności i dwa formularze PDF są linkowane, a nie powtarzane                   |
+
+Ceny dostawy kurierem i do paczkomatu nie są wpisane w regulamin. Leżą w wierszach `delivery_method`, których plik seed nie utrzymuje w zgodzie z produkcją, więc regulamin mówi, że kasa pokazuje każdą cenę przed złożeniem zamówienia. Regulamin nie linkuje unijnej platformy ODR, którą zamknięto 20 lipca 2025 r.
+
 ## Strony w sklepie
 
-Obie trasy pobierają stronę jednym zapytaniem i oddają renderowanie wspólnemu artykułowi:
+Wszystkie trzy trasy pobierają stronę jednym zapytaniem i oddają renderowanie wspólnemu artykułowi:
 
 ```tsx
 const PrivacyPolicyPage = (): JSX.Element => <ContentPageArticle handle={CONTENT_PAGE_HANDLE.PRIVACY_POLICY} />
@@ -56,11 +72,11 @@ const { Markdown } = createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkH
 
 Typografia leży w `CONTENT_PROSE_CLASS` w `content-page.styles.ts`. Edytor w panelu nakłada tę samą klasę na obszar edycji, więc administrator widzi podczas pisania to, co zobaczą klienci.
 
-Obie trasy leżą pod `_storefront`, więc mają nawigację, banner dostępności koszyka i stopkę.
+Wszystkie trzy trasy leżą pod `_storefront`, więc mają nawigację, banner dostępności koszyka i stopkę.
 
 ## Edycja w panelu
 
-Pozycja **Treść** w bocznym menu panelu otwiera `/admin/content`, gdzie obie strony są wypisane z datą ostatniego zapisu. Każda z nich otwiera `/admin/content/$handle`. Trasa odrzuca każdy `handle` spoza `CONTENT_PAGE_HANDLES` błędem 404.
+Pozycja **Treść** w bocznym menu panelu otwiera `/admin/content`, gdzie każda strona jest wypisana z datą ostatniego zapisu. Każda z nich otwiera `/admin/content/$handle`. Trasa odrzuca każdy `handle` spoza `CONTENT_PAGE_HANDLES` błędem 404.
 
 Strona edytora ma jedną kartę na język. Każda karta zawiera trzy pola:
 
@@ -80,7 +96,7 @@ Pole treści to [MDXEditor](https://mdxeditor.dev), zbudowany na Lexicalu. `src/
 
 Cytaty są dostępne przez skróty Markdown, na przykład wpisanie `> ` na początku wiersza. Shift+Enter zaczyna nowy wiersz wewnątrz akapitu i tak adres pocztowy zostaje w osobnych liniach. Edytor zapisuje go jako ukośnik wsteczny na końcu wiersza, a własny wizytor eksportu zamienia dwa kolejne złamania wiersza w podział akapitu.
 
-MDXEditor serializuje przez `mdast-util-to-markdown`, więc tekst, który inaczej zostałby odczytany jako Markdown, jest escapowany. Wiersz zaczynający się od `1.` lub `-`, końcowy `#` w nagłówku i wyróżnienie przy znaku interpunkcyjnym przechodzą przez zapis bez zmian. Testy edytora wczytują obie zasiane strony w obu językach do prawdziwego edytora i sprawdzają, że wracają identyczne co do bajtu.
+MDXEditor serializuje przez `mdast-util-to-markdown`, więc tekst, który inaczej zostałby odczytany jako Markdown, jest escapowany. Wiersz zaczynający się od `1.` lub `-`, końcowy `#` w nagłówku i wyróżnienie przy znaku interpunkcyjnym przechodzą przez zapis bez zmian. Testy edytora wczytują każdą zasianą stronę w obu językach do prawdziwego edytora i sprawdzają, że wracają identyczne co do bajtu.
 
 Etykiety samego edytora, na przykład okno odnośnika i nazwy nagłówków, pochodzą z `pages.admin.content.editor.mdx` w plikach komunikatów panelu przez `useContentEditorTranslation`. Obszar edycji bierze nazwę dostępną z etykiety pola.
 
@@ -110,22 +126,21 @@ Zmiany wpisane w trakcie trwającego zapisu zostają zachowane po jego zakończe
 
 1. Dodaj `handle` do `CONTENT_PAGE_HANDLE` i `CONTENT_PAGE_HANDLES`, a jego trasę do `ROUTES` i `CONTENT_PAGE_PATHS`.
 2. Napisz migrację, która wstawia wiersz z tytułem, opisem i treścią w każdym języku, z `ON CONFLICT(handle) DO NOTHING`.
-3. Skopiuj jedną z dwóch tras sklepu i zmień `handle`.
+3. Skopiuj jedną z tras sklepu i zmień `handle`.
 4. Podlinkuj stronę w stopce, jeśli klienci mają ją tam znaleźć.
 
 Lista i edytor w panelu obsłużą nową stronę bez zmian.
 
 ## Strony oparte tylko na komunikatach
 
-Trzy inne strony z kolumny informacyjnej w stopce nie są stronami treści i nie mają rozbudowanego tekstu:
+Dwie inne strony z kolumny informacyjnej w stopce nie są stronami treści i nie mają rozbudowanego tekstu:
 
-| Trasa               | Plik                               | Co renderuje                                                              |
-| ------------------- | ---------------------------------- | ------------------------------------------------------------------------- |
-| `/terms-of-service` | `_storefront.terms-of-service.tsx` | `t("title")`, jeden akapit `t("description")`, odnośnik do strony głównej |
-| `/faq`              | `_storefront.faq.tsx`              | ten sam trzyelementowy układ                                              |
-| `/about`            | `_storefront.about.tsx`            | nadtytuł, tytuł, lead i cztery akapity z `pages.about`                    |
+| Trasa    | Plik                    | Co renderuje                                                              |
+| -------- | ----------------------- | ------------------------------------------------------------------------- |
+| `/faq`   | `_storefront.faq.tsx`   | `t("title")`, jeden akapit `t("description")`, odnośnik do strony głównej |
+| `/about` | `_storefront.about.tsx` | nadtytuł, tytuł, lead i cztery akapity z `pages.about`                    |
 
-`/about` to gotowa treść napisana w `messages/{locale}/pages.about.json`. `/terms-of-service` i `/faq` są placeholderami i obie renderują wyśrodkowany odnośnik do strony głównej. Regulamin może stać się edytowalnym dokumentem według kroków powyżej.
+`/about` to gotowa treść napisana w `messages/{locale}/pages.about.json`. `/faq` jest placeholderem i renderuje wyśrodkowany odnośnik do strony głównej.
 
 ## Odnośniki w stopce
 
@@ -141,8 +156,10 @@ Krok płatności w kasie również linkuje regulamin i politykę prywatności pr
 
 ## Testy
 
-- `content-page.integration.test.ts` uruchamia migrację na SQLite i sprawdza odczyt z polskim zapasowym językiem, odczyty w panelu, przycinanie, konfliktujące zapisy, daty rewizji per język oraz reguły odnośników i obrazów.
-- `mdxeditor.plugins.component.test.tsx` przepuszcza obie zasiane strony przez prawdziwy edytor w obie strony, razem z przypadkami escapowania i złamań wiersza.
+- `content-page.integration.test.ts` uruchamia obie migracje na SQLite i sprawdza odczyt z polskim zapasowym językiem, odczyty w panelu, przycinanie, konfliktujące zapisy, daty rewizji per język oraz reguły odnośników i obrazów. Sprawdza też, że zasiany regulamin przechodzi walidację edytora i zapisuje się bez zmian oraz że ponowne uruchomienie migracji regulaminu zachowuje zmiany administratora.
+- `business.test.ts` zawodzi, jeśli zasiana strona przestanie podawać dane firmy z `src/presentation/branding/business.ts`.
+- `legal-routes.test.ts` obejmuje trzy trasy sklepu.
+- `mdxeditor.plugins.component.test.tsx` przepuszcza każdą zasianą stronę przez prawdziwy edytor w obie strony, razem z przypadkami escapowania i złamań wiersza.
 - Testy komponentów panelu sprawdzają zapis, walidację, konflikty, zmiany w trakcie zapisu, skrót klawiszowy i okno opuszczania strony.
 - `content-page-article.component.test.tsx` sprawdza renderowanie w sklepie, kotwice nagłówków, lokalizowane odnośniki i pomijany HTML.
 

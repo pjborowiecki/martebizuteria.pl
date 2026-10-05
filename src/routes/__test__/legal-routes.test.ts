@@ -57,16 +57,18 @@ import { type PageMeta, pageHead } from "~/src/lib/seo"
 
 await import("~/src/routes/_storefront.privacy-policy")
 await import("~/src/routes/_storefront.exchanges-and-returns")
+await import("~/src/routes/_storefront.terms-of-service")
 
-const [privacyRoute, exchangesRoute] = captured.routes
+const [privacyRoute, exchangesRoute, termsRoute] = captured.routes
 
-if (privacyRoute === undefined || exchangesRoute === undefined) {
+if (privacyRoute === undefined || exchangesRoute === undefined || termsRoute === undefined) {
   throw new Error("the content page routes did not register their options")
 }
 
 const PAGES = [
   { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY, route: privacyRoute },
   { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, route: exchangesRoute },
+  { handle: CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE, route: termsRoute },
 ] as const
 
 beforeEach(() => {

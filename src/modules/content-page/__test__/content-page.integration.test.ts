@@ -66,6 +66,8 @@ import { updateContentPage, updateContentPageMutation } from "~/src/modules/cont
 
 const SEEDED_AT = new Date("2026-09-29T12:00:00.000Z")
 
+const TERMS_SEEDED_AT = new Date("2026-10-05T12:00:00.000Z")
+
 const both = (pl: string, en: string): ContentPage["localeMap"] => ({ "en-US": en, "pl-PL": pl })
 
 const edit = (overrides: Partial<ContentPage["updateInput"]> = {}): ContentPage["updateInput"] => ({
@@ -81,6 +83,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   sqlite.exec("drop table if exists content_page")
   applyMigration(sqlite, MIGRATION.CONTENT_PAGES)
+  applyMigration(sqlite, MIGRATION.TERMS_OF_SERVICE_PAGE)
 })
 
 afterAll(() => {
@@ -127,6 +130,7 @@ describe("getAdminContentPages", () => {
     await expect(getAdminContentPages()).resolves.toStrictEqual([
       { handle: "exchanges-and-returns", titles: both("Wymiana i zwroty", "Exchanges and returns"), updatedAt: SEEDED_AT },
       { handle: "privacy-policy", titles: both("Polityka prywatności", "Privacy policy"), updatedAt: SEEDED_AT },
+      { handle: "terms-of-service", titles: both("Regulamin", "Terms of Service"), updatedAt: TERMS_SEEDED_AT },
     ])
   })
 })
@@ -243,7 +247,11 @@ describe("content page admin cache options", () => {
   it("loads every page for the list through the cache", async () => {
     const pages = await new QueryClient().query(getAdminContentPagesQuery())
 
-    expect(pages.map((page) => page.handle)).toStrictEqual([CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, CONTENT_PAGE_HANDLE.PRIVACY_POLICY])
+    expect(pages.map((page) => page.handle)).toStrictEqual([
+      CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS,
+      CONTENT_PAGE_HANDLE.PRIVACY_POLICY,
+      CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE,
+    ])
   })
 
   it("saves an edit through the mutation the editor runs", async () => {
@@ -254,5 +262,63 @@ describe("content page admin cache options", () => {
     const page = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS } })
     expect(page.titles).toStrictEqual(both("Zwroty", "Returns"))
     expect(effects.audit).toHaveBeenCalledExactlyOnceWith(CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS)
+  })
+})
+
+describe("the terms of service migration", () => {
+  it.each([
+    ["pl-PL", "Regulamin", "## § 1. Sprzedawca i kontakt"],
+    ["en-US", "Terms of Service", "## § 1. Seller and contact"],
+  ] as const)("publishes the %s terms in place of the placeholder", async (locale, title, firstSection) => {
+    const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE, locale } })
+
+    expect(page).toMatchObject({ revisedAt: TERMS_SEEDED_AT, title })
+    expect(page.body).toContain(firstSection)
+    expect(page.description).not.toBe("")
+  })
+
+  it.each(["pl-PL", "en-US"] as const)(
+    "points the %s terms to the returns, privacy and form pages instead of repeating them",
+    async (locale) => {
+      const { body } = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE, locale } })
+
+      for (const path of ["/exchanges-and-returns", "/privacy-policy", "/forms/formularz_zwrotu.pdf", "/forms/formularz_reklamacji.pdf"]) {
+        expect(body).toContain(`](${path})`)
+      }
+      expect(body).not.toContain("ec.europa.eu/consumers/odr")
+    },
+  )
+
+  it("seeds text the admin editor can save back unchanged", async () => {
+    const seeded = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE } })
+
+    await updateContentPage({
+      data: {
+        bodies: seeded.bodies,
+        descriptions: seeded.descriptions,
+        expectedUpdatedAt: seeded.updatedAt,
+        handle: CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE,
+        titles: seeded.titles,
+      },
+    })
+
+    const saved = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE } })
+    expect(saved.bodies).toStrictEqual(seeded.bodies)
+    expect(saved.revisedAts).toStrictEqual(seeded.revisedAts)
+  })
+
+  it("keeps the terms an admin has edited when the migration runs again", async () => {
+    await updateContentPage({
+      data: edit({
+        bodies: both("## Regulamin\n\nTreść właściciela.", "## Terms\n\nThe owner's text."),
+        expectedUpdatedAt: TERMS_SEEDED_AT,
+        handle: CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE,
+      }),
+    })
+
+    applyMigration(sqlite, MIGRATION.TERMS_OF_SERVICE_PAGE)
+
+    const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE, locale: "en-US" } })
+    expect(page.body).toBe("## Terms\n\nThe owner's text.")
   })
 })

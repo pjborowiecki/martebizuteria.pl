@@ -105,7 +105,7 @@ A test file is named after the file it covers: `src/modules/address/__test__/` h
 | `content/docs/<path>/meta.<locale>.json`  | Navigation order and title for that folder, per locale               |
 | `messages/<locale>/<namespace>.json`      | One translation namespace, named after it: `pages.admin.orders.json` |
 
-The locale suffix is parsed by Fumadocs with `parser: "dot"` and `hideLocale: "always"`, configured in `src/integrations/fumadocs/fumadocs.i18n.ts`. Both locales must carry the same slugs. The privacy policy and the exchanges-and-returns page are not files: they are rows in the `content_page` table, edited at `/admin/content`.
+The locale suffix is parsed by Fumadocs with `parser: "dot"` and `hideLocale: "always"`, configured in `src/integrations/fumadocs/fumadocs.i18n.ts`. Both locales must carry the same slugs. The terms of service, the privacy policy and the exchanges-and-returns page are not files: they are rows in the `content_page` table, edited at `/admin/content`.
 
 ## Database
 

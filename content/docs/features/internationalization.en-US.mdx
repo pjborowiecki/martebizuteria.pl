@@ -202,7 +202,7 @@ descriptions: text("descriptions", { mode: "json" }).$type<Product["localeMap"] 
 tags: text("tags", { mode: "json" }).$type<Product["tagsLocaleMap"] | null>(),
 ```
 
-The same shape appears on `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles`, and the labels inside `allowed_values`) and `content_page` (`titles`, `descriptions` and `bodies`, where `bodies` holds the Markdown of `/privacy-policy` and `/exchanges-and-returns`).
+The same shape appears on `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles`, and the labels inside `allowed_values`) and `content_page` (`titles`, `descriptions` and `bodies`, where `bodies` holds the Markdown of `/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns`).
 
 Reading falls back three times. `resolveLocalizedString` in `src/modules/product-attribute/product-attribute.utils.ts` is the shared implementation:
 

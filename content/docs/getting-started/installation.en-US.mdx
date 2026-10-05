@@ -58,7 +58,7 @@ fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source
 
 This compiles `content/docs`, the only MDX collection declared in `src/integrations/fumadocs/fumadocs.config.ts`, into `.source/browser.ts`, `.source/server.ts` and `.source/dynamic.ts`. Those are the modules `src/presentation/components/custom/docs-content.tsx` and `src/integrations/fumadocs/fumadocs.docs.ts` import as `collections/browser` and `collections/server`.
 
-Without `.source/`, type checking fails and the `/docs` routes cannot resolve their content. `/privacy-policy` and `/exchanges-and-returns` do not depend on it: their content lives in the D1 `content_page` table. `bun run dev` and both build scripts run `bun run content` first, so in normal use you do not have to think about it.
+Without `.source/`, type checking fails and the `/docs` routes cannot resolve their content. `/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns` do not depend on it: their content lives in the D1 `content_page` table. `bun run dev` and both build scripts run `bun run content` first, so in normal use you do not have to think about it.
 
 ## Installing the way CI does
 
