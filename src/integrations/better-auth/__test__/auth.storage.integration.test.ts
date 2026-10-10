@@ -1,7 +1,15 @@
 import { readFileSync } from "node:fs"
-import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { z } from "zod"
 
 import { auth } from "~/src/integrations/better-auth/auth.server"
+import {
+  PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX,
+  PUBLIC_EMAIL_KINDS,
+  admitPublicEmail,
+} from "~/src/integrations/resend/resend.public-email-limits.server"
+
+import { authRateLimitStorage } from "~/src/lib/rate-limit"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -16,6 +24,7 @@ const storageMigration = readFileSync(
 
 vi.mock("cloudflare:workers", () => ({
   env: {
+    APP_ENV: "test",
     AUTH_GITHUB_CLIENT_ID: "test-github-client",
     AUTH_GITHUB_CLIENT_SECRET: "test-github-secret",
     AUTH_GOOGLE_CLIENT_ID: "test-google-client",
@@ -43,6 +52,21 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
+const signIn = (ip: string): Promise<Response> =>
+  auth.handler(
+    new Request("http://localhost:3000/api/auth/sign-in/email", {
+      body: JSON.stringify({}),
+      headers: { "Content-Type": "application/json", "cf-connecting-ip": ip },
+      method: "POST",
+    }),
+  )
+
+const storedKeys = (): string[] =>
+  z
+    .array(z.object({ key: z.string() }))
+    .parse(sqlite.prepare("select key from rate_limit order by key").all())
+    .map(({ key }) => key)
+
 describe("better Auth database storage", () => {
   beforeEach(() => {
     sqlite.exec(`
@@ -61,6 +85,10 @@ describe("better Auth database storage", () => {
       );
     `)
     sqlite.exec(storageMigration)
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   afterAll(() => {
@@ -87,11 +115,12 @@ describe("better Auth database storage", () => {
         "/sign-in/email": { max: 5, window: 60 },
         "/sign-up/email": { max: 3, window: 60 },
       },
+      customStorage: authRateLimitStorage,
       enabled: true,
       max: 100,
-      storage: "database",
       window: 60,
     })
+    expect(auth.options.rateLimit).not.toHaveProperty("storage")
   })
 
   it("consumes a verification token only once across concurrent callers", async () => {
@@ -112,20 +141,34 @@ describe("better Auth database storage", () => {
   })
 
   it("denies concurrent sign-in attempts after the configured database limit", async () => {
-    const attempts = await Promise.all(
-      Array.from({ length: 8 }, () =>
-        auth.handler(
-          new Request("http://localhost:3000/api/auth/sign-in/email", {
-            body: JSON.stringify({}),
-            headers: { "Content-Type": "application/json", "cf-connecting-ip": "192.0.2.1" },
-            method: "POST",
-          }),
-        ),
-      ),
-    )
+    const attempts = await Promise.all(Array.from({ length: 8 }, () => signIn("192.0.2.1")))
 
     expect(attempts.filter((response) => response.status === 400)).toHaveLength(5)
     expect(attempts.filter((response) => response.status === 429)).toHaveLength(3)
     expect(sqlite.prepare("select count from rate_limit").get()).toMatchObject({ count: 5 })
+  })
+
+  it("keeps the caps on emails visitors request when one of its own windows starts again", async () => {
+    vi.useFakeTimers({ now: new Date("2026-10-10T12:00:00.000Z"), toFake: ["Date"] })
+    const reset = { kind: PUBLIC_EMAIL_KINDS.PASSWORD_RESET, to: "anna@example.com" } as const
+    for (let sent = 0; sent < PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX; sent += 1) {
+      await expect(admitPublicEmail(reset)).resolves.toBe(true)
+    }
+
+    const withinLimit = await Promise.all(Array.from({ length: 5 }, () => signIn("192.0.2.2")))
+    const refused = await signIn("192.0.2.2")
+    vi.advanceTimersByTime(61_000)
+    const afterWindow = await signIn("192.0.2.2")
+
+    expect(withinLimit.map((response) => response.status)).toStrictEqual([400, 400, 400, 400, 400])
+    expect(refused.status).toBe(429)
+    expect(refused.headers.get("X-Retry-After")).toBe("60")
+    expect(afterWindow.status).toBe(400)
+    expect(storedKeys()).toStrictEqual([
+      "192.0.2.2|/sign-in/email",
+      "public-email:test:daily",
+      expect.stringMatching(/^public-email:test:password-reset:/u),
+    ])
+    await expect(admitPublicEmail(reset)).resolves.toBe(false)
   })
 })

@@ -1,6 +1,6 @@
 import "@tanstack/react-start/server-only"
 
-import { type BetterAuthOptions } from "better-auth"
+import { type BetterAuthOptions, type BetterAuthRateLimitStorage } from "better-auth"
 import { getIP } from "better-auth/api"
 import { sql } from "drizzle-orm"
 import { v7 as uuidv7 } from "uuid"
@@ -50,4 +50,12 @@ export const withinRateLimit = async ({ key, limit, windowSeconds }: RateLimitIn
 
     return false
   }
+}
+
+export const authRateLimitStorage: BetterAuthRateLimitStorage = {
+  consume: async (key, { max, window }) => {
+    const allowed = await withinRateLimit({ key, limit: max, windowSeconds: window })
+
+    return { allowed, retryAfter: allowed ? 0 : window }
+  },
 }

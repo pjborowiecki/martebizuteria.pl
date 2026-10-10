@@ -6,6 +6,9 @@ import { useForm } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
 
 import { type SignUpFormValues, signUpWithPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
+import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+
+import { useTurnstileToken } from "~/src/hooks/use-turnstile-token"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -14,7 +17,8 @@ import { useSignUpWithPassword } from "~/src/presentation/components/custom/page
 
 export const SignUpWithPasswordForm = (): JSX.Element => {
   const t = useTranslations()
-  const signUpMutation = useSignUpWithPassword()
+  const { containerRef, requestToken } = useTurnstileToken(TURNSTILE_ACTIONS.SIGN_UP)
+  const signUpMutation = useSignUpWithPassword(requestToken)
   const form = useForm<SignUpFormValues>({
     defaultValues: {
       confirmPassword: "",
@@ -97,6 +101,8 @@ export const SignUpWithPasswordForm = (): JSX.Element => {
         disabled={isSubmitting}
         required
       />
+
+      <div ref={containerRef} className="empty:hidden" />
 
       <Button size="xl" type="submit" className="w-full gap-3.5 tracking-wide" disabled={isSubmitting}>
         {isSubmitting && <Loader2 aria-hidden className="size-4 animate-spin" />}

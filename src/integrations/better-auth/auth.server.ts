@@ -13,10 +13,18 @@ import { v7 as uuidv7 } from "uuid"
 import { ADMIN_PANEL_ROLES, DEFAULT_ROLE, ROLES_CONFIG, ac } from "~/src/integrations/better-auth/auth.access"
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "~/src/integrations/better-auth/auth.constraints"
 import { type AuthErrorCode } from "~/src/integrations/better-auth/auth.errors"
+import {
+  TURNSTILE_ACTIONS,
+  TURNSTILE_TOKEN_HEADER,
+  type TurnstileAction,
+} from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+import { passesTurnstile } from "~/src/integrations/cloudflare-turnstile/turnstile.server"
+import { turnstileTokenSchema } from "~/src/integrations/cloudflare-turnstile/turnstile.zod"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 import { scheduleAdminCustomersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { isEmailSenderUnavailable } from "~/src/integrations/resend/resend.availability.server"
+import { PUBLIC_EMAIL_KINDS, admitPublicEmail } from "~/src/integrations/resend/resend.public-email-limits.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
@@ -33,8 +41,8 @@ import { linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.access
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
-import { IP_ADDRESS_HEADER } from "~/src/lib/rate-limit"
-import { resolveRequestOrigin } from "~/src/lib/request"
+import { IP_ADDRESS_HEADER, authRateLimitStorage } from "~/src/lib/rate-limit"
+import { resolveRequestIp, resolveRequestOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
@@ -74,15 +82,26 @@ const EMAIL_SENDING_AUTH_PATHS: ReadonlySet<string> = new Set([
   ROUTES.API_AUTH.SIGN_UP_EMAIL,
 ])
 
+const BOT_CHECKED_AUTH_PATHS: ReadonlyMap<string, TurnstileAction> = new Map([
+  [ROUTES.API_AUTH.REQUEST_PASSWORD_RESET, TURNSTILE_ACTIONS.PASSWORD_RESET],
+  [ROUTES.API_AUTH.SEND_VERIFICATION_EMAIL, TURNSTILE_ACTIONS.VERIFICATION_RESEND],
+  [ROUTES.API_AUTH.SIGN_UP_EMAIL, TURNSTILE_ACTIONS.SIGN_UP],
+])
+
+const BOT_CHECK_FAILED = {
+  code: "BOT_CHECK_FAILED",
+  message: "The bot check did not pass",
+} as const satisfies AuthRefusal
+
 const EMAIL_DELIVERY_FAILED = {
   code: "EMAIL_DELIVERY_FAILED",
   message: "The email could not be sent",
-} as const satisfies AuthEmailError
+} as const satisfies AuthRefusal
 
 const EMAIL_DELIVERY_UNAVAILABLE = {
   code: "EMAIL_DELIVERY_UNAVAILABLE",
   message: "Emails cannot be sent at the moment",
-} as const satisfies AuthEmailError
+} as const satisfies AuthRefusal
 
 const TWO_FACTOR_VERIFY_PATH_PREFIX = "/two-factor/verify-"
 
@@ -164,7 +183,25 @@ const requireAuthEmailDelivery = async (kind: string, email: Parameters<typeof s
   }
 }
 
+const passesBotCheck = (request: Request | undefined, action: TurnstileAction): Promise<boolean> => {
+  const token = turnstileTokenSchema.safeParse(request?.headers.get(TURNSTILE_TOKEN_HEADER))
+  if (request === undefined || !token.success) {
+    return Promise.resolve(false)
+  }
+
+  return passesTurnstile({
+    action,
+    hostname: new URL(request.url).hostname,
+    remoteIp: resolveRequestIp(request.headers),
+    token: token.data,
+  })
+}
+
 export const sendVerificationEmail = async ({ user, url }: AuthEmailParams): Promise<void> => {
+  if (!(await admitPublicEmail({ kind: PUBLIC_EMAIL_KINDS.VERIFICATION, to: user.email }))) {
+    return
+  }
+
   const locale = getCurrentLocale()
   const verificationUrl = resolveEmailVerificationCallbackUrl(url, locale)
   const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
@@ -181,6 +218,10 @@ export const sendVerificationEmail = async ({ user, url }: AuthEmailParams): Pro
 }
 
 export const sendResetPassword = async ({ user, url }: AuthEmailParams): Promise<void> => {
+  if (!(await admitPublicEmail({ kind: PUBLIC_EMAIL_KINDS.PASSWORD_RESET, to: user.email }))) {
+    return
+  }
+
   const locale = getCurrentLocale()
   const messages = await loadNamespace<typeof resetPasswordMessages>({ locale, namespace: RESET_PASSWORD_NAMESPACE })
   await requireAuthEmailDelivery("reset-password", {
@@ -327,6 +368,11 @@ export const auth = betterAuth({
       if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
         throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
       }
+
+      const botCheckAction = BOT_CHECKED_AUTH_PATHS.get(ctx.path)
+      if (botCheckAction !== undefined && !(await passesBotCheck(ctx.request, botCheckAction))) {
+        throw APIError.from("FORBIDDEN", BOT_CHECK_FAILED)
+      }
     }),
   },
   plugins: [
@@ -364,9 +410,9 @@ export const auth = betterAuth({
         window: RATE_LIMIT_WINDOW_IN_SECONDS,
       },
     },
+    customStorage: authRateLimitStorage,
     enabled: true,
     max: RATE_LIMIT_MAX_REQUESTS,
-    storage: "database",
     window: RATE_LIMIT_WINDOW_IN_SECONDS,
   },
   secret: env.AUTH_SECRET,
@@ -420,7 +466,7 @@ interface AuthEmailParams {
   }
 }
 
-interface AuthEmailError {
+interface AuthRefusal {
   readonly code: AuthErrorCode
   readonly message: string
 }

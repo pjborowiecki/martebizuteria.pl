@@ -64,6 +64,13 @@ describe("useActionError with a better-auth failure", () => {
   it("falls back to the generic message for an unrecognised auth code", () => {
     expect(messageFor({ code: "TEAPOT" })).toBe("Something went wrong. Please try again.")
   })
+
+  it.each([
+    ["the bot check the browser could not finish", new Error("BOT_CHECK_FAILED")],
+    ["a bot check the server refused", { code: "BOT_CHECK_FAILED" }],
+  ])("explains %s", (_label, error) => {
+    expect(messageFor(error)).toBe("We could not finish the check that keeps bots out. Please try again.")
+  })
 })
 
 describe("useActionError with a validation failure", () => {

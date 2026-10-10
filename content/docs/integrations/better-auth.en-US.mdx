@@ -33,7 +33,7 @@ Plugins: `admin({ ac, adminRoles, defaultRole, roles })`, `multiSession({ maximu
 
 ### Built-in rate limiting
 
-Better Auth's own limiter is enabled with `storage: "database"`, a global 100 requests per 60 seconds, plus per-endpoint rules keyed off `ROUTES.API_AUTH`:
+Better Auth's own limiter is enabled with `customStorage: authRateLimitStorage` from `src/lib/rate-limit.ts`, a global 100 requests per 60 seconds, plus per-endpoint rules keyed off `ROUTES.API_AUTH`:
 
 | Endpoint                  | Limit per 60 s |
 | ------------------------- | -------------- |
@@ -42,7 +42,7 @@ Better Auth's own limiter is enabled with `storage: "database"`, a global 100 re
 | `/request-password-reset` | 3              |
 | `/reset-password`         | 5              |
 
-This is separate from the application's own `withRateLimit` middleware described below; both write to the `rate_limit` table.
+This is separate from the application's own `withRateLimit` middleware described below, but both count with `withinRateLimit` in the `rate_limit` table. `authRateLimitStorage` passes Better Auth's `<ip>|<path>` key and the matching rule to it, and a refusal answers 429 with the rule's window in `X-Retry-After`. Better Auth's `storage: "database"` is not used, because whenever one of its counters started a new window it deleted every `rate_limit` row whose `last_request` was older than its longest window, 60 seconds. `withinRateLimit` keeps the start of a window in `last_request`, so the hourly and daily caps on the e-mails visitors can request would have gone about a minute after they began.
 
 ### Database hooks
 
@@ -100,11 +100,16 @@ hooks: {
     if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
       throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
     }
+
+    const botCheckAction = BOT_CHECKED_AUTH_PATHS.get(ctx.path)
+    if (botCheckAction !== undefined && !(await passesBotCheck(ctx.request, botCheckAction))) {
+      throw APIError.from("FORBIDDEN", BOT_CHECK_FAILED)
+    }
   }),
 },
 ```
 
-The answer is `503` with `EMAIL_DELIVERY_UNAVAILABLE`, shown as "We can't send emails at the moment, so nothing has been changed. Please try again in a few minutes." No account is created, no token is stored, and known and unknown addresses get the same answer. The paths come from `ROUTES.API_AUTH`. Sign-in, verification links, account deletion and every other endpoint pass straight through without reading KV.
+The answer is `503` with `EMAIL_DELIVERY_UNAVAILABLE`, shown as "We can't send emails at the moment, so nothing has been changed. Please try again in a few minutes." No account is created, no token is stored, and known and unknown addresses get the same answer. The paths come from `ROUTES.API_AUTH`. Sign-in, verification links, account deletion and every other endpoint pass straight through without reading KV. The second check in the hook is the bot check; see [Bot check and email limits](#bot-check-and-email-limits).
 
 Only an email whose sending says nothing about which accounts exist may set the flag: the newsletter emails (every submitted address gets one), the order confirmation and shipped emails, the account-deleted email, and the password-changed email, which goes only to an account whose reset link was just used and so tells whoever used it nothing new. The verification, reset and change-email confirmation go out only when an account does or does not exist, so `requireAuthEmailDelivery` sends them with `revealsAccountExistence: true` and `sendEmail` leaves the flag alone. Otherwise the flag would answer the question the generic responses hide: during an outage, request a reset for an address, then one for a random address, and a `503` on the second would mean the first has an account. Those refusals are still logged and audited.
 
@@ -112,9 +117,21 @@ So the gate closes only once one of the other emails has been refused. Until the
 
 If KV cannot be read, `isEmailSenderUnavailable` logs `[Resend] Email sender availability unreadable` with the error and answers `false`, so the gate lets the request through. Password reset is the way back into an account and must not depend on KV; a send that then fails is still logged and audited like any other.
 
-On the sign-in page, a sign-in refused with `EMAIL_NOT_VERIFIED` shows `UnverifiedEmailNotice` with "Send the confirmation link again". That call goes to `/send-verification-email`, so its success toast, "A new confirmation link is on its way to …", only appears after Resend has accepted the email. Better Auth returns `EMAIL_NOT_VERIFIED` only after the password has been checked, so the notice reveals nothing to someone who does not know the password.
+On the sign-in page, a sign-in refused with `EMAIL_NOT_VERIFIED` shows `UnverifiedEmailNotice` with "Send the confirmation link again". That call goes to `/send-verification-email`, so its success toast, "A new confirmation link is on its way to …", appears only after Resend has accepted the email, or after the address limit below has quietly skipped it. Better Auth returns `EMAIL_NOT_VERIFIED` only after the password has been checked, so the notice reveals nothing to someone who does not know the password.
 
 The endpoint itself can be called without the form, and there the honest answer has a cost. Signed out, Better Auth calls the hook only for an address with an unconfirmed account and answers `200` for any other address. While single sends fail (a Resend rate limit or outage, or a sender refusal before the flag is set), an unconfirmed account therefore gets `503 EMAIL_DELIVERY_FAILED` where an unknown or confirmed address gets `200`. This is how Better Auth treats a hook that throws, and it is the price of telling the person the truth about their resend. It reveals only unconfirmed accounts, only while sends are failing, at Better Auth's default limit of three requests per minute per IP, and while the flag is set the gate answers every address alike.
+
+### Bot check and email limits
+
+Sign-up, the password-reset request and the verification resend make the shop send an email to whatever address the request names. Repeated, they would flood someone's inbox or use up the Resend quota, after which the order emails stop too. Three things bound them, on top of the per-IP limits above.
+
+**Bot check.** After the email delivery gate, `hooks.before` looks the path up in `BOT_CHECKED_AUTH_PATHS`, which maps `/sign-up/email`, `/request-password-reset` and `/send-verification-email` to the Turnstile actions `sign-up`, `password-reset` and `verification-resend`. `passesBotCheck` reads the token from the `x-turnstile-token` header (`TURNSTILE_TOKEN_HEADER`), refuses a missing, empty or overlong one with `turnstileTokenSchema`, and refuses a call that reached the hook without a request. Otherwise it asks `passesTurnstile` whether siteverify confirms the token for that action on the hostname of the request URL. A refusal is `403` with `BOT_CHECK_FAILED`, before an account, a reset token or an email exists, and it reads the same for every address. `SignUpWithPasswordForm`, `ForgotPasswordForm` and `UnverifiedEmailNotice` each run `useTurnstileToken` with their action, keep its container above their button and send the token in `fetchOptions.headers`; a widget that fails and a refused token both show "We could not finish the check that keeps bots out. Please try again." `/change-email` needs a session and is not checked. See [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile).
+
+**Emails per address.** `sendVerificationEmail` and `sendResetPassword` first ask `admitPublicEmail` from `src/integrations/resend/resend.public-email-limits.server.ts`, with the kind `verification` or `password-reset`. One address gets at most three emails of each kind an hour. Past that, the hook returns without sending and logs `[Email] Skipped a <kind> email to <address>: the address reached its hourly limit for this email`, and the endpoint answers exactly as it does after a send: sign-up and the reset request keep their generic answers, and the resend answers `200`. A refusal there would be given only for an address with an account, or with an unconfirmed one, and would reveal it.
+
+**Emails per day.** The same call counts every email visitors can make the shop send, these two kinds and the newsletter's, against 50 a day for the whole shop. Past that, the email is skipped with the same answer, logged with `console.error` and recorded as `email.failed` with the detail `Public <kind> email — the shop reached its daily limit of 50 emails that visitors can request`, so the audit log shows that customers are missing emails. A sign-up still creates the account, and its owner can ask for a new link once the day has passed. The order, password-changed, account-deleted and change-email confirmation emails never go through `admitPublicEmail`. The verification email Better Auth sends to a new address once a change of address is confirmed does, because it is also `sendVerificationEmail`. See [Resend: Emails visitors can request](/docs/integrations/resend#emails-visitors-can-request).
+
+`auth.server.test.ts` covers the hook's three paths, the token checks and the paths it leaves alone. `auth.bot-check.integration.test.ts` sends forged and missing tokens through the real handler, and `auth.email-delivery.integration.test.ts` shows a reset request and a resend past the hourly limit answering like any other, a sign-up on a used-up day still creating the account, and an order email still going out on that day.
 
 ## Roles and permissions
 

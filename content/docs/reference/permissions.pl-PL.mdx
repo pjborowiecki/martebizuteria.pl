@@ -162,7 +162,7 @@ Better Auth jest skonfigurowany w `auth.server.ts` z wyłączonym podpisanym cac
 
 Dwie warstwy, obie zapisujące do tabeli `rate_limit`.
 
-**Własny limiter Better Auth**, skonfigurowany z `storage: "database"`, globalnym limitem 100 zapytań na 60 sekund i czterema regułami per endpoint:
+**Własny limiter Better Auth**, liczony tym samym `withinRateLimit` co middleware poniżej i skonfigurowany z `customStorage: authRateLimitStorage`, globalnym limitem 100 zapytań na 60 sekund i czterema regułami per endpoint:
 
 | Endpoint                           | Maks. na 60 s |
 | ---------------------------------- | ------------- |

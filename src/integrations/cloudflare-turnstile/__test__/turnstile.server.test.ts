@@ -5,7 +5,7 @@ const workerEnv = vi.hoisted(() => ({ TURNSTILE_SECRET_KEY: "0x4AAAAAAAwidget-se
 vi.mock("cloudflare:workers", () => ({ env: workerEnv }))
 
 import { TURNSTILE_SITEVERIFY_URL, TURNSTILE_TESTING_KEYS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
-import { verifyTurnstileToken } from "~/src/integrations/cloudflare-turnstile/turnstile.server"
+import { passesTurnstile, verifyTurnstileToken } from "~/src/integrations/cloudflare-turnstile/turnstile.server"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 
@@ -114,5 +114,22 @@ describe("verifyTurnstileToken with Cloudflare's testing secret", () => {
     answer({ "error-codes": ["invalid-input-response"], success: false })
 
     await expect(verifyTurnstileToken(CHECK)).rejects.toMatchObject(BOT_CHECK_REFUSAL)
+  })
+})
+
+describe("passesTurnstile", () => {
+  it("answers true for a token Cloudflare confirms was issued for this action on this host", async () => {
+    answer({ action: "checkout", hostname: "martebizuteria.pl", success: true })
+
+    await expect(passesTurnstile(CHECK)).resolves.toBe(true)
+  })
+
+  it.each([
+    ["a token Cloudflare rejects", { "error-codes": ["timeout-or-duplicate"], success: false }],
+    ["a token issued for another action", { action: "sign-up", hostname: "martebizuteria.pl", success: true }],
+  ])("answers false, without throwing, for %s", async (_label, verdict) => {
+    answer(verdict)
+
+    await expect(passesTurnstile(CHECK)).resolves.toBe(false)
   })
 })

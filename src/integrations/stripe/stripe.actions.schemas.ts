@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-import { TURNSTILE_TOKEN_MAX_LENGTH } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+import { turnstileTokenSchema } from "~/src/integrations/cloudflare-turnstile/turnstile.zod"
 
 import { CART_LINES_MAX, CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
 import { checkoutSchema } from "~/src/modules/checkout/checkout.zod"
@@ -22,7 +22,7 @@ export const cartItemSchema = z.object({
 export const createCheckoutSessionInputSchema = z.object({
   checkoutValues: checkoutSchema,
   items: z.array(cartItemSchema).min(MIN_ITEMS_COUNT).max(CART_LINES_MAX),
-  turnstileToken: z.string().min(1).max(TURNSTILE_TOKEN_MAX_LENGTH),
+  turnstileToken: turnstileTokenSchema,
 })
 
 export const updateCheckoutSessionInputSchema = z.object({

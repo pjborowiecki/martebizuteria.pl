@@ -21,11 +21,13 @@ interface SentEmail {
 }
 
 const stubs = vi.hoisted(() => ({
+  admitPublicEmail: vi.fn<(email: { kind: string; to: string }) => Promise<boolean>>(),
   buildLocalizedUrl: vi.fn<(base: string, path: string, locale: string) => string>(),
   claimGuestOrdersForUser: vi.fn<(input: { email: string; userId: string }) => Promise<number>>(),
   getCurrentLocale: vi.fn<() => string>(),
   isEmailSenderUnavailable: vi.fn<() => Promise<boolean>>(),
   linkSubscriberToUser: vi.fn<(email: string, userId: string) => Promise<void>>(),
+  passesTurnstile: vi.fn<(check: { action: string; hostname: string; remoteIp: string | undefined; token: string }) => Promise<boolean>>(),
   recordAuthLoginAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
   recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
@@ -56,6 +58,11 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
 
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: stubs.sendEmail }))
 vi.mock("~/src/integrations/resend/resend.availability.server", () => ({ isEmailSenderUnavailable: stubs.isEmailSenderUnavailable }))
+vi.mock(import("~/src/integrations/resend/resend.public-email-limits.server"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  admitPublicEmail: stubs.admitPublicEmail,
+}))
+vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ passesTurnstile: stubs.passesTurnstile }))
 
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: stubs.getCurrentLocale }))
 
@@ -159,6 +166,8 @@ beforeEach(() => {
   stubs.getCurrentLocale.mockReturnValue(LOCALE)
   stubs.sendEmail.mockResolvedValue(undefined)
   stubs.isEmailSenderUnavailable.mockResolvedValue(false)
+  stubs.admitPublicEmail.mockResolvedValue(true)
+  stubs.passesTurnstile.mockResolvedValue(true)
   stubs.buildLocalizedUrl.mockImplementation((_base, path, locale) => (path === "/" ? `/${locale}` : `/${locale}${path}`))
 })
 
@@ -274,6 +283,20 @@ describe("verification email", () => {
 
     expect(sentEmail()?.subject).toBe(verifyEmailPolish.subject)
   })
+
+  it("counts the email against the verification emails the address may receive", async () => {
+    await sendVerificationEmail({ url: verifyUrl(), user })
+
+    expect(stubs.admitPublicEmail).toHaveBeenCalledExactlyOnceWith({ kind: "verification", to: user.email })
+  })
+
+  it("sends nothing, and answers as if it had, once the limits refuse the email", async () => {
+    stubs.admitPublicEmail.mockResolvedValue(false)
+
+    await expect(sendVerificationEmail({ url: verifyUrl(), user })).resolves.toBeUndefined()
+
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+  })
 })
 
 describe("account emails", () => {
@@ -282,6 +305,15 @@ describe("account emails", () => {
 
     expect(sentEmail()?.subject).toBe(resetPasswordPolish.subject)
     expect(sentProp("resetPasswordUrl")).toBe("https://marte.test/reset")
+    expect(stubs.admitPublicEmail).toHaveBeenCalledExactlyOnceWith({ kind: "password-reset", to: user.email })
+  })
+
+  it("sends no reset-password link, and answers as if it had, once the limits refuse the email", async () => {
+    stubs.admitPublicEmail.mockResolvedValue(false)
+
+    await expect(sendResetPassword({ url: "https://marte.test/reset", user })).resolves.toBeUndefined()
+
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
   })
 
   it("sends a change-email confirmation", async () => {
@@ -405,11 +437,19 @@ const refuseEmails = () => {
   stubs.sendEmail.mockResolvedValue(DOMAIN_NOT_VERIFIED)
 }
 
-const gate = (path: string): Promise<unknown> => {
-  const endpointContext = { headers: new Headers(), path }
+const gate = (path: string, request?: Request): Promise<unknown> => {
+  const endpointContext = request === undefined ? { headers: new Headers(), path } : { headers: request.headers, path, request }
 
   return auth.options.hooks.before(endpointContext)
 }
+
+const browserRequest = (path: string, turnstileToken?: string): Request =>
+  new Request(`https://martebizuteria.pl/api/auth${path}`, {
+    headers: { "cf-connecting-ip": "203.0.113.7", ...(turnstileToken === undefined ? {} : { "x-turnstile-token": turnstileToken }) },
+    method: "POST",
+  })
+
+const BOT_CHECK_REFUSAL = { body: { code: "BOT_CHECK_FAILED" }, statusCode: 403 }
 
 describe("auth email delivery", () => {
   it.each([
@@ -528,9 +568,16 @@ describe("email delivery gate", () => {
   )
 
   it("lets the email-sending endpoints through while the sender is available", async () => {
-    await gate("/request-password-reset")
+    await gate("/request-password-reset", browserRequest("/request-password-reset", "turnstile-token-1"))
 
     expect(stubs.isEmailSenderUnavailable).toHaveBeenCalledOnce()
+  })
+
+  it("refuses while the sender is unavailable without asking Turnstile about the token", async () => {
+    stubs.isEmailSenderUnavailable.mockResolvedValue(true)
+
+    await expect(gate("/sign-up/email", browserRequest("/sign-up/email", "turnstile-token-1"))).rejects.toMatchObject({ statusCode: 503 })
+    expect(stubs.passesTurnstile).not.toHaveBeenCalled()
   })
 
   it.each(["/sign-in/email", "/verify-email", "/delete-user", "/get-session"])(
@@ -541,6 +588,55 @@ describe("email delivery gate", () => {
       await gate(path)
 
       expect(stubs.isEmailSenderUnavailable).not.toHaveBeenCalled()
+    },
+  )
+})
+
+describe("bot check gate", () => {
+  it.each([
+    ["/sign-up/email", "sign-up"],
+    ["/request-password-reset", "password-reset"],
+    ["/send-verification-email", "verification-resend"],
+  ])("lets %s through with a token Turnstile passes for the %s action on the request's host and address", async (path, action) => {
+    await gate(path, browserRequest(path, "turnstile-token-1"))
+
+    expect(stubs.passesTurnstile).toHaveBeenCalledExactlyOnceWith({
+      action,
+      hostname: "martebizuteria.pl",
+      remoteIp: "203.0.113.7",
+      token: "turnstile-token-1",
+    })
+  })
+
+  it.each(["/sign-up/email", "/request-password-reset", "/send-verification-email"])(
+    "refuses %s when Turnstile does not pass the token",
+    async (path) => {
+      stubs.passesTurnstile.mockResolvedValue(false)
+
+      await expect(gate(path, browserRequest(path, "turnstile-token-1"))).rejects.toMatchObject(BOT_CHECK_REFUSAL)
+    },
+  )
+
+  it.each([
+    ["no token", undefined],
+    ["an empty token", ""],
+    ["a token too long to be one Turnstile issued", "t".repeat(2049)],
+  ])("refuses a sign-up with %s without asking Turnstile", async (_label, token) => {
+    await expect(gate("/sign-up/email", browserRequest("/sign-up/email", token))).rejects.toMatchObject(BOT_CHECK_REFUSAL)
+    expect(stubs.passesTurnstile).not.toHaveBeenCalled()
+  })
+
+  it("refuses a sign-up that arrives without a request to check", async () => {
+    await expect(gate("/sign-up/email")).rejects.toMatchObject(BOT_CHECK_REFUSAL)
+    expect(stubs.passesTurnstile).not.toHaveBeenCalled()
+  })
+
+  it.each(["/sign-in/email", "/change-email", "/reset-password", "/verify-email"])(
+    "leaves %s to the session and the rate limits, with no token asked for",
+    async (path) => {
+      await gate(path, browserRequest(path))
+
+      expect(stubs.passesTurnstile).not.toHaveBeenCalled()
     },
   )
 })

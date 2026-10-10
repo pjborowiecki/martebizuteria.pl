@@ -15,7 +15,7 @@ const sentEmailsSchema = z.array(
 
 export type SentEmail = z.infer<typeof sentEmailsSchema>[number]
 
-const sentEmails = async (request: APIRequestContext, recipient: string): Promise<SentEmail[]> => {
+export const sentEmails = async (request: APIRequestContext, recipient: string): Promise<SentEmail[]> => {
   const response = await request.get("/__test/emails", { params: { to: recipient } }).catch(() => undefined)
   if (response === undefined) {
     return []

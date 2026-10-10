@@ -48,9 +48,14 @@ const readSiteverifyVerdict = async ({ remoteIp, token }: Pick<TurnstileTokenChe
 const isIssuedFor = (verdict: SiteverifyVerdict, { action, hostname }: Pick<TurnstileTokenCheck, "action" | "hostname">): boolean =>
   isTurnstileTestingKey(env.TURNSTILE_SECRET_KEY) || (verdict.action === action && verdict.hostname === hostname)
 
-export const verifyTurnstileToken = async (check: TurnstileTokenCheck): Promise<void> => {
+export const passesTurnstile = async (check: TurnstileTokenCheck): Promise<boolean> => {
   const verdict = await readSiteverifyVerdict(check)
-  if (!verdict.success || !isIssuedFor(verdict, check)) {
+
+  return verdict.success && isIssuedFor(verdict, check)
+}
+
+export const verifyTurnstileToken = async (check: TurnstileTokenCheck): Promise<void> => {
+  if (!(await passesTurnstile(check))) {
     throw new AppError(ERROR_CODES.FORBIDDEN, TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED)
   }
 }

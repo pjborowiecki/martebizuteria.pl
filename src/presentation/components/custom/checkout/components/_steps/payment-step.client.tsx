@@ -1,4 +1,4 @@
-import { type BaseSyntheticEvent, type JSX, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type BaseSyntheticEvent, type JSX, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { CheckoutElementsProvider, PaymentElement, useCheckoutElements } from "@stripe/react-stripe-js/checkout"
 import { type StripeCheckoutElementsSdkOptions, type StripeCheckoutPaymentElementOptions } from "@stripe/stripe-js"
@@ -11,8 +11,7 @@ import { AlertCircle, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { issueTurnstileToken } from "~/src/integrations/cloudflare-turnstile/turnstile.client"
-import { TURNSTILE_ACTIONS, TURNSTILE_ERROR_CODES } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import { STRIPE_FONTS, getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
 import {
   type CheckoutSession,
@@ -35,6 +34,7 @@ import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delive
 import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
+import { useTurnstileToken } from "~/src/hooks/use-turnstile-token"
 
 import { Button, buttonVariants } from "~/src/presentation/components/shadcn/button"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
@@ -262,20 +262,6 @@ const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
   return { loadError, reportFailure, setLoadError }
 }
 
-const useTurnstileToken = (): TurnstileTokenSource => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const requestToken = useCallback((): Promise<string> => {
-    const container = containerRef.current
-    if (container === null) {
-      return Promise.reject(new Error(TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED))
-    }
-
-    return issueTurnstileToken({ action: TURNSTILE_ACTIONS.CHECKOUT, container })
-  }, [])
-
-  return { containerRef, requestToken }
-}
-
 const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>): CheckoutSessionLoader => {
   const { theme } = useTheme()
   const { checkoutSession, getValues, onEdit, setCheckoutSession } = useCheckoutForm()
@@ -466,7 +452,7 @@ const PaymentStepBody = ({ checkoutSession, loadError, options, resetSession, re
 }
 
 export const PaymentStep = (): JSX.Element => {
-  const { containerRef, requestToken } = useTurnstileToken()
+  const { containerRef, requestToken } = useTurnstileToken(TURNSTILE_ACTIONS.CHECKOUT)
   const { checkoutSession, loadError, options, resetSession, retry } = useCheckoutSessionLoader(requestToken)
 
   return (
@@ -519,11 +505,6 @@ interface CheckoutSessionFailure {
 }
 
 type PaymentStepDestination = "confirmation" | "payment"
-
-interface TurnstileTokenSource {
-  containerRef: RefObject<HTMLDivElement | null>
-  requestToken: () => Promise<string>
-}
 
 interface CheckoutSessionLoader {
   checkoutSession: CheckoutSession | undefined

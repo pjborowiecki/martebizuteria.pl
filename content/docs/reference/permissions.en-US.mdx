@@ -162,7 +162,7 @@ Better Auth is configured in `auth.server.ts` with the signed cookie cache turne
 
 Two layers, both writing to the `rate_limit` table.
 
-**Better Auth's own limiter**, configured with `storage: "database"`, a global 100 requests per 60 seconds, and four per-endpoint rules:
+**Better Auth's own limiter**, counted with the same `withinRateLimit` as the middleware below and configured with `customStorage: authRateLimitStorage`, a global 100 requests per 60 seconds, and four per-endpoint rules:
 
 | Endpoint                           | Max per 60s |
 | ---------------------------------- | ----------- |

@@ -6,12 +6,15 @@ import { ArrowRight, Check, Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { useLocale, useTranslations } from "use-intl/react"
 
+import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
 import { NEWSLETTER_OUTCOME, NEWSLETTER_SOURCE } from "~/src/modules/newsletter/newsletter.constants"
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
 import { subscribeToNewsletterMutation } from "~/src/modules/newsletter/use-cases/subscribe-to-newsletter"
+
+import { useTurnstileToken } from "~/src/hooks/use-turnstile-token"
 
 import { Input } from "~/src/presentation/components/shadcn/input"
 
@@ -23,16 +26,18 @@ export const NewsletterSection = (): JSX.Element => {
     resolver: zodResolver(newsletterZodSchemas.subscribeFormValues),
   })
   const subscribe = useMutation(subscribeToNewsletterMutation)
+  const { containerRef, requestToken } = useTurnstileToken(TURNSTILE_ACTIONS.NEWSLETTER)
 
   const submitEmail = useCallback(
     ({ email }: Newsletter["subscribeFormValues"]) => {
       subscribe.mutate({
         email,
         locale: isSupportedLocale(locale) ? locale : undefined,
+        requestTurnstileToken: requestToken,
         source: NEWSLETTER_SOURCE.LANDING,
       })
     },
-    [locale, subscribe],
+    [locale, requestToken, subscribe],
   )
 
   const handleSubmit = useCallback(
@@ -79,6 +84,7 @@ export const NewsletterSection = (): JSX.Element => {
                   {!subscribe.isPending && <ArrowRight aria-hidden className="size-4" />}
                 </button>
               </div>
+              <div ref={containerRef} className="empty:hidden" />
               {form.formState.errors.email !== undefined && <p className="text-center text-[12px] text-destructive">{t("invalidEmail")}</p>}
               {subscribe.isError && (
                 <p className="text-center text-[12px] text-destructive" role="alert">
