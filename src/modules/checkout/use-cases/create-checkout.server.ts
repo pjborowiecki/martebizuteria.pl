@@ -17,6 +17,7 @@ export const createCheckout = async (input: CreateCheckoutInput): Promise<Create
 
 export interface CreateCheckoutInput {
   readonly checkoutValues: CheckoutFormSchema
+  readonly clientAddress: string
   readonly discountId?: string | undefined
   readonly userEmail: string
   readonly userId: string | undefined

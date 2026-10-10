@@ -28,6 +28,8 @@ Przejdź przez sekcje, które dotyczą Twojej zmiany. Każdy punkt wskazuje plik
 - [ ] `withinRateLimit` w `src/lib/rate-limit.ts` przy awarii **odmawia** — jeśli zapis do D1 rzuci wyjątek, funkcja loguje błąd i zwraca `false`. Nie zmieniaj tego na zachowanie przepuszczające.
 - [ ] Adres IP klienta pochodzi z `cf-connecting-ip`, skonfigurowanego raz w `IP_ADDRESS_HEADER` i przekazanego do Better Auth jako `advanced.ipAddress.ipAddressHeaders`. Nigdy nie czytaj `x-forwarded-for` bezpośrednio.
 - [ ] Własny ogranicznik Better Auth jest włączony (`rateLimit.enabled: true`, `storage: "database"`, domyślnie 100/min) z regułami dla logowania (5), rejestracji (3), żądania resetu hasła (3) i resetu hasła (5). Zachowaj je, jeśli dotykasz tej konfiguracji.
+- [ ] Wszystko, co rezerwuje towar dla gościa, jest ograniczone. Nowy checkout przechodzi w `admitNewCheckout` przez `verifyTurnstileToken` dla akcji `checkout` i `countOpenCheckouts` (pięć otwartych na adres klienta, trzy na e-mail), zanim cokolwiek zarezerwuje, a `cartItemSchema` ogranicza linię do `CART_LINE_QUANTITY_MAX`. Obie kontrole muszą zostać przed `reserveInventoryForItems`. Zmiana odnawia rezerwację bez żadnej z nich, więc `handleUpdateCheckoutSession` musi nadal odrzucać checkout utworzony `CHECKOUT_SESSION_LIFETIME_SECONDS` temu lub dawniej; zobacz [Kasa: limity trzymania towaru](/docs/features/checkout#limity-trzymania-towaru).
+- [ ] Produkcja jest wdrażana z kluczami własnego widżetu Turnstile sklepu. `scripts/verify-turnstile-keys.ts` odrzuca tam testowe klucze Cloudflare, bo przepuszczają każdego odwiedzającego.
 
 ## Błędy
 
@@ -77,9 +79,9 @@ Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli z
 ## Sekrety i kod wyłącznie serwerowy
 
 - [ ] Sekrety czytamy z `env` w `cloudflare:workers`, wyłącznie w modułach zaczynających się od `import "@tanstack/react-start/server-only"`.
-- [ ] Żadna prywatna wartość nie ma prefiksu `VITE_`. `VITE_R2_URL` i `VITE_STRIPE_PUBLISHABLE_KEY` są publiczne z założenia; wszystko pozostałe nie może nim być.
+- [ ] Żadna prywatna wartość nie ma prefiksu `VITE_`. `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY` i `VITE_TURNSTILE_SITE_KEY` są publiczne z założenia; wszystko pozostałe nie może nim być.
 - [ ] Nowy sekret dopisano do `env.<environment>.secrets.required` w `wrangler.jsonc` dla wszystkich trzech środowisk oraz do `.env.development`, `.env.preview`, `.env.production` i `.env.test` (w pliku testowym z wartością atrapy).
-- [ ] Obecny wymagany zestaw to `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `VITE_R2_URL`.
+- [ ] Obecny wymagany zestaw to `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`, `VITE_R2_URL`.
 - [ ] Dane dostępowe **do zarządzania** Cloudflare — `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, `CLOUDFLARE_ACCESS_TOKEN` — zostają lokalnie. `scripts/prepare-deploy-secrets.ts` wysyła tylko nazwy wymienione w `secrets.required`, zapisując `.wrangler/secrets.<env>.json` z uprawnieniami `0o600`, i rzuca wyjątek, gdy brakuje któregoś wymaganego sekretu.
 - [ ] Żaden plik `.env.*` poza `.env.example` i `.env.test` nie jest nigdy commitowany.
 

@@ -11,6 +11,7 @@
   "decreaseQty": "Zmniejsz ilość",
   "increaseQty": "Zwiększ ilość",
   "priceChanged": "Cena zmieniła się od czasu dodania tego produktu do koszyka.",
+  "quantityLimit": "Jednego produktu możesz zamówić najwyżej {max} szt. W sprawie większego zamówienia skontaktuj się z nami.",
   "availability": {
     "banner": "Niektóre produkty w koszyku nie są już dostępne. Zaktualizuj koszyk przed przejściem do kasy.",
     "itemUnavailable": "Nie jest już dostępny",

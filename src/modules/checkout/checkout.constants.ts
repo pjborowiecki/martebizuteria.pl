@@ -3,3 +3,7 @@ export const CHECKOUT_QUERY_KEYS = {
 } as const
 
 export const COMPANY_NAME_MAX_LENGTH = 256
+
+export const OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX = 5
+
+export const OPEN_CHECKOUTS_PER_EMAIL_MAX = 3

@@ -1,3 +1,5 @@
+import { TURNSTILE_ORIGIN } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+
 import { isLocalMode } from "~/src/modules/_core/constants/api"
 
 import { getAssetCdnBase } from "~/src/lib/url"
@@ -17,8 +19,6 @@ const STRIPE_THREE_D_SECURE_ORIGIN = "https://hooks.stripe.com"
 const STRIPE_API_ORIGIN = "https://api.stripe.com"
 
 const STRIPE_ELEMENTS_FONT_STYLESHEET_ORIGIN = "https://fonts.googleapis.com"
-
-const TURNSTILE_ORIGIN = "https://challenges.cloudflare.com"
 
 const INPOST_POINTS_API_ORIGIN = "https://api-pl-points.easypack24.net"
 

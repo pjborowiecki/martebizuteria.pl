@@ -17,7 +17,7 @@ M'Arte nie ma koszyka po stronie serwera. Koszyk żyje w `localStorage` pod kluc
 }
 ```
 
-`CART_PERSIST_VERSION` wynosi `2`. Funkcja `migrate` nie przekształca starych kształtów — waliduje ponownie każdy wiersz predykatem typu `isPersistedCartItem` i odrzuca wszystko, co nie pasuje, więc koszyk zapisany przez starszą wersję degraduje się do pustego lub częściowego, a nie wywala strony.
+`CART_PERSIST_VERSION` wynosi `3`. Funkcja `migrate` nie przekształca starych kształtów — waliduje ponownie każdy wiersz predykatem typu `isPersistedCartItem` i odrzuca wszystko, co nie pasuje, więc koszyk zapisany przez starszą wersję degraduje się do pustego lub częściowego, a nie wywala strony. Sprowadza też `qty` każdej zachowanej linii do przedziału od jednej sztuki do `CART_LINE_QUANTITY_MAX`; wersja `3` sprawia, że uruchamia się raz dla koszyków zapisanych przed wprowadzeniem tego limitu, więc żaden z nich nie wyśle ilości, którą kasa by odrzuciła.
 
 Linia koszyka to:
 
@@ -38,7 +38,7 @@ export interface CartItem {
 
 `id` jest zawsze ustawiane przez `addItem` na `variantId`, więc **tożsamością linii jest wariant**: dodanie tego samego wariantu dwa razy zwiększa `qty`, a nie tworzy drugiej linii. `price` to gotowy napis do wyświetlenia, a `rawPrice` to jednostki podrzędne. `priceChanged` oznacza linię, której cenę sklep zmienił, gdy leżała w koszyku.
 
-Akcje: `addItem`, `applyCurrentPrices(prices)`, `removeItem(id)`, `updateQuantity(id, qty)` (ograniczane do minimum 1), `clearCart`, `itemCount()` i `cartTotal()`.
+Akcje: `addItem`, `applyCurrentPrices(prices)`, `removeItem(id)`, `updateQuantity(id, qty)`, `clearCart`, `itemCount()` i `cartTotal()`. `addItem` i `updateQuantity` trzymają `qty` linii między jedną sztuką a `CART_LINE_QUANTITY_MAX` (10, w `src/modules/cart/cart.constants.ts`), czyli najwyższą liczbą sztuk jednego produktu, jaką kasa przyjmuje w zamówieniu (zobacz [Kasa: limity trzymania towaru](/docs/features/checkout#limity-trzymania-towaru)), więc dodanie produktu, którego koszyk ma już dziesięć sztuk, zostawia dziesięć.
 
 Obok store'a eksportowane jest `useCartHydrated()`. Subskrybuje `useCartStore.persist.onFinishHydration` i zwraca `false`, dopóki rehydratacja się nie zakończy — korzysta z niego każdy odbiorca, który nie może działać na pustym koszyku przed hydratacją, a przede wszystkim strażnik kasy.
 
@@ -100,14 +100,14 @@ return {
 
 ## Strony i komponenty
 
-| Plik                                                                     | Rola                                                                 |
-| ------------------------------------------------------------------------ | -------------------------------------------------------------------- |
-| `src/routes/_storefront.cart.tsx`                                        | `/cart`; renderuje `EmptyCart`, gdy nie ma linii                     |
-| `.../custom/pages/cart-page/cart-item-card.tsx`                          | jedna linia: zdjęcie, tytuły, zmiana ceny, ilość, usunięcie          |
-| `.../custom/pages/cart-page/cart-summary.tsx`                            | podsumowanie i odnośnik do kasy                                      |
-| `.../custom/cart-availability-banner.tsx`                                | banner na całą witrynę, renderowany przez layout `_storefront`       |
-| `.../custom/sales-paused-banner.tsx`                                     | komunikat o wstrzymanej sprzedaży, nad bannerem                      |
-| `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | licznik w nagłówku, `items.reduce((sum, item) => sum + item.qty, 0)` |
+| Plik                                                                     | Rola                                                                                                                                                                            |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/routes/_storefront.cart.tsx`                                        | `/cart`; renderuje `EmptyCart`, gdy nie ma linii                                                                                                                                |
+| `.../custom/pages/cart-page/cart-item-card.tsx`                          | jedna linia: zdjęcie, tytuły, zmiana ceny, ilość, usunięcie; przy `CART_LINE_QUANTITY_MAX` przycisk plusa jest wyłączony, a `pages.cart.quantityLimit` mówi, jak zamówić więcej |
+| `.../custom/pages/cart-page/cart-summary.tsx`                            | podsumowanie i odnośnik do kasy                                                                                                                                                 |
+| `.../custom/cart-availability-banner.tsx`                                | banner na całą witrynę, renderowany przez layout `_storefront`                                                                                                                  |
+| `.../custom/sales-paused-banner.tsx`                                     | komunikat o wstrzymanej sprzedaży, nad bannerem                                                                                                                                 |
+| `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | licznik w nagłówku, `items.reduce((sum, item) => sum + item.qty, 0)`                                                                                                            |
 
 Strona koszyka formatuje własne kwoty, nie korzystając z `useFormatter`:
 

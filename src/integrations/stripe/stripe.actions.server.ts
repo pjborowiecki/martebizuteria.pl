@@ -3,6 +3,8 @@ import type StripeType from "stripe"
 import { type z } from "zod"
 
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+import { verifyTurnstileToken } from "~/src/integrations/cloudflare-turnstile/turnstile.server"
 import { INPOST_POINT_NAME_PATTERN } from "~/src/integrations/inpost/inpost.constants"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import {
@@ -25,7 +27,9 @@ import {
   readCheckoutSessionItemsJson,
   toCheckoutSessionItemsMetadata,
 } from "~/src/modules/checkout/checkout-metadata.zod"
+import { OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX, OPEN_CHECKOUTS_PER_EMAIL_MAX } from "~/src/modules/checkout/checkout.constants"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { countOpenCheckouts } from "~/src/modules/checkout/use-cases/count-open-checkouts.server"
 import { createCheckout } from "~/src/modules/checkout/use-cases/create-checkout.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { supersedeCheckoutSession } from "~/src/modules/checkout/use-cases/supersede-checkout-session.server"
@@ -48,7 +52,8 @@ import { createPendingPayment, getPaymentContextByTransactionId } from "~/src/mo
 import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 import { isSalesPaused } from "~/src/modules/store-setting/store-setting.accessors"
 
-import { resolveRequestOrigin } from "~/src/lib/request"
+import { clientAddress } from "~/src/lib/rate-limit"
+import { resolveRequestIp, resolveRequestOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 import { resolveAssetURL } from "~/src/lib/url"
 
@@ -101,6 +106,30 @@ const assertSalesOpen = async (): Promise<void> => {
   if (await isSalesPaused()) {
     throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SALES_PAUSED)
   }
+}
+
+interface AdmittedCheckout {
+  origin: string
+  visitorAddress: string
+}
+
+const admitNewCheckout = async ({ checkoutValues, turnstileToken }: CreateCheckoutSessionInput): Promise<AdmittedCheckout> => {
+  await assertSalesOpen()
+  const request = getRequest()
+  const origin = resolveRequestOrigin(request)
+  await verifyTurnstileToken({
+    action: TURNSTILE_ACTIONS.CHECKOUT,
+    hostname: new URL(origin).hostname,
+    remoteIp: resolveRequestIp(request.headers),
+    token: turnstileToken,
+  })
+  const visitorAddress = clientAddress(request.headers)
+  const open = await countOpenCheckouts({ clientAddress: visitorAddress, email: checkoutValues.email })
+  if (open.byClientAddress >= OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX || open.byEmail >= OPEN_CHECKOUTS_PER_EMAIL_MAX) {
+    throw new AppError(ERROR_CODES.TOO_MANY_REQUESTS, CHECKOUT_ERROR_CODES.TOO_MANY_OPEN_CHECKOUTS)
+  }
+
+  return { origin, visitorAddress }
 }
 
 const resolveDelivery = async (checkoutValues: CheckoutSessionValues): Promise<ResolvedDelivery> => {
@@ -312,8 +341,7 @@ const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenChecko
 }
 
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
-  await assertSalesOpen()
-  const origin = resolveRequestOrigin(getRequest())
+  const { origin, visitorAddress } = await admitNewCheckout(data)
   const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)
   const session = await getRequestSession()
   const userId = session?.user.id
@@ -335,6 +363,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
   try {
     const { checkoutId, discountClaimed } = await createCheckout({
       checkoutValues,
+      clientAddress: visitorAddress,
       discountId: applicableDiscount?.discountId,
       userEmail: email,
       userId,
@@ -371,6 +400,7 @@ interface SignedInUser {
 }
 
 interface UpdatableCheckout {
+  checkoutCreatedAt: Date
   checkoutId: string
   heldLines: CheckoutReleaseLine[]
   ownerId: string | undefined
@@ -423,11 +453,22 @@ const resolveUpdatableCheckout = async (sessionId: string): Promise<UpdatableChe
   }
 
   return {
+    checkoutCreatedAt: context.checkoutCreatedAt,
     checkoutId: context.checkoutId,
     heldLines: readHeldLines(stripeSession),
     ownerId: context.userId,
     signedInUser,
   }
+}
+
+const assertCheckoutStillEditable = async (sessionId: string, checkoutCreatedAt: Date): Promise<void> => {
+  const editingClosesAt = checkoutCreatedAt.getTime() + CHECKOUT_SESSION_LIFETIME_SECONDS * MILLISECONDS_PER_SECOND
+  if (Date.now() < editingClosesAt) {
+    return
+  }
+
+  await releaseExpiredCheckoutSession(await stripe.checkout.sessions.expire(sessionId))
+  throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
 }
 
 interface ReplacementCustomerArgs {
@@ -548,8 +589,9 @@ const reserveReplacementCheckout = async ({
 
 export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInput) => {
   const origin = resolveRequestOrigin(getRequest())
-  const { checkoutId, heldLines, ownerId, signedInUser } = await resolveUpdatableCheckout(data.sessionId)
+  const { checkoutCreatedAt, checkoutId, heldLines, ownerId, signedInUser } = await resolveUpdatableCheckout(data.sessionId)
   await assertSalesOpen()
+  await assertCheckoutStillEditable(data.sessionId, checkoutCreatedAt)
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
   const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)

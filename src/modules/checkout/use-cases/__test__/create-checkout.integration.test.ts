@@ -20,6 +20,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
 const USER_ID = "user_1"
 
+const CLIENT_ADDRESS = "203.0.113.7"
+
 const shippingForm: CheckoutFormSchema = {
   address1: "Krucza 1",
   address2: "m. 4",
@@ -52,6 +54,7 @@ const separateBillingForm: CheckoutFormSchema = {
 
 const checkoutRowSchema = z.object({
   billing_address_id: z.string().nullable(),
+  client_address: z.string().nullable(),
   customer_note: z.string().nullable(),
   delivery_method_id: z.string().nullable(),
   email: z.string(),
@@ -88,7 +91,7 @@ const resetSchema = (): void => {
       );
       create table checkout (
         id text primary key, billing_company_name text, billing_nip text, status text not null, email text not null, user_id text, cart_id text, discount_id text,
-        customer_note text, delivery_method_id text, locker_id text, billing_address_id text, shipping_address_id text,
+        client_address text, customer_note text, delivery_method_id text, locker_id text, billing_address_id text, shipping_address_id text,
         created_at integer, updated_at integer
       );
       create table discount (
@@ -111,9 +114,15 @@ afterAll(() => {
 
 describe("createCheckout", () => {
   it("opens a pending checkout and hands back its id", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: "account@example.com",
+      userId: USER_ID,
+    })
 
     expect(readCheckout(checkoutId)).toMatchObject({
+      client_address: CLIENT_ADDRESS,
       customer_note: "Leave with the concierge",
       delivery_method_id: "courier_1",
       email: "account@example.com",
@@ -123,7 +132,12 @@ describe("createCheckout", () => {
   })
 
   it("stores the shipping address and bills it to the same place when the shopper asked for that", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: "account@example.com",
+      userId: USER_ID,
+    })
     const row = readCheckout(checkoutId)
 
     expect(countAddresses()).toBe(1)
@@ -137,7 +151,12 @@ describe("createCheckout", () => {
   })
 
   it("stores a second address when the shopper typed a separate billing address", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: separateBillingForm, userEmail: "account@example.com", userId: USER_ID })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: separateBillingForm,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: "account@example.com",
+      userId: USER_ID,
+    })
     const row = readCheckout(checkoutId)
 
     expect(countAddresses()).toBe(2)
@@ -146,26 +165,47 @@ describe("createCheckout", () => {
   })
 
   it("keeps a guest checkout unattached to any account", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: shippingForm, userEmail: "guest@example.com", userId: undefined })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: "guest@example.com",
+      userId: undefined,
+    })
 
     expect(readCheckout(checkoutId).user_id).toBeNull()
   })
 
   it("gives every checkout its own id", async () => {
-    const first = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
-    const second = await createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID })
+    const first = await createCheckout({
+      checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: "account@example.com",
+      userId: USER_ID,
+    })
+    const second = await createCheckout({
+      checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: "account@example.com",
+      userId: USER_ID,
+    })
 
     expect(second.checkoutId).not.toBe(first.checkoutId)
   })
 
   it("reports no claimed discount when the shopper entered no code", async () => {
     await expect(
-      createCheckout({ checkoutValues: shippingForm, userEmail: "account@example.com", userId: USER_ID }),
+      createCheckout({ checkoutValues: shippingForm, clientAddress: CLIENT_ADDRESS, userEmail: "account@example.com", userId: USER_ID }),
     ).resolves.toMatchObject({ discountClaimed: false })
   })
 
   it("claims the code's last use for the first checkout and applies the code to it in the batch that opens it", async () => {
-    const input = { checkoutValues: shippingForm, discountId: "disc_last", userEmail: "account@example.com", userId: USER_ID }
+    const input = {
+      checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
+      discountId: "disc_last",
+      userEmail: "account@example.com",
+      userId: USER_ID,
+    }
 
     const holder = await createCheckout(input)
 
@@ -175,7 +215,13 @@ describe("createCheckout", () => {
   })
 
   it("opens the next checkout without the code while another holds its last use", async () => {
-    const input = { checkoutValues: shippingForm, discountId: "disc_last", userEmail: "account@example.com", userId: USER_ID }
+    const input = {
+      checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
+      discountId: "disc_last",
+      userEmail: "account@example.com",
+      userId: USER_ID,
+    }
     const holder = await createCheckout(input)
 
     const latecomer = await createCheckout({ ...input, userEmail: "other@example.com" })

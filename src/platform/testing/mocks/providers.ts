@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { TURNSTILE_ORIGIN, TURNSTILE_TESTING_KEYS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import { STRIPE_API_VERSION, STRIPE_CURRENCY } from "~/src/integrations/stripe/stripe.constants"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
@@ -55,6 +56,8 @@ const stripeSetupIntentParamsSchema = z.object({
   payment_method_types: z.record(z.string(), z.string()),
   usage: z.enum(["off_session", "on_session"]),
 })
+
+const turnstileSiteverifySchema = z.object({ response: z.string(), secret: z.string() })
 
 const stripeRefundParamsSchema = z.object({
   amount: stripeAmountSchema.optional(),
@@ -503,6 +506,23 @@ export const expireCheckoutSession = (sessionId: string): string | undefined => 
   return checkoutSessionEvent("checkout.session.expired", expired)
 }
 
+const answerTurnstileSiteverify = async (request: Request): Promise<Response> => {
+  const form = new URLSearchParams(await request.text())
+  const { response, secret } = turnstileSiteverifySchema.parse(Object.fromEntries(form))
+  if (secret !== TURNSTILE_TESTING_KEYS.ALWAYS_PASSES_SECRET_KEY || response !== TURNSTILE_TESTING_KEYS.DUMMY_TOKEN) {
+    return Response.json({ "error-codes": ["invalid-input-response"], success: false })
+  }
+
+  return Response.json({
+    action: "test",
+    cdata: "test-data",
+    challenge_ts: new Date().toISOString(),
+    "error-codes": [],
+    hostname: "localhost",
+    success: true,
+  })
+}
+
 export const installProviderMocks = (): void => {
   globalThis.fetch = async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]): Promise<Response> => {
     const request = new Request(input, init)
@@ -513,6 +533,10 @@ export const installProviderMocks = (): void => {
 
     if (url.hostname === "api.stripe.com") {
       return emulateStripe(request, url)
+    }
+
+    if (url.origin === TURNSTILE_ORIGIN) {
+      return answerTurnstileSiteverify(request)
     }
 
     return nativeFetch(request)

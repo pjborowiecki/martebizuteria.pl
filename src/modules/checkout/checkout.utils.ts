@@ -21,6 +21,7 @@ import { productVariant } from "~/src/modules/product-variant/product-variant.sc
 
 export interface PrepareCreateCheckoutInput {
   readonly checkoutValues: CheckoutFormSchema
+  readonly clientAddress: string
   readonly discountId?: string | undefined
   readonly userEmail: string
   readonly userId: string | undefined
@@ -121,6 +122,7 @@ const prepareCheckoutDiscountClaim = (
 
 export const prepareCreateCheckoutBatch = ({
   checkoutValues,
+  clientAddress,
   discountId,
   userEmail,
   userId,
@@ -149,6 +151,7 @@ export const prepareCreateCheckoutBatch = ({
     billingAddressId,
     billingCompanyName: companyInvoice.billingCompanyName,
     billingNip: companyInvoice.billingNip,
+    clientAddress,
     customerNote: checkoutValues.deliveryNotes,
     deliveryMethodId: checkoutValues.deliveryMethod,
     email: userEmail,
@@ -424,7 +427,7 @@ export const prepareFulfillCheckoutBatch = (
       db.update(payment).set({ status: "succeeded" }).where(eq(payment.transactionId, transactionId)),
       db
         .update(checkout)
-        .set({ status: "completed" })
+        .set({ clientAddress: sql`NULL`, status: "completed" })
         .where(and(eq(checkout.id, context.checkoutId), eq(checkout.status, "pending"))),
       orderNumberAllocation.statement,
       db.insert(order).values({
@@ -488,7 +491,7 @@ export const prepareReleaseCheckoutBatch = ({
     db.delete(discountClaim).where(inArray(discountClaim.checkoutId, releasableSession)),
     db
       .update(checkout)
-      .set({ status: "failed" })
+      .set({ clientAddress: sql`NULL`, status: "failed" })
       .where(and(eq(checkout.status, "pending"), exists(sessionPaymentOfCheckout))),
     db
       .update(payment)

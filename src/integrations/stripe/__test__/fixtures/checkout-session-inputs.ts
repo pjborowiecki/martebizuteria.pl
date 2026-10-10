@@ -45,8 +45,10 @@ export const availableVariant = (): CatalogueVariant => ({
   title: "Rozmiar M (katalog)",
 })
 
+export const TURNSTILE_TOKEN = "turnstile-token-1"
+
 export const createInput = (values: Record<string, unknown> = {}, items: Record<string, unknown>[] = [CART_ITEM]) =>
-  createCheckoutSessionInputSchema.parse({ checkoutValues: { ...CHECKOUT_VALUES, ...values }, items })
+  createCheckoutSessionInputSchema.parse({ checkoutValues: { ...CHECKOUT_VALUES, ...values }, items, turnstileToken: TURNSTILE_TOKEN })
 
 export const updateInput = (values: Record<string, unknown> = {}, items: Record<string, unknown>[] = [CART_ITEM]) =>
   updateCheckoutSessionInputSchema.parse({
@@ -56,6 +58,7 @@ export const updateInput = (values: Record<string, unknown> = {}, items: Record<
   })
 
 export const pendingContext = (overrides: Record<string, unknown> = {}) => ({
+  checkoutCreatedAt: new Date(),
   checkoutId: "checkout-1",
   checkoutStatus: "pending",
   email: "anna@example.com",

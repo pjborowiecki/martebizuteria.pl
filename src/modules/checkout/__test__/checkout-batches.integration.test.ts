@@ -35,6 +35,8 @@ const VARIANT_ID = "var_1"
 
 const TRANSACTION_ID = "cs_test_1"
 
+const CLIENT_ADDRESS = "203.0.113.7"
+
 const shippingForm: CheckoutFormSchema = {
   address1: "Krucza 1",
   address2: "m. 4",
@@ -84,6 +86,7 @@ const checkoutRowSchema = z.object({
   billing_address_id: z.string().nullable(),
   billing_company_name: z.string().nullable(),
   billing_nip: z.string().nullable(),
+  client_address: z.string().nullable(),
   customer_note: z.string().nullable(),
   delivery_method_id: z.string().nullable(),
   email: z.string(),
@@ -119,6 +122,7 @@ const readInventory = (variantId: string) =>
 const createdCheckoutId = async (): Promise<string> => {
   const { checkoutId, statements } = prepareCreateCheckoutBatch({
     checkoutValues: shippingForm,
+    clientAddress: CLIENT_ADDRESS,
     userEmail: "buyer@example.com",
     userId: USER_ID,
   })
@@ -145,7 +149,7 @@ const resetSchema = (): void => {
       );
       create table checkout (
         id text primary key, billing_company_name text, billing_nip text, status text not null, email text not null, user_id text, cart_id text, discount_id text,
-        customer_note text, delivery_method_id text, locker_id text, billing_address_id text, shipping_address_id text,
+        client_address text, customer_note text, delivery_method_id text, locker_id text, billing_address_id text, shipping_address_id text,
         created_at integer, updated_at integer
       );
       create table payment (id text primary key, checkout_id text, status text, transaction_id text unique, created_at integer, updated_at integer);
@@ -171,6 +175,7 @@ describe("prepareCreateCheckoutBatch", () => {
   it("writes one address and reuses it for billing when the shopper kept them the same", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
@@ -185,6 +190,7 @@ describe("prepareCreateCheckoutBatch", () => {
   it("keeps an address the shopper declined to save out of their address book", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: { ...shippingForm, saveShippingAddress: false },
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
@@ -203,6 +209,7 @@ describe("prepareCreateCheckoutBatch", () => {
 
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
@@ -217,6 +224,7 @@ describe("prepareCreateCheckoutBatch", () => {
   it("writes a second address when the shopper entered a separate billing address", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: separateBillingForm,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
@@ -243,6 +251,7 @@ describe("prepareCreateCheckoutBatch billing details", () => {
 
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: withoutBillingDetails,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
@@ -257,12 +266,14 @@ describe("prepareCreateCheckoutBatch billing details", () => {
   it("opens the checkout as pending with the delivery selection attached", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
     await runDrizzleBatch(statements)
 
     expect(readCheckout(checkoutId)).toMatchObject({
+      client_address: CLIENT_ADDRESS,
       customer_note: "Leave with the concierge",
       delivery_method_id: "courier_1",
       status: "pending",
@@ -273,6 +284,7 @@ describe("prepareCreateCheckoutBatch billing details", () => {
   it("stores the authenticated account's email rather than the one typed in the form", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "account@example.com",
       userId: USER_ID,
     })
@@ -284,6 +296,7 @@ describe("prepareCreateCheckoutBatch billing details", () => {
   it("keeps a guest checkout unattached to any account", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "guest@example.com",
       userId: undefined,
     })
@@ -298,6 +311,7 @@ describe("prepareCreateCheckoutBatch billing details", () => {
   it("honours the shopper's choice to save the shipping address as their default", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
@@ -309,6 +323,7 @@ describe("prepareCreateCheckoutBatch billing details", () => {
   it("carries every shipping address field through to the row", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "buyer@example.com",
       userId: USER_ID,
     })
@@ -328,8 +343,18 @@ describe("prepareCreateCheckoutBatch billing details", () => {
   })
 
   it("gives each checkout its own identifier", () => {
-    const first = prepareCreateCheckoutBatch({ checkoutValues: shippingForm, userEmail: "buyer@example.com", userId: USER_ID })
-    const second = prepareCreateCheckoutBatch({ checkoutValues: shippingForm, userEmail: "buyer@example.com", userId: USER_ID })
+    const first = prepareCreateCheckoutBatch({
+      checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: "buyer@example.com",
+      userId: USER_ID,
+    })
+    const second = prepareCreateCheckoutBatch({
+      checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: "buyer@example.com",
+      userId: USER_ID,
+    })
 
     expect(first.checkoutId).not.toBe(second.checkoutId)
   })
@@ -390,7 +415,8 @@ describe("prepareReleaseCheckoutBatch", () => {
   beforeEach(() => {
     resetSchema()
     sqlite.exec(`
-      insert into checkout (id, status, email) values ('chk_1', 'pending', 'buyer@example.com'), ('chk_2', 'pending', 'other@example.com');
+      insert into checkout (id, status, email, client_address)
+        values ('chk_1', 'pending', 'buyer@example.com', '${CLIENT_ADDRESS}'), ('chk_2', 'pending', 'other@example.com', '${CLIENT_ADDRESS}');
       insert into payment (id, checkout_id, status, transaction_id) values ('pay_2', 'chk_2', 'pending', 'cs_test_2');
       insert into discount_claim (id, checkout_id, discount_id, email) values
         ('claim_1', 'chk_1', 'disc_last', 'buyer@example.com'),
@@ -417,6 +443,13 @@ describe("prepareReleaseCheckoutBatch", () => {
 
     expect(readPaymentStatus(TRANSACTION_ID)).toBe("failed")
     expect(readCheckout("chk_1").status).toBe("failed")
+  })
+
+  it("forgets the client address of the checkout it ends and keeps the one still open", async () => {
+    await runDrizzleBatch(prepareReleaseCheckoutBatch({ lines: [], transactionId: TRANSACTION_ID }))
+
+    expect(readCheckout("chk_1").client_address).toBeNull()
+    expect(readCheckout("chk_2").client_address).toBe(CLIENT_ADDRESS)
   })
 
   it("returns the reserved stock to availability", async () => {
@@ -457,7 +490,12 @@ describe("prepareReleaseCheckoutBatch", () => {
 })
 
 const createdCheckoutIdFrom = async (form: CheckoutFormSchema): Promise<string> => {
-  const { checkoutId, statements } = prepareCreateCheckoutBatch({ checkoutValues: form, userEmail: "buyer@example.com", userId: USER_ID })
+  const { checkoutId, statements } = prepareCreateCheckoutBatch({
+    checkoutValues: form,
+    clientAddress: CLIENT_ADDRESS,
+    userEmail: "buyer@example.com",
+    userId: USER_ID,
+  })
   await runDrizzleBatch(statements)
 
   return checkoutId
@@ -645,6 +683,7 @@ describe("prepareUpdateCheckoutDeliveryBatch filling in what the checkout or for
   it("keeps the addresses of a guest checkout out of every address book", async () => {
     const { checkoutId, statements } = prepareCreateCheckoutBatch({
       checkoutValues: shippingForm,
+      clientAddress: CLIENT_ADDRESS,
       userEmail: "guest@example.com",
       userId: undefined,
     })

@@ -25,6 +25,7 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({ useCheckoutElements: () => 
 
 import { useCheckoutElements as loadStubbedCheckout } from "@stripe/react-stripe-js/checkout"
 
+import { TURNSTILE_ERROR_CODES } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import {
   type CheckoutSession,
   PaidCheckoutSessionError,
@@ -99,6 +100,10 @@ const existingSession: CheckoutSession = {
 }
 
 const repricedItems = [cartItem("variant-b", 1, 26_900), cartItem("variant-a", 2)]
+
+const TURNSTILE_TOKEN = "turnstile-token-1"
+
+const requestTurnstileToken = (): Promise<string> => Promise.resolve(TURNSTILE_TOKEN)
 
 describe("buildCheckoutValuesFingerprint", () => {
   it("ignores the insertion order of the form fields", () => {
@@ -234,7 +239,7 @@ describe("ensureCheckoutSession", () => {
     createCheckoutSessionFn.mockResolvedValue(opened("cs_new", "cs_secret_new"))
 
     await expect(
-      ensureCheckoutSession({ existing: undefined, heldSessionId: undefined, items, values: shippingValues }),
+      ensureCheckoutSession({ existing: undefined, heldSessionId: undefined, items, requestTurnstileToken, values: shippingValues }),
     ).resolves.toStrictEqual({
       clientSecret: "cs_secret_new",
       expiresAt: EXPIRES_AT,
@@ -243,7 +248,9 @@ describe("ensureCheckoutSession", () => {
       totals: QUOTED_TOTALS,
       valuesFingerprint: buildCheckoutValuesFingerprint(shippingValues),
     })
-    expect(createCheckoutSessionFn).toHaveBeenCalledWith({ data: { checkoutValues: shippingValues, items } })
+    expect(createCheckoutSessionFn).toHaveBeenCalledWith({
+      data: { checkoutValues: shippingValues, items, turnstileToken: TURNSTILE_TOKEN },
+    })
     expect(updateCheckoutSessionFn).not.toHaveBeenCalled()
   })
 
@@ -254,11 +261,48 @@ describe("ensureCheckoutSession", () => {
       existing: undefined,
       heldSessionId: undefined,
       items: repricedItems,
+      requestTurnstileToken,
       values: shippingValues,
     })
 
     expect(session.lines).toStrictEqual(QUOTED_LINES)
     expect(isCheckoutSessionFor(session, { items: repricedItems, values: shippingValues })).toBe(false)
+  })
+})
+
+describe("ensureCheckoutSession and the bot check", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it("opens no checkout when the bot check fails", async () => {
+    const failure = new Error(TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED)
+
+    await expect(
+      ensureCheckoutSession({
+        existing: undefined,
+        heldSessionId: undefined,
+        items,
+        requestTurnstileToken: () => Promise.reject(failure),
+        values: shippingValues,
+      }),
+    ).rejects.toBe(failure)
+    expect(createCheckoutSessionFn).not.toHaveBeenCalled()
+  })
+
+  it("asks for a bot check only to open a checkout, not to continue the one the browser holds", async () => {
+    updateCheckoutSessionFn.mockResolvedValue(opened("cs_replacement", "cs_secret_replacement"))
+    const tokenRequests = vi.fn(requestTurnstileToken)
+
+    await ensureCheckoutSession({
+      existing: undefined,
+      heldSessionId: "cs_held",
+      items,
+      requestTurnstileToken: tokenRequests,
+      values: shippingValues,
+    })
+
+    expect(tokenRequests).not.toHaveBeenCalled()
   })
 })
 
@@ -275,7 +319,13 @@ describe("ensureCheckoutSession with a session the browser holds", () => {
   it("continues the session the browser holds instead of opening a second one after a reload", async () => {
     updateCheckoutSessionFn.mockResolvedValue(opened("cs_replacement", "cs_secret_replacement"))
 
-    const session = await ensureCheckoutSession({ existing: undefined, heldSessionId: "cs_held", items, values: shippingValues })
+    const session = await ensureCheckoutSession({
+      existing: undefined,
+      heldSessionId: "cs_held",
+      items,
+      requestTurnstileToken,
+      values: shippingValues,
+    })
 
     expect(updateCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
       data: { checkoutValues: shippingValues, items, sessionId: "cs_held" },
@@ -287,7 +337,13 @@ describe("ensureCheckoutSession with a session the browser holds", () => {
   it("continues the session another tab moved the browser to rather than the one this tab still shows", async () => {
     updateCheckoutSessionFn.mockResolvedValue(opened("cs_replacement", "cs_secret_replacement"))
 
-    await ensureCheckoutSession({ existing: existingSession, heldSessionId: "cs_other_tab", items, values: shippingValues })
+    await ensureCheckoutSession({
+      existing: existingSession,
+      heldSessionId: "cs_other_tab",
+      items,
+      requestTurnstileToken,
+      values: shippingValues,
+    })
 
     expect(updateCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
       data: { checkoutValues: shippingValues, items, sessionId: "cs_other_tab" },
@@ -298,16 +354,30 @@ describe("ensureCheckoutSession with a session the browser holds", () => {
     updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_CLOSED))
     createCheckoutSessionFn.mockResolvedValue(opened("cs_fresh", "cs_secret_fresh"))
 
-    const session = await ensureCheckoutSession({ existing: undefined, heldSessionId: "cs_expired", items, values: shippingValues })
+    const session = await ensureCheckoutSession({
+      existing: undefined,
+      heldSessionId: "cs_expired",
+      items,
+      requestTurnstileToken,
+      values: shippingValues,
+    })
 
     expect(session.sessionId).toBe("cs_fresh")
-    expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({ data: { checkoutValues: shippingValues, items } })
+    expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
+      data: { checkoutValues: shippingValues, items, turnstileToken: TURNSTILE_TOKEN },
+    })
   })
 
   it("names the held session the server reports paid instead of opening a second payment for it", async () => {
     updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_COMPLETE))
 
-    const continuing = ensureCheckoutSession({ existing: undefined, heldSessionId: "cs_paid", items, values: shippingValues })
+    const continuing = ensureCheckoutSession({
+      existing: undefined,
+      heldSessionId: "cs_paid",
+      items,
+      requestTurnstileToken,
+      values: shippingValues,
+    })
 
     await expect(continuing).rejects.toBeInstanceOf(PaidCheckoutSessionError)
     await expect(continuing).rejects.toMatchObject({ message: CHECKOUT_ERROR_CODES.SESSION_COMPLETE, sessionId: "cs_paid" })
@@ -327,7 +397,13 @@ describe("ensureCheckoutSession with the session on screen", () => {
 
   it("reuses an unchanged session without calling Stripe again", async () => {
     await expect(
-      ensureCheckoutSession({ existing: existingSession, heldSessionId: existingSession.sessionId, items, values: shippingValues }),
+      ensureCheckoutSession({
+        existing: existingSession,
+        heldSessionId: existingSession.sessionId,
+        items,
+        requestTurnstileToken,
+        values: shippingValues,
+      }),
     ).resolves.toBe(existingSession)
     expect(createCheckoutSessionFn).not.toHaveBeenCalled()
     expect(updateCheckoutSessionFn).not.toHaveBeenCalled()
@@ -335,7 +411,7 @@ describe("ensureCheckoutSession with the session on screen", () => {
 
   it("reuses an unchanged session when the browser could not store its id", async () => {
     await expect(
-      ensureCheckoutSession({ existing: existingSession, heldSessionId: undefined, items, values: shippingValues }),
+      ensureCheckoutSession({ existing: existingSession, heldSessionId: undefined, items, requestTurnstileToken, values: shippingValues }),
     ).resolves.toBe(existingSession)
     expect(updateCheckoutSessionFn).not.toHaveBeenCalled()
   })
@@ -351,6 +427,7 @@ describe("ensureCheckoutSession with the session on screen", () => {
       existing: existingSession,
       heldSessionId: undefined,
       items: repricedItems,
+      requestTurnstileToken,
       values: shippingValues,
     })
 
@@ -370,6 +447,7 @@ describe("ensureCheckoutSession with the session on screen", () => {
       existing: existingSession,
       heldSessionId: existingSession.sessionId,
       items: swapped,
+      requestTurnstileToken,
       values: shippingValues,
     })
 
@@ -388,7 +466,13 @@ describe("ensureCheckoutSession with the session on screen", () => {
     updateCheckoutSessionFn.mockResolvedValue(opened("cs_existing", "cs_secret_updated"))
     const values = { ...shippingValues, ...changes }
 
-    const updated = await ensureCheckoutSession({ existing: existingSession, heldSessionId: undefined, items, values })
+    const updated = await ensureCheckoutSession({
+      existing: existingSession,
+      heldSessionId: undefined,
+      items,
+      requestTurnstileToken,
+      values,
+    })
 
     expect(updateCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
       data: { checkoutValues: values, items, sessionId: "cs_existing" },
@@ -396,7 +480,9 @@ describe("ensureCheckoutSession with the session on screen", () => {
     expect(createCheckoutSessionFn).not.toHaveBeenCalled()
     expect(updated.valuesFingerprint).toBe(buildCheckoutValuesFingerprint(values))
 
-    await expect(ensureCheckoutSession({ existing: updated, heldSessionId: undefined, items, values })).resolves.toBe(updated)
+    await expect(
+      ensureCheckoutSession({ existing: updated, heldSessionId: undefined, items, requestTurnstileToken, values }),
+    ).resolves.toBe(updated)
     expect(updateCheckoutSessionFn).toHaveBeenCalledTimes(1)
   })
 
@@ -407,10 +493,22 @@ describe("ensureCheckoutSession with the session on screen", () => {
       existing: existingSession,
       heldSessionId: undefined,
       items: repricedItems,
+      requestTurnstileToken,
       values: shippingValues,
     })
 
     expect(session.sessionId).toBe("cs_replacement")
+  })
+})
+
+describe("ensureCheckoutSession when the session on screen can no longer change", () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+    useOpeningTime()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it("starts a fresh checkout when the server refuses to change a session that has closed", async () => {
@@ -418,7 +516,13 @@ describe("ensureCheckoutSession with the session on screen", () => {
     createCheckoutSessionFn.mockResolvedValue(opened("cs_fresh", "cs_secret_fresh"))
 
     await expect(
-      ensureCheckoutSession({ existing: existingSession, heldSessionId: undefined, items: repricedItems, values: shippingValues }),
+      ensureCheckoutSession({
+        existing: existingSession,
+        heldSessionId: undefined,
+        items: repricedItems,
+        requestTurnstileToken,
+        values: shippingValues,
+      }),
     ).resolves.toStrictEqual({
       clientSecret: "cs_secret_fresh",
       expiresAt: EXPIRES_AT,
@@ -427,7 +531,9 @@ describe("ensureCheckoutSession with the session on screen", () => {
       totals: QUOTED_TOTALS,
       valuesFingerprint: buildCheckoutValuesFingerprint(shippingValues),
     })
-    expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({ data: { checkoutValues: shippingValues, items: repricedItems } })
+    expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
+      data: { checkoutValues: shippingValues, items: repricedItems, turnstileToken: TURNSTILE_TOKEN },
+    })
   })
 
   it.each([new Error(CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY), "SESSION_CLOSED"])(
@@ -436,7 +542,13 @@ describe("ensureCheckoutSession with the session on screen", () => {
       updateCheckoutSessionFn.mockRejectedValue(failure)
 
       await expect(
-        ensureCheckoutSession({ existing: existingSession, heldSessionId: undefined, items: repricedItems, values: shippingValues }),
+        ensureCheckoutSession({
+          existing: existingSession,
+          heldSessionId: undefined,
+          items: repricedItems,
+          requestTurnstileToken,
+          values: shippingValues,
+        }),
       ).rejects.toBe(failure)
       expect(createCheckoutSessionFn).not.toHaveBeenCalled()
     },
@@ -457,7 +569,7 @@ describe("resetCheckoutSession", () => {
     updateCheckoutSessionFn.mockResolvedValue(opened("cs_existing", "cs_secret_reset"))
 
     await expect(
-      resetCheckoutSession({ heldSessionId: undefined, items, session: existingSession, values: shippingValues }),
+      resetCheckoutSession({ heldSessionId: undefined, items, requestTurnstileToken, session: existingSession, values: shippingValues }),
     ).resolves.toStrictEqual({
       clientSecret: "cs_secret_reset",
       expiresAt: EXPIRES_AT,
@@ -474,7 +586,13 @@ describe("resetCheckoutSession", () => {
   it("resets the session the browser holds when another tab has replaced the one on screen", async () => {
     updateCheckoutSessionFn.mockResolvedValue(opened("cs_replacement", "cs_secret_reset"))
 
-    await resetCheckoutSession({ heldSessionId: "cs_other_tab", items, session: existingSession, values: shippingValues })
+    await resetCheckoutSession({
+      heldSessionId: "cs_other_tab",
+      items,
+      requestTurnstileToken,
+      session: existingSession,
+      values: shippingValues,
+    })
 
     expect(updateCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
       data: { checkoutValues: shippingValues, items, sessionId: "cs_other_tab" },
@@ -487,6 +605,7 @@ describe("resetCheckoutSession", () => {
     const session = await resetCheckoutSession({
       heldSessionId: undefined,
       items: repricedItems,
+      requestTurnstileToken,
       session: existingSession,
       values: shippingValues,
     })
@@ -499,17 +618,25 @@ describe("resetCheckoutSession", () => {
     updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_CLOSED))
     createCheckoutSessionFn.mockResolvedValue(opened("cs_fresh", "cs_secret_fresh"))
 
-    const session = await resetCheckoutSession({ heldSessionId: undefined, items, session: existingSession, values: shippingValues })
+    const session = await resetCheckoutSession({
+      heldSessionId: undefined,
+      items,
+      requestTurnstileToken,
+      session: existingSession,
+      values: shippingValues,
+    })
 
     expect(session).toMatchObject({ clientSecret: "cs_secret_fresh", expiresAt: EXPIRES_AT, sessionId: "cs_fresh" })
-    expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({ data: { checkoutValues: shippingValues, items } })
+    expect(createCheckoutSessionFn).toHaveBeenCalledExactlyOnceWith({
+      data: { checkoutValues: shippingValues, items, turnstileToken: TURNSTILE_TOKEN },
+    })
   })
 
   it("names the session it was paying when the server reports it paid, instead of opening a fresh checkout", async () => {
     updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_COMPLETE))
 
     await expect(
-      resetCheckoutSession({ heldSessionId: undefined, items, session: existingSession, values: shippingValues }),
+      resetCheckoutSession({ heldSessionId: undefined, items, requestTurnstileToken, session: existingSession, values: shippingValues }),
     ).rejects.toMatchObject({ name: "PaidCheckoutSessionError", sessionId: "cs_existing" })
     expect(createCheckoutSessionFn).not.toHaveBeenCalled()
   })

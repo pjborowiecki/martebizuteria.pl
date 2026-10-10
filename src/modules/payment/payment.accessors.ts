@@ -71,6 +71,7 @@ export const getPaymentContextByTransactionId = async (transactionId: string): P
 
   const checkoutRow = await db.query.checkout.findFirst({
     columns: {
+      createdAt: true,
       email: true,
       status: true,
       userId: true,
@@ -83,6 +84,7 @@ export const getPaymentContextByTransactionId = async (transactionId: string): P
   }
 
   return {
+    checkoutCreatedAt: checkoutRow.createdAt,
     checkoutId: paymentRow.checkoutId,
     checkoutStatus: checkoutRow.status,
     email: checkoutRow.email,
@@ -101,6 +103,7 @@ interface CreatePaymentInput {
 }
 
 interface PaymentContext {
+  checkoutCreatedAt: Date
   checkoutId: string
   checkoutStatus: (typeof checkout.$inferSelect)["status"]
   email: string

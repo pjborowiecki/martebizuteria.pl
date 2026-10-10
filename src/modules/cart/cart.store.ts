@@ -3,11 +3,16 @@ import { useEffect, useState } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
+import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
 import { type CartUnitPrice, getCartLineTotalCents, getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 
 const MIN_QUANTITY = 1
 
-const CART_PERSIST_VERSION = 2
+const CART_PERSIST_VERSION = 3
+
+const toLineQuantity = (qty: number): number => Math.min(CART_LINE_QUANTITY_MAX, Math.max(MIN_QUANTITY, qty))
+
+const withLineQuantityLimit = (item: CartItem): CartItem => ({ ...item, qty: toLineQuantity(item.qty) })
 
 export interface CartItem {
   readonly id: string
@@ -85,7 +90,7 @@ export const useCartStore = create<CartState>()(
                 item.id === lineId
                   ? {
                       ...item,
-                      qty: item.qty + qty,
+                      qty: toLineQuantity(item.qty + qty),
                     }
                   : item,
               ),
@@ -98,7 +103,7 @@ export const useCartStore = create<CartState>()(
               {
                 ...incoming,
                 id: lineId,
-                qty,
+                qty: toLineQuantity(qty),
               },
             ],
           }
@@ -131,7 +136,7 @@ export const useCartStore = create<CartState>()(
             item.id === id
               ? {
                   ...item,
-                  qty: Math.max(MIN_QUANTITY, qty),
+                  qty: toLineQuantity(qty),
                 }
               : item,
           ),
@@ -150,7 +155,7 @@ export const useCartStore = create<CartState>()(
           items?: unknown
         }
 
-        const items = Array.isArray(state.items) ? state.items.filter(isPersistedCartItem) : []
+        const items = Array.isArray(state.items) ? state.items.filter(isPersistedCartItem).map((item) => withLineQuantityLimit(item)) : []
 
         return {
           items,

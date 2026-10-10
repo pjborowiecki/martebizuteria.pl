@@ -81,6 +81,7 @@ Note the return type. **A missing product and an out-of-stock product are both `
 - `isOutOfStock` is `availableQuantity < 1`
 - `canPurchase = isVariantPurchasable(selectedVariant, quantity)`
 - if the chosen quantity exceeds what is available, an effect clamps it down
+- the quantity picker stops at the lower of `availableQuantity` and `CART_LINE_QUANTITY_MAX`, the most of one piece an order may hold
 - changing the variant resets the quantity to 1
 
 On click it pushes one line into the zustand store and fires activity tracking:

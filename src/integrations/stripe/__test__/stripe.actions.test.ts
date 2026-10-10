@@ -76,33 +76,51 @@ const CART_LINE = {
 
 const CART_ITEM = { ...CART_LINE, price: "249,00 zł", rawPrice: 24_900 }
 
+const TURNSTILE_TOKEN = "turnstile-token-1"
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
 describe("createCheckoutSessionFn", () => {
   it("hands a valid cart to the server handler, without the prices the browser remembers, and returns its answer", async () => {
-    const data = { checkoutValues: CHECKOUT_VALUES, items: [CART_ITEM] }
+    const data = { checkoutValues: CHECKOUT_VALUES, items: [CART_ITEM], turnstileToken: TURNSTILE_TOKEN }
+    const expected = { checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_LINE], turnstileToken: TURNSTILE_TOKEN }
 
     const result = await createCheckoutSessionFn({ data })
 
-    expect(result).toStrictEqual({ created: { checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_LINE] } })
-    expect(state.createHandler).toHaveBeenCalledWith({ checkoutValues: PARSED_CHECKOUT_VALUES, items: [CART_LINE] })
+    expect(result).toStrictEqual({ created: expected })
+    expect(state.createHandler).toHaveBeenCalledWith(expected)
   })
 
   it("hands the server handler the company to invoice with the NIP reduced to its ten digits", async () => {
     const company = { billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "PL 526-000-12-46", companyInvoice: true }
 
-    await createCheckoutSessionFn({ data: { checkoutValues: { ...CHECKOUT_VALUES, ...company }, items: [CART_ITEM] } })
+    await createCheckoutSessionFn({
+      data: { checkoutValues: { ...CHECKOUT_VALUES, ...company }, items: [CART_ITEM], turnstileToken: TURNSTILE_TOKEN },
+    })
 
     expect(state.createHandler).toHaveBeenCalledWith({
       checkoutValues: { ...PARSED_CHECKOUT_VALUES, ...company, billingNip: "5260001246" },
       items: [CART_LINE],
+      turnstileToken: TURNSTILE_TOKEN,
     })
   })
 
   it("refuses an empty cart before reaching Stripe", () => {
     expect(() => createCheckoutSessionFn({ data: { checkoutValues: CHECKOUT_VALUES, items: [] } })).toThrow()
+    expect(state.createHandler).not.toHaveBeenCalled()
+  })
+
+  it("refuses a checkout without a Turnstile token before reaching Stripe", () => {
+    expect(() => createCheckoutSessionFn({ data: { checkoutValues: CHECKOUT_VALUES, items: [CART_ITEM] } })).toThrow()
+    expect(state.createHandler).not.toHaveBeenCalled()
+  })
+
+  it("refuses more of one piece than an order may hold", () => {
+    const data = { checkoutValues: CHECKOUT_VALUES, items: [{ ...CART_ITEM, qty: 11 }], turnstileToken: TURNSTILE_TOKEN }
+
+    expect(() => createCheckoutSessionFn({ data })).toThrow()
     expect(state.createHandler).not.toHaveBeenCalled()
   })
 

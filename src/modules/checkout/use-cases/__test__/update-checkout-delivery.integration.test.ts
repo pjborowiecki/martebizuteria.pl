@@ -19,6 +19,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
+const CLIENT_ADDRESS = "203.0.113.7"
+
 const shipping: CheckoutFormSchema = {
   address1: "Krucza 1",
   address2: "Apartment 4",
@@ -76,7 +78,7 @@ beforeEach(() => {
     );
     create table checkout (
       id text primary key, billing_company_name text, billing_nip text, status text not null, email text not null, user_id text, cart_id text, discount_id text,
-      customer_note text, delivery_method_id text, locker_id text, billing_address_id text, shipping_address_id text,
+      client_address text, customer_note text, delivery_method_id text, locker_id text, billing_address_id text, shipping_address_id text,
       created_at integer, updated_at integer
     );
   `)
@@ -92,7 +94,12 @@ afterEach(() => {
 
 describe("checkout address and contact edits", () => {
   it("persists the revised shipping, contact, and delivery details together", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: shipping, userEmail: shipping.email, userId: "user-1" })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: shipping,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: shipping.email,
+      userId: "user-1",
+    })
     const original = readCheckout(checkoutId)
 
     await updateCheckoutDelivery(checkoutId, {
@@ -140,7 +147,12 @@ describe("checkout address and contact edits", () => {
   })
 
   it("creates a separate billing address when billing previously shared shipping", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: shipping, userEmail: shipping.email, userId: "user-1" })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: shipping,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: shipping.email,
+      userId: "user-1",
+    })
     const original = readCheckout(checkoutId)
 
     await updateCheckoutDelivery(checkoutId, { ...separateBilling, saveBillingAddress: true })
@@ -164,7 +176,12 @@ describe("checkout address and contact edits", () => {
   })
 
   it("updates an existing separate billing address without creating another one", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: separateBilling, userEmail: shipping.email, userId: "user-1" })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: separateBilling,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: shipping.email,
+      userId: "user-1",
+    })
     const original = readCheckout(checkoutId)
 
     await updateCheckoutDelivery(checkoutId, { ...separateBilling, billingAddress1: "Billing street 9", phone: "+48600999888" })
@@ -176,7 +193,12 @@ describe("checkout address and contact edits", () => {
   })
 
   it("relinks billing to shipping without changing the former billing address", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: separateBilling, userEmail: shipping.email, userId: "user-1" })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: separateBilling,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: shipping.email,
+      userId: "user-1",
+    })
     const original = readCheckout(checkoutId)
     const formerBilling = readAddress(original.billing_address_id)
 
@@ -192,6 +214,7 @@ describe("checkout update persistence boundaries", () => {
   it("clears removed optional shipping fields and the obsolete locker selection", async () => {
     const { checkoutId } = await createCheckout({
       checkoutValues: { ...shipping, lockerId: "WAW01A" },
+      clientAddress: CLIENT_ADDRESS,
       userEmail: shipping.email,
       userId: "user-1",
     })
@@ -204,7 +227,12 @@ describe("checkout update persistence boundaries", () => {
   })
 
   it("keeps guest addresses unattached to a customer and avoids duplicates on retry", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: shipping, userEmail: shipping.email, userId: undefined })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: shipping,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: shipping.email,
+      userId: undefined,
+    })
 
     await updateCheckoutDelivery(checkoutId, shipping)
     await updateCheckoutDelivery(checkoutId, shipping)
@@ -216,7 +244,12 @@ describe("checkout update persistence boundaries", () => {
   })
 
   it("recreates address records if the checkout's previous addresses were removed", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: shipping, userEmail: shipping.email, userId: "user-1" })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: shipping,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: shipping.email,
+      userId: "user-1",
+    })
     sqlite.exec("delete from address; update checkout set shipping_address_id = null, billing_address_id = null")
 
     await updateCheckoutDelivery(checkoutId, separateBilling)
@@ -228,7 +261,12 @@ describe("checkout update persistence boundaries", () => {
   })
 
   it("rolls address edits back when the checkout update fails", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: shipping, userEmail: shipping.email, userId: "user-1" })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: shipping,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: shipping.email,
+      userId: "user-1",
+    })
     const original = readCheckout(checkoutId)
     const originalAddress = readAddress(original.shipping_address_id)
     sqlite.exec(
@@ -251,7 +289,12 @@ describe("checkout update persistence boundaries", () => {
   })
 
   it("rejects edits once the checkout has completed", async () => {
-    const { checkoutId } = await createCheckout({ checkoutValues: shipping, userEmail: shipping.email, userId: "user-1" })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: shipping,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: shipping.email,
+      userId: "user-1",
+    })
     sqlite.exec("update checkout set status = 'completed'")
     const original = readCheckout(checkoutId)
     const originalAddress = readAddress(original.shipping_address_id)
@@ -269,7 +312,12 @@ describe("checkout update completion races", () => {
     { initial: separateBilling, missingAddresses: false, name: "existing shipping and billing addresses" },
     { initial: shipping, missingAddresses: true, name: "new shipping and billing addresses" },
   ])("preserves $name when payment completes after reading status", async ({ initial, missingAddresses }) => {
-    const { checkoutId } = await createCheckout({ checkoutValues: initial, userEmail: initial.email, userId: "user-1" })
+    const { checkoutId } = await createCheckout({
+      checkoutValues: initial,
+      clientAddress: CLIENT_ADDRESS,
+      userEmail: initial.email,
+      userId: "user-1",
+    })
     if (missingAddresses) {
       sqlite.exec("delete from address; update checkout set shipping_address_id = null, billing_address_id = null")
     }

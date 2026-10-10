@@ -11,6 +11,7 @@
   "decreaseQty": "Decrease quantity",
   "increaseQty": "Increase quantity",
   "priceChanged": "The price has changed since you added this piece to your cart.",
+  "quantityLimit": "You can order up to {max} of one piece. For a larger order, please contact us.",
   "availability": {
     "banner": "Some items in your cart are no longer available. Update your cart before checkout.",
     "itemUnavailable": "No longer available",

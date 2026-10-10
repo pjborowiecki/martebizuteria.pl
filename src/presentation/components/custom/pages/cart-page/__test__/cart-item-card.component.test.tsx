@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
 import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
 import { type CartAvailabilityIssue } from "~/src/modules/cart/use-cases/check-cart-availability"
 
@@ -105,6 +106,21 @@ describe("CartItemCard", () => {
     await userEvent.click(screen.getByRole("button", { name: "Decrease quantity" }))
 
     expect(useCartStore.getState().items[0]?.qty).toBe(1)
+  })
+
+  it("stops the plus button at the most of one piece an order may hold and says how to order more", () => {
+    issuesRef.current = [{ available: 50, qty: CART_LINE_QUANTITY_MAX, variantId: "variant-1" }]
+    renderWithProviders(<CartItemCard item={cartItem({ qty: CART_LINE_QUANTITY_MAX })} />)
+
+    expect(screen.getByRole("button", { name: "Increase quantity" })).toBeDisabled()
+    expect(screen.getByRole("status")).toHaveTextContent("You can order up to 10 of one piece. For a larger order, please contact us.")
+  })
+
+  it("says nothing about the limit while the line is below it", () => {
+    renderWithProviders(<CartItemCard item={cartItem({ qty: CART_LINE_QUANTITY_MAX - 1 })} />)
+
+    expect(screen.getByRole("button", { name: "Increase quantity" })).toBeEnabled()
+    expect(screen.queryByRole("status")).not.toBeInTheDocument()
   })
 
   it("refuses to lower the quantity below one", () => {

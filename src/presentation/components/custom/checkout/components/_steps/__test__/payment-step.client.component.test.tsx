@@ -21,6 +21,7 @@ interface SessionRequest {
   existing: CheckoutSession | undefined
   heldSessionId: string | undefined
   items: readonly { qty: number; variantId: string }[]
+  requestTurnstileToken: () => Promise<string>
   values: CheckoutFormSchema
 }
 
@@ -238,6 +239,7 @@ describe("PaymentStep session bootstrap", () => {
       existing: undefined,
       heldSessionId: undefined,
       items: useCartStore.getState().items,
+      requestTurnstileToken: ensureCheckoutSession.mock.calls[0]?.[0].requestTurnstileToken,
       values: completeValues,
     })
     expect(setCheckoutSession).toHaveBeenCalledWith(session)
@@ -301,12 +303,14 @@ describe("PaymentStep session bootstrap", () => {
     renderWithProviders(<PaymentStep />)
 
     await waitFor(() => {
-      expect(ensureCheckoutSession).toHaveBeenCalledWith({
-        existing: session,
-        heldSessionId: undefined,
-        items: useCartStore.getState().items,
-        values: formState.values,
-      })
+      expect(ensureCheckoutSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          existing: session,
+          heldSessionId: undefined,
+          items: useCartStore.getState().items,
+          values: formState.values,
+        }),
+      )
     })
     expect(setCheckoutSession).toHaveBeenCalledWith(updatedSession)
     expect(await screen.findByTestId("payment-element")).toBeInTheDocument()
