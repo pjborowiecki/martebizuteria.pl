@@ -40,6 +40,8 @@ const routing = vi.hoisted((): DocsRouting => ({
 
 const menu = vi.hoisted(() => ({ fetchCollections: vi.fn<() => Promise<unknown[]>>() }))
 
+const sales = vi.hoisted(() => ({ fetchStatus: vi.fn<() => Promise<{ salesPaused: boolean }>>() }))
+
 const docs = vi.hoisted(() => ({
   loadDocsNavigation: vi.fn<() => Promise<{ readonly sections: readonly DocsNavigationSection[] }>>(),
   loadDocsPage: vi.fn<(splat?: string) => Promise<DocsPageMeta>>(),
@@ -64,6 +66,11 @@ vi.mock("~/src/modules/product-collection/use-cases/get-collections", async () =
 
   return { getCollectionsQuery: () => ({ queryFn: menu.fetchCollections, queryKey: COLLECTION_QUERY_KEYS.ALL }) }
 })
+vi.mock("~/src/modules/store-setting/use-cases/get-sales-status", async () => {
+  const { STORE_SETTING_QUERY_KEYS } = await import("~/src/modules/store-setting/store-setting.constants")
+
+  return { getSalesStatusQuery: () => ({ queryFn: sales.fetchStatus, queryKey: STORE_SETTING_QUERY_KEYS.SALES }) }
+})
 vi.mock("~/src/presentation/components/custom/pages/docs/docs-sidebar", () => ({
   DocsSidebar: (): JSX.Element => <nav data-testid="docs-sidebar" />,
 }))
@@ -73,6 +80,9 @@ vi.mock("~/src/presentation/components/custom/pages/landing-page/navigation/comp
 vi.mock("~/src/presentation/components/custom/pages/landing-page/footer/footer", () => ({
   Footer: (): JSX.Element => <footer data-testid="storefront-footer" />,
 }))
+vi.mock("~/src/presentation/components/custom/sales-paused-banner", () => ({
+  SalesPausedBanner: (): JSX.Element => <div data-testid="sales-paused-banner" />,
+}))
 vi.mock("~/src/presentation/components/custom/docs-content", () => ({
   docsContent: { useContent: (path: string): JSX.Element => <article data-testid="docs-content">{path}</article> },
 }))
@@ -80,6 +90,7 @@ vi.mock("~/src/presentation/components/custom/docs-content", () => ({
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { COLLECTION_QUERY_KEYS } from "~/src/modules/product-collection/product-collection.constants"
+import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
 import { pageHead } from "~/src/lib/seo"
 
@@ -108,6 +119,7 @@ const loadAt = (path: string, params: DocsLoaderContext["params"] = {}, queryCli
     throw new Error(`the route at ${path} registered no loader`)
   }
   menu.fetchCollections.mockResolvedValue(MENU_COLLECTIONS)
+  sales.fetchStatus.mockResolvedValue({ salesPaused: false })
 
   return loader({ context: { queryClient }, params })
 }
@@ -135,6 +147,14 @@ describe("documentation layout", () => {
     expect(screen.getByTestId("storefront-footer")).toBeInTheDocument()
   })
 
+  it("puts the paused-sales notice between the navigation and the documentation area", () => {
+    renderRoute("/docs", { sections: SECTIONS })
+
+    const notice = screen.getByTestId("sales-paused-banner")
+    expect(screen.getByTestId("storefront-navigation").compareDocumentPosition(notice)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(notice.compareDocumentPosition(screen.getByRole("main"))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
   it("renders the sidebar beside the routed page", () => {
     renderRoute("/docs", { sections: SECTIONS })
 
@@ -143,11 +163,11 @@ describe("documentation layout", () => {
     expect(screen.getByRole("main")).toBeInTheDocument()
   })
 
-  it("loads the page tree and preloads only the documentation namespace", () => {
+  it("loads the page tree and preloads the cart namespace of the paused-sales notice beside the documentation one", () => {
     const route = routeAt("/docs")
 
     expect(route.loader).toBeTypeOf("function")
-    expect(route.staticData).toStrictEqual({ namespaces: ["pages.docs"] })
+    expect(route.staticData).toStrictEqual({ namespaces: ["pages.cart", "pages.docs"] })
   })
 
   it("hands the sidebar the sections of the documentation tree", async () => {
@@ -172,6 +192,25 @@ describe("documentation layout", () => {
 
     await expect(loadAt("/docs", {}, queryClient)).resolves.toStrictEqual({ sections: SECTIONS })
     expect(queryClient.getQueryState(COLLECTION_QUERY_KEYS.ALL)).toMatchObject({ data: undefined, status: "error" })
+  })
+
+  it("renders the documentation knowing whether sales are paused, so the notice is in the first paint", async () => {
+    docs.loadDocsNavigation.mockResolvedValue({ sections: SECTIONS })
+    sales.fetchStatus.mockResolvedValueOnce({ salesPaused: true })
+    const queryClient = new QueryClient()
+
+    await loadAt("/docs", {}, queryClient)
+
+    expect(queryClient.getQueryData(STORE_SETTING_QUERY_KEYS.SALES)).toStrictEqual({ salesPaused: true })
+  })
+
+  it("still hands the sidebar its sections when the sales status cannot be read, leaving the notice to ask again", async () => {
+    docs.loadDocsNavigation.mockResolvedValue({ sections: SECTIONS })
+    sales.fetchStatus.mockRejectedValueOnce(new Error("D1 unavailable"))
+    const queryClient = new QueryClient()
+
+    await expect(loadAt("/docs", {}, queryClient)).resolves.toStrictEqual({ sections: SECTIONS })
+    expect(queryClient.getQueryState(STORE_SETTING_QUERY_KEYS.SALES)).toMatchObject({ data: undefined, status: "error" })
   })
 })
 

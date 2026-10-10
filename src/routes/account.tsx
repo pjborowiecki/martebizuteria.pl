@@ -7,6 +7,7 @@ import { requireCustomer } from "~/src/integrations/better-auth/auth.routes"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
+import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
@@ -15,6 +16,7 @@ import { AccountNotFoundState } from "~/src/presentation/components/custom/pages
 import { AccountSidebar } from "~/src/presentation/components/custom/pages/account/account-sidebar"
 import { Footer } from "~/src/presentation/components/custom/pages/landing-page/footer/footer"
 import { Navigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation"
+import { SalesPausedBanner } from "~/src/presentation/components/custom/sales-paused-banner"
 
 import type accountMetaMessages from "~/messages/en-US/pages.account.meta.json"
 
@@ -49,6 +51,7 @@ const AccountLayout = (): JSX.Element => {
   return (
     <div className="flex min-h-dvh flex-col">
       <Navigation />
+      <SalesPausedBanner />
       <main className="mx-auto w-full max-w-400 flex-1 px-6 font-light lg:px-12">
         <div className="grid gap-x-16 gap-y-10 py-12 lg:grid-cols-[220px_1fr] lg:py-20 lg:pl-[116px]">
           <Suspense fallback={sidebarFallback}>
@@ -81,6 +84,7 @@ export const Route = createFileRoute("/account")({
           staleTime: "static",
         })
         .catch(noop),
+      context.queryClient.query(getSalesStatusQuery()).catch(noop),
     ])
 
     return {
@@ -90,6 +94,6 @@ export const Route = createFileRoute("/account")({
   },
   notFoundComponent: AccountNotFoundState,
   staticData: {
-    namespaces: ["pages.account", "pages.account.meta", "pages.auth.errors", "pages.auth.validations"],
+    namespaces: ["pages.account", "pages.account.meta", "pages.auth.errors", "pages.auth.validations", "pages.cart"],
   },
 })

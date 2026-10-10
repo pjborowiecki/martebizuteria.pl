@@ -105,13 +105,13 @@ Dlatego `index` **nie może** być wymieniony w tablicy `pages` w pliku `meta.<l
 
 ## Trasy
 
-| Trasa     | Plik                        | Działanie                                                                                                               |
-| --------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `/docs`   | `src/routes/docs.tsx`       | Układ: nawigacja, `DocsSidebar`, stopka; loader uruchamia jednocześnie `loadDocsNavigation()` i `getCollectionsQuery()` |
-| `/docs`   | `src/routes/docs.index.tsx` | Strona główna, `loadDocsPage()` bez splata                                                                              |
-| `/docs/$` | `src/routes/docs.$.tsx`     | Każda inna strona, `loadDocsPage(params._splat)`                                                                        |
+| Trasa     | Plik                        | Działanie                                                                                                                                                                           |
+| --------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/docs`   | `src/routes/docs.tsx`       | Układ: nawigacja, komunikat o wstrzymanej sprzedaży, `DocsSidebar`, stopka; loader uruchamia jednocześnie `loadDocsNavigation()`, `getCollectionsQuery()` i `getSalesStatusQuery()` |
+| `/docs`   | `src/routes/docs.index.tsx` | Strona główna, `loadDocsPage()` bez splata                                                                                                                                          |
+| `/docs/$` | `src/routes/docs.$.tsx`     | Każda inna strona, `loadDocsPage(params._splat)`                                                                                                                                    |
 
-Układ deklaruje `staticData: { namespaces: ["pages.docs"] }` — stąd pochodzą własne etykiety panelu bocznego (`messages/{locale}/pages.docs.json`: `navigation.title`, `navigation.label`, `navigation.overview`). Obie trasy stron ustawiają `head: pageHead` i `wrapInSuspense: false`.
+Układ deklaruje `staticData: { namespaces: ["pages.cart", "pages.docs"] }`. W `pages.cart` jest tekst `SalesPausedBanner`, komunikatu pokazywanego pod nawigacją, dopóki sprzedaż jest wstrzymana (zobacz [Kasa: wstrzymanie sprzedaży](/docs/features/checkout#wstrzymanie-sprzedaży)), a z `pages.docs` pochodzą własne etykiety panelu bocznego (`messages/{locale}/pages.docs.json`: `navigation.title`, `navigation.label`, `navigation.overview`). Obie trasy stron ustawiają `head: pageHead` i `wrapInSuspense: false`.
 
 `DocsSidebar` w `src/presentation/components/custom/pages/docs/docs-sidebar.tsx` renderuje odnośnik „Przegląd" do `ROUTES.DOCS`, a po nim po jednej grupie na sekcję, używając `LocalizedLink` z `activeOptions={{ exact: true }}`.
 

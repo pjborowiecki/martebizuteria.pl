@@ -8,6 +8,7 @@ const CI_RETRIES = 2
 const DEV_RETRIES = 0
 const WORKERS = 2
 const E2E_TIMEOUT_MS = 60_000
+const SHOP_WIDE_SPECS = /.*\.shop-wide\.ts/u
 
 const STRIPE_TEST_MODE_SPEC = /stripe-test-mode\.spec\.ts$/u
 
@@ -22,6 +23,8 @@ export default defineConfig({
     { dependencies: ["setup"], name: "chromium", testIgnore: STRIPE_TEST_MODE_SPEC, use: { ...devices["Desktop Chrome"] } },
     { dependencies: ["setup"], name: "webkit", testIgnore: STRIPE_TEST_MODE_SPEC, use: { ...devices["Desktop Safari"] } },
     { name: "stripe-test-mode", testMatch: STRIPE_TEST_MODE_SPEC, use: { ...devices["Desktop Chrome"] } },
+    { dependencies: ["chromium"], name: "chromium-shop-wide", testMatch: SHOP_WIDE_SPECS, use: { ...devices["Desktop Chrome"] } },
+    { dependencies: ["webkit"], name: "webkit-shop-wide", testMatch: SHOP_WIDE_SPECS, use: { ...devices["Desktop Safari"] } },
   ],
   reporter: isCI ? [["github"], ["html", { open: "never" }]] : [["list"], ["html", { open: "on-failure" }]],
   retries: isCI ? CI_RETRIES : DEV_RETRIES,

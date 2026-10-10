@@ -1,4 +1,5 @@
 export { AccountPage } from "./account-page"
+export { AdminDashboardPage } from "./admin-dashboard-page"
 export { AdminOrderPage } from "./admin-order-page"
 export { AuthPage } from "./auth-page"
 export { BasePage } from "./base-page"

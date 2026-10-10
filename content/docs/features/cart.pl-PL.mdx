@@ -139,7 +139,7 @@ Gdy `checkoutDisabled` albo `salesPaused` jest prawdziwe, odnośnik do kasy zast
 Wynik sprawdzenia dostępności wykorzystują trzy strażniki:
 
 - `/cart` blokuje odnośnik do kasy, dopóki `hasUnavailableItems || isChecking`, a także dopóki `getSalesStatusQuery()` zgłasza wstrzymaną sprzedaż, co przekazuje podsumowaniu jako `salesPaused`. Sam koszyk działa dalej, więc kupujący może trzymać w nim produkty do wznowienia sprzedaży.
-- `CartAvailabilityBanner` renderuje pasek z `role="alert"` i komunikatem `pages.cart.availability.banner`, gdy linie są niedostępne. Nad nim `SalesPausedBanner` renderuje na każdej stronie sklepu pasek z `role="status"` i komunikatem `pages.cart.salesPaused.banner`, dopóki sprzedaż jest wstrzymana. Zobacz [Kasa: wstrzymanie sprzedaży](/docs/features/checkout#wstrzymanie-sprzedaży).
+- `CartAvailabilityBanner` renderuje pasek z `role="alert"` i komunikatem `pages.cart.availability.banner`, gdy linie są niedostępne. Nad nim `SalesPausedBanner` renderuje na każdej stronie sklepu pasek z `role="status"` i komunikatem `pages.cart.salesPaused.banner`, dopóki sprzedaż jest wstrzymana; layouty konta i dokumentacji też renderują go pod swoją nawigacją. Zobacz [Kasa: wstrzymanie sprzedaży](/docs/features/checkout#wstrzymanie-sprzedaży).
 - `/checkout` przekierowuje z powrotem na `/cart`, gdy zhydratowany koszyk jest pusty albo ma problemy ze stanem. Zobacz [Kasa](/docs/features/checkout).
 
 ## Śledzenie porzucenia koszyka
