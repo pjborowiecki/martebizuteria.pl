@@ -45,6 +45,16 @@ describe("DeliveryLocker", () => {
     expect(screen.getByText("Have your package delivered to a secure parcel locker (e.g. InPost Paczkomat).")).toBeInTheDocument()
   })
 
+  it("states the delivery time the terms of service give: the fulfillment time, then up to 4 business days with InPost", () => {
+    renderWithProviders(<LockerHarness lockerId="" />)
+
+    expect(
+      screen.getByText(
+        "We prepare your order within the fulfillment time stated on the product page, counted from the acceptance of the order; with several products, the longest applies. InPost delivery then takes up to 4 business days from dispatch, and we email you the tracking number.",
+      ),
+    ).toBeInTheDocument()
+  })
+
   it("always renders the locker picker", () => {
     renderWithProviders(<LockerHarness lockerId="" />)
 

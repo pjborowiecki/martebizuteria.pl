@@ -128,7 +128,7 @@ Numery telefonów są walidowane przez `isValidPhoneNumber(value, "PL")` z `libp
 
 `_steps/delivery-step.tsx` czyta `listDeliveryMethodsQuery()` i grupuje wiersze po `type` w ustalonej kolejności `DELIVERY_METHODS` (`courier`, `locker`, `in_store`). Wybór typu ustawia `deliveryMethodType`, a gdy ten typ ma dokładnie jedną metodę — automatycznie ustawia `deliveryMethod`; w przeciwnym razie je czyści. Podtytuł karty pokazuje najniższą cenę grupy, `deliverySubsteps.free`, gdy ta cena to zero, albo `od <cena>`, gdy grupa ma więcej niż jedną metodę.
 
-Podkrok zależy od typu: `DeliveryCourier`, `DeliveryLocker` (z mapą InPost) albo `DeliveryInStore` (sama treść). Zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery).
+Podkrok zależy od typu: `DeliveryCourier`, `DeliveryLocker` (z mapą InPost) albo `DeliveryInStore` (sama treść). Każdy podaje termin dostawy z § 7 regulaminu, zanim klient zapłaci: kroki kuriera i paczkomatu podają czas realizacji ze strony produktu, a potem do 4 dni roboczych od nadania przez InPost, a krok odbioru osobistego mówi, że zamówienie jest gotowe najpóźniej z upływem tego czasu realizacji. Zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery).
 
 ## Podsumowanie
 

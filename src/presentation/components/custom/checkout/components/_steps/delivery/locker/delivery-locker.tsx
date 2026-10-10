@@ -24,6 +24,8 @@ export const DeliveryLocker = (): JSX.Element => {
         <p className="text-sm leading-relaxed text-muted-foreground">{t("deliverySubsteps.lockerText")}</p>
       </div>
 
+      <p className="text-sm leading-relaxed text-muted-foreground">{t("deliverySubsteps.parcelDeliveryTime")}</p>
+
       <Field data-invalid={fieldState.invalid} className="flex flex-col gap-3">
         {field.value !== "" && (
           <div className="flex items-center gap-4 rounded-none border border-foreground/10 bg-muted/20 p-4">

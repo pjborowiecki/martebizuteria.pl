@@ -13,7 +13,9 @@ vi.mock("~/src/lib/url", () => ({
 import { type CheckoutEmailContext } from "~/src/integrations/resend/order-confirmation.utils"
 import { buildOrderShippedAccountCta, buildOrderShippedDetails } from "~/src/integrations/resend/order-shipped.utils"
 
+import englishConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
 import englishCopy from "~/messages/en-US/emails.order-shipped.json"
+import polishConfirmationCopy from "~/messages/pl-PL/emails.order-confirmation.json"
 import polishCopy from "~/messages/pl-PL/emails.order-shipped.json"
 
 const addressRow = {
@@ -57,6 +59,17 @@ describe("buildOrderShippedDetails", () => {
     const details = buildOrderShippedDetails({ ...context, deliveryMethod: { name: "Method", type } }, englishCopy)
 
     expect(details.estimatedDelivery).toBe(englishCopy.deliveryTiming[type].estimatedDelivery)
+  })
+
+  it.each([
+    ["courier", englishCopy, englishConfirmationCopy],
+    ["locker", englishCopy, englishConfirmationCopy],
+    ["courier", polishCopy, polishConfirmationCopy],
+    ["locker", polishCopy, polishConfirmationCopy],
+  ] as const)("promises the %s transit time the order confirmation and the terms of service give", (type, copy, confirmationCopy) => {
+    const details = buildOrderShippedDetails({ ...context, deliveryMethod: { name: "Method", type } }, copy)
+
+    expect(details.estimatedDelivery).toBe(confirmationCopy.estimatedDelivery[type])
   })
 
   it("assumes courier timings when no delivery method was captured", () => {

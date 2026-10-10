@@ -57,7 +57,7 @@ describe("OrderShipped", () => {
     expect(text).toContain(`${englishCopy.deliveryMethodLabel}\n\n${details.deliveryMethod}`)
     expect(text).toContain(englishCopy.shippingAddressLabel)
     expect(text).toContain("ul. Mokotowska 12/4")
-    expect(text).toContain(`${englishCopy.estimatedDeliveryLabel}\n\n2–4 business days after dispatch`)
+    expect(text).toContain(`${englishCopy.estimatedDeliveryLabel}\n\nUp to 4 business days after dispatch`)
   })
 
   it("carries the dispatch message and the closing offer of help", async () => {

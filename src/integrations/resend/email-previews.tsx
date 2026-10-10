@@ -54,7 +54,6 @@ const PREVIEW_ORDER_CONFIRMATION_DETAILS = {
   billingAddress: "Tak jak adres dostawy",
   companyInvoice: PREVIEW_COMPANY_INVOICE,
   deliveryMethod: "Kurier DPD · dostawa do domu",
-  estimatedDelivery: "2–4 dni robocze od wysyłki",
   paymentMethod: "Karta płatnicza",
   shippingAddress: PREVIEW_ADDRESS,
 }
@@ -235,21 +234,25 @@ export const EMAIL_PREVIEWS = {
     label: "Order refunded",
   },
   "order-shipped": {
-    element: async (locale) => (
-      <OrderShipped
-        accountCta={PREVIEW_CUSTOMER_CTA}
-        details={{
-          deliveryMethod: PREVIEW_ORDER_CONFIRMATION_DETAILS.deliveryMethod,
-          estimatedDelivery: PREVIEW_ORDER_CONFIRMATION_DETAILS.estimatedDelivery,
-          shippingAddress: PREVIEW_ADDRESS,
-          trackingNumber: PREVIEW_TRACKING_NUMBER,
-          trackingUrl: undefined,
-        }}
-        locale={locale}
-        messages={await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })}
-        orderNumber={PREVIEW_ORDER_NUMBER}
-      />
-    ),
+    element: async (locale) => {
+      const messages = await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })
+
+      return (
+        <OrderShipped
+          accountCta={PREVIEW_CUSTOMER_CTA}
+          details={{
+            deliveryMethod: PREVIEW_ORDER_CONFIRMATION_DETAILS.deliveryMethod,
+            estimatedDelivery: messages.deliveryTiming.courier.estimatedDelivery,
+            shippingAddress: PREVIEW_ADDRESS,
+            trackingNumber: PREVIEW_TRACKING_NUMBER,
+            trackingUrl: undefined,
+          }}
+          locale={locale}
+          messages={messages}
+          orderNumber={PREVIEW_ORDER_NUMBER}
+        />
+      )
+    },
     label: "Order shipped",
   },
   "password-changed": {

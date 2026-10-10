@@ -35,6 +35,9 @@ import { DeliveryCourier } from "~/src/presentation/components/custom/checkout/c
 
 const COURIER_TITLE = "Choose a courier"
 
+const PARCEL_DELIVERY_TIME =
+  "We prepare your order within the fulfillment time stated on the product page, counted from the acceptance of the order; with several products, the longest applies. InPost delivery then takes up to 4 business days from dispatch, and we email you the tracking number."
+
 afterEach(() => {
   cleanup()
 })
@@ -90,14 +93,10 @@ describe("DeliveryCourier", () => {
     expect(screen.getByLabelText("Delivery Instructions (Optional)")).toBeInTheDocument()
   })
 
-  it("explains the standard delivery window", async () => {
+  it("states the delivery time the terms of service give: the fulfillment time, then up to 4 business days with InPost", async () => {
     renderWithProviders(<DeliveryCourier />)
 
-    expect(
-      await screen.findByText(
-        "Standard delivery typically takes 1-3 business days. You will receive a tracking link once your order has shipped.",
-      ),
-    ).toBeInTheDocument()
+    expect(await screen.findByText(PARCEL_DELIVERY_TIME)).toBeInTheDocument()
   })
 
   it("gives each courier option its own radio input", async () => {

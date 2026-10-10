@@ -18,6 +18,7 @@ import resetPasswordCopy from "~/messages/en-US/emails.reset-password.json"
 import verifyEmailCopy from "~/messages/en-US/emails.verify-email.json"
 import polishNewOrderCopy from "~/messages/pl-PL/emails.new-order.json"
 import polishOrderConfirmationCopy from "~/messages/pl-PL/emails.order-confirmation.json"
+import polishOrderShippedCopy from "~/messages/pl-PL/emails.order-shipped.json"
 import polishPaymentFailedCopy from "~/messages/pl-PL/emails.payment-failed.json"
 import polishVerifyEmailCopy from "~/messages/pl-PL/emails.verify-email.json"
 
@@ -114,7 +115,9 @@ describe("renderEmailPreview", () => {
     expect(preview).toContain(passwordChangedCopy.heading.toUpperCase())
     expect(preview).toContain("https://martebizuteria.pl/en-US/auth/sign-in")
   })
+})
 
+describe("renderEmailPreview of the order emails", () => {
   it("lists the sample basket on the order confirmation", async () => {
     const preview = await text("order-confirmation")
 
@@ -150,6 +153,12 @@ describe("renderEmailPreview", () => {
 
     expect(preview).toContain(orderShippedCopy.heading.toUpperCase())
     expect(preview).toContain("ul. Mokotowska 12/4")
+  })
+
+  it("previews the shipped email's delivery time from the message catalogue in the language asked for", async () => {
+    await expect(text("order-shipped", "pl-PL")).resolves.toContain(
+      `${polishOrderShippedCopy.estimatedDeliveryLabel}\n\n${polishOrderShippedCopy.deliveryTiming.courier.estimatedDelivery}`,
+    )
   })
 
   it("points the returning buyer at their own order", async () => {
