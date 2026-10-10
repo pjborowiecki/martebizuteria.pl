@@ -99,7 +99,11 @@ const prepareFullOrderRefund = (orderId: string): BatchItem<"sqlite"> =>
 export const prepareRefundBatch = (settled: Order["settled"], { fullyRefunded, refundedAmount }: Order["refundInput"]) =>
   [
     db
-      .select({ orderStatus: order.status, refundedAmount: payment.refundedAmount })
+      .select({
+        orderStatus: order.status,
+        paymentStatus: sql<(typeof payment.$inferSelect)["status"]>`${payment.status}`.as("payment_status"),
+        refundedAmount: payment.refundedAmount,
+      })
       .from(payment)
       .leftJoin(order, eq(order.paymentId, payment.id))
       .where(eq(payment.id, settled.paymentId)),
@@ -110,7 +114,7 @@ export const prepareRefundBatch = (settled: Order["settled"], { fullyRefunded, r
         refundedAt: new Date(),
         status: fullyRefunded ? "refunded" : "succeeded",
       })
-      .where(eq(payment.id, settled.paymentId)),
+      .where(and(eq(payment.id, settled.paymentId), ne(payment.status, "refunded"))),
     ...(fullyRefunded && settled.orderId !== undefined ? [prepareFullOrderRefund(settled.orderId)] : []),
   ] as const
 
