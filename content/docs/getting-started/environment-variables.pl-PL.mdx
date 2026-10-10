@@ -108,7 +108,7 @@ Kilka ustawień, których ludzie szukają w `.env`, jest stałymi:
 | Linki do Facebooka i Instagrama                                                   | `src/presentation/branding/socials.ts`                 |
 | Hosty obsługiwane w każdym trybie: logowanie, linki w e-mailach, powrót ze Stripe | `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts` |
 | Obsługiwane lokalizacje, lokalizacja domyślna, nazwa ciasteczka, strefy czasowe   | `src/integrations/use-intl/i18n.config.ts`             |
-| Identyfikatory D1, R2, KV i kolejki, nazwy Workerów                               | `wrangler.jsonc`                                       |
+| Identyfikatory D1, R2, KV i kolejki, nazwy Workerów, domeny własne                | `wrangler.jsonc`                                       |
 
 O `appHostsForMode` trzeba pamiętać przy każdej zmianie domeny:
 
@@ -126,7 +126,7 @@ const HOSTS_BY_MODE: Readonly<Record<string, readonly string[]>> = {
 const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]
 ```
 
-Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. Host, którego nie ma na tej liście, będzie miał odrzucane żądania uwierzytelniania — wygląda to jak ciche niedziałanie logowania na nowej domenie. Pod `WORKERS_DEV_HOSTS` wysyła też swoje żądania kontrola działającej strony na końcu wdrożenia, więc Worker przemianowany w `wrangler.jsonc` potrzebuje tam swojej nowej nazwy `workers.dev`.
+Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. Host, którego nie ma na tej liście, będzie miał odrzucane żądania uwierzytelniania — wygląda to jak ciche niedziałanie logowania na nowej domenie. Pod `WORKERS_DEV_HOSTS` wysyła też swoje żądania kontrola działającej strony na końcu wdrożenia, więc Worker przemianowany w `wrangler.jsonc` potrzebuje tam swojej nowej nazwy `workers.dev`. Każdy pozostały host wdrażanego trybu jest podłączony do tego Workera jako domena własna przez `routes` w `wrangler.jsonc`, więc nowa domena trafia do obu plików, a `src/modules/_core/constants/__test__/api.test.ts` nie przechodzi, dopóki się nie zgadzają.
 
 Tę samą listę sprawdza `resolveRequestOrigin` (`src/lib/request.ts`), zanim aplikacja zbuduje link do e-maila albo `return_url` dla Stripe, więc e-maile linkują do hosta, którego używał klient albo administrator: lokalnie do `localhost:3000` albo `127.0.0.1:3000`, na preview do hosta preview, a na produkcji do `martebizuteria.pl` albo produkcyjnej nazwy `workers.dev`. Żądanie na host spoza listy jest odrzucane z `FORBIDDEN`. Potwierdzenie zamówienia wysyła webhook Stripe i bierze ono origin z `return_url` sesji, który `resolveDeploymentOrigin` sprawdza z hostami wszystkich trybów. `LOCAL_HOSTS` przypina port 3000, co dla serwera deweloperskiego i tak wymusza `strictPort` w Vite.
 
@@ -138,7 +138,7 @@ Tę samą listę sprawdza `resolveRequestOrigin` (`src/lib/request.ts`), zanim a
 | GitHub   | `https://<host>/api/auth/callback/github` | Identyfikator i sekret klienta |
 | Stripe   | `https://<host>/api/webhooks/stripe`      | `STRIPE_WEBHOOK_SECRET`        |
 
-Handler uwierzytelniania to `src/routes/api/auth.$.ts`, zamontowany pod `/api/auth/$`; handler Stripe to `src/routes/api/webhooks.stripe.ts` i przyjmuje wyłącznie `POST`. Host, na którym zarejestrowano punkt końcowy Stripe, nie zmienia żadnego e-maila: potwierdzenie zamówienia linkuje pod adres, na którym złożono zamówienie, a ten adres niesie `return_url` sesji.
+Na wdrożonym Workerze `<host>` to jego domena własna, `martebizuteria.pl` na produkcji i `preview.martebizuteria.pl` na preview, albo jego nazwa `workers.dev`, która nadal odpowiada. Handler uwierzytelniania to `src/routes/api/auth.$.ts`, zamontowany pod `/api/auth/$`; handler Stripe to `src/routes/api/webhooks.stripe.ts` i przyjmuje wyłącznie `POST`. Host, na którym zarejestrowano punkt końcowy Stripe, nie zmienia żadnego e-maila: potwierdzenie zamówienia linkuje pod adres, na którym złożono zamówienie, a ten adres niesie `return_url` sesji.
 
 ## Zadeklarowane, ale niepodłączone
 
