@@ -7,13 +7,13 @@ description: "Jak wymuszany jest dostęp na trasach, funkcjach serwerowych i Web
 
 **Guardy tras** w `src/integrations/better-auth/auth.routes.ts` działają w `beforeLoad` i przekierowują. Każdy layout przekazuje sam guard, jak w `beforeLoad: requireAdmin`:
 
-| Guard                | Używany przez            | Zachowanie                                                                                                   |
-| -------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| `requireSignedIn`    | Podstawa dla pozostałych | Bez sesji przekierowuje na `/auth/sign-in`                                                                   |
-| `requireAdminRole`   | `admin_.security.tsx`    | Wymaga dodatkowo `hasAdminAccess(role)`, inaczej `/account/overview`                                         |
-| `requireAdmin`       | `admin.tsx`              | `requireAdminRole`, a potem wysyła administratora bez uwierzytelniania dwuskładnikowego na `/admin/security` |
-| `requireCustomer`    | `account.tsx`            | Administratora wysyła zamiast tego na `/admin`                                                               |
-| `redirectIfSignedIn` | `auth.tsx`               | Zalogowanego wysyła na bezpieczną ścieżkę z `?redirect`, inaczej na `postAuthRouteFor(user)`                 |
+| Guard                | Używany przez                                     | Zachowanie                                                                                                   |
+| -------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `requireSignedIn`    | Podstawa dla pozostałych                          | Bez sesji przekierowuje na `/auth/sign-in`                                                                   |
+| `requireAdminRole`   | `admin_.security.tsx`                             | Wymaga dodatkowo `hasAdminAccess(role)`, inaczej `/account/overview`                                         |
+| `requireAdmin`       | `admin.tsx`, `admin_.orders.$orderId.summary.tsx` | `requireAdminRole`, a potem wysyła administratora bez uwierzytelniania dwuskładnikowego na `/admin/security` |
+| `requireCustomer`    | `account.tsx`                                     | Administratora wysyła zamiast tego na `/admin`                                                               |
+| `redirectIfSignedIn` | `auth.tsx`                                        | Zalogowanego wysyła na bezpieczną ścieżkę z `?redirect`, inaczej na `postAuthRouteFor(user)`                 |
 
 `requireSignedIn`, `requireAdminRole`, `requireAdmin` i `requireCustomer` zwracają `{ user }`, które staje się kontekstem trasy; `account.overview.tsx` czyta go przez `AccountRoute.useRouteContext()`. Guardy jedynie czytają sesję, przez `loadRouteSession`:
 

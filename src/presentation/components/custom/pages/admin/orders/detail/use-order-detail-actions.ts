@@ -5,7 +5,7 @@ import {
   canFulfillAdminOrder,
   canMarkAdminOrderDelivered,
   canMarkAdminOrderShipped,
-  canPrintAdminOrderInvoice,
+  canPrintAdminOrderSummary,
   canRefundAdminOrder,
   canRestockAdminOrder,
   cancelRefundsAdminOrderPayment,
@@ -101,10 +101,6 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
     )
   }, [order.id, restockOrder])
 
-  const handlePrint = useCallback(() => {
-    globalThis.print()
-  }, [])
-
   return {
     canCancel: canCancelAdminOrder(order),
     canFulfill: canFulfillAdminOrder({
@@ -113,7 +109,7 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
       status: order.status,
     }),
     canMarkDelivered: canMarkAdminOrderDelivered(order),
-    canPrint: canPrintAdminOrderInvoice(order),
+    canPrintSummary: canPrintAdminOrderSummary(order),
     canRefund: canRefundAdminOrder(order),
     canRestock: canRestockAdminOrder(order),
     canShip: canMarkAdminOrderShipped({
@@ -129,7 +125,6 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
     handleConfirmShip,
     handleFulfill,
     handleMarkDelivered,
-    handlePrint,
     isPending,
     refundBlocker: resolveAdminOrderRefundBlocker({
       hasOpenDispute: order.dispute !== undefined,
@@ -150,7 +145,7 @@ interface UseOrderDetailActionsResult {
   readonly canCancel: boolean
   readonly canFulfill: boolean
   readonly canMarkDelivered: boolean
-  readonly canPrint: boolean
+  readonly canPrintSummary: boolean
   readonly canRefund: boolean
   readonly canRestock: boolean
   readonly canShip: boolean
@@ -162,7 +157,6 @@ interface UseOrderDetailActionsResult {
   readonly handleConfirmShip: (tracking: { readonly trackingNumber: string | undefined; readonly trackingUrl: string | undefined }) => void
   readonly handleFulfill: () => void
   readonly handleMarkDelivered: () => void
-  readonly handlePrint: () => void
   readonly isPending: boolean
   readonly refundBlocker: AdminOrderRefundBlocker | undefined
   readonly refundDialogOpen: boolean

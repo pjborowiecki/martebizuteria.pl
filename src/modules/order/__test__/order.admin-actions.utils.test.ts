@@ -4,7 +4,7 @@ import {
   canCancelAdminOrder,
   canFulfillAdminOrder,
   canMarkAdminOrderShipped,
-  canPrintAdminOrderInvoice,
+  canPrintAdminOrderSummary,
   canRefundAdminOrder,
   canRestockAdminOrder,
   cancelRefundsAdminOrderPayment,
@@ -36,7 +36,7 @@ const OPEN_STATUSES: OrderStatus[] = ["pending", "processing"]
 
 const FINAL_STATUSES: OrderStatus[] = ["completed", "cancelled", "refunded"]
 
-const INVOICEABLE_STATUSES: OrderStatus[] = ["pending", "processing", "completed", "refunded"]
+const SUMMARY_PRINTABLE_STATUSES: OrderStatus[] = ["pending", "processing", "completed", "refunded"]
 
 describe("canFulfillAdminOrder", () => {
   it.each(FULFILLABLE)("allows fulfilling an order that is %s", (fulfillmentStatus) => {
@@ -155,12 +155,12 @@ describe("resolveAdminOrderRefundBlocker", () => {
   })
 })
 
-describe("canPrintAdminOrderInvoice", () => {
-  it.each(INVOICEABLE_STATUSES)("allows printing an invoice for a %s order", (status) => {
-    expect(canPrintAdminOrderInvoice({ status })).toBe(true)
+describe("canPrintAdminOrderSummary", () => {
+  it.each(SUMMARY_PRINTABLE_STATUSES)("allows printing the summary of a %s order", (status) => {
+    expect(canPrintAdminOrderSummary({ status })).toBe(true)
   })
 
-  it("refuses to print an invoice for a cancelled order", () => {
-    expect(canPrintAdminOrderInvoice({ status: "cancelled" })).toBe(false)
+  it("refuses to print the summary of a cancelled order", () => {
+    expect(canPrintAdminOrderSummary({ status: "cancelled" })).toBe(false)
   })
 })

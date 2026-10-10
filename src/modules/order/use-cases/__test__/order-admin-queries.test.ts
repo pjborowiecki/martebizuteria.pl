@@ -12,6 +12,8 @@ import { getAdminOrderStats, getAdminOrderStatsQuery } from "../get-admin-order-
 import { getAdminOrdersPage, getAdminOrdersPageQuery } from "../get-admin-orders-page"
 
 interface SourceRow {
+  readonly billingCompanyName: string | null
+  readonly billingNip: string | null
   readonly createdAt: Date
   readonly currencyCode: string
   readonly customerName: string | null
@@ -28,6 +30,8 @@ interface SourceRow {
 const CREATED_AT = new Date(1_700_000_000_000)
 
 const sourceRow = (overrides: Partial<SourceRow> = {}): SourceRow => ({
+  billingCompanyName: null,
+  billingNip: null,
   createdAt: CREATED_AT,
   currencyCode: "PLN",
   customerName: "Ada Lovelace",
@@ -221,6 +225,21 @@ describe("exportAdminOrders", () => {
 
     expect(items[0]).toMatchObject({ fulfillmentUiKey: "pending" })
   })
+
+  it("adds the company and NIP a business buyer gave", async () => {
+    accessors.rows = [sourceRow({ billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246" })]
+
+    const items = await exportAdminOrders({ data: {} })
+
+    expect(items[0]).toMatchObject({ billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246", id: "order-1" })
+  })
+
+  it("leaves the company and NIP out of an order placed without them", async () => {
+    const items = await exportAdminOrders({ data: {} })
+
+    expect(items[0]?.billingCompanyName).toBeUndefined()
+    expect(items[0]?.billingNip).toBeUndefined()
+  })
 })
 
 describe("getAdminOrderStats", () => {
@@ -293,6 +312,7 @@ const detailRow = (overrides: Record<string, unknown> = {}) => ({
   shippingTotal: 1500,
   status: "processing",
   subtotal: 10_000,
+  taxBasisPoints: 2300,
   taxTotal: 2100,
   total: 11_500,
   trackingNumber: null,
@@ -448,6 +468,14 @@ describe("getAdminOrder withdrawals", () => {
 
     await expect(fetchAdminOrder()).resolves.toMatchObject({ withdrawals: [withdrawal] })
     expect(accessors.getOrderWithdrawals).toHaveBeenCalledWith(DETAIL_ORDER_ID)
+  })
+})
+
+describe("getAdminOrder VAT", () => {
+  it("carries the VAT rate and amount the order was taxed at", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow({ taxBasisPoints: 800, taxTotal: 852 }))
+
+    await expect(fetchAdminOrder()).resolves.toMatchObject({ taxBasisPoints: 800, taxTotalMinorUnits: 852 })
   })
 })
 

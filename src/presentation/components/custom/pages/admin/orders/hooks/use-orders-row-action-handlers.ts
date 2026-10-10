@@ -8,7 +8,7 @@ import {
   canCancelAdminOrder,
   canFulfillAdminOrder,
   canMarkAdminOrderShipped,
-  canPrintAdminOrderInvoice,
+  canPrintAdminOrderSummary,
   canRefundAdminOrder,
   cancelRefundsAdminOrderPayment,
 } from "~/src/modules/order/order.admin-actions.utils"
@@ -21,10 +21,12 @@ import {
   useMarkOrderShipped,
 } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions"
 
+import { ROUTES } from "~/src/routes"
+
 const resolveOrderRowActionAvailability = (order: Order["adminListItem"]): OrderRowActionAvailability => ({
   canCancel: canCancelAdminOrder(order),
   canFulfill: canFulfillAdminOrder(order),
-  canPrint: canPrintAdminOrderInvoice(order),
+  canPrintSummary: canPrintAdminOrderSummary(order),
   canRefund: canRefundAdminOrder(order),
   canShip: canMarkAdminOrderShipped(order),
   cancelRefundsPayment: cancelRefundsAdminOrderPayment(order),
@@ -65,14 +67,14 @@ export const useOrdersRowActionHandlers = (
     markOrderShipped.mutate({ orderId: order.id })
   }, [markOrderShipped, order.id])
 
-  const handlePrintInvoice = useCallback(() => {
-    const detailUrl = router.buildLocation({
+  const handlePrintSummary = useCallback(() => {
+    const summaryUrl = router.buildLocation({
       params: {
         orderId: order.id,
       },
-      to: "/admin/orders/$orderId",
-    }).href
-    globalThis.open(detailUrl, "_blank", "noopener,noreferrer")
+      to: ROUTES.ADMIN_ORDER_SUMMARY,
+    }).publicHref
+    globalThis.open(summaryUrl, "_blank", "noopener,noreferrer")
   }, [order.id, router])
 
   const handleRefund = useCallback(() => {
@@ -122,7 +124,7 @@ export const useOrdersRowActionHandlers = (
     handleCopyId,
     handleFulfill,
     handleMarkShipped,
-    handlePrintInvoice,
+    handlePrintSummary,
     handleRefund,
     handleStopRowClick,
     handleViewOrder,
@@ -134,7 +136,7 @@ export const useOrdersRowActionHandlers = (
 interface OrderRowActionAvailability {
   readonly canCancel: boolean
   readonly canFulfill: boolean
-  readonly canPrint: boolean
+  readonly canPrintSummary: boolean
   readonly canRefund: boolean
   readonly canShip: boolean
   readonly cancelRefundsPayment: boolean
@@ -146,7 +148,7 @@ interface UseOrdersRowActionHandlersResult extends OrderRowActionAvailability {
   readonly handleCopyId: () => void
   readonly handleFulfill: () => void
   readonly handleMarkShipped: () => void
-  readonly handlePrintInvoice: () => void
+  readonly handlePrintSummary: () => void
   readonly handleRefund: () => void
   readonly handleStopRowClick: (event: MouseEvent) => void
   readonly handleViewOrder: () => void

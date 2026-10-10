@@ -39,7 +39,19 @@ export const OrdersExportAction = (): JSX.Element => {
           data: exportListInput,
         })
 
-        const headers = ["Order ID", "Customer", "Email", "Date", "Items", "Total", "Payment", "Fulfillment", "Status"]
+        const headers = [
+          t("exportColumns.orderId"),
+          t("columns.customer"),
+          t("columns.email"),
+          t("exportColumns.companyName"),
+          t("exportColumns.nip"),
+          t("columns.date"),
+          t("columns.items"),
+          t("columns.total"),
+          t("columns.payment"),
+          t("columns.fulfillment"),
+          t("columns.status"),
+        ]
         const csvContent = [
           headers.join(","),
           ...orders.map((order) => {
@@ -47,6 +59,8 @@ export const OrdersExportAction = (): JSX.Element => {
               order.id,
               order.customerName,
               order.email,
+              order.billingCompanyName,
+              order.billingNip,
               formatAdminOrderDate(order.createdAt, locale),
               String(order.itemCount),
               formatPrice(order.totalMinorUnits, order.currencyCode, locale),
@@ -55,7 +69,7 @@ export const OrdersExportAction = (): JSX.Element => {
               t(ADMIN_ORDER_STATUS_LABEL_KEYS[order.status]),
             ]
 
-            return fields.map((field) => `"${escapeCsvField(field)}"`).join(",")
+            return fields.map((field) => (field === undefined ? "" : `"${escapeCsvField(field)}"`)).join(",")
           }),
         ].join("\n")
 

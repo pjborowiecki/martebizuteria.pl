@@ -76,7 +76,7 @@ export const resolveAdminOrderRefundBlocker = ({
   return undefined
 }
 
-export const canPrintAdminOrderInvoice = ({ status }: Pick<OrderActionSnapshot, "status">): boolean => status !== "cancelled"
+export const canPrintAdminOrderSummary = ({ status }: Pick<OrderActionSnapshot, "status">): boolean => status !== "cancelled"
 
 const FULFILLABLE_FULFILLMENT_STATUSES = ["not_fulfilled", "partially_fulfilled"] as const
 

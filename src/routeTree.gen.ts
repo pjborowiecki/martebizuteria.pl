@@ -78,6 +78,7 @@ import { Route as AdminCatalogCategoriesHandleRouteImport } from './routes/admin
 import { Route as AdminCatalogCollectionsIndexRouteImport } from './routes/admin.catalog.collections.index'
 import { Route as AdminCatalogCollectionsHandleRouteImport } from './routes/admin.catalog.collections.$handle'
 import { Route as AdminCatalogProductsIndexRouteImport } from './routes/admin.catalog.products.index'
+import { Route as AdminOrdersOrderIdSummaryRouteImport } from './routes/admin_.orders.$orderId.summary'
 
 const StorefrontRoute = StorefrontRouteImport.update({
   id: '/_storefront',
@@ -439,6 +440,12 @@ const AdminCatalogProductsIndexRoute =
     path: '/',
     getParentRoute: () => AdminCatalogProductsRoute,
   } as any)
+const AdminOrdersOrderIdSummaryRoute =
+  AdminOrdersOrderIdSummaryRouteImport.update({
+    id: '/admin_/orders/$orderId/summary',
+    path: '/admin/orders/$orderId/summary',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof StorefrontIndexRoute
@@ -505,6 +512,7 @@ export interface FileRoutesByFullPath {
   '/admin/orders/': typeof AdminOrdersIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
   '/admin/catalog/collections/$handle': typeof AdminCatalogCollectionsHandleRoute
+  '/admin/orders/$orderId/summary': typeof AdminOrdersOrderIdSummaryRoute
   '/admin/catalog/attributes/': typeof AdminCatalogAttributesIndexRoute
   '/admin/catalog/categories/': typeof AdminCatalogCategoriesIndexRoute
   '/admin/catalog/collections/': typeof AdminCatalogCollectionsIndexRoute
@@ -566,6 +574,7 @@ export interface FileRoutesByTo {
   '/admin/orders': typeof AdminOrdersIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
   '/admin/catalog/collections/$handle': typeof AdminCatalogCollectionsHandleRoute
+  '/admin/orders/$orderId/summary': typeof AdminOrdersOrderIdSummaryRoute
   '/admin/catalog/attributes': typeof AdminCatalogAttributesIndexRoute
   '/admin/catalog/categories': typeof AdminCatalogCategoriesIndexRoute
   '/admin/catalog/collections': typeof AdminCatalogCollectionsIndexRoute
@@ -638,6 +647,7 @@ export interface FileRoutesById {
   '/admin/orders/': typeof AdminOrdersIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
   '/admin/catalog/collections/$handle': typeof AdminCatalogCollectionsHandleRoute
+  '/admin_/orders/$orderId/summary': typeof AdminOrdersOrderIdSummaryRoute
   '/admin/catalog/attributes/': typeof AdminCatalogAttributesIndexRoute
   '/admin/catalog/categories/': typeof AdminCatalogCategoriesIndexRoute
   '/admin/catalog/collections/': typeof AdminCatalogCollectionsIndexRoute
@@ -710,6 +720,7 @@ export interface FileRouteTypes {
     | '/admin/orders/'
     | '/admin/catalog/categories/$handle'
     | '/admin/catalog/collections/$handle'
+    | '/admin/orders/$orderId/summary'
     | '/admin/catalog/attributes/'
     | '/admin/catalog/categories/'
     | '/admin/catalog/collections/'
@@ -771,6 +782,7 @@ export interface FileRouteTypes {
     | '/admin/orders'
     | '/admin/catalog/categories/$handle'
     | '/admin/catalog/collections/$handle'
+    | '/admin/orders/$orderId/summary'
     | '/admin/catalog/attributes'
     | '/admin/catalog/categories'
     | '/admin/catalog/collections'
@@ -842,6 +854,7 @@ export interface FileRouteTypes {
     | '/admin/orders/'
     | '/admin/catalog/categories/$handle'
     | '/admin/catalog/collections/$handle'
+    | '/admin_/orders/$orderId/summary'
     | '/admin/catalog/attributes/'
     | '/admin/catalog/categories/'
     | '/admin/catalog/collections/'
@@ -860,6 +873,7 @@ export interface RootRouteChildren {
   DevEmailsRoute: typeof DevEmailsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
+  AdminOrdersOrderIdSummaryRoute: typeof AdminOrdersOrderIdSummaryRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1347,6 +1361,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCatalogProductsIndexRouteImport
       parentRoute: typeof AdminCatalogProductsRoute
     }
+    '/admin_/orders/$orderId/summary': {
+      id: '/admin_/orders/$orderId/summary'
+      path: '/admin/orders/$orderId/summary'
+      fullPath: '/admin/orders/$orderId/summary'
+      preLoaderRoute: typeof AdminOrdersOrderIdSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1586,6 +1607,7 @@ const rootRouteChildren: RootRouteChildren = {
   DevEmailsRoute: DevEmailsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
+  AdminOrdersOrderIdSummaryRoute: AdminOrdersOrderIdSummaryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

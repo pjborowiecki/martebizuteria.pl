@@ -37,10 +37,6 @@ import { OrderDetailActions } from "~/src/presentation/components/custom/pages/a
 
 const DISPUTE = { amount: 38_900, id: "dp_test_1", reason: "fraudulent", status: "needs_response" }
 
-const print = vi.fn<() => void>()
-
-vi.stubGlobal("print", print)
-
 const succeed: Mutate = (_variables, options) => {
   options?.onSuccess?.()
 }
@@ -177,19 +173,20 @@ describe("OrderDetailActions return to stock", () => {
   })
 })
 
-describe("OrderDetailActions print", () => {
-  it("prints the order invoice", async () => {
+describe("OrderDetailActions print summary", () => {
+  it("opens the printable order summary in a new tab", () => {
     renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail()} />)
 
-    await userEvent.click(screen.getByRole("button", { name: "Print" }))
+    const link = screen.getByRole("link", { name: "Print summary" })
 
-    expect(print).toHaveBeenCalledOnce()
+    expect(link).toHaveAttribute("href", `/admin/orders/${ORDER_ID}/summary`)
+    expect(link).toHaveAttribute("target", "_blank")
   })
 
-  it("withholds the invoice of a cancelled order", () => {
+  it("offers no summary for a cancelled order", () => {
     renderWithProviders(<OrderDetailActions order={buildAdminOrderDetail({ fulfillmentStatus: "cancelled", status: "cancelled" })} />)
 
-    expect(screen.getByRole("button", { name: "Print" })).toBeDisabled()
+    expect(screen.queryByRole("link", { name: "Print summary" })).toBeNull()
   })
 })
 

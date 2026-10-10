@@ -6,6 +6,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { getAdminOrdersExport as orderGetAdminOrdersExport } from "~/src/modules/order/order.accessors"
 import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
+import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
 const buildAdminOrdersExportParams = (input: zod.output<typeof orderZodSchemas.adminOrdersExportInput>) => ({
@@ -26,9 +27,14 @@ export const exportAdminOrders = createServerFn({
 })
   .middleware([authorized({ order: ["read"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminOrdersExportInput>) => orderZodSchemas.adminOrdersExportInput.parse(input))
-  .handler(async ({ data: input }) => {
+  .handler(async ({ data: input }): Promise<Order["adminExportItem"][]> => {
     const params = buildAdminOrdersExportParams(input)
     const rows = await orderGetAdminOrdersExport(params)
 
-    return rows.map((row) => toAdminOrderListItem(row))
+    return rows.map((row) =>
+      Object.assign(toAdminOrderListItem(row), {
+        billingCompanyName: row.billingCompanyName ?? undefined,
+        billingNip: row.billingNip ?? undefined,
+      }),
+    )
   })

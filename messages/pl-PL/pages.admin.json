@@ -564,6 +564,11 @@
       "status": "Status",
       "actions": "Akcje wiersza"
     },
+    "exportColumns": {
+      "orderId": "ID zamówienia",
+      "companyName": "Firma",
+      "nip": "NIP"
+    },
     "status": {
       "pending": "Oczekujące",
       "processing": "W realizacji",
@@ -597,7 +602,7 @@
       "copyError": "Nie udało się skopiować ID zamówienia",
       "fulfill": "Realizuj zamówienie",
       "markShipped": "Oznacz jako wysłane",
-      "printInvoice": "Drukuj fakturę",
+      "printSummary": "Drukuj podsumowanie zamówienia",
       "refund": "Zwrot",
       "cancel": "Anuluj zamówienie",
       "cancelDialog": {
@@ -628,7 +633,7 @@
   },
   "orderDetail": {
     "actions": {
-      "print": "Drukuj",
+      "printSummary": "Drukuj podsumowanie",
       "refund": "Zwrot",
       "restock": "Przywróć na stan",
       "cancel": "Anuluj zamówienie",
@@ -806,6 +811,18 @@
       "cancel": "Zachowaj zamówienie",
       "confirm": "Anuluj zamówienie"
     }
+  },
+  "orderSummary": {
+    "title": "Podsumowanie zamówienia",
+    "notVatInvoice": "Ten dokument nie jest fakturą VAT.",
+    "orderNumber": "Numer zamówienia",
+    "orderDate": "Data zamówienia",
+    "seller": "Sprzedawca",
+    "sellerCountry": "Polska",
+    "buyer": "Kupujący",
+    "vatIncluded": "W tym VAT {rate}%",
+    "print": "Drukuj",
+    "backToOrder": "Wróć do zamówienia"
   },
   "marketing": {
     "title": "Kampanie marketingowe",

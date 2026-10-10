@@ -107,7 +107,7 @@ describe("admin order detail route", () => {
   it("offers refund, cancel and ship for a paid order already in fulfillment", () => {
     renderRoute({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "unfulfilled" })
 
-    expect(screen.getByRole("button", { name: "Print" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Print summary" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Refund" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Cancel order" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Mark shipped" })).toBeInTheDocument()

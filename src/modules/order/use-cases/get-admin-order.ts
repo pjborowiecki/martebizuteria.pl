@@ -125,6 +125,7 @@ const buildAdminOrderDetail = ({
       refundedAmount: paymentRow?.refundedAmount ?? 0,
       userId: orderRow.userId,
     }),
+    taxBasisPoints: orderRow.taxBasisPoints,
     taxTotalMinorUnits: orderRow.taxTotal,
     timeline: mapAdminOrderTimeline(timelineRows),
     totalMinorUnits: orderRow.total,

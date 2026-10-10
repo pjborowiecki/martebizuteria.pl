@@ -25,6 +25,7 @@ export const ROUTES = {
   ADMIN_MARKETING: "/admin/marketing",
   ADMIN_ORDER: "/admin/orders/$orderId",
   ADMIN_ORDERS: "/admin/orders",
+  ADMIN_ORDER_SUMMARY: "/admin/orders/$orderId/summary",
   ADMIN_OVERVIEW: "/admin/overview",
   ADMIN_PRODUCTS: "/admin/catalog/products",
   ADMIN_SECURITY: "/admin/security",

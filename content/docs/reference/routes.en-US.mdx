@@ -92,32 +92,35 @@ The `/account` layout is `account.tsx` and its `beforeLoad` runs `requireCustome
 
 The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`, which sends an admin without two-factor authentication to `/admin/security`; it also loads `admin.css`, forces the light theme, renders the admin sidebar and opens the admin realtime WebSocket through `useRealtimeQuerySync`. `admin.index.tsx` redirects `/admin` to `/admin/overview`, and `admin.catalog.index.tsx` redirects `/admin/catalog` to `/admin/catalog/products`.
 
-| Path                                 | `ROUTES` constant    | Route file                                                             |
-| ------------------------------------ | -------------------- | ---------------------------------------------------------------------- |
-| `/admin`                             | `ADMIN`              | `admin.tsx` (layout), `admin.index.tsx` (redirect)                     |
-| `/admin/overview`                    | `ADMIN_OVERVIEW`     | `admin.overview.tsx`                                                   |
-| `/admin/catalog`                     | `ADMIN_CATALOG`      | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (redirect)     |
-| `/admin/catalog/products`            | `ADMIN_PRODUCTS`     | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`       |
-| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`   | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`   |
-| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`     | `admin.catalog.categories.$handle.tsx`                                 |
-| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`  | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx` |
-| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`   | `admin.catalog.collections.$handle.tsx`                                |
-| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`   | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`   |
-| `/admin/orders`                      | `ADMIN_ORDERS`       | `admin.orders.index.tsx`                                               |
-| `/admin/orders/$orderId`             | none                 | `admin.orders.$orderId.tsx`                                            |
-| `/admin/customers`                   | `ADMIN_CUSTOMERS`    | `admin.customers.index.tsx`                                            |
-| `/admin/customers/$id`               | `ADMIN_CUSTOMER`     | `admin.customers.$id.tsx`                                              |
-| `/admin/audit`                       | `ADMIN_AUDIT`        | `admin.audit.tsx`                                                      |
-| `/admin/coupons`                     | `ADMIN_COUPONS`      | `admin.coupons.tsx`                                                    |
-| `/admin/content`                     | `ADMIN_CONTENT`      | `admin.content.index.tsx`                                              |
-| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE` | `admin.content.$handle.tsx`                                            |
-| `/admin/marketing`                   | `ADMIN_MARKETING`    | `admin.marketing.tsx`                                                  |
-| `/admin/settings`                    | `ADMIN_SETTINGS`     | `admin.settings.tsx`                                                   |
-| `/admin/security`                    | `ADMIN_SECURITY`     | `admin_.security.tsx` (outside the layout)                             |
+| Path                                 | `ROUTES` constant     | Route file                                                             |
+| ------------------------------------ | --------------------- | ---------------------------------------------------------------------- |
+| `/admin`                             | `ADMIN`               | `admin.tsx` (layout), `admin.index.tsx` (redirect)                     |
+| `/admin/overview`                    | `ADMIN_OVERVIEW`      | `admin.overview.tsx`                                                   |
+| `/admin/catalog`                     | `ADMIN_CATALOG`       | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (redirect)     |
+| `/admin/catalog/products`            | `ADMIN_PRODUCTS`      | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`       |
+| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`    | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`   |
+| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`      | `admin.catalog.categories.$handle.tsx`                                 |
+| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`   | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx` |
+| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`    | `admin.catalog.collections.$handle.tsx`                                |
+| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`    | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`   |
+| `/admin/orders`                      | `ADMIN_ORDERS`        | `admin.orders.index.tsx`                                               |
+| `/admin/orders/$orderId`             | `ADMIN_ORDER`         | `admin.orders.$orderId.tsx`                                            |
+| `/admin/customers`                   | `ADMIN_CUSTOMERS`     | `admin.customers.index.tsx`                                            |
+| `/admin/customers/$id`               | `ADMIN_CUSTOMER`      | `admin.customers.$id.tsx`                                              |
+| `/admin/audit`                       | `ADMIN_AUDIT`         | `admin.audit.tsx`                                                      |
+| `/admin/coupons`                     | `ADMIN_COUPONS`       | `admin.coupons.tsx`                                                    |
+| `/admin/content`                     | `ADMIN_CONTENT`       | `admin.content.index.tsx`                                              |
+| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE`  | `admin.content.$handle.tsx`                                            |
+| `/admin/marketing`                   | `ADMIN_MARKETING`     | `admin.marketing.tsx`                                                  |
+| `/admin/settings`                    | `ADMIN_SETTINGS`      | `admin.settings.tsx`                                                   |
+| `/admin/security`                    | `ADMIN_SECURITY`      | `admin_.security.tsx` (outside the layout)                             |
+| `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY` | `admin_.orders.$orderId.summary.tsx` (outside the layout)              |
 
 `/admin/security` turns two-factor authentication on and off for the signed-in admin. The trailing underscore in `admin_.security.tsx` keeps it out of the `/admin` layout, so it has no sidebar, `admin.css` or realtime socket, and its own guard, `requireAdminRole`, admits an admin who has not turned two-factor authentication on yet. Its page, `AdminSecurityPage`, calls `useAdminLightTheme` itself.
 
-The admin order detail route is the one page with no `ROUTES` constant; navigation to it is written as the literal `"/admin/orders/$orderId"` in `src/presentation/components/custom/pages/admin/orders/`. `/admin/marketing` and `/admin/settings` still render from fixtures in `src/data/`: `marketing.ts` and `settings.ts`.
+`/admin/orders/$orderId/summary` is the printable order summary, which says it is not a VAT invoice. The trailing underscore in `admin_.orders.$orderId.summary.tsx` keeps it out of the `/admin` layout too, so the printout has no sidebar, but its guard is `requireAdmin`, the layout's own, and its page, `OrderSummaryPage`, calls `useAdminLightTheme` itself. See [Orders](/docs/features/orders#the-order-summary).
+
+`/admin/marketing` and `/admin/settings` still render from fixtures in `src/data/`: `marketing.ts` and `settings.ts`.
 
 ## Documentation
 
@@ -154,13 +157,13 @@ The last four are checked in `src/server.ts` before the request reaches TanStack
 
 All five guards live in `src/integrations/better-auth/auth.routes.ts`. A layout route passes the guard itself, as in `beforeLoad: requireAdmin`.
 
-| Guard                | Behaviour                                                                                                                                    | Used by               |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| `requireSignedIn`    | Redirects to `/auth/sign-in` with the requested path in `?redirect` when there is no session                                                 | Via the others        |
-| `requireAdminRole`   | `requireSignedIn`, then redirects a non-admin to `/account/overview`                                                                         | `admin_.security.tsx` |
-| `requireAdmin`       | `requireAdminRole`, then redirects an admin without two-factor authentication to `/admin/security`                                           | `admin.tsx`           |
-| `requireCustomer`    | `requireSignedIn`, then redirects an admin to `/admin`                                                                                       | `account.tsx`         |
-| `redirectIfSignedIn` | Sends a signed-in visitor to the `?redirect` path, or else to `postAuthRouteFor(user)`: `/admin` for an admin, `/account/overview` otherwise | `auth.tsx`            |
+| Guard                | Behaviour                                                                                                                                    | Used by                                           |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `requireSignedIn`    | Redirects to `/auth/sign-in` with the requested path in `?redirect` when there is no session                                                 | Via the others                                    |
+| `requireAdminRole`   | `requireSignedIn`, then redirects a non-admin to `/account/overview`                                                                         | `admin_.security.tsx`                             |
+| `requireAdmin`       | `requireAdminRole`, then redirects an admin without two-factor authentication to `/admin/security`                                           | `admin.tsx`, `admin_.orders.$orderId.summary.tsx` |
+| `requireCustomer`    | `requireSignedIn`, then redirects an admin to `/admin`                                                                                       | `account.tsx`                                     |
+| `redirectIfSignedIn` | Sends a signed-in visitor to the `?redirect` path, or else to `postAuthRouteFor(user)`: `/admin` for an admin, `/account/overview` otherwise | `auth.tsx`                                        |
 
 `requireSignedIn`, `requireAdminRole`, `requireAdmin` and `requireCustomer` take the `beforeLoad` options (`{ context, location, preload }`) and resolve to `{ user }`. That becomes route context, so a page under the layout reads the signed-in user with `Route.useRouteContext().user`.
 

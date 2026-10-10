@@ -9,7 +9,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import { type Order } from "~/src/modules/order/order.types"
 
 const handlers = vi.hoisted(() => ({
-  availability: { canCancel: true, canFulfill: true, canPrint: true, canRefund: true, canShip: true, cancelRefundsPayment: true },
+  availability: { canCancel: true, canFulfill: true, canPrintSummary: true, canRefund: true, canShip: true, cancelRefundsPayment: true },
   calls: [] as string[],
   isPending: false,
 }))
@@ -28,7 +28,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order
     handleCopyId: () => handlers.calls.push("copyId"),
     handleFulfill: () => handlers.calls.push("fulfill"),
     handleMarkShipped: () => handlers.calls.push("markShipped"),
-    handlePrintInvoice: () => handlers.calls.push("printInvoice"),
+    handlePrintSummary: () => handlers.calls.push("printSummary"),
     handleRefund: () => handlers.calls.push("refund"),
     handleStopRowClick: (event: MouseEvent) => {
       event.stopPropagation()
@@ -70,7 +70,14 @@ const openMenu = async () => {
 }
 
 beforeEach(() => {
-  handlers.availability = { canCancel: true, canFulfill: true, canPrint: true, canRefund: true, canShip: true, cancelRefundsPayment: true }
+  handlers.availability = {
+    canCancel: true,
+    canFulfill: true,
+    canPrintSummary: true,
+    canRefund: true,
+    canShip: true,
+    cancelRefundsPayment: true,
+  }
   handlers.calls.length = 0
   handlers.isPending = false
 })
@@ -87,7 +94,7 @@ describe("OrdersRowActions menu", () => {
     expect(screen.getByRole("menuitem", { name: "Copy #order-1" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Fulfill order" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Mark as shipped" })).toBeInTheDocument()
-    expect(screen.getByRole("menuitem", { name: "Print invoice" })).toBeInTheDocument()
+    expect(screen.getByRole("menuitem", { name: "Print order summary" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Refund" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Cancel order" })).toBeInTheDocument()
   })
@@ -97,7 +104,7 @@ describe("OrdersRowActions menu", () => {
     ["Copy #order-1", "copyId"],
     ["Fulfill order", "fulfill"],
     ["Mark as shipped", "markShipped"],
-    ["Print invoice", "printInvoice"],
+    ["Print order summary", "printSummary"],
     ["Refund", "refund"],
   ])("runs the %s action", async (label, expected) => {
     await openMenu()
@@ -112,7 +119,7 @@ describe("OrdersRowActions availability", () => {
     handlers.availability = {
       canCancel: false,
       canFulfill: false,
-      canPrint: false,
+      canPrintSummary: false,
       canRefund: false,
       canShip: false,
       cancelRefundsPayment: false,
@@ -121,7 +128,7 @@ describe("OrdersRowActions availability", () => {
 
     expect(await screen.findByRole("menuitem", { name: "Fulfill order" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Mark as shipped" })).toHaveAttribute("data-disabled")
-    expect(screen.getByRole("menuitem", { name: "Print invoice" })).toHaveAttribute("data-disabled")
+    expect(screen.getByRole("menuitem", { name: "Print order summary" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Refund" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Cancel order" })).toHaveAttribute("data-disabled")
   })
@@ -130,7 +137,7 @@ describe("OrdersRowActions availability", () => {
     handlers.availability = {
       canCancel: false,
       canFulfill: false,
-      canPrint: false,
+      canPrintSummary: false,
       canRefund: false,
       canShip: false,
       cancelRefundsPayment: false,
@@ -148,7 +155,7 @@ describe("OrdersRowActions availability", () => {
     expect(await screen.findByRole("menuitem", { name: "Fulfill order" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Mark as shipped" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Cancel order" })).toHaveAttribute("data-disabled")
-    expect(screen.getByRole("menuitem", { name: "Print invoice" })).not.toHaveAttribute("data-disabled")
+    expect(screen.getByRole("menuitem", { name: "Print order summary" })).not.toHaveAttribute("data-disabled")
   })
 })
 
