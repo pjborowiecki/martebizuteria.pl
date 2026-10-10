@@ -15,6 +15,7 @@ import {
   storefrontScopedCategoryCatalogSearchSchema,
   storefrontScopedCollectionCatalogSearchSchema,
 } from "~/src/modules/product/product.storefront-catalog"
+import { STOREFRONT_SEARCH_MAX_LENGTH } from "~/src/modules/storefront-search/storefront-search.constants"
 
 describe("storefrontProductsSearchSchema", () => {
   it("accepts a search with no filters at all", () => {
@@ -27,6 +28,26 @@ describe("storefrontProductsSearchSchema", () => {
 
   it("trims a filter that carries content", () => {
     expect(storefrontProductsSearchSchema.parse({ q: "  silver ring  " })).toStrictEqual({ q: "silver ring" })
+  })
+
+  it.each([
+    ["the catalog", storefrontProductsSearchSchema],
+    ["a category page", storefrontScopedCategoryCatalogSearchSchema],
+    ["a collection page", storefrontScopedCollectionCatalogSearchSchema],
+  ])("cuts a search term in a link to %s down to the longest the search overlay sends", (_page, schema) => {
+    expect(schema.parse({ q: "r".repeat(STOREFRONT_SEARCH_MAX_LENGTH + 1) })).toStrictEqual({ q: "r".repeat(STOREFRONT_SEARCH_MAX_LENGTH) })
+  })
+
+  it("keeps a search term of exactly the maximum whole", () => {
+    const longest = "r".repeat(STOREFRONT_SEARCH_MAX_LENGTH)
+
+    expect(storefrontProductsSearchSchema.parse({ q: `  ${longest}  ` })).toStrictEqual({ q: longest })
+  })
+
+  it("drops the space the cut leaves at the end of a long search term", () => {
+    const firstWord = "r".repeat(STOREFRONT_SEARCH_MAX_LENGTH - 1)
+
+    expect(storefrontProductsSearchSchema.parse({ q: `${firstWord} ring` })).toStrictEqual({ q: firstWord })
   })
 
   it("coerces price bounds from the query string", () => {

@@ -3,6 +3,8 @@ import { type JSX, type SyntheticEvent, useRef } from "react"
 import { Search, X } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
+import { STOREFRONT_SEARCH_MAX_LENGTH } from "~/src/modules/storefront-search/storefront-search.constants"
+
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
 import { CLIP_CLOSED } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-constants"
@@ -76,6 +78,7 @@ export const SearchOverlay = (): JSX.Element => {
             autoComplete="off"
             className="w-full border-b border-transparent bg-transparent py-3 pr-10 pl-9 font-serif text-3xl text-foreground placeholder:text-muted-foreground/40 focus:border-foreground/20 focus:outline-none lg:pl-11 lg:text-5xl"
             enterKeyHint="search"
+            maxLength={STOREFRONT_SEARCH_MAX_LENGTH}
             onChange={handleQueryChange}
             placeholder={t("searchOverlay.placeholder")}
             spellCheck={false}

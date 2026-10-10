@@ -49,6 +49,18 @@ test.describe("catalog", () => {
     await expect(productPage.heading()).toHaveText(PRODUCTS.onyx.title)
   })
 
+  test("a search link longer than the search field allows opens the results for its first hundred characters", async ({
+    page,
+    productPage,
+  }) => {
+    const word = "onyx "
+
+    await productPage.open(`/en-US/products?q=${encodeURIComponent(word.repeat(40))}`)
+
+    await expect(productPage.heading()).toHaveText(`Results for “${word.repeat(20).trimEnd()}”`)
+    await expect(page.getByRole("main").getByRole("link", { name: /Necklace/u })).toHaveText([new RegExp(PRODUCTS.onyx.title, "u")])
+  })
+
   test("a product page shows what the piece costs and adds it to the cart", async ({ productPage }) => {
     await productPage.gotoProduct(PRODUCTS.lapis.handle)
 

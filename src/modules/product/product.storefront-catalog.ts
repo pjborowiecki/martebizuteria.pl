@@ -1,5 +1,7 @@
 import { z } from "zod/v4"
 
+import { STOREFRONT_SEARCH_MAX_LENGTH } from "~/src/modules/storefront-search/storefront-search.constants"
+
 export const STOREFRONT_PRODUCTS_SORT = {
   NEWEST: "newest",
   PRICE_ASC: "price_asc",
@@ -21,7 +23,12 @@ export const storefrontProductsSearchSchema = z.object({
   collection: z.string().trim().nonempty().optional(),
   maxPrice: z.coerce.number().nonnegative().optional(),
   minPrice: z.coerce.number().nonnegative().optional(),
-  q: z.string().trim().nonempty().optional(),
+  q: z
+    .string()
+    .trim()
+    .nonempty()
+    .overwrite((term) => term.slice(0, STOREFRONT_SEARCH_MAX_LENGTH).trimEnd())
+    .optional(),
   sort: z.enum(STOREFRONT_PRODUCTS_SORTS).optional(),
 })
 

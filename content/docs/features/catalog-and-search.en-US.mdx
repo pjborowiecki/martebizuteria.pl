@@ -27,7 +27,12 @@ export const storefrontProductsSearchSchema = z.object({
   collection: z.string().trim().nonempty().optional(),
   maxPrice: z.coerce.number().nonnegative().optional(),
   minPrice: z.coerce.number().nonnegative().optional(),
-  q: z.string().trim().nonempty().optional(),
+  q: z
+    .string()
+    .trim()
+    .nonempty()
+    .overwrite((term) => term.slice(0, STOREFRONT_SEARCH_MAX_LENGTH).trimEnd())
+    .optional(),
   sort: z.enum(STOREFRONT_PRODUCTS_SORTS).optional(),
 })
 ```
@@ -51,6 +56,8 @@ Each route passes a `handleSearchChange` callback that navigates with `replace: 
 ## Listing query
 
 `getStorefrontProductsPage` (`src/modules/product/use-cases/get-storefront-products-page.ts`) is a public `GET` server function with `withRequest`. It is exposed as an **infinite** query through `getStorefrontProductsPageQuery(search, scope)`.
+
+A request that carries `q` is a search, and the handler counts it with `assertWithinRateLimit("search-storefront-products", RATE_LIMITS.BROWSING, context.requestHeaders)` before it resolves a handle or reads a product: 120 searches a minute per client address, in a bucket of its own beside the overlay's. Past the limit it answers `TOO_MANY_REQUESTS`, the loader fails and the router shows `DefaultErrorComponent`. A listing without `q` is not counted, so browsing, filtering and paging through `/products`, a category or a collection, and the crawlers that walk them, add no write to the `rate_limit` table. A shopper sends one search per submitted term and one more for each filter or sort change on the results, which stays far below the limit.
 
 Page size depends on whether any filter is active, using the constants in `product.constants.ts`:
 
@@ -94,6 +101,8 @@ Scope filters are `inArray(product.id, <subquery>)` against `category_on_product
 
 The `q` parameter searches the `storefront_search` FTS5 index through `storefrontProductMatches(term)` in `src/modules/storefront-search/storefront-search.accessors.server.ts`. `buildStorefrontSearchExpression` folds `ł` to `l`, splits the term into words and turns each word into a prefix query, so `zlo pier` finds "Złoty pierścionek". A term with no letters or digits has nothing to search for, and the page comes back empty.
 
+The schema keeps at most the first `STOREFRONT_SEARCH_MAX_LENGTH` (100) characters of the trimmed term and drops a space the cut leaves at its end. The routes validate their search with it and the server function parses its input with it, so the index never receives a longer term, however the request is made. The overlay's field stops at the same length, so only an edited or hand-typed link is ever cut, and such a link opens the results for its first 100 characters instead of an error page.
+
 A product matches when any of these holds:
 
 - the index matches its own title, subtitle, tags, description or handle;
@@ -136,9 +145,12 @@ The header search is a separate feature backed by `src/modules/storefront-search
 
 The overlay's product group matches a product's own text only. Unlike the `q` parameter, it does not reach products through their categories, collections or SKUs.
 
+Each search runs those three index queries, so the function sits behind `withRateLimit("search-storefront", RATE_LIMITS.BROWSING)`: 120 searches a minute per client address, in a bucket of its own. The overlay asks only after a 300 ms pause in typing and caches each term for a minute, so a shopper stays far below that. Past the limit the function answers `TOO_MANY_REQUESTS` and the overlay shows its retryable error. A query longer than `STOREFRONT_SEARCH_MAX_LENGTH` characters after trimming fails validation before the database is read, and the overlay's field takes no more characters than that.
+
 Constants in `storefront-search.constants.ts`:
 
 - `STOREFRONT_SEARCH_MIN_LENGTH = 2` — the query is `enabled` only at two characters
+- `STOREFRONT_SEARCH_MAX_LENGTH = 100` — the longest trimmed query the server accepts, the field's `maxLength`, and the length the catalog cuts `q` to
 - `STOREFRONT_SEARCH_DEBOUNCE_MS = 300`
 - `STOREFRONT_SEARCH_LIMIT_PER_GROUP = 6`
 - `STOREFRONT_SEARCH_TRENDING_LIMIT = 5`

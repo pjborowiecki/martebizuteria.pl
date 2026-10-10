@@ -23,7 +23,7 @@ Przejdź przez sekcje, które dotyczą Twojej zmiany. Każdy punkt wskazuje plik
 
 ## Nadużycia
 
-- [ ] Operacje publiczne albo kosztowne niosą `withRateLimit(kind, RATE_LIMITS.…)` przed strażnikiem. Gotowe zestawy to `SENSITIVE` (3/min), `TOKEN` (5/min) i `CHECKOUT` (10/min).
+- [ ] Operacje publiczne albo kosztowne niosą `withRateLimit(kind, RATE_LIMITS.…)` przed strażnikiem. Gotowe zestawy to `SENSITIVE` (3/min), `TOKEN` (5/min), `CHECKOUT` (10/min) i `BROWSING` (120/min).
 - [ ] Napis `kind` jest unikalny dla operacji, bo klucz licznika to `` `${kind}:${clientAddress(headers)}` ``.
 - [ ] `withinRateLimit` w `src/lib/rate-limit.ts` przy awarii **odmawia** — jeśli zapis do D1 rzuci wyjątek, funkcja loguje błąd i zwraca `false`. Nie zmieniaj tego na zachowanie przepuszczające.
 - [ ] Adres IP klienta pochodzi z `cf-connecting-ip`, skonfigurowanego raz w `IP_ADDRESS_HEADER` i przekazanego do Better Auth jako `advanced.ipAddress.ipAddressHeaders`. Nigdy nie czytaj `x-forwarded-for` bezpośrednio.

@@ -2,11 +2,12 @@ import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import zod from "zod/v4"
 
-import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
+import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
   STOREFRONT_SEARCH_LIMIT_PER_GROUP,
+  STOREFRONT_SEARCH_MAX_LENGTH,
   STOREFRONT_SEARCH_MIN_LENGTH,
   STOREFRONT_SEARCH_QUERY_KEYS,
   STOREFRONT_SEARCH_QUERY_STALE_MS,
@@ -25,11 +26,11 @@ interface StorefrontSearchInput {
 
 const storefrontSearchInputSchema = zod.object({
   locale: zod.enum(I18N.SUPPORTED_LOCALES).default(I18N.DEFAULT_LOCALE),
-  query: zod.string().trim().min(STOREFRONT_SEARCH_MIN_LENGTH),
+  query: zod.string().trim().min(STOREFRONT_SEARCH_MIN_LENGTH).max(STOREFRONT_SEARCH_MAX_LENGTH),
 })
 
 export const searchStorefront = createServerFn({ method: "GET" })
-  .middleware([withRequest])
+  .middleware([withRateLimit("search-storefront", RATE_LIMITS.BROWSING)])
   .validator((input: StorefrontSearchInput) => storefrontSearchInputSchema.parse(input))
   .handler(async ({ data: { query, locale } }): Promise<StorefrontSearch["results"]> => {
     const limit = STOREFRONT_SEARCH_LIMIT_PER_GROUP

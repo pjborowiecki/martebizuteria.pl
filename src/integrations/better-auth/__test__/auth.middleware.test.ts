@@ -38,10 +38,10 @@ vi.mock("@tanstack/react-start", () => {
     },
   }
 
-  return { createMiddleware: () => builder }
+  return { createMiddleware: () => builder, createServerOnlyFn: (fn: unknown) => fn }
 })
 
-const { RATE_LIMITS, authorized, withRateLimit } = await import("~/src/integrations/better-auth/auth.middleware")
+const { RATE_LIMITS, assertWithinRateLimit, authorized, withRateLimit } = await import("~/src/integrations/better-auth/auth.middleware")
 
 const [requestBoundary] = stubs.handlers
 
@@ -249,8 +249,26 @@ describe("rate limit middleware", () => {
     expect(next).not.toHaveBeenCalled()
   })
 
+  it("lets a handler count only the calls it chooses, under the same per-address key", async () => {
+    stubs.withinRateLimit.mockResolvedValueOnce(true).mockResolvedValueOnce(false)
+
+    await expect(assertWithinRateLimit("search-storefront-products", RATE_LIMITS.BROWSING, requestHeaders)).resolves.toBeUndefined()
+    await expect(assertWithinRateLimit("search-storefront-products", RATE_LIMITS.BROWSING, requestHeaders)).rejects.toThrow(
+      new AppError(ERROR_CODES.TOO_MANY_REQUESTS),
+    )
+    expect(stubs.withinRateLimit).toHaveBeenCalledWith({
+      key: "search-storefront-products:203.0.113.7",
+      limit: RATE_LIMITS.BROWSING.max,
+      windowSeconds: RATE_LIMITS.BROWSING.window,
+    })
+  })
+
   it("keeps a wider allowance for token exchanges than for sensitive writes", () => {
     expect(RATE_LIMITS.TOKEN.max).toBeGreaterThan(RATE_LIMITS.SENSITIVE.max)
     expect(RATE_LIMITS.TOKEN.window).toBe(RATE_LIMITS.SENSITIVE.window)
+  })
+
+  it("lets a browsing shopper send two requests a second for a whole minute", () => {
+    expect(RATE_LIMITS.BROWSING).toStrictEqual({ max: 120, window: 60 })
   })
 })

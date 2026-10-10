@@ -2,7 +2,7 @@ import { type InfiniteData, infiniteQueryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import zod from "zod/v4"
 
-import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
+import { RATE_LIMITS, assertWithinRateLimit, withRequest } from "~/src/integrations/better-auth/auth.middleware"
 
 import {
   LIST_PAGE_FIRST,
@@ -90,9 +90,13 @@ export const getStorefrontProductsPage = createServerFn({
 })
   .middleware([withRequest])
   .validator((input: zod.input<typeof storefrontProductsPageInputSchema>) => storefrontProductsPageInputSchema.parse(input))
-  .handler(async ({ data: input }) => {
+  .handler(async ({ context, data: input }) => {
     const startedAt = performance.now()
     const search = normalizeStorefrontProductsSearch(input)
+    if (search.q !== undefined) {
+      await assertWithinRateLimit("search-storefront-products", RATE_LIMITS.BROWSING, context.requestHeaders)
+    }
+
     const page = input.page ?? LIST_PAGE_FIRST
     const filtered = hasActiveStorefrontProductFilters(search)
     const pageSize = filtered ? PRODUCT_STOREFRONT_FILTERED_MAX : PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE

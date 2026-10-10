@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
   STOREFRONT_SEARCH_LIMIT_PER_GROUP,
+  STOREFRONT_SEARCH_MAX_LENGTH,
   STOREFRONT_SEARCH_QUERY_KEYS,
   STOREFRONT_SEARCH_TRENDING_LIMIT,
 } from "~/src/modules/storefront-search/storefront-search.constants"
@@ -20,6 +21,7 @@ const server = vi.hoisted(() => ({
   searchCategories: vi.fn(),
   searchCollections: vi.fn(),
   searchProducts: vi.fn(),
+  withRateLimit: vi.fn<(kind: string, limit: object) => object>(() => ({})),
 }))
 
 const database = vi.hoisted(() => {
@@ -33,7 +35,11 @@ const database = vi.hoisted(() => {
   return { state }
 })
 
-vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
+  RATE_LIMITS: { BROWSING: { max: 120, window: 60 } },
+  withRateLimit: server.withRateLimit,
+  withRequest: {},
+}))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", async () => {
   const { productCategory } = await import("~/src/modules/product-category/product-category.schema")
 
@@ -89,6 +95,8 @@ vi.mock("@tanstack/react-start", () => ({
   },
 }))
 
+const rateLimitsAppliedOnLoad = [...server.withRateLimit.mock.calls]
+
 const category = (handle: string, titles: Record<string, string>, image: string | null = null): TrendingRow => ({ handle, image, titles })
 
 describe("searchStorefront", () => {
@@ -97,6 +105,10 @@ describe("searchStorefront", () => {
     server.searchProducts.mockResolvedValue([{ handle: "ring", name: "Ring", type: "product" }])
     server.searchCategories.mockResolvedValue([{ handle: "rings", name: "Rings", type: "category" }])
     server.searchCollections.mockResolvedValue([{ handle: "spring", name: "Spring", type: "collection" }])
+  })
+
+  it("limits each client address to the browsing rate, in a bucket of its own", () => {
+    expect(rateLimitsAppliedOnLoad).toStrictEqual([["search-storefront", { max: 120, window: 60 }]])
   })
 
   it("groups each source's hits under its own key", async () => {
@@ -126,6 +138,21 @@ describe("searchStorefront", () => {
       void searchStorefront({ data: { query } })
     }).toThrow()
     expect(server.searchProducts).not.toHaveBeenCalled()
+  })
+
+  it("refuses a query longer than the maximum before touching the database", () => {
+    expect(() => {
+      void searchStorefront({ data: { query: "r".repeat(STOREFRONT_SEARCH_MAX_LENGTH + 1) } })
+    }).toThrow()
+    expect(server.searchProducts).not.toHaveBeenCalled()
+  })
+
+  it("measures the maximum on the trimmed query", async () => {
+    const longest = "r".repeat(STOREFRONT_SEARCH_MAX_LENGTH)
+
+    await searchStorefront({ data: { query: `  ${longest}  ` } })
+
+    expect(server.searchProducts).toHaveBeenCalledExactlyOnceWith(longest, "pl-PL", STOREFRONT_SEARCH_LIMIT_PER_GROUP)
   })
 
   it("keys the cached results by locale and query", () => {
