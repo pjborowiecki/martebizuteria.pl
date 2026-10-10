@@ -9,6 +9,7 @@ import type * as Seo from "~/src/lib/seo"
 import accountDeletedEnglish from "~/messages/en-US/emails.account-deleted.json"
 import accountDeletedPolish from "~/messages/pl-PL/emails.account-deleted.json"
 import changeEmailPolish from "~/messages/pl-PL/emails.change-email.json"
+import passwordChangedPolish from "~/messages/pl-PL/emails.password-changed.json"
 import resetPasswordPolish from "~/messages/pl-PL/emails.reset-password.json"
 import verifyEmailPolish from "~/messages/pl-PL/emails.verify-email.json"
 
@@ -77,6 +78,11 @@ vi.mock("~/src/presentation/emails/change-email", () => ({
   ChangeEmail: () => null,
 }))
 
+vi.mock("~/src/presentation/emails/password-changed", () => ({
+  PASSWORD_CHANGED_NAMESPACE: "emails.password-changed",
+  PasswordChanged: () => null,
+}))
+
 vi.mock("~/src/presentation/emails/reset-password", () => ({
   RESET_PASSWORD_NAMESPACE: "emails.reset-password",
   ResetPassword: () => null,
@@ -87,8 +93,15 @@ vi.mock("~/src/presentation/emails/verify-email", () => ({
   VerifyEmail: () => null,
 }))
 
-const { auth, sendAccountDeletedEmail, sendChangeEmailConfirmation, sendResetPassword, sendVerificationEmail, signInAudit } =
-  await import("~/src/integrations/better-auth/auth.server")
+const {
+  auth,
+  sendAccountDeletedEmail,
+  sendChangeEmailConfirmation,
+  sendPasswordChangedEmail,
+  sendResetPassword,
+  sendVerificationEmail,
+  signInAudit,
+} = await import("~/src/integrations/better-auth/auth.server")
 
 const seo = await vi.importActual<typeof Seo>("~/src/lib/seo")
 
@@ -128,6 +141,8 @@ const user = { email: "shopper@marte.test", name: "Ada" }
 const goodbye = { email: user.email, name: user.name, origin: "http://127.0.0.1:3000" }
 
 const deletionOn = (origin: string): Request => new Request(`${origin}/api/auth/delete-user`, { method: "POST" })
+
+const resetOn = (origin: string): Request => new Request(`${origin}/api/auth/reset-password`, { method: "POST" })
 
 const verifyUrl = (callback?: string): string =>
   callback === undefined
@@ -325,6 +340,50 @@ describe("account emails", () => {
     })
   })
 
+  it("tells the customer the password was changed, linking to sign-in on the address the reset came in on", async () => {
+    stubs.buildLocalizedUrl.mockImplementation(seo.buildLocalizedUrl)
+
+    await sendPasswordChangedEmail({ request: resetOn("http://127.0.0.1:3000"), user })
+
+    expect(sentEmail()?.to).toBe(user.email)
+    expect(sentEmail()?.subject).toBe(passwordChangedPolish.subject)
+    expect(sentProp("name")).toBe(user.name)
+    expect(sentProp("signInUrl")).toBe("http://127.0.0.1:3000/auth/sign-in")
+  })
+
+  it("sends the password-changed email from a finished reset without holding up the sign-out of every device", async () => {
+    await auth.options.emailAndPassword.onPasswordReset({ user: createdUser }, resetOn("http://localhost:3000"))
+
+    await vi.waitFor(() => {
+      expect(sentEmail()?.subject).toBe(passwordChangedPolish.subject)
+    })
+    expect(sentEmail()?.to).toBe(createdUser.email)
+  })
+
+  it("records a password-changed email it will not link to a host this build does not serve, and keeps the reset successful", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await expect(
+      sendPasswordChangedEmail({ request: resetOn("https://martebizuteria.pl.attacker.example"), user }),
+    ).resolves.toBeUndefined()
+
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
+      detail: `Auth password-changed email — AppError: ${ERROR_CODES.FORBIDDEN}`,
+    })
+  })
+
+  it("records a password-changed email for a reset that came with no request to link from, and keeps the reset successful", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await expect(auth.options.emailAndPassword.onPasswordReset({ user: createdUser }, undefined)).resolves.toBeUndefined()
+
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
+      detail: "Auth password-changed email — The reset came with no request to link the sign-in page from",
+    })
+  })
+
   it("records a goodbye note for a deletion that came with no request to link from, and keeps the deletion successful", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {})
 
@@ -396,6 +455,22 @@ describe("auth email delivery", () => {
     await sendAccountDeletedEmail(goodbye)
 
     expect(sentEmail()?.revealsAccountExistence).toBeUndefined()
+  })
+
+  it("lets a password-changed email, sent only to whoever already used the account's reset link, mark the sender unavailable", async () => {
+    await sendPasswordChangedEmail({ request: resetOn("http://localhost:3000"), user })
+
+    expect(sentEmail()?.revealsAccountExistence).toBeUndefined()
+  })
+
+  it("records a refused password-changed email instead of throwing", async () => {
+    refuseEmails()
+
+    await expect(sendPasswordChangedEmail({ request: resetOn("http://localhost:3000"), user })).resolves.toBeUndefined()
+
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
+      detail: `Auth password-changed email — ${DOMAIN_NOT_VERIFIED}`,
+    })
   })
 
   it("records nothing when the provider accepts the message", async () => {

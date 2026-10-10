@@ -12,6 +12,7 @@ import orderCancelledCopy from "~/messages/en-US/emails.order-cancelled.json"
 import orderConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
 import orderRefundedCopy from "~/messages/en-US/emails.order-refunded.json"
 import orderShippedCopy from "~/messages/en-US/emails.order-shipped.json"
+import passwordChangedCopy from "~/messages/en-US/emails.password-changed.json"
 import paymentFailedCopy from "~/messages/en-US/emails.payment-failed.json"
 import resetPasswordCopy from "~/messages/en-US/emails.reset-password.json"
 import verifyEmailCopy from "~/messages/en-US/emails.verify-email.json"
@@ -44,6 +45,7 @@ describe("EMAIL_PREVIEWS", () => {
       ["order-confirmation", "Order confirmation"],
       ["order-refunded", "Order refunded"],
       ["order-shipped", "Order shipped"],
+      ["password-changed", "Password changed"],
       ["payment-failed", "Payment failed"],
       ["reset-password", "Reset password"],
       ["verify-email", "Verify email"],
@@ -104,6 +106,13 @@ describe("renderEmailPreview", () => {
 
     expect(preview).toContain(resetPasswordCopy.cta)
     expect(preview).toContain("auth/reset-password?token=12345")
+  })
+
+  it("renders the password changed notice with a way to sign in", async () => {
+    const preview = await text("password-changed")
+
+    expect(preview).toContain(passwordChangedCopy.heading.toUpperCase())
+    expect(preview).toContain("https://martebizuteria.pl/en-US/auth/sign-in")
   })
 
   it("lists the sample basket on the order confirmation", async () => {

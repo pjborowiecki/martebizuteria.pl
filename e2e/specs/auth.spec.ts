@@ -1,6 +1,10 @@
 import { TEST_ACCOUNTS, TEST_PASSWORD } from "../data/accounts"
 import { registerCustomer } from "../fixtures/customers"
-import { expect, test } from "../fixtures/test"
+import { linkIn, waitForEmail } from "../fixtures/emails"
+import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
+import { AuthPage } from "../pages"
+
+const RESET_PASSWORD = "MarteResetPassword456!"
 
 test.describe("authentication", () => {
   test("a new customer signs up, confirms the email and lands in their account", async ({ authPage, page, request }, testInfo) => {
@@ -37,5 +41,36 @@ test.describe("authentication", () => {
 
     await page.goto("/en-US/account/overview")
     await expect(page).toHaveURL(/\/en-US\/auth\/sign-in/u)
+  })
+
+  test("a password reset signs out the browser that stayed signed in and emails the customer about it", async ({
+    authPage,
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const customer = await registerCustomer({ authPage, page, request }, testInfo)
+    const resetBrowser = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "reset") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(resetBrowser)
+    const resetPage = new AuthPage(await resetBrowser.newPage())
+
+    await resetPage.requestPasswordReset(customer.email)
+    const resetEmail = await waitForEmail(request, customer.email, "Password reset — M'Arte")
+    await resetPage.open(linkIn(resetEmail, /reset-password/u).href)
+    await resetPage.setNewPassword(RESET_PASSWORD)
+    await expect(resetPage.notification("Password updated")).toBeVisible()
+    await resetBrowser.close()
+
+    const notice = await waitForEmail(request, customer.email, "Your M'Arte password has been changed")
+    expect(linkIn(notice, /\/auth\/sign-in/u).pathname).toBe("/en-US/auth/sign-in")
+
+    await authPage.open("/en-US/account/overview")
+    await expect(page).toHaveURL(/\/en-US\/auth\/sign-in/u)
+
+    await authPage.signIn(customer.email, RESET_PASSWORD)
+    await expect(page).toHaveURL(/\/en-US\/account\/overview/u)
   })
 })

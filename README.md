@@ -35,7 +35,7 @@ This is a working application under active development, not a finished product. 
 | Checkout                 | Four steps (contact, billing address, delivery, payment) with lazily loaded step components, a persisted draft, a discount code field, Stripe Payment Element, and webhook-driven fulfilment.                                                |
 | Payments and fulfilment  | Stripe Checkout Sessions, `/api/webhooks/stripe` with signature verification, idempotent order placement, inventory reservation with compensation, refunds that restock only when the admin says the goods came back, never twice per order. |
 | Customer accounts        | Better Auth email/password with required verification, GitHub and Google sign-in, two-factor auth with backup codes, password change and recovery, multi-session, order history, addresses, active sessions and login history.               |
-| Transactional email      | Resend with React Email templates: verify, change and reset emails, account deleted, order confirmation, shipped, cancelled, refunded, failed payment and new-order notice to the shop. Previewable at `/dev/emails`.                        |
+| Transactional email      | Resend with React Email templates: verify, change and reset emails, password changed, account deleted, order confirmation, shipped, cancelled, refunded, failed payment and new-order notice to the shop. Previewable at `/dev/emails`.      |
 | Admin catalog            | Products, variants, categories, collections and attributes: permission-checked CRUD, reordering, localized content editing, R2 image upload, stats cards, product CSV export.                                                                |
 | Admin orders             | Database-backed list and detail page with tabs, filters, stats and CSV export, plus fulfil, ship with tracking, mark delivered, cancel, refund and return-to-stock actions, webhook-flagged disputes, audit trail, customer and shop emails. |
 | Discounts                | Percentage, fixed-amount and free-shipping codes with date, usage, per-customer and minimum-order limits, applied to the Stripe Checkout Session as a one-off coupon and managed at `/admin/coupons`.                                        |
@@ -200,7 +200,7 @@ The canonical URL is configured in source, not in an environment file. Rebuild a
 ```text
 content/
   docs/                       Localized MDX documentation (98 pages per locale) and meta.{locale}.json
-messages/{locale}/            52 JSON namespace files per locale
+messages/{locale}/            53 JSON namespace files per locale
 public/                       Fonts, favicon, OG image, llms.txt, _headers, screenshots, video
 scripts/                      verify-bindings, verify-stripe-keys, verify-email-sender, verify-build, prepare-deploy-secrets, sync-skills, commit-msg
 src/
@@ -317,7 +317,7 @@ Route files carry no locale segment. The router rewrites instead — `rewrite.in
 
 One consequence worth knowing: because the router only ever sees the de-localized path, anything deriving locale from router location silently yields the default. `getCurrentLocale()` reads the real request URL and is the single derivation used everywhere — including by server functions, whose `/_serverFn` URLs carry no locale prefix at all.
 
-Message catalogues are split into 52 namespaces per locale, so a page ships the always-on root namespaces plus what its route and layout ancestors declare in `staticData.namespaces` — not the whole catalogue. A test asserts file by file that Polish contains every key English does.
+Message catalogues are split into 53 namespaces per locale, so a page ships the always-on root namespaces plus what its route and layout ancestors declare in `staticData.namespaces` — not the whole catalogue. A test asserts file by file that Polish contains every key English does.
 
 ## Engineering standards
 
@@ -524,7 +524,7 @@ Supported locales are `pl-PL` (default) and `en-US`, declared in [`i18n.config.t
 
 Polish uses unprefixed paths, because it is the default. English uses the full BCP-47 tag — `/en-US/products`. A redundant `/pl-PL/...` URL is 301'd to the bare path in the Worker, and bare language aliases (`/pl`, `/en`) canonicalize to the full tag.
 
-- **UI messages** live in `messages/{locale}/` as 52 dotted-namespace JSON files, using the same keys, ICU arguments and rich-text tags across locales. A test asserts Polish parity with English file by file.
+- **UI messages** live in `messages/{locale}/` as 53 dotted-namespace JSON files, using the same keys, ICU arguments and rich-text tags across locales. A test asserts Polish parity with English file by file.
 - **Route namespaces** are declared in `staticData.namespaces`; a page loads the always-on root namespaces plus what its route and layout ancestors ask for. Loaders fetch messages and data in one `Promise.all`.
 - **Documentation** lives in `content/docs/` as `slug.{locale}.mdx` with `meta.{locale}.json` for navigation. It compiles through Fumadocs into `.source/`, which is generated — edit the MDX, never the output.
 - **Legal pages** — `/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns` — are rows in the D1 `content_page` table, with titles, descriptions and Markdown bodies as per-locale JSON maps. The [`20261002120000_content_pages.sql`](src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql) migration creates the table and seeds the privacy and returns pages, and [`20261005200000_terms_of_service_page.sql`](src/integrations/drizzle-orm/migrations/20261005200000_terms_of_service_page.sql) seeds the terms of service, both without overwriting existing rows. [`20261005210000_returns_and_complaints_page.sql`](src/integrations/drizzle-orm/migrations/20261005210000_returns_and_complaints_page.sql) replaces the seeded returns text, which contradicted Polish consumer law, only while both languages still match it. The withdrawal and complaint forms the pages link are PDFs in `public/forms`, and the order confirmation email attaches the withdrawal form, read through the `ASSETS` binding, next to the seller's details, the longest fulfilment time of the ordered products, the withdrawal and complaint rules with the out-of-court routes, and links to the three pages. Admins edit them with MDXEditor at `/admin/content`, styled with the same prose class as the storefront page. A save publishes immediately, is refused if someone else saved the page after it was opened, and moves the "Last updated" date of each locale whose title or body changed. A new locale needs a migration that adds it to every row's maps before it can be translated in the editor.

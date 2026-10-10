@@ -41,10 +41,12 @@ import { APP_NAME } from "~/src/presentation/branding/app"
 
 import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
 import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"
+import type passwordChangedMessages from "~/messages/en-US/emails.password-changed.json"
 import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.json"
 import type verifyEmailMessages from "~/messages/en-US/emails.verify-email.json"
 import { ACCOUNT_DELETED_NAMESPACE, AccountDeleted } from "~/src/presentation/emails/account-deleted"
 import { CHANGE_EMAIL_NAMESPACE, ChangeEmail } from "~/src/presentation/emails/change-email"
+import { PASSWORD_CHANGED_NAMESPACE, PasswordChanged } from "~/src/presentation/emails/password-changed"
 import { RESET_PASSWORD_NAMESPACE, ResetPassword } from "~/src/presentation/emails/reset-password"
 import { VERIFY_EMAIL_NAMESPACE, VerifyEmail } from "~/src/presentation/emails/verify-email"
 import { ROUTES } from "~/src/routes"
@@ -208,6 +210,27 @@ export const sendChangeEmailConfirmation = async ({ user, url }: AuthEmailParams
   })
 }
 
+export const sendPasswordChangedEmail = async ({ request, user }: PasswordChangedEmailParams): Promise<void> => {
+  try {
+    const locale = getCurrentLocale()
+    const signInUrl = buildLocalizedUrl(resolveRequestOrigin(request), ROUTES.AUTH_SIGN_IN, locale)
+    const messages = await loadNamespace<typeof passwordChangedMessages>({ locale, namespace: PASSWORD_CHANGED_NAMESPACE })
+
+    await deliverAuthEmail("password-changed", {
+      react: createElement(PasswordChanged, {
+        locale,
+        messages,
+        name: user.name,
+        signInUrl,
+      }),
+      subject: createTranslator({ locale, messages })("subject"),
+      to: user.email,
+    })
+  } catch (error) {
+    recordAuthEmailFailure("password-changed", user.email, String(error))
+  }
+}
+
 export const sendAccountDeletedEmail = async ({ email, locale, name, origin }: AccountDeletedEmailParams): Promise<boolean> => {
   try {
     const resolvedLocale = locale ?? getCurrentLocale()
@@ -277,7 +300,18 @@ export const auth = betterAuth({
     enabled: true,
     maxPasswordLength: PASSWORD_MAX_LENGTH,
     minPasswordLength: PASSWORD_MIN_LENGTH,
+    onPasswordReset: async ({ user }, request) => {
+      if (request === undefined) {
+        recordAuthEmailFailure("password-changed", user.email, "The reset came with no request to link the sign-in page from")
+
+        return
+      }
+
+      scheduleBackgroundWork(sendPasswordChangedEmail({ request, user }))
+      await Promise.resolve()
+    },
     requireEmailVerification: true,
+    revokeSessionsOnPasswordReset: true,
     sendResetPassword,
   },
   emailVerification: {
@@ -389,6 +423,11 @@ interface AuthEmailParams {
 interface AuthEmailError {
   readonly code: AuthErrorCode
   readonly message: string
+}
+
+interface PasswordChangedEmailParams {
+  readonly request: Request
+  readonly user: AuthEmailParams["user"]
 }
 
 interface AccountDeletedEmailParams {

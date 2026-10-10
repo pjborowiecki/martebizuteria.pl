@@ -9,7 +9,7 @@
   "forgotPasswordTitle": "Sprawdź skrzynkę",
   "forgotPasswordDescription": "Jeśli konto dla tego adresu istnieje, bezpieczny link do zmiany hasła jest już w drodze.",
   "resetPasswordTitle": "Hasło zaktualizowane",
-  "resetPasswordDescription": "Twoje nowe hasło zostało ustawione. Możesz się teraz zalogować.",
+  "resetPasswordDescription": "Twoje nowe hasło zostało ustawione, a konto wylogowane na wszystkich urządzeniach. Możesz się teraz zalogować.",
   "verificationResentTitle": "Sprawdź skrzynkę",
   "verificationResentDescription": "Nowy link potwierdzający jest już w drodze na adres {email}.",
   "verifiedTitle": "Adres e-mail potwierdzony",
