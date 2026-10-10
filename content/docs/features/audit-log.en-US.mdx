@@ -154,7 +154,7 @@ Details worth knowing:
 
 ## Customer activity
 
-`recordCustomerActivity` (`src/modules/customer-activity/use-cases/record-customer-activity.ts`) is public (`withRequest`) but returns `{ ok: true, recorded: false }` without writing when there is no session, so anonymous traffic is never logged.
+`recordCustomerActivity` (`src/modules/customer-activity/use-cases/record-customer-activity.ts`) is public but returns `{ ok: true, recorded: false }` without writing when there is no session, so anonymous traffic is never logged. It sits behind `withRateLimit("record-customer-activity", RATE_LIMITS.BROWSING)`: 120 calls a minute per client address, in a bucket of its own, which a shopper's page views and basket additions never reach and which keeps one address from filling the audit log. Past the limit it answers `TOO_MANY_REQUESTS` and records nothing.
 
 It handles three kinds and formats a detail line for each:
 

@@ -133,7 +133,7 @@ Dwa limitery dzielą tabelę `rate_limit` i funkcję liczącą `withinRateLimit`
 
 `authRateLimitStorage` liczy każdy klucz `<ip>|<ścieżka>` według jego reguły przez `withinRateLimit` i odmawia z oknem reguły jako `X-Retry-After`. Better Auth nie używa `storage: "database"`: za każdym razem, gdy któryś z jego liczników zaczynał nowe okno, ta opcja usuwała każdy wiersz `rate_limit`, którego `last_request` był starszy niż 60 sekund, a wraz z nimi liczniki limitów e-maili opisanych niżej, minutę po ich starcie.
 
-**Limiter aplikacji**, `withRateLimit(kind, limit)` nad `withinRateLimit` z `src/lib/rate-limit.ts`. `RATE_LIMITS` definiuje `SENSITIVE` (3/60 s), `TOKEN` (5/60 s) i `CHECKOUT` (10/60 s), a licznik to jeden atomowy upsert w D1:
+**Limiter aplikacji**, `withRateLimit(kind, limit)` albo, w handlerze, który liczy tylko część swoich wywołań, `assertWithinRateLimit(kind, limit, requestHeaders)`, oba nad `withinRateLimit` z `src/lib/rate-limit.ts`. `RATE_LIMITS` definiuje `SENSITIVE` (3/60 s), `TOKEN` (5/60 s), `CHECKOUT` (10/60 s) i `BROWSING` (120/60 s), a licznik to jeden atomowy upsert w D1:
 
 ```ts
 .onConflictDoUpdate({
@@ -146,7 +146,7 @@ Dwa limitery dzielą tabelę `rate_limit` i funkcję liczącą `withinRateLimit`
 })
 ```
 
-Kluczem jest `${kind}:${clientAddress(headers)}`, a `clientAddress` czyta **wyłącznie** `cf-connecting-ip`, którego klient nie może podrobić. Jeśli magazyn licznika zawiedzie, żądanie jest odrzucane, a nie dopuszczane. Obecnie stosowane do `checkout-create`, `checkout-update`, `checkout-status`, `discount-validate`, `create-user-address`, `update-customer-phone` i `revoke-other-customer-sessions`. Limity są per IP; nie ma blokady per konto.
+Kluczem jest `${kind}:${clientAddress(headers)}`, a `clientAddress` czyta **wyłącznie** `cf-connecting-ip`, którego klient nie może podrobić. Jeśli magazyn licznika zawiedzie, żądanie jest odrzucane, a nie dopuszczane. Obecnie stosowane do `checkout-create`, `checkout-update`, `checkout-status`, `discount-validate`, `create-user-address`, `update-customer-phone`, `revoke-other-customer-sessions`, `search-storefront`, `search-storefront-products` (tylko listingi katalogu z parametrem `q`) i `record-customer-activity`. Limity są per IP; nie ma blokady per konto.
 
 Zwróć uwagę, że `resolveRequestIp` w `src/lib/request.ts` — używane dla _dziennika audytu_ i dla podpowiedzi `remoteip`, którą kasa wysyła do siteverify Turnstile — sięga w drugiej kolejności do `x-forwarded-for`, który klient może podrobić. Limitowania żądań to nie dotyczy, bo nie korzysta z tego helpera, a limit otwartych checkoutów także wyznacza adres przez `clientAddress`; na Cloudflare `cf-connecting-ip` jest zawsze obecny, więc podpowiedź nigdy nie pochodzi tam z `x-forwarded-for`.
 

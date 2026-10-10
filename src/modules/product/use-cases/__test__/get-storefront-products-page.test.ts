@@ -1,16 +1,25 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getStorefrontProductsPage, getStorefrontProductsPageQuery } from "~/src/modules/product/use-cases/get-storefront-products-page"
+import { STOREFRONT_SEARCH_MAX_LENGTH } from "~/src/modules/storefront-search/storefront-search.constants"
 
 const access = vi.hoisted(() => ({
+  assertWithinRateLimit: vi.fn<(kind: string, rule: object, requestHeaders: Headers) => Promise<void>>(),
   categoryByHandle: vi.fn(),
   collectionByHandle: vi.fn(),
   hierarchy: vi.fn(),
   page: vi.fn(),
 }))
 
-vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
+const REQUEST_HEADERS = vi.hoisted(() => new Headers({ "cf-connecting-ip": "203.0.113.7" }))
+
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
+  RATE_LIMITS: { BROWSING: { max: 120, window: 60 } },
+  assertWithinRateLimit: access.assertWithinRateLimit,
+  withRequest: {},
+}))
 
 vi.mock("~/src/modules/product-category/product-category.server", () => ({
   getCategoryHierarchyQuery: { execute: access.hierarchy },
@@ -29,10 +38,15 @@ vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const state: { validator?: (input: unknown) => unknown } = {}
     const builder = {
-      handler: (handler: (options: { readonly data: unknown }) => unknown) => (options: { readonly data: unknown }) =>
-        Promise.resolve(options).then((received) =>
-          handler({ data: state.validator === undefined ? received.data : state.validator(received.data) }),
-        ),
+      handler:
+        (handler: (options: { readonly context: { readonly requestHeaders: Headers }; readonly data: unknown }) => unknown) =>
+        (options: { readonly data: unknown }) =>
+          Promise.resolve(options).then((received) =>
+            handler({
+              context: { requestHeaders: REQUEST_HEADERS },
+              data: state.validator === undefined ? received.data : state.validator(received.data),
+            }),
+          ),
       middleware: () => builder,
       validator: (validator: (input: unknown) => unknown) => {
         state.validator = validator
@@ -48,6 +62,8 @@ vi.mock("@tanstack/react-start", () => ({
 const PRODUCT_ROW = { handle: "ring", id: "product-1", title: "Ring" }
 
 beforeEach(() => {
+  access.assertWithinRateLimit.mockReset()
+  access.assertWithinRateLimit.mockResolvedValue()
   access.categoryByHandle.mockReset()
   access.collectionByHandle.mockReset()
   access.hierarchy.mockReset()
@@ -181,6 +197,41 @@ describe("getStorefrontProductsPage", () => {
       searchTerm: "ring",
       sort: undefined,
     })
+  })
+})
+
+describe("getStorefrontProductsPage search limits", () => {
+  it("counts a search against the client address's catalog search budget", async () => {
+    await getStorefrontProductsPage({ data: { q: "ring" } })
+
+    expect(access.assertWithinRateLimit).toHaveBeenCalledExactlyOnceWith(
+      "search-storefront-products",
+      { max: 120, window: 60 },
+      REQUEST_HEADERS,
+    )
+  })
+
+  it("lets a listing without a search term through without counting it", async () => {
+    await getStorefrontProductsPage({ data: { maxPrice: 500, sort: "newest" } })
+
+    expect(access.assertWithinRateLimit).not.toHaveBeenCalled()
+    expect(access.page).toHaveBeenCalledOnce()
+  })
+
+  it("refuses a search over the limit before reading anything from the catalog", async () => {
+    access.assertWithinRateLimit.mockRejectedValue(new AppError(ERROR_CODES.TOO_MANY_REQUESTS))
+
+    await expect(getStorefrontProductsPage({ data: { category: "rings", q: "ring" } })).rejects.toThrow(
+      new AppError(ERROR_CODES.TOO_MANY_REQUESTS),
+    )
+    expect(access.categoryByHandle).not.toHaveBeenCalled()
+    expect(access.page).not.toHaveBeenCalled()
+  })
+
+  it("searches the catalog for no more than the longest term the search overlay sends", async () => {
+    await getStorefrontProductsPage({ data: { q: "r".repeat(STOREFRONT_SEARCH_MAX_LENGTH * 10) } })
+
+    expect(access.page.mock.calls[0]?.[0]).toMatchObject({ searchTerm: "r".repeat(STOREFRONT_SEARCH_MAX_LENGTH) })
   })
 })
 

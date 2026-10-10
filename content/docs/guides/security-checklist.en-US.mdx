@@ -23,7 +23,7 @@ Go through the sections that apply to your change. Each item names the file that
 
 ## Abuse
 
-- [ ] Public or costly operations carry `withRateLimit(kind, RATE_LIMITS.…)` in front of the guard. The presets are `SENSITIVE` (3/min), `TOKEN` (5/min) and `CHECKOUT` (10/min).
+- [ ] Public or costly operations carry `withRateLimit(kind, RATE_LIMITS.…)` in front of the guard. The presets are `SENSITIVE` (3/min), `TOKEN` (5/min), `CHECKOUT` (10/min) and `BROWSING` (120/min).
 - [ ] The `kind` string is unique to the operation, since the counter key is `` `${kind}:${clientAddress(headers)}` ``.
 - [ ] `withinRateLimit` in `src/lib/rate-limit.ts` fails **closed** — if the D1 write throws, it logs and returns `false`. Do not change that to fail open.
 - [ ] The client IP comes from `cf-connecting-ip`, configured once in `IP_ADDRESS_HEADER` and passed to Better Auth as `advanced.ipAddress.ipAddressHeaders`. Never read `x-forwarded-for` directly.

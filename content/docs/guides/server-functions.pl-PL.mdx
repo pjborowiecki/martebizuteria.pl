@@ -81,15 +81,18 @@ Słownik uprawnień definiuje `src/integrations/better-auth/auth.access.ts`. Zas
 .middleware([withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE), authorized()])
 ```
 
-Trzy gotowe zestawy, wszystkie w oknie 60 sekund:
+Cztery gotowe zestawy, wszystkie w oknie 60 sekund:
 
-| Zestaw      | Maks. żądań | Stosowany do                           |
-| ----------- | ----------- | -------------------------------------- |
-| `SENSITIVE` | 3           | Zapisy adresów, operacje tokenopodobne |
-| `TOKEN`     | 5           | Zużywanie tokenów                      |
-| `CHECKOUT`  | 10          | Operacje w procesie zamówienia         |
+| Zestaw      | Maks. żądań | Stosowany do                                       |
+| ----------- | ----------- | -------------------------------------------------- |
+| `SENSITIVE` | 3           | Zapisy adresów, operacje tokenopodobne             |
+| `TOKEN`     | 5           | Zużywanie tokenów                                  |
+| `CHECKOUT`  | 10          | Operacje w procesie zamówienia                     |
+| `BROWSING`  | 120         | Wyszukiwarka sklepu i śledzenie aktywności klienta |
 
 Kluczem licznika jest `` `${kind}:${clientAddress(context.requestHeaders)}` ``, gdzie `clientAddress` czyta nagłówek `cf-connecting-ip` przez `getIP` z Better Auth, a w razie braku zwraca literał `"unknown"`. Liczniki żyją w tabeli D1 `rate_limit`; `withinRateLimit` w `src/lib/rate-limit.ts` realizuje okno jednym `INSERT ... ON CONFLICT DO UPDATE` z klauzulą `setWhere`, więc wystarcza jedno odwołanie do bazy. Jeśli ten zapis rzuci wyjątek, funkcja zapisuje błąd w logu i zwraca `false` — czyli domyślnie odmawia.
+
+Gdy liczyć się ma tylko część wywołań funkcji, handler sam wywołuje `assertWithinRateLimit(kind, limit, context.requestHeaders)`, które kluczuje i odmawia dokładnie tak jak middleware. W ten sposób `getStorefrontProductsPage` liczy listing z parametrem `q`, a zwykłego przeglądania nie liczy.
 
 Better Auth stosuje własny ogranicznik do `/api/auth/*`, liczony tym samym `withinRateLimit` przez `customStorage: authRateLimitStorage`, z regułami: logowanie 5, rejestracja 3, żądanie resetu hasła 3 oraz reset hasła 5 na minutę.
 

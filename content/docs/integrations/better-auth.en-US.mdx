@@ -216,6 +216,7 @@ export const createCompleteProduct = createServerFn({ method: "POST" }).middlewa
 
 ```ts
 export const RATE_LIMITS = {
+  BROWSING: { max: 120, window: RATE_LIMIT_WINDOW_SECONDS },
   CHECKOUT: { max: 10, window: RATE_LIMIT_WINDOW_SECONDS },
   SENSITIVE: { max: 3, window: RATE_LIMIT_WINDOW_SECONDS },
   TOKEN: { max: 5, window: RATE_LIMIT_WINDOW_SECONDS },

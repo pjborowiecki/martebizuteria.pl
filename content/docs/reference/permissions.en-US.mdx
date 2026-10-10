@@ -171,13 +171,14 @@ Two layers, both writing to the `rate_limit` table.
 | `/api/auth/request-password-reset` | 3           |
 | `/api/auth/reset-password`         | 5           |
 
-**The application's `withRateLimit` middleware**, with three named budgets in `auth.middleware.ts`, all over a 60-second window:
+**The application's `withRateLimit` middleware**, with four named budgets in `auth.middleware.ts`, all over a 60-second window:
 
-| Budget      | Max | Applied to                                                                                                                                     |
-| ----------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `CHECKOUT`  | 10  | `checkout-create` and `checkout-update` in `src/integrations/stripe/stripe.actions.ts`, and `discount-validate` in `validate-discount-code.ts` |
-| `SENSITIVE` | 3   | `create-user-address`, `update-customer-phone`, `revoke-other-customer-sessions`                                                               |
-| `TOKEN`     | 5   | Nothing yet; only asserted against `SENSITIVE` in `auth.middleware.test.ts`                                                                    |
+| Budget      | Max | Applied to                                                                                                                                                                                                       |
+| ----------- | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BROWSING`  | 120 | `search-storefront` in `search-storefront.ts`, `search-storefront-products` in `get-storefront-products-page.ts` for a listing that carries `q`, and `record-customer-activity` in `record-customer-activity.ts` |
+| `CHECKOUT`  | 10  | `checkout-create` and `checkout-update` in `src/integrations/stripe/stripe.actions.ts`, and `discount-validate` in `validate-discount-code.ts`                                                                   |
+| `SENSITIVE` | 3   | `create-user-address`, `update-customer-phone`, `revoke-other-customer-sessions`                                                                                                                                 |
+| `TOKEN`     | 5   | Nothing yet; only asserted against `SENSITIVE` in `auth.middleware.test.ts`                                                                                                                                      |
 
 Both layers key on the client IP. `clientAddress` in `src/lib/rate-limit.ts` reads only the `cf-connecting-ip` header, which the edge sets and a client cannot spoof. The counter itself is a single `INSERT ... ON CONFLICT DO UPDATE` with a `setWhere` guard, so the window reset and the increment are one atomic statement. If the table is unreachable the helper logs `Rate-limit storage unavailable` and returns `false`, so the middleware throws `TOO_MANY_REQUESTS` — it fails closed.
 

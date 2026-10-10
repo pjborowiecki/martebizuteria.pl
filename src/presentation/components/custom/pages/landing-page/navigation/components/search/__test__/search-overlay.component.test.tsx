@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { STOREFRONT_SEARCH_MAX_LENGTH } from "~/src/modules/storefront-search/storefront-search.constants"
 import { type StorefrontSearch } from "~/src/modules/storefront-search/storefront-search.types"
 
 import {
@@ -124,6 +125,15 @@ describe("SearchOverlay", () => {
     await userEvent.type(screen.getByRole("searchbox", { hidden: true, name: "Search M'ARTE…" }), "{Enter}")
 
     expect(logic.current?.handleSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it("stops the field at the longest query the search accepts", () => {
+    renderWithProviders(<SearchOverlay />)
+
+    expect(screen.getByRole("searchbox", { hidden: true, name: "Search M'ARTE…" })).toHaveAttribute(
+      "maxlength",
+      String(STOREFRONT_SEARCH_MAX_LENGTH),
+    )
   })
 
   it("closes the overlay from the close control and from the dialog's own cancel", async () => {

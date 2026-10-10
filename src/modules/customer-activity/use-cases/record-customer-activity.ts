@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
-import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
+import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
 import {
@@ -14,7 +14,7 @@ import { resolveRequestAuditIp } from "~/src/modules/audit-log/audit-log.record.
 import { customerActivityZodSchemas } from "~/src/modules/customer-activity/customer-activity.zod"
 
 export const recordCustomerActivity = createServerFn({ method: "POST" })
-  .middleware([withRequest])
+  .middleware([withRateLimit("record-customer-activity", RATE_LIMITS.BROWSING)])
   .validator((input: zod.input<typeof customerActivityZodSchemas.recordInput>) => customerActivityZodSchemas.recordInput.parse(input))
   .handler(async ({ data: input }): Promise<{ ok: true; recorded: boolean }> => {
     const session = await getRequestSession()

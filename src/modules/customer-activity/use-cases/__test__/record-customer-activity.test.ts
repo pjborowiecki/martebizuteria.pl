@@ -14,7 +14,12 @@ const audits = vi.hoisted(() => ({
   pageViewed: vi.fn(),
 }))
 
-vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
+const withRateLimit = vi.hoisted(() => vi.fn<(kind: string, limit: object) => object>(() => ({})))
+
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
+  RATE_LIMITS: { BROWSING: { max: 120, window: 60 } },
+  withRateLimit,
+}))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: session.get }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordCustomerCartAbandonedAudit: audits.abandoned,
@@ -40,10 +45,16 @@ vi.mock("@tanstack/react-start", () => ({
   },
 }))
 
+const rateLimitsAppliedOnLoad = [...withRateLimit.mock.calls]
+
 describe("recordCustomerActivity", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     session.get.mockResolvedValue({ user: { email: "shopper@example.test", id: "user-1" } })
+  })
+
+  it("limits each client address to the browsing rate, in a bucket of its own", () => {
+    expect(rateLimitsAppliedOnLoad).toStrictEqual([["record-customer-activity", { max: 120, window: 60 }]])
   })
 
   it("records nothing for an anonymous visitor", async () => {

@@ -1,5 +1,5 @@
 import { isNotFound } from "@tanstack/react-router"
-import { createMiddleware } from "@tanstack/react-start"
+import { createMiddleware, createServerOnlyFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import { isAPIError } from "better-auth/api"
 import { ZodError } from "zod"
@@ -15,6 +15,7 @@ import { clientAddress, withinRateLimit } from "~/src/lib/rate-limit"
 const RATE_LIMIT_WINDOW_SECONDS = 60
 
 export const RATE_LIMITS = {
+  BROWSING: { max: 120, window: RATE_LIMIT_WINDOW_SECONDS },
   CHECKOUT: { max: 10, window: RATE_LIMIT_WINDOW_SECONDS },
   SENSITIVE: { max: 3, window: RATE_LIMIT_WINDOW_SECONDS },
   TOKEN: { max: 5, window: RATE_LIMIT_WINDOW_SECONDS },
@@ -63,14 +64,25 @@ export const authorized = (permission?: Permission) =>
       return next({ context: { auth: session } })
     })
 
-export const withRateLimit = (kind: string, { max, window }: { readonly max: number; readonly window: number }) =>
+interface RateLimitRule {
+  readonly max: number
+  readonly window: number
+}
+
+export const assertWithinRateLimit = createServerOnlyFn(
+  async (kind: string, { max, window }: RateLimitRule, requestHeaders: Headers): Promise<void> => {
+    const admitted = await withinRateLimit({ key: `${kind}:${clientAddress(requestHeaders)}`, limit: max, windowSeconds: window })
+    if (!admitted) {
+      throw new AppError(ERROR_CODES.TOO_MANY_REQUESTS)
+    }
+  },
+)
+
+export const withRateLimit = (kind: string, rule: RateLimitRule) =>
   createMiddleware({ type: "function" })
     .middleware([withRequest])
     .server(async ({ context, next }) => {
-      const admitted = await withinRateLimit({ key: `${kind}:${clientAddress(context.requestHeaders)}`, limit: max, windowSeconds: window })
-      if (!admitted) {
-        throw new AppError(ERROR_CODES.TOO_MANY_REQUESTS)
-      }
+      await assertWithinRateLimit(kind, rule, context.requestHeaders)
 
       return next()
     })

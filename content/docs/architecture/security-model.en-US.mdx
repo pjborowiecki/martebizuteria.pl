@@ -133,7 +133,7 @@ Two limiters share the `rate_limit` table and its counting function, `withinRate
 
 `authRateLimitStorage` counts each `<ip>|<path>` key under its rule with `withinRateLimit` and refuses with the rule's window as `X-Retry-After`. Better Auth's `storage: "database"` is not used: whenever one of its counters started a new window it deleted every `rate_limit` row whose `last_request` was more than 60 seconds old, which would have taken the e-mail caps below with it a minute after they began.
 
-**The application's own**, `withRateLimit(kind, limit)` over `withinRateLimit` in `src/lib/rate-limit.ts`. `RATE_LIMITS` defines `SENSITIVE` (3/60 s), `TOKEN` (5/60 s) and `CHECKOUT` (10/60 s), and the counter is a single atomic D1 upsert:
+**The application's own**, `withRateLimit(kind, limit)`, or `assertWithinRateLimit(kind, limit, requestHeaders)` for a handler that counts only some of its calls, both over `withinRateLimit` in `src/lib/rate-limit.ts`. `RATE_LIMITS` defines `SENSITIVE` (3/60 s), `TOKEN` (5/60 s), `CHECKOUT` (10/60 s) and `BROWSING` (120/60 s), and the counter is a single atomic D1 upsert:
 
 ```ts
 .onConflictDoUpdate({
@@ -146,7 +146,7 @@ Two limiters share the `rate_limit` table and its counting function, `withinRate
 })
 ```
 
-The key is `${kind}:${clientAddress(headers)}`, and `clientAddress` reads **only** `cf-connecting-ip`, which a client cannot spoof. If the counter storage fails the request is refused, not admitted. Currently applied to `checkout-create`, `checkout-update`, `checkout-status`, `discount-validate`, `create-user-address`, `update-customer-phone` and `revoke-other-customer-sessions`. Limits are per IP; there is no per-account lockout.
+The key is `${kind}:${clientAddress(headers)}`, and `clientAddress` reads **only** `cf-connecting-ip`, which a client cannot spoof. If the counter storage fails the request is refused, not admitted. Currently applied to `checkout-create`, `checkout-update`, `checkout-status`, `discount-validate`, `create-user-address`, `update-customer-phone`, `revoke-other-customer-sessions`, `search-storefront`, `search-storefront-products` (only catalog listings that carry `q`) and `record-customer-activity`. Limits are per IP; there is no per-account lockout.
 
 Note that `resolveRequestIp` in `src/lib/request.ts` — used for the _audit log_ and for the `remoteip` hint the checkout sends to Turnstile's siteverify — falls back to `x-forwarded-for`, which is client-spoofable. Rate limiting is unaffected because it does not use that helper, and the open-checkout limit keys the address with `clientAddress` too; on Cloudflare `cf-connecting-ip` is always present, so the hint is never taken from `x-forwarded-for` there.
 

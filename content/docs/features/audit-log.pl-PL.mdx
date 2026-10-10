@@ -154,7 +154,7 @@ Szczegóły warte uwagi:
 
 ## Aktywność klienta
 
-`recordCustomerActivity` (`src/modules/customer-activity/use-cases/record-customer-activity.ts`) jest publiczne (`withRequest`), ale bez sesji zwraca `{ ok: true, recorded: false }` bez zapisu, więc ruch anonimowy nigdy nie jest logowany.
+`recordCustomerActivity` (`src/modules/customer-activity/use-cases/record-customer-activity.ts`) jest publiczne, ale bez sesji zwraca `{ ok: true, recorded: false }` bez zapisu, więc ruch anonimowy nigdy nie jest logowany. Stoi za `withRateLimit("record-customer-activity", RATE_LIMITS.BROWSING)`: 120 wywołań na minutę z jednego adresu klienta, we własnym koszyku limitu, czego wyświetlenia stron i dodania do koszyka przez klienta nigdy nie osiągają, a co nie pozwala jednemu adresowi zapełnić dziennika audytu. Po przekroczeniu limitu odpowiada `TOO_MANY_REQUESTS` i niczego nie zapisuje.
 
 Obsługuje trzy rodzaje zdarzeń i formatuje dla każdego linię szczegółów:
 

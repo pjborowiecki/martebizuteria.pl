@@ -245,7 +245,7 @@ Authentication and authorization entry points are in [`src/integrations/better-a
 | --------------------- | ------------------------------------------------------------------------------------------------------ |
 | `auth.server.ts`      | Better Auth configuration: adapter, providers, plugins, rate-limit rules, database hooks, email sends. |
 | `auth.access.ts`      | Roles, the permission statement matrix, `hasAdminAccess` and `hasPermission`.                          |
-| `auth.middleware.ts`  | `withRequest`, `authorized(permission?)`, `withRateLimit` — the server-function trust boundary.        |
+| `auth.middleware.ts`  | `withRequest`, `authorized(permission?)`, `withRateLimit`, `assertWithinRateLimit` — trust boundary.   |
 | `auth.session.ts`     | Per-request session memoization, the client session query options and `clearCacheOnUserChange`.        |
 | `auth.routes.ts`      | `requireSignedIn`, `requireAdmin`, `requireCustomer`, `redirectIfSignedIn` and post-auth redirects.    |
 | `auth.client.ts`      | Browser auth client with the matching plugin set.                                                      |

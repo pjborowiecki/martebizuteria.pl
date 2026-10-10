@@ -27,7 +27,12 @@ export const storefrontProductsSearchSchema = z.object({
   collection: z.string().trim().nonempty().optional(),
   maxPrice: z.coerce.number().nonnegative().optional(),
   minPrice: z.coerce.number().nonnegative().optional(),
-  q: z.string().trim().nonempty().optional(),
+  q: z
+    .string()
+    .trim()
+    .nonempty()
+    .overwrite((term) => term.slice(0, STOREFRONT_SEARCH_MAX_LENGTH).trimEnd())
+    .optional(),
   sort: z.enum(STOREFRONT_PRODUCTS_SORTS).optional(),
 })
 ```
@@ -51,6 +56,8 @@ Każda trasa przekazuje funkcję `handleSearchChange`, która nawiguje z `replac
 ## Zapytanie listingu
 
 `getStorefrontProductsPage` (`src/modules/product/use-cases/get-storefront-products-page.ts`) to publiczna funkcja serwerowa `GET` z middleware `withRequest`. Udostępniana jest jako zapytanie **nieskończone** przez `getStorefrontProductsPageQuery(search, scope)`.
+
+Żądanie z parametrem `q` jest wyszukiwaniem, więc handler liczy je przez `assertWithinRateLimit("search-storefront-products", RATE_LIMITS.BROWSING, context.requestHeaders)`, zanim rozwiąże jakikolwiek handle albo przeczyta produkt: 120 wyszukiwań na minutę z jednego adresu klienta, we własnym koszyku limitu, obok koszyka nakładki. Po przekroczeniu limitu odpowiada `TOO_MANY_REQUESTS`, loader zawodzi, a router pokazuje `DefaultErrorComponent`. Listing bez `q` nie jest liczony, więc przeglądanie, filtrowanie i stronicowanie `/products`, kategorii i kolekcji, a także roboty, które po nich chodzą, nie dodają żadnego zapisu do tabeli `rate_limit`. Klient wysyła jedno wyszukiwanie na każdą zatwierdzoną frazę i jedno więcej na każdą zmianę filtra lub sortowania w wynikach, czyli pozostaje daleko poniżej limitu.
 
 Rozmiar strony zależy od tego, czy jakikolwiek filtr jest aktywny; stałe leżą w `product.constants.ts`:
 
@@ -94,6 +101,8 @@ Filtry zakresu to `inArray(product.id, <podzapytanie>)` na tabelach `category_on
 
 Parametr `q` przeszukuje indeks FTS5 `storefront_search` przez `storefrontProductMatches(term)` w `src/modules/storefront-search/storefront-search.accessors.server.ts`. `buildStorefrontSearchExpression` zamienia `ł` na `l`, dzieli frazę na słowa i z każdego słowa robi zapytanie o prefiks, więc `zlo pier` znajduje „Złoty pierścionek”. Fraza bez liter i cyfr nie daje niczego do szukania, a strona wraca pusta.
 
+Schemat zostawia najwyżej pierwsze `STOREFRONT_SEARCH_MAX_LENGTH` (100) znaków przyciętej frazy i usuwa spację, którą cięcie zostawi na jej końcu. Trasy walidują nim swoje parametry, a funkcja serwerowa parsuje nim wejście, więc indeks nigdy nie dostaje dłuższej frazy, niezależnie od tego, jak wysłano żądanie. Pole w nakładce kończy się na tej samej długości, więc przycinany bywa tylko zmieniony albo wpisany ręcznie link, a taki link otwiera wyniki dla pierwszych 100 znaków zamiast strony błędu.
+
 Produkt pasuje, gdy spełnia którykolwiek z tych warunków:
 
 - indeks dopasowuje jego własny tytuł, podtytuł, tagi, opis albo handle;
@@ -136,9 +145,12 @@ Wyszukiwanie w nagłówku to oddzielna funkcja oparta na `src/modules/storefront
 
 Grupa produktów w nakładce dopasowuje wyłącznie własny tekst produktu. W przeciwieństwie do parametru `q` nie dociera do produktów przez ich kategorie, kolekcje ani SKU.
 
+Każde wyszukiwanie uruchamia te trzy zapytania do indeksu, więc funkcja stoi za `withRateLimit("search-storefront", RATE_LIMITS.BROWSING)`: 120 wyszukiwań na minutę z jednego adresu klienta, we własnym koszyku limitu. Nakładka pyta dopiero po 300 ms przerwy w pisaniu i trzyma każdą frazę w pamięci podręcznej przez minutę, więc klient pozostaje daleko poniżej tego progu. Po przekroczeniu limitu funkcja odpowiada `TOO_MANY_REQUESTS`, a nakładka pokazuje swój błąd z możliwością ponowienia. Fraza dłuższa niż `STOREFRONT_SEARCH_MAX_LENGTH` znaków po przycięciu nie przechodzi walidacji, zanim cokolwiek zostanie odczytane z bazy, a pole w nakładce nie przyjmuje więcej znaków.
+
 Stałe w `storefront-search.constants.ts`:
 
 - `STOREFRONT_SEARCH_MIN_LENGTH = 2` — zapytanie jest `enabled` dopiero od dwóch znaków
+- `STOREFRONT_SEARCH_MAX_LENGTH = 100` — najdłuższa przycięta fraza, którą przyjmuje serwer, `maxLength` pola i długość, do której katalog przycina `q`
 - `STOREFRONT_SEARCH_DEBOUNCE_MS = 300`
 - `STOREFRONT_SEARCH_LIMIT_PER_GROUP = 6`
 - `STOREFRONT_SEARCH_TRENDING_LIMIT = 5`
