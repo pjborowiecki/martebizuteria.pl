@@ -470,6 +470,32 @@ test.describe("guest checkout", () => {
     await expect(cartPage.summary()).toContainText(/Total\s*PLN\s758\.00/u)
   })
 
+  test("a guest who reopens an old order confirmation sees the order and keeps the basket filled since", async ({
+    cartPage,
+    checkoutPage,
+    page,
+    productPage,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "reopened-confirmation")
+    const session = await reachPaymentForm(checkoutPage, request, email)
+    await completeCheckoutSession(request, session.id)
+    await checkoutPage.open(`/en-US/checkout?success=true&session_id=${session.id}`)
+    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    await productPage.gotoProduct(PRODUCTS.onyx.handle)
+    await expect(cartPage.cartLink()).toContainText("0")
+    await productPage.addToCart()
+    await expect(cartPage.cartLink()).toContainText("1")
+
+    await checkoutPage.open(`/en-US/checkout?success=true&session_id=${session.id}`)
+
+    await expect(checkoutPage.confirmationHeading()).toBeVisible()
+    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    await cartPage.gotoCart()
+    await expect(page.getByRole("main")).toContainText(PRODUCTS.onyx.title)
+    await expect(cartPage.summary()).toContainText(/Total\s*PLN\s379\.00/u)
+  })
+
   test("a guest who comes back from the bank without paying returns to the payment step with the basket kept", async ({
     checkoutPage,
     page,
