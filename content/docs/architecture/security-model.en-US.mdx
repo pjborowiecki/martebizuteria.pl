@@ -1,6 +1,6 @@
 ---
 title: "Security model"
-description: "How access is enforced on routes, server functions and WebSockets, and how sessions, rate limits and errors are protected."
+description: "How access is enforced on routes, server functions and WebSockets, and how sessions, rate limits, errors and responses are protected."
 ---
 
 ## Two layers, only one of which is a boundary
@@ -184,6 +184,46 @@ Checking after `getByName()` would already have let an unauthenticated client op
 | Anything else          | `INTERNAL_ERROR`, original logged server-side |
 
 `ERROR_CODES` in `src/modules/_core/constants/errors.ts` holds the eight codes, and `useActionError()` maps a code to `errors.action.<CODE>`. Internal messages, stack traces and SQL never reach the browser.
+
+## Response headers
+
+`src/server.ts` passes every response it answers through `withSecurityHeaders` from `src/lib/security-headers.ts`: pages, server functions, the auth and webhook handlers, redirects, `/sitemap.xml` and `/robots.txt`. Only the two WebSocket upgrades go back untouched, because a `101` response cannot be copied.
+
+| Header                      | Value                                                                                                                   |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `Content-Security-Policy`   | Built for each response, below                                                                                          |
+| `X-Frame-Options`           | `DENY`, the same rule as `frame-ancestors 'none'` for browsers that predate it                                          |
+| `X-Content-Type-Options`    | `nosniff`                                                                                                               |
+| `Referrer-Policy`           | `strict-origin-when-cross-origin`                                                                                       |
+| `Permissions-Policy`        | `camera=(), geolocation=(), microphone=()`                                                                              |
+| `Strict-Transport-Security` | `max-age=31536000; includeSubDomains`, only when `APP_ENV` is `preview` or `production` and the request came over HTTPS |
+
+The policy allows what the shop loads and nothing else:
+
+| Directive                    | Sources                                                                                                                                                                                                             | Loaded by                                                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `script-src`                 | `'self'`, `'nonce-…'`, `https://js.stripe.com`, `https://*.js.stripe.com`, `https://challenges.cloudflare.com`                                                                                                      | The bundles, the inline scripts of this response, Stripe.js, Turnstile                                                                                 |
+| `style-src`                  | `'self'`, `'unsafe-inline'`                                                                                                                                                                                         | The stylesheets, and the inline styles explained below                                                                                                 |
+| `img-src`                    | `'self'`, `data:`, `blob:`, the image hosts                                                                                                                                                                         | Catalogue images; `data:` for the SVG icons in the MapLibre stylesheet, `blob:` for the admin upload preview                                           |
+| `media-src`                  | `'self'`, the image hosts                                                                                                                                                                                           | The landing-page video                                                                                                                                 |
+| `connect-src`                | `'self'`, `https://api.stripe.com`, `https://fonts.googleapis.com`, `https://challenges.cloudflare.com`, `https://api-pl-points.easypack24.net`, `https://basemaps.cartocdn.com`, `https://*.basemaps.cartocdn.com` | Server functions and the realtime sockets, the Stripe API, the font stylesheet Stripe Elements reads, Turnstile, the InPost points API, the locker map |
+| `frame-src`                  | `https://js.stripe.com`, `https://*.js.stripe.com`, `https://hooks.stripe.com`, `https://challenges.cloudflare.com`                                                                                                 | The Payment Element, 3-D Secure, the Turnstile challenge                                                                                               |
+| `font-src`, `worker-src`     | `'self'`                                                                                                                                                                                                            | The self-hosted fonts, the MapLibre worker                                                                                                             |
+| `default-src`, `form-action` | `'self'`                                                                                                                                                                                                            | Everything not listed, and form posts                                                                                                                  |
+| `object-src`, `base-uri`     | `'none'`                                                                                                                                                                                                            | Nothing                                                                                                                                                |
+| `frame-ancestors`            | `'none'`                                                                                                                                                                                                            | No site may frame the shop                                                                                                                             |
+
+The image hosts are the origins of `DEFAULT_R2_PUBLIC_URL` and of `getAssetCdnBase()`, so a new `VITE_R2_URL` moves the policy with it. Turnstile is allowed ahead of the bot check that loads it.
+
+**The nonce.** `createContentSecurityPolicyNonce` draws 16 random bytes for every request. `src/server.ts` hands the nonce to TanStack Start as `RequestContext.nonce`, `getRouter` reads it back with `getGlobalStartContext()` into `ssr.nonce`, and Start stamps it on its hydration scripts, on the tags `<HeadContent />` and `<Scripts />` render, and on a `<meta property="csp-nonce">` the browser router reads when it hydrates. `RootDocument` puts it on the theme, sidebar and data-grid init scripts with `useRouter().options.ssr?.nonce`. An inline script injected into a page has no nonce, so it does not run.
+
+**Inline styles.** `style-src` allows `'unsafe-inline'`. React renders `style` attributes into the server HTML, and Sonner, the theme provider, MapLibre and Stripe.js insert `<style>` elements at runtime that carry no nonce. A nonce source in `style-src` switches `'unsafe-inline'` off and would block all of them. A style cannot run script, and scripts stay nonce-only.
+
+**Zod's eval probe.** Zod 4 calls `new Function("")` once per page to decide whether to compile its object parsers. The policy has no `'unsafe-eval'`, so the browser refuses the call and reports one `script-src` violation for `eval`; Zod catches the refusal and parses without compiling, as it already does on Workers. Zod's `jitless` setting skips the probe, but it has to be set before the first schema module runs, and the client bundle evaluates the route chunks before any module the app could set it in.
+
+**Static files.** Files under `public/` are answered by the assets layer and never reach the Worker. `public/_headers` gives every one of them `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`. HSTS is left to the Worker's responses, because the browser applies it to the whole host.
+
+`security-headers.test.ts` checks every header and directive, `server.test.ts` checks that each Worker response carries them with the nonce the application was handed, and `e2e/specs/smoke.spec.ts` loads the home, product, sign-in and documentation pages in a browser and fails if they do not hydrate or if the browser refuses anything other than Zod's probe.
 
 ## Indexing and exposure
 

@@ -96,6 +96,16 @@ Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change t
 - [ ] `generateRobotsTxt` returns a blanket `Disallow: /` for any non-production `APP_ENV`, and in production disallows `/api/`, `/admin`, `/account` and `/checkout`.
 - [ ] `generateSitemapXml` is built from `STATIC_PAGES` in `src/data/static-pages.ts` (currently `/`, `/about`, `/blog`). A new public page belongs there; a private one does not.
 
+## Response headers
+
+`src/lib/security-headers.ts`, applied in `src/server.ts`:
+
+- [ ] A new response in `src/server.ts` is returned from `respond`, so `withSecurityHeaders` covers it. Only the two WebSocket upgrades bypass it.
+- [ ] A new script host, frame, image or video host, or API the browser calls directly is added to the matching directive in `contentSecurityPolicy`, with the case in `security-headers.test.ts`. The smoke browser test fails when the browser refuses anything but Zod's eval probe on the pages it opens.
+- [ ] An inline `<script>` carries the request's nonce, as the init scripts in `RootDocument` do with `useRouter().options.ssr?.nonce`, or is rendered through a route's `head` or `scripts`, which Start stamps itself. `script-src` never gains `'unsafe-inline'` or `'unsafe-eval'`.
+- [ ] `Strict-Transport-Security` stays limited to `preview` and `production` over HTTPS, so a local browser never pins `localhost` or `127.0.0.1`.
+- [ ] Static files in `public/` get their headers from `public/_headers`, because the assets layer answers them without the Worker.
+
 ## Development-only surfaces
 
 - [ ] `/dev/emails` guards itself with `if (!import.meta.env.DEV) { return notFound() }` as the first statement of its handler. Any new `dev.*` route must do the same.

@@ -191,7 +191,7 @@ The canonical URL is configured in source, not in an environment file. Rebuild a
 - **GitHub and Google OAuth.** Callback URLs are `https://<host>/api/auth/callback/github` and `https://<host>/api/auth/callback/google`. A provider sign-in is linked to an existing account with the same e-mail address only when the provider reports that address as verified, and OAuth tokens are encrypted at rest.
 - **Resend.** Configure the API key and a verified sender before testing sign-up, because `requireEmailVerification` blocks sign-in until the address is verified. Add the sender's domain at [resend.com/domains](https://resend.com/domains) and publish the DKIM (`resend._domainkey` TXT) and SPF (`send` MX and TXT) records it lists; locally, `onboarding@resend.dev` works but delivers only to the Resend account owner. `bun run email:verify <environment>` checks the key and sender, and the deploy scripts run the same check. Every e-mail carries `Reply-To: kontakt@martebizuteria.pl` (`BUSINESS.EMAIL` in [`src/presentation/branding/business.ts`](src/presentation/branding/business.ts)), so customer replies reach the shop whatever sender is configured. Each new order is also emailed to the shop at `RESEND_EMAIL_FROM`. Templates live in [`src/presentation/emails/`](src/presentation/emails) and are previewable at `/dev/emails`.
 - **Stripe.** Use test keys for development and preview and live keys for production; the deploy scripts refuse any other pairing. Create the webhook endpoint at `https://<host>/api/webhooks/stripe` and store its signing secret. Handlers live in [`src/integrations/stripe/stripe.webhooks.tsx`](src/integrations/stripe/stripe.webhooks.tsx) and cover payment success, failure, refund and `checkout.session.expired`.
-- **R2.** Admin media upload writes to the `IMAGES` binding with a one-year immutable `Cache-Control`. Reads go through the public `VITE_R2_URL`, so the bucket needs public access or a custom domain.
+- **R2.** Admin media upload writes to the `IMAGES` binding with a one-year immutable `Cache-Control`. Reads go through the public `VITE_R2_URL`, so the bucket needs public access or a custom domain. Pages are served with a Content-Security-Policy that allows images and video only from that host and the bundled `r2.dev` bucket, so the build-time and the Worker value of `VITE_R2_URL` must match.
 - **InPost.** [`src/integrations/inpost/inpost.api.ts`](src/integrations/inpost/inpost.api.ts) calls the public points API by city to power locker selection during checkout. It needs no credentials, and it creates no shipments and prints no labels.
 - **Cloudflare Queue and Durable Object.** Both are declared per environment in `wrangler.jsonc`. The queue needs to exist before deploying; `scripts/verify-bindings.ts` refuses a configuration whose producer queue has no matching consumer.
 
@@ -204,7 +204,7 @@ messages/{locale}/            53 JSON namespace files per locale
 public/                       Fonts, favicon, OG image, llms.txt, _headers, screenshots, video
 scripts/                      verify-bindings, verify-stripe-keys, verify-email-sender, verify-build, prepare-deploy-secrets, sync-skills, commit-msg
 src/
-  server.ts                   Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, queue consumer
+  server.ts                   Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, security headers, queue consumer
   router.tsx                  Per-request QueryClient, SSR integration, locale rewrite, default components
   routes.ts                   Route constants shared by links, guards and head metadata
   routes/                     65 locale-free file routes + 2 API handlers
@@ -218,7 +218,7 @@ src/
   durable-objects/            RealtimeInvalidationHub
   providers/                  Theme and translation providers
   hooks/                      Shared React hooks
-  lib/                        background (ALS + waitUntil), cookie, image, rate-limit, request, seo, url
+  lib/                        background (ALS + waitUntil), cookie, image, rate-limit, request, security-headers, seo, url
   data/                       Fixtures still backing unfinished admin screens and the blog
   platform/testing/           D1-shaped transport over node:sqlite, server-function driver, render and message helpers
   types/                      Generated Worker declarations, router and Vite ambient types

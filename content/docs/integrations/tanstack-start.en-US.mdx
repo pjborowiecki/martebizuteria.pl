@@ -30,9 +30,12 @@ const router = createRouter({
   routeTree,
   scrollRestoration: true,
   scrollRestorationBehavior: "instant",
+  ssr: nonce === undefined ? {} : { nonce },
 })
 setupRouterSsrQueryIntegration({ queryClient, router })
 ```
+
+On the server, `nonce` is the Content-Security-Policy nonce `src/server.ts` drew for the request, read with `getGlobalStartContext()` inside `createIsomorphicFn().server(…)`. Start stamps `ssr.nonce` on its hydration scripts, on the tags `<HeadContent />` and `<Scripts />` render and on a `<meta property="csp-nonce">`, from which the browser router takes it back when it hydrates. See [Security model](/docs/architecture/security-model#response-headers).
 
 The `rewrite` pair is what makes locale prefixes invisible to the route tree: an incoming `/en-US/products` is de-localized to `/products` before matching, and every generated href is re-localized on the way out. See [use-intl](/docs/integrations/use-intl) for `deLocalizeUrl` and `localizeUrl`.
 
@@ -49,7 +52,7 @@ Pending, error and not-found components are global defaults from `src/presentati
 | `/api/realtime/admin/ws`      | WebSocket upgrade into the admin invalidation hub                    |
 | `/api/realtime/storefront/ws` | WebSocket upgrade into the storefront invalidation hub               |
 
-Everything else goes through `resolveLocale(request)`, which can return a 301 to the canonical locale path or a `Set-Cookie` to be appended to the response, and is then handed to `handler.fetch` inside `executionContextStorage.run({ waitUntil }, …)`. That `AsyncLocalStorage` store is how `scheduleBackgroundWork` in `src/lib/background.ts` reaches `ctx.waitUntil` from deep inside a use case, which the audit log, the transactional emails and [realtime invalidation](/docs/integrations/realtime-invalidation) all rely on.
+Everything else goes through `resolveLocale(request)`, which can return a 301 to the canonical locale path or a `Set-Cookie` to be appended to the response, and is then handed to `handler.fetch` inside `executionContextStorage.run({ waitUntil }, …)`. That `AsyncLocalStorage` store is how `scheduleBackgroundWork` in `src/lib/background.ts` reaches `ctx.waitUntil` from deep inside a use case, which the audit log, the transactional emails and [realtime invalidation](/docs/integrations/realtime-invalidation) all rely on. Every response except the WebSocket upgrades then goes through `withSecurityHeaders` from `src/lib/security-headers.ts`, which sets the Content-Security-Policy with the request's nonce and the other security headers.
 
 The same file exports the Durable Object class and a `queue` handler:
 
@@ -61,7 +64,7 @@ async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: Executio
 }
 ```
 
-`RequestContext` is declared into `@tanstack/react-start` in the same file, so `env`, `waitUntil` and `passThroughOnException` are typed everywhere a server function reads the request context.
+`RequestContext` is declared into `@tanstack/react-start` in the same file, so `env`, `nonce`, `waitUntil` and `passThroughOnException` are typed everywhere a server function reads the request context.
 
 ## File routes
 

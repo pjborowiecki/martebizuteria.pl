@@ -8,6 +8,7 @@ import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modu
 
 import { executionContextStorage } from "~/src/lib/background"
 import { serializeCookie } from "~/src/lib/cookie"
+import { createContentSecurityPolicyNonce, withSecurityHeaders } from "~/src/lib/security-headers"
 import { generateRobotsTxt, generateSitemapXml } from "~/src/lib/seo"
 
 import { ROUTES } from "~/src/routes"
@@ -32,6 +33,7 @@ export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalida
 
 export interface RequestContext {
   env: Env
+  nonce: string
   passThroughOnException: () => void
   waitUntil: (promise: Readonly<Promise<unknown>>) => void
 }
@@ -44,17 +46,45 @@ declare module "@tanstack/react-start" {
   }
 }
 
+const respond = async (request: Request, context: RequestContext): Promise<Response> => {
+  const { origin, pathname, protocol } = new URL(request.url)
+  if (pathname === "/sitemap.xml") {
+    return sitemapResponse(origin)
+  }
+
+  if (pathname === "/robots.txt") {
+    return robotsResponse(origin, context.env.APP_ENV)
+  }
+
+  const { redirect, setCookie } = resolveLocale(request)
+  if (redirect) {
+    return redirect
+  }
+
+  const response = await executionContextStorage.run(
+    {
+      waitUntil: context.waitUntil,
+    },
+    () =>
+      handler.fetch(request, {
+        context,
+        responseLinkHeader: true,
+      }),
+  )
+
+  if (!setCookie) {
+    return response
+  }
+
+  const newResponse = new Response(response.body, response)
+  newResponse.headers.append("Set-Cookie", serializeCookie({ ...setCookie, options: { secure: protocol === "https:" } }))
+
+  return newResponse
+}
+
 const server: ExportedHandler<Env, AuditLogQueueMessage> = {
   async fetch(request, env, ctx) {
-    const { origin, pathname, protocol } = new URL(request.url)
-    if (pathname === "/sitemap.xml") {
-      return sitemapResponse(origin)
-    }
-
-    if (pathname === "/robots.txt") {
-      return robotsResponse(origin, env.APP_ENV)
-    }
-
+    const { pathname, protocol } = new URL(request.url)
     if (pathname === ROUTES.API_REALTIME.ADMIN_WS) {
       return handleRealtimeInvalidationWebSocket(request, env, REALTIME_INVALIDATION_HUB.ADMIN)
     }
@@ -63,35 +93,15 @@ const server: ExportedHandler<Env, AuditLogQueueMessage> = {
       return handleRealtimeInvalidationWebSocket(request, env, REALTIME_INVALIDATION_HUB.STOREFRONT)
     }
 
-    const { redirect, setCookie } = resolveLocale(request)
-    if (redirect) {
-      return redirect
+    const nonce = createContentSecurityPolicyNonce()
+    const context: RequestContext = {
+      env,
+      nonce,
+      passThroughOnException: ctx.passThroughOnException.bind(ctx),
+      waitUntil: ctx.waitUntil.bind(ctx),
     }
 
-    const waitUntil = ctx.waitUntil.bind(ctx)
-    const response = await executionContextStorage.run(
-      {
-        waitUntil,
-      },
-      () =>
-        handler.fetch(request, {
-          context: {
-            env,
-            passThroughOnException: ctx.passThroughOnException.bind(ctx),
-            waitUntil,
-          },
-          responseLinkHeader: true,
-        }),
-    )
-
-    if (!setCookie) {
-      return response
-    }
-
-    const newResponse = new Response(response.body, response)
-    newResponse.headers.append("Set-Cookie", serializeCookie({ ...setCookie, options: { secure: protocol === "https:" } }))
-
-    return newResponse
+    return withSecurityHeaders(await respond(request, context), { appEnv: env.APP_ENV, nonce, protocol })
   },
   async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
     await processAuditLogQueueBatch(batch)

@@ -102,7 +102,7 @@ Plik `src/lib/url.ts` zamienia zapisany klucz lub adres na coś, co przeglądark
 
 `DEFAULT_R2_PUBLIC_URL` w `src/presentation/branding/app.ts` to własny publiczny punkt końcowy bucketu, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`. Funkcja `isConfiguredAssetCdnBase` dodatkowo odrzuca bazę zawierającą zastępczy host `your-production-cdn-domain.com`, więc niedokończony plik środowiska cofa się do działającej wartości domyślnej, a nie generuje martwych adresów obrazów.
 
-`VITE_R2_URL` występuje zarówno w `secrets.required` w `wrangler.jsonc`, jak i wśród zmiennych przeglądarkowych z prefiksem `VITE_`, ponieważ potrzebują go obie strony.
+`VITE_R2_URL` występuje zarówno w `secrets.required` w `wrangler.jsonc`, jak i wśród zmiennych przeglądarkowych z prefiksem `VITE_`, ponieważ potrzebują go obie strony. Obie wartości muszą wskazywać ten sam host: Content-Security-Policy jest budowany na serwerze i pozwala stronom ładować obrazy i wideo tylko z originu `DEFAULT_R2_PUBLIC_URL` oraz originu, który zwraca tam `getAssetCdnBase()`, więc bundle zbudowany z innym hostem miałby odrzucone obrazy. Zobacz [Model bezpieczeństwa](/docs/architecture/security-model#nagłówki-odpowiedzi).
 
 ### Dlaczego istnieje `isAssetCdnUrl`
 

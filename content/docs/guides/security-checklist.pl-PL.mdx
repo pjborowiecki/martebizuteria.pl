@@ -96,6 +96,16 @@ Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli z
 - [ ] `generateRobotsTxt` zwraca całkowite `Disallow: /` dla każdego nieprodukcyjnego `APP_ENV`, a na produkcji zabrania `/api/`, `/admin`, `/account` i `/checkout`.
 - [ ] `generateSitemapXml` jest budowane z `STATIC_PAGES` w `src/data/static-pages.ts` (obecnie `/`, `/about`, `/blog`). Nowa strona publiczna należy tam; prywatna nie.
 
+## Nagłówki odpowiedzi
+
+`src/lib/security-headers.ts`, stosowany w `src/server.ts`:
+
+- [ ] Nowa odpowiedź w `src/server.ts` jest zwracana z `respond`, więc obejmuje ją `withSecurityHeaders`. Omijają go tylko dwa przejścia na WebSocket.
+- [ ] Nowy host skryptów, ramka, host obrazów lub wideo albo API wywoływane bezpośrednio z przeglądarki trafia do właściwej dyrektywy w `contentSecurityPolicy`, z przypadkiem w `security-headers.test.ts`. Przeglądarkowy test smoke kończy się błędem, gdy przeglądarka odmówi na otwieranych stronach czegokolwiek poza sondą eval Zod.
+- [ ] Skrypt `<script>` inline niesie nonce żądania, tak jak skrypty inicjujące w `RootDocument` przez `useRouter().options.ssr?.nonce`, albo jest renderowany przez `head` lub `scripts` trasy, którym Start nadaje go sam. `script-src` nigdy nie dostaje `'unsafe-inline'` ani `'unsafe-eval'`.
+- [ ] `Strict-Transport-Security` pozostaje ograniczony do `preview` i `production` przez HTTPS, żeby lokalna przeglądarka nigdy nie przypięła `localhost` ani `127.0.0.1`.
+- [ ] Pliki statyczne z `public/` dostają nagłówki z `public/_headers`, bo warstwa zasobów odpowiada na nie bez Workera.
+
 ## Powierzchnie tylko dla środowiska deweloperskiego
 
 - [ ] `/dev/emails` sam się pilnuje przez `if (!import.meta.env.DEV) { return notFound() }` jako pierwszą instrukcję handlera. Każda nowa trasa `dev.*` musi robić to samo.

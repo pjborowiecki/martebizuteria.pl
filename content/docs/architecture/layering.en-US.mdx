@@ -5,13 +5,13 @@ description: "The five layers of the application, what each one is allowed to de
 
 ## The layers
 
-| Layer        | Lives in                                    | Decides                                                                  |
-| ------------ | ------------------------------------------- | ------------------------------------------------------------------------ |
-| Worker entry | `src/server.ts`                             | Which requests never reach React; locale redirects; `waitUntil` plumbing |
-| Delivery     | `src/routes`, `src/router.tsx`              | URL shape, guards, what a page preloads, head tags                       |
-| Use cases    | `src/modules/*/use-cases`                   | Who may call an operation, what input is valid, which query keys it owns |
-| Data access  | `src/modules/*.accessors.ts`, `*.server.ts` | How a row is read or written; SQL shape; prepared statements             |
-| Presentation | `src/presentation`, `src/providers`         | Markup, styles, which query options to read                              |
+| Layer        | Lives in                                    | Decides                                                                                    |
+| ------------ | ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Worker entry | `src/server.ts`                             | Which requests never reach React; locale redirects; `waitUntil` plumbing; security headers |
+| Delivery     | `src/routes`, `src/router.tsx`              | URL shape, guards, what a page preloads, head tags                                         |
+| Use cases    | `src/modules/*/use-cases`                   | Who may call an operation, what input is valid, which query keys it owns                   |
+| Data access  | `src/modules/*.accessors.ts`, `*.server.ts` | How a row is read or written; SQL shape; prepared statements                               |
+| Presentation | `src/presentation`, `src/providers`         | Markup, styles, which query options to read                                                |
 
 Vendors sit beside these layers rather than inside them: `src/integrations/{vendor}` configures a third party and hands the domain decisions back to the module that owns the data.
 
@@ -63,7 +63,7 @@ A foreign order id returns no row, so there is nothing to leak.
 3. `ROUTES.API_REALTIME.ADMIN_WS` and `ROUTES.API_REALTIME.STOREFRONT_WS` — WebSocket upgrades, handed to `handleRealtimeInvalidationWebSocket`.
 4. A locale redirect from `resolveLocale`, returned as a `301` before anything else happens.
 
-Everything else is wrapped in `executionContextStorage.run({ waitUntil }, …)` so that background work scheduled deep inside the domain layer can still reach the Worker's `ExecutionContext`. The same file also exports the `queue` handler that drains the audit-log queue, and re-exports the `RealtimeInvalidationHub` class so Wrangler can bind it.
+Everything else is wrapped in `executionContextStorage.run({ waitUntil }, …)` so that background work scheduled deep inside the domain layer can still reach the Worker's `ExecutionContext`. Every response except the WebSocket upgrades, the first two short-circuits and the redirect included, leaves through `withSecurityHeaders` from `src/lib/security-headers.ts`, with a Content-Security-Policy nonce drawn for the request and handed to the Start handler in its request context; see [Security model](/docs/architecture/security-model#response-headers). The same file also exports the `queue` handler that drains the audit-log queue, and re-exports the `RealtimeInvalidationHub` class so Wrangler can bind it.
 
 ## Background work
 

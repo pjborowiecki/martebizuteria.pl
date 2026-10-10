@@ -102,7 +102,7 @@ The successful `url` values are collected and the failures counted into a single
 
 `DEFAULT_R2_PUBLIC_URL` in `src/presentation/branding/app.ts` is the bucket's own public endpoint, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`. `isConfiguredAssetCdnBase` additionally rejects a base containing the placeholder host `your-production-cdn-domain.com`, so a half-filled environment file falls back to the working default rather than producing dead image URLs.
 
-`VITE_R2_URL` appears in both `secrets.required` in `wrangler.jsonc` and the `VITE_`-prefixed browser variables, because both sides need it.
+`VITE_R2_URL` appears in both `secrets.required` in `wrangler.jsonc` and the `VITE_`-prefixed browser variables, because both sides need it. The two values must name the same host: the Content-Security-Policy is built on the server and lets pages load images and video only from the origin of `DEFAULT_R2_PUBLIC_URL` and from the origin `getAssetCdnBase()` returns there, so a bundle built with a different host would have its images refused. See [Security model](/docs/architecture/security-model#response-headers).
 
 ### Why `isAssetCdnUrl` exists
 

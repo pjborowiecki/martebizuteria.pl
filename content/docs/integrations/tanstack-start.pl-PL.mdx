@@ -30,9 +30,12 @@ const router = createRouter({
   routeTree,
   scrollRestoration: true,
   scrollRestorationBehavior: "instant",
+  ssr: nonce === undefined ? {} : { nonce },
 })
 setupRouterSsrQueryIntegration({ queryClient, router })
 ```
+
+Na serwerze `nonce` to nonce Content-Security-Policy wylosowany dla żądania przez `src/server.ts`, odczytany przez `getGlobalStartContext()` wewnątrz `createIsomorphicFn().server(…)`. Start nadaje `ssr.nonce` swoim skryptom hydratacji, tagom renderowanym przez `<HeadContent />` i `<Scripts />` oraz znacznikowi `<meta property="csp-nonce">`, z którego router w przeglądarce odczytuje go przy hydratacji. Zobacz [Model bezpieczeństwa](/docs/architecture/security-model#nagłówki-odpowiedzi).
 
 Para `rewrite` sprawia, że prefiksy językowe są niewidoczne dla drzewa tras: przychodzące `/en-US/products` zostaje pozbawione prefiksu i dopasowane jako `/products`, a każdy generowany adres otrzymuje prefiks ponownie po drodze na zewnątrz. Opis `deLocalizeUrl` i `localizeUrl` znajduje się na stronie [use-intl](/docs/integrations/use-intl).
 
@@ -49,7 +52,7 @@ Komponenty stanu oczekiwania, błędu i braku strony to globalne domyślne warto
 | `/api/realtime/admin/ws`      | Podniesienie połączenia WebSocket do huba unieważniania panelu administracyjnego |
 | `/api/realtime/storefront/ws` | Podniesienie połączenia WebSocket do huba unieważniania sklepu                   |
 
-Wszystko inne przechodzi przez `resolveLocale(request)`, które może zwrócić przekierowanie 301 na kanoniczną ścieżkę języka albo nagłówek `Set-Cookie` do dołączenia do odpowiedzi, a następnie trafia do `handler.fetch` wewnątrz `executionContextStorage.run({ waitUntil }, …)`. Ten magazyn `AsyncLocalStorage` pozwala funkcji `scheduleBackgroundWork` z `src/lib/background.ts` dotrzeć do `ctx.waitUntil` z głębi przypadku użycia — polegają na tym dziennik audytu, e-maile transakcyjne oraz [unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation).
+Wszystko inne przechodzi przez `resolveLocale(request)`, które może zwrócić przekierowanie 301 na kanoniczną ścieżkę języka albo nagłówek `Set-Cookie` do dołączenia do odpowiedzi, a następnie trafia do `handler.fetch` wewnątrz `executionContextStorage.run({ waitUntil }, …)`. Ten magazyn `AsyncLocalStorage` pozwala funkcji `scheduleBackgroundWork` z `src/lib/background.ts` dotrzeć do `ctx.waitUntil` z głębi przypadku użycia — polegają na tym dziennik audytu, e-maile transakcyjne oraz [unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation). Każda odpowiedź poza przejściami na WebSocket przechodzi potem przez `withSecurityHeaders` z `src/lib/security-headers.ts`, który ustawia Content-Security-Policy z nonce'em żądania i pozostałe nagłówki bezpieczeństwa.
 
 Ten sam plik eksportuje klasę Durable Object oraz handler `queue`:
 
@@ -61,7 +64,7 @@ async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: Executio
 }
 ```
 
-Typ `RequestContext` jest deklarowany do modułu `@tanstack/react-start` w tym samym pliku, więc `env`, `waitUntil` i `passThroughOnException` są typowane wszędzie tam, gdzie funkcja serwerowa czyta kontekst żądania.
+Typ `RequestContext` jest deklarowany do modułu `@tanstack/react-start` w tym samym pliku, więc `env`, `nonce`, `waitUntil` i `passThroughOnException` są typowane wszędzie tam, gdzie funkcja serwerowa czyta kontekst żądania.
 
 ## Trasy plikowe
 
