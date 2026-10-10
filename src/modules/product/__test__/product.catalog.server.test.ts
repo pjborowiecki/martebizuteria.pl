@@ -109,10 +109,14 @@ describe("assertCatalogSkusAvailable", () => {
     await expect(assertCatalogSkusAvailable(catalogInput())).resolves.toBeUndefined()
   })
 
-  it("rejects a catalog with a taken sku", async () => {
+  it("rejects a catalog with a taken sku as a conflict the editor can explain", async () => {
     mutations.findTakenSkus.mockResolvedValue(["SILVER-RING"])
 
-    await expect(assertCatalogSkusAvailable(catalogInput())).rejects.toThrow("DUPLICATE_SKU")
+    await expect(assertCatalogSkusAvailable(catalogInput())).rejects.toMatchObject({
+      code: "CONFLICT",
+      message: "DUPLICATE_SKU",
+      name: "AppError",
+    })
   })
 })
 

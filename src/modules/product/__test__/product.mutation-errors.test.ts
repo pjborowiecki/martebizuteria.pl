@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
 import {
   isDatabaseSchemaOutdatedMutationError,
@@ -145,25 +146,29 @@ describe("resolveProductMutationErrorMessage", () => {
 })
 
 describe("rethrowProductMutationError", () => {
-  it("translates a handle collision into the shared error code", () => {
-    const driverError = new Error("UNIQUE constraint failed: product.handle")
+  it("turns a handle collision into a conflict the editor shows on the handle field", () => {
+    const driverError = new Error("D1_ERROR: UNIQUE constraint failed: product.handle: SQLITE_CONSTRAINT")
 
-    expect(() => rethrowProductMutationError(driverError)).toThrow(PRODUCT_ERROR_CODES.DUPLICATE_HANDLE)
+    expect(() => rethrowProductMutationError(driverError)).toThrow(
+      expect.objectContaining({ code: "CONFLICT", message: PRODUCT_ERROR_CODES.DUPLICATE_HANDLE, name: "AppError" }),
+    )
   })
 
-  it("keeps the driver error as the cause so the message can still be read", () => {
-    const driverError = new Error("UNIQUE constraint failed: product_variant.sku")
-    let caught: unknown = null
+  it("turns a sku collision behind the driver's wrapper into a conflict the editor can explain", () => {
+    const driverError = nested("Failed query: insert into product_variant", "UNIQUE constraint failed: product_variant.sku")
 
-    try {
-      rethrowProductMutationError(driverError)
-    } catch (error) {
-      caught = error
-    }
+    expect(() => rethrowProductMutationError(driverError)).toThrow(
+      expect.objectContaining({ code: "CONFLICT", message: PRODUCT_ERROR_CODES.DUPLICATE_SKU, name: "AppError" }),
+    )
+  })
 
-    expect(caught).toBeInstanceOf(Error)
-    expect(caught instanceof Error ? caught.message : "").toBe(PRODUCT_ERROR_CODES.DUPLICATE_SKU)
-    expect(caught instanceof Error ? caught.cause : undefined).toBe(driverError)
+  it("keeps a taken handle or sku the use case already refused a conflict", () => {
+    expect(() => rethrowProductMutationError(new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.DUPLICATE_HANDLE))).toThrow(
+      expect.objectContaining({ code: "CONFLICT", message: PRODUCT_ERROR_CODES.DUPLICATE_HANDLE, name: "AppError" }),
+    )
+    expect(() => rethrowProductMutationError(new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.DUPLICATE_SKU))).toThrow(
+      expect.objectContaining({ code: "CONFLICT", message: PRODUCT_ERROR_CODES.DUPLICATE_SKU, name: "AppError" }),
+    )
   })
 
   it("turns a stock change that would go below zero into a conflict the editor can explain", () => {

@@ -47,7 +47,7 @@ export const assertCatalogSkusAvailable = async (
 ): Promise<void> => {
   const takenSkus = await findTakenSkus(collectSkusFromCatalogInput(catalogInput), productId)
   if (takenSkus.length > 0) {
-    throw new Error(PRODUCT_ERROR_CODES.DUPLICATE_SKU)
+    throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.DUPLICATE_SKU)
   }
 }
 

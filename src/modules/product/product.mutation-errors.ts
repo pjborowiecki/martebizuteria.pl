@@ -55,15 +55,11 @@ export const resolveProductMutationErrorMessage = (error: unknown): string => co
 
 export const rethrowProductMutationError = (error: unknown): never => {
   if (isDuplicateHandleMutationError(error)) {
-    throw new Error(PRODUCT_ERROR_CODES.DUPLICATE_HANDLE, {
-      cause: error,
-    })
+    throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.DUPLICATE_HANDLE)
   }
 
   if (isDuplicateSkuMutationError(error)) {
-    throw new Error(PRODUCT_ERROR_CODES.DUPLICATE_SKU, {
-      cause: error,
-    })
+    throw new AppError(ERROR_CODES.CONFLICT, PRODUCT_ERROR_CODES.DUPLICATE_SKU)
   }
 
   if (isStockChangedWhileEditingMutationError(error)) {
