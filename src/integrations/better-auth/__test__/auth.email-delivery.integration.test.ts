@@ -55,6 +55,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminCustomersInvalidation: vi.fn(),
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
+vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ passesTurnstile: () => Promise.resolve(true) }))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
@@ -66,6 +67,11 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { auth } from "~/src/integrations/better-auth/auth.server"
+import { TURNSTILE_TESTING_KEYS, TURNSTILE_TOKEN_HEADER } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+import {
+  PUBLIC_EMAILS_DAILY_MAX,
+  PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX,
+} from "~/src/integrations/resend/resend.public-email-limits.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 
 const PASSWORD = "Sup3rSecret!"
@@ -96,6 +102,7 @@ const post = (path: string, body: object, cookie?: string): Promise<Response> =>
       headers: {
         "Content-Type": "application/json",
         "cf-connecting-ip": `198.51.100.${String(clientAddress.next)}`,
+        [TURNSTILE_TOKEN_HEADER]: TURNSTILE_TESTING_KEYS.DUMMY_TOKEN,
         ...(cookie === undefined ? {} : { cookie }),
       },
       method: "POST",
@@ -133,6 +140,16 @@ const refuseNewsletterConfirmation = async () => {
   emailsSend.mockResolvedValueOnce(DOMAIN_NOT_VERIFIED)
   await sendEmail({ react: createElement("p", undefined, "Confirm your subscription"), subject: "Confirm", to: "visitor@example.com" })
   await waitForSenderFlag()
+}
+
+const requestReset = (email: string): Promise<Response> => post("/request-password-reset", { email })
+
+const fillTodaysPublicEmails = () => {
+  sqlite
+    .prepare(
+      "insert into rate_limit (id, key, count, last_request) values (?, ?, ?, ?) on conflict (key) do update set count = excluded.count",
+    )
+    .run("public-email-day", "public-email:test:daily", PUBLIC_EMAILS_DAILY_MAX, Date.now())
 }
 
 const waitForSends = async (count: number) => {
@@ -269,5 +286,67 @@ describe("auth emails when Resend refuses them", () => {
     expect(recordEmailFailedAudit).toHaveBeenCalledWith("anna@example.com", {
       detail: `Auth account-deleted email — ${DOMAIN_NOT_VERIFIED.error.message}`,
     })
+  })
+})
+
+describe("auth emails anyone can request", () => {
+  it("answers a reset request past the hourly limit for an account exactly like one for no account, and sends nothing", async () => {
+    await signUp("anna@example.com")
+    await waitForSends(1)
+    for (let sent = 1; sent <= PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX; sent += 1) {
+      await requestReset("anna@example.com")
+      await waitForSends(1 + sent)
+    }
+
+    const unknown = await requestReset("nobody@example.com")
+    const limited = await requestReset("anna@example.com")
+
+    expect(limited.status).toBe(200)
+    expect(await limited.json()).toStrictEqual(await unknown.json())
+    await vi.waitFor(() => {
+      expect(console.warn).toHaveBeenCalledWith(
+        "[Email] Skipped a password-reset email to anna@example.com: the address reached its hourly limit for this email",
+      )
+    })
+    expect(emailsSend).toHaveBeenCalledTimes(1 + PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX)
+  })
+
+  it("answers a resend-verification request past the hourly limit with success and sends nothing", async () => {
+    await signUp("anna@example.com")
+    for (let sent = 2; sent <= PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX; sent += 1) {
+      await post("/send-verification-email", { email: "anna@example.com" })
+    }
+    await waitForSends(PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX)
+
+    const limited = await post("/send-verification-email", { email: "anna@example.com" })
+
+    expect(limited.status).toBe(200)
+    expect(await limited.json()).toStrictEqual({ status: true })
+    expect(emailsSend).toHaveBeenCalledTimes(PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX)
+  })
+
+  it("still creates the account once the shop has sent its emails for the day, so a resend can reach it later", async () => {
+    fillTodaysPublicEmails()
+
+    const response = await signUp("anna@example.com")
+
+    expect(response.status).toBe(200)
+    expect(countUsers()).toBe(1)
+    await waitForRefusalAudit("anna@example.com")
+    expect(emailsSend).not.toHaveBeenCalled()
+  })
+
+  it("keeps sending the emails the shop sends on its own, such as an order confirmation, after visitors used up the day", async () => {
+    await signUp("anna@example.com")
+    await waitForSends(1)
+    fillTodaysPublicEmails()
+
+    await requestReset("anna@example.com")
+    await waitForRefusalAudit("anna@example.com")
+    const failure = await sendEmail({ react: createElement("p", undefined, "Order confirmed"), subject: "Order", to: "buyer@example.com" })
+
+    expect(failure).toBeUndefined()
+    expect(emailsSend).toHaveBeenCalledTimes(2)
+    expect(emailsSend).toHaveBeenLastCalledWith(expect.objectContaining({ to: "buyer@example.com" }))
   })
 })

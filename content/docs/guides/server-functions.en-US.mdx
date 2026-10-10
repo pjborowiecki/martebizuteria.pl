@@ -91,7 +91,7 @@ The three presets, all over a 60-second window:
 
 The counter key is `` `${kind}:${clientAddress(context.requestHeaders)}` ``, where `clientAddress` reads the `cf-connecting-ip` header through Better Auth's `getIP` and falls back to the literal `"unknown"`. Counters live in the `rate_limit` D1 table; `withinRateLimit` in `src/lib/rate-limit.ts` implements the window as a single `INSERT ... ON CONFLICT DO UPDATE` with a `setWhere` clause, so it needs one round trip. If that write throws, the helper logs and returns `false` — it fails closed.
 
-Better Auth applies its own limiter to `/api/auth/*` with `storage: "database"` and custom rules for sign-in (5), sign-up (3), password-reset request (3) and password reset (5) per minute.
+Better Auth applies its own limiter to `/api/auth/*`, counted by the same `withinRateLimit` through `customStorage: authRateLimitStorage`, with custom rules for sign-in (5), sign-up (3), password-reset request (3) and password reset (5) per minute.
 
 ## Errors
 

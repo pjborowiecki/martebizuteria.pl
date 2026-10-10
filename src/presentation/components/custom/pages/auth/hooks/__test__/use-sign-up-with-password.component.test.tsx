@@ -7,8 +7,9 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
 import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
-const { navigate, signUpEmail, toastError, toastSuccess } = vi.hoisted(() => ({
+const { navigate, requestTurnstileToken, signUpEmail, toastError, toastSuccess } = vi.hoisted(() => ({
   navigate: vi.fn(),
+  requestTurnstileToken: vi.fn<() => Promise<string>>(),
   signUpEmail: vi.fn<() => Promise<{ error: { code: string } | null }>>(),
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
@@ -44,7 +45,7 @@ const values: SignUpFormValues = {
 const renderSignUp = (queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })) => {
   const router = createTestRouter()
 
-  return renderHook(() => useSignUpWithPassword(), {
+  return renderHook(() => useSignUpWithPassword(requestTurnstileToken), {
     wrapper: ({ children }: Readonly<{ children: ReactNode }>) => (
       <TestProviders queryClient={queryClient} router={router}>
         {children}
@@ -55,6 +56,7 @@ const renderSignUp = (queryClient = new QueryClient({ defaultOptions: { mutation
 
 beforeEach(() => {
   vi.clearAllMocks()
+  requestTurnstileToken.mockResolvedValue("turnstile-token-1")
 })
 
 describe("useSignUpWithPassword", () => {
@@ -79,8 +81,43 @@ describe("useSignUpWithPassword", () => {
     expect(signUpEmail).toHaveBeenCalledWith({
       callbackURL: "/en-US/account/overview?verified=true",
       email: "anna@example.com",
+      fetchOptions: { headers: { "x-turnstile-token": "turnstile-token-1" } },
       name: "Anna Kowalska",
       password: "Sup3rSecret!",
+    })
+  })
+
+  it("asks for a fresh bot check token for every sign-up", async () => {
+    signUpEmail.mockResolvedValue({ error: null })
+    const { result } = renderSignUp()
+
+    await result.current.mutateAsync(values)
+    await result.current.mutateAsync(values)
+
+    expect(requestTurnstileToken).toHaveBeenCalledTimes(2)
+  })
+
+  it("explains a bot check the browser could not finish, without signing up", async () => {
+    requestTurnstileToken.mockRejectedValue(new Error("BOT_CHECK_FAILED"))
+    const { result } = renderSignUp()
+
+    await expect(result.current.mutateAsync(values)).rejects.toThrow("BOT_CHECK_FAILED")
+
+    expect(signUpEmail).not.toHaveBeenCalled()
+    expect(toastError).toHaveBeenCalledWith("Something went wrong", {
+      description: "We could not finish the check that keeps bots out. Please try again.",
+    })
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("explains a bot check the server refused", async () => {
+    signUpEmail.mockResolvedValue({ error: { code: "BOT_CHECK_FAILED" } })
+    const { result } = renderSignUp()
+
+    await expect(result.current.mutateAsync(values)).rejects.toThrow("SIGN_UP_FAILED")
+
+    expect(toastError).toHaveBeenCalledWith("Something went wrong", {
+      description: "We could not finish the check that keeps bots out. Please try again.",
     })
   })
 

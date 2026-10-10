@@ -1,6 +1,7 @@
 import { parseSetCookieHeader } from "better-auth/cookies"
 
 import { auth } from "~/src/integrations/better-auth/auth.server"
+import { TURNSTILE_TESTING_KEYS, TURNSTILE_TOKEN_HEADER } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 
 export const AUTH_BASE_URL = "http://localhost:3000/api/auth"
 
@@ -27,6 +28,7 @@ export const openAuthBrowser = (ip: string): AuthBrowser => {
           "cf-connecting-ip": ip,
           cookie: [...jar].map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join("; "),
           origin: new URL(AUTH_BASE_URL).origin,
+          [TURNSTILE_TOKEN_HEADER]: TURNSTILE_TESTING_KEYS.DUMMY_TOKEN,
         },
       }),
     )

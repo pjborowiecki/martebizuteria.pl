@@ -91,7 +91,7 @@ Trzy gotowe zestawy, wszystkie w oknie 60 sekund:
 
 Kluczem licznika jest `` `${kind}:${clientAddress(context.requestHeaders)}` ``, gdzie `clientAddress` czyta nagłówek `cf-connecting-ip` przez `getIP` z Better Auth, a w razie braku zwraca literał `"unknown"`. Liczniki żyją w tabeli D1 `rate_limit`; `withinRateLimit` w `src/lib/rate-limit.ts` realizuje okno jednym `INSERT ... ON CONFLICT DO UPDATE` z klauzulą `setWhere`, więc wystarcza jedno odwołanie do bazy. Jeśli ten zapis rzuci wyjątek, funkcja zapisuje błąd w logu i zwraca `false` — czyli domyślnie odmawia.
 
-Better Auth stosuje własny ogranicznik do `/api/auth/*` z `storage: "database"` i regułami: logowanie 5, rejestracja 3, żądanie resetu hasła 3 oraz reset hasła 5 na minutę.
+Better Auth stosuje własny ogranicznik do `/api/auth/*`, liczony tym samym `withinRateLimit` przez `customStorage: authRateLimitStorage`, z regułami: logowanie 5, rejestracja 3, żądanie resetu hasła 3 oraz reset hasła 5 na minutę.
 
 ## Błędy
 

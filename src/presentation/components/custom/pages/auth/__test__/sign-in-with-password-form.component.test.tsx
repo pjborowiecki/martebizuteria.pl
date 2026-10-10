@@ -39,7 +39,13 @@ const auth = vi.hoisted(() => {
 })
 
 const verification = vi.hoisted(() => ({
-  send: vi.fn<(input: { callbackURL: string; email: string }) => Promise<{ data: unknown; error: unknown }>>(),
+  issueTurnstileToken: vi.fn<(request: { action: string; container: HTMLElement }) => Promise<string>>(),
+  send: vi.fn<
+    (input: { callbackURL: string; email: string; fetchOptions: { headers: Record<string, string> } }) => Promise<{
+      data: unknown
+      error: unknown
+    }>
+  >(),
 }))
 
 const postAuth = vi.hoisted(() => ({ redirect: vi.fn<() => Promise<void>>() }))
@@ -55,6 +61,7 @@ vi.mock("~/src/integrations/better-auth/auth.client", () => ({
   signIn: { email: auth.signInEmail },
 }))
 vi.mock("~/src/hooks/use-post-auth-redirect", () => ({ usePostAuthRedirect: () => postAuth.redirect }))
+vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.client", () => ({ issueTurnstileToken: verification.issueTurnstileToken }))
 
 import { SignInWithPasswordForm } from "~/src/presentation/components/custom/pages/auth/sign-in-with-password-form"
 
@@ -75,6 +82,7 @@ const signInAs = async (email = "ada@example.test", password = "Str0ng!Pass") =>
 beforeEach(() => {
   vi.clearAllMocks()
   verification.send.mockResolvedValue({ data: { status: true }, error: null })
+  verification.issueTurnstileToken.mockResolvedValue("turnstile-token-1")
   auth.requests.length = 0
   auth.outcome.current = { kind: "success" }
   auth.inFlight.release = undefined
@@ -252,8 +260,42 @@ describe("SignInWithPasswordForm for an address that is not confirmed yet", () =
     await userEvent.click(await resendButton())
 
     await waitFor(() => {
-      expect(verification.send).toHaveBeenCalledWith({ callbackURL: "/en-US/account/overview?verified=true", email: "ada@example.test" })
+      expect(verification.send).toHaveBeenCalledWith({
+        callbackURL: "/en-US/account/overview?verified=true",
+        email: "ada@example.test",
+        fetchOptions: { headers: { "x-turnstile-token": "turnstile-token-1" } },
+      })
     })
+  })
+
+  it("runs the resend's own bot check in a slot inside the notice", async () => {
+    await signInUnverified()
+
+    await userEvent.click(await resendButton())
+
+    await waitFor(() => {
+      expect(verification.issueTurnstileToken).toHaveBeenCalledOnce()
+    })
+    const slot = verification.issueTurnstileToken.mock.lastCall?.[0].container
+    expect(verification.issueTurnstileToken).toHaveBeenCalledWith({ action: "verification-resend", container: slot })
+    expect(slot?.nextElementSibling).toBe(await resendButton())
+    expect(slot).toHaveClass("empty:hidden")
+  })
+
+  it("explains a bot check the browser could not finish and keeps the offer to try again", async () => {
+    verification.issueTurnstileToken.mockRejectedValue(new Error("BOT_CHECK_FAILED"))
+    await signInUnverified()
+    toasts.error.mockClear()
+
+    await userEvent.click(await resendButton())
+
+    await waitFor(() => {
+      expect(toasts.error).toHaveBeenCalledWith("Something went wrong", {
+        description: "We could not finish the check that keeps bots out. Please try again.",
+      })
+    })
+    expect(verification.send).not.toHaveBeenCalled()
+    expect(await resendButton()).toBeEnabled()
   })
 
   it("says a new link is on its way only after the send went through", async () => {

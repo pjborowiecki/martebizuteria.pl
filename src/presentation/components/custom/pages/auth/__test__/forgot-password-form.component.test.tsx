@@ -7,6 +7,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 interface ResetRequest {
   readonly email: string
   readonly fetchOptions: {
+    readonly headers: Readonly<Record<string, string>>
     readonly onError: (context: { error: unknown }) => void
     readonly onSuccess: () => void
   }
@@ -34,12 +35,17 @@ const auth = vi.hoisted(() => {
   }
 })
 
+const { issueTurnstileToken } = vi.hoisted(() => ({
+  issueTurnstileToken: vi.fn<(request: { action: string; container: HTMLElement }) => Promise<string>>(),
+}))
+
 const toasts = vi.hoisted(() => ({
   error: vi.fn<(title: string, options: { description: string }) => void>(),
   success: vi.fn<(title: string, options: { description: string }) => void>(),
 }))
 
 vi.mock("sonner", () => ({ toast: { error: toasts.error, success: toasts.success } }))
+vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.client", () => ({ issueTurnstileToken }))
 vi.mock("~/src/lib/url", () => ({
   getAssetURL: (path: string) => `https://assets.test/${path.replace(/^\//u, "")}`,
   getBaseURL: () => "https://marte.test",
@@ -65,6 +71,7 @@ beforeEach(() => {
   auth.requests.length = 0
   auth.outcome.current = "success"
   auth.outcome.error = new Error("FORBIDDEN")
+  issueTurnstileToken.mockResolvedValue("turnstile-token-1")
 })
 
 const CHECK_EMAIL =
@@ -179,5 +186,35 @@ describe("ForgotPasswordForm", () => {
     expect(toasts.success).not.toHaveBeenCalled()
     expect(screen.queryByText(CHECK_EMAIL)).not.toBeInTheDocument()
     expect(emailField()).toHaveValue("ada@example.test")
+  })
+
+  it("runs the password-reset bot check inside the form and sends its token with the request", async () => {
+    auth.outcome.current = "error"
+    const { container } = renderWithProviders(<ForgotPasswordForm />)
+
+    await requestResetFor("ada@example.test")
+
+    await waitFor(() => {
+      expect(auth.requests[0]?.fetchOptions.headers).toStrictEqual({ "x-turnstile-token": "turnstile-token-1" })
+    })
+    const slot = issueTurnstileToken.mock.lastCall?.[0].container
+    expect(issueTurnstileToken).toHaveBeenCalledExactlyOnceWith({ action: "password-reset", container: slot })
+    expect(container.querySelector("form")?.contains(slot ?? null)).toBe(true)
+    expect(slot).toHaveClass("empty:hidden")
+  })
+
+  it("explains a bot check the browser could not finish and keeps the form, without asking for a link", async () => {
+    issueTurnstileToken.mockRejectedValue(new Error("BOT_CHECK_FAILED"))
+    renderWithProviders(<ForgotPasswordForm />)
+
+    await requestResetFor("ada@example.test")
+
+    await waitFor(() => {
+      expect(toasts.error).toHaveBeenCalledWith("Something went wrong", {
+        description: "We could not finish the check that keeps bots out. Please try again.",
+      })
+    })
+    expect(auth.requestPasswordReset).not.toHaveBeenCalled()
+    expect(submit()).toBeEnabled()
   })
 })

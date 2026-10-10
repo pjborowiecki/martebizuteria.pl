@@ -45,6 +45,7 @@ vi.mock("cloudflare:workers", () => ({
   },
 }))
 vi.mock("~/src/integrations/resend/resend.send", () => mail)
+vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ passesTurnstile: () => Promise.resolve(true) }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({

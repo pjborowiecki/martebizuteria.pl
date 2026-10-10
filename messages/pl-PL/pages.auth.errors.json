@@ -1,6 +1,7 @@
 {
   "accountNotFound": "Nie znaleziono konta.",
   "bannedUser": "Twoje konto zostało zawieszone.",
+  "botCheckFailed": "Nie udało się dokończyć zabezpieczenia przed botami. Spróbuj ponownie.",
   "couldNotCreateSession": "Nie udało się utworzyć sesji. Spróbuj ponownie.",
   "credentialAccountNotFound": "Nie znaleziono konta z tymi danymi.",
   "emailDeliveryFailed": "Nie udało się teraz wysłać wiadomości. Spróbuj ponownie za kilka minut.",

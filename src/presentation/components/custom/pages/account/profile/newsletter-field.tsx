@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
+import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+
 import {
   NEWSLETTER_OUTCOME,
   NEWSLETTER_QUERY_KEYS,
@@ -14,6 +16,8 @@ import { getOwnNewsletterSubscriptionQuery } from "~/src/modules/newsletter/use-
 import { subscribeToNewsletterMutation } from "~/src/modules/newsletter/use-cases/subscribe-to-newsletter"
 import { unsubscribeOwnNewsletterMutation } from "~/src/modules/newsletter/use-cases/unsubscribe-own-newsletter"
 
+import { useTurnstileToken } from "~/src/hooks/use-turnstile-token"
+
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 export const NewsletterField = ({ email }: Readonly<{ email: string }>): JSX.Element => {
@@ -22,6 +26,7 @@ export const NewsletterField = ({ email }: Readonly<{ email: string }>): JSX.Ele
   const { data: subscription } = useQuery(getOwnNewsletterSubscriptionQuery())
   const subscribe = useMutation(subscribeToNewsletterMutation)
   const unsubscribe = useMutation(unsubscribeOwnNewsletterMutation)
+  const { containerRef, requestToken } = useTurnstileToken(TURNSTILE_ACTIONS.NEWSLETTER)
   const status = subscription?.status
   const pending = subscribe.isPending || unsubscribe.isPending
   const subscribed = status === NEWSLETTER_STATUS.CONFIRMED || status === NEWSLETTER_STATUS.PENDING
@@ -32,7 +37,7 @@ export const NewsletterField = ({ email }: Readonly<{ email: string }>): JSX.Ele
 
   const handleSubscribe = useCallback(() => {
     subscribe.mutate(
-      { email, source: NEWSLETTER_SOURCE.ACCOUNT },
+      { email, requestTurnstileToken: requestToken, source: NEWSLETTER_SOURCE.ACCOUNT },
       {
         onError: () => {
           toast.error(t("newsletterError"))
@@ -48,7 +53,7 @@ export const NewsletterField = ({ email }: Readonly<{ email: string }>): JSX.Ele
         },
       },
     )
-  }, [email, refresh, subscribe, t])
+  }, [email, refresh, requestToken, subscribe, t])
 
   const handleUnsubscribe = useCallback(() => {
     unsubscribe.mutate(undefined, {
@@ -78,6 +83,7 @@ export const NewsletterField = ({ email }: Readonly<{ email: string }>): JSX.Ele
           {t(subscribed ? "newsletterUnsubscribeAction" : "newsletterSubscribeAction")}
         </Button>
       </div>
+      <div ref={containerRef} className="basis-full empty:hidden" />
     </div>
   )
 }

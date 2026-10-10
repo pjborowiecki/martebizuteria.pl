@@ -120,9 +120,9 @@ The same pattern appears in `list-customer-orders.ts`, `list-customer-sessions.t
 
 ## Rate limits
 
-Two limiters share the `rate_limit` table.
+Two limiters share the `rate_limit` table and its counting function, `withinRateLimit` in `src/lib/rate-limit.ts`.
 
-**Better Auth's own**, configured in `auth.server.ts` with `storage: "database"`, a 100-request default per 60 s window and custom rules:
+**Better Auth's own**, configured in `auth.server.ts` with `customStorage: authRateLimitStorage`, a 100-request default per 60 s window and custom rules:
 
 | Route                     | Max per minute |
 | ------------------------- | -------------- |
@@ -130,6 +130,8 @@ Two limiters share the `rate_limit` table.
 | `/sign-up/email`          | 3              |
 | `/request-password-reset` | 3              |
 | `/reset-password`         | 5              |
+
+`authRateLimitStorage` counts each `<ip>|<path>` key under its rule with `withinRateLimit` and refuses with the rule's window as `X-Retry-After`. Better Auth's `storage: "database"` is not used: whenever one of its counters started a new window it deleted every `rate_limit` row whose `last_request` was more than 60 seconds old, which would have taken the e-mail caps below with it a minute after they began.
 
 **The application's own**, `withRateLimit(kind, limit)` over `withinRateLimit` in `src/lib/rate-limit.ts`. `RATE_LIMITS` defines `SENSITIVE` (3/60 s), `TOKEN` (5/60 s) and `CHECKOUT` (10/60 s), and the counter is a single atomic D1 upsert:
 
@@ -151,6 +153,10 @@ Note that `resolveRequestIp` in `src/lib/request.ts` — used for the _audit log
 ### Checkout holds
 
 A new checkout reserves stock for up to 32 minutes, and anyone can start one as a guest, so the rate limit alone would let one script keep the catalogue reserved. `handleCreateCheckoutSession` therefore also needs a Turnstile token that siteverify confirms for the `checkout` action on the request's host, and refuses a client address that already has five open checkouts or an email that has three; the open-checkout count keys the address with the same `clientAddress`. Each line is capped at ten of one piece by the server function's schema. Updating an open checkout needs neither the token nor the count, but every update renews the hold with a replacement session, so `handleUpdateCheckoutSession` refuses with `SESSION_CLOSED` once the checkout is `CHECKOUT_SESSION_LIFETIME_SECONDS` old, after expiring its session and returning its stock; holding stock longer takes a new checkout and a new token. See [Checkout: Limits on holding stock](/docs/features/checkout#limits-on-holding-stock) and [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile).
+
+### Emails anyone can request
+
+Sign-up, the password-reset request, the verification resend and the newsletter sign-up send an email to whatever address they are given, so the per-IP limits alone would let a script spread over many addresses flood an inbox or use up the Resend quota and stop the order emails with it. Each of them therefore needs a Turnstile token for its own action (`sign-up`, `password-reset`, `verification-resend`, `newsletter`): Better Auth's `hooks.before` checks the `x-turnstile-token` header of the three auth endpoints and answers `403 BOT_CHECK_FAILED`, and `subscribeToNewsletter` calls `verifyTurnstileToken`. Behind the check, `admitPublicEmail` allows three emails of one kind to one address an hour and 50 of these emails a day for the whole shop, counted in `rate_limit` under a SHA-256 of the address. A skipped email is answered exactly like a sent one, because the reset and the resend are sent only for some addresses and a different answer would reveal which; the daily limit also records `email.failed` for the owner. Emails the shop sends on its own, about orders, refunds and accounts, never pass through these limits. See [Better Auth: Bot check and email limits](/docs/integrations/better-auth#bot-check-and-email-limits) and [Resend: Emails visitors can request](/docs/integrations/resend#emails-visitors-can-request).
 
 ## WebSocket authorization
 

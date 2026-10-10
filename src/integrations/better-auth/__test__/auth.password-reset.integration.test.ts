@@ -37,6 +37,7 @@ vi.mock("cloudflare:workers", () => ({
 }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: stubs.sendEmail }))
 vi.mock("~/src/integrations/resend/resend.availability.server", () => ({ isEmailSenderUnavailable: () => Promise.resolve(false) }))
+vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ passesTurnstile: () => Promise.resolve(true) }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordAuthLoginAudit: vi.fn(),

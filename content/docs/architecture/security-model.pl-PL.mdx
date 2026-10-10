@@ -120,9 +120,9 @@ Ten sam wzorzec występuje w `list-customer-orders.ts`, `list-customer-sessions.
 
 ## Limity żądań
 
-Dwa limitery dzielą tabelę `rate_limit`.
+Dwa limitery dzielą tabelę `rate_limit` i funkcję liczącą `withinRateLimit` z `src/lib/rate-limit.ts`.
 
-**Własny limiter Better Auth**, skonfigurowany w `auth.server.ts` z `storage: "database"`, domyślnym limitem 100 żądań na okno 60 s i regułami szczegółowymi:
+**Własny limiter Better Auth**, skonfigurowany w `auth.server.ts` z `customStorage: authRateLimitStorage`, domyślnym limitem 100 żądań na okno 60 s i regułami szczegółowymi:
 
 | Trasa                     | Maksymalnie na minutę |
 | ------------------------- | --------------------- |
@@ -130,6 +130,8 @@ Dwa limitery dzielą tabelę `rate_limit`.
 | `/sign-up/email`          | 3                     |
 | `/request-password-reset` | 3                     |
 | `/reset-password`         | 5                     |
+
+`authRateLimitStorage` liczy każdy klucz `<ip>|<ścieżka>` według jego reguły przez `withinRateLimit` i odmawia z oknem reguły jako `X-Retry-After`. Better Auth nie używa `storage: "database"`: za każdym razem, gdy któryś z jego liczników zaczynał nowe okno, ta opcja usuwała każdy wiersz `rate_limit`, którego `last_request` był starszy niż 60 sekund, a wraz z nimi liczniki limitów e-maili opisanych niżej, minutę po ich starcie.
 
 **Limiter aplikacji**, `withRateLimit(kind, limit)` nad `withinRateLimit` z `src/lib/rate-limit.ts`. `RATE_LIMITS` definiuje `SENSITIVE` (3/60 s), `TOKEN` (5/60 s) i `CHECKOUT` (10/60 s), a licznik to jeden atomowy upsert w D1:
 
@@ -151,6 +153,10 @@ Zwróć uwagę, że `resolveRequestIp` w `src/lib/request.ts` — używane dla _
 ### Rezerwacje kasy
 
 Nowy checkout rezerwuje towar nawet na 32 minuty, a każdy może go zacząć bez konta, więc sam limit żądań pozwoliłby jednemu skryptowi trzymać zarezerwowany katalog. Dlatego `handleCreateCheckoutSession` wymaga też tokenu Turnstile, który siteverify potwierdzi dla akcji `checkout` na hoście żądania, i odrzuca adres klienta, który ma już pięć otwartych checkoutów, albo e-mail, który ma ich trzy; liczenie otwartych checkoutów wyznacza adres tym samym `clientAddress`. Schemat funkcji serwerowej ogranicza każdą linię do dziesięciu sztuk jednego produktu. Aktualizacja otwartego checkoutu nie wymaga ani tokenu, ani liczenia, ale każda odnawia rezerwację sesją zastępczą, więc `handleUpdateCheckoutSession` odmawia z `SESSION_CLOSED`, gdy od otwarcia checkoutu minęło `CHECKOUT_SESSION_LIFETIME_SECONDS`, po wygaszeniu jego sesji i oddaniu jej towaru; dłuższe trzymanie towaru wymaga nowego checkoutu i nowego tokenu. Zobacz [Kasa: limity trzymania towaru](/docs/features/checkout#limity-trzymania-towaru) i [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile).
+
+### E-maile, o które może poprosić każdy
+
+Rejestracja, prośba o zmianę hasła, ponowne wysłanie weryfikacji i zapis do newslettera wysyłają e-mail na dowolny podany adres, więc same limity na IP pozwoliłyby skryptowi rozłożonemu na wiele adresów zalać czyjąś skrzynkę albo zużyć limit Resend, a razem z nim zatrzymać e-maile o zamówieniach. Dlatego każde z tych żądań wymaga tokenu Turnstile dla własnej akcji (`sign-up`, `password-reset`, `verification-resend`, `newsletter`): `hooks.before` Better Auth sprawdza nagłówek `x-turnstile-token` trzech punktów końcowych uwierzytelniania i odpowiada `403 BOT_CHECK_FAILED`, a `subscribeToNewsletter` wywołuje `verifyTurnstileToken`. Za sprawdzeniem `admitPublicEmail` pozwala na trzy e-maile jednego rodzaju na jeden adres na godzinę i 50 takich e-maili na dobę dla całego sklepu, liczone w `rate_limit` pod skrótem SHA-256 adresu. Na pominięty e-mail odpowiedź jest dokładnie taka jak na wysłany, bo link do zmiany hasła i ponowna weryfikacja wychodzą tylko dla niektórych adresów, a inna odpowiedź zdradzałaby, dla których; limit dzienny zapisuje też `email.failed` dla właściciela. E-maile, które sklep wysyła sam, o zamówieniach, zwrotach i kontach, nigdy nie przechodzą przez te limity. Zobacz [Better Auth: sprawdzenie antybotowe i limity e-maili](/docs/integrations/better-auth#sprawdzenie-antybotowe-i-limity-e-maili) i [Resend: e-maile, o które może poprosić odwiedzający](/docs/integrations/resend#e-maile-o-które-może-poprosić-odwiedzający).
 
 ## Autoryzacja WebSocketu
 

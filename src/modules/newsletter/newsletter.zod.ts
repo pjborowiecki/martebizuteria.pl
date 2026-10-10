@@ -1,6 +1,8 @@
 import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
+import { turnstileTokenSchema } from "~/src/integrations/cloudflare-turnstile/turnstile.zod"
+
 import { localeField, pageField, pageSizeField } from "~/src/modules/_core/utils/zod-fields"
 import { NEWSLETTER_EMAIL_MAX_LENGTH, NEWSLETTER_SOURCES } from "~/src/modules/newsletter/newsletter.constants"
 import { newsletterSubscriber } from "~/src/modules/newsletter/newsletter.schema"
@@ -28,6 +30,7 @@ export const newsletterZodSchemas = {
     email: zod.email({ message: "validation.emailInvalid" }).max(NEWSLETTER_EMAIL_MAX_LENGTH),
     locale: localeField.optional(),
     source: zod.enum(NEWSLETTER_SOURCES).optional(),
+    turnstileToken: turnstileTokenSchema,
   }),
   tokenInput: zod.object({
     token: zod.string().trim().min(TOKEN_MIN_LENGTH).max(TOKEN_MAX_LENGTH),
