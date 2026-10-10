@@ -9,6 +9,10 @@ const PRICE_WHEN_ADDED = 29_900
 
 const PRICE_CHANGED_NOTE = "The price has changed since you added this piece to your cart."
 
+const LINE_QUANTITY_MAX = 10
+
+const QUANTITY_LIMIT_NOTE = "You can order up to 10 of one piece. For a larger order, please contact us."
+
 test.describe("cart", () => {
   test.beforeEach(async ({ productPage }) => {
     await productPage.gotoProduct(PRODUCTS.lapis.handle)
@@ -29,6 +33,19 @@ test.describe("cart", () => {
     await cartPage.removeButton().click()
     await expect(cartPage.heading()).toHaveText("Your cart is empty")
     await expect(cartPage.cartLink()).toContainText("0")
+  })
+
+  test("a piece stops at the most one order may hold and the cart says how to order more", async ({ cartPage, page }) => {
+    await cartPage.gotoCart()
+
+    for (let quantity = 2; quantity <= LINE_QUANTITY_MAX; quantity += 1) {
+      await cartPage.increaseButton().click()
+      await expect(cartPage.cartLink()).toContainText(String(quantity))
+    }
+
+    await expect(cartPage.increaseButton()).toBeDisabled()
+    await expect(page.getByRole("main").getByText(QUANTITY_LIMIT_NOTE)).toBeVisible()
+    await expect(cartPage.summary()).toContainText(/Total\s*PLN\s3,790\.00/u)
   })
 
   test("a piece the shop repriced after it was added shows the price it sells for now and says so", async ({ cartPage, page }) => {

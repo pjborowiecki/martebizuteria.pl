@@ -4,6 +4,7 @@ import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 import { type Product } from "~/src/modules/product/product.types"
 
@@ -117,7 +118,7 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
         <p className="text-sm tracking-wide text-destructive">{tProduct("outOfStock")}</p>
       ) : (
         <div ref={purchaseRowRef} className="flex flex-col gap-4 sm:flex-row sm:items-center">
-          <QuantityPicker maxQuantity={availableQuantity} quantity={quantity} setQuantity={setQuantity} />
+          <QuantityPicker maxQuantity={Math.min(availableQuantity, CART_LINE_QUANTITY_MAX)} quantity={quantity} setQuantity={setQuantity} />
 
           <Button
             className="h-14 flex-1 bg-foreground px-8 text-[12px] tracking-[0.24em] text-background uppercase hover:bg-foreground/90"

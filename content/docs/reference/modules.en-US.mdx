@@ -20,7 +20,7 @@ Every table except `storefront_search` is re-exported from `src/integrations/dri
 | `cart`                  | `cart`                                              | `check-cart-availability`                                                                                                                                                                                                                                                                                                           |
 | `cart-item`             | `cart_item`                                         | none                                                                                                                                                                                                                                                                                                                                |
 | `category-on-product`   | `category_on_product`                               | none — written as part of the product batch                                                                                                                                                                                                                                                                                         |
-| `checkout`              | `checkout`                                          | `create-checkout.server`, `update-checkout-delivery.server`, `fulfill-checkout.server`, `release-checkout.server`                                                                                                                                                                                                                   |
+| `checkout`              | `checkout`                                          | `count-open-checkouts.server`, `create-checkout.server`, `update-checkout-delivery.server`, `fulfill-checkout.server`, `release-checkout.server`                                                                                                                                                                                    |
 | `collection-on-product` | `collection_on_product`                             | none — written as part of the product batch                                                                                                                                                                                                                                                                                         |
 | `content-page`          | `content_page`                                      | `get-content-page`, `get-admin-content-pages`, `get-admin-content-page`, `update-content-page`                                                                                                                                                                                                                                      |
 | `courier`               | `courier`                                           | none                                                                                                                                                                                                                                                                                                                                |
@@ -85,17 +85,19 @@ Four modules exist for operations rather than for rows.
 
 ## Use cases without an RPC endpoint
 
-Seven use-case files export a plain `async` function rather than a `createServerFn`. They are called from the Stripe webhook handler or from other server code, and they are not reachable over HTTP:
+Nine use-case files export a plain `async` function rather than a `createServerFn`. They are called from the Stripe webhook handler or from other server code, and they are not reachable over HTTP:
 
-| File                                                    | Called from                              |
-| ------------------------------------------------------- | ---------------------------------------- |
-| `checkout/use-cases/create-checkout.server.ts`          | The checkout flow's server actions       |
-| `checkout/use-cases/update-checkout-delivery.server.ts` | The checkout flow's server actions       |
-| `checkout/use-cases/fulfill-checkout.server.ts`         | `checkout.session.completed` from Stripe |
-| `checkout/use-cases/release-checkout.server.ts`         | `checkout.session.expired` from Stripe   |
-| `order/use-cases/refund-order.ts`                       | Refund events from Stripe                |
-| `order/use-cases/flag-order-dispute.ts`                 | Dispute events from Stripe               |
-| `order/use-cases/clear-order-dispute.ts`                | Dispute-closed events from Stripe        |
+| File                                                      | Called from                                                                  |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `checkout/use-cases/count-open-checkouts.server.ts`       | The checkout flow's server actions, before a new checkout reserves stock     |
+| `checkout/use-cases/create-checkout.server.ts`            | The checkout flow's server actions                                           |
+| `checkout/use-cases/update-checkout-delivery.server.ts`   | The checkout flow's server actions                                           |
+| `checkout/use-cases/supersede-checkout-session.server.ts` | The checkout flow's server actions, when an edit replaces the Stripe session |
+| `checkout/use-cases/fulfill-checkout.server.ts`           | `checkout.session.completed` from Stripe                                     |
+| `checkout/use-cases/release-checkout.server.ts`           | `checkout.session.expired` from Stripe                                       |
+| `order/use-cases/refund-order.ts`                         | Refund events from Stripe                                                    |
+| `order/use-cases/flag-order-dispute.ts`                   | Dispute events from Stripe                                                   |
+| `order/use-cases/clear-order-dispute.ts`                  | Dispute-closed events from Stripe                                            |
 
 A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` walks every file under `src/modules/*/use-cases/` and skips the ones without `createServerFn`, which is why these need no authorization middleware.
 

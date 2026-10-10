@@ -100,6 +100,11 @@ vi.mock("~/src/modules/product/product.accessors", () => ({
   getPublishedProductsWithInventoryByHandles: mocked.getPublishedProductsWithInventoryByHandles,
 }))
 vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ isSalesPaused: () => Promise.resolve(false) }))
+vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ verifyTurnstileToken: () => Promise.resolve() }))
+vi.mock("~/src/modules/checkout/use-cases/count-open-checkouts.server", () => ({
+  countOpenCheckouts: () => Promise.resolve({ byClientAddress: 0, byEmail: 0 }),
+}))
+vi.mock("~/src/lib/rate-limit", () => ({ clientAddress: () => "203.0.113.7" }))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
 import {
@@ -364,6 +369,8 @@ describe("checkout session hold", () => {
   })
 
   it("gives the replacement session for an edited checkout the same hold", async () => {
+    mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext({ checkoutCreatedAt: new Date(OPENED_AT) }))
+
     await handleUpdateCheckoutSession(updateInput())
 
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ expires_at: 1_791_201_600 + 1920 }))

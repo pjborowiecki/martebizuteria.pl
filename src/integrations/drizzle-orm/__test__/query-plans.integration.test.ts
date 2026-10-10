@@ -31,6 +31,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
 const { pageViewsQuery } = await import("~/src/modules/admin-dashboard/admin-dashboard.accessors")
+const { countOpenCheckouts } = await import("~/src/modules/checkout/use-cases/count-open-checkouts.server")
 const { getCustomerActivityAuditRows, getCustomerLoginAuditRows } =
   await import("~/src/modules/customer-account/customer-account.accessors.server")
 const { getDiscountByCodeForCustomerQuery } = await import("~/src/modules/discount/discount.accessors")
@@ -184,6 +185,13 @@ describe("hot reads", () => {
     await expect(planSteps(() => getPublishedRelatedProducts("category-1", "product-1"))).resolves.toContain(
       "SEARCH category_on_product USING INDEX category_on_product_category_id_idx (category_id=?)",
     )
+  })
+
+  it("count a visitor's open checkouts among the pending ones instead of scanning every checkout", async () => {
+    await expect(planSteps(() => countOpenCheckouts({ clientAddress: "203.0.113.7", email: "ada@marte.test" }))).resolves.toStrictEqual([
+      "SEARCH checkout USING INDEX checkout_status_idx (status=?)",
+      "SEARCH payment USING INDEX payment_checkoutId_idx (checkout_id=?)",
+    ])
   })
 
   it("page newsletter subscribers newest first without sorting the whole list", async () => {

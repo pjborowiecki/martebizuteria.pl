@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
 import type { CartItem } from "~/src/modules/cart/cart.store"
 
 const STORAGE_KEY = "marte-cart"
@@ -72,6 +73,14 @@ describe("addItem", () => {
     expect(useCartStore.getState().items[0]?.qty).toBe(5)
   })
 
+  it("stops a line at the most of one piece an order may hold, however much is added", () => {
+    useCartStore.getState().addItem({ ...line(), qty: CART_LINE_QUANTITY_MAX + 5 })
+    useCartStore.getState().addItem(line({ id: "variant-2", variantId: "variant-2" }))
+    useCartStore.getState().addItem({ ...line({ id: "variant-2", variantId: "variant-2" }), qty: CART_LINE_QUANTITY_MAX })
+
+    expect(useCartStore.getState().items.map((item) => item.qty)).toStrictEqual([CART_LINE_QUANTITY_MAX, CART_LINE_QUANTITY_MAX])
+  })
+
   it("keeps two variants of the same product as separate lines", () => {
     useCartStore.getState().addItem(line())
     useCartStore.getState().addItem(line({ id: "variant-2", variantId: "variant-2", variantTitle: "Size L" }))
@@ -108,6 +117,12 @@ describe("updateQuantity", () => {
     useCartStore.getState().updateQuantity("variant-1", qty)
 
     expect(useCartStore.getState().items[0]?.qty).toBe(1)
+  })
+
+  it("never raises the quantity above the most of one piece an order may hold", () => {
+    useCartStore.getState().updateQuantity("variant-1", CART_LINE_QUANTITY_MAX + 1)
+
+    expect(useCartStore.getState().items[0]?.qty).toBe(CART_LINE_QUANTITY_MAX)
   })
 
   it("leaves the cart alone when the line is not there", () => {
@@ -234,6 +249,12 @@ describe("rehydrating a persisted cart", () => {
     await rehydrate({ state: { items: [{ ...line(), qty: 2 }] }, version: 1 })
 
     expect(useCartStore.getState().items).toStrictEqual([{ ...line(), qty: 2 }])
+  })
+
+  it("brings a line saved above the per-piece limit down to it, so the checkout can still open", async () => {
+    await rehydrate({ state: { items: [{ ...line(), qty: CART_LINE_QUANTITY_MAX + 15 }] }, version: 2 })
+
+    expect(useCartStore.getState().items).toStrictEqual([{ ...line(), qty: CART_LINE_QUANTITY_MAX }])
   })
 
   it("drops a persisted line that is missing a variant id", async () => {

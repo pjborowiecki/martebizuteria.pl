@@ -20,7 +20,7 @@ Każda tabela poza `storefront_search` jest re-eksportowana z `src/integrations/
 | `cart`                  | `cart`                                              | `check-cart-availability`                                                                                                                                                                                                                                                                                                           |
 | `cart-item`             | `cart_item`                                         | brak                                                                                                                                                                                                                                                                                                                                |
 | `category-on-product`   | `category_on_product`                               | brak — zapisywana w ramach wsadu produktu                                                                                                                                                                                                                                                                                           |
-| `checkout`              | `checkout`                                          | `create-checkout.server`, `update-checkout-delivery.server`, `fulfill-checkout.server`, `release-checkout.server`                                                                                                                                                                                                                   |
+| `checkout`              | `checkout`                                          | `count-open-checkouts.server`, `create-checkout.server`, `update-checkout-delivery.server`, `fulfill-checkout.server`, `release-checkout.server`                                                                                                                                                                                    |
 | `collection-on-product` | `collection_on_product`                             | brak — zapisywana w ramach wsadu produktu                                                                                                                                                                                                                                                                                           |
 | `content-page`          | `content_page`                                      | `get-content-page`, `get-admin-content-pages`, `get-admin-content-page`, `update-content-page`                                                                                                                                                                                                                                      |
 | `courier`               | `courier`                                           | brak                                                                                                                                                                                                                                                                                                                                |
@@ -85,17 +85,19 @@ Cztery moduły istnieją dla operacji, a nie dla wierszy.
 
 ## Przypadki użycia bez endpointu RPC
 
-Siedem plików w `use-cases` eksportuje zwykłą funkcję `async`, a nie `createServerFn`. Wywołuje je handler webhooka Stripe lub inny kod serwerowy i nie są osiągalne po HTTP:
+Dziewięć plików w `use-cases` eksportuje zwykłą funkcję `async`, a nie `createServerFn`. Wywołuje je handler webhooka Stripe lub inny kod serwerowy i nie są osiągalne po HTTP:
 
-| Plik                                                    | Wywoływany z                                     |
-| ------------------------------------------------------- | ------------------------------------------------ |
-| `checkout/use-cases/create-checkout.server.ts`          | Akcji serwerowych procesu zamówienia             |
-| `checkout/use-cases/update-checkout-delivery.server.ts` | Akcji serwerowych procesu zamówienia             |
-| `checkout/use-cases/fulfill-checkout.server.ts`         | Zdarzenia `checkout.session.completed` ze Stripe |
-| `checkout/use-cases/release-checkout.server.ts`         | Zdarzenia `checkout.session.expired` ze Stripe   |
-| `order/use-cases/refund-order.ts`                       | Zdarzeń zwrotu płatności ze Stripe               |
-| `order/use-cases/flag-order-dispute.ts`                 | Zdarzeń sporu ze Stripe                          |
-| `order/use-cases/clear-order-dispute.ts`                | Zdarzeń zamknięcia sporu ze Stripe               |
+| Plik                                                      | Wywoływany z                                                                |
+| --------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `checkout/use-cases/count-open-checkouts.server.ts`       | Akcji serwerowych procesu zamówienia, zanim nowy checkout zarezerwuje towar |
+| `checkout/use-cases/create-checkout.server.ts`            | Akcji serwerowych procesu zamówienia                                        |
+| `checkout/use-cases/update-checkout-delivery.server.ts`   | Akcji serwerowych procesu zamówienia                                        |
+| `checkout/use-cases/supersede-checkout-session.server.ts` | Akcji serwerowych procesu zamówienia, gdy zmiana zastępuje sesję Stripe     |
+| `checkout/use-cases/fulfill-checkout.server.ts`           | Zdarzenia `checkout.session.completed` ze Stripe                            |
+| `checkout/use-cases/release-checkout.server.ts`           | Zdarzenia `checkout.session.expired` ze Stripe                              |
+| `order/use-cases/refund-order.ts`                         | Zdarzeń zwrotu płatności ze Stripe                                          |
+| `order/use-cases/flag-order-dispute.ts`                   | Zdarzeń sporu ze Stripe                                                     |
+| `order/use-cases/clear-order-dispute.ts`                  | Zdarzeń zamknięcia sporu ze Stripe                                          |
 
 Test w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` przechodzi po każdym pliku w `src/modules/*/use-cases/` i pomija te bez `createServerFn` — dlatego nie potrzebują one middleware autoryzacji.
 

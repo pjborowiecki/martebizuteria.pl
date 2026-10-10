@@ -10,7 +10,7 @@ const access = vi.hoisted(() => ({
       (input: {
         columns?: Record<string, boolean>
         where: SQL | undefined
-      }) => Promise<{ email: string; status: string; userId: string | null } | undefined>
+      }) => Promise<{ createdAt: Date; email: string; status: string; userId: string | null } | undefined>
     >(),
   insertValues: vi.fn<(values: Record<string, unknown>) => Promise<void>>(),
   paymentFindFirst: vi.fn<(input: { columns?: Record<string, boolean>; where: SQL | undefined }) => Promise<unknown>>(),
@@ -92,6 +92,8 @@ describe("getPaymentByTransactionId", () => {
 })
 
 describe("getPaymentContextByTransactionId", () => {
+  const CHECKOUT_OPENED_AT = new Date("2026-10-10T12:00:00.000Z")
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -110,11 +112,17 @@ describe("getPaymentContextByTransactionId", () => {
     await expect(getPaymentContextByTransactionId("pi_123")).resolves.toBeUndefined()
   })
 
-  it("joins the payment to its checkout email, owner and both statuses", async () => {
+  it("joins the payment to its checkout email, owner, opening time and both statuses", async () => {
     access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1", status: "succeeded" })
-    access.checkoutFindFirst.mockResolvedValue({ email: "shopper@example.com", status: "completed", userId: "customer-1" })
+    access.checkoutFindFirst.mockResolvedValue({
+      createdAt: CHECKOUT_OPENED_AT,
+      email: "shopper@example.com",
+      status: "completed",
+      userId: "customer-1",
+    })
 
     await expect(getPaymentContextByTransactionId("pi_123")).resolves.toStrictEqual({
+      checkoutCreatedAt: CHECKOUT_OPENED_AT,
       checkoutId: "checkout-1",
       checkoutStatus: "completed",
       email: "shopper@example.com",
@@ -125,17 +133,27 @@ describe("getPaymentContextByTransactionId", () => {
 
   it("reads the statuses alongside the columns that identify the checkout", async () => {
     access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1", status: "pending" })
-    access.checkoutFindFirst.mockResolvedValue({ email: "shopper@example.com", status: "pending", userId: null })
+    access.checkoutFindFirst.mockResolvedValue({
+      createdAt: CHECKOUT_OPENED_AT,
+      email: "shopper@example.com",
+      status: "pending",
+      userId: null,
+    })
 
     await getPaymentContextByTransactionId("pi_123")
 
     expect(access.paymentFindFirst.mock.calls[0]?.[0].columns).toStrictEqual({ checkoutId: true, status: true })
-    expect(access.checkoutFindFirst.mock.calls[0]?.[0].columns).toStrictEqual({ email: true, status: true, userId: true })
+    expect(access.checkoutFindFirst.mock.calls[0]?.[0].columns).toStrictEqual({ createdAt: true, email: true, status: true, userId: true })
   })
 
   it("reports a guest checkout as having no owner", async () => {
     access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1", status: "pending" })
-    access.checkoutFindFirst.mockResolvedValue({ email: "guest@example.com", status: "pending", userId: null })
+    access.checkoutFindFirst.mockResolvedValue({
+      createdAt: CHECKOUT_OPENED_AT,
+      email: "guest@example.com",
+      status: "pending",
+      userId: null,
+    })
 
     const context = await getPaymentContextByTransactionId("pi_123")
 
@@ -144,7 +162,12 @@ describe("getPaymentContextByTransactionId", () => {
 
   it("scopes the checkout lookup to the id the payment carries", async () => {
     access.paymentFindFirst.mockResolvedValue({ checkoutId: "checkout-1", status: "pending" })
-    access.checkoutFindFirst.mockResolvedValue({ email: "shopper@example.com", status: "pending", userId: null })
+    access.checkoutFindFirst.mockResolvedValue({
+      createdAt: CHECKOUT_OPENED_AT,
+      email: "shopper@example.com",
+      status: "pending",
+      userId: null,
+    })
 
     await getPaymentContextByTransactionId("pi_123")
 

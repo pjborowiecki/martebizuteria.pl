@@ -1,6 +1,7 @@
 import { type BrowserContext, type TestInfo, test as base } from "@playwright/test"
 
 import { AccountPage, AdminOrderPage, AuthPage, CartPage, CheckoutPage, CouponsPage, ProductPage } from "../pages"
+import { TURNSTILE_SCRIPT, TURNSTILE_WIDGET_DOUBLE } from "./turnstile"
 
 const LOCAL_ORIGIN = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\//u
 const TRANSLATION_ERROR = /MISSING_MESSAGE|INVALID_MESSAGE|FORMATTING_ERROR|INVALID_KEY/u
@@ -17,10 +18,16 @@ const IP_OCTET_RANGE = 254
 export const isolateNetwork = async (context: BrowserContext): Promise<void> => {
   await context.route(
     (url) => !LOCAL_ORIGIN.test(url.href),
-    (route) =>
-      route.request().resourceType() === "image"
+    (route) => {
+      const request = route.request()
+      if (TURNSTILE_SCRIPT.test(request.url())) {
+        return route.fulfill({ body: TURNSTILE_WIDGET_DOUBLE, contentType: "text/javascript" })
+      }
+
+      return request.resourceType() === "image"
         ? route.fulfill({ body: TRANSPARENT_PNG, contentType: "image/png" })
-        : route.abort("blockedbyclient"),
+        : route.abort("blockedbyclient")
+    },
   )
 }
 

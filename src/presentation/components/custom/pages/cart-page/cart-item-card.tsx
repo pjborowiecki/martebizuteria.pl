@@ -4,6 +4,7 @@ import { Minus, Plus, X } from "lucide-react"
 import { useFormatter, useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
 import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
 
@@ -25,7 +26,8 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
   const { issuesByVariantId } = useCartAvailability()
   const availabilityIssue = issuesByVariantId.get(item.variantId)
   const isUnavailable = availabilityIssue !== undefined && availabilityIssue.available < item.qty
-  const canIncrease = availabilityIssue === undefined || item.qty < availabilityIssue.available
+  const atQuantityLimit = item.qty >= CART_LINE_QUANTITY_MAX
+  const canIncrease = !atQuantityLimit && (availabilityIssue === undefined || item.qty < availabilityIssue.available)
   const unitPriceLabel = format.number(centsToDisplayAmount(getCartLineUnitPriceCents(item)), {
     currency: "PLN",
     style: "currency",
@@ -86,6 +88,11 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
                   : t("availability.itemLimited", {
                       available: availabilityIssue.available,
                     })}
+              </p>
+            )}
+            {atQuantityLimit && (
+              <p className="mt-2 text-xs text-muted-foreground" role="status">
+                {t("quantityLimit", { max: CART_LINE_QUANTITY_MAX })}
               </p>
             )}
           </div>

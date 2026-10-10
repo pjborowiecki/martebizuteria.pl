@@ -18,6 +18,7 @@ export const checkout = sqliteTable(
     billingCompanyName: text("billing_company_name", { length: 256 }),
     billingNip: text("billing_nip", { length: 16 }),
     cartId: text("cart_id").references(() => cart.id, { onDelete: "set null" }),
+    clientAddress: text("client_address"),
     customerNote: text("customer_note"),
     deliveryMethodId: text("delivery_method_id").references(() => deliveryMethod.id, {
       onDelete: "set null",

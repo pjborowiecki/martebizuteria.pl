@@ -1,3 +1,5 @@
+import { TURNSTILE_ERROR_CODES } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+
 export const getCheckoutErrorKey = (error: unknown): string => {
   const code = error instanceof Error ? error.message : ""
 
@@ -13,11 +15,13 @@ export const CHECKOUT_ERROR_CODES = {
   SALES_PAUSED: "SALES_PAUSED",
   SESSION_CLOSED: "SESSION_CLOSED",
   SESSION_COMPLETE: "SESSION_COMPLETE",
+  TOO_MANY_OPEN_CHECKOUTS: "TOO_MANY_OPEN_CHECKOUTS",
   UNKNOWN_ERROR: "UNKNOWN_ERROR",
   VARIANT_NOT_FOUND: "VARIANT_NOT_FOUND",
 } as const
 
 export const CHECKOUT_ERRORS: Record<string, string> = {
+  [TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED]: "botCheckFailed",
   [CHECKOUT_ERROR_CODES.DELIVERY_METHOD_UNAVAILABLE]: "deliveryMethodUnavailable",
   [CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY]: "insufficientInventory",
   [CHECKOUT_ERROR_CODES.INVALID_PRICE]: "invalidPrice",
@@ -26,6 +30,7 @@ export const CHECKOUT_ERRORS: Record<string, string> = {
   [CHECKOUT_ERROR_CODES.SALES_PAUSED]: "salesPaused",
   [CHECKOUT_ERROR_CODES.SESSION_CLOSED]: "sessionClosed",
   [CHECKOUT_ERROR_CODES.SESSION_COMPLETE]: "sessionComplete",
+  [CHECKOUT_ERROR_CODES.TOO_MANY_OPEN_CHECKOUTS]: "tooManyOpenCheckouts",
   [CHECKOUT_ERROR_CODES.UNKNOWN_ERROR]: "unknownError",
   [CHECKOUT_ERROR_CODES.VARIANT_NOT_FOUND]: "variantNotFound",
 }

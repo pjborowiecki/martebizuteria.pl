@@ -81,6 +81,7 @@ Zwróć uwagę na typ zwracany. **Brak produktu i brak stanu magazynowego to oba
 - `isOutOfStock` to `availableQuantity < 1`
 - `canPurchase = isVariantPurchasable(selectedVariant, quantity)`
 - jeśli wybrana ilość przekracza dostępną, efekt ją obniża
+- wybór ilości zatrzymuje się na mniejszej z wartości: `availableQuantity` albo `CART_LINE_QUANTITY_MAX`, czyli najwyższej liczbie sztuk jednego produktu w zamówieniu
 - zmiana wariantu resetuje ilość do 1
 
 Po kliknięciu wpycha jedną linię do store'a zustand i wysyła zdarzenie aktywności:

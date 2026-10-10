@@ -1,4 +1,4 @@
-import { type BaseSyntheticEvent, type JSX, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { type BaseSyntheticEvent, type JSX, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { CheckoutElementsProvider, PaymentElement, useCheckoutElements } from "@stripe/react-stripe-js/checkout"
 import { type StripeCheckoutElementsSdkOptions, type StripeCheckoutPaymentElementOptions } from "@stripe/stripe-js"
@@ -11,6 +11,8 @@ import { AlertCircle, ArrowRight } from "lucide-react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "use-intl/react"
 
+import { issueTurnstileToken } from "~/src/integrations/cloudflare-turnstile/turnstile.client"
+import { TURNSTILE_ACTIONS, TURNSTILE_ERROR_CODES } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import { STRIPE_FONTS, getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
 import {
   type CheckoutSession,
@@ -260,7 +262,21 @@ const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
   return { loadError, reportFailure, setLoadError }
 }
 
-const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
+const useTurnstileToken = (): TurnstileTokenSource => {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const requestToken = useCallback((): Promise<string> => {
+    const container = containerRef.current
+    if (container === null) {
+      return Promise.reject(new Error(TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED))
+    }
+
+    return issueTurnstileToken({ action: TURNSTILE_ACTIONS.CHECKOUT, container })
+  }, [])
+
+  return { containerRef, requestToken }
+}
+
+const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>): CheckoutSessionLoader => {
   const { theme } = useTheme()
   const { checkoutSession, getValues, onEdit, setCheckoutSession } = useCheckoutForm()
   const items = useCartStore((state) => state.items)
@@ -313,6 +329,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
       const session = await resetCheckoutSession({
         heldSessionId: loadCheckoutSessionId(),
         items,
+        requestTurnstileToken,
         session: checkoutSession,
         values: getValues(),
       })
@@ -324,7 +341,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
     } finally {
       inFlightRef.current = false
     }
-  }, [adoptSession, checkoutSession, getValues, handleSessionError, items])
+  }, [adoptSession, checkoutSession, getValues, handleSessionError, items, requestTurnstileToken])
   useEffect(() => {
     if (!isCheckoutComplete(getValues())) {
       onEdit(CHECKOUT_STEP_ID.CONTACT)
@@ -344,6 +361,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
           existing: checkoutSession,
           heldSessionId: loadCheckoutSessionId(),
           items,
+          requestTurnstileToken,
           values: getValues(),
         })
         adoptSession(session)
@@ -361,6 +379,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
     handleSessionError,
     items,
     onEdit,
+    requestTurnstileToken,
     setLoadError,
     retryToken,
     sessionMatches,
@@ -412,13 +431,12 @@ const useCheckoutSessionExpired = (checkoutSession: CheckoutSession | undefined)
   return checkoutSession !== undefined && expiredSession === checkoutSession
 }
 
-export const PaymentStep = (): JSX.Element => {
+const PaymentStepBody = ({ checkoutSession, loadError, options, resetSession, retry }: Readonly<CheckoutSessionLoader>): JSX.Element => {
   const locale = useLocale()
   const t = useTranslations("pages.checkout.checkoutForm")
   const { hasUnavailableItems, isChecking } = useCartAvailability()
   const checkoutBlocked = hasUnavailableItems || isChecking
   const stripePromise = useMemo(() => getStripe(locale), [locale])
-  const { checkoutSession, loadError, options, resetSession, retry } = useCheckoutSessionLoader()
   const isExpired = useCheckoutSessionExpired(checkoutSession)
   const restartPayment = useCallback(() => {
     void resetSession()
@@ -443,6 +461,24 @@ export const PaymentStep = (): JSX.Element => {
           <PaymentForm checkoutBlocked={checkoutBlocked} onReset={resetSession} onRetry={retry} />
         </CheckoutElementsProvider>
       </div>
+    </div>
+  )
+}
+
+export const PaymentStep = (): JSX.Element => {
+  const { containerRef, requestToken } = useTurnstileToken()
+  const { checkoutSession, loadError, options, resetSession, retry } = useCheckoutSessionLoader(requestToken)
+
+  return (
+    <div>
+      <div ref={containerRef} className="mb-4 empty:hidden" />
+      <PaymentStepBody
+        checkoutSession={checkoutSession}
+        loadError={loadError}
+        options={options}
+        resetSession={resetSession}
+        retry={retry}
+      />
     </div>
   )
 }
@@ -483,6 +519,11 @@ interface CheckoutSessionFailure {
 }
 
 type PaymentStepDestination = "confirmation" | "payment"
+
+interface TurnstileTokenSource {
+  containerRef: RefObject<HTMLDivElement | null>
+  requestToken: () => Promise<string>
+}
 
 interface CheckoutSessionLoader {
   checkoutSession: CheckoutSession | undefined

@@ -67,7 +67,7 @@ run: |
   bun run deploy:preview
 ```
 
-The `touch` exists because `scripts/prepare-deploy-secrets.ts` reads the file unconditionally (`scripts/verify-stripe-keys.ts` and `scripts/verify-email-sender.ts` treat a missing file as empty); the values themselves come from the step's `env:` block, which all three scripts prefer over the file:
+The `touch` exists because `scripts/prepare-deploy-secrets.ts` reads the file unconditionally (`scripts/verify-stripe-keys.ts`, `scripts/verify-turnstile-keys.ts` and `scripts/verify-email-sender.ts` treat a missing file as empty); the values themselves come from the step's `env:` block, which all four scripts prefer over the file:
 
 ```ts
 const value = process.env[name] ?? values[name]
@@ -84,10 +84,10 @@ Preview is a single shared deployment: every pull request deploys to the same Wo
 ## What a deploy actually runs
 
 ```json
-"deploy:preview": "bun scripts/verify-bindings.ts preview && bun scripts/verify-stripe-keys.ts preview && bun scripts/verify-email-sender.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json"
+"deploy:preview": "bun scripts/verify-bindings.ts preview && bun scripts/verify-stripe-keys.ts preview && bun scripts/verify-turnstile-keys.ts preview && bun scripts/verify-email-sender.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json"
 ```
 
-Six stages.
+Seven stages.
 
 ### 1. verify-bindings.ts
 
@@ -107,36 +107,40 @@ Reads `VITE_STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY` from `process.env` f
 
 It reads only the prefixes and calls no outside service, so it cannot tell whether Stripe still accepts the keys or whether a restricted key has the permissions checkout needs. It runs before the build because `VITE_STRIPE_PUBLISHABLE_KEY` is baked into the client bundle, so test keys in the production environment would otherwise go live with a checkout that takes Stripe's test cards. See [Stripe](/docs/integrations/stripe#secrets).
 
-### 3. verify-email-sender.ts
+### 3. verify-turnstile-keys.ts
+
+Reads `VITE_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` from `process.env` first and `.env.<environment>` second, and passes them to `verifyTurnstileKeys` in `src/integrations/cloudflare-turnstile/turnstile.keys.ts`. Cloudflare's testing keys (`1x…`, `2x…` and `3x…` followed by zeros) pass every visitor, so production needs the keys of the shop's own widget; preview, and development when the script is run by hand, accept either kind. It fails on a missing or blank key in any environment, and on a testing key paired with a widget's key, because the secret would then refuse every token the site key issues. Its output and errors name the variables and the kind of keys, never a key. It calls no outside service, so it cannot tell whether the widget still exists or lists the shop's hostname. It runs before the build because `VITE_TURNSTILE_SITE_KEY` is baked into the client bundle. See [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile#keys).
+
+### 4. verify-email-sender.ts
 
 Reads `RESEND_API_KEY` and `RESEND_EMAIL_FROM` from `process.env` first and `.env.<environment>` second, then asks Resend whether it would send as that address. It fails on a missing key, a sender with a display name, `onboarding@resend.dev` outside development, a domain that is not in the key's Resend account, and a domain whose DKIM or SPF records are not verified, in which case it prints the records still to publish. A sending-only key cannot read domains, so the check reads them with `RESEND_MANAGEMENT_API_KEY`, an optional Full access key that the step takes from the environment's GitHub secrets and that never reaches the Worker. Without it, the check sends one test e-mail to `delivered@resend.dev` and fails if Resend refuses it. Each Resend request is asked again once after a rate limit or a 5xx, and the whole check gives up after 30 seconds.
 
 It runs before the build so that a sender Resend would refuse stops the deploy within seconds. Apart from `wrangler deploy` itself, it is the only stage that calls an outside service, and it is not part of `build:*`, so `ci.yml` never calls Resend with the dummy `.env.test` values. See [Resend](/docs/integrations/resend#sender-domain) for the records and the local `onboarding@resend.dev` setup.
 
-### 4. build
+### 5. build
 
 `bun run build:preview` removes `dist`, regenerates `.source/`, runs `CLOUDFLARE_ENV=preview vp build --mode preview`, and then `bun scripts/verify-build.ts preview`. `verify-build.ts` reads `.wrangler/deploy/config.json`, follows its `configPath`, and asserts it resolves to exactly `dist/server/wrangler.json`; that the built config's `vars.APP_ENV` matches the target and its `name` is `martebizuteria-preview` (or `martebizuteria` for production); that `main` and `dist/client` exist; that `dist/client/fonts` exists; that `dist/client/assets` contains at least one `.js` and one `.css`; and finally it scans every client `.js` file with `new Bun.Transpiler({ loader: "js" })` and fails on any import of `cloudflare:workers` or a `node:` module.
 
-### 5. prepare-deploy-secrets.ts
+### 6. prepare-deploy-secrets.ts
 
 Reads `secrets.required` from the environment's `wrangler.jsonc` block, resolves each name from `process.env` first and `.env.<environment>` second, throws on the first missing or blank value, and writes `.wrangler/secrets.<environment>.json` with mode `0o600`.
 
 Only the names declared in `wrangler.jsonc` are written. `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` and `CLOUDFLARE_ACCESS_TOKEN` are deliberately not in that list: they are management credentials for drizzle-kit and Wrangler, not Worker runtime secrets, and uploading them to the Worker would be a privilege leak.
 
-### 6. wrangler deploy
+### 7. wrangler deploy
 
 ```sh
 env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json
 ```
 
-`CLOUDFLARE_ENV` is unset for this command because the built `dist/server/wrangler.json` is already flattened to one environment — leaving the variable set would have Wrangler look for an environment section inside a config that no longer has one. The secrets file is uploaded with the deploy, so the ten declared secrets are set atomically with the new version.
+`CLOUDFLARE_ENV` is unset for this command because the built `dist/server/wrangler.json` is already flattened to one environment — leaving the variable set would have Wrangler look for an environment section inside a config that no longer has one. The secrets file is uploaded with the deploy, so the eleven declared secrets are set atomically with the new version.
 
 ## Repository configuration
 
-| Kind                | Names                                                                                                                                                                                                                                                              |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Actions **secrets** | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
-| Actions **vars**    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                                                                       |
+| Kind                | Names                                                                                                                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Actions **secrets** | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` |
+| Actions **vars**    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                                                                                    |
 
 `CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
 

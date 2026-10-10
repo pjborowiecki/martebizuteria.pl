@@ -66,10 +66,11 @@ export class PaidCheckoutSessionError extends Error {
 interface CheckoutSessionChange {
   checkoutValues: CheckoutFormSchema
   items: CartItem[]
+  requestTurnstileToken: () => Promise<string>
   sessionId: string
 }
 
-const updateOrRestartCheckoutSession = async ({ checkoutValues, items, sessionId }: CheckoutSessionChange) => {
+const updateOrRestartCheckoutSession = async ({ checkoutValues, items, requestTurnstileToken, sessionId }: CheckoutSessionChange) => {
   try {
     return await updateCheckoutSessionFn({ data: { checkoutValues, items, sessionId } })
   } catch (error) {
@@ -82,7 +83,7 @@ const updateOrRestartCheckoutSession = async ({ checkoutValues, items, sessionId
       throw error
     }
 
-    return createCheckoutSessionFn({ data: { checkoutValues, items } })
+    return createCheckoutSessionFn({ data: { checkoutValues, items, turnstileToken: await requestTurnstileToken() } })
   }
 }
 
@@ -106,16 +107,27 @@ export const isCheckoutSessionFor = (session: CheckoutSession, { items, values }
   buildCheckoutLinesFingerprint(session.lines) === buildCheckoutLinesFingerprint(toCheckoutSessionLines(items)) &&
   session.valuesFingerprint === buildCheckoutValuesFingerprint(values)
 
-interface EnsureSessionArgs extends CheckoutSessionRequest {
+interface CheckoutSessionOpening extends CheckoutSessionRequest {
+  requestTurnstileToken: () => Promise<string>
+}
+
+interface EnsureSessionArgs extends CheckoutSessionOpening {
   existing: CheckoutSession | undefined
   heldSessionId: string | undefined
 }
 
-export const ensureCheckoutSession = async ({ existing, heldSessionId, ...request }: EnsureSessionArgs): Promise<CheckoutSession> => {
+export const ensureCheckoutSession = async ({
+  existing,
+  heldSessionId,
+  requestTurnstileToken,
+  ...request
+}: EnsureSessionArgs): Promise<CheckoutSession> => {
   const continuedSessionId = heldSessionId ?? existing?.sessionId
   if (continuedSessionId === undefined) {
+    const turnstileToken = await requestTurnstileToken()
+
     return toCheckoutSession(
-      await createCheckoutSessionFn({ data: { checkoutValues: request.values, items: request.items } }),
+      await createCheckoutSessionFn({ data: { checkoutValues: request.values, items: request.items, turnstileToken } }),
       request.values,
     )
   }
@@ -127,21 +139,28 @@ export const ensureCheckoutSession = async ({ existing, heldSessionId, ...reques
   const continued = await updateOrRestartCheckoutSession({
     checkoutValues: request.values,
     items: request.items,
+    requestTurnstileToken,
     sessionId: continuedSessionId,
   })
 
   return toCheckoutSession(continued, request.values)
 }
 
-interface ResetSessionArgs extends CheckoutSessionRequest {
+interface ResetSessionArgs extends CheckoutSessionOpening {
   heldSessionId: string | undefined
   session: CheckoutSession
 }
 
-export const resetCheckoutSession = async ({ heldSessionId, session, ...request }: ResetSessionArgs): Promise<CheckoutSession> => {
+export const resetCheckoutSession = async ({
+  heldSessionId,
+  requestTurnstileToken,
+  session,
+  ...request
+}: ResetSessionArgs): Promise<CheckoutSession> => {
   const updated = await updateOrRestartCheckoutSession({
     checkoutValues: request.values,
     items: request.items,
+    requestTurnstileToken,
     sessionId: heldSessionId ?? session.sessionId,
   })
 

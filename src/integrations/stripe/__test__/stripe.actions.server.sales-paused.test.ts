@@ -75,6 +75,11 @@ vi.mock("~/src/modules/product/product.accessors", () => ({
   getPublishedProductsWithInventoryByHandles: mocked.getPublishedProductsWithInventoryByHandles,
 }))
 vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ isSalesPaused: mocked.isSalesPaused }))
+vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ verifyTurnstileToken: () => Promise.resolve() }))
+vi.mock("~/src/modules/checkout/use-cases/count-open-checkouts.server", () => ({
+  countOpenCheckouts: () => Promise.resolve({ byClientAddress: 0, byEmail: 0 }),
+}))
+vi.mock("~/src/lib/rate-limit", () => ({ clientAddress: () => "203.0.113.7" }))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
 import {
@@ -87,6 +92,7 @@ import {
   updateInput,
 } from "~/src/integrations/stripe/__test__/fixtures/checkout-session-inputs"
 import { handleCreateCheckoutSession, handleUpdateCheckoutSession } from "~/src/integrations/stripe/stripe.actions.server"
+import { CHECKOUT_SESSION_LIFETIME_SECONDS } from "~/src/integrations/stripe/stripe.constants"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
@@ -137,6 +143,16 @@ describe("handleUpdateCheckoutSession while sales are paused", () => {
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject(SALES_PAUSED_REFUSAL)
 
     expect(mocked.getPublishedProductsWithInventoryByHandles).not.toHaveBeenCalled()
+    expect(mocked.releaseCheckout).not.toHaveBeenCalled()
+    expectNothingHeldOrCharged()
+  })
+
+  it("leaves the open session of a checkout too old to edit payable, as every session opened before the pause", async () => {
+    const twoHoldsAgo = new Date(Date.now() - 2 * CHECKOUT_SESSION_LIFETIME_SECONDS * 1000)
+    mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext({ checkoutCreatedAt: twoHoldsAgo }))
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject(SALES_PAUSED_REFUSAL)
+
     expect(mocked.releaseCheckout).not.toHaveBeenCalled()
     expectNothingHeldOrCharged()
   })

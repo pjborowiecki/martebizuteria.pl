@@ -1,4 +1,4 @@
-import { type APIRequestContext, type Page, type Request } from "@playwright/test"
+import { type APIRequestContext, type Browser, type Page, type Request, type TestInfo } from "@playwright/test"
 
 import { COURIER, IN_STORE_PICKUP, PARCEL_LOCKER, PRODUCTS, SHIPPING_ADDRESS, WITHDRAWN_DELIVERY_METHOD } from "../data/catalog"
 import { rememberPriceWhenAdded } from "../fixtures/cart"
@@ -22,8 +22,10 @@ import {
   waitForOpenCheckoutSession,
 } from "../fixtures/stripe"
 import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
+import { TURNSTILE_DUMMY_TOKEN } from "../fixtures/turnstile"
 import { uniqueEmail } from "../fixtures/unique"
 import { CheckoutPage } from "../pages/checkout-page"
+import { ProductPage } from "../pages/product-page"
 
 const STRIPE_MINIMUM_SESSION_SECONDS = 1800
 
@@ -40,6 +42,13 @@ const DELIVERY_METHOD_UNAVAILABLE = "The delivery method you chose is no longer 
 const LOCKER_REQUIRED = "Please choose a parcel locker for this delivery method."
 
 const DELIVERY_STEP_URL = /\/en-US\/checkout\?step=3$/u
+
+const BOT_CHECK_FAILED = "We could not finish the check that keeps bots out of checkout. Please try again."
+
+const TOO_MANY_OPEN_CHECKOUTS =
+  "Several payments started for this email address or from your connection have not been paid yet. Finish one of them, or try again in about half an hour, once they have expired."
+
+const OPEN_CHECKOUTS_PER_EMAIL = 3
 
 const fillCheckoutUpToPayment = async (checkoutPage: CheckoutPage, email: string): Promise<void> => {
   await checkoutPage.gotoCheckout()
@@ -74,6 +83,34 @@ const recordPaymentSessionRequests = (page: Page): readonly (readonly Request[])
 
 const confirmationUrl = (session: CheckoutSession): RegExp =>
   new RegExp(`/en-US/checkout\\?(?=.*\\bsuccess=true\\b)(?=.*\\bsession_id=${session.id}\\b)`, "u")
+
+const chooseCourierAsGuest = async (checkoutPage: CheckoutPage, email: string): Promise<void> => {
+  await checkoutPage.gotoCheckout()
+  await checkoutPage.fillContact(email, SHIPPING_ADDRESS.phone)
+  await checkoutPage.fillAddress(SHIPPING_ADDRESS)
+  await checkoutPage.chooseDelivery(COURIER.name)
+}
+
+interface OtherBrowser {
+  readonly checkoutPage: CheckoutPage
+  readonly close: () => Promise<void>
+}
+
+const checkOutInAnotherBrowser = async (browser: Browser, testInfo: TestInfo, shopper: string, email: string): Promise<OtherBrowser> => {
+  const context = await browser.newContext({
+    extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, shopper) },
+    storageState: { cookies: [], origins: [] },
+  })
+  await isolateNetwork(context)
+  const page = await context.newPage()
+  const productPage = new ProductPage(page)
+  const checkoutPage = new CheckoutPage(page)
+  await productPage.gotoProduct(PRODUCTS.lapis.handle)
+  await productPage.addToCart()
+  await chooseCourierAsGuest(checkoutPage, email)
+
+  return { checkoutPage, close: () => context.close() }
+}
 
 const switchToInStorePickup = async (checkoutPage: CheckoutPage): Promise<void> => {
   await checkoutPage.editStep("Delivery Method")
@@ -442,6 +479,58 @@ test.describe("guest checkout", () => {
     await checkoutPage.chooseDelivery(COURIER.name)
     const session = await waitForOpenCheckoutSession(request, email)
     expect(session.amount_total).toBe(39_899)
+  })
+})
+
+test.describe("checkout abuse limits", () => {
+  test.beforeEach(async ({ cartPage, productPage }) => {
+    await productPage.gotoProduct(PRODUCTS.lapis.handle)
+    await productPage.addToCart()
+    await expect(cartPage.cartLink()).toContainText("1")
+  })
+
+  test("a checkout whose bot check token was tampered with opens no payment until the shopper tries again", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "forged-bot-check")
+    await rewriteNextServerFunctionRequest(page, SERVER_FUNCTIONS.createCheckoutSession, (body) =>
+      body.replaceAll(TURNSTILE_DUMMY_TOKEN, "forged-token"),
+    )
+
+    await chooseCourierAsGuest(checkoutPage, email)
+
+    await expect(checkoutPage.notification(BOT_CHECK_FAILED)).toBeVisible()
+    expect(await openCheckoutSessions(request, email)).toStrictEqual([])
+
+    await page.getByRole("button", { name: "Try again" }).click()
+    const session = await waitForOpenCheckoutSession(request, email)
+    expect(session.amount_total).toBe(39_899)
+    await expect(checkoutPage.paymentStep()).toBeVisible()
+  })
+
+  test("a further unpaid checkout for an email that already has three open is refused and holds nothing", async ({
+    browser,
+    checkoutPage,
+    request,
+  }, testInfo) => {
+    test.slow()
+    const email = uniqueEmail(testInfo, "open-checkout-cap")
+    await reachPaymentForm(checkoutPage, request, email)
+    for (const shopper of ["second-browser", "third-browser"]) {
+      const otherBrowser = await checkOutInAnotherBrowser(browser, testInfo, shopper, email)
+      await expect(otherBrowser.checkoutPage.paymentStep()).toBeVisible()
+      await otherBrowser.close()
+    }
+    await expect.poll(async () => (await openCheckoutSessions(request, email)).length).toBe(OPEN_CHECKOUTS_PER_EMAIL)
+
+    const refusedBrowser = await checkOutInAnotherBrowser(browser, testInfo, "fourth-browser", email)
+
+    await expect(refusedBrowser.checkoutPage.notification(TOO_MANY_OPEN_CHECKOUTS)).toBeVisible()
+    await expect(refusedBrowser.checkoutPage.paymentStep()).toBeHidden()
+    expect(await openCheckoutSessions(request, email)).toHaveLength(OPEN_CHECKOUTS_PER_EMAIL)
+    await refusedBrowser.close()
   })
 })
 

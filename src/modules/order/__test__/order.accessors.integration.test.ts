@@ -535,7 +535,7 @@ const seedPlacedOrderReads = (): void => {
     drop table if exists audit_log;
 
     create table checkout (
-      id text primary key, billing_address_id text, billing_company_name text, billing_nip text, cart_id text,
+      id text primary key, billing_address_id text, billing_company_name text, billing_nip text, cart_id text, client_address text,
       customer_note text, delivery_method_id text, discount_id text, email text, locker_id text, shipping_address_id text,
       status text, user_id text, created_at integer, updated_at integer
     );

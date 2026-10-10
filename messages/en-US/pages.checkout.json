@@ -183,6 +183,8 @@
       "salesPaused": "We have paused orders for a while, so this payment cannot go ahead. Your cart will wait until we reopen.",
       "sessionClosed": "This payment can no longer be changed. Please start the payment again.",
       "sessionComplete": "This payment has already been completed.",
+      "botCheckFailed": "We could not finish the check that keeps bots out of checkout. Please try again.",
+      "tooManyOpenCheckouts": "Several payments started for this email address or from your connection have not been paid yet. Finish one of them, or try again in about half an hour, once they have expired.",
       "variantNotFound": "A selected option is no longer available.",
       "paymentSessionStale": "Your previous payment attempt is still processing or has expired. We've refreshed the payment — please choose a method and try again.",
       "paymentNotCompleted": "Your payment was not completed. Choose a payment method to try again.",

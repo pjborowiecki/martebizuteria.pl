@@ -43,7 +43,7 @@ beforeEach(() => {
 
     create table checkout (
       id text primary key, billing_company_name text, billing_nip text, email text not null, status text not null default 'pending', user_id text,
-      billing_address_id text, cart_id text, customer_note text, delivery_method_id text, discount_id text,
+      billing_address_id text, cart_id text, client_address text, customer_note text, delivery_method_id text, discount_id text,
       locker_id text, shipping_address_id text, created_at integer not null, updated_at integer not null
     );
     create table payment (

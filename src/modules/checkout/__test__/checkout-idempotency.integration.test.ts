@@ -111,7 +111,7 @@ beforeEach(() => {
       drop table if exists product_variant;
       drop table if exists order_number_sequence;
 
-      create table checkout (id text primary key, billing_company_name text, billing_nip text, status text not null, email text, user_id text, customer_note text, delivery_method_id text, locker_id text, created_at integer, updated_at integer);
+      create table checkout (id text primary key, billing_company_name text, billing_nip text, client_address text, status text not null, email text, user_id text, customer_note text, delivery_method_id text, locker_id text, created_at integer, updated_at integer);
       create table payment (id text primary key, checkout_id text, status text, transaction_id text unique, created_at integer, updated_at integer);
       create table "order" (
         id text primary key, checkout_id text unique, payment_id text, user_id text, email text not null,
@@ -141,7 +141,7 @@ beforeEach(() => {
         created_at integer, updated_at integer
       );
 
-      insert into checkout (id, status, email) values ('${CHECKOUT_ID}', 'pending', 'buyer@example.com');
+      insert into checkout (id, status, email, client_address) values ('${CHECKOUT_ID}', 'pending', 'buyer@example.com', '203.0.113.7');
       insert into payment (id, checkout_id, status, transaction_id) values ('pay_1', '${CHECKOUT_ID}', 'pending', '${TRANSACTION_ID}');
       insert into product_variant (id, product_id) values ('${VARIANT_ID}', 'prod_onyx');
       insert into inventory (id, variant_id, quantity_available, quantity_reserved, version)
@@ -289,6 +289,7 @@ describe("fulfilment batch", () => {
 
     expect(countOrders()).toBe(1)
     expect(readCheckoutStatus()).toBe("completed")
+    expect(sqlite.prepare("select client_address from checkout where id = ?").get(CHECKOUT_ID)).toEqual({ client_address: null })
   })
 
   it("releases the reserved quantity for each fulfilled line", async () => {

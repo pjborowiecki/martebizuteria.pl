@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type Product } from "~/src/modules/product/product.types"
 
@@ -151,6 +152,18 @@ describe("ProductHeroInfo purchase row", () => {
 
     expect(screen.getByRole("button", { name: "Decrease quantity" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Add to cart" })).toBeEnabled()
+  })
+
+  it("lets the shopper pick no more of a well stocked piece than one order may hold", async () => {
+    renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 50 })] }))
+    const increase = screen.getByRole("button", { name: "Increase quantity" })
+
+    for (let step = 0; step < CART_LINE_QUANTITY_MAX + 5; step += 1) {
+      await userEvent.click(increase)
+    }
+
+    expect(screen.getByText(String(CART_LINE_QUANTITY_MAX))).toBeInTheDocument()
+    expect(increase).toBeDisabled()
   })
 
   it("replaces the purchase row with a sold out notice", () => {

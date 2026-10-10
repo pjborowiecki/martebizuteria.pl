@@ -1,0 +1,50 @@
+---
+title: "Cloudflare Turnstile"
+description: "The bot check the checkout runs before it opens a payment: the widget in the browser, siteverify on the server, the keys per environment and the test doubles."
+---
+
+Guest checkout is open to anyone, and every new checkout holds stock for up to 32 minutes, so `src/integrations/cloudflare-turnstile/` puts a Cloudflare Turnstile check in front of it. Creating a checkout is the only request it protects: `createCheckoutSessionFn` requires a `turnstileToken`, and `handleCreateCheckoutSession` checks it before it counts the shopper's open checkouts or reserves anything. Updating an open checkout needs no token, but each update gives the checkout a replacement session with a fresh 32-minute hold, so `handleUpdateCheckoutSession` edits a checkout only while it is younger than `CHECKOUT_SESSION_LIFETIME_SECONDS`. An older one is refused with `SESSION_CLOSED` after its session is expired and its stock returned, and the browser opens a new checkout, which needs a new token. One passed check therefore holds stock for at most about an hour. See [Checkout: Limits on holding stock](/docs/features/checkout#limits-on-holding-stock).
+
+## Files
+
+| File                     | Role                                                                                                                                                                                           |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `turnstile.constants.ts` | `TURNSTILE_ORIGIN`, the script and siteverify URLs, `TURNSTILE_ACTIONS` (`checkout`), `TURNSTILE_ERROR_CODES` (`BOT_CHECK_FAILED`), `TURNSTILE_TOKEN_MAX_LENGTH` and Cloudflare's testing keys |
+| `turnstile.client.ts`    | `issueTurnstileToken({ action, container })`, which loads the script once and renders one widget per token                                                                                     |
+| `turnstile.server.ts`    | `verifyTurnstileToken({ action, hostname, remoteIp, token })`, which asks siteverify and throws `FORBIDDEN` with `BOT_CHECK_FAILED` unless the token passes                                    |
+| `turnstile.keys.ts`      | `verifyTurnstileKeys` for the deploy check and `isTurnstileTestingKey`                                                                                                                         |
+
+## In the browser
+
+`issueTurnstileToken` loads `https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit` the first time a token is asked for and keeps the loaded API for the rest of the visit; a script that fails to load is removed, so the next request tries again. It then renders a fresh widget into the container it is given, with `action`, `sitekey` set to `VITE_TURNSTILE_SITE_KEY`, `appearance: "interaction-only"` and `size: "flexible"`, and resolves with the token the widget's `callback` receives, taking the widget down again. Turnstile decides per visitor whether to ask anything: most shoppers pass without seeing the widget, and it appears only when Turnstile wants the visitor to act. The `error-callback` takes the widget down, logs `Turnstile could not check this visitor: <code>` to the console and rejects with `BOT_CHECK_FAILED`, and a build without a site key rejects the same way without loading anything. Siteverify accepts a token once, so every new checkout renders a new widget.
+
+The payment step owns the container and asks for a token only when it creates a checkout; see [Checkout: Payment step](/docs/features/checkout#payment-step). The Content-Security-Policy lists `challenges.cloudflare.com` in `script-src`, `frame-src` and `connect-src`, so the script, which is inserted without a nonce, and its challenge frame load (see [Security model](/docs/architecture/security-model#response-headers)).
+
+## On the server
+
+`verifyTurnstileToken` posts the token, `TURNSTILE_SECRET_KEY` and the shopper's IP as `remoteip` (from `resolveRequestIp`, left out when the request carries none) to siteverify as a form, with a ten-second timeout. A token passes only when the verdict says `success` and, with the secret of the shop's own widget, names the `checkout` action and the hostname of the origin the request came in on, so a token solved on another site or for another action is refused. Cloudflare's testing secrets answer with a placeholder action and hostname, so with a testing secret only `success` counts. A siteverify that cannot be reached, answers with an error status or answers something that is not a verdict is logged as `Turnstile siteverify could not check a token` and counts as a failed check: the checkout fails closed rather than letting a script through during an outage.
+
+## Keys
+
+| Environment                         | `VITE_TURNSTILE_SITE_KEY`         | `TURNSTILE_SECRET_KEY`                |
+| ----------------------------------- | --------------------------------- | ------------------------------------- |
+| `production`                        | The site key of the shop's widget | The secret key of the same widget     |
+| `preview`, `development` and `test` | `1x00000000000000000000AA`        | `1x0000000000000000000000000000000AA` |
+
+`VITE_TURNSTILE_SITE_KEY` is a browser variable, inlined into the client bundle. `TURNSTILE_SECRET_KEY` is a Worker secret, declared under `secrets.required` in every environment of `wrangler.jsonc`. The testing pair is Cloudflare's always-passing one: its site key issues the dummy token `XXXX.DUMMY.TOKEN.XXXX`, and its secret accepts only that token. `.env.example` and `.env.test` carry it, so development, preview and the test build need no widget.
+
+`deploy:preview` and `deploy:production` run `scripts/verify-turnstile-keys.ts <environment>` after the Stripe key check and before the build. `verifyTurnstileKeys` refuses a missing or blank key, a testing key paired with a widget's key, whose secret would refuse every token the site key issues, and, in production, Cloudflare's testing keys, which pass every visitor. `isTurnstileTestingKey` recognises those by their shape: `1x`, `2x` or `3x`, zeros, then two capital letters. The script prints the kind of keys, never a key, and calls no Cloudflare API, so it cannot tell whether the widget exists or lists the shop's hostname.
+
+The production widget is created by hand in the Cloudflare dashboard, under Turnstile, in managed mode, for the hosts production serves: `martebizuteria.pl` and `martebizuteria.pjborowiecki.workers.dev`, the two `appHostsForMode("production")` accepts. Its site key goes into the `production` GitHub environment as the variable `VITE_TURNSTILE_SITE_KEY` and its secret key as the secret `TURNSTILE_SECRET_KEY`, and the pair into `.env.production` for a deploy from a laptop.
+
+## Tests
+
+`src/integrations/cloudflare-turnstile/__test__/` holds three files. `turnstile.client.component.test.ts` covers loading the script once, the render options, the token, the widget's error, a script that fails to load and the retry after it, and a build without a site key. `turnstile.server.test.ts` covers the form sent to siteverify, a token for another action or host, a rejected token, an unreachable or failing siteverify and the testing secret. `turnstile.keys.test.ts` covers every environment's rules and that no message prints a key.
+
+The test Worker answers siteverify from `src/platform/testing/mocks/providers.ts`, and the end-to-end browser gets a widget double from `e2e/fixtures/turnstile.ts`, so no test reaches Cloudflare; see [Testing](/docs/tooling/testing).
+
+## Related pages
+
+- [Checkout](/docs/features/checkout)
+- [Security model](/docs/architecture/security-model)
+- [Environment variables](/docs/getting-started/environment-variables)

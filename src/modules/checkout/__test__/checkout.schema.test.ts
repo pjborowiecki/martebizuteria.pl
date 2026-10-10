@@ -38,6 +38,7 @@ describe("checkout table", () => {
       "billing_company_name",
       "billing_nip",
       "cart_id",
+      "client_address",
       "customer_note",
       "delivery_method_id",
       "discount_id",
@@ -99,6 +100,13 @@ describe("checkout table", () => {
 
   it("leaves the discount unconstrained so a removed coupon cannot orphan a checkout", () => {
     expect(references.map((reference) => reference.columns)).not.toContainEqual(["discount_id"])
+  })
+
+  it("keeps the client address optional, so a checkout that has ended can forget it", () => {
+    const clientAddress = columnByName.get("client_address")
+
+    expect(clientAddress?.getSQLType()).toBe("text")
+    expect(clientAddress?.notNull).toBe(false)
   })
 
   it("keeps the locker choice as free text because the carrier owns those ids", () => {
