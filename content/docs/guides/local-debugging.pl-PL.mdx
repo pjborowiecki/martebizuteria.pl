@@ -86,6 +86,7 @@ Lektura handlera w `src/routes/api/webhooks.stripe.ts` mówi, jak interpretować
 
 - 400 `Missing signature or webhook secret` — brakuje nagłówka albo wartości ze środowiska.
 - 400 `Webhook Error: Invalid Signature` — sekret nie pasuje do sekretu nasłuchu.
+- 200 z `[Stripe] Ignoring live event <id> (<type>): development accepts only test events` w logu — zdarzenie pochodzi z trybu live, a każde środowisko poza produkcją obsługuje tylko zdarzenia testowe.
 - 200 z `[Stripe] Safely ignoring unhandled event: <type>` w logu — ten typ zdarzenia nie ma wpisu w `webhookHandlers`.
 - 500 `Internal Server Error` z `[Stripe] Domain logic failed for <type>` — Twój handler rzucił wyjątek. Stripe ponowi, więc handler musi być idempotentny.
 

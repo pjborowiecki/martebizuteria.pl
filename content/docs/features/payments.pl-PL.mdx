@@ -107,6 +107,8 @@ const event = await verifiedStripeEvent(request, signature, env.STRIPE_WEBHOOK_S
 
 `verifiedStripeEvent` używa `stripe.webhooks.constructEventAsync` — wariant asynchroniczny jest wymagany na Workers, gdzie API kryptograficzne opiera się na obietnicach. Nieudana weryfikacja loguje błąd i zwraca 400.
 
+Zweryfikowane zdarzenie musi też pochodzić z trybu Stripe, w którym działa środowisko. `requiredStripeMode(env.APP_ENV)` ze `stripe.keys.ts`, ta sama reguła, którą kontrola wdrożenia stosuje do kluczy, w `production` przyjmuje tylko zdarzenia live (`livemode: true`), a w każdym innym środowisku, także w `test`, tylko zdarzenia testowe. Zdarzenie z drugiego trybu dotyczy płatności, których to środowisko nigdy nie przyjęło, więc zanim uruchomi się jakikolwiek handler, trasa loguje `[Stripe] Ignoring <tryb> event <id> (<typ>): <APP_ENV> accepts only <tryb> events` i odpowiada `200` z `{ received: true }`, przez co Stripe przestaje je ponawiać. Taki wpis oznacza, że endpoint, który wysłał zdarzenie i którego sekret podpisujący to środowisko trzyma jako `STRIPE_WEBHOOK_SECRET`, działa w drugim trybie.
+
 Typ zdarzenia bez handlera loguje `[Stripe] Safely ignoring unhandled event` i zwraca `200`, więc Stripe nie ponawia zdarzeń, które sklepu nie interesują. Handler, który rzuci wyjątek, zwraca `500`, więc Stripe **ponawia** takie zdarzenie, a trasa w tle przekazuje `notifyShopOfIncident` incydent `stripeWebhookFailed` dla typu zdarzenia, który wysyła e-mail na `RESEND_EMAIL_FROM` najwyżej raz na godzinę na typ; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts).
 
 ## Osiem obsługiwanych zdarzeń

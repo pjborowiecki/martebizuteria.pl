@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { verifyStripeKeys } from "~/src/integrations/stripe/stripe.keys"
+import { requiredStripeMode, verifyStripeKeys } from "~/src/integrations/stripe/stripe.keys"
 
 const FIXTURE_SUFFIX = "local_fixture"
 
@@ -140,5 +140,15 @@ describe("verifyStripeKeys output", () => {
   ])("leaves the keys out of the refusal for %o", (overrides) => {
     expect(() => verifyStripeKeys(keys(overrides))).toThrow(Error)
     expect(() => verifyStripeKeys(keys(overrides))).not.toThrow(FIXTURE_SUFFIX)
+  })
+})
+
+describe("requiredStripeMode", () => {
+  it("runs production in live mode", () => {
+    expect(requiredStripeMode("production")).toBe("live")
+  })
+
+  it.each(["development", "preview", "test"])("runs %s in test mode", (environment) => {
+    expect(requiredStripeMode(environment)).toBe("test")
   })
 })

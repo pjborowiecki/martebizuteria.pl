@@ -181,7 +181,7 @@ Checking after `getByName()` would already have let an unauthenticated client op
 
 ## Webhooks
 
-`POST /api/webhooks/stripe` requires a `stripe-signature` header and verifies it with `env.STRIPE_WEBHOOK_SECRET` through `stripe.webhooks.constructEventAsync` before any handler runs. An unverifiable body is a `400` and nothing is touched.
+`POST /api/webhooks/stripe` requires a `stripe-signature` header and verifies it with `env.STRIPE_WEBHOOK_SECRET` through `stripe.webhooks.constructEventAsync` before any handler runs. An unverifiable body is a `400` and nothing is touched. A verified event from the other Stripe mode, test in `production` or live anywhere else, is logged and acknowledged with `200` before any handler runs, so it changes nothing either.
 
 `POST /api/webhooks/inpost` cannot be verified the same way, because InPost does not sign ShipX webhooks, so the route trusts no call: it accepts only an event naming the shop's `INPOST_ORGANIZATION_ID` and a shipment some order holds, and then reads that shipment from ShipX with the shop's token before writing anything. A forged call can make the shop read one of its own shipments again and nothing more. Anything else is a `400`, and an address that sends more than `INPOST_WEBHOOK_RATE_LIMIT` (120) calls a minute is answered `429` before the body is read.
 

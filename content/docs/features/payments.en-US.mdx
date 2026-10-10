@@ -107,6 +107,8 @@ const event = await verifiedStripeEvent(request, signature, env.STRIPE_WEBHOOK_S
 
 `verifiedStripeEvent` uses `stripe.webhooks.constructEventAsync` — the async variant is required on Workers, where the crypto API is promise-based. A failed verification logs and returns 400.
 
+A verified event must also come from the Stripe mode the environment runs in. `requiredStripeMode(env.APP_ENV)` from `stripe.keys.ts`, the rule the deploy check applies to the keys, accepts only live events (`livemode: true`) in `production` and only test events everywhere else, `test` included. An event from the other mode belongs to payments this environment never took, so before any handler runs the route logs `[Stripe] Ignoring <mode> event <id> (<type>): <APP_ENV> accepts only <mode> events` and answers `200` with `{ received: true }`, which stops Stripe redelivering it. That line means the endpoint that sent the event, whose signing secret this environment holds as `STRIPE_WEBHOOK_SECRET`, runs in the other mode.
+
 An event type with no handler logs `[Stripe] Safely ignoring unhandled event` and returns `200`, so Stripe does not retry events the shop does not care about. A handler that throws returns `500`, so Stripe **does** retry, and the route hands `notifyShopOfIncident` a `stripeWebhookFailed` incident for the event type in the background, which emails `RESEND_EMAIL_FROM` at most once an hour per type; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
 
 ## The eight handled events
