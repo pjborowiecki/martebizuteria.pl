@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import {
   clearCheckoutDraft,
   forgetCheckoutSessionId,
+  isCheckoutSessionHeldForCart,
   loadCheckoutDraft,
   loadCheckoutSessionId,
   saveCheckoutDraft,
@@ -167,6 +168,29 @@ describe("wasCheckoutSessionOpenedForAnotherCart", () => {
 
   it("knows nothing against a session the browser does not hold", () => {
     expect(wasCheckoutSessionOpenedForAnotherCart("cs_test_other", [])).toBe(false)
+  })
+})
+
+describe("isCheckoutSessionHeldForCart", () => {
+  beforeEach(() => {
+    saveCheckoutSession(openedForRingAndEarrings("cs_test_paid"))
+  })
+
+  it("recognises the held session for the cart it was opened for, in any order and at any price", () => {
+    const sameCart = [
+      { qty: 2, rawPrice: 12_900, variantId: "variant-earring" },
+      { qty: 1, rawPrice: 18_900, variantId: "variant-ring" },
+    ]
+
+    expect(isCheckoutSessionHeldForCart("cs_test_paid", sameCart)).toBe(true)
+  })
+
+  it("does not recognise the held session for a cart whose pieces changed", () => {
+    expect(isCheckoutSessionHeldForCart("cs_test_paid", [{ qty: 1, variantId: "variant-ring" }])).toBe(false)
+  })
+
+  it("does not recognise a session the browser does not hold, whatever the cart", () => {
+    expect(isCheckoutSessionHeldForCart("cs_test_other", RING_AND_TWO_EARRINGS)).toBe(false)
   })
 })
 

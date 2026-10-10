@@ -109,6 +109,12 @@ export const wasCheckoutSessionOpenedForAnotherCart = (sessionId: string, cart: 
   return held?.sessionId === sessionId && held.cart !== fingerprintCart(cart)
 }
 
+export const isCheckoutSessionHeldForCart = (sessionId: string, cart: readonly CheckoutCartLine[]): boolean => {
+  const held = loadHeldCheckoutSession()
+
+  return held?.sessionId === sessionId && held.cart === fingerprintCart(cart)
+}
+
 const announceCheckoutSessionIdChange = (): void => {
   globalThis.dispatchEvent(new Event(SESSION_ID_CHANGE_EVENT))
 }

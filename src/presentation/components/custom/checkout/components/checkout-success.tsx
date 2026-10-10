@@ -14,7 +14,7 @@ import { getOrderConfirmationQuery } from "~/src/modules/order/use-cases/get-ord
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
-import { clearCheckoutDraft } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
+import { clearCheckoutDraft, isCheckoutSessionHeldForCart } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 
@@ -170,17 +170,25 @@ const ConfirmationActions = ({ order }: Readonly<{ order: Order["confirmation"] 
 
 export const CheckoutSuccess = ({ sessionId }: Readonly<CheckoutSuccessProps>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutSuccess")
+  const cart = useCartStore((state) => state.items)
   const clearCart = useCartStore((state) => state.clearCart)
   const queryClient = useQueryClient()
   const { data: order, isPending } = useQuery(getOrderConfirmationQuery(sessionId))
 
   useEffect(() => {
+    if (!isCheckoutSessionHeldForCart(sessionId, cart)) {
+      return
+    }
+
     clearCart()
     clearCheckoutDraft()
     resetCartAbandonedTracking()
+  }, [cart, clearCart, sessionId])
+
+  useEffect(() => {
     void queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.ORDERS })
     void queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.OVERVIEW })
-  }, [clearCart, queryClient])
+  }, [queryClient])
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 py-12 text-center md:py-20">

@@ -1,4 +1,4 @@
-import { cleanup, screen, waitFor } from "@testing-library/react"
+import { act, cleanup, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { type Order } from "~/src/modules/order/order.types"
@@ -30,9 +30,17 @@ import { useCartStore } from "~/src/modules/cart/cart.store"
 import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY } from "~/src/modules/customer-activity/customer-activity.constants"
 
 import { CheckoutSuccess } from "~/src/presentation/components/custom/checkout/components/checkout-success"
-import { loadCheckoutDraft, saveCheckoutDraft } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
+import {
+  forgetCheckoutSessionId,
+  loadCheckoutDraft,
+  loadCheckoutSessionId,
+  saveCheckoutDraft,
+  saveCheckoutSession,
+} from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 
 const SESSION_ID = "cs_test_123"
+
+const PAID_LINES = [{ qty: 1, variantId: "variant-1" }]
 
 const confirmation = (overrides: Partial<Order["confirmation"]> = {}): Order["confirmation"] => ({
   createdAt: new Date("2026-03-14T10:00:00.000Z"),
@@ -78,6 +86,7 @@ const confirmation = (overrides: Partial<Order["confirmation"]> = {}): Order["co
 beforeEach(() => {
   vi.clearAllMocks()
   sessionStorage.clear()
+  localStorage.clear()
   getOrderConfirmation.mockResolvedValue(confirmation())
   useCartStore.getState().addItem({
     id: "line-1",
@@ -89,6 +98,7 @@ beforeEach(() => {
     variantId: "variant-1",
     variantTitle: "Rozmiar M",
   })
+  saveCheckoutSession({ lines: PAID_LINES, sessionId: SESSION_ID })
 })
 
 afterEach(() => {
@@ -191,7 +201,7 @@ describe("CheckoutSuccess", () => {
     expect(getOrderConfirmation).not.toHaveBeenCalled()
   })
 
-  it("empties the cart once the order is placed", async () => {
+  it("empties the cart that still holds what the session paid for", async () => {
     expect(useCartStore.getState().items).toHaveLength(1)
 
     renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
@@ -200,6 +210,23 @@ describe("CheckoutSuccess", () => {
       expect(useCartStore.getState().items).toStrictEqual([])
     })
     expect(useCartStore.getState().itemCount()).toBe(0)
+    expect(loadCheckoutSessionId()).toBeUndefined()
+  })
+
+  it("empties the cart once its pieces have loaded from storage", async () => {
+    const { items } = useCartStore.getState()
+    useCartStore.setState({ items: [] })
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+    expect(loadCheckoutSessionId()).toBe(SESSION_ID)
+
+    act(() => {
+      useCartStore.setState({ items })
+    })
+
+    await waitFor(() => {
+      expect(useCartStore.getState().items).toStrictEqual([])
+    })
+    expect(loadCheckoutSessionId()).toBeUndefined()
   })
 
   it("discards the saved checkout draft so the next order starts clean", async () => {
@@ -221,6 +248,52 @@ describe("CheckoutSuccess", () => {
     await waitFor(() => {
       expect(sessionStorage.getItem(CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY)).toBeNull()
     })
+  })
+})
+
+describe("CheckoutSuccess reopened after the basket moved on", () => {
+  it.each([
+    {
+      heldSessionId: SESSION_ID,
+      hold: () => {
+        saveCheckoutSession({ lines: [{ qty: 1, variantId: "variant-2" }], sessionId: SESSION_ID })
+      },
+      why: "the session paid for other pieces than the basket holds now",
+    },
+    {
+      heldSessionId: undefined,
+      hold: () => {
+        forgetCheckoutSessionId(SESSION_ID)
+      },
+      why: "the browser no longer holds the session",
+    },
+    {
+      heldSessionId: "cs_test_newer",
+      hold: () => {
+        saveCheckoutSession({ lines: PAID_LINES, sessionId: "cs_test_newer" })
+      },
+      why: "the browser holds a newer checkout for the basket",
+    },
+  ])("shows the order and leaves the basket, the draft and the reminder alone when $why", async ({ heldSessionId, hold }) => {
+    hold()
+    saveCheckoutDraft({ email: "anna@example.com" })
+    sessionStorage.setItem(CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY, "1")
+
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByText("MRT-2026-00042")).toBeInTheDocument()
+    expect(useCartStore.getState().items).toHaveLength(1)
+    expect(loadCheckoutDraft()).toStrictEqual({ email: "anna@example.com" })
+    expect(sessionStorage.getItem(CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY)).toBe("1")
+    expect(loadCheckoutSessionId()).toBe(heldSessionId)
+  })
+
+  it("leaves the basket alone when the address names no session", () => {
+    renderWithProviders(<CheckoutSuccess sessionId="" />)
+
+    expect(screen.getByRole("heading", { name: "Order Confirmed" })).toBeInTheDocument()
+    expect(useCartStore.getState().items).toHaveLength(1)
+    expect(loadCheckoutSessionId()).toBe(SESSION_ID)
   })
 })
 
