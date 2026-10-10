@@ -127,9 +127,9 @@
         "value": "100%",
         "label": "Handmade"
       },
-      "warranty": {
+      "liability": {
         "value": "2 years",
-        "label": "Warranty"
+        "label": "Statutory liability for lack of conformity"
       }
     }
   },

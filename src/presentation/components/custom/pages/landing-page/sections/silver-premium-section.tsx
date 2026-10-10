@@ -54,8 +54,8 @@ export const SilverPremiumSection = (): JSX.Element => {
               <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/35 uppercase">{t("stats.handmade.label")}</p>
             </div>
             <div>
-              <p className="font-serif text-4xl leading-none tracking-tight lg:text-5xl">{t("stats.warranty.value")}</p>
-              <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/35 uppercase">{t("stats.warranty.label")}</p>
+              <p className="font-serif text-4xl leading-none tracking-tight lg:text-5xl">{t("stats.liability.value")}</p>
+              <p className="mt-2.5 text-[10px] tracking-[0.2em] text-primary-foreground/35 uppercase">{t("stats.liability.label")}</p>
             </div>
           </div>
         </div>

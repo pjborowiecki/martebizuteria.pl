@@ -127,9 +127,9 @@
         "value": "100%",
         "label": "Ręcznie robione"
       },
-      "warranty": {
+      "liability": {
         "value": "2 lata",
-        "label": "Gwarancja"
+        "label": "Ustawowa odpowiedzialność za brak zgodności z umową"
       }
     }
   },
