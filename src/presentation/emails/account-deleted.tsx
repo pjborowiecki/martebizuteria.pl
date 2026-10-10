@@ -27,6 +27,8 @@ export const AccountDeleted = ({ locale, messages, name, storefrontUrl }: Readon
 
       <EmailBodyText className="mt-[30px]">{t("greeting", { name: name ?? "" })}</EmailBodyText>
       <EmailBodyText className="mt-[16px]">{t("message")}</EmailBodyText>
+      <EmailBodyText className="mt-[16px]">{t("deleted")}</EmailBodyText>
+      <EmailBodyText className="mt-[16px]">{t("kept")}</EmailBodyText>
       <EmailBodyText className="mt-[16px]">{t("messageSecondary")}</EmailBodyText>
       <EmailBodyText className="mt-[16px]">{t("messageTertiary")}</EmailBodyText>
 

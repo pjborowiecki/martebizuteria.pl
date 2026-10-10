@@ -5,6 +5,7 @@ vi.mock("cloudflare:workers", () => ({
   env: { VITE_R2_URL: "https://cdn.example.test" },
 }))
 
+vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", async () => {
   const { drizzle } = await import("drizzle-orm/sqlite-proxy")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")

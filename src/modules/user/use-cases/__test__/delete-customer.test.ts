@@ -2,12 +2,13 @@ import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
+import { USER_ERROR_CODES, USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
 
 import { executionContextStorage } from "~/src/lib/background"
 
-const { auth, getRequest, getRequestHeaders, getUserById, sendAccountDeletedEmail, serverContext } = vi.hoisted(() => ({
+const { auth, eraseAccountData, getRequest, getRequestHeaders, getUserById, sendAccountDeletedEmail, serverContext } = vi.hoisted(() => ({
   auth: { api: { removeUser: vi.fn<(input: object) => Promise<{ success: boolean }>>() } },
+  eraseAccountData: vi.fn<(account: { email: string; id: string }) => Promise<boolean>>(),
   getRequest: vi.fn<() => Request>(),
   getRequestHeaders: vi.fn<() => Record<string, string>>(),
   getUserById: vi.fn<(id: string) => Promise<{ email: string; id: string; name: string; role: string | null } | undefined>>(),
@@ -40,6 +41,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/better-auth/auth.server", () => ({ auth, sendAccountDeletedEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById }))
+vi.mock("~/src/modules/user/user.erasure.server", () => ({ eraseAccountData }))
 
 import { deleteCustomer, deleteCustomerMutation } from "~/src/modules/user/use-cases/delete-customer"
 
@@ -52,6 +54,7 @@ beforeEach(() => {
   getRequest.mockReturnValue(new Request("http://127.0.0.1:3000/_serverFn/delete-customer", { headers: { host: "attacker.example" } }))
   getRequestHeaders.mockReturnValue({ cookie: "session=abc" })
   auth.api.removeUser.mockResolvedValue({ success: true })
+  eraseAccountData.mockResolvedValue(true)
   sendAccountDeletedEmail.mockResolvedValue(true)
 })
 
@@ -92,6 +95,31 @@ describe("deleteCustomer", () => {
     expect(auth.api.removeUser).toHaveBeenCalledWith({ body: { userId: "user-1" }, headers: { cookie: "session=abc" } })
   })
 
+  it("erases the customer's Stripe customer, activity log and newsletter subscription before removing the account", async () => {
+    eraseAccountData.mockImplementation(() => {
+      expect(auth.api.removeUser).not.toHaveBeenCalled()
+
+      return Promise.resolve(true)
+    })
+
+    await deleteCustomer({ data: { userId: "user-1" } })
+
+    expect(eraseAccountData).toHaveBeenCalledExactlyOnceWith(customer)
+    expect(auth.api.removeUser).toHaveBeenCalledOnce()
+  })
+
+  it("keeps the account and sends no goodbye email when Stripe cannot delete the customer", async () => {
+    eraseAccountData.mockResolvedValue(false)
+
+    await expect(deleteCustomer({ data: { userId: "user-1" } })).rejects.toMatchObject({
+      code: ERROR_CODES.INTERNAL_ERROR,
+      message: USER_ERROR_CODES.STRIPE_CUSTOMER_NOT_DELETED,
+    })
+
+    expect(auth.api.removeUser).not.toHaveBeenCalled()
+    expect(sendAccountDeletedEmail).not.toHaveBeenCalled()
+  })
+
   it("confirms the deletion of the customer it was given and the goodbye email", async () => {
     await expect(deleteCustomer({ data: { userId: "user-1" } })).resolves.toStrictEqual({
       goodbyeEmailSent: true,
@@ -116,6 +144,7 @@ describe("deleteCustomer", () => {
 
     await expect(deleteCustomer({ data: { userId: "user-1" } })).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
 
+    expect(eraseAccountData).not.toHaveBeenCalled()
     expect(auth.api.removeUser).not.toHaveBeenCalled()
     expect(sendAccountDeletedEmail).not.toHaveBeenCalled()
   })

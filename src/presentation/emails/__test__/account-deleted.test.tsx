@@ -40,6 +40,26 @@ describe("AccountDeleted", () => {
     expect(text).toContain(englishCopy.messageTertiary)
   })
 
+  it.each([
+    ["en-US", englishCopy],
+    ["pl-PL", polishCopy],
+  ] as const)("says in %s what was deleted, and that the orders are kept for the accounting records", async (locale, copy) => {
+    const text = await render(<AccountDeleted locale={locale} messages={copy} name="Anna" storefrontUrl={STOREFRONT_URL} />, {
+      plainText: true,
+    })
+
+    expect(text).toContain(copy.deleted)
+    expect(text).toContain(copy.kept)
+  })
+
+  it("no longer claims that every piece of personal data is gone", async () => {
+    const text = await renderText("Jane Doe")
+
+    expect(text).toContain("Stripe")
+    expect(text).toContain("5 years")
+    expect(text).not.toContain("All personal data")
+  })
+
   it("tells an unaware recipient to reply so the deletion can be checked", async () => {
     await expect(renderText("Jane Doe")).resolves.toContain(englishCopy.security)
   })

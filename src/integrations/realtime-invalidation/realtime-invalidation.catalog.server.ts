@@ -1,5 +1,6 @@
 import { scheduleRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
 
+import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
@@ -59,6 +60,12 @@ export const scheduleProductAttributeCatalogInvalidation = (): void => {
 export const scheduleAdminCustomersInvalidation = (): void => {
   scheduleRealtimeInvalidation({
     admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE],
+  })
+}
+
+export const scheduleAdminAuditLogInvalidation = (): void => {
+  scheduleRealtimeInvalidation({
+    admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS],
   })
 }
 

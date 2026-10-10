@@ -156,6 +156,8 @@ export const getSentEmails = (recipient: string): CapturedEmail[] => sentEmails.
 export const listCheckoutSessions = (email: string): EmulatedCheckoutSession[] =>
   [...checkoutSessions.values()].filter((session) => session.customer_details.email === email)
 
+export const listCustomers = (email: string): EmulatedCustomer[] => [...customers.values()].filter((customer) => customer.email === email)
+
 export const listSetupIntents = (email: string): EmulatedSetupIntent[] => {
   const customerIds = new Set([...customers.values()].filter((customer) => customer.email === email).map((customer) => customer.id))
 
@@ -332,6 +334,20 @@ const handleCustomers = (form: StripeForm): Response => {
   return Response.json(customer)
 }
 
+const deleteCustomer = (customerId: string | undefined): Response => {
+  if (customerId === undefined || !customers.delete(customerId)) {
+    return stripeError(`No such customer: '${String(customerId)}'`, HTTP_STATUS.NOT_FOUND)
+  }
+
+  for (const paymentMethod of paymentMethods.values()) {
+    if (paymentMethod.customer === customerId) {
+      paymentMethods.set(paymentMethod.id, { ...paymentMethod, customer: null })
+    }
+  }
+
+  return Response.json({ deleted: true, id: customerId, object: "customer" })
+}
+
 const handlePaymentIntents = (paymentIntentId: string | undefined): Response => {
   const paymentIntent = paymentIntentId === undefined ? undefined : paymentIntents.get(paymentIntentId)
 
@@ -444,6 +460,9 @@ const emulateStripe = async (request: Request, url: URL): Promise<Response> => {
     case "GET payment_methods":
     case "POST payment_methods": {
       return handlePaymentMethods(request, url, [resourceId, ...rest])
+    }
+    case "DELETE customers": {
+      return deleteCustomer(resourceId)
     }
     case "POST customers": {
       return handleCustomers(form)

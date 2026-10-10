@@ -151,14 +151,14 @@ describe("CustomersRowActions deletion guard", () => {
 })
 
 describe("CustomersRowActions deletion", () => {
-  it("asks for confirmation naming the customer and the GDPR consequence", async () => {
+  it("asks for confirmation naming the customer, what is deleted and what the accounting records keep", async () => {
     await openMenu()
     await userEvent.click(await screen.findByRole("menuitem", { name: "Delete account" }))
 
     expect(await screen.findByText("Delete customer account?")).toBeInTheDocument()
     expect(
       await screen.findByText(
-        "This action cannot be undone. Anna Kowalska (anna@example.com) will be permanently deleted under GDPR, and we will send an account-deletion confirmation email to the customer.",
+        "This action cannot be undone. We will delete the account of Anna Kowalska (anna@example.com) with their profile, saved addresses, wishlist, newsletter subscription, sign-in history, activity log, and their customer profile and saved cards at Stripe. Their orders and payments stay in the accounting records for 5 years, as the law requires. We will send the customer an account-deletion confirmation email.",
       ),
     ).toBeInTheDocument()
   })

@@ -21,6 +21,7 @@ import {
   recordContentPageUpdatedAudit,
   recordCustomerCartAbandonedAudit,
   recordCustomerCartItemAddedAudit,
+  recordCustomerDeletionFailedAudit,
   recordCustomerPageViewedAudit,
   recordCustomerRegisteredAudit,
   recordDiscountCreatedAudit,
@@ -167,6 +168,22 @@ describe("recordCustomerRegisteredAudit", () => {
         metadata: { email: "new@example.test", provider: "google" },
       }),
     )
+  })
+})
+
+describe("recordCustomerDeletionFailedAudit", () => {
+  it("files the kept account as an error under customers, against the account", () => {
+    recordCustomerDeletionFailedAudit("anna@example.test", { detail: "Stripe is unreachable", resourceId: "user-7" })
+
+    expect(record.scheduleSystemAuditLog).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.CUSTOMER_DELETION_FAILED,
+      category: "customers",
+      detail: "Stripe is unreachable",
+      metadata: undefined,
+      resourceId: "user-7",
+      severity: "error",
+      target: "anna@example.test",
+    })
   })
 })
 

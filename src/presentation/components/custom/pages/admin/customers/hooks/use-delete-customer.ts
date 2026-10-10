@@ -6,13 +6,17 @@ import { invalidateQueryPrefix } from "~/src/integrations/tanstack-query/query.i
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
 import { deleteCustomerMutation } from "~/src/modules/user/use-cases/delete-customer"
-import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
+import { USER_ERROR_CODES, USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 const resolveDeleteCustomerErrorMessage = (
   error: Error,
   t: ReturnType<typeof useTranslations<"pages.admin.customers.rowActions">>,
 ): string => {
   const code = errorCode(error)
+
+  if (error.message === USER_ERROR_CODES.STRIPE_CUSTOMER_NOT_DELETED) {
+    return t("toast.deleteStripeCustomerFailedDescription")
+  }
 
   if (code === ERROR_CODES.CONFLICT) {
     return t("toast.cannotDeleteSelfDescription")

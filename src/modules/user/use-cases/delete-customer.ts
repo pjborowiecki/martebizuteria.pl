@@ -11,6 +11,7 @@ import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getUserById } from "~/src/modules/user/user.accessors"
 import { USER_ERROR_CODES, USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
+import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
 import { userZodSchemas } from "~/src/modules/user/user.zod"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
@@ -39,6 +40,10 @@ export const deleteCustomer = createServerFn({ method: "POST" })
       locale: getCurrentLocale(),
       name: targetUser.name,
       origin,
+    }
+
+    if (!(await eraseAccountData(targetUser))) {
+      throw new AppError(ERROR_CODES.INTERNAL_ERROR, USER_ERROR_CODES.STRIPE_CUSTOMER_NOT_DELETED)
     }
 
     await auth.api.removeUser({

@@ -82,7 +82,7 @@
     "copyStripeCustomerIdMissingToast": "This customer has no Stripe customer ID",
     "copyStripeCustomerIdToast": "Stripe customer ID copied to clipboard",
     "delete": "Delete account",
-    "deleteDescription": "This action cannot be undone. {name} ({email}) will be permanently deleted under GDPR, and we will send an account-deletion confirmation email to the customer.",
+    "deleteDescription": "This action cannot be undone. We will delete the account of {name} ({email}) with their profile, saved addresses, wishlist, newsletter subscription, sign-in history, activity log, and their customer profile and saved cards at Stripe. Their orders and payments stay in the accounting records for 5 years, as the law requires. We will send the customer an account-deletion confirmation email.",
     "deleteTitle": "Delete customer account?",
     "toast": {
       "cannotDeleteAdminDescription": "Admin accounts cannot be deleted from here.",
@@ -93,6 +93,7 @@
       "deleteErrorTitle": "Delete failed",
       "deleteNotFoundDescription": "This customer was not found. Refresh the table and try again.",
       "deleteSuccessDescription": "The account was deleted and a confirmation email was sent.",
+      "deleteStripeCustomerFailedDescription": "Stripe could not delete the customer's profile and saved cards, so the account was not deleted. Try again in a few minutes. The error is recorded in the audit log.",
       "deleteSuccessTitle": "Account deleted"
     },
     "viewDetails": "View {name}"

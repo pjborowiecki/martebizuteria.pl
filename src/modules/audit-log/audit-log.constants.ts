@@ -65,6 +65,7 @@ export const AUDIT_LOG_ACTION = {
   CONTENT_PAGE_UPDATED: "content_page.updated",
   CUSTOMER_CART_ABANDONED: "customer.cart_abandoned",
   CUSTOMER_CART_ITEM_ADDED: "customer.cart_item_added",
+  CUSTOMER_DELETION_FAILED: "customer.deletion_failed",
   CUSTOMER_PAGE_VIEWED: "customer.page_viewed",
   CUSTOMER_REGISTERED: "customer.registered",
   DISCOUNT_CREATED: "discount.created",

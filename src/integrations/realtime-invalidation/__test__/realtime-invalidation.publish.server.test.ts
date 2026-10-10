@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
+  scheduleAdminAuditLogInvalidation,
   scheduleAdminCustomersInvalidation,
   scheduleAdminOrdersInvalidation,
   scheduleCategoryCatalogInvalidation,
@@ -20,6 +21,7 @@ import {
   STOREFRONT_REALTIME_QUERY_PREFIXES,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 
+import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
@@ -169,6 +171,7 @@ describe("catalog invalidation scheduling", () => {
       scheduleProductAttributeCatalogInvalidation,
       [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL, PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.STATS],
     ],
+    ["audit log", scheduleAdminAuditLogInvalidation, [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS]],
     ["customers", scheduleAdminCustomersInvalidation, [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE]],
     ["orders", scheduleAdminOrdersInvalidation, [ORDER_QUERY_KEYS.ADMIN.ORDERS]],
   ])("keeps the %s invalidation off the storefront hub", async (_name, schedule, expected) => {
@@ -225,6 +228,7 @@ describe("catalog invalidation scheduling", () => {
       { admin: [STORE_SETTING_QUERY_KEYS.ADMIN.SALES], storefront: [STORE_SETTING_QUERY_KEYS.SALES] },
     ],
     ["attribute", scheduleProductAttributeCatalogInvalidation, { admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL] }],
+    ["audit log", scheduleAdminAuditLogInvalidation, { admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] }],
     ["customers", scheduleAdminCustomersInvalidation, { admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS] }],
     ["orders", scheduleAdminOrdersInvalidation, { admin: [ORDER_QUERY_KEYS.ADMIN.ORDERS] }],
   ])("resolves the %s topics to the exact keys a subscribed tab invalidates", async (_name, schedule, expected) => {

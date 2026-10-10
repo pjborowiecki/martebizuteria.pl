@@ -9,7 +9,7 @@ import { TEST_LOCALE, TEST_MESSAGES } from "~/src/platform/testing/lib/messages"
 import { StubBroadcastChannel } from "~/src/platform/testing/mocks/broadcast-channel"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
+import { USER_ERROR_CODES, USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import { useDeleteCustomer } from "~/src/presentation/components/custom/pages/admin/customers/hooks/use-delete-customer"
 
@@ -129,6 +129,20 @@ describe("useDeleteCustomer on failure", () => {
     })
 
     expect(toastSuccess).not.toHaveBeenCalled()
+  })
+
+  it("tells the admin the account was kept because Stripe could not delete the customer", async () => {
+    deleteCustomerMutationFn.mockRejectedValue(new AppError(ERROR_CODES.INTERNAL_ERROR, USER_ERROR_CODES.STRIPE_CUSTOMER_NOT_DELETED))
+    const { result } = renderDeleteCustomer()
+
+    result.current.mutate({ userId: "usr_1" })
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith("Delete failed", {
+        description:
+          "Stripe could not delete the customer's profile and saved cards, so the account was not deleted. Try again in a few minutes. The error is recorded in the audit log.",
+      })
+    })
   })
 
   it("falls back to the generic message for an error that carries no code", async () => {

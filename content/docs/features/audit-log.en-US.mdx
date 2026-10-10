@@ -27,7 +27,7 @@ The audit log is the shop's event history and doubles as its analytics store. It
 
 Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` and the composite `audit_log_resource_idx` on (`category`, `resource_id`) — which is what makes "everything that happened to this order" cheap.
 
-## The 42 actions
+## The 43 actions
 
 `AUDIT_LOG_ACTION` in `audit-log.constants.ts`:
 
@@ -37,7 +37,7 @@ Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_se
 | `content`   | `content_page.updated`                                                                                                                                                                                                                                                                            |
 | `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_initiated`, `order.restocked`, `order.released`, `order.dispute_opened`, `order.dispute_closed`, `discount.redeemed` |
 | `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                                                                                                  |
-| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`                                                                                                                                                                                              |
+| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`, `customer.deletion_failed`                                                                                                                                                                  |
 | `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                                                                                    |
 | `settings`  | `settings.updated`, `discount.created/updated/deleted`, `sales.paused`, `sales.resumed`                                                                                                                                                                                                           |
 
@@ -45,7 +45,7 @@ Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_se
 
 ## Writing an event
 
-Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 41 exported `record*` functions, which is 40 action recorders plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
+Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 42 exported `record*` functions, which is 41 action recorders plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
 
 | Scheduler                     | Actor resolution                                                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -192,7 +192,7 @@ The filter constants are `AUDIT_LOG_CATEGORY_FILTER` (the categories plus `all`)
 
 Components live in `.../admin/audit/`: `audit-log.tsx`, `components/audit-columns.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, the cells in `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-table-cell`), and `audit-stats.config.ts`.
 
-Deletion is the only mutation. There is no retention policy or scheduled cleanup, so the table grows until an admin selects rows and deletes them.
+Deletion is the only mutation. There is no retention policy or scheduled cleanup, so the table grows until an admin selects rows and deletes them, or until an account is deleted: `eraseAccountData` (`src/modules/user/user.erasure.server.ts`) then deletes every row whose `resource_id` is the account's id or email address, which covers the account's activity log, its sign-in history, its registration and the auth emails that failed to reach it, and leaves order, catalogue and admin entries alone. If Stripe refuses to delete the account's customer, the account is kept and `customer.deletion_failed` records why, as an error under `customers`, against the account.
 
 ## Read as a feed elsewhere
 

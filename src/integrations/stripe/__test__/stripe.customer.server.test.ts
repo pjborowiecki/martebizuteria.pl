@@ -1,3 +1,4 @@
+import Stripe from "stripe"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 const mocked = vi.hoisted(() => ({
@@ -18,7 +19,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   stripe: { customers: { create: mocked.customersCreate, del: mocked.customersDel } },
 }))
 
-import { ensureStripeCustomer, getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
+import { deleteStripeCustomer, ensureStripeCustomer, getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 
@@ -104,6 +105,44 @@ describe("ensureStripeCustomer", () => {
     mocked.customersCreate.mockRejectedValue(new Error("stripe is unreachable"))
 
     await expect(ensureStripeCustomer(CUSTOMER_INPUT)).rejects.toThrow("stripe is unreachable")
+    expect(mocked.set).not.toHaveBeenCalled()
+  })
+})
+
+describe("deleteStripeCustomer", () => {
+  it("leaves Stripe alone for an account that never had a customer", async () => {
+    mocked.userFindFirst.mockResolvedValue({ stripeCustomerId: null })
+
+    await deleteStripeCustomer("user-1")
+
+    expect(mocked.customersDel).not.toHaveBeenCalled()
+    expect(mocked.set).not.toHaveBeenCalled()
+  })
+
+  it("deletes the account's customer at Stripe, which removes its saved cards, and forgets its id", async () => {
+    mocked.userFindFirst.mockResolvedValue({ stripeCustomerId: "cus_stored" })
+
+    await deleteStripeCustomer("user-1")
+
+    expect(mocked.customersDel).toHaveBeenCalledExactlyOnceWith("cus_stored")
+    expect(mocked.set.mock.calls[0]?.[0]).toHaveProperty("updatedAt", expect.any(Date))
+  })
+
+  it("treats a customer Stripe no longer knows as already deleted", async () => {
+    mocked.userFindFirst.mockResolvedValue({ stripeCustomerId: "cus_stored" })
+    mocked.customersDel.mockRejectedValue(
+      new Stripe.errors.StripeInvalidRequestError({ code: "resource_missing", message: "No such customer: 'cus_stored'" }),
+    )
+
+    await expect(deleteStripeCustomer("user-1")).resolves.toBeUndefined()
+    expect(mocked.set).toHaveBeenCalledOnce()
+  })
+
+  it("lets any other Stripe failure surface and keeps the id stored", async () => {
+    mocked.userFindFirst.mockResolvedValue({ stripeCustomerId: "cus_stored" })
+    mocked.customersDel.mockRejectedValue(new Error("stripe is unreachable"))
+
+    await expect(deleteStripeCustomer("user-1")).rejects.toThrow("stripe is unreachable")
     expect(mocked.set).not.toHaveBeenCalled()
   })
 })

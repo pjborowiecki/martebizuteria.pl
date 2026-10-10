@@ -251,6 +251,15 @@ export const recordCustomerRegisteredAudit = (target: string, options?: AuditEve
   })
 }
 
+export const recordCustomerDeletionFailedAudit = (email: string, options?: AuditEventOptions): void => {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.CUSTOMER_DELETION_FAILED,
+    category: "customers",
+    severity: "error",
+    ...withResourceId(email, options),
+  })
+}
+
 export const recordAuthLoginAudit = (actor: AuditLogActorInput, options?: AuditEventOptions): void => {
   const targetFields = resolveActorAuditTarget(actor, options)
 

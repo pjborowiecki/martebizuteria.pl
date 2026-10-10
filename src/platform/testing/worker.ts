@@ -4,6 +4,7 @@ import {
   getSentEmails,
   installProviderMocks,
   listCheckoutSessions,
+  listCustomers,
   listSetupIntents,
   succeedSetupIntent,
 } from "~/src/platform/testing/mocks/providers"
@@ -81,6 +82,14 @@ const handleTestRequest = (request: Request, env: Env, url: URL): Promise<Respon
     return email === undefined
       ? Response.json({ error: "A customer email is required" }, { status: HTTP_STATUS.BAD_REQUEST })
       : Response.json(listCheckoutSessions(email))
+  }
+
+  if (url.pathname === "/__test/stripe/customers" && request.method === "GET") {
+    const email = requiredParam(url, "email")
+
+    return email === undefined
+      ? Response.json({ error: "A customer email is required" }, { status: HTTP_STATUS.BAD_REQUEST })
+      : Response.json(listCustomers(email))
   }
 
   const settlement = SETTLE_SESSION_PATTERN.exec(url.pathname)?.groups
