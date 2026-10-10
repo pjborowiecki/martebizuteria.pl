@@ -13,6 +13,7 @@ const seededBody = (handle: string, locale: string): string => {
   applyMigration(sqlite, MIGRATION.CONTENT_PAGES)
   applyMigration(sqlite, MIGRATION.TERMS_OF_SERVICE_PAGE)
   applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
+  applyMigration(sqlite, MIGRATION.PRIVACY_POLICY_PAGE)
   const row = sqlite.prepare("select json_extract(bodies, ?) as body from content_page where handle = ?").get(`$."${locale}"`, handle)
   sqlite.close()
 
@@ -27,12 +28,11 @@ describe("published business details", () => {
   it.each(I18N.SUPPORTED_LOCALES)("keeps the %s privacy controller consistent with the business identity", (locale) => {
     const privacy = seededBody("privacy-policy", locale)
 
-    expect(privacy).toContain(BUSINESS.LEGAL_NAME)
-    expect(privacy).toContain(BUSINESS.NIP)
-    expect(privacy).toContain(`mailto:${BUSINESS.EMAIL}`)
-    for (const line of BUSINESS_POSTAL_ADDRESS_LINES) {
-      expect(privacy).toContain(line)
+    for (const detail of [BUSINESS.LEGAL_NAME, BUSINESS.NIP, BUSINESS.REGON, BUSINESS.PHONE, ...BUSINESS_POSTAL_ADDRESS_LINES]) {
+      expect(privacy).toContain(detail)
     }
+    expect(privacy).toContain(`mailto:${BUSINESS.EMAIL}`)
+    expect(privacy).toContain(`tel:${BUSINESS.PHONE.replaceAll(" ", "")}`)
   })
 
   it.each(I18N.SUPPORTED_LOCALES)("uses the same %s returns address and contact email as the business", (locale) => {

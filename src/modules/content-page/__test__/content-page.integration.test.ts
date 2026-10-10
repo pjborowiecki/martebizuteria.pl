@@ -70,6 +70,8 @@ const TERMS_SEEDED_AT = new Date("2026-10-05T12:00:00.000Z")
 
 const RETURNS_REVISED_AT = new Date("2026-10-05T10:00:00.000Z")
 
+const PRIVACY_REVISED_AT = new Date("2026-10-10T10:00:00.000Z")
+
 const both = (pl: string, en: string): ContentPage["localeMap"] => ({ "en-US": en, "pl-PL": pl })
 
 const edit = (overrides: Partial<ContentPage["updateInput"]> = {}): ContentPage["updateInput"] => ({
@@ -81,16 +83,27 @@ const edit = (overrides: Partial<ContentPage["updateInput"]> = {}): ContentPage[
   ...overrides,
 })
 
+const privacyBody = async (locale: "en-US" | "pl-PL"): Promise<string> => {
+  const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY, locale } })
+
+  return page.body
+}
+
 const seedContentPagesBeforeReturnsRewrite = (): void => {
   sqlite.exec("drop table if exists content_page")
   applyMigration(sqlite, MIGRATION.CONTENT_PAGES)
   applyMigration(sqlite, MIGRATION.TERMS_OF_SERVICE_PAGE)
 }
 
-beforeEach(() => {
-  vi.clearAllMocks()
+const seedContentPagesBeforePrivacyRewrite = (): void => {
   seedContentPagesBeforeReturnsRewrite()
   applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  seedContentPagesBeforePrivacyRewrite()
+  applyMigration(sqlite, MIGRATION.PRIVACY_POLICY_PAGE)
 })
 
 afterAll(() => {
@@ -136,7 +149,7 @@ describe("getAdminContentPages", () => {
   it("lists every page with its titles and last update", async () => {
     await expect(getAdminContentPages()).resolves.toStrictEqual([
       { handle: "exchanges-and-returns", titles: both("Wymiana i zwroty", "Exchanges and returns"), updatedAt: RETURNS_REVISED_AT },
-      { handle: "privacy-policy", titles: both("Polityka prywatności", "Privacy policy"), updatedAt: SEEDED_AT },
+      { handle: "privacy-policy", titles: both("Polityka prywatności", "Privacy policy"), updatedAt: PRIVACY_REVISED_AT },
       { handle: "terms-of-service", titles: both("Regulamin", "Terms of Service"), updatedAt: TERMS_SEEDED_AT },
     ])
   })
@@ -473,5 +486,293 @@ describe("the returns and complaints migration", () => {
 
     const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS, locale: "en-US" } })
     expect(page.body).toBe("## Returns\n\nNew copy.")
+  })
+})
+
+describe("the privacy policy migration", () => {
+  it.each([
+    ["pl-PL", "Polityka prywatności", "## Pliki cookies i inne dane zapisywane w przeglądarce"],
+    ["en-US", "Privacy policy", "## Cookies and other data stored in your browser"],
+  ] as const)("rewrites the seeded %s privacy policy and dates the rewrite", async (locale, title, section) => {
+    const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY, locale } })
+
+    expect(page).toMatchObject({ revisedAt: PRIVACY_REVISED_AT, title })
+    expect(page.body).toContain(section)
+  })
+
+  it("rewrites text the admin editor can save back unchanged", async () => {
+    const rewritten = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY } })
+
+    await updateContentPage({
+      data: {
+        bodies: rewritten.bodies,
+        descriptions: rewritten.descriptions,
+        expectedUpdatedAt: rewritten.updatedAt,
+        handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY,
+        titles: rewritten.titles,
+      },
+    })
+
+    const saved = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY } })
+    expect(saved.bodies).toStrictEqual(rewritten.bodies)
+    expect(saved.revisedAts).toStrictEqual(rewritten.revisedAts)
+  })
+
+  it("rewrites a policy an admin saved without changing its text", async () => {
+    seedContentPagesBeforePrivacyRewrite()
+    const seeded = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY } })
+    await updateContentPage({
+      data: {
+        bodies: seeded.bodies,
+        descriptions: seeded.descriptions,
+        expectedUpdatedAt: SEEDED_AT,
+        handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY,
+        titles: seeded.titles,
+      },
+    })
+
+    applyMigration(sqlite, MIGRATION.PRIVACY_POLICY_PAGE)
+
+    const page = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY } })
+    expect(page.bodies["pl-PL"]).toContain("## Odbiorcy danych")
+    expect(page.bodies["en-US"]).toContain("## Recipients of data")
+    expect(page.updatedAt).toStrictEqual(PRIVACY_REVISED_AT)
+  })
+
+  it("leaves both languages alone once an admin has edited either of them", async () => {
+    seedContentPagesBeforePrivacyRewrite()
+    const seeded = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY } })
+    await updateContentPage({
+      data: {
+        bodies: { ...seeded.bodies, "pl-PL": "## Prywatność\n\nTreść właściciela." },
+        descriptions: seeded.descriptions,
+        expectedUpdatedAt: SEEDED_AT,
+        handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY,
+        titles: seeded.titles,
+      },
+    })
+
+    applyMigration(sqlite, MIGRATION.PRIVACY_POLICY_PAGE)
+
+    const page = await getAdminContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY } })
+    expect(page.bodies).toStrictEqual({ ...seeded.bodies, "pl-PL": "## Prywatność\n\nTreść właściciela." })
+    expect(page.revisedAts["en-US"]).toBe(SEEDED_AT.getTime())
+  })
+
+  it("keeps an admin's later edit when it runs again", async () => {
+    await updateContentPage({
+      data: edit({
+        bodies: both("## Prywatność\n\nTreść właściciela.", "## Privacy\n\nThe owner's text."),
+        expectedUpdatedAt: PRIVACY_REVISED_AT,
+        handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY,
+      }),
+    })
+
+    applyMigration(sqlite, MIGRATION.PRIVACY_POLICY_PAGE)
+
+    const page = await getContentPage({ data: { handle: CONTENT_PAGE_HANDLE.PRIVACY_POLICY, locale: "en-US" } })
+    expect(page.body).toBe("## Privacy\n\nThe owner's text.")
+  })
+})
+
+describe("what the rewritten privacy policy says about processing", () => {
+  it.each([
+    ["pl-PL", "marketingu i promocji produktów jako uzasadniony interes"],
+    ["pl-PL", "dostawcom usług IT, hostingu, marketingu i płatności"],
+    ["pl-PL", "lokalizację połączenia"],
+    ["en-US", "for the marketing and promotion of products as a legitimate interest"],
+    ["en-US", "providers of IT, hosting, marketing and payment services"],
+    ["en-US", "the location of the connection"],
+  ] as const)("drops the %s statement %j that the code contradicts", async (locale, statement) => {
+    await expect(privacyBody(locale)).resolves.not.toContain(statement)
+  })
+
+  it.each([
+    [
+      "pl-PL",
+      [
+        "umowę sprzedaży: przyjąć płatność",
+        "przepisy o rachunkowości i podatkach (art. 6 ust. 1 lit. c RODO)",
+        "Podstawą jest Twoja zgoda (art. 6 ust. 1 lit. a RODO)",
+        "Zgodę możesz wycofać w każdej chwili",
+        "zapobieganiu oszustwom (art. 6 ust. 1 lit. f RODO)",
+      ],
+    ],
+    [
+      "en-US",
+      [
+        "the contract of sale: to take payment",
+        "accounting and tax law requires it (Article 6(1)(c) GDPR)",
+        "The legal basis is your consent (Article 6(1)(a) GDPR)",
+        "You can withdraw your consent at any time",
+        "preventing fraud (Article 6(1)(f) GDPR)",
+      ],
+    ],
+  ] as const)("gives the %s legal basis of each purpose, consent for the newsletter", async (locale, statements) => {
+    const body = await privacyBody(locale)
+
+    for (const statement of statements) {
+      expect(body).toContain(statement)
+    }
+  })
+
+  it.each([
+    ["pl-PL", ["Stripe, Inc. w USA", "Resend, Inc. ma siedzibę w USA", "(UE) 2023/1795", "standardowych klauzulach umownych"]],
+    ["en-US", ["Stripe, Inc. in the US", "Resend, Inc. is based in the US", "(EU) 2023/1795", "standard contractual clauses"]],
+  ] as const)("names the %s recipients and the safeguards for transfers to the US", async (locale, transfers) => {
+    const body = await privacyBody(locale)
+
+    for (const recipient of [
+      "Cloudflare, Inc.",
+      "Stripe Payments Europe, Limited",
+      "Resend, Inc.",
+      "InPost sp. z o.o.",
+      "Google",
+      "CARTO",
+    ]) {
+      expect(body).toContain(`**${recipient}**`)
+    }
+    for (const statement of transfers) {
+      expect(body).toContain(statement)
+    }
+    expect(body).not.toContain("GitHub")
+  })
+
+  it.each([
+    [
+      "pl-PL",
+      [
+        "– 5 lat, licząc od końca roku kalendarzowego",
+        "– 30 dni od ich zakończenia",
+        "– 90 dni",
+        "– 12 miesięcy",
+        "– 2 lata",
+        "– 30 dni od rezygnacji",
+      ],
+    ],
+    [
+      "en-US",
+      [
+        "– 5 years from the end of the calendar year",
+        "– 30 days after they end",
+        "– 90 days",
+        "– 12 months",
+        "– 2 years",
+        "– 30 days after unsubscribing",
+      ],
+    ],
+  ] as const)("states every %s retention period", async (locale, periods) => {
+    const body = await privacyBody(locale)
+
+    for (const period of periods) {
+      expect(body).toContain(period)
+    }
+  })
+
+  it.each([
+    [
+      "pl-PL",
+      [
+        "żądań wysyłanych z jednego adresu w ciągu minuty",
+        "skrót (SHA-256) adresu e-mail w licznikach",
+        "do trzech wiadomości każdego rodzaju na godzinę; liczniki nie zawierają samego adresu e-mail",
+        "adres IP, z którego rozpoczęto płatność, zapisywany przy zamówieniu, dopóki płatność jest otwarta",
+        "przekazujemy Cloudflare jednorazowy token weryfikacji wraz z adresem IP",
+        "liczniki adresów IP wygasają po minucie, a liczniki adresów e-mail po godzinie",
+      ],
+    ],
+    [
+      "en-US",
+      [
+        "requests can be sent from one address within a minute",
+        "a hash (SHA-256) of the e-mail address in counters",
+        "to three of each kind an hour; the counters do not contain the e-mail address itself",
+        "the IP address a payment was started from, kept with the order while the payment is open",
+        "we send Cloudflare the check's one-time token together with your IP address",
+        "counters of IP addresses expire after a minute and counters of e-mail addresses after an hour",
+      ],
+    ],
+  ] as const)("describes the %s bot check, the request and e-mail counters and how long they live", async (locale, statements) => {
+    const body = await privacyBody(locale)
+
+    for (const statement of statements) {
+      expect(body).toContain(statement)
+    }
+  })
+})
+
+describe("what the rewritten privacy policy says about the browser and your rights", () => {
+  it.each(["pl-PL", "en-US"] as const)("names every cookie and browser storage key the site sets in %s", async (locale) => {
+    const body = await privacyBody(locale)
+
+    for (const key of [
+      "marte_locale",
+      "__Secure-better-auth.session_token",
+      "__Secure-better-auth.session_token_multi-…",
+      "__Secure-better-auth.state",
+      "__Secure-better-auth.two_factor",
+      "__Secure-better-auth.trust_device",
+      "sidebar_state",
+      "marte-cart",
+      "marte-checkout-session",
+      "marte-checkout-draft",
+      "customer-activity:page-view:…",
+      "customer-activity:cart-abandoned-sent",
+      "marte:datagrid:v1:…",
+      "admin-sheet-width:…",
+      "__stripe_mid",
+      "__stripe_sid",
+    ]) {
+      expect(body).toContain(`\`${key}\``)
+    }
+  })
+
+  it.each([
+    [
+      "pl-PL",
+      [
+        "(art. 15 RODO)",
+        "(art. 16 RODO)",
+        "(art. 17 RODO)",
+        "(art. 18 RODO)",
+        "(art. 20 RODO)",
+        "(art. 21 RODO)",
+        "(art. 7 ust. 3 RODO)",
+        "Prezesa Urzędu Ochrony Danych Osobowych",
+      ],
+    ],
+    [
+      "en-US",
+      [
+        "(Article 15 GDPR)",
+        "(Article 16 GDPR)",
+        "(Article 17 GDPR)",
+        "(Article 18 GDPR)",
+        "(Article 20 GDPR)",
+        "(Article 21 GDPR)",
+        "(Article 7(3) GDPR)",
+        "Personal Data Protection Office",
+      ],
+    ],
+  ] as const)("lists the %s data subject rights and the complaint to the UODO", async (locale, rights) => {
+    const body = await privacyBody(locale)
+
+    for (const right of rights) {
+      expect(body).toContain(right)
+    }
+  })
+
+  it.each(["pl-PL", "en-US"] as const)("links the %s policy to the terms, the UODO and the providers' policies", async (locale) => {
+    const body = await privacyBody(locale)
+
+    for (const href of [
+      "/terms-of-service",
+      "https://uodo.gov.pl",
+      "https://stripe.com/privacy",
+      "https://www.cloudflare.com/turnstile-privacy-policy/",
+      "https://www.dataprivacyframework.gov",
+    ]) {
+      expect(body).toContain(`](${href})`)
+    }
   })
 })

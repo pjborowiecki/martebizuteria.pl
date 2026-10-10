@@ -3,7 +3,7 @@ title: "Dodawanie modułu"
 description: "Utwórz moduł funkcjonalny: tabelę Drizzle, schematy Zod, stałe, typy, akcesory i przypadki użycia."
 ---
 
-Moduł to jedna funkcjonalność zbudowana wokół jednej tabeli bazy danych. Mieszka w `src/modules/{feature}/` i jest właścicielem wszystkiego, co jest prawdą o tej tabeli: jej kolumn, reguł walidacji, kluczy zapytań, typów wierszy i operacji. W `src/modules/` jest obecnie 36 modułów. Najmniejszy kompletny moduł, od którego warto zacząć lekturę, to `src/modules/address`; najbogatszy to `src/modules/product`.
+Moduł to jedna funkcjonalność zbudowana wokół jednej tabeli bazy danych. Mieszka w `src/modules/{feature}/` i jest właścicielem wszystkiego, co jest prawdą o tej tabeli: jej kolumn, reguł walidacji, kluczy zapytań, typów wierszy i operacji. W `src/modules/` jest obecnie 40 modułów. Najmniejszy kompletny moduł, od którego warto zacząć lekturę, to `src/modules/address`; najbogatszy to `src/modules/product`.
 
 Logika serwerowa, która nie należy do żadnej tabeli, nie dostaje modułu. Funkcje pomocnicze związane z żądaniem trafiają do `src/lib/`, adaptery dostawców do `src/integrations/{vendor}/`, a wspólne elementy potrzebne wielu modułom do `src/modules/_core/`.
 
