@@ -1,17 +1,17 @@
 ---
 title: "CI/CD"
-description: "Pięć przepływów GitHub Actions, jedna wspólna akcja setup i sposób, w jaki wdrożenie składa sekrety Workera."
+description: "Pięć przepływów GitHub Actions, jedna wspólna akcja setup, na co czeka wdrożenie produkcyjne i co robi wdrożenie, od sekretów Workera po migracje i kontrolę działającej strony."
 ---
 
-`.github/workflows/` zawiera pięć przepływów. Wszystkie instalują zestaw narzędzi przez akcję złożoną `.github/actions/setup`. Testy uruchamiają `ci.yml` i `e2e-full.yml`; przepływy wdrożeniowe uruchamiają tylko `bun run check`.
+`.github/workflows/` zawiera pięć przepływów. Wszystkie instalują zestaw narzędzi przez akcję złożoną `.github/actions/setup`. Testy uruchamiają `ci.yml` i `e2e-full.yml`. Produkcja wdraża tylko commit, którego przebieg `ci.yml` się powiódł; wdrożenie podglądu uruchamia tylko `bun run check`.
 
-| Przepływ                | Wyzwalacz                                               | Co robi                                                                                          |
-| ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `ci.yml`                | Każdy pull request; pushe do `main`                     | `check`, `test:coverage`, `build:preview`, wysyła raport pokrycia; zestaw Playwrighta w Chromium |
-| `e2e-full.yml`          | Pushe do `main`; poniedziałki o 03:15 UTC; ręcznie      | Zestaw Playwrighta w WebKicie po pushu, w przeciwnym razie w Chromium i WebKicie                 |
-| `e2e-reusable.yml`      | Wywoływany przez `ci.yml` i `e2e-full.yml`              | Buduje testowego Workera i uruchamia zestaw Playwrighta w jednej przeglądarce                    |
-| `deploy-preview.yml`    | Pull requesty do `main` (opened, synchronize, reopened) | `check`, potem `deploy:preview`, potem komentarz z adresem podglądu                              |
-| `deploy-production.yml` | Pushe do `main`                                         | `check`, potem `deploy:production`                                                               |
+| Przepływ                | Wyzwalacz                                                                    | Co robi                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `ci.yml`                | Każdy pull request; pushe do `main`                                          | `check`, `test:coverage`, `build:preview`, wysyła raport pokrycia; zestaw Playwrighta w Chromium |
+| `e2e-full.yml`          | Pushe do `main`; poniedziałki o 03:15 UTC; ręcznie                           | Zestaw Playwrighta w WebKicie po pushu, w przeciwnym razie w Chromium i WebKicie                 |
+| `e2e-reusable.yml`      | Wywoływany przez `ci.yml` i `e2e-full.yml`                                   | Buduje testowego Workera i uruchamia zestaw Playwrighta w jednej przeglądarce                    |
+| `deploy-preview.yml`    | Pull requesty do `main` (opened, synchronize, reopened)                      | `check`, potem `deploy:preview`, potem komentarz z adresem podglądu                              |
+| `deploy-production.yml` | Udany `ci.yml` dla pusha do `main`; ręcznie, dla commita, który go przeszedł | `deploy:production`                                                                              |
 
 ## Akcja setup
 
@@ -59,7 +59,7 @@ Krok kompilacji działa na atrapowym `.env.preview`, który akcja setup skopiowa
 
 ## Przepływy wdrożeniowe
 
-Oba przepływy wdrożeniowe mają ten sam kształt: `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` na poziomie przepływu, środowisko GitHuba (`preview` albo `production`), akcja setup, `bun run check`, a następnie jeden krok, który tworzy pusty plik środowiska i uruchamia skrypt wdrożeniowy:
+Oba przepływy wdrożeniowe mają ten sam kształt: `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` na poziomie przepływu, środowisko GitHuba (`preview` albo `production`), akcja setup, a następnie jeden krok, który tworzy pusty plik środowiska i uruchamia skrypt wdrożeniowy. Podgląd uruchamia przed tym krokiem `bun run check`; produkcja nie, bo jej zadanie wdrożeniowe działa tylko dla commita, który przeszedł już CI, a wybiera go pierwsze zadanie, `choose-commit`:
 
 ```yaml
 run: |
@@ -73,21 +73,29 @@ run: |
 const value = process.env[name] ?? values[name]
 ```
 
-Współbieżność różni się celowo. Podgląd grupuje po numerze pull requesta i anuluje trwające przebiegi (`preview-${{ github.event.pull_request.number }}`, `cancel-in-progress: true`), więc kolejny push do gałęzi zastępuje jej podgląd. Produkcja używa stałej grupy `production` z `cancel-in-progress: false`, więc pushe do `main` ustawiają się w kolejce, zamiast przerywać się w połowie wdrożenia.
+Współbieżność różni się celowo. Podgląd grupuje po numerze pull requesta i anuluje trwające przebiegi (`preview-${{ github.event.pull_request.number }}`, `cancel-in-progress: true`), więc kolejny push do gałęzi zastępuje jej podgląd. Zadanie wdrożeniowe produkcji używa stałej grupy `production` z `cancel-in-progress: false`, więc wdrożenia ustawiają się w kolejce, zamiast przerywać się w połowie. Grupa jest ustawiona na zadaniu wdrożeniowym, a nie na całym przepływie, więc nie czeka w niej ani `choose-commit`, ani przebieg, który nie wybrał żadnego commita.
 
 `deploy-preview.yml` bierze dodatkowo `pull-requests: write` i kończy krokiem `actions/github-script@v7`, który publikuje — albo aktualizuje, szukając w istniejących komentarzach napisu `Preview Deployment` — komentarz z odnośnikiem do `https://martebizuteria-preview.pjborowiecki.workers.dev`.
 
-> Przepływy wdrożeniowe uruchamiają `bun run check`, ale **nie** `bun run test:coverage` ani zestawu end-to-end. Testy działają tylko w `ci.yml` i `e2e-full.yml`, które są osobnymi przepływami bez relacji blokującej wdrożenia. Push do `main` z niedziałającymi testami i tak wdroży się na produkcję, dopóki formatowanie, lint i typy są w porządku. Jeśli chcesz twardej bramki, to jest rzecz do zmiany.
+### Na co czeka wdrożenie produkcyjne
+
+`deploy-production.yml` nie startuje po pushu. Startuje przez `workflow_run`, gdy przepływ `CI` zakończy się na `main`, a jego pierwsze zadanie, `choose-commit`, działa tylko wtedy, gdy tamten przebieg dotyczył pusha i zakończył się wynikiem `success`. Commit trafia więc na produkcję dopiero wtedy, gdy na tym właśnie commicie przeszły `check`, `test:coverage`, `build:preview` i zestaw end-to-end w Chromium. Pull request z gałęzi, która przypadkiem nazywa się `main`, go nie uruchomi, bo jego przebieg CI ma zdarzenie `pull_request`. Gdy CI zawiedzie albo zostanie anulowane, nic się nie wdraża. Przebieg `e2e-full.yml` w WebKicie po pushu nie należy do tej bramki.
+
+`choose-commit` przekazuje zadaniu wdrożeniowemu `github.event.workflow_run.head_sha`, czyli commit przetestowany przez CI, ale tylko wtedy, gdy wciąż jest on najnowszym commitem na `main`, co sprawdza przez `gh api repos/<owner>/<repo>/commits/main`. Gdy na `main` jest już nowszy commit, zapisuje ostrzeżenie, a zadanie wdrożeniowe zostaje pominięte; nowszy commit wdroży się, gdy przejdzie jego własne CI. Ponowne uruchomienie CI starszego commita, na przykład po niestabilnym teście end-to-end, nigdy więc nie wdroży go w miejsce commitów scalonych po nim, a razem z tym, że `ci.yml` anuluje swój przebieg na `main`, gdy przychodzi nowszy push, produkcja sama z siebie przesuwa się tylko do przodu. Powrót do starszego commita wymaga ręcznego uruchomienia. Zadanie wdrożeniowe pobiera przekazany mu commit, a nie to, co jest na `main` w chwili, gdy rusza.
+
+`workflow_dispatch` przyjmuje jedno wejście, `commit`, czyli pełny SHA commita do wdrożenia. Zamiast sprawdzać najnowszy commit, `choose-commit` pyta `gh run list --workflow ci.yml --branch main --event push --commit <sha> --status success`, czy CI przeszło dla pusha tego commita do `main` (stąd uprawnienie `actions: read` tego zadania), i kończy się błędem, jeśli nie przeszło, więc nic się nie wdraża. Tak wdraża się ponownie sprawdzony commit; zobacz [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
+
+GitHub uruchamia `workflow_run` wyłącznie z pliku przepływu na `main`, więc zmiana w `deploy-production.yml` działa od chwili scalenia.
 
 Podgląd jest jednym wspólnym wdrożeniem: każdy pull request wdraża się na tego samego Workera (`martebizuteria-preview`) opartego na tej samej bazie D1 preview, przestrzeni KV i zasobniku R2, więc na żywo jest ostatnie wdrożenie podglądu.
 
 ## Co dokładnie robi wdrożenie
 
 ```json
-"deploy:preview": "bun scripts/verify-bindings.ts preview && bun scripts/verify-stripe-keys.ts preview && bun scripts/verify-turnstile-keys.ts preview && bun scripts/verify-email-sender.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json"
+"deploy:preview": "bun scripts/verify-bindings.ts preview && bun scripts/verify-stripe-keys.ts preview && bun scripts/verify-turnstile-keys.ts preview && bun scripts/verify-email-sender.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && bun run db:migrate:preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json && bun scripts/verify-deployment.ts preview"
 ```
 
-Siedem etapów.
+Dziewięć etapów połączonych `&&`, więc pierwszy, który zawiedzie, zatrzymuje wdrożenie.
 
 ### 1. verify-bindings.ts
 
@@ -115,7 +123,7 @@ Czyta `VITE_TURNSTILE_SITE_KEY` i `TURNSTILE_SECRET_KEY` najpierw z `process.env
 
 Czyta `RESEND_API_KEY` i `RESEND_EMAIL_FROM` najpierw z `process.env`, potem z `.env.<środowisko>`, i pyta Resend, czy wyśle pocztę z tego adresu. Przerywa przy braku klucza, nadawcy z nazwą wyświetlaną, `onboarding@resend.dev` poza środowiskiem development, domenie, której nie ma na koncie Resend przypisanym do klucza, oraz domenie z niezweryfikowanymi rekordami DKIM lub SPF — wtedy wypisuje rekordy, które trzeba jeszcze opublikować. Klucz tylko do wysyłki nie może czytać domen, więc kontrola odczytuje je kluczem `RESEND_MANAGEMENT_API_KEY` — opcjonalnym kluczem z pełnym dostępem, który krok bierze z sekretów środowiska w GitHubie i który nigdy nie trafia do Workera. Bez niego kontrola wysyła jeden testowy e-mail na `delivered@resend.dev` i przerywa, jeśli Resend go odrzuci. Każde żądanie do Resend jest ponawiane raz po przekroczeniu limitu żądań albo odpowiedzi 5xx, a cała kontrola rezygnuje po 30 sekundach.
 
-Działa przed kompilacją, żeby nadawca, którego Resend by odrzucił, zatrzymał wdrożenie w kilka sekund. Poza samym `wrangler deploy` to jedyny etap, który łączy się z zewnętrzną usługą, i nie należy do `build:*`, więc `ci.yml` nigdy nie wywołuje Resend z atrapowymi wartościami z `.env.test`. Rekordy i lokalną konfigurację z `onboarding@resend.dev` opisuje [Resend](/docs/integrations/resend#domena-nadawcy).
+Działa przed kompilacją, żeby nadawca, którego Resend by odrzucił, zatrzymał wdrożenie w kilka sekund. To jedyny etap przed kompilacją, który łączy się z zewnętrzną usługą, i nie należy do `build:*`, więc `ci.yml` nigdy nie wywołuje Resend z atrapowymi wartościami z `.env.test`. Rekordy i lokalną konfigurację z `onboarding@resend.dev` opisuje [Resend](/docs/integrations/resend#domena-nadawcy).
 
 ### 5. kompilacja
 
@@ -127,13 +135,25 @@ Czyta `secrets.required` z bloku danego środowiska w `wrangler.jsonc`, rozwiąz
 
 Zapisywane są wyłącznie nazwy zadeklarowane w `wrangler.jsonc`. `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` i `CLOUDFLARE_ACCESS_TOKEN` celowo nie są na tej liście: to dane uwierzytelniające do zarządzania, potrzebne drizzle-kitowi i Wranglerowi, a nie sekrety uruchomieniowe Workera, i wysłanie ich do Workera byłoby wyciekiem uprawnień.
 
-### 7. wrangler deploy
+### 7. db:migrate:preview
+
+`bun run db:migrate:preview` to `vp exec wrangler d1 migrations apply DB --env preview --remote`, a `deploy:production` uruchamia w tym miejscu `db:migrate:production`. Przy tej komendzie Wrangler czyta `wrangler.jsonc`, a nie skompilowaną konfigurację, i nakłada w kolejności nazw każdy plik z `src/integrations/drizzle-orm/migrations/`, którego nie ma jeszcze w tabeli `d1_migrations` bazy, albo wypisuje `No migrations to apply!`. Gdy migracja zawiedzie, Wrangler wycofuje tę jedną, zachowuje wcześniejsze i kończy się błędem, więc Worker nie zostaje wdrożony. Na runnerze Wrangler nakłada migracje bez pytania; w terminalu najpierw pyta, a odpowiedź „nie” pomija migracje, ale nie wdrożenie, więc zamiast tego przerwij Ctrl+C.
+
+Etap działa po kompilacji i po pliku sekretów, więc wdrożenie, które zawiedzie wcześniej, nigdy nie dotyka bazy, i przed `wrangler deploy`, więc nowy Worker nigdy nie startuje na schemacie, którego nie zna. W czasie migracji sklep obsługuje poprzedni Worker, dlatego każda migracja musi zachować jego działanie; zobacz [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
+
+### 8. wrangler deploy
 
 ```sh
 env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json
 ```
 
 `CLOUDFLARE_ENV` jest dla tej komendy usuwane, bo skompilowany `dist/server/wrangler.json` jest już spłaszczony do jednego środowiska — zostawienie tej zmiennej kazałoby Wranglerowi szukać sekcji środowiska w konfiguracji, która jej już nie ma. Plik sekretów jest wysyłany razem z wdrożeniem, więc jedenaście zadeklarowanych sekretów ustawia się atomowo wraz z nową wersją.
+
+### 9. verify-deployment.ts
+
+Wywołuje `verifyDeployment` z `src/lib/deployment.ts`, które pyta własny host `workers.dev` środowiska, z `WORKERS_DEV_HOSTS` w `src/modules/_core/constants/api.ts`, o cztery strony, bez podążania za przekierowaniami. `/` i `/products` muszą odpowiedzieć `200` z `text/html`, `/robots.txt` musi odpowiedzieć `200` z `text/plain`, a `/api/webhooks/stripe` musi odrzucić `GET` kodem `405` z `text/plain`, co pokazuje, że żądanie dotarło do własnego handlera trasy, a nie do wyrenderowanej strony. Każde żądanie rezygnuje po 15 sekundach, a o stronę, która zawiedzie, kontrola pyta łącznie najwyżej trzy razy, co pięć sekund. Strona, która dalej zawodzi, przerywa wdrożenie, a komunikat ma po jednym wierszu na stronę. Nowa wersja działa już wtedy na żywo, więc następnym krokiem jest [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
+
+Kontrola tylko czyta publiczne strony: nikogo nie loguje, nie otwiera zamówienia i niczego nie zapisuje. Pyta host `workers.dev`, bo `wrangler.jsonc` nie podłącza domeny własnej.
 
 ## Konfiguracja repozytorium
 
@@ -142,23 +162,19 @@ env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json
 | **Secrets** w Actions | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` |
 | **Vars** w Actions    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                                                                                    |
 
-`CLOUDFLARE_ACCESS_TOKEN` jest przekazywany do kroku jako `CLOUDFLARE_API_TOKEN`, bo taką nazwę czyta Wrangler. Oba przepływy wdrożeniowe korzystają ze środowisk GitHuba (`preview`, `production`), więc sekrety można tam zawęzić do środowiska.
+`CLOUDFLARE_ACCESS_TOKEN` jest przekazywany do kroku jako `CLOUDFLARE_API_TOKEN`, bo taką nazwę czyta Wrangler. Poza wdrażaniem Workera token potrzebuje uprawnienia do edycji D1, bo wdrożenie nakłada nim migracje. Oba przepływy wdrożeniowe korzystają ze środowisk GitHuba (`preview`, `production`), więc sekrety można tam zawęzić do środowiska.
 
 `VITE_R2_URL` jest wymieniony w `secrets.required` w `wrangler.jsonc`, ale dostarczany z **vars** Actions, a nie z secrets — to publiczny adres zasobnika, który dodatkowo musi być widoczny dla pakietu klienta przez przedrostek `VITE_`. `prepare-deploy-secrets.ts` czyta go z `process.env`, więc to działa.
 
 ## Migracje a CI
 
-Żaden przepływ nie nakłada migracji na wdrożoną bazę D1; przepływ end-to-end odtwarza całą historię tylko we własnej lokalnej bazie, co przy okazji dowodzi, że historia wciąż buduje bazę od zera. Przed scaleniem pull requesta, którego kod potrzebuje nowej kolumny, nałóż ją samodzielnie:
+`ci.yml` i przepływy end-to-end nigdy nie dotykają wdrożonej bazy; przepływ end-to-end odtwarza całą historię we własnej lokalnej bazie, co przy okazji dowodzi, że historia wciąż buduje bazę od zera. Wdrożone bazy migrują same skrypty wdrożeniowe, tuż przed `wrangler deploy`: wspólną bazę preview każde wdrożenie podglądu, więc migracja z pull requesta trafia do niej, gdy tylko wdroży się podgląd tego pull requesta, a produkcję każde wdrożenie produkcyjne. `bun run db:migrate:<środowisko>` nadal nakłada migracje ręcznie, a `bun run db:migrations:<środowisko>` pokazuje, co baza ma już nałożone.
 
-```sh
-bun run db:migrate:preview     # zanim wdrożenie podglądu zacznie mieć znaczenie
-bun run db:migrate:production  # przed scaleniem do main
-```
-
-Zobacz [Baza danych](/docs/tooling/database).
+Migracja nałożona przez wdrożenie podglądu zostaje nałożona, nawet gdy jej pull request się zmieni albo zostanie zamknięty, więc nie edytuj migracji, której podgląd już się wdrożył; dodaj kolejną. Zobacz [Baza danych](/docs/tooling/database) i [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
 ## Powiązane strony
 
 - [Skrypty projektu](/docs/tooling/scripts)
 - [Baza danych](/docs/tooling/database)
 - [Testy](/docs/tooling/testing)
+- [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy)

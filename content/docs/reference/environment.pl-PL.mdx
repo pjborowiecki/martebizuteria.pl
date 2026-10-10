@@ -109,7 +109,7 @@ Kod Workera czyta powiązania i sekrety z `env` z modułu `cloudflare:workers`. 
 
 ## Kontrole przy wdrożeniu
 
-Oba skrypty wdrożeniowe uruchamiają sześć bramek wokół budowania i każda z nich rzuca wyjątkiem zamiast ostrzegać.
+Oba skrypty wdrożeniowe uruchamiają sześć bramek wokół budowania i jedną kontrolę po wdrożeniu, a każda z nich rzuca wyjątkiem zamiast ostrzegać. Między bramkami a wdrożeniem `db:migrate:<środowisko>` nakłada oczekujące migracje D1.
 
 | Skrypt                              | Co sprawdza                                                                                                                                                                                                                         |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -119,12 +119,13 @@ Oba skrypty wdrożeniowe uruchamiają sześć bramek wokół budowania i każda 
 | `scripts/verify-email-sender.ts`    | Pyta Resend, czy wyśle pocztę z `RESEND_EMAIL_FROM`, i odrzuca nadawcę z nazwą wyświetlaną, `onboarding@resend.dev` oraz nieznaną lub niezweryfikowaną domenę, wypisując rekordy DNS do opublikowania                               |
 | `scripts/verify-build.ts`           | Potwierdza, że `dist/server/wrangler.json` celuje we właściwe środowisko i nazwę Workera, że `dist/client` zawiera JS, CSS i fonty oraz że żaden zasób klienta nie importuje `cloudflare:workers` ani `node:*`                      |
 | `scripts/prepare-deploy-secrets.ts` | Zapisuje tylko zadeklarowane sekrety do `.wrangler/secrets.<środowisko>.json` i przerywa przy pustej wartości                                                                                                                       |
+| `scripts/verify-deployment.ts`      | Po `wrangler deploy` pyta host `workers.dev` środowiska o `/`, `/products`, `/robots.txt` i `/api/webhooks/stripe` i odrzuca każdą odpowiedź inną niż odpowiedź sklepu                                                              |
 
 Całą sekwencję widać w `package.json`:
 
 ```sh
 bun run deploy:preview
-# verify-bindings.ts → verify-stripe-keys.ts → verify-turnstile-keys.ts → verify-email-sender.ts → build:preview → prepare-deploy-secrets.ts → wrangler deploy
+# verify-bindings.ts → verify-stripe-keys.ts → verify-turnstile-keys.ts → verify-email-sender.ts → build:preview → prepare-deploy-secrets.ts → db:migrate:preview → wrangler deploy → verify-deployment.ts
 ```
 
 Krok wdrożenia przekazuje `--config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json` i najpierw usuwa `CLOUDFLARE_ENV`, bo zbudowana konfiguracja już zawiera środowisko.

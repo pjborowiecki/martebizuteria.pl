@@ -54,14 +54,14 @@ Bramki są mechaniczne, nie społeczne. `bun run check` i `bun run test` decyduj
 
 ## Gałęzie
 
-Odgałęziaj się od `main`. Nigdy nie pushuj bezpośrednio do `main`: `.github/workflows/deploy-production.yml` uruchamia się przy każdym pushu do `main` i wdraża produkcyjnego Workera, z `concurrency: production` i `cancel-in-progress: false`.
+Odgałęziaj się od `main`. Nigdy nie pushuj bezpośrednio do `main`: gdy `ci.yml` przejdzie dla pusha do `main`, `.github/workflows/deploy-production.yml` wdraża ten commit na produkcyjnego Workera, jeśli wciąż jest najnowszym commitem na `main`, z `concurrency: production` i `cancel-in-progress: false`.
 
 Pull request otwieraj do `main`. Dostajesz wtedy dwie rzeczy:
 
 - `ci.yml` uruchamia `bun run check`, potem `bun run test:coverage`, potem `bun run build:preview`, i wysyła raport pokrycia jako artefakt.
 - `deploy-preview.yml` uruchamia `bun run check`, wdraża środowisko preview i komentuje adres podglądu w pull requeście, aktualizując ten sam komentarz przy każdym pushu.
 
-Oba przepływy wdrożeniowe przepuszczają pełny `check` ponownie przed budowaniem, więc jeśli zmiana przechodzi lokalnie, a wywala się w CI, to twoje lokalne drzewo nie jest czyste.
+Wdrożenie podglądu przepuszcza pełny `check` ponownie przed budowaniem, a produkcja czeka na CI, więc jeśli zmiana przechodzi lokalnie, a wywala się w CI, to twoje lokalne drzewo nie jest czyste.
 
 ## Pętla pracy
 

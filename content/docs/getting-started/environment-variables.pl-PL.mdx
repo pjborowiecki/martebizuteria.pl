@@ -113,15 +113,20 @@ Kilka ustawień, których ludzie szukają w `.env`, jest stałymi:
 O `appHostsForMode` trzeba pamiętać przy każdej zmianie domeny:
 
 ```ts
+export const WORKERS_DEV_HOSTS = {
+  preview: "martebizuteria-preview.pjborowiecki.workers.dev",
+  production: "martebizuteria.pjborowiecki.workers.dev",
+} as const
+
 const HOSTS_BY_MODE: Readonly<Record<string, readonly string[]>> = {
-  preview: [`preview.${APP_DOMAIN}`, "martebizuteria-preview.pjborowiecki.workers.dev"],
-  production: [APP_DOMAIN, "martebizuteria.pjborowiecki.workers.dev"],
+  preview: [`preview.${APP_DOMAIN}`, WORKERS_DEV_HOSTS.preview],
+  production: [APP_DOMAIN, WORKERS_DEV_HOSTS.production],
 }
 
 const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]
 ```
 
-Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. Host, którego nie ma na tej liście, będzie miał odrzucane żądania uwierzytelniania — wygląda to jak ciche niedziałanie logowania na nowej domenie.
+Better Auth jest skonfigurowany z `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. Host, którego nie ma na tej liście, będzie miał odrzucane żądania uwierzytelniania — wygląda to jak ciche niedziałanie logowania na nowej domenie. Pod `WORKERS_DEV_HOSTS` wysyła też swoje żądania kontrola działającej strony na końcu wdrożenia, więc Worker przemianowany w `wrangler.jsonc` potrzebuje tam swojej nowej nazwy `workers.dev`.
 
 Tę samą listę sprawdza `resolveRequestOrigin` (`src/lib/request.ts`), zanim aplikacja zbuduje link do e-maila albo `return_url` dla Stripe, więc e-maile linkują do hosta, którego używał klient albo administrator: lokalnie do `localhost:3000` albo `127.0.0.1:3000`, na preview do hosta preview, a na produkcji do `martebizuteria.pl` albo produkcyjnej nazwy `workers.dev`. Żądanie na host spoza listy jest odrzucane z `FORBIDDEN`. Potwierdzenie zamówienia wysyła webhook Stripe i bierze ono origin z `return_url` sesji, który `resolveDeploymentOrigin` sprawdza z hostami wszystkich trybów. `LOCAL_HOSTS` przypina port 3000, co dla serwera deweloperskiego i tak wymusza `strictPort` w Vite.
 

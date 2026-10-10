@@ -36,7 +36,7 @@ There is no separate ESLint, Prettier, Jest or tsc invocation. `bun run check` i
 
 There are no browser or end-to-end tests. `vite.config.ts` lists `e2e`, `playwright/.cache`, `playwright-report` and `test-results` in its ignore and exclude patterns, but no `e2e/` directory exists and Playwright is not a dependency. Those patterns are pre-emptive, not evidence of a suite.
 
-CI does not apply database migrations. `bun run db:migrate:preview` and `bun run db:migrate:production` are run by hand before a deploy that needs them — see [Database](/docs/tooling/database).
+CI does not apply database migrations; the deploy scripts do, right before `wrangler deploy`, and production deploys only a commit that passed CI. See [CI/CD](/docs/tooling/ci-cd) and [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
 ## First run
 

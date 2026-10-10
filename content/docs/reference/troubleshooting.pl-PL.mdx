@@ -160,6 +160,10 @@ co uruchamia `cf-typegen` (`wrangler types --env development`), a potem `content
 
 **`Missing client JavaScript` / `Missing client CSS`.** W `dist/client/assets` nie ma pliku `.js` ani `.css`. Budowanie klienta padło wcześniej w potoku — przewiń wyjście budowania w górę.
 
+**`Migration <name> failed with the following errors:`.** Od Wranglera, na etapie `db:migrate:<środowisko>` wdrożenia. Wrangler wycofał tę migrację, zachował wcześniejsze i zatrzymał wdrożenie przed `wrangler deploy`, więc na żywo działa wciąż poprzedni Worker. Wiersze pod komunikatem to błąd D1 dla instrukcji, która zawiodła. Migracji, którą nałożyła już inna baza, na przykład wspólna baza preview, nigdy się nie edytuje; popraw ją nową migracją i wdróż ponownie.
+
+**`The production Worker at https://martebizuteria.pjborowiecki.workers.dev is deployed but does not answer like the shop:`.** Od `scripts/verify-deployment.ts`, który działa po `wrangler deploy`, więc nowa wersja jest już na żywo. Każdy wiersz pod komunikatem podaje stronę i jej odpowiedź. `vp exec wrangler tail --env production` pokazuje wyjątki stojące za `500`, a `200 text/html` z `/api/webhooks/stripe` oznacza, że żądanie wyrenderowało stronę, zamiast trafić do własnego handlera trasy. Gdy sklep nie działa, najpierw wycofaj Workera, a dopiero potem szukaj dalej; zobacz [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
+
 ## Powiązane strony
 
 - [Często zadawane pytania](/docs/reference/faq)

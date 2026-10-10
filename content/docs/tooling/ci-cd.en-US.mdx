@@ -1,17 +1,17 @@
 ---
 title: "CI/CD"
-description: "Five GitHub Actions workflows, one shared setup action, and how a deploy assembles its Worker secrets."
+description: "Five GitHub Actions workflows, one shared setup action, what a production deploy waits for, and what a deploy runs, from its Worker secrets to the migrations and the check of the live site."
 ---
 
-`.github/workflows/` holds five workflows. All of them install the toolchain through the composite action `.github/actions/setup`. `ci.yml` and `e2e-full.yml` run the tests; the deploy workflows run `bun run check` only.
+`.github/workflows/` holds five workflows. All of them install the toolchain through the composite action `.github/actions/setup`. `ci.yml` and `e2e-full.yml` run the tests. Production deploys only a commit whose `ci.yml` run passed; the preview deploy runs `bun run check` only.
 
-| Workflow                | Trigger                                                 | What it does                                                                                             |
-| ----------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `ci.yml`                | Every pull request; pushes to `main`                    | `check`, `test:coverage`, `build:preview`, uploads the coverage report; the Playwright suite on Chromium |
-| `e2e-full.yml`          | Pushes to `main`; Mondays at 03:15 UTC; manual          | The Playwright suite on WebKit after a push, on Chromium and WebKit otherwise                            |
-| `e2e-reusable.yml`      | Called by `ci.yml` and `e2e-full.yml`                   | Builds the test Worker and runs the Playwright suite in one browser                                      |
-| `deploy-preview.yml`    | Pull requests to `main` (opened, synchronize, reopened) | `check`, then `deploy:preview`, then comments the preview URL on the PR                                  |
-| `deploy-production.yml` | Pushes to `main`                                        | `check`, then `deploy:production`                                                                        |
+| Workflow                | Trigger                                                              | What it does                                                                                             |
+| ----------------------- | -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `ci.yml`                | Every pull request; pushes to `main`                                 | `check`, `test:coverage`, `build:preview`, uploads the coverage report; the Playwright suite on Chromium |
+| `e2e-full.yml`          | Pushes to `main`; Mondays at 03:15 UTC; manual                       | The Playwright suite on WebKit after a push, on Chromium and WebKit otherwise                            |
+| `e2e-reusable.yml`      | Called by `ci.yml` and `e2e-full.yml`                                | Builds the test Worker and runs the Playwright suite in one browser                                      |
+| `deploy-preview.yml`    | Pull requests to `main` (opened, synchronize, reopened)              | `check`, then `deploy:preview`, then comments the preview URL on the PR                                  |
+| `deploy-production.yml` | `ci.yml` passing for a push to `main`; manual, for a commit that did | `deploy:production`                                                                                      |
 
 ## The setup action
 
@@ -59,7 +59,7 @@ The build step runs against the dummy `.env.preview` the setup action copied fro
 
 ## The deploy workflows
 
-Both deploy workflows share the same shape: `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` at workflow level, a GitHub `environment` (`preview` or `production`), the setup action, `bun run check`, and then a single step that creates an empty env file and runs the deploy script:
+Both deploy workflows share the same shape: `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` at workflow level, a GitHub `environment` (`preview` or `production`), the setup action, and then a single step that creates an empty env file and runs the deploy script. Preview runs `bun run check` before that step; production does not, because its deploy job only runs for a commit that has already passed CI, which a first job, `choose-commit`, picks:
 
 ```yaml
 run: |
@@ -73,21 +73,29 @@ The `touch` exists because `scripts/prepare-deploy-secrets.ts` reads the file un
 const value = process.env[name] ?? values[name]
 ```
 
-Concurrency differs on purpose. Preview groups by pull request number and cancels in-progress runs (`preview-${{ github.event.pull_request.number }}`, `cancel-in-progress: true`), so pushing again to a branch replaces its preview. Production uses the fixed group `production` with `cancel-in-progress: false`, so pushes to `main` queue rather than interrupt each other mid-deploy.
+Concurrency differs on purpose. Preview groups by pull request number and cancels in-progress runs (`preview-${{ github.event.pull_request.number }}`, `cancel-in-progress: true`), so pushing again to a branch replaces its preview. Production's deploy job uses the fixed group `production` with `cancel-in-progress: false`, so deploys queue rather than interrupt each other mid-deploy. The group is set on the deploy job, not on the workflow, so `choose-commit` and a run that chose no commit never wait in it.
 
 `deploy-preview.yml` additionally takes `pull-requests: write` and finishes with an `actions/github-script@v7` step that posts — or updates, by searching existing comments for the string `Preview Deployment` — a comment linking to `https://martebizuteria-preview.pjborowiecki.workers.dev`.
 
-> The deploy workflows run `bun run check` but **not** `bun run test:coverage` or the end-to-end suite. Tests run only in `ci.yml` and `e2e-full.yml`, which are separate workflows with no gating relationship to the deploys. A push to `main` with failing tests will still deploy to production as long as format, lint and types pass. If you want a hard gate, that is the thing to change.
+### What a production deploy waits for
+
+`deploy-production.yml` does not run on a push. It starts on `workflow_run` when the `CI` workflow completes on `main`, and its first job, `choose-commit`, runs only when that run was for a push and concluded `success`. So a commit reaches production only after `check`, `test:coverage`, `build:preview` and the Chromium end-to-end suite have passed on that very commit. A pull request from a branch that happens to be called `main` cannot start it, because its CI run's event is `pull_request`. When CI fails or is cancelled, nothing deploys. The WebKit run of `e2e-full.yml` after the push is not part of the gate.
+
+`choose-commit` hands the deploy job `github.event.workflow_run.head_sha`, the commit CI tested, but only while it is still the tip of `main`, which it reads with `gh api repos/<owner>/<repo>/commits/main`. When `main` has moved on, it writes a warning and the deploy job is skipped; the newer commit deploys once its own CI passes. So re-running an older commit's CI, for example after a flaky end-to-end test, never deploys it over the commits merged after it, and together with `ci.yml` cancelling its run on `main` when a newer push arrives, production only moves forward on its own. Going back to an older commit takes a manual run. The deploy job checks out the commit it was handed, not whatever is on `main` by the time it runs.
+
+`workflow_dispatch` takes one input, `commit`, the full SHA of a commit to deploy. Instead of the tip check, `choose-commit` asks `gh run list --workflow ci.yml --branch main --event push --commit <sha> --status success` whether CI passed for a push of that commit to `main`, which is why that job has the `actions: read` permission, and fails when it did not, so nothing deploys. That is how a known-good commit is redeployed; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
+
+GitHub only starts `workflow_run` from the workflow file on `main`, so a change to `deploy-production.yml` takes effect once it is merged.
 
 Preview is a single shared deployment: every pull request deploys to the same Worker (`martebizuteria-preview`) backed by the same preview D1 database, KV namespace and R2 bucket, so the most recent preview deploy is the one that is live.
 
 ## What a deploy actually runs
 
 ```json
-"deploy:preview": "bun scripts/verify-bindings.ts preview && bun scripts/verify-stripe-keys.ts preview && bun scripts/verify-turnstile-keys.ts preview && bun scripts/verify-email-sender.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json"
+"deploy:preview": "bun scripts/verify-bindings.ts preview && bun scripts/verify-stripe-keys.ts preview && bun scripts/verify-turnstile-keys.ts preview && bun scripts/verify-email-sender.ts preview && bun run build:preview && bun scripts/prepare-deploy-secrets.ts preview && bun run db:migrate:preview && env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json && bun scripts/verify-deployment.ts preview"
 ```
 
-Seven stages.
+Nine stages, chained with `&&`, so the first one that fails stops the deploy.
 
 ### 1. verify-bindings.ts
 
@@ -115,7 +123,7 @@ Reads `VITE_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` from `process.env` fi
 
 Reads `RESEND_API_KEY` and `RESEND_EMAIL_FROM` from `process.env` first and `.env.<environment>` second, then asks Resend whether it would send as that address. It fails on a missing key, a sender with a display name, `onboarding@resend.dev` outside development, a domain that is not in the key's Resend account, and a domain whose DKIM or SPF records are not verified, in which case it prints the records still to publish. A sending-only key cannot read domains, so the check reads them with `RESEND_MANAGEMENT_API_KEY`, an optional Full access key that the step takes from the environment's GitHub secrets and that never reaches the Worker. Without it, the check sends one test e-mail to `delivered@resend.dev` and fails if Resend refuses it. Each Resend request is asked again once after a rate limit or a 5xx, and the whole check gives up after 30 seconds.
 
-It runs before the build so that a sender Resend would refuse stops the deploy within seconds. Apart from `wrangler deploy` itself, it is the only stage that calls an outside service, and it is not part of `build:*`, so `ci.yml` never calls Resend with the dummy `.env.test` values. See [Resend](/docs/integrations/resend#sender-domain) for the records and the local `onboarding@resend.dev` setup.
+It runs before the build so that a sender Resend would refuse stops the deploy within seconds. It is the only stage before the build that calls an outside service, and it is not part of `build:*`, so `ci.yml` never calls Resend with the dummy `.env.test` values. See [Resend](/docs/integrations/resend#sender-domain) for the records and the local `onboarding@resend.dev` setup.
 
 ### 5. build
 
@@ -127,13 +135,25 @@ Reads `secrets.required` from the environment's `wrangler.jsonc` block, resolves
 
 Only the names declared in `wrangler.jsonc` are written. `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` and `CLOUDFLARE_ACCESS_TOKEN` are deliberately not in that list: they are management credentials for drizzle-kit and Wrangler, not Worker runtime secrets, and uploading them to the Worker would be a privilege leak.
 
-### 7. wrangler deploy
+### 7. db:migrate:preview
+
+`bun run db:migrate:preview` is `vp exec wrangler d1 migrations apply DB --env preview --remote`, and `deploy:production` runs `db:migrate:production` in its place. Wrangler reads `wrangler.jsonc` for this command, not the built config, and applies in filename order every file in `src/integrations/drizzle-orm/migrations/` that the database's `d1_migrations` table does not list yet, or prints `No migrations to apply!`. When a migration fails, Wrangler rolls that one back, keeps the ones before it and exits non-zero, so the Worker is not deployed. On a runner Wrangler applies without asking; in a terminal it asks first, and answering no skips the migrations but not the deploy, so stop with Ctrl+C instead.
+
+The stage runs after the build and the secrets file, so a deploy that fails earlier never touches the database, and before `wrangler deploy`, so the new Worker never starts on a schema it does not know. The Worker serving the shop while the migrations run is the previous one, which is why every migration has to keep it working; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
+
+### 8. wrangler deploy
 
 ```sh
 env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json
 ```
 
 `CLOUDFLARE_ENV` is unset for this command because the built `dist/server/wrangler.json` is already flattened to one environment — leaving the variable set would have Wrangler look for an environment section inside a config that no longer has one. The secrets file is uploaded with the deploy, so the eleven declared secrets are set atomically with the new version.
+
+### 9. verify-deployment.ts
+
+Calls `verifyDeployment` in `src/lib/deployment.ts`, which asks the environment's own `workers.dev` host, from `WORKERS_DEV_HOSTS` in `src/modules/_core/constants/api.ts`, for four pages without following redirects. `/` and `/products` must answer `200` with `text/html`, `/robots.txt` must answer `200` with `text/plain`, and `/api/webhooks/stripe` must refuse a `GET` with `405` and `text/plain`, which shows the request reached the route's own handler rather than a rendered page. Each request gives up after 15 seconds, and a page that fails is asked up to three times in all, five seconds apart. A page still failing then fails the deploy with one line per page. The new version is already live by then, so the next step is [Roll back a deploy](/docs/guides/roll-back-a-deploy).
+
+It only reads public pages: it signs nobody in, opens no checkout and writes nothing. It asks the `workers.dev` host because `wrangler.jsonc` attaches no custom domain.
 
 ## Repository configuration
 
@@ -142,23 +162,19 @@ env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json
 | Actions **secrets** | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` |
 | Actions **vars**    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                                                                                    |
 
-`CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
+`CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Besides deploying the Worker, the token needs the D1 edit permission, because the deploy applies the migrations with it. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
 
 `VITE_R2_URL` is listed in `secrets.required` in `wrangler.jsonc` but supplied from Actions **vars**, not secrets — it is a public bucket URL and also needs to be visible to the client bundle through its `VITE_` prefix. `prepare-deploy-secrets.ts` reads it from `process.env`, so this works.
 
 ## Migrations and CI
 
-No workflow applies a migration to a deployed D1 database; the end-to-end workflow only replays the full history into its own local one, which also proves the history still builds a database from scratch. Before merging a pull request whose code needs a new column, apply it yourself:
+`ci.yml` and the end-to-end workflows never touch a deployed database; the end-to-end workflow replays the full history into its own local one, which also proves the history still builds a database from scratch. The deployed databases are migrated by the deploy scripts, right before `wrangler deploy`: the shared preview database by every preview deploy, so a pull request's migration reaches it as soon as that pull request's preview deploys, and production by every production deploy. `bun run db:migrate:<environment>` still applies migrations by hand, and `bun run db:migrations:<environment>` lists what a database has applied.
 
-```sh
-bun run db:migrate:preview     # before the preview deploy matters
-bun run db:migrate:production  # before merging to main
-```
-
-See [Database](/docs/tooling/database).
+A migration that a preview deploy applied stays applied even if its pull request changes or closes, so never edit a migration once its preview has deployed; add another one. See [Database](/docs/tooling/database) and [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
 ## Related pages
 
 - [Project scripts](/docs/tooling/scripts)
 - [Database](/docs/tooling/database)
 - [Testing](/docs/tooling/testing)
+- [Roll back a deploy](/docs/guides/roll-back-a-deploy)

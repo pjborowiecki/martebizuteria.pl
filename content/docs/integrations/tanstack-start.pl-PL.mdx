@@ -144,11 +144,11 @@ Tam, gdzie handler wciągnąłby ciężki kod serwerowy do grafu klienta, moduł
 
 Tylko trzy trasy deklarują `server.handlers`:
 
-| Trasa                  | Plik                                | Handler                                                                             |
-| ---------------------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
-| `/api/auth/$`          | `src/routes/api/auth.$.ts`          | `handleAuthRequestWithAudit(request)` dla `GET` i `POST`                            |
-| `/api/webhooks/stripe` | `src/routes/api/webhooks.stripe.ts` | Tylko `POST`; weryfikuje `stripe-signature`, następnie kieruje do `webhookHandlers` |
-| `/dev/emails`          | `src/routes/dev.emails.tsx`         | `GET`; zwraca 404, jeśli nie jest ustawione `import.meta.env.DEV`                   |
+| Trasa                  | Plik                                | Handler                                                                          |
+| ---------------------- | ----------------------------------- | -------------------------------------------------------------------------------- |
+| `/api/auth/$`          | `src/routes/api/auth.$.ts`          | `handleAuthRequestWithAudit(request)` dla `GET` i `POST`                         |
+| `/api/webhooks/stripe` | `src/routes/api/webhooks.stripe.ts` | `POST` weryfikuje `stripe-signature`, kieruje do `webhookHandlers`; `GET`: `405` |
+| `/dev/emails`          | `src/routes/dev.emails.tsx`         | `GET`; zwraca 404, jeśli nie jest ustawione `import.meta.env.DEV`                |
 
 ```ts
 export const Route = createFileRoute("/api/auth/$")({

@@ -71,11 +71,10 @@ Idą z tym dwie zmiany w kodzie:
 ## Wdrożenie
 
 ```sh
-bun run db:migrate:preview
 bun run deploy:preview
 ```
 
-Migracji nigdy nie nakłada ani build, ani wdrożenie. Uruchom `db:migrate:preview` zawsze, gdy wdrażasz kod wymagający nowego schematu — w przeciwnym razie Worker wdroży się i dopiero w czasie działania wywali się na brakującej kolumnie.
+Wdrożenie samo nakłada oczekujące migracje na bazę preview, po kompilacji i tuż przed `wrangler deploy`, więc nowy Worker nigdy nie startuje na schemacie, którego nie zna; sam build niczego nie nakłada. W terminalu Wrangler pyta przed nałożeniem, a odpowiedź „nie” pomija migracje, ale nie wdrożenie, więc zamiast tego przerwij Ctrl+C.
 
 Przed pierwszym wdrożeniem domena z `RESEND_EMAIL_FROM` musi też być zweryfikowana w Resend; rekordy DNS wymienia [Resend](/docs/integrations/resend#domena-nadawcy). `bun run email:verify preview` uruchamia osobno tę samą kontrolę, którą wykonuje wdrożenie.
 
@@ -83,7 +82,7 @@ Preview przyjmuje testowe klucze Stripe: `VITE_STRIPE_PUBLISHABLE_KEY` zaczynaj�
 
 Preview przyjmuje zawsze przepuszczające testowe klucze Turnstile od Cloudflare: `VITE_TURNSTILE_SITE_KEY` `1x00000000000000000000AA` i `TURNSTILE_SECRET_KEY` `1x0000000000000000000000000000000AA`, czyli wartości z `.env.example`. Przepuszczają każdego odwiedzającego, więc kasa w preview nie ma prawdziwego zabezpieczenia antybotowego; działają też klucze własnego widżetu, o ile klucz witryny i klucz tajny są tego samego rodzaju.
 
-`deploy:preview` to siedem kroków połączonych operatorem `&&`:
+`deploy:preview` to dziewięć kroków połączonych operatorem `&&`:
 
 ```sh
 bun scripts/verify-bindings.ts preview \
@@ -92,9 +91,11 @@ bun scripts/verify-bindings.ts preview \
   && bun scripts/verify-email-sender.ts preview \
   && bun run build:preview \
   && bun scripts/prepare-deploy-secrets.ts preview \
+  && bun run db:migrate:preview \
   && env -u CLOUDFLARE_ENV vp exec wrangler deploy \
        --config dist/server/wrangler.json \
-       --secrets-file .wrangler/secrets.preview.json
+       --secrets-file .wrangler/secrets.preview.json \
+  && bun scripts/verify-deployment.ts preview
 ```
 
 1. **`verify-bindings.ts preview`** — opisana wyżej kontrola bindingów. Przerywa wdrożenie, a nie tylko ostrzega.
@@ -103,7 +104,9 @@ bun scripts/verify-bindings.ts preview \
 4. **`verify-email-sender.ts preview`** — bierze `RESEND_API_KEY` i `RESEND_EMAIL_FROM` ze środowiska procesu lub z `.env.preview` i pyta Resend, czy wyśle pocztę z tego adresu. Domena, której nie ma na koncie Resend albo która nie jest zweryfikowana, przerywa wdrożenie już tutaj, przed kompilacją, a komunikat podaje rekordy DNS do opublikowania.
 5. **`build:preview`** — `rm -rf dist`, ponowne wygenerowanie `.source/`, `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `verify-build.ts preview`.
 6. **`prepare-deploy-secrets.ts preview`** — czyta `secrets.required` z `wrangler.jsonc`, bierze każdą wartość ze środowiska procesu lub z `.env.preview` i zapisuje `.wrangler/secrets.preview.json` z uprawnieniami `0600`. Brakująca lub pusta wartość powoduje wyjątek `Missing <NAZWA> in .env.preview or the process environment`. Zapisywane są wyłącznie zadeklarowane sekrety — tak `CLOUDFLARE_ACCESS_TOKEN` i pozostałe dane zarządcze nie trafiają do Workera.
-7. **`wrangler deploy`** — wdraża wygenerowany `dist/server/wrangler.json` i w tym samym wywołaniu wysyła plik sekretów. Wygenerowana konfiguracja jest płaska: ma już `"name": "martebizuteria-preview"` i `"vars": { "APP_ENV": "preview" }` na najwyższym poziomie, bez sekcji `env` — i właśnie dlatego polecenie najpierw usuwa zmienną `CLOUDFLARE_ENV`. Z nią ustawioną Wrangler szukałby sekcji środowiska, której w wygenerowanym pliku nie ma.
+7. **`db:migrate:preview`** — `wrangler d1 migrations apply DB --env preview --remote` nakłada każdy plik migracji, którego baza preview jeszcze nie odnotowała. Migracja, która zawiedzie, zostaje wycofana, wcześniejsze pozostają nałożone, a wdrożenie zatrzymuje się przed wysłaniem Workera.
+8. **`wrangler deploy`** — wdraża wygenerowany `dist/server/wrangler.json` i w tym samym wywołaniu wysyła plik sekretów. Wygenerowana konfiguracja jest płaska: ma już `"name": "martebizuteria-preview"` i `"vars": { "APP_ENV": "preview" }` na najwyższym poziomie, bez sekcji `env` — i właśnie dlatego polecenie najpierw usuwa zmienną `CLOUDFLARE_ENV`. Z nią ustawioną Wrangler szukałby sekcji środowiska, której w wygenerowanym pliku nie ma.
+9. **`verify-deployment.ts preview`** — pyta `https://martebizuteria-preview.pjborowiecki.workers.dev` o `/`, `/products`, `/robots.txt` i `/api/webhooks/stripe` i przerywa wdrożenie, chyba że `/` i `/products` odpowiedzą `200` z HTML-em, `robots.txt` odpowie `200` zwykłym tekstem, a trasa webhooka odrzuci `GET` kodem `405`. O stronę, która odpowie źle, kontrola pyta łącznie najwyżej trzy razy, co pięć sekund.
 
 ### Co wychwytuje weryfikacja buildu
 
@@ -121,13 +124,13 @@ Ta ostatnia kontrola jest najciekawsza. Skanuje każdy bundle kliencki przy uży
 
 ## Wdrożenia automatyczne
 
-| Workflow                | Wyzwalacz                          | Środowisko   |
-| ----------------------- | ---------------------------------- | ------------ |
-| `ci.yml`                | Pull requesty oraz pushe do `main` | brak         |
-| `deploy-preview.yml`    | Pull requesty do `main`            | `preview`    |
-| `deploy-production.yml` | Pushe do `main`                    | `production` |
+| Workflow                | Wyzwalacz                                   | Środowisko   |
+| ----------------------- | ------------------------------------------- | ------------ |
+| `ci.yml`                | Pull requesty oraz pushe do `main`          | brak         |
+| `deploy-preview.yml`    | Pull requesty do `main`                     | `preview`    |
+| `deploy-production.yml` | Udany `ci.yml` dla pusha do `main`; ręcznie | `production` |
 
-Oba workflow wdrożeniowe korzystają z `.github/actions/setup`, ponownie uruchamiają `bun run check`, a potem wykonują `touch .env.<env>` i uruchamiają skrypt wdrożeniowy z wszystkimi wartościami podanymi przez środowisko zadania. `verify-stripe-keys.ts`, `verify-turnstile-keys.ts`, `verify-email-sender.ts` i `prepare-deploy-secrets.ts` wolą `process.env` od pliku, więc pusty plik jest celowy — istnieje tylko po to, żeby wywołanie `readFile` w `prepare-deploy-secrets.ts` się udało.
+Oba workflow wdrożeniowe korzystają z `.github/actions/setup`, a potem wykonują `touch .env.<env>` i uruchamiają skrypt wdrożeniowy z wszystkimi wartościami podanymi przez środowisko zadania. Workflow podglądu najpierw uruchamia `bun run check`; workflow produkcyjny startuje dopiero wtedy, gdy `ci.yml` przeszedł dla pusha tego samego commita do `main`, i wdraża go tylko wtedy, gdy wciąż jest najnowszym commitem na `main`, albo ręcznie dla takiego commita, zobacz [CI/CD](/docs/tooling/ci-cd). `verify-stripe-keys.ts`, `verify-turnstile-keys.ts`, `verify-email-sender.ts` i `prepare-deploy-secrets.ts` wolą `process.env` od pliku, więc pusty plik jest celowy — istnieje tylko po to, żeby wywołanie `readFile` w `prepare-deploy-secrets.ts` się udało.
 
 Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull requeście z adresem podglądu. Współbieżność jest kluczowana per pull request dla preview i globalnie dla produkcji, z `cancel-in-progress: false` na produkcji, żeby dwa pushe do `main` nie wyścigowały się ze sobą.
 
@@ -143,10 +146,13 @@ Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull 
 
 ## Po wdrożeniu
 
+Ostatni krok wdrożenia zapytał już nowego Workera o stronę główną, listę produktów, `robots.txt` i trasę webhooka Stripe. Gdy zawiedzie, nowa wersja działa na żywo, ale nie odpowiada jak sklep; co wtedy zrobić, opisuje [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
+
 Zarejestruj adresy zwrotne dostawców dla nowego hosta, zgodnie z listą w [Zmiennych środowiskowych](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` oraz punkt końcowy Stripe pod `/api/webhooks/stripe`. Stripe wydaje osobny sekret podpisu dla każdego punktu końcowego, więc wartości `STRIPE_WEBHOOK_SECRET` dla preview i produkcji się różnią. Host punktu końcowego nie decyduje, dokąd linkuje potwierdzenie zamówienia: linkuje ono pod adres, na którym złożono zamówienie, wzięty z `return_url` sesji.
 
 ## Powiązane
 
 - [Skrypty projektu](/docs/getting-started/project-scripts)
+- [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy)
 - [Narzędzia](/docs/tooling) — Wrangler, środowiska i workflow szczegółowo
 - [Integracje](/docs/integrations) — adaptery Cloudflare, Stripe, Resend i Better Auth

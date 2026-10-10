@@ -1,0 +1,100 @@
+---
+title: "Roll back a deploy"
+description: "Put the previous Worker back with wrangler rollback or by redeploying a known-good commit, and what to do when the release has already migrated the database."
+---
+
+A deploy changes two things. `deploy:preview` and `deploy:production` first apply the pending D1 migrations and then upload a new Worker version with its assets and secrets. The Worker can be put back in seconds. A migration cannot be taken back: Wrangler has no down migrations, so after a rollback the previous Worker runs against the newer schema. That is why every migration has to keep working with the Worker deployed before it, as the last section of this page explains.
+
+## Where a deploy can stop
+
+The deploy script is one chain of `&&`, so it stops at the first stage that fails. [CI/CD](/docs/tooling/ci-cd) describes each stage.
+
+| Stage that failed                                                   | What is live                                                                                   | What to do                                                             |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| A check before the build, the build, or `prepare-deploy-secrets.ts` | The previous Worker on the previous schema; nothing remote changed                             | Fix the cause and deploy again                                         |
+| `db:migrate:<environment>`                                          | The previous Worker; the migrations before the failing one are applied, the failing one is not | Read the failing statement in the log, fix it forward and deploy again |
+| `wrangler deploy`                                                   | The previous Worker on the new schema                                                          | Fix the cause and deploy again                                         |
+| `verify-deployment.ts`                                              | The new Worker                                                                                 | Roll the Worker back, then find out why                                |
+
+`scripts/verify-deployment.ts` calls `verifyDeployment` in `src/lib/deployment.ts`, which asks the environment's `workers.dev` host for `/`, `/products`, `/robots.txt` and `/api/webhooks/stripe` without following redirects. The home page and the product listing must answer `200` with HTML, `robots.txt` must answer `200` with plain text, and the Stripe webhook route must refuse a `GET` with `405`. A page that answers anything else is asked again up to three times in all, five seconds apart, so a version still reaching every Cloudflare location is not taken for a broken one. A failure names each page and its answer:
+
+```text
+The production Worker at https://martebizuteria.pjborowiecki.workers.dev is deployed but does not answer like the shop:
+GET https://martebizuteria.pjborowiecki.workers.dev/products answered 500 text/html; charset=utf-8 instead of 200 text/html.
+```
+
+## Roll the Worker back
+
+`wrangler rollback` makes an earlier version of the Worker serve all traffic again. It changes no binding: D1, R2, KV, the audit queue and the Durable Object keep their data, and the schema stays as the migrations left it.
+
+```sh
+vp exec wrangler deployments list --env production
+vp exec wrangler rollback --env production --message "Back to the version before <what broke>"
+```
+
+`deployments list` shows the ten latest deployments with their version ids. Without an id, `rollback` goes back to the version of the deployment before the current one. Pass a version id from the list to go further back:
+
+```sh
+vp exec wrangler rollback <version-id> --env production --message "<why>"
+```
+
+Wrangler shows the version and asks for confirmation. Both commands read the Worker name from `wrangler.jsonc`, `martebizuteria` for `production` and `martebizuteria-preview` for `preview`, and need the same Cloudflare login as a deploy: `vp exec wrangler login`, or `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the shell.
+
+A Worker version keeps the secrets it was deployed with, so a rollback also brings their earlier values back. When a secret has changed since that version, Wrangler names it and asks again. If you rotated it because it leaked, answer no and redeploy a commit instead, which uploads the current values.
+
+A rollback does not change `main`, and the next push to `main` deploys `main` again. Follow it with a pull request that reverts or fixes the commit that broke the site.
+
+## Redeploy a known-good commit
+
+`deploy-production.yml` can also be started by hand. In GitHub, open **Actions**, then **Production Deployment**, then **Run workflow**, and give the full 40-character SHA of the commit to deploy. From a terminal:
+
+```sh
+gh workflow run deploy-production.yml -f commit=<full sha>
+```
+
+The workflow refuses a commit that has no passing `ci.yml` run for a push to `main`, so only a commit that passed every check once can reach production this way. It checks that commit out and runs its own `bun run deploy:production`: the checks, the build, the migrations, `wrangler deploy` and the live-site check. Wrangler applies only the migration files it has not recorded in `d1_migrations`, so an older commit applies nothing and runs against the newer schema, just as after a rollback. A commit from before the deploy scripts applied migrations and checked the live site deploys without those two stages.
+
+This manual run is the only way back to an older commit. Started by CI, the workflow deploys the commit CI tested only while it is still the tip of `main`, so re-running an older commit's CI, for example after a flaky test, deploys nothing.
+
+Redeploying takes longer than `wrangler rollback` because it builds again, but it uploads the current secrets and leaves a run in the Actions history. From a laptop with a filled-in `.env.production`, the same is:
+
+```sh
+git switch --detach <sha>
+bun run deploy:production
+git switch -
+```
+
+## When a migration has already been applied
+
+The migrations run before the new Worker is uploaded, so for a short while, and for as long as you stay rolled back, the previous Worker serves the shop on the new schema. That is only safe when every change to the schema ships as **expand, deploy, contract**:
+
+1. **Expand.** The migration only adds: a table, a nullable column or a column with a default, an index. The Worker already deployed never reads them, so it keeps working.
+2. **Deploy.** The code that uses the new shape ships in the same release or a later one. For a rename or a change of meaning, that code writes both the old and the new column for at least one release.
+3. **Contract.** Only in a later release, once you would no longer roll back to a version that reads it, a migration drops the old column or table or adds the constraint.
+
+So a single release never:
+
+- drops or renames a column or table that the deployed Worker still reads; a table rebuild, which drizzle-kit emits for many column changes, counts as dropping it (see [Database migrations](/docs/guides/database-migrations)),
+- adds a `NOT NULL` column without a default, which the previous Worker's inserts would break,
+- changes what an existing value means.
+
+When a migration that follows these rules is applied and the release has to go, roll the Worker back and leave the schema alone. The extra tables and columns are harmless, and the next release can use or drop them.
+
+When the migration itself is wrong, fix it forward. A migration that `bun run db:migrations:<environment>` lists as applied is never edited or renamed, because Wrangler would not run it again. Add a new migration that corrects it and deploy. The same goes for a migration that a pull request has already applied to the shared preview database.
+
+### Time Travel, the last resort
+
+D1 keeps a point-in-time history of each database, Time Travel, so a database can be put back as it was before a deploy:
+
+```sh
+vp exec wrangler d1 time-travel info DB --env production --timestamp=2026-10-10T12:00:00Z
+vp exec wrangler d1 time-travel restore DB --env production --timestamp=2026-10-10T12:00:00Z
+```
+
+The restore replaces the whole database. Every order, payment, customer, stock change and audit entry written after that moment is lost, while Stripe keeps the payments, so those orders have to be rebuilt from the Stripe dashboard by hand. Use it only when data is already damaged beyond what a new migration can repair. The restore also rewinds the `d1_migrations` table, so the next deploy applies the same migrations again unless you have replaced them first. Wrangler prints a bookmark after the restore, and restoring to that bookmark undoes it. The history reaches back 30 days on the Workers Paid plan and 7 days on Workers Free.
+
+## Related pages
+
+- [CI/CD](/docs/tooling/ci-cd)
+- [Database migrations](/docs/guides/database-migrations)
+- [Database](/docs/tooling/database)

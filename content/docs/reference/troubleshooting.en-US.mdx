@@ -160,6 +160,10 @@ which runs `cf-typegen` (`wrangler types --env development`) and then `content`.
 
 **`Missing client JavaScript` / `Missing client CSS`.** `dist/client/assets` has no `.js` or `.css` file. The client build failed earlier in the pipeline — scroll back through the build output.
 
+**`Migration <name> failed with the following errors:`.** From Wrangler, in the deploy's `db:migrate:<environment>` stage. Wrangler rolled that migration back, kept the ones before it and stopped the deploy before `wrangler deploy`, so the previous Worker is still live. The lines under the message are D1's error for the failing statement. A migration that another database, such as the shared preview one, has already applied is never edited; correct it with a new migration and deploy again.
+
+**`The production Worker at https://martebizuteria.pjborowiecki.workers.dev is deployed but does not answer like the shop:`.** From `scripts/verify-deployment.ts`, which runs after `wrangler deploy`, so the new version is already live. Each line under it names a page and what it answered. `vp exec wrangler tail --env production` shows the exceptions behind a `500`, and a `200 text/html` from `/api/webhooks/stripe` means the request rendered a page instead of reaching the route's own handler. When the shop is down, roll the Worker back before looking further; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
+
 ## Related pages
 
 - [Frequently asked questions](/docs/reference/faq)

@@ -144,11 +144,11 @@ Where a handler would pull heavy server-only code into the client graph, the mod
 
 Only three routes declare `server.handlers`:
 
-| Route                  | File                                | Handler                                                                     |
-| ---------------------- | ----------------------------------- | --------------------------------------------------------------------------- |
-| `/api/auth/$`          | `src/routes/api/auth.$.ts`          | `handleAuthRequestWithAudit(request)` for `GET` and `POST`                  |
-| `/api/webhooks/stripe` | `src/routes/api/webhooks.stripe.ts` | `POST` only; verifies `stripe-signature`, then dispatches `webhookHandlers` |
-| `/dev/emails`          | `src/routes/dev.emails.tsx`         | `GET`; returns 404 unless `import.meta.env.DEV`                             |
+| Route                  | File                                | Handler                                                                    |
+| ---------------------- | ----------------------------------- | -------------------------------------------------------------------------- |
+| `/api/auth/$`          | `src/routes/api/auth.$.ts`          | `handleAuthRequestWithAudit(request)` for `GET` and `POST`                 |
+| `/api/webhooks/stripe` | `src/routes/api/webhooks.stripe.ts` | `POST` checks `stripe-signature`, runs `webhookHandlers`; `GET` gets `405` |
+| `/dev/emails`          | `src/routes/dev.emails.tsx`         | `GET`; returns 404 unless `import.meta.env.DEV`                            |
 
 ```ts
 export const Route = createFileRoute("/api/auth/$")({

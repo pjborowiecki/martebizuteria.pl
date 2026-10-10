@@ -120,7 +120,7 @@ Następnie, po kolei:
 
 Zadanie `e2e` tego samego przepływu uruchamia zestaw Playwrighta w Chromium przez `e2e-reusable.yml`, a `e2e-full.yml` uruchamia go w WebKicie po każdym pushu do `main` i w obu przeglądarkach w każdy poniedziałek.
 
-`.github/workflows/deploy-preview.yml` i `deploy-production.yml` używają tej samej akcji setup i ponownie uruchamiają pełny `check` przed buildem.
+`.github/workflows/deploy-preview.yml` używa tej samej akcji setup i ponownie uruchamia pełny `check` przed buildem. `deploy-production.yml` startuje dopiero wtedy, gdy ten przepływ przejdzie dla pusha do `main`, więc produkcja nigdy nie dostaje commita, którego testy nie przeszły.
 
 ## Lokalna bramka
 

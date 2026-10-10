@@ -1,37 +1,83 @@
 name: Production Deployment
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full SHA of a commit whose push to main passed CI
+        required: true
+        type: string
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
-concurrency:
-  group: production
-  cancel-in-progress: false
 
 permissions:
   contents: read
 
 jobs:
+  choose-commit:
+    name: Choose the commit to deploy
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      commit: ${{ steps.requested.outputs.commit || steps.tested.outputs.commit }}
+
+    steps:
+      - name: Require a passing CI run on main for the requested commit
+        id: requested
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          COMMIT: ${{ inputs.commit }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --event push --commit "$COMMIT" --status success --json databaseId --jq length)
+          if [ "$passed" = "0" ]; then
+            echo "::error::No CI run passed for a push of $COMMIT to main. Give the full SHA of a commit that passed CI on main."
+            exit 1
+          fi
+          echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+
+      - name: Take the tested commit only while it is the tip of main
+        id: tested
+        if: github.event_name == 'workflow_run'
+        env:
+          COMMIT: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tip=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [ "$tip" = "$COMMIT" ]; then
+            echo "commit=$COMMIT" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::CI passed for $COMMIT, but main is now at $tip, so nothing is deployed. To deploy an older commit, run Production Deployment by hand with its SHA."
+          fi
+
   deploy-production:
     name: Deploy to Production
+    needs: choose-commit
+    if: needs.choose-commit.outputs.commit != ''
     runs-on: ubuntu-latest
     environment: production
+    concurrency:
+      group: production
+      cancel-in-progress: false
 
     steps:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          ref: ${{ needs.choose-commit.outputs.commit }}
 
       - name: Setup toolchain
         uses: ./.github/actions/setup
 
-      - name: Format, lint, and types
-        run: bun run check
-
-      - name: Build & deploy to production
+      - name: Build, migrate, deploy, and check the live site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

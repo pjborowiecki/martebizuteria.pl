@@ -158,7 +158,7 @@ bun run db:migrations:production
 
 Those run `wrangler d1 migrations list DB --env <environment> --remote`.
 
-CI does not migrate anything. The deploy workflows run `bun run check` and then the deploy script; applying migrations before a deploy that needs them is a manual step.
+CI migrates nothing. `deploy:preview` and `deploy:production` run `db:migrate:preview` or `db:migrate:production` themselves, after the build and right before `wrangler deploy`, and a failed migration stops the deploy. The Worker still serving the shop at that moment is the previous one, so a migration must keep it working; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
 ### Which database is which
 
@@ -212,10 +212,11 @@ collection-on-product.sql                       attribute-on-product.sql
 5. Update the module's `*.schema.test.ts` — the column list, foreign keys and relations are asserted explicitly, so the test will fail until you do.
 6. Update the `create table` statements in any `*.integration.test.ts` that touches the table; the integration suite builds its own SQLite tables and does not read the migration files.
 7. Run `bun run check` and `bun run test`.
-8. Apply the migration to the target database with the matching `db:migrate:*` script before deploying code that depends on it.
+8. Keep the migration backward compatible with the Worker deployed before it: add, do not drop or rename, and remove what is no longer read in a later release. The deploy applies it right before `wrangler deploy`; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
 ## Related pages
 
 - [Testing](/docs/tooling/testing)
 - [CI/CD](/docs/tooling/ci-cd)
+- [Roll back a deploy](/docs/guides/roll-back-a-deploy)
 - [Integrations](/docs/integrations)

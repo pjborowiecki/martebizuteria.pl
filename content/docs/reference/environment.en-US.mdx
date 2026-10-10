@@ -109,7 +109,7 @@ Worker code reads bindings and secrets from `env` in `cloudflare:workers`. The g
 
 ## Deploy-time checks
 
-Both deploy scripts run six gates around the build, and each one throws rather than warning.
+Both deploy scripts run six gates around the build and one check after the deploy, and each one throws rather than warning. Between the gates and the deploy, `db:migrate:<environment>` applies the pending D1 migrations.
 
 | Script                              | Checks                                                                                                                                                                                                                                   |
 | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -119,12 +119,13 @@ Both deploy scripts run six gates around the build, and each one throws rather t
 | `scripts/verify-email-sender.ts`    | Asks Resend whether it would send as `RESEND_EMAIL_FROM` and rejects a display-name sender, `onboarding@resend.dev`, or an unknown or unverified domain, printing the DNS records to publish                                             |
 | `scripts/verify-build.ts`           | Confirms `dist/server/wrangler.json` targets the right environment and Worker name, that `dist/client` holds JS, CSS and fonts, and that no client asset imports `cloudflare:workers` or `node:*`                                        |
 | `scripts/prepare-deploy-secrets.ts` | Writes only the declared secrets to `.wrangler/secrets.<environment>.json` and fails on any blank value                                                                                                                                  |
+| `scripts/verify-deployment.ts`      | After `wrangler deploy`, asks the environment's `workers.dev` host for `/`, `/products`, `/robots.txt` and `/api/webhooks/stripe` and rejects any answer other than the shop's                                                           |
 
 The full sequence is visible in `package.json`:
 
 ```sh
 bun run deploy:preview
-# verify-bindings.ts → verify-stripe-keys.ts → verify-turnstile-keys.ts → verify-email-sender.ts → build:preview → prepare-deploy-secrets.ts → wrangler deploy
+# verify-bindings.ts → verify-stripe-keys.ts → verify-turnstile-keys.ts → verify-email-sender.ts → build:preview → prepare-deploy-secrets.ts → db:migrate:preview → wrangler deploy → verify-deployment.ts
 ```
 
 The deploy step passes `--config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json` and unsets `CLOUDFLARE_ENV` first, because the built config already carries the environment.
