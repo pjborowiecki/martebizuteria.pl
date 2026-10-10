@@ -10,17 +10,12 @@ import { DISCOUNT_CODE_MAX_LENGTH } from "~/src/modules/discount/discount.consta
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { normalizeDiscountCode } from "~/src/modules/discount/discount.utils"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
-import { validateDiscountCodeMutation } from "~/src/modules/discount/use-cases/validate-discount-code"
+import { type DiscountCheckBasket, validateDiscountCodeMutation } from "~/src/modules/discount/use-cases/validate-discount-code"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Input } from "~/src/presentation/components/shadcn/input"
 
-export const CheckoutDiscountField = ({
-  email,
-  itemsSubtotal,
-  onApplied,
-  shippingTotal,
-}: Readonly<CheckoutDiscountFieldProps>): JSX.Element => {
+export const CheckoutDiscountField = ({ basket, onApplied }: Readonly<CheckoutDiscountFieldProps>): JSX.Element => {
   const t = useTranslations("pages.checkout.discount")
   const form = useForm<Discount["checkoutCodeFormValues"]>({
     defaultValues: { code: "" },
@@ -32,7 +27,7 @@ export const CheckoutDiscountField = ({
   const applyCode = useCallback(
     ({ code }: Discount["checkoutCodeFormValues"]) => {
       validate.mutate(
-        { code: normalizeDiscountCode(code), email, itemsSubtotal, shippingTotal },
+        { ...basket, code: normalizeDiscountCode(code) },
         {
           onSuccess: (result) => {
             if (result.applied !== undefined) {
@@ -42,7 +37,7 @@ export const CheckoutDiscountField = ({
         },
       )
     },
-    [email, itemsSubtotal, onApplied, shippingTotal, validate],
+    [basket, onApplied, validate],
   )
 
   const handleSubmit = useCallback(
@@ -81,8 +76,6 @@ export const CheckoutDiscountField = ({
 }
 
 interface CheckoutDiscountFieldProps {
-  readonly email: string | undefined
-  readonly itemsSubtotal: number
+  readonly basket: DiscountCheckBasket
   readonly onApplied: (code: string) => void
-  readonly shippingTotal: number
 }

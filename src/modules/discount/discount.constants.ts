@@ -24,6 +24,7 @@ export const DISCOUNT_REJECTION = {
   ALREADY_USED: "alreadyUsed",
   EXHAUSTED: "exhausted",
   EXPIRED: "expired",
+  HELD: "held",
   INACTIVE: "inactive",
   MIN_ORDER_NOT_MET: "minOrderNotMet",
   NOT_FOUND: "notFound",

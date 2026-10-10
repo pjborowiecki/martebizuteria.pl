@@ -4,13 +4,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-const { getDiscountByCodeForCustomerQuery, onApplied } = vi.hoisted(() => ({
-  getDiscountByCodeForCustomerQuery:
-    vi.fn<(code: string, email: string | undefined) => Promise<Discount["selectForCustomer"] | undefined>>(),
+const { getDiscountByCodeForPreviewQuery, onApplied } = vi.hoisted(() => ({
+  getDiscountByCodeForPreviewQuery:
+    vi.fn<
+      (lookup: {
+        code: string
+        email: string | undefined
+        heldSessionId: string | undefined
+      }) => Promise<Discount["selectForPreview"] | undefined>
+    >(),
   onApplied: vi.fn<(code: string) => void>(),
 }))
 
-vi.mock("~/src/modules/discount/discount.accessors", () => ({ getDiscountByCodeForCustomerQuery }))
+vi.mock("~/src/modules/discount/discount.accessors", () => ({ getDiscountByCodeForPreviewQuery }))
+vi.mock("~/src/modules/product-variant/product-variant.accessors", () => ({
+  getSellPricesByVariantIds: () => Promise.resolve(new Map([["variant-a", 24_900]])),
+}))
+vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
+  getOfferedDeliveryMethodByIdQuery: () => Promise.resolve({ price: 1900, type: "courier" }),
+}))
 vi.mock("~/src/integrations/better-auth/auth.middleware", async () => {
   const { createMiddleware } = await import("@tanstack/react-start")
 
@@ -25,11 +37,13 @@ import { type Discount } from "~/src/modules/discount/discount.types"
 
 import { CheckoutDiscountField } from "~/src/presentation/components/custom/checkout/components/checkout-discount-field"
 
-const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Discount["selectForCustomer"] => ({
+const discountRow = (overrides: Partial<Discount["selectForPreview"]> = {}): Discount["selectForPreview"] => ({
   code: "SPRING",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   description: null,
   endsAt: null,
+  heldByOtherCheckouts: 0,
+  heldForCustomer: 0,
   id: "discount-1",
   isActive: true,
   maxDiscountAmount: null,
@@ -45,8 +59,14 @@ const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Di
   ...overrides,
 })
 
-const renderField = () =>
-  renderWithProviders(<CheckoutDiscountField email="ada@marte.test" itemsSubtotal={24_900} onApplied={onApplied} shippingTotal={1900} />)
+const BASKET = {
+  deliveryMethodId: "courier",
+  email: "ada@marte.test",
+  heldSessionId: "cs_test_own",
+  lines: [{ qty: 1, variantId: "variant-a" }],
+}
+
+const renderField = () => renderWithProviders(<CheckoutDiscountField basket={BASKET} onApplied={onApplied} />)
 
 const submitCode = async (code: string): Promise<void> => {
   await userEvent.type(screen.getByLabelText("Discount code"), code)
@@ -55,7 +75,7 @@ const submitCode = async (code: string): Promise<void> => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
+  getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
 })
 
 afterEach(cleanup)
@@ -69,11 +89,15 @@ describe("CheckoutDiscountField", () => {
     await waitFor(() => {
       expect(onApplied).toHaveBeenCalledExactlyOnceWith("SPRING")
     })
-    expect(getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING", "ada@marte.test")
+    expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
+      code: "SPRING",
+      email: "ada@marte.test",
+      heldSessionId: "cs_test_own",
+    })
   })
 
   it("locks the button behind a spinner while the code is being checked", async () => {
-    getDiscountByCodeForCustomerQuery.mockReturnValue(new Promise(() => {}))
+    getDiscountByCodeForPreviewQuery.mockReturnValue(new Promise(() => {}))
     renderField()
 
     await submitCode("SPRING")
@@ -86,8 +110,18 @@ describe("CheckoutDiscountField", () => {
     expect(onApplied).not.toHaveBeenCalled()
   })
 
+  it("explains a code whose remaining uses other checkouts hold and applies nothing", async () => {
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ heldByOtherCheckouts: 1, usageLimit: 1 }))
+    renderField()
+
+    await submitCode("SPRING")
+
+    expect(await screen.findByText("That code is reserved for orders awaiting payment. Try again later.")).toBeInTheDocument()
+    expect(onApplied).not.toHaveBeenCalled()
+  })
+
   it("explains a code it does not recognise and applies nothing", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(undefined)
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(undefined)
     renderField()
 
     await submitCode("NOPE")
@@ -97,7 +131,7 @@ describe("CheckoutDiscountField", () => {
   })
 
   it("drops the explanation as soon as the shopper edits the code", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(undefined)
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(undefined)
     renderField()
     await submitCode("NOPE")
     await screen.findByText("We do not recognise that code.")
@@ -108,7 +142,7 @@ describe("CheckoutDiscountField", () => {
   })
 
   it("asks the shopper to try again when the code could not be checked", async () => {
-    getDiscountByCodeForCustomerQuery.mockRejectedValue(new Error("D1 unavailable"))
+    getDiscountByCodeForPreviewQuery.mockRejectedValue(new Error("D1 unavailable"))
     renderField()
 
     await submitCode("SPRING")
@@ -122,7 +156,7 @@ describe("CheckoutDiscountField", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Apply" }))
 
-    expect(getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
+    expect(getDiscountByCodeForPreviewQuery).not.toHaveBeenCalled()
     expect(onApplied).not.toHaveBeenCalled()
   })
 })

@@ -12,6 +12,11 @@ interface CustomerRedemptions {
   readonly redeemedByCustomer: number
 }
 
+interface UsesHeldByOtherCheckouts {
+  readonly heldByOtherCheckouts: number
+  readonly heldForCustomer: number
+}
+
 interface DiscountValidationResult {
   readonly applied?: AppliedDiscount | undefined
   readonly rejection?: DiscountRejection | undefined
@@ -70,5 +75,6 @@ export interface Discount {
   redemptionInsert: typeof discountRedemption.$inferInsert
   select: typeof discount.$inferSelect
   selectForCustomer: typeof discount.$inferSelect & CustomerRedemptions
+  selectForPreview: typeof discount.$inferSelect & CustomerRedemptions & UsesHeldByOtherCheckouts
   validation: DiscountValidationResult
 }

@@ -6,9 +6,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-const { getDiscountByCodeForCustomerQuery, search } = vi.hoisted(() => ({
-  getDiscountByCodeForCustomerQuery:
-    vi.fn<(code: string, email: string | undefined) => Promise<Discount["selectForCustomer"] | undefined>>(),
+const { getDiscountByCodeForPreviewQuery, getSellPricesByVariantIds, search } = vi.hoisted(() => ({
+  getDiscountByCodeForPreviewQuery:
+    vi.fn<
+      (lookup: {
+        code: string
+        email: string | undefined
+        heldSessionId: string | undefined
+      }) => Promise<Discount["selectForPreview"] | undefined>
+    >(),
+  getSellPricesByVariantIds: vi.fn<(variantIds: readonly string[]) => Promise<Map<string, number>>>(),
   search: { step: 1 },
 }))
 
@@ -27,7 +34,11 @@ vi.mock("~/src/lib/url", () => ({
   isAssetCdnUrl: () => true,
   resolveAssetURL: (src: string) => src,
 }))
-vi.mock("~/src/modules/discount/discount.accessors", () => ({ getDiscountByCodeForCustomerQuery }))
+vi.mock("~/src/modules/discount/discount.accessors", () => ({ getDiscountByCodeForPreviewQuery }))
+vi.mock("~/src/modules/product-variant/product-variant.accessors", () => ({ getSellPricesByVariantIds }))
+vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
+  getOfferedDeliveryMethodByIdQuery: (id: string) => Promise.resolve(deliveryMethods.find((method) => method.id === id)),
+}))
 vi.mock("~/src/integrations/stripe/stripe.actions", () => ({ createCheckoutSessionFn: vi.fn(), updateCheckoutSessionFn: vi.fn() }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", async () => {
   const { createMiddleware } = await import("@tanstack/react-start")
@@ -53,6 +64,7 @@ import { type OrderTotals } from "~/src/modules/order/order.totals"
 import { CheckoutTextField } from "~/src/presentation/components/custom/checkout/components/checkout-fields"
 import { CheckoutFormProvider, useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
 import { CheckoutSummary } from "~/src/presentation/components/custom/checkout/components/checkout-summary"
+import { saveCheckoutSession } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 
 const addLine = ({
   qty,
@@ -133,11 +145,13 @@ const chooseDeliveryMethod = (deliveryMethod: string): void => {
   restoreDraft({ deliveryMethod })
 }
 
-const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Discount["selectForCustomer"] => ({
+const discountRow = (overrides: Partial<Discount["selectForPreview"]> = {}): Discount["selectForPreview"] => ({
   code: "SPRING",
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   description: null,
   endsAt: null,
+  heldByOtherCheckouts: 0,
+  heldForCustomer: 0,
   id: "discount-1",
   isActive: true,
   maxDiscountAmount: null,
@@ -155,8 +169,15 @@ const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Di
 
 beforeEach(() => {
   vi.clearAllMocks()
+  getSellPricesByVariantIds.mockResolvedValue(
+    new Map([
+      ["variant-a", 24_900],
+      ["variant-b", 18_900],
+    ]),
+  )
   search.step = 1
   sessionStorage.clear()
+  localStorage.clear()
   useCartStore.getState().clearCart()
 })
 
@@ -299,7 +320,7 @@ describe("CheckoutSummary discount code", () => {
   })
 
   it("takes an accepted code off the total and shows what it saved", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     renderSummary()
 
@@ -311,7 +332,7 @@ describe("CheckoutSummary discount code", () => {
   })
 
   it("explains a rejected code without applying anything", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ code: "OLD", endsAt: new Date("2026-02-01T00:00:00.000Z") }))
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ code: "OLD", endsAt: new Date("2026-02-01T00:00:00.000Z") }))
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     renderSummary()
 
@@ -322,7 +343,7 @@ describe("CheckoutSummary discount code", () => {
   })
 
   it("lets the shopper take an applied code back off", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     renderSummary()
 
@@ -335,7 +356,7 @@ describe("CheckoutSummary discount code", () => {
   })
 
   it("asks the server every time Apply is pressed and shows that answer without asking twice", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     renderSummary()
 
@@ -344,11 +365,11 @@ describe("CheckoutSummary discount code", () => {
     applyCode("SPRING")
 
     expect(await screen.findByText("PLN 199.00")).toBeInTheDocument()
-    expect(getDiscountByCodeForCustomerQuery).toHaveBeenCalledTimes(2)
+    expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledTimes(2)
   })
 
   it("explains a code it could not check when Apply is pressed", async () => {
-    getDiscountByCodeForCustomerQuery.mockRejectedValue(new Error("D1 unavailable"))
+    getDiscountByCodeForPreviewQuery.mockRejectedValue(new Error("D1 unavailable"))
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     renderSummary()
 
@@ -361,7 +382,7 @@ describe("CheckoutSummary discount code", () => {
 
 describe("CheckoutSummary restored discount code", () => {
   it("keeps a restored code on the total after the page reloads", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     restoreDraft({ deliveryMethod: "courier", discountCode: "SPRING" })
     renderSummary()
@@ -372,7 +393,7 @@ describe("CheckoutSummary restored discount code", () => {
   })
 
   it("prices a free-delivery code with the delivery the shopper chose", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ code: "SHIPFREE", type: "free_shipping", value: 0 }))
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ code: "SHIPFREE", type: "free_shipping", value: 0 }))
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     restoreDraft({ deliveryMethod: "courier", discountCode: "SHIPFREE" })
     renderSummary()
@@ -382,7 +403,7 @@ describe("CheckoutSummary restored discount code", () => {
   })
 
   it("keeps a restored code that no longer applies on screen with the reason", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ endsAt: new Date("2026-02-01T00:00:00.000Z") }))
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ endsAt: new Date("2026-02-01T00:00:00.000Z") }))
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     restoreDraft({ discountCode: "SPRING" })
     renderSummary()
@@ -394,7 +415,7 @@ describe("CheckoutSummary restored discount code", () => {
   })
 
   it("holds back the total and says so when the code cannot be checked", async () => {
-    getDiscountByCodeForCustomerQuery.mockRejectedValueOnce(new Error("D1 unavailable")).mockResolvedValue(discountRow())
+    getDiscountByCodeForPreviewQuery.mockRejectedValueOnce(new Error("D1 unavailable")).mockResolvedValue(discountRow())
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     restoreDraft({ discountCode: "SPRING" })
     renderSummary()
@@ -413,17 +434,17 @@ describe("CheckoutSummary restored discount code", () => {
 
 describe("CheckoutSummary discount code and the shopper's email", () => {
   it("checks the code without the email while the shopper is still on the contact step", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     restoreDraft({ discountCode: "SPRING", email: "ada@marte.test", phone: "+48512345678" })
     renderSummary()
 
     expect(await screen.findByText("Discount")).toBeInTheDocument()
-    expect(getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING", undefined)
+    expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({ code: "SPRING", email: undefined, heldSessionId: undefined })
   })
 
   it("does not check the code again while the shopper types an email", async () => {
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     restoreDraft({ discountCode: "SPRING" })
     renderSummary(<EmailField />)
@@ -434,20 +455,84 @@ describe("CheckoutSummary discount code and the shopper's email", () => {
     }
 
     expect(screen.getByText("Discount")).toBeInTheDocument()
-    expect(getDiscountByCodeForCustomerQuery).toHaveBeenCalledOnce()
+    expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledOnce()
   })
 
   it("withholds a code the confirmed email has already used, with the reason", async () => {
     search.step = 2
-    getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ perCustomerLimit: 1, redeemedByCustomer: 1 }))
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ perCustomerLimit: 1, redeemedByCustomer: 1 }))
     addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
     restoreDraft({ discountCode: "SPRING", email: "ada@marte.test", phone: "+48512345678" })
     renderSummary()
 
     expect(await screen.findByText("You have already used that code.")).toBeInTheDocument()
-    expect(getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING", "ada@marte.test")
+    expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
+      code: "SPRING",
+      email: "ada@marte.test",
+      heldSessionId: undefined,
+    })
     expect(screen.queryByText("Discount")).not.toBeInTheDocument()
     expect(screen.getAllByText("PLN 249.00")).toHaveLength(2)
+  })
+})
+
+describe("CheckoutSummary discount code and the server's own figures", () => {
+  it("takes off what the code is worth at the shop's prices, not at the prices the basket stored", async () => {
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ type: "percentage", value: 10 }))
+    getSellPricesByVariantIds.mockResolvedValue(new Map([["variant-a", 26_900]]))
+    addLine({ qty: 2, rawPrice: 24_900, variantId: "variant-a" })
+    restoreDraft({ discountCode: "SPRING" })
+    renderSummary()
+
+    expect(await screen.findAllByText("−PLN 53.80")).toHaveLength(2)
+    expect(getSellPricesByVariantIds).toHaveBeenCalledExactlyOnceWith(["variant-a"])
+  })
+
+  it("withholds a code whose remaining uses other checkouts hold, with the reason", async () => {
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ heldByOtherCheckouts: 1, usageLimit: 1 }))
+    addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
+    restoreDraft({ discountCode: "SPRING" })
+    renderSummary()
+
+    expect(await screen.findByText("That code is reserved for orders awaiting payment. Try again later.")).toBeInTheDocument()
+    expect(screen.queryByText("Discount")).not.toBeInTheDocument()
+    expect(screen.getAllByText("PLN 249.00")).toHaveLength(2)
+  })
+
+  it("leaves the hold of the checkout this browser keeps open out of the count", async () => {
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
+    addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
+    saveCheckoutSession({ lines: [{ qty: 1, variantId: "variant-a" }], sessionId: "cs_test_own" })
+    restoreDraft({ discountCode: "SPRING" })
+    renderSummary()
+
+    await screen.findByText("Discount")
+
+    expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
+      code: "SPRING",
+      email: undefined,
+      heldSessionId: "cs_test_own",
+    })
+  })
+
+  it("checks the code again once the payment step stores the checkout it opened", async () => {
+    getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
+    addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
+    restoreDraft({ discountCode: "SPRING" })
+    renderSummary()
+    await screen.findByText("Discount")
+
+    act(() => {
+      saveCheckoutSession({ lines: [{ qty: 1, variantId: "variant-a" }], sessionId: "cs_test_opened" })
+    })
+
+    await vi.waitFor(() => {
+      expect(getDiscountByCodeForPreviewQuery).toHaveBeenLastCalledWith({
+        code: "SPRING",
+        email: undefined,
+        heldSessionId: "cs_test_opened",
+      })
+    })
   })
 })
 

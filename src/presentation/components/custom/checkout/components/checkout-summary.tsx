@@ -1,4 +1,4 @@
-import { type JSX, useCallback } from "react"
+import { type JSX, useCallback, useMemo, useSyncExternalStore } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { useWatch } from "react-hook-form"
@@ -11,7 +11,7 @@ import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
-import { validateDiscountCodeQuery } from "~/src/modules/discount/use-cases/validate-discount-code"
+import { type DiscountCheckBasket, validateDiscountCodeQuery } from "~/src/modules/discount/use-cases/validate-discount-code"
 import { computeOrderTotals } from "~/src/modules/order/order.totals"
 
 import { getProductImageUrl } from "~/src/lib/image"
@@ -19,6 +19,11 @@ import { getProductImageUrl } from "~/src/lib/image"
 import { CheckoutDiscountCode } from "~/src/presentation/components/custom/checkout/components/checkout-discount-code"
 import { CheckoutDiscountField } from "~/src/presentation/components/custom/checkout/components/checkout-discount-field"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+import {
+  loadCheckoutSessionId,
+  loadCheckoutSessionIdOnServer,
+  subscribeToCheckoutSessionId,
+} from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 import { CHECKOUT_STEP_DEFINITIONS, CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
 import { Image } from "~/src/presentation/components/custom/image"
 
@@ -30,26 +35,27 @@ const useCheckoutSummaryFigures = () => {
     name: ["deliveryMethod", "email", "discountCode"],
   })
   const { data: deliveryMethods = [] } = useQuery(listDeliveryMethodsQuery())
+  const heldSessionId = useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, loadCheckoutSessionIdOnServer)
   const selectedDeliveryMethod = deliveryMethods.find((m) => m.id === deliveryMethodId)
   const deliveryCostCents = selectedDeliveryMethod?.price ?? 0
   const subtotalCents = cartTotal()
   const redemptionEmail = activeStepIndex > CONTACT_STEP_INDEX ? email : undefined
-  const discountCheck = useQuery(
-    validateDiscountCodeQuery({
-      code: discountCode,
+  const discountBasket = useMemo(
+    (): DiscountCheckBasket => ({
+      deliveryMethodId: selectedDeliveryMethod?.id,
       email: redemptionEmail,
-      itemsSubtotal: subtotalCents,
-      shippingTotal: deliveryCostCents,
+      heldSessionId,
+      lines: items.map((item) => ({ qty: item.qty, variantId: item.variantId })),
     }),
+    [heldSessionId, items, redemptionEmail, selectedDeliveryMethod?.id],
   )
+  const discountCheck = useQuery(validateDiscountCodeQuery({ ...discountBasket, code: discountCode }))
   const enteredCode = discountCode === "" ? undefined : discountCode
   const shared = {
-    deliveryCostCents,
+    discountBasket,
     discountCheck,
     enteredCode,
     hasDeliveryMethod: selectedDeliveryMethod !== undefined,
-    redemptionEmail,
-    subtotalCents,
   }
   if (checkoutSession !== undefined && isCheckoutSessionFor(checkoutSession, { items, values: getValues() })) {
     return { ...shared, isTotalFinal: true, totals: checkoutSession.totals }
@@ -73,8 +79,7 @@ export const CheckoutSummary = (): JSX.Element => {
   const format = useFormatter()
   const { items, itemCount } = useCartStore()
   const { setValue } = useCheckoutForm()
-  const { deliveryCostCents, discountCheck, enteredCode, hasDeliveryMethod, isTotalFinal, redemptionEmail, subtotalCents, totals } =
-    useCheckoutSummaryFigures()
+  const { discountBasket, discountCheck, enteredCode, hasDeliveryMethod, isTotalFinal, totals } = useCheckoutSummaryFigures()
   const handleDiscountApplied = useCallback(
     (code: string) => {
       setValue("discountCode", code, { shouldDirty: true })
@@ -135,14 +140,7 @@ export const CheckoutSummary = (): JSX.Element => {
 
       <div className="mt-6 border-t border-border/30 pt-6">
         {enteredCode !== undefined && <CheckoutDiscountCode check={discountCheck} code={enteredCode} onRemove={handleDiscountCleared} />}
-        {enteredCode === undefined && (
-          <CheckoutDiscountField
-            email={redemptionEmail}
-            itemsSubtotal={subtotalCents}
-            onApplied={handleDiscountApplied}
-            shippingTotal={deliveryCostCents}
-          />
-        )}
+        {enteredCode === undefined && <CheckoutDiscountField basket={discountBasket} onApplied={handleDiscountApplied} />}
       </div>
 
       <div className="mt-8 space-y-6 border-t border-foreground/20 pt-8">

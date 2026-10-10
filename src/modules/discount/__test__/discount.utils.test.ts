@@ -6,6 +6,7 @@ import {
   calculateDiscountAmount,
   normalizeDiscountCode,
   resolveAppliedCheckoutDiscount,
+  resolveDiscountPreviewRejection,
   resolveDiscountRejection,
   resolveDiscountStatus,
 } from "~/src/modules/discount/discount.utils"
@@ -154,6 +155,40 @@ describe("resolveDiscountRejection", () => {
 
   it("reports the most fundamental problem first", () => {
     expect(check({ endsAt: BEFORE, isActive: false, minOrderTotal: 99_999 })).toBe(DISCOUNT_REJECTION.INACTIVE)
+  })
+})
+
+const preview = (overrides = {}) =>
+  resolveDiscountPreviewRejection({
+    itemsSubtotal: 20_000,
+    now: NOW,
+    row: { ...rejectionRow(), heldByOtherCheckouts: 0, heldForCustomer: 0, ...overrides },
+  })
+
+describe("resolveDiscountPreviewRejection", () => {
+  it("accepts a code no other checkout holds", () => {
+    expect(preview({ perCustomerLimit: 1, usageCount: 2, usageLimit: 3 })).toBeUndefined()
+  })
+
+  it("accepts a code with a use left beside the ones other checkouts hold", () => {
+    expect(preview({ heldByOtherCheckouts: 1, usageCount: 1, usageLimit: 3 })).toBeUndefined()
+  })
+
+  it("turns down a code whose remaining uses other checkouts hold", () => {
+    expect(preview({ heldByOtherCheckouts: 1, usageCount: 2, usageLimit: 3 })).toBe(DISCOUNT_REJECTION.HELD)
+  })
+
+  it("turns down a code another of the customer's checkouts holds up to their limit", () => {
+    expect(preview({ heldForCustomer: 1, perCustomerLimit: 2, redeemedByCustomer: 1 })).toBe(DISCOUNT_REJECTION.HELD)
+  })
+
+  it("ignores holds on a code without limits", () => {
+    expect(preview({ heldByOtherCheckouts: 40, heldForCustomer: 3 })).toBeUndefined()
+  })
+
+  it("gives the rules' own reason before the holds", () => {
+    expect(preview({ heldByOtherCheckouts: 3, usageCount: 3, usageLimit: 3 })).toBe(DISCOUNT_REJECTION.EXHAUSTED)
+    expect(preview({ heldByOtherCheckouts: 3, minOrderTotal: 30_000, usageLimit: 3 })).toBe(DISCOUNT_REJECTION.MIN_ORDER_NOT_MET)
   })
 })
 
