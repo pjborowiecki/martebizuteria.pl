@@ -2,7 +2,7 @@ import { type ReactNode } from "react"
 
 import { Tooltip } from "@base-ui/react/tooltip"
 import { type QueryClient } from "@tanstack/react-query"
-import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router"
+import { HeadContent, Outlet, Scripts, createRootRouteWithContext, useRouter } from "@tanstack/react-router"
 
 import { ThemesProvider } from "~/src/providers/themes-provider"
 import { TranslationsProvider } from "~/src/providers/translations-provider"
@@ -52,6 +52,7 @@ const RootComponent = () => {
 const RootDocument = ({ children }: Readonly<{ children: ReactNode }>) => {
   const locale = getCurrentLocale()
   const isAdmin = isAdminPathname(getCurrentPathname())
+  const nonce = useRouter().options.ssr?.nonce
 
   return (
     <html
@@ -64,9 +65,9 @@ const RootDocument = ({ children }: Readonly<{ children: ReactNode }>) => {
         : {})}
     >
       <head>
-        <script dangerouslySetInnerHTML={THEME_INIT_SCRIPT_HTML} />
-        <script dangerouslySetInnerHTML={SIDEBAR_INIT_SCRIPT_HTML} />
-        <script dangerouslySetInnerHTML={DATAGRID_PREFS_INIT_SCRIPT_HTML} />
+        <script nonce={nonce} dangerouslySetInnerHTML={THEME_INIT_SCRIPT_HTML} />
+        <script nonce={nonce} dangerouslySetInnerHTML={SIDEBAR_INIT_SCRIPT_HTML} />
+        <script nonce={nonce} dangerouslySetInnerHTML={DATAGRID_PREFS_INIT_SCRIPT_HTML} />
         {!isAdmin && <StorefrontCriticalFontsHead locale={locale} />}
         <HeadContent />
       </head>

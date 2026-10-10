@@ -1,17 +1,24 @@
 import { type JSX } from "react"
 
 import { useQueryClient } from "@tanstack/react-query"
+import type * as Start from "@tanstack/react-start"
 import type * as StartServer from "@tanstack/react-start/server"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { currentRequest, devtools, session, sync } = vi.hoisted(() => ({
+const { currentRequest, devtools, requestContext, session, sync } = vi.hoisted(() => ({
   currentRequest: vi.fn<() => Request>(() => new Request("https://marte.test/cart")),
   devtools: vi.fn(() => null),
+  requestContext: vi.fn<() => { nonce: string } | undefined>(() => ({ nonce: "cmVxdWVzdC1ub25jZQ==" })),
   session: { clearCacheOnUserChange: vi.fn() },
   sync: { setupQueryClientInvalidationBroadcast: vi.fn() },
 }))
 
+vi.mock("@tanstack/react-start", async (importOriginal) => {
+  const actual = await importOriginal<typeof Start>()
+
+  return { ...actual, getGlobalStartContext: requestContext }
+})
 vi.mock("@tanstack/react-start/server", async (importOriginal) => {
   const actual = await importOriginal<typeof StartServer>()
 
@@ -51,6 +58,7 @@ const rewritten = (direction: "input" | "output", href: string): string => {
 beforeEach(() => {
   vi.clearAllMocks()
   currentRequest.mockReturnValue(new Request("https://marte.test/cart"))
+  requestContext.mockReturnValue({ nonce: "cmVxdWVzdC1ub25jZQ==" })
 })
 
 afterEach(() => {
@@ -92,6 +100,18 @@ describe("router defaults", () => {
 
     expect(options.scrollRestoration).toBe(true)
     expect(options.scrollRestorationBehavior).toBe("instant")
+  })
+})
+
+describe("router content security nonce", () => {
+  it("stamps the nonce the Worker allowed for this request on the scripts and styles Start renders", () => {
+    expect(getRouter().options.ssr?.nonce).toBe("cmVxdWVzdC1ub25jZQ==")
+  })
+
+  it("names no nonce where no request context provides one, as in the browser, which reads it from the page", () => {
+    requestContext.mockReturnValue(undefined)
+
+    expect(getRouter().options.ssr).toStrictEqual({})
   })
 })
 

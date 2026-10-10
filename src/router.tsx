@@ -4,6 +4,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { createRouter } from "@tanstack/react-router"
 import { setupRouterSsrQueryIntegration } from "@tanstack/react-router-ssr-query"
+import { createIsomorphicFn, getGlobalStartContext } from "@tanstack/react-start"
 
 import { clearCacheOnUserChange } from "~/src/integrations/better-auth/auth.session"
 import { setupQueryClientInvalidationBroadcast } from "~/src/integrations/tanstack-query/query.sync"
@@ -17,6 +18,8 @@ import { DefaultPendingComponent } from "~/src/presentation/components/custom/de
 
 import { routeTree } from "~/src/routeTree.gen"
 
+const getRequestNonce = createIsomorphicFn().server(() => getGlobalStartContext()?.nonce)
+
 export const getRouter = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -28,6 +31,7 @@ export const getRouter = () => {
   })
 
   const imagePrefetchService = new ImagePrefetchService()
+  const nonce = getRequestNonce()
   if (!import.meta.env.SSR) {
     setupQueryClientInvalidationBroadcast(queryClient)
     clearCacheOnUserChange(queryClient)
@@ -66,6 +70,7 @@ export const getRouter = () => {
     routeTree,
     scrollRestoration: true,
     scrollRestorationBehavior: "instant",
+    ssr: nonce === undefined ? {} : { nonce },
   })
   setupRouterSsrQueryIntegration({
     queryClient,

@@ -37,9 +37,14 @@ vi.mock("~/src/presentation/components/shadcn/sonner", () => ({
 
 import { Route as RootRoute } from "~/src/routes/__root"
 
+import { SIDEBAR_INIT_SCRIPT } from "~/src/presentation/theme/sidebar-preference"
+import { THEME_INIT_SCRIPT } from "~/src/presentation/theme/theme-init"
+
 import { ImagePrefetchService } from "~/src/lib/image"
 
-const renderRootAt = async (pathname: string) => {
+import { DATAGRID_PREFS_INIT_SCRIPT } from "~/src/presentation/components/custom/datagrid/datagrid-init"
+
+const renderRootAt = async (pathname: string, routerOptions: { readonly ssr?: { readonly nonce: string } } = {}) => {
   intl.pathname = pathname
   const catchAll = createRoute({
     component: () => <p>page body</p>,
@@ -51,6 +56,7 @@ const renderRootAt = async (pathname: string) => {
     context: { imagePrefetchService: new ImagePrefetchService(), queryClient: new QueryClient() },
     history: createMemoryHistory({ initialEntries: [pathname] }),
     routeTree: RootRoute.addChildren([index, catchAll]),
+    ...routerOptions,
   })
   await router.load()
 
@@ -95,5 +101,28 @@ describe("root layout component", () => {
     await renderRootAt("/products")
 
     expect(await screen.findByTestId("verification-toast")).toBeInTheDocument()
+  })
+})
+
+describe("root document inline scripts", () => {
+  const INLINE_SCRIPTS = new Set([THEME_INIT_SCRIPT, SIDEBAR_INIT_SCRIPT, DATAGRID_PREFS_INIT_SCRIPT])
+
+  const inlineScriptNonces = () =>
+    [...document.querySelectorAll("script")]
+      .filter((script) => INLINE_SCRIPTS.has(script.textContent))
+      .map((script) => script.getAttribute("nonce"))
+
+  it("runs the theme, sidebar and data grid scripts under the nonce the response's policy allows", async () => {
+    await renderRootAt("/products", { ssr: { nonce: "ZG9jdW1lbnQtbm9uY2U=" } })
+    await screen.findByText("page body")
+
+    expect(inlineScriptNonces()).toStrictEqual(["ZG9jdW1lbnQtbm9uY2U=", "ZG9jdW1lbnQtbm9uY2U=", "ZG9jdW1lbnQtbm9uY2U="])
+  })
+
+  it("renders the scripts without a nonce when the router has none", async () => {
+    await renderRootAt("/products")
+    await screen.findByText("page body")
+
+    expect(inlineScriptNonces()).toStrictEqual([null, null, null])
   })
 })

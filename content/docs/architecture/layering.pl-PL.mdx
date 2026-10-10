@@ -5,13 +5,13 @@ description: "Pięć warstw aplikacji, o czym każda z nich może decydować i d
 
 ## Warstwy
 
-| Warstwa          | Znajduje się w                              | Decyduje o                                                                              |
-| ---------------- | ------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Wejście Workera  | `src/server.ts`                             | Które żądania nigdy nie dotrą do Reacta; przekierowania locale; przekazanie `waitUntil` |
-| Dostarczanie     | `src/routes`, `src/router.tsx`              | Kształt URL-i, guardy, co strona wstępnie ładuje, tagi head                             |
-| Przypadki użycia | `src/modules/*/use-cases`                   | Kto może wywołać operację, jakie wejście jest poprawne, które klucze zapytań posiada    |
-| Dostęp do danych | `src/modules/*.accessors.ts`, `*.server.ts` | Jak wiersz jest czytany lub zapisywany; kształt SQL; prepared statements                |
-| Prezentacja      | `src/presentation`, `src/providers`         | Markup, style, które opcje zapytań odczytać                                             |
+| Warstwa          | Znajduje się w                              | Decyduje o                                                                                                       |
+| ---------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Wejście Workera  | `src/server.ts`                             | Które żądania nigdy nie dotrą do Reacta; przekierowania locale; przekazanie `waitUntil`; nagłówki bezpieczeństwa |
+| Dostarczanie     | `src/routes`, `src/router.tsx`              | Kształt URL-i, guardy, co strona wstępnie ładuje, tagi head                                                      |
+| Przypadki użycia | `src/modules/*/use-cases`                   | Kto może wywołać operację, jakie wejście jest poprawne, które klucze zapytań posiada                             |
+| Dostęp do danych | `src/modules/*.accessors.ts`, `*.server.ts` | Jak wiersz jest czytany lub zapisywany; kształt SQL; prepared statements                                         |
+| Prezentacja      | `src/presentation`, `src/providers`         | Markup, style, które opcje zapytań odczytać                                                                      |
 
 Dostawcy stoją obok tych warstw, nie w nich: `src/integrations/{vendor}` konfiguruje usługę zewnętrzną i oddaje decyzje domenowe modułowi, który jest właścicielem danych.
 
@@ -63,7 +63,7 @@ Obce `orderId` nie zwraca żadnego wiersza, więc nie ma czego wyciekać.
 3. `ROUTES.API_REALTIME.ADMIN_WS` i `ROUTES.API_REALTIME.STOREFRONT_WS` — upgrade'y WebSocket przekazywane do `handleRealtimeInvalidationWebSocket`.
 4. Przekierowanie locale z `resolveLocale`, zwracane jako `301` przed czymkolwiek innym.
 
-Wszystko pozostałe jest owinięte w `executionContextStorage.run({ waitUntil }, …)`, żeby praca w tle zaplanowana głęboko w warstwie domenowej wciąż mogła dosięgnąć `ExecutionContext` Workera. Ten sam plik eksportuje również handler `queue`, który opróżnia kolejkę dziennika audytu, i re-eksportuje klasę `RealtimeInvalidationHub`, żeby Wrangler mógł ją zbindować.
+Wszystko pozostałe jest owinięte w `executionContextStorage.run({ waitUntil }, …)`, żeby praca w tle zaplanowana głęboko w warstwie domenowej wciąż mogła dosięgnąć `ExecutionContext` Workera. Każda odpowiedź poza przejściami na WebSocket, łącznie z dwoma pierwszymi skrótami i przekierowaniem, wychodzi przez `withSecurityHeaders` z `src/lib/security-headers.ts`, z nonce'em Content-Security-Policy wylosowanym dla żądania i przekazanym handlerowi Start w kontekście żądania; zobacz [Model bezpieczeństwa](/docs/architecture/security-model#nagłówki-odpowiedzi). Ten sam plik eksportuje również handler `queue`, który opróżnia kolejkę dziennika audytu, i re-eksportuje klasę `RealtimeInvalidationHub`, żeby Wrangler mógł ją zbindować.
 
 ## Praca w tle
 

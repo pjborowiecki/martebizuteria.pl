@@ -12,6 +12,7 @@ import { ROUTES } from "~/src/routes"
 
 interface StartRequestContext {
   readonly env: Env
+  readonly nonce: string
   readonly passThroughOnException: () => void
   readonly waitUntil: (promise: Promise<unknown>) => void
 }
@@ -29,6 +30,7 @@ const realtime = vi.hoisted(() => ({ handleRealtimeInvalidationWebSocket: vi.fn(
 
 const queue = vi.hoisted(() => ({ processAuditLogQueueBatch: vi.fn(() => Promise.resolve()) }))
 
+vi.mock("cloudflare:workers", () => ({ env: { VITE_R2_URL: "https://images.marte.test" } }))
 vi.mock("~/src/durable-objects/realtime-invalidation-hub", () => ({ RealtimeInvalidationHub: vi.fn() }))
 vi.mock("@tanstack/react-start/server-entry", () => ({ default: entry }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server", () => realtime)
@@ -224,6 +226,63 @@ describe("worker request context", () => {
     const { context } = await fetchPath("/about")
 
     expect(context.keptAlive).toHaveLength(1)
+  })
+})
+
+describe("worker security headers", () => {
+  it("allows the inline scripts carrying the nonce it handed the application, and no others", async () => {
+    const { response } = await fetchPath("/about")
+    const { nonce } = lastStartOptions().context
+
+    expect(nonce).toMatch(/^[A-Za-z0-9+/]{22}==$/u)
+    expect(response.headers.get("content-security-policy")).toContain(`script-src 'self' 'nonce-${nonce}' `)
+  })
+
+  it("draws a new nonce for every request", async () => {
+    await fetchPath("/about")
+    const { nonce: first } = lastStartOptions().context
+    await fetchPath("/about")
+
+    expect(lastStartOptions().context.nonce).not.toBe(first)
+  })
+
+  it("lets pages load images and video from the configured image host", async () => {
+    const { response } = await fetchPath("/about")
+
+    expect(response.headers.get("content-security-policy")).toContain("https://images.marte.test")
+  })
+
+  it.each(["/about", "/sitemap.xml", "/robots.txt", "/pl-PL/about"])("protects the response to %s", async (path) => {
+    const { response } = await fetchPath(path)
+
+    expect(response.headers.get("content-security-policy")).toContain("frame-ancestors 'none'")
+    expect(response.headers.get("x-frame-options")).toBe("DENY")
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff")
+    expect(response.headers.get("referrer-policy")).toBe("strict-origin-when-cross-origin")
+    expect(response.headers.get("permissions-policy")).toBe("camera=(), geolocation=(), microphone=()")
+  })
+
+  it("keeps the locale cookie next to the security headers", async () => {
+    const { response } = await fetchPath("/en-US/about")
+
+    expect(response.headers.get("set-cookie")).toContain(`${I18N.COOKIE_NAME}=en-US`)
+    expect(response.headers.get("x-frame-options")).toBe("DENY")
+  })
+
+  it("never pins HTTPS for the development environment, even over HTTPS", async () => {
+    const { response } = await fetchPath("/about")
+
+    expect(response.headers.has("strict-transport-security")).toBe(false)
+  })
+
+  it("hands a WebSocket upgrade back exactly as the realtime hub answered it", async () => {
+    const upgraded = new Response("upgraded")
+    realtime.handleRealtimeInvalidationWebSocket.mockResolvedValueOnce(upgraded)
+
+    const { response } = await fetchPath(ROUTES.API_REALTIME.STOREFRONT_WS)
+
+    expect(response).toBe(upgraded)
+    expect(response.headers.has("content-security-policy")).toBe(false)
   })
 })
 

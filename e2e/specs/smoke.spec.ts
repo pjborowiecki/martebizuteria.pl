@@ -9,6 +9,23 @@ const PUBLIC_PAGES = [
   { heading: "Stay with us a little longer", path: "/en-US/auth/sign-up" },
 ] as const
 
+const PAGES_UNDER_POLICY = ["/en-US", `/en-US/products/${PRODUCTS.lapis.handle}`, "/en-US/auth/sign-in", "/en-US/docs"] as const
+
+const ZOD_EVAL_PROBE = "eval"
+
+interface PolicyViolation {
+  readonly blockedURI: string
+  readonly effectiveDirective: string
+}
+
+const recordPolicyViolations = (): void => {
+  const violations: PolicyViolation[] = []
+  Reflect.set(globalThis, "policyViolations", violations)
+  document.addEventListener("securitypolicyviolation", ({ blockedURI, effectiveDirective }) => {
+    violations.push({ blockedURI, effectiveDirective })
+  })
+}
+
 const CONTENT_PAGES = [
   { path: "/en-US/privacy-policy", title: "Privacy policy" },
   { path: "/en-US/exchanges-and-returns", title: "Exchanges and returns" },
@@ -46,6 +63,40 @@ test.describe("smoke", () => {
       await expect(article.getByRole("heading", { level: 2 }).first()).toBeVisible()
     })
   }
+
+  for (const path of PAGES_UNDER_POLICY) {
+    test(`${path} hydrates under its content security policy without the browser refusing a script, style or request`, async ({
+      page,
+      productPage,
+    }) => {
+      await page.addInitScript(recordPolicyViolations)
+      const response = await page.goto(path)
+      await productPage.waitForAppReady()
+
+      const nonce = await page.locator('meta[property="csp-nonce"]').getAttribute("content")
+      const violations: PolicyViolation[] = await page.evaluate(() => Reflect.get(globalThis, "policyViolations"))
+
+      expect(nonce).not.toBeNull()
+      expect(response?.headers()["content-security-policy"]).toContain(`'nonce-${String(nonce)}'`)
+      expect(violations.filter(({ blockedURI }) => blockedURI !== ZOD_EVAL_PROBE)).toStrictEqual([])
+    })
+  }
+
+  test("answers pages and static files with headers that refuse framing and content sniffing, and leaves HTTPS pinning to deployments", async ({
+    request,
+  }) => {
+    const page = await request.get("/en-US")
+    const favicon = await request.get("/favicon.svg")
+
+    expect(page.headers()["x-frame-options"]).toBe("DENY")
+    expect(page.headers()["x-content-type-options"]).toBe("nosniff")
+    expect(page.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin")
+    expect(page.headers()["permissions-policy"]).toBe("camera=(), geolocation=(), microphone=()")
+    expect(page.headers()["content-security-policy"]).toContain("frame-ancestors 'none'")
+    expect(page.headers()["strict-transport-security"]).toBeUndefined()
+    expect(favicon.headers()["x-content-type-options"]).toBe("nosniff")
+    expect(favicon.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin")
+  })
 
   test("keeps every environment but production out of search engines while serving the sitemap", async ({ request }) => {
     const robots = await request.get("/robots.txt")
