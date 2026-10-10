@@ -183,7 +183,7 @@ const coupon = await stripe.coupons.create({
 return [{ coupon: coupon.id }]
 ```
 
-Kod `free_shipping` staje się więc `amount_off` równym kosztowi dostawy, a pozycja `"Shipping"` zostaje w sesji. Metadane sesji niosą też `discountCode` i `discountTotal`, których webhook nie czyta. Kody promocyjne samego Stripe nie są włączone.
+Kod `free_shipping` staje się więc `amount_off` równym kosztowi dostawy, a pozycja dostawy zostaje w sesji. Metadane sesji niosą też `discountCode` i `discountTotal`, których webhook nie czyta. Kody promocyjne samego Stripe nie są włączone.
 
 Każda sesja utworzona lub zastąpiona z kodem dostaje własny kupon, oznaczony w metadanych kuponu identyfikatorem checkoutu i `source: STRIPE_COUPON_SOURCE` (`"marte_checkout"`). `deleteCheckoutCoupons` z tego samego pliku usuwa go, gdy żadna sesja nie może już z niego skorzystać:
 

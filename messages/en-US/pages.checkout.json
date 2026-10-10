@@ -44,6 +44,11 @@
     "title": "Orders are paused",
     "description": "We have stopped taking orders for a while, so checkout is closed. Your cart will wait here, and you can place your order as soon as we reopen."
   },
+  "deliveryLineItem": {
+    "courier": "Courier delivery",
+    "locker": "InPost Parcel Locker delivery",
+    "in_store": "In-store pickup"
+  },
   "checkoutForm": {
     "paymentCard": "Card",
     "paymentBlik": "BLIK",

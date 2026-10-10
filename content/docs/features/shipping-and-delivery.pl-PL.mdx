@@ -153,7 +153,7 @@ Mapa to `react-map-gl/maplibre` z podkładem Carto Voyager (`https://basemaps.ca
 
 1. `deliveryMethod` (identyfikator metody) jest wysyłany razem z formularzem kasy.
 2. `resolveDelivery` odrzuca metodę, której sklep nie oferuje, i metodę paczkomatową bez paczkomatu, zachowuje `lockerId` tylko dla metody paczkomatowej i odczytuje `price` metody.
-3. `prepareCreateCheckoutBatch` zapisuje metodę do `checkout.delivery_method_id`, a `lockerId` do `checkout.locker_id`; `createStripeSession` dodaje dla ceny pozycję `"Shipping"`, gdy jest większa od zera.
+3. `prepareCreateCheckoutBatch` zapisuje metodę do `checkout.delivery_method_id`, a `lockerId` do `checkout.locker_id`; `createStripeSession` dodaje dla ceny pozycję dostawy, gdy jest większa od zera, nazwaną według typu metody w języku kupującego (`deliveryLineItem` w `pages.checkout`).
 4. `prepareFulfillCheckoutBatch` kopiuje `deliveryMethodId`, `lockerId` i `customerNote` z migawki checkoutu na nowy wiersz `order` i wylicza `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
 5. Przy zamówieniu do paczkomatu albo kurierem administrator może nadać paczkę w InPost ze strony zamówienia. Identyfikator i status przesyłki trafiają do `order.inpost_shipment_id` i `order.inpost_shipment_status`, numer do śledzenia i link do `order.tracking_number` i `order.tracking_url`, a etykietę PDF pobiera się z tej samej karty. Zobacz [InPost](/docs/integrations/inpost#przesyłki-przez-shipx).
 

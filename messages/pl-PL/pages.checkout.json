@@ -44,6 +44,11 @@
     "title": "Przyjmowanie zamówień jest wstrzymane",
     "description": "Na pewien czas przestaliśmy przyjmować zamówienia, więc kasa jest zamknięta. Twój koszyk poczeka, a zamówienie złożysz zaraz po wznowieniu sprzedaży."
   },
+  "deliveryLineItem": {
+    "courier": "Dostawa kurierem",
+    "locker": "Dostawa do Paczkomatu InPost",
+    "in_store": "Odbiór osobisty"
+  },
   "checkoutForm": {
     "paymentCard": "Karta",
     "paymentBlik": "BLIK",

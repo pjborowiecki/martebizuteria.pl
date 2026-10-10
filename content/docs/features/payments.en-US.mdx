@@ -40,7 +40,7 @@ Sessions are created with `ui_mode: "elements"`, which means the card form is em
 ```ts
 const params: StripeType.Checkout.SessionCreateParams = {
   expires_at: Math.floor(Date.now() / MILLISECONDS_PER_SECOND) + CHECKOUT_SESSION_LIFETIME_SECONDS,
-  line_items: toLineItems(lines, shippingCost),
+  line_items: toLineItems(lines, { cost: shippingCost, name: messages.deliveryLineItem[deliveryType] }),
   metadata,
   mode: "payment",
   payment_intent_data: { metadata, receipt_email: email },
@@ -69,7 +69,7 @@ const session = await stripe.checkout.sessions.create(params).catch(async (error
 
 The same `metadata` object is attached to the session and to the payment intent, so a webhook that only has the intent can still find the checkout. It carries `checkoutId`, `discountCode` and `discountTotal` (an empty string and `"0"` without a discount), `locale` (from `getCurrentLocale()`), `userId` (empty string for a guest) and the chunked `items0…N` list.
 
-Line items are built from the server-validated prices, plus a literal `"Shipping"` line when the delivery method costs more than zero. The line-item names come from `lineTitle`, which is `"<product title> — <variant title>"` unless the variant title is empty. A discount is not a line item: `toSessionDiscounts` (`src/integrations/stripe/stripe.coupons.server.ts`) creates a one-time Stripe coupon for the amount `resolveCheckoutDiscount` computed, tagged with the checkout id and `source: "marte_checkout"`, and the session receives it in `discounts`. `createStripeSession` deletes that coupon at once when Stripe refuses the session, and the webhook deletes it once the session completes or expires. See [Discounts](/docs/features/discounts).
+Line items are built from the server-validated prices, plus a delivery line when the delivery method costs more than zero. That line is named in the shopper's language: `createStripeSession` loads the `pages.checkout` messages for the checkout's locale and takes `deliveryLineItem.<type>` for the method's type, so the line on a Polish receipt reads "Dostawa kurierem" or "Dostawa do Paczkomatu InPost" and on an English one "Courier delivery" or "InPost Parcel Locker delivery". The method's own `name` is not used, because it is stored in Polish only. The line-item names come from `lineTitle`, which is `"<product title> — <variant title>"` unless the variant title is empty. A discount is not a line item: `toSessionDiscounts` (`src/integrations/stripe/stripe.coupons.server.ts`) creates a one-time Stripe coupon for the amount `resolveCheckoutDiscount` computed, tagged with the checkout id and `source: "marte_checkout"`, and the session receives it in `discounts`. `createStripeSession` deletes that coupon at once when Stripe refuses the session, and the webhook deletes it once the session completes or expires. See [Discounts](/docs/features/discounts).
 
 ## The payment row
 

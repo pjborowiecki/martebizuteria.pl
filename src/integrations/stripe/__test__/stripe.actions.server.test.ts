@@ -248,7 +248,7 @@ describe("handleCreateCheckoutSession", () => {
             price_data: { currency: "pln", product_data: { name: "Bransoletka Aurora — Rozmiar M" }, unit_amount: 24_900 },
             quantity: 2,
           },
-          { price_data: { currency: "pln", product_data: { name: "Shipping" }, unit_amount: 1500 }, quantity: 1 },
+          { price_data: { currency: "pln", product_data: { name: "Dostawa kurierem" }, unit_amount: 1500 }, quantity: 1 },
         ],
         mode: "payment",
         ui_mode: "elements",
@@ -329,7 +329,7 @@ describe("handleCreateCheckoutSession", () => {
       expect.objectContaining({
         line_items: [
           { price_data: { currency: "pln", product_data: { name: "Bransoletka Aurora" }, unit_amount: 24_900 }, quantity: 2 },
-          { price_data: { currency: "pln", product_data: { name: "Shipping" }, unit_amount: 1500 }, quantity: 1 },
+          { price_data: { currency: "pln", product_data: { name: "Dostawa kurierem" }, unit_amount: 1500 }, quantity: 1 },
         ],
       }),
     )
