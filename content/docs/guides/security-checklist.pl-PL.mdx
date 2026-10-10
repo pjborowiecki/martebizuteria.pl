@@ -46,6 +46,7 @@ Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli z
 - [ ] Każdy link w e-mailu i `return_url` Stripe są budowane z `resolveRequestOrigin(request)` (`src/lib/request.ts`), które czyta wyłącznie `request.url` i odrzuca host spoza tej listy z `FORBIDDEN`. Potwierdzenie zamówienia, wysyłane z webhooka, bierze origin z `return_url` sesji przez `resolveDeploymentOrigin`, które odrzuca host nieobsługiwany przez żadne wdrożenie. Nic nie buduje ich z `APP_URL` ani z nagłówków `Origin`, `Referer`, `Host` czy `X-Forwarded-*`.
 - [ ] `account.encryptOAuthTokens: true` i `verification.storeIdentifier: "hashed"`.
 - [ ] `account.accountLinking` nie ustawia `trustedProviders`, więc logowanie przez Google lub GitHub dołącza do istniejącego konta tylko wtedy, gdy dostawca zgłasza adres e-mail jako zweryfikowany. `auth.account-linking.integration.test.ts` sprawdza, że niezweryfikowany adres nie zostaje połączony.
+- [ ] Brak wtyczki `anonymous()`. Każda sesja Better Auth należy do prawdziwego użytkownika i przechodzi `authorized()`, a goście składają zamówienia bez logowania. `auth.anonymous-sign-in.integration.test.ts` sprawdza, że `/sign-in/anonymous` odpowiada 404 i nie tworzy użytkownika.
 - [ ] `multiSession({ maximumSessions: 5 })` i `session.storeSessionInDatabase: true`.
 - [ ] `telemetry.enabled: false`.
 - [ ] Dane sesji wysyłane do przeglądarki przechodzą przez `getCurrentSession` w `auth.session.ts`, gdzie `toClientSession` usuwa `session.token`. Nie zwracaj surowej sesji Better Auth z funkcji serwerowej.

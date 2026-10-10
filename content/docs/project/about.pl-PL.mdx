@@ -53,21 +53,21 @@ Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed
 
 ## Stos technologiczny
 
-| Obszar              | Wybór                                                                         | Gdzie jest konfigurowany                            |
-| ------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------- |
-| Framework           | TanStack Start 1.168 + TanStack Router 1.170                                  | `vite.config.ts`, `src/router.tsx`                  |
-| Interfejs           | React 19.3, Tailwind CSS 4, komponenty shadcn, Base UI                        | `src/presentation/`                                 |
-| Dane                | D1 + Drizzle ORM 0.45, `drizzle-zod` do schematów                             | `src/integrations/drizzle-orm/`                     |
-| Cache klienta       | TanStack Query 5.103, opcje zapytań eksportowane przy przypadku użycia        | `src/integrations/tanstack-query/`                  |
-| Uwierzytelnianie    | Better Auth 1.7 z wtyczkami `admin`, `twoFactor`, `multiSession`, `anonymous` | `src/integrations/better-auth/auth.server.ts`       |
-| Płatności           | Stripe 22.6 (SDK serwerowy) + `@stripe/react-stripe-js`                       | `src/integrations/stripe/`                          |
-| Poczta              | Resend 6.28 + React Email 6.11                                                | `src/integrations/resend/`                          |
-| Internacjonalizacja | `use-intl` 4.14, jeden plik JSON na przestrzeń nazw                           | `src/integrations/use-intl/`, `messages/{locale}/`  |
-| Dokumentacja        | Fumadocs MDX 15 + `fumadocs-core` 16                                          | `src/integrations/fumadocs/`                        |
-| Animacje            | GSAP 3.15 + Lenis (płynne przewijanie)                                        | `src/integrations/gsap/`, `src/integrations/lenis/` |
-| Walidacja           | Zod 4.6                                                                       | `{feature}.zod.ts` w każdym module                  |
-| Narzędzia           | Vite+ `1.0.0-rc.0` — dev, build, formatowanie, lint i testy w jednym          | `vite.config.ts`                                    |
-| Menedżer paczek     | Bun 1.4.0                                                                     | `packageManager` w `package.json`                   |
+| Obszar              | Wybór                                                                  | Gdzie jest konfigurowany                            |
+| ------------------- | ---------------------------------------------------------------------- | --------------------------------------------------- |
+| Framework           | TanStack Start 1.168 + TanStack Router 1.170                           | `vite.config.ts`, `src/router.tsx`                  |
+| Interfejs           | React 19.3, Tailwind CSS 4, komponenty shadcn, Base UI                 | `src/presentation/`                                 |
+| Dane                | D1 + Drizzle ORM 0.45, `drizzle-zod` do schematów                      | `src/integrations/drizzle-orm/`                     |
+| Cache klienta       | TanStack Query 5.103, opcje zapytań eksportowane przy przypadku użycia | `src/integrations/tanstack-query/`                  |
+| Uwierzytelnianie    | Better Auth 1.7 z wtyczkami `admin`, `twoFactor`, `multiSession`       | `src/integrations/better-auth/auth.server.ts`       |
+| Płatności           | Stripe 22.6 (SDK serwerowy) + `@stripe/react-stripe-js`                | `src/integrations/stripe/`                          |
+| Poczta              | Resend 6.28 + React Email 6.11                                         | `src/integrations/resend/`                          |
+| Internacjonalizacja | `use-intl` 4.14, jeden plik JSON na przestrzeń nazw                    | `src/integrations/use-intl/`, `messages/{locale}/`  |
+| Dokumentacja        | Fumadocs MDX 15 + `fumadocs-core` 16                                   | `src/integrations/fumadocs/`                        |
+| Animacje            | GSAP 3.15 + Lenis (płynne przewijanie)                                 | `src/integrations/gsap/`, `src/integrations/lenis/` |
+| Walidacja           | Zod 4.6                                                                | `{feature}.zod.ts` w każdym module                  |
+| Narzędzia           | Vite+ `1.0.0-rc.0` — dev, build, formatowanie, lint i testy w jednym   | `vite.config.ts`                                    |
+| Menedżer paczek     | Bun 1.4.0                                                              | `packageManager` w `package.json`                   |
 
 ## Repozytorium w liczbach
 

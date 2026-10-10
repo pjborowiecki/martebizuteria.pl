@@ -47,7 +47,6 @@ const userWithRole = (role: string, id = "usr_1"): SessionUser => ({
   email: "shopper@marte.test",
   emailVerified: true,
   id,
-  isAnonymous: null,
   name: "Shopper",
   role,
   twoFactorEnabled: null,

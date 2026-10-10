@@ -16,7 +16,7 @@ The `user` table is shared with Better Auth, so "customers" is a view over authe
 | `email_verified`                      | Boolean, default `false`, not null                                   |
 | `role`                                | `admin \| customer`, default `DEFAULT_ROLE` (`customer`)             |
 | `banned`, `ban_reason`, `ban_expires` | Better Auth admin plugin fields                                      |
-| `is_anonymous`                        | Boolean, default `false`                                             |
+| `is_anonymous`                        | Boolean, default `false`; nothing writes it (see below)              |
 | `two_factor_enabled`                  | Boolean, default `false`                                             |
 | `phone`                               | 32 characters; written by `updateCustomerPhone` and `updateCustomer` |
 | `timezone`                            | 64 characters                                                        |
@@ -25,6 +25,8 @@ The `user` table is shared with Better Auth, so "customers" is a view over authe
 | `metadata`                            | A JSON string holding admin notes and tags                           |
 
 One index: `user_createdAt_idx`.
+
+`is_anonymous` is left from Better Auth's `anonymous()` plugin, which the shop no longer loads (see [Better Auth](/docs/integrations/better-auth#no-anonymous-sign-in)): nothing sets it any more, and a new user takes the default. It still marks the users that plugin created, which the grid lists as customers with a placeholder address and the name "Anonymous". It stays in the table and in the Drizzle schema until a migration of its own drops it, applied only after code that no longer declares it is deployed, because a Worker still running older code selects it with every user row it loads.
 
 ## Routes
 

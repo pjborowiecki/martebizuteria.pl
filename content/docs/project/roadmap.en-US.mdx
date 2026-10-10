@@ -59,14 +59,6 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 `.env.example` declares `SENTRY_AUTH_TOKEN`, but nothing in `src/` initialises a client and `wrangler.jsonc` does not declare the variable. Every failure path currently ends at `console.error`, which means it ends in the Workers log tail and nowhere durable. Either wire a reporter or drop the variable so it stops implying one exists.
 
-### Declared but unused
-
-| Thing                | State                                                                                             |
-| -------------------- | ------------------------------------------------------------------------------------------------- |
-| `anonymous()` plugin | Registered in `src/integrations/better-auth/auth.server.ts`; no flow creates an anonymous session |
-
-It is a decision waiting to be made: use it, or remove it so the next reader does not assume it is load-bearing.
-
 ### The `refund` permission is never checked
 
 The admin console now issues refunds. The Refund button on `/admin/orders/$orderId` calls `refundAdminOrder` in `src/modules/order/use-cases/refund-admin-order.ts`, which asks Stripe for a full refund with `stripe.refunds.create`, and the `charge.refunded` webhook then records it through `handleChargeRefunded` in `src/integrations/stripe/stripe.webhooks.tsx`, exactly as it does for a refund issued in Stripe. `refundAdminOrder` is guarded by `authorized({ order: ["update"] })`, so the `order: ["refund"]` permission declared in `auth.access.ts` is still never checked anywhere. Cancel order on a paid order requests the same refund through `requestFullOrderRefund` and is guarded the same way. Either check it in both or remove it.
