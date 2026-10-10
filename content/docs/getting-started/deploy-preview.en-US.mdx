@@ -3,9 +3,9 @@ title: "Deploy a preview"
 description: "Provision the Cloudflare resources, then build, verify and deploy the preview Worker."
 ---
 
-The `preview` environment deploys a Worker named `martebizuteria-preview`, which Cloudflare serves at `https://martebizuteria-preview.pjborowiecki.workers.dev` — the URL the preview workflow posts on each pull request. Production deploys `martebizuteria`.
+The `preview` environment deploys a Worker named `martebizuteria-preview`, which Cloudflare serves at `https://preview.martebizuteria.pl` and at `https://martebizuteria-preview.pjborowiecki.workers.dev`, the URL the preview workflow posts on each pull request. Production deploys `martebizuteria`, served at `https://martebizuteria.pl` and at `https://martebizuteria.pjborowiecki.workers.dev`.
 
-`wrangler.jsonc` declares no `routes` and no `custom_domain`, so both Workers are reachable on their `workers.dev` subdomains only. `APP_DOMAIN` in `src/presentation/branding/app.ts` is `martebizuteria.pl` and `HOSTS_BY_MODE` lists `preview.martebizuteria.pl` as an accepted host for auth, email links and the Stripe return URL, but nothing in the Wrangler configuration attaches those hostnames. If you need a custom domain, adding it is a Wrangler configuration change, not a code change.
+Each of the two environments in `wrangler.jsonc` attaches its custom domain through `routes` with `custom_domain: true` and sets `workers_dev: true`, because Wrangler would otherwise turn the `workers.dev` hostname off for a Worker with routes, and the deploy's live-site check asks that hostname. The custom domains are the hosts besides `workers.dev` that `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts` accepts for auth, email links and the Stripe return URL, and `src/modules/_core/constants/__test__/api.test.ts` fails when the two disagree. No `www` hostname is attached: `APP_URL`, and with it every canonical link, is the bare `https://martebizuteria.pl`.
 
 ## Provision the resources
 
@@ -61,12 +61,19 @@ if (
 
 Note the placeholder check: an id of all zeroes and dashes is rejected, which is what stops a copied template being deployed.
 
+### The custom domains
+
+Wrangler attaches a custom domain only in a zone of the same Cloudflare account, so `martebizuteria.pl` has to be an active zone there before the first deploy. Cloudflare then creates the DNS record and the certificate for each hostname itself. An A, AAAA or CNAME record already on `martebizuteria.pl` or `preview.martebizuteria.pl` conflicts with the custom domain: a deploy from a terminal asks before replacing it, and a deploy from CI replaces it without asking. The zone's MX and TXT records, which the shop's mailbox and the Resend sender rely on, are not touched.
+
+A deploy makes the Worker's custom domains match `routes`, so a hostname attached to the Worker by hand in the dashboard is detached by the next deploy; add it to `routes` instead. Besides deploying Workers, the API token needs the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone to attach the domains.
+
 ### If you change the hostname
 
-Two code changes go with it:
+Three changes go with it:
 
 - `APP_DOMAIN` in `src/presentation/branding/app.ts`, which `APP_URL`, and through it the canonical links, the OG tags and the structured data, derive from.
 - `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts`. Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`, so a host absent from that list has its auth requests rejected and sign-in fails on the new domain with no obvious error. `resolveRequestOrigin` checks the same list before it builds an email link or a Stripe return URL, so on a missing host the newsletter sign-up, the checkout and the admin's shipping and customer-deletion actions answer `FORBIDDEN` as well.
+- The `routes` entry of each environment in `wrangler.jsonc`, which attaches the new hostname to the Worker as a custom domain.
 
 ## Deploy
 
@@ -148,7 +155,7 @@ Repository **variables**:
 
 The deploy's last step has already asked the new Worker for the home page, the product listing, `robots.txt` and the Stripe webhook route. When it fails, the new version is live but not answering like the shop; [Roll back a deploy](/docs/guides/roll-back-a-deploy) covers what to do.
 
-Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` and the Stripe endpoint at `/api/webhooks/stripe`. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ. The endpoint's host does not decide where the order confirmation links: it links to the address the checkout was made on, taken from the session's `return_url`.
+Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` and the Stripe endpoint at `/api/webhooks/stripe`, which is `https://preview.martebizuteria.pl/api/webhooks/stripe` on preview and `https://martebizuteria.pl/api/webhooks/stripe` in production. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ. The endpoint's host does not decide where the order confirmation links: it links to the address the checkout was made on, taken from the session's `return_url`.
 
 ## Related
 

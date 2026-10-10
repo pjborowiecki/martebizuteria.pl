@@ -108,7 +108,7 @@ Several settings people expect to find in `.env` are constants:
 | Facebook and Instagram links                                                 | `src/presentation/branding/socials.ts`                  |
 | Hosts each mode serves: auth, email links, the Stripe return URL             | `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts` |
 | Supported locales, default locale, locale cookie name, timezones             | `src/integrations/use-intl/i18n.config.ts`              |
-| D1, R2, KV and Queue identifiers, Worker names                               | `wrangler.jsonc`                                        |
+| D1, R2, KV and Queue identifiers, Worker names, custom domains               | `wrangler.jsonc`                                        |
 
 `appHostsForMode` is the one to remember when you change domains:
 
@@ -126,7 +126,7 @@ const HOSTS_BY_MODE: Readonly<Record<string, readonly string[]>> = {
 const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]
 ```
 
-Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. A host missing from this list will have its auth requests rejected, which looks like sign-in silently failing on a new domain. `WORKERS_DEV_HOSTS` is also where the deploy's live-site check sends its requests, so a Worker renamed in `wrangler.jsonc` needs its new `workers.dev` name there.
+Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. A host missing from this list will have its auth requests rejected, which looks like sign-in silently failing on a new domain. `WORKERS_DEV_HOSTS` is also where the deploy's live-site check sends its requests, so a Worker renamed in `wrangler.jsonc` needs its new `workers.dev` name there. Every other host of a deployed mode is attached to that Worker as a custom domain by `routes` in `wrangler.jsonc`, so a new domain goes into both files, and `src/modules/_core/constants/__test__/api.test.ts` fails until they agree.
 
 `resolveRequestOrigin` (`src/lib/request.ts`) checks the same list before the app builds a link into an email or a Stripe `return_url`, so emails link back to the host the customer or admin used: `localhost:3000` or `127.0.0.1:3000` locally, the preview host on preview, and `martebizuteria.pl` or the production `workers.dev` name in production. A request on a host missing from the list is refused with `FORBIDDEN`. The order confirmation is sent from the Stripe webhook and takes the origin of the session's `return_url`, which `resolveDeploymentOrigin` checks against the hosts of every mode. `LOCAL_HOSTS` pins port 3000, which Vite's `strictPort` already enforces for the dev server.
 
@@ -138,7 +138,7 @@ Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.
 | GitHub   | `https://<host>/api/auth/callback/github` | Client id and secret    |
 | Stripe   | `https://<host>/api/webhooks/stripe`      | `STRIPE_WEBHOOK_SECRET` |
 
-The auth handler is `src/routes/api/auth.$.ts`, mounted at `/api/auth/$`; the Stripe handler is `src/routes/api/webhooks.stripe.ts` and accepts `POST` only. The host the Stripe endpoint is registered on does not change any email: the order confirmation links to the address the checkout was made on, which the session's `return_url` carries.
+On a deployed Worker, `<host>` is its custom domain, `martebizuteria.pl` in production and `preview.martebizuteria.pl` on preview, or its `workers.dev` name, which keeps answering. The auth handler is `src/routes/api/auth.$.ts`, mounted at `/api/auth/$`; the Stripe handler is `src/routes/api/webhooks.stripe.ts` and accepts `POST` only. The host the Stripe endpoint is registered on does not change any email: the order confirmation links to the address the checkout was made on, which the session's `return_url` carries.
 
 ## Declared but not wired
 

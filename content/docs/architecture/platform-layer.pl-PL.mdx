@@ -30,6 +30,8 @@ Flaga `nodejs_compat` udostępnia `node:async_hooks`, którego `src/lib/backgrou
 | `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run build:preview`, `deploy:preview`, `start` |
 | `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria-audit-log`         | `bun run build:production`, `deploy:production`    |
 
+`preview` podłącza `preview.martebizuteria.pl`, a `production` podłącza `martebizuteria.pl` jako domenę własną przez `routes` z `custom_domain: true`. Oba ustawiają też `workers_dev: true`, więc ich nazwy `workers.dev` nadal odpowiadają obok domeny; czego potrzebuje strefa, opisuje [Wdrożenie podglądu](/docs/getting-started/deploy-preview).
+
 Każdy binding jest oznaczony `"remote": true`, więc `bun run dev` łączy się z prawdziwym D1, R2 i KV środowiska development, a nie z lokalną emulacją. Plugin Cloudflare dla Vite włącza zdalne bindingi tylko wtedy, gdy `CLOUDFLARE_ENV` ma wartość `development`. Migracje muszą więc być zastosowane przed pierwszym uruchomieniem:
 
 ```sh

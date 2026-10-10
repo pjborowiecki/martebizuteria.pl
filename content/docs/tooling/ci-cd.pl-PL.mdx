@@ -153,7 +153,7 @@ env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json
 
 Wywołuje `verifyDeployment` z `src/lib/deployment.ts`, które pyta własny host `workers.dev` środowiska, z `WORKERS_DEV_HOSTS` w `src/modules/_core/constants/api.ts`, o cztery strony, bez podążania za przekierowaniami. `/` i `/products` muszą odpowiedzieć `200` z `text/html`, `/robots.txt` musi odpowiedzieć `200` z `text/plain`, a `/api/webhooks/stripe` musi odrzucić `GET` kodem `405` z `text/plain`, co pokazuje, że żądanie dotarło do własnego handlera trasy, a nie do wyrenderowanej strony. Każde żądanie rezygnuje po 15 sekundach, a o stronę, która zawiedzie, kontrola pyta łącznie najwyżej trzy razy, co pięć sekund. Strona, która dalej zawodzi, przerywa wdrożenie, a komunikat ma po jednym wierszu na stronę. Nowa wersja działa już wtedy na żywo, więc następnym krokiem jest [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
-Kontrola tylko czyta publiczne strony: nikogo nie loguje, nie otwiera zamówienia i niczego nie zapisuje. Pyta host `workers.dev`, bo `wrangler.jsonc` nie podłącza domeny własnej.
+Kontrola tylko czyta publiczne strony: nikogo nie loguje, nie otwiera zamówienia i niczego nie zapisuje. Pyta host `workers.dev`, który `workers_dev: true` w `wrangler.jsonc` zostawia włączony obok domeny własnej, więc kontrola nie zależy od DNS strefy ani od certyfikatu, który Cloudflare może jeszcze wystawiać dla świeżo podłączonej domeny.
 
 ## Konfiguracja repozytorium
 
@@ -162,7 +162,7 @@ Kontrola tylko czyta publiczne strony: nikogo nie loguje, nie otwiera zamówieni
 | **Secrets** w Actions | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` |
 | **Vars** w Actions    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                                                                                    |
 
-`CLOUDFLARE_ACCESS_TOKEN` jest przekazywany do kroku jako `CLOUDFLARE_API_TOKEN`, bo taką nazwę czyta Wrangler. Poza wdrażaniem Workera token potrzebuje uprawnienia do edycji D1, bo wdrożenie nakłada nim migracje. Oba przepływy wdrożeniowe korzystają ze środowisk GitHuba (`preview`, `production`), więc sekrety można tam zawęzić do środowiska.
+`CLOUDFLARE_ACCESS_TOKEN` jest przekazywany do kroku jako `CLOUDFLARE_API_TOKEN`, bo taką nazwę czyta Wrangler. Poza wdrażaniem Workera token potrzebuje uprawnienia do edycji D1, bo wdrożenie nakłada nim migracje, oraz uprawnień Workers Routes (edycja) i Zone (odczyt) do strefy `martebizuteria.pl`, bo wdrożenie podłącza domeny własne z `routes` w `wrangler.jsonc`. Oba przepływy wdrożeniowe korzystają ze środowisk GitHuba (`preview`, `production`), więc sekrety można tam zawęzić do środowiska.
 
 `VITE_R2_URL` jest wymieniony w `secrets.required` w `wrangler.jsonc`, ale dostarczany z **vars** Actions, a nie z secrets — to publiczny adres zasobnika, który dodatkowo musi być widoczny dla pakietu klienta przez przedrostek `VITE_`. `prepare-deploy-secrets.ts` czyta go z `process.env`, więc to działa.
 

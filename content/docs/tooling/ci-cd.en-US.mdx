@@ -153,7 +153,7 @@ env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json
 
 Calls `verifyDeployment` in `src/lib/deployment.ts`, which asks the environment's own `workers.dev` host, from `WORKERS_DEV_HOSTS` in `src/modules/_core/constants/api.ts`, for four pages without following redirects. `/` and `/products` must answer `200` with `text/html`, `/robots.txt` must answer `200` with `text/plain`, and `/api/webhooks/stripe` must refuse a `GET` with `405` and `text/plain`, which shows the request reached the route's own handler rather than a rendered page. Each request gives up after 15 seconds, and a page that fails is asked up to three times in all, five seconds apart. A page still failing then fails the deploy with one line per page. The new version is already live by then, so the next step is [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
-It only reads public pages: it signs nobody in, opens no checkout and writes nothing. It asks the `workers.dev` host because `wrangler.jsonc` attaches no custom domain.
+It only reads public pages: it signs nobody in, opens no checkout and writes nothing. It asks the `workers.dev` host, which `workers_dev: true` in `wrangler.jsonc` keeps on next to the custom domain, so the check does not depend on the zone's DNS or on a certificate Cloudflare may still be issuing for a newly attached domain.
 
 ## Repository configuration
 
@@ -162,7 +162,7 @@ It only reads public pages: it signs nobody in, opens no checkout and writes not
 | Actions **secrets** | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` |
 | Actions **vars**    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                                                                                    |
 
-`CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Besides deploying the Worker, the token needs the D1 edit permission, because the deploy applies the migrations with it. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
+`CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Besides deploying the Worker, the token needs the D1 edit permission, because the deploy applies the migrations with it, and the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone, because the deploy attaches the custom domains from `routes` in `wrangler.jsonc`. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
 
 `VITE_R2_URL` is listed in `secrets.required` in `wrangler.jsonc` but supplied from Actions **vars**, not secrets — it is a public bucket URL and also needs to be visible to the client bundle through its `VITE_` prefix. `prepare-deploy-secrets.ts` reads it from `process.env`, so this works.
 

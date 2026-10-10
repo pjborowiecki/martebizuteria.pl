@@ -19,7 +19,7 @@ The codebase exists for two reasons at once. It runs a real jewellery brand's sh
 | Transactional email | Resend, thirteen React Email templates in `src/presentation/emails/`                                |
 | Worker name         | `martebizuteria` in production, `martebizuteria-preview`, `martebizuteria-development`              |
 
-`wrangler.jsonc` declares no `routes` block and no custom domain, so each environment is served on its `*.workers.dev` hostname. The production URL recorded in `package.json` is `https://martebizuteria.pjborowiecki.workers.dev`.
+`wrangler.jsonc` attaches `martebizuteria.pl` to the production Worker and `preview.martebizuteria.pl` to the preview Worker as custom domains, and keeps each of the two on its `*.workers.dev` hostname as well. The production URL recorded in `package.json` is `https://martebizuteria.pl`, the canonical address `APP_URL` gives every page.
 
 ## One Worker, one route tree
 

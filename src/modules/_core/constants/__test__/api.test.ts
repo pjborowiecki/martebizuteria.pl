@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vite-plus/test"
+import { unstable_readConfig } from "wrangler"
 
 import {
   HTTP_STATUS,
@@ -10,6 +11,8 @@ import {
 } from "~/src/modules/_core/constants/api"
 
 import { APP_DOMAIN } from "~/src/presentation/branding/app"
+
+const readWorkerConfig = (environment: string): unknown => unstable_readConfig({ config: "wrangler.jsonc", env: environment })
 
 describe("HTTP_STATUS", () => {
   it("holds only integer status codes inside the HTTP range", () => {
@@ -106,4 +109,24 @@ describe("deployment hosts", () => {
       expect(isDeploymentHost(host)).toBe(false)
     },
   )
+})
+
+describe("Worker domains in wrangler.jsonc", () => {
+  it.each(["preview", "production"] as const)(
+    "attaches each %s host besides workers.dev as a custom domain and keeps the workers.dev host the live-site check asks",
+    (mode) => {
+      const customDomains = appHostsForMode(mode).filter((host) => host !== WORKERS_DEV_HOSTS[mode])
+      const config = readWorkerConfig(mode)
+
+      expect(config).toHaveProperty(
+        "routes",
+        customDomains.map((pattern) => ({ custom_domain: true, pattern })),
+      )
+      expect(config).toHaveProperty("workers_dev", true)
+    },
+  )
+
+  it.each(["development", "test"])("attaches no domain to the %s Worker", (mode) => {
+    expect(readWorkerConfig(mode)).not.toHaveProperty("routes.0")
+  })
 })
