@@ -125,6 +125,17 @@ test.describe("smoke", () => {
     await expect(contact.getByText(/^NIP \(tax identification number\): \d{10}\sREGON \(business statistics number\): \d{9}$/u)).toBeVisible()
   })
 
+  test("a product page names the shop as the manufacturer with a postal and an email address", async ({ productPage }) => {
+    await productPage.open(`/products/${PRODUCTS.lapis.handle}`)
+
+    await productPage.details().getByRole("button", { name: "Producent" }).click()
+
+    const manufacturer = productPage.details().getByRole("region", { name: "Producent" })
+    await expect(manufacturer.getByRole("term")).toHaveText(["Nazwa i adres pocztowy", "Adres e-mail"])
+    await expect(manufacturer.getByText(/\s\d{2}-\d{3}\s\S+\sPolska$/u)).toBeVisible()
+    await expect(manufacturer.getByRole("link", { name: /@/u })).toHaveAttribute("href", /^mailto:\S+@\S+$/u)
+  })
+
   test("keeps every environment but production out of search engines while serving the sitemap", async ({ request }) => {
     const robots = await request.get("/robots.txt")
     const sitemap = await request.get("/sitemap.xml")

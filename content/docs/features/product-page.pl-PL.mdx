@@ -1,6 +1,6 @@
 ---
 title: "Karta produktu"
-description: "/products/$handle: odroczone zapytanie o produkty powiązane, wybór wariantu, dodanie do koszyka z uwzględnieniem stanu i lista specyfikacji."
+description: "/products/$handle: odroczone zapytanie o produkty powiązane, wybór wariantu, dodanie do koszyka z uwzględnieniem stanu, lista specyfikacji i producent."
 ---
 
 ## Trasa
@@ -111,9 +111,11 @@ trackCartItemAdded({ productTitle: product.title, quantity: addQuantity, variant
 
 ## Specyfikacje i szczegóły
 
-`product-hero-details.tsx` renderuje opis i listę specyfikacji. `product-hero-detail-line.ts` eksportuje `resolveProductHeroDetailLine(subtitle, specifications, locale)`, które składa jedną linię podsumowania pod tytułem — z podtytułu, a gdy go brak, ze specyfikacji.
+`product-hero-details.tsx` renderuje szczegóły jako akordeon: opis i listę specyfikacji, gdy produkt je ma, a potem „Dodatkowe informacje” i „Producent” przy każdym produkcie; pierwsza sekcja jest otwarta. `product-hero-detail-line.ts` eksportuje `resolveProductHeroDetailLine(subtitle, specifications, locale)`, które składa jedną linię podsumowania pod tytułem — z podtytułu, a gdy go brak, ze specyfikacji.
 
 Specyfikacje pochodzą z systemu atrybutów produktu: wiersze `attribute_on_product` mapowane przez `mapAttributeRowsToSpecifications`. Sposób definiowania atrybutów opisuje [Panel katalogu](/docs/features/admin-catalog).
+
+Sekcja „Producent” podaje to, czego unijne rozporządzenie w sprawie ogólnego bezpieczeństwa produktów (art. 19 rozporządzenia (UE) 2023/988) wymaga w ofercie internetowej: nazwę producenta, jego adres pocztowy i adres elektroniczny. Sklep sam wykonuje swoją biżuterię, więc sekcja pokazuje sprzedawcę z `src/presentation/branding/business.ts`: nazwę firmy i adres pocztowy z `BUSINESS_POSTAL_ADDRESS_LINES` wraz z krajem oraz `BUSINESS.EMAIL` jako odnośnik `mailto:`. Komunikatami w `pages.product.heroSection.details.manufacturer` są tylko etykiety i nazwa kraju. Sekcja nie podaje własnych ostrzeżeń: wskazówki pielęgnacyjne albo ostrzeżenia dołączone do danego wyrobu należą do jego specyfikacji jako atrybut produktu. Zobacz [Strony prawne](/docs/features/legal-pages#producent-na-kartach-produktu).
 
 ## Pasek zakupu na mobile
 

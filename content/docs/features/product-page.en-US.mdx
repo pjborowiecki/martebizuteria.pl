@@ -1,6 +1,6 @@
 ---
 title: "Product page"
-description: "/products/$handle: the deferred related-products query, variant selection, stock-aware add to cart, and the specification list."
+description: "/products/$handle: the deferred related-products query, variant selection, stock-aware add to cart, the specification list and the manufacturer."
 ---
 
 ## Route
@@ -111,9 +111,11 @@ Tracking goes to `src/modules/customer-activity` and is recorded only for signed
 
 ## Specifications and details
 
-`product-hero-details.tsx` renders the description and the specification list. `product-hero-detail-line.ts` exports `resolveProductHeroDetailLine(subtitle, specifications, locale)`, which produces the single summary line under the title from the subtitle or, failing that, the specifications.
+`product-hero-details.tsx` renders the details as an accordion: the description and the specification list when the product has them, then "Additional information" and "Manufacturer" on every product, with the first section open. `product-hero-detail-line.ts` exports `resolveProductHeroDetailLine(subtitle, specifications, locale)`, which produces the single summary line under the title from the subtitle or, failing that, the specifications.
 
 Specifications come from the product attribute system: `attribute_on_product` rows mapped by `mapAttributeRowsToSpecifications`. See [Admin catalog](/docs/features/admin-catalog) for how attributes are defined.
+
+The "Manufacturer" section gives what the EU General Product Safety Regulation (Article 19 of Regulation (EU) 2023/988) requires an online offer to name: the manufacturer's name, postal address and electronic address. The shop makes its own pieces, so the section shows the seller from `src/presentation/branding/business.ts`: the legal name and postal address from `BUSINESS_POSTAL_ADDRESS_LINES` with the country, and `BUSINESS.EMAIL` as a `mailto:` link. Only the labels and the country name are messages, in `pages.product.heroSection.details.manufacturer`. The section shows no warnings of its own: a care note or warning that comes with a piece belongs in its specifications as a product attribute. See [Legal pages](/docs/features/legal-pages#manufacturer-on-product-pages).
 
 ## Mobile buy bar
 
