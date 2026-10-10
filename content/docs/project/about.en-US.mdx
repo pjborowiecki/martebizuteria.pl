@@ -45,7 +45,7 @@ Four request paths short-circuit inside `src/server.ts` before the React framewo
 
 | Binding                     | Resource         | Used for                                                         |
 | --------------------------- | ---------------- | ---------------------------------------------------------------- |
-| `DB`                        | D1 database      | Every table — 38, including the `storefront_search` FTS5 index   |
+| `DB`                        | D1 database      | Every table — 39, including the `storefront_search` FTS5 index   |
 | `IMAGES`                    | R2 bucket        | Product image uploads                                            |
 | `CACHE`                     | KV namespace     | Holds the email sender flag from `resend.availability.server.ts` |
 | `AUDIT_LOG_QUEUE`           | Cloudflare Queue | Audit events, drained by the `queue` handler in `src/server.ts`  |
@@ -77,10 +77,10 @@ Counted against the working tree, not aspirational:
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Feature modules                           | 40 in `src/modules/`, including `_core`                                                               |
 | Database tables                           | 38 exported from `drizzle.schemas.ts`, plus the `storefront_search` FTS5 table                        |
-| D1 migrations                             | 77 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
-| Use cases                                 | 115 files under `src/modules/*/use-cases/`                                                            |
+| D1 migrations                             | 78 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
+| Use cases                                 | 116 files under `src/modules/*/use-cases/`                                                            |
 | Server functions                          | 113 `createServerFn(...)` call sites                                                                  |
-| Integrations                              | 14 vendor adapters in `src/integrations/`                                                             |
+| Integrations                              | 15 vendor adapters in `src/integrations/`                                                             |
 | Route files                               | 67 in `src/routes/`                                                                                   |
 | Presentation files                        | 650 non-test files under `src/presentation/`, of which 57 shadcn primitives and 430 custom components |
 | Message namespaces                        | 53 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |

@@ -19,7 +19,7 @@ Polish is the default language and is served without a prefix. English is served
 
 - [Exchanges and returns](/exchanges-and-returns): The 14-day right of withdrawal, refunds, complaints about faulty items and the forms for both.
 - [Terms of service](/terms-of-service): Ordering, delivery and contract terms.
-- [Privacy policy](/privacy-policy): What personal data the store processes and on what basis.
+- [Privacy policy](/privacy-policy): What personal data the store processes and on what basis, who receives it, how long it is kept, the cookies and browser storage the site uses, and your rights.
 
 ## Optional
 
