@@ -1,12 +1,13 @@
-import { type JSX, type ReactNode, type SVGProps } from "react"
+import { type JSX, type SVGProps } from "react"
 
 import { useTranslations } from "use-intl/react"
 
 import { SOCIALS } from "~/src/presentation/branding/socials"
 
-import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
+import { LocalizedLink, type LocalizedLinkProps } from "~/src/presentation/components/custom/localized-link"
+import { SellerContactDetails } from "~/src/presentation/components/custom/seller-contact-details"
 
-import { ROUTES } from "~/src/routes"
+import { ABOUT_CONTACT_HASH, ROUTES } from "~/src/routes"
 
 export const Footer = (): JSX.Element => {
   const t = useTranslations("components.custom.footer")
@@ -24,7 +25,9 @@ export const Footer = (): JSX.Element => {
             <h3 className="mb-2 text-xs font-medium tracking-widest text-primary-foreground/50 uppercase">{t("info")}</h3>
             <ul className="space-y-3 text-sm">
               <FooterLink to={ROUTES.ABOUT}>{t("about")}</FooterLink>
-              <FooterLink to={ROUTES.ABOUT}>{t("contact")}</FooterLink>
+              <FooterLink to={ROUTES.ABOUT} hash={ABOUT_CONTACT_HASH}>
+                {t("contact")}
+              </FooterLink>
               <FooterLink to={ROUTES.ACCOUNT}>{t("account")}</FooterLink>
             </ul>
           </div>
@@ -43,6 +46,11 @@ export const Footer = (): JSX.Element => {
             <ul className="space-y-3 text-sm">
               <FooterLink to={ROUTES.FAQ}>{t("care")}</FooterLink>
             </ul>
+          </div>
+
+          <div className="flex flex-col space-y-4 md:col-span-4 lg:col-span-5">
+            <h3 className="mb-2 text-xs font-medium tracking-widest text-primary-foreground/50 uppercase">{t("seller")}</h3>
+            <SellerContactDetails className="text-sm text-primary-foreground/80 md:grid-cols-3" />
           </div>
         </div>
 
@@ -75,11 +83,9 @@ export const Footer = (): JSX.Element => {
   )
 }
 
-const FooterLink = ({ to, children }: { to: LocalizedTo; children: ReactNode }) => (
+const FooterLink = (link: Pick<LocalizedLinkProps, "children" | "hash" | "to">) => (
   <li>
-    <LocalizedLink to={to} className="text-primary-foreground/80 transition-colors hover:text-primary-foreground">
-      {children}
-    </LocalizedLink>
+    <LocalizedLink {...link} className="text-primary-foreground/80 transition-colors hover:text-primary-foreground" />
   </li>
 )
 

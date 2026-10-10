@@ -7,7 +7,10 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
+import { SellerContactDetails } from "~/src/presentation/components/custom/seller-contact-details"
+
 import type aboutMessages from "~/messages/en-US/pages.about.json"
+import { ABOUT_CONTACT_HASH } from "~/src/routes"
 
 const AboutPage = (): JSX.Element => {
   const t = useTranslations("pages.about")
@@ -26,6 +29,18 @@ const AboutPage = (): JSX.Element => {
         <p className="text-base/relaxed text-muted-foreground md:text-lg/relaxed">{t("paragraph3")}</p>
         <p className="text-base/relaxed text-foreground md:text-lg/relaxed">{t("paragraph4")}</p>
       </div>
+
+      <section
+        id={ABOUT_CONTACT_HASH}
+        aria-labelledby="about-contact-heading"
+        className="mt-16 max-w-2xl scroll-mt-24 space-y-6 border-t border-border pt-10 lg:mt-20"
+      >
+        <h2 id="about-contact-heading" className="font-serif text-3xl tracking-tight md:text-4xl">
+          {t("contactTitle")}
+        </h2>
+        <p className="text-base/relaxed text-muted-foreground md:text-lg/relaxed">{t("contactDescription")}</p>
+        <SellerContactDetails className="text-base/relaxed text-foreground sm:grid-cols-2" />
+      </section>
     </main>
   )
 }

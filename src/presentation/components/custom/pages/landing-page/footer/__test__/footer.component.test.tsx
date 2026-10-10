@@ -3,11 +3,12 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { BUSINESS, BUSINESS_PHONE_HREF } from "~/src/presentation/branding/business"
 import { SOCIALS } from "~/src/presentation/branding/socials"
 
 import { Footer } from "~/src/presentation/components/custom/pages/landing-page/footer/footer"
 
-import { ROUTES } from "~/src/routes"
+import { ABOUT_CONTACT_HASH, ROUTES } from "~/src/routes"
 
 describe("Footer", () => {
   afterEach(() => {
@@ -23,7 +24,7 @@ describe("Footer", () => {
     ).toBeInTheDocument()
   })
 
-  it.each([["Information"], ["Legal"], ["Tips"]])("groups the links under the %s heading", (name) => {
+  it.each([["Information"], ["Legal"], ["Tips"], ["Seller and contact"]])("groups the footer under the %s heading", (name) => {
     renderWithProviders(<Footer />)
 
     expect(screen.getByRole("heading", { level: 3, name })).toBeInTheDocument()
@@ -31,7 +32,7 @@ describe("Footer", () => {
 
   it.each([
     ["Who we are", ROUTES.ABOUT],
-    ["Contact details", ROUTES.ABOUT],
+    ["Contact details", `${ROUTES.ABOUT}#${ABOUT_CONTACT_HASH}`],
     ["Customer panel", ROUTES.ACCOUNT],
     ["Store regulations", ROUTES.TERMS_OF_SERVICE],
     ["Privacy policy", ROUTES.PRIVACY_POLICY],
@@ -41,6 +42,17 @@ describe("Footer", () => {
     renderWithProviders(<Footer />)
 
     expect(screen.getByRole("link", { name })).toHaveAttribute("href", href)
+  })
+
+  it("shows the seller's identity and how to reach it on every page", () => {
+    renderWithProviders(<Footer />)
+
+    expect(screen.getByText(BUSINESS.LEGAL_NAME, { exact: false })).toHaveTextContent(
+      `${BUSINESS.STREET} ${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY}`,
+    )
+    expect(screen.getByText(BUSINESS.REGON, { exact: false })).toHaveTextContent(BUSINESS.NIP)
+    expect(screen.getByRole("link", { name: BUSINESS.EMAIL })).toHaveAttribute("href", `mailto:${BUSINESS.EMAIL}`)
+    expect(screen.getByRole("link", { name: BUSINESS.PHONE })).toHaveAttribute("href", BUSINESS_PHONE_HREF)
   })
 
   it.each([

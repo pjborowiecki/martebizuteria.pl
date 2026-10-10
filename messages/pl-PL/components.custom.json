@@ -15,6 +15,7 @@
     "returns": "Wymiana i zwroty",
     "tips": "Porady",
     "care": "Jak dbać o biżuterię",
+    "seller": "Sprzedawca i kontakt",
     "copyright": "© 2026 M'Arte. Wszelkie prawa zastrzeżone.",
     "facebook": "Facebook",
     "instagram": "Instagram",
@@ -110,6 +111,11 @@
     "wishlistSignInTitle": "Zaloguj się, aby zapisywać",
     "wishlistSignInDescription": "Lista życzeń jest powiązana z Twoim kontem.",
     "wishlistSignInAction": "Zaloguj się"
+  },
+  "sellerContactDetails": {
+    "country": "Polska",
+    "nip": "NIP: {nip}",
+    "regon": "REGON: {regon}"
   },
   "authLayout": {
     "imageAlt": "Edytorialna kompozycja biżuterii na kamiennej fakturze",

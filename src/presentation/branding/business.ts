@@ -13,3 +13,5 @@ export const BUSINESS = {
 } as const
 
 export const BUSINESS_POSTAL_ADDRESS_LINES = [BUSINESS.LEGAL_NAME, BUSINESS.STREET, `${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY}`] as const
+
+export const BUSINESS_PHONE_HREF = `tel:${BUSINESS.PHONE.replaceAll(" ", "")}`

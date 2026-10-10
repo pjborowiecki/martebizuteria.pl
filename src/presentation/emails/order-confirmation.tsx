@@ -9,7 +9,7 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 
-import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+import { BUSINESS, BUSINESS_PHONE_HREF, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 
 import type emailMessages from "~/messages/en-US/emails.order-confirmation.json"
 import {
@@ -122,7 +122,7 @@ const OrderContractInformation = ({ legalLinks, locale, messages }: Readonly<Ord
         </Text>
         <Text className={CONTRACT_TEXT_CLASS}>
           {t("seller.phoneLabel")}:{" "}
-          <Link className={CONTRACT_LINK_CLASS} href={SELLER_PHONE_HREF}>
+          <Link className={CONTRACT_LINK_CLASS} href={BUSINESS_PHONE_HREF}>
             {BUSINESS.PHONE}
           </Link>
         </Text>
@@ -258,8 +258,6 @@ const CONTRACT_TEXT_CLASS = "text-ink mt-[8px] mb-0 text-[13px] leading-[22px]"
 const CONTRACT_LINK_CLASS = "text-ink underline"
 
 const DOCUMENT_LINK_SEPARATOR = " · "
-
-const SELLER_PHONE_HREF = `tel:${BUSINESS.PHONE.replaceAll(" ", "")}`
 
 export interface OrderConfirmationItem {
   readonly imageUrl: string

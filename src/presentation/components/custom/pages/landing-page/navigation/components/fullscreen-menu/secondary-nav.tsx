@@ -12,7 +12,7 @@ import { useCartStore } from "~/src/modules/cart/cart.store"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { useNavigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider"
 
-import { ROUTES } from "~/src/routes"
+import { ABOUT_CONTACT_HASH, ROUTES } from "~/src/routes"
 
 export const SecondaryNav = (): JSX.Element => {
   const { dismissMenuForRouteNavigation } = useNavigation()
@@ -37,7 +37,7 @@ export const SecondaryNav = (): JSX.Element => {
       </div>
       <div className="flex flex-col gap-5">
         <span className="mb-2 text-xs font-light tracking-[0.2em] text-primary-foreground/50 uppercase">{t("menu.secondary.help")}</span>
-        <LocalizedLink className={linkStyles} onClick={dismissMenuForRouteNavigation} to={ROUTES.ABOUT}>
+        <LocalizedLink className={linkStyles} onClick={dismissMenuForRouteNavigation} to={ROUTES.ABOUT} hash={ABOUT_CONTACT_HASH}>
           {t("menu.links.contact")}
         </LocalizedLink>
         <LocalizedLink className={linkStyles} onClick={dismissMenuForRouteNavigation} to={ROUTES.EXCHANGES_AND_RETURNS}>

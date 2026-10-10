@@ -1,4 +1,4 @@
-import { PRODUCTS } from "../data/catalog"
+import { MENU_SHOWCASE, PRODUCTS } from "../data/catalog"
 import { expect, test } from "../fixtures/test"
 
 const PUBLIC_PAGES = [
@@ -96,6 +96,33 @@ test.describe("smoke", () => {
     expect(page.headers()["strict-transport-security"]).toBeUndefined()
     expect(favicon.headers()["x-content-type-options"]).toBe("nosniff")
     expect(favicon.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin")
+  })
+
+  test("the footer's contact link scrolls the about page to the seller's details", async ({ page, productPage }) => {
+    await productPage.open("/cart")
+
+    await page.getByRole("contentinfo").getByRole("link", { name: "Dane kontaktowe" }).click()
+
+    await expect(page).toHaveURL(/\/about#contact$/u)
+    const contact = page.getByRole("main").getByRole("region", { name: "Dane kontaktowe" })
+    await expect(contact.getByRole("heading", { level: 2 })).toBeInViewport()
+    await expect(contact.getByText(/\s\d{2}-\d{3}\s\S+\sPolska$/u)).toBeVisible()
+    await expect(contact.getByText(/^NIP: \d{10}\sREGON: \d{9}$/u)).toBeVisible()
+    await expect(contact.getByRole("link", { name: /@/u })).toHaveAttribute("href", /^mailto:\S+@\S+$/u)
+    await expect(contact.getByRole("link", { name: /^\+48[\d ]+$/u })).toHaveAttribute("href", /^tel:\+48\d{9}$/u)
+  })
+
+  test("the menu's contact link scrolls the about page to the seller's details", async ({ page, productPage }) => {
+    await page.setViewportSize(MENU_SHOWCASE.viewport)
+    await productPage.open("/en-US/cart")
+    await productPage.openMenu()
+
+    await page.getByRole("link", { name: "Contact", exact: true }).click()
+
+    await expect(page).toHaveURL(/\/en-US\/about#contact$/u)
+    const contact = page.getByRole("main").getByRole("region", { name: "Contact details" })
+    await expect(contact.getByRole("heading", { level: 2 })).toBeInViewport()
+    await expect(contact.getByText(/^NIP \(tax identification number\): \d{10}\sREGON \(business statistics number\): \d{9}$/u)).toBeVisible()
   })
 
   test("keeps every environment but production out of search engines while serving the sitemap", async ({ request }) => {

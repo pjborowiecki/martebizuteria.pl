@@ -9,7 +9,7 @@ import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
 
 import { SecondaryNav } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/fullscreen-menu/secondary-nav"
 
-import { ROUTES } from "~/src/routes"
+import { ABOUT_CONTACT_HASH, ROUTES } from "~/src/routes"
 
 const { dismissMenuForRouteNavigation } = vi.hoisted(() => ({ dismissMenuForRouteNavigation: vi.fn() }))
 
@@ -61,10 +61,10 @@ describe("SecondaryNav account destinations", () => {
 })
 
 describe("SecondaryNav help destinations", () => {
-  it("links the contact, shipping and common questions pages", () => {
+  it("links the seller's contact details, shipping and common questions pages", () => {
     renderMenu(undefined)
 
-    expect(screen.getByRole("link", { name: "Contact" })).toHaveAttribute("href", ROUTES.ABOUT)
+    expect(screen.getByRole("link", { name: "Contact" })).toHaveAttribute("href", `${ROUTES.ABOUT}#${ABOUT_CONTACT_HASH}`)
     expect(screen.getByRole("link", { name: "Shipping & returns" })).toHaveAttribute("href", ROUTES.EXCHANGES_AND_RETURNS)
     expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", ROUTES.FAQ)
   })
