@@ -76,6 +76,8 @@ Delivery goes only to the countries in `DELIVERY_COUNTRY_CODES` (`delivery-metho
 
 The seed uses `INSERT OR IGNORE` with fixed UUIDv7 ids. Do not run `bun run db:seed:preview` against the live database — the seed files lag behind production data.
 
+Each seeded method also has a Polish `description`, which no page shows. The descriptions follow § 7 of the terms of service: up to 4 business days from dispatch for the locker and the courier, and collection from the workshop in Bochnia, ready by the end of the fulfilment time. `20261010220000_delivery_method_descriptions.sql` gives rows seeded before that the same descriptions, replacing the 1–2 day transit and the Warsaw atelier ready in 24 hours. It changes a row only while its description is still the old seeded text, so a description the owner has rewritten stays as it is.
+
 ## Delivery step
 
 `_steps/delivery-step.tsx` renders one `OptionCard` per **type** that has at least one active method, using `DELIVERY_ICONS` (`Truck`, `Package`, `Store` from lucide). The card description shows the cheapest price in the group:
@@ -95,15 +97,15 @@ Picking a type writes `deliveryMethodType` and either auto-selects the single me
 
 ### Courier
 
-`delivery/courier/delivery-courier.tsx` renders a radio group of the `courier` methods with their formatted prices, plus the free-text `deliveryNotes` field. That field is persisted as `checkout.customer_note` and copied onto `order.customer_note`. The component returns `undefined` when there are no courier methods.
+`delivery/courier/delivery-courier.tsx` renders a radio group of the `courier` methods with their formatted prices, then `deliverySubsteps.parcelDeliveryTime`, plus the free-text `deliveryNotes` field. That paragraph gives the delivery time of § 7 of the terms of service: the fulfilment time stated on the product page, counted from the acceptance of the order and the longest one for several products, then up to 4 business days from dispatch with InPost, with the tracking number sent by e-mail. That field is persisted as `checkout.customer_note` and copied onto `order.customer_note`. The component returns `undefined` when there are no courier methods.
 
 ### In-store
 
-`delivery/store/delivery-in-store.tsx` is copy only: two paragraphs from `deliverySubsteps.inStoreTitle` and `deliverySubsteps.inStoreText`. There is no store picker; the `storeLocation` field exists in `checkoutSchema` but nothing writes it.
+`delivery/store/delivery-in-store.tsx` is copy only: two paragraphs from `deliverySubsteps.inStoreTitle` and `deliverySubsteps.inStoreText`. The second gives the address and opening hours and, as § 7 does, says the order is ready by the end of the fulfilment time stated on the product page and that the shopper is told when it is. There is no store picker; the `storeLocation` field exists in `checkoutSchema` but nothing writes it.
 
 ### Locker
 
-`delivery/locker/delivery-locker.tsx` shows the currently selected locker id and hosts `InpostSelector`. The `lockerId` field is required by the `superRefine` in `checkoutSchema` whenever `deliveryMethodType === "locker"`, which shows `validation.lockerIdRequired` on the step. The server does not trust that type: `resolveDelivery` requires a `lockerId` matching `INPOST_POINT_NAME_PATTERN` whenever the method's `type` in the database is `locker`, and refuses the session with `LOCKER_REQUIRED` otherwise. For any other type it drops `lockerId`, so `checkout.locker_id` and `order.locker_id` stay empty for courier and in-store orders.
+`delivery/locker/delivery-locker.tsx` shows `deliverySubsteps.lockerText`, which the map dialog also uses as its description, the same `deliverySubsteps.parcelDeliveryTime` as the courier step, and the currently selected locker id, and hosts `InpostSelector`. The `lockerId` field is required by the `superRefine` in `checkoutSchema` whenever `deliveryMethodType === "locker"`, which shows `validation.lockerIdRequired` on the step. The server does not trust that type: `resolveDelivery` requires a `lockerId` matching `INPOST_POINT_NAME_PATTERN` whenever the method's `type` in the database is `locker`, and refuses the session with `LOCKER_REQUIRED` otherwise. For any other type it drops `lockerId`, so `checkout.locker_id` and `order.locker_id` stay empty for courier and in-store orders.
 
 ## InPost point picker
 
@@ -177,7 +179,7 @@ return {
 
 `getFulfillmentTimeAttributesByVariantId` in `attribute-on-product.server.ts` reads the `czas-realizacji` attribute (`FULFILLMENT_TIME_ATTRIBUTE_HANDLE`) the way the product page shows it: the variant's own value when the variant has attributes of its own, otherwise the product's, and none when the value is blank. `resolveOrderLineFulfillmentTimes` in `src/integrations/resend/order-fulfillment-time.utils.ts` labels each value in the order's locale, and a product without one takes `fulfillmentTime.fallback`, 10 business days. `describeOrderFulfillmentTime` reads the number and unit of each label (hours, days, business days, weeks or months, in Polish or English) and states the longest, followed by `fulfillmentTime.note`, which says it runs from the acceptance of the order and that the order ships in one parcel. When a label has no number and unit it can compare, such as "na zamówienie", it lists every product with its own time instead. The email therefore states the period itself, as Article 21 of the Consumer Rights Act requires, rather than pointing at product pages that can change after the order.
 
-`messages/{locale}/emails.order-confirmation.json` has the `fulfillmentTime` object with `fallback` and `note`, and an `estimatedDelivery` object keyed by `courier`, `locker` and `in_store`. Both repeat § 7 of the terms of service: the fulfilment time stated on each product page, or up to 10 business days when a page gives none, with the longest applying to the whole order, then up to 4 business days in transit with InPost, or collection at the atelier once the fulfilment time ends. Changing the fallback or the transit time is a message-catalogue edit and an edit to § 7 in `/admin/content`, and changing a product's time is an edit to its `czas-realizacji` attribute. The shipped email keeps its own `deliveryTiming` in `emails.order-shipped.json`.
+`messages/{locale}/emails.order-confirmation.json` has the `fulfillmentTime` object with `fallback` and `note`, and an `estimatedDelivery` object keyed by `courier`, `locker` and `in_store`. Both repeat § 7 of the terms of service: the fulfilment time stated on each product page, or up to 10 business days when a page gives none, with the longest applying to the whole order, then up to 4 business days in transit with InPost, or collection at the atelier once the fulfilment time ends. Changing the fallback or the transit time is a message-catalogue edit and an edit to § 7 in `/admin/content`, and changing a product's time is an edit to its `czas-realizacji` attribute. The shipped email keeps its own `deliveryTiming` in `emails.order-shipped.json`, which gives the same up to 4 business days after dispatch for the courier and the locker, and collection once the shopper is told for in-store orders; the checkout's courier and locker steps state the same transit time.
 
 ## What is not there
 

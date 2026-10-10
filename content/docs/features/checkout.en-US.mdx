@@ -128,7 +128,7 @@ Phone numbers are validated with `libphonenumber-js/mobile`'s `isValidPhoneNumbe
 
 `_steps/delivery-step.tsx` reads `listDeliveryMethodsQuery()` and groups the rows by `type` in the fixed order of `DELIVERY_METHODS` (`courier`, `locker`, `in_store`). Choosing a type sets `deliveryMethodType` and, when that type has exactly one method, auto-selects `deliveryMethod`; otherwise it clears it. The card subtitle shows the lowest price of the group, `deliverySubsteps.free` when that price is zero, or `from <price>` when the group has more than one method.
 
-The sub-step depends on the type: `DeliveryCourier`, `DeliveryLocker` (with the InPost map) or `DeliveryInStore` (copy only). See [Shipping and delivery](/docs/features/shipping-and-delivery).
+The sub-step depends on the type: `DeliveryCourier`, `DeliveryLocker` (with the InPost map) or `DeliveryInStore` (copy only). Each states the delivery time of § 7 of the terms of service before the shopper pays: the courier and locker steps give the fulfilment time stated on the product page, then up to 4 business days from dispatch with InPost, and the in-store step says the order is ready by the end of that fulfilment time. See [Shipping and delivery](/docs/features/shipping-and-delivery).
 
 ## The summary
 

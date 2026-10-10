@@ -14,10 +14,10 @@
   "unavailable": "Niedostępne",
   "deliveryTiming": {
     "courier": {
-      "estimatedDelivery": "2–4 dni robocze od wysyłki"
+      "estimatedDelivery": "Do 4 dni roboczych od wysyłki"
     },
     "locker": {
-      "estimatedDelivery": "2–3 dni robocze od wysyłki"
+      "estimatedDelivery": "Do 4 dni roboczych od wysyłki"
     },
     "in_store": {
       "estimatedDelivery": "Odbiór w pracowni po powiadomieniu"

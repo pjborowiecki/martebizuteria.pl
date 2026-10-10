@@ -14,10 +14,10 @@
   "unavailable": "Unavailable",
   "deliveryTiming": {
     "courier": {
-      "estimatedDelivery": "2–4 business days after dispatch"
+      "estimatedDelivery": "Up to 4 business days after dispatch"
     },
     "locker": {
-      "estimatedDelivery": "2–3 business days after dispatch"
+      "estimatedDelivery": "Up to 4 business days after dispatch"
     },
     "in_store": {
       "estimatedDelivery": "Pickup at the atelier once notified"

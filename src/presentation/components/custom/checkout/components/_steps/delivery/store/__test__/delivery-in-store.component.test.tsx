@@ -15,12 +15,12 @@ describe("DeliveryInStore", () => {
     expect(screen.queryByText("Odbiór Osobisty")).not.toBeInTheDocument()
   })
 
-  it("explains the pickup in the shopper's language", () => {
+  it("explains the pickup and when the order is ready, as the terms of service state it, in the shopper's language", () => {
     renderWithProviders(<DeliveryInStore />)
 
     expect(
       screen.getByText(
-        "Collect your order at our shop in Bochnia, ul. Wąska 11, between 09:00 and 17:00. We will let you know as soon as it is ready.",
+        "Collect your order at our shop in Bochnia, ul. Wąska 11, between 09:00 and 17:00. It will be ready by the end of the fulfillment time stated on the product page, or the longest of them if you order several products, and we will let you know as soon as it is.",
       ),
     ).toBeInTheDocument()
   })

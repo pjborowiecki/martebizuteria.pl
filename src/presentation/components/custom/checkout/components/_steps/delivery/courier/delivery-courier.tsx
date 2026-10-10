@@ -40,7 +40,7 @@ export const DeliveryCourier = (): JSX.Element | undefined => {
         ))}
       </CheckoutRadioField>
 
-      <p className="text-sm leading-relaxed text-muted-foreground">{t("deliverySubsteps.courierText")}</p>
+      <p className="text-sm leading-relaxed text-muted-foreground">{t("deliverySubsteps.parcelDeliveryTime")}</p>
 
       <CheckoutTextField control={control} name="deliveryNotes" label={t("deliveryNotes")} placeholder={t("deliveryNotesPlaceholder")} />
     </div>

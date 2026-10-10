@@ -76,6 +76,8 @@ Dostawa trafia tylko do krajów z `DELIVERY_COUNTRY_CODES` (`delivery-method.con
 
 Seed używa `INSERT OR IGNORE` ze stałymi identyfikatorami UUIDv7. Nie uruchamiaj `bun run db:seed:preview` na żywej bazie — pliki seedów są starsze niż dane produkcyjne.
 
+Każda metoda z seeda ma też polski `description`, którego nie pokazuje żadna strona. Opisy idą za § 7 regulaminu: do 4 dni roboczych od nadania dla paczkomatu i kuriera oraz odbiór w pracowni w Bochni, gotowy najpóźniej z upływem czasu realizacji. `20261010220000_delivery_method_descriptions.sql` nadaje te same opisy wierszom wstawionym wcześniej, zastępując doręczenie w 1–2 dni i atelier w Warszawie gotowe w 24 godziny. Zmienia wiersz tylko wtedy, gdy jego opis wciąż jest dawnym tekstem z seeda, więc opis przepisany przez właściciela zostaje bez zmian.
+
 ## Krok dostawy
 
 `_steps/delivery-step.tsx` renderuje jedną kartę `OptionCard` na każdy **typ**, który ma co najmniej jedną aktywną metodę, używając `DELIVERY_ICONS` (`Truck`, `Package`, `Store` z lucide). Opis karty pokazuje najtańszą cenę w grupie:
@@ -95,15 +97,15 @@ Wybór typu zapisuje `deliveryMethodType` i albo automatycznie wybiera jedyną m
 
 ### Kurier
 
-`delivery/courier/delivery-courier.tsx` renderuje grupę radiową metod typu `courier` ze sformatowanymi cenami oraz pole tekstowe `deliveryNotes`. To pole jest utrwalane jako `checkout.customer_note` i kopiowane na `order.customer_note`. Komponent zwraca `undefined`, gdy nie ma metod kurierskich.
+`delivery/courier/delivery-courier.tsx` renderuje grupę radiową metod typu `courier` ze sformatowanymi cenami, pod nią `deliverySubsteps.parcelDeliveryTime` oraz pole tekstowe `deliveryNotes`. Ten akapit podaje termin dostawy z § 7 regulaminu: czas realizacji podany na stronie produktu, liczony od przyjęcia zamówienia, a przy kilku produktach najdłuższy z nich, potem do 4 dni roboczych od nadania przez InPost, z numerem przesyłki wysyłanym e-mailem. To pole jest utrwalane jako `checkout.customer_note` i kopiowane na `order.customer_note`. Komponent zwraca `undefined`, gdy nie ma metod kurierskich.
 
 ### Odbiór osobisty
 
-`delivery/store/delivery-in-store.tsx` to sama treść: dwa akapity z `deliverySubsteps.inStoreTitle` i `deliverySubsteps.inStoreText`. Nie ma wyboru salonu; pole `storeLocation` istnieje w `checkoutSchema`, ale nic go nie zapisuje.
+`delivery/store/delivery-in-store.tsx` to sama treść: dwa akapity z `deliverySubsteps.inStoreTitle` i `deliverySubsteps.inStoreText`. Drugi podaje adres i godziny otwarcia oraz, tak jak § 7, mówi, że zamówienie jest gotowe najpóźniej z upływem czasu realizacji podanego na stronie produktu i że klient dostanie o tym powiadomienie. Nie ma wyboru salonu; pole `storeLocation` istnieje w `checkoutSchema`, ale nic go nie zapisuje.
 
 ### Paczkomat
 
-`delivery/locker/delivery-locker.tsx` pokazuje aktualnie wybrany identyfikator paczkomatu i osadza `InpostSelector`. Pole `lockerId` jest wymagane przez `superRefine` w `checkoutSchema`, ilekroć `deliveryMethodType === "locker"`, co pokazuje na kroku `validation.lockerIdRequired`. Serwer nie ufa temu typowi: `resolveDelivery` wymaga `lockerId` pasującego do `INPOST_POINT_NAME_PATTERN` zawsze, gdy `type` metody w bazie to `locker`, a w przeciwnym razie odmawia sesji z `LOCKER_REQUIRED`. Dla każdego innego typu porzuca `lockerId`, więc `checkout.locker_id` i `order.locker_id` zostają puste przy zamówieniach z kurierem i z odbiorem osobistym.
+`delivery/locker/delivery-locker.tsx` pokazuje `deliverySubsteps.lockerText`, którego okno z mapą używa też jako opisu, to samo `deliverySubsteps.parcelDeliveryTime` co krok kuriera i aktualnie wybrany identyfikator paczkomatu oraz osadza `InpostSelector`. Pole `lockerId` jest wymagane przez `superRefine` w `checkoutSchema`, ilekroć `deliveryMethodType === "locker"`, co pokazuje na kroku `validation.lockerIdRequired`. Serwer nie ufa temu typowi: `resolveDelivery` wymaga `lockerId` pasującego do `INPOST_POINT_NAME_PATTERN` zawsze, gdy `type` metody w bazie to `locker`, a w przeciwnym razie odmawia sesji z `LOCKER_REQUIRED`. Dla każdego innego typu porzuca `lockerId`, więc `checkout.locker_id` i `order.locker_id` zostają puste przy zamówieniach z kurierem i z odbiorem osobistym.
 
 ## Wybór punktu InPost
 
@@ -177,7 +179,7 @@ return {
 
 `getFulfillmentTimeAttributesByVariantId` w `attribute-on-product.server.ts` czyta atrybut `czas-realizacji` (`FULFILLMENT_TIME_ATTRIBUTE_HANDLE`) tak, jak pokazuje go strona produktu: wartość wariantu, gdy wariant ma własne atrybuty, w przeciwnym razie wartość produktu, a przy pustej wartości nic. `resolveOrderLineFulfillmentTimes` w `src/integrations/resend/order-fulfillment-time.utils.ts` zamienia każdą wartość na etykietę w języku zamówienia, a produkt bez niej dostaje `fulfillmentTime.fallback`, czyli 10 dni roboczych. `describeOrderFulfillmentTime` odczytuje z każdej etykiety liczbę i jednostkę (godziny, dni, dni robocze, tygodnie albo miesiące, po polsku lub po angielsku) i podaje najdłuższy czas, a po nim `fulfillmentTime.note`, które mówi, że czas biegnie od przyjęcia zamówienia i że zamówienie jest wysyłane w jednej przesyłce. Gdy etykieta nie ma liczby i jednostki, które da się porównać, na przykład „na zamówienie”, e-mail wymienia zamiast tego każdy produkt z jego własnym czasem. E-mail podaje więc sam termin, czego wymaga art. 21 ustawy o prawach konsumenta, a nie odsyła do stron produktów, które mogą się zmienić po zamówieniu.
 
-Plik `messages/{locale}/emails.order-confirmation.json` ma obiekt `fulfillmentTime` z kluczami `fallback` i `note` oraz obiekt `estimatedDelivery` z kluczami `courier`, `locker` i `in_store`. Oba powtarzają § 7 regulaminu: czas realizacji podany na stronie każdego produktu, a gdy strona go nie podaje, do 10 dni roboczych, przy czym dla całego zamówienia obowiązuje najdłuższy, a potem do 4 dni roboczych doręczenia przez InPost albo odbiór w pracowni po upływie czasu realizacji. Zmiana czasu zastępczego albo czasu doręczenia to edycja katalogu komunikatów i § 7 w `/admin/content`, a zmiana czasu produktu to edycja jego atrybutu `czas-realizacji`. E-mail o wysyłce ma własne `deliveryTiming` w `emails.order-shipped.json`.
+Plik `messages/{locale}/emails.order-confirmation.json` ma obiekt `fulfillmentTime` z kluczami `fallback` i `note` oraz obiekt `estimatedDelivery` z kluczami `courier`, `locker` i `in_store`. Oba powtarzają § 7 regulaminu: czas realizacji podany na stronie każdego produktu, a gdy strona go nie podaje, do 10 dni roboczych, przy czym dla całego zamówienia obowiązuje najdłuższy, a potem do 4 dni roboczych doręczenia przez InPost albo odbiór w pracowni po upływie czasu realizacji. Zmiana czasu zastępczego albo czasu doręczenia to edycja katalogu komunikatów i § 7 w `/admin/content`, a zmiana czasu produktu to edycja jego atrybutu `czas-realizacji`. E-mail o wysyłce ma własne `deliveryTiming` w `emails.order-shipped.json`, które podaje te same do 4 dni roboczych od wysyłki dla kuriera i paczkomatu oraz odbiór po powiadomieniu dla zamówień z odbiorem osobistym; kroki kuriera i paczkomatu w kasie podają ten sam czas doręczenia.
 
 ## Czego nie ma
 
