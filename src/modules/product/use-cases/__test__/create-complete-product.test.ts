@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
 import { createCompleteProduct } from "~/src/modules/product/use-cases/create-complete-product"
 
@@ -115,10 +116,10 @@ describe("complete product creation", () => {
 })
 
 describe("complete product creation failures", () => {
-  it("writes nothing when a sku is already taken", async () => {
-    operations.assertSkus.mockRejectedValueOnce(new Error("DUPLICATE_SKU"))
+  it("writes nothing and answers with a conflict when a sku is already taken", async () => {
+    operations.assertSkus.mockRejectedValueOnce(new AppError(ERROR_CODES.CONFLICT, "DUPLICATE_SKU"))
 
-    await expect(createCompleteProduct({ data: productInput })).rejects.toThrow("DUPLICATE_SKU")
+    await expect(createCompleteProduct({ data: productInput })).rejects.toMatchObject({ code: "CONFLICT", message: "DUPLICATE_SKU" })
 
     expect(operations.batch).not.toHaveBeenCalled()
     expect(operations.audit).not.toHaveBeenCalled()
@@ -133,9 +134,15 @@ describe("complete product creation failures", () => {
     expect(operations.invalidate).not.toHaveBeenCalled()
   })
 
-  it("translates a duplicate handle constraint into the product error code", async () => {
-    operations.batch.mockRejectedValueOnce(new Error("UNIQUE constraint failed: product.handle"))
+  it("answers a handle another product already uses with a conflict", async () => {
+    operations.batch.mockRejectedValueOnce(new Error("D1_ERROR: UNIQUE constraint failed: product.handle: SQLITE_CONSTRAINT"))
 
-    await expect(createCompleteProduct({ data: productInput })).rejects.toThrow("DUPLICATE_HANDLE")
+    await expect(createCompleteProduct({ data: productInput })).rejects.toMatchObject({ code: "CONFLICT", message: "DUPLICATE_HANDLE" })
+  })
+
+  it("answers a sku another product's variant took meanwhile with a conflict", async () => {
+    operations.batch.mockRejectedValueOnce(new Error("D1_ERROR: UNIQUE constraint failed: product_variant.sku: SQLITE_CONSTRAINT"))
+
+    await expect(createCompleteProduct({ data: productInput })).rejects.toMatchObject({ code: "CONFLICT", message: "DUPLICATE_SKU" })
   })
 })

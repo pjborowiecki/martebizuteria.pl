@@ -55,6 +55,9 @@ const placeGuestOrder = async ({ browser, handle, label, request, testInfo }: Gu
 const RESERVED_IN_CHECKOUT =
   "A customer is paying for one of these products right now, so it cannot be deleted. Archive the product to take it off sale, and delete it only once that payment has finished or expired."
 
+const SLUG_TAKEN =
+  "This URL slug is already used by another product. If it is not in the list, click Create product again — the previous attempt may have been rolled back."
+
 const CODE_HELD_BY_OTHER_CHECKOUTS = "That code is reserved for orders awaiting payment. Try again later."
 
 const DISPUTE_BLOCKS_CANCEL =
@@ -558,6 +561,19 @@ test.describe("admin", () => {
     await expect(page.getByText(/^Two-factor authentication is on\./u)).toBeVisible()
     await page.getByRole("link", { name: "Go to the admin panel" }).click()
     await expect(page).toHaveURL(/\/en-US\/admin\/overview$/u)
+  })
+
+  test("an admin who gives a necklace another necklace's URL slug is told the slug is taken", async ({ page }) => {
+    const productsPage = new BasePage(page)
+    await productsPage.open("/en-US/admin/catalog/products")
+    await page.getByRole("row").filter({ hasText: PRODUCTS.lapis.sku }).getByText(PRODUCTS.lapis.title).click()
+    const editor = page.getByRole("dialog", { name: "Edit product" })
+
+    await editor.getByPlaceholder("minimalist-gold-hoop").fill(PRODUCTS.onyx.handle)
+    await editor.getByRole("button", { name: "Save changes" }).click()
+
+    await expect(editor.getByRole("alert")).toHaveText(SLUG_TAKEN)
+    await expect(productsPage.notification(SLUG_TAKEN)).toBeVisible()
   })
 
   test("two admin tabs in one browser do not echo a catalogue event to each other", async ({

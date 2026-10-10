@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
 import { updateCompleteProduct } from "~/src/modules/product/use-cases/update-complete-product"
 
@@ -287,10 +288,10 @@ describe("complete product update taking the product off sale", () => {
 })
 
 describe("complete product update failures", () => {
-  it("refuses a handle that already belongs to another product", async () => {
+  it("refuses a handle that already belongs to another product with a conflict", async () => {
     operations.productByHandle.mockResolvedValue({ id: "another-product" })
 
-    await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("DUPLICATE_HANDLE")
+    await expect(updateCompleteProduct({ data: productInput })).rejects.toMatchObject({ code: "CONFLICT", message: "DUPLICATE_HANDLE" })
 
     expect(operations.batch).not.toHaveBeenCalled()
     expect(operations.audit).not.toHaveBeenCalled()
@@ -330,15 +331,23 @@ describe("complete product update failures", () => {
     expect(operations.expireCheckouts).not.toHaveBeenCalled()
   })
 
-  it("translates a duplicate sku constraint into the product error code", async () => {
-    operations.batch.mockRejectedValueOnce(new Error("UNIQUE constraint failed: product_variant.sku"))
+  it("refuses a sku another product already uses with a conflict and writes nothing", async () => {
+    operations.assertSkus.mockRejectedValueOnce(new AppError(ERROR_CODES.CONFLICT, "DUPLICATE_SKU"))
 
-    await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("DUPLICATE_SKU")
+    await expect(updateCompleteProduct({ data: productInput })).rejects.toMatchObject({ code: "CONFLICT", message: "DUPLICATE_SKU" })
+
+    expect(operations.batch).not.toHaveBeenCalled()
   })
 
-  it("translates a duplicate handle constraint into the product error code", async () => {
-    operations.batch.mockRejectedValueOnce(new Error("UNIQUE constraint failed: product.handle"))
+  it("answers a sku another product's variant took meanwhile with a conflict", async () => {
+    operations.batch.mockRejectedValueOnce(new Error("D1_ERROR: UNIQUE constraint failed: product_variant.sku: SQLITE_CONSTRAINT"))
 
-    await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("DUPLICATE_HANDLE")
+    await expect(updateCompleteProduct({ data: productInput })).rejects.toMatchObject({ code: "CONFLICT", message: "DUPLICATE_SKU" })
+  })
+
+  it("answers a handle another product took meanwhile with a conflict", async () => {
+    operations.batch.mockRejectedValueOnce(new Error("D1_ERROR: UNIQUE constraint failed: product.handle: SQLITE_CONSTRAINT"))
+
+    await expect(updateCompleteProduct({ data: productInput })).rejects.toMatchObject({ code: "CONFLICT", message: "DUPLICATE_HANDLE" })
   })
 })
