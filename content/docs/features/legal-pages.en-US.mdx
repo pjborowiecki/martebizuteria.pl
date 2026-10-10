@@ -194,12 +194,14 @@ The admin list and editor pick the new page up without changes.
 
 Two other pages in the footer's information column are not content pages and have no long-form text:
 
-| Route    | File                    | What it renders                                                    |
-| -------- | ----------------------- | ------------------------------------------------------------------ |
-| `/faq`   | `_storefront.faq.tsx`   | `t("title")`, one `t("description")` paragraph, a link home        |
-| `/about` | `_storefront.about.tsx` | An eyebrow, a title, a lead and four paragraphs from `pages.about` |
+| Route    | File                    | What it renders                                                                                     |
+| -------- | ----------------------- | --------------------------------------------------------------------------------------------------- |
+| `/faq`   | `_storefront.faq.tsx`   | `t("title")`, one `t("description")` paragraph, a link home                                         |
+| `/about` | `_storefront.about.tsx` | An eyebrow, a title, a lead and four paragraphs from `pages.about`, then the seller contact section |
 
 `/about` is finished copy authored in `messages/{locale}/pages.about.json`. `/faq` is a placeholder and renders a centred "go home" link.
+
+The about page ends with a "Contact details" section whose id is `ABOUT_CONTACT_HASH` from `src/routes.ts`, so `/about#contact` scrolls to it. It renders `SellerContactDetails` from `src/presentation/components/custom/seller-contact-details.tsx`: the legal name and postal address from `BUSINESS_POSTAL_ADDRESS_LINES` with the country, the NIP and REGON, and the e-mail address and phone number as `mailto:` and `tel:` links. Every value comes from `BUSINESS` in `src/presentation/branding/business.ts`; only the country name and the NIP and REGON labels are messages, in `components.custom.sellerContactDetails`.
 
 ## Footer links
 
@@ -210,6 +212,8 @@ Two other pages in the footer's information column are not content pages and hav
 <FooterLink to={ROUTES.PRIVACY_POLICY}>{t("privacy")}</FooterLink>
 <FooterLink to={ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
 ```
+
+The footer's "Contact details" link, like the "Contact" link in the full-screen menu, goes to `ROUTES.ABOUT` with `hash={ABOUT_CONTACT_HASH}`, the contact section at the end of the about page. Below the link columns, under the "Seller and contact" heading, the footer also renders `SellerContactDetails`, so the seller's legal name, address, NIP, REGON, e-mail and phone are on every page that has the footer.
 
 The checkout payment step also links the terms and privacy pages through `t.rich("termsAgreement", { privacy, terms })`. See [Checkout](/docs/features/checkout).
 
@@ -222,6 +226,7 @@ The checkout payment step also links the terms and privacy pages through `t.rich
 - `business.test.ts` fails if a seeded page stops naming the business details in `src/presentation/branding/business.ts`.
 - `order-confirmation.test.tsx` checks in both languages that the confirmation names the seller with every detail in `BUSINESS`, states the withdrawal, return, refund and complaint rules, and links the three documents. `withdrawal-form.attachment.test.ts` checks that the PDF in `public/forms` is attached byte for byte and that a missing form stops the email.
 - `legal-routes.test.ts` covers the three storefront routes.
+- `seller-contact-details.component.test.tsx` checks every business detail in both languages and the `mailto:` and `tel:` links; the footer, the full-screen menu and the about page tests check where the contact links go and that the details are shown. The smoke browser test follows the footer link and the menu link from the cart to the scrolled-in contact section.
 - `mdxeditor.plugins.component.test.tsx` round-trips every seeded page through the real editor, plus the escaping and line-break cases.
 - The admin component tests cover saving, validation, conflicts, edits during a save, the save shortcut and the leave dialog.
 - `content-page-article.component.test.tsx` covers the storefront rendering, heading anchors, localised links and dropped HTML.

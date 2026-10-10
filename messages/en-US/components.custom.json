@@ -15,6 +15,7 @@
     "returns": "Exchanges and returns",
     "tips": "Tips",
     "care": "How to care for jewelry",
+    "seller": "Seller and contact",
     "copyright": "© 2026 M'Arte. All rights reserved.",
     "facebook": "Facebook",
     "instagram": "Instagram",
@@ -110,6 +111,11 @@
     "wishlistSignInTitle": "Sign in to save pieces",
     "wishlistSignInDescription": "Your wishlist is kept with your account.",
     "wishlistSignInAction": "Sign in"
+  },
+  "sellerContactDetails": {
+    "country": "Poland",
+    "nip": "NIP (tax identification number): {nip}",
+    "regon": "REGON (business statistics number): {regon}"
   },
   "authLayout": {
     "imageAlt": "Editorial jewelry composition on textured stone",

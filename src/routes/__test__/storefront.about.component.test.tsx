@@ -7,6 +7,10 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { Route } from "~/src/routes/_storefront.about"
 
+import { BUSINESS, BUSINESS_PHONE_HREF, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+
+import { ABOUT_CONTACT_HASH } from "~/src/routes"
+
 const AboutPage = (): JSX.Element => {
   const Page = Route.options.component
   if (Page === undefined) {
@@ -44,10 +48,26 @@ describe("storefront about page", () => {
     expect(screen.queryByText(/under construction/iu)).not.toBeInTheDocument()
   })
 
-  it("keeps the reader on the page instead of sending them back home", () => {
+  it("ends with the seller's contact details where the contact links land", () => {
+    renderWithProviders(<AboutPage />)
+    const contact = screen.getByRole("region", { name: "Contact details" })
+
+    expect(contact).toHaveAttribute("id", ABOUT_CONTACT_HASH)
+    expect(contact).toHaveTextContent([...BUSINESS_POSTAL_ADDRESS_LINES, "Poland"].join(" "))
+    expect(contact).toHaveTextContent(`NIP (tax identification number): ${BUSINESS.NIP}`)
+    expect(contact).toHaveTextContent(`REGON (business statistics number): ${BUSINESS.REGON}`)
+    expect(
+      screen.getByText("Write or call us with any question about an order, a piece of jewellery or a bespoke design."),
+    ).toBeInTheDocument()
+  })
+
+  it("keeps the reader on the page, offering only the seller's email address and phone number", () => {
     renderWithProviders(<AboutPage />)
 
-    expect(screen.queryByRole("link")).not.toBeInTheDocument()
+    expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toStrictEqual([
+      `mailto:${BUSINESS.EMAIL}`,
+      BUSINESS_PHONE_HREF,
+    ])
   })
 })
 

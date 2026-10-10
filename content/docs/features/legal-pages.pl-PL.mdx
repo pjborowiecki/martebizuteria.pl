@@ -194,12 +194,14 @@ Lista i edytor w panelu obsłużą nową stronę bez zmian.
 
 Dwie inne strony z kolumny informacyjnej w stopce nie są stronami treści i nie mają rozbudowanego tekstu:
 
-| Trasa    | Plik                    | Co renderuje                                                              |
-| -------- | ----------------------- | ------------------------------------------------------------------------- |
-| `/faq`   | `_storefront.faq.tsx`   | `t("title")`, jeden akapit `t("description")`, odnośnik do strony głównej |
-| `/about` | `_storefront.about.tsx` | nadtytuł, tytuł, lead i cztery akapity z `pages.about`                    |
+| Trasa    | Plik                    | Co renderuje                                                                               |
+| -------- | ----------------------- | ------------------------------------------------------------------------------------------ |
+| `/faq`   | `_storefront.faq.tsx`   | `t("title")`, jeden akapit `t("description")`, odnośnik do strony głównej                  |
+| `/about` | `_storefront.about.tsx` | nadtytuł, tytuł, lead i cztery akapity z `pages.about`, a po nich sekcja danych sprzedawcy |
 
 `/about` to gotowa treść napisana w `messages/{locale}/pages.about.json`. `/faq` jest placeholderem i renderuje wyśrodkowany odnośnik do strony głównej.
+
+Strona „O M'Arte” kończy się sekcją „Dane kontaktowe” o identyfikatorze `ABOUT_CONTACT_HASH` z `src/routes.ts`, więc `/about#contact` przewija do niej stronę. Sekcja renderuje `SellerContactDetails` z `src/presentation/components/custom/seller-contact-details.tsx`: nazwę firmy i adres pocztowy z `BUSINESS_POSTAL_ADDRESS_LINES` wraz z krajem, NIP i REGON oraz adres e-mail i numer telefonu jako odnośniki `mailto:` i `tel:`. Wszystkie wartości pochodzą z `BUSINESS` w `src/presentation/branding/business.ts`; komunikatami w `components.custom.sellerContactDetails` są tylko nazwa kraju oraz etykiety NIP i REGON.
 
 ## Odnośniki w stopce
 
@@ -210,6 +212,8 @@ Dwie inne strony z kolumny informacyjnej w stopce nie są stronami treści i nie
 <FooterLink to={ROUTES.PRIVACY_POLICY}>{t("privacy")}</FooterLink>
 <FooterLink to={ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
 ```
+
+Odnośnik „Dane kontaktowe” w stopce, tak jak odnośnik „Kontakt” w menu pełnoekranowym, prowadzi do `ROUTES.ABOUT` z `hash={ABOUT_CONTACT_HASH}`, czyli do sekcji danych kontaktowych na końcu strony „O M'Arte”. Pod kolumnami odnośników, pod nagłówkiem „Sprzedawca i kontakt”, stopka renderuje też `SellerContactDetails`, więc nazwa firmy, adres, NIP, REGON, e-mail i telefon sprzedawcy są na każdej stronie ze stopką.
 
 Krok płatności w kasie również linkuje regulamin i politykę prywatności przez `t.rich("termsAgreement", { privacy, terms })`. Zobacz [Kasa](/docs/features/checkout).
 
@@ -222,6 +226,7 @@ Krok płatności w kasie również linkuje regulamin i politykę prywatności pr
 - `business.test.ts` zawodzi, jeśli zasiana strona przestanie podawać dane firmy z `src/presentation/branding/business.ts`.
 - `order-confirmation.test.tsx` sprawdza w obu językach, że potwierdzenie podaje Sprzedawcę ze wszystkimi danymi z `BUSINESS`, zasady odstąpienia, odesłania, zwrotu płatności i reklamacji oraz linkuje trzy dokumenty. `withdrawal-form.attachment.test.ts` sprawdza, że PDF z `public/forms` jest dołączany bajt w bajt i że brak formularza zatrzymuje e-mail.
 - `legal-routes.test.ts` obejmuje trzy trasy sklepu.
+- `seller-contact-details.component.test.tsx` sprawdza w obu językach wszystkie dane firmy oraz odnośniki `mailto:` i `tel:`; testy stopki, menu pełnoekranowego i strony „O M'Arte” sprawdzają, dokąd prowadzą odnośniki kontaktowe i że dane są widoczne. Test przeglądarkowy smoke przechodzi z koszyka odnośnikiem ze stopki i z menu do przewiniętej sekcji danych kontaktowych.
 - `mdxeditor.plugins.component.test.tsx` przepuszcza każdą zasianą stronę przez prawdziwy edytor w obie strony, razem z przypadkami escapowania i złamań wiersza.
 - Testy komponentów panelu sprawdzają zapis, walidację, konflikty, zmiany w trakcie zapisu, skrót klawiszowy i okno opuszczania strony.
 - `content-page-article.component.test.tsx` sprawdza renderowanie w sklepie, kotwice nagłówków, lokalizowane odnośniki i pomijany HTML.

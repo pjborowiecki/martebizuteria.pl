@@ -66,3 +66,5 @@ export const ROUTES = {
   PRODUCTS: "/products",
   TERMS_OF_SERVICE: "/terms-of-service",
 } as const
+
+export const ABOUT_CONTACT_HASH = "contact"

@@ -42,6 +42,8 @@ Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, kt�
 
 `/terms-of-service`, `/privacy-policy` i `/exchanges-and-returns` ładują swój Markdown z tabeli D1 `content_page` przez `getContentPageQuery` i renderują go przez `ContentPageArticle`; administratorzy edytują go w `/admin/content`. Blog czyta wpisy z `src/data/blog-posts.ts`.
 
+`ABOUT_CONTACT_HASH` w `src/routes.ts` to identyfikator sekcji danych sprzedawcy na końcu `/about`. Odnośnik „Dane kontaktowe” w stopce i odnośnik „Kontakt” w menu pełnoekranowym przekazują go jako `hash` odnośnika do `ROUTES.ABOUT`, więc otwierają `/about#contact` przewinięte do danych sprzedawcy.
+
 ## Proces zamówienia
 
 | Ścieżka     | Stała w `ROUTES` | Plik trasy                           | Uwagi                                                                          |

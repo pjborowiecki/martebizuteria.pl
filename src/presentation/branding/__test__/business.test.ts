@@ -6,7 +6,7 @@ import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migratio
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { APP_DOMAIN } from "~/src/presentation/branding/app"
-import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+import { BUSINESS, BUSINESS_PHONE_HREF, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 
 const seededBody = (handle: string, locale: string): string => {
   const sqlite = new DatabaseSync(":memory:")
@@ -23,6 +23,11 @@ const seededBody = (handle: string, locale: string): string => {
 describe("published business details", () => {
   it("takes customer replies to every email at a mailbox on the shop's own domain", () => {
     expect(BUSINESS.EMAIL.split("@").at(1)).toBe(APP_DOMAIN)
+  })
+
+  it("dials the published phone number without the spaces it is written with", () => {
+    expect(BUSINESS_PHONE_HREF).toMatch(/^tel:\+\d+$/u)
+    expect(BUSINESS_PHONE_HREF.replaceAll(/\D/gu, "")).toBe(BUSINESS.PHONE.replaceAll(/\D/gu, ""))
   })
 
   it.each(I18N.SUPPORTED_LOCALES)("keeps the %s privacy controller consistent with the business identity", (locale) => {
