@@ -270,7 +270,7 @@ describe("prepareRefundBatch against the database", () => {
 
     const [recorded] = await db.batch(prepareRefundBatch(SETTLED, FULL_REFUND))
 
-    expect(recorded).toStrictEqual([{ orderStatus: "cancelled", refundedAmount: 500 }])
+    expect(recorded).toStrictEqual([{ orderStatus: "cancelled", paymentStatus: "succeeded", refundedAmount: 500 }])
     expect(readPayment()).toMatchObject({ refunded_amount: PAID_AMOUNT, status: "refunded" })
   })
 
@@ -280,8 +280,21 @@ describe("prepareRefundBatch against the database", () => {
 
     const [recorded] = await db.batch(prepareRefundBatch(SETTLED, { ...FULL_REFUND, fullyRefunded: false, refundedAmount: 10_000 }))
 
-    expect(recorded).toStrictEqual([{ orderStatus: "processing", refundedAmount: 30_000 }])
+    expect(recorded).toStrictEqual([{ orderStatus: "processing", paymentStatus: "succeeded", refundedAmount: 30_000 }])
     expect(readPayment()).toMatchObject({ refunded_amount: 30_000, status: "succeeded" })
+  })
+
+  it("leaves a payment refunded in full untouched when an older partial refund event read it first and arrives after", async () => {
+    seedOrder("processing", "not_fulfilled")
+    await runDrizzleBatch(prepareRefundBatch(SETTLED, FULL_REFUND))
+    const refunded = readPayment()
+
+    const [recorded] = await db.batch(prepareRefundBatch(SETTLED, { ...FULL_REFUND, fullyRefunded: false, refundedAmount: 500 }))
+
+    expect(recorded).toStrictEqual([{ orderStatus: "refunded", paymentStatus: "refunded", refundedAmount: PAID_AMOUNT }])
+    expect(readPayment()).toStrictEqual(refunded)
+    expect(refunded).toMatchObject({ refunded_amount: PAID_AMOUNT, status: "refunded" })
+    expect(readOrder().status).toBe("refunded")
   })
 
   it("records a refund whose payment has no order on the payment alone", async () => {

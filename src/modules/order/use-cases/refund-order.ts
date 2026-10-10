@@ -45,7 +45,7 @@ export const refundOrder = async (input: Order["refundInput"]): Promise<Order["u
   }
 
   const [[recorded]] = await db.batch(prepareRefundBatch(settled, input))
-  if (settled.orderId === undefined) {
+  if (settled.orderId === undefined || recorded?.paymentStatus === "refunded") {
     return undefined
   }
 

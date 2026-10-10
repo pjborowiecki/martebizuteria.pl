@@ -6,6 +6,7 @@ import { refundOrder } from "../refund-order"
 
 interface RecordedRefund {
   readonly orderStatus: string | null
+  readonly paymentStatus: string
   readonly refundedAmount: number
 }
 
@@ -58,7 +59,7 @@ beforeEach(() => {
   calls.prepared.length = 0
   state.orderRow = { status: "processing" }
   state.paymentRow = { checkoutId: "checkout-1", refundedAmount: 0 }
-  state.recorded = [{ orderStatus: "processing", refundedAmount: 0 }]
+  state.recorded = [{ orderStatus: "processing", paymentStatus: "succeeded", refundedAmount: 0 }]
   state.settled = { checkoutId: "checkout-1", orderId: "order-1", paymentId: "payment-1", paymentStatus: "succeeded" }
 })
 
@@ -78,6 +79,14 @@ describe("refundOrder guards", () => {
     await refundOrder(input())
 
     expect(calls.batches).toHaveLength(0)
+  })
+
+  it("records and announces nothing when another event refunded the payment after this one read it", async () => {
+    state.recorded = [{ orderStatus: "refunded", paymentStatus: "refunded", refundedAmount: 1999 }]
+
+    await expect(refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))).resolves.toBeUndefined()
+    expect(calls.batches).toHaveLength(1)
+    expect(calls.audit).not.toHaveBeenCalled()
   })
 })
 
@@ -186,7 +195,7 @@ describe("refundOrder unannounced refund", () => {
   })
 
   it("hands back only the amount refunded since the refund the payment already recorded", async () => {
-    state.recorded = [{ orderStatus: "completed", refundedAmount: 500 }]
+    state.recorded = [{ orderStatus: "completed", paymentStatus: "succeeded", refundedAmount: 500 }]
 
     await expect(refundOrder(input({ fullyRefunded: false, refundedAmount: 1500 }))).resolves.toStrictEqual({
       amount: 1000,
@@ -197,19 +206,19 @@ describe("refundOrder unannounced refund", () => {
   })
 
   it("hands back nothing for a redelivered refund the payment already recorded", async () => {
-    state.recorded = [{ orderStatus: "processing", refundedAmount: 500 }]
+    state.recorded = [{ orderStatus: "processing", paymentStatus: "succeeded", refundedAmount: 500 }]
 
     await expect(refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))).resolves.toBeUndefined()
   })
 
   it("hands back nothing for an older refund delivered after a later one", async () => {
-    state.recorded = [{ orderStatus: "processing", refundedAmount: 1500 }]
+    state.recorded = [{ orderStatus: "processing", paymentStatus: "succeeded", refundedAmount: 1500 }]
 
     await expect(refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))).resolves.toBeUndefined()
   })
 
   it("hands back nothing for the refund of an order the shop cancelled, which the cancellation already announced", async () => {
-    state.recorded = [{ orderStatus: "cancelled", refundedAmount: 0 }]
+    state.recorded = [{ orderStatus: "cancelled", paymentStatus: "succeeded", refundedAmount: 0 }]
 
     await expect(refundOrder(input())).resolves.toBeUndefined()
     expect(calls.audit).toHaveBeenCalledOnce()
