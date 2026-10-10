@@ -227,6 +227,7 @@
       "expired": "That code has expired.",
       "exhausted": "That code has been fully redeemed.",
       "alreadyUsed": "You have already used that code.",
+      "held": "That code is reserved for orders awaiting payment. Try again later.",
       "minOrderNotMet": "Your basket does not reach the minimum for that code.",
       "error": "We could not check that code. Please try again."
     }

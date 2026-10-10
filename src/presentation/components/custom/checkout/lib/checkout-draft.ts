@@ -103,6 +103,8 @@ const loadHeldCheckoutSession = (): HeldCheckoutSession | undefined => {
 
 export const loadCheckoutSessionId = (): string | undefined => loadHeldCheckoutSession()?.sessionId
 
+export const loadCheckoutSessionIdOnServer = (): string | undefined => undefined
+
 export const wasCheckoutSessionOpenedForAnotherCart = (sessionId: string, cart: readonly CheckoutCartLine[]): boolean => {
   const held = loadHeldCheckoutSession()
 

@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, isNull, or, sql } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, isNull, notInArray, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -6,8 +6,9 @@ import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
-import { discount, discountRedemption } from "~/src/modules/discount/discount.schema"
+import { discount, discountClaim, discountRedemption } from "~/src/modules/discount/discount.schema"
 import { type Discount } from "~/src/modules/discount/discount.types"
+import { payment } from "~/src/modules/payment/payment.schema"
 
 const NO_ROWS = 0
 
@@ -21,9 +22,15 @@ export const getDiscountById = (id: string) =>
     where: eq(discount.id, id),
   })
 
-const customerRedemptionCount = (email: string | undefined): SQL<number> => {
+const normalizeCustomerEmail = (email: string | undefined): string | undefined => {
   const normalizedEmail = email?.trim().toLowerCase()
-  if (normalizedEmail === undefined || normalizedEmail === "") {
+
+  return normalizedEmail === "" ? undefined : normalizedEmail
+}
+
+const customerRedemptionCount = (email: string | undefined): SQL<number> => {
+  const normalizedEmail = normalizeCustomerEmail(email)
+  if (normalizedEmail === undefined) {
     return sql<number>`${NO_ROWS}`
   }
 
@@ -38,6 +45,41 @@ export const getDiscountByCodeForCustomerQuery = (code: string, email: string | 
     extras: { redeemedByCustomer: customerRedemptionCount(email).as("redeemed_by_customer") },
     where: eq(discount.code, code),
   })
+
+const claimsOfOtherCheckouts = (heldSessionId: string | undefined): SQL | undefined => {
+  const sameDiscount = eq(discountClaim.discountId, discount.id)
+  if (heldSessionId === undefined) {
+    return sameDiscount
+  }
+
+  const heldCheckout = db.select({ checkoutId: payment.checkoutId }).from(payment).where(eq(payment.transactionId, heldSessionId))
+
+  return and(sameDiscount, notInArray(discountClaim.checkoutId, heldCheckout))
+}
+
+const claimCount = (claims: SQL | undefined): SQL<number> => sql<number>`${db.select({ held: count() }).from(discountClaim).where(claims)}`
+
+const customerClaimCount = (claims: SQL | undefined, email: string | undefined): SQL<number> => {
+  const normalizedEmail = normalizeCustomerEmail(email)
+  if (normalizedEmail === undefined) {
+    return sql<number>`${NO_ROWS}`
+  }
+
+  return claimCount(and(claims, eq(sql`lower(${discountClaim.email})`, normalizedEmail)))
+}
+
+export const getDiscountByCodeForPreviewQuery = ({ code, email, heldSessionId }: DiscountPreviewLookup) => {
+  const otherCheckoutsClaims = claimsOfOtherCheckouts(heldSessionId)
+
+  return db.query.discount.findFirst({
+    extras: {
+      heldByOtherCheckouts: claimCount(otherCheckoutsClaims).as("held_by_other_checkouts"),
+      heldForCustomer: customerClaimCount(otherCheckoutsClaims, email).as("held_for_customer"),
+      redeemedByCustomer: customerRedemptionCount(email).as("redeemed_by_customer"),
+    },
+    where: eq(discount.code, code),
+  })
+}
 
 const buildAdminDiscountsWhere = (search: string | undefined): SQL | undefined =>
   buildAdminSearchOrCondition(search, [discount.code, discount.description])
@@ -99,6 +141,12 @@ export const deleteDiscountsByIds = async (ids: readonly string[]): Promise<numb
 }
 
 type DiscountUpdateSet = Parameters<ReturnType<typeof db.update<typeof discount>>["set"]>[0]
+
+interface DiscountPreviewLookup {
+  readonly code: string
+  readonly email: string | undefined
+  readonly heldSessionId: string | undefined
+}
 
 export interface AdminDiscountsListParams extends ListPaginationParams {
   readonly search?: string | undefined

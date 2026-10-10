@@ -56,6 +56,22 @@ export const resolveDiscountRejection = ({ itemsSubtotal, now, row }: ResolveRej
   return undefined
 }
 
+export const resolveDiscountPreviewRejection = ({
+  itemsSubtotal,
+  now,
+  row,
+}: ResolvePreviewRejectionInput): DiscountRejection | undefined => {
+  const rejection = resolveDiscountRejection({ itemsSubtotal, now, row })
+  if (rejection !== undefined) {
+    return rejection
+  }
+
+  const usesHeldElsewhere = row.usageLimit !== null && row.usageCount + row.heldByOtherCheckouts >= row.usageLimit
+  const customerUsesHeldElsewhere = row.perCustomerLimit !== null && row.redeemedByCustomer + row.heldForCustomer >= row.perCustomerLimit
+
+  return usesHeldElsewhere || customerUsesHeldElsewhere ? DISCOUNT_REJECTION.HELD : undefined
+}
+
 export const resolveAppliedCheckoutDiscount = ({
   itemsSubtotal,
   now,
@@ -119,6 +135,10 @@ interface ResolveRejectionInput {
     Discount["selectForCustomer"],
     "endsAt" | "isActive" | "minOrderTotal" | "perCustomerLimit" | "redeemedByCustomer" | "startsAt" | "usageCount" | "usageLimit"
   >
+}
+
+interface ResolvePreviewRejectionInput extends ResolveRejectionInput {
+  readonly row: ResolveRejectionInput["row"] & Pick<Discount["selectForPreview"], "heldByOtherCheckouts" | "heldForCustomer">
 }
 
 interface ResolveAppliedCheckoutDiscountInput {

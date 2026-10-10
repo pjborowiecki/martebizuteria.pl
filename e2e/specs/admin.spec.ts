@@ -19,9 +19,14 @@ const ORDER_EMAIL_RETRIES_SETTLED_MS = 30_000
 
 const CONFIRMATION_SUBJECT = "Order confirmation — M'Arte"
 
+interface DiscountAttempt {
+  readonly code: string
+  readonly summaryShows: string
+}
+
 interface GuestOrderInput {
   readonly browser: Browser
-  readonly discountCode?: string
+  readonly discount?: DiscountAttempt
   readonly handle: string
   readonly label: string
   readonly request: APIRequestContext
@@ -44,7 +49,9 @@ const placeGuestOrder = async ({ browser, handle, label, request, testInfo }: Gu
 const RESERVED_IN_CHECKOUT =
   "A customer is paying for one of these products right now, so it cannot be deleted. Archive the product to take it off sale, and delete it only once that payment has finished or expired."
 
-const openGuestPayment = async ({ browser, discountCode, handle, label, request, testInfo }: GuestOrderInput): Promise<CheckoutSession> => {
+const CODE_HELD_BY_OTHER_CHECKOUTS = "That code is reserved for orders awaiting payment. Try again later."
+
+const openGuestPayment = async ({ browser, discount, handle, label, request, testInfo }: GuestOrderInput): Promise<CheckoutSession> => {
   const shopper = await browser.newContext({
     extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, label) },
     storageState: { cookies: [], origins: [] },
@@ -57,9 +64,9 @@ const openGuestPayment = async ({ browser, discountCode, handle, label, request,
   await productPage.gotoProduct(handle)
   await productPage.addToCart()
   await checkoutPage.gotoCheckout()
-  if (discountCode !== undefined) {
-    await checkoutPage.applyDiscountCode(discountCode)
-    await expect(checkoutPage.summary()).toContainText(discountCode)
+  if (discount !== undefined) {
+    await checkoutPage.applyDiscountCode(discount.code)
+    await expect(checkoutPage.summary()).toContainText(discount.summaryShows)
   }
 
   await checkoutPage.fillContact(email, SHIPPING_ADDRESS.phone)
@@ -130,7 +137,7 @@ test.describe("admin", () => {
     await expect(page.getByRole("row").filter({ hasText: code })).toContainText("1 used")
   })
 
-  test("a coupon's last use stays with the checkout that holds it until its session expires", async ({
+  test("a coupon's last use stays with the checkout that holds it, and is refused to others, until its session expires", async ({
     browser,
     couponsPage,
     page,
@@ -139,10 +146,14 @@ test.describe("admin", () => {
     const code = uniqueCode("LAST")
     await couponsPage.gotoCoupons()
     await couponsPage.createPercentageCoupon(code, 10, 1)
-    const checkoutWithCode = { browser, discountCode: code, handle: PRODUCTS.lapis.handle, request, testInfo }
+    const checkoutWithCode = { browser, discount: { code, summaryShows: code }, handle: PRODUCTS.lapis.handle, request, testInfo }
 
     const holder = await openGuestPayment({ ...checkoutWithCode, label: "holder" })
-    const latecomer = await openGuestPayment({ ...checkoutWithCode, label: "latecomer" })
+    const latecomer = await openGuestPayment({
+      ...checkoutWithCode,
+      discount: { code, summaryShows: CODE_HELD_BY_OTHER_CHECKOUTS },
+      label: "latecomer",
+    })
 
     expect(holder.metadata["discountCode"]).toBe(code)
     expect(latecomer.metadata["discountCode"]).toBe("")

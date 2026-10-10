@@ -6,6 +6,7 @@ import {
   isCheckoutSessionHeldForCart,
   loadCheckoutDraft,
   loadCheckoutSessionId,
+  loadCheckoutSessionIdOnServer,
   saveCheckoutDraft,
   saveCheckoutSession,
   subscribeToCheckoutSessionId,
@@ -122,6 +123,14 @@ describe("saveCheckoutSession and loadCheckoutSessionId", () => {
     saveCheckoutSession(openedForRingAndEarrings("cs_test_new"))
 
     expect(loadCheckoutSessionId()).toBe("cs_test_new")
+  })
+})
+
+describe("loadCheckoutSessionIdOnServer", () => {
+  it("holds no session on the server, whatever this browser stored", () => {
+    saveCheckoutSession({ lines: [{ qty: 1, variantId: "variant-a" }], sessionId: "cs_test_open" })
+
+    expect(loadCheckoutSessionIdOnServer()).toBeUndefined()
   })
 })
 

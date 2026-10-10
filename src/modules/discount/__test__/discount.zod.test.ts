@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vite-plus/test"
 
+import { CART_LINES_MAX } from "~/src/modules/cart/cart.constants"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
 
-const BASKET = { code: "SPRING", itemsSubtotal: 24_900, shippingTotal: 1900 }
+const BASKET = { code: "SPRING", lines: [{ qty: 1, variantId: "variant-a" }] }
 
 describe("discountZodSchemas.validateDiscountInput", () => {
   it("checks a code before the shopper has typed an email", () => {
@@ -19,6 +20,26 @@ describe("discountZodSchemas.validateDiscountInput", () => {
 
   it("rejects a malformed email", () => {
     expect(discountZodSchemas.validateDiscountInput.safeParse({ ...BASKET, email: "ada@" }).success).toBe(false)
+  })
+
+  it("takes the basket as lines, with the chosen delivery method and the browser's open checkout session", () => {
+    const basket = { ...BASKET, deliveryMethodId: "dm-courier", heldSessionId: "cs_test_own" }
+
+    expect(discountZodSchemas.validateDiscountInput.parse(basket)).toStrictEqual(basket)
+  })
+
+  it("checks a code against an empty basket", () => {
+    expect(discountZodSchemas.validateDiscountInput.parse({ ...BASKET, lines: [] })).toStrictEqual({ ...BASKET, lines: [] })
+  })
+
+  it.each([
+    ["a line without a quantity", { lines: [{ qty: 0, variantId: "variant-a" }] }],
+    ["a line without a variant", { lines: [{ qty: 1, variantId: "" }] }],
+    ["more lines than a checkout takes", { lines: Array.from({ length: CART_LINES_MAX + 1 }, () => ({ qty: 1, variantId: "variant-a" })) }],
+    ["an empty delivery method", { deliveryMethodId: "" }],
+    ["an empty session id", { heldSessionId: "" }],
+  ])("rejects %s", (_case, overrides) => {
+    expect(discountZodSchemas.validateDiscountInput.safeParse({ ...BASKET, ...overrides }).success).toBe(false)
   })
 })
 

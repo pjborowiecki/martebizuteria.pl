@@ -1,7 +1,10 @@
 import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
-import { MIN_FIELD_LENGTH, pageField, pageSizeField, searchTermField, uuidField } from "~/src/modules/_core/utils/zod-fields"
+import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
+
+import { MIN_FIELD_LENGTH, idField, pageField, pageSizeField, searchTermField, uuidField } from "~/src/modules/_core/utils/zod-fields"
+import { CART_LINES_MAX } from "~/src/modules/cart/cart.constants"
 import {
   DISCOUNT_CODE_MAX_LENGTH,
   DISCOUNT_CODE_MIN_LENGTH,
@@ -11,6 +14,7 @@ import {
   DISCOUNT_TYPES,
 } from "~/src/modules/discount/discount.constants"
 import { discount } from "~/src/modules/discount/discount.schema"
+import { PRODUCT_VARIANT_COLUMN_LENGTH } from "~/src/modules/product-variant/product-variant.constants"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
   zodInstance: zod,
@@ -31,6 +35,11 @@ const optionalEmailField = zod
   .union([zod.email(), zod.literal("")])
   .optional()
   .transform((email) => (email === "" ? undefined : email))
+
+const basketLine = zod.object({
+  qty: zod.number().int().positive(),
+  variantId: idField.max(PRODUCT_VARIANT_COLUMN_LENGTH.id),
+})
 
 const adminDiscountFormValues = zod
   .object({
@@ -78,8 +87,9 @@ export const discountZodSchemas = {
   updateDiscountInput: zod.object({ id: uuidField, values: adminDiscountFormValues }),
   validateDiscountInput: zod.object({
     code: codeField,
+    deliveryMethodId: idField.optional(),
     email: optionalEmailField,
-    itemsSubtotal: zod.number().int().min(0),
-    shippingTotal: zod.number().int().min(0),
+    heldSessionId: idField.max(CHECKOUT_SESSION_ID_MAX_LENGTH).optional(),
+    lines: zod.array(basketLine).max(CART_LINES_MAX),
   }),
 }

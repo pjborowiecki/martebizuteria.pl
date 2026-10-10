@@ -35,7 +35,7 @@ const { countOpenCheckouts } = await import("~/src/modules/checkout/use-cases/co
 const { deleteExpiredAuditLogs } = await import("~/src/modules/audit-log/use-cases/delete-expired-audit-logs.server")
 const { getCustomerActivityAuditRows, getCustomerLoginAuditRows } =
   await import("~/src/modules/customer-account/customer-account.accessors.server")
-const { getDiscountByCodeForCustomerQuery } = await import("~/src/modules/discount/discount.accessors")
+const { getDiscountByCodeForCustomerQuery, getDiscountByCodeForPreviewQuery } = await import("~/src/modules/discount/discount.accessors")
 const { prepareDiscountClaim } = await import("~/src/modules/discount/discount.claim.server")
 const { getAdminSubscribersPage } = await import("~/src/modules/newsletter/newsletter.accessors")
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
@@ -211,6 +211,19 @@ describe("hot reads", () => {
     await expect(planSteps(() => getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test"))).resolves.toStrictEqual(
       expect.arrayContaining([
         "SEARCH discount USING INDEX discount_code_unique (code=?)",
+        "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+      ]),
+    )
+  })
+
+  it("read a discount by its code for the checkout's preview and count its holds outside the shopper's checkout from their indexes", async () => {
+    await expect(
+      planSteps(() => getDiscountByCodeForPreviewQuery({ code: "SPRING-24", email: "ada@marte.test", heldSessionId: "cs_test_own" })),
+    ).resolves.toStrictEqual(
+      expect.arrayContaining([
+        "SEARCH discount USING INDEX discount_code_unique (code=?)",
+        "SEARCH discount_claim USING INDEX discount_claim_discountId_email_idx (discount_id=?)",
+        "SEARCH payment USING INDEX payment_transactionId_unique (transaction_id=?)",
         "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
       ]),
     )

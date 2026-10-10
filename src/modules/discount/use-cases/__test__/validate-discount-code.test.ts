@@ -17,9 +17,17 @@ import {
 } from "~/src/modules/discount/use-cases/validate-discount-code"
 
 const stubs = vi.hoisted(() => ({
-  getDiscountByCodeForCustomerQuery:
-    vi.fn<(code: string, email: string | undefined) => Promise<Discount["selectForCustomer"] | undefined>>(),
+  getDiscountByCodeForPreviewQuery:
+    vi.fn<
+      (lookup: {
+        code: string
+        email: string | undefined
+        heldSessionId: string | undefined
+      }) => Promise<Discount["selectForPreview"] | undefined>
+    >(),
+  getOfferedDeliveryMethodByIdQuery: vi.fn<(id: string) => Promise<{ price: number; type: string } | undefined>>(),
   getRequestSession: vi.fn<() => Promise<{ user: { email: string } } | null>>(),
+  getSellPricesByVariantIds: vi.fn<(variantIds: readonly string[]) => Promise<Map<string, number>>>(),
   withinRateLimit: vi.fn<(input: { key: string; limit: number; windowSeconds: number }) => Promise<boolean>>(),
 }))
 
@@ -45,18 +53,36 @@ vi.mock("~/src/lib/rate-limit", () => ({
   withinRateLimit: stubs.withinRateLimit,
 }))
 vi.mock("~/src/modules/discount/discount.accessors", () => ({
-  getDiscountByCodeForCustomerQuery: stubs.getDiscountByCodeForCustomerQuery,
+  getDiscountByCodeForPreviewQuery: stubs.getDiscountByCodeForPreviewQuery,
+}))
+vi.mock("~/src/modules/product-variant/product-variant.accessors", () => ({
+  getSellPricesByVariantIds: stubs.getSellPricesByVariantIds,
+}))
+vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
+  getOfferedDeliveryMethodByIdQuery: stubs.getOfferedDeliveryMethodByIdQuery,
 }))
 
 const NOW = new Date("2026-06-01T12:00:00.000Z")
 
-const BASKET = { itemsSubtotal: 20_000, shippingTotal: 1500 }
+const BASKET = {
+  lines: [
+    { qty: 2, variantId: "variant-ring" },
+    { qty: 1, variantId: "variant-chain" },
+  ],
+}
 
-const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Discount["selectForCustomer"] => ({
+const SELL_PRICES = new Map([
+  ["variant-ring", 8000],
+  ["variant-chain", 4000],
+])
+
+const discountRow = (overrides: Partial<Discount["selectForPreview"]> = {}): Discount["selectForPreview"] => ({
   code: "SPRING-24",
   createdAt: new Date("2026-05-01T00:00:00.000Z"),
   description: null,
   endsAt: null,
+  heldByOtherCheckouts: 0,
+  heldForCustomer: 0,
   id: "discount-1",
   isActive: true,
   maxDiscountAmount: null,
@@ -75,8 +101,10 @@ const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Di
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers({ now: NOW, toFake: ["Date"] })
-  stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow())
+  stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow())
+  stubs.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1500, type: "courier" })
   stubs.getRequestSession.mockResolvedValue(null)
+  stubs.getSellPricesByVariantIds.mockResolvedValue(SELL_PRICES)
   stubs.withinRateLimit.mockResolvedValue(true)
 })
 
@@ -97,23 +125,24 @@ describe("validateDiscountCode", () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).rejects.toMatchObject({
       code: ERROR_CODES.TOO_MANY_REQUESTS,
     })
-    expect(stubs.getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
+    expect(stubs.getDiscountByCodeForPreviewQuery).not.toHaveBeenCalled()
   })
 
-  it("applies a usable code and prices it against the basket", async () => {
+  it("applies a usable code and prices it against the basket at the shop's sell prices", async () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).resolves.toStrictEqual({
       applied: { amountMinorUnits: 3000, code: "SPRING-24", discountId: "discount-1", type: DISCOUNT_TYPE.PERCENTAGE },
     })
+    expect(stubs.getSellPricesByVariantIds).toHaveBeenCalledExactlyOnceWith(["variant-ring", "variant-chain"])
   })
 
   it("looks the code up however the shopper typed it", async () => {
     await validateDiscountCode({ data: { ...BASKET, code: " spring-24 " } })
 
-    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledWith("SPRING-24", undefined)
+    expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledWith({ code: "SPRING-24", email: undefined, heldSessionId: undefined })
   })
 
   it("says a code that matches no discount was not found", async () => {
-    stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(undefined)
+    stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(undefined)
 
     await expect(validateDiscountCode({ data: { ...BASKET, code: "NOPE-99" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.NOT_FOUND,
@@ -121,7 +150,7 @@ describe("validateDiscountCode", () => {
   })
 
   it("explains why a code that exists cannot be used yet", async () => {
-    stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ startsAt: new Date("2026-07-01T00:00:00.000Z") }))
+    stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ startsAt: new Date("2026-07-01T00:00:00.000Z") }))
 
     await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.NOT_STARTED,
@@ -133,7 +162,11 @@ describe("validateDiscountCode", () => {
 
     await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", email: "ada@marte.test" } })
 
-    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", "ada@marte.test")
+    expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
+      code: "SPRING-24",
+      email: "ada@marte.test",
+      heldSessionId: undefined,
+    })
     expect(stubs.getRequestSession).not.toHaveBeenCalled()
   })
 
@@ -142,7 +175,11 @@ describe("validateDiscountCode", () => {
 
     await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", email: "" } })
 
-    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", "account@marte.test")
+    expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
+      code: "SPRING-24",
+      email: "account@marte.test",
+      heldSessionId: undefined,
+    })
   })
 
   it("waits for the session before it reads the discount when no email was typed", async () => {
@@ -154,20 +191,28 @@ describe("validateDiscountCode", () => {
       expect(stubs.getRequestSession).toHaveBeenCalledOnce()
     })
 
-    expect(stubs.getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
+    expect(stubs.getDiscountByCodeForPreviewQuery).not.toHaveBeenCalled()
     session.resolve({ user: { email: "account@marte.test" } })
     await validation
-    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", "account@marte.test")
+    expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
+      code: "SPRING-24",
+      email: "account@marte.test",
+      heldSessionId: undefined,
+    })
   })
 
   it("checks a guest without an email against no one", async () => {
     await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })
 
-    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", undefined)
+    expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
+      code: "SPRING-24",
+      email: undefined,
+      heldSessionId: undefined,
+    })
   })
 
   it("turns down a code the shopper has already used up", async () => {
-    stubs.getDiscountByCodeForCustomerQuery.mockResolvedValue(discountRow({ perCustomerLimit: 1, redeemedByCustomer: 1 }))
+    stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ perCustomerLimit: 1, redeemedByCustomer: 1 }))
 
     await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", email: "ada@marte.test" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.ALREADY_USED,
@@ -176,7 +221,101 @@ describe("validateDiscountCode", () => {
 
   it("rejects a code with characters a discount code cannot contain", async () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING 24!" } })).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION })
-    expect(stubs.getDiscountByCodeForCustomerQuery).not.toHaveBeenCalled()
+    expect(stubs.getDiscountByCodeForPreviewQuery).not.toHaveBeenCalled()
+  })
+
+  it("refuses a basket line without a quantity before reading anything", async () => {
+    await expect(
+      validateDiscountCode({ data: { code: "SPRING-24", lines: [{ qty: 0, variantId: "variant-ring" }] } }),
+    ).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION })
+    expect(stubs.getSellPricesByVariantIds).not.toHaveBeenCalled()
+  })
+})
+
+describe("validateDiscountCode prices the basket from the shop", () => {
+  it("prices the basket again when the shop changes a price", async () => {
+    stubs.getSellPricesByVariantIds.mockResolvedValue(new Map([...SELL_PRICES, ["variant-chain", 14_000]]))
+
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).resolves.toMatchObject({
+      applied: { amountMinorUnits: 4500 },
+    })
+  })
+
+  it("leaves out of the subtotal a line the shop no longer prices", async () => {
+    stubs.getSellPricesByVariantIds.mockResolvedValue(new Map([["variant-ring", 8000]]))
+
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).resolves.toMatchObject({
+      applied: { amountMinorUnits: 2400 },
+    })
+  })
+
+  it("holds the minimum order against the subtotal the shop prices", async () => {
+    stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ minOrderTotal: 20_001 }))
+
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).resolves.toStrictEqual({
+      rejection: DISCOUNT_REJECTION.MIN_ORDER_NOT_MET,
+    })
+  })
+
+  it("prices a free-delivery code at the cost of the delivery method the shop offers", async () => {
+    stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ type: DISCOUNT_TYPE.FREE_SHIPPING, value: 0 }))
+
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", deliveryMethodId: "dm-courier" } })).resolves.toMatchObject({
+      applied: { amountMinorUnits: 1500, type: DISCOUNT_TYPE.FREE_SHIPPING },
+    })
+    expect(stubs.getOfferedDeliveryMethodByIdQuery).toHaveBeenCalledExactlyOnceWith("dm-courier")
+  })
+
+  it("takes nothing off for delivery before the shopper chooses a method", async () => {
+    stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ type: DISCOUNT_TYPE.FREE_SHIPPING, value: 0 }))
+
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).resolves.toMatchObject({
+      applied: { amountMinorUnits: 0 },
+    })
+    expect(stubs.getOfferedDeliveryMethodByIdQuery).not.toHaveBeenCalled()
+  })
+
+  it("takes nothing off for a delivery method the shop no longer offers", async () => {
+    stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ type: DISCOUNT_TYPE.FREE_SHIPPING, value: 0 }))
+    stubs.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(undefined)
+
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", deliveryMethodId: "dm-retired" } })).resolves.toMatchObject({
+      applied: { amountMinorUnits: 0 },
+    })
+  })
+
+  it("does not read the delivery method for a code whose amount does not depend on it", async () => {
+    await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", deliveryMethodId: "dm-courier" } })
+
+    expect(stubs.getOfferedDeliveryMethodByIdQuery).not.toHaveBeenCalled()
+  })
+})
+
+describe("validateDiscountCode counts the uses open checkouts hold", () => {
+  it("leaves the uses held by the shopper's own open checkout out of the count", async () => {
+    await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", heldSessionId: "cs_test_own" } })
+
+    expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
+      code: "SPRING-24",
+      email: undefined,
+      heldSessionId: "cs_test_own",
+    })
+  })
+
+  it("turns down a code whose remaining uses other checkouts hold", async () => {
+    stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ heldByOtherCheckouts: 1, usageCount: 2, usageLimit: 3 }))
+
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })).resolves.toStrictEqual({
+      rejection: DISCOUNT_REJECTION.HELD,
+    })
+  })
+
+  it("turns down a code the shopper's limit allows only once while another of their checkouts holds it", async () => {
+    stubs.getDiscountByCodeForPreviewQuery.mockResolvedValue(discountRow({ heldForCustomer: 1, perCustomerLimit: 1 }))
+
+    await expect(validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", email: "ada@marte.test" } })).resolves.toStrictEqual({
+      rejection: DISCOUNT_REJECTION.HELD,
+    })
   })
 })
 
@@ -186,10 +325,12 @@ describe("validateDiscountCodeQuery", () => {
     expect(validateDiscountCodeQuery({ ...BASKET, code: "" }).queryFn).toBe(skipToken)
   })
 
-  it("keys the check by the code and the basket it was priced against", () => {
-    expect(validateDiscountCodeQuery({ ...BASKET, code: "SPRING-24", email: "ada@marte.test" }).queryKey).toStrictEqual([
+  it("keys the check by the code and the basket, delivery, e-mail and open checkout it was priced against", () => {
+    const basket = { ...BASKET, deliveryMethodId: "dm-courier", email: "ada@marte.test", heldSessionId: "cs_test_own" }
+
+    expect(validateDiscountCodeQuery({ ...basket, code: "SPRING-24" }).queryKey).toStrictEqual([
       ...DISCOUNT_QUERY_KEYS.VALIDATION,
-      { ...BASKET, code: "SPRING-24", email: "ada@marte.test" },
+      { ...basket, code: "SPRING-24" },
     ])
   })
 

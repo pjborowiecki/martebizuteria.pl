@@ -227,6 +227,7 @@
       "expired": "Ten kod wygasł.",
       "exhausted": "Ten kod został już w pełni wykorzystany.",
       "alreadyUsed": "Już korzystałeś z tego kodu.",
+      "held": "Ten kod jest zarezerwowany dla zamówień oczekujących na płatność. Spróbuj ponownie później.",
       "minOrderNotMet": "Twój koszyk nie osiąga minimalnej kwoty dla tego kodu.",
       "error": "Nie udało się sprawdzić kodu. Spróbuj ponownie."
     }

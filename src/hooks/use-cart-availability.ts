@@ -9,7 +9,11 @@ import {
   checkCartAvailabilityQuery,
 } from "~/src/modules/cart/use-cases/check-cart-availability"
 
-import { loadCheckoutSessionId, subscribeToCheckoutSessionId } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
+import {
+  loadCheckoutSessionId,
+  loadCheckoutSessionIdOnServer,
+  subscribeToCheckoutSessionId,
+} from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
 
 export const useCartAvailability = (): CartAvailabilityState => {
   const items = useCartStore((state) => state.items)
@@ -25,7 +29,7 @@ export const useCartAvailability = (): CartAvailabilityState => {
     [items],
   )
 
-  const heldSessionId = useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, readNoHeldSessionId)
+  const heldSessionId = useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, loadCheckoutSessionIdOnServer)
   const { data, isFetching, isPending } = useQuery(checkCartAvailabilityQuery(lines, heldSessionId))
   const currentPrices = data?.prices
   useEffect(() => {
@@ -46,8 +50,6 @@ export const useCartAvailability = (): CartAvailabilityState => {
 }
 
 const EMPTY_LINES: CartAvailabilityLine[] = []
-
-const readNoHeldSessionId = (): string | undefined => undefined
 
 const EMPTY_ISSUES: CartAvailabilityIssue[] = []
 

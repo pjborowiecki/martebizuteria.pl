@@ -5,16 +5,42 @@ import type * as zod from "zod"
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
-import { getDiscountByCodeForCustomerQuery } from "~/src/modules/discount/discount.accessors"
+import { getOfferedDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
+import { getDiscountByCodeForPreviewQuery } from "~/src/modules/discount/discount.accessors"
 import {
   DISCOUNT_MUTATION_KEYS,
   DISCOUNT_QUERY_KEYS,
   DISCOUNT_QUERY_STALE_MS,
   DISCOUNT_REJECTION,
+  DISCOUNT_TYPE,
+  type DiscountType,
 } from "~/src/modules/discount/discount.constants"
 import { type Discount } from "~/src/modules/discount/discount.types"
-import { calculateDiscountAmount, normalizeDiscountCode, resolveDiscountRejection } from "~/src/modules/discount/discount.utils"
+import { calculateDiscountAmount, normalizeDiscountCode, resolveDiscountPreviewRejection } from "~/src/modules/discount/discount.utils"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
+import { sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
+import { getSellPricesByVariantIds } from "~/src/modules/product-variant/product-variant.accessors"
+
+const NO_DELIVERY_COST = 0
+
+const sumBasketAtSellPrices = (lines: DiscountCheckBasket["lines"], priceByVariantId: ReadonlyMap<string, number>): number =>
+  sumOrderLineSubtotal(
+    lines.flatMap((line) => {
+      const price = priceByVariantId.get(line.variantId)
+
+      return price === undefined ? [] : [{ price, qty: line.qty }]
+    }),
+  )
+
+const priceDeliveryCoveredBy = async (type: DiscountType, deliveryMethodId: string | undefined): Promise<number> => {
+  if (type !== DISCOUNT_TYPE.FREE_SHIPPING || deliveryMethodId === undefined) {
+    return NO_DELIVERY_COST
+  }
+
+  const method = await getOfferedDeliveryMethodByIdQuery(deliveryMethodId)
+
+  return method === undefined ? NO_DELIVERY_COST : method.price
+}
 
 export const validateDiscountCode = createServerFn({ method: "POST" })
   .middleware([withRateLimit("discount-validate", RATE_LIMITS.CHECKOUT)])
@@ -22,13 +48,16 @@ export const validateDiscountCode = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<Discount["validation"]> => {
     const session = data.email === undefined ? await getRequestSession() : undefined
     const email = data.email ?? session?.user.email
-    const row = await getDiscountByCodeForCustomerQuery(normalizeDiscountCode(data.code), email)
+    const [row, priceByVariantId] = await Promise.all([
+      getDiscountByCodeForPreviewQuery({ code: normalizeDiscountCode(data.code), email, heldSessionId: data.heldSessionId }),
+      getSellPricesByVariantIds(data.lines.map((line) => line.variantId)),
+    ])
     if (row === undefined) {
       return { rejection: DISCOUNT_REJECTION.NOT_FOUND }
     }
 
-    const rejection = resolveDiscountRejection({ itemsSubtotal: data.itemsSubtotal, now: new Date(), row })
-
+    const itemsSubtotal = sumBasketAtSellPrices(data.lines, priceByVariantId)
+    const rejection = resolveDiscountPreviewRejection({ itemsSubtotal, now: new Date(), row })
     if (rejection !== undefined) {
       return { rejection }
     }
@@ -36,9 +65,9 @@ export const validateDiscountCode = createServerFn({ method: "POST" })
     return {
       applied: {
         amountMinorUnits: calculateDiscountAmount({
-          itemsSubtotal: data.itemsSubtotal,
+          itemsSubtotal,
           row,
-          shippingTotal: data.shippingTotal,
+          shippingTotal: await priceDeliveryCoveredBy(row.type, data.deliveryMethodId),
         }),
         code: row.code,
         discountId: row.id,
@@ -66,6 +95,8 @@ export const validateDiscountCodeMutation = mutationOptions({
 
 type ValidateDiscountInput = zod.input<typeof discountZodSchemas.validateDiscountInput>
 
-interface ValidateDiscountCodeQueryInput extends Omit<ValidateDiscountInput, "code"> {
+export type DiscountCheckBasket = Omit<ValidateDiscountInput, "code">
+
+interface ValidateDiscountCodeQueryInput extends DiscountCheckBasket {
   readonly code: string | undefined
 }
