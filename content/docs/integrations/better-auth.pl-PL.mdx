@@ -22,7 +22,8 @@ Plik `src/integrations/better-auth/auth.server.ts` konfiguruje jedną instancję
 | `hooks.before`                 | Odrzuca cztery punkty końcowe wysyłające e-maile, dopóki nadawca jest oznaczony jako niedostępny               |
 | `session`                      | `storeSessionInDatabase: true`, cache w ciasteczku wyłączony (`cookieCache: { enabled: false }`)               |
 | `verification`                 | `storeIdentifier: "hashed"`, `storeInDatabase: true`                                                           |
-| `socialProviders`              | `google` i `github`, przy `account.accountLinking.trustedProviders` obejmującym oba                            |
+| `socialProviders`              | `google` i `github`                                                                                            |
+| `account.accountLinking`       | Włączone, bez `trustedProviders` (zobacz [Łączenie kont](#łączenie-kont))                                      |
 | `account.encryptOAuthTokens`   | `true`                                                                                                         |
 | `telemetry`                    | Wyłączona                                                                                                      |
 | `user.additionalFields`        | `timezone` (łańcuch, opcjonalne, przyjmowane na wejściu)                                                       |
@@ -53,6 +54,10 @@ Jest to mechanizm odrębny od własnego middleware `withRateLimit` opisanego pon
 ### Audyt logowań
 
 Nowa sesja nie zawsze oznacza logowanie. Better Auth tworzy ją także na etapie hasła przy logowaniu dwuskładnikowym (wtyczka `twoFactor` od razu ją usuwa), przy włączaniu i wyłączaniu uwierzytelniania dwuskładnikowego oraz przy zmianie hasła, która wylogowuje pozostałe urządzenia. Dlatego wtyczka `signInAudit` zapisuje `auth.login` z hooka „after”, a nie z `databaseHooks`. Dopasowuje ścieżki logowania (`/sign-in/`, `/sign-up/`, `/callback/`, `/verify-email` i `/two-factor/verify-`), działa po `twoFactor`, więc oczekujące wyzwanie dwuskładnikowe zdążyło już wyzerować `newSession`, i wywołuje `recordAuthLoginAudit(...)` dla każdego `ctx.context.newSession` poza takim, które kontynuuje sesję, z którą przyszło żądanie. Robią tak dwa żądania: potwierdzenie nowego adresu e-mail wydaje ponownie tę samą sesję, a potwierdzenie konfiguracji uwierzytelniania dwuskładnikowego przez `/two-factor/verify-*` zamienia zalogowaną sesję na nową. Dokończenie logowania dwuskładnikowego przychodzi bez sesji i zapisuje jedno logowanie; tak samo ponowne zalogowanie w przeglądarce, która wciąż jest zalogowana, bo klient znów podał hasło.
+
+### Łączenie kont
+
+Logowanie przez Google lub GitHub z adresem e-mail, który należy już do konta w sklepie, dołącza do tego konta tylko wtedy, gdy dostawca zgłasza ten adres jako zweryfikowany — przez pole `email_verified` w tokenie ID od Google albo flagę `verified`, którą GitHub zwraca razem z adresem — i gdy własny adres konta w sklepie jest zweryfikowany (`requireLocalEmailVerified` w Better Auth, domyślnie włączone). W przeciwnym razie callback niczego nie łączy, nie tworzy sesji i przekierowuje na stronę błędu Better Auth z `error=account_not_linked`. `trustedProviders` pozostaje nieustawione: dla zaufanego dostawcy Better Auth pomija sprawdzenie po stronie dostawcy, więc każdy, kto dopisałby adres klienta do konta Google lub GitHub bez jego weryfikacji, zostałby zalogowany na konto tego klienta w sklepie. `auth.account-linking.integration.test.ts` przechodzi przez callback Google z adresem niezweryfikowanym i zweryfikowanym.
 
 ### E-maile transakcyjne
 
