@@ -65,8 +65,6 @@ const RATE_LIMIT_WINDOW_IN_SECONDS = 60
 
 const SESSION_UPDATE_AGE_IN_SECONDS = 300
 
-const TRUSTED_AUTH_PROVIDERS = ["google", "github"]
-
 const EMAIL_SENDING_AUTH_PATHS: ReadonlySet<string> = new Set([
   ROUTES.API_AUTH.CHANGE_EMAIL,
   ROUTES.API_AUTH.REQUEST_PASSWORD_RESET,
@@ -235,10 +233,7 @@ export const sendAccountDeletedEmail = async ({ email, locale, name, origin }: A
 
 export const auth = betterAuth({
   account: {
-    accountLinking: {
-      enabled: true,
-      trustedProviders: TRUSTED_AUTH_PROVIDERS,
-    },
+    accountLinking: { enabled: true },
     encryptOAuthTokens: true,
   },
   advanced: {

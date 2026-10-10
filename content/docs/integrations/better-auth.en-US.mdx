@@ -22,7 +22,8 @@ Better Auth owns identity: e-mail and password sign-in, Google and GitHub OAuth,
 | `hooks.before`                 | Refuses the four email-sending endpoints while the email sender is marked unavailable           |
 | `session`                      | `storeSessionInDatabase: true`, cookie cache turned off (`cookieCache: { enabled: false }`)     |
 | `verification`                 | `storeIdentifier: "hashed"`, `storeInDatabase: true`                                            |
-| `socialProviders`              | `google` and `github`, with `account.accountLinking.trustedProviders` covering both             |
+| `socialProviders`              | `google` and `github`                                                                           |
+| `account.accountLinking`       | Enabled, with no `trustedProviders` (see [Account linking](#account-linking))                   |
 | `account.encryptOAuthTokens`   | `true`                                                                                          |
 | `telemetry`                    | Disabled                                                                                        |
 | `user.additionalFields`        | `timezone` (string, optional, accepted as input)                                                |
@@ -53,6 +54,10 @@ This is separate from the application's own `withRateLimit` middleware described
 ### Sign-in audit
 
 A new session is not always a sign-in. Better Auth also creates one when the password step of a two-factor sign-in starts (and the `twoFactor` plugin deletes it again), when two-factor is turned on or off, and when a password change signs the other devices out. The `signInAudit` plugin therefore records `auth.login` from an after hook rather than from `databaseHooks`. It matches the sign-in paths (`/sign-in/`, `/sign-up/`, `/callback/`, `/verify-email` and `/two-factor/verify-`), runs after `twoFactor` so a pending two-factor challenge has already cleared `newSession`, and calls `recordAuthLoginAudit(...)` for every `ctx.context.newSession` except one that continues the session the request arrived with. Two requests do that: confirming a new e-mail address re-issues the same session, and confirming two-factor set-up through `/two-factor/verify-*` swaps the signed-in session for a fresh one. Completing a two-factor sign-in arrives without a session and records one login, and so does signing in again on a browser that is still signed in, because the customer entered their password again.
+
+### Account linking
+
+A Google or GitHub sign-in whose e-mail address already belongs to a shop account joins that account only when the provider reports the address as verified, through the `email_verified` field of Google's ID token or the `verified` flag GitHub returns with the address, and when the shop account's own address is verified (Better Auth's `requireLocalEmailVerified`, on by default). Otherwise the callback links nothing, creates no session and redirects to Better Auth's error page with `error=account_not_linked`. `trustedProviders` stays unset: Better Auth skips the provider's check for a trusted provider, so anyone who put a customer's address on a Google or GitHub account without verifying it would be signed in to that customer's shop account. `auth.account-linking.integration.test.ts` goes through the Google callback with an unverified and a verified address.
 
 ### Transactional e-mail
 
