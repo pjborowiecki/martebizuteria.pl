@@ -4,6 +4,7 @@ import { createFileRoute } from "@tanstack/react-router"
 import type StripeType from "stripe"
 
 import { notifyShopOfIncident } from "~/src/integrations/resend/incident-alert.notification.server"
+import { requiredStripeMode } from "~/src/integrations/stripe/stripe.keys"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
 
@@ -21,6 +22,18 @@ const verifiedStripeEvent = async (request: Request, signature: string, secret: 
   }
 }
 
+const isFromTheOtherStripeMode = (event: StripeType.Event): boolean => {
+  const eventMode = event.livemode ? "live" : "test"
+  const acceptedMode = requiredStripeMode(env.APP_ENV)
+  if (eventMode === acceptedMode) {
+    return false
+  }
+
+  console.error(`[Stripe] Ignoring ${eventMode} event ${event.id} (${event.type}): ${env.APP_ENV} accepts only ${acceptedMode} events`)
+
+  return true
+}
+
 export const Route = createFileRoute("/api/webhooks/stripe")({
   server: {
     handlers: {
@@ -36,6 +49,10 @@ export const Route = createFileRoute("/api/webhooks/stripe")({
 
         if (event === undefined) {
           return new Response("Webhook Error: Invalid Signature", { status: HTTP_STATUS.BAD_REQUEST })
+        }
+
+        if (isFromTheOtherStripeMode(event)) {
+          return Response.json({ received: true })
         }
 
         const handler = webhookHandlers[event.type]

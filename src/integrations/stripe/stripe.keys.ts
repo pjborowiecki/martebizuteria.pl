@@ -1,8 +1,8 @@
-const requiredMode = (environment: StripeKeysEnvironment): StripeMode => (environment === "production" ? "live" : "test")
+export const requiredStripeMode = (environment: string): StripeMode => (environment === "production" ? "live" : "test")
 
 const keyMode = ({ name, prefixes, role }: StripeKey, environment: StripeKeysEnvironment, value: string | undefined): StripeMode => {
   if (value === undefined || value.trim() === "") {
-    throw new Error(`${name} is missing for ${environment}. Copy the ${role} key from ${API_KEYS_PAGE[requiredMode(environment)]}.`)
+    throw new Error(`${name} is missing for ${environment}. Copy the ${role} key from ${API_KEYS_PAGE[requiredStripeMode(environment)]}.`)
   }
 
   const mode = STRIPE_MODES.find((candidate) => prefixes[candidate].some((prefix) => value.startsWith(prefix)))
@@ -16,7 +16,7 @@ const keyMode = ({ name, prefixes, role }: StripeKey, environment: StripeKeysEnv
 }
 
 export const verifyStripeKeys = ({ environment, publishableKey, secretKey }: Readonly<StripeKeysCheck>): string => {
-  const required = requiredMode(environment)
+  const required = requiredStripeMode(environment)
   const publishableMode = keyMode(PUBLISHABLE_KEY, environment, publishableKey)
   const secretMode = keyMode(SECRET_KEY, environment, secretKey)
   if (publishableMode !== secretMode) {

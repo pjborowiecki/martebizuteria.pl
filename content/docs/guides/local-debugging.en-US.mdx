@@ -86,6 +86,7 @@ Reading the handler in `src/routes/api/webhooks.stripe.ts` tells you how to inte
 
 - 400 `Missing signature or webhook secret` — the header or the env value is absent.
 - 400 `Webhook Error: Invalid Signature` — the secret does not match the listener's.
+- 200 with `[Stripe] Ignoring live event <id> (<type>): development accepts only test events` in the log — the event came from live mode, and every environment but production acts only on test events.
 - 200 with `[Stripe] Safely ignoring unhandled event: <type>` in the log — the event type has no entry in `webhookHandlers`.
 - 500 `Internal Server Error` with `[Stripe] Domain logic failed for <type>` — your handler threw. Stripe will retry, so the handler must be idempotent.
 
