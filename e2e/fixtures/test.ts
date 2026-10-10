@@ -1,6 +1,6 @@
 import { type BrowserContext, type Route, type TestInfo, test as base } from "@playwright/test"
 
-import { AccountPage, AdminOrderPage, AuthPage, CartPage, CheckoutPage, CouponsPage, ProductPage } from "../pages"
+import { AccountPage, AdminDashboardPage, AdminOrderPage, AuthPage, CartPage, CheckoutPage, CouponsPage, ProductPage } from "../pages"
 import { answerInpostPointSearch, isInpostPointSearch } from "./inpost"
 import { TURNSTILE_SCRIPT, TURNSTILE_WIDGET_DOUBLE } from "./turnstile"
 
@@ -57,6 +57,7 @@ interface AppOptions {
 
 interface AppFixtures {
   accountPage: AccountPage
+  adminDashboardPage: AdminDashboardPage
   adminOrderPage: AdminOrderPage
   authPage: AuthPage
   cartPage: CartPage
@@ -70,6 +71,9 @@ interface AppFixtures {
 export const test = base.extend<AppOptions & AppFixtures>({
   accountPage: async ({ page }, use) => {
     await use(new AccountPage(page))
+  },
+  adminDashboardPage: async ({ page }, use) => {
+    await use(new AdminDashboardPage(page))
   },
   adminOrderPage: async ({ page }, use) => {
     await use(new AdminOrderPage(page))

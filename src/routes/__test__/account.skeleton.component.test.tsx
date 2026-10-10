@@ -13,12 +13,14 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 })
 vi.mock("~/src/integrations/better-auth/auth.routes", () => ({ requireCustomer: vi.fn() }))
 vi.mock("~/src/modules/product-collection/use-cases/get-collections", () => ({ getCollectionsQuery: vi.fn() }))
+vi.mock("~/src/modules/store-setting/use-cases/get-sales-status", () => ({ getSalesStatusQuery: vi.fn() }))
 vi.mock("~/src/presentation/components/custom/pages/account/account-sidebar", () => ({
   AccountSidebar: (): JSX.Element => <NeverLoads />,
 }))
 vi.mock("~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation", () => ({
   Navigation: (): JSX.Element => <header data-testid="storefront-navigation" />,
 }))
+vi.mock("~/src/presentation/components/custom/sales-paused-banner", () => ({ SalesPausedBanner: () => null }))
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 

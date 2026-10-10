@@ -139,7 +139,7 @@ When `checkoutDisabled` or `salesPaused` is true the checkout link is replaced b
 Two guards use the availability result:
 
 - `/cart` disables the checkout link while `hasUnavailableItems || isChecking`, and also while `getSalesStatusQuery()` reports that sales are paused, which it passes to the summary as `salesPaused`. The basket itself stays usable, so a shopper can keep pieces in it until the shop reopens.
-- `CartAvailabilityBanner` renders an `role="alert"` strip with `pages.cart.availability.banner` when lines are unavailable. Above it, `SalesPausedBanner` renders a `role="status"` strip with `pages.cart.salesPaused.banner` on every storefront page while sales are paused. See [Checkout: Pausing sales](/docs/features/checkout#pausing-sales).
+- `CartAvailabilityBanner` renders an `role="alert"` strip with `pages.cart.availability.banner` when lines are unavailable. Above it, `SalesPausedBanner` renders a `role="status"` strip with `pages.cart.salesPaused.banner` on every storefront page while sales are paused; the account and documentation layouts render it under their navigation too. See [Checkout: Pausing sales](/docs/features/checkout#pausing-sales).
 - `/checkout` redirects back to `/cart` when the hydrated basket is empty or has stock issues. See [Checkout](/docs/features/checkout).
 
 ## Abandonment tracking

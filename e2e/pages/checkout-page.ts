@@ -47,6 +47,10 @@ export class CheckoutPage extends BasePage {
     return this.page.getByText("Waiting for your bank")
   }
 
+  salesPausedHeading(): Locator {
+    return this.page.getByRole("heading", { name: "Orders are paused" })
+  }
+
   confirmationHeading(): Locator {
     return this.page.getByRole("heading", { name: "Order Confirmed" })
   }

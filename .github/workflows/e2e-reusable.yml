@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       browser:
-        description: Playwright project to run.
+        description: Browser whose Playwright projects to run.
         required: true
         type: string
       suite:
@@ -40,7 +40,7 @@ jobs:
       - name: Install Playwright browser
         run: bunx playwright install --with-deps ${{ inputs.browser }}
       - name: E2E suite
-        run: bunx playwright test ${{ inputs.suite }} --project=${{ inputs.browser }}
+        run: bunx playwright test ${{ inputs.suite }} --project=${{ inputs.browser }} --project=${{ inputs.browser }}-shop-wide
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4
         if: failure()

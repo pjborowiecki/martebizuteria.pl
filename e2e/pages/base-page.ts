@@ -8,6 +8,9 @@ const WHEEL_STEP_SETTLE_MS = 400
 
 const SCROLL_TO_TIMEOUT_MS = 45_000
 
+const SALES_PAUSED_NOTICE =
+  "We have paused orders for a while. You can still browse and keep pieces in your cart, but checkout is closed until we reopen."
+
 export class BasePage {
   protected readonly page: Page
 
@@ -85,6 +88,10 @@ export class BasePage {
     const toast = this.page.getByRole("region", { name: /Notifications/u }).getByRole("listitem").filter({ hasText: text })
     await toast.getByRole("button", { name: "Close toast" }).click()
     await toast.waitFor({ state: "detached" })
+  }
+
+  salesPausedNotice(): Locator {
+    return this.page.getByRole("status").filter({ hasText: SALES_PAUSED_NOTICE })
   }
 
   cartLink(): Locator {

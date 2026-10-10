@@ -3,6 +3,7 @@ import type * as ReactRouter from "@tanstack/react-router"
 import { describe, expect, it, vi } from "vite-plus/test"
 
 import { COLLECTION_QUERY_KEYS } from "~/src/modules/product-collection/product-collection.constants"
+import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
 import { type PageMeta } from "~/src/lib/seo"
 
@@ -24,6 +25,8 @@ const MENU_COLLECTIONS = [{ handle: "nowosci", id: "collection-1", image: "colle
 
 const menu = vi.hoisted(() => ({ fetchCollections: vi.fn<() => Promise<unknown[]>>() }))
 
+const sales = vi.hoisted(() => ({ fetchStatus: vi.fn<() => Promise<{ salesPaused: boolean }>>() }))
+
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouter>()
 
@@ -42,6 +45,11 @@ vi.mock("~/src/modules/product-collection/use-cases/get-collections", async () =
 
   return { getCollectionsQuery: () => ({ queryFn: menu.fetchCollections, queryKey: keys.ALL }) }
 })
+vi.mock("~/src/modules/store-setting/use-cases/get-sales-status", async () => {
+  const { STORE_SETTING_QUERY_KEYS: keys } = await import("~/src/modules/store-setting/store-setting.constants")
+
+  return { getSalesStatusQuery: () => ({ queryFn: sales.fetchStatus, queryKey: keys.SALES }) }
+})
 vi.mock("~/src/presentation/components/custom/pages/account/account-error-state", () => ({
   AccountErrorState: () => null,
   AccountNotFoundState: () => null,
@@ -51,6 +59,7 @@ vi.mock("~/src/presentation/components/custom/pages/landing-page/footer/footer",
 vi.mock("~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation", () => ({
   Navigation: () => null,
 }))
+vi.mock("~/src/presentation/components/custom/sales-paused-banner", () => ({ SalesPausedBanner: () => null }))
 
 await import("~/src/routes/account")
 
@@ -62,6 +71,7 @@ if (route === undefined) {
 
 const loadMeta = (locale: LoaderContext["locale"], queryClient = new QueryClient()): Promise<PageMeta> | undefined => {
   menu.fetchCollections.mockResolvedValue(MENU_COLLECTIONS)
+  sales.fetchStatus.mockResolvedValue({ salesPaused: false })
 
   return route.loader?.({ context: { locale, queryClient } })
 }
@@ -100,5 +110,24 @@ describe("account route menu collections", () => {
 
     await expect(route.loader?.({ context: { locale: "en-US", queryClient } })).resolves.toMatchObject({ title: "Your Account | M'Arte" })
     expect(queryClient.getQueryState(COLLECTION_QUERY_KEYS.ALL)).toMatchObject({ data: undefined, status: "error" })
+  })
+})
+
+describe("account route sales status", () => {
+  it("renders the account area knowing whether sales are paused, so the notice is in the first paint", async () => {
+    const queryClient = new QueryClient()
+    sales.fetchStatus.mockResolvedValue({ salesPaused: true })
+
+    await route.loader?.({ context: { locale: "en-US", queryClient } })
+
+    expect(queryClient.getQueryData(STORE_SETTING_QUERY_KEYS.SALES)).toStrictEqual({ salesPaused: true })
+  })
+
+  it("still opens the account area when the sales status cannot be read, leaving the notice to ask again", async () => {
+    const queryClient = new QueryClient()
+    sales.fetchStatus.mockRejectedValue(new Error("D1 unavailable"))
+
+    await expect(route.loader?.({ context: { locale: "en-US", queryClient } })).resolves.toMatchObject({ title: "Your Account | M'Arte" })
+    expect(queryClient.getQueryState(STORE_SETTING_QUERY_KEYS.SALES)).toMatchObject({ data: undefined, status: "error" })
   })
 })

@@ -6,10 +6,12 @@ import { Outlet, createFileRoute } from "@tanstack/react-router"
 import { loadDocsNavigation } from "~/src/integrations/fumadocs/fumadocs.docs"
 
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
+import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { DocsSidebar } from "~/src/presentation/components/custom/pages/docs/docs-sidebar"
 import { Footer } from "~/src/presentation/components/custom/pages/landing-page/footer/footer"
 import { Navigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation"
+import { SalesPausedBanner } from "~/src/presentation/components/custom/sales-paused-banner"
 
 const DocumentationLayout = (): JSX.Element => {
   const { sections } = Route.useLoaderData()
@@ -17,6 +19,7 @@ const DocumentationLayout = (): JSX.Element => {
   return (
     <div className="flex min-h-dvh flex-col">
       <Navigation />
+      <SalesPausedBanner />
       <main className="mx-auto w-full max-w-400 flex-1 px-6 font-light lg:px-12">
         <div className="grid gap-x-16 gap-y-10 py-12 lg:grid-cols-[240px_1fr] lg:py-20">
           <DocsSidebar sections={sections} />
@@ -41,11 +44,12 @@ export const Route = createFileRoute("/docs")({
           staleTime: "static",
         })
         .catch(noop),
+      context.queryClient.query(getSalesStatusQuery()).catch(noop),
     ])
 
     return navigation
   },
   staticData: {
-    namespaces: ["pages.docs"],
+    namespaces: ["pages.cart", "pages.docs"],
   },
 })
