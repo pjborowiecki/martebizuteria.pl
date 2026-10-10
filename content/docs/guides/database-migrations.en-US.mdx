@@ -68,7 +68,9 @@ bun run db:migrations:preview
 bun run db:migrations:production
 ```
 
-The normal sequence is: generate, read, apply to preview, exercise the app, then apply to production. Do not deploy code that assumes a column production does not have yet.
+The deploy scripts apply pending migrations themselves, right before `wrangler deploy`: a pull request's preview deploy applies them to the shared preview database, and the production deploy after the merge applies them to production. The normal sequence is therefore: generate, read, open the pull request, exercise the app on preview, merge. The commands above remain for applying a migration by hand.
+
+While the migrations run, and for as long as a release stays rolled back, the previous Worker serves the shop on the new schema. A migration must therefore not drop, rename or tighten anything that Worker still reads; ship such a change as expand, deploy, contract, as [Roll back a deploy](/docs/guides/roll-back-a-deploy) describes.
 
 ## Hand-written migrations
 
@@ -140,9 +142,9 @@ bun run db:push:development
 - [ ] `bun run db:generate` ran, and you have read every line of the output.
 - [ ] Nothing in it rebuilds a populated table by accident.
 - [ ] Index and constraint names follow the convention.
-- [ ] Applied to preview with `bun run db:migrate:preview` and `bun run db:migrations:preview` confirms it.
+- [ ] The pull request's preview deploy applied it, and `bun run db:migrations:preview` confirms it.
 - [ ] The app was exercised against preview before production.
-- [ ] `bun run db:migrate:production` ran **before** the code that needs the column was deployed.
+- [ ] It only adds what the Worker deployed before it can live with, and drops or renames nothing that Worker still reads.
 - [ ] `bun run check` and `bun run test` pass — `vite.config.ts` excludes the migrations directory from both lint and test, so a broken `.sql` file will not be caught for you.
 
 ## Related guides
@@ -150,3 +152,4 @@ bun run db:push:development
 - [Add a module](/docs/guides/add-a-module)
 - [Seeding data](/docs/guides/seeding-data)
 - [Local debugging](/docs/guides/local-debugging)
+- [Roll back a deploy](/docs/guides/roll-back-a-deploy)

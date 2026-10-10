@@ -15,6 +15,7 @@
     "seeding-data",
     "writing-tests",
     "security-checklist",
-    "local-debugging"
+    "local-debugging",
+    "roll-back-a-deploy"
   ]
 }

@@ -68,7 +68,9 @@ bun run db:migrations:preview
 bun run db:migrations:production
 ```
 
-Normalna kolejność jest taka: wygeneruj, przeczytaj, zastosuj na preview, przetestuj aplikację, potem zastosuj na produkcji. Nie wdrażaj kodu, który zakłada istnienie kolumny nieobecnej jeszcze na produkcji.
+Skrypty wdrożeniowe same nakładają oczekujące migracje, tuż przed `wrangler deploy`: wdrożenie podglądu z pull requesta nakłada je na wspólną bazę preview, a wdrożenie produkcyjne po scaleniu na produkcję. Normalna kolejność jest więc taka: wygeneruj, przeczytaj, otwórz pull request, przetestuj aplikację na preview, scal. Powyższe komendy zostają do ręcznego nakładania migracji.
+
+W czasie migracji, a także tak długo, jak wydanie pozostaje wycofane, sklep obsługuje poprzedni Worker na nowym schemacie. Migracja nie może więc usuwać, zmieniać nazw ani zaostrzać niczego, co ten Worker wciąż czyta; taką zmianę wydaje się w krokach rozszerz, wdróż, zawęź, opisanych w [Wycofaniu wdrożenia](/docs/guides/roll-back-a-deploy).
 
 ## Migracje pisane ręcznie
 
@@ -140,9 +142,9 @@ bun run db:push:development
 - [ ] `bun run db:generate` się wykonało i przeczytałeś każdą linię wyniku.
 - [ ] Nic w nim nie przebudowuje przypadkiem wypełnionej tabeli.
 - [ ] Nazwy indeksów i ograniczeń zgadzają się z konwencją.
-- [ ] Zastosowano na preview przez `bun run db:migrate:preview`, a `bun run db:migrations:preview` to potwierdza.
+- [ ] Wdrożenie podglądu z pull requesta ją nałożyło, a `bun run db:migrations:preview` to potwierdza.
 - [ ] Aplikacja została przetestowana na preview przed produkcją.
-- [ ] `bun run db:migrate:production` wykonało się **przed** wdrożeniem kodu, który potrzebuje nowej kolumny.
+- [ ] Tylko dodaje to, z czym poradzi sobie Worker wdrożony przed nią, i nie usuwa ani nie zmienia nazwy niczego, co ten Worker wciąż czyta.
 - [ ] `bun run check` i `bun run test` przechodzą — `vite.config.ts` wyłącza katalog migracji z lintu i testów, więc zepsuty plik `.sql` nie zostanie za Ciebie wychwycony.
 
 ## Powiązane przewodniki
@@ -150,3 +152,4 @@ bun run db:push:development
 - [Dodawanie modułu](/docs/guides/add-a-module)
 - [Dane startowe](/docs/guides/seeding-data)
 - [Debugowanie lokalne](/docs/guides/local-debugging)
+- [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy)

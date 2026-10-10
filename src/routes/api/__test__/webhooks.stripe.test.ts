@@ -5,6 +5,7 @@ import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
 interface RouteDefinition {
   readonly server: {
     readonly handlers: {
+      readonly GET: () => Response
       readonly POST: (context: { readonly request: Request }) => Promise<Response>
     }
   }
@@ -56,6 +57,15 @@ beforeEach(() => {
 })
 
 describe("stripe webhook route", () => {
+  it("answers a GET with 405 and names POST as the method it takes, without asking stripe", async () => {
+    const response = route.server.handlers.GET()
+
+    expect(response.status).toBe(HTTP_STATUS.METHOD_NOT_ALLOWED)
+    expect(response.headers.get("Allow")).toBe("POST")
+    await expect(response.text()).resolves.toBe("Method Not Allowed")
+    expect(constructEventAsync).not.toHaveBeenCalled()
+  })
+
   it("rejects a request that carries no stripe signature", async () => {
     const response = await postWebhook({ request: webhookRequest() })
 

@@ -64,7 +64,7 @@ Dane dostępowe do zarządzania Cloudflare (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE
 Oba skrypty wdrożeniowe przerywają pracę, a nie tylko ostrzegają:
 
 ```sh
-bun run deploy:preview      # verify-bindings → verify-stripe-keys → verify-turnstile-keys → verify-email-sender → build:preview → prepare-deploy-secrets → wrangler deploy
+bun run deploy:preview      # verify-bindings → verify-stripe-keys → verify-turnstile-keys → verify-email-sender → build:preview → prepare-deploy-secrets → db:migrate:preview → wrangler deploy → verify-deployment
 bun run deploy:production   # to samo, względem środowiska production
 ```
 
@@ -74,6 +74,8 @@ bun run deploy:production   # to samo, względem środowiska production
 - `scripts/verify-email-sender.ts` pyta Resend, czy wyśle pocztę z `RESEND_EMAIL_FROM`, i rzuca wyjątek, gdy domeny nadawcy nie ma na koncie Resend albo nie jest zweryfikowana; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 - `scripts/verify-build.ts` odrzuca bundle klienta, który wciąż zawiera niezbundlowany import `cloudflare:workers` lub `node:*`.
 - `scripts/prepare-deploy-secrets.ts` zapisuje `.wrangler/secrets.<env>.json` z odpowiedniego pliku `.env`, a wdrożenie przekazuje go przez `--secrets-file`.
+- `db:migrate:<env>` nakłada oczekujące migracje D1 tuż przed `wrangler deploy` i zatrzymuje wdrożenie, gdy któraś zawiedzie.
+- `scripts/verify-deployment.ts` działa po `wrangler deploy` i rzuca wyjątek, chyba że działający Worker odpowie na stronę główną, listę produktów, `robots.txt` i trasę webhooka Stripe tak jak sklep; zobacz [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
 Wdrożenie działa na `dist/server/wrangler.json` — konfiguracji emitowanej przez plugin Cloudflare dla Vite — z odpiętą zmienną `CLOUDFLARE_ENV`, więc na produkcję trafia środowisko wbudowane w build.
 

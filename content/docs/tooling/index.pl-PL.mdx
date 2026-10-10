@@ -36,7 +36,7 @@ Nie ma tu osobnych wywołań ESLinta, Prettiera, Jesta czy `tsc`. `bun run check
 
 Nie ma testów przeglądarkowych ani end-to-end. `vite.config.ts` wymienia `e2e`, `playwright/.cache`, `playwright-report` i `test-results` we wzorcach ignorowania i wykluczania, ale katalog `e2e/` nie istnieje, a Playwright nie jest zależnością. Te wzorce są zapobiegawcze, a nie dowodem na istnienie zestawu testów.
 
-CI nie nakłada migracji bazy danych. `bun run db:migrate:preview` i `bun run db:migrate:production` uruchamia się ręcznie przed wdrożeniem, które ich wymaga — zobacz [Baza danych](/docs/tooling/database).
+CI nie nakłada migracji bazy danych; robią to skrypty wdrożeniowe, tuż przed `wrangler deploy`, a produkcja wdraża tylko commit, który przeszedł CI. Zobacz [CI/CD](/docs/tooling/ci-cd) i [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
 ## Pierwsze uruchomienie
 

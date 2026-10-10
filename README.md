@@ -42,7 +42,7 @@ This is a working application under active development, not a finished product. 
 | Admin customers          | Database-backed customer list and detail, order counts and spend aggregates.                                                                                                                                                                                                                                                                                                                                                    |
 | Audit log                | Cloudflare Queue producer/consumer, 37 typed recorder functions over a 38-entry action catalogue, admin list with category and date filters.                                                                                                                                                                                                                                                                                    |
 | Realtime invalidation    | Durable Object fan-out hub per audience, WebSocket subscriptions for 14 admin and 11 storefront query prefixes, `BroadcastChannel` mirroring across tabs.                                                                                                                                                                                                                                                                       |
-| Documentation and legal  | Fumadocs-backed `/docs` with 98 pages per locale. The terms of service, privacy policy and exchanges-and-returns pages are Markdown in the D1 `content_page` table, edited with MDXEditor at `/admin/content`.                                                                                                                                                                                                                  |
+| Documentation and legal  | Fumadocs-backed `/docs` with 100 pages per locale. The terms of service, privacy policy and exchanges-and-returns pages are Markdown in the D1 `content_page` table, edited with MDXEditor at `/admin/content`.                                                                                                                                                                                                                 |
 | Scaffolded, not finished | InPost parcel-locker discovery only (no shipments or labels).                                                                                                                                                                                                                                                                                                                                                                   |
 | Fixture-backed screens   | `/admin/marketing`, `/admin/settings` and the blog render from `src/data/`, not the database.                                                                                                                                                                                                                                                                                                                                   |
 | Not present              | End-to-end/browser tests, scheduled or cron jobs, a dead-letter queue, and error reporting.                                                                                                                                                                                                                                                                                                                                     |
@@ -202,10 +202,10 @@ The canonical URL is configured in source, not in an environment file. Rebuild a
 
 ```text
 content/
-  docs/                       Localized MDX documentation (98 pages per locale) and meta.{locale}.json
+  docs/                       Localized MDX documentation (100 pages per locale) and meta.{locale}.json
 messages/{locale}/            53 JSON namespace files per locale
 public/                       Fonts, favicon, OG image, llms.txt, _headers, screenshots, video
-scripts/                      verify-bindings, verify-stripe-keys, verify-turnstile-keys, verify-email-sender, verify-build, prepare-deploy-secrets, sync-skills, commit-msg
+scripts/                      verify-bindings, verify-stripe-keys, verify-turnstile-keys, verify-email-sender, verify-build, verify-deployment, prepare-deploy-secrets, sync-skills, commit-msg
 src/
   server.ts                   Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, security headers, queue consumer
   router.tsx                  Per-request QueryClient, SSR integration, locale rewrite, default components
@@ -362,7 +362,7 @@ Use `bun run test`, not `bun test` — the latter bypasses the configured Vitest
 | `bun run test:coverage`                                     | Run with the configured coverage gate and write `coverage/`.                          |
 | `bun run build:preview` / `build:production`                | Clean `dist`, compile content, build the Worker for that mode, then verify it.        |
 | `bun run start`                                             | Serve the last preview build at `127.0.0.1:3000`.                                     |
-| `bun run deploy:preview` / `deploy:production`              | Verify bindings, Stripe keys and e-mail sender, build, prepare secrets, deploy.       |
+| `bun run deploy:preview` / `deploy:production`              | Check config and keys, build, migrate, deploy, then check the live site.              |
 | `bun run db:generate`                                       | Generate a migration from the collected schemas.                                      |
 | `bun run db:migrate:{local,development,preview,production}` | Apply migrations to that database.                                                    |
 | `bun run db:migrations:{development,preview,production}`    | List applied and pending migrations.                                                  |
@@ -444,7 +444,7 @@ Module schemas are collected by [`drizzle.schemas.ts`](src/integrations/drizzle-
 bun run db:generate
 ```
 
-Review and commit the SQL under `src/integrations/drizzle-orm/migrations/` together with the schema change, then apply it before deploying code that depends on it.
+Review and commit the SQL under `src/integrations/drizzle-orm/migrations/` together with the schema change. The deploy scripts apply pending migrations right before `wrangler deploy`, while the previous Worker is still serving, so a migration only adds what that Worker can live with; drops and renames wait for a later release. See [Roll back a deploy](content/docs/guides/roll-back-a-deploy.en-US.mdx).
 
 Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **66 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
 
@@ -475,9 +475,9 @@ Three workflows share the composite action at [`.github/actions/setup`](.github/
 | ---------------------------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------- |
 | [CI](.github/workflows/ci.yml)                                   | Pull requests and pushes to `main`            | `check` → `test:coverage` → `build:preview`, then uploads `coverage/`.           |
 | [Preview Deployment](.github/workflows/deploy-preview.yml)       | PRs to `main` (opened, synchronize, reopened) | Re-runs `check`, then `deploy:preview`, then comments the preview URL on the PR. |
-| [Production Deployment](.github/workflows/deploy-production.yml) | Pushes to `main`                              | Re-runs `check`, then `deploy:production`.                                       |
+| [Production Deployment](.github/workflows/deploy-production.yml) | CI passing for a push to `main`; manual       | `deploy:production` for the tested tip of `main`, or for a SHA given by hand.    |
 
-CI runs with a 15-minute timeout and cancels superseded runs on the same ref. Preview deployments are keyed on the PR number and cancel in progress; production deployments queue on a single `production` group and never cancel, so a push cannot overtake the deploy before it.
+CI runs with a 15-minute timeout and cancels superseded runs on the same ref. Production deploys only after CI, including the Chromium end-to-end suite, has passed for a push to `main`: the workflow starts on `workflow_run` and deploys the commit CI tested only while it is still the tip of `main`, so re-running an older commit's CI deploys nothing. Started by hand, it takes the full SHA of a commit and refuses one without a passing CI run for a push to `main`, which is how a known-good commit is redeployed. Preview deployments are keyed on the PR number and cancel in progress; production deploy jobs queue on a single `production` group and never cancel, so a push cannot overtake the deploy before it.
 
 Preview is a **shared environment**: each successful PR deployment replaces the previous one, on the same Worker, the same D1 database and the same KV namespace. There is no per-PR Worker or database.
 
@@ -485,12 +485,12 @@ Both deploy workflows use GitHub `environment: preview` / `environment: producti
 
 | Kind     | Name                                                                                                                                                                                                                                   | Purpose                                                                                        |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Secret   | `CLOUDFLARE_ACCESS_TOKEN`                                                                                                                                                                                                              | Passed as `CLOUDFLARE_API_TOKEN`; needs Worker deploy plus the bindings and routes it manages. |
+| Secret   | `CLOUDFLARE_ACCESS_TOKEN`                                                                                                                                                                                                              | Passed as `CLOUDFLARE_API_TOKEN`; needs Worker deploy, D1 edit, plus all the bindings it uses. |
 | Secret   | `CLOUDFLARE_ACCOUNT_ID`                                                                                                                                                                                                                | Account holding the Worker, D1, KV, R2, queue and Durable Object.                              |
 | Secret   | `AUTH_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` | The Worker secrets that `prepare-deploy-secrets.ts` uploads.                                   |
 | Variable | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                                | Browser-visible values baked into the client bundle at build time.                             |
 
-The deploy jobs `touch .env.<environment>` and rely on the process environment, because `verify-stripe-keys.ts`, `verify-turnstile-keys.ts`, `verify-email-sender.ts` and `prepare-deploy-secrets.ts` prefer `process.env[name]` over the file. **Neither deploy workflow applies D1 migrations** — run `db:migrate:preview` or `db:migrate:production` yourself before merging a change that needs them, and keep schema changes backward compatible with the currently deployed Worker.
+The deploy jobs `touch .env.<environment>` and rely on the process environment, because `verify-stripe-keys.ts`, `verify-turnstile-keys.ts`, `verify-email-sender.ts` and `prepare-deploy-secrets.ts` prefer `process.env[name]` over the file. The deploy scripts apply the environment's pending D1 migrations themselves, so a pull request's migration reaches the shared preview database with its preview deploy, and keep schema changes backward compatible with the currently deployed Worker.
 
 Use one deployment owner. If a Cloudflare Workers Builds trigger is also connected to this repository, disable it so a push does not deploy twice or bypass the CI gate.
 
@@ -499,18 +499,16 @@ Use one deployment owner. If a Cloudflare Workers Builds trigger is also connect
 ```sh
 cp .env.example .env.preview
 # Fill in preview secrets and Stripe test keys, then:
-bun run db:migrate:preview
 bun run deploy:preview
 ```
 
 ```sh
 cp .env.example .env.production
 # Fill in production secrets, live Stripe keys and the Turnstile widget's keys, then:
-bun run db:migrate:production
 bun run deploy:production
 ```
 
-Each deploy script runs seven gates in order, and each one fails the deploy rather than warning:
+Each deploy script runs eight stages in order before it deploys, and each one fails the deploy rather than warning:
 
 1. [`verify-bindings.ts`](scripts/verify-bindings.ts) reads the same JSONC Wrangler reads and rejects a missing or placeholder `DB` id, `CACHE` id, `IMAGES` bucket, `AUDIT_LOG_QUEUE` producer without a matching consumer, or a renamed Durable Object class.
 2. [`verify-stripe-keys.ts`](scripts/verify-stripe-keys.ts) reads the mode of `VITE_STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY` from their prefixes. Production needs `pk_live_` with `sk_live_` or a restricted `rk_live_`, preview needs `pk_test_` with `sk_test_` or `rk_test_`, and a missing key or a publishable key whose mode differs from the secret key's fails everywhere. It prints the mode, never a key.
@@ -519,8 +517,11 @@ Each deploy script runs seven gates in order, and each one fails the deploy rath
 5. `build:preview` / `build:production` clears `dist`, compiles content, and builds with `CLOUDFLARE_ENV` and `--mode` both set to the target environment.
 6. [`verify-build.ts`](scripts/verify-build.ts) checks that `.wrangler/deploy/config.json` points at `dist/server/wrangler.json`, that the built Worker's `APP_ENV` and name match the requested environment, that `main` and `dist/client` exist with fonts, CSS and JavaScript — and then transpile-scans every client chunk and **fails on any `cloudflare:workers` or `node:*` import** that leaked into the browser bundle.
 7. [`prepare-deploy-secrets.ts`](scripts/prepare-deploy-secrets.ts) writes a `0600` secrets file containing only the keys declared in `secrets.required`, which is what keeps `CLOUDFLARE_*` management credentials out of the Worker.
+8. `db:migrate:preview` / `db:migrate:production` applies the migrations the target database has not recorded yet. A failing migration is rolled back on its own, the ones before it stay applied, and nothing is deployed.
 
 Only then does `wrangler deploy` run, against the generated `dist/server/wrangler.json` with `CLOUDFLARE_ENV` unset so the generated config is used verbatim. Builds alone deploy nothing and apply no migrations.
+
+Last, [`verify-deployment.ts`](scripts/verify-deployment.ts) asks the environment's `workers.dev` host for `/`, `/products`, `/robots.txt` and `/api/webhooks/stripe`, and fails the job unless the two pages answer `200` with HTML, `robots.txt` answers `200` as plain text and the webhook route refuses a `GET` with `405`. A failing page is asked up to three times, five seconds apart. The new version is live by then, so a failure is a signal to roll back: `vp exec wrangler rollback --env <environment>` puts the previous Worker version back, and [Roll back a deploy](content/docs/guides/roll-back-a-deploy.en-US.mdx) covers redeploying a known-good commit and what to do once a migration has run.
 
 ## Localization and content
 

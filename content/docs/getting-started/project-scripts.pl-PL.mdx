@@ -127,7 +127,7 @@ bun run test:coverage
 bun run build:preview
 ```
 
-Uruchom te trzy polecenia przed otwarciem pull requesta i nie powinno być niespodzianek. Oba workflow wdrożeniowe ponownie uruchamiają `bun run check` przed buildem, więc potknięcie w formatowaniu blokuje zarówno merge, jak i wdrożenie.
+Uruchom te trzy polecenia przed otwarciem pull requesta i nie powinno być niespodzianek. Wdrożenie podglądu ponownie uruchamia `bun run check` przed buildem, a produkcja wdraża tylko commit, którego CI przeszło, więc potknięcie w formatowaniu blokuje zarówno merge, jak i wdrożenie.
 
 ## Powiązane
 

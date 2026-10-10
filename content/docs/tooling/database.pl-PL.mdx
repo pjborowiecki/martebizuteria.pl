@@ -158,7 +158,7 @@ bun run db:migrations:production
 
 Uruchamiają one `wrangler d1 migrations list DB --env <środowisko> --remote`.
 
-CI nie nakłada niczego. Przepływy wdrożeniowe uruchamiają `bun run check`, a potem skrypt wdrożeniowy; nałożenie migracji przed wdrożeniem, które jej wymaga, jest krokiem ręcznym.
+CI niczego nie migruje. `deploy:preview` i `deploy:production` same uruchamiają `db:migrate:preview` albo `db:migrate:production`, po kompilacji i tuż przed `wrangler deploy`, a nieudana migracja zatrzymuje wdrożenie. W tej chwili sklep obsługuje jeszcze poprzedni Worker, więc migracja musi zachować jego działanie; zobacz [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
 ### Która baza jest która
 
@@ -212,10 +212,11 @@ collection-on-product.sql                       attribute-on-product.sql
 5. Zaktualizuj `*.schema.test.ts` modułu — lista kolumn, klucze obce i relacje są sprawdzane jawnie, więc test będzie się wysypywał, dopóki tego nie zrobisz.
 6. Zaktualizuj instrukcje `create table` w każdym `*.integration.test.ts`, który dotyka tej tabeli; zestaw integracyjny buduje własne tabele SQLite i nie czyta plików migracji.
 7. Uruchom `bun run check` i `bun run test`.
-8. Nałóż migrację na docelową bazę odpowiednim skryptem `db:migrate:*`, zanim wdrożysz kod, który od niej zależy.
+8. Zachowaj zgodność migracji wstecz z Workerem wdrożonym przed nią: dodawaj, nie usuwaj i nie zmieniaj nazw, a to, czego nic już nie czyta, usuń w późniejszym wydaniu. Wdrożenie nakłada ją tuż przed `wrangler deploy`; zobacz [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
 ## Powiązane strony
 
 - [Testy](/docs/tooling/testing)
 - [CI/CD](/docs/tooling/ci-cd)
+- [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy)
 - [Integracje](/docs/integrations)

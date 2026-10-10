@@ -120,7 +120,7 @@ Then, in order:
 
 The same workflow's `e2e` job runs the Playwright suite on Chromium through `e2e-reusable.yml`, and `e2e-full.yml` runs it on WebKit after every push to `main` and on both browsers every Monday.
 
-`.github/workflows/deploy-preview.yml` and `deploy-production.yml` use the same setup action and re-run the full check before building.
+`.github/workflows/deploy-preview.yml` uses the same setup action and re-runs the full check before building. `deploy-production.yml` starts only after this workflow has passed for a push to `main`, so production never ships a commit whose tests failed.
 
 ## Local gate
 

@@ -4,7 +4,9 @@ export const HTTP_STATUS = {
   BAD_REQUEST: 400,
   FORBIDDEN: 403,
   INTERNAL_SERVER_ERROR: 500,
+  METHOD_NOT_ALLOWED: 405,
   NOT_FOUND: 404,
+  OK: 200,
   SWITCHING_PROTOCOLS: 101,
   UNAUTHORIZED: 401,
   UPGRADE_REQUIRED: 426,
@@ -12,9 +14,14 @@ export const HTTP_STATUS = {
 
 const LOCAL_MODES = new Set(["development", "test"])
 
+export const WORKERS_DEV_HOSTS = {
+  preview: "martebizuteria-preview.pjborowiecki.workers.dev",
+  production: "martebizuteria.pjborowiecki.workers.dev",
+} as const
+
 const HOSTS_BY_MODE: Readonly<Record<string, readonly string[]>> = {
-  preview: [`preview.${APP_DOMAIN}`, "martebizuteria-preview.pjborowiecki.workers.dev"],
-  production: [APP_DOMAIN, "martebizuteria.pjborowiecki.workers.dev"],
+  preview: [`preview.${APP_DOMAIN}`, WORKERS_DEV_HOSTS.preview],
+  production: [APP_DOMAIN, WORKERS_DEV_HOSTS.production],
 }
 
 const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]

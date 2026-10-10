@@ -54,14 +54,14 @@ The gates are mechanical rather than social. `bun run check` and `bun run test` 
 
 ## Branching
 
-Branch from `main`. Never push to `main` directly: `.github/workflows/deploy-production.yml` triggers on every push to `main` and deploys the production Worker, with `concurrency: production` and `cancel-in-progress: false`.
+Branch from `main`. Never push to `main` directly: once `ci.yml` passes for a push to `main`, `.github/workflows/deploy-production.yml` deploys that commit to the production Worker if it is still the tip of `main`, with `concurrency: production` and `cancel-in-progress: false`.
 
 Open the pull request against `main`. That gives you two things:
 
 - `ci.yml` runs `bun run check`, then `bun run test:coverage`, then `bun run build:preview`, and uploads the coverage report as an artifact.
 - `deploy-preview.yml` runs `bun run check`, deploys to the preview environment and comments the preview URL on the pull request, updating the same comment on each push.
 
-Both deploy workflows re-run the full check before building, so a change that passes locally and fails in CI means your local tree is not clean.
+The preview deploy re-runs the full check before building, and production waits for CI, so a change that passes locally and fails in CI means your local tree is not clean.
 
 ## The loop
 

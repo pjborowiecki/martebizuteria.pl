@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { HTTP_STATUS, appHostsForMode, isDeploymentHost, isLocalHost, isLocalMode } from "~/src/modules/_core/constants/api"
+import {
+  HTTP_STATUS,
+  WORKERS_DEV_HOSTS,
+  appHostsForMode,
+  isDeploymentHost,
+  isLocalHost,
+  isLocalMode,
+} from "~/src/modules/_core/constants/api"
 
 import { APP_DOMAIN } from "~/src/presentation/branding/app"
 
@@ -30,6 +37,11 @@ describe("HTTP_STATUS", () => {
     expect(HTTP_STATUS.FORBIDDEN).toBe(403)
     expect(HTTP_STATUS.NOT_FOUND).toBe(404)
     expect(HTTP_STATUS.INTERNAL_SERVER_ERROR).toBe(500)
+  })
+
+  it("keeps the codes the deploy's live-site check expects", () => {
+    expect(HTTP_STATUS.OK).toBe(200)
+    expect(HTTP_STATUS.METHOD_NOT_ALLOWED).toBe(405)
   })
 })
 
@@ -76,6 +88,15 @@ describe("deployment hosts", () => {
   ])("treats %s as a deployment that is not local", (host) => {
     expect(isLocalHost(host)).toBe(false)
     expect(isDeploymentHost(host)).toBe(true)
+  })
+
+  it("names the workers.dev host each deployed Worker answers on, which its mode accepts", () => {
+    expect(WORKERS_DEV_HOSTS).toStrictEqual({
+      preview: "martebizuteria-preview.pjborowiecki.workers.dev",
+      production: "martebizuteria.pjborowiecki.workers.dev",
+    })
+    expect(appHostsForMode("preview")).toContain(WORKERS_DEV_HOSTS.preview)
+    expect(appHostsForMode("production")).toContain(WORKERS_DEV_HOSTS.production)
   })
 
   it.each(["localhost:3001", "[::1]:3000", `${APP_DOMAIN}.attacker.example`, `fake${APP_DOMAIN}`, "other.pjborowiecki.workers.dev", ""])(

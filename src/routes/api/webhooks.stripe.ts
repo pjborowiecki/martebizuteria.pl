@@ -21,6 +21,7 @@ const verifiedStripeEvent = async (request: Request, signature: string, secret: 
 export const Route = createFileRoute("/api/webhooks/stripe")({
   server: {
     handlers: {
+      GET: () => new Response("Method Not Allowed", { headers: { Allow: "POST" }, status: HTTP_STATUS.METHOD_NOT_ALLOWED }),
       POST: async ({ request }) => {
         const signature = request.headers.get("stripe-signature")
 

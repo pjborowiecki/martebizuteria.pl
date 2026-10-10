@@ -32,7 +32,7 @@ jobs:
       - name: Format, lint, and types
         run: bun run check
 
-      - name: Build & deploy to preview
+      - name: Build, migrate, deploy, and check the live site
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

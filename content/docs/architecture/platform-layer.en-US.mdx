@@ -64,7 +64,7 @@ Cloudflare management credentials (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE
 Both deploy scripts fail rather than warn:
 
 ```sh
-bun run deploy:preview      # verify-bindings → verify-stripe-keys → verify-turnstile-keys → verify-email-sender → build:preview → prepare-deploy-secrets → wrangler deploy
+bun run deploy:preview      # verify-bindings → verify-stripe-keys → verify-turnstile-keys → verify-email-sender → build:preview → prepare-deploy-secrets → db:migrate:preview → wrangler deploy → verify-deployment
 bun run deploy:production   # the same, against the production environment
 ```
 
@@ -74,6 +74,8 @@ bun run deploy:production   # the same, against the production environment
 - `scripts/verify-email-sender.ts` asks Resend whether it would send as `RESEND_EMAIL_FROM` and throws when the sender's domain is missing from the Resend account or not verified; see [Resend](/docs/integrations/resend#sender-domain).
 - `scripts/verify-build.ts` rejects a client bundle that still carries an unbundled `cloudflare:workers` or `node:*` import.
 - `scripts/prepare-deploy-secrets.ts` writes `.wrangler/secrets.<env>.json` from the matching `.env` file, and the deploy passes it with `--secrets-file`.
+- `db:migrate:<env>` applies the pending D1 migrations right before `wrangler deploy` and stops the deploy when one fails.
+- `scripts/verify-deployment.ts` runs after `wrangler deploy` and throws unless the live Worker answers its home page, product listing, `robots.txt` and Stripe webhook route as the shop does; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
 The deploy runs against `dist/server/wrangler.json` — the config the Cloudflare Vite plugin emits — with `CLOUDFLARE_ENV` unset, so the environment baked into the build is the one that ships.
 

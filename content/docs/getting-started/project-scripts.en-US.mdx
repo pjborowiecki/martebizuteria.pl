@@ -127,7 +127,7 @@ bun run test:coverage
 bun run build:preview
 ```
 
-Run those three before opening a pull request and there should be no surprises. Both deploy workflows re-run `bun run check` before building, so a formatting slip blocks a deploy as well as a merge.
+Run those three before opening a pull request and there should be no surprises. The preview deploy re-runs `bun run check` before building, and production deploys only a commit whose CI passed, so a formatting slip blocks a deploy as well as a merge.
 
 ## Related
 
