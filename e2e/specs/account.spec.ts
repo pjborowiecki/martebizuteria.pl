@@ -4,7 +4,8 @@ import { PRODUCTS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
 import { registerCustomer } from "../fixtures/customers"
 import { placeOrder } from "../fixtures/orders"
-import { confirmCardSetupIntent, waitForCardSetupIntent } from "../fixtures/stripe"
+import { waitForEmail } from "../fixtures/emails"
+import { confirmCardSetupIntent, stripeCustomerIds, waitForCardSetupIntent } from "../fixtures/stripe"
 import { expect, test } from "../fixtures/test"
 import { swipeUp } from "../fixtures/touch"
 
@@ -52,6 +53,29 @@ test.describe("customer account", () => {
     await page.getByRole("button", { name: "Remove card" }).click()
     await expect(accountPage.notification("Card removed")).toBeVisible()
     await expect(page.getByRole("heading", { name: "Saved Cards (0)" })).toBeVisible()
+  })
+
+  test("deleting the account deletes the Stripe customer with its saved card and emails what is kept", async ({ accountPage, authPage, page, request }, testInfo) => {
+    const customer = await registerCustomer({ authPage, page, request }, testInfo)
+    await accountPage.gotoSection("payment")
+    await page.getByRole("button", { name: "Add Card" }).click()
+    await confirmCardSetupIntent(request, await waitForCardSetupIntent(request, customer.email))
+    expect(await stripeCustomerIds(request, customer.email)).toHaveLength(1)
+
+    await accountPage.gotoSection("profile")
+    await page.getByRole("button", { name: "Delete Account" }).click()
+    const dialog = page.getByRole("dialog", { name: "Are you sure you want to delete your account?" })
+    await expect(dialog.getByText("We delete your customer profile at our payment provider Stripe, together with your saved cards.")).toBeVisible()
+    await dialog.getByLabel("Type DELETE to confirm").fill("DELETE")
+    await dialog.getByLabel("Your password").fill(customer.password)
+    await dialog.getByRole("button", { name: "Delete my account" }).click()
+
+    await expect(page).toHaveURL(/\/en-US$/u)
+    expect(await stripeCustomerIds(request, customer.email)).toStrictEqual([])
+    const goodbye = await waitForEmail(request, customer.email, "Your M'Arte account has been deleted")
+    expect(goodbye.html).toContain("for 5 years from the end of the year of each order")
+    await authPage.signIn(customer.email, customer.password)
+    await expect(accountPage.notification("Invalid email or password.")).toBeVisible()
   })
 })
 

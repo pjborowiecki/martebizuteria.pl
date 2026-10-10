@@ -194,9 +194,13 @@ It does **not** change email, name, role or ban state; those are Better Auth ope
 | `targetUser.id === context.auth.user.id`                             | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
 | `targetUser.role === ROLES.ADMIN`                                    | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
 
-It captures the email, name, current locale and request origin **before** deleting, hands the deletion to `auth.api.removeUser`, and then waits for the goodbye email:
+It captures the email, name, current locale and request origin **before** deleting, erases the account's data with `eraseAccountData`, hands the deletion to `auth.api.removeUser`, and then waits for the goodbye email:
 
 ```ts
+if (!(await eraseAccountData(targetUser))) {
+  throw new AppError(ERROR_CODES.INTERNAL_ERROR, USER_ERROR_CODES.STRIPE_CUSTOMER_NOT_DELETED)
+}
+
 await auth.api.removeUser({ body: { userId }, headers: getRequestHeaders() })
 
 const goodbyeEmailDelivery = sendAccountDeletedEmail(goodbyeEmail)
@@ -208,7 +212,9 @@ return { goodbyeEmailSent, ok: true as const, userId }
 
 `sendAccountDeletedEmail` never throws; a refusal from Resend, or an error while preparing the email, is logged, recorded as `email.failed` in the audit log and returned as `false`, and the deletion stands. Handing the same promise to `scheduleBackgroundWork` puts it on the Worker's `waitUntil`, so the email and its audit entry finish even if the admin closes the tab first. `useDeleteCustomer` picks the toast from `goodbyeEmailSent`: a success toast, "The account was deleted and a confirmation email was sent.", or a warning toast, "Account deleted — email not sent", with "The confirmation email to the customer could not be sent. The error is recorded in the audit log."
 
-Because deletion goes through Better Auth, the cascades on `session`, `account` and `address` apply, while `order.user_id` and `checkout.user_id` are `onDelete: "set null"` — so the orders survive as guest orders.
+`eraseAccountData` is the step a customer's own deletion runs in Better Auth's `beforeDelete`: it deletes the account's Stripe customer with its saved cards, then the account's audit log entries and newsletter subscription (see [Account: Closing the account](/docs/features/account#closing-the-account)). When Stripe cannot delete the customer, nothing is deleted, `customer.deletion_failed` is recorded, and `useDeleteCustomer` shows "Stripe could not delete the customer's profile and saved cards, so the account was not deleted. Try again in a few minutes. The error is recorded in the audit log." The confirmation dialog, `rowActions.deleteDescription`, lists what is deleted and that the orders and payments stay in the accounting records for 5 years.
+
+Because deletion goes through Better Auth, the cascades on `session`, `account`, `address`, `wishlist_item` and `two_factor` apply, while `order.user_id` and `checkout.user_id` are `onDelete: "set null"` — so the orders survive as guest orders.
 
 ## Export
 

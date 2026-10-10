@@ -39,6 +39,8 @@ import {
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
+import { USER_ERROR_CODES } from "~/src/modules/user/user.constants"
+import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { IP_ADDRESS_HEADER, authRateLimitStorage } from "~/src/lib/rate-limit"
@@ -102,6 +104,11 @@ const EMAIL_DELIVERY_UNAVAILABLE = {
   code: "EMAIL_DELIVERY_UNAVAILABLE",
   message: "Emails cannot be sent at the moment",
 } as const satisfies AuthRefusal
+
+const STRIPE_CUSTOMER_NOT_DELETED = {
+  code: USER_ERROR_CODES.STRIPE_CUSTOMER_NOT_DELETED,
+  message: "The saved cards could not be deleted at Stripe, so the account was kept",
+} as const
 
 const TWO_FACTOR_VERIFY_PATH_PREFIX = "/two-factor/verify-"
 
@@ -450,6 +457,11 @@ export const auth = betterAuth({
           await sendAccountDeletedEmail({ email: deleted.email, name: deleted.name, origin: resolveRequestOrigin(request) })
         } catch (error) {
           recordAuthEmailFailure("account-deleted", deleted.email, String(error))
+        }
+      },
+      beforeDelete: async (deleting) => {
+        if (!(await eraseAccountData(deleting))) {
+          throw APIError.from("SERVICE_UNAVAILABLE", STRIPE_CUSTOMER_NOT_DELETED)
         }
       },
       enabled: true,

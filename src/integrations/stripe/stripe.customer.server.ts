@@ -1,9 +1,9 @@
-import { eq, sql } from "drizzle-orm"
+import { and, eq, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 
-import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { AppError, ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
 import { user } from "~/src/modules/user/user.schema"
 
 export const getStripeCustomerId = async (userId: string): Promise<string | undefined> => {
@@ -40,6 +40,25 @@ export const ensureStripeCustomer = async ({ email, name, userId }: EnsureStripe
 
   return stored.stripeCustomerId
 }
+
+export const deleteStripeCustomer = async (userId: string): Promise<void> => {
+  const customerId = await getStripeCustomerId(userId)
+  if (customerId === undefined) {
+    return
+  }
+
+  await stripe.customers.del(customerId).catch((deleteError: unknown) => {
+    if (errorCode(deleteError) !== STRIPE_RESOURCE_MISSING) {
+      throw deleteError
+    }
+  })
+  await db
+    .update(user)
+    .set({ stripeCustomerId: sql`NULL`, updatedAt: new Date() })
+    .where(and(eq(user.id, userId), eq(user.stripeCustomerId, customerId)))
+}
+
+const STRIPE_RESOURCE_MISSING = "resource_missing"
 
 interface EnsureStripeCustomerInput {
   readonly email: string

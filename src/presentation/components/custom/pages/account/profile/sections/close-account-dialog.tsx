@@ -11,6 +11,7 @@ import { useTranslations } from "use-intl/react"
 import { authClient } from "~/src/integrations/better-auth/auth.client"
 
 import { type CloseAccountFormValues, closeAccountFormSchema } from "~/src/modules/customer-account/customer-account.zod"
+import { USER_ERROR_CODES } from "~/src/modules/user/user.constants"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {
@@ -32,6 +33,18 @@ const INVALID_PASSWORD_CODE = "INVALID_PASSWORD"
 
 const deleteAccountRequest = createClientOnlyFn((input: Parameters<typeof authClient.deleteUser>[0]) => authClient.deleteUser(input))
 
+const closeAccountErrorKey = (code: string | undefined): "closeAccountError" | "closeStripeCustomerError" | "closeWrongPassword" => {
+  if (code === INVALID_PASSWORD_CODE) {
+    return "closeWrongPassword"
+  }
+
+  if (code === USER_ERROR_CODES.STRIPE_CUSTOMER_NOT_DELETED) {
+    return "closeStripeCustomerError"
+  }
+
+  return "closeAccountError"
+}
+
 export const CloseAccountDialog = ({ hasPassword, onOpenChange, open }: Readonly<CloseAccountDialogProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile")
   const router = useRouter()
@@ -45,7 +58,7 @@ export const CloseAccountDialog = ({ hasPassword, onOpenChange, open }: Readonly
     const { error } = await deleteAccountRequest(hasPassword ? { password: values.password } : {})
 
     if (error) {
-      toast.error(error.code === INVALID_PASSWORD_CODE ? t("closeWrongPassword") : t("closeAccountError"))
+      toast.error(t(closeAccountErrorKey(error.code)))
 
       return
     }
@@ -74,7 +87,7 @@ export const CloseAccountDialog = ({ hasPassword, onOpenChange, open }: Readonly
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[calc(100dvh-12rem)] overflow-y-auto sm:max-w-md">
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
@@ -88,6 +101,7 @@ export const CloseAccountDialog = ({ hasPassword, onOpenChange, open }: Readonly
             <li className="list-disc">{t("closeDialogPoint1")}</li>
             <li className="list-disc">{t("closeDialogPoint2")}</li>
             <li className="list-disc">{t("closeDialogPoint3")}</li>
+            <li className="list-disc">{t("closeDialogPoint4")}</li>
           </ul>
 
           <div className="space-y-4 py-4">

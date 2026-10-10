@@ -1,9 +1,11 @@
 {
   "subject": "Twoje konto M'Arte zostało usunięte",
-  "preview": "Potwierdzamy usunięcie Twojego konta i danych osobowych.",
+  "preview": "Potwierdzamy usunięcie Twojego konta i wyjaśniamy, co usunęliśmy, a co zachowujemy.",
   "heading": "Do zobaczenia",
   "greeting": "Droga {name},",
-  "message": "Zgodnie z Twoją prośbą usunęliśmy konto M'Arte powiązane z tym adresem e-mail. Wszystkie dane osobowe przechowywane w związku z kontem zostały trwale usunięte z naszych systemów, zgodnie z RODO.",
+  "message": "Zgodnie z Twoją prośbą usunęliśmy konto M'Arte powiązane z tym adresem e-mail.",
+  "deleted": "Usunęliśmy Twój profil (imię i nazwisko, adres e-mail, numer telefonu, hasło, ustawienia uwierzytelniania dwuskładnikowego i powiązania z dostawcami logowania, takimi jak Google), zapisane adresy, listę życzeń, subskrypcję newslettera, historię logowania i zapis Twojej aktywności w sklepie, a także Twój profil klienta u naszego operatora płatności Stripe razem z zapisanymi kartami.",
+  "kept": "Zachowujemy Twoje zamówienia i płatności, wraz z zapisanymi w nich imionami i nazwiskami, adresami, danymi kontaktowymi i danymi do faktury, przez 5 lat od końca roku, w którym złożono zamówienie, bo wymagają tego przepisy o rachunkowości i podatkach. Nie są już powiązane z żadnym kontem. Jeśli założysz nowe konto z tym adresem e-mail i je potwierdzisz, pojawią się w nim ponownie.",
   "messageSecondary": "Szkoda, że odchodzisz — każda osoba, która wybiera M'Arte, jest dla nas wyjątkowa. Jeśli kiedykolwiek zechcesz wrócić, nasze drzwi pozostają otwarte.",
   "messageTertiary": "Nasza kolekcja wciąż czeka na Ciebie. Możesz nadal przeglądać sklep bez konta lub założyć nowe, kiedy zechcesz.",
   "security": "Jeśli nie Ty prosiłeś o usunięcie konta, odpowiedz na tę wiadomość jak najszybciej — chcemy upewnić się, że wszystko jest w porządku.",

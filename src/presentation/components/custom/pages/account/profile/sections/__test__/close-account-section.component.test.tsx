@@ -62,15 +62,26 @@ describe("CloseAccountSection warnings", () => {
     expect(screen.queryByText(DIALOG_TITLE)).not.toBeInTheDocument()
   })
 
-  it("opens an accessible dialog that says truthfully what is lost and what is kept", async () => {
+  it("opens an accessible dialog that says truthfully what is deleted and what is kept, and why", async () => {
     await openDialog()
 
     expect(screen.getByRole("dialog", { name: DIALOG_TITLE })).toBeInTheDocument()
-    expect(screen.getByText("Your saved addresses, saved cards and wishlist are erased.")).toBeInTheDocument()
     expect(
-      screen.getByText("Your past orders stay in our accounting records, as the law requires, but you will no longer see them here."),
+      screen.getByText(
+        "We delete your profile (name, email address, phone number, password, two-factor settings and links to sign-in providers such as Google), your saved addresses, wishlist and newsletter subscription.",
+      ),
     ).toBeInTheDocument()
-    expect(screen.getByText("You are signed out on every device, and this cannot be undone.")).toBeInTheDocument()
+    expect(
+      screen.getByText("We delete your customer profile at our payment provider Stripe, together with your saved cards."),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText("We delete your sign-in history and the record of your activity in the shop, and sign you out on every device."),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        "Your orders and payments, with the names, addresses, contact and invoice details on them, stay in our accounting records for 5 years from the end of the year of each order, because accounting and tax law requires it. They are no longer linked to an account, so you will not see them here.",
+      ),
+    ).toBeInTheDocument()
   })
 })
 
@@ -176,6 +187,21 @@ describe("CloseAccountSection deletion", () => {
 
     await waitFor(() => {
       expect(calls.toastError).toHaveBeenCalledWith("That password is not right.")
+    })
+    expect(screen.getByRole("dialog", { name: DIALOG_TITLE })).toBeInTheDocument()
+  })
+
+  it("says the account was kept because Stripe still holds the saved cards", async () => {
+    calls.deleteUser.mockResolvedValue({ error: { code: "STRIPE_CUSTOMER_NOT_DELETED" } })
+    await openDialog()
+    await typeConfirmation()
+    await typePassword()
+    await userEvent.click(confirmButton())
+
+    await waitFor(() => {
+      expect(calls.toastError).toHaveBeenCalledWith(
+        "We could not delete your saved cards at our payment provider Stripe, so your account has not been deleted. Please try again in a few minutes.",
+      )
     })
     expect(screen.getByRole("dialog", { name: DIALOG_TITLE })).toBeInTheDocument()
   })

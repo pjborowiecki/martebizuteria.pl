@@ -19,6 +19,8 @@ const signedEventSchema = z.object({ payload: z.string(), signature: z.string() 
 
 const setupIntentsSchema = z.array(z.object({ id: z.string(), status: z.string() }))
 
+const customersSchema = z.array(z.object({ email: z.string(), id: z.string() }))
+
 export type CheckoutSession = z.infer<typeof checkoutSessionsSchema>[number]
 
 export const openCheckoutSessions = async (request: APIRequestContext, email: string): Promise<CheckoutSession[]> => {
@@ -97,6 +99,13 @@ export const waitForCardSetupIntent = async (request: APIRequestContext, email: 
   }
 
   return setupIntentId
+}
+
+export const stripeCustomerIds = async (request: APIRequestContext, email: string): Promise<string[]> => {
+  const response = await request.get("/__test/stripe/customers", { params: { email } })
+  expect(response.ok()).toBe(true)
+
+  return customersSchema.parse(await response.json()).map((customer) => customer.id)
 }
 
 export const confirmCardSetupIntent = async (request: APIRequestContext, setupIntentId: string): Promise<void> => {

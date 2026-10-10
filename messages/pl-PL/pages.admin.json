@@ -426,6 +426,7 @@
       "auth_logout": "Wylogowanie",
       "customer_cart_abandoned": "Porzucony koszyk",
       "customer_cart_item_added": "Dodano do koszyka",
+      "customer_deletion_failed": "Usunięcie konta nieudane",
       "customer_page_viewed": "Odwiedzona strona"
     },
     "searchPlaceholder": "Szukaj zdarzeń…",

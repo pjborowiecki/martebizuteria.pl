@@ -426,6 +426,7 @@
       "auth_logout": "Logout",
       "customer_cart_abandoned": "Cart abandoned",
       "customer_cart_item_added": "Added to cart",
+      "customer_deletion_failed": "Account deletion failed",
       "customer_page_viewed": "Page viewed"
     },
     "searchPlaceholder": "Search events…",

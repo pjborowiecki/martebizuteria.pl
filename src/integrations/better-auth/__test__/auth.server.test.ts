@@ -24,6 +24,7 @@ const stubs = vi.hoisted(() => ({
   admitPublicEmail: vi.fn<(email: { kind: string; to: string }) => Promise<boolean>>(),
   buildLocalizedUrl: vi.fn<(base: string, path: string, locale: string) => string>(),
   claimGuestOrdersForUser: vi.fn<(input: { email: string; userId: string }) => Promise<number>>(),
+  eraseAccountData: vi.fn<(account: { email: string; id: string }) => Promise<boolean>>(),
   getCurrentLocale: vi.fn<() => string>(),
   isEmailSenderUnavailable: vi.fn<() => Promise<boolean>>(),
   linkSubscriberToUser: vi.fn<(email: string, userId: string) => Promise<void>>(),
@@ -52,6 +53,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 
 vi.mock("~/src/modules/newsletter/newsletter.accessors", () => ({ linkSubscriberToUser: stubs.linkSubscriberToUser }))
 vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: stubs.claimGuestOrdersForUser }))
+vi.mock("~/src/modules/user/user.erasure.server", () => ({ eraseAccountData: stubs.eraseAccountData }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: stubs.scheduleAdminCustomersInvalidation,
 }))
@@ -231,6 +233,25 @@ describe("customer list invalidation hooks", () => {
     await hooks.user.delete.after()
 
     expect(stubs.scheduleAdminCustomersInvalidation).toHaveBeenCalledOnce()
+  })
+})
+
+describe("account deletion", () => {
+  it("erases the account's data before Better Auth deletes the account", async () => {
+    stubs.eraseAccountData.mockResolvedValue(true)
+
+    await expect(auth.options.user.deleteUser.beforeDelete(createdUser)).resolves.toBeUndefined()
+
+    expect(stubs.eraseAccountData).toHaveBeenCalledExactlyOnceWith(createdUser)
+  })
+
+  it("stops the deletion with a retryable STRIPE_CUSTOMER_NOT_DELETED while Stripe keeps the saved cards", async () => {
+    stubs.eraseAccountData.mockResolvedValue(false)
+
+    await expect(auth.options.user.deleteUser.beforeDelete(createdUser)).rejects.toMatchObject({
+      body: { code: "STRIPE_CUSTOMER_NOT_DELETED" },
+      statusCode: 503,
+    })
   })
 })
 

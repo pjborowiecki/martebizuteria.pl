@@ -81,7 +81,7 @@ src/
 
 ## Content and messages live outside `src`
 
-`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. The terms of service, the privacy policy and the exchanges-and-returns page are not files: their Markdown lives in the D1 `content_page` table, seeded by `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql` and `20261005200000_terms_of_service_page.sql`, rewritten for the returns page by `20261005210000_returns_and_complaints_page.sql` and for the privacy policy by `20261010200000_privacy_policy_page.sql`, and edited at `/admin/content`. The withdrawal and complaint forms those pages link are PDFs in `public/forms`. `messages/{en-US,pl-PL}` holds 53 namespace files each.
+`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. The terms of service, the privacy policy and the exchanges-and-returns page are not files: their Markdown lives in the D1 `content_page` table, seeded by `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql` and `20261005200000_terms_of_service_page.sql`, rewritten for the returns page by `20261005210000_returns_and_complaints_page.sql` and for the privacy policy by `20261010200000_privacy_policy_page.sql` and `20261010210000_privacy_policy_account_deletion.sql`, and edited at `/admin/content`. The withdrawal and complaint forms those pages link are PDFs in `public/forms`. `messages/{en-US,pl-PL}` holds 53 namespace files each.
 
 ## Related pages
 

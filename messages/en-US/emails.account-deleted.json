@@ -1,9 +1,11 @@
 {
   "subject": "Your M'Arte account has been deleted",
-  "preview": "Confirmation that your account and personal data have been removed.",
+  "preview": "Confirmation that your account has been deleted, with what we deleted and what we keep.",
   "heading": "Until we meet again",
   "greeting": "Dear {name},",
-  "message": "As you requested, we have deleted the M'Arte account associated with this email address. All personal data held in connection with your account has been permanently removed from our systems, in accordance with GDPR.",
+  "message": "As you requested, we have deleted the M'Arte account associated with this email address.",
+  "deleted": "We deleted your profile (name, email address, phone number, password, two-factor settings and links to sign-in providers such as Google), your saved addresses, wishlist, newsletter subscription, sign-in history and the record of your activity in the shop, and your customer profile at our payment provider Stripe together with your saved cards.",
+  "kept": "We keep your orders and payments, with the names, addresses, contact and invoice details on them, for 5 years from the end of the year of each order, because accounting and tax law requires it. They are no longer linked to an account. If you create a new account with this email address and confirm it, they will appear in it again.",
   "messageSecondary": "We are sorry to see you go — everyone who chooses M'Arte is special to us. Should you ever wish to return, our doors remain open.",
   "messageTertiary": "Our collection is still here for you. You may continue browsing the shop without an account, or create a new one whenever you are ready.",
   "security": "If you did not request account deletion, please reply to this email as soon as possible — we want to make sure everything is in order.",

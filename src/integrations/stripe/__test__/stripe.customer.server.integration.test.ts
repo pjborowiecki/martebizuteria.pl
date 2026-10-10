@@ -20,7 +20,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { customers: { create: customersCreate, del: customersDel } } }))
 
-import { ensureStripeCustomer } from "~/src/integrations/stripe/stripe.customer.server"
+import { deleteStripeCustomer, ensureStripeCustomer } from "~/src/integrations/stripe/stripe.customer.server"
 
 const ANNA = { email: "anna@example.com", name: "Anna Kowalska", userId: "user-1" }
 
@@ -80,5 +80,26 @@ describe("ensureStripeCustomer", () => {
   it("reuses the stored customer without calling Stripe", async () => {
     await expect(ensureStripeCustomer({ ...ANNA, userId: "user-2" })).resolves.toBe("cus_existing")
     expect(customersCreate).not.toHaveBeenCalled()
+  })
+})
+
+describe("deleteStripeCustomer", () => {
+  it("deletes the stored customer and clears its id from the account", async () => {
+    await deleteStripeCustomer("user-2")
+
+    expect(customersDel).toHaveBeenCalledExactlyOnceWith("cus_existing")
+    expect(storedCustomerId("user-2")).toBeNull()
+  })
+
+  it("keeps a customer another request stored while the old one was being deleted", async () => {
+    customersDel.mockImplementationOnce(() => {
+      storeCustomerId("user-2", "cus_newer")
+
+      return Promise.resolve({ deleted: true })
+    })
+
+    await deleteStripeCustomer("user-2")
+
+    expect(storedCustomerId("user-2")).toBe("cus_newer")
   })
 })
