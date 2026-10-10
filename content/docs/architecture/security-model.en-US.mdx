@@ -7,13 +7,13 @@ description: "How access is enforced on routes, server functions and WebSockets,
 
 **Route guards** in `src/integrations/better-auth/auth.routes.ts` run in `beforeLoad` and redirect. Each layout passes the guard itself, as in `beforeLoad: requireAdmin`:
 
-| Guard                | Used by                       | Behaviour                                                                                      |
-| -------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------- |
-| `requireSignedIn`    | Building block for the others | Redirects to `/auth/sign-in` without a session                                                 |
-| `requireAdminRole`   | `admin_.security.tsx`         | Also requires `hasAdminAccess(role)`, otherwise `/account/overview`                            |
-| `requireAdmin`       | `admin.tsx`                   | `requireAdminRole`, then sends an admin without two-factor authentication to `/admin/security` |
-| `requireCustomer`    | `account.tsx`                 | Sends an admin to `/admin` instead                                                             |
-| `redirectIfSignedIn` | `auth.tsx`                    | Sends a signed-in user to a safe `?redirect` path, otherwise to `postAuthRouteFor(user)`       |
+| Guard                | Used by                                           | Behaviour                                                                                      |
+| -------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `requireSignedIn`    | Building block for the others                     | Redirects to `/auth/sign-in` without a session                                                 |
+| `requireAdminRole`   | `admin_.security.tsx`                             | Also requires `hasAdminAccess(role)`, otherwise `/account/overview`                            |
+| `requireAdmin`       | `admin.tsx`, `admin_.orders.$orderId.summary.tsx` | `requireAdminRole`, then sends an admin without two-factor authentication to `/admin/security` |
+| `requireCustomer`    | `account.tsx`                                     | Sends an admin to `/admin` instead                                                             |
+| `redirectIfSignedIn` | `auth.tsx`                                        | Sends a signed-in user to a safe `?redirect` path, otherwise to `postAuthRouteFor(user)`       |
 
 `requireSignedIn`, `requireAdminRole`, `requireAdmin` and `requireCustomer` resolve to `{ user }`, which becomes route context; `account.overview.tsx` reads it with `AccountRoute.useRouteContext()`. The guards only read the session, through `loadRouteSession`:
 

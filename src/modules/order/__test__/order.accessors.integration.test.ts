@@ -65,6 +65,7 @@ beforeEach(() => {
     create table payment (id text primary key, status text, transaction_id text, created_at integer not null, updated_at integer not null);
     create table "order" (
       id text primary key, checkout_id text, payment_id text, user_id text, email text not null,
+      billing_company_name text, billing_nip text,
       currency_code text not null default 'PLN', status text not null default 'pending',
       fulfillment_status text not null default 'not_fulfilled', total integer not null default 0,
       metadata text, order_number text, tracking_number text, tracking_url text,
@@ -84,12 +85,12 @@ beforeEach(() => {
       ('pay-refunded', 'refunded', 'pi_refunded', ${JUNE}, ${JUNE}),
       ('pay-pending', 'pending', null, ${JUNE}, ${JUNE});
 
-    insert into "order" (id, checkout_id, payment_id, user_id, email, status, fulfillment_status, total, metadata, order_number, tracking_number, created_at, updated_at) values
-      ('o-pending', 'chk-1', 'pay-pending', 'u-anna', 'anna@example.com', 'pending', 'not_fulfilled', 10000, '{"locale":"en-US"}', 'MRT-2024-00001', null, ${JANUARY}, ${JANUARY}),
-      ('o-unfulfilled', 'chk-2', 'pay-paid', 'u-anna', 'anna@example.com', 'processing', 'not_fulfilled', 20000, null, 'MRT-2024-00002', null, ${JUNE}, ${JUNE}),
-      ('o-shipped', 'chk-3', 'pay-paid', null, 'guest@example.com', 'processing', 'shipped', 30000, null, 'MRT-2024-00003', 'TRK-9', ${JUNE}, ${JUNE}),
-      ('o-delivered', 'chk-4', 'pay-refunded', null, 'guest@example.com', 'completed', 'delivered', 40000, null, 'MRT-2024-00004', null, ${JUNE}, ${JUNE}),
-      ('o-cancelled', 'chk-5', null, null, 'guest@example.com', 'cancelled', 'cancelled', 50000, null, 'MRT-2024-00005', null, ${JUNE}, ${JUNE});
+    insert into "order" (id, checkout_id, payment_id, user_id, email, billing_company_name, billing_nip, status, fulfillment_status, total, metadata, order_number, tracking_number, created_at, updated_at) values
+      ('o-pending', 'chk-1', 'pay-pending', 'u-anna', 'anna@example.com', null, null, 'pending', 'not_fulfilled', 10000, '{"locale":"en-US"}', 'MRT-2024-00001', null, ${JANUARY}, ${JANUARY}),
+      ('o-unfulfilled', 'chk-2', 'pay-paid', 'u-anna', 'anna@example.com', 'Pracownia Złotnicza sp. z o.o.', '5260001246', 'processing', 'not_fulfilled', 20000, null, 'MRT-2024-00002', null, ${JUNE}, ${JUNE}),
+      ('o-shipped', 'chk-3', 'pay-paid', null, 'guest@example.com', null, null, 'processing', 'shipped', 30000, null, 'MRT-2024-00003', 'TRK-9', ${JUNE}, ${JUNE}),
+      ('o-delivered', 'chk-4', 'pay-refunded', null, 'guest@example.com', null, null, 'completed', 'delivered', 40000, null, 'MRT-2024-00004', null, ${JUNE}, ${JUNE}),
+      ('o-cancelled', 'chk-5', null, null, 'guest@example.com', null, null, 'cancelled', 'cancelled', 50000, null, 'MRT-2024-00005', null, ${JUNE}, ${JUNE});
 
     insert into order_item (id, order_id, variant_id, quantity, created_at, updated_at) values
       ('oi-1', 'o-pending', 'v-1', 2, ${JANUARY}, ${JANUARY}),
@@ -278,6 +279,15 @@ describe("getAdminOrdersExport", () => {
     const rows = await getAdminOrdersExport({ tab: ADMIN_ORDER_TAB.UNFULFILLED })
 
     expect(rows[0]).toMatchObject({ paymentStatus: "succeeded", status: "processing", total: 20_000, userId: "u-anna" })
+  })
+
+  it("reads the company and NIP a business buyer gave, and nothing for an order without them", async () => {
+    const rows = await getAdminOrdersExport({})
+    const company = rows.find((row) => row.id === "o-unfulfilled")
+    const guest = rows.find((row) => row.id === "o-shipped")
+
+    expect(company).toMatchObject({ billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246" })
+    expect(guest).toMatchObject({ billingCompanyName: null, billingNip: null })
   })
 
   it("returns nothing when no order matches", async () => {

@@ -76,11 +76,11 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
           </DropdownMenuItem>
           <DropdownMenuItem
             className={ITEM_CLASS}
-            disabled={!handlers.canPrint}
-            onClick={handlers.runMenuAction(handlers.handlePrintInvoice)}
+            disabled={!handlers.canPrintSummary}
+            onClick={handlers.runMenuAction(handlers.handlePrintSummary)}
           >
             <Printer className="size-4" strokeWidth={1.5} />
-            {t("printInvoice")}
+            {t("printSummary")}
           </DropdownMenuItem>
           <DropdownMenuSeparator className="my-1.5" />
           <DropdownMenuItem className={ITEM_CLASS} disabled={!handlers.canRefund} onClick={handlers.runMenuAction(handlers.handleRefund)}>

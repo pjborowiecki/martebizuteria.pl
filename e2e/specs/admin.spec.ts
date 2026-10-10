@@ -7,7 +7,7 @@ import { linkIn, waitForEmail } from "../fixtures/emails"
 import { placeOrder } from "../fixtures/orders"
 import { SERVER_FUNCTIONS, waitForServerFunctionResponse } from "../fixtures/server-functions"
 import { type CheckoutSession, completeCheckoutSession, expireCheckoutSession, waitForOpenCheckoutSession } from "../fixtures/stripe"
-import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
+import { clientAddressFor, expect, isolateNetwork, muteRealtime, test } from "../fixtures/test"
 import { uniqueCode, uniqueEmail } from "../fixtures/unique"
 import { AdminOrderPage, BasePage, CheckoutPage, ProductPage } from "../pages"
 
@@ -291,12 +291,14 @@ test.describe("admin", () => {
     await expect(main.getByText(`Anna Kowalska · ${email}`)).toBeVisible()
   })
 
-  test("a business buyer's company and NIP reach their confirmation, the shop's notice and the admin order", async ({
+  test("a business buyer's company and NIP reach their emails, the orders export and the admin order summary", async ({
     adminOrderPage,
     browser,
+    context,
     page,
     request,
   }, testInfo) => {
+    await muteRealtime(context)
     const shopper = await browser.newContext({
       extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
       storageState: { cookies: [], origins: [] },
@@ -327,6 +329,23 @@ test.describe("admin", () => {
     await expect(main.getByText("Invoice for a company")).toBeVisible()
     await expect(main.getByText(INVOICED_COMPANY.companyName)).toBeVisible()
     await expect(main.getByText(`NIP ${INVOICED_COMPANY.storedNip}`)).toBeVisible()
+
+    const summary = await adminOrderPage.openSummary()
+    await expect(new BasePage(summary).heading()).toHaveText("Order summary")
+    await expect(summary.getByRole("note")).toHaveText("This document is not a VAT invoice.")
+    await expect(summary.getByText(orderNumber)).toBeVisible()
+    await expect(summary.getByText(INVOICED_COMPANY.companyName)).toBeVisible()
+    await expect(summary.getByText(`NIP ${INVOICED_COMPANY.storedNip}`)).toBeVisible()
+    await expect(summary.getByRole("row", { name: PRODUCTS.onyx.title })).toBeVisible()
+    await expect(summary.getByText(/^Including VAT 23%$/u)).toBeVisible()
+    await summary.close()
+
+    await adminOrderPage.searchOrdersFor(email)
+    const csv = await adminOrderPage.exportOrders()
+    expect(csv.split("\n")[0]).toBe("Order ID,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status")
+    expect(csv).toContain(`"${email}","${INVOICED_COMPANY.companyName}","${INVOICED_COMPANY.storedNip}"`)
+    const summaryFromList = await adminOrderPage.openSummaryFromRow(email)
+    await expect(new BasePage(summaryFromList).heading()).toHaveText("Order summary")
   })
 
   test("an admin back on the order list sees the order a colleague shipped while they had it open", async ({

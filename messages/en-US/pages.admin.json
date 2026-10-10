@@ -564,6 +564,11 @@
       "status": "Status",
       "actions": "Row actions"
     },
+    "exportColumns": {
+      "orderId": "Order ID",
+      "companyName": "Company",
+      "nip": "NIP"
+    },
     "status": {
       "pending": "Pending",
       "processing": "Processing",
@@ -597,7 +602,7 @@
       "copyError": "Could not copy order ID",
       "fulfill": "Fulfill order",
       "markShipped": "Mark as shipped",
-      "printInvoice": "Print invoice",
+      "printSummary": "Print order summary",
       "refund": "Refund",
       "cancel": "Cancel order",
       "cancelDialog": {
@@ -628,7 +633,7 @@
   },
   "orderDetail": {
     "actions": {
-      "print": "Print",
+      "printSummary": "Print summary",
       "refund": "Refund",
       "restock": "Return to stock",
       "cancel": "Cancel order",
@@ -806,6 +811,18 @@
       "cancel": "Keep order",
       "confirm": "Cancel order"
     }
+  },
+  "orderSummary": {
+    "title": "Order summary",
+    "notVatInvoice": "This document is not a VAT invoice.",
+    "orderNumber": "Order number",
+    "orderDate": "Order date",
+    "seller": "Seller",
+    "sellerCountry": "Poland",
+    "buyer": "Buyer",
+    "vatIncluded": "Including VAT {rate}%",
+    "print": "Print",
+    "backToOrder": "Back to order"
   },
   "marketing": {
     "title": "Marketing Campaigns",

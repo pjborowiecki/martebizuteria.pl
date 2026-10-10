@@ -52,6 +52,11 @@ interface AdminOrderListItem {
   readonly userId: string | null
 }
 
+interface AdminOrderExportItem extends AdminOrderListItem {
+  readonly billingCompanyName: string | undefined
+  readonly billingNip: string | undefined
+}
+
 interface AdminOrderDetailAddress {
   readonly city: string
   readonly countryCode: string
@@ -147,6 +152,7 @@ interface AdminOrderDetail {
   readonly status: Order["select"]["status"]
   readonly subtotalMinorUnits: number
   readonly tags: readonly AdminOrderDetailTag[]
+  readonly taxBasisPoints: number
   readonly taxTotalMinorUnits: number
   readonly timeline: readonly AdminOrderDetailTimelineEvent[]
   readonly totalMinorUnits: number
@@ -211,6 +217,7 @@ interface UnannouncedOrderRefund {
 
 export interface Order {
   adminExportInput: Omit<AdminOrdersPageInput, "page" | "pageSize">
+  adminExportItem: AdminOrderExportItem
   adminListFilters: AdminOrdersListFilters
   adminListItem: AdminOrderListItem
   adminOrderDetail: AdminOrderDetail

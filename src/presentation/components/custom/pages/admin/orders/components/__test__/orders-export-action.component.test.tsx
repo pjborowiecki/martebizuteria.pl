@@ -17,9 +17,11 @@ import { OrdersExportAction } from "~/src/presentation/components/custom/pages/a
 
 const EXPORT_LABEL = "Export"
 
-const HEADER_ROW = "Order ID,Customer,Email,Date,Items,Total,Payment,Fulfillment,Status"
+const HEADER_ROW = "Order ID,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status"
 
 const orderRow = {
+  billingCompanyName: undefined,
+  billingNip: undefined,
   createdAt: new Date("2026-03-14T10:00:00.000Z"),
   currencyCode: "PLN",
   customerName: "Anna Kowalska",
@@ -96,8 +98,20 @@ describe("OrdersExportAction", () => {
 
     await waitFor(() => {
       expect(withPlainSpaces(writtenCsv().content.split("\n")[1] ?? "")).toBe(
-        '"order-1","Anna Kowalska","anna@example.com","Mar 14, 2026","2","PLN 120.00","Paid","Shipped","Completed"',
+        '"order-1","Anna Kowalska","anna@example.com",,,"Mar 14, 2026","2","PLN 120.00","Paid","Shipped","Completed"',
       )
+    })
+  })
+
+  it("writes the company and NIP a business buyer gave", async () => {
+    exportAdminOrders.mockResolvedValueOnce([
+      { ...orderRow, billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246" },
+    ])
+    renderWithProviders(<OrdersExportAction />)
+    fireEvent.click(screen.getByRole("button", { name: EXPORT_LABEL }))
+
+    await waitFor(() => {
+      expect(writtenCsv().content).toContain('"anna@example.com","Pracownia Złotnicza sp. z o.o.","5260001246",')
     })
   })
 

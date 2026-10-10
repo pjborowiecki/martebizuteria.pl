@@ -150,6 +150,8 @@ const buildAdminOrdersWhere = (params: Pick<AdminOrdersListParams, "filters" | "
 const adminOrdersBaseQuery = (whereClause: SQL | undefined) =>
   db
     .select({
+      billingCompanyName: order.billingCompanyName,
+      billingNip: order.billingNip,
       createdAt: order.createdAt,
       currencyCode: order.currencyCode,
       customerName: user.name,

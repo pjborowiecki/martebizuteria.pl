@@ -83,6 +83,7 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
   status: "processing",
   subtotalMinorUnits: 37_000,
   tags: ["returning", "locker"],
+  taxBasisPoints: 2300,
   taxTotalMinorUnits: 0,
   timeline: [
     {

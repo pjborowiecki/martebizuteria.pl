@@ -1,12 +1,14 @@
 import { type JSX, useCallback } from "react"
 
+import { cn } from "cn"
 import { CheckCheck, Loader2, Package, PackagePlus, Printer, Truck, XCircle } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { type Order } from "~/src/modules/order/order.types"
 
-import { Button } from "~/src/presentation/components/shadcn/button"
+import { Button, buttonVariants } from "~/src/presentation/components/shadcn/button"
 
+import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import {
   ADMIN_HEADER_PRIMARY_BUTTON_CLASS,
   ADMIN_HEADER_SECONDARY_BUTTON_CLASS,
@@ -16,6 +18,8 @@ import { OrderRefundButton } from "~/src/presentation/components/custom/pages/ad
 import { OrderRefundDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-refund-dialog"
 import { OrderShipDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-ship-dialog"
 import { useOrderDetailActions } from "~/src/presentation/components/custom/pages/admin/orders/detail/use-order-detail-actions"
+
+import { ROUTES } from "~/src/routes"
 
 export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>): JSX.Element => {
   const t = useTranslations("pages.admin.orderDetail")
@@ -36,16 +40,18 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
 
   return (
     <>
-      <Button
-        className={ADMIN_HEADER_SECONDARY_BUTTON_CLASS}
-        disabled={!actions.canPrint}
-        onClick={actions.handlePrint}
-        size="sm"
-        variant="outline"
-      >
-        <Printer className="size-3.5" strokeWidth={1.5} />
-        {t("actions.print")}
-      </Button>
+      {actions.canPrintSummary && (
+        <LocalizedLink
+          className={cn(buttonVariants({ size: "sm", variant: "outline" }), ADMIN_HEADER_SECONDARY_BUTTON_CLASS)}
+          params={{ orderId: order.id }}
+          rel="noopener noreferrer"
+          target="_blank"
+          to={ROUTES.ADMIN_ORDER_SUMMARY}
+        >
+          <Printer className="size-3.5" strokeWidth={1.5} />
+          {t("actions.printSummary")}
+        </LocalizedLink>
+      )}
 
       {actions.canRefund && (
         <OrderRefundButton blocker={actions.refundBlocker} isPending={actions.isPending} onClick={handleOpenRefundDialog} />

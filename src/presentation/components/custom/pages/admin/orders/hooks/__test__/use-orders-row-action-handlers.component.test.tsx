@@ -12,7 +12,7 @@ import { consumeDataGridRowClickSuppression } from "~/src/presentation/component
 import { useOrdersRowActionHandlers } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-orders-row-action-handlers"
 
 const { buildLocation, cancelMutate, fulfillMutate, navigate, pending, shipMutate, toastSuccess } = vi.hoisted(() => ({
-  buildLocation: vi.fn(() => ({ href: "/admin/orders/order-1" })),
+  buildLocation: vi.fn(() => ({ href: "/admin/orders/order-1/summary", publicHref: "/en-US/admin/orders/order-1/summary" })),
   cancelMutate: vi.fn<(input: { orderId: string }, settings?: { onSuccess?: () => void }) => void>(),
   fulfillMutate: vi.fn<(input: { orderId: string }) => void>(),
   navigate: vi.fn(),
@@ -103,7 +103,7 @@ describe("useOrdersRowActionHandlers availability", () => {
     expect(result.current.canShip).toBe(false)
     expect(result.current.canCancel).toBe(true)
     expect(result.current.canRefund).toBe(true)
-    expect(result.current.canPrint).toBe(true)
+    expect(result.current.canPrintSummary).toBe(true)
   })
 
   it("offers shipping once the order is fulfilled and withdraws fulfilment", () => {
@@ -120,13 +120,13 @@ describe("useOrdersRowActionHandlers availability", () => {
     expect(result.current.canShip).toBe(false)
     expect(result.current.canCancel).toBe(false)
     expect(result.current.canRefund).toBe(false)
-    expect(result.current.canPrint).toBe(false)
+    expect(result.current.canPrintSummary).toBe(false)
   })
 
-  it("keeps the invoice available for a refunded order but not the refund", () => {
+  it("keeps the summary printable for a refunded order but not the refund", () => {
     const { result } = renderHandlers(order({ status: "refunded" }))
 
-    expect(result.current.canPrint).toBe(true)
+    expect(result.current.canPrintSummary).toBe(true)
     expect(result.current.canRefund).toBe(false)
   })
 
@@ -205,15 +205,15 @@ describe("useOrdersRowActionHandlers actions", () => {
     expect(shipMutate).toHaveBeenCalledExactlyOnceWith({ orderId: "order-1" })
   })
 
-  it("opens the built invoice url in a new tab", () => {
+  it("opens the order summary in the admin's language in a new tab", () => {
     const openTab = vi.fn(() => null)
     vi.stubGlobal("open", openTab)
     const { result } = renderHandlers(order())
 
-    result.current.handlePrintInvoice()
+    result.current.handlePrintSummary()
 
-    expect(buildLocation).toHaveBeenCalledExactlyOnceWith({ params: { orderId: "order-1" }, to: "/admin/orders/$orderId" })
-    expect(openTab).toHaveBeenCalledExactlyOnceWith("/admin/orders/order-1", "_blank", "noopener,noreferrer")
+    expect(buildLocation).toHaveBeenCalledExactlyOnceWith({ params: { orderId: "order-1" }, to: "/admin/orders/$orderId/summary" })
+    expect(openTab).toHaveBeenCalledExactlyOnceWith("/en-US/admin/orders/order-1/summary", "_blank", "noopener,noreferrer")
     vi.unstubAllGlobals()
   })
 
