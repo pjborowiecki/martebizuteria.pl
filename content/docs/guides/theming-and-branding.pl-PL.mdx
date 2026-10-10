@@ -186,7 +186,7 @@ export const BUSINESS = {
 
 ## Wiadomości e-mail
 
-Stylowanie e-maili jest osobne: bez Tailwinda i bez zmiennych CSS, bo klienty pocztowe nie wspierają ich niezawodnie. `src/presentation/emails/email-styles.ts` przechowuje obiekty stylów inline, `email-layout.tsx` to wspólna powłoka, a `email-highlight-box.tsx` jedyny wspólny blok. Sześć szablonów to `account-deleted`, `change-email`, `order-confirmation`, `order-shipped`, `reset-password` i `verify-email`. Każdy przyjmuje `locale` i `messages` jako właściwości. Podejrzysz je pod `/dev/emails`.
+Stylowanie e-maili jest osobne: bez Tailwinda i bez zmiennych CSS, bo klienty pocztowe nie wspierają ich niezawodnie. `src/presentation/emails/email-styles.ts` przechowuje obiekty stylów inline, `email-layout.tsx` to wspólna powłoka, a `email-highlight-box.tsx` jedyny wspólny blok. Trzynaście szablonów to `account-deleted`, `change-email`, `new-order`, `newsletter-already-subscribed`, `newsletter-confirmation`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `password-changed`, `payment-failed`, `reset-password` i `verify-email`. Każdy przyjmuje `locale` i `messages` jako właściwości. Podejrzysz je pod `/dev/emails`.
 
 ## Lista kontrolna zmiany wizualnej
 

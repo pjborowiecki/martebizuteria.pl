@@ -138,7 +138,7 @@ Kod serwerowy rzuca `AppError` z `src/modules/_core/constants/errors.ts` z jedny
 
 ## Tłumaczenia
 
-Pliki tłumaczeń to jeden JSON na przestrzeń nazw w `messages/<locale>/`, nazwany tak jak przestrzeń: `pages.admin.catalog.products.json` to przestrzeń `pages.admin.catalog.products`. Są 52 przestrzenie i obie lokalizacje mają wszystkie.
+Pliki tłumaczeń to jeden JSON na przestrzeń nazw w `messages/<locale>/`, nazwany tak jak przestrzeń: `pages.admin.catalog.products.json` to przestrzeń `pages.admin.catalog.products`. Są 53 przestrzenie i obie lokalizacje mają wszystkie.
 
 Przestrzenie korzeniowe — `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors`, `pages.auth.toast` — są wstępnie ładowane dla każdej trasy. Wszystko inne deklaruje się per trasa w `staticData.namespaces`. Test w `src/integrations/use-intl/__test__/i18n.messages.test.ts` sprawdza, że polski zawiera każdy klucz obecny w angielskim, oraz że żadna przestrzeń `emails.*` nie przecieka do zbioru korzeniowego.
 

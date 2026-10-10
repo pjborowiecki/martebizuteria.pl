@@ -25,6 +25,18 @@ export class AuthPage extends BasePage {
     await this.page.getByRole("button", { exact: true, name: "Sign in" }).click()
   }
 
+  async requestPasswordReset(email: string): Promise<void> {
+    await this.open("/en-US/auth/forgot-password")
+    await this.emailField().fill(email)
+    await this.page.getByRole("button", { exact: true, name: "Send reset link" }).click()
+  }
+
+  async setNewPassword(password: string): Promise<void> {
+    await this.passwordField().fill(password)
+    await this.page.getByRole("textbox", { exact: true, name: "Confirm password *" }).fill(password)
+    await this.page.getByRole("button", { exact: true, name: "Reset password" }).click()
+  }
+
   async signUp(account: NewAccount): Promise<void> {
     await this.open("/en-US/auth/sign-up")
     await this.page.getByRole("textbox", { exact: true, name: "First name *" }).fill(account.firstName)

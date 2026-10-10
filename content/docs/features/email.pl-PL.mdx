@@ -1,6 +1,6 @@
 ---
 title: "E-maile transakcyjne"
-description: "Dwanaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
+description: "Trzynaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
 ---
 
 ## Wysyłka
@@ -50,7 +50,7 @@ Niektóre odmowy oznaczają, że od tego nadawcy nie wyjdzie żaden e-mail: odpo
 
 Klientem jest `src/integrations/resend/resend.config.ts`, jednolinijkowe `new Resend(env.RESEND_API_KEY)`. Domyślne `from` to `APP_NAME <RESEND_EMAIL_FROM>`. Zarówno `RESEND_API_KEY`, jak i `RESEND_EMAIL_FROM` są na liście `secrets.required` każdego środowiska w `wrangler.jsonc`. Domena nadawcy musi być zweryfikowana w Resend, a wdrożenie zatrzymuje się przed kompilacją, gdy nie jest; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 
-## Dwanaście szablonów
+## Trzynaście szablonów
 
 Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane po stronie serwera wewnątrz Workera:
 
@@ -59,6 +59,7 @@ Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane
 | `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerificationEmail` (Better Auth)                                                                |
 | `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPassword` (Better Auth)                                                                    |
 | `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmation` (Better Auth)                                                          |
+| `password-changed.tsx`              | `PASSWORD_CHANGED_NAMESPACE`              | `sendPasswordChangedEmail`, z `onPasswordReset` w Better Auth                                        |
 | `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, wywoływany przez `deleteCustomer` i `afterDelete` z oczekiwaniem na wynik |
 | `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `notifyOrderConfirmed`, z webhooka Stripe                                                            |
 | `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `notifyOrderShipped`, oczekiwany przez `shipOrder`                                                   |
@@ -105,7 +106,7 @@ E-maile dotyczące zamówień mają tu znaczenie: webhook nie ma przeglądarki, 
 
 ## Origin linków
 
-Linki, które sklep wpisuje do własnych e-maili, prowadzą pod adres, którego używał klient albo administrator, tak jak linki Better Auth prowadzą do hosta, na którym go wywołano. Funkcja serwerowa ustala origin, zanim cokolwiek zapisze, przez `resolveRequestOrigin(request)` (`src/lib/request.ts`): bierze go z `request.url`, akceptuje tylko hosty z listy `appHostsForMode(import.meta.env.MODE)`, a dla każdego innego rzuca `AppError(FORBIDDEN)`. Dalej origin jest przekazywany jako napis: `sendNewsletterConfirmation({ email, locale, origin, token })`, `sendNewsletterAlreadySubscribed({ email, locale, origin })`, `sendAccountDeletedEmail({ email, locale, name, origin })`, `notifyOrderShipped(orderId, origin)` i `notifyOrderCancelled({ orderId, refundedAmount }, origin)`. Po samodzielnym usunięciu konta hook `afterDelete` ustala go z żądania, które przekazuje mu Better Auth.
+Linki, które sklep wpisuje do własnych e-maili, prowadzą pod adres, którego używał klient albo administrator, tak jak linki Better Auth prowadzą do hosta, na którym go wywołano. Funkcja serwerowa ustala origin, zanim cokolwiek zapisze, przez `resolveRequestOrigin(request)` (`src/lib/request.ts`): bierze go z `request.url`, akceptuje tylko hosty z listy `appHostsForMode(import.meta.env.MODE)`, a dla każdego innego rzuca `AppError(FORBIDDEN)`. Dalej origin jest przekazywany jako napis: `sendNewsletterConfirmation({ email, locale, origin, token })`, `sendNewsletterAlreadySubscribed({ email, locale, origin })`, `sendAccountDeletedEmail({ email, locale, name, origin })`, `notifyOrderShipped(orderId, origin)` i `notifyOrderCancelled({ orderId, refundedAmount }, origin)`. Po samodzielnym usunięciu konta hook `afterDelete` ustala go z żądania, które przekazuje mu Better Auth, a po resecie hasła `sendPasswordChangedEmail` robi to samo z żądaniem, które Better Auth przekazuje do `onPasswordReset`.
 
 Potwierdzenie zamówienia wysyła webhook Stripe, którego żądanie mówi tylko, który endpoint wywołał Stripe. Dlatego bierze ono origin z `return_url` sesji: żądanie checkoutu zbudowało ten adres na własnym, sprawdzonym originie, a wraca on w zdarzeniu ze sprawdzonym podpisem. `resolveDeploymentOrigin(session.return_url)` akceptuje host obsługiwany przez dowolne wdrożenie, lokalne, preview albo produkcyjne, i wymaga `https:` wszędzie poza `localhost:3000` i `127.0.0.1:3000`. Lokalny checkout linkuje więc pod adres, na którym go złożono, choć `stripe:listen` przekazuje webhook na `localhost:3000`, i nawet wtedy, gdy realizuje go wdrożenie preview, które dzieli z developmentem testowe konto Stripe i bazę danych. E-mail o nieudanej płatności robi to samo z sesją ze swojego zdarzenia, e-mail sklepu o nowym zamówieniu z sesją, która utworzyła zamówienie, a e-mail o zwrocie z sesją Checkout, którą `resolveCheckoutSession` znajduje dla zwróconej płatności.
 
@@ -237,7 +238,7 @@ Identyfikator zamówienia jest celem i `resourceId` każdego wpisu. Porażkę wi
 
 E-mail newslettera odrzucony przez Resend również trafia do audytu. `subscribeToNewsletter` wywołuje `recordEmailFailedAudit(email, { detail })`: celem wpisu jest adres, a szczegół podaje rodzaj e-maila i błąd Resend, na przykład `Newsletter confirmation — The example.com domain is not verified` albo `Newsletter already-subscribed notice — …`. Niezweryfikowana domena nadawcy pojawia się więc w `/admin/audit` już przy pierwszym zapisie, a nie tylko w logu Workera. Wysłany e-mail nie jest zapisywany.
 
-Cztery e-maile Better Auth trafiają do audytu w ten sam sposób, przez `recordAuthEmailFailure` w `auth.server.ts`:
+Pięć e-maili Better Auth trafia do audytu w ten sam sposób, przez `recordAuthEmailFailure` w `auth.server.ts`:
 
 ```ts
 const recordAuthEmailFailure = (kind: string, recipient: string, failure: string): void => {
@@ -263,7 +264,7 @@ Celem wpisu jest adres odbiorcy, a szczegół podaje rodzaj e-maila, na przykła
 
 ## Czekanie na wysyłkę
 
-Własne wysyłki sklepu czekają na odpowiedź Resend, więc wynik trafia do tego, kto na niego patrzy. Wyjątkiem są hooki rejestracji, resetu hasła i zmiany adresu w Better Auth: Better Auth uruchamia je przez `advanced.backgroundTasks`, czyli `scheduleBackgroundWork` (`src/lib/background.ts`, `waitUntil` Workera), co opisuje [Better Auth](/docs/integrations/better-auth).
+Własne wysyłki sklepu czekają na odpowiedź Resend, więc wynik trafia do tego, kto na niego patrzy. Wyjątkiem są hooki rejestracji, resetu hasła i zmiany adresu w Better Auth: Better Auth uruchamia je przez `advanced.backgroundTasks`, czyli `scheduleBackgroundWork` (`src/lib/background.ts`, `waitUntil` Workera), co opisuje [Better Auth](/docs/integrations/better-auth). Drugim wyjątkiem jest e-mail o zmianie hasła: `onPasswordReset` sam przekazuje `sendPasswordChangedEmail` do `scheduleBackgroundWork` i na niego nie czeka, bo Better Auth wylogowuje wszystkie urządzenia dopiero po powrocie z hooka.
 
 `shipOrder`, `cancelOrder`, `deleteCustomer` i webhook Stripe przekazują też wysyłkę, na którą czekają, do `scheduleBackgroundWork`, zanim zaczną na nią czekać:
 

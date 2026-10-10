@@ -9,7 +9,7 @@
   "forgotPasswordTitle": "Check your inbox",
   "forgotPasswordDescription": "If an account exists for this address, a secure link to reset your password is on its way.",
   "resetPasswordTitle": "Password updated",
-  "resetPasswordDescription": "Your new password is set. You can now sign in with it.",
+  "resetPasswordDescription": "Your new password is set and every device has been signed out of your account. You can now sign in with it.",
   "verificationResentTitle": "Check your inbox",
   "verificationResentDescription": "A new confirmation link is on its way to {email}.",
   "verifiedTitle": "Email confirmed",

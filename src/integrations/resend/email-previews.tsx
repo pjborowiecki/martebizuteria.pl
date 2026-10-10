@@ -16,6 +16,7 @@ import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import type orderRefundedMessages from "~/messages/en-US/emails.order-refunded.json"
 import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
+import type passwordChangedMessages from "~/messages/en-US/emails.password-changed.json"
 import type paymentFailedMessages from "~/messages/en-US/emails.payment-failed.json"
 import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.json"
 import type verifyEmailMessages from "~/messages/en-US/emails.verify-email.json"
@@ -30,6 +31,7 @@ import { ORDER_CANCELLED_NAMESPACE, OrderCancelled } from "~/src/presentation/em
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
 import { ORDER_REFUNDED_NAMESPACE, OrderRefunded } from "~/src/presentation/emails/order-refunded"
 import { ORDER_SHIPPED_NAMESPACE, OrderShipped } from "~/src/presentation/emails/order-shipped"
+import { PASSWORD_CHANGED_NAMESPACE, PasswordChanged } from "~/src/presentation/emails/password-changed"
 import { PAYMENT_FAILED_NAMESPACE, PaymentFailed } from "~/src/presentation/emails/payment-failed"
 import { RESET_PASSWORD_NAMESPACE, ResetPassword } from "~/src/presentation/emails/reset-password"
 import { VERIFY_EMAIL_NAMESPACE, VerifyEmail } from "~/src/presentation/emails/verify-email"
@@ -249,6 +251,17 @@ export const EMAIL_PREVIEWS = {
       />
     ),
     label: "Order shipped",
+  },
+  "password-changed": {
+    element: async (locale) => (
+      <PasswordChanged
+        locale={locale}
+        messages={await loadNamespace<typeof passwordChangedMessages>({ locale, namespace: PASSWORD_CHANGED_NAMESPACE })}
+        name={PREVIEW_NAME}
+        signInUrl={`https://martebizuteria.pl/${locale}/auth/sign-in`}
+      />
+    ),
+    label: "Password changed",
   },
   "payment-failed": {
     element: async (locale) => (

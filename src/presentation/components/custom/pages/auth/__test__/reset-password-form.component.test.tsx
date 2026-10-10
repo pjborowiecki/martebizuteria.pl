@@ -122,7 +122,7 @@ describe("ResetPasswordForm", () => {
 
     await waitFor(() => {
       expect(toasts.success).toHaveBeenCalledWith("Password updated", {
-        description: "Your new password is set. You can now sign in with it.",
+        description: "Your new password is set and every device has been signed out of your account. You can now sign in with it.",
       })
     })
     expect(navigation.navigate).toHaveBeenCalledWith({ to: ROUTES.AUTH_SIGN_IN })

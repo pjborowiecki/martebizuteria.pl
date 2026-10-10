@@ -186,7 +186,7 @@ export const BUSINESS = {
 
 ## Emails
 
-Email styling is separate: no Tailwind, no CSS variables, because mail clients support neither reliably. `src/presentation/emails/email-styles.ts` holds inline style objects, `email-layout.tsx` is the shared shell and `email-highlight-box.tsx` the one shared block. The six templates are `account-deleted`, `change-email`, `order-confirmation`, `order-shipped`, `reset-password` and `verify-email`. Each takes its `locale` and `messages` as props. Preview them at `/dev/emails`.
+Email styling is separate: no Tailwind, no CSS variables, because mail clients support neither reliably. `src/presentation/emails/email-styles.ts` holds inline style objects, `email-layout.tsx` is the shared shell and `email-highlight-box.tsx` the one shared block. The thirteen templates are `account-deleted`, `change-email`, `new-order`, `newsletter-already-subscribed`, `newsletter-confirmation`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`. Each takes its `locale` and `messages` as props. Preview them at `/dev/emails`.
 
 ## Checklist for a visual change
 

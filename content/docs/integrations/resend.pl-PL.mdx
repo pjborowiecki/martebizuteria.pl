@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "Dwanaście e-maili transakcyjnych, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
+description: "Trzynaście e-maili transakcyjnych, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
 ---
 
 Każdy e-mail wysyłany przez sklep przechodzi przez Resend. Adapter w `src/integrations/resend/` zawiera klienta, jeden pomocnik `sendEmail`, budowniki zamieniające wiersze zamówień na właściwości szablonów oraz renderer podglądów dla programisty. Same szablony React Email mieszkają w `src/presentation/emails/`, ponieważ należą do warstwy prezentacji.
@@ -59,19 +59,20 @@ Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. SDK Res
 
 Brakujący klucz API nigdy nie dociera do Resend: `new Resend(undefined)` rzuca wyjątek już przy ładowaniu `resend.config.ts`, a `scripts/prepare-deploy-secrets.ts` nie przygotuje wdrożenia bez `RESEND_API_KEY`.
 
-Wywołujący przekazuje `revealsAccountExistence: true`, gdy to, czy e-mail w ogóle zostanie wysłany, zależy od istnienia konta. Tak jest z weryfikacją, linkiem do zmiany hasła i potwierdzeniem zmiany adresu z Better Auth: Better Auth wysyła je tylko dla adresu, który ma konto albo go nie ma. Ich odmowy nigdy nie ustawiają flagi, bo jej stan zdradzałby komuś z zewnątrz, czy taka wysyłka w ogóle nastąpiła. E-maile newslettera, zamówień i o usunięciu konta wychodzą dla każdego adresu, który je uruchomi, więc ich odmowy flagę ustawiają.
+Wywołujący przekazuje `revealsAccountExistence: true`, gdy to, czy e-mail w ogóle zostanie wysłany, zależy od istnienia konta. Tak jest z weryfikacją, linkiem do zmiany hasła i potwierdzeniem zmiany adresu z Better Auth: Better Auth wysyła je tylko dla adresu, który ma konto albo go nie ma. Ich odmowy nigdy nie ustawiają flagi, bo jej stan zdradzałby komuś z zewnątrz, czy taka wysyłka w ogóle nastąpiła. E-maile newslettera, zamówień i o usunięciu konta wychodzą dla każdego adresu, który je uruchomi, a e-mail o zmianie hasła tylko do konta, którego link do resetu właśnie użyto, więc temu, kto go użył, nie mówi niczego nowego; dlatego ich odmowy flagę ustawiają.
 
 Odmowa dotycząca jednej wiadomości nie zmienia flagi: błąd odbiorcy 422, `rate_limit_exceeded`, odpowiedź 5xx, błąd sieci albo dziesięciosekundowy limit czasu. Gdyby limit liczby żądań traktować jak awarię nadawcy, jeden nagły szczyt blokowałby wszystkie e-maile na pięć minut. To samo dotyczy odpowiedzi 401 lub 403 bez żadnego z powyższych kodów, gdy nadawca jest w domenie `resend.dev` (`RESEND_TEST_SENDER`): testowy nadawca Resend dostarcza pocztę wyłącznie właścicielowi konta Resend, a każdemu innemu odbiorcy odpowiada `validation_error` z kodem 403, `You can only send testing emails to your own email address`, co nic nie mówi o kolejnym e-mailu do właściciela. Odmowy dotyczące klucza i limitu mają własne kody i nadal ustawiają flagę.
 
 Na flagę reaguje tylko blokada w Better Auth. Dopóki jest ustawiona, rejestracja, zmiana hasła, ponowne wysłanie weryfikacji i zmiana adresu odpowiadają `503 EMAIL_DELIVERY_UNAVAILABLE`, zamiast tworzyć token dla e-maila, który nie może wyjść; zobacz [Better Auth](/docs/integrations/better-auth#blokada-wysyłki-e-maili). E-maile newslettera i zamówień nie są blokowane, bo o każdej porażce i tak informują osobę albo dziennik audytu. Flaga wyłapuje zepsutego nadawcę po pierwszej odmowie któregoś z tych e-maili; domena, której nigdy nie zweryfikowano, nadal kosztowałaby każdą osobę, która wcześniej uruchomi e-mail uwierzytelniania, dlatego wdrożenie najpierw sprawdza nadawcę; zobacz [Domena nadawcy](#domena-nadawcy).
 
-## Dwanaście e-maili
+## Trzynaście e-maili
 
 | E-mail                          | Szablon                                                     | Przestrzeń nazw                        | Wysyłany z                                                                                                                                                                                                              |
 | ------------------------------- | ----------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Weryfikacja adresu              | `src/presentation/emails/verify-email.tsx`                  | `emails.verify-email`                  | `sendVerificationEmail` w `auth.server.ts`, przy rejestracji                                                                                                                                                            |
 | Reset hasła                     | `src/presentation/emails/reset-password.tsx`                | `emails.reset-password`                | `sendResetPassword` w `auth.server.ts`                                                                                                                                                                                  |
 | Zmiana adresu e-mail            | `src/presentation/emails/change-email.tsx`                  | `emails.change-email`                  | `sendChangeEmailConfirmation` w `auth.server.ts`                                                                                                                                                                        |
+| Hasło zmienione                 | `src/presentation/emails/password-changed.tsx`              | `emails.password-changed`              | `sendPasswordChangedEmail` w `auth.server.ts`, przekazywane do `scheduleBackgroundWork` przez `onPasswordReset` Better Auth                                                                                             |
 | Konto usunięte                  | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail`, wywoływane z oczekiwaniem na wynik przez `src/modules/user/use-cases/delete-customer.ts` i `afterDelete` Better Auth                                                                         |
 | Potwierdzenie zamówienia        | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `stripe.webhooks.tsx` po zrealizowaniu sesji Checkout                                                                                                                                                                   |
 | Zamówienie wysłane              | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `notifyOrderShipped`, oczekiwane przez `src/modules/order/use-cases/ship-order.ts`                                                                                                                                      |
@@ -82,7 +83,7 @@ Na flagę reaguje tylko blokada w Better Auth. Dopóki jest ustawiona, rejestrac
 | Potwierdzenie newslettera       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` w `newsletter-confirmation.server.ts`, wywoływane przez `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` z oczekiwaniem na wynik                                              |
 | Adres już na liście newslettera | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribed` w `newsletter-already-subscribed.server.ts`, wywoływane z oczekiwaniem na wynik przez `subscribe-to-newsletter.ts`, gdy potwierdzony adres wysyła ktoś inny niż zalogowany właściciel |
 
-Pierwsze cztery opisuje strona [Better Auth](/docs/integrations/better-auth); pozostałe osiem buduje ten adapter.
+Pierwsze pięć opisuje strona [Better Auth](/docs/integrations/better-auth); pozostałe osiem buduje ten adapter.
 
 Każdy szablon eksportuje własną stałą przestrzeni nazw obok komponentu, więc wywołujący nie może rozjechać się z komunikatami, które renderuje:
 
@@ -127,10 +128,11 @@ Każdy link, który aplikacja sama wpisuje do e-maila, prowadzi pod adres, któr
 | Nieudana płatność                                                | `return_url` sesji: `resolveDeploymentOrigin(session.return_url)` w `sendPaymentFailedEmail`                                                                                             |
 | Nowe zamówienie, do sklepu                                       | `return_url` sesji, która utworzyła zamówienie: `resolveDeploymentOrigin(returnUrl)` w `sendNewOrderEmail`, który linkuje `/admin/orders/<id>`                                           |
 | Konto usunięte                                                   | `deleteCustomer`, przez `resolveRequestOrigin(getRequest())` przed `removeUser`; po samodzielnym usunięciu konta `afterDelete` ustala go z żądania, które Better Auth przekazuje hookowi |
+| Hasło zmienione                                                  | `sendPasswordChangedEmail`, przez `resolveRequestOrigin(request)` na żądaniu, które Better Auth przekazuje do `onPasswordReset`; e-mail linkuje `/auth/sign-in`                          |
 
 Obie funkcje leżą w `src/lib/request.ts`. Czytają wyłącznie adres URL, nigdy nagłówków `Host`, `Origin`, `Referer` ani `X-Forwarded-*`, wymagają `https:` wszędzie poza `localhost:3000` i `127.0.0.1:3000` i rzucają `AppError(FORBIDDEN)` dla hosta, którego nie akceptują. `resolveRequestOrigin(request)` akceptuje hosty z listy `appHostsForMode(import.meta.env.MODE)`, więc funkcja serwerowa odrzuca żądanie na każdym innym hoście, zanim cokolwiek zapisze. `resolveDeploymentOrigin(url)` akceptuje hosty wszystkich wdrożeń (`isDeploymentHost` w `src/modules/_core/constants/api.ts`), ponieważ webhook, który realizuje checkout, może należeć do innego wdrożenia: development i preview dzielą testowe konto Stripe i bazę danych, a `stripe:listen` zawsze przekazuje na `localhost:3000`.
 
-W webhooku odrzucony host albo sesja bez `return_url` zatrzymuje tylko próbę wysłania e-maila, więc zamówienie i tak zostaje zrealizowane, zwrot zapisany, a sesja zwolniona, webhook i tak odpowiada 200, a niewysłany e-mail jest zapisywany przy zamówieniu albo, przy nieudanej płatności, przy sesji. W `afterDelete` odrzucony host albo usunięcie, które przyszło bez żądania, jest logowane i audytowane jako niewysłany e-mail pożegnalny, a usunięcie konta i tak się udaje. Better Auth buduje własne linki weryfikacji, resetu hasła i zmiany adresu z listy hostów dla danego trybu. Praca przekazywana do `scheduleBackgroundWork` dostaje już ustalony origin, więc nic nie czyta żądania po wysłaniu odpowiedzi. Przyszły konsument kolejki, który wysyła e-maile, musi nieść origin w wiadomości.
+W webhooku odrzucony host albo sesja bez `return_url` zatrzymuje tylko próbę wysłania e-maila, więc zamówienie i tak zostaje zrealizowane, zwrot zapisany, a sesja zwolniona, webhook i tak odpowiada 200, a niewysłany e-mail jest zapisywany przy zamówieniu albo, przy nieudanej płatności, przy sesji. W `afterDelete` odrzucony host albo usunięcie, które przyszło bez żądania, jest logowane i audytowane jako niewysłany e-mail pożegnalny, a usunięcie konta i tak się udaje. W `onPasswordReset` to samo jest zapisywane jako niewysłany e-mail o zmianie hasła, a reset i tak się udaje i nadal wylogowuje wszystkie urządzenia. Better Auth buduje własne linki weryfikacji, resetu hasła i zmiany adresu z listy hostów dla danego trybu. Praca przekazywana do `scheduleBackgroundWork` dostaje już ustalony origin albo, jak `sendPasswordChangedEmail`, ustala go przed pierwszym `await`, więc nic nie czyta żądania po wysłaniu odpowiedzi. Przyszły konsument kolejki, który wysyła e-maile, musi nieść origin w wiadomości.
 
 ## Budowniki e-maili o zamówieniu
 
@@ -212,6 +214,7 @@ export const EMAIL_PREVIEWS = {
   "order-confirmation": { … },
   "order-refunded": { … },
   "order-shipped": { … },
+  "password-changed": { … },
   "payment-failed": { … },
   "reset-password": { … },
   "verify-email": { … },
