@@ -13,6 +13,7 @@ const mocked = vi.hoisted(() => ({
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
   getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
+  requestLocale: { value: "pl-PL" },
   reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
   supersedeCheckoutSession: vi.fn(),
@@ -39,7 +40,7 @@ vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
   ensureStripeCustomer: mocked.ensureStripeCustomer,
   getStripeCustomerId: mocked.getStripeCustomerId,
 }))
-vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
+vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => mocked.requestLocale.value }))
 vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ createCheckout: mocked.createCheckout }))
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout: vi.fn() }))
 vi.mock("~/src/modules/checkout/use-cases/supersede-checkout-session.server", () => ({
@@ -96,6 +97,8 @@ const PARCEL_LOCKER = { price: 1499, type: "locker" }
 
 const COURIER = { price: 1999, type: "courier" }
 
+const PAID_PICKUP = { price: 500, type: "in_store" }
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, "error").mockImplementation(() => {})
@@ -118,6 +121,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks()
+  mocked.requestLocale.value = "pl-PL"
 })
 
 const expectNewCheckoutUntouched = (): void => {
@@ -137,6 +141,8 @@ const expectHeldSessionUntouched = (): void => {
 }
 
 const savedLockerId = (): string | undefined => mocked.createCheckout.mock.lastCall?.[0].checkoutValues.lockerId
+
+const sessionLineItems = (): unknown[] | undefined => mocked.checkoutSessionsCreate.mock.lastCall?.[0].line_items
 
 describe("delivery method a new checkout names", () => {
   it("looks up the method the shopper chose among the ones the shop offers", async () => {
@@ -158,8 +164,41 @@ describe("delivery method a new checkout names", () => {
   it("charges the price the database holds for the method as its own line", async () => {
     await handleCreateCheckoutSession(createInput())
 
-    expect(mocked.checkoutSessionsCreate.mock.lastCall?.[0].line_items).toContainEqual({
-      price_data: { currency: "pln", product_data: { name: "Shipping" }, unit_amount: 1999 },
+    expect(sessionLineItems()).toContainEqual({
+      price_data: { currency: "pln", product_data: { name: "Dostawa kurierem" }, unit_amount: 1999 },
+      quantity: 1,
+    })
+  })
+})
+
+describe("delivery line the receipt names", () => {
+  it.each([
+    { locale: "pl-PL", method: COURIER, name: "Dostawa kurierem" },
+    { locale: "pl-PL", method: PARCEL_LOCKER, name: "Dostawa do Paczkomatu InPost" },
+    { locale: "pl-PL", method: PAID_PICKUP, name: "Odbiór osobisty" },
+    { locale: "en-US", method: COURIER, name: "Courier delivery" },
+    { locale: "en-US", method: PARCEL_LOCKER, name: "InPost Parcel Locker delivery" },
+    { locale: "en-US", method: PAID_PICKUP, name: "In-store pickup" },
+  ])("names the $method.type line $name in $locale", async ({ locale, method, name }) => {
+    mocked.requestLocale.value = locale
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(method)
+
+    await handleCreateCheckoutSession(createInput({ deliveryMethodType: method.type, lockerId: "KRA01M" }))
+
+    expect(sessionLineItems()).toContainEqual({
+      price_data: { currency: "pln", product_data: { name }, unit_amount: method.price },
+      quantity: 1,
+    })
+  })
+
+  it("names the delivery of an edited checkout in the shopper's language on the replacement session", async () => {
+    mocked.requestLocale.value = "en-US"
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(PARCEL_LOCKER)
+
+    await handleUpdateCheckoutSession(updateInput({ deliveryMethodType: "locker", lockerId: "KRA01M" }))
+
+    expect(sessionLineItems()).toContainEqual({
+      price_data: { currency: "pln", product_data: { name: "InPost Parcel Locker delivery" }, unit_amount: 1499 },
       quantity: 1,
     })
   })

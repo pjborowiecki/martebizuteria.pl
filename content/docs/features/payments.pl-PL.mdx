@@ -40,7 +40,7 @@ Sesje są tworzone z `ui_mode: "elements"`, co oznacza, że formularz płatnośc
 ```ts
 const params: StripeType.Checkout.SessionCreateParams = {
   expires_at: Math.floor(Date.now() / MILLISECONDS_PER_SECOND) + CHECKOUT_SESSION_LIFETIME_SECONDS,
-  line_items: toLineItems(lines, shippingCost),
+  line_items: toLineItems(lines, { cost: shippingCost, name: messages.deliveryLineItem[deliveryType] }),
   metadata,
   mode: "payment",
   payment_intent_data: { metadata, receipt_email: email },
@@ -69,7 +69,7 @@ const session = await stripe.checkout.sessions.create(params).catch(async (error
 
 Ten sam obiekt `metadata` jest dołączany do sesji i do payment intentu, więc webhook, który ma tylko intent, wciąż znajdzie checkout. Metadane zawierają `checkoutId`, `discountCode` i `discountTotal` (pusty napis i `"0"`, gdy nie ma rabatu), `locale` (z `getCurrentLocale()`), `userId` (pusty napis dla gościa) i pociętą listę `items0…N`.
 
-Pozycje sesji są budowane z cen zwalidowanych na serwerze, plus dosłowna linia `"Shipping"`, gdy metoda dostawy kosztuje więcej niż zero. Nazwy pozycji pochodzą z `lineTitle`, czyli `"<tytuł produktu> — <tytuł wariantu>"`, chyba że tytuł wariantu jest pusty. Rabat nie jest pozycją: `toSessionDiscounts` (`src/integrations/stripe/stripe.coupons.server.ts`) tworzy jednorazowy kupon Stripe na kwotę wyliczoną przez `resolveCheckoutDiscount`, oznaczony identyfikatorem checkoutu i `source: "marte_checkout"`, a sesja dostaje go w `discounts`. `createStripeSession` usuwa ten kupon od razu, gdy Stripe odmówi utworzenia sesji, a webhook usuwa go, gdy sesja zostanie ukończona lub wygaśnie. Zobacz [Rabaty](/docs/features/discounts).
+Pozycje sesji są budowane z cen zwalidowanych na serwerze, plus pozycja dostawy, gdy metoda dostawy kosztuje więcej niż zero. Ta pozycja ma nazwę w języku kupującego: `createStripeSession` wczytuje teksty `pages.checkout` dla języka checkoutu i bierze `deliveryLineItem.<typ>` dla typu metody, więc na polskim potwierdzeniu płatności pozycja brzmi „Dostawa kurierem” albo „Dostawa do Paczkomatu InPost”, a na angielskim „Courier delivery” albo „InPost Parcel Locker delivery”. Własne pole `name` metody nie jest używane, bo jest zapisane tylko po polsku. Nazwy pozycji pochodzą z `lineTitle`, czyli `"<tytuł produktu> — <tytuł wariantu>"`, chyba że tytuł wariantu jest pusty. Rabat nie jest pozycją: `toSessionDiscounts` (`src/integrations/stripe/stripe.coupons.server.ts`) tworzy jednorazowy kupon Stripe na kwotę wyliczoną przez `resolveCheckoutDiscount`, oznaczony identyfikatorem checkoutu i `source: "marte_checkout"`, a sesja dostaje go w `discounts`. `createStripeSession` usuwa ten kupon od razu, gdy Stripe odmówi utworzenia sesji, a webhook usuwa go, gdy sesja zostanie ukończona lub wygaśnie. Zobacz [Rabaty](/docs/features/discounts).
 
 ## Wiersz płatności
 

@@ -153,7 +153,7 @@ The map is `react-map-gl/maplibre` with the Carto Voyager basemap (`https://base
 
 1. `deliveryMethod` (the method id) is submitted with the checkout form.
 2. `resolveDelivery` refuses a method the shop does not offer and a locker method without a locker, keeps `lockerId` only for a locker method, and reads the method's `price`.
-3. `prepareCreateCheckoutBatch` writes the method to `checkout.delivery_method_id`, and `lockerId` to `checkout.locker_id`; `createStripeSession` adds a `"Shipping"` line item for the price when it is above zero.
+3. `prepareCreateCheckoutBatch` writes the method to `checkout.delivery_method_id`, and `lockerId` to `checkout.locker_id`; `createStripeSession` adds a delivery line item for the price when it is above zero, named for the method's type in the shopper's language (`deliveryLineItem` in `pages.checkout`).
 4. `prepareFulfillCheckoutBatch` copies `deliveryMethodId`, `lockerId` and `customerNote` from the checkout snapshot onto the new `order` row, and computes `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
 5. For a locker or courier order, an admin can book the parcel with InPost from the order page. The shipment's id and status land on `order.inpost_shipment_id` and `order.inpost_shipment_status`, its tracking number and link on `order.tracking_number` and `order.tracking_url`, and its PDF label is downloaded from the same card. See [InPost](/docs/integrations/inpost#shipments-through-shipx).
 

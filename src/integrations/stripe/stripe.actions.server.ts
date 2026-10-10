@@ -17,6 +17,7 @@ import { deleteCheckoutCoupons, toSessionDiscounts } from "~/src/integrations/st
 import { ensureStripeCustomer, getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
+import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
@@ -35,7 +36,7 @@ import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checko
 import { supersedeCheckoutSession } from "~/src/modules/checkout/use-cases/supersede-checkout-session.server"
 import { updateCheckoutDelivery } from "~/src/modules/checkout/use-cases/update-checkout-delivery.server"
 import { getOfferedDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
-import { DELIVERY_METHOD } from "~/src/modules/delivery-method/delivery-method.constants"
+import { DELIVERY_METHOD, type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import { resolveCheckoutDiscount } from "~/src/modules/discount/discount.checkout.server"
 import {
   claimCheckoutDiscount,
@@ -57,6 +58,7 @@ import { resolveRequestIp, resolveRequestOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 import { resolveAssetURL } from "~/src/lib/url"
 
+import type checkoutMessages from "~/messages/en-US/pages.checkout.json"
 import { ROUTES } from "~/src/routes"
 
 const EMPTY_VARIANTS_COUNT = 0
@@ -65,7 +67,7 @@ const NO_COST = 0
 
 const SHIPPING_QUANTITY = 1
 
-const SHIPPING_LABEL = "Shipping"
+const CHECKOUT_NAMESPACE = "pages.checkout"
 
 const CLIENT_SECRET_MISSING = "Failed to create Checkout Session: client_secret is missing"
 
@@ -89,6 +91,11 @@ interface SessionLineItem {
   quantity: number
 }
 
+interface DeliveryLine {
+  cost: number
+  name: string
+}
+
 type ResolvedProducts = Awaited<ReturnType<typeof getPublishedProductsWithInventoryByHandles>>
 
 type ResolvedProduct = ResolvedProducts[number]
@@ -99,6 +106,7 @@ type ResolvedVariant = Omit<ResolvedProduct["variants"][number], "inventory"> & 
 
 interface ResolvedDelivery {
   checkoutValues: CheckoutSessionValues
+  deliveryType: DeliveryMethodType
   shippingCost: number
 }
 
@@ -139,7 +147,7 @@ const resolveDelivery = async (checkoutValues: CheckoutSessionValues): Promise<R
   }
 
   if (method.type !== DELIVERY_METHOD.LOCKER) {
-    return { checkoutValues: { ...checkoutValues, lockerId: undefined }, shippingCost: method.price }
+    return { checkoutValues: { ...checkoutValues, lockerId: undefined }, deliveryType: method.type, shippingCost: method.price }
   }
 
   const lockerId = checkoutValues.lockerId?.trim()
@@ -147,7 +155,7 @@ const resolveDelivery = async (checkoutValues: CheckoutSessionValues): Promise<R
     throw new AppError(ERROR_CODES.VALIDATION, CHECKOUT_ERROR_CODES.LOCKER_REQUIRED)
   }
 
-  return { checkoutValues: { ...checkoutValues, lockerId }, shippingCost: method.price }
+  return { checkoutValues: { ...checkoutValues, lockerId }, deliveryType: method.type, shippingCost: method.price }
 }
 
 const resolveVariant = (products: ResolvedProducts, item: CartItem): { product: ResolvedProduct; variant: ResolvedVariant } => {
@@ -191,16 +199,16 @@ const validateAndCalculateItems = async (items: CartItem[], heldLines: readonly 
   })
 }
 
-const toLineItems = (lines: OrderLine[], shippingCost: number): SessionLineItem[] => {
+const toLineItems = (lines: OrderLine[], delivery: DeliveryLine): SessionLineItem[] => {
   const currency = STRIPE_CURRENCY
   const lineItems: SessionLineItem[] = lines.map((line) => ({
     price_data: { currency, product_data: { name: line.title }, unit_amount: line.priceCents },
     quantity: line.qty,
   }))
 
-  if (shippingCost > NO_COST) {
+  if (delivery.cost > NO_COST) {
     lineItems.push({
-      price_data: { currency, product_data: { name: SHIPPING_LABEL }, unit_amount: shippingCost },
+      price_data: { currency, product_data: { name: delivery.name }, unit_amount: delivery.cost },
       quantity: SHIPPING_QUANTITY,
     })
   }
@@ -246,6 +254,7 @@ const toMetaItems = (lines: OrderLine[]): Record<string, string> =>
 interface CreateSessionArgs {
   checkoutId: string
   customerId: string | undefined
+  deliveryType: DeliveryMethodType
   discount: Discount["applied"] | undefined
   email: string
   lines: OrderLine[]
@@ -254,8 +263,19 @@ interface CreateSessionArgs {
   userId: string | undefined
 }
 
-const createStripeSession = async ({ checkoutId, customerId, discount, email, lines, origin, shippingCost, userId }: CreateSessionArgs) => {
+const createStripeSession = async ({
+  checkoutId,
+  customerId,
+  deliveryType,
+  discount,
+  email,
+  lines,
+  origin,
+  shippingCost,
+  userId,
+}: CreateSessionArgs) => {
   const locale = getCurrentLocale()
+  const messages = await loadNamespace<typeof checkoutMessages>({ locale, namespace: CHECKOUT_NAMESPACE })
   const returnUrl = `${buildLocalizedUrl(origin, ROUTES.CHECKOUT, locale)}?success=true&session_id={CHECKOUT_SESSION_ID}`
   const metadata = {
     checkoutId,
@@ -268,7 +288,7 @@ const createStripeSession = async ({ checkoutId, customerId, discount, email, li
 
   const params: StripeType.Checkout.SessionCreateParams = {
     expires_at: Math.floor(Date.now() / MILLISECONDS_PER_SECOND) + CHECKOUT_SESSION_LIFETIME_SECONDS,
-    line_items: toLineItems(lines, shippingCost),
+    line_items: toLineItems(lines, { cost: shippingCost, name: messages.deliveryLineItem[deliveryType] }),
     metadata,
     mode: "payment",
     payment_intent_data: { metadata, receipt_email: email },
@@ -342,7 +362,7 @@ const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenChecko
 
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
   const { origin, visitorAddress } = await admitNewCheckout(data)
-  const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)
+  const { checkoutValues, deliveryType, shippingCost } = await resolveDelivery(data.checkoutValues)
   const session = await getRequestSession()
   const userId = session?.user.id
   const { email } = checkoutValues
@@ -372,6 +392,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
     const result = await openCheckoutSession({
       checkoutId,
       customerId,
+      deliveryType,
       discount,
       email,
       lines,
@@ -594,7 +615,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   await assertCheckoutStillEditable(data.sessionId, checkoutCreatedAt)
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
-  const { checkoutValues, shippingCost } = await resolveDelivery(data.checkoutValues)
+  const { checkoutValues, deliveryType, shippingCost } = await resolveDelivery(data.checkoutValues)
   const applicableDiscount = await resolveCheckoutDiscount({
     code: checkoutValues.discountCode,
     email: checkoutValues.email,
@@ -612,6 +633,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
     session: {
       checkoutId,
       customerId,
+      deliveryType,
       discount,
       email: checkoutValues.email,
       lines,
