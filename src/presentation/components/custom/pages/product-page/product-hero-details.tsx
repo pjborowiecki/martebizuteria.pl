@@ -9,22 +9,21 @@ import {
 } from "~/src/modules/product-attribute/product-attribute.utils"
 import { type Product } from "~/src/modules/product/product.types"
 
+import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/src/presentation/components/shadcn/accordion"
 
-const AdditionalInfoEmailLink = ({
+const BusinessEmailLink = ({
   children,
 }: Readonly<{
   children: ReactNode
 }>): JSX.Element => (
-  <a
-    className="text-foreground underline underline-offset-4 transition-colors hover:text-foreground/70"
-    href="mailto:kontakt@martebizuteria.pl"
-  >
+  <a className="text-foreground underline underline-offset-4 transition-colors hover:text-foreground/70" href={`mailto:${BUSINESS.EMAIL}`}>
     {children}
   </a>
 )
 
-const renderAdditionalInfoEmail = (chunks: ReactNode): JSX.Element => <AdditionalInfoEmailLink>{chunks}</AdditionalInfoEmailLink>
+const renderAdditionalInfoEmail = (chunks: ReactNode): JSX.Element => <BusinessEmailLink>{chunks}</BusinessEmailLink>
 
 const formatSpecificationValue = (spec: Product["specification"], locale: string): string =>
   formatProductAttributeValueForDisplay(spec.type, spec.value, {
@@ -101,6 +100,25 @@ const ProductAdditionalInfo = ({
   )
 }
 
+const ProductManufacturer = (): JSX.Element => {
+  const t = useTranslations("pages.product.heroSection.details.manufacturer")
+
+  return (
+    <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
+      <div className="space-y-1">
+        <dt className="text-sm font-medium text-foreground">{t("nameAndAddress")}</dt>
+        <dd className="text-sm whitespace-pre-line text-muted-foreground">{[...BUSINESS_POSTAL_ADDRESS_LINES, t("country")].join("\n")}</dd>
+      </div>
+      <div className="space-y-1">
+        <dt className="text-sm font-medium text-foreground">{t("email")}</dt>
+        <dd className="text-sm text-muted-foreground">
+          <BusinessEmailLink>{BUSINESS.EMAIL}</BusinessEmailLink>
+        </dd>
+      </div>
+    </dl>
+  )
+}
+
 export const ProductHeroDetails = ({ description, specifications }: ProductHeroDetailsProps): JSX.Element => {
   const t = useTranslations("pages.product.heroSection.details")
   const locale = useLocale()
@@ -143,11 +161,18 @@ export const ProductHeroDetails = ({ description, specifications }: ProductHeroD
         title: t("specifications.title"),
       })
     }
-    items.push({
-      content: <ProductAdditionalInfo fulfillmentTime={fulfillmentTime} />,
-      key: "additionalInfo",
-      title: t("additionalInfo.title"),
-    })
+    items.push(
+      {
+        content: <ProductAdditionalInfo fulfillmentTime={fulfillmentTime} />,
+        key: "additionalInfo",
+        title: t("additionalInfo.title"),
+      },
+      {
+        content: <ProductManufacturer />,
+        key: "manufacturer",
+        title: t("manufacturer.title"),
+      },
+    )
 
     return items
   }, [description, detailSpecifications, fulfillmentTime, t])

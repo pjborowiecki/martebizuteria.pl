@@ -219,6 +219,10 @@ The footer's "Contact details" link, like the "Contact" link in the full-screen 
 
 The checkout payment step also links the terms and privacy pages through `t.rich("termsAgreement", { privacy, terms })`. See [Checkout](/docs/features/checkout).
 
+## Manufacturer on product pages
+
+Article 19 of the EU General Product Safety Regulation (Regulation (EU) 2023/988) requires every online offer to name the product's manufacturer with a postal and an electronic address. The shop makes the pieces it sells, so every product page ends its details with a "Manufacturer" section that names the seller: the legal name and postal address from `BUSINESS_POSTAL_ADDRESS_LINES` with the country, and `BUSINESS.EMAIL` as a `mailto:` link, labelled by messages in `pages.product.heroSection.details.manufacturer`. A piece made by someone else would need that maker's own details, which the catalog has no field for. See [Product page](/docs/features/product-page#specifications-and-details).
+
 ## Tests
 
 - `content-page.integration.test.ts` runs the content migrations against SQLite and covers reading with the Polish fallback, the admin reads, trimming, conflicting saves, per-locale revision dates and the link and image rules. It also checks that the seeded terms save back unchanged through the editor's validation and that running the terms migration again keeps an admin's edits.
@@ -229,6 +233,7 @@ The checkout payment step also links the terms and privacy pages through `t.rich
 - `order-confirmation.test.tsx` checks in both languages that the confirmation names the seller with every detail in `BUSINESS`, states the withdrawal, return, refund and complaint rules, and links the three documents. `withdrawal-form.attachment.test.ts` checks that the PDF in `public/forms` is attached byte for byte and that a missing form stops the email.
 - `legal-routes.test.ts` covers the three storefront routes.
 - `seller-contact-details.component.test.tsx` checks every business detail in both languages and the `mailto:` and `tel:` links; the footer, the full-screen menu and the about page tests check where the contact links go and that the details are shown. The smoke browser test follows the footer link and the menu link from the cart to the scrolled-in contact section.
+- `product-hero-details.component.test.tsx` checks in both languages that the "Manufacturer" section on every product names the seller with the postal address and a `mailto:` link to `BUSINESS.EMAIL`. A smoke browser test opens it on a Polish product page.
 - `silver-premium-section.component.test.tsx` checks that the home page's silver section states the statutory liability for lack of conformity in both languages and calls nothing a warranty, a guarantee or a gwarancja.
 - `mdxeditor.plugins.component.test.tsx` round-trips every seeded page through the real editor, plus the escaping and line-break cases.
 - The admin component tests cover saving, validation, conflicts, edits during a save, the save shortcut and the leave dialog.

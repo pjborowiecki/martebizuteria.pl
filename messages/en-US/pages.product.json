@@ -44,6 +44,12 @@
           "title": "Flexible service",
           "text": "Need a different size? Would you like to refresh your jewelry with re-plating? Write to us at <email>kontakt@martebizuteria.pl</email>"
         }
+      },
+      "manufacturer": {
+        "title": "Manufacturer",
+        "nameAndAddress": "Name and postal address",
+        "email": "Email address",
+        "country": "Poland"
       }
     }
   },
