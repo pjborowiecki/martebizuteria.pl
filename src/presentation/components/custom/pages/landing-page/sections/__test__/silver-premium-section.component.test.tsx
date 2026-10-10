@@ -1,4 +1,5 @@
 import { cleanup, screen } from "@testing-library/react"
+import { IntlProvider } from "use-intl/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 vi.mock("~/src/lib/url", () => ({
@@ -11,7 +12,11 @@ vi.mock("~/src/lib/url", () => ({
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { I18N } from "~/src/integrations/use-intl/i18n.config"
+
 import { SilverPremiumSection } from "~/src/presentation/components/custom/pages/landing-page/sections/silver-premium-section"
+
+import polishLanding from "~/messages/pl-PL/pages.landing.json"
 
 describe("SilverPremiumSection", () => {
   afterEach(() => {
@@ -48,7 +53,25 @@ describe("SilverPremiumSection", () => {
     expect(screen.getByText("100%")).toBeInTheDocument()
     expect(screen.getByText("Handmade")).toBeInTheDocument()
     expect(screen.getByText("2 years")).toBeInTheDocument()
-    expect(screen.getByText("Warranty")).toBeInTheDocument()
+    expect(screen.getByText("Statutory liability for lack of conformity")).toBeInTheDocument()
+  })
+
+  it("promises no warranty or guarantee, which the shop does not give", () => {
+    const { container } = renderWithProviders(<SilverPremiumSection />)
+
+    expect(container).not.toHaveTextContent(/warrant|guarant/iu)
+  })
+
+  it("states the statutory liability in Polish and promises no gwarancja", () => {
+    const { container } = renderWithProviders(
+      <IntlProvider locale="pl-PL" messages={{ pages: { landing: polishLanding } }} timeZone={I18N.DEFAULT_TIMEZONE}>
+        <SilverPremiumSection />
+      </IntlProvider>,
+    )
+
+    expect(screen.getByText("2 lata")).toBeInTheDocument()
+    expect(screen.getByText("Ustawowa odpowiedzialność za brak zgodności z umową")).toBeInTheDocument()
+    expect(container).not.toHaveTextContent(/gwaranc/iu)
   })
 
   it("anchors the section for the silver navigation link", () => {
