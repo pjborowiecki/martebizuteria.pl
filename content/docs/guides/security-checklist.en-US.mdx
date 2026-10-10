@@ -46,6 +46,7 @@ Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change t
 - [ ] Every email link and the Stripe `return_url` are built from `resolveRequestOrigin(request)` (`src/lib/request.ts`), which reads `request.url` only and refuses a host outside that list with `FORBIDDEN`. The order confirmation, sent from the webhook, takes the origin of the session's `return_url` through `resolveDeploymentOrigin`, which refuses a host no deployment serves. Nothing builds them from `APP_URL` or from the `Origin`, `Referer`, `Host` or `X-Forwarded-*` headers.
 - [ ] `account.encryptOAuthTokens: true` and `verification.storeIdentifier: "hashed"`.
 - [ ] `account.accountLinking` sets no `trustedProviders`, so a Google or GitHub sign-in joins an existing account only when the provider reports the e-mail address as verified. `auth.account-linking.integration.test.ts` checks that an unverified address is not linked.
+- [ ] No `anonymous()` plugin. Every Better Auth session belongs to a real user and passes `authorized()`, and guests check out without signing in. `auth.anonymous-sign-in.integration.test.ts` checks that `/sign-in/anonymous` answers 404 and creates no user.
 - [ ] `multiSession({ maximumSessions: 5 })` and `session.storeSessionInDatabase: true`.
 - [ ] `telemetry.enabled: false`.
 - [ ] Session data sent to the browser goes through `getCurrentSession` in `auth.session.ts`, whose `toClientSession` strips `session.token`. Do not return a raw Better Auth session from a server function.

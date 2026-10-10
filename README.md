@@ -77,7 +77,7 @@ This README is the operational summary. The docs site is the reference; when the
 | Storage                  | D1 (SQLite) for all application data, R2 for media, KV declared as `CACHE`, static assets binding     |
 | Coordination             | Durable Object (`RealtimeInvalidationHub`) and a Cloudflare Queue for the audit log                   |
 | Database access          | Drizzle ORM, `drizzle-zod`, and checked-in SQLite migrations applied by Wrangler                      |
-| Auth and authorization   | Better Auth (admin, anonymous, multi-session, two-factor plugins) with D1 as the sole store           |
+| Auth and authorization   | Better Auth (admin, multi-session, two-factor plugins) with D1 as the sole store                      |
 | Data and forms           | TanStack Query and Table, React Hook Form with Zod resolvers, `nuqs` for URL state, Zustand           |
 | UI                       | Tailwind CSS 4, shadcn-styled components over Base UI, Lucide icons, Recharts, Embla, Vaul, Sonner    |
 | Motion and scrolling     | GSAP with `@gsap/react`, Lenis smooth scroll synchronized with the router                             |
@@ -575,7 +575,7 @@ Kept here rather than hidden, because an accurate map is more useful than a flat
 - InPost is parcel-locker _discovery_ only — `fetchPointsByCity` against the public points API. No shipment creation, no labels, no tracking.
 - `/admin/marketing` and `/admin/settings` render from `src/data/`. The admin order list and detail page are fully database-backed, as are their fulfil, ship, mark-delivered, cancel and refund actions.
 - The blog reads `src/data/blog-posts.ts` rather than MDX or the database.
-- The `CACHE` KV binding is declared and verified at deploy time but never read. The `anonymous()` Better Auth plugin is registered with no flow that uses it.
+- The `CACHE` KV binding is declared and verified at deploy time but never read.
 
 ## Contributing
 

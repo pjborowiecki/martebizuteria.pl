@@ -5,7 +5,7 @@ import { createElement } from "react"
 import { type BetterAuthPlugin, betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { APIError, createAuthMiddleware } from "better-auth/api"
-import { admin, anonymous, multiSession, twoFactor } from "better-auth/plugins"
+import { admin, multiSession, twoFactor } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { createTranslator } from "use-intl"
 import { v7 as uuidv7 } from "uuid"
@@ -302,7 +302,6 @@ export const auth = betterAuth({
       defaultRole: DEFAULT_ROLE,
       roles: ROLES_CONFIG,
     }),
-    anonymous(),
     multiSession({
       maximumSessions: MAX_CONCURRENT_SESSIONS,
     }),

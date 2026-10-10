@@ -16,7 +16,7 @@ Tabela `user` jest współdzielona z Better Auth, więc „klienci” to widok n
 | `email_verified`                      | boolean, domyślnie `false`, not null                                |
 | `role`                                | `admin \| customer`, domyślnie `DEFAULT_ROLE` (`customer`)          |
 | `banned`, `ban_reason`, `ban_expires` | pola wtyczki admin z Better Auth                                    |
-| `is_anonymous`                        | boolean, domyślnie `false`                                          |
+| `is_anonymous`                        | boolean, domyślnie `false`; nic jej nie zapisuje (zobacz niżej)     |
 | `two_factor_enabled`                  | boolean, domyślnie `false`                                          |
 | `phone`                               | 32 znaki; zapisywane przez `updateCustomerPhone` i `updateCustomer` |
 | `timezone`                            | 64 znaki                                                            |
@@ -25,6 +25,8 @@ Tabela `user` jest współdzielona z Better Auth, więc „klienci” to widok n
 | `metadata`                            | napis JSON z notatkami i tagami administratora                      |
 
 Jeden indeks: `user_createdAt_idx`.
+
+`is_anonymous` została po wtyczce `anonymous()` Better Auth, której sklep już nie ładuje (zobacz [Better Auth](/docs/integrations/better-auth#brak-logowania-anonimowego)): nic jej już nie ustawia, a nowy użytkownik dostaje wartość domyślną. Nadal oznacza użytkowników utworzonych przez tę wtyczkę, którzy w siatce wyglądają jak klienci z zastępczym adresem i nazwą „Anonymous”. Zostaje w tabeli i w schemacie Drizzle, dopóki nie usunie jej osobna migracja, zastosowana dopiero po wdrożeniu kodu, który przestał ją deklarować, bo Worker z wcześniejszym kodem odczytuje ją z każdym wczytywanym wierszem użytkownika.
 
 ## Trasy
 

@@ -5,7 +5,7 @@ import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 
 import { createCardSetupIntent, createCardSetupIntentMutation } from "../create-card-setup-intent"
 
-const ANNA = { email: "anna@example.com", emailVerified: true, id: "user-1", isAnonymous: false, name: "Anna Kowalska" }
+const ANNA = { email: "anna@example.com", emailVerified: true, id: "user-1", name: "Anna Kowalska" }
 
 const calls = vi.hoisted(() => ({
   caller: { current: {} },
@@ -74,11 +74,8 @@ describe("createCardSetupIntent", () => {
     await expect(createCardSetupIntent()).rejects.toMatchObject({ code: ERROR_CODES.INTERNAL_ERROR })
   })
 
-  it.each([
-    ["an anonymous session", { ...ANNA, isAnonymous: true }],
-    ["an account whose email is not verified", { ...ANNA, emailVerified: false }],
-  ])("refuses %s before touching Stripe, so the endpoint cannot be used to test stolen cards", async (_case, caller) => {
-    calls.caller.current = caller
+  it("refuses an account whose email is not verified before touching Stripe, so the endpoint cannot be used to test stolen cards", async () => {
+    calls.caller.current = { ...ANNA, emailVerified: false }
 
     await expect(createCardSetupIntent()).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
     expect(calls.ensureCustomer).not.toHaveBeenCalled()

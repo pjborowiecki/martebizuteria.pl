@@ -3,7 +3,7 @@ title: "Better Auth"
 description: "Sesje, OAuth, role i uprawnienia, middleware funkcji serwerowych oraz strażnicy tras."
 ---
 
-Better Auth odpowiada za tożsamość: logowanie e-mailem i hasłem, OAuth Google i GitHub, weryfikację adresu e-mail, reset hasła, zmianę adresu e-mail, dwa czynniki, sesje anonimowe, wiele sesji równocześnie oraz model roli administratora. Wszystko zapisuje w D1 przez adapter Drizzle i jest źródłem middleware `authorized()`, które deklaruje każda chroniona funkcja serwerowa.
+Better Auth odpowiada za tożsamość: logowanie e-mailem i hasłem, OAuth Google i GitHub, weryfikację adresu e-mail, reset hasła, zmianę adresu e-mail, dwa czynniki, wiele sesji równocześnie oraz model roli administratora. Wszystko zapisuje w D1 przez adapter Drizzle i jest źródłem middleware `authorized()`, które deklaruje każda chroniona funkcja serwerowa.
 
 ## Instancja
 
@@ -29,7 +29,7 @@ Plik `src/integrations/better-auth/auth.server.ts` konfiguruje jedną instancję
 | `user.additionalFields`        | `timezone` (łańcuch, opcjonalne, przyjmowane na wejściu)                                                       |
 | `user.changeEmail`             | Włączone, wraz z `sendChangeEmailConfirmation`                                                                 |
 
-Wtyczki: `admin({ ac, adminRoles, defaultRole, roles })`, `anonymous()`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })`, lokalna `signInAudit` oraz `tanstackStartCookies()`. Ostatnia sprawia, że ciasteczka Better Auth współpracują z obsługą odpowiedzi w TanStack Start, i musi pozostać ostatnia w tablicy.
+Wtyczki: `admin({ ac, adminRoles, defaultRole, roles })`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })`, lokalna `signInAudit` oraz `tanstackStartCookies()`. Ostatnia sprawia, że ciasteczka Better Auth współpracują z obsługą odpowiedzi w TanStack Start, i musi pozostać ostatnia w tablicy.
 
 ### Wbudowane ograniczanie liczby żądań
 
@@ -58,6 +58,10 @@ Nowa sesja nie zawsze oznacza logowanie. Better Auth tworzy ją także na etapie
 ### Łączenie kont
 
 Logowanie przez Google lub GitHub z adresem e-mail, który należy już do konta w sklepie, dołącza do tego konta tylko wtedy, gdy dostawca zgłasza ten adres jako zweryfikowany — przez pole `email_verified` w tokenie ID od Google albo flagę `verified`, którą GitHub zwraca razem z adresem — i gdy własny adres konta w sklepie jest zweryfikowany (`requireLocalEmailVerified` w Better Auth, domyślnie włączone). W przeciwnym razie callback niczego nie łączy, nie tworzy sesji i przekierowuje na stronę błędu Better Auth z `error=account_not_linked`. `trustedProviders` pozostaje nieustawione: dla zaufanego dostawcy Better Auth pomija sprawdzenie po stronie dostawcy, więc każdy, kto dopisałby adres klienta do konta Google lub GitHub bez jego weryfikacji, zostałby zalogowany na konto tego klienta w sklepie. `auth.account-linking.integration.test.ts` przechodzi przez callback Google z adresem niezweryfikowanym i zweryfikowanym.
+
+### Brak logowania anonimowego
+
+Goście przeglądają sklep, kompletują koszyk i składają zamówienie bez logowania, więc Better Auth nie ładuje wtyczki `anonymous()`. Z nią każdy mógł wywołać `/api/auth/sign-in/anonymous` i dostać wiersz użytkownika z domyślną rolą `customer` oraz sesję, która przechodzi `authorized()`, a każde takie wywołanie zapisywało też `customer.registered` w dzienniku audytu i dodawało wiersz do listy klientów w panelu. Ten endpoint odpowiada teraz 404, co sprawdza `auth.anonymous-sign-in.integration.test.ts`. Kolumna `user.is_anonymous` po tej wtyczce nadal oznacza utworzonych przez nią użytkowników; zobacz [Klienci w panelu](/docs/features/admin-customers).
 
 ### E-maile transakcyjne
 
@@ -281,13 +285,7 @@ Plik `auth.client.ts` odzwierciedla wtyczki serwera i eksportuje tylko to, czego
 
 ```ts
 export const authClient = createAuthClient({
-  plugins: [
-    adminClient({ ac, roles: ROLES_CONFIG }),
-    anonymousClient(),
-    inferAdditionalFields<typeof auth>(),
-    multiSessionClient(),
-    twoFactorClient(),
-  ],
+  plugins: [adminClient({ ac, roles: ROLES_CONFIG }), inferAdditionalFields<typeof auth>(), multiSessionClient(), twoFactorClient()],
 })
 
 export const { signIn, signOut, signUp, resetPassword } = authClient

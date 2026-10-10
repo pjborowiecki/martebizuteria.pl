@@ -11,8 +11,8 @@ import { PAYMENT_METHOD_MUTATION_KEYS } from "~/src/modules/payment/payment.cons
 export const createCardSetupIntent = createServerFn({ method: "POST" })
   .middleware([withRateLimit("create-card-setup-intent", RATE_LIMITS.SENSITIVE), authorized()])
   .handler(async ({ context }) => {
-    const { email, emailVerified, id: userId, isAnonymous, name } = context.auth.user
-    if (isAnonymous === true || !emailVerified) {
+    const { email, emailVerified, id: userId, name } = context.auth.user
+    if (!emailVerified) {
       throw new AppError(ERROR_CODES.FORBIDDEN)
     }
 
