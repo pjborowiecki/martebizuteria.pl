@@ -10,9 +10,8 @@ import {
   averageCompletedOrderValueQuery,
   completedRevenueSumQuery,
   countableOrdersQuery,
-  dailyOrderAggregatesQuery,
-  monthlyOrderAggregatesQuery,
   newCustomersQuery,
+  orderAggregatesQuery,
   pageViewsQuery,
   recentOrdersQuery,
   resolveTopProductCategoryLabel,
@@ -23,18 +22,19 @@ import {
   ADMIN_DASHBOARD_CHART_DAYS_30,
   ADMIN_DASHBOARD_CHART_DAYS_7,
   ADMIN_DASHBOARD_CHART_MONTHS_1Y,
+  ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
+  ADMIN_DASHBOARD_MONTH_LABEL_FORMAT,
   ADMIN_DASHBOARD_QUERY_KEYS,
   ADMIN_DASHBOARD_QUERY_STALE_MS,
 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 import {
-  buildAdminDashboardDailyChartPoints,
+  buildAdminDashboardChartPoints,
   buildAdminDashboardKpiStat,
-  buildAdminDashboardMonthlyChartPoints,
   buildAdminDashboardWeeklyOrderPoints,
-  resolveAdminDashboardChartStart,
   resolveAdminDashboardComparisonPeriod,
-  resolveAdminDashboardMonthlyChartStart,
+  resolveAdminDashboardDays,
+  resolveAdminDashboardMonths,
   resolveAdminDashboardYearStart,
 } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { adminDashboardZodSchemas } from "~/src/modules/admin-dashboard/admin-dashboard.zod"
@@ -46,8 +46,8 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
   .handler(async ({ data: { locale } }): Promise<AdminDashboard["snapshot"]> => {
     const now = new Date()
     const { currentStart, previousEnd, previousStart } = resolveAdminDashboardComparisonPeriod(now)
-    const chartStart = resolveAdminDashboardChartStart(now, ADMIN_DASHBOARD_CHART_DAYS_30)
-    const monthlyChartStart = resolveAdminDashboardMonthlyChartStart(now, ADMIN_DASHBOARD_CHART_MONTHS_1Y)
+    const days = resolveAdminDashboardDays(now, ADMIN_DASHBOARD_CHART_DAYS_30)
+    const months = resolveAdminDashboardMonths(now, ADMIN_DASHBOARD_CHART_MONTHS_1Y)
     const yearStart = resolveAdminDashboardYearStart(now)
 
     const [
@@ -78,26 +78,26 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
       averageCompletedOrderValueQuery(currentStart),
       averageCompletedOrderValueQuery(previousStart, previousEnd),
       completedRevenueSumQuery(yearStart),
-      dailyOrderAggregatesQuery(chartStart),
-      monthlyOrderAggregatesQuery(monthlyChartStart),
+      orderAggregatesQuery(days),
+      orderAggregatesQuery(months),
       recentOrdersQuery(),
       topProductsQuery(),
     ])
 
     const currencyCode = topProductRows[0]?.currencyCode ?? recentOrderRows[0]?.currencyCode ?? STORE_CURRENCY_CODE
 
-    const chartPoints30d = buildAdminDashboardDailyChartPoints({
-      days: ADMIN_DASHBOARD_CHART_DAYS_30,
+    const chartPoints30d = buildAdminDashboardChartPoints({
+      labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
       locale,
-      referenceDate: now,
+      periods: days.periods,
       rows: dailyAggregateRows,
     })
 
     const chartPoints7d = chartPoints30d.slice(-ADMIN_DASHBOARD_CHART_DAYS_7)
-    const chartPoints1y = buildAdminDashboardMonthlyChartPoints({
+    const chartPoints1y = buildAdminDashboardChartPoints({
+      labelFormat: ADMIN_DASHBOARD_MONTH_LABEL_FORMAT,
       locale,
-      months: ADMIN_DASHBOARD_CHART_MONTHS_1Y,
-      referenceDate: now,
+      periods: months.periods,
       rows: monthlyAggregateRows,
     })
 
@@ -139,7 +139,7 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
       })),
       weeklyOrders: buildAdminDashboardWeeklyOrderPoints({
         locale,
-        referenceDate: now,
+        periods: days.periods.slice(-ADMIN_DASHBOARD_CHART_DAYS_7),
         rows: dailyAggregateRows,
       }),
       yearToDateRevenueMinorUnits: yearToDateRevenueRow?.total ?? 0,

@@ -58,9 +58,13 @@ afterAll(() => {
 })
 
 describe("currentOrderNumberPeriod", () => {
-  it("uses the UTC year so the series does not shift with the server timezone", () => {
-    expect(currentOrderNumberPeriod(new Date("2026-12-31T23:30:00.000Z"))).toBe("2026")
-    expect(currentOrderNumberPeriod(new Date("2027-01-01T00:30:00.000Z"))).toBe("2027")
+  it("keeps the old year until midnight in Poland on New Year's Eve", () => {
+    expect(currentOrderNumberPeriod(new Date("2026-12-31T22:59:59.999Z"))).toBe("2026")
+  })
+
+  it("starts the new year at midnight in Poland, while it is still the old year in UTC", () => {
+    expect(currentOrderNumberPeriod(new Date("2026-12-31T23:00:00.000Z"))).toBe("2027")
+    expect(currentOrderNumberPeriod(new Date("2026-12-31T23:30:00.000Z"))).toBe("2027")
   })
 })
 
@@ -73,6 +77,13 @@ describe("prepareOrderNumberAllocation", () => {
     const numbers = [await allocate(JANUARY_2026), await allocate(JANUARY_2026), await allocate(JANUARY_2026)]
 
     expect(numbers).toStrictEqual(["MRT-2026-00001", "MRT-2026-00002", "MRT-2026-00003"])
+  })
+
+  it("numbers an order placed in the first hour of 1 January in Poland in the new year", async () => {
+    await allocate(new Date("2026-12-31T22:59:00.000Z"))
+
+    await expect(allocate(new Date("2026-12-31T23:30:00.000Z"))).resolves.toBe("MRT-2027-00001")
+    expect(readLastValue("2026")).toBe(1)
   })
 
   it("restarts the sequence in a new year without disturbing the old one", async () => {

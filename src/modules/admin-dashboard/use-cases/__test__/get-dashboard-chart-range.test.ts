@@ -2,18 +2,19 @@ import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { ADMIN_DASHBOARD_QUERY_KEYS, ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import { type AdminDashboardChartWindow } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { getDashboardChartRange, getDashboardChartRangeQuery } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-chart-range"
 
-interface DailyAggregateRow {
-  readonly dateKey: string
+interface OrderAggregateRow {
   readonly orders: number
+  readonly periodKey: string
   readonly revenue: number
 }
 
 const captured = vi.hoisted((): { validate?: (input: unknown) => unknown } => ({}))
 
 const accessors = vi.hoisted(() => ({
-  dailyOrderAggregatesQuery: vi.fn<(start: Date, end: Date) => Promise<DailyAggregateRow[]>>(),
+  orderAggregatesQuery: vi.fn<(window: AdminDashboardChartWindow) => Promise<OrderAggregateRow[]>>(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
@@ -39,7 +40,7 @@ const range = (startDate: string, endDate: string) => ({ data: { endDate, locale
 describe("getDashboardChartRange", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    accessors.dailyOrderAggregatesQuery.mockResolvedValue([])
+    accessors.orderAggregatesQuery.mockResolvedValue([])
   })
 
   it("returns a point per day in the range, both bounds included", async () => {
@@ -55,7 +56,7 @@ describe("getDashboardChartRange", () => {
   })
 
   it("fills the days the aggregate query did not report with zeroes", async () => {
-    accessors.dailyOrderAggregatesQuery.mockResolvedValue([{ dateKey: "2026-03-02", orders: 3, revenue: 45_000 }])
+    accessors.orderAggregatesQuery.mockResolvedValue([{ orders: 3, periodKey: "2026-03-02", revenue: 45_000 }])
 
     const points = await getDashboardChartRange(range("2026-03-01", "2026-03-03"))
 
@@ -69,28 +70,28 @@ describe("getDashboardChartRange", () => {
   it("labels each day in the requested locale", async () => {
     const points = await getDashboardChartRange(range("2026-03-01", "2026-03-01"))
 
-    expect(points[0]?.label).toBe(new Date(2026, 2, 1).toLocaleDateString("en-US", { day: "numeric", month: "short" }))
+    expect(points[0]?.label).toBe("Mar 1")
   })
 
-  it("queries the aggregates from the start of the first day to the end of the last", async () => {
-    await getDashboardChartRange(range("2026-03-01", "2026-03-03"))
+  it("queries the aggregates from midnight in Poland on the first day until midnight in Poland after the last", async () => {
+    await getDashboardChartRange(range("2026-03-28", "2026-03-29"))
 
-    const [start, end] = accessors.dailyOrderAggregatesQuery.mock.calls[0] ?? []
-    expect(start?.getHours()).toBe(0)
-    expect(end?.getHours()).toBe(23)
-    expect(end?.getDate()).toBe(3)
+    const [window] = accessors.orderAggregatesQuery.mock.calls[0] ?? []
+    expect(window?.start.toISOString()).toBe("2026-03-27T23:00:00.000Z")
+    expect(window?.end.toISOString()).toBe("2026-03-29T22:00:00.000Z")
+    expect(window?.periods.map((period) => period.key)).toStrictEqual(["2026-03-28", "2026-03-29"])
   })
 
   it("returns nothing and touches no data when the range runs backwards", async () => {
     await expect(getDashboardChartRange(range("2026-03-05", "2026-03-01"))).resolves.toStrictEqual([])
 
-    expect(accessors.dailyOrderAggregatesQuery).not.toHaveBeenCalled()
+    expect(accessors.orderAggregatesQuery).not.toHaveBeenCalled()
   })
 
   it("returns nothing for a date that is not an iso day", async () => {
     await expect(getDashboardChartRange(range("01/03/2026", "2026-03-03"))).resolves.toStrictEqual([])
 
-    expect(accessors.dailyOrderAggregatesQuery).not.toHaveBeenCalled()
+    expect(accessors.orderAggregatesQuery).not.toHaveBeenCalled()
   })
 })
 
@@ -130,7 +131,7 @@ describe("getDashboardChartRangeQuery", () => {
   })
 
   it("reads the chart points through the server function when fetched", async () => {
-    accessors.dailyOrderAggregatesQuery.mockResolvedValue([{ dateKey: "2026-03-01", orders: 2, revenue: 10_000 }])
+    accessors.orderAggregatesQuery.mockResolvedValue([{ orders: 2, periodKey: "2026-03-01", revenue: 10_000 }])
 
     const points = await new QueryClient().query(
       getDashboardChartRangeQuery({ endDate: "2026-03-01", locale: "en-US", startDate: "2026-03-01" }),

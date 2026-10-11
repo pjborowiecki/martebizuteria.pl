@@ -4,13 +4,17 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
-import { parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
-import { dailyOrderAggregatesQuery } from "~/src/modules/admin-dashboard/admin-dashboard.accessors"
-import { ADMIN_DASHBOARD_QUERY_KEYS, ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import { orderAggregatesQuery } from "~/src/modules/admin-dashboard/admin-dashboard.accessors"
+import {
+  ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
+  ADMIN_DASHBOARD_QUERY_KEYS,
+  ADMIN_DASHBOARD_QUERY_STALE_MS,
+} from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 import {
-  buildAdminDashboardDailyChartPointsForIsoDateRange,
+  buildAdminDashboardChartPoints,
   isAdminDashboardCustomChartRangeValid,
+  resolveAdminDashboardDateRange,
 } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { adminDashboardZodSchemas } from "~/src/modules/admin-dashboard/admin-dashboard.zod"
 
@@ -24,15 +28,14 @@ export const getDashboardChartRange = createServerFn({ method: "GET" })
       return []
     }
 
-    const rangeStart = new Date(parseIsoDateToStartMs(startDate))
-    const rangeEnd = new Date(parseIsoDateToEndMs(endDate))
-    const dailyAggregateRows = await dailyOrderAggregatesQuery(rangeStart, rangeEnd)
+    const days = resolveAdminDashboardDateRange(startDate, endDate)
+    const dailyAggregateRows = await orderAggregatesQuery(days)
 
-    return buildAdminDashboardDailyChartPointsForIsoDateRange({
-      endDate,
+    return buildAdminDashboardChartPoints({
+      labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
       locale,
+      periods: days.periods,
       rows: dailyAggregateRows,
-      startDate,
     })
   })
 

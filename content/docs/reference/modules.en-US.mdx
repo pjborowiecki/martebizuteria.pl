@@ -82,7 +82,7 @@ Four modules exist for operations rather than for rows.
 | `placeholder.ts` | Placeholder image data                                                                                                                                                                                              |
 | `tax.ts`         | `STANDARD_VAT_BASIS_POINTS` (23%), `BASIS_POINTS_SCALE` and `VAT_COUNTRY_CODE`                                                                                                                                      |
 
-`country.ts` is reference data kept intentionally; the only import from it is the `CountryCode` type in `timezone.ts`. `timezone.ts` is in use: the profile page's time zone field lists `TIMEZONES`, and `list-saved-payment-methods` resolves the customer's zone with `resolveTimezoneCode` to decide whether a saved card has expired.
+`country.ts` is reference data kept intentionally; the only import from it is the `CountryCode` type in `timezone.ts`. `timezone.ts` is in use: the profile page's time zone field lists `TIMEZONES`, `list-saved-payment-methods` resolves the customer's zone with `resolveTimezoneCode` to decide whether a saved card has expired, and `DEFAULT_TIMEZONE_CODE` (`Europe/Warsaw`) is the shop's own zone for the order-number year and the admin dashboard's days, months and years.
 
 `_core/utils/` holds `column-filters.ts` and `column-filters.server.ts`, `datetime-column-filter.ts` and its `.server` twin, `search-conditions.server.ts`, `pagination.ts`, `csv.ts`, `currency.ts`, `datetime.ts`, `iso-date.ts`, `iso-datetime.ts`, `json.ts`, `polish-deadline.ts`, `tax.ts` and `zod-fields.ts`. The `.server` halves build SQL; the plain halves are shared with the browser.
 

@@ -1,26 +1,32 @@
 import { describe, expect, it } from "vite-plus/test"
 
 import {
-  ADMIN_DASHBOARD_CHART_DAYS_7,
-  ADMIN_DASHBOARD_CHART_MONTHS_1Y,
   ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS,
+  ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
+  ADMIN_DASHBOARD_MONTH_LABEL_FORMAT,
   ADMIN_DASHBOARD_MS_PER_DAY,
 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import {
-  buildAdminDashboardDailyChartPoints,
-  buildAdminDashboardDailyChartPointsForIsoDateRange,
+  type AdminDashboardChartWindow,
+  buildAdminDashboardChartPoints,
   buildAdminDashboardKpiStat,
-  buildAdminDashboardMonthlyChartPoints,
   buildAdminDashboardWeeklyOrderPoints,
   computeAdminDashboardTrendPercent,
   isAdminDashboardCustomChartRangeValid,
-  resolveAdminDashboardChartStart,
   resolveAdminDashboardComparisonPeriod,
-  resolveAdminDashboardMonthlyChartStart,
+  resolveAdminDashboardDateRange,
+  resolveAdminDashboardDays,
+  resolveAdminDashboardMonths,
   resolveAdminDashboardYearStart,
 } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 
-const REFERENCE = new Date(2024, 5, 15, 14, 30)
+const REFERENCE = new Date("2026-06-15T12:30:00.000Z")
+
+const describeWindow = (window: AdminDashboardChartWindow) => ({
+  end: window.end.toISOString(),
+  periods: window.periods.map((period) => [period.key, period.start.toISOString()]),
+  start: window.start.toISOString(),
+})
 
 describe("resolveAdminDashboardComparisonPeriod", () => {
   it("puts the previous window immediately before the current one", () => {
@@ -37,29 +43,131 @@ describe("resolveAdminDashboardComparisonPeriod", () => {
   })
 })
 
-describe("chart window starts", () => {
-  it("counts the reference day itself as the last day of a daily window", () => {
-    expect(resolveAdminDashboardChartStart(REFERENCE, 7).getTime()).toBe(REFERENCE.getTime() - 6 * ADMIN_DASHBOARD_MS_PER_DAY)
+describe("resolveAdminDashboardDays", () => {
+  it("ends on today in Poland while UTC is still on the day before", () => {
+    const window = resolveAdminDashboardDays(new Date("2026-06-14T22:30:00.000Z"), 2)
+
+    expect(describeWindow(window)).toStrictEqual({
+      end: "2026-06-15T22:00:00.000Z",
+      periods: [
+        ["2026-06-14", "2026-06-13T22:00:00.000Z"],
+        ["2026-06-15", "2026-06-14T22:00:00.000Z"],
+      ],
+      start: "2026-06-13T22:00:00.000Z",
+    })
   })
 
-  it("starts a single day window at the reference instant", () => {
-    expect(resolveAdminDashboardChartStart(REFERENCE, 1)).toStrictEqual(REFERENCE)
+  it("moves each day's start an hour earlier from the day clocks go forward", () => {
+    const window = resolveAdminDashboardDays(new Date("2026-03-30T10:00:00.000Z"), 3)
+
+    expect(describeWindow(window)).toStrictEqual({
+      end: "2026-03-30T22:00:00.000Z",
+      periods: [
+        ["2026-03-28", "2026-03-27T23:00:00.000Z"],
+        ["2026-03-29", "2026-03-28T23:00:00.000Z"],
+        ["2026-03-30", "2026-03-29T22:00:00.000Z"],
+      ],
+      start: "2026-03-27T23:00:00.000Z",
+    })
   })
 
-  it("starts a monthly window on the first of the earliest month", () => {
-    const start = resolveAdminDashboardMonthlyChartStart(REFERENCE, 12)
+  it("moves each day's start an hour later from the day clocks go back", () => {
+    const window = resolveAdminDashboardDays(new Date("2026-10-26T10:00:00.000Z"), 3)
 
-    expect(start).toStrictEqual(new Date(2023, 6, 1))
+    expect(describeWindow(window)).toStrictEqual({
+      end: "2026-10-26T23:00:00.000Z",
+      periods: [
+        ["2026-10-24", "2026-10-23T22:00:00.000Z"],
+        ["2026-10-25", "2026-10-24T22:00:00.000Z"],
+        ["2026-10-26", "2026-10-25T23:00:00.000Z"],
+      ],
+      start: "2026-10-23T22:00:00.000Z",
+    })
   })
 
-  it("defaults the monthly window to a year", () => {
-    expect(resolveAdminDashboardMonthlyChartStart(REFERENCE).getMonth()).toBe(
-      new Date(2024, 5 - (ADMIN_DASHBOARD_CHART_MONTHS_1Y - 1), 1).getMonth(),
-    )
+  it("counts New Year's Day from midnight in Poland", () => {
+    const window = resolveAdminDashboardDays(new Date("2026-12-31T23:30:00.000Z"), 2)
+
+    expect(window.periods.map((period) => [period.key, period.start.toISOString()])).toStrictEqual([
+      ["2026-12-31", "2026-12-30T23:00:00.000Z"],
+      ["2027-01-01", "2026-12-31T23:00:00.000Z"],
+    ])
+  })
+})
+
+describe("resolveAdminDashboardMonths", () => {
+  it("ends on the month it is in Poland while UTC is still in the month before", () => {
+    const window = resolveAdminDashboardMonths(new Date("2026-09-30T22:30:00.000Z"), 1)
+
+    expect(describeWindow(window)).toStrictEqual({
+      end: "2026-10-31T23:00:00.000Z",
+      periods: [["2026-10", "2026-09-30T22:00:00.000Z"]],
+      start: "2026-09-30T22:00:00.000Z",
+    })
   })
 
-  it("starts the year window on the first of January", () => {
-    expect(resolveAdminDashboardYearStart(REFERENCE)).toStrictEqual(new Date(2024, 0, 1))
+  it("starts each month at midnight in Poland on its first day, across a new year", () => {
+    const window = resolveAdminDashboardMonths(new Date("2027-01-10T12:00:00.000Z"), 3)
+
+    expect(describeWindow(window)).toStrictEqual({
+      end: "2027-01-31T23:00:00.000Z",
+      periods: [
+        ["2026-11", "2026-10-31T23:00:00.000Z"],
+        ["2026-12", "2026-11-30T23:00:00.000Z"],
+        ["2027-01", "2026-12-31T23:00:00.000Z"],
+      ],
+      start: "2026-10-31T23:00:00.000Z",
+    })
+  })
+
+  it("covers a full year ending on the reference month", () => {
+    const window = resolveAdminDashboardMonths(REFERENCE, 12)
+
+    expect(window.periods).toHaveLength(12)
+    expect(window.periods[0]?.key).toBe("2025-07")
+    expect(window.periods.at(-1)?.key).toBe("2026-06")
+  })
+})
+
+describe("resolveAdminDashboardDateRange", () => {
+  it("covers every day from the start to the end inclusively, until midnight in Poland after the last", () => {
+    const window = resolveAdminDashboardDateRange("2026-10-24", "2026-10-26")
+
+    expect(describeWindow(window)).toStrictEqual({
+      end: "2026-10-26T23:00:00.000Z",
+      periods: [
+        ["2026-10-24", "2026-10-23T22:00:00.000Z"],
+        ["2026-10-25", "2026-10-24T22:00:00.000Z"],
+        ["2026-10-26", "2026-10-25T23:00:00.000Z"],
+      ],
+      start: "2026-10-23T22:00:00.000Z",
+    })
+  })
+
+  it("covers a single Polish day when both ends are the same date", () => {
+    const window = resolveAdminDashboardDateRange("2026-03-29", "2026-03-29")
+
+    expect(describeWindow(window)).toStrictEqual({
+      end: "2026-03-29T22:00:00.000Z",
+      periods: [["2026-03-29", "2026-03-28T23:00:00.000Z"]],
+      start: "2026-03-28T23:00:00.000Z",
+    })
+  })
+
+  it("keeps one day per date across New Year", () => {
+    const window = resolveAdminDashboardDateRange("2026-12-30", "2027-01-02")
+
+    expect(window.periods.map((period) => period.key)).toStrictEqual(["2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02"])
+  })
+})
+
+describe("resolveAdminDashboardYearStart", () => {
+  it("starts the year at midnight on 1 January in Poland", () => {
+    expect(resolveAdminDashboardYearStart(REFERENCE).toISOString()).toBe("2025-12-31T23:00:00.000Z")
+  })
+
+  it("starts the new year in the first hour of 1 January in Poland, while UTC is still in December", () => {
+    expect(resolveAdminDashboardYearStart(new Date("2026-12-31T23:30:00.000Z")).toISOString()).toBe("2026-12-31T23:00:00.000Z")
   })
 })
 
@@ -89,72 +197,77 @@ describe("computeAdminDashboardTrendPercent", () => {
   })
 })
 
-describe("buildAdminDashboardDailyChartPoints", () => {
-  it("emits one point per day in chronological order, ending on the reference day", () => {
-    const points = buildAdminDashboardDailyChartPoints({ days: 3, referenceDate: REFERENCE, rows: [] })
+describe("buildAdminDashboardChartPoints", () => {
+  const days = resolveAdminDashboardDays(new Date("2026-06-15T10:00:00.000Z"), 3)
 
-    expect(points.map((point) => point.dateKey)).toStrictEqual(["2024-06-13", "2024-06-14", "2024-06-15"])
-  })
-
-  it("fills the days with no activity with zeroes", () => {
-    const points = buildAdminDashboardDailyChartPoints({
-      days: 3,
-      referenceDate: REFERENCE,
-      rows: [{ dateKey: "2024-06-14", orders: 2, revenue: 12_000 }],
+  it("emits one point per period in chronological order", () => {
+    const points = buildAdminDashboardChartPoints({
+      labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
+      locale: "en-US",
+      periods: days.periods,
+      rows: [],
     })
 
-    expect(points.map((point) => point.orders)).toStrictEqual([0, 2, 0])
-    expect(points.map((point) => point.revenue)).toStrictEqual([0, 12_000, 0])
+    expect(points.map((point) => point.dateKey)).toStrictEqual(["2026-06-13", "2026-06-14", "2026-06-15"])
   })
 
-  it("ignores aggregate rows outside the window", () => {
-    const points = buildAdminDashboardDailyChartPoints({
-      days: 2,
-      referenceDate: REFERENCE,
-      rows: [{ dateKey: "2020-01-01", orders: 9, revenue: 9 }],
+  it("fills the periods with no activity with zeroes and attaches the aggregate of the others", () => {
+    const points = buildAdminDashboardChartPoints({
+      labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
+      locale: "en-US",
+      periods: days.periods,
+      rows: [{ orders: 2, periodKey: "2026-06-14", revenue: 12_000 }],
+    })
+
+    expect(points.map((point) => [point.orders, point.revenue])).toStrictEqual([
+      [0, 0],
+      [2, 12_000],
+      [0, 0],
+    ])
+  })
+
+  it("ignores aggregate rows for periods outside the window", () => {
+    const points = buildAdminDashboardChartPoints({
+      labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
+      locale: "en-US",
+      periods: days.periods,
+      rows: [{ orders: 9, periodKey: "2020-01-01", revenue: 9 }],
     })
 
     expect(points.every((point) => point.orders === 0)).toBe(true)
   })
 
-  it("labels each point in the requested locale", () => {
-    const [point] = buildAdminDashboardDailyChartPoints({ days: 1, locale: "en-US", referenceDate: REFERENCE, rows: [] })
-
-    expect(point?.label).toBe("Jun 15")
-  })
-})
-
-describe("buildAdminDashboardMonthlyChartPoints", () => {
-  it("emits one point per month in chronological order, ending on the reference month", () => {
-    const points = buildAdminDashboardMonthlyChartPoints({ months: 3, referenceDate: REFERENCE, rows: [] })
-
-    expect(points.map((point) => point.dateKey)).toStrictEqual(["2024-04", "2024-05", "2024-06"])
-  })
-
-  it("zero-pads the month key so it matches the aggregate rows", () => {
-    const points = buildAdminDashboardMonthlyChartPoints({
-      months: 2,
-      referenceDate: new Date(2024, 1, 10),
-      rows: [{ monthKey: "2024-01", orders: 3, revenue: 300 }],
+  it("names each day as it is in Poland, in the requested locale", () => {
+    const english = buildAdminDashboardChartPoints({
+      labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
+      locale: "en-US",
+      periods: days.periods,
+      rows: [],
+    })
+    const polish = buildAdminDashboardChartPoints({
+      labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
+      locale: "pl-PL",
+      periods: days.periods,
+      rows: [],
     })
 
-    expect(points[0]).toMatchObject({ dateKey: "2024-01", orders: 3, revenue: 300 })
+    expect(english.map((point) => point.label)).toStrictEqual(["Jun 13", "Jun 14", "Jun 15"])
+    expect(polish.at(-1)?.label).toBe("15 cze")
   })
 
-  it("crosses the year boundary correctly", () => {
-    const points = buildAdminDashboardMonthlyChartPoints({ months: 3, referenceDate: new Date(2024, 0, 10), rows: [] })
+  it("names each month with its year", () => {
+    const months = resolveAdminDashboardMonths(new Date("2027-01-10T12:00:00.000Z"), 2)
+    const points = buildAdminDashboardChartPoints({
+      labelFormat: ADMIN_DASHBOARD_MONTH_LABEL_FORMAT,
+      locale: "en-US",
+      periods: months.periods,
+      rows: [],
+    })
 
-    expect(points.map((point) => point.dateKey)).toStrictEqual(["2023-11", "2023-12", "2024-01"])
-  })
-
-  it("defaults to a full year of points", () => {
-    expect(buildAdminDashboardMonthlyChartPoints({ referenceDate: REFERENCE, rows: [] })).toHaveLength(ADMIN_DASHBOARD_CHART_MONTHS_1Y)
-  })
-
-  it("labels each point with the month and year", () => {
-    const [point] = buildAdminDashboardMonthlyChartPoints({ locale: "en-US", months: 1, referenceDate: REFERENCE, rows: [] })
-
-    expect(point?.label).toBe("Jun 2024")
+    expect(points.map((point) => [point.dateKey, point.label])).toStrictEqual([
+      ["2026-12", "Dec 2026"],
+      ["2027-01", "Jan 2027"],
+    ])
   })
 })
 
@@ -174,60 +287,29 @@ describe("isAdminDashboardCustomChartRangeValid", () => {
   })
 })
 
-describe("buildAdminDashboardDailyChartPointsForIsoDateRange", () => {
-  it("covers every day from the start to the end inclusively", () => {
-    const points = buildAdminDashboardDailyChartPointsForIsoDateRange({ endDate: "2024-06-03", rows: [], startDate: "2024-06-01" })
-
-    expect(points.map((point) => point.dateKey)).toStrictEqual(["2024-06-01", "2024-06-02", "2024-06-03"])
-  })
-
-  it("emits a single point when the range is one day", () => {
-    expect(buildAdminDashboardDailyChartPointsForIsoDateRange({ endDate: "2024-06-01", rows: [], startDate: "2024-06-01" })).toHaveLength(1)
-  })
-
-  it("emits nothing for an inverted range", () => {
-    expect(buildAdminDashboardDailyChartPointsForIsoDateRange({ endDate: "2024-06-01", rows: [], startDate: "2024-06-03" })).toStrictEqual(
-      [],
-    )
-  })
-
-  it("attaches the matching aggregate to each day", () => {
-    const points = buildAdminDashboardDailyChartPointsForIsoDateRange({
-      endDate: "2024-06-02",
-      rows: [{ dateKey: "2024-06-02", orders: 4, revenue: 40_000 }],
-      startDate: "2024-06-01",
-    })
-
-    expect(points.map((point) => point.orders)).toStrictEqual([0, 4])
-  })
-
-  it("keeps one point per calendar day across a spring-forward boundary", () => {
-    const points = buildAdminDashboardDailyChartPointsForIsoDateRange({ endDate: "2024-04-01", rows: [], startDate: "2024-03-29" })
-
-    expect(new Set(points.map((point) => point.dateKey)).size).toBe(points.length)
-  })
-})
-
 describe("buildAdminDashboardWeeklyOrderPoints", () => {
-  it("emits one point per day of the trailing week", () => {
-    const points = buildAdminDashboardWeeklyOrderPoints({ referenceDate: REFERENCE, rows: [] })
+  const week = resolveAdminDashboardDays(new Date("2026-06-14T22:30:00.000Z"), 7)
 
-    expect(points).toHaveLength(ADMIN_DASHBOARD_CHART_DAYS_7)
-    expect(points.at(-1)?.dateKey).toBe("2024-06-15")
+  it("emits one point per day of the week, ending on today in Poland", () => {
+    const points = buildAdminDashboardWeeklyOrderPoints({ locale: "en-US", periods: week.periods, rows: [] })
+
+    expect(points).toHaveLength(7)
+    expect(points.at(-1)?.dateKey).toBe("2026-06-15")
   })
 
-  it("labels each day by weekday name", () => {
-    const points = buildAdminDashboardWeeklyOrderPoints({ locale: "en-US", referenceDate: REFERENCE, rows: [] })
+  it("names each day by its weekday in Poland", () => {
+    const points = buildAdminDashboardWeeklyOrderPoints({ locale: "en-US", periods: week.periods, rows: [] })
 
-    expect(points.at(-1)?.dayLabel).toBe("Sat")
+    expect(points.at(-1)?.dayLabel).toBe("Mon")
   })
 
   it("carries the order counts through and drops the revenue", () => {
     const points = buildAdminDashboardWeeklyOrderPoints({
-      referenceDate: REFERENCE,
-      rows: [{ dateKey: "2024-06-15", orders: 5, revenue: 50_000 }],
+      locale: "en-US",
+      periods: week.periods,
+      rows: [{ orders: 5, periodKey: "2026-06-15", revenue: 50_000 }],
     })
 
-    expect(points.at(-1)).toStrictEqual({ dateKey: "2024-06-15", dayLabel: points.at(-1)?.dayLabel, orders: 5 })
+    expect(points.at(-1)).toStrictEqual({ dateKey: "2026-06-15", dayLabel: "Mon", orders: 5 })
   })
 })

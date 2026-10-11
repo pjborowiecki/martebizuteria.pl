@@ -18,9 +18,8 @@ import {
   averageCompletedOrderValueQuery,
   countableOrdersQuery,
   completedRevenueSumQuery,
-  dailyOrderAggregatesQuery,
-  monthlyOrderAggregatesQuery,
   newCustomersQuery,
+  orderAggregatesQuery,
   pageViewsQuery,
   recentOrdersQuery,
   topProductsQuery,
@@ -29,6 +28,7 @@ import {
   ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT,
   ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT,
 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import { resolveAdminDashboardDateRange, resolveAdminDashboardMonths } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 
 const JANUARY = Date.UTC(2024, 0, 10)
 
@@ -41,6 +41,15 @@ const APRIL = Date.UTC(2024, 3, 10)
 const WINDOW_START = new Date(Date.UTC(2024, 0, 1))
 
 const WINDOW_END = new Date(Date.UTC(2024, 2, 1))
+
+const placeCompletedOrder = (id: string, createdAt: string): void => {
+  const createdAtMs = Date.parse(createdAt)
+  sqlite
+    .prepare(
+      `insert into "order" (id, email, status, total, created_at, updated_at) values (?, 'guest@example.com', 'completed', 1000, ?, ?)`,
+    )
+    .run(id, createdAtMs, createdAtMs)
+}
 
 beforeEach(() => {
   sqlite.exec(`
@@ -195,45 +204,64 @@ describe("averageCompletedOrderValueQuery", () => {
   })
 })
 
-describe("dailyOrderAggregatesQuery", () => {
-  it("aggregates every countable order from the window start", async () => {
-    const rows = await dailyOrderAggregatesQuery(WINDOW_START)
+describe("orderAggregatesQuery", () => {
+  it("counts the countable orders and sums the completed revenue per month", async () => {
+    const rows = await orderAggregatesQuery(resolveAdminDashboardMonths(new Date(APRIL), 4))
 
-    expect(rows.reduce((sum, row) => sum + row.orders, 0)).toBe(5)
+    expect(rows).toStrictEqual([
+      { orders: 1, periodKey: "2024-01", revenue: 10_000 },
+      { orders: 2, periodKey: "2024-02", revenue: 30_000 },
+      { orders: 1, periodKey: "2024-03", revenue: 70_000 },
+      { orders: 1, periodKey: "2024-04", revenue: 1000 },
+    ])
   })
 
-  it("counts only completed orders towards the revenue it aggregates", async () => {
-    const rows = await dailyOrderAggregatesQuery(WINDOW_START)
+  it("leaves out the orders placed before the window and from midnight in Poland after its last day", async () => {
+    const rows = await orderAggregatesQuery(resolveAdminDashboardDateRange("2024-02-10", "2024-03-09"))
 
-    expect(rows.reduce((sum, row) => sum + row.revenue, 0)).toBe(111_000)
-  })
-
-  it("treats the window end as inclusive", async () => {
-    const rows = await dailyOrderAggregatesQuery(WINDOW_START, new Date(MARCH))
-
-    expect(rows.reduce((sum, row) => sum + row.orders, 0)).toBe(4)
+    expect(rows).toStrictEqual([{ orders: 2, periodKey: "2024-02-10", revenue: 30_000 }])
   })
 
   it("aggregates nothing outside the window", async () => {
-    const rows = await dailyOrderAggregatesQuery(new Date(Date.UTC(2030, 0, 1)))
-
-    expect(rows).toStrictEqual([])
-  })
-})
-
-describe("monthlyOrderAggregatesQuery", () => {
-  it("aggregates the countable orders and the completed revenue", async () => {
-    const rows = await monthlyOrderAggregatesQuery(WINDOW_START)
-
-    expect(rows.reduce((sum, row) => sum + row.orders, 0)).toBe(5)
-    expect(rows.reduce((sum, row) => sum + row.revenue, 0)).toBe(111_000)
+    await expect(orderAggregatesQuery(resolveAdminDashboardDateRange("2030-01-01", "2030-01-31"))).resolves.toStrictEqual([])
   })
 
-  it("skips the orders placed before the window start", async () => {
-    const rows = await monthlyOrderAggregatesQuery(new Date(Date.UTC(2024, 2, 1)))
+  it("puts an order placed in the first hour of 1 January in Poland on New Year's Day and in January", async () => {
+    placeCompletedOrder("o-new-year", "2024-12-31T23:30:00.000Z")
+    const midJanuary = new Date("2025-01-15T12:00:00.000Z")
 
-    expect(rows.reduce((sum, row) => sum + row.orders, 0)).toBe(2)
-    expect(rows.reduce((sum, row) => sum + row.revenue, 0)).toBe(71_000)
+    await expect(orderAggregatesQuery(resolveAdminDashboardDateRange("2024-12-31", "2025-01-01"))).resolves.toStrictEqual([
+      { orders: 1, periodKey: "2025-01-01", revenue: 1000 },
+    ])
+    await expect(orderAggregatesQuery(resolveAdminDashboardMonths(midJanuary, 2))).resolves.toStrictEqual([
+      { orders: 1, periodKey: "2025-01", revenue: 1000 },
+    ])
+  })
+
+  it("splits the days at midnight in Poland around the night clocks go forward", async () => {
+    placeCompletedOrder("o-saturday-late", "2024-03-30T22:30:00.000Z")
+    placeCompletedOrder("o-sunday-early", "2024-03-30T23:30:00.000Z")
+    placeCompletedOrder("o-sunday-late", "2024-03-31T21:30:00.000Z")
+    placeCompletedOrder("o-monday-early", "2024-03-31T22:30:00.000Z")
+
+    await expect(orderAggregatesQuery(resolveAdminDashboardDateRange("2024-03-30", "2024-04-01"))).resolves.toStrictEqual([
+      { orders: 1, periodKey: "2024-03-30", revenue: 1000 },
+      { orders: 2, periodKey: "2024-03-31", revenue: 2000 },
+      { orders: 1, periodKey: "2024-04-01", revenue: 1000 },
+    ])
+  })
+
+  it("splits the days at midnight in Poland around the night clocks go back", async () => {
+    placeCompletedOrder("o-saturday-late", "2024-10-26T21:30:00.000Z")
+    placeCompletedOrder("o-sunday-early", "2024-10-26T22:30:00.000Z")
+    placeCompletedOrder("o-sunday-late", "2024-10-27T22:30:00.000Z")
+    placeCompletedOrder("o-monday-early", "2024-10-27T23:30:00.000Z")
+
+    await expect(orderAggregatesQuery(resolveAdminDashboardDateRange("2024-10-26", "2024-10-28"))).resolves.toStrictEqual([
+      { orders: 1, periodKey: "2024-10-26", revenue: 1000 },
+      { orders: 2, periodKey: "2024-10-27", revenue: 2000 },
+      { orders: 1, periodKey: "2024-10-28", revenue: 1000 },
+    ])
   })
 })
 

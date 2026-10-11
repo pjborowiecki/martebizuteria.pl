@@ -26,6 +26,14 @@ const CALENDAR_PARTS: Intl.DateTimeFormatOptions = {
 
 const CALENDAR_PARTS_LOCALE = "en-US"
 
+const WALL_CLOCK_PARTS: Intl.DateTimeFormatOptions = {
+  ...CALENDAR_PARTS,
+  hour: "numeric",
+  hourCycle: "h23",
+  minute: "numeric",
+  second: "numeric",
+}
+
 const TIMESTAMP_PARTS: Intl.DateTimeFormatOptions = {
   day: "numeric",
   hour: "2-digit",
@@ -43,11 +51,39 @@ export interface CalendarDate {
   readonly year: number
 }
 
+export interface CalendarPeriod {
+  readonly key: string
+  readonly start: Date
+}
+
+const readNumericParts = (value: DateInput, options: Intl.DateTimeFormatOptions): ((type: Intl.DateTimeFormatPartTypes) => number) => {
+  const parts = new Intl.DateTimeFormat(CALENDAR_PARTS_LOCALE, options).formatToParts(toDate(value))
+
+  return (type) => Number(parts.find((part) => part.type === type)?.value)
+}
+
 export const toCalendarDate = (value: DateInput, timeZone: string): CalendarDate => {
-  const parts = new Intl.DateTimeFormat(CALENDAR_PARTS_LOCALE, { ...CALENDAR_PARTS, timeZone }).formatToParts(toDate(value))
-  const numberOf = (type: Intl.DateTimeFormatPartTypes): number => Number(parts.find((part) => part.type === type)?.value)
+  const numberOf = readNumericParts(value, { ...CALENDAR_PARTS, timeZone })
 
   return { day: numberOf("day"), month: numberOf("month"), year: numberOf("year") }
+}
+
+export const normalizeCalendarDate = ({ day, month, year }: CalendarDate): CalendarDate =>
+  toCalendarDate(new Date(Date.UTC(year, month - 1, day)), "UTC")
+
+const timeZoneOffsetMs = (instantMs: number, timeZone: string): number => {
+  const numberOf = readNumericParts(new Date(instantMs), { ...WALL_CLOCK_PARTS, timeZone })
+
+  return (
+    Date.UTC(numberOf("year"), numberOf("month") - 1, numberOf("day"), numberOf("hour"), numberOf("minute"), numberOf("second")) - instantMs
+  )
+}
+
+export const startOfCalendarDate = ({ day, month, year }: CalendarDate, timeZone: string): Date => {
+  const midnightAsUtcMs = Date.UTC(year, month - 1, day)
+  const estimatedStartMs = midnightAsUtcMs - timeZoneOffsetMs(midnightAsUtcMs, timeZone)
+
+  return new Date(midnightAsUtcMs - timeZoneOffsetMs(estimatedStartMs, timeZone))
 }
 
 export const formatShortDate = (value: DateInput, locale: string = I18N.DEFAULT_LOCALE): string =>

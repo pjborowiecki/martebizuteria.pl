@@ -72,14 +72,14 @@ Wrangler adds one more, `d1_migrations`, which is bookkeeping and not part of th
 
 `src/integrations/drizzle-orm/drizzle.utils.ts` holds the conventions every table follows:
 
-| Export                | What it does                                                                            |
-| --------------------- | --------------------------------------------------------------------------------------- |
-| `timestamp(name)`     | `integer(name, { mode: "timestamp_ms" })` — all times are epoch milliseconds            |
-| `timestampNow(name)`  | The same, defaulting to `(unixepoch() * 1000)` in SQL and `new Date()` in JS, `notNull` |
-| `timestamps()`        | Spreads `created_at` and `updated_at`; `updated_at` carries `$onUpdateFn`               |
-| `UUID_STRING_LENGTH`  | `36`, the length used for id columns                                                    |
-| `isoDayKey(column)`   | `strftime('%Y-%m-%d', column / 1000, 'unixepoch')` for grouping                         |
-| `isoMonthKey(column)` | `strftime('%Y-%m', column / 1000, 'unixepoch')` for grouping                            |
+| Export                               | What it does                                                                                                                                                                                                 |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `timestamp(name)`                    | `integer(name, { mode: "timestamp_ms" })` — all times are epoch milliseconds                                                                                                                                 |
+| `timestampNow(name)`                 | The same, defaulting to `(unixepoch() * 1000)` in SQL and `new Date()` in JS, `notNull`                                                                                                                      |
+| `timestamps()`                       | Spreads `created_at` and `updated_at`; `updated_at` carries `$onUpdateFn`                                                                                                                                    |
+| `UUID_STRING_LENGTH`                 | `36`, the length used for id columns                                                                                                                                                                         |
+| `isoMonthKey(column)`                | `strftime('%Y-%m', column / 1000, 'unixepoch')` for grouping by UTC month                                                                                                                                    |
+| `calendarPeriodKey(column, periods)` | The key of the last of `periods` (`{ key, start }`) that starts at or before `column`, bound as one JSON parameter, for grouping by days or months in a time zone, such as the admin dashboard's Polish days |
 
 A new table ends with `...timestamps()` and uses `timestamp(...)` for every other date column. Primary keys are `text("id").primaryKey().$defaultFn(() => crypto.randomUUID())`.
 

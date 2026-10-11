@@ -1,7 +1,14 @@
 import { SQLiteSyncDialect, sqliteTable, text } from "drizzle-orm/sqlite-core"
 import { describe, expect, it } from "vite-plus/test"
 
-import { UUID_STRING_LENGTH, inJsonList, notInJsonList, timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
+import {
+  UUID_STRING_LENGTH,
+  calendarPeriodKey,
+  inJsonList,
+  notInJsonList,
+  timestamp,
+  timestamps,
+} from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 const table = sqliteTable("drizzle_utils_probe", {
   id: text("id", { length: UUID_STRING_LENGTH }).primaryKey(),
@@ -68,5 +75,21 @@ describe("JSON id lists", () => {
 
     expect(query.sql).toBe('"drizzle_utils_probe"."id" not in (select value from json_each(?))')
     expect(query.params).toStrictEqual([JSON.stringify(ids)])
+  })
+})
+
+describe("calendarPeriodKey", () => {
+  const dialect = new SQLiteSyncDialect()
+  const days = Array.from({ length: 366 }, (_, index) => ({
+    key: `day-${String(index)}`,
+    start: new Date(Date.UTC(2026, 0, 1 + index)),
+  }))
+
+  it("passes the start of every period through a single parameter", () => {
+    const query = dialect.sqlToQuery(calendarPeriodKey(table.plain, days))
+
+    expect(query.sql).toBe('(select key from json_each(?) where value <= "drizzle_utils_probe"."plain" order by value desc limit 1)')
+    expect(query.params).toHaveLength(1)
+    expect(JSON.parse(String(query.params[0]))).toMatchObject({ "day-0": Date.UTC(2026, 0, 1), "day-365": Date.UTC(2027, 0, 1) })
   })
 })

@@ -1,6 +1,8 @@
 import { type SQL, sql } from "drizzle-orm"
 import { type AnySQLiteColumn, integer } from "drizzle-orm/sqlite-core"
 
+import { type CalendarPeriod } from "~/src/modules/_core/utils/datetime"
+
 export const UUID_STRING_LENGTH = 36
 
 export const timestamp = (name: string) => integer(name, { mode: "timestamp_ms" })
@@ -20,9 +22,13 @@ export const timestamps = () => ({
 
 const MS_PER_SECOND = 1000
 
-export const isoDayKey = (column: AnySQLiteColumn) => sql<string>`strftime('%Y-%m-%d', ${column} / ${MS_PER_SECOND}, 'unixepoch')`
-
 export const isoMonthKey = (column: AnySQLiteColumn) => sql<string>`strftime('%Y-%m', ${column} / ${MS_PER_SECOND}, 'unixepoch')`
+
+export const calendarPeriodKey = (column: AnySQLiteColumn, periods: readonly CalendarPeriod[]) => {
+  const startMsByKey = Object.fromEntries(periods.map(({ key, start }) => [key, start.getTime()]))
+
+  return sql<string>`(select key from json_each(${JSON.stringify(startMsByKey)}) where value <= ${column} order by value desc limit 1)`
+}
 
 export const inJsonList = (column: AnySQLiteColumn, values: readonly string[]): SQL =>
   sql`${column} in (select value from json_each(${JSON.stringify(values)}))`

@@ -76,16 +76,16 @@ Pola tłumaczone przechowywane są jako mapy językowe w JSON (`titles`, `subtit
 
 `drizzle.utils.ts` trzyma konwencje w jednym miejscu:
 
-| Eksport               | Działanie                                                                                           |
-| --------------------- | --------------------------------------------------------------------------------------------------- |
-| `UUID_STRING_LENGTH`  | `36`, długość używana przez każdą kolumnę identyfikatora                                            |
-| `timestamp(name)`     | Kolumna `integer` z `{ mode: "timestamp_ms" }`                                                      |
-| `timestampNow(name)`  | To samo, z domyślną wartością `(unixepoch() * 1000)` w SQL i `new Date()` w JS, `notNull`           |
-| `timestamps()`        | Rozwija `createdAt` i `updatedAt`, gdzie `updatedAt` nosi dodatkowo `$onUpdateFn(() => new Date())` |
-| `isoDayKey(column)`   | `strftime('%Y-%m-%d', column / 1000, 'unixepoch')` do grupowania po dniach                          |
-| `isoMonthKey(column)` | To samo dla `'%Y-%m'`                                                                               |
+| Eksport                              | Działanie                                                                                                                          |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `UUID_STRING_LENGTH`                 | `36`, długość używana przez każdą kolumnę identyfikatora                                                                           |
+| `timestamp(name)`                    | Kolumna `integer` z `{ mode: "timestamp_ms" }`                                                                                     |
+| `timestampNow(name)`                 | To samo, z domyślną wartością `(unixepoch() * 1000)` w SQL i `new Date()` w JS, `notNull`                                          |
+| `timestamps()`                       | Rozwija `createdAt` i `updatedAt`, gdzie `updatedAt` nosi dodatkowo `$onUpdateFn(() => new Date())`                                |
+| `isoMonthKey(column)`                | `strftime('%Y-%m', column / 1000, 'unixepoch')` do grupowania po miesiącach                                                        |
+| `calendarPeriodKey(column, periods)` | `(select key from json_each(?) where value <= column order by value desc limit 1)` do grupowania po okresach o podanych początkach |
 
-Znaczniki czasu to milisekundy od epoki przechowywane jako liczby całkowite, więc każde surowe SQL pisane przeciwko nim musi dzielić przez 1000 przed `strftime` — dokładnie to robią dwa powyższe pomocniki. Klucze główne to łańcuchy UUIDv7 generowane przez `v7 as uuidv7` z paczki `uuid`, zarówno w przypadkach użycia, jak i w `advanced.database.generateId` w Better Auth.
+Znaczniki czasu to milisekundy od epoki przechowywane jako liczby całkowite, więc każde surowe SQL pisane przeciwko nim musi dzielić przez 1000 przed `strftime` — dokładnie to robi `isoMonthKey`. `strftime` odczytuje czas w UTC, a D1 nie zna innej strefy. `calendarPeriodKey` służy zamiast tego do grupowania według kalendarza sklepu: przyjmuje okresy jako `{ key, start }`, wysyła ich klucze i początki jako jeden obiekt JSON i nadaje każdemu wierszowi klucz ostatniego okresu, który zaczął się nie później niż on. Panel administracyjny buduje swoje dni i miesiące przez `startOfCalendarDate` z `src/modules/_core/utils/datetime.ts`, więc zaczynają się o północy w Warszawie po obu stronach zmiany czasu; zobacz [Panel administracyjny](/docs/features/admin-dashboard#wykresy). Klucze główne to łańcuchy UUIDv7 generowane przez `v7 as uuidv7` z paczki `uuid`, zarówno w przypadkach użycia, jak i w `advanced.database.generateId` w Better Auth.
 
 ## Wsady
 
