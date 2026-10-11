@@ -13,10 +13,13 @@ const recipientsSchema = z.array(z.string())
 
 const resendEmailSchema = z.object({
   from: z.string(),
+  headers: z.record(z.string(), z.string()).optional(),
   html: z.string(),
   subject: z.string(),
   to: z.union([z.string(), recipientsSchema]),
 })
+
+const RESEND_BATCH_PATH = "/emails/batch"
 
 const stripeAmountSchema = z.coerce.number().int()
 
@@ -68,6 +71,7 @@ const stripeRefundParamsSchema = z.object({
 
 export interface CapturedEmail {
   readonly from: string
+  readonly headers: Readonly<Record<string, string>> | undefined
   readonly html: string
   readonly id: string
   readonly subject: string
@@ -208,18 +212,31 @@ export const succeedSetupIntent = (setupIntentId: string): EmulatedSetupIntent |
   return succeeded
 }
 
-const captureEmail = async (request: Request): Promise<Response> => {
-  const payload = resendEmailSchema.parse(await request.json())
+const recordEmail = (payload: z.infer<typeof resendEmailSchema>): { id: string } => {
   const id = crypto.randomUUID()
   sentEmails.push({
     from: payload.from,
+    headers: payload.headers,
     html: payload.html,
     id,
     subject: payload.subject,
     to: typeof payload.to === "string" ? [payload.to] : payload.to,
   })
 
-  return Response.json({ id })
+  return { id }
+}
+
+const captureEmail = async (request: Request, url: URL): Promise<Response> => {
+  const body: unknown = await request.json()
+
+  return url.pathname === RESEND_BATCH_PATH
+    ? Response.json({
+        data: z
+          .array(resendEmailSchema)
+          .parse(body)
+          .map((payload) => recordEmail(payload)),
+      })
+    : Response.json(recordEmail(resendEmailSchema.parse(body)))
 }
 
 interface CheckoutSessionRequest {
@@ -606,7 +623,7 @@ export const installProviderMocks = (): void => {
     const request = new Request(input, init)
     const url = new URL(request.url)
     if (url.hostname === "api.resend.com") {
-      return captureEmail(request)
+      return captureEmail(request, url)
     }
 
     if (url.hostname === "api.stripe.com" && request.headers.get("authorization") === EMULATED_STRIPE_AUTHORIZATION) {

@@ -7,14 +7,15 @@ description: "The Cloudflare runtime: the Worker entry, its bindings, the three 
 
 `wrangler.jsonc` sets `./src/server.ts` as `main`, with `compatibility_date` `2026-04-18`, the `nodejs_compat` flag, `placement.mode: "smart"` and observability enabled, Workers Issues included. Every environment receives the same six bindings:
 
-| Binding                     | Type           | Used for                                                                  |
-| --------------------------- | -------------- | ------------------------------------------------------------------------- |
-| `DB`                        | D1 database    | All 40 tables, including sessions, verification and rate-limit counters   |
-| `IMAGES`                    | R2 bucket      | Product images uploaded through `src/integrations/cloudflare-r2`          |
-| `CACHE`                     | KV namespace   | Holds the five-minute email sender flag (`resend.availability.server.ts`) |
-| `ASSETS`                    | Static assets  | Everything in `public/`, including the fonts and the withdrawal form PDF  |
-| `REALTIME_INVALIDATION_HUB` | Durable Object | The `RealtimeInvalidationHub` class, one instance per audience name       |
-| `AUDIT_LOG_QUEUE`           | Queue          | Audit events, produced by the app and consumed by the same Worker         |
+| Binding                     | Type           | Used for                                                                        |
+| --------------------------- | -------------- | ------------------------------------------------------------------------------- |
+| `DB`                        | D1 database    | All 41 tables, including sessions, verification and rate-limit counters         |
+| `IMAGES`                    | R2 bucket      | Product images uploaded through `src/integrations/cloudflare-r2`                |
+| `CACHE`                     | KV namespace   | Holds the five-minute email sender flag (`resend.availability.server.ts`)       |
+| `ASSETS`                    | Static assets  | Everything in `public/`, including the fonts and the withdrawal form PDF        |
+| `REALTIME_INVALIDATION_HUB` | Durable Object | The `RealtimeInvalidationHub` class, one instance per audience name             |
+| `AUDIT_LOG_QUEUE`           | Queue          | Audit events, produced by the app and consumed by the same Worker               |
+| `NEWSLETTER_QUEUE`          | Queue          | Newsletter batches, one campaign batch per message, consumed by the same Worker |
 
 The Durable Object is declared as a SQLite class in the `migrations` block (`tag: "v1"`, `new_sqlite_classes: ["RealtimeInvalidationHub"]`) even though the hub keeps no durable state. The queue is configured with `max_batch_size: 50`, `max_batch_timeout: 5`, `max_retries: 3` and a `dead_letter_queue` named after it with `-dlq`, and both producer and consumer point at the same queue, so `src/server.ts` exports both a `fetch` and a `queue` handler. The same `queue` handler also consumes the dead-letter queue, one message at a time with `max_retries: 3` and `retry_delay: 300`. Preview and production also declare `triggers.crons: ["0 3 * * *"]`, which calls its `scheduled` handler every day at 03:00 UTC for the [retention clean-up](/docs/guides/data-retention); development and test declare no trigger.
 
@@ -24,11 +25,11 @@ The Durable Object is declared as a SQLite class in the `migrations` block (`tag
 
 `wrangler.jsonc` defines three environments and `CLOUDFLARE_ENV` selects one for `vp dev` and `vp build`.
 
-| Environment   | Worker name                  | D1 database              | R2 bucket                | Queue                              | Used by                                            |
-| ------------- | ---------------------------- | ------------------------ | ------------------------ | ---------------------------------- | -------------------------------------------------- |
-| `development` | `martebizuteria-development` | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run dev`                                      |
-| `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run build:preview`, `deploy:preview`, `start` |
-| `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria`         | `martebizuteria-audit-log`         | `bun run build:production`, `deploy:production`    |
+| Environment   | Worker name                  | D1 database              | R2 bucket                | Queues                                                                  | Used by                                            |
+| ------------- | ---------------------------- | ------------------------ | ------------------------ | ----------------------------------------------------------------------- | -------------------------------------------------- |
+| `development` | `martebizuteria-development` | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview`, `martebizuteria-newsletter-preview` | `bun run dev`                                      |
+| `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview`, `martebizuteria-newsletter-preview` | `bun run build:preview`, `deploy:preview`, `start` |
+| `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria`         | `martebizuteria-audit-log`, `martebizuteria-newsletter`                 | `bun run build:production`, `deploy:production`    |
 
 `preview` attaches `preview.martebizuteria.pl` and `production` attaches `martebizuteria.pl` as a custom domain through `routes` with `custom_domain: true`. Both also set `workers_dev: true`, so their `workers.dev` hostnames keep answering next to the domain; see [Deploy a preview](/docs/getting-started/deploy-preview) for what the zone needs.
 

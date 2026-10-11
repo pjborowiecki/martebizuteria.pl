@@ -3,7 +3,7 @@ title: "i18n messages"
 description: "Add or change user-visible text: namespace files, route declarations, the loading pipeline, formatting and locale resolution."
 ---
 
-M'Arte is bilingual: Polish (`pl-PL`) is the default and English (`en-US`) is secondary. Translations are split into 55 namespace files per locale under `messages/pl-PL/` and `messages/en-US/`, loaded per route and delivered through `use-intl`.
+M'Arte is bilingual: Polish (`pl-PL`) is the default and English (`en-US`) is secondary. Translations are split into 56 namespace files per locale under `messages/pl-PL/` and `messages/en-US/`, loaded per route and delivered through `use-intl`.
 
 `src/integrations/use-intl/i18n.config.ts` is the whole configuration:
 
@@ -21,7 +21,7 @@ const DEFAULT_TIMEZONE = "Europe/Warsaw"
 
 A namespace is one JSON file, and its filename _is_ its dotted namespace path. `messages/pl-PL/pages.admin.catalog.categories.json` is the namespace `pages.admin.catalog.categories`, reached as `useTranslations("pages.admin.catalog.categories")`.
 
-The 55 files fall into five groups:
+The 56 files fall into five groups:
 
 | Prefix        | Examples                                                                                                                                                            |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

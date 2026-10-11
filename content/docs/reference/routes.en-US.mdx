@@ -92,35 +92,36 @@ The `/account` layout is `account.tsx` and its `beforeLoad` runs `requireCustome
 
 The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`, which sends an admin without two-factor authentication to `/admin/security`; it also loads `admin.css`, forces the light theme, renders the admin sidebar and opens the admin realtime WebSocket through `useRealtimeQuerySync`. `admin.index.tsx` redirects `/admin` to `/admin/overview`, and `admin.catalog.index.tsx` redirects `/admin/catalog` to `/admin/catalog/products`.
 
-| Path                                 | `ROUTES` constant     | Route file                                                             |
-| ------------------------------------ | --------------------- | ---------------------------------------------------------------------- |
-| `/admin`                             | `ADMIN`               | `admin.tsx` (layout), `admin.index.tsx` (redirect)                     |
-| `/admin/overview`                    | `ADMIN_OVERVIEW`      | `admin.overview.tsx`                                                   |
-| `/admin/catalog`                     | `ADMIN_CATALOG`       | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (redirect)     |
-| `/admin/catalog/products`            | `ADMIN_PRODUCTS`      | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`       |
-| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`    | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`   |
-| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`      | `admin.catalog.categories.$handle.tsx`                                 |
-| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`   | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx` |
-| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`    | `admin.catalog.collections.$handle.tsx`                                |
-| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`    | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`   |
-| `/admin/orders`                      | `ADMIN_ORDERS`        | `admin.orders.index.tsx`                                               |
-| `/admin/orders/$orderId`             | `ADMIN_ORDER`         | `admin.orders.$orderId.tsx`                                            |
-| `/admin/customers`                   | `ADMIN_CUSTOMERS`     | `admin.customers.index.tsx`                                            |
-| `/admin/customers/$id`               | `ADMIN_CUSTOMER`      | `admin.customers.$id.tsx`                                              |
-| `/admin/audit`                       | `ADMIN_AUDIT`         | `admin.audit.tsx`                                                      |
-| `/admin/coupons`                     | `ADMIN_COUPONS`       | `admin.coupons.tsx`                                                    |
-| `/admin/content`                     | `ADMIN_CONTENT`       | `admin.content.index.tsx`                                              |
-| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE`  | `admin.content.$handle.tsx`                                            |
-| `/admin/marketing`                   | `ADMIN_MARKETING`     | `admin.marketing.tsx`                                                  |
-| `/admin/settings`                    | `ADMIN_SETTINGS`      | `admin.settings.tsx`                                                   |
-| `/admin/security`                    | `ADMIN_SECURITY`      | `admin_.security.tsx` (outside the layout)                             |
-| `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY` | `admin_.orders.$orderId.summary.tsx` (outside the layout)              |
+| Path                                 | `ROUTES` constant      | Route file                                                             |
+| ------------------------------------ | ---------------------- | ---------------------------------------------------------------------- |
+| `/admin`                             | `ADMIN`                | `admin.tsx` (layout), `admin.index.tsx` (redirect)                     |
+| `/admin/overview`                    | `ADMIN_OVERVIEW`       | `admin.overview.tsx`                                                   |
+| `/admin/catalog`                     | `ADMIN_CATALOG`        | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (redirect)     |
+| `/admin/catalog/products`            | `ADMIN_PRODUCTS`       | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`       |
+| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`     | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`   |
+| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`       | `admin.catalog.categories.$handle.tsx`                                 |
+| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`    | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx` |
+| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`     | `admin.catalog.collections.$handle.tsx`                                |
+| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`     | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`   |
+| `/admin/orders`                      | `ADMIN_ORDERS`         | `admin.orders.index.tsx`                                               |
+| `/admin/orders/$orderId`             | `ADMIN_ORDER`          | `admin.orders.$orderId.tsx`                                            |
+| `/admin/customers`                   | `ADMIN_CUSTOMERS`      | `admin.customers.index.tsx`                                            |
+| `/admin/customers/$id`               | `ADMIN_CUSTOMER`       | `admin.customers.$id.tsx`                                              |
+| `/admin/audit`                       | `ADMIN_AUDIT`          | `admin.audit.tsx`                                                      |
+| `/admin/coupons`                     | `ADMIN_COUPONS`        | `admin.coupons.tsx`                                                    |
+| `/admin/content`                     | `ADMIN_CONTENT`        | `admin.content.index.tsx`                                              |
+| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE`   | `admin.content.$handle.tsx`                                            |
+| `/admin/marketing`                   | `ADMIN_MARKETING`      | `admin.marketing.index.tsx`                                            |
+| `/admin/marketing/new`               | `ADMIN_NEWSLETTER_NEW` | `admin.marketing.new.tsx`                                              |
+| `/admin/settings`                    | `ADMIN_SETTINGS`       | `admin.settings.tsx`                                                   |
+| `/admin/security`                    | `ADMIN_SECURITY`       | `admin_.security.tsx` (outside the layout)                             |
+| `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY`  | `admin_.orders.$orderId.summary.tsx` (outside the layout)              |
 
 `/admin/security` turns two-factor authentication on and off for the signed-in admin. The trailing underscore in `admin_.security.tsx` keeps it out of the `/admin` layout, so it has no sidebar, `admin.css` or realtime socket, and its own guard, `requireAdminRole`, admits an admin who has not turned two-factor authentication on yet. Its page, `AdminSecurityPage`, calls `useAdminLightTheme` itself.
 
 `/admin/orders/$orderId/summary` is the printable order summary, which says it is not a VAT invoice. The trailing underscore in `admin_.orders.$orderId.summary.tsx` keeps it out of the `/admin` layout too, so the printout has no sidebar, but its guard is `requireAdmin`, the layout's own, and its page, `OrderSummaryPage`, calls `useAdminLightTheme` itself. See [Orders](/docs/features/orders#the-order-summary).
 
-`/admin/marketing` and `/admin/settings` still render from fixtures in `src/data/`: `marketing.ts` and `settings.ts`.
+`/admin/settings` still renders from fixtures in `src/data/settings.ts`.
 
 ## Documentation
 
@@ -141,18 +142,19 @@ The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`, which 
 
 API paths are never localized — `shouldIgnorePath` in `src/integrations/use-intl/i18n.paths.ts` exempts `/api`, `/rpc`, `/_serverFn` and `/assets` from locale handling.
 
-| Path                          | Handled by                                            | Notes                                                                                                                  |
-| ----------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `/api/auth/*`                 | `src/routes/api/auth.$.ts`                            | Better Auth's own handler                                                                                              |
-| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                   | Signature-verified Stripe events                                                                                       |
-| `/api/webhooks/inpost`        | `src/routes/api/webhooks.inpost.ts`                   | InPost ShipX events, at most 120 a minute from one address; each named shipment is read back from ShipX                |
-| `/api/health`                 | `src/routes/api/health.ts`                            | 200 or 503 for an uptime monitor after reading D1, KV and R2                                                           |
-| `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`      | WebSocket upgrade, open to an admin with two-factor authentication on, checked in the Worker before the Durable Object |
-| `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS` | WebSocket upgrade, open to anyone                                                                                      |
-| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                | Pages read from D1 by `listSitemapPages`, cached for a day                                                             |
-| `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                 | Content depends on `env.APP_ENV`                                                                                       |
+| Path                          | Handled by                                                                       | Notes                                                                                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `/api/auth/*`                 | `src/routes/api/auth.$.ts`                                                       | Better Auth's own handler                                                                                              |
+| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                                              | Signature-verified Stripe events                                                                                       |
+| `/api/webhooks/inpost`        | `src/routes/api/webhooks.inpost.ts`                                              | InPost ShipX events, at most 120 a minute from one address; each named shipment is read back from ShipX                |
+| `/api/newsletter/unsubscribe` | `src/routes/api/newsletter.unsubscribe.ts` → `ROUTES.API_NEWSLETTER_UNSUBSCRIBE` | One-click unsubscribe (RFC 8058) a mail provider posts with a newsletter's token                                       |
+| `/api/health`                 | `src/routes/api/health.ts`                                                       | 200 or 503 for an uptime monitor after reading D1, KV and R2                                                           |
+| `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`                                 | WebSocket upgrade, open to an admin with two-factor authentication on, checked in the Worker before the Durable Object |
+| `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS`                            | WebSocket upgrade, open to anyone                                                                                      |
+| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                                           | Pages read from D1 by `listSitemapPages`, cached for a day                                                             |
+| `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                                            | Content depends on `env.APP_ENV`                                                                                       |
 
-The last four are checked in `src/server.ts` before the request reaches TanStack Start, so none of them pays for an SSR render. `/api/auth/*`, `/api/webhooks/stripe`, `/api/webhooks/inpost` and `/api/health` are TanStack Start server routes under `src/routes/api/`, so they go through the router but never render a page.
+The last four are checked in `src/server.ts` before the request reaches TanStack Start, so none of them pays for an SSR render. `/api/auth/*`, `/api/webhooks/stripe`, `/api/webhooks/inpost`, `/api/newsletter/unsubscribe` and `/api/health` are TanStack Start server routes under `src/routes/api/`, so they go through the router but never render a page.
 
 ## Guards
 

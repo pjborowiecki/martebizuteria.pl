@@ -54,6 +54,7 @@ describe("AdminSidebar", () => {
     expect(screen.getByText("Security").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_SECURITY)
     expect(screen.getByText("Coupons").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_COUPONS)
     expect(screen.getByText("Content").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_CONTENT)
+    expect(screen.getByText("Marketing").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_MARKETING)
   })
 
   it("marks the coupons entry active on the coupons route", () => {
@@ -62,16 +63,20 @@ describe("AdminSidebar", () => {
     expect(screen.getByText("Coupons").closest("a")).toHaveAttribute("data-active")
   })
 
-  it("renders the unbuilt tools as plain buttons that navigate nowhere", () => {
+  it("marks the marketing entry active while the owner writes a newsletter", () => {
+    renderSidebar(ROUTES.ADMIN_NEWSLETTER_NEW)
+
+    expect(screen.getByText("Marketing").closest("a")).toHaveAttribute("data-active")
+  })
+
+  it("renders the unbuilt settings as a plain button that navigates nowhere", () => {
     renderSidebar(ROUTES.ADMIN_OVERVIEW)
 
-    for (const label of ["Marketing", "Settings"]) {
-      const trigger = screen.getByText(label).closest("button")
+    const trigger = screen.getByText("Settings").closest("button")
 
-      expect(trigger).toBeInTheDocument()
-      expect(trigger).toHaveAttribute("data-trigger-disabled")
-      expect(screen.getByText(label).closest("a")).toBeNull()
-    }
+    expect(trigger).toBeInTheDocument()
+    expect(trigger).toHaveAttribute("data-trigger-disabled")
+    expect(screen.getByText("Settings").closest("a")).toBeNull()
   })
 
   it("marks the dashboard entry active on the overview route", () => {

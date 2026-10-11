@@ -6,6 +6,7 @@ import { expect } from "./test"
 const sentEmailsSchema = z.array(
   z.object({
     from: z.string(),
+    headers: z.record(z.string(), z.string()).optional(),
     html: z.string(),
     id: z.string(),
     subject: z.string(),

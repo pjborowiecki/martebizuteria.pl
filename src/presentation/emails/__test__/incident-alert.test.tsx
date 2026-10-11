@@ -19,7 +19,7 @@ const renderIncidentAlert = (overrides: Partial<ComponentProps<typeof IncidentAl
     plainText ? { plainText: true } : { plainText: false },
   )
 
-const KINDS: readonly IncidentKind[] = ["auditQueueFailed", "paidCheckoutWithoutOrder", "stripeWebhookFailed"]
+const KINDS: readonly IncidentKind[] = ["auditQueueFailed", "newsletterFailed", "paidCheckoutWithoutOrder", "stripeWebhookFailed"]
 
 describe("IncidentAlert", () => {
   it("names the namespace the messages are loaded under", () => {

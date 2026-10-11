@@ -107,6 +107,7 @@ Czyta `wrangler.jsonc` dla docelowego środowiska przez `unstable_readConfig` i 
 - binding KV `CACHE` z prawdziwym `id`,
 - binding R2 `IMAGES` z `bucket_name`,
 - producent `AUDIT_LOG_QUEUE` **oraz** konsument tej samej kolejki, który wskazuje `dead_letter_queue` konsumowaną przez drugiego konsumenta,
+- producent `NEWSLETTER_QUEUE` **oraz** konsument tej samej kolejki, który wskazuje `dead_letter_queue` konsumowaną przez kolejnego konsumenta,
 - binding Durable Object `REALTIME_INVALIDATION_HUB`, którego `class_name` to `RealtimeInvalidationHub`,
 - dla produkcji bucket `IMAGES` inny niż ten, który wiąże preview.
 

@@ -19,6 +19,8 @@ bunx wrangler r2 bucket create martebizuteria-preview
 bunx wrangler r2 bucket dev-url enable martebizuteria-preview
 bunx wrangler queues create martebizuteria-audit-log-preview
 bunx wrangler queues create martebizuteria-audit-log-preview-dlq
+bunx wrangler queues create martebizuteria-newsletter-preview
+bunx wrangler queues create martebizuteria-newsletter-preview-dlq
 ```
 
 Następnie wpisz identyfikatory do `wrangler.jsonc` — pod `development` i `preview`, jeśli mają współdzielić zasoby tak, jak robi to konfiguracja w repozytorium:
@@ -34,7 +36,7 @@ Następnie wpisz identyfikatory do `wrangler.jsonc` — pod `development` i `pre
 
 Bucket preview startuje pusty, a baza preview wskazuje na zdjęcia z plików seed i grafiki marketingowe. Skopiuj je do niego przed pierwszym wdrożeniem i ustaw `VITE_R2_URL` na adres wypisany przez `dev-url enable`, tak jak opisuje [Dostarczanie zdjęć](/docs/guides/image-delivery).
 
-Zostaw nazwy bindingów dokładnie takie, jakie są — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `REALTIME_INVALIDATION_HUB` — i nie ruszaj `migrations_dir`, który wskazuje na `./src/integrations/drizzle-orm/migrations`. Z nazw bindingów generowany jest `src/types/worker-configuration.d.ts` i względem nich typowana jest cała warstwa serwerowa.
+Zostaw nazwy bindingów dokładnie takie, jakie są — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE`, `REALTIME_INVALIDATION_HUB` — i nie ruszaj `migrations_dir`, który wskazuje na `./src/integrations/drizzle-orm/migrations`. Z nazw bindingów generowany jest `src/types/worker-configuration.d.ts` i względem nich typowana jest cała warstwa serwerowa.
 
 Durable Object nie wymaga przygotowania. Tworzy go migracja już obecna w pliku:
 
@@ -47,9 +49,12 @@ Durable Object nie wymaga przygotowania. Tworzy go migracja już obecna w pliku:
 ],
 ```
 
-Oto dokładnie to, czego wymaga `verify-bindings.ts`, żebyś wiedział, kiedy skończyłeś. `auditConsumer` to konsument kolejki producenta `AUDIT_LOG_QUEUE`, a `auditDeadLetterConsumer` to konsument kolejki, którą tamten wskazuje jako `dead_letter_queue`:
+Oto dokładnie to, czego wymaga `verify-bindings.ts`, żebyś wiedział, kiedy skończyłeś. `audit` i `newsletter` to producenci `AUDIT_LOG_QUEUE` i `NEWSLETTER_QUEUE`, a `hasDeadLetterConsumer` jest spełnione, gdy kolejka ma konsumenta, który wskazuje `dead_letter_queue` konsumowaną także przez Workera:
 
 ```ts
+const consumerOf = (queue: string | undefined) => config.queues.consumers.find((consumer) => consumer.queue === queue)
+const hasDeadLetterConsumer = (queue: string | undefined): boolean => consumerOf(consumerOf(queue)?.dead_letter_queue) !== undefined
+
 if (
   !database?.database_id ||
   /^[0-]+$/u.test(database.database_id) ||
@@ -57,11 +62,12 @@ if (
   /^[0-]+$/u.test(cache.id) ||
   !images?.bucket_name ||
   !audit?.queue ||
-  !auditConsumer?.dead_letter_queue ||
-  auditDeadLetterConsumer === undefined ||
+  !hasDeadLetterConsumer(audit.queue) ||
+  !newsletter?.queue ||
+  !hasDeadLetterConsumer(newsletter.queue) ||
   realtime?.class_name !== "RealtimeInvalidationHub"
 ) {
-  throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)
+  throw new Error(`Missing database, cache, images, audit, newsletter, or realtime binding for ${environment}`)
 }
 ```
 

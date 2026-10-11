@@ -10,7 +10,8 @@ import {
 } from "~/src/platform/testing/mocks/providers"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
-import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.queue.server"
+
+import { type WorkerQueueMessage } from "~/src/server"
 
 export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub"
 
@@ -123,4 +124,4 @@ export default {
 
     await application.queue(batch, env, ctx)
   },
-} satisfies ExportedHandler<Env, AuditLogQueueMessage>
+} satisfies ExportedHandler<Env, WorkerQueueMessage>

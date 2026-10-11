@@ -3,6 +3,7 @@ import { type QueryKey } from "@tanstack/react-query"
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
+import { NEWSLETTER_CAMPAIGN_QUERY_KEYS } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
 import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
@@ -34,6 +35,7 @@ export const ADMIN_REALTIME_QUERY_PREFIXES = [
   CONTENT_PAGE_QUERY_KEYS.ADMIN.ALL,
   CONTENT_PAGE_QUERY_KEYS.ADMIN.BY_HANDLE,
   STORE_SETTING_QUERY_KEYS.ADMIN.SALES,
+  NEWSLETTER_CAMPAIGN_QUERY_KEYS.ADMIN.LIST,
 ] as const satisfies readonly QueryKey[]
 
 export const STOREFRONT_REALTIME_QUERY_PREFIXES = [

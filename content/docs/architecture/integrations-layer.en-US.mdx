@@ -25,7 +25,7 @@ Every third party that needs setup owns one folder under `src/integrations`. Fil
 
 ## What is not an integration
 
-- **Cloudflare bindings need no adapter.** Server code reads `DB`, `IMAGES`, `CACHE`, `ASSETS`, `REALTIME_INVALIDATION_HUB` and `AUDIT_LOG_QUEUE` from `env` in `cloudflare:workers`.
+- **Cloudflare bindings need no adapter.** Server code reads `DB`, `IMAGES`, `CACHE`, `ASSETS`, `REALTIME_INVALIDATION_HUB`, `AUDIT_LOG_QUEUE` and `NEWSLETTER_QUEUE` from `env` in `cloudflare:workers`.
 - **Rate limiting** is `src/lib/rate-limit.ts`, backed by the `rate_limit` table, and is reached through the `withRateLimit` middleware rather than a vendor folder.
 - **The Durable Object class** lives in `src/durable-objects/realtime-invalidation-hub.ts`, not in the integration folder, because Wrangler binds the class from the Worker entry.
 - **SEO, sitemap and robots** are `src/lib/seo.ts`, with the sitemap's pages read from D1 by `src/lib/sitemap.ts`.

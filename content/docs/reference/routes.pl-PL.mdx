@@ -92,35 +92,36 @@ Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCu
 
 Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`, który wysyła administratora bez uwierzytelniania dwuskładnikowego na `/admin/security`; ponadto ładuje `admin.css`, wymusza jasny motyw, renderuje sidebar panelu i otwiera administracyjny WebSocket realtime przez `useRealtimeQuerySync`. `admin.index.tsx` przekierowuje `/admin` na `/admin/overview`, a `admin.catalog.index.tsx` przekierowuje `/admin/catalog` na `/admin/catalog/products`.
 
-| Ścieżka                              | Stała w `ROUTES`      | Plik trasy                                                               |
-| ------------------------------------ | --------------------- | ------------------------------------------------------------------------ |
-| `/admin`                             | `ADMIN`               | `admin.tsx` (layout), `admin.index.tsx` (przekierowanie)                 |
-| `/admin/overview`                    | `ADMIN_OVERVIEW`      | `admin.overview.tsx`                                                     |
-| `/admin/catalog`                     | `ADMIN_CATALOG`       | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (przekierowanie) |
-| `/admin/catalog/products`            | `ADMIN_PRODUCTS`      | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`         |
-| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`    | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`     |
-| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`      | `admin.catalog.categories.$handle.tsx`                                   |
-| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`   | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx`   |
-| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`    | `admin.catalog.collections.$handle.tsx`                                  |
-| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`    | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`     |
-| `/admin/orders`                      | `ADMIN_ORDERS`        | `admin.orders.index.tsx`                                                 |
-| `/admin/orders/$orderId`             | `ADMIN_ORDER`         | `admin.orders.$orderId.tsx`                                              |
-| `/admin/customers`                   | `ADMIN_CUSTOMERS`     | `admin.customers.index.tsx`                                              |
-| `/admin/customers/$id`               | `ADMIN_CUSTOMER`      | `admin.customers.$id.tsx`                                                |
-| `/admin/audit`                       | `ADMIN_AUDIT`         | `admin.audit.tsx`                                                        |
-| `/admin/coupons`                     | `ADMIN_COUPONS`       | `admin.coupons.tsx`                                                      |
-| `/admin/content`                     | `ADMIN_CONTENT`       | `admin.content.index.tsx`                                                |
-| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE`  | `admin.content.$handle.tsx`                                              |
-| `/admin/marketing`                   | `ADMIN_MARKETING`     | `admin.marketing.tsx`                                                    |
-| `/admin/settings`                    | `ADMIN_SETTINGS`      | `admin.settings.tsx`                                                     |
-| `/admin/security`                    | `ADMIN_SECURITY`      | `admin_.security.tsx` (poza layoutem)                                    |
-| `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY` | `admin_.orders.$orderId.summary.tsx` (poza layoutem)                     |
+| Ścieżka                              | Stała w `ROUTES`       | Plik trasy                                                               |
+| ------------------------------------ | ---------------------- | ------------------------------------------------------------------------ |
+| `/admin`                             | `ADMIN`                | `admin.tsx` (layout), `admin.index.tsx` (przekierowanie)                 |
+| `/admin/overview`                    | `ADMIN_OVERVIEW`       | `admin.overview.tsx`                                                     |
+| `/admin/catalog`                     | `ADMIN_CATALOG`        | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (przekierowanie) |
+| `/admin/catalog/products`            | `ADMIN_PRODUCTS`       | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`         |
+| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`     | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`     |
+| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`       | `admin.catalog.categories.$handle.tsx`                                   |
+| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`    | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx`   |
+| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`     | `admin.catalog.collections.$handle.tsx`                                  |
+| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`     | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`     |
+| `/admin/orders`                      | `ADMIN_ORDERS`         | `admin.orders.index.tsx`                                                 |
+| `/admin/orders/$orderId`             | `ADMIN_ORDER`          | `admin.orders.$orderId.tsx`                                              |
+| `/admin/customers`                   | `ADMIN_CUSTOMERS`      | `admin.customers.index.tsx`                                              |
+| `/admin/customers/$id`               | `ADMIN_CUSTOMER`       | `admin.customers.$id.tsx`                                                |
+| `/admin/audit`                       | `ADMIN_AUDIT`          | `admin.audit.tsx`                                                        |
+| `/admin/coupons`                     | `ADMIN_COUPONS`        | `admin.coupons.tsx`                                                      |
+| `/admin/content`                     | `ADMIN_CONTENT`        | `admin.content.index.tsx`                                                |
+| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE`   | `admin.content.$handle.tsx`                                              |
+| `/admin/marketing`                   | `ADMIN_MARKETING`      | `admin.marketing.index.tsx`                                              |
+| `/admin/marketing/new`               | `ADMIN_NEWSLETTER_NEW` | `admin.marketing.new.tsx`                                                |
+| `/admin/settings`                    | `ADMIN_SETTINGS`       | `admin.settings.tsx`                                                     |
+| `/admin/security`                    | `ADMIN_SECURITY`       | `admin_.security.tsx` (poza layoutem)                                    |
+| `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY`  | `admin_.orders.$orderId.summary.tsx` (poza layoutem)                     |
 
 `/admin/security` włącza i wyłącza uwierzytelnianie dwuskładnikowe zalogowanego administratora. Podkreślnik w `admin_.security.tsx` trzyma tę trasę poza layoutem `/admin`, więc nie ma sidebaru, `admin.css` ani gniazda realtime, a jej własny strażnik, `requireAdminRole`, wpuszcza administratora, który jeszcze nie włączył uwierzytelniania dwuskładnikowego. Jej strona, `AdminSecurityPage`, sama wywołuje `useAdminLightTheme`.
 
 `/admin/orders/$orderId/summary` to podsumowanie zamówienia do druku, które mówi, że nie jest fakturą VAT. Podkreślnik w `admin_.orders.$orderId.summary.tsx` również trzyma tę trasę poza layoutem `/admin`, więc wydruk nie ma sidebaru, ale jej strażnikiem jest `requireAdmin`, ten sam co layoutu, a jej strona, `OrderSummaryPage`, sama wywołuje `useAdminLightTheme`. Zobacz [Zamówienia](/docs/features/orders#podsumowanie-zamówienia).
 
-Strony `/admin/marketing` i `/admin/settings` nadal renderują dane z fikstur w `src/data/`: `marketing.ts` i `settings.ts`.
+Strona `/admin/settings` nadal renderuje dane z fikstur w `src/data/settings.ts`.
 
 ## Dokumentacja
 
@@ -141,18 +142,19 @@ Strony `/admin/marketing` i `/admin/settings` nadal renderują dane z fikstur w 
 
 Ścieżki API nigdy nie są lokalizowane — `shouldIgnorePath` w `src/integrations/use-intl/i18n.paths.ts` wyłącza `/api`, `/rpc`, `/_serverFn` i `/assets` z obsługi lokalizacji.
 
-| Ścieżka                       | Obsługiwana przez                                     | Uwagi                                                                                                                                       |
-| ----------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/api/auth/*`                 | `src/routes/api/auth.$.ts`                            | Własny handler Better Auth                                                                                                                  |
-| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                   | Zdarzenia Stripe z weryfikacją podpisu                                                                                                      |
-| `/api/webhooks/inpost`        | `src/routes/api/webhooks.inpost.ts`                   | Zdarzenia InPost ShipX, najwyżej 120 na minutę z jednego adresu; każdą wskazaną przesyłkę odczytuje ponownie z ShipX                        |
-| `/api/health`                 | `src/routes/api/health.ts`                            | 200 albo 503 dla monitora dostępności po odczycie D1, KV i R2                                                                               |
-| `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`      | Upgrade WebSocket dla administratora z włączonym uwierzytelnianiem dwuskładnikowym, sprawdzany w Workerze przed adresowaniem Durable Object |
-| `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS` | Upgrade WebSocket, otwarty dla wszystkich                                                                                                   |
-| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                | Strony czytane z D1 przez `listSitemapPages`, cache na jeden dzień                                                                          |
-| `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                 | Treść zależy od `env.APP_ENV`                                                                                                               |
+| Ścieżka                       | Obsługiwana przez                                                                | Uwagi                                                                                                                                       |
+| ----------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/auth/*`                 | `src/routes/api/auth.$.ts`                                                       | Własny handler Better Auth                                                                                                                  |
+| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                                              | Zdarzenia Stripe z weryfikacją podpisu                                                                                                      |
+| `/api/webhooks/inpost`        | `src/routes/api/webhooks.inpost.ts`                                              | Zdarzenia InPost ShipX, najwyżej 120 na minutę z jednego adresu; każdą wskazaną przesyłkę odczytuje ponownie z ShipX                        |
+| `/api/newsletter/unsubscribe` | `src/routes/api/newsletter.unsubscribe.ts` → `ROUTES.API_NEWSLETTER_UNSUBSCRIBE` | Wypisanie jednym kliknięciem (RFC 8058), które dostawca poczty wysyła z tokenem z newslettera                                               |
+| `/api/health`                 | `src/routes/api/health.ts`                                                       | 200 albo 503 dla monitora dostępności po odczycie D1, KV i R2                                                                               |
+| `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`                                 | Upgrade WebSocket dla administratora z włączonym uwierzytelnianiem dwuskładnikowym, sprawdzany w Workerze przed adresowaniem Durable Object |
+| `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS`                            | Upgrade WebSocket, otwarty dla wszystkich                                                                                                   |
+| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                                           | Strony czytane z D1 przez `listSitemapPages`, cache na jeden dzień                                                                          |
+| `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                                            | Treść zależy od `env.APP_ENV`                                                                                                               |
 
-Cztery ostatnie ścieżki są sprawdzane w `src/server.ts`, zanim zapytanie dotrze do TanStack Start, więc żadna z nich nie płaci za render SSR. `/api/auth/*`, `/api/webhooks/stripe`, `/api/webhooks/inpost` i `/api/health` to trasy serwerowe TanStack Start w `src/routes/api/`, więc przechodzą przez router, ale nigdy nie renderują strony.
+Cztery ostatnie ścieżki są sprawdzane w `src/server.ts`, zanim zapytanie dotrze do TanStack Start, więc żadna z nich nie płaci za render SSR. `/api/auth/*`, `/api/webhooks/stripe`, `/api/webhooks/inpost`, `/api/newsletter/unsubscribe` i `/api/health` to trasy serwerowe TanStack Start w `src/routes/api/`, więc przechodzą przez router, ale nigdy nie renderują strony.
 
 ## Strażnicy
 

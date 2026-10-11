@@ -40,7 +40,7 @@ The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` f
 | ------ | ----------------------------------------------------------------------------------------------- |
 | (top)  | Dashboard (`/admin/overview`)                                                                   |
 | Main   | Orders, Customers, and a collapsible Catalog with Products, Categories, Collections, Attributes |
-| Tools  | Marketing with `disabled: true`, Coupons, and Content                                           |
+| Tools  | Marketing, Coupons, and Content                                                                 |
 | System | Audit, Settings — Settings has `disabled: true`                                                 |
 
 A disabled item renders as a non-interactive `SidebarMenuButton disabled` with `cursor-not-allowed opacity-50`, so the two disabled screens are not reachable from the UI at all — only by typing the URL.
@@ -140,13 +140,16 @@ const validTopProductRows = topProductRows.filter((row): row is typeof row & { p
 
 ## Marketing, coupons and settings
 
-| Route              | File                  | Components                                                                                | Data                                                                                              |
-| ------------------ | --------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `/admin/marketing` | `admin.marketing.tsx` | `MarketingStats`, `MarketingEngagementChart`, `MarketingCampaignsTable`                   | `src/data/marketing.ts` (`MARKETING_STATS`, `ENGAGEMENT_DATA`, `CAMPAIGNS`)                       |
-| `/admin/coupons`   | `admin.coupons.tsx`   | `CouponStats`, `CouponListTable` with `CouponFormDialog`                                  | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; see [Discounts](/docs/features/discounts)  |
-| `/admin/settings`  | `admin.settings.tsx`  | `SettingsPage` with `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`) |
+| Route                  | File                        | Components                                                                                | Data                                                                                                             |
+| ---------------------- | --------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `/admin/marketing`     | `admin.marketing.index.tsx` | `NewsletterStats`, `NewsletterCampaignsTable`                                             | `getNewsletterStatsQuery`, `getAdminNewsletterCampaignsQuery`; see [E-mail](/docs/features/email#the-newsletter) |
+| `/admin/marketing/new` | `admin.marketing.new.tsx`   | `NewsletterComposer` with `NewsletterComposerFields` and `NewsletterSendDialog`           | `getNewsletterStatsQuery`, `sendNewsletterTest`, `sendNewsletterCampaign`                                        |
+| `/admin/coupons`       | `admin.coupons.tsx`         | `CouponStats`, `CouponListTable` with `CouponFormDialog`                                  | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; see [Discounts](/docs/features/discounts)                 |
+| `/admin/settings`      | `admin.settings.tsx`        | `SettingsPage` with `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`)                |
 
-Marketing and settings have no loader, query or mutation, and the marketing Export and Create buttons have no handlers. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only, so its maintenance switch does nothing; sales are paused from the [Sales switch](#sales-switch) on the overview. The other tabs render `settings-placeholder.tsx`.
+Marketing is the newsletter. Its page shows how many subscribers are confirmed, awaiting confirmation and unsubscribed, and lists the 50 most recent newsletters with their progress, refreshed by the admin realtime hub as batches go out. **New newsletter** opens the composer, where the owner writes the letter in Polish and English in the content editor, sends a test to their own address and sends it to every confirmed subscriber; [E-mail](/docs/features/email#the-newsletter) describes the sending.
+
+Settings has no loader, query or mutation. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only, so its maintenance switch does nothing; sales are paused from the [Sales switch](#sales-switch) on the overview. The other tabs render `settings-placeholder.tsx`.
 
 Coupons is a working screen: its loader prefetches `getAdminDiscountsPageQuery({})` and `getDiscountStatsQuery()`, and `use-coupon-actions.ts` calls `createDiscount`, `updateDiscount` and `deleteDiscounts`.
 

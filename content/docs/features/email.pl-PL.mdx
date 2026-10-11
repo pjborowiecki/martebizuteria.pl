@@ -1,11 +1,11 @@
 ---
 title: "E-maile transakcyjne"
-description: "Piętnaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
+description: "Szesnaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach, oraz newsletter, który właściciel wysyła potwierdzonym subskrybentom."
 ---
 
 ## Wysyłka
 
-Każdy e-mail wysyła jedna funkcja — `src/integrations/resend/resend.send.ts`:
+Każdy e-mail transakcyjny wysyła jedna funkcja — `src/integrations/resend/resend.send.ts`. Newslettery wychodzą partiami własną ścieżką, opisaną w części [Newsletter](#newsletter).
 
 ```ts
 const RESEND_TEST_SENDER = /@resend\.dev>?$/iu
@@ -52,7 +52,7 @@ Cztery z tych e-maili trafiają na dowolny adres wpisany przez odwiedzającego: 
 
 Klientem jest `src/integrations/resend/resend.config.ts`, jednolinijkowe `new Resend(env.RESEND_API_KEY)`. Domyślne `from` to `APP_NAME <RESEND_EMAIL_FROM>`. Zarówno `RESEND_API_KEY`, jak i `RESEND_EMAIL_FROM` są na liście `secrets.required` każdego środowiska w `wrangler.jsonc`. Domena nadawcy musi być zweryfikowana w Resend, a wdrożenie zatrzymuje się przed kompilacją, gdy nie jest; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 
-## Piętnaście szablonów
+## Szesnaście szablonów
 
 Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane po stronie serwera wewnątrz Workera:
 
@@ -70,13 +70,14 @@ Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane
 | `payment-failed.tsx`                | `PAYMENT_FAILED_NAMESPACE`                | `sendPaymentFailedEmail`, z webhooka `async_payment_failed`                                                                                                                                                                                                      |
 | `new-order.tsx`                     | `NEW_ORDER_NAMESPACE`                     | `notifyShopOfNewOrder`, z webhooka Stripe, do sklepu                                                                                                                                                                                                             |
 | `order-withdrawal.tsx`              | `ORDER_WITHDRAWAL_NAMESPACE`              | `acknowledgeOrderWithdrawal` do klienta i `notifyShopOfOrderWithdrawal` do sklepu, oba przez `sendOrderWithdrawalEmails`: z oczekiwaniem na wynik w `withdrawFromCustomerOrder` i w tle w `withdrawFromGuestOrder`, gdy `admitPublicEmail` dopuści potwierdzenie |
-| `incident-alert.tsx`                | `INCIDENT_ALERT_NAMESPACE`                | `notifyShopOfIncident`, z webhooka Stripe i kolejki audytu                                                                                                                                                                                                       |
+| `incident-alert.tsx`                | `INCIDENT_ALERT_NAMESPACE`                | `notifyShopOfIncident`, z webhooka Stripe, kolejki audytu i kolejki newslettera                                                                                                                                                                                  |
 | `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik                                                                                                                                                                   |
 | `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik                                                                                                                                                              |
+| `newsletter-campaign.tsx`           | `NEWSLETTER_CAMPAIGN_NAMESPACE`           | `sendNewsletterBatch`, z kolejki newslettera i z wysyłki testowej administratora                                                                                                                                                                                 |
 
 Każdy szablon **eksportuje własną stałą przestrzeni nazw** obok komponentu, na przykład `export const ORDER_CONFIRMATION_NAMESPACE = "emails.order-confirmation"`. Taka jest konwencja: szablon jest właścicielem nazwy swojego katalogu komunikatów, więc nie ma osobnego mapowania, które trzeba utrzymywać w zgodzie.
 
-Wspólne elementy: `email-layout.tsx` (sygnet, złota linia, tagline i stopka), `email-highlight-box.tsx` (`EmailBodyText`, `EmailBorderedSection`, `EmailDetailRow` z etykietą nad wartością oraz nazwy klas przycisków i etykiet) oraz `email-styles.ts` (obiekty `CSSProperties` wstawiane inline).
+Wspólne elementy: `email-layout.tsx` (sygnet, złota linia, tagline i stopka), `email-highlight-box.tsx` (`EmailBodyText`, `EmailBorderedSection`, `EmailDetailRow` z etykietą nad wartością oraz nazwy klas przycisków i etykiet) oraz `email-styles.ts` (obiekty `CSSProperties` wstawiane inline i `EMAIL_MARKDOWN_STYLES` dla Markdownu newslettera).
 
 ## Lokalizacja
 
@@ -95,17 +96,18 @@ await requireAuthEmailDelivery("verification", {
 
 Źródło języka zależy od wyzwalacza:
 
-| Wyzwalacz                 | Skąd język                                                                   |
-| ------------------------- | ---------------------------------------------------------------------------- |
-| e-maile Better Auth       | `getCurrentLocale()` — z żądania wykonywanego przez użytkownika              |
-| `sendAccountDeletedEmail` | `locale` zapamiętany przed usunięciem, z fallbackiem na `getCurrentLocale()` |
-| e-maile newslettera       | `locale` przesłany z zapisem, z fallbackiem na `getCurrentLocale()`          |
-| potwierdzenie zamówienia  | `resolveLocale(session)` z metadanych sesji Stripe                           |
-| nieudana płatność         | `resolveLocale(session)` z metadanych sesji Stripe                           |
-| wysyłka zamówienia        | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia       |
-| anulowanie, zwrot         | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia       |
-| powiadomienie sklepu      | `I18N.DEFAULT_LOCALE`, język sklepu, niezależnie od języka klienta           |
-| alert sklepu              | `I18N.DEFAULT_LOCALE`, język sklepu                                          |
+| Wyzwalacz                 | Skąd język                                                                                |
+| ------------------------- | ----------------------------------------------------------------------------------------- |
+| e-maile Better Auth       | `getCurrentLocale()` — z żądania wykonywanego przez użytkownika                           |
+| `sendAccountDeletedEmail` | `locale` zapamiętany przed usunięciem, z fallbackiem na `getCurrentLocale()`              |
+| e-maile newslettera       | `locale` przesłany z zapisem, z fallbackiem na `getCurrentLocale()`                       |
+| kampania newslettera      | `newsletter_subscriber.locale` każdego subskrybenta; wysyłka testowa renderuje oba języki |
+| potwierdzenie zamówienia  | `resolveLocale(session)` z metadanych sesji Stripe                                        |
+| nieudana płatność         | `resolveLocale(session)` z metadanych sesji Stripe                                        |
+| wysyłka zamówienia        | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia                    |
+| anulowanie, zwrot         | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia                    |
+| powiadomienie sklepu      | `I18N.DEFAULT_LOCALE`, język sklepu, niezależnie od języka klienta                        |
+| alert sklepu              | `I18N.DEFAULT_LOCALE`, język sklepu                                                       |
 
 E-maile dotyczące zamówień mają tu znaczenie: webhook nie ma przeglądarki, a język administratora nie jest językiem klienta, więc język musiał zostać utrwalony w momencie składania zamówienia. `createStripeSession` wkłada `locale: getCurrentLocale()` do metadanych sesji, a `prepareFulfillCheckoutBatch` kopiuje go do `order.metadata` — dlatego polski klient dostaje powiadomienie o wysyłce po polsku nawet kilka dni później.
 
@@ -303,6 +305,26 @@ Webhook Stripe też czeka na `notifyOrderConfirmed` i `notifyShopOfNewOrder`, al
 
 Dlatego strona sukcesu kasy nie twierdzi, że potwierdzenie jest w drodze. Prosi kupującego o kontakt z numerem zamówienia, jeśli e-mail nie dotrze w ciągu kilku minut.
 
+## Newsletter
+
+Właściciel pisze newslettery na stronie **Marketing** panelu, `/admin/marketing`. **Nowy newsletter** otwiera `/admin/marketing/new`, zbudowaną z elementów edytora treści: karta polska i angielska, w każdej temat do 150 znaków i list do 20 000 znaków pisany w tym samym edytorze Markdown co strony informacyjne. Linki muszą być pełnymi adresami `https://`, `mailto:` albo `tel:`, bo link względny nic nie znaczy w skrzynce pocztowej, a obrazy są odrzucane tak jak na stronach treści; oba warunki sprawdza `newsletterCampaignZodSchemas.composeValues` za pomocą `hasOnlyMarkdownLinksMatching(NEWSLETTER_LINK_PATTERN)`. Wyjście ze strony z niewysłanym listem wymaga potwierdzenia.
+
+**Wyślij test do mnie** wywołuje `sendNewsletterTest`, który wysyła obie wersje językowe na adres zalogowanego administratora, bez zapisywania kampanii i bez nagłówków wypisania. **Wyślij do subskrybentów** prosi o potwierdzenie, podając, do ilu potwierdzonych subskrybentów trafi list, i wywołuje `sendNewsletterCampaign`. Obie funkcje wymagają `content: ["update"]`.
+
+`sendNewsletterCampaign` liczy potwierdzonych subskrybentów i odmawia z `NEWSLETTER_NO_RECIPIENTS`, gdy nie ma żadnego. Zapisuje kampanię w `newsletter_campaign` pod identyfikatorem, który edytor wygenerował przy otwarciu, z oboma tematami i listami, originem żądania administratora, na który prowadzą linki, liczbą odbiorców i statusem `sending`. Gdy ten identyfikator już istnieje, zapis nic nie robi, a funkcja odpowiada `NEWSLETTER_ALREADY_SENT`, więc podwójne kliknięcie ani ponowione żądanie nigdy nie zaczyna drugiej wysyłki. Następnie kampania trafia do kolejki Cloudflare `NEWSLETTER_QUEUE`, wysyłka jest zapisywana w audycie jako `newsletter.sent` na administratora, a otwarte strony panelu odświeżają listę. Gdy kolejka odrzuci wiadomość, `deleteUnsentNewsletterCampaign` z powrotem usuwa kampanię, chyba że wyszła już jakaś partia, więc lista nie pokazuje niczego, co się nie zaczęło, a administrator dowiaduje się, że nic nie zostało wysłane. Edytor zachowuje list i jego identyfikator, więc ponowna wysyłka zapisuje i kolejkuje kampanię od nowa, a ponowienie, którego pierwsza próba jednak trafiła do kolejki, nadal dostaje `NEWSLETTER_ALREADY_SENT`.
+
+`processNewsletterQueueBatch` w `src/modules/newsletter-campaign/newsletter-campaign.queue.server.ts`, który `src/server.ts` wywołuje dla partii z kolejki o nazwie zaczynającej się od `martebizuteria-newsletter`, wysyła jedną partię kampanii na wiadomość. Czyta 100 (`NEWSLETTER_BATCH_SIZE`) kolejnych potwierdzonych subskrybentów w kolejności identyfikatorów po `last_recipient_id`, ostatnim, do którego dotarła kampania, a `sendNewsletterBatch` w `src/integrations/resend/newsletter-campaign.server.ts` wysyła ich jednym wywołaniem endpointu wsadowego Resend, który przyjmuje najwyżej 100 e-maili. Każdy subskrybent dostaje temat i list w języku, w którym się zapisał, wyrenderowane przez `newsletter-campaign.tsx` w szacie sklepu, a pod nimi informację, dlaczego go otrzymuje, oraz link **Wypisz się z newslettera** do `/newsletter/unsubscribe?token=<jego token>` w jego języku, który działa bez logowania. Na końcu list wskazuje nadawcę, czego art. 9 ustawy o świadczeniu usług drogą elektroniczną wymaga od informacji handlowej: firmę i adres przedsiębiorcy z `BUSINESS_POSTAL_ADDRESS_LINES`, kraj oraz adres e-mail sklepu, `BUSINESS.EMAIL`. Każdy e-mail niesie też `List-Unsubscribe: <origin/api/newsletter/unsubscribe?token=…>` i `List-Unsubscribe-Post: List-Unsubscribe=One-Click`, więc dostawcy poczty mogą pokazać własny przycisk wypisania, który wysyła POST pod ten adres (RFC 8058).
+
+Kampania nigdy nie wychodzi dwa razy. Każda partia trafia do Resend z kluczem idempotencji `newsletter-<id kampanii>`, a po pierwszej partii `newsletter-<id kampanii>-after-<id ostatniego subskrybenta>`, więc Resend nie wysyła partii ponownie, gdy jej wiadomość zostanie dostarczona dwa razy w ciągu 24 godzin. Kursor przesuwa tylko aktualizacja warunkowa względem kursora, od którego partia zaczęła, i tylko dostarczenie, które go przesunęło, kolejkuje następną partię, sekundę później. Konsument bierze jedną wiadomość naraz (`max_batch_size: 1`, `max_concurrency: 1`), co trzyma sklep wyraźnie poniżej domyślnego limitu Resend, dwóch żądań na sekundę. Partia mniejsza niż 100 albo brak kolejnych odbiorców oznacza kampanię jako `sent`.
+
+Partia odrzucona przez Resend lub nieudana z innego powodu jest ponawiana po 60 sekundach. Przy trzeciej próbie (`NEWSLETTER_SEND_ATTEMPTS`) kampania dostaje status `failed` z przyczyną, w audycie pojawia się `email.failed` na kampanię, `notifyShopOfIncident` wysyła na `RESEND_EMAIL_FROM` alert `newsletterFailed` z identyfikatorem kampanii (zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts#alerty-e-mail-ze-sklepu)), a reszta listy nie jest wysyłana. Wiadomość, na której konsument wciąż rzuca wyjątek, na przykład gdy D1 jest niedostępne, po `max_retries` (3) trafia do kolejki martwych listów `-dlq`. Ten sam Worker konsumuje ją tą samą funkcją, po jednej wiadomości i co pięć minut, więc kampania jest kontynuowana od ostatniego subskrybenta, do którego dotarła, albo zatrzymuje się i wysyła alert jak wyżej. Subskrybent, który potwierdzi zapis w trakcie wysyłki, dostaje kampanię, gdy jego identyfikator wypada po partiach już wysłanych; kto wypisze się przed swoją partią, zostaje pominięty.
+
+Strona Marketing pokazuje, ilu subskrybentów jest potwierdzonych, czeka na potwierdzenie i się wypisało, oraz listę 50 ostatnich newsletterów z tematem w języku administratora, statusem (Wysyłanie, Wysłany albo Przerwany), liczbą potwierdzonych subskrybentów, do których dotarły, czasem rozpoczęcia i zakończenia oraz przyczyną przerwania. Lista odświeża się sama, gdy wychodzą kolejne partie.
+
+### Newslettery a poczta transakcyjna
+
+Newslettery nigdy nie przechodzą przez `sendEmail` ani `admitPublicEmail`. Dzienny limit 50 e-maili, które odwiedzający mogą kazać sklepowi wysłać, pilnowany przez `admitPublicEmail` dla e-maili weryfikacyjnych, resetu hasła, zapisu do newslettera i odstąpienia od umowy, nie liczy więc ani kampanii, ani wysyłki testowej i ich nie wstrzymuje, a kampania nigdy nie wyczerpuje dziennej puli odwiedzających; odrzucona partia newslettera nie ustawia też flagi niedostępnego nadawcy. Newslettery dzielą jednak konto Resend z pocztą transakcyjną: każdy e-mail newslettera wlicza się do dziennego i miesięcznego limitu konta i do limitu żądań. Na darmowym planie Resend, 100 e-maili dziennie, newsletter do więcej niż kilkudziesięciu subskrybentów wyczerpałby dzienny limit i e-maile zamówień nie wychodziłyby do następnego dnia, więc zanim lista urośnie, sklep potrzebuje płatnego planu Resend.
+
 ## Podglądanie
 
 ```bash
@@ -322,7 +344,7 @@ więc trasa nie istnieje w buildzie preview ani produkcyjnym. Bez `?template=` r
 
 `src/integrations/resend/email-previews.tsx` to rejestr. `EMAIL_PREVIEWS` mapuje każdy slug na `{ element: async (locale) => …, label }`, a `renderEmailPreview(slug, locale, plainText)` wywołuje `render` z react-email. Dane testowe są realistyczne i polskie — `PREVIEW_ORDER_ITEMS` używa „Bransoletka Aurora” za 24 900 jednostek podrzędnych oraz „Kolczyki Luna” ×2 za 18 900, `PREVIEW_ADDRESS` to adres warszawski, a dwa zestawy CTA, `PREVIEW_GUEST_CTA` i `PREVIEW_CUSTOMER_CTA`, pozwalają zobaczyć oba warianty `buildOrderAccountCta`.
 
-Każdy szablon poza `newsletter-confirmation` jest wymieniony w `pl-PL` i `en-US`, w HTML i w wersji tekstowej — osiem odnośników na szablon — co czyni ten indeks najszybszym sposobem sprawdzenia zmiany w tłumaczeniu.
+Każdy szablon poza `newsletter-confirmation` i `newsletter-campaign`, który właściciel sprawdza przyciskiem **Wyślij test do mnie**, jest wymieniony w `pl-PL` i `en-US`, w HTML i w wersji tekstowej — osiem odnośników na szablon — co czyni ten indeks najszybszym sposobem sprawdzenia zmiany w tłumaczeniu.
 
 Dodanie szablonu oznacza: komponent wraz ze stałą przestrzeni nazw w `src/presentation/emails/`, dwa pliki komunikatów w `messages/{locale}/`, wpis w `EMAIL_PREVIEWS` i wywołującego, który wczyta przestrzeń nazw i wywoła `sendEmail`.
 
@@ -331,7 +353,7 @@ Dodanie szablonu oznacza: komponent wraz ze stałą przestrzeni nazw w `src/pres
 - Nie ma e-maila o porzuconym koszyku. Zdarzenie jest zapisywane w audycie, ale nic nie wysyła wiadomości.
 - Nie ma powiadomienia o dostarczeniu.
 - Nie ma e-maila, gdy płatność nie powiedzie się w trakcie płacenia (`payment_intent.payment_failed`): błąd pokazuje formularz płatności.
-- Nie ma ponawiania ani kolejki martwych listów dla poczty; porażka jest logowana i zapisywana w audycie. Ponawia sama osoba: zapis do newslettera z formularza na stronie głównej albo przyciskiem „Wyślij ponownie” w preferencjach konta, niepotwierdzone konto przyciskiem „Wyślij link potwierdzający ponownie” na stronie logowania, a zmianę hasła przyciskiem „Wyślij nowy link”.
+- Nie ma ponawiania ani kolejki martwych listów dla poczty transakcyjnej; porażka jest logowana i zapisywana w audycie. Ponawia sama osoba: zapis do newslettera z formularza na stronie głównej albo przyciskiem „Wyślij ponownie” w preferencjach konta, niepotwierdzone konto przyciskiem „Wyślij link potwierdzający ponownie” na stronie logowania, a zmianę hasła przyciskiem „Wyślij nowy link”.
 
 ## Powiązane strony
 

@@ -55,7 +55,7 @@ Następnie `toMinimalQueryKeyPrefixes` sprowadza ramkę do minimalnego zbioru kl
 
 ## Subskrypcje
 
-`ADMIN_REALTIME_QUERY_PREFIXES` ma 15 wpisów: strona i statystyki dziennika audytu, zamówienia administracyjne, klienci administracyjni, pary `ALL`/`STATS` dla kategorii, kolekcji, produktów i atrybutów produktów, para `ADMIN.ALL`/`ADMIN.BY_HANDLE` stron treści oraz `ADMIN.SALES` ustawień sklepu. `STOREFRONT_REALTIME_QUERY_PREFIXES` ma 12: klucze produktów (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), dostępność koszyka, pary `ALL`/`BY_HANDLE` kategorii i kolekcji, `BY_HANDLE` stron treści oraz `SALES` ustawień sklepu.
+`ADMIN_REALTIME_QUERY_PREFIXES` ma 16 wpisów: strona i statystyki dziennika audytu, zamówienia administracyjne, klienci administracyjni, pary `ALL`/`STATS` dla kategorii, kolekcji, produktów i atrybutów produktów, para `ADMIN.ALL`/`ADMIN.BY_HANDLE` stron treści, `ADMIN.SALES` ustawień sklepu oraz `ADMIN.LIST` kampanii newslettera. `STOREFRONT_REALTIME_QUERY_PREFIXES` ma 12: klucze produktów (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), dostępność koszyka, pary `ALL`/`BY_HANDLE` kategorii i kolekcji, `BY_HANDLE` stron treści oraz `SALES` ustawień sklepu.
 
 Obie listy są zbudowane ze stałych `*_QUERY_KEYS` samych modułów i typowane jako `as const satisfies readonly QueryKey[]`, więc zmiana nazwy klucza jest błędem typu, a nie po cichu martwą subskrypcją.
 

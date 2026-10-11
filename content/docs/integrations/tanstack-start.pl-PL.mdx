@@ -147,15 +147,16 @@ Tam, gdzie handler wciągnąłby ciężki kod serwerowy do grafu klienta, moduł
 
 ## Handlery HTTP
 
-Tylko pięć tras deklaruje `server.handlers`:
+Tylko sześć tras deklaruje `server.handlers`:
 
-| Trasa                  | Plik                                | Handler                                                                          |
-| ---------------------- | ----------------------------------- | -------------------------------------------------------------------------------- |
-| `/api/auth/$`          | `src/routes/api/auth.$.ts`          | `handleAuthRequestWithAudit(request)` dla `GET` i `POST`                         |
-| `/api/webhooks/stripe` | `src/routes/api/webhooks.stripe.ts` | `POST` weryfikuje `stripe-signature`, kieruje do `webhookHandlers`; `GET`: `405` |
-| `/api/webhooks/inpost` | `src/routes/api/webhooks.inpost.ts` | `POST` ma limit na adres i odczytuje przesyłkę z ShipX; `GET` odpowiada 200      |
-| `/api/health`          | `src/routes/api/health.ts`          | `GET`; odczytuje D1, KV i R2 i odpowiada 200 albo 503                            |
-| `/dev/emails`          | `src/routes/dev.emails.tsx`         | `GET`; zwraca 404, jeśli nie jest ustawione `import.meta.env.DEV`                |
+| Trasa                         | Plik                                       | Handler                                                                               |
+| ----------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `/api/auth/$`                 | `src/routes/api/auth.$.ts`                 | `handleAuthRequestWithAudit(request)` dla `GET` i `POST`                              |
+| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`        | `POST` weryfikuje `stripe-signature`, kieruje do `webhookHandlers`; `GET`: `405`      |
+| `/api/webhooks/inpost`        | `src/routes/api/webhooks.inpost.ts`        | `POST` ma limit na adres i odczytuje przesyłkę z ShipX; `GET` odpowiada 200           |
+| `/api/newsletter/unsubscribe` | `src/routes/api/newsletter.unsubscribe.ts` | `POST` wypisuje subskrybenta z `token`, czyli wypisanie jednym kliknięciem z RFC 8058 |
+| `/api/health`                 | `src/routes/api/health.ts`                 | `GET`; odczytuje D1, KV i R2 i odpowiada 200 albo 503                                 |
+| `/dev/emails`                 | `src/routes/dev.emails.tsx`                | `GET`; zwraca 404, jeśli nie jest ustawione `import.meta.env.DEV`                     |
 
 ```ts
 export const Route = createFileRoute("/api/auth/$")({

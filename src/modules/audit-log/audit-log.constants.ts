@@ -88,6 +88,7 @@ export const AUDIT_LOG_ACTION = {
   EMAIL_FAILED: "email.failed",
   EMAIL_SENT: "email.sent",
   IMAGE_UPLOADED: "image.uploaded",
+  NEWSLETTER_SENT: "newsletter.sent",
   ORDER_CANCELLED: "order.cancelled",
   ORDER_DISPUTE_CLOSED: "order.dispute_closed",
   ORDER_DISPUTE_OPENED: "order.dispute_opened",

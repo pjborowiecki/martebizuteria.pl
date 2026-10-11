@@ -147,15 +147,16 @@ Where a handler would pull heavy server-only code into the client graph, the mod
 
 ## HTTP handlers
 
-Only five routes declare `server.handlers`:
+Only six routes declare `server.handlers`:
 
-| Route                  | File                                | Handler                                                                                      |
-| ---------------------- | ----------------------------------- | -------------------------------------------------------------------------------------------- |
-| `/api/auth/$`          | `src/routes/api/auth.$.ts`          | `handleAuthRequestWithAudit(request)` for `GET` and `POST`                                   |
-| `/api/webhooks/stripe` | `src/routes/api/webhooks.stripe.ts` | `POST` checks `stripe-signature`, runs `webhookHandlers`; `GET` gets `405`                   |
-| `/api/webhooks/inpost` | `src/routes/api/webhooks.inpost.ts` | `POST` is rate limited per address and reads the shipment back from ShipX; `GET` answers 200 |
-| `/api/health`          | `src/routes/api/health.ts`          | `GET`; reads D1, KV and R2 and answers 200 or 503                                            |
-| `/dev/emails`          | `src/routes/dev.emails.tsx`         | `GET`; returns 404 unless `import.meta.env.DEV`                                              |
+| Route                         | File                                       | Handler                                                                                      |
+| ----------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `/api/auth/$`                 | `src/routes/api/auth.$.ts`                 | `handleAuthRequestWithAudit(request)` for `GET` and `POST`                                   |
+| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`        | `POST` checks `stripe-signature`, runs `webhookHandlers`; `GET` gets `405`                   |
+| `/api/webhooks/inpost`        | `src/routes/api/webhooks.inpost.ts`        | `POST` is rate limited per address and reads the shipment back from ShipX; `GET` answers 200 |
+| `/api/newsletter/unsubscribe` | `src/routes/api/newsletter.unsubscribe.ts` | `POST` unsubscribes the `token`'s subscriber, the one-click unsubscribe of RFC 8058          |
+| `/api/health`                 | `src/routes/api/health.ts`                 | `GET`; reads D1, KV and R2 and answers 200 or 503                                            |
+| `/dev/emails`                 | `src/routes/dev.emails.tsx`                | `GET`; returns 404 unless `import.meta.env.DEV`                                              |
 
 ```ts
 export const Route = createFileRoute("/api/auth/$")({
