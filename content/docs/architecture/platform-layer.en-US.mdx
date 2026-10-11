@@ -5,7 +5,7 @@ description: "The Cloudflare runtime: the Worker entry, its bindings, the three 
 
 ## Worker entry and bindings
 
-`wrangler.jsonc` sets `./src/server.ts` as `main`, with `compatibility_date` `2026-04-18`, the `nodejs_compat` flag, `placement.mode: "smart"` and observability enabled. Every environment receives the same six bindings:
+`wrangler.jsonc` sets `./src/server.ts` as `main`, with `compatibility_date` `2026-04-18`, the `nodejs_compat` flag, `placement.mode: "smart"` and observability enabled, Workers Issues included. Every environment receives the same six bindings:
 
 | Binding                     | Type           | Used for                                                                  |
 | --------------------------- | -------------- | ------------------------------------------------------------------------- |
@@ -42,7 +42,7 @@ bun run db:migrate:development
 
 ## Secrets and environment files
 
-Each environment lists its required secrets under `secrets.required`: `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `VITE_R2_URL`. `APP_ENV` is a plain var, not a secret.
+Each environment lists its required secrets under `secrets.required`: `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` and `VITE_R2_URL`. `APP_ENV` is a plain var, not a secret.
 
 Values come from `.env.development`, `.env.preview` and `.env.production`, which are gitignored; `.env.test` holds committed dummy values and `.env.example` is the template. Bun's automatic env loading is disabled in `bunfig.toml`, so the environment is always chosen explicitly — either by `--mode` or by `bun --env-file=`.
 
@@ -77,7 +77,7 @@ bun run deploy:production   # the same, against the production environment
 - `scripts/verify-build.ts` rejects a client bundle that still carries an unbundled `cloudflare:workers` or `node:*` import.
 - `scripts/prepare-deploy-secrets.ts` writes `.wrangler/secrets.<env>.json` from the matching `.env` file, and the deploy passes it with `--secrets-file`.
 - `db:migrate:<env>` applies the pending D1 migrations right before `wrangler deploy` and stops the deploy when one fails.
-- `scripts/verify-deployment.ts` runs after `wrangler deploy` and throws unless the live Worker answers its home page, product listing, `robots.txt` and Stripe webhook route as the shop does; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
+- `scripts/verify-deployment.ts` runs after `wrangler deploy` and throws unless the live Worker answers its home page, product listing, `robots.txt`, Stripe webhook route and health check as the shop does; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
 The deploy runs against `dist/server/wrangler.json` — the config the Cloudflare Vite plugin emits — with `CLOUDFLARE_ENV` unset, so the environment baked into the build is the one that ships.
 

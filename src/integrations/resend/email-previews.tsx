@@ -10,6 +10,7 @@ import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 
 import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
 import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"
+import type incidentAlertMessages from "~/messages/en-US/emails.incident-alert.json"
 import type newOrderMessages from "~/messages/en-US/emails.new-order.json"
 import type newsletterAlreadySubscribedMessages from "~/messages/en-US/emails.newsletter-already-subscribed.json"
 import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled.json"
@@ -23,6 +24,7 @@ import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.j
 import type verifyEmailMessages from "~/messages/en-US/emails.verify-email.json"
 import { ACCOUNT_DELETED_NAMESPACE, AccountDeleted } from "~/src/presentation/emails/account-deleted"
 import { CHANGE_EMAIL_NAMESPACE, ChangeEmail } from "~/src/presentation/emails/change-email"
+import { INCIDENT_ALERT_NAMESPACE, IncidentAlert } from "~/src/presentation/emails/incident-alert"
 import { NEW_ORDER_NAMESPACE, NewOrder } from "~/src/presentation/emails/new-order"
 import {
   NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE,
@@ -156,6 +158,21 @@ export const EMAIL_PREVIEWS = {
       />
     ),
     label: "Change email",
+  },
+  "incident-alert": {
+    element: async (locale) => (
+      <IncidentAlert
+        environment="production"
+        incident={{
+          detail: "546,00 PLN — anna.kowalska@example.com — No payment carries Checkout Session cs_live_a1B2c3D4e5",
+          kind: "paidCheckoutWithoutOrder",
+          reference: "cs_live_a1B2c3D4e5",
+        }}
+        locale={locale}
+        messages={await loadNamespace<typeof incidentAlertMessages>({ locale, namespace: INCIDENT_ALERT_NAMESPACE })}
+      />
+    ),
+    label: "Incident alert for the shop",
   },
   "new-order": {
     element: async (locale) => (

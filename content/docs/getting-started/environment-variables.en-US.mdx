@@ -139,11 +139,10 @@ On a deployed Worker, `<host>` is its custom domain, `martebizuteria.pl` in prod
 
 ## Declared but not wired
 
-Three names exist in the repository without a matching consumer. They are listed here so you do not spend time hunting for the code that reads them:
+Two names exist in the repository without a matching consumer. They are listed here so you do not spend time hunting for the code that reads them:
 
 | Name                    | Where it appears                                                             | Status                                                                                                                                                      |
 | ----------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SENTRY_AUTH_TOKEN`     | `.env.example` and the local `.env` files                                    | Nothing in `src/` references Sentry. Error reporting is not implemented                                                                                     |
 | `VITE_APP_URL`          | `env:` in `.github/workflows/deploy-preview.yml` and `deploy-production.yml` | Not in `.env.example`, not a declared secret, and not read anywhere in `src/`. The canonical URL comes from `APP_URL` in `src/presentation/branding/app.ts` |
 | `VITE_IMAGE_CDN_DOMAIN` | Read in `src/lib/image.ts` by `resolveImageCdnDomain()`                      | Absent from `.env.example`. When unset it falls back to the hostname of `APP_URL`, which is the normal case                                                 |
 

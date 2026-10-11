@@ -37,6 +37,7 @@ import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminMarketingRouteImport } from './routes/admin.marketing'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthSignInRouteImport } from './routes/auth.sign-in'
@@ -218,6 +219,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AdminRoute,
+} as any)
+const ApiHealthRoute = ApiHealthRouteImport.update({
+  id: '/api/health',
+  path: '/api/health',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   id: '/forgot-password',
@@ -454,6 +460,7 @@ export interface FileRoutesByFullPath {
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/api/health': typeof ApiHealthRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/sign-in': typeof AuthSignInRoute
@@ -516,6 +523,7 @@ export interface FileRoutesByTo {
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/api/health': typeof ApiHealthRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/sign-in': typeof AuthSignInRoute
@@ -582,6 +590,7 @@ export interface FileRoutesById {
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/api/health': typeof ApiHealthRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/auth/sign-in': typeof AuthSignInRoute
@@ -653,6 +662,7 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/overview'
     | '/admin/settings'
+    | '/api/health'
     | '/auth/forgot-password'
     | '/auth/reset-password'
     | '/auth/sign-in'
@@ -715,6 +725,7 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/overview'
     | '/admin/settings'
+    | '/api/health'
     | '/auth/forgot-password'
     | '/auth/reset-password'
     | '/auth/sign-in'
@@ -780,6 +791,7 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/overview'
     | '/admin/settings'
+    | '/api/health'
     | '/auth/forgot-password'
     | '/auth/reset-password'
     | '/auth/sign-in'
@@ -831,6 +843,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   CheckoutRoute: typeof CheckoutRouteWithChildren
   DocsRoute: typeof DocsRouteWithChildren
+  ApiHealthRoute: typeof ApiHealthRoute
   DevEmailsRoute: typeof DevEmailsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
@@ -1033,6 +1046,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/api/health': {
+      id: '/api/health'
+      path: '/api/health'
+      fullPath: '/api/health'
+      preLoaderRoute: typeof ApiHealthRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth/forgot-password': {
       id: '/auth/forgot-password'
@@ -1541,6 +1561,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   CheckoutRoute: CheckoutRouteWithChildren,
   DocsRoute: DocsRouteWithChildren,
+  ApiHealthRoute: ApiHealthRoute,
   DevEmailsRoute: DevEmailsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,

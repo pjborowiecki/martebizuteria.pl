@@ -1,6 +1,6 @@
 ---
 title: "Transactional email"
-description: "Fourteen React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales."
+description: "Fifteen React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales."
 ---
 
 ## Sending
@@ -52,7 +52,7 @@ Four of the emails go to any address a visitor types in: the verification email,
 
 The client is `src/integrations/resend/resend.config.ts`, a one-line `new Resend(env.RESEND_API_KEY)`. The default `from` is `APP_NAME <RESEND_EMAIL_FROM>`. Both `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in the `secrets.required` list of every environment in `wrangler.jsonc`. The sender's domain must be verified in Resend, and a deploy stops before the build when it is not; see [Resend](/docs/integrations/resend#sender-domain).
 
-## The fourteen templates
+## The fifteen templates
 
 All under `src/presentation/emails/`, built with `react-email` and rendered server-side inside the Worker:
 
@@ -70,6 +70,7 @@ All under `src/presentation/emails/`, built with `react-email` and rendered serv
 | `payment-failed.tsx`                | `PAYMENT_FAILED_NAMESPACE`                | `sendPaymentFailedEmail`, from the `async_payment_failed` webhook                                                                                                                                                                                                                       |
 | `new-order.tsx`                     | `NEW_ORDER_NAMESPACE`                     | `notifyShopOfNewOrder`, from the Stripe webhook, to the shop                                                                                                                                                                                                                            |
 | `order-withdrawal.tsx`              | `ORDER_WITHDRAWAL_NAMESPACE`              | `acknowledgeOrderWithdrawal` to the customer and `notifyShopOfOrderWithdrawal` to the shop, both through `sendOrderWithdrawalEmails`: awaited by `withdrawFromCustomerOrder`, and sent in the background by `withdrawFromGuestOrder` once `admitPublicEmail` admits the acknowledgement |
+| `incident-alert.tsx`                | `INCIDENT_ALERT_NAMESPACE`                | `notifyShopOfIncident`, from the Stripe webhook and the audit queue                                                                                                                                                                                                                     |
 | `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, awaited by `subscribeToNewsletter`                                                                                                                                                                                                                        |
 | `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, awaited by `subscribeToNewsletter`                                                                                                                                                                                                                   |
 
@@ -104,6 +105,7 @@ Where the locale comes from differs by trigger:
 | Order shipped             | `resolveOrderLocale(orderRow.metadata)` from the order's stored JSON            |
 | Order cancelled, refunded | `resolveOrderLocale(orderRow.metadata)` from the order's stored JSON            |
 | Shop's new-order notice   | `I18N.DEFAULT_LOCALE`, the shop's own language, whatever the customer used      |
+| Shop's incident alert     | `I18N.DEFAULT_LOCALE`, the shop's own language                                  |
 
 The order emails matter: a webhook has no browser, and an admin's language is not the customer's, so the locale must have been persisted at checkout time. `createStripeSession` puts `locale: getCurrentLocale()` in the session metadata and `prepareFulfillCheckoutBatch` copies it into `order.metadata`, which is why a Polish customer's shipping notice arrives in Polish days later.
 
@@ -192,6 +194,12 @@ The attempt goes through `recordOrderEmailAttempt` like every order email, label
 
 `order-withdrawal.tsx` exports two e-mails over one message catalogue, `emails.order-withdrawal`, because both repeat the same statement. `OrderWithdrawalReceived` (`received`) is the acknowledgement on a durable medium that Article 11a of the Consumer Rights Directive requires: it goes to the order's e-mail address in the language of the request, states that the statement arrived and repeats its content, then says where to send the products back and how the refund works. `OrderWithdrawalNotice` (`notice`) goes to `RESEND_EMAIL_FROM` in the shop's language with a link to the order in the admin. Both are built in `src/integrations/resend/order-withdrawal.notification.server.ts` and recorded as `Withdrawal acknowledgement → <address>` and `Withdrawal notice → <address>`. The date and time are written out in Polish time with `Intl.DateTimeFormat`, because the Worker runs in UTC. A withdrawal sent by order number from `/withdraw-from-contract` sends both only when `admitPublicEmail` admits a `withdrawal` e-mail to the order's address, like the other e-mails a visitor can ask for; one from the account always sends them. See [Legal pages: The withdrawal function](/docs/features/legal-pages#the-withdrawal-function).
 
+## The shop's incident alerts
+
+`notifyShopOfIncident` in `src/integrations/resend/incident-alert.notification.server.ts` emails `RESEND_EMAIL_FROM` when something the owner must act on fails: a paid Checkout Session that cannot become an order, a Stripe event the webhook answers with an error, and an audit-log batch the queue consumer cannot process. The template is `incident-alert.tsx` with its `emails.incident-alert` catalogue, in the shop's language, with a heading and an explanation for each kind of incident, the reference, the cause and the environment.
+
+Every environment sends the alerts, like the shop's new-order notice. Each incident is keyed by its environment, kind and reference — the Checkout Session, the Stripe event type or the queue — in the `CACHE` KV namespace for an hour (`INCIDENT_ALERT_SECONDS`), so a retry storm sends one email. An alert never throws: a failure to read KV, render or send is logged with `[Alert]`, and the webhook's answer and the queue's retry stay as they were. Unlike order emails, alerts are not recorded in the audit log, because the database may be what failed. [Monitoring and alerts](/docs/guides/monitoring-and-alerts) explains when each one fires and what to do.
+
 ## Auditing
 
 Order emails record their outcome in the audit log:
@@ -241,7 +249,7 @@ An error thrown while the email is prepared is logged with its stack and becomes
 | The session has no return URL     | `Order refunded — The Stripe session has no return URL to link the email to`         |
 | Preparing the email threw         | `Order shipped — D1_ERROR: …`, or the thrown value as text when it is not an `Error` |
 
-The order id is the target and `resourceId` of every entry. The failure therefore shows in the order's **Activity** card in the admin, as "Email failed" with a "Failed" badge and the detail underneath, and in `/admin/audit` under the `email` category with severity `error`. Audit entries reach D1 through the queue a few seconds after the send, so `processAuditLogQueueBatch` publishes `ORDER_QUERY_KEYS.ADMIN.ORDERS` whenever a batch carries an action from an order timeline: every open admin tab refetches the order list, stats or order page it has on screen and drops the order queries it only has cached, so an open order page shows the entry without a reload. Newsletter and Better Auth failures use the same `email.failed` action, so they trigger that refetch as well. An entry can still be lost on its way to D1, when the queue send fails or a batch fails three times, because no dead-letter queue is configured; only the Worker log has the failure then. The admin has no button to resend an order email yet: once the cause is fixed, the shop contacts the customer at the address shown on the order.
+The order id is the target and `resourceId` of every entry. The failure therefore shows in the order's **Activity** card in the admin, as "Email failed" with a "Failed" badge and the detail underneath, and in `/admin/audit` under the `email` category with severity `error`. Audit entries reach D1 through the queue a few seconds after the send, so `processAuditLogQueueBatch` publishes `ORDER_QUERY_KEYS.ADMIN.ORDERS` whenever a batch carries an action from an order timeline: every open admin tab refetches the order list, stats or order page it has on screen and drops the order queries it only has cached, so an open order page shows the entry without a reload. Newsletter and Better Auth failures use the same `email.failed` action, so they trigger that refetch as well. An entry can still be lost on its way to D1, when the queue send fails or a batch fails three times, because no dead-letter queue is configured; only the Worker log has the failure then, and a failed batch also emails `RESEND_EMAIL_FROM`. The admin has no button to resend an order email yet: once the cause is fixed, the shop contacts the customer at the address shown on the order.
 
 A newsletter email that Resend refuses is audited as well. `subscribeToNewsletter` calls `recordEmailFailedAudit(email, { detail })`: the address is the audit target, and the detail names the email and the Resend error, such as `Newsletter confirmation — The example.com domain is not verified` or `Newsletter already-subscribed notice — …`. An unverified sender domain therefore shows up in `/admin/audit` on the first signup instead of only in the Worker log. An email that went out is not recorded.
 

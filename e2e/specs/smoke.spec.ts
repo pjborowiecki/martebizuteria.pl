@@ -169,4 +169,12 @@ test.describe("smoke", () => {
     expect(sitemap.status()).toBe(200)
     expect(await sitemap.text()).toContain('<xhtml:link rel="alternate" hreflang="en-US" href="http://127.0.0.1:3000/en-US"/>')
   })
+
+  test("reports the database, the cache and the image storage healthy to an uptime monitor", async ({ request }) => {
+    const health = await request.get("/api/health")
+
+    expect(health.status()).toBe(200)
+    expect(health.headers()["cache-control"]).toBe("no-store")
+    expect(await health.json()).toStrictEqual({ checks: { d1: "ok", kv: "ok", r2: "ok" }, status: "ok" })
+  })
 })

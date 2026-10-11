@@ -142,12 +142,13 @@ Where a handler would pull heavy server-only code into the client graph, the mod
 
 ## HTTP handlers
 
-Only three routes declare `server.handlers`:
+Only four routes declare `server.handlers`:
 
 | Route                  | File                                | Handler                                                                    |
 | ---------------------- | ----------------------------------- | -------------------------------------------------------------------------- |
 | `/api/auth/$`          | `src/routes/api/auth.$.ts`          | `handleAuthRequestWithAudit(request)` for `GET` and `POST`                 |
 | `/api/webhooks/stripe` | `src/routes/api/webhooks.stripe.ts` | `POST` checks `stripe-signature`, runs `webhookHandlers`; `GET` gets `405` |
+| `/api/health`          | `src/routes/api/health.ts`          | `GET`; reads D1, KV and R2 and answers 200 or 503                          |
 | `/dev/emails`          | `src/routes/dev.emails.tsx`         | `GET`; returns 404 unless `import.meta.env.DEV`                            |
 
 ```ts

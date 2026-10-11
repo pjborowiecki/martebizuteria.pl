@@ -7,6 +7,9 @@
   "keep_vars": true,
   "observability": {
     "enabled": true,
+    "issues": {
+      "enabled": true,
+    },
   },
   "placement": {
     "mode": "smart",

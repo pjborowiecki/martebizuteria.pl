@@ -113,7 +113,7 @@ bun scripts/verify-bindings.ts preview \
 6. **`prepare-deploy-secrets.ts preview`** — reads `secrets.required` from `wrangler.jsonc`, takes each value from the process environment or `.env.preview`, and writes `.wrangler/secrets.preview.json` with mode `0600`. A missing or blank value throws `Missing <NAME> in .env.preview or the process environment`. Only declared secrets are written, which is how `CLOUDFLARE_ACCESS_TOKEN` and the other management credentials stay off the Worker.
 7. **`db:migrate:preview`** — `wrangler d1 migrations apply DB --env preview --remote` applies every migration file the preview database has not recorded yet. A failing migration is rolled back on its own, the ones before it stay applied, and the deploy stops before the Worker is uploaded.
 8. **`wrangler deploy`** — deploys the generated `dist/server/wrangler.json` and uploads the secrets file in the same call. The generated config is flat: it already carries `"name": "martebizuteria-preview"` and `"vars": { "APP_ENV": "preview" }` at the top level with no `env` section, which is why the command unsets `CLOUDFLARE_ENV` first — with it set, Wrangler would look for an environment section that the generated file does not have.
-9. **`verify-deployment.ts preview`** — asks `https://martebizuteria-preview.pjborowiecki.workers.dev` for `/`, `/products`, `/robots.txt` and `/api/webhooks/stripe`, and fails the deploy unless `/` and `/products` answer `200` with HTML, `robots.txt` answers `200` as plain text and the webhook route refuses the `GET` with `405`. A page that answers wrongly is asked up to three times in all, five seconds apart.
+9. **`verify-deployment.ts preview`** — asks `https://martebizuteria-preview.pjborowiecki.workers.dev` for `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` and `/api/health`, and fails the deploy unless `/` and `/products` answer `200` with HTML, `robots.txt` answers `200` as plain text, the webhook route refuses the `GET` with `405` and `/api/health` answers `200` because D1, KV and R2 answered. A page that answers wrongly is asked up to three times in all, five seconds apart.
 
 ### What the build verification catches
 
@@ -153,7 +153,7 @@ Repository **variables**:
 
 ## After deploying
 
-The deploy's last step has already asked the new Worker for the home page, the product listing, `robots.txt` and the Stripe webhook route. When it fails, the new version is live but not answering like the shop; [Roll back a deploy](/docs/guides/roll-back-a-deploy) covers what to do.
+The deploy's last step has already asked the new Worker for the home page, the product listing, `robots.txt`, the Stripe webhook route and the health check. When it fails, the new version is live but not answering like the shop; [Roll back a deploy](/docs/guides/roll-back-a-deploy) covers what to do.
 
 Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google` and the Stripe endpoint at `/api/webhooks/stripe`, which is `https://preview.martebizuteria.pl/api/webhooks/stripe` on preview and `https://martebizuteria.pl/api/webhooks/stripe` in production. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ. The endpoint's host does not decide where the order confirmation links: it links to the address the checkout was made on, taken from the session's `return_url`.
 

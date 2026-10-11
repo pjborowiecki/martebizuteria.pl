@@ -114,10 +114,16 @@ try {
   for (const message of batch.messages) {
     message.retry()
   }
+
+  await notifyShopOfIncident({
+    detail: error instanceof Error ? error.message : String(error),
+    kind: "auditQueueFailed",
+    reference: batch.queue,
+  })
 }
 ```
 
-Do 50 zdarzeń staje się więc jednym insertem do D1, a nieudany wsad jest ponawiany do trzech razy. Konsekwencja, o której trzeba pamiętać: **wpis audytu jest spójny ostatecznie** — może pojawić się nawet po `max_batch_timeout` (5 sekund), dlatego konsument publikuje unieważnienie realtime, a nie liczy na to, że interfejs odświeży sam zapisujący. `AUDIT_LOG_ADMIN_QUERY_KEYS` to strona audytu i jej statystyki. Gdy któryś wiersz wsadu należy do `ADMIN_ORDER_TIMELINE_ACTIONS`, konsument dodaje `ORDER_QUERY_KEYS.ADMIN.ORDERS`. Każda otwarta karta panelu pobiera wtedy ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc nowy wiersz osi czasu, na przykład nieudany e-mail o zamówieniu, pojawia się bez przeładowania. Akcje `email.*` należą do tej listy niezależnie od tego, czego dotyczył e-mail, więc nieudany e-mail newslettera albo Better Auth też wywołuje to odświeżenie.
+Do 50 zdarzeń staje się więc jednym insertem do D1, a nieudany wsad jest ponawiany do trzech razy. Nieudany wsad wysyła też e-mail na `RESEND_EMAIL_FROM`, gdy wiadomości są już oznaczone do ponowienia, najwyżej raz na godzinę dla kolejki, a alert nigdy nie rzuca wyjątku, więc nie zmienia ponowienia; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts). Konsekwencja, o której trzeba pamiętać: **wpis audytu jest spójny ostatecznie** — może pojawić się nawet po `max_batch_timeout` (5 sekund), dlatego konsument publikuje unieważnienie realtime, a nie liczy na to, że interfejs odświeży sam zapisujący. `AUDIT_LOG_ADMIN_QUERY_KEYS` to strona audytu i jej statystyki. Gdy któryś wiersz wsadu należy do `ADMIN_ORDER_TIMELINE_ACTIONS`, konsument dodaje `ORDER_QUERY_KEYS.ADMIN.ORDERS`. Każda otwarta karta panelu pobiera wtedy ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc nowy wiersz osi czasu, na przykład nieudany e-mail o zamówieniu, pojawia się bez przeładowania. Akcje `email.*` należą do tej listy niezależnie od tego, czego dotyczył e-mail, więc nieudany e-mail newslettera albo Better Auth też wywołuje to odświeżenie.
 
 ## Różnice zmian
 

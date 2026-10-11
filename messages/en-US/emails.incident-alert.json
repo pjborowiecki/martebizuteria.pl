@@ -1,0 +1,23 @@
+{
+  "paidCheckoutWithoutOrder": {
+    "subject": "Alert: a paid checkout has no order — M'Arte",
+    "heading": "A paid checkout has no order",
+    "message": "Stripe took a customer's payment, but the shop could not turn the checkout into an order, and a retry would not change that. Find the payment in the Stripe Dashboard by the reference below, then refund it or arrange the order with the customer."
+  },
+  "stripeWebhookFailed": {
+    "subject": "Alert: the shop failed a Stripe event — M'Arte",
+    "heading": "The shop failed a Stripe event",
+    "message": "The shop answered a Stripe event with an error, so Stripe will send it again for up to three days. Until a retry succeeds, what the event reports is missing from the shop: after a completed checkout, the customer has paid but has no order yet."
+  },
+  "auditQueueFailed": {
+    "subject": "Alert: the audit log queue failed — M'Arte",
+    "heading": "The audit log queue failed",
+    "message": "The shop could not process a batch of audit log entries. The queue delivers the batch again a few times, and entries that still fail are lost. The database may be unavailable."
+  },
+  "preview": "Something in the shop needs your attention.",
+  "referenceLabel": "Reference",
+  "detailLabel": "Cause",
+  "environmentLabel": "Environment",
+  "followUp": "Further failures with the same reference are not emailed for an hour. Every failure is in Workers Logs and Issues in the Cloudflare dashboard, and a paid checkout without an order is also in the audit log in the admin panel.",
+  "tagline": "Shop alert"
+}

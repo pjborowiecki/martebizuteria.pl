@@ -34,6 +34,11 @@ describe("HTTP_STATUS", () => {
     expect(HTTP_STATUS.UPGRADE_REQUIRED).toBe(426)
   })
 
+  it("keeps the success and unavailable codes the health check answers with", () => {
+    expect(HTTP_STATUS.OK).toBe(200)
+    expect(HTTP_STATUS.SERVICE_UNAVAILABLE).toBe(503)
+  })
+
   it("keeps the client and server error codes used by the API layer", () => {
     expect(HTTP_STATUS.BAD_REQUEST).toBe(400)
     expect(HTTP_STATUS.UNAUTHORIZED).toBe(401)

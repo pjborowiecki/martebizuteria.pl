@@ -9,6 +9,7 @@ import {
   scheduleAdminOrdersInvalidation,
   scheduleProductCatalogInvalidation,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
+import { notifyShopOfIncident } from "~/src/integrations/resend/incident-alert.notification.server"
 import { notifyShopOfNewOrder } from "~/src/integrations/resend/new-order.notification.server"
 import {
   buildOrderAccountCta,
@@ -282,8 +283,11 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
   const locale = resolveLocale(session)
   const created = await createOrderFromPaidSession(session, currency).catch((error: unknown) => {
     console.error(`Paid Checkout Session ${session.id} created no order:`, error)
-    recordOrderFulfillmentFailedAudit(session.id, { detail: describeUnfulfilledPaidSession(session, currency, error) })
+    const detail = describeUnfulfilledPaidSession(session, currency, error)
+    recordOrderFulfillmentFailedAudit(session.id, { detail })
     if (errorCode(error) === ERROR_CODES.NOT_FOUND) {
+      scheduleBackgroundWork(notifyShopOfIncident({ detail, kind: "paidCheckoutWithoutOrder", reference: session.id }))
+
       return
     }
 

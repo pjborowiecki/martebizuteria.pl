@@ -16,6 +16,7 @@
     "writing-tests",
     "security-checklist",
     "local-debugging",
-    "roll-back-a-deploy"
+    "roll-back-a-deploy",
+    "monitoring-and-alerts"
   ]
 }

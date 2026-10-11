@@ -68,9 +68,11 @@ POST /_serverFn/…  (shipOrder)
 1. Handler wymaga nagłówka `stripe-signature` oraz `env.STRIPE_WEBHOOK_SECRET`; brak któregokolwiek to `400`.
 2. `stripe.webhooks.constructEventAsync` weryfikuje podpis. Niepowodzenie jest logowane i zwracane jako `400`.
 3. Typ zdarzenia jest wyszukiwany w `webhookHandlers`. Nieobsługiwany typ jest logowany przez `console.info` i potwierdzany odpowiedzią `{ received: true }`, więc Stripe przestaje go ponawiać.
-4. Handler, który rzuci wyjątek, jest logowany i zwraca `500`, co sprawia, że Stripe ponawia próbę.
+4. Handler, który rzuci wyjątek, jest logowany i zwraca `500`, co sprawia, że Stripe ponawia próbę. Po drodze `notifyShopOfIncident` trafia do `scheduleBackgroundWork`, więc `RESEND_EMAIL_FROM` dowiaduje się o tym najwyżej raz na godzinę na typ zdarzenia, bez opóźniania odpowiedzi.
 
-`GET|POST /api/auth/$` to drugi handler. Deleguje do `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.server.ts`, które owija `auth.handler(request)`: przed wywołaniem klonuje ciało żądania, żeby odczytać e-mail logowania, i ustala sesję, która właśnie zostanie zniszczona; po wywołaniu nieudany `POST /sign-in/email` staje się zdarzeniem `auth.login_failed`, a udany `POST /sign-out` — zdarzeniem `auth.logout`. Zdarzenie udanego logowania powstaje w innym miejscu — w hooku „after” wtyczki `signInAudit` w `auth.server.ts`, który zapisuje logowanie za każdym razem, gdy ścieżka logowania tworzy sesję, chyba że ta sesja jedynie kontynuuje tę, z którą przyszło żądanie (potwierdzona zmiana adresu e-mail albo konfiguracja uwierzytelniania dwuskładnikowego).
+`GET /api/health` odczytuje D1, KV i R2 i odpowiada `200` albo `503` dla monitora dostępności; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts).
+
+`GET|POST /api/auth/$` to trzeci handler. Deleguje do `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.server.ts`, które owija `auth.handler(request)`: przed wywołaniem klonuje ciało żądania, żeby odczytać e-mail logowania, i ustala sesję, która właśnie zostanie zniszczona; po wywołaniu nieudany `POST /sign-in/email` staje się zdarzeniem `auth.login_failed`, a udany `POST /sign-out` — zdarzeniem `auth.logout`. Zdarzenie udanego logowania powstaje w innym miejscu — w hooku „after” wtyczki `signInAudit` w `auth.server.ts`, który zapisuje logowanie za każdym razem, gdy ścieżka logowania tworzy sesję, chyba że ta sesja jedynie kontynuuje tę, z którą przyszło żądanie (potwierdzona zmiana adresu e-mail albo konfiguracja uwierzytelniania dwuskładnikowego).
 
 ## Wiadomość z kolejki
 
@@ -79,7 +81,7 @@ Dziennik audytu zapisuje konsument kolejki, a nie żądanie, które wygenerował
 1. Rejestrator woła `scheduleAuditLog` albo `scheduleAuditLogFromRequest`, które generuje identyfikator wiersza przez `uuidv7()` i stempluje `createdAt` wartością `Date.now()` w momencie wysłania do kolejki, żeby kolejność przetrwała grupowanie w batche.
 2. `scheduleBackgroundWork` przekazuje obietnicę `env.AUDIT_LOG_QUEUE.send(...)` do `waitUntil`.
 3. Cloudflare dostarcza batch do 50 wiadomości do eksportu `queue` w `src/server.ts`.
-4. `processAuditLogQueueBatch` wstawia cały batch przez `insertAuditLogs`, potwierdza każdą wiadomość, a następnie publikuje unieważnienie realtime dla `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` i `.STATS`, a także dla `ORDER_QUERY_KEYS.ADMIN.ORDERS`, gdy batch zawiera akcję z osi czasu zamówienia, więc otwarte karty panelu pobierają ponownie listę zamówień, statystyki i stronę zamówienia, a ta pokazuje nieudany e-mail o zamówieniu. Jeśli wstawienie rzuci wyjątek, każda wiadomość jest ponawiana; po trzech próbach batch jest tracony, bo nie skonfigurowano kolejki martwych listów.
+4. `processAuditLogQueueBatch` wstawia cały batch przez `insertAuditLogs`, potwierdza każdą wiadomość, a następnie publikuje unieważnienie realtime dla `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` i `.STATS`, a także dla `ORDER_QUERY_KEYS.ADMIN.ORDERS`, gdy batch zawiera akcję z osi czasu zamówienia, więc otwarte karty panelu pobierają ponownie listę zamówień, statystyki i stronę zamówienia, a ta pokazuje nieudany e-mail o zamówieniu. Jeśli wstawienie rzuci wyjątek, każda wiadomość jest ponawiana, a na `RESEND_EMAIL_FROM` idzie e-mail, najwyżej raz na godzinę dla kolejki; po trzech próbach batch jest tracony, bo nie skonfigurowano kolejki martwych listów.
 
 ## Powiązane strony
 

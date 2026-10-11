@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "The fifteen transactional e-mails, the sender domain they need, how they are composed, and how to preview them."
+description: "The sixteen transactional e-mails, the sender domain they need, how they are composed, and how to preview them."
 ---
 
 Every e-mail the shop sends goes out through Resend. The adapter in `src/integrations/resend/` holds the client, one `sendEmail` helper, the builders that turn order rows into e-mail props, and the developer preview renderer. The React Email templates themselves live in `src/presentation/emails/`, because they are presentation.
@@ -78,11 +78,11 @@ The kinds are `verification`, `password-reset`, `newsletter` and `withdrawal`; t
 
 A refusal sends nothing, and the caller answers as if the e-mail had gone out. `withdrawFromGuestOrder` asks only once a statement is recorded, and a refusal holds back both the acknowledgement and the shop's notice; the statement stays on the order, where the admin order page shows it. The senders run only for some addresses, a reset only for an account and a resend only for an unconfirmed one, so a different answer would reveal which. An address past its hourly limit is logged as `[Email] Skipped a <kind> email to <address>: the address reached its hourly limit for this email`. The daily limit is the shop's problem rather than one visitor's, so it is logged with `console.error` and recorded as `email.failed` with the detail `Public <kind> email — the shop reached its daily limit of 50 emails that visitors can request`. Fifty is half of the 100 e-mails a day Resend's free plan sends, which leaves the other half for the order e-mails; on a paid plan without a daily quota it still bounds what a flood costs. Raise the constant if real sign-ups and newsletter confirmations ever come close to it.
 
-Nothing else asks. The order, shipped, cancelled, refunded, payment-failed, new-order, password-changed, account-deleted and change-email e-mails, and the acknowledgement of a withdrawal sent from the account, go straight to `sendEmail`, so a used-up day never holds them back; a withdrawal from the account needs a session and reaches only the address of the customer's own order. The verification e-mail Better Auth sends to a new address once a change of address is confirmed goes through `sendVerificationEmail` and is counted with the others. The requests behind these e-mails also need a Turnstile token; see [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile).
+Nothing else asks. The order, shipped, cancelled, refunded, payment-failed, new-order, password-changed, account-deleted and change-email e-mails, the incident alerts, and the acknowledgement of a withdrawal sent from the account, go straight to `sendEmail`, so a used-up day never holds them back; a withdrawal from the account needs a session and reaches only the address of the customer's own order. The verification e-mail Better Auth sends to a new address once a change of address is confirmed goes through `sendVerificationEmail` and is counted with the others. The requests behind these e-mails also need a Turnstile token; see [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile).
 
 `src/integrations/resend/__test__/resend.public-email-limits.integration.test.ts` runs the limits against a `rate_limit` table: the fourth e-mail of a kind to an address in an hour, the case and spaces of an address, separate kinds and addresses, the hour and the day rolling over, the hash in place of the address, the audit entry for the daily limit, and an unreadable table.
 
-## The fifteen e-mails
+## The sixteen e-mails
 
 | E-mail                        | Template                                                    | Namespace                              | Sent from                                                                                                                                                                                                                     |
 | ----------------------------- | ----------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -99,10 +99,11 @@ Nothing else asks. The order, shipped, cancelled, refunded, payment-failed, new-
 | New order, to the shop        | `src/presentation/emails/new-order.tsx`                     | `emails.new-order`                     | `notifyShopOfNewOrder`, awaited by `handleFulfillCheckoutSession` in `stripe.webhooks.tsx` once the order exists, sent to `RESEND_EMAIL_FROM`                                                                                 |
 | Withdrawal acknowledgement    | `src/presentation/emails/order-withdrawal.tsx`              | `emails.order-withdrawal`              | `acknowledgeOrderWithdrawal`, through `sendOrderWithdrawalEmails` once the statement is recorded: awaited by `withdrawFromCustomerOrder`, and in the background by `withdrawFromGuestOrder` once `admitPublicEmail` admits it |
 | Withdrawal, to the shop       | `src/presentation/emails/order-withdrawal.tsx`              | `emails.order-withdrawal`              | `notifyShopOfOrderWithdrawal`, sent by `sendOrderWithdrawalEmails` with the acknowledgement, sent to `RESEND_EMAIL_FROM`                                                                                                      |
+| Incident alert, to the shop   | `src/presentation/emails/incident-alert.tsx`                | `emails.incident-alert`                |
 | Newsletter confirmation       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` in `newsletter-confirmation.server.ts`, awaited by `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`                                                                                 |
 | Newsletter already subscribed | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribed` in `newsletter-already-subscribed.server.ts`, awaited by `subscribe-to-newsletter.ts` when a confirmed address is submitted by anyone but its signed-in owner                               |
 
-The first five are described in [Better Auth](/docs/integrations/better-auth); the other ten are the ones this adapter builds.
+The first five are described in [Better Auth](/docs/integrations/better-auth); the other eleven are the ones this adapter builds.
 
 Each template exports its own namespace constant beside the component, so the caller cannot drift from the messages it renders:
 
@@ -191,7 +192,9 @@ export const notifyOrderShipped = (orderId: string, origin: string): Promise<boo
 
 `new-order.notification.server.ts` writes to the shop rather than the customer. `notifyShopOfNewOrder(orderId, returnUrl)` sends the notice to `RESEND_EMAIL_FROM`: `sendNewOrderEmail` resolves the origin from `returnUrl` inside the attempt, reads the order with `getAdminOrderDetailRow` and `getAdminOrderItemRows`, the reads behind the admin order page, and renders `new-order.tsx`. The delivery line reuses `resolveDeliveryMethodLabel`, the item rows `mapAdminOrderDetailItem` and the shipping address `resolveAdminOrderDetailAddresses`, and the button opens `ROUTES.ADMIN_ORDER` on that origin.
 
-The locale comes from the order rather than from the current request, so a customer who ordered in Polish is written to in Polish even when an English-speaking admin clicks the button. The shop's new-order notice is always in the shop's language, `I18N.DEFAULT_LOCALE`.
+`incident-alert.notification.server.ts` writes to the shop as well. `notifyShopOfIncident({ detail, kind, reference })` looks the incident up in the `CACHE` KV namespace under `incident-alert:<APP_ENV>:<kind>:<reference>`, returns if the key is there, writes it with a one-hour `expirationTtl` (`INCIDENT_ALERT_SECONDS`) and only then renders `incident-alert.tsx` and sends it to `RESEND_EMAIL_FROM`. A refused send is logged as `[Alert] The <kind> alert to <address> was not sent: …`, and anything thrown on the way is logged as `[Alert] The <kind> alert could not be sent:` and swallowed, so an alert can never fail the webhook or the queue batch that raised it. See [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
+
+The locale comes from the order rather than from the current request, so a customer who ordered in Polish is written to in Polish even when an English-speaking admin clicks the button. The shop's new-order notice and incident alerts are always in the shop's language, `I18N.DEFAULT_LOCALE`.
 
 ## Waiting for the order e-mails
 
@@ -269,7 +272,7 @@ Resend refuses every message whose `from` domain is not verified in the account 
 
 Replies never go to that address. `sendEmail` passes `replyTo: BUSINESS.EMAIL` with every message, so each e-mail carries `Reply-To: kontakt@martebizuteria.pl` and the recipient's mail client addresses an answer there. `kontakt@martebizuteria.pl` must therefore be a mailbox the shop reads: customers send questions, cancellations, withdrawals and complaints there. Which domain the shop sends from is a setting for the owner. The [deploy check](#deploy-check) confirms that Resend would send as `RESEND_EMAIL_FROM`, not that its domain is `martebizuteria.pl`.
 
-The shop's own notice of each new order goes to `RESEND_EMAIL_FROM` itself, in every environment, so that address needs a mailbox the owner reads as well.
+Both the shop's own notice of each new order and the incident alerts go to `RESEND_EMAIL_FROM` itself, in every environment, so that address needs a mailbox the owner reads as well.
 
 ### Verifying a domain
 

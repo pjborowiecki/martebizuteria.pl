@@ -9,6 +9,7 @@ const {
   fulfillCheckout,
   getCheckoutEmailContext,
   getOrderTotalsForEmail,
+  notifyShopOfIncident,
   notifyShopOfNewOrder,
   paymentIntentsRetrieve,
   recordOrderDisputeClosedAudit,
@@ -33,6 +34,7 @@ const {
   fulfillCheckout: vi.fn<(input: object) => Promise<string | undefined>>(),
   getCheckoutEmailContext: vi.fn<(checkoutId: string) => Promise<object | undefined>>(),
   getOrderTotalsForEmail: vi.fn<(orderId: string) => Promise<Record<string, unknown> | undefined>>(),
+  notifyShopOfIncident: vi.fn<(incident: { detail: string; kind: string; reference: string }) => Promise<void>>(),
   notifyShopOfNewOrder: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<void>>(),
   paymentIntentsRetrieve: vi.fn<(id: string, params: object) => Promise<{ payment_method: { type: string } | null }>>(),
   recordOrderDisputeClosedAudit: vi.fn(),
@@ -59,6 +61,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
     paymentIntents: { retrieve: paymentIntentsRetrieve },
   },
 }))
+vi.mock("~/src/integrations/resend/incident-alert.notification.server", () => ({ notifyShopOfIncident }))
 vi.mock("~/src/integrations/resend/new-order.notification.server", () => ({ notifyShopOfNewOrder }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/resend/withdrawal-form.attachment.server", () => ({
@@ -166,6 +169,7 @@ beforeEach(() => {
   clearOrderDispute.mockResolvedValue(undefined)
   sendEmail.mockResolvedValue(undefined)
   notifyShopOfNewOrder.mockResolvedValue(undefined)
+  notifyShopOfIncident.mockResolvedValue(undefined)
   sessionsList.mockResolvedValue({ data: [{ id: "cs_resolved_1" }] })
   couponsDel.mockImplementation((couponId) => Promise.resolve({ deleted: true, id: couponId }))
   couponsRetrieve.mockImplementation((couponId) =>
@@ -260,6 +264,19 @@ describe("checkout session fulfillment", () => {
     expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
   })
 
+  it("fulfills a session whose asynchronous payment succeeded", async () => {
+    await dispatch(checkoutSessionAsyncPaymentSucceededEvent(paidSession({ items: itemsMetadata })))
+
+    expect(fulfillCheckout).toHaveBeenCalledOnce()
+    expect(releaseCheckout).not.toHaveBeenCalled()
+    expect(notifyShopOfNewOrder).toHaveBeenCalledExactlyOnceWith(
+      "order-1",
+      "http://127.0.0.1:3000/checkout?success=true&session_id={CHECKOUT_SESSION_ID}",
+    )
+  })
+})
+
+describe("a paid checkout session that creates no order", () => {
   it("records the paid session it could not turn into an order as an error and lets Stripe retry it", async () => {
     fulfillCheckout.mockRejectedValue(new Error("D1_ERROR: FOREIGN KEY constraint failed"))
     const event = checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata }))
@@ -273,6 +290,7 @@ describe("checkout session fulfillment", () => {
     expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
     expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
+    expect(notifyShopOfIncident).not.toHaveBeenCalled()
   })
 
   it("records a paid session that matches no open checkout and acknowledges it, since a retry cannot help", async () => {
@@ -283,6 +301,11 @@ describe("checkout session fulfillment", () => {
 
     expect(recordOrderFulfillmentFailedAudit).toHaveBeenCalledExactlyOnceWith("cs_test_1", {
       detail: "548,00 PLN — No payment carries Checkout Session cs_test_1",
+    })
+    expect(notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
+      detail: "548,00 PLN — No payment carries Checkout Session cs_test_1",
+      kind: "paidCheckoutWithoutOrder",
+      reference: "cs_test_1",
     })
     expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
@@ -308,17 +331,6 @@ describe("checkout session fulfillment", () => {
     await expect(dispatch(checkoutSessionAsyncPaymentSucceededEvent(session))).rejects.toBe("D1 unavailable")
 
     expect(recordOrderFulfillmentFailedAudit).toHaveBeenCalledExactlyOnceWith("cs_test_1", { detail: "jan@example.com — D1 unavailable" })
-  })
-
-  it("fulfills a session whose asynchronous payment succeeded", async () => {
-    await dispatch(checkoutSessionAsyncPaymentSucceededEvent(paidSession({ items: itemsMetadata })))
-
-    expect(fulfillCheckout).toHaveBeenCalledOnce()
-    expect(releaseCheckout).not.toHaveBeenCalled()
-    expect(notifyShopOfNewOrder).toHaveBeenCalledExactlyOnceWith(
-      "order-1",
-      "http://127.0.0.1:3000/checkout?success=true&session_id={CHECKOUT_SESSION_ID}",
-    )
   })
 })
 

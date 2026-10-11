@@ -15,11 +15,13 @@ const captured: { current: RouteDefinition | undefined } = { current: undefined 
 
 const env = { STRIPE_WEBHOOK_SECRET: "whsec_test" }
 
-const constructEventAsync = vi.fn<(body: string, signature: string, secret: string) => Promise<{ type: string }>>()
+const constructEventAsync = vi.fn<(body: string, signature: string, secret: string) => Promise<{ id: string; type: string }>>()
 
-const handledEvent = vi.fn<(event: { type: string }) => Promise<void>>()
+const handledEvent = vi.fn<(event: { id: string; type: string }) => Promise<void>>()
 
-const webhookHandlers: Record<string, (event: { type: string }) => Promise<void>> = {
+const notifyShopOfIncident = vi.fn<(incident: { detail: string; kind: string; reference: string }) => Promise<void>>()
+
+const webhookHandlers: Record<string, (event: { id: string; type: string }) => Promise<void>> = {
   "checkout.session.completed": handledEvent,
 }
 
@@ -31,6 +33,7 @@ vi.mock("@tanstack/react-router", () => ({
     return options
   },
 }))
+vi.mock("~/src/integrations/resend/incident-alert.notification.server", () => ({ notifyShopOfIncident }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { webhooks: { constructEventAsync } } }))
 vi.mock("~/src/integrations/stripe/stripe.webhooks", () => ({ webhookHandlers }))
 
@@ -51,9 +54,12 @@ const webhookRequest = (signature?: string): Request =>
     method: "POST",
   })
 
+const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
 beforeEach(() => {
   vi.clearAllMocks()
   env.STRIPE_WEBHOOK_SECRET = "whsec_test"
+  notifyShopOfIncident.mockResolvedValue(undefined)
 })
 
 describe("stripe webhook route", () => {
@@ -93,7 +99,7 @@ describe("stripe webhook route", () => {
   })
 
   it("verifies the raw body against the signature and the configured secret", async () => {
-    constructEventAsync.mockResolvedValue({ type: "checkout.session.completed" })
+    constructEventAsync.mockResolvedValue({ id: "evt_1", type: "checkout.session.completed" })
     handledEvent.mockResolvedValue(undefined)
 
     await postWebhook({ request: webhookRequest("sig_1") })
@@ -102,7 +108,7 @@ describe("stripe webhook route", () => {
   })
 
   it("runs the handler registered for the event type and acknowledges it", async () => {
-    const event = { type: "checkout.session.completed" }
+    const event = { id: "evt_1", type: "checkout.session.completed" }
     constructEventAsync.mockResolvedValue(event)
     handledEvent.mockResolvedValue(undefined)
 
@@ -110,10 +116,11 @@ describe("stripe webhook route", () => {
 
     expect(handledEvent).toHaveBeenCalledWith(event)
     await expect(response.json()).resolves.toStrictEqual({ received: true })
+    expect(notifyShopOfIncident).not.toHaveBeenCalled()
   })
 
   it("acknowledges an event nobody handles instead of failing the delivery", async () => {
-    constructEventAsync.mockResolvedValue({ type: "invoice.paid" })
+    constructEventAsync.mockResolvedValue({ id: "evt_2", type: "invoice.paid" })
 
     const response = await postWebhook({ request: webhookRequest("sig_1") })
 
@@ -123,12 +130,45 @@ describe("stripe webhook route", () => {
   })
 
   it("asks stripe to retry when the domain handler throws", async () => {
-    constructEventAsync.mockResolvedValue({ type: "checkout.session.completed" })
+    constructEventAsync.mockResolvedValue({ id: "evt_1", type: "checkout.session.completed" })
     handledEvent.mockRejectedValue(new Error("inventory compensation failed"))
 
     const response = await postWebhook({ request: webhookRequest("sig_1") })
 
     expect(response.status).toBe(HTTP_STATUS.INTERNAL_SERVER_ERROR)
     await expect(response.text()).resolves.toBe("Internal Server Error")
+    expect(consoleError).toHaveBeenCalledWith("[Stripe] Domain logic failed for checkout.session.completed:", expect.any(Error))
+  })
+
+  it("alerts the shop to the failed event under its type, naming the event and the cause", async () => {
+    constructEventAsync.mockResolvedValue({ id: "evt_1", type: "checkout.session.completed" })
+    handledEvent.mockRejectedValue(new Error("inventory compensation failed"))
+
+    await postWebhook({ request: webhookRequest("sig_1") })
+
+    expect(notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
+      detail: "evt_1: inventory compensation failed",
+      kind: "stripeWebhookFailed",
+      reference: "checkout.session.completed",
+    })
+  })
+
+  it("names a cause that is not an Error by its text", async () => {
+    constructEventAsync.mockResolvedValue({ id: "evt_1", type: "checkout.session.completed" })
+    handledEvent.mockRejectedValue("D1 unavailable")
+
+    await postWebhook({ request: webhookRequest("sig_1") })
+
+    expect(notifyShopOfIncident).toHaveBeenCalledWith(expect.objectContaining({ detail: "evt_1: D1 unavailable" }))
+  })
+
+  it("still asks stripe to retry when the alert itself fails", async () => {
+    constructEventAsync.mockResolvedValue({ id: "evt_1", type: "checkout.session.completed" })
+    handledEvent.mockRejectedValue(new Error("inventory compensation failed"))
+    notifyShopOfIncident.mockRejectedValue(new Error("KV unavailable"))
+
+    const response = await postWebhook({ request: webhookRequest("sig_1") })
+
+    expect(response.status).toBe(HTTP_STATUS.INTERNAL_SERVER_ERROR)
   })
 })

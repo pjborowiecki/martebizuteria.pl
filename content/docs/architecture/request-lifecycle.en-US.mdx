@@ -68,9 +68,11 @@ POST /_serverFn/…  (shipOrder)
 1. The handler requires a `stripe-signature` header and `env.STRIPE_WEBHOOK_SECRET`; a missing either is a `400`.
 2. `stripe.webhooks.constructEventAsync` verifies the signature. A failure is logged and answered `400`.
 3. The event type is looked up in `webhookHandlers`. An unhandled type is logged with `console.info` and acknowledged `{ received: true }`, so Stripe stops retrying it.
-4. A handler that throws is logged and answered `500`, which makes Stripe retry.
+4. A handler that throws is logged and answered `500`, which makes Stripe retry. `notifyShopOfIncident` is handed to `scheduleBackgroundWork` on the way, so `RESEND_EMAIL_FROM` hears of it at most once an hour per event type without delaying the answer.
 
-`GET|POST /api/auth/$` is the other handler. It delegates to `handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts`, which wraps `auth.handler(request)`: before the call it clones the body to read the sign-in email and resolves the session that is about to be destroyed; after it, a failed `POST /sign-in/email` becomes an `auth.login_failed` event and a successful `POST /sign-out` becomes an `auth.logout` event. The successful-login event comes from a different place — the `signInAudit` plugin's after hook in `auth.server.ts`, which records a login whenever a sign-in path produces a session, unless that session only continues the one the request arrived with (a confirmed e-mail change or two-factor set-up).
+`GET /api/health` reads D1, KV and R2 and answers `200` or `503` for an uptime monitor; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
+
+`GET|POST /api/auth/$` is the third handler. It delegates to `handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts`, which wraps `auth.handler(request)`: before the call it clones the body to read the sign-in email and resolves the session that is about to be destroyed; after it, a failed `POST /sign-in/email` becomes an `auth.login_failed` event and a successful `POST /sign-out` becomes an `auth.logout` event. The successful-login event comes from a different place — the `signInAudit` plugin's after hook in `auth.server.ts`, which records a login whenever a sign-in path produces a session, unless that session only continues the one the request arrived with (a confirmed e-mail change or two-factor set-up).
 
 ## Queue message
 
@@ -79,7 +81,7 @@ The audit log is written by the queue consumer, not by the request that produced
 1. A recorder calls `scheduleAuditLog` or `scheduleAuditLogFromRequest`, which mints the row id with `uuidv7()` and stamps `createdAt` with `Date.now()` at enqueue time, so ordering survives batching.
 2. `scheduleBackgroundWork` hands the `env.AUDIT_LOG_QUEUE.send(...)` promise to `waitUntil`.
 3. Cloudflare delivers a batch of up to 50 messages to the `queue` export in `src/server.ts`.
-4. `processAuditLogQueueBatch` inserts the whole batch with `insertAuditLogs`, acks each message, then publishes a realtime invalidation for `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` and `.STATS`, plus `ORDER_QUERY_KEYS.ADMIN.ORDERS` when the batch carries an action from an order timeline, so open admin tabs refetch their order list, stats and order page and pick up a failed order email. If the insert throws, every message is retried; after three attempts the batch is dropped, because no dead-letter queue is configured.
+4. `processAuditLogQueueBatch` inserts the whole batch with `insertAuditLogs`, acks each message, then publishes a realtime invalidation for `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` and `.STATS`, plus `ORDER_QUERY_KEYS.ADMIN.ORDERS` when the batch carries an action from an order timeline, so open admin tabs refetch their order list, stats and order page and pick up a failed order email. If the insert throws, every message is retried and `RESEND_EMAIL_FROM` is emailed, at most once an hour for the queue; after three attempts the batch is dropped, because no dead-letter queue is configured.
 
 ## Related pages
 

@@ -1,4 +1,5 @@
 import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
+import { notifyShopOfIncident } from "~/src/integrations/resend/incident-alert.notification.server"
 
 import { type AuditLogInsertRow, insertAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
 import {
@@ -66,5 +67,11 @@ export const processAuditLogQueueBatch = async (batch: MessageBatch<AuditLogQueu
     for (const message of batch.messages) {
       message.retry()
     }
+
+    await notifyShopOfIncident({
+      detail: error instanceof Error ? error.message : String(error),
+      kind: "auditQueueFailed",
+      reference: batch.queue,
+    })
   }
 }
