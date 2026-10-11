@@ -45,12 +45,12 @@ Nie ma konta tworzonego przez seed. Zarejestruj się pod `/auth/sign-up`, używa
 emailAndPassword: {
   enabled: true,
   requireEmailVerification: true,
-  sendResetPassword,
+  sendResetPassword: sendResetPasswordEmail,
 },
 emailVerification: {
   autoSignInAfterVerification: true,
   sendOnSignUp: true,
-  sendVerificationEmail,
+  sendVerificationEmail: sendVerifyEmail,
 },
 ```
 

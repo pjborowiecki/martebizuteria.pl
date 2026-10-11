@@ -7,7 +7,7 @@ Better Auth owns identity: e-mail and password sign-in, Google OAuth, e-mail ver
 
 ## The instance
 
-`src/integrations/better-auth/auth.server.ts` configures one `betterAuth(...)` instance. The pieces worth knowing:
+`src/integrations/better-auth/auth.server.ts` configures one `betterAuth(...)` instance and holds nothing else: the limits, paths and refusals it uses are in `auth.constants.ts`, the logic of its hooks is in `auth.hooks.server.ts`, its audit plugins are in `auth.audit.server.ts`, and its e-mail callbacks are use cases of the verification, account and user modules. The pieces worth knowing:
 
 | Option                         | Value                                                                                                                                                                                                                                                                   |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -27,13 +27,13 @@ Better Auth owns identity: e-mail and password sign-in, Google OAuth, e-mail ver
 | `account.encryptOAuthTokens`   | `true`                                                                                                                                                                                                                                                                  |
 | `telemetry`                    | Disabled                                                                                                                                                                                                                                                                |
 | `user.additionalFields`        | `timezone` (string, optional, accepted as input)                                                                                                                                                                                                                        |
-| `user.changeEmail`             | Enabled, with `sendChangeEmailConfirmation`                                                                                                                                                                                                                             |
+| `user.changeEmail`             | Enabled, with `sendChangeEmailConfirmationEmail`                                                                                                                                                                                                                        |
 
-Plugins: `admin({ ac, adminRoles, defaultRole, roles })`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })`, the local `signInAudit` and `accountSecurityAudit`, and `tanstackStartCookies()`. The last one is what makes Better Auth's cookies work with TanStack Start's response handling, and it must stay last in the array.
+Plugins: `admin({ ac, adminRoles, defaultRole, roles })`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })`, the local `signInAudit` and `accountSecurityAudit` from `auth.audit.server.ts`, and `tanstackStartCookies()`. The last one is what makes Better Auth's cookies work with TanStack Start's response handling, and it must stay last in the array.
 
 ### Built-in rate limiting
 
-Better Auth's own limiter is enabled with `customStorage: authRateLimitStorage` from `src/lib/rate-limit.ts`, a global 100 requests per 60 seconds, plus per-endpoint rules keyed off `ROUTES.API_AUTH`:
+Better Auth's own limiter is enabled with `customStorage: authRateLimitStorage` from `src/lib/rate-limit.ts`, a global 100 requests per 60 seconds, plus per-endpoint rules keyed off `ROUTES.API_AUTH` (`RATE_LIMIT_CUSTOM_RULES` in `auth.constants.ts`):
 
 | Endpoint                  | Limit per 60 s |
 | ------------------------- | -------------- |
@@ -46,7 +46,7 @@ This is separate from the application's own `withRateLimit` middleware described
 
 ### Database hooks
 
-`databaseHooks` is where account events reach the rest of the application:
+`databaseHooks` is where account events reach the rest of the application, through `refuseAdminProviderSignIn`, `handleUserCreated`, `handleUserUpdated` and `handleUserDeleted` in `auth.hooks.server.ts`:
 
 - `user.create.after` calls `scheduleAdminCustomersInvalidation()` and `recordCustomerRegisteredAudit(...)`.
 - `user.update.after` and `user.delete.after` both call `scheduleAdminCustomersInvalidation()`, so the admin customer list refreshes without a poll.
@@ -55,7 +55,7 @@ This is separate from the application's own `withRateLimit` middleware described
 
 ### Account deletion
 
-`user.deleteUser.beforeDelete` calls `eraseAccountData(user)` (`src/modules/user/user.erasure.server.ts`), which deletes the account's Stripe customer with its saved cards and then the account's audit log entries and newsletter subscription. When Stripe cannot delete the customer, it returns `false` and the hook throws `APIError.from("SERVICE_UNAVAILABLE", { code: "STRIPE_CUSTOMER_NOT_DELETED" })`, so the request answers `503` and Better Auth deletes nothing. The erasure cannot live in `databaseHooks.user.delete.before`: `internalAdapter.deleteUser` deletes the sessions and `account` rows before it runs that hook, so a Stripe failure there would leave an account without its password. `auth.api.removeUser` has no `beforeDelete`, so `deleteCustomer` calls `eraseAccountData` itself before it. See [Account: Closing the account](/docs/features/account#closing-the-account).
+`user.deleteUser.beforeDelete`, `requireAccountDataErased` in `auth.hooks.server.ts`, calls `eraseAccountData(user)` (`src/modules/user/user.erasure.server.ts`), which deletes the account's Stripe customer with its saved cards and then the account's audit log entries and newsletter subscription. When Stripe cannot delete the customer, it returns `false` and the hook throws `APIError.from("SERVICE_UNAVAILABLE", { code: "STRIPE_CUSTOMER_NOT_DELETED" })`, so the request answers `503` and Better Auth deletes nothing. The erasure cannot live in `databaseHooks.user.delete.before`: `internalAdapter.deleteUser` deletes the sessions and `account` rows before it runs that hook, so a Stripe failure there would leave an account without its password. `auth.api.removeUser` has no `beforeDelete`, so `deleteCustomer` calls `eraseAccountData` itself before it. See [Account: Closing the account](/docs/features/account#closing-the-account).
 
 ### Sign-in audit
 
@@ -79,7 +79,7 @@ Better Auth awaits `emailAndPassword.onPasswordReset({ user }, request)` after s
 
 ### Account security audit
 
-The `accountSecurityAudit` plugin records the changes to an account that Better Auth makes, from after hooks, so they are caught whichever client calls the endpoint. A hook records nothing when the endpoint answered with an error or no session called it. `/change-password` records `auth.password_changed`, and `auth.sessions_revoked` too when the body asks to revoke the other sessions; `/two-factor/disable` records `auth.two_factor_disabled`; and `/revoke-session`, `/revoke-sessions` and `/revoke-other-sessions` record `auth.sessions_revoked`, each credited to the signed-in account. `/two-factor/verify-totp` records `auth.two_factor_enabled` only when the caller arrived with two-factor off and `newSession` leaves with it on, so the code that completes a two-factor sign-in records nothing here. `/verify-email` verifies its token again with `verifyJWT` from `better-auth/crypto` and records `auth.email_changed`, with `old → new` as the detail, only for a `change-email-verification` token whose new address the re-issued session now carries; the confirmation sent to the old address and an ordinary address verification record nothing. The admin endpoints `/admin/set-role`, `/admin/ban-user`, `/admin/unban-user`, `/admin/update-user`, `/admin/revoke-user-sessions` and `/admin/set-user-password` look up the account named by `userId` and record the matching role, ban, e-mail, session or password event against it, credited to the admin. `/admin/revoke-user-session`, which names a session only by its token, and `/admin/impersonate-user` are not recorded. The recorders are chosen per path inside the hooks rather than kept in a module-level table, because `auth.server.ts`, `audit-log.events.server.ts`, `audit-log.record.server.ts` and `auth.session.ts` import one another, and a table built while the cycle is still loading could capture a recorder that is not defined yet. See [Audit log](/docs/features/audit-log#account-security-events) for the full list.
+The `accountSecurityAudit` plugin records the changes to an account that Better Auth makes, from after hooks, so they are caught whichever client calls the endpoint. A hook records nothing when the endpoint answered with an error or no session called it. `/change-password` records `auth.password_changed`, and `auth.sessions_revoked` too when the body asks to revoke the other sessions; `/two-factor/disable` records `auth.two_factor_disabled`; and `/revoke-session`, `/revoke-sessions` and `/revoke-other-sessions` record `auth.sessions_revoked`, each credited to the signed-in account. `/two-factor/verify-totp` records `auth.two_factor_enabled` only when the caller arrived with two-factor off and `newSession` leaves with it on, so the code that completes a two-factor sign-in records nothing here. `/verify-email` verifies its token again with `verifyJWT` from `better-auth/crypto` and records `auth.email_changed`, with `old → new` as the detail, only for a `change-email-verification` token whose new address the re-issued session now carries; the confirmation sent to the old address and an ordinary address verification record nothing. The admin endpoints `/admin/set-role`, `/admin/ban-user`, `/admin/unban-user`, `/admin/update-user`, `/admin/revoke-user-sessions` and `/admin/set-user-password` look up the account named by `userId` and record the matching role, ban, e-mail, session or password event against it, credited to the admin. `/admin/revoke-user-session`, which names a session only by its token, and `/admin/impersonate-user` are not recorded. The recorders are chosen per path inside the hooks rather than kept in a module-level table, because `auth.server.ts`, `auth.audit.server.ts`, `audit-log.events.server.ts`, `audit-log.record.server.ts` and `auth.session.ts` import one another, and a table built while the cycle is still loading could capture a recorder that is not defined yet. See [Audit log](/docs/features/audit-log#account-security-events) for the full list.
 
 ### Two-factor authentication for admins
 
@@ -100,7 +100,7 @@ Better Auth's other ways to open a session for an existing admin do not skip the
 
 ### Transactional e-mail
 
-Five of the sixteen application e-mails are sent from this file: `sendVerificationEmail`, `sendResetPassword`, `sendChangeEmailConfirmation`, `sendPasswordChangedEmail` and `sendAccountDeletedEmail`. Each loads its own message namespace, renders its React Email component and hands it to `deliverAuthEmail`, which calls `sendEmail`. When Resend refuses the message, `recordAuthEmailFailure` logs `[Auth] Failed to send <kind> email to <address>: <error>` and records an `email.failed` audit entry. `resolveEmailVerificationCallbackUrl` additionally rewrites a verification link that would land on the storefront home so it lands on `/account/overview?verified=true` instead. See [Resend](/docs/integrations/resend).
+Five of the sixteen application e-mails are sent on Better Auth's callbacks, each by a use case of the module it concerns: `sendVerifyEmail` and `sendResetPasswordEmail` in `src/modules/verification/use-cases/`, `sendChangeEmailConfirmationEmail` and `sendPasswordChangedEmail` in `src/modules/account/use-cases/`, and `sendAccountDeletedEmail` in `src/modules/user/use-cases/`. Each loads its own message namespace, renders its React Email component and hands it to `deliverAuthEmail` in `auth.email-delivery.server.ts`, which calls `sendEmail`. When Resend refuses the message, `recordAuthEmailFailure` logs `[Auth] Failed to send <kind> email to <address>: <error>` and records an `email.failed` audit entry. `resolveEmailVerificationCallbackUrl` in `send-verify-email.server.ts` additionally rewrites a verification link that would land on the storefront home so it lands on `/account/overview?verified=true` instead. See [Resend](/docs/integrations/resend).
 
 The links in the first three come from Better Auth's `url`, which it builds on the request host after checking it against `baseURL.allowedHosts`. `sendAccountDeletedEmail` links to the storefront home on the `origin` it is given, which `deleteCustomer` resolves with `resolveRequestOrigin(getRequest())` before `removeUser`. After a self-service deletion, `afterDelete(user, request)` resolves it with `resolveRequestOrigin(request)` from the request Better Auth passes the hook. A host outside the list, or a deletion that came with no request, is logged and audited as an unsent goodbye email instead of turning the finished deletion into a 500. `sendPasswordChangedEmail` resolves the origin of its sign-in link the same way, with `resolveRequestOrigin(request)` on the request Better Auth passes `onPasswordReset`.
 
@@ -119,21 +119,19 @@ Removing `advanced.backgroundTasks` would not change the background rows: withou
 
 ### Email delivery gate
 
-`sendEmail` marks the sender unavailable for five minutes when Resend refuses every email, for example because the sending domain is not verified (see [Resend](/docs/integrations/resend)). While the flag is set, `hooks.before` refuses `/sign-up/email`, `/request-password-reset`, `/send-verification-email` and `/change-email` before the endpoint runs:
+`sendEmail` marks the sender unavailable for five minutes when Resend refuses every email, for example because the sending domain is not verified (see [Resend](/docs/integrations/resend)). While the flag is set, `hooks.before`, which is `guardAuthRequest` in `auth.hooks.server.ts`, refuses `/sign-up/email`, `/request-password-reset`, `/send-verification-email` and `/change-email` before the endpoint runs:
 
 ```ts
-hooks: {
-  before: createAuthMiddleware(async (ctx) => {
-    if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
-      throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
-    }
+export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
+  if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
+    throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
+  }
 
-    const botCheckAction = BOT_CHECKED_AUTH_PATHS.get(ctx.path)
-    if (botCheckAction !== undefined && !(await passesBotCheck(ctx.request, botCheckAction))) {
-      throw APIError.from("FORBIDDEN", BOT_CHECK_FAILED)
-    }
-  }),
-},
+  const botCheckAction = BOT_CHECKED_AUTH_PATHS.get(ctx.path)
+  if (botCheckAction !== undefined && !(await passesBotCheck(ctx.request, botCheckAction))) {
+    throw APIError.from("FORBIDDEN", BOT_CHECK_FAILED)
+  }
+})
 ```
 
 The answer is `503` with `EMAIL_DELIVERY_UNAVAILABLE`, shown as "We can't send emails at the moment, so nothing has been changed. Please try again in a few minutes." No account is created, no token is stored, and known and unknown addresses get the same answer. The paths come from `ROUTES.API_AUTH`. Sign-in, verification links, account deletion and every other endpoint pass straight through without reading KV. The second check in the hook is the bot check; see [Bot check and email limits](#bot-check-and-email-limits).
@@ -154,11 +152,11 @@ Sign-up, the password-reset request and the verification resend make the shop se
 
 **Bot check.** After the email delivery gate, `hooks.before` looks the path up in `BOT_CHECKED_AUTH_PATHS`, which maps `/sign-up/email`, `/request-password-reset` and `/send-verification-email` to the Turnstile actions `sign-up`, `password-reset` and `verification-resend`. `passesBotCheck` reads the token from the `x-turnstile-token` header (`TURNSTILE_TOKEN_HEADER`), refuses a missing, empty or overlong one with `turnstileTokenSchema`, and refuses a call that reached the hook without a request. Otherwise it asks `passesTurnstile` whether siteverify confirms the token for that action on the hostname of the request URL. A refusal is `403` with `BOT_CHECK_FAILED`, before an account, a reset token or an email exists, and it reads the same for every address. `SignUpWithPasswordForm`, `ForgotPasswordForm` and `UnverifiedEmailNotice` each run `useTurnstileToken` with their action, keep its container above their button and send the token in `fetchOptions.headers`; a widget that fails and a refused token both show "We could not finish the check that keeps bots out. Please try again." `/change-email` needs a session and is not checked. See [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile).
 
-**Emails per address.** `sendVerificationEmail` and `sendResetPassword` first ask `admitPublicEmail` from `src/integrations/resend/resend.public-email-limits.server.ts`, with the kind `verification` or `password-reset`. One address gets at most three emails of each kind an hour. Past that, the hook returns without sending and logs `[Email] Skipped a <kind> email to <address>: the address reached its hourly limit for this email`, and the endpoint answers exactly as it does after a send: sign-up and the reset request keep their generic answers, and the resend answers `200`. A refusal there would be given only for an address with an account, or with an unconfirmed one, and would reveal it.
+**Emails per address.** `sendVerifyEmail` and `sendResetPasswordEmail` first ask `admitPublicEmail` from `src/integrations/resend/resend.public-email-limits.server.ts`, with the kind `verification` or `password-reset`. One address gets at most three emails of each kind an hour. Past that, the hook returns without sending and logs `[Email] Skipped a <kind> email to <address>: the address reached its hourly limit for this email`, and the endpoint answers exactly as it does after a send: sign-up and the reset request keep their generic answers, and the resend answers `200`. A refusal there would be given only for an address with an account, or with an unconfirmed one, and would reveal it.
 
-**Emails per day.** The same call counts every email visitors can make the shop send, these two kinds and the newsletter's, against 50 a day for the whole shop. Past that, the email is skipped with the same answer, logged with `console.error` and recorded as `email.failed` with the detail `Public <kind> email — the shop reached its daily limit of 50 emails that visitors can request`, so the audit log shows that customers are missing emails. A sign-up still creates the account, and its owner can ask for a new link once the day has passed. The order, password-changed, account-deleted and change-email confirmation emails never go through `admitPublicEmail`. The verification email Better Auth sends to a new address once a change of address is confirmed does, because it is also `sendVerificationEmail`. See [Resend: Emails visitors can request](/docs/integrations/resend#emails-visitors-can-request).
+**Emails per day.** The same call counts every email visitors can make the shop send, these two kinds and the newsletter's, against 50 a day for the whole shop. Past that, the email is skipped with the same answer, logged with `console.error` and recorded as `email.failed` with the detail `Public <kind> email — the shop reached its daily limit of 50 emails that visitors can request`, so the audit log shows that customers are missing emails. A sign-up still creates the account, and its owner can ask for a new link once the day has passed. The order, password-changed, account-deleted and change-email confirmation emails never go through `admitPublicEmail`. The verification email Better Auth sends to a new address once a change of address is confirmed does, because it is also `sendVerifyEmail`. See [Resend: Emails visitors can request](/docs/integrations/resend#emails-visitors-can-request).
 
-`auth.server.test.ts` covers the hook's three paths, the token checks and the paths it leaves alone. `auth.bot-check.integration.test.ts` sends forged and missing tokens through the real handler, and `auth.email-delivery.integration.test.ts` shows a reset request and a resend past the hourly limit answering like any other, a sign-up on a used-up day still creating the account, and an order email still going out on that day.
+`auth.hooks.server.test.ts` covers the hook's three paths, the token checks and the paths it leaves alone. `auth.bot-check.integration.test.ts` sends forged and missing tokens through the real handler, and `auth.email-delivery.integration.test.ts` shows a reset request and a resend past the hourly limit answering like any other, a sign-up on a used-up day still creating the account, and an order email still going out on that day.
 
 ## Roles and permissions
 

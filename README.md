@@ -218,7 +218,7 @@ src/
   routes/                     69 locale-free file routes + 5 API handlers
   modules/{feature}/          42 domain modules — schema, Zod, types, constants, utils
     *.accessors.ts              unauthenticated data access (reads and writes), 25 files
-    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 144 files
+    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 149 files
   modules/_core/              Shared error codes, HTTP statuses, currency, pagination, CSV, column filters
   integrations/{vendor}/      15 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, cloudflare-turnstile, inpost, use-intl,
                                 fumadocs, mdxeditor, tanstack-query, realtime-invalidation, gsap, lenis, react-day-picker
@@ -246,16 +246,20 @@ Conventions that are enforced rather than suggested:
 
 Authentication and authorization entry points are in [`src/integrations/better-auth/`](src/integrations/better-auth):
 
-| File                  | Responsibility                                                                                                          |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `auth.server.ts`      | Better Auth configuration: adapter, providers, plugins, rate-limit rules, database hooks, email sends.                  |
-| `auth.access.ts`      | Roles, the permission statement matrix, `hasAdminAccess`, `needsTwoFactorSetup` and `hasPermission`.                    |
-| `auth.middleware.ts`  | `withRequest`, `authorized(permission?)`, `withRateLimit`, `assertWithinRateLimit` — trust boundary.                    |
-| `auth.session.ts`     | Per-request session memoization, the client session query options and `clearCacheOnUserChange`.                         |
-| `auth.routes.ts`      | `requireSignedIn`, `requireAdminRole`, `requireAdmin`, `requireCustomer`, `redirectIfSignedIn` and post-auth redirects. |
-| `auth.client.ts`      | Browser auth client with the matching plugin set.                                                                       |
-| `auth.constraints.ts` | Password length bounds shared by the server config and the Zod schemas.                                                 |
-| `auth.errors.ts`      | Maps Better Auth API error codes to translation keys.                                                                   |
+| File                            | Responsibility                                                                                                          |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `auth.server.ts`                | Better Auth configuration only: adapter, providers, plugins, rate limits, and the hooks and email senders it names.     |
+| `auth.constants.ts`             | Better Auth's limits, the auth paths it guards and audits, and its refusals.                                            |
+| `auth.hooks.server.ts`          | The request gate, the database hooks and the password-reset, verification and deletion hooks.                           |
+| `auth.audit.server.ts`          | The `signInAudit` and `accountSecurityAudit` plugins.                                                                   |
+| `auth.email-delivery.server.ts` | `deliverAuthEmail`, `requireAuthEmailDelivery` and `recordAuthEmailFailure` for the account e-mails.                    |
+| `auth.access.ts`                | Roles, the permission statement matrix, `hasAdminAccess`, `needsTwoFactorSetup` and `hasPermission`.                    |
+| `auth.middleware.ts`            | `withRequest`, `authorized(permission?)`, `withRateLimit`, `assertWithinRateLimit` — trust boundary.                    |
+| `auth.session.ts`               | Per-request session memoization, the client session query options and `clearCacheOnUserChange`.                         |
+| `auth.routes.ts`                | `requireSignedIn`, `requireAdminRole`, `requireAdmin`, `requireCustomer`, `redirectIfSignedIn` and post-auth redirects. |
+| `auth.client.ts`                | Browser auth client with the matching plugin set.                                                                       |
+| `auth.constraints.ts`           | Password length bounds shared by the server config and the Zod schemas.                                                 |
+| `auth.errors.ts`                | Maps Better Auth API error codes to translation keys.                                                                   |
 
 ## Problems worth talking about
 
@@ -396,12 +400,12 @@ Current measured coverage, from `coverage/coverage-summary.json`:
 
 | Metric     | Covered / total | Percent | Configured gate |
 | ---------- | --------------- | ------- | --------------- |
-| Statements | 21 125 / 21 125 | 100%    | 100             |
+| Statements | 21 135 / 21 135 | 100%    | 100             |
 | Branches   | 9 712 / 9 712   | 100%    | 100             |
 | Functions  | 5 905 / 5 905   | 100%    | 100             |
-| Lines      | 20 225 / 20 225 | 100%    | 100             |
+| Lines      | 20 236 / 20 236 | 100%    | 100             |
 
-1 100 test files — 426 unit, 98 integration and 576 component — hold 13 698 tests, many of them generated by 607 `it.each`, `test.each` and `describe.each` tables, across about 170 000 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
+1 108 test files — 434 unit, 98 integration and 576 component — hold 13 708 tests, many of them generated by 607 `it.each`, `test.each` and `describe.each` tables, across about 170 000 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
 
 Every configured threshold is 100%, so a change that leaves a statement, branch, function or line uncovered fails `bun run test:coverage` and CI. `autoUpdate` is off, so the thresholds never move on their own.
 

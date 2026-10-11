@@ -124,7 +124,7 @@ The same pattern appears in `list-customer-orders.ts`, `list-customer-sessions.t
 
 Two limiters share the `rate_limit` table and its counting function, `withinRateLimit` in `src/lib/rate-limit.ts`.
 
-**Better Auth's own**, configured in `auth.server.ts` with `customStorage: authRateLimitStorage`, a 100-request default per 60 s window and custom rules:
+**Better Auth's own**, configured in `auth.server.ts` with `customStorage: authRateLimitStorage`, a 100-request default per 60 s window and the custom rules of `RATE_LIMIT_CUSTOM_RULES` in `auth.constants.ts`:
 
 | Route                     | Max per minute |
 | ------------------------- | -------------- |

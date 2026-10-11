@@ -168,7 +168,7 @@ Szablony e-mail w `src/presentation/emails/` eksportują stałą z nazwą przest
 const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
 ```
 
-`auth.server.ts` wywołuje `loadNamespace` bezpośrednio i przekazuje do szablonu zarówno `locale`, jak i `messages`, używając po stronie serwera `createTranslator` z `use-intl`. Oba języki każdego szablonu podejrzysz pod `/dev/emails` — zobacz [Debugowanie lokalne](/docs/guides/local-debugging).
+Przypadki użycia wysyłające e-maile, na przykład `src/modules/verification/use-cases/send-verify-email.server.ts`, wywołują `loadNamespace` bezpośrednio i przekazują do szablonu zarówno `locale`, jak i `messages`, używając po stronie serwera `createTranslator` z `use-intl`. Oba języki każdego szablonu podejrzysz pod `/dev/emails` — zobacz [Debugowanie lokalne](/docs/guides/local-debugging).
 
 ## Dodawanie przestrzeni nazw: lista kontrolna
 

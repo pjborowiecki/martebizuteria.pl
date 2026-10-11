@@ -5,10 +5,11 @@ import type * as zod from "zod"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
-import { auth, sendAccountDeletedEmail } from "~/src/integrations/better-auth/auth.server"
+import { auth } from "~/src/integrations/better-auth/auth.server"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { sendAccountDeletedEmail } from "~/src/modules/user/use-cases/send-account-deleted-email.server"
 import { getUserById } from "~/src/modules/user/user.accessors"
 import { USER_ERROR_CODES, USER_MUTATION_KEYS } from "~/src/modules/user/user.constants"
 import { eraseAccountData } from "~/src/modules/user/user.erasure.server"

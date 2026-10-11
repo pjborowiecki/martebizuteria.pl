@@ -175,7 +175,7 @@ Szczegóły warte uwagi:
 
 ### Zdarzenia bezpieczeństwa konta
 
-Zmiany konta są zapisywane z wnętrza Better Auth, więc zostają odnotowane niezależnie od tego, który klient wywołuje endpoint. `auth.server.ts` rejestruje wtyczkę `accountSecurityAudit` obok `signInAudit`. Jej hooki `after` działają, gdy endpoint już odpowiedział, pomijają odpowiedź będącą błędem, a wywołującego czytają z `ctx.context.session`, adres zaś z nagłówka `cf-connecting-ip` żądania:
+Zmiany konta są zapisywane z wnętrza Better Auth, więc zostają odnotowane niezależnie od tego, który klient wywołuje endpoint. `auth.server.ts` rejestruje wtyczkę `accountSecurityAudit` obok `signInAudit`; obie są zdefiniowane w `auth.audit.server.ts`. Jej hooki `after` działają, gdy endpoint już odpowiedział, pomijają odpowiedź będącą błędem, a wywołującego czytają z `ctx.context.session`, adres zaś z nagłówka `cf-connecting-ip` żądania:
 
 | Endpoint                                                        | Zapis                                                                                                                                |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
