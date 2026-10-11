@@ -118,19 +118,23 @@ describe("deployment hosts", () => {
 })
 
 describe("Worker domains in wrangler.jsonc", () => {
-  it.each(["preview", "production"] as const)(
-    "attaches each %s host besides workers.dev as a custom domain and keeps the workers.dev host the live-site check asks",
-    (mode) => {
-      const customDomains = appHostsForMode(mode).filter((host) => host !== WORKERS_DEV_HOSTS[mode])
-      const config = readWorkerConfig(mode)
+  it("attaches each preview host besides workers.dev as a custom domain and keeps the workers.dev host the live-site check asks", () => {
+    const customDomains = appHostsForMode("preview").filter((host) => host !== WORKERS_DEV_HOSTS.preview)
+    const config = readWorkerConfig("preview")
 
-      expect(config).toHaveProperty(
-        "routes",
-        customDomains.map((pattern) => ({ custom_domain: true, pattern })),
-      )
-      expect(config).toHaveProperty("workers_dev", true)
-    },
-  )
+    expect(config).toHaveProperty(
+      "routes",
+      customDomains.map((pattern) => ({ custom_domain: true, pattern })),
+    )
+    expect(config).toHaveProperty("workers_dev", true)
+  })
+
+  it("keeps the production Worker on its workers.dev host, with no custom domain, until the shop goes live", () => {
+    const config = readWorkerConfig("production")
+
+    expect(config).toHaveProperty("routes", [])
+    expect(config).toHaveProperty("workers_dev", true)
+  })
 
   it.each(["development", "test"])("attaches no domain to the %s Worker", (mode) => {
     expect(readWorkerConfig(mode)).not.toHaveProperty("routes.0")

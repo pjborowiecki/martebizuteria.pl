@@ -138,7 +138,7 @@ Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.
 | Stripe   | `https://<host>/api/webhooks/stripe`      | `STRIPE_WEBHOOK_SECRET`                                           |
 | InPost   | `https://<host>/api/webhooks/inpost`      | Not verified; the route reads each named shipment back from ShipX |
 
-On a deployed Worker, `<host>` is its custom domain, `martebizuteria.pl` in production and `preview.martebizuteria.pl` on preview, or its `workers.dev` name, which keeps answering. The auth handler is `src/routes/api/auth.$.ts`, mounted at `/api/auth/$`; the Stripe handler is `src/routes/api/webhooks.stripe.ts` and accepts `POST` only. The InPost handler is `src/routes/api/webhooks.inpost.ts`; it answers `GET` with 200 for InPost Manager's address check and acts on a `POST`, up to 120 a minute from one address. The host the Stripe endpoint is registered on does not change any email: the order confirmation links to the address the checkout was made on, which the session's `return_url` carries.
+On a deployed Worker, `<host>` is its `workers.dev` name, or on preview its custom domain `preview.martebizuteria.pl`; production gets `martebizuteria.pl` when the shop goes live. The auth handler is `src/routes/api/auth.$.ts`, mounted at `/api/auth/$`; the Stripe handler is `src/routes/api/webhooks.stripe.ts` and accepts `POST` only. The InPost handler is `src/routes/api/webhooks.inpost.ts`; it answers `GET` with 200 for InPost Manager's address check and acts on a `POST`, up to 120 a minute from one address. The host the Stripe endpoint is registered on does not change any email: the order confirmation links to the address the checkout was made on, which the session's `return_url` carries.
 
 ## Declared but not wired
 
