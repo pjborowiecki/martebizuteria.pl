@@ -295,17 +295,13 @@ export interface AdminCustomersListParams extends ListPaginationParams {
   readonly statFilter?: AdminCustomerStatFilter | undefined
 }
 
-export const getAdminCustomersQuery = db.query.user
-  .findMany({
-    orderBy: (customers, { desc: descFn }) => [descFn(customers.createdAt)],
-  })
-  .prepare()
-export const getAdminCustomerTotalCountQuery = db
-  .select({
-    count: count(),
-  })
-  .from(user)
-  .prepare()
+export const getAdminCustomerTotalCountQuery = () =>
+  db
+    .select({
+      count: count(),
+    })
+    .from(user)
+
 const orderQuantityTotalsSubquery = db
   .select({
     quantity: sql<number>`coalesce(sum(${orderItem.quantity}), 0)`.as("quantity"),
@@ -316,12 +312,13 @@ const orderQuantityTotalsSubquery = db
   .groupBy(order.id)
   .as("order_quantity_totals")
 
-export const getAverageProductsPerOrderQuery = db
-  .select({
-    value: sql<number>`coalesce(avg(order_quantity_totals.quantity), 0)`,
-  })
-  .from(orderQuantityTotalsSubquery)
-  .prepare()
+export const getAverageProductsPerOrderQuery = () =>
+  db
+    .select({
+      value: sql<number>`coalesce(avg(order_quantity_totals.quantity), 0)`,
+    })
+    .from(orderQuantityTotalsSubquery)
+
 const customerOrderRollupStatsSubquery = db
   .select({
     completedRevenue:
@@ -336,14 +333,14 @@ const customerOrderRollupStatsSubquery = db
   .groupBy(order.userId)
   .as("customer_order_rollup")
 
-export const getAdminCustomerOrderRollupStatsQuery = db
-  .select({
-    averageLtv: sql<number>`coalesce(avg(customer_order_rollup.completed_revenue), 0)`,
-    customersWithOrders: sql<number>`count(*)`,
-    repeatCustomers: sql<number>`sum(case when customer_order_rollup.order_count >= ${ADMIN_CUSTOMER_MIN_REPEAT_ORDERS} then 1 else 0 end)`,
-  })
-  .from(customerOrderRollupStatsSubquery)
-  .prepare()
+export const getAdminCustomerOrderRollupStatsQuery = () =>
+  db
+    .select({
+      averageLtv: sql<number>`coalesce(avg(customer_order_rollup.completed_revenue), 0)`,
+      customersWithOrders: sql<number>`count(*)`,
+      repeatCustomers: sql<number>`sum(case when customer_order_rollup.order_count >= ${ADMIN_CUSTOMER_MIN_REPEAT_ORDERS} then 1 else 0 end)`,
+    })
+    .from(customerOrderRollupStatsSubquery)
 
 export const getDefaultCustomerAddressFullQuery = (userId: string) =>
   db

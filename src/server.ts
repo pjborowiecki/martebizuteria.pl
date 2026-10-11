@@ -4,26 +4,27 @@ import { REALTIME_INVALIDATION_HUB } from "~/src/integrations/realtime-invalidat
 import { handleRealtimeInvalidationWebSocket } from "~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server"
 import { resolveLocale } from "~/src/integrations/use-intl/i18n.middleware"
 
-import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modules/audit-log/audit-log.queue.server"
-import { isNewsletterQueueBatch, processNewsletterQueueBatch } from "~/src/modules/newsletter-campaign/newsletter-campaign.queue.server"
+import { type AuditLogQueueMessage } from "~/src/modules/audit-log/audit-log.queue.server"
 import { type NewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.types"
+import { isNewsletterQueueBatch } from "~/src/modules/newsletter-campaign/newsletter-campaign.utils"
 
 import { executionContextStorage } from "~/src/lib/background"
 import { serializeCookie } from "~/src/lib/cookie"
-import { enforceRetentionPeriods } from "~/src/lib/retention"
 import { createContentSecurityPolicyNonce, withSecurityHeaders } from "~/src/lib/security-headers"
 import { generateRobotsTxt, generateSitemapXml } from "~/src/lib/seo"
-import { listSitemapPages } from "~/src/lib/sitemap"
 
 import { ROUTES } from "~/src/routes"
 
-const sitemapResponse = async (origin: string): Promise<Response> =>
-  new Response(generateSitemapXml(origin, await listSitemapPages()), {
+const sitemapResponse = async (origin: string): Promise<Response> => {
+  const { listSitemapPages } = await import("~/src/lib/sitemap")
+
+  return new Response(generateSitemapXml(origin, await listSitemapPages()), {
     headers: {
       "Cache-Control": "public, max-age=86400",
       "Content-Type": "application/xml; charset=utf-8",
     },
   })
+}
 
 const robotsResponse = (origin: string, appEnv: string): Response =>
   new Response(generateRobotsTxt(origin, appEnv), {
@@ -114,14 +115,17 @@ const server: ExportedHandler<Env, WorkerQueueMessage> = {
   },
   async queue(batch: MessageBatch<WorkerQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
     if (isNewsletterQueueBatch(batch)) {
+      const { processNewsletterQueueBatch } = await import("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server")
       await processNewsletterQueueBatch(batch)
     }
 
     if (isAuditLogQueueBatch(batch)) {
+      const { processAuditLogQueueBatch } = await import("~/src/modules/audit-log/audit-log.queue.server")
       await processAuditLogQueueBatch(batch)
     }
   },
   async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+    const { enforceRetentionPeriods } = await import("~/src/lib/retention")
     await enforceRetentionPeriods(new Date(controller.scheduledTime))
   },
 }

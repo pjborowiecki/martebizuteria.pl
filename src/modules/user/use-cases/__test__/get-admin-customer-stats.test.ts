@@ -9,9 +9,9 @@ const accessors = vi.hoisted(() => ({
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: vi.fn() }))
 vi.mock("~/src/modules/user/user.accessors", () => ({
-  getAdminCustomerOrderRollupStatsQuery: { execute: accessors.rollup },
-  getAdminCustomerTotalCountQuery: { execute: accessors.total },
-  getAverageProductsPerOrderQuery: { execute: accessors.averageProductsPerOrder },
+  getAdminCustomerOrderRollupStatsQuery: accessors.rollup,
+  getAdminCustomerTotalCountQuery: accessors.total,
+  getAverageProductsPerOrderQuery: accessors.averageProductsPerOrder,
 }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {

@@ -45,7 +45,7 @@ vi.mock("~/src/modules/newsletter-campaign/use-cases/send-newsletter-batch.serve
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit: doubles.recordEmailFailedAudit }))
 
-const { enqueueNewsletterCampaign, isNewsletterQueueBatch, processNewsletterQueueBatch } =
+const { enqueueNewsletterCampaign, processNewsletterQueueBatch } =
   await import("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server")
 
 const CAMPAIGN_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
@@ -129,35 +129,6 @@ beforeEach(() => {
 
 afterAll(() => {
   sqlite.close()
-})
-
-describe("isNewsletterQueueBatch", () => {
-  it.each(["martebizuteria-newsletter", "martebizuteria-newsletter-preview", "martebizuteria-newsletter-test"])(
-    "recognises a batch from %s",
-    (queue) => {
-      expect(
-        isNewsletterQueueBatch({
-          ackAll: () => {},
-          messages: [],
-          metadata: { metrics: { backlogBytes: 0, backlogCount: 0 } },
-          queue,
-          retryAll: () => {},
-        }),
-      ).toBe(true)
-    },
-  )
-
-  it("leaves the audit log queue to its own consumer", () => {
-    expect(
-      isNewsletterQueueBatch({
-        ackAll: () => {},
-        messages: [],
-        metadata: { metrics: { backlogBytes: 0, backlogCount: 0 } },
-        queue: "martebizuteria-audit-log-test",
-        retryAll: () => {},
-      }),
-    ).toBe(false)
-  })
 })
 
 describe("enqueueNewsletterCampaign", () => {
