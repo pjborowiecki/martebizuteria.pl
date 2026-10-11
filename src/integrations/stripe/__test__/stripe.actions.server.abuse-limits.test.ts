@@ -270,4 +270,22 @@ describe("handleUpdateCheckoutSession and the abuse limits", () => {
     expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
     expect(mocked.releaseCheckout).not.toHaveBeenCalled()
   })
+
+  it("leaves a session whose BLIK payment the bank is still confirming open with its stock, however old its checkout is", async () => {
+    vi.setSystemTime(CHECKOUT_OPENED_AT + 2 * ONE_HOLD_MILLISECONDS)
+    mocked.checkoutSessionsRetrieve.mockResolvedValue({
+      id: "cs_old",
+      metadata: { items: JSON.stringify(HELD_LINES) },
+      payment_intent: { next_action: { type: "blik_authorize" }, status: "requires_action" },
+      status: "open",
+    })
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: CHECKOUT_ERROR_CODES.SESSION_PROCESSING,
+    })
+    expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
+    expect(mocked.releaseCheckout).not.toHaveBeenCalled()
+    expect(mocked.verifyTurnstileToken).not.toHaveBeenCalled()
+  })
 })

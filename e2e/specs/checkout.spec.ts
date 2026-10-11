@@ -15,8 +15,10 @@ import {
 import {
   type CheckoutSession,
   type SignedStripeEvent,
+  awaitBlikApproval,
   completeCheckoutSession,
   completeCheckoutSessionBeforeItsWebhook,
+  declineBlikApproval,
   deliverStripeEvent,
   expireCheckoutSession,
   openCheckoutSessions,
@@ -390,6 +392,52 @@ test.describe("guest checkout", () => {
     await expect(checkoutPage.paymentStep()).toBeHidden()
     expect(freshCheckouts).toHaveLength(0)
     expect(await openCheckoutSessions(request, email)).toStrictEqual([])
+  })
+
+  test("a guest whose tab reloads while the banking app still asks to approve BLIK keeps the payment and sees the order once the bank approves", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "blik-awaiting-approval")
+    const session = await reachPaymentForm(checkoutPage, request, email)
+    await awaitBlikApproval(request, session.id)
+    const freshCheckouts = recordServerFunctionRequests(page, SERVER_FUNCTIONS.createCheckoutSession)
+
+    await checkoutPage.reload()
+
+    await expect(checkoutPage.awaitingBank()).toBeVisible()
+    await expect(checkoutPage.paymentStep()).toBeHidden()
+    await expectOnlyOpenSession(request, email, session)
+    await checkoutPage.leaveTab()
+    await completeCheckoutSession(request, session.id)
+    await checkoutPage.returnToTab()
+
+    await expect(page).toHaveURL(confirmationUrl(session))
+    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    expect(freshCheckouts).toHaveLength(0)
+  })
+
+  test("a guest whose bank declines the BLIK payment the reloaded tab waited for goes back to the payment step with the basket held", async ({
+    checkoutPage,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "blik-declined")
+    const session = await reachPaymentForm(checkoutPage, request, email)
+    await awaitBlikApproval(request, session.id)
+    await checkoutPage.reload()
+    await expect(checkoutPage.awaitingBank()).toBeVisible()
+
+    await checkoutPage.leaveTab()
+    await declineBlikApproval(request, session.id)
+    await checkoutPage.returnToTab()
+
+    await expect(checkoutPage.notification(PAYMENT_NOT_COMPLETED)).toBeVisible()
+    await expect(checkoutPage.paymentStep()).toBeVisible()
+    await expect(checkoutPage.awaitingBank()).toBeHidden()
+    const continued = await waitForOpenCheckoutSession(request, email, session)
+    expect(continued.metadata["checkoutId"]).toBe(session.metadata["checkoutId"])
+    await expectOnlyOpenSession(request, email, continued)
   })
 
   test("a guest who paid in the banking app and later checks out another basket gets a fresh checkout, not the old confirmation", async ({

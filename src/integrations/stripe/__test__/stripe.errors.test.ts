@@ -24,6 +24,7 @@ describe("getCheckoutErrorKey", () => {
       "errors.salesPaused",
       "errors.sessionClosed",
       "errors.sessionComplete",
+      "errors.sessionProcessing",
       "errors.tooManyOpenCheckouts",
       "errors.unknownError",
       "errors.variantNotFound",

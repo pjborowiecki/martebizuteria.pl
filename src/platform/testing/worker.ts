@@ -1,6 +1,8 @@
 import {
   acceptEmailsTo,
+  awaitBlikApproval,
   completeCheckoutSession,
+  declineBlikApproval,
   expireCheckoutSession,
   getSentEmails,
   installProviderMocks,
@@ -24,6 +26,8 @@ const applicationModule = import("~/src/server")
 const SETTLE_SESSION_PATTERN = /^\/__test\/stripe\/checkout-sessions\/(?<sessionId>cs_[\w-]+)\/(?<outcome>complete|expire)$/u
 
 const SUCCEED_SETUP_INTENT_PATTERN = /^\/__test\/stripe\/setup-intents\/(?<setupIntentId>seti_[\w-]+)\/succeed$/u
+
+const BLIK_APPROVAL_PATTERN = /^\/__test\/stripe\/checkout-sessions\/(?<sessionId>cs_[\w-]+)\/(?<answer>await|decline)-blik-approval$/u
 
 const loadApplication = async () => {
   const { default: application } = await applicationModule
@@ -86,6 +90,20 @@ const handleEmailRefusalTestRequest = (request: Request, url: URL): Response => 
   return Response.json({ recipient, refused })
 }
 
+const handleBlikApprovalRequest = (request: Request, url: URL): Response | undefined => {
+  const approval = BLIK_APPROVAL_PATTERN.exec(url.pathname)?.groups
+  const sessionId = approval?.["sessionId"]
+  if (sessionId === undefined || request.method !== "POST") {
+    return undefined
+  }
+
+  const session = approval?.["answer"] === "decline" ? declineBlikApproval(sessionId) : awaitBlikApproval(sessionId)
+
+  return session === undefined
+    ? Response.json({ error: `No BLIK payment to answer on checkout session ${sessionId}` }, { status: HTTP_STATUS.NOT_FOUND })
+    : Response.json(session)
+}
+
 const handleTestRequest = (request: Request, env: Env, url: URL): Promise<Response> | Response | undefined => {
   if (url.pathname === "/__test/emails" && request.method === "GET") {
     const recipient = requiredParam(url, "to")
@@ -120,7 +138,7 @@ const handleTestRequest = (request: Request, env: Env, url: URL): Promise<Respon
     return signSettledCheckout(settlement["sessionId"], settlement["outcome"], env.STRIPE_WEBHOOK_SECRET)
   }
 
-  return handleSetupIntentTestRequest(request, url)
+  return handleSetupIntentTestRequest(request, url) ?? handleBlikApprovalRequest(request, url)
 }
 
 export default {

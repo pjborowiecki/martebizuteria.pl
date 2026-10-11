@@ -7,6 +7,7 @@ import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 import { releaseExpiredCheckoutSession } from "~/src/integrations/stripe/stripe.actions.server"
 import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
+import { isCheckoutSessionProcessing } from "~/src/integrations/stripe/stripe.utils"
 
 import { CHECKOUT_QUERY_KEYS } from "~/src/modules/checkout/checkout.constants"
 import { getPaymentContextByTransactionId } from "~/src/modules/payment/payment.accessors"
@@ -17,16 +18,16 @@ const checkoutSessionStatusInputSchema = zod.object({
   sessionId: zod.string().trim().min(1).max(CHECKOUT_SESSION_ID_MAX_LENGTH),
 })
 
-export type CheckoutSessionStatus = "closed" | "complete" | "open"
+export type CheckoutSessionStatus = "closed" | "complete" | "open" | "processing"
 
 const readStripeSessionStatus = async (sessionId: string): Promise<CheckoutSessionStatus> => {
-  const stripeSession = await stripe.checkout.sessions.retrieve(sessionId)
+  const stripeSession = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] })
   if (stripeSession.status === "complete") {
     return "complete"
   }
 
   if (stripeSession.status === "open") {
-    return "open"
+    return isCheckoutSessionProcessing(stripeSession) ? "processing" : "open"
   }
 
   if (stripeSession.status === "expired") {
@@ -50,13 +51,13 @@ export const getCheckoutSessionStatus = createServerFn({ method: "POST" })
     }
 
     const status = await readStripeSessionStatus(sessionId)
-    if (status !== "open" || context.userId === undefined) {
+    if (status === "complete" || status === "closed" || context.userId === undefined) {
       return status
     }
 
     const requestSession = await getRequestSession()
 
-    return requestSession?.user.id === context.userId ? "open" : "closed"
+    return requestSession?.user.id === context.userId ? status : "closed"
   })
 
 export const checkoutSessionStatusQuery = (sessionId: string | undefined) =>

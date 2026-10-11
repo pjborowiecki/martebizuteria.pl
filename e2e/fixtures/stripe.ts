@@ -79,6 +79,17 @@ export const completeCheckoutSessionBeforeItsWebhook = (request: APIRequestConte
 export const expireCheckoutSession = (request: APIRequestContext, sessionId: string): Promise<void> =>
   settleCheckoutSession(request, sessionId, "expire")
 
+const answerBlikApproval = async (request: APIRequestContext, sessionId: string, answer: "await" | "decline"): Promise<void> => {
+  const response = await request.post(`/__test/stripe/checkout-sessions/${sessionId}/${answer}-blik-approval`)
+  expect(response.ok()).toBe(true)
+}
+
+export const awaitBlikApproval = (request: APIRequestContext, sessionId: string): Promise<void> =>
+  answerBlikApproval(request, sessionId, "await")
+
+export const declineBlikApproval = (request: APIRequestContext, sessionId: string): Promise<void> =>
+  answerBlikApproval(request, sessionId, "decline")
+
 const openSetupIntents = async (request: APIRequestContext, email: string): Promise<string[]> => {
   const response = await request.get("/__test/stripe/setup-intents", { params: { email } })
   expect(response.ok()).toBe(true)

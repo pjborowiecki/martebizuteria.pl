@@ -52,7 +52,10 @@ export const useCheckoutSessionEntry = ({ session_id: returnedSessionId, success
     if (status === "closed") {
       forgetCheckoutSessionId(sessionId)
     }
-    toast.error(t("errors.paymentNotCompleted"))
+
+    if (status !== "processing") {
+      toast.error(t("errors.paymentNotCompleted"))
+    }
     void navigate({ replace: true, search: { step: PAYMENT_STEP }, to: "." })
   }, [navigate, returned, sessionId, status, t])
 
@@ -64,7 +67,7 @@ export const useCheckoutSessionEntry = ({ session_id: returnedSessionId, success
     const paidForThisCart = status === "complete" && !wasCheckoutSessionOpenedForAnotherCart(sessionId, cart)
     if (paidForThisCart) {
       void navigate({ replace: true, search: { session_id: sessionId, success: true }, to: "." })
-    } else if (status !== "open") {
+    } else if (status === "complete" || status === "closed") {
       forgetCheckoutSessionId(sessionId)
     }
 

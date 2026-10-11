@@ -13,7 +13,7 @@ const { catalogInvalidated, retrieveSession, sqlite } = await vi.hoisted(async (
 
   return {
     catalogInvalidated: vi.fn(),
-    retrieveSession: vi.fn<(sessionId: string) => Promise<object>>(),
+    retrieveSession: vi.fn<(sessionId: string, params: object) => Promise<object>>(),
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
   }
 })
@@ -125,9 +125,24 @@ describe("getCheckoutSessionStatus against the migrated schema", () => {
   it("keeps a session Stripe still offers for payment open, with the last ring still held for it", async () => {
     await expect(statusOf("cs_held")).resolves.toBe("open")
 
-    expect(retrieveSession).toHaveBeenCalledExactlyOnceWith("cs_held")
+    expect(retrieveSession).toHaveBeenCalledExactlyOnceWith("cs_held", { expand: ["payment_intent"] })
     expect(readRingStock()).toStrictEqual({ quantity_available: 0, quantity_reserved: 1 })
     expect(readStatuses()).toStrictEqual({ checkout: "pending", payment: "pending" })
+  })
+
+  it("reports a session whose BLIK payment waits for approval in the banking app as processing, with the last ring still held for it", async () => {
+    retrieveSession.mockResolvedValue({
+      id: "cs_held",
+      metadata: toCheckoutSessionItemsMetadata([HELD_RING]),
+      payment_intent: { next_action: { type: "blik_authorize" }, status: "requires_action" },
+      status: "open",
+    })
+
+    await expect(statusOf("cs_held")).resolves.toBe("processing")
+
+    expect(readRingStock()).toStrictEqual({ quantity_available: 0, quantity_reserved: 1 })
+    expect(readStatuses()).toStrictEqual({ checkout: "pending", payment: "pending" })
+    expect(catalogInvalidated).not.toHaveBeenCalled()
   })
 
   it("returns the last ring of a session Stripe expired before its webhook, once, so a fresh checkout finds it free", async () => {

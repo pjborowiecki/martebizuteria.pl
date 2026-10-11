@@ -2,12 +2,12 @@ import { type BaseSyntheticEvent, type JSX, type ReactNode, useCallback, useEffe
 
 import { CheckoutElementsProvider, PaymentElement, useCheckoutElements } from "@stripe/react-stripe-js/checkout"
 import { type StripeCheckoutElementsSdkOptions, type StripeCheckoutPaymentElementOptions } from "@stripe/stripe-js"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import "@tanstack/react-start/client-only"
 import { useTheme } from "@wrksz/themes/client"
 import { cn } from "cn"
-import { AlertCircle, ArrowRight } from "lucide-react"
+import { AlertCircle, ArrowRight, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "use-intl/react"
 
@@ -22,6 +22,7 @@ import {
   isCheckoutSessionFor,
   resetCheckoutSession,
 } from "~/src/integrations/stripe/stripe.checkout"
+import { ProcessingCheckoutSessionError } from "~/src/integrations/stripe/stripe.checkout.processing"
 import { getStripe } from "~/src/integrations/stripe/stripe.client"
 import { CHECKOUT_PAYMENT_METHOD_ORDER } from "~/src/integrations/stripe/stripe.constants"
 import { CHECKOUT_ERROR_CODES, getCheckoutErrorKey } from "~/src/integrations/stripe/stripe.errors"
@@ -29,7 +30,7 @@ import { CHECKOUT_ERROR_CODES, getCheckoutErrorKey } from "~/src/integrations/st
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
-import { checkoutSessionStatusQuery } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
+import { type CheckoutSessionStatus, checkoutSessionStatusQuery } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
 import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
@@ -70,6 +71,8 @@ const PaymentSkeleton = (): JSX.Element => (
   </div>
 )
 
+const PROCESSING_SESSION_POLL_INTERVAL_MS = 8000
+
 const PAYMENT_ERROR_COPY = {
   expired: { action: "restartPayment", hint: "paymentExpiredHint", title: "paymentExpired" },
   unavailable: { action: "retry", hint: "paymentUnavailableHint", title: "paymentUnavailable" },
@@ -107,6 +110,36 @@ const PaymentError = ({
         >
           {t("backToCart")}
         </LocalizedLink>
+      </div>
+    </div>
+  )
+}
+
+const PaymentAwaitingBank = ({
+  onSettled,
+  sessionId,
+}: Readonly<{
+  onSettled: SettleProcessingSession
+  sessionId: string
+}>): JSX.Element => {
+  const t = useTranslations("pages.checkout.checkoutForm")
+  const { data: status } = useQuery({
+    ...checkoutSessionStatusQuery(sessionId),
+    refetchInterval: PROCESSING_SESSION_POLL_INTERVAL_MS,
+    staleTime: 0,
+  })
+  useEffect(() => {
+    if (status !== undefined && status !== "processing") {
+      void onSettled(sessionId, status)
+    }
+  }, [onSettled, sessionId, status])
+
+  return (
+    <div role="status" className="flex flex-col items-center gap-4 border border-border px-6 py-10 text-center">
+      <Loader2 aria-hidden className="size-7 animate-spin text-muted-foreground" strokeWidth={1.3} />
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium text-foreground">{t("paymentAwaitingBank")}</p>
+        <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground">{t("paymentAwaitingBankHint")}</p>
       </div>
     </div>
   )
@@ -262,13 +295,77 @@ const useCheckoutSessionFailure = (): CheckoutSessionFailure => {
   return { loadError, reportFailure, setLoadError }
 }
 
+const useCheckoutSessionOutcome = (): CheckoutSessionOutcome => {
+  const t = useTranslations("pages.checkout.checkoutForm")
+  const queryClient = useQueryClient()
+  const items = useCartStore((state) => state.items)
+  const showConfirmation = useCheckoutConfirmation()
+  const { loadError, reportFailure, setLoadError } = useCheckoutSessionFailure()
+  const [retryToken, setRetryToken] = useState(0)
+  const [processingSessionId, setProcessingSessionId] = useState<string>()
+  const retry = useCallback(() => {
+    setLoadError(false)
+    setProcessingSessionId(undefined)
+    setRetryToken((token) => token + 1)
+  }, [setLoadError])
+  const openPaidSession = useCallback(
+    async (sessionId: string): Promise<PaymentStepDestination> => {
+      if (wasCheckoutSessionOpenedForAnotherCart(sessionId, items)) {
+        forgetCheckoutSessionId(sessionId)
+        retry()
+
+        return "payment"
+      }
+
+      await showConfirmation(sessionId)
+
+      return "confirmation"
+    },
+    [items, retry, showConfirmation],
+  )
+  const handleSessionError = useCallback(
+    (error: unknown): Promise<PaymentStepDestination> => {
+      if (error instanceof PaidCheckoutSessionError) {
+        return openPaidSession(error.sessionId)
+      }
+
+      if (error instanceof ProcessingCheckoutSessionError) {
+        queryClient.setQueryData(checkoutSessionStatusQuery(error.sessionId).queryKey, "processing")
+        setProcessingSessionId(error.sessionId)
+
+        return Promise.resolve("processing")
+      }
+
+      reportFailure(error)
+
+      return Promise.resolve("payment")
+    },
+    [openPaidSession, queryClient, reportFailure],
+  )
+  const settleProcessingSession = useCallback(
+    async (sessionId: string, status: CheckoutSessionStatus) => {
+      if (status === "complete") {
+        await openPaidSession(sessionId)
+
+        return
+      }
+
+      toast.error(t("errors.paymentNotCompleted"))
+      retry()
+    },
+    [openPaidSession, retry, t],
+  )
+
+  return { handleSessionError, loadError, processingSessionId, retry, retryToken, setLoadError, settleProcessingSession }
+}
+
 const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>): CheckoutSessionLoader => {
   const { theme } = useTheme()
   const { checkoutSession, getValues, onEdit, setCheckoutSession } = useCheckoutForm()
   const items = useCartStore((state) => state.items)
   const applyCurrentPrices = useCartStore((state) => state.applyCurrentPrices)
-  const { loadError, reportFailure, setLoadError } = useCheckoutSessionFailure()
-  const [retryToken, setRetryToken] = useState(0)
+  const { handleSessionError, loadError, processingSessionId, retry, retryToken, setLoadError, settleProcessingSession } =
+    useCheckoutSessionOutcome()
   const valuesFingerprint = buildCheckoutValuesFingerprint(getValues())
   const sessionMatches = checkoutSession !== undefined && isCheckoutSessionFor(checkoutSession, { items, values: getValues() })
   const inFlightRef = useRef(false)
@@ -278,32 +375,6 @@ const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>):
       setCheckoutSession(session)
     },
     [applyCurrentPrices, setCheckoutSession],
-  )
-  const retry = useCallback(() => {
-    setLoadError(false)
-    setRetryToken((token) => token + 1)
-  }, [setLoadError])
-  const showConfirmation = useCheckoutConfirmation()
-  const handleSessionError = useCallback(
-    async (error: unknown): Promise<PaymentStepDestination> => {
-      if (!(error instanceof PaidCheckoutSessionError)) {
-        reportFailure(error)
-
-        return "payment"
-      }
-
-      if (wasCheckoutSessionOpenedForAnotherCart(error.sessionId, items)) {
-        forgetCheckoutSessionId(error.sessionId)
-        retry()
-
-        return "payment"
-      }
-
-      await showConfirmation(error.sessionId)
-
-      return "confirmation"
-    },
-    [items, reportFailure, retry, showConfirmation],
   )
 
   const resetSession = useCallback(async (): Promise<PaymentStepDestination> => {
@@ -335,7 +406,7 @@ const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>):
       return
     }
 
-    if (items.length === 0 || inFlightRef.current || sessionMatches) {
+    if (items.length === 0 || inFlightRef.current || sessionMatches || processingSessionId !== undefined) {
       return
     }
 
@@ -365,6 +436,7 @@ const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>):
     handleSessionError,
     items,
     onEdit,
+    processingSessionId,
     requestTurnstileToken,
     setLoadError,
     retryToken,
@@ -390,8 +462,10 @@ const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>):
     checkoutSession,
     loadError,
     options,
+    processingSessionId,
     resetSession,
     retry,
+    settleProcessingSession,
   }
 }
 
@@ -417,7 +491,15 @@ const useCheckoutSessionExpired = (checkoutSession: CheckoutSession | undefined)
   return checkoutSession !== undefined && expiredSession === checkoutSession
 }
 
-const PaymentStepBody = ({ checkoutSession, loadError, options, resetSession, retry }: Readonly<CheckoutSessionLoader>): JSX.Element => {
+const PaymentStepBody = ({
+  checkoutSession,
+  loadError,
+  options,
+  processingSessionId,
+  resetSession,
+  retry,
+  settleProcessingSession,
+}: Readonly<CheckoutSessionLoader>): JSX.Element => {
   const locale = useLocale()
   const t = useTranslations("pages.checkout.checkoutForm")
   const { hasUnavailableItems, isChecking } = useCartAvailability()
@@ -427,6 +509,10 @@ const PaymentStepBody = ({ checkoutSession, loadError, options, resetSession, re
   const restartPayment = useCallback(() => {
     void resetSession()
   }, [resetSession])
+  if (processingSessionId !== undefined) {
+    return <PaymentAwaitingBank onSettled={settleProcessingSession} sessionId={processingSessionId} />
+  }
+
   if (isExpired) {
     return <PaymentError onRetry={restartPayment} reason="expired" />
   }
@@ -453,7 +539,8 @@ const PaymentStepBody = ({ checkoutSession, loadError, options, resetSession, re
 
 export const PaymentStep = (): JSX.Element => {
   const { containerRef, requestToken } = useTurnstileToken(TURNSTILE_ACTIONS.CHECKOUT)
-  const { checkoutSession, loadError, options, resetSession, retry } = useCheckoutSessionLoader(requestToken)
+  const { checkoutSession, loadError, options, processingSessionId, resetSession, retry, settleProcessingSession } =
+    useCheckoutSessionLoader(requestToken)
 
   return (
     <div>
@@ -462,8 +549,10 @@ export const PaymentStep = (): JSX.Element => {
         checkoutSession={checkoutSession}
         loadError={loadError}
         options={options}
+        processingSessionId={processingSessionId}
         resetSession={resetSession}
         retry={retry}
+        settleProcessingSession={settleProcessingSession}
       />
     </div>
   )
@@ -504,12 +593,26 @@ interface CheckoutSessionFailure {
   setLoadError: (failed: boolean) => void
 }
 
-type PaymentStepDestination = "confirmation" | "payment"
+type PaymentStepDestination = "confirmation" | "payment" | "processing"
+
+type SettleProcessingSession = (sessionId: string, status: CheckoutSessionStatus) => Promise<void>
+
+interface CheckoutSessionOutcome {
+  handleSessionError: (error: unknown) => Promise<PaymentStepDestination>
+  loadError: boolean
+  processingSessionId: string | undefined
+  retry: () => void
+  retryToken: number
+  setLoadError: (failed: boolean) => void
+  settleProcessingSession: SettleProcessingSession
+}
 
 interface CheckoutSessionLoader {
   checkoutSession: CheckoutSession | undefined
   loadError: boolean
   options: StripeCheckoutElementsSdkOptions | undefined
+  processingSessionId: string | undefined
   resetSession: () => Promise<PaymentStepDestination>
   retry: () => void
+  settleProcessingSession: SettleProcessingSession
 }
