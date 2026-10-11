@@ -10,7 +10,7 @@ import { getDiscountStats, getDiscountStatsQuery } from "~/src/modules/discount/
 
 const stubs = vi.hoisted(() => ({
   getAdminDiscountStats: vi.fn<(now: Date) => Promise<Discount["adminStats"]>>(),
-  getRequestSession: vi.fn<() => Promise<{ user: { role: string } } | null>>(),
+  getRequestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } } | null>>(),
 }))
 
 vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
@@ -46,7 +46,7 @@ const STATS: Discount["adminStats"] = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers({ now: NOW, toFake: ["Date"] })
-  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN } })
+  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } })
   stubs.getAdminDiscountStats.mockResolvedValue(STATS)
 })
 

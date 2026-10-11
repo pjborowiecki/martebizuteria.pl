@@ -167,7 +167,7 @@ export const handleRealtimeInvalidationWebSocket = async (request, env, hubName)
 }
 ```
 
-The admin hub requires `hasAdminAccess(session?.user.role)` and returns 401 otherwise. The storefront hub is open, which is correct — it only ever broadcasts public catalogue keys.
+The admin hub requires a session whose user passes `hasAdminAccess(role)` and has two-factor authentication on (`needsTwoFactorSetup(user)` is false), and returns 401 otherwise. The storefront hub is open, which is correct — it only ever broadcasts public catalogue keys.
 
 These are routed in `src/server.ts` before the TanStack Start handler, because a WebSocket upgrade has to be answered by the Durable Object rather than by a route component:
 

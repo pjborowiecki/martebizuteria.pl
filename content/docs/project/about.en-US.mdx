@@ -30,12 +30,12 @@ Route files live flat in `src/routes/` and carry no locale segment. The router d
 | `_storefront.*.tsx` | 19 files                                       | Landing page, catalog, product pages, cart, blog, legal pages         |
 | `checkout.*.tsx`    | 2 files                                        | The four-step checkout flow                                           |
 | `account.*.tsx`     | 10 files                                       | Signed-in customer area — orders, addresses, sessions, profile        |
-| `admin.*.tsx`       | 25 files                                       | Admin console — catalog, orders, customers, audit, settings           |
+| `admin.*.tsx`       | 26 files                                       | Admin console — catalog, orders, customers, audit, settings           |
 | `auth.*.tsx`        | 5 files                                        | Sign in, sign up, forgot and reset password                           |
 | `docs.*.tsx`        | 3 files                                        | These documentation pages                                             |
 | `api/`              | `auth.$.ts`, `health.ts`, `webhooks.stripe.ts` | Better Auth handler, the health check and the Stripe webhook endpoint |
 
-`__root.tsx` and `dev.emails.tsx` complete the 69 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
+`__root.tsx` and `dev.emails.tsx` complete the 70 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
 
 Four request paths short-circuit inside `src/server.ts` before the React framework is reached — `/sitemap.xml`, `/robots.txt`, the two WebSocket upgrades — plus the locale redirect, because none of them need an SSR render. The same file's `scheduled` handler runs the daily retention clean-up.
 
@@ -81,7 +81,7 @@ Counted against the working tree, not aspirational:
 | Use cases                                 | 125 files under `src/modules/*/use-cases/`                                                            |
 | Server functions                          | 117 `createServerFn(...)` call sites                                                                  |
 | Integrations                              | 15 vendor adapters in `src/integrations/`                                                             |
-| Route files                               | 69 in `src/routes/`                                                                                   |
+| Route files                               | 70 in `src/routes/`                                                                                   |
 | Presentation files                        | 650 non-test files under `src/presentation/`, of which 57 shadcn primitives and 430 custom components |
 | Message namespaces                        | 55 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |
 | Test files                                | 889 — 339 unit, 35 integration, 515 component                                                         |

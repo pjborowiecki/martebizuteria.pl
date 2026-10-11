@@ -56,7 +56,7 @@ emailVerification: {
 
 Przy `sendOnSignUp: true` wiadomość weryfikacyjna wychodzi natychmiast, a `autoSignInAfterVerification: true` oznacza, że kliknięcie linku jednocześnie potwierdza adres i loguje użytkownika. Jeśli `RESEND_API_KEY` jest nieprawidłowy albo domena nadawcy nie jest zweryfikowana w Resend, nic nie dotrze; `bun run email:verify development` powie, który z tych przypadków zachodzi, a [Resend](/docs/integrations/resend#domena-nadawcy) wymienia rekordy DNS, których potrzebuje domena. Wiersz nadal istnieje w tabeli `user` z `email_verified` równym `0`, a odmowa jest w `/admin/audit` jako `email.failed`. Gdy tę samą odmowę dostanie e-mail newslettera, zamówienia albo o usunięciu konta, przez kolejne pięć minut rejestracja, zmiana hasła, ponowne wysłanie weryfikacji i zmiana adresu odpowiadają, że nie można teraz wysyłać e-maili. Gdy nadawca zacznie działać, zaloguj się na nowe konto: strona logowania odrzuci niepotwierdzony adres i zaproponuje **Wyślij link potwierdzający ponownie**.
 
-Logowanie przez Google pomija wiadomość weryfikacyjną, więc działająca aplikacja OAuth to szybsza droga, jeśli nadawca w Resend nie jest jeszcze gotowy.
+Logowanie przez Google pomija wiadomość weryfikacyjną, więc działająca aplikacja OAuth to szybsza droga, jeśli nadawca w Resend nie jest jeszcze gotowy. Gdy jednak nadasz temu kontu rolę administratora, będzie logować się wyłącznie hasłem, więc nadaj mu je przez **Nie pamiętasz hasła?**.
 
 ### Nadanie sobie roli administratora
 
@@ -77,7 +77,9 @@ Kolumna `role` w tabeli `user` jest tekstowym typem wyliczeniowym z tą wartośc
 bun run db:studio:development
 ```
 
-Otwórz tabelę `user`, znajdź swój wiersz, ustaw `role` na `admin`, a potem wyloguj się i zaloguj ponownie. Po zalogowaniu strażnik `/auth` odsyła administratora na `/admin`. Layout `/admin` używa `requireAdmin` z `src/integrations/better-auth/auth.routes.ts` jako swojego `beforeLoad`, a ten strażnik wywołuje `hasAdminAccess(user.role)`; klient wchodzący na `/admin` jest przekierowywany na `/account/overview`, a nie widzi błędu.
+Otwórz tabelę `user`, znajdź swój wiersz, ustaw `role` na `admin`, a potem wyloguj się i zaloguj ponownie hasłem. Po zalogowaniu strażnik `/auth` odsyła administratora na `/admin`. Layout `/admin` używa `requireAdmin` z `src/integrations/better-auth/auth.routes.ts` jako swojego `beforeLoad`, a ten strażnik wywołuje `hasAdminAccess(user.role)`; klient wchodzący na `/admin` jest przekierowywany na `/account/overview`, a nie widzi błędu.
+
+Za pierwszym razem strażnik wyśle cię zamiast tego na `/admin/security`, bo panel wymaga uwierzytelniania dwuskładnikowego. Wybierz **Włącz**, potwierdź hasło, zeskanuj kod QR aplikacją uwierzytelniającą (albo wpisz klucz konfiguracyjny), wpisz sześciocyfrowy kod i zachowaj kody odzyskiwania, a potem **Przejdź do panelu administracyjnego**. Od tej pory logujesz się hasłem i kodem. Administrator nie może zalogować się przez Google, bo wtyczka `twoFactor` nie prosi na tej ścieżce o kod; jeśli konto założono przez Google, najpierw nadaj mu hasło przez **Nie pamiętasz hasła?** na stronie logowania. Zobacz [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów).
 
 Drizzle Studio łączy się przez API HTTP D1 z użyciem `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` i `CLOUDFLARE_ACCESS_TOKEN` z pliku `.env.development`. Jeśli ich brakuje, Studio się otworzy, ale każde zapytanie zakończy się błędem.
 

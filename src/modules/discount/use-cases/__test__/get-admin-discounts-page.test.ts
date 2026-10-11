@@ -17,7 +17,7 @@ import { getAdminDiscountsPage, getAdminDiscountsPageQuery } from "~/src/modules
 
 const stubs = vi.hoisted(() => ({
   getAdminDiscountsPage: vi.fn<(params: AdminDiscountsListParams) => Promise<{ rows: Discount["select"][]; total: number }>>(),
-  getRequestSession: vi.fn<() => Promise<{ user: { role: string } } | null>>(),
+  getRequestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } } | null>>(),
 }))
 
 vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
@@ -64,7 +64,7 @@ const discountRow = (overrides: Partial<Discount["select"]> = {}): Discount["sel
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers({ now: NOW, toFake: ["Date"] })
-  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN } })
+  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } })
   stubs.getAdminDiscountsPage.mockResolvedValue({ rows: [discountRow()], total: 1 })
 })
 

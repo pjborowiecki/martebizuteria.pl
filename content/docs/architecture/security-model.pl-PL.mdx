@@ -7,21 +7,22 @@ description: "Jak wymuszany jest dostęp na trasach, funkcjach serwerowych i Web
 
 **Guardy tras** w `src/integrations/better-auth/auth.routes.ts` działają w `beforeLoad` i przekierowują. Każdy layout przekazuje sam guard, jak w `beforeLoad: requireAdmin`:
 
-| Guard                | Używany przez                  | Zachowanie                                                                                   |
-| -------------------- | ------------------------------ | -------------------------------------------------------------------------------------------- |
-| `requireSignedIn`    | Podstawa dla dwóch pozostałych | Bez sesji przekierowuje na `/auth/sign-in`                                                   |
-| `requireAdmin`       | `admin.tsx`                    | Wymaga dodatkowo `hasAdminAccess(role)`, inaczej `/account/overview`                         |
-| `requireCustomer`    | `account.tsx`                  | Administratora wysyła zamiast tego na `/admin`                                               |
-| `redirectIfSignedIn` | `auth.tsx`                     | Zalogowanego wysyła na bezpieczną ścieżkę z `?redirect`, inaczej na `postAuthRouteFor(user)` |
+| Guard                | Używany przez            | Zachowanie                                                                                                   |
+| -------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `requireSignedIn`    | Podstawa dla pozostałych | Bez sesji przekierowuje na `/auth/sign-in`                                                                   |
+| `requireAdminRole`   | `admin_.security.tsx`    | Wymaga dodatkowo `hasAdminAccess(role)`, inaczej `/account/overview`                                         |
+| `requireAdmin`       | `admin.tsx`              | `requireAdminRole`, a potem wysyła administratora bez uwierzytelniania dwuskładnikowego na `/admin/security` |
+| `requireCustomer`    | `account.tsx`            | Administratora wysyła zamiast tego na `/admin`                                                               |
+| `redirectIfSignedIn` | `auth.tsx`               | Zalogowanego wysyła na bezpieczną ścieżkę z `?redirect`, inaczej na `postAuthRouteFor(user)`                 |
 
-`requireSignedIn`, `requireAdmin` i `requireCustomer` zwracają `{ user }`, które staje się kontekstem trasy; `account.overview.tsx` czyta go przez `AccountRoute.useRouteContext()`. Guardy jedynie czytają sesję, przez `loadRouteSession`:
+`requireSignedIn`, `requireAdminRole`, `requireAdmin` i `requireCustomer` zwracają `{ user }`, które staje się kontekstem trasy; `account.overview.tsx` czyta go przez `AccountRoute.useRouteContext()`. Guardy jedynie czytają sesję, przez `loadRouteSession`:
 
 ```ts
 const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContext, { recheck }: { readonly recheck: boolean }) =>
   queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)
 ```
 
-`requireSignedIn`, a przez nie także `requireAdmin` i `requireCustomer`, przekazuje `recheck: true`, więc nawigacja do `/account` lub `/admin` pobiera sesję ponownie. Wstępne ładowanie linku i `redirectIfSignedIn`, które przekazuje `recheck: false`, korzystają z sesji w cache'u młodszej niż 60 sekund. Sesja załadowana przez guard zostaje w cache'u TanStack Query, skąd czytają ją komponenty, a przy renderowaniu na serwerze jest serializowana do strony. Zmianę użytkownika obsługuje jedno miejsce, `clearCacheOnUserChange` w `auth.session.ts`: gdy sesja przełączy się na innego użytkownika, usuwa z cache'u wszystkie zapytania poza samą sesją i katalogami komunikatów tłumaczeń. Szczegóły opisuje strona [Cache i SSR](/docs/architecture/caching-and-ssr).
+`requireSignedIn`, a przez nie także `requireAdminRole`, `requireAdmin` i `requireCustomer`, przekazuje `recheck: true`, więc nawigacja do `/account` lub `/admin` pobiera sesję ponownie. Wstępne ładowanie linku i `redirectIfSignedIn`, które przekazuje `recheck: false`, korzystają z sesji w cache'u młodszej niż 60 sekund. Sesja załadowana przez guard zostaje w cache'u TanStack Query, skąd czytają ją komponenty, a przy renderowaniu na serwerze jest serializowana do strony. Zmianę użytkownika obsługuje jedno miejsce, `clearCacheOnUserChange` w `auth.session.ts`: gdy sesja przełączy się na innego użytkownika, usuwa z cache'u wszystkie zapytania poza samą sesją i katalogami komunikatów tłumaczeń. Szczegóły opisuje strona [Cache i SSR](/docs/architecture/caching-and-ssr).
 
 Anonimowy gość wchodzący na `/account` lub `/admin` trafia na `/auth/sign-in` z `?redirect=` ustawionym na `route.location.publicHref`, czyli zlokalizowaną publiczną ścieżkę, o którą prosił, na przykład `/en-US/account/orders/order-1`. Wewnętrzna dla modułu funkcja `resolveSafeRedirect` sprawdza tę wartość zarówno przy budowaniu linku do logowania, jak i zanim guard `/auth` za nią podąży. Zachowuje ją tylko wtedy, gdy jest napisem pasującym do `SAME_SITE_PATH_PATTERN`: wyłącznie drukowalne znaki ASCII, jeden ukośnik na początku i żadnego ukośnika wstecznego. Bezwzględne URL-e, wartości `//` względne wobec protokołu, białe znaki, znaki sterujące i znaki spoza ASCII są odrzucane, więc parametru nie da się zamienić w otwarte przekierowanie:
 
@@ -66,7 +67,7 @@ export const authorized = (permission?: Permission) =>
         throw new AppError(ERROR_CODES.UNAUTHORIZED)
       }
 
-      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+      if (permission !== undefined && (!hasPermission({ permission, role: session.user.role }) || needsTwoFactorSetup(session.user))) {
         throw new AppError(ERROR_CODES.FORBIDDEN)
       }
 
@@ -84,6 +85,7 @@ W `src/modules` i `src/integrations` `authorized()` występuje 87 razy: 23 razy 
 - **Zasoby i akcje**: `order: [read, update, refund]`, `product: [create, read, update, delete, publish]`, `settings: [manage]`, plus własne `defaultStatements` Better Auth dla `user` i `session`.
 - **`ROLES_CONFIG`** przyznaje roli admin wszystkie statementy oraz `adminAc.statements`; rola customer nie otrzymuje żadnego.
 - **`hasAdminAccess(role)`** to zgrubne sprawdzenie używane przez guardy tras i handshake WebSocketu; `hasPermission({ permission, role })` to sprawdzenie drobnoziarniste używane przez `authorized()`.
+- **`needsTwoFactorSetup({ role, twoFactorEnabled })`** jest prawdziwe dla administratora bez uwierzytelniania dwuskładnikowego. `requireAdmin` wysyła go na `/admin/security`, `authorized()` odmawia mu każdego uprawnienia, handshake administracyjnego WebSocketu odpowiada `401`, a `hooks.before` odrzuca punkty końcowe `/admin/*` Better Auth z kodem `ADMIN_TWO_FACTOR_REQUIRED`. Administratorzy logują się wyłącznie hasłem i kodem: `session.create.before` odrzuca administratorowi logowanie przez Google, bo wtyczka `twoFactor` na tej ścieżce nigdy nie prosi o kod. Zobacz [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów).
 
 Ponieważ rola customer nie ma żadnych statementów, macierz zasobów zachowuje się dziś jak binarne sprawdzenie „czy admin”. Warto o tym pamiętać przed dodaniem trzeciej roli: macierz już istnieje, ale nic jeszcze nie korzysta z niej częściowo.
 
@@ -160,7 +162,7 @@ Rejestracja, prośba o zmianę hasła, ponowne wysłanie weryfikacji i zapis do 
 
 ## Autoryzacja WebSocketu
 
-`fetch` Durable Objectu nie ma własnego kontekstu cookie ani sesji, dlatego hub administracyjny jest sprawdzany rolą w Workerze **przed** zaadresowaniem obiektu:
+`fetch` Durable Objectu nie ma własnego kontekstu cookie ani sesji, dlatego hub administracyjny jest sprawdzany w Workerze **przed** zaadresowaniem obiektu: `assertAdminWebSocket` odpowiada `401`, chyba że sesja należy do administratora z włączonym uwierzytelnianiem dwuskładnikowym.
 
 ```ts
 if (hubName === REALTIME_INVALIDATION_HUB.ADMIN) {

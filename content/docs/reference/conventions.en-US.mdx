@@ -101,7 +101,7 @@ export const Route = createFileRoute("/_storefront/products/")({
 - `head` is either the shared `pageHead` from `src/lib/seo.ts` or an inline function that builds `meta` from `loaderData`.
 - Search parameters are validated with a Zod schema in `validateSearch`, and `loaderDeps` normalises them so the loader key is stable.
 - Paths come from `ROUTES` in `src/routes.ts`. Route files carry **no locale segment** — the router rewrites the URL with `deLocalizeUrl` on input and `localizeUrl` on output, so one file serves both locales.
-- Route guards come from `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireCustomer`, `requireSignedIn`, `redirectIfSignedIn`. A layout passes the guard itself, as in `beforeLoad: requireAdmin`, and the pages under it read the signed-in user it resolves with `Route.useRouteContext().user`. They exist for navigation, not for authorization — see [Permissions](/docs/reference/permissions).
+- Route guards come from `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireAdminRole`, `requireCustomer`, `requireSignedIn`, `redirectIfSignedIn`. A layout passes the guard itself, as in `beforeLoad: requireAdmin`, and the pages under it read the signed-in user it resolves with `Route.useRouteContext().user`. They exist for navigation, not for authorization — see [Permissions](/docs/reference/permissions).
 
 ## Modules
 

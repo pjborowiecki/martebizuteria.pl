@@ -7,7 +7,7 @@ Przejdź przez sekcje, które dotyczą Twojej zmiany. Każdy punkt wskazuje plik
 
 ## Dostęp
 
-- [ ] Strony prywatne siedzą pod strzeżonym układem. `admin.tsx` ma `beforeLoad: requireAdmin`, a `account.tsx` ma `beforeLoad: requireCustomer`; każdy z tych strażników najpierw wywołuje `requireSignedIn`. Wszystkie trzy są w `src/integrations/better-auth/auth.routes.ts`.
+- [ ] Strony prywatne siedzą pod strzeżonym układem. `admin.tsx` ma `beforeLoad: requireAdmin`, a `account.tsx` ma `beforeLoad: requireCustomer`; każdy z tych strażników najpierw wywołuje `requireSignedIn`. Jedyna strona panelu poza układem, `admin_.security.tsx`, ma `beforeLoad: requireAdminRole`, więc administrator bez uwierzytelniania dwuskładnikowego może je tam włączyć. Wszystkie cztery są w `src/integrations/better-auth/auth.routes.ts`.
 - [ ] **Każda chroniona funkcja serwerowa niesie własne `authorized(...)`.** Strażnik trasy powstrzymuje renderowanie strony; nie chroni punktu końcowego RPC, który jest osiągalny bezpośrednio.
 - [ ] `authorized()` dla dowolnego zalogowanego użytkownika, `authorized({ resource: ["action"] })` gdy potrzebne jest uprawnienie.
 - [ ] Operacje na własnych danych wywołującego czytają użytkownika z `context.auth.user.id`, nigdy z wejścia. Porównaj `createUserAddress` i `setDefaultUserAddress` w `src/modules/address/use-cases/`.

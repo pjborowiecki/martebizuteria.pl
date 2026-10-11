@@ -19,7 +19,7 @@ const { effects, sqlite } = await vi.hoisted(async () => {
     effects: {
       invalidate: vi.fn<() => void>(),
       paused: vi.fn<(target: string) => void>(),
-      requestSession: vi.fn<() => Promise<{ user: { role: string } } | null>>(),
+      requestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } } | null>>(),
       resumed: vi.fn<(target: string) => void>(),
     },
     sqlite: new DatabaseSync(":memory:"),
@@ -67,7 +67,7 @@ const readRow = () => storeSettingRowsSchema.parse(sqlite.prepare("select id, sa
 
 beforeEach(() => {
   vi.clearAllMocks()
-  effects.requestSession.mockResolvedValue({ user: { role: ROLES.ADMIN } })
+  effects.requestSession.mockResolvedValue({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } })
   sqlite.exec("drop table if exists store_setting")
   applyMigration(sqlite, MIGRATION.STORE_SETTINGS)
   sqlite.exec(`update store_setting set created_at = ${String(MIGRATED_AT)}, updated_at = ${String(MIGRATED_AT)}`)

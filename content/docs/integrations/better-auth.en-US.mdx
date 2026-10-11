@@ -9,25 +9,25 @@ Better Auth owns identity: e-mail and password sign-in, Google OAuth, e-mail ver
 
 `src/integrations/better-auth/auth.server.ts` configures one `betterAuth(...)` instance. The pieces worth knowing:
 
-| Option                         | Value                                                                                                                                                                       |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `database`                     | `drizzleAdapter(db, { provider: "sqlite", schema })`                                                                                                                        |
-| `advanced.database.generateId` | `() => uuidv7()`, with `joins: true`                                                                                                                                        |
-| `advanced.ipAddress`           | Reads `cf-connecting-ip` (`IP_ADDRESS_HEADER` from `src/lib/rate-limit.ts`)                                                                                                 |
-| `advanced.useSecureCookies`    | `!isLocalMode(import.meta.env.MODE)`                                                                                                                                        |
-| `advanced.backgroundTasks`     | `{ handler: scheduleBackgroundWork }`, so Better Auth's own async work rides on `ctx.waitUntil`                                                                             |
-| `baseURL.allowedHosts`         | `appHostsForMode(import.meta.env.MODE)` from `src/modules/_core/constants/api.ts`                                                                                           |
-| `emailAndPassword`             | Enabled, `requireEmailVerification: true`, min 8 / max 1024 characters, `revokeSessionsOnPasswordReset: true` and `onPasswordReset` (see [Password reset](#password-reset)) |
-| `emailVerification`            | `sendOnSignUp: true`, `autoSignInAfterVerification: true`                                                                                                                   |
-| `hooks.before`                 | Refuses the four email-sending endpoints while the email sender is marked unavailable                                                                                       |
-| `session`                      | `storeSessionInDatabase: true`, cookie cache turned off (`cookieCache: { enabled: false }`)                                                                                 |
-| `verification`                 | `storeIdentifier: "hashed"`, `storeInDatabase: true`                                                                                                                        |
-| `socialProviders`              | `google`                                                                                                                                                                    |
-| `account.accountLinking`       | Enabled, with no `trustedProviders` (see [Account linking](#account-linking))                                                                                               |
-| `account.encryptOAuthTokens`   | `true`                                                                                                                                                                      |
-| `telemetry`                    | Disabled                                                                                                                                                                    |
-| `user.additionalFields`        | `timezone` (string, optional, accepted as input)                                                                                                                            |
-| `user.changeEmail`             | Enabled, with `sendChangeEmailConfirmation`                                                                                                                                 |
+| Option                         | Value                                                                                                                                                                                                                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `database`                     | `drizzleAdapter(db, { provider: "sqlite", schema })`                                                                                                                                                                                                                    |
+| `advanced.database.generateId` | `() => uuidv7()`, with `joins: true`                                                                                                                                                                                                                                    |
+| `advanced.ipAddress`           | Reads `cf-connecting-ip` (`IP_ADDRESS_HEADER` from `src/lib/rate-limit.ts`)                                                                                                                                                                                             |
+| `advanced.useSecureCookies`    | `!isLocalMode(import.meta.env.MODE)`                                                                                                                                                                                                                                    |
+| `advanced.backgroundTasks`     | `{ handler: scheduleBackgroundWork }`, so Better Auth's own async work rides on `ctx.waitUntil`                                                                                                                                                                         |
+| `baseURL.allowedHosts`         | `appHostsForMode(import.meta.env.MODE)` from `src/modules/_core/constants/api.ts`                                                                                                                                                                                       |
+| `emailAndPassword`             | Enabled, `requireEmailVerification: true`, min 8 / max 1024 characters, `revokeSessionsOnPasswordReset: true` and `onPasswordReset` (see [Password reset](#password-reset))                                                                                             |
+| `emailVerification`            | `sendOnSignUp: true`, `autoSignInAfterVerification: true`                                                                                                                                                                                                               |
+| `hooks.before`                 | Refuses the four email-sending endpoints while the email sender is marked unavailable, a sign-up, password-reset request or verification resend without a passing Turnstile token, and Better Auth's `/admin/*` endpoints to an admin without two-factor authentication |
+| `session`                      | `storeSessionInDatabase: true`, cookie cache turned off (`cookieCache: { enabled: false }`)                                                                                                                                                                             |
+| `verification`                 | `storeIdentifier: "hashed"`, `storeInDatabase: true`                                                                                                                                                                                                                    |
+| `socialProviders`              | `google`                                                                                                                                                                                                                                                                |
+| `account.accountLinking`       | Enabled, with no `trustedProviders` (see [Account linking](#account-linking))                                                                                                                                                                                           |
+| `account.encryptOAuthTokens`   | `true`                                                                                                                                                                                                                                                                  |
+| `telemetry`                    | Disabled                                                                                                                                                                                                                                                                |
+| `user.additionalFields`        | `timezone` (string, optional, accepted as input)                                                                                                                                                                                                                        |
+| `user.changeEmail`             | Enabled, with `sendChangeEmailConfirmation`                                                                                                                                                                                                                             |
 
 Plugins: `admin({ ac, adminRoles, defaultRole, roles })`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })`, the local `signInAudit` and `tanstackStartCookies()`. The last one is what makes Better Auth's cookies work with TanStack Start's response handling, and it must stay last in the array.
 
@@ -50,6 +50,7 @@ This is separate from the application's own `withRateLimit` middleware described
 
 - `user.create.after` calls `scheduleAdminCustomersInvalidation()` and `recordCustomerRegisteredAudit(...)`.
 - `user.update.after` and `user.delete.after` both call `scheduleAdminCustomersInvalidation()`, so the admin customer list refreshes without a poll.
+- `session.create.before` refuses the session a provider sign-in (`/callback/*`, or `/sign-in/social` with an ID token) would open for an admin, with `ADMIN_PASSWORD_SIGN_IN_REQUIRED`. See [Two-factor authentication for admins](#two-factor-authentication-for-admins).
 
 ### Account deletion
 
@@ -74,6 +75,23 @@ A completed reset through `/reset-password` signs the account out everywhere. Wi
 Better Auth awaits `emailAndPassword.onPasswordReset({ user }, request)` after storing the password and before deleting the sessions. The hook hands `sendPasswordChangedEmail({ request, user })` to `scheduleBackgroundWork` and returns at once, so the sign-out never waits for Resend and the email still finishes after the response. The email says the password was changed and every device signed out, links to `/auth/sign-in` on the address the reset came in on, and tells someone who did not make the change to secure their inbox, set a new password with "Forgot password?" and reply to the shop. `sendPasswordChangedEmail` never throws, because a hook that threw would answer the finished reset with a 500 and skip the sign-out. A refusal from Resend, a host outside `appHostsForMode` and an error while the email is prepared are logged and audited as `email.failed`, and a reset that came with no request, which only a server-side `auth.api.resetPassword` call could make, is recorded the same way without a send.
 
 `auth.password-reset.integration.test.ts` signs a customer in on two browsers, resets the password from a third through `/request-password-reset` and `/reset-password`, and checks that both old sessions are refused and deleted, that the new password signs in, that the email links to `http://localhost:3000/en-US/auth/sign-in`, and that a refused email still leaves every device signed out. The browser test in `e2e/specs/auth.spec.ts` does the same through the forgot-password and reset forms.
+
+### Two-factor authentication for admins
+
+The admin panel opens only for an admin with two-factor authentication on. `needsTwoFactorSetup({ role, twoFactorEnabled })` in `auth.access.ts` is true for an admin whose `user.two_factor_enabled` is not `1`, and four places apply it:
+
+| Where                                      | What an admin without two-factor authentication gets                                         |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `requireAdmin` on the `/admin` layout      | A redirect to `/admin/security` instead of the admin panel                                   |
+| `authorized(permission)`                   | `FORBIDDEN` for every admin permission; `authorized()` without one still admits them         |
+| The admin realtime WebSocket handshake     | `401`                                                                                        |
+| `hooks.before` on Better Auth's `/admin/*` | `403` with `ADMIN_TWO_FACTOR_REQUIRED`; a customer still gets the admin plugin's own refusal |
+
+The admin is never locked out. `/admin/security` is `admin_.security.tsx`, a route outside the `/admin` layout guarded by `requireAdminRole`, which checks the role only. It renders `AdminSecurityPage`, which reuses the account's `SecuritySection`: the same `TwoFactorDialog` turns two-factor authentication on with a password, a QR code or setup key, a six-digit code and the recovery codes, and turns it off again with the password. Its profile comes from `getCustomerProfileQuery`, whose `authorized()` needs no permission. Once two-factor authentication is on, the page links to the panel, and the sidebar's **Security** item leads back to it. An admin who turns it off is sent back to the page the next time they open the panel. The page also signs out, and an account without a password, which cannot turn two-factor authentication on, is told to sign out and set one with **Forgot password?**: Better Auth's reset creates the missing credential account.
+
+Admins sign in with their password and a two-factor code, never with Google. The `twoFactor` plugin asks for the code from an after hook whose matcher is `/sign-in/email`, `/sign-in/username` and `/sign-in/phone-number` only (`node_modules/better-auth/dist/plugins/two-factor/index.mjs`, Better Auth 1.7.5). A Google sign-in finishes in `/callback/google`, which that hook never sees, so it opens a full session without the code. Account linking also joins a Google account whose verified address is the admin's to the admin on its first sign-in (see [Account linking](#account-linking)). The shop cannot see whether that Google account has its own 2-Step Verification. `session.create.before` therefore refuses a provider sign-in for an admin, whether or not their two-factor authentication is on, and Better Auth sends the browser to `/api/auth/error?error=ADMIN_PASSWORD_SIGN_IN_REQUIRED`. Customers keep Google sign-in, and for them it still skips the code, so a customer's two-factor authentication covers password sign-in only.
+
+Better Auth's other ways to open a session for an existing admin do not skip the code: a trusted device is set only by a two-factor sign-in on that browser, the verification link signs in only an unverified address, and confirming a new address starts from a signed-in session. Password reset opens no session.
 
 ### Transactional e-mail
 
@@ -166,11 +184,14 @@ export const PERMISSIONS_STATEMENTS = {
 
 `ROLES_CONFIG.admin` receives all of those plus `adminAc.statements` (Better Auth's own `user` and `session` management statements). `ROLES_CONFIG.customer` receives empty arrays for every resource — a customer holds no administrative permission at all. `DEFAULT_ROLE` is `customer` and `ADMIN_PANEL_ROLES` is `["admin"]`.
 
-Two predicates are exported and used everywhere:
+Three predicates are exported and used everywhere:
 
 ```ts
 export const hasAdminAccess = (role: string | null | undefined): role is Role =>
   typeof role === "string" && (ADMIN_PANEL_ROLES as readonly string[]).includes(role)
+
+export const needsTwoFactorSetup = ({ role, twoFactorEnabled }: Readonly<TwoFactorAccessUser>): boolean =>
+  hasAdminAccess(role) && twoFactorEnabled !== true
 
 export const hasPermission = ({ permission, role }: { permission: Permission; role: string | null | undefined }): boolean =>
   isKnownRole(role) && ROLES_CONFIG[role].authorize(permission).success
@@ -202,7 +223,7 @@ export const authorized = (permission?: Permission) =>
         throw new AppError(ERROR_CODES.UNAUTHORIZED)
       }
 
-      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+      if (permission !== undefined && (!hasPermission({ permission, role: session.user.role }) || needsTwoFactorSetup(session.user))) {
         throw new AppError(ERROR_CODES.FORBIDDEN)
       }
 
@@ -210,7 +231,7 @@ export const authorized = (permission?: Permission) =>
     })
 ```
 
-Called without an argument it only requires a signed-in user; called as `authorized({ product: ["create"] })` it also requires that permission. A use case therefore declares its own authorization in its signature:
+Called without an argument it only requires a signed-in user; called as `authorized({ product: ["create"] })` it also requires that permission, and two-factor authentication on the admin who holds it. A use case therefore declares its own authorization in its signature:
 
 ```ts
 export const createCompleteProduct = createServerFn({ method: "POST" }).middleware([authorized({ product: ["create"] })])
@@ -237,14 +258,15 @@ The window is 60 seconds. `withinRateLimit` in `src/lib/rate-limit.ts` implement
 
 `auth.routes.ts` holds the _navigation_ guards. They decide what to render, never whether an operation is allowed; protected server functions authorize themselves through `authorized()`. Each layout route passes its guard as `beforeLoad` directly: `/account` has `beforeLoad: requireCustomer`, `/admin` has `beforeLoad: requireAdmin` and `/auth` has `beforeLoad: redirectIfSignedIn`.
 
-| Export                      | Behaviour                                                                              |
-| --------------------------- | -------------------------------------------------------------------------------------- |
-| `requireSignedIn(route)`    | Resolves to `{ user }`, or redirects to `/auth/sign-in`                                |
-| `requireAdmin(route)`       | Resolves to `{ user }` if `hasAdminAccess`, otherwise redirects to `/account/overview` |
-| `requireCustomer(route)`    | Resolves to `{ user }` unless they are an admin, who is redirected to `/admin`         |
-| `redirectIfSignedIn(route)` | Used on the auth pages; sends a signed-in visitor to `?redirect` or to their home      |
-| `postAuthRouteFor(user)`    | `/admin` for an admin, `/account/overview` for a customer                              |
-| `authEntryRouteFor(user)`   | `/auth/sign-in` when there is no user, otherwise `postAuthRouteFor`                    |
+| Export                      | Behaviour                                                                                                             |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `requireSignedIn(route)`    | Resolves to `{ user }`, or redirects to `/auth/sign-in`                                                               |
+| `requireAdminRole(route)`   | Resolves to `{ user }` if `hasAdminAccess`, otherwise redirects to `/account/overview`; guards `/admin/security` only |
+| `requireAdmin(route)`       | `requireAdminRole`, then redirects an admin for whom `needsTwoFactorSetup` holds to `/admin/security`                 |
+| `requireCustomer(route)`    | Resolves to `{ user }` unless they are an admin, who is redirected to `/admin`                                        |
+| `redirectIfSignedIn(route)` | Used on the auth pages; sends a signed-in visitor to `?redirect` or to their home                                     |
+| `postAuthRouteFor(user)`    | `/admin` for an admin, `/account/overview` for a customer                                                             |
+| `authEntryRouteFor(user)`   | `/auth/sign-in` when there is no user, otherwise `postAuthRouteFor`                                                   |
 
 `route` is the `beforeLoad` argument, `{ context, location, preload }`. The `{ user }` a guard resolves to becomes route context, so a page reads the `SessionUser` with `Route.useRouteContext().user`.
 
@@ -255,7 +277,7 @@ const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContex
   queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)
 ```
 
-`requireSignedIn`, `requireAdmin` and `requireCustomer` pass `recheck: true`, so a real navigation into `/account` or `/admin` re-checks with `staleTime: 0`. A link preload, and `redirectIfSignedIn` on `/auth` with `recheck: false`, reuse a cached session younger than 60 seconds. The session a guard loads stays in the TanStack Query cache, so the components that read it see the same value, and on a server render it is dehydrated into the page, so guarded pages render signed-in on the server. The guards only read the session. A change of user is handled in one place, `clearCacheOnUserChange` in `auth.session.ts`: whenever the cached session switches to a different user, whoever fetched it, it removes every other cached query except the translation message catalogues. It is described in [TanStack Query](/docs/integrations/tanstack-query).
+`requireSignedIn`, `requireAdminRole`, `requireAdmin` and `requireCustomer` pass `recheck: true`, so a real navigation into `/account` or `/admin` re-checks with `staleTime: 0`. A link preload, and `redirectIfSignedIn` on `/auth` with `recheck: false`, reuse a cached session younger than 60 seconds. The session a guard loads stays in the TanStack Query cache, so the components that read it see the same value, and on a server render it is dehydrated into the page, so guarded pages render signed-in on the server. The guards only read the session. A change of user is handled in one place, `clearCacheOnUserChange` in `auth.session.ts`: whenever the cached session switches to a different user, whoever fetched it, it removes every other cached query except the translation message catalogues. It is described in [TanStack Query](/docs/integrations/tanstack-query).
 
 ### Sign-in redirects
 

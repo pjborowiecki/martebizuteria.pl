@@ -1,6 +1,6 @@
 import { type APIRequestContext, type Browser, type Page, type TestInfo } from "@playwright/test"
 
-import { ORDER_NOTIFICATION_INBOX } from "../data/accounts"
+import { ORDER_NOTIFICATION_INBOX, TEST_ACCOUNTS, TEST_PASSWORD } from "../data/accounts"
 import { COURIER, INVOICED_COMPANY, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
 import { linkIn, waitForEmail } from "../fixtures/emails"
@@ -83,6 +83,18 @@ test.describe("admin access", () => {
     await page.goto("/en-US/admin")
 
     await expect(page).toHaveURL(/\/en-US\/account\/overview$/u)
+  })
+})
+
+test.describe("admin two-factor authentication", () => {
+  test("an admin without two-factor authentication is sent to set it up instead of the admin panel", async ({ authPage, page }) => {
+    await authPage.signIn(TEST_ACCOUNTS.adminWithoutTwoFactor.email, TEST_PASSWORD)
+
+    await expect(page).toHaveURL(/\/en-US\/admin\/security$/u)
+    await expect(page.getByRole("heading", { level: 1, name: "Sign-in security" })).toBeVisible()
+    await expect(page.getByRole("button", { exact: true, name: "Enable" })).toBeVisible()
+    await authPage.open("/en-US/admin/orders")
+    await expect(page).toHaveURL(/\/en-US\/admin\/security$/u)
   })
 })
 
@@ -379,6 +391,16 @@ test.describe("admin", () => {
 
     await expect(page.getByText("Your changes have been saved.")).toBeVisible()
     await expireCheckoutSession(request, session.id)
+  })
+
+  test("an admin with two-factor authentication finds it on the security page and goes back to the panel", async ({ page }) => {
+    await new BasePage(page).open("/en-US/admin/overview")
+    await page.getByRole("link", { exact: true, name: "Security" }).click()
+
+    await expect(page).toHaveURL(/\/en-US\/admin\/security$/u)
+    await expect(page.getByText(/^Two-factor authentication is on\./u)).toBeVisible()
+    await page.getByRole("link", { name: "Go to the admin panel" }).click()
+    await expect(page).toHaveURL(/\/en-US\/admin\/overview$/u)
   })
 
   test("two admin tabs in one browser do not echo a catalogue event to each other", async ({

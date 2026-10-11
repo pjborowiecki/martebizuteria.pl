@@ -4,7 +4,7 @@ import { getRequest } from "@tanstack/react-start/server"
 import { isAPIError } from "better-auth/api"
 import { ZodError } from "zod"
 
-import { type Permission, hasPermission } from "~/src/integrations/better-auth/auth.access"
+import { type Permission, hasPermission, needsTwoFactorSetup } from "~/src/integrations/better-auth/auth.access"
 import { authErrorKey } from "~/src/integrations/better-auth/auth.errors"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
@@ -56,7 +56,7 @@ export const authorized = (permission?: Permission) =>
         throw new AppError(ERROR_CODES.UNAUTHORIZED)
       }
 
-      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+      if (permission !== undefined && (!hasPermission({ permission, role: session.user.role }) || needsTwoFactorSetup(session.user))) {
         throw new AppError(ERROR_CODES.FORBIDDEN)
       }
 

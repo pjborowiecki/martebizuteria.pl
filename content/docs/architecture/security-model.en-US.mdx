@@ -7,21 +7,22 @@ description: "How access is enforced on routes, server functions and WebSockets,
 
 **Route guards** in `src/integrations/better-auth/auth.routes.ts` run in `beforeLoad` and redirect. Each layout passes the guard itself, as in `beforeLoad: requireAdmin`:
 
-| Guard                | Used by                          | Behaviour                                                                                |
-| -------------------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
-| `requireSignedIn`    | Building block for the other two | Redirects to `/auth/sign-in` without a session                                           |
-| `requireAdmin`       | `admin.tsx`                      | Also requires `hasAdminAccess(role)`, otherwise `/account/overview`                      |
-| `requireCustomer`    | `account.tsx`                    | Sends an admin to `/admin` instead                                                       |
-| `redirectIfSignedIn` | `auth.tsx`                       | Sends a signed-in user to a safe `?redirect` path, otherwise to `postAuthRouteFor(user)` |
+| Guard                | Used by                       | Behaviour                                                                                      |
+| -------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------- |
+| `requireSignedIn`    | Building block for the others | Redirects to `/auth/sign-in` without a session                                                 |
+| `requireAdminRole`   | `admin_.security.tsx`         | Also requires `hasAdminAccess(role)`, otherwise `/account/overview`                            |
+| `requireAdmin`       | `admin.tsx`                   | `requireAdminRole`, then sends an admin without two-factor authentication to `/admin/security` |
+| `requireCustomer`    | `account.tsx`                 | Sends an admin to `/admin` instead                                                             |
+| `redirectIfSignedIn` | `auth.tsx`                    | Sends a signed-in user to a safe `?redirect` path, otherwise to `postAuthRouteFor(user)`       |
 
-`requireSignedIn`, `requireAdmin` and `requireCustomer` resolve to `{ user }`, which becomes route context; `account.overview.tsx` reads it with `AccountRoute.useRouteContext()`. The guards only read the session, through `loadRouteSession`:
+`requireSignedIn`, `requireAdminRole`, `requireAdmin` and `requireCustomer` resolve to `{ user }`, which becomes route context; `account.overview.tsx` reads it with `AccountRoute.useRouteContext()`. The guards only read the session, through `loadRouteSession`:
 
 ```ts
 const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContext, { recheck }: { readonly recheck: boolean }) =>
   queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)
 ```
 
-`requireSignedIn`, and through it `requireAdmin` and `requireCustomer`, passes `recheck: true`, so a navigation into `/account` or `/admin` fetches the session again. A link preload and `redirectIfSignedIn`, which passes `recheck: false`, reuse a cached session younger than 60 seconds. The session a guard loads stays in the TanStack Query cache for components to read and, on a server render, is serialized into the page. A change of user is handled in one place, `clearCacheOnUserChange` in `auth.session.ts`: when the session switches to a different user, it removes every cached query except the session itself and the translation message catalogues. See [Caching and SSR](/docs/architecture/caching-and-ssr) for the details.
+`requireSignedIn`, and through it `requireAdminRole`, `requireAdmin` and `requireCustomer`, passes `recheck: true`, so a navigation into `/account` or `/admin` fetches the session again. A link preload and `redirectIfSignedIn`, which passes `recheck: false`, reuse a cached session younger than 60 seconds. The session a guard loads stays in the TanStack Query cache for components to read and, on a server render, is serialized into the page. A change of user is handled in one place, `clearCacheOnUserChange` in `auth.session.ts`: when the session switches to a different user, it removes every cached query except the session itself and the translation message catalogues. See [Caching and SSR](/docs/architecture/caching-and-ssr) for the details.
 
 An anonymous visitor to `/account` or `/admin` is sent to `/auth/sign-in` with `?redirect=` set to `route.location.publicHref`, the localized public path they asked for, such as `/en-US/account/orders/order-1`. `resolveSafeRedirect`, internal to the module, checks the value both when the sign-in link is built and before the `/auth` guard follows it. It keeps the value only when it is a string matching `SAME_SITE_PATH_PATTERN`: printable ASCII only, a single leading slash and no backslash. Absolute URLs, protocol-relative `//` values, whitespace, control characters and non-ASCII characters are dropped, so the parameter cannot become an open redirect:
 
@@ -66,7 +67,7 @@ export const authorized = (permission?: Permission) =>
         throw new AppError(ERROR_CODES.UNAUTHORIZED)
       }
 
-      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+      if (permission !== undefined && (!hasPermission({ permission, role: session.user.role }) || needsTwoFactorSetup(session.user))) {
         throw new AppError(ERROR_CODES.FORBIDDEN)
       }
 
@@ -84,6 +85,7 @@ Across `src/modules` and `src/integrations`, `authorized()` appears 87 times: 23
 - **Resources and actions**: `order: [read, update, refund]`, `product: [create, read, update, delete, publish]`, `settings: [manage]`, plus Better Auth's own `defaultStatements` for `user` and `session`.
 - **`ROLES_CONFIG`** grants the admin role every statement plus `adminAc.statements`; the customer role is granted nothing.
 - **`hasAdminAccess(role)`** is the coarse check used by the route guards and the WebSocket handshake; `hasPermission({ permission, role })` is the fine-grained check used by `authorized()`.
+- **`needsTwoFactorSetup({ role, twoFactorEnabled })`** is true for an admin without two-factor authentication. `requireAdmin` sends that admin to `/admin/security`, `authorized()` refuses them every permission, the admin WebSocket handshake answers `401`, and `hooks.before` refuses Better Auth's `/admin/*` endpoints with `ADMIN_TWO_FACTOR_REQUIRED`. Admins sign in with a password and a two-factor code only: `session.create.before` refuses a Google sign-in for an admin, because the `twoFactor` plugin never asks for the code on that path. See [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins).
 
 Because the customer role holds no statements, the resource matrix currently behaves as a binary admin check. It is worth keeping in mind before adding a third role: the matrix is already there, but nothing yet exercises it partially.
 
@@ -160,7 +162,7 @@ Sign-up, the password-reset request, the verification resend and the newsletter 
 
 ## WebSocket authorization
 
-A Durable Object `fetch` has no cookie or session context of its own, so the admin hub is role-checked in the Worker **before** the object is addressed:
+A Durable Object `fetch` has no cookie or session context of its own, so the admin hub is checked in the Worker **before** the object is addressed: `assertAdminWebSocket` answers `401` unless the session belongs to an admin with two-factor authentication on.
 
 ```ts
 if (hubName === REALTIME_INVALIDATION_HUB.ADMIN) {

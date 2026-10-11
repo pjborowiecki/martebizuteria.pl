@@ -10,7 +10,7 @@ import { createDiscount, createDiscountMutation } from "~/src/modules/discount/u
 
 const stubs = vi.hoisted(() => ({
   getDiscountByCode: vi.fn<(code: string) => Promise<{ id: string } | undefined>>(),
-  getRequestSession: vi.fn<() => Promise<{ user: { role: string } } | null>>(),
+  getRequestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } } | null>>(),
   insertDiscount: vi.fn<(values: Discount["insert"]) => Promise<void>>(),
   recordDiscountCreatedAudit: vi.fn(),
 }))
@@ -51,7 +51,7 @@ const FORM_VALUES = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN } })
+  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } })
   stubs.getDiscountByCode.mockResolvedValue(undefined)
   stubs.insertDiscount.mockResolvedValue(undefined)
 })

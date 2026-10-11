@@ -27,6 +27,8 @@ export const ADMIN_PANEL_ROLES = [ROLES.ADMIN] as const
 
 Nowe konta dostają rolę `customer` przez `DEFAULT_ROLE`. `hasAdminAccess(role)` to wąski predykat używany tam, gdzie liczy się tylko „czy to odbiorca panelu administracyjnego" — w strażnikach tras i w uzgadnianiu administracyjnego WebSocketa.
 
+Administrator potrzebuje też włączonego uwierzytelniania dwuskładnikowego. `needsTwoFactorSetup({ role, twoFactorEnabled })` jest prawdziwe dla administratora bez niego, a taki administrator nie ma żadnego uprawnienia: `authorized(permission)` odpowiada `FORBIDDEN`, punkty końcowe `/admin/*` Better Auth odpowiadają `ADMIN_TWO_FACTOR_REQUIRED`, a strażnik trasy wysyła go na `/admin/security`, żeby je włączył. Zobacz [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów).
+
 ## Deklaracje uprawnień
 
 Deklaracje aplikacyjne pochodzą z `PERMISSIONS_STATEMENTS`, które rozwija `defaultStatements` wtyczki admin Better Auth i dodaje cztery zasoby:
@@ -126,7 +128,7 @@ export const authorized = (permission?: Permission) =>
         throw new AppError(ERROR_CODES.UNAUTHORIZED)
       }
 
-      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+      if (permission !== undefined && (!hasPermission({ permission, role: session.user.role }) || needsTwoFactorSetup(session.user))) {
         throw new AppError(ERROR_CODES.FORBIDDEN)
       }
 
@@ -134,9 +136,9 @@ export const authorized = (permission?: Permission) =>
     })
 ```
 
-Wywołanie `authorized()` bez argumentu znaczy „dowolny zalogowany użytkownik". Tak robią przypadki użycia w `customer-account` i `address`; zawężają one dostęp tożsamością w SQL, a nie rolą.
+Wywołanie `authorized()` bez argumentu znaczy „dowolny zalogowany użytkownik". Tak robią przypadki użycia w `customer-account` i `address`; zawężają one dostęp tożsamością w SQL, a nie rolą. Wpuszcza ono też administratora bez uwierzytelniania dwuskładnikowego i dzięki temu `/admin/security` wczytuje jego własny profil przez `getCustomerProfile`.
 
-Kod poza ścieżką middleware wywołuje `hasPermission({ permission, role })` albo `hasAdminAccess(role)` bezpośrednio. `hasPermission` dla nieznanej roli zwraca `false`, a nie rzuca wyjątkiem.
+Kod poza ścieżką middleware wywołuje `hasPermission({ permission, role })`, `hasAdminAccess(role)` albo `needsTwoFactorSetup(user)` bezpośrednio. `hasPermission` dla nieznanej roli zwraca `false`, a nie rzuca wyjątkiem.
 
 ## Własność, nie tylko rola
 

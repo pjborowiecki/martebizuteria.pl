@@ -1,7 +1,7 @@
 import { type QueryClient } from "@tanstack/react-query"
 import { redirect } from "@tanstack/react-router"
 
-import { hasAdminAccess } from "~/src/integrations/better-auth/auth.access"
+import { hasAdminAccess, needsTwoFactorSetup } from "~/src/integrations/better-auth/auth.access"
 import { type getCurrentSession, getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
 
 import { ROUTES } from "~/src/routes"
@@ -10,7 +10,7 @@ type Session = Awaited<ReturnType<typeof getCurrentSession>>
 
 export type SessionUser = NonNullable<Session>["user"]
 
-type GuardRoute = typeof ROUTES.ACCOUNT_OVERVIEW | typeof ROUTES.ADMIN | typeof ROUTES.AUTH_SIGN_IN
+type GuardRoute = typeof ROUTES.ACCOUNT_OVERVIEW | typeof ROUTES.ADMIN | typeof ROUTES.ADMIN_SECURITY | typeof ROUTES.AUTH_SIGN_IN
 
 interface AuthRouteContext {
   readonly context: { readonly queryClient: QueryClient }
@@ -56,10 +56,16 @@ export const requireSignedIn = async (route: AuthRouteContext): Promise<{ user: 
   return session === null ? redirectToSignIn(route.location.publicHref) : { user: session.user }
 }
 
-export const requireAdmin = async (route: AuthRouteContext): Promise<{ user: SessionUser }> => {
+export const requireAdminRole = async (route: AuthRouteContext): Promise<{ user: SessionUser }> => {
   const { user } = await requireSignedIn(route)
 
   return hasAdminAccess(user.role) ? { user } : redirectTo(ROUTES.ACCOUNT_OVERVIEW)
+}
+
+export const requireAdmin = async (route: AuthRouteContext): Promise<{ user: SessionUser }> => {
+  const { user } = await requireAdminRole(route)
+
+  return needsTwoFactorSetup(user) ? redirectTo(ROUTES.ADMIN_SECURITY) : { user }
 }
 
 export const requireCustomer = async (route: AuthRouteContext): Promise<{ user: SessionUser }> => {

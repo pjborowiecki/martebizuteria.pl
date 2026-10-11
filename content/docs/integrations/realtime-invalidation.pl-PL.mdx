@@ -167,7 +167,7 @@ export const handleRealtimeInvalidationWebSocket = async (request, env, hubName)
 }
 ```
 
-Hub panelu wymaga `hasAdminAccess(session?.user.role)`, a w przeciwnym razie zwraca 401. Hub sklepu jest otwarty, i słusznie — rozgłasza wyłącznie publiczne klucze katalogu.
+Hub panelu wymaga sesji, której użytkownik przechodzi `hasAdminAccess(role)` i ma włączone uwierzytelnianie dwuskładnikowe (`needsTwoFactorSetup(user)` jest fałszywe), a w przeciwnym razie zwraca 401. Hub sklepu jest otwarty, i słusznie — rozgłasza wyłącznie publiczne klucze katalogu.
 
 Trasy te obsługiwane są w `src/server.ts` przed handlerem TanStack Start, ponieważ na podniesienie połączenia WebSocket musi odpowiedzieć Durable Object, a nie komponent trasy:
 

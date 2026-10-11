@@ -7,7 +7,7 @@ Go through the sections that apply to your change. Each item names the file that
 
 ## Access
 
-- [ ] Private pages sit under a guarded layout. `admin.tsx` has `beforeLoad: requireAdmin` and `account.tsx` has `beforeLoad: requireCustomer`; each calls `requireSignedIn` first. All three are in `src/integrations/better-auth/auth.routes.ts`.
+- [ ] Private pages sit under a guarded layout. `admin.tsx` has `beforeLoad: requireAdmin` and `account.tsx` has `beforeLoad: requireCustomer`; each calls `requireSignedIn` first. The one admin page outside the layout, `admin_.security.tsx`, has `beforeLoad: requireAdminRole`, so an admin without two-factor authentication can turn it on there. All four are in `src/integrations/better-auth/auth.routes.ts`.
 - [ ] **Every protected server function carries its own `authorized(...)`.** A route guard stops a page from rendering; it does not protect the RPC endpoint, which is reachable directly.
 - [ ] `authorized()` for any signed-in user, `authorized({ resource: ["action"] })` when a permission is needed.
 - [ ] Operations on the caller's own data read the user from `context.auth.user.id`, never from the input. Compare `createUserAddress` and `setDefaultUserAddress` in `src/modules/address/use-cases/`.

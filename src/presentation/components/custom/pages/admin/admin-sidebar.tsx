@@ -15,6 +15,7 @@ import {
   Package,
   ScrollText,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
@@ -386,6 +387,11 @@ const SYSTEM_NAV: readonly NavItem[] = [
     href: ROUTES.ADMIN_AUDIT,
     icon: ScrollText,
     labelKey: "nav.audit",
+  },
+  {
+    href: ROUTES.ADMIN_SECURITY,
+    icon: ShieldCheck,
+    labelKey: "nav.security",
   },
   {
     disabled: true,

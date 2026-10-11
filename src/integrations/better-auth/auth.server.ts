@@ -4,13 +4,20 @@ import { createElement } from "react"
 
 import { type BetterAuthPlugin, betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { APIError, createAuthMiddleware } from "better-auth/api"
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api"
 import { admin, multiSession, twoFactor } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { createTranslator } from "use-intl"
 import { v7 as uuidv7 } from "uuid"
 
-import { ADMIN_PANEL_ROLES, DEFAULT_ROLE, ROLES_CONFIG, ac } from "~/src/integrations/better-auth/auth.access"
+import {
+  ADMIN_PANEL_ROLES,
+  DEFAULT_ROLE,
+  ROLES_CONFIG,
+  ac,
+  hasAdminAccess,
+  needsTwoFactorSetup,
+} from "~/src/integrations/better-auth/auth.access"
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "~/src/integrations/better-auth/auth.constraints"
 import { type AuthErrorCode } from "~/src/integrations/better-auth/auth.errors"
 import {
@@ -39,6 +46,7 @@ import {
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
+import { getUserById } from "~/src/modules/user/user.accessors"
 import { USER_ERROR_CODES } from "~/src/modules/user/user.constants"
 import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
 
@@ -109,6 +117,20 @@ const STRIPE_CUSTOMER_NOT_DELETED = {
   code: USER_ERROR_CODES.STRIPE_CUSTOMER_NOT_DELETED,
   message: "The saved cards could not be deleted at Stripe, so the account was kept",
 } as const
+
+const ADMIN_PASSWORD_SIGN_IN_REQUIRED = {
+  code: "ADMIN_PASSWORD_SIGN_IN_REQUIRED",
+  message: "Admin accounts sign in with their password and a two-factor authentication code",
+} as const satisfies AuthRefusal
+
+const ADMIN_TWO_FACTOR_REQUIRED = {
+  code: "ADMIN_TWO_FACTOR_REQUIRED",
+  message: "Turn on two-factor authentication before using the admin panel",
+} as const satisfies AuthRefusal
+
+const PROVIDER_SIGN_IN_PATH_PREFIXES = ["/callback/", "/sign-in/social"]
+
+const ADMIN_PLUGIN_PATH_PREFIX = "/admin/"
 
 const TWO_FACTOR_VERIFY_PATH_PREFIX = "/two-factor/verify-"
 
@@ -319,6 +341,20 @@ export const auth = betterAuth({
   baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) },
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
   databaseHooks: {
+    session: {
+      create: {
+        before: async (session, endpoint) => {
+          if (endpoint === null || !PROVIDER_SIGN_IN_PATH_PREFIXES.some((prefix) => endpoint.path.startsWith(prefix))) {
+            return
+          }
+
+          const signingIn = await getUserById(session.userId)
+          if (hasAdminAccess(signingIn?.role)) {
+            throw APIError.from("FORBIDDEN", ADMIN_PASSWORD_SIGN_IN_REQUIRED)
+          }
+        },
+      },
+    },
     user: {
       create: {
         after: async (user) => {
@@ -379,6 +415,15 @@ export const auth = betterAuth({
       const botCheckAction = BOT_CHECKED_AUTH_PATHS.get(ctx.path)
       if (botCheckAction !== undefined && !(await passesBotCheck(ctx.request, botCheckAction))) {
         throw APIError.from("FORBIDDEN", BOT_CHECK_FAILED)
+      }
+
+      if (!ctx.path.startsWith(ADMIN_PLUGIN_PATH_PREFIX)) {
+        return
+      }
+
+      const caller = await getSessionFromCtx<{ role?: string | null; twoFactorEnabled?: boolean | null }>(ctx)
+      if (caller !== null && needsTwoFactorSetup(caller.user)) {
+        throw APIError.from("FORBIDDEN", ADMIN_TWO_FACTOR_REQUIRED)
       }
     }),
   },

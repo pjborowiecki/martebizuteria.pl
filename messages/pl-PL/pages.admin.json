@@ -169,6 +169,7 @@
     "coupons": "Kupony",
     "content": "Treść",
     "audit": "Dziennik zdarzeń",
+    "security": "Bezpieczeństwo",
     "settings": "Ustawienia"
   },
   "media": {
@@ -436,6 +437,14 @@
       "previous": "Poprzednia",
       "next": "Następna"
     }
+  },
+  "security": {
+    "eyebrow": "Panel administracyjny",
+    "title": "Bezpieczeństwo logowania",
+    "required": "Panel administracyjny otworzy się dopiero po włączeniu uwierzytelniania dwuskładnikowego. Włącz je poniżej w aplikacji uwierzytelniającej — od tej pory będziesz się logować hasłem i sześciocyfrowym kodem.",
+    "enabled": "Uwierzytelnianie dwuskładnikowe jest włączone. Każde logowanie na to konto wymaga hasła i kodu z aplikacji uwierzytelniającej.",
+    "passwordRequired": "To konto nie ma jeszcze hasła, a konta administratorów logują się wyłącznie hasłem i kodem uwierzytelniania dwuskładnikowego. Wyloguj się, wybierz „Nie pamiętasz hasła?” na stronie logowania i ustaw hasło, a potem zaloguj się nim i włącz tutaj uwierzytelnianie dwuskładnikowe.",
+    "openAdmin": "Przejdź do panelu administracyjnego"
   },
   "settings": {
     "title": "Ustawienia",
