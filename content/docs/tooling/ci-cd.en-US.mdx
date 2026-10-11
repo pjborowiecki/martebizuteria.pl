@@ -45,7 +45,7 @@ permissions:
   contents: read
 ```
 
-The `verify` job, with a 15-minute timeout, running on `ubuntu-latest` with `persist-credentials: false` on the checkout. The steps are `bun run check`, `bun run test:coverage`, `bun run build:preview`, and an upload of `coverage/` as the `coverage` artifact with a seven-day retention (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
+The `verify` job, with a 25-minute timeout, running on `ubuntu-latest` with `persist-credentials: false` on the checkout. The steps are `bun run check`, `bun run test:coverage`, `bun run build:preview`, and an upload of `coverage/` as the `coverage` artifact with a seven-day retention (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
 
 A second job, `e2e`, calls `e2e-reusable.yml` with `browser: chromium`.
 

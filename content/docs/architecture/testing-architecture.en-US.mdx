@@ -109,7 +109,7 @@ The Playwright suite in `e2e/` runs the built Worker in Chromium and WebKit agai
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`, with concurrency cancellation and a 15-minute timeout. It uses the shared composite action `.github/actions/setup`, which installs Bun 1.4.0, sets up Vite+ with Node 24, runs `bun install --frozen-lockfile --ignore-scripts`, copies `.env.test` over `.env.development` and `.env.preview`, and runs `bun run typegen`.
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`, with concurrency cancellation and a 25-minute timeout. It uses the shared composite action `.github/actions/setup`, which installs Bun 1.4.0, sets up Vite+ with Node 24, runs `bun install --frozen-lockfile --ignore-scripts`, copies `.env.test` over `.env.development` and `.env.preview`, and runs `bun run typegen`.
 
 Then, in order:
 

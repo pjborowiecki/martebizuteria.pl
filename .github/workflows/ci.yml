@@ -16,7 +16,7 @@ jobs:
   verify:
     name: Format, lint, types, tests, and build
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
         with:

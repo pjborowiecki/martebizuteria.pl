@@ -109,7 +109,7 @@ Zestaw Playwrighta w `e2e/` uruchamia zbudowanego Workera w Chromium i WebKicie 
 
 ## CI
 
-`.github/workflows/ci.yml` działa dla każdego pull requesta i dla pushy do `main`, z anulowaniem współbieżnych uruchomień i limitem 15 minut. Korzysta ze współdzielonej akcji złożonej `.github/actions/setup`, która instaluje Bun 1.4.0, konfiguruje Vite+ z Node 24, uruchamia `bun install --frozen-lockfile --ignore-scripts`, kopiuje `.env.test` na `.env.development` i `.env.preview` oraz uruchamia `bun run typegen`.
+`.github/workflows/ci.yml` działa dla każdego pull requesta i dla pushy do `main`, z anulowaniem współbieżnych uruchomień i limitem 25 minut. Korzysta ze współdzielonej akcji złożonej `.github/actions/setup`, która instaluje Bun 1.4.0, konfiguruje Vite+ z Node 24, uruchamia `bun install --frozen-lockfile --ignore-scripts`, kopiuje `.env.test` na `.env.development` i `.env.preview` oraz uruchamia `bun run typegen`.
 
 Następnie, po kolei:
 
