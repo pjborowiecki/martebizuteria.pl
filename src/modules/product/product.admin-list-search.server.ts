@@ -1,10 +1,10 @@
-import { type SQL, inArray, or, sql } from "drizzle-orm"
+import { type SQL, inArray, or } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import {
-  buildAdminLikePattern,
   buildAdminSearchOrCondition,
+  containsAdminSearchTerm,
   localizedTextColumns,
   normalizeAdminSearchTerm,
 } from "~/src/modules/_core/utils/search-conditions.server"
@@ -17,7 +17,6 @@ export const buildAdminProductSearchCondition = (search: string | undefined): SQ
     return undefined
   }
 
-  const pattern = buildAdminLikePattern(normalized)
   const textMatch = buildAdminSearchOrCondition(normalized, [
     product.handle,
     product.id,
@@ -33,7 +32,7 @@ export const buildAdminProductSearchCondition = (search: string | undefined): SQ
         id: productVariant.productId,
       })
       .from(productVariant)
-      .where(sql`${productVariant.sku} like ${pattern} escape '\\'`),
+      .where(containsAdminSearchTerm(productVariant.sku, normalized)),
   )
 
   return or(textMatch, skuMatch)

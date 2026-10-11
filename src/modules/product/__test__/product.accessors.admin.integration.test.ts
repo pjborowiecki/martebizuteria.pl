@@ -206,6 +206,15 @@ describe("literal product SKU search", () => {
     expect(idsOf(result.rows)).toStrictEqual(["p1"])
     expect(result.total).toBe(1)
   })
+
+  it("matches a SKU longer than the 50 bytes D1 allows a LIKE pattern, in any case", async () => {
+    const sku = "MARTE-SREBRO-925-PIERSCIONEK-LAPIS-LAZULI-ROZMIAR-18-POLER"
+    sqlite.prepare("update product_variant set sku = ? where id = 'v1b'").run(sku)
+
+    const result = await getAdminProductsPage({ ...PAGE, search: sku.toLowerCase() })
+
+    expect(idsOf(result.rows)).toStrictEqual(["p1"])
+  })
 })
 
 describe("getAdminProductsPage without variant statistics", () => {

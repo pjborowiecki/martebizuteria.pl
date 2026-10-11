@@ -118,6 +118,8 @@ D1 odrzuca instrukcję, która wiąże więcej niż 100 parametrów, a limit obo
 
 Testowy zamiennik D1 egzekwuje ten sam limit, więc test integracyjny na pełnej stronie wierszy zawodzi tak, jak zawiódłby D1.
 
+D1 odrzuca też wzorzec `LIKE` lub `GLOB` dłuższy niż 50 bajtów komunikatem "LIKE or GLOB pattern too complex", a pełny adres e-mail potrafi go przekroczyć. Dlatego wyszukiwanie w panelu znajduje frazę przez `instr(lower(cast(column as text)), lower(?)) > 0` (`containsAdminSearchTerm` w `src/modules/_core/utils/search-conditions.server.ts`), które przyjmuje frazę dowolnej długości i dopasowuje `%` oraz `_` dosłownie. Testowy zamiennik ustawia `likePatternLength` na 50 w bazie SQLite, którą obsługuje, więc długi wzorzec `LIKE` zawodzi także tam.
+
 ## Instrukcje przygotowane
 
 Gorące ścieżki odczytu prekompilują swoje SQL przez `.prepare()` i `sql.placeholder()`. Plik `src/modules/product/product.accessors.ts` jest najgęstszym przykładem:

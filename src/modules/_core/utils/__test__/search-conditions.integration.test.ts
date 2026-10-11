@@ -9,6 +9,8 @@ import { buildAdminSearchOrCondition, localizedTextColumns } from "~/src/modules
 
 const sqlite = new DatabaseSync(":memory:")
 
+const LONG_EMAIL = "anna.kowalska-nowak.zamowienia@przyklad-sklepu-z-bizuteria.pl"
+
 const database = drizzle(createTestD1Database(sqlite))
 
 const entries = sqliteTable("search_entry", {
@@ -29,6 +31,7 @@ beforeAll(() => {
     "pathleaf",
     String.raw`combo%_\done`,
     "x' OR 1=1 --",
+    LONG_EMAIL,
   ]
   const insert = sqlite.prepare("insert into search_entry (id, label, reference) values (?, ?, ?)")
 
@@ -49,6 +52,7 @@ describe("admin search against SQLite", () => {
     { ids: [6], search: "path\\" },
     { ids: [8], search: "%_\\" },
     { ids: [9], search: "x' OR 1=1 --" },
+    { ids: [10], search: LONG_EMAIL.toUpperCase() },
   ])("matches $search as literal text", async ({ ids, search }) => {
     const rows = await database
       .select({ id: entries.id })
@@ -57,6 +61,17 @@ describe("admin search against SQLite", () => {
       .orderBy(entries.id)
 
     expect(rows.map((row) => row.id)).toStrictEqual(ids)
+  })
+
+  it("finds a term longer than the 50 bytes D1 allows a LIKE pattern", async () => {
+    const term = `  ${LONG_EMAIL}  `
+    const rows = await database
+      .select({ id: entries.id })
+      .from(entries)
+      .where(buildAdminSearchOrCondition(term, [entries.label]))
+
+    expect(new TextEncoder().encode(LONG_EMAIL).length).toBeGreaterThan(50)
+    expect(rows).toStrictEqual([{ id: 10 }])
   })
 
   it("matches any supplied column, including a numeric reference", async () => {

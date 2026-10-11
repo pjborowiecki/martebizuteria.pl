@@ -62,7 +62,7 @@ Each of these already has some of its groundwork in place (an integration functi
 
 - **Stripe's payment form is tested only with sandbox keys.** The Playwright suite in `e2e/` buys with courier, in-store pickup and a parcel locker, in English and in Polish, but settles payments through an emulator. Only the opt-in `stripe-test-mode` project pays in the real Payment Element, by card, and only where Stripe sandbox keys are set; no test pays with BLIK or Przelewy24.
 - **The ratio is inverted relative to the risk.** Component tests mostly assert rendering; commerce correctness lives in checkout, inventory compensation and refunds, which the 35 integration suites cover. More integration coverage of the money paths is worth more than more component coverage.
-- **Integration suites run on `node:sqlite`.** The transport in `src/platform/testing/mocks/d1.ts` emulates D1's batch atomicity and its 100-parameter ceiling but not its concurrency, so concurrency results are SQLite's behaviour, not proof against D1 under production load.
+- **Integration suites run on `node:sqlite`.** The transport in `src/platform/testing/mocks/d1.ts` emulates D1's batch atomicity, its 100-parameter ceiling and its 50-byte `LIKE` pattern limit but not its concurrency, so concurrency results are SQLite's behaviour, not proof against D1 under production load.
 - **The coverage ratchet needs turning.** Thresholds sit at 72 statements, 71 lines, 68 functions, 69 branches with `autoUpdate: false`. They are a floor to raise, not a target that has been met.
 
 ## Priority 5 — housekeeping

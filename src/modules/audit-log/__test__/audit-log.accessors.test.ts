@@ -122,9 +122,9 @@ describe("getAdminAuditLogsPage where clause", () => {
 
     const query = dialect.sqlToQuery(lastWhere())
 
-    expect(query.sql).toContain('lower(cast("audit_log"."action" as text)) like ?')
-    expect(query.sql).toContain('lower(cast("audit_log"."ip" as text)) like ?')
-    expect(query.params).toStrictEqual(["%ada%", "%ada%", "%ada%", "%ada%", "%ada%"])
+    expect(query.sql).toContain('instr(lower(cast("audit_log"."action" as text)), lower(?)) > 0')
+    expect(query.sql).toContain('instr(lower(cast("audit_log"."ip" as text)), lower(?)) > 0')
+    expect(query.params).toStrictEqual(["ada", "ada", "ada", "ada", "ada"])
   })
 
   it("ignores a blank search term", async () => {
@@ -139,7 +139,7 @@ describe("getAdminAuditLogsPage where clause", () => {
     const query = dialect.sqlToQuery(lastWhere())
 
     expect(query.sql).toContain(" and ")
-    expect(query.params).toStrictEqual(["warning", "auth", "%ada%", "%ada%", "%ada%", "%ada%", "%ada%"])
+    expect(query.params).toStrictEqual(["warning", "auth", "ada", "ada", "ada", "ada", "ada"])
   })
 
   it("bounds a created at filter to the day", async () => {
