@@ -45,7 +45,7 @@ permissions:
   contents: read
 ```
 
-Zadanie `verify`, z limitem 15 minut, na `ubuntu-latest`, z `persist-credentials: false` przy checkoucie. Kroki to `bun run check`, `bun run test:coverage`, `bun run build:preview` oraz wysłanie `coverage/` jako artefaktu `coverage` z siedmiodniowym okresem przechowywania (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
+Zadanie `verify`, z limitem 25 minut, na `ubuntu-latest`, z `persist-credentials: false` przy checkoucie. Kroki to `bun run check`, `bun run test:coverage`, `bun run build:preview` oraz wysłanie `coverage/` jako artefaktu `coverage` z siedmiodniowym okresem przechowywania (`if: ${{ !cancelled() }}`, `if-no-files-found: ignore`).
 
 Drugie zadanie, `e2e`, wywołuje `e2e-reusable.yml` z `browser: chromium`.
 
