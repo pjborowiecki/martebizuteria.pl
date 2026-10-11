@@ -37,6 +37,11 @@ export const AUTH_ERRORS = {
 
 export type AuthErrorCode = keyof typeof AUTH_ERRORS
 
+export interface AuthRefusal {
+  readonly code: AuthErrorCode
+  readonly message: string
+}
+
 export type AuthErrorMessageKey = (typeof AUTH_ERRORS)[AuthErrorCode]
 
 const AUTH_ERROR_BY_CODE = new Map<string, AuthErrorMessageKey>(Object.entries(AUTH_ERRORS))

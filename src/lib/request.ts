@@ -20,6 +20,9 @@ export const resolveRequestIp = (headers: Headers): string | undefined => {
   return trimmed === "" ? undefined : trimmed
 }
 
+export const auditRequestIp = (headers: Headers | undefined): string | undefined =>
+  headers === undefined ? undefined : resolveRequestIp(headers)
+
 const originOnAcceptedHost = (url: string, isAcceptedHost: (host: string) => boolean): string => {
   const { host, origin, protocol } = new URL(url)
   const isSecureEnough = protocol === "https:" || (protocol === "http:" && isLocalHost(host))

@@ -84,6 +84,30 @@ export const changeEmailSchema = z.object({
   email: emailSchema,
 })
 
+const roleChangeSchema = z.union([z.string(), z.array(z.string())]).transform((role) => [role].flat().join(", "))
+
+export const passwordChangeSchema = z.object({ revokeOtherSessions: z.boolean().optional() })
+
+export const adminAccountChangeSchema = z.object({
+  banReason: z.string().optional(),
+  data: z
+    .object({
+      banReason: z.string().optional(),
+      banned: z.boolean().optional(),
+      email: z.string().optional(),
+      role: roleChangeSchema.optional(),
+    })
+    .optional(),
+  role: roleChangeSchema.optional(),
+  userId: z.string(),
+})
+
+export const confirmedEmailChangeSchema = z.object({
+  email: z.string(),
+  requestType: z.literal("change-email-verification"),
+  updateTo: z.string(),
+})
+
 export type ChangeEmailFormValues = z.infer<typeof changeEmailSchema>
 
 export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>

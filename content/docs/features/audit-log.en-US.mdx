@@ -175,7 +175,7 @@ Details worth knowing:
 
 ### Account security events
 
-Changes to an account are recorded from inside Better Auth, so they are caught whichever client calls the endpoint. `auth.server.ts` registers the `accountSecurityAudit` plugin next to `signInAudit`. Its after hooks run once the endpoint has answered, skip an answer that is an error, and read the caller from `ctx.context.session` and the address from the request's `cf-connecting-ip`:
+Changes to an account are recorded from inside Better Auth, so they are caught whichever client calls the endpoint. `auth.server.ts` registers the `accountSecurityAudit` plugin next to `signInAudit`, both defined in `auth.audit.server.ts`. Its after hooks run once the endpoint has answered, skip an answer that is an error, and read the caller from `ctx.context.session` and the address from the request's `cf-connecting-ip`:
 
 | Endpoint                                                        | Recorded                                                                                                                                                |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |

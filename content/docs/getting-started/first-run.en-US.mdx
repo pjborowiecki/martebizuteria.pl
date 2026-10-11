@@ -45,12 +45,12 @@ There is no seeded user. Sign up at `/auth/sign-up` with an email address you ca
 emailAndPassword: {
   enabled: true,
   requireEmailVerification: true,
-  sendResetPassword,
+  sendResetPassword: sendResetPasswordEmail,
 },
 emailVerification: {
   autoSignInAfterVerification: true,
   sendOnSignUp: true,
-  sendVerificationEmail,
+  sendVerificationEmail: sendVerifyEmail,
 },
 ```
 

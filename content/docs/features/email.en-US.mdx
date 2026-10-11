@@ -66,9 +66,9 @@ All under `src/presentation/emails/`, built with `react-email` and rendered serv
 
 | Template                            | Namespace constant                        | Sent by                                                                                                                                                                                                                                                                                 |
 | ----------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerificationEmail` (Better Auth)                                                                                                                                                                                                                                                   |
-| `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPassword` (Better Auth)                                                                                                                                                                                                                                                       |
-| `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmation` (Better Auth)                                                                                                                                                                                                                                             |
+| `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerifyEmail` (Better Auth)                                                                                                                                                                                                                                                         |
+| `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPasswordEmail` (Better Auth)                                                                                                                                                                                                                                                  |
+| `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmationEmail` (Better Auth)                                                                                                                                                                                                                                        |
 | `password-changed.tsx`              | `PASSWORD_CHANGED_NAMESPACE`              | `sendPasswordChangedEmail`, from Better Auth's `onPasswordReset`                                                                                                                                                                                                                        |
 | `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, awaited by `deleteCustomer` and `afterDelete`                                                                                                                                                                                                                |
 | `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `sendOrderConfirmationEmail`, from the Stripe webhook                                                                                                                                                                                                                                   |
@@ -290,15 +290,15 @@ The hook `useResendOrderEmail` toasts "Email sent" when Resend took the email, a
 
 A newsletter email that Resend refuses is audited as well. `subscribeToNewsletter` calls `recordEmailFailedAudit(email, { detail })`: the address is the audit target, and the detail names the email and the Resend error, such as `Newsletter confirmation — The example.com domain is not verified` or `Newsletter already-subscribed notice — …`. An unverified sender domain therefore shows up in `/admin/audit` on the first signup instead of only in the Worker log. An email that went out is not recorded.
 
-Better Auth's five emails are audited the same way, through `recordAuthEmailFailure` in `auth.server.ts`:
+Better Auth's five emails are audited the same way, through `recordAuthEmailFailure` in `auth.email-delivery.server.ts`:
 
 ```ts
-const recordAuthEmailFailure = (kind: string, recipient: string, failure: string): void => {
+export const recordAuthEmailFailure = (kind: string, recipient: string, failure: string): void => {
   console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
   recordEmailFailedAudit(recipient, { detail: `Auth ${kind} email — ${failure}` })
 }
 
-const deliverAuthEmail = async (kind: string, email: Parameters<typeof sendEmail>[0]): Promise<boolean> => {
+export const deliverAuthEmail = async (kind: string, email: Parameters<typeof sendEmail>[0]): Promise<boolean> => {
   const failure = await sendEmail(email)
   if (failure === undefined) {
     return true

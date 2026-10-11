@@ -168,7 +168,7 @@ Email templates in `src/presentation/emails/` each export a namespace constant a
 const messages = await loadNamespace<typeof verifyEmailMessages>({ locale, namespace: VERIFY_EMAIL_NAMESPACE })
 ```
 
-`auth.server.ts` calls `loadNamespace` directly and passes both `locale` and `messages` into the template, using `createTranslator` from `use-intl` on the server side. Preview both locales of every template at `/dev/emails` — see [Local debugging](/docs/guides/local-debugging).
+The e-mail use cases, such as `src/modules/verification/use-cases/send-verify-email.server.ts`, call `loadNamespace` directly and pass both `locale` and `messages` into the template, using `createTranslator` from `use-intl` on the server side. Preview both locales of every template at `/dev/emails` — see [Local debugging](/docs/guides/local-debugging).
 
 ## Adding a namespace: the checklist
 

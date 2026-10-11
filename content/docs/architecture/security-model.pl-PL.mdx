@@ -124,7 +124,7 @@ Ten sam wzorzec występuje w `list-customer-orders.ts`, `list-customer-sessions.
 
 Dwa limitery dzielą tabelę `rate_limit` i funkcję liczącą `withinRateLimit` z `src/lib/rate-limit.ts`.
 
-**Własny limiter Better Auth**, skonfigurowany w `auth.server.ts` z `customStorage: authRateLimitStorage`, domyślnym limitem 100 żądań na okno 60 s i regułami szczegółowymi:
+**Własny limiter Better Auth**, skonfigurowany w `auth.server.ts` z `customStorage: authRateLimitStorage`, domyślnym limitem 100 żądań na okno 60 s i regułami szczegółowymi z `RATE_LIMIT_CUSTOM_RULES` w `auth.constants.ts`:
 
 | Trasa                     | Maksymalnie na minutę |
 | ------------------------- | --------------------- |

@@ -73,12 +73,12 @@ Email and password sign-in is enabled with verification enforced:
 emailAndPassword: {
   enabled: true,
   requireEmailVerification: true,
-  sendResetPassword,
+  sendResetPassword: sendResetPasswordEmail,
 },
 emailVerification: {
   autoSignInAfterVerification: true,
   sendOnSignUp: true,
-  sendVerificationEmail,
+  sendVerificationEmail: sendVerifyEmail,
 },
 ```
 

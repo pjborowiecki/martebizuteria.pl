@@ -73,12 +73,12 @@ Logowanie e-mailem i hasłem jest włączone z wymuszoną weryfikacją adresu:
 emailAndPassword: {
   enabled: true,
   requireEmailVerification: true,
-  sendResetPassword,
+  sendResetPassword: sendResetPasswordEmail,
 },
 emailVerification: {
   autoSignInAfterVerification: true,
   sendOnSignUp: true,
-  sendVerificationEmail,
+  sendVerificationEmail: sendVerifyEmail,
 },
 ```
 
