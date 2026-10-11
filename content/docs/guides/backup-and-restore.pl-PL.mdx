@@ -45,6 +45,7 @@ Cofa się tylko D1. Wszystko, co od punktu przywrócenia wydarzyło się poza ba
 - Odstąpienia od umowy złożone od tamtej chwili, pod `/withdraw-from-contract` albo na koncie, znikają z zamówień, choć każde nadal wiąże sklep. Powiadomienia sklepu o odstąpieniu w `kontakt@martebizuteria.pl` zachowują ich treść; obsłuż te odstąpienia na podstawie powiadomień.
 - Zmiany produktów, cen, kodów rabatowych i stron prawnych z tego czasu zostają cofnięte, a przełącznik sprzedaży wraca do swojego ówczesnego położenia. Zdjęcia wysłane w międzyczasie zostają w R2, ale nic na nie nie wskazuje.
 - Dziennik audytu traci wpisy z tego czasu, łącznie z zapisem tego, co poszło źle.
+- Wiersze, które od tamtej chwili usunęło albo zanonimizowało codzienne czyszczenie, wracają, a jego następne uruchomienie znów je czyści; zobacz [Okresy przechowywania danych](/docs/guides/data-retention).
 - `d1_migrations` też się cofa, więc migracja zastosowana po punkcie przywrócenia zostaje cofnięta i znów figuruje jako oczekująca.
 
 Time Travel służy do naprawy szkód w całej bazie, takich jak migracja, która zniszczyła dane, albo masowe usunięcie. Pojedynczą błędną zmianę taniej poprawić ręcznie: wpis produktu w `/admin/audit` pokazuje jego pola przed zmianą i po niej (zobacz [Dziennik audytu](/docs/features/audit-log#różnice-zmian)).

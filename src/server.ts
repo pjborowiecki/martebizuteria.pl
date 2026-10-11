@@ -8,6 +8,7 @@ import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modu
 
 import { executionContextStorage } from "~/src/lib/background"
 import { serializeCookie } from "~/src/lib/cookie"
+import { enforceRetentionPeriods } from "~/src/lib/retention"
 import { createContentSecurityPolicyNonce, withSecurityHeaders } from "~/src/lib/security-headers"
 import { generateRobotsTxt, generateSitemapXml } from "~/src/lib/seo"
 import { listSitemapPages } from "~/src/lib/sitemap"
@@ -106,6 +107,9 @@ const server: ExportedHandler<Env, AuditLogQueueMessage> = {
   },
   async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
     await processAuditLogQueueBatch(batch)
+  },
+  async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+    await enforceRetentionPeriods(new Date(controller.scheduledTime))
   },
 }
 

@@ -157,6 +157,8 @@ Nieudana wysyłka loguje błąd Resend i zapisuje wpis `email.failed` w `/admin/
 
 Adres już potwierdzony dostaje `alreadyConfirmed` tylko wtedy, gdy należy do zalogowanego odwiedzającego, i nic nie jest wysyłane. Każdy inny jest traktowany tak samo jak nowy adres: żądanie czeka na `sendNewsletterAlreadySubscribed`, który informuje właściciela skrzynki, że jest już na liście, i odpowiada `confirmationSent` albo `confirmationFailed` dokładnie tak, jak przy nowym zapisie. Wiersz i jego token pozostają bez zmian, więc linki w wysłanych już listach nadal działają. Odpowiedź jest więc taka sama niezależnie od tego, czy adres jest na liście, obie ścieżki spędzają czas na jednym połączeniu z Resend, a subskrybent, który nie jest zalogowany, dostaje e-mail zamiast samej obietnicy e-maila.
 
+Codzienne czyszczenie usuwa wiersz, który jest nadal `pending` 30 dni po ostatniej prośbie adresu o potwierdzenie, i wiersz `unsubscribed` 30 dni po wypisaniu; zobacz [Okresy przechowywania danych](/docs/guides/data-retention).
+
 ## Zakotwiczenia sekcji
 
 `NewArrivalsSection` to jedyna sekcja z atrybutem `id`: `id="nowosci"`. Odnośniki, które mają do niej trafiać, używają tego fragmentu adresu. Pozostałe sekcje nie są adresowalne.

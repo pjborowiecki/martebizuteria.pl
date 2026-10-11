@@ -45,6 +45,7 @@ Only D1 goes back. Everything that happened since the restore point outside the 
 - Withdrawals from the contract sent since then, at `/withdraw-from-contract` or from an account, are gone from their orders, although each still binds the shop. The shop's withdrawal notices in `kontakt@martebizuteria.pl` keep their content; handle those withdrawals from the notices.
 - Product, price, discount-code and legal-page edits since then are undone, and the Sales switch is back in the position it had. Images uploaded since stay in R2 with nothing pointing at them.
 - The audit log loses its entries since then, including the record of what went wrong.
+- Rows the daily clean-up deleted or anonymised since then come back, and its next run clears them again; see [Data retention](/docs/guides/data-retention).
 - `d1_migrations` goes back too, so a migration applied after the restore point is undone and listed as pending again.
 
 Time Travel is for damage to the whole database, such as a migration that destroyed data or a mass deletion. A single wrong edit is cheaper to put right by hand: a product's entry in `/admin/audit` shows its fields before and after the change (see [Audit log](/docs/features/audit-log#change-diffs)).

@@ -241,6 +241,8 @@ When `sameAsShipping` is true, `prepareCreateCheckoutBatch` points both address 
 
 An address joins the customer's address book only while its `saveShippingAddress` or `saveBillingAddress` box is ticked: both batches leave `user_id` null otherwise, and a delivery update that unticks the box sets it back to null. When an update saves an address, the same batch clears `is_default` on the customer's other addresses, guarded by the pending checkout like the upserts, so the customer keeps one default.
 
+Thirty days after a checkout ends, as `failed`, as `abandoned` or as `pending` with no `payment` row, the daily retention clean-up erases its e-mail, note, company, NIP, parcel locker and account, deletes the addresses no account owns and any discount hold it still kept, and leaves the row and its payment; see [Data retention](/docs/guides/data-retention#ended-checkouts).
+
 ## Related pages
 
 - [Payments](/docs/features/payments) for the webhooks that turn a checkout into an order

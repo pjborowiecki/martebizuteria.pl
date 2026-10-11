@@ -37,7 +37,7 @@ Pliki tras leżą płasko w `src/routes/` i nie zawierają segmentu języka. Rou
 
 `__root.tsx` i `dev.emails.tsx` dopełniają 69 plików; `dev.emails.tsx` to podgląd e-maili dostępny tylko w trybie deweloperskim — zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdą.
 
-Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed wejściem we framework Reacta — `/sitemap.xml`, `/robots.txt` i dwa uaktualnienia do WebSocketu — a dodatkowo przekierowanie językowe, bo żadna z nich nie potrzebuje renderu SSR.
+Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed wejściem we framework Reacta — `/sitemap.xml`, `/robots.txt` i dwa uaktualnienia do WebSocketu — a dodatkowo przekierowanie językowe, bo żadna z nich nie potrzebuje renderu SSR. Handler `scheduled` z tego samego pliku uruchamia codzienne czyszczenie danych po okresie przechowywania.
 
 ## Powiązania (bindings)
 
@@ -78,7 +78,7 @@ Liczby policzone na drzewie roboczym, nie życzeniowe:
 | Moduły funkcjonalne                                | 41 w `src/modules/`, łącznie z `_core`                                                                |
 | Tabele w bazie                                     | 39 eksportowanych z `drizzle.schemas.ts` oraz tabela FTS5 `storefront_search`                         |
 | Migracje D1                                        | 83 pliki SQL w `src/integrations/drizzle-orm/migrations/`                                             |
-| Przypadki użycia                                   | 119 plików w `src/modules/*/use-cases/`                                                               |
+| Przypadki użycia                                   | 125 plików w `src/modules/*/use-cases/`                                                               |
 | Funkcje serwerowe                                  | 117 wywołań `createServerFn(...)`                                                                     |
 | Integracje                                         | 15 adapterów dostawców w `src/integrations/`                                                          |
 | Pliki tras                                         | 69 w `src/routes/`                                                                                    |
@@ -94,7 +94,7 @@ Precyzyjne wskazanie granicy jest bardziej przydatne niż lista funkcji.
 
 ### Podłączone od początku do końca
 
-Katalog (produkty, warianty, opcje, atrybuty, kategorie, kolekcje, wyszukiwanie, filtrowanie, paginacja), koszyk, czterokrokowy proces zamówienia, kody rabatowe (procentowe, kwotowe lub na darmową dostawę) sprawdzane podczas zamówienia, przeliczane na serwerze, rezerwowane dla otwartego checkoutu, żeby limity wykorzystań trzymały się przy równoległych zakupach, nakładane na sesję Stripe jako jednorazowy kupon i zapisywane w `discount_redemption` razem z zamówieniem, płatność Stripe z realizacją sterowaną webhookiem, rezerwacja stanów magazynowych z kompensacją, składanie zamówienia, kompletowanie zamówienia, jego wysyłka z opcjonalnym numerem przesyłki i oznaczanie dostarczenia z panelu, zwroty płatności zlecane z panelu lub w Stripe, przy których produkty wracają na stan tylko wtedy, gdy administrator potwierdzi, że wróciły, konta klientów (zamówienia, adresy, sesje, profil, logowanie dwuskładnikowe z kodami zapasowymi), lista życzeń przechowywana w tabeli `wishlist_item`, zapisane karty przypisywane podczas zamówienia do klienta w Stripe i usuwalne z `/account/payment`, poczta transakcyjna w obu językach, dziennik audytu za kolejką Cloudflare, unieważnianie cache w czasie rzeczywistym po WebSocketach oraz zarządzanie produktami, kategoriami, kolekcjami, atrybutami, klientami, zamówieniami, kodami rabatowymi, stronami polityki prywatności i zwrotów oraz audytem w panelu.
+Katalog (produkty, warianty, opcje, atrybuty, kategorie, kolekcje, wyszukiwanie, filtrowanie, paginacja), koszyk, czterokrokowy proces zamówienia, kody rabatowe (procentowe, kwotowe lub na darmową dostawę) sprawdzane podczas zamówienia, przeliczane na serwerze, rezerwowane dla otwartego checkoutu, żeby limity wykorzystań trzymały się przy równoległych zakupach, nakładane na sesję Stripe jako jednorazowy kupon i zapisywane w `discount_redemption` razem z zamówieniem, płatność Stripe z realizacją sterowaną webhookiem, rezerwacja stanów magazynowych z kompensacją, składanie zamówienia, kompletowanie zamówienia, jego wysyłka z opcjonalnym numerem przesyłki i oznaczanie dostarczenia z panelu, zwroty płatności zlecane z panelu lub w Stripe, przy których produkty wracają na stan tylko wtedy, gdy administrator potwierdzi, że wróciły, konta klientów (zamówienia, adresy, sesje, profil, logowanie dwuskładnikowe z kodami zapasowymi), lista życzeń przechowywana w tabeli `wishlist_item`, zapisane karty przypisywane podczas zamówienia do klienta w Stripe i usuwalne z `/account/payment`, poczta transakcyjna w obu językach, dziennik audytu za kolejką Cloudflare, codzienne czyszczenie, które usuwa albo anonimizuje dane osobowe po upływie okresu przechowywania, unieważnianie cache w czasie rzeczywistym po WebSocketach oraz zarządzanie produktami, kategoriami, kolekcjami, atrybutami, klientami, zamówieniami, kodami rabatowymi, stronami polityki prywatności i zwrotów oraz audytem w panelu.
 
 ### Zaczęte, ale niedokończone
 
@@ -105,7 +105,7 @@ Katalog (produkty, warianty, opcje, atrybuty, kategorie, kolekcje, wyszukiwanie,
 
 ### Nieobecne
 
-Brak testów end-to-end i przeglądarkowych. Brak triggerów cron i zadania uzgadniającego — `wrangler.jsonc` nie deklaruje `crons`. Brak kolejki martwych listów, więc partia audytowa, która wyczerpie trzy ponowienia, jest tracona, choć każda nieudana partia wysyła e-mail na `RESEND_EMAIL_FROM`. Brak zewnętrznej usługi raportowania błędów: błędy trafiają do Workers Logs i Issues, a te, którymi musi się zająć właściciel, na `RESEND_EMAIL_FROM`; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts). Brak czyszczenia wygasłych wierszy `session`, `verification` i `rate_limit`.
+Brak testów end-to-end i przeglądarkowych. Brak zadania uzgadniającego: jedyny Cron Trigger uruchamia [czyszczenie danych po okresie przechowywania](/docs/guides/data-retention), które nie zwalnia stanów magazynowych. Brak kolejki martwych listów, więc partia audytowa, która wyczerpie trzy ponowienia, jest tracona, choć każda nieudana partia wysyła e-mail na `RESEND_EMAIL_FROM`. Brak zewnętrznej usługi raportowania błędów: błędy trafiają do Workers Logs i Issues, a te, którymi musi się zająć właściciel, na `RESEND_EMAIL_FROM`; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts).
 
 [Plan rozwoju](/docs/project/roadmap) wymienia te braki w kolejności, w jakiej warto je naprawiać.
 

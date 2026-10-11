@@ -30,6 +30,7 @@ Linie logu związane z tą stroną:
 | `[Stripe] Domain logic failed for <type>:`              | Handler webhooka rzucił wyjątek, trasa odpowiedziała 500, a Stripe ponowi zdarzenie |
 | `Paid Checkout Session <id> created no order:`          | `handleFulfillCheckoutSession` nie mógł utworzyć zamówienia dla opłaconej sesji     |
 | `[AuditLog Queue] Batch insert failed:`                 | `processAuditLogQueueBatch` nie zapisał partii i poprosił kolejkę o jej ponowienie  |
+| `[Retention] <kind> could not be cleared:`              | Czyszczenie danych zawiodło dla jednego rodzaju wierszy; uruchomienie też zawodzi   |
 
 `vp exec wrangler tail --env production` pokazuje te same linie na żywo; zobacz [Debugowanie lokalne](/docs/guides/local-debugging#obserwowanie-workera-we-wdrożonym-środowisku).
 

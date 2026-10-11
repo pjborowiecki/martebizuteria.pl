@@ -156,6 +156,9 @@
           },
         ],
       },
+      "triggers": {
+        "crons": ["0 3 * * *"],
+      },
       "secrets": {
         "required": [
           "AUTH_GOOGLE_CLIENT_ID",
@@ -305,6 +308,9 @@
             "max_retries": 3,
           },
         ],
+      },
+      "triggers": {
+        "crons": ["0 3 * * *"],
       },
       "secrets": {
         "required": [

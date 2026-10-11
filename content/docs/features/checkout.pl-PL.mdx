@@ -241,6 +241,8 @@ Gdy `sameAsShipping` jest prawdziwe, `prepareCreateCheckoutBatch` wskazuje oba i
 
 Adres trafia do książki adresowej klienta tylko wtedy, gdy zaznaczone jest jego pole `saveShippingAddress` lub `saveBillingAddress`: w przeciwnym razie obie instrukcje zostawiają `user_id` puste, a aktualizacja dostawy, która odznacza pole, ustawia je z powrotem na null. Gdy aktualizacja zapisuje adres, ta sama partia zdejmuje `is_default` z pozostałych adresów klienta, również tylko dla checkoutu w stanie `pending`, więc klient zachowuje jeden adres domyślny.
 
+Trzydzieści dni po zakończeniu checkoutu, jako `failed`, jako `abandoned` albo jako `pending` bez wiersza `payment`, codzienne czyszczenie wymazuje jego e-mail, notatkę, firmę, NIP, paczkomat i konto, usuwa adresy, które nie należą do żadnego konta, i blokadę rabatu, jeśli jeszcze ją trzymał, a sam wiersz i jego płatność zostawia; zobacz [Okresy przechowywania danych](/docs/guides/data-retention#zakończone-checkouty).
+
 ## Powiązane strony
 
 - [Płatności](/docs/features/payments) — webhooki zamieniające checkout w zamówienie

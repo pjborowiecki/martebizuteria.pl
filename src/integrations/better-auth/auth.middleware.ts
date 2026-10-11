@@ -9,16 +9,15 @@ import { authErrorKey } from "~/src/integrations/better-auth/auth.errors"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { RATE_LIMIT_WINDOW_SECONDS } from "~/src/modules/rate-limit/rate-limit.constants"
 
 import { clientAddress, withinRateLimit } from "~/src/lib/rate-limit"
 
-const RATE_LIMIT_WINDOW_SECONDS = 60
-
 export const RATE_LIMITS = {
-  BROWSING: { max: 120, window: RATE_LIMIT_WINDOW_SECONDS },
-  CHECKOUT: { max: 10, window: RATE_LIMIT_WINDOW_SECONDS },
-  SENSITIVE: { max: 3, window: RATE_LIMIT_WINDOW_SECONDS },
-  TOKEN: { max: 5, window: RATE_LIMIT_WINDOW_SECONDS },
+  BROWSING: { max: 120, window: RATE_LIMIT_WINDOW_SECONDS.REQUEST },
+  CHECKOUT: { max: 10, window: RATE_LIMIT_WINDOW_SECONDS.REQUEST },
+  SENSITIVE: { max: 3, window: RATE_LIMIT_WINDOW_SECONDS.REQUEST },
+  TOKEN: { max: 5, window: RATE_LIMIT_WINDOW_SECONDS.REQUEST },
 } as const
 
 const ERROR_REASON_PATTERN = /^[A-Z][A-Z\d_]*$/u
