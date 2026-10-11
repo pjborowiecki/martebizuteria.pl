@@ -41,15 +41,9 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 ## Priorytet 2 — brakująca infrastruktura
 
-### Brak pracy zaplanowanej
+### Brak uzgadniania rezerwacji
 
-`wrangler.jsonc` nie deklaruje `crons`, a `src/server.ts` nie eksportuje handlera `scheduled`. Potrzebują go trzy rzeczy:
-
-| Zadanie                              | Dlaczego                                                                                                                                                                                                   |
-| ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Uzgadnianie rezerwacji               | przestarzałe rezerwacje zwalniane są tylko wtedy, gdy Stripe wyemituje `checkout.session.expired`, 32 minuty po otwarciu sesji; rezerwacja osierocona przez nieudaną kompensację nigdy nie wraca do obiegu |
-| Wygasanie `session` i `verification` | nic nie usuwa wygasłych wierszy                                                                                                                                                                            |
-| Wygasanie `rate_limit`               | liczniki odkładają wiersze bez końca                                                                                                                                                                       |
+`src/server.ts` ma handler `scheduled`, ale jego codzienny Cron Trigger tylko pilnuje [okresów przechowywania danych](/docs/guides/data-retention) i nie zwalnia żadnego stanu magazynowego. Przestarzałe rezerwacje zwalniane są tylko wtedy, gdy Stripe wyemituje `checkout.session.expired`, 32 minuty po otwarciu sesji, a rezerwacja osierocona przez nieudaną kompensację nigdy nie wraca do obiegu. Zadanie uzgadniające działałoby z tego samego handlera.
 
 ### Brak kolejki martwych listów
 
@@ -89,7 +83,7 @@ Model obciążenia na prawdziwym schemacie (5 000 produktów, 20 000 klientów, 
 
 - **Eksporty CSV w panelu** wczytują całą tabelę i wysyłają do D1 wszystkie identyfikatory jako jedną wartość, czego D1 odmawia powyżej około 51 000 wierszy. Zanim któraś tabela zbliży się do tej wielkości, CSV trzeba strumieniować z serwera stronami po 1 000.
 - **Pulpit administratora** przy każdym wejściu przelicza najlepiej sprzedające się produkty i liczby z zakresów dat z całej historii zamówień: około 2 s przy 200 000 zamówień. Wcześniej trzeba dodać indeks `order(status, created_at)` oraz utrzymywane przez wyzwalacze tabele podsumowań dziennych i produktowych.
-- **Dziennik aktywności** rośnie o około 2,6 GB rocznie przy takim ruchu, głównie przez odsłony stron, i przy każdym wczytaniu liczy całą tabelę. Na długo przed limitem 10 GB w D1 trzeba dodać indeksy `(category, created_at)` i `(severity, created_at)`, ograniczyć liczenie i przenieść odsłony do osobnej tabeli z zadaniem kasującym je po 13 miesiącach.
+- **Dziennik aktywności** przyjmuje około 2,6 GB rocznie przy takim ruchu, głównie odsłon stron, i przy każdym wczytaniu liczy całą tabelę. Codzienne czyszczenie usuwa odsłony po 90 dniach, ale przy takim ruchu przybywają szybciej niż 2500 wpisów dziennika audytu, które usuwa jedno uruchomienie. Zwiększ `RETENTION_BATCHES_PER_RUN` w `src/lib/retention.ts`, gdy sklep będzie na Workers Paid, który pozwala na 1000 zapytań do D1 w jednym wywołaniu, albo uruchamiaj trigger częściej; dodaj indeksy `(category, created_at)` i `(severity, created_at)` i ogranicz liczenie.
 - **Strona klientów w panelu** sumuje wszystkie zamówienia każdego klienta na potrzeby kart i filtrów: 1,25 mln wierszy na wejście przy 20 000 klientów. Naprawi to tabela podsumowań per klient utrzymywana przez wyzwalacze.
 - **Listy produktów w sklepie** przeliczają stan i zakres cen każdego produktu ze wszystkich wariantów: 40 000 wierszy na listę przy 5 000 produktów. Gdy katalog urośnie, łączny stan i najniższą cenę trzeba trzymać na produkcie, dokładnie aktualizowane przez wyzwalacze.
 - **Mniejsze podróże do bazy** zostały w zapisie adresów, webhookach sporów i zwrotów, zmianach statusu zamówień w panelu, tworzeniu i aktualizacji checkoutu oraz realizacji zamówienia, gdzie niezależne odczyty mogłyby trafić do jednego wsadu. W realtime brakuje jeszcze ograniczania odświeżeń per karta i odświeżenia po ponownym połączeniu.

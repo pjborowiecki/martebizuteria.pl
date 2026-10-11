@@ -43,10 +43,11 @@ This is a working application under active development, not a finished product. 
 | Audit log                | Cloudflare Queue producer/consumer, 42 typed recorder functions over a 43-entry action catalogue, admin list with category and date filters.                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Realtime invalidation    | Durable Object fan-out hub per audience, WebSocket subscriptions for 14 admin and 11 storefront query prefixes, `BroadcastChannel` mirroring across tabs.                                                                                                                                                                                                                                                                                                                                                                                                           |
 | Monitoring               | Workers Logs and Issues, `/api/health` reading D1, KV and R2 for an uptime monitor, and e-mails to `RESEND_EMAIL_FROM` when a paid checkout creates no order, a Stripe event fails or an audit batch fails, at most once an hour per incident.                                                                                                                                                                                                                                                                                                                      |
-| Documentation and legal  | Fumadocs-backed `/docs` with 104 pages per locale. The terms of service, privacy policy, exchanges-and-returns and FAQ pages are Markdown in the D1 `content_page` table, edited with MDXEditor at `/admin/content`. Customers withdraw from a contract online at `/withdraw-from-contract` or on the order's page in their account.                                                                                                                                                                                                                                |
+| Data retention           | A daily Cron Trigger in preview and production deletes or anonymises ended checkouts, old activity, sign-in and audit entries, lapsed newsletter sign-ups and expired sessions, tokens and rate-limit rows; orders, payments and withdrawals stay.                                                                                                                                                                                                                                                                                                                  |
+| Documentation and legal  | Fumadocs-backed `/docs` with 105 pages per locale. The terms of service, privacy policy, exchanges-and-returns and FAQ pages are Markdown in the D1 `content_page` table, edited with MDXEditor at `/admin/content`. Customers withdraw from a contract online at `/withdraw-from-contract` or on the order's page in their account.                                                                                                                                                                                                                                |
 | Scaffolded, not finished | InPost parcel-locker discovery only (no shipments or labels).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | Fixture-backed screens   | `/admin/marketing` and `/admin/settings` render from `src/data/`, not the database. The blog is hidden until `src/data/blog-posts.ts` lists an article.                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Not present              | End-to-end/browser tests, scheduled or cron jobs, and a dead-letter queue.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| Not present              | End-to-end/browser tests, a stock reconciliation job, and a dead-letter queue.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 The built-in roles are `admin` and `customer`; new accounts receive `customer`. See [Known gaps](#known-gaps) for the specifics behind the last three rows.
 
@@ -201,18 +202,18 @@ The canonical URL is configured in source, not in an environment file. Rebuild a
 
 ```text
 content/
-  docs/                       Localized MDX documentation (104 pages per locale) and meta.{locale}.json
+  docs/                       Localized MDX documentation (105 pages per locale) and meta.{locale}.json
 messages/{locale}/            55 JSON namespace files per locale
 public/                       Fonts, favicon, OG image, llms.txt, _headers, screenshots, video
 scripts/                      verify-bindings, verify-stripe-keys, verify-turnstile-keys, verify-email-sender, verify-build, verify-deployment, prepare-deploy-secrets, sync-skills, commit-msg
 src/
-  server.ts                   Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, security headers, queue consumer
+  server.ts                   Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, security headers, queue consumer, retention clean-up
   router.tsx                  Per-request QueryClient, SSR integration, locale rewrite, default components
   routes.ts                   Route constants shared by links, guards and head metadata
   routes/                     66 locale-free file routes + 3 API handlers
   modules/{feature}/          40 domain modules — schema, Zod, types, constants, utils
     *.accessors.ts              unauthenticated data access (reads and writes), 23 files
-    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 119 files
+    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 125 files
   modules/_core/              Shared error codes, HTTP statuses, currency, pagination, CSV, column filters
   integrations/{vendor}/      15 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, cloudflare-turnstile, inpost, use-intl,
                                 fumadocs, mdxeditor, tanstack-query, realtime-invalidation, gsap, lenis, react-day-picker
@@ -220,7 +221,7 @@ src/
   durable-objects/            RealtimeInvalidationHub
   providers/                  Theme and translation providers
   hooks/                      Shared React hooks
-  lib/                        background (ALS + waitUntil), cookie, image, rate-limit, request, security-headers, seo, sitemap, url
+  lib/                        background (ALS + waitUntil), cookie, image, rate-limit, request, retention, security-headers, seo, sitemap, url
   data/                       Fixtures still backing unfinished admin screens, and the blog's article list
   platform/testing/           D1-shaped transport over node:sqlite, server-function driver, render and message helpers
   types/                      Generated Worker declarations, router and Vite ambient types
@@ -565,9 +566,8 @@ Kept here rather than hidden, because an accurate map is more useful than a flat
 
 **Missing infrastructure**
 
-- No cron or reconciliation job. Stale inventory reservations are reclaimed only when Stripe emits `checkout.session.expired`, 32 minutes after a Checkout Session opens.
+- No reconciliation job. The only Cron Trigger runs the daily retention clean-up, which releases no stock, so stale inventory reservations are reclaimed only when Stripe emits `checkout.session.expired`, 32 minutes after a Checkout Session opens.
 - No dead-letter queue. An audit batch that fails three times is dropped; each failed batch emails `RESEND_EMAIL_FROM`.
-- No expiry sweep for `session`, `verification` or `rate_limit` rows. The rate-limit table grows one row per distinct key forever, including one per address and kind of email a visitor asked for.
 - No end-to-end or browser tests, and no Playwright configuration.
 
 **Security hardening**

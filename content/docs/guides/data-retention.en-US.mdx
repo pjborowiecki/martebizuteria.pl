@@ -1,0 +1,119 @@
+---
+title: "Data retention"
+description: "The daily clean-up that deletes or anonymises personal data once its retention period ends: what it clears and when, what it never touches, how it stays within D1's limits, and how to check that it ran."
+---
+
+The privacy policy tells customers how long the shop keeps each kind of personal data. A scheduled job enforces those periods: every day at 03:00 UTC the preview and production Workers delete or anonymise the rows whose period has ended. Orders, payments and the data on them are outside its reach.
+
+## What is cleared, and when
+
+| Data                           | Rows                                                                                                                                                     | Kept for                                                                                                                                          | Then                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| Ended checkouts                | `checkout` that failed or was abandoned, or that never opened a payment, with its guest addresses                                                        | 30 days after it ended                                                                                                                            | Anonymised, see below |
+| Customer activity              | `audit_log` entries `customer.page_viewed`, `customer.cart_item_added` and `customer.cart_abandoned`                                                     | 90 days                                                                                                                                           | Deleted               |
+| Sign-in history                | `audit_log` entries `auth.login`, `auth.login_failed` and `auth.logout`                                                                                  | 12 calendar months                                                                                                                                | Deleted               |
+| The rest of the audit log      | Every other `audit_log` entry: orders, e-mails, catalogue, settings, content and `customer.registered`                                                   | 24 calendar months                                                                                                                                | Deleted               |
+| Unconfirmed newsletter sign-up | `newsletter_subscriber` with status `pending`                                                                                                            | 30 days after the address last asked for a confirmation                                                                                           | Deleted               |
+| Unsubscribed address           | `newsletter_subscriber` with status `unsubscribed`                                                                                                       | 30 days after `unsubscribed_at`                                                                                                                   | Deleted               |
+| Sessions                       | `session`, with the IP address and browser stored on it                                                                                                  | Until `expires_at`                                                                                                                                | Deleted               |
+| Verification tokens            | `verification`, the values Better Auth checks for password resets and other confirmations                                                                | Until `expires_at`                                                                                                                                | Deleted               |
+| Rate-limit counters            | `rate_limit`: one row per request limiter and IP address, per kind of e-mail and hashed address a visitor asked for, and the shop's daily e-mail counter | Until the window that began at `last_request` ends: a minute for a request counter, an hour for an address's e-mail counter, a day for the shop's | Deleted               |
+
+An entry is measured from its `created_at`. A checkout is measured from its `updated_at`, which the release batch sets when Stripe reports the session expired or the payment failed and marks the checkout `failed`. A pending sign-up is measured from its `updated_at`, which `subscribeToNewsletter` resets each time the address asks again, so a sign-up that was sent a fresh confirmation yesterday is kept even when the row is a year old. Months are calendar months in UTC: on 29 February 2028 the two-year cut-off is 1 March 2026.
+
+### Ended checkouts
+
+A checkout has ended when its status is `failed`, when it is `abandoned` (a status the schema allows and nothing sets today), or when it is still `pending` but has no `payment` row. The last kind is a checkout whose payment never opened: `handleCreateCheckoutSession` writes the checkout first, and when Stripe refuses the session or the pending payment cannot be written, it releases the stock and the discount but leaves the row, which nothing can resume.
+
+The checkout row is kept, with its status, delivery method, discount and timestamps, because its `payment` row points at it and a payment is never deleted. Its personal data goes:
+
+- `email` becomes an empty string, since the column cannot be `NULL`; `customer_note`, `billing_company_name`, `billing_nip`, `locker_id` and `user_id` become `NULL`.
+- The `address` rows it points at are deleted when no account owns them (`user_id` is `NULL`), and `shipping_address_id` and `billing_address_id` become `NULL`. An address a signed-in customer saved to their account stays with the account.
+- Any `discount_claim` row the checkout still holds is deleted. The release normally removes it already; one left behind by a release that failed would otherwise hold a use of the code, and the customer's e-mail address, for good.
+
+An anonymised checkout has an empty `email`, which is how the next run knows to pass it over.
+
+## What it never touches
+
+- **Orders and payments.** `order`, `order_item`, `order_address`, `order_withdrawal`, which holds each withdrawal from the contract with the consumer's name and e-mail address, `payment` and `discount_redemption` hold what Polish accounting and tax law requires the shop to keep for five years from the end of the calendar year of the order, and the job has no statement for any of them. Nothing in the code deletes an order after those five years either; that remains a manual task.
+- **A checkout that is still open.** A `pending` checkout with a `payment` row keeps its contact details and addresses however old it is, because the webhook needs them to create the order. Its stock and discount hold are released only by Stripe's `checkout.session.expired` or `checkout.session.async_payment_failed`; the job releases no reservation.
+- **The checkout of a paid order**, whose status is `completed`.
+- **Account data**: `user`, saved addresses, `wishlist_item`, `account`, `two_factor` and confirmed newsletter subscribers stay until the account is deleted or the address unsubscribes.
+
+Some views read the audit log, so they lose the entries with it. The activity feed on `/account/overview`, the sign-in history on `/account/sessions` and the customer timeline on `/admin/customers/$id` show at most 12 months of sign-ins and 90 days of browsing, and they and an order's timeline on `/admin/orders/$orderId` keep order events for two years. The dashboard's page-view figure compares two 30-day periods, well inside 90 days.
+
+## How a run works
+
+`wrangler.jsonc` gives the preview and production environments a Cron Trigger:
+
+```jsonc
+"triggers": {
+  "crons": ["0 3 * * *"],
+},
+```
+
+Cloudflare reads cron expressions in UTC, so the run starts at 05:00 Polish time in summer and 04:00 in winter. The deploy scripts upload the trigger with the Worker; a build's `dist/server/wrangler.json` shows it. Development and test have no trigger. Development shares the preview database, which the preview run already cleans, and `bun run dev` does not fire Cron Triggers. The test database is rebuilt by `bun run db:reset:test`, and a browser test should not see its rows disappear halfway.
+
+The trigger calls the `scheduled` handler in `src/server.ts`, next to `fetch` and `queue`:
+
+```ts
+async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  await enforceRetentionPeriods(new Date(controller.scheduledTime))
+},
+```
+
+`enforceRetentionPeriods` in `src/lib/retention.ts` holds the periods, `RETENTION_DAYS` and `RETENTION_MONTHS`, turns them into cut-off dates from the time the run was scheduled for, and runs one use case per kind of row:
+
+| Kind in the log         | Use case                                                              |
+| ----------------------- | --------------------------------------------------------------------- |
+| `auditLogEntries`       | `audit-log/use-cases/delete-expired-audit-logs.server.ts`             |
+| `endedCheckouts`        | `checkout/use-cases/anonymize-ended-checkouts.server.ts`              |
+| `newsletterSubscribers` | `newsletter/use-cases/delete-lapsed-newsletter-subscribers.server.ts` |
+| `rateLimits`            | `rate-limit/use-cases/delete-expired-rate-limits.server.ts`           |
+| `sessions`              | `session/use-cases/delete-expired-sessions.server.ts`                 |
+| `verifications`         | `verification/use-cases/delete-expired-verifications.server.ts`       |
+
+The six run at the same time, and D1 executes their statements one after another.
+
+### Staying within D1's limits
+
+Each call clears at most `RETENTION_BATCH_ROWS` (500) rows. A delete names its rows with a subquery rather than a list of ids, so it binds only its cut-off dates, the rate-limit key patterns and the limit, well under the 100 bound parameters D1 allows in a statement:
+
+```sql
+delete from "session" where "session"."id" in (select "id" from "session" where "session"."expires_at" < ? limit ?) returning "id"
+```
+
+The checkout use case reads the ids of up to 500 ended checkouts first and passes them to its batch as one JSON value through `inJsonList`. The batch then deletes the guest addresses, anonymises the checkouts and deletes their discount holds atomically, and each statement checks again that the checkout has ended.
+
+A kind is asked again while its last batch came back full, up to `RETENTION_BATCHES_PER_RUN` (5) batches, so one run clears at most 2,500 rows of each kind and leaves the rest for the next day. That caps a run at 45 statements, counting each statement of the checkout batch, under the 50 queries D1 allows a Worker invocation on the Workers Free plan. Each statement works on a single batch, so none of them holds the database for long while the storefront is querying it. The audit log, the largest table, is searched through `audit_log_action_createdAt_idx` and `audit_log_createdAt_idx`; a case in `src/integrations/drizzle-orm/__test__/query-plans.integration.test.ts` checks that plan.
+
+## Checking that it ran
+
+Each run writes one line per kind to Workers Logs:
+
+| Line                                                                    | Meaning                                                              |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `[Retention] <kind>: <count> cleared`                                   | The kind finished; the count is rows deleted or checkouts anonymised |
+| `[Retention] <kind> could not be cleared:`                              | A statement for that kind failed; the error follows                  |
+| `[Retention] The clean-up did not finish; each failure is logged above` | The run's own error once every kind has finished or failed           |
+
+A kind that fails does not stop the others. The run then throws, so the invocation is recorded as failed and Workers Issues groups it with the logged errors, as [Monitoring and alerts](/docs/guides/monitoring-and-alerts) describes. No e-mail is sent. The next day's run starts again from whatever is left.
+
+## Changing a period
+
+1. Change the number in `RETENTION_DAYS` or `RETENTION_MONTHS` in `src/lib/retention.ts`, and the expected cut-off in `src/lib/__test__/retention.test.ts`.
+2. Change the privacy policy at `/admin/content` to state the same period, before the deploy when the period gets shorter.
+3. Deploy. From the next run on, the new period applies to everything already stored, up to 2,500 rows of each kind a day.
+
+A new kind of personal data needs a use case of its own under `src/modules/<module>/use-cases/`, an integration test on the migrated schema beside it, and a line in `retentionBatches`.
+
+## Copies the job cannot reach
+
+D1 Time Travel can put the database back to any minute of the last 30 days on Workers Paid, and 7 on Workers Free, so for that long a cleared row can come back with a restore; the next run clears it again (see [Backup and restore](/docs/guides/backup-and-restore#what-a-restore-erases)). An export kept off the account holds whatever the database held when it was taken. Cloudflare's own logs and Stripe's and Resend's records are kept under their own terms.
+
+## Related pages
+
+- [Backup and restore](/docs/guides/backup-and-restore)
+- [Monitoring and alerts](/docs/guides/monitoring-and-alerts)
+- [Audit log](/docs/features/audit-log)
+- [Legal pages](/docs/features/legal-pages)

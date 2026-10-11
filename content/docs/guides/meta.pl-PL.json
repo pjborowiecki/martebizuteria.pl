@@ -20,6 +20,7 @@
     "monitoring-and-alerts",
     "image-delivery",
     "backup-and-restore",
+    "data-retention",
     "go-live-checklist"
   ]
 }

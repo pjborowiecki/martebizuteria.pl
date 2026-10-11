@@ -54,15 +54,20 @@ Komponenty stanu oczekiwania, błędu i braku strony to globalne domyślne warto
 
 Wszystko inne przechodzi przez `resolveLocale(request)`, które może zwrócić przekierowanie 301 na kanoniczną ścieżkę języka albo nagłówek `Set-Cookie` do dołączenia do odpowiedzi, a następnie trafia do `handler.fetch` wewnątrz `executionContextStorage.run({ waitUntil }, …)`. Ten magazyn `AsyncLocalStorage` pozwala funkcji `scheduleBackgroundWork` z `src/lib/background.ts` dotrzeć do `ctx.waitUntil` z głębi przypadku użycia — polegają na tym dziennik audytu, e-maile transakcyjne oraz [unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation). Każda odpowiedź poza przejściami na WebSocket przechodzi potem przez `withSecurityHeaders` z `src/lib/security-headers.ts`, który ustawia Content-Security-Policy z nonce'em żądania i pozostałe nagłówki bezpieczeństwa.
 
-Ten sam plik eksportuje klasę Durable Object oraz handler `queue`:
+Ten sam plik eksportuje klasę Durable Object, handler `queue` i handler `scheduled`:
 
 ```ts
 export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub"
 
 async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
   await processAuditLogQueueBatch(batch)
-}
+},
+async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  await enforceRetentionPeriods(new Date(controller.scheduledTime))
+},
 ```
+
+Cron Triggers preview i produkcji wywołują `scheduled` raz dziennie na potrzeby czyszczenia opisanego w [Okresach przechowywania danych](/docs/guides/data-retention).
 
 Typ `RequestContext` jest deklarowany do modułu `@tanstack/react-start` w tym samym pliku, więc `env`, `nonce`, `waitUntil` i `passThroughOnException` są typowane wszędzie tam, gdzie funkcja serwerowa czyta kontekst żądania.
 

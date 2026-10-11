@@ -1,0 +1,119 @@
+---
+title: "Okresy przechowywania danych"
+description: "Codzienne czyszczenie, które usuwa albo anonimizuje dane osobowe po upływie ich okresu przechowywania: co czyści i kiedy, czego nigdy nie dotyka, jak mieści się w limitach D1 i jak sprawdzić, że się wykonało."
+---
+
+Polityka prywatności mówi klientom, jak długo sklep przechowuje każdy rodzaj danych osobowych. Pilnuje tego zadanie cykliczne: codziennie o 03:00 UTC Workery preview i produkcyjny usuwają albo anonimizują wiersze, których okres minął. Zamówienia, płatności i dane na nich są poza jego zasięgiem.
+
+## Co jest czyszczone i kiedy
+
+| Dane                                 | Wiersze                                                                                                                                                      | Przechowywane przez                                                                                                                         | Potem                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- |
+| Zakończone checkouty                 | `checkout`, który się nie powiódł, został porzucony albo nigdy nie otworzył płatności, z adresami gościa                                                     | 30 dni od zakończenia                                                                                                                       | Anonimizowane, patrz niżej |
+| Aktywność klientów                   | Wpisy `audit_log` `customer.page_viewed`, `customer.cart_item_added` i `customer.cart_abandoned`                                                             | 90 dni                                                                                                                                      | Usuwane                    |
+| Historia logowań                     | Wpisy `audit_log` `auth.login`, `auth.login_failed` i `auth.logout`                                                                                          | 12 miesięcy kalendarzowych                                                                                                                  | Usuwane                    |
+| Reszta dziennika audytu              | Każdy inny wpis `audit_log`: zamówienia, e-maile, katalog, ustawienia, treści i `customer.registered`                                                        | 24 miesiące kalendarzowe                                                                                                                    | Usuwane                    |
+| Niepotwierdzony zapis do newslettera | `newsletter_subscriber` ze statusem `pending`                                                                                                                | 30 dni od ostatniej prośby adresu o potwierdzenie                                                                                           | Usuwane                    |
+| Wypisany adres                       | `newsletter_subscriber` ze statusem `unsubscribed`                                                                                                           | 30 dni od `unsubscribed_at`                                                                                                                 | Usuwane                    |
+| Sesje                                | `session`, razem z zapisanym w niej adresem IP i przeglądarką                                                                                                | Do `expires_at`                                                                                                                             | Usuwane                    |
+| Tokeny weryfikacyjne                 | `verification`, wartości, które Better Auth sprawdza przy resecie hasła i innych potwierdzeniach                                                             | Do `expires_at`                                                                                                                             | Usuwane                    |
+| Liczniki limitów zapytań             | `rate_limit`: jeden wiersz na limiter żądań i adres IP, na rodzaj e-maila i skrót adresu, o który poprosił odwiedzający, oraz dzienny licznik e-maili sklepu | Do końca okna, które zaczęło się w `last_request`: minuta dla licznika żądań, godzina dla licznika e-maili adresu, doba dla licznika sklepu | Usuwane                    |
+
+Wpis liczy się od swojego `created_at`. Checkout liczy się od `updated_at`, które ustawia batch zwalniający, gdy Stripe zgłosi wygaśnięcie sesji albo nieudaną płatność i checkout dostaje status `failed`. Oczekujący zapis do newslettera liczy się od `updated_at`, które `subscribeToNewsletter` ustawia na nowo przy każdej kolejnej prośbie adresu, więc zapis, do którego wczoraj poszło świeże potwierdzenie, zostaje, nawet gdy wiersz ma rok. Miesiące to miesiące kalendarzowe w UTC: 29 lutego 2028 r. granica dwóch lat to 1 marca 2026 r.
+
+### Zakończone checkouty
+
+Checkout jest zakończony, gdy ma status `failed`, gdy jest `abandoned` (status dopuszczony przez schemat, którego dziś nic nie ustawia) albo gdy nadal jest `pending`, ale nie ma wiersza `payment`. Ten ostatni to checkout, którego płatność nigdy się nie otworzyła: `handleCreateCheckoutSession` najpierw zapisuje checkout, a gdy Stripe odmówi sesji albo nie da się zapisać oczekującej płatności, zwalnia stan magazynowy i rabat, ale zostawia wiersz, którego nic już nie wznowi.
+
+Wiersz checkoutu zostaje, z jego statusem, metodą dostawy, rabatem i znacznikami czasu, bo wskazuje na niego wiersz `payment`, a płatności nigdy się nie usuwa. Znikają z niego dane osobowe:
+
+- `email` staje się pustym napisem, bo kolumna nie może być `NULL`; `customer_note`, `billing_company_name`, `billing_nip`, `locker_id` i `user_id` stają się `NULL`.
+- Wiersze `address`, na które wskazuje, są usuwane, gdy nie należą do żadnego konta (`user_id` jest `NULL`), a `shipping_address_id` i `billing_address_id` stają się `NULL`. Adres, który zalogowany klient zapisał na swoim koncie, zostaje przy koncie.
+- Usuwany jest każdy wiersz `discount_claim`, który checkout jeszcze trzyma. Zwolnienie zwykle już go usuwa; wiersz pozostawiony przez nieudane zwolnienie trzymałby na zawsze jedno użycie kodu i adres e-mail klienta.
+
+Zanonimizowany checkout ma pusty `email` i po tym następne uruchomienie poznaje, że ma go pominąć.
+
+## Czego nigdy nie dotyka
+
+- **Zamówień i płatności.** `order`, `order_item`, `order_address`, `order_withdrawal`, w której jest każde odstąpienie od umowy z imieniem i nazwiskiem oraz adresem e-mail konsumenta, `payment` i `discount_redemption` zawierają to, co polskie prawo rachunkowe i podatkowe każe sklepowi przechowywać przez pięć lat od końca roku kalendarzowego zamówienia, a zadanie nie ma dla żadnej z tych tabel ani jednej instrukcji. Nic w kodzie nie usuwa też zamówienia po tych pięciu latach; to nadal zadanie ręczne.
+- **Checkoutu, który jest wciąż otwarty.** Checkout `pending` z wierszem `payment` zachowuje dane kontaktowe i adresy bez względu na wiek, bo webhook potrzebuje ich do utworzenia zamówienia. Jego stan magazynowy i rabat zwalnia tylko `checkout.session.expired` albo `checkout.session.async_payment_failed` od Stripe; zadanie nie zwalnia żadnej rezerwacji.
+- **Checkoutu opłaconego zamówienia**, który ma status `completed`.
+- **Danych konta**: `user`, zapisane adresy, `wishlist_item`, `account`, `two_factor` i potwierdzeni subskrybenci newslettera zostają do usunięcia konta albo wypisania adresu.
+
+Niektóre widoki czytają dziennik audytu, więc tracą wpisy razem z nim. Strumień aktywności na `/account/overview`, historia logowań na `/account/sessions` i oś czasu klienta na `/admin/customers/$id` pokazują najwyżej 12 miesięcy logowań i 90 dni przeglądania, a one i oś czasu zamówienia na `/admin/orders/$orderId` zachowują zdarzenia zamówień przez dwa lata. Liczba odsłon na pulpicie porównuje dwa okresy po 30 dni, czyli mieści się w 90 dniach.
+
+## Jak przebiega uruchomienie
+
+`wrangler.jsonc` daje środowiskom preview i produkcyjnemu Cron Trigger:
+
+```jsonc
+"triggers": {
+  "crons": ["0 3 * * *"],
+},
+```
+
+Cloudflare czyta wyrażenia cron w UTC, więc uruchomienie zaczyna się o 05:00 czasu polskiego latem i o 04:00 zimą. Skrypty wdrożeniowe wysyłają trigger razem z Workerem; widać go w `dist/server/wrangler.json` z buildu. Development i test nie mają triggera. Development dzieli bazę z preview, którą czyści już uruchomienie preview, a `bun run dev` nie uruchamia Cron Triggers. Bazę testową odbudowuje `bun run db:reset:test`, a test przeglądarkowy nie powinien widzieć, jak w połowie znikają mu wiersze.
+
+Trigger wywołuje handler `scheduled` w `src/server.ts`, obok `fetch` i `queue`:
+
+```ts
+async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  await enforceRetentionPeriods(new Date(controller.scheduledTime))
+},
+```
+
+`enforceRetentionPeriods` w `src/lib/retention.ts` trzyma okresy, `RETENTION_DAYS` i `RETENTION_MONTHS`, zamienia je na daty graniczne liczone od chwili, na którą zaplanowano uruchomienie, i uruchamia po jednym przypadku użycia na rodzaj wierszy:
+
+| Rodzaj w logu           | Przypadek użycia                                                      |
+| ----------------------- | --------------------------------------------------------------------- |
+| `auditLogEntries`       | `audit-log/use-cases/delete-expired-audit-logs.server.ts`             |
+| `endedCheckouts`        | `checkout/use-cases/anonymize-ended-checkouts.server.ts`              |
+| `newsletterSubscribers` | `newsletter/use-cases/delete-lapsed-newsletter-subscribers.server.ts` |
+| `rateLimits`            | `rate-limit/use-cases/delete-expired-rate-limits.server.ts`           |
+| `sessions`              | `session/use-cases/delete-expired-sessions.server.ts`                 |
+| `verifications`         | `verification/use-cases/delete-expired-verifications.server.ts`       |
+
+Sześć przypadków działa równocześnie, a D1 wykonuje ich instrukcje jedna po drugiej.
+
+### Jak zadanie mieści się w limitach D1
+
+Każde wywołanie czyści najwyżej `RETENTION_BATCH_ROWS` (500) wierszy. Usuwanie wskazuje wiersze podzapytaniem, a nie listą identyfikatorów, więc wiąże tylko swoje daty graniczne, wzorce kluczy limitów zapytań i limit, daleko poniżej 100 parametrów, na które D1 pozwala w jednej instrukcji:
+
+```sql
+delete from "session" where "session"."id" in (select "id" from "session" where "session"."expires_at" < ? limit ?) returning "id"
+```
+
+Przypadek użycia checkoutów najpierw czyta identyfikatory do 500 zakończonych checkoutów i przekazuje je do swojego batcha jako jedną wartość JSON przez `inJsonList`. Batch atomowo usuwa adresy gości, anonimizuje checkouty i usuwa ich blokady rabatów, a każda jego instrukcja jeszcze raz sprawdza, że checkout się zakończył.
+
+Rodzaj wierszy jest pytany ponownie, dopóki ostatni batch wrócił pełny, najwyżej `RETENTION_BATCHES_PER_RUN` (5) razy, więc jedno uruchomienie czyści najwyżej 2500 wierszy każdego rodzaju, a resztę zostawia na następny dzień. To ogranicza uruchomienie do 45 instrukcji, licząc osobno każdą instrukcję batcha checkoutów, poniżej 50 zapytań, na które D1 pozwala jednemu wywołaniu Workera na planie Workers Free. Każda instrukcja obejmuje jeden batch, więc żadna nie zajmuje bazy na długo, gdy sklep wysyła do niej zapytania. Dziennik audytu, największa tabela, jest przeszukiwany przez `audit_log_action_createdAt_idx` i `audit_log_createdAt_idx`; przypadek w `src/integrations/drizzle-orm/__test__/query-plans.integration.test.ts` sprawdza ten plan.
+
+## Jak sprawdzić, że się wykonało
+
+Każde uruchomienie zapisuje w Workers Logs jedną linię na rodzaj wierszy:
+
+| Linia                                                                   | Znaczenie                                                                  |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `[Retention] <kind>: <count> cleared`                                   | Rodzaj skończony; liczba to usunięte wiersze albo zanonimizowane checkouty |
+| `[Retention] <kind> could not be cleared:`                              | Instrukcja dla tego rodzaju się nie powiodła; błąd jest dalej w linii      |
+| `[Retention] The clean-up did not finish; each failure is logged above` | Własny błąd uruchomienia, gdy każdy rodzaj skończył albo zawiódł           |
+
+Rodzaj, który zawiedzie, nie zatrzymuje pozostałych. Uruchomienie rzuca potem wyjątek, więc wywołanie jest zapisane jako nieudane, a Workers Issues grupuje je z zalogowanymi błędami, jak opisuje [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts). Żaden e-mail nie wychodzi. Uruchomienie następnego dnia zaczyna od tego, co zostało.
+
+## Zmiana okresu
+
+1. Zmień liczbę w `RETENTION_DAYS` albo `RETENTION_MONTHS` w `src/lib/retention.ts` i oczekiwaną datę graniczną w `src/lib/__test__/retention.test.ts`.
+2. Zmień politykę prywatności w `/admin/content`, aby podawała ten sam okres, a gdy okres się skraca, zrób to przed wdrożeniem.
+3. Wdróż. Od następnego uruchomienia nowy okres obowiązuje wszystko, co już jest zapisane, do 2500 wierszy każdego rodzaju dziennie.
+
+Nowy rodzaj danych osobowych potrzebuje własnego przypadku użycia w `src/modules/<moduł>/use-cases/`, testu integracyjnego na zmigrowanym schemacie obok niego i linii w `retentionBatches`.
+
+## Kopie, do których zadanie nie sięga
+
+D1 Time Travel może cofnąć bazę do dowolnej minuty z ostatnich 30 dni na Workers Paid albo 7 na Workers Free, więc przez ten czas wyczyszczony wiersz może wrócić z przywróceniem; następne uruchomienie znów go wyczyści (zobacz [Kopie zapasowe i przywracanie](/docs/guides/backup-and-restore#co-kasuje-przywrócenie)). Eksport trzymany poza kontem zawiera to, co baza miała w chwili jego wykonania. Własne logi Cloudflare oraz zapisy Stripe i Resend są przechowywane na ich warunkach.
+
+## Powiązane strony
+
+- [Kopie zapasowe i przywracanie](/docs/guides/backup-and-restore)
+- [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts)
+- [Dziennik audytu](/docs/features/audit-log)
+- [Strony prawne](/docs/features/legal-pages)

@@ -157,6 +157,8 @@ A failed send logs the Resend error and records an `email.failed` entry in `/adm
 
 An address that is already confirmed gets `alreadyConfirmed` only when it belongs to the signed-in visitor, and nothing is sent. Anyone else gets the same treatment as a new address: the request waits for `sendNewsletterAlreadySubscribed`, which tells the owner of the inbox that they are already on the list, and answers `confirmationSent` or `confirmationFailed` exactly as a new signup would. The row and its token stay as they are, so links in letters already sent keep working. The answer is therefore the same whether or not the address is on the list, both paths spend their time waiting for one Resend round trip, and a subscriber who is not signed in gets an email instead of a promise of one.
 
+The daily retention clean-up deletes a row still `pending` 30 days after the address last asked for a confirmation, and an `unsubscribed` row 30 days after it left; see [Data retention](/docs/guides/data-retention).
+
 ## Section anchors
 
 `NewArrivalsSection` is the only section with an `id`: `id="nowosci"`. Links elsewhere that need to reach it use that hash. The other sections are not addressable.

@@ -19,7 +19,7 @@ Browser-safe integrations are the ones with no `env` read and no server-only mar
 ## Server-only boundaries
 
 - **Server functions.** TanStack Start compiles every `createServerFn` handler out of the browser bundle and replaces the call with an RPC request. That is why a component can import `shipOrderMutation` from the same file that imports `db`.
-- **Server-only modules.** Files that read secrets or bindings start with `import "@tanstack/react-start/server-only"`, which keeps them out of the client build. In this repository that is `drizzle.database.ts`, `src/lib/rate-limit.ts`, `src/lib/background.ts` and `src/lib/sitemap.ts`.
+- **Server-only modules.** Files that read secrets or bindings start with `import "@tanstack/react-start/server-only"`, which keeps them out of the client build. In this repository that is `drizzle.database.ts`, `src/lib/rate-limit.ts`, `src/lib/background.ts`, `src/lib/retention.ts` and `src/lib/sitemap.ts`.
 - **The `.server.ts` suffix** marks module files that are only ever reached from a server function or a webhook — `order.settled.server.ts`, `checkout.pending.server.ts`, `audit-log.record.server.ts`, `product.catalog.server.ts` and the rest. The suffix is a convention for readers; the bundle exclusion comes from the `createServerFn` boundary or the explicit `server-only` import.
 - **Environment-specific functions.** `createServerOnlyFn` wraps code that only runs on the server (`getRequestSession`). `createIsomorphicFn` provides separate implementations per environment (`getCurrentLocale`, `getCurrentPathname` in `i18n.utils.ts`).
 - **Bindings and secrets** come from `env` in `cloudflare:workers` and are read only in server-only modules, `src/server.ts` or a server function handler.

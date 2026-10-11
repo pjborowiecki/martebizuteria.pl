@@ -32,6 +32,7 @@ const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
 const { pageViewsQuery } = await import("~/src/modules/admin-dashboard/admin-dashboard.accessors")
 const { countOpenCheckouts } = await import("~/src/modules/checkout/use-cases/count-open-checkouts.server")
+const { deleteExpiredAuditLogs } = await import("~/src/modules/audit-log/use-cases/delete-expired-audit-logs.server")
 const { getCustomerActivityAuditRows, getCustomerLoginAuditRows } =
   await import("~/src/modules/customer-account/customer-account.accessors.server")
 const { getDiscountByCodeForCustomerQuery } = await import("~/src/modules/discount/discount.accessors")
@@ -215,6 +216,26 @@ describe("hot reads", () => {
         "SEARCH discount USING INDEX sqlite_autoindex_discount_1 (id=?)",
         "SEARCH discount_claim USING INDEX discount_claim_discountId_email_idx (discount_id=?)",
         "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+      ]),
+    )
+  })
+})
+
+describe("retention clean-up", () => {
+  it("finds expired activity log entries through the action and date indexes instead of reading the whole log", async () => {
+    const steps = planSteps(() =>
+      deleteExpiredAuditLogs({
+        customerActivityBefore: new Date("2026-07-12T03:00:00.000Z"),
+        entryBefore: new Date("2024-10-10T03:00:00.000Z"),
+        limit: 500,
+        signInHistoryBefore: new Date("2025-10-10T03:00:00.000Z"),
+      }),
+    )
+
+    await expect(steps).resolves.toStrictEqual(
+      expect.arrayContaining([
+        "SEARCH audit_log USING INDEX audit_log_action_createdAt_idx (action=? AND created_at<?)",
+        "SEARCH audit_log USING INDEX audit_log_createdAt_idx (created_at<?)",
       ]),
     )
   })

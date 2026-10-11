@@ -16,7 +16,7 @@ description: "The Cloudflare runtime: the Worker entry, its bindings, the three 
 | `REALTIME_INVALIDATION_HUB` | Durable Object | The `RealtimeInvalidationHub` class, one instance per audience name       |
 | `AUDIT_LOG_QUEUE`           | Queue          | Audit events, produced by the app and consumed by the same Worker         |
 
-The Durable Object is declared as a SQLite class in the `migrations` block (`tag: "v1"`, `new_sqlite_classes: ["RealtimeInvalidationHub"]`) even though the hub keeps no durable state. The queue is configured with `max_batch_size: 50`, `max_batch_timeout: 5` and `max_retries: 3`, and both producer and consumer point at the same queue, so `src/server.ts` exports both a `fetch` and a `queue` handler.
+The Durable Object is declared as a SQLite class in the `migrations` block (`tag: "v1"`, `new_sqlite_classes: ["RealtimeInvalidationHub"]`) even though the hub keeps no durable state. The queue is configured with `max_batch_size: 50`, `max_batch_timeout: 5` and `max_retries: 3`, and both producer and consumer point at the same queue, so `src/server.ts` exports both a `fetch` and a `queue` handler. Preview and production also declare `triggers.crons: ["0 3 * * *"]`, which calls its `scheduled` handler every day at 03:00 UTC for the [retention clean-up](/docs/guides/data-retention); development and test declare no trigger.
 
 `nodejs_compat` is what makes `node:async_hooks` available, which `src/lib/background.ts` needs for its `AsyncLocalStorage`.
 

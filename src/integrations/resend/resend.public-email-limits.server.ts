@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers"
 
 import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { PUBLIC_EMAIL_RATE_LIMIT_KEY, RATE_LIMIT_WINDOW_SECONDS } from "~/src/modules/rate-limit/rate-limit.constants"
 
 import { withinRateLimit } from "~/src/lib/rate-limit"
 
@@ -15,10 +16,6 @@ export const PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX = 3
 
 export const PUBLIC_EMAILS_DAILY_MAX = 50
 
-const SECONDS_PER_HOUR = 3600
-
-const SECONDS_PER_DAY = 86_400
-
 const recipientDigest = async (to: string): Promise<string> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(to.trim().toLowerCase()))
 
@@ -27,13 +24,17 @@ const recipientDigest = async (to: string): Promise<string> => {
 
 const withinRecipientLimit = async ({ kind, to }: PublicEmail): Promise<boolean> =>
   withinRateLimit({
-    key: `public-email:${env.APP_ENV}:${kind}:${await recipientDigest(to)}`,
+    key: `${PUBLIC_EMAIL_RATE_LIMIT_KEY.PREFIX}${env.APP_ENV}:${kind}:${await recipientDigest(to)}`,
     limit: PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX,
-    windowSeconds: SECONDS_PER_HOUR,
+    windowSeconds: RATE_LIMIT_WINDOW_SECONDS.PUBLIC_EMAIL_RECIPIENT,
   })
 
 const withinDailyLimit = (): Promise<boolean> =>
-  withinRateLimit({ key: `public-email:${env.APP_ENV}:daily`, limit: PUBLIC_EMAILS_DAILY_MAX, windowSeconds: SECONDS_PER_DAY })
+  withinRateLimit({
+    key: `${PUBLIC_EMAIL_RATE_LIMIT_KEY.PREFIX}${env.APP_ENV}${PUBLIC_EMAIL_RATE_LIMIT_KEY.DAILY_SUFFIX}`,
+    limit: PUBLIC_EMAILS_DAILY_MAX,
+    windowSeconds: RATE_LIMIT_WINDOW_SECONDS.PUBLIC_EMAIL_DAILY,
+  })
 
 export const admitPublicEmail = async (email: PublicEmail): Promise<boolean> => {
   if (!(await withinRecipientLimit(email))) {

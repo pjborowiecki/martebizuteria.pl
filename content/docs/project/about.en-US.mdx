@@ -37,7 +37,7 @@ Route files live flat in `src/routes/` and carry no locale segment. The router d
 
 `__root.tsx` and `dev.emails.tsx` complete the 69 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
 
-Four request paths short-circuit inside `src/server.ts` before the React framework is reached — `/sitemap.xml`, `/robots.txt`, the two WebSocket upgrades — plus the locale redirect, because none of them need an SSR render.
+Four request paths short-circuit inside `src/server.ts` before the React framework is reached — `/sitemap.xml`, `/robots.txt`, the two WebSocket upgrades — plus the locale redirect, because none of them need an SSR render. The same file's `scheduled` handler runs the daily retention clean-up.
 
 ## Bindings
 
@@ -78,7 +78,7 @@ Counted against the working tree, not aspirational:
 | Feature modules                           | 41 in `src/modules/`, including `_core`                                                               |
 | Database tables                           | 39 exported from `drizzle.schemas.ts`, plus the `storefront_search` FTS5 table                        |
 | D1 migrations                             | 83 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
-| Use cases                                 | 119 files under `src/modules/*/use-cases/`                                                            |
+| Use cases                                 | 125 files under `src/modules/*/use-cases/`                                                            |
 | Server functions                          | 117 `createServerFn(...)` call sites                                                                  |
 | Integrations                              | 15 vendor adapters in `src/integrations/`                                                             |
 | Route files                               | 69 in `src/routes/`                                                                                   |
@@ -94,7 +94,7 @@ Being precise about the boundary is more useful than a feature list.
 
 ### Wired end to end
 
-Catalog (products, variants, options, attributes, categories, collections, search, filtering, pagination), cart, the four-step checkout, discount codes (percentage, fixed amount or free shipping) checked at checkout, recomputed on the server, held for the open checkout so usage limits hold under concurrent checkouts, applied to the Stripe session as a one-off coupon and recorded in `discount_redemption` with the order, Stripe payment with webhook-driven fulfilment, inventory reservation with compensation, order placement, order fulfilment, shipping with an optional tracking number and delivery from the admin console, refunds issued from the admin console or in Stripe, with the items returned to stock only when the admin says they came back, customer accounts (orders, addresses, sessions, profile, two-factor sign-in with backup codes), a wishlist kept in the `wishlist_item` table, saved cards attached at checkout to the customer's Stripe customer and removable from `/account/payment`, transactional email in both locales, the audit log behind a Cloudflare Queue, realtime cache invalidation over WebSockets, and admin management of products, categories, collections, attributes, customers, orders, discount codes, the privacy and returns pages, and audit.
+Catalog (products, variants, options, attributes, categories, collections, search, filtering, pagination), cart, the four-step checkout, discount codes (percentage, fixed amount or free shipping) checked at checkout, recomputed on the server, held for the open checkout so usage limits hold under concurrent checkouts, applied to the Stripe session as a one-off coupon and recorded in `discount_redemption` with the order, Stripe payment with webhook-driven fulfilment, inventory reservation with compensation, order placement, order fulfilment, shipping with an optional tracking number and delivery from the admin console, refunds issued from the admin console or in Stripe, with the items returned to stock only when the admin says they came back, customer accounts (orders, addresses, sessions, profile, two-factor sign-in with backup codes), a wishlist kept in the `wishlist_item` table, saved cards attached at checkout to the customer's Stripe customer and removable from `/account/payment`, transactional email in both locales, the audit log behind a Cloudflare Queue, a daily clean-up that deletes or anonymises personal data once its retention period ends, realtime cache invalidation over WebSockets, and admin management of products, categories, collections, attributes, customers, orders, discount codes, the privacy and returns pages, and audit.
 
 ### Scaffolded, not finished
 
@@ -105,7 +105,7 @@ Catalog (products, variants, options, attributes, categories, collections, searc
 
 ### Absent
 
-No end-to-end or browser tests. No cron triggers or reconciliation job — `wrangler.jsonc` declares no `crons`. No dead-letter queue, so an audit batch that fails its three retries is dropped, although each failed batch emails `RESEND_EMAIL_FROM`. No third-party error reporting service: failures go to Workers Logs and Issues, and the ones the owner must act on to `RESEND_EMAIL_FROM`; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts). No expiry sweep for `session`, `verification` or `rate_limit` rows.
+No end-to-end or browser tests. No reconciliation job: the only Cron Trigger runs the [retention clean-up](/docs/guides/data-retention), which releases no stock. No dead-letter queue, so an audit batch that fails its three retries is dropped, although each failed batch emails `RESEND_EMAIL_FROM`. No third-party error reporting service: failures go to Workers Logs and Issues, and the ones the owner must act on to `RESEND_EMAIL_FROM`; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
 
 [Roadmap](/docs/project/roadmap) lists these in the order they are worth fixing.
 

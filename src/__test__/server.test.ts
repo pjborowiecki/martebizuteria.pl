@@ -30,6 +30,8 @@ const realtime = vi.hoisted(() => ({ handleRealtimeInvalidationWebSocket: vi.fn(
 
 const queue = vi.hoisted(() => ({ processAuditLogQueueBatch: vi.fn(() => Promise.resolve()) }))
 
+const retention = vi.hoisted(() => ({ enforceRetentionPeriods: vi.fn((_now: Date) => Promise.resolve()) }))
+
 const sitemap = vi.hoisted(() => ({
   listSitemapPages: vi.fn(() =>
     Promise.resolve([{ path: "/" }, { lastModified: new Date("2026-10-01T09:00:00.000Z"), path: "/products/lapis-lazuli-necklace" }]),
@@ -42,6 +44,7 @@ vi.mock("@tanstack/react-start/server-entry", () => ({ default: entry }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server", () => realtime)
 vi.mock("~/src/modules/audit-log/audit-log.queue.server", () => queue)
 vi.mock("~/src/lib/sitemap", () => sitemap)
+vi.mock("~/src/lib/retention", () => retention)
 
 const { default: server } = await import("~/src/server")
 
@@ -319,5 +322,29 @@ describe("worker audit log queue", () => {
     await Reflect.apply(drainQueue, server, [batch, env, new TestExecutionContext()])
 
     expect(queue.processAuditLogQueueBatch).toHaveBeenCalledWith(batch)
+  })
+})
+
+const runSchedule = async (scheduledTime: number): Promise<void> => {
+  const controller: ScheduledController = { cron: "0 3 * * *", noRetry: () => {}, scheduledTime }
+  const { scheduled } = server
+
+  if (scheduled === undefined) {
+    throw new Error("the worker registered no scheduled handler")
+  }
+  await Reflect.apply(scheduled, server, [controller, env, new TestExecutionContext()])
+}
+
+describe("worker scheduled clean-up", () => {
+  it("enforces the retention periods as of the time the run was scheduled for", async () => {
+    await runSchedule(Date.parse("2026-10-10T03:00:00.000Z"))
+
+    expect(retention.enforceRetentionPeriods).toHaveBeenCalledExactlyOnceWith(new Date("2026-10-10T03:00:00.000Z"))
+  })
+
+  it("fails the run when the clean-up fails, so Cloudflare records the failed invocation", async () => {
+    retention.enforceRetentionPeriods.mockRejectedValueOnce(new Error("D1 is unavailable"))
+
+    await expect(runSchedule(Date.parse("2026-10-10T03:00:00.000Z"))).rejects.toThrow("D1 is unavailable")
   })
 })

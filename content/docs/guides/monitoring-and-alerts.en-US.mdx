@@ -30,6 +30,7 @@ The log lines that belong to this page:
 | `[Stripe] Domain logic failed for <type>:`              | A webhook handler threw, the route answered 500 and Stripe will retry               |
 | `Paid Checkout Session <id> created no order:`          | `handleFulfillCheckoutSession` could not create the order for a paid session        |
 | `[AuditLog Queue] Batch insert failed:`                 | `processAuditLogQueueBatch` could not write a batch and asked the queue to retry it |
+| `[Retention] <kind> could not be cleared:`              | The daily retention clean-up failed for one kind of row; the run then fails         |
 
 `vp exec wrangler tail --env production` streams the same lines live; see [Local debugging](/docs/guides/local-debugging#watching-the-worker-in-a-deployed-environment).
 
