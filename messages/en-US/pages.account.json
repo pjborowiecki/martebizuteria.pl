@@ -296,7 +296,7 @@
       "wrongCode": "That code is not correct. Check your app and try again."
     },
     "closeDialogPassword": "Your password",
-    "closeDialogRecentSignIn": "You signed in with Google or GitHub, so no password is needed. If this fails, sign in again and retry.",
+    "closeDialogRecentSignIn": "You signed in with Google, so no password is needed. If this fails, sign in again and retry.",
     "closeDialogAction": "Delete my account",
     "closeAccountError": "We could not delete your account. Please try again, or sign in again first.",
     "closeStripeCustomerError": "We could not delete your saved cards at our payment provider Stripe, so your account has not been deleted. Please try again in a few minutes.",

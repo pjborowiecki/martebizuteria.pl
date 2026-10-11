@@ -147,7 +147,7 @@ Etap działa po kompilacji i po pliku sekretów, więc wdrożenie, które zawied
 env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json
 ```
 
-`CLOUDFLARE_ENV` jest dla tej komendy usuwane, bo skompilowany `dist/server/wrangler.json` jest już spłaszczony do jednego środowiska — zostawienie tej zmiennej kazałoby Wranglerowi szukać sekcji środowiska w konfiguracji, która jej już nie ma. Plik sekretów jest wysyłany razem z wdrożeniem, więc jedenaście zadeklarowanych sekretów ustawia się atomowo wraz z nową wersją.
+`CLOUDFLARE_ENV` jest dla tej komendy usuwane, bo skompilowany `dist/server/wrangler.json` jest już spłaszczony do jednego środowiska — zostawienie tej zmiennej kazałoby Wranglerowi szukać sekcji środowiska w konfiguracji, która jej już nie ma. Plik sekretów jest wysyłany razem z wdrożeniem, więc dziewięć zadeklarowanych sekretów ustawia się atomowo wraz z nową wersją.
 
 ### 9. verify-deployment.ts
 
@@ -157,10 +157,10 @@ Kontrola tylko czyta publiczne strony: nikogo nie loguje, nie otwiera zamówieni
 
 ## Konfiguracja repozytorium
 
-| Rodzaj                | Nazwy                                                                                                                                                                                                                                                                                      |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Secrets** w Actions | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` |
-| **Vars** w Actions    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                                                                                    |
+| Rodzaj                | Nazwy                                                                                                                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Secrets** w Actions | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` |
+| **Vars** w Actions    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                              |
 
 `CLOUDFLARE_ACCESS_TOKEN` jest przekazywany do kroku jako `CLOUDFLARE_API_TOKEN`, bo taką nazwę czyta Wrangler. Poza wdrażaniem Workera token potrzebuje uprawnienia do edycji D1, bo wdrożenie nakłada nim migracje, oraz uprawnień Workers Routes (edycja) i Zone (odczyt) do strefy `martebizuteria.pl`, bo wdrożenie podłącza domeny własne z `routes` w `wrangler.jsonc`. Oba przepływy wdrożeniowe korzystają ze środowisk GitHuba (`preview`, `production`), więc sekrety można tam zawęzić do środowiska.
 

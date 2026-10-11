@@ -59,7 +59,7 @@ Layoutem `/auth` jest `auth.tsx`, a jego `beforeLoad` uruchamia `redirectIfSigne
 
 Po udanym logowaniu hasłem albo udanej weryfikacji dwuskładnikowej formularz wywołuje `usePostAuthRedirect` z `src/hooks/use-post-auth-redirect.ts`. Ten hook usuwa z cache wyłącznie wpis sesji, czyści dopasowania zapisane w routerze i unieważnia router. Strażnik layoutu `/auth` uruchamia się wtedy ponownie, pobiera świeżą sesję i przekierowuje, więc formularze nigdy same nie wybierają celu. Gdy świeża sesja dotrze, `clearCacheOnUserChange`, opisane niżej w sekcji Strażnicy, zapomina to, co trafiło do cache przed zalogowaniem.
 
-Logowanie przez Google i GitHub przechodzi przez `useOAuthSignIn` z `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`. Jego `callbackURL` to strona, na której kliknięto przycisk (`location.publicHref` z `useLocation`), na przykład `/en-US/auth/sign-in?redirect=...`. Po powrocie od dostawcy przeglądarka ląduje z powrotem na tej stronie uwierzytelniania, a `redirectIfSignedIn` przekierowuje użytkownika dalej dokładnie tak jak po logowaniu hasłem.
+Logowanie przez Google przechodzi przez `useOAuthSignIn` z `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`. Jego `callbackURL` to strona, na której kliknięto przycisk (`location.publicHref` z `useLocation`), na przykład `/en-US/auth/sign-in?redirect=...`. Po powrocie od dostawcy przeglądarka ląduje z powrotem na tej stronie uwierzytelniania, a `redirectIfSignedIn` przekierowuje użytkownika dalej dokładnie tak jak po logowaniu hasłem.
 
 | Ścieżka                 | Stała w `ROUTES`       | Plik trasy                 |
 | ----------------------- | ---------------------- | -------------------------- |

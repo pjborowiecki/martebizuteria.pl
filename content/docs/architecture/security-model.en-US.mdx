@@ -48,7 +48,7 @@ export const usePostAuthRedirect = (): (() => Promise<void>) => {
 
 It removes the cached session entry only, then clears the router's cached matches and invalidates the router. The `/auth` layout guard runs again, fetches the fresh session and redirects as described above. When the fresh session arrives, `clearCacheOnUserChange` forgets what was cached while signed out. The forms never choose a destination themselves.
 
-Google and GitHub sign-in, in `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`, pass the page the button was clicked on as the `callbackURL`: `location.publicHref` from `useLocation`, for example `/en-US/auth/sign-in?redirect=…`. After the provider round trip the browser lands on that auth page, and `redirectIfSignedIn` sends the user on exactly as after a password sign-in.
+Google sign-in, in `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`, passes the page the button was clicked on as the `callbackURL`: `location.publicHref` from `useLocation`, for example `/en-US/auth/sign-in?redirect=…`. After the provider round trip the browser lands on that auth page, and `redirectIfSignedIn` sends the user on exactly as after a password sign-in.
 
 Signing out is a full page load that discards the cache: the account sidebar goes to `/`, the admin sidebar to `/auth/sign-in`.
 

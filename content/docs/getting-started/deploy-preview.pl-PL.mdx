@@ -145,7 +145,7 @@ Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull 
 
 **Sekrety** repozytorium:
 
-`CLOUDFLARE_ACCESS_TOKEN` (przekazywany Wranglerowi jako `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`.
+`CLOUDFLARE_ACCESS_TOKEN` (przekazywany Wranglerowi jako `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`.
 
 **Zmienne** repozytorium:
 
@@ -155,7 +155,7 @@ Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull 
 
 Ostatni krok wdrożenia zapytał już nowego Workera o stronę główną, listę produktów, `robots.txt` i trasę webhooka Stripe. Gdy zawiedzie, nowa wersja działa na żywo, ale nie odpowiada jak sklep; co wtedy zrobić, opisuje [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
-Zarejestruj adresy zwrotne dostawców dla nowego hosta, zgodnie z listą w [Zmiennych środowiskowych](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` oraz punkt końcowy Stripe pod `/api/webhooks/stripe`, czyli `https://preview.martebizuteria.pl/api/webhooks/stripe` na preview i `https://martebizuteria.pl/api/webhooks/stripe` na produkcji. Stripe wydaje osobny sekret podpisu dla każdego punktu końcowego, więc wartości `STRIPE_WEBHOOK_SECRET` dla preview i produkcji się różnią. Host punktu końcowego nie decyduje, dokąd linkuje potwierdzenie zamówienia: linkuje ono pod adres, na którym złożono zamówienie, wzięty z `return_url` sesji.
+Zarejestruj adresy zwrotne dostawców dla nowego hosta, zgodnie z listą w [Zmiennych środowiskowych](/docs/getting-started/environment-variables): `/api/auth/callback/google` oraz punkt końcowy Stripe pod `/api/webhooks/stripe`, czyli `https://preview.martebizuteria.pl/api/webhooks/stripe` na preview i `https://martebizuteria.pl/api/webhooks/stripe` na produkcji. Stripe wydaje osobny sekret podpisu dla każdego punktu końcowego, więc wartości `STRIPE_WEBHOOK_SECRET` dla preview i produkcji się różnią. Host punktu końcowego nie decyduje, dokąd linkuje potwierdzenie zamówienia: linkuje ono pod adres, na którym złożono zamówienie, wzięty z `return_url` sesji.
 
 ## Powiązane
 

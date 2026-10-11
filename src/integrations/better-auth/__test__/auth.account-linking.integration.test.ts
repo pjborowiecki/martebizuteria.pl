@@ -12,8 +12,6 @@ const { sqlite } = await vi.hoisted(async () => {
 
 vi.mock("cloudflare:workers", () => ({
   env: {
-    AUTH_GITHUB_CLIENT_ID: "test-github-client",
-    AUTH_GITHUB_CLIENT_SECRET: "test-github-secret",
     AUTH_GOOGLE_CLIENT_ID: "test-google-client",
     AUTH_GOOGLE_CLIENT_SECRET: "test-google-secret",
     AUTH_SECRET: "local-test-auth-secret-with-at-least-thirty-two-characters",

@@ -37,8 +37,6 @@ cp .env.example .env.development
 | `AUTH_SECRET`                 | Podpisywanie i szyfrowanie w Better Auth                                                                                                                                                               | Tak            |
 | `AUTH_GOOGLE_CLIENT_ID`       | OAuth Google                                                                                                                                                                                           | Tak            |
 | `AUTH_GOOGLE_CLIENT_SECRET`   | OAuth Google                                                                                                                                                                                           | Tak            |
-| `AUTH_GITHUB_CLIENT_ID`       | OAuth GitHub                                                                                                                                                                                           | Tak            |
-| `AUTH_GITHUB_CLIENT_SECRET`   | OAuth GitHub                                                                                                                                                                                           | Tak            |
 | `RESEND_API_KEY`              | Klient Resend: `new Resend(env.RESEND_API_KEY)` w `src/integrations/resend/resend.config.ts`                                                                                                           | Tak            |
 | `RESEND_EMAIL_FROM`           | Domyślny nadawca: sam adres w domenie zweryfikowanej w Resend                                                                                                                                          | Tak            |
 | `STRIPE_SECRET_KEY`           | Serwerowy klient Stripe w `src/integrations/stripe/stripe.server.ts`; jego tryb sprawdza `scripts/verify-stripe-keys.ts`                                                                               | Tak            |
@@ -53,7 +51,7 @@ cp .env.example .env.development
 | `RESEND_MANAGEMENT_API_KEY`   | Opcjonalny. Tym kluczem z pełnym dostępem `scripts/verify-email-sender.ts` odczytuje domenę nadawcy, gdy `RESEND_API_KEY` może tylko wysyłać                                                           | Nie            |
 | `SENTRY_AUTH_TOKEN`           | Na razie przez nic — zadeklarowana w `.env.example` z wyprzedzeniem, raportowanie błędów nie jest podłączone                                                                                           | Nie            |
 
-Przy wdrożeniu wysyłane są wyłącznie zmienne wymienione w `secrets.required` w `wrangler.jsonc`. Każde środowisko deklaruje te same jedenaście nazw. Trzy zmienne `CLOUDFLARE_*` to poświadczenia Drizzle Kit i zostają na maszynie uruchamiającej CLI; `prepare-deploy-secrets.ts` zapisuje wyłącznie zadeklarowany zbiór do `.wrangler/secrets.<środowisko>.json` z uprawnieniami `0600` i głośno przerywa, jeśli któraś wartość jest pusta:
+Przy wdrożeniu wysyłane są wyłącznie zmienne wymienione w `secrets.required` w `wrangler.jsonc`. Każde środowisko deklaruje te same dziewięć nazw. Trzy zmienne `CLOUDFLARE_*` to poświadczenia Drizzle Kit i zostają na maszynie uruchamiającej CLI; `prepare-deploy-secrets.ts` zapisuje wyłącznie zadeklarowany zbiór do `.wrangler/secrets.<środowisko>.json` z uprawnieniami `0600` i głośno przerywa, jeśli któraś wartość jest pusta:
 
 ```
 Missing STRIPE_SECRET_KEY in .env.preview or the process environment

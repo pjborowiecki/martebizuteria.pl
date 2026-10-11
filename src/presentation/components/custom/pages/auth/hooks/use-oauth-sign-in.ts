@@ -10,7 +10,7 @@ import { useActionError } from "~/src/hooks/use-action-error"
 
 const signInSocial = createClientOnlyFn((input: Parameters<typeof authClient.signIn.social>[0]) => authClient.signIn.social(input))
 
-type OAuthProvider = "google" | "github"
+type OAuthProvider = "google"
 
 export const useOAuthSignIn = (): UseMutationResult<void, unknown, OAuthProvider> => {
   const t = useTranslations()

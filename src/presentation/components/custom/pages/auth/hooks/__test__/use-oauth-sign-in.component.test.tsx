@@ -64,15 +64,6 @@ describe("useOAuthSignIn", () => {
     expect(signInSocial).toHaveBeenCalledWith({ callbackURL: SIGN_IN_PAGE, provider: "google" })
   })
 
-  it("passes the provider the caller chose", async () => {
-    signInSocial.mockResolvedValue({ error: null })
-    const { result } = renderSignIn()
-
-    await result.current.mutateAsync("github")
-
-    expect(signInSocial).toHaveBeenCalledWith({ callbackURL: SIGN_IN_PAGE, provider: "github" })
-  })
-
   it("welcomes the shopper back when the provider accepts the sign in", async () => {
     signInSocial.mockResolvedValue({ error: null })
     const { result } = renderSignIn()

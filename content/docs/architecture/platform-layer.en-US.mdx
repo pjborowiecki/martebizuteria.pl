@@ -42,7 +42,7 @@ bun run db:migrate:development
 
 ## Secrets and environment files
 
-Each environment lists its required secrets under `secrets.required`: `AUTH_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `VITE_R2_URL`. `APP_ENV` is a plain var, not a secret.
+Each environment lists its required secrets under `secrets.required`: `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` and `VITE_R2_URL`. `APP_ENV` is a plain var, not a secret.
 
 Values come from `.env.development`, `.env.preview` and `.env.production`, which are gitignored; `.env.test` holds committed dummy values and `.env.example` is the template. Bun's automatic env loading is disabled in `bunfig.toml`, so the environment is always chosen explicitly — either by `--mode` or by `bun --env-file=`.
 

@@ -48,7 +48,7 @@ export const usePostAuthRedirect = (): (() => Promise<void>) => {
 
 Hook usuwa wyłącznie wpis sesji z cache'u, a następnie czyści zapisane w routerze dopasowania i unieważnia router. Guard layoutu `/auth` uruchamia się ponownie, pobiera świeżą sesję i przekierowuje tak, jak opisano wyżej. Gdy świeża sesja dotrze, `clearCacheOnUserChange` zapomina to, co trafiło do cache'u przed zalogowaniem. Formularze nigdy same nie wybierają celu.
 
-Logowanie przez Google i GitHub, w `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`, przekazuje jako `callbackURL` stronę, na której kliknięto przycisk: `location.publicHref` z `useLocation`, na przykład `/en-US/auth/sign-in?redirect=…`. Po powrocie od dostawcy przeglądarka trafia na tę stronę uwierzytelniania, a `redirectIfSignedIn` przekierowuje użytkownika dalej dokładnie tak, jak po logowaniu hasłem.
+Logowanie przez Google, w `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`, przekazuje jako `callbackURL` stronę, na której kliknięto przycisk: `location.publicHref` z `useLocation`, na przykład `/en-US/auth/sign-in?redirect=…`. Po powrocie od dostawcy przeglądarka trafia na tę stronę uwierzytelniania, a `redirectIfSignedIn` przekierowuje użytkownika dalej dokładnie tak, jak po logowaniu hasłem.
 
 Wylogowanie to pełne przeładowanie strony, które porzuca cache: panel boczny konta prowadzi na `/`, a panel boczny administracyjny na `/auth/sign-in`.
 

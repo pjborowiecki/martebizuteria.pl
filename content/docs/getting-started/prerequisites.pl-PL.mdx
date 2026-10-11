@@ -52,18 +52,17 @@ Dwie rzeczy warte uwagi, zanim zaczniesz tworzyć zasoby:
 
 Durable Object nie wymaga osobnego kroku przygotowania. Tworzy go migracja `v1` w `wrangler.jsonc`, która deklaruje `RealtimeInvalidationHub` w `new_sqlite_classes`.
 
-### Google i GitHub OAuth — wymagane do logowania społecznościowego
+### Google OAuth — wymagane do logowania społecznościowego
 
-`src/integrations/better-auth/auth.server.ts` konfiguruje oba dostawców bezwarunkowo:
+`src/integrations/better-auth/auth.server.ts` konfiguruje Google, jedynego dostawcę logowania społecznościowego, bezwarunkowo:
 
 ```ts
 socialProviders: {
-  github: { clientId: env.AUTH_GITHUB_CLIENT_ID, clientSecret: env.AUTH_GITHUB_CLIENT_SECRET },
   google: { clientId: env.AUTH_GOOGLE_CLIENT_ID, clientSecret: env.AUTH_GOOGLE_CLIENT_SECRET },
 },
 ```
 
-Oba identyfikatory klienta i oba sekrety znajdują się na liście `secrets.required` w każdym środowisku w `wrangler.jsonc`, więc `scripts/prepare-deploy-secrets.ts` odmawia wdrożenia bez nich. Adres powrotny to `https://<host>/api/auth/callback/google` oraz `https://<host>/api/auth/callback/github` — zgodnie z handlerem Better Auth zamontowanym w `src/routes/api/auth.$.ts`.
+Identyfikator i sekret klienta znajdują się na liście `secrets.required` w każdym środowisku w `wrangler.jsonc`, więc `scripts/prepare-deploy-secrets.ts` odmawia wdrożenia bez nich. Adres powrotny to `https://<host>/api/auth/callback/google` — zgodnie z handlerem Better Auth zamontowanym w `src/routes/api/auth.$.ts`.
 
 ### Resend — wymagane do utworzenia jakiegokolwiek konta
 

@@ -59,7 +59,7 @@ The `/auth` layout is `auth.tsx` and its `beforeLoad` runs `redirectIfSignedIn`,
 
 After a successful password sign-in or two-factor challenge, the form calls `usePostAuthRedirect` from `src/hooks/use-post-auth-redirect.ts`. It removes the cached session entry only, clears the router's cached matches and invalidates the router. The `/auth` layout guard then runs again, fetches the fresh session and redirects, so the forms never choose a destination themselves. When the fresh session arrives, `clearCacheOnUserChange`, described under Guards below, forgets what was cached while signed out.
 
-Google and GitHub sign-in go through `useOAuthSignIn` in `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`. Its `callbackURL` is the page the button was clicked on (`location.publicHref` from `useLocation`), for example `/en-US/auth/sign-in?redirect=...`. After the provider round trip the browser lands back on that auth page, and `redirectIfSignedIn` sends the user on exactly as after a password sign-in.
+Google sign-in goes through `useOAuthSignIn` in `src/presentation/components/custom/pages/auth/hooks/use-oauth-sign-in.ts`. Its `callbackURL` is the page the button was clicked on (`location.publicHref` from `useLocation`), for example `/en-US/auth/sign-in?redirect=...`. After the provider round trip the browser lands back on that auth page, and `redirectIfSignedIn` sends the user on exactly as after a password sign-in.
 
 | Path                    | `ROUTES` constant      | Route file                 |
 | ----------------------- | ---------------------- | -------------------------- |

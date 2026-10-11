@@ -121,7 +121,7 @@ describe("CloseAccountSection confirmation", () => {
 
     expect(screen.queryByLabelText("Your password")).toBeNull()
     expect(
-      screen.getByText("You signed in with Google or GitHub, so no password is needed. If this fails, sign in again and retry."),
+      screen.getByText("You signed in with Google, so no password is needed. If this fails, sign in again and retry."),
     ).toBeInTheDocument()
 
     await typeConfirmation()
