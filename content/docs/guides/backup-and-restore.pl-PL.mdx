@@ -1,0 +1,198 @@
+---
+title: "Kopie zapasowe i przywracanie"
+description: "Gdzie leżą dane sklepu, D1 Time Travel i dlaczego przywrócenie kasuje każde późniejsze zamówienie, regularny eksport trzymany poza kontem Cloudflare i przywracanie z niego oraz kopia bucketu zdjęć R2."
+---
+
+Dane, których sklep nie odtworzy sam, leżą w dwóch miejscach: w produkcyjnej bazie D1 `martebizuteria` i w produkcyjnym buckecie R2 `martebizuteria`. Time Travel chroni bazę wewnątrz Cloudflare, regularny eksport trzyma jej kopię poza Cloudflare, a `rclone` kopiuje zdjęcia.
+
+| Magazyn                                  | Co przechowuje                                                                                                                                                 | Czym jest chroniony                                                        |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| D1 `martebizuteria`                      | Zamówienia i płatności, klientów z ich kontami, adresami i sesjami, katalog i jego stany, kody rabatowe, strony prawne, przełącznik sprzedaży, dziennik audytu | [Time Travel](#d1-time-travel) i [eksport](#regularny-eksport-poza-kontem) |
+| R2 `martebizuteria`                      | Zdjęcia produktów, kategorii, kolekcji i grafiki marketingowe                                                                                                  | [Kopia zdjęć](#kopia-bucketu-zdjęć)                                        |
+| KV `CACHE`                               | Znaczniki alertów o incydentach, które wygasają po godzinie, i znacznik niedostępnego nadawcy, który wygasa po pięciu minutach                                 | Nie wymaga kopii                                                           |
+| Kolejka `martebizuteria-audit-log`       | Wpisy audytu przez kilka sekund, zanim konsument zapisze je w D1                                                                                               | Nie wymaga kopii                                                           |
+| Durable Object `RealtimeInvalidationHub` | Otwarte połączenia WebSocket, bez zapisanych danych                                                                                                            | Nie wymaga kopii                                                           |
+
+Kod i `wrangler.jsonc` są w Gicie. Sekrety żyją w środowisku GitHub `production` i w `.env.production`, a GitHub nigdy więcej nie pokazuje zapisanego sekretu, więc trzymaj ich wartości także w menedżerze haseł.
+
+Każdą komendę poniżej uruchamiasz z katalogu głównego repozytorium po `bunx wrangler login`, a każda, która podaje `martebizuteria`, działa na żywym sklepie.
+
+## D1 Time Travel
+
+Time Travel jest w D1 zawsze włączony, nie wymaga konfiguracji i nic nie kosztuje. Pozwala cofnąć całą bazę do dowolnej minuty z ostatnich 30 dni na planie Workers Paid albo z ostatnich 7 dni na Workers Free.
+
+```sh
+bunx wrangler d1 time-travel info martebizuteria
+bunx wrangler d1 time-travel info martebizuteria --timestamp=2026-10-10T08:30:00+02:00
+```
+
+Pierwsza komenda wypisuje zakładkę (bookmark) bazy w obecnym stanie, druga zakładkę minionej minuty. Znacznik czasu to RFC 3339 albo sekundy uniksowe; czas polski to `+02:00` latem i `+01:00` zimą.
+
+```sh
+bunx wrangler d1 time-travel restore martebizuteria --timestamp=2026-10-10T08:30:00+02:00
+```
+
+Przywrócenie nadpisuje bazę w miejscu i przerywa zapytania wykonywane w tej chwili. Wypisuje zakładkę stanu, który zastąpiło, a `restore --bookmark=<ta zakładka>` je cofa. Time Travel nie kopiuje bazy ani nie przywraca do innej, więc nie da się obejrzeć starych danych bez przywrócenia ich.
+
+### Co kasuje przywrócenie
+
+Cofa się tylko D1. Wszystko, co od punktu przywrócenia wydarzyło się poza bazą, zostaje, więc jedno przestaje się zgadzać z drugim:
+
+- Zamówienia opłacone od tamtej chwili znikają z `/admin/orders` i z kont klientów, choć Stripe pobrał od klientów pieniądze, a Resend wysłał im potwierdzenia.
+- Stany magazynowe wracają do tamtej minuty. Sztuka sprzedana w międzyczasie znów jest w sprzedaży, a jedyny egzemplarz może zostać sprzedany dwa razy. Checkout, który w tamtej minucie jeszcze czekał, znów trzyma swój stan i użycie kodu rabatowego, nawet jeśli jego sesja od tego czasu wygasła.
+- Anulowania, zwroty pieniędzy, oznaczenia wysyłki i numery przesyłek z tego czasu znikają z zamówień, choć Stripe nadal ma zwroty.
+- Konta założone w międzyczasie znikają, a każdy, kto się w tym czasie zalogował, zostaje wylogowany. Konta usunięte w międzyczasie wracają, z adresami, dziennikiem aktywności i zapisem do newslettera, choć ich zapisane karty w Stripe już nie istnieją; usuń każde z nich ponownie w `/admin/customers`, znajdując je wśród e-maili o usunięciu konta, które Resend wysłał od punktu przywrócenia.
+- Odstąpienia od umowy złożone od tamtej chwili, pod `/withdraw-from-contract` albo na koncie, znikają z zamówień, choć każde nadal wiąże sklep. Powiadomienia sklepu o odstąpieniu w `kontakt@martebizuteria.pl` zachowują ich treść; obsłuż te odstąpienia na podstawie powiadomień.
+- Zmiany produktów, cen, kodów rabatowych i stron prawnych z tego czasu zostają cofnięte, a przełącznik sprzedaży wraca do swojego ówczesnego położenia. Zdjęcia wysłane w międzyczasie zostają w R2, ale nic na nie nie wskazuje.
+- Dziennik audytu traci wpisy z tego czasu, łącznie z zapisem tego, co poszło źle.
+- `d1_migrations` też się cofa, więc migracja zastosowana po punkcie przywrócenia zostaje cofnięta i znów figuruje jako oczekująca.
+
+Time Travel służy do naprawy szkód w całej bazie, takich jak migracja, która zniszczyła dane, albo masowe usunięcie. Pojedynczą błędną zmianę taniej poprawić ręcznie: wpis produktu w `/admin/audit` pokazuje jego pola przed zmianą i po niej (zobacz [Dziennik audytu](/docs/features/audit-log#różnice-zmian)).
+
+### Przywracanie
+
+1. Wstrzymaj sprzedaż przełącznikiem na pulpicie panelu (zobacz [Wstrzymanie sprzedaży](/docs/features/checkout#wstrzymanie-sprzedaży)). Sesję Checkout otwartą przed wstrzymaniem nadal można opłacić, dopóki nie wygaśnie, najpóźniej 32 minuty po otwarciu.
+2. Przeczytaj `/admin/audit` i Workers Logs i wybierz ostatnią minutę przed szkodą. Zapisz punkt przywrócenia; wszystko po nim trzeba będzie uzgodnić.
+3. Jeśli szkoda przyszła z wdrożeniem, najpierw wycofaj Workera, w panelu Cloudflare w **Workers & Pages**, `martebizuteria`, **Deployments**. Przywrócenie D1 nie wycofuje Workera, wycofanie Workera nie przywraca D1, a nowy kod na starym schemacie się wywraca.
+4. Uruchom `bunx wrangler d1 time-travel restore` i zachowaj zakładkę, którą wypisze.
+5. Uruchom `bun run db:migrations:production`. Pokaże migracje, które przywrócenie cofnęło. Zastosuj je ponownie przez `bun run db:migrate:production`, jeśli działający kod ich potrzebuje, chyba że to jedna z nich wyrządziła szkodę. Następne wdrożenie stosuje każdą oczekującą migrację, zanim wyśle Workera, więc migrację, która wyrządziła szkodę, usuń albo popraw przed kolejnym wdrożeniem.
+6. Przełącznik sprzedaży ma teraz położenie z punktu przywrócenia. Wstrzymaj sprzedaż ponownie, dopóki sklep i Stripe się nie zgadzają.
+7. W panelu Stripe, w trybie live, wypisz płatności od punktu przywrócenia. Dla każdej bez zamówienia w `/admin/orders` otwórz jej zdarzenie `checkout.session.completed`, albo `checkout.session.async_payment_succeeded` dla płatności BLIK lub Przelewy24 rozliczonej później, i wybierz **Resend**:
+   - Gdy sesja była już w bazie w punkcie przywrócenia, jej checkout znów czeka z zarezerwowanym stanem, a webhook tworzy zamówienie i drugi raz wysyła potwierdzenie.
+   - Gdy checkout zaczął się po punkcie przywrócenia, nie ma czego zrealizować: webhook zapisuje `order.fulfillment_failed` i wysyła alert `paidCheckoutWithoutOrder`. Uzgodnij to zamówienie z klientem albo zwróć pieniądze, jak opisuje [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts#alerty-e-mail-ze-sklepu), i popraw stan tego, co sprzedało.
+8. Wyślij ponownie także pozostałe zdarzenia od punktu przywrócenia, typ po typie, z listy zdarzeń w panelu Stripe:
+   - `checkout.session.expired` i `checkout.session.async_payment_failed`. Checkout, który w punkcie przywrócenia czekał, znów czeka, więc trzyma swój stan poza sprzedażą i zajmuje użycie kodu rabatowego, a zwalniają je tylko te dwa zdarzenia. Stripe wysłał je przed przywróceniem i sam nie wyśle ich ponownie, więc bez ponownego wysłania jedyny egzemplarz wygląda na wyprzedany, kod rabatowy z limitem użyć pozostaje zużyty, a checkout czeka na zawsze. Zwolnienie zmienia tylko checkout, który razem ze swoją płatnością nadal czeka, więc zdarzenie sesji rozpoczętej po punkcie przywrócenia albo takiej, z której powstało zamówienie, niczego nie zwalnia. Zwolnienie po `checkout.session.async_payment_failed` drugi raz wysyła klientowi e-mail o nieudanej płatności.
+   - `charge.refunded`, `charge.dispute.created` i `charge.dispute.closed`, żeby zamówienia znów pokazywały swoje zwroty pieniędzy i spory.
+9. Powtórz zmiany wprowadzone od punktu przywrócenia, a potem wznów sprzedaż.
+
+## Regularny eksport poza kontem
+
+Time Travel żyje wewnątrz konta Cloudflare i wewnątrz samej bazy. Nie pomoże, gdy przepadnie baza albo konto, ani gdy szkoda wyjdzie na jaw po upływie jego okna. Eksportuj produkcyjną bazę regularnie, na przykład co tydzień i przed ryzykowną migracją, i trzymaj pliki poza Cloudflare.
+
+### Dlaczego eksport wymaga dodatkowych kroków
+
+`wrangler d1 export` odmawia eksportu bazy z tabelą wirtualną, a produkcja ma jedną: `storefront_search`, indeks FTS5 wyszukiwarki sklepu, który dziewięć triggerów utrzymuje w zgodzie z produktami, kategoriami i kolekcjami (zobacz [Katalog i wyszukiwanie](/docs/features/catalog-and-search)). Obejście opisane przez Cloudflare to usunąć tabelę wirtualną, wyeksportować i utworzyć ją ponownie. Migracja, która utworzyła indeks, `20261002100000_storefront_search.sql`, tworzy tabelę i triggery tylko wtedy, gdy ich brakuje, i wypełnia indeks z bieżących wierszy, więc jej ponowne uruchomienie odbudowuje indeks i niczego poza nim nie zmienia.
+
+Dopóki indeksu nie ma, wyszukiwarka sklepu i filtr tekstowy katalogu zwracają błąd, a eksport w trakcie działania wstrzymuje wszystkie inne zapytania. Rób to w spokojnej porze.
+
+Eksport to dwa pliki, schemat i wiersze. Jednego pliku nie da się przywrócić: tworzy tabele w kolejności, w jakiej ostatnio je przebudowano, więc wstawia wiersze `product_variant`, zanim powstanie tabela `product`, a SQLite odrzuca je błędem `no such table: main.product`. Utworzenie najpierw wszystkich tabel, a dopiero potem wczytanie wierszy działa.
+
+### Eksport
+
+1. Zanotuj obecną zakładkę. Jeśli coś poniżej pójdzie źle, przywrócenie do niej straci tylko minuty, które od tego czasu minęły:
+
+   ```sh
+   bunx wrangler d1 time-travel info martebizuteria
+   ```
+
+2. Usuń indeks wyszukiwania i jego triggery:
+
+   ```sh
+   bunx wrangler d1 execute martebizuteria --remote --command "
+   DROP TRIGGER IF EXISTS storefront_search_product_insert;
+   DROP TRIGGER IF EXISTS storefront_search_product_update;
+   DROP TRIGGER IF EXISTS storefront_search_product_delete;
+   DROP TRIGGER IF EXISTS storefront_search_product_category_insert;
+   DROP TRIGGER IF EXISTS storefront_search_product_category_update;
+   DROP TRIGGER IF EXISTS storefront_search_product_category_delete;
+   DROP TRIGGER IF EXISTS storefront_search_product_collection_insert;
+   DROP TRIGGER IF EXISTS storefront_search_product_collection_update;
+   DROP TRIGGER IF EXISTS storefront_search_product_collection_delete;
+   DROP TABLE IF EXISTS storefront_search;"
+   ```
+
+3. Wyeksportuj schemat i wiersze do katalogu poza repozytorium:
+
+   ```sh
+   mkdir -p "$HOME/marte-backups"
+   bunx wrangler d1 export martebizuteria --remote --no-data --output "$HOME/marte-backups/schema.sql"
+   bunx wrangler d1 export martebizuteria --remote --no-schema --output "$HOME/marte-backups/data.sql"
+   ```
+
+4. Utwórz indeks ponownie, także wtedy, gdy eksport się nie udał, a potem wyszukaj w sklepie nazwę produktu:
+
+   ```sh
+   bunx wrangler d1 execute martebizuteria --remote --file=src/integrations/drizzle-orm/migrations/20261002100000_storefront_search.sql
+   ```
+
+5. Zaszyfruj oba pliki do jednego za pomocą GnuPG (`brew install gnupg` na macOS) i usuń jawne:
+
+   ```sh
+   cd "$HOME/marte-backups"
+   tar -czf - schema.sql data.sql | gpg --symmetric --cipher-algo AES256 --output "marte-d1-$(date +%F).tar.gz.gpg"
+   rm schema.sql data.sql
+   ```
+
+Eksport zawiera imię i nazwisko, e-mail, adres pocztowy, numer telefonu i historię zamówień każdego klienta. Nigdy nie trzymaj go niezaszyfrowanego, nigdy nie umieszczaj go w repozytorium, a hasło trzymaj w menedżerze haseł. Zaszyfrowany plik przechowuj poza Cloudflare, na dysku zewnętrznym albo u innego dostawcy przestrzeni, i zachowuj tylko kilka ostatnich, na przykład cztery, żeby dane usunięte przez sklep nie żyły dalej w starych kopiach.
+
+### Próba przywrócenia
+
+Wczytaj każdy nowy eksport do jednorazowej lokalnej bazy. To działa wyłącznie na Twoim komputerze:
+
+```sh
+gpg --decrypt "$HOME/marte-backups/marte-d1-2026-10-10.tar.gz.gpg" | tar -xzf - -C "$HOME/marte-backups"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/schema.sql"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/data.sql"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --command 'SELECT count(*) AS orders FROM "order"'
+rm -rf .wrangler/restore-drill "$HOME/marte-backups/schema.sql" "$HOME/marte-backups/data.sql"
+```
+
+Liczba powinna się zgadzać z liczbą zamówień, które sklep miał w chwili eksportu. Git ignoruje `.wrangler/`, a ostatnia linia znów usuwa jawne kopie.
+
+### Przywracanie z eksportu
+
+1. Wstrzymaj sprzedaż, jeśli sklep nadal działa.
+2. Odszyfruj eksport jak w próbie powyżej.
+3. Utwórz nową bazę. Komenda wypisze jej `database_id`:
+
+   ```sh
+   bunx wrangler d1 create martebizuteria-restored
+   ```
+
+4. Wczytaj schemat, potem wiersze, a na końcu indeks wyszukiwania:
+
+   ```sh
+   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/schema.sql"
+   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/data.sql"
+   bunx wrangler d1 execute martebizuteria-restored --remote --file=src/integrations/drizzle-orm/migrations/20261002100000_storefront_search.sql
+   ```
+
+5. W `wrangler.jsonc` ustaw `database_name` i `database_id` powiązania `DB` w środowisku `production` na nową bazę. Wiersze niosą własną tabelę Wranglera `d1_migrations`, więc `bun run db:migrations:production` pokaże tylko migracje nowsze od eksportu; zastosuj je przez `bun run db:migrate:production`.
+6. Zatwierdź zmianę i wdroż produkcję. Starą bazę, jeśli jeszcze istnieje, zostaw, dopóki jest Ci potrzebna.
+7. Uzgodnij ze Stripe wszystko od chwili eksportu, jak opisują kroki 7–9 w sekcji [Przywracanie](#przywracanie), a potem wznów sprzedaż.
+
+## Kopia bucketu zdjęć
+
+Time Travel obejmuje tylko D1. Zdjęcia potrzebują własnej kopii. Sklep nigdy nie nadpisuje ani nie usuwa obiektu: przesłany plik zapisuje się pod skrótem SHA-256 jego bajtów, a nic nie wywołuje `IMAGES.delete` (zobacz [Cloudflare R2](/docs/integrations/cloudflare-r2)). Zdjęcie może zniknąć tylko przez panel, token API R2 albo utratę bucketu, a kopia, która tylko dodaje, zachowuje każde zdjęcie, na które może wskazywać baza.
+
+1. W panelu Cloudflare otwórz **R2 object storage**, **Manage API tokens**, **Create API token**, wybierz **Object Read only** i ogranicz token do `martebizuteria`. Każdy obiekt w buckecie i tak jest publiczny, więc ten token może zostać w menedżerze haseł na potrzeby regularnej kopii.
+2. Dodaj go do `rclone` jako zdalne źródło `r2`, jak pokazuje krok 2 w [Dostarczaniu zdjęć](/docs/guides/image-delivery).
+3. Skopiuj i porównaj zaraz po eksporcie bazy, żeby kopia zawierała każde zdjęcie, na które wskazuje ten eksport:
+
+   ```sh
+   rclone copy r2:martebizuteria "$HOME/marte-backups/images" --progress
+   rclone check r2:martebizuteria "$HOME/marte-backups/images" --one-way
+   ```
+
+`rclone copy` tylko dodaje i aktualizuje pliki. Nigdy nie używaj tu `rclone sync`, który usunąłby z kopii również to, co zniknęło z bucketu. Zdjęcia są publiczne, więc ta kopia nie wymaga szyfrowania; trzymaj ją poza Cloudflare jak eksporty. Żeby trzymać ją u innego dostawcy przestrzeni, dodaj dla niego zdalne źródło w `rclone.conf` i użyj go zamiast katalogu, z `--metadata`, które między dwoma magazynami zgodnymi z S3 przenosi `Content-Type` i `Cache-Control` każdego obiektu.
+
+### Przywracanie zdjęć
+
+Na czas przywracania utwórz token z uprawnieniem **Object Read & Write** do bucketu i usuń go potem. Jeśli przepadł sam bucket, utwórz go ponownie przez `bunx wrangler r2 bucket create martebizuteria` i podłącz do niego `images.martebizuteria.pl`, jak pokazuje krok 4 w [Dostarczaniu zdjęć](/docs/guides/image-delivery). Zdjęcia w e-mailach z odnośnikami do `images.martebizuteria.pl` znów się załadują, gdy kopia wróci; te w e-mailach wysłanych, gdy `VITE_R2_URL` był adresem `r2.dev` starego bucketu, zostaną uszkodzone, bo nowy bucket dostaje nowy adres.
+
+```sh
+rclone copy "$HOME/marte-backups/images" r2:martebizuteria --include "/{products,categories,collections,uploads}/**" --header-upload "Cache-Control: public, max-age=31536000, immutable" --progress
+rclone copy "$HOME/marte-backups/images" r2:martebizuteria --exclude "/{products,categories,collections,uploads}/**" --progress
+rclone check "$HOME/marte-backups/images" r2:martebizuteria --one-way
+```
+
+Katalog na dysku nie przechowuje `Content-Type` ani `Cache-Control`. `rclone` ustawia `Content-Type` na podstawie rozszerzenia pliku, a pierwsza komenda nadaje czterem katalogom, do których wysyła panel, roczny niezmienny `Cache-Control`, ten sam, który ustawia `uploadImageFn`. Pozostałe obiekty, takie jak `marketing/` i `placeholder.svg`, nie zostały wysłane przez panel i wracają bez niego.
+
+## Powiązane strony
+
+- [Lista kontrolna przed startem sprzedaży](/docs/guides/go-live-checklist)
+- [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts)
+- [Baza danych](/docs/tooling/database)
+- [Migracje bazy danych](/docs/guides/database-migrations)
+- [Dostarczanie zdjęć](/docs/guides/image-delivery)
+- [Cloudflare R2](/docs/integrations/cloudflare-r2)

@@ -1,0 +1,198 @@
+---
+title: "Backup and restore"
+description: "What holds the shop's data, D1 Time Travel and why a restore erases every later order, a regular export kept off the Cloudflare account and how to restore from it, and a copy of the R2 image bucket."
+---
+
+Two places hold data the shop cannot rebuild: the production D1 database `martebizuteria` and the production R2 bucket `martebizuteria`. Time Travel protects the database inside Cloudflare, a regular export keeps a copy of it outside Cloudflare, and `rclone` copies the images.
+
+| Store                                    | Holds                                                                                                                                                                     | Protected by                                                                            |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| D1 `martebizuteria`                      | Orders and payments, customers with their accounts, addresses and sessions, the catalogue and its stock, discount codes, the legal pages, the Sales switch, the audit log | [Time Travel](#d1-time-travel) and the [export](#a-regular-export-kept-off-the-account) |
+| R2 `martebizuteria`                      | Product, category, collection and marketing images                                                                                                                        | The [image copy](#copying-the-image-bucket)                                             |
+| KV `CACHE`                               | The incident-alert flags, which expire after an hour, and the unavailable-sender flag, which expires after five minutes                                                   | Nothing to back up                                                                      |
+| Queue `martebizuteria-audit-log`         | Audit entries for the seconds before the consumer writes them to D1                                                                                                       | Nothing to back up                                                                      |
+| Durable Object `RealtimeInvalidationHub` | Open WebSocket connections, nothing stored                                                                                                                                | Nothing to back up                                                                      |
+
+The code and `wrangler.jsonc` are in Git. The secrets live in the GitHub `production` environment and in `.env.production`, and GitHub never shows a saved secret again, so keep their values in a password manager too.
+
+Every command below runs from the repository root after `bunx wrangler login`, and every one that names `martebizuteria` acts on the live shop.
+
+## D1 Time Travel
+
+Time Travel is always on for D1, needs no setup and costs nothing. It can put the whole database back to any minute of the last 30 days on the Workers Paid plan, or of the last 7 days on Workers Free.
+
+```sh
+bunx wrangler d1 time-travel info martebizuteria
+bunx wrangler d1 time-travel info martebizuteria --timestamp=2026-10-10T08:30:00+02:00
+```
+
+The first command prints the bookmark of the database as it is now, the second the bookmark of a past minute. A timestamp is RFC 3339 or Unix seconds; Polish time is `+02:00` in summer and `+01:00` in winter.
+
+```sh
+bunx wrangler d1 time-travel restore martebizuteria --timestamp=2026-10-10T08:30:00+02:00
+```
+
+A restore overwrites the database in place and cancels the queries running at that moment. It prints the bookmark of the state it replaced, and `restore --bookmark=<that bookmark>` undoes it. Time Travel cannot copy a database or restore into another one, so it gives no way to look at the old data without putting it back.
+
+### What a restore erases
+
+Only D1 goes back. Everything that happened since the restore point outside the database stays as it is, so the two no longer agree:
+
+- Orders paid since then disappear from `/admin/orders` and from the customers' accounts, while Stripe has charged the customers and Resend has sent them their confirmations.
+- Stock goes back to that minute. A piece sold since is for sale again, and a one-of-a-kind piece can be sold twice. A checkout that was still pending at that minute holds its stock and its discount code's use again, even when its session has expired since.
+- Cancellations, refunds, shipping marks and tracking numbers since then are gone from the orders, while Stripe still holds the refunds.
+- Accounts created since are gone, and everyone who signed in since is signed out. Accounts deleted since are back, with their addresses, activity log and newsletter subscription, although their saved cards are gone at Stripe; delete each one again from `/admin/customers`, finding them among the account-deleted e-mails Resend sent since the restore point.
+- Withdrawals from the contract sent since then, at `/withdraw-from-contract` or from an account, are gone from their orders, although each still binds the shop. The shop's withdrawal notices in `kontakt@martebizuteria.pl` keep their content; handle those withdrawals from the notices.
+- Product, price, discount-code and legal-page edits since then are undone, and the Sales switch is back in the position it had. Images uploaded since stay in R2 with nothing pointing at them.
+- The audit log loses its entries since then, including the record of what went wrong.
+- `d1_migrations` goes back too, so a migration applied after the restore point is undone and listed as pending again.
+
+Time Travel is for damage to the whole database, such as a migration that destroyed data or a mass deletion. A single wrong edit is cheaper to put right by hand: a product's entry in `/admin/audit` shows its fields before and after the change (see [Audit log](/docs/features/audit-log#change-diffs)).
+
+### Restoring
+
+1. Pause sales with the Sales switch on the admin dashboard (see [Pausing sales](/docs/features/checkout#pausing-sales)). A Checkout Session opened before the pause can still be paid until it expires, at most 32 minutes after it opened.
+2. Read `/admin/audit` and Workers Logs and pick the last minute before the damage. Write the restore point down; everything after it has to be reconciled.
+3. If the damage came with a deploy, roll the Worker back first, in the Cloudflare dashboard under **Workers & Pages**, `martebizuteria`, **Deployments**. Restoring D1 does not roll back the Worker, rolling back the Worker does not restore D1, and new code running on the old schema fails.
+4. Run `bunx wrangler d1 time-travel restore` and keep the bookmark it prints.
+5. Run `bun run db:migrations:production`. It lists the migrations the restore undid. Apply them again with `bun run db:migrate:production` when the running code needs them, unless one of them caused the damage. The next deploy applies every pending migration before it uploads the Worker, so remove or fix a migration that caused the damage before deploying again.
+6. The Sales switch now has the position it had at the restore point. Pause sales again until the shop and Stripe agree.
+7. In the Stripe Dashboard, in live mode, list the payments made since the restore point. For each one with no order in `/admin/orders`, open its `checkout.session.completed` event, or `checkout.session.async_payment_succeeded` for a BLIK or Przelewy24 payment that settled later, and choose **Resend**:
+   - When the session was already in the database at the restore point, its checkout is pending again with its stock held, and the webhook creates the order and sends the confirmation a second time.
+   - When the checkout began after the restore point, there is nothing to fulfil: the webhook records `order.fulfillment_failed` and emails a `paidCheckoutWithoutOrder` alert. Arrange that order with the customer or refund it, as [Monitoring and alerts](/docs/guides/monitoring-and-alerts#e-mail-alerts-from-the-shop) describes, and correct the stock of what it sold.
+8. Resend the other events since the restore point too, one type at a time from the event list in the Stripe Dashboard:
+   - `checkout.session.expired` and `checkout.session.async_payment_failed`. A checkout that was pending at the restore point is pending again, holding its stock out of sale and its discount code's use, and only these two events release them. Stripe sent them before the restore and does not send them again on its own, so without a resend a one-of-a-kind piece reads as sold out, a discount code with a usage limit stays used up and the checkout stays pending for good. A release changes only a checkout that is still pending together with its payment, so the event of a session that began after the restore point, or that became an order, releases nothing. A release after `checkout.session.async_payment_failed` sends the customer the payment-failed e-mail a second time.
+   - `charge.refunded`, `charge.dispute.created` and `charge.dispute.closed`, so the orders show their refunds and disputes again.
+9. Redo the edits made since the restore point, then reopen sales.
+
+## A regular export kept off the account
+
+Time Travel lives inside the Cloudflare account and inside the database. It cannot help when the database or the account is lost, or when the damage is found after its window has passed. Export the production database regularly, for example every week and before a risky migration, and keep the files outside Cloudflare.
+
+### Why the export takes extra steps
+
+`wrangler d1 export` refuses a database that holds a virtual table, and production holds one: `storefront_search`, the FTS5 index behind the storefront search, which nine triggers keep in step with products, categories and collections (see [Catalog and search](/docs/features/catalog-and-search)). Cloudflare's documented workaround is to drop the virtual table, export, and create it again. The migration that created the index, `20261002100000_storefront_search.sql`, creates the table and its triggers only if they are missing and fills the index from the current rows, so running it again rebuilds the index and changes nothing else.
+
+While the index is gone, the storefront search and the catalogue's text filter fail, and an export holds back every other query while it runs. Do it at a quiet hour.
+
+The export is two files, the schema and the rows. A single file cannot be restored: it creates the tables in the order they were last rebuilt, so it inserts `product_variant` rows before the `product` table exists, and SQLite refuses them with `no such table: main.product`. Creating every table first and loading the rows afterwards works.
+
+### Exporting
+
+1. Note the current bookmark. If anything below goes wrong, restoring to it loses only the minutes since:
+
+   ```sh
+   bunx wrangler d1 time-travel info martebizuteria
+   ```
+
+2. Drop the search index and its triggers:
+
+   ```sh
+   bunx wrangler d1 execute martebizuteria --remote --command "
+   DROP TRIGGER IF EXISTS storefront_search_product_insert;
+   DROP TRIGGER IF EXISTS storefront_search_product_update;
+   DROP TRIGGER IF EXISTS storefront_search_product_delete;
+   DROP TRIGGER IF EXISTS storefront_search_product_category_insert;
+   DROP TRIGGER IF EXISTS storefront_search_product_category_update;
+   DROP TRIGGER IF EXISTS storefront_search_product_category_delete;
+   DROP TRIGGER IF EXISTS storefront_search_product_collection_insert;
+   DROP TRIGGER IF EXISTS storefront_search_product_collection_update;
+   DROP TRIGGER IF EXISTS storefront_search_product_collection_delete;
+   DROP TABLE IF EXISTS storefront_search;"
+   ```
+
+3. Export the schema and the rows into a folder outside the repository:
+
+   ```sh
+   mkdir -p "$HOME/marte-backups"
+   bunx wrangler d1 export martebizuteria --remote --no-data --output "$HOME/marte-backups/schema.sql"
+   bunx wrangler d1 export martebizuteria --remote --no-schema --output "$HOME/marte-backups/data.sql"
+   ```
+
+4. Create the index again, also when an export failed, then search the storefront for a product's name:
+
+   ```sh
+   bunx wrangler d1 execute martebizuteria --remote --file=src/integrations/drizzle-orm/migrations/20261002100000_storefront_search.sql
+   ```
+
+5. Encrypt the two files into one with GnuPG (`brew install gnupg` on macOS) and delete the plain ones:
+
+   ```sh
+   cd "$HOME/marte-backups"
+   tar -czf - schema.sql data.sql | gpg --symmetric --cipher-algo AES256 --output "marte-d1-$(date +%F).tar.gz.gpg"
+   rm schema.sql data.sql
+   ```
+
+The export holds every customer's name, e-mail and postal address, phone number and order history. Never keep it unencrypted, never put it in the repository, and keep the passphrase in the password manager. Store the encrypted file outside Cloudflare, on an external disk or with another storage provider, and keep only a few recent ones, for example the last four, so data the shop has deleted does not live on in old copies.
+
+### Rehearsing a restore
+
+Load each new export into a throwaway local database. This runs on your machine only:
+
+```sh
+gpg --decrypt "$HOME/marte-backups/marte-d1-2026-10-10.tar.gz.gpg" | tar -xzf - -C "$HOME/marte-backups"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/schema.sql"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/data.sql"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --command 'SELECT count(*) AS orders FROM "order"'
+rm -rf .wrangler/restore-drill "$HOME/marte-backups/schema.sql" "$HOME/marte-backups/data.sql"
+```
+
+The count should match the number of orders the shop had when you exported. `.wrangler/` is ignored by Git, and the last line deletes the plain copies again.
+
+### Restoring from an export
+
+1. Pause sales if the shop still runs.
+2. Decrypt the export as in the rehearsal above.
+3. Create a new database. The command prints its `database_id`:
+
+   ```sh
+   bunx wrangler d1 create martebizuteria-restored
+   ```
+
+4. Load the schema, then the rows, then the search index:
+
+   ```sh
+   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/schema.sql"
+   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/data.sql"
+   bunx wrangler d1 execute martebizuteria-restored --remote --file=src/integrations/drizzle-orm/migrations/20261002100000_storefront_search.sql
+   ```
+
+5. In `wrangler.jsonc`, set `database_name` and `database_id` of the `DB` binding in the `production` environment to the new database. The rows carry Wrangler's own `d1_migrations` table, so `bun run db:migrations:production` lists only the migrations newer than the export; apply them with `bun run db:migrate:production`.
+6. Commit the change and deploy production. Leave the old database in place, if it still exists, until you no longer need it.
+7. Reconcile everything since the export with Stripe as steps 7 to 9 of [Restoring](#restoring) describe, then reopen sales.
+
+## Copying the image bucket
+
+Time Travel covers D1 only. The images need a copy of their own. The shop never overwrites or deletes an object: an upload is stored under the SHA-256 of its bytes, and nothing calls `IMAGES.delete` (see [Cloudflare R2](/docs/integrations/cloudflare-r2)). An image can only go missing through the dashboard, an R2 API token or the loss of the bucket, and a copy that only ever adds keeps every image the database can point at.
+
+1. In the Cloudflare dashboard, open **R2 object storage**, **Manage API tokens**, **Create API token**, choose **Object Read only** and apply it to `martebizuteria` only. Every object in the bucket is public anyway, so this token can stay in the password manager for the regular copy.
+2. Add it to `rclone` as the `r2` remote, as step 2 of [Image delivery](/docs/guides/image-delivery) shows.
+3. Copy and compare, right after the database export, so the copy holds every image that export points at:
+
+   ```sh
+   rclone copy r2:martebizuteria "$HOME/marte-backups/images" --progress
+   rclone check r2:martebizuteria "$HOME/marte-backups/images" --one-way
+   ```
+
+`rclone copy` only adds and updates files. Never use `rclone sync` here, which would also delete from the copy whatever has gone from the bucket. The images are public, so this copy needs no encryption; keep it outside Cloudflare like the exports. To keep it with another storage provider instead, add a remote for it to `rclone.conf` and use that in place of the folder, with `--metadata`, which carries each object's `Content-Type` and `Cache-Control` between two S3-compatible stores.
+
+### Putting images back
+
+Create a token with **Object Read & Write** on the bucket for the restore, and delete it afterwards. If the bucket itself is gone, create it again with `bunx wrangler r2 bucket create martebizuteria` and attach `images.martebizuteria.pl` to it as step 4 of [Image delivery](/docs/guides/image-delivery) shows. Images in e-mails that link to `images.martebizuteria.pl` load again once the copy is back; those in e-mails sent while `VITE_R2_URL` was the old bucket's `r2.dev` address stay broken, because a new bucket gets a new one.
+
+```sh
+rclone copy "$HOME/marte-backups/images" r2:martebizuteria --include "/{products,categories,collections,uploads}/**" --header-upload "Cache-Control: public, max-age=31536000, immutable" --progress
+rclone copy "$HOME/marte-backups/images" r2:martebizuteria --exclude "/{products,categories,collections,uploads}/**" --progress
+rclone check "$HOME/marte-backups/images" r2:martebizuteria --one-way
+```
+
+A folder on disk keeps no `Content-Type` or `Cache-Control`. `rclone` sets the `Content-Type` from each file's extension, and the first command gives the four folders the admin console uploads to the one-year immutable `Cache-Control` that `uploadImageFn` sets. The other objects, such as `marketing/` and `placeholder.svg`, were not uploaded through the admin console and go back without one.
+
+## Related pages
+
+- [Go-live checklist](/docs/guides/go-live-checklist)
+- [Monitoring and alerts](/docs/guides/monitoring-and-alerts)
+- [Database](/docs/tooling/database)
+- [Database migrations](/docs/guides/database-migrations)
+- [Image delivery](/docs/guides/image-delivery)
+- [Cloudflare R2](/docs/integrations/cloudflare-r2)

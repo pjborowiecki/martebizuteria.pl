@@ -214,9 +214,14 @@ collection-on-product.sql                       attribute-on-product.sql
 7. Run `bun run check` and `bun run test`.
 8. Keep the migration backward compatible with the Worker deployed before it: add, do not drop or rename, and remove what is no longer read in a later release. The deploy applies it right before `wrangler deploy`; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
+## Backups
+
+D1 Time Travel can put the production database back to any minute of the last 30 days on the Workers Paid plan, and a regular export keeps a copy outside Cloudflare. A plain `wrangler d1 export` of production fails, because `storefront_search` is an FTS5 virtual table; [Backup and restore](/docs/guides/backup-and-restore) has the steps around it, how to restore from the export, and what a Time Travel restore erases.
+
 ## Related pages
 
 - [Testing](/docs/tooling/testing)
 - [CI/CD](/docs/tooling/ci-cd)
 - [Roll back a deploy](/docs/guides/roll-back-a-deploy)
+- [Backup and restore](/docs/guides/backup-and-restore)
 - [Integrations](/docs/integrations)

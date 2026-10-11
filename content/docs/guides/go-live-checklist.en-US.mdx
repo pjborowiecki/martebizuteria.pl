@@ -1,0 +1,68 @@
+---
+title: "Go-live checklist"
+description: "One ordered list of everything that must be true before the shop takes real orders: domains, database, images, queue, secrets, Stripe, e-mail, the shop's mailbox, Turnstile, InPost, monitoring, backups, a legal review and a live test order with a refund."
+---
+
+Work through the list in order. Each item says what must be true, how to check it, and which page has the details. Later items build on earlier ones: the deploy needs every value set before it, and the test order needs the deploy. Open sales only once every item holds.
+
+1. **The shop's domains reach their Workers.** `wrangler.jsonc` lists `martebizuteria.pl` under the `routes` of `production` and `preview.martebizuteria.pl` under those of `preview`, as custom domains, so every deploy attaches them and Cloudflare creates the DNS record and the certificate for each. Before the first deploy, `martebizuteria.pl` is an active zone in the account that holds both Workers, the API token in `CLOUDFLARE_ACCESS_TOKEN` has the Workers Routes edit and Zone read permissions on it, and nothing still depends on an A, AAAA or CNAME record on either hostname, because a deploy from CI replaces such a record without asking; the MX and TXT records of the mailbox and the Resend sender are not touched. A domain attached to a Worker by hand in the dashboard is detached by the next deploy, and the `workers.dev` addresses keep working. Only the hosts in `HOSTS_BY_MODE` can sign in, check out or get e-mail links, so if `www.martebizuteria.pl` should work, serve it from the zone with a proxied DNS record and a redirect rule to `https://martebizuteria.pl` rather than attaching it (see [Deploy a preview](/docs/getting-started/deploy-preview#the-custom-domains)). Check: `curl -sI https://martebizuteria.pl/api/health` answers `200`.
+
+2. **The production database has every migration.** Every deploy applies the migrations the database has not recorded, with `bun run db:migrate:production`, right before `wrangler deploy`, and a failing one stops the deploy before the Worker is uploaded. After the deploy in item 12, `bun run db:migrations:production` answers `No migrations to apply!`. The terms of service, the privacy policy, the returns page and the FAQ reach the live shop only through migrations, and a migration that rewrites one of them skips a language whose text was already edited at `/admin/content`, so read each page on the live site afterwards. See [Database migrations](/docs/guides/database-migrations).
+
+3. **Images come from the shop's own image domain, and preview has its own bucket.** Development and preview bind `martebizuteria-preview`, which exists and holds its copy of the images, and production binds `martebizuteria`; the production deploy refuses a configuration that gives both the same bucket. `images.martebizuteria.pl` is attached to `martebizuteria` with the status **Active**, Image Transformations are on for the zone, and `VITE_R2_URL` is `https://images.martebizuteria.pl` in `.env.production` and in the GitHub `production` environment. [Image delivery](/docs/guides/image-delivery) has each step, the Images plan to choose and the `curl` check.
+
+4. **The audit queue has a dead-letter queue.** Without one, a batch the consumer still cannot write after `max_retries` (3) is deleted, and its entries never reach `/admin/audit` (see [Roadmap](/docs/project/roadmap#no-dead-letter-queue)). The production consumer of `martebizuteria-audit-log` in `wrangler.jsonc` names a `dead_letter_queue`, and `bunx wrangler queues list` shows that queue. Messages wait there for four days when nothing consumes the dead-letter queue, so act on every `auditQueueFailed` alert within that time (see [Monitoring and alerts](/docs/guides/monitoring-and-alerts#e-mail-alerts-from-the-shop)). `wrangler.jsonc` configures none yet, so this item stays open until a change to the code adds one.
+
+5. **The GitHub `production` environment holds the live values.** Under **Settings**, **Environments**, `production`, every name under `secrets.required` of the `production` environment in `wrangler.jsonc` has a value, because `prepare-deploy-secrets.ts` stops the deploy at the first blank one, and the browser values are set as environment variables. The Stripe keys are the live ones, which exist once Stripe has activated the account: `VITE_STRIPE_PUBLISHABLE_KEY` starting with `pk_live_` as a variable, and `STRIPE_SECRET_KEY` starting with `sk_live_`, or a restricted `rk_live_`, as a secret. Preview needs test keys, so set both on the environment rather than once for the repository; the deploy refuses keys of the wrong mode (see [Stripe](/docs/integrations/stripe#secrets)). `AUTH_SECRET` has a value of its own, not preview's, and Google, the only sign-in provider, has `https://martebizuteria.pl/api/auth/callback/google` registered in the OAuth client whose id and secret are the production `AUTH_GOOGLE_CLIENT_ID` and `AUTH_GOOGLE_CLIENT_SECRET` (see [Environment variables](/docs/getting-started/environment-variables#provider-callbacks-to-register)). Nothing reads `AUTH_GITHUB_CLIENT_ID` or `AUTH_GITHUB_CLIENT_SECRET` any more; delete them from the environment, and from the Worker with `wrangler secret delete` if they were ever uploaded, since a deploy adds secrets but never removes them.
+
+6. **Stripe sends live events to the shop.** In the Stripe Dashboard, in live mode, a webhook endpoint for `https://martebizuteria.pl/api/webhooks/stripe` listens to the eight events in `STRIPE_WEBHOOK_EVENTS` (`src/integrations/stripe/stripe.constants.ts`):
+
+   - `checkout.session.completed`
+   - `checkout.session.async_payment_succeeded`
+   - `checkout.session.async_payment_failed`
+   - `checkout.session.expired`
+   - `payment_intent.payment_failed`
+   - `charge.refunded`
+   - `charge.dispute.created`
+   - `charge.dispute.closed`
+
+   Give the endpoint the API version `2026-08-26.dahlia`, the one `STRIPE_API_VERSION` pins, so the payloads have the shape the handlers read. The endpoint's own signing secret, `whsec_…`, is the production `STRIPE_WEBHOOK_SECRET`; it differs from preview's. `checkout.session.expired` matters as much as the payment events, because it is how the stock an abandoned checkout held comes back. See [Stripe](/docs/integrations/stripe#webhooks).
+
+7. **Cards, BLIK and Przelewy24 are on in live mode.** The Checkout Session names no payment methods, so Stripe offers the ones turned on in the Dashboard, and `CHECKOUT_PAYMENT_METHOD_ORDER` only orders them. In live mode, under **Settings**, **Payment methods**, cards, BLIK and Przelewy24 are on; the terms of service promise all three. Test-mode settings do not carry over to live mode.
+
+8. **Resend sends from the shop's domain.** `martebizuteria.pl` is verified in Resend, with the DKIM record (`resend._domainkey`), the SPF records on the `send` subdomain and a DMARC record (`_dmarc`, `v=DMARC1; p=none;` to start), and `RESEND_EMAIL_FROM` in the production environment is a bare address on it whose mailbox someone reads, because the shop's notices of new orders and of withdrawals sent online, and the incident alerts, go to it. `bun run email:verify production` passes; every production deploy runs the same check, which reads the DKIM and SPF records but not DMARC, and does not check that the sender's domain is `martebizuteria.pl`. See [Resend](/docs/integrations/resend#sender-domain).
+
+9. **Someone reads `kontakt@martebizuteria.pl`.** It is `BUSINESS.EMAIL`, and it receives customers' replies to every e-mail the shop sends, each of which carries it as `Reply-To`, and the withdrawals and complaints that the terms, the returns page, the forms and the order confirmation direct there. The domain's MX records point at a real mailbox, a message from an outside address arrives, and someone reads it every working day: a complaint left unanswered for 14 days counts as accepted.
+
+10. **Turnstile has a production widget.** A new checkout, a sign-up, a password-reset request, a verification resend, a newsletter sign-up and a withdrawal by order number each need a Turnstile token, which the server checks with siteverify. In the Cloudflare dashboard, under **Turnstile**, a widget in **Managed** mode for `martebizuteria.pl` and `martebizuteria.pjborowiecki.workers.dev`, the two hosts production accepts, supplies the production values: its site key as the variable `VITE_TURNSTILE_SITE_KEY` and its secret key as the secret `TURNSTILE_SECRET_KEY` in the GitHub `production` environment, and both in `.env.production` for a deploy from a laptop. Preview keeps Cloudflare's always-passing testing keys. `scripts/verify-turnstile-keys.ts` stops a production deploy when a key is missing, when a testing key is paired with a widget's key, or when the keys are the testing ones, but it calls no Cloudflare API and cannot see whether the widget lists the shop's hosts. Check: after the deploy, open a checkout, sign up and join the newsletter in a normal browser on `https://martebizuteria.pl`; each form passes the widget and the checkout shows the payment form. The browser tests use a widget double, so only a real browser exercises the real widget. See [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile#keys).
+
+11. **InPost can book shipments and print labels.** The ShipX API token and the organisation ID from InPost Manager (**My account**, **API**) are the production values of `INPOST_API_TOKEN` and `INPOST_ORGANIZATION_ID`, and the organisation's sender details in InPost Manager are complete, because every shipment is booked with them. The shop does not book shipments yet: no code reads either value, and the [InPost](/docs/integrations/inpost) integration only looks up parcel lockers through a public endpoint with no key. This item stays open until the ShipX booking lands; until then, create each parcel in InPost Manager and enter its tracking number when you mark the order shipped from its page in `/admin/orders`.
+
+12. **Production runs the configuration above.** The last **Production Deployment** run on `main` succeeded after every value above was set. A `VITE_` value is built into the browser bundle, so changing one needs a new deploy. See [CI/CD](/docs/tooling/ci-cd).
+
+13. **An uptime monitor watches `/api/health`.** A monitor requests `https://martebizuteria.pl/api/health` every one to five minutes, expects `200` and `"status":"ok"`, and alerts the owner. It is what notices an outage the Worker cannot report itself. See [Monitoring and alerts](/docs/guides/monitoring-and-alerts#pointing-an-uptime-monitor-at-it), which also lists the Cloudflare notifications worth adding.
+
+14. **A backup exists and has been restored once.** You know the Time Travel window of the account's plan, the first export of the production database and the first copy of the image bucket are stored outside Cloudflare, and the export has been loaded into a local database once, as [Backup and restore](/docs/guides/backup-and-restore) shows.
+
+15. **A lawyer has read the shop's legal texts.** Start this early; it takes the longest. The review covers the terms of service, the returns page, the FAQ and the privacy policy, with its legal bases, recipients and retention periods, as published on the live site, since they are rows in the production database edited at `/admin/content`; the customer e-mails, which `bun run dev` previews at `http://localhost:3000/dev/emails` in both languages, above all the order confirmation with its withdrawal and complaint texts and the acknowledgement of a withdrawal sent online; the withdrawal function at `/withdraw-from-contract` and on the order page of an account; the two forms in `public/forms`; and the seller's details in `BUSINESS` (`src/presentation/branding/business.ts`), which the e-mails print, every product page names as the manufacturer, and the terms and forms repeat. Three questions are the lawyer's to settle: whether the order confirmation may link the terms instead of attaching them, whether both forms may be in Polish only, and whether logging the page views of signed-in customers, with the session-storage markers that go with it, needs their consent under the Electronic Communications Law. See [Legal pages](/docs/features/legal-pages) and [Transactional email](/docs/features/email).
+
+16. **A live test order has gone through end to end, refund included.** On `https://martebizuteria.pl`, buy a cheap product with a real card or BLIK. Then check that:
+
+    - the payment step offered card, BLIK and Przelewy24;
+    - the Stripe endpoint shows the order's events delivered with `200`;
+    - the order is in `/admin/orders`, `/admin/audit` records it, and the product's stock went down;
+    - the confirmation reached the buyer with `formularz_zwrotu.pdf` attached, and the new-order notice reached `RESEND_EMAIL_FROM`, neither of them in spam.
+
+    Then refund the order from its page in `/admin/orders`, answering that the item came back, and check that Stripe shows the refund, the order reads as refunded, the stock is back and the buyer received the refund e-mail. Stripe keeps its processing fee on a refunded payment, so the test costs that fee.
+
+## Related pages
+
+- [Backup and restore](/docs/guides/backup-and-restore)
+- [Monitoring and alerts](/docs/guides/monitoring-and-alerts)
+- [Image delivery](/docs/guides/image-delivery)
+- [Deploy a preview](/docs/getting-started/deploy-preview)
+- [CI/CD](/docs/tooling/ci-cd)
+- [Stripe](/docs/integrations/stripe)
+- [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile)
+- [Resend](/docs/integrations/resend)
+- [Legal pages](/docs/features/legal-pages)
