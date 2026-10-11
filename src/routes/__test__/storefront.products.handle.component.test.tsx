@@ -11,16 +11,13 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import type * as ImageLib from "~/src/lib/image"
-import { pageHead } from "~/src/lib/seo"
+import { resolveProductImageUrls, resolveProductSocialImageUrl } from "~/src/lib/image"
+import { buildProductStructuredData, pageHead } from "~/src/lib/seo"
 
-interface StorefrontProduct {
-  readonly categoryId: string | null
-  readonly description: string
-  readonly id: string
-  readonly thumbnail: string | null
-  readonly title: string
-  readonly titles: Record<string, string>
-}
+import {
+  storefrontProduct,
+  storefrontVariant,
+} from "~/src/presentation/components/custom/pages/product-page/__test__/storefront-product-fixture"
 
 interface RelatedRow {
   readonly handle: string
@@ -45,20 +42,27 @@ interface ProductRouteOptions {
       context: { imagePrefetchService: unknown; locale: SupportedLocale; queryClient: TestQueryClient }
       params: { handle: string }
     }>,
-  ) => Promise<{ readonly deferredRelated?: Promise<unknown> | undefined; readonly description: string; readonly title: string }>
+  ) => Promise<{
+    readonly deferredRelated?: Promise<unknown> | undefined
+    readonly description: string
+    readonly image?: string | undefined
+    readonly structuredData?: object | undefined
+    readonly title: string
+  }>
   readonly staticData?: { readonly namespaces?: readonly string[] }
 }
 
 const PRODUCT_KEY = ["product", "silver-ring", "en-US"] as const
 
-const silverRing: StorefrontProduct = {
+const silverRing = storefrontProduct({
   categoryId: "category-rings",
   description: "A fine silver ring.",
   id: "product-1",
-  thumbnail: "https://images.test/silver-ring.jpg",
+  imageUrls: ["https://images.test/silver-ring.jpg", "https://images.test/silver-ring-side.jpg"],
+  thumbnail: "https://images.test/silver-ring-thumb.jpg",
   title: "Silver ring",
-  titles: { "en-US": "Silver ring", "pl-PL": "Srebrny pierscionek" },
-}
+  variants: [storefrontVariant({ price: 24_900, sku: "RING-925" })],
+})
 
 const route = vi.hoisted(() => ({
   captured: {} as { current?: ProductRouteOptions },
@@ -274,6 +278,24 @@ describe("storefront product head", () => {
 describe("storefront product loader", () => {
   it("hands the page title and description to the head", async () => {
     await expect(runLoader()).resolves.toMatchObject({ description: "A fine silver ring.", title: "Silver ring | M'Arte" })
+  })
+
+  it("shows the product's main image on social cards", async () => {
+    const result = await runLoader()
+
+    expect(result?.image).toBe(resolveProductSocialImageUrl(silverRing))
+    expect(result?.image).toContain("silver-ring.jpg")
+  })
+
+  it("describes the product, its offers and its breadcrumb to search engines", async () => {
+    await expect(runLoader()).resolves.toMatchObject({
+      structuredData: buildProductStructuredData({
+        images: resolveProductImageUrls(silverRing),
+        locale: "en-US",
+        product: silverRing,
+        section: "Products",
+      }),
+    })
   })
 
   it("warms the hero image before the page paints", async () => {

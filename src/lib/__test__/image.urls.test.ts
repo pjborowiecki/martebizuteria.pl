@@ -1,8 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { IMAGE_CONSTANTS, PLACEHOLDER_IMAGE, getOptimizedImageUrl, getProductImageUrl } from "~/src/lib/image"
+import {
+  IMAGE_CONSTANTS,
+  PLACEHOLDER_IMAGE,
+  getOptimizedImageUrl,
+  getProductImageUrl,
+  resolveProductImageUrls,
+  resolveProductSocialImageUrl,
+} from "~/src/lib/image"
 
-import { APP_URL } from "~/src/presentation/branding/app"
+import { APP_URL, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH } from "~/src/presentation/branding/app"
 
 const { transformUrl } = vi.hoisted(() => ({ transformUrl: vi.fn<(...args: unknown[]) => string | undefined>() }))
 
@@ -142,5 +149,53 @@ describe("getOptimizedImageUrl", () => {
     expect(getOptimizedImageUrl({ height: 256, quality: undefined, src: "products/ring.jpg", width: 256 })).toBe(
       "https://assets.test/products/ring.jpg",
     )
+  })
+})
+
+describe("resolveProductImageUrls", () => {
+  beforeEach(() => {
+    assetCdn.origin = "https://assets.test"
+  })
+
+  it("resolves every gallery image of the product against the asset origin", () => {
+    expect(
+      resolveProductImageUrls({ imageUrls: ["products/ring.jpg", "https://other.test/ring-side.jpg"], thumbnail: "products/thumb.jpg" }),
+    ).toStrictEqual(["https://assets.test/products/ring.jpg", "https://other.test/ring-side.jpg"])
+  })
+
+  it("falls back to the thumbnail, as the product page does, when the gallery is empty", () => {
+    expect(resolveProductImageUrls({ imageUrls: [], thumbnail: "products/thumb.jpg" })).toStrictEqual([
+      "https://assets.test/products/thumb.jpg",
+    ])
+  })
+
+  it("has no image for a product without a gallery or a thumbnail", () => {
+    expect(resolveProductImageUrls({ imageUrls: [], thumbnail: null })).toStrictEqual([])
+  })
+})
+
+describe("resolveProductSocialImageUrl", () => {
+  beforeEach(() => {
+    assetCdn.hosted = true
+    assetCdn.origin = "https://assets.test"
+    transformUrl.mockReset()
+    transformUrl.mockReturnValue(OPTIMIZED)
+  })
+
+  it("asks for the product's main image at the social card size the root head declares", () => {
+    expect(resolveProductSocialImageUrl({ imageUrls: ["products/ring.jpg", "products/ring-side.jpg"], thumbnail: null })).toBe(OPTIMIZED)
+    expect(transformUrl.mock.calls).toHaveLength(1)
+    expect(transformUrl.mock.calls[0]?.[0]).toStrictEqual({
+      height: Number(OG_IMAGE_HEIGHT),
+      provider: "cloudflare",
+      quality: IMAGE_CONSTANTS.DEFAULT_QUALITY,
+      url: "/products/ring.jpg",
+      width: Number(OG_IMAGE_WIDTH),
+    })
+  })
+
+  it("leaves the default social image in place for a product with no image", () => {
+    expect(resolveProductSocialImageUrl({ imageUrls: [], thumbnail: null })).toBeUndefined()
+    expect(transformUrl).not.toHaveBeenCalled()
   })
 })

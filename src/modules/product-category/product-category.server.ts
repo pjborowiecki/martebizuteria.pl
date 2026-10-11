@@ -38,6 +38,14 @@ export const getStorefrontCategoryByHandleQuery = db.query.productCategory
   })
   .prepare()
 
+export const getStorefrontCategoryHandlesQuery = db.query.productCategory
+  .findMany({
+    columns: { handle: true, updatedAt: true },
+    orderBy: (categories, { asc }) => [asc(categories.rank)],
+    where: eq(productCategory.status, CATEGORY_STATUS.ACTIVE),
+  })
+  .prepare()
+
 export const getCategoryHierarchyQuery = db
   .select({
     id: productCategory.id,

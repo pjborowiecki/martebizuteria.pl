@@ -5,7 +5,7 @@ import { type Product } from "~/src/modules/product/product.types"
 
 import { getAssetURL, isAssetCdnUrl, resolveAssetURL } from "~/src/lib/url"
 
-import { APP_URL } from "~/src/presentation/branding/app"
+import { APP_URL, OG_IMAGE_HEIGHT, OG_IMAGE_WIDTH } from "~/src/presentation/branding/app"
 
 const resolveImageCdnDomain = (): string => {
   const domain: unknown = import.meta.env["VITE_IMAGE_CDN_DOMAIN"]
@@ -79,6 +79,22 @@ export const getOptimizedImageUrl = ({
   } catch {
     return resolvedSrc
   }
+}
+
+export const resolveProductImageUrls = ({ imageUrls, thumbnail }: Pick<Product["storefront"], "imageUrls" | "thumbnail">): string[] => {
+  if (imageUrls.length > 0) {
+    return imageUrls.map((url) => resolveAssetURL(url))
+  }
+
+  return thumbnail === null ? [] : [resolveAssetURL(thumbnail)]
+}
+
+export const resolveProductSocialImageUrl = (product: Pick<Product["storefront"], "imageUrls" | "thumbnail">): string | undefined => {
+  const [mainImage] = resolveProductImageUrls(product)
+
+  return mainImage === undefined
+    ? undefined
+    : getOptimizedImageUrl({ height: Number(OG_IMAGE_HEIGHT), quality: undefined, src: mainImage, width: Number(OG_IMAGE_WIDTH) })
 }
 
 const preloadSingleImage = (image: Readonly<PrefetchImageConfig>, prefetchService: Readonly<ImagePrefetchService>): void => {

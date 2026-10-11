@@ -21,13 +21,24 @@ loader: async ({ context, params }) => {
   prefetchSingleProductImage(data, context.imagePrefetchService)
   const deferredRelated = defer(context.queryClient.query(getRelatedProductsQuery(data.categoryId, data.id, locale)))
 
-  return { deferredRelated, description: data.description, title: messages.metaTitle.replace("{title}", data.title) }
+  return {
+    deferredRelated,
+    description: data.description,
+    image: resolveProductSocialImageUrl(data),
+    structuredData: buildProductStructuredData({
+      images: resolveProductImageUrls(data),
+      locale,
+      product: data,
+      section: messages.heroSection.breadcrumbProducts,
+    }),
+    title: messages.metaTitle.replace("{title}", data.title),
+  }
 }
 ```
 
 The related-products query is **deferred**: the hero renders as soon as the product resolves, and `<Await promise={deferredRelated}>` streams the related grid in behind a `Suspense` fallback that shows `pages.product.loadingRelated`.
 
-`head: pageHead` from `src/lib/seo.ts` turns the returned `PageMeta` into the title and description tags.
+`head: pageHead` from `src/lib/seo.ts` turns the returned `PageMeta` into the title and description tags, the product's main image at the 1200 × 630 social card size in `og:image` and `twitter:image`, and a JSON-LD `Product` with the seller from `BUSINESS` as its manufacturer, as the page's "Manufacturer" section names it, one PLN `Offer` per variant, in or out of stock by its available quantity, and the breadcrumb home › products › product. [Internationalization](/docs/features/internationalization#seo) lists the structured data of every page.
 
 ## Loading the product
 

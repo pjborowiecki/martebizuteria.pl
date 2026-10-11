@@ -58,7 +58,7 @@ Obce `orderId` nie zwraca żadnego wiersza, więc nie ma czego wyciekać.
 
 `src/server.ts` skraca obsługę czterech rodzajów żądań, zanim zostanie osiągnięty handler TanStack Start, bo żadne z nich nie potrzebuje renderu SSR:
 
-1. `GET /sitemap.xml` — `generateSitemapXml` z `src/lib/seo.ts`, cache'owane na dobę.
+1. `GET /sitemap.xml` — `generateSitemapXml` z `src/lib/seo.ts` ze stron, które `listSitemapPages` czyta z D1, cache'owane na dobę.
 2. `GET /robots.txt` — `generateRobotsTxt`, który zwraca całkowite `Disallow: /`, o ile `APP_ENV` nie jest równe `production`.
 3. `ROUTES.API_REALTIME.ADMIN_WS` i `ROUTES.API_REALTIME.STOREFRONT_WS` — upgrade'y WebSocket przekazywane do `handleRealtimeInvalidationWebSocket`.
 4. Przekierowanie locale z `resolveLocale`, zwracane jako `301` przed czymkolwiek innym.

@@ -15,13 +15,16 @@ import {
 } from "~/src/modules/product/product.storefront-catalog"
 
 import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
+import { buildBreadcrumbStructuredData } from "~/src/lib/seo"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 
 import { ProductsCatalogPage } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog-page"
 import { prefetchProductsCatalogPage } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog.loader"
 
+import type categoriesMessages from "~/messages/en-US/pages.categories.json"
 import type productsMessages from "~/messages/en-US/pages.products.json"
+import { ROUTES } from "~/src/routes"
 
 const CategoryPage = (): JSX.Element => {
   const t = useTranslations("pages.category")
@@ -66,6 +69,7 @@ const CategoryPage = (): JSX.Element => {
 
 interface CategoryPageMeta {
   readonly metaDescription: string
+  readonly structuredData?: object
   readonly title: string
 }
 
@@ -84,6 +88,7 @@ export const Route = createFileRoute("/_storefront/categories/$handle")({
         content: loaderData?.metaDescription ?? "",
         name: "description",
       },
+      ...(loaderData?.structuredData === undefined ? [] : [{ "script:ld+json": loaderData.structuredData }]),
     ],
   }),
   loader: async ({ context, deps, params }) => {
@@ -122,12 +127,21 @@ export const Route = createFileRoute("/_storefront/categories/$handle")({
       ms: Math.round(performance.now() - startedAt),
     })
 
-    const messages = await context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale, namespace: "pages.products" }))
+    const [messages, categoriesPageMessages] = await Promise.all([
+      context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale, namespace: "pages.products" })),
+      context.queryClient.query(messagesQueryOptions<typeof categoriesMessages>({ locale, namespace: "pages.categories" })),
+    ])
     const description = resolveCategoryDescription(category.descriptions, locale)
+    const title = resolveCategoryTitle(category.titles, locale)
 
     return {
       metaDescription: description || messages.description,
-      title: resolveCategoryTitle(category.titles, locale),
+      structuredData: buildBreadcrumbStructuredData({
+        leaf: title,
+        locale,
+        sections: [{ name: categoriesPageMessages.title, path: ROUTES.CATEGORIES }],
+      }),
+      title,
     }
   },
   loaderDeps: ({ search }: { search: StorefrontScopedCategoryCatalogSearch }) => normalizeStorefrontProductsSearch(search),

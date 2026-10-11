@@ -142,7 +142,7 @@ API paths are never localized — `shouldIgnorePath` in `src/integrations/use-in
 | `/api/health`                 | `src/routes/api/health.ts`                            | 200 or 503 for an uptime monitor after reading D1, KV and R2            |
 | `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`      | WebSocket upgrade, role-checked in the Worker before the Durable Object |
 | `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS` | WebSocket upgrade, open to anyone                                       |
-| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                | Cached for a day                                                        |
+| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                | Pages read from D1 by `listSitemapPages`, cached for a day              |
 | `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                 | Content depends on `env.APP_ENV`                                        |
 
 The last four are checked in `src/server.ts` before the request reaches TanStack Start, so none of them pays for an SSR render. `/api/auth/*`, `/api/webhooks/stripe` and `/api/health` are TanStack Start server routes under `src/routes/api/`, so they go through the router but never render a page.

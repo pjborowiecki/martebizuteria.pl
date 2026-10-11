@@ -1,4 +1,4 @@
-import { MENU_SHOWCASE, PRODUCTS } from "../data/catalog"
+import { CATEGORIES, MENU_SHOWCASE, PRODUCTS } from "../data/catalog"
 import { expect, test } from "../fixtures/test"
 
 const PUBLIC_PAGES = [
@@ -168,6 +168,44 @@ test.describe("smoke", () => {
     expect(await robots.text()).toBe("User-agent: *\nDisallow: /\n")
     expect(sitemap.status()).toBe(200)
     expect(await sitemap.text()).toContain('<xhtml:link rel="alternate" hreflang="en-US" href="http://127.0.0.1:3000/en-US"/>')
+  })
+
+  test("lists the catalogue, the legal pages, the FAQ and the withdrawal form in the sitemap in both languages and leaves the blog out", async ({ request }) => {
+    const sitemap = await (await request.get("/sitemap.xml")).text()
+
+    expect(sitemap).toContain(`<loc>http://127.0.0.1:3000/products/${PRODUCTS.lapis.handle}</loc>`)
+    expect(sitemap).toContain(`<loc>http://127.0.0.1:3000/en-US/products/${PRODUCTS.lapis.handle}</loc>`)
+    expect(sitemap).toContain(`<loc>http://127.0.0.1:3000/en-US/categories/${CATEGORIES.necklaces.handle}</loc>`)
+    expect(sitemap).toContain("<loc>http://127.0.0.1:3000/en-US/terms-of-service</loc>")
+    expect(sitemap).toContain("<loc>http://127.0.0.1:3000/privacy-policy</loc>")
+    expect(sitemap).toContain("<loc>http://127.0.0.1:3000/faq</loc>")
+    expect(sitemap).toContain("<loc>http://127.0.0.1:3000/withdraw-from-contract</loc>")
+    expect(sitemap.match(/<loc>http:\/\/127\.0\.0\.1:3000\/faq<\/loc>/gu)).toHaveLength(1)
+    expect(sitemap).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z<\/lastmod>/u)
+    expect(sitemap).not.toContain("/blog")
+  })
+
+  test("describes a product to search engines and to social cards", async ({ page, productPage }) => {
+    await productPage.gotoProduct(PRODUCTS.lapis.handle)
+
+    const jsonLd = await page.locator('script[type="application/ld+json"]').allTextContents()
+
+    expect(jsonLd.map((text) => JSON.parse(text))).toMatchObject([
+      {
+        "@graph": [
+          {
+            "@type": "Product",
+            name: PRODUCTS.lapis.title,
+            offers: [{ availability: "https://schema.org/InStock", price: "379.00", priceCurrency: "PLN", sku: PRODUCTS.lapis.sku }],
+          },
+          { "@type": "BreadcrumbList" },
+        ],
+      },
+    ])
+    await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+      "content",
+      /\/cdn-cgi\/image\/width=1200,height=630,[^/]+\/products\/[\da-f]{64}\.webp$/u,
+    )
   })
 
   test("reports the database, the cache and the image storage healthy to an uptime monitor", async ({ request }) => {

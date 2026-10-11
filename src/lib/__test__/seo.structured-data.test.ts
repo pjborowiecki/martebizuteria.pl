@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vite-plus/test"
 import {
   buildBlogPostStructuredData,
   buildBlogStructuredData,
+  buildBreadcrumbStructuredData,
   buildPageHead,
   buildProductStructuredData,
   buildStoreStructuredData,
@@ -10,7 +11,13 @@ import {
 } from "~/src/lib/seo"
 
 import { APP_NAME, APP_URL, OG_IMAGE_PATH } from "~/src/presentation/branding/app"
+import { BUSINESS } from "~/src/presentation/branding/business"
 import { SOCIALS } from "~/src/presentation/branding/socials"
+
+import {
+  storefrontProduct,
+  storefrontVariant,
+} from "~/src/presentation/components/custom/pages/product-page/__test__/storefront-product-fixture"
 
 const { env } = vi.hoisted(() => ({ env: { VITE_R2_URL: "" } }))
 
@@ -75,6 +82,45 @@ describe("buildStoreStructuredData", () => {
       sameAs: [SOCIALS.FACEBOOK, SOCIALS.INSTAGRAM],
       url: APP_URL,
     })
+  })
+
+  it("names the business behind the store with its address, contacts and tax number", () => {
+    expect(graph[1]).toMatchObject({
+      address: {
+        "@type": "PostalAddress",
+        addressCountry: "PL",
+        addressLocality: "Bochnia",
+        postalCode: "32-700",
+        streetAddress: "ul. Wąska 11",
+      },
+      email: BUSINESS.EMAIL,
+      legalName: BUSINESS.LEGAL_NAME,
+      taxID: BUSINESS.NIP,
+      telephone: BUSINESS.PHONE,
+    })
+  })
+})
+
+describe("buildBreadcrumbStructuredData", () => {
+  it("walks from the store through each linked section to the current page", () => {
+    expect(
+      buildBreadcrumbStructuredData({ leaf: "Rings", locale: "pl-PL", sections: [{ name: "Kategorie", path: "/categories" }] }),
+    ).toStrictEqual({
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", item: `${APP_URL}/`, name: APP_NAME, position: 1 },
+        { "@type": "ListItem", item: `${APP_URL}/categories`, name: "Kategorie", position: 2 },
+        { "@type": "ListItem", name: "Rings", position: 3 },
+      ],
+    })
+  })
+
+  it("links the store in the reader's locale and leaves the current page unlinked", () => {
+    expect(buildBreadcrumbStructuredData({ leaf: "All Products", locale: "en-US", sections: [] }).itemListElement).toStrictEqual([
+      { "@type": "ListItem", item: `${APP_URL}/en-US`, name: APP_NAME, position: 1 },
+      { "@type": "ListItem", name: "All Products", position: 2 },
+    ])
   })
 })
 
@@ -172,64 +218,91 @@ describe("buildBlogPostStructuredData", () => {
 })
 
 describe("buildProductStructuredData", () => {
-  const graph = buildProductStructuredData({
-    availability: "InStock",
-    canonicalPath: "/products/silver-ring",
-    currency: "PLN",
+  const ring = storefrontProduct({
     description: "Pierścionek ze srebra 925.",
-    images: ["/products/ring.jpg", "https://cdn.test/ring-2.jpg"],
-    locale: "en-US",
-    price: "249.00",
-    section: "Products",
-    sectionPath: "/products",
-    sku: "RING-925",
-    title: "Silver ring",
-  })["@graph"]
+    variants: [
+      storefrontVariant({ id: "variant-small", price: 24_900, quantityAvailable: 2, sku: "RING-925-S" }),
+      storefrontVariant({ id: "variant-large", price: 26_900, quantityAvailable: 0, sku: null }),
+    ],
+  })
+  const images = ["https://images.example.test/products/ring.webp", "https://images.example.test/products/ring-side.webp"]
+  const [product, breadcrumbs] = buildProductStructuredData({ images, locale: "en-US", product: ring, section: "Products" })["@graph"]
 
-  it("resolves relative product images while leaving absolute ones alone", () => {
-    expect(graph[0]).toMatchObject({
+  it("describes the product under the store's brand with its images", () => {
+    expect(product).toMatchObject({
       "@type": "Product",
-      brand: { "@id": `${APP_URL}#organization` },
-      image: [`${APP_URL}/products/ring.jpg`, "https://cdn.test/ring-2.jpg"],
+      brand: { "@type": "Brand", name: APP_NAME },
+      description: "Pierścionek ze srebra 925.",
+      image: images,
       name: "Silver ring",
-      sku: "RING-925",
+      url: `${APP_URL}/en-US/products/silver-ring`,
     })
   })
 
-  it("expands the availability into a schema.org url and prices the offer at the canonical page", () => {
-    expect(graph[0]).toMatchObject({
-      offers: {
-        "@type": "Offer",
-        availability: "https://schema.org/InStock",
-        price: "249.00",
-        priceCurrency: "PLN",
-        seller: { "@id": `${APP_URL}#organization` },
-        url: `${APP_URL}/en-US/products/silver-ring`,
+  it("names the manufacturer with the postal and e-mail address the product page shows", () => {
+    expect(product).toMatchObject({
+      manufacturer: {
+        "@type": "Organization",
+        address: {
+          "@type": "PostalAddress",
+          addressCountry: "PL",
+          addressLocality: "Bochnia",
+          postalCode: "32-700",
+          streetAddress: "ul. Wąska 11",
+        },
+        email: BUSINESS.EMAIL,
+        name: BUSINESS.LEGAL_NAME,
       },
     })
   })
 
-  it.each([["OutOfStock" as const], ["PreOrder" as const]])("expands the %s availability", (availability) => {
-    const [product] = buildProductStructuredData({
-      availability,
-      canonicalPath: "/products/silver-ring",
-      currency: "PLN",
-      description: "Pierścionek ze srebra 925.",
-      images: [],
-      locale: "pl-PL",
-      price: "249.00",
-      section: "Products",
-      sectionPath: "/products",
-      sku: "RING-925",
-      title: "Silver ring",
-    })["@graph"]
-
-    expect(product).toMatchObject({ offers: { availability: `https://schema.org/${availability}` } })
+  it("offers every variant at its price in zloty with the availability its stock allows", () => {
+    expect(product).toMatchObject({
+      offers: [
+        {
+          "@type": "Offer",
+          availability: "https://schema.org/InStock",
+          price: "249.00",
+          priceCurrency: "PLN",
+          seller: { "@id": `${APP_URL}#organization` },
+          sku: "RING-925-S",
+          url: `${APP_URL}/en-US/products/silver-ring`,
+        },
+        {
+          "@type": "Offer",
+          availability: "https://schema.org/OutOfStock",
+          price: "269.00",
+          priceCurrency: "PLN",
+          seller: { "@id": `${APP_URL}#organization` },
+          url: `${APP_URL}/en-US/products/silver-ring`,
+        },
+      ],
+    })
   })
 
-  it("localizes the breadcrumb section link alongside the product", () => {
-    expect(graph[1]).toMatchObject({
-      itemListElement: [{ item: `${APP_URL}/en-US` }, { item: `${APP_URL}/en-US/products`, name: "Products" }, { name: "Silver ring" }],
+  it("leaves the sku out of the published json for a variant without one", () => {
+    expect(JSON.stringify(product).match(/"sku":/gu)).toStrictEqual(['"sku":'])
+  })
+
+  it("treats a variant with no inventory row as out of stock", () => {
+    const [untracked] = buildProductStructuredData({
+      images: [],
+      locale: "pl-PL",
+      product: storefrontProduct({ variants: [storefrontVariant({ inventory: null })] }),
+      section: "Produkty",
+    })["@graph"]
+
+    expect(untracked).toMatchObject({ offers: [{ availability: "https://schema.org/OutOfStock", price: "1200.00" }] })
+  })
+
+  it("walks the breadcrumb from the store through the catalogue to the product", () => {
+    expect(breadcrumbs).toStrictEqual({
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", item: `${APP_URL}/en-US`, name: APP_NAME, position: 1 },
+        { "@type": "ListItem", item: `${APP_URL}/en-US/products`, name: "Products", position: 2 },
+        { "@type": "ListItem", name: "Silver ring", position: 3 },
+      ],
     })
   })
 })

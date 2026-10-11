@@ -1,9 +1,13 @@
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { deLocalizePathname, localeLinks, localizePathname } from "~/src/integrations/use-intl/i18n.paths"
 
-import { STATIC_PAGES } from "~/src/data/static-pages"
+import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
+import { formatMinorUnitsToNumberInput } from "~/src/modules/_core/utils/currency"
+import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.availability.utils"
+import { type Product } from "~/src/modules/product/product.types"
 
 import { APP_NAME, APP_URL, OG_IMAGE_PATH } from "~/src/presentation/branding/app"
+import { BUSINESS } from "~/src/presentation/branding/business"
 import { SOCIALS } from "~/src/presentation/branding/socials"
 
 import { ROUTES } from "~/src/routes"
@@ -29,8 +33,18 @@ const toAbsoluteUrl = (appUrl: string, pathOrUrl: string): string =>
 
 const publisherRef = (appUrl: string) => ({ "@id": `${appUrl}#organization` })
 
+const BUSINESS_POSTAL_ADDRESS = {
+  "@type": "PostalAddress",
+  addressCountry: BUSINESS.COUNTRY_CODE,
+  addressLocality: BUSINESS.CITY,
+  postalCode: BUSINESS.POSTAL_CODE,
+  streetAddress: BUSINESS.STREET,
+} as const
+
 export interface PageMeta {
   readonly description: string
+  readonly image?: string | undefined
+  readonly structuredData?: object | undefined
   readonly title: string
 }
 
@@ -40,6 +54,14 @@ export const pageHead = ({ loaderData }: Readonly<{ loaderData?: Readonly<PageMe
     { content: loaderData?.description ?? "", name: "description" },
     { content: loaderData?.title ?? APP_NAME, property: "og:title" },
     { content: loaderData?.description ?? "", property: "og:description" },
+    ...(loaderData?.image === undefined
+      ? []
+      : [
+          { content: loaderData.image, property: "og:image" },
+          { content: loaderData.title, property: "og:image:alt" },
+          { content: loaderData.image, name: "twitter:image" },
+        ]),
+    ...(loaderData?.structuredData === undefined ? [] : [{ "script:ld+json": loaderData.structuredData }]),
   ],
 })
 
@@ -141,9 +163,14 @@ export const buildStoreStructuredData = ({ description, locale }: { readonly des
       {
         "@id": `${appUrl}#organization`,
         "@type": "OnlineStore",
+        address: BUSINESS_POSTAL_ADDRESS,
         description,
+        email: BUSINESS.EMAIL,
+        legalName: BUSINESS.LEGAL_NAME,
         name: APP_NAME,
         sameAs: [SOCIALS.FACEBOOK, SOCIALS.INSTAGRAM],
+        taxID: BUSINESS.NIP,
+        telephone: BUSINESS.PHONE,
         url: appUrl,
       },
     ],
@@ -187,41 +214,32 @@ export const buildBlogStructuredData = ({
   }
 }
 
-const BREADCRUMB_HOME = 1
+interface BreadcrumbTrail {
+  readonly leaf: string
+  readonly locale: SupportedLocale
+  readonly sections: readonly { readonly name: string; readonly path: string }[]
+}
 
-const BREADCRUMB_SECTION = 2
+const buildBreadcrumbs = ({ leaf, locale, sections }: BreadcrumbTrail) => {
+  const linked = [{ name: APP_NAME, path: ROUTES.HOME }, ...sections]
 
-const BREADCRUMB_LEAF = 3
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      ...linked.map(({ name, path }, index) => ({
+        "@type": "ListItem",
+        item: `${APP_URL}${localizePathname({ locale, pathname: path })}`,
+        name,
+        position: index + 1,
+      })),
+      { "@type": "ListItem", name: leaf, position: linked.length + 1 },
+    ],
+  }
+}
 
-const buildBreadcrumbs = ({
-  appUrl,
-  leaf,
-  locale,
-  section,
-  sectionPath,
-}: {
-  appUrl: string
-  leaf: string
-  locale: SupportedLocale
-  section: string
-  sectionPath: string
-}) => ({
-  "@type": "BreadcrumbList",
-  itemListElement: [
-    {
-      "@type": "ListItem",
-      item: `${appUrl}${localizePathname({ locale, pathname: ROUTES.HOME })}`,
-      name: APP_NAME,
-      position: BREADCRUMB_HOME,
-    },
-    {
-      "@type": "ListItem",
-      item: `${appUrl}${localizePathname({ locale, pathname: sectionPath })}`,
-      name: section,
-      position: BREADCRUMB_SECTION,
-    },
-    { "@type": "ListItem", name: leaf, position: BREADCRUMB_LEAF },
-  ],
+export const buildBreadcrumbStructuredData = (trail: BreadcrumbTrail) => ({
+  "@context": "https://schema.org",
+  ...buildBreadcrumbs(trail),
 })
 
 export const buildBlogPostStructuredData = ({
@@ -263,60 +281,46 @@ export const buildBlogPostStructuredData = ({
         publisher: publisherRef(appUrl),
         url: canonicalUrl,
       },
-      buildBreadcrumbs({ appUrl, leaf: title, locale, section, sectionPath }),
+      buildBreadcrumbs({ leaf: title, locale, sections: [{ name: section, path: sectionPath }] }),
     ],
   }
 }
 
 export const buildProductStructuredData = ({
-  availability,
-  canonicalPath,
-  currency,
-  description,
   images,
   locale,
-  price,
+  product,
   section,
-  sectionPath,
-  sku,
-  title,
 }: {
-  readonly availability: "InStock" | "OutOfStock" | "PreOrder"
-  readonly canonicalPath: string
-  readonly currency: string
-  readonly description: string
   readonly images: readonly string[]
   readonly locale: SupportedLocale
-  readonly price: string
+  readonly product: Product["storefront"]
   readonly section: string
-  readonly sectionPath: string
-  readonly sku: string
-  readonly title: string
 }) => {
-  const appUrl = APP_URL
-  const canonicalUrl = `${appUrl}${localizePathname({ locale, pathname: canonicalPath })}`
+  const canonicalUrl = `${APP_URL}${localizePathname({ locale, pathname: ROUTES.PRODUCT.replace("$handle", product.handle) })}`
 
   return {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "Product",
-        brand: { "@id": `${appUrl}#organization` },
-        description,
-        image: images.map((image) => toAbsoluteUrl(appUrl, image)),
-        name: title,
-        offers: {
+        brand: { "@type": "Brand", name: APP_NAME },
+        description: product.description,
+        image: images,
+        manufacturer: { "@type": "Organization", address: BUSINESS_POSTAL_ADDRESS, email: BUSINESS.EMAIL, name: BUSINESS.LEGAL_NAME },
+        name: product.title,
+        offers: product.variants.map((variant) => ({
           "@type": "Offer",
-          availability: `https://schema.org/${availability}`,
-          price,
-          priceCurrency: currency,
-          seller: { "@id": `${appUrl}#organization` },
+          availability: `https://schema.org/${getVariantQuantityAvailable(variant) > 0 ? "InStock" : "OutOfStock"}`,
+          price: formatMinorUnitsToNumberInput(variant.price, STORE_CURRENCY_CODE),
+          priceCurrency: STORE_CURRENCY_CODE,
+          seller: publisherRef(APP_URL),
+          ...(variant.sku === null ? {} : { sku: variant.sku }),
           url: canonicalUrl,
-        },
-        sku,
+        })),
         url: canonicalUrl,
       },
-      buildBreadcrumbs({ appUrl, leaf: title, locale, section, sectionPath }),
+      buildBreadcrumbs({ leaf: product.title, locale, sections: [{ name: section, path: ROUTES.PRODUCTS }] }),
     ],
   }
 }
@@ -345,37 +349,31 @@ export const generateRobotsTxt = (appUrl: string, appEnv: string): string => {
   return `User-agent: *\nAllow: /\n${disallowLines}\n\nSitemap: ${appUrl}/sitemap.xml\n`
 }
 
-export const generateSitemapXml = (appUrl: string): string => {
-  const urlEntries = STATIC_PAGES.flatMap((internalPath) =>
-    I18N.SUPPORTED_LOCALES.map((locale) => {
-      const thisUrl = buildLocalizedUrl(appUrl, internalPath, locale)
-      const xDefaultUrl = buildLocalizedUrl(appUrl, internalPath, I18N.DEFAULT_LOCALE)
-      const alternateLinks = I18N.SUPPORTED_LOCALES.map(
-        (altLocale) =>
-          `    <xhtml:link rel="alternate" hreflang="${altLocale}" href="${buildLocalizedUrl(appUrl, internalPath, altLocale)}"/>`,
-      ).join("\n")
+export interface SitemapPage {
+  readonly lastModified?: Date
+  readonly path: string
+}
 
-      let priority = "0.8"
-      if (internalPath === "/") {
-        priority = "1.0"
-      }
+const sitemapUrlEntry = (appUrl: string, { lastModified, path }: SitemapPage, locale: SupportedLocale): string =>
+  [
+    "  <url>",
+    `    <loc>${buildLocalizedUrl(appUrl, path, locale)}</loc>`,
+    ...(lastModified === undefined ? [] : [`    <lastmod>${lastModified.toISOString()}</lastmod>`]),
+    "    <changefreq>weekly</changefreq>",
+    `    <priority>${path === ROUTES.HOME ? "1.0" : "0.8"}</priority>`,
+    ...I18N.SUPPORTED_LOCALES.map(
+      (alternate) => `    <xhtml:link rel="alternate" hreflang="${alternate}" href="${buildLocalizedUrl(appUrl, path, alternate)}"/>`,
+    ),
+    `    <xhtml:link rel="alternate" hreflang="x-default" href="${buildLocalizedUrl(appUrl, path, I18N.DEFAULT_LOCALE)}"/>`,
+    "  </url>",
+  ].join("\n")
 
-      return `  <url>
-    <loc>${thisUrl}</loc>
-${alternateLinks}
-    <xhtml:link rel="alternate" hreflang="x-default" href="${xDefaultUrl}"/>
-    <changefreq>weekly</changefreq>
-    <priority>${priority}</priority>
-  </url>`
-    }),
-  )
-
-  return [
+export const generateSitemapXml = (appUrl: string, pages: readonly SitemapPage[]): string =>
+  [
     `<?xml version="1.0" encoding="UTF-8"?>`,
     `<urlset`,
     `  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"`,
     `  xmlns:xhtml="http://www.w3.org/1999/xhtml">`,
-    ...urlEntries,
+    ...pages.flatMap((page) => I18N.SUPPORTED_LOCALES.map((locale) => sitemapUrlEntry(appUrl, page, locale))),
     `</urlset>`,
   ].join("\n")
-}

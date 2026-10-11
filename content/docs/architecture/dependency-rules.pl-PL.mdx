@@ -19,7 +19,7 @@ Integracje bezpieczne dla przeglądarki to te bez odczytu `env` i bez markera se
 ## Granice kodu wyłącznie serwerowego
 
 - **Funkcje serwerowe.** TanStack Start usuwa z bundla przeglądarki każdy handler `createServerFn` i zastępuje wywołanie żądaniem RPC. Dlatego komponent może zaimportować `shipOrderMutation` z tego samego pliku, który importuje `db`.
-- **Moduły wyłącznie serwerowe.** Pliki odczytujące sekrety lub bindingi zaczynają się od `import "@tanstack/react-start/server-only"`, co wyklucza je z builda klienta. W tym repozytorium są to `drizzle.database.ts`, `src/lib/rate-limit.ts` i `src/lib/background.ts`.
+- **Moduły wyłącznie serwerowe.** Pliki odczytujące sekrety lub bindingi zaczynają się od `import "@tanstack/react-start/server-only"`, co wyklucza je z builda klienta. W tym repozytorium są to `drizzle.database.ts`, `src/lib/rate-limit.ts`, `src/lib/background.ts` i `src/lib/sitemap.ts`.
 - **Sufiks `.server.ts`** oznacza pliki modułów osiągalne wyłącznie z funkcji serwerowej albo webhooka — `order.settled.server.ts`, `checkout.pending.server.ts`, `audit-log.record.server.ts`, `product.catalog.server.ts` i pozostałe. Sufiks jest konwencją dla czytającego; wykluczenie z bundla wynika z granicy `createServerFn` albo z jawnego importu `server-only`.
 - **Funkcje zależne od środowiska.** `createServerOnlyFn` opakowuje kod działający wyłącznie na serwerze (`getRequestSession`). `createIsomorphicFn` dostarcza osobne implementacje dla każdego środowiska (`getCurrentLocale`, `getCurrentPathname` w `i18n.utils.ts`).
 - **Bindingi i sekrety** pochodzą z `env` w `cloudflare:workers` i są odczytywane wyłącznie w modułach serwerowych, w `src/server.ts` albo w handlerze funkcji serwerowej.
