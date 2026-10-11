@@ -112,7 +112,7 @@ A custom range is a second server function. `getDashboardChartRange` takes `{ st
 
 ## Recent orders
 
-`recentOrdersQuery` selects the latest `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` orders, left-joining `user` for the customer name and `payment` for the status, and the snapshot maps each row through `toAdminOrderListItem` — the same mapper the orders grid uses, so the badges match. Note it passes `itemCount: 0`, so the recent-orders list never shows an item count.
+`recentOrdersQuery` selects the latest `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` orders, left-joining `user` for the customer name and `payment` for the status, and the snapshot maps each row through `toAdminOrderListItem` — the same mapper the orders grid uses, so the badges match. Note it passes `itemCount: 0`, so the recent-orders list never shows an item count. It also selects the order's `metadata`, from which the mapper sets `hasOpenDispute`; the dashboard shows no dispute.
 
 ## Top products
 

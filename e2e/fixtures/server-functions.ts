@@ -9,6 +9,7 @@ const serverFunctionId = (file: string, name: string): string =>
 export const SERVER_FUNCTIONS = {
   checkCartAvailability: serverFunctionId("src/modules/cart/use-cases/check-cart-availability.ts", "checkCartAvailability"),
   createCheckoutSession: serverFunctionId("src/integrations/stripe/stripe.actions.ts", "createCheckoutSessionFn"),
+  getAdminOrdersPage: serverFunctionId("src/modules/order/use-cases/get-admin-orders-page.ts", "getAdminOrdersPage"),
   getAdminProducts: serverFunctionId("src/modules/product/use-cases/get-admin-products.ts", "getAdminProducts"),
   getCollections: serverFunctionId("src/modules/product-collection/use-cases/get-collections.ts", "getCollections"),
   getCurrentSession: serverFunctionId("src/integrations/better-auth/auth.session.ts", "getCurrentSession"),

@@ -73,7 +73,7 @@ const DDL = `
   );
   create table "order" (
     id text primary key, checkout_id text, currency_code text not null default 'PLN', email text not null,
-    fulfillment_status text not null default 'not_fulfilled', payment_id text, status text not null default 'pending',
+    fulfillment_status text not null default 'not_fulfilled', metadata text, payment_id text, status text not null default 'pending',
     total integer not null default 0, user_id text, created_at integer not null, updated_at integer not null
   );
   create table order_item (

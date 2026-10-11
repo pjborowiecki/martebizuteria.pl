@@ -565,11 +565,11 @@ const emulateStripe = async (request: Request, url: URL): Promise<Response> => {
   }
 }
 
-const checkoutSessionEvent = (type: "checkout.session.completed" | "checkout.session.expired", session: EmulatedCheckoutSession): string =>
+const stripeEvent = (type: "charge.dispute.created" | "checkout.session.completed" | "checkout.session.expired", object: object): string =>
   JSON.stringify({
     api_version: STRIPE_API_VERSION,
     created: nowInSeconds(),
-    data: { object: session },
+    data: { object },
     id: stripeId("evt"),
     livemode: false,
     object: "event",
@@ -596,7 +596,25 @@ export const completeCheckoutSession = (sessionId: string): string | undefined =
   const completed: EmulatedCheckoutSession = { ...session, payment_intent: paymentIntentId, payment_status: "paid", status: "complete" }
   checkoutSessions.set(sessionId, completed)
 
-  return checkoutSessionEvent("checkout.session.completed", completed)
+  return stripeEvent("checkout.session.completed", completed)
+}
+
+export const disputeCheckoutPayment = (sessionId: string): string | undefined => {
+  const session = checkoutSessions.get(sessionId)
+  if (typeof session?.payment_intent !== "string") {
+    return undefined
+  }
+
+  return stripeEvent("charge.dispute.created", {
+    amount: session.amount_total,
+    charge: stripeId("ch"),
+    currency: session.currency,
+    id: stripeId("dp"),
+    object: "dispute",
+    payment_intent: session.payment_intent,
+    reason: "fraudulent",
+    status: "needs_response",
+  })
 }
 
 export const awaitBlikApproval = (sessionId: string): EmulatedCheckoutSession | undefined => {
@@ -647,7 +665,7 @@ export const expireCheckoutSession = (sessionId: string): string | undefined => 
   const expired: EmulatedCheckoutSession = { ...session, status: "expired" }
   checkoutSessions.set(sessionId, expired)
 
-  return checkoutSessionEvent("checkout.session.expired", expired)
+  return stripeEvent("checkout.session.expired", expired)
 }
 
 const answerTurnstileSiteverify = async (request: Request): Promise<Response> => {

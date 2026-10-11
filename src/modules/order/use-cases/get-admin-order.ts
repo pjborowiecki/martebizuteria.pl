@@ -24,9 +24,12 @@ import {
   mapAdminOrderTimeline,
   resolveAdminOrderDetailAddresses,
   resolveAdminOrderDetailTags,
-  resolveAdminOrderDispute,
 } from "~/src/modules/order/order.detail.utils"
-import { resolveAdminOrderFulfillmentUiKey, resolveAdminOrderPaymentUiKey } from "~/src/modules/order/order.display.utils"
+import {
+  resolveAdminOrderDispute,
+  resolveAdminOrderFulfillmentUiKey,
+  resolveAdminOrderPaymentUiKey,
+} from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 

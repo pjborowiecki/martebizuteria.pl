@@ -608,6 +608,9 @@
       "printSummary": "Print order summary",
       "refund": "Refund",
       "cancel": "Cancel order",
+      "cancelBlocked": {
+        "openDispute": "This order has an open dispute. Cancelling would refund its payment, which the dispute now decides, so the order cannot be cancelled until the dispute closes."
+      },
       "cancelDialog": {
         "title": "Cancel order?",
         "description": "Order #{id} will be cancelled and its items returned to stock. There is no payment to refund. The customer is emailed about the cancellation. This action cannot be undone.",
@@ -628,6 +631,7 @@
         "errorDescription": "Please try again in a moment.",
         "notFoundDescription": "This order no longer exists.",
         "invalidStateDescription": "This action is not available for the order's current state.",
+        "openDisputeDescription": "This order has an open dispute, which decides what happens to its payment. Until the dispute closes, the payment cannot be refunded and the order cannot be cancelled.",
         "markDeliveredSuccessDescription": "Order marked as delivered.",
         "refundSuccessDescription": "Refund submitted to Stripe. The order updates once Stripe confirms it.",
         "restockSuccessDescription": "The order's items are back in stock.",
@@ -871,6 +875,9 @@
     "refundBlocked": {
       "noStripePayment": "Nothing to refund: this order was free, so Stripe took no payment for it.",
       "openDispute": "This order has an open dispute. The dispute decides what happens to the payment, so it cannot be refunded until the dispute closes."
+    },
+    "cancelBlocked": {
+      "openDispute": "This order has an open dispute. Cancelling would refund its payment, which the dispute now decides, so the order cannot be cancelled until the dispute closes."
     },
     "cancelDialog": {
       "title": "Cancel this order?",

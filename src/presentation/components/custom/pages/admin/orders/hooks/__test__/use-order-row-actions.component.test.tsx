@@ -6,8 +6,8 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
 
-import { AppError } from "~/src/modules/_core/constants/errors"
-import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 
 import {
   useCancelOrder,
@@ -324,6 +324,22 @@ describe("admin order action failures", () => {
     expect(toastError).toHaveBeenCalledWith("Could not update order", {
       description: "This action is not available for the order's current state.",
     })
+  })
+
+  it("explains that an open dispute stops the cancellation of a paid order", async () => {
+    cancelFn.mockRejectedValue(new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.OPEN_DISPUTE))
+    const { result } = renderHook(() => useCancelOrder(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledOnce()
+    })
+
+    expect(toastError).toHaveBeenCalledWith("Could not update order", {
+      description:
+        "This order has an open dispute, which decides what happens to its payment. Until the dispute closes, the payment cannot be refunded and the order cannot be cancelled.",
+    })
+    expect(toastSuccess).not.toHaveBeenCalled()
   })
 
   it("falls back to the generic description for an unclassified failure", async () => {

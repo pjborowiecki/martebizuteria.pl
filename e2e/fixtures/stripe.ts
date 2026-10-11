@@ -51,7 +51,9 @@ export const waitForOpenCheckoutSession = async (
 
 export type SignedStripeEvent = z.infer<typeof signedEventSchema>
 
-const signSettlement = async (request: APIRequestContext, sessionId: string, outcome: "complete" | "expire"): Promise<SignedStripeEvent> => {
+type SessionOutcome = "complete" | "dispute" | "expire"
+
+const signSettlement = async (request: APIRequestContext, sessionId: string, outcome: SessionOutcome): Promise<SignedStripeEvent> => {
   const signing = await request.post(`/__test/stripe/checkout-sessions/${sessionId}/${outcome}`)
   expect(signing.ok()).toBe(true)
 
@@ -66,7 +68,7 @@ export const deliverStripeEvent = async (request: APIRequestContext, { payload, 
   expect(webhook.status(), await webhook.text()).toBe(200)
 }
 
-const settleCheckoutSession = async (request: APIRequestContext, sessionId: string, outcome: "complete" | "expire"): Promise<void> => {
+const settleCheckoutSession = async (request: APIRequestContext, sessionId: string, outcome: SessionOutcome): Promise<void> => {
   await deliverStripeEvent(request, await signSettlement(request, sessionId, outcome))
 }
 
@@ -78,6 +80,9 @@ export const completeCheckoutSessionBeforeItsWebhook = (request: APIRequestConte
 
 export const expireCheckoutSession = (request: APIRequestContext, sessionId: string): Promise<void> =>
   settleCheckoutSession(request, sessionId, "expire")
+
+export const disputeCheckoutPayment = (request: APIRequestContext, sessionId: string): Promise<void> =>
+  settleCheckoutSession(request, sessionId, "dispute")
 
 const answerBlikApproval = async (request: APIRequestContext, sessionId: string, answer: "await" | "decline"): Promise<void> => {
   const response = await request.post(`/__test/stripe/checkout-sessions/${sessionId}/${answer}-blik-approval`)

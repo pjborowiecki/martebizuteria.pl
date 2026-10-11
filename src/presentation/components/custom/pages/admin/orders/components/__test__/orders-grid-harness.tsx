@@ -21,6 +21,7 @@ export const orderRow = (overrides: Partial<OrderRow> = {}): OrderRow => ({
   email: "anna@example.com",
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED,
+  hasOpenDispute: false,
   id: "order-1",
   initials: "AK",
   itemCount: 2,

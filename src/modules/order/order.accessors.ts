@@ -158,6 +158,7 @@ const adminOrdersBaseQuery = (whereClause: SQL | undefined) =>
       email: order.email,
       fulfillmentStatus: order.fulfillmentStatus,
       id: order.id,
+      metadata: order.metadata,
       paymentStatus: sql<(typeof payment.$inferSelect)["status"] | null>`${payment.status}`.as("payment_status"),
       status: order.status,
       total: order.total,

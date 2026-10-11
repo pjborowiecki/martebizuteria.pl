@@ -6,7 +6,13 @@ import { STORAGE_STATE } from "../data/storage-state"
 import { acceptEmailsTo, linkIn, refuseEmailsTo, sentEmails, waitForEmail } from "../fixtures/emails"
 import { placeOrder } from "../fixtures/orders"
 import { SERVER_FUNCTIONS, waitForServerFunctionResponse } from "../fixtures/server-functions"
-import { type CheckoutSession, completeCheckoutSession, expireCheckoutSession, waitForOpenCheckoutSession } from "../fixtures/stripe"
+import {
+  type CheckoutSession,
+  completeCheckoutSession,
+  disputeCheckoutPayment,
+  expireCheckoutSession,
+  waitForOpenCheckoutSession,
+} from "../fixtures/stripe"
 import { clientAddressFor, expect, isolateNetwork, muteRealtime, test } from "../fixtures/test"
 import { uniqueCode, uniqueEmail } from "../fixtures/unique"
 import { AdminOrderPage, BasePage, CheckoutPage, ProductPage } from "../pages"
@@ -50,6 +56,9 @@ const RESERVED_IN_CHECKOUT =
   "A customer is paying for one of these products right now, so it cannot be deleted. Archive the product to take it off sale, and delete it only once that payment has finished or expired."
 
 const CODE_HELD_BY_OTHER_CHECKOUTS = "That code is reserved for orders awaiting payment. Try again later."
+
+const DISPUTE_BLOCKS_CANCEL =
+  "This order has an open dispute. Cancelling would refund its payment, which the dispute now decides, so the order cannot be cancelled until the dispute closes."
 
 const openGuestPayment = async ({ browser, discount, handle, label, request, testInfo }: GuestOrderInput): Promise<CheckoutSession> => {
   const shopper = await browser.newContext({
@@ -256,6 +265,42 @@ test.describe("admin", () => {
     expect(cancelled.html).toContain(orderNumber)
     expect(cancelled.html).toMatch(/PLN\s398\.99/u)
     expect(linkIn(cancelled, /\/auth\/sign-up/u).origin).toBe("http://127.0.0.1:3000")
+  })
+
+  test("an open dispute keeps a paid order from being cancelled and says why, in the list and on the order", async ({
+    adminOrderPage,
+    browser,
+    context,
+    page,
+    request,
+  }, testInfo) => {
+    const shopper = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(shopper)
+    const email = uniqueEmail(testInfo, "dispute")
+    const { sessionId } = await placeOrder({ email, handle: PRODUCTS.onyx.handle, page: await shopper.newPage(), request })
+    await shopper.close()
+    await disputeCheckoutPayment(request, sessionId)
+
+    await muteRealtime(context)
+    await adminOrderPage.open("/en-US/admin/orders")
+    const searched = waitForServerFunctionResponse(page, SERVER_FUNCTIONS.getAdminOrdersPage)
+    await page.getByRole("searchbox", { name: "Search orders…" }).fill(email)
+    await searched
+    await expect(page.getByRole("row")).toHaveCount(2)
+    await adminOrderPage.orderRow(email).getByRole("button").last().click()
+    const cancelItem = page.getByRole("menuitem", { name: "Cancel order" })
+    await expect(cancelItem).toBeDisabled()
+    await expect(cancelItem).toHaveAccessibleDescription(DISPUTE_BLOCKS_CANCEL)
+    await expect(page.getByText(DISPUTE_BLOCKS_CANCEL)).toBeVisible()
+
+    await adminOrderPage.gotoOrderFor(email)
+    const cancel = adminOrderPage.action("Cancel order")
+    await expect(cancel).toBeDisabled()
+    await cancel.hover()
+    await expect(page.getByText(DISPUTE_BLOCKS_CANCEL)).toBeVisible()
   })
 
   test("refunding a shipped order returns its piece to stock only when the admin says it came back", async ({

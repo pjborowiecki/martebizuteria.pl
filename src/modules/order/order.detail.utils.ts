@@ -17,9 +17,6 @@ import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils"
 
-export const resolveAdminOrderDispute = (metadata: string | null | undefined): Order["disputeMetadata"] | undefined =>
-  orderZodSchemas.disputeMetadata.safeParse(parseOrderMetadata(metadata)["dispute"]).data
-
 export const mapAdminOrderDetailAddress = (row: AdminOrderAddressRow | null | undefined): Order["adminOrderDetailAddress"] | undefined => {
   if (row === null || row === undefined) {
     return undefined

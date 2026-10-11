@@ -113,6 +113,8 @@ const REFUND_KEY = { idempotencyKey: `admin-order-refund-${PAID_ORDER_ID}` }
 
 const INVALID_STATE = { code: ERROR_CODES.CONFLICT, message: ORDER_ERROR_CODES.INVALID_STATE }
 
+const OPEN_DISPUTE = { code: ERROR_CODES.CONFLICT, message: ORDER_ERROR_CODES.OPEN_DISPUTE }
+
 const STOCK_HELD = { "variant-chain": 3, "variant-ring": 0 }
 
 const STOCK_RETURNED = { "variant-chain": 5, "variant-ring": 1 }
@@ -249,10 +251,10 @@ describe("cancelling a paid order", () => {
     expect(readStock()).toStrictEqual(STOCK_HELD)
   })
 
-  it("refuses while a dispute is open, since the dispute decides the payment", async () => {
+  it("refuses while a dispute is open and names the dispute, since the dispute decides the payment", async () => {
     sqlite.prepare(`update "order" set metadata = ? where id = ?`).run(DISPUTED, PAID_ORDER_ID)
 
-    await expect(cancelPaidOrder()).rejects.toMatchObject(INVALID_STATE)
+    await expect(cancelPaidOrder()).rejects.toMatchObject(OPEN_DISPUTE)
     expect(stripeApi.sessionsRetrieve).not.toHaveBeenCalled()
     expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
     expect(readStock()).toStrictEqual(STOCK_HELD)
@@ -482,6 +484,16 @@ describe("a role that may update orders but not refund them", () => {
     expect(readStock()).toStrictEqual(STOCK_HELD)
     expect(audit.cancelled).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it("is refused a disputed paid order for lacking the refund permission before the dispute is named", async () => {
+    sqlite.prepare(`update "order" set metadata = ? where id = ?`).run(DISPUTED, PAID_ORDER_ID)
+
+    await expect(cancelPaidOrder()).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+
+    expect(stripeApi.sessionsRetrieve).not.toHaveBeenCalled()
+    expect(readOrder(PAID_ORDER_ID)).toStrictEqual({ fulfillment_status: "not_fulfilled", status: "processing" })
+    expect(readStock()).toStrictEqual(STOCK_HELD)
   })
 
   it("cancels a free order, which refunds nothing", async () => {

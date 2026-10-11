@@ -17,6 +17,8 @@ const BACK_IN_STOCK = { orderId: ORDER_ID, restock: true }
 
 const INVALID_STATE = { code: ERROR_CODES.CONFLICT, message: ORDER_ERROR_CODES.INVALID_STATE }
 
+const OPEN_DISPUTE = { code: ERROR_CODES.CONFLICT, message: ORDER_ERROR_CODES.OPEN_DISPUTE }
+
 const PAID_TARGET: AdminOrderRefundTarget = {
   fulfillmentStatus: "not_fulfilled",
   metadata: null,
@@ -140,10 +142,10 @@ describe("refundAdminOrder", () => {
     expect(stripeApi.refundsCreate).toHaveBeenCalledOnce()
   })
 
-  it("refuses an order with an open dispute without calling Stripe", async () => {
+  it("refuses an order with an open dispute, naming the dispute, without calling Stripe", async () => {
     target.current = { ...PAID_TARGET, metadata: DISPUTED_METADATA }
 
-    await expect(refundAdminOrder({ data: KEEP_OUT_OF_STOCK })).rejects.toMatchObject(INVALID_STATE)
+    await expect(refundAdminOrder({ data: KEEP_OUT_OF_STOCK })).rejects.toMatchObject(OPEN_DISPUTE)
     expect(stripeApi.sessionsRetrieve).not.toHaveBeenCalled()
     expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
   })

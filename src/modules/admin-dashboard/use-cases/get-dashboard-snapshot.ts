@@ -121,6 +121,7 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
           fulfillmentStatus: row.fulfillmentStatus,
           id: row.id,
           itemCount: 0,
+          metadata: row.metadata,
           paymentStatus: row.paymentStatus,
           status: row.status,
           total: row.total,

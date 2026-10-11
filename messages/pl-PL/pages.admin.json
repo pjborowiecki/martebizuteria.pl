@@ -608,6 +608,9 @@
       "printSummary": "Drukuj podsumowanie zamówienia",
       "refund": "Zwrot",
       "cancel": "Anuluj zamówienie",
+      "cancelBlocked": {
+        "openDispute": "To zamówienie ma otwarty spór. Anulowanie zwróciłoby płatność, o której losie decyduje teraz spór, więc zamówienia nie można anulować, dopóki spór się nie zakończy."
+      },
       "cancelDialog": {
         "title": "Anulować zamówienie?",
         "description": "Zamówienie #{id} zostanie anulowane, a jego produkty wrócą na stan magazynowy. Nie ma płatności do zwrotu. Klient otrzyma e-mail o anulowaniu. Tej operacji nie można cofnąć.",
@@ -628,6 +631,7 @@
         "errorDescription": "Spróbuj ponownie za chwilę.",
         "notFoundDescription": "To zamówienie już nie istnieje.",
         "invalidStateDescription": "Ta akcja nie jest dostępna w bieżącym stanie zamówienia.",
+        "openDisputeDescription": "To zamówienie ma otwarty spór, który decyduje o losie płatności. Dopóki spór się nie zakończy, nie można zwrócić płatności ani anulować zamówienia.",
         "markDeliveredSuccessDescription": "Zamówienie oznaczone jako dostarczone.",
         "refundSuccessDescription": "Zwrot zlecony w Stripe. Zamówienie zaktualizuje się po potwierdzeniu przez Stripe.",
         "restockSuccessDescription": "Produkty z zamówienia wróciły na stan magazynowy.",
@@ -871,6 +875,9 @@
     "refundBlocked": {
       "noStripePayment": "Nie ma czego zwrócić: to zamówienie było bezpłatne, więc Stripe nie pobrał za nie płatności.",
       "openDispute": "To zamówienie ma otwarty spór. O losie płatności decyduje spór, więc nie można jej zwrócić, dopóki się nie zakończy."
+    },
+    "cancelBlocked": {
+      "openDispute": "To zamówienie ma otwarty spór. Anulowanie zwróciłoby płatność, o której losie decyduje teraz spór, więc zamówienia nie można anulować, dopóki spór się nie zakończy."
     },
     "cancelDialog": {
       "title": "Anulować to zamówienie?",

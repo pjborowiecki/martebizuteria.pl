@@ -112,7 +112,7 @@ Zakres własny to druga funkcja serwerowa. `getDashboardChartRange` przyjmuje `{
 
 ## Ostatnie zamówienia
 
-`recentOrdersQuery` wybiera najnowsze `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` zamówień, dołączając lewostronnie `user` dla nazwy klienta i `payment` dla statusu, a migawka mapuje każdy wiersz przez `toAdminOrderListItem` — ten sam mapper, którego używa siatka zamówień, więc plakietki są spójne. Zwróć uwagę, że przekazuje `itemCount: 0`, więc lista ostatnich zamówień nigdy nie pokazuje liczby pozycji.
+`recentOrdersQuery` wybiera najnowsze `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` zamówień, dołączając lewostronnie `user` dla nazwy klienta i `payment` dla statusu, a migawka mapuje każdy wiersz przez `toAdminOrderListItem` — ten sam mapper, którego używa siatka zamówień, więc plakietki są spójne. Zwróć uwagę, że przekazuje `itemCount: 0`, więc lista ostatnich zamówień nigdy nie pokazuje liczby pozycji. Wybiera też `metadata` zamówienia, z których mapper ustawia `hasOpenDispute`; pulpit nie pokazuje sporu.
 
 ## Najlepsze produkty
 

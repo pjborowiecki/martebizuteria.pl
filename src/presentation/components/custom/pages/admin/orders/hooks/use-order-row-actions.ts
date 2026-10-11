@@ -5,7 +5,7 @@ import { useTranslations } from "use-intl/react"
 import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
-import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { cancelOrderMutation } from "~/src/modules/order/use-cases/cancel-order"
 import { fulfillOrderMutation } from "~/src/modules/order/use-cases/fulfill-order"
 import { markOrderDeliveredMutation } from "~/src/modules/order/use-cases/mark-order-delivered"
@@ -19,6 +19,10 @@ const resolveOrderActionErrorMessage = (error: Error, t: ReturnType<typeof useTr
 
   if (code === ERROR_CODES.NOT_FOUND) {
     return t("toast.notFoundDescription")
+  }
+
+  if (error.message === ORDER_ERROR_CODES.OPEN_DISPUTE) {
+    return t("toast.openDisputeDescription")
   }
 
   if (code === ERROR_CODES.CONFLICT) {
