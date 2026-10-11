@@ -76,13 +76,13 @@ Komponenty leżą w `.../admin/customers/components/`: `customers-table.tsx`, `c
 
 ## Statystyki
 
-`getAdminCustomerStats` uruchamia równolegle trzy przygotowane zapytania i wyprowadza karty w czystej funkcji:
+`getAdminCustomerStats` uruchamia równolegle trzy zapytania i wyprowadza karty w czystej funkcji:
 
 ```ts
 const [[totalRow], [rollupRow], [averageProductsPerOrderRow]] = await Promise.all([
-  getAdminCustomerTotalCountQuery.execute(),
-  getAdminCustomerOrderRollupStatsQuery.execute(),
-  getAverageProductsPerOrderQuery.execute(),
+  getAdminCustomerTotalCountQuery(),
+  getAdminCustomerOrderRollupStatsQuery(),
+  getAverageProductsPerOrderQuery(),
 ])
 
 return computeAdminCustomerStatsFromAggregates({

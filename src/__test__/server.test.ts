@@ -30,10 +30,7 @@ const realtime = vi.hoisted(() => ({ handleRealtimeInvalidationWebSocket: vi.fn(
 
 const queue = vi.hoisted(() => ({ processAuditLogQueueBatch: vi.fn(() => Promise.resolve()) }))
 
-const newsletterQueue = vi.hoisted(() => ({
-  isNewsletterQueueBatch: vi.fn((batch: { readonly queue: string }) => batch.queue === "newsletter"),
-  processNewsletterQueueBatch: vi.fn(() => Promise.resolve()),
-}))
+const newsletterQueue = vi.hoisted(() => ({ processNewsletterQueueBatch: vi.fn(() => Promise.resolve()) }))
 
 const retention = vi.hoisted(() => ({ enforceRetentionPeriods: vi.fn((_now: Date) => Promise.resolve()) }))
 
@@ -332,7 +329,7 @@ const drainBatch = async (batch: MessageBatch<AuditLogQueueMessage>): Promise<vo
 
 describe("worker queues", () => {
   it("drains an audit log batch through the audit log consumer", async () => {
-    const batch = queueBatch("audit-log")
+    const batch = queueBatch("martebizuteria-audit-log-test")
 
     await drainBatch(batch)
 
@@ -341,7 +338,7 @@ describe("worker queues", () => {
   })
 
   it("sends a newsletter batch to the newsletter consumer and keeps it away from the audit log", async () => {
-    const batch = queueBatch("newsletter")
+    const batch = queueBatch("martebizuteria-newsletter-test")
 
     await drainBatch(batch)
 

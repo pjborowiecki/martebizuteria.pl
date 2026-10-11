@@ -69,7 +69,7 @@ Each of these already has some of its groundwork in place (an integration functi
 
 ## Priority 4 — testing
 
-1,108 test files exist: 434 unit, 98 integration, 576 component. The distribution is the thing to fix rather than the count.
+1,109 test files exist: 435 unit, 98 integration, 576 component. The distribution is the thing to fix rather than the count.
 
 - **Stripe's payment form is tested only with sandbox keys.** The Playwright suite in `e2e/` buys with courier, in-store pickup and a parcel locker, in English and in Polish, but settles payments through an emulator. Only the opt-in `stripe-test-mode` project pays in the real Payment Element, by card, and only where Stripe sandbox keys are set: in CI, the **E2E (Stripe test mode)** job of `e2e-full.yml` reports its spec skipped until the `E2E_STRIPE_SECRET_KEY` and `E2E_STRIPE_PUBLISHABLE_KEY` repository secrets exist. No test pays with BLIK or Przelewy24.
 - **The ratio is inverted relative to the risk.** Component tests mostly assert rendering; commerce correctness lives in checkout, inventory compensation and refunds, which the 98 integration suites cover. More integration coverage of the money paths is worth more than more component coverage.

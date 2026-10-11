@@ -14,7 +14,6 @@ import {
   NEWSLETTER_CAMPAIGN_QUERY_KEYS,
   NEWSLETTER_CAMPAIGN_STATUS,
   NEWSLETTER_NEXT_BATCH_DELAY_SECONDS,
-  NEWSLETTER_QUEUE_PREFIX,
   NEWSLETTER_RETRY_DELAY_SECONDS,
   NEWSLETTER_SEND_ATTEMPTS,
 } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
@@ -25,10 +24,6 @@ import { getConfirmedSubscribersAfter } from "~/src/modules/newsletter/newslette
 import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
 
 type NewsletterQueueMessage = NewsletterCampaign["queueMessage"]
-
-export const isNewsletterQueueBatch = <OtherMessage>(
-  batch: MessageBatch<NewsletterQueueMessage | OtherMessage>,
-): batch is MessageBatch<NewsletterQueueMessage> => batch.queue.startsWith(NEWSLETTER_QUEUE_PREFIX)
 
 export const enqueueNewsletterCampaign = async (campaignId: string): Promise<void> => {
   const message: NewsletterQueueMessage = { campaignId }

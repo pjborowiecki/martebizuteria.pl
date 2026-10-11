@@ -17,8 +17,11 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 import { DATE_COLUMN_FILTER_OPERATOR, NUMERIC_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
 import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import {
+  getAdminCustomerOrderRollupStatsQuery,
+  getAdminCustomerTotalCountQuery,
   getAdminCustomersFilteredList,
   getAdminCustomersPage,
+  getAverageProductsPerOrderQuery,
   getCustomerOrderStatsQuery,
   getDefaultCustomerAddressesQuery,
   getUserById,
@@ -381,5 +384,24 @@ describe("a full admin page of customers", () => {
     expect(result.rows).toHaveLength(LIST_PAGE_SIZE_MAX)
     expect(new Map(result.orderStats.map((row) => [row.userId, row.totalSpent]))).toStrictEqual(totalSpentByCustomer)
     expect(new Map(result.addresses.map((row) => [row.userId, row.city]))).toStrictEqual(cityByCustomer)
+  })
+})
+
+describe("the admin customer stats queries", () => {
+  it("count every account and roll up only the countable orders of signed-in customers", async () => {
+    sqlite.exec(`
+      insert into order_item (id, order_id, quantity) values
+        ('i-1', 'o-1', 2), ('i-2', 'o-1', 1), ('i-3', 'o-3', 1), ('i-4', 'o-4', 5), ('i-5', 'o-guest', 4);
+    `)
+
+    const [[total], [rollup], [averageProductsPerOrder]] = await Promise.all([
+      getAdminCustomerTotalCountQuery(),
+      getAdminCustomerOrderRollupStatsQuery(),
+      getAverageProductsPerOrderQuery(),
+    ])
+
+    expect(total).toStrictEqual({ count: 4 })
+    expect(rollup).toStrictEqual({ averageLtv: 17_500, customersWithOrders: 2, repeatCustomers: 1 })
+    expect(averageProductsPerOrder).toStrictEqual({ value: 2 })
   })
 })

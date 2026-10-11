@@ -15,9 +15,9 @@ export const getAdminCustomerStats = createServerFn({ method: "GET" })
   .middleware([authorized({ user: ["list"] })])
   .handler(async () => {
     const [[totalRow], [rollupRow], [averageProductsPerOrderRow]] = await Promise.all([
-      getAdminCustomerTotalCountQuery.execute(),
-      getAdminCustomerOrderRollupStatsQuery.execute(),
-      getAverageProductsPerOrderQuery.execute(),
+      getAdminCustomerTotalCountQuery(),
+      getAdminCustomerOrderRollupStatsQuery(),
+      getAverageProductsPerOrderQuery(),
     ])
 
     return computeAdminCustomerStatsFromAggregates({
