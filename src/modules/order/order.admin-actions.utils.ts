@@ -2,7 +2,9 @@ import { INPOST_CANCELED_SHIPMENT_STATUS } from "~/src/integrations/inpost/inpos
 
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import {
+  ADMIN_ORDER_CANCEL_BLOCKER,
   ADMIN_ORDER_REFUND_BLOCKER,
+  type AdminOrderCancelBlocker,
   type AdminOrderRefundBlocker,
   CANCELLED_ORDER_STATUSES,
   DISPATCHED_FULFILLMENT_STATUSES,
@@ -84,6 +86,13 @@ export const resolveAdminOrderRefundBlocker = ({
   return undefined
 }
 
+export const resolveAdminOrderCancelBlocker = ({
+  hasOpenDispute,
+  paymentUiKey,
+  totalMinorUnits,
+}: AdminOrderCancelBlockerSnapshot): AdminOrderCancelBlocker | undefined =>
+  hasOpenDispute && cancelRefundsAdminOrderPayment({ paymentUiKey, totalMinorUnits }) ? ADMIN_ORDER_CANCEL_BLOCKER.OPEN_DISPUTE : undefined
+
 export const canPrintAdminOrderSummary = ({ status }: Pick<OrderActionSnapshot, "status">): boolean => status !== "cancelled"
 
 const holdsLiveInpostShipment = ({
@@ -115,4 +124,8 @@ interface InpostShipmentSnapshot extends Pick<OrderActionSnapshot, "fulfillmentS
 interface AdminOrderRefundBlockerSnapshot {
   readonly hasOpenDispute: boolean
   readonly totalMinorUnits: number
+}
+
+interface AdminOrderCancelBlockerSnapshot extends AdminOrderRefundBlockerSnapshot {
+  readonly paymentUiKey: Order["adminListItem"]["paymentUiKey"]
 }

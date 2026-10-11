@@ -21,6 +21,7 @@ interface SourceRow {
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly id: string
   readonly itemCount: number | null
+  readonly metadata: string | null
   readonly paymentStatus: string | null
   readonly status: Order["select"]["status"]
   readonly total: number
@@ -39,6 +40,7 @@ const sourceRow = (overrides: Partial<SourceRow> = {}): SourceRow => ({
   fulfillmentStatus: "shipped",
   id: "order-1",
   itemCount: 3,
+  metadata: null,
   paymentStatus: "succeeded",
   status: "processing",
   total: 19_900,
@@ -165,6 +167,7 @@ describe("getAdminOrdersPage result", () => {
         email: "ada@example.test",
         fulfillmentStatus: "shipped",
         fulfillmentUiKey: "shipped",
+        hasOpenDispute: false,
         id: "order-1",
         initials: "AL",
         itemCount: 3,
@@ -174,6 +177,16 @@ describe("getAdminOrdersPage result", () => {
         userId: "user-1",
       },
     ])
+  })
+
+  it("flags an order whose dispute is still open", async () => {
+    accessors.rows = [
+      sourceRow({ metadata: JSON.stringify({ dispute: { amount: 19_900, id: "dp_1", reason: "fraudulent", status: "needs_response" } }) }),
+    ]
+
+    const { items } = await getAdminOrdersPage({ data: {} })
+
+    expect(items[0]?.hasOpenDispute).toBe(true)
   })
 
   it("falls back to the email when the customer has no name", async () => {

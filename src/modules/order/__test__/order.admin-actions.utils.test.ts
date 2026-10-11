@@ -11,9 +11,10 @@ import {
   cancelRefundsAdminOrderPayment,
   isInpostDeliveryType,
   refundRestocksByDefault,
+  resolveAdminOrderCancelBlocker,
   resolveAdminOrderRefundBlocker,
 } from "~/src/modules/order/order.admin-actions.utils"
-import { ADMIN_ORDER_REFUND_BLOCKER, type AdminOrderPaymentUiKey } from "~/src/modules/order/order.constants"
+import { ADMIN_ORDER_CANCEL_BLOCKER, ADMIN_ORDER_REFUND_BLOCKER, type AdminOrderPaymentUiKey } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 type FulfillmentStatus = Order["select"]["fulfillmentStatus"]
@@ -154,6 +155,23 @@ describe("resolveAdminOrderRefundBlocker", () => {
 
   it("blocks an order while its dispute is open", () => {
     expect(resolveAdminOrderRefundBlocker({ hasOpenDispute: true, totalMinorUnits: 12_900 })).toBe(ADMIN_ORDER_REFUND_BLOCKER.OPEN_DISPUTE)
+  })
+})
+
+describe("resolveAdminOrderCancelBlocker", () => {
+  it("blocks cancelling a paid order while its dispute is open, since the cancellation would refund it", () => {
+    expect(resolveAdminOrderCancelBlocker({ hasOpenDispute: true, paymentUiKey: "paid", totalMinorUnits: 12_900 })).toBe(
+      ADMIN_ORDER_CANCEL_BLOCKER.OPEN_DISPUTE,
+    )
+  })
+
+  it("lets a paid order without a dispute be cancelled", () => {
+    expect(resolveAdminOrderCancelBlocker({ hasOpenDispute: false, paymentUiKey: "paid", totalMinorUnits: 12_900 })).toBeUndefined()
+  })
+
+  it("lets a disputed order be cancelled when the cancellation refunds nothing", () => {
+    expect(resolveAdminOrderCancelBlocker({ hasOpenDispute: true, paymentUiKey: "paid", totalMinorUnits: 0 })).toBeUndefined()
+    expect(resolveAdminOrderCancelBlocker({ hasOpenDispute: true, paymentUiKey: "authorized", totalMinorUnits: 12_900 })).toBeUndefined()
   })
 })
 

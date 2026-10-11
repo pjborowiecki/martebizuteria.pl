@@ -11,7 +11,9 @@ import {
   canPrintAdminOrderSummary,
   canRefundAdminOrder,
   cancelRefundsAdminOrderPayment,
+  resolveAdminOrderCancelBlocker,
 } from "~/src/modules/order/order.admin-actions.utils"
+import { type AdminOrderCancelBlocker } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { suppressDataGridRowClickAfterDialogDismiss } from "~/src/presentation/components/custom/datagrid/lib/data-grid-row-click"
@@ -29,6 +31,7 @@ const resolveOrderRowActionAvailability = (order: Order["adminListItem"]): Order
   canPrintSummary: canPrintAdminOrderSummary(order),
   canRefund: canRefundAdminOrder(order),
   canShip: canMarkAdminOrderShipped(order),
+  cancelBlocker: resolveAdminOrderCancelBlocker(order),
   cancelRefundsPayment: cancelRefundsAdminOrderPayment(order),
 })
 
@@ -139,6 +142,7 @@ interface OrderRowActionAvailability {
   readonly canPrintSummary: boolean
   readonly canRefund: boolean
   readonly canShip: boolean
+  readonly cancelBlocker: AdminOrderCancelBlocker | undefined
   readonly cancelRefundsPayment: boolean
 }
 

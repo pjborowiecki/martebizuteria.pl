@@ -271,6 +271,33 @@ describe("OrderDetailActions cancel", () => {
 
     expect(screen.queryByRole("button", { name: "Cancel order" })).toBeNull()
   })
+
+  it("keeps the cancellation of a paid order closed while its dispute is open and says why", async () => {
+    renderWithProviders(<OrderDetailActions order={{ ...unfulfilled(), dispute: DISPUTE }} />)
+    const cancel = screen.getByRole("button", { name: "Cancel order" })
+
+    await userEvent.hover(cancel)
+
+    expect(
+      await screen.findByText(
+        "This order has an open dispute. Cancelling would refund its payment, which the dispute now decides, so the order cannot be cancelled until the dispute closes.",
+      ),
+    ).toBeInTheDocument()
+
+    await userEvent.click(cancel)
+
+    expect(cancel).toHaveAttribute("aria-disabled", "true")
+    expect(screen.queryByText("Cancel this order?")).toBeNull()
+    expect(mutations.cancel).not.toHaveBeenCalled()
+  })
+
+  it("still cancels a disputed order that has no payment to refund", async () => {
+    renderWithProviders(<OrderDetailActions order={{ ...unfulfilled(), dispute: DISPUTE, totalMinorUnits: 0 }} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel order" }))
+
+    expect(await screen.findByText("Cancel this order?")).toBeInTheDocument()
+  })
 })
 
 describe("OrderDetailActions fulfillment", () => {
@@ -290,7 +317,7 @@ describe("OrderDetailActions fulfillment", () => {
 
     expect(fulfill).toBeDisabled()
     expect(fulfill.querySelector(".animate-spin")).not.toBeNull()
-    expect(screen.getByRole("button", { name: "Cancel order" })).toBeDisabled()
+    expect(screen.getByRole("button", { name: "Cancel order" })).toHaveAttribute("aria-disabled", "true")
   })
 })
 

@@ -5,8 +5,8 @@ import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordOrderRefundRequestedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { type AdminOrderRefundTarget } from "~/src/modules/order/order.accessors"
 import { resolveAdminOrderRefundBlocker } from "~/src/modules/order/order.admin-actions.utils"
-import { ORDER_ERROR_CODES } from "~/src/modules/order/order.constants"
-import { resolveAdminOrderDispute } from "~/src/modules/order/order.detail.utils"
+import { ADMIN_ORDER_REFUND_BLOCKER, ORDER_ERROR_CODES } from "~/src/modules/order/order.constants"
+import { resolveAdminOrderDispute } from "~/src/modules/order/order.display.utils"
 
 export const requestFullOrderRefund = async (orderId: string, target: AdminOrderRefundTarget): Promise<number> => {
   const { transactionId } = target
@@ -14,6 +14,10 @@ export const requestFullOrderRefund = async (orderId: string, target: AdminOrder
     hasOpenDispute: resolveAdminOrderDispute(target.metadata) !== undefined,
     totalMinorUnits: target.total,
   })
+
+  if (blocker === ADMIN_ORDER_REFUND_BLOCKER.OPEN_DISPUTE) {
+    throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.OPEN_DISPUTE)
+  }
 
   if (blocker !== undefined || transactionId === null || transactionId === "") {
     throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE)

@@ -234,6 +234,12 @@ export const ADMIN_ORDER_REFUND_BLOCKER = {
 
 export type AdminOrderRefundBlocker = (typeof ADMIN_ORDER_REFUND_BLOCKER)[keyof typeof ADMIN_ORDER_REFUND_BLOCKER]
 
+export const ADMIN_ORDER_CANCEL_BLOCKER = {
+  OPEN_DISPUTE: "openDispute",
+} as const
+
+export type AdminOrderCancelBlocker = (typeof ADMIN_ORDER_CANCEL_BLOCKER)[keyof typeof ADMIN_ORDER_CANCEL_BLOCKER]
+
 export const ORDER_NUMBER_PREFIX = "MRT"
 
 export const ORDER_NUMBER_PADDING = 5
@@ -249,6 +255,7 @@ export const ADMIN_ORDER_DETAIL_RETURNING_MIN_ORDERS = 2
 export const ORDER_ERROR_CODES = {
   INVALID_STATE: "ORDER_INVALID_STATE",
   NOT_FOUND: "ORDER_NOT_FOUND",
+  OPEN_DISPUTE: "ORDER_OPEN_DISPUTE",
 } as const
 
 export type AdminOrderPaymentUiKey = (typeof ADMIN_ORDER_PAYMENT_UI_KEY)[keyof typeof ADMIN_ORDER_PAYMENT_UI_KEY]

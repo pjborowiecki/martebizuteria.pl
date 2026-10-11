@@ -44,6 +44,7 @@ const order = (overrides: Partial<Order["adminListItem"]> = {}): Order["adminLis
   email: "ada@example.test",
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: "unfulfilled",
+  hasOpenDispute: false,
   id: "order-1",
   initials: "AN",
   itemCount: 2,
@@ -155,6 +156,18 @@ describe("useOrdersRowActionHandlers availability", () => {
     const { result } = renderHandlers(order({ totalMinorUnits: 0 }))
 
     expect(result.current.cancelRefundsPayment).toBe(false)
+  })
+
+  it("blocks the cancellation of a paid order while its dispute is open", () => {
+    const { result } = renderHandlers(order({ hasOpenDispute: true }))
+
+    expect(result.current.cancelBlocker).toBe("openDispute")
+  })
+
+  it("leaves the cancellation of a paid order without a dispute unblocked", () => {
+    const { result } = renderHandlers(order())
+
+    expect(result.current.cancelBlocker).toBeUndefined()
   })
 })
 

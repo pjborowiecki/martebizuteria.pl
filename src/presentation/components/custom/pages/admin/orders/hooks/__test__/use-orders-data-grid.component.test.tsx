@@ -42,6 +42,7 @@ const orderRow = (id: string): Order["adminListItem"] => ({
   email: "ada@example.test",
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: "unfulfilled",
+  hasOpenDispute: false,
   id,
   initials: "AN",
   itemCount: 1,

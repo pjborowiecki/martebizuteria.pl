@@ -6,6 +6,7 @@ import {
   formatAdminOrderDate,
   mergeDisputeMetadata,
   parseOrderMetadata,
+  resolveAdminOrderDispute,
   resolveAdminOrderFulfillmentUiKey,
   resolveAdminOrderPaymentUiKey,
   resolveOrderLocale,
@@ -76,6 +77,22 @@ describe("dispute metadata", () => {
   })
 })
 
+describe("resolveAdminOrderDispute", () => {
+  it("reads a stored dispute out of the order metadata", () => {
+    expect(resolveAdminOrderDispute(mergeDisputeMetadata('{"locale":"en-US"}', dispute))).toStrictEqual(dispute)
+  })
+
+  it("returns nothing for metadata without a dispute", () => {
+    expect(resolveAdminOrderDispute(JSON.stringify({ locale: "pl-PL" }))).toBeUndefined()
+    expect(resolveAdminOrderDispute(null)).toBeUndefined()
+    expect(resolveAdminOrderDispute("not json")).toBeUndefined()
+  })
+
+  it("rejects a malformed dispute rather than surfacing it", () => {
+    expect(resolveAdminOrderDispute(JSON.stringify({ dispute: { id: "dp_1" } }))).toBeUndefined()
+  })
+})
+
 describe("resolveAdminOrderPaymentUiKey", () => {
   it.each([
     ["succeeded", ADMIN_ORDER_PAYMENT_UI_KEY.PAID],
@@ -120,6 +137,7 @@ describe("toAdminOrderListItem", () => {
     fulfillmentStatus: "not_fulfilled" as const,
     id: "order-1",
     itemCount: 3,
+    metadata: '{"locale":"pl-PL"}',
     paymentStatus: "succeeded",
     status: "processing" as const,
     total: 30_000,
@@ -134,6 +152,7 @@ describe("toAdminOrderListItem", () => {
       email: "anna@example.com",
       fulfillmentStatus: "not_fulfilled",
       fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED,
+      hasOpenDispute: false,
       id: "order-1",
       initials: "AK",
       itemCount: 3,
@@ -153,5 +172,15 @@ describe("toAdminOrderListItem", () => {
 
   it("treats a missing item count as zero", () => {
     expect(toAdminOrderListItem({ ...row, itemCount: null }).itemCount).toBe(0)
+  })
+
+  it("marks an order whose metadata carries an open dispute", () => {
+    expect(toAdminOrderListItem({ ...row, metadata: mergeDisputeMetadata(row.metadata, dispute) }).hasOpenDispute).toBe(true)
+  })
+
+  it("marks no dispute once the dispute closes", () => {
+    const closed = clearDisputeMetadata(mergeDisputeMetadata(row.metadata, dispute))
+
+    expect(toAdminOrderListItem({ ...row, metadata: closed }).hasOpenDispute).toBe(false)
   })
 })

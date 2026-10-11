@@ -1,4 +1,4 @@
-import { type JSX, useMemo, useState } from "react"
+import { type JSX, useId, useMemo, useState } from "react"
 
 import { Copy, Eye, MoreHorizontal, Package, Printer, RefreshCw, Trash2, Truck } from "lucide-react"
 import { useTranslations } from "use-intl/react"
@@ -27,6 +27,9 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
   )
 
   const handlers = useOrdersRowActionHandlers(order, closeMenuAndRequestDeleteConfirm, handleConfirmOpenChange)
+  const cancelBlockedReasonId = useId()
+  const cancelBlockedReason =
+    handlers.canCancel && handlers.cancelBlocker !== undefined ? t(`cancelBlocked.${handlers.cancelBlocker}`) : undefined
   const trigger = useMemo(
     () => (
       <Button
@@ -88,14 +91,20 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
             {t("refund")}
           </DropdownMenuItem>
           <DropdownMenuItem
+            aria-describedby={cancelBlockedReason === undefined ? undefined : cancelBlockedReasonId}
             className={ITEM_CLASS}
-            disabled={!handlers.canCancel || handlers.isPending}
+            disabled={!handlers.canCancel || cancelBlockedReason !== undefined || handlers.isPending}
             variant="destructive"
             onClick={handlers.runMenuAction(handlers.handleCancelRequest)}
           >
             <Trash2 className="size-4" strokeWidth={1.5} />
             {t("cancel")}
           </DropdownMenuItem>
+          {cancelBlockedReason !== undefined && (
+            <p className="px-3 pb-2 text-xs text-muted-foreground" id={cancelBlockedReasonId}>
+              {cancelBlockedReason}
+            </p>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

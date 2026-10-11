@@ -11,7 +11,6 @@ import {
   resolveAdminOrderCustomerName,
   resolveAdminOrderDetailAddresses,
   resolveAdminOrderDetailTags,
-  resolveAdminOrderDispute,
   resolveOrderShippingAddressRow,
   resolveResendableOrderEmails,
 } from "~/src/modules/order/order.detail.utils"
@@ -54,29 +53,6 @@ const tagSnapshot = (overrides = {}) => ({
   refundedAmount: 0,
   userId: "user-1",
   ...overrides,
-})
-
-describe("resolveAdminOrderDispute", () => {
-  it("reads a stored dispute out of the order metadata", () => {
-    const metadata = JSON.stringify({ dispute: { amount: 12_000, id: "dp_1", reason: "fraudulent", status: "needs_response" } })
-
-    expect(resolveAdminOrderDispute(metadata)).toStrictEqual({
-      amount: 12_000,
-      id: "dp_1",
-      reason: "fraudulent",
-      status: "needs_response",
-    })
-  })
-
-  it("returns nothing for metadata without a dispute", () => {
-    expect(resolveAdminOrderDispute(JSON.stringify({ locale: "pl-PL" }))).toBeUndefined()
-    expect(resolveAdminOrderDispute(null)).toBeUndefined()
-    expect(resolveAdminOrderDispute("not json")).toBeUndefined()
-  })
-
-  it("rejects a malformed dispute rather than surfacing it", () => {
-    expect(resolveAdminOrderDispute(JSON.stringify({ dispute: { id: "dp_1" } }))).toBeUndefined()
-  })
 })
 
 describe("mapAdminOrderDetailAddress", () => {

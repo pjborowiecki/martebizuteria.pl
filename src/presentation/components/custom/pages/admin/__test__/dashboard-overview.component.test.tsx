@@ -44,6 +44,7 @@ const orderRow = (overrides: Partial<Order["adminListItem"]> = {}): Order["admin
   email: "anna@example.test",
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: "unfulfilled",
+  hasOpenDispute: false,
   id: "ORD-1",
   initials: "AK",
   itemCount: 2,

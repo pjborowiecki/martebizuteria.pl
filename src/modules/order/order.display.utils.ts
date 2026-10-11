@@ -44,6 +44,9 @@ export const clearDisputeMetadata = (currentMetadata: string | null | undefined)
   return JSON.stringify(rest)
 }
 
+export const resolveAdminOrderDispute = (metadata: string | null | undefined): Order["disputeMetadata"] | undefined =>
+  orderZodSchemas.disputeMetadata.safeParse(parseOrderMetadata(metadata)["dispute"]).data
+
 export const resolveAdminOrderPaymentUiKey = (paymentStatus: string | null | undefined): AdminOrderPaymentUiKey => {
   if (paymentStatus === "succeeded") {
     return ADMIN_ORDER_PAYMENT_UI_KEY.PAID
@@ -99,6 +102,7 @@ export const toAdminOrderListItem = (row: AdminOrderListSourceRow): Order["admin
     email: row.email,
     fulfillmentStatus: row.fulfillmentStatus,
     fulfillmentUiKey: resolveAdminOrderFulfillmentUiKey(row.status, row.fulfillmentStatus),
+    hasOpenDispute: resolveAdminOrderDispute(row.metadata) !== undefined,
     id: row.id,
     initials: resolveAdminCustomerInitials(customerName),
     itemCount: row.itemCount ?? 0,
@@ -117,6 +121,7 @@ interface AdminOrderListSourceRow {
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly id: string
   readonly itemCount: number | null
+  readonly metadata: string | null
   readonly paymentStatus: string | null
   readonly status: Order["select"]["status"]
   readonly total: number

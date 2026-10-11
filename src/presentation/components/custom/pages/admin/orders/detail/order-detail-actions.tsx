@@ -1,7 +1,7 @@
 import { type JSX, useCallback } from "react"
 
 import { cn } from "cn"
-import { CheckCheck, Loader2, Package, PackagePlus, Printer, Truck, XCircle } from "lucide-react"
+import { CheckCheck, Loader2, Package, PackagePlus, Printer, RotateCcw, Truck, XCircle } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { type Order } from "~/src/modules/order/order.types"
@@ -14,7 +14,7 @@ import {
   ADMIN_HEADER_SECONDARY_BUTTON_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
-import { OrderRefundButton } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-refund-button"
+import { OrderActionButton } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-action-button"
 import { OrderRefundDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-refund-dialog"
 import { OrderShipDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-ship-dialog"
 import { useOrderDetailActions } from "~/src/presentation/components/custom/pages/admin/orders/detail/use-order-detail-actions"
@@ -54,7 +54,14 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
       )}
 
       {actions.canRefund && (
-        <OrderRefundButton blocker={actions.refundBlocker} isPending={actions.isPending} onClick={handleOpenRefundDialog} />
+        <OrderActionButton
+          blockedReason={actions.refundBlocker === undefined ? undefined : t(`refundBlocked.${actions.refundBlocker}`)}
+          isPending={actions.isPending}
+          onClick={handleOpenRefundDialog}
+        >
+          <RotateCcw className="size-3.5" strokeWidth={1.5} />
+          {t("actions.refund")}
+        </OrderActionButton>
       )}
 
       {actions.canRestock && (
@@ -71,16 +78,14 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
       )}
 
       {actions.canCancel && (
-        <Button
-          className={ADMIN_HEADER_SECONDARY_BUTTON_CLASS}
-          disabled={actions.isPending}
+        <OrderActionButton
+          blockedReason={actions.cancelBlocker === undefined ? undefined : t(`cancelBlocked.${actions.cancelBlocker}`)}
+          isPending={actions.isPending}
           onClick={handleOpenCancelDialog}
-          size="sm"
-          variant="outline"
         >
           <XCircle className="size-3.5" strokeWidth={1.5} />
           {t("actions.cancel")}
-        </Button>
+        </OrderActionButton>
       )}
 
       {actions.canFulfill && (

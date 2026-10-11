@@ -46,6 +46,7 @@ interface AdminOrderListItem {
   readonly email: string
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly fulfillmentUiKey: AdminOrderFulfillmentUiKey
+  readonly hasOpenDispute: boolean
   readonly id: string
   readonly initials: string
   readonly itemCount: number

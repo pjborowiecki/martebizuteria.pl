@@ -3,6 +3,7 @@ import {
   awaitBlikApproval,
   completeCheckoutSession,
   declineBlikApproval,
+  disputeCheckoutPayment,
   expireCheckoutSession,
   getSentEmails,
   installProviderMocks,
@@ -23,7 +24,13 @@ installProviderMocks()
 
 const applicationModule = import("~/src/server")
 
-const SETTLE_SESSION_PATTERN = /^\/__test\/stripe\/checkout-sessions\/(?<sessionId>cs_[\w-]+)\/(?<outcome>complete|expire)$/u
+const SETTLE_SESSION_PATTERN = /^\/__test\/stripe\/checkout-sessions\/(?<sessionId>cs_[\w-]+)\/(?<outcome>complete|dispute|expire)$/u
+
+const SESSION_OUTCOME_EVENTS: Readonly<Record<string, (sessionId: string) => string | undefined>> = {
+  complete: completeCheckoutSession,
+  dispute: disputeCheckoutPayment,
+  expire: expireCheckoutSession,
+}
 
 const SUCCEED_SETUP_INTENT_PATTERN = /^\/__test\/stripe\/setup-intents\/(?<setupIntentId>seti_[\w-]+)\/succeed$/u
 
@@ -42,9 +49,9 @@ const requiredParam = (url: URL, name: string): string | undefined => {
 }
 
 const signSettledCheckout = async (sessionId: string, outcome: string, webhookSecret: string): Promise<Response> => {
-  const payload = outcome === "expire" ? expireCheckoutSession(sessionId) : completeCheckoutSession(sessionId)
+  const payload = SESSION_OUTCOME_EVENTS[outcome]?.(sessionId)
   if (payload === undefined) {
-    return Response.json({ error: `No checkout session ${sessionId}` }, { status: HTTP_STATUS.NOT_FOUND })
+    return Response.json({ error: `No ${outcome} event for checkout session ${sessionId}` }, { status: HTTP_STATUS.NOT_FOUND })
   }
 
   const { stripe } = await import("~/src/integrations/stripe/stripe.server")

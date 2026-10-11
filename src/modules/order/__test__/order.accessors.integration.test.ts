@@ -148,6 +148,13 @@ describe("getAdminOrdersPage row shape", () => {
     expect(result.rows.find((row) => row.id === "o-delivered")?.itemCount).toBe(0)
   })
 
+  it("carries the metadata a dispute flag lives in, so the list can block the cancellation of a disputed order", async () => {
+    const result = await getAdminOrdersPage(page)
+
+    expect(result.rows.find((row) => row.id === "o-pending")?.metadata).toBe('{"locale":"en-US"}')
+    expect(result.rows.find((row) => row.id === "o-shipped")?.metadata).toBeNull()
+  })
+
   it("pages through the list", async () => {
     const first = await getAdminOrdersPage({ limit: 2, offset: 0 })
     const second = await getAdminOrdersPage({ limit: 2, offset: 2 })

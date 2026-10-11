@@ -67,7 +67,7 @@ beforeEach(() => {
     create table "order" (
       id text primary key, payment_id text, user_id text, email text not null,
       currency_code text not null default 'PLN', status text not null default 'pending',
-      fulfillment_status text not null default 'not_fulfilled', total integer not null default 0,
+      fulfillment_status text not null default 'not_fulfilled', metadata text, total integer not null default 0,
       created_at integer not null, updated_at integer not null
     );
     create table order_item (

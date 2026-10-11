@@ -6,10 +6,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { ADMIN_ORDER_CANCEL_BLOCKER, type AdminOrderCancelBlocker } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 const handlers = vi.hoisted(() => ({
-  availability: { canCancel: true, canFulfill: true, canPrintSummary: true, canRefund: true, canShip: true, cancelRefundsPayment: true },
+  availability: {
+    canCancel: true,
+    canFulfill: true,
+    canPrintSummary: true,
+    canRefund: true,
+    canShip: true,
+    cancelBlocker: undefined as AdminOrderCancelBlocker | undefined,
+    cancelRefundsPayment: true,
+  },
   calls: [] as string[],
   isPending: false,
 }))
@@ -51,6 +60,7 @@ const ORDER: Order["adminListItem"] = {
   email: "ada@example.test",
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: "unfulfilled",
+  hasOpenDispute: false,
   id: "order-1",
   initials: "AN",
   itemCount: 2,
@@ -59,6 +69,9 @@ const ORDER: Order["adminListItem"] = {
   totalMinorUnits: 12_000,
   userId: null,
 }
+
+const DISPUTE_BLOCKS_CANCEL =
+  "This order has an open dispute. Cancelling would refund its payment, which the dispute now decides, so the order cannot be cancelled until the dispute closes."
 
 const openMenu = async () => {
   renderWithProviders(<OrdersRowActions order={ORDER} />)
@@ -76,6 +89,7 @@ beforeEach(() => {
     canPrintSummary: true,
     canRefund: true,
     canShip: true,
+    cancelBlocker: undefined,
     cancelRefundsPayment: true,
   }
   handlers.calls.length = 0
@@ -122,6 +136,7 @@ describe("OrdersRowActions availability", () => {
       canPrintSummary: false,
       canRefund: false,
       canShip: false,
+      cancelBlocker: undefined,
       cancelRefundsPayment: false,
     }
     await openMenu()
@@ -140,6 +155,7 @@ describe("OrdersRowActions availability", () => {
       canPrintSummary: false,
       canRefund: false,
       canShip: false,
+      cancelBlocker: undefined,
       cancelRefundsPayment: false,
     }
     await openMenu()
@@ -201,5 +217,27 @@ describe("OrdersRowActions cancellation", () => {
     await openMenu()
 
     expect(screen.queryByText("Cancel order?")).toBeNull()
+  })
+
+  it("disables the cancellation of an order with an open dispute and says why", async () => {
+    handlers.availability = { ...handlers.availability, cancelBlocker: ADMIN_ORDER_CANCEL_BLOCKER.OPEN_DISPUTE }
+    await openMenu()
+    const cancel = await screen.findByRole("menuitem", { name: "Cancel order" })
+
+    expect(cancel).toHaveAttribute("data-disabled")
+    expect(cancel).toHaveAccessibleDescription(DISPUTE_BLOCKS_CANCEL)
+
+    await userEvent.click(cancel)
+
+    expect(handlers.calls).toStrictEqual([])
+    expect(screen.queryByText("Cancel order?")).toBeNull()
+  })
+
+  it("explains no dispute on an order that could not be cancelled anyway", async () => {
+    handlers.availability = { ...handlers.availability, canCancel: false, cancelBlocker: ADMIN_ORDER_CANCEL_BLOCKER.OPEN_DISPUTE }
+    await openMenu()
+
+    expect(await screen.findByRole("menuitem", { name: "Cancel order" })).not.toHaveAccessibleDescription()
+    expect(screen.queryByText(DISPUTE_BLOCKS_CANCEL)).toBeNull()
   })
 })

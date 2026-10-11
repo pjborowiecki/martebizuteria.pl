@@ -25,6 +25,7 @@ const row = (id: string, totalMinorUnits: number): OrderRow => ({
   email: "anna@example.com",
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED,
+  hasOpenDispute: false,
   id,
   initials: "AK",
   itemCount: 2,

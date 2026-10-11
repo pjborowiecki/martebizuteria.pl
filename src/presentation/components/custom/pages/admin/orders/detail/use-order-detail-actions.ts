@@ -10,9 +10,10 @@ import {
   canRestockAdminOrder,
   cancelRefundsAdminOrderPayment,
   refundRestocksByDefault,
+  resolveAdminOrderCancelBlocker,
   resolveAdminOrderRefundBlocker,
 } from "~/src/modules/order/order.admin-actions.utils"
-import { type AdminOrderRefundBlocker } from "~/src/modules/order/order.constants"
+import { type AdminOrderCancelBlocker, type AdminOrderRefundBlocker } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 import {
@@ -25,6 +26,7 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions"
 
 export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrderDetailActionsResult => {
+  const hasOpenDispute = order.dispute !== undefined
   const fulfillOrder = useFulfillOrder()
   const markOrderShipped = useMarkOrderShipped()
   const markOrderDelivered = useMarkOrderDelivered()
@@ -117,6 +119,11 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
       paymentUiKey: order.paymentUiKey,
       status: order.status,
     }),
+    cancelBlocker: resolveAdminOrderCancelBlocker({
+      hasOpenDispute,
+      paymentUiKey: order.paymentUiKey,
+      totalMinorUnits: order.totalMinorUnits,
+    }),
     cancelDialogOpen,
     cancelRefundsPayment: cancelRefundsAdminOrderPayment(order),
     handleConfirmCancel,
@@ -127,7 +134,7 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
     handleMarkDelivered,
     isPending,
     refundBlocker: resolveAdminOrderRefundBlocker({
-      hasOpenDispute: order.dispute !== undefined,
+      hasOpenDispute,
       totalMinorUnits: order.totalMinorUnits,
     }),
     refundDialogOpen,
@@ -149,6 +156,7 @@ interface UseOrderDetailActionsResult {
   readonly canRefund: boolean
   readonly canRestock: boolean
   readonly canShip: boolean
+  readonly cancelBlocker: AdminOrderCancelBlocker | undefined
   readonly cancelDialogOpen: boolean
   readonly cancelRefundsPayment: boolean
   readonly handleConfirmCancel: () => void
