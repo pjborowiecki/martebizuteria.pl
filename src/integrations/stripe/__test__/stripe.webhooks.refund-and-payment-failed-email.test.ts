@@ -8,9 +8,8 @@ import { type Order } from "~/src/modules/order/order.types"
 
 type PaymentFailedElement = ReactElement<ComponentProps<typeof PaymentFailed>>
 
-const { notifyOrderRefunded, recordOrderEmailOutcome, recordOrderReleasedAudit, refundOrder, releaseCheckout, sendEmail, sessionsList } =
+const { recordOrderEmailOutcome, recordOrderReleasedAudit, refundOrder, releaseCheckout, sendEmail, sendOrderRefundedEmail, sessionsList } =
   vi.hoisted(() => ({
-    notifyOrderRefunded: vi.fn<(refund: Order["unannouncedRefund"], returnUrl: string | undefined) => Promise<boolean>>(),
     recordOrderEmailOutcome: vi.fn(),
     recordOrderReleasedAudit: vi.fn(),
     refundOrder: vi.fn<(input: Order["refundInput"]) => Promise<Order["unannouncedRefund"] | undefined>>(),
@@ -21,6 +20,7 @@ const { notifyOrderRefunded, recordOrderEmailOutcome, recordOrderReleasedAudit, 
           options: Readonly<{ idempotencyKey?: string; react: PaymentFailedElement; subject: string; to: string }>,
         ) => Promise<string | undefined>
       >(),
+    sendOrderRefundedEmail: vi.fn<(refund: Order["unannouncedRefund"], returnUrl: string | undefined) => Promise<boolean>>(),
     sessionsList: vi.fn<(params: object) => Promise<{ data: Stripe.Checkout.Session[] }>>(),
   }))
 
@@ -28,7 +28,7 @@ vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { checkout: { sessions: { list: sessionsList } } } }))
 vi.mock("~/src/integrations/stripe/stripe.coupons.server", () => ({ deleteCheckoutCoupons: vi.fn(() => Promise.resolve(undefined)) }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
-vi.mock("~/src/integrations/resend/order-refunded.notification.server", () => ({ notifyOrderRefunded }))
+vi.mock("~/src/modules/order/use-cases/send-order-refunded-email.server", () => ({ sendOrderRefundedEmail }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),
@@ -108,7 +108,7 @@ beforeEach(() => {
   releaseCheckout.mockResolvedValue(true)
   sendEmail.mockResolvedValue(undefined)
   refundOrder.mockResolvedValue(PARTIAL_REFUND)
-  notifyOrderRefunded.mockResolvedValue(true)
+  sendOrderRefundedEmail.mockResolvedValue(true)
   sessionsList.mockResolvedValue({ data: [checkoutSession({ id: "cs_resolved_1", returnUrl: RETURN_URL })] })
 })
 
@@ -262,7 +262,7 @@ describe("refund email", () => {
     await dispatch(chargeRefundedEvent(charge({ amount: AMOUNT_TOTAL, amountRefunded: 5000, paymentIntent: "pi_test_1" })))
 
     expect(refundOrder).toHaveBeenCalledWith({ fullyRefunded: false, refundedAmount: 5000, transactionId: "cs_resolved_1" })
-    expect(notifyOrderRefunded).toHaveBeenCalledExactlyOnceWith(PARTIAL_REFUND, RETURN_URL)
+    expect(sendOrderRefundedEmail).toHaveBeenCalledExactlyOnceWith(PARTIAL_REFUND, RETURN_URL)
   })
 
   it("sends nothing for a refund the cancellation or an earlier delivery already announced", async () => {
@@ -271,6 +271,6 @@ describe("refund email", () => {
     await dispatch(chargeRefundedEvent(charge({ amount: AMOUNT_TOTAL, amountRefunded: AMOUNT_TOTAL, paymentIntent: "pi_test_1" })))
 
     expect(refundOrder).toHaveBeenCalledOnce()
-    expect(notifyOrderRefunded).not.toHaveBeenCalled()
+    expect(sendOrderRefundedEmail).not.toHaveBeenCalled()
   })
 })

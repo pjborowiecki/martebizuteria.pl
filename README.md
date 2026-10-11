@@ -197,7 +197,7 @@ The canonical URL is configured in source, not in an environment file. Rebuild a
 
 - **Google OAuth.** Google is the only social sign-in. Its callback URL is `https://<host>/api/auth/callback/google`. A provider sign-in is linked to an existing account with the same e-mail address only when the provider reports that address as verified, and OAuth tokens are encrypted at rest.
 - **Resend.** Configure the API key and a verified sender before testing sign-up, because `requireEmailVerification` blocks sign-in until the address is verified. Add the sender's domain at [resend.com/domains](https://resend.com/domains) and publish the DKIM (`resend._domainkey` TXT) and SPF (`send` MX and TXT) records it lists; locally, `onboarding@resend.dev` works but delivers only to the Resend account owner. `bun run email:verify <environment>` checks the key and sender, and the deploy scripts run the same check. Every e-mail carries `Reply-To: kontakt@martebizuteria.pl` (`BUSINESS.EMAIL` in [`src/presentation/branding/business.ts`](src/presentation/branding/business.ts)), so customer replies reach the shop whatever sender is configured. Each new order and each incident that needs the owner is also emailed to the shop at `RESEND_EMAIL_FROM`. Templates live in [`src/presentation/emails/`](src/presentation/emails) and are previewable at `/dev/emails`.
-- **Stripe.** Use test keys for development and preview and live keys for production; the deploy scripts refuse any other pairing. Create the webhook endpoint at `https://<host>/api/webhooks/stripe` in the same mode as the keys and store its signing secret; the route logs and ignores events from the other mode. Handlers live in [`src/integrations/stripe/stripe.webhooks.tsx`](src/integrations/stripe/stripe.webhooks.tsx) and cover payment success, failure, refund and `checkout.session.expired`.
+- **Stripe.** Use test keys for development and preview and live keys for production; the deploy scripts refuse any other pairing. Create the webhook endpoint at `https://<host>/api/webhooks/stripe` in the same mode as the keys and store its signing secret; the route logs and ignores events from the other mode. Handlers live in [`src/integrations/stripe/stripe.webhooks.ts`](src/integrations/stripe/stripe.webhooks.ts) and cover payment success, failure, refund and `checkout.session.expired`.
 - **Cloudflare Turnstile.** A new checkout, a sign-up, a password-reset request, a verification resend and a newsletter sign-up each need a Turnstile token for their own action, and the server refuses one siteverify does not confirm for the request's host. Development, preview and the test build use Cloudflare's always-passing testing keys from `.env.example`. Production needs a managed widget created in the Cloudflare dashboard for `martebizuteria.pl` and `martebizuteria.pjborowiecki.workers.dev`, its site key in `VITE_TURNSTILE_SITE_KEY` and its secret key in `TURNSTILE_SECRET_KEY`; the deploy refuses the testing keys there. See [Cloudflare Turnstile](content/docs/integrations/cloudflare-turnstile.en-US.mdx).
 - **R2.** Admin media upload writes to the `IMAGES` binding with a one-year immutable `Cache-Control` and stores the object key. Reads go through the public `VITE_R2_URL`: the preview bucket's `r2.dev` address for development and preview, and the custom domain `images.martebizuteria.pl` for production, where the storefront resizes images with Cloudflare Image Transformations. Stored `r2.dev` URLs are moved onto `VITE_R2_URL` when they are read, so changing it needs no data rewrite. Pages are served with a Content-Security-Policy that allows images and video only from that host, its `/cdn-cgi/image/` resizes included, and the bundled `r2.dev` bucket, so the build-time and the Worker value of `VITE_R2_URL` must match. [Image delivery](content/docs/guides/image-delivery.en-US.mdx) lists the one-time setup.
 - **InPost.** [`src/integrations/inpost/inpost.api.ts`](src/integrations/inpost/inpost.api.ts) calls the public points API, with no credentials, by city to power locker selection during checkout and by name to confirm the chosen locker when the payment session is opened: a locker InPost does not list is refused, and one InPost cannot confirm within three seconds goes ahead and is flagged "Locker not confirmed" on the admin order. [`src/integrations/inpost/inpost.shipx.server.ts`](src/integrations/inpost/inpost.shipx.server.ts) books shipments, downloads PDF labels and reads their status through ShipX from the admin order page. It needs the token and organisation id from the API section of InPost Manager as `INPOST_API_TOKEN` and `INPOST_ORGANIZATION_ID`, calls InPost's sandbox outside production, and is off while they are blank. Register `https://<host>/api/webhooks/inpost` as the webhook address in InPost Manager to have status changes read back without a refresh; the route reads each named shipment back from ShipX instead of trusting the call, and answers `429` to an address past 120 calls a minute.
@@ -218,7 +218,7 @@ src/
   routes/                     69 locale-free file routes + 5 API handlers
   modules/{feature}/          42 domain modules — schema, Zod, types, constants, utils
     *.accessors.ts              unauthenticated data access (reads and writes), 25 files
-    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 133 files
+    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 144 files
   modules/_core/              Shared error codes, HTTP statuses, currency, pagination, CSV, column filters
   integrations/{vendor}/      15 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, cloudflare-turnstile, inpost, use-intl,
                                 fumadocs, mdxeditor, tanstack-query, realtime-invalidation, gsap, lenis, react-day-picker
@@ -226,7 +226,7 @@ src/
   durable-objects/            RealtimeInvalidationHub
   providers/                  Theme and translation providers
   hooks/                      Shared React hooks
-  lib/                        background (ALS + waitUntil), cookie, image, rate-limit, request, retention, security-headers, seo, sitemap, url
+  lib/                        background (ALS + waitUntil), cookie, image, incident-alert, rate-limit, request, retention, security-headers, seo, sitemap, url
   data/                       Fixtures still backing unfinished admin screens, and the blog's article list
   platform/testing/           D1-shaped transport over node:sqlite, server-function driver, render and message helpers
   types/                      Generated Worker declarations, router and Vite ambient types
@@ -396,12 +396,12 @@ Current measured coverage, from `coverage/coverage-summary.json`:
 
 | Metric     | Covered / total | Percent | Configured gate |
 | ---------- | --------------- | ------- | --------------- |
-| Statements | 21 126 / 21 126 | 100%    | 100             |
+| Statements | 21 125 / 21 125 | 100%    | 100             |
 | Branches   | 9 712 / 9 712   | 100%    | 100             |
-| Functions  | 5 906 / 5 906   | 100%    | 100             |
-| Lines      | 20 226 / 20 226 | 100%    | 100             |
+| Functions  | 5 905 / 5 905   | 100%    | 100             |
+| Lines      | 20 225 / 20 225 | 100%    | 100             |
 
-1 100 test files — 426 unit, 98 integration and 576 component — hold 13 676 tests, many of them generated by 607 `it.each`, `test.each` and `describe.each` tables, across about 170 000 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
+1 100 test files — 426 unit, 98 integration and 576 component — hold 13 698 tests, many of them generated by 607 `it.each`, `test.each` and `describe.each` tables, across about 170 000 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
 
 Every configured threshold is 100%, so a change that leaves a statement, branch, function or line uncovered fails `bun run test:coverage` and CI. `autoUpdate` is off, so the thresholds never move on their own.
 

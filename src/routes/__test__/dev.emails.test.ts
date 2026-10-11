@@ -1,7 +1,7 @@
 import type * as ReactRouter from "@tanstack/react-router"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-import type * as EmailPreviews from "~/src/integrations/resend/email-previews"
+import type * as EmailPreviews from "~/src/presentation/emails/email-previews"
 
 interface RouteDefinition {
   readonly server?: {
@@ -17,7 +17,7 @@ const rendered = vi.hoisted(() => ({
 
 const captured: { current: RouteDefinition | undefined } = { current: undefined }
 
-vi.mock("~/src/integrations/resend/email-previews", async (importOriginal) => {
+vi.mock("~/src/presentation/emails/email-previews", async (importOriginal) => {
   const actual = await importOriginal<typeof EmailPreviews>()
 
   return {
@@ -42,10 +42,11 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   }
 })
 
-import { EMAIL_PREVIEWS } from "~/src/integrations/resend/email-previews"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
+
+import { EMAIL_PREVIEWS } from "~/src/presentation/emails/email-previews"
 
 await import("~/src/routes/dev.emails")
 

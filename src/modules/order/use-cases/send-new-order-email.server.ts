@@ -4,8 +4,6 @@ import { createElement } from "react"
 
 import { createTranslator } from "use-intl"
 
-import { describeCompanyInvoice, resolveDeliveryMethodLabel } from "~/src/integrations/resend/order-confirmation.utils"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/integrations/resend/order-email.delivery.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
@@ -13,6 +11,8 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { getAdminOrderDetailRow, getAdminOrderItemRows } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { mapAdminOrderDetailItem, resolveAdminOrderDetailAddresses } from "~/src/modules/order/order.detail.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
+import { describeCompanyInvoice, resolveDeliveryMethodLabel } from "~/src/modules/order/order.email.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { resolveDeploymentOrigin } from "~/src/lib/request"
@@ -58,7 +58,10 @@ const buildNewOrderDetails = (orderRow: AdminOrderDetailRow, messages: typeof ne
   }
 }
 
-const sendNewOrderEmail = async ({ orderId, returnUrl }: Readonly<NewOrderNotice>, idempotencyKey: string): Promise<OrderEmailOutcome> => {
+const attemptNewOrderEmail = async (
+  { orderId, returnUrl }: Readonly<NewOrderNotice>,
+  idempotencyKey: string,
+): Promise<OrderEmailOutcome> => {
   if (returnUrl === undefined) {
     return { failure: "The Stripe session has no return URL to link the email to", label: NEW_ORDER_LABEL }
   }
@@ -91,8 +94,8 @@ const sendNewOrderEmail = async ({ orderId, returnUrl }: Readonly<NewOrderNotice
   return { failure, label: `${NEW_ORDER_LABEL} → ${env.RESEND_EMAIL_FROM}` }
 }
 
-export const notifyShopOfNewOrder = (orderId: string, returnUrl: string | undefined): Promise<boolean> =>
-  deliverOrderEmail((idempotencyKey) => sendNewOrderEmail({ orderId, returnUrl }, idempotencyKey), {
+export const sendNewOrderEmail = (orderId: string, returnUrl: string | undefined): Promise<boolean> =>
+  deliverOrderEmail((idempotencyKey) => attemptNewOrderEmail({ orderId, returnUrl }, idempotencyKey), {
     idempotencyKey: `${ORDER_EMAIL_KIND.NEW_ORDER}/${orderId}`,
     label: NEW_ORDER_LABEL,
     orderEmail: { kind: ORDER_EMAIL_KIND.NEW_ORDER },

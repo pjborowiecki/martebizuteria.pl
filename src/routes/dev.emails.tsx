@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router"
 
-import { EMAIL_PREVIEWS, isEmailPreviewSlug, renderEmailPreview } from "~/src/integrations/resend/email-previews"
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
+
+import { EMAIL_PREVIEWS, isEmailPreviewSlug, renderEmailPreview } from "~/src/presentation/emails/email-previews"
 
 const notFound = (): Response =>
   new Response("Not found", {

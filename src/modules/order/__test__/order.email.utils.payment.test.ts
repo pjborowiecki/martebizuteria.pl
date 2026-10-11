@@ -14,12 +14,9 @@ vi.mock("~/src/lib/url", () => ({
   resolveAssetURL: (src: string) => `https://assets.test/${src}`,
 }))
 
-import {
-  buildOrderAccountCta,
-  buildOrderConfirmationItems,
-  resolveStripePaymentMethodLabel,
-} from "~/src/integrations/resend/order-confirmation.utils"
 import { paymentIntent } from "~/src/integrations/stripe/__test__/fixtures/stripe-webhook-events"
+
+import { buildOrderAccountCta, buildOrderConfirmationItems, resolveStripePaymentMethodLabel } from "~/src/modules/order/order.email.utils"
 
 import englishCopy from "~/messages/en-US/emails.order-confirmation.json"
 

@@ -31,7 +31,7 @@ vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderForRefundEmail }))
 
-import { notifyOrderCancelled } from "~/src/integrations/resend/order-cancelled.notification.server"
+import { sendOrderCancelledEmail } from "~/src/modules/order/use-cases/send-order-cancelled-email.server"
 
 const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
@@ -61,7 +61,7 @@ const sentEmail = () => {
   return call[0]
 }
 
-const cancel = (): Promise<boolean> => notifyOrderCancelled({ orderId: ORDER_ID, refundedAmount: REFUNDED_AMOUNT }, ORIGIN)
+const cancel = (): Promise<boolean> => sendOrderCancelledEmail({ orderId: ORDER_ID, refundedAmount: REFUNDED_AMOUNT }, ORIGIN)
 
 const CANCELLED_DELIVERY = {
   idempotencyKey: `order-cancelled/${ORDER_ID}`,
@@ -80,7 +80,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe("notifyOrderCancelled", () => {
+describe("sendOrderCancelledEmail", () => {
   it("emails the customer in the locale the order was placed in", async () => {
     await cancel()
 
@@ -97,7 +97,7 @@ describe("notifyOrderCancelled", () => {
   })
 
   it("tells the customer of a free order that nothing is refunded", async () => {
-    await notifyOrderCancelled({ orderId: ORDER_ID, refundedAmount: undefined }, ORIGIN)
+    await sendOrderCancelledEmail({ orderId: ORDER_ID, refundedAmount: undefined }, ORIGIN)
 
     expect(sentEmail().react.props.refundedAmount).toBeUndefined()
   })
@@ -113,7 +113,7 @@ describe("notifyOrderCancelled", () => {
   })
 
   it("links a customer with an account to the order on the deployment the admin cancelled it from", async () => {
-    await notifyOrderCancelled({ orderId: ORDER_ID, refundedAmount: REFUNDED_AMOUNT }, "http://127.0.0.1:3000")
+    await sendOrderCancelledEmail({ orderId: ORDER_ID, refundedAmount: REFUNDED_AMOUNT }, "http://127.0.0.1:3000")
 
     const html = await render(sentEmail().react)
 
@@ -210,7 +210,7 @@ describe("notifyOrderCancelled", () => {
   })
 
   it("records an unpaid order's cancellation for resending without a refund", async () => {
-    await notifyOrderCancelled({ orderId: ORDER_ID, refundedAmount: undefined }, ORIGIN)
+    await sendOrderCancelledEmail({ orderId: ORDER_ID, refundedAmount: undefined }, ORIGIN)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith(
       expect.objectContaining({ metadata: { idempotencyKey: `order-cancelled/${ORDER_ID}`, orderEmail: { kind: "order-cancelled" } } }),

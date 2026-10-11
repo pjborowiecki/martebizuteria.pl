@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { notifyShopOfIncident, recordOrderEmailOutcome } = vi.hoisted(() => ({
-  notifyShopOfIncident: vi.fn<(incident: unknown) => Promise<void>>(),
+const { recordOrderEmailOutcome, sendIncidentAlert } = vi.hoisted(() => ({
   recordOrderEmailOutcome: vi.fn(),
+  sendIncidentAlert: vi.fn<(incident: unknown) => Promise<void>>(),
 }))
 
-vi.mock("~/src/integrations/resend/incident-alert.notification.server", () => ({ notifyShopOfIncident }))
+vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome }))
 
 import {
@@ -14,7 +14,7 @@ import {
   ORDER_EMAIL_RETRY_DELAY_MS,
   type OrderEmailOutcome,
   deliverOrderEmail,
-} from "~/src/integrations/resend/order-email.delivery.server"
+} from "~/src/modules/order/order.email-delivery.server"
 
 import { executionContextStorage } from "~/src/lib/background"
 
@@ -43,7 +43,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers()
   send.mockReset()
-  notifyShopOfIncident.mockResolvedValue()
+  sendIncidentAlert.mockResolvedValue()
 })
 
 afterEach(() => {
@@ -78,7 +78,7 @@ describe("deliverOrderEmail", () => {
       orderId: "order-1",
       willRetry: true,
     })
-    expect(notifyShopOfIncident).not.toHaveBeenCalled()
+    expect(sendIncidentAlert).not.toHaveBeenCalled()
   })
 
   it("tries a refused email again after one and then four more seconds under the same idempotency key", async () => {
@@ -125,7 +125,7 @@ describe("deliverOrderEmail", () => {
     await vi.advanceTimersByTimeAsync(ORDER_EMAIL_RETRY_DELAY_MS + SECOND_RETRY_DELAY_MS)
 
     expect(send).toHaveBeenCalledTimes(2)
-    expect(notifyShopOfIncident).not.toHaveBeenCalled()
+    expect(sendIncidentAlert).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenLastCalledWith({
       failure: undefined,
       label: "Order shipped → anna@example.com",
@@ -196,7 +196,7 @@ describe("deliverOrderEmail alerts", () => {
     await vi.advanceTimersByTimeAsync(ORDER_EMAIL_RETRY_DELAY_MS + SECOND_RETRY_DELAY_MS)
     await vi.advanceTimersByTimeAsync(SECOND_RETRY_DELAY_MS * ORDER_EMAIL_RETRY_BACKOFF)
 
-    expect(notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
+    expect(sendIncidentAlert).toHaveBeenCalledExactlyOnceWith({
       detail: `Order shipped — ${DOMAIN_NOT_VERIFIED}`,
       kind: "orderEmailFailed",
       reference: "order-shipped/order-1",

@@ -76,8 +76,8 @@ Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli z
 - [ ] Nieudana weryfikacja zwraca 400 i loguje; nigdy nie przechodzi dalej do handlerów.
 - [ ] Zdarzenie, którego `livemode` nie pasuje do `requiredStripeMode(env.APP_ENV)`, jest logowane i potwierdzane przez `{ received: true }`, zanim uruchomi się jakikolwiek handler, więc produkcja nigdy nie działa na zdarzeniu testowym, a żadne inne środowisko na zdarzeniu live.
 - [ ] Nieobsługiwany `event.type` jest potwierdzany przez `{ received: true }`, a nie błędem — żeby Stripe nie ponawiał w nieskończoność.
-- [ ] Handler, który rzuci wyjątek, zwraca 500, więc Stripe **ponawia**. Oznacza to, że każdy handler w `src/integrations/stripe/stripe.webhooks.tsx` musi być idempotentny — `20260924120000_checkout_idempotency_constraints.sql` istnieje dokładnie z tego powodu.
-- [ ] Alert o błędzie na `RESEND_EMAIL_FROM` idzie przez `notifyShopOfIncident`, które nigdy nie rzuca wyjątku, i trafia do `scheduleBackgroundWork`, więc nie może zmienić ani opóźnić odpowiedzi 500.
+- [ ] Handler, który rzuci wyjątek, zwraca 500, więc Stripe **ponawia**. Oznacza to, że każdy handler w `src/integrations/stripe/stripe.webhooks.ts` musi być idempotentny — `20260924120000_checkout_idempotency_constraints.sql` istnieje dokładnie z tego powodu.
+- [ ] Alert o błędzie na `RESEND_EMAIL_FROM` idzie przez `sendIncidentAlert`, które nigdy nie rzuca wyjątku, i trafia do `scheduleBackgroundWork`, więc nie może zmienić ani opóźnić odpowiedzi 500.
 
 ## Sekrety i kod wyłącznie serwerowy
 

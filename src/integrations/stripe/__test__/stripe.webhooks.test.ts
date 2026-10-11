@@ -9,8 +9,6 @@ const {
   fulfillCheckout,
   getCheckoutEmailContext,
   getOrderTotalsForEmail,
-  notifyShopOfIncident,
-  notifyShopOfNewOrder,
   paymentIntentsRetrieve,
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
@@ -25,6 +23,8 @@ const {
   scheduleAdminOrdersInvalidation,
   scheduleProductCatalogInvalidation,
   sendEmail,
+  sendIncidentAlert,
+  sendNewOrderEmail,
   sessionsList,
 } = vi.hoisted(() => ({
   clearOrderDispute: vi.fn<(transactionId: string) => Promise<void>>(),
@@ -34,8 +34,6 @@ const {
   fulfillCheckout: vi.fn<(input: object) => Promise<string | undefined>>(),
   getCheckoutEmailContext: vi.fn<(checkoutId: string) => Promise<object | undefined>>(),
   getOrderTotalsForEmail: vi.fn<(orderId: string) => Promise<Record<string, unknown> | undefined>>(),
-  notifyShopOfIncident: vi.fn<(incident: { detail: string; kind: string; reference: string }) => Promise<void>>(),
-  notifyShopOfNewOrder: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<void>>(),
   paymentIntentsRetrieve: vi.fn<(id: string, params: object) => Promise<{ payment_method: { type: string } | null }>>(),
   recordOrderDisputeClosedAudit: vi.fn(),
   recordOrderDisputeOpenedAudit: vi.fn(),
@@ -50,6 +48,8 @@ const {
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),
   sendEmail: vi.fn<(options: Readonly<{ subject: string; to: string }>) => Promise<string | undefined>>(),
+  sendIncidentAlert: vi.fn<(incident: { detail: string; kind: string; reference: string }) => Promise<void>>(),
+  sendNewOrderEmail: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<void>>(),
   sessionsList: vi.fn<(params: object) => Promise<{ data: { id: string }[] }>>(),
 }))
 
@@ -61,10 +61,10 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
     paymentIntents: { retrieve: paymentIntentsRetrieve },
   },
 }))
-vi.mock("~/src/integrations/resend/incident-alert.notification.server", () => ({ notifyShopOfIncident }))
-vi.mock("~/src/integrations/resend/new-order.notification.server", () => ({ notifyShopOfNewOrder }))
+vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert }))
+vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ sendNewOrderEmail }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
-vi.mock("~/src/integrations/resend/withdrawal-form.attachment.server", () => ({
+vi.mock("~/src/modules/order-withdrawal/order-withdrawal.form.server", () => ({
   loadWithdrawalFormAttachment: vi.fn(() => Promise.resolve({ content: "JVBERi0=", filename: "formularz_zwrotu.pdf" })),
 }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
@@ -168,8 +168,8 @@ beforeEach(() => {
   flagOrderDispute.mockResolvedValue(undefined)
   clearOrderDispute.mockResolvedValue(undefined)
   sendEmail.mockResolvedValue(undefined)
-  notifyShopOfNewOrder.mockResolvedValue(undefined)
-  notifyShopOfIncident.mockResolvedValue(undefined)
+  sendNewOrderEmail.mockResolvedValue(undefined)
+  sendIncidentAlert.mockResolvedValue(undefined)
   sessionsList.mockResolvedValue({ data: [{ id: "cs_resolved_1" }] })
   couponsDel.mockImplementation((couponId) => Promise.resolve({ deleted: true, id: couponId }))
   couponsRetrieve.mockImplementation((couponId) =>
@@ -261,7 +261,7 @@ describe("checkout session fulfillment", () => {
     expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
-    expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
+    expect(sendNewOrderEmail).not.toHaveBeenCalled()
   })
 
   it("fulfills a session whose asynchronous payment succeeded", async () => {
@@ -269,7 +269,7 @@ describe("checkout session fulfillment", () => {
 
     expect(fulfillCheckout).toHaveBeenCalledOnce()
     expect(releaseCheckout).not.toHaveBeenCalled()
-    expect(notifyShopOfNewOrder).toHaveBeenCalledExactlyOnceWith(
+    expect(sendNewOrderEmail).toHaveBeenCalledExactlyOnceWith(
       "order-1",
       "http://127.0.0.1:3000/checkout?success=true&session_id={CHECKOUT_SESSION_ID}",
     )
@@ -289,8 +289,8 @@ describe("a paid checkout session that creates no order", () => {
     expect(consoleError).toHaveBeenCalledWith("Paid Checkout Session cs_test_1 created no order:", expect.any(Error))
     expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
-    expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
-    expect(notifyShopOfIncident).not.toHaveBeenCalled()
+    expect(sendNewOrderEmail).not.toHaveBeenCalled()
+    expect(sendIncidentAlert).not.toHaveBeenCalled()
   })
 
   it("records a paid session that matches no open checkout and acknowledges it, since a retry cannot help", async () => {
@@ -302,14 +302,14 @@ describe("a paid checkout session that creates no order", () => {
     expect(recordOrderFulfillmentFailedAudit).toHaveBeenCalledExactlyOnceWith("cs_test_1", {
       detail: "548,00 PLN — No payment carries Checkout Session cs_test_1",
     })
-    expect(notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
+    expect(sendIncidentAlert).toHaveBeenCalledExactlyOnceWith({
       detail: "548,00 PLN — No payment carries Checkout Session cs_test_1",
       kind: "paidCheckoutWithoutOrder",
       reference: "cs_test_1",
     })
     expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
-    expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
+    expect(sendNewOrderEmail).not.toHaveBeenCalled()
   })
 
   it("names the address Stripe collected and the bare cause when the session has no amount", async () => {

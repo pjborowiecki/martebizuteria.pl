@@ -13,7 +13,10 @@ const { sendEmail } = vi.hoisted(() => ({
 
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 
-import { buildNewsletterConfirmUrl, sendNewsletterConfirmation } from "~/src/integrations/resend/newsletter-confirmation.server"
+import {
+  buildNewsletterConfirmUrl,
+  sendNewsletterConfirmationEmail,
+} from "~/src/modules/newsletter/use-cases/send-newsletter-confirmation-email.server"
 
 import { ROUTES } from "~/src/routes"
 
@@ -61,22 +64,22 @@ describe("buildNewsletterConfirmUrl", () => {
   })
 })
 
-describe("sendNewsletterConfirmation", () => {
+describe("sendNewsletterConfirmationEmail", () => {
   it("mails the address that asked to join", async () => {
-    await sendNewsletterConfirmation(subscription)
+    await sendNewsletterConfirmationEmail(subscription)
 
     expect(sendEmail).toHaveBeenCalledOnce()
     expect(sentPayload().to).toBe("anna@example.com")
   })
 
   it("writes the subject in the subscriber's language", async () => {
-    await sendNewsletterConfirmation({ ...subscription, locale: "pl-PL" })
+    await sendNewsletterConfirmationEmail({ ...subscription, locale: "pl-PL" })
 
     expect(sentPayload().subject).toBe(polishCopy.subject)
   })
 
   it("puts the confirmation link for this token, on the address the subscriber used, behind the call to action", async () => {
-    await sendNewsletterConfirmation(subscription)
+    await sendNewsletterConfirmationEmail(subscription)
 
     const html = await render(sentPayload().react)
 
@@ -89,10 +92,10 @@ describe("sendNewsletterConfirmation", () => {
   it("hands a refused send back to the caller so the subscriber is not told an email is on its way", async () => {
     sendEmail.mockResolvedValueOnce("The pjborowiecki.com domain is not verified")
 
-    await expect(sendNewsletterConfirmation(subscription)).resolves.toBe("The pjborowiecki.com domain is not verified")
+    await expect(sendNewsletterConfirmationEmail(subscription)).resolves.toBe("The pjborowiecki.com domain is not verified")
   })
 
   it("reports no failure when the email went out", async () => {
-    await expect(sendNewsletterConfirmation(subscription)).resolves.toBeUndefined()
+    await expect(sendNewsletterConfirmationEmail(subscription)).resolves.toBeUndefined()
   })
 })

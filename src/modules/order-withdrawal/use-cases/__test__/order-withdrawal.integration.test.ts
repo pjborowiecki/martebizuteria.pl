@@ -30,10 +30,10 @@ const { background, effects, sqlite, worker } = await vi.hoisted(async () => {
       emailOutcome: vi.fn(),
       invalidateAdminOrders: vi.fn(),
       locale: vi.fn<() => string>(),
-      notifyShopOfIncident: vi.fn<(incident: unknown) => Promise<void>>(),
       rateLimit: vi.fn<(limit: Readonly<{ key: string; limit: number; windowSeconds: number }>) => Promise<boolean>>(),
       requestSession: vi.fn<() => Promise<{ user: { id: string; name: string; role: string } } | null>>(),
       sendEmail: vi.fn<(options: Readonly<SentEmail>) => Promise<string | undefined>>(),
+      sendIncidentAlert: vi.fn<(incident: unknown) => Promise<void>>(),
       verifyTurnstile: vi.fn<(check: Readonly<{ action: string; hostname: string; token: string }>) => Promise<void>>(),
       withdrawalReceivedAudit: vi.fn(),
     },
@@ -77,7 +77,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: effects.sendEmail }))
-vi.mock("~/src/integrations/resend/incident-alert.notification.server", () => ({ notifyShopOfIncident: effects.notifyShopOfIncident }))
+vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert: effects.sendIncidentAlert }))
 vi.mock("~/src/lib/background", () => ({
   scheduleBackgroundWork: (task: Promise<unknown>) => {
     background.push(task)
@@ -363,7 +363,7 @@ describe("retrying the acknowledgement of a withdrawal", () => {
     const attempts = sentEmails().filter(({ to }) => to === "Anna@Example.com")
     expect(attempts).toHaveLength(3)
     expect(new Set(attempts.map(({ idempotencyKey }) => idempotencyKey)).size).toBe(1)
-    expect(effects.notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
+    expect(effects.sendIncidentAlert).toHaveBeenCalledExactlyOnceWith({
       detail: "Withdrawal acknowledgement — Resend is down",
       kind: "orderEmailFailed",
       reference: attempts[0]?.idempotencyKey,

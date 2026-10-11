@@ -1,4 +1,9 @@
+import type StripeType from "stripe"
 import zod from "zod/v4"
+
+import { STRIPE_CURRENCY } from "~/src/integrations/stripe/stripe.constants"
+import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
 const STRIPE_METADATA_VALUE_LENGTH = 500
 
@@ -43,6 +48,18 @@ export const parseCheckoutSessionMetadataItems = (itemsJson: string): CheckoutFu
 
 export const parseCheckoutSessionReleaseLines = (itemsJson: string): CheckoutReleaseLine[] =>
   checkoutReleaseLinesSchema.parse(JSON.parse(itemsJson))
+
+export const parseCheckoutSessionFulfillmentLines = (session: StripeType.Checkout.Session): CheckoutFulfillmentLine[] =>
+  checkoutFulfillmentLinesSchema.parse(JSON.parse(readCheckoutSessionItemsJson(session.metadata)))
+
+export const resolveCheckoutSessionCurrency = (session: StripeType.Checkout.Session): string =>
+  (session.currency ?? STRIPE_CURRENCY).toUpperCase()
+
+export const resolveCheckoutSessionLocale = (session: StripeType.Checkout.Session): SupportedLocale => {
+  const raw = session.metadata?.["locale"]
+
+  return typeof raw === "string" && isSupportedLocale(raw) ? raw : I18N.DEFAULT_LOCALE
+}
 
 export const checkoutFulfillmentLinesSchema = zod.array(
   zod.object({

@@ -15,7 +15,7 @@ import {
 } from "~/src/presentation/emails/newsletter-already-subscribed"
 import { ROUTES } from "~/src/routes"
 
-export const sendNewsletterAlreadySubscribed = async ({
+export const sendNewsletterAlreadySubscribedEmail = async ({
   email,
   locale,
   origin,

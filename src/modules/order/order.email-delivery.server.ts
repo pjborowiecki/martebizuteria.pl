@@ -1,9 +1,8 @@
-import { notifyShopOfIncident } from "~/src/integrations/resend/incident-alert.notification.server"
-
 import { recordOrderEmailOutcome } from "~/src/modules/audit-log/audit-log.events.server"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
+import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
 
 export const ORDER_EMAIL_RETRIES = 2
 
@@ -50,7 +49,7 @@ const retryOrderEmail = async (
 
   recordOutcome(outcome, delivery, false)
   if (outcome.failure !== undefined) {
-    await notifyShopOfIncident({
+    await sendIncidentAlert({
       detail: `${delivery.label} — ${outcome.failure}`,
       kind: "orderEmailFailed",
       reference: delivery.idempotencyKey,

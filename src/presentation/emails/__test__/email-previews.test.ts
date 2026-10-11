@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { EMAIL_PREVIEWS, type EmailPreviewSlug, isEmailPreviewSlug, renderEmailPreview } from "~/src/integrations/resend/email-previews"
-
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 
 import accountDeletedCopy from "~/messages/en-US/emails.account-deleted.json"
@@ -25,6 +23,7 @@ import polishOrderShippedCopy from "~/messages/pl-PL/emails.order-shipped.json"
 import polishOrderWithdrawalCopy from "~/messages/pl-PL/emails.order-withdrawal.json"
 import polishPaymentFailedCopy from "~/messages/pl-PL/emails.payment-failed.json"
 import polishVerifyEmailCopy from "~/messages/pl-PL/emails.verify-email.json"
+import { EMAIL_PREVIEWS, type EmailPreviewSlug, isEmailPreviewSlug, renderEmailPreview } from "~/src/presentation/emails/email-previews"
 
 const text = (slug: EmailPreviewSlug, locale: "en-US" | "pl-PL" = "en-US"): Promise<string> => renderEmailPreview(slug, locale, true)
 

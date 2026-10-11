@@ -40,8 +40,8 @@ describe("production address", () => {
 
   it("writes a web address on the production domain out by hand only in the dev-only email previews", () => {
     expect(filesMatching(/https?:\/\/(?:[\w-]+\.)*(?:martebizuteria\.pl|\$\{APP_DOMAIN\})/u)).toStrictEqual([
-      "integrations/resend/email-previews.tsx",
       DEFINING_FILE,
+      "presentation/emails/email-previews.tsx",
     ])
   })
 })

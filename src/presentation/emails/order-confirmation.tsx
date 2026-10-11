@@ -3,11 +3,11 @@ import { type JSX, type ReactNode } from "react"
 import { Button, Column, Heading, Hr, Img, Link, Row, Section, Text } from "react-email"
 import { createTranslator } from "use-intl"
 
-import { type OrderAccountCta } from "~/src/integrations/resend/order-confirmation.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
+import { type OrderAccountCta } from "~/src/modules/order/order.email.utils"
 
 import { BUSINESS, BUSINESS_PHONE_HREF, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 

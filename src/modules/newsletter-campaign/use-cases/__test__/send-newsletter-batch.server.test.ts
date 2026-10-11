@@ -23,7 +23,7 @@ const { batchSend, env } = vi.hoisted(() => ({
 vi.mock("cloudflare:workers", () => ({ env }))
 vi.mock("~/src/integrations/resend/resend.config", () => ({ resend: { batch: { send: batchSend } } }))
 
-import { sendNewsletterBatch } from "~/src/integrations/resend/newsletter-campaign.server"
+import { sendNewsletterBatch } from "~/src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 import { BUSINESS } from "~/src/presentation/branding/business"

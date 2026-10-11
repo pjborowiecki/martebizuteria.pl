@@ -2,11 +2,11 @@ import { type ReactElement } from "react"
 
 import { render } from "react-email"
 
-import { describeOrderFulfillmentTime } from "~/src/integrations/resend/order-fulfillment-time.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
+import { describeOrderFulfillmentTime } from "~/src/modules/order/order.fulfillment-time.utils"
 
 import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
 import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"

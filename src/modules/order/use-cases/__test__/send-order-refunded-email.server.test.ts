@@ -31,7 +31,7 @@ vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderForRefundEmail }))
 
-import { notifyOrderRefunded } from "~/src/integrations/resend/order-refunded.notification.server"
+import { sendOrderRefundedEmail } from "~/src/modules/order/use-cases/send-order-refunded-email.server"
 
 const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
@@ -80,9 +80,9 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe("notifyOrderRefunded", () => {
+describe("sendOrderRefundedEmail", () => {
   it("emails the customer in the locale the order was placed in", async () => {
-    await notifyOrderRefunded(PARTIAL_REFUND, RETURN_URL)
+    await sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)
 
     expect(getOrderForRefundEmail).toHaveBeenCalledWith(ORDER_ID)
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "en-US", namespace: "emails.order-refunded" })
@@ -91,7 +91,7 @@ describe("notifyOrderRefunded", () => {
   })
 
   it("states the amount of this refund against the order total", async () => {
-    await notifyOrderRefunded(PARTIAL_REFUND, RETURN_URL)
+    await sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)
 
     expect(sentEmail().react.props).toMatchObject({
       currency: "PLN",
@@ -106,14 +106,14 @@ describe("notifyOrderRefunded", () => {
     getOrderForRefundEmail.mockResolvedValue({ ...orderRow, metadata: null })
     loadNamespace.mockResolvedValue(polishCopy)
 
-    await notifyOrderRefunded({ amount: ORDER_TOTAL, fullyRefunded: true, orderId: ORDER_ID, refundedTotal: ORDER_TOTAL }, RETURN_URL)
+    await sendOrderRefundedEmail({ amount: ORDER_TOTAL, fullyRefunded: true, orderId: ORDER_ID, refundedTotal: ORDER_TOTAL }, RETURN_URL)
 
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "pl-PL", namespace: "emails.order-refunded" })
     expect(sentEmail().subject).toBe(polishCopy.subject)
   })
 
   it("links the order on the deployment the checkout returned to", async () => {
-    await notifyOrderRefunded(PARTIAL_REFUND, "http://127.0.0.1:3000/en-US/checkout?success=true")
+    await sendOrderRefundedEmail(PARTIAL_REFUND, "http://127.0.0.1:3000/en-US/checkout?success=true")
 
     const html = await render(sentEmail().react)
 
@@ -123,7 +123,7 @@ describe("notifyOrderRefunded", () => {
   it("invites a guest to create an account instead", async () => {
     getOrderForRefundEmail.mockResolvedValue({ ...orderRow, userId: null })
 
-    await notifyOrderRefunded(PARTIAL_REFUND, RETURN_URL)
+    await sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)
 
     expect(sentEmail().react.props.accountCta).toStrictEqual({
       href: "https://preview.martebizuteria.pl/en-US/auth/sign-up",
@@ -133,7 +133,7 @@ describe("notifyOrderRefunded", () => {
   })
 
   it("records a successful send against the order and reports it", async () => {
-    await expect(notifyOrderRefunded(PARTIAL_REFUND, RETURN_URL)).resolves.toBe(true)
+    await expect(sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)).resolves.toBe(true)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: undefined,
@@ -147,7 +147,7 @@ describe("notifyOrderRefunded", () => {
   it("records the refusal reported by the email transport", async () => {
     sendEmail.mockResolvedValue(DOMAIN_NOT_VERIFIED)
 
-    await expect(notifyOrderRefunded(PARTIAL_REFUND, RETURN_URL)).resolves.toBe(false)
+    await expect(sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)).resolves.toBe(false)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: DOMAIN_NOT_VERIFIED,
@@ -159,7 +159,7 @@ describe("notifyOrderRefunded", () => {
   })
 
   it("records a refund email whose session has no return URL to link it to", async () => {
-    await expect(notifyOrderRefunded(PARTIAL_REFUND, undefined)).resolves.toBe(false)
+    await expect(sendOrderRefundedEmail(PARTIAL_REFUND, undefined)).resolves.toBe(false)
 
     expect(getOrderForRefundEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
@@ -172,7 +172,7 @@ describe("notifyOrderRefunded", () => {
   })
 
   it("records a refund email whose session returned to a host no deployment serves", async () => {
-    await expect(notifyOrderRefunded(PARTIAL_REFUND, "https://attacker.example/en-US/checkout")).resolves.toBe(false)
+    await expect(sendOrderRefundedEmail(PARTIAL_REFUND, "https://attacker.example/en-US/checkout")).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(consoleError).toHaveBeenCalledWith(`Order refunded for order ${ORDER_ID} could not be prepared:`, expect.any(Error))
@@ -188,7 +188,7 @@ describe("notifyOrderRefunded", () => {
   it("records a refund email that has no order to go out for", async () => {
     getOrderForRefundEmail.mockResolvedValue(undefined)
 
-    await expect(notifyOrderRefunded(PARTIAL_REFUND, RETURN_URL)).resolves.toBe(false)
+    await expect(sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
@@ -203,7 +203,7 @@ describe("notifyOrderRefunded", () => {
   it("records a refund email that has no recipient", async () => {
     getOrderForRefundEmail.mockResolvedValue({ ...orderRow, email: " " })
 
-    await expect(notifyOrderRefunded(PARTIAL_REFUND, RETURN_URL)).resolves.toBe(false)
+    await expect(sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
@@ -216,8 +216,8 @@ describe("notifyOrderRefunded", () => {
   })
 
   it("keys each refund's email by the total refunded once it is made, so two equal partial refunds both reach the customer", async () => {
-    await notifyOrderRefunded(PARTIAL_REFUND, RETURN_URL)
-    await notifyOrderRefunded({ ...PARTIAL_REFUND, refundedTotal: 13_000 }, RETURN_URL)
+    await sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)
+    await sendOrderRefundedEmail({ ...PARTIAL_REFUND, refundedTotal: 13_000 }, RETURN_URL)
 
     expect(sendEmail.mock.calls.map(([options]) => options.idempotencyKey)).toStrictEqual([
       `order-refunded/${ORDER_ID}/8000`,

@@ -12,15 +12,15 @@ const {
   getRequest,
   getRequestSession,
   recordEmailFailedAudit,
-  sendNewsletterAlreadySubscribed,
-  sendNewsletterConfirmation,
+  sendNewsletterAlreadySubscribedEmail,
+  sendNewsletterConfirmationEmail,
   verifyTurnstileToken,
 } = vi.hoisted(() => ({
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn<() => Promise<{ user: { email: string; id: string } } | undefined>>(),
   recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
-  sendNewsletterAlreadySubscribed: vi.fn<(input: { email: string; locale: string; origin: string }) => Promise<string | undefined>>(),
-  sendNewsletterConfirmation:
+  sendNewsletterAlreadySubscribedEmail: vi.fn<(input: { email: string; locale: string; origin: string }) => Promise<string | undefined>>(),
+  sendNewsletterConfirmationEmail:
     vi.fn<(input: { email: string; locale: string; origin: string; token: string }) => Promise<string | undefined>>(),
   verifyTurnstileToken:
     vi.fn<(check: { action: string; hostname: string; remoteIp: string | undefined; token: string }) => Promise<void>>(),
@@ -45,8 +45,10 @@ vi.mock("@tanstack/react-start/server", () => ({ getRequest }))
 vi.mock("cloudflare:workers", () => ({ env: { APP_ENV: "test" } }))
 vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ verifyTurnstileToken }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession }))
-vi.mock("~/src/integrations/resend/newsletter-already-subscribed.server", () => ({ sendNewsletterAlreadySubscribed }))
-vi.mock("~/src/integrations/resend/newsletter-confirmation.server", () => ({ sendNewsletterConfirmation }))
+vi.mock("~/src/modules/newsletter/use-cases/send-newsletter-already-subscribed-email.server", () => ({
+  sendNewsletterAlreadySubscribedEmail,
+}))
+vi.mock("~/src/modules/newsletter/use-cases/send-newsletter-confirmation-email.server", () => ({ sendNewsletterConfirmationEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit }))
 vi.mock("@tanstack/react-start", () => ({
@@ -112,7 +114,7 @@ const countSubscribers = (): number =>
   z.object({ total: z.number() }).parse(sqlite.prepare("select count(*) as total from newsletter_subscriber").get()).total
 
 const lastConfirmationToken = (): string =>
-  z.object({ token: z.string() }).parse({ token: sendNewsletterConfirmation.mock.calls.at(-1)?.[0]?.token }).token
+  z.object({ token: z.string() }).parse({ token: sendNewsletterConfirmationEmail.mock.calls.at(-1)?.[0]?.token }).token
 
 const confirmAnna = async () => {
   await subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })
@@ -120,8 +122,9 @@ const confirmAnna = async () => {
 }
 
 const sendsTo = (email: string): number =>
-  [...sendNewsletterConfirmation.mock.calls, ...sendNewsletterAlreadySubscribed.mock.calls].filter(([input]) => input.email === email)
-    .length
+  [...sendNewsletterConfirmationEmail.mock.calls, ...sendNewsletterAlreadySubscribedEmail.mock.calls].filter(
+    ([input]) => input.email === email,
+  ).length
 
 const fillTodaysPublicEmails = () => {
   sqlite
@@ -130,7 +133,7 @@ const fillTodaysPublicEmails = () => {
 }
 
 const failNextConfirmation = () => {
-  sendNewsletterConfirmation.mockResolvedValueOnce(UNVERIFIED_DOMAIN)
+  sendNewsletterConfirmationEmail.mockResolvedValueOnce(UNVERIFIED_DOMAIN)
 
   return vi.spyOn(console, "error").mockImplementation(() => {})
 }
@@ -139,8 +142,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   getRequest.mockReturnValue(requestOn("http://localhost:3000"))
   getRequestSession.mockResolvedValue(undefined)
-  sendNewsletterAlreadySubscribed.mockResolvedValue(undefined)
-  sendNewsletterConfirmation.mockResolvedValue(undefined)
+  sendNewsletterAlreadySubscribedEmail.mockResolvedValue(undefined)
+  sendNewsletterConfirmationEmail.mockResolvedValue(undefined)
   verifyTurnstileToken.mockResolvedValue(undefined)
   sqlite.exec(`
     drop table if exists rate_limit;
@@ -174,7 +177,7 @@ describe("subscribeToNewsletter", () => {
   it("sends a confirmation mail carrying the stored token", async () => {
     await subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })
 
-    expect(sendNewsletterConfirmation).toHaveBeenCalledOnce()
+    expect(sendNewsletterConfirmationEmail).toHaveBeenCalledOnce()
     expect(lastConfirmationToken()).toBe(subscriberRow("anna@example.com")?.token)
   })
 
@@ -208,12 +211,12 @@ describe("subscribeToNewsletter", () => {
 
     await subscribeToNewsletter({ data: { email: "anna@example.com", locale: "en-US", turnstileToken: TURNSTILE_TOKEN } })
 
-    expect(sendNewsletterAlreadySubscribed).toHaveBeenCalledExactlyOnceWith({
+    expect(sendNewsletterAlreadySubscribedEmail).toHaveBeenCalledExactlyOnceWith({
       email: "anna@example.com",
       locale: "en-US",
       origin: "http://localhost:3000",
     })
-    expect(sendNewsletterConfirmation).toHaveBeenCalledOnce()
+    expect(sendNewsletterConfirmationEmail).toHaveBeenCalledOnce()
   })
 
   it("keeps a confirmed subscriber's token so the links in letters already sent keep working", async () => {
@@ -232,7 +235,7 @@ describe("subscribeToNewsletter", () => {
     await expect(subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })).resolves.toStrictEqual({
       outcome: NEWSLETTER_OUTCOME.ALREADY_CONFIRMED,
     })
-    expect(sendNewsletterAlreadySubscribed).not.toHaveBeenCalled()
+    expect(sendNewsletterAlreadySubscribedEmail).not.toHaveBeenCalled()
   })
 
   it("leaves a confirmed subscription confirmed when someone else submits the address", async () => {
@@ -286,7 +289,7 @@ describe("subscribeToNewsletter bot check", () => {
       message: "BOT_CHECK_FAILED",
     })
     expect(countSubscribers()).toBe(0)
-    expect(sendNewsletterConfirmation).not.toHaveBeenCalled()
+    expect(sendNewsletterConfirmationEmail).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -324,7 +327,7 @@ describe("subscribeToNewsletter email limits", () => {
       await subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })
     }
 
-    expect(sendNewsletterAlreadySubscribed).toHaveBeenCalledTimes(PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX - 1)
+    expect(sendNewsletterAlreadySubscribedEmail).toHaveBeenCalledTimes(PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX - 1)
     expect(sendsTo("anna@example.com")).toBe(PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX)
   })
 
@@ -349,7 +352,7 @@ describe("subscribeToNewsletter email limits", () => {
 
     await subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })
 
-    expect(sendNewsletterAlreadySubscribed).toHaveBeenCalledOnce()
+    expect(sendNewsletterAlreadySubscribedEmail).toHaveBeenCalledOnce()
   })
 
   it("saves no new address and records why once the shop has sent its emails for the day", async () => {
@@ -360,7 +363,7 @@ describe("subscribeToNewsletter email limits", () => {
       outcome: NEWSLETTER_OUTCOME.CONFIRMATION_SENT,
     })
     expect(countSubscribers()).toBe(0)
-    expect(sendNewsletterConfirmation).not.toHaveBeenCalled()
+    expect(sendNewsletterConfirmationEmail).not.toHaveBeenCalled()
     expect(recordEmailFailedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com", {
       detail: `Public newsletter email — the shop reached its daily limit of ${String(PUBLIC_EMAILS_DAILY_MAX)} emails that visitors can request`,
     })
@@ -375,7 +378,7 @@ describe("subscribeToNewsletter links", () => {
 
       await subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })
 
-      expect(sendNewsletterConfirmation).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ origin }))
+      expect(sendNewsletterConfirmationEmail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ origin }))
     },
   )
 
@@ -385,7 +388,9 @@ describe("subscribeToNewsletter links", () => {
 
     await subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })
 
-    expect(sendNewsletterAlreadySubscribed).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ origin: "http://127.0.0.1:3000" }))
+    expect(sendNewsletterAlreadySubscribedEmail).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ origin: "http://127.0.0.1:3000" }),
+    )
   })
 
   it.each(["https://martebizuteria.pl.attacker.example", "https://martebizuteria.pl", "http://localhost:3001"])(
@@ -397,8 +402,8 @@ describe("subscribeToNewsletter links", () => {
         code: ERROR_CODES.FORBIDDEN,
       })
       expect(countSubscribers()).toBe(0)
-      expect(sendNewsletterConfirmation).not.toHaveBeenCalled()
-      expect(sendNewsletterAlreadySubscribed).not.toHaveBeenCalled()
+      expect(sendNewsletterConfirmationEmail).not.toHaveBeenCalled()
+      expect(sendNewsletterAlreadySubscribedEmail).not.toHaveBeenCalled()
     },
   )
 })
@@ -406,12 +411,12 @@ describe("subscribeToNewsletter links", () => {
 describe("subscribeToNewsletter when the confirmation email cannot be sent", () => {
   it("waits for the confirmation email before answering", async () => {
     const delivery = Promise.withResolvers<string | undefined>()
-    sendNewsletterConfirmation.mockReturnValueOnce(delivery.promise)
+    sendNewsletterConfirmationEmail.mockReturnValueOnce(delivery.promise)
     const settled = vi.fn<() => void>()
 
     const subscribing = subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } }).then(settled)
     await vi.waitFor(() => {
-      expect(sendNewsletterConfirmation).toHaveBeenCalledOnce()
+      expect(sendNewsletterConfirmationEmail).toHaveBeenCalledOnce()
     })
 
     expect(settled).not.toHaveBeenCalled()
@@ -459,7 +464,7 @@ describe("subscribeToNewsletter when the confirmation email cannot be sent", () 
     await expect(subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })).resolves.toStrictEqual({
       outcome: NEWSLETTER_OUTCOME.CONFIRMATION_SENT,
     })
-    expect(sendNewsletterConfirmation).toHaveBeenCalledTimes(2)
+    expect(sendNewsletterConfirmationEmail).toHaveBeenCalledTimes(2)
     expect(lastConfirmationToken()).not.toBe(failedToken)
     expect(lastConfirmationToken()).toBe(subscriberRow("anna@example.com")?.token)
   })
@@ -467,7 +472,7 @@ describe("subscribeToNewsletter when the confirmation email cannot be sent", () 
   it("reports and audits a failed already-subscribed notice instead of claiming it went out", async () => {
     await confirmAnna()
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
-    sendNewsletterAlreadySubscribed.mockResolvedValueOnce(UNVERIFIED_DOMAIN)
+    sendNewsletterAlreadySubscribedEmail.mockResolvedValueOnce(UNVERIFIED_DOMAIN)
 
     await expect(subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })).resolves.toStrictEqual({
       outcome: NEWSLETTER_OUTCOME.CONFIRMATION_FAILED,
@@ -484,8 +489,8 @@ describe("subscribeToNewsletter when the confirmation email cannot be sent", () 
   it("answers a confirmed address exactly like a new one while no email can be sent", async () => {
     await confirmAnna()
     vi.spyOn(console, "error").mockImplementation(() => {})
-    sendNewsletterAlreadySubscribed.mockResolvedValue(UNVERIFIED_DOMAIN)
-    sendNewsletterConfirmation.mockResolvedValue(UNVERIFIED_DOMAIN)
+    sendNewsletterAlreadySubscribedEmail.mockResolvedValue(UNVERIFIED_DOMAIN)
+    sendNewsletterConfirmationEmail.mockResolvedValue(UNVERIFIED_DOMAIN)
 
     const member = await subscribeToNewsletter({ data: { email: "anna@example.com", turnstileToken: TURNSTILE_TOKEN } })
     const stranger = await subscribeToNewsletter({ data: { email: "jan@example.com", turnstileToken: TURNSTILE_TOKEN } })
@@ -605,7 +610,7 @@ describe("newsletter mutation options", () => {
     expect(requestTurnstileToken).toHaveBeenCalledOnce()
     expect(verifyTurnstileToken).toHaveBeenCalledWith(expect.objectContaining({ token: TURNSTILE_TOKEN }))
     expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.PENDING)
-    expect(sendNewsletterConfirmation).toHaveBeenCalledWith(expect.objectContaining({ email: "anna@example.com", locale: "en-US" }))
+    expect(sendNewsletterConfirmationEmail).toHaveBeenCalledWith(expect.objectContaining({ email: "anna@example.com", locale: "en-US" }))
   })
 
   it("confirms the subscription through the mutation the confirmation page runs", async () => {

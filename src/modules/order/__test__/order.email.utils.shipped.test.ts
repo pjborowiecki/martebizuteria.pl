@@ -10,8 +10,7 @@ vi.mock("~/src/lib/url", () => ({
   resolveAssetURL: (src: string) => `https://assets.test/${src}`,
 }))
 
-import { type CheckoutEmailContext } from "~/src/integrations/resend/order-confirmation.utils"
-import { buildOrderShippedAccountCta, buildOrderShippedDetails } from "~/src/integrations/resend/order-shipped.utils"
+import { type CheckoutEmailContext, buildOrderShippedAccountCta, buildOrderShippedDetails } from "~/src/modules/order/order.email.utils"
 
 import englishConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
 import englishCopy from "~/messages/en-US/emails.order-shipped.json"

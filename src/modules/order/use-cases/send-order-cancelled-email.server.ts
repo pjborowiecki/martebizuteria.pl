@@ -2,21 +2,21 @@ import { createElement } from "react"
 
 import { createTranslator } from "use-intl"
 
-import { buildOrderAccountCta } from "~/src/integrations/resend/order-confirmation.utils"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/integrations/resend/order-email.delivery.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getOrderForRefundEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
+import { buildOrderAccountCta } from "~/src/modules/order/order.email.utils"
 
 import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled.json"
 import { ORDER_CANCELLED_NAMESPACE, OrderCancelled } from "~/src/presentation/emails/order-cancelled"
 
 const ORDER_CANCELLED_LABEL = "Order cancelled"
 
-const sendOrderCancelledEmail = async (
+const attemptOrderCancelledEmail = async (
   { orderId, refundedAmount }: Readonly<OrderCancellation>,
   origin: string,
   idempotencyKey: string,
@@ -49,8 +49,8 @@ const sendOrderCancelledEmail = async (
   return { failure, label: `${ORDER_CANCELLED_LABEL} → ${orderRow.email}` }
 }
 
-export const notifyOrderCancelled = (cancellation: Readonly<OrderCancellation>, origin: string): Promise<boolean> =>
-  deliverOrderEmail((idempotencyKey) => sendOrderCancelledEmail(cancellation, origin, idempotencyKey), {
+export const sendOrderCancelledEmail = (cancellation: Readonly<OrderCancellation>, origin: string): Promise<boolean> =>
+  deliverOrderEmail((idempotencyKey) => attemptOrderCancelledEmail(cancellation, origin, idempotencyKey), {
     idempotencyKey: `${ORDER_EMAIL_KIND.CANCELLED}/${cancellation.orderId}`,
     label: ORDER_CANCELLED_LABEL,
     orderEmail: { kind: ORDER_EMAIL_KIND.CANCELLED, refundedAmount: cancellation.refundedAmount },

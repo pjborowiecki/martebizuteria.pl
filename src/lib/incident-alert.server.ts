@@ -31,7 +31,7 @@ const beginsIncident = async (incident: Incident): Promise<boolean> => {
   return true
 }
 
-const sendIncidentAlert = async (incident: Incident): Promise<string | undefined> => {
+const attemptIncidentAlert = async (incident: Incident): Promise<string | undefined> => {
   const locale = I18N.DEFAULT_LOCALE
   const messages = await loadNamespace<typeof incidentAlertMessages>({ locale, namespace: INCIDENT_ALERT_NAMESPACE })
 
@@ -42,13 +42,13 @@ const sendIncidentAlert = async (incident: Incident): Promise<string | undefined
   })
 }
 
-export const notifyShopOfIncident = async (incident: Incident): Promise<void> => {
+export const sendIncidentAlert = async (incident: Incident): Promise<void> => {
   try {
     if (!(await beginsIncident(incident))) {
       return
     }
 
-    const failure = await sendIncidentAlert(incident)
+    const failure = await attemptIncidentAlert(incident)
     if (failure !== undefined) {
       console.error(`[Alert] The ${incident.kind} alert to ${env.RESEND_EMAIL_FROM} was not sent: ${failure}`)
     }

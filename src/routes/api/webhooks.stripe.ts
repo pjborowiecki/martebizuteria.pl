@@ -3,7 +3,6 @@ import { env } from "cloudflare:workers"
 import { createFileRoute } from "@tanstack/react-router"
 import type StripeType from "stripe"
 
-import { notifyShopOfIncident } from "~/src/integrations/resend/incident-alert.notification.server"
 import { requiredStripeMode } from "~/src/integrations/stripe/stripe.keys"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
@@ -11,6 +10,7 @@ import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
+import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
 
 const verifiedStripeEvent = async (request: Request, signature: string, secret: string): Promise<StripeType.Event | undefined> => {
   try {
@@ -68,7 +68,7 @@ export const Route = createFileRoute("/api/webhooks/stripe")({
         } catch (error) {
           console.error(`[Stripe] Domain logic failed for ${event.type}:`, error)
           scheduleBackgroundWork(
-            notifyShopOfIncident({
+            sendIncidentAlert({
               detail: `${event.type}: ${error instanceof Error ? error.message : String(error)}`,
               kind: "stripeWebhookFailed",
               reference: event.id,
