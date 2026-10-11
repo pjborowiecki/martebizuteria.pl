@@ -49,6 +49,7 @@ const tagSnapshot = (overrides = {}) => ({
   deliveryType: undefined,
   hasCustomerNote: false,
   hasDispute: false,
+  lockerUnconfirmed: false,
   paymentStatus: "succeeded",
   refundedAmount: 0,
   userId: "user-1",
@@ -434,6 +435,13 @@ describe("resolveAdminOrderDetailTags", () => {
     expect(resolveAdminOrderDetailTags(tagSnapshot({ deliveryType: "locker" }))).toContain("locker")
     expect(resolveAdminOrderDetailTags(tagSnapshot({ deliveryType: "in_store" }))).toContain("inStore")
     expect(resolveAdminOrderDetailTags(tagSnapshot({ deliveryType: "courier" }))).toStrictEqual([])
+  })
+
+  it("flags a locker InPost could not confirm when the order was placed", () => {
+    expect(resolveAdminOrderDetailTags(tagSnapshot({ deliveryType: "locker", lockerUnconfirmed: true }))).toStrictEqual([
+      "locker",
+      "lockerUnconfirmed",
+    ])
   })
 
   it("separates a full refund from a partial one", () => {

@@ -649,7 +649,10 @@ describe("checkout session discounts", () => {
 
     expect(mocked.couponsCreate).not.toHaveBeenCalled()
     expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ discountId: undefined }))
-    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", expect.any(Object), undefined)
+    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", expect.any(Object), {
+      discountId: undefined,
+      lockerUnconfirmed: false,
+    })
     expect(result.totals.discountTotal).toBe(0)
   })
 

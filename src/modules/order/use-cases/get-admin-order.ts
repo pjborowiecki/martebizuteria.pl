@@ -84,6 +84,7 @@ const buildAdminOrderDetail = ({
         : {
             courierName: deliveryMethod.courier.name,
             lockerId: orderRow.lockerId ?? undefined,
+            lockerUnconfirmed: orderRow.lockerUnconfirmed,
             methodName: deliveryMethod.name,
             type: deliveryMethod.type,
           },
@@ -131,6 +132,7 @@ const buildAdminOrderDetail = ({
       deliveryType: deliveryMethod?.type,
       hasCustomerNote: customerNote !== undefined && customerNote !== "",
       hasDispute: dispute !== undefined,
+      lockerUnconfirmed: orderRow.lockerUnconfirmed,
       paymentStatus: paymentRow?.status,
       refundedAmount: paymentRow?.refundedAmount ?? 0,
       userId: orderRow.userId,

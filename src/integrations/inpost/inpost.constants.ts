@@ -4,6 +4,8 @@ export const INPOST_QUERY_KEYS = {
 
 export const INPOST_POINT_NAME_PATTERN = /^[\dA-Z][\w-]{2,31}$/iu
 
+export const INPOST_POINTS_API_ORIGIN = "https://api-pl-points.easypack24.net"
+
 export const INPOST_PARCEL_TEMPLATES = ["small", "medium", "large"] as const
 
 export type InpostParcelTemplate = (typeof INPOST_PARCEL_TEMPLATES)[number]

@@ -184,6 +184,10 @@ export const resolveAdminOrderDetailTags = (snapshot: AdminOrderTagSnapshot): re
     tags.push(ADMIN_ORDER_DETAIL_TAG.IN_STORE)
   }
 
+  if (snapshot.lockerUnconfirmed) {
+    tags.push(ADMIN_ORDER_DETAIL_TAG.LOCKER_UNCONFIRMED)
+  }
+
   if (snapshot.hasDispute) {
     tags.push(ADMIN_ORDER_DETAIL_TAG.DISPUTED)
   }
@@ -295,6 +299,7 @@ interface AdminOrderTagSnapshot {
   readonly deliveryType: DeliveryMethodType | undefined
   readonly hasCustomerNote: boolean
   readonly hasDispute: boolean
+  readonly lockerUnconfirmed: boolean
   readonly paymentStatus: string | undefined
   readonly refundedAmount: number
   readonly userId: string | null

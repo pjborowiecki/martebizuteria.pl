@@ -52,7 +52,13 @@ describe("OrderInpostCard", () => {
     const { container } = renderWithProviders(
       <OrderInpostCard
         order={openLockerOrder({
-          delivery: { courierName: undefined, lockerId: undefined, methodName: "Odbiór w atelier", type: "in_store" },
+          delivery: {
+            courierName: undefined,
+            lockerId: undefined,
+            lockerUnconfirmed: false,
+            methodName: "Odbiór w atelier",
+            type: "in_store",
+          },
         })}
       />,
     )
@@ -95,7 +101,9 @@ describe("OrderInpostCard", () => {
   it("asks for a courier parcel's weight", async () => {
     renderWithProviders(
       <OrderInpostCard
-        order={openLockerOrder({ delivery: { courierName: "InPost", lockerId: undefined, methodName: "Kurier InPost", type: "courier" } })}
+        order={openLockerOrder({
+          delivery: { courierName: "InPost", lockerId: undefined, lockerUnconfirmed: false, methodName: "Kurier InPost", type: "courier" },
+        })}
       />,
     )
 

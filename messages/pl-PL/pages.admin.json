@@ -746,7 +746,8 @@
       "copy": "Kopiuj adres wysyłki",
       "copied": "Skopiowano adres wysyłki",
       "missing": "Brak zapisanego adresu wysyłki.",
-      "openTracking": "Otwórz stronę śledzenia"
+      "openTracking": "Otwórz stronę śledzenia",
+      "lockerUnconfirmed": "Przy składaniu zamówienia nie udało się połączyć z InPost, żeby potwierdzić ten paczkomat. Zanim nadasz paczkę, sprawdź, czy istnieje."
     },
     "inpost": {
       "title": "Przesyłka InPost",
@@ -827,6 +828,7 @@
         "guest": "Bez konta",
         "returning": "Klient powracający",
         "locker": "Dostawa do paczkomatu",
+        "lockerUnconfirmed": "Paczkomat niepotwierdzony",
         "inStore": "Odbiór w sklepie",
         "disputed": "Sporne",
         "refunded": "Zwrócone",

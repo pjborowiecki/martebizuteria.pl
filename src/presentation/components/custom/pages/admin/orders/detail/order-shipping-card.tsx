@@ -1,6 +1,6 @@
 import { type JSX } from "react"
 
-import { Box, Copy, ExternalLink, Package, Truck } from "lucide-react"
+import { AlertTriangle, Box, Copy, ExternalLink, Package, Truck } from "lucide-react"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
@@ -75,6 +75,12 @@ export const OrderShippingCard = ({
             <div className="flex items-center gap-2.5 text-sm">
               <Box className="size-3.5 shrink-0 text-muted-foreground/40" strokeWidth={1.5} />
               <span className="font-mono text-xs text-muted-foreground">{delivery.lockerId}</span>
+            </div>
+          )}
+          {delivery?.lockerUnconfirmed === true && (
+            <div className="flex items-start gap-2.5 text-[13px] text-amber-600 dark:text-amber-400">
+              <AlertTriangle className="mt-0.5 size-3.5 shrink-0" strokeWidth={1.5} />
+              <span>{t("orderDetail.shipping.lockerUnconfirmed")}</span>
             </div>
           )}
           {trackingNumber !== undefined && (

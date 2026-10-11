@@ -227,7 +227,10 @@ describe("handleUpdateCheckoutSession", () => {
       customer: "cus_1",
       payment_intent_data: { receipt_email: "updated@example.com" },
     })
-    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", input.checkoutValues, undefined)
+    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", input.checkoutValues, {
+      discountId: undefined,
+      lockerUnconfirmed: false,
+    })
   })
 
   it("expires the old session and moves its payment and stock before reserving the edited cart", async () => {
@@ -268,11 +271,10 @@ describe("handleUpdateCheckoutSession", () => {
   it("returns the replacement session once the delivery change is saved", async () => {
     const result = await handleUpdateCheckoutSession(updateInput())
 
-    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith(
-      "checkout-1",
-      expect.objectContaining({ deliveryMethod: "dpd-courier" }),
-      undefined,
-    )
+    expect(mocked.updateCheckoutDelivery).toHaveBeenCalledWith("checkout-1", expect.objectContaining({ deliveryMethod: "dpd-courier" }), {
+      discountId: undefined,
+      lockerUnconfirmed: false,
+    })
     expect(mocked.releaseCheckout).not.toHaveBeenCalled()
     expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
     expect(result).toStrictEqual({

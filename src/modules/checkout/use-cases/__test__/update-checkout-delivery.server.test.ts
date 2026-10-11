@@ -95,9 +95,10 @@ describe("updateCheckoutDelivery", () => {
   })
 
   it("refreshes the row timestamp on every delivery change", async () => {
+    const startedAt = Date.now()
     await updateCheckoutDelivery("checkout-1", checkoutValues)
 
-    expect(statement().params.filter((param) => typeof param === "number")).toHaveLength(1)
+    expect(statement().params.filter((param) => typeof param === "number" && param >= startedAt)).toHaveLength(1)
   })
 
   it("clears an omitted locker while leaving an omitted note out of the update", async () => {

@@ -43,7 +43,7 @@ beforeEach(() => {
     );
     create table checkout (
       id text primary key, billing_company_name text, billing_nip text, billing_address_id text, cart_id text, client_address text, customer_note text, delivery_method_id text,
-      discount_id text, email text not null, locker_id text, shipping_address_id text, status text not null default 'pending',
+      discount_id text, email text not null, locker_id text, locker_unconfirmed integer not null default 0, shipping_address_id text, status text not null default 'pending',
       user_id text, created_at integer not null, updated_at integer not null
     );
 
@@ -61,8 +61,8 @@ beforeEach(() => {
     insert into discount (id, code, type, value, created_at, updated_at) values
       ('disc-spring', 'SPRING', 'percentage', 10, ${CREATED_AT}, ${CREATED_AT});
 
-    insert into checkout (id, billing_address_id, billing_company_name, billing_nip, customer_note, delivery_method_id, discount_id, email, locker_id, shipping_address_id, status, created_at, updated_at) values
-      ('chk-business', 'adr-bill', 'Pracownia Złotnicza sp. z o.o.', '5260001246', 'Invoice please', 'dm-locker', 'disc-spring', 'firma@example.com', 'WAW01A', 'adr-ship', 'pending', ${CREATED_AT}, ${CREATED_AT});
+    insert into checkout (id, billing_address_id, billing_company_name, billing_nip, customer_note, delivery_method_id, discount_id, email, locker_id, locker_unconfirmed, shipping_address_id, status, created_at, updated_at) values
+      ('chk-business', 'adr-bill', 'Pracownia Złotnicza sp. z o.o.', '5260001246', 'Invoice please', 'dm-locker', 'disc-spring', 'firma@example.com', 'WAW01A', 1, 'adr-ship', 'pending', ${CREATED_AT}, ${CREATED_AT});
   `)
 })
 
@@ -160,6 +160,7 @@ describe("getCheckoutForFulfillment", () => {
       "discount",
       "discountId",
       "lockerId",
+      "lockerUnconfirmed",
       "shippingAddress",
     ])
   })
@@ -172,6 +173,7 @@ describe("getCheckoutForFulfillment", () => {
       deliveryMethodId: "dm-locker",
       discountId: "disc-spring",
       lockerId: "WAW01A",
+      lockerUnconfirmed: true,
     })
   })
 
@@ -205,6 +207,7 @@ describe("getCheckoutForFulfillment", () => {
       discount: null,
       discountId: null,
       lockerId: null,
+      lockerUnconfirmed: false,
       shippingAddress: null,
     })
   })

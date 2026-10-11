@@ -3,7 +3,7 @@ title: "InPost"
 description: "Wyszukiwanie paczkomatów w kroku dostawy oraz przesyłki, etykiety i śledzenie ShipX w panelu administracyjnym."
 ---
 
-Polscy klienci oczekują możliwości wyboru paczkomatu InPost, a sklep wysyła paczki przez InPost. Adapter `src/integrations/inpost/` obsługuje jedno i drugie: wyszukiwanie punktów odbioru po mieście tylko do odczytu, buforowane w TanStack Query i zasilające wybierak z mapą i listą w kroku dostawy, oraz niewielkiego klienta API ShipX, przez którego strona zamówienia w panelu nadaje przesyłkę, pobiera jej etykietę i odczytuje jej status.
+Polscy klienci oczekują możliwości wyboru paczkomatu InPost, a sklep wysyła paczki przez InPost. Adapter `src/integrations/inpost/` obsługuje jedno i drugie: wyszukiwanie punktów odbioru po mieście tylko do odczytu, buforowane w TanStack Query i zasilające wybierak z mapą i listą w kroku dostawy, odczyt jednego punktu po nazwie, którym serwer potwierdza wybrany paczkomat, gdy sesja płatności jest otwierana albo zastępowana, oraz niewielkiego klienta API ShipX, przez którego strona zamówienia w panelu nadaje przesyłkę, pobiera jej etykietę i odczytuje jej status.
 
 ## Dwa API
 
@@ -12,11 +12,11 @@ Polscy klienci oczekują możliwości wyboru paczkomatu InPost, a sklep wysyła 
 | Wyszukiwanie punktów | `inpost.api.ts`, `inpost.queries.ts`                         | `https://api-pl-points.easypack24.net/v1/points`, wywoływane z przeglądarki                                                               | Brak, punkt końcowy jest publiczny           |
 | Przesyłki            | `inpost.shipx.server.ts`, przypadki użycia w `modules/order` | ShipX: `https://api-shipx-pl.easypack24.net` na produkcji, piaskownica InPost `https://sandbox-api-shipx-pl.easypack24.net` w pozostałych | `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID` |
 
-Zamówienie przechowuje paczkomat wybrany przez klienta, jako `checkout.locker_id` i `order.locker_id`, a po nadaniu przesyłki także jej identyfikator ShipX i ostatni zgłoszony status w `order.inpost_shipment_id` i `order.inpost_shipment_status`, z numerem do śledzenia i linkiem w `order.tracking_number` i `order.tracking_url`.
+Zamówienie przechowuje paczkomat wybrany przez klienta, jako `checkout.locker_id` i `order.locker_id`, to, czy InPost potwierdził go przy otwieraniu sesji płatności, jako `checkout.locker_unconfirmed` i `order.locker_unconfirmed`, a po nadaniu przesyłki także jej identyfikator ShipX i ostatni zgłoszony status w `order.inpost_shipment_id` i `order.inpost_shipment_status`, z numerem do śledzenia i linkiem w `order.tracking_number` i `order.tracking_url`.
 
 ## Wyszukiwanie
 
-Plik `inpost.api.ts` ma 28 linii i wywołuje jeden publiczny punkt końcowy:
+Plik `inpost.api.ts` ma 46 linii i wywołuje jeden publiczny punkt końcowy na dwa sposoby. Wybierak przeszukuje go po mieście:
 
 ```ts
 const url = `${INPOST_API_BASE}?city=${encodeURIComponent(capitalizeCity(trimmed))}&per_page=1000`
@@ -26,11 +26,23 @@ if (!response.ok) {
 }
 ```
 
-`INPOST_API_BASE` to `https://api-pl-points.easypack24.net/v1/points`. Liczą się trzy szczegóły:
+`INPOST_API_BASE` to `https://api-pl-points.easypack24.net/v1/points`, zbudowane z `INPOST_POINTS_API_ORIGIN` w `inpost.constants.ts`, które importuje też `connect-src` polityki Content-Security-Policy dla wyszukiwania w przeglądarce. Liczą się trzy szczegóły:
 
 - **`capitalizeCity`** zamienia wejście na małe litery, a następnie podnosi pierwszą literę każdego wyrazu, także po łączniku, przy pomocy wyrażenia regularnego świadomego Unicode — `"jelenia-góra"` staje się `"Jelenia-Góra"`. Punkt końcowy jest wrażliwy na wielkość liter w nazwach miast, więc bez tego wyszukiwanie po cichu nic nie zwraca.
 - **Mniej niż trzy znaki zwraca pustą tablicę** bez żadnego żądania (`MIN_CITY_LENGTH = 3`).
 - **Odpowiedź, która nie przejdzie walidacji schematu, zwraca pustą tablicę**, a nie błąd. Wyjątek rzuca wyłącznie status HTTP inny niż OK. Oznacza to, że zmiana kształtu danych po stronie InPostu degraduje się do „nie znaleziono paczkomatów", a nie do zepsutego zamówienia — co jest właściwym kompromisem, ale też sprawia, że taka awaria jest cicha. Jeśli wybierak nic nie pokazuje dla miasta, w którym z pewnością są paczkomaty, sprawdź najpierw wynik parsowania.
+
+Serwer odczytuje jeden punkt po nazwie przez `fetchPointByName`:
+
+```ts
+const response = await fetch(`${INPOST_API_BASE}/${encodeURIComponent(name)}`, { signal: AbortSignal.timeout(POINT_LOOKUP_TIMEOUT_MS) })
+if (response.status === HTTP_STATUS.NOT_FOUND) {
+  return undefined
+}
+```
+
+- **Status 404 zwraca `undefined`**: InPost nie ma punktu o tej nazwie.
+- **Każdy inny status inny niż OK rzuca wyjątek**, tak samo jak odpowiedź, która nie przejdzie `inpostPointSchema.parse`, błąd sieci albo upływ `POINT_LOOKUP_TIMEOUT_MS` (trzech sekund) bez odpowiedzi. Inaczej niż przy wyszukiwaniu po mieście zniekształcona odpowiedź nie oznacza „nic nie znaleziono”, bo wywołujący odrzuciłby wtedy prawdziwy paczkomat; oznacza, że InPost nie mógł odpowiedzieć.
 
 ## Schematy
 
@@ -115,7 +127,7 @@ if (data.deliveryMethodType === "locker" && (typeof data.lockerId !== "string" |
 }
 ```
 
-To sprawdzenie czyta `deliveryMethodType` trzymany przez przeglądarkę, więc tylko prowadzi formularz. Gdy sesja płatności jest otwierana albo zastępowana, `resolveDelivery` w `stripe.actions.server.ts` czyta `type` metody z bazy: metoda `locker` wymaga `lockerId`, który po przycięciu pasuje do `INPOST_POINT_NAME_PATTERN` z `inpost.constants.ts` (od 3 do 32 liter, cyfr, `_` albo `-`, zaczynając od litery lub cyfry), inaczej sesja dostaje odmowę `LOCKER_REQUIRED`, a każda inna metoda porzuca `lockerId`. Wzorzec sprawdza kształt nazwy punktu; nic nie pyta InPostu, czy punkt istnieje.
+To sprawdzenie czyta `deliveryMethodType` trzymany przez przeglądarkę, więc tylko prowadzi formularz. Gdy sesja płatności jest otwierana albo zastępowana, `resolveDelivery` w `stripe.actions.server.ts` czyta `type` metody z bazy: metoda `locker` wymaga `lockerId`, który po przycięciu pasuje do `INPOST_POINT_NAME_PATTERN` z `inpost.constants.ts` (od 3 do 32 liter, cyfr, `_` albo `-`, zaczynając od litery lub cyfry), inaczej sesja dostaje odmowę `LOCKER_REQUIRED`, a każda inna metoda porzuca `lockerId`. Poprawny identyfikator trafia następnie do `fetchPointByName`. Gdy InPost odpowiada, że punkt nie istnieje, sesja dostaje odmowę `LOCKER_NOT_FOUND`, a krok płatności odsyła kupującego do kroku dostawy, by wybrał inny paczkomat. Gdy InPost nie może odpowiedzieć, checkout idzie dalej, zamiast odrzucać każde zamówienie do paczkomatu, dopóki InPost nie działa: identyfikator zostaje przyjęty, błąd trafia do logu jako „InPost could not confirm parcel locker …”, a checkout zostaje zapisany z ustawionym `locker_unconfirmed`. Realizacja kopiuje tę flagę na zamówienie, a strona zamówienia w panelu pokazuje tag „Paczkomat niepotwierdzony” i notatkę na karcie wysyłki, która prosi administratora o sprawdzenie paczkomatu przed nadaniem paczki. Zobacz [Zamówienia i płatności](/docs/features/checkout#strona-serwera).
 
 Dalej `lockerId` zapisywany jest w wierszu `checkout`, kopiowany na zamówienie przy realizacji i odczytywany przez e-maile potwierdzające oraz o wysyłce przez `getCheckoutEmailContext`, gdzie `resolveDeliveryMethodLabel` składa etykietę widzianą przez klienta. Zobacz [Resend](/docs/integrations/resend) oraz [Zamówienia i płatności](/docs/features/checkout).
 
@@ -167,9 +179,9 @@ ShipX potwierdza nową przesyłkę chwilę po jej utworzeniu i wtedy nadaje jej 
 
 ## Testy
 
-Katalog `src/integrations/inpost/__test__/` obejmuje obie części. `inpost.api.test.ts` obejmuje adres żądania, wielkie litery w wieloczłonowych i dzielonych łącznikiem nazwach miast, rzucenie wyjątku przy statusie innym niż OK oraz zwrócenie pustej tablicy zarówno dla błędnego kształtu odpowiedzi, jak i dla jednego zniekształconego punktu. `inpost.queries.test.ts` obejmuje obcięty, zapisany małymi literami klucz, prefiks przestrzeni nazw oraz czasy cache jednego i dwóch dni. `inpost.zod.test.ts` obejmuje pełny punkt, punkt ograniczony do pól wymaganych, odrzucenie, gdy brakuje współrzędnych, miasta lub nazwy, oraz kształty przesyłki i webhooka ShipX. `inpost.shipx.server.test.ts` uruchamia klienta ShipX na odpowiedziach z `__test__/fixtures/shipx.ts`: adresy piaskownicy i produkcji, treść dla paczkomatu i kuriera, numer telefonu i każdą odmowę. Przypadki użycia, wspólna synchronizacja, trasa webhooka i karta zamówienia mają własne zestawy. `inpost-shipment.integration.test.ts` nadaje, odświeża i wysyła na zmigrowanej bazie SQLite: numer wpisany przy wysyłce przetrwa późniejsze raporty starej przesyłki, numer anulowanej przesyłki znika z zamówienia i nowe nadanie zajmuje jej miejsce, a nadanie zakończone już po wysłaniu zamówienia zostaje odrzucone. Zestaw przeglądarkowy nadaje, odświeża, drukuje i wysyła paczkę na emulatorze ShipX w testowym Workerze.
+Katalog `src/integrations/inpost/__test__/` obejmuje obie części. `inpost.api.test.ts` obejmuje adres żądania, wielkie litery w wieloczłonowych i dzielonych łącznikiem nazwach miast, rzucenie wyjątku przy statusie innym niż OK oraz zwrócenie pustej tablicy zarówno dla błędnego kształtu odpowiedzi, jak i dla jednego zniekształconego punktu; dla `fetchPointByName` obejmuje adres punktu, sygnał z limitem trzech sekund, `undefined` przy 404 i rzucenie wyjątku przy każdym innym statusie błędu albo odpowiedzi, która nie jest punktem. `inpost.queries.test.ts` obejmuje obcięty, zapisany małymi literami klucz, prefiks przestrzeni nazw oraz czasy cache jednego i dwóch dni. `inpost.zod.test.ts` obejmuje pełny punkt, punkt ograniczony do pól wymaganych, odrzucenie, gdy brakuje współrzędnych, miasta lub nazwy, oraz kształty przesyłki i webhooka ShipX. `inpost.shipx.server.test.ts` uruchamia klienta ShipX na odpowiedziach z `__test__/fixtures/shipx.ts`: adresy piaskownicy i produkcji, treść dla paczkomatu i kuriera, numer telefonu i każdą odmowę. Przypadki użycia, wspólna synchronizacja, trasa webhooka i karta zamówienia mają własne zestawy. `inpost-shipment.integration.test.ts` nadaje, odświeża i wysyła na zmigrowanej bazie SQLite: numer wpisany przy wysyłce przetrwa późniejsze raporty starej przesyłki, numer anulowanej przesyłki znika z zamówienia i nowe nadanie zajmuje jej miejsce, a nadanie zakończone już po wysłaniu zamówienia zostaje odrzucone. Zestaw przeglądarkowy nadaje, odświeża, drukuje i wysyła paczkę na emulatorze ShipX w testowym Workerze.
 
-Testy przeglądarkowe nigdy nie wywołują InPostu. `e2e/fixtures/inpost.ts` odpowiada na wyszukiwanie punktów paczkomatami z `e2e/data/inpost.ts`, których miasto się zgadza, a specyfikacja checkoutu wyszukuje w wyborze paczkomatu Warszawę, wybiera paczkomat z listy i płaci; zobacz [Testy](/docs/tooling/testing#testy-end-to-end).
+Testy przeglądarkowe nigdy nie wywołują InPostu. `e2e/fixtures/inpost.ts` odpowiada na wyszukiwanie punktów paczkomatami z `e2e/data/inpost.ts`, których miasto się zgadza, a specyfikacja checkoutu wyszukuje w wyborze paczkomatu Warszawę, wybiera paczkomat z listy i płaci; zobacz [Testy](/docs/tooling/testing#testy-end-to-end). Testowy Worker sam odpowiada na zapytania serwera o punkty przez `emulateInpostPoints` (`src/platform/testing/mocks/inpost-points.ts`): oba paczkomaty z `e2e/data/inpost.ts` są na liście, `WAW503` dostaje 503, jakby InPost nie działał, a każda inna nazwa 404.
 
 ## Powiązane strony
 

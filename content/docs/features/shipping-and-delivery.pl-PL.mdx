@@ -105,7 +105,7 @@ Wybór typu zapisuje `deliveryMethodType` i albo automatycznie wybiera jedyną m
 
 ### Paczkomat
 
-`delivery/locker/delivery-locker.tsx` pokazuje `deliverySubsteps.lockerText`, którego okno z mapą używa też jako opisu, to samo `deliverySubsteps.parcelDeliveryTime` co krok kuriera i aktualnie wybrany identyfikator paczkomatu oraz osadza `InpostSelector`. Pole `lockerId` jest wymagane przez `superRefine` w `checkoutSchema`, ilekroć `deliveryMethodType === "locker"`, co pokazuje na kroku `validation.lockerIdRequired`. Serwer nie ufa temu typowi: `resolveDelivery` wymaga `lockerId` pasującego do `INPOST_POINT_NAME_PATTERN` zawsze, gdy `type` metody w bazie to `locker`, a w przeciwnym razie odmawia sesji z `LOCKER_REQUIRED`. Dla każdego innego typu porzuca `lockerId`, więc `checkout.locker_id` i `order.locker_id` zostają puste przy zamówieniach z kurierem i z odbiorem osobistym.
+`delivery/locker/delivery-locker.tsx` pokazuje `deliverySubsteps.lockerText`, którego okno z mapą używa też jako opisu, to samo `deliverySubsteps.parcelDeliveryTime` co krok kuriera i aktualnie wybrany identyfikator paczkomatu oraz osadza `InpostSelector`. Pole `lockerId` jest wymagane przez `superRefine` w `checkoutSchema`, ilekroć `deliveryMethodType === "locker"`, co pokazuje na kroku `validation.lockerIdRequired`. Serwer nie ufa temu typowi: `resolveDelivery` wymaga `lockerId` pasującego do `INPOST_POINT_NAME_PATTERN` zawsze, gdy `type` metody w bazie to `locker`, a w przeciwnym razie odmawia sesji z `LOCKER_REQUIRED`. Następnie pyta InPost przez `fetchPointByName`, czy punkt istnieje, czekając najwyżej trzy sekundy: punkt, którego InPost nie ma na liście, dostaje odmowę `LOCKER_NOT_FOUND`, która odsyła kupującego do tego kroku, a gdy InPost nie może odpowiedzieć, paczkomat zostaje przyjęty z ustawionym `checkout.locker_unconfirmed`, więc zamówienie w panelu prosi sklep o sprawdzenie go przed wysyłką. Dla każdego innego typu porzuca `lockerId`, więc `checkout.locker_id` i `order.locker_id` zostają puste przy zamówieniach z kurierem i z odbiorem osobistym.
 
 ## Wybór punktu InPost
 
@@ -128,7 +128,7 @@ export const fetchPointsByCity = async (city: string): Promise<InpostPointParsed
 
 Rzeczy warte uwagi:
 
-- Wywołanie idzie **wprost z przeglądarki** do publicznego API punktów InPost. Nie ma funkcji serwerowej, nie ma proxy i nie ma klucza API.
+- Wyszukiwanie po mieście idzie **wprost z przeglądarki** do publicznego API punktów InPost. Nie ma funkcji serwerowej, nie ma proxy i nie ma klucza API. Serwer woła to samo API tylko przez `fetchPointByName` (`/v1/points/<name>`, limit trzech sekund), żeby potwierdzić wybrany punkt, gdy sesja płatności jest otwierana albo zastępowana.
 - `capitalizeCity` zamienia pierwszą literę każdego słowa na wielką, czego API oczekuje.
 - Odpowiedź inna niż OK rzuca wyjątek; odpowiedź, która nie przejdzie `inpostApiResponseSchema.safeParse`, zwraca `[]` zamiast rzucać — zmiana schematu po stronie InPostu degraduje się więc do „nie znaleziono punktów”.
 - `inpostPointsByCityQueryOptions(city)` cache'uje agresywnie: `staleTime` jeden dzień, `gcTime` dwa dni, klucz po przyciętej nazwie miasta w małych literach i `enabled` dopiero od trzech znaków.
@@ -152,9 +152,9 @@ Mapa to `react-map-gl/maplibre` z podkładem Carto Voyager (`https://basemaps.ca
 ## Jak dostawa trafia do zamówienia
 
 1. `deliveryMethod` (identyfikator metody) jest wysyłany razem z formularzem kasy.
-2. `resolveDelivery` odrzuca metodę, której sklep nie oferuje, i metodę paczkomatową bez paczkomatu, zachowuje `lockerId` tylko dla metody paczkomatowej i odczytuje `price` metody.
-3. `prepareCreateCheckoutBatch` zapisuje metodę do `checkout.delivery_method_id`, a `lockerId` do `checkout.locker_id`; `createStripeSession` dodaje dla ceny pozycję dostawy, gdy jest większa od zera, nazwaną według typu metody w języku kupującego (`deliveryLineItem` w `pages.checkout`).
-4. `prepareFulfillCheckoutBatch` kopiuje `deliveryMethodId`, `lockerId` i `customerNote` z migawki checkoutu na nowy wiersz `order` i wylicza `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
+2. `resolveDelivery` odrzuca metodę, której sklep nie oferuje, metodę paczkomatową bez paczkomatu i paczkomat, którego InPost nie ma na liście, zachowuje `lockerId` tylko dla metody paczkomatowej, zapamiętuje, czy udało się o niego zapytać InPost, i odczytuje `price` metody.
+3. `prepareCreateCheckoutBatch` zapisuje metodę do `checkout.delivery_method_id`, `lockerId` do `checkout.locker_id`, a nieodpowiedziane zapytanie do `checkout.locker_unconfirmed`; `createStripeSession` dodaje dla ceny pozycję dostawy, gdy jest większa od zera, nazwaną według typu metody w języku kupującego (`deliveryLineItem` w `pages.checkout`).
+4. `prepareFulfillCheckoutBatch` kopiuje `deliveryMethodId`, `lockerId`, `lockerUnconfirmed` i `customerNote` z migawki checkoutu na nowy wiersz `order` i wylicza `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
 5. Przy zamówieniu do paczkomatu albo kurierem administrator może nadać paczkę w InPost ze strony zamówienia. Identyfikator i status przesyłki trafiają do `order.inpost_shipment_id` i `order.inpost_shipment_status`, numer do śledzenia i link do `order.tracking_number` i `order.tracking_url`, a etykietę PDF pobiera się z tej samej karty. Zobacz [InPost](/docs/integrations/inpost#przesyłki-przez-shipx).
 
 ## Dostawa w e-mailach

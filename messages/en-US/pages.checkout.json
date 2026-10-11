@@ -180,6 +180,7 @@
     "errors": {
       "deliveryMethodUnavailable": "The delivery method you chose is no longer available. Please choose another one.",
       "lockerRequired": "Please choose a parcel locker for this delivery method.",
+      "lockerNotFound": "InPost does not list the parcel locker you chose. Please choose another one.",
       "insufficientInventory": "Some items in your cart are out of stock.",
       "invalidPrice": "A product in your cart has an invalid price. Please remove it and try again.",
       "productNotFound": "A product in your cart is no longer available.",

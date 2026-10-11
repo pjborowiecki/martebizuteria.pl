@@ -491,7 +491,7 @@ const createPlacedOrderTables = (): void => {
       currency_code text not null default 'PLN', customer_note text, delivered_at integer, delivery_method_id text,
       discount_id text, discount_total integer not null default 0, email text not null,
       fulfillment_status text not null default 'not_fulfilled', inpost_shipment_id text, inpost_shipment_status text,
-      locker_id text, metadata text, order_number text not null,
+      locker_id text, locker_unconfirmed integer not null default 0, metadata text, order_number text not null,
       payment_id text, restocked_at integer, shipped_at integer, shipping_total integer not null default 0, status text not null default 'pending',
       subtotal integer not null default 0, tax_basis_points integer not null default 2300, tax_total integer not null default 0,
       total integer not null default 0, tracking_number text, tracking_url text, user_id text,
@@ -573,7 +573,7 @@ const seedPlacedOrderReads = (): void => {
 
     create table checkout (
       id text primary key, billing_address_id text, billing_company_name text, billing_nip text, cart_id text, client_address text,
-      customer_note text, delivery_method_id text, discount_id text, email text, locker_id text, shipping_address_id text,
+      customer_note text, delivery_method_id text, discount_id text, email text, locker_id text, locker_unconfirmed integer not null default 0, shipping_address_id text,
       status text, user_id text, created_at integer, updated_at integer
     );
     create table product (id text primary key, handle text not null, thumbnail text);

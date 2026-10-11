@@ -3,7 +3,7 @@ title: "InPost"
 description: "Parcel-locker lookup for the checkout delivery step, and ShipX shipments, labels and tracking for the admin."
 ---
 
-Polish customers expect to choose an InPost _paczkomat_, and the shop sends its parcels with InPost. The `src/integrations/inpost/` adapter covers both: a read-only lookup of pickup points by city, cached in TanStack Query, feeding a map-and-list picker in the checkout delivery step, and a small client for InPost's ShipX API that the admin order page uses to book a shipment, download its label and read back its status.
+Polish customers expect to choose an InPost _paczkomat_, and the shop sends its parcels with InPost. The `src/integrations/inpost/` adapter covers both: a read-only lookup of pickup points by city, cached in TanStack Query, feeding a map-and-list picker in the checkout delivery step, a lookup of one point by name that the server uses to confirm the chosen locker when the payment session is opened or replaced, and a small client for InPost's ShipX API that the admin order page uses to book a shipment, download its label and read back its status.
 
 ## Two APIs
 
@@ -12,11 +12,11 @@ Polish customers expect to choose an InPost _paczkomat_, and the shop sends its 
 | Point lookup | `inpost.api.ts`, `inpost.queries.ts`                       | `https://api-pl-points.easypack24.net/v1/points`, called from the browser                                                            | None, the endpoint is public                 |
 | Shipments    | `inpost.shipx.server.ts`, the use cases in `modules/order` | ShipX: `https://api-shipx-pl.easypack24.net` in production, InPost's sandbox `https://sandbox-api-shipx-pl.easypack24.net` elsewhere | `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID` |
 
-The order stores the locker the customer picked, as `checkout.locker_id` and `order.locker_id`, and once a shipment is booked, its ShipX id and last reported status in `order.inpost_shipment_id` and `order.inpost_shipment_status`, with the tracking number and link in `order.tracking_number` and `order.tracking_url`.
+The order stores the locker the customer picked, as `checkout.locker_id` and `order.locker_id`, whether InPost could confirm it when the payment session was opened, as `checkout.locker_unconfirmed` and `order.locker_unconfirmed`, and once a shipment is booked, its ShipX id and last reported status in `order.inpost_shipment_id` and `order.inpost_shipment_status`, with the tracking number and link in `order.tracking_number` and `order.tracking_url`.
 
 ## The lookup
 
-`inpost.api.ts` is 28 lines and calls one public endpoint:
+`inpost.api.ts` is 46 lines and calls one public endpoint in two ways. The picker searches it by city:
 
 ```ts
 const url = `${INPOST_API_BASE}?city=${encodeURIComponent(capitalizeCity(trimmed))}&per_page=1000`
@@ -26,11 +26,23 @@ if (!response.ok) {
 }
 ```
 
-`INPOST_API_BASE` is `https://api-pl-points.easypack24.net/v1/points`. Three details matter:
+`INPOST_API_BASE` is `https://api-pl-points.easypack24.net/v1/points`, built from `INPOST_POINTS_API_ORIGIN` in `inpost.constants.ts`, which the Content-Security-Policy's `connect-src` also imports for the browser's search. Three details matter:
 
 - **`capitalizeCity`** lowercases the input and then upper-cases the first letter of every word, including after a hyphen, with a Unicode-aware regex — `"jelenia-góra"` becomes `"Jelenia-Góra"`. The endpoint is case-sensitive about city names, so without this the search silently returns nothing.
 - **Fewer than three characters returns an empty array** without a request (`MIN_CITY_LENGTH = 3`).
 - **A response that fails schema validation returns an empty array**, not an error. Only a non-OK HTTP status throws. This means a change in the upstream payload shape degrades to "no lockers found" rather than a broken checkout — which is the right trade-off, but it also means such a break is silent. If the picker shows nothing for a city you know has lockers, check the parse result first.
+
+The server looks one point up by name with `fetchPointByName`:
+
+```ts
+const response = await fetch(`${INPOST_API_BASE}/${encodeURIComponent(name)}`, { signal: AbortSignal.timeout(POINT_LOOKUP_TIMEOUT_MS) })
+if (response.status === HTTP_STATUS.NOT_FOUND) {
+  return undefined
+}
+```
+
+- **A 404 returns `undefined`**: InPost has no point with that name.
+- **Any other non-OK status throws**, and so does a reply that fails `inpostPointSchema.parse`, a network failure, or `POINT_LOOKUP_TIMEOUT_MS` (three seconds) passing without an answer. Unlike the city search, a malformed reply is not read as "nothing found", because the caller would then refuse a real locker; it means InPost could not answer.
 
 ## The schemas
 
@@ -115,7 +127,7 @@ if (data.deliveryMethodType === "locker" && (typeof data.lockerId !== "string" |
 }
 ```
 
-That check reads the `deliveryMethodType` the browser keeps, so it only guides the form. When a payment session is opened or replaced, `resolveDelivery` in `stripe.actions.server.ts` reads the method's `type` from the database instead: a `locker` method needs a `lockerId` that, trimmed, matches `INPOST_POINT_NAME_PATTERN` from `inpost.constants.ts` (3 to 32 letters, digits, `_` or `-`, starting with a letter or digit), or the session is refused with `LOCKER_REQUIRED`, and any other method drops the `lockerId`. The pattern checks the shape of a point name; nothing asks InPost whether the point exists.
+That check reads the `deliveryMethodType` the browser keeps, so it only guides the form. When a payment session is opened or replaced, `resolveDelivery` in `stripe.actions.server.ts` reads the method's `type` from the database instead: a `locker` method needs a `lockerId` that, trimmed, matches `INPOST_POINT_NAME_PATTERN` from `inpost.constants.ts` (3 to 32 letters, digits, `_` or `-`, starting with a letter or digit), or the session is refused with `LOCKER_REQUIRED`, and any other method drops the `lockerId`. A well-formed id then goes to `fetchPointByName`. When InPost answers that the point does not exist, the session is refused with `LOCKER_NOT_FOUND`, and the payment step sends the shopper back to the delivery step to choose another locker. When InPost cannot answer, the checkout goes ahead rather than turning every locker order away while InPost is down: the id is accepted, the failure is logged as "InPost could not confirm parcel locker …", and the checkout is saved with `locker_unconfirmed` set. Fulfilment copies the flag onto the order, and the admin order page shows a "Locker not confirmed" tag and a note on the shipping card asking the admin to check the locker before sending the parcel. See [Checkout and payments](/docs/features/checkout#server-side).
 
 From there `lockerId` is persisted on the `checkout` row, copied onto the order at fulfilment, and read back by the confirmation and shipped e-mails through `getCheckoutEmailContext`, where `resolveDeliveryMethodLabel` composes the label the customer sees. See [Resend](/docs/integrations/resend) and [Checkout and payments](/docs/features/checkout).
 
@@ -167,9 +179,9 @@ ShipX confirms a new shipment shortly after it is created and assigns the tracki
 
 ## Tests
 
-`src/integrations/inpost/__test__/` covers both halves. `inpost.api.test.ts` covers the request URL, capitalization of multi-part and hyphenated city names, the throw on a non-OK status, and the empty-array fallback for both a wrong response shape and a single malformed point. `inpost.queries.test.ts` covers the trimmed lower-cased key, the namespace prefix and the one-day / two-day cache times. `inpost.zod.test.ts` covers a full point, a point stripped to its required fields, rejection when coordinates, city or name are missing, and the ShipX shipment and webhook shapes. `inpost.shipx.server.test.ts` runs the ShipX client against the responses in `__test__/fixtures/shipx.ts`: the sandbox and production URLs, the locker and courier bodies, the phone number, and each refusal. The use cases, the shared sync, the webhook route and the order card have their own suites. `inpost-shipment.integration.test.ts` books, refreshes and ships against a migrated SQLite database: a number typed when shipping survives the old shipment's later reports, a cancelled shipment's number leaves the order and a new booking takes its place, and a booking that finishes after the order shipped is refused. The browser suite books, refreshes, prints and ships a parcel against the ShipX emulator in the test Worker.
+`src/integrations/inpost/__test__/` covers both halves. `inpost.api.test.ts` covers the request URL, capitalization of multi-part and hyphenated city names, the throw on a non-OK status, and the empty-array fallback for both a wrong response shape and a single malformed point; for `fetchPointByName` it covers the point URL, the three-second timeout signal, `undefined` on a 404 and the throw on any other error status or a reply that is not a point. `inpost.queries.test.ts` covers the trimmed lower-cased key, the namespace prefix and the one-day / two-day cache times. `inpost.zod.test.ts` covers a full point, a point stripped to its required fields, rejection when coordinates, city or name are missing, and the ShipX shipment and webhook shapes. `inpost.shipx.server.test.ts` runs the ShipX client against the responses in `__test__/fixtures/shipx.ts`: the sandbox and production URLs, the locker and courier bodies, the phone number, and each refusal. The use cases, the shared sync, the webhook route and the order card have their own suites. `inpost-shipment.integration.test.ts` books, refreshes and ships against a migrated SQLite database: a number typed when shipping survives the old shipment's later reports, a cancelled shipment's number leaves the order and a new booking takes its place, and a booking that finishes after the order shipped is refused. The browser suite books, refreshes, prints and ships a parcel against the ShipX emulator in the test Worker.
 
-The browser tests never call InPost. `e2e/fixtures/inpost.ts` answers the point search with the lockers in `e2e/data/inpost.ts` whose city matches, and a checkout spec searches Warszawa in the picker, chooses a locker from the list and pays; see [Testing](/docs/tooling/testing#end-to-end-tests).
+The browser tests never call InPost. `e2e/fixtures/inpost.ts` answers the point search with the lockers in `e2e/data/inpost.ts` whose city matches, and a checkout spec searches Warszawa in the picker, chooses a locker from the list and pays; see [Testing](/docs/tooling/testing#end-to-end-tests). The test Worker answers the server's own point lookups with `emulateInpostPoints` (`src/platform/testing/mocks/inpost-points.ts`): the two lockers in `e2e/data/inpost.ts` are listed, `WAW503` gets a 503 as if InPost were down, and any other name a 404.
 
 ## Related pages
 

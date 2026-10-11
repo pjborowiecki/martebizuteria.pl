@@ -218,6 +218,7 @@ export const ADMIN_ORDER_DETAIL_TAG = {
   GUEST: "guest",
   IN_STORE: "inStore",
   LOCKER: "locker",
+  LOCKER_UNCONFIRMED: "lockerUnconfirmed",
   NOTE: "note",
   NOT_RESTOCKED: "notRestocked",
   PARTIALLY_REFUNDED: "partiallyRefunded",

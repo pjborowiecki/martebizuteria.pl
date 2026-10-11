@@ -120,6 +120,7 @@ describe("PaymentStep when the server refuses the delivery the shopper chose", (
       "The delivery method you chose is no longer available. Please choose another one.",
     ],
     ["the parcel-locker method names no locker", "LOCKER_REQUIRED", "Please choose a parcel locker for this delivery method."],
+    ["InPost does not list the locker", "LOCKER_NOT_FOUND", "InPost does not list the parcel locker you chose. Please choose another one."],
   ])("sends the shopper back to choose again with the current methods when %s", async (_reason, code, toastMessage) => {
     ensureCheckoutSession.mockRejectedValue(new Error(code))
     const invalidateQueries = renderWatchingInvalidations()

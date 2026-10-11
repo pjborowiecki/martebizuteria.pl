@@ -1,6 +1,9 @@
 import { z } from "zod"
 
+import { emulateInpostPoints } from "~/src/platform/testing/mocks/inpost-points"
+
 import { TURNSTILE_ORIGIN, TURNSTILE_TESTING_KEYS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+import { INPOST_POINTS_API_ORIGIN } from "~/src/integrations/inpost/inpost.constants"
 import { STRIPE_API_VERSION, STRIPE_CURRENCY } from "~/src/integrations/stripe/stripe.constants"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
@@ -739,6 +742,10 @@ export const installProviderMocks = (): void => {
 
     if (url.hostname === SHIPX_SANDBOX_HOST) {
       return emulateInpostShipx(request, url)
+    }
+
+    if (url.origin === INPOST_POINTS_API_ORIGIN) {
+      return emulateInpostPoints(url)
     }
 
     return nativeFetch(request)

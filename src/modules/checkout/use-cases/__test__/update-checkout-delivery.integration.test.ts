@@ -56,6 +56,7 @@ const checkoutRow = z.object({
   delivery_method_id: z.string().nullable(),
   email: z.string(),
   locker_id: z.string().nullable(),
+  locker_unconfirmed: z.number(),
   shipping_address_id: z.string().nullable(),
   status: z.string(),
   user_id: z.string().nullable(),
@@ -78,7 +79,7 @@ beforeEach(() => {
     );
     create table checkout (
       id text primary key, billing_company_name text, billing_nip text, status text not null, email text not null, user_id text, cart_id text, discount_id text,
-      client_address text, customer_note text, delivery_method_id text, locker_id text, billing_address_id text, shipping_address_id text,
+      client_address text, customer_note text, delivery_method_id text, locker_id text, locker_unconfirmed integer not null default 0, billing_address_id text, shipping_address_id text,
       created_at integer, updated_at integer
     );
   `)
@@ -224,6 +225,23 @@ describe("checkout update persistence boundaries", () => {
     const updated = readCheckout(checkoutId)
     expect(updated.locker_id).toBeNull()
     expect(readAddress(updated.shipping_address_id)).toMatchObject({ address2: null, province: null })
+  })
+
+  it("keeps the flag on a locker InPost could not confirm until an edit names a locker it confirms", async () => {
+    const { checkoutId } = await createCheckout({
+      checkoutValues: { ...shipping, lockerId: "WAW01A" },
+      clientAddress: CLIENT_ADDRESS,
+      lockerUnconfirmed: true,
+      userEmail: shipping.email,
+      userId: "user-1",
+    })
+    expect(readCheckout(checkoutId).locker_unconfirmed).toBe(1)
+
+    await updateCheckoutDelivery(checkoutId, { ...shipping, lockerId: "KRA01M" }, { lockerUnconfirmed: true })
+    expect(readCheckout(checkoutId)).toMatchObject({ locker_id: "KRA01M", locker_unconfirmed: 1 })
+
+    await updateCheckoutDelivery(checkoutId, { ...shipping, lockerId: "KRA01M" })
+    expect(readCheckout(checkoutId)).toMatchObject({ locker_id: "KRA01M", locker_unconfirmed: 0 })
   })
 
   it("keeps guest addresses unattached to a customer and avoids duplicates on retry", async () => {

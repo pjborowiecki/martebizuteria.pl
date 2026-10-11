@@ -110,11 +110,39 @@ describe("OrderShippingCard copy", () => {
 describe("OrderShippingCard delivery", () => {
   it("names the delivery method alone when the courier is unknown", () => {
     renderCard(
-      buildAdminOrderDetail({ delivery: { courierName: undefined, lockerId: undefined, methodName: "Odbiór osobisty", type: "in_store" } }),
+      buildAdminOrderDetail({
+        delivery: {
+          courierName: undefined,
+          lockerId: undefined,
+          lockerUnconfirmed: false,
+          methodName: "Odbiór osobisty",
+          type: "in_store",
+        },
+      }),
     )
 
     expect(screen.getByText("Odbiór osobisty")).toHaveTextContent(/^Odbiór osobisty$/u)
     expect(screen.queryByText("WAW01A")).toBeNull()
+  })
+
+  it("asks the admin to check a locker InPost could not confirm when the order was placed", () => {
+    renderCard(
+      buildAdminOrderDetail({
+        delivery: { courierName: "InPost", lockerId: "WAW01A", lockerUnconfirmed: true, methodName: "Paczkomat 24/7", type: "locker" },
+      }),
+    )
+
+    expect(
+      screen.getByText(
+        "InPost could not be reached to confirm this parcel locker when the order was placed. Check that it exists before you send the parcel.",
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it("says nothing about a locker InPost confirmed", () => {
+    renderCard()
+
+    expect(screen.queryByText(/InPost could not be reached/u)).toBeNull()
   })
 
   it("shows the tracking number without a link when no tracking page is known", () => {

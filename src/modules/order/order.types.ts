@@ -85,6 +85,7 @@ interface AdminOrderDetailCustomer {
 interface AdminOrderDetailDelivery {
   readonly courierName: string | undefined
   readonly lockerId: string | undefined
+  readonly lockerUnconfirmed: boolean
   readonly methodName: string
   readonly type: DeliveryMethodType
 }

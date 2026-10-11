@@ -45,6 +45,7 @@ describe("checkout table", () => {
       "email",
       "id",
       "locker_id",
+      "locker_unconfirmed",
       "shipping_address_id",
       "status",
       "user_id",
@@ -114,6 +115,14 @@ describe("checkout table", () => {
 
     expect(locker?.getSQLType()).toBe("text")
     expect(locker?.notNull).toBe(false)
+  })
+
+  it("treats a locker as confirmed unless InPost could not be asked about it", () => {
+    const unconfirmed = columnByName.get("locker_unconfirmed")
+
+    expect(unconfirmed?.getSQLType()).toBe("integer")
+    expect(unconfirmed?.default).toBe(false)
+    expect(unconfirmed?.notNull).toBe(true)
   })
 
   it("stamps the checkout on insert and refreshes it on update", () => {

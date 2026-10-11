@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { fetchPointsByCity } from "~/src/integrations/inpost/inpost.api"
+import { fetchPointByName, fetchPointsByCity } from "~/src/integrations/inpost/inpost.api"
 
 const point = {
   address_details: { building_number: "12A", city: "Warszawa", post_code: "00-001", province: "mazowieckie", street: "Krucza" },
@@ -36,6 +36,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 describe("fetchPointsByCity", () => {
@@ -93,5 +94,42 @@ describe("fetchPointsByCity", () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ count: 1, items: [{ name: "WAW01A" }] }))
 
     await expect(fetchPointsByCity("warszawa")).resolves.toStrictEqual([])
+  })
+})
+
+describe("fetchPointByName", () => {
+  it("returns the point InPost reports under that name", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse(point))
+
+    await expect(fetchPointByName("WAW01A")).resolves.toMatchObject({ name: "WAW01A" })
+    expect(requestedUrl()).toBe("https://api-pl-points.easypack24.net/v1/points/WAW01A")
+  })
+
+  it("gives InPost three seconds to answer", async () => {
+    const timeout = vi.spyOn(AbortSignal, "timeout")
+    fetchMock.mockResolvedValueOnce(jsonResponse(point))
+
+    await fetchPointByName("WAW01A")
+
+    expect(timeout).toHaveBeenCalledExactlyOnceWith(3000)
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(timeout.mock.results[0]?.value)
+  })
+
+  it("returns nothing when InPost has no point under that name", async () => {
+    fetchMock.mockResolvedValueOnce(Response.json({ error: "resource_not_found" }, { status: 404 }))
+
+    await expect(fetchPointByName("WAW99X")).resolves.toBeUndefined()
+  })
+
+  it("throws with the status InPost returned when it cannot answer", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("busy", { status: 503 }))
+
+    await expect(fetchPointByName("WAW01A")).rejects.toThrow("InPost API error: 503")
+  })
+
+  it("throws when InPost answers with something that is not a point", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({ name: "WAW01A" }))
+
+    await expect(fetchPointByName("WAW01A")).rejects.toThrow()
   })
 })
