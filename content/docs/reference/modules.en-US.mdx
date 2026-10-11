@@ -3,7 +3,7 @@ title: "Module catalog"
 description: "All 43 modules in src/modules, the database tables each one owns, and every use case it exports."
 ---
 
-`src/modules` holds 43 folders. Thirty-eight own the 41 tables registered with Drizzle, since `order` also owns `order_number_sequence` and `discount` also owns `discount_redemption` and `discount_claim`. `storefront-search` owns the FTS5 virtual table `storefront_search`, which is declared in its schema file but not registered. Four own no table and exist because they group operations that read across several of them. Together they export 131 use cases, of which 116 are `createServerFn` endpoints and 15 are plain server-side functions.
+`src/modules` holds 43 folders. Thirty-eight own the 41 tables registered with Drizzle, since `order` also owns `order_number_sequence` and `discount` also owns `discount_redemption` and `discount_claim`. `storefront-search` owns the FTS5 virtual table `storefront_search`, which is declared in its schema file but not registered. Four own no table and exist because they group operations that read across several of them. Together they export 132 use cases, of which 117 are `createServerFn` endpoints and 15 are plain server-side functions.
 
 Every table except `storefront_search` is re-exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`, which is what makes it part of the Drizzle schema and therefore part of the relational query API (`db.query.<table>`). A table that is not listed there does not exist for `db.query` or drizzle-kit: `storefront_search` is created by the hand-written `20261002100000_storefront_search.sql` migration and queried with `db.select().from(storefrontSearch)` in `storefront-search.accessors.server.ts`.
 

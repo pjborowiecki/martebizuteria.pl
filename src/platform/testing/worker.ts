@@ -1,4 +1,5 @@
 import {
+  acceptEmailsTo,
   completeCheckoutSession,
   expireCheckoutSession,
   getSentEmails,
@@ -6,6 +7,7 @@ import {
   listCheckoutSessions,
   listCustomers,
   listSetupIntents,
+  refuseEmailsTo,
   succeedSetupIntent,
 } from "~/src/platform/testing/mocks/providers"
 
@@ -68,6 +70,22 @@ const handleSetupIntentTestRequest = (request: Request, url: URL): Response | un
     : Response.json(succeeded)
 }
 
+const handleEmailRefusalTestRequest = (request: Request, url: URL): Response => {
+  const recipient = requiredParam(url, "to")
+  if (recipient === undefined) {
+    return Response.json({ error: "An email recipient is required" }, { status: HTTP_STATUS.BAD_REQUEST })
+  }
+
+  const refused = request.method === "POST"
+  if (refused) {
+    refuseEmailsTo(recipient)
+  } else {
+    acceptEmailsTo(recipient)
+  }
+
+  return Response.json({ recipient, refused })
+}
+
 const handleTestRequest = (request: Request, env: Env, url: URL): Promise<Response> | Response | undefined => {
   if (url.pathname === "/__test/emails" && request.method === "GET") {
     const recipient = requiredParam(url, "to")
@@ -75,6 +93,10 @@ const handleTestRequest = (request: Request, env: Env, url: URL): Promise<Respon
     return recipient === undefined
       ? Response.json({ error: "An email recipient is required" }, { status: HTTP_STATUS.BAD_REQUEST })
       : Response.json(getSentEmails(recipient))
+  }
+
+  if (url.pathname === "/__test/emails/refusals" && (request.method === "POST" || request.method === "DELETE")) {
+    return handleEmailRefusalTestRequest(request, url)
   }
 
   if (url.pathname === "/__test/stripe/checkout-sessions" && request.method === "GET") {

@@ -8,8 +8,9 @@ import {
   ORDER_EMAIL_STATUS_CONFIG,
   ORDER_TIMELINE_ICONS,
 } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
+import { OrderEmailResendButton } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-email-resend-button"
 
-export const OrderTimelineEvent = ({ event }: Readonly<OrderTimelineEventProps>): JSX.Element => {
+export const OrderTimelineEvent = ({ event, orderId }: Readonly<OrderTimelineEventProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
   const Icon = ORDER_TIMELINE_ICONS[event.kind]
@@ -27,6 +28,7 @@ export const OrderTimelineEvent = ({ event }: Readonly<OrderTimelineEventProps>)
       <div className="min-w-0 pt-0.5">
         <p className="text-[13px] leading-snug">{t(`orderDetail.timeline.actions.${event.labelKey}`)}</p>
         {event.detail !== undefined && <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{event.detail}</p>}
+        {event.resendable && <OrderEmailResendButton eventId={event.id} orderId={orderId} />}
         <div className="mt-0.5 flex items-center gap-2">
           <span className="text-[11px] text-muted-foreground/50">
             {format.dateTime(event.at, { day: "numeric", hour: "2-digit", minute: "2-digit", month: "short", year: "numeric" })}
@@ -45,4 +47,5 @@ export const OrderTimelineEvent = ({ event }: Readonly<OrderTimelineEventProps>)
 
 interface OrderTimelineEventProps {
   readonly event: Order["adminOrderDetailTimelineEvent"]
+  readonly orderId: string
 }

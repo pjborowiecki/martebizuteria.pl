@@ -33,10 +33,18 @@ const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): 
 
 export const shopSender = (): string => `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
 
-const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+const deliver = async ({
+  from,
+  idempotencyKey,
+  revealsAccountExistence,
+  ...message
+}: Readonly<SendEmailOptions>): Promise<string | undefined> => {
   const sender = from ?? shopSender()
   try {
-    const { error } = await resend.emails.send({ ...message, from: sender, replyTo: BUSINESS.EMAIL })
+    const { error } = await resend.emails.send(
+      { ...message, from: sender, replyTo: BUSINESS.EMAIL },
+      idempotencyKey === undefined ? {} : { idempotencyKey },
+    )
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -64,6 +72,7 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 interface SendEmailOptions {
   readonly attachments?: Attachment[]
   readonly from?: string
+  readonly idempotencyKey?: string
   readonly react: ReactElement
   readonly revealsAccountExistence?: boolean
   readonly subject: string

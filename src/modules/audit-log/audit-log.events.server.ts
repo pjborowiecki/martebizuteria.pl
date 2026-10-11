@@ -603,18 +603,46 @@ export const recordEmailFailedAudit = (target: string, options?: AuditEventOptio
   })
 }
 
-export const recordOrderEmailOutcome = ({
-  failure,
-  label,
-  orderId,
-}: Readonly<{ failure: string | undefined; label: string; orderId: string }>): void => {
+export const recordEmailDeferredAudit = (target: string, options?: AuditEventOptions): void => {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.EMAIL_DEFERRED,
+    category: "email",
+    severity: "warning",
+    ...withResourceId(target, options),
+  })
+}
+
+export const recordEmailResendRequestedAudit = (orderId: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.EMAIL_RESEND_REQUESTED,
+    category: "email",
+    severity: "info",
+    ...withResourceId(orderId, options),
+  })
+}
+
+export const recordOrderEmailOutcome = ({ failure, label, metadata, orderId, willRetry }: Readonly<OrderEmailOutcomeRecord>): void => {
   if (failure === undefined) {
-    recordEmailSentAudit(orderId, { detail: label, resourceId: orderId })
+    recordEmailSentAudit(orderId, { detail: label, metadata, resourceId: orderId })
 
     return
   }
   console.error(`${label} failed for order ${orderId}: ${failure}`)
-  recordEmailFailedAudit(orderId, { detail: `${label} — ${failure}`, resourceId: orderId })
+  const options = { detail: `${label} — ${failure}`, metadata, resourceId: orderId }
+  if (willRetry) {
+    recordEmailDeferredAudit(orderId, options)
+
+    return
+  }
+  recordEmailFailedAudit(orderId, options)
+}
+
+interface OrderEmailOutcomeRecord {
+  readonly failure: string | undefined
+  readonly label: string
+  readonly metadata: Record<string, unknown>
+  readonly orderId: string
+  readonly willRetry: boolean
 }
 
 export const resolveAuthAuditActor = (

@@ -41,6 +41,16 @@ export const waitForEmail = async (request: APIRequestContext, recipient: string
   return email
 }
 
+export const refuseEmailsTo = async (request: APIRequestContext, recipient: string): Promise<void> => {
+  const response = await request.post("/__test/emails/refusals", { params: { to: recipient } })
+  expect(response.ok()).toBe(true)
+}
+
+export const acceptEmailsTo = async (request: APIRequestContext, recipient: string): Promise<void> => {
+  const response = await request.delete("/__test/emails/refusals", { params: { to: recipient } })
+  expect(response.ok()).toBe(true)
+}
+
 export const linkIn = (email: SentEmail, pattern: RegExp): URL => {
   const href = [...email.html.matchAll(/href="(?<href>[^"]+)"/gu)]
     .map((match) => match.groups?.["href"]?.replaceAll("&amp;", "&") ?? "")

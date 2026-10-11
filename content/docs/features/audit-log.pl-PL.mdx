@@ -27,7 +27,7 @@ Dziennik audytu to historia zdarzeń sklepu, która pełni jednocześnie rolę m
 
 Pięć indeksów: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` oraz złożony `audit_log_resource_idx` na (`category`, `resource_id`) — właśnie on sprawia, że pytanie „co się stało z tym zamówieniem” jest tanie.
 
-## 60 akcji
+## 61 akcji
 
 `AUDIT_LOG_ACTION` w `audit-log.constants.ts`:
 
@@ -38,14 +38,14 @@ Pięć indeksów: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_lo
 | `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_requested`, `order.withdrawal_received`, `order.refund_initiated`, `order.restocked`, `order.shipment_created`, `order.released`, `order.dispute_opened`, `order.dispute_closed`, `discount.redeemed` |
 | `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset`, `auth.email_changed`, `auth.two_factor_enabled`, `auth.two_factor_disabled`, `auth.sessions_revoked`, `auth.role_changed`, `auth.user_banned`, `auth.user_unbanned`                                                                                                              |
 | `customers` | `customer.registered`, `customer.updated`, `customer.deleted`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`, `customer.deletion_failed`                                                                                                                                                                                                           |
-| `email`     | `email.sent`, `email.failed`, `email.deferred`, `newsletter.sent`                                                                                                                                                                                                                                                                                                                  |
+| `email`     | `email.sent`, `email.failed`, `email.deferred`, `email.resend_requested`, `newsletter.sent`                                                                                                                                                                                                                                                                                        |
 | `settings`  | `settings.updated`, `discount.created/updated/deleted`, `sales.paused`, `sales.resumed`, `audit_log.deleted`                                                                                                                                                                                                                                                                       |
 
-`email.deferred` i `settings.updated` są zadeklarowane, ale nic ich nie emituje.
+`settings.updated` jest zadeklarowane, ale nic go nie emituje. `email.deferred` zapisuje e-mail dotyczący zamówienia, którego pierwszej próby Resend nie przyjął i który jest ponawiany, a `email.resend_requested` naciśnięcie przez administratora przycisku **Wyślij ponownie** w zamówieniu; zobacz [E-mail](/docs/features/email#wysyłka-i-ponawianie).
 
 ## Zapis zdarzenia
 
-Nigdy nie zapisuj do `audit_log` bezpośrednio. `audit-log.events.server.ts` eksportuje nazwany rejestrator na każdą akcję: 60 eksportowanych funkcji `record*`, czyli 59 rejestratorów akcji, w tym dwa dla `order.released` (koszyk zwalniany przez webhook Stripe i zamówienie, które administrator oznacza jako dostarczone), plus wrapper `recordOrderEmailOutcome`. Każdy rejestrator uzupełnia akcję, kategorię i poziom ważności, a następnie deleguje do jednego z trzech schedulerów w `audit-log.record.server.ts`:
+Nigdy nie zapisuj do `audit_log` bezpośrednio. `audit-log.events.server.ts` eksportuje nazwany rejestrator na każdą akcję: 62 eksportowane funkcje `record*`, czyli 61 rejestratorów akcji, w tym dwa dla `order.released` (koszyk zwalniany przez webhook Stripe i zamówienie, które administrator oznacza jako dostarczone), plus wrapper `recordOrderEmailOutcome`. Każdy rejestrator uzupełnia akcję, kategorię i poziom ważności, a następnie deleguje do jednego z trzech schedulerów w `audit-log.record.server.ts`:
 
 | Scheduler                     | Rozwiązywanie aktora                                                                                        |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |

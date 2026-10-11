@@ -392,6 +392,7 @@
       "email_sent": "Email sent",
       "email_failed": "Email failed",
       "email_deferred": "Email deferred",
+      "email_resend_requested": "Email resend requested",
       "newsletter_sent": "Newsletter sent",
       "order_cancelled": "Order cancelled",
       "order_shipped": "Order shipped",
@@ -618,18 +619,22 @@
         "successTitle": "Order updated",
         "fulfillSuccessDescription": "Fulfillment started for this order.",
         "shipSuccessDescription": "Order marked as shipped.",
-        "shipEmailFailedTitle": "Shipping email not sent",
-        "shipEmailFailedDescription": "The customer was not emailed about the shipment. See the order's Activity card for the error.",
+        "shipEmailFailedTitle": "Shipping email not sent yet",
+        "shipEmailFailedDescription": "Resend did not take the shipping email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
         "cancelSuccessDescription": "Order cancelled and its items returned to stock. A paid order shows the refund once Stripe confirms it.",
-        "cancelEmailFailedTitle": "Cancellation email not sent",
-        "cancelEmailFailedDescription": "The customer was not emailed about the cancellation. See the order's Activity card for the error.",
+        "cancelEmailFailedTitle": "Cancellation email not sent yet",
+        "cancelEmailFailedDescription": "Resend did not take the cancellation email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
         "errorTitle": "Could not update order",
         "errorDescription": "Please try again in a moment.",
         "notFoundDescription": "This order no longer exists.",
         "invalidStateDescription": "This action is not available for the order's current state.",
         "markDeliveredSuccessDescription": "Order marked as delivered.",
         "refundSuccessDescription": "Refund submitted to Stripe. The order updates once Stripe confirms it.",
-        "restockSuccessDescription": "The order's items are back in stock."
+        "restockSuccessDescription": "The order's items are back in stock.",
+        "resendEmailSentTitle": "Email sent",
+        "resendEmailSentDescription": "Resend took the email. The order's Activity card records it.",
+        "resendEmailFailedTitle": "Email not sent yet",
+        "resendEmailFailedDescription": "Resend did not take the email. It is tried twice more within a few seconds. If it still fails, the order's Activity card offers Resend email again."
       }
     }
   },
@@ -716,8 +721,10 @@
         "disputeClosed": "Dispute closed",
         "emailSent": "Email sent",
         "emailFailed": "Email failed",
-        "emailDeferred": "Email deferred"
+        "emailDeferred": "Email deferred",
+        "emailResendRequested": "Email resend requested"
       },
+      "resendEmail": "Resend email",
       "emailStatus": {
         "sent": "Sent",
         "failed": "Failed",

@@ -177,7 +177,12 @@ describe("refundOrder audit trail", () => {
 
 describe("refundOrder unannounced refund", () => {
   it("hands back a full refund the batch recorded for an open order", async () => {
-    await expect(refundOrder(input())).resolves.toStrictEqual({ amount: 1999, fullyRefunded: true, orderId: "order-1" })
+    await expect(refundOrder(input())).resolves.toStrictEqual({
+      amount: 1999,
+      fullyRefunded: true,
+      orderId: "order-1",
+      refundedTotal: 1999,
+    })
   })
 
   it("hands back only the amount refunded since the refund the payment already recorded", async () => {
@@ -187,6 +192,7 @@ describe("refundOrder unannounced refund", () => {
       amount: 1000,
       fullyRefunded: false,
       orderId: "order-1",
+      refundedTotal: 1500,
     })
   })
 

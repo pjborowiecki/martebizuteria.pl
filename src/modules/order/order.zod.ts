@@ -19,6 +19,7 @@ import {
   ADMIN_ORDER_PAYMENT_UI_KEY,
   ADMIN_ORDER_STATUSES,
   ADMIN_ORDER_STAT_FILTER,
+  ORDER_EMAIL_KIND,
   ORDER_TABS,
   ORDER_TRACKING_NUMBER_MAX_LENGTH,
   ORDER_TRACKING_URL_MAX_LENGTH,
@@ -52,6 +53,16 @@ const disputeMetadata = zod.object({
   status: zod.string(),
 })
 
+const minorUnits = zod.number().int().nonnegative()
+
+const email = zod.discriminatedUnion("kind", [
+  zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.CONFIRMATION) }),
+  zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.NEW_ORDER) }),
+  zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.SHIPPED) }),
+  zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.CANCELLED), refundedAmount: minorUnits.optional() }),
+  zod.object({ amount: minorUnits, fullyRefunded: zod.boolean(), kind: zod.literal(ORDER_EMAIL_KIND.REFUNDED), refundedTotal: minorUnits }),
+])
+
 export const orderZodSchemas = {
   adminCreateInpostShipmentInput: zod.object({
     orderId: uuidField,
@@ -67,12 +78,18 @@ export const orderZodSchemas = {
     orderId: uuidField,
     restock: zod.boolean(),
   }),
+  adminResendOrderEmailInput: zod.object({
+    eventId: uuidField,
+    orderId: uuidField,
+  }),
   adminShipOrderInput: zod.object({
     orderId: uuidField,
     trackingNumber: zod.string().trim().max(ORDER_TRACKING_NUMBER_MAX_LENGTH).optional(),
     trackingUrl: zod.url().max(ORDER_TRACKING_URL_MAX_LENGTH).optional().or(zod.literal("")),
   }),
   disputeMetadata,
+  email,
+  emailDelivery: zod.object({ idempotencyKey: zod.string().min(MIN_FIELD_LENGTH), orderEmail: email }),
   insert: createInsertSchema(order),
   metadata: zod.record(zod.string(), zod.unknown()),
   orderConfirmationInput: zod.object({

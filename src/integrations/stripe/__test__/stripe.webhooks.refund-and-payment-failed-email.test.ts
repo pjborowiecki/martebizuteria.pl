@@ -2,7 +2,7 @@ import { type ComponentProps, type ReactElement } from "react"
 
 import { render } from "react-email"
 import type Stripe from "stripe"
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -15,7 +15,12 @@ const { notifyOrderRefunded, recordOrderEmailOutcome, recordOrderReleasedAudit, 
     recordOrderReleasedAudit: vi.fn(),
     refundOrder: vi.fn<(input: Order["refundInput"]) => Promise<Order["unannouncedRefund"] | undefined>>(),
     releaseCheckout: vi.fn<(input: object) => Promise<boolean>>(),
-    sendEmail: vi.fn<(options: Readonly<{ react: PaymentFailedElement; subject: string; to: string }>) => Promise<string | undefined>>(),
+    sendEmail:
+      vi.fn<
+        (
+          options: Readonly<{ idempotencyKey?: string; react: PaymentFailedElement; subject: string; to: string }>,
+        ) => Promise<string | undefined>
+      >(),
     sessionsList: vi.fn<(params: object) => Promise<{ data: Stripe.Checkout.Session[] }>>(),
   }))
 
@@ -63,7 +68,9 @@ const itemsMetadata = JSON.stringify([
   { handle: "onyx-necklace", imageUrl: "products/onyx.jpg", price: 37_900, qty: 1, title: "Onyx Necklace", variantId: "var-onyx" },
 ])
 
-const PARTIAL_REFUND: Order["unannouncedRefund"] = { amount: 5000, fullyRefunded: false, orderId: "order-1" }
+const PARTIAL_REFUND: Order["unannouncedRefund"] = { amount: 5000, fullyRefunded: false, orderId: "order-1", refundedTotal: 5000 }
+
+const PAYMENT_FAILED_DELIVERY = { idempotencyKey: "payment-failed/cs_test_1", orderEmail: undefined }
 
 const DOMAIN_NOT_VERIFIED = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
 
@@ -97,11 +104,16 @@ const sentEmail = () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useFakeTimers()
   releaseCheckout.mockResolvedValue(true)
   sendEmail.mockResolvedValue(undefined)
   refundOrder.mockResolvedValue(PARTIAL_REFUND)
   notifyOrderRefunded.mockResolvedValue(true)
   sessionsList.mockResolvedValue({ data: [checkoutSession({ id: "cs_resolved_1", returnUrl: RETURN_URL })] })
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe("failed asynchronous payment email", () => {
@@ -110,6 +122,7 @@ describe("failed asynchronous payment email", () => {
 
     expect(sendEmail).toHaveBeenCalledOnce()
     expect(sentEmail().to).toBe("anna@example.com")
+    expect(sentEmail().idempotencyKey).toBe("payment-failed/cs_test_1")
     expect(sentEmail().subject).toBe(englishCopy.subject)
     expect(sentEmail().react.type).toBe(PaymentFailed)
     expect(sentEmail().react.props).toMatchObject({ amount: AMOUNT_TOTAL, currency: "pln", locale: "en-US" })
@@ -159,7 +172,9 @@ describe("failed asynchronous payment email", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledExactlyOnceWith({
       failure: undefined,
       label: "Payment failed → anna@example.com",
+      metadata: PAYMENT_FAILED_DELIVERY,
       orderId: "cs_test_1",
+      willRetry: false,
     })
   })
 
@@ -190,8 +205,24 @@ describe("failed asynchronous payment email", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: DOMAIN_NOT_VERIFIED,
       label: "Payment failed → anna@example.com",
+      metadata: PAYMENT_FAILED_DELIVERY,
       orderId: "cs_test_1",
+      willRetry: true,
     })
+  })
+
+  it("tries a refused payment failure email again under the same idempotency key", async () => {
+    sendEmail.mockResolvedValueOnce(DOMAIN_NOT_VERIFIED)
+
+    await dispatch(checkoutSessionAsyncPaymentFailedEvent(failedSession()))
+    await vi.runAllTimersAsync()
+
+    expect(releaseCheckout).toHaveBeenCalledOnce()
+    expect(sendEmail.mock.calls.map(([options]) => options.idempotencyKey)).toStrictEqual([
+      "payment-failed/cs_test_1",
+      "payment-failed/cs_test_1",
+    ])
+    expect(recordOrderEmailOutcome).toHaveBeenLastCalledWith(expect.objectContaining({ failure: undefined, willRetry: false }))
   })
 
   it.each([
@@ -202,7 +233,13 @@ describe("failed asynchronous payment email", () => {
     await dispatch(checkoutSessionAsyncPaymentFailedEvent(failedSession(overrides)))
 
     expect(sendEmail).not.toHaveBeenCalled()
-    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({ failure, label: "Payment failed", orderId: "cs_test_1" })
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
+      failure,
+      label: "Payment failed",
+      metadata: PAYMENT_FAILED_DELIVERY,
+      orderId: "cs_test_1",
+      willRetry: true,
+    })
   })
 
   it("records a session that returned to a host no deployment serves instead of throwing", async () => {
@@ -210,7 +247,13 @@ describe("failed asynchronous payment email", () => {
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(consoleError).toHaveBeenCalledWith("Payment failed for order cs_test_1 could not be prepared:", expect.any(Error))
-    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({ failure: "FORBIDDEN", label: "Payment failed", orderId: "cs_test_1" })
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
+      failure: "FORBIDDEN",
+      label: "Payment failed",
+      metadata: PAYMENT_FAILED_DELIVERY,
+      orderId: "cs_test_1",
+      willRetry: true,
+    })
   })
 })
 

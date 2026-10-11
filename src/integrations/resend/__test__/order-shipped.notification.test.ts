@@ -1,7 +1,7 @@
 import { type ReactElement } from "react"
 
 import { render } from "react-email"
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import englishCopy from "~/messages/en-US/emails.order-shipped.json"
 import polishCopy from "~/messages/pl-PL/emails.order-shipped.json"
@@ -13,7 +13,14 @@ const { env, getCheckoutEmailContext, getOrderForShippedEmail, loadNamespace, re
   loadNamespace: vi.fn(),
   recordOrderEmailOutcome: vi.fn(),
   sendEmail:
-    vi.fn<(options: { readonly react: ReactElement; readonly subject: string; readonly to: string }) => Promise<string | undefined>>(),
+    vi.fn<
+      (options: {
+        readonly idempotencyKey?: string
+        readonly react: ReactElement
+        readonly subject: string
+        readonly to: string
+      }) => Promise<string | undefined>
+    >(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env }))
@@ -84,7 +91,10 @@ const sentHtml = (): Promise<string> => {
   return render(payload.react)
 }
 
+const SHIPPED_DELIVERY = { idempotencyKey: "order-shipped/order-abcdef12", orderEmail: { kind: "order-shipped" } }
+
 beforeEach(() => {
+  vi.useFakeTimers()
   getCheckoutEmailContext.mockReset()
   getOrderForShippedEmail.mockReset()
   loadNamespace.mockReset()
@@ -92,6 +102,10 @@ beforeEach(() => {
   sendEmail.mockReset()
   loadNamespace.mockResolvedValue(englishCopy)
   sendEmail.mockResolvedValue(undefined)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe("notifyOrderShipped", () => {
@@ -104,7 +118,9 @@ describe("notifyOrderShipped", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: "The order could not be found",
       label: "Order shipped",
+      metadata: SHIPPED_DELIVERY,
       orderId: "order-abcdef12",
+      willRetry: true,
     })
   })
 
@@ -117,7 +133,9 @@ describe("notifyOrderShipped", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: "The order has no email address",
       label: "Order shipped",
+      metadata: SHIPPED_DELIVERY,
       orderId: "order-abcdef12",
+      willRetry: true,
     })
   })
 
@@ -127,7 +145,9 @@ describe("notifyOrderShipped", () => {
     await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "en-US", namespace: "emails.order-shipped" })
-    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "anna@example.com" }))
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ idempotencyKey: "order-shipped/order-abcdef12", to: "anna@example.com" }),
+    )
     expect(sentSubject()).toBe(englishCopy.subject)
   })
 
@@ -187,7 +207,9 @@ describe("notifyOrderShipped", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: undefined,
       label: "Order shipped → anna@example.com",
+      metadata: SHIPPED_DELIVERY,
       orderId: "order-abcdef12",
+      willRetry: false,
     })
   })
 
@@ -200,7 +222,9 @@ describe("notifyOrderShipped", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: DOMAIN_NOT_VERIFIED,
       label: "Order shipped → anna@example.com",
+      metadata: SHIPPED_DELIVERY,
       orderId: "order-abcdef12",
+      willRetry: true,
     })
   })
 
@@ -215,7 +239,25 @@ describe("notifyOrderShipped", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: "D1_ERROR: no such table",
       label: "Order shipped",
+      metadata: SHIPPED_DELIVERY,
       orderId: "order-abcdef12",
+      willRetry: true,
     })
+  })
+})
+
+describe("notifyOrderShipped retries", () => {
+  it("rebuilds a refused shipped email for its retry and sends it under the same idempotency key", async () => {
+    getOrderForShippedEmail.mockResolvedValue({ ...orderRow, checkoutId: null })
+    sendEmail.mockResolvedValueOnce(DOMAIN_NOT_VERIFIED)
+
+    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
+    await vi.runAllTimersAsync()
+
+    expect(getOrderForShippedEmail).toHaveBeenCalledTimes(2)
+    expect(sendEmail.mock.calls.map(([options]) => options.idempotencyKey)).toStrictEqual([
+      "order-shipped/order-abcdef12",
+      "order-shipped/order-abcdef12",
+    ])
   })
 })

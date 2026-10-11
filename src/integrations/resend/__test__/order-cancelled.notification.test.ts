@@ -1,7 +1,7 @@
 import { type ComponentProps, type ReactElement } from "react"
 
 import { render } from "react-email"
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import englishCopy from "~/messages/en-US/emails.order-cancelled.json"
 import polishCopy from "~/messages/pl-PL/emails.order-cancelled.json"
@@ -15,7 +15,12 @@ const { getOrderForRefundEmail, loadNamespace, recordOrderEmailOutcome, sendEmai
   recordOrderEmailOutcome: vi.fn(),
   sendEmail:
     vi.fn<
-      (options: { readonly react: OrderCancelledElement; readonly subject: string; readonly to: string }) => Promise<string | undefined>
+      (options: {
+        readonly idempotencyKey?: string
+        readonly react: OrderCancelledElement
+        readonly subject: string
+        readonly to: string
+      }) => Promise<string | undefined>
     >(),
 }))
 
@@ -58,11 +63,21 @@ const sentEmail = () => {
 
 const cancel = (): Promise<boolean> => notifyOrderCancelled({ orderId: ORDER_ID, refundedAmount: REFUNDED_AMOUNT }, ORIGIN)
 
+const CANCELLED_DELIVERY = {
+  idempotencyKey: `order-cancelled/${ORDER_ID}`,
+  orderEmail: { kind: "order-cancelled", refundedAmount: REFUNDED_AMOUNT },
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useFakeTimers()
   getOrderForRefundEmail.mockResolvedValue(orderRow)
   loadNamespace.mockResolvedValue(englishCopy)
   sendEmail.mockResolvedValue(undefined)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe("notifyOrderCancelled", () => {
@@ -123,7 +138,9 @@ describe("notifyOrderCancelled", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: undefined,
       label: "Order cancelled → anna@example.com",
+      metadata: CANCELLED_DELIVERY,
       orderId: ORDER_ID,
+      willRetry: false,
     })
   })
 
@@ -135,7 +152,9 @@ describe("notifyOrderCancelled", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: DOMAIN_NOT_VERIFIED,
       label: "Order cancelled → anna@example.com",
+      metadata: CANCELLED_DELIVERY,
       orderId: ORDER_ID,
+      willRetry: true,
     })
   })
 
@@ -148,7 +167,9 @@ describe("notifyOrderCancelled", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: "The order could not be found",
       label: "Order cancelled",
+      metadata: CANCELLED_DELIVERY,
       orderId: ORDER_ID,
+      willRetry: true,
     })
   })
 
@@ -161,7 +182,9 @@ describe("notifyOrderCancelled", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: "The order has no email address",
       label: "Order cancelled",
+      metadata: CANCELLED_DELIVERY,
       orderId: ORDER_ID,
+      willRetry: true,
     })
   })
 
@@ -174,7 +197,23 @@ describe("notifyOrderCancelled", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: "D1_ERROR: no such table",
       label: "Order cancelled",
+      metadata: CANCELLED_DELIVERY,
       orderId: ORDER_ID,
+      willRetry: true,
     })
+  })
+
+  it("sends the cancellation under an idempotency key that names the order", async () => {
+    await cancel()
+
+    expect(sentEmail().idempotencyKey).toBe(`order-cancelled/${ORDER_ID}`)
+  })
+
+  it("records an unpaid order's cancellation for resending without a refund", async () => {
+    await notifyOrderCancelled({ orderId: ORDER_ID, refundedAmount: undefined }, ORIGIN)
+
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: { idempotencyKey: `order-cancelled/${ORDER_ID}`, orderEmail: { kind: "order-cancelled" } } }),
+    )
   })
 })

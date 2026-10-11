@@ -22,7 +22,7 @@ const { cache, emailsSend, recordEmailFailedAudit } = vi.hoisted(() => {
         return Promise.resolve()
       },
     },
-    emailsSend: vi.fn<(email: { readonly to: string }) => Promise<unknown>>(),
+    emailsSend: vi.fn<(email: { readonly to: string }, options: object) => Promise<unknown>>(),
     recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
   }
 })
@@ -241,7 +241,7 @@ describe("auth emails when Resend refuses them", () => {
 
     expect(response.status).toBe(200)
     await waitForSends(2)
-    expect(emailsSend).toHaveBeenLastCalledWith(expect.objectContaining({ to: "anna@example.com" }))
+    expect(emailsSend).toHaveBeenLastCalledWith(expect.objectContaining({ to: "anna@example.com" }), {})
   })
 
   it("creates no account while the sender is unavailable", async () => {
@@ -269,7 +269,7 @@ describe("auth emails when Resend refuses them", () => {
     const resend = await post("/send-verification-email", { email: "anna@example.com" })
 
     expect(resend.status).toBe(200)
-    expect(emailsSend).toHaveBeenLastCalledWith(expect.objectContaining({ to: "anna@example.com" }))
+    expect(emailsSend).toHaveBeenLastCalledWith(expect.objectContaining({ to: "anna@example.com" }), {})
   })
 
   it("keeps account deletion successful when the goodbye email, linked to the address the deletion came in on, is refused", async () => {
@@ -349,6 +349,6 @@ describe("auth emails anyone can request", () => {
 
     expect(failure).toBeUndefined()
     expect(emailsSend).toHaveBeenCalledTimes(2)
-    expect(emailsSend).toHaveBeenLastCalledWith(expect.objectContaining({ to: "buyer@example.com" }))
+    expect(emailsSend).toHaveBeenLastCalledWith(expect.objectContaining({ to: "buyer@example.com" }), {})
   })
 })

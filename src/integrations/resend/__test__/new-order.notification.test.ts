@@ -1,7 +1,7 @@
 import { type ComponentProps, type ReactElement } from "react"
 
 import { render } from "react-email"
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import englishCopy from "~/messages/en-US/emails.new-order.json"
 import polishCopy from "~/messages/pl-PL/emails.new-order.json"
@@ -16,7 +16,14 @@ const { env, getAdminOrderDetailRow, getAdminOrderItemRows, loadNamespace, recor
   loadNamespace: vi.fn(),
   recordOrderEmailOutcome: vi.fn(),
   sendEmail:
-    vi.fn<(options: { readonly react: NewOrderElement; readonly subject: string; readonly to: string }) => Promise<string | undefined>>(),
+    vi.fn<
+      (options: {
+        readonly idempotencyKey?: string
+        readonly react: NewOrderElement
+        readonly subject: string
+        readonly to: string
+      }) => Promise<string | undefined>
+    >(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env }))
@@ -99,14 +106,21 @@ const sentEmail = () => {
   return call[0]
 }
 
-const UNSENT_NOTIFICATION = { label: "New order notification", orderId: ORDER_ID }
+const NOTIFICATION_DELIVERY = { idempotencyKey: `new-order/${ORDER_ID}`, orderEmail: { kind: "new-order" } }
+
+const UNSENT_NOTIFICATION = { label: "New order notification", metadata: NOTIFICATION_DELIVERY, orderId: ORDER_ID, willRetry: true }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useFakeTimers()
   getAdminOrderDetailRow.mockResolvedValue(orderRow)
   getAdminOrderItemRows.mockResolvedValue(itemRows)
   loadNamespace.mockResolvedValue(polishCopy)
   sendEmail.mockResolvedValue(undefined)
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe("notifyShopOfNewOrder", () => {
@@ -117,6 +131,7 @@ describe("notifyShopOfNewOrder", () => {
     expect(getAdminOrderItemRows).toHaveBeenCalledWith(ORDER_ID)
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "pl-PL", namespace: "emails.new-order" })
     expect(sentEmail().to).toBe("orders@marte.test")
+    expect(sentEmail().idempotencyKey).toBe(`new-order/${ORDER_ID}`)
     expect(sentEmail().subject).toBe(`Nowe zamówienie ${ORDER_NUMBER} — M'Arte`)
     expect(sentEmail().react.props).toMatchObject({ currency: "PLN", locale: "pl-PL", orderNumber: ORDER_NUMBER, total: 64_600 })
   })
@@ -237,13 +252,15 @@ describe("notifyShopOfNewOrder", () => {
 })
 
 describe("notifyShopOfNewOrder outcome", () => {
-  it("records a successful send against the order", async () => {
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+  it("records a successful send against the order and reports it", async () => {
+    await expect(notifyShopOfNewOrder(ORDER_ID, RETURN_URL)).resolves.toBe(true)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledExactlyOnceWith({
       failure: undefined,
       label: "New order notification → orders@marte.test",
+      metadata: NOTIFICATION_DELIVERY,
       orderId: ORDER_ID,
+      willRetry: false,
     })
   })
 
@@ -253,9 +270,9 @@ describe("notifyShopOfNewOrder outcome", () => {
     await expect(notifyShopOfNewOrder(ORDER_ID, RETURN_URL)).resolves.toBe(false)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
+      ...UNSENT_NOTIFICATION,
       failure: DOMAIN_NOT_VERIFIED,
       label: "New order notification → orders@marte.test",
-      orderId: ORDER_ID,
     })
   })
 

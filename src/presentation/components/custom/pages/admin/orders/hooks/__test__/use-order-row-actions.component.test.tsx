@@ -15,23 +15,36 @@ import {
   useMarkOrderDelivered,
   useMarkOrderShipped,
   useRefundOrder,
+  useResendOrderEmail,
   useRestockOrder,
 } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions"
 
-const { cancelFn, deliverFn, fulfillFn, refundFn, restockFn, shipFn, syncQueryInvalidation, toastError, toastSuccess, toastWarning } =
-  vi.hoisted(() => ({
-    cancelFn: vi.fn<(input: { orderId: string }) => Promise<{ cancelledEmailSent: boolean; ok: true; orderId: string }>>(),
-    deliverFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
-    fulfillFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
-    refundFn: vi.fn<(input: { orderId: string; restock: boolean }) => Promise<{ ok: true; orderId: string }>>(),
-    restockFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
-    shipFn:
-      vi.fn<(input: { orderId: string; trackingNumber?: string }) => Promise<{ ok: true; orderId: string; shippedEmailSent: boolean }>>(),
-    syncQueryInvalidation: vi.fn(() => Promise.resolve(undefined)),
-    toastError: vi.fn(),
-    toastSuccess: vi.fn(),
-    toastWarning: vi.fn(),
-  }))
+const {
+  cancelFn,
+  deliverFn,
+  fulfillFn,
+  refundFn,
+  resendEmailFn,
+  restockFn,
+  shipFn,
+  syncQueryInvalidation,
+  toastError,
+  toastSuccess,
+  toastWarning,
+} = vi.hoisted(() => ({
+  cancelFn: vi.fn<(input: { orderId: string }) => Promise<{ cancelledEmailSent: boolean; ok: true; orderId: string }>>(),
+  deliverFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+  fulfillFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+  refundFn: vi.fn<(input: { orderId: string; restock: boolean }) => Promise<{ ok: true; orderId: string }>>(),
+  resendEmailFn: vi.fn<(input: { eventId: string; orderId: string }) => Promise<{ emailSent: boolean; ok: true; orderId: string }>>(),
+  restockFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+  shipFn:
+    vi.fn<(input: { orderId: string; trackingNumber?: string }) => Promise<{ ok: true; orderId: string; shippedEmailSent: boolean }>>(),
+  syncQueryInvalidation: vi.fn(() => Promise.resolve(undefined)),
+  toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastWarning: vi.fn(),
+}))
 
 vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess, warning: toastWarning } }))
 
@@ -51,6 +64,9 @@ vi.mock("~/src/modules/order/use-cases/mark-order-delivered", () => ({
 }))
 vi.mock("~/src/modules/order/use-cases/refund-admin-order", () => ({
   refundAdminOrderMutation: { mutationFn: refundFn, mutationKey: ["order", "refund"] },
+}))
+vi.mock("~/src/modules/order/use-cases/resend-order-email", () => ({
+  resendOrderEmailMutation: { mutationFn: resendEmailFn, mutationKey: ["order", "resendEmail"] },
 }))
 vi.mock("~/src/modules/order/use-cases/restock-order", () => ({
   restockOrderMutation: { mutationFn: restockFn, mutationKey: ["order", "restock"] },
@@ -117,8 +133,9 @@ describe("admin order action mutations", () => {
     })
 
     expect(toastSuccess).toHaveBeenCalledExactlyOnceWith("Order updated", { description: "Order marked as shipped." })
-    expect(toastWarning).toHaveBeenCalledWith("Shipping email not sent", {
-      description: "The customer was not emailed about the shipment. See the order's Activity card for the error.",
+    expect(toastWarning).toHaveBeenCalledWith("Shipping email not sent yet", {
+      description:
+        "Resend did not take the shipping email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
     })
   })
 
@@ -184,8 +201,9 @@ describe("admin order action mutations", () => {
     expect(toastSuccess).toHaveBeenCalledExactlyOnceWith("Order updated", {
       description: "Order cancelled and its items returned to stock. A paid order shows the refund once Stripe confirms it.",
     })
-    expect(toastWarning).toHaveBeenCalledWith("Cancellation email not sent", {
-      description: "The customer was not emailed about the cancellation. See the order's Activity card for the error.",
+    expect(toastWarning).toHaveBeenCalledWith("Cancellation email not sent yet", {
+      description:
+        "Resend did not take the cancellation email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
     })
   })
 
@@ -217,6 +235,59 @@ describe("admin order return to stock", () => {
 
     expect(restockFn.mock.calls[0]?.[0]).toStrictEqual({ orderId: "order-1" })
     expect(toastSuccess).toHaveBeenCalledWith("Order updated", { description: "The order's items are back in stock." })
+  })
+})
+
+describe("admin order email resend", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resendEmailFn.mockResolvedValue({ emailSent: true, ok: true, orderId: "order-1" })
+  })
+
+  it("resends the email of the failed delivery and announces that it went out", async () => {
+    const { result } = renderHook(() => useResendOrderEmail(), { wrapper: Wrapper })
+
+    result.current.mutate({ eventId: "audit-3", orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastSuccess).toHaveBeenCalledOnce()
+    })
+
+    expect(resendEmailFn.mock.calls[0]?.[0]).toStrictEqual({ eventId: "audit-3", orderId: "order-1" })
+    expect(toastSuccess).toHaveBeenCalledWith("Email sent", {
+      description: "Resend took the email. The order's Activity card records it.",
+    })
+    expect(toastWarning).not.toHaveBeenCalled()
+  })
+
+  it("warns that a resend Resend refused is still being tried", async () => {
+    resendEmailFn.mockResolvedValue({ emailSent: false, ok: true, orderId: "order-1" })
+    const { result } = renderHook(() => useResendOrderEmail(), { wrapper: Wrapper })
+
+    result.current.mutate({ eventId: "audit-3", orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastWarning).toHaveBeenCalledOnce()
+    })
+
+    expect(toastSuccess).not.toHaveBeenCalled()
+    expect(toastWarning).toHaveBeenCalledWith("Email not sent yet", {
+      description:
+        "Resend did not take the email. It is tried twice more within a few seconds. If it still fails, the order's Activity card offers Resend email again.",
+    })
+  })
+
+  it("explains that the email no longer needs resending and refreshes the order", async () => {
+    resendEmailFn.mockRejectedValue(new AppError("CONFLICT"))
+    const { result } = renderHook(() => useResendOrderEmail(), { wrapper: Wrapper })
+
+    result.current.mutate({ eventId: "audit-3", orderId: "order-1" })
+    await waitFor(() => {
+      expect(syncQueryInvalidation).toHaveBeenCalledOnce()
+    })
+
+    expect(toastError).toHaveBeenCalledWith("Could not update order", {
+      description: "This action is not available for the order's current state.",
+    })
+    expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), ORDER_QUERY_KEYS.ADMIN.ORDERS)
   })
 })
 

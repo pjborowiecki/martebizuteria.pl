@@ -86,6 +86,7 @@ export const AUDIT_LOG_ACTION = {
   DISCOUNT_UPDATED: "discount.updated",
   EMAIL_DEFERRED: "email.deferred",
   EMAIL_FAILED: "email.failed",
+  EMAIL_RESEND_REQUESTED: "email.resend_requested",
   EMAIL_SENT: "email.sent",
   IMAGE_UPLOADED: "image.uploaded",
   NEWSLETTER_SENT: "newsletter.sent",

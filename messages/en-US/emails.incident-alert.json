@@ -19,6 +19,11 @@
     "heading": "A newsletter stopped part way",
     "message": "The shop could not send a batch of a newsletter three times and stopped the campaign, so the subscribers after the last batch that went out did not get it. Marketing in the admin panel shows how many subscribers it reached and why it stopped. Check the Resend account's status and sending quota before you send anything else."
   },
+  "orderEmailFailed": {
+    "subject": "Alert: an order email was not sent — M'Arte",
+    "heading": "An order email was not sent",
+    "message": "The shop tried an order email three times and Resend took none of them, so the customer has not received it. The reference names the email and the order or payment it belongs to. Once Resend works again, open the order in the admin panel and press Resend email on its Activity card; a failed-payment email or a withdrawal email cannot be resent from there, so write to that customer yourself."
+  },
   "preview": "Something in the shop needs your attention.",
   "referenceLabel": "Reference",
   "detailLabel": "Cause",

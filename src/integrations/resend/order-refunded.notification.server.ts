@@ -3,11 +3,12 @@ import { createElement } from "react"
 import { createTranslator } from "use-intl"
 
 import { buildOrderAccountCta } from "~/src/integrations/resend/order-confirmation.utils"
-import { type OrderEmailOutcome, recordOrderEmailAttempt } from "~/src/integrations/resend/order-email.outcome.server"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/integrations/resend/order-email.delivery.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getOrderForRefundEmail } from "~/src/modules/order/order.accessors"
+import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -18,7 +19,11 @@ import { ORDER_REFUNDED_NAMESPACE, OrderRefunded } from "~/src/presentation/emai
 
 const ORDER_REFUNDED_LABEL = "Order refunded"
 
-const sendOrderRefundedEmail = async (refund: Order["unannouncedRefund"], returnUrl: string | undefined): Promise<OrderEmailOutcome> => {
+const sendOrderRefundedEmail = async (
+  refund: Order["unannouncedRefund"],
+  returnUrl: string | undefined,
+  idempotencyKey: string,
+): Promise<OrderEmailOutcome> => {
   if (returnUrl === undefined) {
     return { failure: "The Stripe session has no return URL to link the email to", label: ORDER_REFUNDED_LABEL }
   }
@@ -36,6 +41,7 @@ const sendOrderRefundedEmail = async (refund: Order["unannouncedRefund"], return
   const locale = resolveOrderLocale(orderRow.metadata)
   const messages = await loadNamespace<typeof orderRefundedMessages>({ locale, namespace: ORDER_REFUNDED_NAMESPACE })
   const failure = await sendEmail({
+    idempotencyKey,
     react: createElement(OrderRefunded, {
       accountCta: buildOrderAccountCta({ isGuest: orderRow.userId === null, locale, messages, orderId: refund.orderId, origin }),
       currency: orderRow.currencyCode,
@@ -54,4 +60,14 @@ const sendOrderRefundedEmail = async (refund: Order["unannouncedRefund"], return
 }
 
 export const notifyOrderRefunded = (refund: Order["unannouncedRefund"], returnUrl: string | undefined): Promise<boolean> =>
-  recordOrderEmailAttempt(sendOrderRefundedEmail(refund, returnUrl), { label: ORDER_REFUNDED_LABEL, orderId: refund.orderId })
+  deliverOrderEmail((idempotencyKey) => sendOrderRefundedEmail(refund, returnUrl, idempotencyKey), {
+    idempotencyKey: `${ORDER_EMAIL_KIND.REFUNDED}/${refund.orderId}/${refund.refundedTotal}`,
+    label: ORDER_REFUNDED_LABEL,
+    orderEmail: {
+      amount: refund.amount,
+      fullyRefunded: refund.fullyRefunded,
+      kind: ORDER_EMAIL_KIND.REFUNDED,
+      refundedTotal: refund.refundedTotal,
+    },
+    orderId: refund.orderId,
+  })

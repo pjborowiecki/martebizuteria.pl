@@ -26,16 +26,21 @@ const {
     vi.fn<(variantIds: readonly string[]) => Promise<ReadonlyMap<string, FulfillmentTimeAttribute>>>(),
   getOrderTotalsForEmail: vi.fn<(orderId: string) => Promise<Record<string, unknown> | undefined>>(),
   loadWithdrawalFormAttachment: vi.fn<(origin: string) => Promise<Attachment>>(),
-  notifyShopOfNewOrder: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<void>>(),
+  notifyShopOfNewOrder: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<boolean>>(),
   paymentIntentsRetrieve: vi.fn<(id: string, params: object) => Promise<{ payment_method: { type: string } | null }>>(),
   recordOrderEmailOutcome: vi.fn(),
   recordOrderPaymentCapturedAudit: vi.fn(),
-  sendEmail:
-    vi.fn<
-      (
-        options: Readonly<{ attachments?: Attachment[]; react: OrderConfirmationElement; subject: string; to: string }>,
-      ) => Promise<string | undefined>
-    >(),
+  sendEmail: vi.fn<
+    (
+      options: Readonly<{
+        attachments?: Attachment[]
+        idempotencyKey?: string
+        react: OrderConfirmationElement
+        subject: string
+        to: string
+      }>,
+    ) => Promise<string | undefined>
+  >(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env: {} }))
@@ -105,7 +110,9 @@ const paidSession = (metadata: Stripe.Metadata, email: string | null = "anna@exa
 
 const itemsMetadata = JSON.stringify(fulfillmentLines)
 
-const UNSENT_CONFIRMATION = { label: "Order confirmation", orderId: "order-1" }
+const CONFIRMATION_DELIVERY = { idempotencyKey: "order-confirmation/order-1", orderEmail: { kind: "order-confirmation" } }
+
+const UNSENT_CONFIRMATION = { label: "Order confirmation", metadata: CONFIRMATION_DELIVERY, orderId: "order-1", willRetry: true }
 
 const sessionCheckedOutOn = (origin: string, metadata: Stripe.Metadata): Stripe.Checkout.Session =>
   checkoutSession({
@@ -149,13 +156,15 @@ beforeEach(() => {
   getCheckoutEmailContext.mockResolvedValue(undefined)
   getFulfillmentTimeAttributesByVariantId.mockResolvedValue(new Map())
   loadWithdrawalFormAttachment.mockResolvedValue(WITHDRAWAL_FORM)
-  notifyShopOfNewOrder.mockResolvedValue(undefined)
+  notifyShopOfNewOrder.mockResolvedValue(true)
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
   sendEmail.mockResolvedValue(undefined)
+  vi.useFakeTimers()
 })
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.useRealTimers()
 })
 
 describe("order confirmation email", () => {
@@ -164,6 +173,7 @@ describe("order confirmation email", () => {
 
     expect(sendEmail).toHaveBeenCalledOnce()
     expect(sentEmail().to).toBe("anna@example.com")
+    expect(sentEmail().idempotencyKey).toBe("order-confirmation/order-1")
     expect(sentEmail().subject).toBe(polishCopy.subject)
     expect(sentEmail().react.type).toBe(OrderConfirmation)
     expect(sentEmail().react.props.locale).toBe("pl-PL")
@@ -545,9 +555,32 @@ describe("order confirmation email delivery", () => {
     await expect(dispatch(event)).resolves.toBeUndefined()
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledExactlyOnceWith({
+      ...UNSENT_CONFIRMATION,
       failure: DOMAIN_NOT_VERIFIED,
       label: "Order confirmation → anna@example.com",
+    })
+  })
+})
+
+describe("order confirmation email retries", () => {
+  it("rebuilds a refused confirmation from the session for its retry under the same idempotency key", async () => {
+    sendEmail.mockResolvedValueOnce(DOMAIN_NOT_VERIFIED)
+
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
+    await vi.runAllTimersAsync()
+
+    expect(fulfillCheckout).toHaveBeenCalledOnce()
+    expect(sendEmail.mock.calls.map(([options]) => options.idempotencyKey)).toStrictEqual([
+      "order-confirmation/order-1",
+      "order-confirmation/order-1",
+    ])
+    expect(sendEmail.mock.calls[1]?.[0].react.props.items).toStrictEqual(sentEmail().react.props.items)
+    expect(recordOrderEmailOutcome).toHaveBeenLastCalledWith({
+      failure: undefined,
+      label: "Order confirmation → anna@example.com",
+      metadata: CONFIRMATION_DELIVERY,
       orderId: "order-1",
+      willRetry: false,
     })
   })
 
@@ -569,7 +602,9 @@ describe("order confirmation email delivery", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledExactlyOnceWith({
       failure: undefined,
       label: "Order confirmation → anna@example.com",
+      metadata: CONFIRMATION_DELIVERY,
       orderId: "order-1",
+      willRetry: false,
     })
     expect(notifyShopOfNewOrder).toHaveBeenCalledOnce()
   })
