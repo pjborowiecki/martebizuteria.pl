@@ -124,7 +124,7 @@ const variantRow = (id: string, overrides: Partial<VariantRow> = {}): VariantRow
   createdAt: NOW,
   id,
   images: [],
-  inventory: { createdAt: NOW, id: `inv-${id}`, quantityAvailable: 5, quantityReserved: 0, updatedAt: NOW, variantId: id, version: 1 },
+  inventory: { createdAt: NOW, id: `inv-${id}`, quantityAvailable: 5, quantityReserved: 0, updatedAt: NOW, variantId: id },
   manageInventory: true,
   metadata: null,
   optionOnVariants: [],

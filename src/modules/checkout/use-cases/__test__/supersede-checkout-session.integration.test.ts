@@ -90,7 +90,7 @@ beforeEach(() => {
     );
     create table inventory (
       id text primary key, quantity_available integer not null default 0, quantity_reserved integer not null default 0,
-      variant_id text not null unique, version integer not null default 1, created_at integer not null, updated_at integer not null
+      variant_id text not null unique, created_at integer not null, updated_at integer not null
     );
 
     insert into checkout (id, email, status, user_id, created_at, updated_at)
@@ -106,9 +106,9 @@ beforeEach(() => {
       created_at integer, updated_at integer
     );
 
-    insert into inventory (id, quantity_available, quantity_reserved, variant_id, version, created_at, updated_at)
-      values ('inv-1', 3, 4, 'var-1', 1, ${AT}, ${AT}),
-             ('inv-2', 0, 1, 'var-2', 1, ${AT}, ${AT});
+    insert into inventory (id, quantity_available, quantity_reserved, variant_id, created_at, updated_at)
+      values ('inv-1', 3, 4, 'var-1', ${AT}, ${AT}),
+             ('inv-2', 0, 1, 'var-2', ${AT}, ${AT});
 
     insert into discount_claim (id, checkout_id, discount_id, email)
       values ('claim-spring', 'chk-1', 'disc-spring', 'anna@example.com'),

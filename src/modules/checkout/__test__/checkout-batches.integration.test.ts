@@ -155,13 +155,13 @@ const resetSchema = (): void => {
       create table payment (id text primary key, checkout_id text, status text, transaction_id text unique, created_at integer, updated_at integer);
       create table inventory (
         id text primary key, variant_id text, quantity_available integer, quantity_reserved integer,
-        version integer, created_at integer, updated_at integer
+        created_at integer, updated_at integer
       );
       create table discount_claim (id text primary key, checkout_id text not null, discount_id text not null, email text not null);
 
       insert into payment (id, checkout_id, status, transaction_id) values ('pay_1', 'chk_1', 'pending', '${TRANSACTION_ID}');
-      insert into inventory (id, variant_id, quantity_available, quantity_reserved, version)
-        values ('inv_1', '${VARIANT_ID}', 5, 3, 1);
+      insert into inventory (id, variant_id, quantity_available, quantity_reserved)
+        values ('inv_1', '${VARIANT_ID}', 5, 3);
   `)
 }
 

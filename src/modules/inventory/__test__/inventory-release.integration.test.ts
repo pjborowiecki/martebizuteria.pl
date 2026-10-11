@@ -29,11 +29,11 @@ beforeEach(() => {
     drop table if exists inventory;
     create table inventory (
       id text primary key, variant_id text not null unique, quantity_available integer not null,
-      quantity_reserved integer not null, version integer not null, created_at integer, updated_at integer
+      quantity_reserved integer not null, created_at integer, updated_at integer
     );
-    insert into inventory (id, variant_id, quantity_available, quantity_reserved, version) values
-      ('inv_a', 'var_a', 6, 4, 1),
-      ('inv_b', 'var_b', 8, 2, 1);
+    insert into inventory (id, variant_id, quantity_available, quantity_reserved) values
+      ('inv_a', 'var_a', 6, 4),
+      ('inv_b', 'var_b', 8, 2);
   `)
 })
 

@@ -2,11 +2,7 @@ import { getTableName } from "drizzle-orm"
 import { SQLiteSyncDialect, getTableConfig } from "drizzle-orm/sqlite-core"
 import { describe, expect, it } from "vite-plus/test"
 
-import {
-  INVENTORY_DEFAULT_QUANTITY,
-  INVENTORY_DEFAULT_VERSION,
-  INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK,
-} from "~/src/modules/inventory/inventory.constants"
+import { INVENTORY_DEFAULT_QUANTITY, INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK } from "~/src/modules/inventory/inventory.constants"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 
 const config = getTableConfig(inventory)
@@ -18,7 +14,7 @@ describe("inventory table", () => {
     expect(config.name).toBe("inventory")
   })
 
-  it("declares the stock counters, the variant link and the version column the table still holds", () => {
+  it("declares the stock counters and the variant link", () => {
     expect(config.columns.map((column) => column.name).toSorted()).toStrictEqual([
       "created_at",
       "id",
@@ -26,7 +22,6 @@ describe("inventory table", () => {
       "quantity_reserved",
       "updated_at",
       "variant_id",
-      "version",
     ])
   })
 
@@ -45,13 +40,6 @@ describe("inventory table", () => {
       expect(column?.default).toBe(INVENTORY_DEFAULT_QUANTITY)
       expect(column?.getSQLType()).toBe("integer")
     }
-  })
-
-  it("defaults the version column, which nothing writes any more, so a new stock row can leave it out", () => {
-    const version = columnByName.get("version")
-
-    expect(version?.notNull).toBe(true)
-    expect(version?.default).toBe(INVENTORY_DEFAULT_VERSION)
   })
 
   it("requires the variant it tracks", () => {

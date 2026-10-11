@@ -6,7 +6,6 @@ import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 import {
   INVENTORY_COLUMN_LENGTH,
   INVENTORY_DEFAULT_QUANTITY,
-  INVENTORY_DEFAULT_VERSION,
   INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK,
 } from "~/src/modules/inventory/inventory.constants"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
@@ -22,7 +21,6 @@ export const inventory = sqliteTable(
     variantId: text("variant_id", { length: INVENTORY_COLUMN_LENGTH.variantId })
       .references(() => productVariant.id, { onDelete: "cascade" })
       .notNull(),
-    version: integer("version").default(INVENTORY_DEFAULT_VERSION).notNull(),
     ...timestamps(),
   },
   (table) => [

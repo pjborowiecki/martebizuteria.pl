@@ -112,7 +112,7 @@ const variant = (
   const inventoryRow =
     quantityAvailable === undefined
       ? null
-      : { id: `inv-${columns.id}`, quantityAvailable, quantityReserved, variantId: columns.id, version: 1, ...stamps }
+      : { id: `inv-${columns.id}`, quantityAvailable, quantityReserved, variantId: columns.id, ...stamps }
   const links =
     valueId === undefined
       ? []

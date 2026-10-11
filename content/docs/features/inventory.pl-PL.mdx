@@ -19,7 +19,6 @@ export const inventory = sqliteTable(
     variantId: text("variant_id", { length: INVENTORY_COLUMN_LENGTH.variantId })
       .references(() => productVariant.id, { onDelete: "cascade" })
       .notNull(),
-    version: integer("version").default(INVENTORY_DEFAULT_VERSION).notNull(),
     ...timestamps(),
   },
   (table) => [
@@ -29,11 +28,11 @@ export const inventory = sqliteTable(
 )
 ```
 
-`INVENTORY_DEFAULT_QUANTITY` to `0`, a `INVENTORY_DEFAULT_VERSION` to `1` (`inventory.constants.ts`). Unikalny indeks na `variant_id` gwarantuje relację jeden do jednego, a kaskada powoduje, że usunięcie wariantu usuwa jego wiersz stanu.
+`INVENTORY_DEFAULT_QUANTITY` to `0` (`inventory.constants.ts`). Unikalny indeks na `variant_id` gwarantuje relację jeden do jednego, a kaskada powoduje, że usunięcie wariantu usuwa jego wiersz stanu.
 
 Ograniczenie `inventory_quantity_available_non_negative` (`INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK`, dodane przez `20261005300000_inventory_available_never_negative.sql`) utrzymuje `quantity_available` na poziomie zera lub wyżej. Instrukcja, która zeszłaby poniżej zera, kończy się błędem, a razem z nią cały wsad D1, w którym działa. Rezerwacja nigdy go nie narusza, bo jej własny warunek wymaga wystarczającego stanu; to ono odrzuca zapis produktu, którego zmianę stanu wyprzedził klient (zobacz [Zmiana stanu](#zmiana-stanu)).
 
-Nie ma magazynów, lokalizacji ani księgi ruchów — dwa liczniki to cały model. Kolumna `version` została po dawnym warunku rezerwacji (zobacz [Rezerwacja stanu](#rezerwacja-stanu)): nic jej już nie porównuje ani nie zwiększa, a nowy wiersz dostaje wartość domyślną. Zostaje w tabeli i w schemacie Drizzle, dopóki nie usunie jej osobna migracja, zastosowana dopiero po wdrożeniu kodu, który przestał ją deklarować, bo Worker z wcześniejszym kodem odczytuje ją z każdym wczytywanym wierszem stanu.
+Nie ma magazynów, lokalizacji ani księgi ruchów — dwa liczniki to cały model. Tabela ma jeszcze kolumnę `version integer DEFAULT 1 NOT NULL`, która została po dawnym warunku rezerwacji (zobacz [Rezerwacja stanu](#rezerwacja-stanu)), ale schemat Drizzle już jej nie deklaruje, więc żadne zapytanie jej nie odczytuje ani nie zapisuje, a nowy wiersz dostaje wartość domyślną. Usunie ją osobna migracja, zastosowana dopiero po wdrożeniu tego kodu, bo Worker z wcześniejszym kodem odczytuje ją z każdym wczytywanym wierszem stanu.
 
 Wiersze powstają razem z wariantami: `prepareProductCatalogBatch` w `product.mutations.ts` wstawia wiersz stanu na podstawie pola `quantity` z formularza produktu, w tym samym wsadzie D1, który wstawia warianty, dla każdego wariantu, który jeszcze go nie ma, a istniejący wiersz zostawia w spokoju (`onConflictDoNothing` po `variant_id`). Każdy wariant jest zapisywany z `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` w `product.utils.ts`), więc kolumna `product_variant.manage_inventory` istnieje, ale w praktyce nigdy nie jest `false`.
 

@@ -79,7 +79,7 @@ beforeEach(() => {
       created_at integer not null default 0, updated_at integer not null default 0
     );
     create table inventory (
-      id text primary key, variant_id text, quantity_available integer, quantity_reserved integer, version integer,
+      id text primary key, variant_id text, quantity_available integer, quantity_reserved integer,
       created_at integer, updated_at integer
     );
     create table product_category (

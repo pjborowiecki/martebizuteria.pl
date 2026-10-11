@@ -7,6 +7,4 @@ export const INVENTORY_COLUMN_LENGTH = {
 
 export const INVENTORY_DEFAULT_QUANTITY = 0
 
-export const INVENTORY_DEFAULT_VERSION = 1
-
 export const INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK = "inventory_quantity_available_non_negative"
