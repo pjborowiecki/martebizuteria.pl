@@ -1,6 +1,6 @@
 ---
 title: "E-maile transakcyjne"
-description: "Czternaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
+description: "Piętnaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach."
 ---
 
 ## Wysyłka
@@ -52,7 +52,7 @@ Cztery z tych e-maili trafiają na dowolny adres wpisany przez odwiedzającego: 
 
 Klientem jest `src/integrations/resend/resend.config.ts`, jednolinijkowe `new Resend(env.RESEND_API_KEY)`. Domyślne `from` to `APP_NAME <RESEND_EMAIL_FROM>`. Zarówno `RESEND_API_KEY`, jak i `RESEND_EMAIL_FROM` są na liście `secrets.required` każdego środowiska w `wrangler.jsonc`. Domena nadawcy musi być zweryfikowana w Resend, a wdrożenie zatrzymuje się przed kompilacją, gdy nie jest; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 
-## Czternaście szablonów
+## Piętnaście szablonów
 
 Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane po stronie serwera wewnątrz Workera:
 
@@ -70,6 +70,7 @@ Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane
 | `payment-failed.tsx`                | `PAYMENT_FAILED_NAMESPACE`                | `sendPaymentFailedEmail`, z webhooka `async_payment_failed`                                                                                                                                                                                                      |
 | `new-order.tsx`                     | `NEW_ORDER_NAMESPACE`                     | `notifyShopOfNewOrder`, z webhooka Stripe, do sklepu                                                                                                                                                                                                             |
 | `order-withdrawal.tsx`              | `ORDER_WITHDRAWAL_NAMESPACE`              | `acknowledgeOrderWithdrawal` do klienta i `notifyShopOfOrderWithdrawal` do sklepu, oba przez `sendOrderWithdrawalEmails`: z oczekiwaniem na wynik w `withdrawFromCustomerOrder` i w tle w `withdrawFromGuestOrder`, gdy `admitPublicEmail` dopuści potwierdzenie |
+| `incident-alert.tsx`                | `INCIDENT_ALERT_NAMESPACE`                | `notifyShopOfIncident`, z webhooka Stripe i kolejki audytu                                                                                                                                                                                                       |
 | `newsletter-confirmation.tsx`       | `NEWSLETTER_CONFIRMATION_NAMESPACE`       | `sendNewsletterConfirmation`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik                                                                                                                                                                   |
 | `newsletter-already-subscribed.tsx` | `NEWSLETTER_ALREADY_SUBSCRIBED_NAMESPACE` | `sendNewsletterAlreadySubscribed`, wywoływany przez `subscribeToNewsletter` z oczekiwaniem na wynik                                                                                                                                                              |
 
@@ -104,6 +105,7 @@ await requireAuthEmailDelivery("verification", {
 | wysyłka zamówienia        | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia       |
 | anulowanie, zwrot         | `resolveOrderLocale(orderRow.metadata)` z zapisanego JSON-a zamówienia       |
 | powiadomienie sklepu      | `I18N.DEFAULT_LOCALE`, język sklepu, niezależnie od języka klienta           |
+| alert sklepu              | `I18N.DEFAULT_LOCALE`, język sklepu                                          |
 
 E-maile dotyczące zamówień mają tu znaczenie: webhook nie ma przeglądarki, a język administratora nie jest językiem klienta, więc język musiał zostać utrwalony w momencie składania zamówienia. `createStripeSession` wkłada `locale: getCurrentLocale()` do metadanych sesji, a `prepareFulfillCheckoutBatch` kopiuje go do `order.metadata` — dlatego polski klient dostaje powiadomienie o wysyłce po polsku nawet kilka dni później.
 
@@ -192,6 +194,12 @@ Próba przechodzi przez `recordOrderEmailAttempt` jak każdy e-mail dotyczący z
 
 `order-withdrawal.tsx` eksportuje dwa e-maile korzystające z jednego katalogu komunikatów, `emails.order-withdrawal`, bo oba powtarzają to samo oświadczenie. `OrderWithdrawalReceived` (`received`) to potwierdzenie na trwałym nośniku, którego wymaga art. 11a dyrektywy w sprawie praw konsumentów: trafia na adres e-mail zamówienia w języku żądania, potwierdza otrzymanie oświadczenia i powtarza jego treść, a potem mówi, dokąd odesłać produkty i jak wygląda zwrot płatności. `OrderWithdrawalNotice` (`notice`) trafia na `RESEND_EMAIL_FROM` w języku sklepu z linkiem do zamówienia w panelu. Oba buduje `src/integrations/resend/order-withdrawal.notification.server.ts`, a w audycie zapisują się jako `Withdrawal acknowledgement → <adres>` i `Withdrawal notice → <adres>`. Data i godzina są zapisane w czasie polskim przez `Intl.DateTimeFormat`, bo Worker działa w UTC. Odstąpienie z użyciem numeru zamówienia na `/withdraw-from-contract` wysyła oba tylko wtedy, gdy `admitPublicEmail` dopuści e-mail rodzaju `withdrawal` na adres zamówienia, tak jak pozostałe e-maile, o które może poprosić odwiedzający; odstąpienie na koncie wysyła je zawsze. Zobacz [Strony prawne: Funkcja odstąpienia od umowy](/docs/features/legal-pages#funkcja-odstąpienia-od-umowy).
 
+## Alerty sklepu o incydentach
+
+`notifyShopOfIncident` z `src/integrations/resend/incident-alert.notification.server.ts` wysyła e-mail na `RESEND_EMAIL_FROM`, gdy zawiedzie coś, czym właściciel musi się zająć: opłacona sesja Checkout, z której nie da się utworzyć zamówienia, zdarzenie Stripe, na które webhook odpowiada błędem, i partia dziennika audytu, której konsument kolejki nie potrafi przetworzyć. Szablon to `incident-alert.tsx` z katalogiem `emails.incident-alert`, w języku sklepu, z nagłówkiem i wyjaśnieniem dla każdego rodzaju incydentu, identyfikatorem, przyczyną i środowiskiem.
+
+Alerty wysyła każde środowisko, tak jak powiadomienie sklepu o nowym zamówieniu. Każdy incydent jest zapisywany pod kluczem złożonym ze środowiska, rodzaju i identyfikatora — sesji Checkout, typu zdarzenia Stripe albo kolejki — w przestrzeni KV `CACHE` na godzinę (`INCIDENT_ALERT_SECONDS`), więc burza ponowień wysyła jeden e-mail. Alert nigdy nie rzuca wyjątku: nieudany odczyt KV, renderowanie albo wysyłka trafia do logu z prefiksem `[Alert]`, a odpowiedź webhooka i ponowienie kolejki pozostają bez zmian. W przeciwieństwie do e-maili dotyczących zamówień alerty nie są zapisywane w dzienniku audytu, bo zawieść mogła właśnie baza danych. [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts) wyjaśnia, kiedy który się wysyła i co wtedy zrobić.
+
 ## Zapis w audycie
 
 E-maile dotyczące zamówień zapisują swój wynik w dzienniku audytu:
@@ -241,7 +249,7 @@ Wyjątek rzucony podczas przygotowywania e-maila trafia do logu razem ze stosem 
 | Sesja nie ma adresu powrotu           | `Order refunded — The Stripe session has no return URL to link the email to`        |
 | Przygotowanie e-maila rzuciło wyjątek | `Order shipped — D1_ERROR: …` albo rzucona wartość jako tekst, gdy nie jest `Error` |
 
-Identyfikator zamówienia jest celem i `resourceId` każdego wpisu. Porażkę widać więc w karcie **Aktywność** zamówienia w panelu, jako „Błąd wysyłki e-maila” z oznaczeniem „Niepowodzenie” i szczegółem pod spodem, oraz w `/admin/audit` w kategorii `email` z poziomem `error`. Wpisy audytu trafiają do D1 przez kolejkę kilka sekund po wysyłce, dlatego `processAuditLogQueueBatch` publikuje `ORDER_QUERY_KEYS.ADMIN.ORDERS` za każdym razem, gdy partia zawiera akcję z osi czasu zamówienia: każda otwarta karta panelu pobiera ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc otwarta strona zamówienia pokazuje wpis bez przeładowania. Porażki newslettera i Better Auth używają tej samej akcji `email.failed`, więc też wywołują to odświeżenie. Wpis może jeszcze zginąć w drodze do D1, gdy nie powiedzie się wysłanie do kolejki albo partia zawiedzie trzy razy, bo nie skonfigurowano kolejki martwych wiadomości; wtedy porażkę zna tylko log Workera. Panel nie ma jeszcze przycisku ponownej wysyłki e-maila dotyczącego zamówienia: po usunięciu przyczyny sklep kontaktuje się z klientem pod adresem widocznym w zamówieniu.
+Identyfikator zamówienia jest celem i `resourceId` każdego wpisu. Porażkę widać więc w karcie **Aktywność** zamówienia w panelu, jako „Błąd wysyłki e-maila” z oznaczeniem „Niepowodzenie” i szczegółem pod spodem, oraz w `/admin/audit` w kategorii `email` z poziomem `error`. Wpisy audytu trafiają do D1 przez kolejkę kilka sekund po wysyłce, dlatego `processAuditLogQueueBatch` publikuje `ORDER_QUERY_KEYS.ADMIN.ORDERS` za każdym razem, gdy partia zawiera akcję z osi czasu zamówienia: każda otwarta karta panelu pobiera ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc otwarta strona zamówienia pokazuje wpis bez przeładowania. Porażki newslettera i Better Auth używają tej samej akcji `email.failed`, więc też wywołują to odświeżenie. Wpis może jeszcze zginąć w drodze do D1, gdy nie powiedzie się wysłanie do kolejki albo partia zawiedzie trzy razy, bo nie skonfigurowano kolejki martwych wiadomości; wtedy porażkę zna tylko log Workera, a nieudana partia wysyła też e-mail na `RESEND_EMAIL_FROM`. Panel nie ma jeszcze przycisku ponownej wysyłki e-maila dotyczącego zamówienia: po usunięciu przyczyny sklep kontaktuje się z klientem pod adresem widocznym w zamówieniu.
 
 E-mail newslettera odrzucony przez Resend również trafia do audytu. `subscribeToNewsletter` wywołuje `recordEmailFailedAudit(email, { detail })`: celem wpisu jest adres, a szczegół podaje rodzaj e-maila i błąd Resend, na przykład `Newsletter confirmation — The example.com domain is not verified` albo `Newsletter already-subscribed notice — …`. Niezweryfikowana domena nadawcy pojawia się więc w `/admin/audit` już przy pierwszym zapisie, a nie tylko w logu Workera. Wysłany e-mail nie jest zapisywany.
 

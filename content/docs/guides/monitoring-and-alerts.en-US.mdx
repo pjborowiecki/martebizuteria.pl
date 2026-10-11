@@ -1,0 +1,107 @@
+---
+title: "Monitoring and alerts"
+description: "Workers Logs and Issues, the /api/health check for an uptime monitor, the e-mails the shop sends itself when a payment, a Stripe event or the audit queue fails, and the Cloudflare notifications to add."
+---
+
+The shop watches itself in three ways, and none of them needs an account with an error-reporting service. Cloudflare keeps the Worker's logs and groups its failures, `/api/health` tells an uptime monitor whether the Worker can reach its storage, and the Worker emails `RESEND_EMAIL_FROM` when a failure needs the owner.
+
+## Workers Logs and Issues
+
+The top level of `wrangler.jsonc` turns both on, and every environment inherits it, so the preview and production deployments have them:
+
+```jsonc
+"observability": {
+  "enabled": true,
+  "issues": {
+    "enabled": true,
+  },
+},
+```
+
+`enabled` keeps every invocation's logs, including each `console.error`, in Workers Logs. `issues.enabled` turns on Workers Issues, which records an uncaught exception, a failed invocation, a `5xx` response or a logged error as an occurrence and groups the occurrences of one failure into an issue. Issues needs Wrangler 4.134.0 or later; the repository is on 4.138.0. Cloudflare describes Issues as an open beta that is free while the beta lasts. Both appear in the Cloudflare dashboard under **Workers & Pages**, the Worker (`martebizuteria` for production, `martebizuteria-preview` for preview), **Observability**. A build's `dist/server/wrangler.json` shows the `observability` block the deploy uploads.
+
+The log lines that belong to this page:
+
+| Prefix                                                  | Source                                                                              |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `[Health] D1 did not answer:` (or `KV`, `R2`)           | `/api/health` caught an error from that binding                                     |
+| `[Alert] The <kind> alert to <address> was not sent: …` | Resend refused or timed out on an incident alert                                    |
+| `[Alert] The <kind> alert could not be sent:`           | Reading KV or rendering the alert threw; the error follows                          |
+| `[Stripe] Domain logic failed for <type>:`              | A webhook handler threw, the route answered 500 and Stripe will retry               |
+| `Paid Checkout Session <id> created no order:`          | `handleFulfillCheckoutSession` could not create the order for a paid session        |
+| `[AuditLog Queue] Batch insert failed:`                 | `processAuditLogQueueBatch` could not write a batch and asked the queue to retry it |
+
+`vp exec wrangler tail --env production` streams the same lines live; see [Local debugging](/docs/guides/local-debugging#watching-the-worker-in-a-deployed-environment).
+
+## The health check
+
+`GET /api/health` is the TanStack Start handler in `src/routes/api/health.ts`. It reads each storage binding once, all three in parallel, with operations that touch no data:
+
+```ts
+const [d1, kv, r2] = await Promise.all([
+  probe("D1", () => env.DB.prepare("SELECT 1").first()),
+  probe("KV", () => env.CACHE.get(PROBE_KEY)),
+  probe("R2", () => env.IMAGES.head(PROBE_KEY)),
+])
+```
+
+`PROBE_KEY` is `health-check`, a key and an object that do not exist, so KV answers `null` and R2 answers `null`, and that is a pass. Only a thrown error fails a check. The answer is `200` when all three pass and `503` when any fails:
+
+```json
+{ "checks": { "d1": "ok", "kv": "ok", "r2": "ok" }, "status": "ok" }
+```
+
+```json
+{ "checks": { "d1": "error", "kv": "ok", "r2": "ok" }, "status": "error" }
+```
+
+The body never carries the error, a binding name or any configuration; the error goes to the log as `[Health] D1 did not answer:`. The response is sent with `Cache-Control: no-store`, so neither Cloudflare nor a proxy can serve a stale `200`. A `HEAD` request gets the same status, because TanStack Start answers `HEAD` with the `GET` handler.
+
+What a `200` does not say: Stripe, Resend, the realtime Durable Object and the audit queue are not checked, so it means the Worker runs and reaches its database, cache and images, not that a checkout would succeed. The endpoint has no rate limit and needs no sign-in. Each call costs one D1 query that reads no rows, one KV read and one R2 Class B operation, about 43,200 of each a month for a check every minute.
+
+Every deploy asks it once as well: the deploy's last step, `scripts/verify-deployment.ts`, fails unless the new Worker's `/api/health` on its `workers.dev` host answers `200`, next to the home page, the product listing, `robots.txt` and the Stripe webhook route. The new version is live by then, so a `503` there means rolling back; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
+
+## Pointing an uptime monitor at it
+
+Any HTTP uptime monitor works with these settings:
+
+| Setting         | Value                                                                                     |
+| --------------- | ----------------------------------------------------------------------------------------- |
+| URL             | `https://martebizuteria.pl/api/health`, or `https://preview.martebizuteria.pl/api/health` |
+| Method          | `GET` (`HEAD` also works)                                                                 |
+| Expected status | `200`; treat anything else, a timeout included, as down                                   |
+| Keyword         | `"status":"ok"`, if the monitor can check the body                                        |
+| Interval        | One to five minutes                                                                       |
+| Who to alert    | The owner's e-mail; the monitor's own alert covers a Worker that cannot run at all        |
+
+The monitor is what notices an outage the Worker cannot report itself: a failed deploy, a broken route or a Cloudflare incident.
+
+**Cloudflare Health Checks.** If the `martebizuteria.pl` zone is on the Pro plan or higher, Cloudflare can be the monitor; the Free plan has no standalone Health Checks. In the dashboard, open the zone, go to **Health Checks**, select **Create**, and point it at `martebizuteria.pl` over HTTPS with the path `/api/health`, the expected code `200` and `"status":"ok"` as the **Response body**, a substring that must appear in the first 10 KB. Keep the **Interval** at a minute or more and the **Check regions** few, since each region sends its own requests. Then select **Configure an alert** on the same page, add the notification e-mail and the health check, and choose the trigger. Cloudflare sends it only after the status changes in the majority of the selected regions.
+
+**On the Free plan**, use a hosted uptime monitor with the settings above. That is the only part of this page that needs an account outside Cloudflare, and nothing in the code depends on which one is used.
+
+## E-mail alerts from the shop
+
+`notifyShopOfIncident` in `src/integrations/resend/incident-alert.notification.server.ts` emails `RESEND_EMAIL_FROM` in the shop's language with the `incident-alert.tsx` template. Each e-mail names the kind of incident, its reference, the cause and the environment:
+
+| Incident                   | Sent when                                                                                                                                                                                                                                                                                            | Reference               | What to do                                                                                                                                                                                                          |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `paidCheckoutWithoutOrder` | `handleFulfillCheckoutSession` in `stripe.webhooks.tsx` gets `NOT_FOUND` from fulfilment for a paid session: no pending payment carries it, or its checkout was released or is gone. The webhook answers 200, so Stripe will not send it again.                                                      | The Checkout Session id | Find the payment in the Stripe Dashboard by the session id, then refund it or arrange the order with the customer. The `order.fulfillment_failed` entry in `/admin/audit` has the amount and the customer's e-mail. |
+| `stripeWebhookFailed`      | Any handler in `webhookHandlers` throws, so `src/routes/api/webhooks.stripe.ts` answers 500 and Stripe retries the event, in live mode for up to three days. A paid session whose order could not be created for any other reason lands here, with `order.fulfillment_failed` in `/admin/audit` too. | The Stripe event type   | The cause starts with the event id. Read the stack in Workers Logs, fix the cause, and let Stripe's next retry, or **Resend** on the event in the Stripe Dashboard, deliver it again.                               |
+| `auditQueueFailed`         | `processAuditLogQueueBatch` in `audit-log.queue.server.ts` cannot write a batch, marks every message for retry and then alerts. The queue retries a batch three times (`max_retries: 3`) and, with no dead-letter queue, drops it after that.                                                        | The queue name          | Check D1 in the Cloudflare dashboard. Entries still failing after the third retry are lost from `/admin/audit`.                                                                                                     |
+
+**At most once per incident.** An incident is its environment, kind and reference. The first failure writes `incident-alert:<APP_ENV>:<kind>:<reference>` to the `CACHE` KV namespace with a one-hour expiry (`INCIDENT_ALERT_SECONDS`) and only then sends. Further failures under the same key within that hour are logged and not emailed, so Stripe's retries of one event or the queue's retries of one batch send one e-mail. A new Checkout Session, another event type or a failure after the hour is a new incident. KV is eventually consistent between Cloudflare locations, so two failures that land at the same moment in different locations can each send one.
+
+**An alert never breaks the work that raised it.** `notifyShopOfIncident` catches everything: a KV error, a rendering error and a refused send are logged with `[Alert]` and swallowed. The webhook route hands the alert to `scheduleBackgroundWork`, so Stripe gets its 500 at once, and fulfilment does the same before it answers 200. The queue consumer awaits the alert only after every message is marked for retry. Alerts are not recorded in the audit log, because the database may be what failed.
+
+**Where alerts go.** Alerts go to `RESEND_EMAIL_FROM`, the address the shop sends from, in every environment, so development and preview send them too. In the `test` environment it is `noreply@example.test` from `.env.test`, a dummy inbox the mocked Resend captures. Alerts are sent through Resend from that same address, so a broken sender also stops them; the uptime monitor and Cloudflare's own notifications do not depend on it.
+
+## Cloudflare notifications
+
+Notifications are set up per account in the Cloudflare dashboard under **Notifications**, **Add**. Every plan can deliver them by e-mail or webhook. The ones worth adding for this shop:
+
+- **Health Checks status**, if the zone has the health check above. Creating it from **Configure an alert** on the Health Checks page adds it here.
+- **Custom Alerts** (beta), which run a SQL API query on a schedule and notify when the result meets a threshold. A query that counts `5xx` responses in the last five minutes and alerts above zero catches failures that throw before the code can email, such as a broken deploy. Cloudflare's own example reads `events.httpRequests` filtered on the account tag and `edgeResponseStatus >= 500`; which datasets a Custom Alert can read depends on the plan, and the dashboard lists the ones available.
+- **Workers Issues automations**, set up in the Issues dashboard, which send a new issue to a webhook, a chat service or an incident-management tool.
+
+Keep at least one of the Cloudflare-side alerts or the uptime monitor in place. The shop's own e-mails cover the three failures above, but they cannot report a Worker that does not run.

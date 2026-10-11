@@ -138,7 +138,7 @@ Server code throws `AppError` from `src/modules/_core/constants/errors.ts` with 
 
 ## Translations
 
-Message files are one JSON file per namespace under `messages/<locale>/`, named after the namespace: `pages.admin.catalog.products.json` is the namespace `pages.admin.catalog.products`. There are 54 namespaces and both locales carry all of them.
+Message files are one JSON file per namespace under `messages/<locale>/`, named after the namespace: `pages.admin.catalog.products.json` is the namespace `pages.admin.catalog.products`. There are 55 namespaces and both locales carry all of them.
 
 The root namespaces — `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors`, `pages.auth.toast` — are preloaded for every route. Everything else is declared per route in `staticData.namespaces`. A test in `src/integrations/use-intl/__test__/i18n.messages.test.ts` asserts that Polish contains every key English has, and that no `emails.*` namespace leaks into the root set.
 

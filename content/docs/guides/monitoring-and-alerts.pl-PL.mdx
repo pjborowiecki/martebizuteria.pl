@@ -1,0 +1,107 @@
+---
+title: "Monitorowanie i alerty"
+description: "Workers Logs i Issues, sprawdzenie /api/health dla monitora dostępności, e-maile, które sklep wysyła sam sobie, gdy zawiedzie płatność, zdarzenie Stripe albo kolejka audytu, oraz powiadomienia Cloudflare do dodania."
+---
+
+Sklep pilnuje się na trzy sposoby i żaden z nich nie wymaga konta w usłudze raportowania błędów. Cloudflare przechowuje logi Workera i grupuje jego błędy, `/api/health` mówi monitorowi dostępności, czy Worker sięga do swoich magazynów danych, a Worker wysyła e-mail na `RESEND_EMAIL_FROM`, gdy błąd wymaga uwagi właściciela.
+
+## Workers Logs i Issues
+
+Najwyższy poziom `wrangler.jsonc` włącza oba, a każde środowisko go dziedziczy, więc mają je wdrożenia preview i produkcyjne:
+
+```jsonc
+"observability": {
+  "enabled": true,
+  "issues": {
+    "enabled": true,
+  },
+},
+```
+
+`enabled` zachowuje w Workers Logs logi każdego wywołania, w tym każde `console.error`. `issues.enabled` włącza Workers Issues, które zapisuje nieprzechwycony wyjątek, nieudane wywołanie, odpowiedź `5xx` albo zalogowany błąd jako wystąpienie i grupuje wystąpienia jednego błędu w jedno zgłoszenie. Issues wymaga Wranglera 4.134.0 lub nowszego; repozytorium używa 4.138.0. Cloudflare opisuje Issues jako otwartą betę, darmową do jej końca. Oba widać w panelu Cloudflare pod **Workers & Pages**, Worker (`martebizuteria` dla produkcji, `martebizuteria-preview` dla preview), **Observability**. Plik `dist/server/wrangler.json` z buildu pokazuje blok `observability`, który wysyła wdrożenie.
+
+Linie logu związane z tą stroną:
+
+| Prefiks                                                 | Źródło                                                                              |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `[Health] D1 did not answer:` (albo `KV`, `R2`)         | `/api/health` przechwyciło błąd tego bindingu                                       |
+| `[Alert] The <kind> alert to <address> was not sent: …` | Resend odrzucił alert o incydencie albo nie odpowiedział na czas                    |
+| `[Alert] The <kind> alert could not be sent:`           | Odczyt KV albo renderowanie alertu rzuciło wyjątek; błąd jest dalej w linii         |
+| `[Stripe] Domain logic failed for <type>:`              | Handler webhooka rzucił wyjątek, trasa odpowiedziała 500, a Stripe ponowi zdarzenie |
+| `Paid Checkout Session <id> created no order:`          | `handleFulfillCheckoutSession` nie mógł utworzyć zamówienia dla opłaconej sesji     |
+| `[AuditLog Queue] Batch insert failed:`                 | `processAuditLogQueueBatch` nie zapisał partii i poprosił kolejkę o jej ponowienie  |
+
+`vp exec wrangler tail --env production` pokazuje te same linie na żywo; zobacz [Debugowanie lokalne](/docs/guides/local-debugging#obserwowanie-workera-we-wdrożonym-środowisku).
+
+## Sprawdzenie stanu
+
+`GET /api/health` to handler TanStack Start w `src/routes/api/health.ts`. Odczytuje każdy binding magazynu raz, wszystkie trzy równolegle, operacjami, które nie dotykają danych:
+
+```ts
+const [d1, kv, r2] = await Promise.all([
+  probe("D1", () => env.DB.prepare("SELECT 1").first()),
+  probe("KV", () => env.CACHE.get(PROBE_KEY)),
+  probe("R2", () => env.IMAGES.head(PROBE_KEY)),
+])
+```
+
+`PROBE_KEY` to `health-check`, klucz i obiekt, które nie istnieją, więc KV odpowiada `null`, R2 odpowiada `null` i to jest wynik pozytywny. Sprawdzenie zawodzi tylko przy rzuconym błędzie. Odpowiedź to `200`, gdy przechodzą wszystkie trzy, i `503`, gdy zawiedzie którekolwiek:
+
+```json
+{ "checks": { "d1": "ok", "kv": "ok", "r2": "ok" }, "status": "ok" }
+```
+
+```json
+{ "checks": { "d1": "error", "kv": "ok", "r2": "ok" }, "status": "error" }
+```
+
+Treść nigdy nie zawiera błędu, nazwy bindingu ani żadnej konfiguracji; błąd trafia do logu jako `[Health] D1 did not answer:`. Odpowiedź ma nagłówek `Cache-Control: no-store`, więc ani Cloudflare, ani proxy nie poda nieaktualnego `200`. Żądanie `HEAD` dostaje ten sam status, bo TanStack Start odpowiada na `HEAD` handlerem `GET`.
+
+Czego `200` nie mówi: Stripe, Resend, Durable Object odświeżania na żywo i kolejka audytu nie są sprawdzane, więc oznacza ono, że Worker działa i sięga do bazy danych, cache'u i zdjęć, a nie, że zamówienie by się udało. Endpoint nie ma limitu żądań i nie wymaga logowania. Każde wywołanie kosztuje jedno zapytanie D1, które nie czyta żadnych wierszy, jeden odczyt KV i jedną operację R2 klasy B, czyli około 43 200 każdej z nich miesięcznie przy sprawdzaniu co minutę.
+
+Pyta go też każde wdrożenie: ostatni krok wdrożenia, `scripts/verify-deployment.ts`, kończy się błędem, chyba że `/api/health` nowego Workera na jego hoście `workers.dev` odpowie `200`, obok strony głównej, listy produktów, `robots.txt` i trasy webhooka Stripe. Nowa wersja działa już wtedy na żywo, więc `503` w tym miejscu oznacza wycofanie; zobacz [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
+
+## Podłączenie monitora dostępności
+
+Każdy monitor dostępności HTTP zadziała z takimi ustawieniami:
+
+| Ustawienie        | Wartość                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| URL               | `https://martebizuteria.pl/api/health` albo `https://preview.martebizuteria.pl/api/health` |
+| Metoda            | `GET` (`HEAD` też działa)                                                                  |
+| Oczekiwany status | `200`; wszystko inne, także przekroczenie czasu, traktuj jako awarię                       |
+| Słowo kluczowe    | `"status":"ok"`, jeśli monitor potrafi sprawdzić treść                                     |
+| Interwał          | Od jednej do pięciu minut                                                                  |
+| Kogo powiadomić   | E-mail właściciela; własny alert monitora obejmuje Workera, który w ogóle nie działa       |
+
+To monitor zauważa awarię, której Worker sam nie zgłosi: nieudane wdrożenie, zepsutą trasę albo incydent po stronie Cloudflare.
+
+**Cloudflare Health Checks.** Jeśli strefa `martebizuteria.pl` jest na planie Pro lub wyższym, monitorem może być Cloudflare; plan Free nie ma samodzielnych Health Checks. W panelu otwórz strefę, przejdź do **Health Checks**, wybierz **Create** i skieruj sprawdzenie na `martebizuteria.pl` przez HTTPS ze ścieżką `/api/health`, oczekiwanym kodem `200` i `"status":"ok"` jako **Response body**, czyli fragmentem, który musi się pojawić w pierwszych 10 KB odpowiedzi. Zostaw **Interval** na minucie lub dłużej, a **Check regions** nieliczne, bo każdy region wysyła własne żądania. Potem na tej samej stronie wybierz **Configure an alert**, dodaj adres e-mail i to sprawdzenie i wybierz wyzwalacz. Cloudflare wysyła powiadomienie dopiero, gdy status zmieni się w większości wybranych regionów.
+
+**Na planie Free** użyj hostowanego monitora dostępności z ustawieniami powyżej. To jedyna część tej strony, która wymaga konta poza Cloudflare, a nic w kodzie nie zależy od tego, który monitor zostanie wybrany.
+
+## Alerty e-mail ze sklepu
+
+`notifyShopOfIncident` z `src/integrations/resend/incident-alert.notification.server.ts` wysyła e-mail na `RESEND_EMAIL_FROM` w języku sklepu, szablonem `incident-alert.tsx`. Każdy e-mail podaje rodzaj incydentu, jego identyfikator, przyczynę i środowisko:
+
+| Incydent                   | Wysyłany, gdy                                                                                                                                                                                                                                                                                                                  | Identyfikator        | Co zrobić                                                                                                                                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `paidCheckoutWithoutOrder` | `handleFulfillCheckoutSession` w `stripe.webhooks.tsx` dostaje z realizacji `NOT_FOUND` dla opłaconej sesji: nie niesie jej żadna oczekująca płatność albo jej checkout został zwolniony lub zniknął. Webhook odpowiada 200, więc Stripe nie wyśle go ponownie.                                                                | Id sesji Checkout    | Znajdź płatność w panelu Stripe po id sesji, a następnie zwróć pieniądze albo ustal zamówienie z klientem. Wpis `order.fulfillment_failed` w `/admin/audit` ma kwotę i e-mail klienta.               |
+| `stripeWebhookFailed`      | Dowolny handler z `webhookHandlers` rzuca wyjątek, więc `src/routes/api/webhooks.stripe.ts` odpowiada 500, a Stripe ponawia zdarzenie, w trybie live przez maksymalnie trzy dni. Trafia tu też opłacona sesja, z której nie dało się utworzyć zamówienia z innego powodu, razem z `order.fulfillment_failed` w `/admin/audit`. | Typ zdarzenia Stripe | Przyczyna zaczyna się od id zdarzenia. Przeczytaj stos w Workers Logs, usuń przyczynę i pozwól, by kolejne ponowienie Stripe albo **Resend** przy zdarzeniu w panelu Stripe dostarczyło je ponownie. |
+| `auditQueueFailed`         | `processAuditLogQueueBatch` w `audit-log.queue.server.ts` nie może zapisać partii, oznacza każdą wiadomość do ponowienia, a potem wysyła alert. Kolejka ponawia partię trzy razy (`max_retries: 3`), a bez kolejki martwych wiadomości potem ją porzuca.                                                                       | Nazwa kolejki        | Sprawdź D1 w panelu Cloudflare. Wpisy, które nie zapiszą się po trzecim ponowieniu, przepadają z `/admin/audit`.                                                                                     |
+
+**Najwyżej raz na incydent.** Incydent to jego środowisko, rodzaj i identyfikator. Pierwszy błąd zapisuje `incident-alert:<APP_ENV>:<kind>:<reference>` w przestrzeni KV `CACHE` z godzinnym wygaśnięciem (`INCIDENT_ALERT_SECONDS`) i dopiero potem wysyła e-mail. Kolejne błędy pod tym samym kluczem w ciągu tej godziny trafiają do logu, ale nie do skrzynki, więc ponowienia jednego zdarzenia przez Stripe albo jednej partii przez kolejkę wysyłają jeden e-mail. Nowa sesja Checkout, inny typ zdarzenia albo błąd po upływie godziny to nowy incydent. KV jest spójne ostatecznie między lokalizacjami Cloudflare, więc dwa błędy, które w tej samej chwili trafią do różnych lokalizacji, mogą wysłać po jednym e-mailu.
+
+**Alert nigdy nie psuje pracy, która go wywołała.** `notifyShopOfIncident` przechwytuje wszystko: błąd KV, błąd renderowania i odrzuconą wysyłkę loguje z prefiksem `[Alert]` i połyka. Trasa webhooka przekazuje alert do `scheduleBackgroundWork`, więc Stripe od razu dostaje swoje 500, a realizacja robi to samo, zanim odpowie 200. Konsument kolejki czeka na alert dopiero wtedy, gdy każda wiadomość jest już oznaczona do ponowienia. Alerty nie są zapisywane w dzienniku audytu, bo zawieść mogła właśnie baza danych.
+
+**Dokąd trafiają alerty.** Alerty trafiają na `RESEND_EMAIL_FROM`, adres, z którego sklep wysyła pocztę, w każdym środowisku, więc development i preview też je wysyłają. W środowisku `test` to `noreply@example.test` z `.env.test`, atrapowa skrzynka przechwytywana przez zamockowany Resend. Alerty idą przez Resend z tego samego adresu, więc zepsuty nadawca zatrzymuje także je; monitor dostępności i własne powiadomienia Cloudflare od niego nie zależą.
+
+## Powiadomienia Cloudflare
+
+Powiadomienia ustawia się dla konta w panelu Cloudflare pod **Notifications**, **Add**. Każdy plan może je dostarczać e-mailem albo webhookiem. Warte dodania dla tego sklepu:
+
+- **Health Checks status**, jeśli strefa ma opisane wyżej sprawdzenie. Utworzenie go przez **Configure an alert** na stronie Health Checks dodaje je tutaj.
+- **Custom Alerts** (beta), które wykonują zapytanie SQL API według harmonogramu i powiadamiają, gdy wynik przekroczy próg. Zapytanie liczące odpowiedzi `5xx` z ostatnich pięciu minut z alertem powyżej zera wyłapie błędy, które padają, zanim kod zdąży wysłać e-mail, na przykład zepsute wdrożenie. Przykład Cloudflare czyta `events.httpRequests` z filtrem na identyfikator konta i `edgeResponseStatus >= 500`; to, które zbiory danych Custom Alert może czytać, zależy od planu, a panel wymienia dostępne.
+- **Automatyzacje Workers Issues**, ustawiane w panelu Issues, które wysyłają nowe zgłoszenie na webhook, do komunikatora albo narzędzia do obsługi incydentów.
+
+Zostaw co najmniej jeden z alertów po stronie Cloudflare albo monitor dostępności. Własne e-maile sklepu obejmują trzy opisane wyżej błędy, ale nie zgłoszą Workera, który nie działa.

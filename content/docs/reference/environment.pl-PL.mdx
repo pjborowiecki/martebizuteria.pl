@@ -49,7 +49,6 @@ cp .env.example .env.development
 | `CLOUDFLARE_DATABASE_ID`      | Sterownik HTTP D1 w Drizzle Kit                                                                                                                                                                        | Nie            |
 | `CLOUDFLARE_ACCESS_TOKEN`     | Sterownik HTTP D1 w Drizzle Kit                                                                                                                                                                        | Nie            |
 | `RESEND_MANAGEMENT_API_KEY`   | Opcjonalny. Tym kluczem z pełnym dostępem `scripts/verify-email-sender.ts` odczytuje domenę nadawcy, gdy `RESEND_API_KEY` może tylko wysyłać                                                           | Nie            |
-| `SENTRY_AUTH_TOKEN`           | Na razie przez nic — zadeklarowana w `.env.example` z wyprzedzeniem, raportowanie błędów nie jest podłączone                                                                                           | Nie            |
 
 Przy wdrożeniu wysyłane są wyłącznie zmienne wymienione w `secrets.required` w `wrangler.jsonc`. Każde środowisko deklaruje te same dziewięć nazw. Trzy zmienne `CLOUDFLARE_*` to poświadczenia Drizzle Kit i zostają na maszynie uruchamiającej CLI; `prepare-deploy-secrets.ts` zapisuje wyłącznie zadeklarowany zbiór do `.wrangler/secrets.<środowisko>.json` z uprawnieniami `0600` i głośno przerywa, jeśli któraś wartość jest pusta:
 
@@ -93,7 +92,7 @@ Każde środowisko deklaruje też jedną zwykłą zmienną, `vars.APP_ENV`, usta
 
 Konsument kolejki Workera jest zadeklarowany obok producenta z `max_batch_size: 50`, `max_batch_timeout: 5` i `max_retries: 3`, a obsługuje go eksport `queue` w `src/server.ts`. Klasę Durable Object tworzy migracja o tagu `v1` (`new_sqlite_classes: ["RealtimeInvalidationHub"]`).
 
-Inne ustawienia najwyższego poziomu warte zapamiętania: `compatibility_date` to `2026-04-18` z flagą `nodejs_compat`, `keep_vars` jest włączone, obserwowalność jest włączona, a `placement.mode` ma wartość `smart`.
+Inne ustawienia najwyższego poziomu warte zapamiętania: `compatibility_date` to `2026-04-18` z flagą `nodejs_compat`, `keep_vars` jest włączone, obserwowalność jest włączona razem z Workers Issues (`observability.issues.enabled`), a `placement.mode` ma wartość `smart`.
 
 ## Typy
 
@@ -117,7 +116,7 @@ Oba skrypty wdrożeniowe uruchamiają sześć bramek wokół budowania i jedną 
 | `scripts/verify-email-sender.ts`    | Pyta Resend, czy wyśle pocztę z `RESEND_EMAIL_FROM`, i odrzuca nadawcę z nazwą wyświetlaną, `onboarding@resend.dev` oraz nieznaną lub niezweryfikowaną domenę, wypisując rekordy DNS do opublikowania                               |
 | `scripts/verify-build.ts`           | Potwierdza, że `dist/server/wrangler.json` celuje we właściwe środowisko i nazwę Workera, że `dist/client` zawiera JS, CSS i fonty oraz że żaden zasób klienta nie importuje `cloudflare:workers` ani `node:*`                      |
 | `scripts/prepare-deploy-secrets.ts` | Zapisuje tylko zadeklarowane sekrety do `.wrangler/secrets.<środowisko>.json` i przerywa przy pustej wartości                                                                                                                       |
-| `scripts/verify-deployment.ts`      | Po `wrangler deploy` pyta host `workers.dev` środowiska o `/`, `/products`, `/robots.txt` i `/api/webhooks/stripe` i odrzuca każdą odpowiedź inną niż odpowiedź sklepu                                                              |
+| `scripts/verify-deployment.ts`      | Po `wrangler deploy` pyta host `workers.dev` środowiska o `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` i `/api/health` i odrzuca każdą odpowiedź inną niż odpowiedź sklepu                                               |
 
 Całą sekwencję widać w `package.json`:
 

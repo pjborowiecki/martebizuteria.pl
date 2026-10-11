@@ -95,14 +95,14 @@ Without the listener the checkout flow appears to hang at the payment step: Stri
 
 ## Previewing transactional emails
 
-`/dev/emails` renders thirteen of the fourteen React Email templates without sending anything, the withdrawal one in both its customer and its shop version; `newsletter-confirmation` has no preview entry. The index lists each template with HTML and plain-text links for both locales:
+`/dev/emails` renders fourteen of the fifteen React Email templates without sending anything, the withdrawal one in both its customer and its shop version; `newsletter-confirmation` has no preview entry. The index lists each template with HTML and plain-text links for both locales:
 
 ```
 /dev/emails?template=order-confirmation&locale=pl-PL
 /dev/emails?template=order-confirmation&locale=pl-PL&format=text
 ```
 
-The available slugs are `account-deleted`, `change-email`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`. The handler returns 404 unless `import.meta.env.DEV` is true, so the route does not exist in a built Worker.
+The available slugs are `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `order-withdrawal`, `order-withdrawal-notice`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`. The handler returns 404 unless `import.meta.env.DEV` is true, so the route does not exist in a built Worker.
 
 ## Running a production-shaped build locally
 

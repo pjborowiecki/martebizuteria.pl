@@ -167,7 +167,7 @@ Outside CI, Playwright's `webServer` runs `db:reset:test`, `build:test` and `sta
 
 ### The test Worker
 
-`wrangler.jsonc` has a `test` environment whose `main` is `src/platform/testing/worker.ts` and whose D1, KV, R2, Durable Object and audit queue are all local (`remote: false`), persisted under `.wrangler/test`. `bun run build:test` builds it with `CLOUDFLARE_ENV=test` and `--mode test`, so every secret comes from the committed `.env.test`. The shop's new-order notice goes to its `RESEND_EMAIL_FROM`, `noreply@example.test`, which is `ORDER_NOTIFICATION_INBOX` in `e2e/data/accounts.ts`, so every order a spec places also sends the notice there.
+`wrangler.jsonc` has a `test` environment whose `main` is `src/platform/testing/worker.ts` and whose D1, KV, R2, Durable Object and audit queue are all local (`remote: false`), persisted under `.wrangler/test`. `bun run build:test` builds it with `CLOUDFLARE_ENV=test` and `--mode test`, so every secret comes from the committed `.env.test`. The shop's new-order notice goes to its `RESEND_EMAIL_FROM`, `noreply@example.test`, which is `ORDER_NOTIFICATION_INBOX` in `e2e/data/accounts.ts`, so every order a spec places also sends the notice there, and the shop's incident alerts go there too.
 
 The test Worker installs `src/platform/testing/mocks/providers.ts` before it loads the application, so nothing leaves the machine:
 

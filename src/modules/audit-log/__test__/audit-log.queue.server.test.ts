@@ -6,6 +6,7 @@ import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 
 const queue = vi.hoisted(() => ({
   insertAuditLogs: vi.fn(() => Promise.resolve(undefined)),
+  notifyShopOfIncident: vi.fn((_incident: { detail: string; kind: string; reference: string }) => Promise.resolve(undefined)),
   publishRealtimeInvalidation: vi.fn(() => Promise.resolve(undefined)),
 }))
 
@@ -13,6 +14,7 @@ vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({ insertAuditLogs:
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server", () => ({
   publishRealtimeInvalidation: queue.publishRealtimeInvalidation,
 }))
+vi.mock("~/src/integrations/resend/incident-alert.notification.server", () => ({ notifyShopOfIncident: queue.notifyShopOfIncident }))
 
 const body = (id: string): AuditLogQueueMessage => ({
   action: "order.placed",
@@ -99,6 +101,12 @@ describe("processAuditLogQueueBatch", () => {
     expect(queue.insertAuditLogs).toHaveBeenCalledWith([])
     expect(queue.publishRealtimeInvalidation).toHaveBeenCalledTimes(1)
   })
+
+  it("alerts nobody when the batch is written", async () => {
+    await processAuditLogQueueBatch(createBatch([createMessage("first")]))
+
+    expect(queue.notifyShopOfIncident).not.toHaveBeenCalled()
+  })
 })
 
 describe("processAuditLogQueueBatch when the insert fails", () => {
@@ -135,6 +143,36 @@ describe("processAuditLogQueueBatch when the insert fails", () => {
     await processAuditLogQueueBatch(createBatch([createMessage("first")]))
 
     expect(consoleError).toHaveBeenCalledWith("[AuditLog Queue] Batch insert failed:", new Error("D1_ERROR: no such table"))
+  })
+
+  it("alerts the shop to the failure under the queue's name after marking the batch for retry", async () => {
+    const steps: string[] = []
+    const first = createMessage("first")
+    first.retry.mockImplementationOnce(() => {
+      steps.push("retry")
+    })
+    queue.notifyShopOfIncident.mockImplementationOnce(() => {
+      steps.push("alert")
+
+      return Promise.resolve(undefined)
+    })
+
+    await processAuditLogQueueBatch(createBatch([first]))
+
+    expect(steps).toStrictEqual(["retry", "alert"])
+    expect(queue.notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
+      detail: "D1_ERROR: no such table",
+      kind: "auditQueueFailed",
+      reference: "audit-log",
+    })
+  })
+
+  it("names a cause that is not an Error by its text", async () => {
+    queue.insertAuditLogs.mockRejectedValue("D1 unavailable")
+
+    await processAuditLogQueueBatch(createBatch([createMessage("first")]))
+
+    expect(queue.notifyShopOfIncident).toHaveBeenCalledWith(expect.objectContaining({ detail: "D1 unavailable" }))
   })
 
   it("does not swallow an acknowledgement failure into a retry loop", async () => {

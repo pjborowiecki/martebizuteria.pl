@@ -15,6 +15,8 @@ const HTML = "text/html; charset=utf-8"
 
 const PLAIN_TEXT = "text/plain; charset=utf-8"
 
+const JSON_BODY = "application/json"
+
 const EVERY_RETRY_MS = (LIVE_SITE_CHECK_ATTEMPTS - 1) * LIVE_SITE_CHECK_RETRY_DELAY_MS
 
 type Answer = () => Promise<Response>
@@ -30,6 +32,7 @@ const page =
 
 const WORKING_SHOP: Readonly<Record<string, Answer>> = {
   "/": page(200, HTML),
+  "/api/health": page(200, JSON_BODY),
   "/api/webhooks/stripe": page(405, PLAIN_TEXT),
   "/products": page(200, HTML),
   "/robots.txt": page(200, PLAIN_TEXT),
@@ -76,14 +79,15 @@ describe("verifyDeployment on a working shop", () => {
   it.each([
     ["production", PRODUCTION_ORIGIN],
     ["preview", PREVIEW_ORIGIN],
-  ] as const)("asks the %s Worker on its workers.dev host for the four pages", async (environment, origin) => {
+  ] as const)("asks the %s Worker on its workers.dev host for the five pages", async (environment, origin) => {
     serve()
 
     await expect(verifyDeployment(environment)).resolves.toBe(
-      `The ${environment} Worker at ${origin} answered /, /products, /robots.txt, /api/webhooks/stripe as expected.`,
+      `The ${environment} Worker at ${origin} answered /, /products, /robots.txt, /api/webhooks/stripe, /api/health as expected.`,
     )
     expect(fetchMock.mock.calls.map(([url]) => url.href).toSorted()).toStrictEqual([
       `${origin}/`,
+      `${origin}/api/health`,
       `${origin}/api/webhooks/stripe`,
       `${origin}/products`,
       `${origin}/robots.txt`,
@@ -96,7 +100,7 @@ describe("verifyDeployment on a working shop", () => {
 
     await verifyDeployment("production")
 
-    expect(fetchMock).toHaveBeenCalledTimes(4)
+    expect(fetchMock).toHaveBeenCalledTimes(5)
     expect(fetchMock.mock.calls.every(([, init]) => init.redirect === "manual" && init.signal instanceof AbortSignal)).toBe(true)
     expect(timeout).toHaveBeenCalledWith(LIVE_SITE_CHECK_TIMEOUT_MS)
   })
@@ -137,6 +141,14 @@ describe("verifyDeployment on a shop that answers wrongly", () => {
     await expectProductionRefusal(`GET ${PRODUCTION_ORIGIN}/products answered 200 instead of 200 text/html.`)
   })
 
+  it("refuses a health check that reports a binding down", async () => {
+    serve({ "/api/health": page(503, JSON_BODY) })
+
+    await expectProductionRefusal(
+      productionRefusal(`GET ${PRODUCTION_ORIGIN}/api/health answered 503 ${JSON_BODY} instead of 200 application/json.`),
+    )
+  })
+
   it("refuses a robots.txt served as a page", async () => {
     serve({ "/robots.txt": page(200, HTML) })
 
@@ -169,6 +181,7 @@ describe("verifyDeployment on a shop that answers wrongly", () => {
     expect(requestsFor("/")).toBe(1)
     expect(requestsFor("/products")).toBe(1)
     expect(requestsFor("/robots.txt")).toBe(1)
+    expect(requestsFor("/api/health")).toBe(1)
   })
 
   it("waits before asking again, so a version still spreading across Cloudflare can take over", async () => {

@@ -1,0 +1,23 @@
+{
+  "paidCheckoutWithoutOrder": {
+    "subject": "Alert: opłacona płatność bez zamówienia — M'Arte",
+    "heading": "Opłacona płatność bez zamówienia",
+    "message": "Stripe przyjął płatność klienta, ale sklep nie mógł utworzyć z niej zamówienia, a ponowna próba tego nie zmieni. Znajdź płatność w panelu Stripe po identyfikatorze poniżej, a następnie zwróć pieniądze albo ustal zamówienie z klientem."
+  },
+  "stripeWebhookFailed": {
+    "subject": "Alert: sklep nie obsłużył zdarzenia Stripe — M'Arte",
+    "heading": "Sklep nie obsłużył zdarzenia Stripe",
+    "message": "Sklep odpowiedział błędem na zdarzenie ze Stripe, więc Stripe będzie je wysyłać ponownie przez maksymalnie trzy dni. Dopóki ponowna próba się nie powiedzie, w sklepie brakuje tego, o czym informuje zdarzenie: po zakończonej płatności klient zapłacił, ale nie ma jeszcze zamówienia."
+  },
+  "auditQueueFailed": {
+    "subject": "Alert: błąd kolejki dziennika audytu — M'Arte",
+    "heading": "Błąd kolejki dziennika audytu",
+    "message": "Sklep nie mógł przetworzyć partii wpisów dziennika audytu. Kolejka dostarczy ją jeszcze kilka razy, a wpisy, których nadal nie uda się zapisać, przepadną. Baza danych może być niedostępna."
+  },
+  "preview": "Coś w sklepie wymaga Twojej uwagi.",
+  "referenceLabel": "Dotyczy",
+  "detailLabel": "Przyczyna",
+  "environmentLabel": "Środowisko",
+  "followUp": "Kolejne błędy dotyczące tego samego identyfikatora nie są wysyłane e-mailem przez godzinę. Każdy błąd jest w Workers Logs i Issues w panelu Cloudflare, a opłacona płatność bez zamówienia także w dzienniku audytu w panelu administracyjnym.",
+  "tagline": "Alert sklepu"
+}

@@ -6,6 +6,7 @@ import { formatPrice } from "~/src/modules/_core/utils/currency"
 
 import accountDeletedCopy from "~/messages/en-US/emails.account-deleted.json"
 import changeEmailCopy from "~/messages/en-US/emails.change-email.json"
+import incidentAlertCopy from "~/messages/en-US/emails.incident-alert.json"
 import newOrderCopy from "~/messages/en-US/emails.new-order.json"
 import newsletterAlreadySubscribedCopy from "~/messages/en-US/emails.newsletter-already-subscribed.json"
 import orderCancelledCopy from "~/messages/en-US/emails.order-cancelled.json"
@@ -17,6 +18,7 @@ import passwordChangedCopy from "~/messages/en-US/emails.password-changed.json"
 import paymentFailedCopy from "~/messages/en-US/emails.payment-failed.json"
 import resetPasswordCopy from "~/messages/en-US/emails.reset-password.json"
 import verifyEmailCopy from "~/messages/en-US/emails.verify-email.json"
+import polishIncidentAlertCopy from "~/messages/pl-PL/emails.incident-alert.json"
 import polishNewOrderCopy from "~/messages/pl-PL/emails.new-order.json"
 import polishOrderConfirmationCopy from "~/messages/pl-PL/emails.order-confirmation.json"
 import polishOrderShippedCopy from "~/messages/pl-PL/emails.order-shipped.json"
@@ -42,6 +44,7 @@ describe("EMAIL_PREVIEWS", () => {
     expect(Object.entries(EMAIL_PREVIEWS).map(([slug, preview]) => [slug, preview.label])).toStrictEqual([
       ["account-deleted", "Account deleted"],
       ["change-email", "Change email"],
+      ["incident-alert", "Incident alert for the shop"],
       ["new-order", "New order for the shop"],
       ["newsletter-already-subscribed", "Newsletter already subscribed"],
       ["order-cancelled", "Order cancelled"],
@@ -198,6 +201,17 @@ describe("renderEmailPreview of the order emails", () => {
     expect(polish).toContain(
       `${polishNewOrderCopy.companyInvoiceLabel}\n\nPracownia Złotnicza sp. z o.o. NIP 5260001246 ul. Mokotowska 12/4`,
     )
+  })
+
+  it("previews the shop's alert about a paid checkout without an order in the language asked for", async () => {
+    const english = await text("incident-alert")
+    const polish = await text("incident-alert", "pl-PL")
+
+    expect(english).toContain(incidentAlertCopy.paidCheckoutWithoutOrder.heading.toUpperCase())
+    expect(english).toContain(`${incidentAlertCopy.referenceLabel}\n\ncs_live_a1B2c3D4e5`)
+    expect(english).toContain(`${incidentAlertCopy.environmentLabel}\n\nproduction`)
+    expect(polish).toContain(polishIncidentAlertCopy.paidCheckoutWithoutOrder.heading.toUpperCase())
+    expect(polish).toContain(polishIncidentAlertCopy.followUp)
   })
 
   it("previews the failed payment with the basket and a way back to the shop in the language asked for", async () => {

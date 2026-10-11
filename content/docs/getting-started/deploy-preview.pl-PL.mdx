@@ -113,7 +113,7 @@ bun scripts/verify-bindings.ts preview \
 6. **`prepare-deploy-secrets.ts preview`** — czyta `secrets.required` z `wrangler.jsonc`, bierze każdą wartość ze środowiska procesu lub z `.env.preview` i zapisuje `.wrangler/secrets.preview.json` z uprawnieniami `0600`. Brakująca lub pusta wartość powoduje wyjątek `Missing <NAZWA> in .env.preview or the process environment`. Zapisywane są wyłącznie zadeklarowane sekrety — tak `CLOUDFLARE_ACCESS_TOKEN` i pozostałe dane zarządcze nie trafiają do Workera.
 7. **`db:migrate:preview`** — `wrangler d1 migrations apply DB --env preview --remote` nakłada każdy plik migracji, którego baza preview jeszcze nie odnotowała. Migracja, która zawiedzie, zostaje wycofana, wcześniejsze pozostają nałożone, a wdrożenie zatrzymuje się przed wysłaniem Workera.
 8. **`wrangler deploy`** — wdraża wygenerowany `dist/server/wrangler.json` i w tym samym wywołaniu wysyła plik sekretów. Wygenerowana konfiguracja jest płaska: ma już `"name": "martebizuteria-preview"` i `"vars": { "APP_ENV": "preview" }` na najwyższym poziomie, bez sekcji `env` — i właśnie dlatego polecenie najpierw usuwa zmienną `CLOUDFLARE_ENV`. Z nią ustawioną Wrangler szukałby sekcji środowiska, której w wygenerowanym pliku nie ma.
-9. **`verify-deployment.ts preview`** — pyta `https://martebizuteria-preview.pjborowiecki.workers.dev` o `/`, `/products`, `/robots.txt` i `/api/webhooks/stripe` i przerywa wdrożenie, chyba że `/` i `/products` odpowiedzą `200` z HTML-em, `robots.txt` odpowie `200` zwykłym tekstem, a trasa webhooka odrzuci `GET` kodem `405`. O stronę, która odpowie źle, kontrola pyta łącznie najwyżej trzy razy, co pięć sekund.
+9. **`verify-deployment.ts preview`** — pyta `https://martebizuteria-preview.pjborowiecki.workers.dev` o `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` i `/api/health` i przerywa wdrożenie, chyba że `/` i `/products` odpowiedzą `200` z HTML-em, `robots.txt` odpowie `200` zwykłym tekstem, trasa webhooka odrzuci `GET` kodem `405`, a `/api/health` odpowie `200`, bo odpowiedziały D1, KV i R2. O stronę, która odpowie źle, kontrola pyta łącznie najwyżej trzy razy, co pięć sekund.
 
 ### Co wychwytuje weryfikacja buildu
 
@@ -153,7 +153,7 @@ Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull 
 
 ## Po wdrożeniu
 
-Ostatni krok wdrożenia zapytał już nowego Workera o stronę główną, listę produktów, `robots.txt` i trasę webhooka Stripe. Gdy zawiedzie, nowa wersja działa na żywo, ale nie odpowiada jak sklep; co wtedy zrobić, opisuje [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
+Ostatni krok wdrożenia zapytał już nowego Workera o stronę główną, listę produktów, `robots.txt`, trasę webhooka Stripe i kontrolę stanu. Gdy zawiedzie, nowa wersja działa na żywo, ale nie odpowiada jak sklep; co wtedy zrobić, opisuje [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
 Zarejestruj adresy zwrotne dostawców dla nowego hosta, zgodnie z listą w [Zmiennych środowiskowych](/docs/getting-started/environment-variables): `/api/auth/callback/google` oraz punkt końcowy Stripe pod `/api/webhooks/stripe`, czyli `https://preview.martebizuteria.pl/api/webhooks/stripe` na preview i `https://martebizuteria.pl/api/webhooks/stripe` na produkcji. Stripe wydaje osobny sekret podpisu dla każdego punktu końcowego, więc wartości `STRIPE_WEBHOOK_SECRET` dla preview i produkcji się różnią. Host punktu końcowego nie decyduje, dokąd linkuje potwierdzenie zamówienia: linkuje ono pod adres, na którym złożono zamówienie, wzięty z `return_url` sesji.
 

@@ -65,4 +65,5 @@ const LIVE_SITE_CHECKS: readonly LiveSiteCheck[] = [
   { contentType: "text/html", path: ROUTES.PRODUCTS, status: HTTP_STATUS.OK },
   { contentType: "text/plain", path: "/robots.txt", status: HTTP_STATUS.OK },
   { contentType: "text/plain", path: "/api/webhooks/stripe", status: HTTP_STATUS.METHOD_NOT_ALLOWED },
+  { contentType: "application/json", path: "/api/health", status: HTTP_STATUS.OK },
 ]

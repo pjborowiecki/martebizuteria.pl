@@ -102,7 +102,7 @@ http://127.0.0.1:3000/dev/emails
 /dev/emails?template=<slug>&locale=en-US&format=text
 ```
 
-The twelve previewed templates are `account-deleted`, `change-email`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`; `newsletter-confirmation` has no preview entry. This renders the real component with the real message catalogue, so it catches a missing translation key or a broken layout without sending anything.
+The fourteen previewed templates are `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `order-withdrawal`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`; `newsletter-confirmation` has no preview entry, and `order-withdrawal-notice` previews the shop's version of the withdrawal e-mail. This renders the real component with the real message catalogue, so it catches a missing translation key or a broken layout without sending anything.
 
 ## Reading the database
 
@@ -126,7 +126,7 @@ Use `--command` for reads. `--file` runs a whole SQL file, which is how the seed
 vp exec wrangler tail --env preview
 ```
 
-`observability.enabled: true` in `wrangler.jsonc` means logs are retained in the Cloudflare dashboard as well. The log lines worth knowing, all from code quoted elsewhere in these guides:
+`observability.enabled: true` in `wrangler.jsonc` means logs are retained in the Cloudflare dashboard as well, and `observability.issues.enabled: true` groups the failures among them into Workers Issues; [Monitoring and alerts](/docs/guides/monitoring-and-alerts) covers both, the `/api/health` check and the e-mails the shop sends itself. The log lines worth knowing, all from code quoted elsewhere in these guides:
 
 | Prefix                                                  | Source                                                                                                                                                          |
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -134,6 +134,8 @@ vp exec wrangler tail --env preview
 | `Rate-limit storage unavailable`                        | `withinRateLimit` could not write to D1                                                                                                                         |
 | `[Background Work Failed]:`                             | `runSafely` in `src/lib/background.ts`                                                                                                                          |
 | `[Stripe] …`                                            | The webhook route                                                                                                                                               |
+| `[Health] … did not answer:`                            | `/api/health` could not read D1, KV or R2 and answered 503                                                                                                      |
+| `[Alert] …`                                             | `notifyShopOfIncident` could not send an incident alert to `RESEND_EMAIL_FROM`                                                                                  |
 | `[Auth] Failed to send … email`                         | `recordAuthEmailFailure` in `auth.server.ts`; also an `email.failed` entry in `/admin/audit`                                                                    |
 | `[Better Auth]: Failed to run background task:`         | An auth email hook Better Auth ran in the background threw; the `[Auth]` line before it has the Resend error                                                    |
 | `[Resend] Email sender availability unreadable`         | `isEmailSenderUnavailable` could not read the `CACHE` KV flag; the Better Auth gate let the request through                                                     |
@@ -193,3 +195,4 @@ If a commit is rejected, run `bun run check` to see the full output rather than 
 - [Database migrations](/docs/guides/database-migrations)
 - [Seeding data](/docs/guides/seeding-data)
 - [Writing tests](/docs/guides/writing-tests)
+- [Monitoring and alerts](/docs/guides/monitoring-and-alerts)

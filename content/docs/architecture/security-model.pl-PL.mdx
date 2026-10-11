@@ -181,6 +181,10 @@ Sprawdzanie po `getByName()` pozwoliłoby już nieuwierzytelnionemu klientowi ot
 
 `POST /api/webhooks/stripe` wymaga nagłówka `stripe-signature` i weryfikuje go sekretem `env.STRIPE_WEBHOOK_SECRET` przez `stripe.webhooks.constructEventAsync`, zanim uruchomi jakikolwiek handler. Ciała, którego nie da się zweryfikować, kończą się kodem `400` i niczego nie dotykają.
 
+## Sprawdzenie stanu
+
+`GET /api/health` jest publiczne i nie wymaga sesji, więc może je wywoływać monitor dostępności. Nie czyta żadnych danych — `SELECT 1`, odczyt KV i `head` w R2 dla klucza, który nie istnieje — i odpowiada tylko `ok` albo `error` dla każdego bindingu, nigdy błędem, nazwą bindingu ani konfiguracją. Błędy trafiają do logu Workera. Zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts#sprawdzenie-stanu).
+
 ## Błędy
 
 `withRequest` instaluje jeden normalizator dla każdej funkcji serwerowej:

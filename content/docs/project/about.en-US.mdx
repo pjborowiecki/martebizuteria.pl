@@ -16,7 +16,7 @@ The codebase exists for two reasons at once. It runs a real jewellery brand's sh
 | Currency            | `PLN` only — `STORE_CURRENCY_CODE` in `src/modules/_core/constants/currency.ts`                     |
 | Payment             | Stripe, card and Stripe-hosted methods, webhook-driven fulfilment                                   |
 | Delivery            | Courier and InPost parcel lockers, seeded into the `delivery_method` table                          |
-| Transactional email | Resend, fourteen React Email templates in `src/presentation/emails/`                                |
+| Transactional email | Resend, fifteen React Email templates in `src/presentation/emails/`                                 |
 | Worker name         | `martebizuteria` in production, `martebizuteria-preview`, `martebizuteria-development`              |
 
 `wrangler.jsonc` attaches `martebizuteria.pl` to the production Worker and `preview.martebizuteria.pl` to the preview Worker as custom domains, and keeps each of the two on its `*.workers.dev` hostname as well. The production URL recorded in `package.json` is `https://martebizuteria.pl`, the canonical address `APP_URL` gives every page.
@@ -25,17 +25,17 @@ The codebase exists for two reasons at once. It runs a real jewellery brand's sh
 
 Route files live flat in `src/routes/` and carry no locale segment. The router de-localizes the URL before matching and re-applies the prefix when generating links, so `_storefront.products.index.tsx` serves both `/products` (Polish, the default locale, which takes no prefix) and `/en-US/products`. Path segments themselves are never translated. See [i18n architecture](/docs/architecture/i18n-architecture) for the mechanism.
 
-| Prefix              | Files                             | What it serves                                                 |
-| ------------------- | --------------------------------- | -------------------------------------------------------------- |
-| `_storefront.*.tsx` | 18 files                          | Landing page, catalog, product pages, cart, blog, legal pages  |
-| `checkout.*.tsx`    | 2 files                           | The four-step checkout flow                                    |
-| `account.*.tsx`     | 10 files                          | Signed-in customer area — orders, addresses, sessions, profile |
-| `admin.*.tsx`       | 25 files                          | Admin console — catalog, orders, customers, audit, settings    |
-| `auth.*.tsx`        | 5 files                           | Sign in, sign up, forgot and reset password                    |
-| `docs.*.tsx`        | 3 files                           | These documentation pages                                      |
-| `api/`              | `auth.$.ts`, `webhooks.stripe.ts` | Better Auth handler and the Stripe webhook endpoint            |
+| Prefix              | Files                                          | What it serves                                                        |
+| ------------------- | ---------------------------------------------- | --------------------------------------------------------------------- |
+| `_storefront.*.tsx` | 19 files                                       | Landing page, catalog, product pages, cart, blog, legal pages         |
+| `checkout.*.tsx`    | 2 files                                        | The four-step checkout flow                                           |
+| `account.*.tsx`     | 10 files                                       | Signed-in customer area — orders, addresses, sessions, profile        |
+| `admin.*.tsx`       | 25 files                                       | Admin console — catalog, orders, customers, audit, settings           |
+| `auth.*.tsx`        | 5 files                                        | Sign in, sign up, forgot and reset password                           |
+| `docs.*.tsx`        | 3 files                                        | These documentation pages                                             |
+| `api/`              | `auth.$.ts`, `health.ts`, `webhooks.stripe.ts` | Better Auth handler, the health check and the Stripe webhook endpoint |
 
-`__root.tsx` and `dev.emails.tsx` complete the 68 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
+`__root.tsx` and `dev.emails.tsx` complete the 69 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
 
 Four request paths short-circuit inside `src/server.ts` before the React framework is reached — `/sitemap.xml`, `/robots.txt`, the two WebSocket upgrades — plus the locale redirect, because none of them need an SSR render.
 
@@ -81,9 +81,9 @@ Counted against the working tree, not aspirational:
 | Use cases                                 | 119 files under `src/modules/*/use-cases/`                                                            |
 | Server functions                          | 117 `createServerFn(...)` call sites                                                                  |
 | Integrations                              | 15 vendor adapters in `src/integrations/`                                                             |
-| Route files                               | 68 in `src/routes/`                                                                                   |
+| Route files                               | 69 in `src/routes/`                                                                                   |
 | Presentation files                        | 650 non-test files under `src/presentation/`, of which 57 shadcn primitives and 430 custom components |
-| Message namespaces                        | 54 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |
+| Message namespaces                        | 55 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |
 | Test files                                | 889 — 339 unit, 35 integration, 515 component                                                         |
 | Comments in hand-written source           | 5: three in TypeScript, two in CSS                                                                    |
 | Lint suppressions outside generated files | 0                                                                                                     |
@@ -105,7 +105,7 @@ Catalog (products, variants, options, attributes, categories, collections, searc
 
 ### Absent
 
-No end-to-end or browser tests. No cron triggers or reconciliation job — `wrangler.jsonc` declares no `crons`. No dead-letter queue, so an audit batch that fails its three retries is dropped. No error reporting service is initialised. No expiry sweep for `session`, `verification` or `rate_limit` rows.
+No end-to-end or browser tests. No cron triggers or reconciliation job — `wrangler.jsonc` declares no `crons`. No dead-letter queue, so an audit batch that fails its three retries is dropped, although each failed batch emails `RESEND_EMAIL_FROM`. No third-party error reporting service: failures go to Workers Logs and Issues, and the ones the owner must act on to `RESEND_EMAIL_FROM`; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts). No expiry sweep for `session`, `verification` or `rate_limit` rows.
 
 [Roadmap](/docs/project/roadmap) lists these in the order they are worth fixing.
 

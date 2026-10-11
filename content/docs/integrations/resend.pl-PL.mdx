@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "Piętnaście e-maili transakcyjnych, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
+description: "Szesnaście e-maili transakcyjnych, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
 ---
 
 Każdy e-mail wysyłany przez sklep przechodzi przez Resend. Adapter w `src/integrations/resend/` zawiera klienta, jeden pomocnik `sendEmail`, budowniki zamieniające wiersze zamówień na właściwości szablonów oraz renderer podglądów dla programisty. Same szablony React Email mieszkają w `src/presentation/emails/`, ponieważ należą do warstwy prezentacji.
@@ -78,11 +78,11 @@ Rodzaje to `verification`, `password-reset`, `newsletter` i `withdrawal`; potwie
 
 Odmowa niczego nie wysyła, a wywołujący odpowiada tak, jakby e-mail wyszedł. `withdrawFromGuestOrder` pyta dopiero po zapisaniu oświadczenia, a odmowa wstrzymuje zarówno potwierdzenie, jak i powiadomienie sklepu; oświadczenie zostaje przy zamówieniu, gdzie pokazuje je strona zamówienia w panelu. Funkcje wysyłające działają tylko dla niektórych adresów, link do zmiany hasła tylko dla konta, a ponowna weryfikacja tylko dla niepotwierdzonego, więc inna odpowiedź zdradziłaby, dla których. Adres ponad limitem godzinowym trafia do logu jako `[Email] Skipped a <kind> email to <address>: the address reached its hourly limit for this email`. Limit dzienny to problem sklepu, a nie jednego odwiedzającego, więc jest logowany przez `console.error` i zapisywany jako `email.failed` ze szczegółem `Public <kind> email — the shop reached its daily limit of 50 emails that visitors can request`. Pięćdziesiąt to połowa ze 100 e-maili dziennie, które wysyła darmowy plan Resend, więc druga połowa zostaje dla e-maili o zamówieniach; w płatnym planie bez dziennego limitu nadal ogranicza to, ile kosztuje zalew. Podnieś stałą, jeśli prawdziwe rejestracje i potwierdzenia newslettera kiedyś się do niej zbliżą.
 
-Nic innego nie pyta. E-maile o zamówieniu, wysyłce, anulowaniu, zwrocie, nieudanej płatności, nowym zamówieniu, zmianie hasła, usunięciu konta i zmianie adresu oraz potwierdzenie odstąpienia złożonego na koncie trafiają prosto do `sendEmail`, więc wyczerpany dzień nigdy ich nie wstrzymuje; odstąpienie na koncie wymaga sesji i trafia tylko na adres własnego zamówienia klienta. E-mail weryfikacyjny, który Better Auth wysyła na nowy adres po potwierdzeniu jego zmiany, przechodzi przez `sendVerificationEmail` i liczy się razem z pozostałymi. Żądania stojące za tymi e-mailami wymagają też tokenu Turnstile; zobacz [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile).
+Nic innego nie pyta. E-maile o zamówieniu, wysyłce, anulowaniu, zwrocie, nieudanej płatności, nowym zamówieniu, zmianie hasła, usunięciu konta i zmianie adresu, alerty o incydentach oraz potwierdzenie odstąpienia złożonego na koncie trafiają prosto do `sendEmail`, więc wyczerpany dzień nigdy ich nie wstrzymuje; odstąpienie na koncie wymaga sesji i trafia tylko na adres własnego zamówienia klienta. E-mail weryfikacyjny, który Better Auth wysyła na nowy adres po potwierdzeniu jego zmiany, przechodzi przez `sendVerificationEmail` i liczy się razem z pozostałymi. Żądania stojące za tymi e-mailami wymagają też tokenu Turnstile; zobacz [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile).
 
 `src/integrations/resend/__test__/resend.public-email-limits.integration.test.ts` sprawdza limity na tabeli `rate_limit`: czwarty e-mail jednego rodzaju na adres w ciągu godziny, wielkość liter i spacje w adresie, osobne rodzaje i adresy, upływ godziny i doby, skrót zamiast adresu, wpis w audycie przy limicie dziennym i tabelę, której nie da się odczytać.
 
-## Piętnaście e-maili
+## Szesnaście e-maili
 
 | E-mail                          | Szablon                                                     | Przestrzeń nazw                        | Wysyłany z                                                                                                                                                                                                              |
 | ------------------------------- | ----------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -99,10 +99,11 @@ Nic innego nie pyta. E-maile o zamówieniu, wysyłce, anulowaniu, zwrocie, nieud
 | Nowe zamówienie, do sklepu      | `src/presentation/emails/new-order.tsx`                     | `emails.new-order`                     | `notifyShopOfNewOrder`, oczekiwane przez `handleFulfillCheckoutSession` w `stripe.webhooks.tsx`, gdy zamówienie już istnieje, wysyłane na `RESEND_EMAIL_FROM`                                                           |
 | Potwierdzenie odstąpienia       | `src/presentation/emails/order-withdrawal.tsx`              | `emails.order-withdrawal`              | `acknowledgeOrderWithdrawal`, przez `sendOrderWithdrawalEmails` po zapisaniu oświadczenia: z oczekiwaniem na wynik w `withdrawFromCustomerOrder` i w tle w `withdrawFromGuestOrder`, gdy dopuści je `admitPublicEmail`  |
 | Odstąpienie, do sklepu          | `src/presentation/emails/order-withdrawal.tsx`              | `emails.order-withdrawal`              | `notifyShopOfOrderWithdrawal`, wysyłane przez `sendOrderWithdrawalEmails` razem z potwierdzeniem, wysyłane na `RESEND_EMAIL_FROM`                                                                                       |
+| Alert o incydencie, do sklepu   | `src/presentation/emails/incident-alert.tsx`                | `emails.incident-alert`                | `notifyShopOfIncident`, z `stripe.webhooks.tsx`, trasy webhooka Stripe i konsumenta kolejki audytu, wysyłane na `RESEND_EMAIL_FROM`, raz na godzinę na incydent                                                         |
 | Potwierdzenie newslettera       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` w `newsletter-confirmation.server.ts`, wywoływane przez `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` z oczekiwaniem na wynik                                              |
 | Adres już na liście newslettera | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribed` w `newsletter-already-subscribed.server.ts`, wywoływane z oczekiwaniem na wynik przez `subscribe-to-newsletter.ts`, gdy potwierdzony adres wysyła ktoś inny niż zalogowany właściciel |
 
-Pierwsze pięć opisuje strona [Better Auth](/docs/integrations/better-auth); pozostałe dziesięć buduje ten adapter.
+Pierwszych pięć opisuje strona [Better Auth](/docs/integrations/better-auth); pozostałych jedenaście buduje ten adapter.
 
 Każdy szablon eksportuje własną stałą przestrzeni nazw obok komponentu, więc wywołujący nie może rozjechać się z komunikatami, które renderuje:
 
@@ -191,7 +192,9 @@ export const notifyOrderShipped = (orderId: string, origin: string): Promise<boo
 
 `new-order.notification.server.ts` pisze do sklepu, a nie do klienta. `notifyShopOfNewOrder(orderId, returnUrl)` wysyła powiadomienie na `RESEND_EMAIL_FROM`: `sendNewOrderEmail` ustala origin z `returnUrl` wewnątrz próby, czyta zamówienie przez `getAdminOrderDetailRow` i `getAdminOrderItemRows`, te same odczyty, na których stoi strona zamówienia w panelu, i renderuje `new-order.tsx`. Wiersz dostawy korzysta z `resolveDeliveryMethodLabel`, pozycje z `mapAdminOrderDetailItem`, a adres dostawy z `resolveAdminOrderDetailAddresses`, a przycisk otwiera `ROUTES.ADMIN_ORDER` na tym originie.
 
-Język pochodzi z zamówienia, a nie z bieżącego żądania, więc klient, który złożył zamówienie po polsku, otrzymuje polską wiadomość także wtedy, gdy przycisk kliknie administrator pracujący po angielsku. Powiadomienie sklepu o nowym zamówieniu jest zawsze w języku sklepu, `I18N.DEFAULT_LOCALE`.
+`incident-alert.notification.server.ts` także pisze do sklepu. `notifyShopOfIncident({ detail, kind, reference })` szuka incydentu w przestrzeni KV `CACHE` pod kluczem `incident-alert:<APP_ENV>:<kind>:<reference>`, kończy, jeśli klucz istnieje, zapisuje go z godzinnym `expirationTtl` (`INCIDENT_ALERT_SECONDS`) i dopiero wtedy renderuje `incident-alert.tsx` i wysyła go na `RESEND_EMAIL_FROM`. Odrzucona wysyłka trafia do logu jako `[Alert] The <kind> alert to <adres> was not sent: …`, a wszystko, co zostanie rzucone po drodze, jako `[Alert] The <kind> alert could not be sent:` i jest połykane, więc alert nigdy nie może zepsuć webhooka ani partii kolejki, która go wywołała. Zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts).
+
+Język pochodzi z zamówienia, a nie z bieżącego żądania, więc klient, który złożył zamówienie po polsku, otrzymuje polską wiadomość także wtedy, gdy przycisk kliknie administrator pracujący po angielsku. Powiadomienie sklepu o nowym zamówieniu i alerty o incydentach są zawsze w języku sklepu, `I18N.DEFAULT_LOCALE`.
 
 ## Czekanie na e-maile o zamówieniu
 
@@ -269,7 +272,7 @@ Resend odrzuca każdą wiadomość, której domena w polu `from` nie jest zweryf
 
 Odpowiedzi nigdy nie trafiają na ten adres. `sendEmail` przekazuje przy każdej wiadomości `replyTo: BUSINESS.EMAIL`, więc każdy e-mail niesie nagłówek `Reply-To: kontakt@martebizuteria.pl`, a program pocztowy odbiorcy kieruje tam odpowiedź. `kontakt@martebizuteria.pl` musi więc być skrzynką, którą sklep czyta: klienci wysyłają na nią pytania, anulowania, odstąpienia od umowy i reklamacje. To, z jakiej domeny sklep wysyła pocztę, jest ustawieniem właściciela. [Kontrola przed wdrożeniem](#kontrola-przed-wdrożeniem) sprawdza, czy Resend wyśle e-mail jako `RESEND_EMAIL_FROM`, a nie, czy jego domeną jest `martebizuteria.pl`.
 
-Własne powiadomienie sklepu o każdym nowym zamówieniu trafia natomiast na sam `RESEND_EMAIL_FROM`, w każdym środowisku, więc ten adres też potrzebuje skrzynki, którą właściciel czyta.
+Własne powiadomienie sklepu o każdym nowym zamówieniu i alerty sklepu o incydentach trafiają natomiast na sam `RESEND_EMAIL_FROM`, w każdym środowisku, więc ten adres też potrzebuje skrzynki, którą właściciel czyta.
 
 ### Weryfikacja domeny
 

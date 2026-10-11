@@ -143,7 +143,7 @@ Because they never move on their own, a change that lowers coverage fails `bun r
 
 Two parallel sets of files must stay in step.
 
-**UI strings** live in `messages/en-US/` and `messages/pl-PL/`, 54 namespace files each. `src/integrations/use-intl/__test__/i18n.messages.test.ts` iterates over every English file and asserts that the Polish file with the same name exists and contains every key:
+**UI strings** live in `messages/en-US/` and `messages/pl-PL/`, 55 namespace files each. `src/integrations/use-intl/__test__/i18n.messages.test.ts` iterates over every English file and asserts that the Polish file with the same name exists and contains every key:
 
 ```ts
 it.each(Object.entries(localeMessages).filter(([path]) => path.includes("/en-US/")))(
