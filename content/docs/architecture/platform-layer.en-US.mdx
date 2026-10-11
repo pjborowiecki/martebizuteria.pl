@@ -31,7 +31,7 @@ The Durable Object is declared as a SQLite class in the `migrations` block (`tag
 | `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview`, `martebizuteria-newsletter-preview` | `bun run build:preview`, `deploy:preview`, `start` |
 | `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria`         | `martebizuteria-audit-log`, `martebizuteria-newsletter`                 | `bun run build:production`, `deploy:production`    |
 
-`preview` attaches `preview.martebizuteria.pl` and `production` attaches `martebizuteria.pl` as a custom domain through `routes` with `custom_domain: true`. Both also set `workers_dev: true`, so their `workers.dev` hostnames keep answering next to the domain; see [Deploy a preview](/docs/getting-started/deploy-preview) for what the zone needs.
+`preview` attaches `preview.martebizuteria.pl` as a custom domain through `routes` with `custom_domain: true`; `production` keeps its `routes` empty and answers only on its `workers.dev` hostname until the shop goes live on `martebizuteria.pl`. Both also set `workers_dev: true`, so their `workers.dev` hostnames keep answering next to the domain; see [Deploy a preview](/docs/getting-started/deploy-preview) for what the zone needs.
 
 Every binding is marked `"remote": true`, so `bun run dev` talks to the real development D1, R2 and KV rather than local emulation. The Vite Cloudflare plugin only enables remote bindings when `CLOUDFLARE_ENV` is `development`. Migrations therefore have to be applied before the first run:
 

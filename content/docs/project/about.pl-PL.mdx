@@ -19,7 +19,7 @@ Ten kod istnieje z dwóch powodów jednocześnie. Obsługuje sklep prawdziwej ma
 | Poczta transakcyjna | Resend, piętnaście szablonów React Email w `src/presentation/emails/`                                  |
 | Nazwa Workera       | `martebizuteria` na produkcji, `martebizuteria-preview`, `martebizuteria-development`                  |
 
-`wrangler.jsonc` podłącza `martebizuteria.pl` do Workera produkcyjnego i `preview.martebizuteria.pl` do Workera preview jako domeny własne, a oba zostają dostępne także pod swoimi adresami `*.workers.dev`. Produkcyjny adres zapisany w `package.json` to `https://martebizuteria.pl`, adres kanoniczny, który `APP_URL` nadaje każdej stronie.
+`wrangler.jsonc` podłącza `preview.martebizuteria.pl` do Workera preview jako domenę własną, a oba Workery są dostępne pod swoimi adresami `*.workers.dev`; Worker produkcyjny dostanie `martebizuteria.pl` przy starcie sprzedaży. Produkcyjny adres zapisany w `package.json` to `https://martebizuteria.pl`, adres kanoniczny, który `APP_URL` nadaje każdej stronie.
 
 ## Jeden Worker, jedno drzewo tras
 

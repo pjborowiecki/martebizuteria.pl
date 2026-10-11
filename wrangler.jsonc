@@ -329,12 +329,7 @@
     "production": {
       "name": "martebizuteria",
       "workers_dev": true,
-      "routes": [
-        {
-          "pattern": "martebizuteria.pl",
-          "custom_domain": true,
-        },
-      ],
+      "routes": [],
       "vars": {
         "APP_ENV": "production",
       },
