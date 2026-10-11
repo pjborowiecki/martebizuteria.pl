@@ -75,7 +75,7 @@ export const authorized = (permission?: Permission) =>
     })
 ```
 
-Across `src/modules` and `src/integrations`, `authorized()` appears 87 times: 23 bare (a session is enough), and the rest with a permission — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×6, `order: ["read"]` ×6, `order: ["update"]` ×9, `content: ["read"]` ×2, `content: ["update"]` ×1, and the Better Auth admin statements `user: ["list" | "get" | "update" | "delete"]`.
+Across `src/modules` and `src/integrations`, `authorized()` appears 95 times: 25 bare (a session is enough), and the rest with a permission — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×6, `order: ["read"]` ×7, `order: ["update"]` ×10, `order: ["update", "refund"]` ×1 (`refundAdminOrder`), `content: ["read"]` ×3, `content: ["update"]` ×3, and the Better Auth admin statements `user: ["list" | "get" | "update" | "delete"]`.
 
 ## Roles and permissions
 
@@ -87,7 +87,7 @@ Across `src/modules` and `src/integrations`, `authorized()` appears 87 times: 23
 - **`hasAdminAccess(role)`** is the coarse check used by the route guards and the WebSocket handshake; `hasPermission({ permission, role })` is the fine-grained check used by `authorized()`.
 - **`needsTwoFactorSetup({ role, twoFactorEnabled })`** is true for an admin without two-factor authentication. `requireAdmin` sends that admin to `/admin/security`, `authorized()` refuses them every permission, the admin WebSocket handshake answers `401`, and `hooks.before` refuses Better Auth's `/admin/*` endpoints with `ADMIN_TWO_FACTOR_REQUIRED`. Admins sign in with a password and a two-factor code only: `session.create.before` refuses a Google sign-in for an admin, because the `twoFactor` plugin never asks for the code on that path. See [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins).
 
-Because the customer role holds no statements, the resource matrix currently behaves as a binary admin check. It is worth keeping in mind before adding a third role: the matrix is already there, but nothing yet exercises it partially.
+Because the customer role holds no statements, the resource matrix currently behaves as a binary admin check. It is worth keeping in mind before adding a third role: the matrix is already there, and money already has its own action, since `refundAdminOrder` and `cancelOrder` on a paid order ask for `order: ["refund"]` on top of `order: ["update"]`, so a role granted only `order: ["read", "update"]` could run orders without refunding them.
 
 ## Ownership is compiled into the SQL
 

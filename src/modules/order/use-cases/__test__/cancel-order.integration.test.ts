@@ -19,12 +19,13 @@ import { refundAdminOrder } from "~/src/modules/order/use-cases/refund-admin-ord
 import cancelledCopy from "~/messages/pl-PL/emails.order-cancelled.json"
 import refundedCopy from "~/messages/pl-PL/emails.order-refunded.json"
 
-const { audit, catalogInvalidated, sendEmail, sqlite, stripeApi } = await vi.hoisted(async () => {
+const { audit, catalogInvalidated, requestSession, sendEmail, sqlite, stripeApi } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
   return {
     audit: { cancelled: vi.fn(), email: vi.fn(), refund: vi.fn(), refundRequested: vi.fn(), restocked: vi.fn() },
     catalogInvalidated: vi.fn(),
+    requestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } }>>(),
     sendEmail: vi.fn<(options: Readonly<SentEmail>) => Promise<string | undefined>>(),
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
     stripeApi: {
@@ -58,9 +59,17 @@ vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
 
   return { ...actual, getRequest: () => new Request(`${SHOP_ORIGIN}/en-US/admin/orders`) }
 })
-vi.mock("~/src/integrations/better-auth/auth.session", () => ({
-  getRequestSession: () => Promise.resolve({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } }),
-}))
+vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: requestSession }))
+vi.mock(import("~/src/integrations/better-auth/auth.access"), async (importOriginal) => {
+  const actual = await importOriginal()
+  const orderClerk = actual.ac.newRole({ order: ["read", "update"] })
+
+  return {
+    ...actual,
+    hasPermission: ({ permission, role }) =>
+      role === ORDER_CLERK_ROLE ? orderClerk.authorize(permission).success : actual.hasPermission({ permission, role }),
+  }
+})
 vi.mock("~/src/lib/rate-limit", () => ({}))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
@@ -89,6 +98,8 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
 }))
 
 const SHOP_ORIGIN = "http://127.0.0.1:3000"
+
+const ORDER_CLERK_ROLE = "order-clerk"
 
 const PAID_ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
 
@@ -184,6 +195,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, "info").mockImplementation(() => {})
   seedOrders()
+  requestSession.mockResolvedValue({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } })
   stripeApi.sessionsList.mockResolvedValue({ data: [{ id: "cs_paid", return_url: `${SHOP_ORIGIN}/pl-PL/checkout?success=true` }] })
   stripeApi.sessionsRetrieve.mockResolvedValue({ payment_intent: "pi_paid", payment_status: "paid" })
   stripeApi.refundsCreate.mockResolvedValue({ amount: PAID_AMOUNT, id: "re_paid" })
@@ -420,6 +432,44 @@ describe("cancelling an order with nothing to refund", () => {
     expect(audit.refundRequested).not.toHaveBeenCalled()
     expect(readOrder(FREE_ORDER_ID)).toStrictEqual({ fulfillment_status: "cancelled", status: "cancelled" })
     expect(readStock()).toStrictEqual({ ...STOCK_HELD, "variant-chain": 4 })
+  })
+})
+
+describe("a role that may update orders but not refund them", () => {
+  beforeEach(() => {
+    requestSession.mockResolvedValue({ user: { role: ORDER_CLERK_ROLE } })
+  })
+
+  it("is refused the Refund button before Stripe is asked or stock returns", async () => {
+    await expect(refundAdminOrder({ data: { orderId: PAID_ORDER_ID, restock: true } })).rejects.toMatchObject({
+      code: ERROR_CODES.FORBIDDEN,
+    })
+
+    expect(stripeApi.sessionsRetrieve).not.toHaveBeenCalled()
+    expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
+    expect(readStock()).toStrictEqual(STOCK_HELD)
+  })
+
+  it("is refused the cancellation of a paid order, which would refund it, and leaves the order open", async () => {
+    await expect(cancelPaidOrder()).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+
+    expect(stripeApi.sessionsRetrieve).not.toHaveBeenCalled()
+    expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
+    expect(readOrder(PAID_ORDER_ID)).toStrictEqual({ fulfillment_status: "not_fulfilled", status: "processing" })
+    expect(readStock()).toStrictEqual(STOCK_HELD)
+    expect(audit.cancelled).not.toHaveBeenCalled()
+    expect(sendEmail).not.toHaveBeenCalled()
+  })
+
+  it("cancels a free order, which refunds nothing", async () => {
+    await expect(cancelOrder({ data: { orderId: FREE_ORDER_ID } })).resolves.toStrictEqual({
+      cancelledEmailSent: true,
+      ok: true,
+      orderId: FREE_ORDER_ID,
+    })
+
+    expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
+    expect(readOrder(FREE_ORDER_ID)).toStrictEqual({ fulfillment_status: "cancelled", status: "cancelled" })
   })
 })
 

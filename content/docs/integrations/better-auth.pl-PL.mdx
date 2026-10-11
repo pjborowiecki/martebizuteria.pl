@@ -242,6 +242,8 @@ Wywołane bez argumentu wymaga jedynie zalogowanego użytkownika; wywołane jako
 export const createCompleteProduct = createServerFn({ method: "POST" }).middleware([authorized({ product: ["create"] })])
 ```
 
+Uprawnienie zależne od wiersza jest sprawdzane w handlerze przez `hasPermission` i sesję, którą `authorized` umieścił w `context.auth`. Jedynym takim przypadkiem jest `cancelOrder`: od middleware żąda `order: ["update"]`, a gdy po odczytaniu zamówienia znajdzie płatność do zwrotu, wymaga też `order: ["refund"]` i rzuca `AppError(FORBIDDEN)`, zanim wywoła Stripe albo cokolwiek zmieni.
+
 `withRateLimit(kind, { max, window })` również nadbudowuje `withRequest` i stosuje własny limiter aplikacji, kluczowany przez `kind` i adres klienta:
 
 ```ts
@@ -257,7 +259,7 @@ Okno wynosi 60 sekund. Funkcja `withinRateLimit` w `src/lib/rate-limit.ts` reali
 
 ### Wymusza to test
 
-Plik `src/integrations/better-auth/__test__/use-case-authorization.test.ts` przechodzi przez każdy plik w `src/modules/**/use-cases/` i dla każdego zawierającego `createServerFn` sprawdza, czy zawiera również `authorized(` — chyba że znajduje się na jawnej liście 22 świadomie publicznych przypadków użycia (`get-product.ts`, `search-storefront.ts`, `check-cart-availability.ts`, `get-checkout-session-status.ts` i podobne). Test sprawdza także, że żaden przypadek użycia nie weryfikuje autoryzacji wewnątrz handlera oraz że każdy wpis z listy dozwolonych wciąż istnieje. Dodanie chronionego przypadku użycia bez middleware powoduje niepowodzenie testów.
+Plik `src/integrations/better-auth/__test__/use-case-authorization.test.ts` przechodzi przez każdy plik w `src/modules/**/use-cases/` i dla każdego zawierającego `createServerFn` sprawdza, czy zawiera również `authorized(` — chyba że znajduje się na jawnej liście 22 świadomie publicznych przypadków użycia (`get-product.ts`, `search-storefront.ts`, `check-cart-availability.ts`, `get-checkout-session-status.ts` i podobne). Test sprawdza także, że żaden przypadek użycia nie wraca do sprawdzania roli przez `assertAdmin` wewnątrz handlera oraz że każdy wpis z listy dozwolonych wciąż istnieje. Dodanie chronionego przypadku użycia bez middleware powoduje niepowodzenie testów.
 
 ## Strażnicy tras
 

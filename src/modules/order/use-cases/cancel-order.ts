@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 import type * as zod from "zod"
 
+import { hasPermission } from "~/src/integrations/better-auth/auth.access"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
@@ -25,9 +26,15 @@ import { resolveRequestOrigin } from "~/src/lib/request"
 export const cancelOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
-  .handler(async ({ data: { orderId } }) => {
+  .handler(async ({ context, data: { orderId } }) => {
     const origin = resolveRequestOrigin(getRequest())
     const target = assertOrderActionState(await getAdminOrderRefundTarget(orderId), canCancelAdminOrder)
+    const paymentUiKey = resolveAdminOrderPaymentUiKey(target.paymentStatus)
+    const refundsPayment = cancelRefundsAdminOrderPayment({ paymentUiKey, totalMinorUnits: target.total })
+    if (refundsPayment && !hasPermission({ permission: { order: ["refund"] }, role: context.auth.user.role })) {
+      throw new AppError(ERROR_CODES.FORBIDDEN)
+    }
+
     const orderLines = await getRestockLinesForOrder(orderId)
     const restockLines = orderLines.filter(
       (
@@ -38,10 +45,7 @@ export const cancelOrder = createServerFn({ method: "POST" })
       } => line.variantId !== null,
     )
 
-    const paymentUiKey = resolveAdminOrderPaymentUiKey(target.paymentStatus)
-    const refundedAmount = cancelRefundsAdminOrderPayment({ paymentUiKey, totalMinorUnits: target.total })
-      ? await requestFullOrderRefund(orderId, target)
-      : undefined
+    const refundedAmount = refundsPayment ? await requestFullOrderRefund(orderId, target) : undefined
 
     const [first, ...rest] = prepareCancelOrderBatch(orderId, restockLines)
     const results = await db.batch([first, ...rest])
