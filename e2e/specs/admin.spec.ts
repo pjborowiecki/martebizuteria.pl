@@ -238,6 +238,46 @@ test.describe("admin", () => {
     await expect(adminOrderPage.heading()).toHaveText(orderNumber)
   })
 
+  test("a guest withdraws through the confirmation email's link, gets the statement back and the shop sees it on the order", async ({
+    adminOrderPage,
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const shopper = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(shopper)
+    const shopperPage = await shopper.newPage()
+    const email = uniqueEmail(testInfo, "withdraw")
+    const { orderNumber } = await placeOrder({ email, handle: PRODUCTS.onyx.handle, page: shopperPage, request })
+    const confirmation = await waitForEmail(request, email, "Order confirmation — M'Arte")
+    const withdrawalLink = linkIn(confirmation, /\/withdraw-from-contract\?/u)
+    expect(withdrawalLink.searchParams.get("order")).toBe(orderNumber)
+
+    await new BasePage(shopperPage).open(`${withdrawalLink.pathname}${withdrawalLink.search}`)
+    await expect(shopperPage.getByLabel(/Order number/u)).toHaveValue(orderNumber)
+    await shopperPage.getByLabel(/Email address you ordered with/u).fill(email)
+    await shopperPage.getByLabel(/Your full name/u).fill("Anna Kowalska")
+    await shopperPage.getByRole("button", { name: "Confirm withdrawal" }).click()
+    await expect(shopperPage.getByRole("heading", { name: "Thank you for your statement" })).toBeVisible()
+    await shopper.close()
+
+    const acknowledgement = await waitForEmail(request, email, `We have received your withdrawal from order ${orderNumber} — M'Arte`)
+    expect(acknowledgement.html).toContain(`I withdraw from the contract of sale for the whole of order ${orderNumber}.`)
+    const notice = await waitForEmail(request, ORDER_NOTIFICATION_INBOX, `Odstąpienie od umowy — zamówienie ${orderNumber} — M'Arte`)
+    expect(notice.html).toContain("Anna Kowalska")
+    expect(linkIn(notice, /\/admin\/orders\//u).origin).toBe("http://127.0.0.1:3000")
+
+    await adminOrderPage.gotoOrderFor(email)
+    await expect(adminOrderPage.heading()).toHaveText(orderNumber)
+    const main = page.getByRole("main")
+    await expect(main.getByText("Withdrawal from the contract")).toBeVisible()
+    await expect(main.getByText("The whole order")).toBeVisible()
+    await expect(main.getByText(`Anna Kowalska · ${email}`)).toBeVisible()
+  })
+
   test("a business buyer's company and NIP reach their confirmation, the shop's notice and the admin order", async ({
     adminOrderPage,
     browser,

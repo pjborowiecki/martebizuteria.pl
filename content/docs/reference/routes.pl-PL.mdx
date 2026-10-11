@@ -35,12 +35,13 @@ Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, kt�
 | `/exchanges-and-returns`  | `EXCHANGES_AND_RETURNS`  | `_storefront.exchanges-and-returns.tsx`  |
 | `/privacy-policy`         | `PRIVACY_POLICY`         | `_storefront.privacy-policy.tsx`         |
 | `/terms-of-service`       | `TERMS_OF_SERVICE`       | `_storefront.terms-of-service.tsx`       |
+| `/withdraw-from-contract` | `WITHDRAW_FROM_CONTRACT` | `_storefront.withdraw-from-contract.tsx` |
 | `/blog`                   | `BLOG`                   | `_storefront.blog.index.tsx`             |
 | `/blog/$slug`             | `BLOG_POST`              | `_storefront.blog.$slug.tsx`             |
 | `/newsletter/confirm`     | `NEWSLETTER_CONFIRM`     | `_storefront.newsletter.confirm.tsx`     |
 | `/newsletter/unsubscribe` | `NEWSLETTER_UNSUBSCRIBE` | `_storefront.newsletter.unsubscribe.tsx` |
 
-`/terms-of-service`, `/privacy-policy` i `/exchanges-and-returns` ładują swój Markdown z tabeli D1 `content_page` przez `getContentPageQuery` i renderują go przez `ContentPageArticle`; administratorzy edytują go w `/admin/content`. Blog czyta wpisy z `src/data/blog-posts.ts`.
+`/terms-of-service`, `/privacy-policy` i `/exchanges-and-returns` ładują swój Markdown z tabeli D1 `content_page` przez `getContentPageQuery` i renderują go przez `ContentPageArticle`; administratorzy edytują go w `/admin/content`. `/withdraw-from-contract` to formularz odstąpienia od umowy online dla każdego zamówienia, także złożonego przez gościa; jego parametr `?order=`, który ustawia potwierdzenie zamówienia, wpisuje numer zamówienia. Zobacz [Strony prawne: Funkcja odstąpienia od umowy](/docs/features/legal-pages#funkcja-odstąpienia-od-umowy). Blog czyta wpisy z `src/data/blog-posts.ts`.
 
 `ABOUT_CONTACT_HASH` w `src/routes.ts` to identyfikator sekcji danych sprzedawcy na końcu `/about`. Odnośnik „Dane kontaktowe” w stopce i odnośnik „Kontakt” w menu pełnoekranowym przekazują go jako `hash` odnośnika do `ROUTES.ABOUT`, więc otwierają `/about#contact` przewinięte do danych sprzedawcy.
 

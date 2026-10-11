@@ -16,7 +16,7 @@ The codebase exists for two reasons at once. It runs a real jewellery brand's sh
 | Currency            | `PLN` only — `STORE_CURRENCY_CODE` in `src/modules/_core/constants/currency.ts`                     |
 | Payment             | Stripe, card and Stripe-hosted methods, webhook-driven fulfilment                                   |
 | Delivery            | Courier and InPost parcel lockers, seeded into the `delivery_method` table                          |
-| Transactional email | Resend, thirteen React Email templates in `src/presentation/emails/`                                |
+| Transactional email | Resend, fourteen React Email templates in `src/presentation/emails/`                                |
 | Worker name         | `martebizuteria` in production, `martebizuteria-preview`, `martebizuteria-development`              |
 
 `wrangler.jsonc` attaches `martebizuteria.pl` to the production Worker and `preview.martebizuteria.pl` to the preview Worker as custom domains, and keeps each of the two on its `*.workers.dev` hostname as well. The production URL recorded in `package.json` is `https://martebizuteria.pl`, the canonical address `APP_URL` gives every page.
@@ -35,7 +35,7 @@ Route files live flat in `src/routes/` and carry no locale segment. The router d
 | `docs.*.tsx`        | 3 files                           | These documentation pages                                      |
 | `api/`              | `auth.$.ts`, `webhooks.stripe.ts` | Better Auth handler and the Stripe webhook endpoint            |
 
-`__root.tsx` and `dev.emails.tsx` complete the 67 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
+`__root.tsx` and `dev.emails.tsx` complete the 68 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
 
 Four request paths short-circuit inside `src/server.ts` before the React framework is reached — `/sitemap.xml`, `/robots.txt`, the two WebSocket upgrades — plus the locale redirect, because none of them need an SSR render.
 
@@ -45,7 +45,7 @@ Four request paths short-circuit inside `src/server.ts` before the React framewo
 
 | Binding                     | Resource         | Used for                                                         |
 | --------------------------- | ---------------- | ---------------------------------------------------------------- |
-| `DB`                        | D1 database      | Every table — 39, including the `storefront_search` FTS5 index   |
+| `DB`                        | D1 database      | Every table — 40, including the `storefront_search` FTS5 index   |
 | `IMAGES`                    | R2 bucket        | Product image uploads                                            |
 | `CACHE`                     | KV namespace     | Holds the email sender flag from `resend.availability.server.ts` |
 | `AUDIT_LOG_QUEUE`           | Cloudflare Queue | Audit events, drained by the `queue` handler in `src/server.ts`  |
@@ -75,15 +75,15 @@ Counted against the working tree, not aspirational:
 
 | Thing                                     | Count                                                                                                 |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Feature modules                           | 40 in `src/modules/`, including `_core`                                                               |
-| Database tables                           | 38 exported from `drizzle.schemas.ts`, plus the `storefront_search` FTS5 table                        |
-| D1 migrations                             | 80 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
-| Use cases                                 | 116 files under `src/modules/*/use-cases/`                                                            |
-| Server functions                          | 113 `createServerFn(...)` call sites                                                                  |
+| Feature modules                           | 41 in `src/modules/`, including `_core`                                                               |
+| Database tables                           | 39 exported from `drizzle.schemas.ts`, plus the `storefront_search` FTS5 table                        |
+| D1 migrations                             | 82 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
+| Use cases                                 | 119 files under `src/modules/*/use-cases/`                                                            |
+| Server functions                          | 117 `createServerFn(...)` call sites                                                                  |
 | Integrations                              | 15 vendor adapters in `src/integrations/`                                                             |
-| Route files                               | 67 in `src/routes/`                                                                                   |
+| Route files                               | 68 in `src/routes/`                                                                                   |
 | Presentation files                        | 650 non-test files under `src/presentation/`, of which 57 shadcn primitives and 430 custom components |
-| Message namespaces                        | 53 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |
+| Message namespaces                        | 55 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |
 | Test files                                | 889 — 339 unit, 35 integration, 515 component                                                         |
 | Comments in hand-written source           | 5: three in TypeScript, two in CSS                                                                    |
 | Lint suppressions outside generated files | 0                                                                                                     |

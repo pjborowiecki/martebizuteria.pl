@@ -50,7 +50,8 @@
   "withdrawal": {
     "label": "Right of withdrawal",
     "period": "As a consumer, you may withdraw from this contract within 14 days without giving any reason. The period runs from the day you, or a person you name other than the carrier, take possession of the products. Sending your statement before the period ends is enough to meet the deadline.",
-    "how": "To withdraw, send us a clear statement by e-mail to {email} or by post to the seller's address below. You may use the model withdrawal form attached to this email, which is in Polish, but you do not have to.",
+    "how": "To withdraw, use the withdrawal form on our website, linked below, or send us a clear statement by e-mail to {email} or by post to the seller's address below. You may use the model withdrawal form attached to this email, which is in Polish, but you do not have to.",
+    "online": "Withdraw from the contract",
     "returnShipping": "Send the products back to that address no later than 14 days after withdrawing; posting them before then is enough. You bear the direct cost of returning them.",
     "refund": "We refund all payments received from you, including the cost of the cheapest standard delivery we offer, no later than 14 days after receiving your statement, using the same means of payment you used for the order. We may withhold the refund until we have the products back or you have supplied proof of sending them, whichever comes first.",
     "exception": "The right of withdrawal does not cover products made to your own specifications, such as a size outside our range or an engraving agreed with us individually. The sizes and finishes offered as variants in the shop are covered."

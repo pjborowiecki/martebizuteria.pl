@@ -16,6 +16,7 @@ import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import type orderRefundedMessages from "~/messages/en-US/emails.order-refunded.json"
 import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
+import type orderWithdrawalMessages from "~/messages/en-US/emails.order-withdrawal.json"
 import type passwordChangedMessages from "~/messages/en-US/emails.password-changed.json"
 import type paymentFailedMessages from "~/messages/en-US/emails.payment-failed.json"
 import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.json"
@@ -31,6 +32,7 @@ import { ORDER_CANCELLED_NAMESPACE, OrderCancelled } from "~/src/presentation/em
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
 import { ORDER_REFUNDED_NAMESPACE, OrderRefunded } from "~/src/presentation/emails/order-refunded"
 import { ORDER_SHIPPED_NAMESPACE, OrderShipped } from "~/src/presentation/emails/order-shipped"
+import { ORDER_WITHDRAWAL_NAMESPACE, OrderWithdrawalNotice, OrderWithdrawalReceived } from "~/src/presentation/emails/order-withdrawal"
 import { PASSWORD_CHANGED_NAMESPACE, PasswordChanged } from "~/src/presentation/emails/password-changed"
 import { PAYMENT_FAILED_NAMESPACE, PaymentFailed } from "~/src/presentation/emails/payment-failed"
 import { RESET_PASSWORD_NAMESPACE, ResetPassword } from "~/src/presentation/emails/reset-password"
@@ -108,6 +110,7 @@ const PREVIEW_LEGAL_LINKS = {
   exchangesAndReturns: "http://localhost:3000/exchanges-and-returns",
   privacyPolicy: "http://localhost:3000/privacy-policy",
   termsOfService: "http://localhost:3000/terms-of-service",
+  withdrawal: `http://localhost:3000/withdraw-from-contract?order=${PREVIEW_ORDER_NUMBER}`,
 }
 
 const PREVIEW_GUEST_CTA = {
@@ -115,6 +118,15 @@ const PREVIEW_GUEST_CTA = {
   isGuest: true,
   label: "Załóż konto i śledź zamówienie",
 }
+
+const PREVIEW_WITHDRAWAL_STATEMENT = {
+  consumerName: "Anna Kowalska",
+  email: "anna.kowalska@example.com",
+  items: "Kolczyki Luna — Srebro × 2",
+  reason: "Rozmiar nie pasuje.",
+  scope: "items",
+  submittedAt: new Date("2026-10-10T12:30:00.000Z"),
+} as const
 
 const PREVIEW_CUSTOMER_CTA = {
   href: "http://localhost:3000/pl/konto/zamowienia/abc123",
@@ -254,6 +266,29 @@ export const EMAIL_PREVIEWS = {
       )
     },
     label: "Order shipped",
+  },
+  "order-withdrawal": {
+    element: async (locale) => (
+      <OrderWithdrawalReceived
+        locale={locale}
+        messages={await loadNamespace<typeof orderWithdrawalMessages>({ locale, namespace: ORDER_WITHDRAWAL_NAMESPACE })}
+        orderNumber={PREVIEW_ORDER_NUMBER}
+        statement={PREVIEW_WITHDRAWAL_STATEMENT}
+      />
+    ),
+    label: "Withdrawal acknowledgement",
+  },
+  "order-withdrawal-notice": {
+    element: async (locale) => (
+      <OrderWithdrawalNotice
+        adminOrderUrl="http://localhost:3000/admin/orders/abc123"
+        locale={locale}
+        messages={await loadNamespace<typeof orderWithdrawalMessages>({ locale, namespace: ORDER_WITHDRAWAL_NAMESPACE })}
+        orderNumber={PREVIEW_ORDER_NUMBER}
+        statement={PREVIEW_WITHDRAWAL_STATEMENT}
+      />
+    ),
+    label: "Withdrawal for the shop",
   },
   "password-changed": {
     element: async (locale) => (

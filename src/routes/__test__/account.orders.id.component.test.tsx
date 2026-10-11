@@ -39,6 +39,15 @@ vi.mock("~/src/modules/customer-account/use-cases/get-customer-order", () => ({
     queryKey: ["customer-account", "order", orderId],
   }),
 }))
+vi.mock("~/src/modules/order-withdrawal/use-cases/get-customer-order-withdrawal", () => ({
+  getCustomerOrderWithdrawalQuery: (orderId: string) => ({
+    queryFn: () => Promise.resolve({ canWithdraw: true, consumerName: "Anna Kowalska", email: "anna@example.com", statements: [] }),
+    queryKey: ["order-withdrawal", "customerOrder", orderId],
+  }),
+}))
+vi.mock("~/src/modules/order-withdrawal/use-cases/withdraw-from-customer-order", () => ({
+  withdrawFromCustomerOrderMutation: { mutationFn: vi.fn(), mutationKey: ["order-withdrawal", "withdrawFromCustomerOrder"] },
+}))
 
 import { Route } from "~/src/routes/account.orders.$id"
 
@@ -389,6 +398,14 @@ describe("account order detail addresses", () => {
     await screen.findByText("Silver ring")
 
     expect(screen.queryByText("Your Note")).toBeNull()
+  })
+})
+
+describe("account order detail withdrawal", () => {
+  it("offers the withdrawal function on the order's page", async () => {
+    renderPage()
+
+    expect(await screen.findByRole("button", { name: "Withdraw from the contract" })).toBeInTheDocument()
   })
 })
 

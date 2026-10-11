@@ -132,10 +132,11 @@ export const buildOrderAccountCta = ({ isGuest, locale, messages, orderId, origi
   }
 }
 
-export const buildOrderLegalLinks = (origin: string, locale: SupportedLocale): OrderConfirmationLegalLinks => ({
+export const buildOrderLegalLinks = (origin: string, locale: SupportedLocale, orderNumber: string): OrderConfirmationLegalLinks => ({
   exchangesAndReturns: buildLocalizedUrl(origin, ROUTES.EXCHANGES_AND_RETURNS, locale),
   privacyPolicy: buildLocalizedUrl(origin, ROUTES.PRIVACY_POLICY, locale),
   termsOfService: buildLocalizedUrl(origin, ROUTES.TERMS_OF_SERVICE, locale),
+  withdrawal: `${buildLocalizedUrl(origin, ROUTES.WITHDRAW_FROM_CONTRACT, locale)}?${new URLSearchParams({ order: orderNumber }).toString()}`,
 })
 
 export const resolveStripePaymentMethodLabel = async (

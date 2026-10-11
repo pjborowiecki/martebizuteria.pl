@@ -12,12 +12,14 @@ import { OrderPaymentCard } from "~/src/presentation/components/custom/pages/adm
 import { OrderShippingCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-shipping-card"
 import { OrderTagsCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-tags-card"
 import { OrderTimelineCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-timeline-card"
+import { OrderWithdrawalsCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-withdrawals-card"
 
 export const OrderDetailPage = ({ order }: Readonly<OrderDetailPageProps>): JSX.Element => (
   <div className="min-h-0 flex-1 overflow-y-auto p-8">
     <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
       <div className="space-y-6">
         <OrderMetaStrip order={order} />
+        <OrderWithdrawalsCard withdrawals={order.withdrawals} />
         <OrderFulfillmentTracker canceledAt={order.canceledAt} steps={order.fulfillmentSteps} />
         <OrderLineItemsCard order={order} />
         <OrderTimelineCard timeline={order.timeline} />

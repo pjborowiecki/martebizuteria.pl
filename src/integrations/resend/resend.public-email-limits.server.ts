@@ -8,6 +8,7 @@ export const PUBLIC_EMAIL_KINDS = {
   NEWSLETTER: "newsletter",
   PASSWORD_RESET: "password-reset",
   VERIFICATION: "verification",
+  WITHDRAWAL: "withdrawal",
 } as const
 
 export const PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX = 3

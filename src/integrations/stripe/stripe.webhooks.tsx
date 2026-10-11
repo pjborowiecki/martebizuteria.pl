@@ -148,6 +148,7 @@ const buildOrderConfirmationEmailPayload = async (
   const rawUserId = session.metadata?.["userId"]
   const isGuest = rawUserId === undefined || rawUserId === ""
   const accountCta = buildOrderAccountCta({ isGuest, locale, messages, orderId: order.orderId, origin })
+  const orderNumber = totals?.orderNumber ?? order.orderId
 
   return {
     attachments: [await loadWithdrawalFormAttachment(origin)],
@@ -159,11 +160,11 @@ const buildOrderConfirmationEmailPayload = async (
         currency={order.currency}
         details={details}
         items={emailItems}
-        legalLinks={buildOrderLegalLinks(origin, locale)}
+        legalLinks={buildOrderLegalLinks(origin, locale, orderNumber)}
         locale={locale}
         messages={messages}
         discountTotal={totals?.discountTotal ?? NO_AMOUNT}
-        orderNumber={totals?.orderNumber ?? order.orderId}
+        orderNumber={orderNumber}
         shippingTotal={totals?.shippingTotal ?? NO_AMOUNT}
         subtotal={totals?.subtotal ?? NO_AMOUNT}
         taxBasisPoints={totals?.taxBasisPoints ?? STANDARD_VAT_BASIS_POINTS}

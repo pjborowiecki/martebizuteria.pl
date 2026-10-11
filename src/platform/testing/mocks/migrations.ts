@@ -15,12 +15,14 @@ export const MIGRATION = {
   DELIVERY_METHOD_DESCRIPTIONS: "20261010220000_delivery_method_descriptions",
   ORDER_ITEM_PRODUCT_BACKFILL: "20261003120000_order_item_product_backfill",
   ORDER_RESTOCKED_AT: "20261005410000_order_restocked_at",
+  ORDER_WITHDRAWALS: "20261010230000_order_withdrawals",
   PRIVACY_POLICY_ACCOUNT_DELETION: "20261010210000_privacy_policy_account_deletion",
   PRIVACY_POLICY_PAGE: "20261010200000_privacy_policy_page",
   RETURNS_AND_COMPLAINTS_PAGE: "20261005210000_returns_and_complaints_page",
   STOREFRONT_SEARCH: "20261002100000_storefront_search",
   STORE_SETTINGS: "20261005420000_store_settings",
   TERMS_OF_SERVICE_PAGE: "20261005200000_terms_of_service_page",
+  WITHDRAWAL_FUNCTION_LINKS: "20261010231000_withdrawal_function_links",
 } as const
 
 export const applyMigration = (sqlite: DatabaseSync, migration: (typeof MIGRATION)[keyof typeof MIGRATION]): void => {

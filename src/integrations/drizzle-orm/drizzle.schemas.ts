@@ -34,6 +34,8 @@ export { orderItem, orderItemRelations } from "~/src/modules/order-item/order-it
 
 export { order, orderNumberSequence, orderRelations } from "~/src/modules/order/order.schema"
 
+export { orderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.schema"
+
 export { productVariant, productVariantRelations } from "~/src/modules/product-variant/product-variant.schema"
 
 export { productImage, productImageRelations } from "~/src/modules/product-image/product-image.schema"

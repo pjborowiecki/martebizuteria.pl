@@ -38,6 +38,10 @@ vi.mock("~/src/modules/customer-account/use-cases/list-customer-orders", () => (
 vi.mock("~/src/modules/customer-account/use-cases/get-customer-order", () => ({
   getCustomerOrderQuery: (id: string) => ({ queryKey: ["customer-account", "order", id] }),
 }))
+vi.mock("~/src/modules/order-withdrawal/use-cases/get-customer-order-withdrawal", () => ({
+  getCustomerOrderWithdrawalQuery: (id: string) => ({ queryKey: ["order-withdrawal", "customerOrder", id] }),
+}))
+vi.mock("~/src/modules/order-withdrawal/use-cases/withdraw-from-customer-order", () => ({ withdrawFromCustomerOrderMutation: {} }))
 vi.mock("~/src/modules/customer-account/use-cases/list-customer-sessions", () => ({
   listCustomerSessionsQuery: () => ({ queryKey: ["customer-account", "sessions"] }),
 }))
@@ -81,11 +85,19 @@ describe("account page loaders", () => {
   it.each([
     { key: ["customer-account", "overview", "en-US"], path: "/account/overview" },
     { key: ["customer-account", "orders"], path: "/account/orders/" },
-    { key: ["customer-account", "order", "order-7"], path: "/account/orders/$id" },
   ])("preloads the page query for $path with its route parameters", async ({ key, path }) => {
     await load(path)
 
     expect(pageQueries()).toStrictEqual([{ queryKey: key, staleTime: "static" }])
+  })
+
+  it("preloads the order and its withdrawal function together", async () => {
+    await load("/account/orders/$id")
+
+    expect(pageQueries()).toStrictEqual([
+      { queryKey: ["customer-account", "order", "order-7"], staleTime: "static" },
+      { queryKey: ["order-withdrawal", "customerOrder", "order-7"] },
+    ])
   })
 
   it.each([

@@ -49,7 +49,7 @@ Zwróć uwagę, że `product` obejmuje cały katalog, nie tylko tabelę `product
 
 ## Gdzie sprawdzane jest każde uprawnienie
 
-Ze 107 funkcji serwerowych w `src/modules/*/use-cases/` 63 wymagają uprawnienia, 23 wymagają tylko sesji, a 21 jest publicznych.
+Ze 110 funkcji serwerowych w `src/modules/*/use-cases/` 63 wymagają uprawnienia, 25 wymaga tylko sesji, a 22 są publiczne.
 
 | Uprawnienie            | Sprawdzane przez                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -66,13 +66,13 @@ Ze 107 funkcji serwerowych w `src/modules/*/use-cases/` 63 wymagają uprawnienia
 | `user: ["get"]`        | `get-admin-customer`                                                                                                                                                                                                                                                                                                                                      |
 | `user: ["update"]`     | `update-customer`                                                                                                                                                                                                                                                                                                                                         |
 | `user: ["delete"]`     | `delete-customer`                                                                                                                                                                                                                                                                                                                                         |
-| Sesja, bez uprawnienia | Wszystkie dziewięć przypadków użycia `customer-account`, wszystkie pięć z `address`, wszystkie trzy z `wishlist`, oba z `payment` oraz `get-own-newsletter-subscription` i `unsubscribe-own-newsletter` z `newsletter`                                                                                                                                    |
+| Sesja, bez uprawnienia | Wszystkie dziewięć przypadków użycia `customer-account`, wszystkie pięć z `address`, wszystkie trzy z `wishlist`, oba z `payment` `get-own-newsletter-subscription` i `unsubscribe-own-newsletter` z `newsletter` oraz `withdraw-from-customer-order` i `get-customer-order-withdrawal` z `order-withdrawal`                                              |
 
 `order: ["refund"]` i `product: ["publish"]` są zadeklarowane, ale nie są sprawdzane przez żadną funkcję serwerową. Przycisk Zwrot w panelu wywołuje `refund-admin-order`, który sprawdza `order: ["update"]`. Sam zwrot zapisuje `order/use-cases/refund-order.ts`, zwykła funkcja wywoływana przez webhook `charge.refunded`, która nie ma endpointu RPC do autoryzowania.
 
 ## Publiczne endpointy
 
-Dwadzieścia jeden przypadków użycia świadomie nie ma middleware `authorized`, bo sklep musi obsługiwać anonimowych odwiedzających. Ta lista nie jest domyślna — jest zapisana w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` jako `PUBLIC_USE_CASES`:
+Dwadzieścia dwa przypadki użycia świadomie nie mają middleware `authorized`, bo sklep musi obsługiwać anonimowych odwiedzających. Ta lista nie jest domyślna — jest zapisana w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` jako `PUBLIC_USE_CASES`:
 
 | Przypadek użycia                                            |
 | ----------------------------------------------------------- |
@@ -83,6 +83,7 @@ Dwadzieścia jeden przypadków użycia świadomie nie ma middleware `authorized`
 | `delivery-method/use-cases/list-delivery-methods.ts`        |
 | `discount/use-cases/validate-discount-code.ts`              |
 | `order/use-cases/get-order-confirmation.ts`                 |
+| `order-withdrawal/use-cases/withdraw-from-guest-order.ts`   |
 | `newsletter/use-cases/confirm-newsletter-subscription.ts`   |
 | `newsletter/use-cases/subscribe-to-newsletter.ts`           |
 | `newsletter/use-cases/unsubscribe-from-newsletter.ts`       |

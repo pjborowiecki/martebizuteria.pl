@@ -278,19 +278,21 @@ describe("buildOrderAccountCta", () => {
 })
 
 describe("buildOrderLegalLinks", () => {
-  it("links the terms, the returns page and the privacy policy on the address the order came from", () => {
-    expect(buildOrderLegalLinks("https://preview.martebizuteria.pl", "en-US")).toStrictEqual({
+  it("links the terms, the returns page, the privacy policy and the order's withdrawal form on the address the order came from", () => {
+    expect(buildOrderLegalLinks("https://preview.martebizuteria.pl", "en-US", "MRT-2026-00042")).toStrictEqual({
       exchangesAndReturns: "https://preview.martebizuteria.pl/en-US/exchanges-and-returns",
       privacyPolicy: "https://preview.martebizuteria.pl/en-US/privacy-policy",
       termsOfService: "https://preview.martebizuteria.pl/en-US/terms-of-service",
+      withdrawal: "https://preview.martebizuteria.pl/en-US/withdraw-from-contract?order=MRT-2026-00042",
     })
   })
 
   it("leaves the Polish pages unprefixed", () => {
-    expect(buildOrderLegalLinks("http://127.0.0.1:3000", "pl-PL")).toStrictEqual({
+    expect(buildOrderLegalLinks("http://127.0.0.1:3000", "pl-PL", "MRT-2026-00042")).toStrictEqual({
       exchangesAndReturns: "http://127.0.0.1:3000/exchanges-and-returns",
       privacyPolicy: "http://127.0.0.1:3000/privacy-policy",
       termsOfService: "http://127.0.0.1:3000/terms-of-service",
+      withdrawal: "http://127.0.0.1:3000/withdraw-from-contract?order=MRT-2026-00042",
     })
   })
 })

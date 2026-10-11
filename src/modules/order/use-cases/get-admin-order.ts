@@ -6,6 +6,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
+import { getOrderWithdrawals } from "~/src/modules/order-withdrawal/order-withdrawal.accessors"
 import {
   type AdminOrderCustomerStats,
   getAdminOrderCustomerStats,
@@ -45,6 +46,7 @@ const buildAdminOrderDetail = ({
   itemRows,
   orderRow,
   timelineRows,
+  withdrawals,
 }: BuildAdminOrderDetailInput): Order["adminOrderDetail"] => {
   const dispute = resolveAdminOrderDispute(orderRow.metadata)
   const customerNote = orderRow.customerNote?.trim()
@@ -128,6 +130,7 @@ const buildAdminOrderDetail = ({
     totalMinorUnits: orderRow.total,
     trackingNumber: orderRow.trackingNumber ?? undefined,
     trackingUrl: orderRow.trackingUrl ?? undefined,
+    withdrawals,
   }
 }
 
@@ -136,6 +139,7 @@ interface BuildAdminOrderDetailInput {
   readonly itemRows: Awaited<ReturnType<typeof getAdminOrderItemRows>>
   readonly orderRow: AdminOrderDetailRow
   readonly timelineRows: AdminOrderTimelineRows
+  readonly withdrawals: Order["adminOrderDetail"]["withdrawals"]
 }
 
 export const getAdminOrder = createServerFn({
@@ -149,13 +153,14 @@ export const getAdminOrder = createServerFn({
       return undefined
     }
 
-    const [itemRows, timelineRows, customerStats] = await Promise.all([
+    const [itemRows, timelineRows, customerStats, withdrawals] = await Promise.all([
       getAdminOrderItemRows(orderId),
       getAdminOrderTimelineRows(orderId),
       orderRow.userId === null ? Promise.resolve(GUEST_CUSTOMER_STATS) : getAdminOrderCustomerStats(orderRow.userId),
+      getOrderWithdrawals(orderId),
     ])
 
-    return buildAdminOrderDetail({ customerStats, itemRows, orderRow, timelineRows })
+    return buildAdminOrderDetail({ customerStats, itemRows, orderRow, timelineRows, withdrawals })
   })
 
 export const getAdminOrderQuery = (orderId: string) =>

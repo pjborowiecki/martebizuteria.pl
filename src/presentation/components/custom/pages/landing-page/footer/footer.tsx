@@ -38,6 +38,7 @@ export const Footer = (): JSX.Element => {
               <FooterLink to={ROUTES.TERMS_OF_SERVICE}>{t("terms")}</FooterLink>
               <FooterLink to={ROUTES.PRIVACY_POLICY}>{t("privacy")}</FooterLink>
               <FooterLink to={ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
+              <FooterLink to={ROUTES.WITHDRAW_FROM_CONTRACT}>{t("withdraw")}</FooterLink>
             </ul>
           </div>
 

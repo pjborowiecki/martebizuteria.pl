@@ -65,6 +65,7 @@ export const ROUTES = {
   PRODUCT: "/products/$handle",
   PRODUCTS: "/products",
   TERMS_OF_SERVICE: "/terms-of-service",
+  WITHDRAW_FROM_CONTRACT: "/withdraw-from-contract",
 } as const
 
 export const ABOUT_CONTACT_HASH = "contact"

@@ -12,6 +12,7 @@ import orderCancelledCopy from "~/messages/en-US/emails.order-cancelled.json"
 import orderConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
 import orderRefundedCopy from "~/messages/en-US/emails.order-refunded.json"
 import orderShippedCopy from "~/messages/en-US/emails.order-shipped.json"
+import orderWithdrawalCopy from "~/messages/en-US/emails.order-withdrawal.json"
 import passwordChangedCopy from "~/messages/en-US/emails.password-changed.json"
 import paymentFailedCopy from "~/messages/en-US/emails.payment-failed.json"
 import resetPasswordCopy from "~/messages/en-US/emails.reset-password.json"
@@ -19,6 +20,7 @@ import verifyEmailCopy from "~/messages/en-US/emails.verify-email.json"
 import polishNewOrderCopy from "~/messages/pl-PL/emails.new-order.json"
 import polishOrderConfirmationCopy from "~/messages/pl-PL/emails.order-confirmation.json"
 import polishOrderShippedCopy from "~/messages/pl-PL/emails.order-shipped.json"
+import polishOrderWithdrawalCopy from "~/messages/pl-PL/emails.order-withdrawal.json"
 import polishPaymentFailedCopy from "~/messages/pl-PL/emails.payment-failed.json"
 import polishVerifyEmailCopy from "~/messages/pl-PL/emails.verify-email.json"
 
@@ -46,6 +48,8 @@ describe("EMAIL_PREVIEWS", () => {
       ["order-confirmation", "Order confirmation"],
       ["order-refunded", "Order refunded"],
       ["order-shipped", "Order shipped"],
+      ["order-withdrawal", "Withdrawal acknowledgement"],
+      ["order-withdrawal-notice", "Withdrawal for the shop"],
       ["password-changed", "Password changed"],
       ["payment-failed", "Payment failed"],
       ["reset-password", "Reset password"],
@@ -204,5 +208,19 @@ describe("renderEmailPreview of the order emails", () => {
     expect(english).toContain(`${paymentFailedCopy.shopCta} http://localhost:3000/en-US/products`)
     expect(polish).toContain(polishPaymentFailedCopy.heading.toUpperCase())
     expect(polish).toContain("http://localhost:3000/pl-PL/products")
+  })
+})
+
+describe("renderEmailPreview for a withdrawal from the contract", () => {
+  it("previews the withdrawal acknowledgement with a sample statement for some products", async () => {
+    const preview = await text("order-withdrawal")
+
+    expect(preview).toContain(orderWithdrawalCopy.received.heading.toUpperCase())
+    expect(preview).toContain("Kolczyki Luna — Srebro × 2")
+    expect(preview).toContain("Rozmiar nie pasuje.")
+  })
+
+  it("previews the shop's withdrawal notice in the language asked for", async () => {
+    await expect(text("order-withdrawal-notice", "pl-PL")).resolves.toContain(polishOrderWithdrawalCopy.notice.adminCta)
   })
 })
