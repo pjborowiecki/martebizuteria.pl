@@ -233,7 +233,7 @@ describe("handleUpdateCheckoutSession", () => {
   it("expires the old session and moves its payment and stock before reserving the edited cart", async () => {
     await handleUpdateCheckoutSession(updateInput())
 
-    expect(mocked.checkoutSessionsRetrieve).toHaveBeenCalledWith("cs_old")
+    expect(mocked.checkoutSessionsRetrieve).toHaveBeenCalledWith("cs_old", { expand: ["payment_intent"] })
     expect(mocked.checkoutSessionsExpire).toHaveBeenCalledExactlyOnceWith("cs_old")
     expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith({
       amount: 51_300,
@@ -366,6 +366,41 @@ describe("handleUpdateCheckoutSession on a checkout that can no longer change", 
     })
     expectNothingTouched()
     expect(mocked.releaseCheckout).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      payment: "a BLIK payment waiting for approval in the banking app",
+      paymentIntent: { next_action: { type: "blik_authorize" }, status: "requires_action" },
+    },
+    { payment: "a payment the bank is still processing", paymentIntent: { next_action: null, status: "processing" } },
+  ])("keeps a session with $payment and its stock as they are instead of replacing it", async ({ paymentIntent }) => {
+    mocked.checkoutSessionsRetrieve.mockResolvedValue({
+      id: "cs_old",
+      metadata: { items: JSON.stringify(HELD_LINES) },
+      payment_intent: paymentIntent,
+      status: "open",
+    })
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: CHECKOUT_ERROR_CODES.SESSION_PROCESSING,
+    })
+    expectNothingTouched()
+    expect(mocked.releaseCheckout).not.toHaveBeenCalled()
+    expect(mocked.getPublishedProductsWithInventoryByHandles).not.toHaveBeenCalled()
+    expect(mocked.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
+  })
+
+  it("replaces a session whose 3-D Secure challenge was left behind with the page that showed it", async () => {
+    mocked.checkoutSessionsRetrieve.mockResolvedValue({
+      metadata: { items: JSON.stringify(HELD_LINES) },
+      payment_intent: { next_action: { type: "use_stripe_sdk" }, status: "requires_action" },
+      status: "open",
+    })
+
+    await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
+    expect(mocked.checkoutSessionsExpire).toHaveBeenCalledExactlyOnceWith("cs_old")
   })
 
   it("returns the stock of a session Stripe has expired before its webhook arrives, so a fresh checkout can take it", async () => {

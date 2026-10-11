@@ -350,6 +350,17 @@ const createCheckoutSession = (form: StripeForm): Response => {
   return Response.json(session)
 }
 
+const expandsPaymentIntent = (url: URL): boolean =>
+  [...url.searchParams].some(([key, value]) => key.startsWith("expand[") && value === "payment_intent")
+
+const withExpandedPaymentIntent = (
+  session: EmulatedCheckoutSession,
+  url: URL,
+): Omit<EmulatedCheckoutSession, "payment_intent"> & { readonly payment_intent: unknown } =>
+  expandsPaymentIntent(url) && session.payment_intent !== null
+    ? { ...session, payment_intent: paymentIntents.get(session.payment_intent) ?? null }
+    : session
+
 const handleCheckoutSessions = ({ action, form, method, sessionId, url }: Readonly<CheckoutSessionRequest>): Response => {
   if (sessionId === undefined) {
     if (method === "POST") {
@@ -375,7 +386,7 @@ const handleCheckoutSessions = ({ action, form, method, sessionId, url }: Readon
     return Response.json(expired)
   }
 
-  return Response.json(session)
+  return Response.json(withExpandedPaymentIntent(session, url))
 }
 
 const handleCoupons = (request: Request, form: StripeForm, couponId: string | undefined): Response => {
@@ -586,6 +597,45 @@ export const completeCheckoutSession = (sessionId: string): string | undefined =
   checkoutSessions.set(sessionId, completed)
 
   return checkoutSessionEvent("checkout.session.completed", completed)
+}
+
+export const awaitBlikApproval = (sessionId: string): EmulatedCheckoutSession | undefined => {
+  const session = checkoutSessions.get(sessionId)
+  if (session === undefined) {
+    return undefined
+  }
+
+  const paymentIntentId = stripeId("pi")
+  paymentIntents.set(paymentIntentId, {
+    amount: session.amount_total,
+    currency: session.currency,
+    id: paymentIntentId,
+    next_action: { blik_authorize: {}, type: "blik_authorize" },
+    object: "payment_intent",
+    status: "requires_action",
+  })
+  const awaiting: EmulatedCheckoutSession = { ...session, payment_intent: paymentIntentId }
+  checkoutSessions.set(sessionId, awaiting)
+
+  return awaiting
+}
+
+export const declineBlikApproval = (sessionId: string): EmulatedCheckoutSession | undefined => {
+  const session = checkoutSessions.get(sessionId)
+  const paymentIntentId = session?.payment_intent
+  const paymentIntent = typeof paymentIntentId === "string" ? paymentIntents.get(paymentIntentId) : undefined
+  if (typeof paymentIntentId !== "string" || paymentIntent === undefined) {
+    return undefined
+  }
+
+  paymentIntents.set(paymentIntentId, {
+    ...paymentIntent,
+    last_payment_error: { code: "payment_method_provider_decline", message: "The bank declined the BLIK payment." },
+    next_action: null,
+    status: "requires_payment_method",
+  })
+
+  return session
 }
 
 export const expireCheckoutSession = (sessionId: string): string | undefined => {

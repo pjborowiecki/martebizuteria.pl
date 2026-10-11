@@ -37,6 +37,7 @@ import {
   isCheckoutSessionFor,
   resetCheckoutSession,
 } from "~/src/integrations/stripe/stripe.checkout"
+import { ProcessingCheckoutSessionError } from "~/src/integrations/stripe/stripe.checkout.processing"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { type CartItem } from "~/src/modules/cart/cart.store"
@@ -383,6 +384,29 @@ describe("ensureCheckoutSession with a session the browser holds", () => {
     await expect(continuing).rejects.toMatchObject({ message: CHECKOUT_ERROR_CODES.SESSION_COMPLETE, sessionId: "cs_paid" })
     expect(createCheckoutSessionFn).not.toHaveBeenCalled()
   })
+
+  it("names the held session whose payment the bank is still confirming instead of opening a second payment for it", async () => {
+    updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_PROCESSING))
+
+    const tokenRequests = vi.fn(requestTurnstileToken)
+
+    const continuing = ensureCheckoutSession({
+      existing: undefined,
+      heldSessionId: "cs_awaiting_bank",
+      items,
+      requestTurnstileToken: tokenRequests,
+      values: shippingValues,
+    })
+
+    await expect(continuing).rejects.toBeInstanceOf(ProcessingCheckoutSessionError)
+    await expect(continuing).rejects.toMatchObject({
+      message: CHECKOUT_ERROR_CODES.SESSION_PROCESSING,
+      name: "ProcessingCheckoutSessionError",
+      sessionId: "cs_awaiting_bank",
+    })
+    expect(createCheckoutSessionFn).not.toHaveBeenCalled()
+    expect(tokenRequests).not.toHaveBeenCalled()
+  })
 })
 
 describe("ensureCheckoutSession with the session on screen", () => {
@@ -639,6 +663,24 @@ describe("resetCheckoutSession", () => {
       resetCheckoutSession({ heldSessionId: undefined, items, requestTurnstileToken, session: existingSession, values: shippingValues }),
     ).rejects.toMatchObject({ name: "PaidCheckoutSessionError", sessionId: "cs_existing" })
     expect(createCheckoutSessionFn).not.toHaveBeenCalled()
+  })
+
+  it("names the session it was paying when the bank is still confirming that payment, instead of opening a fresh checkout", async () => {
+    updateCheckoutSessionFn.mockRejectedValue(new Error(CHECKOUT_ERROR_CODES.SESSION_PROCESSING))
+
+    const tokenRequests = vi.fn(requestTurnstileToken)
+
+    await expect(
+      resetCheckoutSession({
+        heldSessionId: undefined,
+        items,
+        requestTurnstileToken: tokenRequests,
+        session: existingSession,
+        values: shippingValues,
+      }),
+    ).rejects.toMatchObject({ name: "ProcessingCheckoutSessionError", sessionId: "cs_existing" })
+    expect(createCheckoutSessionFn).not.toHaveBeenCalled()
+    expect(tokenRequests).not.toHaveBeenCalled()
   })
 })
 

@@ -59,6 +59,8 @@ const paymentContext = (overrides: Record<string, unknown> = {}) => ({
 
 const statusOf = (sessionId: string) => getCheckoutSessionStatus({ data: { sessionId } })
 
+const AWAITING_BLIK_APPROVAL = { next_action: { type: "blik_authorize" }, status: "requires_action" }
+
 beforeEach(() => {
   vi.clearAllMocks()
   mocked.getPaymentContextByTransactionId.mockResolvedValue(paymentContext())
@@ -146,6 +148,20 @@ describe("getCheckoutSessionStatus for an account's checkout asked about by whoe
 
     await expect(statusOf("cs_held")).resolves.toBe("closed")
   })
+
+  it("tells that account its session is waiting for the bank", async () => {
+    mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1" } })
+    mocked.retrieve.mockResolvedValue({ id: "cs_held", payment_intent: AWAITING_BLIK_APPROVAL, status: "open" })
+
+    await expect(statusOf("cs_held")).resolves.toBe("processing")
+  })
+
+  it("tells another account nothing about a payment under way, as for an unknown session", async () => {
+    mocked.getRequestSession.mockResolvedValue({ user: { id: "user-2" } })
+    mocked.retrieve.mockResolvedValue({ id: "cs_held", payment_intent: AWAITING_BLIK_APPROVAL, status: "open" })
+
+    await expect(statusOf("cs_held")).resolves.toBe("closed")
+  })
 })
 
 describe("getCheckoutSessionStatus for a payment still pending", () => {
@@ -153,7 +169,7 @@ describe("getCheckoutSessionStatus for a payment still pending", () => {
     mocked.retrieve.mockResolvedValue({ id: "cs_held", payment_status: "paid", status: "complete" })
 
     await expect(statusOf("cs_held")).resolves.toBe("complete")
-    expect(mocked.retrieve).toHaveBeenCalledWith("cs_held")
+    expect(mocked.retrieve).toHaveBeenCalledWith("cs_held", { expand: ["payment_intent"] })
     expect(mocked.releaseExpiredCheckoutSession).not.toHaveBeenCalled()
   })
 
@@ -167,6 +183,26 @@ describe("getCheckoutSessionStatus for a payment still pending", () => {
     await expect(statusOf("cs_held")).resolves.toBe("open")
     expect(mocked.releaseExpiredCheckoutSession).not.toHaveBeenCalled()
     expect(mocked.getRequestSession).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { payment: "a BLIK payment waiting for approval in the banking app", paymentIntent: AWAITING_BLIK_APPROVAL },
+    { payment: "a payment the bank is still processing", paymentIntent: { next_action: null, status: "processing" } },
+  ])("reports a guest's open session with $payment as processing, so the page waits instead of replacing it", async ({ paymentIntent }) => {
+    mocked.retrieve.mockResolvedValue({ id: "cs_held", payment_intent: paymentIntent, status: "open" })
+
+    await expect(statusOf("cs_held")).resolves.toBe("processing")
+    expect(mocked.getRequestSession).not.toHaveBeenCalled()
+  })
+
+  it("reports a session whose BLIK payment the bank declined as open again, so the shopper can pay another way", async () => {
+    mocked.retrieve.mockResolvedValue({
+      id: "cs_held",
+      payment_intent: { next_action: null, status: "requires_payment_method" },
+      status: "open",
+    })
+
+    await expect(statusOf("cs_held")).resolves.toBe("open")
   })
 
   it("releases the stock of a session Stripe expired before its webhook arrived and reports it closed", async () => {

@@ -2,6 +2,7 @@ import { type StripeCheckoutElementsValue } from "@stripe/react-stripe-js/checko
 import { type StripeCheckoutContact } from "@stripe/stripe-js"
 
 import { createCheckoutSessionFn, updateCheckoutSessionFn } from "~/src/integrations/stripe/stripe.actions"
+import { ProcessingCheckoutSessionError } from "~/src/integrations/stripe/stripe.checkout.processing"
 import { CHECKOUT_SESSION_LIFETIME_SECONDS } from "~/src/integrations/stripe/stripe.constants"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
@@ -77,6 +78,10 @@ const updateOrRestartCheckoutSession = async ({ checkoutValues, items, requestTu
     const code = error instanceof Error ? error.message : undefined
     if (code === CHECKOUT_ERROR_CODES.SESSION_COMPLETE) {
       throw new PaidCheckoutSessionError(sessionId)
+    }
+
+    if (code === CHECKOUT_ERROR_CODES.SESSION_PROCESSING) {
+      throw new ProcessingCheckoutSessionError(sessionId)
     }
 
     if (code !== CHECKOUT_ERROR_CODES.SESSION_CLOSED) {

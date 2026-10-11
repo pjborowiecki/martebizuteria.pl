@@ -43,6 +43,10 @@ export class CheckoutPage extends BasePage {
     return this.page.getByText("Choose how you'd like to pay. All transactions are encrypted and securely processed by Stripe.")
   }
 
+  awaitingBank(): Locator {
+    return this.page.getByText("Waiting for your bank")
+  }
+
   confirmationHeading(): Locator {
     return this.page.getByRole("heading", { name: "Order Confirmed" })
   }

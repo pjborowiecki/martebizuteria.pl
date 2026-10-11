@@ -130,6 +130,19 @@ describe("useCheckoutSessionEntry on /checkout", () => {
     expect(toastError).not.toHaveBeenCalled()
   })
 
+  it("keeps a stored session whose payment the bank is still confirming, so the payment step can wait for it", async () => {
+    holdSession("cs_awaiting_bank")
+    readStatus.mockResolvedValue("processing")
+    const { result } = renderEntry({})
+
+    await waitFor(() => {
+      expect(result.current).toBe("checkout")
+    })
+    expect(loadCheckoutSessionId()).toBe("cs_awaiting_bank")
+    expect(navigate).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
   it("shows the confirmation of a stored session that was paid for this cart while the page was gone, instead of a payment form", async () => {
     holdSession("cs_paid")
     readStatus.mockResolvedValue("complete")
@@ -305,6 +318,19 @@ describe("useCheckoutSessionEntry on the return from a payment", () => {
     expect(toastError).toHaveBeenCalledExactlyOnceWith(NOT_COMPLETED)
     expect(result.current).toBe("checking")
     expect(loadCheckoutSessionId()).toBe("cs_abandoned")
+  })
+
+  it("sends a shopper whose bank is still confirming the returned payment to the payment step without saying it failed", async () => {
+    holdSession("cs_awaiting_bank")
+    readStatus.mockResolvedValue("processing")
+    const { result } = renderEntry({ session_id: "cs_awaiting_bank", success: true })
+
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledWith({ replace: true, search: { step: 4 }, to: "." })
+    })
+    expect(toastError).not.toHaveBeenCalled()
+    expect(result.current).toBe("checking")
+    expect(loadCheckoutSessionId()).toBe("cs_awaiting_bank")
   })
 
   it("continues the abandoned session on the payment step without asking about it again", async () => {

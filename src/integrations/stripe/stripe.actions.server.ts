@@ -17,6 +17,7 @@ import { deleteCheckoutCoupons, toSessionDiscounts } from "~/src/integrations/st
 import { ensureStripeCustomer, getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
+import { isCheckoutSessionProcessing } from "~/src/integrations/stripe/stripe.utils"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
@@ -440,6 +441,27 @@ export const releaseExpiredCheckoutSession = async (session: StripeType.Checkout
   }
 }
 
+const retrieveReplaceableStripeSession = async (sessionId: string): Promise<StripeType.Checkout.Session> => {
+  const stripeSession = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] })
+  if (stripeSession.status === "complete") {
+    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_COMPLETE)
+  }
+
+  if (stripeSession.status === "expired") {
+    await releaseExpiredCheckoutSession(stripeSession)
+  }
+
+  if (stripeSession.status !== "open") {
+    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
+  }
+
+  if (isCheckoutSessionProcessing(stripeSession)) {
+    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_PROCESSING)
+  }
+
+  return stripeSession
+}
+
 const resolveUpdatableCheckout = async (sessionId: string): Promise<UpdatableCheckout> => {
   const context = await getPaymentContextByTransactionId(sessionId)
   if (context === undefined) {
@@ -460,18 +482,7 @@ const resolveUpdatableCheckout = async (sessionId: string): Promise<UpdatableChe
     throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
   }
 
-  const stripeSession = await stripe.checkout.sessions.retrieve(sessionId)
-  if (stripeSession.status === "complete") {
-    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_COMPLETE)
-  }
-
-  if (stripeSession.status === "expired") {
-    await releaseExpiredCheckoutSession(stripeSession)
-  }
-
-  if (stripeSession.status !== "open") {
-    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
-  }
+  const stripeSession = await retrieveReplaceableStripeSession(sessionId)
 
   return {
     checkoutCreatedAt: context.checkoutCreatedAt,
