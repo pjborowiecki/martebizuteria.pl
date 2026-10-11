@@ -167,12 +167,12 @@ export const insertAuditLogs = async (rows: readonly AuditLogInsertRow[]): Promi
   )
 }
 
-export const deleteAuditLogs = async (ids: readonly string[]): Promise<number> => {
+export const deleteAuditLogs = async (ids: readonly string[]): Promise<string[]> => {
   if (ids.length === 0) {
-    return 0
+    return []
   }
 
-  await db.delete(auditLog).where(inJsonList(auditLog.id, ids))
+  const deleted = await db.delete(auditLog).where(inJsonList(auditLog.id, ids)).returning({ id: auditLog.id })
 
-  return ids.length
+  return deleted.map(({ id }) => id)
 }

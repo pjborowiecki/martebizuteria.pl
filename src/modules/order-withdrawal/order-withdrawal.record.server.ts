@@ -2,6 +2,7 @@ import { scheduleAdminOrdersInvalidation } from "~/src/integrations/realtime-inv
 import { acknowledgeOrderWithdrawal, notifyShopOfOrderWithdrawal } from "~/src/integrations/resend/order-withdrawal.notification.server"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
+import { recordOrderWithdrawalReceivedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getOrderWithdrawals, insertOrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.accessors"
 import { ORDER_WITHDRAWAL_OUTCOME } from "~/src/modules/order-withdrawal/order-withdrawal.constants"
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
@@ -25,6 +26,11 @@ export const recordOrderWithdrawal = async ({
   const withdrawal = { ...statement, email: orderRow.email, submittedAt: new Date() }
   await insertOrderWithdrawal(orderRow.id, withdrawal)
   scheduleAdminOrdersInvalidation()
+  recordOrderWithdrawalReceivedAudit(
+    orderRow.id,
+    { email: orderRow.email, name: statement.consumerName, role: "customer" },
+    { detail: orderRow.orderNumber, metadata: { scope: statement.scope } },
+  )
 
   return { outcome: ORDER_WITHDRAWAL_OUTCOME.RECORDED, withdrawal }
 }

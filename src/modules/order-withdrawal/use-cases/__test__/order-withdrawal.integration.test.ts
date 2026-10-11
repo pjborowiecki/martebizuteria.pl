@@ -34,6 +34,7 @@ const { background, effects, sqlite, worker } = await vi.hoisted(async () => {
       requestSession: vi.fn<() => Promise<{ user: { id: string; name: string; role: string } } | null>>(),
       sendEmail: vi.fn<(options: Readonly<SentEmail>) => Promise<string | undefined>>(),
       verifyTurnstile: vi.fn<(check: Readonly<{ action: string; hostname: string; token: string }>) => Promise<void>>(),
+      withdrawalReceivedAudit: vi.fn(),
     },
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
     worker: { env: { APP_ENV: "test", RESEND_EMAIL_FROM: "orders@marte.test" } },
@@ -85,6 +86,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordEmailFailedAudit: effects.emailFailedAudit,
   recordOrderEmailOutcome: effects.emailOutcome,
+  recordOrderWithdrawalReceivedAudit: effects.withdrawalReceivedAudit,
 }))
 vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ verifyTurnstileToken: effects.verifyTurnstile }))
 
@@ -235,6 +237,11 @@ describe("withdrawing from an order in the account", () => {
     ])
     expect(readWithdrawals()[0]?.created_at).toBeGreaterThanOrEqual(before)
     expect(effects.invalidateAdminOrders).toHaveBeenCalledOnce()
+    expect(effects.withdrawalReceivedAudit).toHaveBeenCalledExactlyOnceWith(
+      ANNA_ORDER_ID,
+      { email: "Anna@Example.com", name: "Anna Kowalska", role: "customer" },
+      { detail: "MRT-2026-00042", metadata: { scope: "order" } },
+    )
   })
 
   it("acknowledges the statement to the order's address in the customer's language and tells the shop", async () => {
@@ -357,6 +364,11 @@ describe("withdrawing from an order as a guest", () => {
     expect(readWithdrawals()).toStrictEqual([
       expect.objectContaining({ items: "Kolczyki Luna × 1", order_id: ANNA_ORDER_ID, scope: "items" }),
     ])
+    expect(effects.withdrawalReceivedAudit).toHaveBeenCalledExactlyOnceWith(
+      ANNA_ORDER_ID,
+      { email: "Anna@Example.com", name: "Anna Kowalska", role: "customer" },
+      { detail: "MRT-2026-00042", metadata: { scope: "items" } },
+    )
     await Promise.all(background)
     expect(sentTo("Anna@Example.com")?.subject).toBe("Otrzymaliśmy Twoje odstąpienie od umowy dla zamówienia MRT-2026-00042 — M'Arte")
     expect(sentTo(SHOP_INBOX)).toBeDefined()
@@ -385,6 +397,7 @@ describe("withdrawing from an order as a guest", () => {
     await expect(guestWithdrawal(overrides)).resolves.toBeUndefined()
     await Promise.all(background)
     expect(readWithdrawals()).toStrictEqual([])
+    expect(effects.withdrawalReceivedAudit).not.toHaveBeenCalled()
     expect(effects.sendEmail).not.toHaveBeenCalled()
     expect(publicEmailLimits()).toStrictEqual([])
   })

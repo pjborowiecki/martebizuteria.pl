@@ -6,7 +6,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
-import { recordOrderReleasedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderDeliveredAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { assertOrderActionState, getAdminOrderActionRow } from "~/src/modules/order/order.admin-action.server"
 import { canMarkAdminOrderDelivered } from "~/src/modules/order/order.admin-actions.utils"
 import { ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
@@ -31,7 +31,7 @@ export const markOrderDelivered = createServerFn({ method: "POST" })
       })
       .where(eq(order.id, orderId))
 
-    recordOrderReleasedAudit(orderId)
+    recordOrderDeliveredAudit(orderId)
 
     return { ok: true, orderId }
   })

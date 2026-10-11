@@ -45,10 +45,6 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 `src/server.ts` has a `scheduled` handler, but its daily Cron Trigger only enforces the [retention periods](/docs/guides/data-retention) and releases no stock. Stale reservations are released only when Stripe emits `checkout.session.expired`, 32 minutes after a session opens, and a reservation orphaned by a failed compensation is never reclaimed. A reconciliation job would run from the same handler.
 
-### No dead-letter queue
-
-`wrangler.jsonc` sets `max_retries: 3` on the `AUDIT_LOG_QUEUE` consumer with no `dead_letter_queue`. An audit batch that fails three times is dropped. Each failed batch emails `RESEND_EMAIL_FROM`, so the owner hears of it, but the entries themselves are gone. The audit log is the record of who changed what, so losing a batch is worse than it looks.
-
 ### The `refund` permission is never checked
 
 The admin console now issues refunds. The Refund button on `/admin/orders/$orderId` calls `refundAdminOrder` in `src/modules/order/use-cases/refund-admin-order.ts`, which asks Stripe for a full refund with `stripe.refunds.create`, and the `charge.refunded` webhook then records it through `handleChargeRefunded` in `src/integrations/stripe/stripe.webhooks.tsx`, exactly as it does for a refund issued in Stripe. `refundAdminOrder` is guarded by `authorized({ order: ["update"] })`, so the `order: ["refund"]` permission declared in `auth.access.ts` is still never checked anywhere. Cancel order on a paid order requests the same refund through `requestFullOrderRefund` and is guarded the same way. Either check it in both or remove it.

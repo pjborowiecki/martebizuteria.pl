@@ -11,6 +11,8 @@ import {
   isMediaFolder,
 } from "~/src/integrations/cloudflare-r2/media.zod"
 
+import { recordImageUploadedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+
 const bufferToHex = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer)
   let hex = ""
@@ -59,6 +61,7 @@ export const uploadImageFn = createServerFn({
         },
       })
     }
+    recordImageUploadedAudit(key, { detail: file.name })
 
     return {
       key,

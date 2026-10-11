@@ -188,3 +188,41 @@ describe("processAuditLogQueueBatch when the insert fails", () => {
     expect(queue.publishRealtimeInvalidation).not.toHaveBeenCalled()
   })
 })
+
+const deadLettered = (message: ReturnType<typeof createMessage>) => ({ ...createBatch([message]), queue: "audit-log-dlq" })
+
+describe("processAuditLogQueueBatch for the dead-letter queue", () => {
+  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    queue.insertAuditLogs.mockResolvedValue(undefined)
+  })
+
+  afterAll(() => {
+    consoleError.mockRestore()
+  })
+
+  it("writes a message that failed in a batch with others once it is retried on its own", async () => {
+    const message = createMessage("first")
+
+    await processAuditLogQueueBatch(deadLettered(message))
+
+    expect(queue.insertAuditLogs).toHaveBeenCalledExactlyOnceWith([body("first")])
+    expect(message.ack).toHaveBeenCalledOnce()
+  })
+
+  it("retries a message that still cannot be written and alerts under the dead-letter queue's name", async () => {
+    queue.insertAuditLogs.mockRejectedValue(new Error("D1_ERROR: NOT NULL constraint failed: audit_log.target"))
+    const message = createMessage("first")
+
+    await processAuditLogQueueBatch(deadLettered(message))
+
+    expect(message.retry).toHaveBeenCalledOnce()
+    expect(queue.notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
+      detail: "D1_ERROR: NOT NULL constraint failed: audit_log.target",
+      kind: "auditQueueFailed",
+      reference: "audit-log-dlq",
+    })
+  })
+})

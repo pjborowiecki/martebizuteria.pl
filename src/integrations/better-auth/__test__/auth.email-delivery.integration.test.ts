@@ -45,6 +45,8 @@ vi.mock("resend", () => ({
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordAuthLoginAudit: vi.fn(),
+  recordAuthPasswordResetAudit: vi.fn(),
+  recordCustomerDeletedAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
   recordEmailFailedAudit,
   resolveAuthAuditActor: vi.fn(),

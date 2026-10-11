@@ -25,7 +25,7 @@ const { audit, catalogInvalidated, sqlite, stripeApi } = await vi.hoisted(async 
   const { DatabaseSync } = await import("node:sqlite")
 
   return {
-    audit: { cancelled: vi.fn(), email: vi.fn(), refund: vi.fn(), restocked: vi.fn() },
+    audit: { cancelled: vi.fn(), email: vi.fn(), refund: vi.fn(), refundRequested: vi.fn(), restocked: vi.fn() },
     catalogInvalidated: vi.fn(),
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
     stripeApi: {
@@ -79,6 +79,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderCancelledAudit: audit.cancelled,
   recordOrderEmailOutcome: audit.email,
   recordOrderRefundAudit: audit.refund,
+  recordOrderRefundRequestedAudit: audit.refundRequested,
   recordOrderRestockedAudit: audit.restocked,
 }))
 

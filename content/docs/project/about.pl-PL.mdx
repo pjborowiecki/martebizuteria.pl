@@ -105,7 +105,7 @@ Katalog (produkty, warianty, opcje, atrybuty, kategorie, kolekcje, wyszukiwanie,
 
 ### Nieobecne
 
-Brak testów end-to-end i przeglądarkowych. Brak zadania uzgadniającego: jedyny Cron Trigger uruchamia [czyszczenie danych po okresie przechowywania](/docs/guides/data-retention), które nie zwalnia stanów magazynowych. Brak kolejki martwych listów, więc partia audytowa, która wyczerpie trzy ponowienia, jest tracona, choć każda nieudana partia wysyła e-mail na `RESEND_EMAIL_FROM`. Brak zewnętrznej usługi raportowania błędów: błędy trafiają do Workers Logs i Issues, a te, którymi musi się zająć właściciel, na `RESEND_EMAIL_FROM`; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts).
+Brak testów end-to-end i przeglądarkowych. Brak zadania uzgadniającego: jedyny Cron Trigger uruchamia [czyszczenie danych po okresie przechowywania](/docs/guides/data-retention), które nie zwalnia stanów magazynowych. Wpis audytu, którego nie da się zapisać nawet wtedy, gdy kolejka martwych listów ponawia go osobno, przepada, choć porażki wysyłają e-mail na `RESEND_EMAIL_FROM`. Brak zewnętrznej usługi raportowania błędów: błędy trafiają do Workers Logs i Issues, a te, którymi musi się zająć właściciel, na `RESEND_EMAIL_FROM`; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts).
 
 [Plan rozwoju](/docs/project/roadmap) wymienia te braki w kolejności, w jakiej warto je naprawiać.
 

@@ -40,6 +40,8 @@ interface RetrievedSession {
 
 const returnOrderToStock = vi.hoisted(() => vi.fn<(orderId: string) => Promise<boolean>>())
 
+const audit = vi.hoisted(() => ({ recordOrderRefundRequestedAudit: vi.fn() }))
+
 const stripeApi = vi.hoisted(() => ({
   refundsCreate: vi.fn<(params: object, options: object) => Promise<{ id: string }>>(),
   sessionsRetrieve: vi.fn<(id: string) => Promise<RetrievedSession>>(),
@@ -52,6 +54,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
 }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getAdminOrderRefundTarget: () => Promise.resolve(target.current) }))
 vi.mock("~/src/modules/order/order.restock.server", () => ({ returnOrderToStock }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -86,6 +89,12 @@ describe("refundAdminOrder", () => {
     expect(stripeApi.refundsCreate).toHaveBeenCalledWith({ metadata: { orderId: ORDER_ID }, payment_intent: "pi_test_paid" }, IDEMPOTENCY)
   })
 
+  it("records the refund the admin asked Stripe for against the order", async () => {
+    await refundAdminOrder({ data: KEEP_OUT_OF_STOCK })
+
+    expect(audit.recordOrderRefundRequestedAudit).toHaveBeenCalledExactlyOnceWith(ORDER_ID)
+  })
+
   it("leaves the order's items out of stock unless the admin says they came back", async () => {
     await refundAdminOrder({ data: KEEP_OUT_OF_STOCK })
 
@@ -103,6 +112,7 @@ describe("refundAdminOrder", () => {
 
     await expect(refundAdminOrder({ data: BACK_IN_STOCK })).rejects.toThrow("This charge has already been refunded.")
     expect(returnOrderToStock).not.toHaveBeenCalled()
+    expect(audit.recordOrderRefundRequestedAudit).not.toHaveBeenCalled()
   })
 
   it("refunds by id when the Checkout Session returns its PaymentIntent expanded", async () => {

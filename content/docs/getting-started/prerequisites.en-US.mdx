@@ -47,7 +47,7 @@ The application cannot start without its bindings. `wrangler.jsonc` declares fiv
 
 Two caveats worth knowing before you provision anything:
 
-- Cloudflare Queues is not available on every Workers plan. If your account cannot create a queue, a deploy will fail at `scripts/verify-bindings.ts`, which requires both a producer and a matching consumer for `AUDIT_LOG_QUEUE`.
+- Cloudflare Queues is not available on every Workers plan. If your account cannot create a queue, a deploy will fail at `scripts/verify-bindings.ts`, which requires both a producer and a matching consumer for `AUDIT_LOG_QUEUE`, and a consumed dead-letter queue for that consumer.
 - `placement: { mode: "smart" }` in `wrangler.jsonc` is also a paid-plan feature. It is a hint, not a requirement, so it is safe to remove locally if your account rejects it.
 
 The Durable Object needs no provisioning step. It is created by the `v1` migration in `wrangler.jsonc`, which declares `RealtimeInvalidationHub` under `new_sqlite_classes`.

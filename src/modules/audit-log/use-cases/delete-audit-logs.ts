@@ -7,19 +7,24 @@ import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalid
 
 import { deleteAuditLogs as auditLogDeleteAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
 import { AUDIT_LOG_MUTATION_KEYS, AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
+import { recordAuditLogsDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { auditLogZodSchemas } from "~/src/modules/audit-log/audit-log.zod"
 
 export const deleteAuditLogs = createServerFn({ method: "POST" })
   .middleware([authorized({ settings: ["manage"] })])
   .validator((input: zod.input<typeof auditLogZodSchemas.deleteAuditLogsInput>) => auditLogZodSchemas.deleteAuditLogsInput.parse(input))
   .handler(async ({ data: ids }) => {
-    const deleted = await auditLogDeleteAuditLogs(ids)
+    const deletedIds = await auditLogDeleteAuditLogs(ids)
+
+    if (deletedIds.length > 0) {
+      recordAuditLogsDeletedAudit(String(deletedIds.length), { metadata: { ids: deletedIds } })
+    }
 
     await publishRealtimeInvalidation({
       admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS],
     })
 
-    return { deleted, ok: true as const }
+    return { deleted: deletedIds.length, ok: true as const }
   })
 
 export const deleteAuditLogsMutation = mutationOptions({

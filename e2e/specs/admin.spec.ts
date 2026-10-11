@@ -285,8 +285,9 @@ test.describe("admin", () => {
     await adminOrderPage.gotoOrderFor(email)
     await expect(adminOrderPage.heading()).toHaveText(orderNumber)
     const main = page.getByRole("main")
-    await expect(main.getByText("Withdrawal from the contract")).toBeVisible()
+    await expect(main.getByText("Withdrawal from the contract", { exact: true })).toBeVisible()
     await expect(main.getByText("The whole order")).toBeVisible()
+    await expect(main.getByText("Withdrawal from the contract received")).toBeVisible()
     await expect(main.getByText(`Anna Kowalska · ${email}`)).toBeVisible()
   })
 

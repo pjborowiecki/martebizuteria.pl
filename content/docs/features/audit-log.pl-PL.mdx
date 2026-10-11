@@ -27,25 +27,25 @@ Dziennik audytu to historia zdarzeń sklepu, która pełni jednocześnie rolę m
 
 Pięć indeksów: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` oraz złożony `audit_log_resource_idx` na (`category`, `resource_id`) — właśnie on sprawia, że pytanie „co się stało z tym zamówieniem” jest tanie.
 
-## 43 akcje
+## 58 akcji
 
 `AUDIT_LOG_ACTION` w `audit-log.constants.ts`:
 
-| Kategoria   | Akcje                                                                                                                                                                                                                                                                                             |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`                                                                                                                                                  |
-| `content`   | `content_page.updated`                                                                                                                                                                                                                                                                            |
-| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_initiated`, `order.restocked`, `order.released`, `order.dispute_opened`, `order.dispute_closed`, `discount.redeemed` |
-| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                                                                                                  |
-| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`, `customer.deletion_failed`                                                                                                                                                                  |
-| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                                                                                    |
-| `settings`  | `settings.updated`, `discount.created/updated/deleted`, `sales.paused`, `sales.resumed`                                                                                                                                                                                                           |
+| Kategoria   | Akcje                                                                                                                                                                                                                                                                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`, `image.uploaded`                                                                                                                                                                                       |
+| `content`   | `content_page.updated`                                                                                                                                                                                                                                                                                                                                   |
+| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_requested`, `order.withdrawal_received`, `order.refund_initiated`, `order.restocked`, `order.released`, `order.dispute_opened`, `order.dispute_closed`, `discount.redeemed` |
+| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset`, `auth.email_changed`, `auth.two_factor_enabled`, `auth.two_factor_disabled`, `auth.sessions_revoked`, `auth.role_changed`, `auth.user_banned`, `auth.user_unbanned`                                                                                    |
+| `customers` | `customer.registered`, `customer.updated`, `customer.deleted`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`, `customer.deletion_failed`                                                                                                                                                                                 |
+| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                                                                                                                                           |
+| `settings`  | `settings.updated`, `discount.created/updated/deleted`, `sales.paused`, `sales.resumed`, `audit_log.deleted`                                                                                                                                                                                                                                             |
 
 `email.deferred` i `settings.updated` są zadeklarowane, ale nic ich nie emituje.
 
 ## Zapis zdarzenia
 
-Nigdy nie zapisuj do `audit_log` bezpośrednio. `audit-log.events.server.ts` eksportuje nazwany rejestrator na każdą akcję: 42 eksportowane funkcje `record*`, czyli 41 rejestratorów akcji plus wrapper `recordOrderEmailOutcome`. Każdy rejestrator uzupełnia akcję, kategorię i poziom ważności, a następnie deleguje do jednego z trzech schedulerów w `audit-log.record.server.ts`:
+Nigdy nie zapisuj do `audit_log` bezpośrednio. `audit-log.events.server.ts` eksportuje nazwany rejestrator na każdą akcję: 58 eksportowanych funkcji `record*`, czyli 57 rejestratorów akcji, w tym dwa dla `order.released` (koszyk zwalniany przez webhook Stripe i zamówienie, które administrator oznacza jako dostarczone), plus wrapper `recordOrderEmailOutcome`. Każdy rejestrator uzupełnia akcję, kategorię i poziom ważności, a następnie deleguje do jednego z trzech schedulerów w `audit-log.record.server.ts`:
 
 | Scheduler                     | Rozwiązywanie aktora                                                                                        |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -67,6 +67,8 @@ export const scheduleAuditLog = (input: AuditLogEventInput): void => {
 
 Dwa pomocniki spójnie kształtują `target` i `resource_id`: `withResourceId(target, options)` domyślnie ustawia `resourceId` na `target`, a `resolveActorAuditTarget(actor, options)` preferuje jako cel adres e-mail aktora i umieszcza go w metadanych, z fallbackiem na nazwę.
 
+To, komu przypisany jest wpis, wynika ze schedulera. Każda czynność administratora na zamówieniu — realizacja, wysyłka, oznaczenie dostarczenia, anulowanie, zlecenie zwrotu w Stripe (`order.refund_requested`, zarówno z przycisku Zwrot, jak i przy anulowaniu) i przywrócenie na stan (`order.restocked`) — przechodzi przez `scheduleAuditLogFromRequest`, więc karta Aktywność zamówienia i `/admin/audit` pokazują zalogowanego administratora i adres, z którego działał. Zdarzenia zamówień zapisywane przez webhook Stripe, w tym `order.refund_initiated`, gdy Stripe potwierdzi zwrot, pozostają przy `SYSTEM_AUDIT_ACTOR`. Zdarzenia konta, od `auth.password_changed` do `auth.user_unbanned` oraz `customer.deleted`, przyjmują zmienione konto i korzystają ze wspólnego `scheduleAccountAudit`: konto jest celem, a wpis jest przypisany do `options.actor`, gdy zmiany dokonał administrator, a w przeciwnym razie do właściciela konta. Edycje klientów (`customer.updated`), przesłane zdjęcia (`image.uploaded`) i usunięte wpisy audytu (`audit_log.deleted`) są przypisane do administratora wykonującego żądanie. Odstąpienie od umowy (`order.withdrawal_received`), złożone na koncie albo z numerem zamówienia pod `/withdraw-from-contract`, jest ostrzeżeniem przypisanym do konsumenta, który podpisał oświadczenie, z adresem zamówienia, numerem zamówienia jako szczegółem i zakresem w metadanych, więc karta aktywności zamówienia pokazuje je obok karty odstąpień.
+
 ## Kolejka
 
 Bindingiem producenta jest `AUDIT_LOG_QUEUE`:
@@ -82,11 +84,20 @@ const enqueueAuditLogMessage = async (message: AuditLogQueueMessage): Promise<vo
 ```jsonc
 "queues": {
   "producers": [{ "binding": "AUDIT_LOG_QUEUE", "queue": "martebizuteria-audit-log-preview" }],
-  "consumers": [{ "queue": "martebizuteria-audit-log-preview", "max_batch_size": 50, "max_batch_timeout": 5, "max_retries": 3 }],
+  "consumers": [
+    {
+      "queue": "martebizuteria-audit-log-preview",
+      "max_batch_size": 50,
+      "max_batch_timeout": 5,
+      "max_retries": 3,
+      "dead_letter_queue": "martebizuteria-audit-log-preview-dlq",
+    },
+    { "queue": "martebizuteria-audit-log-preview-dlq", "max_batch_size": 1, "max_retries": 3, "retry_delay": 300 },
+  ],
 },
 ```
 
-Punktem wejścia konsumenta jest eksport `queue` w `src/server.ts`:
+Worker konsumuje w każdym środowisku dwie kolejki: kolejkę audytu i jej kolejkę martwych listów, nazwaną od niej z przyrostkiem `-dlq` (`martebizuteria-audit-log-preview-dlq` dla development i preview, `martebizuteria-audit-log-test-dlq` dla lokalnego Workera testowego, `martebizuteria-audit-log-dlq` dla produkcji). Punktem wejścia konsumenta obu jest eksport `queue` w `src/server.ts`:
 
 ```ts
 async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
@@ -123,7 +134,7 @@ try {
 }
 ```
 
-Do 50 zdarzeń staje się więc jednym insertem do D1, a nieudany wsad jest ponawiany do trzech razy. Nieudany wsad wysyła też e-mail na `RESEND_EMAIL_FROM`, gdy wiadomości są już oznaczone do ponowienia, najwyżej raz na godzinę dla kolejki, a alert nigdy nie rzuca wyjątku, więc nie zmienia ponowienia; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts). Konsekwencja, o której trzeba pamiętać: **wpis audytu jest spójny ostatecznie** — może pojawić się nawet po `max_batch_timeout` (5 sekund), dlatego konsument publikuje unieważnienie realtime, a nie liczy na to, że interfejs odświeży sam zapisujący. `AUDIT_LOG_ADMIN_QUERY_KEYS` to strona audytu i jej statystyki. Gdy któryś wiersz wsadu należy do `ADMIN_ORDER_TIMELINE_ACTIONS`, konsument dodaje `ORDER_QUERY_KEYS.ADMIN.ORDERS`. Każda otwarta karta panelu pobiera wtedy ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc nowy wiersz osi czasu, na przykład nieudany e-mail o zamówieniu, pojawia się bez przeładowania. Akcje `email.*` należą do tej listy niezależnie od tego, czego dotyczył e-mail, więc nieudany e-mail newslettera albo Better Auth też wywołuje to odświeżenie.
+Do 50 zdarzeń staje się więc jednym insertem do D1, a nieudany wsad jest ponawiany do trzech razy. Wsad, który nadal się nie zapisze, nie jest usuwany: Cloudflare przenosi jego wiadomości do kolejki martwych listów, której konsument bierze je **pojedynczo** (`max_batch_size: 1`) i przepuszcza każdą przez to samo `processAuditLogQueueBatch`, ponawiając ją jeszcze do trzech razy co pięć minut (`retry_delay: 300`). Jedna wiadomość odrzucona przez insert nie zabiera więc ze sobą pozostałych 49 wpisów wsadu: zapisują się osobno, a przepada tylko wiadomość, której nie da się zapisać także po trzecim ponowieniu w kolejce martwych listów; ślad po niej zostaje w logu Workera i w alercie z nazwą kolejki martwych listów. `scripts/verify-bindings.ts` odmawia wdrożenia preview albo produkcji, gdy konsument audytu nie podaje `dead_letter_queue` albo kolejka martwych listów nie ma konsumenta, a każda kolejka `-dlq` musi istnieć w Cloudflare przed wdrożeniem, które ją wskazuje (`bunx wrangler queues create martebizuteria-audit-log-dlq` dla produkcji). Nieudany wsad wysyła też e-mail na `RESEND_EMAIL_FROM`, gdy wiadomości są już oznaczone do ponowienia, najwyżej raz na godzinę dla kolejki, a alert nigdy nie rzuca wyjątku, więc nie zmienia ponowienia; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts). Konsekwencja, o której trzeba pamiętać: **wpis audytu jest spójny ostatecznie** — może pojawić się nawet po `max_batch_timeout` (5 sekund), dlatego konsument publikuje unieważnienie realtime, a nie liczy na to, że interfejs odświeży sam zapisujący. `AUDIT_LOG_ADMIN_QUERY_KEYS` to strona audytu i jej statystyki. Gdy któryś wiersz wsadu należy do `ADMIN_ORDER_TIMELINE_ACTIONS`, konsument dodaje `ORDER_QUERY_KEYS.ADMIN.ORDERS`. Każda otwarta karta panelu pobiera wtedy ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc nowy wiersz osi czasu, na przykład nieudany e-mail o zamówieniu, pojawia się bez przeładowania. Akcje `email.*` należą do tej listy niezależnie od tego, czego dotyczył e-mail, więc nieudany e-mail newslettera albo Better Auth też wywołuje to odświeżenie.
 
 ## Różnice zmian
 
@@ -157,6 +168,23 @@ Szczegóły warte uwagi:
 - Treść żądania jest czytana przez `request.clone().json()`, żeby prawdziwy handler wciąż ją otrzymał.
 - Przy wylogowaniu sesja jest czytana **przed** wywołaniem handlera, bo potem już jej nie ma.
 - Nieudane logowanie jest zapisywane tylko wtedy, gdy odpowiedź nie jest `ok`, a adres e-mail staje się `target` — dzięki temu dziennik pokazuje próby na adresach, które mogą nie istnieć.
+
+### Zdarzenia bezpieczeństwa konta
+
+Zmiany konta są zapisywane z wnętrza Better Auth, więc zostają odnotowane niezależnie od tego, który klient wywołuje endpoint. `auth.server.ts` rejestruje wtyczkę `accountSecurityAudit` obok `signInAudit`. Jej hooki `after` działają, gdy endpoint już odpowiedział, pomijają odpowiedź będącą błędem, a wywołującego czytają z `ctx.context.session`, adres zaś z nagłówka `cf-connecting-ip` żądania:
+
+| Endpoint                                                        | Zapis                                                                                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `/change-password`                                              | `auth.password_changed`, a także `auth.sessions_revoked`, gdy klient poprosił o wylogowanie pozostałych urządzeń                     |
+| `/two-factor/verify-totp`                                       | `auth.two_factor_enabled`, tylko dla kodu, który włącza 2FA: wywołujący przyszedł zalogowany z wyłączonym 2FA i wychodzi z włączonym |
+| `/two-factor/disable`                                           | `auth.two_factor_disabled`                                                                                                           |
+| `/revoke-session`, `/revoke-sessions`, `/revoke-other-sessions` | `auth.sessions_revoked`                                                                                                              |
+| `/verify-email`                                                 | `auth.email_changed` ze szczegółem `stary → nowy`, gdy link niesie token `change-email-verification`, a sesja ma już nowy adres      |
+| `/admin/set-role`, `/admin/ban-user`, `/admin/unban-user`       | `auth.role_changed` (rola jako szczegół), `auth.user_banned` (powód), `auth.user_unbanned`                                           |
+| `/admin/update-user`                                            | Każde z `auth.role_changed`, `auth.user_banned`, `auth.user_unbanned` i `auth.email_changed`, którego pole ustawia aktualizacja      |
+| `/admin/revoke-user-sessions`, `/admin/set-user-password`       | `auth.sessions_revoked`, `auth.password_changed`                                                                                     |
+
+Endpointy administracyjne wyszukują konto po `userId` i przypisują wpis administratorowi. Dwa kolejne zdarzenia nie potrzebują wtyczki: `emailAndPassword.onPasswordReset` zapisuje `auth.password_reset`, gdy link resetu ustawi nowe hasło, a `databaseHooks.user.delete.after` zapisuje `customer.deleted` dla każdego konta usuniętego przez Better Auth z wyjątkiem anonimowych, które usuwa ono samo, i przypisuje wpis sesji, która o to poprosiła — administratorowi dla `/admin/remove-user`, do którego strona klientów w panelu sięga przez `auth.api.removeUser`, albo klientowi dla `/delete-user` — a systemowi, gdy sesji nie ma. Własne funkcje serwerowe strony konta do wylogowania jednego urządzenia albo wszystkich pozostałych, `revokeCustomerSession` i `revokeOtherCustomerSessions`, same zapisują `auth.sessions_revoked`, gdy usuną sesję. `/admin/revoke-user-session` z Better Auth, który wskazuje sesję jej tokenem, oraz `/admin/impersonate-user` nie są zapisywane.
 
 ## Aktywność klienta
 
@@ -198,7 +226,7 @@ Stałe filtrów to `AUDIT_LOG_CATEGORY_FILTER` (kategorie plus `all`) i `AUDIT_L
 
 Komponenty leżą w `.../admin/audit/`: `audit-log.tsx`, `components/audit-columns.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, komórki w `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-table-cell`) oraz `audit-stats.config.ts`.
 
-Usuwanie to jedyna mutacja dostępna administratorowi. Wpisy usuwa też codzienne czyszczenie po okresie przechowywania, `deleteExpiredAuditLogs` w `use-cases/delete-expired-audit-logs.server.ts`: odsłony stron i zdarzenia koszyka po 90 dniach, logowania, nieudane logowania i wylogowania po 12 miesiącach, a każdy inny wpis po 24 miesiącach. Zadanie opisują [Okresy przechowywania danych](/docs/guides/data-retention). Usunięcie konta również usuwa jego wpisy: `eraseAccountData` (`src/modules/user/user.erasure.server.ts`) usuwa wtedy każdy wiersz, którego `resource_id` to identyfikator albo adres e-mail konta, czyli dziennik aktywności konta, historię logowania, rejestrację i nieudane wiadomości uwierzytelniania wysłane na ten adres, a wpisy zamówień, katalogu i administratorów zostawia. Jeśli Stripe odmówi usunięcia klienta powiązanego z kontem, konto zostaje, a `customer.deletion_failed` zapisuje przyczynę jako błąd w kategorii `customers`, przypisany do konta.
+Usuwanie to jedyna mutacja dostępna administratorowi i ono też jest zapisywane. `deleteAuditLogs` przyjmuje najwyżej `LIST_PAGE_SIZE_MAX` (250) identyfikatorów wpisów, czyli największą stronę, jaką pokazuje tabela, i odrzuca wszystko, co nie jest UUID, więc zapisywany wpis zawsze mieści się w wiadomości kolejki. Usunięcie zwraca identyfikatory faktycznie usuniętych wpisów i jeśli jakiś usunięto, `audit_log.deleted` jest zapisywane jako działanie administratora, z ich liczbą jako celem i tymi identyfikatorami w metadanych; identyfikator, który niczego nie dopasował, nie jest ani liczony, ani wymieniany. Wpisy usuwa też codzienne czyszczenie po okresie przechowywania, `deleteExpiredAuditLogs` w `use-cases/delete-expired-audit-logs.server.ts`: odsłony stron i zdarzenia koszyka po 90 dniach, logowania, nieudane logowania i wylogowania po 12 miesiącach, a każdy inny wpis po 24 miesiącach. Zadanie opisują [Okresy przechowywania danych](/docs/guides/data-retention). Usunięcie konta również usuwa jego wpisy: `eraseAccountData` (`src/modules/user/user.erasure.server.ts`) usuwa wtedy każdy wiersz, którego `resource_id` to identyfikator albo adres e-mail konta, czyli dziennik aktywności konta, historię logowania, rejestrację i nieudane wiadomości uwierzytelniania wysłane na ten adres, a wpisy zamówień, katalogu i administratorów zostawia. Jeśli Stripe odmówi usunięcia klienta powiązanego z kontem, konto zostaje, a `customer.deletion_failed` zapisuje przyczynę jako błąd w kategorii `customers`, przypisany do konta.
 
 ## Czytany jako strumień w innych miejscach
 

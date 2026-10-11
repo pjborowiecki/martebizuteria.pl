@@ -30,6 +30,8 @@ const stubs = vi.hoisted(() => ({
   linkSubscriberToUser: vi.fn<(email: string, userId: string) => Promise<void>>(),
   passesTurnstile: vi.fn<(check: { action: string; hostname: string; remoteIp: string | undefined; token: string }) => Promise<boolean>>(),
   recordAuthLoginAudit: vi.fn(),
+  recordAuthPasswordResetAudit: vi.fn(),
+  recordCustomerDeletedAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
   recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
   resolveAuthAuditActor: vi.fn(),
@@ -71,6 +73,8 @@ vi.mock("~/src/lib/seo", () => ({ buildLocalizedUrl: stubs.buildLocalizedUrl }))
 
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordAuthLoginAudit: stubs.recordAuthLoginAudit,
+  recordAuthPasswordResetAudit: stubs.recordAuthPasswordResetAudit,
+  recordCustomerDeletedAudit: stubs.recordCustomerDeletedAudit,
   recordCustomerRegisteredAudit: stubs.recordCustomerRegisteredAudit,
   recordEmailFailedAudit: stubs.recordEmailFailedAudit,
   resolveAuthAuditActor: stubs.resolveAuthAuditActor,
@@ -229,7 +233,7 @@ describe("customer list invalidation hooks", () => {
   })
 
   it("refreshes the admin customer list after a deletion", async () => {
-    await hooks.user.delete.after()
+    await hooks.user.delete.after(createdUser, null)
 
     expect(stubs.scheduleAdminCustomersInvalidation).toHaveBeenCalledOnce()
   })
@@ -251,6 +255,43 @@ describe("account deletion", () => {
       body: { code: "STRIPE_CUSTOMER_NOT_DELETED" },
       statusCode: 503,
     })
+  })
+})
+
+describe("deleted account audit", () => {
+  beforeEach(() => {
+    stubs.resolveAuthAuditActor.mockImplementation((deleted: { id: string }) => `actor:${deleted.id}`)
+  })
+
+  it("credits a deletion made outside any request to the system", async () => {
+    await hooks.user.delete.after(createdUser, null)
+
+    expect(stubs.recordCustomerDeletedAudit).toHaveBeenCalledExactlyOnceWith("actor:usr_1", {
+      actor: { name: "System", role: "system" },
+      ip: undefined,
+    })
+  })
+})
+
+describe("password reset audit", () => {
+  it("records the reset against the account, from the address the new password came from", async () => {
+    stubs.resolveAuthAuditActor.mockReturnValue("customer-actor")
+
+    await auth.options.emailAndPassword.onPasswordReset(
+      { user: createdUser },
+      new Request("https://marte.test/api/auth/reset-password", { headers: { "cf-connecting-ip": "198.51.100.9" } }),
+    )
+
+    expect(stubs.resolveAuthAuditActor).toHaveBeenCalledWith(createdUser)
+    expect(stubs.recordAuthPasswordResetAudit).toHaveBeenCalledExactlyOnceWith("customer-actor", { ip: "198.51.100.9" })
+  })
+
+  it("records a reset made without a request with no address", async () => {
+    stubs.resolveAuthAuditActor.mockReturnValue("customer-actor")
+
+    await auth.options.emailAndPassword.onPasswordReset({ user: createdUser }, undefined)
+
+    expect(stubs.recordAuthPasswordResetAudit).toHaveBeenCalledExactlyOnceWith("customer-actor", { ip: undefined })
   })
 })
 

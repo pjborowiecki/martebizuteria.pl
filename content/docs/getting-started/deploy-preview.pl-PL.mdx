@@ -9,7 +9,7 @@ Każde z dwóch środowisk w `wrangler.jsonc` podłącza swoją domenę własną
 
 ## Przygotowanie zasobów
 
-`bun run deploy:preview` zaczyna od `scripts/verify-bindings.ts`, który czyta ten sam plik JSONC co Wrangler i przerywa pracę, jeśli którykolwiek z pięciu bindingów się nie rozwiąże. Zasoby trzeba więc utworzyć najpierw:
+`bun run deploy:preview` zaczyna od `scripts/verify-bindings.ts`, który czyta ten sam plik JSONC co Wrangler i przerywa pracę, jeśli którykolwiek z pięciu bindingów się nie rozwiąże albo konsument kolejki audytu nie wskazuje kolejki martwych listów, którą Worker również konsumuje. Zasoby trzeba więc utworzyć najpierw:
 
 ```sh
 bunx wrangler login
@@ -18,17 +18,19 @@ bunx wrangler kv namespace create martebizuteria-cache-preview
 bunx wrangler r2 bucket create martebizuteria-preview
 bunx wrangler r2 bucket dev-url enable martebizuteria-preview
 bunx wrangler queues create martebizuteria-audit-log-preview
+bunx wrangler queues create martebizuteria-audit-log-preview-dlq
 ```
 
 Następnie wpisz identyfikatory do `wrangler.jsonc` — pod `development` i `preview`, jeśli mają współdzielić zasoby tak, jak robi to konfiguracja w repozytorium:
 
-| Pole                           | Gdzie                                         |
-| ------------------------------ | --------------------------------------------- |
-| `d1_databases[].database_id`   | `env.development` i `env.preview`             |
-| `d1_databases[].database_name` | Te same dwa                                   |
-| `kv_namespaces[].id`           | Te same dwa                                   |
-| `r2_buckets[].bucket_name`     | Te same dwa                                   |
-| `queues.producers[].queue`     | Musi zgadzać się z `queues.consumers[].queue` |
+| Pole                                   | Gdzie                                          |
+| -------------------------------------- | ---------------------------------------------- |
+| `d1_databases[].database_id`           | `env.development` i `env.preview`              |
+| `d1_databases[].database_name`         | Te same dwa                                    |
+| `kv_namespaces[].id`                   | Te same dwa                                    |
+| `r2_buckets[].bucket_name`             | Te same dwa                                    |
+| `queues.producers[].queue`             | Musi zgadzać się z `queues.consumers[].queue`  |
+| `queues.consumers[].dead_letter_queue` | Musi zgadzać się z `queue` drugiego konsumenta |
 
 Bucket preview startuje pusty, a baza preview wskazuje na zdjęcia z plików seed i grafiki marketingowe. Skopiuj je do niego przed pierwszym wdrożeniem i ustaw `VITE_R2_URL` na adres wypisany przez `dev-url enable`, tak jak opisuje [Dostarczanie zdjęć](/docs/guides/image-delivery).
 
@@ -45,7 +47,7 @@ Durable Object nie wymaga przygotowania. Tworzy go migracja już obecna w pliku:
 ],
 ```
 
-Oto dokładnie to, czego wymaga `verify-bindings.ts`, żebyś wiedział, kiedy skończyłeś:
+Oto dokładnie to, czego wymaga `verify-bindings.ts`, żebyś wiedział, kiedy skończyłeś. `auditConsumer` to konsument kolejki producenta `AUDIT_LOG_QUEUE`, a `auditDeadLetterConsumer` to konsument kolejki, którą tamten wskazuje jako `dead_letter_queue`:
 
 ```ts
 if (
@@ -55,7 +57,8 @@ if (
   /^[0-]+$/u.test(cache.id) ||
   !images?.bucket_name ||
   !audit?.queue ||
-  !config.queues.consumers.some(({ queue }) => queue === audit.queue) ||
+  !auditConsumer?.dead_letter_queue ||
+  auditDeadLetterConsumer === undefined ||
   realtime?.class_name !== "RealtimeInvalidationHub"
 ) {
   throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)

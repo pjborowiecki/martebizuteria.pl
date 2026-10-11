@@ -193,7 +193,7 @@ if ((await env.IMAGES.head(key)) === null) {
 }
 ```
 
-`IMMUTABLE_CACHE_CONTROL` to `public, max-age=31536000, immutable`, co jest bezpieczne właśnie dlatego, że kluczem jest skrót. Bindingiem jest `IMAGES` w `wrangler.jsonc`. `uploadImageFn` odpowiada samym kluczem, formularze zapisują ten klucz, a `getAssetURL` / `resolveAssetURL` w `src/lib/url.ts` zamieniają go w publiczny adres na podstawie `VITE_R2_URL` dopiero przy wyświetlaniu, więc zapisane wiersze nie zawierają hosta.
+`IMMUTABLE_CACHE_CONTROL` to `public, max-age=31536000, immutable`, co jest bezpieczne właśnie dlatego, że kluczem jest skrót. Bindingiem jest `IMAGES` w `wrangler.jsonc`. Każde przyjęte przesłanie, także pliku, którego bajty bucket już miał, zapisuje `image.uploaded` przypisane administratorowi, z kluczem jako celem i własną nazwą pliku jako szczegółem. `uploadImageFn` odpowiada samym kluczem, formularze zapisują ten klucz, a `getAssetURL` / `resolveAssetURL` w `src/lib/url.ts` zamieniają go w publiczny adres na podstawie `VITE_R2_URL` dopiero przy wyświetlaniu, więc zapisane wiersze nie zawierają hosta.
 
 `product-image.persist.utils.ts` (`prepareProductImagesBatch`) przepisuje wiersze zdjęć produktu i w tym samym batchu utrzymuje `product.thumbnail` w zgodzie, a `product-image.server.ts` odczytuje je przez `getProductImagesQuery`. Widżety wysyłki leżą w `src/presentation/components/custom/image-upload/`.
 

@@ -23,7 +23,7 @@ const { audit, catalogInvalidated, sendEmail, sqlite, stripeApi } = await vi.hoi
   const { DatabaseSync } = await import("node:sqlite")
 
   return {
-    audit: { cancelled: vi.fn(), email: vi.fn(), refund: vi.fn(), restocked: vi.fn() },
+    audit: { cancelled: vi.fn(), email: vi.fn(), refund: vi.fn(), refundRequested: vi.fn(), restocked: vi.fn() },
     catalogInvalidated: vi.fn(),
     sendEmail: vi.fn<(options: Readonly<SentEmail>) => Promise<string | undefined>>(),
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
@@ -84,6 +84,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderCancelledAudit: audit.cancelled,
   recordOrderEmailOutcome: audit.email,
   recordOrderRefundAudit: audit.refund,
+  recordOrderRefundRequestedAudit: audit.refundRequested,
   recordOrderRestockedAudit: audit.restocked,
 }))
 
@@ -199,6 +200,7 @@ describe("cancelling a paid order", () => {
 
     expect(stripeApi.sessionsRetrieve).toHaveBeenCalledExactlyOnceWith("cs_paid")
     expect(stripeApi.refundsCreate).toHaveBeenCalledExactlyOnceWith(REFUND_REQUEST, REFUND_KEY)
+    expect(audit.refundRequested).toHaveBeenCalledExactlyOnceWith(PAID_ORDER_ID)
   })
 
   it("cancels the order and returns its stock, passing over a line whose variant is gone", async () => {
@@ -248,6 +250,7 @@ describe("cancelling a paid order", () => {
     expect(consoleError).toHaveBeenCalledOnce()
     expect(readOrder(PAID_ORDER_ID)).toStrictEqual({ fulfillment_status: "not_fulfilled", status: "processing" })
     expect(readStock()).toStrictEqual(STOCK_HELD)
+    expect(audit.refundRequested).not.toHaveBeenCalled()
     expect(audit.cancelled).not.toHaveBeenCalled()
   })
 
@@ -414,6 +417,7 @@ describe("cancelling an order with nothing to refund", () => {
 
     expect(stripeApi.sessionsRetrieve).not.toHaveBeenCalled()
     expect(stripeApi.refundsCreate).not.toHaveBeenCalled()
+    expect(audit.refundRequested).not.toHaveBeenCalled()
     expect(readOrder(FREE_ORDER_ID)).toStrictEqual({ fulfillment_status: "cancelled", status: "cancelled" })
     expect(readStock()).toStrictEqual({ ...STOCK_HELD, "variant-chain": 4 })
   })

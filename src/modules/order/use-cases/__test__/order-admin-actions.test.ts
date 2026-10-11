@@ -36,8 +36,8 @@ interface ActionRow {
 const orderRow = vi.hoisted(() => ({ current: undefined as ActionRow | undefined }))
 
 const audit = vi.hoisted(() => ({
+  delivered: vi.fn(),
   fulfillmentStarted: vi.fn(),
-  released: vi.fn(),
   shipped: vi.fn(),
 }))
 
@@ -54,8 +54,8 @@ vi.mock("~/src/integrations/resend/order-shipped.notification.server", () => ({
   notifyOrderShipped: shippedEmail.notifyOrderShipped,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+  recordOrderDeliveredAudit: audit.delivered,
   recordOrderFulfillmentStartedAudit: audit.fulfillmentStarted,
-  recordOrderReleasedAudit: audit.released,
   recordOrderShippedAudit: audit.shipped,
 }))
 vi.mock(import("~/src/modules/order/order.admin-action.server"), async (importOriginal) => {
@@ -240,10 +240,10 @@ describe("markOrderDelivered", () => {
     expect(database.updates[0]?.["deliveredAt"]).toBeInstanceOf(Date)
   })
 
-  it("records the release of the order in the audit log", async () => {
+  it("records the delivery of the order in the audit log", async () => {
     await markOrderDelivered({ data: { orderId: ORDER_ID } })
 
-    expect(audit.released).toHaveBeenCalledWith(ORDER_ID)
+    expect(audit.delivered).toHaveBeenCalledWith(ORDER_ID)
   })
 
   it("refuses to mark delivered an order that has not shipped", async () => {
@@ -253,7 +253,7 @@ describe("markOrderDelivered", () => {
       new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE),
     )
     expect(database.updates).toHaveLength(0)
-    expect(audit.released).not.toHaveBeenCalled()
+    expect(audit.delivered).not.toHaveBeenCalled()
   })
 
   it("refuses to mark delivered a refunded order", async () => {

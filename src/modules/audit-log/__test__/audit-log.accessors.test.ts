@@ -6,6 +6,7 @@ import { deleteAuditLogs, getAdminAuditLogStats, getAdminAuditLogsPage, insertAu
 
 const database = vi.hoisted(() => ({
   batch: vi.fn((): Promise<unknown> => Promise.resolve([[{ count: 0 }], []])),
+  deletedRows: [] as { id: string }[],
   deletes: [] as unknown[],
   inserts: [] as unknown[],
   limits: [] as (number | undefined)[],
@@ -44,7 +45,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => {
         where: (where: SQL) => {
           database.deletes.push(where)
 
-          return Promise.resolve(undefined)
+          return { returning: () => Promise.resolve(database.deletedRows) }
         },
       }),
       insert: () => ({
@@ -75,6 +76,7 @@ const listParams = { limit: 50, offset: 0 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  database.deletedRows = []
   database.deletes = []
   database.inserts = []
   database.limits = []
@@ -233,13 +235,15 @@ describe("insertAuditLogs", () => {
 })
 
 describe("deleteAuditLogs", () => {
-  it("returns zero and writes nothing for an empty id list", async () => {
-    await expect(deleteAuditLogs([])).resolves.toBe(0)
+  it("reports no ids and writes nothing for an empty id list", async () => {
+    await expect(deleteAuditLogs([])).resolves.toStrictEqual([])
     expect(database.deletes).toStrictEqual([])
   })
 
-  it("deletes the listed ids and reports how many were removed", async () => {
-    await expect(deleteAuditLogs(["log-1", "log-2"])).resolves.toBe(2)
+  it("deletes the listed ids and reports the ones the delete returned", async () => {
+    database.deletedRows = [{ id: "log-2" }]
+
+    await expect(deleteAuditLogs(["log-1", "log-2"])).resolves.toStrictEqual(["log-2"])
 
     const query = dialect.sqlToQuery(lastDelete())
 

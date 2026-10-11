@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { AUDIT_LOG_ACTION, type AuditLogAction, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import {
   type AuditEventOptions,
+  recordAuditLogsDeletedAudit,
   recordAuthLoginAudit,
   recordAuthLoginFailedAudit,
   recordAuthLogoutAudit,
@@ -24,13 +25,16 @@ import {
   recordCustomerDeletionFailedAudit,
   recordCustomerPageViewedAudit,
   recordCustomerRegisteredAudit,
+  recordCustomerUpdatedAudit,
   recordDiscountCreatedAudit,
   recordDiscountDeletedAudit,
   recordDiscountRedeemedAudit,
   recordDiscountUpdatedAudit,
   recordEmailFailedAudit,
   recordEmailSentAudit,
+  recordImageUploadedAudit,
   recordOrderCancelledAudit,
+  recordOrderDeliveredAudit,
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
   recordOrderEmailOutcome,
@@ -40,9 +44,11 @@ import {
   recordOrderPaymentFailedAudit,
   recordOrderPlacedAudit,
   recordOrderRefundAudit,
+  recordOrderRefundRequestedAudit,
   recordOrderReleasedAudit,
   recordOrderRestockedAudit,
   recordOrderShippedAudit,
+  recordOrderWithdrawalReceivedAudit,
   recordSalesPausedAudit,
   recordSalesResumedAudit,
   resolveAuthAuditActor,
@@ -274,10 +280,11 @@ describe("order lifecycle audit events", () => {
     )
   })
 
-  it("records a cancellation as a warning", () => {
+  it("records a cancellation as a warning against the admin making the request", () => {
     recordOrderCancelledAudit("order-1")
 
-    expect(record.scheduleSystemAuditLog).toHaveBeenCalledWith(
+    expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledWith(
       expect.objectContaining({ action: AUDIT_LOG_ACTION.ORDER_CANCELLED, severity: "warning" }),
     )
   })
@@ -426,16 +433,8 @@ const ORDER_CASES: readonly TargetAuditCase[] = [
     record: recordOrderPaymentCapturedAudit,
     severity: "success",
   },
-  {
-    action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,
-    name: "the start of fulfillment",
-    record: recordOrderFulfillmentStartedAudit,
-    severity: "info",
-  },
-  { action: AUDIT_LOG_ACTION.ORDER_SHIPPED, name: "a shipped order", record: recordOrderShippedAudit, severity: "success" },
   { action: AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED, name: "a started refund", record: recordOrderRefundAudit, severity: "warning" },
   { action: AUDIT_LOG_ACTION.ORDER_RELEASED, name: "a released reservation", record: recordOrderReleasedAudit, severity: "info" },
-  { action: AUDIT_LOG_ACTION.ORDER_RESTOCKED, name: "items returned to stock", record: recordOrderRestockedAudit, severity: "info" },
   { action: AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED, name: "an opened dispute", record: recordOrderDisputeOpenedAudit, severity: "warning" },
   { action: AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED, name: "a closed dispute", record: recordOrderDisputeClosedAudit, severity: "info" },
   {
@@ -469,6 +468,72 @@ describe("remaining order audit events", () => {
     expect(record.scheduleSystemAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ detail: "handled by Stripe", resourceId: "pi_42", target: "order-7" }),
     )
+  })
+})
+
+const ADMIN_ORDER_CASES: readonly TargetAuditCase[] = [
+  {
+    action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,
+    name: "the start of fulfillment",
+    record: recordOrderFulfillmentStartedAudit,
+    severity: "info",
+  },
+  { action: AUDIT_LOG_ACTION.ORDER_SHIPPED, name: "a shipped order", record: recordOrderShippedAudit, severity: "success" },
+  { action: AUDIT_LOG_ACTION.ORDER_RELEASED, name: "a delivered order", record: recordOrderDeliveredAudit, severity: "info" },
+  { action: AUDIT_LOG_ACTION.ORDER_CANCELLED, name: "a cancelled order", record: recordOrderCancelledAudit, severity: "warning" },
+  {
+    action: AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED,
+    name: "a refund the admin asked Stripe for",
+    record: recordOrderRefundRequestedAudit,
+    severity: "warning",
+  },
+  { action: AUDIT_LOG_ACTION.ORDER_RESTOCKED, name: "items returned to stock", record: recordOrderRestockedAudit, severity: "info" },
+]
+
+describe("order actions an admin takes", () => {
+  it.each(ADMIN_ORDER_CASES)(
+    "files $name under the orders category against the admin making the request",
+    ({ action, record: recordAudit, severity }) => {
+      recordAudit("order-7")
+
+      expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()
+      expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+        action,
+        category: "orders",
+        detail: undefined,
+        metadata: undefined,
+        resourceId: "order-7",
+        severity,
+        target: "order-7",
+      })
+    },
+  )
+
+  it.each(ADMIN_ORDER_CASES)("keeps the detail and resource id handed to $name", ({ record: recordAudit }) => {
+    recordAudit("order-7", { detail: "PL123456789", resourceId: "order-7" })
+
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledWith(
+      expect.objectContaining({ detail: "PL123456789", resourceId: "order-7", target: "order-7" }),
+    )
+  })
+})
+
+describe("a withdrawal from the contract", () => {
+  it("files it as a warning under the order, credited to the consumer who made the statement", () => {
+    const consumer: AuditLogActorInput = { email: "anna@example.com", name: "Anna Kowalska", role: "customer" }
+
+    recordOrderWithdrawalReceivedAudit("order-7", consumer, { detail: "MRT-2026-00042", metadata: { scope: "items" } })
+
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.ORDER_WITHDRAWAL_RECEIVED,
+      actor: consumer,
+      category: "orders",
+      detail: "MRT-2026-00042",
+      metadata: { scope: "items" },
+      resourceId: "order-7",
+      severity: "warning",
+      target: "order-7",
+    })
   })
 })
 
@@ -623,6 +688,55 @@ describe("sales switch audit events", () => {
       resourceId: "store",
       severity,
       target: "store",
+    })
+  })
+})
+
+describe("recordCustomerUpdatedAudit", () => {
+  it("files the edit under customers against the admin making the request, targeting the customer's address", () => {
+    recordCustomerUpdatedAudit("ada@example.test", { resourceId: "user-7" })
+
+    expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.CUSTOMER_UPDATED,
+      category: "customers",
+      detail: undefined,
+      metadata: undefined,
+      resourceId: "user-7",
+      severity: "info",
+      target: "ada@example.test",
+    })
+  })
+})
+
+describe("recordImageUploadedAudit", () => {
+  it("files the upload under the catalog against the admin making the request, with the object key as the target", () => {
+    recordImageUploadedAudit("products/abc.png", { detail: "ring.png" })
+
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.IMAGE_UPLOADED,
+      category: "catalog",
+      detail: "ring.png",
+      metadata: undefined,
+      resourceId: "products/abc.png",
+      severity: "info",
+      target: "products/abc.png",
+    })
+  })
+})
+
+describe("recordAuditLogsDeletedAudit", () => {
+  it("files the deletion under settings as a warning against the admin making the request, keeping the deleted ids", () => {
+    recordAuditLogsDeletedAudit("2", { metadata: { ids: ["log-1", "log-2"] } })
+
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.AUDIT_LOG_DELETED,
+      category: "settings",
+      detail: undefined,
+      metadata: { ids: ["log-1", "log-2"] },
+      resourceId: "2",
+      severity: "warning",
+      target: "2",
     })
   })
 })
