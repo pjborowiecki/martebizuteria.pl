@@ -183,7 +183,7 @@ Kolumna zawierająca zwykły tekst, a nie JSON, jest traktowana jako notatka, wi
 - upsertuje domyślny adres przez `upsertDefaultAddressForUser`, ale tylko gdy przejdzie `hasAddressInput` — `address1` i `city` muszą być niepuste
 - gdy przysłany `countryCode` jest pusty, używa kraju z istniejącego domyślnego adresu, a nie zapisuje pustego napisu, i całkowicie pomija zapis adresu, jeśli kraju wciąż nie ma
 
-**Nie** zmienia adresu e-mail, nazwy, roli ani stanu bana; to operacje Better Auth.
+**Nie** zmienia adresu e-mail, nazwy, roli ani stanu bana; to operacje Better Auth. Po zapisach zapisuje `customer.updated` przypisane administratorowi, z adresem e-mail klienta jako celem i jego identyfikatorem jako zasobem.
 
 `deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, ma cztery zabezpieczenia:
 
@@ -214,7 +214,7 @@ return { goodbyeEmailSent, ok: true as const, userId }
 
 `eraseAccountData` to ten sam krok, który przy usunięciu konta przez klienta uruchamia `beforeDelete` w Better Auth: usuwa klienta Stripe powiązanego z kontem razem z zapisanymi kartami, a potem wpisy konta w dzienniku audytu i subskrypcję newslettera (zobacz [Konto: Usunięcie konta](/docs/features/account#usunięcie-konta)). Gdy Stripe nie może usunąć klienta, nic nie zostaje usunięte, zapisuje się `customer.deletion_failed`, a `useDeleteCustomer` pokazuje „Stripe nie usunął profilu klienta ani zapisanych kart, więc konto nie zostało usunięte. Spróbuj ponownie za kilka minut. Błąd zapisano w dzienniku zdarzeń.” Okno potwierdzenia, `rowActions.deleteDescription`, wymienia, co zostanie usunięte, i mówi, że zamówienia i płatności pozostaną w dokumentacji księgowej przez 5 lat.
 
-Ponieważ usunięcie idzie przez Better Auth, działają kaskady na `session`, `account`, `address`, `wishlist_item` i `two_factor`, natomiast `order.user_id` i `checkout.user_id` mają `onDelete: "set null"` — zamówienia przeżywają więc jako zamówienia gościa.
+Ponieważ usunięcie idzie przez Better Auth, jego `databaseHooks.user.delete.after` zapisuje `customer.deleted` przypisane administratorowi, którego sesja wywołała `removeUser`, z adresem e-mail usuniętego klienta jako celem, i działają kaskady na `session`, `account`, `address`, `wishlist_item` i `two_factor`, natomiast `order.user_id` i `checkout.user_id` mają `onDelete: "set null"` — zamówienia przeżywają więc jako zamówienia gościa.
 
 ## Eksport
 

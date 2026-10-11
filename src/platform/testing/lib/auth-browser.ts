@@ -9,6 +9,7 @@ export const CUSTOMER_PASSWORD = "correct-horse-battery-staple"
 
 export interface AuthBrowser {
   readonly follow: (url: string) => Promise<Response>
+  readonly headers: () => Headers
   readonly post: (path: string, body: Readonly<Record<string, unknown>>) => Promise<Response>
   readonly signIn: (email: string) => Promise<Response>
 }
@@ -16,22 +17,20 @@ export interface AuthBrowser {
 export const openAuthBrowser = (ip: string): AuthBrowser => {
   const jar = new Map<string, string>()
 
+  const headers: AuthBrowser["headers"] = () =>
+    new Headers({
+      "cf-connecting-ip": ip,
+      cookie: [...jar].map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join("; "),
+      origin: new URL(AUTH_BASE_URL).origin,
+      [TURNSTILE_TOKEN_HEADER]: TURNSTILE_TESTING_KEYS.DUMMY_TOKEN,
+    })
+
   const send = async (
     url: string,
     init: Readonly<{ body?: string; headers?: Record<string, string>; method?: string }>,
   ): Promise<Response> => {
-    const response = await auth.handler(
-      new Request(url, {
-        ...init,
-        headers: {
-          ...init.headers,
-          "cf-connecting-ip": ip,
-          cookie: [...jar].map(([name, value]) => `${name}=${encodeURIComponent(value)}`).join("; "),
-          origin: new URL(AUTH_BASE_URL).origin,
-          [TURNSTILE_TOKEN_HEADER]: TURNSTILE_TESTING_KEYS.DUMMY_TOKEN,
-        },
-      }),
-    )
+    const request = new Request(url, { ...init, headers: { ...init.headers, ...Object.fromEntries(headers()) } })
+    const response = await auth.handler(request)
     for (const [name, { value }] of parseSetCookieHeader(response.headers.getSetCookie().join(", "))) {
       if (value === "") {
         jar.delete(name)
@@ -48,6 +47,7 @@ export const openAuthBrowser = (ip: string): AuthBrowser => {
 
   return {
     follow: (url) => send(url, {}),
+    headers,
     post,
     signIn: (email) => post("/sign-in/email", { email, password: CUSTOMER_PASSWORD }),
   }

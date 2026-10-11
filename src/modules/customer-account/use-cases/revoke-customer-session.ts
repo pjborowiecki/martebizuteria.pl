@@ -6,9 +6,12 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { recordAuthSessionsRevokedAudit, resolveAuthAuditActor } from "~/src/modules/audit-log/audit-log.events.server"
 import { CUSTOMER_ACCOUNT_MUTATION_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
 import { session } from "~/src/modules/session/session.schema"
+
+import { resolveRequestIp } from "~/src/lib/request"
 
 export const revokeCustomerSession = createServerFn({ method: "POST" })
   .middleware([authorized()])
@@ -18,7 +21,13 @@ export const revokeCustomerSession = createServerFn({ method: "POST" })
       return false
     }
 
-    await db.delete(session).where(and(eq(session.id, sessionId), eq(session.userId, context.auth.user.id)))
+    const [revoked] = await db
+      .delete(session)
+      .where(and(eq(session.id, sessionId), eq(session.userId, context.auth.user.id)))
+      .returning({ id: session.id })
+    if (revoked !== undefined) {
+      recordAuthSessionsRevokedAudit(resolveAuthAuditActor(context.auth.user), { ip: resolveRequestIp(context.requestHeaders) })
+    }
 
     return true
   })

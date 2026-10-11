@@ -1,6 +1,11 @@
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
-import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
+import {
+  AUDIT_LOG_ACTION,
+  type AuditLogAction,
+  type AuditLogCategory,
+  type AuditLogSeverity,
+} from "~/src/modules/audit-log/audit-log.constants"
 import {
   type AuditLogActorInput,
   scheduleAuditLog,
@@ -48,6 +53,27 @@ const resolveActorAuditTarget = (
     resourceId,
     target: actor.name,
   }
+}
+
+interface AccountAuditEvent {
+  readonly action: AuditLogAction
+  readonly category: AuditLogCategory
+  readonly severity: AuditLogSeverity
+}
+
+const scheduleAccountAudit = (
+  { action, category, severity }: AccountAuditEvent,
+  account: AuditLogActorInput,
+  options?: AuditEventOptions,
+): void => {
+  scheduleAuditLog({
+    action,
+    actor: options?.actor ?? account,
+    category,
+    ip: options?.ip,
+    severity,
+    ...resolveActorAuditTarget(account, options),
+  })
 }
 
 export const recordCatalogProductCreatedAudit = (target: string, options?: AuditEventOptions): void => {
@@ -176,6 +202,15 @@ export const recordCatalogAttributeDeletedAudit = (target: string, options?: Aud
   })
 }
 
+export const recordImageUploadedAudit = (key: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.IMAGE_UPLOADED,
+    category: "catalog",
+    severity: "info",
+    ...withResourceId(key, options),
+  })
+}
+
 export const recordContentPageUpdatedAudit = (handle: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.CONTENT_PAGE_UPDATED,
@@ -230,6 +265,15 @@ export const recordSalesResumedAudit = (target: string, options?: AuditEventOpti
   })
 }
 
+export const recordAuditLogsDeletedAudit = (target: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.AUDIT_LOG_DELETED,
+    category: "settings",
+    severity: "warning",
+    ...withResourceId(target, options),
+  })
+}
+
 export const recordDiscountRedeemedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.DISCOUNT_REDEEMED,
@@ -258,6 +302,55 @@ export const recordCustomerDeletionFailedAudit = (email: string, options?: Audit
     severity: "error",
     ...withResourceId(email, options),
   })
+}
+
+export const recordCustomerUpdatedAudit = (email: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.CUSTOMER_UPDATED,
+    category: "customers",
+    severity: "info",
+    ...withResourceId(email, options),
+  })
+}
+
+export const recordCustomerDeletedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.CUSTOMER_DELETED, category: "customers", severity: "warning" }, account, options)
+}
+
+export const recordAuthPasswordChangedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_PASSWORD_CHANGED, category: "auth", severity: "info" }, account, options)
+}
+
+export const recordAuthPasswordResetAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_PASSWORD_RESET, category: "auth", severity: "warning" }, account, options)
+}
+
+export const recordAuthEmailChangedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED, category: "auth", severity: "warning" }, account, options)
+}
+
+export const recordAuthTwoFactorEnabledAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_TWO_FACTOR_ENABLED, category: "auth", severity: "success" }, account, options)
+}
+
+export const recordAuthTwoFactorDisabledAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_TWO_FACTOR_DISABLED, category: "auth", severity: "warning" }, account, options)
+}
+
+export const recordAuthSessionsRevokedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_SESSIONS_REVOKED, category: "auth", severity: "info" }, account, options)
+}
+
+export const recordAuthRoleChangedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED, category: "auth", severity: "warning" }, account, options)
+}
+
+export const recordAuthUserBannedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_USER_BANNED, category: "auth", severity: "warning" }, account, options)
+}
+
+export const recordAuthUserUnbannedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_USER_UNBANNED, category: "auth", severity: "info" }, account, options)
 }
 
 export const recordAuthLoginAudit = (actor: AuditLogActorInput, options?: AuditEventOptions): void => {
@@ -357,7 +450,7 @@ export const recordOrderPaymentCapturedAudit = (orderId: string, options?: Audit
 }
 
 export const recordOrderFulfillmentStartedAudit = (orderId: string, options?: AuditEventOptions): void => {
-  scheduleSystemAuditLog({
+  scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,
     category: "orders",
     severity: "info",
@@ -366,7 +459,7 @@ export const recordOrderFulfillmentStartedAudit = (orderId: string, options?: Au
 }
 
 export const recordOrderShippedAudit = (orderId: string, options?: AuditEventOptions): void => {
-  scheduleSystemAuditLog({
+  scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.ORDER_SHIPPED,
     category: "orders",
     severity: "success",
@@ -375,7 +468,7 @@ export const recordOrderShippedAudit = (orderId: string, options?: AuditEventOpt
 }
 
 export const recordOrderCancelledAudit = (orderId: string, options?: AuditEventOptions): void => {
-  scheduleSystemAuditLog({
+  scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.ORDER_CANCELLED,
     category: "orders",
     severity: "warning",
@@ -392,11 +485,30 @@ export const recordOrderRefundAudit = (orderId: string, options?: AuditEventOpti
   })
 }
 
+export const recordOrderRefundRequestedAudit = (orderId: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED,
+    category: "orders",
+    severity: "warning",
+    ...withResourceId(orderId, options),
+  })
+}
+
 export const recordOrderRestockedAudit = (orderId: string, options?: AuditEventOptions): void => {
-  scheduleSystemAuditLog({
+  scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.ORDER_RESTOCKED,
     category: "orders",
     severity: "info",
+    ...withResourceId(orderId, options),
+  })
+}
+
+export const recordOrderWithdrawalReceivedAudit = (orderId: string, consumer: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.ORDER_WITHDRAWAL_RECEIVED,
+    actor: consumer,
+    category: "orders",
+    severity: "warning",
     ...withResourceId(orderId, options),
   })
 }
@@ -407,6 +519,15 @@ export const recordOrderReleasedAudit = (sessionId: string, options?: AuditEvent
     category: "orders",
     severity: "info",
     ...withResourceId(sessionId, options),
+  })
+}
+
+export const recordOrderDeliveredAudit = (orderId: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.ORDER_RELEASED,
+    category: "orders",
+    severity: "info",
+    ...withResourceId(orderId, options),
   })
 }
 

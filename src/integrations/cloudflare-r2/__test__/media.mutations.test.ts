@@ -24,7 +24,10 @@ const bucket = vi.hoisted(() => {
   }
 })
 
+const audit = vi.hoisted(() => ({ recordImageUploadedAudit: vi.fn() }))
+
 vi.mock("cloudflare:workers", () => ({ env: { IMAGES: { head: bucket.head, put: bucket.put } } }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 const passthrough = vi.hoisted(
   () =>
@@ -101,6 +104,7 @@ describe("uploadImageFn rejections", () => {
     await expect(uploadImageFn({ data: formDataWith("not-a-file") })).rejects.toThrow(MEDIA_ERROR_CODES.INVALID_FILE)
 
     expect(bucket.put).not.toHaveBeenCalled()
+    expect(audit.recordImageUploadedAudit).not.toHaveBeenCalled()
   })
 })
 
@@ -163,5 +167,21 @@ describe("uploadImageFn writes", () => {
     await uploadImageFn({ data: formDataWith(pngFile(), "products") })
 
     expect(bucket.head).toHaveBeenCalledWith(`products/${PNG_DIGEST}.png`)
+  })
+})
+
+describe("uploadImageFn audit", () => {
+  it("records the upload against its object key, naming the file the admin chose", async () => {
+    await uploadImageFn({ data: formDataWith(pngFile("ring.png"), "products") })
+
+    expect(audit.recordImageUploadedAudit).toHaveBeenCalledExactlyOnceWith(`products/${PNG_DIGEST}.png`, { detail: "ring.png" })
+  })
+
+  it("records an upload whose bytes the bucket already held", async () => {
+    bucket.existingKeys.add(`products/${PNG_DIGEST}.png`)
+
+    await uploadImageFn({ data: formDataWith(pngFile("again.png"), "products") })
+
+    expect(audit.recordImageUploadedAudit).toHaveBeenCalledExactlyOnceWith(`products/${PNG_DIGEST}.png`, { detail: "again.png" })
   })
 })

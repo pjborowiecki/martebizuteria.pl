@@ -28,7 +28,12 @@ const { sqlite } = await vi.hoisted(async () => {
 })
 
 const audit = vi.hoisted(() => ({
+  recordAuthEmailChangedAudit: vi.fn(),
   recordAuthLoginAudit: vi.fn(),
+  recordAuthPasswordChangedAudit: vi.fn(),
+  recordAuthSessionsRevokedAudit: vi.fn(),
+  recordAuthTwoFactorDisabledAudit: vi.fn(),
+  recordAuthTwoFactorEnabledAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
   resolveAuthAuditActor: vi.fn((user: { id: string }) => `actor:${user.id}`),
 }))

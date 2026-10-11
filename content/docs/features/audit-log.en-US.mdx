@@ -27,25 +27,25 @@ The audit log is the shop's event history and doubles as its analytics store. It
 
 Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` and the composite `audit_log_resource_idx` on (`category`, `resource_id`) — which is what makes "everything that happened to this order" cheap.
 
-## The 43 actions
+## The 58 actions
 
 `AUDIT_LOG_ACTION` in `audit-log.constants.ts`:
 
-| Category    | Actions                                                                                                                                                                                                                                                                                           |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`                                                                                                                                                  |
-| `content`   | `content_page.updated`                                                                                                                                                                                                                                                                            |
-| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_initiated`, `order.restocked`, `order.released`, `order.dispute_opened`, `order.dispute_closed`, `discount.redeemed` |
-| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`                                                                                                                                                                                                                                                  |
-| `customers` | `customer.registered`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`, `customer.deletion_failed`                                                                                                                                                                  |
-| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                                                                                    |
-| `settings`  | `settings.updated`, `discount.created/updated/deleted`, `sales.paused`, `sales.resumed`                                                                                                                                                                                                           |
+| Category    | Actions                                                                                                                                                                                                                                                                                                                                                  |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `catalog`   | `product.created/updated/deleted`, `category.created/updated/deleted`, `collection.created/updated/deleted`, `attribute.created/updated/deleted`, `image.uploaded`                                                                                                                                                                                       |
+| `content`   | `content_page.updated`                                                                                                                                                                                                                                                                                                                                   |
+| `orders`    | `order.placed`, `order.payment_captured`, `order.payment_failed`, `order.fulfillment_failed`, `order.fulfillment_started`, `order.shipped`, `order.cancelled`, `order.refund_requested`, `order.withdrawal_received`, `order.refund_initiated`, `order.restocked`, `order.released`, `order.dispute_opened`, `order.dispute_closed`, `discount.redeemed` |
+| `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset`, `auth.email_changed`, `auth.two_factor_enabled`, `auth.two_factor_disabled`, `auth.sessions_revoked`, `auth.role_changed`, `auth.user_banned`, `auth.user_unbanned`                                                                                    |
+| `customers` | `customer.registered`, `customer.updated`, `customer.deleted`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`, `customer.deletion_failed`                                                                                                                                                                                 |
+| `email`     | `email.sent`, `email.failed`, `email.deferred`                                                                                                                                                                                                                                                                                                           |
+| `settings`  | `settings.updated`, `discount.created/updated/deleted`, `sales.paused`, `sales.resumed`, `audit_log.deleted`                                                                                                                                                                                                                                             |
 
 `email.deferred` and `settings.updated` are declared but nothing emits them.
 
 ## Writing an event
 
-Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 42 exported `record*` functions, which is 41 action recorders plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
+Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 58 exported `record*` functions, which are 57 action recorders, two of them for `order.released` (the checkout the Stripe webhook releases and the order an admin marks delivered), plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
 
 | Scheduler                     | Actor resolution                                                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -67,6 +67,8 @@ export const scheduleAuditLog = (input: AuditLogEventInput): void => {
 
 Two helpers shape `target` and `resource_id` consistently: `withResourceId(target, options)` defaults `resourceId` to `target`, and `resolveActorAuditTarget(actor, options)` prefers the actor's email as the target and puts it in the metadata, falling back to the name.
 
+Who an entry is credited to follows from the scheduler. Every action an admin takes on an order — fulfil, ship, mark delivered, cancel, ask Stripe for a refund (`order.refund_requested`, from both the Refund button and a cancellation) and return to stock (`order.restocked`) — goes through `scheduleAuditLogFromRequest`, so the order's Activity card and `/admin/audit` name the signed-in admin and the address they acted from. The order events the Stripe webhook records, among them `order.refund_initiated` when Stripe confirms the refund, stay with `SYSTEM_AUDIT_ACTOR`. The account events, `auth.password_changed` to `auth.user_unbanned` and `customer.deleted`, take the account that changed and share `scheduleAccountAudit`: the account is the target, and the entry is credited to `options.actor` when an admin made the change and to the account holder otherwise. Customer edits (`customer.updated`), image uploads (`image.uploaded`) and deleted audit entries (`audit_log.deleted`) are credited to the admin making the request. A withdrawal from the contract (`order.withdrawal_received`), sent from the account or by order number at `/withdraw-from-contract`, is a warning credited to the consumer who signed the statement, with the order's address, the order number as its detail and the scope in its metadata, so the order's Activity card shows it beside the withdrawals card.
+
 ## The queue
 
 The producer binding is `AUDIT_LOG_QUEUE`:
@@ -82,11 +84,20 @@ const enqueueAuditLogMessage = async (message: AuditLogQueueMessage): Promise<vo
 ```jsonc
 "queues": {
   "producers": [{ "binding": "AUDIT_LOG_QUEUE", "queue": "martebizuteria-audit-log-preview" }],
-  "consumers": [{ "queue": "martebizuteria-audit-log-preview", "max_batch_size": 50, "max_batch_timeout": 5, "max_retries": 3 }],
+  "consumers": [
+    {
+      "queue": "martebizuteria-audit-log-preview",
+      "max_batch_size": 50,
+      "max_batch_timeout": 5,
+      "max_retries": 3,
+      "dead_letter_queue": "martebizuteria-audit-log-preview-dlq",
+    },
+    { "queue": "martebizuteria-audit-log-preview-dlq", "max_batch_size": 1, "max_retries": 3, "retry_delay": 300 },
+  ],
 },
 ```
 
-The consumer entry point is the `queue` export in `src/server.ts`:
+The Worker consumes two queues per environment: the audit queue and its dead-letter queue, named after it with `-dlq` (`martebizuteria-audit-log-preview-dlq` for development and preview, `martebizuteria-audit-log-test-dlq` for the local test Worker, `martebizuteria-audit-log-dlq` for production). The consumer entry point for both is the `queue` export in `src/server.ts`:
 
 ```ts
 async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
@@ -123,7 +134,7 @@ try {
 }
 ```
 
-So up to 50 events become one D1 insert, and a failed batch is retried up to three times. A failed batch also emails `RESEND_EMAIL_FROM` once the messages are marked for retry, at most once an hour for the queue, and the alert never throws, so it cannot change the retry; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts). The consequence to keep in mind: **an audit entry is eventually consistent** — it can take up to `max_batch_timeout` (5 seconds) to appear, which is why the consumer publishes a realtime invalidation instead of relying on the writer to refresh the UI. `AUDIT_LOG_ADMIN_QUERY_KEYS` is the audit page and its stats. When a row in the batch is one of `ADMIN_ORDER_TIMELINE_ACTIONS`, the consumer adds `ORDER_QUERY_KEYS.ADMIN.ORDERS`. Every open admin tab then refetches the order list, stats or order page it has on screen and drops the order queries it only has cached, so a new timeline row, such as a failed order email, appears without a reload. The `email.*` actions are part of that list whatever the email was for, so a failed newsletter or Better Auth email triggers the refetch too.
+So up to 50 events become one D1 insert, and a failed batch is retried up to three times. A batch that still fails is not deleted: Cloudflare moves its messages to the dead-letter queue, whose consumer takes them **one at a time** (`max_batch_size: 1`) and runs each through the same `processAuditLogQueueBatch`, retrying it up to three more times five minutes apart (`retry_delay: 300`). One message the insert rejects therefore no longer takes the other 49 entries of its batch with it: they are written on their own, and only a message that still cannot be written after its third retry on the dead-letter queue is dropped, with the Worker log and an alert under the dead-letter queue's name as its record. `scripts/verify-bindings.ts` refuses a preview or production deploy whose audit consumer names no `dead_letter_queue` or whose dead-letter queue has no consumer, and each `-dlq` queue has to exist in Cloudflare before the deploy that names it (`bunx wrangler queues create martebizuteria-audit-log-dlq` for production). A failed batch also emails `RESEND_EMAIL_FROM` once the messages are marked for retry, at most once an hour for the queue, and the alert never throws, so it cannot change the retry; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts). The consequence to keep in mind: **an audit entry is eventually consistent** — it can take up to `max_batch_timeout` (5 seconds) to appear, which is why the consumer publishes a realtime invalidation instead of relying on the writer to refresh the UI. `AUDIT_LOG_ADMIN_QUERY_KEYS` is the audit page and its stats. When a row in the batch is one of `ADMIN_ORDER_TIMELINE_ACTIONS`, the consumer adds `ORDER_QUERY_KEYS.ADMIN.ORDERS`. Every open admin tab then refetches the order list, stats or order page it has on screen and drops the order queries it only has cached, so a new timeline row, such as a failed order email, appears without a reload. The `email.*` actions are part of that list whatever the email was for, so a failed newsletter or Better Auth email triggers the refetch too.
 
 ## Change diffs
 
@@ -157,6 +168,23 @@ Details worth knowing:
 - The request body is read with `request.clone().json()` so the real handler still receives it.
 - For a sign-out it reads the session **before** calling the handler, because afterwards there is none.
 - A failed login is recorded only when the response is not `ok`, and the email becomes the `target` — which is how the log shows attempts against addresses that may not exist.
+
+### Account security events
+
+Changes to an account are recorded from inside Better Auth, so they are caught whichever client calls the endpoint. `auth.server.ts` registers the `accountSecurityAudit` plugin next to `signInAudit`. Its after hooks run once the endpoint has answered, skip an answer that is an error, and read the caller from `ctx.context.session` and the address from the request's `cf-connecting-ip`:
+
+| Endpoint                                                        | Recorded                                                                                                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/change-password`                                              | `auth.password_changed`, plus `auth.sessions_revoked` when the customer asked to sign out the other devices                                             |
+| `/two-factor/verify-totp`                                       | `auth.two_factor_enabled`, only for the code that turns two-factor on: the caller arrived signed in with it off and leaves with it on                   |
+| `/two-factor/disable`                                           | `auth.two_factor_disabled`                                                                                                                              |
+| `/revoke-session`, `/revoke-sessions`, `/revoke-other-sessions` | `auth.sessions_revoked`                                                                                                                                 |
+| `/verify-email`                                                 | `auth.email_changed`, with `old → new` as the detail, when the link carries a `change-email-verification` token and the session now has the new address |
+| `/admin/set-role`, `/admin/ban-user`, `/admin/unban-user`       | `auth.role_changed` (the role as the detail), `auth.user_banned` (the reason), `auth.user_unbanned`                                                     |
+| `/admin/update-user`                                            | Each of `auth.role_changed`, `auth.user_banned`, `auth.user_unbanned` and `auth.email_changed` whose field the update sets                              |
+| `/admin/revoke-user-sessions`, `/admin/set-user-password`       | `auth.sessions_revoked`, `auth.password_changed`                                                                                                        |
+
+The admin endpoints look the account up by `userId` and credit the entry to the admin. Two more events need no plugin: `emailAndPassword.onPasswordReset` records `auth.password_reset` once a reset link sets the new password, and `databaseHooks.user.delete.after` records `customer.deleted` for every account Better Auth deletes except the anonymous ones it drops itself, credited to the session that asked — the admin for `/admin/remove-user`, which the admin customers page reaches through `auth.api.removeUser`, or the customer for `/delete-user` — and to the system when there is none. The account page's own server functions for signing out one device or all others, `revokeCustomerSession` and `revokeOtherCustomerSessions`, record `auth.sessions_revoked` themselves when they delete a session. Better Auth's `/admin/revoke-user-session`, which names a session by its token, and `/admin/impersonate-user` are not recorded.
 
 ## Customer activity
 
@@ -198,7 +226,7 @@ The filter constants are `AUDIT_LOG_CATEGORY_FILTER` (the categories plus `all`)
 
 Components live in `.../admin/audit/`: `audit-log.tsx`, `components/audit-columns.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, the cells in `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-table-cell`), and `audit-stats.config.ts`.
 
-Deletion is the only mutation an admin can make. The daily retention clean-up, `deleteExpiredAuditLogs` in `use-cases/delete-expired-audit-logs.server.ts`, also deletes entries: page views and cart events after 90 days, sign-ins, failed sign-ins and sign-outs after 12 months, and every other entry after 24 months. [Data retention](/docs/guides/data-retention) describes the job. Deleting an account deletes its entries too: `eraseAccountData` (`src/modules/user/user.erasure.server.ts`) deletes every row whose `resource_id` is the account's id or email address, which covers the account's activity log, its sign-in history, its registration and the auth emails that failed to reach it, and leaves order, catalogue and admin entries alone. If Stripe refuses to delete the account's customer, the account is kept and `customer.deletion_failed` records why, as an error under `customers`, against the account.
+Deletion is the only mutation an admin can make, and it is recorded too. `deleteAuditLogs` accepts at most `LIST_PAGE_SIZE_MAX` (250) entry ids, the largest page the grid shows, and refuses anything that is not a UUID, so the entry it records always fits in a queue message. The delete returns the ids it removed, and when it removed any, `audit_log.deleted` is recorded against the admin with their number as the target and those ids in the metadata; an id that matched nothing is neither counted nor listed. The daily retention clean-up, `deleteExpiredAuditLogs` in `use-cases/delete-expired-audit-logs.server.ts`, also deletes entries: page views and cart events after 90 days, sign-ins, failed sign-ins and sign-outs after 12 months, and every other entry after 24 months. [Data retention](/docs/guides/data-retention) describes the job. Deleting an account deletes its entries too: `eraseAccountData` (`src/modules/user/user.erasure.server.ts`) deletes every row whose `resource_id` is the account's id or email address, which covers the account's activity log, its sign-in history, its registration and the auth emails that failed to reach it, and leaves order, catalogue and admin entries alone. If Stripe refuses to delete the account's customer, the account is kept and `customer.deletion_failed` records why, as an error under `customers`, against the account.
 
 ## Read as a feed elsewhere
 

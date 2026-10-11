@@ -6,13 +6,15 @@ import { deleteAuditLogs, deleteAuditLogsMutation } from "../delete-audit-logs"
 import { listAuditLogs, listAuditLogsQuery } from "../list-audit-logs"
 
 const accessors = vi.hoisted(() => ({
-  deleteAuditLogs: vi.fn((ids: readonly string[]) => Promise.resolve(ids.length)),
+  deleteAuditLogs: vi.fn((ids: readonly string[]) => Promise.resolve([...ids])),
   page: vi.fn((params: { limit: number; offset: number }) =>
     Promise.resolve<{ rows: readonly { id: string }[]; total?: number | undefined }>({ rows: [], total: params.offset }),
   ),
 }))
 
 const publish = vi.hoisted(() => vi.fn(() => Promise.resolve(undefined)))
+
+const audit = vi.hoisted(() => ({ recordAuditLogsDeletedAudit: vi.fn() }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server", () => ({
@@ -22,6 +24,7 @@ vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({
   deleteAuditLogs: accessors.deleteAuditLogs,
   getAdminAuditLogsPage: accessors.page,
 }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("~/src/modules/audit-log/audit-log.utils", () => ({
   resolveStartOfToday: () => new Date("2026-09-27T00:00:00Z"),
   toAdminAuditListItem: (row: { id: string }) => ({ ...row, mapped: true }),
@@ -123,6 +126,7 @@ describe("deleteAuditLogs", () => {
 
     expect(accessors.deleteAuditLogs).toHaveBeenCalledWith(["log-1", "log-2"])
     expect(result).toStrictEqual({ deleted: 2, ok: true })
+    expect(audit.recordAuditLogsDeletedAudit).toHaveBeenCalledExactlyOnceWith("2", { metadata: { ids: ["log-1", "log-2"] } })
     expect(publish).toHaveBeenCalledWith({
       admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS],
     })

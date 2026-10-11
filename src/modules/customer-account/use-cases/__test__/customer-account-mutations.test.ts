@@ -12,6 +12,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   withRateLimit: () => ({}),
 }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({}))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {

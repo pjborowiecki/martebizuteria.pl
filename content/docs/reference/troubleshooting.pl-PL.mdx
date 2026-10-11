@@ -126,7 +126,7 @@ co uruchamia `cf-typegen` (`wrangler types --env development`), a potem `content
 
 ## Budowanie i wdrożenie
 
-**`Missing database, cache, images, audit, or realtime binding for preview`.** Ze `scripts/verify-bindings.ts`. Docelowemu środowisku w `wrangler.jsonc` brakuje powiązania albo nadal ma identyfikator zastępczy (kontrola odrzuca identyfikatory złożone wyłącznie z `0` i `-`). Utwórz zasób w Cloudflare i wklej prawdziwy identyfikator.
+**`Missing database, cache, images, audit, or realtime binding for preview`.** Ze `scripts/verify-bindings.ts`. Docelowemu środowisku w `wrangler.jsonc` brakuje powiązania, nadal ma identyfikator zastępczy (kontrola odrzuca identyfikatory złożone wyłącznie z `0` i `-`) albo konsument jego kolejki audytu nie wskazuje `dead_letter_queue` z własnym konsumentem. Utwórz zasób w Cloudflare i wklej prawdziwy identyfikator albo przywróć konsumenta `-dlq` kolejki audytu.
 
 **`Production and preview share the images bucket <nazwa>`.** Ze `scripts/verify-bindings.ts production`. Produkcyjne powiązanie `IMAGES` w `wrangler.jsonc` wskazuje bucket, który wiąże preview, więc wdrożenie produkcyjne serwowałoby i zapisywało zdjęcia preview. Produkcja używa `martebizuteria`, a preview `martebizuteria-preview`; przywróć produkcyjne `bucket_name`.
 

@@ -13,6 +13,15 @@ const { sqlite } = await vi.hoisted(async () => {
 
 const stripeCustomers = vi.hoisted(() => ({ del: vi.fn<(customerId: string) => Promise<{ deleted: true }>>() }))
 
+const audit = vi.hoisted(() => ({
+  recordAuthLoginAudit: vi.fn(),
+  recordCustomerDeletedAudit: vi.fn(),
+  recordCustomerDeletionFailedAudit: vi.fn(),
+  recordCustomerRegisteredAudit: vi.fn(),
+  recordEmailFailedAudit: vi.fn(),
+  resolveAuthAuditActor: vi.fn((user: { email: string }) => `actor:${user.email}`),
+}))
+
 vi.mock("cloudflare:workers", () => ({
   env: {
     AUTH_GOOGLE_CLIENT_ID: "test-google-client",
@@ -23,13 +32,7 @@ vi.mock("cloudflare:workers", () => ({
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { customers: stripeCustomers } }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: vi.fn(() => Promise.resolve(undefined)) }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
-  recordAuthLoginAudit: vi.fn(),
-  recordCustomerDeletionFailedAudit: vi.fn(),
-  recordCustomerRegisteredAudit: vi.fn(),
-  recordEmailFailedAudit: vi.fn(),
-  resolveAuthAuditActor: vi.fn(),
-}))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminAuditLogInvalidation: vi.fn(),
   scheduleAdminCustomersInvalidation: vi.fn(),
@@ -128,6 +131,10 @@ describe("a customer deleting their account", () => {
     expect(count("address")).toBe(0)
     expect(count("newsletter_subscriber")).toBe(0)
     expect(auditLogIds()).toStrictEqual(["order-placed"])
+    expect(audit.recordCustomerDeletedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${EMAIL}`, {
+      actor: `actor:${EMAIL}`,
+      ip: "198.51.100.30",
+    })
   })
 
   it("keeps the order for the accounting records, no longer linked to an account", async () => {

@@ -81,13 +81,23 @@ describe("insertAuditLogs on D1", () => {
 })
 
 describe("deleteAuditLogs on D1", () => {
-  it("deletes a full page of selected events and reports how many it removed", async () => {
+  it("deletes a full page of selected events and reports the ids it removed", async () => {
     const events = Array.from({ length: LIST_PAGE_SIZE_MAX + 2 }, (_, index) => fullyDescribedEvent(index))
     await insertAuditLogs(events)
     const ids = events.map(({ id }) => id)
+    const selected = ids.slice(1, -1)
 
-    await expect(deleteAuditLogs(ids.slice(1, -1))).resolves.toBe(LIST_PAGE_SIZE_MAX)
+    const deleted = await deleteAuditLogs(selected)
 
+    expect(deleted.toSorted()).toStrictEqual(selected)
     expect(storedIds()).toStrictEqual([ids[0], ids.at(-1)])
+  })
+
+  it("leaves out of its report an id that matched no stored event", async () => {
+    await insertAuditLogs([fullyDescribedEvent(0), fullyDescribedEvent(1)])
+
+    await expect(deleteAuditLogs(["log-000", "log-missing"])).resolves.toStrictEqual(["log-000"])
+
+    expect(storedIds()).toStrictEqual(["log-001"])
   })
 })

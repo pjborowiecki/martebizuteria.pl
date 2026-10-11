@@ -9,7 +9,7 @@ Each of the two environments in `wrangler.jsonc` attaches its custom domain thro
 
 ## Provision the resources
 
-`bun run deploy:preview` starts with `scripts/verify-bindings.ts`, which reads the same JSONC that Wrangler reads and throws unless all five bindings resolve. So provision first:
+`bun run deploy:preview` starts with `scripts/verify-bindings.ts`, which reads the same JSONC that Wrangler reads and throws unless all five bindings resolve and the audit queue's consumer names a dead-letter queue that the Worker consumes too. So provision first:
 
 ```sh
 bunx wrangler login
@@ -18,17 +18,19 @@ bunx wrangler kv namespace create martebizuteria-cache-preview
 bunx wrangler r2 bucket create martebizuteria-preview
 bunx wrangler r2 bucket dev-url enable martebizuteria-preview
 bunx wrangler queues create martebizuteria-audit-log-preview
+bunx wrangler queues create martebizuteria-audit-log-preview-dlq
 ```
 
 Then put the ids into `wrangler.jsonc`, under both `development` and `preview` if you want them to share resources as the committed configuration does:
 
-| Field                          | Where                                 |
-| ------------------------------ | ------------------------------------- |
-| `d1_databases[].database_id`   | `env.development` and `env.preview`   |
-| `d1_databases[].database_name` | The same two                          |
-| `kv_namespaces[].id`           | The same two                          |
-| `r2_buckets[].bucket_name`     | The same two                          |
-| `queues.producers[].queue`     | Must match `queues.consumers[].queue` |
+| Field                                  | Where                                    |
+| -------------------------------------- | ---------------------------------------- |
+| `d1_databases[].database_id`           | `env.development` and `env.preview`      |
+| `d1_databases[].database_name`         | The same two                             |
+| `kv_namespaces[].id`                   | The same two                             |
+| `r2_buckets[].bucket_name`             | The same two                             |
+| `queues.producers[].queue`             | Must match `queues.consumers[].queue`    |
+| `queues.consumers[].dead_letter_queue` | Must match the second consumer's `queue` |
 
 The preview bucket starts empty, while the preview database points at the seed and marketing images. Copy them into it before the first deploy and set `VITE_R2_URL` to the address `dev-url enable` prints, as [Image delivery](/docs/guides/image-delivery) describes.
 
@@ -45,7 +47,7 @@ The Durable Object needs no provisioning. It is created by the migration already
 ],
 ```
 
-Here is exactly what `verify-bindings.ts` insists on, so you know when you are done:
+Here is exactly what `verify-bindings.ts` insists on, so you know when you are done. `auditConsumer` is the consumer of the `AUDIT_LOG_QUEUE` producer's queue, and `auditDeadLetterConsumer` the consumer of the queue it names as `dead_letter_queue`:
 
 ```ts
 if (
@@ -55,7 +57,8 @@ if (
   /^[0-]+$/u.test(cache.id) ||
   !images?.bucket_name ||
   !audit?.queue ||
-  !config.queues.consumers.some(({ queue }) => queue === audit.queue) ||
+  !auditConsumer?.dead_letter_queue ||
+  auditDeadLetterConsumer === undefined ||
   realtime?.class_name !== "RealtimeInvalidationHub"
 ) {
   throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)

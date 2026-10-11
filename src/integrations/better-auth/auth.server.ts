@@ -4,11 +4,13 @@ import { createElement } from "react"
 
 import { type BetterAuthPlugin, betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
-import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api"
+import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from "better-auth/api"
+import { verifyJWT } from "better-auth/crypto"
 import { admin, multiSession, twoFactor } from "better-auth/plugins"
 import { tanstackStartCookies } from "better-auth/tanstack-start"
 import { createTranslator } from "use-intl"
 import { v7 as uuidv7 } from "uuid"
+import { z } from "zod/v4"
 
 import {
   ADMIN_PANEL_ROLES,
@@ -39,11 +41,23 @@ import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { appHostsForMode, isLocalMode } from "~/src/modules/_core/constants/api"
 import {
+  type AuditEventOptions,
+  recordAuthEmailChangedAudit,
   recordAuthLoginAudit,
+  recordAuthPasswordChangedAudit,
+  recordAuthPasswordResetAudit,
+  recordAuthRoleChangedAudit,
+  recordAuthSessionsRevokedAudit,
+  recordAuthTwoFactorDisabledAudit,
+  recordAuthTwoFactorEnabledAudit,
+  recordAuthUserBannedAudit,
+  recordAuthUserUnbannedAudit,
+  recordCustomerDeletedAudit,
   recordCustomerRegisteredAudit,
   recordEmailFailedAudit,
   resolveAuthAuditActor,
 } from "~/src/modules/audit-log/audit-log.events.server"
+import { type AuditLogActorInput, SYSTEM_AUDIT_ACTOR } from "~/src/modules/audit-log/audit-log.record.server"
 import { linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
 import { getUserById } from "~/src/modules/user/user.accessors"
@@ -164,6 +178,198 @@ export const signInAudit = {
     ],
   },
   id: "sign-in-audit",
+} satisfies BetterAuthPlugin
+
+const CHANGE_PASSWORD_PATH = "/change-password"
+
+const DISABLE_TWO_FACTOR_PATH = "/two-factor/disable"
+
+const OWN_ACCOUNT_AUDIT_PATHS: ReadonlySet<string> = new Set([
+  CHANGE_PASSWORD_PATH,
+  DISABLE_TWO_FACTOR_PATH,
+  "/revoke-other-sessions",
+  "/revoke-session",
+  "/revoke-sessions",
+])
+
+const ADMIN_PATHS = {
+  BAN_USER: "/admin/ban-user",
+  REVOKE_USER_SESSIONS: "/admin/revoke-user-sessions",
+  SET_ROLE: "/admin/set-role",
+  SET_USER_PASSWORD: "/admin/set-user-password",
+  UNBAN_USER: "/admin/unban-user",
+  UPDATE_USER: "/admin/update-user",
+} as const
+
+const ADMIN_ACCOUNT_AUDIT_PATHS: ReadonlySet<string> = new Set(Object.values(ADMIN_PATHS))
+
+const VERIFY_TOTP_PATH = "/two-factor/verify-totp"
+
+const VERIFY_EMAIL_PATH = "/verify-email"
+
+const roleChange = z.union([z.string(), z.array(z.string())]).transform((role) => [role].flat().join(", "))
+
+const passwordChange = z.object({ revokeOtherSessions: z.boolean().optional() })
+
+const adminAccountChange = z.object({
+  banReason: z.string().optional(),
+  data: z
+    .object({ banReason: z.string().optional(), banned: z.boolean().optional(), email: z.string().optional(), role: roleChange.optional() })
+    .optional(),
+  role: roleChange.optional(),
+  userId: z.string(),
+})
+
+const confirmedEmailChange = z.object({ email: z.string(), requestType: z.literal("change-email-verification"), updateTo: z.string() })
+
+const auditRequestIp = (headers: Headers | undefined): string | undefined => (headers === undefined ? undefined : resolveRequestIp(headers))
+
+const recordOwnAccountChange = (
+  { body, path }: Readonly<{ body: unknown; path: string }>,
+  account: AuditLogActorInput,
+  options: AuditEventOptions,
+): void => {
+  switch (path) {
+    case CHANGE_PASSWORD_PATH: {
+      recordAuthPasswordChangedAudit(account, options)
+      if (passwordChange.parse(body).revokeOtherSessions === true) {
+        recordAuthSessionsRevokedAudit(account, options)
+      }
+
+      return
+    }
+    case DISABLE_TWO_FACTOR_PATH: {
+      recordAuthTwoFactorDisabledAudit(account, options)
+
+      return
+    }
+    default: {
+      recordAuthSessionsRevokedAudit(account, options)
+    }
+  }
+}
+
+const recordAdminUserUpdate = (
+  account: AuditLogActorInput,
+  options: AuditEventOptions,
+  { data }: z.infer<typeof adminAccountChange>,
+): void => {
+  if (data?.role !== undefined) {
+    recordAuthRoleChangedAudit(account, { ...options, detail: data.role })
+  }
+
+  if (data?.banned === true) {
+    recordAuthUserBannedAudit(account, { ...options, detail: data.banReason })
+  }
+
+  if (data?.banned === false) {
+    recordAuthUserUnbannedAudit(account, options)
+  }
+
+  if (data?.email !== undefined) {
+    recordAuthEmailChangedAudit(account, options)
+  }
+}
+
+const recordAdminAccountChange = ({ account, change, path }: AdminAccountChange, options: AuditEventOptions): void => {
+  switch (path) {
+    case ADMIN_PATHS.BAN_USER: {
+      recordAuthUserBannedAudit(account, { ...options, detail: change.banReason })
+
+      return
+    }
+    case ADMIN_PATHS.REVOKE_USER_SESSIONS: {
+      recordAuthSessionsRevokedAudit(account, options)
+
+      return
+    }
+    case ADMIN_PATHS.SET_ROLE: {
+      recordAuthRoleChangedAudit(account, { ...options, detail: change.role })
+
+      return
+    }
+    case ADMIN_PATHS.SET_USER_PASSWORD: {
+      recordAuthPasswordChangedAudit(account, options)
+
+      return
+    }
+    case ADMIN_PATHS.UNBAN_USER: {
+      recordAuthUserUnbannedAudit(account, options)
+
+      return
+    }
+    default: {
+      recordAdminUserUpdate(account, options, change)
+    }
+  }
+}
+
+export const accountSecurityAudit = {
+  hooks: {
+    after: [
+      {
+        handler: createAuthMiddleware(async (ctx) => {
+          const caller = ctx.context.session
+          if (caller === null || isAPIError(ctx.context.returned)) {
+            return
+          }
+
+          recordOwnAccountChange(ctx, resolveAuthAuditActor(caller.user), { ip: auditRequestIp(ctx.headers) })
+          await Promise.resolve()
+        }),
+        matcher: (ctx) => ctx.path !== undefined && OWN_ACCOUNT_AUDIT_PATHS.has(ctx.path),
+      },
+      {
+        handler: createAuthMiddleware(async (ctx) => {
+          const caller = ctx.context.session
+          if (caller === null || isAPIError(ctx.context.returned)) {
+            return
+          }
+
+          const change = adminAccountChange.parse(ctx.body)
+          const account = await getUserById(change.userId)
+          if (account === undefined) {
+            return
+          }
+
+          recordAdminAccountChange(
+            { account: resolveAuthAuditActor(account), change, path: ctx.path },
+            { actor: resolveAuthAuditActor(caller.user), ip: auditRequestIp(ctx.headers) },
+          )
+        }),
+        matcher: (ctx) => ctx.path !== undefined && ADMIN_ACCOUNT_AUDIT_PATHS.has(ctx.path),
+      },
+      {
+        handler: createAuthMiddleware(async (ctx) => {
+          const enrolling = ctx.context.session
+          const enrolled = ctx.context.newSession
+          if (enrolling === null || enrolling.user["twoFactorEnabled"] === true || enrolled?.user["twoFactorEnabled"] !== true) {
+            return
+          }
+
+          recordAuthTwoFactorEnabledAudit(resolveAuthAuditActor(enrolled.user), { ip: auditRequestIp(ctx.headers) })
+          await Promise.resolve()
+        }),
+        matcher: (ctx) => ctx.path === VERIFY_TOTP_PATH,
+      },
+      {
+        handler: createAuthMiddleware(async (ctx) => {
+          const changed = ctx.context.newSession
+          const token = confirmedEmailChange.safeParse(await verifyJWT(String(ctx.query?.["token"]), ctx.context.secret))
+          if (!token.success || changed?.user.email !== token.data.updateTo) {
+            return
+          }
+
+          recordAuthEmailChangedAudit(resolveAuthAuditActor(changed.user), {
+            detail: `${token.data.email} → ${token.data.updateTo}`,
+            ip: auditRequestIp(ctx.headers),
+          })
+        }),
+        matcher: (ctx) => ctx.path === VERIFY_EMAIL_PATH,
+      },
+    ],
+  },
+  id: "account-security-audit",
 } satisfies BetterAuthPlugin
 
 const resolveEmailVerificationCallbackUrl = (url: string, locale: SupportedLocale): string => {
@@ -367,8 +573,13 @@ export const auth = betterAuth({
         },
       },
       delete: {
-        after: async () => {
+        after: async (deleted, endpoint) => {
           scheduleAdminCustomersInvalidation()
+          const caller = endpoint?.context.session
+          recordCustomerDeletedAudit(resolveAuthAuditActor(deleted), {
+            actor: caller === undefined || caller === null ? SYSTEM_AUDIT_ACTOR : resolveAuthAuditActor(caller.user),
+            ip: auditRequestIp(endpoint?.headers),
+          })
           await Promise.resolve()
         },
       },
@@ -385,6 +596,7 @@ export const auth = betterAuth({
     maxPasswordLength: PASSWORD_MAX_LENGTH,
     minPasswordLength: PASSWORD_MIN_LENGTH,
     onPasswordReset: async ({ user }, request) => {
+      recordAuthPasswordResetAudit(resolveAuthAuditActor(user), { ip: auditRequestIp(request?.headers) })
       if (request === undefined) {
         recordAuthEmailFailure("password-changed", user.email, "The reset came with no request to link the sign-in page from")
 
@@ -441,6 +653,7 @@ export const auth = betterAuth({
       issuer: APP_NAME,
     }),
     signInAudit,
+    accountSecurityAudit,
     tanstackStartCookies(),
   ],
   rateLimit: {
@@ -513,6 +726,12 @@ export const auth = betterAuth({
   },
   verification: { storeIdentifier: "hashed", storeInDatabase: true },
 })
+
+interface AdminAccountChange {
+  readonly account: AuditLogActorInput
+  readonly change: z.infer<typeof adminAccountChange>
+  readonly path: string
+}
 
 interface AuthEmailParams {
   readonly url: string

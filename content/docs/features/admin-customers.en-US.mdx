@@ -183,7 +183,7 @@ A column that holds plain text rather than JSON is treated as notes, so a legacy
 - upserts the default address through `upsertDefaultAddressForUser`, but only when `hasAddressInput` passes — `address1` and `city` must both be non-blank
 - when the submitted `countryCode` is blank it reuses the existing default address's country rather than writing an empty string, and skips the address write entirely if there is still no country
 
-It does **not** change email, name, role or ban state; those are Better Auth operations.
+It does **not** change email, name, role or ban state; those are Better Auth operations. Once the writes are done it records `customer.updated` against the admin, with the customer's address as the target and their id as the resource.
 
 `deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, has four guards:
 
@@ -214,7 +214,7 @@ return { goodbyeEmailSent, ok: true as const, userId }
 
 `eraseAccountData` is the step a customer's own deletion runs in Better Auth's `beforeDelete`: it deletes the account's Stripe customer with its saved cards, then the account's audit log entries and newsletter subscription (see [Account: Closing the account](/docs/features/account#closing-the-account)). When Stripe cannot delete the customer, nothing is deleted, `customer.deletion_failed` is recorded, and `useDeleteCustomer` shows "Stripe could not delete the customer's profile and saved cards, so the account was not deleted. Try again in a few minutes. The error is recorded in the audit log." The confirmation dialog, `rowActions.deleteDescription`, lists what is deleted and that the orders and payments stay in the accounting records for 5 years.
 
-Because deletion goes through Better Auth, the cascades on `session`, `account`, `address`, `wishlist_item` and `two_factor` apply, while `order.user_id` and `checkout.user_id` are `onDelete: "set null"` — so the orders survive as guest orders.
+Because deletion goes through Better Auth, its `databaseHooks.user.delete.after` records `customer.deleted` against the admin whose session made the `removeUser` call, with the deleted customer's address as the target, and the cascades on `session`, `account`, `address`, `wishlist_item` and `two_factor` apply, while `order.user_id` and `checkout.user_id` are `onDelete: "set null"` — so the orders survive as guest orders.
 
 ## Export
 

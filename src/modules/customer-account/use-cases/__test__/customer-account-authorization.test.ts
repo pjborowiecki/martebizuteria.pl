@@ -9,16 +9,22 @@ import { updateCustomerPhone } from "../update-customer-phone"
 
 const CALLER = {
   session: { id: "current-session" },
-  user: { id: "current-customer" },
+  user: { email: "ada@example.test", id: "current-customer", name: "Ada", role: "customer" },
 }
 
 const access = vi.hoisted(() => ({
   delete: vi.fn(),
+  deleted: vi.fn<() => Promise<readonly { id: string }[]>>(),
   order: vi.fn<(input: { where: SQL | undefined }) => Promise<undefined>>(),
   select: vi.fn(),
   set: vi.fn(),
   update: vi.fn(),
-  where: vi.fn<(condition: SQL | undefined) => Promise<void>>(),
+  where: vi.fn<(condition: SQL | undefined) => unknown>(),
+}))
+
+const audit = vi.hoisted(() => ({
+  recordAuthSessionsRevokedAudit: vi.fn(),
+  resolveAuthAuditActor: vi.fn((user: { id: string }) => `actor:${user.id}`),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
@@ -27,6 +33,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   withRateLimit: () => ({}),
 }))
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string) => path }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: {
     delete: access.delete,
@@ -52,7 +59,7 @@ vi.mock("@tanstack/react-start", () => ({
   },
 }))
 
-const CALLER_CONTEXT = { auth: CALLER }
+const CALLER_CONTEXT = { auth: CALLER, requestHeaders: new Headers({ "cf-connecting-ip": "198.51.100.30" }) }
 
 const dialect = new SQLiteSyncDialect()
 
@@ -60,8 +67,10 @@ describe("customer account data scoping", () => {
   beforeEach(() => {
     vi.resetAllMocks()
     access.order.mockResolvedValue(undefined)
-    access.where.mockResolvedValue(undefined)
+    access.deleted.mockResolvedValue([{ id: "other-session" }])
+    access.where.mockReturnValue({ returning: access.deleted })
     access.delete.mockReturnValue({ where: access.where })
+    audit.resolveAuthAuditActor.mockImplementation((user: { id: string }) => `actor:${user.id}`)
     access.set.mockReturnValue({ where: access.where })
     access.update.mockReturnValue({ set: access.set })
   })
@@ -82,6 +91,7 @@ describe("customer account data scoping", () => {
     await expect(revokeCustomerSession({ data: { sessionId: "current-session" } })).resolves.toBe(false)
 
     expect(access.delete).not.toHaveBeenCalled()
+    expect(audit.recordAuthSessionsRevokedAudit).not.toHaveBeenCalled()
   })
 
   it("scopes single-session revocation to the authenticated customer", async () => {
@@ -95,6 +105,21 @@ describe("customer account data scoping", () => {
     })
   })
 
+  it("records the signed-out device against the customer and the address they asked from", async () => {
+    await revokeCustomerSession({ data: { sessionId: "other-session" } })
+
+    expect(audit.resolveAuthAuditActor).toHaveBeenCalledWith(CALLER.user)
+    expect(audit.recordAuthSessionsRevokedAudit).toHaveBeenCalledExactlyOnceWith("actor:current-customer", { ip: "198.51.100.30" })
+  })
+
+  it("records nothing when the session named is not one of the customer's", async () => {
+    access.deleted.mockResolvedValue([])
+
+    await expect(revokeCustomerSession({ data: { sessionId: "another-customers-session" } })).resolves.toBe(true)
+
+    expect(audit.recordAuthSessionsRevokedAudit).not.toHaveBeenCalled()
+  })
+
   it("keeps the current session when revoking the customer's other sessions", async () => {
     await expect(revokeOtherCustomerSessions()).resolves.toStrictEqual({ ok: true })
 
@@ -104,6 +129,22 @@ describe("customer account data scoping", () => {
       params: ["current-customer", "current-session"],
       sql: '("session"."user_id" = ? and "session"."id" <> ?)',
     })
+  })
+
+  it("records signing out the customer's other devices", async () => {
+    access.deleted.mockResolvedValue([{ id: "phone" }, { id: "laptop" }])
+
+    await revokeOtherCustomerSessions()
+
+    expect(audit.recordAuthSessionsRevokedAudit).toHaveBeenCalledExactlyOnceWith("actor:current-customer", { ip: "198.51.100.30" })
+  })
+
+  it("records nothing when the customer had no other device signed in", async () => {
+    access.deleted.mockResolvedValue([])
+
+    await expect(revokeOtherCustomerSessions()).resolves.toStrictEqual({ ok: true })
+
+    expect(audit.recordAuthSessionsRevokedAudit).not.toHaveBeenCalled()
   })
 
   it("updates only the authenticated customer's phone", async () => {

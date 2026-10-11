@@ -22,6 +22,7 @@ const { sqlite } = await vi.hoisted(async () => {
 })
 
 const stubs = vi.hoisted(() => ({
+  recordAuthPasswordResetAudit: vi.fn(),
   recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
   sendEmail: vi.fn<(email: SentEmail) => Promise<string | undefined>>(),
 }))
@@ -39,9 +40,10 @@ vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ pas
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordAuthLoginAudit: vi.fn(),
+  recordAuthPasswordResetAudit: stubs.recordAuthPasswordResetAudit,
   recordCustomerRegisteredAudit: vi.fn(),
   recordEmailFailedAudit: stubs.recordEmailFailedAudit,
-  resolveAuthAuditActor: vi.fn(),
+  resolveAuthAuditActor: vi.fn((user: { id: string }) => `actor:${user.id}`),
 }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: vi.fn(),
@@ -122,6 +124,7 @@ describe("a password reset", () => {
     expect([laptopUpdate.status, phoneUpdate.status]).toStrictEqual([401, 401])
     expect(countSessions(customerId)).toBe(0)
     expect(sqlite.prepare("select name from user where id = ?").get(customerId)).toMatchObject({ name: "Ada" })
+    expect(stubs.recordAuthPasswordResetAudit).toHaveBeenCalledExactlyOnceWith(`actor:${customerId}`, { ip: "198.51.100.62" })
   })
 
   it("lets the customer back in with the new password", async () => {

@@ -11,8 +11,10 @@ const database = vi.hoisted(() => ({
 const access = vi.hoisted(() => ({
   defaultAddress: vi.fn<(userId: string) => Promise<{ readonly countryCode: string } | undefined>>(),
   upsertAddress: vi.fn<(input: Record<string, unknown>) => Promise<void>>(),
-  userById: vi.fn<(id: string) => Promise<{ readonly id: string } | undefined>>(),
+  userById: vi.fn<(id: string) => Promise<{ readonly email: string; readonly id: string } | undefined>>(),
 }))
+
+const audit = vi.hoisted(() => ({ recordCustomerUpdatedAudit: vi.fn() }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 
@@ -29,6 +31,8 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 }))
 
 vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById: access.userById }))
+
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 
 vi.mock("~/src/modules/address/address.accessors", () => ({
   getDefaultAddressForUser: access.defaultAddress,
@@ -77,7 +81,7 @@ const setValues = () => {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  access.userById.mockResolvedValue({ id: "user-1" })
+  access.userById.mockResolvedValue({ email: "ada@example.test", id: "user-1" })
 })
 
 describe("updateCustomer", () => {
@@ -87,10 +91,18 @@ describe("updateCustomer", () => {
     await expect(updateCustomer({ data: { id: "user-1", values: { customTags: [] } } })).rejects.toThrow("USER_NOT_FOUND")
 
     expect(database.update).not.toHaveBeenCalled()
+    expect(audit.recordCustomerUpdatedAudit).not.toHaveBeenCalled()
   })
 
   it("confirms the update of a known customer", async () => {
     await expect(updateCustomer({ data: { id: "user-1", values: { customTags: [] } } })).resolves.toStrictEqual({ ok: true })
+  })
+
+  it("records the edit against the customer's address and account once it is saved", async () => {
+    await updateCustomer({ data: { id: "user-1", values: { address: ADDRESS, customTags: [] } } })
+
+    expect(access.upsertAddress).toHaveBeenCalledOnce()
+    expect(audit.recordCustomerUpdatedAudit).toHaveBeenCalledExactlyOnceWith("ada@example.test", { resourceId: "user-1" })
   })
 
   it("stores the notes and tags as serialized metadata", async () => {

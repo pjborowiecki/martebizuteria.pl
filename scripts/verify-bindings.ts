@@ -10,6 +10,8 @@ const database = config.d1_databases.find(({ binding }) => binding === "DB")
 const cache = config.kv_namespaces.find(({ binding }) => binding === "CACHE")
 const images = config.r2_buckets.find(({ binding }) => binding === "IMAGES")
 const audit = config.queues.producers.find(({ binding }) => binding === "AUDIT_LOG_QUEUE")
+const auditConsumer = config.queues.consumers.find(({ queue }) => queue === audit?.queue)
+const auditDeadLetterConsumer = config.queues.consumers.find(({ queue }) => queue === auditConsumer?.dead_letter_queue)
 const realtime = config.durable_objects.bindings.find(({ name }) => name === "REALTIME_INVALIDATION_HUB")
 
 if (
@@ -19,7 +21,8 @@ if (
   /^[0-]+$/u.test(cache.id) ||
   !images?.bucket_name ||
   !audit?.queue ||
-  !config.queues.consumers.some(({ queue }) => queue === audit.queue) ||
+  !auditConsumer?.dead_letter_queue ||
+  auditDeadLetterConsumer === undefined ||
   realtime?.class_name !== "RealtimeInvalidationHub"
 ) {
   throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)
