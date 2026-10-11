@@ -60,7 +60,7 @@ const webhookRequest = (signature?: string): Request =>
     method: "POST",
   })
 
-const stripeEvent = (type: string, livemode = false): WebhookEvent => ({ id: "evt_1", livemode, type })
+const stripeEvent = (type: string, livemode = false, id = "evt_1"): WebhookEvent => ({ id, livemode, type })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -153,17 +153,28 @@ describe("stripe webhook route", () => {
     expect(consoleError).toHaveBeenCalledWith("[Stripe] Domain logic failed for checkout.session.completed:", expect.any(Error))
   })
 
-  it("alerts the shop to the failed event under its type, naming the event and the cause", async () => {
+  it("alerts the shop to the failed event under its id, naming its type and the cause", async () => {
     constructEventAsync.mockResolvedValue(stripeEvent("checkout.session.completed"))
     handledEvent.mockRejectedValue(new Error("inventory compensation failed"))
 
     await postWebhook({ request: webhookRequest("sig_1") })
 
     expect(notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
-      detail: "evt_1: inventory compensation failed",
+      detail: "checkout.session.completed: inventory compensation failed",
       kind: "stripeWebhookFailed",
-      reference: "checkout.session.completed",
+      reference: "evt_1",
     })
+  })
+
+  it("keeps two failed events of one type apart, so each paid session that created no order is reported", async () => {
+    handledEvent.mockRejectedValue(new Error("D1 unavailable"))
+
+    constructEventAsync.mockResolvedValueOnce(stripeEvent("checkout.session.completed", false, "evt_paid_1"))
+    await postWebhook({ request: webhookRequest("sig_1") })
+    constructEventAsync.mockResolvedValueOnce(stripeEvent("checkout.session.completed", false, "evt_paid_2"))
+    await postWebhook({ request: webhookRequest("sig_2") })
+
+    expect(notifyShopOfIncident.mock.calls.map(([incident]) => incident.reference)).toStrictEqual(["evt_paid_1", "evt_paid_2"])
   })
 
   it("names a cause that is not an Error by its text", async () => {
@@ -172,7 +183,7 @@ describe("stripe webhook route", () => {
 
     await postWebhook({ request: webhookRequest("sig_1") })
 
-    expect(notifyShopOfIncident).toHaveBeenCalledWith(expect.objectContaining({ detail: "evt_1: D1 unavailable" }))
+    expect(notifyShopOfIncident).toHaveBeenCalledWith(expect.objectContaining({ detail: "checkout.session.completed: D1 unavailable" }))
   })
 
   it("still asks stripe to retry when the alert itself fails", async () => {

@@ -155,6 +155,13 @@ describe("scheduleAuditLog", () => {
     expect(onlySent().createdAt).toBeGreaterThanOrEqual(before)
   })
 
+  it("keeps the id an event names, so a repeated event lands on the same entry", async () => {
+    scheduleAuditLog({ ...event, actor: SYSTEM_AUDIT_ACTOR, id: "order.fulfillment_failed:cs_test_1" })
+    await settle()
+
+    expect(onlySent().id).toBe("order.fulfillment_failed:cs_test_1")
+  })
+
   it("leaves the metadata unset when there is none to serialize", async () => {
     scheduleAuditLog({ ...event, actor: SYSTEM_AUDIT_ACTOR, metadata: {} })
     await settle()
@@ -202,6 +209,13 @@ describe("scheduleAuditLogFromRequest", () => {
     await settle()
 
     expect(onlySent().ip).toBe("203.0.113.7")
+  })
+
+  it("keeps the id the event names", async () => {
+    scheduleAuditLogFromRequest({ ...event, id: "order.fulfillment_failed:cs_test_1" })
+    await settle()
+
+    expect(onlySent().id).toBe("order.fulfillment_failed:cs_test_1")
   })
 
   it("keeps an explicitly supplied ip", async () => {

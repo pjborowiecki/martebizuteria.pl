@@ -69,9 +69,9 @@ export const Route = createFileRoute("/api/webhooks/stripe")({
           console.error(`[Stripe] Domain logic failed for ${event.type}:`, error)
           scheduleBackgroundWork(
             notifyShopOfIncident({
-              detail: `${event.id}: ${error instanceof Error ? error.message : String(error)}`,
+              detail: `${event.type}: ${error instanceof Error ? error.message : String(error)}`,
               kind: "stripeWebhookFailed",
-              reference: event.type,
+              reference: event.id,
             }),
           )
 

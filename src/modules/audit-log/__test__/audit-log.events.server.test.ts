@@ -399,12 +399,6 @@ const ORDER_CASES: readonly TargetAuditCase[] = [
   { action: AUDIT_LOG_ACTION.ORDER_RELEASED, name: "a released reservation", record: recordOrderReleasedAudit, severity: "info" },
   { action: AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED, name: "an opened dispute", record: recordOrderDisputeOpenedAudit, severity: "warning" },
   { action: AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED, name: "a closed dispute", record: recordOrderDisputeClosedAudit, severity: "info" },
-  {
-    action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_FAILED,
-    name: "a paid session that created no order",
-    record: recordOrderFulfillmentFailedAudit,
-    severity: "error",
-  },
 ]
 
 describe("remaining order audit events", () => {
@@ -502,6 +496,35 @@ describe("a withdrawal from the contract", () => {
       severity: "warning",
       target: "order-7",
     })
+  })
+})
+
+describe("recordOrderFulfillmentFailedAudit", () => {
+  it("files a paid session that created no order as an error under the session's own entry id", () => {
+    recordOrderFulfillmentFailedAudit("cs_test_1", { detail: "548,00 PLN — anna@example.com — D1 unavailable" })
+
+    expect(record.scheduleAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleAuditLogFromRequest).not.toHaveBeenCalled()
+    expect(record.scheduleSystemAuditLog).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_FAILED,
+      category: "orders",
+      detail: "548,00 PLN — anna@example.com — D1 unavailable",
+      id: "order.fulfillment_failed:cs_test_1",
+      metadata: undefined,
+      resourceId: "cs_test_1",
+      severity: "error",
+      target: "cs_test_1",
+    })
+  })
+
+  it("names the same entry for every failed delivery of one session and a new one for another session", () => {
+    recordOrderFulfillmentFailedAudit("cs_test_1", { detail: "D1 unavailable" })
+    recordOrderFulfillmentFailedAudit("cs_test_1", { detail: "no pending checkout" })
+    recordOrderFulfillmentFailedAudit("cs_test_2", { detail: "D1 unavailable" })
+
+    expect(record.scheduleSystemAuditLog).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: "order.fulfillment_failed:cs_test_1" }))
+    expect(record.scheduleSystemAuditLog).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: "order.fulfillment_failed:cs_test_1" }))
+    expect(record.scheduleSystemAuditLog).toHaveBeenNthCalledWith(3, expect.objectContaining({ id: "order.fulfillment_failed:cs_test_2" }))
   })
 })
 

@@ -562,6 +562,7 @@ export const recordOrderFulfillmentFailedAudit = (sessionId: string, options?: A
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_FAILED,
     category: "orders",
+    id: `${AUDIT_LOG_ACTION.ORDER_FULFILLMENT_FAILED}:${sessionId}`,
     severity: "error",
     ...withResourceId(sessionId, options),
   })

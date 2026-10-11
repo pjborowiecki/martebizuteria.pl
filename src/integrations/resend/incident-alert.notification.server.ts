@@ -13,7 +13,12 @@ import { INCIDENT_ALERT_NAMESPACE, type Incident, IncidentAlert } from "~/src/pr
 
 export const INCIDENT_ALERT_SECONDS = 3600
 
+export const STRIPE_EVENT_RETRY_SECONDS = 259_200
+
 const incidentKey = ({ kind, reference }: Incident): string => `incident-alert:${env.APP_ENV}:${kind}:${reference}`
+
+const incidentOpenSeconds = ({ kind }: Incident): number =>
+  kind === "stripeWebhookFailed" ? STRIPE_EVENT_RETRY_SECONDS : INCIDENT_ALERT_SECONDS
 
 const beginsIncident = async (incident: Incident): Promise<boolean> => {
   const key = incidentKey(incident)
@@ -21,7 +26,7 @@ const beginsIncident = async (incident: Incident): Promise<boolean> => {
     return false
   }
 
-  await env.CACHE.put(key, new Date().toISOString(), { expirationTtl: INCIDENT_ALERT_SECONDS })
+  await env.CACHE.put(key, new Date().toISOString(), { expirationTtl: incidentOpenSeconds(incident) })
 
   return true
 }

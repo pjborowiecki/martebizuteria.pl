@@ -42,6 +42,9 @@ const storedIds = (): string[] =>
     .parse(sqlite.prepare("select id from audit_log order by id").all())
     .map(({ id }) => id)
 
+const storedDetail = (id: string): string | null =>
+  z.object({ detail: z.string().nullable() }).parse(sqlite.prepare("select detail from audit_log where id = ?").get(id)).detail
+
 beforeEach(() => {
   sqlite.exec(`
     drop table if exists audit_log;
@@ -68,15 +71,24 @@ describe("insertAuditLogs on D1", () => {
 
   it("stores none of the batch when one of its events cannot be written", async () => {
     const events = Array.from({ length: QUEUE_MAX_BATCH_SIZE }, (_, index) => fullyDescribedEvent(index))
-    sqlite
-      .prepare(
-        "insert into audit_log (action, actor_name, actor_role, category, created_at, id, severity, target) values (?, ?, ?, ?, ?, ?, ?, ?)",
-      )
-      .run("order.placed", "System", "system", "orders", 1, "log-049", "success", "Order")
+    sqlite.exec(`
+      create trigger audit_log_refuses_last_event before insert on audit_log when new.id = 'log-049'
+      begin select raise(abort, 'audit_log refused log-049'); end;
+    `)
 
-    await expect(insertAuditLogs(events)).rejects.toThrow(/UNIQUE constraint failed/u)
+    await expect(insertAuditLogs(events)).rejects.toThrow(/audit_log refused log-049/u)
 
-    expect(storedIds()).toStrictEqual(["log-049"])
+    expect(storedIds()).toStrictEqual([])
+  })
+
+  it("keeps the entry already stored under an id the batch repeats and stores the rest", async () => {
+    const events = Array.from({ length: QUEUE_MAX_BATCH_SIZE }, (_, index) => fullyDescribedEvent(index))
+    await insertAuditLogs([{ ...fullyDescribedEvent(49), detail: "first delivery" }])
+
+    await insertAuditLogs(events)
+
+    expect(storedIds()).toStrictEqual(events.map(({ id }) => id))
+    expect(storedDetail("log-049")).toBe("first delivery")
   })
 })
 

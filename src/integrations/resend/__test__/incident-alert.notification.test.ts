@@ -27,17 +27,21 @@ vi.mock("cloudflare:workers", () => ({ env }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
 
-import { INCIDENT_ALERT_SECONDS, notifyShopOfIncident } from "~/src/integrations/resend/incident-alert.notification.server"
+import {
+  INCIDENT_ALERT_SECONDS,
+  STRIPE_EVENT_RETRY_SECONDS,
+  notifyShopOfIncident,
+} from "~/src/integrations/resend/incident-alert.notification.server"
 
 const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
 const incident: Incident = {
-  detail: "evt_1Q2w3E4r: D1_ERROR: database is locked",
+  detail: "checkout.session.completed: D1_ERROR: database is locked",
   kind: "stripeWebhookFailed",
-  reference: "checkout.session.completed",
+  reference: "evt_1Q2w3E4r",
 }
 
-const INCIDENT_KEY = "incident-alert:production:stripeWebhookFailed:checkout.session.completed"
+const INCIDENT_KEY = "incident-alert:production:stripeWebhookFailed:evt_1Q2w3E4r"
 
 const sentEmail = () => {
   const [call] = sendEmail.mock.calls
@@ -66,7 +70,7 @@ describe("notifyShopOfIncident", () => {
     expect(sentEmail().react.props).toStrictEqual({ environment: "production", incident, locale: "pl-PL", messages: polishCopy })
   })
 
-  it("opens the incident for an hour under its environment, kind and reference before sending", async () => {
+  it("opens a failed Stripe event's incident for the three days Stripe retries it, under its environment, kind and reference, before sending", async () => {
     const steps: string[] = []
     cachePut.mockImplementation(() => {
       steps.push("open")
@@ -82,8 +86,8 @@ describe("notifyShopOfIncident", () => {
     await notifyShopOfIncident(incident)
 
     expect(cacheGet).toHaveBeenCalledExactlyOnceWith(INCIDENT_KEY)
-    expect(cachePut).toHaveBeenCalledExactlyOnceWith(INCIDENT_KEY, expect.any(String), { expirationTtl: INCIDENT_ALERT_SECONDS })
-    expect(INCIDENT_ALERT_SECONDS).toBe(3600)
+    expect(cachePut).toHaveBeenCalledExactlyOnceWith(INCIDENT_KEY, expect.any(String), { expirationTtl: STRIPE_EVENT_RETRY_SECONDS })
+    expect(STRIPE_EVENT_RETRY_SECONDS).toBe(3 * 24 * 60 * 60)
     expect(steps).toStrictEqual(["open", "send"])
   })
 
@@ -102,6 +106,18 @@ describe("notifyShopOfIncident", () => {
     expect(cacheGet).toHaveBeenCalledExactlyOnceWith("incident-alert:production:auditQueueFailed:martebizuteria-audit-log")
     expect(sentEmail().subject).toBe(polishCopy.auditQueueFailed.subject)
   })
+
+  it.each(["auditQueueFailed", "newsletterFailed", "orderEmailFailed", "paidCheckoutWithoutOrder"] as const)(
+    "opens a %s incident, which Stripe does not retry, for an hour",
+    async (kind) => {
+      await notifyShopOfIncident({ ...incident, kind, reference: "reference-1" })
+
+      expect(cachePut).toHaveBeenCalledExactlyOnceWith(`incident-alert:production:${kind}:reference-1`, expect.any(String), {
+        expirationTtl: INCIDENT_ALERT_SECONDS,
+      })
+      expect(INCIDENT_ALERT_SECONDS).toBe(3600)
+    },
+  )
 
   it("logs an alert Resend refused and resolves", async () => {
     sendEmail.mockResolvedValue("Resend did not answer within 10000 ms")
