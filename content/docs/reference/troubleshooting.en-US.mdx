@@ -60,7 +60,7 @@ bun run db:migrate:development
 
 **A server function returns something unexpected in a test.** `src/platform/testing/setup.ts` proxies `createServerFn` through `withTestRpc` and stubs `getRequest` to return `new Request("http://127.0.0.1:3000/")`. Tests that depend on headers, cookies or a session must override `getRequest` themselves.
 
-**`test:coverage` fails on thresholds.** `vite.config.ts` pins them just below the current numbers — branches 69, functions 68, lines 71, statements 72 — so they act as a ratchet: a regression fails, and the numbers are raised deliberately as coverage grows. Read `coverage/index.html` to find what dropped. `autoUpdate` is `false`, so the values never move on their own.
+**`test:coverage` fails on thresholds.** `vite.config.ts` sets branches, functions, lines and statements to 100, so a single uncovered line fails the run. Read `coverage/index.html` to find what is uncovered, then add a test for it or remove a branch no input can reach. `autoUpdate` is `false`, so the values never move on their own.
 
 **`passWithNoTests` fails the run.** It is set to `false`, so a project matching no files is an error. Check the file name suffix against the project globs.
 

@@ -49,7 +49,7 @@ export const stripe = new StripeServer(env.STRIPE_SECRET_KEY, {
 
 Browser-visible configuration uses `import.meta.env.VITE_*` instead — `VITE_STRIPE_PUBLISHABLE_KEY` in `stripe.client.ts`, `VITE_TURNSTILE_SITE_KEY` in `turnstile.client.ts` and `VITE_R2_URL` in `src/lib/url.ts`. The required secrets per environment are listed in `wrangler.jsonc` under `env.<name>.secrets.required`.
 
-Each folder has a sibling `__test__/` directory; there are 53 test files across `src/integrations/`, run by `bun run test`. Tests named `*.component.test.ts(x)` run in the jsdom project and `*.integration.test.ts` in the integration project — see [Tooling](/docs/tooling).
+Each folder has a sibling `__test__/` directory; there are 93 test files across `src/integrations/`, run by `bun run test`. Tests named `*.component.test.ts(x)` run in the jsdom project and `*.integration.test.ts` in the integration project — see [Tooling](/docs/tooling).
 
 ## In this chapter
 

@@ -3,7 +3,7 @@ title: "Pisanie testów"
 description: "Trzy projekty Vitest, gdzie leżą testy, wspólne funkcje pomocnicze, wzorce mockowania funkcji serwerowych i tras oraz progi pokrycia."
 ---
 
-W `src/` jest 889 plików testowych. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`.
+W `src/` jest 1100 plików testowych. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`.
 
 ## Trzy projekty
 
@@ -11,9 +11,9 @@ W `src/` jest 889 plików testowych. Testy leżą obok kodu, który pokrywają, 
 
 | Projekt       | Pliki                                              | Środowisko | Plik konfiguracyjny             | Liczba |
 | ------------- | -------------------------------------------------- | ---------- | ------------------------------- | ------ |
-| `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | 339    |
-| `integration` | `*.integration.test.ts`                            | `node`     | brak                            | 35     |
-| `component`   | `*.component.test.ts` / `*.component.test.tsx`     | `jsdom`    | `src/platform/testing/setup.ts` | 515    |
+| `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | 426    |
+| `integration` | `*.integration.test.ts`                            | `node`     | brak                            | 98     |
+| `component`   | `*.component.test.ts` / `*.component.test.tsx`     | `jsdom`    | `src/platform/testing/setup.ts` | 576    |
 
 ```sh
 bun run test              # wszystkie trzy
@@ -235,14 +235,14 @@ Ta atrapa renderuje badany stan jako tekst, więc asercja to jedno `screen.getBy
 ```ts
 thresholds: {
   autoUpdate: false,
-  branches: 69,
-  functions: 68,
-  lines: 71,
-  statements: 72,
+  branches: 100,
+  functions: 100,
+  lines: 100,
+  statements: 100,
 }
 ```
 
-Z pokrycia wyłączone są: pliki testowe, katalogi `__test__/`, pliki `.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` (komponenty podstawowe skopiowane z zewnątrz) oraz `src/platform/testing/**`. `autoUpdate: false` oznacza, że liczby nie obniżają się same — jeśli Twoja zmiana zbija pokrycie poniżej progu, dopisz testy, a nie obniżaj progu.
+Z pokrycia wyłączone są: pliki testowe, katalogi `__test__/`, pliki `.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` (komponenty podstawowe skopiowane z zewnątrz) oraz `src/platform/testing/**`. Każdy próg wynosi 100, więc zmiana, która zostawia jakikolwiek kod bez pokrycia, nie przechodzi; dopisz testy albo usuń gałąź, do której nie prowadzi żadne wejście, zamiast obniżać próg. `autoUpdate: false` sprawia, że liczby nie zmieniają się same.
 
 CI (`.github/workflows/ci.yml`) uruchamia `bun run check`, potem `bun run test:coverage`, potem `bun run build:preview`, i wysyła raport pokrycia jako artefakt.
 

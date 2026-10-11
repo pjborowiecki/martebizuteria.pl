@@ -37,19 +37,19 @@ Wszystko jest skryptem z `package.json` napędzanym przez Vite+. Dwie zasady osz
 
 Trzy projekty są zadeklarowane w `vite.config.ts`. Projekt `node` wyklucza `*.component.test.*` i `*.integration.test.*`, więc `test:unit` faktycznie jest szybkim podzbiorem. Tylko projekt `component` wczytuje `src/platform/testing/setup.ts` i działa w jsdom.
 
-Progi pokrycia są zapadką, a nie ambicją:
+Każdy próg pokrycia wynosi 100:
 
 ```ts
 thresholds: {
   autoUpdate: false,
-  branches: 69,
-  functions: 68,
-  lines: 71,
-  statements: 72,
+  branches: 100,
+  functions: 100,
+  lines: 100,
+  statements: 100,
 },
 ```
 
-Leżą nieco poniżej aktualnych wartości, więc regresja przerywa CI. `autoUpdate: false` oznacza, że podnosi się je świadomie, edytując ten blok. Z pomiaru wykluczone są `src/presentation/components/shadcn/**`, `src/platform/testing/**` oraz `src/routeTree.gen.ts`.
+Instrukcja, gałąź, funkcja albo linia bez pokrycia przerywa `bun run test:coverage` i CI, więc nowy kod przychodzi razem ze swoimi testami. `autoUpdate: false` nie pozwala Vitestowi przepisywać tego bloku. Z pomiaru wykluczone są testy, katalogi `__test__`, pliki `*.d.ts`, `src/routeTree.gen.ts`, `src/integrations/**/migrations/**`, `src/presentation/components/shadcn/**` oraz `src/platform/testing/**`.
 
 Używaj `bun run test`, nigdy `bun test` — to drugie to własny runner Buna, który nie wie nic o projektach Vitest, o pliku setup ani o wartościach środowiska `test` wczytywanych przez `loadEnv("test", …)`.
 

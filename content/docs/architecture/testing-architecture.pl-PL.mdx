@@ -9,11 +9,11 @@ description: "Trzy projekty Vitest, uruchamianie funkcji serwerowych w procesie,
 
 | Projekt       | Środowisko | Pliki                                        | Liczba |
 | ------------- | ---------- | -------------------------------------------- | ------ |
-| `node`        | Node       | `*.test.{ts,tsx}`, z wyłączeniem dwóch niżej | 339    |
-| `integration` | Node       | `*.integration.test.ts`                      | 35     |
-| `component`   | jsdom      | `*.component.test.{ts,tsx}`                  | 515    |
+| `node`        | Node       | `*.test.{ts,tsx}`, z wyłączeniem dwóch niżej | 426    |
+| `integration` | Node       | `*.integration.test.ts`                      | 98     |
+| `component`   | jsdom      | `*.component.test.{ts,tsx}`                  | 576    |
 
-Łącznie 889 plików testowych. Tylko projekt `component` ładuje `src/platform/testing/setup.ts`; testy node i integracyjne importują to, czego potrzebują, jawnie.
+Łącznie 1100 plików testowych. Tylko projekt `component` ładuje `src/platform/testing/setup.ts`; testy node i integracyjne importują to, czego potrzebują, jawnie.
 
 ```sh
 bun run test              # wszystkie trzy projekty

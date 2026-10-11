@@ -126,16 +126,16 @@ Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, nazwane od pl
 
 Importuj z `vite-plus/test`, nie z `vitest`. Testy komponentowe ładują `src/platform/testing/setup.ts`. Zestawy bazodanowe działają na `node:sqlite` za transportem w kształcie D1 z `src/platform/testing/mocks/d1.ts`; zewnętrznych dostawców atrapuj i używaj lokalnych fikstur, żeby żaden test nie potrzebował sieci ani zdalnej bazy.
 
-Progi pokrycia działają jak zapadka, z `autoUpdate: false`:
+Progi pokrycia, z `autoUpdate: false`:
 
 | Metryka       | Próg |
 | ------------- | ---- |
-| Instrukcje    | 72   |
-| Linie         | 71   |
-| Funkcje       | 68   |
-| Rozgałęzienia | 69   |
+| Instrukcje    | 100  |
+| Linie         | 100  |
+| Funkcje       | 100  |
+| Rozgałęzienia | 100  |
 
-Ponieważ nigdy nie przesuwają się same, zmiana obniżająca pokrycie wywali `bun run test:coverage`. Gdy podnosisz pokrycie w jakimś obszarze, podnieś też liczbę w `vite.config.ts` w tym samym pull requeście. Z pomiaru wyłączone są `src/presentation/components/shadcn/**`, `src/platform/testing/**`, `src/routeTree.gen.ts` i same pliki testowe.
+Każda metryka jest utrzymywana na 100%, więc zmiana, która zostawia jakikolwiek kod bez pokrycia, wywali `bun run test:coverage`. Pokryj nowy kod w tym samym pull requeście albo usuń gałąź, do której nie prowadzi żadne wejście, zamiast obniżać próg. Z pomiaru wyłączone są `src/presentation/components/shadcn/**`, `src/platform/testing/**`, `src/routeTree.gen.ts`, `src/integrations/**/migrations/**` i same pliki testowe.
 
 [Architektura testów](/docs/architecture/testing-architecture) wyjaśnia, w co celują poszczególne zestawy; [Testowanie](/docs/tooling/testing) opisuje ich uruchamianie.
 

@@ -60,7 +60,7 @@ bun run db:migrate:development
 
 **Funkcja serwerowa zwraca w teście coś nieoczekiwanego.** `src/platform/testing/setup.ts` przepuszcza `createServerFn` przez `withTestRpc` i podstawia `getRequest`, tak by zwracał `new Request("http://127.0.0.1:3000/")`. Testy zależne od nagłówków, cookies lub sesji muszą same nadpisać `getRequest`.
 
-**`test:coverage` pada na progach.** `vite.config.ts` ustawia je nieco poniżej aktualnych wartości — branches 69, functions 68, lines 71, statements 72 — więc działają jak zapadka: regresja psuje build, a wartości podnosi się świadomie w miarę wzrostu pokrycia. Otwórz `coverage/index.html`, żeby zobaczyć, co spadło. `autoUpdate` jest `false`, więc wartości nigdy nie zmieniają się same.
+**`test:coverage` pada na progach.** `vite.config.ts` ustawia branches, functions, lines i statements na 100, więc wystarczy jedna niepokryta linia, by przebieg się nie powiódł. Otwórz `coverage/index.html`, żeby zobaczyć, co nie jest pokryte, i dopisz do tego test albo usuń gałąź, do której nie prowadzi żadne wejście. `autoUpdate` jest `false`, więc wartości nigdy nie zmieniają się same.
 
 **`passWithNoTests` wywala uruchomienie.** Jest ustawione na `false`, więc projekt niedopasowany do żadnego pliku to błąd. Sprawdź sufiks nazwy pliku względem wzorców projektu.
 
