@@ -53,7 +53,7 @@ vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
   return { ...actual, getRequest: () => new Request("https://marte.test/admin/catalog/products") }
 })
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({
-  getRequestSession: () => Promise.resolve({ user: { role: ROLES.ADMIN } }),
+  getRequestSession: () => Promise.resolve({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } }),
 }))
 vi.mock("~/src/lib/rate-limit", () => ({}))
 vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork: vi.fn() }))

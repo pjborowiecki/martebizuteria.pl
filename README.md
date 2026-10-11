@@ -35,6 +35,7 @@ This is a working application under active development, not a finished product. 
 | Checkout                 | Four steps (contact, billing address, delivery, payment) with lazily loaded step components, a persisted draft, a discount code field, Stripe Payment Element, and webhook-driven fulfilment. A new checkout passes a Cloudflare Turnstile bot check and a cap of five open checkouts per client address and three per email, and an order holds at most ten of one piece.                                                                                                                                                                                          |
 | Payments and fulfilment  | Stripe Checkout Sessions, `/api/webhooks/stripe` with signature verification, idempotent order placement, inventory reservation with compensation, refunds that restock only when the admin says the goods came back, never twice per order.                                                                                                                                                                                                                                                                                                                        |
 | Customer accounts        | Better Auth email/password with required verification, Google sign-in, two-factor auth with backup codes, password change and recovery, multi-session, order history, addresses, active sessions and login history. Sign-up, password-reset requests and verification resends pass a Cloudflare Turnstile bot check.                                                                                                                                                                                                                                                |
+| Admin sign-in            | Password plus two-factor authentication: `/admin/security` turns it on and off, and the admin panel, admin permissions, the admin socket and Better Auth's admin endpoints wait until it is on. Google sign-in is refused for admins.                                                                                                                                                                                                                                                                                                                               |
 | Transactional email      | Resend with React Email templates: verify, change and reset emails, password changed, account deleted, order confirmation, shipped, cancelled, refunded, failed payment, withdrawal acknowledgement, and the shop's notices of new orders, withdrawals and incidents. Previewable at `/dev/emails`. Emails any visitor can ask for (verification, password reset, newsletter, and the acknowledgement of a withdrawal sent by order number) are capped at three per address and kind an hour and 50 a day for the shop; the other order emails are never held back. |
 | Admin catalog            | Products, variants, categories, collections and attributes: permission-checked CRUD, reordering, localized content editing, R2 image upload, stats cards, product CSV export.                                                                                                                                                                                                                                                                                                                                                                                       |
 | Admin orders             | Database-backed list and detail page with tabs, filters, stats and CSV export, plus fulfil, ship with tracking, mark delivered, cancel, refund and return-to-stock actions, webhook-flagged disputes, audit trail, customer and shop emails.                                                                                                                                                                                                                                                                                                                        |
@@ -150,6 +151,8 @@ bun run db:studio:development
 
 After sign-in, the `/auth` route guard sends an `admin` user to `/admin` and a `customer` to `/account/overview`, unless the sign-in URL carries a same-site `?redirect` path.
 
+The admin panel requires two-factor authentication, so the first visit lands on `/admin/security`: turn it on there with an authenticator app and keep the recovery codes. Admins sign in with their password and a code; Google sign-in is refused for them because Better Auth's `twoFactor` plugin never asks for the code on that path. An account created with Google gets a password through **Forgot password?** first. See [Better Auth](content/docs/integrations/better-auth.en-US.mdx#two-factor-authentication-for-admins).
+
 ## Configuration and integrations
 
 ### Environment files
@@ -210,7 +213,7 @@ src/
   server.ts                   Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, security headers, queue consumer, retention clean-up
   router.tsx                  Per-request QueryClient, SSR integration, locale rewrite, default components
   routes.ts                   Route constants shared by links, guards and head metadata
-  routes/                     66 locale-free file routes + 3 API handlers
+  routes/                     67 locale-free file routes + 3 API handlers
   modules/{feature}/          40 domain modules — schema, Zod, types, constants, utils
     *.accessors.ts              unauthenticated data access (reads and writes), 23 files
     use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 125 files
@@ -241,16 +244,16 @@ Conventions that are enforced rather than suggested:
 
 Authentication and authorization entry points are in [`src/integrations/better-auth/`](src/integrations/better-auth):
 
-| File                  | Responsibility                                                                                         |
-| --------------------- | ------------------------------------------------------------------------------------------------------ |
-| `auth.server.ts`      | Better Auth configuration: adapter, providers, plugins, rate-limit rules, database hooks, email sends. |
-| `auth.access.ts`      | Roles, the permission statement matrix, `hasAdminAccess` and `hasPermission`.                          |
-| `auth.middleware.ts`  | `withRequest`, `authorized(permission?)`, `withRateLimit`, `assertWithinRateLimit` — trust boundary.   |
-| `auth.session.ts`     | Per-request session memoization, the client session query options and `clearCacheOnUserChange`.        |
-| `auth.routes.ts`      | `requireSignedIn`, `requireAdmin`, `requireCustomer`, `redirectIfSignedIn` and post-auth redirects.    |
-| `auth.client.ts`      | Browser auth client with the matching plugin set.                                                      |
-| `auth.constraints.ts` | Password length bounds shared by the server config and the Zod schemas.                                |
-| `auth.errors.ts`      | Maps Better Auth API error codes to translation keys.                                                  |
+| File                  | Responsibility                                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `auth.server.ts`      | Better Auth configuration: adapter, providers, plugins, rate-limit rules, database hooks, email sends.                  |
+| `auth.access.ts`      | Roles, the permission statement matrix, `hasAdminAccess`, `needsTwoFactorSetup` and `hasPermission`.                    |
+| `auth.middleware.ts`  | `withRequest`, `authorized(permission?)`, `withRateLimit`, `assertWithinRateLimit` — trust boundary.                    |
+| `auth.session.ts`     | Per-request session memoization, the client session query options and `clearCacheOnUserChange`.                         |
+| `auth.routes.ts`      | `requireSignedIn`, `requireAdminRole`, `requireAdmin`, `requireCustomer`, `redirectIfSignedIn` and post-auth redirects. |
+| `auth.client.ts`      | Browser auth client with the matching plugin set.                                                                       |
+| `auth.constraints.ts` | Password length bounds shared by the server config and the Zod schemas.                                                 |
+| `auth.errors.ts`      | Maps Better Auth API error codes to translation keys.                                                                   |
 
 ## Problems worth talking about
 
@@ -270,7 +273,7 @@ The constraint that actually holds is in the database. [`20260924120000_checkout
 
 A server function is a public HTTP endpoint. It is reachable whether or not the route that normally calls it was ever loaded, so a route guard cannot protect it.
 
-Route `beforeLoad` guards exist here and are honest about their job: `requireSignedIn`, `requireAdmin` and `requireCustomer` redirect, for navigation UX, and they also run client-side. The actual boundary is the `authorized()` middleware, applied to **89 server functions**. It resolves the session, throws `AppError(UNAUTHORIZED)` when there is none, and — for the 64 calls that pass a permission — throws `AppError(FORBIDDEN)` unless the role's compiled Better Auth access-control role authorizes that statement. The remaining 25 require only an authenticated session. The statement matrix in `auth.access.ts` is the real authorization source, not decoration: `product` splits `create`/`read`/`update`/`delete`/`publish`, `order` splits `read`/`update`/`refund`, `content` splits `read`/`update`, `settings` has `manage`, and `user` inherits Better Auth's admin statements.
+Route `beforeLoad` guards exist here and are honest about their job: `requireSignedIn`, `requireAdmin` and `requireCustomer` redirect, for navigation UX, and they also run client-side. The actual boundary is the `authorized()` middleware, applied to **89 server functions**. It resolves the session, throws `AppError(UNAUTHORIZED)` when there is none, and — for the 64 calls that pass a permission — throws `AppError(FORBIDDEN)` unless the role's compiled Better Auth access-control role authorizes that statement and the admin has two-factor authentication on. The remaining 25 require only an authenticated session. The statement matrix in `auth.access.ts` is the real authorization source, not decoration: `product` splits `create`/`read`/`update`/`delete`/`publish`, `order` splits `read`/`update`/`refund`, `content` splits `read`/`update`, `settings` has `manage`, and `user` inherits Better Auth's admin statements.
 
 Customer-facing reads take a different route: **ownership predicates compiled into the SQL**, `eq(order.userId, session.user.id)` in the `WHERE` clause rather than a fetch-then-filter. A foreign order id returns no row, which makes IDOR structurally absent rather than conventionally avoided.
 

@@ -11,7 +11,7 @@ import { updateDiscount, updateDiscountMutation } from "~/src/modules/discount/u
 const stubs = vi.hoisted(() => ({
   getDiscountByCode: vi.fn<(code: string) => Promise<{ code: string; id: string } | undefined>>(),
   getDiscountById: vi.fn<(id: string) => Promise<{ code: string; id: string } | undefined>>(),
-  getRequestSession: vi.fn<() => Promise<{ user: { role: string } } | null>>(),
+  getRequestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } } | null>>(),
   recordDiscountUpdatedAudit: vi.fn(),
   updateDiscountById: vi.fn<(id: string, values: Record<string, unknown>) => Promise<void>>(),
 }))
@@ -59,7 +59,7 @@ const FORM_VALUES = {
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers({ now: NOW, toFake: ["Date"] })
-  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN } })
+  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } })
   stubs.getDiscountById.mockResolvedValue({ code: "SPRING-24", id: DISCOUNT_ID })
   stubs.getDiscountByCode.mockResolvedValue(undefined)
   stubs.updateDiscountById.mockResolvedValue(undefined)

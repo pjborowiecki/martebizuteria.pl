@@ -1,4 +1,4 @@
-import { hasAdminAccess } from "~/src/integrations/better-auth/auth.access"
+import { hasAdminAccess, needsTwoFactorSetup } from "~/src/integrations/better-auth/auth.access"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 import {
   REALTIME_INVALIDATION_HUB,
@@ -9,7 +9,7 @@ import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
 
 const assertAdminWebSocket = async (request: Request): Promise<Response | undefined> => {
   const session = await getRequestSession(request)
-  if (!hasAdminAccess(session?.user.role)) {
+  if (session === null || !hasAdminAccess(session.user.role) || needsTwoFactorSetup(session.user)) {
     return new Response("Unauthorized", {
       status: HTTP_STATUS.UNAUTHORIZED,
     })

@@ -63,8 +63,16 @@ export type Permission = RoleAuthorizeRequest<typeof ac.statements>
 export const hasAdminAccess = (role: string | null | undefined): role is Role =>
   typeof role === "string" && (ADMIN_PANEL_ROLES as readonly string[]).includes(role)
 
+export const needsTwoFactorSetup = ({ role, twoFactorEnabled }: Readonly<TwoFactorAccessUser>): boolean =>
+  hasAdminAccess(role) && twoFactorEnabled !== true
+
 const isKnownRole = (role: string | null | undefined): role is keyof typeof ROLES_CONFIG =>
   typeof role === "string" && Object.hasOwn(ROLES_CONFIG, role)
 
 export const hasPermission = ({ permission, role }: { permission: Permission; role: string | null | undefined }): boolean =>
   isKnownRole(role) && ROLES_CONFIG[role].authorize(permission).success
+
+interface TwoFactorAccessUser {
+  readonly role?: string | null | undefined
+  readonly twoFactorEnabled?: boolean | null | undefined
+}

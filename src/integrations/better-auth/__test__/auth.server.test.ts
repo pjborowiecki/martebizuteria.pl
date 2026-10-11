@@ -51,6 +51,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 
 vi.mock("~/src/modules/newsletter/newsletter.accessors", () => ({ linkSubscriberToUser: stubs.linkSubscriberToUser }))
 vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: stubs.claimGuestOrdersForUser }))
+vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById: vi.fn() }))
 vi.mock("~/src/modules/user/user.erasure.server", () => ({ eraseAccountData: stubs.eraseAccountData }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminCustomersInvalidation: stubs.scheduleAdminCustomersInvalidation,

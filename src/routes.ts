@@ -27,6 +27,7 @@ export const ROUTES = {
   ADMIN_ORDERS: "/admin/orders",
   ADMIN_OVERVIEW: "/admin/overview",
   ADMIN_PRODUCTS: "/admin/catalog/products",
+  ADMIN_SECURITY: "/admin/security",
   ADMIN_SETTINGS: "/admin/settings",
   API_AUTH: {
     CHANGE_EMAIL: "/change-email",

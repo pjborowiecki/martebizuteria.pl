@@ -45,7 +45,7 @@ const { RATE_LIMITS, assertWithinRateLimit, authorized, withRateLimit } = await 
 
 const [requestBoundary] = stubs.handlers
 
-const { hasPermission } = await import("~/src/integrations/better-auth/auth.access")
+const { hasPermission, needsTwoFactorSetup } = await import("~/src/integrations/better-auth/auth.access")
 
 const next = vi.fn((arg?: unknown) => Promise.resolve(arg))
 
@@ -72,7 +72,9 @@ const runAuthorized = (permission?: Parameters<typeof authorized>[0]): unknown =
   return lastRegisteredHandler()({ context: { requestHeaders }, next })
 }
 
-const sessionForRole = (role: string): { user: { id: string; role: string } } => ({ user: { id: "usr_1", role } })
+const sessionForRole = (role: string, twoFactorEnabled = false): { user: { id: string; role: string; twoFactorEnabled: boolean } } => ({
+  user: { id: "usr_1", role, twoFactorEnabled },
+})
 
 describe("authorized middleware", () => {
   it("rejects an anonymous caller with UNAUTHORIZED", async () => {
@@ -98,11 +100,26 @@ describe("authorized middleware", () => {
   })
 
   it("admits an admin holding the permission", async () => {
-    stubs.getRequestSession.mockResolvedValue(sessionForRole(ROLES.ADMIN))
+    stubs.getRequestSession.mockResolvedValue(sessionForRole(ROLES.ADMIN, true))
 
     await runAuthorized({ [RESOURCES.PRODUCT]: [ACTIONS.DELETE] })
 
     expect(next).toHaveBeenCalledTimes(1)
+  })
+
+  it("refuses an admin permission to an admin who has not turned on two-factor authentication", async () => {
+    stubs.getRequestSession.mockResolvedValue(sessionForRole(ROLES.ADMIN))
+
+    await expect(runAuthorized({ [RESOURCES.PRODUCT]: [ACTIONS.READ] })).rejects.toThrow(new AppError(ERROR_CODES.FORBIDDEN))
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it("lets an admin without two-factor authentication read their own account, which the security page needs", async () => {
+    stubs.getRequestSession.mockResolvedValue(sessionForRole(ROLES.ADMIN))
+
+    await runAuthorized()
+
+    expect(next).toHaveBeenCalledWith({ context: { auth: sessionForRole(ROLES.ADMIN) } })
   })
 
   it("rejects an unrecognised role rather than letting it through", async () => {
@@ -138,6 +155,20 @@ describe("hasPermission", () => {
 
   it.each([[null], [undefined], [""], ["admin "], ["ADMIN"], ["superuser"]])("fails closed for role %j", (role) => {
     expect(hasPermission({ permission: { [RESOURCES.PRODUCT]: [ACTIONS.READ] }, role })).toBe(false)
+  })
+})
+
+describe("needsTwoFactorSetup", () => {
+  it.each([[false], [null], [undefined]])("asks an admin whose two-factor flag is %j to set it up", (twoFactorEnabled) => {
+    expect(needsTwoFactorSetup({ role: ROLES.ADMIN, twoFactorEnabled })).toBe(true)
+  })
+
+  it("lets an admin with two-factor authentication through", () => {
+    expect(needsTwoFactorSetup({ role: ROLES.ADMIN, twoFactorEnabled: true })).toBe(false)
+  })
+
+  it.each([[ROLES.CUSTOMER], [null], ["superuser"]])("leaves the choice to a %j account", (role) => {
+    expect(needsTwoFactorSetup({ role, twoFactorEnabled: false })).toBe(false)
   })
 })
 

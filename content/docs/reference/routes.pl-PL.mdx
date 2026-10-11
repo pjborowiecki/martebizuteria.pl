@@ -90,7 +90,7 @@ Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCu
 
 ## Panel administracyjny
 
-Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`; ponadto ładuje `admin.css`, wymusza jasny motyw, renderuje sidebar panelu i otwiera administracyjny WebSocket realtime przez `useRealtimeQuerySync`. `admin.index.tsx` przekierowuje `/admin` na `/admin/overview`, a `admin.catalog.index.tsx` przekierowuje `/admin/catalog` na `/admin/catalog/products`.
+Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`, który wysyła administratora bez uwierzytelniania dwuskładnikowego na `/admin/security`; ponadto ładuje `admin.css`, wymusza jasny motyw, renderuje sidebar panelu i otwiera administracyjny WebSocket realtime przez `useRealtimeQuerySync`. `admin.index.tsx` przekierowuje `/admin` na `/admin/overview`, a `admin.catalog.index.tsx` przekierowuje `/admin/catalog` na `/admin/catalog/products`.
 
 | Ścieżka                              | Stała w `ROUTES`     | Plik trasy                                                               |
 | ------------------------------------ | -------------------- | ------------------------------------------------------------------------ |
@@ -113,6 +113,9 @@ Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`; 
 | `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE` | `admin.content.$handle.tsx`                                              |
 | `/admin/marketing`                   | `ADMIN_MARKETING`    | `admin.marketing.tsx`                                                    |
 | `/admin/settings`                    | `ADMIN_SETTINGS`     | `admin.settings.tsx`                                                     |
+| `/admin/security`                    | `ADMIN_SECURITY`     | `admin_.security.tsx` (poza layoutem)                                    |
+
+`/admin/security` włącza i wyłącza uwierzytelnianie dwuskładnikowe zalogowanego administratora. Podkreślnik w `admin_.security.tsx` trzyma tę trasę poza layoutem `/admin`, więc nie ma sidebaru, `admin.css` ani gniazda realtime, a jej własny strażnik, `requireAdminRole`, wpuszcza administratora, który jeszcze nie włączył uwierzytelniania dwuskładnikowego. Jej strona, `AdminSecurityPage`, sama wywołuje `useAdminLightTheme`.
 
 Szczegóły zamówienia w panelu to jedyna strona bez stałej w `ROUTES`; nawigacja do niej zapisana jest jako literał `"/admin/orders/$orderId"` w `src/presentation/components/custom/pages/admin/orders/`. Strony `/admin/marketing` i `/admin/settings` nadal renderują dane z fikstur w `src/data/`: `marketing.ts` i `settings.ts`.
 
@@ -135,34 +138,35 @@ Szczegóły zamówienia w panelu to jedyna strona bez stałej w `ROUTES`; nawiga
 
 Ścieżki API nigdy nie są lokalizowane — `shouldIgnorePath` w `src/integrations/use-intl/i18n.paths.ts` wyłącza `/api`, `/rpc`, `/_serverFn` i `/assets` z obsługi lokalizacji.
 
-| Ścieżka                       | Obsługiwana przez                                     | Uwagi                                                                           |
-| ----------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `/api/auth/*`                 | `src/routes/api/auth.$.ts`                            | Własny handler Better Auth                                                      |
-| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                   | Zdarzenia Stripe z weryfikacją podpisu                                          |
-| `/api/health`                 | `src/routes/api/health.ts`                            | 200 albo 503 dla monitora dostępności po odczycie D1, KV i R2                   |
-| `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`      | Upgrade WebSocket, rola sprawdzana w Workerze przed adresowaniem Durable Object |
-| `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS` | Upgrade WebSocket, otwarty dla wszystkich                                       |
-| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                | Strony czytane z D1 przez `listSitemapPages`, cache na jeden dzień              |
-| `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                 | Treść zależy od `env.APP_ENV`                                                   |
+| Ścieżka                       | Obsługiwana przez                                     | Uwagi                                                                                                                                       |
+| ----------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/auth/*`                 | `src/routes/api/auth.$.ts`                            | Własny handler Better Auth                                                                                                                  |
+| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                   | Zdarzenia Stripe z weryfikacją podpisu                                                                                                      |
+| `/api/health`                 | `src/routes/api/health.ts`                            | 200 albo 503 dla monitora dostępności po odczycie D1, KV i R2                                                                               |
+| `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`      | Upgrade WebSocket dla administratora z włączonym uwierzytelnianiem dwuskładnikowym, sprawdzany w Workerze przed adresowaniem Durable Object |
+| `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS` | Upgrade WebSocket, otwarty dla wszystkich                                                                                                   |
+| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                | Strony czytane z D1 przez `listSitemapPages`, cache na jeden dzień                                                                          |
+| `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                 | Treść zależy od `env.APP_ENV`                                                                                                               |
 
 Cztery ostatnie ścieżki są sprawdzane w `src/server.ts`, zanim zapytanie dotrze do TanStack Start, więc żadna z nich nie płaci za render SSR. `/api/auth/*`, `/api/webhooks/stripe` i `/api/health` to trasy serwerowe TanStack Start w `src/routes/api/`, więc przechodzą przez router, ale nigdy nie renderują strony.
 
 ## Strażnicy
 
-Wszyscy czterej strażnicy leżą w `src/integrations/better-auth/auth.routes.ts`. Trasa layoutu przekazuje samego strażnika, jak w `beforeLoad: requireAdmin`.
+Wszystkich pięciu strażników leży w `src/integrations/better-auth/auth.routes.ts`. Trasa layoutu przekazuje samego strażnika, jak w `beforeLoad: requireAdmin`.
 
-| Strażnik             | Zachowanie                                                                                                                                                                     | Używany przez           |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
-| `requireSignedIn`    | Przekierowuje do `/auth/sign-in` z żądaną ścieżką w `?redirect`, gdy nie ma sesji                                                                                              | Przez dwóch pozostałych |
-| `requireAdmin`       | `requireSignedIn`, a potem przekierowuje osobę bez roli admina do `/account/overview`                                                                                          | `admin.tsx`             |
-| `requireCustomer`    | `requireSignedIn`, a potem przekierowuje administratora do `/admin`                                                                                                            | `account.tsx`           |
-| `redirectIfSignedIn` | Odsyła zalogowaną osobę na ścieżkę z `?redirect`, a w przeciwnym razie do `postAuthRouteFor(user)`: `/admin` dla administratora, w pozostałych przypadkach `/account/overview` | `auth.tsx`              |
+| Strażnik             | Zachowanie                                                                                                                                                                     | Używany przez         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------- |
+| `requireSignedIn`    | Przekierowuje do `/auth/sign-in` z żądaną ścieżką w `?redirect`, gdy nie ma sesji                                                                                              | Przez pozostałych     |
+| `requireAdminRole`   | `requireSignedIn`, a potem przekierowuje osobę bez roli admina do `/account/overview`                                                                                          | `admin_.security.tsx` |
+| `requireAdmin`       | `requireAdminRole`, a potem przekierowuje administratora bez uwierzytelniania dwuskładnikowego do `/admin/security`                                                            | `admin.tsx`           |
+| `requireCustomer`    | `requireSignedIn`, a potem przekierowuje administratora do `/admin`                                                                                                            | `account.tsx`         |
+| `redirectIfSignedIn` | Odsyła zalogowaną osobę na ścieżkę z `?redirect`, a w przeciwnym razie do `postAuthRouteFor(user)`: `/admin` dla administratora, w pozostałych przypadkach `/account/overview` | `auth.tsx`            |
 
-`requireSignedIn`, `requireAdmin` i `requireCustomer` przyjmują opcje `beforeLoad` (`{ context, location, preload }`) i zwracają `{ user }`. To staje się kontekstem trasy, więc strona pod layoutem odczytuje zalogowanego użytkownika przez `Route.useRouteContext().user`.
+`requireSignedIn`, `requireAdminRole`, `requireAdmin` i `requireCustomer` przyjmują opcje `beforeLoad` (`{ context, location, preload }`) i zwracają `{ user }`. To staje się kontekstem trasy, więc strona pod layoutem odczytuje zalogowanego użytkownika przez `Route.useRouteContext().user`.
 
 `requireSignedIn` umieszcza w `?redirect` wartość `location.publicHref`: zlokalizowaną ścieżkę publiczną, na przykład `/en-US/account/orders/order-1`. Wartość zostaje zachowana tylko wtedy, gdy jest napisem pasującym do `SAME_SITE_PATH_PATTERN`, `/^\/(?![/\\])[!-[\]-~]*$/u`: wyłącznie drukowalne znaki ASCII, jeden ukośnik na początku i brak ukośnika wstecznego. Adres bezwzględny, `//` bez protokołu, ukośnik wsteczny, biały znak albo znak sterujący powodują jej odrzucenie: `requireSignedIn` przekierowuje wtedy do `/auth/sign-in` bez niej, a `redirectIfSignedIn` wraca do `postAuthRouteFor(user)`. W przeciwnym razie `redirectIfSignedIn` odsyła tam osobę przez `redirect({ href })`, więc przekierowanie wyrenderowane na serwerze zachowuje język odwiedzającego, a po stronie klienta router ponownie lokalizuje adres na bieżący język.
 
-Strażnicy wyłącznie czytają sesję, przez `loadRouteSession`: `queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)`. `requireSignedIn`, `requireAdmin` i `requireCustomer` przekazują `recheck: true`, więc rzeczywista nawigacja do `/account` albo `/admin` sprawdza sesję ponownie z `staleTime: 0`; wstępne ładowanie odnośnika oraz `redirectIfSignedIn` z `recheck: false` używają sesji z cache, jeśli ma mniej niż 60 sekund. Sesja załadowana przez strażnika zostaje w cache TanStack Query, więc odnośnik do konta w nawigacji, strefa czasowa w `TranslationsProvider`, lista życzeń i wstępne wypełnienie procesu zamówienia czytają tę samą wartość przez `useQuery(getCurrentSessionQuery)`. Render serwerowy dehydratuje ją do strony, więc strony za strażnikiem renderują się na serwerze jako zalogowane.
+Strażnicy wyłącznie czytają sesję, przez `loadRouteSession`: `queryClient.query(recheck && !preload ? { ...getCurrentSessionQuery, staleTime: 0 } : getCurrentSessionQuery)`. `requireSignedIn`, `requireAdminRole`, `requireAdmin` i `requireCustomer` przekazują `recheck: true`, więc rzeczywista nawigacja do `/account` albo `/admin` sprawdza sesję ponownie z `staleTime: 0`; wstępne ładowanie odnośnika oraz `redirectIfSignedIn` z `recheck: false` używają sesji z cache, jeśli ma mniej niż 60 sekund. Sesja załadowana przez strażnika zostaje w cache TanStack Query, więc odnośnik do konta w nawigacji, strefa czasowa w `TranslationsProvider`, lista życzeń i wstępne wypełnienie procesu zamówienia czytają tę samą wartość przez `useQuery(getCurrentSessionQuery)`. Render serwerowy dehydratuje ją do strony, więc strony za strażnikiem renderują się na serwerze jako zalogowane.
 
 Zmiana użytkownika jest obsługiwana w jednym miejscu, przez `clearCacheOnUserChange(queryClient)` z `src/integrations/better-auth/auth.session.ts`. `getRouter` w `src/router.tsx` instaluje je wyłącznie w przeglądarce, obok `setupQueryClientInvalidationBroadcast`; render serwerowy je pomija, bo każde żądanie zaczyna od pustego `QueryClient`. Funkcja subskrybuje cache zapytań i za każdym razem, gdy dane zapytania o sesję przełączą się na inny identyfikator użytkownika, również z wylogowanego na zalogowanego i z powrotem, usuwa z cache każde zapytanie poza samą sesją i katalogami tłumaczeń (`isMessagesQuery` z `src/integrations/use-intl/i18n.messages.ts`). Ignoruje pierwszą sesję, którą zobaczy, oraz usunięcie wpisu sesji. Ponieważ obserwuje cache, wychwytuje zmianę niezależnie od tego, kto pobrał sesję: strażnik, komponent, ponowne pobranie po unieważnieniu albo hydratacja.
 

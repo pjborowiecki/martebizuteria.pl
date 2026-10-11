@@ -51,6 +51,7 @@ describe("AdminSidebar", () => {
     expect(screen.getByText("Orders").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_ORDERS)
     expect(screen.getByText("Customers").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_CUSTOMERS)
     expect(screen.getByText("Audit Log").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_AUDIT)
+    expect(screen.getByText("Security").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_SECURITY)
     expect(screen.getByText("Coupons").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_COUPONS)
     expect(screen.getByText("Content").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_CONTENT)
   })

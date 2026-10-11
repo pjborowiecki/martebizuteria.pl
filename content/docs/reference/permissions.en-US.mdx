@@ -27,6 +27,8 @@ export const ADMIN_PANEL_ROLES = [ROLES.ADMIN] as const
 
 New accounts get `customer` through `DEFAULT_ROLE`. `hasAdminAccess(role)` is the narrow predicate used where only "is this the admin console audience" matters — the route guards and the admin WebSocket handshake.
 
+An admin also needs two-factor authentication on. `needsTwoFactorSetup({ role, twoFactorEnabled })` is true for an admin without it, and such an admin holds no permission: `authorized(permission)` answers `FORBIDDEN`, Better Auth's `/admin/*` endpoints answer `ADMIN_TWO_FACTOR_REQUIRED`, and the route guard sends them to `/admin/security` to turn it on. See [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins).
+
 ## Statements
 
 Application statements come from `PERMISSIONS_STATEMENTS`, which spreads Better Auth's admin `defaultStatements` and adds four resources:
@@ -126,7 +128,7 @@ export const authorized = (permission?: Permission) =>
         throw new AppError(ERROR_CODES.UNAUTHORIZED)
       }
 
-      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+      if (permission !== undefined && (!hasPermission({ permission, role: session.user.role }) || needsTwoFactorSetup(session.user))) {
         throw new AppError(ERROR_CODES.FORBIDDEN)
       }
 
@@ -134,9 +136,9 @@ export const authorized = (permission?: Permission) =>
     })
 ```
 
-Calling `authorized()` with no argument means "any signed-in user". That is what the customer-account and address use cases do; they then narrow by identity in SQL rather than by role.
+Calling `authorized()` with no argument means "any signed-in user". That is what the customer-account and address use cases do; they then narrow by identity in SQL rather than by role. It also admits an admin without two-factor authentication, which is how `/admin/security` loads that admin's own profile through `getCustomerProfile`.
 
-Code outside the middleware path calls `hasPermission({ permission, role })` or `hasAdminAccess(role)` directly. `hasPermission` returns `false` for an unknown role rather than throwing.
+Code outside the middleware path calls `hasPermission({ permission, role })`, `hasAdminAccess(role)` or `needsTwoFactorSetup(user)` directly. `hasPermission` returns `false` for an unknown role rather than throwing.
 
 ## Ownership, not just roles
 

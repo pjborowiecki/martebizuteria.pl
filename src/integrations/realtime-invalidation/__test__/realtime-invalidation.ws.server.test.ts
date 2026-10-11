@@ -14,7 +14,7 @@ const { hub } = vi.hoisted(() => ({
 }))
 
 const { session } = vi.hoisted(() => {
-  const state: { role: string | null; value: boolean } = { role: "admin", value: true }
+  const state: { role: string | null; twoFactorEnabled: boolean; value: boolean } = { role: "admin", twoFactorEnabled: true, value: true }
 
   return { session: state }
 })
@@ -31,7 +31,8 @@ vi.mock("cloudflare:workers", () => ({
   },
 }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({
-  getRequestSession: () => Promise.resolve(session.value ? { user: { role: session.role } } : null),
+  getRequestSession: () =>
+    Promise.resolve(session.value ? { user: { role: session.role, twoFactorEnabled: session.twoFactorEnabled } } : null),
 }))
 
 const upgradeRequest = () => new Request("http://127.0.0.1:3000/api/realtime/admin/ws", { headers: { Upgrade: "websocket" } })
@@ -41,6 +42,7 @@ describe("handleRealtimeInvalidationWebSocket", () => {
     hub.names.length = 0
     hub.fetch.mockClear()
     session.role = "admin"
+    session.twoFactorEnabled = true
     session.value = true
   })
 
@@ -65,6 +67,14 @@ describe("handleRealtimeInvalidationWebSocket", () => {
 
     expect(response.status).toBe(HTTP_STATUS.UNAUTHORIZED)
     await expect(response.text()).resolves.toBe("Unauthorized")
+    expect(hub.fetch).not.toHaveBeenCalled()
+  })
+
+  it("refuses an admin socket to an admin who has not turned on two-factor authentication", async () => {
+    session.twoFactorEnabled = false
+    const response = await handleRealtimeInvalidationWebSocket(upgradeRequest(), env, "admin")
+
+    expect(response.status).toBe(HTTP_STATUS.UNAUTHORIZED)
     expect(hub.fetch).not.toHaveBeenCalled()
   })
 

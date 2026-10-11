@@ -101,7 +101,7 @@ export const Route = createFileRoute("/_storefront/products/")({
 - `head` to albo wspólny `pageHead` z `src/lib/seo.ts`, albo funkcja inline budująca `meta` z `loaderData`.
 - Parametry wyszukiwania walidujemy schematem Zod w `validateSearch`, a `loaderDeps` je normalizuje, żeby klucz loadera był stabilny.
 - Ścieżki pochodzą ze `ROUTES` w `src/routes.ts`. Pliki tras **nie zawierają segmentu lokalizacji** — router przepisuje adres przez `deLocalizeUrl` na wejściu i `localizeUrl` na wyjściu, więc jeden plik obsługuje obie lokalizacje.
-- Strażnicy tras pochodzą z `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireCustomer`, `requireSignedIn`, `redirectIfSignedIn`. Layout przekazuje samego strażnika, jak w `beforeLoad: requireAdmin`, a strony pod nim odczytują zalogowanego użytkownika, którego strażnik zwraca, przez `Route.useRouteContext().user`. Istnieją dla nawigacji, nie dla autoryzacji — zobacz [Uprawnienia](/docs/reference/permissions).
+- Strażnicy tras pochodzą z `src/integrations/better-auth/auth.routes.ts`: `requireAdmin`, `requireAdminRole`, `requireCustomer`, `requireSignedIn`, `redirectIfSignedIn`. Layout przekazuje samego strażnika, jak w `beforeLoad: requireAdmin`, a strony pod nim odczytują zalogowanego użytkownika, którego strażnik zwraca, przez `Route.useRouteContext().user`. Istnieją dla nawigacji, nie dla autoryzacji — zobacz [Uprawnienia](/docs/reference/permissions).
 
 ## Moduły
 

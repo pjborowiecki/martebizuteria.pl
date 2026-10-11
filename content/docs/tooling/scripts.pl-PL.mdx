@@ -109,7 +109,7 @@ Każdy skrypt `db:*` celuje w konkretne środowisko. Aliasy bez sufiksu nie zaws
 | `db:seed`                   | Alias `db:seed:preview`                                                                          |
 | `db:seed:preview`           | Jedenaście połączonych wywołań `wrangler d1 execute DB --env preview --remote --file=…`          |
 | `db:seed:production`        | To samo na produkcji                                                                             |
-| `db:seed:test`              | `bun scripts/seed-test.ts` — seedy katalogu i dwa konta end-to-end, lokalnie                     |
+| `db:seed:test`              | `bun scripts/seed-test.ts` — seedy katalogu i trzy konta end-to-end, lokalnie                    |
 
 Skrypty drizzle-kita działają przez `bun --env-file=.env.<środowisko>`, bo `bunfig.toml` ustawia `env = false`; skrypty Wranglera działają przez `vp exec` i czytają `wrangler.jsonc`.
 

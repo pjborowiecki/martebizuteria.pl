@@ -9,7 +9,7 @@ import { deleteDiscounts, deleteDiscountsMutation } from "~/src/modules/discount
 
 const stubs = vi.hoisted(() => ({
   deleteDiscountsByIds: vi.fn<(ids: readonly string[]) => Promise<number>>(),
-  getRequestSession: vi.fn<() => Promise<{ user: { role: string } } | null>>(),
+  getRequestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } } | null>>(),
   recordDiscountDeletedAudit: vi.fn(),
 }))
 
@@ -38,7 +38,7 @@ const IDS = ["0192f3a4-5b6c-7d8e-9fab-cdef01234567", "0192f3a4-5b6c-7d8e-9fab-cd
 
 beforeEach(() => {
   vi.clearAllMocks()
-  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN } })
+  stubs.getRequestSession.mockResolvedValue({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } })
   stubs.deleteDiscountsByIds.mockResolvedValue(IDS.length)
 })
 

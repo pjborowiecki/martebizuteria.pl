@@ -37,6 +37,11 @@ export class AuthPage extends BasePage {
     await this.page.getByRole("button", { exact: true, name: "Reset password" }).click()
   }
 
+  async enterTwoFactorCode(code: string): Promise<void> {
+    await this.page.getByRole("textbox", { exact: true, name: "Authentication code" }).fill(code)
+    await this.page.getByRole("button", { exact: true, name: "Verify" }).click()
+  }
+
   async signUp(account: NewAccount): Promise<void> {
     await this.open("/en-US/auth/sign-up")
     await this.page.getByRole("textbox", { exact: true, name: "First name *" }).fill(account.firstName)

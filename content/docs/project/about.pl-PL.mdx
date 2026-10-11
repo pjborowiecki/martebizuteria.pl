@@ -30,12 +30,12 @@ Pliki tras leżą płasko w `src/routes/` i nie zawierają segmentu języka. Rou
 | `_storefront.*.tsx` | 19 plików                                      | strona główna, katalog, karty produktów, koszyk, blog, strony prawne    |
 | `checkout.*.tsx`    | 2 pliki                                        | czterokrokowy proces zamówienia                                         |
 | `account.*.tsx`     | 10 plików                                      | strefa zalogowanego klienta — zamówienia, adresy, sesje, profil         |
-| `admin.*.tsx`       | 25 plików                                      | panel administracyjny — katalog, zamówienia, klienci, audyt, ustawienia |
+| `admin.*.tsx`       | 26 plików                                      | panel administracyjny — katalog, zamówienia, klienci, audyt, ustawienia |
 | `auth.*.tsx`        | 5 plików                                       | logowanie, rejestracja, odzyskiwanie i zmiana hasła                     |
 | `docs.*.tsx`        | 3 pliki                                        | ta dokumentacja                                                         |
 | `api/`              | `auth.$.ts`, `health.ts`, `webhooks.stripe.ts` | handler Better Auth, sprawdzenie stanu i endpoint webhooka Stripe       |
 
-`__root.tsx` i `dev.emails.tsx` dopełniają 69 plików; `dev.emails.tsx` to podgląd e-maili dostępny tylko w trybie deweloperskim — zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdą.
+`__root.tsx` i `dev.emails.tsx` dopełniają 70 plików; `dev.emails.tsx` to podgląd e-maili dostępny tylko w trybie deweloperskim — zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdą.
 
 Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed wejściem we framework Reacta — `/sitemap.xml`, `/robots.txt` i dwa uaktualnienia do WebSocketu — a dodatkowo przekierowanie językowe, bo żadna z nich nie potrzebuje renderu SSR. Handler `scheduled` z tego samego pliku uruchamia codzienne czyszczenie danych po okresie przechowywania.
 
@@ -81,7 +81,7 @@ Liczby policzone na drzewie roboczym, nie życzeniowe:
 | Przypadki użycia                                   | 125 plików w `src/modules/*/use-cases/`                                                               |
 | Funkcje serwerowe                                  | 117 wywołań `createServerFn(...)`                                                                     |
 | Integracje                                         | 15 adapterów dostawców w `src/integrations/`                                                          |
-| Pliki tras                                         | 69 w `src/routes/`                                                                                    |
+| Pliki tras                                         | 70 w `src/routes/`                                                                                    |
 | Pliki warstwy prezentacji                          | 650 plików nietestowych w `src/presentation/`, w tym 57 komponentów shadcn i 430 komponentów własnych |
 | Przestrzenie nazw tłumaczeń                        | 55 plików JSON na język w `messages/en-US/` i `messages/pl-PL/`                                       |
 | Pliki testowe                                      | 889 — 339 jednostkowych, 35 integracyjnych, 515 komponentowych                                        |

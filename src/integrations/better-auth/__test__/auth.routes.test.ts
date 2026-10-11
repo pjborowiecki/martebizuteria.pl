@@ -9,6 +9,7 @@ import {
   postAuthRouteFor,
   redirectIfSignedIn,
   requireAdmin,
+  requireAdminRole,
   requireCustomer,
   requireSignedIn,
 } from "~/src/integrations/better-auth/auth.routes"
@@ -41,7 +42,7 @@ const CREATED_AT = new Date("2026-01-01T00:00:00.000Z")
 
 const SESSION_STALE_MS = 60_000
 
-const userWithRole = (role: string, id = "usr_1"): SessionUser => ({
+const userWithRole = (role: string, id = "usr_1", twoFactorEnabled: boolean | null = null): SessionUser => ({
   banned: null,
   createdAt: CREATED_AT,
   email: "shopper@marte.test",
@@ -49,14 +50,21 @@ const userWithRole = (role: string, id = "usr_1"): SessionUser => ({
   id,
   name: "Shopper",
   role,
-  twoFactorEnabled: null,
+  twoFactorEnabled,
   updatedAt: CREATED_AT,
 })
 
 const clientSessionFor = (role: string, id = "usr_1") => ({ session: { id: `ses_${id}`, userId: id }, user: userWithRole(role, id) })
 
-const signedInAs = (role: string, id = "usr_1"): void => {
-  getSession.mockResolvedValue({ session: { id: `ses_${id}`, token: "secret", userId: id }, user: userWithRole(role, id) })
+const signedInAs = (role: string, id = "usr_1", twoFactorEnabled: boolean | null = null): void => {
+  getSession.mockResolvedValue({
+    session: { id: `ses_${id}`, token: "secret", userId: id },
+    user: userWithRole(role, id, twoFactorEnabled),
+  })
+}
+
+const signedInAsEnrolledAdmin = (): void => {
+  signedInAs(ROLES.ADMIN, "usr_1", true)
 }
 
 const routeAt = (publicHref: string, { preload = false, queryClient = new QueryClient(), redirect }: RouteOptions = {}) => ({
@@ -109,6 +117,7 @@ describe("signed-in guards", () => {
   it.each([
     ["any signed-in area", requireSignedIn],
     ["the admin panel", requireAdmin],
+    ["the admin security page", requireAdminRole],
     ["the account area", requireCustomer],
   ])("sends an anonymous visitor from %s to sign in, remembering the localized page they asked for", async (_area, guard) => {
     getSession.mockResolvedValue(null)
@@ -145,16 +154,42 @@ describe("signed-in guards", () => {
     await expect(requireSignedIn(routeAt("/account/overview"))).resolves.toStrictEqual({ user: userWithRole(ROLES.CUSTOMER) })
   })
 
-  it("admits an admin to the admin panel", async () => {
-    signedInAs(ROLES.ADMIN)
+  it("admits an admin with two-factor authentication to the admin panel", async () => {
+    signedInAsEnrolledAdmin()
 
-    await expect(requireAdmin(routeAt("/admin"))).resolves.toStrictEqual({ user: userWithRole(ROLES.ADMIN) })
+    await expect(requireAdmin(routeAt("/admin"))).resolves.toStrictEqual({ user: userWithRole(ROLES.ADMIN, "usr_1", true) })
   })
+
+  it.each([[null], [false]])(
+    "sends an admin whose two-factor flag is %j to the security page instead of the admin panel",
+    async (twoFactorEnabled) => {
+      signedInAs(ROLES.ADMIN, "usr_1", twoFactorEnabled)
+
+      const thrown = await thrownBy(requireAdmin(routeAt("/en-US/admin/orders")))
+
+      expect(isRedirect(thrown)).toBe(true)
+      expect(thrown).toHaveProperty("options.to", ROUTES.ADMIN_SECURITY)
+    },
+  )
 
   it("turns a customer away from the admin panel", async () => {
     signedInAs(ROLES.CUSTOMER)
 
     const thrown = await thrownBy(requireAdmin(routeAt("/admin")))
+
+    expect(thrown).toHaveProperty("options.to", ROUTES.ACCOUNT_OVERVIEW)
+  })
+
+  it("lets an admin without two-factor authentication open the security page to set it up", async () => {
+    signedInAs(ROLES.ADMIN)
+
+    await expect(requireAdminRole(routeAt("/admin/security"))).resolves.toStrictEqual({ user: userWithRole(ROLES.ADMIN) })
+  })
+
+  it("turns a customer away from the admin security page", async () => {
+    signedInAs(ROLES.CUSTOMER)
+
+    const thrown = await thrownBy(requireAdminRole(routeAt("/admin/security")))
 
     expect(thrown).toHaveProperty("options.to", ROUTES.ACCOUNT_OVERVIEW)
   })
@@ -192,7 +227,7 @@ describe("signed-in guards and the cached session", () => {
   })
 
   it("turns away an admin who was demoted since the last page", async () => {
-    signedInAs(ROLES.ADMIN)
+    signedInAsEnrolledAdmin()
     const queryClient = new QueryClient()
     await requireAdmin(routeAt("/admin", { queryClient }))
     signedInAs(ROLES.CUSTOMER)

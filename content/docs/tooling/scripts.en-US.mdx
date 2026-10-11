@@ -80,36 +80,36 @@ Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](
 
 Every `db:*` script targets a named environment. The unsuffixed aliases are not always the safe choice, so they are called out below.
 
-| Script                      | Runs                                                                                  |
-| --------------------------- | ------------------------------------------------------------------------------------- |
-| `db:generate`               | `drizzle-kit generate` — writes a new migration and snapshot; offline, no credentials |
-| `db:migrate`                | Alias for `db:migrate:preview` — **remote**                                           |
-| `db:migrate:local`          | `wrangler d1 migrations apply DB --env development --local`                           |
-| `db:migrate:development`    | The same, `--remote` (the preview database)                                           |
-| `db:migrate:preview`        | The same for `--env preview --remote`                                                 |
-| `db:migrate:production`     | The same for `--env production --remote`                                              |
-| `db:migrate:test`           | `wrangler d1 migrations apply DB --env test --local --persist-to .wrangler/test`      |
-| `db:reset:test`             | Deletes `.wrangler/test`, then `db:migrate:test` and `db:seed:test`                   |
-| `db:migrations:development` | `wrangler d1 migrations list DB --env development --remote`                           |
-| `db:migrations:preview`     | The same for `preview`                                                                |
-| `db:migrations:production`  | The same for `production`                                                             |
-| `db:push`                   | Alias for `db:push:development`                                                       |
-| `db:push:development`       | `drizzle-kit push` with `.env.development` — hits the preview database                |
-| `db:push:preview`           | `drizzle-kit push` with `.env.preview`                                                |
-| `db:push:production`        | `drizzle-kit push` with `.env.production`                                             |
-| `db:pull`                   | Alias for `db:introspect:development`                                                 |
-| `db:pull:production`        | Alias for `db:introspect:production`                                                  |
-| `db:introspect:development` | `drizzle-kit introspect` with `.env.development`                                      |
-| `db:introspect:preview`     | The same with `.env.preview`                                                          |
-| `db:introspect:production`  | The same with `.env.production`                                                       |
-| `db:studio`                 | Alias for `db:studio:development`                                                     |
-| `db:studio:development`     | `drizzle-kit studio` with `.env.development`                                          |
-| `db:studio:preview`         | The same with `.env.preview`                                                          |
-| `db:studio:production`      | The same with `.env.production`                                                       |
-| `db:seed`                   | Alias for `db:seed:preview`                                                           |
-| `db:seed:preview`           | Eleven chained `wrangler d1 execute DB --env preview --remote --file=…` calls         |
-| `db:seed:production`        | The same against production                                                           |
-| `db:seed:test`              | `bun scripts/seed-test.ts` — the catalog seeds and the two end-to-end accounts, local |
+| Script                      | Runs                                                                                    |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| `db:generate`               | `drizzle-kit generate` — writes a new migration and snapshot; offline, no credentials   |
+| `db:migrate`                | Alias for `db:migrate:preview` — **remote**                                             |
+| `db:migrate:local`          | `wrangler d1 migrations apply DB --env development --local`                             |
+| `db:migrate:development`    | The same, `--remote` (the preview database)                                             |
+| `db:migrate:preview`        | The same for `--env preview --remote`                                                   |
+| `db:migrate:production`     | The same for `--env production --remote`                                                |
+| `db:migrate:test`           | `wrangler d1 migrations apply DB --env test --local --persist-to .wrangler/test`        |
+| `db:reset:test`             | Deletes `.wrangler/test`, then `db:migrate:test` and `db:seed:test`                     |
+| `db:migrations:development` | `wrangler d1 migrations list DB --env development --remote`                             |
+| `db:migrations:preview`     | The same for `preview`                                                                  |
+| `db:migrations:production`  | The same for `production`                                                               |
+| `db:push`                   | Alias for `db:push:development`                                                         |
+| `db:push:development`       | `drizzle-kit push` with `.env.development` — hits the preview database                  |
+| `db:push:preview`           | `drizzle-kit push` with `.env.preview`                                                  |
+| `db:push:production`        | `drizzle-kit push` with `.env.production`                                               |
+| `db:pull`                   | Alias for `db:introspect:development`                                                   |
+| `db:pull:production`        | Alias for `db:introspect:production`                                                    |
+| `db:introspect:development` | `drizzle-kit introspect` with `.env.development`                                        |
+| `db:introspect:preview`     | The same with `.env.preview`                                                            |
+| `db:introspect:production`  | The same with `.env.production`                                                         |
+| `db:studio`                 | Alias for `db:studio:development`                                                       |
+| `db:studio:development`     | `drizzle-kit studio` with `.env.development`                                            |
+| `db:studio:preview`         | The same with `.env.preview`                                                            |
+| `db:studio:production`      | The same with `.env.production`                                                         |
+| `db:seed`                   | Alias for `db:seed:preview`                                                             |
+| `db:seed:preview`           | Eleven chained `wrangler d1 execute DB --env preview --remote --file=…` calls           |
+| `db:seed:production`        | The same against production                                                             |
+| `db:seed:test`              | `bun scripts/seed-test.ts` — the catalog seeds and the three end-to-end accounts, local |
 
 The drizzle-kit scripts run through `bun --env-file=.env.<environment>` because `bunfig.toml` sets `env = false`; the Wrangler scripts run through `vp exec` and read `wrangler.jsonc` instead.
 

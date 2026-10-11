@@ -169,6 +169,7 @@
     "coupons": "Coupons",
     "content": "Content",
     "audit": "Audit Log",
+    "security": "Security",
     "settings": "Settings"
   },
   "media": {
@@ -436,6 +437,14 @@
       "previous": "Previous",
       "next": "Next"
     }
+  },
+  "security": {
+    "eyebrow": "Admin panel",
+    "title": "Sign-in security",
+    "required": "The admin panel opens only once two-factor authentication is on. Turn it on below with an authenticator app; from then on you sign in with your password and a six-digit code.",
+    "enabled": "Two-factor authentication is on. Every sign-in to this account asks for your password and a code from your authenticator app.",
+    "passwordRequired": "This account has no password yet, and admin accounts sign in only with a password and a two-factor code. Sign out, choose “Forgot password?” on the sign-in page to set a password, then sign in with it and turn on two-factor authentication here.",
+    "openAdmin": "Go to the admin panel"
   },
   "settings": {
     "title": "Settings",

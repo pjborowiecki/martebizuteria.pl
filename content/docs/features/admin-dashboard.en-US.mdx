@@ -11,7 +11,7 @@ description: "The /admin layout and guard, the overview snapshot built from one 
 beforeLoad: requireAdmin,
 ```
 
-`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) requires a session whose role passes `hasAdminAccess`, which checks membership of `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`). A signed-in customer is redirected to `/account/overview`, and an anonymous visitor to `/auth/sign-in?redirect=<path>`. The guard re-checks the session on every real navigation into `/admin`, leaves it in the TanStack Query cache, and resolves to `{ user }`, which becomes route context. See [Integrations: Better Auth](/docs/integrations/better-auth).
+`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) requires a session whose role passes `hasAdminAccess`, which checks membership of `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`). A signed-in customer is redirected to `/account/overview`, an admin without two-factor authentication to `/admin/security`, and an anonymous visitor to `/auth/sign-in?redirect=<path>`. The guard re-checks the session on every real navigation into `/admin`, leaves it in the TanStack Query cache, and resolves to `{ user }`, which becomes route context. See [Integrations: Better Auth](/docs/integrations/better-auth).
 
 Three things the layout does that nothing else does:
 

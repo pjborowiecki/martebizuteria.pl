@@ -11,7 +11,7 @@ description: "Layout i strażnik /admin, migawka przeglądu zbudowana z jednego 
 beforeLoad: requireAdmin,
 ```
 
-`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) wymaga sesji, której rola przechodzi `hasAdminAccess`, czyli należy do `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`). Zalogowany klient jest przekierowywany na `/account/overview`, a anonimowy gość na `/auth/sign-in?redirect=<path>`. Strażnik sprawdza sesję ponownie przy każdej prawdziwej nawigacji do `/admin`, zostawia ją w cache'u TanStack Query i zwraca `{ user }`, które trafia do kontekstu trasy. Zobacz [Integracje: Better Auth](/docs/integrations/better-auth).
+`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) wymaga sesji, której rola przechodzi `hasAdminAccess`, czyli należy do `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`). Zalogowany klient jest przekierowywany na `/account/overview`, administrator bez uwierzytelniania dwuskładnikowego na `/admin/security`, a anonimowy gość na `/auth/sign-in?redirect=<path>`. Strażnik sprawdza sesję ponownie przy każdej prawdziwej nawigacji do `/admin`, zostawia ją w cache'u TanStack Query i zwraca `{ user }`, które trafia do kontekstu trasy. Zobacz [Integracje: Better Auth](/docs/integrations/better-auth).
 
 Trzy rzeczy, które robi ten layout i których nie robi nic innego:
 

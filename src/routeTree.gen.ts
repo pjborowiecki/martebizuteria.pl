@@ -37,6 +37,7 @@ import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
 import { Route as AdminMarketingRouteImport } from './routes/admin.marketing'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminSecurityRouteImport } from './routes/admin_.security'
 import { Route as ApiHealthRouteImport } from './routes/api/health'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
@@ -219,6 +220,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
   getParentRoute: () => AdminRoute,
+} as any)
+const AdminSecurityRoute = AdminSecurityRouteImport.update({
+  id: '/admin_/security',
+  path: '/admin/security',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiHealthRoute = ApiHealthRouteImport.update({
   id: '/api/health',
@@ -460,6 +466,7 @@ export interface FileRoutesByFullPath {
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/security': typeof AdminSecurityRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -523,6 +530,7 @@ export interface FileRoutesByTo {
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/security': typeof AdminSecurityRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -590,6 +598,7 @@ export interface FileRoutesById {
   '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin_/security': typeof AdminSecurityRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
@@ -662,6 +671,7 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/overview'
     | '/admin/settings'
+    | '/admin/security'
     | '/api/health'
     | '/auth/forgot-password'
     | '/auth/reset-password'
@@ -725,6 +735,7 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/overview'
     | '/admin/settings'
+    | '/admin/security'
     | '/api/health'
     | '/auth/forgot-password'
     | '/auth/reset-password'
@@ -791,6 +802,7 @@ export interface FileRouteTypes {
     | '/admin/marketing'
     | '/admin/overview'
     | '/admin/settings'
+    | '/admin_/security'
     | '/api/health'
     | '/auth/forgot-password'
     | '/auth/reset-password'
@@ -843,6 +855,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   CheckoutRoute: typeof CheckoutRouteWithChildren
   DocsRoute: typeof DocsRouteWithChildren
+  AdminSecurityRoute: typeof AdminSecurityRoute
   ApiHealthRoute: typeof ApiHealthRoute
   DevEmailsRoute: typeof DevEmailsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -1046,6 +1059,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/admin_/security': {
+      id: '/admin_/security'
+      path: '/admin/security'
+      fullPath: '/admin/security'
+      preLoaderRoute: typeof AdminSecurityRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/health': {
       id: '/api/health'
@@ -1561,6 +1581,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   CheckoutRoute: CheckoutRouteWithChildren,
   DocsRoute: DocsRouteWithChildren,
+  AdminSecurityRoute: AdminSecurityRoute,
   ApiHealthRoute: ApiHealthRoute,
   DevEmailsRoute: DevEmailsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
