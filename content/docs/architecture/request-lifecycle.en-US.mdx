@@ -68,7 +68,7 @@ POST /_serverFn/…  (shipOrder)
 1. The handler requires a `stripe-signature` header and `env.STRIPE_WEBHOOK_SECRET`; a missing either is a `400`.
 2. `stripe.webhooks.constructEventAsync` verifies the signature. A failure is logged and answered `400`.
 3. The event type is looked up in `webhookHandlers`. An unhandled type is logged with `console.info` and acknowledged `{ received: true }`, so Stripe stops retrying it.
-4. A handler that throws is logged and answered `500`, which makes Stripe retry. `notifyShopOfIncident` is handed to `scheduleBackgroundWork` on the way, so `RESEND_EMAIL_FROM` hears of it at most once an hour per event type without delaying the answer.
+4. A handler that throws is logged and answered `500`, which makes Stripe retry. `notifyShopOfIncident` is handed to `scheduleBackgroundWork` on the way, so `RESEND_EMAIL_FROM` hears of each failed event once, however often Stripe retries it, without delaying the answer.
 
 `GET /api/health` reads D1, KV and R2 and answers `200` or `503` for an uptime monitor; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
 
@@ -78,10 +78,10 @@ POST /_serverFn/…  (shipOrder)
 
 The audit log is written by the queue consumer, not by the request that produced the event:
 
-1. A recorder calls `scheduleAuditLog` or `scheduleAuditLogFromRequest`, which mints the row id with `uuidv7()` and stamps `createdAt` with `Date.now()` at enqueue time, so ordering survives batching.
+1. A recorder calls `scheduleAuditLog` or `scheduleAuditLogFromRequest`, which mints the row id with `uuidv7()`, unless the recorder names it, and stamps `createdAt` with `Date.now()` at enqueue time, so ordering survives batching.
 2. `scheduleBackgroundWork` hands the `env.AUDIT_LOG_QUEUE.send(...)` promise to `waitUntil`.
 3. Cloudflare delivers a batch of up to 50 messages to the `queue` export in `src/server.ts`.
-4. `processAuditLogQueueBatch` inserts the whole batch with `insertAuditLogs`, acks each message, then publishes a realtime invalidation for `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` and `.STATS`, plus `ORDER_QUERY_KEYS.ADMIN.ORDERS` when the batch carries an action from an order timeline, so open admin tabs refetch their order list, stats and order page and pick up a failed order email. If the insert throws, every message is retried and `RESEND_EMAIL_FROM` is emailed, at most once an hour for the queue. After three retries the messages move to the dead-letter queue, whose consumer runs each one through the same function on its own, so the rest of a batch is written even when one message cannot be; a message that still fails three times there is dropped.
+4. `processAuditLogQueueBatch` inserts the whole batch with `insertAuditLogs`, which skips an id that is already stored, acks each message, then publishes a realtime invalidation for `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` and `.STATS`, plus `ORDER_QUERY_KEYS.ADMIN.ORDERS` when the batch carries an action from an order timeline, so open admin tabs refetch their order list, stats and order page and pick up a failed order email. If the insert throws, every message is retried and `RESEND_EMAIL_FROM` is emailed, at most once an hour for the queue. After three retries the messages move to the dead-letter queue, whose consumer runs each one through the same function on its own, so the rest of a batch is written even when one message cannot be, and a message delivered again after its row was written is skipped instead of failing; a message that still fails three times there is dropped.
 
 ## Related pages
 

@@ -8,9 +8,9 @@ import polishCopy from "~/messages/pl-PL/emails.incident-alert.json"
 import { INCIDENT_ALERT_NAMESPACE, type Incident, IncidentAlert, type IncidentKind } from "~/src/presentation/emails/incident-alert"
 
 const webhookIncident: Incident = {
-  detail: "evt_1Q2w3E4r: D1_ERROR: database is locked",
+  detail: "checkout.session.completed: D1_ERROR: database is locked",
   kind: "stripeWebhookFailed",
-  reference: "checkout.session.completed",
+  reference: "evt_1Q2w3E4r",
 }
 
 const renderIncidentAlert = (overrides: Partial<ComponentProps<typeof IncidentAlert>> = {}, plainText = true): Promise<string> =>
@@ -42,8 +42,8 @@ describe("IncidentAlert", () => {
   it("states the reference, the cause and the environment the failure happened in", async () => {
     const text = await renderIncidentAlert()
 
-    expect(text).toContain(`${englishCopy.referenceLabel}\n\ncheckout.session.completed`)
-    expect(text).toContain(`${englishCopy.detailLabel}\n\nevt_1Q2w3E4r: D1_ERROR: database is locked`)
+    expect(text).toContain(`${englishCopy.referenceLabel}\n\nevt_1Q2w3E4r`)
+    expect(text).toContain(`${englishCopy.detailLabel}\n\ncheckout.session.completed: D1_ERROR: database is locked`)
     expect(text).toContain(`${englishCopy.environmentLabel}\n\nproduction`)
   })
 

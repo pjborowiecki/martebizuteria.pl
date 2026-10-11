@@ -146,23 +146,26 @@ export const getAdminAuditLogStats = async (sinceToday: Date): Promise<AuditLog[
 export const insertAuditLogs = async (rows: readonly AuditLogInsertRow[]): Promise<void> => {
   await runDrizzleBatch(
     insertRowChunks(auditLog, rows).map((chunk) =>
-      db.insert(auditLog).values(
-        chunk.map((row) => ({
-          action: row.action,
-          actorId: row.actorId,
-          actorName: row.actorName,
-          actorRole: row.actorRole,
-          category: row.category,
-          createdAt: new Date(row.createdAt),
-          detail: row.detail,
-          id: row.id,
-          ip: row.ip,
-          metadata: row.metadata,
-          resourceId: row.resourceId,
-          severity: row.severity,
-          target: row.target,
-        })),
-      ),
+      db
+        .insert(auditLog)
+        .values(
+          chunk.map((row) => ({
+            action: row.action,
+            actorId: row.actorId,
+            actorName: row.actorName,
+            actorRole: row.actorRole,
+            category: row.category,
+            createdAt: new Date(row.createdAt),
+            detail: row.detail,
+            id: row.id,
+            ip: row.ip,
+            metadata: row.metadata,
+            resourceId: row.resourceId,
+            severity: row.severity,
+            target: row.target,
+          })),
+        )
+        .onConflictDoNothing({ target: auditLog.id }),
     ),
   )
 }

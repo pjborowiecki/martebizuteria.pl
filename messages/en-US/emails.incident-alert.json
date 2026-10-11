@@ -28,6 +28,6 @@
   "referenceLabel": "Reference",
   "detailLabel": "Cause",
   "environmentLabel": "Environment",
-  "followUp": "Further failures with the same reference are not emailed for an hour. Every failure is in Workers Logs and Issues in the Cloudflare dashboard, and a paid checkout without an order is also in the audit log in the admin panel.",
+  "followUp": "Further failures with the same reference are not emailed for an hour, or for three days when the reference is a Stripe event, which Stripe retries for that long. Every failure is in Workers Logs and Issues in the Cloudflare dashboard, and a paid checkout without an order is also in the audit log in the admin panel.",
   "tagline": "Shop alert"
 }

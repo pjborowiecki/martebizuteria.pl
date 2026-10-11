@@ -30,6 +30,7 @@ export interface AuditLogEventInput {
   readonly actor: AuditLogActorInput
   readonly category: AuditLogCategory
   readonly detail?: string | undefined
+  readonly id?: string | undefined
   readonly ip?: string | undefined
   readonly metadata?: Record<string, unknown> | undefined
   readonly resourceId?: string | undefined
@@ -75,7 +76,7 @@ const buildQueueMessage = (input: AuditLogEventInput): AuditLogQueueMessage => (
   category: input.category,
   createdAt: Date.now(),
   detail: input.detail,
-  id: uuidv7(),
+  id: input.id ?? uuidv7(),
   ip: input.ip,
   metadata: serializeAuditMetadata(input.metadata),
   resourceId: input.resourceId,
@@ -104,6 +105,7 @@ export const scheduleAuditLogFromRequest = (
           actor,
           category: input.category,
           detail: input.detail,
+          id: input.id,
           ip,
           metadata: input.metadata,
           resourceId: input.resourceId,

@@ -3,9 +3,11 @@ import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { deleteAuditLogs, getAdminAuditLogStats, getAdminAuditLogsPage, insertAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
+import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 
 const database = vi.hoisted(() => ({
   batch: vi.fn((): Promise<unknown> => Promise.resolve([[{ count: 0 }], []])),
+  conflicts: [] as unknown[],
   deletedRows: [] as { id: string }[],
   deletes: [] as unknown[],
   inserts: [] as unknown[],
@@ -52,7 +54,13 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => {
         values: (values: unknown) => {
           database.inserts.push(values)
 
-          return Promise.resolve(undefined)
+          return {
+            onConflictDoNothing: (conflict: unknown) => {
+              database.conflicts.push(conflict)
+
+              return Promise.resolve(undefined)
+            },
+          }
         },
       }),
       select: () => ({ from }),
@@ -76,6 +84,7 @@ const listParams = { limit: 50, offset: 0 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  database.conflicts = []
   database.deletedRows = []
   database.deletes = []
   database.inserts = []
@@ -231,6 +240,12 @@ describe("insertAuditLogs", () => {
         },
       ],
     ])
+  })
+
+  it("leaves an entry already stored under the same id as it is", async () => {
+    await insertAuditLogs([row])
+
+    expect(database.conflicts).toStrictEqual([{ target: auditLog.id }])
   })
 })
 

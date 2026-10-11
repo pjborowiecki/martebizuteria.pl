@@ -11,7 +11,7 @@ Dziennik audytu to historia zdarzeń sklepu, która pełni jednocześnie rolę m
 
 | Kolumna       | Uwagi                                                                         |
 | ------------- | ----------------------------------------------------------------------------- |
-| `id`          | klucz główny; UUIDv7, więc sam identyfikator sortuje się chronologicznie      |
+| `id`          | klucz główny; UUIDv7, chyba że nadaje go rejestrator (zob. niżej)             |
 | `created_at`  | `timestampNow("created_at")`                                                  |
 | `action`      | not null; jedna z `AUDIT_LOG_ACTION`                                          |
 | `category`    | enum `orders \| email \| customers \| catalog \| content \| settings \| auth` |
@@ -64,6 +64,8 @@ export const scheduleAuditLog = (input: AuditLogEventInput): void => {
 `scheduleBackgroundWork` (`src/lib/background.ts`) przekazuje obietnicę do `waitUntil` Workera, więc rejestrator nigdy nie opóźnia odpowiedzi, a awaria kolejki nigdy nie wywala mutacji. Zwróć uwagę na typ zwracany: `void`, a nie `Promise<void>` — rejestratora się nie `await`-uje.
 
 `buildQueueMessage` przypisuje `id: uuidv7()` i `createdAt: Date.now()` w miejscu wywołania, więc kolejność odzwierciedla moment zdarzenia, a nie moment przetworzenia przez konsumenta. `serializeAuditMetadata` zamienia obiekt metadanych w przechowywany napis JSON.
+
+Rejestrator może zamiast tego sam nadać identyfikator zdarzeniu, które dziennik ma przechowywać raz, niezależnie od tego, ile razy wystąpi. `recordOrderFulfillmentFailedAudit` używa `order.fulfillment_failed:<identyfikator sesji>`, więc każde nieudane dostarczenie tej samej sesji Checkout wskazuje ten sam wpis, a konsument zostawia ten, który już zapisano (zobacz [Kolejka](#kolejka)).
 
 Dwa pomocniki spójnie kształtują `target` i `resource_id`: `withResourceId(target, options)` domyślnie ustawia `resourceId` na `target`, a `resolveActorAuditTarget(actor, options)` preferuje jako cel adres e-mail aktora i umieszcza go w metadanych, z fallbackiem na nazwę.
 
@@ -135,6 +137,8 @@ try {
 ```
 
 Do 50 zdarzeń staje się więc jednym insertem do D1, a nieudany wsad jest ponawiany do trzech razy. Wsad, który nadal się nie zapisze, nie jest usuwany: Cloudflare przenosi jego wiadomości do kolejki martwych listów, której konsument bierze je **pojedynczo** (`max_batch_size: 1`) i przepuszcza każdą przez to samo `processAuditLogQueueBatch`, ponawiając ją jeszcze do trzech razy co pięć minut (`retry_delay: 300`). Jedna wiadomość odrzucona przez insert nie zabiera więc ze sobą pozostałych 49 wpisów wsadu: zapisują się osobno, a przepada tylko wiadomość, której nie da się zapisać także po trzecim ponowieniu w kolejce martwych listów; ślad po niej zostaje w logu Workera i w alercie z nazwą kolejki martwych listów. `scripts/verify-bindings.ts` odmawia wdrożenia preview albo produkcji, gdy konsument audytu nie podaje `dead_letter_queue` albo kolejka martwych listów nie ma konsumenta, a każda kolejka `-dlq` musi istnieć w Cloudflare przed wdrożeniem, które ją wskazuje (`bunx wrangler queues create martebizuteria-audit-log-dlq` dla produkcji). Nieudany wsad wysyła też e-mail na `RESEND_EMAIL_FROM`, gdy wiadomości są już oznaczone do ponowienia, najwyżej raz na godzinę dla kolejki, a alert nigdy nie rzuca wyjątku, więc nie zmienia ponowienia; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts). Konsekwencja, o której trzeba pamiętać: **wpis audytu jest spójny ostatecznie** — może pojawić się nawet po `max_batch_timeout` (5 sekund), dlatego konsument publikuje unieważnienie realtime, a nie liczy na to, że interfejs odświeży sam zapisujący. `AUDIT_LOG_ADMIN_QUERY_KEYS` to strona audytu i jej statystyki. Gdy któryś wiersz wsadu należy do `ADMIN_ORDER_TIMELINE_ACTIONS`, konsument dodaje `ORDER_QUERY_KEYS.ADMIN.ORDERS`. Każda otwarta karta panelu pobiera wtedy ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc nowy wiersz osi czasu, na przykład nieudany e-mail o zamówieniu, pojawia się bez przeładowania. Akcje `email.*` należą do tej listy niezależnie od tego, czego dotyczył e-mail, więc nieudany e-mail newslettera albo Better Auth też wywołuje to odświeżenie.
+
+`insertAuditLogs` wstawia wiersze z `on conflict (id) do nothing`, więc zdarzenie, którego identyfikator jest już zapisany, zostaje pominięte, a reszta wsadu jest zapisywana i potwierdzana. Wiadomość dostarczona przez kolejkę drugi raz i powtórzenie zdarzenia, któremu identyfikator nadaje rejestrator, zostawiają więc zapisany wpis bez zmian.
 
 ## Różnice zmian
 

@@ -28,6 +28,6 @@
   "referenceLabel": "Dotyczy",
   "detailLabel": "Przyczyna",
   "environmentLabel": "Środowisko",
-  "followUp": "Kolejne błędy dotyczące tego samego identyfikatora nie są wysyłane e-mailem przez godzinę. Każdy błąd jest w Workers Logs i Issues w panelu Cloudflare, a opłacona płatność bez zamówienia także w dzienniku audytu w panelu administracyjnym.",
+  "followUp": "Kolejne błędy dotyczące tego samego identyfikatora nie są wysyłane e-mailem przez godzinę, a gdy identyfikator wskazuje zdarzenie Stripe, przez trzy dni, bo tyle Stripe je ponawia. Każdy błąd jest w Workers Logs i Issues w panelu Cloudflare, a opłacona płatność bez zamówienia także w dzienniku audytu w panelu administracyjnym.",
   "tagline": "Alert sklepu"
 }
