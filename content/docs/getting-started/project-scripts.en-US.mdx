@@ -37,19 +37,19 @@ Everything is a `package.json` script driven by Vite+. Two rules save confusion:
 
 The three projects are declared in `vite.config.ts`. The `node` project excludes `*.component.test.*` and `*.integration.test.*`, so `test:unit` really is the fast subset. Only the `component` project loads `src/platform/testing/setup.ts` and runs in jsdom.
 
-Coverage thresholds are a ratchet, not an aspiration:
+Every coverage threshold is 100:
 
 ```ts
 thresholds: {
   autoUpdate: false,
-  branches: 69,
-  functions: 68,
-  lines: 71,
-  statements: 72,
+  branches: 100,
+  functions: 100,
+  lines: 100,
+  statements: 100,
 },
 ```
 
-They sit just below the current numbers, so a regression fails CI. `autoUpdate: false` means they are raised deliberately, by editing this block. `src/presentation/components/shadcn/**`, `src/platform/testing/**` and `src/routeTree.gen.ts` are excluded from the measurement.
+A statement, branch, function or line left uncovered fails `bun run test:coverage` and CI, so new code arrives with its tests. `autoUpdate: false` keeps Vitest from rewriting this block. Tests, `__test__` folders, `*.d.ts`, `src/routeTree.gen.ts`, `src/integrations/**/migrations/**`, `src/presentation/components/shadcn/**` and `src/platform/testing/**` are excluded from the measurement.
 
 Use `bun run test`, never `bun test` — the latter is Bun's own runner and knows nothing about the Vitest projects, the setup file or the `test` environment values loaded by `loadEnv("test", …)`.
 

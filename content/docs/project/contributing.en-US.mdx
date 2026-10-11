@@ -126,16 +126,16 @@ Tests live beside the code they cover, in a `__test__/` directory, named after t
 
 Import from `vite-plus/test`, not from `vitest`. Component tests load `src/platform/testing/setup.ts`. Database suites run against `node:sqlite` behind the D1-shaped transport in `src/platform/testing/mocks/d1.ts`; mock external providers and use local fixtures, so that no test needs network access or a remote database.
 
-Coverage thresholds are a ratchet, configured with `autoUpdate: false`:
+Coverage thresholds, configured with `autoUpdate: false`:
 
 | Metric     | Threshold |
 | ---------- | --------- |
-| Statements | 72        |
-| Lines      | 71        |
-| Functions  | 68        |
-| Branches   | 69        |
+| Statements | 100       |
+| Lines      | 100       |
+| Functions  | 100       |
+| Branches   | 100       |
 
-Because they never move on their own, a change that lowers coverage fails `bun run test:coverage`. When you raise coverage in an area, raise the number in `vite.config.ts` in the same pull request. `src/presentation/components/shadcn/**`, `src/platform/testing/**`, `src/routeTree.gen.ts` and the test files themselves are excluded from the measurement.
+Every metric is held at 100%, so a change that leaves any code uncovered fails `bun run test:coverage`. Cover new code in the same pull request, or remove a branch no input can reach, rather than lowering a threshold. `src/presentation/components/shadcn/**`, `src/platform/testing/**`, `src/routeTree.gen.ts`, `src/integrations/**/migrations/**` and the test files themselves are excluded from the measurement.
 
 [Testing architecture](/docs/architecture/testing-architecture) explains what the suites are aimed at; [Testing](/docs/tooling/testing) covers running them.
 
