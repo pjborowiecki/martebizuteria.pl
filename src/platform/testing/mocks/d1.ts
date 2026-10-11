@@ -2,11 +2,15 @@ import { type DatabaseSync, type SQLInputValue } from "node:sqlite"
 
 const D1_MAX_BOUND_PARAMETERS = 100
 
+const D1_MAX_LIKE_PATTERN_BYTES = 50
+
 export const createTestD1Database = (
   sqlite: DatabaseSync,
   onQuery?: (query: TestD1Query) => void,
   onRoundTrip?: (trip: TestD1RoundTrip) => void,
 ): D1Database => {
+  sqlite.limits.likePatternLength = D1_MAX_LIKE_PATTERN_BYTES
+
   const recordAndPrepare = (query: TestD1Query) => {
     onQuery?.(query)
 

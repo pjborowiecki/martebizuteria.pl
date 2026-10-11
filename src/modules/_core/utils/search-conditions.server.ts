@@ -9,19 +9,11 @@ export const normalizeAdminSearchTerm = (search: string | undefined): string | u
   return trimmed === "" ? undefined : trimmed
 }
 
-const escapeLikePattern = (term: string): string =>
-  term
-    .replaceAll("\\", String.raw`\\`)
-    .replaceAll("%", String.raw`\%`)
-    .replaceAll("_", String.raw`\_`)
-
 export const localizedTextColumns = (column: SQLiteColumn): SQL[] =>
   I18N.SUPPORTED_LOCALES.map((locale) => sql`json_extract(${column}, ${`$."${locale}"`})`)
 
-export const buildAdminLikePattern = (term: string): string => `%${escapeLikePattern(term)}%`
-
-const buildColumnLikeCondition = (column: AdminSearchColumn, pattern: string): SQL =>
-  sql`lower(cast(${column} as text)) like ${pattern} escape '\\'`
+export const containsAdminSearchTerm = (column: AdminSearchColumn, term: string): SQL =>
+  sql`instr(lower(cast(${column} as text)), lower(${term})) > 0`
 
 export const buildAdminSearchOrCondition = (search: string | undefined, columns: readonly AdminSearchColumn[]): SQL | undefined => {
   const normalized = normalizeAdminSearchTerm(search)
@@ -29,10 +21,9 @@ export const buildAdminSearchOrCondition = (search: string | undefined, columns:
     return undefined
   }
 
-  const pattern = buildAdminLikePattern(normalized.toLowerCase())
-  const conditions = columns.map((column) => buildColumnLikeCondition(column, pattern))
+  const term = normalized.toLowerCase()
 
-  return or(...conditions)
+  return or(...columns.map((column) => containsAdminSearchTerm(column, term)))
 }
 
 type AdminSearchColumn = SQLiteColumn | SQL

@@ -9,8 +9,8 @@ import {
 } from "~/src/modules/_core/utils/column-filters"
 import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
 import {
-  buildAdminLikePattern,
   buildAdminSearchOrCondition,
+  containsAdminSearchTerm,
   normalizeAdminSearchTerm,
 } from "~/src/modules/_core/utils/search-conditions.server"
 
@@ -161,16 +161,20 @@ describe("normalizeAdminSearchTerm", () => {
   })
 })
 
-describe("buildAdminLikePattern", () => {
-  it("wraps the term in wildcards", () => {
-    expect(buildAdminLikePattern("silver")).toBe("%silver%")
+describe("containsAdminSearchTerm", () => {
+  it("looks for the term anywhere in the column's lower-cased text with instr rather than a LIKE pattern", () => {
+    const rendered = renderShape(containsAdminSearchTerm(column, "silver").queryChunks).toLowerCase()
+
+    expect(rendered).toContain("instr(lower(cast(")
+    expect(rendered).not.toContain("like")
   })
 
-  it("escapes the SQL wildcards with a backslash", () => {
-    expect(buildAdminLikePattern("100%")).toBe(String.raw`%100\%%`)
-    expect(buildAdminLikePattern("cus_anna")).toBe(String.raw`%cus\_anna%`)
-    expect(buildAdminLikePattern(String.raw`a\b`)).toBe(String.raw`%a\\b%`)
-  })
+  it.each([["100%"], ["cus_anna"], [String.raw`a\b`], ["anna.kowalska-nowak.zamowienia@przyklad-sklepu-z-bizuteria.pl"]])(
+    "binds %s exactly as typed, with nothing escaped or wrapped",
+    (term) => {
+      expect(params(containsAdminSearchTerm(column, term))).toStrictEqual([term])
+    },
+  )
 })
 
 describe("buildAdminSearchOrCondition", () => {
@@ -182,23 +186,21 @@ describe("buildAdminSearchOrCondition", () => {
     expect(buildAdminSearchOrCondition("silver", [])).toBeUndefined()
   })
 
-  it("lower-cases the pattern so the comparison is case insensitive", () => {
+  it("lower-cases the term so the comparison is case insensitive", () => {
     const condition = buildAdminSearchOrCondition("SILVER", [column])
 
-    expect(condition === undefined ? [] : params(condition)).toContain("%silver%")
+    expect(condition === undefined ? [] : params(condition)).toStrictEqual(["silver"])
   })
 
-  it("declares the escape character so wildcard characters are matched literally", () => {
-    const condition = buildAdminSearchOrCondition("cus_anna", [column])
-    const rendered = condition === undefined ? "" : renderShape(condition.queryChunks)
+  it("passes wildcard characters through untouched, since instr matches them literally", () => {
+    const condition = buildAdminSearchOrCondition("cus_anna%", [column])
 
-    expect(params(condition ?? sql``)).toContain(String.raw`%cus\_anna%`)
-    expect(rendered.toLowerCase()).toContain("escape")
+    expect(params(condition ?? sql``)).toStrictEqual(["cus_anna%"])
   })
 
   it("searches every supplied column", () => {
     const condition = buildAdminSearchOrCondition("silver", [sql`name`, sql`email`])
 
-    expect(params(condition ?? sql``)).toStrictEqual(["%silver%", "%silver%"])
+    expect(params(condition ?? sql``)).toStrictEqual(["silver", "silver"])
   })
 })
