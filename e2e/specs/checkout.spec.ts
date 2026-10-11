@@ -1,6 +1,7 @@
 import { type APIRequestContext, type Browser, type Page, type Request, type TestInfo } from "@playwright/test"
 
 import { COURIER, IN_STORE_PICKUP, PARCEL_LOCKER, PRODUCTS, SHIPPING_ADDRESS, WITHDRAWN_DELIVERY_METHOD } from "../data/catalog"
+import { INPOST_LOCKERS } from "../data/inpost"
 import { rememberPriceWhenAdded } from "../fixtures/cart"
 import { keepCheckoutDraft } from "../fixtures/checkout-draft"
 import { registerCustomer } from "../fixtures/customers"
@@ -157,6 +158,36 @@ test.describe("guest checkout", () => {
 
     await cartPage.gotoCart()
     await expect(cartPage.heading()).toHaveText("Your cart is empty")
+  })
+
+  test("a guest who picks a parcel locker on the map pays and receives the order for that locker", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "locker")
+    const locker = INPOST_LOCKERS.marszalkowska
+    await checkoutPage.gotoCheckout()
+    await checkoutPage.fillContact(email, SHIPPING_ADDRESS.phone)
+    await checkoutPage.fillAddress(SHIPPING_ADDRESS)
+
+    await checkoutPage.chooseParcelLocker(locker)
+
+    await expect(page).toHaveURL(/\/en-US\/checkout\?step=4$/u)
+    await expect(page.getByRole("main")).toContainText(`Paczkomat InPost ${locker.name}`)
+    await expect(checkoutPage.summary()).toContainText(/Total\s*PLN\s393\.99/u)
+    const session = await waitForOpenCheckoutSession(request, email)
+    expect(session.amount_total).toBe(39_399)
+
+    await completeCheckoutSession(request, session.id)
+    await checkoutPage.open(`/en-US/checkout?success=true&session_id=${session.id}`)
+
+    await expect(checkoutPage.confirmationHeading()).toBeVisible()
+    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    await expect(page.getByRole("main")).toContainText(/Paczkomat InPost\s*PLN\s14\.99/u)
+    await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s393\.99/u)
+    const confirmation = await waitForEmail(request, email, "Order confirmation — M'Arte")
+    expect(confirmation.html).toContain(`Paczkomat InPost · ${locker.name}`)
   })
 
   test("a guest whose cart remembers an older price is shown the price Stripe charges", async ({ checkoutPage, page, request }, testInfo) => {

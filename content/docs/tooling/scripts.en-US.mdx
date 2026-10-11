@@ -65,14 +65,17 @@ Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](
 | `test:component`   | `vp test run --project component`                |
 | `test:changed`     | `vp test run --changed`                          |
 | `test:coverage`    | `vp test run --coverage`                         |
-| `test:e2e`         | `playwright test` — both browsers                |
+| `test:e2e`         | `playwright test` — every project                |
 | `test:e2e:pr`      | `playwright test --project=chromium`             |
 | `test:e2e:smoke`   | The smoke spec on Chromium                       |
+| `test:e2e:stripe`  | `playwright test --project=stripe-test-mode`     |
 | `test:e2e:headed`  | `playwright test --headed`                       |
 | `test:e2e:ui`      | `playwright test --ui`                           |
 | `test:e2e:install` | `playwright install --with-deps chromium webkit` |
 | `test:all`         | `test`, then `test:e2e:smoke`                    |
 | `test:watch`       | `vp test`                                        |
+
+`test:e2e` runs Chromium, WebKit and the `stripe-test-mode` project, which skips its spec unless Stripe sandbox keys are set; `test:e2e:stripe` runs that project alone. See [Stripe test mode](/docs/tooling/testing#stripe-test-mode).
 
 `test:watch` does not watch — `vp test` with no subcommand runs once. Use `vp test watch`. See [Testing](/docs/tooling/testing).
 

@@ -7,6 +7,8 @@ import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
 
 const nativeFetch = globalThis.fetch
 
+const EMULATED_STRIPE_AUTHORIZATION = "Bearer sk_test_local_fixture"
+
 const recipientsSchema = z.array(z.string())
 
 const resendEmailSchema = z.object({
@@ -550,7 +552,7 @@ export const installProviderMocks = (): void => {
       return captureEmail(request)
     }
 
-    if (url.hostname === "api.stripe.com") {
+    if (url.hostname === "api.stripe.com" && request.headers.get("authorization") === EMULATED_STRIPE_AUTHORIZATION) {
       return emulateStripe(request, url)
     }
 

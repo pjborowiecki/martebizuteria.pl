@@ -34,7 +34,7 @@ Nie ma tu osobnych wywołań ESLinta, Prettiera, Jesta czy `tsc`. `bun run check
 
 ## Czego tutaj nie ma
 
-Nie ma testów przeglądarkowych ani end-to-end. `vite.config.ts` wymienia `e2e`, `playwright/.cache`, `playwright-report` i `test-results` we wzorcach ignorowania i wykluczania, ale katalog `e2e/` nie istnieje, a Playwright nie jest zależnością. Te wzorce są zapobiegawcze, a nie dowodem na istnienie zestawu testów.
+Domyślny zestaw testów przeglądarkowych nigdy nie wywołuje Stripe'a. Rozlicza płatności przez emulator w testowym Workerze, więc sam formularz karty Stripe'a działa tylko we włączanym osobno projekcie `stripe-test-mode`, gdy ustawione są klucze sandboxa Stripe'a; zobacz [Testy](/docs/tooling/testing#tryb-testowy-stripe).
 
 CI nie nakłada migracji bazy danych; robią to skrypty wdrożeniowe, tuż przed `wrangler deploy`, a produkcja wdraża tylko commit, który przeszedł CI. Zobacz [CI/CD](/docs/tooling/ci-cd) i [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 

@@ -9,6 +9,8 @@ const DEV_RETRIES = 0
 const WORKERS = 2
 const E2E_TIMEOUT_MS = 60_000
 
+const STRIPE_TEST_MODE_SPEC = /stripe-test-mode\.spec\.ts$/u
+
 export default defineConfig({
   expect: {
     timeout: 10_000,
@@ -17,8 +19,9 @@ export default defineConfig({
   fullyParallel: true,
   projects: [
     { name: "setup", testMatch: /.*\.setup\.ts/u },
-    { dependencies: ["setup"], name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { dependencies: ["setup"], name: "webkit", use: { ...devices["Desktop Safari"] } },
+    { dependencies: ["setup"], name: "chromium", testIgnore: STRIPE_TEST_MODE_SPEC, use: { ...devices["Desktop Chrome"] } },
+    { dependencies: ["setup"], name: "webkit", testIgnore: STRIPE_TEST_MODE_SPEC, use: { ...devices["Desktop Safari"] } },
+    { name: "stripe-test-mode", testMatch: STRIPE_TEST_MODE_SPEC, use: { ...devices["Desktop Chrome"] } },
   ],
   reporter: isCI ? [["github"], ["html", { open: "never" }]] : [["list"], ["html", { open: "on-failure" }]],
   retries: isCI ? CI_RETRIES : DEV_RETRIES,

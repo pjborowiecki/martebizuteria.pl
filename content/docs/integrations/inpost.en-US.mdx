@@ -124,6 +124,8 @@ From there `lockerId` is persisted on the `checkout` row, copied onto the order 
 
 `src/integrations/inpost/__test__/` holds three files. `inpost.api.test.ts` covers the request URL, capitalization of multi-part and hyphenated city names, the throw on a non-OK status, and the empty-array fallback for both a wrong response shape and a single malformed point. `inpost.queries.test.ts` covers the trimmed lower-cased key, the namespace prefix and the one-day / two-day cache times. `inpost.zod.test.ts` covers a full point, a point stripped to its required fields, and rejection when coordinates, city or name are missing.
 
+The browser tests never call InPost. `e2e/fixtures/inpost.ts` answers the point search with the lockers in `e2e/data/inpost.ts` whose city matches, and a checkout spec searches Warszawa in the picker, chooses a locker from the list and pays; see [Testing](/docs/tooling/testing#end-to-end-tests).
+
 ## Related pages
 
 - [Checkout and payments](/docs/features/checkout)

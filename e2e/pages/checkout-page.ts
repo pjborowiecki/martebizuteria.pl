@@ -1,5 +1,6 @@
 import { type Locator } from "@playwright/test"
 
+import { type InpostLocker } from "../data/inpost"
 import { BasePage } from "./base-page"
 
 interface ShippingAddress {
@@ -13,6 +14,12 @@ interface ShippingAddress {
 export interface InvoicedCompany {
   readonly companyName: string
   readonly nip: string
+}
+
+interface PaymentCard {
+  readonly cvc: string
+  readonly expiry: string
+  readonly number: string
 }
 
 export class CheckoutPage extends BasePage {
@@ -68,6 +75,24 @@ export class CheckoutPage extends BasePage {
   async chooseDelivery(method: RegExp): Promise<void> {
     await this.page.getByRole("radio", { name: method }).check()
     await this.nextButton("Payment").click()
+  }
+
+  async chooseParcelLocker(locker: InpostLocker): Promise<void> {
+    await this.page.getByRole("radio", { name: /^Parcel Locker/u }).check()
+    await this.page.getByRole("button", { name: "Select Parcel Locker" }).click()
+    const picker = this.page.getByRole("dialog", { name: "Parcel Locker" })
+    await picker.getByPlaceholder("Enter city name...").fill(locker.address_details.city)
+    await picker.getByRole("button", { exact: true, name: locker.name }).click()
+    await picker.waitFor({ state: "hidden" })
+    await this.nextButton("Payment").click()
+  }
+
+  async payWithCard(card: PaymentCard): Promise<void> {
+    const paymentForm = this.page.locator("iframe[title='Secure payment input frame']").contentFrame()
+    await paymentForm.locator("input[name='number']").fill(card.number)
+    await paymentForm.locator("input[name='expiry']").fill(card.expiry)
+    await paymentForm.locator("input[name='cvc']").fill(card.cvc)
+    await this.page.getByRole("button", { name: /^Order & Pay/u }).click()
   }
 
   async applyDiscountCode(code: string): Promise<void> {

@@ -91,6 +91,7 @@
     "test:e2e:install": "playwright install --with-deps chromium webkit",
     "test:e2e:pr": "playwright test --project=chromium",
     "test:e2e:smoke": "playwright test e2e/specs/smoke.spec.ts --project=chromium",
+    "test:e2e:stripe": "playwright test --project=stripe-test-mode",
     "test:e2e:ui": "playwright test --ui",
     "test:integration": "vp test run --project integration",
     "test:unit": "vp test run --project node",
