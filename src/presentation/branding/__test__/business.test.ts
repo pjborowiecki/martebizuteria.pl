@@ -14,6 +14,7 @@ const seededBody = (handle: string, locale: string): string => {
   applyMigration(sqlite, MIGRATION.TERMS_OF_SERVICE_PAGE)
   applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
   applyMigration(sqlite, MIGRATION.PRIVACY_POLICY_PAGE)
+  applyMigration(sqlite, MIGRATION.FAQ_PAGE)
   const row = sqlite.prepare("select json_extract(bodies, ?) as body from content_page where handle = ?").get(`$."${locale}"`, handle)
   sqlite.close()
 
@@ -58,5 +59,13 @@ describe("published business details", () => {
     expect(terms).toContain(`mailto:${BUSINESS.EMAIL}`)
     expect(terms).toContain(`tel:${BUSINESS.PHONE.replaceAll(" ", "")}`)
     expect(terms).toContain(`${BUSINESS.OPENING_HOURS_OPEN}–${BUSINESS.OPENING_HOURS_CLOSE}`)
+  })
+
+  it.each(I18N.SUPPORTED_LOCALES)("gives the %s FAQ the business's contact details and opening hours", (locale) => {
+    const faq = seededBody("faq", locale)
+
+    expect(faq).toContain(`[${BUSINESS.EMAIL}](mailto:${BUSINESS.EMAIL})`)
+    expect(faq).toContain(`[${BUSINESS.PHONE}](${BUSINESS_PHONE_HREF})`)
+    expect(faq).toContain(`${BUSINESS.OPENING_HOURS_OPEN}–${BUSINESS.OPENING_HOURS_CLOSE}`)
   })
 })

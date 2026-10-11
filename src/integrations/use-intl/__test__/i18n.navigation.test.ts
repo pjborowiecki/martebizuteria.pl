@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from "vite-plus/test"
 import { getRouteNamespaces, messagesQueryOptions, preloadNamespaces } from "~/src/integrations/use-intl/i18n.messages"
 import { deLocalizeUrl, getCurrentLocale, localizeUrl } from "~/src/integrations/use-intl/i18n.utils"
 
-import type faqMessages from "~/messages/en-US/pages.faq.json"
+import type cartMessages from "~/messages/en-US/pages.cart.json"
 
 const createLocaleRouter = () => {
   const root = createRootRouteWithContext<{
@@ -26,7 +26,7 @@ const createLocaleRouter = () => {
     },
   })
 
-  const faq = createRoute({
+  const cart = createRoute({
     getParentRoute: () => root,
     head: ({
       loaderData,
@@ -44,10 +44,10 @@ const createLocaleRouter = () => {
       ],
     }),
     loader: ({ context }) =>
-      context.queryClient.query(messagesQueryOptions<typeof faqMessages>({ locale: context.locale, namespace: "pages.faq" })),
-    path: "/faq",
+      context.queryClient.query(messagesQueryOptions<typeof cartMessages>({ locale: context.locale, namespace: "pages.cart" })),
+    path: "/cart",
     staticData: {
-      namespaces: ["pages.faq"],
+      namespaces: ["pages.cart"],
     },
   })
 
@@ -72,19 +72,19 @@ const createLocaleRouter = () => {
     },
     defaultStaleTime: 60_000,
     history: createMemoryHistory({
-      initialEntries: ["/faq"],
+      initialEntries: ["/cart"],
     }),
     isServer: false,
     rewrite: {
       input: ({ url }) => deLocalizeUrl(url),
       output: ({ url }) => localizeUrl(url),
     },
-    routeTree: root.addChildren([faq, signIn, account]),
+    routeTree: root.addChildren([cart, signIn, account]),
   })
 }
 
 const { currentRequest } = vi.hoisted(() => ({
-  currentRequest: vi.fn<() => Request>(() => new Request("https://store.test/faq")),
+  currentRequest: vi.fn<() => Request>(() => new Request("https://store.test/cart")),
 }))
 
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: currentRequest }))

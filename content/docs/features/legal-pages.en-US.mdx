@@ -1,22 +1,22 @@
 ---
 title: "Legal pages"
-description: "The terms of service, the privacy policy and the exchanges-and-returns page: Markdown rows in D1, edited in the admin panel with MDXEditor and rendered on the storefront."
+description: "The terms of service, the privacy policy, the exchanges-and-returns page and the FAQ: Markdown rows in D1, edited in the admin panel with MDXEditor and rendered on the storefront."
 ---
 
-M'Arte has three legal documents: the terms of service (the regulamin) at `/terms-of-service`, the privacy policy at `/privacy-policy` and the returns policy at `/exchanges-and-returns`. Each one is a row in the D1 `content_page` table. Admins edit them at `/admin/content` in a rich-text editor that writes Markdown, and the storefront renders that Markdown with the same typography the editor shows.
+M'Arte has three legal documents: the terms of service (the regulamin) at `/terms-of-service`, the privacy policy at `/privacy-policy` and the returns policy at `/exchanges-and-returns`. Each one is a row in the D1 `content_page` table, and so is the FAQ at `/faq`. Admins edit them at `/admin/content` in a rich-text editor that writes Markdown, and the storefront renders that Markdown with the same typography the editor shows.
 
 ## The table
 
 `src/modules/content-page/content-page.schema.ts` defines one row per page:
 
-| Column         | Holds                                                                    |
-| -------------- | ------------------------------------------------------------------------ |
-| `handle`       | `terms-of-service`, `privacy-policy` or `exchanges-and-returns`, unique  |
-| `titles`       | A JSON map from locale to the page title                                 |
-| `descriptions` | A JSON map from locale to the meta description                           |
-| `bodies`       | A JSON map from locale to the Markdown body                              |
-| `revised_ats`  | A JSON map from locale to the epoch milliseconds of the last real change |
-| `updated_at`   | The last save of any kind, used to detect conflicting saves              |
+| Column         | Holds                                                                          |
+| -------------- | ------------------------------------------------------------------------------ |
+| `handle`       | `terms-of-service`, `privacy-policy`, `exchanges-and-returns` or `faq`, unique |
+| `titles`       | A JSON map from locale to the page title                                       |
+| `descriptions` | A JSON map from locale to the meta description                                 |
+| `bodies`       | A JSON map from locale to the Markdown body                                    |
+| `revised_ats`  | A JSON map from locale to the epoch milliseconds of the last real change       |
+| `updated_at`   | The last save of any kind, used to detect conflicting saves                    |
 
 The handle column is an enum over `CONTENT_PAGE_HANDLES` in `content-page.constants.ts`, so a page the code does not know about cannot be stored or requested.
 
@@ -29,6 +29,8 @@ The migration `20261002120000_content_pages.sql` creates the table and seeds the
 `20261010210000_privacy_policy_account_deletion.sql` changes one sentence of the newsletter section, which said that deleting the account does not end the subscription, to say that it ends the subscription for the account's e-mail address and removes that address from the list, as `eraseAccountData` now does. It runs one `replace` per locale, only while that body still contains the old sentence, and dates that locale's revision and `updated_at` 10 October 2026, 12:00 UTC, so a policy an admin has rewritten keeps the admin's text in that language.
 
 `20261010231000_withdrawal_function_links.sql` points the returns page and § 8 of the terms at the online withdrawal function. The first step of "How to withdraw" on the returns page now starts with the form at `/withdraw-from-contract` and the "Withdraw from the contract" button on the order in the account, and keeps the e-mail and postal routes after them; the English page also says that only the PDF forms are in Polish. § 8 names the function before e-mail and post. In the privacy policy it adds withdrawing by order number to the places the Cloudflare Turnstile check runs and its acknowledgement to the e-mails whose per-address counters the policy describes. Like the account deletion migration it runs one `replace` per page and language, only while that body still contains the old sentence, and dates each changed language and `updated_at` 10 October 2026, 12:00 UTC.
+
+`20261010232000_faq_page.sql` adds the FAQ, which until then was a "Page under construction" message, with `ON CONFLICT(handle) DO NOTHING` like the terms, and dates it 10 October 2026, 14:00 UTC.
 
 The Polish documents are the authoritative ones. They cite Polish statute directly, such as the 14-day right of withdrawal, articles 7a, 38 and 38a of the Consumer Rights Act and the GDPR article for each processing purpose, and they name the data controller. Keep the English versions in step as translations, not as separate texts.
 
@@ -127,9 +129,25 @@ The public page answers every statement alike: `withdrawFromGuestOrder` returns 
 
 The account order page lists the statements already sent and drops the button once the whole order is withdrawn or the period ends, through `getCustomerOrderWithdrawal`, which also only reads the customer's own order. The admin order page shows every statement in a "Withdrawal from the contract" card above the fulfilment tracker: what it covers, when it arrived, the name and address, and the reason. Recording a statement changes nothing else on the order; refunding it and putting the pieces back in stock remain the admin's actions.
 
+## The FAQ
+
+The FAQ answers the questions customers ask about shopping and gives general advice on caring for jewellery. Like the terms, every fact in it comes from the code or the terms, so a change to one of these sources needs a matching edit to the FAQ in `/admin/content`:
+
+| Section                | What it answers                                                                                                                                                                                                                                                                                                | Where it comes from                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Orders                 | Ordering without an account and finding the order in an account created later with the same address, the checkout steps up to "Zamawiam i płacę", a cart that reserves nothing, and acceptance once the payment is confirmed, with the e-mail that carries the withdrawal form                                 | § 4 and § 5 of the terms, `cart.store.ts`, `claimGuestOrdersForUser`                     |
+| Payment and invoices   | Card, BLIK and Przelewy24 through Stripe, paid in advance and never on delivery, prices in PLN with VAT, saved cards, one discount code per order, and a company invoice with its NIP at the checkout or by e-mail                                                                                             | § 3 and § 6 of the terms, `CHECKOUT_PAYMENT_METHOD_ORDER`, the checkout's invoice fields |
+| Delivery               | Poland only, Kurier InPost, Paczkomat InPost or free collection in Bochnia from 09:00 to 17:00, a fixed price per method shown at the checkout, the fulfilment time from the product page or 10 business days, up to 4 business days in transit, the parcel number by e-mail and damaged parcels               | § 7 of the terms, `DELIVERY_COUNTRY_CODES`, `BUSINESS.OPENING_HOURS_*`                   |
+| Returns and complaints | Withdrawal within 14 days through `/withdraw-from-contract`, the account, e-mail or post, the return at the customer's cost, the refund, another size through a new order, the made-to-specification exception, 2 years of liability and the complaint route, and why tarnish and worn plating are not defects | § 8 and § 9 of the terms and the returns page, which it links rather than repeats        |
+| Account                | Signing up with a confirmed address, what the account holds, a wishlist of up to `WISHLIST_MAX_ITEMS` products, resetting the password, and deleting the account while orders are kept for 5 years                                                                                                             | § 4 of the terms and the deletion dialog in `pages.account`                              |
+| Newsletter             | Signing up on the home page or in the profile, the confirmation link, discount codes for subscribers and unsubscribing                                                                                                                                                                                         | § 4 of the terms                                                                         |
+| Jewellery care         | Caring for 925 silver, 585 gold, gold plating, natural stones and pearls, when to take jewellery off and how to store it                                                                                                                                                                                       | General care advice, not a promise about any product                                     |
+
+Like the terms, the FAQ leaves the courier and locker prices to the checkout. The footer's "How to care for jewelry" link under Tips, the "FAQ" link in the full-screen menu and in search, and the "Need Help?" link on an order in the account lead to it. The footer link opens the top of the page: `remarkHeading` builds heading ids from the heading text in each language, such as `#pielęgnacja-biżuterii`, so there is no anchor both languages share.
+
 ## The storefront pages
 
-All three routes load the page through one query and hand rendering to a shared article:
+All four routes load the page through one query and hand rendering to a shared article:
 
 ```tsx
 const PrivacyPolicyPage = (): JSX.Element => <ContentPageArticle handle={CONTENT_PAGE_HANDLE.PRIVACY_POLICY} />
@@ -159,7 +177,7 @@ const { Markdown } = createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkH
 
 The typography lives in `CONTENT_PROSE_CLASS` in `content-page.styles.ts`. The admin editor applies the same class to its editable area, so what an admin sees while typing is what customers see.
 
-All three routes sit under `_storefront`, so they get the navigation, the cart availability banner and the footer.
+All four routes sit under `_storefront`, so they get the navigation, the cart availability banner and the footer.
 
 ## Editing in the admin panel
 
@@ -218,16 +236,9 @@ Edits typed while a save is in flight are kept after it completes.
 
 The admin list and editor pick the new page up without changes.
 
-## Message-only storefront pages
+## The about page
 
-Two other pages in the footer's information column are not content pages and have no long-form text:
-
-| Route    | File                    | What it renders                                                                                     |
-| -------- | ----------------------- | --------------------------------------------------------------------------------------------------- |
-| `/faq`   | `_storefront.faq.tsx`   | `t("title")`, one `t("description")` paragraph, a link home                                         |
-| `/about` | `_storefront.about.tsx` | An eyebrow, a title, a lead and four paragraphs from `pages.about`, then the seller contact section |
-
-`/about` is finished copy authored in `messages/{locale}/pages.about.json`. `/faq` is a placeholder and renders a centred "go home" link.
+`/about`, in the footer's information column, is not a content page. `_storefront.about.tsx` renders an eyebrow, a title, a lead and four paragraphs of finished copy from `messages/{locale}/pages.about.json`, then the seller contact section.
 
 The about page ends with a "Contact details" section whose id is `ABOUT_CONTACT_HASH` from `src/routes.ts`, so `/about#contact` scrolls to it. It renders `SellerContactDetails` from `src/presentation/components/custom/seller-contact-details.tsx`: the legal name and postal address from `BUSINESS_POSTAL_ADDRESS_LINES` with the country, the NIP and REGON, and the e-mail address and phone number as `mailto:` and `tel:` links. Every value comes from `BUSINESS` in `src/presentation/branding/business.ts`; only the country name and the NIP and REGON labels are messages, in `components.custom.sellerContactDetails`.
 
@@ -241,6 +252,8 @@ The about page ends with a "Contact details" section whose id is `ABOUT_CONTACT_
 <FooterLink to={ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
 <FooterLink to={ROUTES.WITHDRAW_FROM_CONTRACT}>{t("withdraw")}</FooterLink>
 ```
+
+The Tips column links the FAQ as "How to care for jewelry" (`<FooterLink to={ROUTES.FAQ}>{t("care")}</FooterLink>`).
 
 The footer's "Contact details" link, like the "Contact" link in the full-screen menu, goes to `ROUTES.ABOUT` with `hash={ABOUT_CONTACT_HASH}`, the contact section at the end of the about page. Below the link columns, under the "Seller and contact" heading, the footer also renders `SellerContactDetails`, so the seller's legal name, address, NIP, REGON, e-mail and phone are on every page that has the footer.
 
@@ -258,9 +271,10 @@ Article 19 of the EU General Product Safety Regulation (Regulation (EU) 2023/988
 - `privacy-policy-account-deletion.integration.test.ts` checks that the account deletion migration replaces the newsletter sentence in both languages and changes nothing else, dates the revision, leaves a language alone once an admin has rewritten that sentence, and changes nothing when it runs again.
 - `withdrawal-function-links.integration.test.ts` checks that the returns page in both languages leads its steps with the online form, that the English page limits the Polish-only note to the PDF forms, that § 8 names the function in both languages, that the privacy policy names the withdrawal by order number among the bot checks and the counted e-mails, the revision dates, that a language an admin has rewritten is left alone and that running it again changes nothing. The editor round-trip test runs the updated pages too.
 - `order-withdrawal.integration.test.ts` runs both withdrawal server functions against the migrated database: the whole order and chosen products, another customer's order, a guest's failed bot check, a wrong e-mail address, an unknown number and a closed or already withdrawn order answering a guest exactly like a recorded statement, the visitor e-mail limits holding back both e-mails, an order delivered a month ago, cancelled or refunded, the last moment of a period whose fourteenth day is a Saturday and the first moment after it, a second statement for the whole order, a failed acknowledgement, no shop address, a signed-out visitor and the rate limit, and the account page's read. `polish-deadline.test.ts` covers the Polish date of the delivery, Saturdays, Sundays and the fixed and Easter-based public holidays, and `order-withdrawal.utils.test.ts` the end of the period in Polish time, a fourteenth day on a Saturday and the change to winter time during the period. `order-withdrawal.test.tsx` renders both e-mails in both languages; the dialog, the account block, the public form and route and the admin card have component tests. Two browser tests, in Chromium and WebKit, follow a customer through the account and a guest from the confirmation e-mail's link to the acknowledgement, the shop's notice and the admin order.
-- `business.test.ts` fails if a seeded page stops naming the business details in `src/presentation/branding/business.ts`.
+- `faq-page.integration.test.ts` checks that the FAQ migration publishes both languages with their titles and date, answers in the same seven sections, states the facts it takes from the checkout and the terms, the wishlist limit from `WISHLIST_MAX_ITEMS` included, writes no delivery price, links the terms, the returns page, the withdrawal form and the complaint form, passes the editor's validation unchanged and keeps an admin's edit when it runs again. The editor round-trip test runs both languages of the FAQ too.
+- `business.test.ts` fails if a seeded page stops naming the business details in `src/presentation/branding/business.ts`, and if the FAQ stops giving the shop's e-mail address, phone number and opening hours.
 - `order-confirmation.test.tsx` checks in both languages that the confirmation names the seller with every detail in `BUSINESS`, states the withdrawal, return, refund and complaint rules, and links the three documents. `withdrawal-form.attachment.test.ts` checks that the PDF in `public/forms` is attached byte for byte and that a missing form stops the email.
-- `legal-routes.test.ts` covers the three storefront routes.
+- `legal-routes.test.ts` covers the four storefront routes. The smoke browser test opens each one and follows the footer's jewellery care link to the FAQ.
 - `seller-contact-details.component.test.tsx` checks every business detail in both languages and the `mailto:` and `tel:` links; the footer, the full-screen menu and the about page tests check where the contact links go and that the details are shown. The smoke browser test follows the footer link and the menu link from the cart to the scrolled-in contact section.
 - `product-hero-details.component.test.tsx` checks in both languages that the "Manufacturer" section on every product names the seller with the postal address and a `mailto:` link to `BUSINESS.EMAIL`. A smoke browser test opens it on a Polish product page.
 - `silver-premium-section.component.test.tsx` checks that the home page's silver section states the statutory liability for lack of conformity in both languages and calls nothing a warranty, a guarantee or a gwarancja.

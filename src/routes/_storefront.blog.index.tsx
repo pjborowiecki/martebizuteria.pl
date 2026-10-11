@@ -1,12 +1,12 @@
 import { type JSX, useMemo } from "react"
 
-import { createFileRoute } from "@tanstack/react-router"
+import { createFileRoute, notFound } from "@tanstack/react-router"
 import { ArrowRight } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
-import { BLOG_POST_SLUG_LIST } from "~/src/data/blog-posts"
+import { BLOG_POST_SLUGS } from "~/src/data/blog-posts"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
@@ -18,7 +18,7 @@ import { ROUTES } from "~/src/routes"
 const BlogPostLink = ({
   slug,
 }: Readonly<{
-  slug: (typeof BLOG_POST_SLUG_LIST)[number]
+  slug: string
 }>): JSX.Element => {
   const t = useTranslations("pages.blog")
   const tPosts = useTranslations("pages.blog.posts")
@@ -56,7 +56,7 @@ const BlogIndexPage = (): JSX.Element => {
       <p className="mt-5 max-w-2xl text-base/relaxed text-muted-foreground">{t("description")}</p>
 
       <ul className="mt-12 border-t border-border">
-        {BLOG_POST_SLUG_LIST.map((slug) => (
+        {BLOG_POST_SLUGS.map((slug) => (
           <BlogPostLink key={slug} slug={slug} />
         ))}
       </ul>
@@ -68,6 +68,10 @@ export const Route = createFileRoute("/_storefront/blog/")({
   component: BlogIndexPage,
   head: pageHead,
   loader: async ({ context }) => {
+    if (BLOG_POST_SLUGS.length === 0) {
+      throw notFound()
+    }
+
     const { locale } = context
     const messages = await context.queryClient.query(messagesQueryOptions<typeof blogMessages>({ locale, namespace: "pages.blog" }))
 

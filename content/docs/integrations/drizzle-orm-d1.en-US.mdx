@@ -186,9 +186,9 @@ Those three variables come from the environment file, which is why the `db:*` sc
 
 ## The migration directory
 
-`src/integrations/drizzle-orm/migrations/` holds 82 `.sql` files. Wrangler applies them in filename order and records what it applied in its own `d1_migrations` table; Drizzle's `meta/_journal.json` is only consulted by `drizzle-kit generate` when it computes the next diff.
+`src/integrations/drizzle-orm/migrations/` holds 83 `.sql` files. Wrangler applies them in filename order and records what it applied in its own `d1_migrations` table; Drizzle's `meta/_journal.json` is only consulted by `drizzle-kit generate` when it computes the next diff.
 
-Those two views have drifted. The journal lists 52 entries, so thirty files in the directory are not in it:
+Those two views have drifted. The journal lists 52 entries, so thirty-one files in the directory are not in it:
 
 ```
 20260604143000_product_status_updated_at_idx
@@ -221,6 +221,7 @@ Those two views have drifted. The journal lists 52 entries, so thirty files in t
 20261010220000_delivery_method_descriptions
 20261010230000_order_withdrawals
 20261010231000_withdrawal_function_links
+20261010232000_faq_page
 ```
 
 Hand-written migrations such as `20260927120000_fix_silver_collection_handle.sql` are normal in this repository: data repairs, index-only changes and newer tables such as `order_number_sequence`, `discount_redemption`, `discount_claim`, `newsletter_subscriber`, `wishlist_item`, `storefront_search`, `content_page` and `store_setting` are written directly and applied with Wrangler. But the journal is also missing index 38 entirely (it runs 0–52 with a gap), and the newest snapshot, `meta/20260930151544_snapshot.json`, predates every one of those tables, which means `drizzle-kit generate` computes its diff from a snapshot that does not include everything the database actually has. After a `db:generate`, read the produced SQL before applying it and delete anything that re-creates an object that already exists.

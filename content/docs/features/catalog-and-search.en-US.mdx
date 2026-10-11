@@ -157,7 +157,7 @@ Constants in `storefront-search.constants.ts`:
 
 `getTrendingSearches` fills the empty state: it takes the top active categories and collections by `rank` then `createdAt`, `Math.ceil(5 / 2) = 3` of each, and slices the combined list to five.
 
-The UI is `search-overlay.tsx` under `.../landing-page/navigation/components/search/`, with its logic in `.../navigation/hooks/use-search-overlay-logic.ts`. That hook also matches three hard-coded static pages from `src/data/static-pages.ts` (`/`, `/about`, `/blog`) against the query, using an accent-stripping `normalize` so that "o nas" matches regardless of diacritics. Open/close state is the zustand store in `.../navigation/store/navigation-store.ts`; the overlay is animated with GSAP.
+The UI is `search-overlay.tsx` under `.../landing-page/navigation/components/search/`, with its logic in `.../navigation/hooks/use-search-overlay-logic.ts`. That hook also matches four pages it lists itself, the brand page, all products, the FAQ and shipping and returns, by their translated labels against the query, using an accent-stripping `normalize` so that "o nas" matches regardless of diacritics. Open/close state is the zustand store in `.../navigation/store/navigation-store.ts`; the overlay is animated with GSAP.
 
 ## Realtime refresh
 

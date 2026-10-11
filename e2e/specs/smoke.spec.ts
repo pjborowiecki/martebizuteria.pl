@@ -30,6 +30,7 @@ const CONTENT_PAGES = [
   { path: "/en-US/privacy-policy", title: "Privacy policy" },
   { path: "/en-US/exchanges-and-returns", title: "Exchanges and returns" },
   { path: "/en-US/terms-of-service", title: "Terms of Service" },
+  { path: "/en-US/faq", title: "Frequently asked questions" },
 ] as const
 
 test.describe("smoke", () => {
@@ -110,6 +111,29 @@ test.describe("smoke", () => {
     await expect(contact.getByText(/^NIP: \d{10}\sREGON: \d{9}$/u)).toBeVisible()
     await expect(contact.getByRole("link", { name: /@/u })).toHaveAttribute("href", /^mailto:\S+@\S+$/u)
     await expect(contact.getByRole("link", { name: /^\+48[\d ]+$/u })).toHaveAttribute("href", /^tel:\+48\d{9}$/u)
+  })
+
+  test("the footer's jewellery care link opens the FAQ with its care advice", async ({ page, productPage }) => {
+    await productPage.open("/en-US/cart")
+
+    await page.getByRole("contentinfo").getByRole("link", { name: "How to care for jewelry" }).click()
+
+    await expect(page).toHaveURL(/\/en-US\/faq$/u)
+    const article = page.getByRole("main").getByRole("article")
+    await expect(article.getByRole("heading", { level: 2, name: "Jewellery care" })).toBeVisible()
+    await expect(article.getByRole("heading", { level: 3, name: "How do I care for silver jewellery?" })).toBeVisible()
+  })
+
+  test("the blog stays hidden until it has articles", async ({ page, productPage, request }) => {
+    for (const path of ["/en-US/blog", "/blog", "/blog/rytual-pielegnacji-bizuterii"]) {
+      expect((await request.get(path)).status()).toBe(404)
+    }
+    expect(await (await request.get("/sitemap.xml")).text()).not.toContain("/blog")
+
+    await productPage.open("/en-US")
+
+    await expect(page.getByRole("heading", { name: "Details matter" })).toHaveCount(0)
+    await expect(page.locator('a[href*="/blog"]')).toHaveCount(0)
   })
 
   test("the menu's contact link scrolls the about page to the seller's details", async ({ page, productPage }) => {

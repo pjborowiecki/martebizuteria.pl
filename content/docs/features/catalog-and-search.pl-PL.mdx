@@ -157,7 +157,7 @@ Stałe w `storefront-search.constants.ts`:
 
 `getTrendingSearches` wypełnia stan pusty: bierze najwyżej uszeregowane aktywne kategorie i kolekcje po `rank`, potem `createdAt`, po `Math.ceil(5 / 2) = 3` z każdego źródła, i obcina połączoną listę do pięciu pozycji.
 
-Interfejs to `search-overlay.tsx` w `.../landing-page/navigation/components/search/`, a jego logika w `.../navigation/hooks/use-search-overlay-logic.ts`. Ten hook dopasowuje też do frazy trzy zapisane na stałe strony statyczne z `src/data/static-pages.ts` (`/`, `/about`, `/blog`), używając funkcji `normalize` usuwającej znaki diakrytyczne, więc „o nas” dopasowuje się niezależnie od ogonków. Stan otwarcia trzyma store zustand w `.../navigation/store/navigation-store.ts`; nakładka jest animowana GSAP-em.
+Interfejs to `search-overlay.tsx` w `.../landing-page/navigation/components/search/`, a jego logika w `.../navigation/hooks/use-search-overlay-logic.ts`. Ten hook dopasowuje też do frazy cztery strony, które sam wymienia — markę, wszystkie produkty, FAQ oraz dostawę i zwroty — po ich przetłumaczonych etykietach, używając funkcji `normalize` usuwającej znaki diakrytyczne, więc „o nas” dopasowuje się niezależnie od ogonków. Stan otwarcia trzyma store zustand w `.../navigation/store/navigation-store.ts`; nakładka jest animowana GSAP-em.
 
 ## Odświeżanie w czasie rzeczywistym
 

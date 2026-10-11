@@ -77,6 +77,17 @@ Sekcja ma `overflow-clip`, a nie `overflow-hidden`, więc nie jest kontenerem pr
 
 Osoby, które wybrały ograniczenie ruchu, nie dostają przewijania poziomego. Na szerokim ekranie sekcja desktopowa ma `motion-reduce:lg:hidden`, a sekcja mobilna `motion-reduce:lg:block`. Od `lg` jej karty układają się po trzy w rzędzie (`lg:grid-cols-3`), a zdjęcia są pobierane w rozmiarze jednej trzeciej szerokości ekranu (`sizes="(min-width: 1024px) 33vw, 100vw"`).
 
+## Sekcja przewodnika i ukryty blog
+
+`ArchiveSection`, blok „Przewodnik M'ARTE” po kategoriach, wymienia artykuły bloga z `BLOG_POST_SLUGS` w `src/data/blog-posts.ts`. Blog nie ma jeszcze artykułów, więc ta lista jest pusta, a pusta lista ukrywa cały blog:
+
+- `ArchiveSection` niczego nie renderuje, więc strona główna pokazuje czternaście sekcji;
+- loadery `/blog` i `/blog/$slug` rzucają `notFound()`, więc obie trasy odpowiadają 404;
+- `STATIC_PAGES` w `src/data/static-pages.ts` pomija `/blog` w `/sitemap.xml`;
+- nawigacja, stopka i `public/llms.txt` nie linkują bloga.
+
+Aby opublikować artykuł, dodaj jego slug do `BLOG_POST_SLUGS` i nadaj mu w obu katalogach `messages/{locale}` `title` i `description` pod `posts.<slug>` w `pages.blog.json` oraz tytuł na stronę główną pod `archiveSection.articles.<slug>` w `pages.landing.json`. `blog-posts.test.ts` zawodzi, dopóki lista i komunikaty się nie zgadzają. Strona artykułu pokazuje tylko tytuł i opis, więc pierwszy artykuł potrzebuje też treści w `_storefront.blog.$slug.tsx`, a razem z nim przewodnik wraca do `public/llms.txt`.
+
 ## Statyczne zasoby marketingowe
 
 `src/data/landing.ts` przechowuje adresy zasobów i trzy kafle kolekcji z `ShopCollectionsSection`:

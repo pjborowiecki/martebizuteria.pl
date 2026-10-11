@@ -77,6 +77,17 @@ The section is `overflow-clip`, not `overflow-hidden`, so it is not a scroll con
 
 Shoppers who ask for reduced motion get no horizontal scroll. On wide screens the desktop section is `motion-reduce:lg:hidden` and the mobile section is `motion-reduce:lg:block`. From `lg` its cards sit three to a row (`lg:grid-cols-3`), and their pictures are requested at a third of the screen width (`sizes="(min-width: 1024px) 33vw, 100vw"`).
 
+## The guide section and the hidden blog
+
+`ArchiveSection`, the "M'ARTE Guide" block after the categories, lists the blog's articles from `BLOG_POST_SLUGS` in `src/data/blog-posts.ts`. The blog has no articles yet, so that list is empty, and an empty list hides the whole blog:
+
+- `ArchiveSection` renders nothing, so the home page shows fourteen sections;
+- the loaders of `/blog` and `/blog/$slug` throw `notFound()`, so both answer 404;
+- `STATIC_PAGES` in `src/data/static-pages.ts` leaves `/blog` out of `/sitemap.xml`;
+- the navigation, the footer and `public/llms.txt` do not link the blog.
+
+To publish an article, add its slug to `BLOG_POST_SLUGS` and give it, in both `messages/{locale}` folders, a `title` and a `description` under `posts.<slug>` in `pages.blog.json` and a home page title under `archiveSection.articles.<slug>` in `pages.landing.json`. `blog-posts.test.ts` fails while the list and the messages disagree. The article page shows only the title and the description, so the first article also needs a body in `_storefront.blog.$slug.tsx`, and the guide goes back into `public/llms.txt` with it.
+
 ## Static marketing assets
 
 `src/data/landing.ts` holds the asset URLs and the three collection tiles of `ShopCollectionsSection`:
