@@ -3,11 +3,12 @@ import { createElement } from "react"
 import { createTranslator } from "use-intl"
 
 import { buildOrderAccountCta } from "~/src/integrations/resend/order-confirmation.utils"
-import { type OrderEmailOutcome, recordOrderEmailAttempt } from "~/src/integrations/resend/order-email.outcome.server"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/integrations/resend/order-email.delivery.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getOrderForRefundEmail } from "~/src/modules/order/order.accessors"
+import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
 
 import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled.json"
@@ -18,6 +19,7 @@ const ORDER_CANCELLED_LABEL = "Order cancelled"
 const sendOrderCancelledEmail = async (
   { orderId, refundedAmount }: Readonly<OrderCancellation>,
   origin: string,
+  idempotencyKey: string,
 ): Promise<OrderEmailOutcome> => {
   const orderRow = await getOrderForRefundEmail(orderId)
   if (orderRow === undefined) {
@@ -31,6 +33,7 @@ const sendOrderCancelledEmail = async (
   const locale = resolveOrderLocale(orderRow.metadata)
   const messages = await loadNamespace<typeof orderCancelledMessages>({ locale, namespace: ORDER_CANCELLED_NAMESPACE })
   const failure = await sendEmail({
+    idempotencyKey,
     react: createElement(OrderCancelled, {
       accountCta: buildOrderAccountCta({ isGuest: orderRow.userId === null, locale, messages, orderId, origin }),
       currency: orderRow.currencyCode,
@@ -47,7 +50,12 @@ const sendOrderCancelledEmail = async (
 }
 
 export const notifyOrderCancelled = (cancellation: Readonly<OrderCancellation>, origin: string): Promise<boolean> =>
-  recordOrderEmailAttempt(sendOrderCancelledEmail(cancellation, origin), { label: ORDER_CANCELLED_LABEL, orderId: cancellation.orderId })
+  deliverOrderEmail((idempotencyKey) => sendOrderCancelledEmail(cancellation, origin, idempotencyKey), {
+    idempotencyKey: `${ORDER_EMAIL_KIND.CANCELLED}/${cancellation.orderId}`,
+    label: ORDER_CANCELLED_LABEL,
+    orderEmail: { kind: ORDER_EMAIL_KIND.CANCELLED, refundedAmount: cancellation.refundedAmount },
+    orderId: cancellation.orderId,
+  })
 
 interface OrderCancellation {
   readonly orderId: string

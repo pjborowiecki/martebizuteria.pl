@@ -335,6 +335,7 @@ export const getAdminOrderTimelineRows = (orderId: string) =>
       createdAt: auditLog.createdAt,
       detail: auditLog.detail,
       id: auditLog.id,
+      metadata: auditLog.metadata,
       severity: auditLog.severity,
     })
     .from(auditLog)

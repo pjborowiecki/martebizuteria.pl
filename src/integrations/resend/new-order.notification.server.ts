@@ -5,12 +5,13 @@ import { createElement } from "react"
 import { createTranslator } from "use-intl"
 
 import { describeCompanyInvoice, resolveDeliveryMethodLabel } from "~/src/integrations/resend/order-confirmation.utils"
-import { type OrderEmailOutcome, recordOrderEmailAttempt } from "~/src/integrations/resend/order-email.outcome.server"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/integrations/resend/order-email.delivery.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getAdminOrderDetailRow, getAdminOrderItemRows } from "~/src/modules/order/order.accessors"
+import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { mapAdminOrderDetailItem, resolveAdminOrderDetailAddresses } from "~/src/modules/order/order.detail.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -57,7 +58,7 @@ const buildNewOrderDetails = (orderRow: AdminOrderDetailRow, messages: typeof ne
   }
 }
 
-const sendNewOrderEmail = async ({ orderId, returnUrl }: Readonly<NewOrderNotice>): Promise<OrderEmailOutcome> => {
+const sendNewOrderEmail = async ({ orderId, returnUrl }: Readonly<NewOrderNotice>, idempotencyKey: string): Promise<OrderEmailOutcome> => {
   if (returnUrl === undefined) {
     return { failure: "The Stripe session has no return URL to link the email to", label: NEW_ORDER_LABEL }
   }
@@ -72,6 +73,7 @@ const sendNewOrderEmail = async ({ orderId, returnUrl }: Readonly<NewOrderNotice
   const messages = await loadNamespace<typeof newOrderMessages>({ locale, namespace: NEW_ORDER_NAMESPACE })
   const adminOrderUrl = buildLocalizedUrl(origin, ROUTES.ADMIN_ORDER.replace("$orderId", orderId), locale)
   const failure = await sendEmail({
+    idempotencyKey,
     react: createElement(NewOrder, {
       adminOrderUrl,
       currency: orderRow.currencyCode,
@@ -90,7 +92,12 @@ const sendNewOrderEmail = async ({ orderId, returnUrl }: Readonly<NewOrderNotice
 }
 
 export const notifyShopOfNewOrder = (orderId: string, returnUrl: string | undefined): Promise<boolean> =>
-  recordOrderEmailAttempt(sendNewOrderEmail({ orderId, returnUrl }), { label: NEW_ORDER_LABEL, orderId })
+  deliverOrderEmail((idempotencyKey) => sendNewOrderEmail({ orderId, returnUrl }, idempotencyKey), {
+    idempotencyKey: `${ORDER_EMAIL_KIND.NEW_ORDER}/${orderId}`,
+    label: NEW_ORDER_LABEL,
+    orderEmail: { kind: ORDER_EMAIL_KIND.NEW_ORDER },
+    orderId,
+  })
 
 type AdminOrderDetailRow = NonNullable<Awaited<ReturnType<typeof getAdminOrderDetailRow>>>
 

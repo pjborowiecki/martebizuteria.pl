@@ -27,9 +27,9 @@ Błąd samego wycofania jest przechwytywany i zapisywany do logu. Nieudane wycof
 
 Towar wraca na stan całym zamówieniem, wszystkie pozycje naraz: `returnOrderToStock` w `src/modules/order/order.restock.server.ts` działa, gdy administrator zaznaczy „Produkty wróciły na stan magazynowy” w oknie zwrotu albo naciśnie Przywróć na stan, a `canRestockAdminOrder` w `src/modules/order/order.admin-actions.utils.ts` oferuje Przywróć na stan tylko dla zamówienia o statusie `refunded`. Częściowy zwrot zrobiony w panelu Stripe zostawia zamówienie otwarte, więc gdy wróci jeden egzemplarz z większego zamówienia, administrator musi ręcznie podnieść stan tego wariantu w edytorze produktu.
 
-### E-mail potwierdzający wysyłany jest raz
+### E-maile o zamówieniu nie mają skrzynki wyjściowej
 
-`notifyOrderConfirmed` w `src/integrations/stripe/stripe.webhooks.tsx` wysyła potwierdzenie i przekazuje próbę do `recordOrderEmailAttempt`, które przy błędzie zapisuje wpis `email.failed` z treścią błędu. Nie ma skrzynki wyjściowej (outbox), ponowień ani akcji ponownej wysyłki w panelu, więc awaria Resend w momencie zakupu oznacza, że klient ma zamówienie i nie ma e-maila. Sklep widzi to w aktywności zamówienia i w `/admin/audit` i musi skontaktować się z klientem ręcznie. E-maile o wysyłce, anulowaniu, zwrocie i nieudanej płatności oraz powiadomienie sklepu o nowym zamówieniu mają tę samą lukę, choć administrator, który wysyła albo anuluje zamówienie, dowiaduje się o porażce od razu.
+`deliverOrderEmail` w `src/integrations/resend/order-email.delivery.server.ts` próbuje wysłać e-mail dotyczący zamówienia trzy razy w ramach `waitUntil` żądania, pod kluczem idempotencji Resend, a e-mail, który nadal nie wyszedł, czeka na przycisk **Wyślij ponownie** administratora w karcie „Aktywność” zamówienia. Nic nie przechowuje samego e-maila, więc Worker zatrzymany w trakcie ponowień zostawia go jako `email.deferred`, dopóki administrator nie wyśle go ponownie, a e-maila o nieudanej płatności, który należy do sesji Checkout, a nie do zamówienia, nie da się wysłać ponownie wcale; z takim klientem sklep musi skontaktować się ręcznie.
 
 ### `isAdminPathname` dopasowuje zbyt szeroko
 

@@ -30,6 +30,7 @@ const { background, effects, sqlite, worker } = await vi.hoisted(async () => {
       emailOutcome: vi.fn(),
       invalidateAdminOrders: vi.fn(),
       locale: vi.fn<() => string>(),
+      notifyShopOfIncident: vi.fn<(incident: unknown) => Promise<void>>(),
       rateLimit: vi.fn<(limit: Readonly<{ key: string; limit: number; windowSeconds: number }>) => Promise<boolean>>(),
       requestSession: vi.fn<() => Promise<{ user: { id: string; name: string; role: string } } | null>>(),
       sendEmail: vi.fn<(options: Readonly<SentEmail>) => Promise<string | undefined>>(),
@@ -42,6 +43,7 @@ const { background, effects, sqlite, worker } = await vi.hoisted(async () => {
 })
 
 interface SentEmail {
+  readonly idempotencyKey?: string
   readonly react: ReactElement<{ readonly adminOrderUrl?: string; readonly statement: OrderWithdrawal["statement"] }>
   readonly subject: string
   readonly to: string
@@ -75,6 +77,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: effects.sendEmail }))
+vi.mock("~/src/integrations/resend/incident-alert.notification.server", () => ({ notifyShopOfIncident: effects.notifyShopOfIncident }))
 vi.mock("~/src/lib/background", () => ({
   scheduleBackgroundWork: (task: Promise<unknown>) => {
     background.push(task)
@@ -258,8 +261,12 @@ describe("withdrawing from an order in the account", () => {
     expect(effects.emailOutcome).toHaveBeenCalledWith({
       failure: undefined,
       label: "Withdrawal acknowledgement → Anna@Example.com",
+      metadata: { idempotencyKey: acknowledgement?.idempotencyKey, orderEmail: undefined },
       orderId: ANNA_ORDER_ID,
+      willRetry: false,
     })
+    expect(acknowledgement?.idempotencyKey).toMatch(new RegExp(`^order-withdrawal/${ANNA_ORDER_ID}/\\d+$`, "u"))
+    expect(notice?.idempotencyKey).toBe(acknowledgement?.idempotencyKey?.replace("order-withdrawal/", "order-withdrawal-notice/"))
   })
 
   it("names the chosen products, leaving out lines of another order", async () => {
@@ -325,11 +332,13 @@ describe("withdrawing from an order in the account", () => {
   })
 
   it("keeps the statement and says so when the acknowledgement could not be sent", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout"] })
     effects.sendEmail.mockImplementation(({ to }) => Promise.resolve(to === SHOP_INBOX ? undefined : "Resend is down"))
     vi.spyOn(console, "error").mockImplementation(() => {})
 
     await expect(customerWithdrawal()).resolves.toMatchObject({ outcome: "recorded", receipt: { acknowledged: false } })
     expect(readWithdrawals()).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(5000)
   })
 
   it("sends the statement through its mutation", async () => {
@@ -338,6 +347,27 @@ describe("withdrawing from an order in the account", () => {
 
     await expect(mutationFn?.({ ...wholeOrder, orderId: ANNA_ORDER_ID }, context)).resolves.toMatchObject({ outcome: "recorded" })
     expect(withdrawFromCustomerOrderMutation.mutationKey).toStrictEqual(ORDER_WITHDRAWAL_MUTATION_KEYS.WITHDRAW_FROM_CUSTOMER_ORDER)
+  })
+})
+
+describe("retrying the acknowledgement of a withdrawal", () => {
+  it("tries a refused acknowledgement twice more under the same key and then alerts the shop", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout"] })
+    effects.sendEmail.mockImplementation(({ to }) => Promise.resolve(to === SHOP_INBOX ? undefined : "Resend is down"))
+    vi.spyOn(console, "error").mockImplementation(() => {})
+
+    await customerWithdrawal()
+    await vi.advanceTimersByTimeAsync(5000)
+    await Promise.all(background.splice(0))
+
+    const attempts = sentEmails().filter(({ to }) => to === "Anna@Example.com")
+    expect(attempts).toHaveLength(3)
+    expect(new Set(attempts.map(({ idempotencyKey }) => idempotencyKey)).size).toBe(1)
+    expect(effects.notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
+      detail: "Withdrawal acknowledgement — Resend is down",
+      kind: "orderEmailFailed",
+      reference: attempts[0]?.idempotencyKey,
+    })
   })
 })
 

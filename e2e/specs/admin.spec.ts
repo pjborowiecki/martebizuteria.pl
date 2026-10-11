@@ -3,7 +3,7 @@ import { type APIRequestContext, type Browser, type Page, type TestInfo } from "
 import { ORDER_NOTIFICATION_INBOX, TEST_ACCOUNTS, TEST_PASSWORD } from "../data/accounts"
 import { COURIER, INVOICED_COMPANY, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
-import { linkIn, waitForEmail } from "../fixtures/emails"
+import { acceptEmailsTo, linkIn, refuseEmailsTo, sentEmails, waitForEmail } from "../fixtures/emails"
 import { placeOrder } from "../fixtures/orders"
 import { SERVER_FUNCTIONS, waitForServerFunctionResponse } from "../fixtures/server-functions"
 import { type CheckoutSession, completeCheckoutSession, expireCheckoutSession, waitForOpenCheckoutSession } from "../fixtures/stripe"
@@ -14,6 +14,10 @@ import { AdminOrderPage, BasePage, CheckoutPage, ProductPage } from "../pages"
 const QUERY_INVALIDATION_CHANNEL = "marte-query-invalidation"
 
 const INPOST_TRACKING_NUMBER = /6026772171316303\d{8}/u
+
+const ORDER_EMAIL_RETRIES_SETTLED_MS = 30_000
+
+const CONFIRMATION_SUBJECT = "Order confirmation — M'Arte"
 
 interface GuestOrderInput {
   readonly browser: Browser
@@ -266,6 +270,39 @@ test.describe("admin", () => {
 
     await expect(page.getByText("Refund submitted to Stripe. The order updates once Stripe confirms it.")).toBeVisible()
     await expect(page.getByRole("main")).toContainText("Items returned to stock")
+  })
+
+  test("a confirmation Resend kept refusing reaches the shopper once when the admin resends it from the order", async ({
+    adminOrderPage,
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const shopper = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(shopper)
+    const email = uniqueEmail(testInfo, "resend")
+    await refuseEmailsTo(request, email)
+    const { orderNumber } = await placeOrder({ email, handle: PRODUCTS.onyx.handle, page: await shopper.newPage(), request })
+    await shopper.close()
+
+    await adminOrderPage.gotoOrderFor(email)
+    await expect(adminOrderPage.heading()).toHaveText(orderNumber)
+    const activity = page.getByRole("main")
+    await expect(activity.getByText("Email failed", { exact: true })).toBeVisible({ timeout: ORDER_EMAIL_RETRIES_SETTLED_MS })
+    expect(await sentEmails(request, email)).toStrictEqual([])
+
+    await acceptEmailsTo(request, email)
+    await adminOrderPage.action("Resend email").click()
+    await adminOrderPage.dismissNotification("Resend took the email. The order's Activity card records it.")
+
+    const confirmation = await waitForEmail(request, email, CONFIRMATION_SUBJECT)
+    expect(confirmation.html).toContain(orderNumber)
+    await expect(activity.getByText("Email resend requested", { exact: true })).toBeVisible()
+    await expect(adminOrderPage.action("Resend email")).toBeHidden()
+    expect((await sentEmails(request, email)).filter(({ subject }) => subject === CONFIRMATION_SUBJECT)).toHaveLength(1)
   })
 
   test("a guest's order emails the shop a notice whose link opens the order in the admin", async ({

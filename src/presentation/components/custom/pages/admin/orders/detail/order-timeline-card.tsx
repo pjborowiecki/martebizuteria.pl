@@ -9,7 +9,7 @@ import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 import { OrderTimelineEvent } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-timeline-event"
 
-export const OrderTimelineCard = ({ timeline }: Readonly<OrderTimelineCardProps>): JSX.Element => {
+export const OrderTimelineCard = ({ orderId, timeline }: Readonly<OrderTimelineCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
 
   return (
@@ -21,7 +21,7 @@ export const OrderTimelineCard = ({ timeline }: Readonly<OrderTimelineCardProps>
         ) : (
           <div className="space-y-0">
             {timeline.map((event) => (
-              <OrderTimelineEvent event={event} key={event.id} />
+              <OrderTimelineEvent event={event} key={event.id} orderId={orderId} />
             ))}
           </div>
         )}
@@ -31,5 +31,6 @@ export const OrderTimelineCard = ({ timeline }: Readonly<OrderTimelineCardProps>
 }
 
 interface OrderTimelineCardProps {
+  readonly orderId: string
   readonly timeline: Order["adminOrderDetail"]["timeline"]
 }

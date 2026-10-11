@@ -27,9 +27,9 @@ The rollback's own failure is caught and logged. A failed rollback therefore lea
 
 Stock goes back per order, every line at once: `returnOrderToStock` in `src/modules/order/order.restock.server.ts` runs when the admin ticks "The items came back to stock" in the Refund dialog or presses Return to stock, and `canRestockAdminOrder` in `src/modules/order/order.admin-actions.utils.ts` offers Return to stock only for an order whose status is `refunded`. A partial refund made in the Stripe dashboard keeps the order open, so when one piece of a larger order comes back, the admin has to raise that variant's stock in the product editor by hand.
 
-### The confirmation email is attempted once
+### Order emails have no outbox
 
-`notifyOrderConfirmed` in `src/integrations/stripe/stripe.webhooks.tsx` sends the confirmation and passes the attempt to `recordOrderEmailAttempt`, which writes an `email.failed` entry with the error on failure. There is no outbox, no retry and no resend action in the admin, so a Resend outage during a purchase means the customer has an order and no email. The shop sees it in the order's activity and in `/admin/audit`, and has to contact the customer by hand. The shipped, cancellation, refund and failed-payment emails and the shop's new-order notice have the same gap, although the admin who ships or cancels the order is told at once.
+`deliverOrderEmail` in `src/integrations/resend/order-email.delivery.server.ts` tries an order email three times within the request's `waitUntil`, under a Resend idempotency key, and an email that still fails waits for the admin's **Resend email** on the order's Activity card. Nothing stores the email itself, so a Worker stopped during the retries leaves it at `email.deferred` until the admin resends it, and the failed payment email, which belongs to a Checkout Session rather than an order, cannot be resent at all; the shop has to contact that customer by hand.
 
 ### `isAdminPathname` matches too broadly
 

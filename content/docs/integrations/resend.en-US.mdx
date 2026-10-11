@@ -18,10 +18,18 @@ export const resend = new Resend(env.RESEND_API_KEY)
 `resend.send.ts` sends every transactional e-mail with it, and never throws. The newsletter is the one other caller; see [The newsletter](#the-newsletter).
 
 ```ts
-const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
-  const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
+const deliver = async ({
+  from,
+  idempotencyKey,
+  revealsAccountExistence,
+  ...message
+}: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  const sender = from ?? shopSender()
   try {
-    const { error } = await resend.emails.send({ ...message, from: sender, replyTo: BUSINESS.EMAIL })
+    const { error } = await resend.emails.send(
+      { ...message, from: sender, replyTo: BUSINESS.EMAIL },
+      idempotencyKey === undefined ? {} : { idempotencyKey },
+    )
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -47,7 +55,7 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 }
 ```
 
-It returns `undefined` on success and the failure message otherwise. The Resend SDK has no timeout and accepts no abort signal, so a call that has not answered after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) is also a failure, reported as `Resend did not answer within 10000 ms`. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`. Every message also carries `replyTo: BUSINESS.EMAIL`, the shop's contact address `kontakt@martebizuteria.pl` from `src/presentation/branding/business.ts`, so a customer who answers an e-mail, as the order confirmation, the shipping notice and the account-deleted notice invite them to, writes to the shop whatever address `RESEND_EMAIL_FROM` names. `SendEmailOptions` has no field for it, so no caller can send without it.
+It returns `undefined` on success and the failure message otherwise. The Resend SDK has no timeout and accepts no abort signal, so a call that has not answered after `SEND_EMAIL_TIMEOUT_MS` (10 seconds) is also a failure, reported as `Resend did not answer within 10000 ms`. This signature is load-bearing: a mail outage must never roll back a registration or an order. Callers log the message, or record it in the audit log, and carry on. The default `from` is `M'Arte <${env.RESEND_EMAIL_FROM}>`, built from `APP_NAME` in `src/presentation/branding/app.ts`. Every message also carries `replyTo: BUSINESS.EMAIL`, the shop's contact address `kontakt@martebizuteria.pl` from `src/presentation/branding/business.ts`, so a customer who answers an e-mail, as the order confirmation, the shipping notice and the account-deleted notice invite them to, writes to the shop whatever address `RESEND_EMAIL_FROM` names. `SendEmailOptions` has no field for it, so no caller can send without it. A caller may pass `idempotencyKey`, which goes to Resend as the `Idempotency-Key` header. Every order e-mail passes one, so that its retries and an admin's resend never send it twice; see [E-mail](/docs/features/email#delivery-and-retries).
 
 ### Attachments
 
@@ -195,16 +203,21 @@ In the webhook, a refused host or a session with no `return_url` stops only the 
 
 `order-shipped.utils.ts` reuses the order-confirmation builders for the shipped e-mail: `buildOrderShippedDetails` picks the delivery timing string by the method's `type` (`courier`, `locker` or `in_store`), and `buildOrderShippedAccountCta` delegates to `buildOrderAccountCta`.
 
-`order-shipped.notification.server.ts` is the whole shipped-e-mail flow. `sendOrderShippedEmail(orderId, origin)` loads the order with `getOrderForShippedEmail`, resolves the locale from `order.metadata` with `resolveOrderLocale`, loads the checkout context when there is a `checkoutId`, renders and sends. It returns the outcome instead of recording it, and a missing order or a blank address is an outcome too. `notifyOrderShipped(orderId, origin)` hands that attempt to `recordOrderEmailAttempt` from `order-email.outcome.server.ts`, which the confirmation e-mail uses as well:
+`order-shipped.notification.server.ts` is the whole shipped-e-mail flow. `sendOrderShippedEmail(orderId, origin, idempotencyKey)` loads the order with `getOrderForShippedEmail`, resolves the locale from `order.metadata` with `resolveOrderLocale`, loads the checkout context when there is a `checkoutId`, renders and sends under the key it is given. It returns the outcome instead of recording it, and a missing order or a blank address is an outcome too. `notifyOrderShipped(orderId, origin)` hands it to `deliverOrderEmail` from `order-email.delivery.server.ts`, which every order e-mail goes through:
 
 ```ts
 export const notifyOrderShipped = (orderId: string, origin: string): Promise<boolean> =>
-  recordOrderEmailAttempt(sendOrderShippedEmail(orderId, origin), { label: ORDER_SHIPPED_LABEL, orderId })
+  deliverOrderEmail((idempotencyKey) => sendOrderShippedEmail(orderId, origin, idempotencyKey), {
+    idempotencyKey: `${ORDER_EMAIL_KIND.SHIPPED}/${orderId}`,
+    label: ORDER_SHIPPED_LABEL,
+    orderEmail: { kind: ORDER_EMAIL_KIND.SHIPPED },
+    orderId,
+  })
 ```
 
-`recordOrderEmailAttempt` logs a thrown error with its stack as `Order shipped for order <id> could not be prepared:` and turns it into an outcome, records the outcome against the order and tells the caller whether the e-mail went out.
+`deliverOrderEmail` logs a thrown error with its stack as `Order shipped for order <id> could not be prepared:` and turns it into an outcome, records the outcome against the order, tries a refused e-mail twice more in the background under the same key and tells the caller whether the first attempt went out.
 
-`order-cancelled.notification.server.ts` and `order-refunded.notification.server.ts` follow the same shape. Both read the order with `getOrderForRefundEmail`, which selects the address, number, currency, total, metadata and account of the order, and both build the button with `buildOrderAccountCta`. `notifyOrderCancelled({ orderId, refundedAmount }, origin)` states the refund `requestFullOrderRefund` got back from Stripe, or that a free order has nothing to refund. `notifyOrderRefunded(refund, returnUrl)` takes the `Order["unannouncedRefund"]` that `refundOrder` returns, so it states the amount of this refund against the order's total and whether the order is now refunded in full, and it resolves its origin from `returnUrl` inside the attempt, so a missing or refused URL is recorded like any other failure. The failed-payment e-mail has no order to read: `sendPaymentFailedEmail` in `stripe.webhooks.tsx` builds it from the session, listing its metadata lines with `buildOrderConfirmationItems`.
+`order-cancelled.notification.server.ts` and `order-refunded.notification.server.ts` follow the same shape. Both read the order with `getOrderForRefundEmail`, which selects the address, number, currency, total, metadata and account of the order, and both build the button with `buildOrderAccountCta`. `notifyOrderCancelled({ orderId, refundedAmount }, origin)` states the refund `requestFullOrderRefund` got back from Stripe, or that a free order has nothing to refund. `notifyOrderRefunded(refund, returnUrl)` takes the `Order["unannouncedRefund"]` that `refundOrder` returns, so it states the amount of this refund against the order's total and whether the order is now refunded in full, and keys the e-mail by its `refundedTotal`, the charge's cumulative refunded amount, and it resolves its origin from `returnUrl` inside the attempt, so a missing or refused URL is recorded like any other failure. The failed-payment e-mail has no order to read: `sendPaymentFailedEmail` in `stripe.webhooks.tsx` builds it from the session, listing its metadata lines with `buildOrderConfirmationItems`.
 
 `new-order.notification.server.ts` writes to the shop rather than the customer. `notifyShopOfNewOrder(orderId, returnUrl)` sends the notice to `RESEND_EMAIL_FROM`: `sendNewOrderEmail` resolves the origin from `returnUrl` inside the attempt, reads the order with `getAdminOrderDetailRow` and `getAdminOrderItemRows`, the reads behind the admin order page, and renders `new-order.tsx`. The delivery line reuses `resolveDeliveryMethodLabel`, the item rows `mapAdminOrderDetailItem` and the shipping address `resolveAdminOrderDetailAddresses`, and the button opens `ROUTES.ADMIN_ORDER` on that origin.
 
@@ -227,13 +240,13 @@ const shippedEmailSent = await shippedEmailDelivery
 return { ok: true, orderId, shippedEmailSent }
 ```
 
-`scheduleBackgroundWork` puts the same promise on `ctx.waitUntil`, so the send and its audit entry finish even if the admin closes the tab while Resend is answering. `useMarkOrderShipped` always shows "Order marked as shipped.", and when `shippedEmailSent` is false also a warning toast, "Shipping email not sent", that points to the order's Activity card for the error. The admin's request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`. `cancel-order.ts` does the same with `notifyOrderCancelled` and returns `cancelledEmailSent`, and `useCancelOrder` warns "Cancellation email not sent" when it is false.
+`scheduleBackgroundWork` puts the same promise on `ctx.waitUntil`, so the send and its audit entry finish even if the admin closes the tab while Resend is answering. `useMarkOrderShipped` always shows "Order marked as shipped.", and when `shippedEmailSent` is false also a warning toast, "Shipping email not sent yet", saying that the e-mail is tried twice more and can be resent from the order's Activity card, which shows the error. The admin's request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`; the retries of a refused e-mail run after the response. `cancel-order.ts` does the same with `notifyOrderCancelled` and returns `cancelledEmailSent`, and `useCancelOrder` warns "Cancellation email not sent yet" when it is false.
 
-The Stripe webhook registers `notifyOrderConfirmed` together with `notifyShopOfNewOrder`, `notifyOrderRefunded` and the failed-payment attempt with `scheduleBackgroundWork` and awaits them the same way. It records every outcome and never throws, so the webhook answers 200 even when Resend refuses the confirmation, and the e-mail still finishes if Stripe stops waiting. A redelivered event would not send the confirmation or the shop's notice again: `fulfillCheckout` returns `undefined` for a checkout that is no longer pending, and the handler stops before the e-mail step. The other two have the same guard: `releaseCheckout` reports whether this delivery failed the session's payment, and `refundOrder` returns a refund only when the charge refunded more than the payment had recorded for an order the shop had not cancelled.
+The Stripe webhook registers `notifyOrderConfirmed` together with `notifyShopOfNewOrder`, `notifyOrderRefunded` and the failed-payment delivery with `scheduleBackgroundWork` and awaits their first attempts the same way, and the retries of a refused e-mail go on after it has answered. It records every outcome and never throws, so the webhook answers 200 even when Resend refuses the confirmation, and the e-mail still finishes if Stripe stops waiting. A redelivered event would not send the confirmation or the shop's notice again: `fulfillCheckout` returns `undefined` for a checkout that is no longer pending, and the handler stops before the e-mail step. The other two have the same guard: `releaseCheckout` reports whether this delivery failed the session's payment, and `refundOrder` returns a refund only when the charge refunded more than the payment had recorded for an order the shop had not cancelled.
 
 ## Audit trail
 
-Sends are recorded, not just logged. `recordOrderEmailAttempt` passes every outcome to `recordOrderEmailOutcome({ failure, label, orderId })` in `src/modules/audit-log/audit-log.events.server.ts`, which writes `email.sent` or `email.failed` against the order. Every way an order e-mail can fail goes through it: a Resend refusal or timeout, a Stripe session or order without an address, a missing order, and an error while the e-mail is prepared, such as a failed database read. The entries appear with the error text in the order's Activity card and in `/admin/audit`; [E-mail templates](/docs/features/email) lists the details.
+Sends are recorded, not just logged. `deliverOrderEmail` passes every outcome to `recordOrderEmailOutcome({ failure, label, metadata, orderId, willRetry })` in `src/modules/audit-log/audit-log.events.server.ts`, which writes `email.sent`, `email.deferred` while retries are still to come, or `email.failed` against the order, with the idempotency key and what a resend needs in the metadata. Every way an order e-mail can fail goes through it: a Resend refusal or timeout, a Stripe session or order without an address, a missing order, and an error while the e-mail is prepared, such as a failed database read. The entries appear with the error text in the order's Activity card, which offers **Resend email** for an e-mail that has not gone out, and in `/admin/audit`; [E-mail templates](/docs/features/email#resending-from-the-order) lists the details.
 
 Better Auth's e-mails are recorded only when they fail, by `deliverAuthEmail` in `auth.server.ts`: the address is the target and the detail reads like `Auth verification email — The example.com domain is not verified`. The link in the e-mail is never part of the entry.
 

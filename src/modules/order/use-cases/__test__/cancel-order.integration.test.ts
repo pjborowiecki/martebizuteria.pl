@@ -2,7 +2,7 @@ import { type ReactElement } from "react"
 
 import { MutationObserver, QueryClient } from "@tanstack/react-query"
 import type Stripe from "stripe"
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod"
 
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
@@ -191,6 +191,10 @@ beforeAll(() => {
   `)
 })
 
+afterEach(() => {
+  vi.useRealTimers()
+})
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, "info").mockImplementation(() => {})
@@ -354,6 +358,7 @@ describe("emails to the customer", () => {
   })
 
   it("cancels the order and records the failure when the cancellation email cannot be sent", async () => {
+    vi.useFakeTimers()
     sendEmail.mockResolvedValue("The marte.test domain is not verified")
 
     await expect(cancelPaidOrder()).resolves.toStrictEqual({ cancelledEmailSent: false, ok: true, orderId: PAID_ORDER_ID })
@@ -361,8 +366,21 @@ describe("emails to the customer", () => {
     expect(audit.email).toHaveBeenCalledExactlyOnceWith({
       failure: "The marte.test domain is not verified",
       label: "Order cancelled → ada@marte.test",
+      metadata: {
+        idempotencyKey: `order-cancelled/${PAID_ORDER_ID}`,
+        orderEmail: { kind: "order-cancelled", refundedAmount: PAID_AMOUNT },
+      },
       orderId: PAID_ORDER_ID,
+      willRetry: true,
     })
+
+    await vi.runAllTimersAsync()
+
+    expect(readOrder(PAID_ORDER_ID).status).toBe("cancelled")
+    expect(sendEmail).toHaveBeenCalledTimes(3)
+    expect(audit.email).toHaveBeenLastCalledWith(
+      expect.objectContaining({ failure: "The marte.test domain is not verified", willRetry: false }),
+    )
   })
 
   it("tells the customer once about the Refund button's refund, however often Stripe delivers its confirmation", async () => {
@@ -375,7 +393,12 @@ describe("emails to the customer", () => {
     expect(audit.email).toHaveBeenCalledExactlyOnceWith({
       failure: undefined,
       label: "Order refunded → ada@marte.test",
+      metadata: {
+        idempotencyKey: `order-refunded/${PAID_ORDER_ID}/${PAID_AMOUNT}`,
+        orderEmail: { amount: PAID_AMOUNT, fullyRefunded: true, kind: "order-refunded", refundedTotal: PAID_AMOUNT },
+      },
       orderId: PAID_ORDER_ID,
+      willRetry: false,
     })
   })
 

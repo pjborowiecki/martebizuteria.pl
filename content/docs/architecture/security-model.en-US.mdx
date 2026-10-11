@@ -75,7 +75,7 @@ export const authorized = (permission?: Permission) =>
     })
 ```
 
-Across `src/modules` and `src/integrations`, `authorized()` appears 95 times: 25 bare (a session is enough), and the rest with a permission — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×6, `order: ["read"]` ×7, `order: ["update"]` ×10, `order: ["update", "refund"]` ×1 (`refundAdminOrder`), `content: ["read"]` ×3, `content: ["update"]` ×3, and the Better Auth admin statements `user: ["list" | "get" | "update" | "delete"]`.
+Across `src/modules` and `src/integrations`, `authorized()` appears 96 times: 25 bare (a session is enough), and the rest with a permission — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×6, `order: ["read"]` ×7, `order: ["update"]` ×11, `order: ["update", "refund"]` ×1 (`refundAdminOrder`), `content: ["read"]` ×3, `content: ["update"]` ×3, and the Better Auth admin statements `user: ["list" | "get" | "update" | "delete"]`.
 
 ## Roles and permissions
 

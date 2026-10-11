@@ -13,6 +13,7 @@ import {
   resolveAdminOrderDetailTags,
   resolveAdminOrderDispute,
   resolveOrderShippingAddressRow,
+  resolveResendableOrderEmails,
 } from "~/src/modules/order/order.detail.utils"
 
 const PLACED_AT = new Date("2026-03-04T09:15:00.000Z")
@@ -298,6 +299,7 @@ describe("mapAdminOrderTimeline", () => {
     createdAt: SHIPPED_AT,
     detail: "00259007123456789012",
     id: "audit-1",
+    metadata: null,
     severity: "success" as const,
   }
 
@@ -310,8 +312,27 @@ describe("mapAdminOrderTimeline", () => {
       id: "audit-1",
       kind: "shipping",
       labelKey: "shipped",
+      resendable: false,
       severity: "success",
     })
+  })
+
+  it("offers to resend an email whose last delivery failed", () => {
+    const failed = {
+      ...auditRow,
+      action: AUDIT_LOG_ACTION.EMAIL_FAILED,
+      metadata: JSON.stringify({ idempotencyKey: "order-shipped/order-1", orderEmail: { kind: "order-shipped" } }),
+    }
+
+    expect(mapAdminOrderTimeline([failed])[0]?.resendable).toBe(true)
+  })
+
+  it("files a resend the admin asked for under email", () => {
+    const [resend] = mapAdminOrderTimeline([{ ...auditRow, action: AUDIT_LOG_ACTION.EMAIL_RESEND_REQUESTED }])
+
+    expect(resend?.kind).toBe("email")
+    expect(resend?.labelKey).toBe("emailResendRequested")
+    expect(resend?.emailStatus).toBeUndefined()
   })
 
   it("tags email entries with their delivery status", () => {
@@ -339,6 +360,84 @@ describe("mapAdminOrderTimeline", () => {
 
     expect(unmapped?.kind).toBe("order")
     expect(unmapped?.labelKey).toBe("order.unknown")
+  })
+})
+
+const shippedDelivery = { idempotencyKey: "order-shipped/order-1", orderEmail: { kind: "order-shipped" } }
+
+const refundDelivery = {
+  idempotencyKey: "order-refunded/order-1/5000",
+  orderEmail: { amount: 5000, fullyRefunded: false, kind: "order-refunded", refundedTotal: 5000 },
+}
+
+const emailRow = (id: string, action: string, delivery: object | undefined) => ({
+  action,
+  actorName: "System",
+  createdAt: SHIPPED_AT,
+  detail: null,
+  id,
+  metadata: delivery === undefined ? null : JSON.stringify(delivery),
+  severity: "error" as const,
+})
+
+describe("resolveResendableOrderEmails", () => {
+  it("offers the email of a failed delivery for resending", () => {
+    expect(resolveResendableOrderEmails([emailRow("audit-2", AUDIT_LOG_ACTION.EMAIL_FAILED, refundDelivery)])).toStrictEqual(
+      new Map([["audit-2", { detail: undefined, email: refundDelivery.orderEmail }]]),
+    )
+  })
+
+  it("keeps the detail of the delivery it offers, for the record of the resend", () => {
+    const failed = { ...emailRow("audit-2", AUDIT_LOG_ACTION.EMAIL_FAILED, shippedDelivery), detail: "Order shipped — timeout" }
+
+    expect(resolveResendableOrderEmails([failed]).get("audit-2")?.detail).toBe("Order shipped — timeout")
+  })
+
+  it("offers an email whose first attempt was deferred and never followed by a later delivery", () => {
+    expect([...resolveResendableOrderEmails([emailRow("audit-2", AUDIT_LOG_ACTION.EMAIL_DEFERRED, shippedDelivery)]).keys()]).toStrictEqual(
+      ["audit-2"],
+    )
+  })
+
+  it("offers only the newest delivery of an email that failed more than once", () => {
+    const newestFirst = [
+      emailRow("audit-3", AUDIT_LOG_ACTION.EMAIL_FAILED, shippedDelivery),
+      emailRow("audit-2", AUDIT_LOG_ACTION.EMAIL_DEFERRED, shippedDelivery),
+    ]
+
+    expect([...resolveResendableOrderEmails(newestFirst).keys()]).toStrictEqual(["audit-3"])
+  })
+
+  it("offers nothing for an email that went out after it had failed", () => {
+    const newestFirst = [
+      emailRow("audit-3", AUDIT_LOG_ACTION.EMAIL_SENT, shippedDelivery),
+      emailRow("audit-2", AUDIT_LOG_ACTION.EMAIL_FAILED, shippedDelivery),
+    ]
+
+    expect(resolveResendableOrderEmails(newestFirst).size).toBe(0)
+  })
+
+  it("keeps each email's deliveries apart", () => {
+    const newestFirst = [
+      emailRow("audit-3", AUDIT_LOG_ACTION.EMAIL_SENT, shippedDelivery),
+      emailRow("audit-2", AUDIT_LOG_ACTION.EMAIL_FAILED, refundDelivery),
+    ]
+
+    expect([...resolveResendableOrderEmails(newestFirst).keys()]).toStrictEqual(["audit-2"])
+  })
+
+  it("offers nothing for an email recorded before deliveries named what they sent", () => {
+    expect(resolveResendableOrderEmails([emailRow("audit-2", AUDIT_LOG_ACTION.EMAIL_FAILED, undefined)]).size).toBe(0)
+  })
+
+  it("offers nothing for a delivery that names no email it could send again", () => {
+    expect(
+      resolveResendableOrderEmails([emailRow("audit-2", AUDIT_LOG_ACTION.EMAIL_FAILED, { idempotencyKey: "payment-failed/cs_1" })]).size,
+    ).toBe(0)
+  })
+
+  it("ignores order events that are not email deliveries", () => {
+    expect(resolveResendableOrderEmails([emailRow("audit-2", AUDIT_LOG_ACTION.ORDER_SHIPPED, shippedDelivery)]).size).toBe(0)
   })
 })
 

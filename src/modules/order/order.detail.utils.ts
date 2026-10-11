@@ -1,5 +1,5 @@
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
-import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
+import { AUDIT_LOG_ACTION, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import {
   ADMIN_ORDER_DETAIL_RETURNING_MIN_ORDERS,
@@ -129,8 +129,37 @@ export const buildAdminOrderFulfillmentSteps = (snapshot: AdminOrderFulfillmentS
   }))
 }
 
-export const mapAdminOrderTimeline = (rows: readonly AdminOrderTimelineRow[]): readonly Order["adminOrderDetailTimelineEvent"][] =>
-  rows.map((row) => ({
+const ORDER_EMAIL_OUTCOME_ACTIONS: ReadonlySet<string> = new Set([
+  AUDIT_LOG_ACTION.EMAIL_DEFERRED,
+  AUDIT_LOG_ACTION.EMAIL_FAILED,
+  AUDIT_LOG_ACTION.EMAIL_SENT,
+])
+
+const parseOrderEmailDelivery = ({ action, metadata }: AdminOrderTimelineRow) =>
+  ORDER_EMAIL_OUTCOME_ACTIONS.has(action) ? orderZodSchemas.emailDelivery.safeParse(parseOrderMetadata(metadata)).data : undefined
+
+export const resolveResendableOrderEmails = (newestFirst: readonly AdminOrderTimelineRow[]): ReadonlyMap<string, ResendableOrderEmail> => {
+  const settledKeys = new Set<string>()
+
+  return new Map(
+    newestFirst.flatMap((row) => {
+      const delivery = parseOrderEmailDelivery(row)
+      if (delivery === undefined || settledKeys.has(delivery.idempotencyKey)) {
+        return []
+      }
+      settledKeys.add(delivery.idempotencyKey)
+
+      return row.action === AUDIT_LOG_ACTION.EMAIL_SENT
+        ? []
+        : [[row.id, { detail: row.detail ?? undefined, email: delivery.orderEmail }] as const]
+    }),
+  )
+}
+
+export const mapAdminOrderTimeline = (newestFirst: readonly AdminOrderTimelineRow[]): readonly Order["adminOrderDetailTimelineEvent"][] => {
+  const resendable = resolveResendableOrderEmails(newestFirst)
+
+  return newestFirst.map((row) => ({
     actorName: row.actorName,
     at: row.createdAt,
     detail: row.detail === null || row.detail.trim() === "" ? undefined : row.detail,
@@ -138,8 +167,10 @@ export const mapAdminOrderTimeline = (rows: readonly AdminOrderTimelineRow[]): r
     id: row.id,
     kind: ADMIN_ORDER_TIMELINE_KIND_BY_ACTION[row.action] ?? ADMIN_ORDER_TIMELINE_KIND.ORDER,
     labelKey: ADMIN_ORDER_TIMELINE_LABEL_KEY_BY_ACTION[row.action] ?? row.action,
+    resendable: resendable.has(row.id),
     severity: row.severity,
   }))
+}
 
 export const resolveAdminOrderDetailTags = (snapshot: AdminOrderTagSnapshot): readonly AdminOrderDetailTag[] => {
   const tags: AdminOrderDetailTag[] = []
@@ -237,12 +268,18 @@ interface AdminOrderItemRow {
   readonly variantTitle: string | null
 }
 
+interface ResendableOrderEmail {
+  readonly detail: string | undefined
+  readonly email: Order["email"]
+}
+
 interface AdminOrderTimelineRow {
   readonly action: string
   readonly actorName: string
   readonly createdAt: Date
   readonly detail: string | null
   readonly id: string
+  readonly metadata: string | null
   readonly severity: AuditLogSeverity
 }
 

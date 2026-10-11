@@ -392,6 +392,7 @@
       "email_sent": "E-mail wysłany",
       "email_failed": "E-mail nieudany",
       "email_deferred": "E-mail odroczony",
+      "email_resend_requested": "Ponowna wysyłka e-maila",
       "newsletter_sent": "Newsletter wysłany",
       "order_cancelled": "Zamówienie anulowane",
       "order_shipped": "Zamówienie wysłane",
@@ -618,18 +619,22 @@
         "successTitle": "Zaktualizowano zamówienie",
         "fulfillSuccessDescription": "Rozpoczęto realizację zamówienia.",
         "shipSuccessDescription": "Zamówienie oznaczono jako wysłane.",
-        "shipEmailFailedTitle": "Klient nie otrzymał e-maila",
-        "shipEmailFailedDescription": "Nie udało się wysłać wiadomości o nadaniu przesyłki. Szczegóły błędu znajdziesz w sekcji „Aktywność” zamówienia.",
+        "shipEmailFailedTitle": "Klient jeszcze nie otrzymał e-maila",
+        "shipEmailFailedDescription": "Resend nie przyjął wiadomości o nadaniu przesyłki. Sklep spróbuje jeszcze dwa razy w ciągu kilku sekund. Jeśli i to się nie uda, wyślij ją ponownie z sekcji „Aktywność” zamówienia, gdzie znajdziesz też szczegóły błędu.",
         "cancelSuccessDescription": "Zamówienie anulowane, a jego produkty wróciły na stan magazynowy. Opłacone zamówienie pokaże zwrot po potwierdzeniu przez Stripe.",
-        "cancelEmailFailedTitle": "Klient nie otrzymał e-maila",
-        "cancelEmailFailedDescription": "Nie udało się wysłać wiadomości o anulowaniu zamówienia. Szczegóły błędu znajdziesz w sekcji „Aktywność” zamówienia.",
+        "cancelEmailFailedTitle": "Klient jeszcze nie otrzymał e-maila",
+        "cancelEmailFailedDescription": "Resend nie przyjął wiadomości o anulowaniu zamówienia. Sklep spróbuje jeszcze dwa razy w ciągu kilku sekund. Jeśli i to się nie uda, wyślij ją ponownie z sekcji „Aktywność” zamówienia, gdzie znajdziesz też szczegóły błędu.",
         "errorTitle": "Nie udało się zaktualizować zamówienia",
         "errorDescription": "Spróbuj ponownie za chwilę.",
         "notFoundDescription": "To zamówienie już nie istnieje.",
         "invalidStateDescription": "Ta akcja nie jest dostępna w bieżącym stanie zamówienia.",
         "markDeliveredSuccessDescription": "Zamówienie oznaczone jako dostarczone.",
         "refundSuccessDescription": "Zwrot zlecony w Stripe. Zamówienie zaktualizuje się po potwierdzeniu przez Stripe.",
-        "restockSuccessDescription": "Produkty z zamówienia wróciły na stan magazynowy."
+        "restockSuccessDescription": "Produkty z zamówienia wróciły na stan magazynowy.",
+        "resendEmailSentTitle": "E-mail wysłany",
+        "resendEmailSentDescription": "Resend przyjął wiadomość. Wysyłkę zapisano w sekcji „Aktywność” zamówienia.",
+        "resendEmailFailedTitle": "E-mail jeszcze nie wysłany",
+        "resendEmailFailedDescription": "Resend nie przyjął wiadomości. Sklep spróbuje jeszcze dwa razy w ciągu kilku sekund. Jeśli i to się nie uda, w sekcji „Aktywność” zamówienia znów pojawi się przycisk „Wyślij ponownie”."
       }
     }
   },
@@ -716,8 +721,10 @@
         "disputeClosed": "Zamknięto spór",
         "emailSent": "Wysłano e-mail",
         "emailFailed": "Błąd wysyłki e-maila",
-        "emailDeferred": "E-mail opóźniony"
+        "emailDeferred": "E-mail opóźniony",
+        "emailResendRequested": "Ponowna wysyłka e-maila"
       },
+      "resendEmail": "Wyślij ponownie",
       "emailStatus": {
         "sent": "Wysłano",
         "failed": "Niepowodzenie",

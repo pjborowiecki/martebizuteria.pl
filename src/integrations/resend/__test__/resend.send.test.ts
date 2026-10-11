@@ -51,13 +51,25 @@ describe("sendEmail", () => {
 
     await sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })
 
-    expect(emailsSend).toHaveBeenCalledWith({
-      from: `${APP_NAME} <atelier@marte.test>`,
-      react: body,
-      replyTo: BUSINESS.EMAIL,
-      subject: "Order shipped",
-      to: "anna@example.com",
-    })
+    expect(emailsSend).toHaveBeenCalledWith(
+      {
+        from: `${APP_NAME} <atelier@marte.test>`,
+        react: body,
+        replyTo: BUSINESS.EMAIL,
+        subject: "Order shipped",
+        to: "anna@example.com",
+      },
+      {},
+    )
+  })
+
+  it("hands Resend the idempotency key under which a retry never sends the email twice", async () => {
+    emailsSend.mockResolvedValueOnce({ data: { id: "email_1" }, error: null })
+
+    await sendEmail({ idempotencyKey: "order-shipped/order-1", react: body, subject: "Order shipped", to: "anna@example.com" })
+
+    expect(emailsSend.mock.calls[0]?.[0]).not.toHaveProperty("idempotencyKey")
+    expect(emailsSend.mock.calls[0]?.[1]).toStrictEqual({ idempotencyKey: "order-shipped/order-1" })
   })
 
   it("hands the attachments to Resend with the message", async () => {
@@ -66,14 +78,17 @@ describe("sendEmail", () => {
 
     await sendEmail({ attachments, react: body, subject: "Order confirmation", to: "anna@example.com" })
 
-    expect(emailsSend).toHaveBeenCalledWith({
-      attachments,
-      from: `${APP_NAME} <atelier@marte.test>`,
-      react: body,
-      replyTo: BUSINESS.EMAIL,
-      subject: "Order confirmation",
-      to: "anna@example.com",
-    })
+    expect(emailsSend).toHaveBeenCalledWith(
+      {
+        attachments,
+        from: `${APP_NAME} <atelier@marte.test>`,
+        react: body,
+        replyTo: BUSINESS.EMAIL,
+        subject: "Order confirmation",
+        to: "anna@example.com",
+      },
+      {},
+    )
   })
 
   it("keeps an explicit sender address", async () => {
@@ -81,7 +96,7 @@ describe("sendEmail", () => {
 
     await sendEmail({ from: "support@marte.test", react: body, subject: "Order shipped", to: "anna@example.com" })
 
-    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: "support@marte.test" }))
+    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: "support@marte.test" }), {})
   })
 
   it("sends the customer's reply to the shop's contact address when the email comes from another address", async () => {
@@ -89,7 +104,7 @@ describe("sendEmail", () => {
 
     await sendEmail({ from: "noreply@marte.test", react: body, subject: "Order shipped", to: "anna@example.com" })
 
-    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: "noreply@marte.test", replyTo: BUSINESS.EMAIL }))
+    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: "noreply@marte.test", replyTo: BUSINESS.EMAIL }), {})
   })
 
   it("surfaces the message Resend rejected the email with", async () => {
@@ -231,7 +246,7 @@ describe("sendEmail from Resend's resend.dev test sender", () => {
 
     await expect(sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })).resolves.toBe(TESTING_ONLY)
 
-    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: `${APP_NAME} <onboarding@resend.dev>` }))
+    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: `${APP_NAME} <onboarding@resend.dev>` }), {})
     expect(markEmailSenderUnavailable).not.toHaveBeenCalled()
   })
 

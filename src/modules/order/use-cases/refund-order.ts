@@ -27,7 +27,7 @@ const resolveUnannouncedRefund = (
     return undefined
   }
 
-  return { amount: refundedAmount - recorded.refundedAmount, fullyRefunded, orderId }
+  return { amount: refundedAmount - recorded.refundedAmount, fullyRefunded, orderId, refundedTotal: refundedAmount }
 }
 
 export const refundOrder = async (input: Order["refundInput"]): Promise<Order["unannouncedRefund"] | undefined> => {

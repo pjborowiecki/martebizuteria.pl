@@ -10,6 +10,7 @@ import { cancelOrderMutation } from "~/src/modules/order/use-cases/cancel-order"
 import { fulfillOrderMutation } from "~/src/modules/order/use-cases/fulfill-order"
 import { markOrderDeliveredMutation } from "~/src/modules/order/use-cases/mark-order-delivered"
 import { refundAdminOrderMutation } from "~/src/modules/order/use-cases/refund-admin-order"
+import { resendOrderEmailMutation } from "~/src/modules/order/use-cases/resend-order-email"
 import { restockOrderMutation } from "~/src/modules/order/use-cases/restock-order"
 import { shipOrderMutation } from "~/src/modules/order/use-cases/ship-order"
 
@@ -102,6 +103,32 @@ export const useRefundOrder = (): UseMutationResult<OrderActionResult, Error, Re
 export const useRestockOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
   useAdminOrderActionMutation(restockOrderMutation, "toast.restockSuccessDescription")
 
+export const useResendOrderEmail = (): UseMutationResult<ResendOrderEmailResult, Error, ResendOrderEmailInput> => {
+  const t = useTranslations("pages.admin.orders.rowActions")
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    ...resendOrderEmailMutation,
+    onError: (error) => {
+      toast.error(t("toast.errorTitle"), {
+        description: resolveOrderActionErrorMessage(error, t),
+      })
+    },
+    onSettled: () => {
+      void syncQueryInvalidation(queryClient, ORDER_QUERY_KEYS.ADMIN.ORDERS)
+    },
+    onSuccess: ({ emailSent }) => {
+      if (emailSent) {
+        toast.success(t("toast.resendEmailSentTitle"), { description: t("toast.resendEmailSentDescription") })
+
+        return
+      }
+
+      toast.warning(t("toast.resendEmailFailedTitle"), { description: t("toast.resendEmailFailedDescription") })
+    },
+  })
+}
+
 type OrderActionSuccessKey =
   | "toast.cancelSuccessDescription"
   | "toast.fulfillSuccessDescription"
@@ -116,6 +143,10 @@ interface OrderIdInput {
 
 interface RefundOrderInput extends OrderIdInput {
   readonly restock: boolean
+}
+
+interface ResendOrderEmailInput extends OrderIdInput {
+  readonly eventId: string
 }
 
 interface ShipOrderInput extends OrderIdInput {
@@ -134,4 +165,8 @@ interface ShipOrderResult extends OrderActionResult {
 
 interface CancelOrderResult extends OrderActionResult {
   readonly cancelledEmailSent: boolean
+}
+
+interface ResendOrderEmailResult extends OrderActionResult {
+  readonly emailSent: boolean
 }

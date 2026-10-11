@@ -48,6 +48,8 @@ const JANUARY = Date.UTC(2024, 0, 10)
 
 const JUNE = Date.UTC(2024, 5, 10)
 
+const SHIPPED_EMAIL_DELIVERY = JSON.stringify({ idempotencyKey: "order-shipped/o-placed", orderEmail: { kind: "order-shipped" } })
+
 const page = { limit: 25, offset: 0 }
 
 const orderIds = async (params: Parameters<typeof getAdminOrdersPage>[0]): Promise<string[]> => {
@@ -575,7 +577,7 @@ const seedPlacedOrderReads = (): void => {
       created_at integer not null, updated_at integer not null
     );
     create table audit_log (
-      id text primary key, action text not null, actor_name text not null, detail text, resource_id text,
+      id text primary key, action text not null, actor_name text not null, detail text, metadata text, resource_id text,
       severity text not null, created_at integer not null
     );
 
@@ -605,11 +607,12 @@ const seedPlacedOrderReads = (): void => {
       ('oi-deleted', 'o-placed', null, 1, null, 'Retired Ring', 3000, 3000, null, ${JANUARY + 2}, ${JANUARY + 2}),
       ('oi-other', 'o-other', 'v-gold', 1, null, 'Aura Hoop', 4900, 4900, null, ${JUNE}, ${JUNE});
 
-    insert into audit_log (id, action, actor_name, detail, resource_id, severity, created_at) values
-      ('audit-placed', '${AUDIT_LOG_ACTION.ORDER_PLACED}', 'System', null, 'o-placed', 'success', ${JANUARY}),
-      ('audit-shipped', '${AUDIT_LOG_ACTION.ORDER_SHIPPED}', 'Admin', 'TRK-9', 'o-placed', 'success', ${JUNE}),
-      ('audit-product', '${AUDIT_LOG_ACTION.PRODUCT_UPDATED}', 'Admin', null, 'o-placed', 'info', ${JUNE}),
-      ('audit-other', '${AUDIT_LOG_ACTION.ORDER_PLACED}', 'System', null, 'o-other', 'success', ${JUNE});
+    insert into audit_log (id, action, actor_name, detail, metadata, resource_id, severity, created_at) values
+      ('audit-placed', '${AUDIT_LOG_ACTION.ORDER_PLACED}', 'System', null, null, 'o-placed', 'success', ${JANUARY}),
+      ('audit-shipped', '${AUDIT_LOG_ACTION.ORDER_SHIPPED}', 'Admin', 'TRK-9', null, 'o-placed', 'success', ${JUNE}),
+      ('audit-email', '${AUDIT_LOG_ACTION.EMAIL_FAILED}', 'System', 'Order shipped — timeout', '${SHIPPED_EMAIL_DELIVERY}', 'o-placed', 'error', ${JUNE + 1}),
+      ('audit-product', '${AUDIT_LOG_ACTION.PRODUCT_UPDATED}', 'Admin', null, null, 'o-placed', 'info', ${JUNE}),
+      ('audit-other', '${AUDIT_LOG_ACTION.ORDER_PLACED}', 'System', null, null, 'o-other', 'success', ${JUNE});
   `)
 }
 
@@ -655,11 +658,21 @@ describe("order line and timeline reads for the admin detail", () => {
 
     expect(rows).toStrictEqual([
       {
+        action: AUDIT_LOG_ACTION.EMAIL_FAILED,
+        actorName: "System",
+        createdAt: new Date(JUNE + 1),
+        detail: "Order shipped — timeout",
+        id: "audit-email",
+        metadata: SHIPPED_EMAIL_DELIVERY,
+        severity: "error",
+      },
+      {
         action: AUDIT_LOG_ACTION.ORDER_SHIPPED,
         actorName: "Admin",
         createdAt: new Date(JUNE),
         detail: "TRK-9",
         id: "audit-shipped",
+        metadata: null,
         severity: "success",
       },
       {
@@ -668,6 +681,7 @@ describe("order line and timeline reads for the admin detail", () => {
         createdAt: new Date(JANUARY),
         detail: null,
         id: "audit-placed",
+        metadata: null,
         severity: "success",
       },
     ])

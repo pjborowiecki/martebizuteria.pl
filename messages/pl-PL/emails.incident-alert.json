@@ -19,6 +19,11 @@
     "heading": "Wysyłka newslettera zatrzymała się w połowie",
     "message": "Sklep trzy razy nie zdołał wysłać partii newslettera i zatrzymał kampanię, więc subskrybenci po ostatniej wysłanej partii go nie dostali. Marketing w panelu administracyjnym pokazuje, do ilu subskrybentów dotarł i dlaczego się zatrzymał. Zanim wyślesz coś jeszcze, sprawdź stan konta Resend i jego limit wysyłki."
   },
+  "orderEmailFailed": {
+    "subject": "Alert: e-mail do zamówienia nie został wysłany — M'Arte",
+    "heading": "E-mail do zamówienia nie został wysłany",
+    "message": "Sklep trzy razy próbował wysłać e-mail do zamówienia i Resend nie przyjął żadnej próby, więc klient go nie dostał. Identyfikator wskazuje e-mail oraz zamówienie albo płatność, której dotyczy. Gdy Resend znów działa, otwórz zamówienie w panelu administracyjnym i naciśnij „Wyślij ponownie” w sekcji „Aktywność”; e-maila o nieudanej płatności ani e-maila o odstąpieniu nie da się stamtąd wysłać ponownie, więc napisz do tego klienta sam."
+  },
   "preview": "Coś w sklepie wymaga Twojej uwagi.",
   "referenceLabel": "Dotyczy",
   "detailLabel": "Przyczyna",

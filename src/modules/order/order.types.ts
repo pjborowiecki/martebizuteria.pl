@@ -1,3 +1,5 @@
+import { type z } from "zod/v4"
+
 import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
 import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
@@ -13,6 +15,7 @@ import {
   type AdminOrderTimelineKind,
 } from "~/src/modules/order/order.constants"
 import { type order } from "~/src/modules/order/order.schema"
+import { type orderZodSchemas } from "~/src/modules/order/order.zod"
 import { type payment } from "~/src/modules/payment/payment.schema"
 
 interface AdminOrderAuditSnapshot {
@@ -125,6 +128,7 @@ interface AdminOrderDetailTimelineEvent {
   readonly id: string
   readonly kind: AdminOrderTimelineKind
   readonly labelKey: string
+  readonly resendable: boolean
   readonly severity: AuditLogSeverity
 }
 
@@ -220,6 +224,7 @@ interface UnannouncedOrderRefund {
   readonly amount: number
   readonly fullyRefunded: boolean
   readonly orderId: string
+  readonly refundedTotal: number
 }
 
 export interface Order {
@@ -236,6 +241,7 @@ export interface Order {
   adminStats: AdminOrderStats
   auditSnapshot: AdminOrderAuditSnapshot
   disputeMetadata: AdminOrderDisputeMetadata
+  email: z.infer<(typeof orderZodSchemas)["email"]>
   insert: typeof order.$inferInsert
   refundInput: OrderRefundInput
   select: typeof order.$inferSelect

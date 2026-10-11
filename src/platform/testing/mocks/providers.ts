@@ -21,6 +21,12 @@ const resendEmailSchema = z.object({
 
 const RESEND_BATCH_PATH = "/emails/batch"
 
+const RESEND_OUTAGE = {
+  message: "The e2e Resend emulator refuses every email to this recipient",
+  name: "internal_server_error",
+  statusCode: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+}
+
 const stripeAmountSchema = z.coerce.number().int()
 
 const stripeMetadataSchema = z.record(z.string(), z.string()).default({})
@@ -148,6 +154,8 @@ interface EmulatedInpostShipment {
 }
 
 const sentEmails: CapturedEmail[] = []
+const refusedRecipients = new Set<string>()
+const emailIdsByIdempotencyKey = new Map<string, string>()
 const checkoutSessions = new Map<string, EmulatedCheckoutSession>()
 const coupons = new Map<string, EmulatedCoupon>()
 const customers = new Map<string, EmulatedCustomer>()
@@ -179,6 +187,14 @@ const stripeId = (prefix: string): string => `${prefix}_test_${crypto.randomUUID
 const nowInSeconds = (): number => Math.floor(Date.now() / 1000)
 
 export const getSentEmails = (recipient: string): CapturedEmail[] => sentEmails.filter(({ to }) => to.includes(recipient))
+
+export const refuseEmailsTo = (recipient: string): void => {
+  refusedRecipients.add(recipient)
+}
+
+export const acceptEmailsTo = (recipient: string): void => {
+  refusedRecipients.delete(recipient)
+}
 
 export const listCheckoutSessions = (email: string): EmulatedCheckoutSession[] =>
   [...checkoutSessions.values()].filter((session) => session.customer_details.email === email)
@@ -226,6 +242,25 @@ const recordEmail = (payload: z.infer<typeof resendEmailSchema>): { id: string }
   return { id }
 }
 
+const captureSingleEmail = (payload: z.infer<typeof resendEmailSchema>, idempotencyKey: string | null): Response => {
+  const recipients = typeof payload.to === "string" ? [payload.to] : payload.to
+  if (recipients.some((recipient) => refusedRecipients.has(recipient))) {
+    return Response.json(RESEND_OUTAGE, { status: HTTP_STATUS.INTERNAL_SERVER_ERROR })
+  }
+
+  const sentId = idempotencyKey === null ? undefined : emailIdsByIdempotencyKey.get(idempotencyKey)
+  if (sentId !== undefined) {
+    return Response.json({ id: sentId })
+  }
+
+  const recorded = recordEmail(payload)
+  if (idempotencyKey !== null) {
+    emailIdsByIdempotencyKey.set(idempotencyKey, recorded.id)
+  }
+
+  return Response.json(recorded)
+}
+
 const captureEmail = async (request: Request, url: URL): Promise<Response> => {
   const body: unknown = await request.json()
 
@@ -236,7 +271,7 @@ const captureEmail = async (request: Request, url: URL): Promise<Response> => {
           .parse(body)
           .map((payload) => recordEmail(payload)),
       })
-    : Response.json(recordEmail(resendEmailSchema.parse(body)))
+    : captureSingleEmail(resendEmailSchema.parse(body), request.headers.get("Idempotency-Key"))
 }
 
 interface CheckoutSessionRequest {

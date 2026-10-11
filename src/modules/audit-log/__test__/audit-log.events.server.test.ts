@@ -1,4 +1,4 @@
-import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { AUDIT_LOG_ACTION, type AuditLogAction, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import {
@@ -30,15 +30,11 @@ import {
   recordDiscountDeletedAudit,
   recordDiscountRedeemedAudit,
   recordDiscountUpdatedAudit,
-  recordEmailFailedAudit,
-  recordEmailSentAudit,
   recordImageUploadedAudit,
-  recordNewsletterSentAudit,
   recordOrderCancelledAudit,
   recordOrderDeliveredAudit,
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
-  recordOrderEmailOutcome,
   recordOrderFulfillmentFailedAudit,
   recordOrderFulfillmentStartedAudit,
   recordOrderPaymentCapturedAudit,
@@ -305,42 +301,6 @@ describe("order lifecycle audit events", () => {
   })
 })
 
-describe("recordOrderEmailOutcome", () => {
-  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
-
-  afterAll(() => {
-    consoleError.mockRestore()
-  })
-
-  it("records a sent email when there is no failure", () => {
-    recordOrderEmailOutcome({ failure: undefined, label: "Order confirmation", orderId: "order-5" })
-
-    expect(consoleError).not.toHaveBeenCalled()
-    expect(record.scheduleSystemAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: AUDIT_LOG_ACTION.EMAIL_SENT,
-        category: "email",
-        detail: "Order confirmation",
-        resourceId: "order-5",
-        severity: "success",
-      }),
-    )
-  })
-
-  it("logs and records a failed email with the reason appended", () => {
-    recordOrderEmailOutcome({ failure: "smtp timeout", label: "Order confirmation", orderId: "order-5" })
-
-    expect(consoleError).toHaveBeenCalledWith("Order confirmation failed for order order-5: smtp timeout")
-    expect(record.scheduleSystemAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: AUDIT_LOG_ACTION.EMAIL_FAILED,
-        detail: "Order confirmation — smtp timeout",
-        severity: "error",
-      }),
-    )
-  })
-})
-
 describe("resolveAuthAuditActor", () => {
   it("maps the admin role", () => {
     expect(resolveAuthAuditActor({ email: "admin@example.test", id: "user-1", name: "Admin", role: "admin" })).toStrictEqual({
@@ -583,36 +543,6 @@ describe("customer activity audit events", () => {
   })
 })
 
-describe("email delivery audit events", () => {
-  it("records a delivered email as a success against the recipient", () => {
-    recordEmailSentAudit("ada@example.test", { detail: "Order confirmation" })
-
-    expect(record.scheduleSystemAuditLog).toHaveBeenCalledWith({
-      action: AUDIT_LOG_ACTION.EMAIL_SENT,
-      category: "email",
-      detail: "Order confirmation",
-      metadata: undefined,
-      resourceId: "ada@example.test",
-      severity: "success",
-      target: "ada@example.test",
-    })
-  })
-
-  it("records a rejected email as an error against the recipient", () => {
-    recordEmailFailedAudit("ada@example.test", { detail: "mailbox full", metadata: { provider: "resend" } })
-
-    expect(record.scheduleSystemAuditLog).toHaveBeenCalledWith({
-      action: AUDIT_LOG_ACTION.EMAIL_FAILED,
-      category: "email",
-      detail: "mailbox full",
-      metadata: { provider: "resend" },
-      resourceId: "ada@example.test",
-      severity: "error",
-      target: "ada@example.test",
-    })
-  })
-})
-
 describe("recordContentPageUpdatedAudit", () => {
   it("files the edited page under content against the admin making the request", () => {
     recordContentPageUpdatedAudit("privacy-policy")
@@ -626,27 +556,6 @@ describe("recordContentPageUpdatedAudit", () => {
       resourceId: "privacy-policy",
       severity: "info",
       target: "privacy-policy",
-    })
-  })
-})
-
-describe("recordNewsletterSentAudit", () => {
-  it("files the newsletter under email against the admin who sent it, named by its subject", () => {
-    recordNewsletterSentAudit("Jesienne projekty", {
-      detail: "12 confirmed subscribers",
-      metadata: { recipientCount: 12 },
-      resourceId: "campaign-1",
-    })
-
-    expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()
-    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
-      action: AUDIT_LOG_ACTION.NEWSLETTER_SENT,
-      category: "email",
-      detail: "12 confirmed subscribers",
-      metadata: { recipientCount: 12 },
-      resourceId: "campaign-1",
-      severity: "info",
-      target: "Jesienne projekty",
     })
   })
 })

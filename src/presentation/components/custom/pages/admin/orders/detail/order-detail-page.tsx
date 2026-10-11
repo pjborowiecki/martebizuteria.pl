@@ -23,7 +23,7 @@ export const OrderDetailPage = ({ order }: Readonly<OrderDetailPageProps>): JSX.
         <OrderWithdrawalsCard withdrawals={order.withdrawals} />
         <OrderFulfillmentTracker canceledAt={order.canceledAt} steps={order.fulfillmentSteps} />
         <OrderLineItemsCard order={order} />
-        <OrderTimelineCard timeline={order.timeline} />
+        <OrderTimelineCard orderId={order.id} timeline={order.timeline} />
       </div>
 
       <div className="space-y-6">

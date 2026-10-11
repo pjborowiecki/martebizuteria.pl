@@ -13,10 +13,18 @@ const RESEND_TEST_SENDER = /@resend\.dev>?$/iu
 const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): boolean =>
   SENDER_REFUSAL_NAMES.has(name) || (SENDER_REFUSAL_STATUSES.has(statusCode) && !RESEND_TEST_SENDER.test(sender))
 
-const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
-  const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
+const deliver = async ({
+  from,
+  idempotencyKey,
+  revealsAccountExistence,
+  ...message
+}: Readonly<SendEmailOptions>): Promise<string | undefined> => {
+  const sender = from ?? shopSender()
   try {
-    const { error } = await resend.emails.send({ ...message, from: sender, replyTo: BUSINESS.EMAIL })
+    const { error } = await resend.emails.send(
+      { ...message, from: sender, replyTo: BUSINESS.EMAIL },
+      idempotencyKey === undefined ? {} : { idempotencyKey },
+    )
 
     if (error !== null && revealsAccountExistence !== true && refusesEverySend(error, sender)) {
       scheduleBackgroundWork(markEmailSenderUnavailable(error.message))
@@ -42,7 +50,7 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 }
 ```
 
-Wiadomość, czyli `react`, `subject`, `to` i ewentualne `attachments`, trafia do Resend w takiej postaci, w jakiej ją przekazano. Załącznik ma tylko potwierdzenie zamówienia. `sendEmail` dodaje do każdej wiadomości `replyTo: BUSINESS.EMAIL`, więc odpowiedź klienta trafia na adres kontaktowy sklepu `kontakt@martebizuteria.pl`, a nie na `RESEND_EMAIL_FROM`; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
+Wiadomość, czyli `react`, `subject`, `to` i ewentualne `attachments`, trafia do Resend w takiej postaci, w jakiej ją przekazano. Załącznik ma tylko potwierdzenie zamówienia. `idempotencyKey`, który przekazuje każdy e-mail dotyczący zamówienia, trafia do Resend jako nagłówek `Idempotency-Key`, więc ponowna próba pod tym samym kluczem nigdy nie wysyła e-maila dwa razy; zobacz [Wysyłka i ponawianie](#wysyłka-i-ponawianie). `sendEmail` dodaje do każdej wiadomości `replyTo: BUSINESS.EMAIL`, więc odpowiedź klienta trafia na adres kontaktowy sklepu `kontakt@martebizuteria.pl`, a nie na `RESEND_EMAIL_FROM`; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 
 Zwróć uwagę na kontrakt: **nigdy nie rzuca wyjątku.** Zwraca `undefined` przy sukcesie, a w przeciwnym razie komunikat błędu jako napis. SDK Resend nie ma własnego limitu czasu, więc `sendEmail` rezygnuje po `SEND_EMAIL_TIMEOUT_MS` (10 sekund) i zwraca `Resend did not answer within 10000 ms`; zawieszony Resend nie może bez końca blokować zapisu ani webhooka. Każdy wywołujący jest więc napisany jako `const failure = await sendEmail(...)`, po czym decyduje, co zrobić z `failure` — awaria poczty nie może wycofać zamówienia ani usunięcia konta.
 
@@ -180,7 +188,7 @@ return {
 
 **Zwrot.** Każdy zwrot dociera do sklepu jako `charge.refunded`: przycisk Zwrot, zwrot wydany przez anulowanie i zwrot zrobiony w panelu Stripe. `prepareRefundBatch` zaczyna się od odczytu `refunded_amount` płatności i statusu zamówienia, więc `refundOrder` dowiaduje się, co płatność miała zapisane przed tym zdarzeniem, w tej samej transakcji D1, która je zapisuje. Zwraca zwrot jako `Order["unannouncedRefund"]` tylko wtedy, gdy narastające `amount_refunded` płatności jest wyższe i zamówienie nie było anulowane, a e-mail podaje różnicę. Każdy częściowy zwrot jest więc ogłaszany raz, z własną kwotą, a ten, który dopełnia zwrot, mówi, że zamówienie zwrócono w całości; gdy nowsze zdarzenie wyprzedzi starsze, jego e-mail obejmuje oba zwroty. Płatność zachowuje większą z kwot: zapisanej i tej ze zdarzenia, więc ponownie dostarczone zdarzenie, starsze zdarzenie dostarczone po nowszym i `charge.refunded`, które następuje po zwrocie wydanym przez anulowanie, nie zwracają niczego, a D1 wykonuje równoczesne dostarczenia po jednym wsadzie, więc niższą kwotę widzi tylko jedno z nich. `handleChargeRefunded` wysyła wtedy e-mail przez `notifyOrderRefunded(refund, session.return_url)`. Gdy zdarzenie zwrotu dotrze przed wsadem anulowania, zamówienie jest już zwrócone, anulowanie zostaje odrzucone, a klient dostaje tylko e-mail o zwrocie.
 
-**Nieudana płatność.** `checkout.session.async_payment_failed` przychodzi, gdy płatność odroczona nie powiedzie się już po wyjściu klienta z kasy. `releaseCheckout` zwraca, czy jego wsad przestawił płatność sesji z `pending` na `failed`, a `handleAsyncPaymentFailed` wysyła `payment-failed.tsx` tylko wtedy, więc ponownie dostarczone zdarzenie nie znajduje niczego oczekującego i niczego nie wysyła, a wygasła sesja nie wysyła nic. E-mail trafia na adres z sesji, w języku sesji, wymienia produkty z linkami do ich stron, podaje kwotę i linkuje z powrotem do `/products`. Zamówienie nie istnieje, więc `recordOrderEmailAttempt` zapisuje wynik przy identyfikatorze sesji, który jest celem wpisu `order.released` z tego samego zwolnienia; widać go w `/admin/audit`, a nie przy zamówieniu.
+**Nieudana płatność.** `checkout.session.async_payment_failed` przychodzi, gdy płatność odroczona nie powiedzie się już po wyjściu klienta z kasy. `releaseCheckout` zwraca, czy jego wsad przestawił płatność sesji z `pending` na `failed`, a `handleAsyncPaymentFailed` wysyła `payment-failed.tsx` tylko wtedy, więc ponownie dostarczone zdarzenie nie znajduje niczego oczekującego i niczego nie wysyła, a wygasła sesja nie wysyła nic. E-mail trafia na adres z sesji, w języku sesji, wymienia produkty z linkami do ich stron, podaje kwotę i linkuje z powrotem do `/products`. Zamówienie nie istnieje, więc `deliverOrderEmail` zapisuje wynik przy identyfikatorze sesji, który jest celem wpisu `order.released` z tego samego zwolnienia; widać go w `/admin/audit`, a nie przy zamówieniu. Odrzucony e-mail o nieudanej płatności jest ponawiany jak każdy e-mail dotyczący zamówienia, pod kluczem `payment-failed/<id sesji>`, ale bez strony zamówienia, na której mógłby się pojawić, nie da się go wysłać ponownie ręcznie.
 
 ## E-mail sklepu o nowym zamówieniu
 
@@ -190,59 +198,78 @@ Odbiorcą jest `RESEND_EMAIL_FROM`, adres, z którego sklep wysyła pocztę, wym
 
 E-mail jest w języku sklepu, `I18N.DEFAULT_LOCALE`, niezależnie od języka klienta. Odczytuje zamówienie przez `getAdminOrderDetailRow` i `getAdminOrderItemRows`, te same odczyty, na których stoi strona zamówienia w panelu, i podaje numer zamówienia w temacie i nagłówku, każdy produkt z wariantem, SKU, ilością, ceną jednostkową i wartością pozycji (`mapAdminOrderDetailItem`), sumę z dostawą, imię i nazwisko, e-mail i telefon klienta, sposób dostawy z identyfikatorem paczkomatu, adres dostawy z kopii zapisanej przy zamówieniu (`resolveAdminOrderDetailAddresses`), firmę do faktury i uwagi klienta. Wiersz firmy pojawia się tylko wtedy, gdy zamówienie ma nazwę firmy lub NIP: `describeCompanyInvoice` podaje nazwę i `NIP <cyfry>`, a po nich adres rozliczeniowy z kopii zamówienia, więc właściciel ma wszystko, czego potrzebuje faktura. Jego przycisk otwiera `/admin/orders/<id>` (`ROUTES.ADMIN_ORDER`) na originie z `return_url` sesji, tym samym, na który prowadzą linki potwierdzenia.
 
-Próba przechodzi przez `recordOrderEmailAttempt` jak każdy e-mail dotyczący zamówienia, z etykietą `New order notification → <adres>`, więc odmowa pojawia się w sekcji „Aktywność” zamówienia i w `/admin/audit`. Nigdy nie wpływa na zamówienie ani na potwierdzenie dla klienta: `notifyShopOfNewOrder` nie rzuca wyjątku, a webhook i tak odpowiada 200.
+Próba przechodzi przez `deliverOrderEmail` jak każdy e-mail dotyczący zamówienia, pod kluczem `new-order/<id zamówienia>` i z etykietą `New order notification → <adres>`, więc odmowa jest ponawiana, a gdy ponowienia też zawiodą, pojawia się w sekcji „Aktywność” zamówienia z przyciskiem **Wyślij ponownie** i w `/admin/audit`. Nigdy nie wpływa na zamówienie ani na potwierdzenie dla klienta: `notifyShopOfNewOrder` nie rzuca wyjątku, a webhook i tak odpowiada 200.
+
+## Wysyłka i ponawianie
+
+Każdy e-mail dotyczący zamówienia wychodzi przez `deliverOrderEmail` w `src/integrations/resend/order-email.delivery.server.ts`. Wywołujący przekazuje mu funkcję, która przygotowuje i wysyła e-mail pod podanym kluczem idempotencji, oraz opis wysyłki:
+
+```ts
+export const notifyOrderShipped = (orderId: string, origin: string): Promise<boolean> =>
+  deliverOrderEmail((idempotencyKey) => sendOrderShippedEmail(orderId, origin, idempotencyKey), {
+    idempotencyKey: `${ORDER_EMAIL_KIND.SHIPPED}/${orderId}`,
+    label: ORDER_SHIPPED_LABEL,
+    orderEmail: { kind: ORDER_EMAIL_KIND.SHIPPED },
+    orderId,
+  })
+```
+
+`sendOrderConfirmationEmail` i `sendPaymentFailedEmail` w `stripe.webhooks.tsx` oraz `sendOrderShippedEmail`, `sendOrderCancelledEmail`, `sendOrderRefundedEmail` i `sendNewOrderEmail` w swoich plikach `*.notification.server.ts` odczytują to, czego potrzebuje ich e-mail, renderują go i przekazują klucz do `sendEmail`. Zwracają `{ failure, label }`, gdzie `label` to czytelny napis, na przykład `Order confirmation → jane@example.com`.
+
+Każdy klucz nazywa e-mail i to, czego dotyczy:
+
+| E-mail                             | Klucz idempotencji                                                 |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| Potwierdzenie zamówienia           | `order-confirmation/<id zamówienia>`                               |
+| Powiadomienie sklepu o zamówieniu  | `new-order/<id zamówienia>`                                        |
+| Wysłanie                           | `order-shipped/<id zamówienia>`                                    |
+| Anulowanie                         | `order-cancelled/<id zamówienia>`                                  |
+| Zwrot                              | `order-refunded/<id zamówienia>/<suma zwrotów po tym zwrocie>`     |
+| Nieudana płatność                  | `payment-failed/<id sesji Checkout>`                               |
+| Potwierdzenie odstąpienia          | `order-withdrawal/<id zamówienia>/<czas oświadczenia w ms>`        |
+| Powiadomienie sklepu o odstąpieniu | `order-withdrawal-notice/<id zamówienia>/<czas oświadczenia w ms>` |
+
+Resend przechowuje klucz przez 24 godziny i na żądanie z kluczem, pod którym już wysłał e-mail, odpowiada pierwotną odpowiedzią zamiast wysyłać ponownie. Ponowna próba nigdy więc nie dostarcza e-maila dwa razy, nawet gdy pierwsza tylko wyglądała na nieudaną, bo Resend odpowiedział po `SEND_EMAIL_TIMEOUT_MS`. Klucz zwrotu niesie narastające `amount_refunded` jego zdarzenia `charge.refunded`, które `refundOrder` zwraca jako `refundedTotal`, więc dwa częściowe zwroty tej samej kwoty to dwa e-maile.
+
+`deliverOrderEmail` czeka na pierwszą próbę i zwraca, czy Resend ją przyjął. Jeśli nie, próba zostaje zapisana jako `email.deferred`, a ponowienia trafiają do `scheduleBackgroundWork`, czyli `waitUntil` żądania, więc odpowiedź na nie nie czeka i nie bierze w tym udziału żadna kolejka. E-mail jest wysyłany ponownie po `ORDER_EMAIL_RETRY_DELAY_MS` (jednej sekundzie) i jeszcze raz po czasie `ORDER_EMAIL_RETRY_BACKOFF` razy dłuższym (czterech sekundach), łącznie `ORDER_EMAIL_RETRIES` ponowienia, a każde przygotowuje e-mail od nowa i wysyła go pod tym samym kluczem. Pierwsze ponowienie przyjęte przez Resend zostaje zapisane jako `email.sent`; e-mail odrzucony także przy ostatnim zostaje zapisany jako `email.failed`, a `notifyShopOfIncident` wysyła na `RESEND_EMAIL_FROM` alert `orderEmailFailed` z kluczem idempotencji, więc każdy e-mail, który ostatecznie zawiedzie, wywołuje jeden alert, tak jak pozostałe incydenty sklepu (zobacz [Alerty sklepu o incydentach](#alerty-sklepu-o-incydentach)). Przy `SEND_EMAIL_TIMEOUT_MS` równym dziesięciu sekundom ponowienia kończą się najpóźniej około 25 sekund po odpowiedzi, w ramach 30 sekund, które środowisko Workers daje pracy w `waitUntil`. Ponawiana jest każda porażka, także ta z przygotowania e-maila, bo nieudany odczyt z D1 albo pobranie zasobu mija równie często jak limit żądań; porażka, która nie może minąć, na przykład zamówienie bez adresu, kończy się wpisem `email.failed` pięć sekund później.
+
+Wyjątek rzucony podczas przygotowywania e-maila trafia do logu razem ze stosem wywołań jako `<etykieta> for order <id> could not be prepared:` i staje się wynikiem, z etykietą bez odbiorcy i opisem utworzonym tak, jak `sendEmail` opisuje przechwycony błąd.
 
 ## Odstąpienie od umowy
 
-`order-withdrawal.tsx` eksportuje dwa e-maile korzystające z jednego katalogu komunikatów, `emails.order-withdrawal`, bo oba powtarzają to samo oświadczenie. `OrderWithdrawalReceived` (`received`) to potwierdzenie na trwałym nośniku, którego wymaga art. 11a dyrektywy w sprawie praw konsumentów: trafia na adres e-mail zamówienia w języku żądania, potwierdza otrzymanie oświadczenia i powtarza jego treść, a potem mówi, dokąd odesłać produkty i jak wygląda zwrot płatności. `OrderWithdrawalNotice` (`notice`) trafia na `RESEND_EMAIL_FROM` w języku sklepu z linkiem do zamówienia w panelu. Oba buduje `src/integrations/resend/order-withdrawal.notification.server.ts`, a w audycie zapisują się jako `Withdrawal acknowledgement → <adres>` i `Withdrawal notice → <adres>`. Data i godzina są zapisane w czasie polskim przez `Intl.DateTimeFormat`, bo Worker działa w UTC. Odstąpienie z użyciem numeru zamówienia na `/withdraw-from-contract` wysyła oba tylko wtedy, gdy `admitPublicEmail` dopuści e-mail rodzaju `withdrawal` na adres zamówienia, tak jak pozostałe e-maile, o które może poprosić odwiedzający; odstąpienie na koncie wysyła je zawsze. Zobacz [Strony prawne: Funkcja odstąpienia od umowy](/docs/features/legal-pages#funkcja-odstąpienia-od-umowy).
+`order-withdrawal.tsx` eksportuje dwa e-maile korzystające z jednego katalogu komunikatów, `emails.order-withdrawal`, bo oba powtarzają to samo oświadczenie. `OrderWithdrawalReceived` (`received`) to potwierdzenie na trwałym nośniku, którego wymaga art. 11a dyrektywy w sprawie praw konsumentów: trafia na adres e-mail zamówienia w języku żądania, potwierdza otrzymanie oświadczenia i powtarza jego treść, a potem mówi, dokąd odesłać produkty i jak wygląda zwrot płatności. `OrderWithdrawalNotice` (`notice`) trafia na `RESEND_EMAIL_FROM` w języku sklepu z linkiem do zamówienia w panelu. Oba buduje `src/integrations/resend/order-withdrawal.notification.server.ts`, a w audycie zapisują się jako `Withdrawal acknowledgement → <adres>` i `Withdrawal notice → <adres>`. Wychodzą przez `deliverOrderEmail` jak e-maile dotyczące zamówienia, pod kluczami `order-withdrawal/<id zamówienia>/<czas oświadczenia>` i `order-withdrawal-notice/<id zamówienia>/<czas oświadczenia>`, więc odrzucony jest ponawiany jeszcze dwa razy, a potem wywołuje alert na `RESEND_EMAIL_FROM`; żaden nie niesie tego, czego potrzebuje **Wyślij ponownie**, więc karta „Aktywność” nigdy ich nie oferuje. Data i godzina są zapisane w czasie polskim przez `Intl.DateTimeFormat`, bo Worker działa w UTC. Odstąpienie z użyciem numeru zamówienia na `/withdraw-from-contract` wysyła oba tylko wtedy, gdy `admitPublicEmail` dopuści e-mail rodzaju `withdrawal` na adres zamówienia, tak jak pozostałe e-maile, o które może poprosić odwiedzający; odstąpienie na koncie wysyła je zawsze. Zobacz [Strony prawne: Funkcja odstąpienia od umowy](/docs/features/legal-pages#funkcja-odstąpienia-od-umowy).
 
 ## Alerty sklepu o incydentach
 
-`notifyShopOfIncident` z `src/integrations/resend/incident-alert.notification.server.ts` wysyła e-mail na `RESEND_EMAIL_FROM`, gdy zawiedzie coś, czym właściciel musi się zająć: opłacona sesja Checkout, z której nie da się utworzyć zamówienia, zdarzenie Stripe, na które webhook odpowiada błędem, i partia dziennika audytu, której konsument kolejki nie potrafi przetworzyć. Szablon to `incident-alert.tsx` z katalogiem `emails.incident-alert`, w języku sklepu, z nagłówkiem i wyjaśnieniem dla każdego rodzaju incydentu, identyfikatorem, przyczyną i środowiskiem.
+`notifyShopOfIncident` z `src/integrations/resend/incident-alert.notification.server.ts` wysyła e-mail na `RESEND_EMAIL_FROM`, gdy zawiedzie coś, czym właściciel musi się zająć: opłacona sesja Checkout, z której nie da się utworzyć zamówienia, zdarzenie Stripe, na które webhook odpowiada błędem, partia dziennika audytu, której konsument kolejki nie potrafi przetworzyć, kampania newslettera zatrzymana w połowie i e-mail do zamówienia odrzucony mimo ponowień. Szablon to `incident-alert.tsx` z katalogiem `emails.incident-alert`, w języku sklepu, z nagłówkiem i wyjaśnieniem dla każdego rodzaju incydentu, identyfikatorem, przyczyną i środowiskiem.
 
-Alerty wysyła każde środowisko, tak jak powiadomienie sklepu o nowym zamówieniu. Każdy incydent jest zapisywany pod kluczem złożonym ze środowiska, rodzaju i identyfikatora — sesji Checkout, typu zdarzenia Stripe albo kolejki — w przestrzeni KV `CACHE` na godzinę (`INCIDENT_ALERT_SECONDS`), więc burza ponowień wysyła jeden e-mail. Alert nigdy nie rzuca wyjątku: nieudany odczyt KV, renderowanie albo wysyłka trafia do logu z prefiksem `[Alert]`, a odpowiedź webhooka i ponowienie kolejki pozostają bez zmian. W przeciwieństwie do e-maili dotyczących zamówień alerty nie są zapisywane w dzienniku audytu, bo zawieść mogła właśnie baza danych. [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts) wyjaśnia, kiedy który się wysyła i co wtedy zrobić.
+Alerty wysyła każde środowisko, tak jak powiadomienie sklepu o nowym zamówieniu. Każdy incydent jest zapisywany pod kluczem złożonym ze środowiska, rodzaju i identyfikatora — sesji Checkout, typu zdarzenia Stripe, kolejki, kampanii albo klucza idempotencji e-maila do zamówienia — w przestrzeni KV `CACHE` na godzinę (`INCIDENT_ALERT_SECONDS`), więc burza ponowień wysyła jeden e-mail. Alert nigdy nie rzuca wyjątku: nieudany odczyt KV, renderowanie albo wysyłka trafia do logu z prefiksem `[Alert]`, a odpowiedź webhooka i ponowienie kolejki pozostają bez zmian. W przeciwieństwie do e-maili dotyczących zamówień alerty nie są zapisywane w dzienniku audytu, bo zawieść mogła właśnie baza danych. [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts) wyjaśnia, kiedy który się wysyła i co wtedy zrobić.
 
 ## Zapis w audycie
 
-E-maile dotyczące zamówień zapisują swój wynik w dzienniku audytu:
+`deliverOrderEmail` zapisuje każdy wynik przez `recordOrderEmailOutcome` w `src/modules/audit-log/audit-log.events.server.ts`, z kluczem i e-mailem w metadanych wpisu:
 
 ```ts
-export const recordOrderEmailOutcome = ({
-  failure,
-  label,
-  orderId,
-}: Readonly<{ failure: string | undefined; label: string; orderId: string }>): void => {
+export const recordOrderEmailOutcome = ({ failure, label, metadata, orderId, willRetry }: Readonly<OrderEmailOutcomeRecord>): void => {
   if (failure === undefined) {
-    recordEmailSentAudit(orderId, { detail: label, resourceId: orderId })
+    recordEmailSentAudit(orderId, { detail: label, metadata, resourceId: orderId })
 
     return
   }
   console.error(`${label} failed for order ${orderId}: ${failure}`)
-  recordEmailFailedAudit(orderId, { detail: `${label} — ${failure}`, resourceId: orderId })
+  const options = { detail: `${label} — ${failure}`, metadata, resourceId: orderId }
+  if (willRetry) {
+    recordEmailDeferredAudit(orderId, options)
+
+    return
+  }
+  recordEmailFailedAudit(orderId, options)
 }
 ```
 
-`label` to czytelny napis, na przykład `Order confirmation → jane@example.com`. Każdy e-mail dotyczący zamówienia jest podzielony tak samo. `sendOrderConfirmationEmail` i `sendPaymentFailedEmail` w `stripe.webhooks.tsx` oraz `sendOrderShippedEmail`, `sendOrderCancelledEmail`, `sendOrderRefundedEmail` i `sendNewOrderEmail` w swoich plikach `*.notification.server.ts` zwracają `{ failure, label }`, a wywołujący przekazuje tę próbę do `recordOrderEmailAttempt` w `src/integrations/resend/order-email.outcome.server.ts`:
+Próba, której Resend nie przyjmie, zawsze kończy się więc wpisem, najpierw `email.deferred`, a gdy ponowienia też zawiodą, `email.failed`:
 
-```ts
-export const recordOrderEmailAttempt = async (
-  attempt: Promise<OrderEmailOutcome>,
-  { label, orderId }: Readonly<{ label: string; orderId: string }>,
-): Promise<boolean> => {
-  const outcome = await attempt.catch((error: unknown) => {
-    console.error(`${label} for order ${orderId} could not be prepared:`, error)
-
-    return { failure: error instanceof Error ? error.message : String(error), label }
-  })
-  recordOrderEmailOutcome({ failure: outcome.failure, label: outcome.label, orderId })
-
-  return outcome.failure === undefined
-}
-```
-
-Wyjątek rzucony podczas przygotowywania e-maila trafia do logu razem ze stosem wywołań i też staje się wynikiem, z etykietą bez odbiorcy i opisem utworzonym tak, jak `sendEmail` opisuje przechwycony błąd. Każda próba kończy się więc wpisem:
-
-| Co poszło nie tak                     | Szczegół wpisu `email.failed`                                                       |
+| Co poszło nie tak                     | Szczegół wpisu                                                                      |
 | ------------------------------------- | ----------------------------------------------------------------------------------- |
 | Resend odrzucił wysyłkę               | `Order confirmation → jane@example.com — The example.com domain is not verified…`   |
 | Sesja Stripe nie ma adresu            | `Order confirmation — The Stripe session has no email address`                      |
@@ -251,7 +278,15 @@ Wyjątek rzucony podczas przygotowywania e-maila trafia do logu razem ze stosem 
 | Sesja nie ma adresu powrotu           | `Order refunded — The Stripe session has no return URL to link the email to`        |
 | Przygotowanie e-maila rzuciło wyjątek | `Order shipped — D1_ERROR: …` albo rzucona wartość jako tekst, gdy nie jest `Error` |
 
-Identyfikator zamówienia jest celem i `resourceId` każdego wpisu. Porażkę widać więc w karcie **Aktywność** zamówienia w panelu, jako „Błąd wysyłki e-maila” z oznaczeniem „Niepowodzenie” i szczegółem pod spodem, oraz w `/admin/audit` w kategorii `email` z poziomem `error`. Wpisy audytu trafiają do D1 przez kolejkę kilka sekund po wysyłce, dlatego `processAuditLogQueueBatch` publikuje `ORDER_QUERY_KEYS.ADMIN.ORDERS` za każdym razem, gdy partia zawiera akcję z osi czasu zamówienia: każda otwarta karta panelu pobiera ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc otwarta strona zamówienia pokazuje wpis bez przeładowania. Porażki newslettera i Better Auth używają tej samej akcji `email.failed`, więc też wywołują to odświeżenie. Wpis może jeszcze zginąć w drodze do D1, gdy nie powiedzie się wysłanie do kolejki albo gdy nie da się go zapisać nawet po trzech osobnych ponowieniach w kolejce martwych listów; wtedy porażkę zna tylko log Workera, a porażki wysyłają też e-mail na `RESEND_EMAIL_FROM`, najwyżej raz na godzinę dla każdej kolejki. Panel nie ma jeszcze przycisku ponownej wysyłki e-maila dotyczącego zamówienia: po usunięciu przyczyny sklep kontaktuje się z klientem pod adresem widocznym w zamówieniu.
+Identyfikator zamówienia jest celem i `resourceId` każdego wpisu, a jego metadane to `{ idempotencyKey, orderEmail }`, gdzie `orderEmail` zawiera to, czego potrzebuje ponowna wysyłka, by zbudować e-mail jeszcze raz: jego rodzaj, a przy anulowaniu zwróconą kwotę, przy zwrocie kwotę tego zwrotu, to, czy dopełnił zwrot, i sumę zwrotów. Wynik widać więc w karcie **Aktywność** zamówienia w panelu, jako „E-mail opóźniony” z oznaczeniem „Opóźniono” albo „Błąd wysyłki e-maila” z oznaczeniem „Niepowodzenie” i szczegółem pod spodem, oraz w `/admin/audit` w kategorii `email` z poziomem `warning` albo `error`. Wpisy audytu trafiają do D1 przez kolejkę kilka sekund po wysyłce, dlatego `processAuditLogQueueBatch` publikuje `ORDER_QUERY_KEYS.ADMIN.ORDERS` za każdym razem, gdy partia zawiera akcję z osi czasu zamówienia: każda otwarta karta panelu pobiera ponownie widoczną listę zamówień, statystyki albo stronę zamówienia, a zapytania o zamówienia trzymane tylko w cache usuwa, więc otwarta strona zamówienia pokazuje wpis bez przeładowania. Porażki newslettera i Better Auth używają tej samej akcji `email.failed`, więc też wywołują to odświeżenie. Wpis może jeszcze zginąć w drodze do D1, gdy nie powiedzie się wysłanie do kolejki albo gdy nie da się go zapisać nawet po trzech osobnych ponowieniach w kolejce martwych listów; wtedy porażkę zna tylko log Workera, a porażki wysyłają też e-mail na `RESEND_EMAIL_FROM`, najwyżej raz na godzinę dla każdej kolejki.
+
+## Ponowna wysyłka z zamówienia
+
+Karta „Aktywność” pokazuje przycisk **Wyślij ponownie** pod najnowszym wpisem `email.deferred` albo `email.failed` każdego e-maila dotyczącego zamówienia, który od tamtej pory nie wyszedł. `resolveResendableOrderEmails` w `src/modules/order/order.detail.utils.ts` czyta oś czasu zamówienia od najnowszych wpisów, bierze pierwszy wpis wysyłki dla każdego klucza idempotencji, którego metadane nazywają e-mail, i proponuje go, chyba że jest to `email.sent`. Wpisy zapisane, zanim wysyłki zaczęły nieść te metadane, oraz e-mail o nieudanej płatności, który należy do sesji, a nie do zamówienia, nigdy nie dostają przycisku.
+
+Przycisk wywołuje `resendOrderEmail` w `src/modules/order/use-cases/resend-order-email.ts` z zamówieniem i identyfikatorem wpisu. Funkcja wymaga `order: ["update"]`, ponownie czyta oś czasu i odmawia z `CONFLICT`, jeśli ten wpis nie jest już tym do ponowienia, więc druga karta albo e-mail, który w międzyczasie wyszedł, niczego nie wysyła. Zapisuje `email.resend_requested` przy zamówieniu przez `scheduleAuditLogFromRequest`, z administratorem jako sprawcą, jego adresem IP i szczegółem nieudanego wpisu, a potem buduje e-mail jeszcze raz z tych samych źródeł, z których korzystała pierwsza próba. E-maile o wysłaniu i anulowaniu linkują na originie administratora, tak jak `shipOrder` i `cancelOrder`. Potwierdzenie, powiadomienie sklepu i e-mail o zwrocie pobierają ze Stripe sesję Checkout zamówienia po `transaction_id` płatności, a zamówienie bez niej zostaje odrzucone z `CONFLICT`. Ponowna wysyłka przechodzi przez ten sam notyfikator i `deliverOrderEmail` pod tym samym kluczem, z tymi samymi ponowieniami i wpisami, więc w ciągu 24 godzin od pierwszej wysyłki e-mail, który jednak dotarł do Resend, choć jego wynik mówił co innego, nie zostaje wysłany drugi raz.
+
+Hook `useResendOrderEmail` pokazuje „E-mail wysłany”, gdy Resend przyjął e-mail, a „E-mail jeszcze nie wysłany” z informacją o dwóch kolejnych próbach, gdy go nie przyjął. Dopóki e-mail nie wyjdzie, przycisk pojawia się znów pod jego najnowszym wpisem.
 
 E-mail newslettera odrzucony przez Resend również trafia do audytu. `subscribeToNewsletter` wywołuje `recordEmailFailedAudit(email, { detail })`: celem wpisu jest adres, a szczegół podaje rodzaj e-maila i błąd Resend, na przykład `Newsletter confirmation — The example.com domain is not verified` albo `Newsletter already-subscribed notice — …`. Niezweryfikowana domena nadawcy pojawia się więc w `/admin/audit` już przy pierwszym zapisie, a nie tylko w logu Workera. Wysłany e-mail nie jest zapisywany.
 
@@ -277,7 +312,7 @@ const deliverAuthEmail = async (kind: string, email: Parameters<typeof sendEmail
 
 Celem wpisu jest adres odbiorcy, a szczegół podaje rodzaj e-maila, na przykład `Auth reset-password email — The example.com domain is not verified`. Link weryfikacyjny ani link do zmiany hasła nigdy nie trafia do audytu, bo jest poświadczeniem. To, czy osoba dowie się o porażce, zależy od punktu końcowego; [Better Auth](/docs/integrations/better-auth) opisuje odpowiedź każdego z nich.
 
-`AUDIT_LOG_ACTION.EMAIL_DEFERRED` istnieje, ale nic go nie emituje.
+`email.deferred` zapisuje tylko `deliverOrderEmail`. Pozostałe e-maile zapisują odmowę jako `email.failed`: e-maile Better Auth i e-maile zapisu do newslettera od razu, kampania newslettera wtedy, gdy zawiedzie trzecia próba partii.
 
 ## Czekanie na wysyłkę
 
@@ -291,17 +326,17 @@ scheduleBackgroundWork(shippedEmailDelivery)
 const shippedEmailSent = await shippedEmailDelivery
 ```
 
-Gdy administrator zamknie kartę albo Stripe przestanie czekać, środowisko Workers może przerwać to, na co żądanie jeszcze czekało, ale nie obietnicę przekazaną do `waitUntil`. Dzięki temu e-mail i tak wychodzi, a jego wynik zostaje zapisany. `afterDelete` w Better Auth czeka na `sendAccountDeletedEmail` bez tego zabezpieczenia, więc klient, który zamknie kartę podczas usuwania własnego konta, nadal może przerwać e-mail pożegnalny.
+Gdy administrator zamknie kartę albo Stripe przestanie czekać, środowisko Workers może przerwać to, na co żądanie jeszcze czekało, ale nie obietnicę przekazaną do `waitUntil`. Dzięki temu e-mail i tak wychodzi, a jego wynik zostaje zapisany. Żądanie czeka tylko na pierwszą próbę: `deliverOrderEmail` planuje ponowienia odrzuconego e-maila dotyczącego zamówienia w ten sam sposób, więc wykonują się po odpowiedzi. `afterDelete` w Better Auth czeka na `sendAccountDeletedEmail` bez tego zabezpieczenia, więc klient, który zamknie kartę podczas usuwania własnego konta, nadal może przerwać e-mail pożegnalny.
 
-`shipOrder` czeka na `notifyOrderShipped` po aktualizacji wiersza zamówienia i zwraca `shippedEmailSent`. Administrator zawsze widzi „Zamówienie oznaczono jako wysłane.”, a gdy e-mail nie wyszedł, także ostrzeżenie „Klient nie otrzymał e-maila”, które odsyła po szczegóły błędu do sekcji „Aktywność” zamówienia. Zamówienie i tak pozostaje oznaczone jako wysłane, bo `notifyOrderShipped` zapisuje porażkę i zwraca `false` zamiast rzucać wyjątek. Wysyłka z listy zamówień pokazuje te same komunikaty.
+`shipOrder` czeka na `notifyOrderShipped` po aktualizacji wiersza zamówienia i zwraca `shippedEmailSent`, czyli to, czy Resend przyjął e-mail przy pierwszej próbie. Administrator zawsze widzi „Zamówienie oznaczono jako wysłane.”, a gdy nie przyjął, także ostrzeżenie „Klient jeszcze nie otrzymał e-maila”, które mówi, że sklep spróbuje jeszcze dwa razy w ciągu kilku sekund, a jeśli i to się nie uda, wiadomość można wysłać ponownie z sekcji „Aktywność” zamówienia, gdzie widać też błąd. Zamówienie i tak pozostaje oznaczone jako wysłane, bo `notifyOrderShipped` zapisuje porażkę i zwraca `false` zamiast rzucać wyjątek. Wysyłka z listy zamówień pokazuje te same komunikaty.
 
-`cancelOrder` czeka w ten sam sposób na `notifyOrderCancelled` po wsadzie anulowania i zwraca `cancelledEmailSent`. Administrator widzi komunikat o anulowaniu, a gdy e-mail nie wyszedł, także ostrzeżenie „Klient nie otrzymał e-maila”, które odsyła do sekcji „Aktywność” zamówienia. Zamówienie pozostaje anulowane, a zwrot wydany.
+`cancelOrder` czeka w ten sam sposób na `notifyOrderCancelled` po wsadzie anulowania i zwraca `cancelledEmailSent`. Administrator widzi komunikat o anulowaniu, a gdy Resend nie przyjął e-maila od razu, także ostrzeżenie „Klient jeszcze nie otrzymał e-maila” z tą samą informacją o ponowieniach i ponownej wysyłce. Zamówienie pozostaje anulowane, a zwrot wydany.
 
 `deleteCustomer` czeka na `sendAccountDeletedEmail` po `removeUser` i zwraca `goodbyeEmailSent`. Administrator widzi „Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.” albo, gdy e-mail nie wyszedł, ostrzeżenie „Konto usunięte — klient nie otrzymał e-maila”, które odsyła do dziennika zdarzeń. Odmowa nigdy nie cofa usunięcia: `sendAccountDeletedEmail` zwraca `false` zamiast rzucać wyjątek, zarówno gdy Resend odrzuci e-mail, jak i gdy nie da się go nawet przygotować. E-mail mówi, co zostało usunięte, w tym klient Stripe z zapisanymi kartami, oraz że zamówienia i płatności zostają w dokumentacji księgowej przez 5 lat od końca roku każdego zamówienia, już bez powiązania z kontem, i że nowe konto potwierdzone tym samym adresem znów je pokaże.
 
 `subscribeToNewsletter` czeka na swój e-mail, bo osoba, która właśnie się zapisała, dowiaduje się, czy wyszedł. Nowy, oczekujący albo wypisany adres dostaje `sendNewsletterConfirmation`; adres już potwierdzony, wysłany przez kogokolwiek poza zalogowanym właścicielem, dostaje `sendNewsletterAlreadySubscribed`. Obie funkcje zwracają komunikat błędu Resend albo `undefined`, gdy wysyłka została przyjęta. Przy porażce przypadek użycia loguje ją, zapisuje w audycie i odpowiada `confirmationFailed`. Wiersz, który czekał na potwierdzenie, zostaje w stanie `pending`, więc ponowne wysłanie adresu nadaje nowy token i wysyła nowy e-mail. Żądanie trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`, co formularz pokrywa stanem „Zapisujemy...”.
 
-Webhook Stripe też czeka na `notifyOrderConfirmed` i `notifyShopOfNewOrder`, ale nikt nie widzi jego odpowiedzi, więc porażka pojawia się w aktywności zamówienia. Żadna z nich nie rzuca wyjątku: zarówno odmowa, jak i rzucony błąd kończą się wpisem `email.failed`, a webhook i tak odpowiada 200. Rzucenie wyjątku nie wysłałoby zresztą e-maila ponownie. Handler odpowiedziałby 500 i Stripe dostarczyłby zdarzenie jeszcze raz, ale przy ponownym dostarczeniu `fulfillCheckout` nie znajduje oczekującej kasy i handler kończy przed krokiem e-maila, więc jedynym skutkiem byłyby nieudane dostarczenia w Stripe i sprzątanie kuponu przesunięte na ponowną próbę.
+Webhook Stripe też czeka na `notifyOrderConfirmed` i `notifyShopOfNewOrder`, ale nikt nie widzi jego odpowiedzi, więc porażka pojawia się w aktywności zamówienia. Żadna z nich nie rzuca wyjątku: zarówno odmowa, jak i rzucony błąd kończą się wpisem `email.deferred` i ponowieniami, a webhook i tak odpowiada 200, nie czekając na nie. Rzucenie wyjątku nie wysłałoby zresztą e-maila ponownie. Handler odpowiedziałby 500 i Stripe dostarczyłby zdarzenie jeszcze raz, ale przy ponownym dostarczeniu `fulfillCheckout` nie znajduje oczekującej kasy i handler kończy przed krokiem e-maila, więc jedynym skutkiem byłyby nieudane dostarczenia w Stripe i sprzątanie kuponu przesunięte na ponowną próbę.
 
 Dlatego strona sukcesu kasy nie twierdzi, że potwierdzenie jest w drodze. Prosi kupującego o kontakt z numerem zamówienia, jeśli e-mail nie dotrze w ciągu kilku minut.
 
@@ -353,7 +388,7 @@ Dodanie szablonu oznacza: komponent wraz ze stałą przestrzeni nazw w `src/pres
 - Nie ma e-maila o porzuconym koszyku. Zdarzenie jest zapisywane w audycie, ale nic nie wysyła wiadomości.
 - Nie ma powiadomienia o dostarczeniu.
 - Nie ma e-maila, gdy płatność nie powiedzie się w trakcie płacenia (`payment_intent.payment_failed`): błąd pokazuje formularz płatności.
-- Nie ma ponawiania ani kolejki martwych listów dla poczty transakcyjnej; porażka jest logowana i zapisywana w audycie. Ponawia sama osoba: zapis do newslettera z formularza na stronie głównej albo przyciskiem „Wyślij ponownie” w preferencjach konta, niepotwierdzone konto przyciskiem „Wyślij link potwierdzający ponownie” na stronie logowania, a zmianę hasła przyciskiem „Wyślij nowy link”.
+- Nie ma kolejki, skrzynki nadawczej ani kolejki martwych listów dla poczty transakcyjnej. E-mail dotyczący zamówienia jest ponawiany dwa razy w ramach `waitUntil` żądania, a potem czeka na przycisk **Wyślij ponownie** administratora; e-maila o nieudanej płatności, który nie ma zamówienia, nie da się wysłać ponownie. E-maile Better Auth i e-maile zapisu do newslettera mają jedną próbę, a porażka jest logowana i zapisywana w audycie. Ponawia je sama osoba: zapis do newslettera z formularza na stronie głównej albo przyciskiem „Wyślij ponownie” w preferencjach konta, niepotwierdzone konto przyciskiem „Wyślij link potwierdzający ponownie” na stronie logowania, a zmianę hasła przyciskiem „Wyślij nowy link”.
 
 ## Powiązane strony
 

@@ -136,9 +136,18 @@ export const ADMIN_ORDER_EMAIL_STATUS = {
 
 export type AdminOrderEmailStatus = (typeof ADMIN_ORDER_EMAIL_STATUS)[keyof typeof ADMIN_ORDER_EMAIL_STATUS]
 
+export const ORDER_EMAIL_KIND = {
+  CANCELLED: "order-cancelled",
+  CONFIRMATION: "order-confirmation",
+  NEW_ORDER: "new-order",
+  REFUNDED: "order-refunded",
+  SHIPPED: "order-shipped",
+} as const
+
 export const ADMIN_ORDER_TIMELINE_ACTIONS = [
   AUDIT_LOG_ACTION.EMAIL_DEFERRED,
   AUDIT_LOG_ACTION.EMAIL_FAILED,
+  AUDIT_LOG_ACTION.EMAIL_RESEND_REQUESTED,
   AUDIT_LOG_ACTION.EMAIL_SENT,
   AUDIT_LOG_ACTION.ORDER_CANCELLED,
   AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED,
@@ -159,6 +168,7 @@ export const ADMIN_ORDER_TIMELINE_ACTIONS = [
 export const ADMIN_ORDER_TIMELINE_KIND_BY_ACTION: Record<string, AdminOrderTimelineKind> = {
   [AUDIT_LOG_ACTION.EMAIL_DEFERRED]: ADMIN_ORDER_TIMELINE_KIND.EMAIL,
   [AUDIT_LOG_ACTION.EMAIL_FAILED]: ADMIN_ORDER_TIMELINE_KIND.EMAIL,
+  [AUDIT_LOG_ACTION.EMAIL_RESEND_REQUESTED]: ADMIN_ORDER_TIMELINE_KIND.EMAIL,
   [AUDIT_LOG_ACTION.EMAIL_SENT]: ADMIN_ORDER_TIMELINE_KIND.EMAIL,
   [AUDIT_LOG_ACTION.ORDER_CANCELLED]: ADMIN_ORDER_TIMELINE_KIND.ORDER,
   [AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED]: ADMIN_ORDER_TIMELINE_KIND.DISPUTE,
@@ -185,6 +195,7 @@ export const ADMIN_ORDER_TIMELINE_EMAIL_STATUS_BY_ACTION: Record<string, AdminOr
 export const ADMIN_ORDER_TIMELINE_LABEL_KEY_BY_ACTION: Record<string, string> = {
   [AUDIT_LOG_ACTION.EMAIL_DEFERRED]: "emailDeferred",
   [AUDIT_LOG_ACTION.EMAIL_FAILED]: "emailFailed",
+  [AUDIT_LOG_ACTION.EMAIL_RESEND_REQUESTED]: "emailResendRequested",
   [AUDIT_LOG_ACTION.EMAIL_SENT]: "emailSent",
   [AUDIT_LOG_ACTION.ORDER_CANCELLED]: "cancelled",
   [AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED]: "disputeClosed",
@@ -340,6 +351,7 @@ export const ORDER_MUTATION_KEYS = {
   MARK_DELIVERED: ["order", "markOrderDelivered"] as const,
   REFRESH_INPOST_SHIPMENT: ["order", "refreshInpostShipment"] as const,
   REFUND: ["order", "refundAdminOrder"] as const,
+  RESEND_EMAIL: ["order", "resendOrderEmail"] as const,
   RESTOCK: ["order", "restockOrder"] as const,
   SHIP: ["order", "shipOrder"] as const,
 } as const

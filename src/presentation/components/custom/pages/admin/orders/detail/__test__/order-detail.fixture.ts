@@ -96,6 +96,7 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
       id: "audit-2",
       kind: "shipping",
       labelKey: "shipped",
+      resendable: false,
       severity: "success",
     },
     {
@@ -106,6 +107,7 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
       id: "audit-1",
       kind: "email",
       labelKey: "emailSent",
+      resendable: false,
       severity: "success",
     },
   ],
