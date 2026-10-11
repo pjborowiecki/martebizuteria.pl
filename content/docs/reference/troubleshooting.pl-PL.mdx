@@ -152,7 +152,7 @@ co uruchamia `cf-typegen` (`wrangler types --env development`), a potem `content
 
 **`RESEND_API_KEY is missing for preview`** albo **`RESEND_EMAIL_FROM is missing for preview`**. Z `verify-email-sender.ts`. Wartość jest pusta w środowisku procesu albo nieustawiona tam i pusta lub nieobecna w `.env.preview`; zmienna wyeksportowana, ale pusta, ma pierwszeństwo przed plikiem. W GitHub Actions sekret, którego nie ustawiono dla środowiska `preview`, przychodzi jako pusty napis, więc dodaj go do sekretów tego środowiska.
 
-**`RESEND_EMAIL_FROM must be a bare address`** albo **`onboarding@resend.dev only delivers to the owner of the Resend account`.** Ustaw w sekrecie sam adres, na przykład `noreply@martebizuteria.pl`, bo `sendEmail` sam dodaje `M'Arte`. `onboarding@resend.dev` przechodzi kontrolę tylko w środowisku development.
+**`RESEND_EMAIL_FROM must be a bare address`** albo **`onboarding@resend.dev only delivers to the owner of the Resend account`.** Ustaw w sekrecie sam adres, na przykład `sklep@martebizuteria.pl`, bo `sendEmail` sam dodaje `M'Arte`. `onboarding@resend.dev` przechodzi kontrolę tylko w środowisku development.
 
 **`Resend rejected RESEND_API_KEY (<code>)`** albo **`Resend rejected RESEND_MANAGEMENT_API_KEY (<code>)`**. Klucz jest nieprawidłowy, unieważniony albo, w przypadku klucza zarządzającego, ograniczony do wysyłki (`restricted_api_key`). Utwórz nowy klucz na resend.com/api-keys; klucz zarządzający potrzebuje pełnego dostępu (Full access).
 
