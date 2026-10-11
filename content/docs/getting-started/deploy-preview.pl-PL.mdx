@@ -15,7 +15,8 @@ Każde z dwóch środowisk w `wrangler.jsonc` podłącza swoją domenę własną
 bunx wrangler login
 bunx wrangler d1 create martebizuteria-preview
 bunx wrangler kv namespace create martebizuteria-cache-preview
-bunx wrangler r2 bucket create martebizuteria
+bunx wrangler r2 bucket create martebizuteria-preview
+bunx wrangler r2 bucket dev-url enable martebizuteria-preview
 bunx wrangler queues create martebizuteria-audit-log-preview
 ```
 
@@ -28,6 +29,8 @@ Następnie wpisz identyfikatory do `wrangler.jsonc` — pod `development` i `pre
 | `kv_namespaces[].id`           | Te same dwa                                   |
 | `r2_buckets[].bucket_name`     | Te same dwa                                   |
 | `queues.producers[].queue`     | Musi zgadzać się z `queues.consumers[].queue` |
+
+Bucket preview startuje pusty, a baza preview wskazuje na zdjęcia z plików seed i grafiki marketingowe. Skopiuj je do niego przed pierwszym wdrożeniem i ustaw `VITE_R2_URL` na adres wypisany przez `dev-url enable`, tak jak opisuje [Dostarczanie zdjęć](/docs/guides/image-delivery).
 
 Zostaw nazwy bindingów dokładnie takie, jakie są — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `REALTIME_INVALIDATION_HUB` — i nie ruszaj `migrations_dir`, który wskazuje na `./src/integrations/drizzle-orm/migrations`. Z nazw bindingów generowany jest `src/types/worker-configuration.d.ts` i względem nich typowana jest cała warstwa serwerowa.
 
@@ -58,6 +61,8 @@ if (
   throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)
 }
 ```
+
+Wdrożenie produkcyjne rzuca też `Production and preview share the images bucket <nazwa>`, gdy jego bucket `IMAGES` jest tym, który wiąże preview.
 
 Zwróć uwagę na kontrolę wartości zastępczych: identyfikator złożony wyłącznie z zer i myślników jest odrzucany — to właśnie ta reguła nie pozwala wdrożyć skopiowanego szablonu.
 
@@ -149,7 +154,7 @@ Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull 
 
 **Zmienne** repozytorium:
 
-`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY` i `VITE_APP_URL`. Trzy pierwsze są wstawiane do bundle'a klienckiego na etapie budowania, więc muszą być zmiennymi, nie sekretami. `VITE_APP_URL` jest przekazywany przez oba workflow, ale nie jest odczytywany nigdzie w `src/` i nie jest zadeklarowanym sekretem Workera — zobacz [Zmienne środowiskowe](/docs/getting-started/environment-variables).
+`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY` i `VITE_APP_URL`. Trzy pierwsze są wstawiane do bundle'a klienckiego na etapie budowania, więc muszą być zmiennymi, nie sekretami. `VITE_R2_URL` różni się między preview a produkcją, więc ustaw go jako zmienną środowisk GitHub `preview` i `production`, która ma pierwszeństwo przed zmienną repozytorium o tej samej nazwie. `VITE_APP_URL` jest przekazywany przez oba workflow, ale nie jest odczytywany nigdzie w `src/` i nie jest zadeklarowanym sekretem Workera — zobacz [Zmienne środowiskowe](/docs/getting-started/environment-variables).
 
 ## Po wdrożeniu
 

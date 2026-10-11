@@ -115,7 +115,7 @@ describe("image prefetching", () => {
 
     expect(transformUrl).toHaveBeenCalledWith(
       expect.objectContaining({ height: 256, quality: 75, width: 256 }),
-      { cloudflare: { f: "auto", format: "auto" } },
+      { cloudflare: { f: "auto", format: "auto", onerror: "redirect" } },
       { cloudflare: { domain: "martebizuteria.pl" } },
     )
     expect(images.map((image) => image.src)).toStrictEqual(["https://images.test/ring.jpg?width=256"])

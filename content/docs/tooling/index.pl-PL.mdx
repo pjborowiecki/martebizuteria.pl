@@ -47,7 +47,7 @@ bun run dev
 
 `bun install` wywołuje dwa skrypty cyklu życia: `prepare` (`vp config --no-agent`, który instaluje dyspozytor hooków Gita) oraz `postinstall` (`bun run typegen`, który odtwarza `src/types/worker-configuration.d.ts` i `.source/`). Oba wyniki są w `.gitignore`, więc świeży klon nie przejdzie kontroli typów, dopóki nie powstaną.
 
-`bun run dev` odtwarza kolekcje dokumentacji i startuje Vite+ w środowisku Cloudflare `development` na http://localhost:3000. To środowisko korzysta z **zdalnych** bindingów, więc serwer deweloperski czyta i zapisuje prawdziwą bazę D1 preview, przestrzeń KV i zasobnik R2.
+`bun run dev` odtwarza kolekcje dokumentacji i startuje Vite+ w środowisku Cloudflare `development` na http://localhost:3000. To środowisko korzysta z **zdalnych** bindingów, więc serwer deweloperski czyta i zapisuje prawdziwą bazę D1 preview, przestrzeń KV i zasobnik R2 (`martebizuteria-preview`).
 
 ## Powiązane strony
 

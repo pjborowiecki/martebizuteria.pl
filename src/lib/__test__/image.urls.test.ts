@@ -62,11 +62,11 @@ describe("getOptimizedImageUrl", () => {
     })
   })
 
-  it("asks the cloudflare provider for an auto format at the store hostname", () => {
+  it("asks the cloudflare provider for an auto format, redirecting to the original when it cannot transform, at the store hostname", () => {
     getOptimizedImageUrl({ height: 100, quality: undefined, src: "https://other.test/ring.jpg", width: 200 })
 
     expect(transformUrl.mock.calls[0]?.slice(1)).toStrictEqual([
-      { cloudflare: { f: "auto", format: "auto" } },
+      { cloudflare: { f: "auto", format: "auto", onerror: "redirect" } },
       { cloudflare: { domain: new URL(APP_URL).hostname } },
     ])
   })
@@ -83,7 +83,7 @@ describe("getOptimizedImageUrl", () => {
 
     expect(transformUrl).toHaveBeenCalledWith(
       { height: 100, provider: "cloudflare", quality: 42, url: "http://other.test/ring.jpg", width: 200 },
-      { cloudflare: { f: "auto", format: "auto" } },
+      { cloudflare: { f: "auto", format: "auto", onerror: "redirect" } },
       { cloudflare: { domain: "images.marte.test" } },
     )
   })
@@ -96,14 +96,28 @@ describe("getOptimizedImageUrl", () => {
     },
   )
 
-  it("serves an image already on the asset cdn untransformed", () => {
+  it("resizes an image on the configured asset host through that host, naming the source by its path", () => {
     assetCdn.hosted = true
 
-    expect(getOptimizedImageUrl({ height: 256, quality: undefined, src: "https://images.test/ring.jpg", width: 256 })).toBe(
-      "https://images.test/ring.jpg",
+    expect(getOptimizedImageUrl({ height: 256, quality: undefined, src: "https://images.test/products/ring.jpg", width: 256 })).toBe(
+      OPTIMIZED,
     )
-    expect(transformUrl).not.toHaveBeenCalled()
+    expect(transformUrl).toHaveBeenCalledWith(
+      { height: 256, provider: "cloudflare", quality: IMAGE_CONSTANTS.DEFAULT_QUALITY, url: "/products/ring.jpg", width: 256 },
+      { cloudflare: { f: "auto", format: "auto", onerror: "redirect" } },
+      { cloudflare: { domain: "images.test" } },
+    )
   })
+
+  it.each([["https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/ring.jpg"], ["https://pub-preview.r2.dev/products/ring.jpg"]])(
+    "serves the r2.dev source %s untransformed, because r2.dev cannot resize images",
+    (src) => {
+      assetCdn.hosted = true
+
+      expect(getOptimizedImageUrl({ height: 256, quality: undefined, src, width: 256 })).toBe(src)
+      expect(transformUrl).not.toHaveBeenCalled()
+    },
+  )
 
   it("still transforms an asset whose origin is configured as a path on the store itself", () => {
     assetCdn.origin = "/media"

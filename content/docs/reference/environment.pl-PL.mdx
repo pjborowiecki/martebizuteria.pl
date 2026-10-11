@@ -42,7 +42,7 @@ cp .env.example .env.development
 | `STRIPE_SECRET_KEY`           | Serwerowy klient Stripe w `src/integrations/stripe/stripe.server.ts`; jego tryb sprawdza `scripts/verify-stripe-keys.ts`                                                                               | Tak            |
 | `STRIPE_WEBHOOK_SECRET`       | Weryfikacja podpisu w `src/routes/api/webhooks.stripe.ts`                                                                                                                                              | Tak            |
 | `TURNSTILE_SECRET_KEY`        | Siteverify Turnstile w `src/integrations/cloudflare-turnstile/turnstile.server.ts`; `scripts/verify-turnstile-keys.ts` sprawdza, że na produkcji to klucz własnego widżetu sklepu                      | Tak            |
-| `VITE_R2_URL`                 | Publiczny adres bazowy R2, czytany jako `import.meta.env["VITE_R2_URL"]` w `src/lib/url.ts`                                                                                                            | Tak            |
+| `VITE_R2_URL`                 | Publiczny adres bazowy bucketu R2 danego środowiska, czytany jako `import.meta.env["VITE_R2_URL"]` w `src/lib/url.ts`                                                                                  | Tak            |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, wstrzykiwany do bundla klienta w czasie budowania; jego tryb sprawdza `scripts/verify-stripe-keys.ts`                                                      | Nie            |
 | `VITE_TURNSTILE_SITE_KEY`     | Widżet Turnstile kasy w `src/integrations/cloudflare-turnstile/turnstile.client.ts`, wstrzykiwany do bundla klienta; `scripts/verify-turnstile-keys.ts` sprawdza, czy pasuje do `TURNSTILE_SECRET_KEY` | Nie            |
 | `CLOUDFLARE_ACCOUNT_ID`       | Sterownik HTTP D1 w Drizzle Kit, `src/integrations/drizzle-orm/drizzle.config.ts`                                                                                                                      | Nie            |
@@ -73,14 +73,14 @@ interface ImportMetaEnv {
 
 `wrangler.jsonc` daje każdemu środowisku te same sześć powiązań, łącznie z `ASSETS`, więc `wrangler types --env development` deklaruje je w `Env`. Różnią się tylko zasoby pod spodem.
 
-| Powiązanie                  | Typ               | `development`                      | `preview`                          | `production`               |
-| --------------------------- | ----------------- | ---------------------------------- | ---------------------------------- | -------------------------- |
-| `DB`                        | D1                | `martebizuteria-preview`, zdalna   | `martebizuteria-preview`, zdalna   | `martebizuteria`, zdalna   |
-| `CACHE`                     | KV                | `d6727c71…`, zdalna                | `d6727c71…`, zdalna                | `4126270a…`, zdalna        |
-| `IMAGES`                    | R2                | bucket `martebizuteria`, zdalny    | bucket `martebizuteria`, zdalny    | bucket `martebizuteria`    |
-| `AUDIT_LOG_QUEUE`           | Producent kolejki | `martebizuteria-audit-log-preview` | `martebizuteria-audit-log-preview` | `martebizuteria-audit-log` |
-| `REALTIME_INVALIDATION_HUB` | Durable Object    | klasa `RealtimeInvalidationHub`    | ta sama                            | ta sama                    |
-| `ASSETS`                    | Zasoby statyczne  | `./public`, w każdym środowisku    | to samo                            | to samo                    |
+| Powiązanie                  | Typ               | `development`                           | `preview`                               | `production`               |
+| --------------------------- | ----------------- | --------------------------------------- | --------------------------------------- | -------------------------- |
+| `DB`                        | D1                | `martebizuteria-preview`, zdalna        | `martebizuteria-preview`, zdalna        | `martebizuteria`, zdalna   |
+| `CACHE`                     | KV                | `d6727c71…`, zdalna                     | `d6727c71…`, zdalna                     | `4126270a…`, zdalna        |
+| `IMAGES`                    | R2                | bucket `martebizuteria-preview`, zdalny | bucket `martebizuteria-preview`, zdalny | bucket `martebizuteria`    |
+| `AUDIT_LOG_QUEUE`           | Producent kolejki | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log` |
+| `REALTIME_INVALIDATION_HUB` | Durable Object    | klasa `RealtimeInvalidationHub`         | ta sama                                 | ta sama                    |
+| `ASSETS`                    | Zasoby statyczne  | `./public`, w każdym środowisku         | to samo                                 | to samo                    |
 
 `development` i `preview` wskazują na **tę samą** bazę D1, tę samą przestrzeń KV i tę samą kolejkę. `bun run dev` zapisuje więc do bazy preview, a `vite.config.ts` włącza zdalne powiązania tylko dla tego trybu:
 
@@ -108,15 +108,15 @@ Kod Workera czyta powiązania i sekrety z `env` z modułu `cloudflare:workers`. 
 
 Oba skrypty wdrożeniowe uruchamiają sześć bramek wokół budowania i jedną kontrolę po wdrożeniu, a każda z nich rzuca wyjątkiem zamiast ostrzegać. Między bramkami a wdrożeniem `db:migrate:<środowisko>` nakłada oczekujące migracje D1.
 
-| Skrypt                              | Co sprawdza                                                                                                                                                                                                                         |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/verify-bindings.ts`        | Czyta `wrangler.jsonc` loaderem samego Wranglera i odrzuca brakujący lub zastępczy identyfikator `DB`, identyfikator `CACHE`, bucket `IMAGES`, parę producent/konsument `AUDIT_LOG_QUEUE` albo klasę `REALTIME_INVALIDATION_HUB`    |
-| `scripts/verify-stripe-keys.ts`     | Rozpoznaje tryb `VITE_STRIPE_PUBLISHABLE_KEY` i `STRIPE_SECRET_KEY` po przedrostkach i odrzuca brakujący klucz, parę z różnych trybów, klucze testowe dla produkcji albo klucze live dla preview, wypisując tryb, a nigdy sam klucz |
-| `scripts/verify-turnstile-keys.ts`  | Odrzuca brakujący `VITE_TURNSTILE_SITE_KEY` albo `TURNSTILE_SECRET_KEY`, testowy klucz Cloudflare w parze z kluczem widżetu oraz testowe klucze Cloudflare na produkcji, wypisując rodzaj kluczy, a nigdy sam klucz                 |
-| `scripts/verify-email-sender.ts`    | Pyta Resend, czy wyśle pocztę z `RESEND_EMAIL_FROM`, i odrzuca nadawcę z nazwą wyświetlaną, `onboarding@resend.dev` oraz nieznaną lub niezweryfikowaną domenę, wypisując rekordy DNS do opublikowania                               |
-| `scripts/verify-build.ts`           | Potwierdza, że `dist/server/wrangler.json` celuje we właściwe środowisko i nazwę Workera, że `dist/client` zawiera JS, CSS i fonty oraz że żaden zasób klienta nie importuje `cloudflare:workers` ani `node:*`                      |
-| `scripts/prepare-deploy-secrets.ts` | Zapisuje tylko zadeklarowane sekrety do `.wrangler/secrets.<środowisko>.json` i przerywa przy pustej wartości                                                                                                                       |
-| `scripts/verify-deployment.ts`      | Po `wrangler deploy` pyta host `workers.dev` środowiska o `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` i `/api/health` i odrzuca każdą odpowiedź inną niż odpowiedź sklepu                                               |
+| Skrypt                              | Co sprawdza                                                                                                                                                                                                                                                                                   |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/verify-bindings.ts`        | Czyta `wrangler.jsonc` loaderem samego Wranglera i odrzuca brakujący lub zastępczy identyfikator `DB`, identyfikator `CACHE`, bucket `IMAGES`, parę producent/konsument `AUDIT_LOG_QUEUE` albo klasę `REALTIME_INVALIDATION_HUB`, a także produkcyjny bucket `IMAGES` będący bucketem preview |
+| `scripts/verify-stripe-keys.ts`     | Rozpoznaje tryb `VITE_STRIPE_PUBLISHABLE_KEY` i `STRIPE_SECRET_KEY` po przedrostkach i odrzuca brakujący klucz, parę z różnych trybów, klucze testowe dla produkcji albo klucze live dla preview, wypisując tryb, a nigdy sam klucz                                                           |
+| `scripts/verify-turnstile-keys.ts`  | Odrzuca brakujący `VITE_TURNSTILE_SITE_KEY` albo `TURNSTILE_SECRET_KEY`, testowy klucz Cloudflare w parze z kluczem widżetu oraz testowe klucze Cloudflare na produkcji, wypisując rodzaj kluczy, a nigdy sam klucz                                                                           |
+| `scripts/verify-email-sender.ts`    | Pyta Resend, czy wyśle pocztę z `RESEND_EMAIL_FROM`, i odrzuca nadawcę z nazwą wyświetlaną, `onboarding@resend.dev` oraz nieznaną lub niezweryfikowaną domenę, wypisując rekordy DNS do opublikowania                                                                                         |
+| `scripts/verify-build.ts`           | Potwierdza, że `dist/server/wrangler.json` celuje we właściwe środowisko i nazwę Workera, że `dist/client` zawiera JS, CSS i fonty oraz że żaden zasób klienta nie importuje `cloudflare:workers` ani `node:*`                                                                                |
+| `scripts/prepare-deploy-secrets.ts` | Zapisuje tylko zadeklarowane sekrety do `.wrangler/secrets.<środowisko>.json` i przerywa przy pustej wartości                                                                                                                                                                                 |
+| `scripts/verify-deployment.ts`      | Po `wrangler deploy` pyta host `workers.dev` środowiska o `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` i `/api/health` i odrzuca każdą odpowiedź inną niż odpowiedź sklepu                                                                                                         |
 
 Całą sekwencję widać w `package.json`:
 

@@ -30,7 +30,7 @@ Route files carry no locale segment. The router de-localizes the URL before matc
 
 ### Development writes to the preview database
 
-Worth repeating, because it surprises people: the `development` and `preview` environments in `wrangler.jsonc` declare the same `database_id` (`1660d0df-…`), the same R2 bucket (`martebizuteria`) and the same KV namespace. Anything you create while developing is visible in the preview deployment, and vice versa. There is no separate development database.
+Worth repeating, because it surprises people: the `development` and `preview` environments in `wrangler.jsonc` declare the same `database_id` (`1660d0df-…`), the same R2 bucket (`martebizuteria-preview`) and the same KV namespace. The bucket has to exist before `bun run dev` can reach it; [Image delivery](/docs/guides/image-delivery) creates it and copies the images into it. Anything you create while developing is visible in the preview deployment, and vice versa. There is no separate development database.
 
 Two related warnings:
 

@@ -73,7 +73,7 @@ Oba klucze językowe są zawsze obecne, z pełnymi znacznikami BCP 47.
 
 - **Ceny jako całkowite jednostki podrzędne.** `1499` to 14,99 zł.
 - **Podwojone apostrofy**, bo `M'ARTE` trzeba w SQL zapisać jako `M''ARTE`.
-- **Adresy obrazów wskazujące na publiczny kubełek R2**, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp` — te same klucze adresowane treścią, jakie tworzy `uploadImageFn` w `src/integrations/cloudflare-r2/media.mutations.ts`.
+- **Adresy obrazów wskazujące na adres `r2.dev` produkcyjnego kubełka R2**, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp` — te same klucze adresowane treścią, jakie tworzy `uploadImageFn` w `src/integrations/cloudflare-r2/media.mutations.ts`. `resolveAssetURL` przenosi je przy odczycie na `VITE_R2_URL` danego środowiska, więc preview ładuje je z `martebizuteria-preview`, który potrzebuje kopii tych obiektów; zobacz [Dostarczanie zdjęć](/docs/guides/image-delivery).
 
 ## Co zawiera katalog startowy
 

@@ -168,7 +168,7 @@ CI migrates nothing. `deploy:preview` and `deploy:production` run `db:migrate:pr
 | `preview`     | `martebizuteria-preview` | Shared by every preview deployment                       |
 | `production`  | `martebizuteria`         | The live shop                                            |
 
-`development` and `preview` point at the same D1 database and the same KV namespace and R2 bucket. `bun run dev` therefore writes to the preview database, and `bun run db:migrate:local` does **not** affect what the dev server sees — `db:migrate:development` does.
+`development` and `preview` point at the same D1 database and the same KV namespace and R2 bucket, `martebizuteria-preview`; production has its own of each. `bun run dev` therefore writes to the preview database, and `bun run db:migrate:local` does **not** affect what the dev server sees — `db:migrate:development` does.
 
 ## Push, pull and Studio
 

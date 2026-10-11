@@ -33,19 +33,19 @@ beforeEach(() => {
 })
 
 describe("useImageUpload", () => {
-  it("uploads each accepted file and reports the stored urls", async () => {
-    uploadImageFn.mockResolvedValueOnce({ key: "products/a.png", url: "https://assets.test/products/a.png" })
-    uploadImageFn.mockResolvedValueOnce({ key: "products/b.png", url: "https://assets.test/products/b.png" })
+  it("uploads each accepted file and reports the stored bucket keys", async () => {
+    uploadImageFn.mockResolvedValueOnce({ key: "products/a.png" })
+    uploadImageFn.mockResolvedValueOnce({ key: "products/b.png" })
     const { result } = renderUpload()
 
-    const urls = await act(() => result.current.uploadFiles([pngFile("a.png"), pngFile("b.png")]))
+    const keys = await act(() => result.current.uploadFiles([pngFile("a.png"), pngFile("b.png")]))
 
-    expect(urls).toStrictEqual(["https://assets.test/products/a.png", "https://assets.test/products/b.png"])
+    expect(keys).toStrictEqual(["products/a.png", "products/b.png"])
     expect(uploadImageFn).toHaveBeenCalledTimes(2)
   })
 
   it("sends the file and its folder as form data", async () => {
-    uploadImageFn.mockResolvedValueOnce({ key: "products/a.png", url: "https://assets.test/products/a.png" })
+    uploadImageFn.mockResolvedValueOnce({ key: "products/a.png" })
     const { result } = renderUpload()
 
     await act(() => result.current.uploadFiles([pngFile("a.png")]))
@@ -61,9 +61,9 @@ describe("useImageUpload", () => {
   it("rejects a file type the bucket does not accept", async () => {
     const { result } = renderUpload()
 
-    const urls = await act(() => result.current.uploadFiles([new File(["x"], "notes.pdf", { type: "application/pdf" })]))
+    const keys = await act(() => result.current.uploadFiles([new File(["x"], "notes.pdf", { type: "application/pdf" })]))
 
-    expect(urls).toStrictEqual([])
+    expect(keys).toStrictEqual([])
     expect(uploadImageFn).not.toHaveBeenCalled()
     expect(toastError).toHaveBeenCalledWith("Upload failed", { description: "Unsupported file type. Use JPG, PNG, WEBP or AVIF." })
   })
@@ -87,28 +87,28 @@ describe("useImageUpload", () => {
   })
 
   it("uploads the accepted files and rejects the rest of a mixed selection", async () => {
-    uploadImageFn.mockResolvedValueOnce({ key: "products/a.png", url: "https://assets.test/products/a.png" })
+    uploadImageFn.mockResolvedValueOnce({ key: "products/a.png" })
     const { result } = renderUpload()
 
-    const urls = await act(() => result.current.uploadFiles([pngFile("a.png"), new File(["x"], "notes.pdf", { type: "application/pdf" })]))
+    const keys = await act(() => result.current.uploadFiles([pngFile("a.png"), new File(["x"], "notes.pdf", { type: "application/pdf" })]))
 
-    expect(urls).toStrictEqual(["https://assets.test/products/a.png"])
+    expect(keys).toStrictEqual(["products/a.png"])
     expect(uploadImageFn).toHaveBeenCalledTimes(1)
   })
 
-  it("keeps the urls that did upload when one of them fails", async () => {
+  it("keeps the keys that did upload when one of them fails", async () => {
     uploadImageFn.mockRejectedValueOnce(new Error("R2 unavailable"))
-    uploadImageFn.mockResolvedValueOnce({ key: "products/b.png", url: "https://assets.test/products/b.png" })
+    uploadImageFn.mockResolvedValueOnce({ key: "products/b.png" })
     const { result } = renderUpload()
 
-    const urls = await act(() => result.current.uploadFiles([pngFile("a.png"), pngFile("b.png")]))
+    const keys = await act(() => result.current.uploadFiles([pngFile("a.png"), pngFile("b.png")]))
 
-    expect(urls).toStrictEqual(["https://assets.test/products/b.png"])
+    expect(keys).toStrictEqual(["products/b.png"])
     expect(toastError).toHaveBeenCalledWith("Upload failed", { description: "The image could not be uploaded. Please try again." })
   })
 
   it("reports no upload in flight once the uploads settle", async () => {
-    uploadImageFn.mockResolvedValueOnce({ key: "products/a.png", url: "https://assets.test/products/a.png" })
+    uploadImageFn.mockResolvedValueOnce({ key: "products/a.png" })
     const { result } = renderUpload()
 
     expect(result.current.isUploading).toBe(false)
@@ -120,7 +120,7 @@ describe("useImageUpload", () => {
 
   it("announces that an upload is in flight and then finished", async () => {
     const onUploadingChange = vi.fn<(uploading: boolean) => void>()
-    const gate = Promise.withResolvers<{ key: string; url: string }>()
+    const gate = Promise.withResolvers<{ key: string }>()
     uploadImageFn.mockImplementationOnce(() => gate.promise)
     const { result } = renderUpload(onUploadingChange)
 
@@ -135,7 +135,7 @@ describe("useImageUpload", () => {
     expect(onUploadingChange).toHaveBeenLastCalledWith(true)
 
     await act(async () => {
-      gate.resolve({ key: "products/a.png", url: "https://assets.test/products/a.png" })
+      gate.resolve({ key: "products/a.png" })
       await pending
     })
 

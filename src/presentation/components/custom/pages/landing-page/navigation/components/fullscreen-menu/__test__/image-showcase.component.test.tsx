@@ -34,6 +34,9 @@ import { PRIMARY } from "~/src/presentation/components/custom/pages/landing-page
 
 const showcaseImages = (): HTMLElement[] => screen.getAllByAltText("Editorial jewelry")
 
+const resizedOnAssetHost = (path: string): string =>
+  `https://assets.test/cdn-cgi/image/width=900,height=1200,quality=75,onerror=redirect,fit=cover,f=auto/${path}`
+
 afterEach(() => {
   catalogue.collections = []
   menu.mounted = true
@@ -81,26 +84,26 @@ describe("ImageShowcase", () => {
     renderWithProviders(<ImageShowcase />)
 
     await waitFor(() => {
-      expect(showcaseImages()[2]).toHaveAttribute("src", "https://assets.test/collections/gold.webp")
+      expect(showcaseImages()[2]).toHaveAttribute("src", resizedOnAssetHost("collections/gold.webp"))
     })
-    expect(showcaseImages()[0]).toHaveAttribute("src", "https://assets.test/collections/arrivals.webp")
-    expect(showcaseImages()[1]).toHaveAttribute("src", "https://assets.test/collections/silver.webp")
+    expect(showcaseImages()[0]).toHaveAttribute("src", resizedOnAssetHost("collections/arrivals.webp"))
+    expect(showcaseImages()[1]).toHaveAttribute("src", resizedOnAssetHost("collections/silver.webp"))
   })
 
   it("keeps the editorial entries on their own artwork", async () => {
     renderWithProviders(<ImageShowcase />)
 
     await waitFor(() => {
-      expect(showcaseImages()[3]).toHaveAttribute("src", "https://assets.test/marketing/menu-collections.webp")
+      expect(showcaseImages()[3]).toHaveAttribute("src", resizedOnAssetHost("marketing/menu-collections.webp"))
     })
-    expect(showcaseImages()[4]).toHaveAttribute("src", "https://assets.test/marketing/editorial.webp")
-    expect(showcaseImages()[5]).toHaveAttribute("src", "https://assets.test/marketing/menu-brand.webp")
+    expect(showcaseImages()[4]).toHaveAttribute("src", resizedOnAssetHost("marketing/editorial.webp"))
+    expect(showcaseImages()[5]).toHaveAttribute("src", resizedOnAssetHost("marketing/menu-brand.webp"))
   })
 
   it("falls back to the placeholder while the collections are still loading", () => {
     renderWithProviders(<ImageShowcase />)
 
-    expect(showcaseImages()[2]).toHaveAttribute("src", "https://assets.test/placeholder.svg")
+    expect(showcaseImages()[2]).toHaveAttribute("src", resizedOnAssetHost("placeholder.svg"))
   })
 
   it("keeps the slides but renders no picture while the menu is closed, so a closed menu downloads nothing", () => {

@@ -15,7 +15,7 @@ Ma to jedną konsekwencję, o której warto wiedzieć przed rozpoczęciem pracy:
 }),
 ```
 
-Serwer deweloperski rozmawia więc z prawdziwą bazą D1 środowiska preview, z prawdziwym zasobnikiem R2 `martebizuteria` i z prawdziwą przestrzenią nazw KV. Środowiska `development` i `preview` w `wrangler.jsonc` deklarują ten sam `database_id` i ten sam zasobnik, co oznacza, że **zapisy wykonane w trybie deweloperskim trafiają do bazy preview**. Traktuj ją jak bazę współdzieloną, nie jak brudnopis.
+Serwer deweloperski rozmawia więc z prawdziwą bazą D1 środowiska preview, z prawdziwym zasobnikiem R2 `martebizuteria-preview` i z prawdziwą przestrzenią nazw KV. Środowiska `development` i `preview` w `wrangler.jsonc` deklarują ten sam `database_id` i ten sam zasobnik, co oznacza, że **zapisy wykonane w trybie deweloperskim trafiają do bazy preview**. Traktuj ją jak bazę współdzieloną, nie jak brudnopis.
 
 Drugi sposób uruchomienia aplikacji to `bun run start`, który serwuje gotowy build z `CLOUDFLARE_ENV=preview`. Skoro ta wartość nie jest równa `development`, zdalne bindingi są wyłączone i używane są lokalne, symulowane D1, R2 i KV z katalogu `.wrangler/state/`. To najbliższa dostępna wersja odizolowanego uruchomienia lokalnego — startuje jednak z pustą bazą danych.
 

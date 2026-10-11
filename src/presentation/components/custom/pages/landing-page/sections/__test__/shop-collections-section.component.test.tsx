@@ -71,6 +71,9 @@ const seedCatalogue = (): void => {
   )
 }
 
+const resizedOnAssetHost = (path: string): string =>
+  `https://images.test/cdn-cgi/image/width=960,height=1200,quality=75,onerror=redirect,fit=cover,f=auto/${path}`
+
 const renderSection = async (): Promise<void> => {
   renderWithProviders(<ShopCollectionsSection />)
   await screen.findByRole("heading", { level: 2, name: "Our Collections" })
@@ -104,14 +107,14 @@ describe("ShopCollectionsSection", () => {
     seedCatalogue()
     await renderSection()
 
-    expect(screen.getByAltText("Gold 585")).toHaveAttribute("src", "https://images.test/collections/gold.webp")
+    expect(screen.getByAltText("Gold 585")).toHaveAttribute("src", resizedOnAssetHost("collections/gold.webp"))
   })
 
   it("falls back to the placeholder when a collection carries no image", async () => {
     seed(buildCollection({ description: "585 gold, created to last.", handle: "zloto-585", title: "Gold 585" }))
     await renderSection()
 
-    expect(screen.getByAltText("Gold 585")).toHaveAttribute("src", "https://images.test/placeholder.svg")
+    expect(screen.getByAltText("Gold 585")).toHaveAttribute("src", resizedOnAssetHost("placeholder.svg"))
   })
 
   it("links every card to its collection handle", async () => {

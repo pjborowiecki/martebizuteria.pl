@@ -24,11 +24,11 @@ The Durable Object is declared as a SQLite class in the `migrations` block (`tag
 
 `wrangler.jsonc` defines three environments and `CLOUDFLARE_ENV` selects one for `vp dev` and `vp build`.
 
-| Environment   | Worker name                  | D1 database              | Queue                              | Used by                                            |
-| ------------- | ---------------------------- | ------------------------ | ---------------------------------- | -------------------------------------------------- |
-| `development` | `martebizuteria-development` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run dev`                                      |
-| `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run build:preview`, `deploy:preview`, `start` |
-| `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria-audit-log`         | `bun run build:production`, `deploy:production`    |
+| Environment   | Worker name                  | D1 database              | R2 bucket                | Queue                              | Used by                                            |
+| ------------- | ---------------------------- | ------------------------ | ------------------------ | ---------------------------------- | -------------------------------------------------- |
+| `development` | `martebizuteria-development` | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run dev`                                      |
+| `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run build:preview`, `deploy:preview`, `start` |
+| `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria`         | `martebizuteria-audit-log`         | `bun run build:production`, `deploy:production`    |
 
 `preview` attaches `preview.martebizuteria.pl` and `production` attaches `martebizuteria.pl` as a custom domain through `routes` with `custom_domain: true`. Both also set `workers_dev: true`, so their `workers.dev` hostnames keep answering next to the domain; see [Deploy a preview](/docs/getting-started/deploy-preview) for what the zone needs.
 
@@ -70,7 +70,7 @@ bun run deploy:preview      # verify-bindings → verify-stripe-keys → verify-
 bun run deploy:production   # the same, against the production environment
 ```
 
-- `scripts/verify-bindings.ts` reads the config through Wrangler's own `unstable_readConfig` and throws unless the D1 and KV ids are real rather than placeholders, the R2 bucket is named, the audit queue has both a producer and a matching consumer, and the Durable Object binding points at `RealtimeInvalidationHub`.
+- `scripts/verify-bindings.ts` reads the config through Wrangler's own `unstable_readConfig` and throws unless the D1 and KV ids are real rather than placeholders, the R2 bucket is named, the audit queue has both a producer and a matching consumer, and the Durable Object binding points at `RealtimeInvalidationHub`. For production it also throws when the `IMAGES` bucket is the one preview binds.
 - `scripts/verify-stripe-keys.ts` reads the mode of `VITE_STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY` from their prefixes and throws unless both are live keys for production or test keys for preview; see [Stripe](/docs/integrations/stripe#secrets).
 - `scripts/verify-turnstile-keys.ts` throws when `VITE_TURNSTILE_SITE_KEY` or `TURNSTILE_SECRET_KEY` is missing, when a testing key is paired with a widget's key, and when production carries Cloudflare's testing keys; see [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile#keys).
 - `scripts/verify-email-sender.ts` asks Resend whether it would send as `RESEND_EMAIL_FROM` and throws when the sender's domain is missing from the Resend account or not verified; see [Resend](/docs/integrations/resend#sender-domain).

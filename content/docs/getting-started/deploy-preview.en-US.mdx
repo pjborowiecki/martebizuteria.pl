@@ -15,7 +15,8 @@ Each of the two environments in `wrangler.jsonc` attaches its custom domain thro
 bunx wrangler login
 bunx wrangler d1 create martebizuteria-preview
 bunx wrangler kv namespace create martebizuteria-cache-preview
-bunx wrangler r2 bucket create martebizuteria
+bunx wrangler r2 bucket create martebizuteria-preview
+bunx wrangler r2 bucket dev-url enable martebizuteria-preview
 bunx wrangler queues create martebizuteria-audit-log-preview
 ```
 
@@ -28,6 +29,8 @@ Then put the ids into `wrangler.jsonc`, under both `development` and `preview` i
 | `kv_namespaces[].id`           | The same two                          |
 | `r2_buckets[].bucket_name`     | The same two                          |
 | `queues.producers[].queue`     | Must match `queues.consumers[].queue` |
+
+The preview bucket starts empty, while the preview database points at the seed and marketing images. Copy them into it before the first deploy and set `VITE_R2_URL` to the address `dev-url enable` prints, as [Image delivery](/docs/guides/image-delivery) describes.
 
 Keep the binding names exactly as they are — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `REALTIME_INVALIDATION_HUB` — and keep `migrations_dir` pointing at `./src/integrations/drizzle-orm/migrations`. The binding names are what `src/types/worker-configuration.d.ts` is generated from and what the whole server layer is typed against.
 
@@ -58,6 +61,8 @@ if (
   throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)
 }
 ```
+
+A production deploy also throws `Production and preview share the images bucket <name>` when its `IMAGES` bucket is the one preview binds.
 
 Note the placeholder check: an id of all zeroes and dashes is rejected, which is what stops a copied template being deployed.
 
@@ -149,7 +154,7 @@ Repository **secrets**:
 
 Repository **variables**:
 
-`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY` and `VITE_APP_URL`. The first three are inlined into the client bundle at build time, so they must be variables rather than secrets. `VITE_APP_URL` is passed by both workflows but is not read anywhere in `src/` and is not a declared Worker secret — see [Environment variables](/docs/getting-started/environment-variables).
+`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY` and `VITE_APP_URL`. The first three are inlined into the client bundle at build time, so they must be variables rather than secrets. `VITE_R2_URL` differs between preview and production, so set it as an environment variable of the GitHub `preview` and `production` environments, which overrides a repository variable of the same name. `VITE_APP_URL` is passed by both workflows but is not read anywhere in `src/` and is not a declared Worker secret — see [Environment variables](/docs/getting-started/environment-variables).
 
 ## After deploying
 

@@ -37,13 +37,13 @@ Vite+ ships two CLIs: the global `vp` and the project-local `vite-plus` package 
 
 The application cannot start without its bindings. `wrangler.jsonc` declares five for every environment:
 
-| Binding                     | Resource                   | Used for                                          |
-| --------------------------- | -------------------------- | ------------------------------------------------- |
-| `DB`                        | D1 database                | All application data — 39 tables                  |
-| `IMAGES`                    | R2 bucket `martebizuteria` | Product image uploads                             |
-| `CACHE`                     | KV namespace               | Holds the email sender availability flag          |
-| `AUDIT_LOG_QUEUE`           | Cloudflare Queue           | Audit events, written by the queue consumer       |
-| `REALTIME_INVALIDATION_HUB` | Durable Object             | WebSocket fan-out for realtime cache invalidation |
+| Binding                     | Resource                                                                                       | Used for                                          |
+| --------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `DB`                        | D1 database                                                                                    | All application data — 39 tables                  |
+| `IMAGES`                    | R2 bucket: `martebizuteria` in production, `martebizuteria-preview` in development and preview | Product image uploads                             |
+| `CACHE`                     | KV namespace                                                                                   | Holds the email sender availability flag          |
+| `AUDIT_LOG_QUEUE`           | Cloudflare Queue                                                                               | Audit events, written by the queue consumer       |
+| `REALTIME_INVALIDATION_HUB` | Durable Object                                                                                 | WebSocket fan-out for realtime cache invalidation |
 
 Two caveats worth knowing before you provision anything:
 

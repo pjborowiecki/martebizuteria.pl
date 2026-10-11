@@ -43,7 +43,7 @@ Pojęcia są uporządkowane alfabetycznie według angielskiej nazwy, bo tak brzm
 - **D1** — baza SQLite Cloudflare, powiązana jako `DB`. Brak transakcji interaktywnych; `db.batch()` jest mechanizmem atomowości.
 - **Durable Object** — `RealtimeInvalidationHub` w `src/durable-objects/realtime-invalidation-hub.ts`, utworzony migracją o tagu `v1`. Rozsyła komunikaty unieważniające do podłączonych WebSocketów i nie przechowuje trwałego stanu — `notifyInvalidation` iteruje po `ctx.getWebSockets(hubName)`.
 - **KV** — przestrzeń `CACHE`. Zadeklarowana w każdym środowisku; przechowuje flagę nadawcy e-maili, którą czyta blokada w Better Auth.
-- **R2** — bucket `IMAGES` przechowujący media produktów. Publiczne odczyty idą przez adres bazowy z `VITE_R2_URL`.
+- **R2** — bucket `IMAGES` przechowujący media produktów: `martebizuteria` na produkcji, `martebizuteria-preview` w developmencie i preview. Publiczne odczyty idą przez adres bazowy z `VITE_R2_URL`, a własna domena w tym miejscu daje zdjęcia zmniejszane przez Cloudflare Image Transformations.
 - **Vite+** — ujednolicony łańcuch narzędzi wywoływany jako `vp`. Dostarcza `vp dev`, `vp build`, `vp check`, `vp fmt`, `vp lint`, `vp test` i `vp staged`, wszystko konfigurowane w `vite.config.ts`.
 
 ## Słownictwo narzędziowe

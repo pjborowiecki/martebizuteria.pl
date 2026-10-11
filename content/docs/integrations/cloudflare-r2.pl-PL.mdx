@@ -3,19 +3,20 @@ title: "Cloudflare R2"
 description: "Wysyłka obrazów do bucketu IMAGES, klucze adresowane treścią i adresy zasobów."
 ---
 
-Zdjęcia produktów, grafiki kategorii i kolekcji oraz materiały marketingowe mieszkają w jednym buckecie R2 o nazwie `martebizuteria`, powiązanym z Workerem jako `IMAGES`. Adapter w `src/integrations/cloudflare-r2/` ma dokładnie jedno zadanie: przyjąć obraz z panelu administracyjnego, zwalidować go i umieścić w buckecie pod kluczem adresowanym treścią. Odczyt nie jest jego zadaniem — bucket udostępniany jest publicznie i czytany przez pomocniki adresów w `src/lib/url.ts`.
+Zdjęcia produktów, grafiki kategorii i kolekcji oraz materiały marketingowe mieszkają w R2, w buckecie powiązanym z Workerem jako `IMAGES`: `martebizuteria` na produkcji i `martebizuteria-preview` w developmencie i preview. Adapter w `src/integrations/cloudflare-r2/` ma dokładnie jedno zadanie: przyjąć obraz z panelu administracyjnego, zwalidować go i umieścić w buckecie pod kluczem adresowanym treścią. Odczyt nie jest jego zadaniem — bucket udostępniany jest publicznie i czytany przez pomocniki adresów w `src/lib/url.ts`.
 
 ## Powiązanie
 
-`wrangler.jsonc` deklaruje ten sam bucket we wszystkich trzech środowiskach:
+`wrangler.jsonc` wiąże po jednym buckecie na środowisko:
 
-```jsonc
-"r2_buckets": [
-  { "binding": "IMAGES", "bucket_name": "martebizuteria", "remote": true }
-]
-```
+| Środowisko    | `bucket_name`            | `remote` |
+| ------------- | ------------------------ | -------- |
+| `development` | `martebizuteria-preview` | `true`   |
+| `preview`     | `martebizuteria-preview` | `true`   |
+| `test`        | `martebizuteria-test`    | `false`  |
+| `production`  | `martebizuteria`         | `true`   |
 
-Wszystkie trzy wskazują na jeden bucket, a `"remote": true` oznacza, że nawet `bun run dev` zapisuje do prawdziwego bucketu. Bezpieczne czynią to klucze adresowane treścią: ponowna wysyłka tych samych bajtów jest operacją bez efektu, a nie nadpisaniem.
+`development` i `preview` dzielą bucket, bo dzielą bazę D1, której wiersze wskazują na jego obiekty, a `"remote": true` oznacza, że nawet `bun run dev` zapisuje do prawdziwego bucketu preview. Bezpieczne czynią to klucze adresowane treścią: ponowna wysyłka tych samych bajtów jest operacją bez efektu, a nie nadpisaniem. Produkcja ma własny bucket, a `scripts/verify-bindings.ts production` odrzuca konfigurację, która daje jej bucket preview. [Dostarczanie zdjęć](/docs/guides/image-delivery) opisuje utworzenie bucketu preview i skopiowanie do niego zdjęć.
 
 ## Wysyłka
 
@@ -52,7 +53,7 @@ if ((await env.IMAGES.head(key)) === null) {
   })
 }
 
-return { key, url: getAssetURL(key) }
+return { key }
 ```
 
 Trzy konsekwencje warte zapamiętania:
@@ -60,6 +61,7 @@ Trzy konsekwencje warte zapamiętania:
 - **Klucz to SHA-256 treści pliku**, zapisane szesnastkowo, wraz z rozszerzeniem. Dwukrotna wysyłka tego samego zdjęcia daje ten sam klucz.
 - **Sprawdzenie `head` czyni zapis idempotentnym.** Istniejący obiekt nie jest zapisywany ponownie, więc wysyłka kosztuje jedno tanie żądanie o metadane.
 - **`Cache-Control: public, max-age=31536000, immutable`** ustawiane jest w momencie wysyłki. Jest to poprawne tylko dlatego, że klucz zmienia się wraz ze zmianą bajtów. Nigdy nie zapisuj do tego bucketu klucza zmiennego.
+- **Zwracany i zapisywany jest tylko klucz.** Do bazy nie trafia żaden host, więc serwowanie bucketu spod innego adresu nie wymaga przepisywania danych.
 
 ## Reguły
 
@@ -87,26 +89,28 @@ formData.append("folder", folder)
 return uploadImageFn({ data: formData })
 ```
 
-Udane wartości `url` są zbierane, a niepowodzenia zliczane do jednego komunikatu. Komponenty `components/image-upload.tsx` i `components/gallery-add-tile.tsx` ustawiają `accept={ACCEPTED_IMAGE_ACCEPT_ATTR}` na swoich polach plików. Powstały adres zapisywany jest w `product.thumbnail` lub w wierszu `product_image`.
+Udane wartości `key` są zbierane, a niepowodzenia zliczane do jednego komunikatu. Komponenty `components/image-upload.tsx` i `components/gallery-add-tile.tsx` ustawiają `accept={ACCEPTED_IMAGE_ACCEPT_ATTR}` na swoich polach plików. Klucz zapisywany jest w `product.thumbnail`, w wierszu `product_image` albo w kolumnie `image` kategorii lub kolekcji.
 
 ## Czytanie zasobów
 
 Plik `src/lib/url.ts` zamienia zapisany klucz lub adres na coś, co przeglądarka może pobrać:
 
-| Eksport                      | Zachowanie                                                                                                                                                         |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `getAssetCdnBase()`          | Funkcja izomorficzna: czyta `env.VITE_R2_URL` na serwerze i `import.meta.env.VITE_R2_URL` w przeglądarce, usuwa końcowy ukośnik i wraca do `DEFAULT_R2_PUBLIC_URL` |
-| `getAssetURL(path)`          | Zwraca `path` bez zmian, jeśli jest już bezwzględny, w przeciwnym razie `${base}/${path}` bez wiodącego ukośnika                                                   |
-| `resolveAssetURL(pathOrUrl)` | To samo, tolerancyjne wobec zapisanej wartości, która może być kluczem albo pełnym adresem                                                                         |
-| `isAssetCdnUrl(url)`         | Prawda dla każdego hosta `*.r2.dev` oraz dla hosta skonfigurowanej bazy                                                                                            |
+| Eksport                      | Zachowanie                                                                                                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getAssetCdnBase()`          | Funkcja izomorficzna: czyta `env.VITE_R2_URL` na serwerze i `import.meta.env.VITE_R2_URL` w przeglądarce, usuwa końcowy ukośnik i wraca do `DEFAULT_R2_PUBLIC_URL`        |
+| `getAssetURL(path)`          | Zwraca `path` bez zmian, jeśli jest już bezwzględny, w przeciwnym razie `${base}/${path}` bez wiodącego ukośnika                                                          |
+| `resolveAssetURL(pathOrUrl)` | Rozwiązuje zapisany klucz jak `getAssetURL`, przenosi zapisany adres `*.r2.dev` na skonfigurowaną bazę z zachowaniem ścieżki, a inny adres bezwzględny zostawia bez zmian |
+| `isAssetCdnUrl(url)`         | Prawda dla każdego hosta `*.r2.dev` oraz dla hosta skonfigurowanej bazy                                                                                                   |
 
-`DEFAULT_R2_PUBLIC_URL` w `src/presentation/branding/app.ts` to własny publiczny punkt końcowy bucketu, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`. Funkcja `isConfiguredAssetCdnBase` dodatkowo odrzuca bazę zawierającą zastępczy host `your-production-cdn-domain.com`, więc niedokończony plik środowiska cofa się do działającej wartości domyślnej, a nie generuje martwych adresów obrazów.
+`DEFAULT_R2_PUBLIC_URL` w `src/presentation/branding/app.ts` to adres `r2.dev` produkcyjnego bucketu, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`. Funkcja `isConfiguredAssetCdnBase` dodatkowo odrzuca bazę zawierającą zastępczy host `your-production-cdn-domain.com`, więc niedokończony plik środowiska cofa się do działającej wartości domyślnej, a nie generuje martwych adresów obrazów.
 
 `VITE_R2_URL` występuje zarówno w `secrets.required` w `wrangler.jsonc`, jak i wśród zmiennych przeglądarkowych z prefiksem `VITE_`, ponieważ potrzebują go obie strony. Obie wartości muszą wskazywać ten sam host: Content-Security-Policy jest budowany na serwerze i pozwala stronom ładować obrazy i wideo tylko z originu `DEFAULT_R2_PUBLIC_URL` oraz originu, który zwraca tam `getAssetCdnBase()`, więc bundle zbudowany z innym hostem miałby odrzucone obrazy. Zobacz [Model bezpieczeństwa](/docs/architecture/security-model#nagłówki-odpowiedzi).
 
-### Dlaczego istnieje `isAssetCdnUrl`
+Wiersze zapisane, zanim wysyłka zaczęła zapisywać klucze, i każdy plik seed zawierają pełne adresy `r2.dev`. Ponieważ `resolveAssetURL` przenosi je na skonfigurowaną bazę, podążają za `VITE_R2_URL` tak jak klucze: produkcja serwuje je ze swojej własnej domeny, a preview z bucketu preview.
 
-Funkcja `getOptimizedImageUrl` w `src/lib/image.ts` normalnie przepisuje adres obrazu przez transformację Cloudflare Images z biblioteki `unpic`. Świadomie pomija to dla hostów Unsplash i dla wszystkiego, co rozpozna `isAssetCdnUrl`, zwracając adres R2 nietknięty. Obrazy hostowane w R2 serwowane są więc dokładnie tak, jak je wysłano, w oryginalnych wymiarach, a komponent `<Image>` (`src/presentation/components/custom/image.tsx`, zbudowany na `@unpic/react`) zajmuje się tylko `loading`, `decoding`, `fetchPriority`, `sizes` i tłem rozmycia. Jeśli chcesz skalowania dla zasobów R2, to właśnie tę funkcję należy zmienić.
+### Zmniejszanie
+
+Funkcja `getOptimizedImageUrl` w `src/lib/image.ts` przepisuje adres obrazu przez transformację Cloudflare z biblioteki `unpic`. Adres na skonfigurowanej bazie, rozpoznawany przez `isAssetCdnUrl`, przekształca na tym samym hoście ze ścieżką obiektu jako źródłem, więc `https://images.martebizuteria.pl/products/<sha256>.webp` staje się `https://images.martebizuteria.pl/cdn-cgi/image/width=600,height=750,quality=75,onerror=redirect,fit=cover,f=auto/products/<sha256>.webp`, a komponent `<Image>` (`src/presentation/components/custom/image.tsx`, zbudowany na `@unpic/react`) buduje z niego `srcset`. Każda transformacja prosi o `onerror=redirect`, więc gdy Cloudflare nie może przekształcić zdjęcia na własnej domenie, na przykład po wyczerpaniu bezpłatnych transformacji w danym miesiącu, przekierowuje przeglądarkę do oryginalnego obiektu zamiast zwrócić błąd. Host `r2.dev` nie obsługuje Image Transformations, więc adres na nim zwracany jest nietknięty i serwowany w oryginalnych wymiarach; tak samo adres Unsplash. Każdy inny adres przekształcany jest przez własny host sklepu. Strefa musi mieć włączone Image Transformations, zanim `VITE_R2_URL` wskaże własną domenę; kroki opisuje [Dostarczanie zdjęć](/docs/guides/image-delivery).
 
 `PLACEHOLDER_IMAGE` to `getAssetURL("placeholder.svg")`, a `src/data/landing.ts` pobiera z tego samego bucketu główną grafikę strony startowej, wideo i jego poster.
 
@@ -125,3 +129,4 @@ Pliki `src/integrations/cloudflare-r2/__test__/media.mutations.test.ts` i `media
 - [Obrazy i media](/docs/ui)
 - [Panel administracyjny](/docs/features/admin-dashboard)
 - [Zmienne środowiskowe](/docs/reference/environment)
+- [Dostarczanie zdjęć](/docs/guides/image-delivery)

@@ -73,7 +73,7 @@ Both locale keys are always present, with full BCP 47 tags.
 
 - **Prices as integer minor units.** `1499` is 14,99 zł.
 - **Doubled single quotes for apostrophes**, since `M'ARTE` has to be written `M''ARTE` in SQL.
-- **Image URLs pointing at the public R2 bucket**, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp` — the same content-addressed keys `uploadImageFn` produces in `src/integrations/cloudflare-r2/media.mutations.ts`.
+- **Image URLs pointing at the production bucket's `r2.dev` address**, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp` — the same content-addressed keys `uploadImageFn` produces in `src/integrations/cloudflare-r2/media.mutations.ts`. `resolveAssetURL` moves them onto each environment's `VITE_R2_URL` when they are read, so preview loads them from `martebizuteria-preview`, which needs a copy of these objects; see [Image delivery](/docs/guides/image-delivery).
 
 ## What the seed catalog contains
 

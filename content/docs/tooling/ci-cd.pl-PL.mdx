@@ -87,7 +87,7 @@ Współbieżność różni się celowo. Podgląd grupuje po numerze pull request
 
 GitHub uruchamia `workflow_run` wyłącznie z pliku przepływu na `main`, więc zmiana w `deploy-production.yml` działa od chwili scalenia.
 
-Podgląd jest jednym wspólnym wdrożeniem: każdy pull request wdraża się na tego samego Workera (`martebizuteria-preview`) opartego na tej samej bazie D1 preview, przestrzeni KV i zasobniku R2, więc na żywo jest ostatnie wdrożenie podglądu.
+Podgląd jest jednym wspólnym wdrożeniem: każdy pull request wdraża się na tego samego Workera (`martebizuteria-preview`) opartego na tej samej bazie D1 preview, przestrzeni KV i zasobniku R2 (`martebizuteria-preview`), więc na żywo jest ostatnie wdrożenie podglądu.
 
 ## Co dokładnie robi wdrożenie
 
@@ -105,9 +105,10 @@ Czyta `wrangler.jsonc` dla docelowego środowiska przez `unstable_readConfig` i 
 - binding KV `CACHE` z prawdziwym `id`,
 - binding R2 `IMAGES` z `bucket_name`,
 - producent `AUDIT_LOG_QUEUE` **oraz** konsument tej samej kolejki,
-- binding Durable Object `REALTIME_INVALIDATION_HUB`, którego `class_name` to `RealtimeInvalidationHub`.
+- binding Durable Object `REALTIME_INVALIDATION_HUB`, którego `class_name` to `RealtimeInvalidationHub`,
+- dla produkcji bucket `IMAGES` inny niż ten, który wiąże preview.
 
-To ta kontrola wyłapuje zastępczy identyfikator skopiowany między środowiskami.
+To ta kontrola wyłapuje zastępczy identyfikator albo bucket skopiowany między środowiskami.
 
 ### 2. verify-stripe-keys.ts
 
@@ -164,7 +165,7 @@ Kontrola tylko czyta publiczne strony: nikogo nie loguje, nie otwiera zamówieni
 
 `CLOUDFLARE_ACCESS_TOKEN` jest przekazywany do kroku jako `CLOUDFLARE_API_TOKEN`, bo taką nazwę czyta Wrangler. Poza wdrażaniem Workera token potrzebuje uprawnienia do edycji D1, bo wdrożenie nakłada nim migracje, oraz uprawnień Workers Routes (edycja) i Zone (odczyt) do strefy `martebizuteria.pl`, bo wdrożenie podłącza domeny własne z `routes` w `wrangler.jsonc`. Oba przepływy wdrożeniowe korzystają ze środowisk GitHuba (`preview`, `production`), więc sekrety można tam zawęzić do środowiska.
 
-`VITE_R2_URL` jest wymieniony w `secrets.required` w `wrangler.jsonc`, ale dostarczany z **vars** Actions, a nie z secrets — to publiczny adres zasobnika, który dodatkowo musi być widoczny dla pakietu klienta przez przedrostek `VITE_`. `prepare-deploy-secrets.ts` czyta go z `process.env`, więc to działa.
+`VITE_R2_URL` jest wymieniony w `secrets.required` w `wrangler.jsonc`, ale dostarczany z **vars** Actions, a nie z secrets — to publiczny adres zasobnika, który dodatkowo musi być widoczny dla pakietu klienta przez przedrostek `VITE_`. `prepare-deploy-secrets.ts` czyta go z `process.env`, więc to działa. Preview i produkcja czytają różne zasobniki, więc ustaw go w środowiskach GitHub `preview` i `production`, a nie raz dla repozytorium; wartości wymienia [Dostarczanie zdjęć](/docs/guides/image-delivery).
 
 ## Migracje a CI
 

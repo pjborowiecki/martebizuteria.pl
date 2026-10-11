@@ -57,11 +57,11 @@ export const useImageUpload = (folder: MediaFolder, onUploadingChange?: (uploadi
           }),
         )
 
-        const urls: string[] = []
+        const keys: string[] = []
         let failed = 0
         for (const result of settled) {
           if (result.status === "fulfilled") {
-            urls.push(result.value.url)
+            keys.push(result.value.key)
           } else {
             failed += 1
           }
@@ -73,7 +73,7 @@ export const useImageUpload = (folder: MediaFolder, onUploadingChange?: (uploadi
           })
         }
 
-        return urls
+        return keys
       } finally {
         setPendingCount((count) => count - valid.length)
       }

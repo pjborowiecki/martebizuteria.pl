@@ -55,7 +55,7 @@ const failure = await sendEmail({
 
 - **InPost is discovery only.** `fetchPointsByCity` reads the public points API; there is no shipment creation, no label generation and no API key. The checkout locker picker is built on top of it in `components/custom/checkout/components/_steps/delivery/locker/inpost`.
 - **Stripe runs in Elements mode.** `stripe.checkout.sessions.create` is called with `ui_mode: "elements"` and a `return_url`, and the client secret is handed to `@stripe/react-stripe-js`. There is no redirect to Stripe-hosted Checkout.
-- **R2 is served over a public bucket URL.** `VITE_R2_URL` (with `DEFAULT_R2_PUBLIC_URL` as the fallback in `branding/app.ts`) is resolved by `src/lib/url.ts`, and uploads are written with `Cache-Control: public, max-age=31536000, immutable`.
+- **R2 is served over a public bucket URL.** `VITE_R2_URL` (with `DEFAULT_R2_PUBLIC_URL` as the fallback in `branding/app.ts`) is resolved by `src/lib/url.ts`, which also moves stored `r2.dev` URLs onto it, and uploads are written with `Cache-Control: public, max-age=31536000, immutable` and stored as bare keys. On a custom domain, `src/lib/image.ts` resizes images there through Cloudflare Image Transformations.
 
 ## Related pages
 

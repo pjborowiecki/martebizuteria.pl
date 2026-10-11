@@ -11,8 +11,6 @@ import {
   isMediaFolder,
 } from "~/src/integrations/cloudflare-r2/media.zod"
 
-import { getAssetURL } from "~/src/lib/url"
-
 const bufferToHex = (buffer: ArrayBuffer): string => {
   const bytes = new Uint8Array(buffer)
   let hex = ""
@@ -64,6 +62,5 @@ export const uploadImageFn = createServerFn({
 
     return {
       key,
-      url: getAssetURL(key),
     }
   })

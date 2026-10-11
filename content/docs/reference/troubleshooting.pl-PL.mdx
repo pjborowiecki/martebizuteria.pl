@@ -128,6 +128,12 @@ co uruchamia `cf-typegen` (`wrangler types --env development`), a potem `content
 
 **`Missing database, cache, images, audit, or realtime binding for preview`.** Ze `scripts/verify-bindings.ts`. Docelowemu środowisku w `wrangler.jsonc` brakuje powiązania albo nadal ma identyfikator zastępczy (kontrola odrzuca identyfikatory złożone wyłącznie z `0` i `-`). Utwórz zasób w Cloudflare i wklej prawdziwy identyfikator.
 
+**`Production and preview share the images bucket <nazwa>`.** Ze `scripts/verify-bindings.ts production`. Produkcyjne powiązanie `IMAGES` w `wrangler.jsonc` wskazuje bucket, który wiąże preview, więc wdrożenie produkcyjne serwowałoby i zapisywało zdjęcia preview. Produkcja używa `martebizuteria`, a preview `martebizuteria-preview`; przywróć produkcyjne `bucket_name`.
+
+**Zdjęcia nie działają na preview albo w `bun run dev`.** Bucketu `martebizuteria-preview` brakuje, nie ma on publicznego adresu `r2.dev`, brakuje w nim obiektów, na które wskazuje baza preview, albo `VITE_R2_URL` nie jest jego adresem. Kroki dla każdego przypadku opisuje [Dostarczanie zdjęć](/docs/guides/image-delivery).
+
+**Zdjęcia na produkcji ładują się w pełnym rozmiarze, a ich żądania `/cdn-cgi/image/` kończą się przekierowaniem.** Cloudflare nie mógł ich przekształcić, a `onerror=redirect` skierował przeglądarkę do oryginalnego obiektu. Na planie Images Free zwykle oznacza to wyczerpanie 5000 unikalnych transformacji w danym miesiącu; nowe rozmiary znów są przekształcane od początku następnego miesiąca albo od razu po przeniesieniu konta na Images Paid. [Dostarczanie zdjęć](/docs/guides/image-delivery) wyjaśnia, skąd bierze się ta liczba.
+
 **`production needs live Stripe keys, but VITE_STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY are test keys`** albo **`preview needs test Stripe keys, but … are live keys`**. Ze `scripts/verify-stripe-keys.ts`. Klucze pochodzą z trybu Stripe niewłaściwego dla celu. Wstaw klucze live z dashboard.stripe.com/apikeys do środowiska GitHuba `production`, `VITE_STRIPE_PUBLISHABLE_KEY` jako zmienną, a `STRIPE_SECRET_KEY` jako sekret, albo klucze testowe z dashboard.stripe.com/test/apikeys do `preview`. Każdy tryb ma własne endpointy webhooków, więc ustaw `STRIPE_WEBHOOK_SECRET` na sekret podpisu endpointu w tym samym trybie.
 
 **`VITE_STRIPE_PUBLISHABLE_KEY is a test key but STRIPE_SECRET_KEY is a live key`** albo odwrotnie. Zmieniono tylko jeden z dwóch kluczy. Skopiuj oba z tego samego trybu tego samego konta Stripe.

@@ -166,7 +166,7 @@ Używaj `custom/image.tsx`, nie surowego `<img>`. Komponent opakowuje `@unpic/re
 | `blurDataURL` | Przekazywany do unpic jako `background`                                          |
 | `sizes`       | Atrybut `sizes` dla obrazów responsywnych                                        |
 
-`width` i `height` są wymagane, co utrzymuje stabilny układ.
+`width` i `height` są wymagane, co utrzymuje stabilny układ. Przy włączonym `optimize` obraz na hoście z `VITE_R2_URL` jest zmniejszany na tym hoście przez Cloudflare Image Transformations, a unpic buduje `srcset`; obraz na hoście `r2.dev` serwowany jest w oryginalnym rozmiarze, bo `r2.dev` nie przekształca obrazów.
 
 ## Dostawcy kontekstu
 

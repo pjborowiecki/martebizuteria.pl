@@ -47,7 +47,7 @@ bun run dev
 
 `bun install` triggers two lifecycle scripts: `prepare` (`vp config --no-agent`, which installs the Git hook dispatcher) and `postinstall` (`bun run typegen`, which regenerates `src/types/worker-configuration.d.ts` and `.source/`). Both generated outputs are gitignored, so a fresh clone will not type check until they exist.
 
-`bun run dev` regenerates the docs collections and starts Vite+ in the `development` Cloudflare environment on http://localhost:3000. That environment uses **remote** bindings, so the dev server reads and writes the real preview D1 database, KV namespace and R2 bucket.
+`bun run dev` regenerates the docs collections and starts Vite+ in the `development` Cloudflare environment on http://localhost:3000. That environment uses **remote** bindings, so the dev server reads and writes the real preview D1 database, KV namespace and R2 bucket (`martebizuteria-preview`).
 
 ## Related pages
 

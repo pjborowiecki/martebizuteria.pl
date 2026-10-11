@@ -24,11 +24,11 @@ Flaga `nodejs_compat` udostępnia `node:async_hooks`, którego `src/lib/backgrou
 
 `wrangler.jsonc` definiuje trzy środowiska, a `CLOUDFLARE_ENV` wybiera jedno dla `vp dev` i `vp build`.
 
-| Środowisko    | Nazwa Workera                | Baza D1                  | Kolejka                            | Używane przez                                      |
-| ------------- | ---------------------------- | ------------------------ | ---------------------------------- | -------------------------------------------------- |
-| `development` | `martebizuteria-development` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run dev`                                      |
-| `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run build:preview`, `deploy:preview`, `start` |
-| `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria-audit-log`         | `bun run build:production`, `deploy:production`    |
+| Środowisko    | Nazwa Workera                | Baza D1                  | Bucket R2                | Kolejka                            | Używane przez                                      |
+| ------------- | ---------------------------- | ------------------------ | ------------------------ | ---------------------------------- | -------------------------------------------------- |
+| `development` | `martebizuteria-development` | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run dev`                                      |
+| `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run build:preview`, `deploy:preview`, `start` |
+| `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria`         | `martebizuteria-audit-log`         | `bun run build:production`, `deploy:production`    |
 
 `preview` podłącza `preview.martebizuteria.pl`, a `production` podłącza `martebizuteria.pl` jako domenę własną przez `routes` z `custom_domain: true`. Oba ustawiają też `workers_dev: true`, więc ich nazwy `workers.dev` nadal odpowiadają obok domeny; czego potrzebuje strefa, opisuje [Wdrożenie podglądu](/docs/getting-started/deploy-preview).
 
@@ -70,7 +70,7 @@ bun run deploy:preview      # verify-bindings → verify-stripe-keys → verify-
 bun run deploy:production   # to samo, względem środowiska production
 ```
 
-- `scripts/verify-bindings.ts` czyta konfigurację przez własną funkcję Wranglera `unstable_readConfig` i rzuca wyjątek, o ile identyfikatory D1 i KV nie są prawdziwe (a nie pozorne), bucket R2 nie jest nazwany, kolejka audytu nie ma zarówno producenta, jak i pasującego konsumenta, oraz binding Durable Object nie wskazuje na `RealtimeInvalidationHub`.
+- `scripts/verify-bindings.ts` czyta konfigurację przez własną funkcję Wranglera `unstable_readConfig` i rzuca wyjątek, o ile identyfikatory D1 i KV nie są prawdziwe (a nie pozorne), bucket R2 nie jest nazwany, kolejka audytu nie ma zarówno producenta, jak i pasującego konsumenta, oraz binding Durable Object nie wskazuje na `RealtimeInvalidationHub`. Dla produkcji rzuca wyjątek także wtedy, gdy bucket `IMAGES` jest tym, który wiąże preview.
 - `scripts/verify-stripe-keys.ts` rozpoznaje tryb `VITE_STRIPE_PUBLISHABLE_KEY` i `STRIPE_SECRET_KEY` po przedrostkach i rzuca wyjątek, o ile oba nie są kluczami live dla produkcji albo kluczami testowymi dla preview; zobacz [Stripe](/docs/integrations/stripe#sekrety).
 - `scripts/verify-turnstile-keys.ts` rzuca wyjątek, gdy brakuje `VITE_TURNSTILE_SITE_KEY` albo `TURNSTILE_SECRET_KEY`, gdy klucz testowy jest w parze z kluczem widżetu i gdy produkcja ma testowe klucze Cloudflare; zobacz [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile#klucze).
 - `scripts/verify-email-sender.ts` pyta Resend, czy wyśle pocztę z `RESEND_EMAIL_FROM`, i rzuca wyjątek, gdy domeny nadawcy nie ma na koncie Resend albo nie jest zweryfikowana; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
