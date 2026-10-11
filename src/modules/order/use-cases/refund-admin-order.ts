@@ -14,7 +14,7 @@ import { returnOrderToStock } from "~/src/modules/order/order.restock.server"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
 export const refundAdminOrder = createServerFn({ method: "POST" })
-  .middleware([authorized({ order: ["update"] })])
+  .middleware([authorized({ order: ["update", "refund"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminRefundOrderInput>) => orderZodSchemas.adminRefundOrderInput.parse(input))
   .handler(async ({ data: { orderId, restock } }) => {
     const target = assertOrderActionState(await getAdminOrderRefundTarget(orderId), (snapshot) =>

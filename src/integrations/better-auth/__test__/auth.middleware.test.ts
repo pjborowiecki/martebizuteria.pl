@@ -137,8 +137,12 @@ describe("hasPermission", () => {
     },
   )
 
-  it("grants admin the order refund permission", () => {
-    expect(hasPermission({ permission: { [RESOURCES.ORDER]: [ACTIONS.REFUND] }, role: ROLES.ADMIN })).toBe(true)
+  it.each([[ACTIONS.READ], [ACTIONS.UPDATE], [ACTIONS.REFUND]])("grants admin order:%s", (action) => {
+    expect(hasPermission({ permission: { [RESOURCES.ORDER]: [action] }, role: ROLES.ADMIN })).toBe(true)
+  })
+
+  it("denies the customer role the order refund permission", () => {
+    expect(hasPermission({ permission: { [RESOURCES.ORDER]: [ACTIONS.REFUND] }, role: ROLES.CUSTOMER })).toBe(false)
   })
 
   it("lets an admin read and edit the store's content pages", () => {

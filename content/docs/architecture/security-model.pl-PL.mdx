@@ -75,7 +75,7 @@ export const authorized = (permission?: Permission) =>
     })
 ```
 
-W `src/modules` i `src/integrations` `authorized()` występuje 87 razy: 23 razy bez argumentu (wystarcza sesja), a pozostałe z uprawnieniem — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×6, `order: ["read"]` ×6, `order: ["update"]` ×9, `content: ["read"]` ×2, `content: ["update"]` ×1 oraz statementy administracyjne Better Auth `user: ["list" | "get" | "update" | "delete"]`.
+W `src/modules` i `src/integrations` `authorized()` występuje 95 razy: 25 razy bez argumentu (wystarcza sesja), a pozostałe z uprawnieniem — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×6, `order: ["read"]` ×7, `order: ["update"]` ×10, `order: ["update", "refund"]` ×1 (`refundAdminOrder`), `content: ["read"]` ×3, `content: ["update"]` ×3 oraz statementy administracyjne Better Auth `user: ["list" | "get" | "update" | "delete"]`.
 
 ## Role i uprawnienia
 
@@ -87,7 +87,7 @@ W `src/modules` i `src/integrations` `authorized()` występuje 87 razy: 23 razy 
 - **`hasAdminAccess(role)`** to zgrubne sprawdzenie używane przez guardy tras i handshake WebSocketu; `hasPermission({ permission, role })` to sprawdzenie drobnoziarniste używane przez `authorized()`.
 - **`needsTwoFactorSetup({ role, twoFactorEnabled })`** jest prawdziwe dla administratora bez uwierzytelniania dwuskładnikowego. `requireAdmin` wysyła go na `/admin/security`, `authorized()` odmawia mu każdego uprawnienia, handshake administracyjnego WebSocketu odpowiada `401`, a `hooks.before` odrzuca punkty końcowe `/admin/*` Better Auth z kodem `ADMIN_TWO_FACTOR_REQUIRED`. Administratorzy logują się wyłącznie hasłem i kodem: `session.create.before` odrzuca administratorowi logowanie przez Google, bo wtyczka `twoFactor` na tej ścieżce nigdy nie prosi o kod. Zobacz [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów).
 
-Ponieważ rola customer nie ma żadnych statementów, macierz zasobów zachowuje się dziś jak binarne sprawdzenie „czy admin”. Warto o tym pamiętać przed dodaniem trzeciej roli: macierz już istnieje, ale nic jeszcze nie korzysta z niej częściowo.
+Ponieważ rola customer nie ma żadnych statementów, macierz zasobów zachowuje się dziś jak binarne sprawdzenie „czy admin”. Warto o tym pamiętać przed dodaniem trzeciej roli: macierz już istnieje, a pieniądze mają już własną akcję, bo `refundAdminOrder` i `cancelOrder` dla opłaconego zamówienia żądają `order: ["refund"]` oprócz `order: ["update"]`, więc rola z samym `order: ["read", "update"]` mogłaby obsługiwać zamówienia bez zwracania pieniędzy.
 
 ## Własność jest wkompilowana w SQL
 

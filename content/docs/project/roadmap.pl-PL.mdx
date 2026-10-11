@@ -45,10 +45,6 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 `src/server.ts` ma handler `scheduled`, ale jego codzienny Cron Trigger tylko pilnuje [okresów przechowywania danych](/docs/guides/data-retention) i nie zwalnia żadnego stanu magazynowego. Przestarzałe rezerwacje zwalniane są tylko wtedy, gdy Stripe wyemituje `checkout.session.expired`, 32 minuty po otwarciu sesji, a rezerwacja osierocona przez nieudaną kompensację nigdy nie wraca do obiegu. Zadanie uzgadniające działałoby z tego samego handlera.
 
-### Uprawnienie `refund` nie jest nigdzie sprawdzane
-
-Panel wykonuje już zwroty płatności. Przycisk „Zwrot” na `/admin/orders/$orderId` wywołuje `refundAdminOrder` z `src/modules/order/use-cases/refund-admin-order.ts`, które prosi Stripe o pełny zwrot przez `stripe.refunds.create`, a webhook `charge.refunded` zapisuje go potem przez `handleChargeRefunded` w `src/integrations/stripe/stripe.webhooks.tsx`, dokładnie tak samo jak zwrot wykonany w Stripe. `refundAdminOrder` jest chronione przez `authorized({ order: ["update"] })`, więc uprawnienie `order: ["refund"]` zadeklarowane w `auth.access.ts` nadal nie jest nigdzie sprawdzane. Anuluj zamówienie dla opłaconego zamówienia zleca ten sam zwrot przez `requestFullOrderRefund` i jest chronione tak samo. Albo sprawdzaj je w obu miejscach, albo je usuń.
-
 ## Priorytet 3 — funkcjonalności zaczęte
 
 Każda z nich ma już na miejscu część podstaw (funkcję integracji albo kompletny interfejs), co czyni je tańszymi, niż wyglądają.

@@ -242,6 +242,8 @@ Called without an argument it only requires a signed-in user; called as `authori
 export const createCompleteProduct = createServerFn({ method: "POST" }).middleware([authorized({ product: ["create"] })])
 ```
 
+A permission that depends on the row is checked in the handler with `hasPermission` and the session `authorized` put on `context.auth`. `cancelOrder` is the one case: it asks the middleware for `order: ["update"]`, and once it has read the order and found a payment to refund it also requires `order: ["refund"]`, throwing `AppError(FORBIDDEN)` before it calls Stripe or changes anything.
+
 `withRateLimit(kind, { max, window })` also builds on `withRequest` and applies the application's own limiter, keyed by `kind` plus the client address:
 
 ```ts
@@ -257,7 +259,7 @@ The window is 60 seconds. `withinRateLimit` in `src/lib/rate-limit.ts` implement
 
 ### This is enforced by a test
 
-`src/integrations/better-auth/__test__/use-case-authorization.test.ts` walks every file under `src/modules/**/use-cases/`, and for each one that contains `createServerFn` asserts that it also contains `authorized(` — unless it is on an explicit allowlist of 22 deliberately public use cases (`get-product.ts`, `search-storefront.ts`, `check-cart-availability.ts`, `get-checkout-session-status.ts` and so on). It also asserts that no use case asserts authorization inside its handler, and that every entry on the allowlist still exists. Adding a protected use case without middleware fails the test suite.
+`src/integrations/better-auth/__test__/use-case-authorization.test.ts` walks every file under `src/modules/**/use-cases/`, and for each one that contains `createServerFn` asserts that it also contains `authorized(` — unless it is on an explicit allowlist of 22 deliberately public use cases (`get-product.ts`, `search-storefront.ts`, `check-cart-availability.ts`, `get-checkout-session-status.ts` and so on). It also asserts that no use case falls back to an `assertAdmin` role check inside its handler, and that every entry on the allowlist still exists. Adding a protected use case without middleware fails the test suite.
 
 ## Route guards
 
