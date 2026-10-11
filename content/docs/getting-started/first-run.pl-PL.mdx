@@ -30,7 +30,7 @@ Pliki tras nie zawierają segmentu lokalizacji. Router usuwa prefiks lokalizacji
 
 ### Tryb deweloperski zapisuje do bazy preview
 
-Warto to powtórzyć, bo zaskakuje: środowiska `development` i `preview` w `wrangler.jsonc` deklarują ten sam `database_id` (`1660d0df-…`), ten sam zasobnik R2 (`martebizuteria`) i tę samą przestrzeń nazw KV. Wszystko, co utworzysz podczas pracy deweloperskiej, jest widoczne we wdrożeniu preview i odwrotnie. Nie ma osobnej bazy deweloperskiej.
+Warto to powtórzyć, bo zaskakuje: środowiska `development` i `preview` w `wrangler.jsonc` deklarują ten sam `database_id` (`1660d0df-…`), ten sam zasobnik R2 (`martebizuteria-preview`) i tę samą przestrzeń nazw KV. Zasobnik musi istnieć, zanim `bun run dev` do niego sięgnie; [Dostarczanie zdjęć](/docs/guides/image-delivery) opisuje jego utworzenie i skopiowanie do niego zdjęć. Wszystko, co utworzysz podczas pracy deweloperskiej, jest widoczne we wdrożeniu preview i odwrotnie. Nie ma osobnej bazy deweloperskiej.
 
 Dwa ostrzeżenia z tym związane:
 

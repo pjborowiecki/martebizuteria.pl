@@ -42,7 +42,7 @@ cp .env.example .env.development
 | `STRIPE_SECRET_KEY`           | The Stripe server client in `src/integrations/stripe/stripe.server.ts`; `scripts/verify-stripe-keys.ts` checks its mode                                                                                        | Yes           |
 | `STRIPE_WEBHOOK_SECRET`       | Signature verification in `src/routes/api/webhooks.stripe.ts`                                                                                                                                                  | Yes           |
 | `TURNSTILE_SECRET_KEY`        | Turnstile's siteverify in `src/integrations/cloudflare-turnstile/turnstile.server.ts`; `scripts/verify-turnstile-keys.ts` checks it is the shop's own widget's key in production                               | Yes           |
-| `VITE_R2_URL`                 | Public R2 base URL, read as `import.meta.env["VITE_R2_URL"]` in `src/lib/url.ts`                                                                                                                               | Yes           |
+| `VITE_R2_URL`                 | Public base URL of the environment's R2 bucket, read as `import.meta.env["VITE_R2_URL"]` in `src/lib/url.ts`                                                                                                   | Yes           |
 | `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, inlined into the client bundle at build time; `scripts/verify-stripe-keys.ts` checks its mode                                                                      | No            |
 | `VITE_TURNSTILE_SITE_KEY`     | The checkout's Turnstile widget in `src/integrations/cloudflare-turnstile/turnstile.client.ts`, inlined into the client bundle; `scripts/verify-turnstile-keys.ts` checks it pairs with `TURNSTILE_SECRET_KEY` | No            |
 | `CLOUDFLARE_ACCOUNT_ID`       | Drizzle Kit's D1 HTTP driver in `src/integrations/drizzle-orm/drizzle.config.ts`                                                                                                                               | No            |
@@ -73,14 +73,14 @@ interface ImportMetaEnv {
 
 `wrangler.jsonc` gives every environment the same six bindings, `ASSETS` included, so `wrangler types --env development` declares it on `Env`. Only the underlying resources differ.
 
-| Binding                     | Type           | `development`                         | `preview`                          | `production`               |
-| --------------------------- | -------------- | ------------------------------------- | ---------------------------------- | -------------------------- |
-| `DB`                        | D1             | `martebizuteria-preview`, remote      | `martebizuteria-preview`, remote   | `martebizuteria`, remote   |
-| `CACHE`                     | KV             | `d6727c71…`, remote                   | `d6727c71…`, remote                | `4126270a…`, remote        |
-| `IMAGES`                    | R2             | bucket `martebizuteria`, remote       | bucket `martebizuteria`, remote    | bucket `martebizuteria`    |
-| `AUDIT_LOG_QUEUE`           | Queue producer | `martebizuteria-audit-log-preview`    | `martebizuteria-audit-log-preview` | `martebizuteria-audit-log` |
-| `REALTIME_INVALIDATION_HUB` | Durable Object | class `RealtimeInvalidationHub`       | same                               | same                       |
-| `ASSETS`                    | Static assets  | `./public`, in each environment block | same                               | same                       |
+| Binding                     | Type           | `development`                           | `preview`                               | `production`               |
+| --------------------------- | -------------- | --------------------------------------- | --------------------------------------- | -------------------------- |
+| `DB`                        | D1             | `martebizuteria-preview`, remote        | `martebizuteria-preview`, remote        | `martebizuteria`, remote   |
+| `CACHE`                     | KV             | `d6727c71…`, remote                     | `d6727c71…`, remote                     | `4126270a…`, remote        |
+| `IMAGES`                    | R2             | bucket `martebizuteria-preview`, remote | bucket `martebizuteria-preview`, remote | bucket `martebizuteria`    |
+| `AUDIT_LOG_QUEUE`           | Queue producer | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log` |
+| `REALTIME_INVALIDATION_HUB` | Durable Object | class `RealtimeInvalidationHub`         | same                                    | same                       |
+| `ASSETS`                    | Static assets  | `./public`, in each environment block   | same                                    | same                       |
 
 `development` and `preview` point at the **same** D1 database, KV namespace and Queue. `bun run dev` therefore writes to the preview database, and `vite.config.ts` turns remote bindings on only for that mode:
 
@@ -108,15 +108,15 @@ Worker code reads bindings and secrets from `env` in `cloudflare:workers`. The g
 
 Both deploy scripts run six gates around the build and one check after the deploy, and each one throws rather than warning. Between the gates and the deploy, `db:migrate:<environment>` applies the pending D1 migrations.
 
-| Script                              | Checks                                                                                                                                                                                                                                   |
-| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `scripts/verify-bindings.ts`        | Reads `wrangler.jsonc` with Wrangler's own loader and rejects a missing or placeholder `DB` id, `CACHE` id, `IMAGES` bucket, `AUDIT_LOG_QUEUE` producer/consumer pair or `REALTIME_INVALIDATION_HUB` class                               |
-| `scripts/verify-stripe-keys.ts`     | Reads the mode of `VITE_STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY` from their prefixes and rejects a missing key, a pair from different modes, test keys for production or live keys for preview, printing the mode and never a key |
-| `scripts/verify-turnstile-keys.ts`  | Rejects a missing `VITE_TURNSTILE_SITE_KEY` or `TURNSTILE_SECRET_KEY`, a Cloudflare testing key paired with a widget's key, and Cloudflare's testing keys in production, printing the kind of keys and never a key                       |
-| `scripts/verify-email-sender.ts`    | Asks Resend whether it would send as `RESEND_EMAIL_FROM` and rejects a display-name sender, `onboarding@resend.dev`, or an unknown or unverified domain, printing the DNS records to publish                                             |
-| `scripts/verify-build.ts`           | Confirms `dist/server/wrangler.json` targets the right environment and Worker name, that `dist/client` holds JS, CSS and fonts, and that no client asset imports `cloudflare:workers` or `node:*`                                        |
-| `scripts/prepare-deploy-secrets.ts` | Writes only the declared secrets to `.wrangler/secrets.<environment>.json` and fails on any blank value                                                                                                                                  |
-| `scripts/verify-deployment.ts`      | After `wrangler deploy`, asks the environment's `workers.dev` host for `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` and `/api/health` and rejects any answer other than the shop's                                            |
+| Script                              | Checks                                                                                                                                                                                                                                                         |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/verify-bindings.ts`        | Reads `wrangler.jsonc` with Wrangler's own loader and rejects a missing or placeholder `DB` id, `CACHE` id, `IMAGES` bucket, `AUDIT_LOG_QUEUE` producer/consumer pair or `REALTIME_INVALIDATION_HUB` class, and a production `IMAGES` bucket that is preview's |
+| `scripts/verify-stripe-keys.ts`     | Reads the mode of `VITE_STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY` from their prefixes and rejects a missing key, a pair from different modes, test keys for production or live keys for preview, printing the mode and never a key                       |
+| `scripts/verify-turnstile-keys.ts`  | Rejects a missing `VITE_TURNSTILE_SITE_KEY` or `TURNSTILE_SECRET_KEY`, a Cloudflare testing key paired with a widget's key, and Cloudflare's testing keys in production, printing the kind of keys and never a key                                             |
+| `scripts/verify-email-sender.ts`    | Asks Resend whether it would send as `RESEND_EMAIL_FROM` and rejects a display-name sender, `onboarding@resend.dev`, or an unknown or unverified domain, printing the DNS records to publish                                                                   |
+| `scripts/verify-build.ts`           | Confirms `dist/server/wrangler.json` targets the right environment and Worker name, that `dist/client` holds JS, CSS and fonts, and that no client asset imports `cloudflare:workers` or `node:*`                                                              |
+| `scripts/prepare-deploy-secrets.ts` | Writes only the declared secrets to `.wrangler/secrets.<environment>.json` and fails on any blank value                                                                                                                                                        |
+| `scripts/verify-deployment.ts`      | After `wrangler deploy`, asks the environment's `workers.dev` host for `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` and `/api/health` and rejects any answer other than the shop's                                                                  |
 
 The full sequence is visible in `package.json`:
 

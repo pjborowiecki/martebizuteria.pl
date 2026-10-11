@@ -87,7 +87,7 @@ Concurrency differs on purpose. Preview groups by pull request number and cancel
 
 GitHub only starts `workflow_run` from the workflow file on `main`, so a change to `deploy-production.yml` takes effect once it is merged.
 
-Preview is a single shared deployment: every pull request deploys to the same Worker (`martebizuteria-preview`) backed by the same preview D1 database, KV namespace and R2 bucket, so the most recent preview deploy is the one that is live.
+Preview is a single shared deployment: every pull request deploys to the same Worker (`martebizuteria-preview`) backed by the same preview D1 database, KV namespace and R2 bucket (`martebizuteria-preview`), so the most recent preview deploy is the one that is live.
 
 ## What a deploy actually runs
 
@@ -105,9 +105,10 @@ Reads `wrangler.jsonc` for the target environment with `unstable_readConfig` and
 - a `CACHE` KV binding with a real `id`,
 - an `IMAGES` R2 binding with a `bucket_name`,
 - an `AUDIT_LOG_QUEUE` producer **and** a consumer for the same queue,
-- a `REALTIME_INVALIDATION_HUB` Durable Object binding whose `class_name` is `RealtimeInvalidationHub`.
+- a `REALTIME_INVALIDATION_HUB` Durable Object binding whose `class_name` is `RealtimeInvalidationHub`,
+- for production, an `IMAGES` bucket other than the one preview binds.
 
-This is the check that catches a placeholder id copied between environments.
+This is the check that catches a placeholder id or a bucket copied between environments.
 
 ### 2. verify-stripe-keys.ts
 
@@ -164,7 +165,7 @@ It only reads public pages: it signs nobody in, opens no checkout and writes not
 
 `CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Besides deploying the Worker, the token needs the D1 edit permission, because the deploy applies the migrations with it, and the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone, because the deploy attaches the custom domains from `routes` in `wrangler.jsonc`. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
 
-`VITE_R2_URL` is listed in `secrets.required` in `wrangler.jsonc` but supplied from Actions **vars**, not secrets — it is a public bucket URL and also needs to be visible to the client bundle through its `VITE_` prefix. `prepare-deploy-secrets.ts` reads it from `process.env`, so this works.
+`VITE_R2_URL` is listed in `secrets.required` in `wrangler.jsonc` but supplied from Actions **vars**, not secrets — it is a public bucket URL and also needs to be visible to the client bundle through its `VITE_` prefix. `prepare-deploy-secrets.ts` reads it from `process.env`, so this works. Preview and production read different buckets, so set it on the GitHub `preview` and `production` environments rather than once for the repository; [Image delivery](/docs/guides/image-delivery) lists the values.
 
 ## Migrations and CI
 

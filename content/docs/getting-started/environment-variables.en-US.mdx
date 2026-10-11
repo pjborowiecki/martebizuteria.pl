@@ -66,7 +66,7 @@ The distinction matters more here than the list of names does.
 | `TURNSTILE_SECRET_KEY`      | `src/integrations/cloudflare-turnstile/turnstile.server.ts`, sent to Turnstile's siteverify with every checkout's token; the testing key `1x0000000000000000000000000000000AA` outside production, checked before a deploy by `scripts/verify-turnstile-keys.ts`, see [Cloudflare Turnstile](/docs/integrations/cloudflare-turnstile#keys) |
 | `VITE_R2_URL`               | `src/lib/url.ts` — the server branch of `getAssetCdnBase()`                                                                                                                                                                                                                                                                                |
 
-`VITE_R2_URL` is deliberately in both lists. It is not a secret; it is the public R2 base URL, and both the SSR render and the browser need it, so it is uploaded as a Worker binding _and_ inlined into the client bundle.
+`VITE_R2_URL` is deliberately in both lists. It is not a secret; it is the public R2 base URL, and both the SSR render and the browser need it, so it is uploaded as a Worker binding _and_ inlined into the client bundle. Each environment points it at its own bucket: the `r2.dev` address of `martebizuteria-preview` in `.env.development` and `.env.preview`, and the custom domain `https://images.martebizuteria.pl` in `.env.production`, where images are resized through Cloudflare Image Transformations. [Image delivery](/docs/guides/image-delivery) sets them up.
 
 **3. Local tooling credentials.** These are never uploaded. `scripts/prepare-deploy-secrets.ts` copies only the names under `secrets.required`, and its comment says why:
 

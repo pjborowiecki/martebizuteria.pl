@@ -15,7 +15,7 @@ That has one consequence you should know before you start: **there is no fully o
 }),
 ```
 
-So the dev server talks to the real preview D1 database, the real `martebizuteria` R2 bucket and the real preview KV namespace. The `development` and `preview` environments in `wrangler.jsonc` declare the same `database_id` and the same bucket, which means **development writes land in the preview database**. Treat it as shared, not scratch.
+So the dev server talks to the real preview D1 database, the real `martebizuteria-preview` R2 bucket and the real preview KV namespace. The `development` and `preview` environments in `wrangler.jsonc` declare the same `database_id` and the same bucket, which means **development writes land in the preview database**. Treat it as shared, not scratch.
 
 The other way to run the application is `bun run start`, which serves a finished build with `CLOUDFLARE_ENV=preview`. Because that value is not `development`, remote bindings are off and Wrangler's local simulated D1, R2 and KV under `.wrangler/state/` are used instead. That is the closest thing to an isolated local run, and it starts with an empty database.
 

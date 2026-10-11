@@ -26,7 +26,6 @@ const bucket = vi.hoisted(() => {
 
 vi.mock("cloudflare:workers", () => ({ env: { IMAGES: { head: bucket.head, put: bucket.put } } }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/lib/url", () => ({ getAssetURL: (key: string) => `https://cdn.test/${key}` }))
 const passthrough = vi.hoisted(
   () =>
     (data: unknown): unknown =>
@@ -106,13 +105,10 @@ describe("uploadImageFn rejections", () => {
 })
 
 describe("uploadImageFn storage key", () => {
-  it("names the object after the content hash and the MIME extension", async () => {
+  it("answers with only the object key, named after the content hash and the MIME extension, so no asset host is stored", async () => {
     const result = await uploadImageFn({ data: formDataWith(pngFile(), "products") })
 
-    expect(result).toStrictEqual({
-      key: `products/${PNG_DIGEST}.png`,
-      url: `https://cdn.test/products/${PNG_DIGEST}.png`,
-    })
+    expect(result).toStrictEqual({ key: `products/${PNG_DIGEST}.png` })
   })
 
   it("falls back to the uploads folder for an unknown folder name", async () => {
@@ -154,13 +150,13 @@ describe("uploadImageFn writes", () => {
     expect(new Uint8Array(bucket.puts[0]?.body ?? new ArrayBuffer(0))).toStrictEqual(PNG_BYTES)
   })
 
-  it("skips the write when the object is already stored but still returns its URL", async () => {
+  it("skips the write when the object is already stored but still returns its key", async () => {
     bucket.existingKeys.add(`products/${PNG_DIGEST}.png`)
 
     const result = await uploadImageFn({ data: formDataWith(pngFile(), "products") })
 
     expect(bucket.put).not.toHaveBeenCalled()
-    expect(result.url).toBe(`https://cdn.test/products/${PNG_DIGEST}.png`)
+    expect(result.key).toBe(`products/${PNG_DIGEST}.png`)
   })
 
   it("asks the bucket whether the object exists before writing", async () => {

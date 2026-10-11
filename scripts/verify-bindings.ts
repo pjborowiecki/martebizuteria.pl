@@ -25,4 +25,9 @@ if (
   throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)
 }
 
+const previewImages = unstable_readConfig({ config: "wrangler.jsonc", env: "preview" }).r2_buckets.find(({ binding }) => binding === "IMAGES")
+if (environment === "production" && images.bucket_name === previewImages?.bucket_name) {
+  throw new Error(`Production and preview share the images bucket ${images.bucket_name}`)
+}
+
 process.stdout.write(`Verified ${environment} Worker bindings.\n`)

@@ -40,7 +40,7 @@ describe("Image source resolution", () => {
   it("routes the resolved asset through the image transform at the default quality", () => {
     const source = renderImage().getAttribute("src")
 
-    expect(source).toBe(`${APP_URL}/cdn-cgi/image/width=400,height=500,quality=75,fit=cover,f=auto/${RESOLVED_SRC}`)
+    expect(source).toBe(`${APP_URL}/cdn-cgi/image/width=400,height=500,quality=75,onerror=redirect,fit=cover,f=auto/${RESOLVED_SRC}`)
   })
 
   it("only resolves the asset URL when optimization is switched off", () => {
@@ -56,6 +56,13 @@ describe("Image source resolution", () => {
 
     expect(candidates.length).toBeGreaterThan(1)
     expect(candidates.every((candidate) => candidate.includes("quality=40"))).toBe(true)
+  })
+
+  it("asks for a redirect to the original image on every candidate in the srcset", () => {
+    const candidates = renderImage().getAttribute("srcset")?.split(",\n")
+
+    expect(candidates?.length).toBeGreaterThan(1)
+    expect(candidates?.every((candidate) => candidate.includes("onerror=redirect"))).toBe(true)
   })
 
   it("leaves a remote source on its own host instead of proxying it", () => {

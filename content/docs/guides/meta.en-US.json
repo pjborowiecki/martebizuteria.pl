@@ -17,6 +17,7 @@
     "security-checklist",
     "local-debugging",
     "roll-back-a-deploy",
-    "monitoring-and-alerts"
+    "monitoring-and-alerts",
+    "image-delivery"
   ]
 }

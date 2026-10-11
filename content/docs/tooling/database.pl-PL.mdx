@@ -168,7 +168,7 @@ CI niczego nie migruje. `deploy:preview` i `deploy:production` same uruchamiają
 | `preview`     | `martebizuteria-preview` | Wspólna dla każdego wdrożenia preview                  |
 | `production`  | `martebizuteria`         | Żywy sklep                                             |
 
-`development` i `preview` wskazują tę samą bazę D1, tę samą przestrzeń KV i ten sam zasobnik R2. `bun run dev` zapisuje więc do bazy preview, a `bun run db:migrate:local` **nie** wpływa na to, co widzi serwer deweloperski — robi to `db:migrate:development`.
+`development` i `preview` wskazują tę samą bazę D1, tę samą przestrzeń KV i ten sam zasobnik R2, `martebizuteria-preview`; produkcja ma własne. `bun run dev` zapisuje więc do bazy preview, a `bun run db:migrate:local` **nie** wpływa na to, co widzi serwer deweloperski — robi to `db:migrate:development`.
 
 ## Push, pull i Studio
 

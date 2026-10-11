@@ -13,6 +13,21 @@ const resolveImageCdnDomain = (): string => {
   return typeof domain === "string" && domain !== "" ? domain : new URL(APP_URL).hostname
 }
 
+const resolveImageTransformation = (resolvedSrc: string): Readonly<{ domain: string; source: string }> | undefined => {
+  if (!resolvedSrc.startsWith("http://") && !resolvedSrc.startsWith("https://")) {
+    return { domain: resolveImageCdnDomain(), source: resolvedSrc }
+  }
+
+  const url = new URL(resolvedSrc)
+  if (UNTRANSFORMED_HOST_SUFFIXES.some((suffix) => url.hostname.endsWith(suffix))) {
+    return undefined
+  }
+
+  return isAssetCdnUrl(resolvedSrc)
+    ? { domain: url.hostname, source: url.pathname }
+    : { domain: resolveImageCdnDomain(), source: resolvedSrc }
+}
+
 export const getProductImageUrl = (src?: string | null): string =>
   src !== undefined && src !== null && src !== "" ? src : PLACEHOLDER_IMAGE
 
@@ -29,11 +44,9 @@ export const getOptimizedImageUrl = ({
 }>): string => {
   const resolvedSrc = resolveAssetURL(src)
   try {
-    if (resolvedSrc.startsWith("http://") || resolvedSrc.startsWith("https://")) {
-      const url = new URL(resolvedSrc)
-      if (url.hostname === "images.unsplash.com" || url.hostname.endsWith(".unsplash.com") || isAssetCdnUrl(resolvedSrc)) {
-        return resolvedSrc
-      }
+    const transformation = resolveImageTransformation(resolvedSrc)
+    if (transformation === undefined) {
+      return resolvedSrc
     }
 
     const optimized: unknown = transformUrl(
@@ -41,18 +54,19 @@ export const getOptimizedImageUrl = ({
         height,
         provider: "cloudflare",
         quality: quality ?? IMAGE_CONSTANTS.DEFAULT_QUALITY,
-        url: resolvedSrc,
+        url: transformation.source,
         width,
       },
       {
         cloudflare: {
           f: "auto",
           format: "auto",
+          onerror: "redirect",
         },
       },
       {
         cloudflare: {
-          domain: resolveImageCdnDomain(),
+          domain: transformation.domain,
         },
       },
     )
@@ -100,6 +114,8 @@ export const executeDomPrefetch = (
     }
   }
 }
+
+const UNTRANSFORMED_HOST_SUFFIXES = [".unsplash.com", ".r2.dev"]
 
 const DEFAULT_EAGER_COUNT = 6
 

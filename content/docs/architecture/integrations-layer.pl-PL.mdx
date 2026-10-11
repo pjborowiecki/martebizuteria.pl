@@ -55,7 +55,7 @@ const failure = await sendEmail({
 
 - **InPost służy wyłącznie do wyszukiwania punktów.** `fetchPointsByCity` czyta publiczne API punktów; nie ma tworzenia przesyłek, generowania etykiet ani klucza API. Wybór paczkomatu w checkoucie jest zbudowany nad tym w `components/custom/checkout/components/_steps/delivery/locker/inpost`.
 - **Stripe działa w trybie Elements.** `stripe.checkout.sessions.create` jest wołane z `ui_mode: "elements"` i `return_url`, a client secret przekazywany do `@stripe/react-stripe-js`. Nie ma przekierowania na Checkout hostowany przez Stripe.
-- **R2 jest serwowane przez publiczny URL bucketa.** `VITE_R2_URL` (z `DEFAULT_R2_PUBLIC_URL` z `branding/app.ts` jako wartością zapasową) jest rozwiązywane przez `src/lib/url.ts`, a uploady zapisywane z nagłówkiem `Cache-Control: public, max-age=31536000, immutable`.
+- **R2 jest serwowane przez publiczny URL bucketa.** `VITE_R2_URL` (z `DEFAULT_R2_PUBLIC_URL` z `branding/app.ts` jako wartością zapasową) jest rozwiązywane przez `src/lib/url.ts`, który przenosi na nie także zapisane adresy `r2.dev`, a uploady zapisywane są z nagłówkiem `Cache-Control: public, max-age=31536000, immutable` i trafiają do bazy jako same klucze. Na własnej domenie `src/lib/image.ts` zmniejsza tam zdjęcia przez Cloudflare Image Transformations.
 
 ## Powiązane strony
 

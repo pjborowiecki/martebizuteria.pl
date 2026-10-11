@@ -43,7 +43,7 @@ Terms are listed alphabetically. Where a term corresponds to a concrete export, 
 - **D1** — Cloudflare's SQLite database, bound as `DB`. No interactive transactions; `db.batch()` is the atomicity primitive.
 - **Durable Object** — `RealtimeInvalidationHub` in `src/durable-objects/realtime-invalidation-hub.ts`, created by the `v1` migration tag. It fans out invalidation messages to connected WebSockets and holds no durable state.
 - **KV** — the `CACHE` namespace. Declared in every environment; holds the email sender flag that the Better Auth gate reads.
-- **R2** — the `IMAGES` bucket, holding product media. Public reads go through the base URL in `VITE_R2_URL`.
+- **R2** — the `IMAGES` bucket, holding product media: `martebizuteria` in production, `martebizuteria-preview` in development and preview. Public reads go through the base URL in `VITE_R2_URL`, and a custom domain there gets images resized by Cloudflare Image Transformations.
 - **Vite+** — the unified toolchain, invoked as `vp`. It provides `vp dev`, `vp build`, `vp check`, `vp fmt`, `vp lint`, `vp test` and `vp staged`, all configured in `vite.config.ts`.
 
 ## Tooling vocabulary

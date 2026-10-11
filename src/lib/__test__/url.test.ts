@@ -33,4 +33,22 @@ describe("server URLs", () => {
     env.VITE_R2_URL = "https://your-production-cdn-domain.com"
     expect(getAssetURL("ring.jpg")).toBe(`${DEFAULT_R2_PUBLIC_URL}/ring.jpg`)
   })
+
+  it.each([`${DEFAULT_R2_PUBLIC_URL}/products/ring.jpg`, "https://pub-preview.r2.dev/products/ring.jpg"])(
+    "moves the stored r2.dev URL %s onto the configured asset origin, so a host change needs no data rewrite",
+    (url) => {
+      expect(resolveAssetURL(url)).toBe("https://images.test/products/ring.jpg")
+    },
+  )
+
+  it("keeps a stored r2.dev URL on the bundled bucket while no asset origin is configured", () => {
+    env.VITE_R2_URL = ""
+
+    expect(resolveAssetURL("https://pub-preview.r2.dev/products/ring.jpg")).toBe(`${DEFAULT_R2_PUBLIC_URL}/products/ring.jpg`)
+  })
+
+  it("leaves a lookalike or unparsable absolute URL as it is", () => {
+    expect(resolveAssetURL("https://r2.dev.evil.example/ring.jpg")).toBe("https://r2.dev.evil.example/ring.jpg")
+    expect(resolveAssetURL("https://")).toBe("https://")
+  })
 })

@@ -15,7 +15,7 @@ Bun installs packages and runs `package.json` scripts. Vite+ (`vp`) provides the
 
 ## Do I need a Cloudflare account to develop?
 
-For `bun run dev`, yes. The `development` Wrangler environment uses remote bindings — it talks to the real preview D1 database, the real R2 bucket and the real KV namespace. For tests, no: they run against an in-memory `node:sqlite` database behind a D1-shaped transport and read dummy values from the committed `.env.test`.
+For `bun run dev`, yes. The `development` Wrangler environment uses remote bindings — it talks to the real preview D1 database, the real preview R2 bucket and the real KV namespace. For tests, no: they run against an in-memory `node:sqlite` database behind a D1-shaped transport and read dummy values from the committed `.env.test`.
 
 ## Which locale is the default?
 

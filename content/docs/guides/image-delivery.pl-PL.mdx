@@ -1,0 +1,145 @@
+---
+title: "Dostarczanie zdjęć"
+description: "Którego bucketu R2 używa każde środowisko, jak sklep zmniejsza zdjęcia katalogu przez Cloudflare Image Transformations na własnej domenie bucketu, oraz jednorazowa konfiguracja: bucket preview, skopiowanie zdjęć, własna domena, ustawienie strefy i VITE_R2_URL."
+---
+
+Zdjęcia produktów, kolekcji, kategorii i materiały marketingowe leżą w R2 i trafiają do przeglądarki przez publiczny adres bazowy z `VITE_R2_URL`. Gdy ten adres to własna domena w strefie Cloudflare sklepu, sklep prosi Cloudflare Image Transformations o każde zdjęcie w rozmiarze, w jakim jest wyświetlane. Gdy to wciąż adres `r2.dev`, zdjęcia serwowane są tak, jak je wysłano, w pełnym rozmiarze, bo `r2.dev` nie potrafi przekształcać obrazów. W obu przypadkach działają.
+
+> **Utwórz bucket preview, zanim uruchomisz `bun run dev` albo wdrożysz preview.** Środowiska `development` i `preview` wiążą bucket R2 `martebizuteria-preview`. Dopóki on nie istnieje, serwer deweloperski nie sięgnie do `IMAGES`, a wdrożenie preview się nie powiedzie, bo Cloudflare nie powiąże bucketu, którego nie ma. Kroki 1–3 poniżej go tworzą i wypełniają.
+
+## Buckety i adresy bazowe w środowiskach
+
+| Środowisko    | Bucket `IMAGES` w `wrangler.jsonc` | `VITE_R2_URL`                                                        |
+| ------------- | ---------------------------------- | -------------------------------------------------------------------- |
+| `development` | `martebizuteria-preview`, zdalny   | Publiczny adres bucketu preview, w `.env.development`                |
+| `preview`     | `martebizuteria-preview`, zdalny   | Publiczny adres bucketu preview, w `.env.preview` i w GitHubie       |
+| `test`        | `martebizuteria-test`, lokalny     | `https://images.example.test`, w `.env.test`                         |
+| `production`  | `martebizuteria`, zdalny           | `https://images.martebizuteria.pl`, w `.env.production` i w GitHubie |
+
+`development` i `preview` dzielą bucket z tego samego powodu, z którego dzielą bazę D1: wiersze zapisane przez serwer deweloperski to te same wiersze, które serwuje preview, a zdjęcie, na które wskazuje wiersz, musi leżeć w buckecie czytanym przez oba. Produkcja zatrzymuje `martebizuteria` dla siebie, a `scripts/verify-bindings.ts production` odrzuca konfigurację, w której produkcyjny bucket `IMAGES` jest bucketem preview:
+
+```ts
+const previewImages = unstable_readConfig({ config: "wrangler.jsonc", env: "preview" }).r2_buckets.find(
+  ({ binding }) => binding === "IMAGES",
+)
+if (environment === "production" && images.bucket_name === previewImages?.bucket_name) {
+  throw new Error(`Production and preview share the images bucket ${images.bucket_name}`)
+}
+```
+
+`VITE_R2_URL` czytany jest dwa razy: serwer bierze go z sekretu Workera o tej nazwie, a do paczki przeglądarkowej trafia wpisany w czasie buildu. Obie wartości pochodzą z tego samego pliku `.env.<środowisko>` albo zmiennej w GitHubie, więc ustawia się go raz na środowisko.
+
+## Jak powstaje adres zdjęcia
+
+Baza przechowuje dwa kształty odwołania do zdjęcia i oba rozwiązywane są względem bieżącego `VITE_R2_URL`:
+
+- **Klucz w buckecie**, na przykład `products/<sha256>.webp`. `uploadImageFn` odpowiada samym kluczem, a formularze panelu zapisują go w `product.thumbnail`, `product_image.url` i kolumnach `image` kategorii i kolekcji.
+- **Adres `r2.dev`**, na przykład `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp`. Tak wyglądają wiersze zapisane, zanim wysyłka zaczęła zapisywać klucze, i każdy plik seed.
+
+`resolveAssetURL` w `src/lib/url.ts` zamienia klucz na `${VITE_R2_URL}/<klucz>`, a adres `r2.dev` przenosi na `VITE_R2_URL`, zachowując jego ścieżkę, czyli klucz obiektu. Skierowanie `VITE_R2_URL` na inny host nie wymaga więc przepisywania zapisanych danych, a adresy `r2.dev` z plików seed działają w każdym środowisku. Każdy inny adres bezwzględny zostaje bez zmian.
+
+`getOptimizedImageUrl` w `src/lib/image.ts` decyduje następnie, jak przeglądarka go pobierze:
+
+| Rozwiązany adres leży na                       | Zdjęcie jest serwowane                                                                                                                                               |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hoście z `VITE_R2_URL`, gdy to własna domena   | Zmniejszone na tym hoście: `https://images.martebizuteria.pl/cdn-cgi/image/width=600,height=750,quality=75,onerror=redirect,fit=cover,f=auto/products/<sha256>.webp` |
+| Hoście `r2.dev`                                | Tak, jak zapisane, w pełnym rozmiarze                                                                                                                                |
+| Hoście Unsplash                                | Tak, jak zapisane, bo Unsplash sam zmniejsza swoje zdjęcia                                                                                                           |
+| Każdym innym hoście albo jako ścieżka względna | Zmniejszone przez własny host sklepu, `martebizuteria.pl`, albo `VITE_IMAGE_CDN_DOMAIN`, gdy jest ustawiony                                                          |
+
+Źródłem w adresie transformacji jest ścieżka obiektu na tym samym hoście, więc Cloudflare pobiera je z bucketu w tej samej strefie, a strefa nie potrzebuje zgody na zmniejszanie obrazów z innych źródeł. `<Image>` w `src/presentation/components/custom/image.tsx` przekazuje adres do `@unpic/react`, które rozpoznaje format `/cdn-cgi/image/` i buduje `srcset` z jedną szerokością na każdy próg, więc telefon pobiera plik na miarę telefonu. `fit=cover` przycina każdy plik do szerokości i wysokości, o które prosi komponent.
+
+Każda transformacja prosi też o `onerror=redirect`. Gdy Cloudflare nie może przekształcić zdjęcia, na przykład po wyczerpaniu bezpłatnych transformacji konta w danym miesiącu, przekierowuje przeglądarkę do oryginalnego obiektu na tym samym hoście, a zdjęcie wyświetla się w pełnym rozmiarze zamiast jako uszkodzone. Cloudflare respektuje `onerror` tylko wtedy, gdy źródło leży w strefie, która je przekształca, tak jak zdjęcie na własnej domenie; zdjęcie z innego hosta, zmniejszane przez własny host sklepu, nie ma takiego zabezpieczenia.
+
+E-maile i Stripe Checkout dostają zwykły rozwiązany adres, `${VITE_R2_URL}/<klucz>`, bez transformacji.
+
+## Jednorazowa konfiguracja
+
+Wykonaj kroki w tej kolejności. Kroki 1–3 rozdzielają development i preview od produkcji i są potrzebne przed następnym `bun run dev` albo wdrożeniem preview; kroki 4–7 przenoszą produkcję na własną domenę i mogą przyjść później, bo produkcja działa na `r2.dev` aż do kroku 7.
+
+### 1. Utwórz bucket preview i nadaj mu publiczny adres
+
+```sh
+bunx wrangler login
+bunx wrangler r2 bucket create martebizuteria-preview
+bunx wrangler r2 bucket dev-url enable martebizuteria-preview
+```
+
+Ostatnia komenda wypisuje publiczny adres bucketu, `https://pub-<id>.r2.dev`; `bunx wrangler r2 bucket dev-url get martebizuteria-preview` wypisuje go ponownie. W panelu ten sam przełącznik to **R2 object storage**, `martebizuteria-preview`, **Settings**, **Public Development URL**, **Enable**. Adres `r2.dev` ma limit żądań i służy do prac deweloperskich, co wystarcza na ruch preview.
+
+### 2. Skopiuj do niego zdjęcia
+
+Baza preview wskazuje na zdjęcia w `martebizuteria`: zdjęcia z plików seed w `products/`, `categories/` i `collections/`, grafiki marketingowe w `marketing/`, `placeholder.svg` oraz każde zdjęcie wysłane dotąd z developmentu albo preview. Skopiuj cały bucket raz. Wrangler nie kopiuje między bucketami, więc użyj `rclone` z tokenem API R2:
+
+1. W panelu otwórz **R2 object storage**, **Manage API tokens**, **Create API token**. Wybierz **Object Read & Write**, ogranicz token do `martebizuteria` i `martebizuteria-preview` i zachowaj **Access Key ID** oraz **Secret Access Key**, które pokazywane są tylko raz.
+2. Dodaj zdalne źródło w `~/.config/rclone/rclone.conf`, z identyfikatorem konta ze strony przeglądu R2:
+
+   ```ini
+   [r2]
+   type = s3
+   provider = Cloudflare
+   access_key_id = <Access Key ID>
+   secret_access_key = <Secret Access Key>
+   endpoint = https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+   acl = private
+   no_check_bucket = true
+   ```
+
+3. Skopiuj, zachowując `Content-Type` i `Cache-Control` każdego obiektu, i porównaj:
+
+   ```sh
+   rclone copy r2:martebizuteria r2:martebizuteria-preview --metadata --progress
+   rclone check r2:martebizuteria r2:martebizuteria-preview --one-way
+   ```
+
+4. Usuń token API w panelu, gdy `rclone check` nie zgłasza różnic.
+
+Kopiowanie tylko czyta z `martebizuteria`, więc produkcja pozostaje nietknięta. Później nic nie utrzymuje bucketów w zgodzie: zdjęcie, na które wskazuje baza preview, a którego brakuje w `martebizuteria-preview`, wyświetla się na preview jako uszkodzony obraz, dopóki nie skopiujesz ponownie.
+
+### 3. Skieruj na niego development i preview
+
+Ustaw `VITE_R2_URL` na adres z kroku 1 w `.env.development` i `.env.preview` oraz jako zmienną środowiska GitHub `preview` (**Settings**, **Environments**, `preview`, **Environment variables**). Zmienna środowiska ma pierwszeństwo przed zmienną repozytorium o tej samej nazwie, a workflow preview działa w tym środowisku. Potem uruchom ponownie `bun run dev` i wdroż preview; wdrożenie wysyła wartość jako sekret Workera i wpisuje ją do paczki.
+
+### 4. Podłącz własną domenę do produkcyjnego bucketu
+
+Strefa `martebizuteria.pl` musi być na tym samym koncie Cloudflare. W panelu otwórz **R2 object storage**, `martebizuteria`, **Settings**, **Custom Domains**, **Add**, wpisz `images.martebizuteria.pl` i potwierdź przez **Connect Domain**. Cloudflare sam tworzy rekord DNS; domena jest gotowa, gdy jej status to **Active**. Przez Wranglera, z identyfikatorem strefy ze strony jej przeglądu:
+
+```sh
+bunx wrangler r2 bucket domain add martebizuteria --domain images.martebizuteria.pl --zone-id <ZONE_ID> --min-tls 1.2
+```
+
+Zostaw włączony adres `r2.dev` tego bucketu. Wysłane już e-maile z potwierdzeniem zamówienia zawierają adresy zdjęć `r2.dev` i ładują się tylko, dopóki pozostaje on włączony.
+
+### 5. Włącz Image Transformations dla strefy
+
+W panelu otwórz **Images**, **Transformations**, wybierz strefę `martebizuteria.pl` i kliknij **Enable for zone**. Zostaw domyślne ustawienie, które zmniejsza tylko obrazy z tej samej strefy: sklep nigdy nie prosi o obraz z innego źródła.
+
+Cloudflare liczy unikalne transformacje w miesiącu kalendarzowym: każda szerokość, wysokość i jakość zdjęcia liczy się raz w miesiącu, niezależnie od liczby żądań. Plan Images Free obejmuje 5000 miesięcznie i na każdą kolejną nową transformację odpowiada błędem `9422`; plan Images Paid obejmuje te same 5000 i nalicza opłatę za każde kolejne 1000. Sklep prosi o jedno zdjęcie w wielu rozmiarach: `srcset` karty produktu ma 7 szerokości, a strony produktu 11, z czego pięć wspólnych z kartą; miniatury w koszyku, kasie, zamówieniach, wyszukiwarce i panelu dodają około tuzina kolejnych, w rozmiarze pojedynczym i podwójnym; a prefetch dodaje jeszcze dwie. Główne zdjęcie produktu daje więc około 25–30 transformacji miesięcznie, gdy obejrzą je odwiedzający na różnych ekranach, a każde kolejne zdjęcie galerii do 11, więc 200 produktów może wyczerpać bezpłatny limit w ciągu miesiąca.
+
+**Przed krokiem 7 przenieś konto na plan Images Paid**, w panelu w sekcji **Images**, żeby zdjęcia na produkcji były zmniejszane przez cały miesiąc. Bez niego zdjęcia się nie psują: każdy adres transformacji zawiera `onerror=redirect`, więc po wyczerpaniu bezpłatnych transformacji Cloudflare przekierowuje każdy nowy rozmiar do oryginalnego obiektu, a przeglądarka pobiera go w pełnym rozmiarze aż do końca miesiąca.
+
+### 6. Sprawdź zmniejszone zdjęcie
+
+```sh
+curl -sI https://images.martebizuteria.pl/marketing/hero.webp | head -n 1
+curl -sI "https://images.martebizuteria.pl/cdn-cgi/image/width=256,f=auto/marketing/hero.webp" | grep -i -E "^HTTP|^content-type|^cf-resized"
+```
+
+Pierwsze odpowiada `200`. Drugie odpowiada `200` z typem treści obrazu i nagłówkiem `cf-resized`; `404` albo strona błędu HTML oznacza, że krok 4 lub 5 nie jest skończony i produkcji nie wolno jeszcze przełączać. Drugi adres celowo pomija `onerror=redirect`, żeby nieudana transformacja pokazała się jako błąd, a nie przekierowanie do oryginału.
+
+### 7. Przełącz produkcję
+
+Ustaw `VITE_R2_URL` na `https://images.martebizuteria.pl` w `.env.production` oraz jako zmienną środowiska GitHub `production`, a potem wdroż produkcję. Otwórz stronę główną, kategorię, produkt i koszyk i sprawdź w panelu sieci przeglądarki, że zdjęcia przychodzą z `images.martebizuteria.pl/cdn-cgi/image/`. Żądanie `/cdn-cgi/image/` z odpowiedzią przekierowującą do zwykłego obiektu oznacza, że Cloudflare nie przekształcił tego zdjęcia; nadal się ono wyświetla, w pełnym rozmiarze.
+
+Wdrożenie wysyła ten sam `VITE_R2_URL` jako sekret Workera, a Content-Security-Policy każdej strony wymienia ten origin w `img-src` i `media-src`, więc zmniejszone zdjęcia i ich zapasowy oryginał ładują się bez zmiany polityki. Zdjęcie odrzucone w konsoli przeglądarki z naruszeniem `Content-Security-Policy` oznacza, że bundle i Worker wdrożono z różnymi wartościami; zobacz [Model bezpieczeństwa](/docs/architecture/security-model).
+
+## Wycofanie
+
+Przywróć w `VITE_R2_URL` adres `r2.dev` bucketu i wdroż. Każdy zapisany klucz i adres `r2.dev` znów rozwiązuje się względem niego, a zdjęcia serwowane są bez zmniejszania; nic w bazie się nie zmienia.
+
+## Powiązane strony
+
+- [Cloudflare R2](/docs/integrations/cloudflare-r2)
+- [Środowisko i powiązania](/docs/reference/environment)
+- [Wdrożenie podglądu](/docs/getting-started/deploy-preview)
+- [CI/CD](/docs/tooling/ci-cd)

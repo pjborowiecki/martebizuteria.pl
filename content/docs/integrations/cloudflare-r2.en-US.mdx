@@ -3,19 +3,20 @@ title: "Cloudflare R2"
 description: "Image upload to the IMAGES bucket, content-addressed keys and asset URLs."
 ---
 
-Product photography, category and collection imagery and the marketing assets all live in one R2 bucket named `martebizuteria`, bound to the Worker as `IMAGES`. The adapter in `src/integrations/cloudflare-r2/` has exactly one job: accept an image from the admin console, validate it, and put it in the bucket under a content-addressed key. Reading is not its job — the bucket is served publicly and read through the URL helpers in `src/lib/url.ts`.
+Product photography, category and collection imagery and the marketing assets live in R2, in the bucket bound to the Worker as `IMAGES`: `martebizuteria` in production and `martebizuteria-preview` in development and preview. The adapter in `src/integrations/cloudflare-r2/` has exactly one job: accept an image from the admin console, validate it, and put it in the bucket under a content-addressed key. Reading is not its job — the bucket is served publicly and read through the URL helpers in `src/lib/url.ts`.
 
 ## The binding
 
-`wrangler.jsonc` declares the same bucket in all three environments:
+`wrangler.jsonc` binds one bucket per environment:
 
-```jsonc
-"r2_buckets": [
-  { "binding": "IMAGES", "bucket_name": "martebizuteria", "remote": true }
-]
-```
+| Environment   | `bucket_name`            | `remote` |
+| ------------- | ------------------------ | -------- |
+| `development` | `martebizuteria-preview` | `true`   |
+| `preview`     | `martebizuteria-preview` | `true`   |
+| `test`        | `martebizuteria-test`    | `false`  |
+| `production`  | `martebizuteria`         | `true`   |
 
-All three point at one bucket, and `"remote": true` means even `bun run dev` writes to the real bucket. Content-addressed keys are what make that safe: a re-upload of the same bytes is a no-op rather than an overwrite.
+`development` and `preview` share a bucket because they share the D1 database whose rows point at its objects, and `"remote": true` means even `bun run dev` writes to the real preview bucket. Content-addressed keys are what make that safe: a re-upload of the same bytes is a no-op rather than an overwrite. Production has a bucket of its own, and `scripts/verify-bindings.ts production` refuses a configuration that gives it the preview one. [Image delivery](/docs/guides/image-delivery) creates the preview bucket and copies the images into it.
 
 ## Upload
 
@@ -52,7 +53,7 @@ if ((await env.IMAGES.head(key)) === null) {
   })
 }
 
-return { key, url: getAssetURL(key) }
+return { key }
 ```
 
 Three consequences worth internalizing:
@@ -60,6 +61,7 @@ Three consequences worth internalizing:
 - **The key is the SHA-256 of the file contents**, hex-encoded, plus the extension. Uploading the same photograph twice produces the same key.
 - **The `head` check makes the write idempotent.** An existing object is not rewritten, so the upload costs one cheap metadata request.
 - **`Cache-Control: public, max-age=31536000, immutable`** is set at upload time. This is only correct because the key changes whenever the bytes change. Never write a mutable key into this bucket.
+- **Only the key is returned and stored.** No host reaches the database, so serving the bucket from another address needs no data rewrite.
 
 ## Rules
 
@@ -87,7 +89,7 @@ formData.append("folder", folder)
 return uploadImageFn({ data: formData })
 ```
 
-The successful `url` values are collected and the failures counted into a single toast. `components/image-upload.tsx` and `components/gallery-add-tile.tsx` set `accept={ACCEPTED_IMAGE_ACCEPT_ATTR}` on their file inputs. The resulting URL is what gets written to `product.thumbnail` or a `product_image` row.
+The successful `key` values are collected and the failures counted into a single toast. `components/image-upload.tsx` and `components/gallery-add-tile.tsx` set `accept={ACCEPTED_IMAGE_ACCEPT_ATTR}` on their file inputs. The key is what gets written to `product.thumbnail`, a `product_image` row or a category's or collection's `image`.
 
 ## Reading assets
 
@@ -97,16 +99,18 @@ The successful `url` values are collected and the failures counted into a single
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `getAssetCdnBase()`          | An isomorphic function: reads `env.VITE_R2_URL` on the server and `import.meta.env.VITE_R2_URL` in the browser, strips a trailing slash, and falls back to `DEFAULT_R2_PUBLIC_URL` |
 | `getAssetURL(path)`          | Returns `path` unchanged if it is already absolute, otherwise `${base}/${path}` with any leading slash removed                                                                     |
-| `resolveAssetURL(pathOrUrl)` | The same, tolerant of a stored value that may be either a key or a full URL                                                                                                        |
+| `resolveAssetURL(pathOrUrl)` | Resolves a stored key like `getAssetURL`, moves a stored `*.r2.dev` URL onto the configured base keeping its path, and leaves any other absolute URL as it is                      |
 | `isAssetCdnUrl(url)`         | True for any `*.r2.dev` host or for the configured base's host                                                                                                                     |
 
-`DEFAULT_R2_PUBLIC_URL` in `src/presentation/branding/app.ts` is the bucket's own public endpoint, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`. `isConfiguredAssetCdnBase` additionally rejects a base containing the placeholder host `your-production-cdn-domain.com`, so a half-filled environment file falls back to the working default rather than producing dead image URLs.
+`DEFAULT_R2_PUBLIC_URL` in `src/presentation/branding/app.ts` is the production bucket's `r2.dev` endpoint, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`. `isConfiguredAssetCdnBase` additionally rejects a base containing the placeholder host `your-production-cdn-domain.com`, so a half-filled environment file falls back to the working default rather than producing dead image URLs.
 
 `VITE_R2_URL` appears in both `secrets.required` in `wrangler.jsonc` and the `VITE_`-prefixed browser variables, because both sides need it. The two values must name the same host: the Content-Security-Policy is built on the server and lets pages load images and video only from the origin of `DEFAULT_R2_PUBLIC_URL` and from the origin `getAssetCdnBase()` returns there, so a bundle built with a different host would have its images refused. See [Security model](/docs/architecture/security-model#response-headers).
 
-### Why `isAssetCdnUrl` exists
+Rows written before uploads stored keys, and every seed file, hold full `r2.dev` URLs. Because `resolveAssetURL` moves them onto the configured base, they follow `VITE_R2_URL` like keys do: production serves them from its custom domain and preview from the preview bucket.
 
-`getOptimizedImageUrl` in `src/lib/image.ts` normally rewrites an image URL through `unpic`'s Cloudflare Images transform. It deliberately skips that for Unsplash hosts and for anything `isAssetCdnUrl` recognizes, returning the R2 URL untouched. So R2-hosted images are served as uploaded, at their original dimensions, and `<Image>` (`src/presentation/components/custom/image.tsx`, built on `@unpic/react`) handles only `loading`, `decoding`, `fetchPriority`, `sizes` and the blur background. If you want resizing for R2 assets, that is the function to change.
+### Resizing
+
+`getOptimizedImageUrl` in `src/lib/image.ts` rewrites an image URL through `unpic`'s Cloudflare transform. For a URL on the configured base, which `isAssetCdnUrl` recognises, it transforms on that host with the object's path as the source, so `https://images.martebizuteria.pl/products/<sha256>.webp` becomes `https://images.martebizuteria.pl/cdn-cgi/image/width=600,height=750,quality=75,onerror=redirect,fit=cover,f=auto/products/<sha256>.webp`, and `<Image>` (`src/presentation/components/custom/image.tsx`, built on `@unpic/react`) writes the `srcset` from it. Every transformation asks for `onerror=redirect`, so when Cloudflare cannot transform an image on the custom domain, for instance once the month's free transformations are used up, it redirects the browser to the original object instead of failing. An `r2.dev` host cannot run Image Transformations, so a URL there is returned untouched and served at its original dimensions; so is an Unsplash URL. Any other URL is transformed through the shop's own host. The zone needs Image Transformations turned on before `VITE_R2_URL` points at the custom domain; [Image delivery](/docs/guides/image-delivery) has the steps.
 
 `PLACEHOLDER_IMAGE` is `getAssetURL("placeholder.svg")`, and `src/data/landing.ts` pulls the landing hero, the video and its poster from the same bucket.
 
@@ -125,3 +129,4 @@ There is also no signed-URL or private-object handling: every object in this buc
 - [Images and media](/docs/ui)
 - [Admin console](/docs/features/admin-dashboard)
 - [Environment variables](/docs/reference/environment)
+- [Image delivery](/docs/guides/image-delivery)

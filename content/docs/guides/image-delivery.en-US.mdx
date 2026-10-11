@@ -1,0 +1,145 @@
+---
+title: "Image delivery"
+description: "Which R2 bucket each environment uses, how the storefront resizes catalogue images with Cloudflare Image Transformations on the bucket's custom domain, and the one-time setup: the preview bucket, copying the images, the custom domain, the zone setting and VITE_R2_URL."
+---
+
+Catalogue, collection, category and marketing images live in R2 and reach the browser through the public base URL in `VITE_R2_URL`. When that URL is a custom domain on the shop's Cloudflare zone, the storefront asks Cloudflare Image Transformations for each image at the size it is shown. When it is still an `r2.dev` address, the images are served as uploaded, at full size, because `r2.dev` cannot transform images. Either way they keep working.
+
+> **Create the preview bucket before you run `bun run dev` or deploy preview.** The `development` and `preview` environments bind the R2 bucket `martebizuteria-preview`. Until it exists, the dev server cannot reach `IMAGES` and a preview deploy fails, because Cloudflare cannot bind a bucket that does not exist. Steps 1 to 3 below create it and fill it.
+
+## Buckets and base URLs per environment
+
+| Environment   | `IMAGES` bucket in `wrangler.jsonc` | `VITE_R2_URL`                                                       |
+| ------------- | ----------------------------------- | ------------------------------------------------------------------- |
+| `development` | `martebizuteria-preview`, remote    | The preview bucket's public URL, in `.env.development`              |
+| `preview`     | `martebizuteria-preview`, remote    | The preview bucket's public URL, in `.env.preview` and GitHub       |
+| `test`        | `martebizuteria-test`, local        | `https://images.example.test`, in `.env.test`                       |
+| `production`  | `martebizuteria`, remote            | `https://images.martebizuteria.pl`, in `.env.production` and GitHub |
+
+`development` and `preview` share the bucket for the same reason they share the D1 database: the rows the dev server writes are the rows preview serves, and an image a row points at has to be in the bucket both of them read. Production keeps `martebizuteria` to itself, and `scripts/verify-bindings.ts production` refuses a configuration whose production `IMAGES` bucket is the preview one:
+
+```ts
+const previewImages = unstable_readConfig({ config: "wrangler.jsonc", env: "preview" }).r2_buckets.find(
+  ({ binding }) => binding === "IMAGES",
+)
+if (environment === "production" && images.bucket_name === previewImages?.bucket_name) {
+  throw new Error(`Production and preview share the images bucket ${images.bucket_name}`)
+}
+```
+
+`VITE_R2_URL` is read twice: the server takes it from the Worker secret of that name, and the browser bundle has it inlined at build time. Both come from the same `.env.<environment>` file or GitHub variable, so set it once per environment.
+
+## How an image URL is built
+
+The database holds two shapes of image reference, and both resolve against the current `VITE_R2_URL`:
+
+- **A bucket key**, such as `products/<sha256>.webp`. `uploadImageFn` answers with the key alone, and the admin forms store it in `product.thumbnail`, `product_image.url` and the category and collection `image` columns.
+- **An `r2.dev` URL**, such as `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp`. Rows written before uploads stored keys, and every seed file, look like this.
+
+`resolveAssetURL` in `src/lib/url.ts` turns a key into `${VITE_R2_URL}/<key>`, and moves an `r2.dev` URL onto `VITE_R2_URL`, keeping its path, which is the object key. Pointing `VITE_R2_URL` at another host therefore needs no rewrite of the stored data, and the `r2.dev` URLs in the seeds work in every environment. Any other absolute URL is left as it is.
+
+`getOptimizedImageUrl` in `src/lib/image.ts` then decides how the browser fetches it:
+
+| The resolved URL is on                           | The image is served                                                                                                                                             |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The `VITE_R2_URL` host, when it is a custom host | Resized on that host: `https://images.martebizuteria.pl/cdn-cgi/image/width=600,height=750,quality=75,onerror=redirect,fit=cover,f=auto/products/<sha256>.webp` |
+| An `r2.dev` host                                 | As stored, at full size                                                                                                                                         |
+| An Unsplash host                                 | As stored, since Unsplash resizes its own images                                                                                                                |
+| Any other host, or a relative path               | Resized through the shop's own host, `martebizuteria.pl`, or `VITE_IMAGE_CDN_DOMAIN` when it is set                                                             |
+
+The source in the transformation URL is the object's path on the same host, so Cloudflare fetches it from the bucket on the same zone and the zone needs no permission to resize images from other origins. `<Image>` in `src/presentation/components/custom/image.tsx` hands the URL to `@unpic/react`, which recognises the `/cdn-cgi/image/` format and writes a `srcset` with one width per breakpoint, so a phone downloads a phone-sized file. `fit=cover` crops each file to the width and height the component asks for.
+
+Every transformation also asks for `onerror=redirect`. When Cloudflare cannot transform an image, for example once the account's free transformations for the month are used up, it redirects the browser to the original object on the same host, and the image shows at full size instead of broken. Cloudflare follows `onerror` only when the source is on the zone that transforms it, as an image on the custom domain is; an image from another host, resized through the shop's own host, has no such fallback.
+
+E-mails and Stripe Checkout get the plain resolved URL, `${VITE_R2_URL}/<key>`, without a transformation.
+
+## One-time setup
+
+Do the steps in this order. Steps 1 to 3 isolate development and preview and are needed before the next `bun run dev` or preview deploy; steps 4 to 7 move production to the custom domain and can follow later, because production keeps working on `r2.dev` until step 7.
+
+### 1. Create the preview bucket and give it a public URL
+
+```sh
+bunx wrangler login
+bunx wrangler r2 bucket create martebizuteria-preview
+bunx wrangler r2 bucket dev-url enable martebizuteria-preview
+```
+
+The last command prints the bucket's public address, `https://pub-<id>.r2.dev`; `bunx wrangler r2 bucket dev-url get martebizuteria-preview` prints it again. In the dashboard the same switch is **R2 object storage**, `martebizuteria-preview`, **Settings**, **Public Development URL**, **Enable**. An `r2.dev` address is rate-limited and meant for development, which is enough for preview traffic.
+
+### 2. Copy the images into it
+
+The preview database points at images in `martebizuteria`: the seed images in `products/`, `categories/` and `collections/`, the marketing images in `marketing/`, `placeholder.svg`, and every image uploaded from development or preview so far. Copy the whole bucket once. Wrangler has no bucket-to-bucket copy, so use `rclone` with an R2 API token:
+
+1. In the dashboard, open **R2 object storage**, **Manage API tokens**, **Create API token**. Choose **Object Read & Write**, apply it to `martebizuteria` and `martebizuteria-preview` only, and keep the **Access Key ID** and **Secret Access Key** it shows once.
+2. Add a remote to `~/.config/rclone/rclone.conf`, with the account id from the R2 overview page:
+
+   ```ini
+   [r2]
+   type = s3
+   provider = Cloudflare
+   access_key_id = <Access Key ID>
+   secret_access_key = <Secret Access Key>
+   endpoint = https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+   acl = private
+   no_check_bucket = true
+   ```
+
+3. Copy, keeping each object's `Content-Type` and `Cache-Control`, and compare:
+
+   ```sh
+   rclone copy r2:martebizuteria r2:martebizuteria-preview --metadata --progress
+   rclone check r2:martebizuteria r2:martebizuteria-preview --one-way
+   ```
+
+4. Delete the API token in the dashboard once `rclone check` reports no differences.
+
+The copy only reads from `martebizuteria`, so production is not touched. Nothing keeps the buckets in step afterwards: an image the preview database points at but `martebizuteria-preview` lacks shows as a broken image on preview until you copy again.
+
+### 3. Point development and preview at it
+
+Set `VITE_R2_URL` to the address from step 1 in `.env.development` and `.env.preview`, and as an environment variable of the GitHub `preview` environment (**Settings**, **Environments**, `preview`, **Environment variables**). An environment variable overrides a repository variable of the same name, and the preview workflow runs in that environment. Then restart `bun run dev` and deploy preview; the deploy uploads the value as the Worker secret and inlines it into the bundle.
+
+### 4. Attach a custom domain to the production bucket
+
+The zone `martebizuteria.pl` has to be on the same Cloudflare account. In the dashboard open **R2 object storage**, `martebizuteria`, **Settings**, **Custom Domains**, **Add**, enter `images.martebizuteria.pl`, and confirm with **Connect Domain**. Cloudflare creates the DNS record itself; the domain is ready when its status reads **Active**. With Wrangler, take the zone id from the zone's overview page:
+
+```sh
+bunx wrangler r2 bucket domain add martebizuteria --domain images.martebizuteria.pl --zone-id <ZONE_ID> --min-tls 1.2
+```
+
+Leave the bucket's `r2.dev` address enabled. Order confirmation e-mails already sent carry `r2.dev` image URLs, and they keep loading only while it stays on.
+
+### 5. Turn on Image Transformations for the zone
+
+In the dashboard open **Images**, **Transformations**, select the zone `martebizuteria.pl`, and choose **Enable for zone**. Keep the default that resizes only images from the zone itself: the storefront never asks it for an image on another origin.
+
+Cloudflare counts unique transformations per calendar month: every width, height and quality of an image counts once a month, however often it is requested. The Images Free plan includes 5,000 a month and answers every further new transformation with error `9422`; the Images Paid plan includes the same 5,000 and bills each further 1,000. The storefront asks for one image at many sizes: a product card's `srcset` has 7 widths, and the product page's 11, five of them shared with the card; the thumbnails in the cart, checkout, orders, search and the admin console add about a dozen more, at one and two times their size; and the prefetch adds two. A product's main image therefore comes to about 25 to 30 transformations a month once visitors on different screens have seen it, and each further gallery image to up to 11, so 200 products can use up the free allowance in a month.
+
+**Move the account to the Images Paid plan before step 7**, in the dashboard under **Images**, so production images stay resized for the whole month. Without it the images do not break: every transformation URL carries `onerror=redirect`, so once the free transformations are used up, Cloudflare redirects each new size to the original object, and the browser downloads it at full size until the month ends.
+
+### 6. Check a resized image
+
+```sh
+curl -sI https://images.martebizuteria.pl/marketing/hero.webp | head -n 1
+curl -sI "https://images.martebizuteria.pl/cdn-cgi/image/width=256,f=auto/marketing/hero.webp" | grep -i -E "^HTTP|^content-type|^cf-resized"
+```
+
+The first answers `200`. The second answers `200` with an image content type and a `cf-resized` header; a `404` or an HTML error page means step 4 or 5 is not finished, and production must not be switched yet. The second URL leaves out `onerror=redirect` on purpose, so a failed transformation shows as an error instead of a redirect to the original.
+
+### 7. Switch production
+
+Set `VITE_R2_URL` to `https://images.martebizuteria.pl` in `.env.production` and as an environment variable of the GitHub `production` environment, then deploy production. Open the home page, a category, a product and the cart, and check in the browser's network panel that images come from `images.martebizuteria.pl/cdn-cgi/image/`. A `/cdn-cgi/image/` request answered with a redirect to the plain object means Cloudflare could not transform that image; it still shows, at full size.
+
+The deploy uploads the same `VITE_R2_URL` as a Worker secret, and the Content-Security-Policy of every page lists that origin in `img-src` and `media-src`, so the resized images and their fallback load without a policy change. An image refused in the browser console with a `Content-Security-Policy` violation means the bundle and the Worker were deployed with different values; see [Security model](/docs/architecture/security-model).
+
+## Going back
+
+Set `VITE_R2_URL` back to the bucket's `r2.dev` address and deploy. Every stored key and `r2.dev` URL resolves against it again and images are served unresized; nothing in the database changes.
+
+## Related pages
+
+- [Cloudflare R2](/docs/integrations/cloudflare-r2)
+- [Environment and bindings](/docs/reference/environment)
+- [Deploy a preview](/docs/getting-started/deploy-preview)
+- [CI/CD](/docs/tooling/ci-cd)

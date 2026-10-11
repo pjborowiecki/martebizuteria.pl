@@ -128,6 +128,12 @@ which runs `cf-typegen` (`wrangler types --env development`) and then `content`.
 
 **`Missing database, cache, images, audit, or realtime binding for preview`.** From `scripts/verify-bindings.ts`. The target environment in `wrangler.jsonc` is missing a binding or still carries a placeholder id (the check rejects ids made only of `0` and `-`). Create the resource in Cloudflare and paste the real id.
 
+**`Production and preview share the images bucket <name>`.** From `scripts/verify-bindings.ts production`. The production `IMAGES` binding in `wrangler.jsonc` names the bucket preview binds, so a production deploy would serve and write preview's images. Production uses `martebizuteria` and preview `martebizuteria-preview`; restore the production `bucket_name`.
+
+**Images are broken on preview or in `bun run dev`.** `martebizuteria-preview` is missing, has no public `r2.dev` address, lacks the objects the preview database points at, or `VITE_R2_URL` is not its address. [Image delivery](/docs/guides/image-delivery) has the steps for each.
+
+**Production images load at full size, and their `/cdn-cgi/image/` requests answer with a redirect.** Cloudflare could not transform them, and `onerror=redirect` sent the browser to the original object. On the Images Free plan the usual cause is that the month's 5,000 unique transformations are used up; new sizes are transformed again from the start of the next month, or at once after moving the account to Images Paid. [Image delivery](/docs/guides/image-delivery) shows how the storefront reaches that count.
+
 **`production needs live Stripe keys, but VITE_STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY are test keys`** or **`preview needs test Stripe keys, but … are live keys`**. From `scripts/verify-stripe-keys.ts`. The keys come from the wrong Stripe mode for the target. Put the live keys from dashboard.stripe.com/apikeys into the `production` GitHub environment, `VITE_STRIPE_PUBLISHABLE_KEY` as a variable and `STRIPE_SECRET_KEY` as a secret, or the test keys from dashboard.stripe.com/test/apikeys into `preview`. Each mode has its own webhook endpoints, so set `STRIPE_WEBHOOK_SECRET` to the signing secret of an endpoint in the same mode.
 
 **`VITE_STRIPE_PUBLISHABLE_KEY is a test key but STRIPE_SECRET_KEY is a live key`**, or the reverse. Only one of the two keys was changed. Copy both from the same mode of the same Stripe account.

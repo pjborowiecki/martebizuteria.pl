@@ -16,11 +16,17 @@ export const getAssetURL = (path: string): string => {
 }
 
 export const resolveAssetURL = (pathOrUrl: string): string => {
-  if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) {
-    return pathOrUrl
+  if (!pathOrUrl.startsWith("http://") && !pathOrUrl.startsWith("https://")) {
+    return getAssetURL(pathOrUrl.replace(/^\//u, ""))
   }
 
-  return getAssetURL(pathOrUrl.replace(/^\//u, ""))
+  try {
+    const url = new URL(pathOrUrl)
+
+    return url.hostname.endsWith(R2_DEV_HOST_SUFFIX) ? getAssetURL(url.pathname) : pathOrUrl
+  } catch {
+    return pathOrUrl
+  }
 }
 
 export const isAssetCdnUrl = (url: string): boolean => {
@@ -30,7 +36,7 @@ export const isAssetCdnUrl = (url: string): boolean => {
 
   try {
     const target = new URL(url)
-    if (target.hostname.endsWith(".r2.dev")) {
+    if (target.hostname.endsWith(R2_DEV_HOST_SUFFIX)) {
       return true
     }
 
@@ -43,6 +49,8 @@ export const isAssetCdnUrl = (url: string): boolean => {
 }
 
 const PLACEHOLDER_CDN_HOST = "your-production-cdn-domain.com"
+
+const R2_DEV_HOST_SUFFIX = ".r2.dev"
 
 export const getAssetCdnBase = createIsomorphicFn()
   .server((): string => {

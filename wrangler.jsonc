@@ -43,7 +43,7 @@
       "r2_buckets": [
         {
           "binding": "IMAGES",
-          "bucket_name": "martebizuteria",
+          "bucket_name": "martebizuteria-preview",
           "remote": true,
         },
       ],
@@ -121,7 +121,7 @@
       "r2_buckets": [
         {
           "binding": "IMAGES",
-          "bucket_name": "martebizuteria",
+          "bucket_name": "martebizuteria-preview",
           "remote": true,
         },
       ],

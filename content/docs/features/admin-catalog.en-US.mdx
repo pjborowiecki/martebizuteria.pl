@@ -193,7 +193,7 @@ if ((await env.IMAGES.head(key)) === null) {
 }
 ```
 
-`IMMUTABLE_CACHE_CONTROL` is `public, max-age=31536000, immutable`, which is safe precisely because the key is the hash. The binding is `IMAGES` in `wrangler.jsonc`, and `getAssetURL` / `resolveAssetURL` in `src/lib/url.ts` turn a key into a public URL using `VITE_R2_URL`.
+`IMMUTABLE_CACHE_CONTROL` is `public, max-age=31536000, immutable`, which is safe precisely because the key is the hash. The binding is `IMAGES` in `wrangler.jsonc`. `uploadImageFn` answers with the key alone, the forms store that key, and `getAssetURL` / `resolveAssetURL` in `src/lib/url.ts` turn it into a public URL using `VITE_R2_URL` when the image is shown, so the stored rows carry no host.
 
 `product-image.persist.utils.ts` (`prepareProductImagesBatch`) rewrites a product's image rows and keeps `product.thumbnail` in step in the same batch, and `product-image.server.ts` reads them back through `getProductImagesQuery`. The upload widgets live in `src/presentation/components/custom/image-upload/`.
 
