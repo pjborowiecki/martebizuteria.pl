@@ -214,9 +214,14 @@ collection-on-product.sql                       attribute-on-product.sql
 7. Uruchom `bun run check` i `bun run test`.
 8. Zachowaj zgodność migracji wstecz z Workerem wdrożonym przed nią: dodawaj, nie usuwaj i nie zmieniaj nazw, a to, czego nic już nie czyta, usuń w późniejszym wydaniu. Wdrożenie nakłada ją tuż przed `wrangler deploy`; zobacz [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
+## Kopie zapasowe
+
+D1 Time Travel pozwala cofnąć produkcyjną bazę do dowolnej minuty z ostatnich 30 dni na planie Workers Paid, a regularny eksport trzyma jej kopię poza Cloudflare. Zwykły `wrangler d1 export` produkcji się nie udaje, bo `storefront_search` to tabela wirtualna FTS5; [Kopie zapasowe i przywracanie](/docs/guides/backup-and-restore) opisują kroki wokół niej, przywracanie z eksportu i to, co kasuje przywrócenie przez Time Travel.
+
 ## Powiązane strony
 
 - [Testy](/docs/tooling/testing)
 - [CI/CD](/docs/tooling/ci-cd)
 - [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy)
+- [Kopie zapasowe i przywracanie](/docs/guides/backup-and-restore)
 - [Integracje](/docs/integrations)
