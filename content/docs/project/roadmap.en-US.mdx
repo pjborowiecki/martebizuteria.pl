@@ -5,7 +5,7 @@ description: "What is unfinished in M'Arte, in the order it is worth fixing, wit
 
 This page is derived from the code, not from a product plan. Every item below was found by reading the repository, and each one names the file that demonstrates it. Nothing here is a promise about dates.
 
-Read it together with [About](/docs/project/about), which draws the same boundary from the other side — what already works.
+Read it together with [About](/docs/project/about), which draws the same boundary from the other side — what already works. What the owner has to set up outside the repository before the shop takes real orders is in the [Go-live checklist](/docs/guides/go-live-checklist), not here.
 
 ## Priority 1 — correctness in the order lifecycle
 
@@ -21,7 +21,7 @@ await releaseInventoryForItems(reserved).catch((error: unknown) => {
 })
 ```
 
-The rollback's own failure is caught and logged. A failed rollback therefore leaves stock reserved against nothing, with no alert and no reconciliation pass to find it. This is a saga with a known hole, and closing it needs either a compensation log or the reconciliation job below.
+The rollback's own failure is caught and logged. A failed rollback therefore leaves stock reserved against nothing, with no alert and no reconciliation pass to find it. The checkout compensates the same way one step later: when the checkout row or its Stripe session cannot be created after the stock is reserved, `handleCreateCheckoutSession` in `src/integrations/stripe/stripe.actions.server.ts` releases the stock and `openCheckoutSession` the discount claim, each behind a `.catch` that only logs. This is a saga with a known hole, and closing it needs either a compensation log or the reconciliation job below.
 
 ### A partial return has no restock path
 
@@ -29,7 +29,11 @@ Stock goes back per order, every line at once: `returnOrderToStock` in `src/modu
 
 ### Order emails have no outbox
 
-`deliverOrderEmail` in `src/modules/order/order.email-delivery.server.ts` tries an order email three times within the request's `waitUntil`, under a Resend idempotency key, and an email that still fails waits for the admin's **Resend email** on the order's Activity card. Nothing stores the email itself, so a Worker stopped during the retries leaves it at `email.deferred` until the admin resends it, and the failed payment email, which belongs to a Checkout Session rather than an order, cannot be resent at all; the shop has to contact that customer by hand.
+`deliverOrderEmail` in `src/modules/order/order.email-delivery.server.ts` sends an order email once in the request and tries twice more within its `waitUntil`, under a Resend idempotency key, and an email that still fails waits for the admin's **Resend email** on the order's Activity card. Nothing stores the email itself, so a Worker stopped during the retries leaves it at `email.deferred` until the admin resends it, and the failed payment email, which belongs to a Checkout Session rather than an order, cannot be resent at all; the shop has to contact that customer by hand.
+
+### Archiving a product can miss a checkout that is opening
+
+Saving a product as draft or archived closes its open checkouts: `updateCompleteProduct` hands the product's variants to `expireCheckoutsHoldingVariants` in `src/modules/checkout/use-cases/expire-checkouts-holding-variants.server.ts`, which finds the sessions through the pending payments that name those variants. A checkout that passed the published check just before the save but records its payment only after that lookup is not found, and fulfilment never reads `product.status`, so it can still be paid, and become an order, until its session expires 32 minutes later. Saving the product again closes it.
 
 ### `isAdminPathname` matches too broadly
 
@@ -37,7 +41,7 @@ Stock goes back per order, every line at once: `returnOrderToStock` in `src/modu
 export const isAdminPathname = (pathname: string): boolean => pathname.includes(ROUTES.ADMIN)
 ```
 
-`src/presentation/components/custom/pages/admin/lib/admin-route.ts` uses `includes`, not `startsWith`, so any storefront URL containing the substring `/admin` — a product handle, a blog slug — is treated as an admin route. Two places consume it: the pending component in `src/presentation/components/custom/defaults/default-pending-component.tsx` and `src/presentation/theme/theme-init.ts`, so the symptom is the wrong loading chrome and the wrong theme initialisation rather than a security hole. A one-line fix, and the existing test file already covers the shape.
+`src/presentation/components/custom/pages/admin/lib/admin-route.ts` uses `includes`, not a match on a path segment, so any storefront URL containing the substring `/admin` — a product handle such as `/products/admin-ring` — is treated as an admin route. Four places consume it: `src/routes/__root.tsx`, which then marks the document as the admin shell, drops the smooth scroll and uses the admin toaster; the pending component in `src/presentation/components/custom/defaults/default-pending-component.tsx`; `adminShellCriticalStyle` in `src/presentation/theme/theme-init.ts`; and the collapsed-sidebar style in `src/presentation/theme/sidebar-preference.ts`. `THEME_INIT_SCRIPT` in `theme-init.ts` repeats the same test inline with `indexOf("/admin")`, and turns dark mode off for such a page. The symptom is admin chrome and the wrong theme on a storefront page, not a security hole: route guards and `authorized()` decide access. The fix is to match `/admin` as a whole segment after an optional locale prefix, in both places; `admin-route.test.ts` pins the current behaviour with `/products/admin-ring`, which the fix turns around.
 
 ## Priority 2 — missing infrastructure
 
@@ -45,28 +49,37 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 `src/server.ts` has a `scheduled` handler, but its daily Cron Trigger only enforces the [retention periods](/docs/guides/data-retention) and releases no stock. Stale reservations are released only when Stripe emits `checkout.session.expired`, 32 minutes after a session opens, and a reservation orphaned by a failed compensation is never reclaimed. A reconciliation job would run from the same handler.
 
+### Two admin endpoints leave no audit entry
+
+`accountSecurityAudit` in `src/integrations/better-auth/auth.audit.server.ts` records what Better Auth's admin endpoints change about an account: `/admin/set-role`, `/admin/ban-user`, `/admin/unban-user`, `/admin/update-user`, `/admin/revoke-user-sessions` and `/admin/set-user-password`. It does not record `/admin/revoke-user-session`, which names a session only by its token, or `/admin/impersonate-user`. The admin panel calls neither, but the `admin` plugin answers both for any admin with two-factor authentication on, so a session opened by impersonating a customer leaves nothing in `/admin/audit`.
+
 ## Priority 3 — features that are scaffolded
 
-Each of these already has some of its groundwork in place (an integration function or a complete UI), which makes them cheaper than they look.
+Each of these already has some of its groundwork in place (an integration function, a table or a complete UI), which makes them cheaper than they look.
 
-| Feature          | What exists                                                                                                         | What is missing                                              |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| InPost shipments | Locker lookup at checkout; booking, PDF labels, tracking numbers and status from the admin order page through ShipX | Marking the order shipped and delivered from InPost's status |
-| Admin settings   | Complete UI                                                                                                         | Reads fixtures from `src/data/`                              |
+| Feature          | What exists                                                                                                                          | What is missing                                                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| InPost shipments | Locker lookup and confirmation at checkout; booking, PDF labels, tracking numbers and status from the admin order page through ShipX | Marking the order shipped and delivered from InPost's status; clearing the "Locker not confirmed" flag once the admin has checked the locker |
+| Price reductions | `price_history` kept by triggers, and the lowest price of the 30 days before a reduction on every product card and page              | A compare-at field in the product editor; a reduction can only be set in D1                                                                  |
+| Manufacturer     | A Manufacturer section on every product page, filled from `BUSINESS`                                                                 | Manufacturer fields for a product made by someone else                                                                                       |
+| Blog             | Routes, a home page section and a sitemap entry that appear once `BLOG_POST_SLUGS` in `src/data/blog-posts.ts` lists an article      | Articles, and a body on the article page, which shows only a title and a description                                                         |
+| Admin settings   | Complete UI                                                                                                                          | Reads fixtures from `src/data/settings.ts` and saves nothing; its sidebar entry is disabled                                                  |
 
-`src/data/` is the honest marker for this whole category: four fixture files, and every screen importing one is a screen that looks finished and is not. [Shipping and delivery](/docs/features/shipping-and-delivery) covers the InPost work.
+`src/data/` holds four files, and `settings.ts` is the one fixture behind a screen that looks finished and is not; the others hold the empty list of blog articles, the landing page's media paths and the static pages of the sitemap. [Shipping and delivery](/docs/features/shipping-and-delivery) covers the InPost work, and [Product page](/docs/features/product-page#reduced-prices-and-the-lowest-price-of-the-30-days-before) the price reductions.
 
 ## Priority 4 — testing
 
 1,108 test files exist: 434 unit, 98 integration, 576 component. The distribution is the thing to fix rather than the count.
 
-- **Stripe's payment form is tested only with sandbox keys.** The Playwright suite in `e2e/` buys with courier, in-store pickup and a parcel locker, in English and in Polish, but settles payments through an emulator. Only the opt-in `stripe-test-mode` project pays in the real Payment Element, by card, and only where Stripe sandbox keys are set; no test pays with BLIK or Przelewy24.
+- **Stripe's payment form is tested only with sandbox keys.** The Playwright suite in `e2e/` buys with courier, in-store pickup and a parcel locker, in English and in Polish, but settles payments through an emulator. Only the opt-in `stripe-test-mode` project pays in the real Payment Element, by card, and only where Stripe sandbox keys are set: in CI, the **E2E (Stripe test mode)** job of `e2e-full.yml` reports its spec skipped until the `E2E_STRIPE_SECRET_KEY` and `E2E_STRIPE_PUBLISHABLE_KEY` repository secrets exist. No test pays with BLIK or Przelewy24.
 - **The ratio is inverted relative to the risk.** Component tests mostly assert rendering; commerce correctness lives in checkout, inventory compensation and refunds, which the 98 integration suites cover. More integration coverage of the money paths is worth more than more component coverage.
 - **Integration suites run on `node:sqlite`.** The transport in `src/platform/testing/mocks/d1.ts` emulates D1's batch atomicity, its 100-parameter ceiling and its 50-byte `LIKE` pattern limit but not its concurrency, so concurrency results are SQLite's behaviour, not proof against D1 under production load.
+- **Two features have no browser test.** Reduced prices have none because the admin cannot set a compare-at price yet and other specs assert the seeded catalogue at full price; closing a product's open checkouts on archiving has none because it would take away the two necklaces every parallel spec buys. Specs that change what every other spec reads now run in the `*-shop-wide` Playwright projects after the browser suites, as `e2e/specs/sales.shop-wide.ts` does, which is where the second could go.
 
 ## Priority 5 — housekeeping
 
 - **The git history does not match the code.** Several commits touch over two thousand files. Nothing to fix retroactively, but worth not repeating — see [Contributing](/docs/project/contributing).
+- **Two columns wait to be dropped.** Nothing uses `inventory.version` any more, and nothing has set `user.is_anonymous` (`src/modules/user/user.schema.ts`) since the anonymous sign-in was removed. Dropping a column the Drizzle schema declares takes two releases, as [Roll back a deploy](/docs/guides/roll-back-a-deploy#when-a-migration-has-already-been-applied) explains: one that removes it from the schema, so that no query selects it, then a migration of its own once that code is live. `inventory.version` has had the first: `src/modules/inventory/inventory.schema.ts` no longer declares it, so the product queries in `src/modules/product/product.accessors.ts` no longer select it, and the migration that drops it waits on the branch `drop-inventory-version` until the next deploy is live, as the [Go-live checklist](/docs/guides/go-live-checklist) describes. `is_anonymous` is still declared, so Better Auth's adapter selects it with every user row, and it also waits until the users it marks are deleted, as the same checklist describes.
 
 ## Scaling work measured but not yet done
 

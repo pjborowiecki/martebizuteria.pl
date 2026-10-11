@@ -5,7 +5,7 @@ description: "Co w M'Arte jest niedokończone, w kolejności, w jakiej warto to 
 
 Ta strona wynika z kodu, nie z planu produktowego. Każdy punkt poniżej został znaleziony przez czytanie repozytorium i każdy wskazuje plik, który go potwierdza. Nic tutaj nie jest obietnicą co do terminów.
 
-Czytaj ją razem z [O projekcie](/docs/project/about), które rysuje tę samą granicę z drugiej strony — co już działa.
+Czytaj ją razem z [O projekcie](/docs/project/about), które rysuje tę samą granicę z drugiej strony — co już działa. To, co właściciel musi przygotować poza repozytorium, zanim sklep przyjmie prawdziwe zamówienia, jest na [liście kontrolnej przed startem sprzedaży](/docs/guides/go-live-checklist), a nie tutaj.
 
 ## Priorytet 1 — poprawność cyklu życia zamówienia
 
@@ -21,7 +21,7 @@ await releaseInventoryForItems(reserved).catch((error: unknown) => {
 })
 ```
 
-Błąd samego wycofania jest przechwytywany i zapisywany do logu. Nieudane wycofanie zostawia więc rezerwację bez pokrycia, bez alertu i bez przebiegu uzgadniającego, który by ją znalazł. To saga ze znaną dziurą, a jej zamknięcie wymaga albo dziennika kompensacji, albo zadania uzgadniającego opisanego niżej.
+Błąd samego wycofania jest przechwytywany i zapisywany do logu. Nieudane wycofanie zostawia więc rezerwację bez pokrycia, bez alertu i bez przebiegu uzgadniającego, który by ją znalazł. Checkout kompensuje tak samo krok dalej: gdy po zarezerwowaniu stanu nie uda się utworzyć wiersza checkoutu albo jego sesji Stripe, `handleCreateCheckoutSession` w `src/integrations/stripe/stripe.actions.server.ts` zwalnia stan, a `openCheckoutSession` blokadę kodu rabatowego, każde za `.catch`, który tylko zapisuje do logu. To saga ze znaną dziurą, a jej zamknięcie wymaga albo dziennika kompensacji, albo zadania uzgadniającego opisanego niżej.
 
 ### Częściowy zwrot towaru nie ma ścieżki powrotu na stan
 
@@ -29,7 +29,11 @@ Towar wraca na stan całym zamówieniem, wszystkie pozycje naraz: `returnOrderTo
 
 ### E-maile o zamówieniu nie mają skrzynki wyjściowej
 
-`deliverOrderEmail` w `src/modules/order/order.email-delivery.server.ts` próbuje wysłać e-mail dotyczący zamówienia trzy razy w ramach `waitUntil` żądania, pod kluczem idempotencji Resend, a e-mail, który nadal nie wyszedł, czeka na przycisk **Wyślij ponownie** administratora w karcie „Aktywność” zamówienia. Nic nie przechowuje samego e-maila, więc Worker zatrzymany w trakcie ponowień zostawia go jako `email.deferred`, dopóki administrator nie wyśle go ponownie, a e-maila o nieudanej płatności, który należy do sesji Checkout, a nie do zamówienia, nie da się wysłać ponownie wcale; z takim klientem sklep musi skontaktować się ręcznie.
+`deliverOrderEmail` w `src/modules/order/order.email-delivery.server.ts` wysyła e-mail dotyczący zamówienia raz w trakcie żądania i próbuje jeszcze dwa razy w ramach jego `waitUntil`, pod kluczem idempotencji Resend, a e-mail, który nadal nie wyszedł, czeka na przycisk **Wyślij ponownie** administratora w karcie „Aktywność” zamówienia. Nic nie przechowuje samego e-maila, więc Worker zatrzymany w trakcie ponowień zostawia go jako `email.deferred`, dopóki administrator nie wyśle go ponownie, a e-maila o nieudanej płatności, który należy do sesji Checkout, a nie do zamówienia, nie da się wysłać ponownie wcale; z takim klientem sklep musi skontaktować się ręcznie.
+
+### Archiwizacja produktu może przeoczyć otwierający się checkout
+
+Zapisanie produktu jako szkicu albo zarchiwizowanego zamyka jego otwarte checkouty: `updateCompleteProduct` przekazuje warianty produktu do `expireCheckoutsHoldingVariants` w `src/modules/checkout/use-cases/expire-checkouts-holding-variants.server.ts`, który znajduje sesje przez oczekujące płatności wymieniające te warianty. Checkout, który przeszedł sprawdzenie publikacji tuż przed zapisem, a płatność zapisuje dopiero po tym wyszukaniu, nie zostaje znaleziony, a realizacja zamówienia nigdy nie czyta `product.status`, więc da się go jeszcze opłacić i zamienić w zamówienie, dopóki jego sesja nie wygaśnie 32 minuty później. Ponowny zapis produktu go zamyka.
 
 ### `isAdminPathname` dopasowuje zbyt szeroko
 
@@ -37,7 +41,7 @@ Towar wraca na stan całym zamówieniem, wszystkie pozycje naraz: `returnOrderTo
 export const isAdminPathname = (pathname: string): boolean => pathname.includes(ROUTES.ADMIN)
 ```
 
-`src/presentation/components/custom/pages/admin/lib/admin-route.ts` używa `includes`, nie `startsWith`, więc każdy adres storefrontu zawierający podciąg `/admin` — uchwyt produktu, slug wpisu na blogu — jest traktowany jako trasa panelu. Konsumują to dwa miejsca: komponent stanu ładowania w `src/presentation/components/custom/defaults/default-pending-component.tsx` i `src/presentation/theme/theme-init.ts`, więc objawem jest zła obudowa stanu ładowania i zła inicjalizacja motywu, a nie dziura w bezpieczeństwie. Poprawka na jedną linię, a istniejący plik testowy już pokrywa ten kształt.
+`src/presentation/components/custom/pages/admin/lib/admin-route.ts` używa `includes`, a nie dopasowania do segmentu ścieżki, więc każdy adres storefrontu zawierający podciąg `/admin` — uchwyt produktu, na przykład `/products/admin-ring` — jest traktowany jako trasa panelu. Konsumują to cztery miejsca: `src/routes/__root.tsx`, który wtedy oznacza dokument jako obudowę panelu, wyłącza płynne przewijanie i używa powiadomień panelu; komponent stanu ładowania w `src/presentation/components/custom/defaults/default-pending-component.tsx`; `adminShellCriticalStyle` w `src/presentation/theme/theme-init.ts`; oraz styl zwiniętego sidebaru w `src/presentation/theme/sidebar-preference.ts`. `THEME_INIT_SCRIPT` w `theme-init.ts` powtarza ten sam test wprost przez `indexOf("/admin")` i na takiej stronie wyłącza tryb ciemny. Objawem jest obudowa panelu i zły motyw na stronie sklepu, a nie dziura w bezpieczeństwie: o dostępie decydują strażnicy tras i `authorized()`. Poprawka to dopasowanie `/admin` jako całego segmentu po opcjonalnym przedrostku języka, w obu miejscach; `admin-route.test.ts` przypina obecne zachowanie przypadkiem `/products/admin-ring`, który poprawka odwraca.
 
 ## Priorytet 2 — brakująca infrastruktura
 
@@ -45,28 +49,37 @@ export const isAdminPathname = (pathname: string): boolean => pathname.includes(
 
 `src/server.ts` ma handler `scheduled`, ale jego codzienny Cron Trigger tylko pilnuje [okresów przechowywania danych](/docs/guides/data-retention) i nie zwalnia żadnego stanu magazynowego. Przestarzałe rezerwacje zwalniane są tylko wtedy, gdy Stripe wyemituje `checkout.session.expired`, 32 minuty po otwarciu sesji, a rezerwacja osierocona przez nieudaną kompensację nigdy nie wraca do obiegu. Zadanie uzgadniające działałoby z tego samego handlera.
 
+### Dwa punkty końcowe administratora nie zostawiają wpisu w audycie
+
+`accountSecurityAudit` w `src/integrations/better-auth/auth.audit.server.ts` zapisuje to, co punkty końcowe administratora Better Auth zmieniają w koncie: `/admin/set-role`, `/admin/ban-user`, `/admin/unban-user`, `/admin/update-user`, `/admin/revoke-user-sessions` i `/admin/set-user-password`. Nie zapisuje `/admin/revoke-user-session`, który wskazuje sesję tylko jej tokenem, ani `/admin/impersonate-user`. Panel administracyjny nie wywołuje żadnego z nich, ale wtyczka `admin` odpowiada na oba każdemu administratorowi z włączonym uwierzytelnianiem dwuskładnikowym, więc sesja otwarta przez podszycie się pod klienta nie zostawia nic w `/admin/audit`.
+
 ## Priorytet 3 — funkcjonalności zaczęte
 
-Każda z nich ma już na miejscu część podstaw (funkcję integracji albo kompletny interfejs), co czyni je tańszymi, niż wyglądają.
+Każda z nich ma już na miejscu część podstaw (funkcję integracji, tabelę albo kompletny interfejs), co czyni je tańszymi, niż wyglądają.
 
-| Funkcjonalność      | Co istnieje                                                                                                                       | Czego brakuje                                                                    |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Przesyłki InPost    | Wyszukiwanie paczkomatów w kasie; nadawanie, etykiety PDF, numery do śledzenia i status ze strony zamówienia w panelu przez ShipX | oznaczanie zamówienia jako wysłanego i dostarczonego na podstawie statusu InPost |
-| Ustawienia w panelu | kompletny interfejs                                                                                                               | ekran czyta dane zastępcze z `src/data/`                                         |
+| Funkcjonalność      | Co istnieje                                                                                                                                       | Czego brakuje                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Przesyłki InPost    | Wyszukiwanie i potwierdzanie paczkomatów w kasie; nadawanie, etykiety PDF, numery do śledzenia i status ze strony zamówienia w panelu przez ShipX | oznaczanie zamówienia jako wysłanego i dostarczonego na podstawie statusu InPost; zdejmowanie oznaczenia „Paczkomat niepotwierdzony”, gdy administrator sprawdzi paczkomat |
+| Obniżki cen         | `price_history` prowadzona przez wyzwalacze i najniższa cena z 30 dni przed obniżką na każdej karcie i stronie produktu                           | pole ceny porównawczej w edytorze produktu; obniżkę da się ustawić tylko w D1                                                                                              |
+| Producent           | sekcja „Producent” na każdej stronie produktu, wypełniona z `BUSINESS`                                                                            | pola producenta dla produktu wytworzonego przez kogoś innego                                                                                                               |
+| Blog                | trasy, sekcja strony głównej i wpis w mapie strony, które pojawiają się, gdy `BLOG_POST_SLUGS` w `src/data/blog-posts.ts` wymieni artykuł         | artykuły oraz treść na stronie artykułu, która pokazuje tylko tytuł i opis                                                                                                 |
+| Ustawienia w panelu | kompletny interfejs                                                                                                                               | ekran czyta dane zastępcze z `src/data/settings.ts` i niczego nie zapisuje; jego pozycja w sidebarze jest wyłączona                                                        |
 
-`src/data/` jest uczciwym znacznikiem całej tej kategorii: cztery pliki z danymi zastępczymi, a każdy ekran importujący jeden z nich to ekran, który wygląda na skończony i nie jest. [Wysyłka i dostawa](/docs/features/shipping-and-delivery) opisuje prace nad InPostem.
+`src/data/` ma cztery pliki, a `settings.ts` jest jedynym z danymi zastępczymi za ekranem, który wygląda na skończony i nie jest; pozostałe trzymają pustą listę artykułów bloga, ścieżki multimediów strony głównej i strony statyczne mapy strony. [Wysyłka i dostawa](/docs/features/shipping-and-delivery) opisuje prace nad InPostem, a [Karta produktu](/docs/features/product-page#obniżone-ceny-i-najniższa-cena-z-30-dni-przed-obniżką) obniżki cen.
 
 ## Priorytet 4 — testy
 
 Istnieje 1108 plików testowych: 434 jednostkowe, 98 integracyjnych, 576 komponentowych. Naprawy wymaga rozkład, nie liczba.
 
-- **Formularz płatności Stripe'a jest testowany tylko z kluczami sandboxa.** Zestaw Playwrighta w `e2e/` kupuje z dostawą kurierem, odbiorem osobistym i do paczkomatu, po angielsku i po polsku, ale rozlicza płatności przez emulator. Tylko włączany osobno projekt `stripe-test-mode` płaci w prawdziwym Payment Element, kartą, i tylko tam, gdzie ustawiono klucze sandboxa Stripe'a; żaden test nie płaci BLIK-iem ani przez Przelewy24.
+- **Formularz płatności Stripe'a jest testowany tylko z kluczami sandboxa.** Zestaw Playwrighta w `e2e/` kupuje z dostawą kurierem, odbiorem osobistym i do paczkomatu, po angielsku i po polsku, ale rozlicza płatności przez emulator. Tylko włączany osobno projekt `stripe-test-mode` płaci w prawdziwym Payment Element, kartą, i tylko tam, gdzie ustawiono klucze sandboxa Stripe'a: w CI zadanie **E2E (Stripe test mode)** z `e2e-full.yml` zgłasza swoją specyfikację jako pominiętą, dopóki nie istnieją sekrety repozytorium `E2E_STRIPE_SECRET_KEY` i `E2E_STRIPE_PUBLISHABLE_KEY`. Żaden test nie płaci BLIK-iem ani przez Przelewy24.
 - **Proporcje są odwrotne do ryzyka.** Testy komponentowe głównie sprawdzają render; poprawność handlowa mieszka w procesie zamówienia, kompensacji stanów magazynowych i zwrotach, które pokrywa 98 zestawów integracyjnych. Więcej pokrycia integracyjnego na ścieżkach pieniędzy jest warte więcej niż więcej testów komponentowych.
 - **Zestawy integracyjne działają na `node:sqlite`.** Transport w `src/platform/testing/mocks/d1.ts` odwzorowuje atomowość partii w D1, jego limit 100 parametrów i 50-bajtowy limit wzorca `LIKE`, ale nie jego współbieżność, więc wyniki dotyczące współbieżności są zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
+- **Dwie funkcjonalności nie mają testu przeglądarkowego.** Obniżki cen go nie mają, bo administrator nie może jeszcze ustawić ceny porównawczej, a inne specyfikacje sprawdzają zasiany katalog w pełnej cenie; zamykanie otwartych checkoutów produktu przy archiwizacji go nie ma, bo zabrałoby dwa naszyjniki, które kupuje każda równoległa specyfikacja. Specyfikacje zmieniające to, co czytają wszystkie inne, działają teraz w projektach Playwrighta `*-shop-wide` po zestawach przeglądarkowych, tak jak `e2e/specs/sales.shop-wide.ts`, i tam mógłby trafić ten drugi test.
 
 ## Priorytet 5 — porządki
 
 - **Historia gita nie odpowiada kodowi.** Część commitów dotyka ponad dwóch tysięcy plików. Retroaktywnie nie ma tu czego naprawiać, ale warto tego nie powtarzać — zobacz [Współtworzenie](/docs/project/contributing).
+- **Dwie kolumny czekają na usunięcie.** Nic nie używa już `inventory.version`, a nic nie ustawia `user.is_anonymous` (`src/modules/user/user.schema.ts`) od czasu usunięcia logowania anonimowego. Usunięcie kolumny, którą deklaruje schemat Drizzle, wymaga dwóch wydań, jak wyjaśnia [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy#gdy-migracja-jest-już-nałożona): jednego, które usuwa ją ze schematu, żeby żadne zapytanie jej nie wybierało, a potem osobnej migracji, gdy ten kod już działa. `inventory.version` ma już za sobą pierwsze z nich: `src/modules/inventory/inventory.schema.ts` jej nie deklaruje, więc zapytania o produkty w `src/modules/product/product.accessors.ts` jej nie wybierają, a migracja, która ją usuwa, czeka na gałęzi `drop-inventory-version`, aż zacznie działać najbliższe wdrożenie, jak opisuje [lista kontrolna przed startem sprzedaży](/docs/guides/go-live-checklist). `is_anonymous` jest nadal zadeklarowana, więc adapter Better Auth wybiera ją przy każdym wierszu użytkownika, i czeka też, aż znikną użytkownicy, których oznacza, jak opisuje ta sama lista.
 
 ## Skalowanie zmierzone, ale jeszcze niewykonane
 
