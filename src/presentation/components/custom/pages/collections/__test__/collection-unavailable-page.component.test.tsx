@@ -20,7 +20,12 @@ interface SuggestedProductRow {
   subtitles: Record<string, string> | null
   thumbnail: string | null
   titles: Record<string, string>
-  variants: { id: string; price: number; title: string }[]
+  variants: {
+    id: string
+    price: number
+    priceReduction?: { readonly lowestPrice: number }
+    title: string
+  }[]
 }
 
 const catalogue = {
@@ -174,6 +179,19 @@ describe("CollectionUnavailablePage suggested products", () => {
     renderPage()
 
     expect(await screen.findByText("PLN 249.00")).toBeInTheDocument()
+  })
+
+  it("adds the lowest price of the 30 days before the reduction to a reduced premiere", async () => {
+    const product = productRow("aurora-ring", "Aurora Ring", 24_900)
+    catalogue.newArrivals = [
+      {
+        ...product,
+        variants: [{ id: "aurora-ring-v1", price: 24_900, priceReduction: { lowestPrice: 27_900 }, title: "M" }],
+      },
+    ]
+    renderPage()
+
+    expect(await screen.findByText("Lowest price in the 30 days before the reduction: PLN 279.00")).toBeInTheDocument()
   })
 
   it("shows the product subtitle beside the name", async () => {

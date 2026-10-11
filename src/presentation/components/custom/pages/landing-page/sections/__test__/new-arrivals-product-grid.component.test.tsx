@@ -1,4 +1,4 @@
-import { cleanup, screen } from "@testing-library/react"
+import { cleanup, screen, within } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 vi.hoisted(() => {
@@ -33,7 +33,7 @@ const products = vi.hoisted(() => [
     subtitles: { "en-US": "Solid weave", "pl-PL": "Zwarty splot" },
     thumbnail: "",
     titles: { "en-US": "Gold choker", "pl-PL": "Zloty naszyjnik" },
-    variants: [{ id: "var_2", price: 99_900, title: "Size M" }],
+    variants: [{ id: "var_2", price: 99_900, priceReduction: { lowestPrice: 105_000 }, title: "Size M" }],
   },
   {
     handle: "pearl-earrings",
@@ -103,9 +103,15 @@ describe("NewArrivalsProductGrid", () => {
   it("omits the price when the product has no variant", async () => {
     renderWithProviders(<NewArrivalsProductGrid />)
 
-    await screen.findByRole("heading", { level: 3, name: "Pearl earrings" })
+    const earrings = await screen.findByRole("link", { name: /Pearl earrings/u })
 
-    expect(screen.getAllByText(/^PLN\s/u)).toHaveLength(2)
+    expect(within(earrings).queryByText(/PLN/u)).toBeNull()
+  })
+
+  it("adds the lowest price of the 30 days before the reduction to a reduced product", async () => {
+    renderWithProviders(<NewArrivalsProductGrid />)
+
+    expect(await screen.findByText("Lowest price in the 30 days before the reduction: PLN 1,050.00")).toBeInTheDocument()
   })
 
   it("links every card to its product handle", async () => {

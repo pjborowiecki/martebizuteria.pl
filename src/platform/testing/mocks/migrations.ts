@@ -17,6 +17,7 @@ export const MIGRATION = {
   ORDER_ITEM_PRODUCT_BACKFILL: "20261003120000_order_item_product_backfill",
   ORDER_RESTOCKED_AT: "20261005410000_order_restocked_at",
   ORDER_WITHDRAWALS: "20261010230000_order_withdrawals",
+  PRICE_HISTORY: "20261010410000_price_history",
   PRIVACY_POLICY_ACCOUNT_DELETION: "20261010210000_privacy_policy_account_deletion",
   PRIVACY_POLICY_PAGE: "20261010200000_privacy_policy_page",
   RETURNS_AND_COMPLAINTS_PAGE: "20261005210000_returns_and_complaints_page",

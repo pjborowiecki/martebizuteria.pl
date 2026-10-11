@@ -4,6 +4,7 @@ import { cn } from "cn"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils"
@@ -53,6 +54,7 @@ const CatalogProductCard = ({
       params={params}
       priority={index < PRIORITY_IMAGE_COUNT}
       price={price}
+      priceReduction={variant?.priceReduction}
       productId={product.id}
       rawPrice={variantPrice}
       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 30vw"
@@ -170,6 +172,7 @@ type CatalogProduct = Pick<Product["select"], "handle" | "id" | "subtitles" | "t
   readonly variants?: readonly {
     readonly id: string
     readonly price: number
+    readonly priceReduction?: PriceReduction | undefined
     readonly title: string
   }[]
 }

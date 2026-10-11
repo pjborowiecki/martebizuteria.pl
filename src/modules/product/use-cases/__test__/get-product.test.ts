@@ -1,10 +1,14 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { execute } = vi.hoisted(() => ({ execute: vi.fn<(input: { handle: string }) => Promise<unknown>>() }))
+const { execute, priceReductions } = vi.hoisted(() => ({
+  execute: vi.fn<(input: { handle: string }) => Promise<unknown>>(),
+  priceReductions: vi.fn<(variants: readonly { readonly id: string }[]) => Promise<ReadonlyMap<string, unknown>>>(),
+}))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
 vi.mock("~/src/modules/product/product.accessors", () => ({ getPublishedProductByHandleQuery: { execute } }))
+vi.mock("~/src/modules/price-history/price-history.accessors", () => ({ getPriceReductions: priceReductions }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const state: { validator?: (input: unknown) => unknown } = {}
@@ -77,6 +81,8 @@ const publishedRow = (quantityAvailable = 5): PublishedProductByHandleRow => ({
 
 beforeEach(() => {
   execute.mockReset()
+  priceReductions.mockReset()
+  priceReductions.mockResolvedValue(new Map())
 })
 
 describe("getProduct", () => {
@@ -95,6 +101,17 @@ describe("getProduct", () => {
     const result = await getProduct({ data: { handle: "srebrny-pierscionek" } })
 
     expect(result).toMatchObject({ title: "Srebrny pierścionek" })
+  })
+
+  it("gives each variant its price reduction, read for the product's own variants", async () => {
+    const reduction = { lowestPrice: 14_000 }
+    execute.mockResolvedValue(publishedRow())
+    priceReductions.mockResolvedValue(new Map([["var-1", reduction]]))
+
+    const result = await getProduct({ data: { handle: "srebrny-pierscionek", locale: "en-US" } })
+
+    expect(priceReductions).toHaveBeenCalledExactlyOnceWith([expect.objectContaining({ id: "var-1", price: 12_000 })])
+    expect(result).toMatchObject({ variants: [{ id: "var-1", priceReduction: reduction }] })
   })
 
   it("reports a missing product as false rather than throwing", async () => {

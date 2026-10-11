@@ -3,6 +3,7 @@ import { type JSX, useMemo, useRef } from "react"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
@@ -45,6 +46,7 @@ const RelatedProductCard = ({
       params={params}
       parallax
       price={price}
+      priceReduction={product.priceReduction}
       productId={product.id}
       rawPrice={variantPrice}
       sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
@@ -89,6 +91,7 @@ export interface RelatedProductItem {
   readonly id: string
   readonly image: string
   readonly name: string
+  readonly priceReduction?: PriceReduction | undefined
   readonly subtitle: string
   readonly variantId?: string | undefined
   readonly variantPrice?: number | undefined

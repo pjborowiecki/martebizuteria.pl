@@ -3,7 +3,7 @@ title: "Modules and use cases"
 description: "How a feature module is laid out, what each file suffix means, and the shape every use case follows."
 ---
 
-## The 41 modules
+## The 42 modules
 
 ```text
 _core                   account                 address
@@ -14,15 +14,15 @@ courier                 customer-account        customer-activity
 delivery-method         discount                inventory
 newsletter              option-on-variant       order
 order-address           order-item              order-withdrawal
-payment                 product                 product-attribute
-product-category        product-collection      product-image
-product-option          product-option-value    product-variant
-rate-limit              session                 store-setting
-storefront-search       two-factor              user
-verification            wishlist
+payment                 price-history           product
+product-attribute       product-category        product-collection
+product-image           product-option          product-option-value
+product-variant         rate-limit              session
+store-setting           storefront-search       two-factor
+user                    verification            wishlist
 ```
 
-36 of them export Drizzle tables, 39 in all, and `src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports every one so that the Drizzle client, the Better Auth adapter and `drizzle-kit` see one schema registry. `storefront-search` declares the FTS5 virtual table `storefront_search`, which a hand-written migration creates and which stays out of that registry. `admin-dashboard`, `customer-account` and `customer-activity` are read models over other modules' tables and have no schema of their own; `_core` is the shared kernel.
+37 of them export Drizzle tables, 40 in all, and `src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports every one so that the Drizzle client, the Better Auth adapter and `drizzle-kit` see one schema registry. `storefront-search` declares the FTS5 virtual table `storefront_search`, which a hand-written migration creates and which stays out of that registry. `admin-dashboard`, `customer-account` and `customer-activity` are read models over other modules' tables and have no schema of their own; `_core` is the shared kernel.
 
 ## File suffixes
 

@@ -29,6 +29,7 @@ const { categoryOnProduct } = await import("~/src/modules/category-on-product/ca
 const { collectionOnProduct } = await import("~/src/modules/collection-on-product/collection-on-product.schema")
 const { inventory } = await import("~/src/modules/inventory/inventory.schema")
 const { optionOnVariant } = await import("~/src/modules/option-on-variant/option-on-variant.schema")
+const { priceHistory } = await import("~/src/modules/price-history/price-history.schema")
 const { productAttribute } = await import("~/src/modules/product-attribute/product-attribute.schema")
 const { productCategory } = await import("~/src/modules/product-category/product-category.schema")
 const { productCollection } = await import("~/src/modules/product-collection/product-collection.schema")
@@ -55,6 +56,7 @@ const TABLES = [
   productAttribute,
   product,
   productVariant,
+  priceHistory,
   inventory,
   productOption,
   productOptionValue,
@@ -66,6 +68,8 @@ const TABLES = [
 ]
 
 const NOW = 1_770_000_000_000
+
+const FORTY_DAYS_MS = 40 * 86_400_000
 
 const titlesJson = (title: string): string => JSON.stringify({ "en-US": title, "pl-PL": title })
 
@@ -330,7 +334,9 @@ describe("getPublishedProductsByCategoryIds", () => {
   it("carries only the storefront variant columns", async () => {
     const [first] = await getPublishedProductsByCategoryIds(["cat-1"], PAGE)
 
-    expect(first?.variants).toStrictEqual([{ id: "v1", price: 9900, productId: "p1", title: "Default" }])
+    expect(first?.variants).toStrictEqual([
+      { compareAtPrice: null, id: "v1", price: 9900, priceReduction: undefined, productId: "p1", title: "Default" },
+    ])
   })
 
   it("returns a full page of products from more categories than D1's SQL parameter limit, by rank", async () => {
@@ -389,7 +395,23 @@ describe("getPublishedProductsByCollectionHandle", () => {
   it("carries only the storefront variant columns", async () => {
     const [first] = await getPublishedProductsByCollectionHandle("sale", PAGE)
 
-    expect(first?.variants).toStrictEqual([{ id: "v6", price: 1900, productId: "p6", title: "Default" }])
+    expect(first?.variants).toStrictEqual([
+      { compareAtPrice: null, id: "v6", price: 1900, priceReduction: undefined, productId: "p6", title: "Default" },
+    ])
+  })
+
+  it("reads the price history in a second statement only when a listed variant is reduced, and gives it its reduction", async () => {
+    sqlite.prepare("update product_variant set price = 1500, compare_at_price = 1900 where id = 'v6'").run()
+    sqlite
+      .prepare(
+        "insert into price_history (variant_id, price, compare_at_price, changed_at) values ('v6', 1900, null, ?), ('v6', 1500, 1900, ?)",
+      )
+      .run(NOW - FORTY_DAYS_MS, NOW)
+
+    const [first] = await getPublishedProductsByCollectionHandle("sale", PAGE)
+
+    expect(first?.variants[0]?.priceReduction).toStrictEqual({ lowestPrice: 1900 })
+    expect(trips).toHaveLength(2)
   })
 
   it("shows nothing from a collection that is not active", async () => {

@@ -215,8 +215,8 @@ src/
   router.tsx                  Per-request QueryClient, SSR integration, locale rewrite, default components
   routes.ts                   Route constants shared by links, guards and head metadata
   routes/                     68 locale-free file routes + 4 API handlers
-  modules/{feature}/          40 domain modules — schema, Zod, types, constants, utils
-    *.accessors.ts              unauthenticated data access (reads and writes), 23 files
+  modules/{feature}/          41 domain modules — schema, Zod, types, constants, utils
+    *.accessors.ts              unauthenticated data access (reads and writes), 24 files
     use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 128 files
   modules/_core/              Shared error codes, HTTP statuses, currency, pagination, CSV, column filters
   integrations/{vendor}/      15 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, cloudflare-turnstile, inpost, use-intl,
@@ -312,7 +312,7 @@ Admin upgrades are role-checked **in the Worker, before the Durable Object is ad
 
 ### Catalog modelling
 
-Products carry localized content as typed JSON maps — `titles` non-null, `subtitles`/`descriptions`/`tags` nullable — rather than a translations table, so a product reads in one query. Storefront search runs against `storefront_search`, an FTS5 index of the Polish and English text that triggers on `product`, `product_category` and `product_collection` keep current, ranked by `bm25`. Admin product search is a `lower(cast(column as text)) like ? escape '\'` over each locale's `json_extract` from those JSON columns.
+Products carry localized content as typed JSON maps — `titles` non-null, `subtitles`/`descriptions`/`tags` nullable — rather than a translations table, so a product reads in one query. Every change of a variant's `price` or `compare_at_price` is recorded in `price_history` by triggers on `product_variant`, inside the statement that makes it, and the storefront uses that history to show a reduction only when the price is below the lowest price of the 30 days before it, striking that lowest price through and naming it next to the reduced price, as Polish law requires. Storefront search runs against `storefront_search`, an FTS5 index of the Polish and English text that triggers on `product`, `product_category` and `product_collection` keep current, ranked by `bm25`. Admin product search is a `lower(cast(column as text)) like ? escape '\'` over each locale's `json_extract` from those JSON columns.
 
 Variants, options, attributes and the category/collection junctions are replaced as a **single `db.batch`** through `runDrizzleBatch`, so a product edit is atomic across nine tables. Point reads — by handle, by id, stats, the `json_each` aggregates — are prepared once at module load (eight prepared statements in the product accessors alone); list queries are built per request because the variant-stats join, filters and sort change shape and a prepared statement cannot.
 
@@ -444,7 +444,7 @@ Then replace `database_id`, the KV `id`, the audit queue's name in the producer 
 
 ### Migrations
 
-Module schemas are collected by [`drizzle.schemas.ts`](src/integrations/drizzle-orm/drizzle.schemas.ts): 39 tables from 36 modules, each exported with its relations where it has any. The FTS5 search index `storefront_search` is declared in its module but left out of that file, because a hand-written migration creates it. Generate a migration with:
+Module schemas are collected by [`drizzle.schemas.ts`](src/integrations/drizzle-orm/drizzle.schemas.ts): 40 tables from 37 modules, each exported with its relations where it has any. The FTS5 search index `storefront_search` is declared in its module but left out of that file, because a hand-written migration creates it. Generate a migration with:
 
 ```sh
 bun run db:generate
@@ -452,7 +452,7 @@ bun run db:generate
 
 Review and commit the SQL under `src/integrations/drizzle-orm/migrations/` together with the schema change. The deploy scripts apply pending migrations right before `wrangler deploy`, while the previous Worker is still serving, so a migration only adds what that Worker can live with; drops and renames wait for a later release. See [Roll back a deploy](content/docs/guides/roll-back-a-deploy.en-US.mdx).
 
-Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **84 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
+Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **85 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
 
 | Command                          | Database affected                                              |
 | -------------------------------- | -------------------------------------------------------------- |

@@ -37,6 +37,7 @@ export const productVariantStatsSubquery = () =>
     .as("product_variant_stats")
 
 export const storefrontListVariantColumns = {
+  compareAtPrice: true,
   id: true,
   price: true,
   productId: true,

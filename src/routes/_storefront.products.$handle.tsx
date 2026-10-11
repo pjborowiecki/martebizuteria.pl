@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl/react"
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
+import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
 import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils"
 import { getProductQuery } from "~/src/modules/product/use-cases/get-product"
@@ -68,6 +69,7 @@ const MappedRelatedProducts = ({
           id: product.id,
           image: getProductImageUrl(product.thumbnail),
           name: resolveProductTitle(product.titles, locale),
+          priceReduction: variant?.priceReduction,
           subtitle: resolveProductSubtitle(product.subtitles, locale),
           variantId: variant?.id,
           variantPrice: variant?.price,
@@ -121,6 +123,7 @@ type RelatedProduct = Pick<Product["select"], "handle" | "id" | "subtitles" | "t
   readonly variants?: readonly {
     readonly id: string
     readonly price: number
+    readonly priceReduction?: PriceReduction | undefined
     readonly title: string
   }[]
 }
