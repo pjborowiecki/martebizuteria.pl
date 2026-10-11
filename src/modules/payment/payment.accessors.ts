@@ -39,21 +39,32 @@ export const getHeldLinesByTransactionId = async (transactionId: string): Promis
   return rows.flatMap((row) => row.reservedLines)
 }
 
+const openCheckoutHoldingAnyOf = (variantIds: readonly string[]) =>
+  and(
+    eq(payment.status, "pending"),
+    eq(checkout.status, "pending"),
+    sql`exists (select 1 from json_each(${payment.reservedLines}) as reserved_line where json_extract(reserved_line.value, '$.variantId') in (select value from json_each(${JSON.stringify(variantIds)})))`,
+  )
+
 export const isAnyVariantHeldByOpenCheckout = async (variantIds: readonly string[]): Promise<boolean> => {
   const rows = await db
     .select({ id: payment.id })
     .from(payment)
     .innerJoin(checkout, eq(checkout.id, payment.checkoutId))
-    .where(
-      and(
-        eq(payment.status, "pending"),
-        eq(checkout.status, "pending"),
-        sql`exists (select 1 from json_each(${payment.reservedLines}) as reserved_line where json_extract(reserved_line.value, '$.variantId') in (select value from json_each(${JSON.stringify(variantIds)})))`,
-      ),
-    )
+    .where(openCheckoutHoldingAnyOf(variantIds))
     .limit(1)
 
   return rows.length > 0
+}
+
+export const getOpenCheckoutSessionIdsHoldingVariants = async (variantIds: readonly string[]): Promise<string[]> => {
+  const rows = await db
+    .select({ transactionId: payment.transactionId })
+    .from(payment)
+    .innerJoin(checkout, eq(checkout.id, payment.checkoutId))
+    .where(openCheckoutHoldingAnyOf(variantIds))
+
+  return rows.flatMap(({ transactionId }) => (transactionId === null ? [] : [transactionId]))
 }
 
 export const getPaymentContextByTransactionId = async (transactionId: string): Promise<PaymentContext | undefined> => {

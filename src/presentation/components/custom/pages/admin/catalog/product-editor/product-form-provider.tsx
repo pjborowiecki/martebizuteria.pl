@@ -100,6 +100,14 @@ const resolveProductMutationErrorDescription = (error: unknown, t: (key: string)
   return t("toast.errorDescription")
 }
 
+const describeSavedProduct = (mode: ProductFormMode, { closedCheckoutCount }: SavedProduct, t: SavedProductTranslator): string => {
+  if (closedCheckoutCount !== undefined && closedCheckoutCount > 0) {
+    return t("toast.updateClosedCheckoutsDescription", { count: closedCheckoutCount })
+  }
+
+  return mode === "create" ? t("toast.createSuccessDescription") : t("toast.updateSuccessDescription")
+}
+
 const applyTakenSkuFieldErrors = (
   entries: ReturnType<typeof collectProductFormSkuEntries>,
   takenSkus: readonly string[],
@@ -175,12 +183,7 @@ const useProductMutation = ({ mode, onCompleted, productId, setError }: UseProdu
   }, [])
 
   const saveProduct = useCallback(
-    async (
-      values: ProductFormValues,
-    ): Promise<{
-      handle: string
-      id: string
-    }> => {
+    async (values: ProductFormValues): Promise<SavedProduct> => {
       const skuEntries = collectProductFormSkuEntries(values)
       if (skuEntries.length > 0) {
         const { takenSkus } = await validateProductSkus({
@@ -246,7 +249,7 @@ const useProductMutation = ({ mode, onCompleted, productId, setError }: UseProdu
         }
       }
       toast.success(mode === "create" ? t("toast.createSuccessTitle") : t("toast.updateSuccessTitle"), {
-        description: mode === "create" ? t("toast.createSuccessDescription") : t("toast.updateSuccessDescription"),
+        description: describeSavedProduct(mode, result, t),
       })
       onCompleted()
     },
@@ -431,6 +434,14 @@ export interface ProductFormContextValue {
 }
 
 const ProductFormContext = createContext<ProductFormContextValue | undefined>(undefined)
+
+interface SavedProduct {
+  readonly closedCheckoutCount?: number
+  readonly handle: string
+  readonly id: string
+}
+
+type SavedProductTranslator = (key: string, values?: { count: number }) => string
 
 interface UseProductMutationOptions {
   readonly mode: ProductFormMode

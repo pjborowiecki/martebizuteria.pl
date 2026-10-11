@@ -197,7 +197,7 @@ beforeEach(() => {
   toastError.mockReset()
   toastSuccess.mockReset()
   createCompleteProduct.mockResolvedValue({ handle: "srebrny-pierscionek", id: "prod-1" })
-  updateCompleteProduct.mockResolvedValue({ handle: "srebrny-pierscionek", id: PRODUCT_ID })
+  updateCompleteProduct.mockResolvedValue({ closedCheckoutCount: 0, handle: "srebrny-pierscionek", id: PRODUCT_ID })
   validateProductSkus.mockResolvedValue({ takenSkus: [] })
   setAllProductAttributes.mockResolvedValue(undefined)
 })
@@ -369,6 +369,26 @@ describe("ProductFormProvider edit submissions", () => {
     })
     expect(createCompleteProduct).not.toHaveBeenCalled()
     expect(setAllProductAttributes).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      closedCheckoutCount: 1,
+      description: "Your changes have been saved. 1 open checkout for this product was closed and its stock released.",
+    },
+    {
+      closedCheckoutCount: 3,
+      description: "Your changes have been saved. 3 open checkouts for this product were closed and their stock released.",
+    },
+  ])("tells the admin the save closed $closedCheckoutCount open checkouts", async ({ closedCheckoutCount, description }) => {
+    updateCompleteProduct.mockResolvedValue({ closedCheckoutCount, handle: "srebrny-pierscionek", id: PRODUCT_ID })
+    renderWithProviders(<EditHarness />)
+
+    await seedAndSave()
+
+    await waitFor(() => {
+      expect(toastSuccess).toHaveBeenCalledWith("Product saved", { description })
+    })
   })
 
   it("scopes sku validation to the product being edited", async () => {

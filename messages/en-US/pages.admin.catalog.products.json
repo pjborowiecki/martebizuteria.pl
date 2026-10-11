@@ -95,6 +95,7 @@
     "createSuccessDescription": "The product was added to your catalog.",
     "updateSuccessTitle": "Product saved",
     "updateSuccessDescription": "Your changes have been saved.",
+    "updateClosedCheckoutsDescription": "Your changes have been saved. {count, plural, one {# open checkout for this product was closed and its stock released.} other {# open checkouts for this product were closed and their stock released.}}",
     "errorTitle": "Could not save product",
     "errorDescription": "Check the form and try again.",
     "duplicateHandle": "This URL slug is already used by another product. If it is not in the list, click Create product again — the previous attempt may have been rolled back.",
