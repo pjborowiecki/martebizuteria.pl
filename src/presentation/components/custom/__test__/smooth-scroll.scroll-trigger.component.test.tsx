@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react"
 import type Lenis from "lenis"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { ScrollTrigger } from "~/src/integrations/gsap/gsap.config"
 import { getLenisInstance } from "~/src/integrations/lenis/lenis.instance"
@@ -18,6 +18,8 @@ const FRAME_MS = 1000 / 60
 const FRAMES_INTO_THE_SCROLL = 5
 
 const FRAMES_TO_SETTLE = 90
+
+const LENIS_RESIZE_DEBOUNCE_MS = 250
 
 const viewport = { scrollY: 0 }
 
@@ -60,6 +62,12 @@ afterEach(() => {
   for (const trigger of ScrollTrigger.getAll()) {
     trigger.kill()
   }
+})
+
+afterAll(async () => {
+  await new Promise((resolve) => {
+    setTimeout(resolve, LENIS_RESIZE_DEBOUNCE_MS)
+  })
 })
 
 describe("SmoothScroll with the real ScrollTrigger and Lenis", () => {
