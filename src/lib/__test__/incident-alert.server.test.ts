@@ -27,11 +27,7 @@ vi.mock("cloudflare:workers", () => ({ env }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
 
-import {
-  INCIDENT_ALERT_SECONDS,
-  STRIPE_EVENT_RETRY_SECONDS,
-  notifyShopOfIncident,
-} from "~/src/integrations/resend/incident-alert.notification.server"
+import { INCIDENT_ALERT_SECONDS, STRIPE_EVENT_RETRY_SECONDS, sendIncidentAlert } from "~/src/lib/incident-alert.server"
 
 const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
@@ -60,9 +56,9 @@ beforeEach(() => {
   sendEmail.mockResolvedValue(undefined)
 })
 
-describe("notifyShopOfIncident", () => {
+describe("sendIncidentAlert", () => {
   it("emails the shop's sender address in the shop's language when the failure starts an incident", async () => {
-    await notifyShopOfIncident(incident)
+    await sendIncidentAlert(incident)
 
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "pl-PL", namespace: "emails.incident-alert" })
     expect(sentEmail().to).toBe("alerts@marte.test")
@@ -83,7 +79,7 @@ describe("notifyShopOfIncident", () => {
       return Promise.resolve(undefined)
     })
 
-    await notifyShopOfIncident(incident)
+    await sendIncidentAlert(incident)
 
     expect(cacheGet).toHaveBeenCalledExactlyOnceWith(INCIDENT_KEY)
     expect(cachePut).toHaveBeenCalledExactlyOnceWith(INCIDENT_KEY, expect.any(String), { expirationTtl: STRIPE_EVENT_RETRY_SECONDS })
@@ -94,14 +90,14 @@ describe("notifyShopOfIncident", () => {
   it("sends nothing more while the same incident is still open", async () => {
     cacheGet.mockResolvedValue("2026-10-10T08:00:00.000Z")
 
-    await notifyShopOfIncident(incident)
+    await sendIncidentAlert(incident)
 
     expect(cachePut).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
   })
 
   it("keeps an incident of another kind or reference apart", async () => {
-    await notifyShopOfIncident({ detail: "D1_ERROR: no such table", kind: "auditQueueFailed", reference: "martebizuteria-audit-log" })
+    await sendIncidentAlert({ detail: "D1_ERROR: no such table", kind: "auditQueueFailed", reference: "martebizuteria-audit-log" })
 
     expect(cacheGet).toHaveBeenCalledExactlyOnceWith("incident-alert:production:auditQueueFailed:martebizuteria-audit-log")
     expect(sentEmail().subject).toBe(polishCopy.auditQueueFailed.subject)
@@ -110,7 +106,7 @@ describe("notifyShopOfIncident", () => {
   it.each(["auditQueueFailed", "newsletterFailed", "orderEmailFailed", "paidCheckoutWithoutOrder"] as const)(
     "opens a %s incident, which Stripe does not retry, for an hour",
     async (kind) => {
-      await notifyShopOfIncident({ ...incident, kind, reference: "reference-1" })
+      await sendIncidentAlert({ ...incident, kind, reference: "reference-1" })
 
       expect(cachePut).toHaveBeenCalledExactlyOnceWith(`incident-alert:production:${kind}:reference-1`, expect.any(String), {
         expirationTtl: INCIDENT_ALERT_SECONDS,
@@ -122,7 +118,7 @@ describe("notifyShopOfIncident", () => {
   it("logs an alert Resend refused and resolves", async () => {
     sendEmail.mockResolvedValue("Resend did not answer within 10000 ms")
 
-    await expect(notifyShopOfIncident(incident)).resolves.toBeUndefined()
+    await expect(sendIncidentAlert(incident)).resolves.toBeUndefined()
 
     expect(consoleError).toHaveBeenCalledWith(
       "[Alert] The stripeWebhookFailed alert to alerts@marte.test was not sent: Resend did not answer within 10000 ms",
@@ -133,7 +129,7 @@ describe("notifyShopOfIncident", () => {
     const unavailable = new Error("KV GET failed: 503 Service Unavailable")
     cacheGet.mockRejectedValue(unavailable)
 
-    await expect(notifyShopOfIncident(incident)).resolves.toBeUndefined()
+    await expect(sendIncidentAlert(incident)).resolves.toBeUndefined()
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(consoleError).toHaveBeenCalledWith("[Alert] The stripeWebhookFailed alert could not be sent:", unavailable)
@@ -142,7 +138,7 @@ describe("notifyShopOfIncident", () => {
   it("logs instead of throwing when the alert cannot be written", async () => {
     loadNamespace.mockRejectedValue(new Error("Missing translation namespace"))
 
-    await expect(notifyShopOfIncident(incident)).resolves.toBeUndefined()
+    await expect(sendIncidentAlert(incident)).resolves.toBeUndefined()
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(consoleError).toHaveBeenCalledWith("[Alert] The stripeWebhookFailed alert could not be sent:", expect.any(Error))

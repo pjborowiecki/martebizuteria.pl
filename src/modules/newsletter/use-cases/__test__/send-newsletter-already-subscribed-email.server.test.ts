@@ -13,7 +13,7 @@ const { sendEmail } = vi.hoisted(() => ({
 
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 
-import { sendNewsletterAlreadySubscribed } from "~/src/integrations/resend/newsletter-already-subscribed.server"
+import { sendNewsletterAlreadySubscribedEmail } from "~/src/modules/newsletter/use-cases/send-newsletter-already-subscribed-email.server"
 
 const notice = { email: "anna@example.com", locale: "en-US", origin: "http://127.0.0.1:3000" } as const
 
@@ -31,22 +31,22 @@ beforeEach(() => {
   sendEmail.mockResolvedValue(undefined)
 })
 
-describe("sendNewsletterAlreadySubscribed", () => {
+describe("sendNewsletterAlreadySubscribedEmail", () => {
   it("mails the address that was submitted", async () => {
-    await sendNewsletterAlreadySubscribed(notice)
+    await sendNewsletterAlreadySubscribedEmail(notice)
 
     expect(sendEmail).toHaveBeenCalledOnce()
     expect(sentPayload().to).toBe("anna@example.com")
   })
 
   it("writes the subject in the language the form was used in", async () => {
-    await sendNewsletterAlreadySubscribed({ ...notice, locale: "pl-PL" })
+    await sendNewsletterAlreadySubscribedEmail({ ...notice, locale: "pl-PL" })
 
     expect(sentPayload().subject).toBe(polishCopy.subject)
   })
 
   it("links an English reader to the storefront in their language, on the address the form was used on", async () => {
-    await sendNewsletterAlreadySubscribed(notice)
+    await sendNewsletterAlreadySubscribedEmail(notice)
 
     const html = await render(sentPayload().react)
 
@@ -59,10 +59,10 @@ describe("sendNewsletterAlreadySubscribed", () => {
   it("hands a refused send back to the caller", async () => {
     sendEmail.mockResolvedValueOnce("The pjborowiecki.com domain is not verified")
 
-    await expect(sendNewsletterAlreadySubscribed(notice)).resolves.toBe("The pjborowiecki.com domain is not verified")
+    await expect(sendNewsletterAlreadySubscribedEmail(notice)).resolves.toBe("The pjborowiecki.com domain is not verified")
   })
 
   it("reports no failure when the email went out", async () => {
-    await expect(sendNewsletterAlreadySubscribed(notice)).resolves.toBeUndefined()
+    await expect(sendNewsletterAlreadySubscribedEmail(notice)).resolves.toBeUndefined()
   })
 })

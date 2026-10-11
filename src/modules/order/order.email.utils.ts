@@ -1,22 +1,24 @@
 import type Stripe from "stripe"
 
-import { type OrderLineFulfillmentTime, describeOrderFulfillmentTime } from "~/src/integrations/resend/order-fulfillment-time.utils"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
+import { type OrderLineFulfillmentTime, describeOrderFulfillmentTime } from "~/src/modules/order/order.fulfillment-time.utils"
 
 import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 import { resolveAssetURL } from "~/src/lib/url"
 
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
+import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
 import {
   type OrderConfirmationDetails,
   type OrderConfirmationItem,
   type OrderConfirmationLegalLinks,
 } from "~/src/presentation/emails/order-confirmation"
+import { type OrderShippedDetails } from "~/src/presentation/emails/order-shipped"
 import { ROUTES } from "~/src/routes"
 
 export const formatEmailAddress = (addressRow: EmailAddressRow | null | undefined): string | undefined => {
@@ -138,6 +140,39 @@ export const buildOrderLegalLinks = (origin: string, locale: SupportedLocale, or
   termsOfService: buildLocalizedUrl(origin, ROUTES.TERMS_OF_SERVICE, locale),
   withdrawal: `${buildLocalizedUrl(origin, ROUTES.WITHDRAW_FROM_CONTRACT, locale)}?${new URLSearchParams({ order: orderNumber }).toString()}`,
 })
+
+export const buildOrderShippedDetails = (
+  context: CheckoutEmailContext | undefined,
+  messages: typeof orderShippedMessages,
+  tracking?: Readonly<{ trackingNumber: string | null; trackingUrl: string | null }>,
+): OrderShippedDetails => {
+  const deliveryType = context?.deliveryMethod?.type ?? "courier"
+  const trackingNumber = tracking?.trackingNumber?.trim()
+  const trackingUrl = tracking?.trackingUrl?.trim()
+
+  return {
+    deliveryMethod: resolveDeliveryMethodLabel(context, messages.unavailable),
+    estimatedDelivery: messages.deliveryTiming[deliveryType].estimatedDelivery,
+    shippingAddress: formatEmailAddress(context?.shippingAddress) ?? messages.unavailable,
+    trackingNumber: trackingNumber === undefined || trackingNumber === "" ? undefined : trackingNumber,
+    trackingUrl: trackingUrl === undefined || trackingUrl === "" ? undefined : trackingUrl,
+  }
+}
+
+export const buildOrderShippedAccountCta = ({
+  locale,
+  messages,
+  orderId,
+  origin,
+  userId,
+}: Readonly<{
+  locale: SupportedLocale
+  messages: typeof orderShippedMessages
+  orderId: string
+  origin: string
+  userId: string | null | undefined
+}>): OrderAccountCta =>
+  buildOrderAccountCta({ isGuest: userId === null || userId === undefined || userId === "", locale, messages, orderId, origin })
 
 export const resolveStripePaymentMethodLabel = async (
   session: Stripe.Checkout.Session,

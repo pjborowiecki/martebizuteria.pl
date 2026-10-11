@@ -1,5 +1,4 @@
 import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
-import { notifyShopOfIncident } from "~/src/integrations/resend/incident-alert.notification.server"
 
 import { type AuditLogInsertRow, insertAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
 import {
@@ -10,6 +9,8 @@ import {
   type AuditLogSeverity,
 } from "~/src/modules/audit-log/audit-log.constants"
 import { ADMIN_ORDER_TIMELINE_ACTIONS, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+
+import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
 
 export interface AuditLogQueueMessage {
   readonly action: AuditLogAction
@@ -68,7 +69,7 @@ export const processAuditLogQueueBatch = async (batch: MessageBatch<AuditLogQueu
       message.retry()
     }
 
-    await notifyShopOfIncident({
+    await sendIncidentAlert({
       detail: error instanceof Error ? error.message : String(error),
       kind: "auditQueueFailed",
       reference: batch.queue,

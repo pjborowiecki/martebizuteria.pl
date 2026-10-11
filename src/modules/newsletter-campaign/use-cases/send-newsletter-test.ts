@@ -4,13 +4,13 @@ import { getRequest } from "@tanstack/react-start/server"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
-import { sendNewsletterBatch } from "~/src/integrations/resend/newsletter-campaign.server"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { NEWSLETTER_CAMPAIGN_MUTATION_KEYS } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
 import { newsletterCampaignZodSchemas } from "~/src/modules/newsletter-campaign/newsletter-campaign.zod"
+import { sendNewsletterBatch } from "~/src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
 

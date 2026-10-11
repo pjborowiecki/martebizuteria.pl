@@ -7,8 +7,6 @@ import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import { verifyTurnstileToken } from "~/src/integrations/cloudflare-turnstile/turnstile.server"
-import { sendNewsletterAlreadySubscribed } from "~/src/integrations/resend/newsletter-already-subscribed.server"
-import { sendNewsletterConfirmation } from "~/src/integrations/resend/newsletter-confirmation.server"
 import { PUBLIC_EMAIL_KINDS, admitPublicEmail } from "~/src/integrations/resend/resend.public-email-limits.server"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
@@ -29,6 +27,8 @@ import {
 } from "~/src/modules/newsletter/newsletter.constants"
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
+import { sendNewsletterAlreadySubscribedEmail } from "~/src/modules/newsletter/use-cases/send-newsletter-already-subscribed-email.server"
+import { sendNewsletterConfirmationEmail } from "~/src/modules/newsletter/use-cases/send-newsletter-confirmation-email.server"
 
 import { resolveRequestIp, resolveRequestOrigin } from "~/src/lib/request"
 
@@ -61,12 +61,12 @@ const mailSubscriber = async ({
     const token = crypto.randomUUID()
     await insertSubscriber({ email, locale, source, status: NEWSLETTER_STATUS.PENDING, token, userId })
 
-    return reportDelivery({ delivery: sendNewsletterConfirmation({ email, locale, origin, token }), email, kind: "confirmation" })
+    return reportDelivery({ delivery: sendNewsletterConfirmationEmail({ email, locale, origin, token }), email, kind: "confirmation" })
   }
 
   if (existing.status === NEWSLETTER_STATUS.CONFIRMED) {
     return reportDelivery({
-      delivery: sendNewsletterAlreadySubscribed({ email, locale, origin }),
+      delivery: sendNewsletterAlreadySubscribedEmail({ email, locale, origin }),
       email,
       kind: "already-subscribed notice",
     })
@@ -81,7 +81,7 @@ const mailSubscriber = async ({
     userId: existing.userId ?? userId,
   })
 
-  return reportDelivery({ delivery: sendNewsletterConfirmation({ email, locale, origin, token }), email, kind: "confirmation" })
+  return reportDelivery({ delivery: sendNewsletterConfirmationEmail({ email, locale, origin, token }), email, kind: "confirmation" })
 }
 
 export const subscribeToNewsletter = createServerFn({ method: "POST" })

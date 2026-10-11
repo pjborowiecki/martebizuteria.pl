@@ -41,7 +41,7 @@ const audit = vi.hoisted(() => ({
   shipped: vi.fn(),
 }))
 
-const shippedEmail = vi.hoisted(() => ({ notifyOrderShipped: vi.fn<(orderId: string, origin: string) => Promise<boolean>>() }))
+const shippedEmail = vi.hoisted(() => ({ sendOrderShippedEmail: vi.fn<(orderId: string, origin: string) => Promise<boolean>>() }))
 
 const incoming = vi.hoisted(() => ({ getRequest: vi.fn<() => Request>() }))
 
@@ -50,8 +50,8 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { update: () => ({ set: database.updateSet }) },
 }))
-vi.mock("~/src/integrations/resend/order-shipped.notification.server", () => ({
-  notifyOrderShipped: shippedEmail.notifyOrderShipped,
+vi.mock("~/src/modules/order/use-cases/send-order-shipped-email.server", () => ({
+  sendOrderShippedEmail: shippedEmail.sendOrderShippedEmail,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderDeliveredAudit: audit.delivered,
@@ -96,7 +96,7 @@ beforeEach(() => {
   incoming.getRequest.mockReturnValue(
     new Request("http://127.0.0.1:3000/_serverFn/ship-order", { headers: { origin: "https://attacker.example" } }),
   )
-  shippedEmail.notifyOrderShipped.mockResolvedValue(true)
+  shippedEmail.sendOrderShippedEmail.mockResolvedValue(true)
   database.updates.length = 0
   orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
 })
@@ -153,7 +153,7 @@ describe("shipOrder", () => {
 
   it("answers with the shipping email result and keeps the send running for the Worker if the admin disconnects", async () => {
     const delivery = Promise.withResolvers<boolean>()
-    shippedEmail.notifyOrderShipped.mockReturnValue(delivery.promise)
+    shippedEmail.sendOrderShippedEmail.mockReturnValue(delivery.promise)
     const kept: Promise<unknown>[] = []
 
     const shipping = executionContextStorage.run(
@@ -171,7 +171,7 @@ describe("shipOrder", () => {
 
     await expect(shipping).resolves.toStrictEqual({ ok: true, orderId: ORDER_ID, shippedEmailSent: false })
     await Promise.all(kept)
-    expect(shippedEmail.notifyOrderShipped).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "http://127.0.0.1:3000")
+    expect(shippedEmail.sendOrderShippedEmail).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "http://127.0.0.1:3000")
   })
 
   it("refuses a request on a host this build does not serve before the order is touched", async () => {
@@ -179,11 +179,11 @@ describe("shipOrder", () => {
 
     await expect(shipOrder({ data: { orderId: ORDER_ID } })).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
     expect(database.updates).toHaveLength(0)
-    expect(shippedEmail.notifyOrderShipped).not.toHaveBeenCalled()
+    expect(shippedEmail.sendOrderShippedEmail).not.toHaveBeenCalled()
   })
 
   it("keeps the order shipped and tells the admin when the shipping email failed", async () => {
-    shippedEmail.notifyOrderShipped.mockResolvedValue(false)
+    shippedEmail.sendOrderShippedEmail.mockResolvedValue(false)
 
     await expect(shipOrder({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({
       ok: true,
@@ -198,7 +198,7 @@ describe("shipOrder", () => {
     orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
 
     await expect(shipOrder({ data: { orderId: ORDER_ID } })).rejects.toThrow(AppError)
-    expect(shippedEmail.notifyOrderShipped).not.toHaveBeenCalled()
+    expect(shippedEmail.sendOrderShippedEmail).not.toHaveBeenCalled()
   })
 
   it("keys its mutation by the shared ship key", () => {
@@ -312,5 +312,5 @@ it("ships a fulfilled order through its mutation and sends the notification", as
     orderId: ORDER_ID,
     shippedEmailSent: true,
   })
-  expect(shippedEmail.notifyOrderShipped).toHaveBeenCalledWith(ORDER_ID, "http://127.0.0.1:3000")
+  expect(shippedEmail.sendOrderShippedEmail).toHaveBeenCalledWith(ORDER_ID, "http://127.0.0.1:3000")
 })

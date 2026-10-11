@@ -29,7 +29,7 @@ Towar wraca na stan całym zamówieniem, wszystkie pozycje naraz: `returnOrderTo
 
 ### E-maile o zamówieniu nie mają skrzynki wyjściowej
 
-`deliverOrderEmail` w `src/integrations/resend/order-email.delivery.server.ts` próbuje wysłać e-mail dotyczący zamówienia trzy razy w ramach `waitUntil` żądania, pod kluczem idempotencji Resend, a e-mail, który nadal nie wyszedł, czeka na przycisk **Wyślij ponownie** administratora w karcie „Aktywność” zamówienia. Nic nie przechowuje samego e-maila, więc Worker zatrzymany w trakcie ponowień zostawia go jako `email.deferred`, dopóki administrator nie wyśle go ponownie, a e-maila o nieudanej płatności, który należy do sesji Checkout, a nie do zamówienia, nie da się wysłać ponownie wcale; z takim klientem sklep musi skontaktować się ręcznie.
+`deliverOrderEmail` w `src/modules/order/order.email-delivery.server.ts` próbuje wysłać e-mail dotyczący zamówienia trzy razy w ramach `waitUntil` żądania, pod kluczem idempotencji Resend, a e-mail, który nadal nie wyszedł, czeka na przycisk **Wyślij ponownie** administratora w karcie „Aktywność” zamówienia. Nic nie przechowuje samego e-maila, więc Worker zatrzymany w trakcie ponowień zostawia go jako `email.deferred`, dopóki administrator nie wyśle go ponownie, a e-maila o nieudanej płatności, który należy do sesji Checkout, a nie do zamówienia, nie da się wysłać ponownie wcale; z takim klientem sklep musi skontaktować się ręcznie.
 
 ### `isAdminPathname` dopasowuje zbyt szeroko
 

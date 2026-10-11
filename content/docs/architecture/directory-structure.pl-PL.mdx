@@ -42,6 +42,7 @@ src/
 │       ├── <feature>.accessors.ts     Dostęp do danych bez autoryzacji
 │       ├── <feature>.*.server.ts      Helpery wyłącznie serwerowe, które nie są przypadkami użycia
 │       └── use-cases/<verb-noun>.ts   createServerFn plus jego opcje zapytania lub mutacji
+│                                      albo operacja tylko serwerowa w <verb-noun>.server.ts
 ├── integrations/<vendor>/             <prefix>.<concern>.ts
 ├── presentation/
 │   ├── components/
@@ -53,7 +54,7 @@ src/
 │   │       ├── checkout/              Kroki zamówienia i wybór dostawy
 │   │       ├── defaults/              Komponenty błędu, ładowania i 404 routera
 │   │       └── pages/<area>/          Komponenty jednej strony lub obszaru
-│   ├── emails/                        Szablony React Email i wspólne style
+│   ├── emails/                        Szablony React Email, wspólne style i ich podglądy
 │   ├── styles/                        globals.css, storefront.css, admin.css,
 │   │                                  fonts.css, critical-fonts.css
 │   ├── theme/                         theme-init, sidebar-preference, use-admin-light-theme
@@ -61,8 +62,9 @@ src/
 │   └── document-assets.ts             Krytyczne preloady fontów zależne od locale
 ├── providers/                         translations-provider, themes-provider
 ├── data/                              Dane statyczne i fixture'y panelu administracyjnego
-├── lib/                               background, cookie, image, rate-limit, request,
-│                                      security-headers, seo, sitemap, url, catalog-debug-log
+├── lib/                               background, cookie, image, incident-alert, rate-limit,
+│                                      request, security-headers, seo, sitemap, url,
+│                                      catalog-debug-log
 ├── hooks/                             Współdzielone hooki React
 ├── durable-objects/                   realtime-invalidation-hub.ts
 ├── platform/testing/                  setup.ts, lib/, mocks/
@@ -76,7 +78,7 @@ src/
 - **Moduł to funkcjonalność, nie zawsze tabela.** Większość z 43 modułów jest właścicielem jednej tabeli Drizzle, ale `admin-dashboard`, `customer-account` i `customer-activity` są modelami odczytu obejmującymi kilka tabel i nie mają własnego pliku schematu. `storefront-search` deklaruje tylko indeks FTS5 `storefront_search`, który tworzy ręcznie napisana migracja.
 - **`_core` to współdzielone jądro.** Znajdują się tam `AppError` i `ERROR_CODES`, helpery paginacji, wielokrotnie używane pola Zod, formatery walut i buildery filtrów kolumn. `_core/constants/timezone.ts` dostarcza `TIMEZONES`, listę stref czasowych, z której wybierają klienci, oraz `DEFAULT_TIMEZONE_CODE`, strefę samego sklepu (`Europe/Warsaw`), w której numery zamówień i panel administracyjny liczą lata, miesiące i dni, a `_core/utils/polish-deadline.ts` liczy termin odstąpienia od umowy; wszystkie czytają polską datę przez `toCalendarDate` z `_core/utils/datetime.ts`. `_core/constants/country.ts` to tablica referencyjna ISO utrzymywana świadomie na potrzeby planowanych prac — nie ma importerów i nie wolno jej usuwać jako martwego kodu.
 - **`src/data` zawiera dane, nie logikę.** `landing.ts` i `static-pages.ts` zasilają prawdziwe strony, a `blog-posts.ts` wymienia artykuły bloga, na razie żadnego, co trzyma blog w ukryciu; `settings.ts` to fixture'y stojące za stroną ustawień w panelu, która jest jeszcze szkieletem.
-- **`src/lib` zawiera małe helpery w zakresie żądania**, a nie funkcjonalności: `background.ts` (magazyn `waitUntil`), `cookie.ts`, `image.ts`, `rate-limit.ts`, `request.ts` (adres klienta oraz `resolveRequestOrigin` i `resolveDeploymentOrigin`, sprawdzone originy, z których budowany jest każdy link w e-mailu i adres powrotu ze Stripe), `retention.ts` (codzienne czyszczenie, które uruchamia handler `scheduled`), `security-headers.ts` (nonce Content-Security-Policy dla każdego żądania i nagłówki, które dostaje każda odpowiedź Workera), `seo.ts`, `sitemap.ts` (strony, które wymienia `/sitemap.xml`, czytane z D1) i `url.ts`. Wyjątkiem jest `deployment.ts`: `verifyDeployment`, kontrola działającej strony, którą `scripts/verify-deployment.ts` uruchamia po wdrożeniu i której nie wywołuje żadne żądanie.
+- **`src/lib` zawiera małe helpery w zakresie żądania**, a nie funkcjonalności: `background.ts` (magazyn `waitUntil`), `cookie.ts`, `image.ts`, `incident-alert.server.ts` (`sendIncidentAlert`, który raz na incydent wysyła e-mail do sklepu), `rate-limit.ts`, `request.ts` (adres klienta oraz `resolveRequestOrigin` i `resolveDeploymentOrigin`, sprawdzone originy, z których budowany jest każdy link w e-mailu i adres powrotu ze Stripe), `retention.ts` (codzienne czyszczenie, które uruchamia handler `scheduled`), `security-headers.ts` (nonce Content-Security-Policy dla każdego żądania i nagłówki, które dostaje każda odpowiedź Workera), `seo.ts`, `sitemap.ts` (strony, które wymienia `/sitemap.xml`, czytane z D1) i `url.ts`. Wyjątkiem jest `deployment.ts`: `verifyDeployment`, kontrola działającej strony, którą `scripts/verify-deployment.ts` uruchamia po wdrożeniu i której nie wywołuje żadne żądanie.
 - **Plików generowanych nie edytuje się ręcznie.** Plugin routera zapisuje `src/routeTree.gen.ts`, `bun run cf-typegen` zapisuje `src/types/worker-configuration.d.ts` (poza repozytorium), a `bun run content` zapisuje `.source/`, które `tsconfig.json` mapuje na prefiks importu `collections/*`.
 
 ## Treści i tłumaczenia leżą poza `src`

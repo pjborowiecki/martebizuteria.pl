@@ -29,7 +29,7 @@ Stock goes back per order, every line at once: `returnOrderToStock` in `src/modu
 
 ### Order emails have no outbox
 
-`deliverOrderEmail` in `src/integrations/resend/order-email.delivery.server.ts` tries an order email three times within the request's `waitUntil`, under a Resend idempotency key, and an email that still fails waits for the admin's **Resend email** on the order's Activity card. Nothing stores the email itself, so a Worker stopped during the retries leaves it at `email.deferred` until the admin resends it, and the failed payment email, which belongs to a Checkout Session rather than an order, cannot be resent at all; the shop has to contact that customer by hand.
+`deliverOrderEmail` in `src/modules/order/order.email-delivery.server.ts` tries an order email three times within the request's `waitUntil`, under a Resend idempotency key, and an email that still fails waits for the admin's **Resend email** on the order's Activity card. Nothing stores the email itself, so a Worker stopped during the retries leaves it at `email.deferred` until the admin resends it, and the failed payment email, which belongs to a Checkout Session rather than an order, cannot be resent at all; the shop has to contact that customer by hand.
 
 ### `isAdminPathname` matches too broadly
 

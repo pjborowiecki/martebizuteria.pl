@@ -76,8 +76,8 @@ Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change t
 - [ ] Verification failure returns 400 and logs; it never falls through to the handlers.
 - [ ] An event whose `livemode` does not match `requiredStripeMode(env.APP_ENV)` is logged and acknowledged with `{ received: true }` before any handler runs, so production never acts on a test event and no other environment acts on a live one.
 - [ ] An unhandled `event.type` is acknowledged with `{ received: true }` rather than erroring, so Stripe does not retry forever.
-- [ ] A handler that throws returns 500, so Stripe **does** retry. That means every handler in `src/integrations/stripe/stripe.webhooks.tsx` must be idempotent — `20260924120000_checkout_idempotency_constraints.sql` exists for exactly this.
-- [ ] The failure alert to `RESEND_EMAIL_FROM` goes through `notifyShopOfIncident`, which never throws, and is handed to `scheduleBackgroundWork`, so it cannot change or delay the 500.
+- [ ] A handler that throws returns 500, so Stripe **does** retry. That means every handler in `src/integrations/stripe/stripe.webhooks.ts` must be idempotent — `20260924120000_checkout_idempotency_constraints.sql` exists for exactly this.
+- [ ] The failure alert to `RESEND_EMAIL_FROM` goes through `sendIncidentAlert`, which never throws, and is handed to `scheduleBackgroundWork`, so it cannot change or delay the 500.
 
 ## Secrets and server-only code
 

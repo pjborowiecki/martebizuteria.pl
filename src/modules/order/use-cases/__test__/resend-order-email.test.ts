@@ -42,12 +42,12 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
     return {}
   },
 }))
-vi.mock("~/src/integrations/resend/new-order.notification.server", () => ({ notifyShopOfNewOrder: notify.newOrder }))
-vi.mock("~/src/integrations/resend/order-cancelled.notification.server", () => ({ notifyOrderCancelled: notify.cancelled }))
-vi.mock("~/src/integrations/resend/order-refunded.notification.server", () => ({ notifyOrderRefunded: notify.refunded }))
-vi.mock("~/src/integrations/resend/order-shipped.notification.server", () => ({ notifyOrderShipped: notify.shipped }))
+vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ sendNewOrderEmail: notify.newOrder }))
+vi.mock("~/src/modules/order/use-cases/send-order-cancelled-email.server", () => ({ sendOrderCancelledEmail: notify.cancelled }))
+vi.mock("~/src/modules/order/use-cases/send-order-refunded-email.server", () => ({ sendOrderRefundedEmail: notify.refunded }))
+vi.mock("~/src/modules/order/use-cases/send-order-shipped-email.server", () => ({ sendOrderShippedEmail: notify.shipped }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { checkout: { sessions: { retrieve: sessionsRetrieve } } } }))
-vi.mock("~/src/integrations/stripe/stripe.webhooks", () => ({ notifyOrderConfirmed: notify.confirmed }))
+vi.mock("~/src/modules/order/use-cases/send-order-confirmation-email.server", () => ({ sendOrderConfirmationEmail: notify.confirmed }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailResendRequestedAudit }))
 vi.mock("~/src/modules/order/order.accessors", () => orders)
 vi.mock("@tanstack/react-start", () => ({

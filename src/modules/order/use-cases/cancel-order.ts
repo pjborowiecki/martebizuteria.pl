@@ -7,7 +7,6 @@ import { hasPermission } from "~/src/integrations/better-auth/auth.access"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
-import { notifyOrderCancelled } from "~/src/integrations/resend/order-cancelled.notification.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordOrderCancelledAudit } from "~/src/modules/audit-log/audit-log.events.server"
@@ -19,6 +18,7 @@ import { resolveAdminOrderPaymentUiKey } from "~/src/modules/order/order.display
 import { requestFullOrderRefund } from "~/src/modules/order/order.refund.server"
 import { prepareCancelOrderBatch } from "~/src/modules/order/order.utils"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { sendOrderCancelledEmail } from "~/src/modules/order/use-cases/send-order-cancelled-email.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { resolveRequestOrigin } from "~/src/lib/request"
@@ -56,7 +56,7 @@ export const cancelOrder = createServerFn({ method: "POST" })
     }
 
     recordOrderCancelledAudit(orderId)
-    const cancelledEmailDelivery = notifyOrderCancelled({ orderId, refundedAmount }, origin)
+    const cancelledEmailDelivery = sendOrderCancelledEmail({ orderId, refundedAmount }, origin)
     scheduleBackgroundWork(cancelledEmailDelivery)
     const cancelledEmailSent = await cancelledEmailDelivery
 

@@ -1,8 +1,6 @@
 import { env } from "cloudflare:workers"
 
 import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
-import { notifyShopOfIncident } from "~/src/integrations/resend/incident-alert.notification.server"
-import { sendNewsletterBatch } from "~/src/integrations/resend/newsletter-campaign.server"
 
 import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
@@ -21,7 +19,10 @@ import {
   NEWSLETTER_SEND_ATTEMPTS,
 } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
 import { type NewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.types"
+import { sendNewsletterBatch } from "~/src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server"
 import { getConfirmedSubscribersAfter } from "~/src/modules/newsletter/newsletter.accessors"
+
+import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
 
 type NewsletterQueueMessage = NewsletterCampaign["queueMessage"]
 
@@ -78,7 +79,7 @@ const retryOrStop = async (message: Message<NewsletterQueueMessage>, failure: st
   console.error(`[Newsletter] Campaign ${campaignId} stopped after ${String(message.attempts)} attempts: ${failure}`)
   await failNewsletterCampaign(campaignId, failure)
   recordEmailFailedAudit(campaignId, { detail: `Newsletter campaign — ${failure}` })
-  await notifyShopOfIncident({ detail: failure, kind: "newsletterFailed", reference: campaignId })
+  await sendIncidentAlert({ detail: failure, kind: "newsletterFailed", reference: campaignId })
   await refreshAdminCampaigns()
   message.ack()
 }

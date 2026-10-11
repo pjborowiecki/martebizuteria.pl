@@ -23,7 +23,7 @@ import {
   buildOrderLegalLinks,
   describeCompanyInvoice,
   formatEmailAddress,
-} from "~/src/integrations/resend/order-confirmation.utils"
+} from "~/src/modules/order/order.email.utils"
 
 import englishCopy from "~/messages/en-US/emails.order-confirmation.json"
 import polishCopy from "~/messages/pl-PL/emails.order-confirmation.json"

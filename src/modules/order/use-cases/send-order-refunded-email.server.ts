@@ -2,14 +2,14 @@ import { createElement } from "react"
 
 import { createTranslator } from "use-intl"
 
-import { buildOrderAccountCta } from "~/src/integrations/resend/order-confirmation.utils"
-import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/integrations/resend/order-email.delivery.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getOrderForRefundEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
+import { buildOrderAccountCta } from "~/src/modules/order/order.email.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { resolveDeploymentOrigin } from "~/src/lib/request"
@@ -19,7 +19,7 @@ import { ORDER_REFUNDED_NAMESPACE, OrderRefunded } from "~/src/presentation/emai
 
 const ORDER_REFUNDED_LABEL = "Order refunded"
 
-const sendOrderRefundedEmail = async (
+const attemptOrderRefundedEmail = async (
   refund: Order["unannouncedRefund"],
   returnUrl: string | undefined,
   idempotencyKey: string,
@@ -59,8 +59,8 @@ const sendOrderRefundedEmail = async (
   return { failure, label: `${ORDER_REFUNDED_LABEL} → ${orderRow.email}` }
 }
 
-export const notifyOrderRefunded = (refund: Order["unannouncedRefund"], returnUrl: string | undefined): Promise<boolean> =>
-  deliverOrderEmail((idempotencyKey) => sendOrderRefundedEmail(refund, returnUrl, idempotencyKey), {
+export const sendOrderRefundedEmail = (refund: Order["unannouncedRefund"], returnUrl: string | undefined): Promise<boolean> =>
+  deliverOrderEmail((idempotencyKey) => attemptOrderRefundedEmail(refund, returnUrl, idempotencyKey), {
     idempotencyKey: `${ORDER_EMAIL_KIND.REFUNDED}/${refund.orderId}/${refund.refundedTotal}`,
     label: ORDER_REFUNDED_LABEL,
     orderEmail: {

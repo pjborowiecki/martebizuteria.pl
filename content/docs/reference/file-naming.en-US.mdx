@@ -67,12 +67,12 @@ Route files never contain a locale segment. `src/routeTree.gen.ts` is generated 
 
 ## Integrations
 
-| Pattern                          | Example                                                        |
-| -------------------------------- | -------------------------------------------------------------- |
-| `<vendor>/<prefix>.<concern>.ts` | `better-auth/auth.middleware.ts`, `stripe/stripe.webhooks.tsx` |
-| `<vendor>/<prefix>.config.ts`    | `use-intl/i18n.config.ts`, `drizzle-orm/drizzle.config.ts`     |
-| `<vendor>/<prefix>.client.ts`    | `better-auth/auth.client.ts`, `stripe/stripe.client.ts`        |
-| `<vendor>/<prefix>.server.ts`    | `better-auth/auth.server.ts`, `stripe/stripe.server.ts`        |
+| Pattern                          | Example                                                       |
+| -------------------------------- | ------------------------------------------------------------- |
+| `<vendor>/<prefix>.<concern>.ts` | `better-auth/auth.middleware.ts`, `stripe/stripe.webhooks.ts` |
+| `<vendor>/<prefix>.config.ts`    | `use-intl/i18n.config.ts`, `drizzle-orm/drizzle.config.ts`    |
+| `<vendor>/<prefix>.client.ts`    | `better-auth/auth.client.ts`, `stripe/stripe.client.ts`       |
+| `<vendor>/<prefix>.server.ts`    | `better-auth/auth.server.ts`, `stripe/stripe.server.ts`       |
 
 The prefix is the vendor's short name rather than the folder name, which is why the `use-intl` folder holds `i18n.*` files and the `cloudflare-r2` folder holds `media.*` files.
 

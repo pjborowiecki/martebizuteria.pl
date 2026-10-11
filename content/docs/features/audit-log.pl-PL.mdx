@@ -128,7 +128,7 @@ try {
     message.retry()
   }
 
-  await notifyShopOfIncident({
+  await sendIncidentAlert({
     detail: error instanceof Error ? error.message : String(error),
     kind: "auditQueueFailed",
     reference: batch.queue,

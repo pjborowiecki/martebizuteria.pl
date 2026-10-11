@@ -80,7 +80,9 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.publish.
   publishRealtimeInvalidation: vi.fn(),
   scheduleRealtimeInvalidation: doubles.scheduleRealtimeInvalidation,
 }))
-vi.mock("~/src/integrations/resend/newsletter-campaign.server", () => ({ sendNewsletterBatch: doubles.sendNewsletterBatch }))
+vi.mock("~/src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server", () => ({
+  sendNewsletterBatch: doubles.sendNewsletterBatch,
+}))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordEmailFailedAudit: doubles.recordEmailFailedAudit,
   recordNewsletterSentAudit: doubles.recordNewsletterSentAudit,

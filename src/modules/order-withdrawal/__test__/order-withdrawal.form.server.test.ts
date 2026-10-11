@@ -7,7 +7,7 @@ const { assetsFetch } = vi.hoisted(() => ({
 
 vi.mock("cloudflare:workers", () => ({ env: { ASSETS: { fetch: assetsFetch } } }))
 
-import { loadWithdrawalFormAttachment } from "~/src/integrations/resend/withdrawal-form.attachment.server"
+import { loadWithdrawalFormAttachment } from "~/src/modules/order-withdrawal/order-withdrawal.form.server"
 
 const PUBLISHED_FORM = readFileSync("public/forms/formularz_zwrotu.pdf")
 

@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { describeOrderFulfillmentTime, resolveOrderLineFulfillmentTimes } from "~/src/integrations/resend/order-fulfillment-time.utils"
-
 import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { describeOrderFulfillmentTime, resolveOrderLineFulfillmentTimes } from "~/src/modules/order/order.fulfillment-time.utils"
 
 import englishCopy from "~/messages/en-US/emails.order-confirmation.json"
 import polishCopy from "~/messages/pl-PL/emails.order-confirmation.json"

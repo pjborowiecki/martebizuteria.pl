@@ -3,10 +3,10 @@ import { type JSX } from "react"
 import { Button, Heading, Hr, Section, Text } from "react-email"
 import { createTranslator } from "use-intl"
 
-import { type OrderAccountCta } from "~/src/integrations/resend/order-confirmation.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
+import { type OrderAccountCta } from "~/src/modules/order/order.email.utils"
 
 import type emailMessages from "~/messages/en-US/emails.order-cancelled.json"
 import {

@@ -56,7 +56,7 @@ POST /_serverFn/…  (shipOrder)
   validator        orderZodSchemas.adminOrderIdInput.parse
   handler          assertOrderActionState → UPDATE order
                    recordOrderShippedAudit      → AUDIT_LOG_QUEUE (waitUntil)
-                   notifyOrderShipped            → Resend, wynik → AUDIT_LOG_QUEUE
+                   sendOrderShippedEmail         → Resend, wynik → AUDIT_LOG_QUEUE
                                                    (waitUntil, potem await)
   odpowiedź        { ok: true, orderId, shippedEmailSent }  albo kod AppError
 ```
@@ -68,7 +68,7 @@ POST /_serverFn/…  (shipOrder)
 1. Handler wymaga nagłówka `stripe-signature` oraz `env.STRIPE_WEBHOOK_SECRET`; brak któregokolwiek to `400`.
 2. `stripe.webhooks.constructEventAsync` weryfikuje podpis. Niepowodzenie jest logowane i zwracane jako `400`.
 3. Typ zdarzenia jest wyszukiwany w `webhookHandlers`. Nieobsługiwany typ jest logowany przez `console.info` i potwierdzany odpowiedzią `{ received: true }`, więc Stripe przestaje go ponawiać.
-4. Handler, który rzuci wyjątek, jest logowany i zwraca `500`, co sprawia, że Stripe ponawia próbę. Po drodze `notifyShopOfIncident` trafia do `scheduleBackgroundWork`, więc `RESEND_EMAIL_FROM` dowiaduje się o każdym nieudanym zdarzeniu raz, niezależnie od tego, ile razy Stripe je ponowi, bez opóźniania odpowiedzi.
+4. Handler, który rzuci wyjątek, jest logowany i zwraca `500`, co sprawia, że Stripe ponawia próbę. Po drodze `sendIncidentAlert` trafia do `scheduleBackgroundWork`, więc `RESEND_EMAIL_FROM` dowiaduje się o każdym nieudanym zdarzeniu raz, niezależnie od tego, ile razy Stripe je ponowi, bez opóźniania odpowiedzi.
 
 `GET /api/health` odczytuje D1, KV i R2 i odpowiada `200` albo `503` dla monitora dostępności; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts).
 

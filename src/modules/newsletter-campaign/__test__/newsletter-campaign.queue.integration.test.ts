@@ -11,10 +11,10 @@ const { doubles, sqlite } = await vi.hoisted(async () => {
 
   return {
     doubles: {
-      notifyShopOfIncident: vi.fn<(incident: unknown) => Promise<void>>(),
       publishRealtimeInvalidation: vi.fn<(input: unknown) => Promise<void>>(),
       queueSend: vi.fn<(message: unknown, options: unknown) => Promise<void>>(),
       recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+      sendIncidentAlert: vi.fn<(incident: unknown) => Promise<void>>(),
       sendNewsletterBatch:
         vi.fn<
           (batch: {
@@ -39,8 +39,10 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server", () => ({
   publishRealtimeInvalidation: doubles.publishRealtimeInvalidation,
 }))
-vi.mock("~/src/integrations/resend/incident-alert.notification.server", () => ({ notifyShopOfIncident: doubles.notifyShopOfIncident }))
-vi.mock("~/src/integrations/resend/newsletter-campaign.server", () => ({ sendNewsletterBatch: doubles.sendNewsletterBatch }))
+vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert: doubles.sendIncidentAlert }))
+vi.mock("~/src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server", () => ({
+  sendNewsletterBatch: doubles.sendNewsletterBatch,
+}))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit: doubles.recordEmailFailedAudit }))
 
 const { enqueueNewsletterCampaign, isNewsletterQueueBatch, processNewsletterQueueBatch } =
@@ -119,7 +121,7 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   sqlite.exec("delete from newsletter_campaign; delete from newsletter_subscriber;")
-  doubles.notifyShopOfIncident.mockResolvedValue()
+  doubles.sendIncidentAlert.mockResolvedValue()
   doubles.publishRealtimeInvalidation.mockResolvedValue()
   doubles.queueSend.mockResolvedValue()
   doubles.sendNewsletterBatch.mockResolvedValue(undefined)
@@ -298,7 +300,7 @@ describe("processNewsletterQueueBatch when sending fails", () => {
     expect(message.retry).toHaveBeenCalledWith({ delaySeconds: NEWSLETTER_RETRY_DELAY_SECONDS })
     expect(message.ack).not.toHaveBeenCalled()
     expect(readCampaign()).toMatchObject({ sent_count: 0, status: "sending" })
-    expect(doubles.notifyShopOfIncident).not.toHaveBeenCalled()
+    expect(doubles.sendIncidentAlert).not.toHaveBeenCalled()
     expect(warn).toHaveBeenCalledOnce()
   })
 
@@ -314,7 +316,7 @@ describe("processNewsletterQueueBatch when sending fails", () => {
     expect(readCampaign()).toMatchObject({ failure: RESEND_REFUSAL, sent_count: 0, status: "failed" })
     expect(readCampaign().completed_at).toBeTypeOf("number")
     expect(doubles.recordEmailFailedAudit).toHaveBeenCalledWith(CAMPAIGN_ID, { detail: `Newsletter campaign — ${RESEND_REFUSAL}` })
-    expect(doubles.notifyShopOfIncident).toHaveBeenCalledExactlyOnceWith({
+    expect(doubles.sendIncidentAlert).toHaveBeenCalledExactlyOnceWith({
       detail: RESEND_REFUSAL,
       kind: "newsletterFailed",
       reference: CAMPAIGN_ID,

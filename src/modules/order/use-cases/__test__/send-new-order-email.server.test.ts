@@ -33,7 +33,7 @@ vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getAdminOrderDetailRow, getAdminOrderItemRows }))
 
-import { notifyShopOfNewOrder } from "~/src/integrations/resend/new-order.notification.server"
+import { sendNewOrderEmail } from "~/src/modules/order/use-cases/send-new-order-email.server"
 
 const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
@@ -123,9 +123,9 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe("notifyShopOfNewOrder", () => {
+describe("sendNewOrderEmail", () => {
   it("emails the shop's sender address in the shop's language with the order number in the subject", async () => {
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+    await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(getAdminOrderDetailRow).toHaveBeenCalledWith(ORDER_ID)
     expect(getAdminOrderItemRows).toHaveBeenCalledWith(ORDER_ID)
@@ -137,7 +137,7 @@ describe("notifyShopOfNewOrder", () => {
   })
 
   it("lists the ordered pieces the way the admin order page does", async () => {
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+    await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.items).toStrictEqual([
       {
@@ -166,7 +166,7 @@ describe("notifyShopOfNewOrder", () => {
   })
 
   it("names the customer's contact, the locker, the shipping address and the note", async () => {
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+    await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details).toStrictEqual({
       companyInvoice: undefined,
@@ -184,7 +184,7 @@ describe("notifyShopOfNewOrder", () => {
       billingNip: "5260001246",
     })
 
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+    await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details.companyInvoice).toBe(
       `Pracownia Złotnicza sp. z o.o.\n${polishCopy.nipLabel} 5260001246\nul. Fakturowa 1\n00-640 Warszawa\nPL`,
@@ -199,7 +199,7 @@ describe("notifyShopOfNewOrder", () => {
       billingNip: "5260001246",
     })
 
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+    await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details.companyInvoice).toBe(`${polishCopy.nipLabel} 5260001246`)
   })
@@ -210,7 +210,7 @@ describe("notifyShopOfNewOrder", () => {
       addresses: [{ ...shippingSnapshot, address2: "lokal 3", phone: null, postalCode: null }],
     })
 
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+    await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details).toMatchObject({
       customer: "Anna Kowalska\nanna@example.com",
@@ -222,7 +222,7 @@ describe("notifyShopOfNewOrder", () => {
     getAdminOrderDetailRow.mockResolvedValue({ ...orderRow, addresses: [], customerNote: "   ", deliveryMethod: null })
     loadNamespace.mockResolvedValue(englishCopy)
 
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+    await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details).toStrictEqual({
       companyInvoice: undefined,
@@ -236,13 +236,13 @@ describe("notifyShopOfNewOrder", () => {
   it("leaves the note out when the customer wrote none", async () => {
     getAdminOrderDetailRow.mockResolvedValue({ ...orderRow, customerNote: null })
 
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+    await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details.customerNote).toBeUndefined()
   })
 
   it("links the button to the order in the admin on the deployment the checkout returned to", async () => {
-    await notifyShopOfNewOrder(ORDER_ID, "http://127.0.0.1:3000/en-US/checkout?success=true")
+    await sendNewOrderEmail(ORDER_ID, "http://127.0.0.1:3000/en-US/checkout?success=true")
 
     const html = await render(sentEmail().react)
 
@@ -251,9 +251,9 @@ describe("notifyShopOfNewOrder", () => {
   })
 })
 
-describe("notifyShopOfNewOrder outcome", () => {
+describe("sendNewOrderEmail outcome", () => {
   it("records a successful send against the order and reports it", async () => {
-    await expect(notifyShopOfNewOrder(ORDER_ID, RETURN_URL)).resolves.toBe(true)
+    await expect(sendNewOrderEmail(ORDER_ID, RETURN_URL)).resolves.toBe(true)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledExactlyOnceWith({
       failure: undefined,
@@ -267,7 +267,7 @@ describe("notifyShopOfNewOrder outcome", () => {
   it("records the refusal reported by the email transport instead of throwing", async () => {
     sendEmail.mockResolvedValue(DOMAIN_NOT_VERIFIED)
 
-    await expect(notifyShopOfNewOrder(ORDER_ID, RETURN_URL)).resolves.toBe(false)
+    await expect(sendNewOrderEmail(ORDER_ID, RETURN_URL)).resolves.toBe(false)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       ...UNSENT_NOTIFICATION,
@@ -277,7 +277,7 @@ describe("notifyShopOfNewOrder outcome", () => {
   })
 
   it("records a notification whose session has no return URL to link it to", async () => {
-    await notifyShopOfNewOrder(ORDER_ID, undefined)
+    await sendNewOrderEmail(ORDER_ID, undefined)
 
     expect(getAdminOrderDetailRow).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
@@ -287,7 +287,7 @@ describe("notifyShopOfNewOrder outcome", () => {
   })
 
   it("records a notification whose session returned to a host no deployment serves", async () => {
-    await expect(notifyShopOfNewOrder(ORDER_ID, "https://attacker.example/en-US/checkout")).resolves.toBe(false)
+    await expect(sendNewOrderEmail(ORDER_ID, "https://attacker.example/en-US/checkout")).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(consoleError).toHaveBeenCalledWith(`New order notification for order ${ORDER_ID} could not be prepared:`, expect.any(Error))
@@ -297,7 +297,7 @@ describe("notifyShopOfNewOrder outcome", () => {
   it("records a notification that has no order to go out for", async () => {
     getAdminOrderDetailRow.mockResolvedValue(undefined)
 
-    await notifyShopOfNewOrder(ORDER_ID, RETURN_URL)
+    await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({ ...UNSENT_NOTIFICATION, failure: "The order could not be found" })
@@ -306,7 +306,7 @@ describe("notifyShopOfNewOrder outcome", () => {
   it("records a notification that could not be prepared against the order instead of throwing", async () => {
     getAdminOrderItemRows.mockRejectedValue(new Error("D1_ERROR: no such table"))
 
-    await expect(notifyShopOfNewOrder(ORDER_ID, RETURN_URL)).resolves.toBe(false)
+    await expect(sendNewOrderEmail(ORDER_ID, RETURN_URL)).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({ ...UNSENT_NOTIFICATION, failure: "D1_ERROR: no such table" })

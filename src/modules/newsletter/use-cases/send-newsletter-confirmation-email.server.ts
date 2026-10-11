@@ -15,7 +15,7 @@ import { ROUTES } from "~/src/routes"
 export const buildNewsletterConfirmUrl = ({ locale, origin, token }: NewsletterConfirmUrlInput): string =>
   `${buildLocalizedUrl(origin, ROUTES.NEWSLETTER_CONFIRM, locale)}?token=${encodeURIComponent(token)}`
 
-export const sendNewsletterConfirmation = async ({
+export const sendNewsletterConfirmationEmail = async ({
   email,
   locale,
   origin,

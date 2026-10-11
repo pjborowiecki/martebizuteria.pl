@@ -37,7 +37,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderE
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailContext }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderForShippedEmail }))
 
-import { notifyOrderShipped } from "~/src/integrations/resend/order-shipped.notification.server"
+import { sendOrderShippedEmail } from "~/src/modules/order/use-cases/send-order-shipped-email.server"
 
 const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
 
@@ -108,11 +108,11 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe("notifyOrderShipped", () => {
+describe("sendOrderShippedEmail", () => {
   it("records a shipped email that has no order to go out for", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce(undefined)
 
-    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
+    await expect(sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
@@ -127,7 +127,7 @@ describe("notifyOrderShipped", () => {
   it.each([[""], ["   "]])("records a shipped email that has no recipient when the order email is %j", async (email) => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, email })
 
-    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
+    await expect(sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
@@ -142,7 +142,7 @@ describe("notifyOrderShipped", () => {
   it("emails the shopper in the locale the order was placed in", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
 
-    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
+    await sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "en-US", namespace: "emails.order-shipped" })
     expect(sendEmail).toHaveBeenCalledWith(
@@ -154,7 +154,7 @@ describe("notifyOrderShipped", () => {
   it("links the shopper to their order on the deployment the order was shipped from", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
 
-    await notifyOrderShipped("order-abcdef12", "http://127.0.0.1:3000")
+    await sendOrderShippedEmail("order-abcdef12", "http://127.0.0.1:3000")
 
     const html = await sentHtml()
 
@@ -166,7 +166,7 @@ describe("notifyOrderShipped", () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null, metadata: null })
     loadNamespace.mockResolvedValueOnce(polishCopy)
 
-    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
+    await sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "pl-PL", namespace: "emails.order-shipped" })
     expect(sentSubject()).toBe(polishCopy.subject)
@@ -175,7 +175,7 @@ describe("notifyOrderShipped", () => {
   it.each([[null], [""]])("skips the checkout lookup when the checkout id is %j", async (checkoutId) => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId })
 
-    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
+    await sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(getCheckoutEmailContext).not.toHaveBeenCalled()
     expect(sendEmail).toHaveBeenCalledTimes(1)
@@ -185,7 +185,7 @@ describe("notifyOrderShipped", () => {
     getOrderForShippedEmail.mockResolvedValueOnce(orderRow)
     getCheckoutEmailContext.mockResolvedValueOnce(checkoutContext)
 
-    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
+    await sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(getCheckoutEmailContext).toHaveBeenCalledWith("checkout-1")
   })
@@ -194,7 +194,7 @@ describe("notifyOrderShipped", () => {
     getOrderForShippedEmail.mockResolvedValueOnce(orderRow)
     getCheckoutEmailContext.mockResolvedValueOnce(undefined)
 
-    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
+    await sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)
 
     expect(sendEmail).toHaveBeenCalledTimes(1)
   })
@@ -202,7 +202,7 @@ describe("notifyOrderShipped", () => {
   it("records a successful send against the order and reports it", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
 
-    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(true)
+    await expect(sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(true)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: undefined,
@@ -217,7 +217,7 @@ describe("notifyOrderShipped", () => {
     getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, checkoutId: null })
     sendEmail.mockResolvedValueOnce(DOMAIN_NOT_VERIFIED)
 
-    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
+    await expect(sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
 
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: DOMAIN_NOT_VERIFIED,
@@ -232,7 +232,7 @@ describe("notifyOrderShipped", () => {
     getOrderForShippedEmail.mockResolvedValueOnce(orderRow)
     getCheckoutEmailContext.mockRejectedValueOnce(new Error("D1_ERROR: no such table"))
 
-    await expect(notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
+    await expect(sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
 
     expect(sendEmail).not.toHaveBeenCalled()
     expect(consoleError).toHaveBeenCalledWith("Order shipped for order order-abcdef12 could not be prepared:", expect.any(Error))
@@ -246,12 +246,12 @@ describe("notifyOrderShipped", () => {
   })
 })
 
-describe("notifyOrderShipped retries", () => {
+describe("sendOrderShippedEmail retries", () => {
   it("rebuilds a refused shipped email for its retry and sends it under the same idempotency key", async () => {
     getOrderForShippedEmail.mockResolvedValue({ ...orderRow, checkoutId: null })
     sendEmail.mockResolvedValueOnce(DOMAIN_NOT_VERIFIED)
 
-    await notifyOrderShipped("order-abcdef12", PREVIEW_ORIGIN)
+    await sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)
     await vi.runAllTimersAsync()
 
     expect(getOrderForShippedEmail).toHaveBeenCalledTimes(2)

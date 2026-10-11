@@ -14,11 +14,11 @@ const {
   getFulfillmentTimeAttributesByVariantId,
   getOrderTotalsForEmail,
   loadWithdrawalFormAttachment,
-  notifyShopOfNewOrder,
   paymentIntentsRetrieve,
   recordOrderEmailOutcome,
   recordOrderPaymentCapturedAudit,
   sendEmail,
+  sendNewOrderEmail,
 } = vi.hoisted(() => ({
   fulfillCheckout: vi.fn<(input: object) => Promise<string | undefined>>(),
   getCheckoutEmailContext: vi.fn<(checkoutId: string) => Promise<object | undefined>>(),
@@ -26,7 +26,6 @@ const {
     vi.fn<(variantIds: readonly string[]) => Promise<ReadonlyMap<string, FulfillmentTimeAttribute>>>(),
   getOrderTotalsForEmail: vi.fn<(orderId: string) => Promise<Record<string, unknown> | undefined>>(),
   loadWithdrawalFormAttachment: vi.fn<(origin: string) => Promise<Attachment>>(),
-  notifyShopOfNewOrder: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<boolean>>(),
   paymentIntentsRetrieve: vi.fn<(id: string, params: object) => Promise<{ payment_method: { type: string } | null }>>(),
   recordOrderEmailOutcome: vi.fn(),
   recordOrderPaymentCapturedAudit: vi.fn(),
@@ -41,14 +40,15 @@ const {
       }>,
     ) => Promise<string | undefined>
   >(),
+  sendNewOrderEmail: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<boolean>>(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { paymentIntents: { retrieve: paymentIntentsRetrieve } } }))
 vi.mock("~/src/integrations/stripe/stripe.coupons.server", () => ({ deleteCheckoutCoupons: vi.fn(() => Promise.resolve(undefined)) }))
-vi.mock("~/src/integrations/resend/new-order.notification.server", () => ({ notifyShopOfNewOrder }))
+vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ sendNewOrderEmail }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
-vi.mock("~/src/integrations/resend/withdrawal-form.attachment.server", () => ({ loadWithdrawalFormAttachment }))
+vi.mock("~/src/modules/order-withdrawal/order-withdrawal.form.server", () => ({ loadWithdrawalFormAttachment }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),
@@ -156,7 +156,7 @@ beforeEach(() => {
   getCheckoutEmailContext.mockResolvedValue(undefined)
   getFulfillmentTimeAttributesByVariantId.mockResolvedValue(new Map())
   loadWithdrawalFormAttachment.mockResolvedValue(WITHDRAWAL_FORM)
-  notifyShopOfNewOrder.mockResolvedValue(true)
+  sendNewOrderEmail.mockResolvedValue(true)
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
   sendEmail.mockResolvedValue(undefined)
   vi.useFakeTimers()
@@ -606,7 +606,7 @@ describe("order confirmation email retries", () => {
       orderId: "order-1",
       willRetry: false,
     })
-    expect(notifyShopOfNewOrder).toHaveBeenCalledOnce()
+    expect(sendNewOrderEmail).toHaveBeenCalledOnce()
   })
 })
 
@@ -614,7 +614,7 @@ describe("new order email to the shop", () => {
   it("tells the shop about the order the session created, linked on the deployment the checkout returned to", async () => {
     await dispatch(checkoutSessionCompletedEvent(sessionCheckedOutOn("https://preview.martebizuteria.pl", { items: itemsMetadata })))
 
-    expect(notifyShopOfNewOrder).toHaveBeenCalledExactlyOnceWith(
+    expect(sendNewOrderEmail).toHaveBeenCalledExactlyOnceWith(
       "order-1",
       "https://preview.martebizuteria.pl/en-US/checkout?success=true&session_id={CHECKOUT_SESSION_ID}",
     )
@@ -625,7 +625,7 @@ describe("new order email to the shop", () => {
 
     await dispatch(checkoutSessionCompletedEvent(session))
 
-    expect(notifyShopOfNewOrder).toHaveBeenCalledOnce()
+    expect(sendNewOrderEmail).toHaveBeenCalledOnce()
   })
 
   it("tells the shop about an order whose confirmation the customer could not be sent", async () => {
@@ -634,7 +634,7 @@ describe("new order email to the shop", () => {
 
     await expect(dispatch(event)).resolves.toBeUndefined()
 
-    expect(notifyShopOfNewOrder).toHaveBeenCalledOnce()
+    expect(sendNewOrderEmail).toHaveBeenCalledOnce()
   })
 
   it("sends nothing to the shop when Stripe redelivers the event of an order already created", async () => {
@@ -642,6 +642,6 @@ describe("new order email to the shop", () => {
 
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
 
-    expect(notifyShopOfNewOrder).not.toHaveBeenCalled()
+    expect(sendNewOrderEmail).not.toHaveBeenCalled()
   })
 })

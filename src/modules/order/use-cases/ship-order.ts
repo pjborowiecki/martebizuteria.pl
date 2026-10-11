@@ -6,7 +6,6 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
-import { notifyOrderShipped } from "~/src/integrations/resend/order-shipped.notification.server"
 
 import { recordOrderShippedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { assertOrderActionState, getAdminOrderActionRow } from "~/src/modules/order/order.admin-action.server"
@@ -14,6 +13,7 @@ import { canMarkAdminOrderShipped } from "~/src/modules/order/order.admin-action
 import { ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { sendOrderShippedEmail } from "~/src/modules/order/use-cases/send-order-shipped-email.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { resolveRequestOrigin } from "~/src/lib/request"
@@ -53,7 +53,7 @@ export const shipOrder = createServerFn({ method: "POST" })
       .where(eq(order.id, orderId))
 
     recordOrderShippedAudit(orderId, { detail: trackingNumber })
-    const shippedEmailDelivery = notifyOrderShipped(orderId, origin)
+    const shippedEmailDelivery = sendOrderShippedEmail(orderId, origin)
     scheduleBackgroundWork(shippedEmailDelivery)
     const shippedEmailSent = await shippedEmailDelivery
 

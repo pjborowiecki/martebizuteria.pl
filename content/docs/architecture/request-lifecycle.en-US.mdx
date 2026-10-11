@@ -56,7 +56,7 @@ POST /_serverFn/…  (shipOrder)
   validator        orderZodSchemas.adminOrderIdInput.parse
   handler          assertOrderActionState → UPDATE order
                    recordOrderShippedAudit      → AUDIT_LOG_QUEUE (waitUntil)
-                   notifyOrderShipped            → Resend, outcome → AUDIT_LOG_QUEUE
+                   sendOrderShippedEmail         → Resend, outcome → AUDIT_LOG_QUEUE
                                                    (waitUntil, then awaited)
   response         { ok: true, orderId, shippedEmailSent }  or  AppError code
 ```
@@ -68,7 +68,7 @@ POST /_serverFn/…  (shipOrder)
 1. The handler requires a `stripe-signature` header and `env.STRIPE_WEBHOOK_SECRET`; a missing either is a `400`.
 2. `stripe.webhooks.constructEventAsync` verifies the signature. A failure is logged and answered `400`.
 3. The event type is looked up in `webhookHandlers`. An unhandled type is logged with `console.info` and acknowledged `{ received: true }`, so Stripe stops retrying it.
-4. A handler that throws is logged and answered `500`, which makes Stripe retry. `notifyShopOfIncident` is handed to `scheduleBackgroundWork` on the way, so `RESEND_EMAIL_FROM` hears of each failed event once, however often Stripe retries it, without delaying the answer.
+4. A handler that throws is logged and answered `500`, which makes Stripe retry. `sendIncidentAlert` is handed to `scheduleBackgroundWork` on the way, so `RESEND_EMAIL_FROM` hears of each failed event once, however often Stripe retries it, without delaying the answer.
 
 `GET /api/health` reads D1, KV and R2 and answers `200` or `503` for an uptime monitor; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
 
