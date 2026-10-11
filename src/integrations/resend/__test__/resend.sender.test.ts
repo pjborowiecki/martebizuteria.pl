@@ -99,7 +99,7 @@ describe("verifyEmailSender settings", () => {
 
   it("refuses a sender with a display name, with stray spaces, or without a domain", async () => {
     await expect(check({ from: "M'Arte <hello@pjborowiecki.com>" })).rejects.toThrow(
-      `RESEND_EMAIL_FROM must be a bare address such as noreply@martebizuteria.pl, with no display name or spaces, because sendEmail sends as "M'Arte <RESEND_EMAIL_FROM>".`,
+      `RESEND_EMAIL_FROM must be a bare address such as sklep@martebizuteria.pl, with no display name or spaces, because sendEmail sends as "M'Arte <RESEND_EMAIL_FROM>".`,
     )
     await expect(check({ from: "hello@pjborowiecki.com " })).rejects.toThrow("RESEND_EMAIL_FROM must be a bare address")
     await expect(check({ from: "hello@localhost" })).rejects.toThrow("RESEND_EMAIL_FROM must be a bare address")

@@ -19,7 +19,7 @@ const parseSender = (from: string): SenderAddress => {
   const domain = BARE_ADDRESS.exec(from)?.groups?.["domain"]
   if (domain === undefined) {
     throw new Error(
-      `RESEND_EMAIL_FROM must be a bare address such as noreply@${APP_DOMAIN}, with no display name or spaces, because sendEmail sends as "${APP_NAME} <RESEND_EMAIL_FROM>".`,
+      `RESEND_EMAIL_FROM must be a bare address such as sklep@${APP_DOMAIN}, with no display name or spaces, because sendEmail sends as "${APP_NAME} <RESEND_EMAIL_FROM>".`,
     )
   }
 
@@ -158,7 +158,7 @@ const checkSender = async ({ apiKey, environment, from, managementApiKey }: Read
   }
 
   if (from === undefined || from.trim() === "") {
-    throw new Error(`RESEND_EMAIL_FROM is missing for ${environment}. Set it to a bare address such as noreply@${APP_DOMAIN}.`)
+    throw new Error(`RESEND_EMAIL_FROM is missing for ${environment}. Set it to a bare address such as sklep@${APP_DOMAIN}.`)
   }
 
   const sender = parseSender(from)
