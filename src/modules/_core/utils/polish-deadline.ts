@@ -1,5 +1,4 @@
-import { I18N } from "~/src/integrations/use-intl/i18n.config"
-
+import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
 import { type CalendarDate, toCalendarDate } from "~/src/modules/_core/utils/datetime"
 import { JS_MONTH_INDEX_OFFSET } from "~/src/modules/_core/utils/iso-date"
 
@@ -97,7 +96,7 @@ const firstWorkingDayFrom = (calendarDay: Date): Date =>
   isNonWorkingDay(calendarDay) ? firstWorkingDayFrom(addDays(calendarDay, 1)) : calendarDay
 
 export const toPolishCalendarDay = (instant: Date): Date => {
-  const { day, month, year } = toCalendarDate(instant, I18N.DEFAULT_TIMEZONE)
+  const { day, month, year } = toCalendarDate(instant, DEFAULT_TIMEZONE_CODE)
 
   return new Date(Date.UTC(year, month - JS_MONTH_INDEX_OFFSET, day))
 }

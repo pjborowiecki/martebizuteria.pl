@@ -1,12 +1,13 @@
-import { and, count, desc, eq, gte, inArray, lt, lte, sql } from "drizzle-orm"
+import { and, count, desc, eq, gte, inArray, lt, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
-import { isoDayKey, isoMonthKey } from "~/src/integrations/drizzle-orm/drizzle.utils"
+import { calendarPeriodKey } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import {
   ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT,
   ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT,
 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import { type AdminDashboardChartWindow } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
@@ -106,35 +107,20 @@ export const averageCompletedOrderValueQuery = (since: Date, until?: Date) => {
     .where(and(...conditions))
 }
 
-export const dailyOrderAggregatesQuery = (since: Date, until?: Date) => {
-  const conditions = [gte(order.createdAt, since), inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])]
-  if (until !== undefined) {
-    conditions.push(lte(order.createdAt, until))
-  }
+export const orderAggregatesQuery = ({ end, periods, start }: AdminDashboardChartWindow) => {
+  const periodKey = calendarPeriodKey(order.createdAt, periods)
 
   return db
     .select({
-      dateKey: isoDayKey(order.createdAt),
       orders: sql<number>`count(*)`,
+      periodKey,
       revenue: sql<number>`coalesce(sum(case when ${order.status} = ${ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS} then ${order.total} else ${0} end), ${0})`,
     })
     .from(order)
-    .where(and(...conditions))
-    .groupBy(isoDayKey(order.createdAt))
-    .orderBy(isoDayKey(order.createdAt))
+    .where(and(gte(order.createdAt, start), lt(order.createdAt, end), inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
+    .groupBy(periodKey)
+    .orderBy(periodKey)
 }
-
-export const monthlyOrderAggregatesQuery = (since: Date) =>
-  db
-    .select({
-      monthKey: isoMonthKey(order.createdAt),
-      orders: sql<number>`count(*)`,
-      revenue: sql<number>`coalesce(sum(case when ${order.status} = ${ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS} then ${order.total} else ${0} end), ${0})`,
-    })
-    .from(order)
-    .where(and(gte(order.createdAt, since), inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
-    .groupBy(isoMonthKey(order.createdAt))
-    .orderBy(isoMonthKey(order.createdAt))
 
 export const recentOrdersQuery = () =>
   db

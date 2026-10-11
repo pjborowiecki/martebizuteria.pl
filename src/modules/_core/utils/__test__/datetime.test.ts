@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { coerceNumber, formatRelativeFromNow, formatTimestamp, toCalendarDate } from "~/src/modules/_core/utils/datetime"
+import {
+  coerceNumber,
+  formatRelativeFromNow,
+  formatTimestamp,
+  normalizeCalendarDate,
+  startOfCalendarDate,
+  toCalendarDate,
+} from "~/src/modules/_core/utils/datetime"
 
 const NOW = new Date(2024, 5, 15, 12, 0, 0)
 
@@ -21,6 +28,54 @@ describe("toCalendarDate", () => {
 
   it("accepts an ISO string as well as a date", () => {
     expect(toCalendarDate(MONTH_BOUNDARY.toISOString(), "UTC")).toStrictEqual(toCalendarDate(MONTH_BOUNDARY, "UTC"))
+  })
+})
+
+describe("normalizeCalendarDate", () => {
+  it("rolls days before the first of the month back into the previous year", () => {
+    expect(normalizeCalendarDate({ day: -2, month: 1, year: 2027 })).toStrictEqual({ day: 29, month: 12, year: 2026 })
+  })
+
+  it("rolls months past December forward into the next year", () => {
+    expect(normalizeCalendarDate({ day: 1, month: 14, year: 2026 })).toStrictEqual({ day: 1, month: 2, year: 2027 })
+  })
+
+  it("lands on the leap day of a leap year", () => {
+    expect(normalizeCalendarDate({ day: 29, month: 2, year: 2028 })).toStrictEqual({ day: 29, month: 2, year: 2028 })
+    expect(normalizeCalendarDate({ day: 29, month: 2, year: 2027 })).toStrictEqual({ day: 1, month: 3, year: 2027 })
+  })
+
+  it("leaves a real date as it is", () => {
+    expect(normalizeCalendarDate({ day: 15, month: 6, year: 2026 })).toStrictEqual({ day: 15, month: 6, year: 2026 })
+  })
+})
+
+describe("startOfCalendarDate", () => {
+  it.each([
+    ["New Year's Day", { day: 1, month: 1, year: 2027 }, "2026-12-31T23:00:00.000Z"],
+    ["the Saturday before clocks go forward", { day: 28, month: 3, year: 2026 }, "2026-03-27T23:00:00.000Z"],
+    ["the Sunday clocks go forward", { day: 29, month: 3, year: 2026 }, "2026-03-28T23:00:00.000Z"],
+    ["the Monday after clocks go forward", { day: 30, month: 3, year: 2026 }, "2026-03-29T22:00:00.000Z"],
+    ["the Sunday clocks go back", { day: 25, month: 10, year: 2026 }, "2026-10-24T22:00:00.000Z"],
+    ["the Monday after clocks go back", { day: 26, month: 10, year: 2026 }, "2026-10-25T23:00:00.000Z"],
+  ])("starts %s at midnight in Warsaw", (_label, date, expected) => {
+    expect(startOfCalendarDate(date, "Europe/Warsaw").toISOString()).toBe(expected)
+  })
+
+  it("starts a day west of Greenwich after midnight UTC", () => {
+    expect(startOfCalendarDate({ day: 1, month: 7, year: 2026 }, "America/New_York").toISOString()).toBe("2026-07-01T04:00:00.000Z")
+  })
+
+  it("starts a day in a half-hour zone on the half hour", () => {
+    expect(startOfCalendarDate({ day: 1, month: 7, year: 2026 }, "Asia/Kolkata").toISOString()).toBe("2026-06-30T18:30:00.000Z")
+  })
+
+  it("starts the same day toCalendarDate reads back in that zone", () => {
+    const start = startOfCalendarDate({ day: 25, month: 10, year: 2026 }, "Europe/Warsaw")
+    const lastMomentBefore = new Date(start.getTime() - 1)
+
+    expect(toCalendarDate(start, "Europe/Warsaw")).toStrictEqual({ day: 25, month: 10, year: 2026 })
+    expect(toCalendarDate(lastMomentBefore, "Europe/Warsaw")).toStrictEqual({ day: 24, month: 10, year: 2026 })
   })
 })
 

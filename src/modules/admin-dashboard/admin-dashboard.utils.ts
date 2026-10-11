@@ -1,9 +1,13 @@
-import { I18N } from "~/src/integrations/use-intl/i18n.config"
-
-import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
+import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
 import {
-  ADMIN_DASHBOARD_CHART_DAYS_7,
-  ADMIN_DASHBOARD_CHART_MONTHS_1Y,
+  type CalendarDate,
+  type CalendarPeriod,
+  normalizeCalendarDate,
+  startOfCalendarDate,
+  toCalendarDate,
+} from "~/src/modules/_core/utils/datetime"
+import { isIsoDateString, parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
+import {
   ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS,
   ADMIN_DASHBOARD_MS_PER_DAY,
   ADMIN_DASHBOARD_TREND_PERCENT_SCALE,
@@ -25,15 +29,59 @@ export const resolveAdminDashboardComparisonPeriod = (
   }
 }
 
-export const resolveAdminDashboardChartStart = (referenceDate: Date, days: number): Date =>
-  new Date(referenceDate.getTime() - (days - 1) * ADMIN_DASHBOARD_MS_PER_DAY)
+export interface AdminDashboardChartWindow {
+  readonly end: Date
+  readonly periods: readonly CalendarPeriod[]
+  readonly start: Date
+}
 
-export const resolveAdminDashboardMonthlyChartStart = (
-  referenceDate: Date = new Date(),
-  months: number = ADMIN_DASHBOARD_CHART_MONTHS_1Y,
-): Date => new Date(referenceDate.getFullYear(), referenceDate.getMonth() - (months - 1), 1)
+const padDatePart = (value: number): string => String(value).padStart(DATE_PART_WIDTH, "0")
 
-export const resolveAdminDashboardYearStart = (referenceDate: Date = new Date()): Date => new Date(referenceDate.getFullYear(), 0, 1)
+const toMonthKey = ({ month, year }: CalendarDate): string => `${String(year)}-${padDatePart(month)}`
+
+const toDayKey = (date: CalendarDate): string => `${toMonthKey(date)}-${padDatePart(date.day)}`
+
+const buildChartWindow = (
+  count: number,
+  dateAt: (index: number) => CalendarDate,
+  keyOf: (date: CalendarDate) => string,
+): AdminDashboardChartWindow => {
+  const periods = Array.from({ length: count }, (_, index) => {
+    const date = dateAt(index)
+
+    return { key: keyOf(date), start: startOfCalendarDate(date, DEFAULT_TIMEZONE_CODE) }
+  })
+
+  return {
+    end: startOfCalendarDate(dateAt(count), DEFAULT_TIMEZONE_CODE),
+    periods,
+    start: startOfCalendarDate(dateAt(0), DEFAULT_TIMEZONE_CODE),
+  }
+}
+
+const buildDayWindow = (first: CalendarDate, count: number): AdminDashboardChartWindow =>
+  buildChartWindow(count, (index) => normalizeCalendarDate({ ...first, day: first.day + index }), toDayKey)
+
+export const resolveAdminDashboardDays = (referenceDate: Date, count: number): AdminDashboardChartWindow => {
+  const today = toCalendarDate(referenceDate, DEFAULT_TIMEZONE_CODE)
+
+  return buildDayWindow({ ...today, day: today.day + 1 - count }, count)
+}
+
+export const resolveAdminDashboardDateRange = (startDate: string, endDate: string): AdminDashboardChartWindow => {
+  const dayCount = (Date.parse(endDate) - Date.parse(startDate)) / ADMIN_DASHBOARD_MS_PER_DAY + 1
+
+  return buildDayWindow(toCalendarDate(startDate, "UTC"), dayCount)
+}
+
+export const resolveAdminDashboardMonths = (referenceDate: Date, count: number): AdminDashboardChartWindow => {
+  const { month, year } = toCalendarDate(referenceDate, DEFAULT_TIMEZONE_CODE)
+
+  return buildChartWindow(count, (index) => normalizeCalendarDate({ day: 1, month: month + 1 - count + index, year }), toMonthKey)
+}
+
+export const resolveAdminDashboardYearStart = (referenceDate: Date): Date =>
+  startOfCalendarDate({ day: 1, month: 1, year: toCalendarDate(referenceDate, DEFAULT_TIMEZONE_CODE).year }, DEFAULT_TIMEZONE_CODE)
 
 export const computeAdminDashboardTrendPercent = (current: number, previous: number): number => {
   if (previous <= 0) {
@@ -49,105 +97,46 @@ export const buildAdminDashboardKpiStat = (current: number, previous: number): A
   trendPercent: computeAdminDashboardTrendPercent(current, previous),
 })
 
-const formatChartDayLabel = (dateKey: string, locale: string): string => {
-  const [yearPart, monthPart, dayPart] = dateKey.split("-")
-  const year = Number(yearPart)
-  const month = Number(monthPart)
-  const day = Number(dayPart)
-  const date = new Date(year, month - 1, day)
-
-  return date.toLocaleDateString(locale, {
-    day: "numeric",
-    month: "short",
-  })
-}
-
-const formatWeekdayLabel = (dateKey: string, locale: string): string => {
-  const [yearPart, monthPart, dayPart] = dateKey.split("-")
-  const year = Number(yearPart)
-  const month = Number(monthPart)
-  const day = Number(dayPart)
-  const date = new Date(year, month - 1, day)
-
-  return date.toLocaleDateString(locale, {
-    weekday: "short",
-  })
-}
-
-export const buildAdminDashboardDailyChartPoints = ({
-  days,
-  locale = I18N.DEFAULT_LOCALE,
-  referenceDate = new Date(),
+export const buildAdminDashboardChartPoints = ({
+  labelFormat,
+  locale,
+  periods,
   rows,
 }: Readonly<{
-  days: number
-  locale?: string
-  referenceDate?: Date
-  rows: readonly DailyAggregateRow[]
+  labelFormat: Intl.DateTimeFormatOptions
+  locale: string
+  periods: readonly CalendarPeriod[]
+  rows: readonly OrderAggregateRow[]
 }>): AdminDashboard["chartPoint"][] => {
-  const rowByDateKey = new Map(rows.map((row) => [row.dateKey, row]))
-  const points: AdminDashboard["chartPoint"][] = []
-  for (let dayIndex = days - 1; dayIndex >= 0; dayIndex -= 1) {
-    const date = new Date(referenceDate.getTime() - dayIndex * ADMIN_DASHBOARD_MS_PER_DAY)
-    const dateKey = formatDateToIsoDateLocal(date)
-    const aggregate = rowByDateKey.get(dateKey)
-    points.push({
-      dateKey,
-      label: formatChartDayLabel(dateKey, locale),
-      orders: aggregate?.orders ?? 0,
-      revenue: aggregate?.revenue ?? 0,
-    })
-  }
+  const rowByPeriodKey = new Map(rows.map((row) => [row.periodKey, row]))
 
-  return points
-}
+  return periods.map(({ key, start }) => {
+    const point = {
+      dateKey: key,
+      label: start.toLocaleDateString(locale, { ...labelFormat, timeZone: DEFAULT_TIMEZONE_CODE }),
+      orders: 0,
+      revenue: 0,
+    }
+    const aggregate = rowByPeriodKey.get(key)
 
-const formatChartMonthLabel = (monthKey: string, locale: string): string => {
-  const [yearPart, monthPart] = monthKey.split("-")
-  const year = Number(yearPart)
-  const month = Number(monthPart)
-  const date = new Date(year, month - 1, 1)
-
-  return date.toLocaleDateString(locale, {
-    month: "short",
-    year: "numeric",
+    return aggregate === undefined ? point : { ...point, orders: aggregate.orders, revenue: aggregate.revenue }
   })
 }
 
-const resolveMonthKey = (referenceDate: Date, monthsAgo: number): string => {
-  const date = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - monthsAgo, 1)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(ISO_MONTH_PAD_WIDTH, "0")
-
-  return `${year}-${month}`
-}
-
-export const buildAdminDashboardMonthlyChartPoints = ({
-  locale = I18N.DEFAULT_LOCALE,
-  months = ADMIN_DASHBOARD_CHART_MONTHS_1Y,
-  referenceDate = new Date(),
+export const buildAdminDashboardWeeklyOrderPoints = ({
+  locale,
+  periods,
   rows,
 }: Readonly<{
-  locale?: string
-  months?: number
-  referenceDate?: Date
-  rows: readonly MonthlyAggregateRow[]
-}>): AdminDashboard["chartPoint"][] => {
-  const rowByMonthKey = new Map(rows.map((row) => [row.monthKey, row]))
-  const points: AdminDashboard["chartPoint"][] = []
-  for (let monthIndex = months - 1; monthIndex >= 0; monthIndex -= 1) {
-    const monthKey = resolveMonthKey(referenceDate, monthIndex)
-    const aggregate = rowByMonthKey.get(monthKey)
-    points.push({
-      dateKey: monthKey,
-      label: formatChartMonthLabel(monthKey, locale),
-      orders: aggregate?.orders ?? 0,
-      revenue: aggregate?.revenue ?? 0,
-    })
-  }
-
-  return points
-}
+  locale: string
+  periods: readonly CalendarPeriod[]
+  rows: readonly OrderAggregateRow[]
+}>): AdminDashboard["weeklyOrderPoint"][] =>
+  buildAdminDashboardChartPoints({ labelFormat: WEEKDAY_LABEL_FORMAT, locale, periods, rows }).map(({ dateKey, label, orders }) => ({
+    dateKey,
+    dayLabel: label,
+    orders,
+  }))
 
 export const isAdminDashboardCustomChartRangeValid = (startDate: string, endDate: string): boolean => {
   if (!isIsoDateString(startDate) || !isIsoDateString(endDate)) {
@@ -155,58 +144,6 @@ export const isAdminDashboardCustomChartRangeValid = (startDate: string, endDate
   }
 
   return parseIsoDateToStartMs(startDate) <= parseIsoDateToEndMs(endDate)
-}
-
-export const buildAdminDashboardDailyChartPointsForIsoDateRange = ({
-  endDate,
-  locale = I18N.DEFAULT_LOCALE,
-  rows,
-  startDate,
-}: Readonly<{
-  endDate: string
-  locale?: string
-  rows: readonly DailyAggregateRow[]
-  startDate: string
-}>): AdminDashboard["chartPoint"][] => {
-  const rowByDateKey = new Map(rows.map((row) => [row.dateKey, row]))
-  const points: AdminDashboard["chartPoint"][] = []
-  const startMs = parseIsoDateToStartMs(startDate)
-  const endMs = parseIsoDateToStartMs(endDate)
-  for (let cursorMs = startMs; cursorMs <= endMs; cursorMs += ADMIN_DASHBOARD_MS_PER_DAY) {
-    const dateKey = formatDateToIsoDateLocal(new Date(cursorMs))
-    const aggregate = rowByDateKey.get(dateKey)
-    points.push({
-      dateKey,
-      label: formatChartDayLabel(dateKey, locale),
-      orders: aggregate?.orders ?? 0,
-      revenue: aggregate?.revenue ?? 0,
-    })
-  }
-
-  return points
-}
-
-export const buildAdminDashboardWeeklyOrderPoints = ({
-  locale = I18N.DEFAULT_LOCALE,
-  referenceDate = new Date(),
-  rows,
-}: Readonly<{
-  locale?: string
-  referenceDate?: Date
-  rows: readonly DailyAggregateRow[]
-}>): AdminDashboard["weeklyOrderPoint"][] => {
-  const dailyPoints = buildAdminDashboardDailyChartPoints({
-    days: ADMIN_DASHBOARD_CHART_DAYS_7,
-    locale,
-    referenceDate,
-    rows,
-  })
-
-  return dailyPoints.map((point) => ({
-    dateKey: point.dateKey,
-    dayLabel: formatWeekdayLabel(point.dateKey, locale),
-    orders: point.orders,
-  }))
 }
 
 const SINGLE_PRIOR_VALUE = 100
@@ -217,16 +154,12 @@ export interface AdminDashboardComparisonPeriod {
   readonly previousStart: Date
 }
 
-interface DailyAggregateRow {
-  readonly dateKey: string
+interface OrderAggregateRow {
   readonly orders: number
+  readonly periodKey: string
   readonly revenue: number
 }
 
-interface MonthlyAggregateRow {
-  readonly monthKey: string
-  readonly orders: number
-  readonly revenue: number
-}
+const DATE_PART_WIDTH = 2
 
-const ISO_MONTH_PAD_WIDTH = 2
+const WEEKDAY_LABEL_FORMAT: Intl.DateTimeFormatOptions = { weekday: "short" }

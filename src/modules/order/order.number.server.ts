@@ -3,10 +3,12 @@ import { type BatchItem } from "drizzle-orm/batch"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
+import { toCalendarDate } from "~/src/modules/_core/utils/datetime"
 import { ORDER_NUMBER_PADDING, ORDER_NUMBER_PREFIX } from "~/src/modules/order/order.constants"
 import { orderNumberSequence } from "~/src/modules/order/order.schema"
 
-export const currentOrderNumberPeriod = (now: Date = new Date()): string => String(now.getUTCFullYear())
+export const currentOrderNumberPeriod = (now: Date = new Date()): string => String(toCalendarDate(now, DEFAULT_TIMEZONE_CODE).year)
 
 export const prepareOrderNumberAllocation = (now: Date = new Date()): OrderNumberAllocation => {
   const period = currentOrderNumberPeriod(now)

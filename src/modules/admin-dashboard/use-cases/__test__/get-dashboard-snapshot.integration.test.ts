@@ -143,6 +143,13 @@ const seed = (): void => {
 
 const snapshot = (locale = "en-US"): Promise<AdminDashboard["snapshot"]> => getDashboardSnapshot({ data: { locale } })
 
+const placeCompletedOrder = (id: string, total: number, createdAt: string): void => {
+  const createdAtMs = Date.parse(createdAt)
+  sqlite
+    .prepare(`insert into "order" (id, email, status, total, created_at, updated_at) values (?, 'guest@example.com', 'completed', ?, ?, ?)`)
+    .run(id, total, createdAtMs, createdAtMs)
+}
+
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(NOW)
@@ -227,6 +234,14 @@ describe("getDashboardSnapshot year to date", () => {
     expect(result.yearToDateRevenueMinorUnits).toBe(48_000)
   })
 
+  it("starts the year at midnight on 1 January in Poland", async () => {
+    placeCompletedOrder("o-new-years-eve", 2000, "2025-12-31T22:30:00.000Z")
+    placeCompletedOrder("o-new-years-day", 5000, "2025-12-31T23:30:00.000Z")
+    const result = await snapshot()
+
+    expect(result.yearToDateRevenueMinorUnits).toBe(53_000)
+  })
+
   it("falls back to zero when nothing completed this year", async () => {
     sqlite.exec(`delete from "order" where status = 'completed'`)
     const result = await snapshot()
@@ -241,6 +256,15 @@ describe("getDashboardSnapshot chart frames", () => {
 
     expect(result.chartPoints30d).toHaveLength(ADMIN_DASHBOARD_CHART_DAYS_30)
     expect(result.chartPoints30d.at(-1)?.dateKey).toBe("2026-06-15")
+  })
+
+  it("ends the daily chart on today in Poland and counts the orders placed since midnight there", async () => {
+    vi.setSystemTime(new Date("2026-06-15T22:30:00.000Z"))
+    placeCompletedOrder("o-after-midnight", 4000, "2026-06-15T22:15:00.000Z")
+    const result = await snapshot()
+
+    expect(result.chartPoints30d.at(-1)).toMatchObject({ dateKey: "2026-06-16", label: "Jun 16", orders: 1, revenue: 4000 })
+    expect(result.weeklyOrders.at(-1)).toStrictEqual({ dateKey: "2026-06-16", dayLabel: "Tue", orders: 1 })
   })
 
   it("derives the seven day chart from the tail of the thirty day chart", async () => {

@@ -24,6 +24,10 @@ export const ADMIN_DASHBOARD_MS_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR * SEC
 
 export const ADMIN_DASHBOARD_TREND_PERCENT_SCALE = 100
 
+export const ADMIN_DASHBOARD_DAY_LABEL_FORMAT: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }
+
+export const ADMIN_DASHBOARD_MONTH_LABEL_FORMAT: Intl.DateTimeFormatOptions = { month: "short", year: "numeric" }
+
 export const ADMIN_DASHBOARD_QUERY_KEYS = {
   CHART_RANGE: ["admin", "dashboard", "chart-range"] as const,
   SNAPSHOT: ["admin", "dashboard", "snapshot"] as const,
