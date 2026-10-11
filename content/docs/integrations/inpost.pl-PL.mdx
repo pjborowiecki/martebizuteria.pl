@@ -1,19 +1,18 @@
 ---
 title: "InPost"
-description: "Wyszukiwanie paczkomatów w kroku dostawy podczas składania zamówienia."
+description: "Wyszukiwanie paczkomatów w kroku dostawy oraz przesyłki, etykiety i śledzenie ShipX w panelu administracyjnym."
 ---
 
-Polscy klienci oczekują możliwości wyboru paczkomatu InPost. Adapter `src/integrations/inpost/` zapewnia dokładnie to i nic więcej: wyszukiwanie punktów odbioru po mieście tylko do odczytu, buforowane w TanStack Query, zasilające wybierak z mapą i listą w kroku dostawy.
+Polscy klienci oczekują możliwości wyboru paczkomatu InPost, a sklep wysyła paczki przez InPost. Adapter `src/integrations/inpost/` obsługuje jedno i drugie: wyszukiwanie punktów odbioru po mieście tylko do odczytu, buforowane w TanStack Query i zasilające wybierak z mapą i listą w kroku dostawy, oraz niewielkiego klienta API ShipX, przez którego strona zamówienia w panelu nadaje przesyłkę, pobiera jej etykietę i odczytuje jej status.
 
-## Czym ta integracja nie jest
+## Dwa API
 
-Warto powiedzieć to wprost, bo zakres jest znacznie węższy, niż sugeruje platforma InPost:
+| Część                | Pliki                                                        | API                                                                                                                                       | Dane dostępowe                               |
+| -------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| Wyszukiwanie punktów | `inpost.api.ts`, `inpost.queries.ts`                         | `https://api-pl-points.easypack24.net/v1/points`, wywoływane z przeglądarki                                                               | Brak, punkt końcowy jest publiczny           |
+| Przesyłki            | `inpost.shipx.server.ts`, przypadki użycia w `modules/order` | ShipX: `https://api-shipx-pl.easypack24.net` na produkcji, piaskownica InPost `https://sandbox-api-shipx-pl.easypack24.net` w pozostałych | `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID` |
 
-- Nie ma **żadnego klucza API ani uwierzytelniania**. Punkt końcowy z punktami odbioru jest publiczny.
-- Aplikacja **nie** tworzy przesyłek, nie kupuje etykiet i nie wywołuje InPost ShipX. Nic w repozytorium nie rozmawia z API wysyłkowym.
-- Numery przesyłek nie są pobierane z InPostu. Powiadomienie o wysłaniu zamówienia wywoływane jest z panelu administracyjnego, a nie przez wywołanie zwrotne kuriera.
-
-Na zamówieniu zapisany jest wybrany przez klienta paczkomat, jako `checkout.lockerId`.
+Zamówienie przechowuje paczkomat wybrany przez klienta, jako `checkout.locker_id` i `order.locker_id`, a po nadaniu przesyłki także jej identyfikator ShipX i ostatni zgłoszony status w `order.inpost_shipment_id` i `order.inpost_shipment_status`, z numerem do śledzenia i linkiem w `order.tracking_number` i `order.tracking_url`.
 
 ## Wyszukiwanie
 
@@ -120,9 +119,55 @@ To sprawdzenie czyta `deliveryMethodType` trzymany przez przeglądarkę, więc t
 
 Dalej `lockerId` zapisywany jest w wierszu `checkout`, kopiowany na zamówienie przy realizacji i odczytywany przez e-maile potwierdzające oraz o wysyłce przez `getCheckoutEmailContext`, gdzie `resolveDeliveryMethodLabel` składa etykietę widzianą przez klienta. Zobacz [Resend](/docs/integrations/resend) oraz [Zamówienia i płatności](/docs/features/checkout).
 
+## Przesyłki przez ShipX
+
+### Dane dostępowe
+
+`INPOST_API_TOKEN` i `INPOST_ORGANIZATION_ID` to sekrety Workera, zadeklarowane jak pozostałe w `secrets.required` w każdym środowisku `wrangler.jsonc`. `isInpostShipxConfigured()` w `inpost.shipx.server.ts` zwraca prawdę tylko wtedy, gdy oba mają wartość. Bez nich strona zamówienia wyjaśnia, że wysyłka przez InPost nie jest skonfigurowana, i nie oferuje żadnej akcji przesyłki, a webhook odrzuca każde zdarzenie; nic innego w sklepie ich nie potrzebuje. `scripts/prepare-deploy-secrets.ts` pozwala zostawić oba puste (`SECRETS_THAT_MAY_BE_BLANK`), więc wdrożenie bez danych InPost nadal przechodzi. Pusta wartość jest wysyłana jako pusty sekret, bo Wrangler wymaga, by każdy zadeklarowany sekret istniał.
+
+`APP_ENV` wybiera API. `production` wywołuje `https://api-shipx-pl.easypack24.net`, każde inne środowisko piaskownicę `https://sandbox-api-shipx-pl.easypack24.net`, więc podgląd ani uruchomienie lokalne nigdy nie nadaje prawdziwej paczki. Piaskownica ma własny Manager Paczek pod `https://sandbox-manager.paczkomaty.pl`, z osobnym tokenem i identyfikatorem organizacji, a jej konto potrzebuje uzupełnionych danych i wirtualnego doładowania, zanim pozwoli tworzyć przesyłki. W obu token i identyfikator organizacji są w sekcji API ustawień konta (Moje konto, API).
+
+### Tworzenie przesyłki
+
+Karta przesyłki InPost na `/admin/orders/$orderId` pojawia się przy zamówieniu do paczkomatu albo kurierem. Oferuje **Utwórz przesyłkę**, dopóki zamówienie jest otwarte (`pending` albo `processing`), jeszcze niewysłane ani niedostarczone i nie ma aktywnej przesyłki: żadnej albo tylko taką, którą InPost zgłasza jako `canceled` (`canCreateAdminOrderInpostShipment` w `order.admin-actions.utils.ts`). Okno pyta o gabaryt paczki, A, B albo C (`INPOST_PARCEL_TEMPLATES`, z największymi wymiarami w `INPOST_PARCEL_DIMENSIONS_MM`), a przy paczce kurierskiej także o jej wagę w kilogramach, do 25.
+
+`createInpostShipment` (`src/modules/order/use-cases/create-inpost-shipment.ts`, chronione przez `order: ["update"]`) ponownie sprawdza ten stan po stronie serwera, bierze odbiorcę z kopii adresu dostawy zamówienia, a przy zamówieniu sprzed kopii z adresu w checkoucie, oraz e-mail zamówienia, i wywołuje `postShipxShipment`, które wysyła `POST` na `/v1/organizations/{INPOST_ORGANIZATION_ID}/shipments`:
+
+| Pole                | Zamówienie do paczkomatu              | Zamówienie kurierem                                                             |
+| ------------------- | ------------------------------------- | ------------------------------------------------------------------------------- |
+| `service`           | `inpost_locker_standard`              | `inpost_courier_standard`                                                       |
+| `receiver`          | imię i nazwisko, e-mail i telefon     | to samo oraz `address` z `line1`, `line2`, `city`, `post_code` i `country_code` |
+| `parcels`           | `{ template }` dla wybranego gabarytu | `{ dimensions, weight }` z wybranego gabarytu i wagi                            |
+| `custom_attributes` | `{ target_point: order.locker_id }`   | brak                                                                            |
+| `reference`         | numer zamówienia                      | numer zamówienia                                                                |
+
+Telefon trafia jako numer krajowy, odczytany przez `libphonenumber-js`. Żądanie nie podaje nadawcy, więc ShipX używa danych organizacji, ani `sending_method`, które ShipX opisuje jako wymagane tylko dla usług Allegro. Nie dodaje ubezpieczenia ani pobrania.
+
+Identyfikator i status przesyłki trafiają na zamówienie tylko wtedy, gdy nadal nie ma ono aktywnej przesyłki (`inpost_shipment_id IS NULL` albo `inpost_shipment_status = 'canceled'`) i nie zostało wysłane, a unikalny indeks na `inpost_shipment_id` wiąże jedną przesyłkę z jednym zamówieniem. Nadanie zastępuje też numer i link do śledzenia na zamówieniu: numerem nowej przesyłki, jeśli ShipX nada go od razu, a w przeciwnym razie niczym, więc nic, co zostawiła anulowana przesyłka, jej nie przetrwa. Dopóki zamówienie nie zostanie wysłane, te kolumny zapisuje tylko jego przesyłka. Gdy dwie osoby nadają naraz albo zamówienie zostanie oznaczone jako wysłane w trakcie nadawania w ShipX, nadanie widzi `ORDER_INVALID_STATE`, a dodatkowa przesyłka ShipX trafia do logu z identyfikatorem do anulowania w Managerze Paczek. Aktywność zamówienia zapisuje `order.shipment_created` z identyfikatorem ShipX.
+
+Aby zastąpić przesyłkę, bo paczka wymaga innego gabarytu albo ShipX jej nie potwierdził (na przykład z braku środków), anuluj ją w Managerze Paczek. Gdy jej status brzmi Anulowana, po webhooku albo **Odśwież status**, karta znów oferuje pod nią **Utwórz przesyłkę**, dopóki zamówienie jest otwarte i niewysłane, a nowa przesyłka zajmuje jej miejsce na zamówieniu.
+
+### Status i śledzenie
+
+ShipX potwierdza nową przesyłkę chwilę po jej utworzeniu i wtedy nadaje jej numer do śledzenia. **Odśwież status** wywołuje `refreshInpostShipment` (`order: ["update"]`), a `syncOrderInpostShipment` w `src/modules/order/order.shipment.server.ts` czyta `/v1/shipments/{id}` i zapisuje jej status, a gdy ShipX już go ma, także numer do śledzenia z linkiem `https://inpost.pl/sledzenie-przesylek?number=…`, na zamówieniu, do którego należy przesyłka. Numer i link są uzupełniane tylko wtedy, gdy zamówienie nie ma żadnego z nich, więc numer wpisany przez administratora przy oznaczaniu wysyłki nigdy nie zostaje nadpisany, a przesyłka `canceled` zdejmuje z zamówienia własny numer i link zamiast je zapisywać. Karta nazywa w obu językach najczęstsze statusy, takie jak `created`, `confirmed`, `ready_to_pickup` i `delivered`, a każdy inny status ShipX pokazuje tak, jak zapisuje go InPost. Status nigdy sam nie zmienia zamówienia: administrator nadal oznacza je jako wysłane i dostarczone.
+
+**Oznacz jako wysłane** zachowuje numer i link zapisane z przesyłki, gdy pola okna zostaną puste, więc e-mail o wysyłce prowadzi do strony śledzenia InPost. Numer wpisany w oknie zastępuje zapisany, a późniejsze odświeżenia i webhooki go nie ruszają.
+
+### Etykieta
+
+**Pobierz etykietę** wywołuje `getInpostShipmentLabel` (`order: ["read"]`), które pobiera `/v1/shipments/{id}/label` w domyślnym układzie PDF InPost i zwraca ją zakodowaną w base64; przeglądarka zapisuje ją jako `<numer zamówienia>-inpost.pdf`. ShipX ma etykietę dopiero po potwierdzeniu przesyłki, a do tego czasu administrator dostaje prośbę o odświeżenie statusu.
+
+### Webhook
+
+`src/routes/api/webhooks.inpost.ts` obsługuje `/api/webhooks/inpost`, adres rejestrowany w Managerze Paczek jako `https://<host>/api/webhooks/inpost`. ShipX nie podpisuje webhooków, a adres nie niesie żadnego sekretu, więc trasa nigdy nie ufa treści. Każdy `POST` najpierw liczy się do limitu adresu nadawcy w `withinRateLimit`, z kluczem z `clientAddress`, a adresowi, który przekroczy `INPOST_WEBHOOK_RATE_LIMIT` (120) wywołań w minutowym oknie `RATE_LIMIT_WINDOW_SECONDS.REQUEST`, trasa odpowiada 429, zanim przeczyta treść, poszuka zamówienia albo wywoła ShipX; InPost wysyła z kilku adresów, a prawdziwy ruch małego sklepu jest daleko poniżej tego progu. Potem trasa działa tylko wtedy, gdy JSON wskazuje `organization_id` tego sklepu i `payload.shipment_id`, znajduje zamówienie z tą przesyłką i wywołuje `syncOrderInpostShipment`, które odczytuje przesyłkę z ShipX tokenem sklepu. Podrobione wywołanie może co najwyżej sprawić, że sklep ponownie odczyta przesyłkę, którą już ma. Zdarzenie dla przesyłki, której nie ma żadne zamówienie, na przykład nadanej w Managerze Paczek, jest potwierdzane i pomijane, a nieudany odczyt odpowiada 500, więc InPost wyśle je ponownie. Po aktualizacji trasa wywołuje `scheduleAdminOrdersInvalidation`, więc otwarte strony zamówień w panelu pokazują nowy status. Na `GET` odpowiada 200, czego Manager Paczek używa do sprawdzenia adresu.
+
+### Błędy
+
+`requestShipx` zamienia odpowiedzi ShipX na powody, które administrator widzi w powiadomieniu: `INPOST_NOT_CONFIGURED` bez danych dostępowych, `INPOST_CREDENTIALS_REJECTED` przy 401 albo 403, `INPOST_REQUEST_REFUSED` przy każdym innym 4xx, `INPOST_UNAVAILABLE` przy 5xx, braku odpowiedzi w ciągu 15 sekund albo odpowiedzi, której nie da się odczytać, oraz `INPOST_WEIGHT_REQUIRED` przy paczce kurierskiej bez wagi. Każda odmowa trafia do logu z treścią odpowiedzi ShipX, która wskazuje pole, któremu InPost się sprzeciwił.
+
 ## Testy
 
-Katalog `src/integrations/inpost/__test__/` zawiera trzy pliki. `inpost.api.test.ts` obejmuje adres żądania, wielkie litery w wieloczłonowych i dzielonych łącznikiem nazwach miast, rzucenie wyjątku przy statusie innym niż OK oraz zwrócenie pustej tablicy zarówno dla błędnego kształtu odpowiedzi, jak i dla jednego zniekształconego punktu. `inpost.queries.test.ts` obejmuje obcięty, zapisany małymi literami klucz, prefiks przestrzeni nazw oraz czasy cache jednego i dwóch dni. `inpost.zod.test.ts` obejmuje pełny punkt, punkt ograniczony do pól wymaganych oraz odrzucenie, gdy brakuje współrzędnych, miasta lub nazwy.
+Katalog `src/integrations/inpost/__test__/` obejmuje obie części. `inpost.api.test.ts` obejmuje adres żądania, wielkie litery w wieloczłonowych i dzielonych łącznikiem nazwach miast, rzucenie wyjątku przy statusie innym niż OK oraz zwrócenie pustej tablicy zarówno dla błędnego kształtu odpowiedzi, jak i dla jednego zniekształconego punktu. `inpost.queries.test.ts` obejmuje obcięty, zapisany małymi literami klucz, prefiks przestrzeni nazw oraz czasy cache jednego i dwóch dni. `inpost.zod.test.ts` obejmuje pełny punkt, punkt ograniczony do pól wymaganych, odrzucenie, gdy brakuje współrzędnych, miasta lub nazwy, oraz kształty przesyłki i webhooka ShipX. `inpost.shipx.server.test.ts` uruchamia klienta ShipX na odpowiedziach z `__test__/fixtures/shipx.ts`: adresy piaskownicy i produkcji, treść dla paczkomatu i kuriera, numer telefonu i każdą odmowę. Przypadki użycia, wspólna synchronizacja, trasa webhooka i karta zamówienia mają własne zestawy. `inpost-shipment.integration.test.ts` nadaje, odświeża i wysyła na zmigrowanej bazie SQLite: numer wpisany przy wysyłce przetrwa późniejsze raporty starej przesyłki, numer anulowanej przesyłki znika z zamówienia i nowe nadanie zajmuje jej miejsce, a nadanie zakończone już po wysłaniu zamówienia zostaje odrzucone. Zestaw przeglądarkowy nadaje, odświeża, drukuje i wysyła paczkę na emulatorze ShipX w testowym Workerze.
 
 Testy przeglądarkowe nigdy nie wywołują InPostu. `e2e/fixtures/inpost.ts` odpowiada na wyszukiwanie punktów paczkomatami z `e2e/data/inpost.ts`, których miasto się zgadza, a specyfikacja checkoutu wyszukuje w wyborze paczkomatu Warszawę, wybiera paczkomat z listy i płaci; zobacz [Testy](/docs/tooling/testing#testy-end-to-end).
 

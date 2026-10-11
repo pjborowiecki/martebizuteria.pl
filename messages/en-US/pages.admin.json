@@ -416,6 +416,7 @@
       "attribute_deleted": "Attribute deleted",
       "order_released": "Checkout released",
       "order_restocked": "Items returned to stock",
+      "order_shipment_created": "InPost shipment created",
       "order_dispute_opened": "Dispute opened",
       "order_dispute_closed": "Dispute closed",
       "order_payment_failed": "Payment failed",
@@ -709,6 +710,7 @@
         "refundRequested": "Refund requested",
         "withdrawalReceived": "Withdrawal from the contract received",
         "restocked": "Items returned to stock",
+        "shipmentCreated": "InPost shipment created",
         "disputeOpened": "Dispute opened",
         "disputeClosed": "Dispute closed",
         "emailSent": "Email sent",
@@ -733,6 +735,64 @@
       "copied": "Shipping address copied",
       "missing": "No shipping address recorded.",
       "openTracking": "Open tracking page"
+    },
+    "inpost": {
+      "title": "InPost shipment",
+      "createHint": "Book this parcel with InPost to get its label and tracking number here.",
+      "create": "Create shipment",
+      "notAvailable": "A shipment can be created while the order is open and not yet shipped.",
+      "notConfigured": "InPost shipping is not set up for this shop, so shipments cannot be created or checked here. The owner adds the ShipX API token and organisation ID from InPost Manager as the INPOST_API_TOKEN and INPOST_ORGANIZATION_ID secrets.",
+      "shipmentLabel": "Shipment",
+      "statusLabel": "Status",
+      "statusUnknown": "Not reported yet",
+      "refresh": "Refresh status",
+      "label": "Download label",
+      "statuses": {
+        "created": "Created",
+        "offers_prepared": "Offers prepared",
+        "offer_selected": "Offer selected",
+        "confirmed": "Ready to send",
+        "dispatched_by_sender": "Handed over by the shop",
+        "collected_from_sender": "Collected from the shop",
+        "taken_by_courier": "Taken by the courier",
+        "out_for_delivery": "Out for delivery",
+        "ready_to_pickup": "Ready to pick up",
+        "delivered": "Delivered",
+        "pickup_time_expired": "Pickup time expired",
+        "returned_to_sender": "Returned to the shop",
+        "canceled": "Cancelled"
+      },
+      "createDialog": {
+        "title": "Create an InPost shipment",
+        "lockerDescription": "InPost delivers the parcel to the locker the customer chose. Choose the locker size it fits.",
+        "courierDescription": "InPost's courier delivers the parcel to the shipping address. Choose its size and enter its weight.",
+        "sizeLabel": "Parcel size",
+        "sizes": {
+          "small": "Size A, up to {height} × {length} × {width} cm",
+          "medium": "Size B, up to {height} × {length} × {width} cm",
+          "large": "Size C, up to {height} × {length} × {width} cm"
+        },
+        "weightLabel": "Weight (kg)",
+        "cancel": "Cancel",
+        "confirm": "Create shipment"
+      },
+      "toast": {
+        "createdTitle": "InPost shipment created",
+        "createdDescription": "InPost confirms it within a few moments. Refresh its status to get the tracking number and the label.",
+        "refreshedTitle": "InPost status updated",
+        "errorTitle": "InPost did not complete this",
+        "errors": {
+          "credentialsRejected": "InPost did not accept the shop's API token or organisation ID. Check INPOST_API_TOKEN and INPOST_ORGANIZATION_ID.",
+          "notConfigured": "InPost shipping is not set up for this shop.",
+          "unavailable": "InPost did not answer. Try again in a moment.",
+          "shipmentRefused": "InPost refused the shipment. Check the customer's phone number and address, and the parcel size and weight.",
+          "shipmentMissing": "InPost could not find this shipment.",
+          "labelNotReady": "InPost has no label for this shipment yet. Refresh its status: the label is ready once InPost confirms the shipment.",
+          "invalidState": "This action is not available for the order's current state.",
+          "notFound": "This order no longer exists.",
+          "failed": "Please try again in a moment."
+        }
+      }
     },
     "billing": {
       "title": "Billing Address",
@@ -778,7 +838,7 @@
     },
     "shipDialog": {
       "title": "Mark order as shipped",
-      "description": "Add the tracking details the customer will see in their account and shipping email. Both fields are optional.",
+      "description": "Add the tracking details the customer will see in their account and shipping email. Both fields are optional. Left blank, they keep the tracking number the order already has from its InPost shipment.",
       "trackingNumberLabel": "Tracking number",
       "trackingNumberPlaceholder": "e.g. 00259007123456789012",
       "trackingUrlLabel": "Tracking URL",

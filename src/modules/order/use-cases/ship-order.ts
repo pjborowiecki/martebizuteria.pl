@@ -18,17 +18,26 @@ import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { resolveRequestOrigin } from "~/src/lib/request"
 
-const trimmedOrNull = (value: string | undefined) => {
+const filledOrUndefined = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim()
 
-  return trimmed === undefined || trimmed === "" ? sql`null` : trimmed
+  return trimmed === "" ? undefined : trimmed
+}
+
+const trackingColumns = (trackingNumber: string | undefined, trackingUrl: string | undefined) => {
+  if (trackingNumber !== undefined) {
+    return { trackingNumber, trackingUrl: trackingUrl ?? sql`null` }
+  }
+
+  return trackingUrl === undefined ? {} : { trackingUrl }
 }
 
 export const shipOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminShipOrderInput>) => orderZodSchemas.adminShipOrderInput.parse(input))
-  .handler(async ({ data: { orderId, trackingNumber, trackingUrl } }) => {
+  .handler(async ({ data: { orderId, ...tracking } }) => {
     const origin = resolveRequestOrigin(getRequest())
+    const trackingNumber = filledOrUndefined(tracking.trackingNumber)
     assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
       canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
     )
@@ -38,15 +47,12 @@ export const shipOrder = createServerFn({ method: "POST" })
       .set({
         fulfillmentStatus: "shipped",
         shippedAt: new Date(),
-        trackingNumber: trimmedOrNull(trackingNumber),
-        trackingUrl: trimmedOrNull(trackingUrl),
+        ...trackingColumns(trackingNumber, filledOrUndefined(tracking.trackingUrl)),
         updatedAt: new Date(),
       })
       .where(eq(order.id, orderId))
 
-    recordOrderShippedAudit(orderId, {
-      detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
-    })
+    recordOrderShippedAudit(orderId, { detail: trackingNumber })
     const shippedEmailDelivery = notifyOrderShipped(orderId, origin)
     scheduleBackgroundWork(shippedEmailDelivery)
     const shippedEmailSent = await shippedEmailDelivery

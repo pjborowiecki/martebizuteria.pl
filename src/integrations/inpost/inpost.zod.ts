@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { INPOST_PARCEL_TEMPLATES } from "~/src/integrations/inpost/inpost.constants"
+
 export const inpostAddressDetailsSchema = z.object({
   building_number: z.string().nullable(),
   city: z.string(),
@@ -35,3 +37,24 @@ export const inpostApiResponseSchema = z.object({
 })
 
 export type InpostPointParsed = z.infer<typeof inpostPointSchema>
+
+export const inpostParcelTemplateSchema = z.enum(INPOST_PARCEL_TEMPLATES)
+
+export const inpostShipmentSchema = z.object({
+  id: z.number().int(),
+  status: z.string(),
+  tracking_number: z
+    .string()
+    .nullish()
+    .transform((value) => value ?? undefined),
+})
+
+export const inpostWebhookEventSchema = z.object({
+  event: z.string(),
+  organization_id: z.number().int(),
+  payload: z.object({
+    shipment_id: z.number().int(),
+  }),
+})
+
+export type InpostShipment = z.infer<typeof inpostShipmentSchema>

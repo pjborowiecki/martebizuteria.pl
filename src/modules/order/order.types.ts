@@ -85,6 +85,11 @@ interface AdminOrderDetailDelivery {
   readonly type: DeliveryMethodType
 }
 
+interface AdminOrderDetailInpostShipment {
+  readonly id: string
+  readonly status: string | undefined
+}
+
 interface AdminOrderDetailItem {
   readonly id: string
   readonly imageUrl: string | undefined
@@ -142,6 +147,8 @@ interface AdminOrderDetail {
   readonly fulfillmentSteps: readonly AdminOrderDetailFulfillmentStep[]
   readonly fulfillmentUiKey: AdminOrderFulfillmentUiKey
   readonly id: string
+  readonly inpostConfigured: boolean
+  readonly inpostShipment: AdminOrderDetailInpostShipment | undefined
   readonly items: readonly AdminOrderDetailItem[]
   readonly payment: AdminOrderDetailPayment | undefined
   readonly paymentUiKey: AdminOrderPaymentUiKey

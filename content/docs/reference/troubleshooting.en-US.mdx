@@ -158,7 +158,7 @@ which runs `cf-typegen` (`wrangler types --env development`) and then `content`.
 
 **`Resend could not list the domains of RESEND_API_KEY (<code>)`** or **`Resend did not answer within 30000 ms`**. Resend was rate limited (`rate_limit_exceeded`) or failing (`application_error`, `internal_server_error`) on both attempts, or did not answer at all. Retry the deploy in a moment.
 
-**`Missing STRIPE_SECRET_KEY in .env.preview or the process environment`.** From `scripts/prepare-deploy-secrets.ts`. Every name under `secrets.required` for that environment must have a non-blank value in the matching `.env` file or in the process environment.
+**`Missing STRIPE_SECRET_KEY in .env.preview or the process environment`.** From `scripts/prepare-deploy-secrets.ts`. Every name under `secrets.required` for that environment must have a non-blank value in the matching `.env` file or in the process environment. `INPOST_API_TOKEN` and `INPOST_ORGANIZATION_ID` may be blank, but their lines must still be there, as in `.env.example`.
 
 **`Server-only import in client asset: <file>.js`.** From `scripts/verify-build.ts`. A client bundle ended up importing `cloudflare:workers` or a `node:*` module, which means a server-only module was reached from a component. Trace the import chain from the named asset; the usual cause is importing from a `*.server.ts` file or from `drizzle.database.ts` in a component instead of going through a use case.
 

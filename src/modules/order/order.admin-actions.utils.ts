@@ -1,11 +1,19 @@
+import { INPOST_CANCELED_SHIPMENT_STATUS } from "~/src/integrations/inpost/inpost.constants"
+
+import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import {
   ADMIN_ORDER_REFUND_BLOCKER,
   type AdminOrderRefundBlocker,
   CANCELLED_ORDER_STATUSES,
   DISPATCHED_FULFILLMENT_STATUSES,
+  INPOST_DELIVERY_TYPES,
+  type InpostDeliveryType,
   OPEN_ORDER_STATUSES,
 } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
+
+export const isInpostDeliveryType = (deliveryType: DeliveryMethodType | undefined): deliveryType is InpostDeliveryType =>
+  deliveryType !== undefined && (INPOST_DELIVERY_TYPES as readonly string[]).includes(deliveryType)
 
 const isCancelledOrderStatus = (status: Order["select"]["status"]): boolean =>
   (CANCELLED_ORDER_STATUSES as readonly string[]).includes(status)
@@ -78,6 +86,18 @@ export const resolveAdminOrderRefundBlocker = ({
 
 export const canPrintAdminOrderSummary = ({ status }: Pick<OrderActionSnapshot, "status">): boolean => status !== "cancelled"
 
+const holdsLiveInpostShipment = ({
+  inpostShipmentId,
+  inpostShipmentStatus,
+}: Pick<InpostShipmentSnapshot, "inpostShipmentId" | "inpostShipmentStatus">): boolean =>
+  inpostShipmentId !== undefined && inpostShipmentStatus !== INPOST_CANCELED_SHIPMENT_STATUS
+
+export const canCreateAdminOrderInpostShipment = (snapshot: InpostShipmentSnapshot): boolean =>
+  !holdsLiveInpostShipment(snapshot) &&
+  isInpostDeliveryType(snapshot.deliveryType) &&
+  (OPEN_ORDER_STATUSES as readonly string[]).includes(snapshot.status) &&
+  !isDispatchedFulfillmentStatus(snapshot.fulfillmentStatus)
+
 const FULFILLABLE_FULFILLMENT_STATUSES = ["not_fulfilled", "partially_fulfilled"] as const
 
 const SHIPPABLE_FULFILLMENT_STATUSES = ["fulfilled", "partially_fulfilled"] as const
@@ -85,6 +105,12 @@ const SHIPPABLE_FULFILLMENT_STATUSES = ["fulfilled", "partially_fulfilled"] as c
 const TERMINAL_FULFILLMENT_STATUSES = ["shipped", "delivered", "cancelled"] as const
 
 type OrderActionSnapshot = Pick<Order["adminListItem"], "fulfillmentStatus" | "paymentUiKey" | "status">
+
+interface InpostShipmentSnapshot extends Pick<OrderActionSnapshot, "fulfillmentStatus" | "status"> {
+  readonly deliveryType: DeliveryMethodType | undefined
+  readonly inpostShipmentId: string | undefined
+  readonly inpostShipmentStatus: string | undefined
+}
 
 interface AdminOrderRefundBlockerSnapshot {
   readonly hasOpenDispute: boolean

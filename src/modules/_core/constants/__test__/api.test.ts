@@ -44,6 +44,7 @@ describe("HTTP_STATUS", () => {
     expect(HTTP_STATUS.UNAUTHORIZED).toBe(401)
     expect(HTTP_STATUS.FORBIDDEN).toBe(403)
     expect(HTTP_STATUS.NOT_FOUND).toBe(404)
+    expect(HTTP_STATUS.TOO_MANY_REQUESTS).toBe(429)
     expect(HTTP_STATUS.INTERNAL_SERVER_ERROR).toBe(500)
   })
 

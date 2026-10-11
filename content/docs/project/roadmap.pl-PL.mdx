@@ -53,10 +53,10 @@ Panel wykonuje już zwroty płatności. Przycisk „Zwrot” na `/admin/orders/$
 
 Każda z nich ma już na miejscu część podstaw (funkcję integracji albo kompletny interfejs), co czyni je tańszymi, niż wyglądają.
 
-| Funkcjonalność                  | Co istnieje                                                                                                             | Czego brakuje                                                           |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Przesyłki InPost                | `fetchPointsByCity` w `src/integrations/inpost/inpost.api.ts` — wyszukiwanie paczkomatów po mieście, minimum trzy znaki | tworzenie przesyłek, generowanie etykiet, zapisywanie numerów śledzenia |
-| Marketing i ustawienia w panelu | kompletny interfejs                                                                                                     | oba ekrany czytają dane zastępcze z `src/data/`                         |
+| Funkcjonalność                  | Co istnieje                                                                                                                       | Czego brakuje                                                                    |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Przesyłki InPost                | Wyszukiwanie paczkomatów w kasie; nadawanie, etykiety PDF, numery do śledzenia i status ze strony zamówienia w panelu przez ShipX | oznaczanie zamówienia jako wysłanego i dostarczonego na podstawie statusu InPost |
+| Marketing i ustawienia w panelu | kompletny interfejs                                                                                                               | oba ekrany czytają dane zastępcze z `src/data/`                                  |
 
 `src/data/` jest uczciwym znacznikiem całej tej kategorii: pięć plików z danymi zastępczymi, a każdy ekran importujący jeden z nich to ekran, który wygląda na skończony i nie jest. [Wysyłka i dostawa](/docs/features/shipping-and-delivery) opisuje prace nad InPostem.
 

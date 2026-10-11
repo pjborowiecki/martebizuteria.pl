@@ -52,6 +52,10 @@ export const CANCELLED_ORDER_STATUSES = ["cancelled", "refunded"] as const
 
 export const DISPATCHED_FULFILLMENT_STATUSES = ["shipped", "delivered"] as const
 
+export const INPOST_DELIVERY_TYPES = ["courier", "locker"] as const
+
+export type InpostDeliveryType = (typeof INPOST_DELIVERY_TYPES)[number]
+
 const ADMIN_ORDER_PAYMENT_UI_KEYS = Object.values(ADMIN_ORDER_PAYMENT_UI_KEY)
 
 const ADMIN_ORDER_FULFILLMENT_UI_KEYS = Object.values(ADMIN_ORDER_FULFILLMENT_UI_KEY)
@@ -147,6 +151,7 @@ export const ADMIN_ORDER_TIMELINE_ACTIONS = [
   AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED,
   AUDIT_LOG_ACTION.ORDER_RELEASED,
   AUDIT_LOG_ACTION.ORDER_RESTOCKED,
+  AUDIT_LOG_ACTION.ORDER_SHIPMENT_CREATED,
   AUDIT_LOG_ACTION.ORDER_SHIPPED,
   AUDIT_LOG_ACTION.ORDER_WITHDRAWAL_RECEIVED,
 ] as const
@@ -166,6 +171,7 @@ export const ADMIN_ORDER_TIMELINE_KIND_BY_ACTION: Record<string, AdminOrderTimel
   [AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED]: ADMIN_ORDER_TIMELINE_KIND.PAYMENT,
   [AUDIT_LOG_ACTION.ORDER_RELEASED]: ADMIN_ORDER_TIMELINE_KIND.ORDER,
   [AUDIT_LOG_ACTION.ORDER_RESTOCKED]: ADMIN_ORDER_TIMELINE_KIND.ORDER,
+  [AUDIT_LOG_ACTION.ORDER_SHIPMENT_CREATED]: ADMIN_ORDER_TIMELINE_KIND.SHIPPING,
   [AUDIT_LOG_ACTION.ORDER_SHIPPED]: ADMIN_ORDER_TIMELINE_KIND.SHIPPING,
   [AUDIT_LOG_ACTION.ORDER_WITHDRAWAL_RECEIVED]: ADMIN_ORDER_TIMELINE_KIND.ORDER,
 }
@@ -191,6 +197,7 @@ export const ADMIN_ORDER_TIMELINE_LABEL_KEY_BY_ACTION: Record<string, string> = 
   [AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED]: "refundRequested",
   [AUDIT_LOG_ACTION.ORDER_RELEASED]: "released",
   [AUDIT_LOG_ACTION.ORDER_RESTOCKED]: "restocked",
+  [AUDIT_LOG_ACTION.ORDER_SHIPMENT_CREATED]: "shipmentCreated",
   [AUDIT_LOG_ACTION.ORDER_SHIPPED]: "shipped",
   [AUDIT_LOG_ACTION.ORDER_WITHDRAWAL_RECEIVED]: "withdrawalReceived",
 }
@@ -327,8 +334,11 @@ export const ORDER_QUERY_KEYS = {
 
 export const ORDER_MUTATION_KEYS = {
   CANCEL: ["order", "cancelOrder"] as const,
+  CREATE_INPOST_SHIPMENT: ["order", "createInpostShipment"] as const,
+  DOWNLOAD_INPOST_LABEL: ["order", "getInpostShipmentLabel"] as const,
   FULFILL: ["order", "fulfillOrder"] as const,
   MARK_DELIVERED: ["order", "markOrderDelivered"] as const,
+  REFRESH_INPOST_SHIPMENT: ["order", "refreshInpostShipment"] as const,
   REFUND: ["order", "refundAdminOrder"] as const,
   RESTOCK: ["order", "restockOrder"] as const,
   SHIP: ["order", "shipOrder"] as const,

@@ -74,7 +74,10 @@ const accessors = vi.hoisted(() => {
   }
 })
 
+const shipx = vi.hoisted(() => ({ configured: { current: true } }))
+
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
+vi.mock("~/src/integrations/inpost/inpost.shipx.server", () => ({ isInpostShipxConfigured: () => shipx.configured.current }))
 vi.mock("~/src/modules/order/order.accessors", () => ({
   getAdminOrderCustomerStats: accessors.getAdminOrderCustomerStats,
   getAdminOrderDetailRow: accessors.getAdminOrderDetailRow,
@@ -109,6 +112,7 @@ beforeEach(() => {
   accessors.exportParams.length = 0
   accessors.rows = [sourceRow()]
   accessors.total = 1
+  shipx.configured.current = true
 })
 
 describe("getAdminOrdersPage parameters", () => {
@@ -303,6 +307,8 @@ const detailRow = (overrides: Record<string, unknown> = {}) => ({
   email: "ada@example.test",
   fulfillmentStatus: "not_fulfilled",
   id: DETAIL_ORDER_ID,
+  inpostShipmentId: null,
+  inpostShipmentStatus: null,
   lockerId: null,
   metadata: null,
   orderNumber: "MRT-2026-00001",
@@ -557,6 +563,30 @@ describe("getAdminOrder delivery and payment", () => {
 
     expect(detail?.restockedAt).toBe(restockedAt)
     expect(detail?.tags).not.toContain(ADMIN_ORDER_DETAIL_TAG.NOT_RESTOCKED)
+  })
+})
+
+describe("getAdminOrder InPost shipment", () => {
+  it("reports an order without a shipment and whether the shop can create one", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow({ deliveryMethod: lockerDelivery, lockerId: "WAW01A" }))
+
+    await expect(fetchAdminOrder()).resolves.toMatchObject({ inpostConfigured: true, inpostShipment: undefined })
+
+    shipx.configured.current = false
+
+    await expect(fetchAdminOrder()).resolves.toMatchObject({ inpostConfigured: false })
+  })
+
+  it("shows the shipment InPost created for the order and its last reported status", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow({ inpostShipmentId: "49", inpostShipmentStatus: "confirmed" }))
+
+    await expect(fetchAdminOrder()).resolves.toMatchObject({ inpostShipment: { id: "49", status: "confirmed" } })
+  })
+
+  it("leaves out a status InPost has not reported", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow({ inpostShipmentId: "49" }))
+
+    await expect(fetchAdminOrder()).resolves.toMatchObject({ inpostShipment: { id: "49", status: undefined } })
   })
 })
 

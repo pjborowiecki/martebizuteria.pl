@@ -26,7 +26,7 @@ description: "Tabele courier i delivery_method, trzy typy dostawy, wybór punktu
 | `api_service_code` | not null; identyfikator usługi przewoźnika, obecnie wyłącznie informacyjny |
 | `is_active`        | boolean, domyślnie `true`                                                  |
 
-`api_service_code` jest zapisywany, ale nigdy nie czytany — nic nie generuje etykiet ani nie zamawia przesyłek w API przewoźnika.
+`api_service_code` jest zapisywany, ale nigdy nie czytany. Przesyłka InPost nadana z panelu bierze usługę ShipX z `type` metody: `inpost_locker_standard` dla `locker` i `inpost_courier_standard` dla `courier` (zobacz [InPost](/docs/integrations/inpost#przesyłki-przez-shipx)).
 
 ## Trzy typy
 
@@ -155,6 +155,7 @@ Mapa to `react-map-gl/maplibre` z podkładem Carto Voyager (`https://basemaps.ca
 2. `resolveDelivery` odrzuca metodę, której sklep nie oferuje, i metodę paczkomatową bez paczkomatu, zachowuje `lockerId` tylko dla metody paczkomatowej i odczytuje `price` metody.
 3. `prepareCreateCheckoutBatch` zapisuje metodę do `checkout.delivery_method_id`, a `lockerId` do `checkout.locker_id`; `createStripeSession` dodaje dla ceny pozycję `"Shipping"`, gdy jest większa od zera.
 4. `prepareFulfillCheckoutBatch` kopiuje `deliveryMethodId`, `lockerId` i `customerNote` z migawki checkoutu na nowy wiersz `order` i wylicza `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
+5. Przy zamówieniu do paczkomatu albo kurierem administrator może nadać paczkę w InPost ze strony zamówienia. Identyfikator i status przesyłki trafiają do `order.inpost_shipment_id` i `order.inpost_shipment_status`, numer do śledzenia i link do `order.tracking_number` i `order.tracking_url`, a etykietę PDF pobiera się z tej samej karty. Zobacz [InPost](/docs/integrations/inpost#przesyłki-przez-shipx).
 
 ## Dostawa w e-mailach
 
@@ -183,8 +184,8 @@ Plik `messages/{locale}/emails.order-confirmation.json` ma obiekt `fulfillmentTi
 
 ## Czego nie ma
 
-- Nie ma generowania etykiet, zamawiania przesyłek ani żadnego wywołania API przewoźnika poza publicznym wyszukiwaniem punktów.
-- Nie ma śledzenia u przewoźnika: `order.tracking_number` i `order.tracking_url` wpisuje administrator w oknie wysyłki na `/admin/orders/$orderId`, a nic nie pobiera ani nie aktualizuje ich od przewoźnika.
+- Nie ma przewoźnika poza InPost: przesyłki, etykiety i śledzenie idą wyłącznie przez API ShipX, a zamówienie odbierane w pracowni nie ma żadnej z nich.
+- Nie ma automatycznych zmian zamówienia od przewoźnika: status InPost jest widoczny na zamówieniu i odświeżany na żądanie albo przez webhook InPost, ale oznaczenie zamówienia jako wysłanego i dostarczonego zostaje w rękach administratora. Bez przesyłki InPost `order.tracking_number` i `order.tracking_url` to to, co administrator wpisze w oknie wysyłki.
 - Nie ma reguł wysyłki: cena to płaska kwota na metodę, bez logiki wagi, rozmiaru, wartości koszyka ani miejsca dostawy. Jedyną regułą miejsca dostawy jest sprawdzenie `DELIVERY_COUNTRY_CODES`.
 - Nie ma tabeli lokalizacji sklepów dla `in_store`.
 - Nie ma ekranu panelu dla przewoźników ani metod dostawy — wiersze zarządza się bezpośrednio w D1.

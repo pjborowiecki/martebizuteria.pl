@@ -44,6 +44,8 @@ describe("order table", () => {
       "email",
       "fulfillment_status",
       "id",
+      "inpost_shipment_id",
+      "inpost_shipment_status",
       "locker_id",
       "metadata",
       "order_number",
@@ -147,6 +149,7 @@ describe("order table", () => {
       { columns: ["created_at"], name: "order_createdAt_idx", unique: false },
       { columns: ["checkout_id"], name: "order_checkoutId_unique", unique: true },
       { columns: ["order_number"], name: "order_orderNumber_unique", unique: true },
+      { columns: ["inpost_shipment_id"], name: "order_inpostShipmentId_unique", unique: true },
     ])
   })
 
@@ -158,16 +161,24 @@ describe("order table", () => {
     expect(columnByName.get("tax_basis_points")?.default).toBe(2300)
   })
 
-  it("lets one checkout produce at most one order", () => {
-    expect(config.indexes.filter((index) => index.config.unique).map((index) => index.config.name)).toStrictEqual([
-      "order_checkoutId_unique",
-      "order_orderNumber_unique",
-    ])
-  })
-
   it("stamps the order on insert and refreshes it on write", () => {
     expect(columnByName.get("created_at")?.defaultFn?.()).toBeInstanceOf(Date)
     expect(columnByName.get("updated_at")?.onUpdateFn?.()).toBeInstanceOf(Date)
+  })
+})
+
+describe("order InPost shipment", () => {
+  it.each(["inpost_shipment_id", "inpost_shipment_status"])("leaves %s empty until the admin books a shipment", (name) => {
+    expect(columnByName.get(name)?.notNull).toBe(false)
+    expect(columnByName.get(name)?.getSQLType()).toBe("text")
+  })
+
+  it("lets one checkout produce at most one order and one InPost shipment belong to at most one order", () => {
+    expect(config.indexes.filter((index) => index.config.unique).map((index) => index.config.name)).toStrictEqual([
+      "order_checkoutId_unique",
+      "order_orderNumber_unique",
+      "order_inpostShipmentId_unique",
+    ])
   })
 })
 

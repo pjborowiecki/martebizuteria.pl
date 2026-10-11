@@ -2,12 +2,14 @@ import { describe, expect, it } from "vite-plus/test"
 
 import {
   canCancelAdminOrder,
+  canCreateAdminOrderInpostShipment,
   canFulfillAdminOrder,
   canMarkAdminOrderShipped,
   canPrintAdminOrderSummary,
   canRefundAdminOrder,
   canRestockAdminOrder,
   cancelRefundsAdminOrderPayment,
+  isInpostDeliveryType,
   refundRestocksByDefault,
   resolveAdminOrderRefundBlocker,
 } from "~/src/modules/order/order.admin-actions.utils"
@@ -162,5 +164,64 @@ describe("canPrintAdminOrderSummary", () => {
 
   it("refuses to print the summary of a cancelled order", () => {
     expect(canPrintAdminOrderSummary({ status: "cancelled" })).toBe(false)
+  })
+})
+
+describe("isInpostDeliveryType", () => {
+  it.each(["courier", "locker"] as const)("hands a %s delivery to InPost", (deliveryType) => {
+    expect(isInpostDeliveryType(deliveryType)).toBe(true)
+  })
+
+  it.each(["in_store", undefined] as const)("keeps a %s delivery away from InPost", (deliveryType) => {
+    expect(isInpostDeliveryType(deliveryType)).toBe(false)
+  })
+})
+
+describe("canCreateAdminOrderInpostShipment", () => {
+  const shippable = {
+    deliveryType: "locker" as const,
+    fulfillmentStatus: "fulfilled" as const,
+    inpostShipmentId: undefined,
+    inpostShipmentStatus: undefined,
+    status: "processing" as const,
+  }
+
+  it.each(STILL_IN_THE_SHOP)("books a shipment for an open %s locker order", (fulfillmentStatus) => {
+    expect(canCreateAdminOrderInpostShipment({ ...shippable, fulfillmentStatus })).toBe(true)
+  })
+
+  it("books a shipment for a pending courier order", () => {
+    expect(canCreateAdminOrderInpostShipment({ ...shippable, deliveryType: "courier", status: "pending" })).toBe(true)
+  })
+
+  it.each(["created", "confirmed", undefined])("books no second shipment while the order holds one InPost reports as %s", (status) => {
+    expect(canCreateAdminOrderInpostShipment({ ...shippable, inpostShipmentId: "49", inpostShipmentStatus: status })).toBe(false)
+  })
+
+  it("books a new shipment once InPost reports the order's shipment cancelled", () => {
+    expect(canCreateAdminOrderInpostShipment({ ...shippable, inpostShipmentId: "49", inpostShipmentStatus: "canceled" })).toBe(true)
+  })
+
+  it("books no replacement for a cancelled shipment once the order has shipped", () => {
+    expect(
+      canCreateAdminOrderInpostShipment({
+        ...shippable,
+        fulfillmentStatus: "shipped",
+        inpostShipmentId: "49",
+        inpostShipmentStatus: "canceled",
+      }),
+    ).toBe(false)
+  })
+
+  it.each(["in_store", undefined] as const)("books no InPost shipment for a %s delivery", (deliveryType) => {
+    expect(canCreateAdminOrderInpostShipment({ ...shippable, deliveryType })).toBe(false)
+  })
+
+  it.each(["completed", "cancelled", "refunded"] as const)("books no shipment for a %s order", (status) => {
+    expect(canCreateAdminOrderInpostShipment({ ...shippable, status })).toBe(false)
+  })
+
+  it.each(["shipped", "delivered"] as const)("books no shipment for an order already %s", (fulfillmentStatus) => {
+    expect(canCreateAdminOrderInpostShipment({ ...shippable, fulfillmentStatus })).toBe(false)
   })
 })

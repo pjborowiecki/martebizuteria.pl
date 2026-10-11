@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { inpostApiResponseSchema, inpostPointSchema } from "~/src/integrations/inpost/inpost.zod"
+import {
+  SHIPX_SHIPMENT_ID,
+  SHIPX_TRACKING_NUMBER,
+  shipxConfirmedShipment,
+  shipxCreatedShipment,
+  shipxStatusChangedEvent,
+} from "~/src/integrations/inpost/__test__/fixtures/shipx"
+import {
+  inpostApiResponseSchema,
+  inpostParcelTemplateSchema,
+  inpostPointSchema,
+  inpostShipmentSchema,
+  inpostWebhookEventSchema,
+} from "~/src/integrations/inpost/inpost.zod"
 
 const point = {
   address_details: {
@@ -80,5 +93,47 @@ describe("inpostApiResponseSchema", () => {
 
   it("rejects a response with a malformed point", () => {
     expect(inpostApiResponseSchema.safeParse({ count: 1, items: [{ name: "WAW01A" }] }).success).toBe(false)
+  })
+})
+
+describe("inpostParcelTemplateSchema", () => {
+  it.each([["small"], ["medium"], ["large"]])("accepts the %s locker size", (template) => {
+    expect(inpostParcelTemplateSchema.parse(template)).toBe(template)
+  })
+
+  it("rejects a size InPost does not offer", () => {
+    expect(inpostParcelTemplateSchema.safeParse("xlarge").success).toBe(false)
+  })
+})
+
+describe("inpostShipmentSchema", () => {
+  it("keeps the id, status and tracking number of a ShipX shipment", () => {
+    expect(inpostShipmentSchema.parse(shipxConfirmedShipment)).toStrictEqual({
+      id: SHIPX_SHIPMENT_ID,
+      status: "confirmed",
+      tracking_number: SHIPX_TRACKING_NUMBER,
+    })
+  })
+
+  it("reads a tracking number InPost has not assigned yet as missing", () => {
+    expect(inpostShipmentSchema.parse(shipxCreatedShipment).tracking_number).toBeUndefined()
+  })
+
+  it("rejects a shipment without a numeric id", () => {
+    expect(inpostShipmentSchema.safeParse({ ...shipxCreatedShipment, id: "1234567890" }).success).toBe(false)
+  })
+})
+
+describe("inpostWebhookEventSchema", () => {
+  it("reads the event, organisation and shipment of a ShipX webhook", () => {
+    expect(inpostWebhookEventSchema.parse(shipxStatusChangedEvent)).toStrictEqual({
+      event: "shipment_status_changed",
+      organization_id: 1001,
+      payload: { shipment_id: SHIPX_SHIPMENT_ID },
+    })
+  })
+
+  it("rejects a webhook without a shipment", () => {
+    expect(inpostWebhookEventSchema.safeParse({ ...shipxStatusChangedEvent, payload: {} }).success).toBe(false)
   })
 })

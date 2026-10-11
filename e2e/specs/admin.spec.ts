@@ -13,6 +13,8 @@ import { AdminOrderPage, BasePage, CheckoutPage, ProductPage } from "../pages"
 
 const QUERY_INVALIDATION_CHANNEL = "marte-query-invalidation"
 
+const INPOST_TRACKING_NUMBER = /6026772171316303\d{8}/u
+
 interface GuestOrderInput {
   readonly browser: Browser
   readonly discountCode?: string
@@ -175,6 +177,48 @@ test.describe("admin", () => {
     const shipped = await waitForEmail(request, email, "Your order has been shipped — M'Arte")
     expect(shipped.html).toContain("00259007123456789012")
     expect(linkIn(shipped, /\/auth\/sign-up/u).origin).toBe("http://127.0.0.1:3000")
+  })
+
+  test("an InPost shipment booked from the order gives its label and its tracking number to the shipping email", async ({
+    adminOrderPage,
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const shopper = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(shopper)
+    const email = uniqueEmail(testInfo, "inpost")
+    const { orderNumber } = await placeOrder({ email, handle: PRODUCTS.onyx.handle, page: await shopper.newPage(), request })
+    await shopper.close()
+
+    await adminOrderPage.gotoOrderFor(email)
+    await adminOrderPage.action("Create shipment").click()
+    const booking = page.getByRole("dialog", { name: "Create an InPost shipment" })
+    await booking.getByRole("combobox", { name: "Parcel size" }).selectOption("medium")
+    await booking.getByRole("spinbutton", { name: "Weight (kg)" }).fill("0.3")
+    await booking.getByRole("button", { name: "Create shipment" }).click()
+    await adminOrderPage.dismissNotification("InPost shipment created")
+    await expect(page.getByRole("main")).toContainText("Created")
+
+    await adminOrderPage.action("Refresh status").click()
+    await expect(page.getByRole("main")).toContainText("Ready to send")
+    const trackingNumber = (await page.getByRole("main").textContent())?.match(INPOST_TRACKING_NUMBER)?.[0]
+    expect(trackingNumber).toBeDefined()
+
+    const label = page.waitForEvent("download")
+    await adminOrderPage.action("Download label").click()
+    expect((await label).suggestedFilename()).toBe(`${orderNumber}-inpost.pdf`)
+
+    await adminOrderPage.action("Fulfill").click()
+    await adminOrderPage.dismissNotification("Fulfillment started for this order.")
+    await adminOrderPage.action("Mark shipped").click()
+    await page.getByRole("dialog", { name: "Mark order as shipped" }).getByRole("button", { name: "Mark shipped" }).click()
+
+    const shipped = await waitForEmail(request, email, "Your order has been shipped — M'Arte")
+    expect(shipped.html).toContain(`inpost.pl/sledzenie-przesylek?number=${String(trackingNumber)}`)
   })
 
   test("cancelling a paid order emails the shopper the refund it issued", async ({ adminOrderPage, browser, page, request }, testInfo) => {

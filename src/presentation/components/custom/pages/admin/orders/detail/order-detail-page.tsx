@@ -5,6 +5,7 @@ import { type Order } from "~/src/modules/order/order.types"
 import { OrderBillingCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-billing-card"
 import { OrderCustomerCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-customer-card"
 import { OrderFulfillmentTracker } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-fulfillment-tracker"
+import { OrderInpostCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-inpost-card"
 import { OrderLineItemsCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-line-items-card"
 import { OrderMetaStrip } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-meta-strip"
 import { OrderNotesCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-notes-card"
@@ -33,6 +34,7 @@ export const OrderDetailPage = ({ order }: Readonly<OrderDetailPageProps>): JSX.
           trackingNumber={order.trackingNumber}
           trackingUrl={order.trackingUrl}
         />
+        <OrderInpostCard order={order} />
         <OrderBillingCard
           billingAddress={order.billingAddress}
           billingCompanyName={order.billingCompanyName}

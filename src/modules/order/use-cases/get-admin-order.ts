@@ -4,6 +4,7 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { isInpostShipxConfigured } from "~/src/integrations/inpost/inpost.shipx.server"
 
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { getOrderWithdrawals } from "~/src/modules/order-withdrawal/order-withdrawal.accessors"
@@ -43,6 +44,7 @@ const resolveFulfillmentStartedAt = (timelineRows: AdminOrderTimelineRows): Date
 
 const buildAdminOrderDetail = ({
   customerStats,
+  inpostConfigured,
   itemRows,
   orderRow,
   timelineRows,
@@ -96,6 +98,11 @@ const buildAdminOrderDetail = ({
     }),
     fulfillmentUiKey: resolveAdminOrderFulfillmentUiKey(orderRow.status, orderRow.fulfillmentStatus),
     id: orderRow.id,
+    inpostConfigured,
+    inpostShipment:
+      orderRow.inpostShipmentId === null
+        ? undefined
+        : { id: orderRow.inpostShipmentId, status: orderRow.inpostShipmentStatus ?? undefined },
     items: itemRows.map((row) => mapAdminOrderDetailItem(row)),
     payment:
       paymentRow === null
@@ -137,6 +144,7 @@ const buildAdminOrderDetail = ({
 
 interface BuildAdminOrderDetailInput {
   readonly customerStats: AdminOrderCustomerStats
+  readonly inpostConfigured: boolean
   readonly itemRows: Awaited<ReturnType<typeof getAdminOrderItemRows>>
   readonly orderRow: AdminOrderDetailRow
   readonly timelineRows: AdminOrderTimelineRows
@@ -161,7 +169,14 @@ export const getAdminOrder = createServerFn({
       getOrderWithdrawals(orderId),
     ])
 
-    return buildAdminOrderDetail({ customerStats, itemRows, orderRow, timelineRows, withdrawals })
+    return buildAdminOrderDetail({
+      customerStats,
+      inpostConfigured: isInpostShipxConfigured(),
+      itemRows,
+      orderRow,
+      timelineRows,
+      withdrawals,
+    })
   })
 
 export const getAdminOrderQuery = (orderId: string) =>

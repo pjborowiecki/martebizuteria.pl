@@ -47,6 +47,7 @@ import {
   recordOrderRefundRequestedAudit,
   recordOrderReleasedAudit,
   recordOrderRestockedAudit,
+  recordOrderShipmentCreatedAudit,
   recordOrderShippedAudit,
   recordOrderWithdrawalReceivedAudit,
   recordSalesPausedAudit,
@@ -488,6 +489,12 @@ const ADMIN_ORDER_CASES: readonly TargetAuditCase[] = [
     severity: "warning",
   },
   { action: AUDIT_LOG_ACTION.ORDER_RESTOCKED, name: "items returned to stock", record: recordOrderRestockedAudit, severity: "info" },
+  {
+    action: AUDIT_LOG_ACTION.ORDER_SHIPMENT_CREATED,
+    name: "a booked InPost shipment",
+    record: recordOrderShipmentCreatedAudit,
+    severity: "info",
+  },
 ]
 
 describe("order actions an admin takes", () => {

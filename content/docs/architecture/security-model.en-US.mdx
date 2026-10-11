@@ -183,6 +183,8 @@ Checking after `getByName()` would already have let an unauthenticated client op
 
 `POST /api/webhooks/stripe` requires a `stripe-signature` header and verifies it with `env.STRIPE_WEBHOOK_SECRET` through `stripe.webhooks.constructEventAsync` before any handler runs. An unverifiable body is a `400` and nothing is touched.
 
+`POST /api/webhooks/inpost` cannot be verified the same way, because InPost does not sign ShipX webhooks, so the route trusts no call: it accepts only an event naming the shop's `INPOST_ORGANIZATION_ID` and a shipment some order holds, and then reads that shipment from ShipX with the shop's token before writing anything. A forged call can make the shop read one of its own shipments again and nothing more. Anything else is a `400`, and an address that sends more than `INPOST_WEBHOOK_RATE_LIMIT` (120) calls a minute is answered `429` before the body is read.
+
 ## Health check
 
 `GET /api/health` is public and needs no session, so an uptime monitor can call it. It reads no data — `SELECT 1`, a KV lookup and an R2 `head` of a key that does not exist — and answers only `ok` or `error` per binding, never the error, a binding name or any configuration. Errors go to the Worker log. See [Monitoring and alerts](/docs/guides/monitoring-and-alerts#the-health-check).

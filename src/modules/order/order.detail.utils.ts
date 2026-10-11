@@ -53,10 +53,13 @@ const isSameAdminOrderAddress = (left: AdminOrderAddressRow, right: AdminOrderAd
   left.postalCode === right.postalCode &&
   left.province === right.province
 
-export const resolveAdminOrderDetailAddresses = ({
-  addresses,
-  checkout,
-}: AdminOrderAddressSources): Pick<Order["adminOrderDetail"], "billingAddress" | "billingSameAsShipping" | "shippingAddress"> => {
+export const resolveOrderShippingAddressRow = ({ addresses, checkout }: AdminOrderAddressSources): AdminOrderAddressRow | undefined =>
+  addresses.find((row) => row.type === "shipping") ?? checkout?.shippingAddress ?? undefined
+
+export const resolveAdminOrderDetailAddresses = (
+  sources: AdminOrderAddressSources,
+): Pick<Order["adminOrderDetail"], "billingAddress" | "billingSameAsShipping" | "shippingAddress"> => {
+  const { addresses, checkout } = sources
   const billingSnapshot = addresses.find((row) => row.type === "billing")
   const shippingSnapshot = addresses.find((row) => row.type === "shipping")
   const placedBeforeSnapshots = addresses.length === 0
@@ -66,7 +69,7 @@ export const resolveAdminOrderDetailAddresses = ({
     billingSameAsShipping: placedBeforeSnapshots
       ? checkout !== null && checkout.billingAddressId !== null && checkout.billingAddressId === checkout.shippingAddressId
       : billingSnapshot !== undefined && shippingSnapshot !== undefined && isSameAdminOrderAddress(billingSnapshot, shippingSnapshot),
-    shippingAddress: mapAdminOrderDetailAddress(shippingSnapshot ?? checkout?.shippingAddress),
+    shippingAddress: mapAdminOrderDetailAddress(resolveOrderShippingAddressRow(sources)),
   }
 }
 

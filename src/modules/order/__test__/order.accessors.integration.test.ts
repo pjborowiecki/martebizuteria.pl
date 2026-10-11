@@ -28,8 +28,10 @@ import {
   getAdminOrdersExport,
   getAdminOrdersPage,
   getOrderByCheckoutId,
+  getOrderByInpostShipmentId,
   getOrderByTransactionId,
   getOrderForShippedEmail,
+  getOrderInpostShipment,
   getOrderMetadata,
   getOrderTotalsForEmail,
   getRestockLinesForOrder,
@@ -68,7 +70,7 @@ beforeEach(() => {
       billing_company_name text, billing_nip text,
       currency_code text not null default 'PLN', status text not null default 'pending',
       fulfillment_status text not null default 'not_fulfilled', total integer not null default 0,
-      metadata text, order_number text, tracking_number text, tracking_url text,
+      metadata text, order_number text, tracking_number text, tracking_url text, inpost_shipment_id text,
       discount_total integer not null default 0, shipping_total integer not null default 0,
       subtotal integer not null default 0, tax_total integer not null default 0, tax_basis_points integer not null default 2300,
       created_at integer not null, updated_at integer not null
@@ -362,6 +364,21 @@ describe("single order lookups", () => {
     expect(shipped?.trackingNumber).toBe("TRK-9")
   })
 
+  it("reads the InPost shipment an order holds with the order number its label is named after", async () => {
+    sqlite.exec(`update "order" set inpost_shipment_id = '49' where id = 'o-shipped'`)
+
+    expect(await getOrderInpostShipment("o-shipped")).toStrictEqual({ inpostShipmentId: "49", orderNumber: "MRT-2024-00003" })
+    expect(await getOrderInpostShipment("o-pending")).toStrictEqual({ inpostShipmentId: null, orderNumber: "MRT-2024-00001" })
+    expect(await getOrderInpostShipment("o-missing")).toBeUndefined()
+  })
+
+  it("finds the order an InPost shipment belongs to, and none for a shipment no order holds", async () => {
+    sqlite.exec(`update "order" set inpost_shipment_id = '49' where id = 'o-shipped'`)
+
+    expect(await getOrderByInpostShipmentId("49")).toStrictEqual({ id: "o-shipped" })
+    expect(await getOrderByInpostShipmentId("50")).toBeUndefined()
+  })
+
   it("counts a customer's live orders but only banks revenue from completed ones", async () => {
     expect(await getAdminOrderCustomerStats("u-anna")).toStrictEqual({ orderCount: 2, totalSpent: 0 })
   })
@@ -464,7 +481,8 @@ const createPlacedOrderTables = (): void => {
       id text primary key, billing_company_name text, billing_nip text, canceled_at integer, checkout_id text,
       currency_code text not null default 'PLN', customer_note text, delivered_at integer, delivery_method_id text,
       discount_id text, discount_total integer not null default 0, email text not null,
-      fulfillment_status text not null default 'not_fulfilled', locker_id text, metadata text, order_number text not null,
+      fulfillment_status text not null default 'not_fulfilled', inpost_shipment_id text, inpost_shipment_status text,
+      locker_id text, metadata text, order_number text not null,
       payment_id text, restocked_at integer, shipped_at integer, shipping_total integer not null default 0, status text not null default 'pending',
       subtotal integer not null default 0, tax_basis_points integer not null default 2300, tax_total integer not null default 0,
       total integer not null default 0, tracking_number text, tracking_url text, user_id text,

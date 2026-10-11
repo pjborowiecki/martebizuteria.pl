@@ -33,6 +33,8 @@ export const order = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
+    inpostShipmentId: text("inpost_shipment_id"),
+    inpostShipmentStatus: text("inpost_shipment_status"),
     lockerId: text("locker_id"),
     metadata: text("metadata"),
     orderNumber: text("order_number").notNull(),
@@ -62,6 +64,7 @@ export const order = sqliteTable(
     index("order_createdAt_idx").on(table.createdAt),
     uniqueIndex("order_checkoutId_unique").on(table.checkoutId),
     uniqueIndex("order_orderNumber_unique").on(table.orderNumber),
+    uniqueIndex("order_inpostShipmentId_unique").on(table.inpostShipmentId),
   ],
 )
 

@@ -145,13 +145,14 @@ Strony `/admin/marketing` i `/admin/settings` nadal renderują dane z fikstur w 
 | ----------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/api/auth/*`                 | `src/routes/api/auth.$.ts`                            | Własny handler Better Auth                                                                                                                  |
 | `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                   | Zdarzenia Stripe z weryfikacją podpisu                                                                                                      |
+| `/api/webhooks/inpost`        | `src/routes/api/webhooks.inpost.ts`                   | Zdarzenia InPost ShipX, najwyżej 120 na minutę z jednego adresu; każdą wskazaną przesyłkę odczytuje ponownie z ShipX                        |
 | `/api/health`                 | `src/routes/api/health.ts`                            | 200 albo 503 dla monitora dostępności po odczycie D1, KV i R2                                                                               |
 | `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`      | Upgrade WebSocket dla administratora z włączonym uwierzytelnianiem dwuskładnikowym, sprawdzany w Workerze przed adresowaniem Durable Object |
 | `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS` | Upgrade WebSocket, otwarty dla wszystkich                                                                                                   |
 | `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                | Strony czytane z D1 przez `listSitemapPages`, cache na jeden dzień                                                                          |
 | `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                 | Treść zależy od `env.APP_ENV`                                                                                                               |
 
-Cztery ostatnie ścieżki są sprawdzane w `src/server.ts`, zanim zapytanie dotrze do TanStack Start, więc żadna z nich nie płaci za render SSR. `/api/auth/*`, `/api/webhooks/stripe` i `/api/health` to trasy serwerowe TanStack Start w `src/routes/api/`, więc przechodzą przez router, ale nigdy nie renderują strony.
+Cztery ostatnie ścieżki są sprawdzane w `src/server.ts`, zanim zapytanie dotrze do TanStack Start, więc żadna z nich nie płaci za render SSR. `/api/auth/*`, `/api/webhooks/stripe`, `/api/webhooks/inpost` i `/api/health` to trasy serwerowe TanStack Start w `src/routes/api/`, więc przechodzą przez router, ale nigdy nie renderują strony.
 
 ## Strażnicy
 
