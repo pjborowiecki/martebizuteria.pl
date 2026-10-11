@@ -1,0 +1,30 @@
+import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+
+const blog = vi.hoisted(() => ({ slugs: [] as string[] }))
+
+vi.mock("~/src/data/blog-posts", () => ({
+  get BLOG_POST_SLUGS() {
+    return blog.slugs
+  },
+}))
+
+afterEach(() => {
+  blog.slugs = []
+  vi.resetModules()
+})
+
+describe("STATIC_PAGES", () => {
+  it("leaves the blog out of the sitemap while it has no articles", async () => {
+    const { STATIC_PAGES } = await import("~/src/data/static-pages")
+
+    expect(STATIC_PAGES).toStrictEqual(["/", "/about"])
+  })
+
+  it("lists the blog once it has an article", async () => {
+    blog.slugs = ["silver-care"]
+
+    const { STATIC_PAGES } = await import("~/src/data/static-pages")
+
+    expect(STATIC_PAGES).toStrictEqual(["/", "/about", "/blog"])
+  })
+})

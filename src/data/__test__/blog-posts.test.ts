@@ -1,53 +1,24 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { BLOG_POST_SLUGS, BLOG_POST_SLUG_LIST, LANDING_ARCHIVE_ARTICLES, isBlogPostSlug } from "~/src/data/blog-posts"
+import { BLOG_POST_SLUGS } from "~/src/data/blog-posts"
 
-describe("isBlogPostSlug", () => {
-  it("accepts every declared slug", () => {
-    for (const slug of Object.values(BLOG_POST_SLUGS)) {
-      expect(isBlogPostSlug(slug)).toBe(true)
-    }
+import englishBlog from "~/messages/en-US/pages.blog.json"
+import englishLanding from "~/messages/en-US/pages.landing.json"
+import polishBlog from "~/messages/pl-PL/pages.blog.json"
+import polishLanding from "~/messages/pl-PL/pages.landing.json"
+
+describe("BLOG_POST_SLUGS", () => {
+  it("publishes no article until a real one is written", () => {
+    expect(BLOG_POST_SLUGS).toStrictEqual([])
   })
 
-  it("rejects an unknown slug", () => {
-    expect(isBlogPostSlug("not-a-post")).toBe(false)
-  })
+  it.each([
+    ["pl-PL", polishBlog.posts, polishLanding.archiveSection.articles],
+    ["en-US", englishBlog.posts, englishLanding.archiveSection.articles],
+  ])("keeps %s copy for exactly the published articles", (_locale, posts, archiveTitles) => {
+    const published = BLOG_POST_SLUGS.toSorted()
 
-  it("rejects an empty slug", () => {
-    expect(isBlogPostSlug("")).toBe(false)
-  })
-
-  it("rejects a slug key instead of its value", () => {
-    expect(isBlogPostSlug("careRitual")).toBe(false)
-  })
-
-  it("matches exactly, without trimming", () => {
-    expect(isBlogPostSlug(` ${BLOG_POST_SLUGS.careRitual}`)).toBe(false)
-  })
-})
-
-describe("LANDING_ARCHIVE_ARTICLES", () => {
-  it("covers every declared slug exactly once", () => {
-    const slugs = LANDING_ARCHIVE_ARTICLES.map((article) => article.slug)
-
-    expect(slugs.toSorted()).toStrictEqual(Object.values(BLOG_POST_SLUGS).toSorted())
-  })
-
-  it("gives every article its own title key", () => {
-    const titleKeys = LANDING_ARCHIVE_ARTICLES.map((article) => article.titleKey)
-
-    expect(new Set(titleKeys).size).toBe(LANDING_ARCHIVE_ARTICLES.length)
-  })
-})
-
-describe("BLOG_POST_SLUG_LIST", () => {
-  it("keeps the archive order", () => {
-    expect(BLOG_POST_SLUG_LIST).toStrictEqual(LANDING_ARCHIVE_ARTICLES.map((article) => article.slug))
-  })
-
-  it("holds only recognised slugs", () => {
-    for (const slug of BLOG_POST_SLUG_LIST) {
-      expect(isBlogPostSlug(slug)).toBe(true)
-    }
+    expect(Object.keys(posts).toSorted()).toStrictEqual(published)
+    expect(Object.keys(archiveTitles).toSorted()).toStrictEqual(published)
   })
 })

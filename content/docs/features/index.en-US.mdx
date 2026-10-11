@@ -29,7 +29,8 @@ These routes exist, render fully and are covered by component tests, but their r
 
 ## Placeholders
 
-- `/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns` are the three legal documents, editable rows in D1. See [Legal pages](/docs/features/legal-pages).
+- `/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns` are the three legal documents, editable rows in D1, and `/faq` is a fourth row. See [Legal pages](/docs/features/legal-pages).
+- The blog at `/blog` is hidden: `src/data/blog-posts.ts` lists no articles, so its routes answer 404 and the home page and the sitemap leave it out. See [Landing page](/docs/features/landing-page#the-guide-section-and-the-hidden-blog).
 
 ## Schema without behaviour
 

@@ -39,6 +39,7 @@ const seededBodies = (): { readonly body: string; readonly label: string }[] => 
   applyMigration(sqlite, MIGRATION.RETURNS_AND_COMPLAINTS_PAGE)
   applyMigration(sqlite, MIGRATION.PRIVACY_POLICY_PAGE)
   applyMigration(sqlite, MIGRATION.WITHDRAWAL_FUNCTION_LINKS)
+  applyMigration(sqlite, MIGRATION.FAQ_PAGE)
   const rows = sqlite
     .prepare("select handle, json_extract(bodies, '$.\"pl-PL\"') as pl, json_extract(bodies, '$.\"en-US\"') as en from content_page")
     .all()

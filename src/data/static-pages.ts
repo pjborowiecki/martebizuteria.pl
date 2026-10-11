@@ -1,3 +1,3 @@
-export const STATIC_PAGES = ["/", "/about", "/blog"] as const
+import { BLOG_POST_SLUGS } from "~/src/data/blog-posts"
 
-export type StaticPage = (typeof STATIC_PAGES)[number]
+export const STATIC_PAGES: readonly string[] = BLOG_POST_SLUGS.length === 0 ? ["/", "/about"] : ["/", "/about", "/blog"]

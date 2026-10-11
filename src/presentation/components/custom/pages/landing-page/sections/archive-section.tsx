@@ -3,7 +3,7 @@ import { type JSX, useMemo } from "react"
 import { ArrowRight } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { LANDING_ARCHIVE_ARTICLES } from "~/src/data/blog-posts"
+import { BLOG_POST_SLUGS } from "~/src/data/blog-posts"
 
 import { getAssetURL } from "~/src/lib/url"
 
@@ -14,9 +14,9 @@ import { LocalizedLink } from "~/src/presentation/components/custom/localized-li
 
 import { ROUTES } from "~/src/routes"
 
-const ArchiveArticleItem = ({ article }: Readonly<ArticleLinkProps>): JSX.Element => {
+const ArchiveArticleItem = ({ slug }: Readonly<{ slug: string }>): JSX.Element => {
   const t = useTranslations("pages.landing.archiveSection")
-  const params = useMemo(() => ({ slug: article.slug }), [article.slug])
+  const params = useMemo(() => ({ slug }), [slug])
 
   return (
     <li>
@@ -25,15 +25,18 @@ const ArchiveArticleItem = ({ article }: Readonly<ArticleLinkProps>): JSX.Elemen
         params={params}
         to={ROUTES.BLOG_POST}
       >
-        <span>{t(article.titleKey)}</span>
+        <span>{t(`articles.${slug}`)}</span>
         <ArrowRight className="transition-transform duration-500 group-hover:translate-x-1" />
       </LocalizedLink>
     </li>
   )
 }
 
-export const ArchiveSection = (): JSX.Element => {
+export const ArchiveSection = (): JSX.Element | undefined => {
   const t = useTranslations("pages.landing.archiveSection")
+  if (BLOG_POST_SLUGS.length === 0) {
+    return undefined
+  }
 
   return (
     <section className="mx-auto max-w-400 px-6 py-16 lg:px-12 lg:py-24">
@@ -54,8 +57,8 @@ export const ArchiveSection = (): JSX.Element => {
           <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
           <h2 className="font-serif text-5xl leading-[0.98]">{t("title")}</h2>
           <ul className="divide-y divide-border border-y border-border">
-            {LANDING_ARCHIVE_ARTICLES.map((article) => (
-              <ArchiveArticleItem key={article.titleKey} article={article} />
+            {BLOG_POST_SLUGS.map((slug) => (
+              <ArchiveArticleItem key={slug} slug={slug} />
             ))}
           </ul>
         </div>
@@ -65,9 +68,3 @@ export const ArchiveSection = (): JSX.Element => {
 }
 
 const ASPECT_RATIO_PORTRAIT = 0.8
-
-type ArchiveArticle = (typeof LANDING_ARCHIVE_ARTICLES)[number]
-
-interface ArticleLinkProps {
-  article: ArchiveArticle
-}

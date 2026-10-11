@@ -97,7 +97,7 @@ Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change t
 
 - [ ] Private paths stay out of search engines. `isNoIndexPathname` in `src/lib/seo.ts` covers `/account`, `/admin` and `/checkout`, and `__root.tsx` emits `noindex, nofollow` for them — and for **every** path when `import.meta.env.MODE` is not `production`.
 - [ ] `generateRobotsTxt` returns a blanket `Disallow: /` for any non-production `APP_ENV`, and in production disallows `/api/`, `/admin`, `/account` and `/checkout`.
-- [ ] `generateSitemapXml` is built from `STATIC_PAGES` in `src/data/static-pages.ts` (currently `/`, `/about`, `/blog`). A new public page belongs there; a private one does not.
+- [ ] `generateSitemapXml` is built from `STATIC_PAGES` in `src/data/static-pages.ts` (currently `/` and `/about`; `/blog` joins them once `BLOG_POST_SLUGS` in `src/data/blog-posts.ts` lists an article). A new public page belongs there; a private one does not.
 
 ## Response headers
 
