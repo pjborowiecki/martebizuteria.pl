@@ -105,7 +105,7 @@ Picking a type writes `deliveryMethodType` and either auto-selects the single me
 
 ### Locker
 
-`delivery/locker/delivery-locker.tsx` shows `deliverySubsteps.lockerText`, which the map dialog also uses as its description, the same `deliverySubsteps.parcelDeliveryTime` as the courier step, and the currently selected locker id, and hosts `InpostSelector`. The `lockerId` field is required by the `superRefine` in `checkoutSchema` whenever `deliveryMethodType === "locker"`, which shows `validation.lockerIdRequired` on the step. The server does not trust that type: `resolveDelivery` requires a `lockerId` matching `INPOST_POINT_NAME_PATTERN` whenever the method's `type` in the database is `locker`, and refuses the session with `LOCKER_REQUIRED` otherwise. For any other type it drops `lockerId`, so `checkout.locker_id` and `order.locker_id` stay empty for courier and in-store orders.
+`delivery/locker/delivery-locker.tsx` shows `deliverySubsteps.lockerText`, which the map dialog also uses as its description, the same `deliverySubsteps.parcelDeliveryTime` as the courier step, and the currently selected locker id, and hosts `InpostSelector`. The `lockerId` field is required by the `superRefine` in `checkoutSchema` whenever `deliveryMethodType === "locker"`, which shows `validation.lockerIdRequired` on the step. The server does not trust that type: `resolveDelivery` requires a `lockerId` matching `INPOST_POINT_NAME_PATTERN` whenever the method's `type` in the database is `locker`, and refuses the session with `LOCKER_REQUIRED` otherwise. It then asks InPost whether the point exists with `fetchPointByName`, waiting at most three seconds: a point InPost does not list is refused with `LOCKER_NOT_FOUND`, which sends the shopper back to this step, and when InPost cannot answer the locker is accepted with `checkout.locker_unconfirmed` set, so the admin order asks the shop to check it before shipping. For any other type it drops `lockerId`, so `checkout.locker_id` and `order.locker_id` stay empty for courier and in-store orders.
 
 ## InPost point picker
 
@@ -128,7 +128,7 @@ export const fetchPointsByCity = async (city: string): Promise<InpostPointParsed
 
 Points of note:
 
-- The call goes **straight from the browser** to InPost's public points API. There is no server function, no proxy and no API key.
+- The city search goes **straight from the browser** to InPost's public points API. There is no server function, no proxy and no API key. The server only calls the same API through `fetchPointByName` (`/v1/points/<name>`, three-second timeout) to confirm the chosen point when the payment session is opened or replaced.
 - `capitalizeCity` upper-cases the first letter of each word, which the API expects.
 - A non-OK response throws; a response that fails `inpostApiResponseSchema.safeParse` returns `[]` rather than throwing, so a schema drift at InPost degrades to "no points found".
 - `inpostPointsByCityQueryOptions(city)` caches aggressively: `staleTime` one day, `gcTime` two days, keyed by the lower-cased trimmed city, and `enabled` only from three characters.
@@ -152,9 +152,9 @@ The map is `react-map-gl/maplibre` with the Carto Voyager basemap (`https://base
 ## How delivery reaches the order
 
 1. `deliveryMethod` (the method id) is submitted with the checkout form.
-2. `resolveDelivery` refuses a method the shop does not offer and a locker method without a locker, keeps `lockerId` only for a locker method, and reads the method's `price`.
-3. `prepareCreateCheckoutBatch` writes the method to `checkout.delivery_method_id`, and `lockerId` to `checkout.locker_id`; `createStripeSession` adds a delivery line item for the price when it is above zero, named for the method's type in the shopper's language (`deliveryLineItem` in `pages.checkout`).
-4. `prepareFulfillCheckoutBatch` copies `deliveryMethodId`, `lockerId` and `customerNote` from the checkout snapshot onto the new `order` row, and computes `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
+2. `resolveDelivery` refuses a method the shop does not offer, a locker method without a locker and a locker InPost does not list, keeps `lockerId` only for a locker method, notes whether InPost could be asked about it, and reads the method's `price`.
+3. `prepareCreateCheckoutBatch` writes the method to `checkout.delivery_method_id`, `lockerId` to `checkout.locker_id` and the unanswered lookup to `checkout.locker_unconfirmed`; `createStripeSession` adds a delivery line item for the price when it is above zero, named for the method's type in the shopper's language (`deliveryLineItem` in `pages.checkout`).
+4. `prepareFulfillCheckoutBatch` copies `deliveryMethodId`, `lockerId`, `lockerUnconfirmed` and `customerNote` from the checkout snapshot onto the new `order` row, and computes `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
 5. For a locker or courier order, an admin can book the parcel with InPost from the order page. The shipment's id and status land on `order.inpost_shipment_id` and `order.inpost_shipment_status`, its tracking number and link on `order.tracking_number` and `order.tracking_url`, and its PDF label is downloaded from the same card. See [InPost](/docs/integrations/inpost#shipments-through-shipx).
 
 ## Delivery in the emails

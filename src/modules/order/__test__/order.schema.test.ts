@@ -47,6 +47,7 @@ describe("order table", () => {
       "inpost_shipment_id",
       "inpost_shipment_status",
       "locker_id",
+      "locker_unconfirmed",
       "metadata",
       "order_number",
       "payment_id",
@@ -197,5 +198,15 @@ describe("order relations", () => {
     expect(relationEntries.filter(([key]) => key === name).map(([, relation]) => getTableName(relation.referencedTable))).toStrictEqual([
       table,
     ])
+  })
+})
+
+describe("order locker confirmation", () => {
+  it("treats the order's locker as confirmed unless InPost could not be asked about it at checkout", () => {
+    const unconfirmed = columnByName.get("locker_unconfirmed")
+
+    expect(unconfirmed?.getSQLType()).toBe("integer")
+    expect(unconfirmed?.default).toBe(false)
+    expect(unconfirmed?.notNull).toBe(true)
   })
 })

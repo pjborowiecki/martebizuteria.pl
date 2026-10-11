@@ -5,8 +5,14 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
   createCheckout:
-    vi.fn<(input: { checkoutValues: { lockerId?: string | undefined } }) => Promise<{ checkoutId: string; discountClaimed: boolean }>>(),
+    vi.fn<
+      (input: {
+        checkoutValues: { lockerId?: string | undefined }
+        lockerUnconfirmed?: boolean | undefined
+      }) => Promise<{ checkoutId: string; discountClaimed: boolean }>
+    >(),
   ensureStripeCustomer: vi.fn<() => Promise<string>>(),
+  fetchPointByName: vi.fn<(name: string) => Promise<{ name: string } | undefined>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn<(id: string) => Promise<{ price: number; type: string } | undefined>>(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -17,11 +23,19 @@ const mocked = vi.hoisted(() => ({
   reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
   supersedeCheckoutSession: vi.fn(),
-  updateCheckoutDelivery: vi.fn<(checkoutId: string, checkoutValues: { lockerId?: string | undefined }) => Promise<void>>(),
+  updateCheckoutDelivery:
+    vi.fn<
+      (
+        checkoutId: string,
+        checkoutValues: { lockerId?: string | undefined },
+        resolved?: { discountId?: string | undefined; lockerUnconfirmed?: boolean | undefined },
+      ) => Promise<void>
+    >(),
 }))
 
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: mocked.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: mocked.getRequestSession }))
+vi.mock("~/src/integrations/inpost/inpost.api", () => ({ fetchPointByName: mocked.fetchPointByName }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: vi.fn(),
 }))
@@ -113,6 +127,7 @@ beforeEach(() => {
   mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
   mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(COURIER)
   mocked.createCheckout.mockResolvedValue({ checkoutId: "checkout-1", discountClaimed: false })
+  mocked.fetchPointByName.mockImplementation((name) => Promise.resolve({ name }))
   mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_799, client_secret: "cs_secret_1", id: "cs_new" })
   mocked.checkoutSessionsExpire.mockResolvedValue({})
   mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: { items: JSON.stringify(HELD_LINES) }, status: "open" })
@@ -249,6 +264,52 @@ describe("parcel locker a new checkout names", () => {
     await handleCreateCheckoutSession(createInput({ deliveryMethodType: "courier", lockerId: "WAW01M" }))
 
     expect(mocked.createCheckout.mock.lastCall?.[0].checkoutValues).toMatchObject({ deliveryMethod: "dpd-courier", lockerId: undefined })
+    expect(mocked.createCheckout.mock.lastCall?.[0].lockerUnconfirmed).toBe(false)
+    expect(mocked.fetchPointByName).not.toHaveBeenCalled()
+  })
+})
+
+describe("parcel locker InPost is asked about for a new checkout", () => {
+  beforeEach(() => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(PARCEL_LOCKER)
+  })
+
+  it("asks InPost for the trimmed locker and saves it as confirmed when InPost lists it", async () => {
+    await handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: " WAW01M " }))
+
+    expect(mocked.fetchPointByName).toHaveBeenCalledExactlyOnceWith("WAW01M")
+    expect(mocked.createCheckout.mock.lastCall?.[0].lockerUnconfirmed).toBe(false)
+  })
+
+  it("refuses a locker InPost does not list before touching Stripe or stock", async () => {
+    mocked.fetchPointByName.mockResolvedValue(undefined)
+
+    await expect(handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "WAW99X" }))).rejects.toMatchObject({
+      code: ERROR_CODES.VALIDATION,
+      message: CHECKOUT_ERROR_CODES.LOCKER_NOT_FOUND,
+    })
+    expectNewCheckoutUntouched()
+  })
+
+  it("does not ask InPost about a locker id of the wrong shape", async () => {
+    await expect(handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "W1" }))).rejects.toMatchObject({
+      message: CHECKOUT_ERROR_CODES.LOCKER_REQUIRED,
+    })
+    expect(mocked.fetchPointByName).not.toHaveBeenCalled()
+  })
+
+  it("opens the payment with the locker flagged unconfirmed when InPost cannot answer", async () => {
+    const outage = new Error("InPost API error: 503")
+    mocked.fetchPointByName.mockRejectedValue(outage)
+
+    await handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "WAW01M" }))
+
+    expect(mocked.createCheckout.mock.lastCall?.[0]).toMatchObject({ checkoutValues: { lockerId: "WAW01M" }, lockerUnconfirmed: true })
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledOnce()
+    expect(console.error).toHaveBeenCalledWith(
+      "InPost could not confirm parcel locker WAW01M, so the order asks the shop to check it:",
+      outage,
+    )
   })
 })
 
@@ -284,5 +345,36 @@ describe("delivery an edited checkout names", () => {
     await handleUpdateCheckoutSession(updateInput({ deliveryMethodType: "courier", lockerId: "KRA01M" }))
 
     expect(mocked.updateCheckoutDelivery.mock.lastCall?.[1]).toMatchObject({ deliveryMethod: "dpd-courier", lockerId: undefined })
+    expect(mocked.updateCheckoutDelivery.mock.lastCall?.[2]?.lockerUnconfirmed).toBe(false)
+  })
+
+  it("saves a locker InPost lists as confirmed", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(PARCEL_LOCKER)
+
+    await handleUpdateCheckoutSession(updateInput({ deliveryMethodType: "locker", lockerId: "KRA01M" }))
+
+    expect(mocked.fetchPointByName).toHaveBeenCalledExactlyOnceWith("KRA01M")
+    expect(mocked.updateCheckoutDelivery.mock.lastCall?.[2]?.lockerUnconfirmed).toBe(false)
+  })
+
+  it("refuses a locker InPost does not list and leaves the held session alone", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(PARCEL_LOCKER)
+    mocked.fetchPointByName.mockResolvedValue(undefined)
+
+    await expect(handleUpdateCheckoutSession(updateInput({ deliveryMethodType: "locker", lockerId: "KRA99X" }))).rejects.toMatchObject({
+      code: ERROR_CODES.VALIDATION,
+      message: CHECKOUT_ERROR_CODES.LOCKER_NOT_FOUND,
+    })
+    expectHeldSessionUntouched()
+  })
+
+  it("saves the locker flagged unconfirmed when InPost cannot answer", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(PARCEL_LOCKER)
+    mocked.fetchPointByName.mockRejectedValue(new DOMException("The operation was aborted due to timeout", "TimeoutError"))
+
+    await handleUpdateCheckoutSession(updateInput({ deliveryMethodType: "locker", lockerId: "KRA01M" }))
+
+    expect(mocked.updateCheckoutDelivery.mock.lastCall?.[1].lockerId).toBe("KRA01M")
+    expect(mocked.updateCheckoutDelivery.mock.lastCall?.[2]?.lockerUnconfirmed).toBe(true)
   })
 })

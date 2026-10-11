@@ -8,6 +8,7 @@ const mocked = vi.hoisted(() => ({
   countOpenCheckouts: vi.fn<(owner: { clientAddress: string; email: string }) => Promise<{ byClientAddress: number; byEmail: number }>>(),
   createCheckout: vi.fn<(input: { clientAddress: string }) => Promise<{ checkoutId: string; discountClaimed: boolean }>>(),
   ensureStripeCustomer: vi.fn(),
+  fetchPointByName: vi.fn<(name: string) => Promise<{ name: string } | undefined>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -25,6 +26,7 @@ const mocked = vi.hoisted(() => ({
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: mocked.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: mocked.getRequestSession }))
 vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ verifyTurnstileToken: mocked.verifyTurnstileToken }))
+vi.mock("~/src/integrations/inpost/inpost.api", () => ({ fetchPointByName: mocked.fetchPointByName }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: vi.fn(),
 }))
@@ -111,6 +113,7 @@ beforeEach(() => {
   mocked.getRequest.mockReturnValue(shopRequest())
   mocked.clientAddress.mockReturnValue(VISITOR_ADDRESS)
   mocked.verifyTurnstileToken.mockResolvedValue(undefined)
+  mocked.fetchPointByName.mockImplementation((name) => Promise.resolve({ name }))
   mocked.countOpenCheckouts.mockResolvedValue({ byClientAddress: 0, byEmail: 0 })
   mocked.getRequestSession.mockResolvedValue(null)
   mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1500, type: "courier" })
@@ -159,6 +162,27 @@ describe("handleCreateCheckoutSession bot check", () => {
 
     expect(mocked.countOpenCheckouts).not.toHaveBeenCalled()
     expectNothingHeld()
+  })
+
+  it("asks InPost about a parcel locker only once the token has passed and the open checkouts are counted", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1499, type: "locker" })
+
+    await handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "WAW01M" }))
+
+    expect(mocked.fetchPointByName).toHaveBeenCalledExactlyOnceWith("WAW01M")
+    expect(mocked.verifyTurnstileToken).toHaveBeenCalledBefore(mocked.fetchPointByName)
+    expect(mocked.countOpenCheckouts).toHaveBeenCalledBefore(mocked.fetchPointByName)
+  })
+
+  it("never asks InPost about the parcel locker of a request whose token does not pass", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1499, type: "locker" })
+    mocked.verifyTurnstileToken.mockRejectedValue(new AppError(ERROR_CODES.FORBIDDEN, TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED))
+
+    await expect(handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "WAW01M" }))).rejects.toMatchObject({
+      code: ERROR_CODES.FORBIDDEN,
+    })
+
+    expect(mocked.fetchPointByName).not.toHaveBeenCalled()
   })
 })
 

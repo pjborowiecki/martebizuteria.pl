@@ -1,4 +1,5 @@
 import { TURNSTILE_ORIGIN } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
+import { INPOST_POINTS_API_ORIGIN } from "~/src/integrations/inpost/inpost.constants"
 
 import { isLocalMode } from "~/src/modules/_core/constants/api"
 
@@ -19,8 +20,6 @@ const STRIPE_THREE_D_SECURE_ORIGIN = "https://hooks.stripe.com"
 const STRIPE_API_ORIGIN = "https://api.stripe.com"
 
 const STRIPE_ELEMENTS_FONT_STYLESHEET_ORIGIN = "https://fonts.googleapis.com"
-
-const INPOST_POINTS_API_ORIGIN = "https://api-pl-points.easypack24.net"
 
 const LOCKER_MAP_ORIGINS = ["https://basemaps.cartocdn.com", "https://*.basemaps.cartocdn.com"] as const
 

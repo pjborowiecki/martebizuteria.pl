@@ -1,9 +1,9 @@
 import { type APIRequestContext, type Browser, type Page, type Request, type TestInfo } from "@playwright/test"
 
 import { COURIER, IN_STORE_PICKUP, PARCEL_LOCKER, PRODUCTS, SHIPPING_ADDRESS, WITHDRAWN_DELIVERY_METHOD } from "../data/catalog"
-import { INPOST_LOCKERS } from "../data/inpost"
+import { INPOST_LOCKERS, INPOST_POINTS } from "../data/inpost"
 import { rememberPriceWhenAdded } from "../fixtures/cart"
-import { keepCheckoutDraft } from "../fixtures/checkout-draft"
+import { keepCheckoutDraft, lockerCheckoutDraft } from "../fixtures/checkout-draft"
 import { registerCustomer } from "../fixtures/customers"
 import { linkIn, waitForEmail } from "../fixtures/emails"
 import {
@@ -43,6 +43,8 @@ const PAYMENT_NOT_COMPLETED = "Your payment was not completed. Choose a payment 
 const DELIVERY_METHOD_UNAVAILABLE = "The delivery method you chose is no longer available. Please choose another one."
 
 const LOCKER_REQUIRED = "Please choose a parcel locker for this delivery method."
+
+const LOCKER_NOT_FOUND = "InPost does not list the parcel locker you chose. Please choose another one."
 
 const DELIVERY_STEP_URL = /\/en-US\/checkout\?step=3$/u
 
@@ -560,6 +562,35 @@ test.describe("guest checkout", () => {
     await checkoutPage.chooseDelivery(IN_STORE_PICKUP.name)
     const session = await waitForOpenCheckoutSession(request, email)
     expect(session.amount_total).toBe(37_900)
+  })
+
+  test("a guest whose saved checkout names a parcel locker InPost lists pays the locker price", async ({ checkoutPage, page, request }, testInfo) => {
+    const email = uniqueEmail(testInfo, "listed-locker")
+    await keepCheckoutDraft(page, lockerCheckoutDraft(email, INPOST_POINTS.listed))
+
+    await checkoutPage.open("/en-US/checkout?step=4")
+
+    const session = await waitForOpenCheckoutSession(request, email)
+    expect(session.amount_total).toBe(39_399)
+  })
+
+  test("a guest whose saved checkout names a parcel locker InPost does not list is sent back to choose another, with nothing held", async ({
+    checkoutPage,
+    page,
+    request,
+  }, testInfo) => {
+    const email = uniqueEmail(testInfo, "unlisted-locker")
+    await keepCheckoutDraft(page, lockerCheckoutDraft(email, INPOST_POINTS.unlisted))
+
+    await checkoutPage.open("/en-US/checkout?step=4")
+
+    await expect(checkoutPage.notification(LOCKER_NOT_FOUND)).toBeVisible()
+    await expect(page).toHaveURL(DELIVERY_STEP_URL)
+    expect(await openCheckoutSessions(request, email)).toStrictEqual([])
+
+    await checkoutPage.chooseDelivery(COURIER.name)
+    const session = await waitForOpenCheckoutSession(request, email)
+    expect(session.amount_total).toBe(39_899)
   })
 
   test("a request that turns the courier into the parcel locker without a locker opens no payment", async ({

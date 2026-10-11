@@ -36,6 +36,7 @@ export const order = sqliteTable(
     inpostShipmentId: text("inpost_shipment_id"),
     inpostShipmentStatus: text("inpost_shipment_status"),
     lockerId: text("locker_id"),
+    lockerUnconfirmed: integer("locker_unconfirmed", { mode: "boolean" }).default(false).notNull(),
     metadata: text("metadata"),
     orderNumber: text("order_number").notNull(),
     paymentId: text("payment_id").references(() => payment.id, { onDelete: "set null" }),

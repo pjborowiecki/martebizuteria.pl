@@ -181,6 +181,7 @@
     "errors": {
       "deliveryMethodUnavailable": "Wybrana metoda dostawy nie jest już dostępna. Wybierz inną.",
       "lockerRequired": "Wybierz paczkomat dla tej metody dostawy.",
+      "lockerNotFound": "InPost nie ma na liście wybranego paczkomatu. Wybierz inny.",
       "insufficientInventory": "Niektórych produktów z koszyka brakuje na stanie.",
       "invalidPrice": "Jeden z produktów w koszyku ma nieprawidłową cenę. Usuń go i spróbuj ponownie.",
       "productNotFound": "Produkt z koszyka nie jest już dostępny.",

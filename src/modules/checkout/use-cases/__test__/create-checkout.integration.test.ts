@@ -91,7 +91,7 @@ const resetSchema = (): void => {
       );
       create table checkout (
         id text primary key, billing_company_name text, billing_nip text, status text not null, email text not null, user_id text, cart_id text, discount_id text,
-        client_address text, customer_note text, delivery_method_id text, locker_id text, billing_address_id text, shipping_address_id text,
+        client_address text, customer_note text, delivery_method_id text, locker_id text, locker_unconfirmed integer not null default 0, billing_address_id text, shipping_address_id text,
         created_at integer, updated_at integer
       );
       create table discount (

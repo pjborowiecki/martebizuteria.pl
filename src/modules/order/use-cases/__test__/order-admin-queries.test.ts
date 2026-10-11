@@ -323,6 +323,7 @@ const detailRow = (overrides: Record<string, unknown> = {}) => ({
   inpostShipmentId: null,
   inpostShipmentStatus: null,
   lockerId: null,
+  lockerUnconfirmed: false,
   metadata: null,
   orderNumber: "MRT-2026-00001",
   payment: null,
@@ -528,7 +529,13 @@ describe("getAdminOrder delivery and payment", () => {
 
     const detail = await fetchAdminOrder()
 
-    expect(detail?.delivery).toStrictEqual({ courierName: "InPost", lockerId: "WAW01A", methodName: "Paczkomat 24/7", type: "locker" })
+    expect(detail?.delivery).toStrictEqual({
+      courierName: "InPost",
+      lockerId: "WAW01A",
+      lockerUnconfirmed: false,
+      methodName: "Paczkomat 24/7",
+      type: "locker",
+    })
     expect(detail?.payment).toStrictEqual({
       amountMinorUnits: 11_500,
       provider: "stripe",
@@ -539,6 +546,18 @@ describe("getAdminOrder delivery and payment", () => {
     })
     expect(detail?.paymentUiKey).toBe("paid")
     expect(detail?.tags).toContain(ADMIN_ORDER_DETAIL_TAG.LOCKER)
+    expect(detail?.tags).not.toContain(ADMIN_ORDER_DETAIL_TAG.LOCKER_UNCONFIRMED)
+  })
+
+  it("flags a parcel locker InPost could not confirm when the order was placed", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(
+      detailRow({ deliveryMethod: lockerDelivery, lockerId: "WAW01A", lockerUnconfirmed: true, payment: paymentRow() }),
+    )
+
+    const detail = await fetchAdminOrder()
+
+    expect(detail?.delivery).toMatchObject({ lockerId: "WAW01A", lockerUnconfirmed: true })
+    expect(detail?.tags).toContain(ADMIN_ORDER_DETAIL_TAG.LOCKER_UNCONFIRMED)
   })
 
   it("dates a partial refund and leaves out a locker and transaction id the order never had", async () => {

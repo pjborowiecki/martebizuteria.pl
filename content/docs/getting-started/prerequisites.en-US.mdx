@@ -96,7 +96,7 @@ The parcel-locker picker calls the public points API directly from `src/integrat
 const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
 ```
 
-Booking shipments, printing labels and reading their status from the admin order page goes through InPost's ShipX API and needs an InPost Manager account: its API section (My Account, API) gives the token for `INPOST_API_TOKEN` and the organisation id for `INPOST_ORGANIZATION_ID`. Development and preview call InPost's sandbox, which has its own account at `https://sandbox-manager.paczkomaty.pl`. Both values may stay blank, and the order page then explains that InPost shipping is not set up. See [InPost](/docs/integrations/inpost#credentials).
+Booking shipments, printing labels and reading their status from the admin order page goes through InPost's ShipX API and needs an InPost Manager account: its API section (My Account, API) gives the token for `INPOST_API_TOKEN` and the organisation id for `INPOST_ORGANIZATION_ID`. Development and preview call InPost's sandbox, which has its own account at `https://sandbox-manager.paczkomaty.pl`. Both values may stay blank, and the order page then explains that InPost shipping is not set up. See [InPost](/docs/integrations/inpost#credentials). The points API, which the checkout searches for lockers and asks to confirm the chosen one, needs no account.
 
 ## Next
 

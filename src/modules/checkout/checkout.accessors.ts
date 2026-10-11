@@ -18,6 +18,7 @@ export const getCheckoutForFulfillment = (checkoutId: string) =>
       deliveryMethodId: true,
       discountId: true,
       lockerId: true,
+      lockerUnconfirmed: true,
     },
     where: eq(checkout.id, checkoutId),
     with: {

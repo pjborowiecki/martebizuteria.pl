@@ -2,7 +2,9 @@ import { type APIRequestContext, type Browser, type Page, type TestInfo } from "
 
 import { ORDER_NOTIFICATION_INBOX, TEST_ACCOUNTS, TEST_PASSWORD } from "../data/accounts"
 import { COURIER, INVOICED_COMPANY, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
+import { INPOST_POINTS } from "../data/inpost"
 import { STORAGE_STATE } from "../data/storage-state"
+import { keepCheckoutDraft, lockerCheckoutDraft } from "../fixtures/checkout-draft"
 import { acceptEmailsTo, linkIn, refuseEmailsTo, sentEmails, waitForEmail } from "../fixtures/emails"
 import { placeOrder } from "../fixtures/orders"
 import { SERVER_FUNCTIONS, waitForServerFunctionResponse } from "../fixtures/server-functions"
@@ -59,6 +61,9 @@ const SLUG_TAKEN =
   "This URL slug is already used by another product. If it is not in the list, click Create product again — the previous attempt may have been rolled back."
 
 const CODE_HELD_BY_OTHER_CHECKOUTS = "That code is reserved for orders awaiting payment. Try again later."
+
+const LOCKER_UNCONFIRMED =
+  "InPost could not be reached to confirm this parcel locker when the order was placed. Check that it exists before you send the parcel."
 
 const DISPUTE_BLOCKS_CANCEL =
   "This order has an open dispute. Cancelling would refund its payment, which the dispute now decides, so the order cannot be cancelled until the dispute closes."
@@ -486,6 +491,36 @@ test.describe("admin", () => {
     expect(csv).toContain(`"${email}","${INVOICED_COMPANY.companyName}","${INVOICED_COMPANY.storedNip}"`)
     const summaryFromList = await adminOrderPage.openSummaryFromRow(email)
     await expect(new BasePage(summaryFromList).heading()).toHaveText("Order summary")
+  })
+
+  test("an order whose parcel locker InPost could not confirm is taken and flagged for the admin to check", async ({
+    adminOrderPage,
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const shopper = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(shopper)
+    const email = uniqueEmail(testInfo, "unconfirmed")
+    const shopperPage = await shopper.newPage()
+    const productPage = new ProductPage(shopperPage)
+    await productPage.gotoProduct(PRODUCTS.onyx.handle)
+    await productPage.addToCart()
+    await keepCheckoutDraft(shopperPage, lockerCheckoutDraft(email, INPOST_POINTS.unanswered))
+    await new CheckoutPage(shopperPage).open("/en-US/checkout?step=4")
+    const session = await waitForOpenCheckoutSession(request, email)
+    expect(session.amount_total).toBe(39_399)
+    await completeCheckoutSession(request, session.id)
+    await shopper.close()
+
+    await adminOrderPage.gotoOrderFor(email)
+    const main = page.getByRole("main")
+    await expect(main.getByText(INPOST_POINTS.unanswered)).toBeVisible()
+    await expect(main.getByText(LOCKER_UNCONFIRMED)).toBeVisible()
+    await expect(main.getByText("Locker not confirmed", { exact: true })).toBeVisible()
   })
 
   test("an admin back on the order list sees the order a colleague shipped while they had it open", async ({

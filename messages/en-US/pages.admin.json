@@ -746,7 +746,8 @@
       "copy": "Copy shipping address",
       "copied": "Shipping address copied",
       "missing": "No shipping address recorded.",
-      "openTracking": "Open tracking page"
+      "openTracking": "Open tracking page",
+      "lockerUnconfirmed": "InPost could not be reached to confirm this parcel locker when the order was placed. Check that it exists before you send the parcel."
     },
     "inpost": {
       "title": "InPost shipment",
@@ -827,6 +828,7 @@
         "guest": "Guest",
         "returning": "Returning customer",
         "locker": "Locker delivery",
+        "lockerUnconfirmed": "Locker not confirmed",
         "inStore": "In-store pickup",
         "disputed": "Disputed",
         "refunded": "Refunded",

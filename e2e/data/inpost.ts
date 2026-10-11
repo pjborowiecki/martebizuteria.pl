@@ -29,4 +29,6 @@ export const INPOST_LOCKERS = {
   },
 } as const
 
+export const INPOST_POINTS = { listed: INPOST_LOCKERS.krucza.name, unanswered: "WAW503", unlisted: "WAW99X" } as const
+
 export type InpostLocker = (typeof INPOST_LOCKERS)[keyof typeof INPOST_LOCKERS]

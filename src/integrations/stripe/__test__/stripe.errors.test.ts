@@ -19,6 +19,7 @@ describe("getCheckoutErrorKey", () => {
       "errors.deliveryMethodUnavailable",
       "errors.insufficientInventory",
       "errors.invalidPrice",
+      "errors.lockerNotFound",
       "errors.lockerRequired",
       "errors.productNotFound",
       "errors.salesPaused",

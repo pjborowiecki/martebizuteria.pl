@@ -51,6 +51,7 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
   delivery: {
     courierName: "InPost",
     lockerId: "WAW01A",
+    lockerUnconfirmed: false,
     methodName: "Paczkomat 24/7",
     type: "locker",
   },
