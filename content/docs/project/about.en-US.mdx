@@ -105,7 +105,7 @@ Catalog (products, variants, options, attributes, categories, collections, searc
 
 ### Absent
 
-No end-to-end or browser tests. No reconciliation job: the only Cron Trigger runs the [retention clean-up](/docs/guides/data-retention), which releases no stock. An audit entry that still cannot be written after the dead-letter queue retries it on its own is dropped, although the failures email `RESEND_EMAIL_FROM`. No third-party error reporting service: failures go to Workers Logs and Issues, and the ones the owner must act on to `RESEND_EMAIL_FROM`; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
+No browser test pays with BLIK or Przelewy24, and Stripe's card form is exercised only by the opt-in Stripe test-mode project when sandbox keys are set. No reconciliation job: the only Cron Trigger runs the [retention clean-up](/docs/guides/data-retention), which releases no stock. An audit entry that still cannot be written after the dead-letter queue retries it on its own is dropped, although the failures email `RESEND_EMAIL_FROM`. No third-party error reporting service: failures go to Workers Logs and Issues, and the ones the owner must act on to `RESEND_EMAIL_FROM`; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
 
 [Roadmap](/docs/project/roadmap) lists these in the order they are worth fixing.
 

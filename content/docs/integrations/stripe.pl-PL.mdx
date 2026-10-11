@@ -190,6 +190,8 @@ bun run stripe:listen
 
 Sekret `STRIPE_WEBHOOK_SECRET` wypisany przez to polecenie jest tym, którego potrzebuje Twój lokalny plik środowiska. Bez niego trasa webhooka odpowiada 400 i nic nie jest realizowane.
 
+Testy przeglądarkowe emulują Stripe'a w testowym Workerze. Jeden projekt Playwrighta, `stripe-test-mode`, opłaca checkout w prawdziwym Payment Element testową kartą Stripe'a, gdy jest zbudowany i uruchomiony z kluczami sandboxa Stripe'a, i sam przekazuje zdarzenie `checkout.session.completed` sandboxa do lokalnego webhooka, więc nie potrzebuje Stripe CLI; zobacz [Tryb testowy Stripe](/docs/tooling/testing#tryb-testowy-stripe).
+
 ## Błędy
 
 Plik `stripe.errors.ts` mapuje wewnętrzne kody na klucze komunikatów:

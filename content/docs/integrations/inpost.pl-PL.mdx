@@ -124,6 +124,8 @@ Dalej `lockerId` zapisywany jest w wierszu `checkout`, kopiowany na zamówienie 
 
 Katalog `src/integrations/inpost/__test__/` zawiera trzy pliki. `inpost.api.test.ts` obejmuje adres żądania, wielkie litery w wieloczłonowych i dzielonych łącznikiem nazwach miast, rzucenie wyjątku przy statusie innym niż OK oraz zwrócenie pustej tablicy zarówno dla błędnego kształtu odpowiedzi, jak i dla jednego zniekształconego punktu. `inpost.queries.test.ts` obejmuje obcięty, zapisany małymi literami klucz, prefiks przestrzeni nazw oraz czasy cache jednego i dwóch dni. `inpost.zod.test.ts` obejmuje pełny punkt, punkt ograniczony do pól wymaganych oraz odrzucenie, gdy brakuje współrzędnych, miasta lub nazwy.
 
+Testy przeglądarkowe nigdy nie wywołują InPostu. `e2e/fixtures/inpost.ts` odpowiada na wyszukiwanie punktów paczkomatami z `e2e/data/inpost.ts`, których miasto się zgadza, a specyfikacja checkoutu wyszukuje w wyborze paczkomatu Warszawę, wybiera paczkomat z listy i płaci; zobacz [Testy](/docs/tooling/testing#testy-end-to-end).
+
 ## Powiązane strony
 
 - [Zamówienia i płatności](/docs/features/checkout)

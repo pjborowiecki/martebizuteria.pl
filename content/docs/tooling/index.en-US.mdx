@@ -34,7 +34,7 @@ There is no separate ESLint, Prettier, Jest or tsc invocation. `bun run check` i
 
 ## What is not here
 
-There are no browser or end-to-end tests. `vite.config.ts` lists `e2e`, `playwright/.cache`, `playwright-report` and `test-results` in its ignore and exclude patterns, but no `e2e/` directory exists and Playwright is not a dependency. Those patterns are pre-emptive, not evidence of a suite.
+The default browser suite never calls Stripe. It settles payments through the emulator in the test Worker, so Stripe's own card form runs only in the opt-in `stripe-test-mode` project, when Stripe sandbox keys are set; see [Testing](/docs/tooling/testing#stripe-test-mode).
 
 CI does not apply database migrations; the deploy scripts do, right before `wrangler deploy`, and production deploys only a commit that passed CI. See [CI/CD](/docs/tooling/ci-cd) and [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 

@@ -1,6 +1,7 @@
-import { type BrowserContext, type TestInfo, test as base } from "@playwright/test"
+import { type BrowserContext, type Route, type TestInfo, test as base } from "@playwright/test"
 
 import { AccountPage, AdminOrderPage, AuthPage, CartPage, CheckoutPage, CouponsPage, ProductPage } from "../pages"
+import { answerInpostPointSearch, isInpostPointSearch } from "./inpost"
 import { TURNSTILE_SCRIPT, TURNSTILE_WIDGET_DOUBLE } from "./turnstile"
 
 const LOCAL_ORIGIN = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\//u
@@ -15,19 +16,24 @@ const REALTIME_SOCKET = /\/api\/realtime\//u
 const IP_OCTET_COUNT = 3
 const IP_OCTET_RANGE = 254
 
-export const isolateNetwork = async (context: BrowserContext): Promise<void> => {
-  await context.route(
-    (url) => !LOCAL_ORIGIN.test(url.href),
-    (route) => {
-      const request = route.request()
-      if (TURNSTILE_SCRIPT.test(request.url())) {
-        return route.fulfill({ body: TURNSTILE_WIDGET_DOUBLE, contentType: "text/javascript" })
-      }
+const answerOutsideRequest = (route: Route): Promise<void> => {
+  if (TURNSTILE_SCRIPT.test(route.request().url())) {
+    return route.fulfill({ body: TURNSTILE_WIDGET_DOUBLE, contentType: "text/javascript" })
+  }
 
-      return request.resourceType() === "image"
-        ? route.fulfill({ body: TRANSPARENT_PNG, contentType: "image/png" })
-        : route.abort("blockedbyclient")
-    },
+  if (route.request().resourceType() === "image") {
+    return route.fulfill({ body: TRANSPARENT_PNG, contentType: "image/png" })
+  }
+
+  const url = new URL(route.request().url())
+
+  return isInpostPointSearch(url) ? answerInpostPointSearch(route, url) : route.abort("blockedbyclient")
+}
+
+export const isolateNetwork = async (context: BrowserContext, reachableOrigins: readonly RegExp[] = []): Promise<void> => {
+  await context.route(
+    (url) => !LOCAL_ORIGIN.test(url.href) && !reachableOrigins.some((origin) => origin.test(url.href)),
+    answerOutsideRequest,
   )
 }
 
@@ -45,6 +51,10 @@ export const clientAddressFor = (testInfo: TestInfo, client = "visitor"): string
   return `10.${octets.join(".")}`
 }
 
+interface AppOptions {
+  reachableOrigins: readonly RegExp[]
+}
+
 interface AppFixtures {
   accountPage: AccountPage
   adminOrderPage: AdminOrderPage
@@ -57,7 +67,7 @@ interface AppFixtures {
   productPage: ProductPage
 }
 
-export const test = base.extend<AppFixtures>({
+export const test = base.extend<AppOptions & AppFixtures>({
   accountPage: async ({ page }, use) => {
     await use(new AccountPage(page))
   },
@@ -93,8 +103,8 @@ export const test = base.extend<AppFixtures>({
     await use({ ...extraHTTPHeaders, "cf-connecting-ip": clientAddressFor(testInfo) })
   },
   isolatedNetwork: [
-    async ({ context }, use) => {
-      await isolateNetwork(context)
+    async ({ context, reachableOrigins }, use) => {
+      await isolateNetwork(context, reachableOrigins)
       await use(undefined)
     },
     { auto: true },
@@ -102,6 +112,7 @@ export const test = base.extend<AppFixtures>({
   productPage: async ({ page }, use) => {
     await use(new ProductPage(page))
   },
+  reachableOrigins: [[], { option: true }],
 })
 
 export { expect } from "@playwright/test"

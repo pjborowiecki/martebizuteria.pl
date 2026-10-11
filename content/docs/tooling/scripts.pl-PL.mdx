@@ -65,14 +65,17 @@ Oba uruchamiają `wrangler deploy` przez `env -u CLOUDFLARE_ENV vp exec`. Co spr
 | `test:component`   | `vp test run --project component`                |
 | `test:changed`     | `vp test run --changed`                          |
 | `test:coverage`    | `vp test run --coverage`                         |
-| `test:e2e`         | `playwright test` — obie przeglądarki            |
+| `test:e2e`         | `playwright test` — wszystkie projekty           |
 | `test:e2e:pr`      | `playwright test --project=chromium`             |
 | `test:e2e:smoke`   | Specyfikacja smoke w Chromium                    |
+| `test:e2e:stripe`  | `playwright test --project=stripe-test-mode`     |
 | `test:e2e:headed`  | `playwright test --headed`                       |
 | `test:e2e:ui`      | `playwright test --ui`                           |
 | `test:e2e:install` | `playwright install --with-deps chromium webkit` |
 | `test:all`         | `test`, a potem `test:e2e:smoke`                 |
 | `test:watch`       | `vp test`                                        |
+
+`test:e2e` uruchamia Chromium, WebKit i projekt `stripe-test-mode`, który pomija swoją specyfikację, dopóki nie ustawisz kluczy sandboxa Stripe'a; `test:e2e:stripe` uruchamia sam ten projekt. Zobacz [Tryb testowy Stripe](/docs/tooling/testing#tryb-testowy-stripe).
 
 `test:watch` nie obserwuje — `vp test` bez podkomendy wykonuje jeden przebieg. Użyj `vp test watch`. Zobacz [Testy](/docs/tooling/testing).
 

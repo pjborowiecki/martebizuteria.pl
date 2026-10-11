@@ -105,7 +105,7 @@ Zestaw pokrywa każdą instrukcję, gałąź, funkcję i linię, a progi go przy
 
 ## Testy przeglądarkowe
 
-Zestaw Playwrighta w `e2e/` uruchamia zbudowanego Workera w Chromium i WebKicie na lokalnej bazie D1 utworzonej z całej historii migracji. Osobny testowy Worker, `src/platform/testing/worker.ts`, przechwytuje e-maile Resend, emuluje w pamięci API Stripe'a i podpisuje zdarzenia `checkout.session.completed` testowym sekretem webhooka, więc specyfikacja obejmuje cały zakup: cztery kroki checkoutu, rezerwację stanu, podpisany webhook, realizację, stronę i e-mail z potwierdzeniem, historię zamówień klienta i wysyłkę zamówienia przez administratora. Pokryte są też rejestracja z prawdziwym linkiem weryfikacyjnym, przekierowania z chronionych tras, kupony, wyszukiwarka, koszyk i oba języki. Poza zasięgiem zostaje tylko formularz karty samego Stripe'a. [Testowanie](/docs/tooling/testing#testy-end-to-end) opisuje zestaw i pisanie specyfikacji.
+Zestaw Playwrighta w `e2e/` uruchamia zbudowanego Workera w Chromium i WebKicie na lokalnej bazie D1 utworzonej z całej historii migracji. Osobny testowy Worker, `src/platform/testing/worker.ts`, przechwytuje e-maile Resend, emuluje w pamięci API Stripe'a i podpisuje zdarzenia `checkout.session.completed` testowym sekretem webhooka, więc specyfikacja obejmuje cały zakup: cztery kroki checkoutu, rezerwację stanu, podpisany webhook, realizację, stronę i e-mail z potwierdzeniem, historię zamówień klienta i wysyłkę zamówienia przez administratora. Opłacane są dostawa kurierem, odbiór osobisty i paczkomat wybrany na mapie, którego wyszukiwanie punktów InPostu przeglądarka obsługuje z lokalnych danych, a jeden pełny checkout przechodzi po polsku w domyślnym języku. Pokryte są też rejestracja z prawdziwym linkiem weryfikacyjnym, przekierowania z chronionych tras, kupony, wyszukiwarka, koszyk i oba języki. Formularz karty samego Stripe'a sprawdza tylko włączany osobno projekt `stripe-test-mode`, który płaci przez sandbox Stripe'a, gdy ustawione są jego klucze, a bez nich jest pomijany. [Testowanie](/docs/tooling/testing#testy-end-to-end) opisuje zestaw i pisanie specyfikacji.
 
 ## CI
 
@@ -118,7 +118,7 @@ Następnie, po kolei:
 3. `bun run build:preview`
 4. Upload `coverage/` jako artefaktu
 
-Zadanie `e2e` tego samego przepływu uruchamia zestaw Playwrighta w Chromium przez `e2e-reusable.yml`, a `e2e-full.yml` uruchamia go w WebKicie po każdym pushu do `main` i w obu przeglądarkach w każdy poniedziałek.
+Zadanie `e2e` tego samego przepływu uruchamia zestaw Playwrighta w Chromium przez `e2e-reusable.yml`, a `e2e-full.yml` uruchamia go w WebKicie po każdym pushu do `main` i w obu przeglądarkach w każdy poniedziałek, razem z projektem trybu testowego Stripe'a.
 
 `.github/workflows/deploy-preview.yml` używa tej samej akcji setup i ponownie uruchamia pełny `check` przed buildem. `deploy-production.yml` startuje dopiero wtedy, gdy ten przepływ przejdzie dla pusha do `main`, więc produkcja nigdy nie dostaje commita, którego testy nie przeszły.
 
