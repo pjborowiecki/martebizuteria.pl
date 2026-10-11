@@ -137,6 +137,12 @@ interface EmulatedPaymentMethod {
   readonly type: "card"
 }
 
+interface EmulatedInpostShipment {
+  readonly id: number
+  readonly status: "confirmed" | "created"
+  readonly tracking_number: string | null
+}
+
 const sentEmails: CapturedEmail[] = []
 const checkoutSessions = new Map<string, EmulatedCheckoutSession>()
 const coupons = new Map<string, EmulatedCoupon>()
@@ -144,6 +150,21 @@ const customers = new Map<string, EmulatedCustomer>()
 const paymentIntents = new Map<string, Readonly<Record<string, unknown>>>()
 const paymentMethods = new Map<string, EmulatedPaymentMethod>()
 const setupIntents = new Map<string, EmulatedSetupIntent>()
+const inpostShipments = new Map<number, EmulatedInpostShipment>()
+
+const SHIPX_SANDBOX_HOST = "sandbox-api-shipx-pl.easypack24.net"
+
+const SHIPX_FIRST_SHIPMENT_ID = 700_000_001
+
+const SHIPX_TRACKING_PREFIX = "6026772171316303"
+
+const SHIPX_TRACKING_SUFFIX_LENGTH = 8
+
+const SHIPX_LABEL_PDF = "%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n"
+
+const SHIPX_CREATE_SHIPMENT_PATTERN = /^\/v1\/organizations\/[^/]+\/shipments$/u
+
+const SHIPX_SHIPMENT_PATTERN = /^\/v1\/shipments\/(?<shipmentId>\d+)(?<label>\/label)?$/u
 
 const SAVED_CARD_VALID_YEARS = 5
 
@@ -544,6 +565,42 @@ const answerTurnstileSiteverify = async (request: Request): Promise<Response> =>
   })
 }
 
+const shipxError = (status: number, error: string): Response => Response.json({ error, status }, { status })
+
+const emulateInpostShipx = (request: Request, url: URL): Response => {
+  if (request.method === "POST" && SHIPX_CREATE_SHIPMENT_PATTERN.test(url.pathname)) {
+    const shipment: EmulatedInpostShipment = {
+      id: SHIPX_FIRST_SHIPMENT_ID + inpostShipments.size,
+      status: "created",
+      tracking_number: null,
+    }
+    inpostShipments.set(shipment.id, shipment)
+
+    return Response.json(shipment, { status: 201 })
+  }
+
+  const match = SHIPX_SHIPMENT_PATTERN.exec(url.pathname)?.groups
+  const shipment = inpostShipments.get(Number(match?.["shipmentId"]))
+  if (shipment === undefined || request.method !== "GET") {
+    return shipxError(HTTP_STATUS.NOT_FOUND, "resource_not_found")
+  }
+
+  if (match?.["label"] !== undefined) {
+    return shipment.status === "confirmed"
+      ? new Response(SHIPX_LABEL_PDF, { headers: { "content-type": "application/pdf" } })
+      : shipxError(HTTP_STATUS.BAD_REQUEST, "invalid_action")
+  }
+
+  const confirmed: EmulatedInpostShipment = {
+    ...shipment,
+    status: "confirmed",
+    tracking_number: `${SHIPX_TRACKING_PREFIX}${String(shipment.id).padStart(SHIPX_TRACKING_SUFFIX_LENGTH, "0").slice(-SHIPX_TRACKING_SUFFIX_LENGTH)}`,
+  }
+  inpostShipments.set(shipment.id, confirmed)
+
+  return Response.json(confirmed)
+}
+
 export const installProviderMocks = (): void => {
   globalThis.fetch = async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]): Promise<Response> => {
     const request = new Request(input, init)
@@ -558,6 +615,10 @@ export const installProviderMocks = (): void => {
 
     if (url.origin === TURNSTILE_ORIGIN) {
       return answerTurnstileSiteverify(request)
+    }
+
+    if (url.hostname === SHIPX_SANDBOX_HOST) {
+      return emulateInpostShipx(request, url)
     }
 
     return nativeFetch(request)

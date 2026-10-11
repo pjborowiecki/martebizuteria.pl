@@ -100,6 +100,7 @@ export const AUDIT_LOG_ACTION = {
   ORDER_REFUND_REQUESTED: "order.refund_requested",
   ORDER_RELEASED: "order.released",
   ORDER_RESTOCKED: "order.restocked",
+  ORDER_SHIPMENT_CREATED: "order.shipment_created",
   ORDER_SHIPPED: "order.shipped",
   ORDER_WITHDRAWAL_RECEIVED: "order.withdrawal_received",
   PRODUCT_CREATED: "product.created",

@@ -32,6 +32,31 @@ describe("orderZodSchemas.adminRefundOrderInput", () => {
   })
 })
 
+describe("orderZodSchemas.adminCreateInpostShipmentInput", () => {
+  it("keeps the parcel size and the courier weight the admin chose", () => {
+    expect(
+      orderZodSchemas.adminCreateInpostShipmentInput.parse({ orderId: ORDER_UUID, parcelTemplate: "medium", weightKg: 0.4 }),
+    ).toStrictEqual({ orderId: ORDER_UUID, parcelTemplate: "medium", weightKg: 0.4 })
+  })
+
+  it("accepts a locker parcel without a weight", () => {
+    expect(orderZodSchemas.adminCreateInpostShipmentInput.parse({ orderId: ORDER_UUID, parcelTemplate: "small" })).toStrictEqual({
+      orderId: ORDER_UUID,
+      parcelTemplate: "small",
+    })
+  })
+
+  it.each([0, -1, 25.01])("refuses a weight of %s kg", (weightKg) => {
+    expect(
+      orderZodSchemas.adminCreateInpostShipmentInput.safeParse({ orderId: ORDER_UUID, parcelTemplate: "small", weightKg }).success,
+    ).toBe(false)
+  })
+
+  it("refuses a parcel size InPost does not offer", () => {
+    expect(orderZodSchemas.adminCreateInpostShipmentInput.safeParse({ orderId: ORDER_UUID, parcelTemplate: "xlarge" }).success).toBe(false)
+  })
+})
+
 describe("orderZodSchemas.adminOrdersPageInput", () => {
   it("accepts an empty filter set", () => {
     expect(orderZodSchemas.adminOrdersPageInput.parse({})).toStrictEqual({})

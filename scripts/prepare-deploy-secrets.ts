@@ -8,12 +8,17 @@ if (environment !== "preview" && environment !== "production") {
   throw new Error("Expected preview or production")
 }
 
+const SECRETS_THAT_MAY_BE_BLANK: ReadonlySet<string> = new Set([
+  "INPOST_API_TOKEN",
+  "INPOST_ORGANIZATION_ID",
+])
+
 const config = unstable_readConfig({ config: "wrangler.jsonc", env: environment })
 const values = parseEnv(await readFile(`.env.${environment}`, "utf8"))
 const secrets: Record<string, string> = {}
 for (const name of config.secrets?.required ?? []) {
   const value = process.env[name] ?? values[name]
-  if (!value?.trim()) {
+  if (value === undefined || (!value.trim() && !SECRETS_THAT_MAY_BE_BLANK.has(name))) {
     throw new Error(`Missing ${name} in .env.${environment} or the process environment`)
   }
   secrets[name] = value

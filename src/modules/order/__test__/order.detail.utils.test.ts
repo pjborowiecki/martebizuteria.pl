@@ -12,6 +12,7 @@ import {
   resolveAdminOrderDetailAddresses,
   resolveAdminOrderDetailTags,
   resolveAdminOrderDispute,
+  resolveOrderShippingAddressRow,
 } from "~/src/modules/order/order.detail.utils"
 
 const PLACED_AT = new Date("2026-03-04T09:15:00.000Z")
@@ -186,6 +187,26 @@ describe("resolveAdminOrderDetailAddresses", () => {
       shippingAddress: undefined,
     })
     expect(resolveAdminOrderDetailAddresses({ addresses: [], checkout: null }).billingSameAsShipping).toBe(false)
+  })
+})
+
+describe("resolveOrderShippingAddressRow", () => {
+  const editedRow = { ...addressRow, address1: "ul. Edited 1" }
+  const checkout = { billingAddress: null, billingAddressId: null, shippingAddress: editedRow, shippingAddressId: "addr-1" }
+
+  it("ships to the address snapshot taken when the order was placed", () => {
+    expect(resolveOrderShippingAddressRow({ addresses: [{ ...addressRow, type: "shipping" }], checkout })?.address1).toBe(
+      "ul. Mokotowska 12/4",
+    )
+  })
+
+  it("falls back to the checkout's address for an order placed before snapshots were written", () => {
+    expect(resolveOrderShippingAddressRow({ addresses: [{ ...addressRow, type: "billing" }], checkout })).toBe(editedRow)
+  })
+
+  it("has no address when neither a snapshot nor a checkout address exists", () => {
+    expect(resolveOrderShippingAddressRow({ addresses: [], checkout: { ...checkout, shippingAddress: null } })).toBeUndefined()
+    expect(resolveOrderShippingAddressRow({ addresses: [], checkout: null })).toBeUndefined()
   })
 })
 

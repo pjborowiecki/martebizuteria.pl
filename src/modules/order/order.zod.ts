@@ -1,6 +1,8 @@
 import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
+import { INPOST_PARCEL_MAX_WEIGHT_KG } from "~/src/integrations/inpost/inpost.constants"
+import { inpostParcelTemplateSchema } from "~/src/integrations/inpost/inpost.zod"
 import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
 
 import {
@@ -51,6 +53,11 @@ const disputeMetadata = zod.object({
 })
 
 export const orderZodSchemas = {
+  adminCreateInpostShipmentInput: zod.object({
+    orderId: uuidField,
+    parcelTemplate: inpostParcelTemplateSchema,
+    weightKg: zod.number().positive().max(INPOST_PARCEL_MAX_WEIGHT_KG).optional(),
+  }),
   adminOrderIdInput: zod.object({
     orderId: uuidField,
   }),

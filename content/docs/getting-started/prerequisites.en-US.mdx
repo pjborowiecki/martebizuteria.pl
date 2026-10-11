@@ -87,15 +87,15 @@ Without a working `RESEND_API_KEY` and a verified `RESEND_EMAIL_FROM` sender, th
 
 You need a test-mode secret key, the matching publishable key, and a webhook signing secret. Payment succeeds in the browser but the order is only created by the webhook handler at `/api/webhooks/stripe`, which verifies the signature with `STRIPE_WEBHOOK_SECRET` and rejects anything it cannot verify.
 
-### InPost — no account needed
+### InPost — an account only for shipments
 
-The parcel-locker picker calls the public points API directly from `src/integrations/inpost/inpost.api.ts`:
+The parcel-locker picker calls the public points API directly from `src/integrations/inpost/inpost.api.ts`, with no account:
 
 ```ts
 const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
 ```
 
-There are no InPost credentials, no shipment creation and no label generation in the codebase — only point discovery by city.
+Booking shipments, printing labels and reading their status from the admin order page goes through InPost's ShipX API and needs an InPost Manager account: its API section (My Account, API) gives the token for `INPOST_API_TOKEN` and the organisation id for `INPOST_ORGANIZATION_ID`. Development and preview call InPost's sandbox, which has its own account at `https://sandbox-manager.paczkomaty.pl`. Both values may stay blank, and the order page then explains that InPost shipping is not set up. See [InPost](/docs/integrations/inpost#credentials).
 
 ## Next
 

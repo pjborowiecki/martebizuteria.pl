@@ -183,6 +183,8 @@ Sprawdzanie po `getByName()` pozwoliłoby już nieuwierzytelnionemu klientowi ot
 
 `POST /api/webhooks/stripe` wymaga nagłówka `stripe-signature` i weryfikuje go sekretem `env.STRIPE_WEBHOOK_SECRET` przez `stripe.webhooks.constructEventAsync`, zanim uruchomi jakikolwiek handler. Ciała, którego nie da się zweryfikować, kończą się kodem `400` i niczego nie dotykają.
 
+`POST /api/webhooks/inpost` nie da się zweryfikować w ten sam sposób, bo InPost nie podpisuje webhooków ShipX, więc trasa nie ufa żadnemu wywołaniu: przyjmuje tylko zdarzenie wskazujące `INPOST_ORGANIZATION_ID` sklepu i przesyłkę, którą ma któreś zamówienie, a potem odczytuje tę przesyłkę z ShipX tokenem sklepu, zanim cokolwiek zapisze. Podrobione wywołanie może sprawić, że sklep ponownie odczyta jedną ze swoich przesyłek, i nic więcej. Wszystko inne kończy się kodem `400`, a adres, który wyśle więcej niż `INPOST_WEBHOOK_RATE_LIMIT` (120) wywołań na minutę, dostaje `429` przed odczytaniem treści.
+
 ## Sprawdzenie stanu
 
 `GET /api/health` jest publiczne i nie wymaga sesji, więc może je wywoływać monitor dostępności. Nie czyta żadnych danych — `SELECT 1`, odczyt KV i `head` w R2 dla klucza, który nie istnieje — i odpowiada tylko `ok` albo `error` dla każdego bindingu, nigdy błędem, nazwą bindingu ani konfiguracją. Błędy trafiają do logu Workera. Zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts#sprawdzenie-stanu).

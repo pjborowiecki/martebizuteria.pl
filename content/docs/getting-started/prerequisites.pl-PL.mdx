@@ -87,15 +87,15 @@ Bez działającego `RESEND_API_KEY` i zweryfikowanego nadawcy `RESEND_EMAIL_FROM
 
 Potrzebujesz testowego klucza tajnego, pasującego klucza publicznego i sekretu podpisu webhooka. Płatność kończy się sukcesem w przeglądarce, ale zamówienie tworzy dopiero handler webhooka pod `/api/webhooks/stripe`, który weryfikuje podpis za pomocą `STRIPE_WEBHOOK_SECRET` i odrzuca wszystko, czego nie potrafi zweryfikować.
 
-### InPost — konto niepotrzebne
+### InPost — konto tylko do przesyłek
 
-Wybór paczkomatu odpytuje publiczne API punktów bezpośrednio z `src/integrations/inpost/inpost.api.ts`:
+Wybór paczkomatu odpytuje publiczne API punktów bezpośrednio z `src/integrations/inpost/inpost.api.ts`, bez konta:
 
 ```ts
 const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
 ```
 
-W kodzie nie ma żadnych danych uwierzytelniających InPost, nie ma tworzenia przesyłek ani generowania etykiet — wyłącznie wyszukiwanie punktów po mieście.
+Nadawanie przesyłek, drukowanie etykiet i odczyt ich statusu ze strony zamówienia w panelu idą przez API ShipX i wymagają konta w Managerze Paczek InPost: jego sekcja API (Moje konto, API) daje token do `INPOST_API_TOKEN` i identyfikator organizacji do `INPOST_ORGANIZATION_ID`. Środowisko deweloperskie i podgląd wywołują piaskownicę InPost, która ma osobne konto pod `https://sandbox-manager.paczkomaty.pl`. Obie wartości mogą zostać puste, a strona zamówienia wyjaśnia wtedy, że wysyłka przez InPost nie jest skonfigurowana. Zobacz [InPost](/docs/integrations/inpost#dane-dostępowe).
 
 ## Dalej
 

@@ -3,7 +3,7 @@ title: "Architecture"
 description: "How M'Arte is organized: one Worker, locale-free routes, feature modules that own their tables, and adapters around every vendor."
 ---
 
-M'Arte is a single TanStack Start application deployed as one Cloudflare Worker. The same Worker serves the public storefront, the customer account area, the admin console, this documentation site and the three HTTP handlers under `/api`. There is no separate backend.
+M'Arte is a single TanStack Start application deployed as one Cloudflare Worker. The same Worker serves the public storefront, the customer account area, the admin console, this documentation site and the four HTTP handlers under `/api`. There is no separate backend.
 
 The code is split by responsibility, not by page:
 

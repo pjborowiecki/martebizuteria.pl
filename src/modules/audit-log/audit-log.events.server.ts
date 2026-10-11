@@ -513,6 +513,15 @@ export const recordOrderWithdrawalReceivedAudit = (orderId: string, consumer: Au
   })
 }
 
+export const recordOrderShipmentCreatedAudit = (orderId: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.ORDER_SHIPMENT_CREATED,
+    category: "orders",
+    severity: "info",
+    ...withResourceId(orderId, options),
+  })
+}
+
 export const recordOrderReleasedAudit = (sessionId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_RELEASED,

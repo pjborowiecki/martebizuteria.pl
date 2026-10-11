@@ -71,6 +71,7 @@ import { Route as AdminCustomersIdRouteImport } from './routes/admin.customers.$
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
 import { Route as AdminOrdersOrderIdRouteImport } from './routes/admin.orders.$orderId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
+import { Route as ApiWebhooksInpostRouteImport } from './routes/api/webhooks.inpost'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks.stripe'
 import { Route as AdminCatalogAttributesIndexRouteImport } from './routes/admin.catalog.attributes.index'
 import { Route as AdminCatalogCategoriesIndexRouteImport } from './routes/admin.catalog.categories.index'
@@ -399,6 +400,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWebhooksInpostRoute = ApiWebhooksInpostRouteImport.update({
+  id: '/api/webhooks/inpost',
+  path: '/api/webhooks/inpost',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiWebhooksStripeRoute = ApiWebhooksStripeRouteImport.update({
   id: '/api/webhooks/stripe',
   path: '/api/webhooks/stripe',
@@ -500,6 +506,7 @@ export interface FileRoutesByFullPath {
   '/admin/customers/$id': typeof AdminCustomersIdRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/blog/': typeof StorefrontBlogIndexRoute
   '/categories/': typeof StorefrontCategoriesIndexRoute
@@ -562,6 +569,7 @@ export interface FileRoutesByTo {
   '/admin/customers/$id': typeof AdminCustomersIdRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/blog': typeof StorefrontBlogIndexRoute
   '/categories': typeof StorefrontCategoriesIndexRoute
@@ -635,6 +643,7 @@ export interface FileRoutesById {
   '/admin/customers/$id': typeof AdminCustomersIdRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/_storefront/blog/': typeof StorefrontBlogIndexRoute
   '/_storefront/categories/': typeof StorefrontCategoriesIndexRoute
@@ -708,6 +717,7 @@ export interface FileRouteTypes {
     | '/admin/customers/$id'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
+    | '/api/webhooks/inpost'
     | '/api/webhooks/stripe'
     | '/blog/'
     | '/categories/'
@@ -770,6 +780,7 @@ export interface FileRouteTypes {
     | '/admin/customers/$id'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
+    | '/api/webhooks/inpost'
     | '/api/webhooks/stripe'
     | '/blog'
     | '/categories'
@@ -842,6 +853,7 @@ export interface FileRouteTypes {
     | '/admin/customers/$id'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
+    | '/api/webhooks/inpost'
     | '/api/webhooks/stripe'
     | '/_storefront/blog/'
     | '/_storefront/categories/'
@@ -872,6 +884,7 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   DevEmailsRoute: typeof DevEmailsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiWebhooksInpostRoute: typeof ApiWebhooksInpostRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
   AdminOrdersOrderIdSummaryRoute: typeof AdminOrdersOrderIdSummaryRoute
 }
@@ -1312,6 +1325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/webhooks/inpost': {
+      id: '/api/webhooks/inpost'
+      path: '/api/webhooks/inpost'
+      fullPath: '/api/webhooks/inpost'
+      preLoaderRoute: typeof ApiWebhooksInpostRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/webhooks/stripe': {
       id: '/api/webhooks/stripe'
       path: '/api/webhooks/stripe'
@@ -1606,6 +1626,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   DevEmailsRoute: DevEmailsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiWebhooksInpostRoute: ApiWebhooksInpostRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
   AdminOrdersOrderIdSummaryRoute: AdminOrdersOrderIdSummaryRoute,
 }

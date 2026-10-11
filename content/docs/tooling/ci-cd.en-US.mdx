@@ -134,7 +134,7 @@ It runs before the build so that a sender Resend would refuse stops the deploy w
 
 ### 6. prepare-deploy-secrets.ts
 
-Reads `secrets.required` from the environment's `wrangler.jsonc` block, resolves each name from `process.env` first and `.env.<environment>` second, throws on the first missing or blank value, and writes `.wrangler/secrets.<environment>.json` with mode `0o600`.
+Reads `secrets.required` from the environment's `wrangler.jsonc` block, resolves each name from `process.env` first and `.env.<environment>` second, throws on the first missing value or blank value other than `INPOST_API_TOKEN` and `INPOST_ORGANIZATION_ID` (`SECRETS_THAT_MAY_BE_BLANK`, uploaded blank so InPost shipments and their webhook stay off), and writes `.wrangler/secrets.<environment>.json` with mode `0o600`.
 
 Only the names declared in `wrangler.jsonc` are written. `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` and `CLOUDFLARE_ACCESS_TOKEN` are deliberately not in that list: they are management credentials for drizzle-kit and Wrangler, not Worker runtime secrets, and uploading them to the Worker would be a privilege leak.
 
@@ -150,7 +150,7 @@ The stage runs after the build and the secrets file, so a deploy that fails earl
 env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json
 ```
 
-`CLOUDFLARE_ENV` is unset for this command because the built `dist/server/wrangler.json` is already flattened to one environment — leaving the variable set would have Wrangler look for an environment section inside a config that no longer has one. The secrets file is uploaded with the deploy, so the nine declared secrets are set atomically with the new version.
+`CLOUDFLARE_ENV` is unset for this command because the built `dist/server/wrangler.json` is already flattened to one environment — leaving the variable set would have Wrangler look for an environment section inside a config that no longer has one. The secrets file is uploaded with the deploy, so the eleven declared secrets are set atomically with the new version.
 
 ### 9. verify-deployment.ts
 
@@ -160,10 +160,10 @@ It only reads public pages: it signs nobody in, opens no checkout and writes not
 
 ## Repository configuration
 
-| Kind                | Names                                                                                                                                                                                                                                |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Actions **secrets** | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` |
-| Actions **vars**    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                              |
+| Kind                | Names                                                                                                                                                                                                                                                                              |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Actions **secrets** | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY` |
+| Actions **vars**    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY`                                                                                                                                                                                            |
 
 `CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Besides deploying the Worker, the token needs the D1 edit permission, because the deploy applies the migrations with it, and the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone, because the deploy attaches the custom domains from `routes` in `wrangler.jsonc`. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
 

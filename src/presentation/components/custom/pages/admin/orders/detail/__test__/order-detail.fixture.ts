@@ -66,6 +66,8 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
   ],
   fulfillmentUiKey: "shipped",
   id: ORDER_ID,
+  inpostConfigured: true,
+  inpostShipment: undefined,
   items: [ORDER_ITEM],
   payment: {
     amountMinorUnits: 38_900,

@@ -6,6 +6,11 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 vi.mock("~/src/presentation/components/custom/image", () => ({
   Image: ({ alt, src }: { readonly alt: string; readonly src: string }) => <img alt={alt} src={src} />,
 }))
+vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-inpost-shipment-actions", () => ({
+  useCreateInpostShipment: () => ({ isPending: false, mutate: vi.fn() }),
+  useDownloadInpostLabel: () => ({ isPending: false, mutate: vi.fn() }),
+  useRefreshInpostShipment: () => ({ isPending: false, mutate: vi.fn() }),
+}))
 
 import {
   ORDER_ITEM,
@@ -27,6 +32,7 @@ describe("OrderDetailPage", () => {
       "Activity",
       "Customer",
       "Shipping Address",
+      "InPost shipment",
       "Billing Address",
       "Payment",
       "Tags",

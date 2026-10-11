@@ -212,20 +212,34 @@ describe("shipOrder", () => {
     expect(audit.shipped).toHaveBeenCalledWith(ORDER_ID, { detail: "TRK-9" })
   })
 
-  it("clears any stored tracking details when the parcel ships without them", async () => {
+  it("keeps the tracking details an InPost shipment stored when the parcel ships without new ones", async () => {
     await shipOrder({ data: { orderId: ORDER_ID } })
 
-    expect(renderedSql(database.updates[0]?.["trackingNumber"])).toBe("null")
-    expect(renderedSql(database.updates[0]?.["trackingUrl"])).toBe("null")
+    expect(database.updates[0]).not.toHaveProperty("trackingNumber")
+    expect(database.updates[0]).not.toHaveProperty("trackingUrl")
     expect(audit.shipped).toHaveBeenCalledWith(ORDER_ID, { detail: undefined })
   })
 
-  it("treats a blank tracking number and url as no tracking at all", async () => {
+  it("treats a blank tracking number and url as none given", async () => {
     await shipOrder({ data: { orderId: ORDER_ID, trackingNumber: "   ", trackingUrl: "" } })
 
-    expect(renderedSql(database.updates[0]?.["trackingNumber"])).toBe("null")
-    expect(renderedSql(database.updates[0]?.["trackingUrl"])).toBe("null")
+    expect(database.updates[0]).not.toHaveProperty("trackingNumber")
+    expect(database.updates[0]).not.toHaveProperty("trackingUrl")
     expect(audit.shipped).toHaveBeenCalledWith(ORDER_ID, { detail: undefined })
+  })
+
+  it("drops the stored tracking link when a new tracking number comes without one", async () => {
+    await shipOrder({ data: { orderId: ORDER_ID, trackingNumber: "TRK-9" } })
+
+    expect(database.updates[0]).toMatchObject({ trackingNumber: "TRK-9" })
+    expect(renderedSql(database.updates[0]?.["trackingUrl"])).toBe("null")
+  })
+
+  it("replaces only the tracking link when no new tracking number comes with it", async () => {
+    await shipOrder({ data: { orderId: ORDER_ID, trackingUrl: "https://tracking.test/TRK-9" } })
+
+    expect(database.updates[0]).toMatchObject({ trackingUrl: "https://tracking.test/TRK-9" })
+    expect(database.updates[0]).not.toHaveProperty("trackingNumber")
   })
 })
 
