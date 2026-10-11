@@ -21,7 +21,6 @@ export const storefrontVariant = (
       quantityReserved: 0,
       updatedAt: EPOCH,
       variantId: id,
-      version: 1,
     },
     manageInventory: true,
     metadata: null,

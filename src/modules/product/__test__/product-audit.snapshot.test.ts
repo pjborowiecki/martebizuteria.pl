@@ -30,7 +30,6 @@ const variant = (
           quantityAvailable: overrides.quantityAvailable,
           quantityReserved: 0,
           variantId: overrides.id,
-          version: 1,
           ...stamps,
         },
   manageInventory: true,

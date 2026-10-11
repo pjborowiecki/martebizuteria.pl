@@ -144,8 +144,8 @@ describe("deleteProducts", () => {
     insertVariant("v1", "p1", "SKU-1")
     sqlite
       .prepare(
-        `insert into inventory (id, variant_id, quantity_available, quantity_reserved, version, created_at, updated_at)
-         values ('i1', 'v1', 5, 0, 1, ?, ?)`,
+        `insert into inventory (id, variant_id, quantity_available, quantity_reserved, created_at, updated_at)
+         values ('i1', 'v1', 5, 0, ?, ?)`,
       )
       .run(NOW, NOW)
 

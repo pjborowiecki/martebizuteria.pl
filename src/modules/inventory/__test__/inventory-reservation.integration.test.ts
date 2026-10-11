@@ -4,7 +4,10 @@ import { z } from "zod"
 import { type TestD1RoundTrip } from "~/src/platform/testing/mocks/d1"
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
+import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+
 import { releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
+import { inventory } from "~/src/modules/inventory/inventory.schema"
 import {
   type ReserveInventoryItem,
   reserveInventoryByVariantLines,
@@ -268,5 +271,24 @@ describe("inventory reservation of an empty cart", () => {
     await expect(reserveInventoryRows([])).resolves.toStrictEqual(new Set())
 
     expect(trips).toStrictEqual([])
+  })
+})
+
+describe("stock rows on the migrated table", () => {
+  it("writes a variant's stock row through the schema and loads it back with only the columns the schema declares", async () => {
+    sqlite.exec("insert into product_variant (id, product_id, title, price) values ('var_c', 'p_lapis', 'Rose gold', 37900)")
+    const stockedAt = new Date("2026-10-11T08:00:00.000Z")
+    await db.insert(inventory).values({ createdAt: stockedAt, id: "inv_c", quantityAvailable: 2, updatedAt: stockedAt, variantId: "var_c" })
+
+    const [necklace] = await getPublishedProductsWithInventoryByHandles([HANDLE])
+
+    expect(necklace?.variants.find((variant) => variant.id === "var_c")?.inventory).toStrictEqual({
+      createdAt: stockedAt,
+      id: "inv_c",
+      quantityAvailable: 2,
+      quantityReserved: 0,
+      updatedAt: stockedAt,
+      variantId: "var_c",
+    })
   })
 })

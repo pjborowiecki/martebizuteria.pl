@@ -38,7 +38,7 @@ Katalog to dwanaście tabel. Wszystkie kolumny tytułowe są **mapami lokalizacj
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `product`              | `handle` (unikalny), `titles`, `subtitles`, `descriptions`, `tags`, `thumbnail`, `status`, `rank`, `primary_category_id`, `metadata`           |
 | `product_variant`      | `product_id`, `title`, `sku` (unikalny), `barcode`, `price`, `compare_at_price`, `manage_inventory`                                            |
-| `inventory`            | `variant_id` (unikalny), `quantity_available`, `quantity_reserved`, `version`                                                                  |
+| `inventory`            | `variant_id` (unikalny), `quantity_available`, `quantity_reserved`                                                                             |
 | `price_history`        | `variant_id`, `price`, `compare_at_price`, `changed_at`; jeden wiersz na zmianę ceny, zapisywany przez wyzwalacze na `product_variant`         |
 | `product_image`        | `product_id`, `variant_id` (nullowalny), `url`, `alt`, `rank`                                                                                  |
 | `product_option`       | `product_id`, `titles`                                                                                                                         |

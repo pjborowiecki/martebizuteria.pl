@@ -56,7 +56,7 @@ const insertProduct = (input: {
       .run(variantId, productId, `Variant ${String(index)}`, 37_900, input.createdAt.getTime(), input.createdAt.getTime())
     sqlite
       .prepare(
-        "insert into inventory (id, variant_id, quantity_available, quantity_reserved, version, created_at, updated_at) values (?, ?, ?, 0, 1, ?, ?)",
+        "insert into inventory (id, variant_id, quantity_available, quantity_reserved, created_at, updated_at) values (?, ?, ?, 0, ?, ?)",
       )
       .run(`inventory-${variantId}`, variantId, quantity, input.createdAt.getTime(), input.createdAt.getTime())
   }

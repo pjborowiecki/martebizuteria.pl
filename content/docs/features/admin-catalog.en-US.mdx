@@ -38,7 +38,7 @@ The catalog is twelve tables. All the title-like columns are **JSON locale maps*
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `product`              | `handle` (unique), `titles`, `subtitles`, `descriptions`, `tags`, `thumbnail`, `status`, `rank`, `primary_category_id`, `metadata`      |
 | `product_variant`      | `product_id`, `title`, `sku` (unique), `barcode`, `price`, `compare_at_price`, `manage_inventory`                                       |
-| `inventory`            | `variant_id` (unique), `quantity_available`, `quantity_reserved`, `version`                                                             |
+| `inventory`            | `variant_id` (unique), `quantity_available`, `quantity_reserved`                                                                        |
 | `price_history`        | `variant_id`, `price`, `compare_at_price`, `changed_at`; one row per price change, written by triggers on `product_variant`             |
 | `product_image`        | `product_id`, `variant_id` (nullable), `url`, `alt`, `rank`                                                                             |
 | `product_option`       | `product_id`, `titles`                                                                                                                  |

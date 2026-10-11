@@ -99,8 +99,8 @@ const insertVariant = (input: { id: string; price: number; productId: string; st
   if (input.stock !== null) {
     sqlite
       .prepare(
-        `insert into inventory (id, variant_id, quantity_available, quantity_reserved, version, created_at, updated_at)
-         values (?, ?, ?, 0, 1, ?, ?)`,
+        `insert into inventory (id, variant_id, quantity_available, quantity_reserved, created_at, updated_at)
+         values (?, ?, ?, 0, ?, ?)`,
       )
       .run(`inv-${input.id}`, input.id, input.stock, NOW, NOW)
   }

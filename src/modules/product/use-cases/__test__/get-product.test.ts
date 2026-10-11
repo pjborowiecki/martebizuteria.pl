@@ -46,7 +46,7 @@ const variantRow = (quantityAvailable: number): PublishedProductByHandleRow["var
   createdAt: NOW,
   id: "var-1",
   images: [],
-  inventory: { createdAt: NOW, id: "inv-1", quantityAvailable, quantityReserved: 0, updatedAt: NOW, variantId: "var-1", version: 1 },
+  inventory: { createdAt: NOW, id: "inv-1", quantityAvailable, quantityReserved: 0, updatedAt: NOW, variantId: "var-1" },
   manageInventory: true,
   metadata: null,
   optionOnVariants: [],

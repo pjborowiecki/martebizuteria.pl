@@ -24,7 +24,6 @@ const variant = (quantityAvailable: number | undefined, id = "variant-1"): Varia
           quantityReserved: 0,
           updatedAt: new Date(2024, 0, 1),
           variantId: id,
-          version: 1,
         },
   manageInventory: true,
   metadata: null,

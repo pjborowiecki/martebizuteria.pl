@@ -19,7 +19,6 @@ export const inventory = sqliteTable(
     variantId: text("variant_id", { length: INVENTORY_COLUMN_LENGTH.variantId })
       .references(() => productVariant.id, { onDelete: "cascade" })
       .notNull(),
-    version: integer("version").default(INVENTORY_DEFAULT_VERSION).notNull(),
     ...timestamps(),
   },
   (table) => [
@@ -29,11 +28,11 @@ export const inventory = sqliteTable(
 )
 ```
 
-`INVENTORY_DEFAULT_QUANTITY` is `0` and `INVENTORY_DEFAULT_VERSION` is `1` (`inventory.constants.ts`). The unique index on `variant_id` guarantees the one-to-one relationship, and the cascade means deleting a variant removes its stock row.
+`INVENTORY_DEFAULT_QUANTITY` is `0` (`inventory.constants.ts`). The unique index on `variant_id` guarantees the one-to-one relationship, and the cascade means deleting a variant removes its stock row.
 
 The check `inventory_quantity_available_non_negative` (`INVENTORY_NON_NEGATIVE_AVAILABLE_CHECK`, added by `20261005300000_inventory_available_never_negative.sql`) keeps `quantity_available` at zero or above. A statement that would take it below zero fails, and so does the D1 batch it runs in. A reservation never trips it, because its own guard asks for enough available stock; it is what refuses a product save whose stock change a customer overtook (see [Changing stock](#changing-stock)).
 
-There are no warehouses, no locations and no stock ledger — the two counters are the whole model. The `version` column is left from an earlier reservation guard (see [Reserving stock](#reserving-stock)): nothing compares or bumps it any more, and a new row takes its default. It stays in the table and in the Drizzle schema until a migration of its own drops it, applied only after code that no longer declares it is deployed, because a Worker still running older code selects it with every stock row it loads.
+There are no warehouses, no locations and no stock ledger — the two counters are the whole model. The table still has a `version integer DEFAULT 1 NOT NULL` column left from an earlier reservation guard (see [Reserving stock](#reserving-stock)), but the Drizzle schema no longer declares it, so no query selects or writes it and a new row takes its default. A migration of its own drops it, applied only after this code is deployed, because a Worker still running older code selects it with every stock row it loads.
 
 Rows are created alongside variants: `prepareProductCatalogBatch` in `product.mutations.ts` inserts a stock row from the `quantity` field of the product form, in the same D1 batch that inserts the variants, for every variant that has none yet, and leaves an existing row alone (`onConflictDoNothing` on `variant_id`). Every variant is persisted with `manageInventory: true` (`MANAGE_INVENTORY_ALWAYS` in `product.utils.ts`), so the `product_variant.manage_inventory` column exists but is never `false` in practice.
 

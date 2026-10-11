@@ -134,7 +134,7 @@ beforeEach(() => {
       create table order_number_sequence (period text primary key, last_value integer not null);
       create table inventory (
         id text primary key, variant_id text, quantity_available integer, quantity_reserved integer,
-        version integer, created_at integer, updated_at integer
+        created_at integer, updated_at integer
       );
       create table order_address (
         id text primary key, order_id text not null, type text not null, address1 text not null, address2 text, city text not null,
@@ -145,8 +145,8 @@ beforeEach(() => {
       insert into checkout (id, status, email, client_address) values ('${CHECKOUT_ID}', 'pending', 'buyer@example.com', '203.0.113.7');
       insert into payment (id, checkout_id, status, transaction_id) values ('pay_1', '${CHECKOUT_ID}', 'pending', '${TRANSACTION_ID}');
       insert into product_variant (id, product_id) values ('${VARIANT_ID}', 'prod_onyx');
-      insert into inventory (id, variant_id, quantity_available, quantity_reserved, version)
-        values ('inv_1', '${VARIANT_ID}', 8, ${RESERVED_QTY}, 1);
+      insert into inventory (id, variant_id, quantity_available, quantity_reserved)
+        values ('inv_1', '${VARIANT_ID}', 8, ${RESERVED_QTY});
     `)
 })
 
@@ -327,7 +327,7 @@ describe("fulfilment batch", () => {
     const variantIds = Array.from({ length: 15 }, (_, index) => `var_many_${String(index)}`)
     for (const variantId of variantIds) {
       sqlite
-        .prepare("insert into inventory (id, variant_id, quantity_available, quantity_reserved, version) values (?, ?, 5, 1, 1)")
+        .prepare("insert into inventory (id, variant_id, quantity_available, quantity_reserved) values (?, ?, 5, 1)")
         .run(`inv_${variantId}`, variantId)
     }
     const lines = variantIds.map((variantId) => ({ price: UNIT_PRICE, qty: 1, title: "Silver ring", variantId }))
