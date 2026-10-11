@@ -58,7 +58,7 @@ A foreign order id returns no row, so there is nothing to leak.
 
 `src/server.ts` short-circuits four kinds of request before the TanStack Start handler is reached, because none of them needs an SSR render:
 
-1. `GET /sitemap.xml` — `generateSitemapXml` from `src/lib/seo.ts`, cached for a day.
+1. `GET /sitemap.xml` — `generateSitemapXml` from `src/lib/seo.ts` over the pages `listSitemapPages` reads from D1, cached for a day.
 2. `GET /robots.txt` — `generateRobotsTxt`, which returns a blanket `Disallow: /` unless `APP_ENV` is `production`.
 3. `ROUTES.API_REALTIME.ADMIN_WS` and `ROUTES.API_REALTIME.STOREFRONT_WS` — WebSocket upgrades, handed to `handleRealtimeInvalidationWebSocket`.
 4. A locale redirect from `resolveLocale`, returned as a `301` before anything else happens.

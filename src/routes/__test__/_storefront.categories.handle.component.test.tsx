@@ -21,13 +21,19 @@ interface CatalogScope {
 interface CategoryMeta {
   readonly description?: string | undefined
   readonly metaDescription: string
+  readonly structuredData?: object
   readonly title: string
 }
 
 interface CategoryRouteDefinition {
   readonly component?: () => JSX.Element
   readonly head?: (context: { readonly loaderData?: CategoryMeta | undefined }) => {
-    readonly meta: readonly { readonly content?: string; readonly name?: string; readonly title?: string }[]
+    readonly meta: readonly {
+      readonly "script:ld+json"?: object
+      readonly content?: string
+      readonly name?: string
+      readonly title?: string
+    }[]
   }
   readonly loader?: (context: {
     readonly context: { readonly imagePrefetchService: unknown; readonly locale: "en-US" | "pl-PL"; readonly queryClient: QueryClient }
@@ -129,6 +135,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 })
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+
+import { buildBreadcrumbStructuredData } from "~/src/lib/seo"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 
@@ -248,8 +256,21 @@ describe("storefront category loader", () => {
   it("resolves the title of the category and its meta description in the visitor's language", async () => {
     await expect(runLoader("pierscionki")).resolves.toStrictEqual({
       metaDescription: "Rings shaped in our atelier.",
+      structuredData: buildBreadcrumbStructuredData({
+        leaf: "Rings",
+        locale: "en-US",
+        sections: [{ name: "Categories", path: "/categories" }],
+      }),
       title: "Rings",
     })
+  })
+
+  it("names the categories section of the breadcrumb in Polish for a Polish visitor", async () => {
+    const meta = await runLoader("pierscionki", {}, { locale: "pl-PL" })
+
+    expect(meta.structuredData).toStrictEqual(
+      buildBreadcrumbStructuredData({ leaf: "Pierścionki", locale: "pl-PL", sections: [{ name: "Kategorie", path: "/categories" }] }),
+    )
   })
 
   it("asks the server for the category named in the url", async () => {
@@ -301,7 +322,7 @@ describe("storefront category loader", () => {
   it("falls back to the catalogue description when the category has none", async () => {
     catalog.getStorefrontCategory.mockResolvedValue({ descriptions: null, titles: { "en-US": "Rings" } })
 
-    await expect(runLoader("pierscionki")).resolves.toStrictEqual({
+    await expect(runLoader("pierscionki")).resolves.toMatchObject({
       metaDescription: "Browse our complete collection of exquisite jewelry.",
       title: "Rings",
     })
@@ -331,6 +352,14 @@ describe("storefront category route metadata", () => {
 
   it("falls back to the store name while the loader has not run", () => {
     expect(route.head?.({ loaderData: undefined }).meta).toStrictEqual([{ title: APP_NAME }, { content: "", name: "description" }])
+  })
+
+  it("publishes the loaded breadcrumb as the page's json-ld", () => {
+    const structuredData = { "@type": "BreadcrumbList" }
+
+    expect(route.head?.({ loaderData: { ...loaderData.current, structuredData } }).meta.at(-1)).toStrictEqual({
+      "script:ld+json": structuredData,
+    })
   })
 
   it("keeps only the search keys the catalogue understands out of the url", () => {

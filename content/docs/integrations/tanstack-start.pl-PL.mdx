@@ -45,12 +45,12 @@ Komponenty stanu oczekiwania, błędu i braku strony to globalne domyślne warto
 
 `wrangler.jsonc` wskazuje `main` na `./src/server.ts`. Ten plik obsługuje cztery rzeczy, zanim handler Start w ogóle zobaczy żądanie:
 
-| Ścieżka                       | Zachowanie                                                                       |
-| ----------------------------- | -------------------------------------------------------------------------------- |
-| `/sitemap.xml`                | `generateSitemapXml(origin)` z `src/lib/seo.ts`, cache na dobę                   |
-| `/robots.txt`                 | `generateRobotsTxt(origin, env.APP_ENV)`, cache na dobę                          |
-| `/api/realtime/admin/ws`      | Podniesienie połączenia WebSocket do huba unieważniania panelu administracyjnego |
-| `/api/realtime/storefront/ws` | Podniesienie połączenia WebSocket do huba unieważniania sklepu                   |
+| Ścieżka                       | Zachowanie                                                                                 |
+| ----------------------------- | ------------------------------------------------------------------------------------------ |
+| `/sitemap.xml`                | `generateSitemapXml(origin, await listSitemapPages())`, strony czytane z D1, cache na dobę |
+| `/robots.txt`                 | `generateRobotsTxt(origin, env.APP_ENV)`, cache na dobę                                    |
+| `/api/realtime/admin/ws`      | Podniesienie połączenia WebSocket do huba unieważniania panelu administracyjnego           |
+| `/api/realtime/storefront/ws` | Podniesienie połączenia WebSocket do huba unieważniania sklepu                             |
 
 Wszystko inne przechodzi przez `resolveLocale(request)`, które może zwrócić przekierowanie 301 na kanoniczną ścieżkę języka albo nagłówek `Set-Cookie` do dołączenia do odpowiedzi, a następnie trafia do `handler.fetch` wewnątrz `executionContextStorage.run({ waitUntil }, …)`. Ten magazyn `AsyncLocalStorage` pozwala funkcji `scheduleBackgroundWork` z `src/lib/background.ts` dotrzeć do `ctx.waitUntil` z głębi przypadku użycia — polegają na tym dziennik audytu, e-maile transakcyjne oraz [unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation). Każda odpowiedź poza przejściami na WebSocket przechodzi potem przez `withSecurityHeaders` z `src/lib/security-headers.ts`, który ustawia Content-Security-Policy z nonce'em żądania i pozostałe nagłówki bezpieczeństwa.
 
@@ -111,7 +111,7 @@ staticData: { namespaces: ["pages.products"] },
 validateSearch: storefrontProductsSearchSchema,
 ```
 
-Widgety, okna dialogowe, formularze i kolumny tabel mieszkają w `src/presentation/components/custom/` i same czytają swoje tłumaczenia oraz swoje zapytania. Prostsze trasy używają `head: pageHead` z `src/lib/seo.ts`, które zamienia `{ title, description }` z loadera w `<title>`, `description` i dwa odpowiadające im znaczniki Open Graph.
+Widgety, okna dialogowe, formularze i kolumny tabel mieszkają w `src/presentation/components/custom/` i same czytają swoje tłumaczenia oraz swoje zapytania. Prostsze trasy używają `head: pageHead` z `src/lib/seo.ts`, które zamienia `{ title, description }` z loadera w `<title>`, `description` i dwa odpowiadające im znaczniki Open Graph, a do tego we własne `og:image` i `twitter:image` strony, gdy loader zwraca `image`, oraz skrypt JSON-LD, gdy zwraca `structuredData`.
 
 Plik `src/routes/__root.tsx` odpowiada za powłokę dokumentu: `beforeLoad` ustala język i wstępnie ładuje każdą przestrzeń nazw wymaganą przez dopasowane trasy, `shellComponent` renderuje `<html lang>` wraz ze skryptami inicjującymi motyw, panel boczny i preferencje tabel, a `head` składa odnośniki kanoniczne i `hreflang` z `localeLinks`. Strony sklepu owinięte są w `SmoothScroll`; strony panelu administracyjnego nie.
 

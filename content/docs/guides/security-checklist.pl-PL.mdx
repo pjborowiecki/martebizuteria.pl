@@ -98,7 +98,7 @@ Ustawiane w `src/integrations/better-auth/auth.server.ts`. Zachowaj je, jeśli z
 
 - [ ] Ścieżki prywatne nie trafiają do wyszukiwarek. `isNoIndexPathname` w `src/lib/seo.ts` obejmuje `/account`, `/admin` i `/checkout`, a `__root.tsx` emituje dla nich `noindex, nofollow` — oraz dla **każdej** ścieżki, gdy `import.meta.env.MODE` nie jest `production`.
 - [ ] `generateRobotsTxt` zwraca całkowite `Disallow: /` dla każdego nieprodukcyjnego `APP_ENV`, a na produkcji zabrania `/api/`, `/admin`, `/account` i `/checkout`.
-- [ ] `generateSitemapXml` jest budowane z `STATIC_PAGES` w `src/data/static-pages.ts` (obecnie `/` i `/about`; `/blog` dołącza, gdy `BLOG_POST_SLUGS` w `src/data/blog-posts.ts` wymienia jakiś artykuł). Nowa strona publiczna należy tam; prywatna nie.
+- [ ] `/sitemap.xml` wymienia `STATIC_PAGES` z `src/data/static-pages.ts` (obecnie `/`, `/about`, `/products`, `/categories`, `/collections` i `/withdraw-from-contract`; `/blog` dołącza, gdy `BLOG_POST_SLUGS` w `src/data/blog-posts.ts` wymienia jakiś artykuł) oraz strony prawne i FAQ, aktywne kategorie i kolekcje i produkty dostępne w sprzedaży, które `listSitemapPages` w `src/lib/sitemap.ts` czyta z D1. Nowa strona publiczna należy tam; prywatna nie.
 
 ## Nagłówki odpowiedzi
 

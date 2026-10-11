@@ -13,6 +13,8 @@ import {
   storefrontProductsSearchSchema,
 } from "~/src/modules/product/product.storefront-catalog"
 
+import { buildBreadcrumbStructuredData } from "~/src/lib/seo"
+
 import { APP_NAME } from "~/src/presentation/branding/app"
 
 import {
@@ -61,6 +63,7 @@ export const Route = createFileRoute("/_storefront/products/")({
     loaderData?:
       | {
           readonly description: string
+          readonly structuredData: object
           readonly title: string
         }
       | undefined
@@ -73,6 +76,7 @@ export const Route = createFileRoute("/_storefront/products/")({
         content: loaderData?.description ?? "",
         name: "description",
       },
+      ...(loaderData === undefined ? [] : [{ "script:ld+json": loaderData.structuredData }]),
     ],
   }),
   loader: async ({ context, deps }) => {
@@ -87,6 +91,7 @@ export const Route = createFileRoute("/_storefront/products/")({
 
     return {
       description: messages.description,
+      structuredData: buildBreadcrumbStructuredData({ leaf: messages.title, locale: context.locale, sections: [] }),
       title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
     }
   },

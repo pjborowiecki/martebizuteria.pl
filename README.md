@@ -220,7 +220,7 @@ src/
   durable-objects/            RealtimeInvalidationHub
   providers/                  Theme and translation providers
   hooks/                      Shared React hooks
-  lib/                        background (ALS + waitUntil), cookie, image, rate-limit, request, security-headers, seo, url
+  lib/                        background (ALS + waitUntil), cookie, image, rate-limit, request, security-headers, seo, sitemap, url
   data/                       Fixtures still backing unfinished admin screens, and the blog's article list
   platform/testing/           D1-shaped transport over node:sqlite, server-function driver, render and message helpers
   types/                      Generated Worker declarations, router and Vite ambient types

@@ -45,12 +45,12 @@ Pending, error and not-found components are global defaults from `src/presentati
 
 `wrangler.jsonc` points `main` at `./src/server.ts`. That file handles four things before the Start handler ever sees the request:
 
-| Path                          | Behaviour                                                            |
-| ----------------------------- | -------------------------------------------------------------------- |
-| `/sitemap.xml`                | `generateSitemapXml(origin)` from `src/lib/seo.ts`, cached for a day |
-| `/robots.txt`                 | `generateRobotsTxt(origin, env.APP_ENV)`, cached for a day           |
-| `/api/realtime/admin/ws`      | WebSocket upgrade into the admin invalidation hub                    |
-| `/api/realtime/storefront/ws` | WebSocket upgrade into the storefront invalidation hub               |
+| Path                          | Behaviour                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| `/sitemap.xml`                | `generateSitemapXml(origin, await listSitemapPages())`, the pages read from D1, cached for a day |
+| `/robots.txt`                 | `generateRobotsTxt(origin, env.APP_ENV)`, cached for a day                                       |
+| `/api/realtime/admin/ws`      | WebSocket upgrade into the admin invalidation hub                                                |
+| `/api/realtime/storefront/ws` | WebSocket upgrade into the storefront invalidation hub                                           |
 
 Everything else goes through `resolveLocale(request)`, which can return a 301 to the canonical locale path or a `Set-Cookie` to be appended to the response, and is then handed to `handler.fetch` inside `executionContextStorage.run({ waitUntil }, …)`. That `AsyncLocalStorage` store is how `scheduleBackgroundWork` in `src/lib/background.ts` reaches `ctx.waitUntil` from deep inside a use case, which the audit log, the transactional emails and [realtime invalidation](/docs/integrations/realtime-invalidation) all rely on. Every response except the WebSocket upgrades then goes through `withSecurityHeaders` from `src/lib/security-headers.ts`, which sets the Content-Security-Policy with the request's nonce and the other security headers.
 
@@ -111,7 +111,7 @@ staticData: { namespaces: ["pages.products"] },
 validateSearch: storefrontProductsSearchSchema,
 ```
 
-Widgets, dialogs, forms and table columns live under `src/presentation/components/custom/` and read their own translations and their own queries. The simpler routes use `head: pageHead` from `src/lib/seo.ts`, which turns the loader's `{ title, description }` into `<title>`, `description` and the two matching Open Graph tags.
+Widgets, dialogs, forms and table columns live under `src/presentation/components/custom/` and read their own translations and their own queries. The simpler routes use `head: pageHead` from `src/lib/seo.ts`, which turns the loader's `{ title, description }` into `<title>`, `description` and the two matching Open Graph tags, plus the page's own `og:image` and `twitter:image` when the loader returns an `image` and a JSON-LD script when it returns `structuredData`.
 
 `src/routes/__root.tsx` owns the document shell: `beforeLoad` resolves the locale and preloads every namespace the matched routes ask for, `shellComponent` renders `<html lang>` with the theme, sidebar and datagrid init scripts, and `head` assembles the canonical and `hreflang` links from `localeLinks`. Storefront pages are wrapped in `SmoothScroll`; admin pages are not.
 

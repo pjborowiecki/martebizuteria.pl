@@ -10,11 +10,12 @@ import { executionContextStorage } from "~/src/lib/background"
 import { serializeCookie } from "~/src/lib/cookie"
 import { createContentSecurityPolicyNonce, withSecurityHeaders } from "~/src/lib/security-headers"
 import { generateRobotsTxt, generateSitemapXml } from "~/src/lib/seo"
+import { listSitemapPages } from "~/src/lib/sitemap"
 
 import { ROUTES } from "~/src/routes"
 
-const sitemapResponse = (origin: string): Response =>
-  new Response(generateSitemapXml(origin), {
+const sitemapResponse = async (origin: string): Promise<Response> =>
+  new Response(generateSitemapXml(origin, await listSitemapPages()), {
     headers: {
       "Cache-Control": "public, max-age=86400",
       "Content-Type": "application/xml; charset=utf-8",

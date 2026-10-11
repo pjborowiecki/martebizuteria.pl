@@ -100,7 +100,7 @@ vi.mock("~/src/presentation/components/custom/pages/landing-page/sections/newsle
   NewsletterSection: (): JSX.Element => <section>newsletter</section>,
 }))
 
-import { type PageMeta, pageHead } from "~/src/lib/seo"
+import { type PageMeta, buildStoreStructuredData, pageHead } from "~/src/lib/seo"
 
 await import("~/src/routes/_storefront.index")
 
@@ -178,9 +178,10 @@ describe("landing page", () => {
 })
 
 describe("landing route loader", () => {
-  it("titles the page from the landing message catalogue", async () => {
+  it("titles the page from the landing message catalogue and describes the store to search engines", async () => {
     await expect(runLoader()).resolves.toStrictEqual({
-      description: "Handcrafted silver and women's jewelry by M'Arte — Polish atelier, pure forms, and 925 silver.",
+      description: LANDING_MESSAGES.meta.description,
+      structuredData: buildStoreStructuredData({ description: LANDING_MESSAGES.meta.description, locale: "en-US" }),
       title: "M'Arte | Handcrafted Jewelry",
     })
   })

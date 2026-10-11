@@ -258,6 +258,16 @@ export const getPublishedProductByHandleQuery = db.query.product
   })
   .prepare()
 
+export const getPublishedInStockProductHandlesQuery = db
+  .select({
+    handle: product.handle,
+    updatedAt: product.updatedAt,
+  })
+  .from(product)
+  .where(publishedInStockWhere())
+  .orderBy(asc(product.rank), desc(product.createdAt))
+  .prepare()
+
 export const getLowStockPublishedProductCountQuery = db
   .select({
     count: sql<number>`count(*)`,

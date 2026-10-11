@@ -11,7 +11,7 @@ import { getNewArrivalsQuery } from "~/src/modules/product/use-cases/get-new-arr
 import { useLandingAnimations } from "~/src/hooks/use-landing-animations"
 
 import { prefetchProductThumbnails } from "~/src/lib/image"
-import { type PageMeta, pageHead } from "~/src/lib/seo"
+import { type PageMeta, buildStoreStructuredData, pageHead } from "~/src/lib/seo"
 
 import { ArchiveSection } from "~/src/presentation/components/custom/pages/landing-page/sections/archive-section"
 import { BreakerSection } from "~/src/presentation/components/custom/pages/landing-page/sections/breaker-section"
@@ -82,6 +82,7 @@ export const Route = createFileRoute("/_storefront/")({
 
     return {
       description: messages.meta.description,
+      structuredData: buildStoreStructuredData({ description: messages.meta.description, locale }),
       title: messages.meta.title,
     } satisfies PageMeta
   },

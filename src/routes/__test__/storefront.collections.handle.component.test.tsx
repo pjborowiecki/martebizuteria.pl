@@ -16,10 +16,12 @@ import {
 } from "~/src/modules/product/product.storefront-catalog"
 
 import { ImagePrefetchService } from "~/src/lib/image"
+import { buildBreadcrumbStructuredData } from "~/src/lib/seo"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 
 interface MetaEntry {
+  readonly "script:ld+json"?: object
   readonly content?: string
   readonly name?: string
   readonly title?: string
@@ -28,6 +30,7 @@ interface MetaEntry {
 interface FoundLoaderData {
   readonly metaDescription: string
   readonly status: "found"
+  readonly structuredData?: object
   readonly title: string
 }
 
@@ -293,16 +296,19 @@ describe("the storefront collection page filters", () => {
 })
 
 describe("the storefront collection metadata", () => {
-  it("titles a found collection after the collection and the store", () => {
+  it("titles a found collection after the collection and the store and publishes its breadcrumb", () => {
+    const structuredData = { "@type": "BreadcrumbList" }
     const meta = headMeta({
       metaDescription: "Sterling silver, cast by hand.",
       status: "found",
+      structuredData,
       title: "Sterling silver",
     })
 
     expect(meta).toStrictEqual([
       { title: `Sterling silver | ${APP_NAME}` },
       { content: "Sterling silver, cast by hand.", name: "description" },
+      { "script:ld+json": structuredData },
     ])
   })
 
@@ -325,10 +331,15 @@ describe("the storefront collection metadata", () => {
 })
 
 describe("the storefront collection loader", () => {
-  it("resolves the collection title and its meta description for the active locale", async () => {
+  it("resolves the collection title, its meta description and its breadcrumb for the active locale", async () => {
     await expect(runLoader()).resolves.toStrictEqual({
       metaDescription: "Sterling silver, cast by hand.",
       status: "found",
+      structuredData: buildBreadcrumbStructuredData({
+        leaf: "Sterling silver",
+        locale: "en-US",
+        sections: [{ name: "Collections", path: "/collections" }],
+      }),
       title: "Sterling silver",
     })
   })
@@ -376,7 +387,7 @@ describe("the storefront collection loader", () => {
   it("falls back to the catalog description when the collection has none", async () => {
     collection.getStorefrontCollection.mockResolvedValue({ ...COLLECTION_ROW, descriptions: null })
 
-    await expect(runLoader()).resolves.toStrictEqual({
+    await expect(runLoader()).resolves.toMatchObject({
       metaDescription: "Browse our complete collection of exquisite jewelry.",
       status: "found",
       title: "Sterling silver",

@@ -2,9 +2,8 @@ import { describe, expect, it, vi } from "vite-plus/test"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { STATIC_PAGES } from "~/src/data/static-pages"
-
 import {
+  type SitemapPage,
   buildLocalizedUrl,
   buildPageHead,
   buildTitle,
@@ -117,10 +116,13 @@ describe("generateRobotsTxt", () => {
 })
 
 describe("generateSitemapXml", () => {
-  const xml = generateSitemapXml(APP_URL)
+  const RING_UPDATED_AT = new Date("2026-10-01T08:30:00.000Z")
+  const pages: SitemapPage[] = [{ path: "/" }, { path: "/about" }, { lastModified: RING_UPDATED_AT, path: "/products/silver-ring" }]
+  const xml = generateSitemapXml(APP_URL, pages)
+  const entries = xml.match(/<url>[\s\S]*?<\/url>/gu) ?? []
 
-  it("emits one url entry per static page and locale", () => {
-    expect(xml.match(/<url>/gu)).toHaveLength(STATIC_PAGES.length * I18N.SUPPORTED_LOCALES.length)
+  it("emits one url entry per page and locale", () => {
+    expect(entries).toHaveLength(pages.length * I18N.SUPPORTED_LOCALES.length)
   })
 
   it("declares the xhtml namespace the alternate links rely on", () => {
@@ -135,15 +137,44 @@ describe("generateSitemapXml", () => {
     expect(xml).toContain(`<xhtml:link rel="alternate" hreflang="x-default" href="${APP_URL}/about"/>`)
   })
 
-  it("ranks the home page above the other static pages", () => {
-    expect(xml).toContain("<priority>1.0</priority>")
-    expect(xml).toContain("<priority>0.8</priority>")
+  it("gives each locale of a page its own location", () => {
+    expect(xml).toContain(`<loc>${APP_URL}/products/silver-ring</loc>`)
+    expect(xml).toContain(`<loc>${APP_URL}/en-US/products/silver-ring</loc>`)
+  })
+
+  it("dates only the pages that carry a last modification, in every locale", () => {
+    expect(xml.match(/<lastmod>2026-10-01T08:30:00\.000Z<\/lastmod>/gu)).toHaveLength(I18N.SUPPORTED_LOCALES.length)
+    expect(entries.filter((entry) => entry.includes("<lastmod>"))).toHaveLength(I18N.SUPPORTED_LOCALES.length)
+  })
+
+  it("orders each entry as the sitemap schema requires, with the alternates last", () => {
+    expect(entries.at(-1)).toBe(
+      [
+        "<url>",
+        `    <loc>${APP_URL}/en-US/products/silver-ring</loc>`,
+        "    <lastmod>2026-10-01T08:30:00.000Z</lastmod>",
+        "    <changefreq>weekly</changefreq>",
+        "    <priority>0.8</priority>",
+        `    <xhtml:link rel="alternate" hreflang="pl-PL" href="${APP_URL}/products/silver-ring"/>`,
+        `    <xhtml:link rel="alternate" hreflang="en-US" href="${APP_URL}/en-US/products/silver-ring"/>`,
+        `    <xhtml:link rel="alternate" hreflang="x-default" href="${APP_URL}/products/silver-ring"/>`,
+        "  </url>",
+      ].join("\n"),
+    )
+  })
+
+  it("ranks the home page above the other pages", () => {
     expect(xml.match(/<priority>1\.0<\/priority>/gu)).toHaveLength(I18N.SUPPORTED_LOCALES.length)
+    expect(xml.match(/<priority>0\.8<\/priority>/gu)).toHaveLength((pages.length - 1) * I18N.SUPPORTED_LOCALES.length)
   })
 
   it("opens with the XML declaration and closes the urlset", () => {
     expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>')).toBe(true)
     expect(xml.endsWith("</urlset>")).toBe(true)
+  })
+
+  it("leaves an empty urlset when there is nothing to list", () => {
+    expect(generateSitemapXml(APP_URL, [])).not.toContain("<url>")
   })
 })
 
@@ -156,6 +187,23 @@ describe("pageHead", () => {
         { content: "Your account", property: "og:title" },
         { content: "Manage your orders", property: "og:description" },
       ],
+    })
+  })
+
+  it("shows the page's own image on social cards and names it after the page", () => {
+    const card = "https://images.example.test/cdn-cgi/image/width=1200,height=630/products/ring.webp"
+    const { meta } = pageHead({ loaderData: { description: "A silver ring.", image: card, title: "Silver ring | M'Arte" } })
+
+    expect(meta).toContainEqual({ content: card, property: "og:image" })
+    expect(meta).toContainEqual({ content: "Silver ring | M'Arte", property: "og:image:alt" })
+    expect(meta).toContainEqual({ content: card, name: "twitter:image" })
+  })
+
+  it("appends the page's structured data as its json-ld script", () => {
+    const structuredData = { "@context": "https://schema.org", "@type": "BreadcrumbList" }
+
+    expect(pageHead({ loaderData: { description: "", structuredData, title: "Rings" } }).meta.at(-1)).toStrictEqual({
+      "script:ld+json": structuredData,
     })
   })
 

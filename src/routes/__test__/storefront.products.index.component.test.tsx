@@ -12,6 +12,8 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type StorefrontProductsSearch } from "~/src/modules/product/product.storefront-catalog"
 
+import { buildBreadcrumbStructuredData } from "~/src/lib/seo"
+
 import { APP_NAME } from "~/src/presentation/branding/app"
 
 interface NavigateOptions {
@@ -27,15 +29,21 @@ interface CatalogPageProps {
 }
 
 interface PageMetaTags {
-  readonly meta: readonly Readonly<{ content?: string; name?: string; title?: string }>[]
+  readonly meta: readonly Readonly<{ "script:ld+json"?: object; content?: string; name?: string; title?: string }>[]
+}
+
+interface ProductsPageMeta {
+  readonly description: string
+  readonly structuredData: object
+  readonly title: string
 }
 
 interface RouteDefinition {
   readonly component?: () => JSX.Element
-  readonly head?: (ctx: Readonly<{ loaderData?: Readonly<{ description: string; title: string }> | undefined }>) => PageMetaTags
+  readonly head?: (ctx: Readonly<{ loaderData?: Readonly<ProductsPageMeta> | undefined }>) => PageMetaTags
   readonly loader?: (
     ctx: Readonly<{ context: { imagePrefetchService: unknown; locale: SupportedLocale; queryClient: QueryClient }; deps: unknown }>,
-  ) => Promise<{ description: string; title: string }>
+  ) => Promise<ProductsPageMeta>
   readonly loaderDeps?: (ctx: Readonly<{ search: StorefrontProductsSearch }>) => StorefrontProductsSearch
   readonly staticData?: unknown
 }
@@ -167,15 +175,24 @@ describe("storefront products head", () => {
 
     expect(tags === undefined ? undefined : titleOf(tags)).toBe(APP_NAME)
     expect(tags === undefined ? undefined : descriptionOf(tags)).toBe("")
+    expect(tags?.meta.some((tag) => tag["script:ld+json"] !== undefined)).toBe(false)
   })
 
   it("puts the page title in front of the shop name once the loader has run", () => {
     const tags = route.head?.({
-      loaderData: { description: "Browse our complete collection of exquisite jewelry.", title: "All Products" },
+      loaderData: { description: "Browse our complete collection of exquisite jewelry.", structuredData: {}, title: "All Products" },
     })
 
     expect(tags === undefined ? undefined : titleOf(tags)).toBe(`All Products | ${APP_NAME}`)
     expect(tags === undefined ? undefined : descriptionOf(tags)).toBe("Browse our complete collection of exquisite jewelry.")
+  })
+
+  it("publishes the loaded breadcrumb as the page's json-ld", () => {
+    const structuredData = { "@type": "BreadcrumbList" }
+
+    expect(route.head?.({ loaderData: { description: "", structuredData, title: "All Products" } }).meta.at(-1)).toStrictEqual({
+      "script:ld+json": structuredData,
+    })
   })
 })
 
@@ -217,6 +234,7 @@ describe("storefront products route data", () => {
       route.loader?.({ context: { imagePrefetchService, locale: "en-US", queryClient }, deps: { category: "rings" } }),
     ).resolves.toStrictEqual({
       description: "Browse our complete collection of exquisite jewelry.",
+      structuredData: buildBreadcrumbStructuredData({ leaf: "All Products", locale: "en-US", sections: [] }),
       title: "All Products",
     })
   })

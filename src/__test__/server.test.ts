@@ -30,11 +30,18 @@ const realtime = vi.hoisted(() => ({ handleRealtimeInvalidationWebSocket: vi.fn(
 
 const queue = vi.hoisted(() => ({ processAuditLogQueueBatch: vi.fn(() => Promise.resolve()) }))
 
+const sitemap = vi.hoisted(() => ({
+  listSitemapPages: vi.fn(() =>
+    Promise.resolve([{ path: "/" }, { lastModified: new Date("2026-10-01T09:00:00.000Z"), path: "/products/lapis-lazuli-necklace" }]),
+  ),
+}))
+
 vi.mock("cloudflare:workers", () => ({ env: { VITE_R2_URL: "https://images.marte.test" } }))
 vi.mock("~/src/durable-objects/realtime-invalidation-hub", () => ({ RealtimeInvalidationHub: vi.fn() }))
 vi.mock("@tanstack/react-start/server-entry", () => ({ default: entry }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.ws.server", () => realtime)
 vi.mock("~/src/modules/audit-log/audit-log.queue.server", () => queue)
+vi.mock("~/src/lib/sitemap", () => sitemap)
 
 const { default: server } = await import("~/src/server")
 
@@ -101,6 +108,15 @@ describe("worker sitemap", () => {
     expect(response.headers.get("Cache-Control")).toBe("public, max-age=86400")
     expect(body).toContain("<loc>https://marte.test/</loc>")
     expect(entry.fetch).not.toHaveBeenCalled()
+  })
+
+  it("lists the pages the database holds, dated by their last change", async () => {
+    const { response } = await fetchPath("/sitemap.xml")
+    const body = await response.text()
+
+    expect(sitemap.listSitemapPages).toHaveBeenCalledTimes(1)
+    expect(body).toContain("<loc>https://marte.test/en-US/products/lapis-lazuli-necklace</loc>")
+    expect(body).toContain("<lastmod>2026-10-01T09:00:00.000Z</lastmod>")
   })
 })
 

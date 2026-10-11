@@ -17,6 +17,7 @@ import {
 import { getNewArrivalsQuery } from "~/src/modules/product/use-cases/get-new-arrivals"
 
 import { catalogDebugLog } from "~/src/lib/catalog-debug-log"
+import { buildBreadcrumbStructuredData } from "~/src/lib/seo"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 
@@ -25,7 +26,9 @@ import { ProductsCatalogPage } from "~/src/presentation/components/custom/pages/
 import { prefetchProductsCatalogPage } from "~/src/presentation/components/custom/pages/products-catalog/products-catalog.loader"
 
 import type collectionMessages from "~/messages/en-US/pages.collection.json"
+import type collectionsMessages from "~/messages/en-US/pages.collections.json"
 import type productsMessages from "~/messages/en-US/pages.products.json"
+import { ROUTES } from "~/src/routes"
 
 const CollectionPage = (): JSX.Element => {
   const loaderData = Route.useLoaderData()
@@ -89,6 +92,7 @@ const CollectionFoundPage = ({
 interface CollectionFoundLoaderData {
   readonly metaDescription: string
   readonly status: "found"
+  readonly structuredData: object
   readonly title: string
 }
 
@@ -130,6 +134,7 @@ export const Route = createFileRoute("/_storefront/collections/$handle")({
           content: loaderData?.metaDescription ?? "",
           name: "description",
         },
+        ...(loaderData === undefined ? [] : [{ "script:ld+json": loaderData.structuredData }]),
       ],
     }
   },
@@ -181,13 +186,22 @@ export const Route = createFileRoute("/_storefront/collections/$handle")({
       ms: Math.round(performance.now() - startedAt),
     })
 
-    const messages = await context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale, namespace: "pages.products" }))
+    const [messages, collectionsPageMessages] = await Promise.all([
+      context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale, namespace: "pages.products" })),
+      context.queryClient.query(messagesQueryOptions<typeof collectionsMessages>({ locale, namespace: "pages.collections" })),
+    ])
     const description = resolveCollectionDescription(collection.descriptions, locale)
+    const title = resolveCollectionTitle(collection.titles, locale)
 
     return {
       metaDescription: description || messages.description,
       status: "found",
-      title: resolveCollectionTitle(collection.titles, locale),
+      structuredData: buildBreadcrumbStructuredData({
+        leaf: title,
+        locale,
+        sections: [{ name: collectionsPageMessages.title, path: ROUTES.COLLECTIONS }],
+      }),
+      title,
     } satisfies CollectionFoundLoaderData
   },
   loaderDeps: ({ search }: { search: StorefrontScopedCollectionCatalogSearch }) => normalizeStorefrontProductsSearch(search),

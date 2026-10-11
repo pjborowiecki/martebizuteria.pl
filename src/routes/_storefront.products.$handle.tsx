@@ -11,8 +11,8 @@ import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/produ
 import { getProductQuery } from "~/src/modules/product/use-cases/get-product"
 import { getRelatedProductsQuery } from "~/src/modules/product/use-cases/get-related-products"
 
-import { getProductImageUrl, prefetchSingleProductImage } from "~/src/lib/image"
-import { type PageMeta, pageHead } from "~/src/lib/seo"
+import { getProductImageUrl, prefetchSingleProductImage, resolveProductImageUrls, resolveProductSocialImageUrl } from "~/src/lib/image"
+import { type PageMeta, buildProductStructuredData, pageHead } from "~/src/lib/seo"
 
 import { useProductAnimations } from "~/src/presentation/components/custom/pages/product-page/hooks/use-product-animations"
 import { ProductHeroSection } from "~/src/presentation/components/custom/pages/product-page/sections/product-hero-section"
@@ -102,6 +102,13 @@ export const Route = createFileRoute("/_storefront/products/$handle")({
     return {
       deferredRelated,
       description: data.description,
+      image: resolveProductSocialImageUrl(data),
+      structuredData: buildProductStructuredData({
+        images: resolveProductImageUrls(data),
+        locale,
+        product: data,
+        section: messages.heroSection.breadcrumbProducts,
+      }),
       title: messages.metaTitle.replace("{title}", data.title),
     } satisfies PageMeta & { deferredRelated: typeof deferredRelated }
   },
