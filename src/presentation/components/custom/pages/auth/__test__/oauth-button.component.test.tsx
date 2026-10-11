@@ -37,11 +37,11 @@ describe("OAuthButton", () => {
   })
 
   it("starts the sign in for the provider it renders", async () => {
-    renderWithProviders(<OAuthButton provider="github" label="Continue with GitHub" Icon={ProviderIcon} />)
+    renderWithProviders(<OAuthButton provider="google" label="Continue with Google" Icon={ProviderIcon} />)
 
-    await userEvent.click(screen.getByRole("button", { name: "Continue with GitHub" }))
+    await userEvent.click(screen.getByRole("button", { name: "Continue with Google" }))
 
-    expect(oauth.mutate).toHaveBeenCalledWith("github")
+    expect(oauth.mutate).toHaveBeenCalledWith("google")
   })
 
   it("renders the provider icon while idle", () => {
@@ -60,18 +60,17 @@ describe("OAuthButton", () => {
 })
 
 describe("SocialProviders", () => {
-  it("offers both configured providers with their translated labels", () => {
+  it("offers Google as the only social sign-in, under its translated label", () => {
     renderWithProviders(<SocialProviders />)
 
-    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "Continue with GitHub" })).toBeInTheDocument()
+    expect(screen.getAllByRole("button")).toStrictEqual([screen.getByRole("button", { name: "Continue with Google" })])
   })
 
-  it("starts the matching provider sign in", async () => {
+  it("starts the Google sign in", async () => {
     renderWithProviders(<SocialProviders />)
 
-    await userEvent.click(screen.getByRole("button", { name: "Continue with GitHub" }))
+    await userEvent.click(screen.getByRole("button", { name: "Continue with Google" }))
 
-    expect(oauth.mutate).toHaveBeenCalledWith("github")
+    expect(oauth.mutate).toHaveBeenCalledWith("google")
   })
 })

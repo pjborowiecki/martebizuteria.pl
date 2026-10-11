@@ -42,7 +42,7 @@ bun run db:migrate:development
 
 ## Sekrety i pliki środowiskowe
 
-Każde środowisko wymienia swoje sekrety w `secrets.required`: `AUTH_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` i `VITE_R2_URL`. `APP_ENV` jest zwykłą zmienną, nie sekretem.
+Każde środowisko wymienia swoje sekrety w `secrets.required`: `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` i `VITE_R2_URL`. `APP_ENV` jest zwykłą zmienną, nie sekretem.
 
 Wartości pochodzą z `.env.development`, `.env.preview` i `.env.production`, które są poza repozytorium; `.env.test` zawiera zacommitowane wartości pozorne, a `.env.example` jest szablonem. Automatyczne ładowanie zmiennych przez Bun jest wyłączone w `bunfig.toml`, więc środowisko zawsze wybiera się jawnie — przez `--mode` albo przez `bun --env-file=`.
 

@@ -23,7 +23,7 @@ Port jest ustalony: `server: { port: 3000, strictPort: true }`. Jeśli 3000 jest
 
 ### Pliki środowiskowe
 
-`bun run dev` czyta `.env.development`. Skopiuj `.env.example` i wypełnij; plik jest w `.gitignore`. Część prywatna potrzebuje `AUTH_SECRET`, par OAuth dla Google i GitHuba, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` oraz trzech wartości `CLOUDFLARE_*` wymaganych przez CLI Drizzle. Część publiczna to `VITE_R2_URL` i `VITE_STRIPE_PUBLISHABLE_KEY`.
+`bun run dev` czyta `.env.development`. Skopiuj `.env.example` i wypełnij; plik jest w `.gitignore`. Część prywatna potrzebuje `AUTH_SECRET`, pary OAuth dla Google, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` oraz trzech wartości `CLOUDFLARE_*` wymaganych przez CLI Drizzle. Część publiczna to `VITE_R2_URL` i `VITE_STRIPE_PUBLISHABLE_KEY`.
 
 Bez własnej zweryfikowanej domeny ustaw `RESEND_EMAIL_FROM=onboarding@resend.dev` i rejestruj się adresem właściciela konta Resend — tylko tam ten nadawca dostarcza pocztę. `bun run email:verify development` pyta Resend, czy przyjmuje klucz i nadawcę z `.env.development`, i wypisuje rekordy DNS, których jeszcze brakuje własnej domenie; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 

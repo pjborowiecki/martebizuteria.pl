@@ -296,7 +296,7 @@
       "wrongCode": "Ten kod jest nieprawidłowy. Sprawdź aplikację i spróbuj ponownie."
     },
     "closeDialogPassword": "Twoje hasło",
-    "closeDialogRecentSignIn": "Logujesz się przez Google lub GitHub, więc hasło nie jest potrzebne. Jeśli operacja się nie uda, zaloguj się ponownie i spróbuj jeszcze raz.",
+    "closeDialogRecentSignIn": "Logujesz się przez Google, więc hasło nie jest potrzebne. Jeśli operacja się nie uda, zaloguj się ponownie i spróbuj jeszcze raz.",
     "closeDialogAction": "Usuń moje konto",
     "closeAccountError": "Nie udało się usunąć konta. Spróbuj ponownie lub zaloguj się jeszcze raz.",
     "closeStripeCustomerError": "Nie udało się usunąć zapisanych kart u naszego operatora płatności Stripe, więc konto nie zostało usunięte. Spróbuj ponownie za kilka minut.",

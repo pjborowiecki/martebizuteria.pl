@@ -23,7 +23,7 @@ The port is fixed: `server: { port: 3000, strictPort: true }`. If 3000 is occupi
 
 ### Environment files
 
-`.env.development` is what `bun run dev` reads. Copy `.env.example` and fill it in; the file is gitignored. The private half needs `AUTH_SECRET`, the Google and GitHub OAuth pairs, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the three `CLOUDFLARE_*` values the Drizzle CLI needs. The public half is `VITE_R2_URL` and `VITE_STRIPE_PUBLISHABLE_KEY`.
+`.env.development` is what `bun run dev` reads. Copy `.env.example` and fill it in; the file is gitignored. The private half needs `AUTH_SECRET`, the Google OAuth pair, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the three `CLOUDFLARE_*` values the Drizzle CLI needs. The public half is `VITE_R2_URL` and `VITE_STRIPE_PUBLISHABLE_KEY`.
 
 Without a verified domain of your own, set `RESEND_EMAIL_FROM=onboarding@resend.dev` and sign up with the Resend account owner's address, the only one that sender delivers to. `bun run email:verify development` asks Resend whether it accepts the key and sender in `.env.development`, and prints the DNS records a custom domain still lacks; see [Resend](/docs/integrations/resend#sender-domain).
 

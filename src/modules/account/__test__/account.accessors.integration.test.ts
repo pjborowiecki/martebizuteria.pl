@@ -56,7 +56,6 @@ describe("hasCredentialAccount", () => {
 
   it("reports no password for a customer who only signs in through a social provider", async () => {
     insertAccount("account-1", "user-1", "google")
-    insertAccount("account-2", "user-1", "github")
 
     await expect(hasCredentialAccount("user-1")).resolves.toBe(false)
   })

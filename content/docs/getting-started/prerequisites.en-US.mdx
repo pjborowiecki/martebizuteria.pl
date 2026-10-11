@@ -52,18 +52,17 @@ Two caveats worth knowing before you provision anything:
 
 The Durable Object needs no provisioning step. It is created by the `v1` migration in `wrangler.jsonc`, which declares `RealtimeInvalidationHub` under `new_sqlite_classes`.
 
-### Google and GitHub OAuth — required for social sign-in
+### Google OAuth — required for social sign-in
 
-`src/integrations/better-auth/auth.server.ts` configures both providers unconditionally:
+`src/integrations/better-auth/auth.server.ts` configures Google, the only social provider, unconditionally:
 
 ```ts
 socialProviders: {
-  github: { clientId: env.AUTH_GITHUB_CLIENT_ID, clientSecret: env.AUTH_GITHUB_CLIENT_SECRET },
   google: { clientId: env.AUTH_GOOGLE_CLIENT_ID, clientSecret: env.AUTH_GOOGLE_CLIENT_SECRET },
 },
 ```
 
-Both client ids and secrets are listed under `secrets.required` in every `wrangler.jsonc` environment, so `scripts/prepare-deploy-secrets.ts` refuses to deploy without them. The redirect URI is `https://<host>/api/auth/callback/google` and `https://<host>/api/auth/callback/github`, matching the Better Auth handler mounted at `src/routes/api/auth.$.ts`.
+The client id and secret are listed under `secrets.required` in every `wrangler.jsonc` environment, so `scripts/prepare-deploy-secrets.ts` refuses to deploy without them. The redirect URI is `https://<host>/api/auth/callback/google`, matching the Better Auth handler mounted at `src/routes/api/auth.$.ts`.
 
 ### Resend — required to create any account
 

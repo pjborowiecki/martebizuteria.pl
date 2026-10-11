@@ -31,7 +31,7 @@ export const OAuthButton = ({ Icon, label, provider }: Readonly<OAuthButtonProps
   )
 }
 
-type Provider = "google" | "github"
+type Provider = "google"
 
 interface OAuthButtonProps {
   readonly Icon: ComponentType<SVGProps<SVGSVGElement>>

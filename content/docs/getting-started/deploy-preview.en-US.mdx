@@ -145,7 +145,7 @@ The preview workflow finishes by posting or updating a comment on the pull reque
 
 Repository **secrets**:
 
-`CLOUDFLARE_ACCESS_TOKEN` (passed to Wrangler as `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_GITHUB_CLIENT_ID`, `AUTH_GITHUB_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`.
+`CLOUDFLARE_ACCESS_TOKEN` (passed to Wrangler as `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`.
 
 Repository **variables**:
 
@@ -155,7 +155,7 @@ Repository **variables**:
 
 The deploy's last step has already asked the new Worker for the home page, the product listing, `robots.txt` and the Stripe webhook route. When it fails, the new version is live but not answering like the shop; [Roll back a deploy](/docs/guides/roll-back-a-deploy) covers what to do.
 
-Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google`, `/api/auth/callback/github` and the Stripe endpoint at `/api/webhooks/stripe`, which is `https://preview.martebizuteria.pl/api/webhooks/stripe` on preview and `https://martebizuteria.pl/api/webhooks/stripe` in production. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ. The endpoint's host does not decide where the order confirmation links: it links to the address the checkout was made on, taken from the session's `return_url`.
+Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google` and the Stripe endpoint at `/api/webhooks/stripe`, which is `https://preview.martebizuteria.pl/api/webhooks/stripe` on preview and `https://martebizuteria.pl/api/webhooks/stripe` in production. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ. The endpoint's host does not decide where the order confirmation links: it links to the address the checkout was made on, taken from the session's `return_url`.
 
 ## Related
 

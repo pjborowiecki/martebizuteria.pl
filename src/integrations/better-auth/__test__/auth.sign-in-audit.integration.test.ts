@@ -37,8 +37,6 @@ const mail = vi.hoisted(() => ({ sendEmail: vi.fn<(email: SentEmail) => Promise<
 
 vi.mock("cloudflare:workers", () => ({
   env: {
-    AUTH_GITHUB_CLIENT_ID: "test-github-client",
-    AUTH_GITHUB_CLIENT_SECRET: "test-github-secret",
     AUTH_GOOGLE_CLIENT_ID: "test-google-client",
     AUTH_GOOGLE_CLIENT_SECRET: "test-google-secret",
     AUTH_SECRET: "local-test-auth-secret-with-at-least-thirty-two-characters",
@@ -62,10 +60,16 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-const GITHUB_RESPONSES: Readonly<Record<string, unknown>> = {
-  "https://api.github.com/user": { avatar_url: null, email: null, id: 4242, login: "octo-ada", name: "Ada Octo" },
-  "https://api.github.com/user/emails": [{ email: "github@marte.test", primary: true, verified: true }],
-  "https://github.com/login/oauth/access_token": { access_token: "gho_test", scope: "read:user,user:email", token_type: "bearer" },
+const googleIdToken = (claims: Readonly<Record<string, unknown>>): string =>
+  `${[{ alg: "RS256" }, claims].map((part) => Buffer.from(JSON.stringify(part)).toString("base64url")).join(".")}.signature`
+
+const GOOGLE_RESPONSES: Readonly<Record<string, unknown>> = {
+  "https://oauth2.googleapis.com/token": {
+    access_token: "ya29.test",
+    id_token: googleIdToken({ email: "google@marte.test", email_verified: true, name: "Ada Google", sub: "4242" }),
+    scope: "openid email profile",
+    token_type: "Bearer",
+  },
 }
 
 const signInRedirect = z.object({ url: z.string() })
@@ -270,22 +274,33 @@ describe("signing in without a password", () => {
     expectOneLogin(userIdFor("new@marte.test"), "198.51.100.17")
   })
 
-  it("records a GitHub sign-in when the provider sends the customer back", async () => {
+  it("records a Google sign-in when the provider sends the customer back", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((input: Request | URL | string) => {
         const { origin, pathname } = new URL(input instanceof Request ? input.url : input)
 
-        return Promise.resolve(Response.json(GITHUB_RESPONSES[`${origin}${pathname}`]))
+        return Promise.resolve(Response.json(GOOGLE_RESPONSES[`${origin}${pathname}`]))
       }),
     )
     const browser = openAuthBrowser("198.51.100.18")
-    const started = await browser.post("/sign-in/social", { callbackURL: "/en-US/account/overview", provider: "github" })
+    const started = await browser.post("/sign-in/social", { callbackURL: "/en-US/account/overview", provider: "google" })
     const { url } = signInRedirect.parse(await started.json())
 
-    const response = await browser.follow(`${AUTH_BASE_URL}/callback/github?code=test-code&state=${new URL(url).searchParams.get("state")}`)
+    const response = await browser.follow(`${AUTH_BASE_URL}/callback/google?code=test-code&state=${new URL(url).searchParams.get("state")}`)
 
     expect(response.headers.get("location")).toBe("/en-US/account/overview")
-    expectOneLogin(userIdFor("github@marte.test"), "198.51.100.18")
+    expectOneLogin(userIdFor("google@marte.test"), "198.51.100.18")
+  })
+
+  it("starts no GitHub sign-in, since the shop does not offer one", async () => {
+    const started = await openAuthBrowser("198.51.100.19").post("/sign-in/social", {
+      callbackURL: "/en-US/account/overview",
+      provider: "github",
+    })
+
+    expect(started.status).toBe(404)
+    await expect(started.json()).resolves.toMatchObject({ code: "PROVIDER_NOT_FOUND" })
+    expect(audit.recordAuthLoginAudit).not.toHaveBeenCalled()
   })
 })
