@@ -80,6 +80,11 @@ const OrderContractInformation = ({ legalLinks, locale, messages }: Readonly<Ord
       <ContractSection label={t("withdrawal.label")}>
         <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.period")}</Text>
         <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.how", { email: BUSINESS.EMAIL })}</Text>
+        <Text className={CONTRACT_TEXT_CLASS}>
+          <Link className={CONTRACT_LINK_CLASS} href={legalLinks.withdrawal}>
+            {t("withdrawal.online")}
+          </Link>
+        </Text>
         <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.returnShipping")}</Text>
         <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.refund")}</Text>
         <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.exception")}</Text>
@@ -281,6 +286,7 @@ export interface OrderConfirmationLegalLinks {
   readonly exchangesAndReturns: string
   readonly privacyPolicy: string
   readonly termsOfService: string
+  readonly withdrawal: string
 }
 
 interface OrderConfirmationProps {

@@ -63,6 +63,7 @@ const accessors = vi.hoisted(() => {
 
       return Promise.resolve({ rows: accessors.rows, total: accessors.total })
     }),
+    getOrderWithdrawals: vi.fn<() => Promise<unknown[]>>(() => Promise.resolve([])),
     pageParams,
     rows: [] as unknown[],
     total: 0,
@@ -79,6 +80,7 @@ vi.mock("~/src/modules/order/order.accessors", () => ({
   getAdminOrdersExport: accessors.getAdminOrdersExport,
   getAdminOrdersPage: accessors.getAdminOrdersPage,
 }))
+vi.mock("~/src/modules/order-withdrawal/order-withdrawal.accessors", () => ({ getOrderWithdrawals: accessors.getOrderWithdrawals }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -427,6 +429,25 @@ describe("getAdminOrder company invoice", () => {
 
     expect(detail?.billingCompanyName).toBeUndefined()
     expect(detail?.billingNip).toBeUndefined()
+  })
+})
+
+describe("getAdminOrder withdrawals", () => {
+  it("shows the statements of withdrawal the customer sent for the order", async () => {
+    const withdrawal = {
+      consumerName: "Ada Lovelace",
+      email: "ada@example.test",
+      id: "withdrawal-1",
+      items: undefined,
+      reason: undefined,
+      scope: "order",
+      submittedAt: CREATED_AT,
+    }
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow())
+    accessors.getOrderWithdrawals.mockResolvedValueOnce([withdrawal])
+
+    await expect(fetchAdminOrder()).resolves.toMatchObject({ withdrawals: [withdrawal] })
+    expect(accessors.getOrderWithdrawals).toHaveBeenCalledWith(DETAIL_ORDER_ID)
   })
 })
 

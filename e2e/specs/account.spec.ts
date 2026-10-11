@@ -36,6 +36,31 @@ test.describe("customer account", () => {
     await expect(order).toContainText("Processing")
   })
 
+  test("a customer withdraws from part of an order on its page and is emailed the statement", async ({ accountPage, authPage, page, request }, testInfo) => {
+    const customer = await registerCustomer({ authPage, page, request }, testInfo)
+    const { orderNumber } = await placeOrder({ email: customer.email, handle: PRODUCTS.lapis.handle, page, request })
+    await accountPage.gotoSection("orders")
+    await page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") }).click()
+    await page.getByRole("link", { name: "View Details" }).click()
+    await expect(accountPage.heading()).toHaveText(orderNumber)
+
+    await page.getByRole("button", { name: "Withdraw from the contract" }).click()
+    const dialog = page.getByRole("dialog", { name: "Withdraw from the contract" })
+    await expect(dialog).toContainText(`We will confirm that we received it by email to ${customer.email}.`)
+    await expect(dialog.getByLabel(/Your full name/u)).toHaveValue("Zofia Nowak")
+    await dialog.getByRole("radio", { name: "Only some products" }).click()
+    await dialog.getByRole("checkbox", { name: new RegExp(`^${PRODUCTS.lapis.title}`, "u") }).click()
+    await dialog.getByLabel("Reason (optional)").fill("The chain is too short")
+    await dialog.getByRole("button", { name: "Confirm withdrawal" }).click()
+
+    await expect(accountPage.notification("We have received your statement of withdrawal")).toBeVisible()
+    await expect(page.getByRole("main").getByText(/^Statement sent on /u)).toBeVisible()
+    const acknowledgement = await waitForEmail(request, customer.email, `We have received your withdrawal from order ${orderNumber} — M'Arte`)
+    expect(acknowledgement.html).toContain(`I withdraw from the contract of sale for these products of order ${orderNumber}:`)
+    expect(acknowledgement.html).toContain(PRODUCTS.lapis.title)
+    expect(acknowledgement.html).toContain("The chain is too short")
+  })
+
   test("a card added from the wallet is listed and can be removed again", async ({ accountPage, authPage, page, request }, testInfo) => {
     const customer = await registerCustomer({ authPage, page, request }, testInfo)
     await accountPage.gotoSection("payment")

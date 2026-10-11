@@ -9,7 +9,7 @@ description: "The Cloudflare runtime: the Worker entry, its bindings, the three 
 
 | Binding                     | Type           | Used for                                                                  |
 | --------------------------- | -------------- | ------------------------------------------------------------------------- |
-| `DB`                        | D1 database    | All 38 tables, including sessions, verification and rate-limit counters   |
+| `DB`                        | D1 database    | All 39 tables, including sessions, verification and rate-limit counters   |
 | `IMAGES`                    | R2 bucket      | Product images uploaded through `src/integrations/cloudflare-r2`          |
 | `CACHE`                     | KV namespace   | Holds the five-minute email sender flag (`resend.availability.server.ts`) |
 | `ASSETS`                    | Static assets  | Everything in `public/`, including the fonts and the withdrawal form PDF  |

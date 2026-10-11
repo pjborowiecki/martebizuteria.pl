@@ -53,7 +53,7 @@ beforeLoad: () => {
 | `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                                 | Live   |
 | `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`, `getOwnNewsletterSubscriptionQuery()` | Live   |
 | `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                        | Live   |
-| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                        | Live   |
+| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`, `getCustomerOrderWithdrawalQuery(id)` | Live   |
 | `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                         | Live   |
 | `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()`   | Live   |
 | `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                   | Live   |

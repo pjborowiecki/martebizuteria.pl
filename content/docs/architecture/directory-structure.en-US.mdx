@@ -32,7 +32,7 @@ src/
 │   │   │                              tax
 │   │   └── utils/                     pagination, zod-fields, csv, currency, datetime,
 │   │                                  iso-date, iso-datetime, json, column-filters,
-│   │                                  search-conditions, tax
+│   │                                  search-conditions, polish-deadline, tax
 │   └── <feature>/
 │       ├── <feature>.schema.ts        Drizzle table and relations
 │       ├── <feature>.zod.ts           Input schemas shared by forms and server functions
@@ -73,7 +73,7 @@ src/
 
 - **Files and folders use kebab-case.** Tests live in a sibling `__test__` folder and are named `*.test.ts`, `*.integration.test.ts` or `*.component.test.tsx`.
 - **Routes only compose.** A route file defines the page or layout component, its `staticData.namespaces`, its `beforeLoad` guard, its `loader` and its `head`. Widgets, dialogs, forms and column definitions live in `src/presentation/components/custom`.
-- **A module is a feature, not strictly a table.** Most of the 40 modules own one Drizzle table, but `admin-dashboard`, `customer-account` and `customer-activity` own read models that span several tables and have no schema file of their own. `storefront-search` declares only the FTS5 `storefront_search` index, which a hand-written migration creates.
+- **A module is a feature, not strictly a table.** Most of the 41 modules own one Drizzle table, but `admin-dashboard`, `customer-account` and `customer-activity` own read models that span several tables and have no schema file of their own. `storefront-search` declares only the FTS5 `storefront_search` index, which a hand-written migration creates.
 - **`_core` is the shared kernel.** `AppError` and `ERROR_CODES`, the pagination helpers, the reusable Zod fields, the currency formatters and the column-filter builders live there. `_core/constants/timezone.ts` supplies `TIMEZONES`, the time-zone list customers pick from. `_core/constants/country.ts` is an ISO reference table kept deliberately for planned work — it has no importers and must not be deleted as dead code.
 - **`src/data` holds data, not logic.** `landing.ts`, `blog-posts.ts` and `static-pages.ts` feed real pages; `marketing.ts` and `settings.ts` are fixtures behind the admin pages that are still scaffolding.
 - **`src/lib` holds small request-scoped helpers**, not features: `background.ts` (the `waitUntil` store), `cookie.ts`, `image.ts`, `rate-limit.ts`, `request.ts` (the client address, and `resolveRequestOrigin` and `resolveDeploymentOrigin`, the validated origins every email link and Stripe return URL are built from), `security-headers.ts` (the per-request Content-Security-Policy nonce and the headers every Worker response gets), `seo.ts` and `url.ts`. `deployment.ts` is the exception: `verifyDeployment`, the live-site check that `scripts/verify-deployment.ts` runs after a deploy, which no request ever calls.
@@ -81,7 +81,7 @@ src/
 
 ## Content and messages live outside `src`
 
-`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. The terms of service, the privacy policy and the exchanges-and-returns page are not files: their Markdown lives in the D1 `content_page` table, seeded by `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql` and `20261005200000_terms_of_service_page.sql`, rewritten for the returns page by `20261005210000_returns_and_complaints_page.sql` and for the privacy policy by `20261010200000_privacy_policy_page.sql` and `20261010210000_privacy_policy_account_deletion.sql`, and edited at `/admin/content`. The withdrawal and complaint forms those pages link are PDFs in `public/forms`. `messages/{en-US,pl-PL}` holds 53 namespace files each.
+`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. The terms of service, the privacy policy and the exchanges-and-returns page are not files: their Markdown lives in the D1 `content_page` table, seeded by `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql` and `20261005200000_terms_of_service_page.sql`, rewritten for the returns page by `20261005210000_returns_and_complaints_page.sql` and for the privacy policy by `20261010200000_privacy_policy_page.sql` and `20261010210000_privacy_policy_account_deletion.sql`, and edited at `/admin/content`. The withdrawal and complaint forms those pages link are PDFs in `public/forms`. `messages/{en-US,pl-PL}` holds 55 namespace files each.
 
 ## Related pages
 

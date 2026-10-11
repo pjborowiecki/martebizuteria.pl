@@ -10,6 +10,7 @@ export const TURNSTILE_ACTIONS = {
   PASSWORD_RESET: "password-reset",
   SIGN_UP: "sign-up",
   VERIFICATION_RESEND: "verification-resend",
+  WITHDRAWAL: "withdrawal",
 } as const
 
 export type TurnstileAction = (typeof TURNSTILE_ACTIONS)[keyof typeof TURNSTILE_ACTIONS]

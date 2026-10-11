@@ -736,6 +736,15 @@
       "title": "Customer Note",
       "empty": "The customer did not leave a note."
     },
+    "withdrawals": {
+      "title": "Withdrawal from the contract",
+      "wholeOrder": "The whole order",
+      "someItems": "Some products",
+      "submittedAt": "Received on {date}",
+      "consumer": "{name} · {email}",
+      "reason": "Reason: {reason}",
+      "noReason": "No reason given"
+    },
     "shipDialog": {
       "title": "Mark order as shipped",
       "description": "Add the tracking details the customer will see in their account and shipping email. Both fields are optional.",

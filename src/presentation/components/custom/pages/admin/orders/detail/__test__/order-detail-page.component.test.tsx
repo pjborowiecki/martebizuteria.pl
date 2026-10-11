@@ -36,6 +36,26 @@ describe("OrderDetailPage", () => {
     }
   })
 
+  it("shows a customer's withdrawal from the contract with the order", () => {
+    const order = buildAdminOrderDetail({
+      withdrawals: [
+        {
+          consumerName: "Anna Kowalska",
+          email: "anna@example.com",
+          id: "withdrawal-1",
+          items: undefined,
+          reason: undefined,
+          scope: "order",
+          submittedAt: new Date("2026-10-10T12:30:00.000Z"),
+        },
+      ],
+    })
+    renderWithProviders(<OrderDetailPage order={order} />)
+
+    expect(screen.getByText("Withdrawal from the contract")).toBeInTheDocument()
+    expect(screen.getByText("The whole order")).toBeInTheDocument()
+  })
+
   it("shows the meta strip labels above the cards", () => {
     renderWithProviders(<OrderDetailPage order={buildAdminOrderDetail()} />)
 

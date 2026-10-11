@@ -109,5 +109,6 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
   totalMinorUnits: 38_900,
   trackingNumber: "00259007123456789012",
   trackingUrl: "https://inpost.pl/sledzenie-przesylek?number=00259007123456789012",
+  withdrawals: [],
   ...overrides,
 })

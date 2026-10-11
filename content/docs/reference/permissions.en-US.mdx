@@ -49,7 +49,7 @@ Note that `product` covers the whole catalog, not only the `product` table: cate
 
 ## Where each permission is checked
 
-Of the 107 server functions in `src/modules/*/use-cases/`, 63 require a permission, 23 require only a session and 21 are public.
+Of the 110 server functions in `src/modules/*/use-cases/`, 63 require a permission, 25 require only a session and 22 are public.
 
 | Permission               | Checked by                                                                                                                                                                                                                                                                                                                                                |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -66,13 +66,13 @@ Of the 107 server functions in `src/modules/*/use-cases/`, 63 require a permissi
 | `user: ["get"]`          | `get-admin-customer`                                                                                                                                                                                                                                                                                                                                      |
 | `user: ["update"]`       | `update-customer`                                                                                                                                                                                                                                                                                                                                         |
 | `user: ["delete"]`       | `delete-customer`                                                                                                                                                                                                                                                                                                                                         |
-| A session, no permission | All nine `customer-account` use cases, all five `address` use cases, all three `wishlist` use cases, both `payment` use cases, and `get-own-newsletter-subscription` and `unsubscribe-own-newsletter` in `newsletter`                                                                                                                                     |
+| A session, no permission | All nine `customer-account` use cases, all five `address` use cases, all three `wishlist` use cases, both `payment` use cases, `get-own-newsletter-subscription` and `unsubscribe-own-newsletter` in `newsletter`, and `withdraw-from-customer-order` and `get-customer-order-withdrawal` in `order-withdrawal`                                           |
 
 `order: ["refund"]` and `product: ["publish"]` are declared but not checked by any server function. The admin Refund button calls `refund-admin-order`, which checks `order: ["update"]`. The refund itself is recorded by `order/use-cases/refund-order.ts`, a plain function that the `charge.refunded` webhook calls and that has no RPC endpoint to authorize.
 
 ## Public endpoints
 
-Twenty-one use cases deliberately take no `authorized` middleware, because the storefront must serve anonymous visitors. The list is not implicit — it is written down in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` as `PUBLIC_USE_CASES`:
+Twenty-two use cases deliberately take no `authorized` middleware, because the storefront must serve anonymous visitors. The list is not implicit — it is written down in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` as `PUBLIC_USE_CASES`:
 
 | Use case                                                    |
 | ----------------------------------------------------------- |
@@ -83,6 +83,7 @@ Twenty-one use cases deliberately take no `authorized` middleware, because the s
 | `delivery-method/use-cases/list-delivery-methods.ts`        |
 | `discount/use-cases/validate-discount-code.ts`              |
 | `order/use-cases/get-order-confirmation.ts`                 |
+| `order-withdrawal/use-cases/withdraw-from-guest-order.ts`   |
 | `newsletter/use-cases/confirm-newsletter-subscription.ts`   |
 | `newsletter/use-cases/subscribe-to-newsletter.ts`           |
 | `newsletter/use-cases/unsubscribe-from-newsletter.ts`       |

@@ -350,13 +350,14 @@ describe("order confirmation email as the confirmation of the contract", () => {
     expect(sentEmail().attachments).toStrictEqual([WITHDRAWAL_FORM])
   })
 
-  it("links the terms, the returns page and the privacy policy in the locale of the order", async () => {
+  it("links the terms, the returns page, the privacy policy and the order's withdrawal form in the locale of the order", async () => {
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata, locale: "en-US" })))
 
     expect(sentEmail().react.props.legalLinks).toStrictEqual({
       exchangesAndReturns: "http://127.0.0.1:3000/en-US/exchanges-and-returns",
       privacyPolicy: "http://127.0.0.1:3000/en-US/privacy-policy",
       termsOfService: "http://127.0.0.1:3000/en-US/terms-of-service",
+      withdrawal: "http://127.0.0.1:3000/en-US/withdraw-from-contract?order=MRT-2026-00042",
     })
   })
 })

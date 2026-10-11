@@ -53,7 +53,7 @@ beforeLoad: () => {
 | `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                                 | działa |
 | `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`, `getOwnNewsletterSubscriptionQuery()` | działa |
 | `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                        | działa |
-| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`                                        | działa |
+| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`, `getCustomerOrderWithdrawalQuery(id)` | działa |
 | `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                         | działa |
 | `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()`   | działa |
 | `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                   | działa |

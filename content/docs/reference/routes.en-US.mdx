@@ -35,12 +35,13 @@ All storefront pages sit under the pathless layout `_storefront.tsx`, which supp
 | `/exchanges-and-returns`  | `EXCHANGES_AND_RETURNS`  | `_storefront.exchanges-and-returns.tsx`  |
 | `/privacy-policy`         | `PRIVACY_POLICY`         | `_storefront.privacy-policy.tsx`         |
 | `/terms-of-service`       | `TERMS_OF_SERVICE`       | `_storefront.terms-of-service.tsx`       |
+| `/withdraw-from-contract` | `WITHDRAW_FROM_CONTRACT` | `_storefront.withdraw-from-contract.tsx` |
 | `/blog`                   | `BLOG`                   | `_storefront.blog.index.tsx`             |
 | `/blog/$slug`             | `BLOG_POST`              | `_storefront.blog.$slug.tsx`             |
 | `/newsletter/confirm`     | `NEWSLETTER_CONFIRM`     | `_storefront.newsletter.confirm.tsx`     |
 | `/newsletter/unsubscribe` | `NEWSLETTER_UNSUBSCRIBE` | `_storefront.newsletter.unsubscribe.tsx` |
 
-`/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns` load their Markdown from the D1 `content_page` table with `getContentPageQuery` and render it through `ContentPageArticle`; admins edit it at `/admin/content`. The blog reads its posts from `src/data/blog-posts.ts`.
+`/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns` load their Markdown from the D1 `content_page` table with `getContentPageQuery` and render it through `ContentPageArticle`; admins edit it at `/admin/content`. `/withdraw-from-contract` is the online withdrawal form for any order, guests included; its `?order=` search parameter, which the order confirmation sets, fills in the order number. See [Legal pages: The withdrawal function](/docs/features/legal-pages#the-withdrawal-function). The blog reads its posts from `src/data/blog-posts.ts`.
 
 `ABOUT_CONTACT_HASH` in `src/routes.ts` is the id of the seller contact section at the end of `/about`. The footer's "Contact details" link and the full-screen menu's "Contact" link pass it as the `hash` of a link to `ROUTES.ABOUT`, so they open `/about#contact` scrolled to the seller's details.
 

@@ -1,0 +1,34 @@
+{
+  "received": {
+    "subject": "We have received your withdrawal from order {orderNumber} — M'Arte",
+    "preview": "This email confirms the statement of withdrawal you sent us, with its content and the date we received it.",
+    "heading": "Your withdrawal has reached us",
+    "message": "We confirm that we received your statement of withdrawal from the contract for order {orderNumber}. Its content and the date and time it reached us are below. Please keep this email as your record of it.",
+    "returnLabel": "Returning the products",
+    "returnBody": "Send the products back to the address below no later than 14 days after the day you withdrew; posting them before then is enough. You bear the direct cost of returning them. Please put the order number in the parcel.",
+    "country": "Poland",
+    "refundLabel": "Your refund",
+    "refundBody": "We refund the payments the withdrawal covers, as our Terms of Service set out, no later than 14 days after receiving your statement, using the same means of payment you used for the order. We may withhold the refund until we have the products back or you have supplied proof of sending them, whichever comes first.",
+    "closingNote": "If you have any questions, simply reply to this email.",
+    "signoff": "With warm regards,",
+    "sender": "The M'Arte Atelier",
+    "tagline": "Handcrafted Jewelry"
+  },
+  "notice": {
+    "subject": "Withdrawal from order {orderNumber} — M'Arte",
+    "preview": "A customer withdrew from the contract online. Here is their statement.",
+    "heading": "Withdrawal from the contract",
+    "message": "A customer withdrew from the contract for order {orderNumber} with the withdrawal function on the shop's website. Their statement is below. We are also emailing the customer an acknowledgement of it.",
+    "adminCta": "Open the order in the admin",
+    "tagline": "Shop notification"
+  },
+  "statement": {
+    "label": "The statement",
+    "declaration": "{scope, select, order {I withdraw from the contract of sale for the whole of order {orderNumber}.} other {I withdraw from the contract of sale for these products of order {orderNumber}:}}",
+    "nameLabel": "Name",
+    "submittedAtLabel": "Received on",
+    "emailLabel": "Acknowledgement sent to",
+    "reasonLabel": "Reason",
+    "noReason": "None given"
+  }
+}

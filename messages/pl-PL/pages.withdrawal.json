@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "title": "Odstąp od umowy",
+    "description": "Odstąp online od umowy zawartej w sklepie M'Arte w ciągu 14 dni od otrzymania zamówienia."
+  },
+  "page": {
+    "eyebrow": "Prawo odstąpienia od umowy",
+    "title": "Odstąp od umowy",
+    "intro": "Jako konsument możesz odstąpić od umowy zawartej w naszym sklepie w ciągu 14 dni od otrzymania produktów, bez podawania przyczyny. Wypełnij ten formularz, aby wysłać nam oświadczenie o odstąpieniu od umowy. Potwierdzimy jego otrzymanie e-mailem na adres, z którego złożono zamówienie.",
+    "accountHint": "Masz konto? Możesz też odstąpić od umowy na stronie zamówienia w <link>swoich zamówieniach</link>.",
+    "orderNumber": "Numer zamówienia",
+    "email": "Adres e-mail podany przy zamówieniu",
+    "items": "Których produktów dotyczy odstąpienie",
+    "itemsHint": "Na przykład nazwy produktów i liczba sztuk każdego z nich."
+  },
+  "form": {
+    "name": "Imię i nazwisko",
+    "scopeLegend": "Odstępuję od umowy dotyczącej",
+    "scope": {
+      "order": "Całego zamówienia",
+      "items": "Tylko niektórych produktów"
+    },
+    "reason": "Powód (nieobowiązkowo)",
+    "reasonHint": "Nie musisz podawać powodu.",
+    "submit": "Potwierdź odstąpienie od umowy",
+    "submitting": "Wysyłanie…"
+  },
+  "account": {
+    "title": "Odstąpienie od umowy",
+    "description": "Możesz odstąpić od tej umowy w ciągu 14 dni od otrzymania produktów, bez podawania przyczyny.",
+    "action": "Odstąp od umowy",
+    "dialogDescription": "Twoje oświadczenie o odstąpieniu od umowy dla zamówienia {orderNumber}. Potwierdzimy jego otrzymanie e-mailem na adres {email}.",
+    "itemsLegend": "Produkty",
+    "cancel": "Anuluj",
+    "statement": "Oświadczenie wysłane {date}"
+  },
+  "result": {
+    "recorded": "Otrzymaliśmy Twoje oświadczenie o odstąpieniu od umowy",
+    "acknowledged": "Dotarło do nas {date}, a potwierdzenie z jego treścią wysłaliśmy na adres {email}.",
+    "notAcknowledged": "Zapisaliśmy je {date}, ale nie udało się wysłać potwierdzenia na adres {email}. Zachowaj tę stronę albo napisz do nas na adres {shopEmail}, a wyślemy je ponownie.",
+    "notFound": "Nie znaleźliśmy tego zamówienia wśród Twoich zamówień.",
+    "closed": "Termin na odstąpienie od umowy dla tego zamówienia minął albo zamówienie zostało anulowane. Jeśli uważasz, że to pomyłka, napisz do nas na adres {shopEmail}.",
+    "alreadyWithdrawn": "Odstąpiono już od umowy dla całego tego zamówienia.",
+    "submitted": "Dziękujemy za oświadczenie",
+    "submittedDescription": "Jeżeli zamówienie o tym numerze złożono z tego adresu e-mail i można jeszcze od niego odstąpić, zapisaliśmy Twoje oświadczenie o odstąpieniu od umowy i wysyłamy na ten adres potwierdzenie z jego treścią oraz datą i godziną, w której do nas dotarło. Jeżeli potwierdzenie nie dotrze w ciągu kilku minut, sprawdź numer zamówienia i adres e-mail w e-mailu z potwierdzeniem zamówienia i wyślij formularz ponownie albo napisz do nas na adres {shopEmail}."
+  },
+  "validation": {
+    "nameRequired": "Podaj imię i nazwisko.",
+    "nameMaxLength": "Imię i nazwisko może mieć najwyżej 256 znaków.",
+    "orderNumberRequired": "Podaj numer zamówienia z e-maila z potwierdzeniem.",
+    "orderNumberMaxLength": "Numer zamówienia ma najwyżej 32 znaki.",
+    "emailInvalid": "Podaj adres e-mail, z którego złożono zamówienie.",
+    "itemsRequired": "Wskaż, których produktów dotyczy odstąpienie.",
+    "itemsMaxLength": "Lista może mieć najwyżej 2000 znaków.",
+    "reasonMaxLength": "Powód może mieć najwyżej 2000 znaków."
+  }
+}

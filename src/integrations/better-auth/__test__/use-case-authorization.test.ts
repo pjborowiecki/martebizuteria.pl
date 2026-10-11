@@ -12,6 +12,7 @@ const PUBLIC_USE_CASES = new Set([
   "delivery-method/use-cases/list-delivery-methods.ts",
   "discount/use-cases/validate-discount-code.ts",
   "order/use-cases/get-order-confirmation.ts",
+  "order-withdrawal/use-cases/withdraw-from-guest-order.ts",
   "newsletter/use-cases/confirm-newsletter-subscription.ts",
   "newsletter/use-cases/subscribe-to-newsletter.ts",
   "newsletter/use-cases/unsubscribe-from-newsletter.ts",

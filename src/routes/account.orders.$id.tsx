@@ -8,6 +8,7 @@ import { useFormatter, useTranslations } from "use-intl/react"
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
 import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { getCustomerOrderQuery } from "~/src/modules/customer-account/use-cases/get-customer-order"
+import { getCustomerOrderWithdrawalQuery } from "~/src/modules/order-withdrawal/use-cases/get-customer-order-withdrawal"
 
 import { pageHead } from "~/src/lib/seo"
 
@@ -22,6 +23,7 @@ import { ShipmentBanner } from "~/src/presentation/components/custom/pages/accou
 import { ShippingBlock } from "~/src/presentation/components/custom/pages/account/orders/order-shipping-block"
 import { TimelineBlock } from "~/src/presentation/components/custom/pages/account/orders/order-timeline-block"
 import { OrderTotals } from "~/src/presentation/components/custom/pages/account/orders/order-totals"
+import { OrderWithdrawalBlock } from "~/src/presentation/components/custom/pages/account/orders/order-withdrawal-block"
 
 import { ROUTES } from "~/src/routes"
 
@@ -82,6 +84,8 @@ const OrderDetailPage = (): JSX.Element => {
 
       <OrderNoteBlock note={order.customerNote} />
 
+      <OrderWithdrawalBlock order={order} />
+
       <Separator className="my-10" />
 
       <LocalizedLink
@@ -98,12 +102,18 @@ export const Route = createFileRoute("/account/orders/$id")({
   component: OrderDetailPage,
   head: pageHead,
   loader: async ({ context, params }) => {
-    await context.queryClient.query({
-      ...getCustomerOrderQuery(params.id),
-      staleTime: "static",
-    })
+    await Promise.all([
+      context.queryClient.query({
+        ...getCustomerOrderQuery(params.id),
+        staleTime: "static",
+      }),
+      context.queryClient.query(getCustomerOrderWithdrawalQuery(params.id)),
+    ])
 
     return accountPageMeta(context.queryClient, context.locale, "orders")
   },
   staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
+  staticData: {
+    namespaces: ["pages.withdrawal"],
+  },
 })

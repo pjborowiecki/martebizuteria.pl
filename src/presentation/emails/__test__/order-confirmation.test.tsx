@@ -50,6 +50,7 @@ const legalLinks: OrderConfirmationLegalLinks = {
   exchangesAndReturns: "https://martebizuteria.pl/en-US/exchanges-and-returns",
   privacyPolicy: "https://martebizuteria.pl/en-US/privacy-policy",
   termsOfService: "https://martebizuteria.pl/en-US/terms-of-service",
+  withdrawal: "https://martebizuteria.pl/en-US/withdraw-from-contract?order=MRT-2026-00042",
 }
 
 const guestCta = { href: "https://martebizuteria.pl/auth/sign-up", isGuest: true, label: "Create an account" }
@@ -269,6 +270,12 @@ describe("OrderConfirmation as the confirmation of the contract", () => {
       expect(t("withdrawal.how", { email: BUSINESS.EMAIL })).toContain(BUSINESS.EMAIL)
       expect(t("complaints.how", { email: BUSINESS.EMAIL })).toContain(BUSINESS.EMAIL)
     }
+  })
+
+  it.each(contractCopies)("links in %s the online withdrawal form for the order, named after the function", async (locale, messages) => {
+    const text = await renderContract(locale, messages)
+
+    expect(text).toContain(`${messages.withdrawal.online} ${legalLinks.withdrawal}`)
   })
 
   it("links the terms of service, the returns page and the privacy policy it was given", async () => {

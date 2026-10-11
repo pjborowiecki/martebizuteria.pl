@@ -1,6 +1,7 @@
 import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
 import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
+import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import {
   type AdminOrderDetailTag,
   type AdminOrderEmailStatus,
@@ -151,6 +152,7 @@ interface AdminOrderDetail {
   readonly totalMinorUnits: number
   readonly trackingNumber: string | undefined
   readonly trackingUrl: string | undefined
+  readonly withdrawals: readonly OrderWithdrawal["recorded"][]
 }
 
 interface OrderConfirmation {

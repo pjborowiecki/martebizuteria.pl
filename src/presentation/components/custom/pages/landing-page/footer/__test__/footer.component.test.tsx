@@ -37,6 +37,7 @@ describe("Footer", () => {
     ["Store regulations", ROUTES.TERMS_OF_SERVICE],
     ["Privacy policy", ROUTES.PRIVACY_POLICY],
     ["Exchanges and returns", ROUTES.EXCHANGES_AND_RETURNS],
+    ["Withdraw from the contract", ROUTES.WITHDRAW_FROM_CONTRACT],
     ["How to care for jewelry", ROUTES.FAQ],
   ])("sends %s to %s", (name, href) => {
     renderWithProviders(<Footer />)
@@ -82,6 +83,6 @@ describe("Footer", () => {
   it("puts every navigation link in a list item", () => {
     const { container } = renderWithProviders(<Footer />)
 
-    expect(container.querySelectorAll("li")).toHaveLength(7)
+    expect(container.querySelectorAll("li")).toHaveLength(8)
   })
 })

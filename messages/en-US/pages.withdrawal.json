@@ -1,0 +1,57 @@
+{
+  "metadata": {
+    "title": "Withdraw from the contract",
+    "description": "Withdraw online from a contract concluded in the M'Arte shop, within 14 days of receiving your order."
+  },
+  "page": {
+    "eyebrow": "Right of withdrawal",
+    "title": "Withdraw from the contract",
+    "intro": "As a consumer, you may withdraw from a contract concluded in our shop within 14 days of receiving the products, without giving a reason. Fill in this form to send us your statement of withdrawal. We will confirm that we received it by email, to the address you placed the order with.",
+    "accountHint": "Have an account? You can also withdraw on the order's page in <link>your orders</link>.",
+    "orderNumber": "Order number",
+    "email": "Email address you ordered with",
+    "items": "Which products",
+    "itemsHint": "For example the product names and how many of each."
+  },
+  "form": {
+    "name": "Your full name",
+    "scopeLegend": "I withdraw from the contract for",
+    "scope": {
+      "order": "The whole order",
+      "items": "Only some products"
+    },
+    "reason": "Reason (optional)",
+    "reasonHint": "You do not have to give a reason.",
+    "submit": "Confirm withdrawal",
+    "submitting": "Sending…"
+  },
+  "account": {
+    "title": "Withdrawal from the contract",
+    "description": "You may withdraw from this contract within 14 days of receiving the products, without giving a reason.",
+    "action": "Withdraw from the contract",
+    "dialogDescription": "Your statement of withdrawal from the contract for order {orderNumber}. We will confirm that we received it by email to {email}.",
+    "itemsLegend": "Products",
+    "cancel": "Cancel",
+    "statement": "Statement sent on {date}"
+  },
+  "result": {
+    "recorded": "We have received your statement of withdrawal",
+    "acknowledged": "On {date} we received it and emailed a confirmation with its content to {email}.",
+    "notAcknowledged": "We recorded it on {date}, but could not email the confirmation to {email}. Please keep this page, or write to us at {shopEmail} and we will send it again.",
+    "notFound": "We could not find this order among your orders.",
+    "closed": "The withdrawal period for this order has ended, or the order was cancelled. If you think this is a mistake, write to us at {shopEmail}.",
+    "alreadyWithdrawn": "You have already withdrawn from the contract for the whole of this order.",
+    "submitted": "Thank you for your statement",
+    "submittedDescription": "If an order with this number was placed with this email address and can still be withdrawn from, we have recorded your statement of withdrawal and are emailing that address a confirmation with its content and the date and time it reached us. If no confirmation arrives within a few minutes, check the order number and the email address in your order confirmation and send the form again, or write to us at {shopEmail}."
+  },
+  "validation": {
+    "nameRequired": "Enter your full name.",
+    "nameMaxLength": "Your name can be at most 256 characters long.",
+    "orderNumberRequired": "Enter the order number from your confirmation email.",
+    "orderNumberMaxLength": "An order number is at most 32 characters long.",
+    "emailInvalid": "Enter the email address you ordered with.",
+    "itemsRequired": "Say which products you are withdrawing from.",
+    "itemsMaxLength": "Keep the list to 2000 characters.",
+    "reasonMaxLength": "Keep the reason to 2000 characters."
+  }
+}

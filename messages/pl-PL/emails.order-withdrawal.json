@@ -1,0 +1,34 @@
+{
+  "received": {
+    "subject": "Otrzymaliśmy Twoje odstąpienie od umowy dla zamówienia {orderNumber} — M'Arte",
+    "preview": "Potwierdzamy otrzymanie Twojego oświadczenia o odstąpieniu od umowy, jego treść i datę, w której do nas dotarło.",
+    "heading": "Twoje odstąpienie do nas dotarło",
+    "message": "Potwierdzamy, że otrzymaliśmy Twoje oświadczenie o odstąpieniu od umowy dla zamówienia {orderNumber}. Poniżej znajdziesz jego treść oraz datę i godzinę, w której do nas dotarło. Zachowaj tę wiadomość jako potwierdzenie.",
+    "returnLabel": "Odesłanie produktów",
+    "returnBody": "Odeślij produkty na adres podany niżej najpóźniej w ciągu 14 dni od dnia odstąpienia od umowy; wystarczy nadać je przed upływem tego terminu. Bezpośredni koszt odesłania ponosisz Ty. Włóż do paczki numer zamówienia.",
+    "country": "Polska",
+    "refundLabel": "Zwrot płatności",
+    "refundBody": "Zwrócimy płatności objęte odstąpieniem na zasadach z Regulaminu, nie później niż w ciągu 14 dni od otrzymania oświadczenia, przy użyciu takiego samego sposobu płatności, jakiego użyto przy zamówieniu. Możemy wstrzymać się ze zwrotem do chwili otrzymania produktów z powrotem albo dowodu ich odesłania, w zależności od tego, co nastąpi wcześniej.",
+    "closingNote": "Jeśli masz pytania, po prostu odpowiedz na tę wiadomość.",
+    "signoff": "Z serdecznymi pozdrowieniami,",
+    "sender": "Pracownia M'Arte",
+    "tagline": "Ręcznie tworzona biżuteria"
+  },
+  "notice": {
+    "subject": "Odstąpienie od umowy — zamówienie {orderNumber} — M'Arte",
+    "preview": "Klient odstąpił od umowy przez stronę sklepu. Oto treść oświadczenia.",
+    "heading": "Odstąpienie od umowy",
+    "message": "Klient odstąpił od umowy dla zamówienia {orderNumber} przez funkcję odstąpienia od umowy na stronie sklepu. Treść oświadczenia znajdziesz poniżej. Klientowi wysyłamy też e-mailem potwierdzenie jego otrzymania.",
+    "adminCta": "Otwórz zamówienie w panelu",
+    "tagline": "Powiadomienie sklepu"
+  },
+  "statement": {
+    "label": "Oświadczenie",
+    "declaration": "{scope, select, order {Odstępuję od umowy sprzedaży całego zamówienia {orderNumber}.} other {Odstępuję od umowy sprzedaży tych produktów z zamówienia {orderNumber}:}}",
+    "nameLabel": "Imię i nazwisko",
+    "submittedAtLabel": "Data otrzymania",
+    "emailLabel": "Potwierdzenie wysłane na adres",
+    "reasonLabel": "Powód",
+    "noReason": "Nie podano"
+  }
+}

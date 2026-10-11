@@ -736,6 +736,15 @@
       "title": "Notatka klienta",
       "empty": "Klient nie zostawił notatki."
     },
+    "withdrawals": {
+      "title": "Odstąpienie od umowy",
+      "wholeOrder": "Całe zamówienie",
+      "someItems": "Niektóre produkty",
+      "submittedAt": "Otrzymane {date}",
+      "consumer": "{name} · {email}",
+      "reason": "Powód: {reason}",
+      "noReason": "Nie podano powodu"
+    },
     "shipDialog": {
       "title": "Oznaczyć zamówienie jako wysłane?",
       "description": "Dodaj dane śledzenia, które klient zobaczy na swoim koncie i w e-mailu o wysyłce. Oba pola są opcjonalne.",

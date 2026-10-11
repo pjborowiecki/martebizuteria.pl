@@ -22,6 +22,7 @@ import { Route as StorefrontExchangesAndReturnsRouteImport } from './routes/_sto
 import { Route as StorefrontFaqRouteImport } from './routes/_storefront.faq'
 import { Route as StorefrontPrivacyPolicyRouteImport } from './routes/_storefront.privacy-policy'
 import { Route as StorefrontTermsOfServiceRouteImport } from './routes/_storefront.terms-of-service'
+import { Route as StorefrontWithdrawFromContractRouteImport } from './routes/_storefront.withdraw-from-contract'
 import { Route as AccountIndexRouteImport } from './routes/account.index'
 import { Route as AccountAddressesRouteImport } from './routes/account.addresses'
 import { Route as AccountOverviewRouteImport } from './routes/account.overview'
@@ -140,6 +141,12 @@ const StorefrontTermsOfServiceRoute =
   StorefrontTermsOfServiceRouteImport.update({
     id: '/terms-of-service',
     path: '/terms-of-service',
+    getParentRoute: () => StorefrontRoute,
+  } as any)
+const StorefrontWithdrawFromContractRoute =
+  StorefrontWithdrawFromContractRouteImport.update({
+    id: '/withdraw-from-contract',
+    path: '/withdraw-from-contract',
     getParentRoute: () => StorefrontRoute,
   } as any)
 const AccountIndexRoute = AccountIndexRouteImport.update({
@@ -434,6 +441,7 @@ export interface FileRoutesByFullPath {
   '/faq': typeof StorefrontFaqRoute
   '/privacy-policy': typeof StorefrontPrivacyPolicyRoute
   '/terms-of-service': typeof StorefrontTermsOfServiceRoute
+  '/withdraw-from-contract': typeof StorefrontWithdrawFromContractRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/overview': typeof AccountOverviewRoute
   '/account/payment': typeof AccountPaymentRoute
@@ -496,6 +504,7 @@ export interface FileRoutesByTo {
   '/faq': typeof StorefrontFaqRoute
   '/privacy-policy': typeof StorefrontPrivacyPolicyRoute
   '/terms-of-service': typeof StorefrontTermsOfServiceRoute
+  '/withdraw-from-contract': typeof StorefrontWithdrawFromContractRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/overview': typeof AccountOverviewRoute
   '/account/payment': typeof AccountPaymentRoute
@@ -560,6 +569,7 @@ export interface FileRoutesById {
   '/_storefront/faq': typeof StorefrontFaqRoute
   '/_storefront/privacy-policy': typeof StorefrontPrivacyPolicyRoute
   '/_storefront/terms-of-service': typeof StorefrontTermsOfServiceRoute
+  '/_storefront/withdraw-from-contract': typeof StorefrontWithdrawFromContractRoute
   '/account/addresses': typeof AccountAddressesRoute
   '/account/overview': typeof AccountOverviewRoute
   '/account/payment': typeof AccountPaymentRoute
@@ -630,6 +640,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/privacy-policy'
     | '/terms-of-service'
+    | '/withdraw-from-contract'
     | '/account/addresses'
     | '/account/overview'
     | '/account/payment'
@@ -692,6 +703,7 @@ export interface FileRouteTypes {
     | '/faq'
     | '/privacy-policy'
     | '/terms-of-service'
+    | '/withdraw-from-contract'
     | '/account/addresses'
     | '/account/overview'
     | '/account/payment'
@@ -755,6 +767,7 @@ export interface FileRouteTypes {
     | '/_storefront/faq'
     | '/_storefront/privacy-policy'
     | '/_storefront/terms-of-service'
+    | '/_storefront/withdraw-from-contract'
     | '/account/addresses'
     | '/account/overview'
     | '/account/payment'
@@ -914,6 +927,13 @@ declare module '@tanstack/react-router' {
       path: '/terms-of-service'
       fullPath: '/terms-of-service'
       preLoaderRoute: typeof StorefrontTermsOfServiceRouteImport
+      parentRoute: typeof StorefrontRoute
+    }
+    '/_storefront/withdraw-from-contract': {
+      id: '/_storefront/withdraw-from-contract'
+      path: '/withdraw-from-contract'
+      fullPath: '/withdraw-from-contract'
+      preLoaderRoute: typeof StorefrontWithdrawFromContractRouteImport
       parentRoute: typeof StorefrontRoute
     }
     '/account/': {
@@ -1297,6 +1317,7 @@ interface StorefrontRouteChildren {
   StorefrontFaqRoute: typeof StorefrontFaqRoute
   StorefrontPrivacyPolicyRoute: typeof StorefrontPrivacyPolicyRoute
   StorefrontTermsOfServiceRoute: typeof StorefrontTermsOfServiceRoute
+  StorefrontWithdrawFromContractRoute: typeof StorefrontWithdrawFromContractRoute
   StorefrontIndexRoute: typeof StorefrontIndexRoute
   StorefrontBlogSlugRoute: typeof StorefrontBlogSlugRoute
   StorefrontCategoriesHandleRoute: typeof StorefrontCategoriesHandleRoute
@@ -1317,6 +1338,7 @@ const StorefrontRouteChildren: StorefrontRouteChildren = {
   StorefrontFaqRoute: StorefrontFaqRoute,
   StorefrontPrivacyPolicyRoute: StorefrontPrivacyPolicyRoute,
   StorefrontTermsOfServiceRoute: StorefrontTermsOfServiceRoute,
+  StorefrontWithdrawFromContractRoute: StorefrontWithdrawFromContractRoute,
   StorefrontIndexRoute: StorefrontIndexRoute,
   StorefrontBlogSlugRoute: StorefrontBlogSlugRoute,
   StorefrontCategoriesHandleRoute: StorefrontCategoriesHandleRoute,
