@@ -15,7 +15,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
-const { createPendingPayment, getHeldLinesByTransactionId, isAnyVariantHeldByOpenCheckout } =
+const { createPendingPayment, getHeldLinesByTransactionId, getOpenCheckoutSessionIdsHoldingVariants, isAnyVariantHeldByOpenCheckout } =
   await import("~/src/modules/payment/payment.accessors")
 
 const AT = Date.UTC(2026, 9, 5)
@@ -111,5 +111,45 @@ describe("isAnyVariantHeldByOpenCheckout", () => {
     sqlite.prepare("update payment set status = ? where transaction_id = 'cs_closed'").run(payment)
 
     await expect(isAnyVariantHeldByOpenCheckout(["var-ring", "var-chain"])).resolves.toBe(false)
+  })
+})
+
+describe("getOpenCheckoutSessionIdsHoldingVariants", () => {
+  it("lists every open checkout session holding any of the variants", async () => {
+    await openCheckout("chk-1", "cs_first")
+    await openCheckout("chk-2", "cs_second")
+
+    await expect(getOpenCheckoutSessionIdsHoldingVariants(["var-other", "var-ring"])).resolves.toStrictEqual(["cs_first", "cs_second"])
+  })
+
+  it("lists nothing for variants no open checkout holds", async () => {
+    await openCheckout("chk-1", "cs_open")
+
+    await expect(getOpenCheckoutSessionIdsHoldingVariants(["var-other"])).resolves.toStrictEqual([])
+    await expect(getOpenCheckoutSessionIdsHoldingVariants([])).resolves.toStrictEqual([])
+  })
+
+  it.each([
+    { checkout: "failed", payment: "failed" },
+    { checkout: "completed", payment: "succeeded" },
+    { checkout: "pending", payment: "failed" },
+    { checkout: "failed", payment: "pending" },
+  ])("leaves out a session whose $checkout checkout has a $payment payment", async ({ checkout, payment }) => {
+    await openCheckout("chk-1", "cs_closed")
+    await openCheckout("chk-2", "cs_open")
+    sqlite.prepare("update checkout set status = ? where id = 'chk-1'").run(checkout)
+    sqlite.prepare("update payment set status = ? where transaction_id = 'cs_closed'").run(payment)
+
+    await expect(getOpenCheckoutSessionIdsHoldingVariants(["var-chain"])).resolves.toStrictEqual(["cs_open"])
+  })
+
+  it("leaves out a pending payment that carries no session id", async () => {
+    sqlite.exec(`
+      insert into checkout (id, email, status, created_at, updated_at) values ('chk-unsent', 'jan@example.com', 'pending', ${AT}, ${AT});
+      insert into payment (id, amount, checkout_id, provider, status, reserved_lines, created_at, updated_at)
+        values ('pay-unsent', 24900, 'chk-unsent', 'stripe', 'pending', '[{"qty":1,"variantId":"var-ring"}]', ${AT}, ${AT});
+    `)
+
+    await expect(getOpenCheckoutSessionIdsHoldingVariants(["var-ring"])).resolves.toStrictEqual([])
   })
 })

@@ -218,7 +218,7 @@ src/
   routes/                     69 locale-free file routes + 5 API handlers
   modules/{feature}/          42 domain modules — schema, Zod, types, constants, utils
     *.accessors.ts              unauthenticated data access (reads and writes), 25 files
-    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 132 files
+    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 133 files
   modules/_core/              Shared error codes, HTTP statuses, currency, pagination, CSV, column filters
   integrations/{vendor}/      15 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, cloudflare-turnstile, inpost, use-intl,
                                 fumadocs, mdxeditor, tanstack-query, realtime-invalidation, gsap, lenis, react-day-picker

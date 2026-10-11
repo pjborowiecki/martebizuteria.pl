@@ -8,6 +8,7 @@ const { sqlite } = await vi.hoisted(async () => {
   return { sqlite: new DatabaseSync(":memory:") }
 })
 
+vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
@@ -42,6 +43,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: vi.fn(),
 }))
+vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { checkout: { sessions: { expire: vi.fn() } } } }))
 
 const { attributeOnProduct } = await import("~/src/modules/attribute-on-product/attribute-on-product.schema")
 const { categoryOnProduct } = await import("~/src/modules/category-on-product/category-on-product.schema")
@@ -154,7 +156,7 @@ beforeEach(() => {
     drop table if exists payment;
     drop table if exists checkout;
     create table checkout (id text primary key, status text not null);
-    create table payment (id text primary key, checkout_id text not null, reserved_lines text not null, status text not null);
+    create table payment (id text primary key, checkout_id text not null, reserved_lines text not null, status text not null, transaction_id text);
   `)
   sqlite
     .prepare(

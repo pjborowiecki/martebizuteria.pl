@@ -5,6 +5,8 @@ import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
+import { toCheckoutSessionItemsMetadata } from "~/src/modules/checkout/checkout-metadata.zod"
+import { countOpenCheckouts } from "~/src/modules/checkout/use-cases/count-open-checkouts.server"
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { reserveInventoryByVariantLines } from "~/src/modules/inventory/inventory.utils"
@@ -13,7 +15,7 @@ import {
   buildProductLevelAttributeRows,
   buildVariantAttributeGroups,
 } from "~/src/modules/product/product-admin-persist.utils"
-import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
+import { PRODUCT_ADMIN_STATUS, PRODUCT_ERROR_CODES, type ProductAdminStatus } from "~/src/modules/product/product.constants"
 import { type ProductFormValues, parseCatalogUpsertInput } from "~/src/modules/product/product.zod"
 import { getAdminProduct } from "~/src/modules/product/use-cases/get-admin-product"
 import { updateCompleteProduct } from "~/src/modules/product/use-cases/update-complete-product"
@@ -23,12 +25,16 @@ import {
   toCatalogUpsertPayload,
 } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-form.utils"
 
-const { sqlite } = await vi.hoisted(async () => {
+const { expireSession, sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
-  return { sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }) }
+  return {
+    expireSession: vi.fn<(sessionId: string) => Promise<object>>(),
+    sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
+  }
 })
 
+vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
@@ -64,6 +70,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: vi.fn(),
 }))
+vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { checkout: { sessions: { expire: expireSession } } } }))
 
 const HANDLE = "onyx-earrings"
 
@@ -124,13 +131,36 @@ const renamed = (values: ProductFormValues): ProductFormValues => ({
   titles: { "en-US": "Onyx drop earrings", "pl-PL": "Kolczyki z onyksem, wiszące" },
 })
 
+const SHOPPER = { clientAddress: "203.0.113.7", email: "anna@example.com" }
+
 const holdInCheckout = async (): Promise<void> => {
   await reserveInventoryByVariantLines([HELD_LINE])
   sqlite.exec(`
-    insert into checkout (id, email, status) values ('checkout-onyx', 'anna@example.com', 'pending');
+    insert into checkout (id, email, client_address, status) values ('checkout-onyx', '${SHOPPER.email}', '${SHOPPER.clientAddress}', 'pending');
     insert into payment (id, checkout_id, amount, provider, status, transaction_id, reserved_lines)
       values ('payment-onyx', 'checkout-onyx', ${String(PRICE)}, 'stripe', 'pending', '${TRANSACTION_ID}', '${JSON.stringify([HELD_LINE])}');
   `)
+}
+
+const readCheckoutStatuses = () =>
+  z
+    .object({ checkout: z.string(), payment: z.string() })
+    .parse(
+      sqlite
+        .prepare(
+          "select checkout.status as checkout, payment.status as payment from payment join checkout on checkout.id = payment.checkout_id where payment.transaction_id = ?",
+        )
+        .get(TRANSACTION_ID),
+    )
+
+const withStatus = (values: ProductFormValues, status: ProductAdminStatus): ProductFormValues => ({ ...values, status })
+
+const expiredHeldSession = {
+  id: TRANSACTION_ID,
+  metadata: toCheckoutSessionItemsMetadata([
+    { handle: HANDLE, imageUrl: "onyx.webp", price: PRICE, qty: HELD_LINE.qty, title: "Onyx earrings", variantId: VARIANT_ID },
+  ]),
+  status: "expired",
 }
 
 const releaseHeldPiece = (): Promise<boolean> => releaseCheckout({ lines: [HELD_LINE], transactionId: TRANSACTION_ID })
@@ -149,7 +179,9 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
+  vi.clearAllMocks()
   vi.spyOn(console, "info").mockImplementation(() => {})
+  expireSession.mockResolvedValue(expiredHeldSession)
   sqlite.exec(`
     delete from order_item;
     delete from "order";
@@ -255,5 +287,81 @@ describe("saving a one-of-a-kind piece while customers reserve, release and buy 
     await expect(save(withStock(editor, 0))).rejects.toMatchObject({ message: PRODUCT_ERROR_CODES.STOCK_CHANGED_WHILE_EDITING })
 
     expect(readStock()).toMatchObject({ available: 0, reserved: 0 })
+  })
+})
+
+describe("taking a piece a customer is paying for off sale", () => {
+  it("frees the shopper's places under the open-checkout limits along with the piece", async () => {
+    const editor = await openEditor()
+    await holdInCheckout()
+
+    await expect(countOpenCheckouts(SHOPPER)).resolves.toStrictEqual({ byClientAddress: 1, byEmail: 1 })
+
+    await save(withStatus(editor, PRODUCT_ADMIN_STATUS.ARCHIVED))
+
+    await expect(countOpenCheckouts(SHOPPER)).resolves.toStrictEqual({ byClientAddress: 0, byEmail: 0 })
+    expect(sqlite.prepare("select client_address from checkout where id = 'checkout-onyx'").get()).toMatchObject({ client_address: null })
+  })
+
+  it.each([PRODUCT_ADMIN_STATUS.ARCHIVED, PRODUCT_ADMIN_STATUS.DRAFT])(
+    "closes the checkout holding a piece saved as %s and puts the piece back once, however often its expiry is reported",
+    async (status) => {
+      const editor = await openEditor()
+      await holdInCheckout()
+
+      await expect(save(withStatus(editor, status))).resolves.toMatchObject({ closedCheckoutCount: 1 })
+
+      expect(expireSession).toHaveBeenCalledExactlyOnceWith(TRANSACTION_ID)
+      expect(readStock()).toStrictEqual({ available: 1, reserved: 0 })
+      expect(readCheckoutStatuses()).toStrictEqual({ checkout: "failed", payment: "failed" })
+
+      await expect(releaseHeldPiece()).resolves.toBe(false)
+
+      expect(readStock()).toStrictEqual({ available: 1, reserved: 0 })
+    },
+  )
+
+  it("leaves the checkout open while the piece stays on sale", async () => {
+    const editor = await openEditor()
+    await holdInCheckout()
+
+    await expect(save(renamed(editor))).resolves.toMatchObject({ closedCheckoutCount: 0 })
+
+    expect(expireSession).not.toHaveBeenCalled()
+    expect(readStock()).toStrictEqual({ available: 0, reserved: 1 })
+    expect(readCheckoutStatuses()).toStrictEqual({ checkout: "pending", payment: "pending" })
+  })
+
+  it("closes nothing and keeps the piece reserved when Stripe will not expire a session paid a moment earlier", async () => {
+    const editor = await openEditor()
+    await holdInCheckout()
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    expireSession.mockRejectedValueOnce(new Error('Only Checkout Sessions with a status in ["open"] can be expired.'))
+
+    await expect(save(withStatus(editor, PRODUCT_ADMIN_STATUS.ARCHIVED))).resolves.toMatchObject({ closedCheckoutCount: 0 })
+
+    expect(readStock()).toStrictEqual({ available: 0, reserved: 1 })
+    expect(readCheckoutStatuses()).toStrictEqual({ checkout: "pending", payment: "pending" })
+
+    await sellHeldPiece()
+
+    expect(readStock()).toStrictEqual({ available: 0, reserved: 0 })
+  })
+
+  it("leaves alone a checkout paying for another piece", async () => {
+    const editor = await openEditor()
+    sqlite.exec(`
+      insert into product (id, handle, status, titles) values ('product-pearl', 'pearl-ring', 'published', '{"en-US":"Pearl ring"}');
+      insert into product_variant (id, product_id, title, price, sku) values ('variant-pearl', 'product-pearl', 'Default', 18900, 'PEARL-1');
+      insert into inventory (id, variant_id, quantity_available, quantity_reserved) values ('inventory-pearl', 'variant-pearl', 0, 1);
+      insert into checkout (id, email, status) values ('checkout-pearl', 'ewa@example.com', 'pending');
+      insert into payment (id, checkout_id, amount, provider, status, transaction_id, reserved_lines)
+        values ('payment-pearl', 'checkout-pearl', 18900, 'stripe', 'pending', 'cs_pearl', '[{"qty":1,"variantId":"variant-pearl"}]');
+    `)
+
+    await expect(save(withStatus(editor, PRODUCT_ADMIN_STATUS.ARCHIVED))).resolves.toMatchObject({ closedCheckoutCount: 0 })
+
+    expect(expireSession).not.toHaveBeenCalled()
+    expect(sqlite.prepare("select status from payment where transaction_id = 'cs_pearl'").get()).toMatchObject({ status: "pending" })
   })
 })

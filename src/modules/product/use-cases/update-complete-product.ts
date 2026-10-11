@@ -8,6 +8,7 @@ import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { loadAttributeOnProductRows, prepareAttributeOnProductBatch } from "~/src/modules/attribute-on-product/attribute-on-product.utils"
 import { recordCatalogProductUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { expireCheckoutsHoldingVariants } from "~/src/modules/checkout/use-cases/expire-checkouts-holding-variants.server"
 import { prepareProductImagesBatch } from "~/src/modules/product-image/product-image.persist.utils"
 import { buildProductAuditChange, extractProductAuditSnapshot } from "~/src/modules/product/product-audit.utils"
 import { getAdminProductDetailByIdQuery, getProductByHandleQuery } from "~/src/modules/product/product.accessors"
@@ -16,7 +17,7 @@ import {
   assertVariantsNotHeldByOpenCheckouts,
   prepareProductUpdateBatch,
 } from "~/src/modules/product/product.catalog.server"
-import { PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
+import { PRODUCT_ADMIN_STATUS, PRODUCT_ERROR_CODES } from "~/src/modules/product/product.constants"
 import { rethrowProductMutationError } from "~/src/modules/product/product.mutation-errors"
 import { prepareCatalogReplacePayload } from "~/src/modules/product/product.utils"
 import { productZodSchemas } from "~/src/modules/product/product.zod"
@@ -24,6 +25,7 @@ import { productZodSchemas } from "~/src/modules/product/product.zod"
 const updateProductRecord = async (
   data: zod.infer<(typeof productZodSchemas)["updateCompleteInput"]>,
 ): Promise<{
+  closedCheckoutCount: number
   handle: string
   id: string
 }> => {
@@ -74,8 +76,11 @@ const updateProductRecord = async (
     metadata: auditChange.metadata,
     resourceId: id,
   })
+  const closedCheckoutCount =
+    catalogInput.status === PRODUCT_ADMIN_STATUS.ACTIVE ? 0 : await expireCheckoutsHoldingVariants([...ownedVariantIds])
 
   return {
+    closedCheckoutCount,
     handle: catalogInput.handle,
     id,
   }

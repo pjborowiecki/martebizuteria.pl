@@ -95,6 +95,7 @@
     "createSuccessDescription": "Produkt został pomyślnie dodany do katalogu.",
     "updateSuccessTitle": "Produkt zapisany",
     "updateSuccessDescription": "Zmiany zostały zapisane.",
+    "updateClosedCheckoutsDescription": "Zmiany zostały zapisane. {count, plural, one {Zamknięto # otwartą płatność za ten produkt i zwolniono zarezerwowane sztuki.} few {Zamknięto # otwarte płatności za ten produkt i zwolniono zarezerwowane sztuki.} many {Zamknięto # otwartych płatności za ten produkt i zwolniono zarezerwowane sztuki.} other {Zamknięto # otwartej płatności za ten produkt i zwolniono zarezerwowane sztuki.}}",
     "errorTitle": "Nie udało się zapisać produktu",
     "errorDescription": "Sprawdź formularz i spróbuj ponownie.",
     "duplicateHandle": "Ten adres URL jest już używany przez inny produkt. Jeśli listy produktów nie widać tego wpisu, kliknij „Utwórz produkt” jeszcze raz — poprzednia próba mogła zostać wycofana.",

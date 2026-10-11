@@ -17,6 +17,7 @@ const operations = vi.hoisted(() => ({
   authorized: vi.fn(),
   batch: vi.fn<(statements: readonly unknown[]) => Promise<void>>(),
   detailById: vi.fn<(input: { readonly id: string }) => Promise<unknown>>(),
+  expireCheckouts: vi.fn<(variantIds: readonly string[]) => Promise<number>>(),
   images: vi.fn(),
   invalidate: vi.fn(),
   loadAttributes: vi.fn(),
@@ -35,6 +36,9 @@ vi.mock("~/src/modules/attribute-on-product/attribute-on-product.utils", () => (
   prepareAttributeOnProductBatch: operations.attributes,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCatalogProductUpdatedAudit: operations.audit }))
+vi.mock("~/src/modules/checkout/use-cases/expire-checkouts-holding-variants.server", () => ({
+  expireCheckoutsHoldingVariants: operations.expireCheckouts,
+}))
 vi.mock("~/src/modules/product-image/product-image.persist.utils", () => ({ prepareProductImagesBatch: operations.images }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
   getAdminProductDetailByIdQuery: { execute: operations.detailById },
@@ -102,11 +106,16 @@ beforeEach(() => {
   operations.productByHandle.mockResolvedValue(undefined)
   operations.update.mockReturnValue(["product statement"])
   operations.detailById.mockResolvedValue(detail("draft", 5))
+  operations.expireCheckouts.mockResolvedValue(0)
 })
 
 describe("complete product update", () => {
   it("returns the handle and id it persisted under", async () => {
-    await expect(updateCompleteProduct({ data: productInput })).resolves.toStrictEqual({ handle: "silver-ring", id: PRODUCT_ID })
+    await expect(updateCompleteProduct({ data: productInput })).resolves.toStrictEqual({
+      closedCheckoutCount: 0,
+      handle: "silver-ring",
+      id: PRODUCT_ID,
+    })
   })
 
   it("leaves the catalog row alone when a sku is already taken", async () => {
@@ -248,6 +257,35 @@ describe("complete product update auditing", () => {
   })
 })
 
+describe("complete product update taking the product off sale", () => {
+  it.each(["draft", "archived"] as const)(
+    "closes the open checkouts holding any variant it owned when saved as %s and reports how many",
+    async (status) => {
+      operations.expireCheckouts.mockResolvedValueOnce(2)
+
+      await expect(updateCompleteProduct({ data: { ...productInput, status } })).resolves.toMatchObject({ closedCheckoutCount: 2 })
+
+      expect(operations.expireCheckouts).toHaveBeenCalledExactlyOnceWith(["variant-1"])
+    },
+  )
+
+  it("closes the checkouts only after the save is written, invalidated and audited", async () => {
+    await updateCompleteProduct({ data: productInput })
+
+    expect(operations.batch).toHaveBeenCalledBefore(operations.expireCheckouts)
+    expect(operations.invalidate).toHaveBeenCalledBefore(operations.expireCheckouts)
+    expect(operations.audit).toHaveBeenCalledBefore(operations.expireCheckouts)
+  })
+
+  it("leaves open checkouts alone while the product stays on sale", async () => {
+    await expect(updateCompleteProduct({ data: { ...productInput, status: "active" } })).resolves.toMatchObject({
+      closedCheckoutCount: 0,
+    })
+
+    expect(operations.expireCheckouts).not.toHaveBeenCalled()
+  })
+})
+
 describe("complete product update failures", () => {
   it("refuses a handle that already belongs to another product", async () => {
     operations.productByHandle.mockResolvedValue({ id: "another-product" })
@@ -261,7 +299,7 @@ describe("complete product update failures", () => {
   it("keeps the handle the product already owns", async () => {
     operations.productByHandle.mockResolvedValue({ id: PRODUCT_ID })
 
-    await expect(updateCompleteProduct({ data: productInput })).resolves.toStrictEqual({ handle: "silver-ring", id: PRODUCT_ID })
+    await expect(updateCompleteProduct({ data: productInput })).resolves.toMatchObject({ handle: "silver-ring", id: PRODUCT_ID })
   })
 
   it("neither audits nor invalidates when the save batch fails", async () => {
@@ -281,6 +319,15 @@ describe("complete product update failures", () => {
     expect(operations.batch).not.toHaveBeenCalled()
     expect(operations.audit).not.toHaveBeenCalled()
     expect(operations.invalidate).not.toHaveBeenCalled()
+    expect(operations.expireCheckouts).not.toHaveBeenCalled()
+  })
+
+  it("closes no checkout when the save batch fails", async () => {
+    operations.batch.mockRejectedValueOnce(new Error("D1_ERROR: FOREIGN KEY constraint failed"))
+
+    await expect(updateCompleteProduct({ data: productInput })).rejects.toThrow("FOREIGN KEY constraint failed")
+
+    expect(operations.expireCheckouts).not.toHaveBeenCalled()
   })
 
   it("translates a duplicate sku constraint into the product error code", async () => {
