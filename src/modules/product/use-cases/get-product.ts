@@ -6,6 +6,8 @@ import { withRequest } from "~/src/integrations/better-auth/auth.middleware"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { isProductInStock } from "~/src/modules/inventory/inventory.availability.utils"
+import { getPriceReductions } from "~/src/modules/price-history/price-history.accessors"
+import { attachPriceReductions } from "~/src/modules/price-history/price-history.utils"
 import { getPublishedProductByHandleQuery } from "~/src/modules/product/product.accessors"
 import { PRODUCT_QUERY_KEYS } from "~/src/modules/product/product.constants"
 import { mapPublishedProductForStorefront } from "~/src/modules/product/product.utils"
@@ -24,7 +26,7 @@ export const getProduct = createServerFn({ method: "GET" })
       return false
     }
 
-    return mapPublishedProductForStorefront(prod, locale)
+    return attachPriceReductions(mapPublishedProductForStorefront(prod, locale), await getPriceReductions(prod.variants))
   })
 
 export const getProductQuery = (handle: string, locale: string = I18N.DEFAULT_LOCALE) =>

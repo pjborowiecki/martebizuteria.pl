@@ -62,6 +62,7 @@ beforeEach(() => {
     drop table if exists product_category;
     drop table if exists product_collection;
     drop table if exists storefront_search;
+    drop table if exists price_history;
 
     create table product (
       descriptions text, handle text not null, id text primary key, metadata text,
@@ -115,6 +116,7 @@ beforeEach(() => {
     insert into collection_on_product (collection_id, product_id) values
       ('bridal', 'mid'), ('bridal', 'pricey');
   `)
+  applyMigration(sqlite, MIGRATION.PRICE_HISTORY)
 })
 
 afterAll(() => {
@@ -133,7 +135,17 @@ describe("storefront published products page", () => {
   it("returns the storefront variant columns and nothing else", async () => {
     const result = await getStorefrontPublishedProductsPage({ ...PAGE, categoryIds: ["rings"] })
 
-    expect(result.items[0]?.variants).toStrictEqual([{ id: "v-cheap", price: 10_000, productId: "cheap", title: "One size" }])
+    expect(result.items[0]?.variants).toStrictEqual([
+      { compareAtPrice: null, id: "v-cheap", price: 10_000, priceReduction: undefined, productId: "cheap", title: "One size" },
+    ])
+  })
+
+  it("gives a reduced variant the lowest price of the 30 days before its reduction", async () => {
+    sqlite.exec("update product_variant set price = 8000, compare_at_price = 10000 where id = 'v-cheap'")
+
+    const result = await getStorefrontPublishedProductsPage({ ...PAGE, categoryIds: ["rings"] })
+
+    expect(result.items[0]?.variants[0]?.priceReduction).toStrictEqual({ lowestPrice: 10_000 })
   })
 
   it("reports the unpaginated total alongside the requested slice", async () => {

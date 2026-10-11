@@ -9,6 +9,7 @@ import { type ListPaginationParams, sortRowsByIdOrder } from "~/src/modules/_cor
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
+import { withPriceReductions } from "~/src/modules/price-history/price-history.accessors"
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
 import { storefrontCollectionByHandleWhere } from "~/src/modules/product-collection/product-collection.server"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
@@ -515,8 +516,8 @@ export const getAdminProductsFilteredList = async (params: AdminProductsExportLi
   return rows
 }
 
-const getPublishedProductsAmong = (productIds: SQLWrapper, params: ListPaginationParams) =>
-  db.query.product.findMany({
+const getPublishedProductsAmong = async (productIds: SQLWrapper, params: ListPaginationParams) => {
+  const rows = await db.query.product.findMany({
     limit: params.limit,
     offset: params.offset,
     orderBy: (products, { asc: ascOrder, desc: descOrder }) => [ascOrder(products.rank), descOrder(products.createdAt)],
@@ -527,6 +528,9 @@ const getPublishedProductsAmong = (productIds: SQLWrapper, params: ListPaginatio
       },
     },
   })
+
+  return withPriceReductions(rows)
+}
 
 export const getPublishedProductsByCategoryIds = (categoryIds: readonly string[], params: ListPaginationParams) => {
   const productIdsInCategories = db

@@ -25,7 +25,12 @@ interface RelatedRow {
   readonly subtitles: Record<string, string> | null
   readonly thumbnail: string | null
   readonly titles: Record<string, string>
-  readonly variants?: readonly { readonly id: string; readonly price: number; readonly title: string }[]
+  readonly variants?: readonly {
+    readonly id: string
+    readonly price: number
+    readonly priceReduction?: { readonly lowestPrice: number }
+    readonly title: string
+  }[]
 }
 
 interface TestQueryClient {
@@ -136,6 +141,7 @@ vi.mock("~/src/presentation/components/custom/pages/product-page/sections/produc
       handle: string
       image: string
       name: string
+      priceReduction?: { readonly lowestPrice: number } | undefined
       subtitle: string
       variantId?: string | undefined
       variantPrice?: number | undefined
@@ -144,7 +150,7 @@ vi.mock("~/src/presentation/components/custom/pages/product-page/sections/produc
   }>): JSX.Element => (
     <ul>
       {products.map((product) => (
-        <li key={product.handle}>
+        <li key={product.handle} data-lowest-price={product.priceReduction?.lowestPrice}>
           {`${product.name} · ${product.subtitle} · ${product.image} · ${product.variantId ?? "-"} · ${String(product.variantPrice ?? "-")} · ${product.variantTitle ?? "-"}`}
         </li>
       ))}
@@ -259,6 +265,16 @@ describe("storefront product page", () => {
     renderProductPage()
 
     expect(await screen.findByText(/https:\/\/cdn\.example\.test\/placeholder\.svg/u)).toBeInTheDocument()
+  })
+
+  it("hands a related product's price reduction to its card", async () => {
+    const priceReduction = { lowestPrice: 135_000 }
+    route.loaderData = {
+      deferredRelated: streamed([relatedRow({ variants: [{ id: "variant-2", price: 129_900, priceReduction, title: "One size" }] })]),
+    }
+    renderProductPage()
+
+    expect(await screen.findByRole("listitem")).toHaveAttribute("data-lowest-price", "135000")
   })
 
   it("leaves the variant fields empty for a related product with no variants", async () => {

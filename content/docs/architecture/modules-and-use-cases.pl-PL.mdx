@@ -3,7 +3,7 @@ title: "Moduły i przypadki użycia"
 description: "Jak zbudowany jest moduł funkcjonalny, co oznacza każdy sufiks pliku i jaki kształt ma każdy przypadek użycia."
 ---
 
-## 41 modułów
+## 42 moduły
 
 ```text
 _core                   account                 address
@@ -14,15 +14,15 @@ courier                 customer-account        customer-activity
 delivery-method         discount                inventory
 newsletter              option-on-variant       order
 order-address           order-item              order-withdrawal
-payment                 product                 product-attribute
-product-category        product-collection      product-image
-product-option          product-option-value    product-variant
-rate-limit              session                 store-setting
-storefront-search       two-factor              user
-verification            wishlist
+payment                 price-history           product
+product-attribute       product-category        product-collection
+product-image           product-option          product-option-value
+product-variant         rate-limit              session
+store-setting           storefront-search       two-factor
+user                    verification            wishlist
 ```
 
-36 z nich eksportuje tabele Drizzle, łącznie 39, a `src/integrations/drizzle-orm/drizzle.schemas.ts` re-eksportuje każdą z nich, żeby klient Drizzle, adapter Better Auth i `drizzle-kit` widziały jeden rejestr schematu. `storefront-search` deklaruje wirtualną tabelę FTS5 `storefront_search`, którą tworzy ręcznie napisana migracja i która pozostaje poza tym rejestrem. `admin-dashboard`, `customer-account` i `customer-activity` to modele odczytu nad tabelami innych modułów i nie mają własnego schematu; `_core` jest współdzielonym jądrem.
+37 z nich eksportuje tabele Drizzle, łącznie 40, a `src/integrations/drizzle-orm/drizzle.schemas.ts` re-eksportuje każdą z nich, żeby klient Drizzle, adapter Better Auth i `drizzle-kit` widziały jeden rejestr schematu. `storefront-search` deklaruje wirtualną tabelę FTS5 `storefront_search`, którą tworzy ręcznie napisana migracja i która pozostaje poza tym rejestrem. `admin-dashboard`, `customer-account` i `customer-activity` to modele odczytu nad tabelami innych modułów i nie mają własnego schematu; `_core` jest współdzielonym jądrem.
 
 ## Sufiksy plików
 

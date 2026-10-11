@@ -118,6 +118,9 @@
     "nip": "NIP (tax identification number): {nip}",
     "regon": "REGON (business statistics number): {regon}"
   },
+  "productPrice": {
+    "lowestPriceBeforeReduction": "Lowest price in the 30 days before the reduction: {price}"
+  },
   "authLayout": {
     "imageAlt": "Editorial jewelry composition on textured stone",
     "imageQuote": "Adornments as unique as the moments they celebrate.",

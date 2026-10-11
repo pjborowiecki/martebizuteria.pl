@@ -51,12 +51,12 @@ if (prod === undefined || !isProductInStock(prod.variants)) {
   return false
 }
 
-return mapPublishedProductForStorefront(prod, locale)
+return attachPriceReductions(mapPublishedProductForStorefront(prod, locale), await getPriceReductions(prod.variants))
 ```
 
 Note the return type. **A missing product and an out-of-stock product are both `false`**, and the route turns `false` into `notFound()`. There is no separate "sold out" page: a product whose variants all sit at zero available is a 404 on the storefront. `isProductInStock` lives in `src/modules/inventory/inventory.availability.utils.ts`.
 
-`getPublishedProductByHandleQuery` is a prepared Drizzle relational query in `product.accessors.ts` that loads the product with its variants, images, options and option values, categories, collections and attribute values in one round trip.
+`getPublishedProductByHandleQuery` is a prepared Drizzle relational query in `product.accessors.ts` that loads the product with its variants, images, options and option values, categories, collections and attribute values in one round trip. `getPriceReductions` adds a second read only when one of the variants is reduced (see [Reduced prices](#reduced-prices-and-the-lowest-price-of-the-30-days-before)).
 
 ## The storefront shape
 
@@ -73,6 +73,7 @@ Note the return type. **A missing product and an out-of-stock product are both `
 | `hasVariants`                              | `inferHasVariants(options, variants.length)`                                                           |
 | `options`                                  | `{ id, title, values: [{ id, label }] }` with labels resolved for the locale                           |
 | `variants[].optionValueIds`                | `resolveVariantOptionValueIds` — a `Record<optionId, valueId>` built from `option_on_variant`          |
+| `variants[].priceReduction`                | `attachPriceReductions` — `{ compareAtPrice, lowestPrice }` for a reduced variant, else `undefined`    |
 
 ## Variant selection
 
@@ -118,7 +119,25 @@ Tracking goes to `src/modules/customer-activity` and is recorded only for signed
 
 ## Price display
 
-`product-hero-info.tsx` formats the selected variant's `price` with `useFormatter().number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" })`. When no variant is selected it shows `EMPTY_VALUE` from `src/modules/_core/constants/placeholder.ts`. The currency is written literally as `"PLN"` here rather than read from `STORE_CURRENCY_CODE`.
+`product-hero-info.tsx` formats the selected variant's `price` with `useFormatter().number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" })`. When no variant is selected it shows `EMPTY_VALUE` from `src/modules/_core/constants/placeholder.ts`. The currency is written literally as `"PLN"` here rather than read from `STORE_CURRENCY_CODE`. It hands the price and the selected variant's `priceReduction` to `ProductPrice`, which adds the reduction described below.
+
+## Reduced prices and the lowest price of the 30 days before
+
+A variant is reduced when its `compare_at_price` is set and higher than its `price`; that is how the owner puts it on sale. Polish law (art. 4 ust. 2 and 3 of the ustawa o informowaniu o cenach towarów i usług, which carries art. 6a of the EU Price Indication Directive as amended by the Omnibus directive) requires the lowest price of the 30 days before a reduction next to every reduced price, and the Court of Justice held in C-330/23 Aldi Süd that an announced reduction must be measured from that lowest price. So the storefront shows a reduction only when the price is below the lowest price of the 30 days before it, and it strikes that lowest price through, not the compare-at price.
+
+`price_history` (`src/modules/price-history/`) holds every price a variant has had: one row per change of its `price` or `compare_at_price`, with the moment the change took effect in `changed_at` and an integer `id` in the order the rows were recorded. Two triggers on `product_variant`, created by `20261010410000_price_history.sql`, write the rows. `price_history_variant_insert` records a new variant's prices, and `price_history_variant_update` records a change of either price and nothing when an update leaves both as they were. A trigger runs inside the statement that changed the variant, so the admin product editor's save batch records its price changes together with the save and a failed save records none; prices written by the seeds or straight into D1 are recorded the same way. The migration starts the history with each variant's current prices as of its `updated_at`. Deleting a variant deletes its history.
+
+`getPriceReductions(variants)` in `price-history.accessors.ts` reads the history of the variants that are reduced in one statement, through `price_history_variantId_idx`, and reads nothing when none is. `findPriceReduction` in `price-history.utils.ts` then decides each variant's reduction:
+
+- The reduction began with the first of the latest run of entries that carry the variant's current price and are reduced. Changing only the compare-at price during a reduction keeps that day; cutting the price again starts a new reduction.
+- The lowest price is the lowest of the prices in effect at any time in the 30 days before that day (`LOWEST_PRICE_LOOKBACK_MS`), including the price that was in effect when the 30 days began.
+- The variant shows a reduction only when that lowest price is above its current price. A compare-at price added without lowering the price, a price that was lower at some point in the 30 days, and a price raised while it stayed under the compare-at price all show no reduction.
+- A variant first recorded at a reduced price shows no reduction, because nothing shows it ever cost more. That includes every variant that already had a compare-at price when the migration started its history.
+- A variant whose latest entry does not show the price it sells at shows no reduction.
+
+The lowest price belongs to the day of the reduction, so it stays the same while the reduction lasts. `attachPriceReductions` and, for lists, `withPriceReductions` put it on each variant as `priceReduction: { lowestPrice }`, or `undefined` when the variant shows no reduction.
+
+`ProductPrice` (`src/presentation/components/custom/product-price.tsx`) shows the price, the lowest price of the 30 days before the reduction struck through (hidden from screen readers, which hear the same amount in the line below), and under them `components.custom.productPrice.lowestPriceBeforeReduction`: "Najniższa cena z 30 dni przed obniżką: {price}" in Polish and "Lowest price in the 30 days before the reduction: {price}" in English. The product page shows it for the selected variant, and every product card shows it for the variant the card offers (see [Catalog and search](/docs/features/catalog-and-search#reduced-prices-on-cards)). The compare-at price itself never appears on the storefront, and the JSON-LD `Product` offers each variant at the price it sells for, never at the compare-at or the lowest earlier price. The cart, the checkout, the wishlist and the account recommendations show no reduction, so they show no lowest price either. The admin product editor has no compare-at price field yet: a reduction is set on `product_variant.compare_at_price` in D1, and the editor keeps the compare-at price it loaded when it saves.
 
 ## Specifications and details
 
@@ -140,9 +159,9 @@ The "Manufacturer" section gives what the EU General Product Safety Regulation (
 .where(and(eq(categoryOnProduct.categoryId, categoryId), ne(categoryOnProduct.productId, excludeProductId)))
 ```
 
-It hands them to the same storefront list read as the landing page's new arrivals, which keeps them behind `publishedInStockWhere`, orders them by `rank` and then newest first, and returns up to `RELATED_PRODUCTS_LIMIT = 3` with their variants in one D1 statement.
+It hands them to the same storefront list read as the landing page's new arrivals, which keeps them behind `publishedInStockWhere`, orders them by `rank` and then newest first, and returns up to `RELATED_PRODUCTS_LIMIT = 3` with their variants in one D1 statement, plus a second one for the price history when one of those variants is reduced.
 
-The route maps the rows into the shape `ProductRelatedSection` needs, resolving titles for the locale and taking the first variant's `id`, `price` and `title`.
+The route maps the rows into the shape `ProductRelatedSection` needs, resolving titles for the locale and taking the first variant's `id`, `price`, `priceReduction` and `title`.
 
 ## Animation
 

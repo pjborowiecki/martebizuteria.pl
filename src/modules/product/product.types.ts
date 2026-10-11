@@ -4,6 +4,7 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
 import { type inventory } from "~/src/modules/inventory/inventory.schema"
+import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
 import { type ProductAttributeType } from "~/src/modules/product-attribute/product-attribute.constants"
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
 import { type productCategory } from "~/src/modules/product-category/product-category.schema"
@@ -43,6 +44,7 @@ type StorefrontVariant = typeof productVariant.$inferSelect & {
   readonly imageUrls: readonly string[]
   readonly inventory?: typeof inventory.$inferSelect | null
   readonly optionValueIds: Readonly<Record<string, string>>
+  readonly priceReduction?: PriceReduction | undefined
   readonly specifications: readonly Specification[]
 }
 

@@ -14,6 +14,7 @@ vi.mock("~/src/presentation/components/custom/product-card", () => ({
     name,
     priority,
     price,
+    priceReduction,
     variantTitle,
   }: {
     readonly detail: string
@@ -21,9 +22,15 @@ vi.mock("~/src/presentation/components/custom/product-card", () => ({
     readonly name: string
     readonly priority: boolean
     readonly price?: string
+    readonly priceReduction?: { readonly lowestPrice: number }
     readonly variantTitle: string
   }) => (
-    <article data-image={image} data-priority={String(priority)} data-variant-title={variantTitle}>
+    <article
+      data-image={image}
+      data-price-reduction={JSON.stringify(priceReduction)}
+      data-priority={String(priority)}
+      data-variant-title={variantTitle}
+    >
       <h3>{name}</h3>
       <p>{detail}</p>
       <p>{price ?? "no price"}</p>
@@ -128,6 +135,13 @@ describe("ProductsCatalogGrid cards", () => {
     renderGrid({ products: [catalogProduct(0)] })
 
     expect(screen.getByRole("article")).toHaveAttribute("data-variant-title", "")
+  })
+
+  it("hands the card the price reduction of the variant it shows", () => {
+    const priceReduction = { lowestPrice: 140_000 }
+    renderGrid({ products: [catalogProduct(0, { variants: [{ id: "variant-0", price: 120_000, priceReduction, title: "Default" }] })] })
+
+    expect(screen.getByRole("article")).toHaveAttribute("data-price-reduction", JSON.stringify(priceReduction))
   })
 
   it("passes a real variant title through", () => {

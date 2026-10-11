@@ -38,6 +38,8 @@ export { orderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal
 
 export { productVariant, productVariantRelations } from "~/src/modules/product-variant/product-variant.schema"
 
+export { priceHistory } from "~/src/modules/price-history/price-history.schema"
+
 export { productImage, productImageRelations } from "~/src/modules/product-image/product-image.schema"
 
 export { product, productRelations } from "~/src/modules/product/product.schema"

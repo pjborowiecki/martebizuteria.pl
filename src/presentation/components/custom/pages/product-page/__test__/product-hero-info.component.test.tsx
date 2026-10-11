@@ -116,6 +116,17 @@ describe("ProductHeroInfo", () => {
     expect(screen.getByText(priceText(1200))).toBeInTheDocument()
   })
 
+  it("strikes through the lowest price of the 30 days before the reduction and names it under the selected variant's reduced price", () => {
+    renderInfo(
+      storefrontProduct({
+        variants: [storefrontVariant({ compareAtPrice: 120_000, price: 99_000, priceReduction: { lowestPrice: 110_000 } })],
+      }),
+    )
+
+    expect(screen.getByText(priceText(1100)).tagName).toBe("S")
+    expect(screen.getByText(`Lowest price in the 30 days before the reduction: ${priceText(1100)}`)).toBeInTheDocument()
+  })
+
   it("shows a placeholder price when no variant is selected", () => {
     renderInfo(storefrontProduct({ variants: [] }), undefined)
 

@@ -39,6 +39,7 @@ const { getDiscountByCodeForCustomerQuery } = await import("~/src/modules/discou
 const { prepareDiscountClaim } = await import("~/src/modules/discount/discount.claim.server")
 const { getAdminSubscribersPage } = await import("~/src/modules/newsletter/newsletter.accessors")
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
+const { getPriceReductions } = await import("~/src/modules/price-history/price-history.accessors")
 const { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle, getPublishedRelatedProducts } =
   await import("~/src/modules/product/product.accessors")
 const { STOREFRONT_PRODUCTS_SORT } = await import("~/src/modules/product/product.storefront-catalog")
@@ -193,6 +194,13 @@ describe("hot reads", () => {
       "SEARCH checkout USING INDEX checkout_status_idx (status=?)",
       "SEARCH payment USING INDEX payment_checkoutId_idx (checkout_id=?)",
     ])
+  })
+
+  it("read the price history of reduced variants by variant, in the order it was recorded, without sorting it", async () => {
+    const steps = await planSteps(() => getPriceReductions([{ compareAtPrice: 30_000, id: "variant-1", price: 20_000 }]))
+
+    expect(steps).toContain("SEARCH price_history USING INDEX price_history_variantId_idx (variant_id=?)")
+    expect(steps).not.toContain("USE TEMP B-TREE FOR ORDER BY")
   })
 
   it("page newsletter subscribers newest first without sorting the whole list", async () => {

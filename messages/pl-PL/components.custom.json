@@ -118,6 +118,9 @@
     "nip": "NIP: {nip}",
     "regon": "REGON: {regon}"
   },
+  "productPrice": {
+    "lowestPriceBeforeReduction": "Najniższa cena z 30 dni przed obniżką: {price}"
+  },
   "authLayout": {
     "imageAlt": "Edytorialna kompozycja biżuterii na kamiennej fakturze",
     "imageQuote": "Biżuteria tak wyjątkowa, jak chwile, które celebrujesz.",

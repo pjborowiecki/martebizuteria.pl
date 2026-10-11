@@ -7,6 +7,7 @@ import { type ListPaginationParams, sortRowsByIdOrder } from "~/src/modules/_cor
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
+import { withPriceReductions } from "~/src/modules/price-history/price-history.accessors"
 import { CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
 import { product } from "~/src/modules/product/product.schema"
@@ -191,17 +192,15 @@ export const getStorefrontPublishedProductsPage = async (params: StorefrontPubli
     }
   }
 
-  const items = sortRowsByIdOrder(
-    await db.query.product.findMany({
-      where: inJsonList(product.id, productIds),
-      with: {
-        variants: {
-          columns: storefrontListVariantColumns,
-        },
+  const rows = await db.query.product.findMany({
+    where: inJsonList(product.id, productIds),
+    with: {
+      variants: {
+        columns: storefrontListVariantColumns,
       },
-    }),
-    productIds,
-  )
+    },
+  })
+  const items = await withPriceReductions(sortRowsByIdOrder(rows, productIds))
 
   return {
     items,

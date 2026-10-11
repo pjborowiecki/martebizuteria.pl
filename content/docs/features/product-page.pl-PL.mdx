@@ -51,12 +51,12 @@ if (prod === undefined || !isProductInStock(prod.variants)) {
   return false
 }
 
-return mapPublishedProductForStorefront(prod, locale)
+return attachPriceReductions(mapPublishedProductForStorefront(prod, locale), await getPriceReductions(prod.variants))
 ```
 
 Zwróć uwagę na typ zwracany. **Brak produktu i brak stanu magazynowego to oba `false`**, a trasa zamienia `false` w `notFound()`. Nie ma osobnej strony „wyprzedane”: produkt, którego wszystkie warianty mają zero dostępnych sztuk, jest w witrynie błędem 404. `isProductInStock` leży w `src/modules/inventory/inventory.availability.utils.ts`.
 
-`getPublishedProductByHandleQuery` to przygotowane relacyjne zapytanie Drizzle w `product.accessors.ts`, które wczytuje produkt z wariantami, zdjęciami, opcjami i ich wartościami, kategoriami, kolekcjami oraz wartościami atrybutów w jednym przebiegu.
+`getPublishedProductByHandleQuery` to przygotowane relacyjne zapytanie Drizzle w `product.accessors.ts`, które wczytuje produkt z wariantami, zdjęciami, opcjami i ich wartościami, kategoriami, kolekcjami oraz wartościami atrybutów w jednym przebiegu. `getPriceReductions` dokłada drugi odczyt tylko wtedy, gdy któryś wariant jest przeceniony (zobacz [Obniżone ceny](#obniżone-ceny-i-najniższa-cena-z-30-dni-przed-obniżką)).
 
 ## Kształt danych dla witryny
 
@@ -73,6 +73,7 @@ Zwróć uwagę na typ zwracany. **Brak produktu i brak stanu magazynowego to oba
 | `hasVariants`                              | `inferHasVariants(options, variants.length)`                                                          |
 | `options`                                  | `{ id, title, values: [{ id, label }] }` z etykietami rozwiązanymi dla języka                         |
 | `variants[].optionValueIds`                | `resolveVariantOptionValueIds` — `Record<optionId, valueId>` zbudowany z `option_on_variant`          |
+| `variants[].priceReduction`                | `attachPriceReductions` — `{ compareAtPrice, lowestPrice }` przy obniżce, inaczej `undefined`         |
 
 ## Wybór wariantu
 
@@ -118,7 +119,25 @@ trackCartItemAdded({ productTitle: product.title, quantity: addQuantity, variant
 
 ## Wyświetlanie ceny
 
-`product-hero-info.tsx` formatuje `price` wybranego wariantu przez `useFormatter().number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" })`. Gdy żaden wariant nie jest wybrany, pokazuje `EMPTY_VALUE` z `src/modules/_core/constants/placeholder.ts`. Waluta jest tu zapisana wprost jako `"PLN"`, a nie odczytana ze `STORE_CURRENCY_CODE`.
+`product-hero-info.tsx` formatuje `price` wybranego wariantu przez `useFormatter().number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" })`. Gdy żaden wariant nie jest wybrany, pokazuje `EMPTY_VALUE` z `src/modules/_core/constants/placeholder.ts`. Waluta jest tu zapisana wprost jako `"PLN"`, a nie odczytana ze `STORE_CURRENCY_CODE`. Cenę i `priceReduction` wybranego wariantu przekazuje do `ProductPrice`, który dokłada obniżkę opisaną niżej.
+
+## Obniżone ceny i najniższa cena z 30 dni przed obniżką
+
+Wariant jest przeceniony, gdy ma ustawione `compare_at_price` wyższe niż `price`; tak właściciel wystawia go na wyprzedaż. Polskie prawo (art. 4 ust. 2 i 3 ustawy o informowaniu o cenach towarów i usług, który wdraża art. 6a unijnej dyrektywy w sprawie podawania cen w brzmieniu nadanym dyrektywą Omnibus) wymaga, by obok każdej obniżonej ceny stała najniższa cena z 30 dni przed obniżką, a Trybunał Sprawiedliwości orzekł w sprawie C-330/23 Aldi Süd, że ogłaszaną obniżkę mierzy się od tej najniższej ceny. Dlatego witryna pokazuje obniżkę tylko wtedy, gdy cena jest niższa od najniższej ceny z 30 dni przed obniżką, i przekreśla tę najniższą cenę, a nie cenę regularną.
+
+`price_history` (`src/modules/price-history/`) przechowuje każdą cenę, jaką miał wariant: jeden wiersz na każdą zmianę jego `price` albo `compare_at_price`, z chwilą wejścia zmiany w życie w `changed_at` i całkowitym `id` w kolejności zapisu wierszy. Wiersze zapisują dwa wyzwalacze na `product_variant`, tworzone przez `20261010410000_price_history.sql`. `price_history_variant_insert` zapisuje ceny nowego wariantu, a `price_history_variant_update` zapisuje zmianę którejkolwiek z cen i nic, gdy aktualizacja zostawia obie bez zmian. Wyzwalacz działa wewnątrz instrukcji, która zmieniła wariant, więc wsad zapisu edytora produktu w panelu zapisuje zmiany cen razem z zapisem, a nieudany zapis nie zapisuje żadnej; ceny wpisane przez skrypty wypełniające albo bezpośrednio w D1 są zapisywane tak samo. Migracja zaczyna historię od obecnych cen każdego wariantu z chwili jego `updated_at`. Usunięcie wariantu usuwa jego historię.
+
+`getPriceReductions(variants)` w `price-history.accessors.ts` czyta historię przecenionych wariantów jedną instrukcją, przez `price_history_variantId_idx`, a gdy żaden nie jest przeceniony, nie czyta nic. Następnie `findPriceReduction` w `price-history.utils.ts` rozstrzyga obniżkę każdego wariantu:
+
+- Obniżka zaczęła się od pierwszego z ostatniego ciągu wpisów, które mają obecną cenę wariantu i są przecenione. Zmiana samej ceny regularnej w trakcie obniżki zachowuje ten dzień; kolejne obniżenie ceny zaczyna nową obniżkę.
+- Najniższa cena to najniższa z cen obowiązujących w dowolnej chwili 30 dni przed tym dniem (`LOWEST_PRICE_LOOKBACK_MS`), łącznie z ceną, która obowiązywała, gdy te 30 dni się zaczęło.
+- Wariant pokazuje obniżkę tylko wtedy, gdy ta najniższa cena jest wyższa od jego obecnej ceny. Cena regularna dodana bez obniżenia ceny, cena, która w tych 30 dniach była przez jakiś czas niższa, i cena podniesiona, która pozostała poniżej ceny regularnej, nie pokazują obniżki.
+- Wariant, którego pierwsza zapisana cena jest już obniżona, nie pokazuje obniżki, bo nic nie wskazuje, że kiedyś kosztował więcej. Dotyczy to każdego wariantu, który miał już cenę regularną, gdy migracja zaczęła jego historię.
+- Wariant, którego ostatni wpis nie pokazuje ceny, za którą jest sprzedawany, nie pokazuje obniżki.
+
+Najniższa cena należy do dnia obniżki, więc nie zmienia się, dopóki obniżka trwa. `attachPriceReductions`, a dla list `withPriceReductions`, zapisują ją w każdym wariancie jako `priceReduction: { lowestPrice }` albo `undefined`, gdy wariant nie pokazuje obniżki.
+
+`ProductPrice` (`src/presentation/components/custom/product-price.tsx`) pokazuje cenę, przekreśloną najniższą cenę z 30 dni przed obniżką (ukrytą przed czytnikami ekranu, które słyszą tę samą kwotę w wierszu poniżej), a pod nimi `components.custom.productPrice.lowestPriceBeforeReduction`: „Najniższa cena z 30 dni przed obniżką: {price}” po polsku i „Lowest price in the 30 days before the reduction: {price}” po angielsku. Strona produktu pokazuje ją dla wybranego wariantu, a każda karta produktu dla wariantu, który oferuje (zobacz [Katalog i wyszukiwanie](/docs/features/catalog-and-search#obniżone-ceny-na-kartach)). Sama cena regularna nigdy nie pojawia się w witrynie, a JSON-LD `Product` podaje w ofercie każdego wariantu cenę, za którą jest sprzedawany, nigdy cenę regularną ani najniższą wcześniejszą. Koszyk, checkout, lista życzeń i rekomendacje na koncie nie pokazują obniżki, więc nie pokazują też najniższej ceny. Edytor produktu w panelu nie ma jeszcze pola ceny regularnej: obniżkę ustawia się w D1 w `product_variant.compare_at_price`, a edytor przy zapisie zachowuje wczytaną cenę regularną.
 
 ## Specyfikacje i szczegóły
 
@@ -140,9 +159,9 @@ Sekcja „Producent” podaje to, czego unijne rozporządzenie w sprawie ogólne
 .where(and(eq(categoryOnProduct.categoryId, categoryId), ne(categoryOnProduct.productId, excludeProductId)))
 ```
 
-Przekazuje je do tego samego odczytu listy witryny co nowości na stronie głównej, który trzyma je za bramką `publishedInStockWhere`, porządkuje według `rank`, a przy równym `rank` od najnowszych, i zwraca do `RELATED_PRODUCTS_LIMIT = 3` produktów razem z wariantami jedną instrukcją D1.
+Przekazuje je do tego samego odczytu listy witryny co nowości na stronie głównej, który trzyma je za bramką `publishedInStockWhere`, porządkuje według `rank`, a przy równym `rank` od najnowszych, i zwraca do `RELATED_PRODUCTS_LIMIT = 3` produktów razem z wariantami jedną instrukcją D1, a drugą po historię cen, gdy któryś z tych wariantów jest przeceniony.
 
-Trasa mapuje wiersze na kształt wymagany przez `ProductRelatedSection`, rozwiązując tytuły dla języka i biorąc `id`, `price` i `title` pierwszego wariantu.
+Trasa mapuje wiersze na kształt wymagany przez `ProductRelatedSection`, rozwiązując tytuły dla języka i biorąc `id`, `price`, `priceReduction` i `title` pierwszego wariantu.
 
 ## Animacja
 

@@ -284,6 +284,20 @@ describe("buildProductStructuredData", () => {
     expect(JSON.stringify(product).match(/"sku":/gu)).toStrictEqual(['"sku":'])
   })
 
+  it("offers a reduced variant at the price it sells for, never at its compare-at or its lowest earlier price", () => {
+    const [reduced] = buildProductStructuredData({
+      images: [],
+      locale: "pl-PL",
+      product: storefrontProduct({
+        variants: [storefrontVariant({ compareAtPrice: 29_900, price: 19_900, priceReduction: { lowestPrice: 24_900 } })],
+      }),
+      section: "Produkty",
+    })["@graph"]
+
+    expect(reduced).toMatchObject({ offers: [{ price: "199.00", priceCurrency: "PLN" }] })
+    expect(JSON.stringify(reduced)).not.toMatch(/299\.00|249\.00/u)
+  })
+
   it("treats a variant with no inventory row as out of stock", () => {
     const [untracked] = buildProductStructuredData({
       images: [],

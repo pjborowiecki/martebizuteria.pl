@@ -7,6 +7,7 @@ import { useTranslations } from "use-intl/react"
 
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { trackCartItemAdded } from "~/src/modules/customer-activity/customer-activity.tracking"
+import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 
 import { useProductCardImageHover } from "~/src/hooks/use-product-card-image-hover"
@@ -14,6 +15,7 @@ import { useWishlist } from "~/src/hooks/use-wishlist"
 
 import { Image } from "~/src/presentation/components/custom/image"
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
+import { ProductPrice } from "~/src/presentation/components/custom/product-price"
 
 const useProductCardLogic = ({
   href,
@@ -126,6 +128,7 @@ export const ProductCard = ({
   parallax = false,
   priority = false,
   price,
+  priceReduction,
   productId,
   rawPrice,
   sizes = "(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 33vw",
@@ -220,7 +223,13 @@ export const ProductCard = ({
           {name}
         </h3>
         <p className="text-xs text-muted-foreground">{detail}</p>
-        {price !== undefined && <p className={cn("text-[11px] tracking-[0.22em] uppercase tabular-nums", !compact && "mt-1")}>{price}</p>}
+        {price !== undefined && (
+          <ProductPrice
+            className={cn("text-[11px] tracking-[0.22em] uppercase tabular-nums", !compact && "mt-1")}
+            price={price}
+            priceReduction={priceReduction}
+          />
+        )}
       </div>
     </LocalizedLink>
   )
@@ -250,6 +259,7 @@ interface ProductCardProps {
   readonly parallax?: boolean | undefined
   readonly priority?: boolean | undefined
   readonly price?: string | undefined
+  readonly priceReduction?: PriceReduction | undefined
   readonly productId: string
   readonly rawPrice?: number | undefined
   readonly sizes?: string | undefined

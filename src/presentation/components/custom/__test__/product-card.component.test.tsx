@@ -82,6 +82,13 @@ describe("ProductCard presentation", () => {
     expect(screen.getByRole("img", { name: "Aurora ring" })).toHaveAttribute("src", "/products/aurora.avif")
   })
 
+  it("strikes through the lowest price of the 30 days before the reduction and names it under a reduced price", () => {
+    renderCard({ priceReduction: { lowestPrice: 27_900 } })
+
+    expect(screen.getByText("PLN 279.00").tagName).toBe("S")
+    expect(screen.getByText("Lowest price in the 30 days before the reduction: PLN 279.00")).toBeInTheDocument()
+  })
+
   it("leaves the price line out when there is no price to show", () => {
     renderCard({ price: undefined })
 

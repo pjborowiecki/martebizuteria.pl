@@ -98,6 +98,22 @@ describe("ProductRelatedSection", () => {
     expect(screen.getAllByText(/^PLN\s/u)).toHaveLength(1)
   })
 
+  it("adds the lowest price of the 30 days before the reduction to a reduced product", () => {
+    const reducedCuff: RelatedProductItem = {
+      handle: "arc-cuff",
+      id: "prod_1",
+      image: "https://images.test/arc-cuff.webp",
+      name: "Arc Cuff",
+      priceReduction: { lowestPrice: 58_000 },
+      subtitle: "Silver with moonstone",
+      variantId: "var_1",
+      variantPrice: 52_000,
+    }
+    renderWithProviders(<ProductRelatedSection products={[reducedCuff]} />)
+
+    expect(screen.getByText("Lowest price in the 30 days before the reduction: PLN 580.00")).toBeInTheDocument()
+  })
+
   it("links every card to its product handle", () => {
     renderWithProviders(<ProductRelatedSection products={products} />)
 

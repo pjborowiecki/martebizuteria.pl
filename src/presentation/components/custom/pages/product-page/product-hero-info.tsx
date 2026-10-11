@@ -18,6 +18,7 @@ import { ProductVariantPicker } from "~/src/presentation/components/custom/pages
 import { ProductWishlistButton } from "~/src/presentation/components/custom/pages/product-page/product-wishlist-button"
 import { QuantityPicker } from "~/src/presentation/components/custom/pages/product-page/quantity-picker"
 import { useProductHeroCart } from "~/src/presentation/components/custom/pages/product-page/use-product-hero-cart"
+import { ProductPrice } from "~/src/presentation/components/custom/product-price"
 
 export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds, selectedVariant }: ProductHeroInfoProps): JSX.Element => {
   const t = useTranslations("pages.product.heroSection")
@@ -106,7 +107,7 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
 
       <Separator className="bg-border" />
 
-      <p className="text-lg tracking-[0.06em]">{price}</p>
+      <ProductPrice className="text-lg tracking-[0.06em]" price={price} priceReduction={selectedVariant?.priceReduction} />
 
       <ProductVariantPicker onSelectOptionValue={onSelectOptionValue} product={product} selectedValueIds={selectedValueIds} />
 

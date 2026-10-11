@@ -45,7 +45,7 @@ Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed
 
 | Powiązanie                  | Zasób              | Do czego służy                                                          |
 | --------------------------- | ------------------ | ----------------------------------------------------------------------- |
-| `DB`                        | baza D1            | wszystkie tabele — 40, wraz z indeksem FTS5 `storefront_search`         |
+| `DB`                        | baza D1            | wszystkie tabele — 41, wraz z indeksem FTS5 `storefront_search`         |
 | `IMAGES`                    | kubełek R2         | wgrywanie zdjęć produktów                                               |
 | `CACHE`                     | przestrzeń KV      | przechowuje flagę nadawcy e-maili z `resend.availability.server.ts`     |
 | `AUDIT_LOG_QUEUE`           | kolejka Cloudflare | zdarzenia audytowe, konsumowane przez handler `queue` w `src/server.ts` |
@@ -75,9 +75,9 @@ Liczby policzone na drzewie roboczym, nie życzeniowe:
 
 | Element                                            | Liczba                                                                                                |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Moduły funkcjonalne                                | 41 w `src/modules/`, łącznie z `_core`                                                                |
-| Tabele w bazie                                     | 39 eksportowanych z `drizzle.schemas.ts` oraz tabela FTS5 `storefront_search`                         |
-| Migracje D1                                        | 84 pliki SQL w `src/integrations/drizzle-orm/migrations/`                                             |
+| Moduły funkcjonalne                                | 42 w `src/modules/`, łącznie z `_core`                                                                |
+| Tabele w bazie                                     | 40 eksportowanych z `drizzle.schemas.ts` oraz tabela FTS5 `storefront_search`                         |
+| Migracje D1                                        | 85 plików SQL w `src/integrations/drizzle-orm/migrations/`                                            |
 | Przypadki użycia                                   | 128 plików w `src/modules/*/use-cases/`                                                               |
 | Funkcje serwerowe                                  | 120 wywołań `createServerFn(...)`                                                                     |
 | Integracje                                         | 15 adapterów dostawców w `src/integrations/`                                                          |
