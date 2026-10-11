@@ -191,7 +191,7 @@ export const scheduleBackgroundWork = (task: Promise<unknown> | PromiseLike<unkn
 - `/sitemap.xml` i `/robots.txt`, generowane przez `src/lib/seo.ts`, mapa witryny ze stron, które `src/lib/sitemap.ts` czyta z D1, i cache'owane na dobę.
 - Dwie ścieżki uaktualnienia połączenia do WebSocket z `ROUTES.API_REALTIME`, przekazywane do Durable Object `RealtimeInvalidationHub`.
 - Ustalenie języka — `resolveLocale(request)` z `src/integrations/use-intl/i18n.middleware.ts` może zwrócić przekierowanie albo ciasteczko do dołączenia do odpowiedzi.
-- Handler `queue`, który opróżnia partie z `AUDIT_LOG_QUEUE` przez `processAuditLogQueueBatch`.
+- Handler `queue`, który opróżnia partie z `AUDIT_LOG_QUEUE` przez `processAuditLogQueueBatch` i wysyła partie z `NEWSLETTER_QUEUE` przez `processNewsletterQueueBatch`, wybierając po nazwie kolejki.
 
 Plik ponownie eksportuje też klasę Durable Object i deklaruje interfejs `RequestContext`, którego używa typ `Register` z TanStack Start.
 

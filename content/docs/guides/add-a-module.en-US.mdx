@@ -3,7 +3,7 @@ title: "Add a module"
 description: "Create a feature module: the Drizzle table, Zod schemas, constants, types, accessors and use cases."
 ---
 
-A module is one feature built around one database table. It lives in `src/modules/{feature}/` and owns everything that is true about that table: its columns, its validation rules, its query keys, its row types and its operations. `src/modules/` currently holds 42 modules. The smallest complete one to read first is `src/modules/address`; the richest is `src/modules/product`.
+A module is one feature built around one database table. It lives in `src/modules/{feature}/` and owns everything that is true about that table: its columns, its validation rules, its query keys, its row types and its operations. `src/modules/` currently holds 43 modules. The smallest complete one to read first is `src/modules/address`; the richest is `src/modules/product`.
 
 Server logic that belongs to no table does not get a module. Request-scoped helpers go in `src/lib/`, vendor adapters go in `src/integrations/{vendor}/`, and shared primitives that several modules need go in `src/modules/_core/`.
 

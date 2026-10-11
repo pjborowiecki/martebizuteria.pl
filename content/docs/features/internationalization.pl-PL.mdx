@@ -98,7 +98,7 @@ Ciasteczko jest fallbackiem dokładnie dla tych ścieżek, które middleware pom
 
 ## Katalogi komunikatów
 
-`messages/{locale}/{namespace}.json`, 55 plików na język, a oba katalogi mają identyczne nazwy plików. Przestrzeń nazw to nazwa pliku: `pages.landing.json` to przestrzeń `pages.landing`, a `buildMessageTree` rozbija ją po kropkach i zagnieżdża, więc `useTranslations("pages.landing.heroSection")` działa.
+`messages/{locale}/{namespace}.json`, 56 plików na język, a oba katalogi mają identyczne nazwy plików. Przestrzeń nazw to nazwa pliku: `pages.landing.json` to przestrzeń `pages.landing`, a `buildMessageTree` rozbija ją po kropkach i zagnieżdża, więc `useTranslations("pages.landing.heroSection")` działa.
 
 `src/integrations/use-intl/i18n.messages.ts` wczytuje je globem Vite:
 
@@ -282,12 +282,12 @@ Formularz Stripe Elements jest lokalizowany osobno, przez mapowanie języka apli
 
 - **Nie ma przełącznika języka w interfejsie.** Nic w nawigacji, stopce ani strefie konta nie zmienia języka; odwiedzający musi edytować adres. Mechanizm jest kompletny — kontrolki nie ma.
 - Nie ma preferencji języka per użytkownik. `user.timezone` jest zapisywana w `/account/profile` i ustawia strefę czasową providera, ale preferencja języka nie jest nigdzie przechowywana.
-- Nie ma sprawdzania zgodności katalogów komunikatów. Oba katalogi mają obecnie te same 55 nazw plików, ale nic w `bun run check` nie weryfikuje, czy klucze w środku są zgodne.
+- Nie ma sprawdzania zgodności katalogów komunikatów. Oba katalogi mają obecnie te same 56 nazw plików, ale nic w `bun run check` nie weryfikuje, czy klucze w środku są zgodne.
 
 ## Dodanie języka
 
 1. Dodaj kod do `SUPPORTED_LOCALES` w `i18n.config.ts`.
-2. Utwórz `messages/<locale>/` ze wszystkimi 55 plikami. `loadNamespace` rzuca wyjątek przy brakującym, więc nie jest to opcjonalne.
+2. Utwórz `messages/<locale>/` ze wszystkimi 56 plikami. `loadNamespace` rzuca wyjątek przy brakującym, więc nie jest to opcjonalne.
 3. Dodaj język do każdego zestawu `*.<locale>.mdx` w `content/docs` oraz do każdego `meta.<locale>.json`.
 4. Dodaj nowy język do map `titles`, `descriptions`, `bodies` i `revised_ats` każdego wiersza `content_page` w migracji, zaczynając od polskiego tekstu. Potem przetłumacz każdą stronę w edytorze pod `/admin/content`, który nie zapisze strony, dopóki każdy język nie ma wszystkich trzech pól.
 5. Uzupełnij mapy lokalizacji w JSON w D1; `coerceProductLocaleMap` utrzymuje w tym czasie istniejące wiersze czytelnymi, a `resolveLocalizedString` wraca do polskiego.

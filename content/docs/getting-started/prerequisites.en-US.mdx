@@ -39,15 +39,16 @@ The application cannot start without its bindings. `wrangler.jsonc` declares fiv
 
 | Binding                     | Resource                                                                                       | Used for                                          |
 | --------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `DB`                        | D1 database                                                                                    | All application data — 40 tables                  |
+| `DB`                        | D1 database                                                                                    | All application data — 41 tables                  |
 | `IMAGES`                    | R2 bucket: `martebizuteria` in production, `martebizuteria-preview` in development and preview | Product image uploads                             |
 | `CACHE`                     | KV namespace                                                                                   | Holds the email sender availability flag          |
 | `AUDIT_LOG_QUEUE`           | Cloudflare Queue                                                                               | Audit events, written by the queue consumer       |
+| `NEWSLETTER_QUEUE`          | Cloudflare Queue                                                                               | Newsletter batches, sent by the queue consumer    |
 | `REALTIME_INVALIDATION_HUB` | Durable Object                                                                                 | WebSocket fan-out for realtime cache invalidation |
 
 Two caveats worth knowing before you provision anything:
 
-- Cloudflare Queues is not available on every Workers plan. If your account cannot create a queue, a deploy will fail at `scripts/verify-bindings.ts`, which requires both a producer and a matching consumer for `AUDIT_LOG_QUEUE`, and a consumed dead-letter queue for that consumer.
+- Cloudflare Queues is not available on every Workers plan. If your account cannot create a queue, a deploy will fail at `scripts/verify-bindings.ts`, which requires both a producer and a matching consumer for `AUDIT_LOG_QUEUE` and for `NEWSLETTER_QUEUE`, and a consumed dead-letter queue for each consumer.
 - `placement: { mode: "smart" }` in `wrangler.jsonc` is also a paid-plan feature. It is a hint, not a requirement, so it is safe to remove locally if your account rejects it.
 
 The Durable Object needs no provisioning step. It is created by the `v1` migration in `wrangler.jsonc`, which declares `RealtimeInvalidationHub` under `new_sqlite_classes`.

@@ -126,7 +126,7 @@ Skrypty drizzle-kita działają przez `bun --env-file=.env.<środowisko>`, bo `b
 | `cf-typegen` | `vp exec wrangler types --env development src/types/worker-configuration.d.ts`                                 |
 | `typegen`    | `cf-typegen`, a potem `content`                                                                                |
 
-Oba wyniki są w `.gitignore`. `src/types/worker-configuration.d.ts` jest tym, co nadaje typy `env.DB`, `env.CACHE`, `env.IMAGES`, `env.AUDIT_LOG_QUEUE` i `env.REALTIME_INVALIDATION_HUB`, więc uruchom `bun run cf-typegen` po każdej zmianie bindingu w `wrangler.jsonc`. Nigdy go nie edytuj i nie commituj. `.source/` jest tym, na co rozwiązuje się alias importów `collections/*`, więc uruchom `bun run content` po dodaniu albo zmianie nazwy pliku MDX.
+Oba wyniki są w `.gitignore`. `src/types/worker-configuration.d.ts` jest tym, co nadaje typy `env.DB`, `env.CACHE`, `env.IMAGES`, `env.AUDIT_LOG_QUEUE`, `env.NEWSLETTER_QUEUE` i `env.REALTIME_INVALIDATION_HUB`, więc uruchom `bun run cf-typegen` po każdej zmianie bindingu w `wrangler.jsonc`. Nigdy go nie edytuj i nie commituj. `.source/` jest tym, na co rozwiązuje się alias importów `collections/*`, więc uruchom `bun run content` po dodaniu albo zmianie nazwy pliku MDX.
 
 ## Umiejętności agentów
 

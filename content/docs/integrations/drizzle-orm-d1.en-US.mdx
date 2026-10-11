@@ -31,7 +31,7 @@ export { productVariant, productVariantRelations } from "~/src/modules/product-v
 export { inventory, inventoryRelations } from "~/src/modules/inventory/inventory.schema"
 ```
 
-The barrel exports 40 tables. Drizzle needs a single object graph to resolve relations and drizzle-kit needs a single entry point, which is why this one file exists despite the project's usual rule against barrels.
+The barrel exports 41 tables. Drizzle needs a single object graph to resolve relations and drizzle-kit needs a single entry point, which is why this one file exists despite the project's usual rule against barrels.
 
 | Area          | Tables                                                                                                                                                                        |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -42,7 +42,7 @@ The barrel exports 40 tables. Drizzle needs a single object graph to resolve rel
 | Commerce      | `cart`, `cart_item`, `checkout`, `payment`, `order`, `order_item`, `order_address`, `order_number_sequence`, `inventory`, `discount`, `discount_redemption`, `discount_claim` |
 | Fulfilment    | `delivery_method`, `courier`                                                                                                                                                  |
 | Customer data | `address`, `wishlist_item`, `newsletter_subscriber`                                                                                                                           |
-| Content       | `content_page`                                                                                                                                                                |
+| Content       | `content_page`, `newsletter_campaign`                                                                                                                                         |
 | Operations    | `audit_log`, `store_setting`                                                                                                                                                  |
 
 `storefront_search`, the FTS5 index behind storefront search, is the one table the barrel leaves out. `storefront-search.schema.ts` declares it for the search accessors, and the hand-written `20261002100000_storefront_search.sql` migration creates it together with the triggers that keep it in step with `product`, `product_category` and `product_collection`.
@@ -189,9 +189,9 @@ Those three variables come from the environment file, which is why the `db:*` sc
 
 ## The migration directory
 
-`src/integrations/drizzle-orm/migrations/` holds 85 `.sql` files. Wrangler applies them in filename order and records what it applied in its own `d1_migrations` table; Drizzle's `meta/_journal.json` is only consulted by `drizzle-kit generate` when it computes the next diff.
+`src/integrations/drizzle-orm/migrations/` holds 86 `.sql` files. Wrangler applies them in filename order and records what it applied in its own `d1_migrations` table; Drizzle's `meta/_journal.json` is only consulted by `drizzle-kit generate` when it computes the next diff.
 
-Those two views have drifted. The journal lists 52 entries, so thirty-three files in the directory are not in it:
+Those two views have drifted. The journal lists 52 entries, so thirty-four files in the directory are not in it:
 
 ```
 20260604143000_product_status_updated_at_idx
@@ -227,9 +227,10 @@ Those two views have drifted. The journal lists 52 entries, so thirty-three file
 20261010232000_faq_page
 20261010400000_order_inpost_shipment
 20261010410000_price_history
+20261010420000_newsletter_campaigns
 ```
 
-Hand-written migrations such as `20260927120000_fix_silver_collection_handle.sql` are normal in this repository: data repairs, index-only changes and newer tables such as `order_number_sequence`, `discount_redemption`, `discount_claim`, `newsletter_subscriber`, `wishlist_item`, `storefront_search`, `content_page`, `store_setting` and `price_history` are written directly and applied with Wrangler. But the journal is also missing index 38 entirely (it runs 0–52 with a gap), and the newest snapshot, `meta/20260930151544_snapshot.json`, predates every one of those tables, which means `drizzle-kit generate` computes its diff from a snapshot that does not include everything the database actually has. After a `db:generate`, read the produced SQL before applying it and delete anything that re-creates an object that already exists.
+Hand-written migrations such as `20260927120000_fix_silver_collection_handle.sql` are normal in this repository: data repairs, index-only changes and newer tables such as `order_number_sequence`, `discount_redemption`, `discount_claim`, `newsletter_subscriber`, `wishlist_item`, `storefront_search`, `content_page`, `store_setting`, `price_history` and `newsletter_campaign` are written directly and applied with Wrangler. But the journal is also missing index 38 entirely (it runs 0–52 with a gap), and the newest snapshot, `meta/20260930151544_snapshot.json`, predates every one of those tables, which means `drizzle-kit generate` computes its diff from a snapshot that does not include everything the database actually has. After a `db:generate`, read the produced SQL before applying it and delete anything that re-creates an object that already exists.
 
 ## Seeds
 

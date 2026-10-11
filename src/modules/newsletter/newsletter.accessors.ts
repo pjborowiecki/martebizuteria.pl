@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, sql } from "drizzle-orm"
+import { type SQL, and, asc, count, desc, eq, gt, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
@@ -67,6 +67,27 @@ export const getAdminNewsletterStats = async (): Promise<Newsletter["adminStats"
     unsubscribed: unsubscribedRow?.count ?? NO_ROWS,
   }
 }
+
+export const countConfirmedSubscribers = (): Promise<number> =>
+  db.$count(newsletterSubscriber, eq(newsletterSubscriber.status, NEWSLETTER_STATUS.CONFIRMED))
+
+export const getConfirmedSubscribersAfter = (lastSubscriberId: string | null, limit: number) =>
+  db
+    .select({
+      email: newsletterSubscriber.email,
+      id: newsletterSubscriber.id,
+      locale: newsletterSubscriber.locale,
+      token: newsletterSubscriber.token,
+    })
+    .from(newsletterSubscriber)
+    .where(
+      and(
+        eq(newsletterSubscriber.status, NEWSLETTER_STATUS.CONFIRMED),
+        lastSubscriberId === null ? undefined : gt(newsletterSubscriber.id, lastSubscriberId),
+      ),
+    )
+    .orderBy(asc(newsletterSubscriber.id))
+    .limit(limit)
 
 export const linkSubscriberToUser = async (email: string, userId: string): Promise<void> => {
   const sameEmail = eq(newsletterSubscriber.email, normalizeSubscriberEmail(email))

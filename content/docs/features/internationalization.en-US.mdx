@@ -98,7 +98,7 @@ The cookie is the fallback for exactly the paths the middleware ignores — an A
 
 ## Message catalogues
 
-`messages/{locale}/{namespace}.json`, 55 files per locale and the two directories are identical in filenames. The namespace is the filename: `pages.landing.json` is the namespace `pages.landing`, and `buildMessageTree` splits it on dots to nest it, so `useTranslations("pages.landing.heroSection")` works.
+`messages/{locale}/{namespace}.json`, 56 files per locale and the two directories are identical in filenames. The namespace is the filename: `pages.landing.json` is the namespace `pages.landing`, and `buildMessageTree` splits it on dots to nest it, so `useTranslations("pages.landing.heroSection")` works.
 
 `src/integrations/use-intl/i18n.messages.ts` loads them with a Vite glob:
 
@@ -282,12 +282,12 @@ The Stripe Elements form is localised separately, by mapping the app locale to a
 
 - **No locale switcher in the UI.** Nothing in the navigation, the footer or the account area changes language; a visitor has to edit the URL. The mechanism is complete — the control is not.
 - No per-user locale preference. `user.timezone` is stored on `/account/profile` and sets the provider's time zone, but no language preference is stored anywhere.
-- No message-catalogue parity check. The two directories currently hold the same 55 filenames, but nothing in `bun run check` verifies that the keys inside them match.
+- No message-catalogue parity check. The two directories currently hold the same 56 filenames, but nothing in `bun run check` verifies that the keys inside them match.
 
 ## Adding a locale
 
 1. Add the code to `SUPPORTED_LOCALES` in `i18n.config.ts`.
-2. Create `messages/<locale>/` with all 55 files. `loadNamespace` throws on a missing one, so this is not optional.
+2. Create `messages/<locale>/` with all 56 files. `loadNamespace` throws on a missing one, so this is not optional.
 3. Add the locale to every `*.<locale>.mdx` set in `content/docs`, and to each `meta.<locale>.json`.
 4. Add the new locale to the `titles`, `descriptions`, `bodies` and `revised_ats` maps of every `content_page` row in a migration, starting from the Polish text. Then translate every page in the editor at `/admin/content`, which will not save a page until every locale has all three fields.
 5. Backfill the JSON locale maps in D1; `coerceProductLocaleMap` keeps existing rows readable in the meantime, and `resolveLocalizedString` falls back to Polish.

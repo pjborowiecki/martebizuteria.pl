@@ -1,9 +1,9 @@
 ---
 title: "Resend"
-description: "Szesnaście e-maili transakcyjnych, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
+description: "Szesnaście e-maili transakcyjnych i newsletter, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
 ---
 
-Każdy e-mail wysyłany przez sklep przechodzi przez Resend. Adapter w `src/integrations/resend/` zawiera klienta, jeden pomocnik `sendEmail`, budowniki zamieniające wiersze zamówień na właściwości szablonów oraz renderer podglądów dla programisty. Same szablony React Email mieszkają w `src/presentation/emails/`, ponieważ należą do warstwy prezentacji.
+Każdy e-mail wysyłany przez sklep przechodzi przez Resend. Adapter w `src/integrations/resend/` zawiera klienta, jeden pomocnik `sendEmail`, wysyłkę wsadową newslettera, budowniki zamieniające wiersze zamówień na właściwości szablonów oraz renderer podglądów dla programisty. Same szablony React Email mieszkają w `src/presentation/emails/`, ponieważ należą do warstwy prezentacji.
 
 ## Klient i pomocnik wysyłki
 
@@ -15,7 +15,7 @@ import { Resend } from "resend"
 export const resend = new Resend(env.RESEND_API_KEY)
 ```
 
-Plik `resend.send.ts` jest jedynym, który go wywołuje, i nigdy nie rzuca wyjątku:
+Plik `resend.send.ts` wysyła nim każdy e-mail transakcyjny i nigdy nie rzuca wyjątku. Jedynym innym wywołującym jest newsletter; zobacz [Newsletter](#newsletter).
 
 ```ts
 const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
@@ -63,7 +63,7 @@ Wywołujący przekazuje `revealsAccountExistence: true`, gdy to, czy e-mail w og
 
 Odmowa dotycząca jednej wiadomości nie zmienia flagi: błąd odbiorcy 422, `rate_limit_exceeded`, odpowiedź 5xx, błąd sieci albo dziesięciosekundowy limit czasu. Gdyby limit liczby żądań traktować jak awarię nadawcy, jeden nagły szczyt blokowałby wszystkie e-maile na pięć minut. To samo dotyczy odpowiedzi 401 lub 403 bez żadnego z powyższych kodów, gdy nadawca jest w domenie `resend.dev` (`RESEND_TEST_SENDER`): testowy nadawca Resend dostarcza pocztę wyłącznie właścicielowi konta Resend, a każdemu innemu odbiorcy odpowiada `validation_error` z kodem 403, `You can only send testing emails to your own email address`, co nic nie mówi o kolejnym e-mailu do właściciela. Odmowy dotyczące klucza i limitu mają własne kody i nadal ustawiają flagę.
 
-Na flagę reaguje tylko blokada w Better Auth. Dopóki jest ustawiona, rejestracja, zmiana hasła, ponowne wysłanie weryfikacji i zmiana adresu odpowiadają `503 EMAIL_DELIVERY_UNAVAILABLE`, zamiast tworzyć token dla e-maila, który nie może wyjść; zobacz [Better Auth](/docs/integrations/better-auth#blokada-wysyłki-e-maili). E-maile newslettera i zamówień nie są blokowane, bo o każdej porażce i tak informują osobę albo dziennik audytu. Flaga wyłapuje zepsutego nadawcę po pierwszej odmowie któregoś z tych e-maili; domena, której nigdy nie zweryfikowano, nadal kosztowałaby każdą osobę, która wcześniej uruchomi e-mail uwierzytelniania, dlatego wdrożenie najpierw sprawdza nadawcę; zobacz [Domena nadawcy](#domena-nadawcy).
+Na flagę reaguje tylko blokada w Better Auth. Dopóki jest ustawiona, rejestracja, zmiana hasła, ponowne wysłanie weryfikacji i zmiana adresu odpowiadają `503 EMAIL_DELIVERY_UNAVAILABLE`, zamiast tworzyć token dla e-maila, który nie może wyjść; zobacz [Better Auth](/docs/integrations/better-auth#blokada-wysyłki-e-maili). Potwierdzenia newslettera i e-maile zamówień nie są blokowane, a partia newslettera nigdy nie ustawia flagi, bo o każdej porażce i tak informują osobę albo dziennik audytu. Flaga wyłapuje zepsutego nadawcę po pierwszej odmowie któregoś z tych e-maili; domena, której nigdy nie zweryfikowano, nadal kosztowałaby każdą osobę, która wcześniej uruchomi e-mail uwierzytelniania, dlatego wdrożenie najpierw sprawdza nadawcę; zobacz [Domena nadawcy](#domena-nadawcy).
 
 ### E-maile, o które może poprosić odwiedzający
 
@@ -103,13 +103,28 @@ Nic innego nie pyta. E-maile o zamówieniu, wysyłce, anulowaniu, zwrocie, nieud
 | Potwierdzenie newslettera       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmation` w `newsletter-confirmation.server.ts`, wywoływane przez `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` z oczekiwaniem na wynik                                              |
 | Adres już na liście newslettera | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribed` w `newsletter-already-subscribed.server.ts`, wywoływane z oczekiwaniem na wynik przez `subscribe-to-newsletter.ts`, gdy potwierdzony adres wysyła ktoś inny niż zalogowany właściciel |
 
-Pierwszych pięć opisuje strona [Better Auth](/docs/integrations/better-auth); pozostałych jedenaście buduje ten adapter.
+Pierwszych pięć opisuje strona [Better Auth](/docs/integrations/better-auth); pozostałych jedenaście buduje ten adapter. Szablon newslettera, `newsletter-campaign.tsx`, opisuje część [Newsletter](#newsletter).
 
 Każdy szablon eksportuje własną stałą przestrzeni nazw obok komponentu, więc wywołujący nie może rozjechać się z komunikatami, które renderuje:
 
 ```ts
 export const ORDER_SHIPPED_NAMESPACE = "emails.order-shipped"
 ```
+
+## Newsletter
+
+Newslettery wysyła `newsletter-campaign.server.ts`, jedyny inny kod korzystający z klienta. `sendNewsletterBatch({ content, idempotencyKey, recipients })` renderuje `newsletter-campaign.tsx` dla każdego odbiorcy w jego języku, z tematem i listem w Markdownie napisanym przez właściciela, i wysyła wszystkie jednym `resend.batch.send(emails, { idempotencyKey })`, czyli endpointem wsadowym Resend, który przyjmuje do 100 e-maili na wywołanie. Tak jak `sendEmail` zwraca `undefined` przy powodzeniu, a w przeciwnym razie komunikat błędu, i nigdy nie rzuca wyjątku. Każdy e-mail wychodzi od `M'Arte <RESEND_EMAIL_FROM>` z `Reply-To: kontakt@martebizuteria.pl`, tak jak poczta transakcyjna.
+
+Odbiorca z tokenem wypisania dostaje dwa nagłówki:
+
+```
+List-Unsubscribe: <https://martebizuteria.pl/api/newsletter/unsubscribe?token=…>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+```
+
+Gmail, Yahoo i Apple Mail pokazują dzięki nim własny przycisk wypisania i wysyłają `POST List-Unsubscribe=One-Click` pod ten adres (RFC 8058). `src/routes/api/newsletter.unsubscribe.ts` odpowiada bez sesji i bez przekierowania: wypisuje subskrybenta z tym tokenem przez `unsubscribeByToken`, tę samą funkcję, której używa strona `/newsletter/unsubscribe`, i odpowiada 200, 404 dla tokenu, którego nikt nie ma, oraz 400 dla brakującego albo błędnego. Nie ma limitu żądań, bo token jest losowym UUID, a dostawca poczty może wysłać wiele takich żądań z jednego adresu. Sam list zawiera też widoczny link do `/newsletter/unsubscribe?token=…` w języku subskrybenta, a kończy się firmą, adresem i adresem e-mail przedsiębiorcy. Wysyłka testowa administratora nie przekazuje tokenu, więc jej e-maile nie mają nagłówków wypisania i linkują do strony wypisania bez tokenu.
+
+Wysyłki nie blokuje flaga niedostępnego nadawcy i wysyłka jej nie ustawia, nie przechodzi też przez `sendEmail` ani `admitPublicEmail`, więc dzienny limit odwiedzających ani jej nie liczy, ani nie wstrzymuje, ale dzieli z nią limit konta i limit żądań. [E-maile](/docs/features/email#newsletter) opisują kampanię, kolejkę i to, dlaczego newsletter nigdy nie wychodzi dwa razy.
 
 ## Składanie i dlaczego komunikaty są przekazywane w propsach
 
@@ -138,18 +153,19 @@ Plik `src/presentation/emails/email-layout.tsx` otacza każdy szablon: znak sło
 
 Każdy link, który aplikacja sama wpisuje do e-maila, prowadzi pod adres, którego używał klient albo administrator: lokalnie i w testach do `http://localhost:3000` albo `http://127.0.0.1:3000`, na preview do hosta preview, a na produkcji do `https://martebizuteria.pl` albo `https://martebizuteria.pjborowiecki.workers.dev`, zależnie od tego, którego użyto. Origin jest ustalany, zanim powstanie e-mail, i przekazywany dalej jako napis. Żaden budownik nie czyta `APP_URL`.
 
-| Przepływ                                                         | Skąd pochodzi origin                                                                                                                                                                     |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Potwierdzenie newslettera i informacja o istniejącej subskrypcji | `subscribeToNewsletter`, przez `resolveRequestOrigin(getRequest())`                                                                                                                      |
-| Potwierdzenie zamówienia                                         | `return_url` sesji, zbudowany przez żądanie checkoutu: `resolveDeploymentOrigin(session.return_url)` w `sendOrderConfirmationEmail`                                                      |
-| Zamówienie wysłane                                               | `shipOrder`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora                                                                                                        |
-| Zamówienie anulowane                                             | `cancelOrder`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora                                                                                                      |
-| Zwrot środków                                                    | `return_url` sesji Checkout, którą `resolveCheckoutSession` znajduje dla zwróconej płatności: `resolveDeploymentOrigin(returnUrl)` w `sendOrderRefundedEmail`                            |
-| Nieudana płatność                                                | `return_url` sesji: `resolveDeploymentOrigin(session.return_url)` w `sendPaymentFailedEmail`                                                                                             |
-| Nowe zamówienie, do sklepu                                       | `return_url` sesji, która utworzyła zamówienie: `resolveDeploymentOrigin(returnUrl)` w `sendNewOrderEmail`, który linkuje `/admin/orders/<id>`                                           |
-| Odstąpienie, do sklepu                                           | `withdrawFromCustomerOrder` i `withdrawFromGuestOrder`, przez `resolveRequestOrigin(getRequest())`, linkuje `/admin/orders/<id>`                                                         |
-| Konto usunięte                                                   | `deleteCustomer`, przez `resolveRequestOrigin(getRequest())` przed `removeUser`; po samodzielnym usunięciu konta `afterDelete` ustala go z żądania, które Better Auth przekazuje hookowi |
-| Hasło zmienione                                                  | `sendPasswordChangedEmail`, przez `resolveRequestOrigin(request)` na żądaniu, które Better Auth przekazuje do `onPasswordReset`; e-mail linkuje `/auth/sign-in`                          |
+| Przepływ                                                         | Skąd pochodzi origin                                                                                                                                                                                               |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Potwierdzenie newslettera i informacja o istniejącej subskrypcji | `subscribeToNewsletter`, przez `resolveRequestOrigin(getRequest())`                                                                                                                                                |
+| Newsletter i jego test                                           | `sendNewsletterCampaign` i `sendNewsletterTest`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora; kampania zapisuje go w `newsletter_campaign.origin` dla partii, które później wyśle kolejka |
+| Potwierdzenie zamówienia                                         | `return_url` sesji, zbudowany przez żądanie checkoutu: `resolveDeploymentOrigin(session.return_url)` w `sendOrderConfirmationEmail`                                                                                |
+| Zamówienie wysłane                                               | `shipOrder`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora                                                                                                                                  |
+| Zamówienie anulowane                                             | `cancelOrder`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora                                                                                                                                |
+| Zwrot środków                                                    | `return_url` sesji Checkout, którą `resolveCheckoutSession` znajduje dla zwróconej płatności: `resolveDeploymentOrigin(returnUrl)` w `sendOrderRefundedEmail`                                                      |
+| Nieudana płatność                                                | `return_url` sesji: `resolveDeploymentOrigin(session.return_url)` w `sendPaymentFailedEmail`                                                                                                                       |
+| Nowe zamówienie, do sklepu                                       | `return_url` sesji, która utworzyła zamówienie: `resolveDeploymentOrigin(returnUrl)` w `sendNewOrderEmail`, który linkuje `/admin/orders/<id>`                                                                     |
+| Odstąpienie, do sklepu                                           | `withdrawFromCustomerOrder` i `withdrawFromGuestOrder`, przez `resolveRequestOrigin(getRequest())`, linkuje `/admin/orders/<id>`                                                                                   |
+| Konto usunięte                                                   | `deleteCustomer`, przez `resolveRequestOrigin(getRequest())` przed `removeUser`; po samodzielnym usunięciu konta `afterDelete` ustala go z żądania, które Better Auth przekazuje hookowi                           |
+| Hasło zmienione                                                  | `sendPasswordChangedEmail`, przez `resolveRequestOrigin(request)` na żądaniu, które Better Auth przekazuje do `onPasswordReset`; e-mail linkuje `/auth/sign-in`                                                    |
 
 Obie funkcje leżą w `src/lib/request.ts`. Czytają wyłącznie adres URL, nigdy nagłówków `Host`, `Origin`, `Referer` ani `X-Forwarded-*`, wymagają `https:` wszędzie poza `localhost:3000` i `127.0.0.1:3000` i rzucają `AppError(FORBIDDEN)` dla hosta, którego nie akceptują. `resolveRequestOrigin(request)` akceptuje hosty z listy `appHostsForMode(import.meta.env.MODE)`, więc funkcja serwerowa odrzuca żądanie na każdym innym hoście, zanim cokolwiek zapisze. `resolveDeploymentOrigin(url)` akceptuje hosty wszystkich wdrożeń (`isDeploymentHost` w `src/modules/_core/constants/api.ts`), ponieważ webhook, który realizuje checkout, może należeć do innego wdrożenia: development i preview dzielą testowe konto Stripe i bazę danych, a `stripe:listen` zawsze przekazuje na `localhost:3000`.
 
@@ -221,11 +237,11 @@ Wysyłki są zapisywane, a nie tylko logowane. `recordOrderEmailAttempt` przekaz
 
 E-maile Better Auth są zapisywane tylko wtedy, gdy się nie powiodą, przez `deliverAuthEmail` w `auth.server.ts`: celem wpisu jest adres, a szczegół wygląda jak `Auth verification email — The example.com domain is not verified`. Link z e-maila nigdy nie trafia do wpisu.
 
-E-maile newslettera są zapisywane tylko wtedy, gdy się nie powiodą. `subscribeToNewsletter` wywołuje `recordEmailFailedAudit(email, { detail })`, gdy Resend odrzuci potwierdzenie albo informację o tym, że adres jest już na liście, lub nie odpowie na czas; celem wpisu jest adres, a szczegół wygląda jak `Newsletter confirmation — The example.com domain is not verified`. Do logu trafia też `[Newsletter] Failed to send confirmation to <adres>: <błąd>`, a odwiedzający dowiaduje się, że e-maila nie udało się wysłać.
+Wysyłka newslettera jest zapisywana jako `newsletter.sent` na administratora, który ją zlecił, a kampania zatrzymana przez kolejkę jako `email.failed` na kampanię. Potwierdzenia newslettera są zapisywane tylko wtedy, gdy się nie powiodą. `subscribeToNewsletter` wywołuje `recordEmailFailedAudit(email, { detail })`, gdy Resend odrzuci potwierdzenie albo informację o tym, że adres jest już na liście, lub nie odpowie na czas; celem wpisu jest adres, a szczegół wygląda jak `Newsletter confirmation — The example.com domain is not verified`. Do logu trafia też `[Newsletter] Failed to send confirmation to <adres>: <błąd>`, a odwiedzający dowiaduje się, że e-maila nie udało się wysłać.
 
 ## Podglądanie szablonów
 
-Plik `email-previews.tsx` deklaruje po jednym wpisie na szablon, z wyjątkiem `newsletter-confirmation`:
+Plik `email-previews.tsx` deklaruje po jednym wpisie na szablon, z wyjątkiem `newsletter-confirmation` i `newsletter-campaign`, którego treść właściciel pisze i sprawdza przyciskiem **Wyślij test do mnie**:
 
 ```ts
 export const EMAIL_PREVIEWS = {

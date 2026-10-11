@@ -10,8 +10,9 @@ const database = config.d1_databases.find(({ binding }) => binding === "DB")
 const cache = config.kv_namespaces.find(({ binding }) => binding === "CACHE")
 const images = config.r2_buckets.find(({ binding }) => binding === "IMAGES")
 const audit = config.queues.producers.find(({ binding }) => binding === "AUDIT_LOG_QUEUE")
-const auditConsumer = config.queues.consumers.find(({ queue }) => queue === audit?.queue)
-const auditDeadLetterConsumer = config.queues.consumers.find(({ queue }) => queue === auditConsumer?.dead_letter_queue)
+const newsletter = config.queues.producers.find(({ binding }) => binding === "NEWSLETTER_QUEUE")
+const consumerOf = (queue: string | undefined) => config.queues.consumers.find((consumer) => consumer.queue === queue)
+const hasDeadLetterConsumer = (queue: string | undefined): boolean => consumerOf(consumerOf(queue)?.dead_letter_queue) !== undefined
 const realtime = config.durable_objects.bindings.find(({ name }) => name === "REALTIME_INVALIDATION_HUB")
 
 if (
@@ -21,11 +22,12 @@ if (
   /^[0-]+$/u.test(cache.id) ||
   !images?.bucket_name ||
   !audit?.queue ||
-  !auditConsumer?.dead_letter_queue ||
-  auditDeadLetterConsumer === undefined ||
+  !hasDeadLetterConsumer(audit.queue) ||
+  !newsletter?.queue ||
+  !hasDeadLetterConsumer(newsletter.queue) ||
   realtime?.class_name !== "RealtimeInvalidationHub"
 ) {
-  throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)
+  throw new Error(`Missing database, cache, images, audit, newsletter, or realtime binding for ${environment}`)
 }
 
 const previewImages = unstable_readConfig({ config: "wrangler.jsonc", env: "preview" }).r2_buckets.find(({ binding }) => binding === "IMAGES")

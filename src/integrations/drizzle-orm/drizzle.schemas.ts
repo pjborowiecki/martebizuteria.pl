@@ -28,6 +28,9 @@ export { productCategory, productCategoryRelations } from "~/src/modules/product
 export { productCollection, productCollectionRelations } from "~/src/modules/product-collection/product-collection.schema"
 
 export { newsletterSubscriber, newsletterSubscriberRelations } from "~/src/modules/newsletter/newsletter.schema"
+
+export { newsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.schema"
+
 export { orderAddress, orderAddressRelations } from "~/src/modules/order-address/order-address.schema"
 
 export { orderItem, orderItemRelations } from "~/src/modules/order-item/order-item.schema"

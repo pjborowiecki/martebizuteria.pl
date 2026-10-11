@@ -30,6 +30,11 @@ const realtime = vi.hoisted(() => ({ handleRealtimeInvalidationWebSocket: vi.fn(
 
 const queue = vi.hoisted(() => ({ processAuditLogQueueBatch: vi.fn(() => Promise.resolve()) }))
 
+const newsletterQueue = vi.hoisted(() => ({
+  isNewsletterQueueBatch: vi.fn((batch: { readonly queue: string }) => batch.queue === "newsletter"),
+  processNewsletterQueueBatch: vi.fn(() => Promise.resolve()),
+}))
+
 const retention = vi.hoisted(() => ({ enforceRetentionPeriods: vi.fn((_now: Date) => Promise.resolve()) }))
 
 const sitemap = vi.hoisted(() => ({
@@ -45,6 +50,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.ws.serve
 vi.mock("~/src/modules/audit-log/audit-log.queue.server", () => queue)
 vi.mock("~/src/lib/sitemap", () => sitemap)
 vi.mock("~/src/lib/retention", () => retention)
+vi.mock("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server", () => newsletterQueue)
 
 const { default: server } = await import("~/src/server")
 
@@ -53,6 +59,7 @@ class TestEnv implements Env {
   declare IMAGES: Env["IMAGES"]
   declare DB: Env["DB"]
   declare AUDIT_LOG_QUEUE: Env["AUDIT_LOG_QUEUE"]
+  declare NEWSLETTER_QUEUE: Env["NEWSLETTER_QUEUE"]
   declare ASSETS: Env["ASSETS"]
   declare AUTH_GOOGLE_CLIENT_ID: Env["AUTH_GOOGLE_CLIENT_ID"]
   declare AUTH_GOOGLE_CLIENT_SECRET: Env["AUTH_GOOGLE_CLIENT_SECRET"]
@@ -306,24 +313,40 @@ describe("worker security headers", () => {
   })
 })
 
-describe("worker audit log queue", () => {
-  it("drains the batch through the audit log consumer", async () => {
-    const batch: MessageBatch<AuditLogQueueMessage> = {
-      ackAll: () => {},
-      messages: [],
-      metadata: { metrics: { backlogBytes: 0, backlogCount: 0 } },
-      queue: "audit-log",
-      retryAll: () => {},
-    }
+const queueBatch = (name: string): MessageBatch<AuditLogQueueMessage> => ({
+  ackAll: () => {},
+  messages: [],
+  metadata: { metrics: { backlogBytes: 0, backlogCount: 0 } },
+  queue: name,
+  retryAll: () => {},
+})
 
-    const { queue: drainQueue } = server
+const drainBatch = async (batch: MessageBatch<AuditLogQueueMessage>): Promise<void> => {
+  const { queue: drainQueue } = server
 
-    if (drainQueue === undefined) {
-      throw new Error("the worker registered no queue consumer")
-    }
-    await Reflect.apply(drainQueue, server, [batch, env, new TestExecutionContext()])
+  if (drainQueue === undefined) {
+    throw new Error("the worker registered no queue consumer")
+  }
+  await Reflect.apply(drainQueue, server, [batch, env, new TestExecutionContext()])
+}
+
+describe("worker queues", () => {
+  it("drains an audit log batch through the audit log consumer", async () => {
+    const batch = queueBatch("audit-log")
+
+    await drainBatch(batch)
 
     expect(queue.processAuditLogQueueBatch).toHaveBeenCalledWith(batch)
+    expect(newsletterQueue.processNewsletterQueueBatch).not.toHaveBeenCalled()
+  })
+
+  it("sends a newsletter batch to the newsletter consumer and keeps it away from the audit log", async () => {
+    const batch = queueBatch("newsletter")
+
+    await drainBatch(batch)
+
+    expect(newsletterQueue.processNewsletterQueueBatch).toHaveBeenCalledWith(batch)
+    expect(queue.processAuditLogQueueBatch).not.toHaveBeenCalled()
   })
 })
 

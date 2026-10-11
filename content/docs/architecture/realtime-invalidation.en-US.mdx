@@ -55,7 +55,7 @@ A topic that falls under a subscription is invalidated as itself: `["admin", "pr
 
 ## Subscriptions
 
-`ADMIN_REALTIME_QUERY_PREFIXES` has 15 entries: the audit log page and stats, admin orders, admin customers, the `ALL`/`STATS` pair for categories, collections, products and product attributes, the content page `ADMIN.ALL`/`ADMIN.BY_HANDLE` pair, and the store setting `ADMIN.SALES`. `STOREFRONT_REALTIME_QUERY_PREFIXES` has 12: the product keys (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), cart availability, the category and collection `ALL`/`BY_HANDLE` pairs, the content page `BY_HANDLE`, and the store setting `SALES`.
+`ADMIN_REALTIME_QUERY_PREFIXES` has 16 entries: the audit log page and stats, admin orders, admin customers, the `ALL`/`STATS` pair for categories, collections, products and product attributes, the content page `ADMIN.ALL`/`ADMIN.BY_HANDLE` pair, the store setting `ADMIN.SALES`, and the newsletter campaign `ADMIN.LIST`. `STOREFRONT_REALTIME_QUERY_PREFIXES` has 12: the product keys (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), cart availability, the category and collection `ALL`/`BY_HANDLE` pairs, the content page `BY_HANDLE`, and the store setting `SALES`.
 
 Both lists are built from the modules' own `*_QUERY_KEYS` constants and typed `as const satisfies readonly QueryKey[]`, so a renamed key is a type error rather than a silently dead subscription.
 

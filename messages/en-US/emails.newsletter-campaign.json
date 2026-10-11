@@ -1,0 +1,11 @@
+{
+  "preview": "News from the M'Arte atelier",
+  "tagline": "Handcrafted Jewelry",
+  "reason": "You are receiving this letter because this address is subscribed to the M'Arte newsletter.",
+  "unsubscribe": "Unsubscribe",
+  "sender": {
+    "label": "Sent by",
+    "country": "Poland",
+    "emailLabel": "E-mail"
+  }
+}

@@ -39,15 +39,16 @@ Aplikacja nie uruchomi się bez swoich bindingów. `wrangler.jsonc` deklaruje pi
 
 | Binding                     | Zasób                                                                                          | Do czego                                                    |
 | --------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `DB`                        | baza D1                                                                                        | Wszystkie dane aplikacji — 40 tabel                         |
+| `DB`                        | baza D1                                                                                        | Wszystkie dane aplikacji — 41 tabel                         |
 | `IMAGES`                    | zasobnik R2: `martebizuteria` na produkcji, `martebizuteria-preview` w developmencie i preview | Wysyłanie zdjęć produktów                                   |
 | `CACHE`                     | przestrzeń nazw KV                                                                             | Przechowuje flagę dostępności nadawcy e-maili               |
 | `AUDIT_LOG_QUEUE`           | kolejka Cloudflare Queues                                                                      | Zdarzenia audytu, zapisywane przez konsumenta kolejki       |
+| `NEWSLETTER_QUEUE`          | kolejka Cloudflare Queues                                                                      | Partie newslettera, wysyłane przez konsumenta kolejki       |
 | `REALTIME_INVALIDATION_HUB` | Durable Object                                                                                 | Rozgłaszanie unieważnień pamięci podręcznej przez WebSocket |
 
 Dwie rzeczy warte uwagi, zanim zaczniesz tworzyć zasoby:
 
-- Cloudflare Queues nie jest dostępne w każdym planie Workers. Jeśli Twoje konto nie może utworzyć kolejki, wdrożenie zatrzyma się na `scripts/verify-bindings.ts`, który wymaga zarówno producenta, jak i pasującego konsumenta dla `AUDIT_LOG_QUEUE`, a dla tego konsumenta konsumowanej kolejki martwych listów.
+- Cloudflare Queues nie jest dostępne w każdym planie Workers. Jeśli Twoje konto nie może utworzyć kolejki, wdrożenie zatrzyma się na `scripts/verify-bindings.ts`, który wymaga zarówno producenta, jak i pasującego konsumenta dla `AUDIT_LOG_QUEUE` i dla `NEWSLETTER_QUEUE`, a dla każdego konsumenta konsumowanej kolejki martwych listów.
 - `placement: { mode: "smart" }` w `wrangler.jsonc` to również funkcja planu płatnego. Jest to wskazówka, a nie wymóg, więc lokalnie można ją bezpiecznie usunąć, jeśli konto ją odrzuca.
 
 Durable Object nie wymaga osobnego kroku przygotowania. Tworzy go migracja `v1` w `wrangler.jsonc`, która deklaruje `RealtimeInvalidationHub` w `new_sqlite_classes`.

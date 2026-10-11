@@ -365,7 +365,6 @@ const CATALOG_SUB: readonly NavItem[] = [
 
 const TOOLS_NAV: readonly NavItem[] = [
   {
-    disabled: true,
     href: ROUTES.ADMIN_MARKETING,
     icon: Megaphone,
     labelKey: "nav.marketing",

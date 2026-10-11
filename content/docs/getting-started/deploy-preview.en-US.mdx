@@ -19,6 +19,8 @@ bunx wrangler r2 bucket create martebizuteria-preview
 bunx wrangler r2 bucket dev-url enable martebizuteria-preview
 bunx wrangler queues create martebizuteria-audit-log-preview
 bunx wrangler queues create martebizuteria-audit-log-preview-dlq
+bunx wrangler queues create martebizuteria-newsletter-preview
+bunx wrangler queues create martebizuteria-newsletter-preview-dlq
 ```
 
 Then put the ids into `wrangler.jsonc`, under both `development` and `preview` if you want them to share resources as the committed configuration does:
@@ -34,7 +36,7 @@ Then put the ids into `wrangler.jsonc`, under both `development` and `preview` i
 
 The preview bucket starts empty, while the preview database points at the seed and marketing images. Copy them into it before the first deploy and set `VITE_R2_URL` to the address `dev-url enable` prints, as [Image delivery](/docs/guides/image-delivery) describes.
 
-Keep the binding names exactly as they are — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `REALTIME_INVALIDATION_HUB` — and keep `migrations_dir` pointing at `./src/integrations/drizzle-orm/migrations`. The binding names are what `src/types/worker-configuration.d.ts` is generated from and what the whole server layer is typed against.
+Keep the binding names exactly as they are — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE`, `REALTIME_INVALIDATION_HUB` — and keep `migrations_dir` pointing at `./src/integrations/drizzle-orm/migrations`. The binding names are what `src/types/worker-configuration.d.ts` is generated from and what the whole server layer is typed against.
 
 The Durable Object needs no provisioning. It is created by the migration already in the file:
 
@@ -47,9 +49,12 @@ The Durable Object needs no provisioning. It is created by the migration already
 ],
 ```
 
-Here is exactly what `verify-bindings.ts` insists on, so you know when you are done. `auditConsumer` is the consumer of the `AUDIT_LOG_QUEUE` producer's queue, and `auditDeadLetterConsumer` the consumer of the queue it names as `dead_letter_queue`:
+Here is exactly what `verify-bindings.ts` insists on, so you know when you are done. `audit` and `newsletter` are the `AUDIT_LOG_QUEUE` and `NEWSLETTER_QUEUE` producers, and `hasDeadLetterConsumer` holds when the queue has a consumer that names a `dead_letter_queue` the Worker consumes too:
 
 ```ts
+const consumerOf = (queue: string | undefined) => config.queues.consumers.find((consumer) => consumer.queue === queue)
+const hasDeadLetterConsumer = (queue: string | undefined): boolean => consumerOf(consumerOf(queue)?.dead_letter_queue) !== undefined
+
 if (
   !database?.database_id ||
   /^[0-]+$/u.test(database.database_id) ||
@@ -57,11 +62,12 @@ if (
   /^[0-]+$/u.test(cache.id) ||
   !images?.bucket_name ||
   !audit?.queue ||
-  !auditConsumer?.dead_letter_queue ||
-  auditDeadLetterConsumer === undefined ||
+  !hasDeadLetterConsumer(audit.queue) ||
+  !newsletter?.queue ||
+  !hasDeadLetterConsumer(newsletter.queue) ||
   realtime?.class_name !== "RealtimeInvalidationHub"
 ) {
-  throw new Error(`Missing database, cache, images, audit, or realtime binding for ${environment}`)
+  throw new Error(`Missing database, cache, images, audit, newsletter, or realtime binding for ${environment}`)
 }
 ```
 

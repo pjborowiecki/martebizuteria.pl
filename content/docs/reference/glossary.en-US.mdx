@@ -10,7 +10,7 @@ Terms are listed alphabetically. Where a term corresponds to a concrete export, 
 - **Accessor** — a plain data-access function in `<module>/<module>.accessors.ts`. It takes arguments, talks to `db`, and has no notion of who is asking. Authorization lives one layer up, in the use case.
 - **AppError** — the single error class server code throws, from `src/modules/_core/constants/errors.ts`. It carries one of eight `ERROR_CODES` and an optional module-specific reason string.
 - **Audit event** — a row in the `audit_log` table, enqueued rather than written inline. Categories are `orders`, `email`, `customers`, `catalog`, `settings` and `auth`; severities are `info`, `success`, `warning`, `error`; actor roles are `admin`, `customer`, `system`, `unknown`. Defined in `src/modules/audit-log/audit-log.constants.ts`.
-- **Binding** — a Cloudflare resource the Worker receives from `env`: `DB` (D1), `CACHE` (KV), `IMAGES` (R2), `AUDIT_LOG_QUEUE` (Queue producer), `REALTIME_INVALIDATION_HUB` (Durable Object) and `ASSETS` (static assets).
+- **Binding** — a Cloudflare resource the Worker receives from `env`: `DB` (D1), `CACHE` (KV), `IMAGES` (R2), `AUDIT_LOG_QUEUE` and `NEWSLETTER_QUEUE` (Queue producers), `REALTIME_INVALIDATION_HUB` (Durable Object) and `ASSETS` (static assets).
 - **Checkout** — a row in the `checkout` table representing one payment attempt, created before Stripe is contacted and resolved by a webhook. Distinct from the **cart**, which is a Zustand store in `src/modules/cart/cart.store.ts` plus the `cart` and `cart_item` tables.
 - **Collection** — a curated group of products (`product_collection`, joined through `collection_on_product`). Distinct from a **category** (`product_category`), which is hierarchical and has a `parentId`.
 - **Compensation** — releasing inventory that was already reserved when a later line in the same cart fails its reservation guard. Best-effort: its own failure is caught and logged.
@@ -21,7 +21,7 @@ Terms are listed alphabetically. Where a term corresponds to a concrete export, 
 - **Layout route** — a route that renders an `Outlet` for its children and usually declares shared `staticData.namespaces`: `_storefront.tsx`, `account.tsx`, `admin.tsx`, `auth.tsx`, `checkout.tsx`, `docs.tsx`.
 - **Locale prefix** — the `/<locale>` segment used for every locale except the default. `pl-PL` is the default and collapses to no prefix; `en-US` is served under `/en-US`. Handled by `localizePathname` and `deLocalizePathname` in `src/integrations/use-intl/i18n.paths.ts`.
 - **Middleware** — a function that runs before a server function's handler: `withRequest` (error normalisation), `authorized` (session and permission), `withRateLimit` (per-IP budget). All three are in `src/integrations/better-auth/auth.middleware.ts`.
-- **Module** — a folder in `src/modules`. Thirty-eight own at least one database table; four own no table and group operations instead.
+- **Module** — a folder in `src/modules`. Thirty-nine own at least one database table; four own no table and group operations instead.
 - **Mutation key** — the tuple in a module's `<ENTITY>_MUTATION_KEYS` used to identify a mutation for cache and pending-state purposes, for example `CATEGORY_MUTATION_KEYS.REORDER`.
 - **Namespace** — one translation file, named after itself: `pages.admin.catalog.products` is `messages/<locale>/pages.admin.catalog.products.json`. Routes declare the namespaces they need in `staticData.namespaces`.
 - **Optimistic concurrency** — the content page save strategy: `updateContentPage` writes only while `updated_at` still equals the value the editor loaded, so a second admin's save is refused instead of overwriting the first. Inventory reservation does not use it: the reserve `UPDATE` is guarded only on `quantityAvailable >= quantity`, and success is signalled by the length of `.returning()`. There is no locking.
@@ -40,7 +40,7 @@ Terms are listed alphabetically. Where a term corresponds to a concrete export, 
 ## Infrastructure vocabulary
 
 - **`background`** — `src/lib/background.ts`. `executionContextStorage` is an `AsyncLocalStorage` carrying the Worker's `waitUntil`; `scheduleBackgroundWork(task)` pulls it out at any depth so a promise survives the response. With no store it degrades to a caught fire-and-forget.
-- **Cloudflare Queue** — the audit-log transport. Events are enqueued through `AUDIT_LOG_QUEUE` and consumed by the `queue` export in `src/server.ts`, in batches of up to 50 with a 5-second timeout and 3 retries.
+- **Cloudflare Queue** — the audit-log and newsletter transport. Audit events are enqueued through `AUDIT_LOG_QUEUE` and consumed by the `queue` export in `src/server.ts`, in batches of up to 50 with a 5-second timeout and 3 retries. Newsletter campaigns are enqueued through `NEWSLETTER_QUEUE` and consumed one message, and so one batch of up to 100 emails, at a time.
 - **D1** — Cloudflare's SQLite database, bound as `DB`. No interactive transactions; `db.batch()` is the atomicity primitive.
 - **Durable Object** — `RealtimeInvalidationHub` in `src/durable-objects/realtime-invalidation-hub.ts`, created by the `v1` migration tag. It fans out invalidation messages to connected WebSockets and holds no durable state.
 - **KV** — the `CACHE` namespace. Declared in every environment; holds the email sender flag that the Better Auth gate reads.

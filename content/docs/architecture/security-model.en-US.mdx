@@ -189,6 +189,8 @@ Checking after `getByName()` would already have let an unauthenticated client op
 
 `GET /api/health` is public and needs no session, so an uptime monitor can call it. It reads no data — `SELECT 1`, a KV lookup and an R2 `head` of a key that does not exist — and answers only `ok` or `error` per binding, never the error, a binding name or any configuration. Errors go to the Worker log. See [Monitoring and alerts](/docs/guides/monitoring-and-alerts#the-health-check).
 
+`POST /api/newsletter/unsubscribe` is the one-click unsubscribe that mail providers post for a newsletter's `List-Unsubscribe` header. It takes no session and no signature: the subscriber's `token`, a random UUID in the query string, is the only credential, and it can only unsubscribe that address. It takes no rate limit either, because a guess has no realistic chance and one mail provider posts for many subscribers from the same address. A malformed token is a `400` and an unknown one a `404`, both without a write.
+
 ## Errors
 
 `withRequest` installs one normalizer for every server function:

@@ -392,6 +392,7 @@
       "email_sent": "Email sent",
       "email_failed": "Email failed",
       "email_deferred": "Email deferred",
+      "newsletter_sent": "Newsletter sent",
       "order_cancelled": "Order cancelled",
       "order_shipped": "Order shipped",
       "order_placed": "Order placed",
@@ -885,49 +886,79 @@
     "backToOrder": "Back to order"
   },
   "marketing": {
-    "title": "Marketing Campaigns",
-    "description": "Manage promotional campaigns, track impressions, click rates, and conversions.",
+    "title": "Newsletter",
+    "description": "Write to confirmed subscribers and follow every letter you send.",
     "actions": {
-      "export": "Export",
-      "newCampaign": "New Campaign"
+      "newCampaign": "New newsletter"
     },
     "stats": {
-      "totalCampaigns": {
-        "label": "Total Campaigns",
-        "value": "12"
-      },
-      "activeCampaigns": {
-        "label": "Active Campaigns",
-        "value": "3"
-      },
-      "totalReach": {
-        "label": "Total Reach",
-        "value": "19.4K"
-      },
-      "totalRevenue": {
-        "label": "Total Revenue",
-        "value": "$85,200"
-      }
-    },
-    "chart": {
-      "title": "Campaign Engagement",
-      "description": "Showing average open rate and click rate for recent months"
+      "confirmed": "Confirmed subscribers",
+      "pending": "Awaiting confirmation",
+      "unsubscribed": "Unsubscribed"
     },
     "campaigns": {
-      "title": "Campaign Overview",
+      "title": "Sent newsletters",
       "columns": {
-        "campaign": "Campaign",
-        "type": "Channel",
+        "subject": "Subject",
         "status": "Status",
-        "sent": "Reach",
-        "openRate": "Open Rate",
-        "revenue": "Revenue"
+        "delivered": "Delivered",
+        "started": "Started",
+        "finished": "Finished"
+      },
+      "delivered": "{sent} of {total}",
+      "empty": {
+        "title": "No newsletters yet",
+        "description": "Every newsletter you send appears here with its progress."
       }
     },
     "status": {
-      "active": "Active",
-      "completed": "Completed",
-      "draft": "Draft"
+      "sending": "Sending",
+      "sent": "Sent",
+      "failed": "Stopped"
+    },
+    "composer": {
+      "title": "New newsletter",
+      "description": "Each confirmed subscriber receives it in the language they signed up in.",
+      "fields": {
+        "subject": "Subject",
+        "body": "Letter",
+        "bodyHint": "Links must be full addresses starting with https://, mailto: or tel:. Every letter ends with an unsubscribe link."
+      },
+      "counter": "{count}/{max}",
+      "actions": {
+        "sendTest": "Send test to me",
+        "send": "Send to subscribers"
+      },
+      "recipients": "{count, plural, =0 {No confirmed subscribers yet} one {# confirmed subscriber} other {# confirmed subscribers}}",
+      "confirm": {
+        "title": "Send this newsletter?",
+        "description": "It goes to {count, plural, one {# confirmed subscriber} other {# confirmed subscribers}} now, each in their own language. A sent newsletter cannot be recalled or sent again.",
+        "cancel": "Keep editing",
+        "confirm": "Send now"
+      },
+      "validation": {
+        "subjectRequired": "Enter a subject.",
+        "subjectTooLong": "Keep the subject to 150 characters.",
+        "bodyRequired": "The letter needs some content.",
+        "bodyTooLong": "The letter is too long to send.",
+        "bodyUnsupported": "The letter contains an image or a link that is not a full https://, mailto: or tel: address."
+      },
+      "toast": {
+        "testSentTitle": "Test sent",
+        "testSentDescription": "Both language versions went to {email}.",
+        "testFailedTitle": "The test could not be sent",
+        "testFailedDescription": "The audit log names the reason. Your letter is still here.",
+        "sentTitle": "Newsletter on its way",
+        "sentDescription": "It is going out to {count, plural, one {# subscriber} other {# subscribers}} in batches. Follow its progress in the list.",
+        "alreadySentTitle": "This newsletter was already sent",
+        "alreadySentDescription": "It is in the list of sent newsletters and will not go out twice.",
+        "noRecipientsTitle": "Nobody to send to yet",
+        "noRecipientsDescription": "The newsletter goes only to confirmed subscribers, and there are none yet.",
+        "errorTitle": "The newsletter could not be sent",
+        "errorDescription": "Nothing went out. Your letter is still here, so try again in a moment.",
+        "invalidTitle": "Some fields need attention",
+        "invalidDescription": "Check: {locales}."
+      }
     }
   },
   "coupons": {

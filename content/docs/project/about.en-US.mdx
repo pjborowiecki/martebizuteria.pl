@@ -25,17 +25,17 @@ The codebase exists for two reasons at once. It runs a real jewellery brand's sh
 
 Route files live flat in `src/routes/` and carry no locale segment. The router de-localizes the URL before matching and re-applies the prefix when generating links, so `_storefront.products.index.tsx` serves both `/products` (Polish, the default locale, which takes no prefix) and `/en-US/products`. Path segments themselves are never translated. See [i18n architecture](/docs/architecture/i18n-architecture) for the mechanism.
 
-| Prefix              | Files                                                                | What it serves                                                                    |
-| ------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `_storefront.*.tsx` | 19 files                                                             | Landing page, catalog, product pages, cart, blog, legal pages                     |
-| `checkout.*.tsx`    | 2 files                                                              | The four-step checkout flow                                                       |
-| `account.*.tsx`     | 10 files                                                             | Signed-in customer area — orders, addresses, sessions, profile                    |
-| `admin.*.tsx`       | 27 files                                                             | Admin console — catalog, orders, customers, audit, settings                       |
-| `auth.*.tsx`        | 5 files                                                              | Sign in, sign up, forgot and reset password                                       |
-| `docs.*.tsx`        | 3 files                                                              | These documentation pages                                                         |
-| `api/`              | `auth.$.ts`, `health.ts`, `webhooks.stripe.ts`, `webhooks.inpost.ts` | Better Auth handler, the health check and the Stripe and InPost webhook endpoints |
+| Prefix              | Files                                                                                             | What it serves                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `_storefront.*.tsx` | 19 files                                                                                          | Landing page, catalog, product pages, cart, blog, legal pages                                                             |
+| `checkout.*.tsx`    | 2 files                                                                                           | The four-step checkout flow                                                                                               |
+| `account.*.tsx`     | 10 files                                                                                          | Signed-in customer area — orders, addresses, sessions, profile                                                            |
+| `admin.*.tsx`       | 28 files                                                                                          | Admin console — catalog, orders, customers, audit, settings                                                               |
+| `auth.*.tsx`        | 5 files                                                                                           | Sign in, sign up, forgot and reset password                                                                               |
+| `docs.*.tsx`        | 3 files                                                                                           | These documentation pages                                                                                                 |
+| `api/`              | `auth.$.ts`, `health.ts`, `newsletter.unsubscribe.ts`, `webhooks.stripe.ts`, `webhooks.inpost.ts` | Better Auth handler, the health check, the newsletter's one-click unsubscribe and the Stripe and InPost webhook endpoints |
 
-`__root.tsx` and `dev.emails.tsx` complete the 72 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
+`__root.tsx` and `dev.emails.tsx` complete the 74 files; `dev.emails.tsx` is a development-only email preview that returns 404 unless `import.meta.env.DEV` is true.
 
 Four request paths short-circuit inside `src/server.ts` before the React framework is reached — `/sitemap.xml`, `/robots.txt`, the two WebSocket upgrades — plus the locale redirect, because none of them need an SSR render. The same file's `scheduled` handler runs the daily retention clean-up.
 
@@ -45,10 +45,11 @@ Four request paths short-circuit inside `src/server.ts` before the React framewo
 
 | Binding                     | Resource         | Used for                                                         |
 | --------------------------- | ---------------- | ---------------------------------------------------------------- |
-| `DB`                        | D1 database      | Every table — 41, including the `storefront_search` FTS5 index   |
+| `DB`                        | D1 database      | Every table — 42, including the `storefront_search` FTS5 index   |
 | `IMAGES`                    | R2 bucket        | Product image uploads                                            |
 | `CACHE`                     | KV namespace     | Holds the email sender flag from `resend.availability.server.ts` |
 | `AUDIT_LOG_QUEUE`           | Cloudflare Queue | Audit events, drained by the `queue` handler in `src/server.ts`  |
+| `NEWSLETTER_QUEUE`          | Cloudflare Queue | Newsletter batches, sent by the same `queue` handler             |
 | `REALTIME_INVALIDATION_HUB` | Durable Object   | WebSocket fan-out for realtime cache invalidation                |
 
 ## The stack
@@ -75,15 +76,15 @@ Counted against the working tree, not aspirational:
 
 | Thing                                     | Count                                                                                                 |
 | ----------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Feature modules                           | 42 in `src/modules/`, including `_core`                                                               |
-| Database tables                           | 40 exported from `drizzle.schemas.ts`, plus the `storefront_search` FTS5 table                        |
-| D1 migrations                             | 85 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
-| Use cases                                 | 128 files under `src/modules/*/use-cases/`                                                            |
+| Feature modules                           | 43 in `src/modules/`, including `_core`                                                               |
+| Database tables                           | 41 exported from `drizzle.schemas.ts`, plus the `storefront_search` FTS5 table                        |
+| D1 migrations                             | 86 SQL files in `src/integrations/drizzle-orm/migrations/`                                            |
+| Use cases                                 | 131 files under `src/modules/*/use-cases/`                                                            |
 | Server functions                          | 120 `createServerFn(...)` call sites                                                                  |
 | Integrations                              | 15 vendor adapters in `src/integrations/`                                                             |
-| Route files                               | 72 in `src/routes/`                                                                                   |
+| Route files                               | 74 in `src/routes/`                                                                                   |
 | Presentation files                        | 650 non-test files under `src/presentation/`, of which 57 shadcn primitives and 430 custom components |
-| Message namespaces                        | 55 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |
+| Message namespaces                        | 56 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                   |
 | Test files                                | 889 — 339 unit, 35 integration, 515 component                                                         |
 | Comments in hand-written source           | 5: three in TypeScript, two in CSS                                                                    |
 | Lint suppressions outside generated files | 0                                                                                                     |
@@ -98,10 +99,10 @@ Catalog (products, variants, options, attributes, categories, collections, searc
 
 ### Scaffolded, not finished
 
-| Area                      | State                                                                                                                                                              |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| InPost                    | Parcel-locker lookup at checkout (`fetchPointsByCity`) and ShipX shipments, labels and tracking from the admin order page; InPost's status does not move the order |
-| Admin marketing, settings | Render from fixtures in `src/data/`                                                                                                                                |
+| Area           | State                                                                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| InPost         | Parcel-locker lookup at checkout (`fetchPointsByCity`) and ShipX shipments, labels and tracking from the admin order page; InPost's status does not move the order |
+| Admin settings | Renders from fixtures in `src/data/`                                                                                                                               |
 
 ### Absent
 

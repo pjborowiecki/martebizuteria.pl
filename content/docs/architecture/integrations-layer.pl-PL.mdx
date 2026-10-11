@@ -25,7 +25,7 @@ Każda usługa zewnętrzna wymagająca konfiguracji ma jeden katalog w `src/inte
 
 ## Co nie jest integracją
 
-- **Bindingi Cloudflare nie potrzebują adaptera.** Kod serwerowy czyta `DB`, `IMAGES`, `CACHE`, `ASSETS`, `REALTIME_INVALIDATION_HUB` i `AUDIT_LOG_QUEUE` z `env` w `cloudflare:workers`.
+- **Bindingi Cloudflare nie potrzebują adaptera.** Kod serwerowy czyta `DB`, `IMAGES`, `CACHE`, `ASSETS`, `REALTIME_INVALIDATION_HUB`, `AUDIT_LOG_QUEUE` i `NEWSLETTER_QUEUE` z `env` w `cloudflare:workers`.
 - **Limitowanie żądań** to `src/lib/rate-limit.ts` na tabeli `rate_limit`, osiągane przez middleware `withRateLimit`, a nie przez katalog dostawcy.
 - **Klasa Durable Object** leży w `src/durable-objects/realtime-invalidation-hub.ts`, a nie w katalogu integracji, bo Wrangler binduje klasę z punktu wejścia Workera.
 - **SEO, sitemap i robots** to `src/lib/seo.ts`, a strony mapy witryny czyta z D1 `src/lib/sitemap.ts`.

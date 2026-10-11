@@ -33,6 +33,7 @@ import {
   recordEmailFailedAudit,
   recordEmailSentAudit,
   recordImageUploadedAudit,
+  recordNewsletterSentAudit,
   recordOrderCancelledAudit,
   recordOrderDeliveredAudit,
   recordOrderDisputeClosedAudit,
@@ -625,6 +626,27 @@ describe("recordContentPageUpdatedAudit", () => {
       resourceId: "privacy-policy",
       severity: "info",
       target: "privacy-policy",
+    })
+  })
+})
+
+describe("recordNewsletterSentAudit", () => {
+  it("files the newsletter under email against the admin who sent it, named by its subject", () => {
+    recordNewsletterSentAudit("Jesienne projekty", {
+      detail: "12 confirmed subscribers",
+      metadata: { recipientCount: 12 },
+      resourceId: "campaign-1",
+    })
+
+    expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.NEWSLETTER_SENT,
+      category: "email",
+      detail: "12 confirmed subscribers",
+      metadata: { recipientCount: 12 },
+      resourceId: "campaign-1",
+      severity: "info",
+      target: "Jesienne projekty",
     })
   })
 })

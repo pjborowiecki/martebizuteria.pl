@@ -220,6 +220,15 @@ export const recordContentPageUpdatedAudit = (handle: string, options?: AuditEve
   })
 }
 
+export const recordNewsletterSentAudit = (subject: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.NEWSLETTER_SENT,
+    category: "email",
+    severity: "info",
+    ...withResourceId(subject, options),
+  })
+}
+
 export const recordDiscountCreatedAudit = (code: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.DISCOUNT_CREATED,

@@ -68,6 +68,10 @@
             "binding": "AUDIT_LOG_QUEUE",
             "queue": "martebizuteria-audit-log-preview",
           },
+          {
+            "binding": "NEWSLETTER_QUEUE",
+            "queue": "martebizuteria-newsletter-preview",
+          },
         ],
         "consumers": [
           {
@@ -80,6 +84,20 @@
           {
             "queue": "martebizuteria-audit-log-preview-dlq",
             "max_batch_size": 1,
+            "max_retries": 3,
+            "retry_delay": 300,
+          },
+          {
+            "queue": "martebizuteria-newsletter-preview",
+            "max_batch_size": 1,
+            "max_concurrency": 1,
+            "max_retries": 3,
+            "dead_letter_queue": "martebizuteria-newsletter-preview-dlq",
+          },
+          {
+            "queue": "martebizuteria-newsletter-preview-dlq",
+            "max_batch_size": 1,
+            "max_concurrency": 1,
             "max_retries": 3,
             "retry_delay": 300,
           },
@@ -155,6 +173,10 @@
             "binding": "AUDIT_LOG_QUEUE",
             "queue": "martebizuteria-audit-log-preview",
           },
+          {
+            "binding": "NEWSLETTER_QUEUE",
+            "queue": "martebizuteria-newsletter-preview",
+          },
         ],
         "consumers": [
           {
@@ -167,6 +189,20 @@
           {
             "queue": "martebizuteria-audit-log-preview-dlq",
             "max_batch_size": 1,
+            "max_retries": 3,
+            "retry_delay": 300,
+          },
+          {
+            "queue": "martebizuteria-newsletter-preview",
+            "max_batch_size": 1,
+            "max_concurrency": 1,
+            "max_retries": 3,
+            "dead_letter_queue": "martebizuteria-newsletter-preview-dlq",
+          },
+          {
+            "queue": "martebizuteria-newsletter-preview-dlq",
+            "max_batch_size": 1,
+            "max_concurrency": 1,
             "max_retries": 3,
             "retry_delay": 300,
           },
@@ -239,6 +275,10 @@
             "binding": "AUDIT_LOG_QUEUE",
             "queue": "martebizuteria-audit-log-test",
           },
+          {
+            "binding": "NEWSLETTER_QUEUE",
+            "queue": "martebizuteria-newsletter-test",
+          },
         ],
         "consumers": [
           {
@@ -251,6 +291,20 @@
           {
             "queue": "martebizuteria-audit-log-test-dlq",
             "max_batch_size": 1,
+            "max_retries": 3,
+            "retry_delay": 300,
+          },
+          {
+            "queue": "martebizuteria-newsletter-test",
+            "max_batch_size": 1,
+            "max_concurrency": 1,
+            "max_retries": 3,
+            "dead_letter_queue": "martebizuteria-newsletter-test-dlq",
+          },
+          {
+            "queue": "martebizuteria-newsletter-test-dlq",
+            "max_batch_size": 1,
+            "max_concurrency": 1,
             "max_retries": 3,
             "retry_delay": 300,
           },
@@ -326,6 +380,10 @@
             "binding": "AUDIT_LOG_QUEUE",
             "queue": "martebizuteria-audit-log",
           },
+          {
+            "binding": "NEWSLETTER_QUEUE",
+            "queue": "martebizuteria-newsletter",
+          },
         ],
         "consumers": [
           {
@@ -338,6 +396,20 @@
           {
             "queue": "martebizuteria-audit-log-dlq",
             "max_batch_size": 1,
+            "max_retries": 3,
+            "retry_delay": 300,
+          },
+          {
+            "queue": "martebizuteria-newsletter",
+            "max_batch_size": 1,
+            "max_concurrency": 1,
+            "max_retries": 3,
+            "dead_letter_queue": "martebizuteria-newsletter-dlq",
+          },
+          {
+            "queue": "martebizuteria-newsletter-dlq",
+            "max_batch_size": 1,
+            "max_concurrency": 1,
             "max_retries": 3,
             "retry_delay": 300,
           },

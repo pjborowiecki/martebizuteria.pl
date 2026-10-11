@@ -14,6 +14,11 @@
     "heading": "Błąd kolejki dziennika audytu",
     "message": "Sklep nie mógł przetworzyć partii wpisów dziennika audytu. Kolejka dostarczy ją jeszcze kilka razy, a wpisy, których nadal nie uda się zapisać, przepadną. Baza danych może być niedostępna."
   },
+  "newsletterFailed": {
+    "subject": "Alert: wysyłka newslettera zatrzymała się w połowie — M'Arte",
+    "heading": "Wysyłka newslettera zatrzymała się w połowie",
+    "message": "Sklep trzy razy nie zdołał wysłać partii newslettera i zatrzymał kampanię, więc subskrybenci po ostatniej wysłanej partii go nie dostali. Marketing w panelu administracyjnym pokazuje, do ilu subskrybentów dotarł i dlaczego się zatrzymał. Zanim wyślesz coś jeszcze, sprawdź stan konta Resend i jego limit wysyłki."
+  },
   "preview": "Coś w sklepie wymaga Twojej uwagi.",
   "referenceLabel": "Dotyczy",
   "detailLabel": "Przyczyna",

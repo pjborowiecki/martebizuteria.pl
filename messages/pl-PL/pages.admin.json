@@ -392,6 +392,7 @@
       "email_sent": "E-mail wysłany",
       "email_failed": "E-mail nieudany",
       "email_deferred": "E-mail odroczony",
+      "newsletter_sent": "Newsletter wysłany",
       "order_cancelled": "Zamówienie anulowane",
       "order_shipped": "Zamówienie wysłane",
       "order_placed": "Zamówienie złożone",
@@ -885,49 +886,79 @@
     "backToOrder": "Wróć do zamówienia"
   },
   "marketing": {
-    "title": "Kampanie marketingowe",
-    "description": "Zarządzaj kampaniami promocyjnymi, śledź zasięgi, kliknięcia i konwersje.",
+    "title": "Newsletter",
+    "description": "Pisz do potwierdzonych subskrybentów i śledź każdy wysłany list.",
     "actions": {
-      "export": "Eksportuj",
-      "newCampaign": "Nowa kampania"
+      "newCampaign": "Nowy newsletter"
     },
     "stats": {
-      "totalCampaigns": {
-        "label": "Wszystkie kampanie",
-        "value": "12"
-      },
-      "activeCampaigns": {
-        "label": "Aktywne kampanie",
-        "value": "3"
-      },
-      "totalReach": {
-        "label": "Całkowity zasięg",
-        "value": "19.4K"
-      },
-      "totalRevenue": {
-        "label": "Całkowity przychód",
-        "value": "85 200 PLN"
-      }
-    },
-    "chart": {
-      "title": "Zaangażowanie kampanii",
-      "description": "Pokazuje średni współczynnik otwarć i kliknięć z ostatnich miesięcy"
+      "confirmed": "Potwierdzeni subskrybenci",
+      "pending": "Czekają na potwierdzenie",
+      "unsubscribed": "Wypisani"
     },
     "campaigns": {
-      "title": "Przegląd kampanii",
+      "title": "Wysłane newslettery",
       "columns": {
-        "campaign": "Kampania",
-        "type": "Kanał",
+        "subject": "Temat",
         "status": "Status",
-        "sent": "Zasięg",
-        "openRate": "Wskaźnik otwarć",
-        "revenue": "Przychód"
+        "delivered": "Doręczone",
+        "started": "Rozpoczęto",
+        "finished": "Zakończono"
+      },
+      "delivered": "{sent} z {total}",
+      "empty": {
+        "title": "Nie wysłano jeszcze żadnego newslettera",
+        "description": "Każdy wysłany newsletter pojawi się tutaj razem z postępem wysyłki."
       }
     },
     "status": {
-      "active": "Aktywna",
-      "completed": "Zakończona",
-      "draft": "Szkic"
+      "sending": "Wysyłanie",
+      "sent": "Wysłany",
+      "failed": "Przerwany"
+    },
+    "composer": {
+      "title": "Nowy newsletter",
+      "description": "Każdy potwierdzony subskrybent otrzyma go w języku, w którym się zapisał.",
+      "fields": {
+        "subject": "Temat",
+        "body": "Treść listu",
+        "bodyHint": "Linki muszą być pełnymi adresami zaczynającymi się od https://, mailto: lub tel:. Każdy list kończy się linkiem do wypisania się."
+      },
+      "counter": "{count}/{max}",
+      "actions": {
+        "sendTest": "Wyślij test do mnie",
+        "send": "Wyślij do subskrybentów"
+      },
+      "recipients": "{count, plural, =0 {Brak potwierdzonych subskrybentów} one {# potwierdzony subskrybent} few {# potwierdzeni subskrybenci} many {# potwierdzonych subskrybentów} other {# potwierdzonego subskrybenta}}",
+      "confirm": {
+        "title": "Wysłać ten newsletter?",
+        "description": "Trafi teraz do {count, plural, one {# potwierdzonego subskrybenta} few {# potwierdzonych subskrybentów} many {# potwierdzonych subskrybentów} other {# potwierdzonego subskrybenta}}, do każdego w jego języku. Wysłanego newslettera nie można cofnąć ani wysłać ponownie.",
+        "cancel": "Edytuj dalej",
+        "confirm": "Wyślij teraz"
+      },
+      "validation": {
+        "subjectRequired": "Wpisz temat.",
+        "subjectTooLong": "Temat może mieć najwyżej 150 znaków.",
+        "bodyRequired": "List musi mieć treść.",
+        "bodyTooLong": "List jest zbyt długi, aby go wysłać.",
+        "bodyUnsupported": "List zawiera obraz lub link, który nie jest pełnym adresem https://, mailto: ani tel:."
+      },
+      "toast": {
+        "testSentTitle": "Test wysłany",
+        "testSentDescription": "Obie wersje językowe trafiły na adres {email}.",
+        "testFailedTitle": "Nie udało się wysłać testu",
+        "testFailedDescription": "Przyczyna jest w dzienniku zdarzeń. Twój list nadal tu jest.",
+        "sentTitle": "Newsletter w drodze",
+        "sentDescription": "Wysyłamy go partiami do {count, plural, one {# subskrybenta} few {# subskrybentów} many {# subskrybentów} other {# subskrybenta}}. Postęp widać na liście.",
+        "alreadySentTitle": "Ten newsletter został już wysłany",
+        "alreadySentDescription": "Jest na liście wysłanych newsletterów i nie zostanie wysłany drugi raz.",
+        "noRecipientsTitle": "Nie ma jeszcze do kogo wysłać",
+        "noRecipientsDescription": "Newsletter trafia tylko do potwierdzonych subskrybentów, a na razie nie ma żadnego.",
+        "errorTitle": "Nie udało się wysłać newslettera",
+        "errorDescription": "Nic nie zostało wysłane. Twój list nadal tu jest, spróbuj ponownie za chwilę.",
+        "invalidTitle": "Niektóre pola wymagają poprawy",
+        "invalidDescription": "Sprawdź: {locales}."
+      }
     }
   },
   "coupons": {

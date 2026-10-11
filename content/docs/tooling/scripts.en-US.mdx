@@ -126,7 +126,7 @@ The drizzle-kit scripts run through `bun --env-file=.env.<environment>` because 
 | `cf-typegen` | `vp exec wrangler types --env development src/types/worker-configuration.d.ts`                                  |
 | `typegen`    | `cf-typegen`, then `content`                                                                                    |
 
-Both outputs are gitignored. `src/types/worker-configuration.d.ts` is what gives `env.DB`, `env.CACHE`, `env.IMAGES`, `env.AUDIT_LOG_QUEUE` and `env.REALTIME_INVALIDATION_HUB` their types, so run `bun run cf-typegen` after changing any binding in `wrangler.jsonc`. Never edit or commit it. `.source/` is what the `collections/*` import alias resolves to, so `bun run content` after adding or renaming an MDX file.
+Both outputs are gitignored. `src/types/worker-configuration.d.ts` is what gives `env.DB`, `env.CACHE`, `env.IMAGES`, `env.AUDIT_LOG_QUEUE`, `env.NEWSLETTER_QUEUE` and `env.REALTIME_INVALIDATION_HUB` their types, so run `bun run cf-typegen` after changing any binding in `wrangler.jsonc`. Never edit or commit it. `.source/` is what the `collections/*` import alias resolves to, so `bun run content` after adding or renaming an MDX file.
 
 ## Agent skills
 

@@ -34,7 +34,6 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as AdminAuditRouteImport } from './routes/admin.audit'
 import { Route as AdminCatalogRouteImport } from './routes/admin.catalog'
 import { Route as AdminCouponsRouteImport } from './routes/admin.coupons'
-import { Route as AdminMarketingRouteImport } from './routes/admin.marketing'
 import { Route as AdminOverviewRouteImport } from './routes/admin.overview'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
 import { Route as AdminSecurityRouteImport } from './routes/admin_.security'
@@ -68,9 +67,12 @@ import { Route as AdminContentIndexRouteImport } from './routes/admin.content.in
 import { Route as AdminContentHandleRouteImport } from './routes/admin.content.$handle'
 import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customers.index'
 import { Route as AdminCustomersIdRouteImport } from './routes/admin.customers.$id'
+import { Route as AdminMarketingIndexRouteImport } from './routes/admin.marketing.index'
+import { Route as AdminMarketingNewRouteImport } from './routes/admin.marketing.new'
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
 import { Route as AdminOrdersOrderIdRouteImport } from './routes/admin.orders.$orderId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
+import { Route as ApiNewsletterUnsubscribeRouteImport } from './routes/api/newsletter.unsubscribe'
 import { Route as ApiWebhooksInpostRouteImport } from './routes/api/webhooks.inpost'
 import { Route as ApiWebhooksStripeRouteImport } from './routes/api/webhooks.stripe'
 import { Route as AdminCatalogAttributesIndexRouteImport } from './routes/admin.catalog.attributes.index'
@@ -206,11 +208,6 @@ const AdminCatalogRoute = AdminCatalogRouteImport.update({
 const AdminCouponsRoute = AdminCouponsRouteImport.update({
   id: '/coupons',
   path: '/coupons',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminMarketingRoute = AdminMarketingRouteImport.update({
-  id: '/marketing',
-  path: '/marketing',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminOverviewRoute = AdminOverviewRouteImport.update({
@@ -385,6 +382,16 @@ const AdminCustomersIdRoute = AdminCustomersIdRouteImport.update({
   path: '/customers/$id',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMarketingIndexRoute = AdminMarketingIndexRouteImport.update({
+  id: '/marketing/',
+  path: '/marketing/',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMarketingNewRoute = AdminMarketingNewRouteImport.update({
+  id: '/marketing/new',
+  path: '/marketing/new',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOrdersIndexRoute = AdminOrdersIndexRouteImport.update({
   id: '/orders/',
   path: '/orders/',
@@ -400,6 +407,12 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiNewsletterUnsubscribeRoute =
+  ApiNewsletterUnsubscribeRouteImport.update({
+    id: '/api/newsletter/unsubscribe',
+    path: '/api/newsletter/unsubscribe',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiWebhooksInpostRoute = ApiWebhooksInpostRouteImport.update({
   id: '/api/webhooks/inpost',
   path: '/api/webhooks/inpost',
@@ -476,7 +489,6 @@ export interface FileRoutesByFullPath {
   '/admin/audit': typeof AdminAuditRoute
   '/admin/catalog': typeof AdminCatalogRouteWithChildren
   '/admin/coupons': typeof AdminCouponsRoute
-  '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/security': typeof AdminSecurityRoute
@@ -504,8 +516,10 @@ export interface FileRoutesByFullPath {
   '/admin/catalog/products': typeof AdminCatalogProductsRouteWithChildren
   '/admin/content/$handle': typeof AdminContentHandleRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
+  '/admin/marketing/new': typeof AdminMarketingNewRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
   '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/blog/': typeof StorefrontBlogIndexRoute
@@ -516,6 +530,7 @@ export interface FileRoutesByFullPath {
   '/admin/catalog/': typeof AdminCatalogIndexRoute
   '/admin/content/': typeof AdminContentIndexRoute
   '/admin/customers/': typeof AdminCustomersIndexRoute
+  '/admin/marketing/': typeof AdminMarketingIndexRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
   '/admin/catalog/collections/$handle': typeof AdminCatalogCollectionsHandleRoute
@@ -542,7 +557,6 @@ export interface FileRoutesByTo {
   '/account/wishlist': typeof AccountWishlistRoute
   '/admin/audit': typeof AdminAuditRoute
   '/admin/coupons': typeof AdminCouponsRoute
-  '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/security': typeof AdminSecurityRoute
@@ -567,8 +581,10 @@ export interface FileRoutesByTo {
   '/account/orders/$id': typeof AccountOrdersIdRoute
   '/admin/content/$handle': typeof AdminContentHandleRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
+  '/admin/marketing/new': typeof AdminMarketingNewRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
   '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/blog': typeof StorefrontBlogIndexRoute
@@ -579,6 +595,7 @@ export interface FileRoutesByTo {
   '/admin/catalog': typeof AdminCatalogIndexRoute
   '/admin/content': typeof AdminContentIndexRoute
   '/admin/customers': typeof AdminCustomersIndexRoute
+  '/admin/marketing': typeof AdminMarketingIndexRoute
   '/admin/orders': typeof AdminOrdersIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
   '/admin/catalog/collections/$handle': typeof AdminCatalogCollectionsHandleRoute
@@ -612,7 +629,6 @@ export interface FileRoutesById {
   '/admin/audit': typeof AdminAuditRoute
   '/admin/catalog': typeof AdminCatalogRouteWithChildren
   '/admin/coupons': typeof AdminCouponsRoute
-  '/admin/marketing': typeof AdminMarketingRoute
   '/admin/overview': typeof AdminOverviewRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin_/security': typeof AdminSecurityRoute
@@ -641,8 +657,10 @@ export interface FileRoutesById {
   '/admin/catalog/products': typeof AdminCatalogProductsRouteWithChildren
   '/admin/content/$handle': typeof AdminContentHandleRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
+  '/admin/marketing/new': typeof AdminMarketingNewRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
   '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
   '/api/webhooks/stripe': typeof ApiWebhooksStripeRoute
   '/_storefront/blog/': typeof StorefrontBlogIndexRoute
@@ -653,6 +671,7 @@ export interface FileRoutesById {
   '/admin/catalog/': typeof AdminCatalogIndexRoute
   '/admin/content/': typeof AdminContentIndexRoute
   '/admin/customers/': typeof AdminCustomersIndexRoute
+  '/admin/marketing/': typeof AdminMarketingIndexRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
   '/admin/catalog/collections/$handle': typeof AdminCatalogCollectionsHandleRoute
@@ -687,7 +706,6 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/catalog'
     | '/admin/coupons'
-    | '/admin/marketing'
     | '/admin/overview'
     | '/admin/settings'
     | '/admin/security'
@@ -715,8 +733,10 @@ export interface FileRouteTypes {
     | '/admin/catalog/products'
     | '/admin/content/$handle'
     | '/admin/customers/$id'
+    | '/admin/marketing/new'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
+    | '/api/newsletter/unsubscribe'
     | '/api/webhooks/inpost'
     | '/api/webhooks/stripe'
     | '/blog/'
@@ -727,6 +747,7 @@ export interface FileRouteTypes {
     | '/admin/catalog/'
     | '/admin/content/'
     | '/admin/customers/'
+    | '/admin/marketing/'
     | '/admin/orders/'
     | '/admin/catalog/categories/$handle'
     | '/admin/catalog/collections/$handle'
@@ -753,7 +774,6 @@ export interface FileRouteTypes {
     | '/account/wishlist'
     | '/admin/audit'
     | '/admin/coupons'
-    | '/admin/marketing'
     | '/admin/overview'
     | '/admin/settings'
     | '/admin/security'
@@ -778,8 +798,10 @@ export interface FileRouteTypes {
     | '/account/orders/$id'
     | '/admin/content/$handle'
     | '/admin/customers/$id'
+    | '/admin/marketing/new'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
+    | '/api/newsletter/unsubscribe'
     | '/api/webhooks/inpost'
     | '/api/webhooks/stripe'
     | '/blog'
@@ -790,6 +812,7 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/content'
     | '/admin/customers'
+    | '/admin/marketing'
     | '/admin/orders'
     | '/admin/catalog/categories/$handle'
     | '/admin/catalog/collections/$handle'
@@ -822,7 +845,6 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/catalog'
     | '/admin/coupons'
-    | '/admin/marketing'
     | '/admin/overview'
     | '/admin/settings'
     | '/admin_/security'
@@ -851,8 +873,10 @@ export interface FileRouteTypes {
     | '/admin/catalog/products'
     | '/admin/content/$handle'
     | '/admin/customers/$id'
+    | '/admin/marketing/new'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
+    | '/api/newsletter/unsubscribe'
     | '/api/webhooks/inpost'
     | '/api/webhooks/stripe'
     | '/_storefront/blog/'
@@ -863,6 +887,7 @@ export interface FileRouteTypes {
     | '/admin/catalog/'
     | '/admin/content/'
     | '/admin/customers/'
+    | '/admin/marketing/'
     | '/admin/orders/'
     | '/admin/catalog/categories/$handle'
     | '/admin/catalog/collections/$handle'
@@ -884,6 +909,7 @@ export interface RootRouteChildren {
   ApiHealthRoute: typeof ApiHealthRoute
   DevEmailsRoute: typeof DevEmailsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiNewsletterUnsubscribeRoute: typeof ApiNewsletterUnsubscribeRoute
   ApiWebhooksInpostRoute: typeof ApiWebhooksInpostRoute
   ApiWebhooksStripeRoute: typeof ApiWebhooksStripeRoute
   AdminOrdersOrderIdSummaryRoute: typeof AdminOrdersOrderIdSummaryRoute
@@ -1064,13 +1090,6 @@ declare module '@tanstack/react-router' {
       path: '/coupons'
       fullPath: '/admin/coupons'
       preLoaderRoute: typeof AdminCouponsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/marketing': {
-      id: '/admin/marketing'
-      path: '/marketing'
-      fullPath: '/admin/marketing'
-      preLoaderRoute: typeof AdminMarketingRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/overview': {
@@ -1304,6 +1323,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCustomersIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/marketing/': {
+      id: '/admin/marketing/'
+      path: '/marketing'
+      fullPath: '/admin/marketing/'
+      preLoaderRoute: typeof AdminMarketingIndexRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/marketing/new': {
+      id: '/admin/marketing/new'
+      path: '/marketing/new'
+      fullPath: '/admin/marketing/new'
+      preLoaderRoute: typeof AdminMarketingNewRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/orders/': {
       id: '/admin/orders/'
       path: '/orders'
@@ -1323,6 +1356,13 @@ declare module '@tanstack/react-router' {
       path: '/api/auth/$'
       fullPath: '/api/auth/$'
       preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/newsletter/unsubscribe': {
+      id: '/api/newsletter/unsubscribe'
+      path: '/api/newsletter/unsubscribe'
+      fullPath: '/api/newsletter/unsubscribe'
+      preLoaderRoute: typeof ApiNewsletterUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/webhooks/inpost': {
@@ -1545,15 +1585,16 @@ interface AdminRouteChildren {
   AdminAuditRoute: typeof AdminAuditRoute
   AdminCatalogRoute: typeof AdminCatalogRouteWithChildren
   AdminCouponsRoute: typeof AdminCouponsRoute
-  AdminMarketingRoute: typeof AdminMarketingRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
   AdminIndexRoute: typeof AdminIndexRoute
   AdminContentHandleRoute: typeof AdminContentHandleRoute
   AdminCustomersIdRoute: typeof AdminCustomersIdRoute
+  AdminMarketingNewRoute: typeof AdminMarketingNewRoute
   AdminOrdersOrderIdRoute: typeof AdminOrdersOrderIdRoute
   AdminContentIndexRoute: typeof AdminContentIndexRoute
   AdminCustomersIndexRoute: typeof AdminCustomersIndexRoute
+  AdminMarketingIndexRoute: typeof AdminMarketingIndexRoute
   AdminOrdersIndexRoute: typeof AdminOrdersIndexRoute
 }
 
@@ -1561,15 +1602,16 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminAuditRoute: AdminAuditRoute,
   AdminCatalogRoute: AdminCatalogRouteWithChildren,
   AdminCouponsRoute: AdminCouponsRoute,
-  AdminMarketingRoute: AdminMarketingRoute,
   AdminOverviewRoute: AdminOverviewRoute,
   AdminSettingsRoute: AdminSettingsRoute,
   AdminIndexRoute: AdminIndexRoute,
   AdminContentHandleRoute: AdminContentHandleRoute,
   AdminCustomersIdRoute: AdminCustomersIdRoute,
+  AdminMarketingNewRoute: AdminMarketingNewRoute,
   AdminOrdersOrderIdRoute: AdminOrdersOrderIdRoute,
   AdminContentIndexRoute: AdminContentIndexRoute,
   AdminCustomersIndexRoute: AdminCustomersIndexRoute,
+  AdminMarketingIndexRoute: AdminMarketingIndexRoute,
   AdminOrdersIndexRoute: AdminOrdersIndexRoute,
 }
 
@@ -1626,6 +1668,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiHealthRoute: ApiHealthRoute,
   DevEmailsRoute: DevEmailsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiNewsletterUnsubscribeRoute: ApiNewsletterUnsubscribeRoute,
   ApiWebhooksInpostRoute: ApiWebhooksInpostRoute,
   ApiWebhooksStripeRoute: ApiWebhooksStripeRoute,
   AdminOrdersOrderIdSummaryRoute: AdminOrdersOrderIdSummaryRoute,

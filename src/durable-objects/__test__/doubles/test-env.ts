@@ -3,6 +3,7 @@ export class TestEnv implements Env {
   declare IMAGES: Env["IMAGES"]
   declare DB: Env["DB"]
   declare AUDIT_LOG_QUEUE: Env["AUDIT_LOG_QUEUE"]
+  declare NEWSLETTER_QUEUE: Env["NEWSLETTER_QUEUE"]
   declare ASSETS: Env["ASSETS"]
   declare APP_ENV: Env["APP_ENV"]
   declare AUTH_GOOGLE_CLIENT_ID: Env["AUTH_GOOGLE_CLIENT_ID"]

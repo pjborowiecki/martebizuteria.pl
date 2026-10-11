@@ -5,6 +5,8 @@ import { handleRealtimeInvalidationWebSocket } from "~/src/integrations/realtime
 import { resolveLocale } from "~/src/integrations/use-intl/i18n.middleware"
 
 import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modules/audit-log/audit-log.queue.server"
+import { isNewsletterQueueBatch, processNewsletterQueueBatch } from "~/src/modules/newsletter-campaign/newsletter-campaign.queue.server"
+import { type NewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.types"
 
 import { executionContextStorage } from "~/src/lib/background"
 import { serializeCookie } from "~/src/lib/cookie"
@@ -32,6 +34,11 @@ const robotsResponse = (origin: string, appEnv: string): Response =>
   })
 
 export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub"
+
+export type WorkerQueueMessage = AuditLogQueueMessage | NewsletterCampaign["queueMessage"]
+
+const isAuditLogQueueBatch = (batch: MessageBatch<WorkerQueueMessage>): batch is MessageBatch<AuditLogQueueMessage> =>
+  !isNewsletterQueueBatch(batch)
 
 export interface RequestContext {
   env: Env
@@ -84,7 +91,7 @@ const respond = async (request: Request, context: RequestContext): Promise<Respo
   return newResponse
 }
 
-const server: ExportedHandler<Env, AuditLogQueueMessage> = {
+const server: ExportedHandler<Env, WorkerQueueMessage> = {
   async fetch(request, env, ctx) {
     const { pathname, protocol } = new URL(request.url)
     if (pathname === ROUTES.API_REALTIME.ADMIN_WS) {
@@ -105,8 +112,14 @@ const server: ExportedHandler<Env, AuditLogQueueMessage> = {
 
     return withSecurityHeaders(await respond(request, context), { appEnv: env.APP_ENV, nonce, protocol })
   },
-  async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
-    await processAuditLogQueueBatch(batch)
+  async queue(batch: MessageBatch<WorkerQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
+    if (isNewsletterQueueBatch(batch)) {
+      await processNewsletterQueueBatch(batch)
+    }
+
+    if (isAuditLogQueueBatch(batch)) {
+      await processAuditLogQueueBatch(batch)
+    }
   },
   async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
     await enforceRetentionPeriods(new Date(controller.scheduledTime))

@@ -14,6 +14,11 @@
     "heading": "The audit log queue failed",
     "message": "The shop could not process a batch of audit log entries. The queue delivers the batch again a few times, and entries that still fail are lost. The database may be unavailable."
   },
+  "newsletterFailed": {
+    "subject": "Alert: a newsletter stopped part way — M'Arte",
+    "heading": "A newsletter stopped part way",
+    "message": "The shop could not send a batch of a newsletter three times and stopped the campaign, so the subscribers after the last batch that went out did not get it. Marketing in the admin panel shows how many subscribers it reached and why it stopped. Check the Resend account's status and sending quota before you send anything else."
+  },
   "preview": "Something in the shop needs your attention.",
   "referenceLabel": "Reference",
   "detailLabel": "Cause",

@@ -7,14 +7,15 @@ description: "Runtime Cloudflare: punkt wejścia Workera, jego bindingi, trzy ś
 
 `wrangler.jsonc` ustawia `./src/server.ts` jako `main`, z `compatibility_date` `2026-04-18`, flagą `nodejs_compat`, `placement.mode: "smart"` i włączoną obserwowalnością, razem z Workers Issues. Każde środowisko otrzymuje te same sześć bindingów:
 
-| Binding                     | Typ              | Służy do                                                                           |
-| --------------------------- | ---------------- | ---------------------------------------------------------------------------------- |
-| `DB`                        | Baza D1          | Wszystkich 40 tabel, w tym sesji, weryfikacji i liczników limitów żądań            |
-| `IMAGES`                    | Bucket R2        | Zdjęć produktów uploadowanych przez `src/integrations/cloudflare-r2`               |
-| `CACHE`                     | Namespace KV     | Przechowuje pięciominutową flagę nadawcy e-maili (`resend.availability.server.ts`) |
-| `ASSETS`                    | Zasoby statyczne | Wszystkiego z `public/`, w tym fontów i PDF formularza odstąpienia od umowy        |
-| `REALTIME_INVALIDATION_HUB` | Durable Object   | Klasy `RealtimeInvalidationHub`, jedna instancja na odbiorcę                       |
-| `AUDIT_LOG_QUEUE`           | Kolejka          | Zdarzeń audytowych, produkowanych i konsumowanych przez ten sam Worker             |
+| Binding                     | Typ              | Służy do                                                                                    |
+| --------------------------- | ---------------- | ------------------------------------------------------------------------------------------- |
+| `DB`                        | Baza D1          | Wszystkich 41 tabel, w tym sesji, weryfikacji i liczników limitów żądań                     |
+| `IMAGES`                    | Bucket R2        | Zdjęć produktów uploadowanych przez `src/integrations/cloudflare-r2`                        |
+| `CACHE`                     | Namespace KV     | Przechowuje pięciominutową flagę nadawcy e-maili (`resend.availability.server.ts`)          |
+| `ASSETS`                    | Zasoby statyczne | Wszystkiego z `public/`, w tym fontów i PDF formularza odstąpienia od umowy                 |
+| `REALTIME_INVALIDATION_HUB` | Durable Object   | Klasy `RealtimeInvalidationHub`, jedna instancja na odbiorcę                                |
+| `AUDIT_LOG_QUEUE`           | Kolejka          | Zdarzeń audytowych, produkowanych i konsumowanych przez ten sam Worker                      |
+| `NEWSLETTER_QUEUE`          | Kolejka          | Partii newslettera, jednej partii kampanii na wiadomość, konsumowanych przez ten sam Worker |
 
 Durable Object jest zadeklarowany jako klasa SQLite w bloku `migrations` (`tag: "v1"`, `new_sqlite_classes: ["RealtimeInvalidationHub"]`), mimo że hub nie trzyma żadnego trwałego stanu. Kolejka jest skonfigurowana z `max_batch_size: 50`, `max_batch_timeout: 5`, `max_retries: 3` i `dead_letter_queue` nazwaną od niej z przyrostkiem `-dlq`, a producent i konsument wskazują tę samą kolejkę, dlatego `src/server.ts` eksportuje zarówno handler `fetch`, jak i `queue`. Ten sam handler `queue` konsumuje też kolejkę martwych listów, po jednej wiadomości, z `max_retries: 3` i `retry_delay: 300`. Preview i produkcja deklarują też `triggers.crons: ["0 3 * * *"]`, który codziennie o 03:00 UTC wywołuje jego handler `scheduled` na potrzeby [czyszczenia po okresie przechowywania](/docs/guides/data-retention); development i test nie deklarują triggera.
 
@@ -24,11 +25,11 @@ Flaga `nodejs_compat` udostępnia `node:async_hooks`, którego `src/lib/backgrou
 
 `wrangler.jsonc` definiuje trzy środowiska, a `CLOUDFLARE_ENV` wybiera jedno dla `vp dev` i `vp build`.
 
-| Środowisko    | Nazwa Workera                | Baza D1                  | Bucket R2                | Kolejka                            | Używane przez                                      |
-| ------------- | ---------------------------- | ------------------------ | ------------------------ | ---------------------------------- | -------------------------------------------------- |
-| `development` | `martebizuteria-development` | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run dev`                                      |
-| `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview` | `bun run build:preview`, `deploy:preview`, `start` |
-| `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria`         | `martebizuteria-audit-log`         | `bun run build:production`, `deploy:production`    |
+| Środowisko    | Nazwa Workera                | Baza D1                  | Bucket R2                | Kolejki                                                                 | Używane przez                                      |
+| ------------- | ---------------------------- | ------------------------ | ------------------------ | ----------------------------------------------------------------------- | -------------------------------------------------- |
+| `development` | `martebizuteria-development` | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview`, `martebizuteria-newsletter-preview` | `bun run dev`                                      |
+| `preview`     | `martebizuteria-preview`     | `martebizuteria-preview` | `martebizuteria-preview` | `martebizuteria-audit-log-preview`, `martebizuteria-newsletter-preview` | `bun run build:preview`, `deploy:preview`, `start` |
+| `production`  | `martebizuteria`             | `martebizuteria`         | `martebizuteria`         | `martebizuteria-audit-log`, `martebizuteria-newsletter`                 | `bun run build:production`, `deploy:production`    |
 
 `preview` podłącza `preview.martebizuteria.pl`, a `production` podłącza `martebizuteria.pl` jako domenę własną przez `routes` z `custom_domain: true`. Oba ustawiają też `workers_dev: true`, więc ich nazwy `workers.dev` nadal odpowiadają obok domeny; czego potrzebuje strefa, opisuje [Wdrożenie podglądu](/docs/getting-started/deploy-preview).
 

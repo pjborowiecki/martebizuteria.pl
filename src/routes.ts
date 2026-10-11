@@ -23,6 +23,7 @@ export const ROUTES = {
   ADMIN_CUSTOMER: "/admin/customers/$id",
   ADMIN_CUSTOMERS: "/admin/customers",
   ADMIN_MARKETING: "/admin/marketing",
+  ADMIN_NEWSLETTER_NEW: "/admin/marketing/new",
   ADMIN_ORDER: "/admin/orders/$orderId",
   ADMIN_ORDERS: "/admin/orders",
   ADMIN_ORDER_SUMMARY: "/admin/orders/$orderId/summary",
@@ -39,6 +40,7 @@ export const ROUTES = {
     SIGN_OUT: "/sign-out",
     SIGN_UP_EMAIL: "/sign-up/email",
   },
+  API_NEWSLETTER_UNSUBSCRIBE: "/api/newsletter/unsubscribe",
   API_REALTIME: {
     ADMIN_WS: "/api/realtime/admin/ws",
     STOREFRONT_WS: "/api/realtime/storefront/ws",

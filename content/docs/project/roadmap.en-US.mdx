@@ -53,12 +53,12 @@ The admin console now issues refunds. The Refund button on `/admin/orders/$order
 
 Each of these already has some of its groundwork in place (an integration function or a complete UI), which makes them cheaper than they look.
 
-| Feature                   | What exists                                                                                                         | What is missing                                              |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| InPost shipments          | Locker lookup at checkout; booking, PDF labels, tracking numbers and status from the admin order page through ShipX | Marking the order shipped and delivered from InPost's status |
-| Admin marketing, settings | Complete UI                                                                                                         | Both read fixtures from `src/data/`                          |
+| Feature          | What exists                                                                                                         | What is missing                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| InPost shipments | Locker lookup at checkout; booking, PDF labels, tracking numbers and status from the admin order page through ShipX | Marking the order shipped and delivered from InPost's status |
+| Admin settings   | Complete UI                                                                                                         | Reads fixtures from `src/data/`                              |
 
-`src/data/` is the honest marker for this whole category: five fixture files, and every screen importing one is a screen that looks finished and is not. [Shipping and delivery](/docs/features/shipping-and-delivery) covers the InPost work.
+`src/data/` is the honest marker for this whole category: four fixture files, and every screen importing one is a screen that looks finished and is not. [Shipping and delivery](/docs/features/shipping-and-delivery) covers the InPost work.
 
 ## Priority 4 — testing
 

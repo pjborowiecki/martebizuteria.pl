@@ -189,6 +189,8 @@ Sprawdzanie po `getByName()` pozwoliłoby już nieuwierzytelnionemu klientowi ot
 
 `GET /api/health` jest publiczne i nie wymaga sesji, więc może je wywoływać monitor dostępności. Nie czyta żadnych danych — `SELECT 1`, odczyt KV i `head` w R2 dla klucza, który nie istnieje — i odpowiada tylko `ok` albo `error` dla każdego bindingu, nigdy błędem, nazwą bindingu ani konfiguracją. Błędy trafiają do logu Workera. Zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts#sprawdzenie-stanu).
 
+`POST /api/newsletter/unsubscribe` to wypisanie jednym kliknięciem, które dostawcy poczty wysyłają dla nagłówka `List-Unsubscribe` newslettera. Nie wymaga sesji ani podpisu: jedynym poświadczeniem jest `token` subskrybenta, losowy UUID w adresie, który może wypisać tylko ten adres. Nie ma też limitu żądań, bo odgadnięcie tokenu nie ma realnej szansy, a jeden dostawca poczty wysyła żądania wielu subskrybentów z tego samego adresu. Błędny token to `400`, a nieznany `404`, w obu przypadkach bez zapisu.
+
 ## Błędy
 
 `withRequest` instaluje jeden normalizator dla każdej funkcji serwerowej:

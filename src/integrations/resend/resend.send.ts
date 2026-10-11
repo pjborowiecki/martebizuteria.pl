@@ -31,8 +31,10 @@ const RESEND_TEST_SENDER = /@resend\.dev>?$/iu
 const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): boolean =>
   SENDER_REFUSAL_NAMES.has(name) || (SENDER_REFUSAL_STATUSES.has(statusCode) && !RESEND_TEST_SENDER.test(sender))
 
+export const shopSender = (): string => `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
+
 const deliver = async ({ from, revealsAccountExistence, ...message }: Readonly<SendEmailOptions>): Promise<string | undefined> => {
-  const sender = from ?? `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
+  const sender = from ?? shopSender()
   try {
     const { error } = await resend.emails.send({ ...message, from: sender, replyTo: BUSINESS.EMAIL })
 
