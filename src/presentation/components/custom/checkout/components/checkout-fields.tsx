@@ -19,6 +19,7 @@ import {
   ValidCheck,
   isFieldValid,
   toStringValue,
+  useAutofillAwareChange,
 } from "~/src/presentation/components/custom/floating-field"
 
 const LABEL_CLASS = "font-medium text-[10px] text-muted-foreground uppercase tracking-[0.22em]"
@@ -54,6 +55,7 @@ export const CheckoutTextField = ({
   ...rest
 }: CheckoutTextFieldProps): JSX.Element => {
   const { field, fieldState } = useController({ control, name })
+  const handleChange = useAutofillAwareChange(field)
 
   const valueStr = displayValue ?? toStringValue(field.value)
   const isReadOnly = rest.readOnly === true
@@ -64,6 +66,7 @@ export const CheckoutTextField = ({
       <Input
         {...rest}
         {...field}
+        onChange={handleChange}
         variant="floating"
         value={valueStr}
         placeholder=" "
@@ -89,6 +92,7 @@ interface CheckoutPhoneFieldProps {
 
 export const CheckoutPhoneField = ({ className, control, label, name, required }: CheckoutPhoneFieldProps): JSX.Element => {
   const { field, fieldState } = useController({ control, name })
+  const handleChange = useAutofillAwareChange(field)
 
   const valueStr = toStringValue(field.value)
   const showValid = isFieldValid(fieldState, valueStr)
@@ -114,6 +118,7 @@ export const CheckoutPhoneField = ({ className, control, label, name, required }
         <div className="relative flex-1">
           <Input
             {...field}
+            onChange={handleChange}
             variant="floating"
             type="tel"
             inputMode="tel"

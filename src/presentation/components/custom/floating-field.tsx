@@ -1,8 +1,8 @@
-import { type JSX } from "react"
+import { type ChangeEvent, type JSX, useCallback } from "react"
 
 import { cn } from "cn"
 import { Check } from "lucide-react"
-import { type ControllerFieldState } from "react-hook-form"
+import { type ControllerFieldState, type ControllerRenderProps, type FieldPath, type FieldValues } from "react-hook-form"
 
 export const FLOATING_LABEL_CLASS = cn(
   "pointer-events-none absolute top-[26px] left-3 z-10 origin-left -translate-y-1/2 text-sm font-normal whitespace-nowrap text-muted-foreground normal-case transition-all duration-200",
@@ -45,6 +45,20 @@ export const ValidCheck = ({ className, show }: Readonly<{ className?: string; s
 }
 
 export const toStringValue = (value: unknown): string => (typeof value === "string" ? value : "")
+
+export const useAutofillAwareChange = <TFieldValues extends FieldValues, TName extends FieldPath<TFieldValues>>({
+  onBlur,
+  onChange,
+}: ControllerRenderProps<TFieldValues, TName>): ((event: ChangeEvent<HTMLInputElement>) => void) =>
+  useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      onChange(event)
+      if (event.target !== event.target.ownerDocument.activeElement) {
+        onBlur()
+      }
+    },
+    [onBlur, onChange],
+  )
 
 export const isFieldValid = (fieldState: ControllerFieldState, value: string): boolean =>
   fieldState.isTouched && !fieldState.invalid && value !== ""

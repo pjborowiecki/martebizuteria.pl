@@ -529,7 +529,12 @@ export const PaymentStep = (): JSX.Element => {
 
 const PAYMENT_ELEMENT_OPTIONS: StripeCheckoutPaymentElementOptions = {
   fields: {
-    billingDetails: "never",
+    billingDetails: {
+      address: { city: "never", country: "never", line1: "never", line2: "never", postalCode: "never", state: "auto" },
+      email: "never",
+      name: "never",
+      phone: "never",
+    },
   },
   layout: {
     radios: "always",

@@ -13,6 +13,7 @@ export const getStripeAppearance = (theme: "light" | "dark"): Appearance => {
   const colorDanger = isDark ? "#f87171" : "#dc2626"
   const colorBorder = isDark ? "#2a2a2a" : "#e4e4e4"
   const colorMutedSurface = isDark ? "#141414" : "#f7f7f7"
+  const colorInputBackground = isDark ? "#121214" : "#ffffff"
   const tabBorderResting = isDark ? "#1f1f1f" : "#ededed"
   const tabBorderSelected = isDark ? "#525252" : "#b6b6b6"
 
@@ -42,13 +43,13 @@ export const getStripeAppearance = (theme: "light" | "dark"): Appearance => {
         borderColor: colorBorder,
       },
       ".Input": {
-        backgroundColor: "transparent",
+        backgroundColor: colorInputBackground,
         border: "none",
         borderBottom: `1px solid ${colorBorder}`,
         borderRadius: "0",
         boxShadow: "none",
         fontSize: "14px",
-        padding: "10px 0",
+        padding: "10px 12px",
       },
       ".Input--invalid": {
         borderBottom: `1px solid ${colorDanger}`,

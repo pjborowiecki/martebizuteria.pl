@@ -565,8 +565,18 @@ describe("confirmCheckoutSession", () => {
         address: { city: "Warszawa", country: "PL", line1: "ul. Mokotowska 12/4", postal_code: "00-640" },
         name: "Anna Kowalska",
       },
+      phoneNumber: "+48600123456",
       redirect: "if_required",
     })
+  })
+
+  it("sends the shopper's phone number in international format, since the payment form asks for no billing details", async () => {
+    const checkout = stubbedCheckout()
+    confirm.mockResolvedValue({ session: checkout, type: "success" })
+
+    await confirmCheckoutSession({ checkout, values: { ...shippingValues, phone: "600 123 456" } })
+
+    expect(confirm).toHaveBeenCalledWith(expect.objectContaining({ phoneNumber: "+48600123456" }))
   })
 
   it("sends the separate billing address when the shopper supplied one", async () => {
@@ -592,6 +602,7 @@ describe("confirmCheckoutSession", () => {
         address: { city: "Kraków", country: "PL", line1: "ul. Krucza 1", postal_code: "30-001" },
         name: "Jan Nowak",
       },
+      phoneNumber: "+48600123456",
       redirect: "if_required",
     })
   })

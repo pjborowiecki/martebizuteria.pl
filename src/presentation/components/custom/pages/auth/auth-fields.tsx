@@ -16,6 +16,7 @@ import {
   ValidCheck,
   isFieldValid,
   toStringValue,
+  useAutofillAwareChange,
 } from "~/src/presentation/components/custom/floating-field"
 import { PasswordToggle } from "~/src/presentation/components/custom/pages/auth/password-toggle"
 import { ValidationFieldError } from "~/src/presentation/components/custom/validation-field-error"
@@ -36,6 +37,7 @@ export const AuthTextField = <TFieldValues extends FieldValues>({
     control,
     name,
   })
+  const handleChange = useAutofillAwareChange(field)
 
   const valueStr = toStringValue(field.value)
   const showValid = isFieldValid(fieldState, valueStr)
@@ -45,6 +47,7 @@ export const AuthTextField = <TFieldValues extends FieldValues>({
       <Input
         {...rest}
         {...field}
+        onChange={handleChange}
         value={valueStr}
         id={id}
         variant="floating"
@@ -75,6 +78,7 @@ export const AuthPasswordField = <TFieldValues extends FieldValues>({
     name,
   })
 
+  const handleChange = useAutofillAwareChange(field)
   const [show, setShow] = useState(false)
   const valueStr = toStringValue(field.value)
   const showValid = isFieldValid(fieldState, valueStr)
@@ -88,6 +92,7 @@ export const AuthPasswordField = <TFieldValues extends FieldValues>({
         <InputGroupInput
           {...rest}
           {...field}
+          onChange={handleChange}
           value={valueStr}
           id={id}
           type={show ? "text" : "password"}

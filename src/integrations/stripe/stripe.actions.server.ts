@@ -312,6 +312,7 @@ const createStripeSession = async ({
     metadata,
     mode: "payment",
     payment_intent_data: { metadata, receipt_email: email },
+    phone_number_collection: { enabled: true },
     return_url: returnUrl,
     ui_mode: "elements",
     ...(customerId === undefined

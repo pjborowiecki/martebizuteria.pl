@@ -28,6 +28,13 @@ describe("getStripeAppearance", () => {
     }
   })
 
+  it("insets the card details inside a filled field, like the storefront's own inputs", () => {
+    expect(light.rules?.[".Input"]?.["padding"]).toBe("10px 12px")
+    expect(light.rules?.[".Input"]?.["backgroundColor"]).toBe("#ffffff")
+    expect(dark.rules?.[".Input"]?.["padding"]).toBe("10px 12px")
+    expect(dark.rules?.[".Input"]?.["backgroundColor"]).toBe("#121214")
+  })
+
   it("uses a lighter danger colour on dark so the error stays legible", () => {
     expect(light.variables?.colorDanger).toBe("#dc2626")
     expect(dark.variables?.colorDanger).toBe("#f87171")
