@@ -1,7 +1,5 @@
 import zod from "zod/v4"
 
-import { turnstileTokenSchema } from "~/src/integrations/cloudflare-turnstile/turnstile.zod"
-
 import { MIN_FIELD_LENGTH, idField } from "~/src/modules/_core/utils/zod-fields"
 import {
   ORDER_WITHDRAWAL_EMAIL_MAX_LENGTH,
@@ -51,6 +49,5 @@ export const orderWithdrawalZodSchemas = {
   customerForm: customerFields.refine(choosesItemsWhenPartial, CHOSEN_ITEMS_REQUIRED),
   customerInput: customerFields.extend({ orderId: idField }).refine(choosesItemsWhenPartial, CHOSEN_ITEMS_REQUIRED),
   guestForm: guestFields.refine(namesItemsWhenPartial, NAMED_ITEMS_REQUIRED),
-  guestInput: guestFields.extend({ turnstileToken: turnstileTokenSchema }).refine(namesItemsWhenPartial, NAMED_ITEMS_REQUIRED),
   orderIdInput: zod.object({ orderId: idField }),
 }

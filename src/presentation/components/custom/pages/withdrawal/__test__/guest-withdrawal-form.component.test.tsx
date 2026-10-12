@@ -5,17 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 const calls = vi.hoisted(() => ({
-  issueTurnstileToken: vi.fn<(request: { action: string; container: HTMLElement }) => Promise<string>>(),
   toastError: vi.fn<(message: string) => void>(),
   withdraw: vi.fn<(data: Record<string, unknown>) => Promise<void>>(),
 }))
 
 vi.mock("sonner", () => ({ toast: { error: calls.toastError } }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.client", () => ({ issueTurnstileToken: calls.issueTurnstileToken }))
 vi.mock("~/src/modules/order-withdrawal/use-cases/withdraw-from-guest-order", () => ({
   withdrawFromGuestOrderMutation: {
-    mutationFn: async ({ requestTurnstileToken, ...data }: { requestTurnstileToken: () => Promise<string> }) =>
-      calls.withdraw({ ...data, turnstileToken: await requestTurnstileToken() }),
+    mutationFn: (data: Record<string, unknown>) => calls.withdraw(data),
     mutationKey: ["order-withdrawal", "withdrawFromGuestOrder"],
   },
 }))
@@ -31,14 +28,13 @@ const fillStatement = async (): Promise<void> => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  calls.issueTurnstileToken.mockResolvedValue("turnstile-token-1")
   calls.withdraw.mockResolvedValue(undefined)
 })
 
 afterEach(cleanup)
 
 describe("GuestWithdrawalForm", () => {
-  it("sends the statement for the order named in the email link with a bot-check token and answers without saying whether the order was found", async () => {
+  it("sends the statement for the order named in the email link and answers without saying whether the order was found", async () => {
     renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />)
     expect(screen.getByLabelText(/Order number/u)).toHaveValue("MRT-2026-00042")
 
@@ -57,15 +53,10 @@ describe("GuestWithdrawalForm", () => {
       orderNumber: "MRT-2026-00042",
       reason: "",
       scope: "order",
-      turnstileToken: "turnstile-token-1",
     })
-    const slot = calls.issueTurnstileToken.mock.lastCall?.[0].container
-    expect(calls.issueTurnstileToken).toHaveBeenCalledExactlyOnceWith({ action: "withdrawal", container: slot })
-    expect(slot?.closest("form")).not.toBeNull()
-    expect(slot).toHaveClass("empty:hidden")
   })
 
-  it("asks for the order number, the email and the name before running the bot check or sending anything", async () => {
+  it("asks for the order number, the email and the name before sending anything", async () => {
     renderWithProviders(<GuestWithdrawalForm defaultOrderNumber={undefined} />)
 
     await userEvent.click(confirmButton())
@@ -73,7 +64,6 @@ describe("GuestWithdrawalForm", () => {
     expect(await screen.findByText("Enter the order number from your confirmation email.")).toBeInTheDocument()
     expect(screen.getByText("Enter the email address you ordered with.")).toBeInTheDocument()
     expect(screen.getByText("Enter your full name.")).toBeInTheDocument()
-    expect(calls.issueTurnstileToken).not.toHaveBeenCalled()
     expect(calls.withdraw).not.toHaveBeenCalled()
   })
 
@@ -105,20 +95,6 @@ describe("GuestWithdrawalForm", () => {
     expect(await screen.findByRole("button", { name: "Sending…" })).toBeDisabled()
     answer.resolve(undefined)
     expect(await screen.findByRole("heading", { name: "Thank you for your statement" })).toBeInTheDocument()
-  })
-
-  it("explains a bot check the browser could not finish and keeps the form", async () => {
-    calls.issueTurnstileToken.mockRejectedValue(new Error("BOT_CHECK_FAILED"))
-    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />)
-    await fillStatement()
-
-    await userEvent.click(confirmButton())
-
-    await waitFor(() => {
-      expect(calls.toastError).toHaveBeenCalledWith("We could not finish the check that keeps bots out. Please try again.")
-    })
-    expect(calls.withdraw).not.toHaveBeenCalled()
-    expect(confirmButton()).toBeEnabled()
   })
 
   it("reports a request the server turned away", async () => {

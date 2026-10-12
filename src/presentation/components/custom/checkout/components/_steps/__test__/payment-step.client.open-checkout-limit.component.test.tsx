@@ -1,8 +1,7 @@
 import { type JSX, type ReactNode } from "react"
 
 import type * as TanStackRouter from "@tanstack/react-router"
-import { cleanup, screen, waitFor } from "@testing-library/react"
-import { userEvent } from "@testing-library/user-event"
+import { cleanup, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -11,13 +10,8 @@ import type * as StripeCheckout from "~/src/integrations/stripe/stripe.checkout"
 
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 
-interface SessionOpening {
-  readonly requestTurnstileToken: () => Promise<string>
-}
-
-const { ensureCheckoutSession, issueTurnstileToken, navigate, onEdit, setCheckoutSession, toastError } = vi.hoisted(() => ({
-  ensureCheckoutSession: vi.fn<(request: SessionOpening) => Promise<StripeCheckout.CheckoutSession>>(),
-  issueTurnstileToken: vi.fn<(request: { action: string; container: HTMLElement }) => Promise<string>>(),
+const { ensureCheckoutSession, navigate, onEdit, setCheckoutSession, toastError } = vi.hoisted(() => ({
+  ensureCheckoutSession: vi.fn<() => Promise<StripeCheckout.CheckoutSession>>(),
   navigate: vi.fn<() => Promise<void>>(),
   onEdit: vi.fn<(stepId: string) => void>(),
   setCheckoutSession: vi.fn<(session: StripeCheckout.CheckoutSession) => void>(),
@@ -45,7 +39,6 @@ vi.mock("@tanstack/react-router", async () => {
 
   return { ...actual, useNavigate: () => navigate }
 })
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.client", () => ({ issueTurnstileToken }))
 vi.mock("~/src/integrations/stripe/stripe.client", () => ({ getStripe: () => Promise.resolve(null) }))
 vi.mock("~/src/integrations/stripe/stripe.actions", () => ({ createCheckoutSessionFn: vi.fn(), updateCheckoutSessionFn: vi.fn() }))
 vi.mock("~/src/integrations/stripe/stripe.checkout", async () => {
@@ -82,23 +75,10 @@ import { useCartStore } from "~/src/modules/cart/cart.store"
 
 import { PaymentStep } from "~/src/presentation/components/custom/checkout/components/_steps/payment-step.client"
 
-const openedRequest = async (): Promise<SessionOpening> => {
-  await waitFor(() => {
-    expect(ensureCheckoutSession).toHaveBeenCalledOnce()
-  })
-  const request = ensureCheckoutSession.mock.calls[0]?.[0]
-  if (request === undefined) {
-    throw new Error("The payment step opened no session")
-  }
-
-  return request
-}
-
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   ensureCheckoutSession.mockReturnValue(Promise.withResolvers<StripeCheckout.CheckoutSession>().promise)
-  issueTurnstileToken.mockResolvedValue("turnstile-token-1")
   useCartStore.setState({
     items: [
       {
@@ -121,46 +101,7 @@ afterEach(() => {
   useCartStore.setState({ items: [] })
 })
 
-describe("PaymentStep bot check", () => {
-  it("runs the checkout's Turnstile check in a slot that stays on the page while the payment loads", async () => {
-    const { container } = renderWithProviders(<PaymentStep />)
-    const request = await openedRequest()
-
-    await expect(request.requestTurnstileToken()).resolves.toBe("turnstile-token-1")
-
-    const slot = issueTurnstileToken.mock.lastCall?.[0].container
-    if (slot === undefined) {
-      throw new Error("The payment step asked Turnstile for no token")
-    }
-
-    expect(issueTurnstileToken).toHaveBeenCalledExactlyOnceWith({ action: "checkout", container: slot })
-    expect(container.contains(slot)).toBe(true)
-    expect(slot).toHaveClass("empty:hidden")
-  })
-
-  it("refuses to run the check once the payment step has left the page", async () => {
-    renderWithProviders(<PaymentStep />)
-    const request = await openedRequest()
-    cleanup()
-
-    await expect(request.requestTurnstileToken()).rejects.toThrow("BOT_CHECK_FAILED")
-    expect(issueTurnstileToken).not.toHaveBeenCalled()
-  })
-
-  it("explains a failed check and lets the shopper try again", async () => {
-    ensureCheckoutSession.mockRejectedValueOnce(new Error("BOT_CHECK_FAILED"))
-    renderWithProviders(<PaymentStep />)
-
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalledExactlyOnceWith("We could not finish the check that keeps bots out of checkout. Please try again.")
-    })
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Try again" }))
-
-    await waitFor(() => {
-      expect(ensureCheckoutSession).toHaveBeenCalledTimes(2)
-    })
-  })
-
+describe("PaymentStep open-checkout limit", () => {
   it("explains why a shopper with too many unpaid checkouts cannot open another", async () => {
     ensureCheckoutSession.mockRejectedValueOnce(new Error("TOO_MANY_OPEN_CHECKOUTS"))
     renderWithProviders(<PaymentStep />)

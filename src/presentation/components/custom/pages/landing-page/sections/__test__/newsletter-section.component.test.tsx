@@ -6,15 +6,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import englishLanding from "~/messages/en-US/pages.landing.json"
 import polishLanding from "~/messages/pl-PL/pages.landing.json"
 
-const { issueTurnstileToken, subscribe } = vi.hoisted(() => ({
-  issueTurnstileToken: vi.fn<(request: { action: string; container: HTMLElement }) => Promise<string>>(),
-  subscribe: vi.fn<(input: { email: string; requestTurnstileToken: () => Promise<string> }) => Promise<{ outcome: string }>>(),
+const { subscribe } = vi.hoisted(() => ({
+  subscribe: vi.fn<(input: { email: string }) => Promise<{ outcome: string }>>(),
 }))
 
 vi.mock("~/src/modules/newsletter/use-cases/subscribe-to-newsletter", () => ({
   subscribeToNewsletterMutation: { mutationFn: subscribe, mutationKey: ["newsletter", "subscribe"] },
 }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.client", () => ({ issueTurnstileToken }))
 
 import { TEST_LOCALE, TEST_MESSAGES } from "~/src/platform/testing/lib/messages"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -51,28 +49,6 @@ describe("NewsletterSection", () => {
 
     await screen.findByText(/check your inbox/u)
     expect(subscribe.mock.calls[0]?.[0]).toMatchObject({ email: "anna@example.com", source: "landing" })
-  })
-
-  it("runs the newsletter bot check in a slot inside the form when the visitor joins", async () => {
-    issueTurnstileToken.mockResolvedValue("turnstile-token-1")
-    subscribe.mockReturnValue(Promise.withResolvers<{ outcome: string }>().promise)
-    renderWithProviders(<NewsletterSection />)
-    submit("anna@example.com")
-    await waitFor(() => {
-      expect(subscribe).toHaveBeenCalledOnce()
-    })
-
-    await expect(subscribe.mock.calls[0]?.[0].requestTurnstileToken()).resolves.toBe("turnstile-token-1")
-
-    const slot = issueTurnstileToken.mock.lastCall?.[0].container
-    expect(issueTurnstileToken).toHaveBeenCalledExactlyOnceWith({ action: "newsletter", container: slot })
-    expect(
-      screen
-        .getByLabelText("Email address")
-        .closest("form")
-        ?.contains(slot ?? null),
-    ).toBe(true)
-    expect(slot).toHaveClass("empty:hidden")
   })
 
   it("asks the visitor to confirm by email rather than claiming they are subscribed", async () => {
@@ -132,7 +108,7 @@ describe("NewsletterSection", () => {
     submit("anna@example.com")
 
     await screen.findByText(/check your inbox/u)
-    expect(subscribe.mock.calls[0]?.[0]).toMatchObject({ email: "anna@example.com", locale: undefined, source: NEWSLETTER_SOURCE.LANDING })
+    expect(subscribe.mock.calls[0]?.[0]).toStrictEqual({ email: "anna@example.com", locale: undefined, source: NEWSLETTER_SOURCE.LANDING })
   })
 
   it("locks the button while the confirmation email is being sent so it cannot be sent twice", async () => {

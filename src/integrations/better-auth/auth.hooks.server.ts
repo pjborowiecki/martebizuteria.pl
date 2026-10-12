@@ -6,17 +6,12 @@ import {
   ADMIN_PASSWORD_SIGN_IN_REQUIRED,
   ADMIN_PLUGIN_PATH_PREFIX,
   ADMIN_TWO_FACTOR_REQUIRED,
-  BOT_CHECKED_AUTH_PATHS,
-  BOT_CHECK_FAILED,
   EMAIL_DELIVERY_UNAVAILABLE,
   EMAIL_SENDING_AUTH_PATHS,
   PROVIDER_SIGN_IN_PATH_PREFIXES,
   STRIPE_CUSTOMER_NOT_DELETED,
 } from "~/src/integrations/better-auth/auth.constants"
 import { recordAuthEmailFailure } from "~/src/integrations/better-auth/auth.email-delivery.server"
-import { TURNSTILE_TOKEN_HEADER, type TurnstileAction } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
-import { passesTurnstile } from "~/src/integrations/cloudflare-turnstile/turnstile.server"
-import { turnstileTokenSchema } from "~/src/integrations/cloudflare-turnstile/turnstile.zod"
 import { scheduleAdminCustomersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { isEmailSenderUnavailable } from "~/src/integrations/resend/resend.availability.server"
 
@@ -35,30 +30,11 @@ import { getUserById } from "~/src/modules/user/user.accessors"
 import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
-import { auditRequestIp, resolveRequestIp, resolveRequestOrigin } from "~/src/lib/request"
-
-const passesBotCheck = (request: Request | undefined, action: TurnstileAction): Promise<boolean> => {
-  const token = turnstileTokenSchema.safeParse(request?.headers.get(TURNSTILE_TOKEN_HEADER))
-  if (request === undefined || !token.success) {
-    return Promise.resolve(false)
-  }
-
-  return passesTurnstile({
-    action,
-    hostname: new URL(request.url).hostname,
-    remoteIp: resolveRequestIp(request.headers),
-    token: token.data,
-  })
-}
+import { auditRequestIp, resolveRequestOrigin } from "~/src/lib/request"
 
 export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
   if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
     throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
-  }
-
-  const botCheckAction = BOT_CHECKED_AUTH_PATHS.get(ctx.path)
-  if (botCheckAction !== undefined && !(await passesBotCheck(ctx.request, botCheckAction))) {
-    throw APIError.from("FORBIDDEN", BOT_CHECK_FAILED)
   }
 
   if (!ctx.path.startsWith(ADMIN_PLUGIN_PATH_PREFIX)) {

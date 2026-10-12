@@ -3,8 +3,6 @@ import type StripeType from "stripe"
 import { type z } from "zod"
 
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
-import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
-import { verifyTurnstileToken } from "~/src/integrations/cloudflare-turnstile/turnstile.server"
 import { fetchPointByName } from "~/src/integrations/inpost/inpost.api"
 import { INPOST_POINT_NAME_PATTERN } from "~/src/integrations/inpost/inpost.constants"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
@@ -56,7 +54,7 @@ import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/produc
 import { isSalesPaused } from "~/src/modules/store-setting/store-setting.accessors"
 
 import { clientAddress } from "~/src/lib/rate-limit"
-import { resolveRequestIp, resolveRequestOrigin } from "~/src/lib/request"
+import { resolveRequestOrigin } from "~/src/lib/request"
 import { buildLocalizedUrl } from "~/src/lib/seo"
 import { resolveAssetURL } from "~/src/lib/url"
 
@@ -124,23 +122,16 @@ interface AdmittedCheckout {
   visitorAddress: string
 }
 
-const admitNewCheckout = async ({ checkoutValues, turnstileToken }: CreateCheckoutSessionInput): Promise<AdmittedCheckout> => {
+const admitNewCheckout = async ({ checkoutValues }: CreateCheckoutSessionInput): Promise<AdmittedCheckout> => {
   await assertSalesOpen()
   const request = getRequest()
-  const origin = resolveRequestOrigin(request)
-  await verifyTurnstileToken({
-    action: TURNSTILE_ACTIONS.CHECKOUT,
-    hostname: new URL(origin).hostname,
-    remoteIp: resolveRequestIp(request.headers),
-    token: turnstileToken,
-  })
   const visitorAddress = clientAddress(request.headers)
   const open = await countOpenCheckouts({ clientAddress: visitorAddress, email: checkoutValues.email })
   if (open.byClientAddress >= OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX || open.byEmail >= OPEN_CHECKOUTS_PER_EMAIL_MAX) {
     throw new AppError(ERROR_CODES.TOO_MANY_REQUESTS, CHECKOUT_ERROR_CODES.TOO_MANY_OPEN_CHECKOUTS)
   }
 
-  return { origin, visitorAddress }
+  return { origin: resolveRequestOrigin(request), visitorAddress }
 }
 
 const isLockerUnconfirmed = (lockerId: string): Promise<boolean> =>

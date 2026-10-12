@@ -39,7 +39,6 @@ jobs:
           VITE_APP_URL: ${{ vars.VITE_APP_URL }}
           VITE_R2_URL: ${{ vars.VITE_R2_URL }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.VITE_STRIPE_PUBLISHABLE_KEY }}
-          VITE_TURNSTILE_SITE_KEY: ${{ vars.VITE_TURNSTILE_SITE_KEY }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
           AUTH_GOOGLE_CLIENT_ID: ${{ secrets.AUTH_GOOGLE_CLIENT_ID }}
           AUTH_GOOGLE_CLIENT_SECRET: ${{ secrets.AUTH_GOOGLE_CLIENT_SECRET }}
@@ -50,7 +49,6 @@ jobs:
           RESEND_MANAGEMENT_API_KEY: ${{ secrets.RESEND_MANAGEMENT_API_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
           STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
-          TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
           CLOUDFLARE_ENV: preview
         run: |
           touch .env.preview

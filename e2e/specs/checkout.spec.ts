@@ -25,7 +25,6 @@ import {
   waitForOpenCheckoutSession,
 } from "../fixtures/stripe"
 import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
-import { TURNSTILE_DUMMY_TOKEN } from "../fixtures/turnstile"
 import { uniqueEmail } from "../fixtures/unique"
 import { CheckoutPage } from "../pages/checkout-page"
 import { ProductPage } from "../pages/product-page"
@@ -47,8 +46,6 @@ const LOCKER_REQUIRED = "Please choose a parcel locker for this delivery method.
 const LOCKER_NOT_FOUND = "InPost does not list the parcel locker you chose. Please choose another one."
 
 const DELIVERY_STEP_URL = /\/en-US\/checkout\?step=3$/u
-
-const BOT_CHECK_FAILED = "We could not finish the check that keeps bots out of checkout. Please try again."
 
 const TOO_MANY_OPEN_CHECKOUTS =
   "Several payments started for this email address or from your connection have not been paid yet. Finish one of them, or try again in about half an hour, once they have expired."
@@ -623,27 +620,6 @@ test.describe("checkout abuse limits", () => {
     await productPage.gotoProduct(PRODUCTS.lapis.handle)
     await productPage.addToCart()
     await expect(cartPage.cartLink()).toContainText("1")
-  })
-
-  test("a checkout whose bot check token was tampered with opens no payment until the shopper tries again", async ({
-    checkoutPage,
-    page,
-    request,
-  }, testInfo) => {
-    const email = uniqueEmail(testInfo, "forged-bot-check")
-    await rewriteNextServerFunctionRequest(page, SERVER_FUNCTIONS.createCheckoutSession, (body) =>
-      body.replaceAll(TURNSTILE_DUMMY_TOKEN, "forged-token"),
-    )
-
-    await chooseCourierAsGuest(checkoutPage, email)
-
-    await expect(checkoutPage.notification(BOT_CHECK_FAILED)).toBeVisible()
-    expect(await openCheckoutSessions(request, email)).toStrictEqual([])
-
-    await page.getByRole("button", { name: "Try again" }).click()
-    const session = await waitForOpenCheckoutSession(request, email)
-    expect(session.amount_total).toBe(39_899)
-    await expect(checkoutPage.paymentStep()).toBeVisible()
   })
 
   test("a further unpaid checkout for an email that already has three open is refused and holds nothing", async ({

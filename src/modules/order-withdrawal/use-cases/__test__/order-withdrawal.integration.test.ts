@@ -7,7 +7,7 @@ import { z } from "zod"
 
 import { MIGRATION, applyMigration, applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
-import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { ORDER_WITHDRAWAL_MUTATION_KEYS } from "~/src/modules/order-withdrawal/order-withdrawal.constants"
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import {
@@ -34,7 +34,6 @@ const { background, effects, sqlite, worker } = await vi.hoisted(async () => {
       requestSession: vi.fn<() => Promise<{ user: { id: string; name: string; role: string } } | null>>(),
       sendEmail: vi.fn<(options: Readonly<SentEmail>) => Promise<string | undefined>>(),
       sendIncidentAlert: vi.fn<(incident: unknown) => Promise<void>>(),
-      verifyTurnstile: vi.fn<(check: Readonly<{ action: string; hostname: string; token: string }>) => Promise<void>>(),
       withdrawalReceivedAudit: vi.fn(),
     },
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
@@ -91,7 +90,6 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderEmailOutcome: effects.emailOutcome,
   recordOrderWithdrawalReceivedAudit: effects.withdrawalReceivedAudit,
 }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ verifyTurnstileToken: effects.verifyTurnstile }))
 
 const SHOP_ORIGIN = "http://127.0.0.1:3000"
 
@@ -102,8 +100,6 @@ const BOB_ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234568"
 const ANNA = { user: { id: "user-anna", name: "Anna Kowalska", role: "customer" } }
 
 const SHOP_INBOX = worker.env.RESEND_EMAIL_FROM
-
-const TURNSTILE_TOKEN = "turnstile-token-1"
 
 const PUBLIC_EMAIL_KEY_PREFIX = "public-email:"
 
@@ -125,7 +121,6 @@ const guestWithdrawal = (overrides: Partial<Parameters<typeof withdrawFromGuestO
       orderNumber: "mrt-2026-00042",
       reason: "",
       scope: "order",
-      turnstileToken: TURNSTILE_TOKEN,
       ...overrides,
     },
   })
@@ -173,7 +168,6 @@ beforeEach(() => {
   effects.rateLimit.mockResolvedValue(true)
   effects.requestSession.mockResolvedValue(ANNA)
   effects.sendEmail.mockResolvedValue(undefined)
-  effects.verifyTurnstile.mockResolvedValue(undefined)
   sqlite.exec(`
     delete from order_withdrawal;
     delete from order_item;
@@ -372,20 +366,6 @@ describe("retrying the acknowledgement of a withdrawal", () => {
 })
 
 describe("withdrawing from an order as a guest", () => {
-  it("checks the bot-check token for the withdrawal action on the shop's host before it looks for the order", async () => {
-    effects.verifyTurnstile.mockRejectedValue(new AppError(ERROR_CODES.FORBIDDEN, "BOT_CHECK_FAILED"))
-
-    await expect(guestWithdrawal()).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN, message: "BOT_CHECK_FAILED" })
-    expect(effects.verifyTurnstile).toHaveBeenCalledExactlyOnceWith({
-      action: "withdrawal",
-      hostname: "127.0.0.1",
-      remoteIp: undefined,
-      token: TURNSTILE_TOKEN,
-    })
-    expect(readWithdrawals()).toStrictEqual([])
-    expect(effects.sendEmail).not.toHaveBeenCalled()
-  })
-
   it("finds the order by its number and email in any letter case, records the named products and acknowledges them", async () => {
     effects.requestSession.mockResolvedValue(null)
     effects.locale.mockReturnValue("pl-PL")
@@ -458,10 +438,9 @@ describe("withdrawing from an order as a guest", () => {
 
     await expect(guestWithdrawal()).rejects.toMatchObject({ code: ERROR_CODES.TOO_MANY_REQUESTS })
     expect(effects.rateLimit).toHaveBeenCalledExactlyOnceWith({ key: "withdraw-from-guest-order:203.0.113.7", limit: 3, windowSeconds: 60 })
-    expect(effects.verifyTurnstile).not.toHaveBeenCalled()
   })
 
-  it("asks for a bot-check token when it sends the statement through its mutation", async () => {
+  it("sends the statement through its mutation", async () => {
     const { mutationFn } = withdrawFromGuestOrderMutation
     const context = { client: new QueryClient(), meta: undefined }
     const statement = {
@@ -470,12 +449,10 @@ describe("withdrawing from an order as a guest", () => {
       items: "",
       orderNumber: "MRT-2026-00042",
       reason: "",
-      requestTurnstileToken: () => Promise.resolve(TURNSTILE_TOKEN),
       scope: "order",
     } as const
 
     await expect(mutationFn?.(statement, context)).resolves.toBeUndefined()
-    expect(effects.verifyTurnstile).toHaveBeenCalledWith(expect.objectContaining({ token: TURNSTILE_TOKEN }))
     expect(readWithdrawals()).toHaveLength(1)
     expect(withdrawFromGuestOrderMutation.mutationKey).toStrictEqual(ORDER_WITHDRAWAL_MUTATION_KEYS.WITHDRAW_FROM_GUEST_ORDER)
   })

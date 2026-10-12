@@ -11,7 +11,6 @@ import { AlertCircle, ArrowRight, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import { STRIPE_FONTS, getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
 import {
   type CheckoutSession,
@@ -35,7 +34,6 @@ import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delive
 import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
-import { useTurnstileToken } from "~/src/hooks/use-turnstile-token"
 
 import { Button, buttonVariants } from "~/src/presentation/components/shadcn/button"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
@@ -360,7 +358,7 @@ const useCheckoutSessionOutcome = (): CheckoutSessionOutcome => {
   return { handleSessionError, loadError, processingSessionId, retry, retryToken, setLoadError, settleProcessingSession }
 }
 
-const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>): CheckoutSessionLoader => {
+const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
   const { theme } = useTheme()
   const { checkoutSession, getValues, onEdit, setCheckoutSession } = useCheckoutForm()
   const items = useCartStore((state) => state.items)
@@ -387,7 +385,6 @@ const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>):
       const session = await resetCheckoutSession({
         heldSessionId: loadCheckoutSessionId(),
         items,
-        requestTurnstileToken,
         session: checkoutSession,
         values: getValues(),
       })
@@ -399,7 +396,7 @@ const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>):
     } finally {
       inFlightRef.current = false
     }
-  }, [adoptSession, checkoutSession, getValues, handleSessionError, items, requestTurnstileToken])
+  }, [adoptSession, checkoutSession, getValues, handleSessionError, items])
   useEffect(() => {
     if (!isCheckoutComplete(getValues())) {
       onEdit(CHECKOUT_STEP_ID.CONTACT)
@@ -419,7 +416,6 @@ const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>):
           existing: checkoutSession,
           heldSessionId: loadCheckoutSessionId(),
           items,
-          requestTurnstileToken,
           values: getValues(),
         })
         adoptSession(session)
@@ -438,7 +434,6 @@ const useCheckoutSessionLoader = (requestTurnstileToken: () => Promise<string>):
     items,
     onEdit,
     processingSessionId,
-    requestTurnstileToken,
     setLoadError,
     retryToken,
     sessionMatches,
@@ -492,20 +487,14 @@ const useCheckoutSessionExpired = (checkoutSession: CheckoutSession | undefined)
   return checkoutSession !== undefined && expiredSession === checkoutSession
 }
 
-const PaymentStepBody = ({
-  checkoutSession,
-  loadError,
-  options,
-  processingSessionId,
-  resetSession,
-  retry,
-  settleProcessingSession,
-}: Readonly<CheckoutSessionLoader>): JSX.Element => {
+export const PaymentStep = (): JSX.Element => {
   const locale = useLocale()
   const t = useTranslations("pages.checkout.checkoutForm")
   const { hasUnavailableItems, isChecking } = useCartAvailability()
   const checkoutBlocked = hasUnavailableItems || isChecking
   const stripePromise = useMemo(() => getStripe(locale), [locale])
+  const { checkoutSession, loadError, options, processingSessionId, resetSession, retry, settleProcessingSession } =
+    useCheckoutSessionLoader()
   const isExpired = useCheckoutSessionExpired(checkoutSession)
   const restartPayment = useCallback(() => {
     void resetSession()
@@ -534,27 +523,6 @@ const PaymentStepBody = ({
           <PaymentForm checkoutBlocked={checkoutBlocked} onReset={resetSession} onRetry={retry} />
         </CheckoutElementsProvider>
       </div>
-    </div>
-  )
-}
-
-export const PaymentStep = (): JSX.Element => {
-  const { containerRef, requestToken } = useTurnstileToken(TURNSTILE_ACTIONS.CHECKOUT)
-  const { checkoutSession, loadError, options, processingSessionId, resetSession, retry, settleProcessingSession } =
-    useCheckoutSessionLoader(requestToken)
-
-  return (
-    <div>
-      <div ref={containerRef} className="mb-4 empty:hidden" />
-      <PaymentStepBody
-        checkoutSession={checkoutSession}
-        loadError={loadError}
-        options={options}
-        processingSessionId={processingSessionId}
-        resetSession={resetSession}
-        retry={retry}
-        settleProcessingSession={settleProcessingSession}
-      />
     </div>
   )
 }

@@ -16,13 +16,13 @@ więc nic nie wczytuje się niejawnie. Vite i Wrangler wybierają plik na podsta
 
 ## Pliki środowiskowe
 
-| Plik               | W repozytorium | Używany przez                                                                                                                                          |
-| ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `.env.example`     | Tak            | Szablon; wymienia każdą zmienną z wartością zastępczą lub pustą                                                                                        |
-| `.env.development` | Nie            | `bun run dev`, `email:verify development`, `verify-stripe-keys.ts development`, `verify-turnstile-keys.ts development`, skrypty Drizzle `:development` |
-| `.env.preview`     | Nie            | `build:preview`, `deploy:preview`, `email:verify preview`, skrypty Drizzle `:preview`                                                                  |
-| `.env.production`  | Nie            | `build:production`, `deploy:production`, `email:verify production`, skrypty Drizzle `:production`                                                      |
-| `.env.test`        | Tak            | Vitest, przez `env: loadEnv("test", import.meta.dirname, "")` w `vite.config.ts`; wyłącznie atrapy                                                     |
+| Plik               | W repozytorium | Używany przez                                                                                                  |
+| ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Tak            | Szablon; wymienia każdą zmienną z wartością zastępczą lub pustą                                                |
+| `.env.development` | Nie            | `bun run dev`, `email:verify development`, `verify-stripe-keys.ts development`, skrypty Drizzle `:development` |
+| `.env.preview`     | Nie            | `build:preview`, `deploy:preview`, `email:verify preview`, skrypty Drizzle `:preview`                          |
+| `.env.production`  | Nie            | `build:production`, `deploy:production`, `email:verify production`, skrypty Drizzle `:production`              |
+| `.env.test`        | Tak            | Vitest, przez `env: loadEnv("test", import.meta.dirname, "")` w `vite.config.ts`; wyłącznie atrapy             |
 
 Zacznij od szablonu:
 
@@ -32,27 +32,25 @@ cp .env.example .env.development
 
 ## Zmienne
 
-| Zmienna                       | Czytana przez                                                                                                                                                                                          | Sekret Workera |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------- |
-| `AUTH_SECRET`                 | Podpisywanie i szyfrowanie w Better Auth                                                                                                                                                               | Tak            |
-| `AUTH_GOOGLE_CLIENT_ID`       | OAuth Google                                                                                                                                                                                           | Tak            |
-| `AUTH_GOOGLE_CLIENT_SECRET`   | OAuth Google                                                                                                                                                                                           | Tak            |
-| `INPOST_API_TOKEN`            | Klient ShipX w `src/integrations/inpost/inpost.shipx.server.ts`; pusty wyłącza przesyłki InPost                                                                                                        | Tak            |
-| `INPOST_ORGANIZATION_ID`      | Organizacja ShipX dla przesyłek i webhooków; pusty wyłącza przesyłki InPost                                                                                                                            | Tak            |
-| `RESEND_API_KEY`              | Klient Resend: `new Resend(env.RESEND_API_KEY)` w `src/integrations/resend/resend.config.ts`                                                                                                           | Tak            |
-| `RESEND_EMAIL_FROM`           | Domyślny nadawca: sam adres w domenie zweryfikowanej w Resend, a zarazem odbiorca powiadomień sklepu i alertów o incydentach w każdym środowisku                                                       | Tak            |
-| `STRIPE_SECRET_KEY`           | Serwerowy klient Stripe w `src/integrations/stripe/stripe.server.ts`; jego tryb sprawdza `scripts/verify-stripe-keys.ts`                                                                               | Tak            |
-| `STRIPE_WEBHOOK_SECRET`       | Weryfikacja podpisu w `src/routes/api/webhooks.stripe.ts`                                                                                                                                              | Tak            |
-| `TURNSTILE_SECRET_KEY`        | Siteverify Turnstile w `src/integrations/cloudflare-turnstile/turnstile.server.ts`; `scripts/verify-turnstile-keys.ts` sprawdza, że na produkcji to klucz własnego widżetu sklepu                      | Tak            |
-| `VITE_R2_URL`                 | Publiczny adres bazowy bucketu R2 danego środowiska, czytany jako `import.meta.env["VITE_R2_URL"]` w `src/lib/url.ts`                                                                                  | Tak            |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, wstrzykiwany do bundla klienta w czasie budowania; jego tryb sprawdza `scripts/verify-stripe-keys.ts`                                                      | Nie            |
-| `VITE_TURNSTILE_SITE_KEY`     | Widżet Turnstile kasy w `src/integrations/cloudflare-turnstile/turnstile.client.ts`, wstrzykiwany do bundla klienta; `scripts/verify-turnstile-keys.ts` sprawdza, czy pasuje do `TURNSTILE_SECRET_KEY` | Nie            |
-| `CLOUDFLARE_ACCOUNT_ID`       | Sterownik HTTP D1 w Drizzle Kit, `src/integrations/drizzle-orm/drizzle.config.ts`                                                                                                                      | Nie            |
-| `CLOUDFLARE_DATABASE_ID`      | Sterownik HTTP D1 w Drizzle Kit                                                                                                                                                                        | Nie            |
-| `CLOUDFLARE_ACCESS_TOKEN`     | Sterownik HTTP D1 w Drizzle Kit                                                                                                                                                                        | Nie            |
-| `RESEND_MANAGEMENT_API_KEY`   | Opcjonalny. Tym kluczem z pełnym dostępem `scripts/verify-email-sender.ts` odczytuje domenę nadawcy, gdy `RESEND_API_KEY` może tylko wysyłać                                                           | Nie            |
+| Zmienna                       | Czytana przez                                                                                                                                     | Sekret Workera |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `AUTH_SECRET`                 | Podpisywanie i szyfrowanie w Better Auth                                                                                                          | Tak            |
+| `AUTH_GOOGLE_CLIENT_ID`       | OAuth Google                                                                                                                                      | Tak            |
+| `AUTH_GOOGLE_CLIENT_SECRET`   | OAuth Google                                                                                                                                      | Tak            |
+| `INPOST_API_TOKEN`            | Klient ShipX w `src/integrations/inpost/inpost.shipx.server.ts`; pusty wyłącza przesyłki InPost                                                   | Tak            |
+| `INPOST_ORGANIZATION_ID`      | Organizacja ShipX dla przesyłek i webhooków; pusty wyłącza przesyłki InPost                                                                       | Tak            |
+| `RESEND_API_KEY`              | Klient Resend: `new Resend(env.RESEND_API_KEY)` w `src/integrations/resend/resend.config.ts`                                                      | Tak            |
+| `RESEND_EMAIL_FROM`           | Domyślny nadawca: sam adres w domenie zweryfikowanej w Resend, a zarazem odbiorca powiadomień sklepu i alertów o incydentach w każdym środowisku  | Tak            |
+| `STRIPE_SECRET_KEY`           | Serwerowy klient Stripe w `src/integrations/stripe/stripe.server.ts`; jego tryb sprawdza `scripts/verify-stripe-keys.ts`                          | Tak            |
+| `STRIPE_WEBHOOK_SECRET`       | Weryfikacja podpisu w `src/routes/api/webhooks.stripe.ts`                                                                                         | Tak            |
+| `VITE_R2_URL`                 | Publiczny adres bazowy bucketu R2 danego środowiska, czytany jako `import.meta.env["VITE_R2_URL"]` w `src/lib/url.ts`                             | Tak            |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | `src/integrations/stripe/stripe.client.ts`, wstrzykiwany do bundla klienta w czasie budowania; jego tryb sprawdza `scripts/verify-stripe-keys.ts` | Nie            |
+| `CLOUDFLARE_ACCOUNT_ID`       | Sterownik HTTP D1 w Drizzle Kit, `src/integrations/drizzle-orm/drizzle.config.ts`                                                                 | Nie            |
+| `CLOUDFLARE_DATABASE_ID`      | Sterownik HTTP D1 w Drizzle Kit                                                                                                                   | Nie            |
+| `CLOUDFLARE_ACCESS_TOKEN`     | Sterownik HTTP D1 w Drizzle Kit                                                                                                                   | Nie            |
+| `RESEND_MANAGEMENT_API_KEY`   | Opcjonalny. Tym kluczem z pełnym dostępem `scripts/verify-email-sender.ts` odczytuje domenę nadawcy, gdy `RESEND_API_KEY` może tylko wysyłać      | Nie            |
 
-Przy wdrożeniu wysyłane są wyłącznie zmienne wymienione w `secrets.required` w `wrangler.jsonc`. Każde środowisko deklaruje te same jedenaście nazw. Trzy zmienne `CLOUDFLARE_*` to poświadczenia Drizzle Kit i zostają na maszynie uruchamiającej CLI; `prepare-deploy-secrets.ts` zapisuje wyłącznie zadeklarowany zbiór do `.wrangler/secrets.<środowisko>.json` z uprawnieniami `0600` i głośno przerywa, jeśli któraś wartość jest pusta, z wyjątkiem `INPOST_API_TOKEN` i `INPOST_ORGANIZATION_ID`, które wysyła puste, żeby sklep bez danych InPost nadal mógł się wdrożyć:
+Przy wdrożeniu wysyłane są wyłącznie zmienne wymienione w `secrets.required` w `wrangler.jsonc`. Każde środowisko deklaruje te same dziesięć nazw. Trzy zmienne `CLOUDFLARE_*` to poświadczenia Drizzle Kit i zostają na maszynie uruchamiającej CLI; `prepare-deploy-secrets.ts` zapisuje wyłącznie zadeklarowany zbiór do `.wrangler/secrets.<środowisko>.json` z uprawnieniami `0600` i głośno przerywa, jeśli któraś wartość jest pusta, z wyjątkiem `INPOST_API_TOKEN` i `INPOST_ORGANIZATION_ID`, które wysyła puste, żeby sklep bez danych InPost nadal mógł się wdrożyć:
 
 ```
 Missing STRIPE_SECRET_KEY in .env.preview or the process environment
@@ -60,12 +58,11 @@ Missing STRIPE_SECRET_KEY in .env.preview or the process environment
 
 ### Wartości widoczne w przeglądarce
 
-Tylko nazwy z prefiksem `VITE_` trafiają do bundla klienta. `src/types/vite-env.d.ts` deklaruje na `ImportMetaEnv` dwie z nich:
+Tylko nazwy z prefiksem `VITE_` trafiają do bundla klienta. `src/types/vite-env.d.ts` deklaruje na `ImportMetaEnv` jedną z nich:
 
 ```ts
 interface ImportMetaEnv {
   readonly VITE_STRIPE_PUBLISHABLE_KEY: string | undefined
-  readonly VITE_TURNSTILE_SITE_KEY: string | undefined
 }
 ```
 
@@ -109,13 +106,12 @@ Kod Workera czyta powiązania i sekrety z `env` z modułu `cloudflare:workers`. 
 
 ## Kontrole przy wdrożeniu
 
-Oba skrypty wdrożeniowe uruchamiają sześć bramek wokół budowania i jedną kontrolę po wdrożeniu, a każda z nich rzuca wyjątkiem zamiast ostrzegać. Między bramkami a wdrożeniem `db:migrate:<środowisko>` nakłada oczekujące migracje D1.
+Oba skrypty wdrożeniowe uruchamiają pięć bramek wokół budowania i jedną kontrolę po wdrożeniu, a każda z nich rzuca wyjątkiem zamiast ostrzegać. Między bramkami a wdrożeniem `db:migrate:<środowisko>` nakłada oczekujące migracje D1.
 
 | Skrypt                              | Co sprawdza                                                                                                                                                                                                                                                                                                                                                               |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scripts/verify-bindings.ts`        | Czyta `wrangler.jsonc` loaderem samego Wranglera i odrzuca brakujący lub zastępczy identyfikator `DB`, identyfikator `CACHE`, bucket `IMAGES`, parę producent/konsument `AUDIT_LOG_QUEUE` lub `NEWSLETTER_QUEUE`, konsumenta bez konsumowanej kolejki martwych listów albo klasę `REALTIME_INVALIDATION_HUB`, a także produkcyjny bucket `IMAGES` będący bucketem preview |
 | `scripts/verify-stripe-keys.ts`     | Rozpoznaje tryb `VITE_STRIPE_PUBLISHABLE_KEY` i `STRIPE_SECRET_KEY` po przedrostkach i odrzuca brakujący klucz, parę z różnych trybów, klucze testowe dla produkcji albo klucze live dla preview, wypisując tryb, a nigdy sam klucz                                                                                                                                       |
-| `scripts/verify-turnstile-keys.ts`  | Odrzuca brakujący `VITE_TURNSTILE_SITE_KEY` albo `TURNSTILE_SECRET_KEY`, testowy klucz Cloudflare w parze z kluczem widżetu oraz testowe klucze Cloudflare na produkcji, wypisując rodzaj kluczy, a nigdy sam klucz                                                                                                                                                       |
 | `scripts/verify-email-sender.ts`    | Pyta Resend, czy wyśle pocztę z `RESEND_EMAIL_FROM`, i odrzuca nadawcę z nazwą wyświetlaną, `onboarding@resend.dev` oraz nieznaną lub niezweryfikowaną domenę, wypisując rekordy DNS do opublikowania                                                                                                                                                                     |
 | `scripts/verify-build.ts`           | Potwierdza, że `dist/server/wrangler.json` celuje we właściwe środowisko i nazwę Workera, że `dist/client` zawiera JS, CSS i fonty oraz że żaden zasób klienta nie importuje `cloudflare:workers` ani `node:*`                                                                                                                                                            |
 | `scripts/prepare-deploy-secrets.ts` | Zapisuje tylko zadeklarowane sekrety do `.wrangler/secrets.<środowisko>.json` i przerywa przy pustej wartości innej niż dwie wartości InPost                                                                                                                                                                                                                              |
@@ -125,7 +121,7 @@ Całą sekwencję widać w `package.json`:
 
 ```sh
 bun run deploy:preview
-# verify-bindings.ts → verify-stripe-keys.ts → verify-turnstile-keys.ts → verify-email-sender.ts → build:preview → prepare-deploy-secrets.ts → db:migrate:preview → wrangler deploy → verify-deployment.ts
+# verify-bindings.ts → verify-stripe-keys.ts → verify-email-sender.ts → build:preview → prepare-deploy-secrets.ts → db:migrate:preview → wrangler deploy → verify-deployment.ts
 ```
 
 Krok wdrożenia przekazuje `--config dist/server/wrangler.json --secrets-file .wrangler/secrets.preview.json` i najpierw usuwa `CLOUDFLARE_ENV`, bo zbudowana konfiguracja już zawiera środowisko.

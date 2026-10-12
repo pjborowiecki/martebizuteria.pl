@@ -3,7 +3,6 @@
   "adminPasswordSignInRequired": "Admin accounts sign in with their password and a two-factor authentication code.",
   "adminTwoFactorRequired": "Turn on two-factor authentication before using the admin panel.",
   "bannedUser": "Your account has been suspended.",
-  "botCheckFailed": "We could not finish the check that keeps bots out. Please try again.",
   "couldNotCreateSession": "Could not create session. Please try again.",
   "credentialAccountNotFound": "No account found with these credentials.",
   "emailDeliveryFailed": "We couldn't send the email just now. Please try again in a few minutes.",

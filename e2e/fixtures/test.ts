@@ -2,7 +2,6 @@ import { type BrowserContext, type Route, type TestInfo, test as base } from "@p
 
 import { AccountPage, AdminDashboardPage, AdminOrderPage, AuthPage, CartPage, CheckoutPage, CouponsPage, ProductPage } from "../pages"
 import { answerInpostPointSearch, isInpostPointSearch } from "./inpost"
-import { TURNSTILE_SCRIPT, TURNSTILE_WIDGET_DOUBLE } from "./turnstile"
 
 const LOCAL_ORIGIN = /^https?:\/\/(?:127\.0\.0\.1|localhost)(?::\d+)?\//u
 const TRANSLATION_ERROR = /MISSING_MESSAGE|INVALID_MESSAGE|FORMATTING_ERROR|INVALID_KEY/u
@@ -17,10 +16,6 @@ const IP_OCTET_COUNT = 3
 const IP_OCTET_RANGE = 254
 
 const answerOutsideRequest = (route: Route): Promise<void> => {
-  if (TURNSTILE_SCRIPT.test(route.request().url())) {
-    return route.fulfill({ body: TURNSTILE_WIDGET_DOUBLE, contentType: "text/javascript" })
-  }
-
   if (route.request().resourceType() === "image") {
     return route.fulfill({ body: TRANSPARENT_PNG, contentType: "image/png" })
   }

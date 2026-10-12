@@ -14,14 +14,6 @@ describe("auth error keys", () => {
     )
   })
 
-  it("translates a code an error carries as its message, as the browser's bot check reports a failure", () => {
-    expect(authErrorKey(new Error("BOT_CHECK_FAILED"))).toBe(AUTH_ERRORS.BOT_CHECK_FAILED)
-  })
-
-  it("explains the BOT_CHECK_FAILED answer the bot check in front of the email endpoints gives", () => {
-    expect(authErrorKey({ code: "BOT_CHECK_FAILED", status: 403, statusText: "Forbidden" })).toBe(AUTH_ERRORS.BOT_CHECK_FAILED)
-  })
-
   it.each([
     ["EMAIL_DELIVERY_FAILED", AUTH_ERRORS.EMAIL_DELIVERY_FAILED],
     ["EMAIL_DELIVERY_UNAVAILABLE", AUTH_ERRORS.EMAIL_DELIVERY_UNAVAILABLE],

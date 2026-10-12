@@ -7,15 +7,12 @@ import { useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
-
 import { ORDER_WITHDRAWAL_SCOPE } from "~/src/modules/order-withdrawal/order-withdrawal.constants"
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import { orderWithdrawalZodSchemas } from "~/src/modules/order-withdrawal/order-withdrawal.zod"
 import { withdrawFromGuestOrderMutation } from "~/src/modules/order-withdrawal/use-cases/withdraw-from-guest-order"
 
 import { useActionError } from "~/src/hooks/use-action-error"
-import { useTurnstileToken } from "~/src/hooks/use-turnstile-token"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -30,7 +27,6 @@ import { WithdrawalSubmitted } from "~/src/presentation/components/custom/pages/
 export const GuestWithdrawalForm = ({ defaultOrderNumber }: Readonly<{ defaultOrderNumber: string | undefined }>): JSX.Element => {
   const t = useTranslations("pages.withdrawal")
   const actionError = useActionError()
-  const { containerRef, requestToken } = useTurnstileToken(TURNSTILE_ACTIONS.WITHDRAWAL)
   const form = useForm<OrderWithdrawal["guestFormValues"]>({
     defaultValues: {
       consumerName: "",
@@ -53,7 +49,7 @@ export const GuestWithdrawalForm = ({ defaultOrderNumber }: Readonly<{ defaultOr
 
   const submit = (event: SyntheticEvent<HTMLFormElement>): void => {
     void form.handleSubmit((values) => {
-      withdraw.mutate({ ...values, requestTurnstileToken: requestToken })
+      withdraw.mutate(values)
     })(event)
   }
 
@@ -108,8 +104,6 @@ export const GuestWithdrawalForm = ({ defaultOrderNumber }: Readonly<{ defaultOr
         label={t("form.reason")}
         name="reason"
       />
-
-      <div ref={containerRef} className="empty:hidden" />
 
       <Button className="w-full gap-2.5 tracking-wide" disabled={withdraw.isPending} size="xl" type="submit">
         {withdraw.isPending && <Loader2 aria-hidden className="size-4 animate-spin" />}

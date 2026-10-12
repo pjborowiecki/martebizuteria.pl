@@ -57,7 +57,6 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
 }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ passesTurnstile: () => Promise.resolve(true) }))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
@@ -69,7 +68,6 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { auth } from "~/src/integrations/better-auth/auth.server"
-import { TURNSTILE_TESTING_KEYS, TURNSTILE_TOKEN_HEADER } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import {
   PUBLIC_EMAILS_DAILY_MAX,
   PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX,
@@ -104,7 +102,6 @@ const post = (path: string, body: object, cookie?: string): Promise<Response> =>
       headers: {
         "Content-Type": "application/json",
         "cf-connecting-ip": `198.51.100.${String(clientAddress.next)}`,
-        [TURNSTILE_TOKEN_HEADER]: TURNSTILE_TESTING_KEYS.DUMMY_TOKEN,
         ...(cookie === undefined ? {} : { cookie }),
       },
       method: "POST",

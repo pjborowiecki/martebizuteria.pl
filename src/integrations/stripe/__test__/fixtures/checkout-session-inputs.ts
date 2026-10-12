@@ -45,10 +45,8 @@ export const availableVariant = (): CatalogueVariant => ({
   title: "Rozmiar M (katalog)",
 })
 
-export const TURNSTILE_TOKEN = "turnstile-token-1"
-
 export const createInput = (values: Record<string, unknown> = {}, items: Record<string, unknown>[] = [CART_ITEM]) =>
-  createCheckoutSessionInputSchema.parse({ checkoutValues: { ...CHECKOUT_VALUES, ...values }, items, turnstileToken: TURNSTILE_TOKEN })
+  createCheckoutSessionInputSchema.parse({ checkoutValues: { ...CHECKOUT_VALUES, ...values }, items })
 
 export const updateInput = (values: Record<string, unknown> = {}, items: Record<string, unknown>[] = [CART_ITEM]) =>
   updateCheckoutSessionInputSchema.parse({

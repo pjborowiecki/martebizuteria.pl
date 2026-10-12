@@ -1,4 +1,3 @@
-import { TURNSTILE_ORIGIN } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import { INPOST_POINTS_API_ORIGIN } from "~/src/integrations/inpost/inpost.constants"
 
 import { isLocalMode } from "~/src/modules/_core/constants/api"
@@ -35,23 +34,16 @@ const contentSecurityPolicy = (nonce: string): string => {
   const imageHosts = imageHostOrigins()
   const directives: Readonly<Record<string, readonly string[]>> = {
     "base-uri": ["'none'"],
-    "connect-src": [
-      "'self'",
-      STRIPE_API_ORIGIN,
-      STRIPE_ELEMENTS_FONT_STYLESHEET_ORIGIN,
-      TURNSTILE_ORIGIN,
-      INPOST_POINTS_API_ORIGIN,
-      ...LOCKER_MAP_ORIGINS,
-    ],
+    "connect-src": ["'self'", STRIPE_API_ORIGIN, STRIPE_ELEMENTS_FONT_STYLESHEET_ORIGIN, INPOST_POINTS_API_ORIGIN, ...LOCKER_MAP_ORIGINS],
     "default-src": ["'self'"],
     "font-src": ["'self'"],
     "form-action": ["'self'"],
     "frame-ancestors": ["'none'"],
-    "frame-src": [...STRIPE_JS_ORIGINS, STRIPE_THREE_D_SECURE_ORIGIN, TURNSTILE_ORIGIN],
+    "frame-src": [...STRIPE_JS_ORIGINS, STRIPE_THREE_D_SECURE_ORIGIN],
     "img-src": ["'self'", "data:", "blob:", ...imageHosts],
     "media-src": ["'self'", ...imageHosts],
     "object-src": ["'none'"],
-    "script-src": ["'self'", `'nonce-${nonce}'`, ...STRIPE_JS_ORIGINS, TURNSTILE_ORIGIN],
+    "script-src": ["'self'", `'nonce-${nonce}'`, ...STRIPE_JS_ORIGINS],
     "style-src": ["'self'", "'unsafe-inline'"],
     "worker-src": ["'self'"],
   }

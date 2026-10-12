@@ -5,8 +5,6 @@ import type * as zod from "zod"
 
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
-import { TURNSTILE_ACTIONS } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
-import { verifyTurnstileToken } from "~/src/integrations/cloudflare-turnstile/turnstile.server"
 import { PUBLIC_EMAIL_KINDS, admitPublicEmail } from "~/src/integrations/resend/resend.public-email-limits.server"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
@@ -30,7 +28,7 @@ import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
 import { sendNewsletterAlreadySubscribedEmail } from "~/src/modules/newsletter/use-cases/send-newsletter-already-subscribed-email.server"
 import { sendNewsletterConfirmationEmail } from "~/src/modules/newsletter/use-cases/send-newsletter-confirmation-email.server"
 
-import { resolveRequestIp, resolveRequestOrigin } from "~/src/lib/request"
+import { resolveRequestOrigin } from "~/src/lib/request"
 
 const reportDelivery = async ({
   delivery,
@@ -88,14 +86,7 @@ export const subscribeToNewsletter = createServerFn({ method: "POST" })
   .middleware([withRateLimit("newsletter-subscribe", RATE_LIMITS.SENSITIVE)])
   .validator((input: zod.input<typeof newsletterZodSchemas.subscribeInput>) => newsletterZodSchemas.subscribeInput.parse(input))
   .handler(async ({ data }): Promise<Newsletter["outcome"]> => {
-    const request = getRequest()
-    const origin = resolveRequestOrigin(request)
-    await verifyTurnstileToken({
-      action: TURNSTILE_ACTIONS.NEWSLETTER,
-      hostname: new URL(origin).hostname,
-      remoteIp: resolveRequestIp(request.headers),
-      token: data.turnstileToken,
-    })
+    const origin = resolveRequestOrigin(getRequest())
     const email = normalizeSubscriberEmail(data.email)
     const session = await getRequestSession()
     const existing = await getSubscriberByEmail(email)
@@ -119,8 +110,7 @@ export const subscribeToNewsletter = createServerFn({ method: "POST" })
   })
 
 export const subscribeToNewsletterMutation = mutationOptions({
-  mutationFn: async ({ requestTurnstileToken, ...data }: NewsletterSubscription) =>
-    subscribeToNewsletter({ data: { ...data, turnstileToken: await requestTurnstileToken() } }),
+  mutationFn: (data: Parameters<typeof subscribeToNewsletter>[0]["data"]) => subscribeToNewsletter({ data }),
   mutationKey: NEWSLETTER_MUTATION_KEYS.SUBSCRIBE,
 })
 
@@ -131,8 +121,4 @@ interface SubscriberMailing {
   readonly origin: string
   readonly source: NewsletterSource
   readonly userId: string | undefined
-}
-
-interface NewsletterSubscription extends Omit<zod.input<typeof newsletterZodSchemas.subscribeInput>, "turnstileToken"> {
-  readonly requestTurnstileToken: () => Promise<string>
 }

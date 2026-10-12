@@ -101,14 +101,11 @@ The domain of `RESEND_EMAIL_FROM` must also be verified in Resend before the fir
 
 Preview takes Stripe test keys: `VITE_STRIPE_PUBLISHABLE_KEY` starting with `pk_test_` and `STRIPE_SECRET_KEY` starting with `sk_test_` or `rk_test_`. Live keys would charge a real card for every test order, so the deploy refuses them.
 
-Preview takes Cloudflare's always-passing Turnstile testing keys: `VITE_TURNSTILE_SITE_KEY` `1x00000000000000000000AA` and `TURNSTILE_SECRET_KEY` `1x0000000000000000000000000000000AA`, the values in `.env.example`. They pass every visitor, so preview's checkout has no real bot check; a widget's own keys also work, as long as the site key and the secret key are of the same kind.
-
-`deploy:preview` is nine steps chained with `&&`:
+`deploy:preview` is eight steps chained with `&&`:
 
 ```sh
 bun scripts/verify-bindings.ts preview \
   && bun scripts/verify-stripe-keys.ts preview \
-  && bun scripts/verify-turnstile-keys.ts preview \
   && bun scripts/verify-email-sender.ts preview \
   && bun run build:preview \
   && bun scripts/prepare-deploy-secrets.ts preview \
@@ -121,13 +118,12 @@ bun scripts/verify-bindings.ts preview \
 
 1. **`verify-bindings.ts preview`** — the binding check above. Fails the deploy rather than warning.
 2. **`verify-stripe-keys.ts preview`** — takes `VITE_STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY` from the process environment or `.env.preview` and reads each key's mode from its prefix. A missing key, live keys, or a publishable key whose mode differs from the secret key's fails the deploy here; the message names the variables and their mode, never a key.
-3. **`verify-turnstile-keys.ts preview`** — takes `VITE_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` from the process environment or `.env.preview` and fails the deploy when one is missing or when a testing key is paired with a widget's key; production additionally refuses the testing keys.
-4. **`verify-email-sender.ts preview`** — takes `RESEND_API_KEY` and `RESEND_EMAIL_FROM` from the process environment or `.env.preview` and asks Resend whether it would send as that address. A domain that is missing from the Resend account or not verified fails the deploy here, before the build, with the DNS records still to publish.
-5. **`build:preview`** — `rm -rf dist`, regenerate `.source/`, `CLOUDFLARE_ENV=preview vp build --mode preview`, then `verify-build.ts preview`.
-6. **`prepare-deploy-secrets.ts preview`** — reads `secrets.required` from `wrangler.jsonc`, takes each value from the process environment or `.env.preview`, and writes `.wrangler/secrets.preview.json` with mode `0600`. A missing value throws `Missing <NAME> in .env.preview or the process environment`, and so does a blank one, except for `INPOST_API_TOKEN` and `INPOST_ORGANIZATION_ID`, which may stay blank until the shop has InPost credentials. Only declared secrets are written, which is how `CLOUDFLARE_ACCESS_TOKEN` and the other management credentials stay off the Worker.
-7. **`db:migrate:preview`** — `wrangler d1 migrations apply DB --env preview --remote` applies every migration file the preview database has not recorded yet. A failing migration is rolled back on its own, the ones before it stay applied, and the deploy stops before the Worker is uploaded.
-8. **`wrangler deploy`** — deploys the generated `dist/server/wrangler.json` and uploads the secrets file in the same call. The generated config is flat: it already carries `"name": "martebizuteria-preview"` and `"vars": { "APP_ENV": "preview" }` at the top level with no `env` section, which is why the command unsets `CLOUDFLARE_ENV` first — with it set, Wrangler would look for an environment section that the generated file does not have.
-9. **`verify-deployment.ts preview`** — asks `https://martebizuteria-preview.pjborowiecki.workers.dev` for `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` and `/api/health`, and fails the deploy unless `/` and `/products` answer `200` with HTML, `robots.txt` answers `200` as plain text, the webhook route refuses the `GET` with `405` and `/api/health` answers `200` because D1, KV and R2 answered. A page that answers wrongly is asked up to three times in all, five seconds apart.
+3. **`verify-email-sender.ts preview`** — takes `RESEND_API_KEY` and `RESEND_EMAIL_FROM` from the process environment or `.env.preview` and asks Resend whether it would send as that address. A domain that is missing from the Resend account or not verified fails the deploy here, before the build, with the DNS records still to publish.
+4. **`build:preview`** — `rm -rf dist`, regenerate `.source/`, `CLOUDFLARE_ENV=preview vp build --mode preview`, then `verify-build.ts preview`.
+5. **`prepare-deploy-secrets.ts preview`** — reads `secrets.required` from `wrangler.jsonc`, takes each value from the process environment or `.env.preview`, and writes `.wrangler/secrets.preview.json` with mode `0600`. A missing value throws `Missing <NAME> in .env.preview or the process environment`, and so does a blank one, except for `INPOST_API_TOKEN` and `INPOST_ORGANIZATION_ID`, which may stay blank until the shop has InPost credentials. Only declared secrets are written, which is how `CLOUDFLARE_ACCESS_TOKEN` and the other management credentials stay off the Worker.
+6. **`db:migrate:preview`** — `wrangler d1 migrations apply DB --env preview --remote` applies every migration file the preview database has not recorded yet. A failing migration is rolled back on its own, the ones before it stay applied, and the deploy stops before the Worker is uploaded.
+7. **`wrangler deploy`** — deploys the generated `dist/server/wrangler.json` and uploads the secrets file in the same call. The generated config is flat: it already carries `"name": "martebizuteria-preview"` and `"vars": { "APP_ENV": "preview" }` at the top level with no `env` section, which is why the command unsets `CLOUDFLARE_ENV` first — with it set, Wrangler would look for an environment section that the generated file does not have.
+8. **`verify-deployment.ts preview`** — asks `https://martebizuteria-preview.pjborowiecki.workers.dev` for `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` and `/api/health`, and fails the deploy unless `/` and `/products` answer `200` with HTML, `robots.txt` answers `200` as plain text, the webhook route refuses the `GET` with `405` and `/api/health` answers `200` because D1, KV and R2 answered. A page that answers wrongly is asked up to three times in all, five seconds apart.
 
 ### What the build verification catches
 
@@ -151,7 +147,7 @@ That last one is the interesting check. It scans each client bundle with `Bun.Tr
 | `deploy-preview.yml`    | Pull requests to `main`                       | `preview`    |
 | `deploy-production.yml` | `ci.yml` passing for a push to `main`; manual | `production` |
 
-Both deploy workflows use `.github/actions/setup`, then `touch .env.<env>` and run the deploy script with every value supplied through the job environment. The preview workflow runs `bun run check` first; the production workflow starts only once `ci.yml` has passed for a push of the same commit to `main` and deploys it only while it is still the tip of `main`, or by hand for such a commit, see [CI/CD](/docs/tooling/ci-cd). `verify-stripe-keys.ts`, `verify-turnstile-keys.ts`, `verify-email-sender.ts` and `prepare-deploy-secrets.ts` prefer `process.env` over the file, so the empty file is intentional — it exists only so the `readFile` call in `prepare-deploy-secrets.ts` succeeds.
+Both deploy workflows use `.github/actions/setup`, then `touch .env.<env>` and run the deploy script with every value supplied through the job environment. The preview workflow runs `bun run check` first; the production workflow starts only once `ci.yml` has passed for a push of the same commit to `main` and deploys it only while it is still the tip of `main`, or by hand for such a commit, see [CI/CD](/docs/tooling/ci-cd). `verify-stripe-keys.ts`, `verify-email-sender.ts` and `prepare-deploy-secrets.ts` prefer `process.env` over the file, so the empty file is intentional — it exists only so the `readFile` call in `prepare-deploy-secrets.ts` succeeds.
 
 The preview workflow finishes by posting or updating a comment on the pull request with the preview URL. Concurrency is keyed per pull request for preview and globally for production, with `cancel-in-progress: false` on production so two pushes to `main` cannot race.
 
@@ -159,11 +155,11 @@ The preview workflow finishes by posting or updating a comment on the pull reque
 
 Repository **secrets**:
 
-`CLOUDFLARE_ACCESS_TOKEN` (passed to Wrangler as `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`.
+`CLOUDFLARE_ACCESS_TOKEN` (passed to Wrangler as `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
 Repository **variables**:
 
-`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY` and `VITE_APP_URL`. The first three are inlined into the client bundle at build time, so they must be variables rather than secrets. `VITE_R2_URL` differs between preview and production, so set it as an environment variable of the GitHub `preview` and `production` environments, which overrides a repository variable of the same name. `VITE_APP_URL` is passed by both workflows but is not read anywhere in `src/` and is not a declared Worker secret — see [Environment variables](/docs/getting-started/environment-variables).
+`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY` and `VITE_APP_URL`. The first two are inlined into the client bundle at build time, so they must be variables rather than secrets. `VITE_R2_URL` differs between preview and production, so set it as an environment variable of the GitHub `preview` and `production` environments, which overrides a repository variable of the same name. `VITE_APP_URL` is passed by both workflows but is not read anywhere in `src/` and is not a declared Worker secret — see [Environment variables](/docs/getting-started/environment-variables).
 
 ## After deploying
 

@@ -19,13 +19,10 @@ const mocked = vi.hoisted(() => ({
   reserveInventoryForItems: vi.fn(),
   supersedeCheckoutSession: vi.fn(),
   updateCheckoutDelivery: vi.fn(),
-  verifyTurnstileToken:
-    vi.fn<(check: { action: string; hostname: string; remoteIp: string | undefined; token: string }) => Promise<void>>(),
 }))
 
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: mocked.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: mocked.getRequestSession }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ verifyTurnstileToken: mocked.verifyTurnstileToken }))
 vi.mock("~/src/integrations/inpost/inpost.api", () => ({ fetchPointByName: mocked.fetchPointByName }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: vi.fn(),
@@ -81,10 +78,8 @@ vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ isSalesP
 vi.mock("~/src/lib/rate-limit", () => ({ clientAddress: mocked.clientAddress }))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
-import { TURNSTILE_ERROR_CODES } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import {
   HELD_LINES,
-  TURNSTILE_TOKEN,
   availableVariant,
   catalogueProduct,
   createInput,
@@ -95,7 +90,7 @@ import { handleCreateCheckoutSession, handleUpdateCheckoutSession } from "~/src/
 import { CHECKOUT_SESSION_LIFETIME_SECONDS } from "~/src/integrations/stripe/stripe.constants"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
-import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX, OPEN_CHECKOUTS_PER_EMAIL_MAX } from "~/src/modules/checkout/checkout.constants"
 
 const VISITOR_IP = "2001:db8::1"
@@ -112,7 +107,6 @@ beforeEach(() => {
   vi.stubEnv("MODE", "production")
   mocked.getRequest.mockReturnValue(shopRequest())
   mocked.clientAddress.mockReturnValue(VISITOR_ADDRESS)
-  mocked.verifyTurnstileToken.mockResolvedValue(undefined)
   mocked.fetchPointByName.mockImplementation((name) => Promise.resolve({ name }))
   mocked.countOpenCheckouts.mockResolvedValue({ byClientAddress: 0, byEmail: 0 })
   mocked.getRequestSession.mockResolvedValue(null)
@@ -142,50 +136,6 @@ const expectNothingHeld = (): void => {
   expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()
 }
 
-describe("handleCreateCheckoutSession bot check", () => {
-  it("checks the Turnstile token for the checkout action on the host the shopper is on, from the shopper's own IP", async () => {
-    await handleCreateCheckoutSession(createInput())
-
-    expect(mocked.verifyTurnstileToken).toHaveBeenCalledExactlyOnceWith({
-      action: "checkout",
-      hostname: "martebizuteria.pl",
-      remoteIp: VISITOR_IP,
-      token: TURNSTILE_TOKEN,
-    })
-  })
-
-  it("holds no stock and opens no payment when the token does not pass", async () => {
-    const refusal = new AppError(ERROR_CODES.FORBIDDEN, TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED)
-    mocked.verifyTurnstileToken.mockRejectedValue(refusal)
-
-    await expect(handleCreateCheckoutSession(createInput())).rejects.toBe(refusal)
-
-    expect(mocked.countOpenCheckouts).not.toHaveBeenCalled()
-    expectNothingHeld()
-  })
-
-  it("asks InPost about a parcel locker only once the token has passed and the open checkouts are counted", async () => {
-    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1499, type: "locker" })
-
-    await handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "WAW01M" }))
-
-    expect(mocked.fetchPointByName).toHaveBeenCalledExactlyOnceWith("WAW01M")
-    expect(mocked.verifyTurnstileToken).toHaveBeenCalledBefore(mocked.fetchPointByName)
-    expect(mocked.countOpenCheckouts).toHaveBeenCalledBefore(mocked.fetchPointByName)
-  })
-
-  it("never asks InPost about the parcel locker of a request whose token does not pass", async () => {
-    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1499, type: "locker" })
-    mocked.verifyTurnstileToken.mockRejectedValue(new AppError(ERROR_CODES.FORBIDDEN, TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED))
-
-    await expect(handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "WAW01M" }))).rejects.toMatchObject({
-      code: ERROR_CODES.FORBIDDEN,
-    })
-
-    expect(mocked.fetchPointByName).not.toHaveBeenCalled()
-  })
-})
-
 describe("handleCreateCheckoutSession open checkout limits", () => {
   it("counts the open checkouts of the shopper's address, as the rate limit keys it, and email before holding anything", async () => {
     await handleCreateCheckoutSession(createInput({ email: "anna@example.com" }))
@@ -193,7 +143,26 @@ describe("handleCreateCheckoutSession open checkout limits", () => {
     expect(mocked.clientAddress).toHaveBeenCalledWith(shopRequest().headers)
     expect(mocked.countOpenCheckouts).toHaveBeenCalledExactlyOnceWith({ clientAddress: VISITOR_ADDRESS, email: "anna@example.com" })
     expect(mocked.countOpenCheckouts).toHaveBeenCalledBefore(mocked.reserveInventoryForItems)
-    expect(mocked.verifyTurnstileToken).toHaveBeenCalledBefore(mocked.countOpenCheckouts)
+  })
+
+  it("asks InPost about a parcel locker only once the open checkouts are counted", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1499, type: "locker" })
+
+    await handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "WAW01M" }))
+
+    expect(mocked.fetchPointByName).toHaveBeenCalledExactlyOnceWith("WAW01M")
+    expect(mocked.countOpenCheckouts).toHaveBeenCalledBefore(mocked.fetchPointByName)
+  })
+
+  it("never asks InPost about the parcel locker of a request the open checkout limits refuse", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1499, type: "locker" })
+    mocked.countOpenCheckouts.mockResolvedValue({ byClientAddress: OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX, byEmail: 0 })
+
+    await expect(handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "WAW01M" }))).rejects.toMatchObject(
+      TOO_MANY_OPEN_CHECKOUTS,
+    )
+
+    expect(mocked.fetchPointByName).not.toHaveBeenCalled()
   })
 
   it("opens one more checkout while both counts are below their limits and records the address on it", async () => {
@@ -240,7 +209,7 @@ describe("handleUpdateCheckoutSession and the abuse limits", () => {
     vi.useRealTimers()
   })
 
-  it("continues a checkout opened less than one hold ago without a new bot check or a count of open checkouts", async () => {
+  it("continues a checkout opened less than one hold ago without a count of open checkouts", async () => {
     vi.setSystemTime(CHECKOUT_OPENED_AT + ONE_HOLD_MILLISECONDS - 1)
     mocked.countOpenCheckouts.mockResolvedValue({
       byClientAddress: OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX,
@@ -248,12 +217,11 @@ describe("handleUpdateCheckoutSession and the abuse limits", () => {
     })
 
     await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
-    expect(mocked.verifyTurnstileToken).not.toHaveBeenCalled()
     expect(mocked.countOpenCheckouts).not.toHaveBeenCalled()
     expect(mocked.releaseCheckout).not.toHaveBeenCalled()
   })
 
-  it("will not renew the hold of a checkout opened one hold ago, so keeping stock longer takes a new checkout and a new bot check", async () => {
+  it("will not renew the hold of a checkout opened one hold ago, so keeping stock longer takes a new checkout", async () => {
     vi.setSystemTime(CHECKOUT_OPENED_AT + ONE_HOLD_MILLISECONDS)
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject(SESSION_CLOSED)
@@ -310,6 +278,5 @@ describe("handleUpdateCheckoutSession and the abuse limits", () => {
     })
     expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
     expect(mocked.releaseCheckout).not.toHaveBeenCalled()
-    expect(mocked.verifyTurnstileToken).not.toHaveBeenCalled()
   })
 })

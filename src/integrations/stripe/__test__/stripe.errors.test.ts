@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { TURNSTILE_ERROR_CODES } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import { CHECKOUT_ERRORS, CHECKOUT_ERROR_CODES, getCheckoutErrorKey } from "~/src/integrations/stripe/stripe.errors"
 
 import checkoutMessages from "~/messages/en-US/pages.checkout.json"
@@ -32,10 +31,6 @@ describe("getCheckoutErrorKey", () => {
     ])
   })
 
-  it("maps a failed bot check, from the widget or from the server, to its own key", () => {
-    expect(getCheckoutErrorKey(new Error(TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED))).toBe("errors.botCheckFailed")
-  })
-
   it("falls back to the unknown error for an unrecognised message", () => {
     expect(getCheckoutErrorKey(new Error("card_declined"))).toBe("errors.unknownError")
   })
@@ -56,7 +51,7 @@ describe("getCheckoutErrorKey", () => {
 
 describe("checkout error translation keys", () => {
   it("produces a key the English checkout copy actually defines", () => {
-    for (const code of [...Object.values(CHECKOUT_ERROR_CODES), TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED]) {
+    for (const code of Object.values(CHECKOUT_ERROR_CODES)) {
       const key = getCheckoutErrorKey(new Error(code)).replace("errors.", "")
 
       expect(translatedErrors[key]).toBeTypeOf("string")

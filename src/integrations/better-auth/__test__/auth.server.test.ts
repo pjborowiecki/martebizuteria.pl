@@ -17,7 +17,6 @@ const stubs = vi.hoisted(() => ({
   getCurrentLocale: vi.fn<() => string>(),
   isEmailSenderUnavailable: vi.fn<() => Promise<boolean>>(),
   linkSubscriberToUser: vi.fn<(email: string, userId: string) => Promise<void>>(),
-  passesTurnstile: vi.fn<(check: { action: string; hostname: string; remoteIp: string | undefined; token: string }) => Promise<boolean>>(),
   recordAuthLoginAudit: vi.fn(),
   recordAuthPasswordResetAudit: vi.fn(),
   recordCustomerDeletedAudit: vi.fn(),
@@ -54,7 +53,6 @@ vi.mock(import("~/src/integrations/resend/resend.public-email-limits.server"), a
   ...(await importOriginal()),
   admitPublicEmail: stubs.admitPublicEmail,
 }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ passesTurnstile: stubs.passesTurnstile }))
 
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: stubs.getCurrentLocale }))
 

@@ -10,7 +10,6 @@
     "inpost",
     "resend",
     "cloudflare-r2",
-    "cloudflare-turnstile",
     "use-intl",
     "fumadocs",
     "realtime-invalidation",

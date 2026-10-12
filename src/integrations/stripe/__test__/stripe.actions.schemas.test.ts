@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { TURNSTILE_TOKEN_MAX_LENGTH } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 import {
   cartItemSchema,
   createCheckoutSessionInputSchema,
@@ -30,8 +29,6 @@ const cartItem = {
   variantId: "variant-1",
   variantTitle: "Rozmiar M",
 }
-
-const turnstileToken = "turnstile-token-1"
 
 const cartLines = (count: number) => Array.from({ length: count }, (_, index) => ({ ...cartItem, id: `line-${String(index)}` }))
 
@@ -80,7 +77,7 @@ describe("cartItemSchema", () => {
 
 describe("createCheckoutSessionInputSchema", () => {
   it("applies the checkout defaults the form leaves out", () => {
-    const parsed = createCheckoutSessionInputSchema.parse({ checkoutValues, items: [cartItem], turnstileToken })
+    const parsed = createCheckoutSessionInputSchema.parse({ checkoutValues, items: [cartItem] })
 
     expect(parsed.checkoutValues.sameAsShipping).toBe(true)
     expect(parsed.checkoutValues.saveBillingAddress).toBe(false)
@@ -89,15 +86,15 @@ describe("createCheckoutSessionInputSchema", () => {
   })
 
   it("refuses an empty cart", () => {
-    const result = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: [], turnstileToken })
+    const result = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: [] })
 
     expect(result.success).toBe(false)
     expect(firstIssue(result)?.path).toStrictEqual(["items"])
   })
 
   it("accepts the largest cart Stripe can carry beside the shipping line, and no more", () => {
-    const largest = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: cartLines(CART_LINES_MAX), turnstileToken })
-    const oversized = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: cartLines(CART_LINES_MAX + 1), turnstileToken })
+    const largest = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: cartLines(CART_LINES_MAX) })
+    const oversized = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: cartLines(CART_LINES_MAX + 1) })
 
     expect(largest.success).toBe(true)
     expect(firstIssue(oversized)?.path).toStrictEqual(["items"])
@@ -107,7 +104,6 @@ describe("createCheckoutSessionInputSchema", () => {
     const result = createCheckoutSessionInputSchema.safeParse({
       checkoutValues: { ...checkoutValues, postalCode: "0064" },
       items: [cartItem],
-      turnstileToken,
     })
 
     expect(result.success).toBe(false)
@@ -118,7 +114,6 @@ describe("createCheckoutSessionInputSchema", () => {
     const result = createCheckoutSessionInputSchema.safeParse({
       checkoutValues: { ...checkoutValues, phone: "123" },
       items: [cartItem],
-      turnstileToken,
     })
 
     expect(result.success).toBe(false)
@@ -129,7 +124,6 @@ describe("createCheckoutSessionInputSchema", () => {
     const result = createCheckoutSessionInputSchema.safeParse({
       checkoutValues: { ...checkoutValues, sameAsShipping: false },
       items: [cartItem],
-      turnstileToken,
     })
 
     expect(result.success).toBe(false)
@@ -145,15 +139,10 @@ describe("createCheckoutSessionInputSchema", () => {
 
   it("hands the server the ten digits of a company's NIP and refuses one whose check digit is wrong", () => {
     const company = { billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "526-000-12-46", companyInvoice: true }
-    const parsed = createCheckoutSessionInputSchema.parse({
-      checkoutValues: { ...checkoutValues, ...company },
-      items: [cartItem],
-      turnstileToken,
-    })
+    const parsed = createCheckoutSessionInputSchema.parse({ checkoutValues: { ...checkoutValues, ...company }, items: [cartItem] })
     const refused = createCheckoutSessionInputSchema.safeParse({
       checkoutValues: { ...checkoutValues, ...company, billingNip: "5260001245" },
       items: [cartItem],
-      turnstileToken,
     })
 
     expect(parsed.checkoutValues).toMatchObject({ billingCompanyName: "Pracownia Złotnicza sp. z o.o.", billingNip: "5260001246" })
@@ -161,29 +150,9 @@ describe("createCheckoutSessionInputSchema", () => {
   })
 
   it("does not accept a session id it has no session to update", () => {
-    const parsed = createCheckoutSessionInputSchema.parse({ checkoutValues, items: [cartItem], sessionId: "cs_test_1", turnstileToken })
+    const parsed = createCheckoutSessionInputSchema.parse({ checkoutValues, items: [cartItem], sessionId: "cs_test_1" })
 
     expect(parsed).not.toHaveProperty("sessionId")
-  })
-})
-
-describe("createCheckoutSessionInputSchema bot check", () => {
-  it("refuses to open a checkout without a Turnstile token", () => {
-    const missing = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: [cartItem] })
-    const blank = createCheckoutSessionInputSchema.safeParse({ checkoutValues, items: [cartItem], turnstileToken: "" })
-
-    expect(firstIssue(missing)?.path).toStrictEqual(["turnstileToken"])
-    expect(firstIssue(blank)?.path).toStrictEqual(["turnstileToken"])
-  })
-
-  it("refuses a token longer than any Turnstile issues", () => {
-    const result = createCheckoutSessionInputSchema.safeParse({
-      checkoutValues,
-      items: [cartItem],
-      turnstileToken: "x".repeat(TURNSTILE_TOKEN_MAX_LENGTH + 1),
-    })
-
-    expect(firstIssue(result)?.path).toStrictEqual(["turnstileToken"])
   })
 })
 

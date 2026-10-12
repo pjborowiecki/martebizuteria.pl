@@ -2,43 +2,15 @@ import { TEST_ACCOUNTS, TEST_PASSWORD } from "../data/accounts"
 import { registerCustomer } from "../fixtures/customers"
 import { linkIn, waitForEmail } from "../fixtures/emails"
 import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
-import { uniqueEmail } from "../fixtures/unique"
 import { AuthPage } from "../pages"
 
 const RESET_PASSWORD = "MarteResetPassword456!"
-
-const SIGN_UP_PASSWORD = "MarteNewCustomer123!"
-
-const BOT_CHECK_FAILED = "We could not finish the check that keeps bots out. Please try again."
 
 test.describe("authentication", () => {
   test("a new customer signs up, confirms the email and lands in their account", async ({ authPage, page, request }, testInfo) => {
     const customer = await registerCustomer({ authPage, page, request }, testInfo)
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(customer.firstName)
-  })
-
-  test("a sign-up whose bot check token was tampered with creates no account until the check passes", async ({
-    authPage,
-    page,
-    request,
-  }, testInfo) => {
-    const customer = { email: uniqueEmail(testInfo, "forged-sign-up"), firstName: "Zofia", lastName: "Nowak", password: SIGN_UP_PASSWORD }
-    await page.route(
-      "**/api/auth/sign-up/email",
-      (route) => route.continue({ headers: { ...route.request().headers(), "x-turnstile-token": "forged-token" } }),
-      { times: 1 },
-    )
-
-    await authPage.signUp(customer)
-
-    await expect(authPage.notification(BOT_CHECK_FAILED)).toBeVisible()
-    await expect(page).toHaveURL(/\/en-US\/auth\/sign-up$/u)
-
-    await page.getByRole("button", { exact: true, name: "Create account" }).click()
-
-    await expect(page).toHaveURL(/\/en-US\/auth\/sign-in$/u)
-    await waitForEmail(request, customer.email, "Welcome to M'Arte — confirm your email")
   })
 
   test("a wrong password keeps the visitor signed out", async ({ authPage, page }) => {

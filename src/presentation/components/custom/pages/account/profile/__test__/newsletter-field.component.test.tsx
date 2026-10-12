@@ -12,16 +12,14 @@ import englishAccount from "~/messages/en-US/pages.account.json"
 import polishAccount from "~/messages/pl-PL/pages.account.json"
 
 const mocks = vi.hoisted(() => ({
-  issueTurnstileToken: vi.fn<(request: { action: string; container: HTMLElement }) => Promise<string>>(),
   status: { current: undefined as string | undefined },
-  subscribe: vi.fn<(variables: { email: string; requestTurnstileToken: () => Promise<string>; source: string }) => Promise<unknown>>(),
+  subscribe: vi.fn<(variables: { email: string; source: string }) => Promise<unknown>>(),
   toastError: vi.fn<(message: string) => void>(),
   toastSuccess: vi.fn<(message: string) => void>(),
   unsubscribe: vi.fn<() => Promise<unknown>>(),
 }))
 
 vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: mocks.toastSuccess } }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.client", () => ({ issueTurnstileToken: mocks.issueTurnstileToken }))
 vi.mock("~/src/modules/newsletter/use-cases/get-own-newsletter-subscription", async () => {
   const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
 
@@ -73,22 +71,6 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
-describe("NewsletterField bot check", () => {
-  it("runs the newsletter bot check in a slot on the field's own row when the customer subscribes", async () => {
-    mocks.issueTurnstileToken.mockResolvedValue("turnstile-token-1")
-    await userEvent.click(await renderField())
-    await waitFor(() => {
-      expect(mocks.subscribe).toHaveBeenCalledOnce()
-    })
-
-    await expect(mocks.subscribe.mock.calls[0]?.[0].requestTurnstileToken()).resolves.toBe("turnstile-token-1")
-
-    const slot = mocks.issueTurnstileToken.mock.lastCall?.[0].container
-    expect(mocks.issueTurnstileToken).toHaveBeenCalledExactlyOnceWith({ action: "newsletter", container: slot })
-    expect(slot).toHaveClass("basis-full", "empty:hidden")
-  })
-})
-
 describe("NewsletterField", () => {
   it("signs the customer up with their own address from the account source", async () => {
     await userEvent.click(await renderField())
@@ -96,7 +78,7 @@ describe("NewsletterField", () => {
     await waitFor(() => {
       expect(mocks.subscribe).toHaveBeenCalledOnce()
     })
-    expect(mocks.subscribe.mock.calls[0]?.[0]).toMatchObject({ email: "anna@example.com", source: NEWSLETTER_SOURCE.ACCOUNT })
+    expect(mocks.subscribe.mock.calls[0]?.[0]).toStrictEqual({ email: "anna@example.com", source: NEWSLETTER_SOURCE.ACCOUNT })
   })
 
   it("shows the signup as awaiting confirmation once the status is refreshed", async () => {
@@ -171,7 +153,7 @@ describe("NewsletterField", () => {
     await waitFor(() => {
       expect(mocks.toastSuccess).toHaveBeenCalledWith(englishAccount.profile.newsletterConfirmationSent)
     })
-    expect(mocks.subscribe.mock.calls[0]?.[0]).toMatchObject({ email: "anna@example.com", source: NEWSLETTER_SOURCE.ACCOUNT })
+    expect(mocks.subscribe.mock.calls[0]?.[0]).toStrictEqual({ email: "anna@example.com", source: NEWSLETTER_SOURCE.ACCOUNT })
     expect(mocks.unsubscribe).not.toHaveBeenCalled()
   })
 
