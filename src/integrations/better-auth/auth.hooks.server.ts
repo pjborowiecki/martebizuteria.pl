@@ -1,14 +1,12 @@
-import { type Session, type User } from "better-auth"
+import { type User } from "better-auth"
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api"
 
-import { hasAdminAccess, needsTwoFactorSetup } from "~/src/integrations/better-auth/auth.access"
+import { needsTwoFactorSetup } from "~/src/integrations/better-auth/auth.access"
 import {
-  ADMIN_PASSWORD_SIGN_IN_REQUIRED,
   ADMIN_PLUGIN_PATH_PREFIX,
   ADMIN_TWO_FACTOR_REQUIRED,
   EMAIL_DELIVERY_UNAVAILABLE,
   EMAIL_SENDING_AUTH_PATHS,
-  PROVIDER_SIGN_IN_PATH_PREFIXES,
   STRIPE_CUSTOMER_NOT_DELETED,
 } from "~/src/integrations/better-auth/auth.constants"
 import { recordAuthEmailFailure } from "~/src/integrations/better-auth/auth.email-delivery.server"
@@ -26,7 +24,6 @@ import { SYSTEM_AUDIT_ACTOR } from "~/src/modules/audit-log/audit-log.record.ser
 import { linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
 import { sendAccountDeletedEmail } from "~/src/modules/user/use-cases/send-account-deleted-email.server"
-import { getUserById } from "~/src/modules/user/user.accessors"
 import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
@@ -46,17 +43,6 @@ export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
     throw APIError.from("FORBIDDEN", ADMIN_TWO_FACTOR_REQUIRED)
   }
 })
-
-export const refuseAdminProviderSignIn = async (session: Session, endpoint: AuthEndpoint | null): Promise<void> => {
-  if (endpoint === null || !PROVIDER_SIGN_IN_PATH_PREFIXES.some((prefix) => endpoint.path.startsWith(prefix))) {
-    return
-  }
-
-  const signingIn = await getUserById(session.userId)
-  if (hasAdminAccess(signingIn?.role)) {
-    throw APIError.from("FORBIDDEN", ADMIN_PASSWORD_SIGN_IN_REQUIRED)
-  }
-}
 
 export const handleUserCreated = async (user: User): Promise<void> => {
   scheduleAdminCustomersInvalidation()
@@ -123,5 +109,4 @@ interface AuthEndpoint {
     readonly session: { readonly user: User } | null
   }
   readonly headers?: Headers | undefined
-  readonly path: string
 }

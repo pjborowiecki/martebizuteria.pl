@@ -2,7 +2,6 @@ import { z } from "zod/v4"
 
 export const AUTH_ERRORS = {
   ACCOUNT_NOT_FOUND: "accountNotFound",
-  ADMIN_PASSWORD_SIGN_IN_REQUIRED: "adminPasswordSignInRequired",
   ADMIN_TWO_FACTOR_REQUIRED: "adminTwoFactorRequired",
   BANNED_USER: "bannedUser",
   COULD_NOT_CREATE_SESSION: "couldNotCreateSession",

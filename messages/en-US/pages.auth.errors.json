@@ -1,6 +1,5 @@
 {
   "accountNotFound": "Account not found.",
-  "adminPasswordSignInRequired": "Admin accounts sign in with their password and a two-factor authentication code.",
   "adminTwoFactorRequired": "Turn on two-factor authentication before using the admin panel.",
   "bannedUser": "Your account has been suspended.",
   "couldNotCreateSession": "Could not create session. Please try again.",
