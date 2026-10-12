@@ -19,7 +19,7 @@ export default defineConfig({
   forbidOnly: isCI,
   fullyParallel: true,
   projects: [
-    { name: "setup", testMatch: /.*\.setup\.ts/u },
+    { name: "setup", testMatch: /.*\.setup\.ts/u, use: { ...devices["Desktop Chrome"] } },
     { dependencies: ["setup"], name: "chromium", testIgnore: STRIPE_TEST_MODE_SPEC, use: { ...devices["Desktop Chrome"] } },
     { dependencies: ["setup"], name: "webkit", testIgnore: STRIPE_TEST_MODE_SPEC, use: { ...devices["Desktop Safari"] } },
     { name: "stripe-test-mode", testMatch: STRIPE_TEST_MODE_SPEC, use: { ...devices["Desktop Chrome"] } },

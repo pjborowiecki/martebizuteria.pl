@@ -36,9 +36,9 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ inputs.browser }}-${{ hashFiles('bun.lock') }}
-      - name: Install Playwright browser
-        run: bunx playwright install --with-deps ${{ inputs.browser }}
+          key: ${{ runner.os }}-playwright-chromium-${{ inputs.browser }}-${{ hashFiles('bun.lock') }}
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium ${{ inputs.browser }}
       - name: E2E suite
         run: bunx playwright test ${{ inputs.suite }} --project=${{ inputs.browser }} --project=${{ inputs.browser }}-shop-wide
       - name: Upload Playwright report
