@@ -240,6 +240,12 @@ describe("useProductColumns values", () => {
     expect(table.getRow("product-2").getValue("title")).toBe("Kolczyki")
   })
 
+  it("sorts and searches the raw record id", () => {
+    const table = renderColumns()
+
+    expect(table.getRow("product-1").getValue("recordId")).toBe("product-1")
+  })
+
   it("filters the table by an exact status", () => {
     const table = renderColumns()
     columnById(table, "status").setFilterValue("draft")

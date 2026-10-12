@@ -67,6 +67,12 @@ const tagInput = () => screen.getByPlaceholderText("Add a tag…")
 
 const customTagList = () => screen.getByText("vip").parentElement?.parentElement
 
+const waitForSheetFocus = async () => {
+  await waitFor(() => {
+    expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true)
+  })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   updateCustomer.mockResolvedValue({ ok: true })
@@ -191,6 +197,7 @@ describe("CustomerSheet custom tags", () => {
 describe("CustomerSheet saving", () => {
   it("saves the edited customer and confirms it", async () => {
     renderSheet()
+    await waitForSheetFocus()
 
     await userEvent.clear(screen.getByDisplayValue("+48600123456"))
     await userEvent.type(screen.getByPlaceholderText("+48 123 456 789"), "+48601000000")
@@ -221,6 +228,7 @@ describe("CustomerSheet saving", () => {
 
   it("upper cases the country code the admin types", async () => {
     renderSheet()
+    await waitForSheetFocus()
 
     const country = screen.getByPlaceholderText("PL")
     await userEvent.clear(country)
@@ -231,6 +239,7 @@ describe("CustomerSheet saving", () => {
 
   it("saves the upper cased country code", async () => {
     renderSheet()
+    await waitForSheetFocus()
 
     const country = screen.getByPlaceholderText("PL")
     await userEvent.clear(country)

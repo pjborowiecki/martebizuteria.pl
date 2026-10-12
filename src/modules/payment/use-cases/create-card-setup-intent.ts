@@ -18,9 +18,9 @@ export const createCardSetupIntent = createServerFn({ method: "POST" })
 
     const customer = await ensureStripeCustomer({ email, name, userId })
     const intent = await stripe.setupIntents.create({
+      allowed_payment_method_types: ["card"],
       customer,
       metadata: { userId },
-      payment_method_types: ["card"],
       usage: "on_session",
     })
 

@@ -64,9 +64,9 @@ const stripeCustomerParamsSchema = z.object({
 })
 
 const stripeSetupIntentParamsSchema = z.object({
+  allowed_payment_method_types: z.record(z.string(), z.string()),
   customer: z.string(),
   metadata: stripeMetadataSchema,
-  payment_method_types: z.record(z.string(), z.string()),
   usage: z.enum(["off_session", "on_session"]),
 })
 
@@ -126,6 +126,7 @@ interface EmulatedCustomer {
 }
 
 interface EmulatedSetupIntent {
+  readonly allowed_payment_method_types: readonly string[]
   readonly client_secret: string
   readonly customer: string
   readonly id: string
@@ -494,7 +495,9 @@ const handlePaymentMethods = (request: Request, url: URL, path: readonly (string
 const createSetupIntent = (form: StripeForm): Response => {
   const params = stripeSetupIntentParamsSchema.parse(form)
   const id = stripeId("seti")
+  const paymentMethodTypes = Object.values(params.allowed_payment_method_types)
   const intent: EmulatedSetupIntent = {
+    allowed_payment_method_types: paymentMethodTypes,
     client_secret: `${id}_secret_${crypto.randomUUID().replaceAll("-", "")}`,
     customer: params.customer,
     id,
@@ -502,7 +505,7 @@ const createSetupIntent = (form: StripeForm): Response => {
     metadata: params.metadata,
     object: "setup_intent",
     payment_method: null,
-    payment_method_types: Object.values(params.payment_method_types),
+    payment_method_types: paymentMethodTypes,
     status: "requires_payment_method",
     usage: params.usage,
   }

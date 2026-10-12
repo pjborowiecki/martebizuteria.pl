@@ -57,9 +57,9 @@ describe("createCardSetupIntent", () => {
     await createCardSetupIntent()
 
     expect(calls.createSetupIntent).toHaveBeenCalledWith({
+      allowed_payment_method_types: ["card"],
       customer: "cus_1",
       metadata: { userId: "user-1" },
-      payment_method_types: ["card"],
       usage: "on_session",
     })
   })
