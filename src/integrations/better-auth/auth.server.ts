@@ -24,7 +24,6 @@ import {
   handleUserCreated,
   handleUserDeleted,
   handleUserUpdated,
-  refuseAdminProviderSignIn,
   requireAccountDataErased,
 } from "~/src/integrations/better-auth/auth.hooks.server"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -57,11 +56,6 @@ export const auth = betterAuth({
   baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) },
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
   databaseHooks: {
-    session: {
-      create: {
-        before: refuseAdminProviderSignIn,
-      },
-    },
     user: {
       create: {
         after: handleUserCreated,

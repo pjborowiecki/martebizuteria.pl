@@ -61,17 +61,10 @@ export const STRIPE_CUSTOMER_NOT_DELETED = {
   message: "The saved cards could not be deleted at Stripe, so the account was kept",
 } as const
 
-export const ADMIN_PASSWORD_SIGN_IN_REQUIRED = {
-  code: "ADMIN_PASSWORD_SIGN_IN_REQUIRED",
-  message: "Admin accounts sign in with their password and a two-factor authentication code",
-} as const satisfies AuthRefusal
-
 export const ADMIN_TWO_FACTOR_REQUIRED = {
   code: "ADMIN_TWO_FACTOR_REQUIRED",
   message: "Turn on two-factor authentication before using the admin panel",
 } as const satisfies AuthRefusal
-
-export const PROVIDER_SIGN_IN_PATH_PREFIXES = ["/callback/", "/sign-in/social"]
 
 export const ADMIN_PLUGIN_PATH_PREFIX = "/admin/"
 

@@ -106,15 +106,6 @@ const signInWithGoogle = async (browser: AuthBrowser, email: string): Promise<Re
   return browser.follow(`${AUTH_BASE_URL}/callback/google?code=test-code&state=${new URL(url).searchParams.get("state")}`)
 }
 
-const redirectTarget = (response: Response): URL => {
-  const location = response.headers.get("location")
-  if (location === null) {
-    throw new Error(`Expected a redirect, got ${String(response.status)}`)
-  }
-
-  return new URL(location, AUTH_BASE_URL)
-}
-
 const sessionsOf = (userId: string): number =>
   sessionCount.parse(sqlite.prepare("select count(*) as sessions from session where user_id = ?").get(userId)).sessions
 
@@ -151,30 +142,27 @@ afterAll(() => {
   sqlite.close()
 })
 
-describe("Google sign-in, which two-factor authentication does not cover", () => {
-  it("is refused for an admin, who is sent to the error page with the reason and gets no session", async () => {
+describe("Google sign-in", () => {
+  it("signs an admin in and sends them back to the page they started from", async () => {
     const adminId = await createPasswordCustomer("google-admin@marte.test")
-    promoteToAdmin(adminId)
-
-    const response = await signInWithGoogle(openAuthBrowser("198.51.100.40"), "google-admin@marte.test")
-
-    const location = redirectTarget(response)
-    expect(response.status).toBe(302)
-    expect(location.pathname).toBe("/api/auth/error")
-    expect(location.searchParams.get("error")).toBe("ADMIN_PASSWORD_SIGN_IN_REQUIRED")
-    expect(sessionsOf(adminId)).toBe(0)
-    expect(audit.recordAuthLoginAudit).not.toHaveBeenCalled()
-  })
-
-  it("is refused for an admin who has already turned two-factor authentication on", async () => {
-    const adminId = await createPasswordCustomer("google-enrolled-admin@marte.test")
     promoteToAdmin(adminId)
     recordTwoFactor(adminId)
 
-    const response = await signInWithGoogle(openAuthBrowser("198.51.100.41"), "google-enrolled-admin@marte.test")
+    const response = await signInWithGoogle(openAuthBrowser("198.51.100.40"), "google-admin@marte.test")
 
-    expect(redirectTarget(response).searchParams.get("error")).toBe("ADMIN_PASSWORD_SIGN_IN_REQUIRED")
-    expect(sessionsOf(adminId)).toBe(0)
+    expect(response.status).toBe(302)
+    expect(response.headers.get("location")).toBe(ACCOUNT_OVERVIEW)
+    expect(sessionsOf(adminId)).toBe(1)
+  })
+
+  it("signs in an admin who has not turned two-factor authentication on yet, so the admin can reach the setup page", async () => {
+    const adminId = await createPasswordCustomer("google-unenrolled-admin@marte.test")
+    promoteToAdmin(adminId)
+
+    const response = await signInWithGoogle(openAuthBrowser("198.51.100.41"), "google-unenrolled-admin@marte.test")
+
+    expect(response.headers.get("location")).toBe(ACCOUNT_OVERVIEW)
+    expect(sessionsOf(adminId)).toBe(1)
   })
 
   it("still signs a customer in and sends them back to the page they started from", async () => {
