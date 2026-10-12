@@ -86,7 +86,6 @@ vi.mock("~/src/modules/product/product.accessors", () => ({
   getPublishedProductsWithInventoryByHandles: mocked.getPublishedProductsWithInventoryByHandles,
 }))
 vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ isSalesPaused: () => Promise.resolve(false) }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => ({ verifyTurnstileToken: () => Promise.resolve() }))
 vi.mock("~/src/modules/checkout/use-cases/count-open-checkouts.server", () => ({
   countOpenCheckouts: () => Promise.resolve({ byClientAddress: 0, byEmail: 0 }),
 }))

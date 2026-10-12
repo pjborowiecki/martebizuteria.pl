@@ -189,7 +189,6 @@
       "sessionClosed": "Tej płatności nie można już zmienić. Rozpocznij płatność od nowa.",
       "sessionComplete": "Ta płatność została już zrealizowana.",
       "sessionProcessing": "Bank wciąż potwierdza tę płatność, więc nie można jej teraz zmienić.",
-      "botCheckFailed": "Nie udało się dokończyć zabezpieczenia, które chroni kasę przed botami. Spróbuj ponownie.",
       "tooManyOpenCheckouts": "Kilka płatności rozpoczętych dla tego adresu e-mail lub z Twojego połączenia nie zostało jeszcze opłaconych. Dokończ jedną z nich albo spróbuj ponownie za około pół godziny, gdy wygasną.",
       "variantNotFound": "Wybrany wariant nie jest już dostępny.",
       "paymentSessionStale": "Twoja poprzednia próba płatności jest jeszcze przetwarzana lub wygasła. Odświeżyliśmy płatność — wybierz metodę i spróbuj ponownie.",

@@ -101,14 +101,11 @@ Przed pierwszym wdrożeniem domena z `RESEND_EMAIL_FROM` musi też być zweryfik
 
 Preview przyjmuje testowe klucze Stripe: `VITE_STRIPE_PUBLISHABLE_KEY` zaczynający się od `pk_test_` i `STRIPE_SECRET_KEY` zaczynający się od `sk_test_` albo `rk_test_`. Klucze live obciążałyby prawdziwą kartę przy każdym testowym zamówieniu, więc wdrożenie je odrzuca.
 
-Preview przyjmuje zawsze przepuszczające testowe klucze Turnstile od Cloudflare: `VITE_TURNSTILE_SITE_KEY` `1x00000000000000000000AA` i `TURNSTILE_SECRET_KEY` `1x0000000000000000000000000000000AA`, czyli wartości z `.env.example`. Przepuszczają każdego odwiedzającego, więc kasa w preview nie ma prawdziwego zabezpieczenia antybotowego; działają też klucze własnego widżetu, o ile klucz witryny i klucz tajny są tego samego rodzaju.
-
-`deploy:preview` to dziewięć kroków połączonych operatorem `&&`:
+`deploy:preview` to osiem kroków połączonych operatorem `&&`:
 
 ```sh
 bun scripts/verify-bindings.ts preview \
   && bun scripts/verify-stripe-keys.ts preview \
-  && bun scripts/verify-turnstile-keys.ts preview \
   && bun scripts/verify-email-sender.ts preview \
   && bun run build:preview \
   && bun scripts/prepare-deploy-secrets.ts preview \
@@ -121,13 +118,12 @@ bun scripts/verify-bindings.ts preview \
 
 1. **`verify-bindings.ts preview`** — opisana wyżej kontrola bindingów. Przerywa wdrożenie, a nie tylko ostrzega.
 2. **`verify-stripe-keys.ts preview`** — bierze `VITE_STRIPE_PUBLISHABLE_KEY` i `STRIPE_SECRET_KEY` ze środowiska procesu lub z `.env.preview` i rozpoznaje tryb każdego klucza po przedrostku. Brakujący klucz, klucze live albo klucz publiczny w innym trybie niż klucz tajny przerywają wdrożenie już tutaj; komunikat podaje nazwy zmiennych i ich tryb, nigdy sam klucz.
-3. **`verify-turnstile-keys.ts preview`** — bierze `VITE_TURNSTILE_SITE_KEY` i `TURNSTILE_SECRET_KEY` ze środowiska procesu lub z `.env.preview` i przerywa wdrożenie, gdy któregoś brakuje albo gdy klucz testowy jest w parze z kluczem widżetu; produkcja dodatkowo odrzuca klucze testowe.
-4. **`verify-email-sender.ts preview`** — bierze `RESEND_API_KEY` i `RESEND_EMAIL_FROM` ze środowiska procesu lub z `.env.preview` i pyta Resend, czy wyśle pocztę z tego adresu. Domena, której nie ma na koncie Resend albo która nie jest zweryfikowana, przerywa wdrożenie już tutaj, przed kompilacją, a komunikat podaje rekordy DNS do opublikowania.
-5. **`build:preview`** — `rm -rf dist`, ponowne wygenerowanie `.source/`, `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `verify-build.ts preview`.
-6. **`prepare-deploy-secrets.ts preview`** — czyta `secrets.required` z `wrangler.jsonc`, bierze każdą wartość ze środowiska procesu lub z `.env.preview` i zapisuje `.wrangler/secrets.preview.json` z uprawnieniami `0600`. Brakująca wartość powoduje wyjątek `Missing <NAZWA> in .env.preview or the process environment`, podobnie pusta, z wyjątkiem `INPOST_API_TOKEN` i `INPOST_ORGANIZATION_ID`, które mogą zostać puste, dopóki sklep nie ma danych InPost. Zapisywane są wyłącznie zadeklarowane sekrety — tak `CLOUDFLARE_ACCESS_TOKEN` i pozostałe dane zarządcze nie trafiają do Workera.
-7. **`db:migrate:preview`** — `wrangler d1 migrations apply DB --env preview --remote` nakłada każdy plik migracji, którego baza preview jeszcze nie odnotowała. Migracja, która zawiedzie, zostaje wycofana, wcześniejsze pozostają nałożone, a wdrożenie zatrzymuje się przed wysłaniem Workera.
-8. **`wrangler deploy`** — wdraża wygenerowany `dist/server/wrangler.json` i w tym samym wywołaniu wysyła plik sekretów. Wygenerowana konfiguracja jest płaska: ma już `"name": "martebizuteria-preview"` i `"vars": { "APP_ENV": "preview" }` na najwyższym poziomie, bez sekcji `env` — i właśnie dlatego polecenie najpierw usuwa zmienną `CLOUDFLARE_ENV`. Z nią ustawioną Wrangler szukałby sekcji środowiska, której w wygenerowanym pliku nie ma.
-9. **`verify-deployment.ts preview`** — pyta `https://martebizuteria-preview.pjborowiecki.workers.dev` o `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` i `/api/health` i przerywa wdrożenie, chyba że `/` i `/products` odpowiedzą `200` z HTML-em, `robots.txt` odpowie `200` zwykłym tekstem, trasa webhooka odrzuci `GET` kodem `405`, a `/api/health` odpowie `200`, bo odpowiedziały D1, KV i R2. O stronę, która odpowie źle, kontrola pyta łącznie najwyżej trzy razy, co pięć sekund.
+3. **`verify-email-sender.ts preview`** — bierze `RESEND_API_KEY` i `RESEND_EMAIL_FROM` ze środowiska procesu lub z `.env.preview` i pyta Resend, czy wyśle pocztę z tego adresu. Domena, której nie ma na koncie Resend albo która nie jest zweryfikowana, przerywa wdrożenie już tutaj, przed kompilacją, a komunikat podaje rekordy DNS do opublikowania.
+4. **`build:preview`** — `rm -rf dist`, ponowne wygenerowanie `.source/`, `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `verify-build.ts preview`.
+5. **`prepare-deploy-secrets.ts preview`** — czyta `secrets.required` z `wrangler.jsonc`, bierze każdą wartość ze środowiska procesu lub z `.env.preview` i zapisuje `.wrangler/secrets.preview.json` z uprawnieniami `0600`. Brakująca wartość powoduje wyjątek `Missing <NAZWA> in .env.preview or the process environment`, podobnie pusta, z wyjątkiem `INPOST_API_TOKEN` i `INPOST_ORGANIZATION_ID`, które mogą zostać puste, dopóki sklep nie ma danych InPost. Zapisywane są wyłącznie zadeklarowane sekrety — tak `CLOUDFLARE_ACCESS_TOKEN` i pozostałe dane zarządcze nie trafiają do Workera.
+6. **`db:migrate:preview`** — `wrangler d1 migrations apply DB --env preview --remote` nakłada każdy plik migracji, którego baza preview jeszcze nie odnotowała. Migracja, która zawiedzie, zostaje wycofana, wcześniejsze pozostają nałożone, a wdrożenie zatrzymuje się przed wysłaniem Workera.
+7. **`wrangler deploy`** — wdraża wygenerowany `dist/server/wrangler.json` i w tym samym wywołaniu wysyła plik sekretów. Wygenerowana konfiguracja jest płaska: ma już `"name": "martebizuteria-preview"` i `"vars": { "APP_ENV": "preview" }` na najwyższym poziomie, bez sekcji `env` — i właśnie dlatego polecenie najpierw usuwa zmienną `CLOUDFLARE_ENV`. Z nią ustawioną Wrangler szukałby sekcji środowiska, której w wygenerowanym pliku nie ma.
+8. **`verify-deployment.ts preview`** — pyta `https://martebizuteria-preview.pjborowiecki.workers.dev` o `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` i `/api/health` i przerywa wdrożenie, chyba że `/` i `/products` odpowiedzą `200` z HTML-em, `robots.txt` odpowie `200` zwykłym tekstem, trasa webhooka odrzuci `GET` kodem `405`, a `/api/health` odpowie `200`, bo odpowiedziały D1, KV i R2. O stronę, która odpowie źle, kontrola pyta łącznie najwyżej trzy razy, co pięć sekund.
 
 ### Co wychwytuje weryfikacja buildu
 
@@ -151,7 +147,7 @@ Ta ostatnia kontrola jest najciekawsza. Skanuje każdy bundle kliencki przy uży
 | `deploy-preview.yml`    | Pull requesty do `main`                     | `preview`    |
 | `deploy-production.yml` | Udany `ci.yml` dla pusha do `main`; ręcznie | `production` |
 
-Oba workflow wdrożeniowe korzystają z `.github/actions/setup`, a potem wykonują `touch .env.<env>` i uruchamiają skrypt wdrożeniowy z wszystkimi wartościami podanymi przez środowisko zadania. Workflow podglądu najpierw uruchamia `bun run check`; workflow produkcyjny startuje dopiero wtedy, gdy `ci.yml` przeszedł dla pusha tego samego commita do `main`, i wdraża go tylko wtedy, gdy wciąż jest najnowszym commitem na `main`, albo ręcznie dla takiego commita, zobacz [CI/CD](/docs/tooling/ci-cd). `verify-stripe-keys.ts`, `verify-turnstile-keys.ts`, `verify-email-sender.ts` i `prepare-deploy-secrets.ts` wolą `process.env` od pliku, więc pusty plik jest celowy — istnieje tylko po to, żeby wywołanie `readFile` w `prepare-deploy-secrets.ts` się udało.
+Oba workflow wdrożeniowe korzystają z `.github/actions/setup`, a potem wykonują `touch .env.<env>` i uruchamiają skrypt wdrożeniowy z wszystkimi wartościami podanymi przez środowisko zadania. Workflow podglądu najpierw uruchamia `bun run check`; workflow produkcyjny startuje dopiero wtedy, gdy `ci.yml` przeszedł dla pusha tego samego commita do `main`, i wdraża go tylko wtedy, gdy wciąż jest najnowszym commitem na `main`, albo ręcznie dla takiego commita, zobacz [CI/CD](/docs/tooling/ci-cd). `verify-stripe-keys.ts`, `verify-email-sender.ts` i `prepare-deploy-secrets.ts` wolą `process.env` od pliku, więc pusty plik jest celowy — istnieje tylko po to, żeby wywołanie `readFile` w `prepare-deploy-secrets.ts` się udało.
 
 Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull requeście z adresem podglądu. Współbieżność jest kluczowana per pull request dla preview i globalnie dla produkcji, z `cancel-in-progress: false` na produkcji, żeby dwa pushe do `main` nie wyścigowały się ze sobą.
 
@@ -159,11 +155,11 @@ Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull 
 
 **Sekrety** repozytorium:
 
-`CLOUDFLARE_ACCESS_TOKEN` (przekazywany Wranglerowi jako `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `TURNSTILE_SECRET_KEY`.
+`CLOUDFLARE_ACCESS_TOKEN` (przekazywany Wranglerowi jako `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
 
 **Zmienne** repozytorium:
 
-`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`, `VITE_TURNSTILE_SITE_KEY` i `VITE_APP_URL`. Trzy pierwsze są wstawiane do bundle'a klienckiego na etapie budowania, więc muszą być zmiennymi, nie sekretami. `VITE_R2_URL` różni się między preview a produkcją, więc ustaw go jako zmienną środowisk GitHub `preview` i `production`, która ma pierwszeństwo przed zmienną repozytorium o tej samej nazwie. `VITE_APP_URL` jest przekazywany przez oba workflow, ale nie jest odczytywany nigdzie w `src/` i nie jest zadeklarowanym sekretem Workera — zobacz [Zmienne środowiskowe](/docs/getting-started/environment-variables).
+`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY` i `VITE_APP_URL`. Dwie pierwsze są wstawiane do bundle'a klienckiego na etapie budowania, więc muszą być zmiennymi, nie sekretami. `VITE_R2_URL` różni się między preview a produkcją, więc ustaw go jako zmienną środowisk GitHub `preview` i `production`, która ma pierwszeństwo przed zmienną repozytorium o tej samej nazwie. `VITE_APP_URL` jest przekazywany przez oba workflow, ale nie jest odczytywany nigdzie w `src/` i nie jest zadeklarowanym sekretem Workera — zobacz [Zmienne środowiskowe](/docs/getting-started/environment-variables).
 
 ## Po wdrożeniu
 

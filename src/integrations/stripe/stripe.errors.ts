@@ -1,5 +1,3 @@
-import { TURNSTILE_ERROR_CODES } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
-
 export const getCheckoutErrorKey = (error: unknown): string => {
   const code = error instanceof Error ? error.message : ""
 
@@ -23,7 +21,6 @@ export const CHECKOUT_ERROR_CODES = {
 } as const
 
 export const CHECKOUT_ERRORS: Record<string, string> = {
-  [TURNSTILE_ERROR_CODES.BOT_CHECK_FAILED]: "botCheckFailed",
   [CHECKOUT_ERROR_CODES.DELIVERY_METHOD_UNAVAILABLE]: "deliveryMethodUnavailable",
   [CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY]: "insufficientInventory",
   [CHECKOUT_ERROR_CODES.INVALID_PRICE]: "invalidPrice",

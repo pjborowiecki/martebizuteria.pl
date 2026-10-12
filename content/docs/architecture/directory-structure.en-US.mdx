@@ -8,9 +8,9 @@ content/
 └── docs/                              <page>.<locale>.mdx and meta.<locale>.json
 messages/<locale>/<namespace>.json     One file per translation namespace
 public/                                Fonts, images and other static assets
-scripts/                               verify-bindings, verify-stripe-keys, verify-turnstile-keys,
-                                       verify-email-sender, verify-build, verify-deployment,
-                                       prepare-deploy-secrets, commit-msg, sync-skills
+scripts/                               verify-bindings, verify-stripe-keys, verify-email-sender,
+                                       verify-build, verify-deployment, prepare-deploy-secrets,
+                                       commit-msg, sync-skills
 src/
 ├── routes/                            Locale-free flat file routes
 │   ├── __root.tsx                     Shell document, head tags, root beforeLoad
@@ -83,7 +83,7 @@ src/
 
 ## Content and messages live outside `src`
 
-`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. The terms of service, the privacy policy, the exchanges-and-returns page and the FAQ are not files: their Markdown lives in the D1 `content_page` table, seeded by `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql`, `20261005200000_terms_of_service_page.sql` and `20261010232000_faq_page.sql`, rewritten for the returns page by `20261005210000_returns_and_complaints_page.sql` and for the privacy policy by `20261010200000_privacy_policy_page.sql` and `20261010210000_privacy_policy_account_deletion.sql`, and edited at `/admin/content`. The withdrawal and complaint forms those pages link are PDFs in `public/forms`. `messages/{en-US,pl-PL}` holds 56 namespace files each.
+`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. The terms of service, the privacy policy, the exchanges-and-returns page and the FAQ are not files: their Markdown lives in the D1 `content_page` table, seeded by `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql`, `20261005200000_terms_of_service_page.sql` and `20261010232000_faq_page.sql`, rewritten for the returns page by `20261005210000_returns_and_complaints_page.sql` and for the privacy policy by `20261010200000_privacy_policy_page.sql`, `20261010210000_privacy_policy_account_deletion.sql` and `20261012100000_privacy_policy_without_bot_check.sql`, and edited at `/admin/content`. The withdrawal and complaint forms those pages link are PDFs in `public/forms`. `messages/{en-US,pl-PL}` holds 56 namespace files each.
 
 ## Related pages
 

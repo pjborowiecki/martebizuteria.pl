@@ -89,17 +89,6 @@ describe("guest withdrawal statement", () => {
       { message: "orderNumberMaxLength", path: ["orderNumber"] },
     ])
   })
-
-  it("sends the statement with a bot-check token of at most 2048 characters", () => {
-    const sent = { ...guestStatement, turnstileToken: "turnstile-token" }
-
-    expect(orderWithdrawalZodSchemas.guestInput.parse(sent)).toStrictEqual(sent)
-    expect(issuesOf(orderWithdrawalZodSchemas.guestInput, guestStatement)?.map(({ path }) => path)).toStrictEqual([["turnstileToken"]])
-    expect(orderWithdrawalZodSchemas.guestInput.safeParse({ ...sent, turnstileToken: "x".repeat(2049) }).success).toBe(false)
-    expect(issuesOf(orderWithdrawalZodSchemas.guestInput, { ...sent, items: " ", scope: "items" })).toStrictEqual([
-      { message: "itemsRequired", path: ["items"] },
-    ])
-  })
 })
 
 describe("order id input", () => {

@@ -26,8 +26,6 @@ const audit = vi.hoisted(() => ({
   resolveAuthAuditActor: vi.fn((user: { id: string }) => `actor:${user.id}`),
 }))
 
-const turnstile = vi.hoisted(() => ({ passesTurnstile: vi.fn(() => Promise.resolve(false)) }))
-
 vi.mock("cloudflare:workers", () => ({
   env: {
     AUTH_GOOGLE_CLIENT_ID: "test-google-client",
@@ -36,7 +34,6 @@ vi.mock("cloudflare:workers", () => ({
   },
 }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: vi.fn(() => Promise.resolve()) }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.server", () => turnstile)
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
@@ -239,8 +236,8 @@ describe("Better Auth's own admin endpoints", () => {
   })
 })
 
-describe("two-factor enrolment and sign-in, which the bot check never asks about", () => {
-  it("lets an admin turn two-factor authentication on and sign in with a code while Turnstile refuses every token", async () => {
+describe("two-factor enrolment and sign-in", () => {
+  it("lets an admin turn two-factor authentication on and sign in with a code", async () => {
     const adminId = await createPasswordCustomer("enrolling-admin@marte.test")
     promoteToAdmin(adminId)
     const browser = openAuthBrowser("198.51.100.47")
@@ -259,6 +256,5 @@ describe("two-factor enrolment and sign-in, which the bot check never asks about
 
     expect(twoFactorChallenge.parse(await challenged.json()).twoFactorRedirect).toBe(true)
     expect([completed.status, nextAdminEndpoint.status]).toStrictEqual([200, 200])
-    expect(turnstile.passesTurnstile).not.toHaveBeenCalled()
   })
 })

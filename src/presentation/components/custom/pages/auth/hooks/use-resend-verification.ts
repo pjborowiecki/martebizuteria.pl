@@ -4,7 +4,6 @@ import { toast } from "sonner"
 import { useLocale, useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
-import { TURNSTILE_TOKEN_HEADER } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 
 import { useActionError } from "~/src/hooks/use-action-error"
 
@@ -16,7 +15,7 @@ const sendVerificationEmail = createClientOnlyFn((input: Parameters<typeof authC
   authClient.sendVerificationEmail(input),
 )
 
-export const useResendVerification = (requestTurnstileToken: () => Promise<string>): UseMutationResult<void, Error, string> => {
+export const useResendVerification = (): UseMutationResult<void, Error, string> => {
   const t = useTranslations("pages.auth.toast")
   const actionError = useActionError()
   const locale = useLocale()
@@ -26,7 +25,6 @@ export const useResendVerification = (requestTurnstileToken: () => Promise<strin
       const { error } = await sendVerificationEmail({
         callbackURL: buildLocalizedUrl("", `${ROUTES.ACCOUNT_OVERVIEW}?verified=true`, locale),
         email,
-        fetchOptions: { headers: { [TURNSTILE_TOKEN_HEADER]: await requestTurnstileToken() } },
       })
 
       if (error !== null) {
@@ -34,7 +32,7 @@ export const useResendVerification = (requestTurnstileToken: () => Promise<strin
       }
     },
     onError: (error) => {
-      toast.error(t("errorTitle"), { description: actionError(error.cause ?? error) })
+      toast.error(t("errorTitle"), { description: actionError(error.cause) })
     },
     onSuccess: (_result, email) => {
       toast.success(t("verificationResentTitle"), { description: t("verificationResentDescription", { email }) })

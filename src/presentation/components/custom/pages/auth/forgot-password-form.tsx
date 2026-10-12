@@ -10,10 +10,8 @@ import { useLocale, useTranslations } from "use-intl/react"
 
 import { authClient } from "~/src/integrations/better-auth/auth.client"
 import { type ForgotPasswordFormValues, forgotPasswordSchema } from "~/src/integrations/better-auth/auth.zod"
-import { TURNSTILE_ACTIONS, TURNSTILE_TOKEN_HEADER } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 
 import { useActionError } from "~/src/hooks/use-action-error"
-import { useTurnstileToken } from "~/src/hooks/use-turnstile-token"
 
 import { buildLocalizedUrl } from "~/src/lib/seo"
 
@@ -32,7 +30,6 @@ export const ForgotPasswordForm = (): JSX.Element => {
   const t = useTranslations()
   const actionError = useActionError()
   const locale = useLocale()
-  const { containerRef, requestToken } = useTurnstileToken(TURNSTILE_ACTIONS.PASSWORD_RESET)
   const form = useForm<ForgotPasswordFormValues>({
     defaultValues: {
       email: "",
@@ -41,39 +38,27 @@ export const ForgotPasswordForm = (): JSX.Element => {
     resolver: zodResolver(forgotPasswordSchema),
   })
 
-  const showError = useCallback(
-    (error: unknown) => {
-      toast.error(t("pages.auth.toast.errorTitle"), {
-        description: actionError(error),
-      })
-    },
-    [actionError, t],
-  )
-
   const onSubmit = useCallback(
     async (data: ForgotPasswordFormValues) => {
-      try {
-        await requestPasswordReset({
-          email: data.email,
-          fetchOptions: {
-            headers: { [TURNSTILE_TOKEN_HEADER]: await requestToken() },
-            onError: (ctx: ErrorContext) => {
-              showError(ctx.error)
-            },
-            onSuccess: () => {
-              setHasSubmitted(true)
-              toast.success(t("pages.auth.toast.forgotPasswordTitle"), {
-                description: t("pages.auth.toast.forgotPasswordDescription"),
-              })
-            },
+      await requestPasswordReset({
+        email: data.email,
+        fetchOptions: {
+          onError: (ctx: ErrorContext) => {
+            toast.error(t("pages.auth.toast.errorTitle"), {
+              description: actionError(ctx.error),
+            })
           },
-          redirectTo: buildLocalizedUrl("", ROUTES.AUTH_RESET_PASSWORD, locale),
-        })
-      } catch (error) {
-        showError(error)
-      }
+          onSuccess: () => {
+            setHasSubmitted(true)
+            toast.success(t("pages.auth.toast.forgotPasswordTitle"), {
+              description: t("pages.auth.toast.forgotPasswordDescription"),
+            })
+          },
+        },
+        redirectTo: buildLocalizedUrl("", ROUTES.AUTH_RESET_PASSWORD, locale),
+      })
     },
-    [locale, requestToken, showError, t],
+    [locale, t],
   )
 
   const handleFormSubmit = useCallback(
@@ -112,8 +97,6 @@ export const ForgotPasswordForm = (): JSX.Element => {
         disabled={isSubmitting}
         required
       />
-
-      <div ref={containerRef} className="empty:hidden" />
 
       <Button size="xl" type="submit" className="w-full gap-2.5 tracking-wide" disabled={isSubmitting}>
         {isSubmitting && <Loader2 aria-hidden className="size-4 animate-spin" />}

@@ -8,19 +8,12 @@ import { type SignUpFormValues } from "~/src/integrations/better-auth/auth.zod"
 
 const signUp = vi.hoisted(() => ({
   isPending: false,
-  issueTurnstileToken: vi.fn<(request: { action: string; container: HTMLElement }) => Promise<string>>(),
   mutate: vi.fn<(values: SignUpFormValues) => void>(),
-  useSignUpWithPassword: vi.fn<(requestTurnstileToken: () => Promise<string>) => void>(),
 }))
 
 vi.mock("~/src/presentation/components/custom/pages/auth/hooks/use-sign-up-with-password", () => ({
-  useSignUpWithPassword: (requestTurnstileToken: () => Promise<string>) => {
-    signUp.useSignUpWithPassword(requestTurnstileToken)
-
-    return { isPending: signUp.isPending, mutate: signUp.mutate }
-  },
+  useSignUpWithPassword: () => ({ isPending: signUp.isPending, mutate: signUp.mutate }),
 }))
-vi.mock("~/src/integrations/cloudflare-turnstile/turnstile.client", () => ({ issueTurnstileToken: signUp.issueTurnstileToken }))
 
 import { SignUpWithPasswordForm } from "~/src/presentation/components/custom/pages/auth/sign-up-with-password-form"
 
@@ -51,21 +44,6 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
-})
-
-describe("SignUpWithPasswordForm bot check", () => {
-  it("lets the sign-up ask for a token from the sign-up bot check, run in a slot above the submit button", async () => {
-    signUp.issueTurnstileToken.mockResolvedValue("turnstile-token-1")
-    renderWithProviders(<SignUpWithPasswordForm />)
-    const requestTurnstileToken = signUp.useSignUpWithPassword.mock.lastCall?.[0]
-
-    await expect(requestTurnstileToken?.()).resolves.toBe("turnstile-token-1")
-
-    const slot = signUp.issueTurnstileToken.mock.lastCall?.[0].container
-    expect(signUp.issueTurnstileToken).toHaveBeenCalledExactlyOnceWith({ action: "sign-up", container: slot })
-    expect(slot?.nextElementSibling).toBe(submit())
-    expect(slot).toHaveClass("empty:hidden")
-  })
 })
 
 describe("SignUpWithPasswordForm fields", () => {

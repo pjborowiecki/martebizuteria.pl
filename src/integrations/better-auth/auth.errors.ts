@@ -5,7 +5,6 @@ export const AUTH_ERRORS = {
   ADMIN_PASSWORD_SIGN_IN_REQUIRED: "adminPasswordSignInRequired",
   ADMIN_TWO_FACTOR_REQUIRED: "adminTwoFactorRequired",
   BANNED_USER: "bannedUser",
-  BOT_CHECK_FAILED: "botCheckFailed",
   COULD_NOT_CREATE_SESSION: "couldNotCreateSession",
   CREDENTIAL_ACCOUNT_NOT_FOUND: "credentialAccountNotFound",
   EMAIL_DELIVERY_FAILED: "emailDeliveryFailed",
@@ -50,10 +49,6 @@ const errorCodeSchema = z.object({ code: z.string() })
 
 const authErrorBodySchema = z.object({ body: errorCodeSchema }).transform(({ body }) => body)
 
-const errorMessageCodeSchema = z.instanceof(Error).transform(({ message }) => ({ code: message }))
-
-const authErrorKeySchema = z
-  .union([errorCodeSchema, authErrorBodySchema, errorMessageCodeSchema])
-  .transform(({ code }) => AUTH_ERROR_BY_CODE.get(code))
+const authErrorKeySchema = z.union([errorCodeSchema, authErrorBodySchema]).transform(({ code }) => AUTH_ERROR_BY_CODE.get(code))
 
 export const authErrorKey = (error: unknown): AuthErrorMessageKey => authErrorKeySchema.safeParse(error).data ?? AUTH_ERRORS.UNKNOWN_ERROR

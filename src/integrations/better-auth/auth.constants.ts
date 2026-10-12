@@ -1,5 +1,4 @@
 import { type AuthRefusal } from "~/src/integrations/better-auth/auth.errors"
-import { TURNSTILE_ACTIONS, type TurnstileAction } from "~/src/integrations/cloudflare-turnstile/turnstile.constants"
 
 import { USER_ERROR_CODES } from "~/src/modules/user/user.constants"
 
@@ -46,17 +45,6 @@ export const EMAIL_SENDING_AUTH_PATHS: ReadonlySet<string> = new Set([
   ROUTES.API_AUTH.SEND_VERIFICATION_EMAIL,
   ROUTES.API_AUTH.SIGN_UP_EMAIL,
 ])
-
-export const BOT_CHECKED_AUTH_PATHS: ReadonlyMap<string, TurnstileAction> = new Map([
-  [ROUTES.API_AUTH.REQUEST_PASSWORD_RESET, TURNSTILE_ACTIONS.PASSWORD_RESET],
-  [ROUTES.API_AUTH.SEND_VERIFICATION_EMAIL, TURNSTILE_ACTIONS.VERIFICATION_RESEND],
-  [ROUTES.API_AUTH.SIGN_UP_EMAIL, TURNSTILE_ACTIONS.SIGN_UP],
-])
-
-export const BOT_CHECK_FAILED = {
-  code: "BOT_CHECK_FAILED",
-  message: "The bot check did not pass",
-} as const satisfies AuthRefusal
 
 export const EMAIL_DELIVERY_FAILED = {
   code: "EMAIL_DELIVERY_FAILED",

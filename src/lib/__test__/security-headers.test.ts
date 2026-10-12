@@ -78,13 +78,12 @@ describe("withSecurityHeaders", () => {
     expect(secured().headers.get("permissions-policy")).toBe("camera=(), geolocation=(), microphone=()")
   })
 
-  it("runs only the shop's own scripts, the inline scripts carrying this response's nonce, Stripe.js and Turnstile", () => {
+  it("runs only the shop's own scripts, the inline scripts carrying this response's nonce and Stripe.js", () => {
     expect(directive(secured(), "script-src")).toStrictEqual([
       "'self'",
       `'nonce-${NONCE}'`,
       "https://js.stripe.com",
       "https://*.js.stripe.com",
-      "https://challenges.cloudflare.com",
     ])
   })
 
@@ -99,21 +98,19 @@ describe("withSecurityHeaders", () => {
     expect(directive(secured(), "style-src")).toStrictEqual(["'self'", "'unsafe-inline'"])
   })
 
-  it("frames only Stripe's payment and 3-D Secure frames and the Turnstile challenge", () => {
+  it("frames only Stripe's payment and 3-D Secure frames", () => {
     expect(directive(secured(), "frame-src")).toStrictEqual([
       "https://js.stripe.com",
       "https://*.js.stripe.com",
       "https://hooks.stripe.com",
-      "https://challenges.cloudflare.com",
     ])
   })
 
-  it("connects only to the shop, Stripe, Turnstile, the InPost points API and the locker map tiles", () => {
+  it("connects only to the shop, Stripe, the InPost points API and the locker map tiles", () => {
     expect(directive(secured(), "connect-src")).toStrictEqual([
       "'self'",
       "https://api.stripe.com",
       "https://fonts.googleapis.com",
-      "https://challenges.cloudflare.com",
       "https://api-pl-points.easypack24.net",
       "https://basemaps.cartocdn.com",
       "https://*.basemaps.cartocdn.com",
