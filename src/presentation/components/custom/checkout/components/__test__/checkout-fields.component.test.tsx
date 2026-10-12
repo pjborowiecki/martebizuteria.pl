@@ -1,7 +1,7 @@
 import { type JSX } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { cleanup, screen } from "@testing-library/react"
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useForm } from "react-hook-form"
 import { afterEach, describe, expect, it } from "vite-plus/test"
@@ -101,6 +101,34 @@ describe("CheckoutTextField", () => {
     expect(container.querySelector("svg.text-success")).toBeInTheDocument()
   })
 
+  it("confirms a field the browser autofills while the shopper is still in another one", async () => {
+    const { container } = renderWithProviders(<FieldsHarness />)
+
+    await userEvent.click(screen.getByLabelText(/Email/u))
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Warszawa" } })
+
+    await waitFor(() => {
+      expect(container.querySelector("svg.text-success")).toBeInTheDocument()
+    })
+  })
+
+  it("flags an invalid value the browser autofills without waiting for the shopper to leave it", async () => {
+    renderWithProviders(<FieldsHarness />)
+
+    await userEvent.click(screen.getByLabelText("City"))
+    fireEvent.change(screen.getByLabelText(/Email/u), { target: { value: "not-an-email" } })
+
+    expect(await screen.findByText("Please enter a valid email address")).toBeInTheDocument()
+  })
+
+  it("waits for the shopper to leave the field they are typing in before confirming it", async () => {
+    const { container } = renderWithProviders(<FieldsHarness />)
+
+    await userEvent.type(screen.getByLabelText("City"), "Warszawa")
+
+    expect(container.querySelector("svg.text-success")).toBeNull()
+  })
+
   it("does not confirm a read-only field", async () => {
     const { container } = renderWithProviders(<FieldsHarness defaultValues={{ province: "Mazowieckie" }} />)
 
@@ -127,6 +155,17 @@ describe("CheckoutPhoneField", () => {
 
     expect(await screen.findByText("Please enter a valid phone number")).toBeInTheDocument()
     expect(screen.getByText("+48").className).toContain("border-destructive")
+  })
+
+  it("greens the prefix for a number the browser autofills", async () => {
+    renderWithProviders(<FieldsHarness />)
+
+    await userEvent.click(screen.getByLabelText("City"))
+    fireEvent.change(screen.getByLabelText("Phone"), { target: { value: "600123456" } })
+
+    await waitFor(() => {
+      expect(screen.getByText("+48").className).toContain("border-success")
+    })
   })
 
   it("greens the prefix once a valid number has been entered and left", async () => {

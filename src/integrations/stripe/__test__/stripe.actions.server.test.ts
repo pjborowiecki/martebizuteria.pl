@@ -255,6 +255,12 @@ describe("handleCreateCheckoutSession", () => {
     )
   })
 
+  it("lets the payment step hand Stripe the phone number, since the payment form collects no billing details itself", async () => {
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ phone_number_collection: { enabled: true } }))
+  })
+
   it("adds no shipping line for a free delivery method", async () => {
     mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 0, type: "in_store" })
 

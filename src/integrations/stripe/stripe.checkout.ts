@@ -8,6 +8,7 @@ import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { type CartUnitPrice, getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 import { type CartItem } from "~/src/modules/cart/cart.store"
+import { toInternationalCheckoutPhone } from "~/src/modules/checkout/checkout.validation.utils"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { type OrderTotals } from "~/src/modules/order/order.totals"
 
@@ -163,6 +164,7 @@ export const confirmCheckoutSession = async ({
 }: Readonly<{ checkout: StripeCheckoutElementsValue; values: CheckoutFormSchema }>): Promise<ConfirmOutcome> => {
   const result = await checkout.confirm({
     billingAddress: buildCheckoutContact(values),
+    phoneNumber: toInternationalCheckoutPhone(values.phone),
     redirect: "if_required",
   })
 

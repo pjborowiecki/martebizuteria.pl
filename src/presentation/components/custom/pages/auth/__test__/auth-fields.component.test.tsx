@@ -1,6 +1,6 @@
 import { type JSX, useEffect } from "react"
 
-import { cleanup, screen } from "@testing-library/react"
+import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useForm } from "react-hook-form"
 import { afterEach, describe, expect, it } from "vite-plus/test"
@@ -66,6 +66,16 @@ describe("AuthTextField", () => {
     expect(screen.getByLabelText(/Email address/u)).toHaveAttribute("aria-invalid", "true")
   })
 
+  it("confirms an address the browser autofills", async () => {
+    const { container } = renderWithProviders(<Harness field="email" />)
+
+    fireEvent.change(screen.getByLabelText(/Email address/u), { target: { value: "ada@example.test" } })
+
+    await waitFor(() => {
+      expect(container.querySelector("svg.text-success")).toBeInTheDocument()
+    })
+  })
+
   it("shows no error message while the field is untouched", () => {
     renderWithProviders(<Harness field="email" />)
 
@@ -74,6 +84,16 @@ describe("AuthTextField", () => {
 })
 
 describe("AuthPasswordField", () => {
+  it("confirms a password the browser autofills", async () => {
+    const { container } = renderWithProviders(<Harness field="password" />)
+
+    fireEvent.change(screen.getByLabelText(/Password/u), { target: { value: "Saved-Password-1" } })
+
+    await waitFor(() => {
+      expect(container.querySelector("svg.text-success")).toBeInTheDocument()
+    })
+  })
+
   it("masks the password by default", () => {
     renderWithProviders(<Harness field="password" />)
 

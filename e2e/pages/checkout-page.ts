@@ -1,4 +1,4 @@
-import { type Locator } from "@playwright/test"
+import { type Locator, expect } from "@playwright/test"
 
 import { type InpostLocker } from "../data/inpost"
 import { BasePage } from "./base-page"
@@ -96,11 +96,15 @@ export class CheckoutPage extends BasePage {
   }
 
   async payWithCard(card: PaymentCard): Promise<void> {
-    const paymentForm = this.page.locator("iframe[title='Secure payment input frame']").contentFrame()
+    const paymentForm = this.page.locator("iframe[title='Secure payment input frame'][src*='elements-inner-payment']").contentFrame()
+    await paymentForm.getByRole("button", { exact: true, name: "Card" }).click()
     await paymentForm.locator("input[name='number']").fill(card.number)
     await paymentForm.locator("input[name='expiry']").fill(card.expiry)
     await paymentForm.locator("input[name='cvc']").fill(card.cvc)
-    await this.page.getByRole("button", { name: /^Order & Pay/u }).click()
+    const payButton = this.page.getByRole("button", { name: /^Order & Pay/u })
+    await payButton.scrollIntoViewIfNeeded()
+    await expect(this.page.locator("html")).not.toHaveClass(/lenis-scrolling/u)
+    await payButton.click()
   }
 
   async applyDiscountCode(code: string): Promise<void> {

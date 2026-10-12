@@ -31,7 +31,7 @@ export const HAS_STRIPE_TEST_MODE_KEYS =
 export const STRIPE_TEST_MODE_SKIP_REASON =
   "No Stripe test-mode keys: build the test Worker and run this project with STRIPE_SECRET_KEY (sk_test_ or rk_test_) and VITE_STRIPE_PUBLISHABLE_KEY (pk_test_) from a Stripe sandbox. Without them no spec calls Stripe."
 
-export const STRIPE_ORIGINS = /^https:\/\/(?:[\w-]+\.)*(?:stripe\.com|stripe\.network|stripecdn\.com)\//u
+export const STRIPE_ORIGINS = /^https:\/\/(?:[\w-]+\.)*(?:stripe\.com|stripe\.network|stripecdn\.com|hcaptcha\.com)\//u
 
 export const STRIPE_TEST_CARD = { cvc: "123", expiry: "12/34", number: "4242424242424242" } as const
 
