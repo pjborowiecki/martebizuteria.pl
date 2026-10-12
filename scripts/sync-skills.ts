@@ -4,13 +4,13 @@ import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 
 const GROUPS: Record<string, string> = {
-  "antfu/skills": "antfu",
   "cloudflare/skills": "cloudflare",
   "greensock/gsap-skills": "gsap",
   "medusajs/medusa-agent-skills": "medusa",
   "resend/resend-skills": "resend",
   "stripe/ai": "stripe",
   "tanstack-skills/tanstack-skills": "tanstack",
+  "vercel-labs/agent-skills": "vercel",
 }
 
 const agentsDirectory = resolve(".agents/skills")

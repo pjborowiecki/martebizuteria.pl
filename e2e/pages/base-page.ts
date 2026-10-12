@@ -31,9 +31,22 @@ export class BasePage {
   async waitForAppReady(): Promise<void> {
     await this.page.waitForFunction(
       () => {
-        const router: unknown = Reflect.get(globalThis, "$_TSR")
+        const read = (value: unknown, key: string): unknown => (typeof value === "object" && value !== null ? Reflect.get(value, key) : undefined)
+        const reactRootKey = Object.keys(document).find((key) => key.startsWith("__reactContainer$"))
+        if (document.readyState !== "complete" || reactRootKey === undefined) {
+          return false
+        }
+        const fibers = [read(read(read(document, reactRootKey), "stateNode"), "current")]
+        while (fibers.length > 0) {
+          const fiber = fibers.pop()
+          const state = read(fiber, "memoizedState")
+          if (read(state, "isDehydrated") === true || read(state, "dehydrated") instanceof Comment) {
+            return false
+          }
+          fibers.push(...[read(fiber, "child"), read(fiber, "sibling")].filter((next) => typeof next === "object" && next !== null))
+        }
 
-        return document.readyState === "complete" && (typeof router !== "object" || router === null || Reflect.get(router, "hydrated") === true)
+        return true
       },
       undefined,
       { timeout: APP_READY_TIMEOUT_MS },

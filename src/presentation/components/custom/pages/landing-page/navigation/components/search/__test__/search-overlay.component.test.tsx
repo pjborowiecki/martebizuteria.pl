@@ -120,9 +120,10 @@ describe("SearchOverlay", () => {
 
   it("wraps the field in a search form that submits on enter", async () => {
     renderWithProviders(<SearchOverlay />)
+    screen.getByRole<HTMLDialogElement>("dialog", { hidden: true }).showModal()
 
-    expect(screen.getByRole("search", { hidden: true })).toBeInTheDocument()
-    await userEvent.type(screen.getByRole("searchbox", { hidden: true, name: "Search M'ARTE…" }), "{Enter}")
+    expect(screen.getByRole("search")).toBeInTheDocument()
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search M'ARTE…" }), "{Enter}")
 
     expect(logic.current?.handleSubmit).toHaveBeenCalledTimes(1)
   })

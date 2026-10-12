@@ -24,6 +24,7 @@ const checkoutSession = (intent: Stripe.Checkout.Session["payment_intent"]): Str
   adaptive_pricing: null,
   after_expiration: null,
   allow_promotion_codes: null,
+  allowed_payment_method_types: null,
   amount_subtotal: 12_000,
   amount_total: 12_000,
   automatic_tax: { enabled: false, liability: null, provider: null, status: null },

@@ -12,7 +12,7 @@ import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 
 describe("stripe constants", () => {
   it("pins the Stripe API version the integration was written against", () => {
-    expect(STRIPE_API_VERSION).toBe("2026-08-26.dahlia")
+    expect(STRIPE_API_VERSION).toBe("2026-09-30.endive")
   })
 
   it("sends the store currency to Stripe in the lowercase form its API expects", () => {

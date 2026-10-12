@@ -1,6 +1,6 @@
 import { STORE_CURRENCY_CODE, type SupportedCurrencyCode } from "~/src/modules/_core/constants/currency"
 
-export const STRIPE_API_VERSION = "2026-08-26.dahlia" as const
+export const STRIPE_API_VERSION = "2026-09-30.endive" as const
 
 export const CHECKOUT_PAYMENT_METHOD_ORDER = ["card", "blik", "p24"] as const
 
