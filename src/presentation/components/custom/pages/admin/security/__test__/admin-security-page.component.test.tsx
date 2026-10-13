@@ -19,6 +19,9 @@ vi.mock("~/src/integrations/better-auth/auth.client", () => ({
   signOut: auth.signOut,
 }))
 vi.mock("qrcode", () => ({ default: { toString: () => Promise.resolve("<svg></svg>") } }))
+vi.mock("~/src/modules/account/use-cases/set-account-password", () => ({
+  setAccountPasswordMutation: { mutationFn: vi.fn(), mutationKey: ["account", "setAccountPassword"] },
+}))
 vi.mock("~/src/modules/customer-account/use-cases/get-customer-profile", async () => {
   const { CUSTOMER_ACCOUNT_QUERY_KEYS } = await import("~/src/modules/customer-account/customer-account.constants")
 
@@ -93,13 +96,16 @@ describe("admin security page", () => {
     expect(screen.getByRole("button", { name: "Disable" })).toBeInTheDocument()
   })
 
-  it("tells an admin without a password how to set one before turning two-factor authentication on", async () => {
+  it("asks an admin who signed up with Google to set a password here before turning two-factor authentication on", async () => {
     profile.fetchProfile.mockResolvedValue(adminProfile({ hasPassword: false }))
     renderPage()
 
-    expect(await screen.findByText(/^This account has no password yet/u)).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Enable" })).toBeNull()
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument()
+    expect(
+      await screen.findByText(/^The admin panel opens only once two-factor authentication is on, and turning it on needs a password\./u),
+    ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Set" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Enable" })).toBeDisabled()
+    expect(screen.queryByRole("link", { name: "Go to the admin panel" })).toBeNull()
   })
 
   it("takes the admin through the account's two-factor setup and then offers the admin panel", async () => {
@@ -134,6 +140,31 @@ describe("admin security page", () => {
     await screen.findByRole("heading", { level: 1 })
 
     expect(document.documentElement).not.toHaveClass("dark")
+  })
+})
+
+describe("admin security page outside production", () => {
+  beforeEach(() => {
+    vi.stubEnv("MODE", "preview")
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("calls two-factor authentication optional and opens the admin panel without it", async () => {
+    renderPage()
+
+    expect(await screen.findByText(/^Two-factor authentication is optional in this environment/u)).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "Go to the admin panel" })).toHaveAttribute("href", ROUTES.ADMIN_OVERVIEW)
+  })
+
+  it("still lets an admin who signed up with Google set a password", async () => {
+    profile.fetchProfile.mockResolvedValue(adminProfile({ hasPassword: false }))
+    renderPage()
+
+    expect(await screen.findByRole("button", { name: "Set" })).toBeInTheDocument()
+    expect(screen.getByText(/^Two-factor authentication is optional in this environment/u)).toBeInTheDocument()
   })
 })
 

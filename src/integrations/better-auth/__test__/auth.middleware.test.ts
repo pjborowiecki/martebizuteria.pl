@@ -1,6 +1,6 @@
 import { notFound } from "@tanstack/react-router"
 import { APIError } from "better-auth/api"
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod/v4"
 
 import { ACTIONS, RESOURCES, ROLES } from "~/src/integrations/better-auth/auth.access"
@@ -45,7 +45,7 @@ const { RATE_LIMITS, assertWithinRateLimit, authorized, withRateLimit } = await 
 
 const [requestBoundary] = stubs.handlers
 
-const { hasPermission, needsTwoFactorSetup } = await import("~/src/integrations/better-auth/auth.access")
+const { hasPermission, isAdminTwoFactorRequired, needsTwoFactorSetup } = await import("~/src/integrations/better-auth/auth.access")
 
 const next = vi.fn((arg?: unknown) => Promise.resolve(arg))
 
@@ -163,6 +163,10 @@ describe("hasPermission", () => {
 })
 
 describe("needsTwoFactorSetup", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it.each([[false], [null], [undefined]])("asks an admin whose two-factor flag is %j to set it up", (twoFactorEnabled) => {
     expect(needsTwoFactorSetup({ role: ROLES.ADMIN, twoFactorEnabled })).toBe(true)
   })
@@ -173,6 +177,20 @@ describe("needsTwoFactorSetup", () => {
 
   it.each([[ROLES.CUSTOMER], [null], ["superuser"]])("leaves the choice to a %j account", (role) => {
     expect(needsTwoFactorSetup({ role, twoFactorEnabled: false })).toBe(false)
+  })
+
+  it.each([["production"], ["test"]])("requires it of admins in a %s build", (mode) => {
+    vi.stubEnv("MODE", mode)
+
+    expect(isAdminTwoFactorRequired()).toBe(true)
+    expect(needsTwoFactorSetup({ role: ROLES.ADMIN, twoFactorEnabled: false })).toBe(true)
+  })
+
+  it.each([["preview"], ["development"]])("leaves it optional for admins in a %s build", (mode) => {
+    vi.stubEnv("MODE", mode)
+
+    expect(isAdminTwoFactorRequired()).toBe(false)
+    expect(needsTwoFactorSetup({ role: ROLES.ADMIN, twoFactorEnabled: false })).toBe(false)
   })
 })
 

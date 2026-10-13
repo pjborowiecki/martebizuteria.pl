@@ -62,8 +62,11 @@ vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/pre
   PreferencesSection: (): JSX.Element => <section>preferences</section>,
 }))
 vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/security-section", () => ({
-  SecuritySection: ({ twoFactorEnabled }: Readonly<{ twoFactorEnabled: boolean }>): JSX.Element => (
-    <section>security with two-factor {twoFactorEnabled ? "on" : "off"}</section>
+  SecuritySection: ({ hasPassword, twoFactorEnabled }: Readonly<{ hasPassword: boolean; twoFactorEnabled: boolean }>): JSX.Element => (
+    <>
+      <section>security with two-factor {twoFactorEnabled ? "on" : "off"}</section>
+      <p>{hasPassword ? "password: set" : "password: not set"}</p>
+    </>
   ),
 }))
 vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/close-account-section", () => ({
@@ -173,6 +176,13 @@ describe("account profile two-factor status", () => {
     renderPage()
 
     expect(await screen.findByText("security with two-factor off")).toBeInTheDocument()
+  })
+
+  it("tells the security section an account signed up with Google has no password yet", async () => {
+    state.fetchProfile.mockResolvedValue({ ...profile, hasPassword: false })
+    renderPage()
+
+    expect(await screen.findByText("password: not set")).toBeInTheDocument()
   })
 })
 

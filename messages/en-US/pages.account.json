@@ -233,8 +233,12 @@
     "changePassword": "Change Password",
     "changePasswordDesc": "Update your password to secure your account",
     "update": "Update",
+    "setPassword": "Set Password",
+    "setPasswordDesc": "You sign in with Google. Add a password to also sign in with your email address.",
+    "set": "Set",
     "twoFactor": "Two-Factor Authentication (2FA)",
     "twoFactorDesc": "Add an extra layer of security to your account",
+    "twoFactorNeedsPassword": "Set a password first: two-factor authentication protects signing in with your password.",
     "enable": "Enable",
     "closeAccount": "Close Account",
     "closeAccountTitle": "Permanently delete account",
@@ -263,6 +267,17 @@
       "successTitle": "Password changed",
       "successDescription": "Use your new password next time you sign in.",
       "errorTitle": "Could not change your password"
+    },
+    "setPasswordDialog": {
+      "title": "Set a password",
+      "description": "You can then sign in with your email address and this password as well as with Google.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "cancel": "Cancel",
+      "submit": "Set password",
+      "successTitle": "Password set",
+      "successDescription": "You can now also sign in with your email address and password.",
+      "errorTitle": "Could not set your password"
     },
     "twoFactorDialog": {
       "enableTitle": "Enable two-factor authentication",

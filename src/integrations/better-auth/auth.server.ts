@@ -13,6 +13,7 @@ import {
   RATE_LIMIT_CUSTOM_RULES,
   RATE_LIMIT_MAX_REQUESTS,
   RATE_LIMIT_WINDOW_IN_SECONDS,
+  SESSION_FRESH_AGE_IN_SECONDS,
   SESSION_UPDATE_AGE_IN_SECONDS,
 } from "~/src/integrations/better-auth/auth.constants"
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "~/src/integrations/better-auth/auth.constraints"
@@ -113,6 +114,7 @@ export const auth = betterAuth({
   secret: env.AUTH_SECRET,
   session: {
     cookieCache: { enabled: false },
+    freshAge: SESSION_FRESH_AGE_IN_SECONDS,
     storeSessionInDatabase: true,
     updateAge: SESSION_UPDATE_AGE_IN_SECONDS,
   },
