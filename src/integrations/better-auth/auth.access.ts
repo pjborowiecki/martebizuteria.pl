@@ -63,8 +63,12 @@ export type Permission = RoleAuthorizeRequest<typeof ac.statements>
 export const hasAdminAccess = (role: string | null | undefined): role is Role =>
   typeof role === "string" && (ADMIN_PANEL_ROLES as readonly string[]).includes(role)
 
+const ADMIN_TWO_FACTOR_MODES: ReadonlySet<string> = new Set(["production", "test"])
+
+export const isAdminTwoFactorRequired = (): boolean => ADMIN_TWO_FACTOR_MODES.has(import.meta.env.MODE)
+
 export const needsTwoFactorSetup = ({ role, twoFactorEnabled }: Readonly<TwoFactorAccessUser>): boolean =>
-  hasAdminAccess(role) && twoFactorEnabled !== true
+  isAdminTwoFactorRequired() && hasAdminAccess(role) && twoFactorEnabled !== true
 
 const isKnownRole = (role: string | null | undefined): role is keyof typeof ROLES_CONFIG =>
   typeof role === "string" && Object.hasOwn(ROLES_CONFIG, role)

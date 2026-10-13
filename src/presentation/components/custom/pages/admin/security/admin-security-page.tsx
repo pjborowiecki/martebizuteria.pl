@@ -5,8 +5,10 @@ import { useRouter } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
 import { useTranslations } from "use-intl/react"
 
+import { isAdminTwoFactorRequired } from "~/src/integrations/better-auth/auth.access"
 import { signOut } from "~/src/integrations/better-auth/auth.client"
 
+import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { getCustomerProfileQuery } from "~/src/modules/customer-account/use-cases/get-customer-profile"
 
 import { useAdminLightTheme } from "~/src/presentation/theme/use-admin-light-theme"
@@ -20,6 +22,18 @@ import { SecuritySection } from "~/src/presentation/components/custom/pages/acco
 import { ROUTES } from "~/src/routes"
 
 const signOutRequest = createClientOnlyFn((input: Parameters<typeof signOut>[0]) => signOut(input))
+
+const securityIntroKey = ({ hasPassword, twoFactorEnabled }: Readonly<CustomerAccount["profile"]>): SecurityIntroKey => {
+  if (twoFactorEnabled) {
+    return "security.enabled"
+  }
+
+  if (!isAdminTwoFactorRequired()) {
+    return "security.optional"
+  }
+
+  return hasPassword ? "security.required" : "security.requiredWithoutPassword"
+}
 
 export const AdminSecurityPage = (): JSX.Element => {
   const t = useTranslations("pages.admin")
@@ -43,19 +57,15 @@ export const AdminSecurityPage = (): JSX.Element => {
         <div className="mb-10 space-y-3">
           <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{t("security.eyebrow")}</p>
           <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("security.title")}</h1>
-          <p className="text-[14px] text-muted-foreground">{profile.twoFactorEnabled ? t("security.enabled") : t("security.required")}</p>
+          <p className="text-[14px] text-muted-foreground">{t(securityIntroKey(profile))}</p>
         </div>
 
-        {profile.hasPassword ? (
-          <SecuritySection twoFactorEnabled={profile.twoFactorEnabled} />
-        ) : (
-          <p className="text-[14px]">{t("security.passwordRequired")}</p>
-        )}
+        <SecuritySection hasPassword={profile.hasPassword} twoFactorEnabled={profile.twoFactorEnabled} />
 
         <Separator className="my-10" />
 
         <div className="flex flex-wrap items-center gap-4">
-          {profile.twoFactorEnabled && (
+          {(profile.twoFactorEnabled || !isAdminTwoFactorRequired()) && (
             <LocalizedLink className={buttonVariants({ size: "account", variant: "account" })} to={ROUTES.ADMIN_OVERVIEW}>
               {t("security.openAdmin")}
             </LocalizedLink>
@@ -68,3 +78,5 @@ export const AdminSecurityPage = (): JSX.Element => {
     </main>
   )
 }
+
+type SecurityIntroKey = "security.enabled" | "security.optional" | "security.required" | "security.requiredWithoutPassword"

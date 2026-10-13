@@ -459,9 +459,10 @@
   "security": {
     "eyebrow": "Admin panel",
     "title": "Sign-in security",
-    "required": "The admin panel opens only once two-factor authentication is on. Turn it on below with an authenticator app; from then on you sign in with your password and a six-digit code.",
-    "enabled": "Two-factor authentication is on. Every sign-in to this account asks for your password and a code from your authenticator app.",
-    "passwordRequired": "This account has no password yet, and admin accounts sign in only with a password and a two-factor code. Sign out, choose “Forgot password?” on the sign-in page to set a password, then sign in with it and turn on two-factor authentication here.",
+    "required": "The admin panel opens only once two-factor authentication is on. Turn it on below with an authenticator app; from then on, signing in with your password also asks for a six-digit code.",
+    "requiredWithoutPassword": "The admin panel opens only once two-factor authentication is on, and turning it on needs a password. This account signs in with Google and has no password yet, so set one below first, then turn on two-factor authentication.",
+    "optional": "Two-factor authentication is optional in this environment, so the admin panel is already open. In production, the admin panel opens only once it is on.",
+    "enabled": "Two-factor authentication is on. Signing in with your password also asks for a code from your authenticator app.",
     "openAdmin": "Go to the admin panel"
   },
   "settings": {

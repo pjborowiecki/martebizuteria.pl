@@ -18,6 +18,8 @@ export const RATE_LIMIT_MAX_REQUESTS = 100
 
 export const RATE_LIMIT_WINDOW_IN_SECONDS = 60
 
+export const SESSION_FRESH_AGE_IN_SECONDS = 86_400
+
 export const SESSION_UPDATE_AGE_IN_SECONDS = 300
 
 export const RATE_LIMIT_CUSTOM_RULES = {
@@ -60,6 +62,11 @@ export const STRIPE_CUSTOMER_NOT_DELETED = {
   code: USER_ERROR_CODES.STRIPE_CUSTOMER_NOT_DELETED,
   message: "The saved cards could not be deleted at Stripe, so the account was kept",
 } as const
+
+export const SESSION_NOT_FRESH = {
+  code: "SESSION_NOT_FRESH",
+  message: "Sign in again before adding a password",
+} as const satisfies AuthRefusal
 
 export const ADMIN_TWO_FACTOR_REQUIRED = {
   code: "ADMIN_TWO_FACTOR_REQUIRED",

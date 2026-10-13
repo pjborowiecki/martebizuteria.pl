@@ -18,6 +18,9 @@ vi.mock("~/src/integrations/better-auth/auth.client", () => ({
   },
 }))
 vi.mock("qrcode", () => ({ default: { toString: () => Promise.resolve("<svg role='img' aria-label='qr'></svg>") } }))
+vi.mock("~/src/modules/account/use-cases/set-account-password", () => ({
+  setAccountPasswordMutation: { mutationFn: vi.fn(), mutationKey: ["account", "setAccountPassword"] },
+}))
 
 import { QueryClient, useQuery } from "@tanstack/react-query"
 
@@ -67,7 +70,7 @@ afterEach(cleanup)
 const renderSection = () => {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
   const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries")
-  renderWithProviders(<SecuritySection twoFactorEnabled={accountState.twoFactorEnabled} />, { queryClient })
+  renderWithProviders(<SecuritySection hasPassword twoFactorEnabled={accountState.twoFactorEnabled} />, { queryClient })
 
   return { invalidateQueries }
 }
@@ -324,7 +327,7 @@ const AccountSecurity = (): JSX.Element => {
     queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE,
   })
 
-  return <SecuritySection twoFactorEnabled={data?.twoFactorEnabled === true} />
+  return <SecuritySection hasPassword twoFactorEnabled={data?.twoFactorEnabled === true} />
 }
 
 const renderAccountSecurity = () => {

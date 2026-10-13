@@ -11,9 +11,10 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
 import { ChangePasswordDialog } from "~/src/presentation/components/custom/pages/account/profile/sections/change-password-dialog"
+import { SetPasswordDialog } from "~/src/presentation/components/custom/pages/account/profile/sections/set-password-dialog"
 import { TwoFactorDialog } from "~/src/presentation/components/custom/pages/account/profile/sections/two-factor-dialog"
 
-export const SecuritySection = ({ twoFactorEnabled }: Readonly<{ twoFactorEnabled: boolean }>): JSX.Element => {
+export const SecuritySection = ({ hasPassword, twoFactorEnabled }: Readonly<SecuritySectionProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile")
   const queryClient = useQueryClient()
   const [passwordOpen, setPasswordOpen] = useState(false)
@@ -42,11 +43,11 @@ export const SecuritySection = ({ twoFactorEnabled }: Readonly<{ twoFactorEnable
       <div className="divide-y divide-border">
         <div className="flex items-center justify-between py-4">
           <div>
-            <p className="text-[14px]">{t("changePassword")}</p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">{t("changePasswordDesc")}</p>
+            <p className="text-[14px]">{hasPassword ? t("changePassword") : t("setPassword")}</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">{hasPassword ? t("changePasswordDesc") : t("setPasswordDesc")}</p>
           </div>
           <Button onClick={openPassword} variant="account-ghost">
-            {t("update")}
+            {hasPassword ? t("update") : t("set")}
           </Button>
         </div>
         <div className="flex items-center justify-between py-4">
@@ -57,15 +58,19 @@ export const SecuritySection = ({ twoFactorEnabled }: Readonly<{ twoFactorEnable
                 {twoFactorEnabled ? t("twoFactorOn") : t("twoFactorOff")}
               </Badge>
             </div>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">{t("twoFactorDesc")}</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">{hasPassword ? t("twoFactorDesc") : t("twoFactorNeedsPassword")}</p>
           </div>
-          <Button onClick={openTwoFactor} variant="account-ghost">
+          <Button disabled={!hasPassword} onClick={openTwoFactor} variant="account-ghost">
             {twoFactorEnabled ? t("disable") : t("enable")}
           </Button>
         </div>
       </div>
 
-      <ChangePasswordDialog onOpenChange={setPasswordOpen} open={passwordOpen} />
+      {hasPassword ? (
+        <ChangePasswordDialog onOpenChange={setPasswordOpen} open={passwordOpen} />
+      ) : (
+        <SetPasswordDialog onOpenChange={setPasswordOpen} open={passwordOpen} />
+      )}
       <TwoFactorDialog
         enabled={twoFactorEnabled}
         key={twoFactorOpen ? "open" : "closed"}
@@ -75,4 +80,9 @@ export const SecuritySection = ({ twoFactorEnabled }: Readonly<{ twoFactorEnable
       />
     </section>
   )
+}
+
+interface SecuritySectionProps {
+  readonly hasPassword: boolean
+  readonly twoFactorEnabled: boolean
 }
