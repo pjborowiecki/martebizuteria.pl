@@ -14,6 +14,8 @@ import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/src/presentation/components/shadcn/table"
 
+import { ADMIN_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+
 const HEADER_CLASS = "text-xs font-medium uppercase tracking-wider text-muted-foreground/60"
 
 const DATE_TIME_FORMAT = { dateStyle: "medium", timeStyle: "short" } as const
@@ -23,9 +25,9 @@ export const NewsletterCampaignsTable = (): JSX.Element => {
   const { data: campaigns } = useSuspenseQuery(getAdminNewsletterCampaignsQuery())
 
   return (
-    <Card className="flex flex-col border-border/40 shadow-none">
-      <CardContent className="flex flex-col p-0">
-        <h2 className="border-b border-border/40 px-6 py-4 text-sm font-semibold tracking-tight">{t("title")}</h2>
+    <Card className={cn("min-h-0", ADMIN_CARD_CLASS)}>
+      <CardContent className="flex min-h-0 flex-col p-0">
+        <h2 className="shrink-0 border-b border-border/60 px-6 py-4 text-sm font-semibold tracking-tight">{t("title")}</h2>
         {campaigns.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
             <p className="text-sm font-medium">{t("empty.title")}</p>

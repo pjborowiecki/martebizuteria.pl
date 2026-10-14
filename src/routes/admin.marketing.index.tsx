@@ -12,7 +12,11 @@ import { buttonVariants } from "~/src/presentation/components/shadcn/button"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
-import { ADMIN_HEADER_PRIMARY_BUTTON_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import {
+  ADMIN_CATALOG_DATAGRID_PAGE_CLASS,
+  ADMIN_CATALOG_PAGE_BODY_CLASS,
+  ADMIN_HEADER_PRIMARY_BUTTON_CLASS,
+} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { NewsletterCampaignsTable } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-campaigns-table"
 import { NewsletterStats } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-stats"
 
@@ -33,9 +37,11 @@ const MarketingPage = (): JSX.Element => {
     <>
       <AdminHeader actions={actions} breadcrumbs={breadcrumbs} description={t("marketing.description")} title={t("marketing.title")} />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-8">
-        <NewsletterStats />
-        <NewsletterCampaignsTable />
+      <div className={ADMIN_CATALOG_PAGE_BODY_CLASS}>
+        <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>
+          <NewsletterStats />
+          <NewsletterCampaignsTable />
+        </div>
       </div>
     </>
   )
