@@ -452,6 +452,67 @@
       "customer_deletion_failed": "Usunięcie konta nieudane",
       "customer_page_viewed": "Odwiedzona strona"
     },
+    "details": {
+      "emails": {
+        "account-deleted": "Informacja o usunięciu konta",
+        "change-email": "Potwierdzenie zmiany adresu e-mail",
+        "new-order": "Powiadomienie o nowym zamówieniu",
+        "newsletter-already-subscribed": "Informacja o aktywnej subskrypcji",
+        "newsletter-campaign": "Kampania newslettera",
+        "newsletter-confirmation": "Potwierdzenie subskrypcji newslettera",
+        "newsletter-subscription": "E-mail w sprawie subskrypcji newslettera",
+        "newsletter-test": "Testowy newsletter",
+        "order-cancelled": "Informacja o anulowaniu zamówienia",
+        "order-confirmation": "Potwierdzenie zamówienia",
+        "order-refunded": "Informacja o zwrocie środków",
+        "order-shipped": "Informacja o wysyłce zamówienia",
+        "order-withdrawal": "Potwierdzenie otrzymania odstąpienia od umowy",
+        "order-withdrawal-notice": "Powiadomienie o odstąpieniu od umowy",
+        "password-changed": "Informacja o zmianie hasła",
+        "payment-failed": "Informacja o nieudanej płatności",
+        "reset-password": "Resetowanie hasła",
+        "verification": "Potwierdzenie adresu e-mail"
+      },
+      "emailDailyLimit": "sklep osiągnął dzienny limit {limit} e-maili wysyłanych na prośbę odwiedzających",
+      "messages": {
+        "cartItemCount": "{count, plural, one {# produkt w koszyku} few {# produkty w koszyku} many {# produktów w koszyku} other {# produktu w koszyku}}",
+        "recipientCount": "{count, plural, one {# potwierdzony subskrybent} other {# potwierdzonych subskrybentów}}",
+        "stripeCustomerKept": "Nie udało się usunąć klienta w Stripe, więc konto zostało zachowane — {error}"
+      },
+      "values": {
+        "role": {
+          "admin": "Administrator",
+          "customer": "Klient"
+        },
+        "disputeReason": {
+          "bank_cannot_process": "Bank nie mógł przetworzyć płatności",
+          "check_returned": "Zwrócony czek",
+          "credit_not_processed": "Nie przetworzono zwrotu",
+          "customer_initiated": "Zgłoszony przez klienta",
+          "debit_not_authorized": "Nieautoryzowane obciążenie",
+          "duplicate": "Podwójne obciążenie",
+          "fraudulent": "Podejrzenie oszustwa",
+          "general": "Inny powód",
+          "incorrect_account_details": "Błędne dane konta",
+          "insufficient_funds": "Brak środków",
+          "noncompliant": "Niezgodność z przepisami",
+          "product_not_received": "Produkt nie dotarł",
+          "product_unacceptable": "Produkt niezgodny z opisem",
+          "subscription_canceled": "Anulowana subskrypcja",
+          "unrecognized": "Nierozpoznana transakcja"
+        },
+        "disputeStatus": {
+          "lost": "Przegrany",
+          "needs_response": "Wymaga odpowiedzi",
+          "prevented": "Zapobiegnięto sporowi",
+          "under_review": "W trakcie rozpatrywania",
+          "warning_closed": "Zapytanie zamknięte",
+          "warning_needs_response": "Zapytanie wymaga odpowiedzi",
+          "warning_under_review": "Zapytanie w trakcie rozpatrywania",
+          "won": "Wygrany"
+        }
+      }
+    },
     "searchPlaceholder": "Szukaj zdarzeń…",
     "clearFilter": "Wyczyść",
     "pagination": {

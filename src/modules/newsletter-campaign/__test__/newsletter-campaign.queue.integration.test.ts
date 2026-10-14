@@ -13,7 +13,7 @@ const { doubles, sqlite } = await vi.hoisted(async () => {
     doubles: {
       publishRealtimeInvalidation: vi.fn<(input: unknown) => Promise<void>>(),
       queueSend: vi.fn<(message: unknown, options: unknown) => Promise<void>>(),
-      recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+      recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
       sendIncidentAlert: vi.fn<(incident: unknown) => Promise<void>>(),
       sendNewsletterBatch:
         vi.fn<
@@ -286,7 +286,10 @@ describe("processNewsletterQueueBatch when sending fails", () => {
 
     expect(readCampaign()).toMatchObject({ failure: RESEND_REFUSAL, sent_count: 0, status: "failed" })
     expect(readCampaign().completed_at).toBeTypeOf("number")
-    expect(doubles.recordEmailFailedAudit).toHaveBeenCalledWith(CAMPAIGN_ID, { detail: `Newsletter campaign — ${RESEND_REFUSAL}` })
+    expect(doubles.recordEmailFailedAudit).toHaveBeenCalledWith(CAMPAIGN_ID, {
+      detail: RESEND_REFUSAL,
+      metadata: { emailKind: "newsletter-campaign" },
+    })
     expect(doubles.sendIncidentAlert).toHaveBeenCalledExactlyOnceWith({
       detail: RESEND_REFUSAL,
       kind: "newsletterFailed",

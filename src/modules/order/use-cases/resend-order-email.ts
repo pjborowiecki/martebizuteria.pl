@@ -68,7 +68,7 @@ export const resendOrderEmail = createServerFn({ method: "POST" })
       throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE)
     }
 
-    recordEmailResendRequestedAudit(orderId, { detail: resendable.detail })
+    recordEmailResendRequestedAudit(orderId, { detail: resendable.detail, metadata: { idempotencyKey: resendable.idempotencyKey } })
     const emailDelivery = sendOrderEmailAgain(resendable.email, orderId, origin)
     scheduleBackgroundWork(emailDelivery)
     const emailSent = await emailDelivery

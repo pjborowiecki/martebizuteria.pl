@@ -1,5 +1,7 @@
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
+import { tryParseJsonRecord } from "~/src/modules/_core/utils/json"
 import { AUDIT_LOG_ACTION, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
+import { describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.detail.utils"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import {
   ADMIN_ORDER_DETAIL_RETURNING_MIN_ORDERS,
@@ -148,7 +150,7 @@ export const resolveResendableOrderEmails = (newestFirst: readonly AdminOrderTim
 
       return row.action === AUDIT_LOG_ACTION.EMAIL_SENT
         ? []
-        : [[row.id, { detail: row.detail ?? undefined, email: delivery.orderEmail }] as const]
+        : [[row.id, { detail: row.detail ?? undefined, email: delivery.orderEmail, idempotencyKey: delivery.idempotencyKey }] as const]
     }),
   )
 }
@@ -159,7 +161,7 @@ export const mapAdminOrderTimeline = (newestFirst: readonly AdminOrderTimelineRo
   return newestFirst.map((row) => ({
     actorName: row.actorName,
     at: row.createdAt,
-    detail: row.detail === null || row.detail.trim() === "" ? undefined : row.detail,
+    detail: describeAuditLogDetail({ action: row.action, detail: row.detail, metadata: tryParseJsonRecord(row.metadata) }),
     emailStatus: ADMIN_ORDER_TIMELINE_EMAIL_STATUS_BY_ACTION[row.action],
     id: row.id,
     kind: ADMIN_ORDER_TIMELINE_KIND_BY_ACTION[row.action] ?? ADMIN_ORDER_TIMELINE_KIND.ORDER,
@@ -272,6 +274,7 @@ interface AdminOrderItemRow {
 interface ResendableOrderEmail {
   readonly detail: string | undefined
   readonly email: Order["email"]
+  readonly idempotencyKey: string
 }
 
 interface AdminOrderTimelineRow {

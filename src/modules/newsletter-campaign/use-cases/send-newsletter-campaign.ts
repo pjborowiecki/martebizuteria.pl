@@ -52,7 +52,6 @@ export const sendNewsletterCampaign = createServerFn({ method: "POST" })
     }
 
     recordNewsletterSentAudit(subjects[I18N.DEFAULT_LOCALE], {
-      detail: `${String(recipientCount)} confirmed subscribers`,
       metadata: { recipientCount },
       resourceId: id,
     })

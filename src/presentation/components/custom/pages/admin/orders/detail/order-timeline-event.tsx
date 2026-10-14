@@ -1,9 +1,10 @@
 import { type JSX } from "react"
 
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { type Order } from "~/src/modules/order/order.types"
 
+import { formatAuditLogDetail } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-detail-format"
 import {
   ORDER_EMAIL_STATUS_CONFIG,
   ORDER_TIMELINE_ICONS,
@@ -13,6 +14,7 @@ import { OrderEmailResendButton } from "~/src/presentation/components/custom/pag
 export const OrderTimelineEvent = ({ event, orderId }: Readonly<OrderTimelineEventProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
+  const locale = useLocale()
   const Icon = ORDER_TIMELINE_ICONS[event.kind]
   const emailStatus = event.emailStatus === undefined ? undefined : ORDER_EMAIL_STATUS_CONFIG[event.emailStatus]
 
@@ -27,7 +29,9 @@ export const OrderTimelineEvent = ({ event, orderId }: Readonly<OrderTimelineEve
       </div>
       <div className="min-w-0 pt-0.5">
         <p className="text-[13px] leading-snug">{t(`orderDetail.timeline.actions.${event.labelKey}`)}</p>
-        {event.detail !== undefined && <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{event.detail}</p>}
+        {event.detail !== undefined && (
+          <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{formatAuditLogDetail(event.detail, { locale, t })}</p>
+        )}
         {event.resendable && <OrderEmailResendButton eventId={event.id} orderId={orderId} />}
         <div className="mt-0.5 flex items-center gap-2">
           <span className="text-[11px] text-muted-foreground/50">

@@ -28,7 +28,7 @@ const stubs = vi.hoisted(() => ({
   recordAuthPasswordResetAudit: vi.fn(),
   recordCustomerDeletedAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
-  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
   resolveAuthAuditActor: vi.fn(),
   scheduleAdminCustomersInvalidation: vi.fn(),
   sendEmail: vi.fn<(input: SentEmail) => Promise<string | undefined>>(),
@@ -274,7 +274,8 @@ describe("account emails", () => {
 
     expect(stubs.sendEmail).not.toHaveBeenCalled()
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
-      detail: `Auth account-deleted email — AppError: ${ERROR_CODES.FORBIDDEN}`,
+      detail: `AppError: ${ERROR_CODES.FORBIDDEN}`,
+      metadata: { emailKind: "account-deleted" },
     })
   })
 
@@ -294,7 +295,8 @@ describe("account emails", () => {
 
     expect(stubs.sendEmail).not.toHaveBeenCalled()
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
-      detail: "Auth password-changed email — The reset came with no request to link the sign-in page from",
+      detail: "The reset came with no request to link the sign-in page from",
+      metadata: { emailKind: "password-changed" },
     })
   })
 
@@ -305,7 +307,8 @@ describe("account emails", () => {
 
     expect(stubs.sendEmail).not.toHaveBeenCalled()
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
-      detail: "Auth account-deleted email — The deletion came with no request to link the storefront from",
+      detail: "The deletion came with no request to link the storefront from",
+      metadata: { emailKind: "account-deleted" },
     })
   })
 })

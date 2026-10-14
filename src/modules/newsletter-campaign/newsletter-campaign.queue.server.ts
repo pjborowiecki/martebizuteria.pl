@@ -2,6 +2,7 @@ import { env } from "cloudflare:workers"
 
 import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
 
+import { AUDIT_EMAIL_KIND } from "~/src/modules/audit-log/audit-log.constants"
 import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   completeNewsletterCampaign,
@@ -73,7 +74,7 @@ const retryOrStop = async (message: Message<NewsletterQueueMessage>, failure: st
 
   console.error(`[Newsletter] Campaign ${campaignId} stopped after ${String(message.attempts)} attempts: ${failure}`)
   await failNewsletterCampaign(campaignId, failure)
-  recordEmailFailedAudit(campaignId, { detail: `Newsletter campaign — ${failure}` })
+  recordEmailFailedAudit(campaignId, { detail: failure, metadata: { emailKind: AUDIT_EMAIL_KIND.NEWSLETTER_CAMPAIGN } })
   await sendIncidentAlert({ detail: failure, kind: "newsletterFailed", reference: campaignId })
   await refreshAdminCampaigns()
   message.ack()

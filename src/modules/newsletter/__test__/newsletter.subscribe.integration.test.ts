@@ -12,7 +12,7 @@ const { getRequest, getRequestSession, recordEmailFailedAudit, sendNewsletterAlr
   vi.hoisted(() => ({
     getRequest: vi.fn<() => Request>(),
     getRequestSession: vi.fn<() => Promise<{ user: { email: string; id: string } } | undefined>>(),
-    recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+    recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
     sendNewsletterAlreadySubscribedEmail:
       vi.fn<(input: { email: string; locale: string; origin: string }) => Promise<string | undefined>>(),
     sendNewsletterConfirmationEmail:
@@ -314,7 +314,7 @@ describe("subscribeToNewsletter email limits", () => {
     expect(countSubscribers()).toBe(0)
     expect(sendNewsletterConfirmationEmail).not.toHaveBeenCalled()
     expect(recordEmailFailedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com", {
-      detail: `Public newsletter email — the shop reached its daily limit of ${String(PUBLIC_EMAILS_DAILY_MAX)} emails that visitors can request`,
+      metadata: { dailyLimit: PUBLIC_EMAILS_DAILY_MAX, emailKind: "newsletter-subscription" },
     })
   })
 })
@@ -389,10 +389,11 @@ describe("subscribeToNewsletter when the confirmation email cannot be sent", () 
     await subscribeToNewsletter({ data: { email: "anna@example.com" } })
 
     expect(recordEmailFailedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com", {
-      detail: `Newsletter confirmation — ${UNVERIFIED_DOMAIN}`,
+      detail: UNVERIFIED_DOMAIN,
+      metadata: { emailKind: "newsletter-confirmation" },
     })
     expect(consoleError).toHaveBeenCalledExactlyOnceWith(
-      `[Newsletter] Failed to send confirmation to anna@example.com: ${UNVERIFIED_DOMAIN}`,
+      `[Newsletter] Failed to send newsletter-confirmation to anna@example.com: ${UNVERIFIED_DOMAIN}`,
     )
   })
 
@@ -427,10 +428,11 @@ describe("subscribeToNewsletter when the confirmation email cannot be sent", () 
       outcome: NEWSLETTER_OUTCOME.CONFIRMATION_FAILED,
     })
     expect(recordEmailFailedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com", {
-      detail: `Newsletter already-subscribed notice — ${UNVERIFIED_DOMAIN}`,
+      detail: UNVERIFIED_DOMAIN,
+      metadata: { emailKind: "newsletter-already-subscribed" },
     })
     expect(consoleError).toHaveBeenCalledExactlyOnceWith(
-      `[Newsletter] Failed to send already-subscribed notice to anna@example.com: ${UNVERIFIED_DOMAIN}`,
+      `[Newsletter] Failed to send newsletter-already-subscribed to anna@example.com: ${UNVERIFIED_DOMAIN}`,
     )
     expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.CONFIRMED)
   })

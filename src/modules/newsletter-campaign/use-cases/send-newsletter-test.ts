@@ -7,6 +7,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { AUDIT_EMAIL_KIND } from "~/src/modules/audit-log/audit-log.constants"
 import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { NEWSLETTER_CAMPAIGN_MUTATION_KEYS } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
 import { newsletterCampaignZodSchemas } from "~/src/modules/newsletter-campaign/newsletter-campaign.zod"
@@ -27,7 +28,7 @@ export const sendNewsletterTest = createServerFn({ method: "POST" })
     })
     if (failure !== undefined) {
       console.error(`[Newsletter] Failed to send the test newsletter to ${email}: ${failure}`)
-      recordEmailFailedAudit(email, { detail: `Newsletter test — ${failure}` })
+      recordEmailFailedAudit(email, { detail: failure, metadata: { emailKind: AUDIT_EMAIL_KIND.NEWSLETTER_TEST } })
       throw new AppError(ERROR_CODES.INTERNAL_ERROR)
     }
 

@@ -24,7 +24,7 @@ const auditRow = (overrides: Partial<AuditRow> = {}): AuditRow => ({
   action: "order.placed",
   actor: { id: "user-1", initials: "AK", name: "Anna Kowalska", role: "admin" },
   category: "orders",
-  detail: "Order MB-1042 for 890,00 zl",
+  detail: { kind: "text", text: "Order MB-1042 for 890,00 zl" },
   id: "audit-1",
   ip: "192.0.2.10",
   resourceId: "order-1042",

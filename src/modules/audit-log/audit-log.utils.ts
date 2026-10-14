@@ -10,6 +10,7 @@ import {
   type AuditLogCategoryFilter,
   type AuditLogDateRange,
 } from "~/src/modules/audit-log/audit-log.constants"
+import { describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.detail.utils"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils"
 
@@ -147,8 +148,9 @@ export const formatAdminAuditTarget = (target: string, resourceId?: string): str
 }
 
 export const toAdminAuditListItem = (row: AuditLogListSourceRow): AuditLog["adminListItem"] => {
+  const metadata = parseAuditMetadata(row.metadata)
   const presentation = resolveAdminAuditTargetPresentation({
-    metadata: parseAuditMetadata(row.metadata),
+    metadata,
     resourceId: row.resourceId ?? undefined,
     target: row.target,
   })
@@ -162,7 +164,7 @@ export const toAdminAuditListItem = (row: AuditLogListSourceRow): AuditLog["admi
       role: row.actorRole,
     },
     category: row.category,
-    detail: row.detail ?? undefined,
+    detail: describeAuditLogDetail({ action: row.action, detail: row.detail, metadata }),
     id: row.id,
     ip: row.ip ?? undefined,
     resourceId: presentation.resourceId,

@@ -193,6 +193,17 @@ describe("toAdminAuditListItem", () => {
     expect(item.target).toBe(PRODUCT_UUID)
   })
 
+  it("describes the detail from what the row stored instead of passing its text through", () => {
+    const sent = toAdminAuditListItem({
+      ...row,
+      action: "email.sent",
+      detail: "Order confirmation → anna@example.com",
+      metadata: JSON.stringify({ idempotencyKey: "order-confirmation/order-1" }),
+    })
+
+    expect(sent.detail).toMatchObject({ emailKind: "order-confirmation", kind: "email", recipient: "anna@example.com" })
+  })
+
   it("survives metadata that is not valid JSON", () => {
     expect(toAdminAuditListItem({ ...row, metadata: "{not json" }).target).toBe(PRODUCT_UUID)
   })

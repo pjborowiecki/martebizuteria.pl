@@ -33,7 +33,7 @@ const { doubles, session, sqlite } = await vi.hoisted(async () => {
   return {
     doubles: {
       queueSend: vi.fn<(message: unknown, options: unknown) => Promise<void>>(),
-      recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+      recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
       recordNewsletterSentAudit: vi.fn<(subject: string, options?: unknown) => void>(),
       scheduleRealtimeInvalidation: vi.fn<(input: unknown) => void>(),
       sendNewsletterBatch:
@@ -167,7 +167,6 @@ describe("sendNewsletterCampaign", () => {
     await send()
 
     expect(doubles.recordNewsletterSentAudit).toHaveBeenCalledWith(LETTER.subjects["pl-PL"], {
-      detail: "1 confirmed subscribers",
       metadata: { recipientCount: 1 },
       resourceId: CAMPAIGN_ID,
     })
@@ -278,7 +277,10 @@ describe("sendNewsletterTest", () => {
 
     await expect(sendNewsletterTest({ data: LETTER })).rejects.toMatchObject({ code: ERROR_CODES.INTERNAL_ERROR })
 
-    expect(doubles.recordEmailFailedAudit).toHaveBeenCalledWith(ADMIN_EMAIL, { detail: "Newsletter test — Domain not verified" })
+    expect(doubles.recordEmailFailedAudit).toHaveBeenCalledWith(ADMIN_EMAIL, {
+      detail: "Domain not verified",
+      metadata: { emailKind: "newsletter-test" },
+    })
     expect(error.mock.calls[0]?.[0]).toBe(`[Newsletter] Failed to send the test newsletter to ${ADMIN_EMAIL}: Domain not verified`)
   })
 

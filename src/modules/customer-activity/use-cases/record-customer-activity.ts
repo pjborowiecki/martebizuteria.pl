@@ -47,7 +47,6 @@ export const recordCustomerActivity = createServerFn({ method: "POST" })
     if (input.kind === "cart_abandoned") {
       recordCustomerCartAbandonedAudit(actor, {
         ...baseOptions,
-        detail: `${input.itemCount} items in cart`,
         metadata: {
           itemCount: input.itemCount,
           lineCount: input.lineCount,

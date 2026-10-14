@@ -18,7 +18,7 @@ interface SentEmail {
 const stubs = vi.hoisted(() => ({
   buildLocalizedUrl: vi.fn<(base: string, path: string, locale: string) => string>(),
   getCurrentLocale: vi.fn<() => string>(),
-  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
   sendEmail: vi.fn<(input: SentEmail) => Promise<string | undefined>>(),
 }))
 
@@ -85,7 +85,8 @@ describe("account emails", () => {
 
     expect(stubs.sendEmail).not.toHaveBeenCalled()
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
-      detail: `Auth password-changed email — AppError: ${ERROR_CODES.FORBIDDEN}`,
+      detail: `AppError: ${ERROR_CODES.FORBIDDEN}`,
+      metadata: { emailKind: "password-changed" },
     })
   })
 })

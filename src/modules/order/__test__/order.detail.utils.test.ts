@@ -284,7 +284,7 @@ describe("mapAdminOrderTimeline", () => {
     expect(mapAdminOrderTimeline([auditRow])[0]).toStrictEqual({
       actorName: "System",
       at: SHIPPED_AT,
-      detail: "00259007123456789012",
+      detail: { kind: "text", text: "00259007123456789012" },
       emailStatus: undefined,
       id: "audit-1",
       kind: "shipping",
@@ -302,6 +302,23 @@ describe("mapAdminOrderTimeline", () => {
     }
 
     expect(mapAdminOrderTimeline([failed])[0]?.resendable).toBe(true)
+  })
+
+  it("names the email a delivery entry sent by the key it was sent under", () => {
+    const sent = {
+      ...auditRow,
+      action: AUDIT_LOG_ACTION.EMAIL_SENT,
+      detail: "Order shipped → anna@example.com",
+      metadata: JSON.stringify(shippedDelivery),
+    }
+
+    expect(mapAdminOrderTimeline([sent])[0]?.detail).toStrictEqual({
+      dailyLimit: undefined,
+      emailKind: "order-shipped",
+      failure: undefined,
+      kind: "email",
+      recipient: "anna@example.com",
+    })
   })
 
   it("files a resend the admin asked for under email", () => {
@@ -360,7 +377,7 @@ const emailRow = (id: string, action: string, delivery: object | undefined) => (
 describe("resolveResendableOrderEmails", () => {
   it("offers the email of a failed delivery for resending", () => {
     expect(resolveResendableOrderEmails([emailRow("audit-2", AUDIT_LOG_ACTION.EMAIL_FAILED, refundDelivery)])).toStrictEqual(
-      new Map([["audit-2", { detail: undefined, email: refundDelivery.orderEmail }]]),
+      new Map([["audit-2", { detail: undefined, email: refundDelivery.orderEmail, idempotencyKey: refundDelivery.idempotencyKey }]]),
     )
   })
 

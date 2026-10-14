@@ -21,7 +21,7 @@ const stubs = vi.hoisted(() => ({
   recordAuthPasswordResetAudit: vi.fn(),
   recordCustomerDeletedAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
-  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
   resolveAuthAuditActor: vi.fn(),
   scheduleAdminCustomersInvalidation: vi.fn(),
   sendEmail: vi.fn<(input: SentEmail) => Promise<string | undefined>>(),
@@ -155,7 +155,7 @@ describe("auth email delivery", () => {
   it.each([
     ["reset-password", () => sendResetPasswordEmail({ url: RESET_URL, user })],
     ["verification", () => sendVerifyEmail({ url: verifyUrl(), user })],
-    ["change-email confirmation", () => sendChangeEmailConfirmationEmail({ url: "https://marte.test/change", user })],
+    ["change-email", () => sendChangeEmailConfirmationEmail({ url: "https://marte.test/change", user })],
   ])("answers a refused %s email with a retryable EMAIL_DELIVERY_FAILED", async (_kind, send) => {
     refuseEmails()
 
@@ -167,7 +167,10 @@ describe("auth email delivery", () => {
 
     await expect(sendResetPasswordEmail({ url: RESET_URL, user })).rejects.toThrow()
 
-    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, { detail: `Auth reset-password email — ${DOMAIN_NOT_VERIFIED}` })
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
+      detail: DOMAIN_NOT_VERIFIED,
+      metadata: { emailKind: "reset-password" },
+    })
     expect(JSON.stringify(stubs.recordEmailFailedAudit.mock.calls)).not.toContain("secret-reset-token")
   })
 
@@ -176,15 +179,13 @@ describe("auth email delivery", () => {
 
     await expect(sendChangeEmailConfirmationEmail({ url: "https://marte.test/change", user })).rejects.toThrow()
 
-    expect(console.error).toHaveBeenCalledWith(
-      `[Auth] Failed to send change-email confirmation email to ${user.email}: ${DOMAIN_NOT_VERIFIED}`,
-    )
+    expect(console.error).toHaveBeenCalledWith(`[Auth] Failed to send change-email email to ${user.email}: ${DOMAIN_NOT_VERIFIED}`)
   })
 
   it.each([
     ["reset-password", () => sendResetPasswordEmail({ url: RESET_URL, user })],
     ["verification", () => sendVerifyEmail({ url: verifyUrl(), user })],
-    ["change-email confirmation", () => sendChangeEmailConfirmationEmail({ url: "https://marte.test/change", user })],
+    ["change-email", () => sendChangeEmailConfirmationEmail({ url: "https://marte.test/change", user })],
   ])("keeps the %s email, sent only for some addresses, from marking the sender unavailable", async (_kind, send) => {
     await send()
 
@@ -209,7 +210,8 @@ describe("auth email delivery", () => {
     await expect(sendPasswordChangedEmail({ request: resetOn("http://localhost:3000"), user })).resolves.toBeUndefined()
 
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
-      detail: `Auth password-changed email — ${DOMAIN_NOT_VERIFIED}`,
+      detail: DOMAIN_NOT_VERIFIED,
+      metadata: { emailKind: "password-changed" },
     })
   })
 
@@ -228,7 +230,10 @@ describe("auth email delivery", () => {
     refuseEmails()
 
     await expect(sendAccountDeletedEmail(goodbye)).resolves.toBe(false)
-    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, { detail: `Auth account-deleted email — ${DOMAIN_NOT_VERIFIED}` })
+    expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
+      detail: DOMAIN_NOT_VERIFIED,
+      metadata: { emailKind: "account-deleted" },
+    })
   })
 
   it("reports a goodbye note it could not even prepare instead of throwing", async () => {
@@ -242,7 +247,8 @@ describe("auth email delivery", () => {
 
     expect(stubs.sendEmail).not.toHaveBeenCalled()
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
-      detail: "Auth account-deleted email — Error: No request locale",
+      detail: "Error: No request locale",
+      metadata: { emailKind: "account-deleted" },
     })
   })
 
@@ -252,7 +258,8 @@ describe("auth email delivery", () => {
     await expect(handleSelfServiceDeletion(createdUser, deletionOn("http://localhost:3000"))).resolves.toBeUndefined()
 
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
-      detail: `Auth account-deleted email — ${DOMAIN_NOT_VERIFIED}`,
+      detail: DOMAIN_NOT_VERIFIED,
+      metadata: { emailKind: "account-deleted" },
     })
   })
 })

@@ -9,6 +9,7 @@ import { PUBLIC_EMAIL_KINDS, admitPublicEmail } from "~/src/integrations/resend/
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
+import { AUDIT_EMAIL_KIND, type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
 import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   getSubscriberByEmail,
@@ -34,7 +35,7 @@ const reportDelivery = async ({
   delivery,
   email,
   kind,
-}: Readonly<{ delivery: Promise<string | undefined>; email: string; kind: string }>): Promise<Newsletter["outcome"]> => {
+}: Readonly<{ delivery: Promise<string | undefined>; email: string; kind: AuditEmailKind }>): Promise<Newsletter["outcome"]> => {
   const failure = await delivery
 
   if (failure === undefined) {
@@ -42,7 +43,7 @@ const reportDelivery = async ({
   }
 
   console.error(`[Newsletter] Failed to send ${kind} to ${email}: ${failure}`)
-  recordEmailFailedAudit(email, { detail: `Newsletter ${kind} — ${failure}` })
+  recordEmailFailedAudit(email, { detail: failure, metadata: { emailKind: kind } })
 
   return { outcome: NEWSLETTER_OUTCOME.CONFIRMATION_FAILED }
 }
@@ -59,14 +60,18 @@ const mailSubscriber = async ({
     const token = crypto.randomUUID()
     await insertSubscriber({ email, locale, source, status: NEWSLETTER_STATUS.PENDING, token, userId })
 
-    return reportDelivery({ delivery: sendNewsletterConfirmationEmail({ email, locale, origin, token }), email, kind: "confirmation" })
+    return reportDelivery({
+      delivery: sendNewsletterConfirmationEmail({ email, locale, origin, token }),
+      email,
+      kind: AUDIT_EMAIL_KIND.NEWSLETTER_CONFIRMATION,
+    })
   }
 
   if (existing.status === NEWSLETTER_STATUS.CONFIRMED) {
     return reportDelivery({
       delivery: sendNewsletterAlreadySubscribedEmail({ email, locale, origin }),
       email,
-      kind: "already-subscribed notice",
+      kind: AUDIT_EMAIL_KIND.NEWSLETTER_ALREADY_SUBSCRIBED,
     })
   }
 
@@ -79,7 +84,11 @@ const mailSubscriber = async ({
     userId: existing.userId ?? userId,
   })
 
-  return reportDelivery({ delivery: sendNewsletterConfirmationEmail({ email, locale, origin, token }), email, kind: "confirmation" })
+  return reportDelivery({
+    delivery: sendNewsletterConfirmationEmail({ email, locale, origin, token }),
+    email,
+    kind: AUDIT_EMAIL_KIND.NEWSLETTER_CONFIRMATION,
+  })
 }
 
 export const subscribeToNewsletter = createServerFn({ method: "POST" })
