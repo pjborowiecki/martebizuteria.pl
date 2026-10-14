@@ -85,15 +85,13 @@ export const NewsletterComposer = (): JSX.Element => {
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-8">
-        <div className="mx-auto max-w-3xl">
-          <ContentPageLocaleTabs
-            invalidLocales={localesWithErrors(composer.form.formState.errors)}
-            locale={composer.activeLocale}
-            onLocaleChange={composer.setActiveLocale}
-          >
-            <NewsletterComposerFields form={composer.form} key={composer.activeLocale} locale={composer.activeLocale} />
-          </ContentPageLocaleTabs>
-        </div>
+        <ContentPageLocaleTabs
+          invalidLocales={localesWithErrors(composer.form.formState.errors)}
+          locale={composer.activeLocale}
+          onLocaleChange={composer.setActiveLocale}
+        >
+          <NewsletterComposerFields form={composer.form} key={composer.activeLocale} locale={composer.activeLocale} />
+        </ContentPageLocaleTabs>
       </div>
 
       <NewsletterSendDialog
