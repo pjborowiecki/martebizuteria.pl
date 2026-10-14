@@ -302,6 +302,7 @@ describe("mapAuditLogToActivityItem", () => {
   it.each([
     [AUDIT_LOG_ACTION.ORDER_PLACED, "orderPlaced"],
     [AUDIT_LOG_ACTION.ORDER_SHIPPED, "orderShipped"],
+    [AUDIT_LOG_ACTION.ORDER_DELIVERED, "orderDelivered"],
     [AUDIT_LOG_ACTION.ORDER_RELEASED, "orderDelivered"],
   ])("maps the order action %s to %s with the order number", (action, actionKey) => {
     expect(

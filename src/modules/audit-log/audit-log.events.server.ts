@@ -542,7 +542,7 @@ export const recordOrderReleasedAudit = (sessionId: string, options?: AuditEvent
 
 export const recordOrderDeliveredAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
-    action: AUDIT_LOG_ACTION.ORDER_RELEASED,
+    action: AUDIT_LOG_ACTION.ORDER_DELIVERED,
     category: "orders",
     severity: "info",
     ...withResourceId(orderId, options),

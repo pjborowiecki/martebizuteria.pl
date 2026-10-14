@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
+  AUDIT_LOG_ACTION,
   AUDIT_LOG_CATEGORIES,
   AUDIT_LOG_CATEGORY_FILTER,
   AUDIT_LOG_DATE_RANGE,
@@ -11,6 +12,7 @@ import {
   formatAdminAuditTimestamp,
   isAuditLogCategoryFilter,
   resolveAdminAuditTargetPresentation,
+  resolveAuditLogAction,
   resolveAuditLogCategoryFilter,
   resolveAuditLogSince,
   resolveStartOfToday,
@@ -225,5 +227,23 @@ describe("serializeAuditMetadata", () => {
 
   it("stores the metadata as JSON", () => {
     expect(serializeAuditMetadata({ handle: "silver-ring" })).toBe('{"handle":"silver-ring"}')
+  })
+})
+
+describe("resolveAuditLogAction", () => {
+  it("names a delivery that older rows recorded as a release by the order it points at", () => {
+    expect(resolveAuditLogAction(AUDIT_LOG_ACTION.ORDER_RELEASED, PRODUCT_UUID)).toBe(AUDIT_LOG_ACTION.ORDER_DELIVERED)
+  })
+
+  it("keeps a released checkout session a release", () => {
+    expect(resolveAuditLogAction(AUDIT_LOG_ACTION.ORDER_RELEASED, "cs_test_b1HqoLnrFS5AJBFsgn14")).toBe(AUDIT_LOG_ACTION.ORDER_RELEASED)
+  })
+
+  it("keeps a release that points at nothing a release", () => {
+    expect(resolveAuditLogAction(AUDIT_LOG_ACTION.ORDER_RELEASED, null)).toBe(AUDIT_LOG_ACTION.ORDER_RELEASED)
+  })
+
+  it("leaves every other action as recorded", () => {
+    expect(resolveAuditLogAction(AUDIT_LOG_ACTION.ORDER_SHIPPED, PRODUCT_UUID)).toBe(AUDIT_LOG_ACTION.ORDER_SHIPPED)
   })
 })
