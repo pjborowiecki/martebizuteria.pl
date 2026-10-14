@@ -435,7 +435,7 @@ const ADMIN_ORDER_CASES: readonly TargetAuditCase[] = [
     severity: "info",
   },
   { action: AUDIT_LOG_ACTION.ORDER_SHIPPED, name: "a shipped order", record: recordOrderShippedAudit, severity: "success" },
-  { action: AUDIT_LOG_ACTION.ORDER_RELEASED, name: "a delivered order", record: recordOrderDeliveredAudit, severity: "info" },
+  { action: AUDIT_LOG_ACTION.ORDER_DELIVERED, name: "a delivered order", record: recordOrderDeliveredAudit, severity: "info" },
   { action: AUDIT_LOG_ACTION.ORDER_CANCELLED, name: "a cancelled order", record: recordOrderCancelledAudit, severity: "warning" },
   {
     action: AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED,

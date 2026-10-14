@@ -352,6 +352,7 @@ export const mapAuditLogToActivityItem = (
             },
           }
     }
+    case AUDIT_LOG_ACTION.ORDER_DELIVERED:
     case AUDIT_LOG_ACTION.ORDER_RELEASED: {
       return orderId === undefined
         ? undefined

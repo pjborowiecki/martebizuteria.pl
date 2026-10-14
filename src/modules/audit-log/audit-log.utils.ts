@@ -1,6 +1,7 @@
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
+  AUDIT_LOG_ACTION,
   AUDIT_LOG_CATEGORIES,
   AUDIT_LOG_CATEGORY_FILTER,
   AUDIT_LOG_DATE_RANGE,
@@ -147,6 +148,13 @@ export const formatAdminAuditTarget = (target: string, resourceId?: string): str
   return `${label} (${resolvedResourceId})`
 }
 
+const CHECKOUT_SESSION_ID_PREFIX = "cs_"
+
+export const resolveAuditLogAction = (action: string, resourceId: string | null): string =>
+  action === AUDIT_LOG_ACTION.ORDER_RELEASED && resourceId !== null && !resourceId.startsWith(CHECKOUT_SESSION_ID_PREFIX)
+    ? AUDIT_LOG_ACTION.ORDER_DELIVERED
+    : action
+
 export const toAdminAuditListItem = (row: AuditLogListSourceRow): AuditLog["adminListItem"] => {
   const metadata = parseAuditMetadata(row.metadata)
   const presentation = resolveAdminAuditTargetPresentation({
@@ -156,7 +164,7 @@ export const toAdminAuditListItem = (row: AuditLogListSourceRow): AuditLog["admi
   })
 
   return {
-    action: row.action,
+    action: resolveAuditLogAction(row.action, row.resourceId),
     actor: {
       id: row.actorId ?? undefined,
       initials: resolveAdminCustomerInitials(row.actorName),
