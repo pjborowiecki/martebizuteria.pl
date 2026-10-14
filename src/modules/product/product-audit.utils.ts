@@ -1,9 +1,4 @@
-import {
-  type AuditChangeMetadata,
-  buildAuditChangeMetadata,
-  formatAuditDetailFromChanges,
-  toAuditMetadataRecord,
-} from "~/src/modules/audit-log/audit-log.diff.utils"
+import { type AuditChangeMetadata, buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
 import { type AdminProductDetail } from "~/src/modules/product/product.utils"
 
 export interface ProductAuditVariantSnapshot {
@@ -17,12 +12,6 @@ export interface ProductAuditSnapshot {
   readonly totalStock: number
   readonly variants: readonly ProductAuditVariantSnapshot[]
 }
-
-const PRODUCT_AUDIT_FIELD_LABELS = {
-  status: "Status",
-  totalStock: "Stock",
-  variants: "Variants",
-} as const
 
 const normalizeVariantSnapshots = (product: AdminProductDetail): ProductAuditVariantSnapshot[] =>
   product.variants
@@ -59,7 +48,6 @@ export const buildProductAuditChange = (
   before: ProductAuditSnapshot | undefined,
   after: ProductAuditSnapshot,
 ): {
-  detail?: string | undefined
   metadata?: Record<string, unknown>
 } => {
   if (before === undefined) {
@@ -97,11 +85,7 @@ export const buildProductAuditChange = (
     },
   }
 
-  const detailParts = formatAuditDetailFromChanges(PRODUCT_AUDIT_FIELD_LABELS, metadata)
-  const variantDetail = hasVariantChange ? "Variants updated" : undefined
-
   return {
-    detail: [detailParts, variantDetail].filter((part) => part !== undefined && part !== "").join("; "),
     metadata: toAuditMetadataRecord(metadata),
   }
 }

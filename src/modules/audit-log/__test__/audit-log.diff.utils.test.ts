@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { buildAuditChangeMetadata, formatAuditDetailFromChanges, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
+import { buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
 
 describe("buildAuditChangeMetadata", () => {
   it("records nothing when no watched field moved", () => {
@@ -38,35 +38,6 @@ describe("buildAuditChangeMetadata", () => {
 
   it("records nothing when there is nothing to watch", () => {
     expect(buildAuditChangeMetadata({ status: "draft" }, { status: "published" }, [])).toBeUndefined()
-  })
-})
-
-describe("formatAuditDetailFromChanges", () => {
-  it("renders each change with its label and an arrow", () => {
-    expect(
-      formatAuditDetailFromChanges({ status: "Status" }, { changed: ["status"], new: { status: "published" }, old: { status: "draft" } }),
-    ).toBe("Status: draft → published")
-  })
-
-  it("joins several changes with a semicolon", () => {
-    expect(
-      formatAuditDetailFromChanges(
-        { rank: "Rank", status: "Status" },
-        { changed: ["status", "rank"], new: { rank: 2, status: "published" }, old: { rank: 1, status: "draft" } },
-      ),
-    ).toBe("Status: draft → published; Rank: 1 → 2")
-  })
-
-  it("falls back to the field name when no label was configured", () => {
-    expect(formatAuditDetailFromChanges({}, { changed: ["handle"], new: { handle: "b" }, old: { handle: "a" } })).toBe("handle: a → b")
-  })
-
-  it("renders a value that appears for the first time as undefined", () => {
-    expect(formatAuditDetailFromChanges({}, { changed: ["sku"], new: { sku: "SR-1" }, old: {} })).toBe("sku: undefined → SR-1")
-  })
-
-  it("renders nothing for an empty change list", () => {
-    expect(formatAuditDetailFromChanges({}, { changed: [], new: {}, old: {} })).toBe("")
   })
 })
 

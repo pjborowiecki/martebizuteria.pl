@@ -103,6 +103,71 @@ describe("AuditDetailCell for coded values", () => {
   })
 })
 
+describe("AuditDetailCell for changes", () => {
+  it("names a product's stock and variant moves instead of printing [object Object]", () => {
+    const cell = renderPolish({
+      changes: [
+        { field: "totalStock", from: 99, to: 0 },
+        { field: "variants", variants: [{ change: "updated", price: undefined, quantity: { from: 99, to: 0 }, sku: "MB-1" }] },
+      ],
+      kind: "changes",
+    })
+
+    expect(cell).toHaveTextContent("Stan magazynowy: 99 → 0; Warianty: MB-1 (stan 99 → 0)")
+    expect(cell.textContent).not.toContain("[object Object]")
+  })
+
+  it("names the product statuses the way the catalog does", () => {
+    const status: AuditLog["detail"] = { changes: [{ field: "status", from: "draft", to: "published" }], kind: "changes" }
+
+    expect(renderPolish(status)).toHaveTextContent("Status: Wersja robocza → Aktywny")
+    expect(renderEnglish(status)).toHaveTextContent("Status: Draft → Active")
+  })
+
+  it("names the statuses of a refund and formats its amount as money", () => {
+    expect(
+      renderPolish({
+        changes: [
+          { field: "orderStatus", from: "processing", to: "refunded" },
+          { field: "paymentStatus", from: "succeeded", to: "refunded" },
+          { field: "refundedAmount", from: 0, to: 1999 },
+        ],
+        kind: "changes",
+      }),
+    ).toHaveTextContent(
+      "Status zamówienia: W realizacji → Zwrócone; Status płatności: Opłacona → Zwrócona; Zwrócona kwota: 0,00 zł → 19,99 zł",
+    )
+  })
+
+  it("lists every variant that moved, came or went", () => {
+    expect(
+      renderPolish({
+        changes: [
+          {
+            field: "variants",
+            variants: [
+              { change: "updated", price: { from: 12_000, to: 9900 }, quantity: { from: 5, to: 0 }, sku: "MB-1" },
+              { change: "updated", price: undefined, quantity: { from: 2, to: 0 }, sku: "" },
+              { change: "updated", price: { from: 5000, to: 4500 }, quantity: undefined, sku: "MB-4" },
+              { change: "added", sku: "MB-3" },
+              { change: "removed", sku: "MB-2" },
+            ],
+          },
+        ],
+        kind: "changes",
+      }),
+    ).toHaveTextContent(
+      "Warianty: MB-1 (cena 120,00 zł → 99,00 zł, stan 5 → 0), wariant bez SKU (stan 2 → 0), MB-4 (cena 50,00 zł → 45,00 zł), dodano MB-3, usunięto MB-2",
+    )
+  })
+
+  it("keeps the name of a field the shop has no label for and dashes out a missing value", () => {
+    expect(renderEnglish({ changes: [{ field: "tags", from: undefined, to: "gold" }], kind: "changes" })).toHaveTextContent(
+      "tags: — → gold",
+    )
+  })
+})
+
 describe("AuditDetailCell for text", () => {
   it("shows text as the row stored it", () => {
     expect(renderPolish({ kind: "text", text: "/products/silver-ring" })).toHaveTextContent("/products/silver-ring")

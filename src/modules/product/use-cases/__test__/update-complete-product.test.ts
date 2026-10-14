@@ -212,15 +212,12 @@ describe("complete product update auditing", () => {
     })
   })
 
-  it("spells the status and stock move out for the reader", async () => {
+  it("stores no English summary of the move, leaving the log to word it in the reader's language", async () => {
     operations.detailById.mockResolvedValueOnce(detail("draft", 5)).mockResolvedValueOnce(detail("published", 2))
 
     await updateCompleteProduct({ data: productInput })
-    const text = auditPayload()?.detail ?? ""
 
-    expect(text).toContain("Status: draft → published")
-    expect(text).toContain("Stock: 5 → 2")
-    expect(text).toContain("Variants updated")
+    expect(auditPayload()).not.toHaveProperty("detail")
   })
 
   it("mentions only the variants when just a price moved", async () => {
@@ -231,7 +228,6 @@ describe("complete product update auditing", () => {
 
     await updateCompleteProduct({ data: productInput })
 
-    expect(auditPayload()?.detail).toContain("Variants updated")
     expect(auditPayload()?.metadata?.["changed"]).toStrictEqual(["variants"])
   })
 

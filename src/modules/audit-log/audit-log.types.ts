@@ -27,24 +27,52 @@ interface AuditLogMessageDetail {
   readonly values: Readonly<Record<string, number | string>>
 }
 
-interface AuditLogAmountValue {
-  readonly field: "amount"
-  readonly value: number
+interface AuditLogValue {
+  readonly field: string
+  readonly value: number | string
 }
-
-interface AuditLogCodeValue {
-  readonly field: "disputeReason" | "disputeStatus" | "role"
-  readonly value: string
-}
-
-type AuditLogValue = AuditLogAmountValue | AuditLogCodeValue
 
 interface AuditLogValuesDetail {
   readonly kind: "values"
   readonly values: readonly AuditLogValue[]
 }
 
-type AuditLogDetail = AuditLogEmailDetail | AuditLogMessageDetail | AuditLogTextDetail | AuditLogValuesDetail
+interface AuditLogFieldChange {
+  readonly field: string
+  readonly from: number | string | undefined
+  readonly to: number | string | undefined
+}
+
+interface AuditLogValueMove {
+  readonly from: number
+  readonly to: number
+}
+
+type AuditLogVariantChange =
+  | {
+      readonly change: "added" | "removed"
+      readonly sku: string
+    }
+  | {
+      readonly change: "updated"
+      readonly price: AuditLogValueMove | undefined
+      readonly quantity: AuditLogValueMove | undefined
+      readonly sku: string
+    }
+
+interface AuditLogVariantsChange {
+  readonly field: "variants"
+  readonly variants: readonly AuditLogVariantChange[]
+}
+
+type AuditLogChange = AuditLogFieldChange | AuditLogVariantsChange
+
+interface AuditLogChangesDetail {
+  readonly changes: readonly AuditLogChange[]
+  readonly kind: "changes"
+}
+
+type AuditLogDetail = AuditLogChangesDetail | AuditLogEmailDetail | AuditLogMessageDetail | AuditLogTextDetail | AuditLogValuesDetail
 
 interface AdminAuditListItem extends Pick<typeof auditLog.$inferSelect, "action" | "category" | "id" | "severity"> {
   readonly actor: AuditLogActor
@@ -65,10 +93,13 @@ interface AuditLogStats {
 export interface AuditLog {
   actor: AuditLogActor
   adminListItem: AdminAuditListItem
+  change: AuditLogChange
   detail: AuditLogDetail
   detailValue: AuditLogValue
   emailDetail: AuditLogEmailDetail
   insert: typeof auditLog.$inferInsert
   select: typeof auditLog.$inferSelect
   stats: AuditLogStats
+  valueMove: AuditLogValueMove
+  variantChange: AuditLogVariantChange
 }

@@ -474,12 +474,38 @@
         "verification": "Email address verification"
       },
       "emailDailyLimit": "the shop reached its daily limit of {limit} emails that visitors can request",
+      "fields": {
+        "orderStatus": "Order status",
+        "paymentStatus": "Payment status",
+        "refundedAmount": "Refunded amount",
+        "status": "Status",
+        "totalStock": "Stock",
+        "variants": "Variants"
+      },
       "messages": {
         "cartItemCount": "{count, plural, one {# item in cart} other {# items in cart}}",
         "recipientCount": "{count, plural, one {# confirmed subscriber} other {# confirmed subscribers}}",
         "stripeCustomerKept": "Stripe customer not deleted, account kept — {error}"
       },
       "values": {
+        "status": {
+          "archived": "Archived",
+          "draft": "Draft",
+          "published": "Active"
+        },
+        "orderStatus": {
+          "cancelled": "Cancelled",
+          "completed": "Completed",
+          "pending": "Pending",
+          "processing": "Processing",
+          "refunded": "Refunded"
+        },
+        "paymentStatus": {
+          "failed": "Failed",
+          "pending": "Pending",
+          "refunded": "Refunded",
+          "succeeded": "Paid"
+        },
         "role": {
           "admin": "Administrator",
           "customer": "Customer"
@@ -511,6 +537,13 @@
           "warning_under_review": "Inquiry under review",
           "won": "Won"
         }
+      },
+      "variants": {
+        "added": "added {sku}",
+        "noSku": "variant without SKU",
+        "price": "price {from} → {to}",
+        "quantity": "stock {from} → {to}",
+        "removed": "removed {sku}"
       }
     },
     "searchPlaceholder": "Search events…",

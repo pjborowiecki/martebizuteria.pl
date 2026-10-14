@@ -111,6 +111,51 @@ describe("describeAuditLogDetail for e-mails", () => {
   })
 })
 
+describe("describeAuditLogDetail for changes", () => {
+  const STOCK_AND_VARIANTS = {
+    changed: ["totalStock", "variants"],
+    new: { totalStock: 0, variants: [{ price: 12_000, quantity: 0, sku: "MB-1" }] },
+    old: { totalStock: 99, variants: [{ price: 12_000, quantity: 99, sku: "MB-1" }] },
+  }
+
+  it.each([["Stock: 99 → 0; Variants: [object Object] → [object Object]; Variants updated"], ["Stock: 99 → 0; Variants updated"], [null]])(
+    "reads a product update from its metadata whatever the row's text was: %j",
+    (detail) => {
+      expect(describeRow(AUDIT_LOG_ACTION.PRODUCT_UPDATED, detail, STOCK_AND_VARIANTS)).toStrictEqual({
+        changes: [
+          { field: "totalStock", from: 99, to: 0 },
+          { field: "variants", variants: [{ change: "updated", price: undefined, quantity: { from: 99, to: 0 }, sku: "MB-1" }] },
+        ],
+        kind: "changes",
+      })
+    },
+  )
+
+  it("reads a refund from its metadata", () => {
+    expect(
+      describeRow(AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED, "Payment status: succeeded → refunded", {
+        changed: ["paymentStatus"],
+        new: { paymentStatus: "refunded" },
+        old: { paymentStatus: "succeeded" },
+      }),
+    ).toStrictEqual({ changes: [{ field: "paymentStatus", from: "succeeded", to: "refunded" }], kind: "changes" })
+  })
+
+  it("keeps the text of a change entry without change metadata", () => {
+    expect(describeRow(AUDIT_LOG_ACTION.PRODUCT_UPDATED, "Changed the price")).toStrictEqual({ kind: "text", text: "Changed the price" })
+  })
+
+  it("records no detail when no change is left to show", () => {
+    expect(
+      describeRow(AUDIT_LOG_ACTION.PRODUCT_UPDATED, "Variants updated", {
+        changed: ["variants"],
+        new: { variants: [{ price: 1, quantity: 1, sku: "A" }] },
+        old: { variants: [{ price: 1, quantity: 1, sku: "A" }] },
+      }),
+    ).toBeUndefined()
+  })
+})
+
 describe("describeAuditLogDetail for counts", () => {
   it("counts the items of an abandoned cart from its metadata, whatever text the row kept", () => {
     expect(describeRow(AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED, "4 items in cart", { itemCount: 4, lineCount: 2 })).toStrictEqual({

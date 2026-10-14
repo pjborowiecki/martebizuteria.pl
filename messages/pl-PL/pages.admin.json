@@ -474,12 +474,38 @@
         "verification": "Potwierdzenie adresu e-mail"
       },
       "emailDailyLimit": "sklep osiągnął dzienny limit {limit} e-maili wysyłanych na prośbę odwiedzających",
+      "fields": {
+        "orderStatus": "Status zamówienia",
+        "paymentStatus": "Status płatności",
+        "refundedAmount": "Zwrócona kwota",
+        "status": "Status",
+        "totalStock": "Stan magazynowy",
+        "variants": "Warianty"
+      },
       "messages": {
         "cartItemCount": "{count, plural, one {# produkt w koszyku} few {# produkty w koszyku} many {# produktów w koszyku} other {# produktu w koszyku}}",
         "recipientCount": "{count, plural, one {# potwierdzony subskrybent} other {# potwierdzonych subskrybentów}}",
         "stripeCustomerKept": "Nie udało się usunąć klienta w Stripe, więc konto zostało zachowane — {error}"
       },
       "values": {
+        "status": {
+          "archived": "Zarchiwizowany",
+          "draft": "Wersja robocza",
+          "published": "Aktywny"
+        },
+        "orderStatus": {
+          "cancelled": "Anulowane",
+          "completed": "Zrealizowane",
+          "pending": "Oczekujące",
+          "processing": "W realizacji",
+          "refunded": "Zwrócone"
+        },
+        "paymentStatus": {
+          "failed": "Nieudana",
+          "pending": "Oczekująca",
+          "refunded": "Zwrócona",
+          "succeeded": "Opłacona"
+        },
         "role": {
           "admin": "Administrator",
           "customer": "Klient"
@@ -511,6 +537,13 @@
           "warning_under_review": "Zapytanie w trakcie rozpatrywania",
           "won": "Wygrany"
         }
+      },
+      "variants": {
+        "added": "dodano {sku}",
+        "noSku": "wariant bez SKU",
+        "price": "cena {from} → {to}",
+        "quantity": "stan {from} → {to}",
+        "removed": "usunięto {sku}"
       }
     },
     "searchPlaceholder": "Szukaj zdarzeń…",

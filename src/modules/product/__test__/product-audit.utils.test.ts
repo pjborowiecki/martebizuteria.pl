@@ -21,8 +21,7 @@ describe("buildProductAuditChange", () => {
   it("records a status change", () => {
     const change = buildProductAuditChange(snapshot({ status: "draft" }), snapshot())
 
-    expect(change.detail).toBe("Status: draft → published")
-    expect(change.metadata).toMatchObject({ changed: ["status"] })
+    expect(change).toStrictEqual({ metadata: { changed: ["status"], new: { status: "published" }, old: { status: "draft" } } })
   })
 
   it("notes a variant change alongside the scalar fields", () => {
@@ -31,21 +30,13 @@ describe("buildProductAuditChange", () => {
       snapshot({ totalStock: 3, variants: [{ price: 12_000, quantity: 3, sku: "SR-1" }] }),
     )
 
-    expect(change.detail).toContain("Stock: 5 → 3")
-    expect(change.detail).toContain("Variants updated")
     expect(change.metadata).toMatchObject({ changed: ["totalStock", "variants"] })
   })
 
   it("detects a price change even when the stock total is unchanged", () => {
     const change = buildProductAuditChange(snapshot(), snapshot({ variants: [{ price: 13_000, quantity: 5, sku: "SR-1" }] }))
 
-    expect(change.detail).toContain("Variants updated")
-  })
-
-  it("summarises a variant-only change without trying to print the variant rows", () => {
-    const change = buildProductAuditChange(snapshot(), snapshot({ variants: [{ price: 13_000, quantity: 5, sku: "SR-1" }] }))
-
-    expect(change.detail).toBe("Variants updated")
+    expect(change.metadata).toMatchObject({ changed: ["variants"] })
   })
 
   it("detects a renamed SKU", () => {

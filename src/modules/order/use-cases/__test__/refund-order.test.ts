@@ -110,7 +110,6 @@ describe("refundOrder audit trail", () => {
     await refundOrder(input())
 
     expect(calls.audit).toHaveBeenCalledWith("order-1", {
-      detail: "Order status: processing → refunded; Payment status: succeeded → refunded; Refunded amount: 0 → 1999",
       metadata: {
         changed: ["orderStatus", "paymentStatus", "refundedAmount"],
         new: { orderStatus: "refunded", paymentStatus: "refunded", refundedAmount: 1999 },
@@ -126,7 +125,6 @@ describe("refundOrder audit trail", () => {
     await refundOrder(input())
 
     expect(calls.audit).toHaveBeenCalledWith("order-1", {
-      detail: "Payment status: succeeded → refunded; Refunded amount: 0 → 1999",
       metadata: {
         changed: ["paymentStatus", "refundedAmount"],
         new: { paymentStatus: "refunded", refundedAmount: 1999 },
@@ -140,7 +138,6 @@ describe("refundOrder audit trail", () => {
     await refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))
 
     expect(calls.audit).toHaveBeenCalledWith("order-1", {
-      detail: "Refunded amount: 0 → 500",
       metadata: { changed: ["refundedAmount"], new: { refundedAmount: 500 }, old: { refundedAmount: 0 } },
       resourceId: "order-1",
     })
@@ -168,7 +165,6 @@ describe("refundOrder audit trail", () => {
     await refundOrder(input({ fullyRefunded: false, refundedAmount: 500 }))
 
     expect(calls.audit).toHaveBeenCalledWith("order-1", {
-      detail: "Refunded amount: undefined → 500",
       metadata: { changed: ["refundedAmount"], new: { refundedAmount: 500 }, old: { refundedAmount: undefined } },
       resourceId: "order-1",
     })

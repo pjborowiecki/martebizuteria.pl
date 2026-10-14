@@ -1,3 +1,4 @@
+import { describeAuditLogChanges } from "~/src/modules/audit-log/audit-log.changes.utils"
 import { AUDIT_EMAIL_KIND, AUDIT_LOG_ACTION, type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { auditLogZodSchemas } from "~/src/modules/audit-log/audit-log.zod"
@@ -135,6 +136,15 @@ const describeDisputeOpened = (source: AuditLogDetailSource): AuditLog["detail"]
 const describeDisputeClosed = (source: AuditLogDetailSource): AuditLog["detail"] | undefined =>
   describeValues(source, source.detail === null ? [] : [{ field: "disputeStatus", value: source.detail }])
 
+const describeChanges = (source: AuditLogDetailSource): AuditLog["detail"] | undefined => {
+  const changes = describeAuditLogChanges(source.metadata)
+  if (changes === undefined) {
+    return describeText(source)
+  }
+
+  return changes.length === 0 ? undefined : { changes, kind: "changes" }
+}
+
 const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetailDescriber>>> = {
   [AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED]: describeRole,
   [AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED]: describeCartItemCount,
@@ -147,6 +157,8 @@ const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetai
   [AUDIT_LOG_ACTION.NEWSLETTER_SENT]: describeRecipientCount,
   [AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED]: describeDisputeClosed,
   [AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED]: describeDisputeOpened,
+  [AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED]: describeChanges,
+  [AUDIT_LOG_ACTION.PRODUCT_UPDATED]: describeChanges,
 }
 
 export const describeAuditLogDetail = (source: AuditLogDetailSource): AuditLog["detail"] | undefined =>
