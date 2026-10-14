@@ -104,7 +104,7 @@ export const ADMIN_DISCOUNT_TABLE_COLUMN_SIZE = {
   code: 210,
   createdAt: 140,
   endsAt: 140,
-  minOrder: 170,
+  minOrder: 180,
   recordId: CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX,
   startsAt: 140,
   status: 130,

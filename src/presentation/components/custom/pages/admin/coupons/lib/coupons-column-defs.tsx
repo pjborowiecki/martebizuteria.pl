@@ -21,16 +21,13 @@ import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/cus
 import {
   CATALOG_DATAGRID_EMPTY_TEXT_CLASS,
   CATALOG_DATAGRID_MUTED_TEXT_CLASS,
+  CatalogTruncatedTextCell,
 } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 import { CouponCodeCell } from "~/src/presentation/components/custom/pages/admin/coupons/components/coupon-code-cell"
 import { CouponStatusBadge } from "~/src/presentation/components/custom/pages/admin/coupons/components/coupon-status-badge"
 import { CouponsRowActions } from "~/src/presentation/components/custom/pages/admin/coupons/components/coupons-row-actions"
 
 const EmptyCell = (): JSX.Element => <span className={CATALOG_DATAGRID_EMPTY_TEXT_CLASS}>{EMPTY_VALUE}</span>
-
-const NumberCell = ({ value }: Readonly<{ value: string }>): JSX.Element => (
-  <span className="font-mono text-sm whitespace-nowrap tabular-nums">{value}</span>
-)
 
 const DateCell = ({ format, value }: Readonly<{ format: ColumnsInput["format"]; value: Date | undefined }>): JSX.Element =>
   value === undefined ? (
@@ -80,6 +77,7 @@ const buildCouponIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | "tAd
       meta: {
         skeletonVariant: "badge",
       },
+      minSize: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.status,
       size: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.status,
     }),
     columnHelper.accessor("type", {
@@ -101,32 +99,44 @@ const buildCouponTermsColumns = ({ format, locale, t }: Pick<ColumnsInput, "form
       cell: ({ row }) => {
         const discount = formatCouponDiscount(row.original, locale)
 
-        return discount === undefined ? <EmptyCell /> : <NumberCell value={discount} />
+        return discount === undefined ? (
+          <EmptyCell />
+        ) : (
+          <CatalogTruncatedTextCell className={NUMBER_TEXT_CLASS} muted={false} text={discount} />
+        )
       },
       header: t("columns.discount"),
       id: ADMIN_DISCOUNT_TABLE_COLUMN_ID.value,
       meta: {
         skeletonVariant: "number",
       },
+      minSize: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.value,
       size: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.value,
     }),
     columnHelper.accessor("minOrderTotalMinorUnits", {
       cell: ({ getValue }) => {
         const minOrder = getValue()
 
-        return minOrder === undefined ? <EmptyCell /> : <NumberCell value={formatPrice(minOrder, STORE_CURRENCY_CODE, locale)} />
+        return minOrder === undefined ? (
+          <EmptyCell />
+        ) : (
+          <CatalogTruncatedTextCell className={NUMBER_TEXT_CLASS} muted={false} text={formatPrice(minOrder, STORE_CURRENCY_CODE, locale)} />
+        )
       },
       header: t("columns.minOrder"),
       id: ADMIN_DISCOUNT_TABLE_COLUMN_ID.minOrder,
       meta: {
         skeletonVariant: "number",
       },
+      minSize: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.minOrder,
       size: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.minOrder,
     }),
     columnHelper.accessor("usageCount", {
       cell: ({ row }) => (
-        <NumberCell
-          value={
+        <CatalogTruncatedTextCell
+          className={NUMBER_TEXT_CLASS}
+          muted={false}
+          text={
             row.original.usageLimit === undefined
               ? t("usage.unlimited", { used: row.original.usageCount })
               : t("usage.limited", { limit: row.original.usageLimit, used: row.original.usageCount })
@@ -147,6 +157,7 @@ const buildCouponTermsColumns = ({ format, locale, t }: Pick<ColumnsInput, "form
       meta: {
         skeletonVariant: "date",
       },
+      minSize: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.startsAt,
       size: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.startsAt,
     }),
     columnHelper.accessor("endsAt", {
@@ -156,6 +167,7 @@ const buildCouponTermsColumns = ({ format, locale, t }: Pick<ColumnsInput, "form
       meta: {
         skeletonVariant: "date",
       },
+      minSize: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.endsAt,
       size: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.endsAt,
     }),
     columnHelper.accessor("createdAt", {
@@ -165,6 +177,7 @@ const buildCouponTermsColumns = ({ format, locale, t }: Pick<ColumnsInput, "form
       meta: {
         skeletonVariant: "date",
       },
+      minSize: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.createdAt,
       size: ADMIN_DISCOUNT_TABLE_COLUMN_SIZE.createdAt,
     }),
     columnHelper.display({
@@ -187,6 +200,8 @@ export const buildCouponColumns = (input: ColumnsInput) =>
   columnHelper.columns([...buildCouponIdentityColumns(input), ...buildCouponTermsColumns(input)])
 
 const columnHelper = createColumnHelper<DataGridFeatures, Discount["adminListItem"]>()
+
+const NUMBER_TEXT_CLASS = "font-mono text-sm tabular-nums"
 
 interface ColumnsInput {
   readonly format: ReturnType<typeof useFormatter>
