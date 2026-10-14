@@ -1030,9 +1030,22 @@
       "editTitle": "Edytuj kod",
       "createDescription": "Kod zadziała w koszyku, gdy tylko będzie aktywny.",
       "editDescription": "Zmiany obowiązują dla zamówień rozpoczętych od teraz.",
+      "sections": {
+        "details": "Kod",
+        "detailsDescription": "To, co klient wpisuje w koszyku, oraz notatka dla zespołu.",
+        "discount": "Rabat",
+        "discountDescription": "Ile kod odejmuje i od jakiej wartości koszyka.",
+        "limits": "Limity",
+        "limitsDescription": "Ile razy można użyć kodu.",
+        "availability": "Dostępność",
+        "availabilityDescription": "Czy i kiedy kod działa w koszyku."
+      },
+      "id": "ID",
       "code": "Kod",
       "codeHint": "Litery, cyfry, myślniki i podkreślenia.",
+      "codePlaceholder": "np. WIOSNA20",
       "description": "Opis wewnętrzny",
+      "descriptionPlaceholder": "Widoczny tylko dla zespołu.",
       "type": "Typ",
       "percentageValue": "Procent rabatu",
       "amountValue": "Kwota rabatu",
@@ -1046,12 +1059,12 @@
       "perCustomerLimitHint": "Pozostaw puste dla braku limitu.",
       "startsAt": "Początek",
       "endsAt": "Koniec",
-      "isActive": "Aktywny",
-      "isActiveHint": "Nieaktywny kod jest odrzucany niezależnie od daty.",
+      "status": "Status",
+      "statusHint": "Wyłączony kod jest odrzucany niezależnie od dat.",
       "freeShippingNote": "Darmowa dostawa pokrywa cały koszt wysyłki, więc nie wymaga wartości.",
       "cancel": "Anuluj",
-      "save": "Zapisz kod",
-      "amountInMinorUnits": "Kwoty podawaj w groszach (100 gr = 1 zł)."
+      "create": "Utwórz kod",
+      "save": "Zapisz kod"
     },
     "validation": {
       "codeTooShort": "Użyj co najmniej 3 znaków.",
@@ -1059,7 +1072,10 @@
       "codeCharacters": "Użyj tylko liter, cyfr, myślników i podkreśleń.",
       "percentageRange": "Podaj procent od 1 do 100.",
       "amountRequired": "Podaj kwotę większą od zera.",
-      "endBeforeStart": "Koniec musi być po początku."
+      "positiveNumber": "Podaj liczbę większą od zera.",
+      "endBeforeStart": "Koniec musi być po początku.",
+      "submitBlockedTitle": "Popraw błędy w formularzu",
+      "submitBlockedDescription": "Sprawdź podświetlone pola i spróbuj ponownie."
     },
     "toast": {
       "createdTitle": "Kod utworzony",

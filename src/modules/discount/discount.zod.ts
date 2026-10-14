@@ -29,7 +29,7 @@ const codeField = zod
 
 const optionalDateField = zod.iso.datetime({ offset: true }).optional().or(zod.literal(""))
 
-const optionalPositiveAmount = zod.number().int().positive().optional()
+const optionalPositiveAmount = zod.number().int("validation.positiveNumber").positive("validation.positiveNumber").optional()
 
 const optionalEmailField = zod
   .union([zod.email(), zod.literal("")])
@@ -49,10 +49,10 @@ const adminDiscountFormValues = zod
     isActive: zod.boolean().default(true),
     maxDiscountAmount: optionalPositiveAmount,
     minOrderTotal: optionalPositiveAmount,
-    perCustomerLimit: zod.number().int().positive().optional(),
+    perCustomerLimit: optionalPositiveAmount,
     startsAt: optionalDateField,
     type: zod.enum(DISCOUNT_TYPES),
-    usageLimit: zod.number().int().positive().optional(),
+    usageLimit: optionalPositiveAmount,
     value: zod.number().int().min(0),
   })
   .superRefine((data, ctx) => {
