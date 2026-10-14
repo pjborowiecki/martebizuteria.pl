@@ -268,19 +268,9 @@
         "order": "Zamówienie",
         "customer": "Klient",
         "date": "Data",
-        "total": "Razem",
+        "total": "Suma",
         "payment": "Płatność",
         "fulfillment": "Realizacja"
-      },
-      "status": {
-        "unfulfilled": "Nie zrealizowano",
-        "shipped": "Wysłane",
-        "delivered": "Dostarczone",
-        "returned": "Zwrócone",
-        "pending": "Oczekujące",
-        "paid": "Opłacone",
-        "refunded": "Zwrócone",
-        "authorized": "Zautoryzowane"
       }
     },
     "topProducts": {

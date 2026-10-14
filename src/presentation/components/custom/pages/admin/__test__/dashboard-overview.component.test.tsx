@@ -45,11 +45,12 @@ const orderRow = (overrides: Partial<Order["adminListItem"]> = {}): Order["admin
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: "unfulfilled",
   hasOpenDispute: false,
-  id: "ORD-1",
+  id: "c3791f39-4f51-4d0d-a7b1-1ef49f0995ea",
   initials: "AK",
   itemCount: 2,
+  orderNumber: "MRT-2026-00001",
   paymentUiKey: "paid",
-  status: "completed",
+  status: "processing",
   totalMinorUnits: 24_900,
   userId: null,
   ...overrides,
@@ -180,7 +181,6 @@ describe("DashboardRecentOrders", () => {
     renderWithProviders(<DashboardRecentOrders />)
 
     expect(screen.getByRole("table")).toBeInTheDocument()
-    expect(screen.getByText("#ORD-1")).toBeInTheDocument()
     expect(screen.getByText("Anna Kowalska")).toBeInTheDocument()
     expect(screen.getByText("AK")).toBeInTheDocument()
     expect(screen.getByText("Paid")).toBeInTheDocument()
@@ -208,5 +208,30 @@ describe("DashboardRecentOrders", () => {
     expect(screen.getByText("Shipped")).toBeInTheDocument()
     expect(screen.getByText("Authorized")).toBeInTheDocument()
     expect(screen.queryByText("Paid")).not.toBeInTheDocument()
+  })
+
+  it("names each order by its order number and links it to the order instead of showing the database id", () => {
+    snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow()] }
+    renderWithProviders(<DashboardRecentOrders />)
+
+    expect(screen.getByRole("link", { name: "MRT-2026-00001" })).toHaveAttribute(
+      "href",
+      "/admin/orders/c3791f39-4f51-4d0d-a7b1-1ef49f0995ea",
+    )
+    expect(screen.queryByText(/c3791f39/u)).not.toBeInTheDocument()
+  })
+
+  it("writes the fulfilment label as the orders list does, without capitalising every word", () => {
+    snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow()] }
+    renderWithProviders(<DashboardRecentOrders />)
+
+    expect(screen.getByText("Unfulfilled")).not.toHaveClass("capitalize")
+  })
+
+  it("shows a refunded payment with the orders list's refunded badge", () => {
+    snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow({ paymentUiKey: "refunded" })] }
+    renderWithProviders(<DashboardRecentOrders />)
+
+    expect(screen.getByText("Refunded")).toHaveAttribute("data-variant", "destructive")
   })
 })

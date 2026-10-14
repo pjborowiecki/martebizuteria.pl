@@ -75,8 +75,8 @@ const DDL = `
   );
   create table "order" (
     id text primary key, checkout_id text, currency_code text not null default 'PLN', email text not null,
-    fulfillment_status text not null default 'not_fulfilled', metadata text, payment_id text, status text not null default 'pending',
-    total integer not null default 0, user_id text, created_at integer not null, updated_at integer not null
+    fulfillment_status text not null default 'not_fulfilled', metadata text, order_number text, payment_id text,
+    status text not null default 'pending', total integer not null default 0, user_id text, created_at integer not null, updated_at integer not null
   );
   create table order_item (
     id text primary key, order_id text not null, product_id text, quantity integer not null, subtotal integer not null,
@@ -126,6 +126,8 @@ const seed = (): void => {
       ('o-refunded', 'PLN', 'piotr@example.com', 'not_fulfilled', 'pay-refunded', 'refunded', 12000, 'u-piotr', ${ago(5)}, ${ago(5)}),
       ('o-old-done', 'PLN', 'old@example.com', 'delivered', 'pay-partly-refunded', 'completed', 8000, 'u-old', ${ago(40)}, ${ago(40)}),
       ('o-last-year', 'PLN', 'old@example.com', 'delivered', 'pay-paid', 'completed', 70000, 'u-old', ${Date.UTC(2025, 10, 1)}, ${Date.UTC(2025, 10, 1)});
+
+    update "order" set order_number = 'MRT-' || id;
 
     insert into product_category (id, handle, titles, created_at, updated_at) values
       ('cat-rings', 'rings', '{"en-US":"Rings","pl-PL":"Pierścionki"}', ${ago(90)}, ${ago(90)});
@@ -361,7 +363,13 @@ describe("getDashboardSnapshot recent orders", () => {
     const paid = result.recentOrders.find((row) => row.id === "o-done-1")
     const unpaid = result.recentOrders.find((row) => row.id === "o-pending")
 
-    expect(paid).toMatchObject({ paymentUiKey: "paid", status: "completed", totalMinorUnits: 30_000, userId: "u-anna" })
+    expect(paid).toMatchObject({
+      orderNumber: "MRT-o-done-1",
+      paymentUiKey: "paid",
+      status: "completed",
+      totalMinorUnits: 30_000,
+      userId: "u-anna",
+    })
     expect(unpaid).toMatchObject({ paymentUiKey: "authorized", status: "pending", totalMinorUnits: 5000, userId: null })
   })
 })

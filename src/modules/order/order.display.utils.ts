@@ -106,6 +106,7 @@ export const toAdminOrderListItem = (row: AdminOrderListSourceRow): Order["admin
     id: row.id,
     initials: resolveAdminCustomerInitials(customerName),
     itemCount: row.itemCount ?? 0,
+    orderNumber: row.orderNumber,
     paymentUiKey: resolveAdminOrderPaymentUiKey(row.paymentStatus),
     status: row.status,
     totalMinorUnits: row.total,
@@ -122,6 +123,7 @@ interface AdminOrderListSourceRow {
   readonly id: string
   readonly itemCount: number | null
   readonly metadata: string | null
+  readonly orderNumber: string
   readonly paymentStatus: string | null
   readonly status: Order["select"]["status"]
   readonly total: number

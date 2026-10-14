@@ -22,6 +22,7 @@ interface SourceRow {
   readonly id: string
   readonly itemCount: number | null
   readonly metadata: string | null
+  readonly orderNumber: string
   readonly paymentStatus: string | null
   readonly status: Order["select"]["status"]
   readonly total: number
@@ -41,6 +42,7 @@ const sourceRow = (overrides: Partial<SourceRow> = {}): SourceRow => ({
   id: "order-1",
   itemCount: 3,
   metadata: null,
+  orderNumber: "MRT-2026-00001",
   paymentStatus: "succeeded",
   status: "processing",
   total: 19_900,
@@ -171,6 +173,7 @@ describe("getAdminOrdersPage result", () => {
         id: "order-1",
         initials: "AL",
         itemCount: 3,
+        orderNumber: "MRT-2026-00001",
         paymentUiKey: "paid",
         status: "processing",
         totalMinorUnits: 19_900,

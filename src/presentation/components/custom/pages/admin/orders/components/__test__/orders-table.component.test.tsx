@@ -85,6 +85,7 @@ const orderRow = (): Order["adminListItem"] => ({
   id: "order-42",
   initials: "AK",
   itemCount: 2,
+  orderNumber: "MRT-2026-00042",
   paymentUiKey: "authorized",
   status: "pending",
   totalMinorUnits: 24_900,

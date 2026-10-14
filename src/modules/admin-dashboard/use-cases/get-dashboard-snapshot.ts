@@ -102,22 +102,7 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
       customers: buildAdminDashboardKpiStat(currentCustomersRow?.count ?? 0, previousCustomersRow?.count ?? 0),
       orders: buildAdminDashboardKpiStat(currentSalesRow?.orders ?? 0, previousSalesRow?.orders ?? 0),
       pageViews: buildAdminDashboardKpiStat(currentViewsRow?.count ?? 0, previousViewsRow?.count ?? 0),
-      recentOrders: recentOrderRows.map((row) =>
-        toAdminOrderListItem({
-          createdAt: row.createdAt,
-          currencyCode: row.currencyCode,
-          customerName: row.customerName,
-          email: row.email,
-          fulfillmentStatus: row.fulfillmentStatus,
-          id: row.id,
-          itemCount: 0,
-          metadata: row.metadata,
-          paymentStatus: row.paymentStatus,
-          status: row.status,
-          total: row.total,
-          userId: row.userId,
-        }),
-      ),
+      recentOrders: recentOrderRows.map((row) => toAdminOrderListItem({ ...row, itemCount: 0 })),
       revenue: buildAdminDashboardKpiStat(currentSalesRow?.revenue ?? 0, previousSalesRow?.revenue ?? 0),
       topProducts: validTopProductRows.map((row) => ({
         category: resolveTopProductCategoryLabel(row.categoryTitles, locale),

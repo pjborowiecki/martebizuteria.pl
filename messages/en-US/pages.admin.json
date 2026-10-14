@@ -271,16 +271,6 @@
         "total": "Total",
         "payment": "Payment",
         "fulfillment": "Fulfillment"
-      },
-      "status": {
-        "unfulfilled": "Unfulfilled",
-        "shipped": "Shipped",
-        "delivered": "Delivered",
-        "returned": "Returned",
-        "pending": "Pending",
-        "paid": "Paid",
-        "refunded": "Refunded",
-        "authorized": "Authorized"
       }
     },
     "topProducts": {

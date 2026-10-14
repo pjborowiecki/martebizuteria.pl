@@ -48,6 +48,7 @@ const order = (overrides: Partial<Order["adminListItem"]> = {}): Order["adminLis
   id: "order-1",
   initials: "AN",
   itemCount: 2,
+  orderNumber: "MRT-2026-00001",
   paymentUiKey: "paid",
   status: "processing",
   totalMinorUnits: 12_000,
