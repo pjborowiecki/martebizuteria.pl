@@ -52,7 +52,6 @@ export const refundOrder = async (input: Order["refundInput"]): Promise<Order["u
   const after = resolveRefundAfterSnapshot(before, input, settled.orderId)
   const auditChange = buildOrderRefundAuditChange(before, after)
   recordOrderRefundAudit(settled.orderId, {
-    detail: auditChange.detail,
     metadata: auditChange.metadata,
     resourceId: settled.orderId,
   })

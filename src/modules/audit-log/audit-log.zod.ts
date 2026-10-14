@@ -18,6 +18,11 @@ export const auditLogZodSchemas = {
     severity: zod.enum(AUDIT_LOG_SEVERITIES).optional(),
   }),
   cartAbandonedMetadata: zod.object({ itemCount: count }),
+  changeMetadata: zod.object({
+    changed: zod.array(zod.string()),
+    new: zod.record(zod.string(), zod.unknown()),
+    old: zod.record(zod.string(), zod.unknown()),
+  }),
   deleteAuditLogsInput: zod.array(uuidField).max(LIST_PAGE_SIZE_MAX),
   emailKind,
   emailMetadata: zod.object({
@@ -26,4 +31,5 @@ export const auditLogZodSchemas = {
     idempotencyKey: zod.string().optional(),
   }),
   newsletterSentMetadata: zod.object({ recipientCount: count }),
+  variantSnapshots: zod.array(zod.object({ price: zod.number(), quantity: zod.number(), sku: zod.string() })),
 }

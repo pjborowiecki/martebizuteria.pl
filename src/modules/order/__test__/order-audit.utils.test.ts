@@ -7,13 +7,19 @@ describe("buildOrderRefundAuditChange", () => {
     expect(buildOrderRefundAuditChange({ paymentStatus: "succeeded" }, { paymentStatus: "succeeded" })).toStrictEqual({})
   })
 
-  it("names each changed field with its old and new value", () => {
+  it("keeps each changed field's old and new value, and no English summary, for the log to word itself", () => {
     const change = buildOrderRefundAuditChange(
       { orderStatus: "processing", paymentStatus: "succeeded", refundedAmount: 0 },
       { orderStatus: "refunded", paymentStatus: "refunded", refundedAmount: 30_000 },
     )
 
-    expect(change.detail).toBe("Order status: processing → refunded; Payment status: succeeded → refunded; Refunded amount: 0 → 30000")
+    expect(change).toStrictEqual({
+      metadata: {
+        changed: ["orderStatus", "paymentStatus", "refundedAmount"],
+        new: { orderStatus: "refunded", paymentStatus: "refunded", refundedAmount: 30_000 },
+        old: { orderStatus: "processing", paymentStatus: "succeeded", refundedAmount: 0 },
+      },
+    })
   })
 
   it("keeps the old and new values plus the changed list in the metadata", () => {
@@ -38,6 +44,10 @@ describe("buildOrderRefundAuditChange", () => {
   it("treats a field appearing for the first time as a change", () => {
     const change = buildOrderRefundAuditChange({ paymentStatus: "succeeded" }, { paymentStatus: "succeeded", refundedAmount: 5000 })
 
-    expect(change.detail).toBe("Refunded amount: undefined → 5000")
+    expect(change.metadata).toStrictEqual({
+      changed: ["refundedAmount"],
+      new: { refundedAmount: 5000 },
+      old: { refundedAmount: undefined },
+    })
   })
 })

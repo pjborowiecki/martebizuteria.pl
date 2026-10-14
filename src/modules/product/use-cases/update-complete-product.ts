@@ -72,7 +72,6 @@ const updateProductRecord = async (
   const auditChange = afterProduct === undefined ? {} : buildProductAuditChange(beforeSnapshot, extractProductAuditSnapshot(afterProduct))
   scheduleProductCatalogInvalidation()
   recordCatalogProductUpdatedAudit(catalogInput.handle, {
-    detail: auditChange.detail,
     metadata: auditChange.metadata,
     resourceId: id,
   })
