@@ -250,7 +250,9 @@
       "clearDate": "Clear",
       "apply": "Apply",
       "clear": "Clear",
-      "revenueLabel": "Revenue"
+      "revenueLabel": "Revenue",
+      "empty": "No sales in this period.",
+      "error": "Could not load revenue for this range."
     },
     "weeklyOrders": {
       "title": "Orders this week",

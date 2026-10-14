@@ -1,16 +1,18 @@
 import { type JSX, useCallback, useMemo } from "react"
 
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, type TooltipValueType, XAxis, YAxis } from "recharts"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
-import { formatPrice, minorUnitsPerMajor } from "~/src/modules/_core/utils/currency"
+import { formatMinorUnitsAsCompactNumber, formatPrice } from "~/src/modules/_core/utils/currency"
 import { parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
 import { ADMIN_DASHBOARD_CHART_DAYS_30, ADMIN_DASHBOARD_CHART_DAYS_7 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/presentation/components/shadcn/chart"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
+import { AdminChartMoneyTooltipRow } from "~/src/presentation/components/custom/pages/admin/admin-chart-money-tooltip-row"
 import { DashboardChartRangeControls } from "~/src/presentation/components/custom/pages/admin/dashboard/components/dashboard-chart-range-controls"
 import { DashboardTrendBadge } from "~/src/presentation/components/custom/pages/admin/dashboard/dashboard-trend-badge"
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
@@ -23,19 +25,8 @@ export const DashboardCharts = (): JSX.Element => {
   const format = useFormatter()
   const locale = useLocale()
   const { data: snapshot } = useAdminDashboardSnapshot()
-  const { applyCustomRange, chartData, chartRange, clearCustomRange, customRange, isCustomLoading, selectPresetRange } =
+  const { applyCustomRange, chartData, chartRange, clearCustomRange, customRange, isCustomError, isCustomLoading, selectPresetRange } =
     useDashboardChartRange()
-  const revenueChartConfig: ChartConfig = useMemo(
-    () => ({
-      revenue: {
-        color: "oklch(0.205 0 0)",
-        label: t("dashboard.chart.revenueLabel"),
-      },
-    }),
-    [t],
-  )
-
-  const chartTooltipContent = useMemo(() => <ChartTooltipContent />, [])
   const formatIsoDateLabel = useCallback(
     (isoDate: string) =>
       format.dateTime(parseIsoDateToLocalDate(isoDate), {
@@ -72,17 +63,6 @@ export const DashboardCharts = (): JSX.Element => {
     }
   }, [chartRange, customRange, formatIsoDateLabel, t])
 
-  const formatYAxisTick = useCallback(
-    (value: number) =>
-      format.number(value / minorUnitsPerMajor(snapshot.currencyCode), {
-        maximumFractionDigits: REVENUE_AXIS_MAX_FRACTION_DIGITS,
-        notation: "compact",
-      }),
-    [format, snapshot.currencyCode],
-  )
-
-  const chartDataPoints = useMemo(() => [...chartData], [chartData])
-
   return (
     <div className="grid gap-5 xl:grid-cols-4">
       <Card className="border-border/40 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent shadow-none xl:col-span-3">
@@ -102,19 +82,7 @@ export const DashboardCharts = (): JSX.Element => {
           </div>
         </CardHeader>
         <CardContent className="pt-2">
-          <ChartContainer
-            config={revenueChartConfig}
-            className={`aspect-auto h-[280px] w-full transition-opacity ${isCustomLoading ? "opacity-60" : "opacity-100"}`}
-          >
-            <AreaChart data={chartDataPoints} margin={REVENUE_CHART_MARGIN}>
-              {REVENUE_CHART_DEFS}
-              <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--color-border)" strokeOpacity={0.5} />
-              <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={12} tick={TICK_FONT_12} />
-              <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_12} tickFormatter={formatYAxisTick} />
-              <ChartTooltip cursor={CHART_TOOLTIP_CURSOR} content={chartTooltipContent} />
-              <Area dataKey="revenue" type="monotone" fill="url(#fillRevenue)" stroke="var(--color-revenue)" strokeWidth={2} dot={false} />
-            </AreaChart>
-          </ChartContainer>
+          <RevenueChart chartData={chartData} isCustomError={isCustomError} isCustomLoading={isCustomLoading} />
         </CardContent>
       </Card>
 
@@ -147,6 +115,64 @@ export const DashboardCharts = (): JSX.Element => {
         </Card>
       </div>
     </div>
+  )
+}
+
+const RevenueChart = ({ chartData, isCustomError, isCustomLoading }: Readonly<RevenueChartProps>): JSX.Element => {
+  const t = useTranslations("pages.admin")
+  const locale = useLocale()
+  const { data: snapshot } = useAdminDashboardSnapshot()
+  const revenueChartConfig: ChartConfig = useMemo(
+    () => ({
+      revenue: {
+        color: "oklch(0.205 0 0)",
+        label: t("dashboard.chart.revenueLabel"),
+      },
+    }),
+    [t],
+  )
+
+  const formatRevenueTooltip = useCallback(
+    (value: TooltipValueType | undefined) => (
+      <AdminChartMoneyTooltipRow
+        amount={Number(value)}
+        currencyCode={snapshot.currencyCode}
+        label={t("dashboard.chart.revenueLabel")}
+        seriesKey="revenue"
+      />
+    ),
+    [snapshot.currencyCode, t],
+  )
+
+  const chartTooltipContent = useMemo(() => <ChartTooltipContent formatter={formatRevenueTooltip} />, [formatRevenueTooltip])
+  const formatYAxisTick = useCallback(
+    (value: number) => formatMinorUnitsAsCompactNumber(value, snapshot.currencyCode, locale),
+    [locale, snapshot.currencyCode],
+  )
+
+  const chartDataPoints = useMemo(() => [...chartData], [chartData])
+  if (!isCustomLoading && chartData.every((point) => point.revenue === 0)) {
+    return (
+      <p className="flex h-[280px] items-center justify-center text-sm text-muted-foreground">
+        {isCustomError ? t("dashboard.chart.error") : t("dashboard.chart.empty")}
+      </p>
+    )
+  }
+
+  return (
+    <ChartContainer
+      config={revenueChartConfig}
+      className={`aspect-auto h-[280px] w-full transition-opacity ${isCustomLoading ? "opacity-60" : "opacity-100"}`}
+    >
+      <AreaChart data={chartDataPoints} margin={REVENUE_CHART_MARGIN}>
+        {REVENUE_CHART_DEFS}
+        <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--color-border)" strokeOpacity={0.5} />
+        <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={12} tick={TICK_FONT_12} />
+        <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_12} tickFormatter={formatYAxisTick} />
+        <ChartTooltip cursor={CHART_TOOLTIP_CURSOR} content={chartTooltipContent} />
+        <Area dataKey="revenue" type="monotone" fill="url(#fillRevenue)" stroke="var(--color-revenue)" strokeWidth={2} dot={false} />
+      </AreaChart>
+    </ChartContainer>
   )
 }
 
@@ -218,8 +244,6 @@ const BAR_RADIUS_BOTTOM = 0
 
 const BAR_RADIUS: [number, number, number, number] = [BAR_RADIUS_TOP, BAR_RADIUS_TOP, BAR_RADIUS_BOTTOM, BAR_RADIUS_BOTTOM]
 
-const REVENUE_AXIS_MAX_FRACTION_DIGITS = 0
-
 const REVENUE_CHART_DEFS = (
   <defs>
     <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -228,3 +252,9 @@ const REVENUE_CHART_DEFS = (
     </linearGradient>
   </defs>
 )
+
+interface RevenueChartProps {
+  readonly chartData: readonly AdminDashboard["chartPoint"][]
+  readonly isCustomError: boolean
+  readonly isCustomLoading: boolean
+}
