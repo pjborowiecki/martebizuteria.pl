@@ -69,7 +69,7 @@ const AdminCustomerDetailRoute = (): JSX.Element => {
 
       <div className="min-h-0 flex-1 overflow-y-auto p-8">
         <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
-          <div className="space-y-8">
+          <div className="min-w-0 space-y-8">
             <CustomerKpis customer={customer} />
             <CustomerCharts customer={customer} />
             <CustomerOrders customer={customer} />

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { ADMIN_CUSTOMER_TABLE_COLUMN_ID, ADMIN_CUSTOMER_TABLE_COLUMN_SIZE } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
@@ -108,6 +109,26 @@ describe("buildCustomerColumns headers", () => {
 
     expect(screen.getByTestId("head-orderCount")).toHaveTextContent("Orders")
     expect(screen.getByTestId("head-totalSpent")).toHaveTextContent("Spent")
+  })
+})
+
+describe("buildCustomerColumns sizes", () => {
+  it("keeps the role and spent columns wide enough to read in full", () => {
+    const definitions: { current?: ReturnType<typeof buildCustomerColumns> } = {}
+    const Probe = (): null => {
+      const t = useTranslations("pages.admin.customers")
+      const tAdmin = useTranslations("pages.admin")
+      const format = useFormatter()
+      const locale = useLocale()
+      definitions.current = buildCustomerColumns({ format, locale, t, tAdmin })
+
+      return null
+    }
+    renderWithProviders(<Probe />)
+    const byId = new Map((definitions.current ?? []).map((column) => [column.id, column]))
+
+    expect(byId.get(ADMIN_CUSTOMER_TABLE_COLUMN_ID.role)?.minSize).toBe(ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.role)
+    expect(byId.get(ADMIN_CUSTOMER_TABLE_COLUMN_ID.totalSpent)?.minSize).toBe(ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.totalSpent)
   })
 })
 

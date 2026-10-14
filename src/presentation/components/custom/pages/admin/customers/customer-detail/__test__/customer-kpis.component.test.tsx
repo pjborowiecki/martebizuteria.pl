@@ -60,6 +60,14 @@ describe("CustomerKpis", () => {
     expect(screen.getByText("Returning Rate")).toBeInTheDocument()
   })
 
+  it("sets the figures two to a row until the screen is wide enough for four beside the customer sidebar", () => {
+    const { container } = renderWithProviders(<CustomerKpis customer={detail()} />)
+    const grid = container.firstElementChild
+
+    expect(grid).toHaveClass("sm:grid-cols-2", "2xl:grid-cols-4")
+    expect(grid).not.toHaveClass("sm:grid-cols-4")
+  })
+
   it("renders the lifetime spend and average order as money in major units", () => {
     renderWithProviders(<CustomerKpis customer={detail()} />)
 

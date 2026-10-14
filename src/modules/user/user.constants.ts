@@ -64,19 +64,19 @@ export const ADMIN_CUSTOMER_TABLE_DEFAULT_COLUMN_VISIBILITY = {
 
 export const ADMIN_CUSTOMER_TABLE_COLUMN_SIZE = {
   actions: 48,
-  averageOrderValue: 200,
-  banned: 120,
-  createdAt: 160,
+  averageOrderValue: 220,
+  banned: 130,
+  createdAt: 180,
   customer: 280,
   emailVerified: 180,
-  lastOrderAt: 160,
+  lastOrderAt: 180,
   location: 240,
-  orderCount: 100,
+  orderCount: 130,
   phone: 140,
   recordId: CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX,
   role: 110,
   stripeCustomerId: 300,
-  totalSpent: 140,
+  totalSpent: 150,
 } as const
 
 export const ADMIN_CUSTOMER_TABLE_COLUMN_PINNING = {
