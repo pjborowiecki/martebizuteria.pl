@@ -1,11 +1,14 @@
 import { type JSX, useCallback } from "react"
 
+import { cn } from "cn"
 import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { DashboardChartCustomRangeFilter } from "~/src/presentation/components/custom/pages/admin/dashboard/components/dashboard-chart-custom-range-filter"
 import { type DashboardChartRange } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-dashboard-chart-range"
+
+const presetClassName = (isSelected: boolean): string => cn("h-7 px-3 text-xs", !isSelected && "text-muted-foreground")
 
 export const DashboardChartRangeControls = ({
   chartRange,
@@ -32,7 +35,7 @@ export const DashboardChartRangeControls = ({
       <Button
         variant={chartRange === "7d" ? "secondary" : "ghost"}
         size="sm"
-        className="h-7 px-3 text-xs"
+        className={presetClassName(chartRange === "7d")}
         type="button"
         onClick={handleSelect7d}
       >
@@ -41,7 +44,7 @@ export const DashboardChartRangeControls = ({
       <Button
         variant={chartRange === "30d" ? "secondary" : "ghost"}
         size="sm"
-        className="h-7 px-3 text-xs text-muted-foreground"
+        className={presetClassName(chartRange === "30d")}
         type="button"
         onClick={handleSelect30d}
       >
@@ -50,7 +53,7 @@ export const DashboardChartRangeControls = ({
       <Button
         variant={chartRange === "1y" ? "secondary" : "ghost"}
         size="sm"
-        className="h-7 px-3 text-xs text-muted-foreground"
+        className={presetClassName(chartRange === "1y")}
         type="button"
         onClick={handleSelect1y}
       >

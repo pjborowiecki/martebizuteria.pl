@@ -49,6 +49,18 @@ describe("DashboardChartRangeControls", () => {
     expect(highlighted).toStrictEqual([label])
   })
 
+  it.each([
+    ["7d", "Last 7 days"],
+    ["30d", "Last 30 days"],
+    ["1y", "Last year"],
+  ] as const)("mutes every preset but the selected %s one", (chartRange, label) => {
+    renderControls(chartRange)
+
+    const prominent = PRESET_LABELS.filter((name) => !screen.getByRole("button", { name }).classList.contains("text-muted-foreground"))
+
+    expect(prominent).toStrictEqual([label])
+  })
+
   it("highlights no preset while a custom range is in use", () => {
     renderControls("custom")
 
