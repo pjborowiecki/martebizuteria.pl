@@ -26,10 +26,13 @@
     "spending": {
       "title": "Aktywność zakupowa",
       "subtitle": "Miesięczne wydatki z ostatnich 12 miesięcy",
+      "seriesLabel": "Wydatki",
       "empty": "Brak opłaconych zamówień w ostatnich 12 miesiącach."
     },
     "categoryBreakdown": {
       "title": "Podział na kategorie",
+      "subtitle": "Wartość kupionych produktów ze wszystkich zamówień",
+      "seriesLabel": "Wartość produktów",
       "empty": "Brak danych o wydatkach w kategoriach."
     },
     "orders": {

@@ -244,6 +244,12 @@ export const formatMinorUnitsAsDecimal = (
   }).format(major)
 }
 
+export const formatMinorUnitsAsCompactNumber = (amountInMinorUnits: number, currencyCode: string, locale: string): string =>
+  new Intl.NumberFormat(locale, {
+    maximumFractionDigits: COMPACT_NUMBER_MAX_FRACTION_DIGITS,
+    notation: "compact",
+  }).format(amountInMinorUnits / minorUnitsPerMajor(currencyCode))
+
 export const formatPrice = (amountInMinorUnits: number, currency: string, locale: string): string => {
   const normalized = currency.toUpperCase()
   if (normalized === STORE_CURRENCY_CODE) {
@@ -284,6 +290,8 @@ export const isCompareAtValid = (priceMinor: number, compareAtInput: string, cur
 export const centsToDisplayAmount = (cents: number, currencyCode = STORE_CURRENCY_CODE): number => cents / minorUnitsPerMajor(currencyCode)
 
 const MINOR_UNITS_BASE = 10
+
+const COMPACT_NUMBER_MAX_FRACTION_DIGITS = 1
 
 const MONEY_INPUT_EXAMPLE_MAJOR_AMOUNT = 199
 
