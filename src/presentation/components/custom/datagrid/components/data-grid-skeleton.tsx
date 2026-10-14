@@ -65,7 +65,6 @@ const DataGridSkeletonCell = <TData extends RowData>({
         {
           "border-l border-border/60": isPinned === "end" && isFirstRightPinned,
           "border-r border-border/60": isPinned === "start" && isLastLeftPinned,
-          "overflow-hidden": !column.getCanResize(),
           "sticky z-10": isPinned !== false,
         },
       )}

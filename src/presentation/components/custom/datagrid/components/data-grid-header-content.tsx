@@ -7,7 +7,14 @@ import { type DataGridFeatures } from "~/src/presentation/components/custom/data
 export const renderDataGridHeaderLabel = <TData extends RowData>(
   header: Header<DataGridFeatures, TData>,
   column: Column<DataGridFeatures, TData>,
-): ReactNode => flexRender(column.columnDef.header, header.getContext())
+): ReactNode => {
+  const definition = column.columnDef.header
+  if (typeof definition === "string") {
+    return <span className="truncate">{definition}</span>
+  }
+
+  return flexRender(definition, header.getContext())
+}
 
 interface DataGridHeaderCellContentOptions<TData extends RowData> {
   readonly column: Column<DataGridFeatures, TData>

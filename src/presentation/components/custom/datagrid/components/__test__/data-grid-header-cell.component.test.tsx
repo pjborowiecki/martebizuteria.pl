@@ -62,6 +62,38 @@ describe("DataGridHeaderCell", () => {
     expect(screen.getByRole("button", { name: "Resize Title column" })).toBeInTheDocument()
   })
 
+  it("clips every header so a narrowed column keeps its label to itself", () => {
+    const { container } = renderHeader(reorderApi(), true)
+    const heads = [...container.querySelectorAll("th")]
+
+    expect(heads).toHaveLength(3)
+    for (const head of heads) {
+      expect(head).toHaveClass("overflow-hidden")
+    }
+  })
+
+  it("lets a sortable label shrink to an ellipsis inside its sort button", () => {
+    renderHeader(reorderApi())
+
+    expect(screen.getByRole("button", { name: "Sort by Title" })).toHaveClass("min-w-0")
+    expect(screen.getByText("Title")).toHaveClass("truncate")
+  })
+
+  it("keeps the sort icon at full size beside a truncated label in every sort direction", async () => {
+    renderHeader(reorderApi())
+    const sortButton = screen.getByRole("button", { name: "Sort by Title" })
+
+    expect(sortButton.querySelector("svg")).toHaveClass("lucide-chevrons-up-down", "shrink-0")
+
+    await userEvent.click(sortButton)
+
+    expect(sortButton.querySelector("svg")).toHaveClass("lucide-arrow-up", "shrink-0")
+
+    await userEvent.click(sortButton)
+
+    expect(sortButton.querySelector("svg")).toHaveClass("lucide-arrow-down", "shrink-0")
+  })
+
   it("omits the drag area and the resize handle for a fixed width column", () => {
     renderHeader(reorderApi(), true)
 

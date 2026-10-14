@@ -83,6 +83,16 @@ describe("DataGridRow", () => {
     expect(screen.getByText("Silver ring")).toBeInTheDocument()
   })
 
+  it("clips resizable and fixed width cells alike so long content stays inside its column", () => {
+    const { container } = renderRows({ withSelection: true })
+    const cells = [...container.querySelectorAll("tbody tr:first-child td")]
+
+    expect(cells).toHaveLength(3)
+    for (const cell of cells) {
+      expect(cell).toHaveClass("overflow-hidden")
+    }
+  })
+
   it("stays unclickable and unhoverable without handlers", () => {
     const { container } = renderRows()
     const row = container.querySelector("tbody tr")
