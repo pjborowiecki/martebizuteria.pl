@@ -1,9 +1,11 @@
 import { type JSX } from "react"
 
 import { flexRender, useTable } from "@tanstack/react-table"
-import { cleanup, screen } from "@testing-library/react"
+import { cleanup, screen, within } from "@testing-library/react"
+import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { markAsCut } from "~/src/platform/testing/lib/cut-text"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { type ProductAttribute } from "~/src/modules/product-attribute/product-attribute.types"
@@ -22,6 +24,8 @@ import { useAttributeColumns } from "~/src/presentation/components/custom/pages/
 type AttributeRow = ProductAttribute["adminListItem"]
 
 const CREATED_AT = new Date("2026-01-15T10:00:00.000Z")
+
+const LONG_UNIT = "opakowanie zbiorcze (12 szt.)"
 
 const attribute = (overrides: Partial<AttributeRow> = {}): AttributeRow => ({
   allowedValues: [
@@ -135,6 +139,17 @@ describe("useAttributeColumns cells", () => {
     renderColumns()
 
     expect(cell("unit")).toHaveTextContent("g")
+  })
+
+  it("cuts a long custom unit short and shows it in full on hover", async () => {
+    renderColumns({ unit: LONG_UNIT })
+    const unit = within(cell("unit")).getByText(LONG_UNIT)
+
+    expect(unit).toHaveClass("truncate", "min-w-0", "font-mono")
+
+    await userEvent.hover(markAsCut(unit))
+
+    expect(await screen.findByText(LONG_UNIT, { selector: "[data-slot='tooltip-content']" })).toBeInTheDocument()
   })
 
   it("falls back to a dash for a missing unit", () => {

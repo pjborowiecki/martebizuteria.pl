@@ -149,6 +149,7 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       meta: {
         skeletonVariant: "badge",
       },
+      minSize: CATEGORY_TABLE_COLUMN_SIZE.status,
       size: CATEGORY_TABLE_COLUMN_SIZE.status,
     }),
     columnHelper.accessor("productCount", {

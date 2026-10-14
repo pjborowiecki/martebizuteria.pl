@@ -149,6 +149,10 @@ describe("useCollectionColumns", () => {
     }
   })
 
+  it("keeps the status column wide enough for its badge", () => {
+    expect(columnById(renderColumns(), "status").columnDef.minSize).toBe(COLLECTION_TABLE_COLUMN_SIZE.status)
+  })
+
   it("lets the description soak up the remaining table width", () => {
     expect(columnById(renderColumns(), "description").columnDef.meta?.fillsRemainingWidth).toBe(true)
   })

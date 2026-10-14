@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { CATEGORY_TABLE_COLUMN_ID, CATEGORY_TABLE_COLUMN_SIZE } from "~/src/modules/product-category/product-category.constants"
 import { type ProductCategory } from "~/src/modules/product-category/product-category.types"
 
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
@@ -99,6 +100,20 @@ describe("useCategoryColumns headers", () => {
     expect(screen.getByTestId("head-title")).toHaveTextContent("Category")
     expect(screen.getByTestId("head-parent")).toHaveTextContent("Parent category")
     expect(screen.getByTestId("head-status")).toHaveTextContent("Status")
+  })
+})
+
+describe("useCategoryColumns sizes", () => {
+  it("keeps the status column wide enough for its badge", () => {
+    const seen: { columns?: ReturnType<typeof useCategoryColumns> } = {}
+    const Probe = (): null => {
+      seen.columns = useCategoryColumns()
+
+      return null
+    }
+    renderWithProviders(<Probe />)
+
+    expect(seen.columns?.find((column) => column.id === CATEGORY_TABLE_COLUMN_ID.status)?.minSize).toBe(CATEGORY_TABLE_COLUMN_SIZE.status)
   })
 })
 
