@@ -76,7 +76,7 @@ POST /_serverFn/…  (shipOrder)
 
 ## Wiadomość z kolejki
 
-Dziennik audytu zapisuje konsument kolejki, a nie żądanie, które wygenerowało zdarzenie:
+Dziennik zdarzeń zapisuje konsument kolejki, a nie żądanie, które wygenerowało zdarzenie:
 
 1. Rejestrator woła `scheduleAuditLog` albo `scheduleAuditLogFromRequest`, które generuje identyfikator wiersza przez `uuidv7()`, chyba że nadaje go rejestrator, i stempluje `createdAt` wartością `Date.now()` w momencie wysłania do kolejki, żeby kolejność przetrwała grupowanie w batche.
 2. `scheduleBackgroundWork` przekazuje obietnicę `env.AUDIT_LOG_QUEUE.send(...)` do `waitUntil`.

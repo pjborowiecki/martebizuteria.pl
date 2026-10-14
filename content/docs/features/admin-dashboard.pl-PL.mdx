@@ -26,7 +26,7 @@ useRealtimeQuerySync({
 })
 ```
 
-`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) wymienia piętnaście prefiksów kluczy — strona i statystyki dziennika audytu, zamówienia w panelu, klienci w panelu, klucze all/stats kategorii, kolekcji, produktów i atrybutów produktu, klucze all/by-handle stron treści oraz stan sprzedaży w panelu. Mutacja w dowolnym miejscu panelu odświeża każdą inną otwartą kartę panelu.
+`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) wymienia piętnaście prefiksów kluczy — strona i statystyki dziennika zdarzeń, zamówienia w panelu, klienci w panelu, klucze all/stats kategorii, kolekcji, produktów i atrybutów produktu, klucze all/by-handle stron treści oraz stan sprzedaży w panelu. Mutacja w dowolnym miejscu panelu odświeża każdą inną otwartą kartę panelu.
 
 Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefaultOpen()` z ciasteczka `sidebar_state` (`src/presentation/theme/sidebar-preference.ts`), a wstawiony inline `SIDEBAR_INIT_SCRIPT` kopiuje wartość z `localStorage` do tego ciasteczka jeszcze przed hydratacją, żeby panel nie migał.
 
@@ -41,7 +41,7 @@ Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefau
 | (góra) | Pulpit (`/admin/overview`)                                                                   |
 | Main   | Zamówienia, Klienci oraz rozwijany Katalog z Produktami, Kategoriami, Kolekcjami, Atrybutami |
 | Tools  | Marketing, Kupony oraz Treść                                                                 |
-| System | Audyt, Ustawienia — Ustawienia mają `disabled: true`                                         |
+| System | Dziennik zdarzeń, Ustawienia — Ustawienia mają `disabled: true`                              |
 
 Pozycja wyłączona renderuje się jako nieinteraktywny `SidebarMenuButton disabled` z `cursor-not-allowed opacity-50`, więc dwa wyłączone ekrany są w ogóle nieosiągalne z interfejsu — tylko po wpisaniu adresu.
 
@@ -68,13 +68,13 @@ Przycisk wylogowania w stopce panelu bocznego wywołuje `signOut`, a potem pełn
 
 Pierwsza karta przeglądu, `DashboardSalesSwitch` (`dashboard/components/dashboard-sales-switch.tsx`), wstrzymuje i wznawia sprzedaż. Pokazuje stan jako odznakę „Otwarta” albo „Wstrzymana” ze zdaniem, co widzą klienci, oraz przełącznik „Wstrzymaj sprzedaż” („Pause sales”); teksty leżą pod `pages.admin.dashboard.sales` w obu językach. Gdy sprzedaż jest wstrzymana, karta robi się bursztynowa.
 
-Czyta `getAdminSalesStatusQuery()`, które wywołuje publiczne `getSalesStatus` pod kluczem panelu `STORE_SETTING_QUERY_KEYS.ADMIN.SALES`, a loader trasy wczytuje je wstępnie. Przestawienie przełącznika uruchamia `setSalesPausedMutation`, które wywołuje `setSalesPaused` z `src/modules/store-setting/use-cases/set-sales-paused.ts`. Ta funkcja serwerowa jest strzeżona przez `authorized({ settings: ["manage"] })`, to samo uprawnienie co reszta pulpitu, więc klient sklepu albo żądanie bez sesji dostaje odmowę od serwera niezależnie od tego, co pokazuje strona. Zapisuje kolumnę `sales_paused` jedynego wiersza `store_setting` jednym upsertem, który zmienia wiersz tylko wtedy, gdy wartość jest inna, a gdy ją zmienił, planuje `scheduleSalesStatusInvalidation()` i zapisuje w dzienniku audytu `sales.paused` albo `sales.resumed` na konto administratora wysyłającego żądanie (zobacz [Dziennik audytu](/docs/features/audit-log)). Drugi administrator, który prosi o stan, w jakim sklep już jest, niczego nie zmienia ani nie zapisuje. Na czas żądania przełącznik jest wyłączony; po sukcesie karta wpisuje odpowiedź do wpisów cache panelu i sklepu i pokazuje toast „Sprzedaż wstrzymana” albo „Sprzedaż wznowiona”, a po błędzie zostawia pokazany stan i pokazuje toast z błędem.
+Czyta `getAdminSalesStatusQuery()`, które wywołuje publiczne `getSalesStatus` pod kluczem panelu `STORE_SETTING_QUERY_KEYS.ADMIN.SALES`, a loader trasy wczytuje je wstępnie. Przestawienie przełącznika uruchamia `setSalesPausedMutation`, które wywołuje `setSalesPaused` z `src/modules/store-setting/use-cases/set-sales-paused.ts`. Ta funkcja serwerowa jest strzeżona przez `authorized({ settings: ["manage"] })`, to samo uprawnienie co reszta pulpitu, więc klient sklepu albo żądanie bez sesji dostaje odmowę od serwera niezależnie od tego, co pokazuje strona. Zapisuje kolumnę `sales_paused` jedynego wiersza `store_setting` jednym upsertem, który zmienia wiersz tylko wtedy, gdy wartość jest inna, a gdy ją zmienił, planuje `scheduleSalesStatusInvalidation()` i zapisuje w dzienniku zdarzeń `sales.paused` albo `sales.resumed` na konto administratora wysyłającego żądanie (zobacz [Dziennik zdarzeń](/docs/features/audit-log)). Drugi administrator, który prosi o stan, w jakim sklep już jest, niczego nie zmienia ani nie zapisuje. Na czas żądania przełącznik jest wyłączony; po sukcesie karta wpisuje odpowiedź do wpisów cache panelu i sklepu i pokazuje toast „Sprzedaż wstrzymana” albo „Sprzedaż wznowiona”, a po błędzie zostawia pokazany stan i pokazuje toast z błędem.
 
 Co wstrzymanie robi ze sklepem i kasą, opisuje [Kasa: wstrzymanie sprzedaży](/docs/features/checkout#wstrzymanie-sprzedaży).
 
 ## Migawka
 
-`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) jest zabezpieczone przez `authorized({ settings: ["manage"] })` — tym samym uprawnieniem co dziennik audytu, a nie uprawnieniem `order` czy `product`. Przyjmuje `locale`, żeby etykiety wykresów można było sformatować po stronie serwera, i uruchamia **piętnaście zapytań w jednym `db.batch`**.
+`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) jest zabezpieczone przez `authorized({ settings: ["manage"] })` — tym samym uprawnieniem co dziennik zdarzeń, a nie uprawnieniem `order` czy `product`. Przyjmuje `locale`, żeby etykiety wykresów można było sformatować po stronie serwera, i uruchamia **piętnaście zapytań w jednym `db.batch`**.
 
 Okno porównania pochodzi z `resolveAdminDashboardComparisonPeriod(now)` z `ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS = 30`, więc każdy wskaźnik to „ostatnie 30 dni wobec 30 poprzednich”.
 
@@ -86,7 +86,7 @@ Okno porównania pochodzi z `resolveAdminDashboardComparisonPeriod(now)` z `ADMI
 | `pageViews`         | `pageViewsQuery`                  | `count()` wierszy `audit_log` z akcją `customer.page_viewed` |
 | `averageOrderValue` | `averageCompletedOrderValueQuery` | zaokrąglona średnia `order.total` po `completed`             |
 
-**Odsłony stron pochodzą z dziennika audytu**, zapisywane przez `trackPageViewed` w `src/modules/customer-activity`. Ponieważ ten tracker działa tylko dla zalogowanych użytkowników i deduplikuje odsłony w obrębie sesji przez `sessionStorage`, liczba oznacza „unikalne strony obejrzane przez zalogowanych klientów”, a nie cały ruch.
+**Odsłony stron pochodzą z dziennika zdarzeń**, zapisywane przez `trackPageViewed` w `src/modules/customer-activity`. Ponieważ ten tracker działa tylko dla zalogowanych użytkowników i deduplikuje odsłony w obrębie sesji przez `sessionStorage`, liczba oznacza „unikalne strony obejrzane przez zalogowanych klientów”, a nie cały ruch.
 
 `buildAdminDashboardKpiStat(current, previous)` wylicza `trendPercent` z `ADMIN_DASHBOARD_TREND_PERCENT_SCALE = 100`.
 
@@ -166,5 +166,5 @@ Treść to działający ekran, który edytuje strony prawne i FAQ. Zobacz [Stron
 - [Zamówienia](/docs/features/orders)
 - [Panel katalogu](/docs/features/admin-catalog)
 - [Klienci w panelu](/docs/features/admin-customers)
-- [Dziennik audytu](/docs/features/audit-log)
+- [Dziennik zdarzeń](/docs/features/audit-log)
 - [Integracje: unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation)

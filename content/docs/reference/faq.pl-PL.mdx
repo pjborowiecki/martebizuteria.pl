@@ -5,7 +5,7 @@ description: "Krótkie odpowiedzi na pytania, które pojawiają się jako pierws
 
 ## Co uruchamia tę aplikację?
 
-Jeden Worker Cloudflare. `src/server.ts` jest punktem wejścia; wszystkim, co nie zostanie obsłużone wcześniej, zajmuje się TanStack Start. Dane leżą w D1, media w R2, dziennik audytu podróżuje przez kolejkę Cloudflare, unieważnianie realtime idzie przez Durable Object, a `CACHE` to przestrzeń KV zadeklarowana w każdym środowisku.
+Jeden Worker Cloudflare. `src/server.ts` jest punktem wejścia; wszystkim, co nie zostanie obsłużone wcześniej, zajmuje się TanStack Start. Dane leżą w D1, media w R2, dziennik zdarzeń podróżuje przez kolejkę Cloudflare, unieważnianie realtime idzie przez Durable Object, a `CACHE` to przestrzeń KV zadeklarowana w każdym środowisku.
 
 Bun instaluje pakiety i uruchamia skrypty z `package.json`. Vite+ (`vp`) dostarcza serwer developerski, budowanie, formatter, linter i runner testów — wszystko konfigurowane w `vite.config.ts`.
 

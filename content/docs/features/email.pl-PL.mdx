@@ -241,9 +241,9 @@ Wyjątek rzucony podczas przygotowywania e-maila trafia do logu razem ze stosem 
 
 ## Alerty sklepu o incydentach
 
-`sendIncidentAlert` z `src/lib/incident-alert.server.ts` wysyła e-mail na `RESEND_EMAIL_FROM`, gdy zawiedzie coś, czym właściciel musi się zająć: opłacona sesja Checkout, z której nie da się utworzyć zamówienia, zdarzenie Stripe, na które webhook odpowiada błędem, partia dziennika audytu, której konsument kolejki nie potrafi przetworzyć, kampania newslettera zatrzymana w połowie i e-mail do zamówienia odrzucony mimo ponowień. Szablon to `incident-alert.tsx` z katalogiem `emails.incident-alert`, w języku sklepu, z nagłówkiem i wyjaśnieniem dla każdego rodzaju incydentu, identyfikatorem, przyczyną i środowiskiem.
+`sendIncidentAlert` z `src/lib/incident-alert.server.ts` wysyła e-mail na `RESEND_EMAIL_FROM`, gdy zawiedzie coś, czym właściciel musi się zająć: opłacona sesja Checkout, z której nie da się utworzyć zamówienia, zdarzenie Stripe, na które webhook odpowiada błędem, partia dziennika zdarzeń, której konsument kolejki nie potrafi przetworzyć, kampania newslettera zatrzymana w połowie i e-mail do zamówienia odrzucony mimo ponowień. Szablon to `incident-alert.tsx` z katalogiem `emails.incident-alert`, w języku sklepu, z nagłówkiem i wyjaśnieniem dla każdego rodzaju incydentu, identyfikatorem, przyczyną i środowiskiem.
 
-Alerty wysyła każde środowisko, tak jak powiadomienie sklepu o nowym zamówieniu. Każdy incydent jest zapisywany pod kluczem złożonym ze środowiska, rodzaju i identyfikatora — sesji Checkout, identyfikatora zdarzenia Stripe, kolejki, kampanii albo klucza idempotencji e-maila do zamówienia — w przestrzeni KV `CACHE` na godzinę (`INCIDENT_ALERT_SECONDS`), a dla nieudanego zdarzenia Stripe na trzy dni, przez które Stripe je ponawia (`STRIPE_EVENT_RETRY_SECONDS`), więc burza ponowień wysyła jeden e-mail. Alert nigdy nie rzuca wyjątku: nieudany odczyt KV, renderowanie albo wysyłka trafia do logu z prefiksem `[Alert]`, a odpowiedź webhooka i ponowienie kolejki pozostają bez zmian. W przeciwieństwie do e-maili dotyczących zamówień alerty nie są zapisywane w dzienniku audytu, bo zawieść mogła właśnie baza danych. [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts) wyjaśnia, kiedy który się wysyła i co wtedy zrobić.
+Alerty wysyła każde środowisko, tak jak powiadomienie sklepu o nowym zamówieniu. Każdy incydent jest zapisywany pod kluczem złożonym ze środowiska, rodzaju i identyfikatora — sesji Checkout, identyfikatora zdarzenia Stripe, kolejki, kampanii albo klucza idempotencji e-maila do zamówienia — w przestrzeni KV `CACHE` na godzinę (`INCIDENT_ALERT_SECONDS`), a dla nieudanego zdarzenia Stripe na trzy dni, przez które Stripe je ponawia (`STRIPE_EVENT_RETRY_SECONDS`), więc burza ponowień wysyła jeden e-mail. Alert nigdy nie rzuca wyjątku: nieudany odczyt KV, renderowanie albo wysyłka trafia do logu z prefiksem `[Alert]`, a odpowiedź webhooka i ponowienie kolejki pozostają bez zmian. W przeciwieństwie do e-maili dotyczących zamówień alerty nie są zapisywane w dzienniku zdarzeń, bo zawieść mogła właśnie baza danych. [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts) wyjaśnia, kiedy który się wysyła i co wtedy zrobić.
 
 ## Zapis w audycie
 
@@ -394,6 +394,6 @@ Dodanie szablonu oznacza: komponent wraz ze stałą przestrzeni nazw w `src/pres
 
 - [Zamówienia](/docs/features/orders)
 - [Płatności](/docs/features/payments)
-- [Dziennik audytu](/docs/features/audit-log)
+- [Dziennik zdarzeń](/docs/features/audit-log)
 - [Internacjonalizacja](/docs/features/internationalization)
 - [Integracje: Resend](/docs/integrations/resend)

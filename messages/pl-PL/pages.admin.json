@@ -291,7 +291,7 @@
     }
   },
   "audit": {
-    "title": "Dziennik audytu",
+    "title": "Dziennik zdarzeń",
     "description": "Śledź wszystkie zdarzenia systemowe i działania administracyjne.",
     "breadcrumb": {
       "dashboard": "Podsumowanie"

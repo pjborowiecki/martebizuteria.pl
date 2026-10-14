@@ -187,7 +187,7 @@ export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryK
 
 `setupQueryClientInvalidationBroadcast(queryClient)` instaluje nasłuchiwanie, które stosuje `invalidateQueryPrefix` do każdego odebranego klucza, a `src/router.tsx` wywołuje je raz na klienta, pod warunkiem `if (!import.meta.env.SSR)`. Obie funkcje są odporne na brak środowiska: `getInvalidationChannel` zwraca `undefined`, gdy brakuje `document` lub `BroadcastChannel`, `WeakSet` zapobiega zduplikowanemu nasłuchiwaniu na tym samym kliencie, a handler wiadomości ignoruje wszystko, co nie zawiera tablicowego `queryKey`.
 
-Używaj `syncQueryInvalidation` tylko przy lokalnej mutacji, której kluczy serwer nie publikuje przez hub realtime: dziś są to akcje kuponów (`DISCOUNT_QUERY_KEYS.ADMIN.ALL`) i akcje w wierszach zamówień (`ORDER_QUERY_KEYS.ADMIN.ORDERS`, które inaczej docierają do innych przeglądarek dopiero po wsadzie z kolejki dziennika audytu). Zmiana publikowana przez serwer dociera już do każdej karty sklepu i panelu przez jej własne gniazdo, więc publikowanie jej także na kanale kazałoby każdej innej karcie przeglądarki pobrać te same zapytania jeszcze raz.
+Używaj `syncQueryInvalidation` tylko przy lokalnej mutacji, której kluczy serwer nie publikuje przez hub realtime: dziś są to akcje kuponów (`DISCOUNT_QUERY_KEYS.ADMIN.ALL`) i akcje w wierszach zamówień (`ORDER_QUERY_KEYS.ADMIN.ORDERS`, które inaczej docierają do innych przeglądarek dopiero po wsadzie z kolejki dziennika zdarzeń). Zmiana publikowana przez serwer dociera już do każdej karty sklepu i panelu przez jej własne gniazdo, więc publikowanie jej także na kanale kazałoby każdej innej karcie przeglądarki pobrać te same zapytania jeszcze raz.
 
 ## Unieważnianie wypychane z serwera
 
