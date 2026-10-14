@@ -210,6 +210,25 @@ describe("describeAuditLogDetail for coded values", () => {
     expect(describeRow(AUDIT_LOG_ACTION.DISCOUNT_REDEEMED, "15 zł")).toStrictEqual({ kind: "text", text: "15 zł" })
   })
 
+  it("reads a captured payment in either decimal style as an amount in minor units", () => {
+    expect(describeRow(AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED, "398.99 PLN")).toStrictEqual({
+      kind: "values",
+      values: [{ field: "amount", value: 39_899 }],
+    })
+    expect(describeRow(AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED, "1250,50 PLN")).toStrictEqual({
+      kind: "values",
+      values: [{ field: "amount", value: 125_050 }],
+    })
+  })
+
+  it.each(["39.99 EUR", "PLN", " PLN", "about 40 PLN"])("keeps a captured payment it cannot read as text: %s", (detail) => {
+    expect(describeRow(AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED, detail)).toStrictEqual({ kind: "text", text: detail })
+  })
+
+  it("shows nothing for a captured payment recorded without an amount", () => {
+    expect(describeRow(AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED, null)).toBeUndefined()
+  })
+
   it("reads the role an account changed to", () => {
     expect(describeRow(AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED, "admin")).toStrictEqual({
       kind: "values",
