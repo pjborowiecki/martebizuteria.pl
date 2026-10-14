@@ -1030,9 +1030,22 @@
       "editTitle": "Edit coupon",
       "createDescription": "The code works at checkout as soon as it is active.",
       "editDescription": "Changes apply to checkouts started from now on.",
+      "sections": {
+        "details": "Code",
+        "detailsDescription": "What shoppers type at checkout, and a note for your team.",
+        "discount": "Discount",
+        "discountDescription": "How much the code takes off, and from what basket value.",
+        "limits": "Limits",
+        "limitsDescription": "How many times the code can be used.",
+        "availability": "Availability",
+        "availabilityDescription": "Whether and when the code works at checkout."
+      },
+      "id": "ID",
       "code": "Code",
       "codeHint": "Letters, digits, hyphens and underscores.",
+      "codePlaceholder": "e.g. SPRING20",
       "description": "Internal description",
+      "descriptionPlaceholder": "Only your team sees this.",
       "type": "Type",
       "percentageValue": "Percent off",
       "amountValue": "Amount off",
@@ -1046,12 +1059,12 @@
       "perCustomerLimitHint": "Leave blank for unlimited.",
       "startsAt": "Starts",
       "endsAt": "Ends",
-      "isActive": "Active",
-      "isActiveHint": "An inactive code is refused at checkout whatever its dates say.",
+      "status": "Status",
+      "statusHint": "A disabled code is refused at checkout whatever its dates say.",
       "freeShippingNote": "Free shipping takes the whole delivery charge off, so it needs no value.",
       "cancel": "Cancel",
-      "save": "Save coupon",
-      "amountInMinorUnits": "Amounts are in grosze (100 gr = 1 zł)."
+      "create": "Create coupon",
+      "save": "Save coupon"
     },
     "validation": {
       "codeTooShort": "Use at least 3 characters.",
@@ -1059,7 +1072,10 @@
       "codeCharacters": "Use only letters, digits, hyphens and underscores.",
       "percentageRange": "Enter a percentage between 1 and 100.",
       "amountRequired": "Enter an amount above zero.",
-      "endBeforeStart": "The end must come after the start."
+      "positiveNumber": "Enter a number above zero.",
+      "endBeforeStart": "The end must come after the start.",
+      "submitBlockedTitle": "Fix the errors in the form",
+      "submitBlockedDescription": "Check the highlighted fields and try again."
     },
     "toast": {
       "createdTitle": "Coupon created",

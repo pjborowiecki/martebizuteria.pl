@@ -22,7 +22,8 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/src/presentation/components/shadcn/table"
 
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
-import { CouponFormDialog } from "~/src/presentation/components/custom/pages/admin/coupons/coupon-form-dialog"
+import { CouponSheet } from "~/src/presentation/components/custom/pages/admin/coupons/edit-coupon/coupon-sheet"
+import { useCouponsSheetState } from "~/src/presentation/components/custom/pages/admin/coupons/hooks/use-coupons-sheet"
 import { useCouponActions } from "~/src/presentation/components/custom/pages/admin/coupons/use-coupon-actions"
 
 const HEADER_CLASS = "text-xs font-medium uppercase tracking-wider text-muted-foreground/60"
@@ -32,6 +33,7 @@ export const CouponListTable = (): JSX.Element => {
   const [search, setSearch] = useState("")
   const { data } = useSuspenseQuery(getAdminDiscountsPageQuery({ search: search === "" ? undefined : search }))
   const actions = useCouponActions()
+  const sheet = useCouponsSheetState()
 
   return (
     <>
@@ -54,7 +56,7 @@ export const CouponListTable = (): JSX.Element => {
                 value={search}
               />
             </div>
-            <Button className="h-9" onClick={actions.handleCreate} size="sm">
+            <Button className="h-9" onClick={sheet.openCreate} size="sm">
               {t("actions.createCoupon")}
             </Button>
           </div>
@@ -81,7 +83,7 @@ export const CouponListTable = (): JSX.Element => {
                 </TableHeader>
                 <TableBody>
                   {data.items.map((coupon) => (
-                    <CouponRow coupon={coupon} key={coupon.id} onDelete={actions.handleRequestDelete} onEdit={actions.handleEdit} />
+                    <CouponRow coupon={coupon} key={coupon.id} onDelete={actions.handleRequestDelete} onEdit={sheet.openEdit} />
                   ))}
                 </TableBody>
               </Table>
@@ -90,14 +92,9 @@ export const CouponListTable = (): JSX.Element => {
         </CardContent>
       </Card>
 
-      <CouponFormDialog
-        coupon={actions.editing}
-        isPending={actions.isPending}
-        key={actions.editing?.id ?? "create"}
-        onOpenChange={actions.setFormOpen}
-        onSubmit={actions.handleSubmit}
-        open={actions.formOpen}
-      />
+      {sheet.open && (
+        <CouponSheet coupon={sheet.coupon} mode={sheet.mode === "edit" ? "edit" : "create"} onOpenChange={sheet.setOpen} open />
+      )}
 
       <CatalogDeleteConfirmDialog
         cancelLabel={t("deleteDialog.cancel")}
