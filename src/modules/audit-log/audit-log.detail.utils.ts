@@ -1,3 +1,5 @@
+import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
+import { parseMoneyInputToMinorUnits } from "~/src/modules/_core/utils/currency"
 import { describeAuditLogChanges } from "~/src/modules/audit-log/audit-log.changes.utils"
 import { AUDIT_EMAIL_KIND, AUDIT_LOG_ACTION, type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
@@ -46,6 +48,8 @@ const LEGACY_DAILY_LIMIT_PATTERN = /^the shop reached its daily limit of (?<limi
 const LEGACY_STRIPE_CUSTOMER_KEPT_PREFIX = "Stripe customer not deleted, account kept — "
 
 const MINOR_UNITS_PATTERN = /^\d+$/u
+
+const PAID_AMOUNT_SUFFIX = ` ${STORE_CURRENCY_CODE}`
 
 const describeText = ({ detail }: AuditLogDetailSource): AuditLog["detail"] | undefined =>
   detail === null || detail.trim() === "" ? undefined : { kind: "text", text: detail }
@@ -116,6 +120,13 @@ const describeRedeemedAmount = (source: AuditLogDetailSource): AuditLog["detail"
     ? { kind: "values", values: [{ field: "amount", value: Number(source.detail) }] }
     : describeText(source)
 
+const describePaidAmount = (source: AuditLogDetailSource): AuditLog["detail"] | undefined => {
+  const amount = source.detail?.endsWith(PAID_AMOUNT_SUFFIX) === true ? source.detail.slice(0, -PAID_AMOUNT_SUFFIX.length) : undefined
+  const minorUnits = amount === undefined || amount === "" ? undefined : parseMoneyInputToMinorUnits(amount, STORE_CURRENCY_CODE)
+
+  return minorUnits === undefined ? describeText(source) : { kind: "values", values: [{ field: "amount", value: minorUnits }] }
+}
+
 const describeRole = (source: AuditLogDetailSource): AuditLog["detail"] | undefined =>
   describeValues(source, source.detail === null ? [] : [{ field: "role", value: source.detail }])
 
@@ -157,6 +168,7 @@ const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetai
   [AUDIT_LOG_ACTION.NEWSLETTER_SENT]: describeRecipientCount,
   [AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED]: describeDisputeClosed,
   [AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED]: describeDisputeOpened,
+  [AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED]: describePaidAmount,
   [AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED]: describeChanges,
   [AUDIT_LOG_ACTION.PRODUCT_UPDATED]: describeChanges,
 }
