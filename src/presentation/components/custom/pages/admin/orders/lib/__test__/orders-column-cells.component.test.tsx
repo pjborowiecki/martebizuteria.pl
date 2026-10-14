@@ -76,10 +76,11 @@ afterEach(() => {
 })
 
 describe("order column cells", () => {
-  it("prefixes the order id so it reads as a reference", () => {
+  it("names the order by the number the shop gives it rather than its database id", () => {
     renderGrid()
 
-    expect(screen.getByText("#order-1")).toBeInTheDocument()
+    expect(screen.getByText("MRT-2024-00001")).toBeInTheDocument()
+    expect(screen.queryByText("#order-1")).not.toBeInTheDocument()
   })
 
   it("formats the order date for the active locale", () => {
@@ -151,9 +152,9 @@ describe("order column cells", () => {
   })
 
   it("renders one row per order", () => {
-    const { container } = renderGrid([orderRow(), orderRow({ id: "order-2" })])
+    const { container } = renderGrid([orderRow(), orderRow({ id: "order-2", orderNumber: "MRT-2024-00002" })])
 
     expect(container.querySelectorAll("tbody tr")).toHaveLength(2)
-    expect(screen.getByText("#order-2")).toBeInTheDocument()
+    expect(screen.getByText("MRT-2024-00002")).toBeInTheDocument()
   })
 })

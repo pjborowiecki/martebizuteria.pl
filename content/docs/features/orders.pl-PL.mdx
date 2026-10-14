@@ -43,7 +43,7 @@ await Promise.all([
 
 `ADMIN_ORDERS_PAGE_SIZE` to 25, a `ORDER_QUERY_STALE_MS` to 60 000.
 
-`getAdminOrdersPage` wymaga uprawnienia `order: ["read"]` przez `authorized({ order: ["read"] })`. Przyjmuje stronę, rozmiar strony, frazę wyszukiwania, `tab`, `statFilter` i pięć filtrów kolumn (`createdAt`, `fulfillment`, `payment`, `status`, `total`), a zwraca `buildListPaginationResult`.
+`getAdminOrdersPage` wymaga uprawnienia `order: ["read"]` przez `authorized({ order: ["read"] })`. Przyjmuje stronę, rozmiar strony, frazę wyszukiwania dopasowywaną do identyfikatora, numeru, e-maila i numeru przesyłki zamówienia oraz imienia i nazwiska, identyfikatora i e-maila klienta, `tab`, `statFilter` i pięć filtrów kolumn (`createdAt`, `fulfillment`, `payment`, `status`, `total`), a zwraca `buildListPaginationResult`.
 
 Zakładki to `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Filtry statystyk to `ADMIN_ORDER_STAT_FILTER` — `total` i `pending`, więc kliknięcie karty statystyki zawęża tabelę.
 
@@ -151,7 +151,7 @@ Numer i adres śledzenia pochodzą z `order-ship-dialog.tsx`, a menu wiersza nie
 
 ## Eksport
 
-`exportAdminOrders` (`use-cases/export-admin-orders.ts`) wymaga `order: ["read"]`, przyjmuje te same filtry co lista, ale bez stronicowania, i zwraca wszystkie pasujące wiersze zmapowane przez `toAdminOrderListItem` z dodanymi `billing_company_name` i `billing_nip` zamówienia jako `billingCompanyName` i `billingNip`. Plik CSV powstaje w przeglądarce w `orders-export-action.tsx`, z nagłówkami w języku administratora. Jego kolumny to ID zamówienia, klient, e-mail, firma, NIP, data, produkty, suma, płatność, realizacja i status; komórki firmy i NIP są puste dla zamówienia złożonego bez nich, więc księgowa może dopasować zamówienie kupującego firmowego do wystawionej dla niego faktury VAT.
+`exportAdminOrders` (`use-cases/export-admin-orders.ts`) wymaga `order: ["read"]`, przyjmuje te same filtry co lista, ale bez stronicowania, i zwraca wszystkie pasujące wiersze zmapowane przez `toAdminOrderListItem` z dodanymi `billing_company_name` i `billing_nip` zamówienia jako `billingCompanyName` i `billingNip`. Plik CSV powstaje w przeglądarce w `orders-export-action.tsx`, z nagłówkami w języku administratora. Jego kolumny to numer zamówienia, klient, e-mail, firma, NIP, data, produkty, suma, płatność, realizacja i status; komórki firmy i NIP są puste dla zamówienia złożonego bez nich, więc księgowa może dopasować zamówienie kupującego firmowego do wystawionej dla niego faktury VAT.
 
 ## Komponenty panelu
 

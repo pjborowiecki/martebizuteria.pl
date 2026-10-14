@@ -56,7 +56,7 @@ export const OrdersExportAction = (): JSX.Element => {
           headers.join(","),
           ...orders.map((order) => {
             const fields = [
-              order.id,
+              order.orderNumber,
               order.customerName,
               order.email,
               order.billingCompanyName,

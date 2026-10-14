@@ -126,6 +126,7 @@ const buildAdminOrdersWhere = (params: Pick<AdminOrdersListParams, "filters" | "
   const filters = params.filters ?? {}
   const searchCondition = buildAdminSearchOrCondition(params.search, [
     order.id,
+    order.orderNumber,
     order.email,
     order.trackingNumber,
     user.name,

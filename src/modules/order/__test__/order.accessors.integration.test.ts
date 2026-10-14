@@ -182,6 +182,12 @@ describe("getAdminOrdersPage row shape", () => {
     expect(await orderIds({ ...page, search })).toContain("o-unfulfilled")
   })
 
+  it("finds an order by the number the shop gave it and carries that number on the row", async () => {
+    const result = await getAdminOrdersPage({ ...page, search: "MRT-2024-00003" })
+
+    expect(result.rows.map((row) => [row.id, row.orderNumber])).toStrictEqual([["o-shipped", "MRT-2024-00003"]])
+  })
+
   it("ignores a blank search", async () => {
     expect(await orderIds({ ...page, search: "  " })).toHaveLength(5)
   })

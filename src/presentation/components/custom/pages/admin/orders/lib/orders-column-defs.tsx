@@ -26,8 +26,8 @@ export const buildOrderColumns = ({ locale, t, tAdmin }: BuildOrderColumnsInput)
       all: tAdmin(ADMIN_ORDER_TABLE_A11Y_KEYS.selectAll),
       row: tAdmin(ADMIN_ORDER_TABLE_A11Y_KEYS.selectRow),
     }),
-    columnHelper.accessor("id", {
-      cell: ({ row }) => <span className="block font-mono text-sm font-medium whitespace-nowrap">{`#${row.original.id}`}</span>,
+    columnHelper.accessor("orderNumber", {
+      cell: ({ row }) => <span className="block font-mono text-sm font-medium whitespace-nowrap">{row.original.orderNumber}</span>,
       enableSorting: false,
       header: t("columns.order"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.orderId,

@@ -43,7 +43,7 @@ await Promise.all([
 
 `ADMIN_ORDERS_PAGE_SIZE` is 25 and `ORDER_QUERY_STALE_MS` is 60 000.
 
-`getAdminOrdersPage` requires the `order: ["read"]` permission via `authorized({ order: ["read"] })`. It accepts a page, a page size, a search term, a `tab`, a `statFilter` and five column filters (`createdAt`, `fulfillment`, `payment`, `status`, `total`), and returns a `buildListPaginationResult`.
+`getAdminOrdersPage` requires the `order: ["read"]` permission via `authorized({ order: ["read"] })`. It accepts a page, a page size, a search term matched against the order's id, number, email and tracking number and the customer's name, id and email, a `tab`, a `statFilter` and five column filters (`createdAt`, `fulfillment`, `payment`, `status`, `total`), and returns a `buildListPaginationResult`.
 
 Tabs are `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Stat filters are `ADMIN_ORDER_STAT_FILTER` — `total` and `pending`, so clicking a stat card narrows the table.
 
@@ -151,7 +151,7 @@ The tracking number and URL come from `order-ship-dialog.tsx`, and the row menu 
 
 ## Export
 
-`exportAdminOrders` (`use-cases/export-admin-orders.ts`) requires `order: ["read"]`, takes the same filters as the list without pagination, and returns every matching row mapped through `toAdminOrderListItem` with the order's `billing_company_name` and `billing_nip` added as `billingCompanyName` and `billingNip`. The CSV is produced in the browser by `orders-export-action.tsx`, with headers in the admin's language. Its columns are the order ID, customer, email, company, NIP, date, items, total, payment, fulfilment and status; the company and NIP cells are empty for an order placed without them, so the accountant can match a business buyer's order to the VAT invoice issued for it.
+`exportAdminOrders` (`use-cases/export-admin-orders.ts`) requires `order: ["read"]`, takes the same filters as the list without pagination, and returns every matching row mapped through `toAdminOrderListItem` with the order's `billing_company_name` and `billing_nip` added as `billingCompanyName` and `billingNip`. The CSV is produced in the browser by `orders-export-action.tsx`, with headers in the admin's language. Its columns are the order number, customer, email, company, NIP, date, items, total, payment, fulfilment and status; the company and NIP cells are empty for an order placed without them, so the accountant can match a business buyer's order to the VAT invoice issued for it.
 
 ## Admin components
 

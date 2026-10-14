@@ -184,7 +184,7 @@ describe("OrdersRowActions cancellation", () => {
     expect(await screen.findByText("Cancel order?")).toBeInTheDocument()
     expect(
       screen.getByText(
-        "Order #order-1 will be cancelled, its items returned to stock and the customer's payment refunded in full through Stripe. The customer is emailed about the cancellation and the refund. This action cannot be undone.",
+        "Order MRT-2026-00001 will be cancelled, its items returned to stock and the customer's payment refunded in full through Stripe. The customer is emailed about the cancellation and the refund. This action cannot be undone.",
       ),
     ).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Keep order" })).toBeInTheDocument()
@@ -197,7 +197,7 @@ describe("OrdersRowActions cancellation", () => {
 
     expect(
       await screen.findByText(
-        "Order #order-1 will be cancelled and its items returned to stock. There is no payment to refund. The customer is emailed about the cancellation. This action cannot be undone.",
+        "Order MRT-2026-00001 will be cancelled and its items returned to stock. There is no payment to refund. The customer is emailed about the cancellation. This action cannot be undone.",
       ),
     ).toBeInTheDocument()
   })
