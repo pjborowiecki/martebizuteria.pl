@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, inArray, lt, sql } from "drizzle-orm"
+import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { calendarPeriodKey } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -12,13 +12,13 @@ import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
+import { netSalesAverage, netSalesSum, orderCountsAsSale } from "~/src/modules/order/order.accessors"
 import { order } from "~/src/modules/order/order.schema"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
 import { product } from "~/src/modules/product/product.schema"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"
-import { ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS, ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES } from "~/src/modules/user/user.constants"
 import { user } from "~/src/modules/user/user.schema"
 
 export const resolveTopProductName = (productTitles: unknown, fallbackTitle: string, locale: string): string => {
@@ -37,31 +37,20 @@ export const resolveTopProductCategoryLabel = (categoryTitles: unknown, locale: 
   return resolveCategoryTitle(categoryTitles, locale)
 }
 
-export const completedRevenueSumQuery = (since: Date, until?: Date) => {
-  const conditions = [eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS), gte(order.createdAt, since)]
+export const salesTotalsQuery = (since: Date, until?: Date) => {
+  const conditions = [orderCountsAsSale, gte(order.createdAt, since)]
   if (until !== undefined) {
     conditions.push(lt(order.createdAt, until))
   }
 
   return db
     .select({
-      total: sql<number>`coalesce(sum(${order.total}), ${0})`,
+      averageOrderValue: netSalesAverage,
+      orders: count(),
+      revenue: netSalesSum,
     })
     .from(order)
-    .where(and(...conditions))
-}
-
-export const countableOrdersQuery = (since: Date, until?: Date) => {
-  const conditions = [inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES]), gte(order.createdAt, since)]
-  if (until !== undefined) {
-    conditions.push(lt(order.createdAt, until))
-  }
-
-  return db
-    .select({
-      count: count(),
-    })
-    .from(order)
+    .leftJoin(payment, eq(order.paymentId, payment.id))
     .where(and(...conditions))
 }
 
@@ -93,20 +82,6 @@ export const pageViewsQuery = (since: Date, until?: Date) => {
     .where(and(...conditions))
 }
 
-export const averageCompletedOrderValueQuery = (since: Date, until?: Date) => {
-  const conditions = [eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS), gte(order.createdAt, since)]
-  if (until !== undefined) {
-    conditions.push(lt(order.createdAt, until))
-  }
-
-  return db
-    .select({
-      average: sql<number>`case when count(*) > 0 then cast(round(coalesce(sum(${order.total}), ${0}) * 1.0 / count(*)) as integer) else ${0} end`,
-    })
-    .from(order)
-    .where(and(...conditions))
-}
-
 export const orderAggregatesQuery = ({ end, periods, start }: AdminDashboardChartWindow) => {
   const periodKey = calendarPeriodKey(order.createdAt, periods)
 
@@ -114,10 +89,11 @@ export const orderAggregatesQuery = ({ end, periods, start }: AdminDashboardChar
     .select({
       orders: sql<number>`count(*)`,
       periodKey,
-      revenue: sql<number>`coalesce(sum(case when ${order.status} = ${ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS} then ${order.total} else ${0} end), ${0})`,
+      revenue: netSalesSum,
     })
     .from(order)
-    .where(and(gte(order.createdAt, start), lt(order.createdAt, end), inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
+    .leftJoin(payment, eq(order.paymentId, payment.id))
+    .where(and(gte(order.createdAt, start), lt(order.createdAt, end), orderCountsAsSale))
     .groupBy(periodKey)
     .orderBy(periodKey)
 }
@@ -160,7 +136,7 @@ export const topProductsQuery = () =>
     .leftJoin(product, eq(product.id, orderItem.productId))
     .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
     .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
-    .where(eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS))
+    .where(orderCountsAsSale)
     .groupBy(orderItem.productId)
     .orderBy(sql`coalesce(sum(${orderItem.quantity}), ${0}) desc`)
     .limit(ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT)

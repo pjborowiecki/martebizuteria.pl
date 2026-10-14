@@ -74,17 +74,19 @@ Co wstrzymanie robi ze sklepem i kasą, opisuje [Kasa: wstrzymanie sprzedaży](/
 
 ## Migawka
 
-`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) jest zabezpieczone przez `authorized({ settings: ["manage"] })` — tym samym uprawnieniem co dziennik zdarzeń, a nie uprawnieniem `order` czy `product`. Przyjmuje `locale`, żeby etykiety wykresów można było sformatować po stronie serwera, i uruchamia **piętnaście zapytań w jednym `db.batch`**.
+`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) jest zabezpieczone przez `authorized({ settings: ["manage"] })` — tym samym uprawnieniem co dziennik zdarzeń, a nie uprawnieniem `order` czy `product`. Przyjmuje `locale`, żeby etykiety wykresów można było sformatować po stronie serwera, i uruchamia **jedenaście zapytań w jednym `db.batch`**.
 
 Okno porównania pochodzi z `resolveAdminDashboardComparisonPeriod(now)` z `ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS = 30`, więc każdy wskaźnik to „ostatnie 30 dni wobec 30 poprzednich”.
 
-| Wskaźnik            | Akcesor                           | Źródło                                                       |
-| ------------------- | --------------------------------- | ------------------------------------------------------------ |
-| `revenue`           | `completedRevenueSumQuery`        | `sum(order.total)` dla statusu `completed`                   |
-| `orders`            | `countableOrdersQuery`            | `count()` po statusach liczonych                             |
-| `customers`         | `newCustomersQuery`               | `count()` wierszy `user` po `created_at`                     |
-| `pageViews`         | `pageViewsQuery`                  | `count()` wierszy `audit_log` z akcją `customer.page_viewed` |
-| `averageOrderValue` | `averageCompletedOrderValueQuery` | zaokrąglona średnia `order.total` po `completed`             |
+| Wskaźnik            | Akcesor             | Źródło                                                                     |
+| ------------------- | ------------------- | -------------------------------------------------------------------------- |
+| `revenue`           | `salesTotalsQuery`  | `netSalesSum` po sprzedażach                                               |
+| `orders`            | `salesTotalsQuery`  | `count()` sprzedaży                                                        |
+| `customers`         | `newCustomersQuery` | `count()` wierszy `user` po `created_at`                                   |
+| `pageViews`         | `pageViewsQuery`    | `count()` wierszy `audit_log` z akcją `customer.page_viewed`               |
+| `averageOrderValue` | `salesTotalsQuery`  | `netSalesAverage`, czyli przychód podzielony przez zamówienia, zaokrąglony |
+
+**Co liczy się jako sprzedaż.** Zamówienie się liczy, gdy jego status należy do `ORDER_SALE_STATUSES` (`processing` i `completed`, w `src/modules/order/order.constants.ts`), niezależnie od tego, czy zostało już wysłane, bo checkout zapisuje zamówienie jako `processing` dopiero po udanej płatności, a zamówienie pozostaje `processing`, dopóki administrator nie oznaczy go jako doręczone. Zamówienia oczekujące, za które nikt nie zapłacił, oraz anulowane i zwrócone są pomijane. `orderCountsAsSale`, `netSalesSum` i `netSalesAverage` w `src/modules/order/order.accessors.ts` to ten warunek oraz suma i zaokrąglona średnia tego, co wnosi każda sprzedaż, `max(order.total - payment.refunded_amount, 0)`, więc częściowy zwrot wykonany w panelu Stripe pomniejsza zamówienie, którego dotyczył. Obie sumy czytają `payment`, więc ich zapytanie dołącza tę tabelę przez `left join` po `order.payment_id`. Przychód, liczba zamówień i średnia pochodzą z tego samego `salesTotalsQuery`, więc średnia zawsze równa się przychodowi podzielonemu przez liczbę zamówień.
 
 **Odsłony stron pochodzą z dziennika zdarzeń**, zapisywane przez `trackPageViewed` w `src/modules/customer-activity`. Ponieważ ten tracker działa tylko dla zalogowanych użytkowników i deduplikuje odsłony w obrębie sesji przez `sessionStorage`, liczba oznacza „unikalne strony obejrzane przez zalogowanych klientów”, a nie cały ruch.
 
@@ -94,7 +96,7 @@ Okno porównania pochodzi z `resolveAdminDashboardComparisonPeriod(now)` z `ADMI
 
 Dni, miesiące i lata w panelu są dniami, miesiącami i latami sklepu, liczonymi w czasie polskim (`DEFAULT_TIMEZONE_CODE`, `Europe/Warsaw`, z `src/modules/_core/constants/timezone.ts`), a nie w UTC, jedynym czasie, jaki znają D1 i Worker. Zamówienie złożone o 00:30 1 stycznia w Polsce, gdy w UTC jest jeszcze 31 grudnia, liczy się do nowego dnia, miesiąca i roku, a dzień zmiany czasu trwa 23 albo 25 godzin.
 
-`resolveAdminDashboardDays(now, count)` i `resolveAdminDashboardMonths(now, count)` (`admin-dashboard.utils.ts`) budują okno wykresu: ostatnie `count` dni lub miesięcy aż do tego, który trwa teraz w Polsce, każdy jako `{ key, start }` z kluczem ISO (`2026-06-15` albo `2026-06`) i chwilą, w której zaczyna się o północy w Warszawie, a do tego `start` okna i jego wyłączny `end`. Początki pochodzą ze `startOfCalendarDate` w `src/modules/_core/utils/datetime.ts`. `orderAggregatesQuery(window)` liczy zamówienia liczone i sumuje przychód z ukończonych od `start` do `end`, grupując je przez `calendarPeriodKey` z `drizzle.utils.ts`, który nadaje każdemu zamówieniu klucz ostatniego okresu, który zaczął się nie później niż ono. `buildAdminDashboardChartPoints` zamienia okresy okna w po jednym punkcie, z zerem tam, gdzie nie było zamówień, a etykietę tworzy z początku okresu w Warszawie przez `ADMIN_DASHBOARD_DAY_LABEL_FORMAT` albo `ADMIN_DASHBOARD_MONTH_LABEL_FORMAT` w żądanym języku.
+`resolveAdminDashboardDays(now, count)` i `resolveAdminDashboardMonths(now, count)` (`admin-dashboard.utils.ts`) budują okno wykresu: ostatnie `count` dni lub miesięcy aż do tego, który trwa teraz w Polsce, każdy jako `{ key, start }` z kluczem ISO (`2026-06-15` albo `2026-06`) i chwilą, w której zaczyna się o północy w Warszawie, a do tego `start` okna i jego wyłączny `end`. Początki pochodzą ze `startOfCalendarDate` w `src/modules/_core/utils/datetime.ts`. `orderAggregatesQuery(window)` liczy sprzedaże i sumuje ich przychód po odjęciu zwrotów od `start` do `end`, grupując je przez `calendarPeriodKey` z `drizzle.utils.ts`, który nadaje każdemu zamówieniu klucz ostatniego okresu, który zaczął się nie później niż ono. `buildAdminDashboardChartPoints` zamienia okresy okna w po jednym punkcie, z zerem tam, gdzie nie było zamówień, a etykietę tworzy z początku okresu w Warszawie przez `ADMIN_DASHBOARD_DAY_LABEL_FORMAT` albo `ADMIN_DASHBOARD_MONTH_LABEL_FORMAT` w żądanym języku.
 
 Trzy serie są wyliczane z wyprzedzeniem w tej samej migawce:
 
@@ -102,7 +104,7 @@ Trzy serie są wyliczane z wyprzedzeniem w tej samej migawce:
 - `chartPoints7d` — `chartPoints30d.slice(-7)`, czyli bez dodatkowego zapytania
 - `chartPoints1y` — `orderAggregatesQuery` na `resolveAdminDashboardMonths(now, ADMIN_DASHBOARD_CHART_MONTHS_1Y)`, z `ADMIN_DASHBOARD_CHART_MONTHS_1Y = 12`
 
-`yearToDateRevenueMinorUnits` to osobne `completedRevenueSumQuery(resolveAdminDashboardYearStart(now))`, liczone od północy 1 stycznia w Polsce. Porównanie wskaźników opisane wyżej pozostaje kroczącym oknem 30 razy 24 godzin wstecz od teraz.
+`yearToDateRevenueMinorUnits` to przychód z osobnego `salesTotalsQuery(resolveAdminDashboardYearStart(now))`, liczone od północy 1 stycznia w Polsce. Porównanie wskaźników opisane wyżej pozostaje kroczącym oknem 30 razy 24 godzin wstecz od teraz.
 
 Zakres własny to druga funkcja serwerowa. `getDashboardChartRange` przyjmuje `{ startDate, endDate, locale }` jako daty ISO, zwraca `[]`, gdy `isAdminDashboardCustomChartRangeValid` odrzuci parę, a w przeciwnym razie buduje przez `resolveAdminDashboardDateRange` okno wszystkich dni od `startDate` do `endDate`, od północy w Polsce pierwszego dnia do północy po ostatnim, i uruchamia na nim `orderAggregatesQuery`. Jego zapytanie jest `enabled` wyłącznie dla poprawnego zakresu. Kontrolki to `dashboard/components/dashboard-chart-range-controls.tsx` napędzane przez `dashboard/hooks/use-dashboard-chart-range.ts`, korzystające z `react-day-picker`.
 
@@ -124,7 +126,7 @@ Zakres własny to druga funkcja serwerowa. `getDashboardChartRange` przyjmuje `{
 .leftJoin(product, eq(product.id, orderItem.productId))
 .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
 .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
-.where(eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS))
+.where(orderCountsAsSale)
 .groupBy(orderItem.productId)
 ```
 

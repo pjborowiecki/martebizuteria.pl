@@ -9,13 +9,11 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: { batch: reads.batch } }))
 vi.mock("~/src/modules/admin-dashboard/admin-dashboard.accessors", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
-  averageCompletedOrderValueQuery: reads.query,
-  completedRevenueSumQuery: reads.query,
-  countableOrdersQuery: reads.query,
   newCustomersQuery: reads.query,
   orderAggregatesQuery: reads.query,
   pageViewsQuery: reads.query,
   recentOrdersQuery: reads.query,
+  salesTotalsQuery: reads.query,
   topProductsQuery: reads.query,
 }))
 vi.mock("@tanstack/react-start", () => ({
@@ -47,7 +45,7 @@ import {
 import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 import { getDashboardSnapshot } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-snapshot"
 
-const BATCHED_READ_COUNT = 15
+const BATCHED_READ_COUNT = 11
 
 const ZERO_STAT = { current: 0, previous: 0, trendPercent: 0 }
 
