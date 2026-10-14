@@ -74,15 +74,17 @@ The badge styling maps for all of this are in `order.constants.ts`: `ORDER_STATU
 
 ## Stats
 
-`getAdminOrderStats` runs one `db.batch` of five aggregates:
+`getAdminOrderStats` runs one `db.batch` of three aggregates:
 
-| Value                | Query                                                                    |
-| -------------------- | ------------------------------------------------------------------------ |
-| `totalOrders`        | `count()` where status is in `ADMIN_ORDER_COUNTABLE_STATUSES`            |
-| `pending`            | `count()` where status is `pending`                                      |
-| `revenueMinorUnits`  | `sum(total)` where status is `completed`                                 |
-| `avgValueMinorUnits` | rounded `sum(total) / count(*)` over `completed` orders                  |
-| `currencyCode`       | `max(currency_code)` over `completed` orders, else `STORE_CURRENCY_CODE` |
+| Value                | Query                                                           |
+| -------------------- | --------------------------------------------------------------- |
+| `totalOrders`        | `count()` where status is in `ADMIN_ORDER_COUNTABLE_STATUSES`   |
+| `pending`            | `count()` where status is `pending`                             |
+| `revenueMinorUnits`  | `netSalesSum` over the sales                                    |
+| `avgValueMinorUnits` | `netSalesAverage` over the same sales                           |
+| `currencyCode`       | `max(currency_code)` over the sales, else `STORE_CURRENCY_CODE` |
+
+The last three come from one query over the orders `orderCountsAsSale` accepts, left-joined to their payment, with the same rule as the dashboard (see [Admin dashboard](/docs/features/admin-dashboard#the-snapshot)): processing and completed orders, each counted at its total less what was refunded on its payment.
 
 `ADMIN_ORDER_COUNTABLE_STATUSES` is `["completed", "processing", "pending", "cancelled", "refunded"]` — every status, so `totalOrders` is effectively the full count.
 
