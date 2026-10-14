@@ -15,10 +15,10 @@ Plik `realtime-invalidation.subscriptions.ts` nazywa je i wypisuje, co każdy z 
 export const REALTIME_INVALIDATION_HUB = { ADMIN: "admin", STOREFRONT: "storefront" } as const
 ```
 
-| Hub          | Subskrybowane prefiksy                                                                                                                                                                                                                                                                                                       |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — strona i statystyki dziennika audytu, zamówienia panelu, klienci panelu, klucze `ALL` i `STATS` kategorii, kolekcji, produktów i atrybutów produktów klucze `ADMIN.ALL` i `ADMIN.BY_HANDLE` stron treści, klucz `ADMIN.SALES` ustawień sklepu oraz klucz `ADMIN.LIST` kampanii newslettera |
-| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY`, kategorie i kolekcje `ALL` / `BY_HANDLE`, strony treści `BY_HANDLE` oraz ustawienia sklepu `SALES`                                                              |
+| Hub          | Subskrybowane prefiksy                                                                                                                                                                                                                                                                                                        |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — strona i statystyki dziennika zdarzeń, zamówienia panelu, klienci panelu, klucze `ALL` i `STATS` kategorii, kolekcji, produktów i atrybutów produktów klucze `ADMIN.ALL` i `ADMIN.BY_HANDLE` stron treści, klucz `ADMIN.SALES` ustawień sklepu oraz klucz `ADMIN.LIST` kampanii newslettera |
+| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY`, kategorie i kolekcje `ALL` / `BY_HANDLE`, strony treści `BY_HANDLE` oraz ustawienia sklepu `SALES`                                                               |
 
 Obie listy to `as const satisfies readonly QueryKey[]`, więc zmiana nazwy stałej klucza jest błędem typowania, a nie cicho martwą subskrypcją. Podział ma znaczenie zarówno dla prywatności, jak i dla ograniczenia szumu: hub sklepu nigdy nie niesie prefiksu `["admin", …]`, więc przeglądarka klienta nie dowiaduje się niczego o działaniach administratora.
 
@@ -101,7 +101,7 @@ Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także s
 - **Strony treści.** `update-content-page.ts` wywołuje `scheduleContentPageInvalidation()` po zapisie.
 - **Przełącznik sprzedaży.** `set-sales-paused.ts` wywołuje `scheduleSalesStatusInvalidation()`, gdy administrator wstrzymuje albo wznawia sprzedaż, więc komunikat o wstrzymaniu pojawia się albo znika w każdej otwartej karcie sklepu, a inne karty panelu przestawiają przełącznik.
 - **Newsletter.** `send-newsletter-campaign.ts` odświeża listę kampanii w panelu, gdy newsletter rusza, a `newsletter-campaign.queue.server.ts` po każdej wysłanej partii i po zatrzymaniu kampanii, więc strona Marketing pokazuje postęp każdego newslettera.
-- **Audyt.** `audit-log.queue.server.ts` i `delete-audit-logs.ts`.
+- **Dziennik zdarzeń.** `audit-log.queue.server.ts` i `delete-audit-logs.ts`.
 
 ## Durable Object
 

@@ -139,7 +139,7 @@ export const resolveAdminCustomerTags = (row: User["select"], orderCount: number
 
 `ADMIN_CUSTOMER_MIN_REPEAT_ORDERS` to 2. Tagi własne dodane przez administratora pochodzą z kolumny metadanych i są scalane osobno.
 
-Oś czasu to widok na `audit_log` dla danego użytkownika, z `CUSTOMER_AUDIT_TIMELINE_LIMIT = 50` (`customer-activity.constants.ts`). Zobacz [Dziennik audytu](/docs/features/audit-log).
+Oś czasu to widok na `audit_log` dla danego użytkownika, z `CUSTOMER_AUDIT_TIMELINE_LIMIT = 50` (`customer-activity.constants.ts`). Zobacz [Dziennik zdarzeń](/docs/features/audit-log).
 
 Interfejs leży w `.../admin/customers/customer-detail/`: `customer-kpis.tsx`, `customer-charts.tsx`, `customer-orders.tsx`, `customer-sidebar.tsx` i edytor `edit-customer/customer-sheet.tsx`.
 
@@ -205,9 +205,9 @@ const goodbyeEmailSent = await goodbyeEmailDelivery
 return { goodbyeEmailSent, ok: true as const, userId }
 ```
 
-`sendAccountDeletedEmail` nigdy nie rzuca wyjątku; gdy Resend odrzuci e-mail albo nie da się go przygotować, porażka jest logowana, zapisywana w dzienniku audytu jako `email.failed` i zwracana jako `false`, a usunięcie pozostaje w mocy. Przekazanie tej samej obietnicy do `scheduleBackgroundWork` umieszcza ją w `waitUntil` Workera, więc e-mail i jego wpis w audycie kończą się nawet wtedy, gdy administrator wcześniej zamknie kartę. `useDeleteCustomer` dobiera komunikat na podstawie `goodbyeEmailSent`: potwierdzenie „Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.” albo ostrzeżenie „Konto usunięte — klient nie otrzymał e-maila” z opisem „Nie udało się wysłać klientowi potwierdzenia usunięcia konta. Błąd zapisano w dzienniku zdarzeń.”
+`sendAccountDeletedEmail` nigdy nie rzuca wyjątku; gdy Resend odrzuci e-mail albo nie da się go przygotować, porażka jest logowana, zapisywana w dzienniku zdarzeń jako `email.failed` i zwracana jako `false`, a usunięcie pozostaje w mocy. Przekazanie tej samej obietnicy do `scheduleBackgroundWork` umieszcza ją w `waitUntil` Workera, więc e-mail i jego wpis w audycie kończą się nawet wtedy, gdy administrator wcześniej zamknie kartę. `useDeleteCustomer` dobiera komunikat na podstawie `goodbyeEmailSent`: potwierdzenie „Konto zostało usunięte, a e-mail z potwierdzeniem został wysłany.” albo ostrzeżenie „Konto usunięte — klient nie otrzymał e-maila” z opisem „Nie udało się wysłać klientowi potwierdzenia usunięcia konta. Błąd zapisano w dzienniku zdarzeń.”
 
-`eraseAccountData` to ten sam krok, który przy usunięciu konta przez klienta uruchamia `beforeDelete` w Better Auth: usuwa klienta Stripe powiązanego z kontem razem z zapisanymi kartami, a potem wpisy konta w dzienniku audytu i subskrypcję newslettera (zobacz [Konto: Usunięcie konta](/docs/features/account#usunięcie-konta)). Gdy Stripe nie może usunąć klienta, nic nie zostaje usunięte, zapisuje się `customer.deletion_failed`, a `useDeleteCustomer` pokazuje „Stripe nie usunął profilu klienta ani zapisanych kart, więc konto nie zostało usunięte. Spróbuj ponownie za kilka minut. Błąd zapisano w dzienniku zdarzeń.” Okno potwierdzenia, `rowActions.deleteDescription`, wymienia, co zostanie usunięte, i mówi, że zamówienia i płatności pozostaną w dokumentacji księgowej przez 5 lat.
+`eraseAccountData` to ten sam krok, który przy usunięciu konta przez klienta uruchamia `beforeDelete` w Better Auth: usuwa klienta Stripe powiązanego z kontem razem z zapisanymi kartami, a potem wpisy konta w dzienniku zdarzeń i subskrypcję newslettera (zobacz [Konto: Usunięcie konta](/docs/features/account#usunięcie-konta)). Gdy Stripe nie może usunąć klienta, nic nie zostaje usunięte, zapisuje się `customer.deletion_failed`, a `useDeleteCustomer` pokazuje „Stripe nie usunął profilu klienta ani zapisanych kart, więc konto nie zostało usunięte. Spróbuj ponownie za kilka minut. Błąd zapisano w dzienniku zdarzeń.” Okno potwierdzenia, `rowActions.deleteDescription`, wymienia, co zostanie usunięte, i mówi, że zamówienia i płatności pozostaną w dokumentacji księgowej przez 5 lat.
 
 Ponieważ usunięcie idzie przez Better Auth, jego `databaseHooks.user.delete.after` zapisuje `customer.deleted` przypisane administratorowi, którego sesja wywołała `removeUser`, z adresem e-mail usuniętego klienta jako celem, i działają kaskady na `session`, `account`, `address`, `wishlist_item` i `two_factor`, natomiast `order.user_id` i `checkout.user_id` mają `onDelete: "set null"` — zamówienia przeżywają więc jako zamówienia gościa.
 
@@ -217,12 +217,12 @@ Ponieważ usunięcie idzie przez Better Auth, jego `databaseHooks.user.delete.af
 
 ## Czas rzeczywisty
 
-`USER_QUERY_KEYS.ADMIN.CUSTOMERS` występuje w `ADMIN_REALTIME_QUERY_PREFIXES`, a `scheduleAdminCustomersInvalidation()` wypycha zarówno `CUSTOMERS`, jak i `CUSTOMERS_PAGE`. Zdarzenia audytu rejestracji klienta unieważniają też klucze dziennika audytu, więc nowa rejestracja pojawia się w otwartym panelu bez przeładowania.
+`USER_QUERY_KEYS.ADMIN.CUSTOMERS` występuje w `ADMIN_REALTIME_QUERY_PREFIXES`, a `scheduleAdminCustomersInvalidation()` wypycha zarówno `CUSTOMERS`, jak i `CUSTOMERS_PAGE`. Zdarzenia audytu rejestracji klienta unieważniają też klucze dziennika zdarzeń, więc nowa rejestracja pojawia się w otwartym panelu bez przeładowania.
 
 ## Powiązane strony
 
 - [Konto](/docs/features/account) — widok klienta na te same dane
 - [Zamówienia](/docs/features/orders)
-- [Dziennik audytu](/docs/features/audit-log)
+- [Dziennik zdarzeń](/docs/features/audit-log)
 - [E-maile transakcyjne](/docs/features/email)
 - [Integracje: Better Auth](/docs/integrations/better-auth)

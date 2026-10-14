@@ -40,7 +40,7 @@ Pojęcia są uporządkowane alfabetycznie według angielskiej nazwy, bo tak brzm
 ## Słownictwo infrastruktury
 
 - **`background`** — `src/lib/background.ts`. `executionContextStorage` to `AsyncLocalStorage` przenoszące `waitUntil` Workera; `scheduleBackgroundWork(task)` wyciąga je na dowolnej głębokości, żeby obietnica przeżyła odpowiedź. Bez magazynu degraduje się do przechwyconego „odpal i zapomnij".
-- **Cloudflare Queue** — transport dziennika audytu i newslettera. Zdarzenia audytu są kolejkowane przez `AUDIT_LOG_QUEUE` i konsumowane przez eksport `queue` w `src/server.ts`, w paczkach do 50, z 5-sekundowym limitem czasu i 3 ponowieniami. Kampanie newslettera są kolejkowane przez `NEWSLETTER_QUEUE` i konsumowane po jednej wiadomości, czyli po jednej partii do 100 e-maili, naraz.
+- **Cloudflare Queue** — transport dziennika zdarzeń i newslettera. Zdarzenia audytu są kolejkowane przez `AUDIT_LOG_QUEUE` i konsumowane przez eksport `queue` w `src/server.ts`, w paczkach do 50, z 5-sekundowym limitem czasu i 3 ponowieniami. Kampanie newslettera są kolejkowane przez `NEWSLETTER_QUEUE` i konsumowane po jednej wiadomości, czyli po jednej partii do 100 e-maili, naraz.
 - **D1** — baza SQLite Cloudflare, powiązana jako `DB`. Brak transakcji interaktywnych; `db.batch()` jest mechanizmem atomowości.
 - **Durable Object** — `RealtimeInvalidationHub` w `src/durable-objects/realtime-invalidation-hub.ts`, utworzony migracją o tagu `v1`. Rozsyła komunikaty unieważniające do podłączonych WebSocketów i nie przechowuje trwałego stanu — `notifyInvalidation` iteruje po `ctx.getWebSockets(hubName)`.
 - **KV** — przestrzeń `CACHE`. Zadeklarowana w każdym środowisku; przechowuje flagę nadawcy e-maili, którą czyta blokada w Better Auth.

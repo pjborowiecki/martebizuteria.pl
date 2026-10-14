@@ -3,7 +3,7 @@ title: "Przegląd"
 description: "Od świeżego klonu repozytorium M'Arte do działającego sklepu i wdrożonego Workera."
 ---
 
-M'Arte to jedna aplikacja TanStack Start, która z pojedynczego Workera Cloudflare obsługuje sklep, panel klienta, panel administracyjny i tę dokumentację. Wszystko, czego aplikacja potrzebuje w czasie działania, to bindingi Cloudflare: D1 na dane, R2 na zdjęcia produktów, KV jako pamięć podręczna, kolejka na dziennik audytu oraz Durable Object do unieważniania pamięci podręcznej w czasie rzeczywistym.
+M'Arte to jedna aplikacja TanStack Start, która z pojedynczego Workera Cloudflare obsługuje sklep, panel klienta, panel administracyjny i tę dokumentację. Wszystko, czego aplikacja potrzebuje w czasie działania, to bindingi Cloudflare: D1 na dane, R2 na zdjęcia produktów, KV jako pamięć podręczna, kolejka na dziennik zdarzeń oraz Durable Object do unieważniania pamięci podręcznej w czasie rzeczywistym.
 
 Ma to jedną konsekwencję, o której warto wiedzieć przed rozpoczęciem pracy: **nie ma w pełni offline'owego trybu pracy**. `bun run dev` ustawia `CLOUDFLARE_ENV=development`, a `vite.config.ts` włącza zdalne bindingi wtyczki Cloudflare dokładnie dla tej wartości:
 

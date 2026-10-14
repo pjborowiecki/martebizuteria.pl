@@ -132,7 +132,7 @@ Trzy mechanizmy chronią to od mrugania i rozjeżdżania się:
 
 ## Kolumny
 
-Definicje kolumn buduje zwykła funkcja, a cienki hook dostarcza tłumaczenia i język, z memoizacją. Ekrany zamówień, klientów i audytu trzymają builder w `lib/<obszar>-column-defs.tsx`, a hook w `components/<obszar>-columns.tsx`; cztery ekrany katalogu trzymają jedno i drugie w `components/<obszar>-columns.tsx`.
+Definicje kolumn buduje zwykła funkcja, a cienki hook dostarcza tłumaczenia i język, z memoizacją. Ekrany zamówień, klientów i dziennika zdarzeń trzymają builder w `lib/<obszar>-column-defs.tsx`, a hook w `components/<obszar>-columns.tsx`; cztery ekrany katalogu trzymają jedno i drugie w `components/<obszar>-columns.tsx`.
 
 ```tsx
 export const useOrderColumns = () => {
@@ -207,7 +207,7 @@ Hook w trybie serwerowym jest właścicielem wejścia zapytania i przekazuje ste
 - `pageCount: Math.ceil(data.total / pagination.pageSize)` oraz `rowCount: data.total`.
 - Efekty, które przy każdej zmianie tekstu wyszukiwania albo filtrów kolumn ustawiają `pageIndex` na 0.
 
-Sortowanie w trybie serwerowym jest opcjonalne: `manualSorting` ustawia tylko tabela produktów. Tabele zamówień, klientów i dziennika audytu ustawiają na swoich kolumnach `enableSorting: false`, więc rozstrzygające jest sortowanie serwera.
+Sortowanie w trybie serwerowym jest opcjonalne: `manualSorting` ustawia tylko tabela produktów. Tabele zamówień, klientów i dziennika zdarzeń ustawiają na swoich kolumnach `enableSorting: false`, więc rozstrzygające jest sortowanie serwera.
 
 Wartość kontekstu można rozszerzyć dla konkretnego ekranu. `OrdersDataGridValue` rozszerza `DataGridContextValue` o `activeStatFilter`, `applyOrderStatFilter` i `exportListInput`, a `useOrdersDataGridContext()` zawęża bazowy kontekst z powrotem do tego typu, używając strażnika typu, który poza właściwym `Provider` rzuca czytelny błąd.
 
@@ -215,7 +215,7 @@ Wartość kontekstu można rozszerzyć dla konkretnego ekranu. `OrdersDataGridVa
 
 `DataGridPagination` renderuje wybór liczby wierszy na stronę, licznik zakresu, wskaźnik strony oraz przyciski pierwsza/poprzednia/następna/ostatnia. Dozwolone rozmiary strony są ustalone w `data-grid-pagination.constants.ts` jako `DATA_GRID_PAGE_SIZE_OPTIONS`, co daje `[10, 25, 50, 100, 250]`. Największa opcja to `LIST_PAGE_SIZE_MAX` z `src/modules/_core/utils/pagination.ts`, którą `pageSizeField` egzekwuje także na serwerze, więc żądanie listy nie może poprosić o większą stronę, niż oferuje siatka.
 
-`DATA_GRID_DEFAULT_PAGE_SIZE` to 10; `normalizeDataGridPageSize` zaokrągla każdą inną liczbę w górę do najbliższego dozwolonego rozmiaru, a efekt w komponencie poprawia rozmiar strony, którego nie ma na liście. Ekrany nadpisują wartość domyślną — zamówienia używają `ADMIN_ORDERS_PAGE_SIZE` (25), klienci `ADMIN_CUSTOMER_PAGE_SIZE`, audyt `ADMIN_AUDIT_LOG_PAGE_SIZE`.
+`DATA_GRID_DEFAULT_PAGE_SIZE` to 10; `normalizeDataGridPageSize` zaokrągla każdą inną liczbę w górę do najbliższego dozwolonego rozmiaru, a efekt w komponencie poprawia rozmiar strony, którego nie ma na liście. Ekrany nadpisują wartość domyślną — zamówienia używają `ADMIN_ORDERS_PAGE_SIZE` (25), klienci `ADMIN_CUSTOMER_PAGE_SIZE`, dziennik zdarzeń `ADMIN_AUDIT_LOG_PAGE_SIZE`.
 
 W trybie ręcznym suma wierszy pochodzi z `table.options.rowCount`; w przeciwnym razie z modelu wierszy po filtrowaniu.
 

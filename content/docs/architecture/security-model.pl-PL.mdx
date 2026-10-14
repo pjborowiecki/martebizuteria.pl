@@ -150,7 +150,7 @@ Dwa limitery dzielą tabelę `rate_limit` i funkcję liczącą `withinRateLimit`
 
 Kluczem jest `${kind}:${clientAddress(headers)}`, a `clientAddress` czyta **wyłącznie** `cf-connecting-ip`, którego klient nie może podrobić. Jeśli magazyn licznika zawiedzie, żądanie jest odrzucane, a nie dopuszczane. Obecnie stosowane do `checkout-create`, `checkout-update`, `checkout-status`, `discount-validate`, `create-user-address`, `update-customer-phone`, `revoke-other-customer-sessions`, `search-storefront`, `search-storefront-products` (tylko listingi katalogu z parametrem `q`), `record-customer-activity`, `withdraw-from-customer-order` i `withdraw-from-guest-order`. Limity są per IP; nie ma blokady per konto.
 
-Zwróć uwagę, że `resolveRequestIp` w `src/lib/request.ts` — używane tylko dla _dziennika audytu_ — sięga w drugiej kolejności do `x-forwarded-for`, który klient może podrobić. Limitowania żądań to nie dotyczy, bo nie korzysta z tego helpera, a limit otwartych checkoutów także wyznacza adres przez `clientAddress`.
+Zwróć uwagę, że `resolveRequestIp` w `src/lib/request.ts` — używane tylko dla _dziennika zdarzeń_ — sięga w drugiej kolejności do `x-forwarded-for`, który klient może podrobić. Limitowania żądań to nie dotyczy, bo nie korzysta z tego helpera, a limit otwartych checkoutów także wyznacza adres przez `clientAddress`.
 
 ### Rezerwacje kasy
 

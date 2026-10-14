@@ -115,7 +115,7 @@ trackCartItemAdded({ productTitle: product.title, quantity: addQuantity, variant
 
 `price` to już sformatowany napis, a `rawPrice` to jednostki podrzędne; koszyk preferuje `rawPrice` i tylko awaryjnie parsuje `price`. `variantTitle` jest czyszczone, gdy równa się `DEFAULT_VARIANT_TITLE` (`product-variant.utils.ts`), żeby produkty jednowariantowe nie pokazywały bezsensownej etykiety wariantu. `isAdded` przechodzi w `true` na 2000 ms, co napędza stan potwierdzenia na przycisku.
 
-Śledzenie trafia do `src/modules/customer-activity` i jest zapisywane wyłącznie dla zalogowanych użytkowników. Zobacz [Dziennik audytu](/docs/features/audit-log).
+Śledzenie trafia do `src/modules/customer-activity` i jest zapisywane wyłącznie dla zalogowanych użytkowników. Zobacz [Dziennik zdarzeń](/docs/features/audit-log).
 
 ## Wyświetlanie ceny
 
