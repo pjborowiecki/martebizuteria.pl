@@ -131,7 +131,7 @@ describe("CouponListTable", () => {
   it("prices the minimum order and dates the expiry in the store's time zone", async () => {
     renderWithProviders(<CouponListTable />)
 
-    expect(await cellUnder("SPRING20", "Min. order")).toHaveTextContent("PLN 200.00")
+    expect(await cellUnder("SPRING20", "Min. basket value")).toHaveTextContent("PLN 200.00")
     expect(await cellUnder("SPRING20", "Expires")).toHaveTextContent("Jul 1, 2026")
   })
 
@@ -139,7 +139,7 @@ describe("CouponListTable", () => {
     getAdminDiscountsPage.mockResolvedValue({ items: [buildCoupon({ endsAt: undefined, minOrderTotalMinorUnits: undefined })] })
     renderWithProviders(<CouponListTable />)
 
-    expect(await cellUnder("SPRING20", "Min. order")).toHaveTextContent(EMPTY_VALUE)
+    expect(await cellUnder("SPRING20", "Min. basket value")).toHaveTextContent(EMPTY_VALUE)
     expect(await cellUnder("SPRING20", "Expires")).toHaveTextContent(EMPTY_VALUE)
   })
 
