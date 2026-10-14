@@ -1,10 +1,12 @@
 import { type JSX, useMemo } from "react"
 
 import { flexRender, useTable } from "@tanstack/react-table"
-import { cleanup, screen } from "@testing-library/react"
+import { cleanup, screen, within } from "@testing-library/react"
+import { userEvent } from "@testing-library/user-event"
 import { useTranslations } from "use-intl/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { markAsCut } from "~/src/platform/testing/lib/cut-text"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { AUDIT_LOG_TABLE_COLUMN_ID, AUDIT_LOG_TABLE_COLUMN_SIZE } from "~/src/modules/audit-log/audit-log.constants"
@@ -35,6 +37,8 @@ const auditRow = (overrides: Partial<AuditRow> = {}): AuditRow => ({
 })
 
 const SELECTION_LABELS = { all: "Select all rows", row: "Select row" }
+
+const LONG_IPV6 = "2a0b:b01:4b0:7500:1234:5678:9abc:def0"
 
 const ColumnsProbe = ({ row }: Readonly<{ row: AuditRow }>): JSX.Element => {
   const t = useTranslations("pages.admin")
@@ -119,6 +123,13 @@ describe("buildAuditColumns layout", () => {
 
     expect(target?.minSize).toBe(AUDIT_LOG_TABLE_COLUMN_SIZE.targetMin)
     expect(target?.meta).toMatchObject({ fillsRemainingWidth: true })
+  })
+
+  it("keeps the severity and category columns wide enough for their badges", () => {
+    const byId = renderDefinitions()
+
+    expect(byId.get(AUDIT_LOG_TABLE_COLUMN_ID.severity)?.minSize).toBe(AUDIT_LOG_TABLE_COLUMN_SIZE.severity)
+    expect(byId.get(AUDIT_LOG_TABLE_COLUMN_ID.category)?.minSize).toBe(AUDIT_LOG_TABLE_COLUMN_SIZE.category)
   })
 
   it("lets the timestamp grow between its own bounds", () => {
@@ -266,6 +277,18 @@ describe("buildAuditColumns cells", () => {
     renderColumns({ ip: undefined })
 
     expect(cell(AUDIT_LOG_TABLE_COLUMN_ID.ip)).toHaveTextContent("—")
+    expect(within(cell(AUDIT_LOG_TABLE_COLUMN_ID.ip)).getByText("—")).not.toHaveAttribute("data-slot", "tooltip-trigger")
+  })
+
+  it("cuts a long IPv6 address short inside its column and shows it in full on hover", async () => {
+    renderColumns({ ip: LONG_IPV6 })
+    const address = within(cell(AUDIT_LOG_TABLE_COLUMN_ID.ip)).getByText(LONG_IPV6)
+
+    expect(address).toHaveClass("truncate", "min-w-0", "font-mono")
+
+    await userEvent.hover(markAsCut(address))
+
+    expect(await screen.findByText(LONG_IPV6, { selector: "[data-slot='tooltip-content']" })).toBeInTheDocument()
   })
 
   it("shows the timestamp exactly as the log recorded it", () => {

@@ -21,6 +21,7 @@ import { AuditDetailCell } from "~/src/presentation/components/custom/pages/admi
 import { AuditTableCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-table-cell"
 import { AuditTargetCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-target-cell"
 import { AuditRowActions } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-row-actions"
+import { CatalogTruncatedTextCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 
 const resolveAuditActionLabel = (t: BuildAuditColumnsOptions["t"], action: string): string => {
   const messageKey = toAuditActionMessageKey(action)
@@ -48,6 +49,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       meta: {
         skeletonVariant: "badge",
       },
+      minSize: AUDIT_LOG_TABLE_COLUMN_SIZE.severity,
       size: AUDIT_LOG_TABLE_COLUMN_SIZE.severity,
     }),
     columnHelper.accessor("action", {
@@ -96,6 +98,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       meta: {
         skeletonVariant: "badge",
       },
+      minSize: AUDIT_LOG_TABLE_COLUMN_SIZE.category,
       size: AUDIT_LOG_TABLE_COLUMN_SIZE.category,
     }),
     columnHelper.display({
@@ -114,11 +117,19 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       size: AUDIT_LOG_TABLE_COLUMN_SIZE.actor,
     }),
     columnHelper.accessor("ip", {
-      cell: ({ getValue }) => (
-        <AuditTableCell>
-          <span className="font-mono text-[10px] text-muted-foreground/40">{getValue() ?? EMPTY_VALUE}</span>
-        </AuditTableCell>
-      ),
+      cell: ({ getValue }) => {
+        const ip = getValue()
+
+        return (
+          <AuditTableCell>
+            {ip === undefined ? (
+              <span className={IP_TEXT_CLASS}>{EMPTY_VALUE}</span>
+            ) : (
+              <CatalogTruncatedTextCell className={IP_TEXT_CLASS} text={ip} />
+            )}
+          </AuditTableCell>
+        )
+      },
       header: t("audit.columns.ip"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.ip,
       meta: {
@@ -158,6 +169,8 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
   ])
 
 const columnHelper = createColumnHelper<DataGridFeatures, AuditLog["adminListItem"]>()
+
+const IP_TEXT_CLASS = "font-mono text-[10px] text-muted-foreground/40"
 
 interface BuildAuditColumnsOptions {
   readonly selectionLabels: {
