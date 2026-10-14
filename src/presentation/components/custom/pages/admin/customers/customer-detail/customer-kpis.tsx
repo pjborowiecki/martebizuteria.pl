@@ -8,6 +8,8 @@ import { formatAdminCustomerDetailKpiPrice } from "~/src/modules/user/user.utils
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
+import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
+
 export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
   const locale = useLocale()
@@ -49,7 +51,7 @@ export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
               </div>
               <p className="text-[13px] text-muted-foreground">{kpi.label}</p>
             </div>
-            <p className="mt-3 text-2xl font-semibold tracking-tight">{kpi.value}</p>
+            <AdminStatValue className="mt-3 text-2xl" value={kpi.value} />
           </CardContent>
         </Card>
       ))}

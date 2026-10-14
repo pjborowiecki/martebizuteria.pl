@@ -10,7 +10,7 @@ export const ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS = "border-foreground/35 ring-0 
 
 export const ADMIN_STAT_LABEL_CLASS = "text-[13px] leading-5 text-muted-foreground"
 
-export const ADMIN_STAT_VALUE_CLASS = "text-3xl leading-9 font-semibold tracking-tight tabular-nums"
+export const ADMIN_STAT_VALUE_CLASS = "min-w-0 truncate text-3xl leading-9 font-semibold tracking-tight tabular-nums"
 
 export const ADMIN_STAT_VALUE_SLOT_CLASS = "flex min-h-9 items-center"
 

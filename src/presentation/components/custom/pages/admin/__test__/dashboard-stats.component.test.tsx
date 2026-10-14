@@ -1,6 +1,8 @@
 import { cleanup, screen } from "@testing-library/react"
+import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { markAsCut } from "~/src/platform/testing/lib/cut-text"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
@@ -59,6 +61,18 @@ describe("DashboardStats", () => {
     renderWithProviders(<DashboardStats />)
 
     expect(screen.getByText("PLN 12,345.00")).toBeInTheDocument()
+  })
+
+  it("ends a revenue too wide for its card in an ellipsis and shows it in full on hover", async () => {
+    snapshot.revenue = { current: 123_456_789, previous: 1_000_000, trendPercent: 23.5 }
+    renderWithProviders(<DashboardStats />)
+    const revenue = screen.getByText("PLN 1,234,567.89")
+
+    expect(revenue).toHaveClass("min-w-0", "truncate", "text-3xl")
+
+    await userEvent.hover(markAsCut(revenue))
+
+    expect(await screen.findByText("PLN 1,234,567.89", { selector: "[data-slot='tooltip-content']" })).toBeInTheDocument()
   })
 
   it("formats the non-money figures as plain grouped numbers", () => {

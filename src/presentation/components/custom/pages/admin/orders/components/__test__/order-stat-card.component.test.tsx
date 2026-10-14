@@ -34,6 +34,8 @@ const stats: Order["adminStats"] = {
   totalOrders: 42,
 }
 
+const LARGE_REVENUE = "1 234 567,89 zł"
+
 afterEach(() => {
   cleanup()
 })
@@ -58,6 +60,14 @@ describe("OrderStatCard", () => {
     )
 
     expect(screen.getByText("3 awaiting payment")).toBeInTheDocument()
+  })
+
+  it("cuts a large revenue short beside its icon instead of running under it", () => {
+    renderWithProviders(
+      <OrderStatCard config={cardConfig("revenueMinorUnits")} currencyCode="PLN" displayValue={LARGE_REVENUE} valuesPending={false} />,
+    )
+
+    expect(screen.getByText(LARGE_REVENUE)).toHaveClass("min-w-0", "truncate")
   })
 
   it("hides the value while the stats are still loading", () => {

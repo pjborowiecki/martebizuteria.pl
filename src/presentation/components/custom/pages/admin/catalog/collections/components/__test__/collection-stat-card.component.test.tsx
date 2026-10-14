@@ -109,6 +109,12 @@ describe("CollectionStatCard", () => {
     expect(screen.getByText("50% of total")).toBeInTheDocument()
   })
 
+  it("cuts a long count short beside its icon instead of running under it", () => {
+    renderWithProviders(<CollectionStatCard config={ACTIVE_CARD} displayValue="1,234,567,890" valuesPending={false} />)
+
+    expect(screen.getByText("1,234,567,890")).toHaveClass("min-w-0", "truncate")
+  })
+
   it("hides the value while the numbers are being refetched", () => {
     renderWithProviders(<CollectionStatCard config={ACTIVE_CARD} displayValue="24" onFilter={filterSpy()} valuesPending />)
 

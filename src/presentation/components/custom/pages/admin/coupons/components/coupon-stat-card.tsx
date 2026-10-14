@@ -11,9 +11,9 @@ import {
   ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
   ADMIN_STAT_LABEL_CLASS,
-  ADMIN_STAT_VALUE_CLASS,
   ADMIN_STAT_VALUE_SLOT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
 import { type CouponStatCardConfig } from "~/src/presentation/components/custom/pages/admin/coupons/coupons-stats.config"
 
 export const CouponStatCard = ({ config, displayValue, onFilter, pressed, valuesPending }: Readonly<CouponStatCardProps>): JSX.Element => {
@@ -33,7 +33,7 @@ export const CouponStatCard = ({ config, displayValue, onFilter, pressed, values
       <div className="min-w-0 flex-1 space-y-2">
         <p className={ADMIN_STAT_LABEL_CLASS}>{t(labelKey)}</p>
         <div className={ADMIN_STAT_VALUE_SLOT_CLASS}>
-          {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={ADMIN_STAT_VALUE_CLASS}>{displayValue}</p>}
+          {valuesPending ? <Skeleton className="h-8 w-20" /> : <AdminStatValue value={displayValue} />}
         </div>
       </div>
       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary shadow-none">

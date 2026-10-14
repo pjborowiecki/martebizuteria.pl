@@ -24,4 +24,10 @@ describe("NewsletterStats", () => {
     expect(screen.getByText("Awaiting confirmation").nextSibling).toHaveTextContent("3")
     expect(screen.getByText("Unsubscribed").nextSibling).toHaveTextContent("5")
   })
+
+  it("cuts a long count short beside its icon instead of running under it", async () => {
+    renderWithProviders(<NewsletterStats />)
+
+    expect(await screen.findByText("12")).toHaveClass("min-w-0", "truncate")
+  })
 })

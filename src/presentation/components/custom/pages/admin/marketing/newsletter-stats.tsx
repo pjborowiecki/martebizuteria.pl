@@ -12,9 +12,9 @@ import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import {
   ADMIN_CARD_CLASS,
   ADMIN_STAT_LABEL_CLASS,
-  ADMIN_STAT_VALUE_CLASS,
   ADMIN_STAT_VALUE_SLOT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
 
 export const NewsletterStats = (): JSX.Element => {
   const t = useTranslations("pages.admin.marketing.stats")
@@ -28,7 +28,7 @@ export const NewsletterStats = (): JSX.Element => {
             <div className="min-w-0 flex-1 space-y-2">
               <p className={ADMIN_STAT_LABEL_CLASS}>{t(key)}</p>
               <div className={ADMIN_STAT_VALUE_SLOT_CLASS}>
-                <p className={ADMIN_STAT_VALUE_CLASS}>{stats[key]}</p>
+                <AdminStatValue value={stats[key]} />
               </div>
             </div>
             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary shadow-none">
