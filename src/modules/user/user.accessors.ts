@@ -14,16 +14,15 @@ import { collectionOnProduct } from "~/src/modules/collection-on-product/collect
 import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
 import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
+import { netSalesAverage, netSalesSum, orderCountsAsSale } from "~/src/modules/order/order.accessors"
 import { order } from "~/src/modules/order/order.schema"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
 import { session } from "~/src/modules/session/session.schema"
 import {
-  ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS,
   ADMIN_CUSTOMER_DETAIL_ORDERS_LIMIT,
   ADMIN_CUSTOMER_MIN_REPEAT_ORDERS,
-  ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES,
   ADMIN_CUSTOMER_STAT_FILTER,
   type AdminCustomerStatFilter,
 } from "~/src/modules/user/user.constants"
@@ -37,26 +36,21 @@ const returningCustomerIdsSubquery = () =>
       userId: order.userId,
     })
     .from(order)
-    .where(and(sql`${order.userId} is not null`, inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
+    .where(and(sql`${order.userId} is not null`, orderCountsAsSale))
     .groupBy(order.userId)
     .having(sql`count(*) >= ${ADMIN_CUSTOMER_MIN_REPEAT_ORDERS}`)
 
 const customerOrderRollupSubquery = () =>
   db
     .select({
-      averageOrderValue:
-        sql<number>`case when count(*) > 0 then cast(round(coalesce(sum(case when ${order.status} = ${ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS} then ${order.total} else 0 end), 0) * 1.0 / count(*)) as integer) else 0 end`.as(
-          "average_order_value",
-        ),
+      averageOrderValue: netSalesAverage.as("average_order_value"),
       lastOrderAt: max(order.createdAt).as("last_order_at"),
-      totalSpent:
-        sql<number>`coalesce(sum(case when ${order.status} = ${ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS} then ${order.total} else 0 end), 0)`.as(
-          "total_spent",
-        ),
+      totalSpent: netSalesSum.as("total_spent"),
       userId: order.userId,
     })
     .from(order)
-    .where(and(sql`${order.userId} is not null`, inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
+    .leftJoin(payment, eq(order.paymentId, payment.id))
+    .where(and(sql`${order.userId} is not null`, orderCountsAsSale))
     .groupBy(order.userId)
     .as("customer_order_rollup")
 
@@ -143,7 +137,7 @@ const buildAdminCustomersQueryParts = (
 }
 
 export const getCustomerOrderStatsQuery = (userIds?: readonly string[]) => {
-  const conditions = [sql`${order.userId} is not null`, inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])]
+  const conditions = [sql`${order.userId} is not null`, orderCountsAsSale]
   if (userIds !== undefined && userIds.length > 0) {
     conditions.push(inJsonList(order.userId, userIds))
   }
@@ -152,10 +146,11 @@ export const getCustomerOrderStatsQuery = (userIds?: readonly string[]) => {
     .select({
       lastOrderAt: max(order.createdAt),
       orderCount: count(),
-      totalSpent: sql<number>`coalesce(sum(case when ${order.status} = ${ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS} then ${order.total} else 0 end), 0)`,
+      totalSpent: netSalesSum,
       userId: order.userId,
     })
     .from(order)
+    .leftJoin(payment, eq(order.paymentId, payment.id))
     .where(and(...conditions))
     .groupBy(order.userId)
 }
@@ -349,7 +344,7 @@ const orderQuantityTotalsSubquery = db
   })
   .from(order)
   .innerJoin(orderItem, eq(orderItem.orderId, order.id))
-  .where(and(sql`${order.userId} is not null`, inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
+  .where(and(sql`${order.userId} is not null`, orderCountsAsSale))
   .groupBy(order.id)
   .as("order_quantity_totals")
 
@@ -362,22 +357,20 @@ export const getAverageProductsPerOrderQuery = () =>
 
 const customerOrderRollupStatsSubquery = db
   .select({
-    completedRevenue:
-      sql<number>`coalesce(sum(case when ${order.status} = ${ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS} then ${order.total} else 0 end), 0)`.as(
-        "completed_revenue",
-      ),
     orderCount: sql<number>`count(*)`.as("order_count"),
+    totalSpent: netSalesSum.as("total_spent"),
     userId: order.userId,
   })
   .from(order)
-  .where(and(sql`${order.userId} is not null`, inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
+  .leftJoin(payment, eq(order.paymentId, payment.id))
+  .where(and(sql`${order.userId} is not null`, orderCountsAsSale))
   .groupBy(order.userId)
   .as("customer_order_rollup")
 
 export const getAdminCustomerOrderRollupStatsQuery = () =>
   db
     .select({
-      averageLtv: sql<number>`coalesce(avg(customer_order_rollup.completed_revenue), 0)`,
+      averageLtv: sql<number>`coalesce(avg(customer_order_rollup.total_spent), 0)`,
       customersWithOrders: sql<number>`count(*)`,
       repeatCustomers: sql<number>`sum(case when customer_order_rollup.order_count >= ${ADMIN_CUSTOMER_MIN_REPEAT_ORDERS} then 1 else 0 end)`,
     })
@@ -408,11 +401,12 @@ export const getLatestSessionActivityQuery = (userId: string) =>
 export const getCustomerMonthlySpendingQuery = (userId: string, since: Date) =>
   db
     .select({
-      amount: sql<number>`coalesce(sum(${order.total}), 0)`,
+      amount: netSalesSum,
       monthKey: isoMonthKey(order.createdAt),
     })
     .from(order)
-    .where(and(eq(order.userId, userId), eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS), gte(order.createdAt, since)))
+    .leftJoin(payment, eq(order.paymentId, payment.id))
+    .where(and(eq(order.userId, userId), orderCountsAsSale, gte(order.createdAt, since)))
     .groupBy(isoMonthKey(order.createdAt))
     .orderBy(isoMonthKey(order.createdAt))
 
@@ -426,7 +420,7 @@ export const getCustomerCategoryBreakdownQuery = (userId: string) =>
     .innerJoin(order, eq(orderItem.orderId, order.id))
     .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
     .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
-    .where(and(eq(order.userId, userId), eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS), isNotNull(productCategory.id)))
+    .where(and(eq(order.userId, userId), orderCountsAsSale, isNotNull(productCategory.id)))
     .groupBy(productCategory.id)
     .orderBy(sql`coalesce(sum(${orderItem.total}), 0) desc`)
     .limit(TOP_CATEGORY_LIMIT)
@@ -441,7 +435,7 @@ export const getCustomerPreferredCategoryQuery = (userId: string) =>
     .innerJoin(order, eq(orderItem.orderId, order.id))
     .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
     .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
-    .where(and(eq(order.userId, userId), eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS), isNotNull(productCategory.id)))
+    .where(and(eq(order.userId, userId), orderCountsAsSale, isNotNull(productCategory.id)))
     .groupBy(productCategory.id)
     .orderBy(sql`coalesce(sum(${orderItem.total}), 0) desc`)
     .limit(1)
@@ -456,7 +450,7 @@ export const getCustomerPreferredCollectionQuery = (userId: string) =>
     .innerJoin(order, eq(orderItem.orderId, order.id))
     .innerJoin(collectionOnProduct, eq(collectionOnProduct.productId, orderItem.productId))
     .innerJoin(productCollection, eq(productCollection.id, collectionOnProduct.collectionId))
-    .where(and(eq(order.userId, userId), eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS)))
+    .where(and(eq(order.userId, userId), orderCountsAsSale))
     .groupBy(productCollection.id)
     .orderBy(sql`coalesce(sum(${orderItem.total}), 0) desc`)
     .limit(1)
@@ -474,7 +468,7 @@ export const getAdminCustomerOrderRowsQuery = (userId: string) =>
     })
     .from(order)
     .leftJoin(payment, eq(order.paymentId, payment.id))
-    .where(and(eq(order.userId, userId), inArray(order.status, [...ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES])))
+    .where(and(eq(order.userId, userId), orderCountsAsSale))
     .orderBy(desc(order.createdAt))
     .limit(ADMIN_CUSTOMER_DETAIL_ORDERS_LIMIT)
 

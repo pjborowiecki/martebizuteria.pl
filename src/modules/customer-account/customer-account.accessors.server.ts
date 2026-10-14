@@ -22,7 +22,9 @@ interface CustomerOrderRowsOptions {
 }
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
+import { netSalesSum, orderCountsAsSale } from "~/src/modules/order/order.accessors"
 import { order } from "~/src/modules/order/order.schema"
+import { payment } from "~/src/modules/payment/payment.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 import { product } from "~/src/modules/product/product.schema"
 
@@ -92,16 +94,15 @@ export const countCustomerOrders = async (userId: string, filter: CustomerAccoun
   return row?.total ?? NO_OFFSET
 }
 
-const CUSTOMER_PAID_ORDER_STATUSES = ["processing", "completed"] as const
-
 export const getCustomerSpendStats = async (userId: string): Promise<{ orderCount: number; totalSpent: number }> => {
   const [row] = await db
     .select({
       orderCount: count(),
-      totalSpent: sql<number>`coalesce(sum(${order.total}), 0)`,
+      totalSpent: netSalesSum,
     })
     .from(order)
-    .where(and(eq(order.userId, userId), inArray(order.status, [...CUSTOMER_PAID_ORDER_STATUSES])))
+    .leftJoin(payment, eq(order.paymentId, payment.id))
+    .where(and(eq(order.userId, userId), orderCountsAsSale))
 
   return { orderCount: row?.orderCount ?? NO_OFFSET, totalSpent: row?.totalSpent ?? NO_OFFSET }
 }
@@ -113,7 +114,7 @@ export const getCustomerPurchasedCategoryIds = async (userId: string): Promise<s
     .innerJoin(order, eq(orderItem.orderId, order.id))
     .innerJoin(productVariant, eq(orderItem.variantId, productVariant.id))
     .innerJoin(categoryOnProduct, eq(categoryOnProduct.productId, productVariant.productId))
-    .where(and(eq(order.userId, userId), inArray(order.status, [...CUSTOMER_PAID_ORDER_STATUSES])))
+    .where(and(eq(order.userId, userId), orderCountsAsSale))
     .groupBy(categoryOnProduct.categoryId)
     .orderBy(desc(count()))
     .limit(CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT)

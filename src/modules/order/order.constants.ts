@@ -69,11 +69,7 @@ export const ADMIN_ORDER_STAT_FILTER = {
 
 export type AdminOrderStatFilter = (typeof ADMIN_ORDER_STAT_FILTER)[keyof typeof ADMIN_ORDER_STAT_FILTER]
 
-export const ADMIN_ORDER_COMPLETED_STATUS = "completed" as const
-
 export const ADMIN_ORDER_COUNTABLE_STATUSES = ["completed", "processing", "pending", "cancelled", "refunded"] as const
-
-export const ADMIN_ORDER_CUSTOMER_COUNTABLE_STATUSES = ["completed", "processing", "pending"] as const
 
 export const ADMIN_ORDER_TABLE_A11Y_KEYS = {
   selectAll: "a11y.selectAll",

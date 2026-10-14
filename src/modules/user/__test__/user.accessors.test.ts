@@ -62,6 +62,6 @@ describe("getAdminCustomersPage when the count comes back without a row", () => 
       rows: [],
       total: 0,
     })
-    expect(database.state.leftJoins).toBe(2)
+    expect(database.state.leftJoins).toBe(4)
   })
 })

@@ -10,9 +10,7 @@ import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-co
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import {
-  ADMIN_ORDER_COMPLETED_STATUS,
   ADMIN_ORDER_COUNTABLE_STATUSES,
-  ADMIN_ORDER_CUSTOMER_COUNTABLE_STATUSES,
   ADMIN_ORDER_FULFILLMENT_UI_KEY,
   ADMIN_ORDER_PAYMENT_UI_KEY,
   ADMIN_ORDER_STAT_FILTER,
@@ -347,10 +345,11 @@ export const getAdminOrderCustomerStats = async (userId: string): Promise<AdminO
   const [row] = await db
     .select({
       orderCount: count(),
-      totalSpent: sql<number>`coalesce(sum(case when ${order.status} = ${ADMIN_ORDER_COMPLETED_STATUS} then ${order.total} else ${0} end), ${0})`,
+      totalSpent: netSalesSum,
     })
     .from(order)
-    .where(and(eq(order.userId, userId), inArray(order.status, [...ADMIN_ORDER_CUSTOMER_COUNTABLE_STATUSES])))
+    .leftJoin(payment, eq(order.paymentId, payment.id))
+    .where(and(eq(order.userId, userId), orderCountsAsSale))
 
   return {
     orderCount: row?.orderCount ?? 0,

@@ -9,7 +9,7 @@ import { type User } from "~/src/modules/user/user.types"
 
 import { CustomerCharts } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-charts"
 
-const SPENDING_EMPTY = "No completed orders in the last 12 months."
+const SPENDING_EMPTY = "No paid orders in the last 12 months."
 
 const CATEGORY_EMPTY = "No category spending data yet."
 

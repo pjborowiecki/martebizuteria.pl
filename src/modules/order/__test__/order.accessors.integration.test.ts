@@ -407,8 +407,17 @@ describe("single order lookups", () => {
     expect(await getOrderByInpostShipmentId("50")).toBeUndefined()
   })
 
-  it("counts a customer's live orders but only banks revenue from completed ones", async () => {
-    expect(await getAdminOrderCustomerStats("u-anna")).toStrictEqual({ orderCount: 2, totalSpent: 0 })
+  it("counts what a customer paid for their processing and completed orders, sent or not, and leaves out the unpaid pending one", async () => {
+    expect(await getAdminOrderCustomerStats("u-anna")).toStrictEqual({ orderCount: 1, totalSpent: 20_000 })
+  })
+
+  it("takes a partial refund off what the customer spent and leaves out a refunded order", async () => {
+    sqlite.exec(`
+      update payment set refunded_amount = 5000 where id = 'pay-paid';
+      update "order" set user_id = 'u-anna', status = 'refunded' where id = 'o-delivered';
+    `)
+
+    expect(await getAdminOrderCustomerStats("u-anna")).toStrictEqual({ orderCount: 1, totalSpent: 15_000 })
   })
 
   it("reports an empty history for a customer with no orders", async () => {
