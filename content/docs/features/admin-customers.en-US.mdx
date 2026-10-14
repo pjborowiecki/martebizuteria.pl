@@ -111,7 +111,7 @@ return computeAdminCustomerStatsFromAggregates({
 | `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                           |
 | `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                              |
 
-Order rows are formatted with the **same** helpers the orders grid uses — `formatAdminOrderDate`, `resolveAdminOrderPaymentUiKey`, `resolveAdminOrderFulfillmentUiKey` — so the badges on a customer's orders match the badges in `/admin/orders`.
+Order rows are formatted with the **same** helpers the orders grid uses — `formatAdminOrderDate`, `resolveAdminOrderPaymentUiKey`, `resolveAdminOrderFulfillmentUiKey` — so the badges on a customer's orders match the badges in `/admin/orders`, and the date is written in the admin's language as it is there. Each row, and the timeline's "Placed order" entry, names the order by its `orderNumber` (`MRT-2026-00001`); the row still opens the order by its id.
 
 Tags are derived, not stored:
 

@@ -90,6 +90,7 @@ interface StubOrderRow {
   readonly currencyCode: string
   readonly fulfillmentStatus: "cancelled" | "delivered" | "fulfilled" | "shipped" | "unfulfilled"
   readonly id: string
+  readonly orderNumber: string
   readonly paymentStatus: string | null
   readonly status: "cancelled" | "completed" | "paid" | "pending" | "refunded"
   readonly total: number
@@ -100,6 +101,7 @@ const orderRow = (overrides: Partial<StubOrderRow> = {}): StubOrderRow => ({
   currencyCode: "PLN",
   fulfillmentStatus: "shipped",
   id: "order-1",
+  orderNumber: "MRT-2026-00001",
   paymentStatus: "succeeded",
   status: "completed",
   total: 24_000,
@@ -251,12 +253,20 @@ describe("getAdminCustomer orders", () => {
     expect(result?.orders[0]?.total).toBe("PLN 240.00")
   })
 
-  it("dates each order with the store locale the admin table shares", async () => {
+  it("dates each order in the requested locale, as the orders list does", async () => {
     access.adminOrderRows.mockResolvedValue([orderRow()])
 
     const result = await detail()
 
-    expect(result?.orders[0]?.date).toBe(ORDER_AT.toLocaleDateString(I18N.DEFAULT_LOCALE, DATE_PARTS))
+    expect(result?.orders[0]?.date).toBe(ORDER_AT.toLocaleDateString("en-US", DATE_PARTS))
+  })
+
+  it("names each order by its order number and keeps its id for the link", async () => {
+    access.adminOrderRows.mockResolvedValue([orderRow()])
+
+    const result = await detail()
+
+    expect(result?.orders[0]).toMatchObject({ id: "order-1", orderNumber: "MRT-2026-00001" })
   })
 
   it("maps the payment and fulfillment keys the admin table renders", async () => {
@@ -531,7 +541,7 @@ describe("getAdminCustomer timeline", () => {
     expect(result?.timeline[0]).toStrictEqual({
       date: ORDER_AT.toLocaleDateString("en-US", DATE_PARTS),
       kind: "order_placed",
-      orderId: "order-1",
+      orderNumber: "MRT-2026-00001",
       total: "PLN 240.00",
     })
   })

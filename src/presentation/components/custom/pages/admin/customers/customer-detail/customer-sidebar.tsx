@@ -31,7 +31,7 @@ const resolveTimelineDescription = (
 ): string => {
   if (event.kind === "order_placed") {
     return t("timeline.orderPlaced", {
-      id: event.orderId,
+      id: event.orderNumber,
       total: event.total,
     })
   }
@@ -68,7 +68,7 @@ const resolveTimelineDescription = (
 
 const resolveTimelineEventKey = (event: User["adminCustomerDetail"]["timeline"][number]): string => {
   if (event.kind === "order_placed") {
-    return `${event.date}-${event.kind}-${event.orderId}`
+    return `${event.date}-${event.kind}-${event.orderNumber}`
   }
 
   if (event.kind === "cart_item_added") {

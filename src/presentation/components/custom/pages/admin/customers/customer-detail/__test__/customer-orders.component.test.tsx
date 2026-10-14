@@ -1,8 +1,6 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react"
-import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { markAsCut } from "~/src/platform/testing/lib/cut-text"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
@@ -22,6 +20,7 @@ const order = (overrides: Partial<User["adminCustomerDetail"]["orders"][number]>
   fulfillment: "shipped",
   id: "ord_1",
   itemTitles: ["Linen shirt", "Wool cap"],
+  orderNumber: "MRT-2026-00001",
   payment: "paid",
   total: "199,00 zl",
   totalMinor: 19_900,
@@ -62,8 +61,6 @@ const detail = (orders: User["adminCustomerDetail"]["orders"]): User["adminCusto
   updatedAt: new Date(2024, 0, 1),
 })
 
-const LONG_ORDER_ID = "3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b"
-
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
@@ -95,25 +92,14 @@ describe("CustomerOrders", () => {
     expect(screen.getByText("Payment")).toBeInTheDocument()
   })
 
-  it("lists the order id, date, items and total", () => {
+  it("lists the order number, date, items and total", () => {
     renderWithProviders(<CustomerOrders customer={detail([order()])} />)
 
-    expect(screen.getByText("ord_1")).toBeInTheDocument()
+    expect(screen.getByText("MRT-2026-00001")).toBeInTheDocument()
+    expect(screen.queryByText("ord_1")).not.toBeInTheDocument()
     expect(screen.getByText("2 Jan 2026")).toBeInTheDocument()
     expect(screen.getByText("Linen shirt, Wool cap")).toBeInTheDocument()
     expect(screen.getByText("199,00 zl")).toBeInTheDocument()
-  })
-
-  it("cuts a long order id short and shows it in full on hover", async () => {
-    renderWithProviders(<CustomerOrders customer={detail([order({ id: LONG_ORDER_ID })])} />)
-    const id = screen.getByText(LONG_ORDER_ID)
-
-    expect(id).toHaveClass("truncate", "min-w-0")
-    expect(id.closest("td")).toHaveClass("max-w-30")
-
-    await userEvent.hover(markAsCut(id))
-
-    expect(await screen.findByText(LONG_ORDER_ID, { selector: "[data-slot='tooltip-content']" })).toBeInTheDocument()
   })
 
   it("falls back to a placeholder for an order whose lines are unknown", () => {
@@ -162,18 +148,20 @@ describe("CustomerOrders", () => {
   })
 
   it("renders one row per order", () => {
-    renderWithProviders(<CustomerOrders customer={detail([order(), order({ id: "ord_2" })])} />)
+    renderWithProviders(<CustomerOrders customer={detail([order(), order({ id: "ord_2", orderNumber: "MRT-2026-00002" })])} />)
 
-    expect(screen.getByText("ord_1")).toBeInTheDocument()
-    expect(screen.getByText("ord_2")).toBeInTheDocument()
+    expect(screen.getByText("MRT-2026-00001")).toBeInTheDocument()
+    expect(screen.getByText("MRT-2026-00002")).toBeInTheDocument()
   })
 })
 
 it("opens the exact order selected from the customer's history", () => {
-  const { router } = renderWithProviders(<CustomerOrders customer={detail([order(), order({ id: "ord_2" })])} />)
+  const { router } = renderWithProviders(
+    <CustomerOrders customer={detail([order(), order({ id: "ord_2", orderNumber: "MRT-2026-00002" })])} />,
+  )
   const navigate = vi.spyOn(router, "navigate").mockResolvedValue()
 
-  fireEvent.click(screen.getByText("ord_2"))
+  fireEvent.click(screen.getByText("MRT-2026-00002"))
 
   expect(navigate).toHaveBeenCalledExactlyOnceWith({ to: "/admin/orders/ord_2" })
 })

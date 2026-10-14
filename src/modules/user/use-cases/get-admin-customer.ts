@@ -150,10 +150,11 @@ const mapAdminCustomerDetailOrders = (
 ): User["adminCustomerDetail"]["orders"] =>
   orderRows.map((row) => ({
     currencyCode: row.currencyCode,
-    date: formatAdminOrderDate(row.createdAt),
+    date: formatAdminOrderDate(row.createdAt, locale),
     fulfillment: resolveAdminOrderFulfillmentUiKey(row.status, row.fulfillmentStatus),
     id: row.id,
     itemTitles: titlesByOrderId.get(row.id) ?? [],
+    orderNumber: row.orderNumber,
     payment: resolveAdminOrderPaymentUiKey(row.paymentStatus),
     total: formatPrice(row.total, row.currencyCode, locale),
     totalMinor: row.total,
@@ -227,12 +228,7 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
       })),
       createdAt: userRow.createdAt,
       locale,
-      orders: queryResult.orderRows.map((row) => ({
-        createdAt: row.createdAt,
-        currencyCode: row.currencyCode,
-        id: row.id,
-        total: row.total,
-      })),
+      orders: queryResult.orderRows,
     }),
     totalSpent,
   }

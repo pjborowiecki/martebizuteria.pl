@@ -24,7 +24,7 @@ type AdminCustomerFullAddressRow = Pick<
   "address1" | "address2" | "city" | "countryCode" | "postalCode" | "province"
 >
 
-type AdminCustomerTimelineOrder = Pick<typeof order.$inferSelect, "createdAt" | "currencyCode" | "id" | "total">
+type AdminCustomerTimelineOrder = Pick<typeof order.$inferSelect, "createdAt" | "currencyCode" | "orderNumber" | "total">
 
 type AdminCustomerAuditTimelineRow = Pick<typeof auditLog.$inferSelect, "action" | "createdAt" | "detail" | "metadata">
 

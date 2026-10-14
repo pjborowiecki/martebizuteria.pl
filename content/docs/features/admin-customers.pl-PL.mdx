@@ -111,7 +111,7 @@ return computeAdminCustomerStatsFromAggregates({
 | `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                                       |
 | `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                                          |
 
-Wiersze zamówień są formatowane **tymi samymi** pomocnikami, których używa siatka zamówień — `formatAdminOrderDate`, `resolveAdminOrderPaymentUiKey`, `resolveAdminOrderFulfillmentUiKey` — więc plakietki przy zamówieniach klienta zgadzają się z tymi w `/admin/orders`.
+Wiersze zamówień są formatowane **tymi samymi** pomocnikami, których używa siatka zamówień — `formatAdminOrderDate`, `resolveAdminOrderPaymentUiKey`, `resolveAdminOrderFulfillmentUiKey` — więc plakietki przy zamówieniach klienta zgadzają się z tymi w `/admin/orders`, a data jest zapisana w języku administratora, tak jak tam. Każdy wiersz i wpis „Złożono zamówienie” na osi czasu nazywają zamówienie jego numerem `orderNumber` (`MRT-2026-00001`); wiersz nadal otwiera zamówienie po jego identyfikatorze.
 
 Tagi są wyprowadzane, a nie przechowywane:
 

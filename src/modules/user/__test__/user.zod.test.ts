@@ -208,7 +208,7 @@ describe("adminCustomerDetailTimelineEvent", () => {
   it("accepts every event kind the detail page renders", () => {
     const events = [
       { date: "1 Jan 2026", kind: "account_created" },
-      { date: "2 Jan 2026", kind: "order_placed", orderId: "ord_1", total: "199,00 zl" },
+      { date: "2 Jan 2026", kind: "order_placed", orderNumber: "MRT-2026-00001", total: "199,00 zl" },
       { date: "3 Jan 2026", kind: "signed_in" },
       { date: "3 Jan 2026", kind: "signed_out" },
       { date: "4 Jan 2026", kind: "cart_item_added", productTitle: "Linen shirt", quantity: 2 },
