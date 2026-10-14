@@ -26,7 +26,7 @@
     "spending": {
       "title": "Spending Activity",
       "subtitle": "Monthly spending over the last 12 months",
-      "empty": "No completed orders in the last 12 months."
+      "empty": "No paid orders in the last 12 months."
     },
     "categoryBreakdown": {
       "title": "Category Breakdown",

@@ -84,7 +84,7 @@ Każdy use case w `src/modules/customer-account/use-cases/` używa `authorized()
 | `getOrderItemsForOrders(recentOrderIds)`         | pozycje pokazywane przy każdym ostatnim zamówieniu |
 | `buildCustomerRecommendations(userId, locale)`   | `recommendations`, `recommendationsSource`         |
 
-`getCustomerSpendStats` liczy i sumuje wyłącznie zamówienia o statusie `processing` lub `completed`. Limity leżą w `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_ORDERS_LIMIT = 50` dla numerów zamówień, `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`, `CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2`.
+`getCustomerSpendStats` liczy zamówienia, które przepuszcza `orderCountsAsSale`, czyli te o statusie `processing` lub `completed`, i sumuje `netSalesSum`, czyli kwotę każdego z nich pomniejszoną o to, co zwrócono z jego płatności, więc klient widzi te same łączne wydatki co administrator (zobacz [Klienci w panelu](/docs/features/admin-customers)). Limity leżą w `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_ORDERS_LIMIT = 50` dla numerów zamówień, `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`, `CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2`.
 
 Dwie rzeczy warto wiedzieć:
 

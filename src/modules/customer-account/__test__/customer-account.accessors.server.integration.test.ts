@@ -84,9 +84,11 @@ beforeEach(() => {
     drop table if exists product;
     drop table if exists category_on_product;
     drop table if exists audit_log;
+    drop table if exists payment;
 
+    create table payment (id text primary key, refunded_amount integer not null default 0, status text);
     create table "order" (
-      id text primary key, user_id text, status text not null, fulfillment_status text not null, order_number text not null,
+      id text primary key, payment_id text, user_id text, status text not null, fulfillment_status text not null, order_number text not null,
       total integer not null default 0, currency_code text not null default 'PLN', created_at integer not null, updated_at integer not null
     );
     create table order_item (
@@ -154,6 +156,15 @@ describe("getCustomerOrderRows filters", () => {
 describe("getCustomerSpendStats", () => {
   it("adds up only the orders that were paid for", async () => {
     await expect(getCustomerSpendStats(CUSTOMER)).resolves.toStrictEqual({ orderCount: 4, totalSpent: 67_000 })
+  })
+
+  it("takes a partial refund off the order it was paid back on, as the admin does", async () => {
+    sqlite.exec(`
+      insert into payment (id, refunded_amount, status) values ('pay-partly-refunded', 4000, 'succeeded');
+      update "order" set payment_id = 'pay-partly-refunded' where id = 'delivered';
+    `)
+
+    await expect(getCustomerSpendStats(CUSTOMER)).resolves.toStrictEqual({ orderCount: 4, totalSpent: 63_000 })
   })
 
   it("reports nothing spent for a customer without paid orders", async () => {

@@ -143,6 +143,7 @@ describe("getCustomerSpendStats", () => {
 
     await expect(getCustomerSpendStats("user-1")).resolves.toStrictEqual({ orderCount: 3, totalSpent: 45_000 })
     expect(database.state.tables).toStrictEqual(["order"])
+    expect(database.state.joins).toBe(1)
   })
 
   it("reports nothing spent when the aggregate comes back empty", async () => {

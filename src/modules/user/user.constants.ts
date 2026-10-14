@@ -30,10 +30,6 @@ export const ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS = {
   yes: "booleanYes",
 } as const
 
-export const ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS = "completed" as const
-
-export const ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES = ["completed", "processing", "pending"] as const
-
 export const ADMIN_CUSTOMER_TABLE_A11Y_KEYS = {
   selectAll: "a11y.selectAll",
   selectRow: "a11y.selectRow",

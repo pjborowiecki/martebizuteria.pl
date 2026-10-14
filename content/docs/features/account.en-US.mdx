@@ -84,7 +84,7 @@ Every use case in `src/modules/customer-account/use-cases/` uses `authorized()` 
 | `getOrderItemsForOrders(recentOrderIds)`         | The items shown under each recent order    |
 | `buildCustomerRecommendations(userId, locale)`   | `recommendations`, `recommendationsSource` |
 
-`getCustomerSpendStats` counts and sums only orders in `processing` or `completed` status. The limits are in `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_ORDERS_LIMIT = 50` for the order numbers, `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`, `CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2`.
+`getCustomerSpendStats` counts the orders `orderCountsAsSale` accepts, those in `processing` or `completed` status, and adds up `netSalesSum`, each one's total less what was refunded on its payment, so the customer sees the same total spent as the admin (see [Admin customers](/docs/features/admin-customers)). The limits are in `customer-account.constants.ts`: `CUSTOMER_ACCOUNT_ORDERS_LIMIT = 50` for the order numbers, `CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3`, `CUSTOMER_ACCOUNT_OVERVIEW_ACTIVITY_LIMIT = 5`, `CUSTOMER_ACCOUNT_RECOMMENDATIONS_LIMIT = 3`, `CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2`.
 
 Two things to know:
 

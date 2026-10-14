@@ -34,6 +34,8 @@ import { formatAdminCustomerLocation, mapCustomerLocations } from "~/src/modules
 
 const JANUARY = Date.UTC(2024, 0, 10)
 
+const MARCH = Date.UTC(2024, 2, 10)
+
 const JUNE = Date.UTC(2024, 5, 10)
 
 const page = { limit: 25, offset: 0 }
@@ -83,6 +85,7 @@ beforeEach(() => {
     drop table if exists order_item;
     drop table if exists order_address;
     drop table if exists address;
+    drop table if exists payment;
 
     create table user (
       id text primary key, name text not null, email text not null, email_verified integer not null default 0,
@@ -90,8 +93,9 @@ beforeEach(() => {
       image text, is_anonymous integer default 0, metadata text, stripe_customer_id text, timezone text,
       two_factor_enabled integer default 0, created_at integer not null, updated_at integer not null
     );
+    create table payment (id text primary key, refunded_amount integer not null default 0, status text);
     create table "order" (
-      id text primary key, user_id text, email text not null default '', order_number text not null default '',
+      id text primary key, payment_id text, user_id text, email text not null default '', order_number text not null default '',
       status text not null default 'pending', total integer not null default 0, currency_code text not null default 'PLN',
       created_at integer not null, updated_at integer not null
     );
@@ -127,6 +131,12 @@ beforeEach(() => {
       ('oa-4', 'ul. Świętojańska 5', 'Gdynia', 'PL', 'Jan', 'Nowak', 'o-4', null, 'shipping', ${JUNE}, ${JUNE}),
       ('oa-guest', 'ul. Szeroka 6', 'Toruń', 'PL', 'Gość', 'Sklepu', 'o-guest', null, 'shipping', ${JUNE}, ${JUNE});
 
+    insert into payment (id, refunded_amount, status) values ('pay-partly-refunded', 2000, 'succeeded'), ('pay-refunded', 30000, 'refunded');
+
+    insert into "order" (id, payment_id, user_id, status, total, created_at, updated_at) values
+      ('o-score-unsent', 'pay-partly-refunded', 'u_score', 'processing', 12000, ${MARCH}, ${MARCH}),
+      ('o-score-refunded', 'pay-refunded', 'u_score', 'refunded', 30000, ${MARCH}, ${MARCH});
+
     insert into address (id, city, country_code, province, user_id, is_default, created_at, updated_at) values
       ('a-1', 'Warszawa', 'PL', 'Mazowieckie', 'u-anna', 1, ${JANUARY}, ${JANUARY}),
       ('a-2', 'Kraków', 'PL', null, 'u-anna', 0, ${JANUARY}, ${JANUARY}),
@@ -146,6 +156,12 @@ describe("getCustomerOrderStatsQuery", () => {
 
     expect(anna).toMatchObject({ orderCount: 2, totalSpent: 30_000 })
     expect(jan).toMatchObject({ orderCount: 1, totalSpent: 5000 })
+  })
+
+  it("books a paid order that is still being fulfilled net of its partial refund and leaves out the refunded one", async () => {
+    const [score] = await getCustomerOrderStatsQuery(["u_score"])
+
+    expect(score).toMatchObject({ orderCount: 1, totalSpent: 10_000 })
   })
 
   it("excludes guest orders that carry no account", async () => {
@@ -287,7 +303,7 @@ describe("getAdminCustomersPage", () => {
   it("attaches the order rollup, default addresses and latest shipping addresses for the page", async () => {
     const result = await getAdminCustomersPage(page)
 
-    expect(result.orderStats.map((row) => row.userId ?? "").toSorted()).toStrictEqual(["u-anna", "u-jan"])
+    expect(result.orderStats.map((row) => row.userId ?? "").toSorted()).toStrictEqual(["u-anna", "u-jan", "u_score"])
     expect(result.defaultAddresses).toHaveLength(2)
     expect(result.latestShippingAddresses).toHaveLength(2)
   })
@@ -389,7 +405,7 @@ describe("getAdminCustomersPage", () => {
       filters: { totalSpent: { amountMinorUnits: 0, operator: NUMERIC_COLUMN_FILTER_OPERATOR.EQ } },
     })
 
-    expect(result.rows.map((row) => row.id).toSorted()).toStrictEqual(["u-admin", "u_score"])
+    expect(result.rows.map((row) => row.id)).toStrictEqual(["u-admin"])
   })
 
   it("filters on the average order value", async () => {
@@ -426,10 +442,30 @@ describe("getAdminCustomersPage", () => {
   })
 })
 
+describe("getAdminCustomersPage order rollup of a customer with a refund", () => {
+  it("filters on the average of what each paid order brought in after refunds", async () => {
+    const result = await getAdminCustomersPage({
+      ...page,
+      filters: { averageOrderValue: { amountMinorUnits: 10_000, operator: NUMERIC_COLUMN_FILTER_OPERATOR.EQ } },
+    })
+
+    expect(result.rows.map((row) => row.id)).toStrictEqual(["u_score"])
+  })
+
+  it("filters on what the paid orders brought in after refunds", async () => {
+    const result = await getAdminCustomersPage({
+      ...page,
+      filters: { totalSpent: { amountMinorUnits: 10_000, operator: NUMERIC_COLUMN_FILTER_OPERATOR.EQ } },
+    })
+
+    expect(result.rows.map((row) => row.id)).toStrictEqual(["u_score"])
+  })
+})
+
 describe("getAdminCustomersFilteredList", () => {
   it("exports all matches for an order-total filter and includes their addresses and orders", async () => {
     const result = await getAdminCustomersFilteredList({
-      filters: { totalSpent: { amountMinorUnits: 10_000, operator: NUMERIC_COLUMN_FILTER_OPERATOR.GTE } },
+      filters: { totalSpent: { amountMinorUnits: 20_000, operator: NUMERIC_COLUMN_FILTER_OPERATOR.GTE } },
     })
 
     expect(result.rows.map((row) => row.id)).toStrictEqual(["u-anna"])
@@ -449,7 +485,7 @@ describe("getAdminCustomersFilteredList", () => {
     const result = await getAdminCustomersFilteredList({})
 
     expect(result.rows).toHaveLength(4)
-    expect(result.orderStats).toHaveLength(2)
+    expect(result.orderStats).toHaveLength(3)
   })
 
   it("applies the same filters as the paged query", async () => {
@@ -559,7 +595,7 @@ describe("a full admin page of customers", () => {
 })
 
 describe("the admin customer stats queries", () => {
-  it("count every account and roll up only the countable orders of signed-in customers", async () => {
+  it("count every account and roll up only the sales of signed-in customers", async () => {
     sqlite.exec(`
       insert into order_item (id, order_id, quantity) values
         ('i-1', 'o-1', 2), ('i-2', 'o-1', 1), ('i-3', 'o-3', 1), ('i-4', 'o-4', 5), ('i-5', 'o-guest', 4);
@@ -572,7 +608,7 @@ describe("the admin customer stats queries", () => {
     ])
 
     expect(total).toStrictEqual({ count: 4 })
-    expect(rollup).toStrictEqual({ averageLtv: 17_500, customersWithOrders: 2, repeatCustomers: 1 })
+    expect(rollup).toStrictEqual({ averageLtv: 15_000, customersWithOrders: 3, repeatCustomers: 1 })
     expect(averageProductsPerOrder).toStrictEqual({ value: 2 })
   })
 })

@@ -56,7 +56,9 @@ const DDL = `
     id text primary key, expires_at integer not null, impersonated_by text, ip_address text, token text not null,
     user_agent text, user_id text not null, created_at integer not null, updated_at integer not null
   );
-  create table payment (id text primary key, status text, created_at integer not null, updated_at integer not null);
+  create table payment (
+    id text primary key, refunded_amount integer not null default 0, status text, created_at integer not null, updated_at integer not null
+  );
   create table "order" (
     id text primary key, currency_code text not null default 'PLN', email text not null,
     fulfillment_status text not null default 'not_fulfilled', payment_id text, status text not null default 'pending',
@@ -101,14 +103,16 @@ const seed = (): void => {
       ('s-old', ${MARCH}, 'tok-1', 'u-anna', ${JANUARY}, ${JANUARY}),
       ('s-new', ${MARCH}, 'tok-2', 'u-anna', ${FEBRUARY}, ${MARCH});
 
-    insert into payment (id, status, created_at, updated_at) values
-      ('pay-paid', 'succeeded', ${JANUARY}, ${JANUARY}),
-      ('pay-refunded', 'refunded', ${FEBRUARY}, ${FEBRUARY});
+    insert into payment (id, refunded_amount, status, created_at, updated_at) values
+      ('pay-paid', 0, 'succeeded', ${JANUARY}, ${JANUARY}),
+      ('pay-partly-refunded', 2000, 'succeeded', ${FEBRUARY}, ${FEBRUARY}),
+      ('pay-refunded', 8000, 'refunded', ${MARCH}, ${MARCH});
 
     insert into "order" (id, currency_code, email, fulfillment_status, payment_id, status, total, user_id, created_at, updated_at) values
       ('o-jan', 'PLN', 'anna@example.com', 'delivered', 'pay-paid', 'completed', 30000, 'u-anna', ${JANUARY}, ${JANUARY}),
-      ('o-feb', 'PLN', 'anna@example.com', 'shipped', 'pay-refunded', 'completed', 12000, 'u-anna', ${FEBRUARY}, ${FEBRUARY}),
+      ('o-feb', 'PLN', 'anna@example.com', 'shipped', 'pay-partly-refunded', 'processing', 12000, 'u-anna', ${FEBRUARY}, ${FEBRUARY}),
       ('o-mar-pending', 'PLN', 'anna@example.com', 'not_fulfilled', null, 'pending', 5000, 'u-anna', ${MARCH}, ${MARCH}),
+      ('o-refunded', 'PLN', 'anna@example.com', 'delivered', 'pay-refunded', 'refunded', 8000, 'u-anna', ${MARCH}, ${MARCH}),
       ('o-cancelled', 'PLN', 'anna@example.com', 'cancelled', null, 'cancelled', 9900, 'u-anna', ${MARCH}, ${MARCH}),
       ('o-piotr', 'PLN', 'piotr@example.com', 'delivered', 'pay-paid', 'completed', 7000, 'u-piotr', ${JANUARY}, ${JANUARY});
 
@@ -131,7 +135,8 @@ const seed = (): void => {
       ('oi-chain', 'o-jan', 'p-chain', 1, 10000, 'Gold chain', 10000, 10000, ${JANUARY}, ${JANUARY}),
       ('oi-chain-2', 'o-feb', 'p-chain', 1, 12000, 'Amber chain', 12000, 12000, ${FEBRUARY}, ${FEBRUARY}),
       ('oi-pending', 'o-mar-pending', 'p-ring', 1, 5000, 'Pending ring', 5000, 5000, ${MARCH}, ${MARCH}),
-      ('oi-untracked', 'o-jan', null, 1, 500, 'Gift wrap', 500, 500, ${JANUARY}, ${JANUARY});
+      ('oi-untracked', 'o-jan', null, 1, 500, 'Gift wrap', 500, 500, ${JANUARY}, ${JANUARY}),
+      ('oi-refunded', 'o-refunded', 'p-chain', 1, 8000, 'Returned chain', 8000, 8000, ${MARCH}, ${MARCH});
 
     insert into audit_log (id, action, actor_name, actor_role, category, severity, target, resource_id, detail, metadata, created_at) values
       ('al-login', 'auth.login', 'Anna', 'customer', 'auth', 'info', 'session', 'u-anna', 'Signed in', '{"ip":"1.1.1.1"}', ${MARCH}),
@@ -190,21 +195,23 @@ describe("getLatestSessionActivityQuery", () => {
 })
 
 describe("getCustomerMonthlySpendingQuery", () => {
-  it("sums only the customer's own completed orders", async () => {
+  it("sums what the customer's own paid orders brought in after refunds, month by month, without the unpaid pending one", async () => {
     const rows = await getCustomerMonthlySpendingQuery("u-anna", EPOCH_START)
-    const total = rows.reduce((sum, row) => sum + row.amount, 0)
 
-    expect(total).toBe(42_000)
+    expect(rows).toStrictEqual([
+      { amount: 30_000, monthKey: "2026-01" },
+      { amount: 10_000, monthKey: "2026-02" },
+    ])
   })
 
   it("leaves out orders placed before the window opens", async () => {
     const rows = await getCustomerMonthlySpendingQuery("u-anna", new Date(FEBRUARY))
     const total = rows.reduce((sum, row) => sum + row.amount, 0)
 
-    expect(total).toBe(12_000)
+    expect(total).toBe(10_000)
   })
 
-  it("returns nothing for a customer with no completed orders", async () => {
+  it("returns nothing for a customer with no paid orders", async () => {
     await expect(getCustomerMonthlySpendingQuery("u-nobody", EPOCH_START)).resolves.toStrictEqual([])
   })
 })
@@ -222,8 +229,11 @@ describe("getCustomerCategoryBreakdownQuery", () => {
     expect(rows).toHaveLength(2)
   })
 
-  it("leaves out lines from orders that are not completed", async () => {
-    sqlite.exec(`delete from "order" where id in ('o-jan', 'o-feb')`)
+  it("leaves out lines from unpaid pending, cancelled and refunded orders", async () => {
+    sqlite.exec(`
+      update "order" set status = 'cancelled' where id = 'o-jan';
+      update "order" set status = 'refunded' where id = 'o-feb';
+    `)
 
     await expect(getCustomerCategoryBreakdownQuery("u-anna")).resolves.toStrictEqual([])
   })
@@ -264,17 +274,18 @@ describe("getCustomerPreferredCollectionQuery", () => {
 })
 
 describe("getAdminCustomerOrderRowsQuery", () => {
-  it("lists the countable orders newest first and drops the cancelled one", async () => {
+  it("lists the customer's sales newest first and drops the unpaid pending, cancelled and refunded orders", async () => {
     const rows = await getAdminCustomerOrderRowsQuery("u-anna")
 
-    expect(rows.map((row) => row.id)).toStrictEqual(["o-mar-pending", "o-feb", "o-jan"])
+    expect(rows.map((row) => row.id)).toStrictEqual(["o-feb", "o-jan"])
   })
 
   it("joins the payment status and leaves it null without a payment row", async () => {
+    sqlite.exec(`update "order" set payment_id = null where id = 'o-feb'`)
     const rows = await getAdminCustomerOrderRowsQuery("u-anna")
 
     expect(rows.find((row) => row.id === "o-jan")?.paymentStatus).toBe("succeeded")
-    expect(rows.find((row) => row.id === "o-mar-pending")?.paymentStatus).toBeNull()
+    expect(rows.find((row) => row.id === "o-feb")?.paymentStatus).toBeNull()
   })
 
   it("stops at the customer detail page limit", async () => {
