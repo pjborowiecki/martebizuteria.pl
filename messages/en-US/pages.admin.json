@@ -26,10 +26,13 @@
     "spending": {
       "title": "Spending Activity",
       "subtitle": "Monthly spending over the last 12 months",
+      "seriesLabel": "Spending",
       "empty": "No paid orders in the last 12 months."
     },
     "categoryBreakdown": {
       "title": "Category Breakdown",
+      "subtitle": "Value of products bought across all orders",
+      "seriesLabel": "Product value",
       "empty": "No category spending data yet."
     },
     "orders": {

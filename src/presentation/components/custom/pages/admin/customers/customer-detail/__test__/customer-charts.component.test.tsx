@@ -65,12 +65,13 @@ afterEach(() => {
 })
 
 describe("CustomerCharts headings", () => {
-  it("titles both cards and explains the spending window", () => {
+  it("titles both cards and explains what each one sums over which period", () => {
     renderWithProviders(<CustomerCharts customer={detail()} />)
 
     expect(screen.getByText("Spending Activity")).toBeInTheDocument()
     expect(screen.getByText("Monthly spending over the last 12 months")).toBeInTheDocument()
     expect(screen.getByText("Category Breakdown")).toBeInTheDocument()
+    expect(screen.getByText("Value of products bought across all orders")).toBeInTheDocument()
   })
 })
 

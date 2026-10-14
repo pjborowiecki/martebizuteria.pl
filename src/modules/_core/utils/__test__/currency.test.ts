@@ -6,6 +6,7 @@ import {
   centsToDisplayAmount,
   formatCentsToMoneyInput,
   formatMinorUnits,
+  formatMinorUnitsAsCompactNumber,
   formatMinorUnitsAsDecimal,
   formatMinorUnitsToMoneyInput,
   formatMinorUnitsToNumberInput,
@@ -188,6 +189,12 @@ describe("formatting minor units", () => {
 
   it("groups thousands when asked", () => {
     expect(formatMinorUnitsAsDecimal(123_456, { currencyCode: "PLN", locale: "en-US", useGrouping: true })).toBe("1,234.56")
+  })
+
+  it("shortens an amount to a compact number of major units with at most one decimal", () => {
+    expect(formatMinorUnitsAsCompactNumber(39_899, "PLN", "pl-PL")).toBe("399")
+    expect(formatMinorUnitsAsCompactNumber(350_000, "PLN", "pl-PL")).toBe("3,5 tys.")
+    expect(formatMinorUnitsAsCompactNumber(1_050_000, "PLN", "en-US")).toBe("10.5K")
   })
 
   it("renders a currency-styled amount", () => {
