@@ -17,10 +17,10 @@ import { selectionColumn } from "~/src/presentation/components/custom/datagrid/c
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { AuditActorCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-actor-cell"
+import { AuditDetailCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-detail-cell"
 import { AuditTableCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-table-cell"
 import { AuditTargetCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-target-cell"
 import { AuditRowActions } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-row-actions"
-import { CATALOG_DATAGRID_MUTED_TEXT_CLASS } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 
 const resolveAuditActionLabel = (t: BuildAuditColumnsOptions["t"], action: string): string => {
   const messageKey = toAuditActionMessageKey(action)
@@ -77,11 +77,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       size: AUDIT_LOG_TABLE_COLUMN_SIZE.target,
     }),
     columnHelper.accessor("detail", {
-      cell: ({ getValue }) => (
-        <AuditTableCell>
-          <span className={`${CATALOG_DATAGRID_MUTED_TEXT_CLASS} text-xs`}>{getValue() ?? EMPTY_VALUE}</span>
-        </AuditTableCell>
-      ),
+      cell: ({ getValue }) => <AuditDetailCell detail={getValue()} />,
       header: t("audit.columns.detail"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.detail,
       meta: {

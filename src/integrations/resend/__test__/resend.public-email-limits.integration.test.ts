@@ -8,7 +8,7 @@ const { sqlite } = await vi.hoisted(async () => {
 })
 
 const { recordEmailFailedAudit } = vi.hoisted(() => ({
-  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env: { APP_ENV: "production" } }))
@@ -127,7 +127,7 @@ describe("emails per day", () => {
 
     expect(await admitPublicEmail(reset)).toBe(false)
     expect(recordEmailFailedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com", {
-      detail: `Public password-reset email — the shop reached its daily limit of ${String(PUBLIC_EMAILS_DAILY_MAX)} emails that visitors can request`,
+      metadata: { dailyLimit: PUBLIC_EMAILS_DAILY_MAX, emailKind: "reset-password" },
     })
     expect(console.error).toHaveBeenCalledOnce()
   })

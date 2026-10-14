@@ -26,7 +26,7 @@ const entry: AuditLog["adminListItem"] = {
   action: "product.published",
   actor: { id: "user-1", initials: "AK", name: "Anna Kowalska", role: "admin" },
   category: "catalog",
-  detail: "Published Bransoletka Aurora",
+  detail: { kind: "text", text: "Published Bransoletka Aurora" },
   id: "audit-1",
   ip: "203.0.113.4",
   resourceId: "product-1",

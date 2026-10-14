@@ -2,6 +2,7 @@ import { type z } from "zod/v4"
 
 import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
 import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
+import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import {
@@ -125,7 +126,7 @@ interface AdminOrderDetailFulfillmentStep {
 interface AdminOrderDetailTimelineEvent {
   readonly actorName: string
   readonly at: Date
-  readonly detail: string | undefined
+  readonly detail: AuditLog["detail"] | undefined
   readonly emailStatus: AdminOrderEmailStatus | undefined
   readonly id: string
   readonly kind: AdminOrderTimelineKind

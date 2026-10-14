@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers"
 
+import { AUDIT_EMAIL_KIND, type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
 import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { PUBLIC_EMAIL_RATE_LIMIT_KEY, RATE_LIMIT_WINDOW_SECONDS } from "~/src/modules/rate-limit/rate-limit.constants"
 
@@ -11,6 +12,13 @@ export const PUBLIC_EMAIL_KINDS = {
   VERIFICATION: "verification",
   WITHDRAWAL: "withdrawal",
 } as const
+
+const PUBLIC_EMAIL_AUDIT_KINDS: Readonly<Record<PublicEmail["kind"], AuditEmailKind>> = {
+  [PUBLIC_EMAIL_KINDS.NEWSLETTER]: AUDIT_EMAIL_KIND.NEWSLETTER_SUBSCRIPTION,
+  [PUBLIC_EMAIL_KINDS.PASSWORD_RESET]: AUDIT_EMAIL_KIND.RESET_PASSWORD,
+  [PUBLIC_EMAIL_KINDS.VERIFICATION]: AUDIT_EMAIL_KIND.VERIFICATION,
+  [PUBLIC_EMAIL_KINDS.WITHDRAWAL]: AUDIT_EMAIL_KIND.ORDER_WITHDRAWAL,
+}
 
 export const PUBLIC_EMAILS_PER_RECIPIENT_HOURLY_MAX = 3
 
@@ -46,7 +54,7 @@ export const admitPublicEmail = async (email: PublicEmail): Promise<boolean> => 
   if (!(await withinDailyLimit())) {
     const reason = `the shop reached its daily limit of ${String(PUBLIC_EMAILS_DAILY_MAX)} emails that visitors can request`
     console.error(`[Email] Skipped a ${email.kind} email to ${email.to}: ${reason}`)
-    recordEmailFailedAudit(email.to, { detail: `Public ${email.kind} email — ${reason}` })
+    recordEmailFailedAudit(email.to, { metadata: { dailyLimit: PUBLIC_EMAILS_DAILY_MAX, emailKind: PUBLIC_EMAIL_AUDIT_KINDS[email.kind] } })
 
     return false
   }

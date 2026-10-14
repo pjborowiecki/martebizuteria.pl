@@ -12,7 +12,7 @@ import { CHANGE_EMAIL_NAMESPACE, ChangeEmail } from "~/src/presentation/emails/c
 export const sendChangeEmailConfirmationEmail = async ({ user, url }: AuthEmailParams): Promise<void> => {
   const locale = getCurrentLocale()
   const messages = await loadNamespace<typeof changeEmailMessages>({ locale, namespace: CHANGE_EMAIL_NAMESPACE })
-  await requireAuthEmailDelivery("change-email confirmation", {
+  await requireAuthEmailDelivery("change-email", {
     react: createElement(ChangeEmail, {
       locale,
       messages,

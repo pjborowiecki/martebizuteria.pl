@@ -102,7 +102,6 @@ describe("recordCustomerActivity", () => {
     await recordCustomerActivity({ data: { itemCount: 4, kind: "cart_abandoned", lineCount: 2 } })
 
     expect(audits.abandoned).toHaveBeenCalledWith("shopper@example.test", {
-      detail: "4 items in cart",
       ip: "198.51.100.4",
       metadata: { itemCount: 4, lineCount: 2 },
       resourceId: "user-1",

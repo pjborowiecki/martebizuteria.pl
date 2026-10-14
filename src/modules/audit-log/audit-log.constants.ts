@@ -115,6 +115,29 @@ export const AUDIT_LOG_ACTION = {
 
 export type AuditLogAction = (typeof AUDIT_LOG_ACTION)[keyof typeof AUDIT_LOG_ACTION]
 
+export const AUDIT_EMAIL_KIND = {
+  ACCOUNT_DELETED: "account-deleted",
+  CHANGE_EMAIL: "change-email",
+  NEWSLETTER_ALREADY_SUBSCRIBED: "newsletter-already-subscribed",
+  NEWSLETTER_CAMPAIGN: "newsletter-campaign",
+  NEWSLETTER_CONFIRMATION: "newsletter-confirmation",
+  NEWSLETTER_SUBSCRIPTION: "newsletter-subscription",
+  NEWSLETTER_TEST: "newsletter-test",
+  NEW_ORDER: "new-order",
+  ORDER_CANCELLED: "order-cancelled",
+  ORDER_CONFIRMATION: "order-confirmation",
+  ORDER_REFUNDED: "order-refunded",
+  ORDER_SHIPPED: "order-shipped",
+  ORDER_WITHDRAWAL: "order-withdrawal",
+  ORDER_WITHDRAWAL_NOTICE: "order-withdrawal-notice",
+  PASSWORD_CHANGED: "password-changed",
+  PAYMENT_FAILED: "payment-failed",
+  RESET_PASSWORD: "reset-password",
+  VERIFICATION: "verification",
+} as const
+
+export type AuditEmailKind = (typeof AUDIT_EMAIL_KIND)[keyof typeof AUDIT_EMAIL_KIND]
+
 export const SEVERITY_DOT_COLORS: Record<AuditLogSeverity, string> = {
   error: "bg-red-500",
   info: "bg-blue-500",

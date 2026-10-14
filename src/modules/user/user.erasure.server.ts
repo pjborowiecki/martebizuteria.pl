@@ -14,7 +14,7 @@ export const eraseAccountData = async ({ email, id }: ErasedAccount): Promise<bo
     await deleteStripeCustomer(id)
   } catch (error) {
     console.error(`[Account deletion] Kept user ${id} because its Stripe customer could not be deleted:`, error)
-    recordCustomerDeletionFailedAudit(email, { detail: `Stripe customer not deleted, account kept — ${String(error)}`, resourceId: id })
+    recordCustomerDeletionFailedAudit(email, { detail: String(error), resourceId: id })
 
     return false
   }

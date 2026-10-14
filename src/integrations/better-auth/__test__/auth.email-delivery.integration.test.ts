@@ -23,7 +23,7 @@ const { cache, emailsSend, recordEmailFailedAudit } = vi.hoisted(() => {
       },
     },
     emailsSend: vi.fn<(email: { readonly to: string }, options: object) => Promise<unknown>>(),
-    recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+    recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
   }
 })
 
@@ -191,7 +191,8 @@ describe("auth emails when Resend refuses them", () => {
     expect(response.status).toBe(503)
     expect(errorBody.parse(await response.json()).code).toBe("EMAIL_DELIVERY_FAILED")
     expect(recordEmailFailedAudit).toHaveBeenCalledWith("anna@example.com", {
-      detail: `Auth verification email — ${DOMAIN_NOT_VERIFIED.error.message}`,
+      detail: DOMAIN_NOT_VERIFIED.error.message,
+      metadata: { emailKind: "verification" },
     })
   })
 
@@ -283,7 +284,8 @@ describe("auth emails when Resend refuses them", () => {
     expect(countUsers()).toBe(0)
     expect(emailsSend.mock.lastCall?.[0]).toMatchObject({ react: { props: { storefrontUrl: "http://localhost:3000/en-US" } } })
     expect(recordEmailFailedAudit).toHaveBeenCalledWith("anna@example.com", {
-      detail: `Auth account-deleted email — ${DOMAIN_NOT_VERIFIED.error.message}`,
+      detail: DOMAIN_NOT_VERIFIED.error.message,
+      metadata: { emailKind: "account-deleted" },
     })
   })
 })

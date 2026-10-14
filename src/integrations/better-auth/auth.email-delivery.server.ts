@@ -3,14 +3,15 @@ import { APIError } from "better-auth/api"
 import { EMAIL_DELIVERY_FAILED } from "~/src/integrations/better-auth/auth.constants"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 
+import { type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
 import { recordEmailFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 
-export const recordAuthEmailFailure = (kind: string, recipient: string, failure: string): void => {
+export const recordAuthEmailFailure = (kind: AuditEmailKind, recipient: string, failure: string): void => {
   console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
-  recordEmailFailedAudit(recipient, { detail: `Auth ${kind} email — ${failure}` })
+  recordEmailFailedAudit(recipient, { detail: failure, metadata: { emailKind: kind } })
 }
 
-export const deliverAuthEmail = async (kind: string, email: Parameters<typeof sendEmail>[0]): Promise<boolean> => {
+export const deliverAuthEmail = async (kind: AuditEmailKind, email: Parameters<typeof sendEmail>[0]): Promise<boolean> => {
   const failure = await sendEmail(email)
   if (failure === undefined) {
     return true
@@ -21,7 +22,7 @@ export const deliverAuthEmail = async (kind: string, email: Parameters<typeof se
   return false
 }
 
-export const requireAuthEmailDelivery = async (kind: string, email: Parameters<typeof sendEmail>[0]): Promise<void> => {
+export const requireAuthEmailDelivery = async (kind: AuditEmailKind, email: Parameters<typeof sendEmail>[0]): Promise<void> => {
   if (!(await deliverAuthEmail(kind, { ...email, revealsAccountExistence: true }))) {
     throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_FAILED)
   }

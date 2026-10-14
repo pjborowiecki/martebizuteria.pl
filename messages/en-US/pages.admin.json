@@ -452,6 +452,67 @@
       "customer_deletion_failed": "Account deletion failed",
       "customer_page_viewed": "Page viewed"
     },
+    "details": {
+      "emails": {
+        "account-deleted": "Account deletion notice",
+        "change-email": "Email change confirmation",
+        "new-order": "New order notification",
+        "newsletter-already-subscribed": "Already subscribed notice",
+        "newsletter-campaign": "Newsletter campaign",
+        "newsletter-confirmation": "Newsletter subscription confirmation",
+        "newsletter-subscription": "Newsletter subscription email",
+        "newsletter-test": "Test newsletter",
+        "order-cancelled": "Order cancellation notice",
+        "order-confirmation": "Order confirmation",
+        "order-refunded": "Refund notice",
+        "order-shipped": "Shipping notice",
+        "order-withdrawal": "Withdrawal acknowledgement",
+        "order-withdrawal-notice": "Withdrawal notice for the shop",
+        "password-changed": "Password change notice",
+        "payment-failed": "Failed payment notice",
+        "reset-password": "Password reset",
+        "verification": "Email address verification"
+      },
+      "emailDailyLimit": "the shop reached its daily limit of {limit} emails that visitors can request",
+      "messages": {
+        "cartItemCount": "{count, plural, one {# item in cart} other {# items in cart}}",
+        "recipientCount": "{count, plural, one {# confirmed subscriber} other {# confirmed subscribers}}",
+        "stripeCustomerKept": "Stripe customer not deleted, account kept — {error}"
+      },
+      "values": {
+        "role": {
+          "admin": "Administrator",
+          "customer": "Customer"
+        },
+        "disputeReason": {
+          "bank_cannot_process": "Bank cannot process",
+          "check_returned": "Check returned",
+          "credit_not_processed": "Credit not processed",
+          "customer_initiated": "Customer initiated",
+          "debit_not_authorized": "Debit not authorized",
+          "duplicate": "Duplicate charge",
+          "fraudulent": "Fraudulent",
+          "general": "General",
+          "incorrect_account_details": "Incorrect account details",
+          "insufficient_funds": "Insufficient funds",
+          "noncompliant": "Noncompliant",
+          "product_not_received": "Product not received",
+          "product_unacceptable": "Product unacceptable",
+          "subscription_canceled": "Subscription canceled",
+          "unrecognized": "Unrecognized charge"
+        },
+        "disputeStatus": {
+          "lost": "Lost",
+          "needs_response": "Needs response",
+          "prevented": "Prevented",
+          "under_review": "Under review",
+          "warning_closed": "Inquiry closed",
+          "warning_needs_response": "Inquiry needs response",
+          "warning_under_review": "Inquiry under review",
+          "won": "Won"
+        }
+      }
+    },
     "searchPlaceholder": "Search events…",
     "clearFilter": "Clear",
     "pagination": {

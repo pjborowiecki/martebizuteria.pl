@@ -126,7 +126,7 @@ describe("eraseAccountData", () => {
     expect(remainingIds("audit_log")).toHaveLength(5)
     expect(remainingIds("newsletter_subscriber")).toHaveLength(3)
     expect(effects.recordCustomerDeletionFailedAudit).toHaveBeenCalledExactlyOnceWith(ANNA.email, {
-      detail: "Stripe customer not deleted, account kept — Error: stripe is unreachable",
+      detail: "Error: stripe is unreachable",
       resourceId: ANNA.id,
     })
     expect(consoleError).toHaveBeenCalledWith(

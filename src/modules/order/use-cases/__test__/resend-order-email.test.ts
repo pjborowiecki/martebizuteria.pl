@@ -122,6 +122,7 @@ describe("resendOrderEmail", () => {
 
     expect(recordEmailResendRequestedAudit).toHaveBeenCalledExactlyOnceWith(ORDER_ID, {
       detail: "Order shipped → anna@example.com — Resend did not answer within 10000 ms",
+      metadata: { idempotencyKey: `order-email/${ORDER_ID}` },
     })
   })
 

@@ -23,7 +23,7 @@ const { sqlite } = await vi.hoisted(async () => {
 
 const stubs = vi.hoisted(() => ({
   recordAuthPasswordResetAudit: vi.fn(),
-  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string }) => void>(),
+  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
   sendEmail: vi.fn<(email: SentEmail) => Promise<string | undefined>>(),
 }))
 
@@ -162,7 +162,8 @@ describe("a password reset", () => {
     expect(countSessions(customerId)).toBe(0)
     await vi.waitFor(() => {
       expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith("refused@marte.test", {
-        detail: `Auth password-changed email — ${DOMAIN_NOT_VERIFIED}`,
+        detail: DOMAIN_NOT_VERIFIED,
+        metadata: { emailKind: "password-changed" },
       })
     })
   })

@@ -92,7 +92,7 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
     {
       actorName: "System",
       at: SHIPPED_AT,
-      detail: "00259007123456789012",
+      detail: { kind: "text", text: "00259007123456789012" },
       emailStatus: undefined,
       id: "audit-2",
       kind: "shipping",
