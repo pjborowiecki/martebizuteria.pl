@@ -1,4 +1,4 @@
-import { cleanup, screen } from "@testing-library/react"
+import { act, cleanup, fireEvent, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -15,11 +15,12 @@ interface RangeState {
   readonly chartData: readonly AdminDashboard["chartPoint"][]
   readonly chartRange: DashboardChartRange
   readonly customRange: DashboardCustomChartRange | undefined
+  readonly isCustomError: boolean
   readonly isCustomLoading: boolean
 }
 
 const rangeRef = vi.hoisted(() => {
-  const initial: RangeState = { chartData: [], chartRange: "30d", customRange: undefined, isCustomLoading: false }
+  const initial: RangeState = { chartData: [], chartRange: "30d", customRange: undefined, isCustomError: false, isCustomLoading: false }
 
   return {
     current: initial,
@@ -73,10 +74,26 @@ const chartWrapper = (): Element => {
   return wrapper
 }
 
+const revenueTickTexts = (): string[] =>
+  [...chartWrapper().querySelectorAll(".recharts-cartesian-axis-tick-value")].map((node) => node.textContent)
+
+const openRevenueTooltip = (): string => {
+  const surface = chartWrapper().querySelector(".recharts-wrapper")
+  if (!(surface instanceof HTMLElement)) {
+    throw new TypeError("the revenue chart never rendered its wrapper")
+  }
+
+  act(() => {
+    fireEvent.focus(surface)
+  })
+
+  return chartWrapper().querySelector(".recharts-tooltip-wrapper")?.textContent ?? ""
+}
+
 afterEach(() => {
   cleanup()
   snapshotRef.current = baseSnapshot()
-  rangeRef.current = { chartData: [], chartRange: "30d", customRange: undefined, isCustomLoading: false }
+  rangeRef.current = { chartData: [], chartRange: "30d", customRange: undefined, isCustomError: false, isCustomLoading: false }
 })
 
 describe("DashboardCharts revenue card", () => {
@@ -139,6 +156,40 @@ describe("DashboardCharts revenue card", () => {
     expect(screen.getByText("4K")).toBeInTheDocument()
   })
 
+  it("keeps the half thousand on the revenue axis instead of rounding it to the next thousand", () => {
+    setRange({ chartData: [point("2026-10-13", 0), point("2026-10-14", 1_400_000)] })
+    renderWithProviders(<DashboardCharts />)
+
+    expect(revenueTickTexts()).toStrictEqual(["2026-10-13", "2026-10-14", "0", "3.5K", "7K", "10.5K", "14K"])
+  })
+
+  it("shows the day's revenue as money in the store currency in the tooltip", () => {
+    setRange({ chartData: [point("2026-10-14", 1_400_000), point("2026-10-15", 0)] })
+    renderWithProviders(<DashboardCharts />)
+
+    const tooltip = openRevenueTooltip()
+
+    expect(tooltip).toContain("2026-10-14")
+    expect(tooltip).toContain("Revenue")
+    expect(tooltip).toContain("PLN 14,000.00")
+  })
+
+  it("says there were no sales instead of plotting a flat line over a column of zeroes", () => {
+    setRange({ chartData: [point("2026-10-13", 0), point("2026-10-14", 0)] })
+    renderWithProviders(<DashboardCharts />)
+
+    expect(screen.getByText("No sales in this period.")).toBeInTheDocument()
+    expect(document.querySelector(".recharts-area")).toBeNull()
+  })
+
+  it("says the custom range could not be loaded when its request fails", () => {
+    setRange({ chartRange: "custom", customRange: { endDate: "2026-09-07", startDate: "2026-09-01" }, isCustomError: true })
+    renderWithProviders(<DashboardCharts />)
+
+    expect(screen.getByText("Could not load revenue for this range.")).toBeInTheDocument()
+    expect(screen.queryByText("No sales in this period.")).not.toBeInTheDocument()
+  })
+
   it("dims the chart while a custom range is being fetched", () => {
     setRange({ chartRange: "custom", isCustomLoading: true })
     renderWithProviders(<DashboardCharts />)
@@ -147,6 +198,7 @@ describe("DashboardCharts revenue card", () => {
   })
 
   it("shows the chart at full strength once nothing is in flight", () => {
+    setRange({ chartData: [point("2026-09-01", 120_000)] })
     renderWithProviders(<DashboardCharts />)
 
     expect(chartWrapper().className).toContain("opacity-100")

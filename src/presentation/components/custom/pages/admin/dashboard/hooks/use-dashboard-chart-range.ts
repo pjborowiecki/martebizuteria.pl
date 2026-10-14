@@ -15,6 +15,7 @@ export const useDashboardChartRange = (): {
   readonly chartRange: DashboardChartRange
   readonly clearCustomRange: () => void
   readonly customRange: DashboardCustomChartRange | undefined
+  readonly isCustomError: boolean
   readonly isCustomLoading: boolean
   readonly selectPresetRange: (range: Exclude<DashboardChartRange, "custom">) => void
 } => {
@@ -52,6 +53,7 @@ export const useDashboardChartRange = (): {
   }, [chartRange, snapshot.chartPoints1y, snapshot.chartPoints30d, snapshot.chartPoints7d])
 
   const chartData = chartRange === "custom" ? (customChartQuery.data ?? []) : presetChartData
+  const isCustomError = chartRange === "custom" && customChartQuery.isError
   const isCustomLoading = chartRange === "custom" && customChartQuery.isFetching
   const selectPresetRange = (range: Exclude<DashboardChartRange, "custom">): void => {
     setChartRange(range)
@@ -73,6 +75,7 @@ export const useDashboardChartRange = (): {
     chartRange,
     clearCustomRange,
     customRange,
+    isCustomError,
     isCustomLoading,
     selectPresetRange,
   }

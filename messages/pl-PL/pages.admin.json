@@ -250,7 +250,9 @@
       "clearDate": "Wyczyść",
       "apply": "Zastosuj",
       "clear": "Wyczyść",
-      "revenueLabel": "Przychód"
+      "revenueLabel": "Przychód",
+      "empty": "Brak sprzedaży w wybranym okresie.",
+      "error": "Nie udało się wczytać przychodu dla tego zakresu."
     },
     "weeklyOrders": {
       "title": "Zamówienia w tym tygodniu",

@@ -23,7 +23,7 @@ const snapshot = {
 
 const custom = vi.hoisted(() => ({
   fetch: vi.fn((input: { endDate: string; startDate: string }) =>
-    Promise.resolve([{ dateKey: input.startDate, label: input.startDate, orders: 2, revenue: 999 }]),
+    Promise.resolve<AdminDashboard["chartPoint"][]>([{ dateKey: input.startDate, label: input.startDate, orders: 2, revenue: 999 }]),
   ),
 }))
 
@@ -59,6 +59,7 @@ describe("useDashboardChartRange", () => {
     expect(result.current.chartRange).toBe("30d")
     expect(result.current.chartData).toStrictEqual(snapshot.chartPoints30d)
     expect(result.current.customRange).toBeUndefined()
+    expect(result.current.isCustomError).toBe(false)
     expect(result.current.isCustomLoading).toBe(false)
   })
 
@@ -104,6 +105,21 @@ describe("useDashboardChartRange", () => {
     })
     expect(result.current.chartData).toStrictEqual([{ dateKey: "2026-09-01", label: "2026-09-01", orders: 2, revenue: 999 }])
     expect(custom.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it("reports a custom range whose request failed", async () => {
+    custom.fetch.mockRejectedValueOnce(new Error("the chart range request failed"))
+    const { result } = renderHook(() => useDashboardChartRange(), { wrapper })
+
+    act(() => {
+      result.current.applyCustomRange({ endDate: "2026-09-30", startDate: "2026-09-01" })
+    })
+
+    await waitFor(() => {
+      expect(result.current.isCustomError).toBe(true)
+    })
+    expect(result.current.isCustomLoading).toBe(false)
+    expect(result.current.chartData).toStrictEqual([])
   })
 
   it("refuses to fetch a custom range whose start is after its end", () => {
