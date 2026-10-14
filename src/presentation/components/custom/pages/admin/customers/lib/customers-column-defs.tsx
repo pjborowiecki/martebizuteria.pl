@@ -83,6 +83,7 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
       meta: {
         skeletonVariant: "badge",
       },
+      minSize: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.role,
       size: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.role,
     }),
     columnHelper.accessor((row) => row.phone ?? "", {
@@ -184,6 +185,7 @@ const buildCustomerMetricsColumns = ({ format, locale, t }: Pick<BuildCustomerCo
         headClassName: "text-right",
         skeletonVariant: "number",
       },
+      minSize: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.totalSpent,
       size: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.totalSpent,
     }),
     columnHelper.accessor("averageOrderValue", {

@@ -12,6 +12,7 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/src/presentation/components/shadcn/table"
 
+import { CatalogTruncatedTextCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 import {
   CUSTOMER_DETAIL_FULFILLMENT_BADGE_STYLES,
   CUSTOMER_DETAIL_PAYMENT_BADGE_STYLES,
@@ -83,7 +84,9 @@ const CustomerOrderRow = ({ order }: { order: User["adminCustomerDetail"]["order
 
   return (
     <TableRow className="group cursor-pointer" onClick={handleOrderClick}>
-      <TableCell className="pl-5 font-mono text-sm font-medium">{order.id}</TableCell>
+      <TableCell className="max-w-30 pl-5 font-mono text-sm font-medium">
+        <CatalogTruncatedTextCell muted={false} text={order.id} />
+      </TableCell>
       <TableCell className="text-sm text-muted-foreground">{order.date}</TableCell>
       <TableCell className="max-w-[240px] truncate text-sm">{itemsLabel}</TableCell>
       <TableCell className="text-right font-mono text-sm font-medium">{order.total}</TableCell>

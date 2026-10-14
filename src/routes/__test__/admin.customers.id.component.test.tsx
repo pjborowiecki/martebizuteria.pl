@@ -170,6 +170,12 @@ describe("admin customer detail page", () => {
     expect(screen.getByText("customer sidebar")).toBeInTheDocument()
   })
 
+  it("lets the main column shrink so a wide order history cannot push the sidebar off screen", () => {
+    renderPage()
+
+    expect(screen.getByText("customer orders").parentElement).toHaveClass("min-w-0")
+  })
+
   it("keeps the edit sheet closed until the admin asks for it", () => {
     renderPage()
 

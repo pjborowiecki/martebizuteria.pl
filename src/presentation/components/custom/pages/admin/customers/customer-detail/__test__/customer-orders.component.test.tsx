@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, screen } from "@testing-library/react"
+import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { markAsCut } from "~/src/platform/testing/lib/cut-text"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
@@ -60,6 +62,8 @@ const detail = (orders: User["adminCustomerDetail"]["orders"]): User["adminCusto
   updatedAt: new Date(2024, 0, 1),
 })
 
+const LONG_ORDER_ID = "3f2b8c1e-9a4d-4e6f-8b7a-1c2d3e4f5a6b"
+
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
@@ -98,6 +102,18 @@ describe("CustomerOrders", () => {
     expect(screen.getByText("2 Jan 2026")).toBeInTheDocument()
     expect(screen.getByText("Linen shirt, Wool cap")).toBeInTheDocument()
     expect(screen.getByText("199,00 zl")).toBeInTheDocument()
+  })
+
+  it("cuts a long order id short and shows it in full on hover", async () => {
+    renderWithProviders(<CustomerOrders customer={detail([order({ id: LONG_ORDER_ID })])} />)
+    const id = screen.getByText(LONG_ORDER_ID)
+
+    expect(id).toHaveClass("truncate", "min-w-0")
+    expect(id.closest("td")).toHaveClass("max-w-30")
+
+    await userEvent.hover(markAsCut(id))
+
+    expect(await screen.findByText(LONG_ORDER_ID, { selector: "[data-slot='tooltip-content']" })).toBeInTheDocument()
   })
 
   it("falls back to a placeholder for an order whose lines are unknown", () => {

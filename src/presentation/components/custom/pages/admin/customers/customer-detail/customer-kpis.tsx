@@ -39,7 +39,7 @@ export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
   ]
 
   return (
-    <div className="grid gap-5 sm:grid-cols-4">
+    <div className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-4">
       {kpis.map((kpi) => (
         <Card key={kpi.label} className="shadow-none">
           <CardContent className="p-5">
