@@ -40,7 +40,7 @@ export const ContentPageEditor = ({ handle }: Readonly<{ handle: ContentPageHand
       />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-8">
-        <form className="mx-auto max-w-3xl" id={CONTENT_PAGE_FORM_ID} noValidate onSubmit={submit}>
+        <form id={CONTENT_PAGE_FORM_ID} noValidate onSubmit={submit}>
           <ContentPageLocaleTabs
             invalidLocales={localesWithErrors(form.formState.errors)}
             locale={activeLocale}
