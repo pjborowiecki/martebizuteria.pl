@@ -182,7 +182,7 @@ describe("CustomerSidebar activity timeline", () => {
             { date: "4 Jan 2026", kind: "cart_item_added", productTitle: "Linen shirt", quantity: 2 },
             { date: "3 Jan 2026", kind: "signed_out" },
             { date: "3 Jan 2026", kind: "signed_in" },
-            { date: "2 Jan 2026", kind: "order_placed", orderId: "ord_1", total: "199,00 zl" },
+            { date: "2 Jan 2026", kind: "order_placed", orderNumber: "MRT-2026-00001", total: "199,00 zl" },
             { date: "1 Jan 2026", kind: "account_created" },
           ],
         })}
@@ -194,7 +194,7 @@ describe("CustomerSidebar activity timeline", () => {
     expect(screen.getByText("Added Linen shirt to cart (×2)")).toBeInTheDocument()
     expect(screen.getByText("Signed out")).toBeInTheDocument()
     expect(screen.getByText("Signed in")).toBeInTheDocument()
-    expect(screen.getByText("Placed order ord_1 — 199,00 zl")).toBeInTheDocument()
+    expect(screen.getByText("Placed order MRT-2026-00001 — 199,00 zl")).toBeInTheDocument()
     expect(screen.getByText("Account created")).toBeInTheDocument()
     expect(screen.getByText("1 Jan 2026")).toBeInTheDocument()
   })

@@ -23,6 +23,7 @@ const adminCustomerDetailOrderSchema = zod.object({
   fulfillment: zod.string(),
   id: zod.string(),
   itemTitles: zod.array(zod.string()),
+  orderNumber: zod.string(),
   payment: zod.string(),
   total: zod.string(),
   totalMinor: zod.number(),
@@ -46,7 +47,7 @@ const adminCustomerDetailTimelineEventSchema = zod.discriminatedUnion("kind", [
   zod.object({
     date: zod.string(),
     kind: zod.literal("order_placed"),
-    orderId: zod.string(),
+    orderNumber: zod.string(),
     total: zod.string(),
   }),
   zod.object({

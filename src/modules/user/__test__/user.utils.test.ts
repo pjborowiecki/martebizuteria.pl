@@ -400,8 +400,8 @@ describe("buildAdminCustomerTimeline", () => {
       createdAt,
       locale: "en-US",
       orders: [
-        { createdAt: new Date(2024, 0, 1), currencyCode: "PLN", id: "order-1", total: 12_000 },
-        { createdAt: new Date(2024, 5, 1), currencyCode: "PLN", id: "order-2", total: 30_000 },
+        { createdAt: new Date(2024, 0, 1), currencyCode: "PLN", orderNumber: "MRT-2024-00001", total: 12_000 },
+        { createdAt: new Date(2024, 5, 1), currencyCode: "PLN", orderNumber: "MRT-2024-00002", total: 30_000 },
       ],
     })
 
@@ -412,10 +412,10 @@ describe("buildAdminCustomerTimeline", () => {
     const [event] = buildAdminCustomerTimeline({
       createdAt,
       locale: "en-US",
-      orders: [{ createdAt: new Date(2024, 0, 1), currencyCode: "PLN", id: "order-1", total: 12_000 }],
+      orders: [{ createdAt: new Date(2024, 0, 1), currencyCode: "PLN", orderNumber: "MRT-2024-00001", total: 12_000 }],
     })
 
-    expect(event).toMatchObject({ kind: "order_placed", orderId: "order-1" })
+    expect(event).toMatchObject({ kind: "order_placed", orderNumber: "MRT-2024-00001" })
     expect(JSON.stringify(event)).toContain("120")
   })
 

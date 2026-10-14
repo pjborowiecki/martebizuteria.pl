@@ -290,7 +290,7 @@ export const buildAdminCustomerTimeline = (input: User["adminCustomerTimelineInp
     events.push({
       date: formatShortDate(orderRow.createdAt, input.locale),
       kind: "order_placed",
-      orderId: orderRow.id,
+      orderNumber: orderRow.orderNumber,
       sortAt: orderRow.createdAt.getTime(),
       total: formatPrice(orderRow.total, orderRow.currencyCode, input.locale),
     })

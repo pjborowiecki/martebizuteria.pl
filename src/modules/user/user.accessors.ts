@@ -462,6 +462,7 @@ export const getAdminCustomerOrderRowsQuery = (userId: string) =>
       currencyCode: order.currencyCode,
       fulfillmentStatus: order.fulfillmentStatus,
       id: order.id,
+      orderNumber: order.orderNumber,
       paymentStatus: sql<(typeof payment.$inferSelect)["status"] | null>`${payment.status}`.as("payment_status"),
       status: order.status,
       total: order.total,

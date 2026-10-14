@@ -61,7 +61,7 @@ const DDL = `
   );
   create table "order" (
     id text primary key, currency_code text not null default 'PLN', email text not null,
-    fulfillment_status text not null default 'not_fulfilled', payment_id text, status text not null default 'pending',
+    fulfillment_status text not null default 'not_fulfilled', order_number text, payment_id text, status text not null default 'pending',
     total integer not null default 0, user_id text, created_at integer not null, updated_at integer not null
   );
   create table order_item (
@@ -115,6 +115,8 @@ const seed = (): void => {
       ('o-refunded', 'PLN', 'anna@example.com', 'delivered', 'pay-refunded', 'refunded', 8000, 'u-anna', ${MARCH}, ${MARCH}),
       ('o-cancelled', 'PLN', 'anna@example.com', 'cancelled', null, 'cancelled', 9900, 'u-anna', ${MARCH}, ${MARCH}),
       ('o-piotr', 'PLN', 'piotr@example.com', 'delivered', 'pay-paid', 'completed', 7000, 'u-piotr', ${JANUARY}, ${JANUARY});
+
+    update "order" set order_number = 'MRT-' || id;
 
     insert into product_category (id, handle, titles, created_at, updated_at) values
       ('cat-rings', 'rings', '{"en-US":"Rings","pl-PL":"Pierścionki"}', ${JANUARY}, ${JANUARY}),
@@ -286,6 +288,12 @@ describe("getAdminCustomerOrderRowsQuery", () => {
 
     expect(rows.find((row) => row.id === "o-jan")?.paymentStatus).toBe("succeeded")
     expect(rows.find((row) => row.id === "o-feb")?.paymentStatus).toBeNull()
+  })
+
+  it("carries the order number the shop shows next to the id the link needs", async () => {
+    const rows = await getAdminCustomerOrderRowsQuery("u-anna")
+
+    expect(rows[0]).toMatchObject({ id: "o-feb", orderNumber: "MRT-o-feb" })
   })
 
   it("stops at the customer detail page limit", async () => {
