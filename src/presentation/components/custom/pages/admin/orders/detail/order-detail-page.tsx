@@ -18,7 +18,7 @@ import { OrderWithdrawalsCard } from "~/src/presentation/components/custom/pages
 export const OrderDetailPage = ({ order }: Readonly<OrderDetailPageProps>): JSX.Element => (
   <div className="min-h-0 flex-1 overflow-y-auto p-8">
     <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <OrderMetaStrip order={order} />
         <OrderWithdrawalsCard withdrawals={order.withdrawals} />
         <OrderFulfillmentTracker canceledAt={order.canceledAt} steps={order.fulfillmentSteps} />
