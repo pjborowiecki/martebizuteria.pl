@@ -45,6 +45,12 @@ describe("OrderDetailPage", () => {
     }
   })
 
+  it("lets the main column shrink so a wide line item table cannot push the sidebar off screen", () => {
+    const { container } = renderWithProviders(<OrderDetailPage order={buildAdminOrderDetail()} />)
+
+    expect(container.querySelector(".grid")?.firstElementChild).toHaveClass("min-w-0")
+  })
+
   it("shows a customer's withdrawal from the contract with the order", () => {
     const order = buildAdminOrderDetail({
       withdrawals: [

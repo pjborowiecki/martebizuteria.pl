@@ -1,9 +1,13 @@
 import { cleanup, screen } from "@testing-library/react"
+import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it } from "vite-plus/test"
 
+import { markAsCut } from "~/src/platform/testing/lib/cut-text"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { OrderFulfillmentCell } from "~/src/presentation/components/custom/pages/admin/orders/components/order-fulfillment-cell"
+
+const LONG_FULFILLMENT_KEY = "awaiting_pickup_at_parcel_locker_after_redirect"
 
 afterEach(() => {
   cleanup()
@@ -39,5 +43,17 @@ describe("OrderFulfillmentCell", () => {
 
     expect(screen.getByText("partially_shipped")).toBeInTheDocument()
     expect(container.querySelector(String.raw`.bg-muted-foreground\/30`)).not.toBeNull()
+  })
+
+  it("cuts a long state short beside its dot and shows it in full on hover", async () => {
+    const { container } = renderWithProviders(<OrderFulfillmentCell fulfillmentUiKey={LONG_FULFILLMENT_KEY} />)
+    const label = screen.getByText(LONG_FULFILLMENT_KEY)
+
+    expect(label).toHaveClass("truncate", "min-w-0")
+    expect(container.querySelector(".rounded-full")).toHaveClass("shrink-0")
+
+    await userEvent.hover(markAsCut(label))
+
+    expect(await screen.findByText(LONG_FULFILLMENT_KEY, { selector: "[data-slot='tooltip-content']" })).toBeInTheDocument()
   })
 })

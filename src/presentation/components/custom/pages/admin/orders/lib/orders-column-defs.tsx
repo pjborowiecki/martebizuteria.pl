@@ -46,6 +46,7 @@ export const buildOrderColumns = ({ locale, t, tAdmin }: BuildOrderColumnsInput)
       meta: {
         skeletonVariant: "text",
       },
+      minSize: ADMIN_ORDER_TABLE_COLUMN_SIZE.createdAt,
       size: ADMIN_ORDER_TABLE_COLUMN_SIZE.createdAt,
     }),
     columnHelper.accessor("customerName", {
@@ -98,6 +99,7 @@ export const buildOrderColumns = ({ locale, t, tAdmin }: BuildOrderColumnsInput)
       meta: {
         skeletonVariant: "text",
       },
+      minSize: ADMIN_ORDER_TABLE_COLUMN_SIZE.total,
       size: ADMIN_ORDER_TABLE_COLUMN_SIZE.total,
     }),
     columnHelper.accessor("fulfillmentUiKey", {
@@ -120,6 +122,7 @@ export const buildOrderColumns = ({ locale, t, tAdmin }: BuildOrderColumnsInput)
       meta: {
         skeletonVariant: "badge",
       },
+      minSize: ADMIN_ORDER_TABLE_COLUMN_SIZE.status,
       size: ADMIN_ORDER_TABLE_COLUMN_SIZE.status,
     }),
     columnHelper.accessor("paymentUiKey", {
@@ -131,6 +134,7 @@ export const buildOrderColumns = ({ locale, t, tAdmin }: BuildOrderColumnsInput)
       meta: {
         skeletonVariant: "badge",
       },
+      minSize: ADMIN_ORDER_TABLE_COLUMN_SIZE.payment,
       size: ADMIN_ORDER_TABLE_COLUMN_SIZE.payment,
     }),
     columnHelper.display({

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
 
-import { ADMIN_ORDER_TABLE_COLUMN_ID } from "~/src/modules/order/order.constants"
+import { ADMIN_ORDER_TABLE_COLUMN_ID, ADMIN_ORDER_TABLE_COLUMN_SIZE } from "~/src/modules/order/order.constants"
 
 import { useOrderColumns } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-columns"
 
@@ -50,6 +50,22 @@ describe("useOrderColumns", () => {
     expect(byId.get(ADMIN_ORDER_TABLE_COLUMN_ID.orderId)?.header).toBe("Order")
     expect(byId.get(ADMIN_ORDER_TABLE_COLUMN_ID.customer)?.header).toBe("Customer")
     expect(byId.get(ADMIN_ORDER_TABLE_COLUMN_ID.payment)?.header).toBe("Payment")
+  })
+
+  it("keeps the date and total columns wide enough to read in full", () => {
+    const { result } = renderColumns()
+    const byId = new Map(result.current.map((column) => [column.id, column]))
+
+    expect(byId.get(ADMIN_ORDER_TABLE_COLUMN_ID.createdAt)?.minSize).toBe(ADMIN_ORDER_TABLE_COLUMN_SIZE.createdAt)
+    expect(byId.get(ADMIN_ORDER_TABLE_COLUMN_ID.total)?.minSize).toBe(ADMIN_ORDER_TABLE_COLUMN_SIZE.total)
+  })
+
+  it("keeps the status and payment columns wide enough for their badges", () => {
+    const { result } = renderColumns()
+    const byId = new Map(result.current.map((column) => [column.id, column]))
+
+    expect(byId.get(ADMIN_ORDER_TABLE_COLUMN_ID.status)?.minSize).toBe(ADMIN_ORDER_TABLE_COLUMN_SIZE.status)
+    expect(byId.get(ADMIN_ORDER_TABLE_COLUMN_ID.payment)?.minSize).toBe(ADMIN_ORDER_TABLE_COLUMN_SIZE.payment)
   })
 
   it("keeps the same column definitions across re-renders", () => {
