@@ -51,6 +51,7 @@ interface AdminOrderListItem {
   readonly id: string
   readonly initials: string
   readonly itemCount: number
+  readonly orderNumber: string
   readonly paymentUiKey: AdminOrderPaymentUiKey
   readonly status: Order["select"]["status"]
   readonly totalMinorUnits: number

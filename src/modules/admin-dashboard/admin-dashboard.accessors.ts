@@ -108,6 +108,7 @@ export const recentOrdersQuery = () =>
       fulfillmentStatus: order.fulfillmentStatus,
       id: order.id,
       metadata: order.metadata,
+      orderNumber: order.orderNumber,
       paymentStatus: sql<(typeof payment.$inferSelect)["status"] | null>`${payment.status}`.as("payment_status"),
       status: order.status,
       total: order.total,

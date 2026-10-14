@@ -67,7 +67,7 @@ beforeEach(() => {
     create table "order" (
       id text primary key, payment_id text, user_id text, email text not null,
       currency_code text not null default 'PLN', status text not null default 'pending',
-      fulfillment_status text not null default 'not_fulfilled', metadata text, total integer not null default 0,
+      fulfillment_status text not null default 'not_fulfilled', metadata text, order_number text, total integer not null default 0,
       created_at integer not null, updated_at integer not null
     );
     create table order_item (
@@ -99,6 +99,8 @@ beforeEach(() => {
       ('o-feb-cancelled', null, null, 'guest@example.com', 'cancelled', 'cancelled', 90000, ${FEBRUARY}, ${FEBRUARY}),
       ('o-mar-completed', null, null, 'guest@example.com', 'completed', 'delivered', 70000, ${MARCH}, ${MARCH}),
       ('o-apr-completed', null, null, 'guest@example.com', 'completed', 'delivered', 1000, ${APRIL}, ${APRIL});
+
+    update "order" set order_number = 'MRT-' || id;
 
     insert into audit_log (id, action, created_at) values
       ('a-1', 'customer.page_viewed', ${JANUARY}),
@@ -295,6 +297,12 @@ describe("recentOrdersQuery", () => {
 
     expect(rows.find((row) => row.id === "o-jan-completed")).toBeUndefined()
     expect(rows.find((row) => row.id === "o-feb-completed")?.customerName).toBe("Borys Nowak")
+  })
+
+  it("carries the order number the shop shows instead of the database id", async () => {
+    const rows = await recentOrdersQuery()
+
+    expect(rows[0]).toMatchObject({ id: "o-apr-completed", orderNumber: "MRT-o-apr-completed" })
   })
 
   it("leaves the guest name and the missing payment empty", async () => {

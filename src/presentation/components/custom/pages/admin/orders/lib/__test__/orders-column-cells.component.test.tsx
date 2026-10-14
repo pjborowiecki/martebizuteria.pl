@@ -37,6 +37,7 @@ const orderRow = (overrides: Partial<OrderRow> = {}): OrderRow => ({
   id: "order-1",
   initials: "AK",
   itemCount: 3,
+  orderNumber: "MRT-2024-00001",
   paymentUiKey: "paid",
   status: "processing",
   totalMinorUnits: 49_800,

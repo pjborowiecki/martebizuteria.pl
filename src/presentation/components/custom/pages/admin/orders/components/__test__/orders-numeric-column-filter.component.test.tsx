@@ -29,6 +29,7 @@ const row = (id: string, totalMinorUnits: number): OrderRow => ({
   id,
   initials: "AK",
   itemCount: 2,
+  orderNumber: `MRT-${id}`,
   paymentUiKey: "authorized",
   status: "pending",
   totalMinorUnits,

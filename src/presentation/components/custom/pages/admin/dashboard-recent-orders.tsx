@@ -4,17 +4,17 @@ import { ArrowRight } from "lucide-react"
 import { useLocale, useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-import { type AdminOrderFulfillmentUiKey } from "~/src/modules/order/order.constants"
 import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { Avatar, AvatarFallback } from "~/src/presentation/components/shadcn/avatar"
-import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/src/presentation/components/shadcn/table"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
+import { OrderFulfillmentCell } from "~/src/presentation/components/custom/pages/admin/orders/components/order-fulfillment-cell"
+import { OrderPaymentBadge } from "~/src/presentation/components/custom/pages/admin/orders/components/order-payment-badge"
 
 import { ROUTES } from "~/src/routes"
 
@@ -64,12 +64,15 @@ export const DashboardRecentOrders = (): JSX.Element => {
 }
 
 const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): JSX.Element => {
-  const t = useTranslations("pages.admin")
   const locale = useLocale()
 
   return (
     <TableRow className="hover:bg-transparent">
-      <TableCell className="pl-6 font-mono text-sm font-medium">{`#${order.id}`}</TableCell>
+      <TableCell className="pl-6 font-mono text-sm font-medium whitespace-nowrap">
+        <LocalizedLink params={{ orderId: order.id }} to={ROUTES.ADMIN_ORDER} className="hover:underline">
+          {order.orderNumber}
+        </LocalizedLink>
+      </TableCell>
       <TableCell>
         <div className="flex items-center gap-3">
           <Avatar size="sm" className="rounded-md after:rounded-md">
@@ -83,27 +86,11 @@ const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): 
         {formatPrice(order.totalMinorUnits, order.currencyCode, locale)}
       </TableCell>
       <TableCell>
-        <Badge
-          variant={order.paymentUiKey === "paid" ? "default" : "outline"}
-          className={order.paymentUiKey === "paid" ? "bg-emerald-600 text-[11px]" : "text-[11px]"}
-        >
-          {t(`dashboard.recentOrders.status.${order.paymentUiKey}`)}
-        </Badge>
+        <OrderPaymentBadge paymentUiKey={order.paymentUiKey} />
       </TableCell>
       <TableCell className="pr-6">
-        <span className="flex items-center gap-2">
-          <span className={`size-2 rounded-full ${FULFILLMENT_COLORS[order.fulfillmentUiKey]}`} />
-          <span className="text-sm text-muted-foreground capitalize">{t(`dashboard.recentOrders.status.${order.fulfillmentUiKey}`)}</span>
-        </span>
+        <OrderFulfillmentCell fulfillmentUiKey={order.fulfillmentUiKey} />
       </TableCell>
     </TableRow>
   )
-}
-
-const FULFILLMENT_COLORS: Record<AdminOrderFulfillmentUiKey, string> = {
-  delivered: "bg-emerald-500",
-  pending: "bg-amber-500",
-  returned: "bg-red-500",
-  shipped: "bg-blue-500",
-  unfulfilled: "bg-muted-foreground/30",
 }

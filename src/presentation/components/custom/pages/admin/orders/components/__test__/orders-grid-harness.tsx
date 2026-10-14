@@ -25,6 +25,7 @@ export const orderRow = (overrides: Partial<OrderRow> = {}): OrderRow => ({
   id: "order-1",
   initials: "AK",
   itemCount: 2,
+  orderNumber: "MRT-2024-00001",
   paymentUiKey: "authorized",
   status: "pending",
   totalMinorUnits: 24_900,
