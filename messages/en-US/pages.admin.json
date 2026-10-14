@@ -601,7 +601,7 @@
     },
     "rowActions": {
       "viewOrder": "View order",
-      "copyId": "Copy #{id}",
+      "copyId": "Copy ID",
       "copySuccess": "Order ID copied",
       "copyError": "Could not copy order ID",
       "fulfill": "Fulfill order",

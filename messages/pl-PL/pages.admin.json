@@ -601,7 +601,7 @@
     },
     "rowActions": {
       "viewOrder": "Zobacz zamówienie",
-      "copyId": "Kopiuj #{id}",
+      "copyId": "Kopiuj ID",
       "copySuccess": "Skopiowano ID zamówienia",
       "copyError": "Nie udało się skopiować ID zamówienia",
       "fulfill": "Realizuj zamówienie",
