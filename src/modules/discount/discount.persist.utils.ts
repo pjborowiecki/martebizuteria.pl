@@ -50,6 +50,7 @@ export const toDiscountUpdateValues = (values: Discount["adminFormValues"]): Dis
 
 export const toAdminDiscountListItem = (row: Discount["select"], now: Date): Discount["adminListItem"] => ({
   code: row.code,
+  createdAt: row.createdAt,
   description: row.description ?? undefined,
   endsAt: row.endsAt ?? undefined,
   id: row.id,

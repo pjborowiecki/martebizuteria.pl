@@ -161,6 +161,7 @@ describe("toAdminDiscountListItem", () => {
 
     expect(toAdminDiscountListItem(row, NOW)).toStrictEqual({
       code: "SPRING-24",
+      createdAt: new Date("2026-05-01T00:00:00.000Z"),
       description: "Spring sale",
       endsAt,
       id: "discount-1",

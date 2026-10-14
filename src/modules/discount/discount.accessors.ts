@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, isNull, notInArray, or, sql } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -6,6 +6,7 @@ import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
+import { DISCOUNT_STATUS, type DiscountStatus, type DiscountType } from "~/src/modules/discount/discount.constants"
 import { discount, discountClaim, discountRedemption } from "~/src/modules/discount/discount.schema"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { payment } from "~/src/modules/payment/payment.schema"
@@ -81,11 +82,39 @@ export const getDiscountByCodeForPreviewQuery = ({ code, email, heldSessionId }:
   })
 }
 
-const buildAdminDiscountsWhere = (search: string | undefined): SQL | undefined =>
-  buildAdminSearchOrCondition(search, [discount.code, discount.description])
+const notExpiredCondition = (now: Date): SQL => or(isNull(discount.endsAt), sql`${discount.endsAt} > ${now.getTime()}`)!
+
+const belowUsageLimitCondition = (): SQL => or(isNull(discount.usageLimit), sql`${discount.usageCount} < ${discount.usageLimit}`)!
+
+const startedCondition = (now: Date): SQL => or(isNull(discount.startsAt), sql`${discount.startsAt} <= ${now.getTime()}`)!
+
+const usableDiscountCondition = (now: Date): SQL =>
+  and(eq(discount.isActive, true), startedCondition(now), notExpiredCondition(now), belowUsageLimitCondition())!
+
+const discountStatusCondition = (status: DiscountStatus, now: Date): SQL => {
+  const enabled = eq(discount.isActive, true)
+  const statusConditions: Record<DiscountStatus, () => SQL> = {
+    [DISCOUNT_STATUS.ACTIVE]: () => usableDiscountCondition(now),
+    [DISCOUNT_STATUS.DISABLED]: () => eq(discount.isActive, false),
+    [DISCOUNT_STATUS.EXHAUSTED]: () =>
+      and(enabled, notExpiredCondition(now), isNotNull(discount.usageLimit), sql`${discount.usageCount} >= ${discount.usageLimit}`)!,
+    [DISCOUNT_STATUS.EXPIRED]: () => and(enabled, isNotNull(discount.endsAt), sql`${discount.endsAt} <= ${now.getTime()}`)!,
+    [DISCOUNT_STATUS.SCHEDULED]: () =>
+      and(enabled, notExpiredCondition(now), belowUsageLimitCondition(), sql`${discount.startsAt} > ${now.getTime()}`)!,
+  }
+
+  return statusConditions[status]()
+}
+
+const buildAdminDiscountsWhere = ({ now, search, status, type }: AdminDiscountsListParams): SQL | undefined =>
+  and(
+    buildAdminSearchOrCondition(search, [discount.code, discount.description]),
+    type === undefined ? undefined : eq(discount.type, type),
+    status === undefined ? undefined : discountStatusCondition(status, now),
+  )
 
 export const getAdminDiscountsPage = async (params: AdminDiscountsListParams) => {
-  const whereClause = buildAdminDiscountsWhere(params.search)
+  const whereClause = buildAdminDiscountsWhere(params)
   const [[countRow], rows] = await db.batch([
     db.select({ count: count() }).from(discount).where(whereClause),
     db.select().from(discount).where(whereClause).orderBy(desc(discount.createdAt)).limit(params.limit).offset(params.offset),
@@ -95,14 +124,6 @@ export const getAdminDiscountsPage = async (params: AdminDiscountsListParams) =>
     rows,
     total: countRow?.count ?? NO_ROWS,
   }
-}
-
-const usableDiscountCondition = (now: Date): SQL => {
-  const withinWindowStart = or(isNull(discount.startsAt), sql`${discount.startsAt} <= ${now.getTime()}`)!
-  const withinWindowEnd = or(isNull(discount.endsAt), sql`${discount.endsAt} > ${now.getTime()}`)!
-  const belowLimit = or(isNull(discount.usageLimit), sql`${discount.usageCount} < ${discount.usageLimit}`)!
-
-  return and(eq(discount.isActive, true), withinWindowStart, withinWindowEnd, belowLimit)!
 }
 
 export const getAdminDiscountStats = async (now: Date): Promise<Discount["adminStats"]> => {
@@ -149,5 +170,8 @@ interface DiscountPreviewLookup {
 }
 
 export interface AdminDiscountsListParams extends ListPaginationParams {
+  readonly now: Date
   readonly search?: string | undefined
+  readonly status?: DiscountStatus | undefined
+  readonly type?: DiscountType | undefined
 }

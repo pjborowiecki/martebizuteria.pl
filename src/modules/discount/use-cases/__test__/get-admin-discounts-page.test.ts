@@ -76,13 +76,28 @@ describe("getAdminDiscountsPage", () => {
   it("reads the first page at the admin page size when no page is given", async () => {
     await getAdminDiscountsPage({ data: {} })
 
-    expect(stubs.getAdminDiscountsPage).toHaveBeenCalledWith({ limit: ADMIN_DISCOUNTS_PAGE_SIZE, offset: 0, search: undefined })
+    expect(stubs.getAdminDiscountsPage).toHaveBeenCalledWith({
+      limit: ADMIN_DISCOUNTS_PAGE_SIZE,
+      now: NOW,
+      offset: 0,
+      search: undefined,
+      status: undefined,
+      type: undefined,
+    })
   })
 
   it("reads the requested page and page size with the search trimmed", async () => {
     await getAdminDiscountsPage({ data: { page: 3, pageSize: 10, search: "  spring  " } })
 
-    expect(stubs.getAdminDiscountsPage).toHaveBeenCalledWith({ limit: 10, offset: 20, search: "spring" })
+    expect(stubs.getAdminDiscountsPage).toHaveBeenCalledWith(expect.objectContaining({ limit: 10, offset: 20, search: "spring" }))
+  })
+
+  it("narrows the list to the requested type and status as of now", async () => {
+    await getAdminDiscountsPage({ data: { status: DISCOUNT_STATUS.SCHEDULED, type: DISCOUNT_TYPE.FIXED_AMOUNT } })
+
+    expect(stubs.getAdminDiscountsPage).toHaveBeenCalledWith(
+      expect.objectContaining({ now: NOW, status: DISCOUNT_STATUS.SCHEDULED, type: DISCOUNT_TYPE.FIXED_AMOUNT }),
+    )
   })
 
   it("ignores a search made only of spaces", async () => {
@@ -105,6 +120,7 @@ describe("getAdminDiscountsPage", () => {
     expect(page.items).toStrictEqual([
       {
         code: "SPRING-24",
+        createdAt: new Date("2026-05-01T00:00:00.000Z"),
         description: "Spring sale",
         endsAt: undefined,
         id: "discount-1",
@@ -170,7 +186,7 @@ describe("getAdminDiscountsPageQuery", () => {
   it("fetches the page it describes through the server function", async () => {
     const page = await new QueryClient().query(getAdminDiscountsPageQuery({ page: 2, pageSize: 5 }))
 
-    expect(stubs.getAdminDiscountsPage).toHaveBeenCalledWith({ limit: 5, offset: 5, search: undefined })
+    expect(stubs.getAdminDiscountsPage).toHaveBeenCalledWith(expect.objectContaining({ limit: 5, offset: 5, search: undefined }))
     expect(page.items.map((item) => item.code)).toStrictEqual(["SPRING-24"])
   })
 })

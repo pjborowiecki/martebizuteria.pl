@@ -2,6 +2,7 @@ import { type Discount } from "~/src/modules/discount/discount.types"
 
 export const buildCoupon = (overrides: Partial<Discount["adminListItem"]> = {}): Discount["adminListItem"] => ({
   code: "SPRING20",
+  createdAt: new Date("2026-03-01T10:00:00.000Z"),
   description: "Spring campaign",
   endsAt: new Date("2026-06-30T22:00:00.000Z"),
   id: "a1b2c3d4-0000-0000-0000-000000000001",

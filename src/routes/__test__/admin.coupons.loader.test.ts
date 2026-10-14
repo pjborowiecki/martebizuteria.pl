@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query"
 import type * as ReactRouter from "@tanstack/react-router"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { DISCOUNT_QUERY_KEYS } from "~/src/modules/discount/discount.constants"
+import { ADMIN_DISCOUNTS_PAGE_SIZE, DISCOUNT_QUERY_KEYS } from "~/src/modules/discount/discount.constants"
 import { type Discount } from "~/src/modules/discount/discount.types"
 
 const queries = vi.hoisted(() => ({
@@ -40,8 +40,7 @@ vi.mock("~/src/modules/discount/use-cases/get-admin-discount-stats", async () =>
 
   return { getDiscountStatsQuery: () => ({ queryFn: () => queries.stats(), queryKey: keys.ADMIN.STATS }) }
 })
-vi.mock("~/src/presentation/components/custom/pages/admin/coupons/coupon-list-table", () => ({ CouponListTable: () => null }))
-vi.mock("~/src/presentation/components/custom/pages/admin/coupons/coupon-stats", () => ({ CouponStats: () => null }))
+vi.mock("~/src/presentation/components/custom/pages/admin/coupons/components/coupons-table", () => ({ CouponsTableContent: () => null }))
 vi.mock("~/src/presentation/components/custom/pages/admin/admin-header", () => ({ AdminHeader: () => null }))
 
 await import("~/src/routes/admin.coupons")
@@ -56,6 +55,8 @@ const runLoader = (queryClient: QueryClient) => route.loader?.({ context: { quer
 
 const createQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } })
 
+const FIRST_PAGE = { page: 1, pageSize: ADMIN_DISCOUNTS_PAGE_SIZE }
+
 const STATS: Discount["adminStats"] = { active: 3, currencyCode: "PLN", redeemedTotalMinorUnits: 124_500, redemptions: 42, total: 7 }
 
 beforeEach(() => {
@@ -65,13 +66,18 @@ beforeEach(() => {
 })
 
 describe("admin coupons loader", () => {
-  it("warms the unfiltered first coupon page and the stat cards before the page renders", async () => {
+  it("warms the unfiltered first coupon page the table asks for and the stat cards before the page renders", async () => {
     const queryClient = createQueryClient()
 
     await runLoader(queryClient)
 
-    expect(queries.page).toHaveBeenCalledExactlyOnceWith({})
-    expect(queryClient.getQueryData([...DISCOUNT_QUERY_KEYS.ADMIN.PAGE, {}])).toStrictEqual({ items: [{ code: "SPRING20" }] })
+    expect(queries.page).toHaveBeenCalledExactlyOnceWith(FIRST_PAGE)
+    expect(
+      queryClient.getQueryData([
+        ...DISCOUNT_QUERY_KEYS.ADMIN.PAGE,
+        { ...FIRST_PAGE, search: undefined, status: undefined, type: undefined },
+      ]),
+    ).toStrictEqual({ items: [{ code: "SPRING20" }] })
     expect(queryClient.getQueryData(DISCOUNT_QUERY_KEYS.ADMIN.STATS)).toStrictEqual(STATS)
   })
 

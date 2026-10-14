@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react"
+import { type JSX, type ReactNode, createContext, useCallback, useContext, useMemo, useState } from "react"
 
 import { type Discount } from "~/src/modules/discount/discount.types"
 
@@ -37,6 +37,21 @@ export const useCouponsSheetState = (): CouponsSheetApi => {
   )
 }
 
+export const CouponsSheetProvider = ({ children, value }: Readonly<{ children: ReactNode; value: CouponsSheetApi }>): JSX.Element => {
+  const { Provider } = CouponsSheetContext
+
+  return <Provider value={value}>{children}</Provider>
+}
+
+export const useCouponsSheet = (): CouponsSheetApi => {
+  const context = useContext(CouponsSheetContext)
+  if (context === undefined) {
+    throw new Error("useCouponsSheet must be used within CouponsSheetProvider")
+  }
+
+  return context
+}
+
 export type CouponsSheetMode = "closed" | "create" | "edit"
 
 interface CouponsSheetState {
@@ -57,3 +72,5 @@ const CLOSED_STATE: CouponsSheetState = {
   coupon: undefined,
   mode: "closed",
 }
+
+const CouponsSheetContext = createContext<CouponsSheetApi | undefined>(undefined)

@@ -985,8 +985,14 @@
       "createCoupon": "Create coupon",
       "delete": "Delete coupon",
       "edit": "Edit coupon",
-      "search": "Search codes",
+      "refresh": "Reload table data",
       "searchPlaceholder": "Search by code or description..."
+    },
+    "filter": {
+      "type": "Filter by type",
+      "allTypes": "All types",
+      "status": "Filter by status",
+      "allStatuses": "All statuses"
     },
     "stats": {
       "activeCoupons": "Active coupons",
@@ -1002,7 +1008,10 @@
       "usage": "Usage",
       "status": "Status",
       "expires": "Expires",
-      "actions": "Actions"
+      "actions": "Actions",
+      "id": "ID",
+      "startsAt": "Starts",
+      "createdAt": "Created"
     },
     "status": {
       "active": "Active",
@@ -1016,14 +1025,23 @@
       "free_shipping": "Free shipping",
       "percentage": "Percentage"
     },
-    "empty": {
-      "title": "No coupons yet",
-      "description": "Create a code and it will be available at checkout straight away.",
-      "noMatches": "No coupons match that search."
-    },
     "usage": {
       "unlimited": "{used} used",
       "limited": "{used} / {limit}"
+    },
+    "rowActions": {
+      "copyCode": "Copy code",
+      "copyCodeToast": "Code copied to clipboard",
+      "copyId": "Copy ID",
+      "copyIdToast": "Coupon ID copied to clipboard"
+    },
+    "bulk": {
+      "selected": "{count} selected",
+      "delete": "Delete ({count})",
+      "confirmTitle": "Delete coupons?",
+      "confirmDescription": "{count} code(s) will stop working immediately. Orders that already used them are unaffected.",
+      "cancel": "Cancel",
+      "confirm": "Delete"
     },
     "form": {
       "createTitle": "Create coupon",
@@ -1086,7 +1104,11 @@
       "deletedDescription": "{code} can no longer be redeemed.",
       "errorTitle": "Could not save the coupon",
       "codeTakenDescription": "That code is already in use.",
-      "errorDescription": "Please try again in a moment."
+      "errorDescription": "Please try again in a moment.",
+      "bulkDeletedTitle": "Coupons deleted",
+      "bulkDeletedDescription": "Deleted {count} code(s).",
+      "deleteErrorTitle": "Couldn't delete",
+      "deleteErrorDescription": "The selected codes could not be deleted. Please try again."
     },
     "deleteDialog": {
       "title": "Delete this coupon?",
