@@ -74,15 +74,17 @@ Mapy stylów dla tego wszystkiego leżą w `order.constants.ts`: `ORDER_STATUS_B
 
 ## Statystyki
 
-`getAdminOrderStats` wykonuje jeden `db.batch` z pięcioma agregatami:
+`getAdminOrderStats` wykonuje jeden `db.batch` z trzema agregatami:
 
-| Wartość              | Zapytanie                                                                       |
-| -------------------- | ------------------------------------------------------------------------------- |
-| `totalOrders`        | `count()` dla statusów z `ADMIN_ORDER_COUNTABLE_STATUSES`                       |
-| `pending`            | `count()` dla statusu `pending`                                                 |
-| `revenueMinorUnits`  | `sum(total)` dla statusu `completed`                                            |
-| `avgValueMinorUnits` | zaokrąglone `sum(total) / count(*)` po zamówieniach `completed`                 |
-| `currencyCode`       | `max(currency_code)` po zamówieniach `completed`, inaczej `STORE_CURRENCY_CODE` |
+| Wartość              | Zapytanie                                                          |
+| -------------------- | ------------------------------------------------------------------ |
+| `totalOrders`        | `count()` dla statusów z `ADMIN_ORDER_COUNTABLE_STATUSES`          |
+| `pending`            | `count()` dla statusu `pending`                                    |
+| `revenueMinorUnits`  | `netSalesSum` po sprzedażach                                       |
+| `avgValueMinorUnits` | `netSalesAverage` po tych samych sprzedażach                       |
+| `currencyCode`       | `max(currency_code)` po sprzedażach, inaczej `STORE_CURRENCY_CODE` |
+
+Trzy ostatnie pochodzą z jednego zapytania po zamówieniach, które przepuszcza `orderCountsAsSale`, dołączonych do ich płatności, według tej samej zasady co na pulpicie (zobacz [Pulpit admina](/docs/features/admin-dashboard#migawka)): zamówienia w realizacji i zrealizowane, każde liczone według sumy pomniejszonej o to, co zwrócono z jego płatności.
 
 `ADMIN_ORDER_COUNTABLE_STATUSES` to `["completed", "processing", "pending", "cancelled", "refunded"]` — czyli wszystkie statusy, więc `totalOrders` jest w praktyce pełną liczbą zamówień.
 

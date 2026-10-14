@@ -66,7 +66,10 @@ beforeEach(() => {
     drop table if exists user;
 
     create table user (id text primary key, name text not null, email text not null, created_at integer not null, updated_at integer not null);
-    create table payment (id text primary key, status text, transaction_id text, created_at integer not null, updated_at integer not null);
+    create table payment (
+      id text primary key, refunded_amount integer not null default 0, status text, transaction_id text,
+      created_at integer not null, updated_at integer not null
+    );
     create table "order" (
       id text primary key, checkout_id text, payment_id text, user_id text, email text not null,
       billing_company_name text, billing_nip text,
@@ -314,14 +317,30 @@ describe("getAdminOrderStats", () => {
     expect(stats.pending).toBe(1)
   })
 
-  it("takes revenue from completed orders only", async () => {
+  it("books every processing and completed order, sent or not, and leaves out the unpaid pending and the cancelled one", async () => {
     const stats = await getAdminOrderStats()
 
-    expect(stats.revenueMinorUnits).toBe(40_000)
-    expect(stats.avgValueMinorUnits).toBe(40_000)
+    expect(stats.revenueMinorUnits).toBe(90_000)
+    expect(stats.avgValueMinorUnits).toBe(30_000)
   })
 
-  it("reports the currency the completed orders were taken in", async () => {
+  it("takes a partial refund off the revenue and averages over the same orders", async () => {
+    sqlite.exec(`update payment set refunded_amount = 6000, status = 'succeeded' where id = 'pay-refunded'`)
+    const stats = await getAdminOrderStats()
+
+    expect(stats.revenueMinorUnits).toBe(84_000)
+    expect(stats.avgValueMinorUnits).toBe(28_000)
+  })
+
+  it("leaves a fully refunded order out of the revenue and the average", async () => {
+    sqlite.exec(`update "order" set status = 'refunded' where id = 'o-delivered'`)
+    const stats = await getAdminOrderStats()
+
+    expect(stats.revenueMinorUnits).toBe(50_000)
+    expect(stats.avgValueMinorUnits).toBe(25_000)
+  })
+
+  it("reports the currency the sales were taken in", async () => {
     const stats = await getAdminOrderStats()
 
     expect(stats.currencyCode).toBe("PLN")

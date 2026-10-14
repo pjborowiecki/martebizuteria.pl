@@ -241,7 +241,7 @@ export const getAdminOrdersExport = async (params: Omit<AdminOrdersListParams, "
 }
 
 export const getAdminOrderStats = async (): Promise<Order["adminStats"]> => {
-  const [[totalRow], [pendingRow], [revenueRow], [avgRow], [currencyRow]] = await db.batch([
+  const [[totalRow], [pendingRow], [salesRow]] = await db.batch([
     db
       .select({
         count: count(),
@@ -256,29 +256,20 @@ export const getAdminOrderStats = async (): Promise<Order["adminStats"]> => {
       .where(eq(order.status, "pending")),
     db
       .select({
-        total: sql<number>`coalesce(sum(${order.total}), ${0})`,
+        averageOrderValue: netSalesAverage,
+        currencyCode: sql<string | null>`max(${order.currencyCode})`,
+        revenue: netSalesSum,
       })
       .from(order)
-      .where(eq(order.status, ADMIN_ORDER_COMPLETED_STATUS)),
-    db
-      .select({
-        average: sql<number>`case when count(*) > 0 then cast(round(coalesce(sum(${order.total}), ${0}) * 1.0 / count(*)) as integer) else ${0} end`,
-      })
-      .from(order)
-      .where(eq(order.status, ADMIN_ORDER_COMPLETED_STATUS)),
-    db
-      .select({
-        currencyCode: sql<string>`max(${order.currencyCode})`,
-      })
-      .from(order)
-      .where(eq(order.status, ADMIN_ORDER_COMPLETED_STATUS)),
+      .leftJoin(payment, eq(order.paymentId, payment.id))
+      .where(orderCountsAsSale),
   ])
 
   return {
-    avgValueMinorUnits: avgRow?.average ?? 0,
-    currencyCode: currencyRow?.currencyCode ?? STORE_CURRENCY_CODE,
+    avgValueMinorUnits: salesRow?.averageOrderValue ?? 0,
+    currencyCode: salesRow?.currencyCode ?? STORE_CURRENCY_CODE,
     pending: pendingRow?.count ?? 0,
-    revenueMinorUnits: revenueRow?.total ?? 0,
+    revenueMinorUnits: salesRow?.revenue ?? 0,
     totalOrders: totalRow?.count ?? 0,
   }
 }
