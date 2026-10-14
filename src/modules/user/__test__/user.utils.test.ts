@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
 import { formatShortDate } from "~/src/modules/_core/utils/datetime"
+import { resolveAdminDashboardMonths } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_STAT_FILTER } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
@@ -503,46 +504,35 @@ describe("buildAdminCustomerTimeline", () => {
 })
 
 describe("buildAdminCustomerMonthlySpendingSeries", () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(NOW)
-  })
+  const { periods } = resolveAdminDashboardMonths(new Date("2026-04-15T12:00:00.000Z"), 3)
 
-  afterEach(() => {
-    vi.useRealTimers()
-  })
+  it("returns one bucket per month of the window, named after its month in Poland", () => {
+    const series = buildAdminCustomerMonthlySpendingSeries([], "en-US", periods)
 
-  it("returns one bucket per requested month, ending with the current one", () => {
-    const series = buildAdminCustomerMonthlySpendingSeries([], "en-US", 3)
-
-    expect(series.map((point) => point.month)).toStrictEqual(["Apr", "May", "Jun"])
+    expect(series.map((point) => point.month)).toStrictEqual(["Feb", "Mar", "Apr"])
   })
 
   it("fills the months with no spending with zero", () => {
-    const series = buildAdminCustomerMonthlySpendingSeries([{ amount: 12_000, monthKey: "2024-05" }], "en-US", 3)
+    const series = buildAdminCustomerMonthlySpendingSeries([{ amount: 12_000, monthKey: "2026-03" }], "en-US", periods)
 
     expect(series.map((point) => point.amount)).toStrictEqual([0, 12_000, 0])
   })
 
-  it("zero-pads the month key it matches on", () => {
-    vi.setSystemTime(new Date(2024, 0, 15))
-
-    const series = buildAdminCustomerMonthlySpendingSeries([{ amount: 500, monthKey: "2024-01" }], "en-US", 1)
-
-    expect(series[0]?.amount).toBe(500)
-  })
-
-  it("ignores aggregate rows with no month and coerces D1's string sums", () => {
+  it("ignores aggregate rows for months outside the window and coerces D1's string sums", () => {
     const series = buildAdminCustomerMonthlySpendingSeries(
       [
-        { amount: "7000", monthKey: "2024-06" },
-        { amount: 100, monthKey: null },
+        { amount: "7000", monthKey: "2026-04" },
+        { amount: 100, monthKey: "2026-01" },
       ],
       "en-US",
-      1,
+      periods,
     )
 
-    expect(series).toStrictEqual([{ amount: 7000, month: "Jun" }])
+    expect(series).toStrictEqual([
+      { amount: 0, month: "Feb" },
+      { amount: 0, month: "Mar" },
+      { amount: 7000, month: "Apr" },
+    ])
   })
 })
 

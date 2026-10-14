@@ -9,7 +9,8 @@ import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-import { formatShortDate } from "~/src/modules/_core/utils/datetime"
+import { type CalendarPeriod, formatShortDate } from "~/src/modules/_core/utils/datetime"
+import { type AdminDashboardChartWindow, resolveAdminDashboardMonths } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import {
   formatAdminOrderDate,
   resolveAdminOrderFulfillmentUiKey,
@@ -79,15 +80,6 @@ const resolveLocalizedCollectionLabel = (titles: unknown, locale: string): strin
   return label === "" ? undefined : label
 }
 
-const resolveSpendingWindowStart = (monthsWindow: number): Date => {
-  const since = new Date()
-  since.setMonth(since.getMonth() - (monthsWindow - 1))
-  since.setDate(1)
-  since.setHours(0, 0, 0, 0)
-
-  return since
-}
-
 const resolveAdminCustomerRoleBadgeKey = (
   role: User["select"]["role"],
   isReturning: boolean,
@@ -103,7 +95,10 @@ const resolveAdminCustomerRoleBadgeKey = (
   return "roleCustomer"
 }
 
-const loadAdminCustomerDetailQueryResult = async (userId: string, since: Date): Promise<AdminCustomerDetailQueryResult> => {
+const loadAdminCustomerDetailQueryResult = async (
+  userId: string,
+  spendingWindow: AdminDashboardChartWindow,
+): Promise<AdminCustomerDetailQueryResult> => {
   const [
     orderStatsRows,
     addressRows,
@@ -118,7 +113,7 @@ const loadAdminCustomerDetailQueryResult = async (userId: string, since: Date): 
     getCustomerOrderStatsQuery([userId]),
     getDefaultCustomerAddressFullQuery(userId),
     getLatestSessionActivityQuery(userId),
-    getCustomerMonthlySpendingQuery(userId, since),
+    getCustomerMonthlySpendingQuery(userId, spendingWindow),
     getCustomerCategoryBreakdownQuery(userId),
     getCustomerPreferredCategoryQuery(userId),
     getCustomerPreferredCollectionQuery(userId),
@@ -161,7 +156,7 @@ const mapAdminCustomerDetailOrders = (
   }))
 
 const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadInput): User["adminCustomerDetail"] => {
-  const { locale, monthsWindow, queryResult, userRow } = input
+  const { locale, queryResult, spendingPeriods, userRow } = input
   const orderCount = queryResult.orderStats?.orderCount ?? 0
   const totalSpent = queryResult.orderStats?.totalSpent ?? 0
   const averageOrderValue = resolveAdminCustomerAverageOrderValue(orderCount, totalSpent)
@@ -169,7 +164,7 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
   const isReturning = orderCount >= ADMIN_CUSTOMER_MIN_REPEAT_ORDERS
   const titlesByOrderId = groupOrderItemTitles(queryResult.itemTitleRows)
   const orders = mapAdminCustomerDetailOrders(queryResult.orderRows, titlesByOrderId, locale)
-  const monthlySpending = buildAdminCustomerMonthlySpendingSeries(queryResult.monthlySpendingRows, locale, monthsWindow)
+  const monthlySpending = buildAdminCustomerMonthlySpendingSeries(queryResult.monthlySpendingRows, locale, spendingPeriods)
   const categoryBreakdown = queryResult.categoryBreakdownRows
     .filter((row) => row.titles !== null)
     .map((row) => ({
@@ -251,8 +246,8 @@ interface AdminCustomerDetailQueryResult {
 
 interface BuildAdminCustomerDetailPayloadInput {
   readonly locale: string
-  readonly monthsWindow: number
   readonly queryResult: AdminCustomerDetailQueryResult
+  readonly spendingPeriods: readonly CalendarPeriod[]
   readonly userRow: User["select"]
 }
 
@@ -268,14 +263,13 @@ export const getAdminCustomer = createServerFn({
       return undefined
     }
 
-    const monthsWindow = ADMIN_CUSTOMER_DETAIL_MONTHS
-    const since = resolveSpendingWindowStart(monthsWindow)
-    const queryResult = await loadAdminCustomerDetailQueryResult(input.id, since)
+    const spendingWindow = resolveAdminDashboardMonths(new Date(), ADMIN_CUSTOMER_DETAIL_MONTHS)
+    const queryResult = await loadAdminCustomerDetailQueryResult(input.id, spendingWindow)
 
     return buildAdminCustomerDetailPayload({
       locale,
-      monthsWindow,
       queryResult,
+      spendingPeriods: spendingWindow.periods,
       userRow,
     })
   })

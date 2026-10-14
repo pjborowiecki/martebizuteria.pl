@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query"
 import { isNotFound } from "@tanstack/react-router"
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
@@ -162,25 +162,6 @@ describe("getAdminCustomer reads", () => {
     expect(access.orderItemTitles).toHaveBeenCalledWith(["order-1", "order-2"])
   })
 
-  it("starts the spending window on the first of the month eleven months back", async () => {
-    await detail()
-
-    const expected = new Date()
-    expected.setMonth(expected.getMonth() - 11)
-    expected.setDate(1)
-    expected.setHours(0, 0, 0, 0)
-
-    expect(access.monthlySpending).toHaveBeenCalledWith("customer-1", expected)
-  })
-
-  it("builds one bucket per month of the window", async () => {
-    access.monthlySpending.mockResolvedValue([{ amount: 5000, monthKey: "2025-06" }])
-
-    const result = await detail()
-
-    expect(result?.monthlySpending).toHaveLength(12)
-  })
-
   it("falls back to the store locale when the caller sends none", async () => {
     const result = await getAdminCustomer({ data: { id: "customer-1" } })
 
@@ -191,6 +172,55 @@ describe("getAdminCustomer reads", () => {
     const result = await detail()
 
     expect(result?.joinDate).toBe(CREATED_AT.toLocaleDateString("en-US", DATE_PARTS))
+  })
+})
+
+describe("getAdminCustomer spending chart", () => {
+  beforeEach(() => {
+    resetAccessors()
+    vi.useFakeTimers({ toFake: ["Date"] })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("opens the window at midnight in Poland on the first of the month eleven months back and closes it at the next month", async () => {
+    vi.setSystemTime(new Date("2026-04-15T12:00:00.000Z"))
+
+    await detail()
+
+    expect(access.monthlySpending).toHaveBeenCalledWith(
+      "customer-1",
+      expect.objectContaining({ end: new Date("2026-04-30T22:00:00.000Z"), start: new Date("2025-04-30T22:00:00.000Z") }),
+    )
+  })
+
+  it("ends the window with the month it already is in Poland while it is still the previous month in UTC", async () => {
+    vi.setSystemTime(new Date("2026-01-31T23:30:00.000Z"))
+
+    await detail()
+
+    expect(access.monthlySpending).toHaveBeenCalledWith(
+      "customer-1",
+      expect.objectContaining({ end: new Date("2026-02-28T23:00:00.000Z"), start: new Date("2025-02-28T23:00:00.000Z") }),
+    )
+  })
+
+  it("builds one bucket per month of the window, zero for the months with no sales", async () => {
+    vi.setSystemTime(new Date("2026-04-01T00:30:00.000+02:00"))
+    access.monthlySpending.mockResolvedValue([
+      { amount: 5000, monthKey: "2025-06" },
+      { amount: 1000, monthKey: "2026-04" },
+    ])
+
+    const result = await detail()
+
+    expect(result?.monthlySpending).toHaveLength(12)
+    expect(result?.monthlySpending[0]).toStrictEqual({ amount: 0, month: "May" })
+    expect(result?.monthlySpending[1]).toStrictEqual({ amount: 5000, month: "Jun" })
+    expect(result?.monthlySpending.at(-1)).toStrictEqual({ amount: 1000, month: "Apr" })
+    expect(result?.monthlySpending.filter((point) => point.amount === 0)).toHaveLength(10)
   })
 })
 
