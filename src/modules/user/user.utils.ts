@@ -2,13 +2,19 @@ import { type ColumnFiltersState } from "@tanstack/react-table"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
+import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
 import { isDateColumnFilterValue, isNumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-import { type DateInput, coerceNumber, formatRelativeFromNow, formatShortDate } from "~/src/modules/_core/utils/datetime"
+import {
+  type CalendarPeriod,
+  type DateInput,
+  coerceNumber,
+  formatRelativeFromNow,
+  formatShortDate,
+} from "~/src/modules/_core/utils/datetime"
 import { parseJsonRecord, readJsonNumber, readJsonString, tryParseJsonRecord } from "~/src/modules/_core/utils/json"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
-  ADMIN_CUSTOMER_DETAIL_MONTHS,
   ADMIN_CUSTOMER_DETAIL_TAGS,
   ADMIN_CUSTOMER_MIN_REPEAT_ORDERS,
   ADMIN_CUSTOMER_STAT_FILTER,
@@ -309,40 +315,17 @@ export const buildAdminCustomerTimeline = (input: User["adminCustomerTimelineInp
 export const buildAdminCustomerMonthlySpendingSeries = (
   rows: readonly {
     amount: number | string | bigint
-    monthKey: string | null
+    monthKey: string
   }[],
   locale: string,
-  months: number = ADMIN_CUSTOMER_DETAIL_MONTHS,
+  periods: readonly CalendarPeriod[],
 ): User["adminCustomerDetail"]["monthlySpending"] => {
-  const amountByMonthKey = new Map(
-    rows
-      .filter(
-        (
-          row,
-        ): row is typeof row & {
-          monthKey: string
-        } => row.monthKey !== null,
-      )
-      .map((row) => [row.monthKey, Number(row.amount)]),
-  )
+  const amountByMonthKey = new Map(rows.map(({ amount, monthKey }) => [monthKey, Number(amount)]))
 
-  const series: User["adminCustomerDetail"]["monthlySpending"] = []
-  const cursor = new Date()
-  cursor.setDate(1)
-  cursor.setHours(0, 0, 0, 0)
-  cursor.setMonth(cursor.getMonth() - (months - 1))
-  for (let index = 0; index < months; index += 1) {
-    const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(MONTH_KEY_PAD_LENGTH, MONTH_KEY_PAD_CHAR)}`
-    series.push({
-      amount: amountByMonthKey.get(monthKey) ?? 0,
-      month: cursor.toLocaleDateString(locale, {
-        month: "short",
-      }),
-    })
-    cursor.setMonth(cursor.getMonth() + 1)
-  }
-
-  return series
+  return periods.map(({ key, start }) => ({
+    amount: amountByMonthKey.get(key) ?? 0,
+    month: start.toLocaleDateString(locale, { month: "short", timeZone: DEFAULT_TIMEZONE_CODE }),
+  }))
 }
 
 export const formatAdminCustomerDetailKpiPrice = (amountMinor: number, locale: string): string =>
@@ -355,10 +338,6 @@ const ONE_DECIMAL_FACTOR = 10
 const DOUBLE_INITIALS_LENGTH = 2
 
 const LAST_NAME_PART_OFFSET = -1
-
-const MONTH_KEY_PAD_LENGTH = 2
-
-const MONTH_KEY_PAD_CHAR = "0"
 
 const normalizeTags = (tags: readonly string[] | undefined): string[] | undefined => {
   if (tags === undefined) {

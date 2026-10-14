@@ -20,10 +20,6 @@ export const timestamps = () => ({
   updatedAt: timestampNow("updated_at").$onUpdateFn(() => new Date()),
 })
 
-const MS_PER_SECOND = 1000
-
-export const isoMonthKey = (column: AnySQLiteColumn) => sql<string>`strftime('%Y-%m', ${column} / ${MS_PER_SECOND}, 'unixepoch')`
-
 export const calendarPeriodKey = (column: AnySQLiteColumn, periods: readonly CalendarPeriod[]) => {
   const startMsByKey = Object.fromEntries(periods.map(({ key, start }) => [key, start.getTime()]))
 

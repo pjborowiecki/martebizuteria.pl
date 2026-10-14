@@ -1,12 +1,13 @@
-import { type SQL, and, count, desc, eq, getTableColumns, gte, inArray, isNotNull, max, sql } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, getTableColumns, gte, inArray, isNotNull, lt, max, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
-import { inJsonList, isoMonthKey } from "~/src/integrations/drizzle-orm/drizzle.utils"
+import { calendarPeriodKey, inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
 import { address } from "~/src/modules/address/address.schema"
+import { type AdminDashboardChartWindow } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
@@ -398,17 +399,20 @@ export const getLatestSessionActivityQuery = (userId: string) =>
     .from(session)
     .where(eq(session.userId, userId))
 
-export const getCustomerMonthlySpendingQuery = (userId: string, since: Date) =>
-  db
+export const getCustomerMonthlySpendingQuery = (userId: string, { end, periods, start }: AdminDashboardChartWindow) => {
+  const monthKey = calendarPeriodKey(order.createdAt, periods)
+
+  return db
     .select({
       amount: netSalesSum,
-      monthKey: isoMonthKey(order.createdAt),
+      monthKey,
     })
     .from(order)
     .leftJoin(payment, eq(order.paymentId, payment.id))
-    .where(and(eq(order.userId, userId), orderCountsAsSale, gte(order.createdAt, since)))
-    .groupBy(isoMonthKey(order.createdAt))
-    .orderBy(isoMonthKey(order.createdAt))
+    .where(and(eq(order.userId, userId), orderCountsAsSale, gte(order.createdAt, start), lt(order.createdAt, end)))
+    .groupBy(monthKey)
+    .orderBy(monthKey)
+}
 
 export const getCustomerCategoryBreakdownQuery = (userId: string) =>
   db

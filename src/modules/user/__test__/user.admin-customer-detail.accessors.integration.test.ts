@@ -14,6 +14,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
+import { resolveAdminDashboardMonths } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import {
   getAdminCustomerOrderRowsQuery,
   getCustomerAuditTimelineQuery,
@@ -33,7 +34,9 @@ const FEBRUARY = Date.UTC(2026, 1, 10)
 
 const MARCH = Date.UTC(2026, 2, 10)
 
-const EPOCH_START = new Date(0)
+const MID_APRIL = new Date("2026-04-15T12:00:00.000Z")
+
+const FIRST_QUARTER = resolveAdminDashboardMonths(new Date(MARCH), 3)
 
 const DDL = `
   drop table if exists address;
@@ -149,6 +152,15 @@ const seed = (): void => {
   `)
 }
 
+const placeAnnasCompletedOrder = (id: string, createdAt: string): void => {
+  const createdAtMs = Date.parse(createdAt)
+  sqlite
+    .prepare(
+      `insert into "order" (id, email, payment_id, status, total, user_id, created_at, updated_at) values (?, 'anna@example.com', 'pay-paid', 'completed', 1000, 'u-anna', ?, ?)`,
+    )
+    .run(id, createdAtMs, createdAtMs)
+}
+
 beforeEach(() => {
   sqlite.exec(DDL)
   seed()
@@ -198,7 +210,7 @@ describe("getLatestSessionActivityQuery", () => {
 
 describe("getCustomerMonthlySpendingQuery", () => {
   it("sums what the customer's own paid orders brought in after refunds, month by month, without the unpaid pending one", async () => {
-    const rows = await getCustomerMonthlySpendingQuery("u-anna", EPOCH_START)
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", FIRST_QUARTER)
 
     expect(rows).toStrictEqual([
       { amount: 30_000, monthKey: "2026-01" },
@@ -207,14 +219,51 @@ describe("getCustomerMonthlySpendingQuery", () => {
   })
 
   it("leaves out orders placed before the window opens", async () => {
-    const rows = await getCustomerMonthlySpendingQuery("u-anna", new Date(FEBRUARY))
-    const total = rows.reduce((sum, row) => sum + row.amount, 0)
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(new Date(MARCH), 2))
 
-    expect(total).toBe(10_000)
+    expect(rows).toStrictEqual([{ amount: 10_000, monthKey: "2026-02" }])
+  })
+
+  it("leaves out orders placed after the window closes", async () => {
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(new Date(JANUARY), 1))
+
+    expect(rows).toStrictEqual([{ amount: 30_000, monthKey: "2026-01" }])
+  })
+
+  it("puts an order placed half an hour into 1 April in Poland in April and one placed just before in March", async () => {
+    placeAnnasCompletedOrder("o-march-last-hour", "2026-03-31T21:30:00.000Z")
+    placeAnnasCompletedOrder("o-april-first-hour", "2026-03-31T22:30:00.000Z")
+
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(MID_APRIL, 2))
+
+    expect(rows).toStrictEqual([
+      { amount: 1000, monthKey: "2026-03" },
+      { amount: 1000, monthKey: "2026-04" },
+    ])
+  })
+
+  it("puts an order placed half an hour into 1 February in Poland in February", async () => {
+    placeAnnasCompletedOrder("o-february-first-hour", "2026-01-31T23:30:00.000Z")
+
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(new Date(FEBRUARY), 2))
+
+    expect(rows).toStrictEqual([
+      { amount: 30_000, monthKey: "2026-01" },
+      { amount: 11_000, monthKey: "2026-02" },
+    ])
+  })
+
+  it("opens the window at midnight in Poland on the first day of its first month", async () => {
+    placeAnnasCompletedOrder("o-march-last-hour", "2026-03-31T21:30:00.000Z")
+    placeAnnasCompletedOrder("o-april-first-hour", "2026-03-31T22:30:00.000Z")
+
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(MID_APRIL, 1))
+
+    expect(rows).toStrictEqual([{ amount: 1000, monthKey: "2026-04" }])
   })
 
   it("returns nothing for a customer with no paid orders", async () => {
-    await expect(getCustomerMonthlySpendingQuery("u-nobody", EPOCH_START)).resolves.toStrictEqual([])
+    await expect(getCustomerMonthlySpendingQuery("u-nobody", FIRST_QUARTER)).resolves.toStrictEqual([])
   })
 })
 
