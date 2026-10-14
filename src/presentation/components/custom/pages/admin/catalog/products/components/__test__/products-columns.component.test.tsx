@@ -201,6 +201,13 @@ describe("useProductColumns layout", () => {
     }
   })
 
+  it("keeps the status and price columns wide enough to read in full", () => {
+    const table = renderColumns()
+
+    expect(columnById(table, "status").columnDef.minSize).toBe(PRODUCT_TABLE_COLUMN_SIZE.status)
+    expect(columnById(table, "minPrice").columnDef.minSize).toBe(PRODUCT_TABLE_COLUMN_SIZE.minPrice)
+  })
+
   it("lets the attributes column soak up the remaining width", () => {
     expect(columnById(renderColumns(), "attributes").columnDef.meta?.fillsRemainingWidth).toBe(true)
   })

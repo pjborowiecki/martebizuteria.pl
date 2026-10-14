@@ -96,7 +96,7 @@ export const useAttributeColumns = () => {
               return <EmptyDash />
             }
 
-            return <span className="font-mono text-muted-foreground">{unit}</span>
+            return <CatalogTruncatedTextCell className="font-mono" text={unit} />
           },
           header: t("columns.unit"),
           id: PRODUCT_ATTRIBUTE_TABLE_COLUMN_ID.unit,

@@ -184,6 +184,7 @@ const buildProductDataGridColumns = (context: ProductColumnBuildContext) => {
       meta: {
         skeletonVariant: "badge",
       },
+      minSize: PRODUCT_TABLE_COLUMN_SIZE.status,
       size: PRODUCT_TABLE_COLUMN_SIZE.status,
     }),
     columnHelper.accessor("skuSummary", {
@@ -222,6 +223,7 @@ const buildProductDataGridColumns = (context: ProductColumnBuildContext) => {
       meta: {
         skeletonVariant: "number",
       },
+      minSize: PRODUCT_TABLE_COLUMN_SIZE.minPrice,
       size: PRODUCT_TABLE_COLUMN_SIZE.minPrice,
     }),
     columnHelper.accessor("totalStock", {

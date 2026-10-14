@@ -108,6 +108,7 @@ export const useCollectionColumns = () => {
           meta: {
             skeletonVariant: "badge",
           },
+          minSize: COLLECTION_TABLE_COLUMN_SIZE.status,
           size: COLLECTION_TABLE_COLUMN_SIZE.status,
         }),
         columnHelper.accessor("productCount", {
