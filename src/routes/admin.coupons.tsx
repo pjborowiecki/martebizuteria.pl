@@ -1,51 +1,55 @@
-import { type JSX, useMemo } from "react"
+import { type JSX } from "react"
 
+import { type QueryClient } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { useTranslations } from "use-intl/react"
 
+import { ADMIN_DISCOUNTS_PAGE_SIZE, DISCOUNT_QUERY_STALE_MS } from "~/src/modules/discount/discount.constants"
 import { getDiscountStatsQuery } from "~/src/modules/discount/use-cases/get-admin-discount-stats"
 import { getAdminDiscountsPageQuery } from "~/src/modules/discount/use-cases/get-admin-discounts-page"
 
-import { type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
-import { CouponListTable } from "~/src/presentation/components/custom/pages/admin/coupons/coupon-list-table"
-import { CouponStats } from "~/src/presentation/components/custom/pages/admin/coupons/coupon-stats"
+import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { CouponsTableContent } from "~/src/presentation/components/custom/pages/admin/coupons/components/coupons-table"
+import {
+  CouponsSheetProvider,
+  useCouponsSheetState,
+} from "~/src/presentation/components/custom/pages/admin/coupons/hooks/use-coupons-sheet"
 
-import { ROUTES } from "~/src/routes"
+const prefetchCouponsQueries = async (context: { queryClient: QueryClient }): Promise<void> => {
+  await Promise.all([
+    context.queryClient.query({
+      ...getAdminDiscountsPageQuery({
+        page: 1,
+        pageSize: ADMIN_DISCOUNTS_PAGE_SIZE,
+      }),
+      staleTime: "static",
+    }),
+    context.queryClient.query({
+      ...getDiscountStatsQuery(),
+      staleTime: "static",
+    }),
+  ])
+}
 
 const CouponsPage = (): JSX.Element => {
-  const t = useTranslations("pages.admin")
-  const bcList = useMemo(
-    () => [
-      {
-        href: ROUTES.ADMIN,
-        label: t("nav.dashboard"),
-      } satisfies {
-        href: LocalizedTo
-        label: string
-      },
-    ],
-    [t],
-  )
+  const t = useTranslations("pages.admin.coupons")
+  const sheetState = useCouponsSheetState()
 
   return (
-    <div className="flex h-[calc(100vh-64px)] flex-col">
-      <AdminHeader title={t("coupons.title")} description={t("coupons.description")} breadcrumbs={bcList} />
+    <CouponsSheetProvider value={sheetState}>
+      <AdminHeader description={t("description")} title={t("title")} />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-8">
-        <CouponStats />
-        <CouponListTable />
+      <div className={ADMIN_CATALOG_PAGE_BODY_CLASS}>
+        <CouponsTableContent />
       </div>
-    </div>
+    </CouponsSheetProvider>
   )
 }
 
 export const Route = createFileRoute("/admin/coupons")({
   component: CouponsPage,
-  loader: async ({ context }) => {
-    await Promise.all([
-      context.queryClient.query({ ...getAdminDiscountsPageQuery({}), staleTime: "static" }),
-      context.queryClient.query({ ...getDiscountStatsQuery(), staleTime: "static" }),
-    ])
-  },
+  loader: ({ context }) => prefetchCouponsQueries(context),
+  shouldReload: false,
+  staleTime: DISCOUNT_QUERY_STALE_MS,
 })

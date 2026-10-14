@@ -35,8 +35,9 @@ import {
   insertDiscount,
   updateDiscountById,
 } from "~/src/modules/discount/discount.accessors"
-import { DISCOUNT_TYPE } from "~/src/modules/discount/discount.constants"
+import { DISCOUNT_STATUSES, DISCOUNT_TYPE, type DiscountType } from "~/src/modules/discount/discount.constants"
 import { toDiscountUpdateValues } from "~/src/modules/discount/discount.persist.utils"
+import { resolveDiscountStatus } from "~/src/modules/discount/discount.utils"
 
 const NOW = Date.UTC(2026, 5, 1, 12)
 
@@ -50,6 +51,7 @@ interface DiscountSeed {
   readonly id: string
   readonly isActive?: boolean
   readonly startsAt?: number | null
+  readonly type?: DiscountType
   readonly usageCount?: number
   readonly usageLimit?: number | null
 }
@@ -62,15 +64,16 @@ const seedDiscount = ({
   id,
   isActive = true,
   startsAt = null,
+  type = DISCOUNT_TYPE.PERCENTAGE,
   usageCount = 0,
   usageLimit = null,
 }: DiscountSeed): void => {
   sqlite
     .prepare(
       `insert into discount (id, code, description, ends_at, is_active, starts_at, type, usage_count, usage_limit, value, created_at, updated_at)
-       values (?, ?, ?, ?, ?, ?, 'percentage', ?, ?, 15, ?, ?)`,
+       values (?, ?, ?, ?, ?, ?, ?, ?, ?, 15, ?, ?)`,
     )
-    .run(id, code, description, endsAt, isActive ? 1 : 0, startsAt, usageCount, usageLimit, createdAt, createdAt)
+    .run(id, code, description, endsAt, isActive ? 1 : 0, startsAt, type, usageCount, usageLimit, createdAt, createdAt)
 }
 
 interface RedemptionSeed {
@@ -248,40 +251,77 @@ describe("getAdminDiscountsPage", () => {
   })
 
   it("lists the newest discounts first with the total count", async () => {
-    const page = await getAdminDiscountsPage({ limit: 10, offset: 0 })
+    const page = await getAdminDiscountsPage({ limit: 10, now: new Date(NOW), offset: 0 })
 
     expect(page.rows.map((row) => row.code)).toStrictEqual(["WELCOME", "SUMMER-25", "SPRING-24"])
     expect(page.total).toBe(3)
   })
 
   it("returns only the requested slice but counts every discount", async () => {
-    const page = await getAdminDiscountsPage({ limit: 1, offset: 1 })
+    const page = await getAdminDiscountsPage({ limit: 1, now: new Date(NOW), offset: 1 })
 
     expect(page.rows.map((row) => row.code)).toStrictEqual(["SUMMER-25"])
     expect(page.total).toBe(3)
   })
 
   it("finds discounts by code regardless of case", async () => {
-    const page = await getAdminDiscountsPage({ limit: 10, offset: 0, search: "welcome" })
+    const page = await getAdminDiscountsPage({ limit: 10, now: new Date(NOW), offset: 0, search: "welcome" })
 
     expect(page.rows.map((row) => row.code)).toStrictEqual(["WELCOME"])
     expect(page.total).toBe(1)
   })
 
   it("finds discounts by description", async () => {
-    const page = await getAdminDiscountsPage({ limit: 10, offset: 0, search: "HOLIDAY" })
+    const page = await getAdminDiscountsPage({ limit: 10, now: new Date(NOW), offset: 0, search: "HOLIDAY" })
 
     expect(page.rows.map((row) => row.code)).toStrictEqual(["SUMMER-25"])
   })
 
   it("reports an empty page when nothing matches", async () => {
-    await expect(getAdminDiscountsPage({ limit: 10, offset: 0, search: "autumn" })).resolves.toStrictEqual({ rows: [], total: 0 })
+    await expect(getAdminDiscountsPage({ limit: 10, now: new Date(NOW), offset: 0, search: "autumn" })).resolves.toStrictEqual({
+      rows: [],
+      total: 0,
+    })
+  })
+
+  it("narrows the list to one discount type", async () => {
+    seedDiscount({ code: "SHIPFREE", id: "discount-4", type: DISCOUNT_TYPE.FREE_SHIPPING })
+
+    const page = await getAdminDiscountsPage({ limit: 10, now: new Date(NOW), offset: 0, type: DISCOUNT_TYPE.FREE_SHIPPING })
+
+    expect(page.rows.map((row) => row.code)).toStrictEqual(["SHIPFREE"])
+    expect(page.total).toBe(1)
+  })
+
+  it("narrows the list to the discounts in each state exactly as the list labels them", async () => {
+    sqlite.exec("delete from discount")
+    seedDiscount({ code: "OPEN", id: "d-open" })
+    seedDiscount({ code: "IN-WINDOW", endsAt: NOW + DAY_MS, id: "d-window", startsAt: NOW - DAY_MS })
+    seedDiscount({ code: "STARTS-NOW", id: "d-starts-now", startsAt: NOW })
+    seedDiscount({ code: "HEADROOM", id: "d-headroom", usageCount: 9, usageLimit: 10 })
+    seedDiscount({ code: "OFF", id: "d-off", isActive: false })
+    seedDiscount({ code: "OFF-AND-OVER", endsAt: NOW - DAY_MS, id: "d-off-over", isActive: false })
+    seedDiscount({ code: "LATER", id: "d-later", startsAt: NOW + 1 })
+    seedDiscount({ code: "LATER-USED-UP", id: "d-later-used-up", startsAt: NOW + DAY_MS, usageCount: 5, usageLimit: 5 })
+    seedDiscount({ code: "ENDS-NOW", endsAt: NOW, id: "d-ends-now" })
+    seedDiscount({ code: "OVER-AND-USED-UP", endsAt: NOW - DAY_MS, id: "d-over-used-up", usageCount: 5, usageLimit: 5 })
+    seedDiscount({ code: "USED-UP", id: "d-used-up", usageCount: 10, usageLimit: 10 })
+    const now = new Date(NOW)
+    const everything = await getAdminDiscountsPage({ limit: LIST_PAGE_SIZE_MAX, now, offset: 0 })
+
+    for (const status of DISCOUNT_STATUSES) {
+      const page = await getAdminDiscountsPage({ limit: LIST_PAGE_SIZE_MAX, now, offset: 0, status })
+      const expected = everything.rows.filter((row) => resolveDiscountStatus(row, now) === status).map((row) => row.code)
+
+      expect(page.rows.map((row) => row.code)).toStrictEqual(expected)
+      expect(page.total).toBe(expected.length)
+    }
   })
 
   it("reports a zero total when the database returns no count row", async () => {
     answerWithNoRows()
 
-    await expect(getAdminDiscountsPage({ limit: 10, offset: 0 })).resolves.toStrictEqual({ rows: [], total: 0 })
+    await expect(getAdminDiscountsPage({ limit: 10, now: new Date(NOW), offset: 0 })).resolves.toStrictEqual({ rows: [], total: 0 })
   })
 })
 
@@ -397,7 +437,10 @@ describe("deleteDiscountsByIds", () => {
   it("deletes the listed discounts and leaves the rest", async () => {
     await expect(deleteDiscountsByIds(["discount-1", "discount-3"])).resolves.toBe(2)
 
-    await expect(getAdminDiscountsPage({ limit: 10, offset: 0 })).resolves.toMatchObject({ rows: [{ id: "discount-2" }], total: 1 })
+    await expect(getAdminDiscountsPage({ limit: 10, now: new Date(NOW), offset: 0 })).resolves.toMatchObject({
+      rows: [{ id: "discount-2" }],
+      total: 1,
+    })
   })
 
   it("counts only the discounts that still existed", async () => {
@@ -412,7 +455,7 @@ describe("deleteDiscountsByIds", () => {
 
     await expect(deleteDiscountsByIds(selectedIds)).resolves.toBe(LIST_PAGE_SIZE_MAX)
 
-    const remaining = await getAdminDiscountsPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0 })
+    const remaining = await getAdminDiscountsPage({ limit: LIST_PAGE_SIZE_MAX, now: new Date(NOW), offset: 0 })
 
     expect(remaining.rows.map((row) => row.id).toSorted()).toStrictEqual(["discount-1", "discount-2", "discount-3"])
     expect(remaining.total).toBe(3)

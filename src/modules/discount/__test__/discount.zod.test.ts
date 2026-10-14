@@ -102,3 +102,25 @@ describe("discountZodSchemas.adminDiscountFormValues", () => {
     expect(issuesOf({ ...FORM, code: "SPRING 24!" })).toStrictEqual([{ message: "validation.codeCharacters", path: ["code"] }])
   })
 })
+
+describe("discountZodSchemas.adminDiscountsPageInput", () => {
+  it("narrows the admin list by type and status", () => {
+    expect(discountZodSchemas.adminDiscountsPageInput.parse({ status: "scheduled", type: "free_shipping" })).toStrictEqual({
+      status: "scheduled",
+      type: "free_shipping",
+    })
+  })
+
+  it("rejects a status or type the list does not know", () => {
+    expect(discountZodSchemas.adminDiscountsPageInput.safeParse({ status: "archived" }).success).toBe(false)
+    expect(discountZodSchemas.adminDiscountsPageInput.safeParse({ type: "buy_one_get_one" }).success).toBe(false)
+  })
+})
+
+describe("discountZodSchemas.adminDiscountFormValues limits", () => {
+  it("names a limit of zero in words the admin can read", () => {
+    const result = discountZodSchemas.adminDiscountFormValues.safeParse({ code: "SPRING", type: "percentage", usageLimit: 0, value: 10 })
+
+    expect(result.error?.issues.map((issue) => issue.message)).toStrictEqual(["validation.positiveNumber"])
+  })
+})

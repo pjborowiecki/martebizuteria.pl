@@ -17,12 +17,15 @@ export const getAdminDiscountsPage = createServerFn({ method: "GET" })
     discountZodSchemas.adminDiscountsPageInput.parse(input),
   )
   .handler(async ({ data: input }) => {
+    const now = new Date()
     const params = {
       ...listPaginationParamsFromPage(input.page ?? LIST_PAGE_FIRST, input.pageSize ?? ADMIN_DISCOUNTS_PAGE_SIZE),
+      now,
       search: normalizeAdminSearchTerm(input.search),
+      status: input.status,
+      type: input.type,
     }
     const { rows, total } = await accessorGetAdminDiscountsPage(params)
-    const now = new Date()
 
     return buildListPaginationResult(
       rows.map((row) => toAdminDiscountListItem(row, now)),

@@ -985,8 +985,14 @@
       "createCoupon": "Utwórz kod",
       "delete": "Usuń kod",
       "edit": "Edytuj kod",
-      "search": "Szukaj kodów",
+      "refresh": "Odśwież dane tabeli",
       "searchPlaceholder": "Szukaj po kodzie lub opisie..."
+    },
+    "filter": {
+      "type": "Filtruj według typu",
+      "allTypes": "Wszystkie typy",
+      "status": "Filtruj według statusu",
+      "allStatuses": "Wszystkie statusy"
     },
     "stats": {
       "activeCoupons": "Aktywne kody",
@@ -1002,7 +1008,10 @@
       "usage": "Wykorzystanie",
       "status": "Status",
       "expires": "Wygasa",
-      "actions": "Akcje"
+      "actions": "Akcje",
+      "id": "ID",
+      "startsAt": "Początek",
+      "createdAt": "Utworzono"
     },
     "status": {
       "active": "Aktywny",
@@ -1016,14 +1025,23 @@
       "free_shipping": "Darmowa dostawa",
       "percentage": "Procent"
     },
-    "empty": {
-      "title": "Brak kodów",
-      "description": "Utwórz kod, a od razu zadziała w koszyku.",
-      "noMatches": "Żaden kod nie odpowiada wyszukiwaniu."
-    },
     "usage": {
       "unlimited": "użyto {used}",
       "limited": "{used} / {limit}"
+    },
+    "rowActions": {
+      "copyCode": "Kopiuj kod",
+      "copyCodeToast": "Kod skopiowany do schowka",
+      "copyId": "Kopiuj ID",
+      "copyIdToast": "ID kodu skopiowane do schowka"
+    },
+    "bulk": {
+      "selected": "Zaznaczono: {count}",
+      "delete": "Usuń ({count})",
+      "confirmTitle": "Usunąć kody?",
+      "confirmDescription": "Zaznaczone kody ({count}) przestaną działać natychmiast. Nie wpływa to na zamówienia, które już ich użyły.",
+      "cancel": "Anuluj",
+      "confirm": "Usuń"
     },
     "form": {
       "createTitle": "Utwórz kod",
@@ -1086,7 +1104,11 @@
       "deletedDescription": "{code} nie może już być wykorzystany.",
       "errorTitle": "Nie udało się zapisać kodu",
       "codeTakenDescription": "Ten kod jest już używany.",
-      "errorDescription": "Spróbuj ponownie za chwilę."
+      "errorDescription": "Spróbuj ponownie za chwilę.",
+      "bulkDeletedTitle": "Kody usunięte",
+      "bulkDeletedDescription": "Usunięto kody: {count}.",
+      "deleteErrorTitle": "Nie udało się usunąć",
+      "deleteErrorDescription": "Nie można było usunąć wybranych kodów. Spróbuj ponownie."
     },
     "deleteDialog": {
       "title": "Usunąć ten kod?",

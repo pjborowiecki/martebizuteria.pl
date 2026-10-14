@@ -18,19 +18,24 @@ vi.mock("~/src/presentation/components/custom/pages/admin/admin-header", () => (
     <header>
       <h1>{title}</h1>
       <p>{description}</p>
-      <nav aria-label="breadcrumbs">{(breadcrumbs ?? []).map((crumb) => `${crumb.label}:${crumb.href ?? ""}`).join("|")}</nav>
+      <nav aria-label="breadcrumbs">{breadcrumbs?.map((crumb) => crumb.label).join("|")}</nav>
       <div data-testid="actions">{actions}</div>
     </header>
   ),
 }))
 vi.mock("~/src/modules/discount/use-cases/get-admin-discounts-page", () => ({ getAdminDiscountsPageQuery: () => ({ queryKey: ["page"] }) }))
 vi.mock("~/src/modules/discount/use-cases/get-admin-discount-stats", () => ({ getDiscountStatsQuery: () => ({ queryKey: ["stats"] }) }))
-vi.mock("~/src/presentation/components/custom/pages/admin/coupons/coupon-stats", () => ({
-  CouponStats: (): JSX.Element => <section data-testid="coupon-stats" />,
-}))
-vi.mock("~/src/presentation/components/custom/pages/admin/coupons/coupon-list-table", () => ({
-  CouponListTable: (): JSX.Element => <section data-testid="coupon-list-table" />,
-}))
+vi.mock("~/src/presentation/components/custom/pages/admin/coupons/components/coupons-table", async () => {
+  const { useCouponsSheet } = await import("~/src/presentation/components/custom/pages/admin/coupons/hooks/use-coupons-sheet")
+
+  return {
+    CouponsTableContent: (): JSX.Element => {
+      const sheet = useCouponsSheet()
+
+      return <section data-sheet-mode={sheet.mode} data-testid="coupons-table" />
+    },
+  }
+})
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
@@ -48,17 +53,12 @@ const renderCouponsPage = () => {
 afterEach(cleanup)
 
 describe("the admin coupons page", () => {
-  it("heads the page with the coupon title and description", () => {
+  it("heads the page with the coupon title and description and no breadcrumb trail, like the customers list", () => {
     renderCouponsPage()
 
     expect(screen.getByRole("heading", { name: "Discount Coupons" })).toBeInTheDocument()
     expect(screen.getByText("Manage promotional codes, discounts, and free shipping offers.")).toBeInTheDocument()
-  })
-
-  it("links the breadcrumb trail back to the dashboard", () => {
-    renderCouponsPage()
-
-    expect(screen.getByLabelText("breadcrumbs")).toHaveTextContent("Dashboard:/admin")
+    expect(screen.getByLabelText("breadcrumbs")).toBeEmptyDOMElement()
   })
 
   it("leaves the header free of actions, because creating a coupon belongs with the list", () => {
@@ -67,12 +67,12 @@ describe("the admin coupons page", () => {
     expect(screen.getByTestId("actions").querySelectorAll("button")).toHaveLength(0)
   })
 
-  it("shows the coupon stats above the coupon list", () => {
+  it("hands the coupon table a closed sheet inside the same page body as the other admin lists", () => {
     renderCouponsPage()
 
-    const stats = screen.getByTestId("coupon-stats")
-    const table = screen.getByTestId("coupon-list-table")
+    const table = screen.getByTestId("coupons-table")
 
-    expect(stats.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(table).toHaveAttribute("data-sheet-mode", "closed")
+    expect(table.parentElement).toHaveClass("flex", "min-h-0", "flex-1", "flex-col", "overflow-hidden", "p-8")
   })
 })

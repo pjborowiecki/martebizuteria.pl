@@ -24,6 +24,7 @@ interface DiscountValidationResult {
 
 interface AdminDiscountListItem {
   readonly code: string
+  readonly createdAt: Date
   readonly description: string | undefined
   readonly endsAt: Date | undefined
   readonly id: string

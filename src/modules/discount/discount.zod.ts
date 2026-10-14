@@ -10,6 +10,7 @@ import {
   DISCOUNT_CODE_MIN_LENGTH,
   DISCOUNT_DESCRIPTION_MAX_LENGTH,
   DISCOUNT_PERCENTAGE_MAX,
+  DISCOUNT_STATUSES,
   DISCOUNT_TYPE,
   DISCOUNT_TYPES,
 } from "~/src/modules/discount/discount.constants"
@@ -77,6 +78,8 @@ export const discountZodSchemas = {
     page: pageField.optional(),
     pageSize: pageSizeField.optional(),
     search: searchTermField.optional(),
+    status: zod.enum(DISCOUNT_STATUSES).optional(),
+    type: zod.enum(DISCOUNT_TYPES).optional(),
   }),
   checkoutCodeFormValues: zod.object({ code: zod.string().trim().min(MIN_FIELD_LENGTH).max(DISCOUNT_CODE_MAX_LENGTH) }),
   createDiscountInput: zod.object({ values: adminDiscountFormValues }),
