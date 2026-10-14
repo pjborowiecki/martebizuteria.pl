@@ -53,20 +53,15 @@ filters: {
 }
 ```
 
-Akcesor zwraca cztery rzeczy — `rows`, `orderStats`, `addresses` i `total` — a use case zszywa je po stronie aplikacji:
+Akcesor zwraca pięć rzeczy — `rows`, `orderStats`, `defaultAddresses`, `latestShippingAddresses` i `total` — a use case zszywa je po stronie aplikacji:
 
 ```ts
 const statsByUserId = mapCustomerOrderStats(orderStats)
-const addressByUserId = new Map(
-  addresses
-    .filter((row) => row.userId !== null)
-    .map((row) => [row.userId!, { city: row.city, countryCode: row.countryCode, province: row.province }]),
-)
-
-const items = rows.map((row) => toAdminCustomerListItem(row, statsByUserId.get(row.id), addressByUserId.get(row.id)))
+const locationByUserId = mapCustomerLocations(defaultAddresses, latestShippingAddresses)
+const items = rows.map((row) => toAdminCustomerListItem(row, statsByUserId.get(row.id), locationByUserId.get(row.id)))
 ```
 
-Kolumna lokalizacji pokazuje więc miasto, województwo i kraj z **domyślnego adresu** klienta, a nie adres rozliczeniowy z zamówienia.
+Kolumna lokalizacji pokazuje więc miasto, województwo i kraj z **zapisanego domyślnego adresu** klienta. Może to być adres rozliczeniowy: klient, który przy zamówieniu zaznaczy „Zapisz ten adres rozliczeniowy na przyszłość”, ma ten adres zapisany również jako domyślny. Gdy checkout zostawi jako domyślne oba adresy, dostawy i rozliczeniowy, `getDefaultCustomerAddressesQuery` zwraca je w kolejności zapisu, a `mapCustomerLocations` bierze pierwszy, czyli zwykle adres dostawy, bo checkout zapisuje go jako pierwszy. Klient bez zapisanego domyślnego adresu dostaje adres dostawy (`order_address` typu `shipping`) z najnowszego zamówienia, które go ma, bez względu na status zamówienia. Zamówienie anulowane lub zwrócone daje więc lokalizację, choć nie liczy się do kolumny „Ostatnie zamówienie”, a nowsze zamówienie bez wiersza dostawy jest pomijane. Przy dwóch zamówieniach z tą samą chwilą wygrywa późniejszy numer zamówienia. Przy zamówieniu do paczkomatu adres dostawy to adres wpisany przez klienta, nie adres paczkomatu, a zamówienia sprzed zapisywania kopii adresów (bez wierszy `order_address`) nie dają lokalizacji. `getLatestOrderShippingAddressesQuery` wybiera jeden adres na klienta jednym zapytaniem z `row_number()`, dla całej strony albo całego eksportu CSV, który pokazuje tę samą lokalizację co siatka. Czyta zamówienia klientów przez `order_userId_status_idx`, a wiersz dostawy każdego zamówienia przez `order_address_orderId_idx`. Jednoargumentowy `+` przy `order_address.type` nie pozwala SQLite zacząć od indeksu `order_address_type_idx`, który przeszedłby po wszystkich adresach dostawy w sklepie.
 
 Statystyki zamówień są liczone po `ADMIN_CUSTOMER_ORDER_COUNTABLE_STATUSES = ["completed", "processing", "pending"]`, a `ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS` to `"completed"`. Zamówienia anulowane i zwrócone nie wchodzą do sum klienta.
 

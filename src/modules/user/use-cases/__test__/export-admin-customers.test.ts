@@ -52,7 +52,8 @@ const userRow = (overrides: Partial<User["select"]> = {}): User["select"] => ({
 })
 
 const listResult = (overrides: Partial<Record<string, unknown>> = {}) => ({
-  addresses: [],
+  defaultAddresses: [],
+  latestShippingAddresses: [],
   orderStats: [],
   rows: [userRow()],
   ...overrides,
@@ -133,7 +134,7 @@ describe("exportAdminCustomers rows", () => {
 
   it("attaches the default address of the row", async () => {
     access.filteredList.mockResolvedValue(
-      listResult({ addresses: [{ city: "Warszawa", countryCode: "PL", province: "Mazowieckie", userId: "customer-1" }] }),
+      listResult({ defaultAddresses: [{ city: "Warszawa", countryCode: "PL", province: "Mazowieckie", userId: "customer-1" }] }),
     )
 
     const rows = await exportRows()
@@ -141,9 +142,35 @@ describe("exportAdminCustomers rows", () => {
     expect(rows[0]).toMatchObject({ city: "Warszawa", countryCode: "PL", province: "Mazowieckie" })
   })
 
+  it("prefers the default address over the shipping address of the latest order", async () => {
+    access.filteredList.mockResolvedValue(
+      listResult({
+        defaultAddresses: [{ city: "Warszawa", countryCode: "PL", province: "Mazowieckie", userId: "customer-1" }],
+        latestShippingAddresses: [{ city: "Kraków", countryCode: "PL", province: null, userId: "customer-1" }],
+      }),
+    )
+
+    const rows = await exportRows()
+
+    expect(rows[0]).toMatchObject({ city: "Warszawa", countryCode: "PL", province: "Mazowieckie" })
+  })
+
+  it("falls back to the shipping address of the latest order without a default address", async () => {
+    access.filteredList.mockResolvedValue(
+      listResult({ latestShippingAddresses: [{ city: "Kraków", countryCode: "PL", province: null, userId: "customer-1" }] }),
+    )
+
+    const rows = await exportRows()
+
+    expect(rows[0]).toMatchObject({ city: "Kraków", countryCode: "PL", province: undefined })
+  })
+
   it("ignores address rows that belong to nobody", async () => {
     access.filteredList.mockResolvedValue(
-      listResult({ addresses: [{ city: "Warszawa", countryCode: "PL", province: null, userId: null }] }),
+      listResult({
+        defaultAddresses: [{ city: "Warszawa", countryCode: "PL", province: null, userId: null }],
+        latestShippingAddresses: [{ city: "Kraków", countryCode: "PL", province: null, userId: null }],
+      }),
     )
 
     const rows = await exportRows()

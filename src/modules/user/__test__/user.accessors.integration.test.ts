@@ -24,10 +24,13 @@ import {
   getAverageProductsPerOrderQuery,
   getCustomerOrderStatsQuery,
   getDefaultCustomerAddressesQuery,
+  getLatestOrderShippingAddressesQuery,
   getUserById,
   getUserIdByEmail,
 } from "~/src/modules/user/user.accessors"
 import { ADMIN_CUSTOMER_STAT_FILTER } from "~/src/modules/user/user.constants"
+import { type User } from "~/src/modules/user/user.types"
+import { formatAdminCustomerLocation, mapCustomerLocations } from "~/src/modules/user/user.utils"
 
 const JANUARY = Date.UTC(2024, 0, 10)
 
@@ -35,11 +38,50 @@ const JUNE = Date.UTC(2024, 5, 10)
 
 const page = { limit: 25, offset: 0 }
 
+const AUGUST = Date.UTC(2024, 7, 10)
+
+const SEEDED_CUSTOMER_IDS = ["u-anna", "u-jan", "u-admin", "u_score"]
+
+const insertNewerOrder = ({ id, orderNumber, status, userId }: { id: string; orderNumber: string; status: string; userId: string }) => {
+  sqlite
+    .prepare(`insert into "order" (id, user_id, order_number, status, created_at, updated_at) values (?, ?, ?, ?, ?, ?)`)
+    .run(id, userId, orderNumber, status, AUGUST, AUGUST)
+}
+
+const insertNewerOrderAddress = ({ city, orderId, type }: { city: string; orderId: string; type: "billing" | "shipping" }) => {
+  sqlite
+    .prepare(
+      `insert into order_address (id, address1, city, country_code, first_name, last_name, order_id, type, created_at, updated_at)
+        values (?, 'ul. Nowa 7', ?, 'PL', 'Anna', 'Kowalska', ?, ?, ?, ?)`,
+    )
+    .run(`${orderId}-${type}`, city, orderId, type, AUGUST, AUGUST)
+}
+
+const insertCheckoutSavedDefaultAddress = ({ city, id }: { city: string; id: string }) => {
+  sqlite
+    .prepare(
+      `insert into address (id, city, country_code, user_id, is_default, created_at, updated_at) values (?, ?, 'PL', 'u_score', 1, ?, ?)`,
+    )
+    .run(id, city, AUGUST, AUGUST)
+}
+
+const locationsOf = (result: {
+  defaultAddresses: readonly User["customerLocationRow"][]
+  latestShippingAddresses: readonly User["customerLocationRow"][]
+}) =>
+  Object.fromEntries(
+    [...mapCustomerLocations(result.defaultAddresses, result.latestShippingAddresses)].map(([userId, location]) => [
+      userId,
+      formatAdminCustomerLocation(location),
+    ]),
+  )
+
 beforeEach(() => {
   sqlite.exec(`
     drop table if exists user;
     drop table if exists "order";
     drop table if exists order_item;
+    drop table if exists order_address;
     drop table if exists address;
 
     create table user (
@@ -49,11 +91,16 @@ beforeEach(() => {
       two_factor_enabled integer default 0, created_at integer not null, updated_at integer not null
     );
     create table "order" (
-      id text primary key, user_id text, email text not null default '', status text not null default 'pending',
-      total integer not null default 0, currency_code text not null default 'PLN',
+      id text primary key, user_id text, email text not null default '', order_number text not null default '',
+      status text not null default 'pending', total integer not null default 0, currency_code text not null default 'PLN',
       created_at integer not null, updated_at integer not null
     );
     create table order_item (id text primary key, order_id text, quantity integer not null default 1);
+    create table order_address (
+      id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
+      first_name text not null, last_name text not null, order_id text not null, phone text, postal_code text,
+      province text, type text not null, created_at integer not null, updated_at integer not null
+    );
     create table address (
       id text primary key, address1 text not null default '', city text not null default '', country_code text not null default 'PL',
       province text, user_id text, is_default integer not null default 0, created_at integer not null, updated_at integer not null
@@ -65,12 +112,20 @@ beforeEach(() => {
       ('u-admin', 'Admin One', 'admin@example.com', 1, null, 'admin', 0, null, ${JUNE}, ${JUNE}),
       ('u_score', 'Under Score', 'under_score@example.com', 1, null, 'customer', 0, null, ${JUNE}, ${JUNE});
 
-    insert into "order" (id, user_id, status, total, created_at, updated_at) values
-      ('o-1', 'u-anna', 'completed', 20000, ${JANUARY}, ${JANUARY}),
-      ('o-2', 'u-anna', 'completed', 10000, ${JUNE}, ${JUNE}),
-      ('o-3', 'u-jan', 'completed', 5000, ${JUNE}, ${JUNE}),
-      ('o-4', 'u-jan', 'cancelled', 90000, ${JUNE}, ${JUNE}),
-      ('o-guest', null, 'completed', 7000, ${JUNE}, ${JUNE});
+    insert into "order" (id, user_id, order_number, status, total, created_at, updated_at) values
+      ('o-1', 'u-anna', 'MRT-2024-00001', 'completed', 20000, ${JANUARY}, ${JANUARY}),
+      ('o-2', 'u-anna', 'MRT-2024-00002', 'completed', 10000, ${JUNE}, ${JUNE}),
+      ('o-3', 'u-jan', 'MRT-2024-00003', 'completed', 5000, ${JUNE}, ${JUNE}),
+      ('o-4', 'u-jan', 'MRT-2024-00004', 'cancelled', 90000, ${JUNE}, ${JUNE}),
+      ('o-guest', null, 'MRT-2024-00005', 'completed', 7000, ${JUNE}, ${JUNE});
+
+    insert into order_address (id, address1, city, country_code, first_name, last_name, order_id, province, type, created_at, updated_at) values
+      ('oa-1', 'ul. Długa 1', 'Poznań', 'PL', 'Anna', 'Kowalska', 'o-1', 'Wielkopolskie', 'shipping', ${JANUARY}, ${JANUARY}),
+      ('oa-2', 'ul. Piotrkowska 2', 'Łódź', 'PL', 'Anna', 'Kowalska', 'o-2', 'Łódzkie', 'shipping', ${JUNE}, ${JUNE}),
+      ('oa-2-billing', 'ul. Firmowa 3', 'Wrocław', 'PL', 'Anna', 'Kowalska', 'o-2', null, 'billing', ${JUNE}, ${JUNE}),
+      ('oa-3', 'ul. Monte Cassino 4', 'Sopot', 'PL', 'Jan', 'Nowak', 'o-3', null, 'shipping', ${JUNE}, ${JUNE}),
+      ('oa-4', 'ul. Świętojańska 5', 'Gdynia', 'PL', 'Jan', 'Nowak', 'o-4', null, 'shipping', ${JUNE}, ${JUNE}),
+      ('oa-guest', 'ul. Szeroka 6', 'Toruń', 'PL', 'Gość', 'Sklepu', 'o-guest', null, 'shipping', ${JUNE}, ${JUNE});
 
     insert into address (id, city, country_code, province, user_id, is_default, created_at, updated_at) values
       ('a-1', 'Warszawa', 'PL', 'Mazowieckie', 'u-anna', 1, ${JANUARY}, ${JANUARY}),
@@ -130,6 +185,74 @@ describe("getDefaultCustomerAddressesQuery", () => {
 
     expect(addresses).toStrictEqual([{ city: "Gdańsk", countryCode: "PL", province: null, userId: "u-jan" }])
   })
+
+  it("lists several default addresses of one customer in the order they were saved", async () => {
+    insertCheckoutSavedDefaultAddress({ city: "Kraków", id: "z-shipping" })
+    insertCheckoutSavedDefaultAddress({ city: "Wrocław", id: "a-billing" })
+
+    const addresses = await getDefaultCustomerAddressesQuery(["u_score"])
+
+    expect(addresses.map((row) => row.city)).toStrictEqual(["Kraków", "Wrocław"])
+  })
+})
+
+describe("getLatestOrderShippingAddressesQuery", () => {
+  it("takes the shipping address of the customer's newest order", async () => {
+    await expect(getLatestOrderShippingAddressesQuery(["u-anna"])).resolves.toStrictEqual([
+      { city: "Łódź", countryCode: "PL", province: "Łódzkie", userId: "u-anna" },
+    ])
+  })
+
+  it("skips a newer order that carries only a billing address", async () => {
+    insertNewerOrder({ id: "o-billing-only", orderNumber: "MRT-2024-00006", status: "completed", userId: "u-anna" })
+    insertNewerOrderAddress({ city: "Wrocław", orderId: "o-billing-only", type: "billing" })
+
+    const [location] = await getLatestOrderShippingAddressesQuery(["u-anna"])
+
+    expect(location?.city).toBe("Łódź")
+  })
+
+  it.each([["processing"], ["cancelled"], ["refunded"]])("takes a newer %s order, whatever became of it", async (status) => {
+    insertNewerOrder({ id: "o-newer", orderNumber: "MRT-2024-00006", status, userId: "u-jan" })
+    insertNewerOrderAddress({ city: "Elbląg", orderId: "o-newer", type: "shipping" })
+
+    const [location] = await getLatestOrderShippingAddressesQuery(["u-jan"])
+
+    expect(location?.city).toBe("Elbląg")
+  })
+
+  it("breaks a tie between orders placed in the same millisecond by the later order number", async () => {
+    insertNewerOrder({ id: "o-a", orderNumber: "MRT-2024-00008", status: "completed", userId: "u_score" })
+    insertNewerOrder({ id: "o-b", orderNumber: "MRT-2024-00007", status: "completed", userId: "u_score" })
+    insertNewerOrderAddress({ city: "Lublin", orderId: "o-b", type: "shipping" })
+    insertNewerOrderAddress({ city: "Rzeszów", orderId: "o-a", type: "shipping" })
+
+    await expect(getLatestOrderShippingAddressesQuery(["u_score"])).resolves.toStrictEqual([
+      { city: "Rzeszów", countryCode: "PL", province: null, userId: "u_score" },
+    ])
+  })
+
+  it("takes one address per requested customer", async () => {
+    const rows = await getLatestOrderShippingAddressesQuery(SEEDED_CUSTOMER_IDS)
+
+    expect(Object.fromEntries(rows.map((row) => [row.userId, row.city]))).toStrictEqual({ "u-anna": "Łódź", "u-jan": "Gdynia" })
+  })
+
+  it("keeps guest orders and the orders of customers who were not requested out", async () => {
+    const rows = await getLatestOrderShippingAddressesQuery(["u-anna", "u-admin"])
+
+    expect(rows.map((row) => [row.userId, row.city])).toStrictEqual([["u-anna", "Łódź"]])
+  })
+
+  it("reports nothing for a customer who never ordered", async () => {
+    await expect(getLatestOrderShippingAddressesQuery(["u-admin"])).resolves.toStrictEqual([])
+  })
+
+  it("reports nothing for a customer whose orders carry no shipping address", async () => {
+    insertNewerOrder({ id: "o-unaddressed", orderNumber: "MRT-2024-00006", status: "completed", userId: "u_score" })
+
+    await expect(getLatestOrderShippingAddressesQuery(["u_score"])).resolves.toStrictEqual([])
+  })
 })
 
 describe("getUserById", () => {
@@ -161,11 +284,12 @@ describe("getAdminCustomersPage", () => {
     expect(result.rows.at(-1)?.id).toBe("u-anna")
   })
 
-  it("attaches the order rollup and default addresses for the page", async () => {
+  it("attaches the order rollup, default addresses and latest shipping addresses for the page", async () => {
     const result = await getAdminCustomersPage(page)
 
     expect(result.orderStats.map((row) => row.userId ?? "").toSorted()).toStrictEqual(["u-anna", "u-jan"])
-    expect(result.addresses).toHaveLength(2)
+    expect(result.defaultAddresses).toHaveLength(2)
+    expect(result.latestShippingAddresses).toHaveLength(2)
   })
 
   it("pages through the list", async () => {
@@ -182,7 +306,8 @@ describe("getAdminCustomersPage", () => {
 
     expect(result.rows).toStrictEqual([])
     expect(result.orderStats).toStrictEqual([])
-    expect(result.addresses).toStrictEqual([])
+    expect(result.defaultAddresses).toStrictEqual([])
+    expect(result.latestShippingAddresses).toStrictEqual([])
     expect(result.total).toBe(4)
   })
 
@@ -309,7 +434,8 @@ describe("getAdminCustomersFilteredList", () => {
 
     expect(result.rows.map((row) => row.id)).toStrictEqual(["u-anna"])
     expect(result.orderStats).toMatchObject([{ orderCount: 2, totalSpent: 30_000, userId: "u-anna" }])
-    expect(result.addresses).toMatchObject([{ city: "Warszawa", userId: "u-anna" }])
+    expect(result.defaultAddresses).toMatchObject([{ city: "Warszawa", userId: "u-anna" }])
+    expect(result.latestShippingAddresses).toMatchObject([{ city: "Łódź", userId: "u-anna" }])
   })
 
   it("exports the full set of returning customers with matching order totals", async () => {
@@ -342,7 +468,43 @@ describe("getAdminCustomersFilteredList", () => {
   it("skips the rollup queries when nothing matches", async () => {
     const result = await getAdminCustomersFilteredList({ search: "nobody" })
 
-    expect(result).toStrictEqual({ addresses: [], orderStats: [], rows: [] })
+    expect(result).toStrictEqual({ defaultAddresses: [], latestShippingAddresses: [], orderStats: [], rows: [] })
+  })
+})
+
+describe("the customer location on the admin list and its export", () => {
+  it("keeps the saved default address of a customer who has also ordered", async () => {
+    expect(locationsOf(await getAdminCustomersPage(page))).toStrictEqual({ "u-anna": "Warszawa, Mazowieckie, PL", "u-jan": "Gdańsk, PL" })
+  })
+
+  it("falls back to the shipping address of the latest order when no default address is saved", async () => {
+    sqlite.exec("update address set is_default = 0")
+
+    expect(locationsOf(await getAdminCustomersPage(page))).toStrictEqual({ "u-anna": "Łódź, Łódzkie, PL", "u-jan": "Gdynia, PL" })
+  })
+
+  it("exports the same locations as the list, falling back to the latest order only without a default address", async () => {
+    sqlite.exec("update address set is_default = 0 where user_id = 'u-jan'")
+
+    const exported = locationsOf(await getAdminCustomersFilteredList({}))
+
+    expect(exported).toStrictEqual({ "u-anna": "Warszawa, Mazowieckie, PL", "u-jan": "Gdynia, PL" })
+    expect(exported).toStrictEqual(locationsOf(await getAdminCustomersPage(page)))
+  })
+
+  it("keeps the shipping address when checkout saved both the shipping and the billing address as defaults", async () => {
+    insertCheckoutSavedDefaultAddress({ city: "Kraków", id: "z-shipping" })
+    insertCheckoutSavedDefaultAddress({ city: "Wrocław", id: "a-billing" })
+
+    expect(locationsOf(await getAdminCustomersPage(page))).toMatchObject({ u_score: "Kraków, PL" })
+  })
+
+  it("prefers a billing address saved as the default at checkout over the latest order's shipping address", async () => {
+    insertNewerOrder({ id: "o-newer", orderNumber: "MRT-2024-00006", status: "completed", userId: "u_score" })
+    insertNewerOrderAddress({ city: "Lublin", orderId: "o-newer", type: "shipping" })
+    insertCheckoutSavedDefaultAddress({ city: "Wrocław", id: "a-billing" })
+
+    expect(locationsOf(await getAdminCustomersPage(page))).toMatchObject({ u_score: "Wrocław, PL" })
   })
 })
 
@@ -353,6 +515,8 @@ describe("a full admin page of customers", () => {
 
   const cityByCustomer = new Map(ids.map((id) => [id, `City ${id}`]))
 
+  const shippingCityByCustomer = new Map(ids.map((id) => [id, `Shipping ${id}`]))
+
   beforeEach(() => {
     const insertUser = sqlite.prepare("insert into user (id, name, email, created_at, updated_at) values (?, ?, ?, ?, ?)")
     const insertOrder = sqlite.prepare(
@@ -361,29 +525,36 @@ describe("a full admin page of customers", () => {
     const insertAddress = sqlite.prepare(
       "insert into address (id, city, user_id, is_default, created_at, updated_at) values (?, ?, ?, 1, ?, ?)",
     )
+    const insertOrderAddress = sqlite.prepare(
+      `insert into order_address (id, address1, city, country_code, first_name, last_name, order_id, type, created_at, updated_at)
+        values (?, 'ul. Hurtowa 1', ?, 'PL', 'Bulk', 'Customer', ?, 'shipping', ?, ?)`,
+    )
 
     for (const [index, id] of ids.entries()) {
       const createdAt = JUNE + index + 1
       insertUser.run(id, `Bulk ${id}`, `${id}@example.com`, createdAt, createdAt)
       insertOrder.run(`order-${id}`, id, index + 1, createdAt, createdAt)
       insertAddress.run(`address-${id}`, `City ${id}`, id, createdAt, createdAt)
+      insertOrderAddress.run(`order-address-${id}`, `Shipping ${id}`, `order-${id}`, createdAt, createdAt)
     }
   })
 
-  it("attaches the order rollup and default address of every customer on the page", async () => {
+  it("attaches the order rollup, default address and latest shipping address of every customer on the page", async () => {
     const result = await getAdminCustomersPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0 })
 
     expect(result.rows.map((row) => row.id)).toStrictEqual(ids.toReversed())
     expect(new Map(result.orderStats.map((row) => [row.userId, row.totalSpent]))).toStrictEqual(totalSpentByCustomer)
-    expect(new Map(result.addresses.map((row) => [row.userId, row.city]))).toStrictEqual(cityByCustomer)
+    expect(new Map(result.defaultAddresses.map((row) => [row.userId, row.city]))).toStrictEqual(cityByCustomer)
+    expect(new Map(result.latestShippingAddresses.map((row) => [row.userId, row.city]))).toStrictEqual(shippingCityByCustomer)
   })
 
-  it("exports the order rollup and default address of every matching customer", async () => {
+  it("exports the order rollup, default address and latest shipping address of every matching customer", async () => {
     const result = await getAdminCustomersFilteredList({ search: "bulk" })
 
     expect(result.rows).toHaveLength(LIST_PAGE_SIZE_MAX)
     expect(new Map(result.orderStats.map((row) => [row.userId, row.totalSpent]))).toStrictEqual(totalSpentByCustomer)
-    expect(new Map(result.addresses.map((row) => [row.userId, row.city]))).toStrictEqual(cityByCustomer)
+    expect(new Map(result.defaultAddresses.map((row) => [row.userId, row.city]))).toStrictEqual(cityByCustomer)
+    expect(new Map(result.latestShippingAddresses.map((row) => [row.userId, row.city]))).toStrictEqual(shippingCityByCustomer)
   })
 })
 

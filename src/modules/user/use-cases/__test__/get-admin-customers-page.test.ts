@@ -54,7 +54,8 @@ const userRow = (overrides: Partial<User["select"]> = {}): User["select"] => ({
 })
 
 const pageResult = (overrides: Partial<Record<string, unknown>> = {}) => ({
-  addresses: [],
+  defaultAddresses: [],
+  latestShippingAddresses: [],
   orderStats: [],
   rows: [userRow()],
   total: 1,
@@ -158,7 +159,7 @@ describe("getAdminCustomersPage rows", () => {
 
   it("attaches the default address of the row", async () => {
     access.customersPage.mockResolvedValue(
-      pageResult({ addresses: [{ city: "Warszawa", countryCode: "PL", province: null, userId: "customer-1" }] }),
+      pageResult({ defaultAddresses: [{ city: "Warszawa", countryCode: "PL", province: null, userId: "customer-1" }] }),
     )
 
     const result = await page()
@@ -166,9 +167,35 @@ describe("getAdminCustomersPage rows", () => {
     expect(result.items[0]).toMatchObject({ city: "Warszawa", countryCode: "PL", province: undefined })
   })
 
+  it("prefers the default address over the shipping address of the latest order", async () => {
+    access.customersPage.mockResolvedValue(
+      pageResult({
+        defaultAddresses: [{ city: "Warszawa", countryCode: "PL", province: "Mazowieckie", userId: "customer-1" }],
+        latestShippingAddresses: [{ city: "Kraków", countryCode: "PL", province: null, userId: "customer-1" }],
+      }),
+    )
+
+    const result = await page()
+
+    expect(result.items[0]).toMatchObject({ city: "Warszawa", countryCode: "PL", province: "Mazowieckie" })
+  })
+
+  it("falls back to the shipping address of the latest order without a default address", async () => {
+    access.customersPage.mockResolvedValue(
+      pageResult({ latestShippingAddresses: [{ city: "Kraków", countryCode: "PL", province: null, userId: "customer-1" }] }),
+    )
+
+    const result = await page()
+
+    expect(result.items[0]).toMatchObject({ city: "Kraków", countryCode: "PL", province: undefined })
+  })
+
   it("ignores address rows that belong to nobody", async () => {
     access.customersPage.mockResolvedValue(
-      pageResult({ addresses: [{ city: "Warszawa", countryCode: "PL", province: null, userId: null }] }),
+      pageResult({
+        defaultAddresses: [{ city: "Warszawa", countryCode: "PL", province: null, userId: null }],
+        latestShippingAddresses: [{ city: "Kraków", countryCode: "PL", province: null, userId: null }],
+      }),
     )
 
     const result = await page()

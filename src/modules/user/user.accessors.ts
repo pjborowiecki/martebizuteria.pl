@@ -12,6 +12,7 @@ import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
 import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
+import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { order } from "~/src/modules/order/order.schema"
 import { payment } from "~/src/modules/payment/payment.schema"
@@ -174,6 +175,34 @@ export const getDefaultCustomerAddressesQuery = (userIds?: readonly string[]) =>
     })
     .from(address)
     .where(and(...conditions))
+    .orderBy(sql`rowid`)
+}
+
+export const getLatestOrderShippingAddressesQuery = (userIds: readonly string[]) => {
+  const rankedShippingAddresses = db
+    .select({
+      city: orderAddress.city,
+      countryCode: orderAddress.countryCode,
+      province: orderAddress.province,
+      recency: sql<number>`row_number() over (partition by ${order.userId} order by ${order.createdAt} desc, ${order.orderNumber} desc)`.as(
+        "recency",
+      ),
+      userId: order.userId,
+    })
+    .from(order)
+    .innerJoin(orderAddress, and(eq(orderAddress.orderId, order.id), eq(sql`+${orderAddress.type}`, "shipping")))
+    .where(inJsonList(order.userId, userIds))
+    .as("ranked_shipping_address")
+
+  return db
+    .select({
+      city: rankedShippingAddresses.city,
+      countryCode: rankedShippingAddresses.countryCode,
+      province: rankedShippingAddresses.province,
+      userId: rankedShippingAddresses.userId,
+    })
+    .from(rankedShippingAddresses)
+    .where(eq(rankedShippingAddresses.recency, 1))
 }
 
 const selectAdminCustomerRows = (
@@ -237,7 +266,8 @@ export const getAdminCustomersPage = async (params: AdminCustomersListParams) =>
 
   if (rows.length === 0) {
     return {
-      addresses: [],
+      defaultAddresses: [],
+      latestShippingAddresses: [],
       orderStats: [],
       rows: [],
       total,
@@ -245,10 +275,15 @@ export const getAdminCustomersPage = async (params: AdminCustomersListParams) =>
   }
 
   const userIds = rows.map((row) => row.id)
-  const [orderStats, addresses] = await Promise.all([getCustomerOrderStatsQuery(userIds), getDefaultCustomerAddressesQuery(userIds)])
+  const [orderStats, defaultAddresses, latestShippingAddresses] = await Promise.all([
+    getCustomerOrderStatsQuery(userIds),
+    getDefaultCustomerAddressesQuery(userIds),
+    getLatestOrderShippingAddressesQuery(userIds),
+  ])
 
   return {
-    addresses,
+    defaultAddresses,
+    latestShippingAddresses,
     orderStats,
     rows,
     total,
@@ -259,17 +294,23 @@ export const getAdminCustomersFilteredList = async (params: Pick<AdminCustomersL
   const rows = await selectAdminCustomerRows(params)
   if (rows.length === 0) {
     return {
-      addresses: [],
+      defaultAddresses: [],
+      latestShippingAddresses: [],
       orderStats: [],
       rows: [],
     }
   }
 
   const userIds = rows.map((row) => row.id)
-  const [orderStats, addresses] = await Promise.all([getCustomerOrderStatsQuery(userIds), getDefaultCustomerAddressesQuery(userIds)])
+  const [orderStats, defaultAddresses, latestShippingAddresses] = await Promise.all([
+    getCustomerOrderStatsQuery(userIds),
+    getDefaultCustomerAddressesQuery(userIds),
+    getLatestOrderShippingAddressesQuery(userIds),
+  ])
 
   return {
-    addresses,
+    defaultAddresses,
+    latestShippingAddresses,
     orderStats,
     rows,
   }

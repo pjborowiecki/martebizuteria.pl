@@ -42,14 +42,26 @@ beforeEach(() => {
 
 describe("getAdminCustomersPage when the count comes back without a row", () => {
   it("reports an empty customer list instead of an undefined total", async () => {
-    await expect(getAdminCustomersPage(page)).resolves.toStrictEqual({ addresses: [], orderStats: [], rows: [], total: 0 })
+    await expect(getAdminCustomersPage(page)).resolves.toStrictEqual({
+      defaultAddresses: [],
+      latestShippingAddresses: [],
+      orderStats: [],
+      rows: [],
+      total: 0,
+    })
     expect(database.state.leftJoins).toBe(0)
   })
 
   it("reports an empty customer list for a filter that joins the order rollup", async () => {
     const filters = { totalSpent: { amountMinorUnits: 10_000, operator: NUMERIC_COLUMN_FILTER_OPERATOR.GT } }
 
-    await expect(getAdminCustomersPage({ ...page, filters })).resolves.toStrictEqual({ addresses: [], orderStats: [], rows: [], total: 0 })
+    await expect(getAdminCustomersPage({ ...page, filters })).resolves.toStrictEqual({
+      defaultAddresses: [],
+      latestShippingAddresses: [],
+      orderStats: [],
+      rows: [],
+      total: 0,
+    })
     expect(database.state.leftJoins).toBe(2)
   })
 })

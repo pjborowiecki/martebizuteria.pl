@@ -148,6 +148,20 @@ export const mapCustomerOrderStats = (
       ]),
   )
 
+export const mapCustomerLocations = (
+  defaultAddresses: readonly User["customerLocationRow"][],
+  latestShippingAddresses: readonly User["customerLocationRow"][],
+): Map<string, User["customerAddressRow"]> => {
+  const locationByUserId = new Map<string, User["customerAddressRow"]>()
+  for (const { city, countryCode, province, userId } of [...defaultAddresses, ...latestShippingAddresses]) {
+    if (userId !== null && !locationByUserId.has(userId)) {
+      locationByUserId.set(userId, { city, countryCode, province })
+    }
+  }
+
+  return locationByUserId
+}
+
 const parseOrderStatsLastOrderAt = (value: DateInput | null): Date | undefined => {
   if (value === null) {
     return undefined
