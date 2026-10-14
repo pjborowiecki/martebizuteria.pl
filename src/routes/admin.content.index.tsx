@@ -19,9 +19,7 @@ const AdminContentRoute = (): JSX.Element => {
       <AdminHeader breadcrumbs={breadcrumbs} description={t("content.description")} title={t("content.title")} />
 
       <div className="min-h-0 flex-1 overflow-y-auto p-8">
-        <div className="mx-auto max-w-3xl">
-          <ContentPageList />
-        </div>
+        <ContentPageList />
       </div>
     </>
   )
