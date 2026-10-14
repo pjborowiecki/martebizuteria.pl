@@ -487,7 +487,7 @@ test.describe("admin", () => {
 
     await adminOrderPage.searchOrdersFor(email)
     const csv = await adminOrderPage.exportOrders()
-    expect(csv.split("\n")[0]).toBe("Order ID,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status")
+    expect(csv.split("\n")[0]).toBe("Order number,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status")
     expect(csv).toContain(`"${email}","${INVOICED_COMPANY.companyName}","${INVOICED_COMPANY.storedNip}"`)
     const summaryFromList = await adminOrderPage.openSummaryFromRow(email)
     await expect(new BasePage(summaryFromList).heading()).toHaveText("Order summary")

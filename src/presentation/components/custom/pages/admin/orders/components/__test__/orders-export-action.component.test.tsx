@@ -17,7 +17,7 @@ import { OrdersExportAction } from "~/src/presentation/components/custom/pages/a
 
 const EXPORT_LABEL = "Export"
 
-const HEADER_ROW = "Order ID,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status"
+const HEADER_ROW = "Order number,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status"
 
 const orderRow = {
   billingCompanyName: undefined,
@@ -29,6 +29,7 @@ const orderRow = {
   fulfillmentUiKey: "shipped",
   id: "order-1",
   itemCount: 2,
+  orderNumber: "MRT-2026-00001",
   paymentUiKey: "paid",
   status: "completed",
   totalMinorUnits: 12_000,
@@ -98,7 +99,7 @@ describe("OrdersExportAction", () => {
 
     await waitFor(() => {
       expect(withPlainSpaces(writtenCsv().content.split("\n")[1] ?? "")).toBe(
-        '"order-1","Anna Kowalska","anna@example.com",,,"Mar 14, 2026","2","PLN 120.00","Paid","Shipped","Completed"',
+        '"MRT-2026-00001","Anna Kowalska","anna@example.com",,,"Mar 14, 2026","2","PLN 120.00","Paid","Shipped","Completed"',
       )
     })
   })

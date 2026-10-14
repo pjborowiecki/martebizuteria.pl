@@ -1,8 +1,6 @@
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
-import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants"
-
 export const isAdminOrderTab = (value: string): value is AdminOrderTab => (ORDER_TABS as readonly string[]).includes(value)
 
 export const isAdminOrderStatus = (value: string): value is Order["select"]["status"] =>
@@ -99,7 +97,7 @@ export const ADMIN_ORDER_TABLE_COLUMN_SIZE = {
   email: 220,
   fulfillment: 160,
   itemCount: 88,
-  orderId: CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX,
+  orderId: 160,
   payment: 120,
   select: 44,
   status: 130,
