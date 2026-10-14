@@ -14,10 +14,10 @@ import {
   ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
   ADMIN_STAT_LABEL_CLASS,
-  ADMIN_STAT_VALUE_CLASS,
   ADMIN_STAT_VALUE_SLOT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { AdminStatCaption } from "~/src/presentation/components/custom/pages/admin/admin-stat-caption"
+import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
 import { type ProductsListFilterPatch } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-data-grid"
 import {
   type ProductStatCardConfig,
@@ -83,7 +83,7 @@ export const ProductStatCard = ({
       <div className="min-w-0 flex-1 space-y-2">
         <p className={ADMIN_STAT_LABEL_CLASS}>{t(`stats.${key}.label`)}</p>
         <div className={ADMIN_STAT_VALUE_SLOT_CLASS}>
-          {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={ADMIN_STAT_VALUE_CLASS}>{displayValue}</p>}
+          {valuesPending ? <Skeleton className="h-8 w-20" /> : <AdminStatValue value={displayValue} />}
         </div>
         <div className={ADMIN_STAT_CAPTION_SLOT_CLASS}>
           <AdminStatCaption caption={caption} valuesPending={valuesPending} />

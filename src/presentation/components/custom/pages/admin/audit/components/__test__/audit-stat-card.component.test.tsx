@@ -47,6 +47,12 @@ describe("AuditStatCard rendering", () => {
     expect(screen.getByText("12,345")).toBeInTheDocument()
   })
 
+  it("cuts a long event count short beside its icon instead of running under it", () => {
+    renderWithProviders(<AuditStatCard config={configFor("total")} displayValue={1_234_567_890} valuesPending={false} />)
+
+    expect(screen.getByText("1,234,567,890")).toHaveClass("min-w-0", "truncate")
+  })
+
   it("shows zero when no count was supplied", () => {
     renderWithProviders(<AuditStatCard config={configFor("errors")} valuesPending={false} />)
 

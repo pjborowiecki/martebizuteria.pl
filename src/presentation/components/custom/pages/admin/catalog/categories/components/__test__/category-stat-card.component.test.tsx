@@ -94,6 +94,12 @@ describe("CategoryStatCard", () => {
     expect(screen.getByText("8")).toBeInTheDocument()
   })
 
+  it("cuts a long count short beside its icon instead of running under it", () => {
+    renderWithProviders(<CategoryStatCard config={config()} displayValue="1,234,567,890" valuesPending={false} />)
+
+    expect(screen.getByText("1,234,567,890")).toHaveClass("min-w-0", "truncate")
+  })
+
   it("hides the value behind a skeleton while the stats load", () => {
     renderWithProviders(<CategoryStatCard config={config()} displayValue="8" valuesPending />)
 

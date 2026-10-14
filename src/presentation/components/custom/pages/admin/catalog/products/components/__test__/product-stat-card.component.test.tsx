@@ -53,6 +53,12 @@ describe("ProductStatCard", () => {
     expect(screen.getByText("12")).toBeInTheDocument()
   })
 
+  it("cuts a long count short beside its icon instead of running under it", () => {
+    renderWithProviders(<ProductStatCard config={cardConfig("total")} displayValue="1,234,567,890" valuesPending={false} />)
+
+    expect(screen.getByText("1,234,567,890")).toHaveClass("min-w-0", "truncate")
+  })
+
   it("shows the caption it was handed", () => {
     renderWithProviders(<ProductStatCard caption="50% of total" config={cardConfig("active")} displayValue="6" valuesPending={false} />)
 

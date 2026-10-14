@@ -1,6 +1,8 @@
 import { cleanup, screen } from "@testing-library/react"
+import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it } from "vite-plus/test"
 
+import { markAsCut } from "~/src/platform/testing/lib/cut-text"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
@@ -10,6 +12,8 @@ import { type User } from "~/src/modules/user/user.types"
 import { CustomerKpis } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-kpis"
 
 const RETURNING_COLOR_CLASS = "text-emerald-600"
+
+const LARGE_SPEND = /99,999,999\.99/u
 
 const detail = (overrides: Partial<User["adminCustomerDetail"]> = {}): User["adminCustomerDetail"] => ({
   averageOrderValue: 49_975,
@@ -73,6 +77,17 @@ describe("CustomerKpis", () => {
 
     expect(screen.getByText(/1,999\.00/u)).toBeInTheDocument()
     expect(screen.getByText(/499\.75/u)).toBeInTheDocument()
+  })
+
+  it("ends a lifetime spend too wide for its card in an ellipsis and shows it in full on hover", async () => {
+    renderWithProviders(<CustomerKpis customer={detail({ totalSpent: 9_999_999_999 })} />)
+    const spend = screen.getByText(LARGE_SPEND)
+
+    expect(spend).toHaveClass("min-w-0", "truncate", "text-2xl")
+
+    await userEvent.hover(markAsCut(spend))
+
+    expect(await screen.findByText(LARGE_SPEND, { selector: "[data-slot='tooltip-content']" })).toBeInTheDocument()
   })
 
   it("renders the order count as a plain number", () => {

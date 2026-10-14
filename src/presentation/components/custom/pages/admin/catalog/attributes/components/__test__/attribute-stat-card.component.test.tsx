@@ -88,6 +88,12 @@ describe("AttributeStatCard", () => {
     expect(screen.getByText("4")).toBeInTheDocument()
   })
 
+  it("cuts a long count short beside its icon instead of running under it", () => {
+    renderWithProviders(<AttributeStatCard config={config()} displayValue="1,234,567,890" valuesPending={false} />)
+
+    expect(screen.getByText("1,234,567,890")).toHaveClass("min-w-0", "truncate")
+  })
+
   it("renders the caption under the value", () => {
     renderWithProviders(<AttributeStatCard caption="75% of all" config={config()} displayValue="4" valuesPending={false} />)
 

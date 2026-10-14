@@ -14,10 +14,10 @@ import {
   ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
   ADMIN_STAT_LABEL_CLASS,
-  ADMIN_STAT_VALUE_CLASS,
   ADMIN_STAT_VALUE_SLOT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { AdminStatCaption } from "~/src/presentation/components/custom/pages/admin/admin-stat-caption"
+import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
 import { type AuditStatCardConfig, type AuditStatKey } from "~/src/presentation/components/custom/pages/admin/audit/audit-stats.config"
 
 const resolveStatLabelKey = (
@@ -104,7 +104,7 @@ export const AuditStatCard = ({
       <div className="min-w-0 flex-1 space-y-2">
         <p className={ADMIN_STAT_LABEL_CLASS}>{t(resolveStatLabelKey(key))}</p>
         <div className={ADMIN_STAT_VALUE_SLOT_CLASS}>
-          {valuesPending ? <Skeleton className="h-8 w-20" /> : <p className={ADMIN_STAT_VALUE_CLASS}>{format.number(displayValue ?? 0)}</p>}
+          {valuesPending ? <Skeleton className="h-8 w-20" /> : <AdminStatValue value={format.number(displayValue ?? 0)} />}
         </div>
         <div className={ADMIN_STAT_CAPTION_SLOT_CLASS}>
           <AdminStatCaption caption={caption} valuesPending={valuesPending} />

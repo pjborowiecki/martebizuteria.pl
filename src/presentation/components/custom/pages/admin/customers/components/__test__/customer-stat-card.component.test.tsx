@@ -21,6 +21,8 @@ import {
 
 const LOCALE = "en-US"
 
+const LARGE_LTV = "12 345,67 zł"
+
 const configFor = (key: CustomerStatKey): CustomerStatCardConfig => {
   const config = CUSTOMER_STAT_CARDS.find((card) => card.key === key)
   if (config === undefined) {
@@ -88,6 +90,12 @@ describe("CustomerStatCard rendering", () => {
 
     expect(screen.getByText("Total Customers")).toBeInTheDocument()
     expect(screen.getByText("1,204")).toBeInTheDocument()
+  })
+
+  it("cuts a large lifetime value short beside its icon instead of running under it", () => {
+    renderWithProviders(<CustomerStatCard config={configFor("averageLtv")} displayValue={LARGE_LTV} valuesPending={false} />)
+
+    expect(screen.getByText(LARGE_LTV)).toHaveClass("min-w-0", "truncate")
   })
 
   it("hides the value behind a placeholder while the stats are loading", () => {
