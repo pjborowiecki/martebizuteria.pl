@@ -49,6 +49,8 @@ export const resolveAuditLogSince = (dateRange: AuditLogDateRange | undefined): 
   return new Date(now - AUDIT_LOG_DATE_RANGE_MS.DAYS_30)
 }
 
+export const toAuditActionMessageKey = (action: string): string => `audit.actions.${action.replaceAll(".", "_")}`
+
 export const formatAdminAuditTimestamp = (createdAt: Date | string): string => {
   const date = createdAt instanceof Date ? createdAt : new Date(createdAt)
 

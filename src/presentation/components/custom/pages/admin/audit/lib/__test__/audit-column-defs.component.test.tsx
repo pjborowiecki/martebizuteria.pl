@@ -199,6 +199,19 @@ describe("buildAuditColumns cells", () => {
     expect(cell(AUDIT_LOG_TABLE_COLUMN_ID.action)).toHaveTextContent("Order placed")
   })
 
+  it("names a coupon event instead of showing its message key", () => {
+    renderColumns({ action: "discount.created" })
+
+    expect(cell(AUDIT_LOG_TABLE_COLUMN_ID.action)).toHaveTextContent("Coupon created")
+  })
+
+  it("shows the stored action of an event the shop no longer names", () => {
+    renderColumns({ action: "customer.tier_changed" })
+
+    expect(cell(AUDIT_LOG_TABLE_COLUMN_ID.action)).toHaveTextContent("customer.tier_changed")
+    expect(cell(AUDIT_LOG_TABLE_COLUMN_ID.actions)).toHaveTextContent("actions for customer.tier_changed")
+  })
+
   it("names the subject alongside the record it points at", () => {
     renderColumns()
 
