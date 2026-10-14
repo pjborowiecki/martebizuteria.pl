@@ -44,7 +44,7 @@ const { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandl
   await import("~/src/modules/product/product.accessors")
 const { STOREFRONT_PRODUCTS_SORT } = await import("~/src/modules/product/product.storefront-catalog")
 const { getStorefrontPublishedProductsPage } = await import("~/src/modules/product/product.storefront-catalog.accessors")
-const { getCustomerAuditTimelineQuery } = await import("~/src/modules/user/user.accessors")
+const { getCustomerAuditTimelineQuery, getLatestOrderShippingAddressesQuery } = await import("~/src/modules/user/user.accessors")
 
 applyMigrationHistory(sqlite)
 
@@ -201,6 +201,15 @@ describe("hot reads", () => {
 
     expect(steps).toContain("SEARCH price_history USING INDEX price_history_variantId_idx (variant_id=?)")
     expect(steps).not.toContain("USE TEMP B-TREE FOR ORDER BY")
+  })
+
+  it("read the latest shipping address of a page of customers through their orders instead of every shipping address in the shop", async () => {
+    await expect(planSteps(() => getLatestOrderShippingAddressesQuery(["user-1", "user-2"]))).resolves.toStrictEqual(
+      expect.arrayContaining([
+        "SEARCH order USING INDEX order_userId_status_idx (user_id=?)",
+        "SEARCH order_address USING INDEX order_address_orderId_idx (order_id=?)",
+      ]),
+    )
   })
 
   it("page newsletter subscribers newest first without sorting the whole list", async () => {

@@ -15,6 +15,10 @@ type CustomerAddressRow = Pick<typeof address.$inferSelect, "city" | "countryCod
   readonly province?: string | null | undefined
 }
 
+type CustomerLocationRow = CustomerAddressRow & {
+  readonly userId: string | null
+}
+
 type AdminCustomerFullAddressRow = Pick<
   typeof address.$inferSelect,
   "address1" | "address2" | "city" | "countryCode" | "postalCode" | "province"
@@ -78,6 +82,7 @@ export interface User {
   adminCustomersPageInput: AdminCustomersPageInput
   adminUserMetadata: z.infer<(typeof userZodSchemas)["adminUserMetadata"]>
   customerAddressRow: CustomerAddressRow
+  customerLocationRow: CustomerLocationRow
   customerOrderStats: CustomerOrderStats
   insert: typeof user.$inferInsert
   select: typeof user.$inferSelect

@@ -15,6 +15,7 @@ import {
   formatAdminCustomerFullAddress,
   formatAdminCustomerLastActive,
   formatAdminCustomerLocation,
+  mapCustomerLocations,
   mapCustomerOrderStats,
   normalizeAverageProductsPerOrder,
   resolveAdminCustomerAverageOrderValue,
@@ -97,6 +98,43 @@ describe("formatAdminCustomerLocation", () => {
 
   it("reports nothing when the customer has no address", () => {
     expect(formatAdminCustomerLocation(undefined)).toBeUndefined()
+  })
+})
+
+describe("mapCustomerLocations", () => {
+  const warsaw: User["customerAddressRow"] = { city: "Warszawa", countryCode: "PL", province: "Mazowieckie" }
+
+  const krakow: User["customerAddressRow"] = { city: "Kraków", countryCode: "PL", province: null }
+
+  it("keeps the default address of a customer whose latest order shipped elsewhere", () => {
+    expect(mapCustomerLocations([{ ...warsaw, userId: "user-1" }], [{ ...krakow, userId: "user-1" }])).toStrictEqual(
+      new Map([["user-1", warsaw]]),
+    )
+  })
+
+  it("falls back to the shipping address of the latest order for a customer without a default address", () => {
+    expect(mapCustomerLocations([{ ...warsaw, userId: "user-1" }], [{ ...krakow, userId: "user-2" }])).toStrictEqual(
+      new Map([
+        ["user-1", warsaw],
+        ["user-2", krakow],
+      ]),
+    )
+  })
+
+  it("keeps the first saved of several default addresses", () => {
+    expect(
+      mapCustomerLocations(
+        [
+          { ...krakow, userId: "user-1" },
+          { ...warsaw, userId: "user-1" },
+        ],
+        [],
+      ),
+    ).toStrictEqual(new Map([["user-1", krakow]]))
+  })
+
+  it("leaves out rows that belong to no account", () => {
+    expect(mapCustomerLocations([{ ...warsaw, userId: null }], [{ ...krakow, userId: null }])).toStrictEqual(new Map())
   })
 })
 

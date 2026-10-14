@@ -5,7 +5,7 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { type AdminCustomersListParams, getAdminCustomersFilteredList } from "~/src/modules/user/user.accessors"
-import { mapCustomerOrderStats, toAdminCustomerListItem } from "~/src/modules/user/user.utils"
+import { mapCustomerLocations, mapCustomerOrderStats, toAdminCustomerListItem } from "~/src/modules/user/user.utils"
 import { userZodSchemas } from "~/src/modules/user/user.zod"
 
 const buildAdminCustomersExportParams = (
@@ -31,20 +31,9 @@ export const exportAdminCustomers = createServerFn({
   .validator((input: zod.input<typeof userZodSchemas.adminCustomersExportInput>) => userZodSchemas.adminCustomersExportInput.parse(input))
   .handler(async ({ data: input }) => {
     const params = buildAdminCustomersExportParams(input)
-    const { addresses, orderStats, rows } = await getAdminCustomersFilteredList(params)
+    const { defaultAddresses, latestShippingAddresses, orderStats, rows } = await getAdminCustomersFilteredList(params)
     const statsByUserId = mapCustomerOrderStats(orderStats)
-    const addressByUserId = new Map(
-      addresses
-        .filter((row) => row.userId !== null)
-        .map((row) => [
-          row.userId!,
-          {
-            city: row.city,
-            countryCode: row.countryCode,
-            province: row.province,
-          },
-        ]),
-    )
+    const locationByUserId = mapCustomerLocations(defaultAddresses, latestShippingAddresses)
 
-    return rows.map((row) => toAdminCustomerListItem(row, statsByUserId.get(row.id), addressByUserId.get(row.id)))
+    return rows.map((row) => toAdminCustomerListItem(row, statsByUserId.get(row.id), locationByUserId.get(row.id)))
   })
