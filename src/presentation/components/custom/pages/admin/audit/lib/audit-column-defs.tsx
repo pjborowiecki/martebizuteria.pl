@@ -68,9 +68,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       header: t("audit.columns.target"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.target,
       meta: {
-        cellClassName: "overflow-hidden",
         fillsRemainingWidth: true,
-        headClassName: "overflow-hidden",
         skeletonVariant: "recordId",
       },
       minSize: AUDIT_LOG_TABLE_COLUMN_SIZE.targetMin,

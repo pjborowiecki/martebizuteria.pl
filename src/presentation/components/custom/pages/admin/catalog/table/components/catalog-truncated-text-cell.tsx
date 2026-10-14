@@ -1,10 +1,19 @@
 import { type JSX, useMemo } from "react"
 
+import { type Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 import { cn } from "cn"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/presentation/components/shadcn/tooltip"
+
+const isCut = (element: Element | undefined): boolean => element !== undefined && element.scrollWidth > element.clientWidth
+
+export const openTooltipOnlyWhenCut = (open: boolean, details: TooltipPrimitive.Root.ChangeEventDetails): void => {
+  if (open && !isCut(details.trigger)) {
+    details.cancel()
+  }
+}
 
 export const CatalogTruncatedTextCell = ({ className, muted = true, text }: Readonly<CatalogTruncatedTextCellProps>): JSX.Element => {
   const trigger = useMemo(
@@ -17,7 +26,7 @@ export const CatalogTruncatedTextCell = ({ className, muted = true, text }: Read
   }
 
   return (
-    <Tooltip>
+    <Tooltip onOpenChange={openTooltipOnlyWhenCut}>
       <TooltipTrigger render={trigger} />
       <TooltipContent className="max-w-sm whitespace-normal">{text}</TooltipContent>
     </Tooltip>

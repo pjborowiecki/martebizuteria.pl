@@ -34,14 +34,14 @@ const preventDefault = (event: DragEvent<HTMLTableCellElement>): void => {
 
 const SortIcon = ({ direction }: Readonly<{ direction: false | "asc" | "desc" }>): JSX.Element => {
   if (direction === "asc") {
-    return <ArrowUp className="size-3.5" strokeWidth={2} />
+    return <ArrowUp className="size-3.5 shrink-0" strokeWidth={2} />
   }
 
   if (direction === "desc") {
-    return <ArrowDown className="size-3.5" strokeWidth={2} />
+    return <ArrowDown className="size-3.5 shrink-0" strokeWidth={2} />
   }
 
-  return <ChevronsUpDown className="size-3.5 opacity-0 transition-opacity group-hover/head:opacity-70" strokeWidth={2} />
+  return <ChevronsUpDown className="size-3.5 shrink-0 opacity-0 transition-opacity group-hover/head:opacity-70" strokeWidth={2} />
 }
 
 const ColumnReorderHeaderArea = ({
@@ -141,7 +141,6 @@ export const DataGridHeaderCell = <TData extends RowData>({
   const { column } = header
   const { table } = header.getContext()
   const { pinLayout, tableLayout, widthPx } = useDataGridColumnMetrics(column, table)
-  const isFixedWidth = !column.getCanResize()
   const canDrag = column.getCanHide()
   const label = typeof column.columnDef.header === "string" ? column.columnDef.header : column.id
   const isPinned = column.getIsPinned()
@@ -207,7 +206,6 @@ export const DataGridHeaderCell = <TData extends RowData>({
         "border-r border-border/60 group-last:border-r-0": isPinned === false,
         "border-r-0 border-l border-border/60": isPinned === "end" && isFirstRightPinned,
         "opacity-40": columnReorder.draggedColumnId === column.id,
-        "overflow-hidden": isFixedWidth,
         "sticky top-0 z-30": isPinned !== false,
       })}
     >

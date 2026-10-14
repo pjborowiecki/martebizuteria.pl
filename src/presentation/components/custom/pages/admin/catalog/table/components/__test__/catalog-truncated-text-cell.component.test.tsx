@@ -1,7 +1,9 @@
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 import { cleanup, screen } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it } from "vite-plus/test"
 
+import { markAsCut } from "~/src/platform/testing/lib/cut-text"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
@@ -37,14 +39,26 @@ describe("CatalogTruncatedTextCell", () => {
     expect(screen.getAllByText("Handmade silver ring")).toHaveLength(1)
   })
 
-  it("reveals the full text in a popup once the cell is hovered", async () => {
+  it("reveals the full text in a popup once a cut cell is hovered", async () => {
     renderWithProviders(<CatalogTruncatedTextCell text="Handmade silver ring" />)
 
-    await userEvent.hover(screen.getByText("Handmade silver ring"))
+    await userEvent.hover(markAsCut(screen.getByText("Handmade silver ring")))
 
     const popup = await screen.findByText("Handmade silver ring", { selector: "[data-slot='tooltip-content']" })
 
     expect(popup).toHaveTextContent("Handmade silver ring")
+  })
+
+  it("adds no popup repeating text that fits its column", async () => {
+    renderWithProviders(
+      <TooltipPrimitive.Provider delay={0}>
+        <CatalogTruncatedTextCell text="10%" />
+      </TooltipPrimitive.Provider>,
+    )
+
+    await userEvent.hover(screen.getByText("10%"))
+
+    expect(screen.queryByText("10%", { selector: "[data-slot='tooltip-content']" })).not.toBeInTheDocument()
   })
 
   it("mutes the text by default", () => {

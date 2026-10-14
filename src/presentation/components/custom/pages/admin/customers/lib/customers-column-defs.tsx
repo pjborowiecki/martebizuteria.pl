@@ -28,7 +28,6 @@ import {
   CustomerStripeCustomerIdCell,
 } from "~/src/presentation/components/custom/pages/admin/customers/components/customer-table-cells"
 import { CustomersRowActions } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-row-actions"
-import { CUSTOMER_STRIPE_CUSTOMER_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/customers/lib/customer-stripe-id-column"
 
 const matchesBooleanColumnFilter = (row: Row<DataGridFeatures, AdminCustomerRow>, columnId: string, filterValue: unknown): boolean => {
   if (typeof filterValue !== "boolean") {
@@ -73,7 +72,7 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
       cell: ({ row }) => <CustomerStripeCustomerIdCell stripeCustomerId={row.original.stripeCustomerId} />,
       header: t("columns.stripeCustomerId"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.stripeCustomerId,
-      meta: CUSTOMER_STRIPE_CUSTOMER_ID_COLUMN_META,
+      meta: CATALOG_RECORD_ID_COLUMN_META,
       ...fixedDataGridColumnWidth(ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.stripeCustomerId),
     }),
     columnHelper.accessor("role", {

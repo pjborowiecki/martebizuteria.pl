@@ -9,7 +9,7 @@ import {
   renderDataGridHeaderLabel,
 } from "~/src/presentation/components/custom/datagrid/components/data-grid-header-content"
 
-import { DataGridHarness, type HarnessTable } from "./data-grid-harness"
+import { DataGridHarness, type HarnessTable, harnessColumnHelper } from "./data-grid-harness"
 
 const renderHarness = (sortable: boolean): HarnessTable => {
   const seen: { table?: HarnessTable } = {}
@@ -62,6 +62,29 @@ describe("renderDataGridHeaderLabel", () => {
     const { container } = render(<>{renderDataGridHeaderLabel(header, header.column)}</>)
 
     expect(container).toHaveTextContent("Title")
+  })
+
+  it("truncates a text label so a narrowed column ends it with an ellipsis", () => {
+    const header = titleHeader(renderHarness(true))
+    render(<>{renderDataGridHeaderLabel(header, header.column)}</>)
+
+    expect(screen.getByText("Title")).toHaveClass("truncate")
+  })
+
+  it("renders a header component as the column defines it", () => {
+    renderWithProviders(
+      <DataGridHarness
+        columns={harnessColumnHelper.columns([harnessColumnHelper.accessor("title", { header: () => <span>Custom title</span> })])}
+      >
+        {(table) => {
+          const header = titleHeader(table)
+
+          return renderDataGridHeaderLabel(header, header.column)
+        }}
+      </DataGridHarness>,
+    )
+
+    expect(screen.getByText("Custom title")).not.toHaveClass("truncate")
   })
 })
 

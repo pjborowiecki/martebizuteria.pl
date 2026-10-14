@@ -19,7 +19,7 @@ export const DATA_GRID_EMPTY_MESSAGE_ROW_INDEX = 2
 export const DATA_GRID_PLACEHOLDER_CELL_INNER_CLASS = "box-border flex h-9 w-full min-w-0 shrink-0 items-center"
 
 export const DATA_GRID_BODY_CELL_CLASS = cn(
-  "border-b border-border/60 bg-card transition-colors group-hover:bg-muted group-data-[state=selected]:bg-muted",
+  "overflow-hidden border-b border-border/60 bg-card transition-colors group-hover:bg-muted group-data-[state=selected]:bg-muted",
 )
 
 export const DATA_GRID_BODY_ROW_CLASS = cn("group border-border/50 transition-colors")
@@ -77,7 +77,6 @@ const DataGridLayoutCell = <TData extends RowData>({
       className={cn(column.columnDef.meta?.cellClassName, DATA_GRID_BODY_CELL_CLASS, {
         "border-l border-border/60": isPinned === "end" && isFirstRightPinned,
         "border-r border-border/60": isPinned === "start" && isLastLeftPinned,
-        "overflow-hidden": !column.getCanResize(),
         "sticky z-10": isPinned !== false,
       })}
     >

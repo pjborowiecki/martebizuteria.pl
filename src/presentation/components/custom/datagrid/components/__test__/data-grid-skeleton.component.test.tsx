@@ -63,6 +63,17 @@ describe("DataGridSkeleton", () => {
     expect(cells[1]?.querySelector('[data-slot="skeleton"]')?.className).toContain("max-w-[80%]")
   })
 
+  it("clips every skeleton cell to its column", () => {
+    for (const isPlaceholderBody of [false, true]) {
+      const { container, unmount } = renderSkeleton({ isPlaceholderBody, rowCount: 1 })
+
+      for (const cell of container.querySelectorAll("tbody td")) {
+        expect(cell).toHaveClass("overflow-hidden")
+      }
+      unmount()
+    }
+  })
+
   it("keeps the rows borderless while standing in for an empty body", () => {
     const { container } = renderSkeleton({ isPlaceholderBody: true, rowCount: 1 })
 
