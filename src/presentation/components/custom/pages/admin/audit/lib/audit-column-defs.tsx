@@ -9,6 +9,7 @@ import {
   SEVERITY_BADGE_COLORS,
 } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
+import { toAuditActionMessageKey } from "~/src/modules/audit-log/audit-log.utils"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 
@@ -22,9 +23,9 @@ import { AuditRowActions } from "~/src/presentation/components/custom/pages/admi
 import { CATALOG_DATAGRID_MUTED_TEXT_CLASS } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 
 const resolveAuditActionLabel = (t: BuildAuditColumnsOptions["t"], action: string): string => {
-  const actionKey = action.replace(ACTION_DOT_REGEX, "_")
+  const messageKey = toAuditActionMessageKey(action)
 
-  return t(`audit.actions.${actionKey}`)
+  return t.has(messageKey) ? t(messageKey) : action
 }
 
 export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptions) =>
@@ -161,8 +162,6 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       ...fixedDataGridColumnWidth(AUDIT_LOG_TABLE_COLUMN_SIZE.actions),
     }),
   ])
-
-const ACTION_DOT_REGEX = /\./gu
 
 const columnHelper = createColumnHelper<DataGridFeatures, AuditLog["adminListItem"]>()
 
