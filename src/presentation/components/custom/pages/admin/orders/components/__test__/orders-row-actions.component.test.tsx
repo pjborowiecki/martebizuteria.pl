@@ -105,7 +105,7 @@ describe("OrdersRowActions menu", () => {
     await openMenu()
 
     expect(await screen.findByRole("menuitem", { name: "View order" })).toBeInTheDocument()
-    expect(screen.getByRole("menuitem", { name: "Copy #order-1" })).toBeInTheDocument()
+    expect(screen.getByRole("menuitem", { name: "Copy ID" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Fulfill order" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Mark as shipped" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Print order summary" })).toBeInTheDocument()
@@ -115,7 +115,7 @@ describe("OrdersRowActions menu", () => {
 
   it.each([
     ["View order", "viewOrder"],
-    ["Copy #order-1", "copyId"],
+    ["Copy ID", "copyId"],
     ["Fulfill order", "fulfill"],
     ["Mark as shipped", "markShipped"],
     ["Print order summary", "printSummary"],
@@ -161,7 +161,7 @@ describe("OrdersRowActions availability", () => {
     await openMenu()
 
     expect(await screen.findByRole("menuitem", { name: "View order" })).not.toHaveAttribute("data-disabled")
-    expect(screen.getByRole("menuitem", { name: "Copy #order-1" })).not.toHaveAttribute("data-disabled")
+    expect(screen.getByRole("menuitem", { name: "Copy ID" })).not.toHaveAttribute("data-disabled")
   })
 
   it("locks the mutating actions while an update is in flight", async () => {

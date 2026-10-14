@@ -56,9 +56,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
           </DropdownMenuItem>
           <DropdownMenuItem className={ITEM_CLASS} onClick={handlers.runMenuAction(handlers.handleCopyId)}>
             <Copy className="size-4" strokeWidth={1.5} />
-            {t("copyId", {
-              id: order.id,
-            })}
+            {t("copyId")}
           </DropdownMenuItem>
           <DropdownMenuSeparator className="my-1.5" />
           <DropdownMenuItem
