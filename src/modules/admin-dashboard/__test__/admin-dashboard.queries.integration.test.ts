@@ -15,13 +15,11 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 import {
-  averageCompletedOrderValueQuery,
-  countableOrdersQuery,
-  completedRevenueSumQuery,
   newCustomersQuery,
   orderAggregatesQuery,
   pageViewsQuery,
   recentOrdersQuery,
+  salesTotalsQuery,
   topProductsQuery,
 } from "~/src/modules/admin-dashboard/admin-dashboard.accessors"
 import {
@@ -63,7 +61,9 @@ beforeEach(() => {
     drop table if exists category_on_product;
 
     create table user (id text primary key, name text not null, email text not null, created_at integer not null, updated_at integer not null);
-    create table payment (id text primary key, status text, created_at integer not null, updated_at integer not null);
+    create table payment (
+      id text primary key, refunded_amount integer not null default 0, status text, created_at integer not null, updated_at integer not null
+    );
     create table "order" (
       id text primary key, payment_id text, user_id text, email text not null,
       currency_code text not null default 'PLN', status text not null default 'pending',
@@ -85,10 +85,15 @@ beforeEach(() => {
       ('u-borys', 'Borys Nowak', 'borys@example.com', ${FEBRUARY}, ${FEBRUARY}),
       ('u-celina', 'Celina Wolska', 'celina@example.com', ${MARCH}, ${MARCH});
 
-    insert into payment (id, status, created_at, updated_at) values ('pay-1', 'succeeded', ${JANUARY}, ${JANUARY});
+    insert into payment (id, refunded_amount, status, created_at, updated_at) values
+      ('pay-1', 0, 'succeeded', ${JANUARY}, ${JANUARY}),
+      ('pay-partly-refunded', 5000, 'succeeded', ${JANUARY}, ${JANUARY}),
+      ('pay-refunded', 8000, 'refunded', ${JANUARY}, ${JANUARY});
 
     insert into "order" (id, payment_id, user_id, email, status, fulfillment_status, total, created_at, updated_at) values
       ('o-jan-completed', 'pay-1', 'u-anna', 'anna@example.com', 'completed', 'delivered', 10000, ${JANUARY}, ${JANUARY}),
+      ('o-jan-processing', 'pay-partly-refunded', 'u-anna', 'anna@example.com', 'processing', 'not_fulfilled', 20000, ${JANUARY}, ${JANUARY}),
+      ('o-jan-refunded', 'pay-refunded', null, 'guest@example.com', 'refunded', 'not_fulfilled', 8000, ${JANUARY}, ${JANUARY}),
       ('o-feb-completed', null, 'u-borys', 'borys@example.com', 'completed', 'shipped', 30000, ${FEBRUARY}, ${FEBRUARY}),
       ('o-feb-pending', null, null, 'guest@example.com', 'pending', 'not_fulfilled', 5000, ${FEBRUARY}, ${FEBRUARY}),
       ('o-feb-cancelled', null, null, 'guest@example.com', 'cancelled', 'cancelled', 90000, ${FEBRUARY}, ${FEBRUARY}),
@@ -114,7 +119,9 @@ beforeEach(() => {
       ('oi-1', 'o-jan-completed', 'p-ring', 2, 'ring.avif', 'Silver ring', 10000, ${JANUARY}, ${JANUARY}),
       ('oi-2', 'o-feb-completed', 'p-ring', 3, 'ring.avif', 'Silver ring', 30000, ${FEBRUARY}, ${FEBRUARY}),
       ('oi-3', 'o-mar-completed', 'p-cuff', 1, null, 'Gold cuff', 70000, ${MARCH}, ${MARCH}),
-      ('oi-4', 'o-feb-cancelled', 'p-cuff', 9, null, 'Gold cuff', 90000, ${FEBRUARY}, ${FEBRUARY});
+      ('oi-4', 'o-feb-cancelled', 'p-cuff', 9, null, 'Gold cuff', 90000, ${FEBRUARY}, ${FEBRUARY}),
+      ('oi-5', 'o-jan-processing', 'p-cuff', 1, null, 'Gold cuff', 20000, ${JANUARY}, ${JANUARY}),
+      ('oi-6', 'o-jan-refunded', 'p-ring', 4, 'ring.avif', 'Silver ring', 8000, ${JANUARY}, ${JANUARY});
   `)
 })
 
@@ -122,37 +129,56 @@ afterAll(() => {
   sqlite.close()
 })
 
-describe("completedRevenueSumQuery", () => {
-  it("sums only completed orders from the window start onwards", async () => {
-    const rows = await completedRevenueSumQuery(WINDOW_START)
+describe("salesTotalsQuery", () => {
+  it("books a paid order that has not been sent yet at its full total", async () => {
+    sqlite.exec(`
+      delete from "order";
+      insert into payment (id, status, created_at, updated_at) values ('pay-unsent', 'succeeded', ${MARCH}, ${MARCH});
+      insert into "order" (id, payment_id, email, status, fulfillment_status, total, created_at, updated_at) values
+        ('o-unsent', 'pay-unsent', 'guest@example.com', 'processing', 'not_fulfilled', 39899, ${MARCH}, ${MARCH});
+    `)
 
-    expect(rows[0]?.total).toBe(111_000)
+    await expect(salesTotalsQuery(WINDOW_START)).resolves.toStrictEqual([{ averageOrderValue: 39_899, orders: 1, revenue: 39_899 }])
+  })
+
+  it("counts every processing and completed order, net of partial refunds, and leaves out unpaid pending, cancelled and refunded ones", async () => {
+    const [totals] = await salesTotalsQuery(WINDOW_START)
+
+    expect(totals?.orders).toBe(5)
+    expect(totals?.revenue).toBe(126_000)
+  })
+
+  it("averages the same orders it counts, net of refunds, to whole minor units", async () => {
+    const [totals] = await salesTotalsQuery(WINDOW_START)
+
+    expect(totals?.averageOrderValue).toBe(25_200)
+  })
+
+  it("takes a partial refund off the order it was paid back on", async () => {
+    sqlite.exec(`delete from "order" where id <> 'o-jan-processing'`)
+
+    await expect(salesTotalsQuery(WINDOW_START)).resolves.toStrictEqual([{ averageOrderValue: 15_000, orders: 1, revenue: 15_000 }])
+  })
+
+  it("never lets a refund larger than the order total take revenue below zero", async () => {
+    sqlite.exec(`
+      delete from "order" where id <> 'o-jan-processing';
+      update payment set refunded_amount = 25000 where id = 'pay-partly-refunded';
+    `)
+
+    await expect(salesTotalsQuery(WINDOW_START)).resolves.toStrictEqual([{ averageOrderValue: 0, orders: 1, revenue: 0 }])
   })
 
   it("stops before the exclusive window end", async () => {
-    const rows = await completedRevenueSumQuery(WINDOW_START, WINDOW_END)
-
-    expect(rows[0]?.total).toBe(40_000)
+    await expect(salesTotalsQuery(WINDOW_START, WINDOW_END)).resolves.toStrictEqual([
+      { averageOrderValue: 18_333, orders: 3, revenue: 55_000 },
+    ])
   })
 
-  it("coalesces an empty window to zero rather than null", async () => {
-    const rows = await completedRevenueSumQuery(new Date(Date.UTC(2030, 0, 1)))
+  it("reports zeroes rather than null or a division by no orders for an empty window", async () => {
+    const afterEveryOrder = new Date(Date.UTC(2030, 0, 1))
 
-    expect(rows[0]?.total).toBe(0)
-  })
-})
-
-describe("countableOrdersQuery", () => {
-  it("counts completed, processing and pending orders but never cancelled ones", async () => {
-    const rows = await countableOrdersQuery(WINDOW_START)
-
-    expect(rows[0]?.count).toBe(5)
-  })
-
-  it("counts only the orders before the window end", async () => {
-    const rows = await countableOrdersQuery(WINDOW_START, WINDOW_END)
-
-    expect(rows[0]?.count).toBe(3)
+    await expect(salesTotalsQuery(afterEveryOrder)).resolves.toStrictEqual([{ averageOrderValue: 0, orders: 0, revenue: 0 }])
   })
 })
 
@@ -184,33 +210,13 @@ describe("pageViewsQuery", () => {
   })
 })
 
-describe("averageCompletedOrderValueQuery", () => {
-  it("rounds the average completed order to whole minor units", async () => {
-    const rows = await averageCompletedOrderValueQuery(WINDOW_START)
-
-    expect(rows[0]?.average).toBe(27_750)
-  })
-
-  it("averages only the window it was asked about", async () => {
-    const rows = await averageCompletedOrderValueQuery(WINDOW_START, WINDOW_END)
-
-    expect(rows[0]?.average).toBe(20_000)
-  })
-
-  it("reports zero instead of dividing by no orders", async () => {
-    const rows = await averageCompletedOrderValueQuery(new Date(Date.UTC(2030, 0, 1)))
-
-    expect(rows[0]?.average).toBe(0)
-  })
-})
-
 describe("orderAggregatesQuery", () => {
-  it("counts the countable orders and sums the completed revenue per month", async () => {
+  it("counts the sales and sums their revenue net of partial refunds per month", async () => {
     const rows = await orderAggregatesQuery(resolveAdminDashboardMonths(new Date(APRIL), 4))
 
     expect(rows).toStrictEqual([
-      { orders: 1, periodKey: "2024-01", revenue: 10_000 },
-      { orders: 2, periodKey: "2024-02", revenue: 30_000 },
+      { orders: 2, periodKey: "2024-01", revenue: 25_000 },
+      { orders: 1, periodKey: "2024-02", revenue: 30_000 },
       { orders: 1, periodKey: "2024-03", revenue: 70_000 },
       { orders: 1, periodKey: "2024-04", revenue: 1000 },
     ])
@@ -219,7 +225,7 @@ describe("orderAggregatesQuery", () => {
   it("leaves out the orders placed before the window and from midnight in Poland after its last day", async () => {
     const rows = await orderAggregatesQuery(resolveAdminDashboardDateRange("2024-02-10", "2024-03-09"))
 
-    expect(rows).toStrictEqual([{ orders: 2, periodKey: "2024-02-10", revenue: 30_000 }])
+    expect(rows).toStrictEqual([{ orders: 1, periodKey: "2024-02-10", revenue: 30_000 }])
   })
 
   it("aggregates nothing outside the window", async () => {
@@ -302,19 +308,19 @@ describe("recentOrdersQuery", () => {
 })
 
 describe("topProductsQuery", () => {
-  it("ranks products by the quantity sold in completed orders", async () => {
+  it("ranks products by the quantity sold in paid orders, cancelled and refunded ones aside", async () => {
     const rows = await topProductsQuery()
 
     expect(rows.map((row) => [row.productId, row.sold])).toStrictEqual([
       ["p-ring", 5],
-      ["p-cuff", 1],
+      ["p-cuff", 2],
     ])
   })
 
-  it("ignores items that belong to an order that never completed", async () => {
+  it("sums the line revenue of the items in orders still being fulfilled and ignores the cancelled ones", async () => {
     const rows = await topProductsQuery()
 
-    expect(rows.find((row) => row.productId === "p-cuff")?.revenue).toBe(70_000)
+    expect(rows.find((row) => row.productId === "p-cuff")?.revenue).toBe(90_000)
   })
 
   it("carries the live product titles and the primary category titles under distinct result columns", async () => {

@@ -50,6 +50,8 @@ export const OPEN_ORDER_STATUSES = ["pending", "processing"] as const
 
 export const CANCELLED_ORDER_STATUSES = ["cancelled", "refunded"] as const
 
+export const ORDER_SALE_STATUSES = ["processing", "completed"] as const
+
 export const DISPATCHED_FULFILLMENT_STATUSES = ["shipped", "delivered"] as const
 
 export const INPOST_DELIVERY_TYPES = ["courier", "locker"] as const

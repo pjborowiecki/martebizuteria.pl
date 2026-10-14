@@ -65,7 +65,9 @@ const DDL = `
   drop table if exists category_on_product;
 
   create table user (id text primary key, name text not null, email text not null, created_at integer not null, updated_at integer not null);
-  create table payment (id text primary key, status text, created_at integer not null, updated_at integer not null);
+  create table payment (
+    id text primary key, refunded_amount integer not null default 0, status text, created_at integer not null, updated_at integer not null
+  );
   create table audit_log (
     id text primary key, action text not null, actor_id text, actor_name text not null, actor_role text not null,
     category text not null, detail text, ip text, metadata text, resource_id text, severity text not null,
@@ -104,9 +106,10 @@ const seed = (): void => {
       ('u-piotr', 'Piotr Nowak', 'piotr@example.com', ${ago(10)}, ${ago(10)}),
       ('u-old', 'Old Customer', 'old@example.com', ${ago(45)}, ${ago(45)});
 
-    insert into payment (id, status, created_at, updated_at) values
-      ('pay-paid', 'succeeded', ${ago(3)}, ${ago(3)}),
-      ('pay-refunded', 'refunded', ${ago(4)}, ${ago(4)});
+    insert into payment (id, refunded_amount, status, created_at, updated_at) values
+      ('pay-paid', 0, 'succeeded', ${ago(3)}, ${ago(3)}),
+      ('pay-partly-refunded', 3000, 'succeeded', ${ago(40)}, ${ago(40)}),
+      ('pay-refunded', 12000, 'refunded', ${ago(5)}, ${ago(5)});
 
     insert into audit_log (id, action, actor_name, actor_role, category, severity, target, created_at) values
       ('al-1', 'customer.page_viewed', 'Anna', 'customer', 'customer', 'info', '/products', ${ago(2)}),
@@ -119,7 +122,9 @@ const seed = (): void => {
       ('o-done-2', 'PLN', 'anna@example.com', 'shipped', 'pay-paid', 'completed', 10000, 'u-anna', ${ago(4)}, ${ago(4)}),
       ('o-pending', 'PLN', 'guest@example.com', 'not_fulfilled', null, 'pending', 5000, null, ${ago(1)}, ${ago(1)}),
       ('o-cancelled', 'PLN', 'guest@example.com', 'cancelled', null, 'cancelled', 9900, null, ${ago(1)}, ${ago(1)}),
-      ('o-old-done', 'PLN', 'old@example.com', 'delivered', 'pay-refunded', 'completed', 8000, 'u-old', ${ago(40)}, ${ago(40)}),
+      ('o-unsent', 'PLN', 'piotr@example.com', 'not_fulfilled', 'pay-paid', 'processing', 20000, 'u-piotr', ${ago(3)}, ${ago(3)}),
+      ('o-refunded', 'PLN', 'piotr@example.com', 'not_fulfilled', 'pay-refunded', 'refunded', 12000, 'u-piotr', ${ago(5)}, ${ago(5)}),
+      ('o-old-done', 'PLN', 'old@example.com', 'delivered', 'pay-partly-refunded', 'completed', 8000, 'u-old', ${ago(40)}, ${ago(40)}),
       ('o-last-year', 'PLN', 'old@example.com', 'delivered', 'pay-paid', 'completed', 70000, 'u-old', ${Date.UTC(2025, 10, 1)}, ${Date.UTC(2025, 10, 1)});
 
     insert into product_category (id, handle, titles, created_at, updated_at) values
@@ -135,13 +140,19 @@ const seed = (): void => {
       ('oi-1', 'o-done-1', 'p-ring', 3, 20000, 'ring-thumb.avif', 'Silver ring (stored)', 20000, 6667, ${ago(2)}, ${ago(2)}),
       ('oi-2', 'o-done-2', 'p-ring', 1, 6000, null, 'Silver ring (stored)', 6000, 6000, ${ago(4)}, ${ago(4)}),
       ('oi-3', 'o-done-1', 'p-chain', 1, 10000, null, 'Gold chain (stored)', 10000, 10000, ${ago(2)}, ${ago(2)}),
-      ('oi-4', 'o-pending', 'p-chain', 9, 90000, null, 'Gold chain (stored)', 90000, 10000, ${ago(1)}, ${ago(1)}),
+      ('oi-4', 'o-cancelled', 'p-chain', 9, 90000, null, 'Gold chain (stored)', 90000, 10000, ${ago(1)}, ${ago(1)}),
+      ('oi-5', 'o-unsent', 'p-chain', 2, 20000, null, 'Gold chain (stored)', 20000, 10000, ${ago(3)}, ${ago(3)}),
+      ('oi-6', 'o-refunded', 'p-ring', 5, 12000, null, 'Silver ring (stored)', 12000, 2400, ${ago(5)}, ${ago(5)}),
       ('oi-orphan', 'o-done-2', null, 2, 4000, null, 'Deleted product', 4000, 2000, ${ago(4)}, ${ago(4)}),
       ('oi-gone', 'o-done-2', 'p-gone', 1, 1000, null, 'Vanished bracelet', 1000, 1000, ${ago(4)}, ${ago(4)});
   `)
 }
 
 const snapshot = (locale = "en-US"): Promise<AdminDashboard["snapshot"]> => getDashboardSnapshot({ data: { locale } })
+
+const deleteSales = (): void => {
+  sqlite.exec(`delete from "order" where status in ('pending', 'processing', 'completed')`)
+}
 
 const placeCompletedOrder = (id: string, total: number, createdAt: string): void => {
   const createdAtMs = Date.parse(createdAt)
@@ -166,35 +177,46 @@ afterAll(() => {
 })
 
 describe("getDashboardSnapshot revenue and order KPIs", () => {
-  it("sums only completed orders inside the trailing 30 day window", async () => {
+  it("books the paid orders of the trailing 30 days whether or not they have been sent", async () => {
     const result = await snapshot()
 
-    expect(result.revenue.current).toBe(40_000)
+    expect(result.revenue.current).toBe(60_000)
   })
 
-  it("compares against the 30 days before that window", async () => {
+  it("shows a lone paid order that is not sent yet as the revenue and the average order value", async () => {
+    sqlite.exec(`delete from "order" where id <> 'o-unsent'`)
     const result = await snapshot()
 
-    expect(result.revenue.previous).toBe(8000)
-    expect(result.revenue.trendPercent).toBe(400)
+    expect(result.revenue.current).toBe(20_000)
+    expect(result.averageOrderValue.current).toBe(20_000)
+    expect(result.orders.current).toBe(1)
+    expect(result.yearToDateRevenueMinorUnits).toBe(20_000)
   })
 
-  it("counts pending, processing and completed orders but not cancelled ones", async () => {
+  it("compares against the 30 days before that window, net of the partial refund given back then", async () => {
+    const result = await snapshot()
+
+    expect(result.revenue.previous).toBe(5000)
+    expect(result.revenue.trendPercent).toBe(1100)
+  })
+
+  it("counts processing and completed orders but not unpaid pending, cancelled or refunded ones", async () => {
     const result = await snapshot()
 
     expect(result.orders.current).toBe(3)
     expect(result.orders.previous).toBe(1)
   })
 
-  it("averages the completed order value to whole minor units", async () => {
+  it("averages the revenue over the same orders it counts, to whole minor units", async () => {
     const result = await snapshot()
 
     expect(result.averageOrderValue.current).toBe(20_000)
-    expect(result.averageOrderValue.previous).toBe(8000)
+    expect(result.averageOrderValue.current).toBe(Math.round(result.revenue.current / result.orders.current))
+    expect(result.averageOrderValue.previous).toBe(5000)
   })
 
-  it("reports a zero average when the window holds no completed orders", async () => {
-    sqlite.exec(`delete from "order" where status = 'completed'`)
+  it("reports a zero average when the window holds no sale", async () => {
+    deleteSales()
     const result = await snapshot()
 
     expect(result.averageOrderValue.current).toBe(0)
@@ -228,10 +250,10 @@ describe("getDashboardSnapshot customers and page views", () => {
 })
 
 describe("getDashboardSnapshot year to date", () => {
-  it("sums completed revenue since the first of January only", async () => {
+  it("sums the revenue of this year's sales since the first of January only", async () => {
     const result = await snapshot()
 
-    expect(result.yearToDateRevenueMinorUnits).toBe(48_000)
+    expect(result.yearToDateRevenueMinorUnits).toBe(65_000)
   })
 
   it("starts the year at midnight on 1 January in Poland", async () => {
@@ -239,11 +261,11 @@ describe("getDashboardSnapshot year to date", () => {
     placeCompletedOrder("o-new-years-day", 5000, "2025-12-31T23:30:00.000Z")
     const result = await snapshot()
 
-    expect(result.yearToDateRevenueMinorUnits).toBe(53_000)
+    expect(result.yearToDateRevenueMinorUnits).toBe(70_000)
   })
 
-  it("falls back to zero when nothing completed this year", async () => {
-    sqlite.exec(`delete from "order" where status = 'completed'`)
+  it("falls back to zero when nothing sold this year", async () => {
+    deleteSales()
     const result = await snapshot()
 
     expect(result.yearToDateRevenueMinorUnits).toBe(0)
@@ -354,18 +376,18 @@ describe("getDashboardSnapshot top products", () => {
     expect(result.topProducts[0]?.productId).toBe("p-ring")
   })
 
-  it("counts units sold across completed orders only", async () => {
+  it("counts units sold across the sales, leaving out cancelled and refunded orders", async () => {
     const result = await snapshot()
 
     expect(topProduct(result, "p-ring")?.sold).toBe(4)
-    expect(topProduct(result, "p-chain")?.sold).toBe(1)
+    expect(topProduct(result, "p-chain")?.sold).toBe(3)
   })
 
   it("sums line revenue per product", async () => {
     const result = await snapshot()
 
     expect(topProduct(result, "p-ring")?.revenueMinorUnits).toBe(26_000)
-    expect(topProduct(result, "p-chain")?.revenueMinorUnits).toBe(10_000)
+    expect(topProduct(result, "p-chain")?.revenueMinorUnits).toBe(30_000)
   })
 
   it("names the product from its live title in the requested locale", async () => {
@@ -458,7 +480,7 @@ it("loads the dashboard through its locale-specific cache query", async () => {
   const client = new QueryClient()
   await expect(client.query(getDashboardSnapshotQuery({ locale: "en-US" }))).resolves.toMatchObject({
     currencyCode: "PLN",
-    revenue: { current: 40_000 },
+    revenue: { current: 60_000 },
   })
   client.clear()
 })

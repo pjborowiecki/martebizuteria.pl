@@ -74,17 +74,19 @@ What a pause does to the storefront and the checkout is described in [Checkout: 
 
 ## The snapshot
 
-`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) is guarded by `authorized({ settings: ["manage"] })` — the same permission as the audit log, not an `order` or `product` permission. It takes a `locale` so the chart labels can be formatted server-side, and runs **fifteen queries in one `db.batch`**.
+`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) is guarded by `authorized({ settings: ["manage"] })` — the same permission as the audit log, not an `order` or `product` permission. It takes a `locale` so the chart labels can be formatted server-side, and runs **eleven queries in one `db.batch`**.
 
 The comparison window comes from `resolveAdminDashboardComparisonPeriod(now)` with `ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS = 30`, so every KPI is "the last 30 days versus the 30 before that".
 
-| KPI                 | Accessor                          | Source                                                           |
-| ------------------- | --------------------------------- | ---------------------------------------------------------------- |
-| `revenue`           | `completedRevenueSumQuery`        | `sum(order.total)` where status is `completed`                   |
-| `orders`            | `countableOrdersQuery`            | `count()` over the countable statuses                            |
-| `customers`         | `newCustomersQuery`               | `count()` of `user` rows by `created_at`                         |
-| `pageViews`         | `pageViewsQuery`                  | `count()` of `audit_log` rows with action `customer.page_viewed` |
-| `averageOrderValue` | `averageCompletedOrderValueQuery` | Rounded mean of `order.total` over `completed`                   |
+| KPI                 | Accessor            | Source                                                           |
+| ------------------- | ------------------- | ---------------------------------------------------------------- |
+| `revenue`           | `salesTotalsQuery`  | `netSalesSum` over the sales                                     |
+| `orders`            | `salesTotalsQuery`  | `count()` of the sales                                           |
+| `customers`         | `newCustomersQuery` | `count()` of `user` rows by `created_at`                         |
+| `pageViews`         | `pageViewsQuery`    | `count()` of `audit_log` rows with action `customer.page_viewed` |
+| `averageOrderValue` | `salesTotalsQuery`  | `netSalesAverage`, the revenue divided by the orders, rounded    |
+
+**What counts as a sale.** An order counts when its status is in `ORDER_SALE_STATUSES` (`processing` and `completed`, in `src/modules/order/order.constants.ts`), whether or not it has been sent, because checkout writes an order as `processing` only once its payment has succeeded and the order stays `processing` until the admin marks it delivered. Pending orders, which nobody has paid for, and cancelled and refunded orders are left out. `orderCountsAsSale`, `netSalesSum` and `netSalesAverage` in `src/modules/order/order.accessors.ts` are that condition and the sum and rounded average of what each sale brings in, `max(order.total - payment.refunded_amount, 0)`, so a partial refund given from the Stripe Dashboard comes off the order it was paid back on. The two sums read `payment`, so their query left-joins it on `order.payment_id`. Revenue, orders and the average come from the same `salesTotalsQuery`, so the average is always the revenue divided by the orders.
 
 **Page views come from the audit log**, written by `trackPageViewed` in `src/modules/customer-activity`. Because that tracker only fires for signed-in users and de-duplicates per session via `sessionStorage`, the figure is "unique pages viewed by logged-in customers", not total traffic.
 
@@ -94,7 +96,7 @@ The comparison window comes from `resolveAdminDashboardComparisonPeriod(now)` wi
 
 Days, months and years on the dashboard are the shop's, in Polish time (`DEFAULT_TIMEZONE_CODE`, `Europe/Warsaw`, from `src/modules/_core/constants/timezone.ts`), not UTC, which is the only time D1 and the Worker know. An order placed at 00:30 on 1 January in Poland, still 31 December in UTC, counts towards the new day, month and year, and a day is 23 or 25 hours long when the clocks change.
 
-`resolveAdminDashboardDays(now, count)` and `resolveAdminDashboardMonths(now, count)` (`admin-dashboard.utils.ts`) build a chart window: the last `count` days or months up to the one it is in Poland now, each as `{ key, start }` with an ISO key (`2026-06-15` or `2026-06`) and the moment it starts at midnight in Warsaw, plus the window's `start` and its exclusive `end`. The starts come from `startOfCalendarDate` in `src/modules/_core/utils/datetime.ts`. `orderAggregatesQuery(window)` counts the countable orders and sums the completed revenue from `start` until `end`, grouped with `calendarPeriodKey` from `drizzle.utils.ts`, which gives each order the key of the last period that started at or before it. `buildAdminDashboardChartPoints` turns the window's periods into one point each, zero where no order fell, labelled from the period's start in Warsaw with `ADMIN_DASHBOARD_DAY_LABEL_FORMAT` or `ADMIN_DASHBOARD_MONTH_LABEL_FORMAT` in the requested locale.
+`resolveAdminDashboardDays(now, count)` and `resolveAdminDashboardMonths(now, count)` (`admin-dashboard.utils.ts`) build a chart window: the last `count` days or months up to the one it is in Poland now, each as `{ key, start }` with an ISO key (`2026-06-15` or `2026-06`) and the moment it starts at midnight in Warsaw, plus the window's `start` and its exclusive `end`. The starts come from `startOfCalendarDate` in `src/modules/_core/utils/datetime.ts`. `orderAggregatesQuery(window)` counts the sales and sums their revenue net of refunds from `start` until `end`, grouped with `calendarPeriodKey` from `drizzle.utils.ts`, which gives each order the key of the last period that started at or before it. `buildAdminDashboardChartPoints` turns the window's periods into one point each, zero where no order fell, labelled from the period's start in Warsaw with `ADMIN_DASHBOARD_DAY_LABEL_FORMAT` or `ADMIN_DASHBOARD_MONTH_LABEL_FORMAT` in the requested locale.
 
 Three series are precomputed in the same snapshot:
 
@@ -102,7 +104,7 @@ Three series are precomputed in the same snapshot:
 - `chartPoints7d` — `chartPoints30d.slice(-7)`, so no extra query
 - `chartPoints1y` — `orderAggregatesQuery` over `resolveAdminDashboardMonths(now, ADMIN_DASHBOARD_CHART_MONTHS_1Y)`, with `ADMIN_DASHBOARD_CHART_MONTHS_1Y = 12`
 
-`yearToDateRevenueMinorUnits` is a separate `completedRevenueSumQuery(resolveAdminDashboardYearStart(now))`, from midnight on 1 January in Poland. The KPI comparison above stays a rolling window of 30 times 24 hours back from now.
+`yearToDateRevenueMinorUnits` is the revenue of a separate `salesTotalsQuery(resolveAdminDashboardYearStart(now))`, from midnight on 1 January in Poland. The KPI comparison above stays a rolling window of 30 times 24 hours back from now.
 
 A custom range is a second server function. `getDashboardChartRange` takes `{ startDate, endDate, locale }` as ISO dates, returns `[]` when `isAdminDashboardCustomChartRangeValid` rejects the pair, and otherwise builds the window of every day from `startDate` to `endDate` with `resolveAdminDashboardDateRange`, from midnight in Poland on the first day until midnight after the last, and runs `orderAggregatesQuery` over it. Its query is `enabled` only for a valid range. The controls are `dashboard/components/dashboard-chart-range-controls.tsx` driven by `dashboard/hooks/use-dashboard-chart-range.ts`, using `react-day-picker`.
 
@@ -124,7 +126,7 @@ A custom range is a second server function. `getDashboardChartRange` takes `{ st
 .leftJoin(product, eq(product.id, orderItem.productId))
 .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
 .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
-.where(eq(order.status, ADMIN_CUSTOMER_COMPLETED_ORDER_STATUS))
+.where(orderCountsAsSale)
 .groupBy(orderItem.productId)
 ```
 

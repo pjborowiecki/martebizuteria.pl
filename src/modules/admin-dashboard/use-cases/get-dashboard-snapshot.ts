@@ -7,15 +7,13 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import {
-  averageCompletedOrderValueQuery,
-  completedRevenueSumQuery,
-  countableOrdersQuery,
   newCustomersQuery,
   orderAggregatesQuery,
   pageViewsQuery,
   recentOrdersQuery,
   resolveTopProductCategoryLabel,
   resolveTopProductName,
+  salesTotalsQuery,
   topProductsQuery,
 } from "~/src/modules/admin-dashboard/admin-dashboard.accessors"
 import {
@@ -51,33 +49,25 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
     const yearStart = resolveAdminDashboardYearStart(now)
 
     const [
-      [currentRevenueRow],
-      [previousRevenueRow],
-      [currentOrdersRow],
-      [previousOrdersRow],
+      [currentSalesRow],
+      [previousSalesRow],
       [currentCustomersRow],
       [previousCustomersRow],
       [currentViewsRow],
       [previousViewsRow],
-      [currentAverageRow],
-      [previousAverageRow],
-      [yearToDateRevenueRow],
+      [yearToDateSalesRow],
       dailyAggregateRows,
       monthlyAggregateRows,
       recentOrderRows,
       topProductRows,
     ] = await db.batch([
-      completedRevenueSumQuery(currentStart),
-      completedRevenueSumQuery(previousStart, previousEnd),
-      countableOrdersQuery(currentStart),
-      countableOrdersQuery(previousStart, previousEnd),
+      salesTotalsQuery(currentStart),
+      salesTotalsQuery(previousStart, previousEnd),
       newCustomersQuery(currentStart),
       newCustomersQuery(previousStart, previousEnd),
       pageViewsQuery(currentStart),
       pageViewsQuery(previousStart, previousEnd),
-      averageCompletedOrderValueQuery(currentStart),
-      averageCompletedOrderValueQuery(previousStart, previousEnd),
-      completedRevenueSumQuery(yearStart),
+      salesTotalsQuery(yearStart),
       orderAggregatesQuery(days),
       orderAggregatesQuery(months),
       recentOrdersQuery(),
@@ -104,13 +94,13 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
     const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
 
     return {
-      averageOrderValue: buildAdminDashboardKpiStat(currentAverageRow?.average ?? 0, previousAverageRow?.average ?? 0),
+      averageOrderValue: buildAdminDashboardKpiStat(currentSalesRow?.averageOrderValue ?? 0, previousSalesRow?.averageOrderValue ?? 0),
       chartPoints1y,
       chartPoints30d,
       chartPoints7d,
       currencyCode,
       customers: buildAdminDashboardKpiStat(currentCustomersRow?.count ?? 0, previousCustomersRow?.count ?? 0),
-      orders: buildAdminDashboardKpiStat(currentOrdersRow?.count ?? 0, previousOrdersRow?.count ?? 0),
+      orders: buildAdminDashboardKpiStat(currentSalesRow?.orders ?? 0, previousSalesRow?.orders ?? 0),
       pageViews: buildAdminDashboardKpiStat(currentViewsRow?.count ?? 0, previousViewsRow?.count ?? 0),
       recentOrders: recentOrderRows.map((row) =>
         toAdminOrderListItem({
@@ -128,7 +118,7 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
           userId: row.userId,
         }),
       ),
-      revenue: buildAdminDashboardKpiStat(currentRevenueRow?.total ?? 0, previousRevenueRow?.total ?? 0),
+      revenue: buildAdminDashboardKpiStat(currentSalesRow?.revenue ?? 0, previousSalesRow?.revenue ?? 0),
       topProducts: validTopProductRows.map((row) => ({
         category: resolveTopProductCategoryLabel(row.categoryTitles, locale),
         currencyCode: row.currencyCode,
@@ -143,7 +133,7 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
         periods: days.periods.slice(-ADMIN_DASHBOARD_CHART_DAYS_7),
         rows: dailyAggregateRows,
       }),
-      yearToDateRevenueMinorUnits: yearToDateRevenueRow?.total ?? 0,
+      yearToDateRevenueMinorUnits: yearToDateSalesRow?.revenue ?? 0,
     }
   })
 

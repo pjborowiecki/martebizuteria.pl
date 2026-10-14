@@ -20,6 +20,7 @@ import {
   ADMIN_ORDER_TIMELINE_ACTIONS,
   type AdminOrderStatFilter,
   type AdminOrderTab,
+  ORDER_SALE_STATUSES,
 } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"
 import { type Order } from "~/src/modules/order/order.types"
@@ -27,6 +28,14 @@ import { payment } from "~/src/modules/payment/payment.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 import { product } from "~/src/modules/product/product.schema"
 import { user } from "~/src/modules/user/user.schema"
+
+export const orderCountsAsSale = inArray(order.status, [...ORDER_SALE_STATUSES])
+
+const orderNetSales = sql<number>`max(${order.total} - coalesce(${payment.refundedAmount}, 0), 0)`
+
+export const netSalesSum = sql<number>`coalesce(sum(${orderNetSales}), 0)`
+
+export const netSalesAverage = sql<number>`case when count(*) > 0 then cast(round(${netSalesSum} * 1.0 / count(*)) as integer) else 0 end`
 
 const buildAdminOrderFulfillmentUiCondition = (
   fulfillmentUiKey: (typeof ADMIN_ORDER_FULFILLMENT_UI_KEY)[keyof typeof ADMIN_ORDER_FULFILLMENT_UI_KEY],
