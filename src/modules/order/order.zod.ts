@@ -16,6 +16,7 @@ import {
   uuidField,
 } from "~/src/modules/_core/utils/zod-fields"
 import {
+  ADMIN_ORDER_ADVANCED_STEPS,
   ADMIN_ORDER_FULFILLMENT_UI_KEY,
   ADMIN_ORDER_PAYMENT_UI_KEY,
   ADMIN_ORDER_STATUSES,
@@ -87,10 +88,19 @@ export const orderZodSchemas = {
     eventId: uuidField,
     orderId: uuidField,
   }),
+  adminSetTrackingNumberInput: zod.object({
+    orderId: uuidField,
+    trackingNumber: zod.string().trim().min(MIN_FIELD_LENGTH).max(ORDER_TRACKING_NUMBER_MAX_LENGTH),
+    trackingUrl: zod.url().max(ORDER_TRACKING_URL_MAX_LENGTH).optional(),
+  }),
   adminShipOrderInput: zod.object({
     orderId: uuidField,
     trackingNumber: zod.string().trim().max(ORDER_TRACKING_NUMBER_MAX_LENGTH).optional(),
     trackingUrl: zod.url().max(ORDER_TRACKING_URL_MAX_LENGTH).optional().or(zod.literal("")),
+  }),
+  adminStepBackOrderInput: zod.object({
+    fromStep: zod.enum(ADMIN_ORDER_ADVANCED_STEPS),
+    orderId: uuidField,
   }),
   disputeMetadata,
   email,

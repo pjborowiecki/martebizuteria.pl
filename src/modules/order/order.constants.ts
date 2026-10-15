@@ -157,6 +157,22 @@ export const ORDER_EMAIL_KIND = {
 
 export type OrderEmailKind = (typeof ORDER_EMAIL_KIND)[keyof typeof ORDER_EMAIL_KIND]
 
+export const ADMIN_ORDER_ADVANCED_STEPS = ["processing", "shipped", "delivered"] as const
+
+export type AdminOrderAdvancedStep = (typeof ADMIN_ORDER_ADVANCED_STEPS)[number]
+
+export const ADMIN_ORDER_PREVIOUS_STEP = {
+  delivered: "shipped",
+  processing: "confirmed",
+  shipped: "processing",
+} as const satisfies Record<AdminOrderAdvancedStep, AdminOrderFulfillmentStepKey>
+
+export const ORDER_EMAIL_KIND_BY_ADVANCED_STEP = {
+  delivered: ORDER_EMAIL_KIND.DELIVERED,
+  processing: ORDER_EMAIL_KIND.IN_PROGRESS,
+  shipped: ORDER_EMAIL_KIND.SHIPPED,
+} as const satisfies Record<AdminOrderAdvancedStep, OrderEmailKind>
+
 export const ORDER_EMAIL_NOTICE_STATUS = {
   ALREADY_SENT: "alreadySent",
   FAILED: "failed",
@@ -184,6 +200,8 @@ export const ADMIN_ORDER_TIMELINE_ACTIONS = [
   AUDIT_LOG_ACTION.ORDER_RESTOCKED,
   AUDIT_LOG_ACTION.ORDER_SHIPMENT_CREATED,
   AUDIT_LOG_ACTION.ORDER_SHIPPED,
+  AUDIT_LOG_ACTION.ORDER_STEPPED_BACK,
+  AUDIT_LOG_ACTION.ORDER_TRACKING_UPDATED,
   AUDIT_LOG_ACTION.ORDER_WITHDRAWAL_RECEIVED,
 ] as const
 
@@ -206,6 +224,8 @@ export const ADMIN_ORDER_TIMELINE_KIND_BY_ACTION: Record<string, AdminOrderTimel
   [AUDIT_LOG_ACTION.ORDER_RESTOCKED]: ADMIN_ORDER_TIMELINE_KIND.ORDER,
   [AUDIT_LOG_ACTION.ORDER_SHIPMENT_CREATED]: ADMIN_ORDER_TIMELINE_KIND.SHIPPING,
   [AUDIT_LOG_ACTION.ORDER_SHIPPED]: ADMIN_ORDER_TIMELINE_KIND.SHIPPING,
+  [AUDIT_LOG_ACTION.ORDER_STEPPED_BACK]: ADMIN_ORDER_TIMELINE_KIND.FULFILLMENT,
+  [AUDIT_LOG_ACTION.ORDER_TRACKING_UPDATED]: ADMIN_ORDER_TIMELINE_KIND.SHIPPING,
   [AUDIT_LOG_ACTION.ORDER_WITHDRAWAL_RECEIVED]: ADMIN_ORDER_TIMELINE_KIND.ORDER,
 }
 
@@ -234,6 +254,8 @@ export const ADMIN_ORDER_TIMELINE_LABEL_KEY_BY_ACTION: Record<string, string> = 
   [AUDIT_LOG_ACTION.ORDER_RESTOCKED]: "restocked",
   [AUDIT_LOG_ACTION.ORDER_SHIPMENT_CREATED]: "shipmentCreated",
   [AUDIT_LOG_ACTION.ORDER_SHIPPED]: "shipped",
+  [AUDIT_LOG_ACTION.ORDER_STEPPED_BACK]: "steppedBack",
+  [AUDIT_LOG_ACTION.ORDER_TRACKING_UPDATED]: "trackingUpdated",
   [AUDIT_LOG_ACTION.ORDER_WITHDRAWAL_RECEIVED]: "withdrawalReceived",
 }
 
@@ -387,5 +409,7 @@ export const ORDER_MUTATION_KEYS = {
   REFUND: ["order", "refundAdminOrder"] as const,
   RESEND_EMAIL: ["order", "resendOrderEmail"] as const,
   RESTOCK: ["order", "restockOrder"] as const,
+  SET_TRACKING_NUMBER: ["order", "setOrderTrackingNumber"] as const,
   SHIP: ["order", "shipOrder"] as const,
+  STEP_BACK: ["order", "stepBackOrder"] as const,
 } as const

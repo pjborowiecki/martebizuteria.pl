@@ -27,6 +27,7 @@ import {
 } from "~/src/modules/order/order.detail.utils"
 import {
   resolveAdminOrderDispute,
+  resolveAdminOrderEmailedSteps,
   resolveAdminOrderFulfillmentUiKey,
   resolveAdminOrderPaymentUiKey,
 } from "~/src/modules/order/order.display.utils"
@@ -89,6 +90,7 @@ const buildAdminOrderDetail = ({
     discountTotalMinorUnits: orderRow.discountTotal,
     displayId: orderRow.orderNumber,
     dispute,
+    emailedSteps: resolveAdminOrderEmailedSteps(orderRow),
     fulfillmentStatus: orderRow.fulfillmentStatus,
     fulfillmentSteps: buildAdminOrderFulfillmentSteps({
       canceledAt: orderRow.canceledAt,

@@ -6,7 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { ORDER_TRACKING_NUMBER_MAX_LENGTH, ORDER_TRACKING_URL_MAX_LENGTH } from "~/src/modules/order/order.constants"
+import {
+  type AdminOrderAdvancedStep,
+  ORDER_TRACKING_NUMBER_MAX_LENGTH,
+  ORDER_TRACKING_URL_MAX_LENGTH,
+} from "~/src/modules/order/order.constants"
 
 import { OrderShipDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-ship-dialog"
 
@@ -15,7 +19,10 @@ const spies = vi.hoisted(() => ({
   openChange: vi.fn<(open: boolean) => void>(),
 }))
 
-const ShipDialogHarness = ({ isPending = false }: Readonly<{ isPending?: boolean }>): JSX.Element => {
+const ShipDialogHarness = ({
+  emailedSteps = [],
+  isPending = false,
+}: Readonly<{ emailedSteps?: readonly AdminOrderAdvancedStep[]; isPending?: boolean }>): JSX.Element => {
   const [open, setOpen] = useState(true)
 
   return (
@@ -29,6 +36,7 @@ const ShipDialogHarness = ({ isPending = false }: Readonly<{ isPending?: boolean
         Reopen
       </button>
       <OrderShipDialog
+        emailedSteps={emailedSteps}
         isPending={isPending}
         onConfirm={spies.confirm}
         onOpenChange={(nextOpen) => {
@@ -57,6 +65,22 @@ describe("OrderShipDialog", () => {
 
     expect(screen.getByRole("dialog", { name: "Mark order as shipped" })).toBeInTheDocument()
     expect(screen.getByText(/Both fields are optional/u)).toBeInTheDocument()
+  })
+
+  it("names the shipping email the customer receives", () => {
+    renderWithProviders(<ShipDialogHarness />)
+
+    expect(screen.getByText("The customer receives the “Shipping notice” email.")).toBeInTheDocument()
+  })
+
+  it("says the shipping email is not sent twice and that only a new tracking number goes out", () => {
+    renderWithProviders(<ShipDialogHarness emailedSteps={["processing", "shipped"]} />)
+
+    expect(
+      screen.getByText(
+        "The order already reached this step before, so the “Shipping notice” email is not sent again. If you enter a new tracking number, the customer receives only a short message with that number.",
+      ),
+    ).toBeInTheDocument()
   })
 
   it("caps the tracking fields at the lengths the order accepts", () => {

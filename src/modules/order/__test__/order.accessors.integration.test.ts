@@ -77,6 +77,7 @@ beforeEach(() => {
       metadata text, order_number text, tracking_number text, tracking_url text, inpost_shipment_id text,
       discount_total integer not null default 0, shipping_total integer not null default 0,
       subtotal integer not null default 0, tax_total integer not null default 0, tax_basis_points integer not null default 2300,
+      in_progress_email_at integer, shipped_email_at integer, delivered_email_at integer,
       created_at integer not null, updated_at integer not null
     );
     create table order_item (

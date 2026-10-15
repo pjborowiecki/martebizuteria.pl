@@ -1,7 +1,7 @@
 import { type JSX, useCallback } from "react"
 
 import { cn } from "cn"
-import { CheckCheck, Loader2, Package, PackagePlus, Printer, RotateCcw, Truck, XCircle } from "lucide-react"
+import { Barcode, CheckCheck, Loader2, Package, PackagePlus, Printer, RotateCcw, Truck, XCircle } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { type Order } from "~/src/modules/order/order.types"
@@ -15,16 +15,108 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
 import { OrderActionButton } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-action-button"
+import { OrderAdvanceDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-advance-dialog"
 import { OrderRefundDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-refund-dialog"
 import { OrderShipDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-ship-dialog"
+import { OrderTrackingDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-tracking-dialog"
 import { useOrderDetailActions } from "~/src/presentation/components/custom/pages/admin/orders/detail/use-order-detail-actions"
 
 import { ROUTES } from "~/src/routes"
 
+const OrderDetailActionDialogs = ({ actions, order }: Readonly<OrderDetailActionDialogsProps>): JSX.Element => {
+  const t = useTranslations("pages.admin.orderDetail")
+
+  return (
+    <>
+      <OrderAdvanceDialog
+        displayId={order.displayId}
+        emailedSteps={order.emailedSteps}
+        isPending={actions.isPending}
+        onConfirm={actions.handleConfirmFulfill}
+        onOpenChange={actions.setFulfillDialogOpen}
+        open={actions.fulfillDialogOpen}
+        step="processing"
+      />
+
+      <OrderShipDialog
+        emailedSteps={order.emailedSteps}
+        isPending={actions.isPending}
+        onConfirm={actions.handleConfirmShip}
+        onOpenChange={actions.setShipDialogOpen}
+        open={actions.shipDialogOpen}
+      />
+
+      <OrderTrackingDialog
+        isPending={actions.isPending}
+        onConfirm={actions.handleConfirmTracking}
+        onOpenChange={actions.setTrackingDialogOpen}
+        open={actions.trackingDialogOpen}
+      />
+
+      <OrderAdvanceDialog
+        displayId={order.displayId}
+        emailedSteps={order.emailedSteps}
+        isPending={actions.isPending}
+        onConfirm={actions.handleConfirmDelivered}
+        onOpenChange={actions.setDeliverDialogOpen}
+        open={actions.deliverDialogOpen}
+        step="delivered"
+      />
+
+      <OrderRefundDialog
+        displayId={order.displayId}
+        isPending={actions.isPending}
+        onConfirm={actions.handleConfirmRefund}
+        onOpenChange={actions.setRefundDialogOpen}
+        open={actions.refundDialogOpen}
+        restockByDefault={actions.refundRestocksByDefault}
+      />
+
+      <CatalogDeleteConfirmDialog
+        cancelLabel={t("restockDialog.cancel")}
+        confirmLabel={t("restockDialog.confirm")}
+        description={t("restockDialog.description", { id: order.displayId })}
+        isPending={actions.isPending}
+        onConfirm={actions.handleConfirmRestock}
+        onOpenChange={actions.setRestockDialogOpen}
+        open={actions.restockDialogOpen}
+        title={t("restockDialog.title")}
+      />
+
+      <CatalogDeleteConfirmDialog
+        cancelLabel={t("cancelDialog.cancel")}
+        confirmLabel={t("cancelDialog.confirm")}
+        description={t(actions.cancelRefundsPayment ? "cancelDialog.refundDescription" : "cancelDialog.description", {
+          id: order.displayId,
+        })}
+        isPending={actions.isPending}
+        onConfirm={actions.handleConfirmCancel}
+        onOpenChange={actions.setCancelDialogOpen}
+        open={actions.cancelDialogOpen}
+        title={t("cancelDialog.title")}
+      />
+    </>
+  )
+}
+
 export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>): JSX.Element => {
   const t = useTranslations("pages.admin.orderDetail")
   const actions = useOrderDetailActions(order)
-  const { setCancelDialogOpen, setRefundDialogOpen, setRestockDialogOpen, setShipDialogOpen } = actions
+  const {
+    setCancelDialogOpen,
+    setDeliverDialogOpen,
+    setFulfillDialogOpen,
+    setRefundDialogOpen,
+    setRestockDialogOpen,
+    setShipDialogOpen,
+    setTrackingDialogOpen,
+  } = actions
+  const handleOpenFulfillDialog = useCallback(() => {
+    setFulfillDialogOpen(true)
+  }, [setFulfillDialogOpen])
+  const handleOpenDeliverDialog = useCallback(() => {
+    setDeliverDialogOpen(true)
+  }, [setDeliverDialogOpen])
   const handleOpenShipDialog = useCallback(() => {
     setShipDialogOpen(true)
   }, [setShipDialogOpen])
@@ -37,6 +129,9 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
   const handleOpenRestockDialog = useCallback(() => {
     setRestockDialogOpen(true)
   }, [setRestockDialogOpen])
+  const handleOpenTrackingDialog = useCallback(() => {
+    setTrackingDialogOpen(true)
+  }, [setTrackingDialogOpen])
 
   return (
     <>
@@ -89,7 +184,7 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
       )}
 
       {actions.canFulfill && (
-        <Button className={ADMIN_HEADER_PRIMARY_BUTTON_CLASS} disabled={actions.isPending} onClick={actions.handleFulfill} size="sm">
+        <Button className={ADMIN_HEADER_PRIMARY_BUTTON_CLASS} disabled={actions.isPending} onClick={handleOpenFulfillDialog} size="sm">
           {actions.isPending ? (
             <Loader2 aria-hidden className="size-3.5 animate-spin" />
           ) : (
@@ -106,8 +201,21 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
         </Button>
       )}
 
+      {actions.canSetTrackingNumber && (
+        <Button
+          className={ADMIN_HEADER_SECONDARY_BUTTON_CLASS}
+          disabled={actions.isPending}
+          onClick={handleOpenTrackingDialog}
+          size="sm"
+          variant="outline"
+        >
+          <Barcode className="size-3.5" strokeWidth={1.5} />
+          {t(order.trackingNumber === undefined ? "actions.addTracking" : "actions.changeTracking")}
+        </Button>
+      )}
+
       {actions.canMarkDelivered && (
-        <Button className={ADMIN_HEADER_PRIMARY_BUTTON_CLASS} disabled={actions.isPending} onClick={actions.handleMarkDelivered} size="sm">
+        <Button className={ADMIN_HEADER_PRIMARY_BUTTON_CLASS} disabled={actions.isPending} onClick={handleOpenDeliverDialog} size="sm">
           {actions.isPending ? (
             <Loader2 aria-hidden className="size-3.5 animate-spin" />
           ) : (
@@ -117,49 +225,15 @@ export const OrderDetailActions = ({ order }: Readonly<OrderDetailActionsProps>)
         </Button>
       )}
 
-      <OrderShipDialog
-        isPending={actions.isPending}
-        onConfirm={actions.handleConfirmShip}
-        onOpenChange={setShipDialogOpen}
-        open={actions.shipDialogOpen}
-      />
-
-      <OrderRefundDialog
-        displayId={order.displayId}
-        isPending={actions.isPending}
-        onConfirm={actions.handleConfirmRefund}
-        onOpenChange={setRefundDialogOpen}
-        open={actions.refundDialogOpen}
-        restockByDefault={actions.refundRestocksByDefault}
-      />
-
-      <CatalogDeleteConfirmDialog
-        cancelLabel={t("restockDialog.cancel")}
-        confirmLabel={t("restockDialog.confirm")}
-        description={t("restockDialog.description", { id: order.displayId })}
-        isPending={actions.isPending}
-        onConfirm={actions.handleConfirmRestock}
-        onOpenChange={setRestockDialogOpen}
-        open={actions.restockDialogOpen}
-        title={t("restockDialog.title")}
-      />
-
-      <CatalogDeleteConfirmDialog
-        cancelLabel={t("cancelDialog.cancel")}
-        confirmLabel={t("cancelDialog.confirm")}
-        description={t(actions.cancelRefundsPayment ? "cancelDialog.refundDescription" : "cancelDialog.description", {
-          id: order.displayId,
-        })}
-        isPending={actions.isPending}
-        onConfirm={actions.handleConfirmCancel}
-        onOpenChange={setCancelDialogOpen}
-        open={actions.cancelDialogOpen}
-        title={t("cancelDialog.title")}
-      />
+      <OrderDetailActionDialogs actions={actions} order={order} />
     </>
   )
 }
 
 interface OrderDetailActionsProps {
   readonly order: Order["adminOrderDetail"]
+}
+
+interface OrderDetailActionDialogsProps extends OrderDetailActionsProps {
+  readonly actions: ReturnType<typeof useOrderDetailActions>
 }

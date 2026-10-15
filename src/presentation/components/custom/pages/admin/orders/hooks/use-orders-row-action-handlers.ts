@@ -37,7 +37,6 @@ const resolveOrderRowActionAvailability = (order: Order["adminListItem"]): Order
 
 export const useOrdersRowActionHandlers = (
   order: Order["adminListItem"],
-  closeMenuAndRequestDeleteConfirm: () => void,
   handleConfirmOpenChange: (open: boolean) => void,
 ): UseOrdersRowActionHandlersResult => {
   const t = useTranslations("pages.admin.orders.rowActions")
@@ -62,13 +61,30 @@ export const useOrdersRowActionHandlers = (
     toast.success(t("copySuccess"))
   }, [order.id, t])
 
-  const handleFulfill = useCallback(() => {
-    fulfillOrder.mutate({ orderId: order.id })
-  }, [fulfillOrder, order.id])
+  const handleConfirmFulfill = useCallback(() => {
+    fulfillOrder.mutate(
+      { orderId: order.id },
+      {
+        onSuccess: () => {
+          handleConfirmOpenChange(false)
+        },
+      },
+    )
+  }, [fulfillOrder, handleConfirmOpenChange, order.id])
 
-  const handleMarkShipped = useCallback(() => {
-    markOrderShipped.mutate({ orderId: order.id })
-  }, [markOrderShipped, order.id])
+  const handleConfirmShip = useCallback(
+    (tracking: { readonly trackingNumber: string | undefined; readonly trackingUrl: string | undefined }) => {
+      markOrderShipped.mutate(
+        { orderId: order.id, ...tracking },
+        {
+          onSuccess: () => {
+            handleConfirmOpenChange(false)
+          },
+        },
+      )
+    },
+    [handleConfirmOpenChange, markOrderShipped, order.id],
+  )
 
   const handlePrintSummary = useCallback(() => {
     const summaryUrl = router.buildLocation({
@@ -88,11 +104,6 @@ export const useOrdersRowActionHandlers = (
       to: "/admin/orders/$orderId",
     })
   }, [navigate, order.id])
-
-  const handleCancelRequest = useCallback(() => {
-    suppressDataGridRowClickAfterDialogDismiss()
-    closeMenuAndRequestDeleteConfirm()
-  }, [closeMenuAndRequestDeleteConfirm])
 
   const handleConfirmCancel = useCallback(() => {
     cancelOrder.mutate(
@@ -122,11 +133,10 @@ export const useOrdersRowActionHandlers = (
 
   return {
     ...availability,
-    handleCancelRequest,
     handleConfirmCancel,
+    handleConfirmFulfill,
+    handleConfirmShip,
     handleCopyId,
-    handleFulfill,
-    handleMarkShipped,
     handlePrintSummary,
     handleRefund,
     handleStopRowClick,
@@ -147,11 +157,10 @@ interface OrderRowActionAvailability {
 }
 
 interface UseOrdersRowActionHandlersResult extends OrderRowActionAvailability {
-  readonly handleCancelRequest: () => void
   readonly handleConfirmCancel: () => void
+  readonly handleConfirmFulfill: () => void
+  readonly handleConfirmShip: (tracking: { readonly trackingNumber: string | undefined; readonly trackingUrl: string | undefined }) => void
   readonly handleCopyId: () => void
-  readonly handleFulfill: () => void
-  readonly handleMarkShipped: () => void
   readonly handlePrintSummary: () => void
   readonly handleRefund: () => void
   readonly handleStopRowClick: (event: MouseEvent) => void

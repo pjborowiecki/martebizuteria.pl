@@ -11,6 +11,7 @@ import { OrderMetaStrip } from "~/src/presentation/components/custom/pages/admin
 import { OrderNotesCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-notes-card"
 import { OrderPaymentCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-payment-card"
 import { OrderShippingCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-shipping-card"
+import { OrderStepBackAction } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-step-back-action"
 import { OrderTagsCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-tags-card"
 import { OrderTimelineCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-timeline-card"
 import { OrderWithdrawalsCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-withdrawals-card"
@@ -21,7 +22,9 @@ export const OrderDetailPage = ({ order }: Readonly<OrderDetailPageProps>): JSX.
       <div className="min-w-0 space-y-6">
         <OrderMetaStrip order={order} />
         <OrderWithdrawalsCard withdrawals={order.withdrawals} />
-        <OrderFulfillmentTracker canceledAt={order.canceledAt} steps={order.fulfillmentSteps} />
+        <OrderFulfillmentTracker canceledAt={order.canceledAt} steps={order.fulfillmentSteps}>
+          <OrderStepBackAction order={order} />
+        </OrderFulfillmentTracker>
         <OrderLineItemsCard order={order} />
         <OrderTimelineCard orderId={order.id} timeline={order.timeline} />
       </div>

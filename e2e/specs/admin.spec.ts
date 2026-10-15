@@ -200,8 +200,7 @@ test.describe("admin", () => {
 
     await adminOrderPage.gotoOrderFor(email)
     await expect(adminOrderPage.heading()).toHaveText(orderNumber)
-    await adminOrderPage.action("Start fulfillment").click()
-    await adminOrderPage.dismissNotification("Fulfillment started for this order.")
+    await adminOrderPage.startFulfillment()
     await adminOrderPage.action("Mark shipped").click()
     const dialog = page.getByRole("dialog", { name: "Mark order as shipped" })
     await dialog.getByRole("textbox", { name: "Tracking number" }).fill("00259007123456789012")
@@ -246,8 +245,7 @@ test.describe("admin", () => {
     await adminOrderPage.action("Download label").click()
     expect((await label).suggestedFilename()).toBe(`${orderNumber}-inpost.pdf`)
 
-    await adminOrderPage.action("Start fulfillment").click()
-    await adminOrderPage.dismissNotification("Fulfillment started for this order.")
+    await adminOrderPage.startFulfillment()
     await adminOrderPage.action("Mark shipped").click()
     await page.getByRole("dialog", { name: "Mark order as shipped" }).getByRole("button", { name: "Mark shipped" }).click()
 
@@ -321,8 +319,7 @@ test.describe("admin", () => {
   }, testInfo) => {
     const email = await placeGuestOrder({ browser, handle: PRODUCTS.onyx.handle, label: "refund", request, testInfo })
     await adminOrderPage.gotoOrderFor(email)
-    await adminOrderPage.action("Start fulfillment").click()
-    await adminOrderPage.dismissNotification("Fulfillment started for this order.")
+    await adminOrderPage.startFulfillment()
     await adminOrderPage.action("Mark shipped").click()
     await page.getByRole("dialog", { name: "Mark order as shipped" }).getByRole("button", { name: "Mark shipped" }).click()
     await expect(adminOrderPage.action("Mark delivered")).toBeVisible()
@@ -544,8 +541,7 @@ test.describe("admin", () => {
     const colleaguePage = await colleague.newPage()
     const colleagueOrders = new AdminOrderPage(colleaguePage)
     await colleagueOrders.gotoOrderFor(email)
-    await colleagueOrders.action("Start fulfillment").click()
-    await colleagueOrders.dismissNotification("Fulfillment started for this order.")
+    await colleagueOrders.startFulfillment()
     await colleagueOrders.action("Mark shipped").click()
     await colleaguePage.getByRole("dialog", { name: "Mark order as shipped" }).getByRole("button", { name: "Mark shipped" }).click()
     await expect(adminOrderPage.action("Mark delivered")).toBeVisible()

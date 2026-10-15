@@ -8,6 +8,7 @@ vi.mock("~/src/presentation/components/custom/image", () => ({
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions", () => ({
   useResendOrderEmail: () => ({ isPending: false, mutate: vi.fn() }),
+  useStepBackOrder: () => ({ isPending: false, mutate: vi.fn() }),
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-inpost-shipment-actions", () => ({
   useCreateInpostShipment: () => ({ isPending: false, mutate: vi.fn() }),

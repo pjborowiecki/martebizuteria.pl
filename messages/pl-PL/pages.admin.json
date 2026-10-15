@@ -371,6 +371,8 @@
       "order_cancelled": "Zamówienie anulowane",
       "order_delivered": "Zamówienie dostarczone",
       "order_shipped": "Zamówienie wysłane",
+      "order_stepped_back": "Cofnięto etap zamówienia",
+      "order_tracking_updated": "Zapisano numer przesyłki",
       "order_placed": "Zamówienie złożone",
       "order_payment_captured": "Płatność pobrana",
       "order_fulfillment_started": "Realizacja rozpoczęta",
@@ -453,6 +455,7 @@
       },
       "emailDailyLimit": "sklep osiągnął dzienny limit {limit} e-maili wysyłanych na prośbę odwiedzających",
       "fields": {
+        "fulfillmentStep": "Etap realizacji",
         "orderStatus": "Status zamówienia",
         "paymentStatus": "Status płatności",
         "refundedAmount": "Zwrócona kwota",
@@ -473,10 +476,16 @@
         },
         "orderStatus": {
           "cancelled": "Anulowane",
-          "completed": "Zrealizowane",
+          "completed": "Zakończone",
           "pending": "Oczekujące",
-          "processing": "W realizacji",
+          "processing": "Otwarte",
           "refunded": "Zwrócone"
+        },
+        "fulfillmentStep": {
+          "confirmed": "Potwierdzone",
+          "processing": "W realizacji",
+          "shipped": "Wysłane",
+          "delivered": "Dostarczone"
         },
         "paymentStatus": {
           "failed": "Nieudana",
@@ -702,6 +711,7 @@
         "successTitle": "Zaktualizowano zamówienie",
         "fulfillSuccessDescription": "Rozpoczęto realizację zamówienia.",
         "shipSuccessDescription": "Zamówienie oznaczono jako wysłane.",
+        "trackingSuccessDescription": "Zapisano numer przesyłki.",
         "emailFailedTitle": "Klient jeszcze nie otrzymał e-maila",
         "emailFailedDescription": "Resend nie przyjął wiadomości „{email}”. Sklep spróbuje jeszcze dwa razy w ciągu kilku sekund. Jeśli i to się nie uda, wyślij ją ponownie z sekcji „Aktywność” zamówienia, gdzie znajdziesz też szczegóły błędu.",
         "emailAlreadySentTitle": "Bez ponownego e-maila",
@@ -717,6 +727,7 @@
         "invalidStateDescription": "Ta akcja nie jest dostępna w bieżącym stanie zamówienia.",
         "openDisputeDescription": "To zamówienie ma otwarty spór, który decyduje o losie płatności. Dopóki spór się nie zakończy, nie można zwrócić płatności ani anulować zamówienia.",
         "markDeliveredSuccessDescription": "Zamówienie oznaczone jako dostarczone.",
+        "stepBackSuccessDescription": "Zamówienie wróciło do poprzedniego etapu.",
         "refundSuccessDescription": "Zwrot zlecony w Stripe. Zamówienie zaktualizuje się po potwierdzeniu przez Stripe.",
         "restockSuccessDescription": "Produkty z zamówienia wróciły na stan magazynowy.",
         "resendEmailSentTitle": "E-mail wysłany",
@@ -734,6 +745,8 @@
       "cancel": "Anuluj zamówienie",
       "fulfill": "Rozpocznij realizację",
       "ship": "Oznacz jako wysłane",
+      "addTracking": "Dodaj numer przesyłki",
+      "changeTracking": "Zmień numer przesyłki",
       "markDelivered": "Oznacz jako dostarczone"
     },
     "meta": {
@@ -779,6 +792,8 @@
         "fulfillmentStarted": "Rozpoczęto realizację",
         "shipped": "Zamówienie wysłane",
         "delivered": "Zamówienie dostarczone",
+        "steppedBack": "Cofnięto do poprzedniego etapu",
+        "trackingUpdated": "Zapisano numer przesyłki",
         "cancelled": "Zamówienie anulowane",
         "refundInitiated": "Zarejestrowano zwrot",
         "refundRequested": "Zlecono zwrot",
@@ -931,6 +946,39 @@
       "trackingUrlPlaceholder": "https://inpost.pl/sledzenie-przesylek?number=...",
       "cancel": "Anuluj",
       "confirm": "Oznacz jako wysłane"
+    },
+    "trackingDialog": {
+      "title": "Zapisać numer przesyłki?",
+      "description": "Zamówienie jest już oznaczone jako wysłane. Podany numer i link zastąpią zapisane dane śledzenia, a klient zobaczy je na swoim koncie. Data wysyłki pozostaje bez zmian.",
+      "emailNote": "Klient dostanie e-mail „{email}” z tym numerem, chyba że to numer zapisany już wcześniej.",
+      "confirm": "Zapisz numer przesyłki"
+    },
+    "advanceDialog": {
+      "processing": {
+        "title": "Rozpocząć realizację?",
+        "description": "Zamówienie {id} przejdzie do etapu „W realizacji”.",
+        "confirm": "Rozpocznij realizację"
+      },
+      "delivered": {
+        "title": "Oznaczyć zamówienie jako dostarczone?",
+        "description": "Zamówienie {id} przejdzie do etapu „Dostarczone” i zostanie zakończone.",
+        "confirm": "Oznacz jako dostarczone"
+      },
+      "cancel": "Nie teraz"
+    },
+    "customerEmail": {
+      "willSend": "Klient dostanie e-mail „{email}”.",
+      "alreadySent": "Zamówienie było już wcześniej na tym etapie, więc e-maila „{email}” nie wyślemy drugi raz.",
+      "trackingUpdate": "Jeśli podasz nowy numer przesyłki, klient dostanie tylko krótką wiadomość z tym numerem."
+    },
+    "stepBack": {
+      "action": "Cofnij do poprzedniego etapu",
+      "title": "Cofnąć zamówienie do poprzedniego etapu?",
+      "description": "Zamówienie {id} wróci z etapu „{from}” do etapu „{to}”. Klient nie dostanie z tego powodu żadnego e-maila.",
+      "emailNote": "Gdy później znów przesuniesz zamówienie dalej, klient nie dostanie drugi raz e-maili o etapach, przez które zamówienie już przeszło.",
+      "inpostWarning": "Przesyłka InPost nie zostanie anulowana, a jej numer do śledzenia zostaje w zamówieniu. Jeśli paczka nie zostanie nadana, anuluj przesyłkę w Managerze Paczek InPost.",
+      "confirm": "Cofnij etap",
+      "cancel": "Zostaw bez zmian"
     },
     "refundDialog": {
       "title": "Zwrócić to zamówienie?",

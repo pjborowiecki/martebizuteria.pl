@@ -6,6 +6,7 @@ import {
   ADMIN_ORDER_FULFILLMENT_STEPS,
   ADMIN_ORDER_FULFILLMENT_UI_KEY,
   ADMIN_ORDER_PAYMENT_UI_KEY,
+  type AdminOrderAdvancedStep,
   type AdminOrderFulfillmentUiKey,
   type AdminOrderPaymentUiKey,
 } from "~/src/modules/order/order.constants"
@@ -108,6 +109,20 @@ export const formatOrderAddressLocality = (
     .filter((part) => isFilledAddressPart(part))
     .join(", ")
 
+export const resolveAdminOrderEmailedSteps = ({
+  deliveredEmailAt,
+  inProgressEmailAt,
+  shippedEmailAt,
+}: Readonly<OrderStepEmailClaims>): readonly AdminOrderAdvancedStep[] => {
+  const claims = [
+    ["processing", inProgressEmailAt],
+    ["shipped", shippedEmailAt],
+    ["delivered", deliveredEmailAt],
+  ] as const
+
+  return claims.filter(([, claimedAt]) => claimedAt !== null).map(([step]) => step)
+}
+
 export const toAdminOrderListItem = (row: AdminOrderListSourceRow): Order["adminListItem"] => {
   const customerName = row.customerName ?? row.email
 
@@ -116,6 +131,7 @@ export const toAdminOrderListItem = (row: AdminOrderListSourceRow): Order["admin
     currencyCode: row.currencyCode,
     customerName,
     email: row.email,
+    emailedSteps: resolveAdminOrderEmailedSteps(row),
     fulfillmentStatus: row.fulfillmentStatus,
     fulfillmentUiKey: resolveAdminOrderFulfillmentUiKey(row.status, row.fulfillmentStatus),
     hasOpenDispute: resolveAdminOrderDispute(row.metadata) !== undefined,
@@ -130,7 +146,13 @@ export const toAdminOrderListItem = (row: AdminOrderListSourceRow): Order["admin
   }
 }
 
-interface AdminOrderListSourceRow {
+interface OrderStepEmailClaims {
+  readonly deliveredEmailAt: Date | null
+  readonly inProgressEmailAt: Date | null
+  readonly shippedEmailAt: Date | null
+}
+
+interface AdminOrderListSourceRow extends OrderStepEmailClaims {
   readonly createdAt: Date
   readonly currencyCode: string
   readonly customerName: string | null

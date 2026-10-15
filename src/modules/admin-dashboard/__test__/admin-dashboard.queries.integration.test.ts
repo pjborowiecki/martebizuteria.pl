@@ -68,6 +68,7 @@ beforeEach(() => {
       id text primary key, payment_id text, user_id text, email text not null,
       currency_code text not null default 'PLN', status text not null default 'pending',
       fulfillment_status text not null default 'not_fulfilled', metadata text, order_number text, total integer not null default 0,
+      in_progress_email_at integer, shipped_email_at integer, delivered_email_at integer,
       created_at integer not null, updated_at integer not null
     );
     create table order_item (

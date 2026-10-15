@@ -3,7 +3,7 @@ import { type JSX, type SubmitEventHandler, useCallback, useState } from "react"
 import { Loader2 } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { ORDER_TRACKING_NUMBER_MAX_LENGTH, ORDER_TRACKING_URL_MAX_LENGTH } from "~/src/modules/order/order.constants"
+import { type AdminOrderAdvancedStep } from "~/src/modules/order/order.constants"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {
@@ -14,10 +14,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/src/presentation/components/shadcn/dialog"
-import { Input } from "~/src/presentation/components/shadcn/input"
-import { Label } from "~/src/presentation/components/shadcn/label"
 
-export const OrderShipDialog = ({ isPending, onConfirm, onOpenChange, open }: Readonly<OrderShipDialogProps>): JSX.Element => {
+import { OrderCustomerEmailNote } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-customer-email-note"
+import { OrderTrackingFields } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-tracking-fields"
+
+export const OrderShipDialog = ({
+  emailedSteps,
+  isPending,
+  onConfirm,
+  onOpenChange,
+  open,
+}: Readonly<OrderShipDialogProps>): JSX.Element => {
   const t = useTranslations("pages.admin.orderDetail.shipDialog")
   const [trackingNumber, setTrackingNumber] = useState("")
   const [trackingUrl, setTrackingUrl] = useState("")
@@ -48,42 +55,23 @@ export const OrderShipDialog = ({ isPending, onConfirm, onOpenChange, open }: Re
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent data-prevent-row-click>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{t("title")}</DialogTitle>
-            <DialogDescription>{t("description")}</DialogDescription>
+            <DialogDescription>
+              <span className="block">{t("description")}</span>
+              <OrderCustomerEmailNote emailedSteps={emailedSteps} step="shipped" />
+            </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="tracking-number">{t("trackingNumberLabel")}</Label>
-              <Input
-                autoComplete="off"
-                id="tracking-number"
-                maxLength={ORDER_TRACKING_NUMBER_MAX_LENGTH}
-                onChange={(event) => {
-                  setTrackingNumber(event.target.value)
-                }}
-                placeholder={t("trackingNumberPlaceholder")}
-                value={trackingNumber}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tracking-url">{t("trackingUrlLabel")}</Label>
-              <Input
-                autoComplete="off"
-                id="tracking-url"
-                maxLength={ORDER_TRACKING_URL_MAX_LENGTH}
-                onChange={(event) => {
-                  setTrackingUrl(event.target.value)
-                }}
-                placeholder={t("trackingUrlPlaceholder")}
-                type="url"
-                value={trackingUrl}
-              />
-            </div>
-          </div>
+          <OrderTrackingFields
+            onTrackingNumberChange={setTrackingNumber}
+            onTrackingUrlChange={setTrackingUrl}
+            trackingNumber={trackingNumber}
+            trackingNumberRequired={false}
+            trackingUrl={trackingUrl}
+          />
 
           <DialogFooter>
             <Button
@@ -108,6 +96,7 @@ export const OrderShipDialog = ({ isPending, onConfirm, onOpenChange, open }: Re
 }
 
 interface OrderShipDialogProps {
+  readonly emailedSteps: readonly AdminOrderAdvancedStep[]
   readonly isPending: boolean
   readonly onConfirm: (tracking: { readonly trackingNumber: string | undefined; readonly trackingUrl: string | undefined }) => void
   readonly onOpenChange: (open: boolean) => void

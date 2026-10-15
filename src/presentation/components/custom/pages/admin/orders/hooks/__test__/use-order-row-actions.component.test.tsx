@@ -19,6 +19,8 @@ import {
   useRefundOrder,
   useResendOrderEmail,
   useRestockOrder,
+  useSetOrderTrackingNumber,
+  useStepBackOrder,
 } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions"
 
 const {
@@ -28,7 +30,9 @@ const {
   refundFn,
   resendEmailFn,
   restockFn,
+  setTrackingFn,
   shipFn,
+  stepBackFn,
   syncQueryInvalidation,
   toastError,
   toastInfo,
@@ -41,6 +45,13 @@ const {
   refundFn: vi.fn<(input: { orderId: string; restock: boolean }) => Promise<{ ok: true; orderId: string }>>(),
   resendEmailFn: vi.fn<(input: { eventId: string; orderId: string }) => Promise<{ emailSent: boolean; ok: true; orderId: string }>>(),
   restockFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+  setTrackingFn:
+    vi.fn<
+      (input: {
+        orderId: string
+        trackingNumber: string
+      }) => Promise<{ email: { kind: string; status: string }; ok: true; orderId: string }>
+    >(),
   shipFn:
     vi.fn<
       (input: {
@@ -48,6 +59,7 @@ const {
         trackingNumber?: string
       }) => Promise<{ email: { kind: string; status: string }; ok: true; orderId: string }>
     >(),
+  stepBackFn: vi.fn<(input: { fromStep: string; orderId: string }) => Promise<{ ok: true; orderId: string; toStep: string }>>(),
   syncQueryInvalidation: vi.fn(() => Promise.resolve(undefined)),
   toastError: vi.fn(),
   toastInfo: vi.fn(),
@@ -79,6 +91,12 @@ vi.mock("~/src/modules/order/use-cases/resend-order-email", () => ({
 }))
 vi.mock("~/src/modules/order/use-cases/restock-order", () => ({
   restockOrderMutation: { mutationFn: restockFn, mutationKey: ["order", "restock"] },
+}))
+vi.mock("~/src/modules/order/use-cases/set-order-tracking-number", () => ({
+  setOrderTrackingNumberMutation: { mutationFn: setTrackingFn, mutationKey: ["order", "setTrackingNumber"] },
+}))
+vi.mock("~/src/modules/order/use-cases/step-back-order", () => ({
+  stepBackOrderMutation: { mutationFn: stepBackFn, mutationKey: ["order", "stepBack"] },
 }))
 
 const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => (
@@ -280,7 +298,7 @@ describe("admin order email notices", () => {
     })
   })
 
-  it("tells the admin the customer already had the shipping email when a stepped back order ships again", async () => {
+  it("says the shipping email is not repeated when a stepped back order ships again", async () => {
     shipFn.mockResolvedValue({ email: { kind: "order-shipped", status: "alreadySent" }, ok: true, orderId: "order-1" })
     const { result } = renderHook(() => useMarkOrderShipped(), { wrapper: Wrapper })
 
@@ -309,6 +327,23 @@ describe("admin order email notices", () => {
         "The order was already marked as shipped before, so the customer received only a short message with the current tracking number.",
     })
   })
+
+  it("saves a tracking number added to a shipped order and says only that number went out", async () => {
+    setTrackingFn.mockResolvedValue({ email: { kind: "order-tracking", status: "sent" }, ok: true, orderId: "order-1" })
+    const { result } = renderHook(() => useSetOrderTrackingNumber(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1", trackingNumber: "TRK-50" })
+    await waitFor(() => {
+      expect(toastInfo).toHaveBeenCalledOnce()
+    })
+
+    expect(setTrackingFn.mock.calls[0]?.[0]).toStrictEqual({ orderId: "order-1", trackingNumber: "TRK-50" })
+    expect(toastSuccess).toHaveBeenCalledExactlyOnceWith("Order updated", { description: "Tracking number saved." })
+    expect(toastInfo).toHaveBeenCalledWith("Tracking number sent", {
+      description:
+        "The order was already marked as shipped before, so the customer received only a short message with the current tracking number.",
+    })
+  })
 })
 
 describe("admin order return to stock", () => {
@@ -327,6 +362,26 @@ describe("admin order return to stock", () => {
 
     expect(restockFn.mock.calls[0]?.[0]).toStrictEqual({ orderId: "order-1" })
     expect(toastSuccess).toHaveBeenCalledWith("Order updated", { description: "The order's items are back in stock." })
+  })
+})
+
+describe("admin order step back", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    stepBackFn.mockResolvedValue({ ok: true, orderId: "order-1", toStep: "processing" })
+  })
+
+  it("moves the order back from the step the admin saw and says so", async () => {
+    const { result } = renderHook(() => useStepBackOrder(), { wrapper: Wrapper })
+
+    result.current.mutate({ fromStep: "shipped", orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastSuccess).toHaveBeenCalledOnce()
+    })
+
+    expect(stepBackFn.mock.calls[0]?.[0]).toStrictEqual({ fromStep: "shipped", orderId: "order-1" })
+    expect(toastSuccess).toHaveBeenCalledWith("Order updated", { description: "The order is back at the previous step." })
+    expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), ORDER_QUERY_KEYS.ADMIN.ORDERS)
   })
 })
 

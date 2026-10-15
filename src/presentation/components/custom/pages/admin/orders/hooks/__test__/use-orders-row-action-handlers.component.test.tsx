@@ -14,10 +14,10 @@ import { useOrdersRowActionHandlers } from "~/src/presentation/components/custom
 const { buildLocation, cancelMutate, fulfillMutate, navigate, pending, shipMutate, toastSuccess } = vi.hoisted(() => ({
   buildLocation: vi.fn(() => ({ href: "/admin/orders/order-1/summary", publicHref: "/en-US/admin/orders/order-1/summary" })),
   cancelMutate: vi.fn<(input: { orderId: string }, settings?: { onSuccess?: () => void }) => void>(),
-  fulfillMutate: vi.fn<(input: { orderId: string }) => void>(),
+  fulfillMutate: vi.fn<(input: { orderId: string }, settings?: { onSuccess?: () => void }) => void>(),
   navigate: vi.fn(),
   pending: { cancel: false, fulfill: false, ship: false },
-  shipMutate: vi.fn<(input: { orderId: string }) => void>(),
+  shipMutate: vi.fn<(input: { orderId: string; trackingNumber?: string | undefined }, settings?: { onSuccess?: () => void }) => void>(),
   toastSuccess: vi.fn(),
 }))
 
@@ -42,6 +42,7 @@ const order = (overrides: Partial<Order["adminListItem"]> = {}): Order["adminLis
   currencyCode: "PLN",
   customerName: "Ada Nowak",
   email: "ada@example.test",
+  emailedSteps: [],
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: "confirmed",
   hasOpenDispute: false,
@@ -62,8 +63,15 @@ const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element =
   </TestProviders>
 )
 
-const renderHandlers = (row: Order["adminListItem"], closeMenu = vi.fn<() => void>(), setConfirmOpen = vi.fn<(open: boolean) => void>()) =>
-  renderHook(() => useOrdersRowActionHandlers(row, closeMenu, setConfirmOpen), { wrapper: Wrapper })
+const renderHandlers = (row: Order["adminListItem"], setConfirmOpen = vi.fn<(open: boolean) => void>()) =>
+  renderHook(() => useOrdersRowActionHandlers(row, setConfirmOpen), { wrapper: Wrapper })
+
+const runOnSuccess = (settings: { onSuccess?: () => void } | undefined): void => {
+  if (settings?.onSuccess === undefined) {
+    throw new TypeError("expected the mutation to receive an onSuccess callback")
+  }
+  settings.onSuccess()
+}
 
 const noop = (): void => undefined
 
@@ -76,7 +84,7 @@ const EventHarness = ({
   action: () => void
   row: Order["adminListItem"]
 }>): JSX.Element => {
-  const handlers = useOrdersRowActionHandlers(row, noop, noopOpen)
+  const handlers = useOrdersRowActionHandlers(row, noopOpen)
 
   return (
     <>
@@ -209,14 +217,35 @@ describe("useOrdersRowActionHandlers actions", () => {
     vi.unstubAllGlobals()
   })
 
-  it("fulfils and ships by order id", () => {
-    const { result } = renderHandlers(order())
+  it("starts fulfilment once confirmed and closes the dialog only after it succeeds", () => {
+    const setConfirmOpen = vi.fn<(open: boolean) => void>()
+    const { result } = renderHandlers(order(), setConfirmOpen)
 
-    result.current.handleFulfill()
-    result.current.handleMarkShipped()
+    result.current.handleConfirmFulfill()
 
-    expect(fulfillMutate).toHaveBeenCalledExactlyOnceWith({ orderId: "order-1" })
-    expect(shipMutate).toHaveBeenCalledExactlyOnceWith({ orderId: "order-1" })
+    expect(fulfillMutate).toHaveBeenCalledExactlyOnceWith({ orderId: "order-1" }, expect.anything())
+    expect(setConfirmOpen).not.toHaveBeenCalled()
+
+    runOnSuccess(fulfillMutate.mock.calls[0]?.[1])
+
+    expect(setConfirmOpen).toHaveBeenCalledExactlyOnceWith(false)
+  })
+
+  it("ships with the tracking details typed in the dialog and closes it only after it succeeds", () => {
+    const setConfirmOpen = vi.fn<(open: boolean) => void>()
+    const { result } = renderHandlers(order({ fulfillmentStatus: "fulfilled" }), setConfirmOpen)
+
+    result.current.handleConfirmShip({ trackingNumber: "00259007123456789012", trackingUrl: undefined })
+
+    expect(shipMutate).toHaveBeenCalledExactlyOnceWith(
+      { orderId: "order-1", trackingNumber: "00259007123456789012", trackingUrl: undefined },
+      expect.anything(),
+    )
+    expect(setConfirmOpen).not.toHaveBeenCalled()
+
+    runOnSuccess(shipMutate.mock.calls[0]?.[1])
+
+    expect(setConfirmOpen).toHaveBeenCalledExactlyOnceWith(false)
   })
 
   it("opens the order summary in the admin's language in a new tab", () => {
@@ -231,30 +260,16 @@ describe("useOrdersRowActionHandlers actions", () => {
     vi.unstubAllGlobals()
   })
 
-  it("asks the menu to close and open the confirm dialog on a cancel request", () => {
-    const closeMenu = vi.fn<() => void>()
-    const { result } = renderHandlers(order(), closeMenu)
-
-    result.current.handleCancelRequest()
-
-    expect(closeMenu).toHaveBeenCalledOnce()
-    expect(consumeDataGridRowClickSuppression()).toBe(true)
-  })
-
   it("closes the confirm dialog only after the cancellation succeeds", () => {
     const setConfirmOpen = vi.fn<(open: boolean) => void>()
-    const { result } = renderHandlers(order(), vi.fn<() => void>(), setConfirmOpen)
+    const { result } = renderHandlers(order(), setConfirmOpen)
 
     result.current.handleConfirmCancel()
 
     expect(cancelMutate).toHaveBeenCalledOnce()
     expect(setConfirmOpen).not.toHaveBeenCalled()
 
-    const onSuccess = cancelMutate.mock.calls[0]?.[1]?.onSuccess
-    if (onSuccess === undefined) {
-      throw new TypeError("expected the cancel mutation to receive an onSuccess callback")
-    }
-    onSuccess()
+    runOnSuccess(cancelMutate.mock.calls[0]?.[1])
 
     expect(setConfirmOpen).toHaveBeenCalledExactlyOnceWith(false)
   })

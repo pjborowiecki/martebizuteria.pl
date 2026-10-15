@@ -59,6 +59,7 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
   discountTotalMinorUnits: 0,
   displayId: "#A1B2C3D4",
   dispute: undefined,
+  emailedSteps: [],
   fulfillmentStatus: "shipped",
   fulfillmentSteps: [
     { at: PLACED_AT, done: true, key: "confirmed" },

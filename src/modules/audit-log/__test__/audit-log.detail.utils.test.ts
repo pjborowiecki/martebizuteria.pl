@@ -141,6 +141,22 @@ describe("describeAuditLogDetail for changes", () => {
     ).toStrictEqual({ changes: [{ field: "paymentStatus", from: "succeeded", to: "refunded" }], kind: "changes" })
   })
 
+  it("reads the steps of an order stepped back from its metadata", () => {
+    expect(
+      describeRow(AUDIT_LOG_ACTION.ORDER_STEPPED_BACK, null, {
+        changed: ["fulfillmentStep", "orderStatus"],
+        new: { fulfillmentStep: "shipped", orderStatus: "processing" },
+        old: { fulfillmentStep: "delivered", orderStatus: "completed" },
+      }),
+    ).toStrictEqual({
+      changes: [
+        { field: "fulfillmentStep", from: "delivered", to: "shipped" },
+        { field: "orderStatus", from: "completed", to: "processing" },
+      ],
+      kind: "changes",
+    })
+  })
+
   it("keeps the text of a change entry without change metadata", () => {
     expect(describeRow(AUDIT_LOG_ACTION.PRODUCT_UPDATED, "Changed the price")).toStrictEqual({ kind: "text", text: "Changed the price" })
   })
