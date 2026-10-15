@@ -32,7 +32,6 @@
     "categoryBreakdown": {
       "title": "Podział na kategorie",
       "subtitle": "Wartość kupionych produktów ze wszystkich zamówień",
-      "seriesLabel": "Wartość produktów",
       "empty": "Brak danych o wydatkach w kategoriach."
     },
     "orders": {

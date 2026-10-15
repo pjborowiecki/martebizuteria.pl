@@ -1,9 +1,9 @@
-import { type JSX, useCallback, useMemo } from "react"
+import { type CSSProperties, type JSX, useCallback, useMemo } from "react"
 
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, type TooltipValueType, XAxis, YAxis } from "recharts"
+import { Area, AreaChart, CartesianGrid, type TooltipValueType, XAxis, YAxis } from "recharts"
 import { useLocale, useTranslations } from "use-intl/react"
 
-import { formatMinorUnitsAsCompactNumber } from "~/src/modules/_core/utils/currency"
+import { formatMinorUnitsAsCompactNumber, formatPrice } from "~/src/modules/_core/utils/currency"
 import { DEFAULT_ADMIN_CUSTOMER_CURRENCY } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 
@@ -20,16 +20,6 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
       amount: {
         color: "var(--foreground)",
         label: t("spending.seriesLabel"),
-      },
-    }),
-    [t],
-  )
-
-  const categoryConfig: ChartConfig = useMemo(
-    () => ({
-      amount: {
-        color: "var(--foreground)",
-        label: t("categoryBreakdown.seriesLabel"),
       },
     }),
     [t],
@@ -52,20 +42,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
     [t],
   )
 
-  const formatCategoryTooltip = useCallback(
-    (value: TooltipValueType | undefined) => (
-      <AdminChartMoneyTooltipRow
-        amount={Number(value)}
-        currencyCode={DEFAULT_ADMIN_CUSTOMER_CURRENCY}
-        label={t("categoryBreakdown.seriesLabel")}
-        seriesKey="amount"
-      />
-    ),
-    [t],
-  )
-
   const spendingTooltipContent = useMemo(() => <ChartTooltipContent formatter={formatSpendingTooltip} />, [formatSpendingTooltip])
-  const categoryTooltipContent = useMemo(() => <ChartTooltipContent formatter={formatCategoryTooltip} />, [formatCategoryTooltip])
   const hasSpendingData = customer.monthlySpending.some((entry) => entry.amount > 0)
   const hasCategoryData = customer.categoryBreakdown.length > 0
 
@@ -94,9 +71,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
             <p className="text-[12px] text-muted-foreground">{t("categoryBreakdown.subtitle")}</p>
           </div>
           {hasCategoryData ? (
-            <ChartContainer config={categoryConfig} className="h-[220px] w-full">
-              <CategoryBreakdownChart data={customer.categoryBreakdown} tooltipContent={categoryTooltipContent} />
-            </ChartContainer>
+            <CategoryBreakdownList data={customer.categoryBreakdown} />
           ) : (
             <p className="flex h-[220px] items-center justify-center text-sm text-muted-foreground">{t("categoryBreakdown.empty")}</p>
           )}
@@ -125,20 +100,50 @@ const SpendingChart = ({
   </AreaChart>
 )
 
-const CategoryBreakdownChart = ({
+const CategoryBreakdownList = ({
   data,
-  tooltipContent,
 }: Readonly<{
   data: User["adminCustomerDetail"]["categoryBreakdown"]
-  tooltipContent: JSX.Element
-}>): JSX.Element => (
-  <BarChart data={data} layout="vertical" margin={CATEGORY_CHART_MARGIN}>
-    <XAxis type="number" hide />
-    <YAxis dataKey="category" type="category" tickLine={false} axisLine={false} tick={TICK_FONT_12} width={80} />
-    <ChartTooltip content={tooltipContent} />
-    <Bar dataKey="amount" fill="var(--color-amount)" radius={BAR_RADIUS} barSize={20} />
-  </BarChart>
-)
+}>): JSX.Element => {
+  const largestAmount = Math.max(...data.map((entry) => entry.amount))
+
+  return (
+    <ul className="space-y-3.5">
+      {data.map((entry) => (
+        <CategoryBreakdownRow key={entry.category} amount={entry.amount} category={entry.category} largestAmount={largestAmount} />
+      ))}
+    </ul>
+  )
+}
+
+const CategoryBreakdownRow = ({
+  amount,
+  category,
+  largestAmount,
+}: Readonly<{
+  amount: number
+  category: string
+  largestAmount: number
+}>): JSX.Element => {
+  const locale = useLocale()
+  const barStyle = useMemo<CSSProperties>(() => ({ width: `${(amount / largestAmount) * FULL_BAR_PERCENT}%` }), [amount, largestAmount])
+
+  return (
+    <li>
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="min-w-0 truncate text-[13px]" title={category}>
+          {category}
+        </span>
+        <span className="shrink-0 font-mono text-xs font-medium tabular-nums">
+          {formatPrice(amount, DEFAULT_ADMIN_CUSTOMER_CURRENCY, locale)}
+        </span>
+      </div>
+      <div aria-hidden className="mt-1.5 h-2 rounded-r-[4px] bg-foreground/5">
+        <div className="h-full rounded-r-[4px] bg-foreground/80" data-slot="category-bar" style={barStyle} />
+      </div>
+    </li>
+  )
+}
 
 const SPENDING_CHART_DEFS = (
   <defs>
@@ -156,26 +161,11 @@ const SPENDING_CHART_MARGIN = {
   top: 4,
 }
 
-const CATEGORY_CHART_MARGIN = {
-  bottom: 0,
-  left: 0,
-  right: 4,
-  top: 0,
-}
-
 const TICK_FONT_11 = {
   fontSize: 11,
 }
 
-const TICK_FONT_12 = {
-  fontSize: 12,
-}
-
-const BAR_RADIUS_END = 4
-
-const BAR_RADIUS_START = 0
-
-const BAR_RADIUS: [number, number, number, number] = [BAR_RADIUS_START, BAR_RADIUS_END, BAR_RADIUS_END, BAR_RADIUS_START]
+const FULL_BAR_PERCENT = 100
 
 interface CustomerChartsProps {
   readonly customer: User["adminCustomerDetail"]

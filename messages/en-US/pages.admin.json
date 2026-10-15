@@ -32,7 +32,6 @@
     "categoryBreakdown": {
       "title": "Category Breakdown",
       "subtitle": "Value of products bought across all orders",
-      "seriesLabel": "Product value",
       "empty": "No category spending data yet."
     },
     "orders": {
