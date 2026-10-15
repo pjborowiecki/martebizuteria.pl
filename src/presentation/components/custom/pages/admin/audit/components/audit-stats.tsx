@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl/react"
 import { resolveAuditLogToday } from "~/src/modules/audit-log/audit-log.utils"
 import { getAuditLogStatsQuery } from "~/src/modules/audit-log/use-cases/get-audit-log-stats"
 
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { AUDIT_STAT_CARDS, type AuditStatKey } from "~/src/presentation/components/custom/pages/admin/audit/audit-stats.config"
 import { AuditStatCard } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-stat-card"
 import { useAuditDataGridContext } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-data-grid"
@@ -86,7 +87,7 @@ export const AuditStats = (): JSX.Element => {
   }
 
   return (
-    <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={ADMIN_STAT_GRID_CLASS}>
       {AUDIT_STAT_CARDS.map((config) => {
         const value = resolveStatValue(config.key, stats)
         const isActive = isAuditStatCardFilterActive(buildAuditStatCardFilters(config, today), activeFilters)

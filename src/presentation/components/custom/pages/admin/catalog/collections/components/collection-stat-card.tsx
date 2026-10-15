@@ -12,8 +12,10 @@ import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 import {
   ADMIN_CARD_CLASS,
   ADMIN_STAT_CAPTION_SLOT_CLASS,
+  ADMIN_STAT_CARD_CONTENT_CLASS,
   ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
+  ADMIN_STAT_ICON_CLASS,
   ADMIN_STAT_LABEL_CLASS,
   ADMIN_STAT_VALUE_SLOT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
@@ -46,7 +48,7 @@ export const CollectionStatCard = ({
   )
 
   const content = (
-    <CardContent className="flex h-full items-start justify-between gap-4 p-5">
+    <CardContent className={ADMIN_STAT_CARD_CONTENT_CLASS}>
       <div className="min-w-0 flex-1 space-y-2">
         <p className={ADMIN_STAT_LABEL_CLASS}>{t(`stats.${key}.label`)}</p>
         <div className={ADMIN_STAT_VALUE_SLOT_CLASS}>
@@ -56,7 +58,7 @@ export const CollectionStatCard = ({
           <AdminStatCaption caption={caption} valuesPending={valuesPending} />
         </div>
       </div>
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary shadow-none">
+      <div className={ADMIN_STAT_ICON_CLASS}>
         <Icon className="size-4 text-muted-foreground" strokeWidth={1.5} />
       </div>
     </CardContent>

@@ -20,7 +20,7 @@ export const NewsletterStats = (): JSX.Element => {
   const { data: stats } = useSuspenseQuery(getNewsletterStatsQuery())
 
   return (
-    <div className="grid shrink-0 gap-4 sm:grid-cols-3">
+    <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 max-sm:[&>:last-child]:col-span-2">
       {NEWSLETTER_STATUS_STAT_CARDS.map((config) => (
         <Card
           className={cn(

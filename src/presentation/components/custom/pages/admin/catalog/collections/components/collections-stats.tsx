@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl/react"
 import { type COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants"
 import { getCollectionStatsQuery } from "~/src/modules/product-collection/use-cases/get-collection-stats"
 
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { COLLECTION_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/collections/collections-stats.config"
 import {
   CollectionStatCard,
@@ -31,7 +32,7 @@ export const CollectionsStats = (): JSX.Element => {
   )
 
   return (
-    <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={ADMIN_STAT_GRID_CLASS}>
       {COLLECTION_STAT_CARDS.map((config) => {
         const value = resolvedStats[config.key]
         const caption = valuesPending

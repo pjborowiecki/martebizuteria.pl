@@ -5,6 +5,7 @@ import { useLocale } from "use-intl/react"
 
 import { getAdminOrderStatsQuery } from "~/src/modules/order/use-cases/get-admin-order-stats"
 
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import {
   OrderStatCard,
   formatOrderStatDisplayValue,
@@ -20,7 +21,7 @@ export const OrdersStats = (): JSX.Element => {
   const { activeStatFilter, applyOrderStatFilter } = useOrdersDataGridContext()
 
   return (
-    <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={ADMIN_STAT_GRID_CLASS}>
       {ORDER_STAT_CARDS.map((config) => {
         const value = resolveOrderStatValue(stats, config.key)
 

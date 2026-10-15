@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl/react"
 import { type CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
 import { getCategoryStatsQuery } from "~/src/modules/product-category/use-cases/get-category-stats"
 
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CATEGORY_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/categories/categories-stats.config"
 import {
   CategoryStatCard,
@@ -31,7 +32,7 @@ export const CategoriesStats = (): JSX.Element => {
   )
 
   return (
-    <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={ADMIN_STAT_GRID_CLASS}>
       {CATEGORY_STAT_CARDS.map((config) => {
         const value = resolvedStats[config.key]
         const caption = valuesPending
