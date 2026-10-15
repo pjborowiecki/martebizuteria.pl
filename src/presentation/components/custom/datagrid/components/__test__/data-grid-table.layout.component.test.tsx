@@ -144,4 +144,37 @@ describe("DataGridTable pinned columns", () => {
 
     expect(scrollContainer().style.scrollPaddingInlineEnd).toBe("150px")
   })
+
+  it("keeps the trailing column pinned while the whole grid fits its container", () => {
+    renderTable(["price"])
+
+    reportContainerWidth(900)
+
+    expect(document.querySelectorAll("[data-pinned='end']")).not.toHaveLength(0)
+    expect(scrollContainer().style.scrollPaddingInlineEnd).toBe("150px")
+  })
+
+  it("lets the pinned column scroll with the rest once it would leave too little of the grid in view", () => {
+    renderTable(["price"])
+
+    reportContainerWidth(200)
+
+    expect(document.querySelectorAll("[data-pinned]")).toHaveLength(0)
+    expect(scrollContainer().style.scrollPaddingInlineEnd).toBe("")
+  })
+
+  it("keeps the pinned column on a desktop screen even when it leaves little of the grid in view", () => {
+    const belowDesktop = globalThis.matchMedia
+    const desktop = vi
+      .spyOn(globalThis, "matchMedia")
+      .mockImplementation((query: string) => Object.assign(belowDesktop(query), { matches: true }))
+    renderTable(["price"])
+
+    reportContainerWidth(200)
+
+    expect(document.querySelectorAll("[data-pinned='end']")).not.toHaveLength(0)
+    expect(scrollContainer().style.scrollPaddingInlineEnd).toBe("150px")
+
+    desktop.mockRestore()
+  })
 })

@@ -9,6 +9,7 @@ import {
   getDataGridPinOffset,
   getDataGridRightPinnedScrollPaddingPx,
   measureDataGridContainerWidth,
+  resolveDataGridPinning,
 } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 
 interface Row {
@@ -219,6 +220,38 @@ describe("getDataGridRightPinnedScrollPaddingPx", () => {
     const table = createGrid({ end: ["title", "actions"] })
 
     expect(getDataGridRightPinnedScrollPaddingPx(getDataGridLayoutColumns(table), { title: 300 }, undefined)).toBe(364)
+  })
+})
+
+const pinningFor = (tableClientWidth: number, tableWidth: number, isDesktopViewport = false) =>
+  resolveDataGridPinning({
+    columnSizing: {},
+    isDesktopViewport,
+    layoutColumns: getDataGridLayoutColumns(createGrid({ end: ["actions"], start: ["select", "id"] })),
+    tableClientWidth,
+    tableLayout: undefined,
+    tableWidth,
+  })
+
+describe("resolveDataGridPinning", () => {
+  it("keeps the pinned columns before the grid has been measured", () => {
+    expect(pinningFor(0, 432)).toStrictEqual({ pinsColumns: true, rightPinnedScrollPaddingPx: 64 })
+  })
+
+  it("keeps the pinned columns while the whole table fits its viewport", () => {
+    expect(pinningFor(432, 432)).toStrictEqual({ pinsColumns: true, rightPinnedScrollPaddingPx: 64 })
+  })
+
+  it("keeps the pinned columns while enough of the scrolling columns stay in view", () => {
+    expect(pinningFor(472, 900)).toStrictEqual({ pinsColumns: true, rightPinnedScrollPaddingPx: 64 })
+  })
+
+  it("lets every column scroll once the pinned columns would leave too little room between them", () => {
+    expect(pinningFor(471, 900)).toStrictEqual({ pinsColumns: false, rightPinnedScrollPaddingPx: 0 })
+  })
+
+  it("keeps the pinned columns on a desktop screen however little room they leave", () => {
+    expect(pinningFor(471, 900, true)).toStrictEqual({ pinsColumns: true, rightPinnedScrollPaddingPx: 64 })
   })
 })
 

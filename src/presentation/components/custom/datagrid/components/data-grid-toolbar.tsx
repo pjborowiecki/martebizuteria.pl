@@ -28,13 +28,13 @@ export const DataGridToolbar = <TData extends RowData>({
 }: DataGridToolbarProps<TData>): JSX.Element => (
   <div className="flex shrink-0 flex-col border-b border-border/60 bg-transparent">
     <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-      <div className="flex flex-1 flex-wrap items-center gap-2">
+      <div className="flex flex-1 flex-wrap items-center gap-2 max-sm:basis-full">
         <DataGridSearch table={table} placeholder={searchPlaceholder} />
         <DataGridViewOptions table={table} />
         <DataGridResetLayout disabled={!hasPreferenceOverrides} onReset={onResetPreferences} />
         {children}
       </div>
-      <div className="flex items-center gap-2">{actions}</div>
+      <div className="flex items-center gap-2 empty:hidden">{actions}</div>
     </div>
     {filters !== undefined && <div className="flex flex-wrap items-center gap-2 px-4 pb-3">{filters}</div>}
   </div>

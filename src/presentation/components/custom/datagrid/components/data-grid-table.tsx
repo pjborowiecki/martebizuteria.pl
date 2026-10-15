@@ -12,6 +12,7 @@ import { DataGridLayoutProvider } from "~/src/presentation/components/custom/dat
 import { DATA_GRID_EMPTY_PLACEHOLDER_ROW_COUNT } from "~/src/presentation/components/custom/datagrid/components/data-grid-row"
 import { DATA_GRID_BODY_SCROLL_CLASS } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { DataGridTableBody } from "~/src/presentation/components/custom/datagrid/components/data-grid-table-body"
+import { useDataGridPinning } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-pinning"
 import { useDatagridContainerWidth } from "~/src/presentation/components/custom/datagrid/hooks/use-datagrid-table-layout"
 import { buildDataGridColumnWidthStyle } from "~/src/presentation/components/custom/datagrid/lib/data-grid-column-width"
 import { DATA_GRID_HEADER_ROW_CLASS } from "~/src/presentation/components/custom/datagrid/lib/data-grid-header.styles"
@@ -24,11 +25,7 @@ import {
 } from "~/src/presentation/components/custom/datagrid/lib/data-grid-table-layout"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { type ColumnReorderApi, type RowReorderApi } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
-import {
-  getDataGridLayoutColumns,
-  getDataGridLayoutHeaders,
-  getDataGridRightPinnedScrollPaddingPx,
-} from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
+import { getDataGridLayoutColumns, getDataGridLayoutHeaders } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 
 const getDataGridPlaceholderBodyState = (rowCount: number): { isPlaceholderBody: boolean; skeletonRowCount: number } => {
   const isPlaceholderBody = rowCount === 0
@@ -99,10 +96,13 @@ export const DataGridTable = <TData extends RowData>({
     [resolvedTableWidth, tableClientWidth, tableMinWidth],
   )
 
-  const rightPinnedScrollPaddingPx = useMemo(
-    () => getDataGridRightPinnedScrollPaddingPx(layoutColumns, columnSizing, tableLayout),
-    [columnSizing, layoutColumns, tableLayout],
-  )
+  const { pinsColumns, rightPinnedScrollPaddingPx } = useDataGridPinning({
+    columnSizing,
+    layoutColumns,
+    tableClientWidth,
+    tableLayout,
+    tableWidth: resolvedTableWidth,
+  })
 
   const containerStyle = useMemo(
     () => (rightPinnedScrollPaddingPx > 0 ? { scrollPaddingInlineEnd: rightPinnedScrollPaddingPx } : undefined),
@@ -110,8 +110,8 @@ export const DataGridTable = <TData extends RowData>({
   )
 
   const layoutValue = useMemo(
-    () => ({ tableClientWidth, tableLayout, tableWidth: resolvedTableWidth }),
-    [resolvedTableWidth, tableClientWidth, tableLayout],
+    () => ({ pinsColumns, tableClientWidth, tableLayout, tableWidth: resolvedTableWidth }),
+    [pinsColumns, resolvedTableWidth, tableClientWidth, tableLayout],
   )
 
   const { isPlaceholderBody, skeletonRowCount } = getDataGridPlaceholderBodyState(rows.length)

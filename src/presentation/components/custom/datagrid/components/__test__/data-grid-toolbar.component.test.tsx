@@ -72,6 +72,17 @@ describe("DataGridToolbar", () => {
     expect(screen.getByRole("button", { name: "Add product" })).toBeInTheDocument()
   })
 
+  it("lets the search field span a phone screen and collapses the action slot when there is nothing in it", () => {
+    renderToolbar()
+    const search = screen.getByRole("searchbox", { name: "Search products" })
+
+    expect(search).toHaveClass("w-full", "sm:w-72")
+    expect(search.parentElement).toHaveClass("w-full", "sm:w-auto")
+    expect(search.parentElement?.parentElement).toHaveClass("max-sm:basis-full")
+    expect(search.closest(".justify-between")?.lastElementChild).toHaveClass("empty:hidden")
+    expect(search.closest(".justify-between")?.lastElementChild).toBeEmptyDOMElement()
+  })
+
   it("omits the filter row entirely when no filters are supplied", () => {
     renderToolbar()
 

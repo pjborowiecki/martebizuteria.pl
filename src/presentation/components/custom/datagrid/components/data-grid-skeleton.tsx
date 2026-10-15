@@ -36,8 +36,7 @@ const DataGridSkeletonCell = <TData extends RowData>({
   persistenceKey: string
   table: Table<DataGridFeatures, TData>
 }>): JSX.Element => {
-  const { pinLayout, tableLayout, widthPx } = useDataGridColumnMetrics(column, table)
-  const isPinned = column.getIsPinned()
+  const { isPinned, pinLayout, tableLayout, widthPx } = useDataGridColumnMetrics(column, table)
   const isLastLeftPinned = isPinned === "start" && column.getIsLastColumn("start")
   const isFirstRightPinned = isPinned === "end" && column.getIsFirstColumn("end")
 

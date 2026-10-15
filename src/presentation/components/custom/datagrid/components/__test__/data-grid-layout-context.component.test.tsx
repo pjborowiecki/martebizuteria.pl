@@ -35,7 +35,7 @@ describe("useDataGridLayout", () => {
 
   it("exposes the measured widths the provider publishes", () => {
     renderWithProviders(
-      <DataGridLayoutProvider value={{ tableClientWidth: 900, tableLayout: layout, tableWidth: 1200 }}>
+      <DataGridLayoutProvider value={{ pinsColumns: true, tableClientWidth: 900, tableLayout: layout, tableWidth: 1200 }}>
         <LayoutProbe />
       </DataGridLayoutProvider>,
     )

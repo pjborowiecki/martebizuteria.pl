@@ -282,6 +282,43 @@ export const getDataGridRightPinnedScrollPaddingPx = <TData extends RowData>(
     return sum + getDataGridColumnLayoutWidth(column, columnSizing, tableLayout)
   }, 0)
 
+const DATA_GRID_MIN_SCROLL_VIEW_PX = 240
+
+const getDataGridPinnedColumnsWidthPx = <TData extends RowData>(
+  layoutColumns: readonly Column<DataGridFeatures, TData>[],
+  columnSizing: ColumnSizingState,
+  tableLayout: DataGridTableLayout | undefined,
+): number =>
+  layoutColumns.reduce(
+    (sum, column) => (column.getIsPinned() === false ? sum : sum + getDataGridColumnLayoutWidth(column, columnSizing, tableLayout)),
+    0,
+  )
+
+export const resolveDataGridPinning = <TData extends RowData>({
+  columnSizing,
+  isDesktopViewport,
+  layoutColumns,
+  tableClientWidth,
+  tableLayout,
+  tableWidth,
+}: Readonly<{
+  columnSizing: ColumnSizingState
+  isDesktopViewport: boolean
+  layoutColumns: readonly Column<DataGridFeatures, TData>[]
+  tableClientWidth: number
+  tableLayout: DataGridTableLayout | undefined
+  tableWidth: number
+}>): { readonly pinsColumns: boolean; readonly rightPinnedScrollPaddingPx: number } => {
+  const scrollViewPx = tableClientWidth - getDataGridPinnedColumnsWidthPx(layoutColumns, columnSizing, tableLayout)
+  const pinsColumns =
+    isDesktopViewport || tableClientWidth === 0 || tableWidth <= tableClientWidth || scrollViewPx >= DATA_GRID_MIN_SCROLL_VIEW_PX
+
+  return {
+    pinsColumns,
+    rightPinnedScrollPaddingPx: pinsColumns ? getDataGridRightPinnedScrollPaddingPx(layoutColumns, columnSizing, tableLayout) : 0,
+  }
+}
+
 interface DataGridRightPinOffsetInput<TData extends RowData> {
   readonly column: Column<DataGridFeatures, TData>
   readonly columnSizing: ColumnSizingState

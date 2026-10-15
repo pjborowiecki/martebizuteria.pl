@@ -11,7 +11,7 @@ export const DATA_GRID_BODY_SCROLL_CLASS = "min-h-0 overflow-auto"
 export const DataGridShell = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => (
   <Card
     className={cn(
-      "grid max-h-full min-h-0 min-w-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden py-0",
+      "grid max-h-full min-h-0 min-w-0 flex-1 grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 overflow-hidden py-0",
       ADMIN_CARD_CLASS,
     )}
   >

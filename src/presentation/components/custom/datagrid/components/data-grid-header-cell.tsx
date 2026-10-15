@@ -140,10 +140,9 @@ export const DataGridHeaderCell = <TData extends RowData>({
   const t = useTranslations("components.datagrid")
   const { column } = header
   const { table } = header.getContext()
-  const { pinLayout, tableLayout, widthPx } = useDataGridColumnMetrics(column, table)
+  const { isPinned, pinLayout, tableLayout, widthPx } = useDataGridColumnMetrics(column, table)
   const canDrag = column.getCanHide()
   const label = typeof column.columnDef.header === "string" ? column.columnDef.header : column.id
-  const isPinned = column.getIsPinned()
   const isSorted = column.getIsSorted() !== false
   const isLastLeftPinned = isPinned === "start" && column.getIsLastColumn("start")
   const isFirstRightPinned = isPinned === "end" && column.getIsFirstColumn("end")
