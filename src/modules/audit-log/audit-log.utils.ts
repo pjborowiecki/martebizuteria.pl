@@ -1,15 +1,16 @@
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
+import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
+import { DATE_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
+import { formatCalendarDateToIsoDate, normalizeCalendarDate, startOfCalendarDate, toCalendarDate } from "~/src/modules/_core/utils/datetime"
+import { type DateTimeColumnFilterValue } from "~/src/modules/_core/utils/datetime-column-filter"
 import {
   AUDIT_LOG_ACTION,
   AUDIT_LOG_CATEGORIES,
   AUDIT_LOG_CATEGORY_FILTER,
-  AUDIT_LOG_DATE_RANGE,
-  AUDIT_LOG_DATE_RANGE_MS,
   type AuditLogActorRole,
   type AuditLogCategory,
   type AuditLogCategoryFilter,
-  type AuditLogDateRange,
 } from "~/src/modules/audit-log/audit-log.constants"
 import { describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.detail.utils"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
@@ -26,30 +27,19 @@ export const resolveAuditLogCategoryFilter = (value: AuditLogCategoryFilter | un
   return value
 }
 
-export const resolveStartOfToday = (): Date => {
-  const startOfDay = new Date()
-  startOfDay.setHours(0, 0, 0, 0)
+export const resolveAuditLogToday = (now: Date = new Date()): string =>
+  formatCalendarDateToIsoDate(toCalendarDate(now, DEFAULT_TIMEZONE_CODE))
 
-  return startOfDay
+export const resolveNextAuditLogDayStart = (now: Date): Date => {
+  const today = toCalendarDate(now, DEFAULT_TIMEZONE_CODE)
+
+  return startOfCalendarDate(normalizeCalendarDate({ ...today, day: today.day + 1 }), DEFAULT_TIMEZONE_CODE)
 }
 
-export const resolveAuditLogSince = (dateRange: AuditLogDateRange | undefined): Date | undefined => {
-  if (dateRange === undefined || dateRange === AUDIT_LOG_DATE_RANGE.ALL) {
-    return undefined
-  }
-
-  const now = Date.now()
-
-  if (dateRange === AUDIT_LOG_DATE_RANGE.TODAY) {
-    return resolveStartOfToday()
-  }
-
-  if (dateRange === AUDIT_LOG_DATE_RANGE.DAYS_7) {
-    return new Date(now - AUDIT_LOG_DATE_RANGE_MS.DAYS_7)
-  }
-
-  return new Date(now - AUDIT_LOG_DATE_RANGE_MS.DAYS_30)
-}
+export const buildAuditLogDayFilter = (isoDate: string): DateTimeColumnFilterValue => ({
+  date: isoDate,
+  operator: DATE_COLUMN_FILTER_OPERATOR.ON,
+})
 
 export const toAuditActionMessageKey = (action: string): string => `audit.actions.${action.replaceAll(".", "_")}`
 
@@ -62,6 +52,7 @@ export const formatAdminAuditTimestamp = (createdAt: Date | string): string => {
     minute: "2-digit",
     month: "short",
     second: "2-digit",
+    timeZone: DEFAULT_TIMEZONE_CODE,
     year: "numeric",
   })
 }

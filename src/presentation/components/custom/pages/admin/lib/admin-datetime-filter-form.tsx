@@ -22,6 +22,7 @@ const DateTimeField = ({
   timePlaceholder,
   todayIso,
   todayLabel,
+  withTime,
 }: Readonly<{
   readonly ariaLabel: string
   readonly clearLabel: string
@@ -37,6 +38,7 @@ const DateTimeField = ({
   readonly timePlaceholder: string
   readonly todayIso: string
   readonly todayLabel: string
+  readonly withTime: boolean
 }>): JSX.Element => (
   <div className="grid gap-2">
     <div className="space-y-2">
@@ -53,10 +55,12 @@ const DateTimeField = ({
         value={date}
       />
     </div>
-    <div className="space-y-2">
-      <p className="text-[11px] text-muted-foreground">{timeLabel}</p>
-      <LocaleTimePicker ariaLabel={timeLabel} onChange={onTimeChange} placeholder={timePlaceholder} value={time} />
-    </div>
+    {withTime && (
+      <div className="space-y-2">
+        <p className="text-[11px] text-muted-foreground">{timeLabel}</p>
+        <LocaleTimePicker ariaLabel={timeLabel} onChange={onTimeChange} placeholder={timePlaceholder} value={time} />
+      </div>
+    )}
   </div>
 )
 
@@ -109,6 +113,7 @@ export const AdminDateTimeFilterForm = ({
             timePlaceholder={labels.timePlaceholder}
             todayIso={todayIso}
             todayLabel={labels.today}
+            withTime
           />
           <DateTimeField
             ariaLabel={labels.endDate}
@@ -125,6 +130,7 @@ export const AdminDateTimeFilterForm = ({
             timePlaceholder={labels.timePlaceholder}
             todayIso={todayIso}
             todayLabel={labels.today}
+            withTime
           />
         </div>
       ) : (
@@ -142,6 +148,7 @@ export const AdminDateTimeFilterForm = ({
           timePlaceholder={labels.timePlaceholder}
           todayIso={todayIso}
           todayLabel={labels.today}
+          withTime={draft.operator !== DATE_COLUMN_FILTER_OPERATOR.ON}
         />
       )}
     </>

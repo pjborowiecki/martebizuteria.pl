@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, gte } from "drizzle-orm"
+import { type SQL, and, count, desc, eq } from "drizzle-orm"
 
 import { insertRowChunks, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -11,6 +11,7 @@ import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-co
 import { type AuditLogCategory, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
+import { buildAuditLogDayFilter } from "~/src/modules/audit-log/audit-log.utils"
 
 export interface AdminAuditLogsListParams extends ListPaginationParams {
   readonly category?: AuditLogCategory | undefined
@@ -127,12 +128,12 @@ export const getAdminAuditLogsPage = async (params: AdminAuditLogsListParams): P
   }
 }
 
-export const getAdminAuditLogStats = async (sinceToday: Date): Promise<AuditLog["stats"]> => {
+export const getAdminAuditLogStats = async (today: string): Promise<AuditLog["stats"]> => {
   const [[totalRow], [todayRow], [warningRow], [errorRow]] = await db.batch([
-    db.select({ count: count() }).from(auditLog),
-    db.select({ count: count() }).from(auditLog).where(gte(auditLog.createdAt, sinceToday)),
-    db.select({ count: count() }).from(auditLog).where(eq(auditLog.severity, "warning")),
-    db.select({ count: count() }).from(auditLog).where(eq(auditLog.severity, "error")),
+    countAdminAuditLogRows({}),
+    countAdminAuditLogRows({ createdAt: buildAuditLogDayFilter(today) }),
+    countAdminAuditLogRows({ severity: "warning" }),
+    countAdminAuditLogRows({ severity: "error" }),
   ])
 
   return {

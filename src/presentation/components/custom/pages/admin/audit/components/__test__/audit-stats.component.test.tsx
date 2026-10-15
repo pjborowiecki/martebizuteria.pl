@@ -11,15 +11,20 @@ const mocked = vi.hoisted(() => ({
   },
   pendingForever: { current: false },
   stats: { errorCount: 60, todayCount: 300, totalCount: 1200, warningCount: 240 },
+  statsDays: [] as string[],
   statsKey: ["audit-log", "admin", "stats"],
 }))
 
 vi.mock("~/src/modules/audit-log/use-cases/get-audit-log-stats", () => ({
-  getAuditLogStatsQuery: () => ({
-    queryFn: () => (mocked.pendingForever.current ? new Promise(() => {}) : Promise.resolve(mocked.stats)),
-    queryKey: mocked.statsKey,
-    staleTime: Number.POSITIVE_INFINITY,
-  }),
+  getAuditLogStatsQuery: (today: string) => {
+    mocked.statsDays.push(today)
+
+    return {
+      queryFn: () => (mocked.pendingForever.current ? new Promise(() => {}) : Promise.resolve(mocked.stats)),
+      queryKey: [...mocked.statsKey, today],
+      staleTime: Number.POSITIVE_INFINITY,
+    }
+  },
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-data-grid", () => ({
   useAuditDataGridContext: () => ({
@@ -34,10 +39,14 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import { AuditStats } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-stats"
 import { buildAuditTodayCreatedAtFilter } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-today-date-filter"
 
+const PAST_MIDNIGHT_IN_POLAND = new Date("2026-10-14T22:30:00.000Z")
+
+const TODAY_IN_POLAND = "2026-10-15"
+
 const renderStats = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   if (!mocked.pendingForever.current) {
-    queryClient.setQueryData(mocked.statsKey, mocked.stats)
+    queryClient.setQueryData([...mocked.statsKey, TODAY_IN_POLAND], mocked.stats)
   }
 
   return renderWithProviders(<AuditStats />, { queryClient })
@@ -45,6 +54,8 @@ const renderStats = () => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useFakeTimers({ now: PAST_MIDNIGHT_IN_POLAND, toFake: ["Date"] })
+  mocked.statsDays = []
   mocked.pendingForever.current = false
   mocked.context.activeDateFilter = undefined
   mocked.context.activeSeverityFilter = undefined
@@ -53,6 +64,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
 })
 
 describe("AuditStats", () => {
@@ -63,6 +75,13 @@ describe("AuditStats", () => {
     expect(screen.getByText("Today")).toBeInTheDocument()
     expect(screen.getByText("Warnings")).toBeInTheDocument()
     expect(screen.getByText("Errors")).toBeInTheDocument()
+  })
+
+  it("asks for the counts of the day it is in Poland, though it is still the day before in UTC", () => {
+    renderStats()
+
+    expect(mocked.statsDays).toContain(TODAY_IN_POLAND)
+    expect(mocked.statsDays).not.toContain("2026-10-14")
   })
 
   it("formats every count for the active locale", () => {
@@ -151,12 +170,12 @@ describe("AuditStats filtering", () => {
     expect(screen.getByRole("button", { name: /Total events/u })).toHaveAttribute("aria-pressed", "false")
   })
 
-  it("applies today's date filter from the today card", async () => {
+  it("applies the filter for the day it is in Poland from the today card", async () => {
     renderStats()
 
     await userEvent.click(screen.getByRole("button", { name: /Today/u }))
 
-    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: buildAuditTodayCreatedAtFilter() })
+    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: { date: TODAY_IN_POLAND, operator: "on" } })
   })
 
   it("clears the date filter when today is already the active filter", async () => {

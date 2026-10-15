@@ -1,26 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { DATE_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
+import { AUDIT_LOG_ACTION, AUDIT_LOG_CATEGORIES, AUDIT_LOG_CATEGORY_FILTER } from "~/src/modules/audit-log/audit-log.constants"
 import {
-  AUDIT_LOG_ACTION,
-  AUDIT_LOG_CATEGORIES,
-  AUDIT_LOG_CATEGORY_FILTER,
-  AUDIT_LOG_DATE_RANGE,
-  AUDIT_LOG_DATE_RANGE_MS,
-} from "~/src/modules/audit-log/audit-log.constants"
-import {
+  buildAuditLogDayFilter,
   formatAdminAuditTarget,
   formatAdminAuditTimestamp,
   isAuditLogCategoryFilter,
   resolveAdminAuditTargetPresentation,
   resolveAuditLogAction,
   resolveAuditLogCategoryFilter,
-  resolveAuditLogSince,
-  resolveStartOfToday,
+  resolveAuditLogToday,
+  resolveNextAuditLogDayStart,
   serializeAuditMetadata,
   toAdminAuditListItem,
 } from "~/src/modules/audit-log/audit-log.utils"
-
-const NOW = new Date(2024, 5, 15, 14, 30, 0)
 
 const PRODUCT_UUID = "0195b6f4-1111-7000-8000-000000000001"
 
@@ -48,53 +42,60 @@ describe("resolveAuditLogCategoryFilter", () => {
   })
 })
 
-describe("date range resolution", () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(NOW)
+describe("resolveAuditLogToday", () => {
+  it.each([
+    ["half past midnight in Poland, still the 14th in UTC", "2026-10-14T22:30:00.000Z", "2026-10-15"],
+    ["a minute before midnight in Poland", "2026-10-14T21:59:00.000Z", "2026-10-14"],
+    ["half past midnight on a winter night", "2026-01-14T23:30:00.000Z", "2026-01-15"],
+  ])("names the day in Poland at %s", (_label, instant, expected) => {
+    expect(resolveAuditLogToday(new Date(instant))).toBe(expected)
   })
 
-  afterEach(() => {
-    vi.useRealTimers()
+  describe("without a reference instant", () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ now: new Date("2026-10-14T23:43:00.000Z") })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it("names the day it is in Poland now", () => {
+      expect(resolveAuditLogToday()).toBe("2026-10-15")
+    })
   })
+})
 
-  it("starts today at local midnight, not at the current time", () => {
-    const start = resolveStartOfToday()
-
-    expect(start.getHours()).toBe(0)
-    expect(start.getMinutes()).toBe(0)
-    expect(start.getSeconds()).toBe(0)
-    expect(start.getMilliseconds()).toBe(0)
-    expect(start.getDate()).toBe(15)
+describe("resolveNextAuditLogDayStart", () => {
+  it.each([
+    ["half past midnight in Poland, still the 14th in UTC", "2026-10-14T22:30:00.000Z", "2026-10-15T22:00:00.000Z"],
+    ["a minute before midnight in Poland", "2026-10-14T21:59:00.000Z", "2026-10-14T22:00:00.000Z"],
+    ["the day before the clocks go back", "2026-10-24T12:00:00.000Z", "2026-10-24T22:00:00.000Z"],
+    ["the 25-hour day the clocks go back", "2026-10-25T12:00:00.000Z", "2026-10-25T23:00:00.000Z"],
+    ["the 23-hour day the clocks go forward", "2026-03-29T12:00:00.000Z", "2026-03-29T22:00:00.000Z"],
+    ["the last evening of the year", "2026-12-31T20:00:00.000Z", "2026-12-31T23:00:00.000Z"],
+  ])("finds the next midnight in Poland at %s", (_label, instant, expected) => {
+    expect(resolveNextAuditLogDayStart(new Date(instant)).toISOString()).toBe(expected)
   })
+})
 
-  it.each([[undefined], [AUDIT_LOG_DATE_RANGE.ALL]])("leaves the query unbounded for %j", (dateRange) => {
-    expect(resolveAuditLogSince(dateRange)).toBeUndefined()
-  })
-
-  it("bounds today at local midnight", () => {
-    expect(resolveAuditLogSince(AUDIT_LOG_DATE_RANGE.TODAY)).toStrictEqual(resolveStartOfToday())
-  })
-
-  it("bounds the seven day range at exactly seven days back", () => {
-    expect(resolveAuditLogSince(AUDIT_LOG_DATE_RANGE.DAYS_7)?.getTime()).toBe(NOW.getTime() - AUDIT_LOG_DATE_RANGE_MS.DAYS_7)
-  })
-
-  it("bounds the thirty day range at exactly thirty days back", () => {
-    expect(resolveAuditLogSince(AUDIT_LOG_DATE_RANGE.DAYS_30)?.getTime()).toBe(NOW.getTime() - AUDIT_LOG_DATE_RANGE_MS.DAYS_30)
+describe("buildAuditLogDayFilter", () => {
+  it("filters on the whole of the given day", () => {
+    expect(buildAuditLogDayFilter("2026-10-15")).toStrictEqual({ date: "2026-10-15", operator: DATE_COLUMN_FILTER_OPERATOR.ON })
   })
 })
 
 describe("formatAdminAuditTimestamp", () => {
-  it("renders a full local timestamp down to the second", () => {
-    const formatted = formatAdminAuditTimestamp(new Date(2024, 5, 15, 14, 30, 5))
+  it("renders the time in Poland down to the second, whatever zone the Worker runs in", () => {
+    expect(formatAdminAuditTimestamp(new Date("2026-10-14T23:35:07.000Z"))).toBe("15 paź 2026, 01:35:07")
+  })
 
-    expect(formatted).toContain("2024")
-    expect(formatted).toContain("14:30:05")
+  it("renders a winter time an hour ahead of UTC", () => {
+    expect(formatAdminAuditTimestamp(new Date("2026-01-15T13:30:05.000Z"))).toBe("15 sty 2026, 14:30:05")
   })
 
   it("accepts a stored timestamp string", () => {
-    expect(formatAdminAuditTimestamp(new Date(2024, 5, 15).toISOString())).toContain("2024")
+    expect(formatAdminAuditTimestamp("2026-10-14T23:35:07.000Z")).toBe("15 paź 2026, 01:35:07")
   })
 })
 

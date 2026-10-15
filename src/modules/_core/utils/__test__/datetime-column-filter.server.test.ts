@@ -20,26 +20,34 @@ const render = (fragment: SQL): { readonly params: readonly unknown[]; readonly 
 const build = (filter: Parameters<typeof buildAdminDateTimeFilterSql>[1]) =>
   render(buildAdminDateTimeFilterSql(auditEvent.occurredAt, filter))
 
-const JUNE = 5
+const RANGE_SQL = `("audit_event"."occurred_at" >= ? and "audit_event"."occurred_at" < ?)`
 
 describe("buildAdminDateTimeFilterSql with the on operator", () => {
-  it("spans the selected minute when a time is supplied", () => {
-    const { params, sql } = build({ date: "2024-06-10T08:30", operator: DATE_COLUMN_FILTER_OPERATOR.ON })
+  it("spans the whole day in Poland, from its midnight to the next, whatever zone the Worker runs in", () => {
+    const { params, sql } = build({ date: "2026-10-15", operator: DATE_COLUMN_FILTER_OPERATOR.ON })
 
-    expect(sql).toBe(`("audit_event"."occurred_at" >= ? and "audit_event"."occurred_at" <= ?)`)
-    expect(params).toStrictEqual([new Date(2024, JUNE, 10, 8, 30).getTime(), new Date(2024, JUNE, 10, 8, 30, 59, 999).getTime()])
+    expect(sql).toBe(RANGE_SQL)
+    expect(params).toStrictEqual([Date.parse("2026-10-14T22:00:00.000Z"), Date.parse("2026-10-15T22:00:00.000Z")])
   })
 
-  it("spans the whole day when only a date is supplied", () => {
-    const { params } = build({ date: "2024-06-10", operator: DATE_COLUMN_FILTER_OPERATOR.ON })
-
-    expect(params).toStrictEqual([new Date(2024, JUNE, 10).getTime(), new Date(2024, JUNE, 10, 23, 59, 59, 999).getTime()])
+  it("starts a winter day an hour later in UTC than a summer one", () => {
+    expect(build({ date: "2026-01-15", operator: DATE_COLUMN_FILTER_OPERATOR.ON }).params).toStrictEqual([
+      Date.parse("2026-01-14T23:00:00.000Z"),
+      Date.parse("2026-01-15T23:00:00.000Z"),
+    ])
   })
 
-  it("encodes the bounds as epoch milliseconds the driver can bind", () => {
-    const { params } = build({ date: "2024-06-10T08:30", operator: DATE_COLUMN_FILTER_OPERATOR.ON })
+  it("spans all 25 hours of the day the clocks go back", () => {
+    expect(build({ date: "2026-10-25", operator: DATE_COLUMN_FILTER_OPERATOR.ON }).params).toStrictEqual([
+      Date.parse("2026-10-24T22:00:00.000Z"),
+      Date.parse("2026-10-25T23:00:00.000Z"),
+    ])
+  })
 
-    expect(params.every((value) => typeof value === "number")).toBe(true)
+  it("still spans the whole day when the value carries a time", () => {
+    expect(build({ date: "2026-10-15T08:30", operator: DATE_COLUMN_FILTER_OPERATOR.ON }).params).toStrictEqual(
+      build({ date: "2026-10-15", operator: DATE_COLUMN_FILTER_OPERATOR.ON }).params,
+    )
   })
 
   it("matches every row when the date is missing", () => {
@@ -51,18 +59,27 @@ describe("buildAdminDateTimeFilterSql with the on operator", () => {
 })
 
 describe("buildAdminDateTimeFilterSql with the before and after operators", () => {
-  it("compares against the start of the selected minute when filtering before", () => {
+  it("keeps only what happened before the chosen minute on the Polish clock", () => {
     const { params, sql } = build({ date: "2024-06-10T08:30", operator: DATE_COLUMN_FILTER_OPERATOR.BEFORE })
 
     expect(sql).toBe(`"audit_event"."occurred_at" < ?`)
-    expect(params).toStrictEqual([new Date(2024, JUNE, 10, 8, 30).getTime()])
+    expect(params).toStrictEqual([Date.parse("2024-06-10T06:30:00.000Z")])
   })
 
-  it("compares against the end of the selected minute when filtering after", () => {
+  it("keeps only what happened once the chosen minute on the Polish clock was over", () => {
     const { params, sql } = build({ date: "2024-06-10T08:30", operator: DATE_COLUMN_FILTER_OPERATOR.AFTER })
 
-    expect(sql).toBe(`"audit_event"."occurred_at" > ?`)
-    expect(params).toStrictEqual([new Date(2024, JUNE, 10, 8, 30, 59, 999).getTime()])
+    expect(sql).toBe(`"audit_event"."occurred_at" >= ?`)
+    expect(params).toStrictEqual([Date.parse("2024-06-10T06:31:00.000Z")])
+  })
+
+  it("compares a date without a time against the Polish day's midnights", () => {
+    expect(build({ date: "2024-06-10", operator: DATE_COLUMN_FILTER_OPERATOR.BEFORE }).params).toStrictEqual([
+      Date.parse("2024-06-09T22:00:00.000Z"),
+    ])
+    expect(build({ date: "2024-06-10", operator: DATE_COLUMN_FILTER_OPERATOR.AFTER }).params).toStrictEqual([
+      Date.parse("2024-06-10T22:00:00.000Z"),
+    ])
   })
 
   it("binds epoch milliseconds, the only shape a D1 statement accepts", () => {
@@ -80,15 +97,15 @@ describe("buildAdminDateTimeFilterSql with the before and after operators", () =
 })
 
 describe("buildAdminDateTimeFilterSql with the between operator", () => {
-  it("spans from the start minute to the end of the closing minute", () => {
+  it("spans from the start minute to the end of the closing minute on the Polish clock", () => {
     const { params, sql } = build({
       endDate: "2024-06-12T18:00",
       operator: DATE_COLUMN_FILTER_OPERATOR.BETWEEN,
       startDate: "2024-06-10T08:30",
     })
 
-    expect(sql).toBe(`("audit_event"."occurred_at" >= ? and "audit_event"."occurred_at" <= ?)`)
-    expect(params).toStrictEqual([new Date(2024, JUNE, 10, 8, 30).getTime(), new Date(2024, JUNE, 12, 18, 0, 59, 999).getTime()])
+    expect(sql).toBe(RANGE_SQL)
+    expect(params).toStrictEqual([Date.parse("2024-06-10T06:30:00.000Z"), Date.parse("2024-06-12T16:01:00.000Z")])
   })
 
   it("leaves an inverted range inverted, so it selects nothing", () => {

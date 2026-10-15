@@ -14,7 +14,6 @@ vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({
   getAdminAuditLogsPage: access.list,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.utils", () => ({
-  resolveStartOfToday: () => new Date("2026-09-20T00:00:00Z"),
   toAdminAuditListItem: (row: unknown) => row,
 }))
 vi.mock("@tanstack/react-start", () => ({
@@ -48,10 +47,10 @@ describe("audit log admin reads", () => {
     expect(result).toMatchObject({ hasMore: false, items: [], total: 0 })
   })
 
-  it("counts audit statistics from the start of the current day", async () => {
-    const result = await getAuditLogStats()
+  it("counts audit statistics for the day the stat cards ask about", async () => {
+    const result = await getAuditLogStats({ data: { today: "2026-09-20" } })
 
-    expect(access.stats).toHaveBeenCalledWith(new Date("2026-09-20T00:00:00Z"))
+    expect(access.stats).toHaveBeenCalledWith("2026-09-20")
     expect(result).toStrictEqual({ errorCount: 0, todayCount: 0, totalCount: 0, warningCount: 0 })
   })
 })

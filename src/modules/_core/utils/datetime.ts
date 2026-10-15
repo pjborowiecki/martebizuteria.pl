@@ -26,6 +26,8 @@ const CALENDAR_PARTS: Intl.DateTimeFormatOptions = {
 
 const CALENDAR_PARTS_LOCALE = "en-US"
 
+const ISO_DATE_PART_WIDTH = 2
+
 const WALL_CLOCK_PARTS: Intl.DateTimeFormatOptions = {
   ...CALENDAR_PARTS,
   hour: "numeric",
@@ -49,6 +51,11 @@ export interface CalendarDate {
   readonly day: number
   readonly month: number
   readonly year: number
+}
+
+export interface CalendarDateTime extends CalendarDate {
+  readonly hour: number
+  readonly minute: number
 }
 
 export interface CalendarPeriod {
@@ -79,12 +86,20 @@ const timeZoneOffsetMs = (instantMs: number, timeZone: string): number => {
   )
 }
 
-export const startOfCalendarDate = ({ day, month, year }: CalendarDate, timeZone: string): Date => {
-  const midnightAsUtcMs = Date.UTC(year, month - 1, day)
-  const estimatedStartMs = midnightAsUtcMs - timeZoneOffsetMs(midnightAsUtcMs, timeZone)
+export const instantOfWallClock = ({ day, hour, minute, month, year }: CalendarDateTime, timeZone: string): Date => {
+  const wallClockAsUtcMs = Date.UTC(year, month - 1, day, hour, minute)
+  const estimatedInstantMs = wallClockAsUtcMs - timeZoneOffsetMs(wallClockAsUtcMs, timeZone)
 
-  return new Date(midnightAsUtcMs - timeZoneOffsetMs(estimatedStartMs, timeZone))
+  return new Date(wallClockAsUtcMs - timeZoneOffsetMs(estimatedInstantMs, timeZone))
 }
+
+export const startOfCalendarDate = (date: CalendarDate, timeZone: string): Date =>
+  instantOfWallClock({ ...date, hour: 0, minute: 0 }, timeZone)
+
+const padIsoDatePart = (value: number): string => String(value).padStart(ISO_DATE_PART_WIDTH, "0")
+
+export const formatCalendarDateToIsoDate = ({ day, month, year }: CalendarDate): string =>
+  `${String(year)}-${padIsoDatePart(month)}-${padIsoDatePart(day)}`
 
 export const formatShortDate = (value: DateInput, locale: string = I18N.DEFAULT_LOCALE): string =>
   toDate(value).toLocaleDateString(locale, SHORT_DATE_PARTS)

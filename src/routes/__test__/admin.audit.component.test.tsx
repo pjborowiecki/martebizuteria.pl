@@ -39,7 +39,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 
 const spies = vi.hoisted(() => ({
   listQuery: vi.fn((input: unknown) => ({ queryKey: ["audit", "list", input] })),
-  statsQuery: vi.fn(() => ({ queryKey: ["audit", "stats"] })),
+  statsQuery: vi.fn((today: string) => ({ queryKey: ["audit", "stats", today] })),
 }))
 
 vi.mock("~/src/modules/audit-log/use-cases/get-audit-log-stats", () => ({ getAuditLogStatsQuery: spies.statsQuery }))
@@ -113,9 +113,21 @@ describe("admin audit route loader", () => {
   it("prefetches the statistics and the first page of the log", async () => {
     const { queried } = await runLoader()
 
-    expect(spies.statsQuery).toHaveBeenCalled()
+    expect(spies.statsQuery).toHaveBeenCalledOnce()
     expect(spies.listQuery).toHaveBeenCalledWith({ page: 1, pageSize: ADMIN_AUDIT_LOG_PAGE_SIZE })
     expect(queried).toHaveLength(2)
+  })
+
+  it("prefetches the statistics for the day it is in Poland, though it is still the day before in UTC", async () => {
+    vi.useFakeTimers({ now: new Date("2026-10-14T22:30:00.000Z"), toFake: ["Date"] })
+
+    try {
+      await runLoader()
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(spies.statsQuery).toHaveBeenCalledWith("2026-10-15")
   })
 
   it("treats the prefetched pages as already fresh", async () => {

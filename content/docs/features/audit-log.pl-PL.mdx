@@ -208,17 +208,19 @@ To właśnie umożliwia wskaźnik „odsłony stron” na pulpicie — zobacz [P
 
 ## Ekran w panelu
 
-`/admin/audit` (`src/routes/admin.audit.tsx`) wczytuje wstępnie `getAuditLogStatsQuery()` i `listAuditLogsQuery({ page: 1, pageSize: ADMIN_AUDIT_LOG_PAGE_SIZE })`. Rozmiar strony to **100**, a `AUDIT_LOG_QUERY_STALE_MS` to 30 000 — najkrótszy czas świeżości w całym kodzie.
+`/admin/audit` (`src/routes/admin.audit.tsx`) wczytuje wstępnie `getAuditLogStatsQuery(resolveAuditLogToday())` i `listAuditLogsQuery({ page: 1, pageSize: ADMIN_AUDIT_LOG_PAGE_SIZE })`. Rozmiar strony to **100**, a `AUDIT_LOG_QUERY_STALE_MS` to 30 000 — najkrótszy czas świeżości w całym kodzie.
 
 Wszystkie trzy use case'y są zabezpieczone przez `authorized({ settings: ["manage"] })`, więc czytanie dziennika zdarzeń to uprawnienie poziomu ustawień, a nie uprawnienie per zasób:
 
 | Use case                 | Zwraca                                                             |
 | ------------------------ | ------------------------------------------------------------------ |
 | `list-audit-logs.ts`     | stronę, filtrowaną po `category`, `severity`, `createdAt` i frazie |
-| `get-audit-log-stats.ts` | `{ totalCount, todayCount, warningCount, errorCount }`             |
+| `get-audit-log-stats.ts` | `{ totalCount, todayCount, warningCount, errorCount }` dla `today` |
 | `delete-audit-logs.ts`   | `{ deleted, ok }` i publikuje unieważnienie realtime               |
 
-`getAdminAuditLogStats` to jeden `db.batch` z czterema zliczeniami, gdzie „dzisiaj” pochodzi z `resolveStartOfToday()`.
+`getAdminAuditLogStats(today)` to jeden `db.batch` z czterema zliczeniami, z których każde buduje ten sam warunek where, którego `listAuditLogs` używa dla filtra danej karty, więc gdy nie wybrano kategorii ani frazy wyszukiwania, karta pokazuje dokładnie te zdarzenia, które liczy. „Dzisiaj” to dzień w Polsce: `resolveAuditLogToday()` w `audit-log.utils.ts` podaje go jako datę ISO (`2026-10-15`) przez `toCalendarDate(now, DEFAULT_TIMEZONE_CODE)`, zapytanie o statystyki ma go w kluczu (`[...AUDIT_LOG_QUERY_KEYS.ADMIN.STATS, today]`), a `useAuditLogToday()` (`hooks/use-audit-log-today.ts`) odczytuje go przez `useSyncExternalStore` i budzi stronę o najbliższej północy w Polsce (`resolveNextAuditLogDayStart`), więc liczniki, karta „Dzisiaj” i ostatni dzień do wyboru w okienku przechodzą na nowy dzień także na stronie otwartej bez żadnego ruchu, a `buildAuditLogDayFilter(today)` to zarówno filtr, którego używa zliczenie, jak i ten, który stosuje karta „Dzisiaj”. O 00:30 15 października w Polsce w UTC, w którym działa Worker, wciąż jest 14., a karta liczy i pokazuje zdarzenia od północy w Polsce.
+
+`buildAdminDateTimeFilterSql` (`src/modules/_core/utils/datetime-column-filter.server.ts`) odczytuje każdą datę i godzinę filtra na polskim zegarze przez `instantOfWallClock` z `datetime.ts`, niezależnie od strefy, w której działa Worker. `on` obejmuje cały dzień, od jego północy w Warszawie do następnej, więc dzień zmiany czasu ma 23 albo 25 godzin, a okienko pyta tylko o dzień. `before` kończy się na wybranej minucie, `after` zaczyna się, gdy ona minie, a `between` trwa od pierwszej minuty do końca ostatniej. Przycisk filtra pokazuje cały dzień bez godziny (`= 15 paź 2026`), a godziny w wierszach `formatAdminAuditTimestamp` zapisuje w czasie polskim.
 
 `listAuditLogs` radzi sobie z brakiem wartości `total`:
 
@@ -226,7 +228,7 @@ Wszystkie trzy use case'y są zabezpieczone przez `authorized({ settings: ["mana
 const hasMore = total === undefined ? items.length === params.limit : params.offset + items.length < total
 ```
 
-Stałe filtrów to `AUDIT_LOG_CATEGORY_FILTER` (kategorie plus `all`) i `AUDIT_LOG_DATE_RANGE` (`today`, `7d`, `30d`, `all`) wraz z `AUDIT_LOG_DATE_RANGE_MS` dla dwóch okien. Mapy prezentacji: `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS`, `ACTOR_ROLE_COLORS`, a także `AUDIT_LOG_TABLE_COLUMN_ID`, `_SIZE` i `_PINNING`.
+Stała filtrów to `AUDIT_LOG_CATEGORY_FILTER` (kategorie plus `all`). Mapy prezentacji: `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS`, `ACTOR_ROLE_COLORS`, a także `AUDIT_LOG_TABLE_COLUMN_ID`, `_SIZE` i `_PINNING`.
 
 Komponenty leżą w `.../admin/audit/`: `audit-log.tsx`, `components/audit-columns.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, komórki w `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-table-cell`) oraz `audit-stats.config.ts`.
 

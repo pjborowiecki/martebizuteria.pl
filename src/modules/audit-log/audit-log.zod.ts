@@ -9,6 +9,7 @@ const emailKind = zod.enum(AUDIT_EMAIL_KIND)
 const count = zod.number().int().nonnegative()
 
 export const auditLogZodSchemas = {
+  adminAuditLogStatsInput: zod.object({ today: zod.iso.date() }),
   adminAuditLogsPageInput: zod.object({
     category: zod.enum(AUDIT_LOG_CATEGORIES).optional(),
     createdAt: dateTimeColumnFilterField.optional(),

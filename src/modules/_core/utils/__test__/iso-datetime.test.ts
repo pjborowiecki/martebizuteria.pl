@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
+import { parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
 import {
   combineIsoDateAndTime,
   defaultDateTimeFilterEndTime,
   hasIsoDateTimeTimeComponent,
   isIsoDateTimeLocalString,
   isTimeInputValue,
-  parseIsoDateTimeLocalToEndMs,
+  parseIsoDateTimeLocal,
   parseIsoDateTimeLocalToMs,
   splitIsoDateTimeLocal,
 } from "~/src/modules/_core/utils/iso-datetime"
@@ -109,25 +109,17 @@ describe("parseIsoDateTimeLocalToMs", () => {
   })
 })
 
-describe("parseIsoDateTimeLocalToEndMs", () => {
-  it("falls back to the end of the day for a date-only value", () => {
-    expect(parseIsoDateTimeLocalToEndMs("2024-03-05")).toBe(parseIsoDateToEndMs("2024-03-05"))
+describe("parseIsoDateTimeLocal", () => {
+  it("reads a date-only value as the wall clock at midnight", () => {
+    expect(parseIsoDateTimeLocal("2026-10-15")).toStrictEqual({ day: 15, hour: 0, minute: 0, month: 10, year: 2026 })
   })
 
-  it("extends a minute-precision bound to the end of that minute so the boundary row is included", () => {
-    expect(parseIsoDateTimeLocalToEndMs("2024-03-05T10:30")).toBe(new Date(2024, 2, 5, 10, 30, 59, 999).getTime())
+  it("reads the hour and minute of a date and time", () => {
+    expect(parseIsoDateTimeLocal("2026-10-15T08:30")).toStrictEqual({ day: 15, hour: 8, minute: 30, month: 10, year: 2026 })
   })
 
-  it("respects an explicit seconds bound exactly", () => {
-    expect(parseIsoDateTimeLocalToEndMs("2024-03-05T10:30:15")).toBe(new Date(2024, 2, 5, 10, 30, 15, 0).getTime())
-  })
-
-  it("never ends before it starts", () => {
-    expect(parseIsoDateTimeLocalToEndMs("2024-03-05T10:30")).toBeGreaterThan(parseIsoDateTimeLocalToMs("2024-03-05T10:30"))
-  })
-
-  it("reports NaN when there is no time component to parse", () => {
-    expect(parseIsoDateTimeLocalToEndMs("nonsense")).toBeNaN()
+  it("keeps the minute and drops the seconds", () => {
+    expect(parseIsoDateTimeLocal("2026-10-15T23:59:45")).toStrictEqual({ day: 15, hour: 23, minute: 59, month: 10, year: 2026 })
   })
 })
 
