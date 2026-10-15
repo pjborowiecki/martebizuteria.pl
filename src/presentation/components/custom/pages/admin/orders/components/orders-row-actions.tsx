@@ -33,6 +33,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
   const trigger = useMemo(
     () => (
       <Button
+        aria-label={t("menuLabel", { orderNumber: order.orderNumber })}
         variant="ghost"
         size="icon"
         className="size-8"
@@ -42,7 +43,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
         <MoreHorizontal className="size-4" strokeWidth={1.5} />
       </Button>
     ),
-    [handlers.handleStopRowClick],
+    [handlers.handleStopRowClick, order.orderNumber, t],
   )
 
   return (

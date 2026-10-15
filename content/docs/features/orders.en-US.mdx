@@ -160,7 +160,7 @@ The tracking number and URL come from `order-ship-dialog.tsx`, and the row menu 
 - `components/orders-table.tsx` — `OrdersTableContent`, the data grid
 - `components/orders-columns.tsx` — column definitions; ids, widths and pinning come from `ADMIN_ORDER_TABLE_COLUMN_ID`, `ADMIN_ORDER_TABLE_COLUMN_SIZE` and `ADMIN_ORDER_TABLE_COLUMN_PINNING`
 - `components/orders-status-filter.tsx`, `orders-payment-filter.tsx`, `orders-fulfillment-filter.tsx`, `orders-date-column-filter.tsx`, `orders-numeric-column-filter.tsx`
-- `components/orders-row-actions.tsx` — the per-row menu that calls `fulfillOrder`, `shipOrder` (without tracking) and `cancelOrder`, and opens the order summary in a new tab; when `resolveAdminOrderCancelBlocker` blocks an order it could otherwise cancel, Cancel order is disabled and the reason from `pages.admin.orders.rowActions.cancelBlocked` is shown under it as the item's description
+- `components/orders-row-actions.tsx` — the per-row menu that calls `fulfillOrder`, `shipOrder` (without tracking) and `cancelOrder`, and opens the order summary in a new tab; when `resolveAdminOrderCancelBlocker` blocks an order it could otherwise cancel, Cancel order is disabled and the reason from `pages.admin.orders.rowActions.cancelBlocked` is shown under it as the item's description; the menu button takes its `aria-label` from `pages.admin.orders.rowActions.menuLabel` (`Actions for order {orderNumber}`), so a screen reader tells each row's button apart; the overview's recent orders render the same menu (see [Admin dashboard](/docs/features/admin-dashboard#recent-orders))
 - `components/orders-stats.tsx` with `orders-stats.config.ts`
 - `components/orders-export-action.tsx`, `orders-refresh-action.tsx`
 

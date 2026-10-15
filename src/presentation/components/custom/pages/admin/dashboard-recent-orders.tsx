@@ -1,5 +1,6 @@
-import { type JSX } from "react"
+import { type JSX, type MouseEvent, useCallback } from "react"
 
+import { useNavigate } from "@tanstack/react-router"
 import { ArrowRight } from "lucide-react"
 import { useLocale, useTranslations } from "use-intl/react"
 
@@ -11,10 +12,12 @@ import { Avatar, AvatarFallback } from "~/src/presentation/components/shadcn/ava
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/src/presentation/components/shadcn/table"
 
+import { consumeDataGridRowClickSuppression } from "~/src/presentation/components/custom/datagrid/lib/data-grid-row-click"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
 import { OrderFulfillmentCell } from "~/src/presentation/components/custom/pages/admin/orders/components/order-fulfillment-cell"
 import { OrderPaymentBadge } from "~/src/presentation/components/custom/pages/admin/orders/components/order-payment-badge"
+import { OrdersRowActions } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-row-actions"
 
 import { ROUTES } from "~/src/routes"
 
@@ -48,7 +51,10 @@ export const DashboardRecentOrders = (): JSX.Element => {
                 <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.date")}</TableHead>
                 <TableHead className="text-right text-xs font-medium">{t("dashboard.recentOrders.columns.total")}</TableHead>
                 <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.payment")}</TableHead>
-                <TableHead className="pr-6 text-xs font-medium">{t("dashboard.recentOrders.columns.fulfillment")}</TableHead>
+                <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.fulfillment")}</TableHead>
+                <TableHead className="pr-6">
+                  <span className="sr-only">{t("orders.columns.actions")}</span>
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -63,11 +69,25 @@ export const DashboardRecentOrders = (): JSX.Element => {
   )
 }
 
+const isOrderCellClick = ({ currentTarget, target }: MouseEvent<HTMLTableRowElement>): boolean =>
+  target instanceof Element && currentTarget.contains(target) && target.closest("a, [data-prevent-row-click]") === null
+
 const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): JSX.Element => {
   const locale = useLocale()
+  const navigate = useNavigate()
+  const handleRowClick = useCallback(
+    (event: MouseEvent<HTMLTableRowElement>) => {
+      if (consumeDataGridRowClickSuppression() || !isOrderCellClick(event)) {
+        return
+      }
+
+      void navigate({ params: { orderId: order.id }, to: ROUTES.ADMIN_ORDER })
+    },
+    [navigate, order.id],
+  )
 
   return (
-    <TableRow className="hover:bg-transparent">
+    <TableRow className="cursor-pointer hover:bg-muted/50" onClick={handleRowClick}>
       <TableCell className="pl-6 font-mono text-sm font-medium whitespace-nowrap">
         <LocalizedLink params={{ orderId: order.id }} to={ROUTES.ADMIN_ORDER} className="hover:underline">
           {order.orderNumber}
@@ -88,8 +108,11 @@ const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): 
       <TableCell>
         <OrderPaymentBadge paymentUiKey={order.paymentUiKey} />
       </TableCell>
-      <TableCell className="pr-6">
+      <TableCell>
         <OrderFulfillmentCell fulfillmentUiKey={order.fulfillmentUiKey} />
+      </TableCell>
+      <TableCell className="pr-6 text-right" data-prevent-row-click>
+        <OrdersRowActions order={order} />
       </TableCell>
     </TableRow>
   )

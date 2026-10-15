@@ -1,11 +1,14 @@
-import { cleanup, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+import type * as TanStackRouter from "@tanstack/react-router"
+import { cleanup, fireEvent, screen } from "@testing-library/react"
+import { userEvent } from "@testing-library/user-event"
+import { type Mock, afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 import { type Order } from "~/src/modules/order/order.types"
 
+import { suppressNextDataGridRowClick } from "~/src/presentation/components/custom/datagrid/lib/data-grid-row-click"
 import { DashboardRecentOrders } from "~/src/presentation/components/custom/pages/admin/dashboard-recent-orders"
 import { DashboardStats } from "~/src/presentation/components/custom/pages/admin/dashboard-stats"
 import { DashboardTopProducts } from "~/src/presentation/components/custom/pages/admin/dashboard-top-products"
@@ -16,6 +19,18 @@ vi.mock("~/src/presentation/components/custom/image", () => ({
 vi.mock("~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot", () => ({
   useAdminDashboardSnapshot: () => ({ data: snapshotRef.current }),
 }))
+vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions", () => ({
+  useCancelOrder: () => ({ isPending: false, mutate: vi.fn() }),
+  useFulfillOrder: () => ({ isPending: false, mutate: vi.fn() }),
+  useMarkOrderShipped: () => ({ isPending: false, mutate: vi.fn() }),
+}))
+vi.mock("@tanstack/react-router", async () => {
+  const actual = await vi.importActual<typeof TanStackRouter>("@tanstack/react-router")
+
+  return { ...actual, useNavigate: () => navigate }
+})
+
+const { navigate } = vi.hoisted((): { navigate: Mock<(options: unknown) => void> } => ({ navigate: vi.fn() }))
 
 const FLAT_STAT = { current: 0, previous: 0, trendPercent: 0 }
 
@@ -56,8 +71,19 @@ const orderRow = (overrides: Partial<Order["adminListItem"]> = {}): Order["admin
   ...overrides,
 })
 
+const tableCellOf = (element: HTMLElement): HTMLTableCellElement => {
+  const cell = element.closest("td")
+  if (cell === null) {
+    throw new Error("The element is not inside a table cell")
+  }
+
+  return cell
+}
+
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
+  navigate.mockClear()
   snapshotRef.current = emptySnapshot()
 })
 
@@ -195,7 +221,7 @@ describe("DashboardRecentOrders", () => {
 
     const headers = screen.getAllByRole("columnheader").map((header) => header.textContent)
 
-    expect(headers).toStrictEqual(["Order", "Customer", "Date", "Total", "Payment", "Fulfillment"])
+    expect(headers).toStrictEqual(["Order", "Customer", "Date", "Total", "Payment", "Fulfillment", "Row actions"])
   })
 
   it("marks a shipped order with the shipped label rather than the paid badge style", () => {
@@ -233,5 +259,99 @@ describe("DashboardRecentOrders", () => {
     renderWithProviders(<DashboardRecentOrders />)
 
     expect(screen.getByText("Refunded")).toHaveAttribute("data-variant", "destructive")
+  })
+})
+
+describe("DashboardRecentOrders row", () => {
+  const ORDER_PAGE = { params: { orderId: "c3791f39-4f51-4d0d-a7b1-1ef49f0995ea" }, to: "/admin/orders/$orderId" }
+  const MENU_OPENED_AT = 0
+  const AFTER_MENU_SUPPRESSION = 10_000
+
+  it("opens the order from a click anywhere on its row", () => {
+    snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow()] }
+    renderWithProviders(<DashboardRecentOrders />)
+
+    fireEvent.click(screen.getByText("Anna Kowalska"))
+
+    expect(screen.getByText("Anna Kowalska").closest("tr")).toHaveClass("cursor-pointer")
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(ORDER_PAGE)
+  })
+
+  it("leaves a click on the order number to its link instead of opening the order twice", () => {
+    snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow()] }
+    renderWithProviders(<DashboardRecentOrders />)
+
+    fireEvent.click(screen.getByRole("link", { name: "MRT-2026-00001" }))
+
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("gives every recent order the row menu of the orders list, named after that order", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(MENU_OPENED_AT)
+    snapshotRef.current = {
+      ...emptySnapshot(),
+      recentOrders: [orderRow(), orderRow({ id: "5d0f8c1e-2a3b-4c5d-8e9f-0a1b2c3d4e5f", orderNumber: "MRT-2026-00002" })],
+    }
+    renderWithProviders(<DashboardRecentOrders />)
+
+    expect(screen.getByRole("button", { name: "Actions for order MRT-2026-00001" })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: "Actions for order MRT-2026-00002" }))
+
+    expect(await screen.findByRole("menuitem", { name: "Fulfill order" })).toBeInTheDocument()
+    expect(screen.getByRole("menuitem", { name: "Cancel order" })).toBeInTheDocument()
+  })
+
+  it("opens the order once from View order in its row menu", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(MENU_OPENED_AT)
+    snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow()] }
+    renderWithProviders(<DashboardRecentOrders />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Actions for order MRT-2026-00001" }))
+    await userEvent.click(await screen.findByRole("menuitem", { name: "View order" }))
+
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(ORDER_PAGE)
+  })
+
+  it("keeps a click on the row menu button or its cell from opening the order", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(MENU_OPENED_AT)
+    snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow()] }
+    renderWithProviders(<DashboardRecentOrders />)
+    const trigger = screen.getByRole("button", { name: "Actions for order MRT-2026-00001" })
+    const cell = tableCellOf(trigger)
+
+    await userEvent.click(trigger)
+    clock.mockReturnValue(AFTER_MENU_SUPPRESSION)
+    fireEvent.click(cell)
+
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("keeps a click inside the open menu, drawn outside the table, from opening the order", async () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(MENU_OPENED_AT)
+    snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow()] }
+    renderWithProviders(<DashboardRecentOrders />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Actions for order MRT-2026-00001" }))
+    clock.mockReturnValue(AFTER_MENU_SUPPRESSION)
+    fireEvent.click(await screen.findByRole("menu"))
+
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("does not open the order when the click only closes a row menu", () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(1000)
+    snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow()] }
+    renderWithProviders(<DashboardRecentOrders />)
+    suppressNextDataGridRowClick()
+
+    fireEvent.click(screen.getByText("Anna Kowalska"))
+
+    expect(navigate).not.toHaveBeenCalled()
+
+    clock.mockReturnValue(1300)
+    fireEvent.click(screen.getByText("Anna Kowalska"))
+
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(ORDER_PAGE)
   })
 })
