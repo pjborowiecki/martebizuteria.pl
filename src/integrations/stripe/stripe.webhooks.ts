@@ -139,11 +139,17 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
 const handleReleaseCheckoutSession = async (session: StripeType.Checkout.Session): Promise<boolean> => {
   const lines = checkoutReleaseLinesSchema.parse(JSON.parse(readCheckoutSessionItemsJson(session.metadata)))
   const released = await releaseCheckout({ lines, transactionId: session.id })
+  if (!released) {
+    console.info(`Session ${session.id} held nothing to release: its checkout was paid, released or moved to a newer session.`)
+
+    return false
+  }
+
   recordOrderReleasedAudit(session.id, { resourceId: session.id })
   scheduleProductCatalogInvalidation()
   console.info(`Checkout released after failed/expired session ${session.id}.`)
 
-  return released
+  return true
 }
 
 const handleAsyncPaymentFailed = async (session: StripeType.Checkout.Session): Promise<void> => {

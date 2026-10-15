@@ -122,12 +122,12 @@ afterAll(() => {
 })
 
 describe("supersedeCheckoutSession", () => {
-  it("moves the pending payment onto the new session and returns the stock the old session held", async () => {
+  it("moves the pending payment onto the new session and returns only the stock the replacement does not keep", async () => {
     await expect(supersede()).resolves.toBe(true)
 
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
     expect(checkoutStatus("chk-1")).toEqual({ status: "pending" })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
+    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4 })
     expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 
@@ -167,7 +167,8 @@ describe("supersedeCheckoutSession", () => {
     await expect(supersede(OLD_SESSION, "cs_newer")).resolves.toBe(false)
 
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
+    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4 })
+    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 
   it.each([
@@ -195,11 +196,12 @@ describe("supersedeCheckoutSession", () => {
 
   it("leaves nothing for the old session's expiry webhook to release once it has been superseded", async () => {
     await supersede()
-    await releaseCheckout({ lines: HELD_LINES, transactionId: OLD_SESSION })
+    await expect(releaseCheckout({ lines: HELD_LINES, transactionId: OLD_SESSION })).resolves.toBe(false)
 
     expect(checkoutStatus("chk-1")).toEqual({ status: "pending" })
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
+    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4 })
+    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 
   it("leaves the stock as the expiry webhook released it when that webhook got there first", async () => {
@@ -220,7 +222,7 @@ describe("supersedeCheckoutSession", () => {
 
     expect(checkoutStatus("chk-1")).toEqual({ status: "pending" })
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
-    expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
+    expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4 })
     expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 
@@ -251,19 +253,57 @@ describe("supersedeCheckoutSession", () => {
     expect(checkoutOwner("chk-other")).toEqual({ userId: null })
   })
 
-  it("lets the replacement session return the edited cart's reservation after a late expiry release of the old one", async () => {
+  it("lets the replacement session return the whole edited cart, kept and added units alike, after a late expiry release of the old one", async () => {
     const expiryRelease = prepareReleaseCheckoutBatch({ lines: HELD_LINES, transactionId: OLD_SESSION })
+    sqlite.exec(
+      "update inventory set quantity_available = quantity_available - 1, quantity_reserved = quantity_reserved + 1 where id = 'inv-1'",
+    )
     await supersede()
     await runDrizzleBatch(expiryRelease)
-    sqlite.exec(
-      "update inventory set quantity_available = quantity_available - 3, quantity_reserved = quantity_reserved + 3 where id = 'inv-1'",
-    )
 
-    await releaseCheckout({ lines: [{ qty: 3, variantId: "var-1" }], transactionId: NEW_SESSION })
+    await releaseCheckout({ lines: RESERVED_LINES, transactionId: NEW_SESSION })
 
     expect(checkoutStatus("chk-1")).toEqual({ status: "failed" })
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "failed", transactionId: NEW_SESSION })
     expect(inventoryRow("var-1")).toEqual({ available: 5, reserved: 2 })
+    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
+  })
+})
+
+describe("supersedeCheckoutSession and the stock the replacement keeps", () => {
+  it("never lets go of a one-of-a-kind piece the replacement still holds", async () => {
+    sqlite.exec("update inventory set quantity_available = 0, quantity_reserved = 1 where id = 'inv-1'")
+
+    await expect(
+      supersedeCheckoutSession({
+        amount: 24_900,
+        discountId: undefined,
+        heldLines: [{ qty: 1, variantId: "var-1" }],
+        newTransactionId: NEW_SESSION,
+        oldTransactionId: OLD_SESSION,
+        reservedLines: [{ qty: 1, variantId: "var-1" }],
+        userId: "user-1",
+      }),
+    ).resolves.toBe(true)
+
+    expect(inventoryRow("var-1")).toEqual({ available: 0, reserved: 1 })
+  })
+
+  it("returns the units the edited cart dropped and keeps the rest of the variant held", async () => {
+    await expect(
+      supersedeCheckoutSession({
+        amount: 24_900,
+        discountId: undefined,
+        heldLines: HELD_LINES,
+        newTransactionId: NEW_SESSION,
+        oldTransactionId: OLD_SESSION,
+        reservedLines: [{ qty: 1, variantId: "var-1" }],
+        userId: "user-1",
+      }),
+    ).resolves.toBe(true)
+
+    expect(inventoryRow("var-1")).toEqual({ available: 4, reserved: 3 })
+    expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 })
 

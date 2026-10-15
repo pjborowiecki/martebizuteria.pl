@@ -5,14 +5,11 @@ import { type TestD1RoundTrip } from "~/src/platform/testing/mocks/d1"
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { releaseInventoryForItems, reserveInventoryRows } from "~/src/modules/inventory/inventory.accessors"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
-import {
-  type ReserveInventoryItem,
-  reserveInventoryByVariantLines,
-  reserveInventoryForItems,
-} from "~/src/modules/inventory/inventory.utils"
+import { type ReserveInventoryItem, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
 import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 
 const { sqlite, trips } = await vi.hoisted(async () => {
@@ -40,6 +37,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 const STARTING_STOCK = 10
+
+const OUT_OF_STOCK = { message: CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY }
 
 const HANDLE = "lapis-lazuli-necklace"
 
@@ -76,6 +75,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   trips.splice(0)
+  vi.spyOn(console, "warn").mockImplementation(() => {})
   sqlite.exec(`
     delete from product;
     insert into product (id, handle, status, titles) values ('p_lapis', '${HANDLE}', 'published', '{"en-US":"Lapis Lazuli Necklace"}');
@@ -137,32 +137,8 @@ describe("two checkouts reserving the same necklace at the same moment", () => {
 
     await reserveInventoryForItems([first])
 
-    await expect(reserveInventoryForItems([second])).rejects.toThrow(
-      "Inventory reservation failed for second checkout. Not enough stock available.",
-    )
-    expect(readRow("inv_a")).toStrictEqual({ available: 0, reserved: 1 })
-  })
-
-  it("reserves both edited carts when two checkout updates read the stock before either reserves", async () => {
-    const results = await Promise.allSettled([
-      reserveInventoryByVariantLines([{ qty: 1, variantId: "var_a" }]),
-      reserveInventoryByVariantLines([{ qty: 1, variantId: "var_a" }]),
-    ])
-
-    expect(trips.map(({ kind }) => kind)).toStrictEqual(["statement", "statement", "batch", "batch"])
-    expect(results.map(({ status }) => status)).toStrictEqual(["fulfilled", "fulfilled"])
-    expect(readRow("inv_a")).toStrictEqual({ available: STARTING_STOCK - 2, reserved: 2 })
-  })
-
-  it("reserves exactly one of two edited carts when only one piece is left", async () => {
-    leaveAvailable(1)
-
-    const results = await Promise.allSettled([
-      reserveInventoryByVariantLines([{ qty: 1, variantId: "var_a" }]),
-      reserveInventoryByVariantLines([{ qty: 1, variantId: "var_a" }]),
-    ])
-
-    expect(results.map(({ status }) => status).toSorted()).toStrictEqual(["fulfilled", "rejected"])
+    await expect(reserveInventoryForItems([second])).rejects.toMatchObject(OUT_OF_STOCK)
+    expect(console.warn).toHaveBeenCalledWith("Inventory reservation failed for second checkout. Not enough stock available.")
     expect(readRow("inv_a")).toStrictEqual({ available: 0, reserved: 1 })
   })
 })
@@ -202,7 +178,7 @@ describe("inventory reservation across several lines", () => {
         { inventoryId: "inv_a", qty: 6, title: "A" },
         { inventoryId: "inv_a", qty: 6, title: "A" },
       ]),
-    ).rejects.toThrow("Inventory reservation failed for A. Not enough stock available.")
+    ).rejects.toMatchObject(OUT_OF_STOCK)
 
     expect(readRow("inv_a")).toStrictEqual({ available: STARTING_STOCK, reserved: 0 })
   })
@@ -213,40 +189,17 @@ describe("inventory reservation across several lines", () => {
         { inventoryId: "inv_a", qty: 2, title: "A" },
         { inventoryId: "inv_b", qty: STARTING_STOCK + 1, title: "B" },
       ]),
-    ).rejects.toThrow(/Inventory reservation failed for B/u)
+    ).rejects.toMatchObject(OUT_OF_STOCK)
 
     expect(readRow("inv_a")).toStrictEqual({ available: STARTING_STOCK, reserved: 0 })
     expect(readRow("inv_b")).toStrictEqual({ available: STARTING_STOCK, reserved: 0 })
   })
 
-  it("names the first failing line in the error", async () => {
-    await expect(reserveInventoryForItems([{ inventoryId: "inv_a", qty: STARTING_STOCK + 1, title: "Onyx earrings" }])).rejects.toThrow(
-      /Onyx earrings/u,
-    )
-  })
-})
-
-describe("inventory reservation by variant", () => {
-  it("reads every line's stock row in one query and reserves them together", async () => {
-    await reserveInventoryByVariantLines([
-      { qty: 1, variantId: "var_a" },
-      { qty: 2, variantId: "var_b" },
-    ])
-
-    expect(trips.map(({ kind }) => kind)).toStrictEqual(["statement", "batch"])
-    expect(readRow("inv_a")).toStrictEqual({ available: 9, reserved: 1 })
-    expect(readRow("inv_b")).toStrictEqual({ available: 8, reserved: 2 })
-  })
-
-  it("refuses every line when one variant has no stock row", async () => {
+  it("names the first failing line in the log", async () => {
     await expect(
-      reserveInventoryByVariantLines([
-        { qty: 1, variantId: "var_a" },
-        { qty: 1, variantId: "var_missing" },
-      ]),
-    ).rejects.toThrow("Inventory not found for variant var_missing.")
-
-    expect(readRow("inv_a")).toStrictEqual({ available: STARTING_STOCK, reserved: 0 })
+      reserveInventoryForItems([{ inventoryId: "inv_a", qty: STARTING_STOCK + 1, title: "Onyx earrings" }]),
+    ).rejects.toMatchObject(OUT_OF_STOCK)
+    expect(console.warn).toHaveBeenCalledWith("Inventory reservation failed for Onyx earrings. Not enough stock available.")
   })
 })
 

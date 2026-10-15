@@ -40,13 +40,14 @@ Rows are created alongside variants: `prepareProductCatalogBatch` in `product.mu
 
 `inventory.availability.utils.ts` holds the pure helpers used by both the storefront and the cart:
 
-| Function                                      | Meaning                                            |
-| --------------------------------------------- | -------------------------------------------------- |
-| `getVariantQuantityAvailable(variant)`        | `variant?.inventory?.quantityAvailable ?? 0`       |
-| `isVariantPurchasable(variant, qty)`          | `qty > 0` and available `>= qty`                   |
-| `resolveProductTotalAvailableStock(variants)` | Sum across variants                                |
-| `isProductInStock(variants)`                  | Total above zero                                   |
-| `sumHeldQuantity(heldLines, variantId)`       | Units of the variant that a checkout session holds |
+| Function                                      | Meaning                                                            |
+| --------------------------------------------- | ------------------------------------------------------------------ |
+| `getVariantQuantityAvailable(variant)`        | `variant?.inventory?.quantityAvailable ?? 0`                       |
+| `isVariantPurchasable(variant, qty)`          | `qty > 0` and available `>= qty`                                   |
+| `resolveProductTotalAvailableStock(variants)` | Sum across variants                                                |
+| `isProductInStock(variants)`                  | Total above zero                                                   |
+| `sumHeldQuantity(heldLines, variantId)`       | Units of the variant that a checkout session holds                 |
+| `quantitiesBeyond(lines, baselineLines)`      | Each line cut to the units the baseline lines do not already cover |
 
 A missing `inventory` row therefore reads as zero rather than as unknown.
 
@@ -82,13 +83,21 @@ if (firstFailure !== undefined) {
     console.error("Failed to roll back partial inventory reservation:", error)
   })
 
-  throw new Error(`Inventory reservation failed for ${firstFailure.title}. Not enough stock available.`)
+  console.warn(`Inventory reservation failed for ${firstFailure.title}. Not enough stock available.`)
+  throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY)
 }
 ```
 
-A guard that matches no row is not an error, so D1 commits the lines that did match; the compensating release, itself a single batch, closes that gap rather than the database.
+A guard that matches no row is not an error, so D1 commits the lines that did match; the compensating release, itself a single batch, closes that gap rather than the database. The refusal carries `INSUFFICIENT_INVENTORY`, the code validation uses for a basket that asks for more than is left, so a shopper who loses the last piece to a checkout that reserved it a moment earlier sees the out-of-stock message (`errors.insufficientInventory`) instead of the generic `errors.unknownError`, and the basket checks its availability again. The log names the line that ran out.
 
-`reserveInventoryByVariantLines(lines)` is the variant-id-based variant that reserves the edited cart during a checkout update, after the old session's lines were released: it finds every line's inventory row in one query through `getInventoryIdsByVariantIds`, then delegates to `reserveInventoryForItems`.
+## Moving a hold to a replacement session
+
+A checkout update replaces its Stripe session but never lets go of the stock the shopper keeps. `quantitiesBeyond(lines, baselineLines)` compares two sets of lines per variant and keeps of each line only the units the baseline does not already cover, spending the baseline of a variant once across several lines of it. The update uses it both ways:
+
+- `quantitiesBeyond(validatedItems, heldLines)` is what the edited cart adds. It is reserved with `reserveInventoryForItems` on the inventory ids validation returned, before the replacement session is created and before the old one is expired. A refusal leaves the old session, its stock and the checkout as they were.
+- `quantitiesBeyond(heldLines, reservedLines)` is what the edited cart drops. `supersedeCheckoutSession` releases only that, in the batch that moves the payment.
+
+The units both sessions hold are therefore never released, so another checkout cannot take a one-of-a-kind piece while its shopper changes the delivery address or the quantity.
 
 ## Release is clamped
 
@@ -101,27 +110,27 @@ Both release statements use `min`/`max` so a duplicate release cannot invent sto
 })
 ```
 
-`releaseInventoryForItems(items)` keys on `inventoryId` and sends every line in one batch. `supersedeCheckoutSession` applies the same `inventoryReleaseValues`, keyed on `variantId`, to the lines a replaced checkout session held. Unlike reservation, release has no guard — it must always succeed, and the clamp keeps a repeated one harmless.
+`releaseInventoryForItems(items)` keys on `inventoryId` and sends every line in one batch. `supersedeCheckoutSession` applies the same `inventoryReleaseValues`, keyed on `variantId`, to the units a replaced checkout session held that its replacement does not keep. Unlike reservation, release has no guard — it must always succeed, and the clamp keeps a repeated one harmless.
 
 ## The full cycle
 
-| Moment                                                                            | Effect on the row                                                                             |
-| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Stripe session created (`handleCreateCheckoutSession`)                            | `available -= qty`, `reserved += qty`, only while `available >= qty`                          |
-| Checkout edited (`handleUpdateCheckoutSession`)                                   | Old lines released as the payment moves (`supersedeCheckoutSession`), then new lines reserved |
-| Session paid (`prepareFulfillCheckoutBatch`)                                      | `reserved -= qty`; `available` untouched — the reservation is consumed                        |
-| Session expired or async payment failed (`prepareReleaseCheckoutBatch`)           | `available += min(reserved, qty)`, `reserved -= qty`                                          |
-| Product saved as draft or archived (`expireCheckoutsHoldingVariants`)             | Its open sessions are expired, then released as above ahead of their webhook                  |
-| Order cancelled by an admin (`prepareCancelOrderBatch`)                           | `available += quantity` while the order is unshipped and its stock has not gone back yet      |
-| Admin says a refunded order's items came back (`prepareRestockOrderBatch`)        | `available += quantity`, from `getRestockLinesForOrder(orderId)`, once per order              |
-| Refund on its own, from the Refund button, the Stripe dashboard or a lost dispute | Nothing — `refundOrder` never restocks                                                        |
-| Admin changes the stock in the product editor (`prepareProductCatalogBatch`)      | `available += new − loaded`; refused when it would go below zero                              |
+| Moment                                                                            | Effect on the row                                                                                                          |
+| --------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Stripe session created (`handleCreateCheckoutSession`)                            | `available -= qty`, `reserved += qty`, only while `available >= qty`                                                       |
+| Checkout edited (`handleUpdateCheckoutSession`)                                   | Added units reserved first; dropped units released as the payment moves (`supersedeCheckoutSession`); kept units untouched |
+| Session paid (`prepareFulfillCheckoutBatch`)                                      | `reserved -= qty`; `available` untouched — the reservation is consumed                                                     |
+| Session expired or async payment failed (`prepareReleaseCheckoutBatch`)           | `available += min(reserved, qty)`, `reserved -= qty`                                                                       |
+| Product saved as draft or archived (`expireCheckoutsHoldingVariants`)             | Its open sessions are expired, then released as above ahead of their webhook                                               |
+| Order cancelled by an admin (`prepareCancelOrderBatch`)                           | `available += quantity` while the order is unshipped and its stock has not gone back yet                                   |
+| Admin says a refunded order's items came back (`prepareRestockOrderBatch`)        | `available += quantity`, from `getRestockLinesForOrder(orderId)`, once per order                                           |
+| Refund on its own, from the Refund button, the Stripe dashboard or a lost dispute | Nothing — `refundOrder` never restocks                                                                                     |
+| Admin changes the stock in the product editor (`prepareProductCatalogBatch`)      | `available += new − loaded`; refused when it would go below zero                                                           |
 
-A reservation lasts only as long as its Checkout Session can be paid. Every session expires `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minutes, from `stripe.constants.ts`) after it opens, instead of after Stripe's 24-hour default, and its `checkout.session.expired` webhook releases the lines. A checkout update that finds Stripe already reporting the session expired runs the same guarded release first, and so does the session check the checkout page runs on a stored session, so the fresh checkout the shopper starts does not wait for the webhook. Saving a product as draft or archived ends its reservations sooner: the save expires every open session holding one of its variants and runs the same guarded release for each, so the webhook that follows finds nothing to return (see [Admin catalog](/docs/features/admin-catalog#writing)). A browser keeps one open session: the checkout continues the session it stored through the update path, which releases the old lines as it reserves the new ones, rather than reserving the basket again on a reload, in a second tab or after a visit to the basket. Each update gives the replacement session a fresh `CHECKOUT_SESSION_LIFETIME_SECONDS`, so the update path edits a checkout only while it is younger than that; an older checkout has its session expired and its lines released, and the browser opens a new checkout, which counts against the open-checkout limits. A checkout therefore holds stock for at most twice the session lifetime (see [Checkout: Limits on holding stock](/docs/features/checkout#limits-on-holding-stock)).
+A reservation lasts only as long as its Checkout Session can be paid. Every session expires `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minutes, from `stripe.constants.ts`) after it opens, instead of after Stripe's 24-hour default, and its `checkout.session.expired` webhook releases the lines. A checkout update that finds Stripe already reporting the session expired runs the same guarded release first, and so does the session check the checkout page runs on a stored session, so the fresh checkout the shopper starts does not wait for the webhook. Saving a product as draft or archived ends its reservations sooner: the save expires every open session holding one of its variants and runs the same guarded release for each, so the webhook that follows finds nothing to return (see [Admin catalog](/docs/features/admin-catalog#writing)). A browser keeps one open session: the checkout continues the session it stored through the update path, which moves the hold to the replacement session, rather than reserving the basket again on a reload, in a second tab or after a visit to the basket. Each update gives the replacement session a fresh `CHECKOUT_SESSION_LIFETIME_SECONDS`, so the update path edits a checkout only while it is younger than that; an older checkout has its session expired and its lines released, and the browser opens a new checkout, which counts against the open-checkout limits. A checkout therefore holds stock for at most twice the session lifetime (see [Checkout: Limits on holding stock](/docs/features/checkout#limits-on-holding-stock)).
 
 Every restock goes through `prepareRestockOrderBatch` (`order.utils.ts`), which adds each line back only while the order is not `cancelled` and its `restocked_at` is empty, and sets `restocked_at` in the same batch, so an order's stock goes back at most once, whichever of a cancellation, the Refund dialog and Return to stock comes first and however often each is repeated. A cancellation also requires the order to be unshipped. A refund on its own returns nothing, because it says nothing about where the goods are: a refund for a lost parcel or a goodwill refund must not put a one-off piece back on sale. The admin answers that question in the Refund dialog, whose box starts ticked only for an order that has not shipped, or later with Return to stock on the order (see [Orders](/docs/features/orders#admin-actions)).
 
-Local error handling in `stripe.actions.server.ts` always compensates: a failure after reserving calls `releaseInventoryForItems`. A checkout update releases the old lines only after its old session is expired and in the same batch that moves the payment, and only while the checkout is still `pending`. The expiry webhook's release batch has the same condition on the session's pending payment, so whichever batch commits first returns the lines and the other finds nothing, however the two requests interleave. A failure after that point does not put them back: the old session can no longer be paid, so `releaseCheckout` fails the checkout and returns whatever the edited cart had reserved.
+Local error handling in `stripe.actions.server.ts` always compensates: a failure after reserving calls `releaseInventoryForItems`. A checkout update reserves what the edited cart adds before anything else changes and gives it back with `releaseInventoryForItems` when creating the replacement, expiring the old session or moving the payment fails. It releases what the edited cart drops only after its old session is expired and in the same batch that moves the payment, and only while the checkout is still `pending`. The expiry webhook's release batch has the same condition on the session's pending payment, so whichever batch commits first returns the old session's lines and the other finds nothing, however the two requests interleave: a webhook that wins returns them all, and the update gives back what it added and is refused. A failure after the move does not put them back: the old session can no longer be paid, so `releaseCheckout` fails the checkout and returns the whole edited cart from the replacement session.
 
 ## Stock decides visibility
 

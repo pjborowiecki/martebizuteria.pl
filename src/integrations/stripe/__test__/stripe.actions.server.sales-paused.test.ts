@@ -15,7 +15,6 @@ const mocked = vi.hoisted(() => ({
   getStripeCustomerId: vi.fn(),
   isSalesPaused: vi.fn<() => Promise<boolean>>(),
   releaseCheckout: vi.fn(),
-  reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
   resolveCheckoutDiscount: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),
@@ -65,7 +64,6 @@ vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
 }))
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: vi.fn() }))
 vi.mock("~/src/modules/inventory/inventory.utils", () => ({
-  reserveInventoryByVariantLines: mocked.reserveInventoryByVariantLines,
   reserveInventoryForItems: mocked.reserveInventoryForItems,
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
@@ -118,7 +116,6 @@ const expectNothingHeldOrCharged = (): void => {
   expect(mocked.resolveCheckoutDiscount).not.toHaveBeenCalled()
   expect(mocked.claimCheckoutDiscount).not.toHaveBeenCalled()
   expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
-  expect(mocked.reserveInventoryByVariantLines).not.toHaveBeenCalled()
   expect(mocked.createCheckout).not.toHaveBeenCalled()
   expect(mocked.updateCheckoutDelivery).not.toHaveBeenCalled()
   expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()

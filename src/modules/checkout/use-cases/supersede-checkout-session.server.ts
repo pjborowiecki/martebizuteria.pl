@@ -6,6 +6,7 @@ import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
 import { discountClaim } from "~/src/modules/discount/discount.schema"
 import { inventoryReleaseValues } from "~/src/modules/inventory/inventory.accessors"
+import { quantitiesBeyond } from "~/src/modules/inventory/inventory.availability.utils"
 import { inventory } from "~/src/modules/inventory/inventory.schema"
 import { payment } from "~/src/modules/payment/payment.schema"
 
@@ -48,7 +49,7 @@ export const supersedeCheckoutSession = async ({
       .set({ amount, reservedLines, transactionId: newTransactionId })
       .where(pendingOldPayment)
       .returning({ id: payment.id }),
-    ...heldLines.map((line) =>
+    ...quantitiesBeyond(heldLines, reservedLines).map((line) =>
       db
         .update(inventory)
         .set(inventoryReleaseValues(line.qty))

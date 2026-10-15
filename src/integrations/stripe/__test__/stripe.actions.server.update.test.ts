@@ -12,7 +12,9 @@ const mocked = vi.hoisted(() => ({
   getRequestSession: vi.fn(),
   getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
   releaseCheckout: vi.fn(),
-  reserveInventoryByVariantLines: vi.fn(),
+  releaseInventoryForItems: vi.fn(),
+  releaseUnappliedDiscountClaims: vi.fn(),
+  reserveInventoryForItems: vi.fn(),
   resolveCheckoutDiscount: vi.fn<() => Promise<{ amountMinorUnits: number; code: string; discountId: string } | undefined>>(),
   scheduleProductCatalogInvalidation: vi.fn(),
   supersedeCheckoutSession: vi.fn(),
@@ -54,16 +56,13 @@ vi.mock("~/src/modules/discount/discount.claim.server", () => ({
   claimCheckoutDiscount: ({ applied }: { applied: unknown }) => Promise.resolve(applied),
   keepClaimedDiscount: vi.fn(),
   releaseDiscountClaims: vi.fn(),
-  releaseUnappliedDiscountClaims: vi.fn(),
+  releaseUnappliedDiscountClaims: mocked.releaseUnappliedDiscountClaims,
 }))
 vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
   getOfferedDeliveryMethodByIdQuery: mocked.getOfferedDeliveryMethodByIdQuery,
 }))
-vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: vi.fn() }))
-vi.mock("~/src/modules/inventory/inventory.utils", () => ({
-  reserveInventoryByVariantLines: mocked.reserveInventoryByVariantLines,
-  reserveInventoryForItems: vi.fn(),
-}))
+vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: mocked.releaseInventoryForItems }))
+vi.mock("~/src/modules/inventory/inventory.utils", () => ({ reserveInventoryForItems: mocked.reserveInventoryForItems }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
   createPendingPayment: vi.fn(),
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
@@ -90,7 +89,7 @@ import {
 import { handleUpdateCheckoutSession } from "~/src/integrations/stripe/stripe.actions.server"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
-import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -100,7 +99,9 @@ beforeEach(() => {
   mocked.getStripeCustomerId.mockResolvedValue("cus_1")
   mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
   mocked.releaseCheckout.mockResolvedValue(undefined)
-  mocked.reserveInventoryByVariantLines.mockResolvedValue(undefined)
+  mocked.releaseInventoryForItems.mockResolvedValue(undefined)
+  mocked.releaseUnappliedDiscountClaims.mockResolvedValue(undefined)
+  mocked.reserveInventoryForItems.mockResolvedValue(undefined)
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
   mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
@@ -116,11 +117,13 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+const ADDED_STOCK = [expect.objectContaining({ inventoryId: "inventory-1", qty: 2, variantId: "variant-1" })]
+
 const expectNothingTouched = (): void => {
+  expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
   expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()
   expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
   expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
-  expect(mocked.reserveInventoryByVariantLines).not.toHaveBeenCalled()
   expect(mocked.updateCheckoutDelivery).not.toHaveBeenCalled()
 }
 
@@ -242,7 +245,7 @@ describe("handleUpdateCheckoutSession", () => {
     })
   })
 
-  it("expires the old session and moves its payment and stock before reserving the edited cart", async () => {
+  it("reserves what the edited cart adds before it opens the replacement, then expires the old session and moves its payment", async () => {
     await handleUpdateCheckoutSession(updateInput())
 
     expect(mocked.checkoutSessionsRetrieve).toHaveBeenCalledWith("cs_old", { expand: ["payment_intent"] })
@@ -256,13 +259,14 @@ describe("handleUpdateCheckoutSession", () => {
       reservedLines: [{ qty: 2, variantId: "variant-1" }],
       userId: "user-1",
     })
-    expect(mocked.reserveInventoryByVariantLines).toHaveBeenCalledWith([expect.objectContaining({ qty: 2, variantId: "variant-1" })])
+    expect(mocked.reserveInventoryForItems).toHaveBeenCalledExactlyOnceWith(ADDED_STOCK)
+    expect(mocked.releaseInventoryForItems).not.toHaveBeenCalled()
 
     const order = [
+      mocked.reserveInventoryForItems,
       mocked.checkoutSessionsCreate,
       mocked.checkoutSessionsExpire,
       mocked.supersedeCheckoutSession,
-      mocked.reserveInventoryByVariantLines,
       mocked.updateCheckoutDelivery,
     ].map((step) => step.mock.invocationCallOrder[0])
 
@@ -313,6 +317,20 @@ describe("handleUpdateCheckoutSession", () => {
     mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
 
     await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
+    expect(mocked.reserveInventoryForItems).toHaveBeenCalledExactlyOnceWith([expect.objectContaining({ qty: 1, variantId: "variant-1" })])
+  })
+
+  it("reserves nothing more when the edited cart keeps no more than the old session holds", async () => {
+    mocked.checkoutSessionsRetrieve.mockResolvedValue({
+      metadata: { items: JSON.stringify([{ qty: 3, variantId: "variant-1" }]) },
+      status: "open",
+    })
+
+    await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
+    expect(mocked.reserveInventoryForItems).toHaveBeenCalledExactlyOnceWith([])
+    expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({ heldLines: [{ qty: 3, variantId: "variant-1" }], reservedLines: [{ qty: 2, variantId: "variant-1" }] }),
+    )
   })
 
   it("keeps the old session untouched when the edited cart needs more stock than is left", async () => {
@@ -334,7 +352,7 @@ describe("handleUpdateCheckoutSession", () => {
       message: CHECKOUT_ERROR_CODES.PRODUCT_NOT_FOUND,
     })
     expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
-    expect(mocked.reserveInventoryByVariantLines).not.toHaveBeenCalled()
+    expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
   })
 })
 
@@ -444,8 +462,10 @@ describe("handleUpdateCheckoutSession on a checkout that can no longer change", 
     expect(mocked.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
     expectNothingTouched()
   })
+})
 
-  it("discards the replacement when the old session's stock was released before it could be moved", async () => {
+describe("handleUpdateCheckoutSession when the hand-over to the replacement fails", () => {
+  it("discards the replacement and gives back what the edited cart added when the old session's stock was released before it could be moved", async () => {
     mocked.supersedeCheckoutSession.mockResolvedValue(false)
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
@@ -453,36 +473,50 @@ describe("handleUpdateCheckoutSession on a checkout that can no longer change", 
       message: CHECKOUT_ERROR_CODES.SESSION_CLOSED,
     })
     expect(mocked.checkoutSessionsExpire.mock.calls).toStrictEqual([["cs_old"], ["cs_new"]])
-    expect(mocked.reserveInventoryByVariantLines).not.toHaveBeenCalled()
+    expect(mocked.releaseInventoryForItems).toHaveBeenCalledExactlyOnceWith(ADDED_STOCK)
     expect(mocked.updateCheckoutDelivery).not.toHaveBeenCalled()
     expect(mocked.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
   })
 
-  it("discards the replacement and leaves the stock alone when Stripe will not expire the old session", async () => {
+  it("discards the replacement and gives back only what the edited cart added when Stripe will not expire the old session", async () => {
     const failure = new Error("This Checkout Session is no longer open")
     mocked.checkoutSessionsExpire.mockRejectedValueOnce(failure)
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(failure)
     expect(mocked.checkoutSessionsExpire.mock.calls).toStrictEqual([["cs_old"], ["cs_new"]])
     expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
-    expect(mocked.reserveInventoryByVariantLines).not.toHaveBeenCalled()
+    expect(mocked.releaseInventoryForItems).toHaveBeenCalledExactlyOnceWith(ADDED_STOCK)
+    expect(mocked.releaseCheckout).not.toHaveBeenCalled()
   })
 
-  it("discards the replacement when moving the payment fails", async () => {
+  it("discards the replacement and gives back what the edited cart added when moving the payment fails", async () => {
     const failure = new Error("d1 batch failed")
     mocked.supersedeCheckoutSession.mockRejectedValue(failure)
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(failure)
     expect(mocked.checkoutSessionsExpire).toHaveBeenLastCalledWith("cs_new")
-    expect(mocked.reserveInventoryByVariantLines).not.toHaveBeenCalled()
+    expect(mocked.releaseInventoryForItems).toHaveBeenCalledExactlyOnceWith(ADDED_STOCK)
   })
 
-  it("leaves the old session open when Stripe refuses the replacement", async () => {
+  it("leaves the old session open and gives back what the edited cart added when Stripe refuses the replacement", async () => {
     mocked.checkoutSessionsCreate.mockRejectedValue(new Error("stripe rejected the session"))
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toThrow("stripe rejected the session")
     expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
     expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
+    expect(mocked.releaseInventoryForItems).toHaveBeenCalledExactlyOnceWith(ADDED_STOCK)
+  })
+
+  it("still reports the refused replacement when giving back what the edited cart added fails", async () => {
+    const releaseFailure = new Error("d1 unavailable")
+    mocked.checkoutSessionsCreate.mockRejectedValue(new Error("stripe rejected the session"))
+    mocked.releaseInventoryForItems.mockRejectedValue(releaseFailure)
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toThrow("stripe rejected the session")
+    expect(console.error).toHaveBeenCalledWith(
+      "Failed to release the stock the edited cart added after checkout update error:",
+      releaseFailure,
+    )
   })
 })
 
@@ -504,17 +538,30 @@ describe("handleUpdateCheckoutSession on a completed session whose payment has n
 })
 
 describe("handleUpdateCheckoutSession compensation", () => {
-  it("fails the checkout and discards the replacement when the edited cart can no longer be reserved", async () => {
-    const failure = new Error("Inventory reservation failed for variant-1. Not enough stock available.")
-    mocked.reserveInventoryByVariantLines.mockRejectedValue(failure)
+  it("keeps the old session, its stock and the checkout when another shopper took what the edited cart adds", async () => {
+    const outOfStock = new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY)
+    mocked.reserveInventoryForItems.mockRejectedValue(outOfStock)
 
-    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(failure)
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(outOfStock)
 
-    expect(mocked.releaseCheckout).toHaveBeenCalledWith({ lines: [], transactionId: "cs_new" })
-    expect(mocked.checkoutSessionsExpire).toHaveBeenLastCalledWith("cs_new")
+    expect(mocked.reserveInventoryForItems).toHaveBeenCalledExactlyOnceWith(ADDED_STOCK)
+    expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()
+    expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
+    expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
     expect(mocked.updateCheckoutDelivery).not.toHaveBeenCalled()
-    expect(mocked.scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
-    expect(console.error).toHaveBeenCalledWith("Failed to reserve the edited cart during checkout session update:", failure)
+    expect(mocked.releaseInventoryForItems).not.toHaveBeenCalled()
+    expect(mocked.releaseCheckout).not.toHaveBeenCalled()
+    expect(mocked.scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
+  })
+
+  it("gives back the code claimed for the edit when the stock the edited cart adds has run out", async () => {
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 5000, code: "WIOSNA", discountId: "discount-spring" })
+    mocked.reserveInventoryForItems.mockRejectedValue(new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY))
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      message: CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY,
+    })
+    expect(mocked.releaseUnappliedDiscountClaims).toHaveBeenCalledExactlyOnceWith("checkout-1")
   })
 
   it("returns the new reservation and fails the checkout when the delivery change cannot be saved", async () => {

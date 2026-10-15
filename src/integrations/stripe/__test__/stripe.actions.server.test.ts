@@ -39,7 +39,6 @@ const mocked = vi.hoisted(() => ({
   releaseInventoryForItems: vi.fn(),
   releaseUnappliedDiscountClaims: vi.fn((_checkoutId: string) => Promise.resolve()),
   requestLocale: { value: "pl-PL" },
-  reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
   resolveCheckoutDiscount: vi.fn<() => Promise<{ amountMinorUnits: number; code: string; discountId: string } | undefined>>(),
   scheduleProductCatalogInvalidation: vi.fn(),
@@ -90,7 +89,6 @@ vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
 }))
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: mocked.releaseInventoryForItems }))
 vi.mock("~/src/modules/inventory/inventory.utils", () => ({
-  reserveInventoryByVariantLines: mocked.reserveInventoryByVariantLines,
   reserveInventoryForItems: mocked.reserveInventoryForItems,
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
@@ -149,7 +147,6 @@ beforeEach(() => {
   signInCustomerWithStripeAccount()
   mocked.releaseCheckout.mockResolvedValue(undefined)
   mocked.releaseInventoryForItems.mockResolvedValue(undefined)
-  mocked.reserveInventoryByVariantLines.mockResolvedValue(undefined)
   mocked.reserveInventoryForItems.mockResolvedValue(undefined)
   mocked.createPendingPayment.mockResolvedValue(undefined)
   mocked.supersedeCheckoutSession.mockResolvedValue(true)

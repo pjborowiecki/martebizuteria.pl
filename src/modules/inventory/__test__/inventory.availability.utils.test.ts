@@ -5,6 +5,7 @@ import {
   getVariantQuantityAvailable,
   isProductInStock,
   isVariantPurchasable,
+  quantitiesBeyond,
   resolveProductTotalAvailableStock,
   sumHeldQuantity,
 } from "~/src/modules/inventory/inventory.availability.utils"
@@ -103,5 +104,54 @@ describe("sumHeldQuantity", () => {
   it("is zero when nothing of the variant is held", () => {
     expect(sumHeldQuantity([{ qty: 2, variantId: "b" }], "a")).toBe(0)
     expect(sumHeldQuantity([], "a")).toBe(0)
+  })
+})
+
+describe("quantitiesBeyond", () => {
+  it("keeps of each line only the units the baseline does not already cover", () => {
+    expect(
+      quantitiesBeyond(
+        [
+          { qty: 3, variantId: "a" },
+          { qty: 1, variantId: "b" },
+          { qty: 2, variantId: "c" },
+        ],
+        [
+          { qty: 1, variantId: "a" },
+          { qty: 1, variantId: "b" },
+          { qty: 4, variantId: "c" },
+        ],
+      ),
+    ).toStrictEqual([{ qty: 2, variantId: "a" }])
+  })
+
+  it("keeps a whole line whose variant the baseline does not hold", () => {
+    expect(quantitiesBeyond([{ qty: 2, variantId: "a" }], [{ qty: 2, variantId: "b" }])).toStrictEqual([{ qty: 2, variantId: "a" }])
+    expect(quantitiesBeyond([{ qty: 2, variantId: "a" }], [])).toStrictEqual([{ qty: 2, variantId: "a" }])
+  })
+
+  it("spends the baseline of a variant once across several lines of it", () => {
+    expect(
+      quantitiesBeyond(
+        [
+          { qty: 2, variantId: "a" },
+          { qty: 2, variantId: "a" },
+          { qty: 1, variantId: "a" },
+        ],
+        [
+          { qty: 1, variantId: "a" },
+          { qty: 2, variantId: "a" },
+        ],
+      ),
+    ).toStrictEqual([
+      { qty: 1, variantId: "a" },
+      { qty: 1, variantId: "a" },
+    ])
+  })
+
+  it("carries every other field of the line it shortens", () => {
+    expect(
+      quantitiesBeyond([{ inventoryId: "inventory-a", qty: 3, title: "Ring", variantId: "a" }], [{ qty: 1, variantId: "a" }]),
+    ).toStrictEqual([{ inventoryId: "inventory-a", qty: 2, title: "Ring", variantId: "a" }])
   })
 })

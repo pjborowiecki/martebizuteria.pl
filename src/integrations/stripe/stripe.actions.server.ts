@@ -50,8 +50,8 @@ import {
 } from "~/src/modules/discount/discount.claim.server"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.accessors"
-import { sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.utils"
-import { reserveInventoryByVariantLines, reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
+import { quantitiesBeyond, sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.utils"
+import { reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
 import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
 import { createPendingPayment, getPaymentContextByTransactionId } from "~/src/modules/payment/payment.accessors"
 import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
@@ -589,18 +589,32 @@ const retireCheckoutSession = async ({
 }
 
 interface ReplaceCheckoutSessionArgs extends Omit<RetireCheckoutSessionArgs, "discountId" | "replacement"> {
+  addedStock: ValidatedCheckoutItem[]
   session: CreateSessionArgs
 }
 
-const replaceCheckoutSession = async ({ session, ...retirement }: ReplaceCheckoutSessionArgs) => {
+const handOverCheckoutSession = async ({ addedStock, session, ...retirement }: ReplaceCheckoutSessionArgs) => {
+  await reserveInventoryForItems(addedStock)
   try {
     const replacement = await createStripeSession(session)
     await retireCheckoutSession({ ...retirement, discountId: session.discount?.discountId, replacement })
 
     return replacement
   } catch (error) {
-    if (session.discount !== undefined) {
-      await releaseUnappliedDiscountClaims(session.checkoutId).catch((releaseError: unknown) => {
+    await releaseInventoryForItems(addedStock).catch((releaseError: unknown) => {
+      console.error("Failed to release the stock the edited cart added after checkout update error:", releaseError)
+    })
+
+    throw error
+  }
+}
+
+const replaceCheckoutSession = async (args: ReplaceCheckoutSessionArgs) => {
+  try {
+    return await handOverCheckoutSession(args)
+  } catch (error) {
+    if (args.session.discount !== undefined) {
+      await releaseUnappliedDiscountClaims(args.session.checkoutId).catch((releaseError: unknown) => {
         console.error("Failed to release the discount claim after checkout update error:", releaseError)
       })
     }
@@ -617,7 +631,7 @@ const abandonReplacementCheckout = async (replacementSessionId: string, reserved
   scheduleProductCatalogInvalidation()
 }
 
-interface ReserveReplacementCheckoutArgs extends LockerConfirmation {
+interface SaveReplacementDeliveryArgs extends LockerConfirmation {
   checkoutId: string
   checkoutValues: CheckoutFormSchema
   discountId: string | undefined
@@ -625,7 +639,7 @@ interface ReserveReplacementCheckoutArgs extends LockerConfirmation {
   validatedItems: ValidatedCheckoutItem[]
 }
 
-const reserveReplacementCheckout = async ({
+const saveReplacementDelivery = async ({
   checkoutId,
   checkoutValues,
   discountId,
@@ -633,16 +647,7 @@ const reserveReplacementCheckout = async ({
   lockerUnconfirmed,
   replacementSessionId,
   validatedItems,
-}: ReserveReplacementCheckoutArgs): Promise<void> => {
-  try {
-    await reserveInventoryByVariantLines(validatedItems)
-  } catch (error) {
-    console.error("Failed to reserve the edited cart during checkout session update:", error)
-    await abandonReplacementCheckout(replacementSessionId, [])
-
-    throw error
-  }
-
+}: SaveReplacementDeliveryArgs): Promise<void> => {
   try {
     await updateCheckoutDelivery(checkoutId, checkoutValues, { discountId, lockerPoint, lockerUnconfirmed })
   } catch (error) {
@@ -672,6 +677,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
     signedInUser === undefined ? undefined : await findReplacementCustomerId({ email: checkoutValues.email, ownerId, signedInUser })
   const discount = await claimCheckoutDiscount({ applied: applicableDiscount, checkoutId, email: checkoutValues.email })
   const replacement = await replaceCheckoutSession({
+    addedStock: quantitiesBeyond(validatedItems, heldLines),
     heldLines,
     oldSessionId: data.sessionId,
     reservedLines: toReservedLines(validatedItems),
@@ -688,7 +694,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
     },
     userId: signedInUser?.id,
   })
-  await reserveReplacementCheckout({
+  await saveReplacementDelivery({
     checkoutId,
     checkoutValues,
     discountId: discount?.discountId,

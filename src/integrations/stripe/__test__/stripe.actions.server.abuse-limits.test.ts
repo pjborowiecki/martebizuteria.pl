@@ -15,7 +15,6 @@ const mocked = vi.hoisted(() => ({
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
   releaseCheckout: vi.fn(),
-  reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
   supersedeCheckoutSession: vi.fn(),
   updateCheckoutDelivery: vi.fn(),
@@ -65,7 +64,6 @@ vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
 }))
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: vi.fn() }))
 vi.mock("~/src/modules/inventory/inventory.utils", () => ({
-  reserveInventoryByVariantLines: mocked.reserveInventoryByVariantLines,
   reserveInventoryForItems: mocked.reserveInventoryForItems,
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
@@ -128,7 +126,6 @@ beforeEach(() => {
   mocked.checkoutSessionsExpire.mockResolvedValue({})
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.releaseCheckout.mockResolvedValue(true)
-  mocked.reserveInventoryByVariantLines.mockResolvedValue(undefined)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
 })
 
@@ -236,7 +233,7 @@ describe("handleUpdateCheckoutSession and the abuse limits", () => {
     expect(mocked.getPublishedProductsWithInventoryByHandles).not.toHaveBeenCalled()
     expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()
     expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
-    expect(mocked.reserveInventoryByVariantLines).not.toHaveBeenCalled()
+    expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
     expect(mocked.updateCheckoutDelivery).not.toHaveBeenCalled()
   })
 

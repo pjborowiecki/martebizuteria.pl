@@ -9,7 +9,7 @@ import { toCheckoutSessionItemsMetadata } from "~/src/modules/checkout/checkout-
 import { countOpenCheckouts } from "~/src/modules/checkout/use-cases/count-open-checkouts.server"
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
-import { reserveInventoryByVariantLines } from "~/src/modules/inventory/inventory.utils"
+import { reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
 import {
   buildAllProductImageRows,
   buildProductLevelAttributeRows,
@@ -134,7 +134,7 @@ const renamed = (values: ProductFormValues): ProductFormValues => ({
 const SHOPPER = { clientAddress: "203.0.113.7", email: "anna@example.com" }
 
 const holdInCheckout = async (): Promise<void> => {
-  await reserveInventoryByVariantLines([HELD_LINE])
+  await reserveInventoryForItems([{ inventoryId: "inventory-onyx", qty: HELD_LINE.qty, title: "Onyx earrings" }])
   sqlite.exec(`
     insert into checkout (id, email, client_address, status) values ('checkout-onyx', '${SHOPPER.email}', '${SHOPPER.clientAddress}', 'pending');
     insert into payment (id, checkout_id, amount, provider, status, transaction_id, reserved_lines)
