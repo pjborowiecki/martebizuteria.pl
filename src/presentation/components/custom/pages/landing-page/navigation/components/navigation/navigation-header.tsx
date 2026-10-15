@@ -15,7 +15,7 @@ export const NavigationHeader = ({
     <header className="sticky top-0 z-110 w-full bg-background/90 backdrop-blur-md">
       <div
         className={cn(
-          "mx-auto flex h-20 max-w-400 items-center border-b border-transparent px-6 transition-[border-color] duration-500 ease-out lg:px-12",
+          "mx-auto flex h-20 items-center border-b border-transparent px-4 transition-[border-color] duration-500 ease-out sm:max-w-400 sm:px-6 lg:px-12",
           { "border-border": scrolled },
         )}
       >

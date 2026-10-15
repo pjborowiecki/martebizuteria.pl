@@ -206,6 +206,49 @@ describe("navigation chrome", () => {
   })
 })
 
+describe("navigation chrome breakpoints", () => {
+  beforeEach(() => {
+    useNavigationStore.setState({ menuOpen: false, pendingHash: undefined, scrolled: false, searchOpen: false })
+    useCartStore.setState({ items: [] })
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("narrows the header gutters on phones and keeps the page width from the sm breakpoint up", () => {
+    renderInNavigation(
+      <NavigationHeader>
+        <span>header slot</span>
+      </NavigationHeader>,
+    )
+    const content = screen.getByText("header slot").parentElement
+
+    expect(content).toHaveClass("px-4", "sm:max-w-400", "sm:px-6")
+    expect(content).not.toHaveClass("max-w-400")
+  })
+
+  it("hands the header over from the menu toggle to the desktop links at the xl breakpoint", () => {
+    renderInNavigation(
+      <>
+        <MobileMenuToggle />
+        <DesktopNav />
+      </>,
+    )
+
+    expect(screen.getByRole("navigation", { name: "Primary" })).toHaveClass("hidden", "xl:flex")
+    expect(screen.getByRole("button", { name: /Open menu/u })).toHaveClass("xl:hidden")
+  })
+
+  it("leaves the account shortcut to the menu on phones so the centred brand mark keeps its room", () => {
+    renderInNavigation(<UserUtilityNav />)
+
+    expect(screen.getByRole("link", { name: /Account/u })).toHaveClass("hidden", "sm:inline-flex")
+    expect(screen.getByRole("button", { name: "Search" })).not.toHaveClass("hidden")
+    expect(screen.getByRole("link", { name: /Cart/u })).not.toHaveClass("hidden")
+  })
+})
+
 describe("NavLink", () => {
   beforeEach(() => {
     useNavigationStore.setState({ menuOpen: false, pendingHash: undefined, scrolled: false, searchOpen: false })

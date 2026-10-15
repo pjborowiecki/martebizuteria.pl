@@ -37,8 +37,8 @@ export const FullscreenMenu = (): JSX.Element => {
       >
         <MenuHeader />
 
-        <div className="mx-auto flex min-h-0 w-full max-w-400 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-          <div className="flex min-h-max w-full flex-col justify-center px-6 py-16 lg:min-h-full lg:w-1/2 lg:px-12 lg:py-0">
+        <div className="mx-auto flex min-h-0 w-full flex-1 flex-col overflow-y-auto mask-y-from-[calc(100%-2rem)] sm:max-w-400 lg:flex-row lg:overflow-hidden">
+          <div className="flex w-full grow flex-col justify-center-safe px-6 py-8 sm:py-10 lg:w-1/2 lg:overflow-y-auto lg:px-12 lg:py-12">
             <PrimaryNav />
             <SecondaryNav />
           </div>

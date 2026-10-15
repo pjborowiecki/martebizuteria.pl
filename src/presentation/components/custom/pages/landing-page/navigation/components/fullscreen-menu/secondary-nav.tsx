@@ -22,8 +22,8 @@ export const SecondaryNav = (): JSX.Element => {
   const authRoute = authEntryRouteFor(session?.user)
 
   return (
-    <div data-menu-secondary className="mt-16 ml-12 flex flex-col gap-12 sm:mt-24 sm:ml-16 sm:flex-row sm:gap-40">
-      <div className="flex flex-col gap-5">
+    <div data-menu-secondary className="mt-10 flex flex-wrap gap-x-12 gap-y-10 sm:mt-24 sm:ml-16 sm:gap-x-20 lg:mt-12">
+      <div className="flex flex-col gap-4 sm:gap-5">
         <span className="mb-2 text-xs font-light tracking-[0.2em] text-primary-foreground/50 uppercase">{t("menu.secondary.client")}</span>
         <LocalizedLink className={linkStyles} onClick={dismissMenuForRouteNavigation} to={authRoute}>
           {t("menu.links.login")}
@@ -35,7 +35,7 @@ export const SecondaryNav = (): JSX.Element => {
           {t("menu.links.cart")} <span className="text-primary-foreground/40">{t("menu.links.cartCount", { count: itemCount })}</span>
         </LocalizedLink>
       </div>
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-4 sm:gap-5">
         <span className="mb-2 text-xs font-light tracking-[0.2em] text-primary-foreground/50 uppercase">{t("menu.secondary.help")}</span>
         <LocalizedLink className={linkStyles} onClick={dismissMenuForRouteNavigation} to={ROUTES.ABOUT} hash={ABOUT_CONTACT_HASH}>
           {t("menu.links.contact")}
@@ -52,4 +52,4 @@ export const SecondaryNav = (): JSX.Element => {
 }
 
 const linkStyles =
-  "font-light text-primary-foreground/70 text-xs uppercase tracking-[0.15em] transition-colors duration-300 ease-out hover:text-primary-foreground"
+  "font-light text-primary-foreground/70 text-xs uppercase tracking-[0.15em] whitespace-nowrap transition-colors duration-300 ease-out hover:text-primary-foreground"
