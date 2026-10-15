@@ -8,7 +8,6 @@ import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
-import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import { getFulfillmentTimeAttributesByVariantId } from "~/src/modules/attribute-on-product/attribute-on-product.server"
 import {
   type CheckoutFulfillmentLine,
@@ -35,8 +34,6 @@ import { resolveDeploymentOrigin } from "~/src/lib/request"
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
 
-const NO_AMOUNT = 0
-
 interface OrderConfirmationEmailPayload {
   readonly attachments: Attachment[]
   readonly email: string
@@ -50,8 +47,8 @@ const buildOrderConfirmationEmailPayload = async (
   order: Readonly<{ currency: string; lines: CheckoutFulfillmentLine[]; orderId: string }>,
   origin: string,
 ): Promise<OrderConfirmationEmailPayload | undefined> => {
-  const email = session.customer_email ?? session.customer_details?.email
-  if (email === null || email === undefined || email === "") {
+  const placedOrder = await getOrderTotalsForEmail(order.orderId)
+  if (placedOrder === undefined) {
     return undefined
   }
 
@@ -83,32 +80,31 @@ const buildOrderConfirmationEmailPayload = async (
     paymentMethod,
   })
 
-  const totals = await getOrderTotalsForEmail(order.orderId)
   const emailItems = buildOrderConfirmationItems(order.lines, locale, origin)
   const rawUserId = session.metadata?.["userId"]
   const isGuest = rawUserId === undefined || rawUserId === ""
   const accountCta = buildOrderAccountCta({ isGuest, locale, messages, orderId: order.orderId, origin })
-  const orderNumber = totals?.orderNumber ?? order.orderId
+  const { orderNumber } = placedOrder
 
   return {
     attachments: [await loadWithdrawalFormAttachment(origin)],
-    email,
+    email: placedOrder.email,
     locale,
     react: createElement(OrderConfirmation, {
       accountCta,
       currency: order.currency,
       details,
-      discountTotal: totals?.discountTotal ?? NO_AMOUNT,
+      discountTotal: placedOrder.discountTotal,
       items: emailItems,
       legalLinks: buildOrderLegalLinks(origin, locale, orderNumber),
       locale,
       messages,
       orderNumber,
-      shippingTotal: totals?.shippingTotal ?? NO_AMOUNT,
-      subtotal: totals?.subtotal ?? NO_AMOUNT,
-      taxBasisPoints: totals?.taxBasisPoints ?? STANDARD_VAT_BASIS_POINTS,
-      taxTotal: totals?.taxTotal ?? NO_AMOUNT,
-      total: totals?.total ?? session.amount_total ?? NO_AMOUNT,
+      shippingTotal: placedOrder.shippingTotal,
+      subtotal: placedOrder.subtotal,
+      taxBasisPoints: placedOrder.taxBasisPoints,
+      taxTotal: placedOrder.taxTotal,
+      total: placedOrder.total,
     }),
     subject: createTranslator({ locale, messages })("subject"),
   }
@@ -128,7 +124,7 @@ const attemptOrderConfirmationEmail = async (
   const order = { currency: resolveCheckoutSessionCurrency(session), lines: parseCheckoutSessionFulfillmentLines(session), orderId }
   const payload = await buildOrderConfirmationEmailPayload(session, order, resolveDeploymentOrigin(session.return_url))
   if (payload === undefined) {
-    return { failure: "The Stripe session has no email address", label: ORDER_CONFIRMATION_LABEL }
+    return { failure: `Order ${orderId} was not found`, label: ORDER_CONFIRMATION_LABEL }
   }
 
   const failure = await sendEmail({

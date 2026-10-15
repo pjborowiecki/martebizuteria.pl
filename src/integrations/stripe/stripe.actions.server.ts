@@ -16,7 +16,7 @@ import {
 } from "~/src/integrations/stripe/stripe.actions.schemas"
 import { CHECKOUT_SESSION_LIFETIME_SECONDS, STRIPE_CURRENCY } from "~/src/integrations/stripe/stripe.constants"
 import { deleteCheckoutCoupons, toSessionDiscounts } from "~/src/integrations/stripe/stripe.coupons.server"
-import { ensureStripeCustomer, getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
+import { ensureStripeCustomerWithEmail } from "~/src/integrations/stripe/stripe.customer.server"
 import { stripeDeploymentOf } from "~/src/integrations/stripe/stripe.deployment"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
@@ -398,7 +398,9 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
   const userId = session?.user.id
   const { email } = checkoutValues
   const customerId =
-    session?.user === undefined ? undefined : await ensureStripeCustomer({ email, name: session.user.name, userId: session.user.id })
+    session?.user === undefined
+      ? undefined
+      : await ensureStripeCustomerWithEmail({ email, name: session.user.name, userId: session.user.id })
 
   const validatedItems = await validateAndCalculateItems(data.items, [])
   const lines = toOrderLines(validatedItems)
@@ -457,7 +459,6 @@ interface UpdatableCheckout {
   checkoutCreatedAt: Date
   checkoutId: string
   heldLines: CheckoutReleaseLine[]
-  ownerId: string | undefined
   signedInUser: SignedInUser | undefined
 }
 
@@ -520,7 +521,6 @@ const resolveUpdatableCheckout = async (sessionId: string): Promise<UpdatableChe
     checkoutCreatedAt: context.checkoutCreatedAt,
     checkoutId: context.checkoutId,
     heldLines: readHeldLines(stripeSession),
-    ownerId: context.userId,
     signedInUser,
   }
 }
@@ -534,15 +534,6 @@ const assertCheckoutStillEditable = async (sessionId: string, checkoutCreatedAt:
   await releaseExpiredCheckoutSession(await stripe.checkout.sessions.expire(sessionId))
   throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
 }
-
-interface ReplacementCustomerArgs {
-  email: string
-  ownerId: string | undefined
-  signedInUser: SignedInUser
-}
-
-const findReplacementCustomerId = ({ email, ownerId, signedInUser }: ReplacementCustomerArgs): Promise<string | undefined> =>
-  ownerId === undefined ? ensureStripeCustomer({ email, name: signedInUser.name, userId: signedInUser.id }) : getStripeCustomerId(ownerId)
 
 const expireCheckoutSession = async (sessionId: string): Promise<void> => {
   await stripe.checkout.sessions.expire(sessionId).catch((expireError: unknown) => {
@@ -660,7 +651,7 @@ const saveReplacementDelivery = async ({
 
 export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInput) => {
   const origin = resolveRequestOrigin(getRequest())
-  const { checkoutCreatedAt, checkoutId, heldLines, ownerId, signedInUser } = await resolveUpdatableCheckout(data.sessionId)
+  const { checkoutCreatedAt, checkoutId, heldLines, signedInUser } = await resolveUpdatableCheckout(data.sessionId)
   await assertSalesOpen()
   await assertCheckoutStillEditable(data.sessionId, checkoutCreatedAt)
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
@@ -674,7 +665,9 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   })
 
   const customerId =
-    signedInUser === undefined ? undefined : await findReplacementCustomerId({ email: checkoutValues.email, ownerId, signedInUser })
+    signedInUser === undefined
+      ? undefined
+      : await ensureStripeCustomerWithEmail({ email: checkoutValues.email, name: signedInUser.name, userId: signedInUser.id })
   const discount = await claimCheckoutDiscount({ applied: applicableDiscount, checkoutId, email: checkoutValues.email })
   const replacement = await replaceCheckoutSession({
     addedStock: quantitiesBeyond(validatedItems, heldLines),

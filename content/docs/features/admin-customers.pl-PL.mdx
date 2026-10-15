@@ -9,20 +9,20 @@ Tabela `user` jest współdzielona z Better Auth, więc „klienci” to widok n
 
 `src/modules/user/user.schema.ts` rozszerza bazowego użytkownika Better Auth o własne kolumny M'Arte:
 
-| Kolumna                               | Uwagi                                                               |
-| ------------------------------------- | ------------------------------------------------------------------- |
-| `email`                               | 320 znaków, unikalny, not null                                      |
-| `name`                                | 256 znaków, not null                                                |
-| `email_verified`                      | boolean, domyślnie `false`, not null                                |
-| `role`                                | `admin \| customer`, domyślnie `DEFAULT_ROLE` (`customer`)          |
-| `banned`, `ban_reason`, `ban_expires` | pola wtyczki admin z Better Auth                                    |
-| `is_anonymous`                        | boolean, domyślnie `false`; nic jej nie zapisuje (zobacz niżej)     |
-| `two_factor_enabled`                  | boolean, domyślnie `false`                                          |
-| `phone`                               | 32 znaki; zapisywane przez `updateCustomerPhone` i `updateCustomer` |
-| `timezone`                            | 64 znaki                                                            |
-| `image`                               | 2048 znaków                                                         |
-| `stripe_customer_id`                  | zapisywana przez `ensureStripeCustomer` w kasie                     |
-| `metadata`                            | napis JSON z notatkami i tagami administratora                      |
+| Kolumna                               | Uwagi                                                                                              |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `email`                               | 320 znaków, unikalny, not null                                                                     |
+| `name`                                | 256 znaków, not null                                                                               |
+| `email_verified`                      | boolean, domyślnie `false`, not null                                                               |
+| `role`                                | `admin \| customer`, domyślnie `DEFAULT_ROLE` (`customer`)                                         |
+| `banned`, `ban_reason`, `ban_expires` | pola wtyczki admin z Better Auth                                                                   |
+| `is_anonymous`                        | boolean, domyślnie `false`; nic jej nie zapisuje (zobacz niżej)                                    |
+| `two_factor_enabled`                  | boolean, domyślnie `false`                                                                         |
+| `phone`                               | 32 znaki; zapisywane przez `updateCustomerPhone` i `updateCustomer`                                |
+| `timezone`                            | 64 znaki                                                                                           |
+| `image`                               | 2048 znaków                                                                                        |
+| `stripe_customer_id`                  | zapisywana przez `ensureStripeCustomerWithEmail` w kasie i `ensureStripeCustomer` na stronie konta |
+| `metadata`                            | napis JSON z notatkami i tagami administratora                                                     |
 
 Jeden indeks: `user_createdAt_idx`.
 

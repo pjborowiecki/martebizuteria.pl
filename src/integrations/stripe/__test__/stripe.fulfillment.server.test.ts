@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const mocked = vi.hoisted(() => ({
   fulfillCheckout: vi.fn<(input: object) => Promise<string | undefined>>(),
   recordOrderPaymentCapturedAudit: vi.fn(),
-  recordOrderPlacedAudit: vi.fn(),
   retrieve: vi.fn<(sessionId: string) => Promise<Stripe.Checkout.Session>>(),
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleBackgroundWork: vi.fn<(task: Promise<unknown>) => void>(),
@@ -20,7 +19,6 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderPaymentCapturedAudit: mocked.recordOrderPaymentCapturedAudit,
-  recordOrderPlacedAudit: mocked.recordOrderPlacedAudit,
 }))
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout: mocked.fulfillCheckout }))
 vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ sendNewOrderEmail: mocked.sendNewOrderEmail }))
@@ -73,10 +71,9 @@ describe("fulfillReturnedCheckoutSession for a session Stripe reports paid", () 
     })
   })
 
-  it("records the placed and captured audits and refreshes the admin and the catalogue as the webhook would", async () => {
+  it("records the captured payment and refreshes the admin and the catalogue as the webhook would", async () => {
     await fulfillReturnedCheckoutSession("cs_test_returned")
 
-    expect(mocked.recordOrderPlacedAudit).toHaveBeenCalledExactlyOnceWith("order-1", { detail: "ada@marte.test", resourceId: "order-1" })
     expect(mocked.recordOrderPaymentCapturedAudit).toHaveBeenCalledExactlyOnceWith("order-1", {
       detail: "253,99 PLN",
       resourceId: "order-1",
@@ -113,7 +110,6 @@ describe("fulfillReturnedCheckoutSession when the webhook or another tab got the
 
     await fulfillReturnedCheckoutSession("cs_test_returned")
 
-    expect(mocked.recordOrderPlacedAudit).not.toHaveBeenCalled()
     expect(mocked.recordOrderPaymentCapturedAudit).not.toHaveBeenCalled()
     expect(mocked.scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
     expect(mocked.sendOrderConfirmationEmail).not.toHaveBeenCalled()
@@ -137,7 +133,7 @@ describe("fulfillReturnedCheckoutSession for a session Stripe does not report pa
     await fulfillReturnedCheckoutSession("cs_test_returned")
 
     expect(mocked.fulfillCheckout).not.toHaveBeenCalled()
-    expect(mocked.recordOrderPlacedAudit).not.toHaveBeenCalled()
+    expect(mocked.recordOrderPaymentCapturedAudit).not.toHaveBeenCalled()
   })
 })
 
@@ -149,7 +145,7 @@ describe("fulfillReturnedCheckoutSession when the order cannot be written", () =
     await expect(fulfillReturnedCheckoutSession("cs_test_returned")).resolves.toBeUndefined()
 
     expect(consoleError).toHaveBeenCalledWith("Paid Checkout Session cs_test_returned created no order from its return page:", failure)
-    expect(mocked.recordOrderPlacedAudit).not.toHaveBeenCalled()
+    expect(mocked.recordOrderPaymentCapturedAudit).not.toHaveBeenCalled()
     expect(mocked.sendOrderConfirmationEmail).not.toHaveBeenCalled()
   })
 

@@ -22,6 +22,7 @@ const {
   prepareDiscountRedemption,
   prepareFulfillCheckoutBatch,
   recordDiscountRedeemedAudit,
+  recordOrderPlacedAudit,
   runDrizzleBatch,
 } = vi.hoisted(() => ({
   findPendingCheckoutByTransaction: vi.fn<(transactionId: string) => Promise<PendingContext | undefined>>(),
@@ -37,6 +38,7 @@ const {
       ) => { orderId: string; statements: string[] }
     >(),
   recordDiscountRedeemedAudit: vi.fn<(orderId: string, options: { detail: string }) => void>(),
+  recordOrderPlacedAudit: vi.fn<(orderId: string, options: { detail: string; resourceId: string }) => void>(),
   runDrizzleBatch: vi.fn<(statements: readonly string[]) => Promise<void>>(),
 }))
 
@@ -44,7 +46,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.batch", () => ({ runDrizzleBatch
 vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutForFulfillment }))
 vi.mock("~/src/modules/checkout/checkout.pending.server", () => ({ findPendingCheckoutByTransaction }))
 vi.mock("~/src/modules/checkout/checkout.utils", () => ({ prepareFulfillCheckoutBatch }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDiscountRedeemedAudit }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDiscountRedeemedAudit, recordOrderPlacedAudit }))
 vi.mock("~/src/modules/discount/discount.redeem.server", () => ({ prepareDiscountRedemption }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderByCheckoutId }))
 
@@ -107,6 +109,14 @@ beforeEach(() => {
   prepareFulfillCheckoutBatch.mockReturnValue({ orderId: "order-1", statements: ["stmt-a", "stmt-b"] })
   runDrizzleBatch.mockResolvedValue(undefined)
   getOrderByCheckoutId.mockResolvedValue(undefined)
+})
+
+describe("fulfillCheckout audit of the placed order", () => {
+  it("records the placed order under the e-mail the checkout carries once the batch has run", async () => {
+    await fulfillCheckout(input)
+
+    expect(recordOrderPlacedAudit).toHaveBeenCalledExactlyOnceWith("order-1", { detail: "buyer@example.com", resourceId: "order-1" })
+  })
 })
 
 describe("fulfillCheckout", () => {
@@ -306,6 +316,7 @@ describe("fulfillCheckout racing another delivery of the same payment", () => {
   it("treats the checkout as fulfilled when the other delivery already placed its order", async () => {
     await expect(fulfillCheckout(input)).resolves.toBeUndefined()
     expect(consoleInfo).toHaveBeenCalledWith("Checkout chk-1 already became Order order-placed through another delivery of pi_123.")
+    expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
   })
 
   it("audits no redemption for the batch that lost the race", async () => {

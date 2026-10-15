@@ -1,12 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod"
 
-const { customersCreate, customersDel, sqlite } = await vi.hoisted(async () => {
+const { customersCreate, customersDel, customersUpdate, sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
   return {
     customersCreate: vi.fn<(params: object) => Promise<{ id: string }>>(),
     customersDel: vi.fn<(id: string) => Promise<{ deleted: true }>>(() => Promise.resolve({ deleted: true })),
+    customersUpdate: vi.fn<(id: string, params: object) => Promise<{ id: string }>>((id) => Promise.resolve({ id })),
     sqlite: new DatabaseSync(":memory:"),
   }
 })
@@ -18,9 +19,11 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
-vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { customers: { create: customersCreate, del: customersDel } } }))
+vi.mock("~/src/integrations/stripe/stripe.server", () => ({
+  stripe: { customers: { create: customersCreate, del: customersDel, update: customersUpdate } },
+}))
 
-import { deleteStripeCustomer, ensureStripeCustomer } from "~/src/integrations/stripe/stripe.customer.server"
+import { deleteStripeCustomer, ensureStripeCustomer, ensureStripeCustomerWithEmail } from "~/src/integrations/stripe/stripe.customer.server"
 
 const ANNA = { email: "anna@example.com", name: "Anna Kowalska", userId: "user-1" }
 
@@ -52,6 +55,7 @@ describe("ensureStripeCustomer", () => {
 
     await expect(ensureStripeCustomer(ANNA)).resolves.toBe("cus_new")
     expect(storedCustomerId("user-1")).toBe("cus_new")
+    expect(customersUpdate).not.toHaveBeenCalled()
     expect(customersDel).not.toHaveBeenCalled()
   })
 
@@ -80,6 +84,29 @@ describe("ensureStripeCustomer", () => {
   it("reuses the stored customer without calling Stripe", async () => {
     await expect(ensureStripeCustomer({ ...ANNA, userId: "user-2" })).resolves.toBe("cus_existing")
     expect(customersCreate).not.toHaveBeenCalled()
+    expect(customersUpdate).not.toHaveBeenCalled()
+  })
+})
+
+describe("ensureStripeCustomerWithEmail", () => {
+  it("moves the stored customer to the e-mail of this payment instead of creating another", async () => {
+    await expect(ensureStripeCustomerWithEmail({ ...ANNA, email: "anna.nowy@example.com", userId: "user-2" })).resolves.toBe("cus_existing")
+    expect(customersUpdate).toHaveBeenCalledExactlyOnceWith("cus_existing", { email: "anna.nowy@example.com" })
+    expect(customersCreate).not.toHaveBeenCalled()
+    expect(storedCustomerId("user-2")).toBe("cus_existing")
+  })
+
+  it("stores the customer it creates with that e-mail for a shopper who has none", async () => {
+    customersCreate.mockResolvedValue({ id: "cus_new" })
+
+    await expect(ensureStripeCustomerWithEmail(ANNA)).resolves.toBe("cus_new")
+    expect(customersCreate).toHaveBeenCalledExactlyOnceWith({
+      email: "anna@example.com",
+      metadata: { userId: "user-1" },
+      name: "Anna Kowalska",
+    })
+    expect(customersUpdate).not.toHaveBeenCalled()
+    expect(storedCustomerId("user-1")).toBe("cus_new")
   })
 })
 

@@ -1,5 +1,6 @@
 import { COURIER, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { heldCheckoutSessionId } from "../fixtures/checkout-draft"
+import { registerCustomer } from "../fixtures/customers"
 import { sentEmails, waitForEmail } from "../fixtures/emails"
 import {
   HAS_STRIPE_TEST_MODE_KEYS,
@@ -62,6 +63,47 @@ test.describe("Stripe test mode", () => {
     await checkoutPage.reload()
     await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
     expect((await sentEmails(request, email)).filter(({ subject }) => subject === ORDER_CONFIRMATION_SUBJECT)).toHaveLength(1)
+  })
+
+  test("a signed-in shopper who types another e-mail at checkout is billed, recorded at Stripe and confirmed under that e-mail", async ({
+    authPage,
+    checkoutPage,
+    page,
+    productPage,
+    request,
+  }, testInfo) => {
+    test.slow()
+    const customer = await registerCustomer({ authPage, page, request }, testInfo)
+    const orderEmail = uniqueEmail(testInfo, "stripe-order-email")
+    await productPage.gotoProduct(PRODUCTS.lapis.handle)
+    await productPage.addToCart()
+    await checkoutPage.gotoCheckout()
+    await checkoutPage.fillContact(customer.email, SHIPPING_ADDRESS.phone)
+    await checkoutPage.fillAddress(SHIPPING_ADDRESS)
+    await checkoutPage.chooseDelivery(COURIER.name)
+    await expect(checkoutPage.paymentStep()).toBeVisible()
+    await expect.poll(() => heldCheckoutSessionId(page)).toBeDefined()
+    const accountEmailSessionId = await heldCheckoutSessionId(page)
+
+    await checkoutPage.editStep("Contact Details")
+    await checkoutPage.fillContact(orderEmail, SHIPPING_ADDRESS.phone)
+    await checkoutPage.fillAddress(SHIPPING_ADDRESS)
+    await checkoutPage.chooseDelivery(COURIER.name)
+    await expect.poll(() => heldCheckoutSessionId(page)).not.toBe(accountEmailSessionId)
+    await checkoutPage.payWithCard(STRIPE_TEST_CARD)
+
+    await expect(page).toHaveURL(CONFIRMATION_URL)
+    await expect(page.getByRole("main")).toContainText(`If the confirmation email has not reached ${orderEmail} within a few minutes`)
+    await waitForEmail(request, orderEmail, ORDER_CONFIRMATION_SUBJECT)
+    const sessionId = new URL(page.url()).searchParams.get("session_id")
+    if (sessionId === null) {
+      throw new Error("The confirmation address names no Checkout Session")
+    }
+
+    const session = await forwardCheckoutCompletion(request, sessionId)
+    expect(session.customer).not.toBeNull()
+    expect(session.customer_details?.email).toBe(orderEmail)
+    expect((await sentEmails(request, customer.email)).map(({ subject }) => subject)).not.toContain(ORDER_CONFIRMATION_SUBJECT)
   })
 
   test("a guest whose card number is incomplete cannot press pay, and pays on the same session once it is complete", async ({

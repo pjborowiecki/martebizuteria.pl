@@ -59,7 +59,6 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderEmailOutcome,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit: vi.fn(),
-  recordOrderPlacedAudit: vi.fn(),
   recordOrderReleasedAudit: vi.fn(),
 }))
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({ getFulfillmentTimeAttributesByVariantId }))
@@ -146,6 +145,7 @@ beforeEach(() => {
   fulfillCheckout.mockResolvedValue("order-1")
   getOrderTotalsForEmail.mockResolvedValue({
     discountTotal: 0,
+    email: "anna@example.com",
     orderNumber: "MRT-2026-00042",
     shippingTotal: SHIPPING_TOTAL,
     subtotal: ITEMS_TOTAL,
@@ -168,7 +168,7 @@ afterEach(() => {
 })
 
 describe("order confirmation email", () => {
-  it("sends the confirmation to the address on the session in the store locale", async () => {
+  it("sends the confirmation to the address on the order in the store locale", async () => {
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
 
     expect(sendEmail).toHaveBeenCalledOnce()
@@ -200,23 +200,12 @@ describe("order confirmation email", () => {
     expect(props.orderNumber).toBe("MRT-2026-00042")
   })
 
-  it("falls back to the session total when the order row cannot be read back", async () => {
+  it("records the confirmation as unsent while the order cannot be read back", async () => {
     getOrderTotalsForEmail.mockResolvedValue(undefined)
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
 
-    const { props } = sentEmail().react
-
-    expect(props.total).toBe(AMOUNT_TOTAL)
-    expect(props.orderNumber).toBe("order-1")
-  })
-
-  it("reports a zero total when neither the order row nor the session carries one", async () => {
-    getOrderTotalsForEmail.mockResolvedValue(undefined)
-    await dispatch(
-      checkoutSessionCompletedEvent(checkoutSession({ customerEmail: "anna@example.com", metadata: { items: itemsMetadata } })),
-    )
-
-    expect(sentEmail().react.props.total).toBe(0)
+    expect(sendEmail).not.toHaveBeenCalled()
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({ ...UNSENT_CONFIRMATION, failure: "Order order-1 was not found" })
   })
 
   it("labels the payment method Stripe reports for the intent", async () => {
@@ -467,7 +456,7 @@ describe("order confirmation email delivery", () => {
     expect(sentEmail().react.props.accountCta.isGuest).toBe(true)
   })
 
-  it("records the missing recipient when Stripe collected customer details without an email address", async () => {
+  it("sends the confirmation to the order's address when Stripe collected customer details without an email address", async () => {
     await dispatch(
       checkoutSessionCompletedEvent(
         checkoutSession({
@@ -486,8 +475,7 @@ describe("order confirmation email delivery", () => {
     )
 
     expect(fulfillCheckout).toHaveBeenCalledOnce()
-    expect(sendEmail).not.toHaveBeenCalled()
-    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({ ...UNSENT_CONFIRMATION, failure: "The Stripe session has no email address" })
+    expect(sentEmail().to).toBe("anna@example.com")
   })
 
   it("audits a preparation failure that is not an error without retrying a fulfilled order", async () => {
@@ -501,32 +489,35 @@ describe("order confirmation email delivery", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({ ...UNSENT_CONFIRMATION, failure: "D1 is unavailable" })
   })
 
-  it("falls back to the address collected by Stripe when the session carries no customer email", async () => {
+  it("sends a signed-in shopper's confirmation to the order's address, not to the one Stripe now holds for the account", async () => {
+    getOrderTotalsForEmail.mockResolvedValue({
+      discountTotal: 0,
+      email: "first-tab@example.com",
+      orderNumber: "MRT-2026-00042",
+      shippingTotal: SHIPPING_TOTAL,
+      subtotal: ITEMS_TOTAL,
+      taxBasisPoints: 2300,
+      taxTotal: 12_080,
+      total: AMOUNT_TOTAL,
+    })
     const session = checkoutSession({
       amountTotal: AMOUNT_TOTAL,
       customerDetails: {
         address: null,
         business_name: null,
-        email: "collected@example.com",
+        email: "second-tab@example.com",
         individual_name: null,
         name: null,
         phone: null,
         tax_exempt: null,
         tax_ids: null,
       },
-      metadata: { items: itemsMetadata },
+      metadata: { items: itemsMetadata, userId: "user-1" },
     })
 
     await dispatch(checkoutSessionCompletedEvent(session))
 
-    expect(sentEmail().to).toBe("collected@example.com")
-  })
-
-  it("records an order confirmation that has no recipient against the order", async () => {
-    await dispatch(checkoutSessionCompletedEvent(checkoutSession({ amountTotal: AMOUNT_TOTAL, metadata: { items: itemsMetadata } })))
-
-    expect(sendEmail).not.toHaveBeenCalled()
-    expect(recordOrderEmailOutcome).toHaveBeenCalledWith({ ...UNSENT_CONFIRMATION, failure: "The Stripe session has no email address" })
+    expect(sentEmail().to).toBe("first-tab@example.com")
   })
 
   it("records a confirmation that could not be prepared against the order instead of failing the webhook", async () => {

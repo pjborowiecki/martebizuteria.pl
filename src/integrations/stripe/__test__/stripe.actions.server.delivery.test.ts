@@ -12,14 +12,13 @@ const mocked = vi.hoisted(() => ({
         lockerUnconfirmed?: boolean | undefined
       }) => Promise<{ checkoutId: string; discountClaimed: boolean }>
     >(),
-  ensureStripeCustomer: vi.fn<() => Promise<string>>(),
+  ensureStripeCustomerWithEmail: vi.fn<() => Promise<string>>(),
   fetchPointByName: vi.fn<(name: string) => Promise<object | undefined>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn<(id: string) => Promise<{ price: number; type: string } | undefined>>(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
-  getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
   requestLocale: { value: "pl-PL" },
   reserveInventoryForItems: vi.fn(),
   supersedeCheckoutSession: vi.fn(),
@@ -52,8 +51,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   },
 }))
 vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
-  ensureStripeCustomer: mocked.ensureStripeCustomer,
-  getStripeCustomerId: mocked.getStripeCustomerId,
+  ensureStripeCustomerWithEmail: mocked.ensureStripeCustomerWithEmail,
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => mocked.requestLocale.value }))
 vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ createCheckout: mocked.createCheckout }))
@@ -117,8 +115,7 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {})
   mocked.getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))
   mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1", name: "Anna Kowalska" } })
-  mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
-  mocked.getStripeCustomerId.mockResolvedValue("cus_1")
+  mocked.ensureStripeCustomerWithEmail.mockResolvedValue("cus_1")
   mocked.reserveInventoryForItems.mockResolvedValue(undefined)
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
@@ -145,7 +142,7 @@ afterEach(() => {
 })
 
 const expectNewCheckoutUntouched = (): void => {
-  expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
+  expect(mocked.ensureStripeCustomerWithEmail).not.toHaveBeenCalled()
   expect(mocked.getPublishedProductsWithInventoryByHandles).not.toHaveBeenCalled()
   expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
   expect(mocked.createCheckout).not.toHaveBeenCalled()

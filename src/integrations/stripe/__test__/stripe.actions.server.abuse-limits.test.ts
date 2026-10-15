@@ -7,7 +7,7 @@ const mocked = vi.hoisted(() => ({
   clientAddress: vi.fn<(headers: Headers) => string>(),
   countOpenCheckouts: vi.fn<(owner: { clientAddress: string; email: string }) => Promise<{ byClientAddress: number; byEmail: number }>>(),
   createCheckout: vi.fn<(input: { clientAddress: string }) => Promise<{ checkoutId: string; discountClaimed: boolean }>>(),
-  ensureStripeCustomer: vi.fn(),
+  ensureStripeCustomerWithEmail: vi.fn(),
   fetchPointByName: vi.fn<(name: string) => Promise<object | undefined>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
@@ -39,8 +39,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   },
 }))
 vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
-  ensureStripeCustomer: mocked.ensureStripeCustomer,
-  getStripeCustomerId: vi.fn(),
+  ensureStripeCustomerWithEmail: mocked.ensureStripeCustomerWithEmail,
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/checkout/use-cases/count-open-checkouts.server", () => ({ countOpenCheckouts: mocked.countOpenCheckouts }))
@@ -134,7 +133,7 @@ afterEach(() => {
 })
 
 const expectNothingHeld = (): void => {
-  expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
+  expect(mocked.ensureStripeCustomerWithEmail).not.toHaveBeenCalled()
   expect(mocked.getPublishedProductsWithInventoryByHandles).not.toHaveBeenCalled()
   expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
   expect(mocked.createCheckout).not.toHaveBeenCalled()

@@ -66,6 +66,7 @@ vi.mock("~/src/lib/background", () => ({ scheduleBackgroundWork: vi.fn() }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordCatalogProductUpdatedAudit: vi.fn(),
   recordDiscountRedeemedAudit: vi.fn(),
+  recordOrderPlacedAudit: vi.fn(),
 }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleProductCatalogInvalidation: vi.fn(),

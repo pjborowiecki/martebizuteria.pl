@@ -6,13 +6,12 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsRetrieve: vi.fn(),
   claimCheckoutDiscount: vi.fn(),
   createCheckout: vi.fn(),
-  ensureStripeCustomer: vi.fn(),
+  ensureStripeCustomerWithEmail: vi.fn(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
-  getStripeCustomerId: vi.fn(),
   isSalesPaused: vi.fn<() => Promise<boolean>>(),
   releaseCheckout: vi.fn(),
   reserveInventoryForItems: vi.fn(),
@@ -40,8 +39,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   },
 }))
 vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
-  ensureStripeCustomer: mocked.ensureStripeCustomer,
-  getStripeCustomerId: mocked.getStripeCustomerId,
+  ensureStripeCustomerWithEmail: mocked.ensureStripeCustomerWithEmail,
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ createCheckout: mocked.createCheckout }))
@@ -129,7 +127,7 @@ describe("handleCreateCheckoutSession while sales are paused", () => {
     await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject(SALES_PAUSED_REFUSAL)
 
     expect(mocked.getOfferedDeliveryMethodByIdQuery).not.toHaveBeenCalled()
-    expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
+    expect(mocked.ensureStripeCustomerWithEmail).not.toHaveBeenCalled()
     expect(mocked.getPublishedProductsWithInventoryByHandles).not.toHaveBeenCalled()
     expectNothingHeldOrCharged()
   })
@@ -178,7 +176,7 @@ describe("handleUpdateCheckoutSession while sales are paused", () => {
 describe("checkout session handlers once sales resume", () => {
   it("opens a checkout again as soon as the switch is off", async () => {
     mocked.isSalesPaused.mockResolvedValue(false)
-    mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
+    mocked.ensureStripeCustomerWithEmail.mockResolvedValue("cus_1")
     mocked.reserveInventoryForItems.mockResolvedValue(undefined)
     mocked.createCheckout.mockResolvedValue({ checkoutId: "checkout-1", discountClaimed: false })
     mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_300, client_secret: "cs_secret_1", id: "cs_new" })

@@ -1,6 +1,6 @@
 import { type DrizzleBatchStatement, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 
-import { recordDiscountRedeemedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordDiscountRedeemedAudit, recordOrderPlacedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getCheckoutForFulfillment } from "~/src/modules/checkout/checkout.accessors"
 import { findPendingCheckoutByTransaction } from "~/src/modules/checkout/checkout.pending.server"
 import { type FulfillCheckoutInput, prepareFulfillCheckoutBatch } from "~/src/modules/checkout/checkout.utils"
@@ -119,6 +119,7 @@ export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): P
     return undefined
   }
 
+  recordOrderPlacedAudit(orderId, { detail: context.email, resourceId: orderId })
   if (discount !== undefined) {
     recordDiscountRedeemedAudit(orderId, { detail: String(discount.amountMinorUnits) })
   }

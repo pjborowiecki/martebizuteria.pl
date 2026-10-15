@@ -8,7 +8,7 @@ import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
-import { recordOrderPaymentCapturedAudit, recordOrderPlacedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordOrderPaymentCapturedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   parseCheckoutSessionFulfillmentLines,
   resolveCheckoutSessionCurrency,
@@ -41,10 +41,6 @@ export const createOrderFromPaidSession = async (session: StripeType.Checkout.Se
 
 export const announcePlacedOrder = (session: StripeType.Checkout.Session, orderId: string): Promise<readonly unknown[]> => {
   console.info(`Checkout converted to Order ${orderId} from session ${session.id}.`)
-  recordOrderPlacedAudit(orderId, {
-    detail: session.customer_email ?? session.customer_details?.email ?? undefined,
-    resourceId: orderId,
-  })
   recordOrderPaymentCapturedAudit(orderId, {
     detail: formatPaidAmount(
       session.amount_total ?? NO_AMOUNT,

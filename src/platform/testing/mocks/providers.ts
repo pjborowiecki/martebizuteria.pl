@@ -63,6 +63,8 @@ const stripeCustomerParamsSchema = z.object({
   name: z.string().optional(),
 })
 
+const stripeCustomerUpdateParamsSchema = z.object({ email: z.string() })
+
 const stripeSetupIntentParamsSchema = z.object({
   allowed_payment_method_types: z.record(z.string(), z.string()),
   customer: z.string(),
@@ -414,12 +416,24 @@ const handleCoupons = (request: Request, form: StripeForm, couponId: string | un
   return Response.json(coupon)
 }
 
-const handleCustomers = (form: StripeForm): Response => {
+const createCustomer = (form: StripeForm): Response => {
   const params = stripeCustomerParamsSchema.parse(form)
   const customer: EmulatedCustomer = { ...params, id: stripeId("cus"), name: params.name ?? null, object: "customer" }
   customers.set(customer.id, customer)
 
   return Response.json(customer)
+}
+
+const updateCustomer = (customerId: string, form: StripeForm): Response => {
+  const customer = customers.get(customerId)
+  if (customer === undefined) {
+    return stripeError(`No such customer: '${customerId}'`, HTTP_STATUS.NOT_FOUND)
+  }
+
+  const updated: EmulatedCustomer = { ...customer, ...stripeCustomerUpdateParamsSchema.parse(form) }
+  customers.set(customerId, updated)
+
+  return Response.json(updated)
 }
 
 const deleteCustomer = (customerId: string | undefined): Response => {
@@ -566,7 +580,7 @@ const emulateStripe = async (request: Request, url: URL): Promise<Response> => {
       return deleteCustomer(resourceId)
     }
     case "POST customers": {
-      return handleCustomers(form)
+      return resourceId === undefined ? createCustomer(form) : updateCustomer(resourceId, form)
     }
     case "GET refunds": {
       return listRefunds(url)

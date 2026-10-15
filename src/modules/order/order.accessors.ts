@@ -472,6 +472,7 @@ export const getOrderTotalsForEmail = (orderId: string) =>
   db.query.order.findFirst({
     columns: {
       discountTotal: true,
+      email: true,
       orderNumber: true,
       shippingTotal: true,
       subtotal: true,
