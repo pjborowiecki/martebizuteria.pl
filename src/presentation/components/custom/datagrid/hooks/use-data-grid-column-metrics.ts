@@ -8,10 +8,11 @@ export const useDataGridColumnMetrics = <TData extends RowData>(
   column: Column<DataGridFeatures, TData>,
   table: Table<DataGridFeatures, TData>,
 ) => {
-  const { tableClientWidth, tableLayout, tableWidth } = useDataGridLayout()
+  const { pinsColumns, tableClientWidth, tableLayout, tableWidth } = useDataGridLayout()
   const columnSizing = table.atoms.columnSizing.get()
 
   return {
+    isPinned: pinsColumns ? column.getIsPinned() : false,
     pinLayout: { tableClientWidth, tableWidth },
     tableLayout,
     widthPx: getDataGridColumnLayoutWidth(column, columnSizing, tableLayout),

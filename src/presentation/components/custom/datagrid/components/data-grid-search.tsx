@@ -23,7 +23,7 @@ export const DataGridSearch = <TData extends RowData>({ placeholder, table }: Da
   )
 
   return (
-    <div className="relative">
+    <div className="relative w-full sm:w-auto">
       <Search
         className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground/50"
         strokeWidth={1.5}
@@ -34,7 +34,7 @@ export const DataGridSearch = <TData extends RowData>({ placeholder, table }: Da
         onChange={handleChange}
         aria-label={placeholder}
         placeholder={placeholder}
-        className="h-9 min-h-0 w-72 rounded-lg border border-input bg-background pr-3 pl-8 text-xs"
+        className="h-9 min-h-0 w-full rounded-lg border border-input bg-background pr-3 pl-8 text-xs sm:w-72 pointer-coarse:h-10"
       />
     </div>
   )

@@ -63,12 +63,12 @@ export const DataGridPagination = <TData extends RowData>({ table }: DataGridPag
   }, [table, pageCount])
 
   return (
-    <div className="flex shrink-0 flex-col gap-3 border-t border-border/60 bg-transparent px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+    <div className="flex shrink-0 flex-col gap-3 border-t border-border/60 bg-transparent px-4 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <span className="whitespace-nowrap">{t("pagination.rowsPerPage")}</span>
           <Select items={sizeOptions} value={String(pageSize)} onValueChange={handlePageSizeChange}>
-            <SelectTrigger size="sm" className="w-[4.25rem]">
+            <SelectTrigger size="sm" className="w-[4.25rem] pointer-coarse:h-10">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -85,11 +85,11 @@ export const DataGridPagination = <TData extends RowData>({ table }: DataGridPag
         </span>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs whitespace-nowrap text-muted-foreground tabular-nums">
           {t("pagination.page", { page: String(pageIndex + 1), total: String(pageCount) })}
         </span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 pointer-coarse:*:size-10">
           <Button
             variant="outline"
             size="icon-sm"
