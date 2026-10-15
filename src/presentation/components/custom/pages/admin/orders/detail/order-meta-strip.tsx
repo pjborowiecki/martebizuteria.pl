@@ -26,7 +26,7 @@ export const OrderMetaStrip = ({ order }: Readonly<OrderMetaStripProps>): JSX.El
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
-      <CardContent className="flex flex-wrap items-center gap-x-8 gap-y-3 p-5">
+      <CardContent className="flex flex-wrap items-center gap-x-6 gap-y-3 p-4 lg:gap-x-8 lg:p-5">
         <div>
           <p className={LABEL_CLASS}>{t("orderDetail.meta.date")}</p>
           <p className="mt-0.5 text-sm">

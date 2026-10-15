@@ -54,6 +54,12 @@ describe("OrderSummaryPage", () => {
     expect(screen.getByRole("link", { name: "Back to order" })).toHaveAttribute("href", `/admin/orders/${ORDER_ID}`)
   })
 
+  it("keeps the 16px phone margin of the other admin pages and widens it from the small breakpoint", () => {
+    renderWithProviders(<OrderSummaryPage order={buildAdminOrderDetail()} />)
+
+    expect(screen.getByRole("main").firstElementChild).toHaveClass("px-4", "sm:px-6", "print:p-0")
+  })
+
   it("keeps the admin light theme on a dark storefront", () => {
     document.documentElement.classList.add("dark")
     renderWithProviders(<OrderSummaryPage order={buildAdminOrderDetail()} />)

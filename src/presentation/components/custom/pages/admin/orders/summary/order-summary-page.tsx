@@ -26,7 +26,7 @@ export const OrderSummaryPage = ({ order }: Readonly<OrderSummaryPageProps>): JS
 
   return (
     <main className="min-h-svh bg-background text-foreground">
-      <div className="mx-auto w-full max-w-3xl space-y-10 px-6 py-10 print:max-w-none print:p-0">
+      <div className="mx-auto w-full max-w-3xl space-y-10 px-4 py-10 sm:px-6 print:max-w-none print:p-0">
         <div className="flex items-center justify-between gap-4 print:hidden">
           <LocalizedLink
             className={buttonVariants({ size: "sm", variant: "ghost" })}

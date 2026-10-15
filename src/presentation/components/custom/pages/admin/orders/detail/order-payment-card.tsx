@@ -10,6 +10,7 @@ import { type Order } from "~/src/modules/order/order.types"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 
 export const OrderPaymentCard = ({ currencyCode, payment }: Readonly<OrderPaymentCardProps>): JSX.Element => {
@@ -20,7 +21,7 @@ export const OrderPaymentCard = ({ currencyCode, payment }: Readonly<OrderPaymen
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
-      <CardContent className="p-5">
+      <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
         <p className="mb-3 text-sm font-medium">{t("orderDetail.paymentDetails.title")}</p>
         {payment === undefined ? (
           <p className="text-[13px] text-muted-foreground">{t("orderDetail.paymentDetails.missing")}</p>
@@ -39,7 +40,7 @@ export const OrderPaymentCard = ({ currencyCode, payment }: Readonly<OrderPaymen
                 <span className="truncate font-mono text-xs text-muted-foreground">{transactionId}</span>
                 <Button
                   aria-label={t("orderDetail.paymentDetails.copy")}
-                  className="ml-auto size-6 shrink-0 text-muted-foreground/40"
+                  className="relative ml-auto size-6 shrink-0 text-muted-foreground/40 pointer-coarse:after:absolute pointer-coarse:after:-inset-2"
                   onClick={() => {
                     void navigator.clipboard.writeText(transactionId)
                     toast.success(t("orderDetail.paymentDetails.copied"))

@@ -12,6 +12,7 @@ import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 
 import { ROUTES } from "~/src/routes"
@@ -22,7 +23,7 @@ export const OrderCustomerCard = ({ customer, currencyCode }: Readonly<OrderCust
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
-      <CardContent className="p-5">
+      <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
         <p className="mb-4 text-sm font-medium">{t("orderDetail.customer.title")}</p>
         <div className="flex items-center gap-3">
           <Avatar className="rounded-md after:rounded-md">
@@ -48,7 +49,9 @@ export const OrderCustomerCard = ({ customer, currencyCode }: Readonly<OrderCust
         <div className="space-y-2.5">
           <div className="flex items-center gap-2.5 text-sm">
             <Mail className="size-3.5 shrink-0 text-muted-foreground/40" strokeWidth={1.5} />
-            <span className="truncate text-muted-foreground">{customer.email}</span>
+            <span className="truncate text-muted-foreground" title={customer.email}>
+              {customer.email}
+            </span>
           </div>
           {customer.phone !== undefined && (
             <div className="flex items-center gap-2.5 text-sm">

@@ -17,7 +17,7 @@ export const OrderLineItemRow = ({ currencyCode, item }: Readonly<OrderLineItemR
 
   return (
     <TableRow className="group">
-      <TableCell className="pl-5 whitespace-normal">
+      <TableCell className="pl-4 whitespace-normal max-lg:min-w-44 lg:pl-5">
         <div className="flex items-center gap-3">
           <div className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-secondary">
             {item.imageUrl === undefined ? (
@@ -37,7 +37,7 @@ export const OrderLineItemRow = ({ currencyCode, item }: Readonly<OrderLineItemR
       </TableCell>
       <TableCell className="text-center font-mono text-sm">{item.quantity}</TableCell>
       <TableCell className="text-right font-mono text-sm">{formatPrice(item.unitPriceMinorUnits, currencyCode, locale)}</TableCell>
-      <TableCell className="pr-5 text-right font-mono text-sm font-medium">
+      <TableCell className="pr-4 text-right font-mono text-sm font-medium lg:pr-5">
         {formatPrice(item.totalMinorUnits, currencyCode, locale)}
       </TableCell>
     </TableRow>

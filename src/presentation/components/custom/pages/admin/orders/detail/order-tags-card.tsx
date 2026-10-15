@@ -7,6 +7,7 @@ import { type Order } from "~/src/modules/order/order.types"
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 
 export const OrderTagsCard = ({ tags }: Readonly<OrderTagsCardProps>): JSX.Element => {
@@ -14,7 +15,7 @@ export const OrderTagsCard = ({ tags }: Readonly<OrderTagsCardProps>): JSX.Eleme
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
-      <CardContent className="p-5">
+      <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
         <p className="mb-3 text-sm font-medium">{t("orderDetail.tags.title")}</p>
         {tags.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">{t("orderDetail.tags.empty")}</p>

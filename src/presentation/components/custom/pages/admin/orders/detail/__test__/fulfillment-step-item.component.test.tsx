@@ -39,5 +39,14 @@ describe("FulfillmentStepItem", () => {
     const { container } = renderWithProviders(<FulfillmentStepItem index={0} step={{ at: undefined, done: true, key: "confirmed" }} />)
 
     expect(container.querySelector(String.raw`.absolute.right-1\/2`)).not.toBeInTheDocument()
+    expect(container.querySelector(String.raw`.absolute.bottom-1\/2`)).not.toBeInTheDocument()
+  })
+
+  it("stacks the steps on phones with a vertical connector up to the previous step, in the step's colour", () => {
+    const { container } = renderWithProviders(<FulfillmentStepItem index={1} step={{ at: undefined, done: false, key: "processing" }} />)
+
+    expect(container.firstElementChild).toHaveClass("flex", "items-center", "sm:flex-col")
+    expect(container.querySelector(String.raw`.absolute.bottom-1\/2`)).toHaveClass("sm:hidden", "bg-border")
+    expect(container.querySelector(String.raw`.absolute.right-1\/2`)).toHaveClass("max-sm:hidden", "bg-border")
   })
 })

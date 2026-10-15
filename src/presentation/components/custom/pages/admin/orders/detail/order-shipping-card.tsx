@@ -12,6 +12,7 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { OrderAddressLines } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-address-lines"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 import {
@@ -28,7 +29,13 @@ const describeDeliveryMethod = ({ courierName, methodName }: NonNullable<Order["
   courierName === undefined || methodName.includes(courierName) ? methodName : `${courierName} — ${methodName}`
 
 const CopyButton = ({ label, onCopy }: Readonly<{ label: string; onCopy: () => void }>): JSX.Element => (
-  <Button aria-label={label} className="size-7 text-muted-foreground" onClick={onCopy} size="icon" variant="ghost">
+  <Button
+    aria-label={label}
+    className="relative size-7 text-muted-foreground pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5"
+    onClick={onCopy}
+    size="icon"
+    variant="ghost"
+  >
     <Copy className="size-3.5" strokeWidth={1.5} />
   </Button>
 )
@@ -97,7 +104,7 @@ export const OrderShippingCard = ({
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
-      <CardContent className="p-5">
+      <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
         <ShippingDestination delivery={delivery} shippingAddress={shippingAddress} />
 
         {(delivery !== undefined || trackingNumber !== undefined) && <Separator className="my-4 bg-border/40" />}

@@ -6,6 +6,7 @@ import { type Order } from "~/src/modules/order/order.types"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 import { OrderTimelineEvent } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-timeline-event"
 
@@ -14,7 +15,7 @@ export const OrderTimelineCard = ({ orderId, timeline }: Readonly<OrderTimelineC
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
-      <CardContent className="p-5">
+      <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
         <p className="mb-4 text-sm font-medium">{t("orderDetail.timeline.title")}</p>
         {timeline.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">{t("orderDetail.timeline.empty")}</p>

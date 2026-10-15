@@ -19,7 +19,7 @@ export const OrderLineItemsCard = ({ order }: Readonly<OrderLineItemsCardProps>)
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
       <CardContent className="p-0">
-        <div className="flex items-center justify-between px-5 py-4">
+        <div className="flex items-center justify-between px-4 py-4 lg:px-5">
           <p className="text-sm font-medium">
             {t("orderDetail.items.title")}
             <span className="ml-2 text-muted-foreground/50">({order.items.length})</span>
@@ -28,11 +28,11 @@ export const OrderLineItemsCard = ({ order }: Readonly<OrderLineItemsCardProps>)
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className={`pl-5 ${HEADER_CLASS}`}>{t("orderDetail.items.columns.product")}</TableHead>
+              <TableHead className={`pl-4 lg:pl-5 ${HEADER_CLASS}`}>{t("orderDetail.items.columns.product")}</TableHead>
               <TableHead className={HEADER_CLASS}>{t("orderDetail.items.columns.sku")}</TableHead>
               <TableHead className={`text-center ${HEADER_CLASS}`}>{t("orderDetail.items.columns.qty")}</TableHead>
               <TableHead className={`text-right ${HEADER_CLASS}`}>{t("orderDetail.items.columns.price")}</TableHead>
-              <TableHead className={`pr-5 text-right ${HEADER_CLASS}`}>{t("orderDetail.items.columns.total")}</TableHead>
+              <TableHead className={`pr-4 text-right lg:pr-5 ${HEADER_CLASS}`}>{t("orderDetail.items.columns.total")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -44,7 +44,7 @@ export const OrderLineItemsCard = ({ order }: Readonly<OrderLineItemsCardProps>)
 
         <Separator className="bg-border/40" />
 
-        <div className="ml-auto max-w-xs space-y-2 px-5 py-4">
+        <div className="ml-auto max-w-xs space-y-2 px-4 py-4 lg:px-5">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t("orderDetail.summary.subtotal")}</span>
             <span className="font-mono">{formatPrice(order.subtotalMinorUnits, order.currencyCode, locale)}</span>

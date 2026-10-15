@@ -7,6 +7,7 @@ import { type Order } from "~/src/modules/order/order.types"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { FulfillmentStepItem } from "~/src/presentation/components/custom/pages/admin/orders/detail/fulfillment-step-item"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 
@@ -16,13 +17,13 @@ export const OrderFulfillmentTracker = ({ canceledAt, children, steps }: Readonl
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
-      <CardContent className="p-5">
-        <div className="mb-5 flex items-center justify-between gap-3">
+      <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm font-medium">{t("orderDetail.fulfillment.title")}</p>
           {children}
         </div>
         {canceledAt === undefined ? (
-          <div className="flex items-start justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-0">
             {steps.map((step, index) => (
               <FulfillmentStepItem index={index} key={step.key} step={step} />
             ))}
