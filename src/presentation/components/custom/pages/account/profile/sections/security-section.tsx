@@ -41,8 +41,8 @@ export const SecuritySection = ({ hasPassword, twoFactorEnabled }: Readonly<Secu
       <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("security")}</h2>
       <Separator className="mt-3 mb-0" />
       <div className="divide-y divide-border">
-        <div className="flex items-center justify-between py-4">
-          <div>
+        <div className="flex items-center justify-between gap-4 py-4">
+          <div className="min-w-0">
             <p className="text-[14px]">{hasPassword ? t("changePassword") : t("setPassword")}</p>
             <p className="mt-0.5 text-[12px] text-muted-foreground">{hasPassword ? t("changePasswordDesc") : t("setPasswordDesc")}</p>
           </div>
@@ -50,9 +50,9 @@ export const SecuritySection = ({ hasPassword, twoFactorEnabled }: Readonly<Secu
             {hasPassword ? t("update") : t("set")}
           </Button>
         </div>
-        <div className="flex items-center justify-between py-4">
-          <div>
-            <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-4 py-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <p className="text-[14px]">{t("twoFactor")}</p>
               <Badge className="text-[10px]" variant={twoFactorEnabled ? "default" : "secondary"}>
                 {twoFactorEnabled ? t("twoFactorOn") : t("twoFactorOff")}

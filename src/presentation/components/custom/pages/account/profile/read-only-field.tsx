@@ -1,7 +1,4 @@
-import { type JSX, type ReactNode, useId } from "react"
-
-import { Input } from "~/src/presentation/components/shadcn/input"
-import { Label } from "~/src/presentation/components/shadcn/label"
+import { type JSX, type ReactNode } from "react"
 
 export const ReadOnlyField = ({
   action,
@@ -13,26 +10,15 @@ export const ReadOnlyField = ({
   hint?: ReactNode
   label: string
   value: string
-}>): JSX.Element => {
-  const fieldId = useId()
-
-  return (
-    <div className="flex items-center gap-4 py-4">
-      <div className="min-w-0 flex-1">
-        <Label className="text-[11px] tracking-widest text-muted-foreground uppercase" htmlFor={fieldId}>
-          {label}
-        </Label>
-        <Input
-          className="pointer-events-none mt-1 block cursor-default text-foreground"
-          id={fieldId}
-          readOnly
-          type="email"
-          value={value}
-          variant="account-inline"
-        />
-        {hint}
-      </div>
-      {action}
+}>): JSX.Element => (
+  <div className="flex items-center gap-4 py-4">
+    <div className="min-w-0 flex-1">
+      <dl>
+        <dt className="flex items-center gap-2 text-[11px] tracking-widest text-muted-foreground uppercase select-none">{label}</dt>
+        <dd className="mt-1 min-h-[1.5em] text-[14px] wrap-anywhere text-foreground">{value}</dd>
+      </dl>
+      {hint}
     </div>
-  )
-}
+    {action}
+  </div>
+)

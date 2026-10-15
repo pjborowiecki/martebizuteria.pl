@@ -35,14 +35,16 @@ export const OrderRowItem = ({
           width={48}
         />
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px]">{item.name}</p>
-        {item.variantTitle !== undefined && item.variantTitle !== "" && (
-          <p className="text-[11px] text-muted-foreground">{item.variantTitle}</p>
-        )}
-        <p className="text-[11px] text-muted-foreground">{t("qtyAtPrice", { price: money(item.unitPriceMinorUnits), qty: item.qty })}</p>
+      <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
+        <div className="sm:min-w-0 sm:flex-1">
+          <p className="text-[13px]">{item.name}</p>
+          {item.variantTitle !== undefined && item.variantTitle !== "" && (
+            <p className="text-[11px] text-muted-foreground">{item.variantTitle}</p>
+          )}
+          <p className="text-[11px] text-muted-foreground">{t("qtyAtPrice", { price: money(item.unitPriceMinorUnits), qty: item.qty })}</p>
+        </div>
+        <p className="mt-0.5 text-[13px] tabular-nums sm:mt-0">{money(item.lineTotalMinorUnits)}</p>
       </div>
-      <p className="text-[13px] tabular-nums">{money(item.lineTotalMinorUnits)}</p>
     </div>
   )
 }

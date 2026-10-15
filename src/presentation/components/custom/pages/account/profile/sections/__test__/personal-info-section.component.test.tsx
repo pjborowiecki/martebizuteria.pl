@@ -62,7 +62,7 @@ describe("PersonalInfoSection layout", () => {
     renderWithProviders(<PersonalInfoSection profile={profile} />)
 
     expect(screen.getByDisplayValue("Anna Kowalska")).toBeInTheDocument()
-    expect(screen.getByDisplayValue("anna@example.com")).toBeInTheDocument()
+    expect(screen.getByRole("definition")).toHaveTextContent("anna@example.com")
     expect(screen.getByDisplayValue("+48600123456")).toBeInTheDocument()
   })
 
@@ -78,7 +78,7 @@ describe("PersonalInfoSection layout", () => {
     renderWithProviders(<PersonalInfoSection profile={profile} />)
 
     expect(screen.getByDisplayValue("Anna Kowalska")).toHaveAttribute("readonly")
-    expect(screen.getByDisplayValue("anna@example.com")).toHaveAttribute("readonly")
+    expect(screen.queryByDisplayValue("anna@example.com")).toBeNull()
     expect(screen.getByRole("button", { name: "Edit Full name" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Edit Phone Number" })).toBeInTheDocument()
   })
@@ -115,7 +115,7 @@ describe("PersonalInfoSection layout", () => {
     renderWithProviders(<PersonalInfoSection profile={{ ...profile, phone: undefined }} />)
 
     expect(screen.getByDisplayValue("Anna Kowalska")).toBeInTheDocument()
-    expect(screen.getAllByRole("textbox")[2]).toHaveValue("")
+    expect(screen.getByLabelText("Phone Number")).toHaveValue("")
   })
 })
 
@@ -194,7 +194,7 @@ describe("PersonalInfoSection phone", () => {
     const invalidate = vi.spyOn(queryClient, "invalidateQueries")
     await userEvent.click(screen.getByRole("button", { name: "Edit Phone Number" }))
     await userEvent.clear(screen.getByDisplayValue("+48600123456"))
-    await userEvent.type(nth(screen.getAllByRole("textbox"), 2), "+48600999888")
+    await userEvent.type(screen.getByLabelText("Phone Number"), "+48600999888")
 
     await userEvent.click(screen.getByRole("button", { name: "Save Phone Number" }))
 

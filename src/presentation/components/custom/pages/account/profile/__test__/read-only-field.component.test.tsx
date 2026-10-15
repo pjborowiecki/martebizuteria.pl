@@ -1,5 +1,4 @@
 import { cleanup, screen } from "@testing-library/react"
-import { userEvent } from "@testing-library/user-event"
 import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -11,27 +10,31 @@ describe("ReadOnlyField", () => {
     cleanup()
   })
 
-  it("shows the label and the stored value", () => {
+  it("pairs the label with the stored value", () => {
     renderWithProviders(<ReadOnlyField label="Email Address" value="shopper@example.com" />)
 
-    expect(screen.getByText("Email Address")).toBeInTheDocument()
-    expect(screen.getByRole("textbox")).toHaveValue("shopper@example.com")
+    expect(screen.getByRole("term")).toHaveTextContent("Email Address")
+    expect(screen.getByRole("definition")).toHaveTextContent("shopper@example.com")
   })
 
-  it("keeps the value uneditable", async () => {
+  it("shows the value as text rather than a field the shopper could edit", () => {
     renderWithProviders(<ReadOnlyField label="Email Address" value="shopper@example.com" />)
-    const input = screen.getByRole("textbox")
 
-    expect(input).toHaveAttribute("readonly")
-
-    await userEvent.type(input, "edited")
-
-    expect(input).toHaveValue("shopper@example.com")
+    expect(screen.queryByRole("textbox")).toBeNull()
   })
 
-  it("renders an empty value without collapsing the field", () => {
+  it("leaves the definition empty when no value is stored", () => {
     renderWithProviders(<ReadOnlyField label="Email Address" value="" />)
 
-    expect(screen.getByRole("textbox")).toHaveValue("")
+    expect(screen.getByRole("definition")).toBeEmptyDOMElement()
+  })
+
+  it("shows the hint and the action beside the value", () => {
+    renderWithProviders(
+      <ReadOnlyField action={<button type="button">Change</button>} hint={<p>Not confirmed yet</p>} label="Email Address" value="a@b.c" />,
+    )
+
+    expect(screen.getByText("Not confirmed yet")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument()
   })
 })
