@@ -9,6 +9,7 @@ import { type Order } from "~/src/modules/order/order.types"
 type PaymentFailedElement = ReactElement<ComponentProps<typeof PaymentFailed>>
 
 const {
+  getCheckoutEmailContext,
   recordOrderEmailOutcome,
   recordOrderReleasedAudit,
   refundOrder,
@@ -18,6 +19,7 @@ const {
   sendOrderRefundedEmail,
   sessionsList,
 } = vi.hoisted(() => ({
+  getCheckoutEmailContext: vi.fn<(checkoutId: string) => Promise<{ email: string } | undefined>>(),
   recordOrderEmailOutcome: vi.fn(),
   recordOrderReleasedAudit: vi.fn(),
   refundOrder: vi.fn<(input: Order["refundInput"]) => Promise<Order["unannouncedRefund"] | undefined>>(),
@@ -46,7 +48,7 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome, recordOrderReleasedAudit }))
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({ getFulfillmentTimeAttributesByVariantId: vi.fn() }))
-vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailContext: vi.fn() }))
+vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailContext }))
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout: vi.fn() }))
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderTotalsForEmail: vi.fn() }))
@@ -100,7 +102,7 @@ const failedSession = (overrides: Parameters<typeof checkoutSession>[0] = {}): S
   checkoutSession({
     amountTotal: AMOUNT_TOTAL,
     customerEmail: "anna@example.com",
-    metadata: { items: itemsMetadata, locale: "en-US" },
+    metadata: { checkoutId: "chk-1", items: itemsMetadata, locale: "en-US" },
     paymentStatus: "unpaid",
     returnUrl: RETURN_URL,
     ...overrides,
@@ -119,6 +121,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers()
   releaseCheckout.mockResolvedValue(true)
+  getCheckoutEmailContext.mockResolvedValue({ email: "anna@example.com" })
   sendEmail.mockResolvedValue(undefined)
   refundOrder.mockResolvedValue(PARTIAL_REFUND)
   sendOrderRefundedEmail.mockResolvedValue(true)
@@ -141,6 +144,7 @@ describe("failed asynchronous payment email", () => {
     await dispatch(checkoutSessionAsyncPaymentFailedEvent(failedSession()))
 
     expect(sendEmail).toHaveBeenCalledOnce()
+    expect(getCheckoutEmailContext).toHaveBeenCalledExactlyOnceWith("chk-1")
     expect(sentEmail().to).toBe("anna@example.com")
     expect(sentEmail().idempotencyKey).toBe("payment-failed/cs_test_1")
     expect(sentEmail().subject).toBe(englishCopy.subject)
@@ -160,17 +164,18 @@ describe("failed asynchronous payment email", () => {
   })
 
   it("writes in the default locale when the checkout carried none", async () => {
-    await dispatch(checkoutSessionAsyncPaymentFailedEvent(failedSession({ metadata: { items: itemsMetadata } })))
+    await dispatch(checkoutSessionAsyncPaymentFailedEvent(failedSession({ metadata: { checkoutId: "chk-1", items: itemsMetadata } })))
 
     expect(sentEmail().subject).toBe(polishCopy.subject)
   })
 
-  it("writes to the address Stripe collected when the session was opened without one", async () => {
+  it("writes to the address on the checkout, not the one Stripe holds for the shopper's account", async () => {
+    getCheckoutEmailContext.mockResolvedValue({ email: "jan@example.com" })
     const session = failedSession({
       customerDetails: {
         address: null,
         business_name: null,
-        email: "jan@example.com",
+        email: "account@example.com",
         individual_name: null,
         name: null,
         phone: null,
@@ -247,8 +252,8 @@ describe("failed asynchronous payment email", () => {
 
   it.each([
     ["has no return URL", { returnUrl: null }, "The Stripe session has no return URL to link the email to"],
-    ["has no email address", { customerEmail: null }, "The Stripe session has no email address"],
-    ["has an empty email address", { customerEmail: "" }, "The Stripe session has no email address"],
+    ["names no checkout", { metadata: { items: itemsMetadata } }, "The Stripe session names no checkout to email"],
+    ["names an empty checkout", { metadata: { checkoutId: "", items: itemsMetadata } }, "The Stripe session names no checkout to email"],
   ])("records why nothing was sent when the session %s", async (_case, overrides, failure) => {
     await dispatch(checkoutSessionAsyncPaymentFailedEvent(failedSession(overrides)))
 
@@ -274,6 +279,19 @@ describe("failed asynchronous payment email", () => {
       orderId: "cs_test_1",
       willRetry: true,
     })
+  })
+})
+
+describe("failed asynchronous payment email for a checkout that is gone", () => {
+  it("records why nothing was sent", async () => {
+    getCheckoutEmailContext.mockResolvedValue(undefined)
+
+    await dispatch(checkoutSessionAsyncPaymentFailedEvent(failedSession()))
+
+    expect(sendEmail).not.toHaveBeenCalled()
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({ failure: "The Stripe session names no checkout to email", label: "Payment failed" }),
+    )
   })
 })
 

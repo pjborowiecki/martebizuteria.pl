@@ -199,7 +199,7 @@ Zalogowany klient zapisuje kartę w jednym z dwóch miejsc: w kasie albo przycis
 
 ### Klient Stripe
 
-`ensureStripeCustomer` (`src/integrations/stripe/stripe.customer.server.ts`) zwraca `stripe_customer_id` użytkownika albo tworzy klienta Stripe i zapisuje jego identyfikator w tej kolumnie. Dwa żądania mogą jednocześnie zastać pustą kolumnę, na przykład po podwójnym kliknięciu albo przy kasie otwartej w innej karcie, dlatego identyfikator jest zapisywany przez `coalesce`, a żądanie, które przegra wyścig, usuwa utworzonego przez siebie klienta:
+`ensureStripeCustomer` (`src/integrations/stripe/stripe.customer.server.ts`) zwraca `stripe_customer_id` użytkownika albo tworzy klienta Stripe i zapisuje jego identyfikator w tej kolumnie. `ensureStripeCustomerWithEmail`, z którego korzysta kasa, robi to samo, tyle że klientowi, którego użytkownik już ma, ustawia też podany adres e-mail przez `stripe.customers.update`. Obie funkcje tworzą klienta tymi samymi krokami. Dwa żądania mogą jednocześnie zastać pustą kolumnę, na przykład po podwójnym kliknięciu albo przy kasie otwartej w innej karcie, dlatego identyfikator jest zapisywany przez `coalesce`, a żądanie, które przegra wyścig, usuwa utworzonego przez siebie klienta:
 
 ```ts
 const customer = await stripe.customers.create({ email, metadata: { userId }, name })
@@ -220,7 +220,7 @@ if (stored?.stripeCustomerId !== customer.id) {
 
 ### W kasie
 
-Dla zalogowanego klienta `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) wywołuje `ensureStripeCustomer` i tworzy sesję Checkout dla tego klienta z włączonym `payment_method_save`, które pozwala klientowi wybrać, czy zapisać kartę:
+Dla zalogowanego klienta `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) wywołuje `ensureStripeCustomerWithEmail` z adresem e-mail wpisanym w formularzu zamówienia i tworzy sesję Checkout dla tego klienta z włączonym `payment_method_save`, które pozwala klientowi wybrać, czy zapisać kartę:
 
 ```ts
 ...(customerId === undefined
@@ -228,11 +228,11 @@ Dla zalogowanego klienta `handleCreateCheckoutSession` (`src/integrations/stripe
   : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 ```
 
-Gość dostaje zamiast tego `customer_email` i nie ma klienta Stripe, do którego można by zapisać kartę. `handleUpdateCheckoutSession` korzysta przez `getStripeCustomerId` z klienta konta, do którego checkout już należy, i nie tworzy dla niego nowego. Gość, który dojdzie do kroku płatności, a potem się zaloguje, dostaje tę samą propozycję co kupujący zalogowany od początku: aktualizacja przekazuje checkout gościa kontu i wywołuje `ensureStripeCustomer`. Zobacz [Płatności](/docs/features/payments).
+Gość dostaje zamiast tego `customer_email` i nie ma klienta Stripe, do którego można by zapisać kartę. Sesja utworzona dla klienta Stripe pokazuje jego adres e-mail, którego kupujący nie może tam zmienić, i pod tym adresem Stripe rozlicza płatność, dlatego `ensureStripeCustomerWithEmail` najpierw przenosi istniejącego klienta na adres z tego zamówienia. Zamówienie, potwierdzenie płatności od Stripe, sama płatność i e-mail z potwierdzeniem mają wtedy adres potwierdzony przez kupującego, nawet jeśli różni się od adresu konta albo od adresu z poprzedniego zakupu. `handleUpdateCheckoutSession` wywołuje `ensureStripeCustomerWithEmail` z poprawionym adresem przy każdym zalogowanym żądaniu, więc zmiana adresu w kroku danych kontaktowych przenosi też klienta. Gość, który dojdzie do kroku płatności, a potem się zaloguje, dostaje tę samą propozycję co kupujący zalogowany od początku: aktualizacja przekazuje checkout gościa kontu i w ten sam sposób bierze klienta Stripe tego konta. Zobacz [Płatności](/docs/features/payments).
 
 ### Na stronie konta
 
-**Dodaj kartę** wywołuje `createCardSetupIntent` (`src/modules/payment/use-cases/create-card-setup-intent.ts`), chronione przez `withRateLimit("create-card-setup-intent", RATE_LIMITS.SENSITIVE)` i `authorized()`. Funkcja wywołuje `ensureStripeCustomer` z adresem e-mail i imieniem z konta, więc klient, który jeszcze nigdy nie płacił, dostaje tu klienta Stripe, a następnie otwiera SetupIntent:
+**Dodaj kartę** wywołuje `createCardSetupIntent` (`src/modules/payment/use-cases/create-card-setup-intent.ts`), chronione przez `withRateLimit("create-card-setup-intent", RATE_LIMITS.SENSITIVE)` i `authorized()`. Funkcja wywołuje `ensureStripeCustomer` z adresem e-mail i imieniem z konta, więc klient, który jeszcze nigdy nie płacił, dostaje tu klienta Stripe, a istniejący klient zachowuje adres nadany przez ostatni checkout, a następnie otwiera SetupIntent:
 
 ```ts
 const intent = await stripe.setupIntents.create({

@@ -4,13 +4,12 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsCreate: vi.fn<(params: { metadata: Record<string, string> }) => Promise<unknown>>(),
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
-  ensureStripeCustomer: vi.fn<() => Promise<string>>(),
+  ensureStripeCustomerWithEmail: vi.fn<() => Promise<string>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
-  getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
   releaseCheckout: vi.fn(),
   releaseInventoryForItems: vi.fn(),
   releaseUnappliedDiscountClaims: vi.fn(),
@@ -39,8 +38,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   },
 }))
 vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
-  ensureStripeCustomer: mocked.ensureStripeCustomer,
-  getStripeCustomerId: mocked.getStripeCustomerId,
+  ensureStripeCustomerWithEmail: mocked.ensureStripeCustomerWithEmail,
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ createCheckout: vi.fn() }))
@@ -96,8 +94,7 @@ beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {})
   mocked.getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))
   mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1", name: "Anna Kowalska" } })
-  mocked.getStripeCustomerId.mockResolvedValue("cus_1")
-  mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
+  mocked.ensureStripeCustomerWithEmail.mockResolvedValue("cus_1")
   mocked.releaseCheckout.mockResolvedValue(undefined)
   mocked.releaseInventoryForItems.mockResolvedValue(undefined)
   mocked.releaseUnappliedDiscountClaims.mockResolvedValue(undefined)
@@ -187,7 +184,7 @@ describe("handleUpdateCheckoutSession authorization", () => {
 
     expect(params).toMatchObject({ customer_email: CHECKOUT_VALUES.email, metadata: { userId: "" } })
     expect(params).not.toHaveProperty("customer")
-    expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
+    expect(mocked.ensureStripeCustomerWithEmail).not.toHaveBeenCalled()
     expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ userId: undefined }))
   })
 
@@ -205,12 +202,11 @@ describe("handleUpdateCheckoutSession authorization", () => {
 
     await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
 
-    expect(mocked.ensureStripeCustomer).toHaveBeenCalledExactlyOnceWith({
+    expect(mocked.ensureStripeCustomerWithEmail).toHaveBeenCalledExactlyOnceWith({
       email: CHECKOUT_VALUES.email,
       name: "Anna Kowalska",
       userId: "user-1",
     })
-    expect(mocked.getStripeCustomerId).not.toHaveBeenCalled()
     expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).toMatchObject({
       customer: "cus_1",
       metadata: { userId: "user-1" },
@@ -222,19 +218,33 @@ describe("handleUpdateCheckoutSession authorization", () => {
   it("leaves the guest's checkout and session untouched when Stripe cannot make the account a customer", async () => {
     const failure = new Error("stripe is unreachable")
     mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext({ email: "guest@example.com", userId: undefined }))
-    mocked.ensureStripeCustomer.mockRejectedValue(failure)
+    mocked.ensureStripeCustomerWithEmail.mockRejectedValue(failure)
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toBe(failure)
     expectNothingTouched()
   })
+
+  it("leaves the account's checkout and session untouched when Stripe cannot move its customer to the edited email", async () => {
+    const failure = new Error("stripe is unreachable")
+    mocked.ensureStripeCustomerWithEmail.mockRejectedValue(failure)
+
+    await expect(handleUpdateCheckoutSession(updateInput({ email: "updated@example.com" }))).rejects.toBe(failure)
+    expectNothingTouched()
+    expect(mocked.releaseUnappliedDiscountClaims).not.toHaveBeenCalled()
+  })
 })
 
 describe("handleUpdateCheckoutSession", () => {
-  it("uses the edited checkout email for both the new session and its payment receipt", async () => {
+  it("moves the account's Stripe customer to the edited checkout email and uses it for the new session and its payment receipt", async () => {
     const input = updateInput({ email: "updated@example.com" })
 
     await handleUpdateCheckoutSession(input)
 
+    expect(mocked.ensureStripeCustomerWithEmail).toHaveBeenCalledExactlyOnceWith({
+      email: "updated@example.com",
+      name: "Anna Kowalska",
+      userId: "user-1",
+    })
     expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).toMatchObject({
       customer: "cus_1",
       payment_intent_data: { receipt_email: "updated@example.com" },

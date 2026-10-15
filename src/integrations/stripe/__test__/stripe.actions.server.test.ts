@@ -27,13 +27,12 @@ const mocked = vi.hoisted(() => ({
       }) => Promise<{ checkoutId: string; discountClaimed: boolean }>
     >(),
   createPendingPayment: vi.fn(),
-  ensureStripeCustomer: vi.fn<() => Promise<string>>(),
+  ensureStripeCustomerWithEmail: vi.fn<() => Promise<string>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn(),
-  getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
   releaseCheckout: vi.fn(),
   releaseDiscountClaims: vi.fn((_checkoutId: string) => Promise.resolve()),
   releaseInventoryForItems: vi.fn(),
@@ -65,8 +64,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   },
 }))
 vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
-  ensureStripeCustomer: mocked.ensureStripeCustomer,
-  getStripeCustomerId: mocked.getStripeCustomerId,
+  ensureStripeCustomerWithEmail: mocked.ensureStripeCustomerWithEmail,
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => mocked.requestLocale.value }))
 vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ createCheckout: mocked.createCheckout }))
@@ -188,8 +186,7 @@ const stubCatalogueForCart = (cartItems: ReturnType<typeof multiItemCart>): void
 
 const signInCustomerWithStripeAccount = (): void => {
   mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1", name: "Anna Kowalska" } })
-  mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
-  mocked.getStripeCustomerId.mockResolvedValue("cus_1")
+  mocked.ensureStripeCustomerWithEmail.mockResolvedValue("cus_1")
 }
 
 const createdSessionMetadata = (): Record<string, string> => mocked.checkoutSessionsCreate.mock.lastCall?.[0].metadata ?? {}
@@ -411,7 +408,7 @@ describe("checkout session return URL", () => {
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
-    expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
+    expect(mocked.ensureStripeCustomerWithEmail).not.toHaveBeenCalled()
     expect(mocked.getPaymentContextByTransactionId).not.toHaveBeenCalled()
     expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
     expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
@@ -524,7 +521,7 @@ describe("checkout session saved cards", () => {
   it("attaches the signed-in customer and lets them choose to save the card", async () => {
     await handleCreateCheckoutSession(createInput())
 
-    expect(mocked.ensureStripeCustomer).toHaveBeenCalledWith({
+    expect(mocked.ensureStripeCustomerWithEmail).toHaveBeenCalledWith({
       email: "anna@example.com",
       name: "Anna Kowalska",
       userId: "user-1",
@@ -550,7 +547,7 @@ describe("checkout session saved cards", () => {
 
     const params = mocked.checkoutSessionsCreate.mock.calls[0]?.[0]
 
-    expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
+    expect(mocked.ensureStripeCustomerWithEmail).not.toHaveBeenCalled()
     expect(params).toMatchObject({ customer_email: "anna@example.com" })
     expect(params).not.toHaveProperty("customer")
     expect(params).not.toHaveProperty("saved_payment_method_options")
@@ -559,21 +556,31 @@ describe("checkout session saved cards", () => {
   it("keeps the card offer on the replacement session when the checkout is edited", async () => {
     await handleUpdateCheckoutSession(updateInput())
 
-    expect(mocked.getStripeCustomerId).toHaveBeenCalledWith("user-1")
+    expect(mocked.ensureStripeCustomerWithEmail).toHaveBeenCalledExactlyOnceWith({
+      email: "anna@example.com",
+      name: "Anna Kowalska",
+      userId: "user-1",
+    })
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({ customer: "cus_1", saved_payment_method_options: { payment_method_save: "enabled" } }),
     )
   })
 
-  it("leaves an owner who never reached Stripe without a customer on the session", async () => {
-    mocked.getStripeCustomerId.mockResolvedValue(undefined)
+  it("gives the account's Stripe customer the email typed at checkout rather than the account's own", async () => {
+    mocked.getRequestSession.mockResolvedValue({ user: { email: "anna.konto@example.com", id: "user-1", name: "Anna Kowalska" } })
 
-    await handleUpdateCheckoutSession(updateInput())
+    await handleCreateCheckoutSession(createInput({ email: "anna.zamowienie@example.com" }))
 
-    const params = mocked.checkoutSessionsCreate.mock.calls[0]?.[0]
-
-    expect(params).toMatchObject({ customer_email: "anna@example.com" })
-    expect(params).not.toHaveProperty("saved_payment_method_options")
+    expect(mocked.ensureStripeCustomerWithEmail).toHaveBeenCalledExactlyOnceWith({
+      email: "anna.zamowienie@example.com",
+      name: "Anna Kowalska",
+      userId: "user-1",
+    })
+    expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).toMatchObject({
+      customer: "cus_1",
+      payment_intent_data: { receipt_email: "anna.zamowienie@example.com" },
+    })
+    expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).not.toHaveProperty("customer_email")
   })
 })
 

@@ -16,7 +16,6 @@ const {
   recordOrderFulfillmentFailedAudit,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit,
-  recordOrderPlacedAudit,
   recordOrderReleasedAudit,
   refundOrder,
   refundsList,
@@ -42,7 +41,6 @@ const {
   recordOrderFulfillmentFailedAudit: vi.fn<(sessionId: string, options: { detail: string }) => void>(),
   recordOrderPaymentCapturedAudit: vi.fn(),
   recordOrderPaymentFailedAudit: vi.fn(),
-  recordOrderPlacedAudit: vi.fn(),
   recordOrderReleasedAudit: vi.fn(),
   refundOrder: vi.fn<(input: object) => Promise<void>>(),
   refundsList: vi.fn<(params: object) => { autoPagingToArray: (options: object) => Promise<Stripe.Refund[]> }>(),
@@ -81,7 +79,6 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderFulfillmentFailedAudit,
   recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit,
-  recordOrderPlacedAudit,
   recordOrderReleasedAudit,
 }))
 vi.mock("~/src/modules/attribute-on-product/attribute-on-product.server", () => ({
@@ -246,10 +243,9 @@ describe("checkout session fulfillment", () => {
     expect(recordOrderFulfillmentFailedAudit.mock.calls[0]?.[1].detail).toMatch(/^548,00 PLN — anna@example\.com — /u)
   })
 
-  it("records the placed and captured audits and refreshes the admin and catalog caches", async () => {
+  it("records the captured payment and refreshes the admin and catalog caches", async () => {
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
 
-    expect(recordOrderPlacedAudit).toHaveBeenCalledWith("order-1", { detail: "anna@example.com", resourceId: "order-1" })
     expect(recordOrderPaymentCapturedAudit).toHaveBeenCalledWith("order-1", { detail: "548,00 PLN", resourceId: "order-1" })
     expect(scheduleAdminOrdersInvalidation).toHaveBeenCalledOnce()
     expect(scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
@@ -266,7 +262,7 @@ describe("checkout session fulfillment", () => {
 
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
 
-    expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
+    expect(recordOrderPaymentCapturedAudit).not.toHaveBeenCalled()
     expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
     expect(sendNewOrderEmail).not.toHaveBeenCalled()
@@ -295,7 +291,7 @@ describe("a paid checkout session that creates no order", () => {
       detail: "548,00 PLN — anna@example.com — D1_ERROR: FOREIGN KEY constraint failed",
     })
     expect(consoleError).toHaveBeenCalledWith("Paid Checkout Session cs_test_1 created no order:", expect.any(Error))
-    expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
+    expect(recordOrderPaymentCapturedAudit).not.toHaveBeenCalled()
     expect(sendEmail).not.toHaveBeenCalled()
     expect(sendNewOrderEmail).not.toHaveBeenCalled()
     expect(sendIncidentAlert).not.toHaveBeenCalled()
@@ -315,7 +311,7 @@ describe("a paid checkout session that creates no order", () => {
       kind: "paidCheckoutWithoutOrder",
       reference: "cs_test_1",
     })
-    expect(recordOrderPlacedAudit).not.toHaveBeenCalled()
+    expect(recordOrderPaymentCapturedAudit).not.toHaveBeenCalled()
     expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
     expect(sendNewOrderEmail).not.toHaveBeenCalled()
   })

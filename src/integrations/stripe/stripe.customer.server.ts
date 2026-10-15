@@ -15,12 +15,7 @@ export const getStripeCustomerId = async (userId: string): Promise<string | unde
   return row?.stripeCustomerId ?? undefined
 }
 
-export const ensureStripeCustomer = async ({ email, name, userId }: EnsureStripeCustomerInput): Promise<string> => {
-  const existing = await getStripeCustomerId(userId)
-  if (existing !== undefined) {
-    return existing
-  }
-
+const createStripeCustomer = async ({ email, name, userId }: EnsureStripeCustomerInput): Promise<string> => {
   const customer = await stripe.customers.create({ email, metadata: { userId }, name })
   const [stored] = await db
     .update(user)
@@ -39,6 +34,20 @@ export const ensureStripeCustomer = async ({ email, name, userId }: EnsureStripe
   }
 
   return stored.stripeCustomerId
+}
+
+export const ensureStripeCustomer = async (input: EnsureStripeCustomerInput): Promise<string> =>
+  (await getStripeCustomerId(input.userId)) ?? createStripeCustomer(input)
+
+export const ensureStripeCustomerWithEmail = async (input: EnsureStripeCustomerInput): Promise<string> => {
+  const existing = await getStripeCustomerId(input.userId)
+  if (existing === undefined) {
+    return createStripeCustomer(input)
+  }
+
+  await stripe.customers.update(existing, { email: input.email })
+
+  return existing
 }
 
 export const deleteStripeCustomer = async (userId: string): Promise<void> => {

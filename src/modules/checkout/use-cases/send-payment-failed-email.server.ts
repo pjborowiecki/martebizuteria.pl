@@ -7,6 +7,7 @@ import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { parseCheckoutSessionFulfillmentLines, resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
+import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
 import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
 import { buildOrderConfirmationItems } from "~/src/modules/order/order.email.utils"
 
@@ -24,10 +25,13 @@ const attemptPaymentFailedEmail = async (session: StripeType.Checkout.Session, i
     return { failure: "The Stripe session has no return URL to link the email to", label: PAYMENT_FAILED_LABEL }
   }
 
-  const email = session.customer_email ?? session.customer_details?.email
-  if (email === null || email === undefined || email === "") {
-    return { failure: "The Stripe session has no email address", label: PAYMENT_FAILED_LABEL }
+  const checkoutId = session.metadata?.["checkoutId"]
+  const checkoutContext = checkoutId === undefined || checkoutId === "" ? undefined : await getCheckoutEmailContext(checkoutId)
+  if (checkoutContext === undefined) {
+    return { failure: "The Stripe session names no checkout to email", label: PAYMENT_FAILED_LABEL }
   }
+
+  const { email } = checkoutContext
 
   const origin = resolveDeploymentOrigin(session.return_url)
   const locale = resolveCheckoutSessionLocale(session)

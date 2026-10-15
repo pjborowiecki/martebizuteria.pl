@@ -199,7 +199,7 @@ A signed-in customer saves a card in one of two places: at checkout, or with **A
 
 ### The Stripe customer
 
-`ensureStripeCustomer` (`src/integrations/stripe/stripe.customer.server.ts`) returns the user's `stripe_customer_id`, or creates a Stripe customer and stores its id in that column. Two requests can both find the column empty, for example after a double click or with checkout open in another tab, so the id is written with `coalesce` and the request that loses the race deletes the customer it created:
+`ensureStripeCustomer` (`src/integrations/stripe/stripe.customer.server.ts`) returns the user's `stripe_customer_id`, or creates a Stripe customer and stores its id in that column. `ensureStripeCustomerWithEmail`, which checkout uses, does the same, except that it also sets the e-mail of a customer the user already has to the one it is given, with `stripe.customers.update`. Both create the customer through the same steps. Two requests can both find the column empty, for example after a double click or with checkout open in another tab, so the id is written with `coalesce` and the request that loses the race deletes the customer it created:
 
 ```ts
 const customer = await stripe.customers.create({ email, metadata: { userId }, name })
@@ -220,7 +220,7 @@ if (stored?.stripeCustomerId !== customer.id) {
 
 ### At checkout
 
-For a signed-in customer, `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) calls `ensureStripeCustomer` and creates the Checkout Session for that customer with `payment_method_save` enabled, which lets the customer choose to save the card:
+For a signed-in customer, `handleCreateCheckoutSession` (`src/integrations/stripe/stripe.actions.server.ts`) calls `ensureStripeCustomerWithEmail` with the email typed into the checkout form and creates the Checkout Session for that customer with `payment_method_save` enabled, which lets the customer choose to save the card:
 
 ```ts
 ...(customerId === undefined
@@ -228,11 +228,11 @@ For a signed-in customer, `handleCreateCheckoutSession` (`src/integrations/strip
   : { customer: customerId, saved_payment_method_options: { payment_method_save: "enabled" } }),
 ```
 
-A guest gets `customer_email` instead and has no Stripe customer to save a card to. `handleUpdateCheckoutSession` reuses the customer of an account that already owns the checkout through `getStripeCustomerId` and creates none for it. A guest who reaches the payment step and then signs in gets the same offer as a shopper who signed in first: the update hands the guest's checkout to the account and calls `ensureStripeCustomer`. See [Payments](/docs/features/payments).
+A guest gets `customer_email` instead and has no Stripe customer to save a card to. Stripe shows a session created for a customer with the customer's email, which the shopper cannot change there, and bills the payment under it, so `ensureStripeCustomerWithEmail` first moves an existing customer to the email of this checkout. The order, the Stripe receipt, the payment and the confirmation email then all carry the address the shopper confirmed, even when it differs from the account's or from the one a previous checkout used. `handleUpdateCheckoutSession` calls `ensureStripeCustomerWithEmail` with the edited email for every signed-in request, so changing the email in the contact step moves the customer too. A guest who reaches the payment step and then signs in gets the same offer as a shopper who signed in first: the update hands the guest's checkout to the account and gets the account's customer the same way. See [Payments](/docs/features/payments).
 
 ### On the account page
 
-**Add Card** calls `createCardSetupIntent` (`src/modules/payment/use-cases/create-card-setup-intent.ts`), behind `withRateLimit("create-card-setup-intent", RATE_LIMITS.SENSITIVE)` and `authorized()`. It calls `ensureStripeCustomer` with the account's email and name, so a customer who has never paid gets a Stripe customer here, and then opens a SetupIntent:
+**Add Card** calls `createCardSetupIntent` (`src/modules/payment/use-cases/create-card-setup-intent.ts`), behind `withRateLimit("create-card-setup-intent", RATE_LIMITS.SENSITIVE)` and `authorized()`. It calls `ensureStripeCustomer` with the account's email and name, so a customer who has never paid gets a Stripe customer here, while an existing customer keeps the email the last checkout gave it, and then opens a SetupIntent:
 
 ```ts
 const intent = await stripe.setupIntents.create({

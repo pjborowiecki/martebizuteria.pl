@@ -95,7 +95,7 @@ describe("getCheckoutById", () => {
 })
 
 describe("getCheckoutEmailContext", () => {
-  it("returns only the columns the confirmation email needs", async () => {
+  it("returns only the columns the order e-mails need", async () => {
     const context = await getCheckoutEmailContext("chk-full")
 
     expect(Object.keys(context ?? {}).toSorted()).toStrictEqual([
@@ -105,6 +105,7 @@ describe("getCheckoutEmailContext", () => {
       "billingNip",
       "customerNote",
       "deliveryMethod",
+      "email",
       "lockerId",
       "lockerPoint",
       "shippingAddress",

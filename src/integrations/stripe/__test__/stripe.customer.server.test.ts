@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 const mocked = vi.hoisted(() => ({
   customersCreate: vi.fn<(params: object) => Promise<{ id: string }>>(),
   customersDel: vi.fn<(id: string) => Promise<unknown>>(),
+  customersUpdate: vi.fn<(id: string, params: object) => Promise<{ id: string }>>(),
   returning: vi.fn<() => Promise<{ stripeCustomerId: string | null }[]>>(),
   set: vi.fn<(values: object) => { where: () => { returning: () => Promise<{ stripeCustomerId: string | null }[]> } }>(),
   userFindFirst: vi.fn<() => Promise<{ stripeCustomerId: string | null } | undefined>>(),
@@ -16,10 +17,15 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   },
 }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
-  stripe: { customers: { create: mocked.customersCreate, del: mocked.customersDel } },
+  stripe: { customers: { create: mocked.customersCreate, del: mocked.customersDel, update: mocked.customersUpdate } },
 }))
 
-import { deleteStripeCustomer, ensureStripeCustomer, getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
+import {
+  deleteStripeCustomer,
+  ensureStripeCustomer,
+  ensureStripeCustomerWithEmail,
+  getStripeCustomerId,
+} from "~/src/integrations/stripe/stripe.customer.server"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 
@@ -31,6 +37,7 @@ beforeEach(() => {
   mocked.returning.mockResolvedValue([{ stripeCustomerId: "cus_new" }])
   mocked.customersCreate.mockResolvedValue({ id: "cus_new" })
   mocked.customersDel.mockResolvedValue({ deleted: true })
+  mocked.customersUpdate.mockResolvedValue({ id: "cus_stored" })
 })
 
 describe("getStripeCustomerId", () => {
@@ -54,11 +61,12 @@ describe("getStripeCustomerId", () => {
 })
 
 describe("ensureStripeCustomer", () => {
-  it("reuses the customer the account already has", async () => {
+  it("reuses the customer the account already has and leaves its e-mail alone", async () => {
     mocked.userFindFirst.mockResolvedValue({ stripeCustomerId: "cus_stored" })
 
     await expect(ensureStripeCustomer(CUSTOMER_INPUT)).resolves.toBe("cus_stored")
     expect(mocked.customersCreate).not.toHaveBeenCalled()
+    expect(mocked.customersUpdate).not.toHaveBeenCalled()
   })
 
   it("creates a customer for a first-time buyer and keeps the one it created", async () => {
@@ -70,6 +78,7 @@ describe("ensureStripeCustomer", () => {
       metadata: { userId: "user-1" },
       name: "Anna Kowalska",
     })
+    expect(mocked.customersUpdate).not.toHaveBeenCalled()
     expect(mocked.customersDel).not.toHaveBeenCalled()
   })
 
@@ -106,6 +115,36 @@ describe("ensureStripeCustomer", () => {
 
     await expect(ensureStripeCustomer(CUSTOMER_INPUT)).rejects.toThrow("stripe is unreachable")
     expect(mocked.set).not.toHaveBeenCalled()
+  })
+})
+
+describe("ensureStripeCustomerWithEmail", () => {
+  it("moves the customer the account already has to the e-mail this payment uses", async () => {
+    mocked.userFindFirst.mockResolvedValue({ stripeCustomerId: "cus_stored" })
+
+    await expect(ensureStripeCustomerWithEmail({ ...CUSTOMER_INPUT, email: "anna.nowy@example.com" })).resolves.toBe("cus_stored")
+    expect(mocked.customersUpdate).toHaveBeenCalledExactlyOnceWith("cus_stored", { email: "anna.nowy@example.com" })
+    expect(mocked.customersCreate).not.toHaveBeenCalled()
+  })
+
+  it("creates the customer of a first-time buyer with that e-mail and sends no update", async () => {
+    mocked.userFindFirst.mockResolvedValue({ stripeCustomerId: null })
+
+    await expect(ensureStripeCustomerWithEmail(CUSTOMER_INPUT)).resolves.toBe("cus_new")
+    expect(mocked.customersCreate).toHaveBeenCalledExactlyOnceWith({
+      email: "anna@example.com",
+      metadata: { userId: "user-1" },
+      name: "Anna Kowalska",
+    })
+    expect(mocked.customersUpdate).not.toHaveBeenCalled()
+  })
+
+  it("hands out no customer whose e-mail Stripe could not change", async () => {
+    mocked.userFindFirst.mockResolvedValue({ stripeCustomerId: "cus_stored" })
+    mocked.customersUpdate.mockRejectedValue(new Error("stripe is unreachable"))
+
+    await expect(ensureStripeCustomerWithEmail(CUSTOMER_INPUT)).rejects.toThrow("stripe is unreachable")
+    expect(mocked.customersCreate).not.toHaveBeenCalled()
   })
 })
 

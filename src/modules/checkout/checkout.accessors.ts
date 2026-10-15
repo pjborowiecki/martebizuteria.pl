@@ -41,6 +41,7 @@ export const getCheckoutEmailContext = (checkoutId: string) =>
       billingCompanyName: true,
       billingNip: true,
       customerNote: true,
+      email: true,
       lockerId: true,
       lockerPoint: true,
       shippingAddressId: true,
