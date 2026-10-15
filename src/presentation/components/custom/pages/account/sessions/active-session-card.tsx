@@ -71,7 +71,7 @@ export const ActiveSessionCard = ({
           className="shrink-0"
           disabled={revokeMutation.isPending}
           onClick={handleRevoke}
-          size="icon-xs"
+          size="account-icon"
           variant="ghost"
         >
           <LogOut className="size-4 text-muted-foreground transition-colors hover:text-destructive" strokeWidth={1.5} />

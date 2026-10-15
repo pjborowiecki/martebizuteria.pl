@@ -32,7 +32,7 @@ export const OrderRowDetails = ({
 
       <div className="mt-4 flex items-center gap-3">
         <LocalizedLink
-          className="text-[11px] tracking-[0.15em] text-foreground uppercase transition-colors hover:text-muted-foreground"
+          className="touch-target text-[11px] tracking-[0.15em] text-foreground uppercase transition-colors hover:text-muted-foreground"
           params={orderParams}
           to={ROUTES.ACCOUNT_ORDER}
         >

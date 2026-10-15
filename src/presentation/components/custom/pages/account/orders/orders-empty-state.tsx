@@ -32,7 +32,7 @@ export const OrdersEmptyState = ({ filter }: Readonly<{ filter: CustomerAccountO
     <div className="flex flex-col items-center gap-4 py-20 text-center">
       <p className="text-sm text-muted-foreground">{t("emptyFiltered", { filter: t(`filter.${filter}`) })}</p>
       <Link
-        className="text-[11px] tracking-[0.15em] text-foreground uppercase underline underline-offset-4"
+        className="touch-target text-[11px] tracking-[0.15em] text-foreground uppercase underline underline-offset-4"
         search={ALL_ORDERS_SEARCH}
         to={ROUTES.ACCOUNT_ORDERS}
       >

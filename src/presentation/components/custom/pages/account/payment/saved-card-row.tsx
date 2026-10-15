@@ -52,7 +52,7 @@ export const SavedCardRow = ({ method }: Readonly<{ method: Payment["savedMethod
       )}
       <Button
         aria-label={t("remove")}
-        className="size-8 shrink-0 text-muted-foreground"
+        className="touch-target size-8 shrink-0 text-muted-foreground"
         disabled={remove.isPending}
         onClick={handleRemove}
         size="icon"

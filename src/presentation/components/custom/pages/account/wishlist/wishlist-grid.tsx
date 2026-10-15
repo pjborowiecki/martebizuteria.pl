@@ -115,7 +115,7 @@ const WishlistCard = ({ item }: Readonly<{ item: Wishlist["product"] }>): JSX.El
 
       <div className="mt-3 flex gap-2">
         <Button
-          className="h-9 flex-1 gap-2 text-[11px] tracking-[0.12em] uppercase"
+          className="h-9 flex-1 gap-2 text-[11px] tracking-[0.12em] uppercase pointer-coarse:h-10"
           disabled={addToCart === undefined}
           onClick={addToCart}
           size="sm"
@@ -125,7 +125,7 @@ const WishlistCard = ({ item }: Readonly<{ item: Wishlist["product"] }>): JSX.El
         </Button>
         <Button
           aria-label={t("remove")}
-          className="size-9 shrink-0 text-muted-foreground"
+          className="size-9 shrink-0 text-muted-foreground pointer-coarse:size-10"
           disabled={remove.isPending}
           onClick={handleRemove}
           size="icon"

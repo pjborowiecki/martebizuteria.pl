@@ -2,6 +2,7 @@ import { type JSX, useCallback } from "react"
 
 import { Copy } from "lucide-react"
 import { toast } from "sonner"
+import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -14,6 +15,7 @@ export const TrackingNumberRow = ({
   trackingNumber: string
   trackingUrl?: string | undefined
 }>): JSX.Element => {
+  const t = useTranslations("pages.account.orderDetail")
   const handleCopy = useCallback(() => {
     void (async () => {
       try {
@@ -28,7 +30,7 @@ export const TrackingNumberRow = ({
   return (
     <div className="mt-0.5 flex items-center gap-2">
       <TrackingNumberText trackingNumber={trackingNumber} trackingUrl={trackingUrl} />
-      <Button onClick={handleCopy} size="icon-xs" variant="ghost">
+      <Button aria-label={t("copyTrackingNumber")} onClick={handleCopy} size="account-icon" variant="ghost">
         <Copy className="size-3" strokeWidth={1.5} />
       </Button>
     </div>

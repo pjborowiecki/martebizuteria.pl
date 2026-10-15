@@ -284,7 +284,7 @@ describe("account order detail tracking", () => {
     renderPage()
     await screen.findByText("PL123")
 
-    await userEvent.click(screen.getAllByRole("button")[1] ?? document.body)
+    await userEvent.click(screen.getByRole("button", { name: "Copy tracking number" }))
 
     expect(spies.writeText).toHaveBeenCalledWith("PL123")
     expect(spies.toastSuccess).toHaveBeenCalledWith("PL123")
@@ -296,7 +296,7 @@ describe("account order detail tracking", () => {
     renderPage()
     await screen.findByText("PL123")
 
-    await userEvent.click(screen.getAllByRole("button")[1] ?? document.body)
+    await userEvent.click(screen.getByRole("button", { name: "Copy tracking number" }))
 
     expect(spies.toastError).toHaveBeenCalledWith("PL123")
   })

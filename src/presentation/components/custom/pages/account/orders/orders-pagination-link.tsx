@@ -24,7 +24,11 @@ export const PaginationLink = ({
   }
 
   return (
-    <Link className="text-[11px] tracking-[0.15em] text-foreground uppercase hover:underline" search={search} to={ROUTES.ACCOUNT_ORDERS}>
+    <Link
+      className="touch-target text-[11px] tracking-[0.15em] text-foreground uppercase hover:underline"
+      search={search}
+      to={ROUTES.ACCOUNT_ORDERS}
+    >
       {label}
     </Link>
   )

@@ -40,7 +40,7 @@ const OrdersPage = (): JSX.Element => {
           <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("title")}</h1>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 pointer-coarse:gap-y-6">
           {CUSTOMER_ACCOUNT_ORDER_FILTERS.map((option) => (
             <OrdersFilterLink currentFilter={filter} key={option} option={option} />
           ))}
