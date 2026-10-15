@@ -46,12 +46,12 @@ export const SearchOverlay = (): JSX.Element => {
       onCancel={handleCancel}
       style={OVERLAY_STYLE}
     >
-      <div className="mx-auto flex w-full items-center justify-between px-6 py-5 sm:max-w-400 lg:px-12">
+      <div className="storefront-container flex w-full items-center justify-between py-5">
         <p className="font-serif text-sm tracking-wide">{t("brand")}</p>
         <button
           type="button"
           onClick={handleClose}
-          className="inline-flex items-center gap-2 text-[10px] tracking-[0.3em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+          className="inline-flex items-center gap-2 text-[10px] tracking-[0.3em] text-muted-foreground uppercase transition-colors hover:text-foreground pointer-coarse:-my-3 pointer-coarse:min-h-10"
         >
           {t("searchOverlay.close")}
           <X className="size-4" strokeWidth={1.2} />
@@ -60,11 +60,7 @@ export const SearchOverlay = (): JSX.Element => {
 
       <Separator className="bg-border/50" />
 
-      <form
-        className="search-bar mx-auto w-full px-6 pt-10 pb-8 sm:max-w-400 lg:px-12 lg:pt-16 lg:pb-10"
-        role="search"
-        onSubmit={handleSubmit}
-      >
+      <form className="search-bar storefront-container w-full pt-10 pb-8 lg:pt-16 lg:pb-10" role="search" onSubmit={handleSubmit}>
         <div className="relative">
           <Search
             aria-hidden="true"
@@ -89,7 +85,7 @@ export const SearchOverlay = (): JSX.Element => {
       </form>
 
       <div className="search-content flex-1 overflow-y-auto" data-lenis-prevent>
-        <div className="mx-auto px-6 pb-20 sm:max-w-400 lg:px-12">
+        <div className="storefront-container pb-20">
           <p aria-live="polite" className="sr-only" role="status">
             {statusMessage}
           </p>

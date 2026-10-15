@@ -34,6 +34,13 @@ describe("SellerContactDetails", () => {
     expect(screen.getByRole("link", { name: BUSINESS.PHONE })).toHaveAttribute("href", BUSINESS_PHONE_HREF)
   })
 
+  it("gives the e-mail and phone links finger-sized targets on touch screens", () => {
+    renderWithProviders(<SellerContactDetails className="" />)
+
+    expect(screen.getByRole("link", { name: BUSINESS.EMAIL })).toHaveClass("pointer-coarse:inline-flex", "pointer-coarse:min-h-10")
+    expect(screen.getByRole("link", { name: BUSINESS.PHONE })).toHaveClass("pointer-coarse:inline-flex", "pointer-coarse:min-h-10")
+  })
+
   it("keeps the details in one address block laid out by the caller", () => {
     const { container } = renderWithProviders(<SellerContactDetails className="md:grid-cols-3" />)
 

@@ -6,6 +6,7 @@
   "loading": "Loading…",
   "notFound": {
     "heading": "Page not found",
-    "message": "The page you are looking for does not exist."
+    "message": "The page you are looking for does not exist.",
+    "cta": "Back to the shop"
   }
 }

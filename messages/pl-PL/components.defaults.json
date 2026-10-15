@@ -6,6 +6,7 @@
   "loading": "Ładowanie…",
   "notFound": {
     "heading": "Nie znaleziono strony",
-    "message": "Strona, której szukasz, nie istnieje."
+    "message": "Strona, której szukasz, nie istnieje.",
+    "cta": "Wróć do sklepu"
   }
 }

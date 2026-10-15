@@ -14,7 +14,7 @@ export const NewsletterTokenPage = ({ description, linkLabel, result, title }: R
   const Icon = succeeded ? CheckCircle2 : XCircle
 
   return (
-    <main className="mx-auto flex min-h-[60dvh] w-full max-w-xl flex-col items-center justify-center gap-6 px-6 py-20 text-center">
+    <main className="mx-auto flex min-h-[60dvh] w-full max-w-xl flex-col items-center justify-center gap-6 px-4 py-20 text-center sm:px-6">
       <Icon className={succeeded ? "size-14 text-success" : "size-14 text-muted-foreground/40"} strokeWidth={1} />
       <h1 className="font-serif text-3xl md:text-4xl">{title}</h1>
       <p className="max-w-md text-sm text-muted-foreground md:text-base">{description}</p>

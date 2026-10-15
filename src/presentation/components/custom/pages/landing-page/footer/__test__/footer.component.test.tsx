@@ -85,4 +85,15 @@ describe("Footer", () => {
 
     expect(container.querySelectorAll("li")).toHaveLength(8)
   })
+
+  it("gives every link and social icon a finger-sized target on touch screens", () => {
+    renderWithProviders(<Footer />)
+
+    const terms = screen.getByRole("link", { name: "Store regulations" })
+
+    expect(terms).toHaveClass("pointer-coarse:inline-block", "pointer-coarse:py-2.5")
+    expect(terms.closest("ul")).toHaveClass("space-y-3", "pointer-coarse:space-y-0")
+    expect(screen.getByRole("link", { name: "Instagram" })).toHaveClass("pointer-coarse:size-10")
+    expect(screen.getByRole("link", { name: "Facebook" })).toHaveClass("pointer-coarse:size-10")
+  })
 })
