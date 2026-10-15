@@ -76,6 +76,14 @@ describe("AuthTextField", () => {
     })
   })
 
+  it("hides its error while the browser previews an autofill suggestion in it", async () => {
+    renderWithProviders(<Harness error="invalidEmail" field="email" />)
+    const error = await screen.findByRole("alert")
+
+    expect(error).toHaveClass("group-has-autofill-preview/field:invisible")
+    expect(error.closest("[data-slot=field]")).toContainElement(screen.getByLabelText(/Email address/u))
+  })
+
   it("shows no error message while the field is untouched", () => {
     renderWithProviders(<Harness field="email" />)
 
@@ -92,6 +100,20 @@ describe("AuthPasswordField", () => {
     await waitFor(() => {
       expect(container.querySelector("svg.text-success")).toBeInTheDocument()
     })
+  })
+
+  it("hides its error and puts back the usual border while the browser previews a saved password", async () => {
+    renderWithProviders(<Harness error="passwordMinLength" field="password" />)
+    const password = screen.getByLabelText(/Password/u)
+    const error = await screen.findByRole("alert")
+
+    expect(error).toHaveClass("group-has-autofill-preview/field:invisible")
+    expect(error.closest("[data-slot=field]")).toContainElement(password)
+    expect(password.closest("[data-slot=input-group]")).toHaveClass(
+      "has-[[data-slot][aria-invalid=true]]:border-destructive",
+      "has-[[data-slot][aria-invalid=true]]:has-autofill-preview:border-border",
+      "has-[[data-slot][aria-invalid=true]]:has-autofill-preview:focus-within:border-foreground",
+    )
   })
 
   it("masks the password by default", () => {

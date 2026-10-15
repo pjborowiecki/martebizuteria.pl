@@ -111,6 +111,7 @@ export const CheckoutPhoneField = ({ className, control, label, name, required }
           className={cn(
             "flex h-11 shrink-0 items-center border-0 border-b bg-background px-3 pt-2 text-sm text-foreground dark:bg-input/30",
             prefixBorderClass,
+            "group-has-autofill-preview/field:border-border",
           )}
         >
           {PHONE_PREFIX}
@@ -130,12 +131,7 @@ export const CheckoutPhoneField = ({ className, control, label, name, required }
             aria-required={required}
             className={cn("peer", showValid && VALID_INPUT_CLASS)}
           />
-          <FloatingLabel
-            htmlFor={field.name}
-            label={label}
-            required={required}
-            className="peer-focus:tracking-[0.05em] peer-[:not(:placeholder-shown)]:tracking-[0.05em]"
-          />
+          <FloatingLabel htmlFor={field.name} label={label} required={required} className="peer-floated:tracking-[0.05em]" />
           <ValidCheck show={showValid} />
         </div>
       </div>

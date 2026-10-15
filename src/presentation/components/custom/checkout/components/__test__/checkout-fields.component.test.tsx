@@ -129,6 +129,42 @@ describe("CheckoutTextField", () => {
     expect(container.querySelector("svg.text-success")).toBeNull()
   })
 
+  it("mirrors its value into the attribute that tells an autofill preview apart from a fill", async () => {
+    renderWithProviders(<FieldsHarness />)
+
+    expect(screen.getByLabelText("City")).toHaveAttribute("value", "")
+
+    await userEvent.type(screen.getByLabelText("City"), "Warszawa")
+
+    expect(screen.getByLabelText("City")).toHaveAttribute("value", "Warszawa")
+  })
+
+  it("hides its error and puts back the usual underline while the browser previews an autofill suggestion in it", async () => {
+    renderWithProviders(<FieldsHarness />)
+    const email = screen.getByLabelText(/Email/u)
+
+    await userEvent.type(email, "not-an-email")
+    await userEvent.tab()
+    const error = await screen.findByRole("alert")
+
+    expect(error).toHaveClass("group-has-autofill-preview/field:invisible")
+    expect(error.closest("[data-slot=field]")).toContainElement(email)
+    expect(email).toHaveClass(
+      "aria-invalid:border-destructive",
+      "autofill-preview:aria-invalid:border-border",
+      "autofill-preview:aria-invalid:focus-visible:border-foreground",
+    )
+  })
+
+  it("keeps a confirmed value clear of the tick", async () => {
+    renderWithProviders(<FieldsHarness />)
+
+    await userEvent.type(screen.getByLabelText("City"), "Warszawa")
+    await userEvent.tab()
+
+    expect(screen.getByLabelText("City")).toHaveClass("pr-9")
+  })
+
   it("does not confirm a read-only field", async () => {
     const { container } = renderWithProviders(<FieldsHarness defaultValues={{ province: "Mazowieckie" }} />)
 
@@ -155,6 +191,27 @@ describe("CheckoutPhoneField", () => {
 
     expect(await screen.findByText("Please enter a valid phone number")).toBeInTheDocument()
     expect(screen.getByText("+48").className).toContain("border-destructive")
+  })
+
+  it("keeps its tight tracking whenever its label floats", () => {
+    renderWithProviders(<FieldsHarness />)
+    const label = screen.getByText("Phone")
+
+    expect(label).toHaveClass("peer-floated:top-0", "peer-floated:tracking-[0.05em]")
+    expect(label).not.toHaveClass("peer-floated:tracking-[0.22em]")
+  })
+
+  it("hides its error and neutralises the prefix while the browser previews an autofill suggestion", async () => {
+    renderWithProviders(<FieldsHarness />)
+    const phone = screen.getByLabelText("Phone")
+
+    await userEvent.type(phone, "123")
+    await userEvent.tab()
+    const error = await screen.findByRole("alert")
+
+    expect(error).toHaveClass("group-has-autofill-preview/field:invisible")
+    expect(error.closest("[data-slot=field]")).toContainElement(phone)
+    expect(screen.getByText("+48")).toHaveClass("border-destructive", "group-has-autofill-preview/field:border-border")
   })
 
   it("greens the prefix for a number the browser autofills", async () => {

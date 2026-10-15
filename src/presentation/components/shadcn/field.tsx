@@ -166,7 +166,12 @@ const FieldError = ({ children, className, errors, ...props }: Readonly<FieldErr
   }
 
   return (
-    <div className={cn("text-xs font-normal text-destructive", className)} data-slot="field-error" role="alert" {...props}>
+    <div
+      className={cn("text-xs font-normal text-destructive group-has-autofill-preview/field:invisible", className)}
+      data-slot="field-error"
+      role="alert"
+      {...props}
+    >
       {content}
     </div>
   )

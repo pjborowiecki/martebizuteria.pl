@@ -20,6 +20,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@custom-variant autofill-preview (&:autofill[value=""]);
+
+@custom-variant peer-floated (&:is(:where(.peer):is(:focus, :not(:placeholder-shown), :autofill) ~ *));
+
 :root {
   --sea-ink: #173a40;
   --sea-ink-soft: #416166;

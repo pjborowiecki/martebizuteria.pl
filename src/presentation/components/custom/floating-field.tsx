@@ -6,12 +6,11 @@ import { type ControllerFieldState, type ControllerRenderProps, type FieldPath, 
 
 export const FLOATING_LABEL_CLASS = cn(
   "pointer-events-none absolute top-[26px] left-3 z-10 origin-left -translate-y-1/2 text-sm font-normal whitespace-nowrap text-muted-foreground normal-case transition-all duration-200",
-  "peer-focus:top-0 peer-focus:text-[10px] peer-focus:font-medium peer-focus:tracking-[0.22em] peer-focus:uppercase",
-  "peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-[10px] peer-[:not(:placeholder-shown)]:font-medium peer-[:not(:placeholder-shown)]:tracking-[0.22em] peer-[:not(:placeholder-shown)]:uppercase",
-  "peer-aria-[invalid=true]:text-destructive",
+  "peer-floated:top-0 peer-floated:text-[10px] peer-floated:font-medium peer-floated:tracking-[0.22em] peer-floated:uppercase",
+  "peer-aria-[invalid=true]:text-destructive peer-autofill-preview:text-muted-foreground",
 )
 
-export const VALID_INPUT_CLASS = "border-success focus-visible:border-success"
+export const VALID_INPUT_CLASS = "border-success pr-9 focus-visible:border-success"
 
 export const FloatingLabel = ({
   className,

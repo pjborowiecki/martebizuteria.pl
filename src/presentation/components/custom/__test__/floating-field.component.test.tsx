@@ -49,18 +49,23 @@ describe("FloatingLabel", () => {
     const label = screen.getByText("Email")
 
     expect(label).toHaveClass("left-0")
-    expect(label).toHaveClass("peer-focus:uppercase")
+    expect(label).toHaveClass("peer-floated:uppercase")
   })
 })
 
 describe("FLOATING_LABEL_CLASS", () => {
-  it("floats the label on focus and once the input holds a value", () => {
-    expect(FLOATING_LABEL_CLASS).toContain("peer-focus:top-0")
-    expect(FLOATING_LABEL_CLASS).toContain("peer-[:not(:placeholder-shown)]:top-0")
+  it("floats the label on focus, once the input holds a value and while the browser autofills it", () => {
+    expect(FLOATING_LABEL_CLASS).toContain(
+      "peer-floated:top-0 peer-floated:text-[10px] peer-floated:font-medium peer-floated:tracking-[0.22em] peer-floated:uppercase",
+    )
   })
 
   it("turns destructive when the input is marked invalid", () => {
     expect(FLOATING_LABEL_CLASS).toContain("peer-aria-[invalid=true]:text-destructive")
+  })
+
+  it("stays neutral while the browser only previews an autofill suggestion", () => {
+    expect(FLOATING_LABEL_CLASS).toContain("peer-autofill-preview:text-muted-foreground")
   })
 
   it("never swallows pointer events meant for the input", () => {
@@ -91,8 +96,8 @@ describe("ValidCheck", () => {
 })
 
 describe("VALID_INPUT_CLASS", () => {
-  it("greens the border both at rest and on focus", () => {
-    expect(VALID_INPUT_CLASS.split(" ")).toStrictEqual(["border-success", "focus-visible:border-success"])
+  it("greens the border both at rest and on focus and keeps the text clear of the tick", () => {
+    expect(VALID_INPUT_CLASS.split(" ")).toStrictEqual(["border-success", "pr-9", "focus-visible:border-success"])
   })
 })
 
