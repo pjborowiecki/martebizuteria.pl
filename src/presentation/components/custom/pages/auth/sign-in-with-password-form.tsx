@@ -121,7 +121,7 @@ export const SignInWithPasswordForm = (): JSX.Element => {
         <div className="flex justify-end">
           <LocalizedLink
             to={ROUTES.AUTH_FORGOT_PASSWORD}
-            className="text-xs text-muted-foreground/70 underline underline-offset-4 transition-colors hover:text-foreground"
+            className="text-xs text-muted-foreground/70 underline underline-offset-4 transition-colors hover:text-foreground pointer-coarse:-my-3 pointer-coarse:inline-flex pointer-coarse:min-h-10 pointer-coarse:items-center"
           >
             {t("pages.auth.sign-in.forgotPassword")}
           </LocalizedLink>

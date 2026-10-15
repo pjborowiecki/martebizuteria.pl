@@ -10,7 +10,7 @@ export const PasswordToggle = ({ onToggle, show }: Readonly<PasswordToggleProps>
     variant="ghost"
     onClick={onToggle}
     aria-label={show ? "Hide password" : "Show password"}
-    className="text-muted-foreground hover:text-foreground"
+    className="text-muted-foreground hover:text-foreground pointer-coarse:-mx-1.5 pointer-coarse:-mt-2 pointer-coarse:-mb-3 pointer-coarse:size-10"
   >
     {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
   </InputGroupButton>

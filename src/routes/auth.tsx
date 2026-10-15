@@ -18,7 +18,7 @@ const AuthLayoutRoute = (): JSX.Element => (
     <div className="fixed inset-0 top-(--nav-height,80px) z-0 grid lg:grid-cols-2">
       <AuthEditorial />
 
-      <div className="flex items-center justify-center overflow-y-auto px-6 py-16 sm:px-12 lg:px-16 xl:px-24">
+      <div className="flex items-center-safe justify-center overflow-y-auto px-4 py-10 sm:px-12 sm:py-16 lg:px-16 xl:px-24">
         <div className="w-full max-w-md space-y-10">
           <Outlet />
         </div>
