@@ -21,13 +21,13 @@ type ArrivalView = Exclude<CheckoutEntryView, "confirmation">
 
 const PAYMENT_STEP = CHECKOUT_STEP_DEFINITIONS.length
 
-const resolveCheckoutEntryView = ({ arrivalView, isError, returned, sessionId, status }: CheckoutEntryState): CheckoutEntryView => {
-  if (sessionId === undefined || isError) {
-    return returned ? "confirmation" : "checkout"
+const resolveCheckoutEntryView = ({ arrivalView, isError, isHeld, returned, sessionId, status }: CheckoutEntryState): CheckoutEntryView => {
+  if (returned) {
+    return status === "complete" || (isError && !isHeld) ? "confirmation" : "checking"
   }
 
-  if (returned) {
-    return status === "complete" ? "confirmation" : "checking"
+  if (sessionId === undefined || isError) {
+    return "checkout"
   }
 
   return arrivalView ?? "checking"
@@ -43,8 +43,16 @@ export const useCheckoutSessionEntry = ({ session_id: returnedSessionId, success
   const sessionId = returned ? returnedSessionId : storedSessionId
   const { data: status, isError } = useQuery(checkoutSessionStatusQuery(sessionId))
   const [arrivalView, setArrivalView] = useState<ArrivalView>()
+  const isHeld = sessionId !== undefined && sessionId === storedSessionId
+  const returnedUnanswered = returned && (sessionId === undefined || (isError && isHeld))
 
   useEffect(() => {
+    if (returnedUnanswered) {
+      void navigate({ replace: true, search: { step: PAYMENT_STEP }, to: "." })
+
+      return
+    }
+
     if (!returned || sessionId === undefined || status === undefined || status === "complete") {
       return
     }
@@ -57,7 +65,7 @@ export const useCheckoutSessionEntry = ({ session_id: returnedSessionId, success
       toast.error(t("errors.paymentNotCompleted"))
     }
     void navigate({ replace: true, search: { step: PAYMENT_STEP }, to: "." })
-  }, [navigate, returned, sessionId, status, t])
+  }, [navigate, returned, returnedUnanswered, sessionId, status, t])
 
   useEffect(() => {
     if (returned || sessionId === undefined || status === undefined || arrivalView !== undefined || !cartHydrated) {
@@ -74,7 +82,7 @@ export const useCheckoutSessionEntry = ({ session_id: returnedSessionId, success
     setArrivalView(paidForThisCart ? "checking" : "checkout")
   }, [arrivalView, cart, cartHydrated, navigate, returned, sessionId, status])
 
-  return resolveCheckoutEntryView({ arrivalView, isError, returned, sessionId, status })
+  return resolveCheckoutEntryView({ arrivalView, isError, isHeld, returned, sessionId, status })
 }
 
 interface CheckoutEntrySearch {
@@ -85,6 +93,7 @@ interface CheckoutEntrySearch {
 interface CheckoutEntryState {
   readonly arrivalView: ArrivalView | undefined
   readonly isError: boolean
+  readonly isHeld: boolean
   readonly returned: boolean
   readonly sessionId: string | undefined
   readonly status: CheckoutSessionStatus | undefined

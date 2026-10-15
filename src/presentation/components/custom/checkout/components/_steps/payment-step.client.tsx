@@ -165,10 +165,12 @@ const useCheckoutConfirmation = (): ((sessionId: string) => Promise<void>) => {
 
 const PaymentForm = ({
   checkoutBlocked,
+  onProcessing,
   onReset,
   onRetry,
 }: Readonly<{
   checkoutBlocked: boolean
+  onProcessing: (sessionId: string) => void
   onReset: () => Promise<PaymentStepDestination>
   onRetry: () => void
 }>): JSX.Element => {
@@ -208,13 +210,19 @@ const PaymentForm = ({
         return
       }
 
+      if (outcome.status === "processing") {
+        onProcessing(checkoutSession.sessionId)
+
+        return
+      }
+
       await showConfirmation(checkoutSession.sessionId)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("validation.paymentFailed"))
     } finally {
       setIsProcessing(false)
     }
-  }, [checkout, checkoutSession, getValues, onReset, showConfirmation, t])
+  }, [checkout, checkoutSession, getValues, onProcessing, onReset, showConfirmation, t])
 
   const onFormSubmit = useCallback(
     (event: BaseSyntheticEvent) => {
@@ -322,6 +330,13 @@ const useCheckoutSessionOutcome = (): CheckoutSessionOutcome => {
     },
     [items, retry, showConfirmation],
   )
+  const awaitBank = useCallback(
+    (sessionId: string) => {
+      queryClient.setQueryData(checkoutSessionStatusQuery(sessionId).queryKey, "processing")
+      setProcessingSessionId(sessionId)
+    },
+    [queryClient],
+  )
   const handleSessionError = useCallback(
     (error: unknown): Promise<PaymentStepDestination> => {
       if (error instanceof PaidCheckoutSessionError) {
@@ -329,8 +344,7 @@ const useCheckoutSessionOutcome = (): CheckoutSessionOutcome => {
       }
 
       if (error instanceof ProcessingCheckoutSessionError) {
-        queryClient.setQueryData(checkoutSessionStatusQuery(error.sessionId).queryKey, "processing")
-        setProcessingSessionId(error.sessionId)
+        awaitBank(error.sessionId)
 
         return Promise.resolve("processing")
       }
@@ -339,7 +353,7 @@ const useCheckoutSessionOutcome = (): CheckoutSessionOutcome => {
 
       return Promise.resolve("payment")
     },
-    [openPaidSession, queryClient, reportFailure],
+    [awaitBank, openPaidSession, reportFailure],
   )
   const settleProcessingSession = useCallback(
     async (sessionId: string, status: CheckoutSessionStatus) => {
@@ -355,7 +369,7 @@ const useCheckoutSessionOutcome = (): CheckoutSessionOutcome => {
     [openPaidSession, retry, t],
   )
 
-  return { handleSessionError, loadError, processingSessionId, retry, retryToken, setLoadError, settleProcessingSession }
+  return { awaitBank, handleSessionError, loadError, processingSessionId, retry, retryToken, setLoadError, settleProcessingSession }
 }
 
 const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
@@ -363,7 +377,7 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
   const { checkoutSession, getValues, onEdit, setCheckoutSession } = useCheckoutForm()
   const items = useCartStore((state) => state.items)
   const applyCurrentPrices = useCartStore((state) => state.applyCurrentPrices)
-  const { handleSessionError, loadError, processingSessionId, retry, retryToken, setLoadError, settleProcessingSession } =
+  const { awaitBank, handleSessionError, loadError, processingSessionId, retry, retryToken, setLoadError, settleProcessingSession } =
     useCheckoutSessionOutcome()
   const valuesFingerprint = buildCheckoutValuesFingerprint(getValues())
   const sessionMatches = checkoutSession !== undefined && isCheckoutSessionFor(checkoutSession, { items, values: getValues() })
@@ -397,6 +411,15 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
       inFlightRef.current = false
     }
   }, [adoptSession, checkoutSession, getValues, handleSessionError, items])
+  const settleSession = useCallback(
+    async (sessionId: string, status: CheckoutSessionStatus) => {
+      await settleProcessingSession(sessionId, status)
+      if (status === "closed") {
+        await resetSession()
+      }
+    },
+    [resetSession, settleProcessingSession],
+  )
   useEffect(() => {
     if (!isCheckoutComplete(getValues())) {
       onEdit(CHECKOUT_STEP_ID.CONTACT)
@@ -455,13 +478,14 @@ const useCheckoutSessionLoader = (): CheckoutSessionLoader => {
   }, [checkoutSession, sessionMatches, theme])
 
   return {
+    awaitBank,
     checkoutSession,
     loadError,
     options,
     processingSessionId,
     resetSession,
     retry,
-    settleProcessingSession,
+    settleSession,
   }
 }
 
@@ -493,14 +517,14 @@ export const PaymentStep = (): JSX.Element => {
   const { hasUnavailableItems, isChecking } = useCartAvailability()
   const checkoutBlocked = hasUnavailableItems || isChecking
   const stripePromise = useMemo(() => getStripe(locale), [locale])
-  const { checkoutSession, loadError, options, processingSessionId, resetSession, retry, settleProcessingSession } =
+  const { awaitBank, checkoutSession, loadError, options, processingSessionId, resetSession, retry, settleSession } =
     useCheckoutSessionLoader()
   const isExpired = useCheckoutSessionExpired(checkoutSession)
   const restartPayment = useCallback(() => {
     void resetSession()
   }, [resetSession])
   if (processingSessionId !== undefined) {
-    return <PaymentAwaitingBank onSettled={settleProcessingSession} sessionId={processingSessionId} />
+    return <PaymentAwaitingBank onSettled={settleSession} sessionId={processingSessionId} />
   }
 
   if (isExpired) {
@@ -520,7 +544,7 @@ export const PaymentStep = (): JSX.Element => {
       <p className="text-sm text-muted-foreground">{t("paymentMethodsIntro")}</p>
       <div className="mt-4">
         <CheckoutElementsProvider key={checkoutSession?.sessionId} stripe={stripePromise} options={options}>
-          <PaymentForm checkoutBlocked={checkoutBlocked} onReset={resetSession} onRetry={retry} />
+          <PaymentForm checkoutBlocked={checkoutBlocked} onProcessing={awaitBank} onReset={resetSession} onRetry={retry} />
         </CheckoutElementsProvider>
       </div>
     </div>
@@ -572,6 +596,7 @@ type PaymentStepDestination = "confirmation" | "payment" | "processing"
 type SettleProcessingSession = (sessionId: string, status: CheckoutSessionStatus) => Promise<void>
 
 interface CheckoutSessionOutcome {
+  awaitBank: (sessionId: string) => void
   handleSessionError: (error: unknown) => Promise<PaymentStepDestination>
   loadError: boolean
   processingSessionId: string | undefined
@@ -582,11 +607,12 @@ interface CheckoutSessionOutcome {
 }
 
 interface CheckoutSessionLoader {
+  awaitBank: (sessionId: string) => void
   checkoutSession: CheckoutSession | undefined
   loadError: boolean
   options: StripeCheckoutElementsSdkOptions | undefined
   processingSessionId: string | undefined
   resetSession: () => Promise<PaymentStepDestination>
   retry: () => void
-  settleProcessingSession: SettleProcessingSession
+  settleSession: SettleProcessingSession
 }

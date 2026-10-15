@@ -289,3 +289,74 @@ describe("PaymentStep with a session whose payment the bank is still confirming"
     expect(navigate).not.toHaveBeenCalled()
   })
 })
+
+const payForTheSessionOnScreen = async (): Promise<ReturnType<typeof renderWithProviders>> => {
+  formState.session = session
+  holdSessionFor(session.sessionId, 1)
+  confirmCheckoutSession.mockResolvedValue({ status: "processing" })
+  const rendered = renderWithProviders(<PaymentStep />)
+  const payButton = await screen.findByRole("button", { name: "Order & Pay PLN 215.00" })
+  await waitFor(() => {
+    expect(payButton).toBeEnabled()
+  })
+
+  await userEvent.setup().click(payButton)
+
+  return rendered
+}
+
+describe("PaymentStep after confirming a payment the bank has not settled yet", () => {
+  it("waits for the bank instead of opening the confirmation of a payment that may still fail", async () => {
+    statusNeverArrives()
+    const { queryClient } = await payForTheSessionOnScreen()
+
+    expect(await screen.findByRole("status")).toHaveTextContent(AWAITING_BANK)
+    expect(queryClient.getQueryData([...CHECKOUT_QUERY_KEYS.SESSION_STATUS, "cs_test_1"])).toBe("processing")
+    expect(navigate).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+    expect(loadCheckoutSessionId()).toBe("cs_test_1")
+  })
+
+  it("opens the confirmation once the bank settles the payment", async () => {
+    readStatus.mockResolvedValue("complete")
+    const { queryClient } = await payForTheSessionOnScreen()
+
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalled()
+    })
+
+    expectConfirmationOf("cs_test_1", queryClient)
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it("says the payment did not go through and opens a fresh payment once the bank declines it", async () => {
+    const replacement: CheckoutSession = { ...session, clientSecret: "cs_test_secret_2", sessionId: "cs_test_2" }
+    readStatus.mockResolvedValue("closed")
+    resetCheckoutSession.mockResolvedValue(replacement)
+    await payForTheSessionOnScreen()
+
+    await waitFor(() => {
+      expect(setCheckoutSession).toHaveBeenCalledWith(replacement)
+    })
+
+    expect(toastError).toHaveBeenCalledExactlyOnceWith(NOT_COMPLETED)
+    expect(resetCheckoutSession).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ heldSessionId: "cs_test_1" }))
+    expect(await screen.findByTestId("payment-element")).toBeInTheDocument()
+    expect(screen.queryByText(AWAITING_BANK)).not.toBeInTheDocument()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("lets the shopper pay the same session again when the bank turns the payment down while the session stays open", async () => {
+    readStatus.mockResolvedValue("open")
+    await payForTheSessionOnScreen()
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledExactlyOnceWith(NOT_COMPLETED)
+    })
+
+    expect(await screen.findByTestId("payment-element")).toBeInTheDocument()
+    expect(resetCheckoutSession).not.toHaveBeenCalled()
+    expect(setCheckoutSession).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+})

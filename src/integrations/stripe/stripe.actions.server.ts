@@ -475,6 +475,10 @@ export const releaseExpiredCheckoutSession = async (session: StripeType.Checkout
 
 const retrieveReplaceableStripeSession = async (sessionId: string): Promise<StripeType.Checkout.Session> => {
   const stripeSession = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] })
+  if (isCheckoutSessionProcessing(stripeSession)) {
+    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_PROCESSING)
+  }
+
   if (stripeSession.status === "complete") {
     throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_COMPLETE)
   }
@@ -485,10 +489,6 @@ const retrieveReplaceableStripeSession = async (sessionId: string): Promise<Stri
 
   if (stripeSession.status !== "open") {
     throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_CLOSED)
-  }
-
-  if (isCheckoutSessionProcessing(stripeSession)) {
-    throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.SESSION_PROCESSING)
   }
 
   return stripeSession
