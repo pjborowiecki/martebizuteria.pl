@@ -34,7 +34,7 @@ const OrdersPage = (): JSX.Element => {
 
   return (
     <div>
-      <div className="sticky top-20 z-10 -mx-6 bg-background px-6 pt-6 sm:-mx-12 sm:px-12 lg:mx-0 lg:px-0 lg:pt-0">
+      <div className="bg-background sm:sticky sm:top-20 sm:z-10 sm:-mx-9 sm:px-9 sm:pt-6 lg:mx-0 lg:px-0 lg:pt-0">
         <div className="mb-10 space-y-3">
           <p className="text-[10px] tracking-[0.24em] text-muted-foreground uppercase">{t("eyebrow")}</p>
           <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("title")}</h1>
