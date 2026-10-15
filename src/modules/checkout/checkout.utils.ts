@@ -23,6 +23,7 @@ export interface PrepareCreateCheckoutInput {
   readonly checkoutValues: CheckoutFormSchema
   readonly clientAddress: string
   readonly discountId?: string | undefined
+  readonly lockerPoint?: string | undefined
   readonly lockerUnconfirmed?: boolean | undefined
   readonly userEmail: string
   readonly userId: string | undefined
@@ -79,6 +80,7 @@ export interface CheckoutFulfillmentSnapshot {
   readonly deliveryMethodId?: string | null | undefined
   readonly discountId?: string | null | undefined
   readonly lockerId?: string | null | undefined
+  readonly lockerPoint?: string | null | undefined
   readonly lockerUnconfirmed?: boolean | undefined
   readonly shippingAddress?: CheckoutAddressSnapshot | null | undefined
 }
@@ -126,6 +128,7 @@ export const prepareCreateCheckoutBatch = ({
   checkoutValues,
   clientAddress,
   discountId,
+  lockerPoint,
   lockerUnconfirmed,
   userEmail,
   userId,
@@ -160,6 +163,7 @@ export const prepareCreateCheckoutBatch = ({
     email: userEmail,
     id: checkoutId,
     lockerId: checkoutValues.lockerId,
+    lockerPoint,
     lockerUnconfirmed,
     shippingAddressId,
     status: "pending",
@@ -284,7 +288,11 @@ const preparePendingCheckoutAddressUpsert = (checkoutId: string, values: Pending
 export const prepareUpdateCheckoutDeliveryBatch = (
   context: Pick<typeof checkout.$inferSelect, "id" | "shippingAddressId" | "billingAddressId" | "userId">,
   checkoutValues: CheckoutFormSchema,
-  { discountId, lockerUnconfirmed = false }: Pick<PrepareCreateCheckoutInput, "discountId" | "lockerUnconfirmed"> = {},
+  {
+    discountId,
+    lockerPoint,
+    lockerUnconfirmed = false,
+  }: Pick<PrepareCreateCheckoutInput, "discountId" | "lockerPoint" | "lockerUnconfirmed"> = {},
 ): [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] => {
   const pendingCheckout = and(eq(checkout.id, context.id), eq(checkout.status, "pending"))
   const shippingAddressId = context.shippingAddressId ?? crypto.randomUUID()
@@ -351,6 +359,7 @@ export const prepareUpdateCheckoutDeliveryBatch = (
         discountId: discountId ?? sql`NULL`,
         email: checkoutValues.email,
         lockerId: checkoutValues.lockerId ?? sql`NULL`,
+        lockerPoint: lockerPoint ?? sql`NULL`,
         lockerUnconfirmed,
         shippingAddressId,
       })
@@ -447,6 +456,7 @@ export const prepareFulfillCheckoutBatch = (
         email: context.email,
         id: orderId,
         lockerId: checkoutSnapshot?.lockerId,
+        lockerPoint: checkoutSnapshot?.lockerPoint,
         lockerUnconfirmed: checkoutSnapshot?.lockerUnconfirmed,
         metadata: locale === undefined || locale === "" ? undefined : JSON.stringify({ locale }),
         orderNumber: orderNumberAllocation.orderNumber,

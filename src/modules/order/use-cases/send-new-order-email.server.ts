@@ -10,7 +10,13 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getAdminOrderDetailRow, getAdminOrderItemRows } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
-import { mapAdminOrderDetailItem, resolveAdminOrderDetailAddresses } from "~/src/modules/order/order.detail.utils"
+import {
+  describeOrderLocker,
+  mapAdminOrderDetailItem,
+  resolveAdminOrderDetailAddresses,
+  resolveOrderLocker,
+} from "~/src/modules/order/order.detail.utils"
+import { formatOrderAddressLocality } from "~/src/modules/order/order.display.utils"
 import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
 import { describeCompanyInvoice, resolveDeliveryMethodLabel } from "~/src/modules/order/order.email.utils"
 import { type Order } from "~/src/modules/order/order.types"
@@ -27,8 +33,8 @@ const NEW_ORDER_LABEL = "New order notification"
 const joinLines = (lines: readonly (string | undefined)[]): string =>
   lines.filter((line): line is string => line !== undefined && line.trim() !== "").join("\n")
 
-const describeAddress = ({ city, countryCode, line1, line2, postalCode }: Order["adminOrderDetailAddress"]): string =>
-  joinLines([line1, line2, postalCode === undefined ? city : `${postalCode} ${city}`, countryCode])
+const describeAddress = (address: Order["adminOrderDetailAddress"]): string =>
+  joinLines([address.line1, address.line2, formatOrderAddressLocality(address, I18N.DEFAULT_LOCALE)])
 
 const describeInvoicedCompany = (
   orderRow: AdminOrderDetailRow,
@@ -45,16 +51,21 @@ const describeInvoicedCompany = (
 const buildNewOrderDetails = (orderRow: AdminOrderDetailRow, messages: typeof newOrderMessages): NewOrderDetails => {
   const { billingAddress, shippingAddress } = resolveAdminOrderDetailAddresses(orderRow)
   const customerNote = orderRow.customerNote?.trim()
+  const locker = resolveOrderLocker({
+    deliveryType: orderRow.deliveryMethod?.type,
+    lockerId: orderRow.lockerId,
+    lockerPoint: orderRow.lockerPoint,
+  })
 
   return {
     companyInvoice: describeInvoicedCompany(orderRow, billingAddress, messages),
     customer: joinLines([shippingAddress?.name, orderRow.email, shippingAddress?.phone]),
     customerNote: customerNote === undefined || customerNote === "" ? undefined : customerNote,
-    deliveryMethod: resolveDeliveryMethodLabel(
-      { deliveryMethod: orderRow.deliveryMethod, lockerId: orderRow.lockerId },
-      messages.unavailable,
-    ),
-    shippingAddress: shippingAddress === undefined ? messages.unavailable : describeAddress(shippingAddress),
+    deliveryMethod: resolveDeliveryMethodLabel(orderRow.deliveryMethod, messages.unavailable),
+    destination:
+      locker === undefined
+        ? { address: shippingAddress === undefined ? messages.unavailable : describeAddress(shippingAddress), kind: "address" }
+        : { kind: "locker", locker: describeOrderLocker(locker).join("\n"), recipient: undefined },
   }
 }
 

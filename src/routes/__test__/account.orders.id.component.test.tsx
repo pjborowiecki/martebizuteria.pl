@@ -326,8 +326,7 @@ describe("account order detail addresses", () => {
     expect(await screen.findByText("Anna Kowalska")).toBeInTheDocument()
     expect(screen.getByText("ul. Krucza 1")).toBeInTheDocument()
     expect(screen.getByText("apt. 4")).toBeInTheDocument()
-    expect(screen.getByText("00-001 Warszawa")).toBeInTheDocument()
-    expect(screen.getByText("PL")).toBeInTheDocument()
+    expect(screen.getByText("00-001 Warszawa, Poland")).toBeInTheDocument()
   })
 
   it("leaves out the second line the address does not have", async () => {
@@ -361,12 +360,38 @@ describe("account order detail addresses", () => {
     expect(screen.getByText("NIP 1234567890")).toBeInTheDocument()
   })
 
-  it("shows the parcel locker a locker order is going to", async () => {
-    state.order = order({ deliveryMethodName: "Paczkomat InPost", lockerId: "WAW01A" })
+  it("shows the parcel locker a locker order is going to, and the shopper only as its recipient", async () => {
+    state.order = order({
+      deliveryMethodName: "Paczkomat InPost",
+      lockerId: "WAW01A",
+      lockerPoint: { buildingNumber: "1", city: "Warszawa", description: "Przy Żabce", postalCode: "00-001", street: "Marszałkowska" },
+      shippingAddress: {
+        city: "Bochnia",
+        countryCode: "PL",
+        line1: "Majora Bacy 54",
+        name: "Anna Kowalska",
+        phone: "+48 515 501 074",
+        postalCode: "32-700",
+      },
+    })
     renderPage()
 
     expect(await screen.findByText("Pickup Point")).toBeInTheDocument()
     expect(screen.getByText(/WAW01A/u)).toBeInTheDocument()
+    expect(screen.getByText("Przy Żabce")).toBeInTheDocument()
+    expect(screen.getByText("Marszałkowska 1")).toBeInTheDocument()
+    expect(screen.getByText("00-001 Warszawa")).toBeInTheDocument()
+    expect(screen.getByText("Recipient")).toBeInTheDocument()
+    expect(screen.getByText("+48 515 501 074")).toBeInTheDocument()
+    expect(screen.queryByText("Majora Bacy 54")).not.toBeInTheDocument()
+  })
+
+  it("names a locker an older order kept only by its code, without a recipient it never recorded", async () => {
+    state.order = order({ deliveryMethodName: undefined, lockerId: "WAW01A", shippingAddress: undefined })
+    renderPage()
+
+    expect(await screen.findByText("WAW01A")).toBeInTheDocument()
+    expect(screen.queryByText("Recipient")).not.toBeInTheDocument()
   })
 
   it("shows the phone the courier was given", async () => {

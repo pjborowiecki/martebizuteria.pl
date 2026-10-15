@@ -39,6 +39,7 @@ export const order = sqliteTable(
     inpostShipmentId: text("inpost_shipment_id"),
     inpostShipmentStatus: text("inpost_shipment_status"),
     lockerId: text("locker_id"),
+    lockerPoint: text("locker_point"),
     lockerUnconfirmed: integer("locker_unconfirmed", { mode: "boolean" }).default(false).notNull(),
     metadata: text("metadata"),
     orderNumber: text("order_number").notNull(),

@@ -8,6 +8,8 @@
   "deliveryMethodLabel": "Delivery method",
   "carrierLabel": "Carrier",
   "shippingAddressLabel": "Shipping address",
+  "lockerLabel": "Destination parcel locker",
+  "recipientLabel": "Recipient (pickup code by text)",
   "trackingNumberLabel": "Tracking number",
   "estimatedDeliveryLabel": "Estimated delivery",
   "createAccountCta": "Create account and track your order",

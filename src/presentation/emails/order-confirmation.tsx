@@ -7,7 +7,7 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
-import { type OrderAccountCta } from "~/src/modules/order/order.email.utils"
+import { type OrderAccountCta, type OrderEmailDestination } from "~/src/modules/order/order.email.utils"
 
 import { BUSINESS, BUSINESS_PHONE_HREF, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 
@@ -211,7 +211,14 @@ export const OrderConfirmation = ({
 
         <DetailRow isFirst label={t("paymentMethodLabel")} value={details.paymentMethod} />
         <DetailRow label={t("deliveryMethodLabel")} value={details.deliveryMethod} />
-        <DetailRow label={t("shippingAddressLabel")} value={details.shippingAddress} />
+        {details.destination.kind === "address" ? (
+          <DetailRow label={t("shippingAddressLabel")} value={details.destination.address} />
+        ) : (
+          <>
+            <DetailRow label={t("lockerLabel")} value={details.destination.locker} />
+            {details.destination.recipient !== undefined && <DetailRow label={t("recipientLabel")} value={details.destination.recipient} />}
+          </>
+        )}
         <DetailRow label={t("billingAddressLabel")} value={details.billingAddress} />
         {details.companyInvoice === undefined ? undefined : <DetailRow label={t("companyInvoiceLabel")} value={details.companyInvoice} />}
         <DetailRow label={t("fulfillmentTimeLabel")} value={details.fulfillmentTime} />
@@ -276,10 +283,10 @@ export interface OrderConfirmationDetails {
   readonly billingAddress: string
   readonly companyInvoice: string | undefined
   readonly deliveryMethod: string
+  readonly destination: OrderEmailDestination
   readonly estimatedDelivery: string
   readonly fulfillmentTime: string
   readonly paymentMethod: string
-  readonly shippingAddress: string
 }
 
 export interface OrderConfirmationLegalLinks {

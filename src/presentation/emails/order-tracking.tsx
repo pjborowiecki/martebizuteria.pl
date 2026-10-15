@@ -1,6 +1,6 @@
 import { type JSX } from "react"
 
-import { Button, Heading, Hr, Section, Text } from "react-email"
+import { Button, Heading, Hr, Link, Section, Text } from "react-email"
 import { createTranslator } from "use-intl"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
@@ -60,6 +60,13 @@ export const OrderTrackingUpdate = ({
         <Button className={EMAIL_CTA_BUTTON_CLASS} href={tracking.trackingUrl ?? accountCta.href}>
           {tracking.trackingUrl === undefined ? accountCta.label : t("trackingCta")}
         </Button>
+        {tracking.trackingUrl !== undefined && (
+          <Text className="mt-[16px] mb-0 text-[12px] leading-[18px]">
+            <Link className="text-ink underline" href={accountCta.href}>
+              {accountCta.label}
+            </Link>
+          </Text>
+        )}
       </Section>
 
       <EmailBodyText className="mt-[34px]">{t("signoff")}</EmailBodyText>

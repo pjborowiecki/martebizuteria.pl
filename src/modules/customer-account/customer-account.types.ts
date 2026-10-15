@@ -1,5 +1,7 @@
 import { type z } from "zod/v4"
 
+import { type InpostLockerPoint } from "~/src/integrations/inpost/inpost.zod"
+
 import { type Address } from "~/src/modules/address/address.types"
 import { type CustomerAccountOrderStatus } from "~/src/modules/customer-account/customer-account.constants"
 import { type customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
@@ -66,6 +68,7 @@ interface CustomerAccountOrderDetail extends CustomerAccountOrderSummary {
   readonly deliveryMethodName?: string | undefined
   readonly discountMinorUnits: number
   readonly lockerId?: string | undefined
+  readonly lockerPoint?: InpostLockerPoint | undefined
   readonly paymentProvider?: string | undefined
   readonly refund?: CustomerAccountOrderRefund | undefined
   readonly shippedAt?: Date | undefined

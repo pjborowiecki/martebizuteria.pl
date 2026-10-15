@@ -1,5 +1,7 @@
 import { type z } from "zod/v4"
 
+import { type InpostLockerPoint } from "~/src/integrations/inpost/inpost.zod"
+
 import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
 import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
@@ -63,6 +65,7 @@ interface AdminOrderListItem {
 interface AdminOrderExportItem extends AdminOrderListItem {
   readonly billingCompanyName: string | undefined
   readonly billingNip: string | undefined
+  readonly destination: string | undefined
 }
 
 interface AdminOrderDetailAddress {
@@ -89,6 +92,7 @@ interface AdminOrderDetailCustomer {
 interface AdminOrderDetailDelivery {
   readonly courierName: string | undefined
   readonly lockerId: string | undefined
+  readonly lockerPoint: InpostLockerPoint | undefined
   readonly lockerUnconfirmed: boolean
   readonly methodName: string
   readonly type: DeliveryMethodType
@@ -178,6 +182,11 @@ interface AdminOrderDetail {
   readonly withdrawals: readonly OrderWithdrawal["recorded"][]
 }
 
+interface OrderLocker {
+  readonly code: string
+  readonly point: InpostLockerPoint | undefined
+}
+
 interface OrderConfirmation {
   readonly createdAt: Date
   readonly currencyCode: string
@@ -188,6 +197,7 @@ interface OrderConfirmation {
   readonly isGuestOrder: boolean
   readonly isOwnOrder: boolean
   readonly items: readonly AdminOrderDetailItem[]
+  readonly locker: OrderLocker | undefined
   readonly orderNumber: string
   readonly shippingAddress: AdminOrderDetailAddress | undefined
   readonly shippingTotalMinorUnits: number
@@ -255,6 +265,7 @@ export interface Order {
   disputeMetadata: AdminOrderDisputeMetadata
   email: z.infer<(typeof orderZodSchemas)["email"]>
   emailNotice: OrderEmailNotice
+  locker: OrderLocker
   insert: typeof order.$inferInsert
   refundInput: OrderRefundInput
   select: typeof order.$inferSelect

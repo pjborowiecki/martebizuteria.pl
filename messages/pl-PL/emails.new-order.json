@@ -11,6 +11,7 @@
   "customerLabel": "Klient",
   "deliveryMethodLabel": "Sposób dostawy",
   "shippingAddressLabel": "Adres dostawy",
+  "lockerLabel": "Paczkomat docelowy",
   "companyInvoiceLabel": "Faktura na firmę",
   "nipLabel": "NIP",
   "customerNoteLabel": "Uwagi klienta",

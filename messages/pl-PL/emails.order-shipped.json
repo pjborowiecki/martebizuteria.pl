@@ -8,6 +8,8 @@
   "deliveryMethodLabel": "Sposób dostawy",
   "carrierLabel": "Przewoźnik",
   "shippingAddressLabel": "Adres dostawy",
+  "lockerLabel": "Paczkomat docelowy",
+  "recipientLabel": "Odbiorca (SMS z kodem odbioru)",
   "trackingNumberLabel": "Numer przesyłki",
   "estimatedDeliveryLabel": "Szacowany czas dostawy",
   "createAccountCta": "Załóż konto i śledź zamówienie",

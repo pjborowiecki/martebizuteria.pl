@@ -647,7 +647,8 @@
     "exportColumns": {
       "orderId": "Order number",
       "companyName": "Company",
-      "nip": "NIP"
+      "nip": "NIP",
+      "destination": "Delivery"
     },
     "status": {
       "pending": "Pending",
@@ -806,14 +807,22 @@
     },
     "shipping": {
       "title": "Shipping Address",
+      "lockerTitle": "Destination parcel locker",
       "copy": "Copy shipping address",
       "copied": "Shipping address copied",
+      "copyLocker": "Copy parcel locker",
+      "lockerCopied": "Parcel locker copied",
+      "lockerAddressMissing": "This order did not keep the locker's address. Look it up by its code in InPost's parcel manager.",
+      "recipientTitle": "Recipient",
+      "recipientHint": "InPost texts the pickup code to this number. This is not the delivery address.",
+      "recipientMissing": "No recipient details recorded.",
       "missing": "No shipping address recorded.",
       "openTracking": "Open tracking page",
       "lockerUnconfirmed": "InPost could not be reached to confirm this parcel locker when the order was placed. Check that it exists before you send the parcel."
     },
     "inpost": {
       "title": "InPost shipment",
+      "targetLocker": "Destination locker:",
       "createHint": "Book this parcel with InPost to get its label and tracking number here.",
       "create": "Create shipment",
       "notAvailable": "A shipment can be created while the order is open and not yet shipped.",
@@ -960,6 +969,7 @@
     "seller": "Seller",
     "sellerCountry": "Poland",
     "buyer": "Buyer",
+    "delivery": "Delivery",
     "vatIncluded": "Including VAT {rate}%",
     "print": "Print",
     "backToOrder": "Back to order"

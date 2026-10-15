@@ -29,6 +29,7 @@ export const checkout = sqliteTable(
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
     lockerId: text("locker_id"),
+    lockerPoint: text("locker_point"),
     lockerUnconfirmed: integer("locker_unconfirmed", { mode: "boolean" }).default(false).notNull(),
     shippingAddressId: text("shipping_address_id").references(() => address.id, {
       onDelete: "set null",

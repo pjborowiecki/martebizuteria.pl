@@ -34,7 +34,7 @@ describe("OrderDetailPage", () => {
       "Items",
       "Activity",
       "Customer",
-      "Shipping Address",
+      "Destination parcel locker",
       "InPost shipment",
       "Billing Address",
       "Payment",

@@ -153,19 +153,21 @@ Mapa to `react-map-gl/maplibre` z podkładem Carto Voyager (`https://basemaps.ca
 
 1. `deliveryMethod` (identyfikator metody) jest wysyłany razem z formularzem kasy.
 2. `resolveDelivery` odrzuca metodę, której sklep nie oferuje, metodę paczkomatową bez paczkomatu i paczkomat, którego InPost nie ma na liście, zachowuje `lockerId` tylko dla metody paczkomatowej, zapamiętuje, czy udało się o niego zapytać InPost, i odczytuje `price` metody.
-3. `prepareCreateCheckoutBatch` zapisuje metodę do `checkout.delivery_method_id`, `lockerId` do `checkout.locker_id`, a nieodpowiedziane zapytanie do `checkout.locker_unconfirmed`; `createStripeSession` dodaje dla ceny pozycję dostawy, gdy jest większa od zera, nazwaną według typu metody w języku kupującego (`deliveryLineItem` w `pages.checkout`).
-4. `prepareFulfillCheckoutBatch` kopiuje `deliveryMethodId`, `lockerId`, `lockerUnconfirmed` i `customerNote` z migawki checkoutu na nowy wiersz `order` i wylicza `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
+3. `prepareCreateCheckoutBatch` zapisuje metodę do `checkout.delivery_method_id`, `lockerId` do `checkout.locker_id`, zwrócony przez InPost adres paczkomatu do `checkout.locker_point`, a nieodpowiedziane zapytanie do `checkout.locker_unconfirmed`; `createStripeSession` dodaje dla ceny pozycję dostawy, gdy jest większa od zera, nazwaną według typu metody w języku kupującego (`deliveryLineItem` w `pages.checkout`).
+4. `prepareFulfillCheckoutBatch` kopiuje `deliveryMethodId`, `lockerId`, `lockerPoint`, `lockerUnconfirmed` i `customerNote` z migawki checkoutu na nowy wiersz `order` i wylicza `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
 5. Przy zamówieniu do paczkomatu albo kurierem administrator może nadać paczkę w InPost ze strony zamówienia. Identyfikator i status przesyłki trafiają do `order.inpost_shipment_id` i `order.inpost_shipment_status`, numer do śledzenia i link do `order.tracking_number` i `order.tracking_url`, a etykietę PDF pobiera się z tej samej karty. Zobacz [InPost](/docs/integrations/inpost#przesyłki-przez-shipx).
 
 ## Dostawa w e-mailach
 
-`src/modules/order/order.email.utils.ts` renderuje blok dostawy. `resolveDeliveryMethodLabel` dokleja identyfikator paczkomatu dla metody typu `locker`:
+`src/modules/order/order.email.utils.ts` renderuje blok dostawy. `resolveDeliveryMethodLabel` podaje nazwę metody, a `describeEmailDestination` ustala, dokąd trafi paczka. Zamówienie do paczkomatu dostaje paczkomat pod „Paczkomat docelowy”, z kodem, wskazówkami dojścia i adresem w osobnych liniach z `describeOrderLocker`, a imię, nazwisko i telefon kupującego pod „Odbiorca (SMS z kodem odbioru)”; każde inne zamówienie dostaje adres dostawy:
 
 ```ts
-if (method.type === "locker" && lockerId !== undefined && lockerId !== "") {
-  return `${method.name} · ${lockerId}`
-}
+return locker === undefined
+  ? { address: formatEmailAddress(shippingAddress) ?? unavailable, kind: "address" }
+  : { kind: "locker", locker: describeOrderLocker(locker).join("\n"), recipient: formatEmailRecipient(shippingAddress) }
 ```
+
+E-maile z potwierdzeniem i o wysyłce pokazują to tak samo. E-mail sklepu o nowym zamówieniu podaje paczkomat zamiast adresu dostawy, bo kupującego wymienia już jego wiersz klienta.
 
 Przewidywany czas dostawy to treść wyszukiwana po typie dostawy. Czas realizacji jest odczytywany z katalogu w chwili budowania e-maila:
 

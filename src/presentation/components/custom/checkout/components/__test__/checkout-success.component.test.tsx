@@ -64,6 +64,7 @@ const confirmation = (overrides: Partial<Order["confirmation"]> = {}): Order["co
       variantTitle: "Rozmiar M",
     },
   ],
+  locker: undefined,
   orderNumber: "MRT-2026-00042",
   shippingAddress: {
     city: "Warszawa",
@@ -347,6 +348,32 @@ describe("CheckoutSuccess order details", () => {
 
     expect(await screen.findByText("Apartment 4")).toBeInTheDocument()
     expect(screen.getByText("Dublin")).toBeInTheDocument()
+  })
+
+  it("sends a locker order to the locker, with its code and the address it kept, not to the customer's address", async () => {
+    getOrderConfirmation.mockResolvedValue(
+      confirmation({
+        locker: {
+          code: "WAW01M",
+          point: { buildingNumber: "1", city: "Warszawa", description: "Przy Żabce", postalCode: "00-001", street: "Marszałkowska" },
+        },
+      }),
+    )
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByText("Collect from parcel locker")).toBeInTheDocument()
+    expect(screen.getByText("WAW01M")).toBeInTheDocument()
+    expect(screen.getByText("Przy Żabce")).toBeInTheDocument()
+    expect(screen.getByText("Marszałkowska 1")).toBeInTheDocument()
+    expect(screen.queryByText("ul. Mokotowska 12/4")).not.toBeInTheDocument()
+  })
+
+  it("names a locker an older order kept only by its code", async () => {
+    getOrderConfirmation.mockResolvedValue(confirmation({ locker: { code: "WAW01M", point: undefined } }))
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByText("WAW01M")).toBeInTheDocument()
+    expect(screen.queryByText("Shipping to")).not.toBeInTheDocument()
   })
 
   it("leaves the shipping block out when the order kept no address", async () => {

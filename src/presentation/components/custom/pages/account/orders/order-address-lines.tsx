@@ -1,9 +1,14 @@
 import { type JSX } from "react"
 
+import { useLocale } from "use-intl/react"
+
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+import { formatOrderAddressLocality } from "~/src/modules/order/order.display.utils"
 
 export const AddressLines = ({ address }: Readonly<{ address?: CustomerAccount["orderAddress"] | undefined }>): JSX.Element => {
+  const locale = useLocale()
+
   if (address === undefined) {
     return <p className="text-[13px] text-muted-foreground">{EMPTY_VALUE}</p>
   }
@@ -14,9 +19,11 @@ export const AddressLines = ({ address }: Readonly<{ address?: CustomerAccount["
       <p className="text-muted-foreground">{address.line1}</p>
       {address.line2 === undefined ? undefined : <p className="text-muted-foreground">{address.line2}</p>}
       <p className="text-muted-foreground">
-        {address.postalCode} {address.city}
+        {formatOrderAddressLocality(
+          { city: address.city, countryCode: address.countryCode, postalCode: address.postalCode, province: address.province },
+          locale,
+        )}
       </p>
-      <p className="text-muted-foreground">{address.countryCode}</p>
       {address.phone === undefined ? undefined : <p className="text-muted-foreground tabular-nums">{address.phone}</p>}
     </div>
   )

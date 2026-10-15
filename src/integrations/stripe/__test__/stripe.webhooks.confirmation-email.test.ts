@@ -232,10 +232,12 @@ describe("order confirmation email", () => {
     const { details } = sentEmail().react.props
 
     expect(details.billingAddress).toBe(polishCopy.unavailable)
-    expect(details.shippingAddress).toBe(polishCopy.unavailable)
+    expect(details.destination).toStrictEqual({ address: polishCopy.unavailable, kind: "address" })
     expect(details.deliveryMethod).toBe(polishCopy.unavailable)
   })
+})
 
+describe("order confirmation email from the checkout", () => {
   it("reads the checkout the session metadata points at", async () => {
     getCheckoutEmailContext.mockResolvedValue({
       billingAddress: null,
@@ -245,6 +247,7 @@ describe("order confirmation email", () => {
       customerNote: null,
       deliveryMethod: { name: "Paczkomat InPost", type: "locker" },
       lockerId: "WAW01A",
+      lockerPoint: JSON.stringify({ buildingNumber: "1", city: "Warszawa", postalCode: "00-001", street: "Marszałkowska" }),
       shippingAddress: {
         address1: "ul. Mokotowska 12/4",
         address2: null,
@@ -252,7 +255,7 @@ describe("order confirmation email", () => {
         countryCode: "PL",
         firstName: "Anna",
         lastName: "Kowalska",
-        phone: null,
+        phone: "+48 600 123 456",
         postalCode: "00-640",
       },
       shippingAddressId: "adr-1",
@@ -263,9 +266,13 @@ describe("order confirmation email", () => {
     const { details } = sentEmail().react.props
 
     expect(getCheckoutEmailContext).toHaveBeenCalledWith("chk-1")
-    expect(details.deliveryMethod).toBe("Paczkomat InPost · WAW01A")
+    expect(details.deliveryMethod).toBe("Paczkomat InPost")
     expect(details.billingAddress).toBe(polishCopy.billingSameAsShipping)
-    expect(details.shippingAddress).toBe("Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa\nPL")
+    expect(details.destination).toStrictEqual({
+      kind: "locker",
+      locker: "WAW01A\nMarszałkowska 1\n00-001 Warszawa",
+      recipient: "Anna Kowalska\n+48 600 123 456",
+    })
     expect(details.estimatedDelivery).toBe(polishCopy.estimatedDelivery.locker)
     expect(details.companyInvoice).toBe(`Pracownia Złotnicza sp. z o.o.\n${polishCopy.nipLabel} 5260001246`)
   })

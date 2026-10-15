@@ -27,7 +27,7 @@ A checkout has ended when its status is `failed`, when it is `abandoned` (a stat
 
 The checkout row is kept, with its status, delivery method, discount and timestamps, because its `payment` row points at it and a payment is never deleted. Its personal data goes:
 
-- `email` becomes an empty string, since the column cannot be `NULL`; `customer_note`, `billing_company_name`, `billing_nip`, `locker_id` and `user_id` become `NULL`.
+- `email` becomes an empty string, since the column cannot be `NULL`; `customer_note`, `billing_company_name`, `billing_nip`, `locker_id`, `locker_point` and `user_id` become `NULL`.
 - The `address` rows it points at are deleted when no account owns them (`user_id` is `NULL`), and `shipping_address_id` and `billing_address_id` become `NULL`. An address a signed-in customer saved to their account stays with the account.
 - Any `discount_claim` row the checkout still holds is deleted. The release normally removes it already; one left behind by a release that failed would otherwise hold a use of the code, and the customer's e-mail address, for good.
 

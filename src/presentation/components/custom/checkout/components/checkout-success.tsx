@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, Loader2, Package } from "lucide-react"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
+import { formatInpostLockerAddress } from "~/src/integrations/inpost/inpost.utils"
+
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { useCartStore } from "~/src/modules/cart/cart.store"
@@ -69,6 +71,45 @@ const ConfirmationItem = ({ currencyCode, item }: Readonly<ConfirmationItemProps
   )
 }
 
+const ConfirmationDestination = ({ order }: Readonly<{ order: Order["confirmation"] }>): JSX.Element | undefined => {
+  const t = useTranslations("pages.checkout.checkoutSuccess")
+
+  if (order.locker !== undefined) {
+    return (
+      <div>
+        <p className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">{t("lockerLabel")}</p>
+        <div className="mt-2 space-y-0.5 text-sm text-muted-foreground">
+          <p className="text-foreground">{order.locker.code}</p>
+          {order.locker.point?.description !== undefined && <p>{order.locker.point.description}</p>}
+          {(order.locker.point === undefined ? [] : formatInpostLockerAddress(order.locker.point)).map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (order.shippingAddress === undefined) {
+    return undefined
+  }
+
+  return (
+    <div>
+      <p className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">{t("shippingToLabel")}</p>
+      <div className="mt-2 space-y-0.5 text-sm text-muted-foreground">
+        <p className="text-foreground">{order.shippingAddress.name}</p>
+        <p>{order.shippingAddress.line1}</p>
+        {order.shippingAddress.line2 !== undefined && <p>{order.shippingAddress.line2}</p>}
+        <p>
+          {order.shippingAddress.postalCode === undefined
+            ? order.shippingAddress.city
+            : `${order.shippingAddress.postalCode} ${order.shippingAddress.city}`}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 const ConfirmationDetails = ({ order }: Readonly<{ order: Order["confirmation"] }>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutSuccess")
   const format = useFormatter()
@@ -116,21 +157,7 @@ const ConfirmationDetails = ({ order }: Readonly<{ order: Order["confirmation"] 
         </p>
       </div>
 
-      {order.shippingAddress !== undefined && (
-        <div>
-          <p className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">{t("shippingToLabel")}</p>
-          <div className="mt-2 space-y-0.5 text-sm text-muted-foreground">
-            <p className="text-foreground">{order.shippingAddress.name}</p>
-            <p>{order.shippingAddress.line1}</p>
-            {order.shippingAddress.line2 !== undefined && <p>{order.shippingAddress.line2}</p>}
-            <p>
-              {order.shippingAddress.postalCode === undefined
-                ? order.shippingAddress.city
-                : `${order.shippingAddress.postalCode} ${order.shippingAddress.city}`}
-            </p>
-          </div>
-        </div>
-      )}
+      <ConfirmationDestination order={order} />
     </div>
   )
 }

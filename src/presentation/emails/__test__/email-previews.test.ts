@@ -160,16 +160,17 @@ describe("renderEmailPreview of the order emails", () => {
     await expect(text("order-confirmation")).resolves.toContain("Załóż konto i śledź zamówienie")
   })
 
-  it("shows the shipping details on the shipped email", async () => {
+  it("shows a parcel locker shipment going to the locker, with the customer as its recipient", async () => {
     const preview = await text("order-shipped")
 
     expect(preview).toContain(orderShippedCopy.heading.toUpperCase())
-    expect(preview).toContain("ul. Mokotowska 12/4")
+    expect(preview).toContain(`${orderShippedCopy.lockerLabel}\n\nWAW01M`)
+    expect(preview).toContain(`${orderShippedCopy.recipientLabel}\n\nAnna Kowalska`)
   })
 
   it("previews the shipped email's delivery time from the message catalogue in the language asked for", async () => {
     await expect(text("order-shipped", "pl-PL")).resolves.toContain(
-      `${polishOrderShippedCopy.estimatedDeliveryLabel}\n\n${polishOrderShippedCopy.deliveryTiming.courier.estimatedDelivery}`,
+      `${polishOrderShippedCopy.estimatedDeliveryLabel}\n\n${polishOrderShippedCopy.deliveryTiming.locker.estimatedDelivery}`,
     )
   })
 

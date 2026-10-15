@@ -6,6 +6,7 @@ import { createTranslator } from "use-intl"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
+import { type OrderEmailDestination } from "~/src/modules/order/order.email.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
 import type emailMessages from "~/messages/en-US/emails.new-order.json"
@@ -80,7 +81,11 @@ export const NewOrder = ({
           {details.customer}
         </EmailDetailRow>
         <EmailDetailRow label={t("deliveryMethodLabel")}>{details.deliveryMethod}</EmailDetailRow>
-        <EmailDetailRow label={t("shippingAddressLabel")}>{details.shippingAddress}</EmailDetailRow>
+        {details.destination.kind === "address" ? (
+          <EmailDetailRow label={t("shippingAddressLabel")}>{details.destination.address}</EmailDetailRow>
+        ) : (
+          <EmailDetailRow label={t("lockerLabel")}>{details.destination.locker}</EmailDetailRow>
+        )}
         {details.companyInvoice === undefined ? undefined : (
           <EmailDetailRow label={t("companyInvoiceLabel")}>{details.companyInvoice}</EmailDetailRow>
         )}
@@ -108,7 +113,7 @@ export interface NewOrderDetails {
   readonly customer: string
   readonly customerNote: string | undefined
   readonly deliveryMethod: string
-  readonly shippingAddress: string
+  readonly destination: OrderEmailDestination
 }
 
 interface NewOrderProps {

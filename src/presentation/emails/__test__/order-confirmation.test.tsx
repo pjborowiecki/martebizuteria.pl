@@ -23,10 +23,10 @@ const details: OrderConfirmationDetails = {
   billingAddress: "Same as shipping",
   companyInvoice: undefined,
   deliveryMethod: "DPD courier",
+  destination: { address: "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa", kind: "address" },
   estimatedDelivery: "2-4 business days after dispatch",
   fulfillmentTime: `3 weeks\n${englishCopy.fulfillmentTime.note}`,
   paymentMethod: "Card",
-  shippingAddress: "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa",
 }
 
 const items: OrderConfirmationItem[] = [
@@ -137,6 +137,28 @@ describe("OrderConfirmation", () => {
       expect(html).toContain(`href="${item.productUrl}"`)
       expect(html).toContain(`src="${item.imageUrl}"`)
     }
+  })
+
+  it("names the parcel locker as the destination and the customer as the recipient InPost texts", async () => {
+    const text = await renderConfirmation(customerCta, true, {
+      confirmationDetails: {
+        ...details,
+        destination: { kind: "locker", locker: "WAW01M\nMarszałkowska 1\n00-001 Warszawa", recipient: "Anna Kowalska\n+48 600 123 456" },
+      },
+    })
+
+    expect(text).toContain(`${englishCopy.lockerLabel}\n\nWAW01M Marszałkowska 1 00-001 Warszawa`)
+    expect(text).toContain(`${englishCopy.recipientLabel}\n\nAnna Kowalska +48 600 123 456`)
+    expect(text).not.toContain(englishCopy.shippingAddressLabel)
+  })
+
+  it("leaves the recipient out when the order kept none", async () => {
+    const text = await renderConfirmation(customerCta, true, {
+      confirmationDetails: { ...details, destination: { kind: "locker", locker: "WAW01M", recipient: undefined } },
+    })
+
+    expect(text).toContain(`${englishCopy.lockerLabel}\n\nWAW01M`)
+    expect(text).not.toContain(englishCopy.recipientLabel)
   })
 
   it("repeats the delivery and payment details the shopper chose", async () => {

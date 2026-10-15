@@ -65,6 +65,8 @@ const CODE_HELD_BY_OTHER_CHECKOUTS = "That code is reserved for orders awaiting 
 const LOCKER_UNCONFIRMED =
   "InPost could not be reached to confirm this parcel locker when the order was placed. Check that it exists before you send the parcel."
 
+const LOCKER_ADDRESS_MISSING = "This order did not keep the locker's address. Look it up by its code in InPost's parcel manager."
+
 const DISPUTE_BLOCKS_CANCEL =
   "This order has an open dispute. Cancelling would refund its payment, which the dispute now decides, so the order cannot be cancelled until the dispute closes."
 
@@ -487,7 +489,7 @@ test.describe("admin", () => {
 
     await adminOrderPage.searchOrdersFor(email)
     const csv = await adminOrderPage.exportOrders()
-    expect(csv.split("\n")[0]).toBe("Order number,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status")
+    expect(csv.split("\n")[0]).toBe("Order number,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status,Delivery")
     expect(csv).toContain(`"${email}","${INVOICED_COMPANY.companyName}","${INVOICED_COMPANY.storedNip}"`)
     const summaryFromList = await adminOrderPage.openSummaryFromRow(email)
     await expect(new BasePage(summaryFromList).heading()).toHaveText("Order summary")
@@ -518,7 +520,8 @@ test.describe("admin", () => {
 
     await adminOrderPage.gotoOrderFor(email)
     const main = page.getByRole("main")
-    await expect(main.getByText(INPOST_POINTS.unanswered)).toBeVisible()
+    await expect(main.getByText(INPOST_POINTS.unanswered, { exact: true })).toHaveCount(2)
+    await expect(main.getByText(LOCKER_ADDRESS_MISSING)).toBeVisible()
     await expect(main.getByText(LOCKER_UNCONFIRMED)).toBeVisible()
     await expect(main.getByText("Locker not confirmed", { exact: true })).toBeVisible()
   })

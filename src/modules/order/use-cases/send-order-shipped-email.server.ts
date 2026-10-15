@@ -29,7 +29,7 @@ const attemptOrderShippedEmail = async (orderId: string, origin: string, idempot
   const locale = resolveOrderLocale(orderRow.metadata)
   const messages = await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })
   const accountCta = buildOrderShippedAccountCta({ locale, messages, orderId: orderRow.id, origin, userId: orderRow.userId })
-  const details = buildOrderShippedDetails(toOrderShipmentEmailSource(orderRow), messages)
+  const details = buildOrderShippedDetails(toOrderShipmentEmailSource(orderRow), messages, locale)
   const failure = await sendEmail({
     idempotencyKey,
     react: createElement(OrderShipped, {

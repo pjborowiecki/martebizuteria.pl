@@ -8,11 +8,12 @@ const mocked = vi.hoisted(() => ({
     vi.fn<
       (input: {
         checkoutValues: { lockerId?: string | undefined }
+        lockerPoint?: string | undefined
         lockerUnconfirmed?: boolean | undefined
       }) => Promise<{ checkoutId: string; discountClaimed: boolean }>
     >(),
   ensureStripeCustomer: vi.fn<() => Promise<string>>(),
-  fetchPointByName: vi.fn<(name: string) => Promise<{ name: string } | undefined>>(),
+  fetchPointByName: vi.fn<(name: string) => Promise<object | undefined>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn<(id: string) => Promise<{ price: number; type: string } | undefined>>(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -28,7 +29,7 @@ const mocked = vi.hoisted(() => ({
       (
         checkoutId: string,
         checkoutValues: { lockerId?: string | undefined },
-        resolved?: { discountId?: string | undefined; lockerUnconfirmed?: boolean | undefined },
+        resolved?: { discountId?: string | undefined; lockerPoint?: string | undefined; lockerUnconfirmed?: boolean | undefined },
       ) => Promise<void>
     >(),
 }))
@@ -126,7 +127,14 @@ beforeEach(() => {
   mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()])])
   mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(COURIER)
   mocked.createCheckout.mockResolvedValue({ checkoutId: "checkout-1", discountClaimed: false })
-  mocked.fetchPointByName.mockImplementation((name) => Promise.resolve({ name }))
+  mocked.fetchPointByName.mockImplementation((name) =>
+    Promise.resolve({
+      address_details: { building_number: "1", city: "Warszawa", post_code: "00-001", province: "mazowieckie", street: "Marszałkowska" },
+      location: { latitude: 52.2, longitude: 21 },
+      location_description: "Przy Żabce",
+      name,
+    }),
+  )
   mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 51_799, client_secret: "cs_secret_1", id: "cs_new" })
   mocked.checkoutSessionsExpire.mockResolvedValue({})
   mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: { items: JSON.stringify(HELD_LINES) }, status: "open" })
@@ -268,6 +276,8 @@ describe("parcel locker a new checkout names", () => {
   })
 })
 
+const LOCKER_POINT = { buildingNumber: "1", city: "Warszawa", description: "Przy Żabce", postalCode: "00-001", street: "Marszałkowska" }
+
 describe("parcel locker InPost is asked about for a new checkout", () => {
   beforeEach(() => {
     mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue(PARCEL_LOCKER)
@@ -278,6 +288,7 @@ describe("parcel locker InPost is asked about for a new checkout", () => {
 
     expect(mocked.fetchPointByName).toHaveBeenCalledExactlyOnceWith("WAW01M")
     expect(mocked.createCheckout.mock.lastCall?.[0].lockerUnconfirmed).toBe(false)
+    expect(JSON.parse(mocked.createCheckout.mock.lastCall?.[0].lockerPoint ?? "null")).toStrictEqual(LOCKER_POINT)
   })
 
   it("refuses a locker InPost does not list before touching Stripe or stock", async () => {
@@ -303,7 +314,11 @@ describe("parcel locker InPost is asked about for a new checkout", () => {
 
     await handleCreateCheckoutSession(createInput({ deliveryMethodType: "locker", lockerId: "WAW01M" }))
 
-    expect(mocked.createCheckout.mock.lastCall?.[0]).toMatchObject({ checkoutValues: { lockerId: "WAW01M" }, lockerUnconfirmed: true })
+    expect(mocked.createCheckout.mock.lastCall?.[0]).toMatchObject({
+      checkoutValues: { lockerId: "WAW01M" },
+      lockerPoint: undefined,
+      lockerUnconfirmed: true,
+    })
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledOnce()
     expect(console.error).toHaveBeenCalledWith(
       "InPost could not confirm parcel locker WAW01M, so the order asks the shop to check it:",
@@ -354,6 +369,7 @@ describe("delivery an edited checkout names", () => {
 
     expect(mocked.fetchPointByName).toHaveBeenCalledExactlyOnceWith("KRA01M")
     expect(mocked.updateCheckoutDelivery.mock.lastCall?.[2]?.lockerUnconfirmed).toBe(false)
+    expect(JSON.parse(mocked.updateCheckoutDelivery.mock.lastCall?.[2]?.lockerPoint ?? "null")).toStrictEqual(LOCKER_POINT)
   })
 
   it("refuses a locker InPost does not list and leaves the held session alone", async () => {

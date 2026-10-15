@@ -55,6 +55,7 @@ describe("OrderInpostCard", () => {
           delivery: {
             courierName: undefined,
             lockerId: undefined,
+            lockerPoint: undefined,
             lockerUnconfirmed: false,
             methodName: "Odbiór w atelier",
             type: "in_store",
@@ -102,7 +103,14 @@ describe("OrderInpostCard", () => {
     renderWithProviders(
       <OrderInpostCard
         order={openLockerOrder({
-          delivery: { courierName: "InPost", lockerId: undefined, lockerUnconfirmed: false, methodName: "Kurier InPost", type: "courier" },
+          delivery: {
+            courierName: "InPost",
+            lockerId: undefined,
+            lockerPoint: undefined,
+            lockerUnconfirmed: false,
+            methodName: "Kurier InPost",
+            type: "courier",
+          },
         })}
       />,
     )

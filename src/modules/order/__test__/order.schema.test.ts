@@ -50,6 +50,7 @@ describe("order table", () => {
       "inpost_shipment_id",
       "inpost_shipment_status",
       "locker_id",
+      "locker_point",
       "locker_unconfirmed",
       "metadata",
       "order_number",

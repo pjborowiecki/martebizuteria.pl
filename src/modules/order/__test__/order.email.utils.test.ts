@@ -37,6 +37,7 @@ const addressRow = {
   lastName: "Kowalska",
   phone: "+48123456789",
   postalCode: "00-001",
+  province: null,
 }
 
 const context: CheckoutEmailContext = {
@@ -47,41 +48,49 @@ const context: CheckoutEmailContext = {
   customerNote: null,
   deliveryMethod: { name: "Kurier", type: "courier" },
   lockerId: null,
+  lockerPoint: null,
   shippingAddress: addressRow,
   shippingAddressId: "address-1",
 }
 
 describe("formatEmailAddress", () => {
   it.each([[null], [undefined]])("reports nothing for %j", (row) => {
-    expect(formatEmailAddress(row)).toBeUndefined()
+    expect(formatEmailAddress(row, "en-US")).toBeUndefined()
   })
 
-  it("lays the address out one part per line", () => {
-    expect(formatEmailAddress(addressRow)).toBe("Anna Kowalska\nKrucza 1\nm. 4\n00-001 Warszawa\nPL\n+48123456789")
-  })
-
-  it("omits the lines that are missing", () => {
-    expect(formatEmailAddress({ ...addressRow, address2: null, firstName: null, lastName: null, phone: null, postalCode: null })).toBe(
-      "Krucza 1\nWarszawa\nPL",
+  it("lays the address out one part per line, with the postal code, city and country on one line as on the order page", () => {
+    expect(formatEmailAddress(addressRow, "en-US")).toBe("Anna Kowalska\nKrucza 1\nm. 4\n00-001 Warszawa, Poland\n+48123456789")
+    expect(formatEmailAddress({ ...addressRow, province: "mazowieckie" }, "pl-PL")).toBe(
+      "Anna Kowalska\nKrucza 1\nm. 4\n00-001 Warszawa, mazowieckie, Polska\n+48123456789",
     )
   })
 
+  it("omits the lines that are missing", () => {
+    expect(
+      formatEmailAddress({ ...addressRow, address2: null, firstName: null, lastName: null, phone: null, postalCode: null }, "pl-PL"),
+    ).toBe("Krucza 1\nWarszawa, Polska")
+  })
+
   it("keeps a single name part", () => {
-    expect(formatEmailAddress({ ...addressRow, lastName: null })).toContain("Anna\n")
+    expect(formatEmailAddress({ ...addressRow, lastName: null }, "en-US")).toContain("Anna\n")
   })
 
   it("reports no printable address when the row contains only empty or whitespace fields", () => {
     expect(
-      formatEmailAddress({
-        address1: "  ",
-        address2: null,
-        city: "",
-        countryCode: "",
-        firstName: "",
-        lastName: null,
-        phone: null,
-        postalCode: "",
-      }),
+      formatEmailAddress(
+        {
+          address1: "  ",
+          address2: null,
+          city: "",
+          countryCode: "",
+          firstName: "",
+          lastName: null,
+          phone: null,
+          postalCode: "",
+          province: " ",
+        },
+        "en-US",
+      ),
     ).toBeUndefined()
   })
 })
@@ -108,14 +117,24 @@ describe("buildOrderConfirmationDetails", () => {
   const ringWithoutStatedTime = [{ time: undefined, title: "Silver ring" }]
 
   const detailsFor = (checkout: CheckoutEmailContext | undefined, messages = englishCopy, paymentMethod = "Card") =>
-    buildOrderConfirmationDetails({ context: checkout, fulfillmentTimes: ringWithoutStatedTime, messages, paymentMethod })
+    buildOrderConfirmationDetails({
+      context: checkout,
+      fulfillmentTimes: ringWithoutStatedTime,
+      locale: messages === polishCopy ? "pl-PL" : "en-US",
+      messages,
+      paymentMethod,
+    })
 
   it("renders the shipping address and delivery method from the checkout", () => {
     const details = detailsFor(context)
 
     expect(details.deliveryMethod).toBe("Kurier")
     expect(details.paymentMethod).toBe("Card")
-    expect(details.shippingAddress).toContain("Krucza 1")
+    expect(details.destination).toMatchObject({ kind: "address" })
+    expect(details.destination).toStrictEqual({
+      address: "Anna Kowalska\nKrucza 1\nm. 4\n00-001 Warszawa, Poland\n+48123456789",
+      kind: "address",
+    })
   })
 
   it("notes that billing matches shipping when both point at the same address", () => {
@@ -129,7 +148,7 @@ describe("buildOrderConfirmationDetails", () => {
       billingAddressId: "address-2",
     }
 
-    expect(detailsFor(withBilling).billingAddress).toContain("Kraków")
+    expect(detailsFor(withBilling).billingAddress).toBe("Anna Kowalska\nKrucza 1\nm. 4\n00-001 Kraków, Poland\n+48123456789")
   })
 
   it("names the company to invoice from the checkout, and none when the customer did not ask for one", () => {
@@ -145,7 +164,7 @@ describe("buildOrderConfirmationDetails", () => {
     expect(details.companyInvoice).toBeUndefined()
     expect(details.billingAddress).toBe(englishCopy.unavailable)
     expect(details.deliveryMethod).toBe(englishCopy.unavailable)
-    expect(details.shippingAddress).toBe(englishCopy.unavailable)
+    expect(details.destination).toStrictEqual({ address: englishCopy.unavailable, kind: "address" })
   })
 
   it("falls back to the unavailable copy when the billing address row was not loaded", () => {
@@ -154,16 +173,27 @@ describe("buildOrderConfirmationDetails", () => {
     expect(detailsFor(withoutBillingRow).billingAddress).toBe(englishCopy.unavailable)
   })
 
-  it("appends the locker code to a locker delivery", () => {
-    const locker: CheckoutEmailContext = { ...context, deliveryMethod: { name: "Paczkomat", type: "locker" }, lockerId: " WAW01A " }
+  it("sends a locker delivery to the locker the customer chose, with the customer as its recipient", () => {
+    const locker: CheckoutEmailContext = {
+      ...context,
+      deliveryMethod: { name: "Paczkomat", type: "locker" },
+      lockerId: " WAW01A ",
+      lockerPoint: JSON.stringify({ city: "Warszawa", postalCode: "00-001", street: "Marszałkowska" }),
+    }
+    const details = detailsFor(locker)
 
-    expect(detailsFor(locker).deliveryMethod).toBe("Paczkomat · WAW01A")
+    expect(details.deliveryMethod).toBe("Paczkomat")
+    expect(details.destination).toStrictEqual({
+      kind: "locker",
+      locker: "WAW01A\nMarszałkowska\n00-001 Warszawa",
+      recipient: "Anna Kowalska\n+48123456789",
+    })
   })
 
-  it("leaves the locker name alone when no code was captured", () => {
+  it("keeps the shipping address of a locker delivery that captured no locker code", () => {
     const locker: CheckoutEmailContext = { ...context, deliveryMethod: { name: "Paczkomat", type: "locker" }, lockerId: "  " }
 
-    expect(detailsFor(locker).deliveryMethod).toBe("Paczkomat")
+    expect(detailsFor(locker).destination).toMatchObject({ kind: "address" })
   })
 
   it.each([["courier"], ["locker"], ["in_store"]] as const)("promises the %s delivery time", (type) => {
@@ -188,6 +218,7 @@ describe("buildOrderConfirmationDetails", () => {
         { time: "3 tygodnie", title: "Pierścionek Luna" },
         { time: undefined, title: "Zawieszka Sol" },
       ],
+      locale: "pl-PL",
       messages: polishCopy,
       paymentMethod: "Karta",
     })

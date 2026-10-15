@@ -8,7 +8,7 @@ import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 export const updateCheckoutDelivery = async (
   checkoutId: string,
   checkoutValues: CheckoutFormSchema,
-  resolved?: Pick<PrepareCreateCheckoutInput, "discountId" | "lockerUnconfirmed">,
+  resolved?: Pick<PrepareCreateCheckoutInput, "discountId" | "lockerPoint" | "lockerUnconfirmed">,
 ): Promise<void> => {
   const checkoutRow = await getCheckoutById(checkoutId)
   if (checkoutRow === undefined) {

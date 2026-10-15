@@ -111,7 +111,7 @@ beforeEach(() => {
       drop table if exists product_variant;
       drop table if exists order_number_sequence;
 
-      create table checkout (id text primary key, billing_company_name text, billing_nip text, client_address text, status text not null, email text, user_id text, customer_note text, delivery_method_id text, locker_id text, locker_unconfirmed integer not null default 0, created_at integer, updated_at integer);
+      create table checkout (id text primary key, billing_company_name text, billing_nip text, client_address text, status text not null, email text, user_id text, customer_note text, delivery_method_id text, locker_id text, locker_point text, locker_unconfirmed integer not null default 0, created_at integer, updated_at integer);
       create table payment (id text primary key, checkout_id text, status text, transaction_id text unique, created_at integer, updated_at integer);
       create table "order" (
         id text primary key, checkout_id text unique, payment_id text, user_id text, email text not null,
@@ -119,7 +119,7 @@ beforeEach(() => {
         fulfillment_status text not null default 'not_fulfilled', subtotal integer not null default 0,
         shipping_total integer not null default 0, tax_total integer not null default 0,
         discount_total integer not null default 0, total integer not null default 0,
-        customer_note text, delivery_method_id text, locker_id text, locker_unconfirmed integer not null default 0, discount_id text, metadata text,
+        customer_note text, delivery_method_id text, locker_id text, locker_point text, locker_unconfirmed integer not null default 0, discount_id text, metadata text,
         inpost_shipment_id text, inpost_shipment_status text,
         tracking_number text, tracking_url text, canceled_at integer, delivered_at integer, restocked_at integer, shipped_at integer,
         shipped_email_at integer, tracking_email_number text, fulfillment_started_at integer, in_progress_email_at integer, delivered_email_at integer,

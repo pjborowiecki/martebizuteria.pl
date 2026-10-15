@@ -19,8 +19,8 @@ const details: NewOrderDetails = {
   companyInvoice: undefined,
   customer: "Anna Kowalska\nanna@example.com\n+48 600 123 456",
   customerNote: undefined,
-  deliveryMethod: "InPost Paczkomat · WAW01M",
-  shippingAddress: "ul. Mokotowska 12/4\n00-640 Warszawa\nPL",
+  deliveryMethod: "Kurier InPost",
+  destination: { address: "ul. Mokotowska 12/4\n00-640 Warszawa, Polska", kind: "address" },
 }
 
 const aurora = {
@@ -102,9 +102,22 @@ describe("NewOrder", () => {
 
     expect(text).toContain(`${englishCopy.customerLabel}\n\nAnna Kowalska anna@example.com +48 600 123 456`)
     expect(text).toContain(`${englishCopy.deliveryMethodLabel}\n\n${details.deliveryMethod}`)
-    expect(text).toContain(`${englishCopy.shippingAddressLabel}\n\nul. Mokotowska 12/4 00-640 Warszawa PL`)
+    expect(text).toContain(`${englishCopy.shippingAddressLabel}\n\nul. Mokotowska 12/4 00-640 Warszawa, Polska`)
     expect(html).toContain(details.customer)
-    expect(html).toContain(details.shippingAddress)
+    expect(html).toContain("ul. Mokotowska 12/4\n00-640 Warszawa, Polska")
+  })
+
+  it("sends a locker order to the locker rather than to the customer's address", async () => {
+    const text = await renderNewOrder({
+      details: {
+        ...details,
+        deliveryMethod: "Paczkomat InPost",
+        destination: { kind: "locker", locker: "WAW01M\nMarszałkowska 1\n00-001 Warszawa", recipient: undefined },
+      },
+    })
+
+    expect(text).toContain(`${englishCopy.lockerLabel}\n\nWAW01M Marszałkowska 1 00-001 Warszawa`)
+    expect(text).not.toContain(englishCopy.shippingAddressLabel)
   })
 
   it("shows the customer's note only when they left one", async () => {
@@ -118,12 +131,12 @@ describe("NewOrder", () => {
   it("shows the company to invoice only when the customer asked for an invoice", async () => {
     await expect(renderNewOrder()).resolves.not.toContain(englishCopy.companyInvoiceLabel)
 
-    const companyInvoice = "Pracownia Złotnicza sp. z o.o.\nNIP 5260001246\nul. Marszałkowska 1\n00-001 Warszawa\nPL"
+    const companyInvoice = "Pracownia Złotnicza sp. z o.o.\nNIP 5260001246\nul. Marszałkowska 1\n00-001 Warszawa, Polska"
     const text = await renderNewOrder({ details: { ...details, companyInvoice } })
     const html = await renderNewOrder({ details: { ...details, companyInvoice } }, false)
 
     expect(text).toContain(
-      `${englishCopy.companyInvoiceLabel}\n\nPracownia Złotnicza sp. z o.o. NIP 5260001246 ul. Marszałkowska 1 00-001 Warszawa PL`,
+      `${englishCopy.companyInvoiceLabel}\n\nPracownia Złotnicza sp. z o.o. NIP 5260001246 ul. Marszałkowska 1 00-001 Warszawa, Polska`,
     )
     expect(html).toContain(companyInvoice)
   })

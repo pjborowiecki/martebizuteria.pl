@@ -31,6 +31,16 @@ export const inpostPointSchema = z.object({
   status: z.string().optional(),
 })
 
+export const inpostLockerPointSchema = z.object({
+  buildingNumber: z.string().optional(),
+  city: z.string(),
+  description: z.string().optional(),
+  postalCode: z.string(),
+  street: z.string(),
+})
+
+export type InpostLockerPoint = z.infer<typeof inpostLockerPointSchema>
+
 export const inpostApiResponseSchema = z.object({
   count: z.number(),
   items: z.array(inpostPointSchema),

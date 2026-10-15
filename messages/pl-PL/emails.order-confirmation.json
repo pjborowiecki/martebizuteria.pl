@@ -18,6 +18,8 @@
   "paymentMethodLabel": "Metoda płatności",
   "deliveryMethodLabel": "Sposób dostawy",
   "shippingAddressLabel": "Adres dostawy",
+  "lockerLabel": "Paczkomat docelowy",
+  "recipientLabel": "Odbiorca (SMS z kodem odbioru)",
   "billingAddressLabel": "Adres rozliczeniowy",
   "companyInvoiceLabel": "Faktura na firmę",
   "nipLabel": "NIP",

@@ -73,10 +73,12 @@ const buildOrderConfirmationEmailPayload = async (
             customerNote: checkoutContext.customerNote,
             deliveryMethod: checkoutContext.deliveryMethod,
             lockerId: checkoutContext.lockerId,
+            lockerPoint: checkoutContext.lockerPoint,
             shippingAddress: checkoutContext.shippingAddress,
             shippingAddressId: checkoutContext.shippingAddressId,
           },
     fulfillmentTimes: resolveOrderLineFulfillmentTimes(order.lines, fulfillmentTimeAttributes, locale),
+    locale,
     messages,
     paymentMethod,
   })

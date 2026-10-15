@@ -38,6 +38,7 @@ const checkoutRowSchema = z.object({
   customer_note: z.string().nullable(),
   email: z.string(),
   locker_id: z.string().nullable(),
+  locker_point: z.string().nullable(),
   shipping_address_id: z.string().nullable(),
   user_id: z.string().nullable(),
 })
@@ -49,6 +50,7 @@ const ERASED_CHECKOUT = {
   customer_note: null,
   email: "",
   locker_id: null,
+  locker_point: null,
   shipping_address_id: null,
   user_id: null,
 }
@@ -57,7 +59,7 @@ const readCheckout = (id: string) =>
   checkoutRowSchema.parse(
     sqlite
       .prepare(
-        "select billing_address_id, billing_company_name, billing_nip, customer_note, email, locker_id, shipping_address_id, user_id from checkout where id = ?",
+        "select billing_address_id, billing_company_name, billing_nip, customer_note, email, locker_id, locker_point, shipping_address_id, user_id from checkout where id = ?",
       )
       .get(id),
   )
@@ -79,8 +81,8 @@ const insertGuestCheckout = (id: string, status: string, updatedAt: number): voi
     insert into address (id, address1, city, country_code, first_name, last_name, phone, postal_code) values
       ('${id}-shipping', 'ul. Floriańska 12', 'Kraków', 'PL', 'Ada', 'Nowak', '+48600100200', '31-019'),
       ('${id}-billing', 'ul. Długa 3', 'Gdańsk', 'PL', 'Ada', 'Nowak', '+48600100200', '80-827');
-    insert into checkout (id, email, status, shipping_address_id, billing_address_id, customer_note, billing_company_name, billing_nip, locker_id, created_at, updated_at) values
-      ('${id}', '${id}@marte.test', '${status}', '${id}-shipping', '${id}-billing', 'Leave it with the neighbour', 'Nowak Studio', '5260250274', 'KRA01M', ${String(updatedAt)}, ${String(updatedAt)});
+    insert into checkout (id, email, status, shipping_address_id, billing_address_id, customer_note, billing_company_name, billing_nip, locker_id, locker_point, created_at, updated_at) values
+      ('${id}', '${id}@marte.test', '${status}', '${id}-shipping', '${id}-billing', 'Leave it with the neighbour', 'Nowak Studio', '5260250274', 'KRA01M', '{"city":"Kraków","postalCode":"31-019","street":"Floriańska"}', ${String(updatedAt)}, ${String(updatedAt)});
   `)
 }
 

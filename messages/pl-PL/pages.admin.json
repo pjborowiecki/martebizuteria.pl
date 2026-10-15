@@ -647,7 +647,8 @@
     "exportColumns": {
       "orderId": "Numer zamówienia",
       "companyName": "Firma",
-      "nip": "NIP"
+      "nip": "NIP",
+      "destination": "Dostawa"
     },
     "status": {
       "pending": "Oczekujące",
@@ -806,14 +807,22 @@
     },
     "shipping": {
       "title": "Adres wysyłki",
+      "lockerTitle": "Paczkomat docelowy",
       "copy": "Kopiuj adres wysyłki",
       "copied": "Skopiowano adres wysyłki",
+      "copyLocker": "Kopiuj dane paczkomatu",
+      "lockerCopied": "Skopiowano dane paczkomatu",
+      "lockerAddressMissing": "Przy tym zamówieniu nie zapisano adresu paczkomatu. Sprawdź go po kodzie w Managerze Paczek InPost.",
+      "recipientTitle": "Dane odbiorcy",
+      "recipientHint": "Na ten numer InPost wyśle kod odbioru. To nie jest adres dostawy.",
+      "recipientMissing": "Brak zapisanych danych odbiorcy.",
       "missing": "Brak zapisanego adresu wysyłki.",
       "openTracking": "Otwórz stronę śledzenia",
       "lockerUnconfirmed": "Przy składaniu zamówienia nie udało się połączyć z InPost, żeby potwierdzić ten paczkomat. Zanim nadasz paczkę, sprawdź, czy istnieje."
     },
     "inpost": {
       "title": "Przesyłka InPost",
+      "targetLocker": "Paczkomat docelowy:",
       "createHint": "Nadaj tę paczkę w InPost, aby mieć tu jej etykietę i numer do śledzenia.",
       "create": "Utwórz przesyłkę",
       "notAvailable": "Przesyłkę można utworzyć, dopóki zamówienie jest otwarte i jeszcze niewysłane.",
@@ -960,6 +969,7 @@
     "seller": "Sprzedawca",
     "sellerCountry": "Polska",
     "buyer": "Kupujący",
+    "delivery": "Dostawa",
     "vatIncluded": "W tym VAT {rate}%",
     "print": "Drukuj",
     "backToOrder": "Wróć do zamówienia"

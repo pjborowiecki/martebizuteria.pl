@@ -11,6 +11,7 @@
   "customerLabel": "Customer",
   "deliveryMethodLabel": "Delivery method",
   "shippingAddressLabel": "Shipping address",
+  "lockerLabel": "Destination parcel locker",
   "companyInvoiceLabel": "Invoice for a company",
   "nipLabel": "NIP",
   "customerNoteLabel": "Customer note",

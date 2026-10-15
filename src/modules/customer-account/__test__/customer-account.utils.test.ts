@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from "vite-plus/test"
 
-import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
   mapAuditLogToActivityItem,
-  mapCustomerAccountAddressRow,
   mapCustomerOrderDetail,
   mapCustomerOrderSummaryRow,
   matchesCustomerAccountOrderFilter,
@@ -58,6 +56,7 @@ const orderRow = {
   fulfillmentStatus: "not_fulfilled" as const,
   id: ORDER_ID,
   lockerId: null,
+  lockerPoint: null,
   orderNumber: "MRT-2026-00001",
   shippedAt: null,
   shippingTotal: 1500,
@@ -131,45 +130,6 @@ describe("mapCustomerOrderSummaryRow", () => {
     const [item] = mapCustomerOrderSummaryRow(orderRow, [{ ...itemRow, variantTitle: null }]).items
 
     expect(item?.variantTitle).toBeUndefined()
-  })
-})
-
-describe("mapCustomerAccountAddressRow", () => {
-  const addressRow = {
-    address1: "Krucza 1",
-    address2: "m. 4",
-    city: "Warszawa",
-    countryCode: "PL",
-    firstName: "Anna",
-    lastName: "Kowalska",
-    phone: "+48123456789",
-    postalCode: "00-001",
-    province: "Mazowieckie",
-  }
-
-  it.each([[null], [undefined]])("reports nothing for %j", (row) => {
-    expect(mapCustomerAccountAddressRow(row)).toBeUndefined()
-  })
-
-  it("joins the first and last name", () => {
-    expect(mapCustomerAccountAddressRow(addressRow)?.name).toBe("Anna Kowalska")
-  })
-
-  it("keeps whichever name part is present", () => {
-    expect(mapCustomerAccountAddressRow({ ...addressRow, lastName: null })?.name).toBe("Anna")
-  })
-
-  it("falls back to the placeholder when the address carries no name", () => {
-    expect(mapCustomerAccountAddressRow({ ...addressRow, firstName: null, lastName: "  " })?.name).toBe(EMPTY_VALUE)
-  })
-
-  it("normalises the nullable columns to absent", () => {
-    const mapped = mapCustomerAccountAddressRow({ ...addressRow, address2: null, phone: null, postalCode: null, province: null })
-
-    expect(mapped?.line2).toBeUndefined()
-    expect(mapped?.phone).toBeUndefined()
-    expect(mapped?.postalCode).toBeUndefined()
-    expect(mapped?.province).toBeUndefined()
   })
 })
 
@@ -255,10 +215,12 @@ describe("mapCustomerOrderDetail", () => {
     expect(detail.refund).toStrictEqual({ amountMinorUnits: 5000, refundedAt: undefined })
   })
 
-  it("shows the parcel locker an order is waiting in", () => {
-    const detail = mapCustomerOrderDetail({ ...orderRow, lockerId: "WAW01M" }, [itemRow], { deliveryMethodType: "locker" })
+  it("shows the parcel locker an order is waiting in, with the address it kept", () => {
+    const lockerPoint = JSON.stringify({ city: "Warszawa", description: "Przy Żabce", postalCode: "00-001", street: "Marszałkowska" })
+    const detail = mapCustomerOrderDetail({ ...orderRow, lockerId: "WAW01M", lockerPoint }, [itemRow], { deliveryMethodType: "locker" })
 
     expect(detail.lockerId).toBe("WAW01M")
+    expect(detail.lockerPoint).toStrictEqual({ city: "Warszawa", description: "Przy Żabce", postalCode: "00-001", street: "Marszałkowska" })
   })
 
   it("leaves the locker absent for a locker delivery that recorded no locker", () => {
@@ -267,10 +229,13 @@ describe("mapCustomerOrderDetail", () => {
     expect(detail.lockerId).toBeUndefined()
   })
 
-  it("hides a stale locker id once the order goes by courier", () => {
-    const detail = mapCustomerOrderDetail({ ...orderRow, lockerId: "WAW01M" }, [itemRow], { deliveryMethodType: "courier" })
+  it("hides a stale locker once the order goes by courier", () => {
+    const detail = mapCustomerOrderDetail({ ...orderRow, lockerId: "WAW01M", lockerPoint: "{}" }, [itemRow], {
+      deliveryMethodType: "courier",
+    })
 
     expect(detail.lockerId).toBeUndefined()
+    expect(detail.lockerPoint).toBeUndefined()
   })
 
   it("normalises the nullable tracking and date columns to absent", () => {

@@ -17,6 +17,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 import { getCheckoutById, getCheckoutEmailContext, getCheckoutForFulfillment } from "~/src/modules/checkout/checkout.accessors"
 
 const CREATED_AT = Date.UTC(2026, 0, 10)
+const LOCKER_POINT = JSON.stringify({ city: "Warszawa", postalCode: "00-640", street: "Mokotowska" })
 
 beforeEach(() => {
   sqlite.exec(`
@@ -43,7 +44,7 @@ beforeEach(() => {
     );
     create table checkout (
       id text primary key, billing_company_name text, billing_nip text, billing_address_id text, cart_id text, client_address text, customer_note text, delivery_method_id text,
-      discount_id text, email text not null, locker_id text, locker_unconfirmed integer not null default 0, shipping_address_id text, status text not null default 'pending',
+      discount_id text, email text not null, locker_id text, locker_point text, locker_unconfirmed integer not null default 0, shipping_address_id text, status text not null default 'pending',
       user_id text, created_at integer not null, updated_at integer not null
     );
 
@@ -54,15 +55,15 @@ beforeEach(() => {
     insert into delivery_method (id, api_service_code, courier_id, name, price, type, created_at, updated_at) values
       ('dm-locker', 'INPOST_LOCKER', 'courier-inpost', 'Paczkomat InPost', 1299, 'locker', ${CREATED_AT}, ${CREATED_AT});
 
-    insert into checkout (id, billing_address_id, cart_id, customer_note, delivery_method_id, email, locker_id, shipping_address_id, status, user_id, created_at, updated_at) values
-      ('chk-full', 'adr-bill', 'cart-1', 'Please gift wrap', 'dm-locker', 'anna@example.com', 'WAW01A', 'adr-ship', 'completed', 'user-1', ${CREATED_AT}, ${CREATED_AT}),
-      ('chk-bare', null, null, null, null, 'guest@example.com', null, null, 'pending', null, ${CREATED_AT}, ${CREATED_AT});
+    insert into checkout (id, billing_address_id, cart_id, customer_note, delivery_method_id, email, locker_id, locker_point, shipping_address_id, status, user_id, created_at, updated_at) values
+      ('chk-full', 'adr-bill', 'cart-1', 'Please gift wrap', 'dm-locker', 'anna@example.com', 'WAW01A', '${LOCKER_POINT}', 'adr-ship', 'completed', 'user-1', ${CREATED_AT}, ${CREATED_AT}),
+      ('chk-bare', null, null, null, null, 'guest@example.com', null, null, null, 'pending', null, ${CREATED_AT}, ${CREATED_AT});
 
     insert into discount (id, code, type, value, created_at, updated_at) values
       ('disc-spring', 'SPRING', 'percentage', 10, ${CREATED_AT}, ${CREATED_AT});
 
-    insert into checkout (id, billing_address_id, billing_company_name, billing_nip, customer_note, delivery_method_id, discount_id, email, locker_id, locker_unconfirmed, shipping_address_id, status, created_at, updated_at) values
-      ('chk-business', 'adr-bill', 'Pracownia Złotnicza sp. z o.o.', '5260001246', 'Invoice please', 'dm-locker', 'disc-spring', 'firma@example.com', 'WAW01A', 1, 'adr-ship', 'pending', ${CREATED_AT}, ${CREATED_AT});
+    insert into checkout (id, billing_address_id, billing_company_name, billing_nip, customer_note, delivery_method_id, discount_id, email, locker_id, locker_point, locker_unconfirmed, shipping_address_id, status, created_at, updated_at) values
+      ('chk-business', 'adr-bill', 'Pracownia Złotnicza sp. z o.o.', '5260001246', 'Invoice please', 'dm-locker', 'disc-spring', 'firma@example.com', 'WAW01A', '${LOCKER_POINT}', 1, 'adr-ship', 'pending', ${CREATED_AT}, ${CREATED_AT});
   `)
 })
 
@@ -105,6 +106,7 @@ describe("getCheckoutEmailContext", () => {
       "customerNote",
       "deliveryMethod",
       "lockerId",
+      "lockerPoint",
       "shippingAddress",
       "shippingAddressId",
     ])
@@ -130,6 +132,7 @@ describe("getCheckoutEmailContext", () => {
 
     expect(context?.deliveryMethod).toMatchObject({ name: "Paczkomat InPost", price: 1299, type: "locker" })
     expect(context?.lockerId).toBe("WAW01A")
+    expect(context?.lockerPoint).toBe(LOCKER_POINT)
   })
 
   it("leaves the joins empty for a checkout that carries no address or delivery method", async () => {
@@ -160,6 +163,7 @@ describe("getCheckoutForFulfillment", () => {
       "discount",
       "discountId",
       "lockerId",
+      "lockerPoint",
       "lockerUnconfirmed",
       "shippingAddress",
     ])
@@ -173,6 +177,7 @@ describe("getCheckoutForFulfillment", () => {
       deliveryMethodId: "dm-locker",
       discountId: "disc-spring",
       lockerId: "WAW01A",
+      lockerPoint: LOCKER_POINT,
       lockerUnconfirmed: true,
     })
   })
@@ -207,6 +212,7 @@ describe("getCheckoutForFulfillment", () => {
       discount: null,
       discountId: null,
       lockerId: null,
+      lockerPoint: null,
       lockerUnconfirmed: false,
       shippingAddress: null,
     })

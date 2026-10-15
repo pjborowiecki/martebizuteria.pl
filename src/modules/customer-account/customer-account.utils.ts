@@ -1,4 +1,5 @@
-import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
+import { parseInpostLockerPoint } from "~/src/integrations/inpost/inpost.utils"
+
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { type CustomerAccountOrderFilter, type CustomerAccountOrderStatus } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
@@ -77,42 +78,6 @@ export const mapCustomerOrderSummaryRow = (
   status: orderRow.status,
   totalMinorUnits: orderRow.total,
 })
-
-export const mapCustomerAccountAddressRow = (
-  row:
-    | {
-        readonly address1: string
-        readonly address2: string | null
-        readonly city: string
-        readonly countryCode: string
-        readonly firstName: string | null
-        readonly lastName: string | null
-        readonly phone: string | null
-        readonly postalCode: string | null
-        readonly province: string | null
-      }
-    | null
-    | undefined,
-): CustomerAccount["orderAddress"] | undefined => {
-  if (row === undefined || row === null) {
-    return undefined
-  }
-
-  const name = [row.firstName, row.lastName]
-    .filter((part) => part !== null && part.trim() !== "")
-    .join(" ")
-    .trim()
-  return {
-    city: row.city,
-    countryCode: row.countryCode,
-    line1: row.address1,
-    line2: row.address2 ?? undefined,
-    name: name === "" ? EMPTY_VALUE : name,
-    phone: row.phone ?? undefined,
-    postalCode: row.postalCode ?? undefined,
-    province: row.province ?? undefined,
-  }
-}
 
 const buildOrderTimeline = (
   orderRow: {
@@ -211,6 +176,7 @@ export const mapCustomerOrderDetail = (
     readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
     readonly id: string
     readonly lockerId: string | null
+    readonly lockerPoint: string | null
     readonly orderNumber: string
     readonly shippedAt: Date | null
     readonly shippingTotal: number
@@ -243,6 +209,7 @@ export const mapCustomerOrderDetail = (
     deliveryMethodName: options.deliveryMethodName,
     discountMinorUnits: orderRow.discountTotal,
     lockerId: options.deliveryMethodType === "locker" ? (orderRow.lockerId ?? undefined) : undefined,
+    lockerPoint: options.deliveryMethodType === "locker" ? parseInpostLockerPoint(orderRow.lockerPoint) : undefined,
     paymentProvider: options.payment?.provider,
     refund: mapOrderRefund(options.payment),
     shippedAt: orderRow.shippedAt ?? undefined,
@@ -256,22 +223,6 @@ export const mapCustomerOrderDetail = (
     trackingUrl: orderRow.trackingUrl ?? undefined,
   }
 }
-
-export const mapOrderAddressSnapshotRow = (
-  row:
-    | {
-        readonly address1: string
-        readonly address2: string | null
-        readonly city: string
-        readonly countryCode: string
-        readonly firstName: string
-        readonly lastName: string
-        readonly phone: string | null
-        readonly postalCode: string | null
-        readonly province: string | null
-      }
-    | undefined,
-): CustomerAccount["orderAddress"] | undefined => mapCustomerAccountAddressRow(row)
 
 export const mapAuditLogToActivityItem = (
   row: {

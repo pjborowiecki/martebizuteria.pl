@@ -7,7 +7,8 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
 import { isInpostDeliveryType } from "~/src/modules/order/order.admin-actions.utils"
-import { resolveOrderShippingAddressRow } from "~/src/modules/order/order.detail.utils"
+import { describeOrderLocker, resolveOrderLocker, resolveOrderShippingAddressRow } from "~/src/modules/order/order.detail.utils"
+import { formatOrderAddressLocality } from "~/src/modules/order/order.display.utils"
 import { type OrderLineFulfillmentTime, describeOrderFulfillmentTime } from "~/src/modules/order/order.fulfillment-time.utils"
 
 import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
@@ -25,35 +26,42 @@ import { type OrderDeliveredLinks } from "~/src/presentation/emails/order-delive
 import { type OrderShippedDetails } from "~/src/presentation/emails/order-shipped"
 import { ROUTES } from "~/src/routes"
 
-export const formatEmailAddress = (addressRow: EmailAddressRow | null | undefined): string | undefined => {
+export const formatEmailAddress = (addressRow: EmailAddressRow | null | undefined, locale: SupportedLocale): string | undefined => {
   if (addressRow === null || addressRow === undefined) {
     return undefined
   }
 
   const name = [addressRow.firstName, addressRow.lastName].filter((part) => part !== null && part !== "").join(" ")
-  const locality = [addressRow.postalCode, addressRow.city].filter((part) => part !== null && part !== "").join(" ")
-  const lines = [name, addressRow.address1, addressRow.address2, locality, addressRow.countryCode, addressRow.phone].filter(
+  const locality = formatOrderAddressLocality(addressRow, locale)
+  const lines = [name, addressRow.address1, addressRow.address2, locality, addressRow.phone].filter(
     (line): line is string => typeof line === "string" && line.trim() !== "",
   )
 
   return lines.length === EMPTY_COUNT ? undefined : lines.join("\n")
 }
 
-export const resolveDeliveryMethodLabel = (
-  context: Pick<CheckoutEmailContext, "deliveryMethod" | "lockerId"> | undefined,
+export const resolveDeliveryMethodLabel = (deliveryMethod: { readonly name: string } | null | undefined, unavailable: string): string =>
+  deliveryMethod?.name ?? unavailable
+
+const isFilledLine = (line: string | null | undefined): line is string => typeof line === "string" && line.trim() !== ""
+
+const formatEmailRecipient = (addressRow: EmailAddressRow | null | undefined): string | undefined => {
+  const name = [addressRow?.firstName, addressRow?.lastName].filter((part) => isFilledLine(part)).join(" ")
+  const lines = [name, addressRow?.phone].filter((line) => isFilledLine(line))
+
+  return lines.length === EMPTY_COUNT ? undefined : lines.join("\n")
+}
+
+export const describeEmailDestination = (
+  { deliveryMethod, lockerId, lockerPoint, shippingAddress }: Readonly<EmailDestinationSource>,
   unavailable: string,
-): string => {
-  const method = context?.deliveryMethod
-  if (method === null || method === undefined) {
-    return unavailable
-  }
+  locale: SupportedLocale,
+): OrderEmailDestination => {
+  const locker = resolveOrderLocker({ deliveryType: deliveryMethod?.type, lockerId, lockerPoint })
 
-  const lockerId = context?.lockerId?.trim()
-  if (method.type === "locker" && lockerId !== undefined && lockerId !== "") {
-    return `${method.name} · ${lockerId}`
-  }
-
-  return method.name
+  return locker === undefined
+    ? { address: formatEmailAddress(shippingAddress, locale) ?? unavailable, kind: "address" }
+    : { kind: "locker", locker: describeOrderLocker(locker).join("\n"), recipient: formatEmailRecipient(shippingAddress) }
 }
 
 const isPresent = (value: string | null): value is string => value !== null && value.trim() !== ""
@@ -70,7 +78,11 @@ export const describeCompanyInvoice = (
   return lines.length === EMPTY_COUNT ? undefined : lines.join("\n")
 }
 
-const resolveBillingAddress = (context: CheckoutEmailContext | undefined, messages: OrderConfirmationMessages): string => {
+const resolveBillingAddress = (
+  context: CheckoutEmailContext | undefined,
+  messages: OrderConfirmationMessages,
+  locale: SupportedLocale,
+): string => {
   if (context === undefined) {
     return messages.unavailable
   }
@@ -79,25 +91,29 @@ const resolveBillingAddress = (context: CheckoutEmailContext | undefined, messag
     return messages.billingSameAsShipping
   }
 
-  return formatEmailAddress(context.billingAddress) ?? messages.unavailable
+  return formatEmailAddress(context.billingAddress, locale) ?? messages.unavailable
 }
 
 export const buildOrderConfirmationDetails = ({
   context,
   fulfillmentTimes,
+  locale,
   messages,
   paymentMethod,
 }: Readonly<OrderConfirmationDetailsInput>): OrderConfirmationDetails => {
   const deliveryType = context?.deliveryMethod?.type ?? "courier"
 
   return {
-    billingAddress: resolveBillingAddress(context, messages),
+    billingAddress: resolveBillingAddress(context, messages, locale),
     companyInvoice: context === undefined ? undefined : describeCompanyInvoice(context, messages.nipLabel),
-    deliveryMethod: resolveDeliveryMethodLabel(context, messages.unavailable),
+    deliveryMethod: resolveDeliveryMethodLabel(context?.deliveryMethod, messages.unavailable),
+    destination:
+      context === undefined
+        ? { address: messages.unavailable, kind: "address" }
+        : describeEmailDestination(context, messages.unavailable, locale),
     estimatedDelivery: messages.estimatedDelivery[deliveryType],
     fulfillmentTime: describeOrderFulfillmentTime(fulfillmentTimes, messages),
     paymentMethod,
-    shippingAddress: formatEmailAddress(context?.shippingAddress) ?? messages.unavailable,
   }
 }
 
@@ -178,11 +194,13 @@ export const toOrderShipmentEmailSource = ({
   checkout,
   deliveryMethod,
   lockerId,
+  lockerPoint,
   trackingNumber,
   trackingUrl,
 }: Readonly<OrderShipmentEmailRow>): OrderShipmentEmailSource => ({
   deliveryMethod,
   lockerId,
+  lockerPoint,
   shippingAddress: resolveOrderShippingAddressRow({ addresses, checkout }),
   trackingNumber: trackingNumber ?? undefined,
   trackingUrl: trackingUrl ?? undefined,
@@ -191,11 +209,12 @@ export const toOrderShipmentEmailSource = ({
 export const buildOrderShippedDetails = (
   shipment: Readonly<OrderShipmentEmailSource>,
   messages: typeof orderShippedMessages,
+  locale: SupportedLocale,
 ): OrderShippedDetails => ({
   ...resolveOrderTracking(shipment),
-  deliveryMethod: resolveDeliveryMethodLabel(shipment, messages.unavailable),
+  deliveryMethod: resolveDeliveryMethodLabel(shipment.deliveryMethod, messages.unavailable),
+  destination: describeEmailDestination(shipment, messages.unavailable, locale),
   estimatedDelivery: messages.deliveryTiming[shipment.deliveryMethod?.type ?? "courier"].estimatedDelivery,
-  shippingAddress: formatEmailAddress(shipment.shippingAddress) ?? messages.unavailable,
 })
 
 export const buildOrderShippedAccountCta = ({
@@ -257,6 +276,7 @@ type OrderConfirmationMessages = typeof orderConfirmationMessages
 interface OrderConfirmationDetailsInput {
   readonly context: CheckoutEmailContext | undefined
   readonly fulfillmentTimes: readonly OrderLineFulfillmentTime[]
+  readonly locale: SupportedLocale
   readonly messages: OrderConfirmationMessages
   readonly paymentMethod: string
 }
@@ -281,6 +301,7 @@ interface EmailAddressRow {
   readonly lastName: string | null
   readonly phone: string | null
   readonly postalCode: string | null
+  readonly province: string | null
 }
 
 export interface OrderShipmentEmailSource {
@@ -290,12 +311,13 @@ export interface OrderShipmentEmailSource {
     readonly type: "courier" | "locker" | "in_store"
   } | null
   readonly lockerId: string | null
+  readonly lockerPoint: string | null
   readonly shippingAddress: EmailAddressRow | undefined
   readonly trackingNumber: string | undefined
   readonly trackingUrl: string | undefined
 }
 
-interface OrderShipmentEmailRow extends Pick<OrderShipmentEmailSource, "deliveryMethod" | "lockerId"> {
+interface OrderShipmentEmailRow extends Pick<OrderShipmentEmailSource, "deliveryMethod" | "lockerId" | "lockerPoint"> {
   readonly addresses: Parameters<typeof resolveOrderShippingAddressRow>[0]["addresses"]
   readonly checkout: Parameters<typeof resolveOrderShippingAddressRow>[0]["checkout"]
   readonly trackingNumber: string | null
@@ -308,6 +330,17 @@ export interface OrderTracking {
   readonly trackingUrl: string | undefined
 }
 
+interface EmailDestinationSource {
+  readonly deliveryMethod: { readonly type: "courier" | "locker" | "in_store" } | null | undefined
+  readonly lockerId: string | null
+  readonly lockerPoint: string | null
+  readonly shippingAddress: EmailAddressRow | null | undefined
+}
+
+export type OrderEmailDestination =
+  | { readonly address: string; readonly kind: "address" }
+  | { readonly kind: "locker"; readonly locker: string; readonly recipient: string | undefined }
+
 export interface CheckoutEmailContext {
   readonly billingAddress: EmailAddressRow | null
   readonly billingAddressId: string | null
@@ -319,6 +352,7 @@ export interface CheckoutEmailContext {
     readonly type: "courier" | "locker" | "in_store"
   } | null
   readonly lockerId: string | null
+  readonly lockerPoint: string | null
   readonly shippingAddress: EmailAddressRow | null
   readonly shippingAddressId: string | null
 }
