@@ -1,8 +1,9 @@
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
-import { type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountOrderFilter, type CustomerAccountOrderStatus } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { type deliveryMethod } from "~/src/modules/delivery-method/delivery-method.schema"
+import { resolveAdminOrderFulfillmentUiKey } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { type Payment } from "~/src/modules/payment/payment.types"
 
@@ -12,28 +13,10 @@ const NO_ITEMS = 0
 
 const SINGLE_ITEM = 1
 
-export const resolveCustomerAccountOrderFilter = (
+export const resolveCustomerAccountOrderStatus = (
   status: Order["select"]["status"],
   fulfillmentStatus: Order["select"]["fulfillmentStatus"],
-): CustomerAccountOrderFilter => {
-  if (status === "refunded") {
-    return "refunded"
-  }
-
-  if (status === "cancelled" || fulfillmentStatus === "cancelled") {
-    return "cancelled"
-  }
-
-  if (fulfillmentStatus === "delivered") {
-    return "delivered"
-  }
-
-  if (fulfillmentStatus === "shipped") {
-    return "shipped"
-  }
-
-  return "processing"
-}
+): CustomerAccountOrderStatus => (status === "refunded" ? "refunded" : resolveAdminOrderFulfillmentUiKey(status, fulfillmentStatus))
 
 export const matchesCustomerAccountOrderFilter = (
   filter: CustomerAccountOrderFilter,
@@ -44,7 +27,7 @@ export const matchesCustomerAccountOrderFilter = (
     return true
   }
 
-  return resolveCustomerAccountOrderFilter(status, fulfillmentStatus) === filter
+  return resolveCustomerAccountOrderStatus(status, fulfillmentStatus) === filter
 }
 
 export interface CustomerOrderItemRow {
@@ -85,7 +68,7 @@ export const mapCustomerOrderSummaryRow = (
 ): CustomerAccount["orderSummary"] => ({
   createdAt: orderRow.createdAt,
   currencyCode: orderRow.currencyCode,
-  filterStatus: resolveCustomerAccountOrderFilter(orderRow.status, orderRow.fulfillmentStatus),
+  filterStatus: resolveCustomerAccountOrderStatus(orderRow.status, orderRow.fulfillmentStatus),
   fulfillmentStatus: orderRow.fulfillmentStatus,
   id: orderRow.id,
   itemCount: countOrderItems(items),

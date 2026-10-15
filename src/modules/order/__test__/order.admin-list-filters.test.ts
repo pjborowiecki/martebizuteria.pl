@@ -28,9 +28,12 @@ describe("parseAdminOrdersListFilters", () => {
     expect(parseAdminOrdersListFilters([{ id: "payment", value: payment }])).toStrictEqual({ payment })
   })
 
-  it.each([["pending"], ["unfulfilled"], ["shipped"], ["delivered"], ["returned"]])("accepts the fulfilment key %s", (fulfillment) => {
-    expect(parseAdminOrdersListFilters([{ id: "fulfillment", value: fulfillment }])).toStrictEqual({ fulfillment })
-  })
+  it.each([["pending"], ["confirmed"], ["processing"], ["shipped"], ["delivered"], ["cancelled"]])(
+    "accepts the fulfilment key %s",
+    (fulfillment) => {
+      expect(parseAdminOrdersListFilters([{ id: "fulfillment", value: fulfillment }])).toStrictEqual({ fulfillment })
+    },
+  )
 
   it("rejects unknown payment and fulfilment keys", () => {
     expect(parseAdminOrdersListFilters([{ id: "payment", value: "chargeback" }])).toStrictEqual({})

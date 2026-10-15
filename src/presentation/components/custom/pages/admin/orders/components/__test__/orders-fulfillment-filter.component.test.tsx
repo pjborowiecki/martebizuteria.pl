@@ -7,7 +7,7 @@ import { ADMIN_ORDER_FULFILLMENT_UI_KEY, ADMIN_ORDER_TABLE_COLUMN_ID } from "~/s
 import { renderWithOrdersGrid } from "~/src/presentation/components/custom/pages/admin/orders/components/__test__/orders-grid-harness"
 import { OrdersFulfillmentFilter } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-fulfillment-filter"
 
-const trigger = () => screen.getByRole("combobox", { name: "Filter by fulfillment" })
+const trigger = () => screen.getByRole("combobox", { name: "Filter by fulfillment step" })
 
 const pick = async (label: string) => {
   await userEvent.click(trigger())
@@ -28,7 +28,7 @@ describe("OrdersFulfillmentFilter", () => {
   it("starts with no fulfillment filter applied", () => {
     renderWithOrdersGrid(<OrdersFulfillmentFilter />)
 
-    expect(trigger()).toHaveTextContent("All fulfillment")
+    expect(trigger()).toHaveTextContent("All fulfillment steps")
   })
 
   it("offers every fulfillment stage in workflow order", async () => {
@@ -38,12 +38,13 @@ describe("OrdersFulfillmentFilter", () => {
     const options = await screen.findAllByRole("option")
 
     expect(options.map((option) => option.textContent)).toStrictEqual([
-      "All fulfillment",
-      "Unfulfilled",
-      "Pending",
+      "All fulfillment steps",
+      "Awaiting payment",
+      "Confirmed",
+      "In progress",
       "Shipped",
       "Delivered",
-      "Returned",
+      "Cancelled",
     ])
   })
 
@@ -68,7 +69,7 @@ describe("OrdersFulfillmentFilter", () => {
     const seen = renderWithOrdersGrid(<OrdersFulfillmentFilter />)
 
     await pick("Delivered")
-    await pick("All fulfillment")
+    await pick("All fulfillment steps")
 
     expect(seen.table?.getColumn(ADMIN_ORDER_TABLE_COLUMN_ID.fulfillment)?.getFilterValue()).toBeUndefined()
     expect(seen.table?.getFilteredRowModel().rows).toHaveLength(3)

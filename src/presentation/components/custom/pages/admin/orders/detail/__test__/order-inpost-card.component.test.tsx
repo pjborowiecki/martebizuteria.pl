@@ -32,7 +32,7 @@ import { OrderInpostCard } from "~/src/presentation/components/custom/pages/admi
 const NOT_CONFIGURED = /InPost shipping is not set up for this shop/u
 
 const openLockerOrder = (overrides: Parameters<typeof buildAdminOrderDetail>[0] = {}) =>
-  buildAdminOrderDetail({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "unfulfilled", trackingNumber: undefined, ...overrides })
+  buildAdminOrderDetail({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "processing", trackingNumber: undefined, ...overrides })
 
 const shippedWithInpost = (status: string | undefined, overrides: Parameters<typeof buildAdminOrderDetail>[0] = {}) =>
   buildAdminOrderDetail({ inpostShipment: { id: "1234567890", status }, ...overrides })

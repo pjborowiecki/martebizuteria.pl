@@ -22,9 +22,17 @@ describe("OrderMetaStrip", () => {
   it("renders the order, fulfillment and payment states from the order", () => {
     renderWithProviders(<OrderMetaStrip order={buildAdminOrderDetail()} />)
 
-    expect(screen.getByText("Processing")).toBeInTheDocument()
+    expect(screen.getByText("Open")).toBeInTheDocument()
     expect(screen.getByText("Shipped")).toBeInTheDocument()
     expect(screen.getByText("Paid")).toBeInTheDocument()
+  })
+
+  it("names the step an order whose fulfilment started has reached", () => {
+    renderWithProviders(
+      <OrderMetaStrip order={buildAdminOrderDetail({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "processing" })} />,
+    )
+
+    expect(screen.getByText("In progress")).toBeInTheDocument()
   })
 
   it("formats the total in the order currency", () => {

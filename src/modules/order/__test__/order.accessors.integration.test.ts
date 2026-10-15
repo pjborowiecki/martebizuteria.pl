@@ -242,11 +242,11 @@ describe("getAdminOrdersPage filtering", () => {
 
   it.each([
     [ADMIN_ORDER_FULFILLMENT_UI_KEY.PENDING, ["o-pending"]],
-    [ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED, ["o-unfulfilled"]],
+    [ADMIN_ORDER_FULFILLMENT_UI_KEY.CONFIRMED, ["o-unfulfilled"]],
     [ADMIN_ORDER_FULFILLMENT_UI_KEY.SHIPPED, ["o-shipped"]],
     [ADMIN_ORDER_FULFILLMENT_UI_KEY.DELIVERED, ["o-delivered"]],
-    [ADMIN_ORDER_FULFILLMENT_UI_KEY.RETURNED, ["o-cancelled"]],
-  ])("filters by the %s fulfilment state", async (fulfillment, expected) => {
+    [ADMIN_ORDER_FULFILLMENT_UI_KEY.CANCELLED, ["o-cancelled"]],
+  ])("filters by the %s fulfilment step", async (fulfillment, expected) => {
     expect(await orderIds({ ...page, filters: { fulfillment } })).toStrictEqual(expected)
   })
 

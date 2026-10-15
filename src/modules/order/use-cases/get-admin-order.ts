@@ -97,6 +97,7 @@ const buildAdminOrderDetail = ({
       createdAt: orderRow.createdAt,
       deliveredAt: orderRow.deliveredAt,
       fulfillmentStartedAt: resolveFulfillmentStartedAt(timelineRows),
+      fulfillmentStatus: orderRow.fulfillmentStatus,
       shippedAt: orderRow.shippedAt,
       status: orderRow.status,
     }),

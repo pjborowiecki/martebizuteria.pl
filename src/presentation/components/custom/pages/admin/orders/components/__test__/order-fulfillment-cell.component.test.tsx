@@ -15,11 +15,12 @@ afterEach(() => {
 
 describe("OrderFulfillmentCell", () => {
   it.each([
-    ["unfulfilled", "Unfulfilled"],
-    ["pending", "Pending"],
+    ["pending", "Awaiting payment"],
+    ["confirmed", "Confirmed"],
+    ["processing", "In progress"],
     ["shipped", "Shipped"],
     ["delivered", "Delivered"],
-    ["returned", "Returned"],
+    ["cancelled", "Cancelled"],
   ])("labels the %s fulfillment state", (fulfillmentUiKey, label) => {
     renderWithProviders(<OrderFulfillmentCell fulfillmentUiKey={fulfillmentUiKey} />)
 
@@ -30,6 +31,12 @@ describe("OrderFulfillmentCell", () => {
     const { container } = renderWithProviders(<OrderFulfillmentCell fulfillmentUiKey="shipped" />)
 
     expect(container.querySelector(".bg-blue-500")).not.toBeNull()
+  })
+
+  it("colours an order in progress apart from a merely confirmed one", () => {
+    const { container } = renderWithProviders(<OrderFulfillmentCell fulfillmentUiKey="processing" />)
+
+    expect(container.querySelector(".bg-violet-500")).not.toBeNull()
   })
 
   it("colours the delivered dot emerald", () => {

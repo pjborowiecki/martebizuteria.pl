@@ -14,9 +14,11 @@ export const CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT = 2
 
 export const CUSTOMER_ACCOUNT_OVERVIEW_ORDERS_LIMIT = 3
 
-export const CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "processing", "shipped", "delivered", "cancelled", "refunded"] as const
+export const CUSTOMER_ACCOUNT_ORDER_FILTERS = ["all", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded"] as const
 
 export type CustomerAccountOrderFilter = (typeof CUSTOMER_ACCOUNT_ORDER_FILTERS)[number]
+
+export type CustomerAccountOrderStatus = Exclude<CustomerAccountOrderFilter, "all"> | "pending"
 
 export const CUSTOMER_ACCOUNT_QUERY_KEYS = {
   LOGIN_HISTORY: ["customer-account", "login-history"] as const,

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, ne, notInArray, or, sql } from "drizzle-orm"
+import { and, asc, count, desc, eq, inArray, notInArray, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -23,6 +23,7 @@ interface CustomerOrderRowsOptions {
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { netSalesSum, orderCountsAsSale } from "~/src/modules/order/order.accessors"
+import { ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
@@ -57,14 +58,10 @@ const customerOrderFilterWhere = (userId: string, filter: CustomerAccountOrderFi
     return and(owned, eq(order.status, "refunded"))
   }
 
-  if (filter === "delivered" || filter === "shipped") {
-    return and(owned, ne(order.status, "refunded"), eq(order.fulfillmentStatus, filter))
-  }
-
   return and(
     owned,
-    notInArray(order.status, ["cancelled", "refunded"]),
-    notInArray(order.fulfillmentStatus, ["cancelled", "delivered", "shipped"]),
+    notInArray(order.status, ["pending", "cancelled", "refunded"]),
+    inArray(order.fulfillmentStatus, [...ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP[filter]]),
   )
 }
 

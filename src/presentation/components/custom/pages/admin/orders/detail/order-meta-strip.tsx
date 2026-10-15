@@ -3,7 +3,12 @@ import { type JSX } from "react"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-import { ORDER_STATUS_BADGE_STYLES, PAYMENT_BADGE_STYLES } from "~/src/modules/order/order.constants"
+import {
+  ADMIN_ORDER_FULFILLMENT_LABEL_KEYS,
+  ADMIN_ORDER_STATUS_LABEL_KEYS,
+  ORDER_STATUS_BADGE_STYLES,
+  PAYMENT_BADGE_STYLES,
+} from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
@@ -13,6 +18,7 @@ import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pa
 
 export const OrderMetaStrip = ({ order }: Readonly<OrderMetaStripProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
+  const tOrders = useTranslations("pages.admin.orders")
   const format = useFormatter()
   const locale = useLocale()
   const statusStyle = ORDER_STATUS_BADGE_STYLES[order.status]
@@ -36,13 +42,13 @@ export const OrderMetaStrip = ({ order }: Readonly<OrderMetaStripProps>): JSX.El
         <div>
           <p className={LABEL_CLASS}>{t("orderDetail.meta.status")}</p>
           <Badge className={`mt-1 text-[11px] ${statusStyle.className ?? ""}`} variant={statusStyle.variant}>
-            {t(`orderDetail.orderStatus.${order.status}`)}
+            {tOrders(ADMIN_ORDER_STATUS_LABEL_KEYS[order.status])}
           </Badge>
         </div>
         <div>
           <p className={LABEL_CLASS}>{t("orderDetail.meta.fulfillment")}</p>
           <Badge className="mt-1 text-[11px]" variant="outline">
-            {t(`orderDetail.status.${order.fulfillmentUiKey}`)}
+            {tOrders(ADMIN_ORDER_FULFILLMENT_LABEL_KEYS[order.fulfillmentUiKey])}
           </Badge>
         </div>
         <div>

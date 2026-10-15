@@ -80,7 +80,7 @@ const orderRow = (): Order["adminListItem"] => ({
   customerName: "Anna Kowalska",
   email: "anna@example.com",
   fulfillmentStatus: "not_fulfilled",
-  fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED,
+  fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.CONFIRMED,
   hasOpenDispute: false,
   id: "order-42",
   initials: "AK",

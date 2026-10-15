@@ -2,6 +2,8 @@ import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.con
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
 import {
+  ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP,
+  ADMIN_ORDER_FULFILLMENT_STEPS,
   ADMIN_ORDER_FULFILLMENT_UI_KEY,
   ADMIN_ORDER_PAYMENT_UI_KEY,
   type AdminOrderFulfillmentUiKey,
@@ -67,19 +69,15 @@ export const resolveAdminOrderFulfillmentUiKey = (
     return ADMIN_ORDER_FULFILLMENT_UI_KEY.PENDING
   }
 
-  if (fulfillmentStatus === "shipped") {
-    return ADMIN_ORDER_FULFILLMENT_UI_KEY.SHIPPED
+  if (orderStatus === "cancelled") {
+    return ADMIN_ORDER_FULFILLMENT_UI_KEY.CANCELLED
   }
 
-  if (fulfillmentStatus === "delivered") {
-    return ADMIN_ORDER_FULFILLMENT_UI_KEY.DELIVERED
-  }
-
-  if (fulfillmentStatus === "cancelled") {
-    return ADMIN_ORDER_FULFILLMENT_UI_KEY.RETURNED
-  }
-
-  return ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED
+  return (
+    ADMIN_ORDER_FULFILLMENT_STEPS.find((step) =>
+      (ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP[step] as readonly string[]).includes(fulfillmentStatus),
+    ) ?? ADMIN_ORDER_FULFILLMENT_UI_KEY.CANCELLED
+  )
 }
 
 export const formatAdminOrderDate = (createdAt: Date | string, locale: string = I18N.DEFAULT_LOCALE): string => {

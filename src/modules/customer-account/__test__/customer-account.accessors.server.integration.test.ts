@@ -109,7 +109,7 @@ beforeEach(() => {
       ('c-rings', 'p-ring'), ('c-necklaces', 'p-necklace'), ('c-earrings', 'p-earring');
   `)
 
-  insertOrder({ day: 1, fulfillmentStatus: "not_fulfilled", id: "processing", status: "processing", total: 10_000, userId: CUSTOMER })
+  insertOrder({ day: 1, fulfillmentStatus: "not_fulfilled", id: "confirmed", status: "processing", total: 10_000, userId: CUSTOMER })
   insertOrder({ day: 2, fulfillmentStatus: "shipped", id: "shipped", status: "processing", total: 20_000, userId: CUSTOMER })
   insertOrder({ day: 3, fulfillmentStatus: "delivered", id: "delivered", status: "completed", total: 30_000, userId: CUSTOMER })
   insertOrder({ day: 4, fulfillmentStatus: "not_fulfilled", id: "cancelled", status: "cancelled", total: 5000, userId: CUSTOMER })
@@ -126,14 +126,15 @@ afterAll(() => {
 describe("getCustomerOrderRows filters", () => {
   it.each([
     {
-      expected: ["pending", "refunded-after-delivery", "fulfilment-cancelled", "cancelled", "delivered", "shipped", "processing"],
+      expected: ["pending", "refunded-after-delivery", "fulfilment-cancelled", "cancelled", "delivered", "shipped", "confirmed"],
       filter: "all",
     },
     { expected: ["fulfilment-cancelled", "cancelled"], filter: "cancelled" },
     { expected: ["refunded-after-delivery"], filter: "refunded" },
     { expected: ["delivered"], filter: "delivered" },
     { expected: ["shipped"], filter: "shipped" },
-    { expected: ["pending", "processing"], filter: "processing" },
+    { expected: ["confirmed"], filter: "confirmed" },
+    { expected: [], filter: "processing" },
   ] as const)("lists the customer's own $filter orders newest first", async ({ expected, filter }) => {
     const rows = await getCustomerOrderRows(CUSTOMER, { filter })
 
@@ -149,7 +150,14 @@ describe("getCustomerOrderRows filters", () => {
   it("counts the same orders the filter lists", async () => {
     await expect(countCustomerOrders(CUSTOMER)).resolves.toBe(7)
     await expect(countCustomerOrders(CUSTOMER, "cancelled")).resolves.toBe(2)
-    await expect(countCustomerOrders(CUSTOMER, "processing")).resolves.toBe(2)
+    await expect(countCustomerOrders(CUSTOMER, "confirmed")).resolves.toBe(1)
+  })
+
+  it("moves an order whose fulfilment started from the confirmed bucket to the in-progress one", async () => {
+    sqlite.exec(`update "order" set fulfillment_status = 'fulfilled' where id = 'confirmed'`)
+
+    await expect(getCustomerOrderRows(CUSTOMER, { filter: "processing" })).resolves.toMatchObject([{ id: "confirmed" }])
+    await expect(getCustomerOrderRows(CUSTOMER, { filter: "confirmed" })).resolves.toStrictEqual([])
   })
 })
 
@@ -174,8 +182,8 @@ describe("getCustomerSpendStats", () => {
 
 describe("getCustomerPurchasedCategoryIds", () => {
   beforeEach(() => {
-    insertOrderItem("item-1", "processing", "v-ring")
-    insertOrderItem("item-2", "processing", "v-necklace")
+    insertOrderItem("item-1", "confirmed", "v-ring")
+    insertOrderItem("item-2", "confirmed", "v-necklace")
     insertOrderItem("item-3", "shipped", "v-ring")
     insertOrderItem("item-4", "delivered", "v-ring")
     insertOrderItem("item-5", "delivered", "v-necklace")
@@ -200,7 +208,7 @@ describe("getCustomerPurchasedCategoryIds", () => {
 
 describe("getCustomerPurchasedProductIds", () => {
   beforeEach(() => {
-    insertOrderItem("item-1", "processing", "v-ring")
+    insertOrderItem("item-1", "confirmed", "v-ring")
     insertOrderItem("item-2", "shipped", "v-ring")
     insertOrderItem("item-3", "pending", "v-necklace")
     insertOrderItem("item-4", "someone-else", "v-earring")

@@ -53,17 +53,20 @@
     "viewDetails": "Zobacz szczegóły",
     "filter": {
       "all": "Wszystkie",
-      "delivered": "Dostarczono",
-      "shipped": "Wysłano",
+      "confirmed": "Potwierdzone",
       "processing": "W realizacji",
-      "cancelled": "Anulowano",
+      "shipped": "Wysłane",
+      "delivered": "Dostarczone",
+      "cancelled": "Anulowane",
       "refunded": "Zwrócone"
     },
     "status": {
-      "delivered": "Dostarczono",
-      "shipped": "Wysłano",
+      "pending": "Oczekuje na płatność",
+      "confirmed": "Potwierdzone",
       "processing": "W realizacji",
-      "cancelled": "Anulowano",
+      "shipped": "Wysłane",
+      "delivered": "Dostarczone",
+      "cancelled": "Anulowane",
       "refunded": "Zwrócone"
     },
     "emptyAll": "Nie złożyłeś jeszcze żadnego zamówienia.",
@@ -92,10 +95,12 @@
     "deliveredOn": "Dostarczono {date}",
     "notFound": "Nie znaleziono zamówienia.",
     "status": {
-      "delivered": "Dostarczono",
-      "shipped": "Wysłano",
+      "pending": "Oczekuje na płatność",
+      "confirmed": "Potwierdzone",
       "processing": "W realizacji",
-      "cancelled": "Anulowano",
+      "shipped": "Wysłane",
+      "delivered": "Dostarczone",
+      "cancelled": "Anulowane",
       "refunded": "Zwrócone"
     },
     "events": {

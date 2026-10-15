@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl/react"
 
 import {
   ADMIN_ORDER_FULFILLMENT_LABEL_KEYS,
+  ADMIN_ORDER_FULFILLMENT_STEPS,
   ADMIN_ORDER_FULFILLMENT_UI_KEY,
   ADMIN_ORDER_TABLE_COLUMN_ID,
 } from "~/src/modules/order/order.constants"
@@ -25,26 +26,10 @@ export const OrdersFulfillmentFilter = (): JSX.Element => {
         label: t("filter.allFulfillment"),
         value: ALL_VALUE,
       },
-      {
-        label: t(ADMIN_ORDER_FULFILLMENT_LABEL_KEYS.unfulfilled),
-        value: ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED,
-      },
-      {
-        label: t(ADMIN_ORDER_FULFILLMENT_LABEL_KEYS.pending),
-        value: ADMIN_ORDER_FULFILLMENT_UI_KEY.PENDING,
-      },
-      {
-        label: t(ADMIN_ORDER_FULFILLMENT_LABEL_KEYS.shipped),
-        value: ADMIN_ORDER_FULFILLMENT_UI_KEY.SHIPPED,
-      },
-      {
-        label: t(ADMIN_ORDER_FULFILLMENT_LABEL_KEYS.delivered),
-        value: ADMIN_ORDER_FULFILLMENT_UI_KEY.DELIVERED,
-      },
-      {
-        label: t(ADMIN_ORDER_FULFILLMENT_LABEL_KEYS.returned),
-        value: ADMIN_ORDER_FULFILLMENT_UI_KEY.RETURNED,
-      },
+      ...FULFILLMENT_FILTER_KEYS.map((key) => ({
+        label: t(ADMIN_ORDER_FULFILLMENT_LABEL_KEYS[key]),
+        value: key,
+      })),
     ],
     [t],
   )
@@ -78,3 +63,9 @@ export const OrdersFulfillmentFilter = (): JSX.Element => {
 }
 
 const ALL_VALUE = "all"
+
+const FULFILLMENT_FILTER_KEYS = [
+  ADMIN_ORDER_FULFILLMENT_UI_KEY.PENDING,
+  ...ADMIN_ORDER_FULFILLMENT_STEPS,
+  ADMIN_ORDER_FULFILLMENT_UI_KEY.CANCELLED,
+] as const

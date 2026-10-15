@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, inArray, ne, not, or, sql } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, inArray, ne, not, notInArray, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -11,6 +11,7 @@ import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import {
   ADMIN_ORDER_COUNTABLE_STATUSES,
+  ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP,
   ADMIN_ORDER_FULFILLMENT_UI_KEY,
   ADMIN_ORDER_PAYMENT_UI_KEY,
   ADMIN_ORDER_STAT_FILTER,
@@ -35,6 +36,9 @@ export const netSalesSum = sql<number>`coalesce(sum(${orderNetSales}), 0)`
 
 export const netSalesAverage = sql<number>`case when count(*) > 0 then cast(round(${netSalesSum} * 1.0 / count(*)) as integer) else 0 end`
 
+const orderAtFulfillmentStatuses = (fulfillmentStatuses: readonly Order["select"]["fulfillmentStatus"][]): SQL =>
+  and(notInArray(order.status, ["pending", "cancelled"]), inArray(order.fulfillmentStatus, [...fulfillmentStatuses]))!
+
 const buildAdminOrderFulfillmentUiCondition = (
   fulfillmentUiKey: (typeof ADMIN_ORDER_FULFILLMENT_UI_KEY)[keyof typeof ADMIN_ORDER_FULFILLMENT_UI_KEY],
 ): SQL => {
@@ -42,19 +46,11 @@ const buildAdminOrderFulfillmentUiCondition = (
     return eq(order.status, "pending")
   }
 
-  if (fulfillmentUiKey === ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED) {
-    return and(ne(order.status, "pending"), inArray(order.fulfillmentStatus, ["not_fulfilled", "partially_fulfilled", "fulfilled"]))!
+  if (fulfillmentUiKey === ADMIN_ORDER_FULFILLMENT_UI_KEY.CANCELLED) {
+    return or(eq(order.status, "cancelled"), and(ne(order.status, "pending"), eq(order.fulfillmentStatus, "cancelled")))!
   }
 
-  if (fulfillmentUiKey === ADMIN_ORDER_FULFILLMENT_UI_KEY.SHIPPED) {
-    return eq(order.fulfillmentStatus, "shipped")
-  }
-
-  if (fulfillmentUiKey === ADMIN_ORDER_FULFILLMENT_UI_KEY.DELIVERED) {
-    return eq(order.fulfillmentStatus, "delivered")
-  }
-
-  return eq(order.fulfillmentStatus, "cancelled")
+  return orderAtFulfillmentStatuses(ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP[fulfillmentUiKey])
 }
 
 const buildAdminOrderTabCondition = (tab: AdminOrderTab | undefined): SQL | undefined => {
@@ -67,7 +63,10 @@ const buildAdminOrderTabCondition = (tab: AdminOrderTab | undefined): SQL | unde
   }
 
   if (tab === ADMIN_ORDER_TAB.UNFULFILLED) {
-    return buildAdminOrderFulfillmentUiCondition(ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED)
+    return orderAtFulfillmentStatuses([
+      ...ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP.confirmed,
+      ...ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP.processing,
+    ])
   }
 
   if (tab === ADMIN_ORDER_TAB.SHIPPED) {

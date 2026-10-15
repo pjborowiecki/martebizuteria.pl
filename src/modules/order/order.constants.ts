@@ -35,11 +35,12 @@ export const ADMIN_ORDER_PAYMENT_UI_KEY = {
 } as const
 
 export const ADMIN_ORDER_FULFILLMENT_UI_KEY = {
+  CANCELLED: "cancelled",
+  CONFIRMED: "confirmed",
   DELIVERED: "delivered",
   PENDING: "pending",
-  RETURNED: "returned",
+  PROCESSING: "processing",
   SHIPPED: "shipped",
-  UNFULFILLED: "unfulfilled",
 } as const
 
 export const ADMIN_ORDER_STATUSES = ["pending", "processing", "completed", "cancelled", "refunded"] as const
@@ -112,6 +113,13 @@ export const ADMIN_ORDER_TABLE_COLUMN_PINNING = {
 export const ADMIN_ORDER_FULFILLMENT_STEPS = ["confirmed", "processing", "shipped", "delivered"] as const
 
 export type AdminOrderFulfillmentStepKey = (typeof ADMIN_ORDER_FULFILLMENT_STEPS)[number]
+
+export const ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP = {
+  confirmed: ["not_fulfilled", "partially_fulfilled"],
+  delivered: ["delivered"],
+  processing: ["fulfilled"],
+  shipped: ["shipped"],
+} as const satisfies Record<AdminOrderFulfillmentStepKey, readonly Order["select"]["fulfillmentStatus"][]>
 
 export const ADMIN_ORDER_TIMELINE_KIND = {
   DISPUTE: "dispute",
@@ -281,11 +289,12 @@ export const ADMIN_ORDER_FULFILLMENT_LABEL_KEYS: Record<
   (typeof ADMIN_ORDER_FULFILLMENT_UI_KEY)[keyof typeof ADMIN_ORDER_FULFILLMENT_UI_KEY],
   string
 > = {
+  cancelled: "fulfillment.cancelled",
+  confirmed: "fulfillment.confirmed",
   delivered: "fulfillment.delivered",
   pending: "fulfillment.pending",
-  returned: "fulfillment.returned",
+  processing: "fulfillment.processing",
   shipped: "fulfillment.shipped",
-  unfulfilled: "fulfillment.unfulfilled",
 }
 
 export interface AdminOrderPaymentStyle {
@@ -333,11 +342,12 @@ export const PAYMENT_BADGE_STYLES: Record<string, AdminOrderPaymentStyle> = {
 }
 
 export const FULFILLMENT_DOT_COLORS: Record<string, string> = {
+  cancelled: "bg-red-400",
+  confirmed: "bg-muted-foreground/30",
   delivered: "bg-emerald-500",
   pending: "bg-amber-500",
-  returned: "bg-red-400",
+  processing: "bg-violet-500",
   shipped: "bg-blue-500",
-  unfulfilled: "bg-muted-foreground/30",
 }
 
 export const ORDER_QUERY_KEYS = {

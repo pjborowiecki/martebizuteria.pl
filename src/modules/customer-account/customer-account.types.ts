@@ -1,7 +1,7 @@
 import { type z } from "zod/v4"
 
 import { type Address } from "~/src/modules/address/address.types"
-import { type CustomerAccountOrderFilter } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountOrderStatus } from "~/src/modules/customer-account/customer-account.constants"
 import { type customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -20,7 +20,7 @@ interface CustomerAccountOrderSummary {
   readonly createdAt: Date
   readonly itemCount: number
   readonly currencyCode: string
-  readonly filterStatus: CustomerAccountOrderFilter
+  readonly filterStatus: CustomerAccountOrderStatus
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly id: string
   readonly items: readonly CustomerAccountOrderItem[]

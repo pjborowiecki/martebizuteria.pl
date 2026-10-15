@@ -41,9 +41,9 @@ const succeed: Mutate = (_variables, options) => {
   options?.onSuccess?.()
 }
 
-const unfulfilled = () => buildAdminOrderDetail({ fulfillmentStatus: "not_fulfilled", fulfillmentUiKey: "unfulfilled" })
+const unfulfilled = () => buildAdminOrderDetail({ fulfillmentStatus: "not_fulfilled", fulfillmentUiKey: "confirmed" })
 
-const fulfilled = () => buildAdminOrderDetail({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "unfulfilled" })
+const fulfilled = () => buildAdminOrderDetail({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "processing" })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -238,7 +238,7 @@ describe("OrderDetailActions cancel", () => {
   it("tells the admin that a free order has no payment to refund", async () => {
     renderWithProviders(
       <OrderDetailActions
-        order={buildAdminOrderDetail({ fulfillmentStatus: "not_fulfilled", fulfillmentUiKey: "unfulfilled", totalMinorUnits: 0 })}
+        order={buildAdminOrderDetail({ fulfillmentStatus: "not_fulfilled", fulfillmentUiKey: "confirmed", totalMinorUnits: 0 })}
       />,
     )
 
@@ -304,7 +304,7 @@ describe("OrderDetailActions fulfillment", () => {
   it("starts fulfilling an unfulfilled order", async () => {
     renderWithProviders(<OrderDetailActions order={unfulfilled()} />)
 
-    await userEvent.click(screen.getByRole("button", { name: "Fulfill" }))
+    await userEvent.click(screen.getByRole("button", { name: "Start fulfillment" }))
 
     expect(mutations.fulfill).toHaveBeenCalledWith({ orderId: ORDER_ID })
   })
@@ -313,7 +313,7 @@ describe("OrderDetailActions fulfillment", () => {
     mutations.pending.current = true
     renderWithProviders(<OrderDetailActions order={unfulfilled()} />)
 
-    const fulfill = screen.getByRole("button", { name: "Fulfill" })
+    const fulfill = screen.getByRole("button", { name: "Start fulfillment" })
 
     expect(fulfill).toBeDisabled()
     expect(fulfill.querySelector(".animate-spin")).not.toBeNull()

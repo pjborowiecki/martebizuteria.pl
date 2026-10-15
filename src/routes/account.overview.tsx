@@ -190,7 +190,7 @@ const RecentOrderLink = ({
       </div>
       <div className="text-right">
         <p className="text-[13px] tabular-nums">{totalLabel}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground capitalize">{tOrders(`status.${filterStatus}`)}</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">{tOrders(`status.${filterStatus}`)}</p>
       </div>
     </LocalizedLink>
   )

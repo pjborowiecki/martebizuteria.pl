@@ -17,11 +17,12 @@ import { type Order } from "~/src/modules/order/order.types"
 const dispute = { amount: 12_000, id: "dp_1", reason: "fraudulent", status: "needs_response" }
 
 const FULFILMENT_UI_CASES: [Order["select"]["fulfillmentStatus"], string][] = [
+  ["not_fulfilled", ADMIN_ORDER_FULFILLMENT_UI_KEY.CONFIRMED],
+  ["partially_fulfilled", ADMIN_ORDER_FULFILLMENT_UI_KEY.CONFIRMED],
+  ["fulfilled", ADMIN_ORDER_FULFILLMENT_UI_KEY.PROCESSING],
   ["shipped", ADMIN_ORDER_FULFILLMENT_UI_KEY.SHIPPED],
   ["delivered", ADMIN_ORDER_FULFILLMENT_UI_KEY.DELIVERED],
-  ["cancelled", ADMIN_ORDER_FULFILLMENT_UI_KEY.RETURNED],
-  ["not_fulfilled", ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED],
-  ["fulfilled", ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED],
+  ["cancelled", ADMIN_ORDER_FULFILLMENT_UI_KEY.CANCELLED],
 ]
 
 describe("parseOrderMetadata", () => {
@@ -116,6 +117,20 @@ describe("resolveAdminOrderFulfillmentUiKey", () => {
   it.each(FULFILMENT_UI_CASES)("shows the fulfilment status %s of a processing order as %s", (fulfillmentStatus, expected) => {
     expect(resolveAdminOrderFulfillmentUiKey("processing", fulfillmentStatus)).toBe(expected)
   })
+
+  it("tells an order whose fulfilment started apart from one that is only paid", () => {
+    expect(resolveAdminOrderFulfillmentUiKey("processing", "fulfilled")).not.toBe(
+      resolveAdminOrderFulfillmentUiKey("processing", "not_fulfilled"),
+    )
+  })
+
+  it("shows a cancelled order as cancelled, never as returned", () => {
+    expect(resolveAdminOrderFulfillmentUiKey("cancelled", "not_fulfilled")).toBe(ADMIN_ORDER_FULFILLMENT_UI_KEY.CANCELLED)
+  })
+
+  it("keeps the step a refunded order reached", () => {
+    expect(resolveAdminOrderFulfillmentUiKey("refunded", "delivered")).toBe(ADMIN_ORDER_FULFILLMENT_UI_KEY.DELIVERED)
+  })
 })
 
 describe("formatAdminOrderDate", () => {
@@ -152,7 +167,7 @@ describe("toAdminOrderListItem", () => {
       customerName: "Anna Kowalska",
       email: "anna@example.com",
       fulfillmentStatus: "not_fulfilled",
-      fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.UNFULFILLED,
+      fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.CONFIRMED,
       hasOpenDispute: false,
       id: "order-1",
       initials: "AK",
