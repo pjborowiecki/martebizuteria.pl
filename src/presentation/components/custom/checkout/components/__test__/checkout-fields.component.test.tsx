@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useForm } from "react-hook-form"
-import { afterEach, describe, expect, it } from "vite-plus/test"
+import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
@@ -45,6 +45,31 @@ const FieldsHarness = ({ defaultValues = {} }: Readonly<{ defaultValues?: Partia
 }
 
 const storedValues = (): string => screen.getByTestId("values").textContent
+
+const contactStepResolver = vi.fn(zodResolver(checkoutSchema))
+
+const ContactStepHarness = (): JSX.Element => {
+  const form = useForm<CheckoutFormSchema>({
+    defaultValues: { email: "", phone: "" },
+    mode: "onTouched",
+    resolver: contactStepResolver,
+  })
+
+  return (
+    <form>
+      <CheckoutTextField control={form.control} label="Email" name="email" required />
+      <CheckoutPhoneField control={form.control} label="Phone" name="phone" />
+      <button
+        type="button"
+        onClick={() => {
+          void form.trigger(["email", "phone"], { shouldFocus: true })
+        }}
+      >
+        Next
+      </button>
+    </form>
+  )
+}
 
 describe("CheckoutTextField", () => {
   it("labels the input and marks a required field with an asterisk", () => {
@@ -232,6 +257,51 @@ describe("CheckoutPhoneField", () => {
     await userEvent.tab()
 
     expect(screen.getByText("+48").className).toContain("border-success")
+  })
+})
+
+describe("a field Next flagged before the shopper touched it", () => {
+  it("drops its error as soon as autofill puts a valid address into it while the shopper is still there", async () => {
+    renderWithProviders(<ContactStepHarness />)
+    const email = screen.getByLabelText(/Email/u)
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }))
+    expect(await screen.findByText("Please enter a valid email address")).toBeInTheDocument()
+    expect(email).toHaveFocus()
+
+    fireEvent.change(email, { target: { value: "piotr@example.com" } })
+
+    await waitFor(() => {
+      expect(screen.queryByText("Please enter a valid email address")).not.toBeInTheDocument()
+    })
+    expect(email).toHaveFocus()
+  })
+
+  it("swaps its error for the one the new value earns", async () => {
+    renderWithProviders(<ContactStepHarness />)
+    const phone = screen.getByLabelText("Phone")
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }))
+    expect(await screen.findByText("Phone number is required")).toBeInTheDocument()
+    await userEvent.click(phone)
+    fireEvent.change(phone, { target: { value: "123" } })
+
+    expect(await screen.findByText("Please enter a valid phone number")).toBeInTheDocument()
+    expect(screen.queryByText("Phone number is required")).not.toBeInTheDocument()
+  })
+
+  it("checks it once per change after its first change has touched it", async () => {
+    renderWithProviders(<ContactStepHarness />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }))
+    expect(await screen.findByText("Please enter a valid email address")).toBeInTheDocument()
+    await userEvent.keyboard("p")
+    contactStepResolver.mockClear()
+
+    await userEvent.keyboard("i")
+
+    expect(contactStepResolver).toHaveBeenCalledOnce()
+    expect(await screen.findByText("Please enter a valid email address")).toBeInTheDocument()
   })
 })
 

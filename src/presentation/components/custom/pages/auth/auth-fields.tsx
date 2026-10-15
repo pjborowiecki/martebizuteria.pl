@@ -37,7 +37,7 @@ export const AuthTextField = <TFieldValues extends FieldValues>({
     control,
     name,
   })
-  const handleChange = useAutofillAwareChange(field)
+  const handleChange = useAutofillAwareChange(field, fieldState)
 
   const valueStr = toStringValue(field.value)
   const showValid = isFieldValid(fieldState, valueStr)
@@ -78,7 +78,7 @@ export const AuthPasswordField = <TFieldValues extends FieldValues>({
     name,
   })
 
-  const handleChange = useAutofillAwareChange(field)
+  const handleChange = useAutofillAwareChange(field, fieldState)
   const [show, setShow] = useState(false)
   const valueStr = toStringValue(field.value)
   const showValid = isFieldValid(fieldState, valueStr)
