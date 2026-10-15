@@ -9,7 +9,7 @@ export const ManifestoSection = (): JSX.Element => {
 
   return (
     <section className="bg-secondary/40 py-24 lg:py-36">
-      <div className="reveal mx-auto max-w-3xl space-y-8 px-6 text-center lg:px-12">
+      <div className="reveal mx-auto max-w-3xl space-y-8 px-4 text-center sm:px-6 lg:px-12">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
         <h2 className="font-serif text-4xl leading-tight md:text-5xl lg:text-6xl">
           {t("title")}

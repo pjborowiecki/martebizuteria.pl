@@ -16,7 +16,7 @@ export const ShopCategoriesSection = (): JSX.Element => {
   const [cat1, cat2, cat3, cat4, cat5] = categories.slice(0, SHOP_CATEGORY_DISPLAY_LIMIT)
 
   return (
-    <section className="mx-auto max-w-400 px-6 pb-24 lg:px-12 lg:pb-36">
+    <section className="storefront-container pb-24 lg:pb-36">
       <div className="reveal mb-14 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between lg:mb-18">
         <div className="space-y-4">
           <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>

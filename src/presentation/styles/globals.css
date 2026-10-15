@@ -182,6 +182,10 @@
   --spacing-54: 13.5rem;
 }
 
+@utility storefront-container {
+  @apply mx-auto px-4 sm:max-w-400 sm:px-6 lg:px-12;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

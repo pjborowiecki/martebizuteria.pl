@@ -52,7 +52,7 @@ export const ValuesSection = (): JSX.Element => {
 
   return (
     <section ref={sectionRef} className="values-section relative z-10 bg-background py-20 lg:py-32">
-      <div className="mx-auto max-w-400 px-6 lg:px-12">
+      <div className="storefront-container">
         <div className="reveal mb-12 max-w-xl space-y-3">
           <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
           <h2 className="font-serif text-4xl leading-tight md:text-5xl">{t("title")}</h2>

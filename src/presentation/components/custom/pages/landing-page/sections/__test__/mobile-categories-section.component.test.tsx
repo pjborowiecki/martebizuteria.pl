@@ -103,4 +103,13 @@ describe("MobileCategoriesSection", () => {
     expect(await screen.findByAltText("Refined simplicity")).toBeInTheDocument()
     expect(screen.getByAltText("Precise accents")).toBeInTheDocument()
   })
+
+  it("sets the panel copy in from the card border and gives each category link a finger-sized target", async () => {
+    renderWithProviders(<MobileCategoriesSection />)
+
+    const link = await screen.findByRole("link", { name: "Discover Necklaces" })
+
+    expect(link.parentElement).toHaveClass("px-4", "sm:px-6")
+    expect(link).toHaveClass("pointer-coarse:min-h-10", "pointer-coarse:items-center")
+  })
 })

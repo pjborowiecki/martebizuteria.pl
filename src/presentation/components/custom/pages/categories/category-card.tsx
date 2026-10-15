@@ -52,7 +52,7 @@ export const StorefrontCategoryCard = ({
         />
       </AspectRatio>
       <div className="mt-5 space-y-2">
-        <div className="flex items-baseline justify-between gap-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h2 className="font-serif text-lg tracking-tight transition-colors duration-500 group-hover:text-muted-foreground sm:text-xl lg:text-2xl">
             {title}
           </h2>

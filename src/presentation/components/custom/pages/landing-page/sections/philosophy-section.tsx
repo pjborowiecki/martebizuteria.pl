@@ -8,7 +8,7 @@ export const PhilosophySection = (): JSX.Element => {
   const t = useTranslations("pages.landing.philosophySection")
 
   return (
-    <section className="mx-auto max-w-400 px-6 pb-20 lg:px-12 lg:pb-28">
+    <section className="storefront-container pb-20 lg:pb-28">
       <div className="reveal mx-auto max-w-3xl space-y-6 text-center">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
         <h2 className="font-serif text-4xl leading-tight md:text-5xl">{t("title")}</h2>

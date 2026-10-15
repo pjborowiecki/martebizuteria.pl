@@ -41,12 +41,12 @@ const MobileCategoryPanel = ({
           width={1250}
         />
       </AspectRatio>
-      <div className="space-y-3 px-1 py-5 sm:px-2 sm:py-6">
+      <div className="space-y-3 px-4 py-5 sm:px-6 sm:py-6">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{panel.tag}</p>
         <h3 className="font-serif text-2xl leading-[1.05] tracking-tight sm:text-3xl">{panel.title}</h3>
         <p className="max-w-prose text-sm/relaxed text-muted-foreground">{panel.subtitle}</p>
         <LocalizedLink
-          className="inline-flex pt-1 text-[11px] tracking-[0.18em] text-foreground uppercase underline-offset-4 transition-colors hover:text-muted-foreground"
+          className="inline-flex pt-1 text-[11px] tracking-[0.18em] text-foreground uppercase underline-offset-4 transition-colors hover:text-muted-foreground pointer-coarse:min-h-10 pointer-coarse:items-center"
           params={params}
           to={ROUTES.CATEGORY}
         >
@@ -62,7 +62,7 @@ export const MobileCategoriesSection = (): JSX.Element => {
   const { data: categories } = useSuspenseQuery(getCategoriesQuery())
 
   return (
-    <section className="mx-auto max-w-400 space-y-8 px-6 pb-8 lg:hidden lg:px-12 motion-reduce:lg:block">
+    <section className="storefront-container space-y-8 pb-8 lg:hidden motion-reduce:lg:block">
       <div className="reveal">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
         <h2 className="mt-3 font-serif text-4xl leading-tight md:text-5xl">{t("title")}</h2>
