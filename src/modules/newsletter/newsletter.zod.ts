@@ -2,7 +2,7 @@ import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { localeField, pageField, pageSizeField } from "~/src/modules/_core/utils/zod-fields"
-import { NEWSLETTER_EMAIL_MAX_LENGTH, NEWSLETTER_SOURCES } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_EMAIL_MAX_LENGTH, NEWSLETTER_SOURCES, NEWSLETTER_STATUSES } from "~/src/modules/newsletter/newsletter.constants"
 import { newsletterSubscriber } from "~/src/modules/newsletter/newsletter.schema"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
@@ -13,11 +13,16 @@ const TOKEN_MIN_LENGTH = 16
 
 const TOKEN_MAX_LENGTH = 128
 
+const adminSubscribersFilters = zod.object({
+  search: zod.string().optional(),
+  status: zod.enum(NEWSLETTER_STATUSES).optional(),
+})
+
 export const newsletterZodSchemas = {
-  adminNewsletterPageInput: zod.object({
+  adminNewsletterExportInput: adminSubscribersFilters,
+  adminNewsletterPageInput: adminSubscribersFilters.extend({
     page: pageField.optional(),
     pageSize: pageSizeField.optional(),
-    search: zod.string().optional(),
   }),
   insert: createInsertSchema(newsletterSubscriber),
   select: createSelectSchema(newsletterSubscriber),

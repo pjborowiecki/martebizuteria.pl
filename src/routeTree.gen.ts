@@ -69,6 +69,7 @@ import { Route as AdminCustomersIndexRouteImport } from './routes/admin.customer
 import { Route as AdminCustomersIdRouteImport } from './routes/admin.customers.$id'
 import { Route as AdminMarketingIndexRouteImport } from './routes/admin.marketing.index'
 import { Route as AdminMarketingNewRouteImport } from './routes/admin.marketing.new'
+import { Route as AdminMarketingSubscribersRouteImport } from './routes/admin.marketing.subscribers'
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
 import { Route as AdminOrdersOrderIdRouteImport } from './routes/admin.orders.$orderId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
@@ -392,6 +393,12 @@ const AdminMarketingNewRoute = AdminMarketingNewRouteImport.update({
   path: '/marketing/new',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMarketingSubscribersRoute =
+  AdminMarketingSubscribersRouteImport.update({
+    id: '/marketing/subscribers',
+    path: '/marketing/subscribers',
+    getParentRoute: () => AdminRoute,
+  } as any)
 const AdminOrdersIndexRoute = AdminOrdersIndexRouteImport.update({
   id: '/orders/',
   path: '/orders/',
@@ -517,6 +524,7 @@ export interface FileRoutesByFullPath {
   '/admin/content/$handle': typeof AdminContentHandleRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
   '/admin/marketing/new': typeof AdminMarketingNewRoute
+  '/admin/marketing/subscribers': typeof AdminMarketingSubscribersRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
@@ -582,6 +590,7 @@ export interface FileRoutesByTo {
   '/admin/content/$handle': typeof AdminContentHandleRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
   '/admin/marketing/new': typeof AdminMarketingNewRoute
+  '/admin/marketing/subscribers': typeof AdminMarketingSubscribersRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
@@ -658,6 +667,7 @@ export interface FileRoutesById {
   '/admin/content/$handle': typeof AdminContentHandleRoute
   '/admin/customers/$id': typeof AdminCustomersIdRoute
   '/admin/marketing/new': typeof AdminMarketingNewRoute
+  '/admin/marketing/subscribers': typeof AdminMarketingSubscribersRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
@@ -734,6 +744,7 @@ export interface FileRouteTypes {
     | '/admin/content/$handle'
     | '/admin/customers/$id'
     | '/admin/marketing/new'
+    | '/admin/marketing/subscribers'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
     | '/api/newsletter/unsubscribe'
@@ -799,6 +810,7 @@ export interface FileRouteTypes {
     | '/admin/content/$handle'
     | '/admin/customers/$id'
     | '/admin/marketing/new'
+    | '/admin/marketing/subscribers'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
     | '/api/newsletter/unsubscribe'
@@ -874,6 +886,7 @@ export interface FileRouteTypes {
     | '/admin/content/$handle'
     | '/admin/customers/$id'
     | '/admin/marketing/new'
+    | '/admin/marketing/subscribers'
     | '/admin/orders/$orderId'
     | '/api/auth/$'
     | '/api/newsletter/unsubscribe'
@@ -1337,6 +1350,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminMarketingNewRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/marketing/subscribers': {
+      id: '/admin/marketing/subscribers'
+      path: '/marketing/subscribers'
+      fullPath: '/admin/marketing/subscribers'
+      preLoaderRoute: typeof AdminMarketingSubscribersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/orders/': {
       id: '/admin/orders/'
       path: '/orders'
@@ -1591,6 +1611,7 @@ interface AdminRouteChildren {
   AdminContentHandleRoute: typeof AdminContentHandleRoute
   AdminCustomersIdRoute: typeof AdminCustomersIdRoute
   AdminMarketingNewRoute: typeof AdminMarketingNewRoute
+  AdminMarketingSubscribersRoute: typeof AdminMarketingSubscribersRoute
   AdminOrdersOrderIdRoute: typeof AdminOrdersOrderIdRoute
   AdminContentIndexRoute: typeof AdminContentIndexRoute
   AdminCustomersIndexRoute: typeof AdminCustomersIndexRoute
@@ -1608,6 +1629,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminContentHandleRoute: AdminContentHandleRoute,
   AdminCustomersIdRoute: AdminCustomersIdRoute,
   AdminMarketingNewRoute: AdminMarketingNewRoute,
+  AdminMarketingSubscribersRoute: AdminMarketingSubscribersRoute,
   AdminOrdersOrderIdRoute: AdminOrdersOrderIdRoute,
   AdminContentIndexRoute: AdminContentIndexRoute,
   AdminCustomersIndexRoute: AdminCustomersIndexRoute,

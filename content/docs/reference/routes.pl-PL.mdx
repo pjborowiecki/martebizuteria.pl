@@ -92,30 +92,31 @@ Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCu
 
 Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`, który wysyła administratora bez uwierzytelniania dwuskładnikowego na `/admin/security`; ponadto ładuje `admin.css`, wymusza jasny motyw, renderuje sidebar panelu i otwiera administracyjny WebSocket realtime przez `useRealtimeQuerySync`. `admin.index.tsx` przekierowuje `/admin` na `/admin/overview`, a `admin.catalog.index.tsx` przekierowuje `/admin/catalog` na `/admin/catalog/products`.
 
-| Ścieżka                              | Stała w `ROUTES`       | Plik trasy                                                               |
-| ------------------------------------ | ---------------------- | ------------------------------------------------------------------------ |
-| `/admin`                             | `ADMIN`                | `admin.tsx` (layout), `admin.index.tsx` (przekierowanie)                 |
-| `/admin/overview`                    | `ADMIN_OVERVIEW`       | `admin.overview.tsx`                                                     |
-| `/admin/catalog`                     | `ADMIN_CATALOG`        | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (przekierowanie) |
-| `/admin/catalog/products`            | `ADMIN_PRODUCTS`       | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`         |
-| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`     | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`     |
-| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`       | `admin.catalog.categories.$handle.tsx`                                   |
-| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`    | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx`   |
-| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`     | `admin.catalog.collections.$handle.tsx`                                  |
-| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`     | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`     |
-| `/admin/orders`                      | `ADMIN_ORDERS`         | `admin.orders.index.tsx`                                                 |
-| `/admin/orders/$orderId`             | `ADMIN_ORDER`          | `admin.orders.$orderId.tsx`                                              |
-| `/admin/customers`                   | `ADMIN_CUSTOMERS`      | `admin.customers.index.tsx`                                              |
-| `/admin/customers/$id`               | `ADMIN_CUSTOMER`       | `admin.customers.$id.tsx`                                                |
-| `/admin/audit`                       | `ADMIN_AUDIT`          | `admin.audit.tsx`                                                        |
-| `/admin/coupons`                     | `ADMIN_COUPONS`        | `admin.coupons.tsx`                                                      |
-| `/admin/content`                     | `ADMIN_CONTENT`        | `admin.content.index.tsx`                                                |
-| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE`   | `admin.content.$handle.tsx`                                              |
-| `/admin/marketing`                   | `ADMIN_MARKETING`      | `admin.marketing.index.tsx`                                              |
-| `/admin/marketing/new`               | `ADMIN_NEWSLETTER_NEW` | `admin.marketing.new.tsx`                                                |
-| `/admin/settings`                    | `ADMIN_SETTINGS`       | `admin.settings.tsx`                                                     |
-| `/admin/security`                    | `ADMIN_SECURITY`       | `admin_.security.tsx` (poza layoutem)                                    |
-| `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY`  | `admin_.orders.$orderId.summary.tsx` (poza layoutem)                     |
+| Ścieżka                              | Stała w `ROUTES`               | Plik trasy                                                               |
+| ------------------------------------ | ------------------------------ | ------------------------------------------------------------------------ |
+| `/admin`                             | `ADMIN`                        | `admin.tsx` (layout), `admin.index.tsx` (przekierowanie)                 |
+| `/admin/overview`                    | `ADMIN_OVERVIEW`               | `admin.overview.tsx`                                                     |
+| `/admin/catalog`                     | `ADMIN_CATALOG`                | `admin.catalog.tsx` (layout), `admin.catalog.index.tsx` (przekierowanie) |
+| `/admin/catalog/products`            | `ADMIN_PRODUCTS`               | `admin.catalog.products.tsx`, `admin.catalog.products.index.tsx`         |
+| `/admin/catalog/categories`          | `ADMIN_CATEGORIES`             | `admin.catalog.categories.tsx`, `admin.catalog.categories.index.tsx`     |
+| `/admin/catalog/categories/$handle`  | `ADMIN_CATEGORY`               | `admin.catalog.categories.$handle.tsx`                                   |
+| `/admin/catalog/collections`         | `ADMIN_COLLECTIONS`            | `admin.catalog.collections.tsx`, `admin.catalog.collections.index.tsx`   |
+| `/admin/catalog/collections/$handle` | `ADMIN_COLLECTION`             | `admin.catalog.collections.$handle.tsx`                                  |
+| `/admin/catalog/attributes`          | `ADMIN_ATTRIBUTES`             | `admin.catalog.attributes.tsx`, `admin.catalog.attributes.index.tsx`     |
+| `/admin/orders`                      | `ADMIN_ORDERS`                 | `admin.orders.index.tsx`                                                 |
+| `/admin/orders/$orderId`             | `ADMIN_ORDER`                  | `admin.orders.$orderId.tsx`                                              |
+| `/admin/customers`                   | `ADMIN_CUSTOMERS`              | `admin.customers.index.tsx`                                              |
+| `/admin/customers/$id`               | `ADMIN_CUSTOMER`               | `admin.customers.$id.tsx`                                                |
+| `/admin/audit`                       | `ADMIN_AUDIT`                  | `admin.audit.tsx`                                                        |
+| `/admin/coupons`                     | `ADMIN_COUPONS`                | `admin.coupons.tsx`                                                      |
+| `/admin/content`                     | `ADMIN_CONTENT`                | `admin.content.index.tsx`                                                |
+| `/admin/content/$handle`             | `ADMIN_CONTENT_PAGE`           | `admin.content.$handle.tsx`                                              |
+| `/admin/marketing`                   | `ADMIN_MARKETING`              | `admin.marketing.index.tsx`                                              |
+| `/admin/marketing/new`               | `ADMIN_NEWSLETTER_NEW`         | `admin.marketing.new.tsx`                                                |
+| `/admin/marketing/subscribers`       | `ADMIN_NEWSLETTER_SUBSCRIBERS` | `admin.marketing.subscribers.tsx`                                        |
+| `/admin/settings`                    | `ADMIN_SETTINGS`               | `admin.settings.tsx`                                                     |
+| `/admin/security`                    | `ADMIN_SECURITY`               | `admin_.security.tsx` (poza layoutem)                                    |
+| `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY`          | `admin_.orders.$orderId.summary.tsx` (poza layoutem)                     |
 
 `/admin/security` włącza i wyłącza uwierzytelnianie dwuskładnikowe zalogowanego administratora. Podkreślnik w `admin_.security.tsx` trzyma tę trasę poza layoutem `/admin`, więc nie ma sidebaru, `admin.css` ani gniazda realtime, a jej własny strażnik, `requireAdminRole`, wpuszcza administratora, który jeszcze nie włączył uwierzytelniania dwuskładnikowego. Jej strona, `AdminSecurityPage`, sama wywołuje `useAdminLightTheme`.
 

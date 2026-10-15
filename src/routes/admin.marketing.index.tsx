@@ -17,6 +17,7 @@ import {
   ADMIN_CATALOG_PAGE_BODY_CLASS,
   ADMIN_HEADER_PRIMARY_BUTTON_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { MarketingTabs } from "~/src/presentation/components/custom/pages/admin/marketing/marketing-tabs"
 import { NewsletterCampaignsTable } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-campaigns-table"
 import { NewsletterStats } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-stats"
 
@@ -25,6 +26,7 @@ import { ROUTES } from "~/src/routes"
 const MarketingPage = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const breadcrumbs = useMemo(() => [{ href: ROUTES.ADMIN, label: t("nav.dashboard") }], [t])
+  const tabs = useMemo(() => <MarketingTabs active="newsletters" />, [])
 
   const actions = (
     <LocalizedLink className={cn(buttonVariants({ size: "sm" }), ADMIN_HEADER_PRIMARY_BUTTON_CLASS)} to={ROUTES.ADMIN_NEWSLETTER_NEW}>
@@ -35,7 +37,13 @@ const MarketingPage = (): JSX.Element => {
 
   return (
     <>
-      <AdminHeader actions={actions} breadcrumbs={breadcrumbs} description={t("marketing.description")} title={t("marketing.title")} />
+      <AdminHeader
+        actions={actions}
+        breadcrumbs={breadcrumbs}
+        description={t("marketing.description")}
+        tabs={tabs}
+        title={t("marketing.title")}
+      />
 
       <div className={ADMIN_CATALOG_PAGE_BODY_CLASS}>
         <div className={ADMIN_CATALOG_DATAGRID_PAGE_CLASS}>

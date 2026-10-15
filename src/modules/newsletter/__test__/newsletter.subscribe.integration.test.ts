@@ -94,6 +94,11 @@ const subscriberRow = (email: string) =>
     .nullable()
     .parse(sqlite.prepare("select email, status, token, user_id from newsletter_subscriber where email = ?").get(email) ?? null)
 
+const subscriptionDates = (email: string) =>
+  z
+    .object({ confirmed_at: z.number().nullable(), unsubscribed_at: z.number().nullable() })
+    .parse(sqlite.prepare("select confirmed_at, unsubscribed_at from newsletter_subscriber where email = ?").get(email))
+
 const countSubscribers = (): number =>
   z.object({ total: z.number() }).parse(sqlite.prepare("select count(*) as total from newsletter_subscriber").get()).total
 
@@ -236,6 +241,18 @@ describe("subscribeToNewsletter", () => {
     await subscribeToNewsletter({ data: { email: "anna@example.com" } })
 
     expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.PENDING)
+  })
+
+  it("clears the dates of the earlier subscription when someone who left signs up again", async () => {
+    await confirmAnna()
+    await unsubscribeFromNewsletter({ data: { token: lastConfirmationToken() } })
+    const left = subscriptionDates("anna@example.com")
+    expect(left.confirmed_at).not.toBeNull()
+    expect(left.unsubscribed_at).not.toBeNull()
+
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    expect(subscriptionDates("anna@example.com")).toStrictEqual({ confirmed_at: null, unsubscribed_at: null })
   })
 
   it("attaches the subscription to a signed-in customer", async () => {

@@ -20,6 +20,7 @@ export const getAdminNewsletterPage = createServerFn({ method: "GET" })
     const params = {
       ...listPaginationParamsFromPage(input.page ?? LIST_PAGE_FIRST, input.pageSize ?? ADMIN_NEWSLETTER_PAGE_SIZE),
       search: normalizeAdminSearchTerm(input.search),
+      status: input.status,
     }
     const { rows, total } = await getAdminSubscribersPage(params)
 
