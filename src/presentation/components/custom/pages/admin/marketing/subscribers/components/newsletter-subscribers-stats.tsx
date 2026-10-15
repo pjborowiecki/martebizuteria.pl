@@ -12,6 +12,7 @@ import {
   ADMIN_CARD_CLASS,
   ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
+  ADMIN_STAT_GRID_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { NewsletterStatCardContent } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-stat-card-content"
 import {
@@ -27,7 +28,7 @@ export const NewsletterSubscribersStats = (): JSX.Element => {
   const { activeStatus, applyStatusFilter } = useNewsletterSubscribersDataGridContext()
 
   return (
-    <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={ADMIN_STAT_GRID_CLASS}>
       {[NEWSLETTER_TOTAL_STAT_CARD, ...NEWSLETTER_STATUS_STAT_CARDS].map((config) => {
         const pressed = config.status === activeStatus
 

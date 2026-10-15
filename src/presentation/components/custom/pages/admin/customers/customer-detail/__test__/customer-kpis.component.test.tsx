@@ -63,12 +63,21 @@ describe("CustomerKpis", () => {
     expect(screen.getByText("Returning Rate")).toBeInTheDocument()
   })
 
-  it("sets the figures two to a row until the screen is wide enough for four beside the customer sidebar", () => {
+  it("sets the figures two to a row, even on phones, until the screen is wide enough for four beside the customer sidebar", () => {
     const { container } = renderWithProviders(<CustomerKpis customer={detail()} />)
     const grid = container.firstElementChild
 
-    expect(grid).toHaveClass("sm:grid-cols-2", "2xl:grid-cols-4")
+    expect(grid).toHaveClass("grid-cols-2", "2xl:grid-cols-4")
     expect(grid).not.toHaveClass("sm:grid-cols-4")
+  })
+
+  it("pads the figure cards like the other admin cards, tighter on phones than on desktop", () => {
+    const { container } = renderWithProviders(<CustomerKpis customer={detail()} />)
+
+    const contents = container.querySelectorAll("[data-slot='card-content']")
+
+    expect(contents).toHaveLength(4)
+    expect(contents[0]).toHaveClass("p-4", "lg:p-5")
   })
 
   it("renders the lifetime spend and average order as money in major units", () => {
@@ -82,7 +91,7 @@ describe("CustomerKpis", () => {
     renderWithProviders(<CustomerKpis customer={detail({ totalSpent: 9_999_999_999 })} />)
     const spend = screen.getByText(LARGE_SPEND)
 
-    expect(spend).toHaveClass("min-w-0", "truncate", "text-2xl")
+    expect(spend).toHaveClass("min-w-0", "truncate", "lg:text-2xl")
 
     await userEvent.hover(markAsCut(spend))
 

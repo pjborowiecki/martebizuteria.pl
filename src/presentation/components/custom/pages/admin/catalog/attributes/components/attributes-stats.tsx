@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl/react"
 
 import { getProductAttributeStatsQuery } from "~/src/modules/product-attribute/use-cases/get-product-attribute-stats"
 
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { PRODUCT_ATTRIBUTE_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/attributes-stats.config"
 import {
   AttributeStatCard,
@@ -19,7 +20,7 @@ export const AttributesStats = (): JSX.Element => {
   const { activeStatFilter, applyAttributeStatFilter } = useAttributesDataGridContext()
 
   return (
-    <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={ADMIN_STAT_GRID_CLASS}>
       {PRODUCT_ATTRIBUTE_STAT_CARDS.map((config) => {
         const value = resolvedStats[config.key]
         const caption = valuesPending

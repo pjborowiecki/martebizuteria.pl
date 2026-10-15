@@ -68,7 +68,7 @@ describe("DashboardStats", () => {
     renderWithProviders(<DashboardStats />)
     const revenue = screen.getByText("PLN 1,234,567.89")
 
-    expect(revenue).toHaveClass("min-w-0", "truncate", "text-3xl")
+    expect(revenue).toHaveClass("min-w-0", "truncate", "text-xl", "lg:text-3xl")
 
     await userEvent.hover(markAsCut(revenue))
 

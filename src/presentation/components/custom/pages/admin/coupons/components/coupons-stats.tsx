@@ -7,6 +7,7 @@ import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { getDiscountStatsQuery } from "~/src/modules/discount/use-cases/get-admin-discount-stats"
 
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CouponStatCard } from "~/src/presentation/components/custom/pages/admin/coupons/components/coupon-stat-card"
 import {
   COUPON_STAT_CARDS,
@@ -42,7 +43,7 @@ export const CouponsStats = (): JSX.Element => {
   const { activeFilters, applyCouponsFilter } = useCouponsDataGridContext()
 
   return (
-    <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={ADMIN_STAT_GRID_CLASS}>
       {COUPON_STAT_CARDS.map((config) => {
         const pressed = config.filter !== undefined && config.filter.status === activeFilters.status
 

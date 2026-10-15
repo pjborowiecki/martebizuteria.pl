@@ -8,6 +8,7 @@ import { formatAdminCustomerDetailKpiPrice } from "~/src/modules/user/user.utils
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
 import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.styles"
 
@@ -42,17 +43,17 @@ export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
   ]
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-5 2xl:grid-cols-4">
       {kpis.map((kpi) => (
         <Card key={kpi.label} className={CUSTOMER_DETAIL_CARD_CLASS}>
-          <CardContent className="p-5">
+          <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
             <div className="flex items-center gap-2">
-              <div className="flex size-8 items-center justify-center rounded-md bg-secondary">
+              <div className="hidden size-8 items-center justify-center rounded-md bg-secondary sm:flex">
                 <kpi.icon className={`size-4 ${kpi.color}`} strokeWidth={1.5} />
               </div>
               <p className="text-[13px] text-muted-foreground">{kpi.label}</p>
             </div>
-            <AdminStatValue className="mt-3 text-2xl" value={kpi.value} />
+            <AdminStatValue className="mt-3 lg:text-2xl" value={kpi.value} />
           </CardContent>
         </Card>
       ))}

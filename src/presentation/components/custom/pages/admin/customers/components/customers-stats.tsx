@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "use-intl/react"
 
 import { getAdminCustomerStatsQuery } from "~/src/modules/user/use-cases/get-admin-customer-stats"
 
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import {
   CustomerStatCard,
   buildCustomerStatCaption,
@@ -21,7 +22,7 @@ export const CustomersStats = (): JSX.Element => {
   const { activeStatFilter, applyCustomerStatFilter } = useCustomersDataGridContext()
 
   return (
-    <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={ADMIN_STAT_GRID_CLASS}>
       {CUSTOMER_STAT_CARDS.map((config) => {
         const value = resolvedStats[config.key]
         const caption = valuesPending
