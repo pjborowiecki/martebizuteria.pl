@@ -327,7 +327,7 @@ const SidebarSeparator = ({ className, ...props }: ComponentProps<typeof Separat
   <Separator
     data-slot="sidebar-separator"
     data-sidebar="separator"
-    className={cn("mx-2 w-auto bg-sidebar-border group-data-[collapsible=icon]:mx-0", className)}
+    className={cn("mx-2 bg-sidebar-border group-data-[collapsible=icon]:mx-0 data-horizontal:w-auto", className)}
     {...props}
   />
 )
