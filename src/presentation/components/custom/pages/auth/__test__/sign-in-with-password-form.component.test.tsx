@@ -107,6 +107,12 @@ describe("SignInWithPasswordForm fields", () => {
 
     expect(screen.getByRole("link", { name: "Forgot password?" })).toHaveAttribute("href", ROUTES.AUTH_FORGOT_PASSWORD)
   })
+
+  it("gives the password reset link a finger-sized target on touch screens without moving the form", () => {
+    renderWithProviders(<SignInWithPasswordForm />)
+
+    expect(screen.getByRole("link", { name: "Forgot password?" })).toHaveClass("pointer-coarse:-my-3", "pointer-coarse:min-h-10")
+  })
 })
 
 describe("SignInWithPasswordForm two-factor challenge", () => {

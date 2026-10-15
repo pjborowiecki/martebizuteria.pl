@@ -85,6 +85,15 @@ describe("auth layout route", () => {
     expect(editorial.compareDocumentPosition(outlet) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
+  it("centres a short form but scrolls a form taller than the screen from its top", () => {
+    renderAuthLayout()
+
+    const column = screen.getByTestId("outlet").parentElement?.parentElement
+
+    expect(column).toHaveClass("items-center-safe", "overflow-y-auto", "px-4", "py-10", "sm:px-12", "sm:py-16")
+    expect(column).not.toHaveClass("items-center")
+  })
+
   it("sends a visitor who is already signed in on before the auth pages load", () => {
     expect(guarded.beforeLoad).toBe(guarded.redirectIfSignedIn)
   })

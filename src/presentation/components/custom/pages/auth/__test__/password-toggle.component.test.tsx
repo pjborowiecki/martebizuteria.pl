@@ -37,4 +37,15 @@ describe("PasswordToggle", () => {
 
     expect(screen.getByRole("button", { name: "Show password" })).toHaveAttribute("type", "button")
   })
+
+  it("grows to a finger-sized target on touch screens without making the field taller or moving the icon", () => {
+    renderWithProviders(<PasswordToggle show={false} onToggle={vi.fn<() => void>()} />)
+
+    expect(screen.getByRole("button", { name: "Show password" })).toHaveClass(
+      "pointer-coarse:size-10",
+      "pointer-coarse:-mx-1.5",
+      "pointer-coarse:-mt-2",
+      "pointer-coarse:-mb-3",
+    )
+  })
 })

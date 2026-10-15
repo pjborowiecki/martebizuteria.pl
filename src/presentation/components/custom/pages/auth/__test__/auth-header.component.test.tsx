@@ -29,4 +29,10 @@ describe("AuthHeader", () => {
 
     expect(screen.getByRole("link", { name: APP_NAME })).toHaveAttribute("href", "/")
   })
+
+  it("leaves the brand mark to the site header on phones so the form starts higher", () => {
+    renderWithProviders(<AuthHeader title="Welcome back" subtitle="Sign in to continue" />)
+
+    expect(screen.getByRole("link", { name: APP_NAME })).toHaveClass("hidden", "sm:inline")
+  })
 })

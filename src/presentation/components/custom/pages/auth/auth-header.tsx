@@ -14,7 +14,7 @@ export const AuthHeader = ({
   subtitle: string
 }>): JSX.Element => (
   <div className="space-y-6">
-    <LocalizedLink to={ROUTES.HOME} className="font-serif text-2xl tracking-tight">
+    <LocalizedLink to={ROUTES.HOME} className="hidden font-serif text-2xl tracking-tight sm:inline">
       {APP_NAME}
     </LocalizedLink>
     <div>
