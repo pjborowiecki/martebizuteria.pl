@@ -55,7 +55,7 @@ export const CheckoutTextField = ({
   ...rest
 }: CheckoutTextFieldProps): JSX.Element => {
   const { field, fieldState } = useController({ control, name })
-  const handleChange = useAutofillAwareChange(field)
+  const handleChange = useAutofillAwareChange(field, fieldState)
 
   const valueStr = displayValue ?? toStringValue(field.value)
   const isReadOnly = rest.readOnly === true
@@ -92,7 +92,7 @@ interface CheckoutPhoneFieldProps {
 
 export const CheckoutPhoneField = ({ className, control, label, name, required }: CheckoutPhoneFieldProps): JSX.Element => {
   const { field, fieldState } = useController({ control, name })
-  const handleChange = useAutofillAwareChange(field)
+  const handleChange = useAutofillAwareChange(field, fieldState)
 
   const valueStr = toStringValue(field.value)
   const showValid = isFieldValid(fieldState, valueStr)

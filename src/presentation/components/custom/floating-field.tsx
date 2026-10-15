@@ -45,18 +45,18 @@ export const ValidCheck = ({ className, show }: Readonly<{ className?: string; s
 
 export const toStringValue = (value: unknown): string => (typeof value === "string" ? value : "")
 
-export const useAutofillAwareChange = <TFieldValues extends FieldValues, TName extends FieldPath<TFieldValues>>({
-  onBlur,
-  onChange,
-}: ControllerRenderProps<TFieldValues, TName>): ((event: ChangeEvent<HTMLInputElement>) => void) =>
+export const useAutofillAwareChange = <TFieldValues extends FieldValues, TName extends FieldPath<TFieldValues>>(
+  { onBlur, onChange }: ControllerRenderProps<TFieldValues, TName>,
+  { invalid, isTouched }: ControllerFieldState,
+): ((event: ChangeEvent<HTMLInputElement>) => void) =>
   useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onChange(event)
-      if (event.target !== event.target.ownerDocument.activeElement) {
+      if ((invalid && !isTouched) || event.target !== event.target.ownerDocument.activeElement) {
         onBlur()
       }
     },
-    [onBlur, onChange],
+    [invalid, isTouched, onBlur, onChange],
   )
 
 export const isFieldValid = (fieldState: ControllerFieldState, value: string): boolean =>
