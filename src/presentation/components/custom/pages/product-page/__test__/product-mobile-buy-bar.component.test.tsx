@@ -39,6 +39,15 @@ describe("ProductMobileBuyBar", () => {
     expect(onAddToCart).toHaveBeenCalledTimes(1)
   })
 
+  it("sticks to the bottom of the screen but keeps its own place after the page so the footer can scroll clear of it", () => {
+    renderWithProviders(<ProductMobileBuyBar canPurchase isAdded={false} onAddToCart={vi.fn<() => void>()} price="1 299,00 zl" />)
+
+    const bar = screen.getByRole("button", { name: "Add to cart" }).parentElement?.parentElement
+
+    expect(bar).toHaveClass("sticky", "bottom-0", "lg:hidden")
+    expect(bar).not.toHaveClass("fixed")
+  })
+
   it("cannot be tapped while the variant is unavailable", async () => {
     const onAddToCart = vi.fn<() => void>()
     renderWithProviders(<ProductMobileBuyBar canPurchase={false} isAdded={false} onAddToCart={onAddToCart} price="1 299,00 zl" />)

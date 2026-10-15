@@ -95,6 +95,16 @@ describe("ProductHeroGallery", () => {
     expect(screen.getByRole("button", { name: "Image 2" })).not.toHaveAttribute("aria-current")
   })
 
+  it("gives every dot a finger-sized target around its small mark", () => {
+    renderWithProviders(<ProductHeroGallery images={images(2)} title={TITLE} />)
+
+    const dot = screen.getByRole("button", { name: "Image 1" })
+
+    expect(dot).toHaveClass("size-10")
+    expect(dot.firstElementChild).toHaveClass("size-1.5", "rounded-full", "bg-foreground")
+    expect(screen.getByRole("button", { name: "Image 2" }).firstElementChild).toHaveClass("bg-foreground/25")
+  })
+
   it("renders nothing to look at when the product has no images", () => {
     renderWithProviders(<ProductHeroGallery images={[]} title={TITLE} />)
 

@@ -71,7 +71,7 @@ export const ProductRelatedSection = ({ products }: ProductRelatedSectionProps):
   }
 
   return (
-    <section className="mx-auto max-w-400 px-6 pb-20 lg:px-12 lg:pb-28" ref={sectionRef}>
+    <section className="storefront-container pb-20 lg:pb-28" ref={sectionRef}>
       <div className="reveal mb-10 space-y-3">
         <Separator className="max-w-16 bg-foreground/30" />
         <h2 className="font-serif text-3xl leading-tight md:text-4xl">{t("title")}</h2>

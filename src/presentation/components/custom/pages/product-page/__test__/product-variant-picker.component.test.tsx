@@ -78,6 +78,12 @@ describe("ProductVariantPicker", () => {
     expect(screen.getByRole("button", { name: "Gold" })).toHaveAttribute("aria-pressed", "false")
   })
 
+  it("raises each value to a finger-sized target on touch screens", () => {
+    renderPicker(variantProduct())
+
+    expect(screen.getByRole("button", { name: "Silver" })).toHaveClass("min-w-16", "pointer-coarse:min-h-10")
+  })
+
   it("disables a value no variant has in stock", () => {
     renderPicker(variantProduct())
 

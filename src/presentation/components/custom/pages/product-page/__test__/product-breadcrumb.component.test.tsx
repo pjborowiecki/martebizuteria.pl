@@ -29,4 +29,15 @@ describe("ProductBreadcrumb", () => {
 
     expect(screen.getAllByText("/")).toHaveLength(2)
   })
+
+  it("gives the crumbs finger-sized targets on touch screens without pushing the page down", () => {
+    renderWithProviders(<ProductBreadcrumb productTitle="Silver ring" />)
+
+    const home = screen.getByRole("link", { name: "Home" })
+
+    expect(home).toHaveClass("pointer-coarse:inline-flex", "pointer-coarse:min-h-10")
+    expect(screen.getByRole("link", { name: "Products" })).toHaveClass("pointer-coarse:min-h-10")
+    expect(home.closest("ol")).toHaveClass("pointer-coarse:-my-3")
+    expect(home.closest("nav")).toHaveClass("storefront-container")
+  })
 })

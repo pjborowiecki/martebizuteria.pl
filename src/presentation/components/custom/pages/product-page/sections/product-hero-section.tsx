@@ -31,7 +31,7 @@ export const ProductHeroSection = ({ product }: ProductHeroSectionProps): JSX.El
     <>
       <ProductBreadcrumb productTitle={product.title} />
 
-      <section className="mx-auto max-w-400 px-6 pt-8 pb-28 lg:px-12 lg:pt-12 lg:pb-16">
+      <section className="storefront-container pt-8 pb-28 lg:pt-12 lg:pb-16">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-16">
           <ProductHeroGallery images={images} title={product.title} />
 
