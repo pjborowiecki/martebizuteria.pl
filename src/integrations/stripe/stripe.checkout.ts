@@ -156,7 +156,11 @@ export const resetCheckoutSession = async ({ heldSessionId, session, ...request 
 
 const PAYMENT_FAILED_CODE = "paymentFailed"
 
-export type ConfirmOutcome = { status: "processing" } | { status: "success" } | { status: "error"; message: string; recoverable: boolean }
+export type ConfirmOutcome =
+  | { status: "declined"; message: string }
+  | { status: "failed"; message: string }
+  | { status: "processing" }
+  | { status: "success" }
 
 const isCheckoutPaid = (status: StripeCheckoutStatus): boolean => status.type === "complete" && status.paymentStatus !== "unpaid"
 
@@ -171,11 +175,7 @@ export const confirmCheckoutSession = async ({
   })
 
   if (result.type === "error") {
-    return {
-      message: result.error.message,
-      recoverable: result.error.code !== PAYMENT_FAILED_CODE,
-      status: "error",
-    }
+    return { message: result.error.message, status: result.error.code === PAYMENT_FAILED_CODE ? "declined" : "failed" }
   }
 
   return isCheckoutPaid(result.session.status) ? { status: "success" } : { status: "processing" }

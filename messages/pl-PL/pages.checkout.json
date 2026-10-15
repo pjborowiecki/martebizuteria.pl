@@ -192,8 +192,9 @@
       "sessionProcessing": "Bank wciąż potwierdza tę płatność, więc nie można jej teraz zmienić.",
       "tooManyOpenCheckouts": "Kilka płatności rozpoczętych dla tego adresu e-mail lub z Twojego połączenia nie zostało jeszcze opłaconych. Dokończ jedną z nich albo spróbuj ponownie za około pół godziny, gdy wygasną.",
       "variantNotFound": "Wybrany wariant nie jest już dostępny.",
-      "paymentSessionStale": "Twoja poprzednia próba płatności jest jeszcze przetwarzana lub wygasła. Odświeżyliśmy płatność — wybierz metodę i spróbuj ponownie.",
+      "paymentSessionStale": "Ta sesja płatności jest już nieaktywna. Otworzyliśmy nową — wybierz metodę płatności i spróbuj ponownie.",
       "paymentNotCompleted": "Płatność nie została dokończona. Wybierz metodę płatności, aby spróbować ponownie.",
+      "blikNewCode": "Wygeneruj nowy kod BLIK w aplikacji banku i wpisz go, aby spróbować ponownie.",
       "unknownError": "Coś poszło nie tak. Spróbuj ponownie."
     },
     "countries": {

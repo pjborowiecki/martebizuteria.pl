@@ -81,3 +81,6 @@ export const forwardCheckoutCompletion = async (request: APIRequestContext, sess
 
   return completion.data.object
 }
+
+export const retrieveCheckoutSessionPayment = (sessionId: string): Promise<Stripe.Checkout.Session> =>
+  connectStripe().checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] })

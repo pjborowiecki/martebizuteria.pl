@@ -191,8 +191,9 @@
       "sessionProcessing": "Your bank is still confirming this payment, so it cannot be changed now.",
       "tooManyOpenCheckouts": "Several payments started for this email address or from your connection have not been paid yet. Finish one of them, or try again in about half an hour, once they have expired.",
       "variantNotFound": "A selected option is no longer available.",
-      "paymentSessionStale": "Your previous payment attempt is still processing or has expired. We've refreshed the payment — please choose a method and try again.",
+      "paymentSessionStale": "This payment session is no longer active. We've opened a new one — please choose a payment method and try again.",
       "paymentNotCompleted": "Your payment was not completed. Choose a payment method to try again.",
+      "blikNewCode": "Generate a new BLIK code in your banking app and enter it to try again.",
       "unknownError": "Something went wrong. Please try again."
     },
     "countries": {

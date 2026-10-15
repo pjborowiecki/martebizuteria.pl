@@ -143,10 +143,11 @@ Preserve this ordering when you touch it. The `payment` row is moved rather than
 `confirmCheckoutSession` wraps `checkout.confirm({ billingAddress, redirect: "if_required" })` and classifies the outcome:
 
 ```ts
-export type ConfirmOutcome = { status: "processing" } | { status: "success" } | { status: "error"; message: string; recoverable: boolean }
+export type ConfirmOutcome =
+  { status: "declined"; message: string } | { status: "failed"; message: string } | { status: "processing" } | { status: "success" }
 ```
 
-A confirmation that goes through is `success` only when the session Stripe returns is `complete` and its `paymentStatus` is not `unpaid`. A BLIK or Przelewy24 payment that has not settled yet is `processing`, and the payment step waits for the bank on it instead of opening the confirmation. An error is `recoverable` unless its code is `paymentFailed`, which is how the UI decides between letting the customer retry in place and resetting the session. `buildCheckoutContact(values)` picks the billing address when `sameAsShipping === false` and the shipping address otherwise.
+A confirmation that goes through is `success` only when the session Stripe returns is `complete` and its `paymentStatus` is not `unpaid`. A BLIK or Przelewy24 payment that has not settled yet is `processing`, and the payment step waits for the bank on it instead of opening the confirmation. An error with code `paymentFailed` is `declined`. Every other error, which Stripe.js returns with code `null`, is `failed`, and the payment step reads the session's status before it decides between keeping the session with Stripe's message, waiting for the bank, opening the confirmation and resetting a closed session (see [Checkout](/docs/features/checkout)). `buildCheckoutContact(values)` picks the billing address when `sameAsShipping === false` and the shipping address otherwise.
 
 `PaymentStep` in `src/presentation/components/custom/checkout/components/_steps/payment-step.client.tsx` mounts `CheckoutElementsProvider` keyed by `sessionId`, passes `getStripeAppearance(theme)` and `STRIPE_FONTS`, and renders the Payment Element as an accordion with wallets and Link disabled and `paymentMethodOrder` taken from `CHECKOUT_PAYMENT_METHOD_ORDER`.
 

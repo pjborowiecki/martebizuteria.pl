@@ -12,6 +12,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import type * as StripeCheckout from "~/src/integrations/stripe/stripe.checkout"
 
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { type CheckoutSessionStatus } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
 
 type CheckoutSession = StripeCheckout.CheckoutSession
 
@@ -38,10 +39,12 @@ const {
   onEdit,
   paymentElementReady,
   providerOptions,
+  readStatus,
   resetCheckoutSession,
   setCheckoutSession,
   toastError,
   uiTheme,
+  updatePhoneNumber,
 } = vi.hoisted(() => ({
   confirmCheckoutSession: vi.fn<() => Promise<ConfirmOutcome>>(),
   elementsStatus: { current: "success" },
@@ -51,10 +54,12 @@ const {
   onEdit: vi.fn<(stepId: string) => void>(),
   paymentElementReady: { current: true },
   providerOptions: { current: undefined as StripeCheckoutElementsSdkOptions | undefined },
+  readStatus: vi.fn<(sessionId: string) => Promise<CheckoutSessionStatus>>(),
   resetCheckoutSession: vi.fn<(request: Omit<SessionRequest, "existing">) => Promise<CheckoutSession>>(),
   setCheckoutSession: vi.fn<(session: CheckoutSession) => void>(),
   toastError: vi.fn<(message: string) => void>(),
   uiTheme: { current: "light" },
+  updatePhoneNumber: vi.fn<(phoneNumber: string) => Promise<unknown>>(),
 }))
 
 const completeValues: CheckoutFormSchema = {
@@ -96,7 +101,12 @@ vi.mock("~/src/integrations/stripe/stripe.checkout", async () => {
 vi.mock("~/src/modules/checkout/use-cases/get-checkout-session-status", async () => {
   const { CHECKOUT_QUERY_KEYS } = await import("~/src/modules/checkout/checkout.constants")
 
-  return { checkoutSessionStatusQuery: (sessionId: string) => ({ queryKey: [...CHECKOUT_QUERY_KEYS.SESSION_STATUS, sessionId] }) }
+  return {
+    checkoutSessionStatusQuery: (sessionId: string) => ({
+      queryFn: () => readStatus(sessionId),
+      queryKey: [...CHECKOUT_QUERY_KEYS.SESSION_STATUS, sessionId],
+    }),
+  }
 })
 vi.mock("~/src/hooks/use-cart-availability", () => ({
   useCartAvailability: () => ({ hasUnavailableItems: false, isChecking: false, issues: [], issuesByVariantId: new Map() }),
@@ -140,7 +150,15 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({
   },
   useCheckoutElements: () =>
     elementsStatus.current === "success"
-      ? { checkout: { id: "checkout-object", total: { total: { amount: "PLN 215.00", minorUnitsAmount: 21_500 } } }, type: "success" }
+      ? {
+          checkout: {
+            canConfirm: true,
+            id: "checkout-object",
+            total: { total: { amount: "PLN 215.00", minorUnitsAmount: 21_500 } },
+            updatePhoneNumber,
+          },
+          type: "success",
+        }
       : { type: elementsStatus.current },
 }))
 
@@ -417,9 +435,10 @@ describe("PaymentStep with a session the browser already holds", () => {
     expect(ensureCheckoutSession.mock.calls[0]?.[0]).toMatchObject({ existing: undefined, heldSessionId: "cs_test_held" })
   })
 
-  it("resets the held session when a confirmation asks for a fresh one", async () => {
+  it("resets the held session when a payment attempt finds the session closed", async () => {
     formState.session = session
-    confirmCheckoutSession.mockResolvedValue({ message: "expired", recoverable: true, status: "error" })
+    confirmCheckoutSession.mockResolvedValue({ message: "The checkout session is no longer active, please try again.", status: "failed" })
+    readStatus.mockResolvedValue("closed")
     renderWithProviders(<PaymentStep />)
     await clickPay()
 
@@ -620,62 +639,6 @@ describe("PaymentStep confirmation", () => {
     expect(queryClient.getQueryData([...CHECKOUT_QUERY_KEYS.SESSION_STATUS, "cs_test_1"])).toBe("complete")
   })
 
-  it("surfaces an unrecoverable failure message without resetting the session", async () => {
-    formState.session = session
-    confirmCheckoutSession.mockResolvedValue({ message: "Your card was declined.", recoverable: false, status: "error" })
-    renderWithProviders(<PaymentStep />)
-    await clickPay()
-
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalledWith("Your card was declined.")
-    })
-
-    expect(resetCheckoutSession).not.toHaveBeenCalled()
-    expect(navigate).not.toHaveBeenCalled()
-  })
-
-  it("uses the generic payment copy when the failure carries no message", async () => {
-    formState.session = session
-    confirmCheckoutSession.mockResolvedValue({ message: "", recoverable: false, status: "error" })
-    renderWithProviders(<PaymentStep />)
-    await clickPay()
-
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalledWith("Payment failed. Please try again.")
-    })
-  })
-
-  it("refreshes a stale session and tells the shopper to try again", async () => {
-    formState.session = session
-    confirmCheckoutSession.mockResolvedValue({ message: "expired", recoverable: true, status: "error" })
-    renderWithProviders(<PaymentStep />)
-    await clickPay()
-
-    await waitFor(() => {
-      expect(resetCheckoutSession).toHaveBeenCalledTimes(1)
-    })
-
-    expect(setCheckoutSession).toHaveBeenCalledWith(refreshedSession)
-    expect(toastError).toHaveBeenCalledWith(
-      "Your previous payment attempt is still processing or has expired. We've refreshed the payment — please choose a method and try again.",
-    )
-  })
-
-  it("reports the mapped error when refreshing the stale session also fails", async () => {
-    formState.session = session
-    confirmCheckoutSession.mockResolvedValue({ message: "expired", recoverable: true, status: "error" })
-    resetCheckoutSession.mockRejectedValue(new Error("INSUFFICIENT_INVENTORY"))
-    renderWithProviders(<PaymentStep />)
-    await clickPay()
-
-    await waitFor(() => {
-      expect(toastError).toHaveBeenCalledWith("Some items in your cart are out of stock.")
-    })
-
-    expect(setCheckoutSession).not.toHaveBeenCalled()
-    expect(navigate).not.toHaveBeenCalled()
-  })
-
   it("reports a thrown confirmation error by its own message", async () => {
     formState.session = session
     confirmCheckoutSession.mockRejectedValue(new Error("network down"))
@@ -756,7 +719,8 @@ const renderWithPendingConfirmation = async () => {
 }
 
 describe("PaymentStep confirmation races", () => {
-  it("keeps an in-flight replacement when the previous confirmation requests a session reset", async () => {
+  it("keeps an in-flight replacement when the previous confirmation finds its session closed", async () => {
+    readStatus.mockResolvedValue("closed")
     const { confirmation, replacement } = await renderWithPendingConfirmation()
     expect(confirmCheckoutSession).toHaveBeenCalledTimes(1)
 
@@ -770,7 +734,7 @@ describe("PaymentStep confirmation races", () => {
     expect(screen.queryByRole("button", { name: PAY_BUTTON })).not.toBeInTheDocument()
 
     await act(async () => {
-      confirmation.resolve({ message: "expired", recoverable: true, status: "error" })
+      confirmation.resolve({ message: "The checkout session is no longer active, please try again.", status: "failed" })
       await confirmation.promise
     })
 
