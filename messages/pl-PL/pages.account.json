@@ -118,6 +118,8 @@
     "refundedOn": "Zwrócono {date}",
     "qtyAtPrice": "Ilość: {qty} · {price} za szt.",
     "pickupPoint": "Punkt odbioru",
+    "recipient": "Dane odbiorcy",
+    "recipientHint": "Na ten numer InPost wyśle kod odbioru.",
     "paidByCard": "Zapłacono online",
     "nip": "NIP {nip}",
     "note": "Twoja uwaga",

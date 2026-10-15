@@ -10,8 +10,8 @@ const ORDER_NUMBER = "MRT-2026-00042"
 const details: OrderShippedDetails = {
   carrier: undefined,
   deliveryMethod: "DPD courier",
+  destination: { address: "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa", kind: "address" },
   estimatedDelivery: englishCopy.deliveryTiming.courier.estimatedDelivery,
-  shippingAddress: "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa",
   trackingNumber: undefined,
   trackingUrl: undefined,
 }
@@ -61,6 +61,42 @@ describe("OrderShipped", () => {
     expect(text).toContain(`${englishCopy.estimatedDeliveryLabel}\n\nUp to 4 business days after dispatch`)
   })
 
+  it("sends a locker parcel to the locker, naming the customer only as its recipient", async () => {
+    const text = await render(
+      <OrderShipped
+        accountCta={customerCta}
+        details={{ ...details, destination: { kind: "locker", locker: "WAW01M\nMarszałkowska 1", recipient: "Anna Kowalska" } }}
+        locale="en-US"
+        messages={englishCopy}
+        orderNumber={ORDER_NUMBER}
+      />,
+      { plainText: true },
+    )
+
+    expect(text).toContain(`${englishCopy.lockerLabel}\n\nWAW01M Marszałkowska 1`)
+    expect(text).toContain(`${englishCopy.recipientLabel}\n\nAnna Kowalska`)
+    expect(text).not.toContain(englishCopy.shippingAddressLabel)
+  })
+
+  it("names no recipient for a locker parcel whose order kept none", async () => {
+    const text = await render(
+      <OrderShipped
+        accountCta={customerCta}
+        details={{ ...details, destination: { kind: "locker", locker: "WAW01M", recipient: undefined } }}
+        locale="en-US"
+        messages={englishCopy}
+        orderNumber={ORDER_NUMBER}
+      />,
+      { plainText: true },
+    )
+
+    expect(text).not.toContain(englishCopy.recipientLabel)
+  })
+
+  it("keeps a link to the customer's order beside the tracking button", async () => {
+    await expect(renderTracked()).resolves.toContain(`${customerCta.label} ${customerCta.href}`)
+  })
+
   it("carries the dispatch message and the closing offer of help", async () => {
     const text = await renderShipped()
 
@@ -96,12 +132,13 @@ describe("OrderShipped", () => {
     expect(text).toContain(`${englishCopy.trackingNumberLabel}\n\n00259007123456789012`)
   })
 
-  it("sends the button to the carrier when a tracking link exists", async () => {
+  it("sends the button to the carrier and keeps the order link beneath it when a tracking link exists", async () => {
     const html = await renderTracked(false)
 
     expect(html).toContain(`href="${TRACKING_URL}"`)
     expect(html).toContain(englishCopy.trackingCta)
-    expect(html).not.toContain(englishCopy.viewOrderCta)
+    expect(html.indexOf(`href="${customerCta.href}"`)).toBeGreaterThan(html.indexOf(`href="${TRACKING_URL}"`))
+    expect(html).toContain(englishCopy.viewOrderCta)
   })
 
   it("points the button at the order the shopper can view", async () => {

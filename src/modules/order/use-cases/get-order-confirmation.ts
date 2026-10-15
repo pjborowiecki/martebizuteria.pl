@@ -7,7 +7,7 @@ import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getAdminOrderItemRows, getOrderByTransactionId } from "~/src/modules/order/order.accessors"
 import { ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
-import { mapAdminOrderDetailAddress, mapAdminOrderDetailItem } from "~/src/modules/order/order.detail.utils"
+import { mapAdminOrderDetailAddress, mapAdminOrderDetailItem, resolveOrderLocker } from "~/src/modules/order/order.detail.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
@@ -31,6 +31,11 @@ export const getOrderConfirmation = createServerFn({ method: "GET" })
       isGuestOrder: orderRow.userId === null,
       isOwnOrder: orderRow.userId !== null && orderRow.userId === session?.user.id,
       items: itemRows.map((row) => mapAdminOrderDetailItem(row)),
+      locker: resolveOrderLocker({
+        deliveryType: orderRow.deliveryMethod?.type,
+        lockerId: orderRow.lockerId,
+        lockerPoint: orderRow.lockerPoint,
+      }),
       orderNumber: orderRow.orderNumber,
       shippingAddress: mapAdminOrderDetailAddress(
         orderRow.addresses.find((row) => row.type === "shipping") ?? orderRow.checkout?.shippingAddress,

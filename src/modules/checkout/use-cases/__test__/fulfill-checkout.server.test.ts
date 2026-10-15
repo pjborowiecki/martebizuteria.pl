@@ -79,6 +79,7 @@ const checkoutRow = {
   discount: null,
   discountId: null,
   lockerId: null,
+  lockerPoint: null,
   lockerUnconfirmed: false,
   shippingAddress: shippingAddressRow,
 }
@@ -142,6 +143,7 @@ describe("fulfillCheckout", () => {
       deliveryMethodId: "dm-courier",
       discountId: null,
       lockerId: null,
+      lockerPoint: null,
       lockerUnconfirmed: false,
       shippingAddress: shippingAddressRow,
     })
@@ -165,6 +167,7 @@ describe("fulfillCheckout", () => {
       deliveryMethodId: undefined,
       discountId: undefined,
       lockerId: undefined,
+      lockerPoint: undefined,
       lockerUnconfirmed: undefined,
       shippingAddress: undefined,
     })

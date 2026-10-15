@@ -52,7 +52,7 @@ const PREVIEW_ORDER_NUMBER = "MRT-2026-00042"
 
 const PREVIEW_IMAGE = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/placeholder.svg"
 
-const PREVIEW_ADDRESS = "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa\nPL\n+48 600 123 456"
+const PREVIEW_ADDRESS = "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa, Polska\n+48 600 123 456"
 
 const PREVIEW_TRACKING_NUMBER = "00259007123456789012"
 
@@ -69,10 +69,16 @@ const PREVIEW_ORDER_TOTAL = 64_600
 const PREVIEW_ORDER_CONFIRMATION_DETAILS = {
   billingAddress: "Tak jak adres dostawy",
   companyInvoice: PREVIEW_COMPANY_INVOICE,
-  deliveryMethod: "Kurier DPD · dostawa do domu",
+  deliveryMethod: "Kurier InPost",
+  destination: { address: PREVIEW_ADDRESS, kind: "address" },
   paymentMethod: "Karta płatnicza",
-  shippingAddress: PREVIEW_ADDRESS,
-}
+} as const
+
+const PREVIEW_LOCKER_DESTINATION = {
+  kind: "locker",
+  locker: "WAW01M\nPrzy wejściu do sklepu\nul. Mokotowska 1\n00-640 Warszawa",
+  recipient: "Anna Kowalska\n+48 600 123 456",
+} as const
 
 const PREVIEW_ORDER_ITEMS = [
   {
@@ -113,12 +119,12 @@ const PREVIEW_SHOP_ORDER_ITEMS = [
 ]
 
 const PREVIEW_SHOP_ORDER_DETAILS = {
-  companyInvoice: `${PREVIEW_COMPANY_INVOICE}\nul. Mokotowska 12/4\n00-640 Warszawa\nPL`,
+  companyInvoice: `${PREVIEW_COMPANY_INVOICE}\nul. Mokotowska 12/4\n00-640 Warszawa, Polska`,
   customer: "Anna Kowalska\nanna.kowalska@example.com\n+48 600 123 456",
   customerNote: "Proszę o zapakowanie na prezent.",
   deliveryMethod: PREVIEW_ORDER_CONFIRMATION_DETAILS.deliveryMethod,
-  shippingAddress: "ul. Mokotowska 12/4\n00-640 Warszawa\nPL",
-}
+  destination: { address: "ul. Mokotowska 12/4\n00-640 Warszawa, Polska", kind: "address" },
+} as const
 
 const PREVIEW_LEGAL_LINKS = {
   exchangesAndReturns: "http://localhost:3000/exchanges-and-returns",
@@ -311,9 +317,9 @@ export const EMAIL_PREVIEWS = {
           accountCta={PREVIEW_CUSTOMER_CTA}
           details={{
             ...PREVIEW_TRACKING,
-            deliveryMethod: PREVIEW_ORDER_CONFIRMATION_DETAILS.deliveryMethod,
-            estimatedDelivery: messages.deliveryTiming.courier.estimatedDelivery,
-            shippingAddress: PREVIEW_ADDRESS,
+            deliveryMethod: "Paczkomat InPost",
+            destination: PREVIEW_LOCKER_DESTINATION,
+            estimatedDelivery: messages.deliveryTiming.locker.estimatedDelivery,
           }}
           locale={locale}
           messages={messages}

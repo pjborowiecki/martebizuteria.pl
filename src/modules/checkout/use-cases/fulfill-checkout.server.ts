@@ -58,6 +58,7 @@ export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): P
       deliveryMethodId: checkoutRow?.deliveryMethodId,
       discountId: checkoutRow?.discountId,
       lockerId: checkoutRow?.lockerId,
+      lockerPoint: checkoutRow?.lockerPoint,
       lockerUnconfirmed: checkoutRow?.lockerUnconfirmed,
       shippingAddress: checkoutRow?.shippingAddress,
     },

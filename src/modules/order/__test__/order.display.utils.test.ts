@@ -4,6 +4,7 @@ import { ADMIN_ORDER_FULFILLMENT_UI_KEY, ADMIN_ORDER_PAYMENT_UI_KEY } from "~/sr
 import {
   clearDisputeMetadata,
   formatAdminOrderDate,
+  formatOrderAddressLocality,
   mergeDisputeMetadata,
   parseOrderMetadata,
   resolveAdminOrderDispute,
@@ -140,6 +141,31 @@ describe("formatAdminOrderDate", () => {
 
   it("accepts a stored date string and defaults to the store locale", () => {
     expect(formatAdminOrderDate(new Date(2024, 5, 15).toISOString())).toContain("2024")
+  })
+})
+
+describe("formatOrderAddressLocality", () => {
+  const locality = { city: "Warszawa", countryCode: "PL", postalCode: "00-640", province: undefined }
+
+  it("puts the postal code before the city and names the country in the reader's language", () => {
+    expect(formatOrderAddressLocality(locality, "pl-PL")).toBe("00-640 Warszawa, Polska")
+    expect(formatOrderAddressLocality(locality, "en-US")).toBe("00-640 Warszawa, Poland")
+  })
+
+  it("adds the province and leaves out a postal code that was never captured", () => {
+    expect(formatOrderAddressLocality({ ...locality, postalCode: undefined, province: "mazowieckie" }, "en-US")).toBe(
+      "Warszawa, mazowieckie, Poland",
+    )
+  })
+
+  it("leaves out a postal code or province stored empty, as an e-mail's address row may hold them", () => {
+    expect(formatOrderAddressLocality({ ...locality, postalCode: null, province: "  " }, "pl-PL")).toBe("Warszawa, Polska")
+    expect(formatOrderAddressLocality({ ...locality, postalCode: " ", province: null }, "en-US")).toBe("Warszawa, Poland")
+  })
+
+  it("keeps the code of a region it cannot name", () => {
+    expect(formatOrderAddressLocality({ ...locality, countryCode: "XX" }, "en-US")).toBe("00-640 Warszawa, XX")
+    expect(formatOrderAddressLocality({ ...locality, countryCode: "not-a-region" }, "en-US")).toBe("00-640 Warszawa, not-a-region")
   })
 })
 

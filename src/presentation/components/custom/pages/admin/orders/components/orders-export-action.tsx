@@ -51,6 +51,7 @@ export const OrdersExportAction = (): JSX.Element => {
           t("columns.payment"),
           t("columns.fulfillment"),
           t("columns.status"),
+          t("exportColumns.destination"),
         ]
         const csvContent = [
           headers.join(","),
@@ -67,6 +68,7 @@ export const OrdersExportAction = (): JSX.Element => {
               resolvePaymentLabel(order.paymentUiKey, t),
               resolveFulfillmentLabel(order.fulfillmentUiKey, t),
               t(ADMIN_ORDER_STATUS_LABEL_KEYS[order.status]),
+              order.destination,
             ]
 
             return fields.map((field) => (field === undefined ? "" : `"${escapeCsvField(field)}"`)).join(",")

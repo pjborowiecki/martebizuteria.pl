@@ -90,6 +90,24 @@ export const formatAdminOrderDate = (createdAt: Date | string, locale: string = 
   })
 }
 
+const formatCountryName = (countryCode: string, locale: string): string => {
+  try {
+    return new Intl.DisplayNames([locale], { fallback: "none", type: "region" }).of(countryCode) ?? countryCode
+  } catch {
+    return countryCode
+  }
+}
+
+const isFilledAddressPart = (part: string | null | undefined): part is string => part !== null && part !== undefined && part.trim() !== ""
+
+export const formatOrderAddressLocality = (
+  { city, countryCode, postalCode, province }: Readonly<OrderAddressLocality>,
+  locale: string,
+): string =>
+  [[postalCode, city].filter((part) => isFilledAddressPart(part)).join(" "), province, formatCountryName(countryCode, locale)]
+    .filter((part) => isFilledAddressPart(part))
+    .join(", ")
+
 export const toAdminOrderListItem = (row: AdminOrderListSourceRow): Order["adminListItem"] => {
   const customerName = row.customerName ?? row.email
 
@@ -126,4 +144,11 @@ interface AdminOrderListSourceRow {
   readonly status: Order["select"]["status"]
   readonly total: number
   readonly userId: string | null
+}
+
+interface OrderAddressLocality {
+  readonly city: string
+  readonly countryCode: string
+  readonly postalCode: string | null | undefined
+  readonly province: string | null | undefined
 }

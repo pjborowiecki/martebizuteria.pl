@@ -5,6 +5,7 @@ import { type z } from "zod"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 import { fetchPointByName } from "~/src/integrations/inpost/inpost.api"
 import { INPOST_POINT_NAME_PATTERN } from "~/src/integrations/inpost/inpost.constants"
+import { serializeInpostLockerPoint } from "~/src/integrations/inpost/inpost.utils"
 import { scheduleProductCatalogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import {
   type CreateCheckoutSessionInput,
@@ -104,10 +105,14 @@ type ResolvedVariant = Omit<ResolvedProduct["variants"][number], "inventory"> & 
   inventory: ResolvedProduct["variants"][number]["inventory"] | null
 }
 
-interface ResolvedDelivery {
+interface LockerConfirmation {
+  lockerPoint: string | undefined
+  lockerUnconfirmed: boolean
+}
+
+interface ResolvedDelivery extends LockerConfirmation {
   checkoutValues: CheckoutSessionValues
   deliveryType: DeliveryMethodType
-  lockerUnconfirmed: boolean
   shippingCost: number
 }
 
@@ -134,19 +139,19 @@ const admitNewCheckout = async ({ checkoutValues }: CreateCheckoutSessionInput):
   return { origin: resolveRequestOrigin(request), visitorAddress }
 }
 
-const isLockerUnconfirmed = (lockerId: string): Promise<boolean> =>
+const confirmLocker = (lockerId: string): Promise<LockerConfirmation> =>
   fetchPointByName(lockerId).then(
     (point) => {
       if (point === undefined) {
         throw new AppError(ERROR_CODES.VALIDATION, CHECKOUT_ERROR_CODES.LOCKER_NOT_FOUND)
       }
 
-      return false
+      return { lockerPoint: serializeInpostLockerPoint(point), lockerUnconfirmed: false }
     },
     (error: unknown) => {
       console.error(`InPost could not confirm parcel locker ${lockerId}, so the order asks the shop to check it:`, error)
 
-      return true
+      return { lockerPoint: undefined, lockerUnconfirmed: true }
     },
   )
 
@@ -160,6 +165,7 @@ const resolveDelivery = async (checkoutValues: CheckoutSessionValues): Promise<R
     return {
       checkoutValues: { ...checkoutValues, lockerId: undefined },
       deliveryType: method.type,
+      lockerPoint: undefined,
       lockerUnconfirmed: false,
       shippingCost: method.price,
     }
@@ -171,9 +177,9 @@ const resolveDelivery = async (checkoutValues: CheckoutSessionValues): Promise<R
   }
 
   return {
+    ...(await confirmLocker(lockerId)),
     checkoutValues: { ...checkoutValues, lockerId },
     deliveryType: method.type,
-    lockerUnconfirmed: await isLockerUnconfirmed(lockerId),
     shippingCost: method.price,
   }
 }
@@ -383,7 +389,7 @@ const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenChecko
 
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
   const { origin, visitorAddress } = await admitNewCheckout(data)
-  const { checkoutValues, deliveryType, lockerUnconfirmed, shippingCost } = await resolveDelivery(data.checkoutValues)
+  const { checkoutValues, deliveryType, lockerPoint, lockerUnconfirmed, shippingCost } = await resolveDelivery(data.checkoutValues)
   const session = await getRequestSession()
   const userId = session?.user.id
   const { email } = checkoutValues
@@ -406,6 +412,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
       checkoutValues,
       clientAddress: visitorAddress,
       discountId: applicableDiscount?.discountId,
+      lockerPoint,
       lockerUnconfirmed,
       userEmail: email,
       userId,
@@ -606,11 +613,10 @@ const abandonReplacementCheckout = async (replacementSessionId: string, reserved
   scheduleProductCatalogInvalidation()
 }
 
-interface ReserveReplacementCheckoutArgs {
+interface ReserveReplacementCheckoutArgs extends LockerConfirmation {
   checkoutId: string
   checkoutValues: CheckoutFormSchema
   discountId: string | undefined
-  lockerUnconfirmed: boolean
   replacementSessionId: string
   validatedItems: ValidatedCheckoutItem[]
 }
@@ -619,6 +625,7 @@ const reserveReplacementCheckout = async ({
   checkoutId,
   checkoutValues,
   discountId,
+  lockerPoint,
   lockerUnconfirmed,
   replacementSessionId,
   validatedItems,
@@ -633,7 +640,7 @@ const reserveReplacementCheckout = async ({
   }
 
   try {
-    await updateCheckoutDelivery(checkoutId, checkoutValues, { discountId, lockerUnconfirmed })
+    await updateCheckoutDelivery(checkoutId, checkoutValues, { discountId, lockerPoint, lockerUnconfirmed })
   } catch (error) {
     console.error("Failed to save the edited delivery during checkout session update:", error)
     await abandonReplacementCheckout(replacementSessionId, validatedItems)
@@ -649,7 +656,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   await assertCheckoutStillEditable(data.sessionId, checkoutCreatedAt)
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
-  const { checkoutValues, deliveryType, lockerUnconfirmed, shippingCost } = await resolveDelivery(data.checkoutValues)
+  const { checkoutValues, deliveryType, lockerPoint, lockerUnconfirmed, shippingCost } = await resolveDelivery(data.checkoutValues)
   const applicableDiscount = await resolveCheckoutDiscount({
     code: checkoutValues.discountCode,
     email: checkoutValues.email,
@@ -681,6 +688,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
     checkoutId,
     checkoutValues,
     discountId: discount?.discountId,
+    lockerPoint,
     lockerUnconfirmed,
     replacementSessionId: replacement.sessionId,
     validatedItems,

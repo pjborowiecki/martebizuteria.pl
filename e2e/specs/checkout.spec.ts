@@ -190,7 +190,9 @@ test.describe("guest checkout", () => {
     await expect(page.getByRole("main")).toContainText(/Paczkomat InPost\s*PLN\s14\.99/u)
     await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s393\.99/u)
     const confirmation = await waitForEmail(request, email, "Order confirmation — M'Arte")
-    expect(confirmation.html).toContain(`Paczkomat InPost · ${locker.name}`)
+    expect(confirmation.html).toContain("Destination parcel locker")
+    expect(confirmation.html).toContain(locker.name)
+    expect(confirmation.html).toContain(`${locker.address_details.street} ${locker.address_details.building_number}`)
   })
 
   test("a guest whose cart remembers an older price is shown the price Stripe charges", async ({ checkoutPage, page, request }, testInfo) => {

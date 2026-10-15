@@ -1,3 +1,5 @@
+import { formatInpostLockerAddress, parseInpostLockerPoint } from "~/src/integrations/inpost/inpost.utils"
+
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { tryParseJsonRecord } from "~/src/modules/_core/utils/json"
 import { AUDIT_LOG_ACTION, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
@@ -19,6 +21,12 @@ import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils"
 
+const filledOrUndefined = (value: string | null): string | undefined => {
+  const trimmed = value?.trim()
+
+  return trimmed === undefined || trimmed === "" ? undefined : trimmed
+}
+
 export const mapAdminOrderDetailAddress = (row: AdminOrderAddressRow | null | undefined): Order["adminOrderDetailAddress"] | undefined => {
   if (row === null || row === undefined) {
     return undefined
@@ -33,12 +41,18 @@ export const mapAdminOrderDetailAddress = (row: AdminOrderAddressRow | null | un
     city: row.city,
     countryCode: row.countryCode,
     line1: row.address1,
-    line2: row.address2 ?? undefined,
+    line2: filledOrUndefined(row.address2),
     name: name === "" ? EMPTY_VALUE : name,
-    phone: row.phone ?? undefined,
-    postalCode: row.postalCode ?? undefined,
-    province: row.province ?? undefined,
+    phone: filledOrUndefined(row.phone),
+    postalCode: filledOrUndefined(row.postalCode),
+    province: filledOrUndefined(row.province),
   }
+}
+
+export const resolveOrderLocker = ({ deliveryType, lockerId, lockerPoint }: Readonly<OrderLockerSource>): Order["locker"] | undefined => {
+  const code = filledOrUndefined(lockerId)
+
+  return deliveryType === "locker" && code !== undefined ? { code, point: parseInpostLockerPoint(lockerPoint) } : undefined
 }
 
 const isSameAdminOrderAddress = (left: AdminOrderAddressRow, right: AdminOrderAddressRow): boolean =>
@@ -220,6 +234,44 @@ export const buildAdminOrderDetailCustomer = (snapshot: AdminOrderCustomerSnapsh
     totalSpentMinorUnits: snapshot.totalSpent,
     userId: snapshot.userId ?? undefined,
   }
+}
+
+export const describeOrderLocker = ({ code, point }: Readonly<Order["locker"]>): readonly string[] =>
+  point === undefined
+    ? [code]
+    : [code, ...(point.description === undefined ? [] : [point.description]), ...formatInpostLockerAddress(point)]
+
+const describeOrderAddress = (address: Order["adminOrderDetailAddress"] | undefined): readonly (string | undefined)[] =>
+  address === undefined
+    ? []
+    : [address.line1, address.line2, [address.postalCode, address.city].filter((part) => part !== undefined).join(" "), address.countryCode]
+
+export const describeOrderDestination = (row: Readonly<OrderDestinationRow>): string | undefined => {
+  const locker = resolveOrderLocker({ deliveryType: row.deliveryMethod?.type, lockerId: row.lockerId, lockerPoint: row.lockerPoint })
+  const lines =
+    locker === undefined
+      ? describeOrderAddress(mapAdminOrderDetailAddress(resolveOrderShippingAddressRow(row)))
+      : describeOrderLocker(locker)
+  const parts = [row.deliveryMethod?.name, lines.filter((line) => line !== undefined).join(", ")].filter(
+    (part): part is string => part !== undefined && part !== "",
+  )
+
+  return parts.length === 0 ? undefined : parts.join(": ")
+}
+
+export const resolveAdminOrderDeliveryLocker = (delivery: Order["adminOrderDetail"]["delivery"]): Order["locker"] | undefined =>
+  delivery?.type === "locker" && delivery.lockerId !== undefined ? { code: delivery.lockerId, point: delivery.lockerPoint } : undefined
+
+interface OrderDestinationRow extends OrderShippingAddressSources {
+  readonly deliveryMethod: { readonly name: string; readonly type: DeliveryMethodType } | null
+  readonly lockerId: string | null
+  readonly lockerPoint: string | null
+}
+
+interface OrderLockerSource {
+  readonly deliveryType: DeliveryMethodType | undefined
+  readonly lockerId: string | null
+  readonly lockerPoint: string | null
 }
 
 interface AdminOrderAddressRow {

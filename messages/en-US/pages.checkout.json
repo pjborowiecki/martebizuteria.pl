@@ -30,6 +30,7 @@
     "itemsLabel": "Items",
     "deliveryLabel": "Delivery",
     "shippingToLabel": "Shipping to",
+    "lockerLabel": "Collect from parcel locker",
     "subtotalLabel": "Subtotal",
     "discountLabel": "Discount",
     "shippingLabel": "Shipping",

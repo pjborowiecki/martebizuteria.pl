@@ -7,6 +7,7 @@ import { type Order } from "~/src/modules/order/order.types"
 import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 
 import { OrderAddressLines } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-address-lines"
+import { OrderSummaryDelivery } from "~/src/presentation/components/custom/pages/admin/orders/summary/order-summary-delivery"
 
 export const OrderSummaryParties = ({ order }: Readonly<OrderSummaryPartiesProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
@@ -38,6 +39,8 @@ export const OrderSummaryParties = ({ order }: Readonly<OrderSummaryPartiesProps
         )}
         <p className="text-[13px] text-muted-foreground">{order.customer.email}</p>
       </section>
+
+      <OrderSummaryDelivery order={order} />
     </div>
   )
 }

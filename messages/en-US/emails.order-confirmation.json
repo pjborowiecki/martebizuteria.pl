@@ -18,6 +18,8 @@
   "paymentMethodLabel": "Payment method",
   "deliveryMethodLabel": "Delivery method",
   "shippingAddressLabel": "Shipping address",
+  "lockerLabel": "Destination parcel locker",
+  "recipientLabel": "Recipient (pickup code by text)",
   "billingAddressLabel": "Billing address",
   "companyInvoiceLabel": "Invoice for a company",
   "nipLabel": "NIP",

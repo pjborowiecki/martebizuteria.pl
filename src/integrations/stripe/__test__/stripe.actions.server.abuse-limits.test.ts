@@ -8,7 +8,7 @@ const mocked = vi.hoisted(() => ({
   countOpenCheckouts: vi.fn<(owner: { clientAddress: string; email: string }) => Promise<{ byClientAddress: number; byEmail: number }>>(),
   createCheckout: vi.fn<(input: { clientAddress: string }) => Promise<{ checkoutId: string; discountClaimed: boolean }>>(),
   ensureStripeCustomer: vi.fn(),
-  fetchPointByName: vi.fn<(name: string) => Promise<{ name: string } | undefined>>(),
+  fetchPointByName: vi.fn<(name: string) => Promise<object | undefined>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -107,7 +107,14 @@ beforeEach(() => {
   vi.stubEnv("MODE", "production")
   mocked.getRequest.mockReturnValue(shopRequest())
   mocked.clientAddress.mockReturnValue(VISITOR_ADDRESS)
-  mocked.fetchPointByName.mockImplementation((name) => Promise.resolve({ name }))
+  mocked.fetchPointByName.mockImplementation((name) =>
+    Promise.resolve({
+      address_details: { building_number: null, city: "Warszawa", post_code: "00-001", province: "mazowieckie", street: "Marszałkowska" },
+      location: { latitude: 52.2, longitude: 21 },
+      location_description: "",
+      name,
+    }),
+  )
   mocked.countOpenCheckouts.mockResolvedValue({ byClientAddress: 0, byEmail: 0 })
   mocked.getRequestSession.mockResolvedValue(null)
   mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ price: 1500, type: "courier" })

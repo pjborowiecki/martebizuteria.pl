@@ -10,13 +10,10 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { customerOrderItemThumbnail, customerOrderItemVariantTitle } from "~/src/modules/customer-account/customer-account.accessors.server"
 import { CUSTOMER_ACCOUNT_QUERY_KEYS, CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
-import {
-  mapCustomerAccountAddressRow,
-  mapCustomerOrderDetail,
-  mapOrderAddressSnapshotRow,
-} from "~/src/modules/customer-account/customer-account.utils"
+import { mapCustomerOrderDetail } from "~/src/modules/customer-account/customer-account.utils"
 import { customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
+import { mapAdminOrderDetailAddress } from "~/src/modules/order/order.detail.utils"
 import { order } from "~/src/modules/order/order.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 import { product } from "~/src/modules/product/product.schema"
@@ -66,11 +63,11 @@ export const getCustomerOrder = createServerFn({ method: "GET" })
     const shippingSnapshot = snapshots.find((row) => row.type === "shipping")
 
     return mapCustomerOrderDetail(orderRow, items, {
-      billingAddress: mapOrderAddressSnapshotRow(billingSnapshot) ?? mapCustomerAccountAddressRow(orderRow.checkout?.billingAddress),
+      billingAddress: mapAdminOrderDetailAddress(billingSnapshot ?? orderRow.checkout?.billingAddress),
       deliveryMethodName: orderRow.deliveryMethod?.name,
       deliveryMethodType: orderRow.deliveryMethod?.type,
       payment: orderRow.payment,
-      shippingAddress: mapOrderAddressSnapshotRow(shippingSnapshot) ?? mapCustomerAccountAddressRow(orderRow.checkout?.shippingAddress),
+      shippingAddress: mapAdminOrderDetailAddress(shippingSnapshot ?? orderRow.checkout?.shippingAddress),
     })
   })
 

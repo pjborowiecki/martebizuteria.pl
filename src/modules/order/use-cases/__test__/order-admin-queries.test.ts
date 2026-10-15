@@ -55,8 +55,10 @@ const accessors = vi.hoisted(() => {
   const exportParams: unknown[] = []
 
   return {
+    destinationRows: [] as unknown[],
     exportParams,
     getAdminOrderCustomerStats: vi.fn(() => Promise.resolve({ orderCount: 1, totalSpent: 0 })),
+    getAdminOrderDestinationRows: vi.fn(() => Promise.resolve(accessors.destinationRows)),
     getAdminOrderDetailRow: vi.fn(),
     getAdminOrderItemRows: vi.fn<() => Promise<unknown[]>>(() => Promise.resolve([])),
     getAdminOrderStats: vi.fn(() => Promise.resolve({ pending: 2, total: 9 })),
@@ -84,6 +86,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/inpost/inpost.shipx.server", () => ({ isInpostShipxConfigured: () => shipx.configured.current }))
 vi.mock("~/src/modules/order/order.accessors", () => ({
   getAdminOrderCustomerStats: accessors.getAdminOrderCustomerStats,
+  getAdminOrderDestinationRows: accessors.getAdminOrderDestinationRows,
   getAdminOrderDetailRow: accessors.getAdminOrderDetailRow,
   getAdminOrderItemRows: accessors.getAdminOrderItemRows,
   getAdminOrderStats: accessors.getAdminOrderStats,
@@ -271,7 +274,27 @@ describe("exportAdminOrders", () => {
     const items = await exportAdminOrders({ data: {} })
 
     expect(items[0]?.billingCompanyName).toBeUndefined()
+    expect(items[0]?.destination).toBeUndefined()
     expect(items[0]?.billingNip).toBeUndefined()
+  })
+
+  it("names where each exported order goes, the parcel locker of a locker order", async () => {
+    accessors.destinationRows = [
+      {
+        addresses: [],
+        checkout: null,
+        deliveryMethod: { name: "Paczkomat InPost", type: "locker" },
+        id: "order-1",
+        lockerId: "WAW01M",
+        lockerPoint: JSON.stringify({ city: "Warszawa", postalCode: "00-001", street: "Marszałkowska" }),
+      },
+    ]
+
+    const items = await exportAdminOrders({ data: {} })
+
+    expect(accessors.getAdminOrderDestinationRows).toHaveBeenCalledWith(["order-1"])
+    expect(items[0]?.destination).toBe("Paczkomat InPost: WAW01M, Marszałkowska, 00-001 Warszawa")
+    accessors.destinationRows = []
   })
 })
 
@@ -549,6 +572,7 @@ describe("getAdminOrder delivery and payment", () => {
     expect(detail?.delivery).toStrictEqual({
       courierName: "InPost",
       lockerId: "WAW01A",
+      lockerPoint: undefined,
       lockerUnconfirmed: false,
       methodName: "Paczkomat 24/7",
       type: "locker",

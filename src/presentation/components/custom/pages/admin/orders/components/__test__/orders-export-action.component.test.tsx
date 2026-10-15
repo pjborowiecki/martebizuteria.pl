@@ -17,7 +17,7 @@ import { OrdersExportAction } from "~/src/presentation/components/custom/pages/a
 
 const EXPORT_LABEL = "Export"
 
-const HEADER_ROW = "Order number,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status"
+const HEADER_ROW = "Order number,Customer,Email,Company,NIP,Date,Items,Total,Payment,Fulfillment,Status,Delivery"
 
 const orderRow = {
   billingCompanyName: undefined,
@@ -25,6 +25,7 @@ const orderRow = {
   createdAt: new Date("2026-03-14T10:00:00.000Z"),
   currencyCode: "PLN",
   customerName: "Anna Kowalska",
+  destination: "Paczkomat InPost: WAW01M, Marszałkowska 1, 00-001 Warszawa",
   email: "anna@example.com",
   fulfillmentUiKey: "shipped",
   id: "order-1",
@@ -99,7 +100,7 @@ describe("OrdersExportAction", () => {
 
     await waitFor(() => {
       expect(withPlainSpaces(writtenCsv().content.split("\n")[1] ?? "")).toBe(
-        '"MRT-2026-00001","Anna Kowalska","anna@example.com",,,"Mar 14, 2026","2","PLN 120.00","Paid","Shipped","Completed"',
+        '"MRT-2026-00001","Anna Kowalska","anna@example.com",,,"Mar 14, 2026","2","PLN 120.00","Paid","Shipped","Completed","Paczkomat InPost: WAW01M, Marszałkowska 1, 00-001 Warszawa"',
       )
     })
   })

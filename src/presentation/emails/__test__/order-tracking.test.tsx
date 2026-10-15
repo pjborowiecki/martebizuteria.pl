@@ -45,6 +45,10 @@ describe("OrderTrackingUpdate", () => {
     await expect(renderTracking()).resolves.toContain(`${englishCopy.trackingCta} ${TRACKING_URL}`)
   })
 
+  it("keeps a link to the customer's order beside the tracking button", async () => {
+    await expect(renderTracking()).resolves.toContain(`${customerCta.label} ${customerCta.href}`)
+  })
+
   it("falls back to the customer's order when the carrier has no tracking page", async () => {
     await expect(renderTracking({ trackingUrl: undefined })).resolves.toContain(`${englishCopy.viewOrderCta} ${customerCta.href}`)
   })

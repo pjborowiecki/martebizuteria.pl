@@ -118,6 +118,8 @@
     "refundedOn": "Refunded on {date}",
     "qtyAtPrice": "Qty: {qty} · {price} each",
     "pickupPoint": "Pickup Point",
+    "recipient": "Recipient",
+    "recipientHint": "InPost texts the pickup code to this number.",
     "paidByCard": "Paid online",
     "nip": "NIP {nip}",
     "note": "Your Note",

@@ -4,6 +4,7 @@ import { FileDown, Loader2, PackagePlus, RefreshCw } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { INPOST_CANCELED_SHIPMENT_STATUS, type InpostParcelTemplate } from "~/src/integrations/inpost/inpost.constants"
+import { formatInpostLockerAddress } from "~/src/integrations/inpost/inpost.utils"
 
 import { canCreateAdminOrderInpostShipment, isInpostDeliveryType } from "~/src/modules/order/order.admin-actions.utils"
 import { type InpostDeliveryType } from "~/src/modules/order/order.constants"
@@ -162,6 +163,21 @@ const InpostShipmentStart = ({ order }: Readonly<OrderInpostCardProps>): JSX.Ele
   return <InpostShipmentCreator deliveryType={deliveryType} orderId={order.id} />
 }
 
+const InpostTargetLocker = ({ delivery }: Readonly<Pick<OrderInpostCardProps["order"], "delivery">>): JSX.Element | undefined => {
+  const t = useTranslations("pages.admin.orderDetail.inpost")
+
+  if (delivery?.type !== "locker" || delivery.lockerId === undefined) {
+    return undefined
+  }
+
+  return (
+    <p className="mb-3 text-[13px] text-muted-foreground">
+      {t("targetLocker")} <span className="font-mono text-foreground">{delivery.lockerId}</span>
+      {delivery.lockerPoint !== undefined && ` · ${formatInpostLockerAddress(delivery.lockerPoint).join(", ")}`}
+    </p>
+  )
+}
+
 export const OrderInpostCard = ({ order }: Readonly<OrderInpostCardProps>): JSX.Element | undefined => {
   const t = useTranslations("pages.admin.orderDetail.inpost")
 
@@ -173,6 +189,7 @@ export const OrderInpostCard = ({ order }: Readonly<OrderInpostCardProps>): JSX.
     <Card className={ORDER_DETAIL_CARD_CLASS}>
       <CardContent className="p-5">
         <p className="mb-3 text-sm font-medium">{t("title")}</p>
+        <InpostTargetLocker delivery={order.delivery} />
         {order.inpostShipment === undefined ? (
           <InpostShipmentStart order={order} />
         ) : (

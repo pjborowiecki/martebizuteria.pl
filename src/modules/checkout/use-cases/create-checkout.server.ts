@@ -19,6 +19,7 @@ export interface CreateCheckoutInput {
   readonly checkoutValues: CheckoutFormSchema
   readonly clientAddress: string
   readonly discountId?: string | undefined
+  readonly lockerPoint?: string | undefined
   readonly lockerUnconfirmed?: boolean | undefined
   readonly userEmail: string
   readonly userId: string | undefined

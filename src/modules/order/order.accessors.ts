@@ -245,6 +245,33 @@ export const getAdminOrdersExport = async (params: Omit<AdminOrdersListParams, "
   return attachItemCounts(rows)
 }
 
+export const getAdminOrderDestinationRows = (orderIds: readonly string[]) =>
+  db.query.order.findMany({
+    columns: {
+      id: true,
+      lockerId: true,
+      lockerPoint: true,
+    },
+    where: inJsonList(order.id, orderIds),
+    with: {
+      addresses: true,
+      checkout: {
+        columns: {
+          id: true,
+        },
+        with: {
+          shippingAddress: true,
+        },
+      },
+      deliveryMethod: {
+        columns: {
+          name: true,
+          type: true,
+        },
+      },
+    },
+  })
+
 export const getAdminOrderStats = async (): Promise<Order["adminStats"]> => {
   const [[totalRow], [pendingRow], [salesRow]] = await db.batch([
     db
@@ -458,6 +485,7 @@ export const getOrderForShippedEmail = (orderId: string) =>
       email: true,
       id: true,
       lockerId: true,
+      lockerPoint: true,
       metadata: true,
       orderNumber: true,
       trackingNumber: true,

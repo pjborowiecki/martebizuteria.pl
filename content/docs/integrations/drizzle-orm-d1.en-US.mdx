@@ -190,9 +190,9 @@ Those three variables come from the environment file, which is why the `db:*` sc
 
 ## The migration directory
 
-`src/integrations/drizzle-orm/migrations/` holds 92 `.sql` files. Wrangler applies them in filename order and records what it applied in its own `d1_migrations` table; Drizzle's `meta/_journal.json` is only consulted by `drizzle-kit generate` when it computes the next diff.
+`src/integrations/drizzle-orm/migrations/` holds 93 `.sql` files. Wrangler applies them in filename order and records what it applied in its own `d1_migrations` table; Drizzle's `meta/_journal.json` is only consulted by `drizzle-kit generate` when it computes the next diff.
 
-Those two views have drifted. The journal lists 52 entries, so forty files in the directory are not in it:
+Those two views have drifted. The journal lists 52 entries, so forty-one files in the directory are not in it:
 
 ```
 20260604143000_product_status_updated_at_idx
@@ -235,6 +235,7 @@ Those two views have drifted. The journal lists 52 entries, so forty files in th
 20261015150000_order_shipped_email
 20261015200000_order_fulfillment_started
 20261015300000_order_delivered_email
+20261015400000_locker_point
 ```
 
 Hand-written migrations such as `20260927120000_fix_silver_collection_handle.sql` are normal in this repository: data repairs, index-only changes and newer tables such as `order_number_sequence`, `discount_redemption`, `discount_claim`, `newsletter_subscriber`, `wishlist_item`, `storefront_search`, `content_page`, `store_setting`, `price_history` and `newsletter_campaign` are written directly and applied with Wrangler. But the journal is also missing index 38 entirely (it runs 0–52 with a gap), and the newest snapshot, `meta/20260930151544_snapshot.json`, predates every one of those tables, which means `drizzle-kit generate` computes its diff from a snapshot that does not include everything the database actually has. After a `db:generate`, read the produced SQL before applying it and delete anything that re-creates an object that already exists.

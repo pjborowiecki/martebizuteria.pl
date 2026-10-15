@@ -51,6 +51,7 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
   delivery: {
     courierName: "InPost",
     lockerId: "WAW01A",
+    lockerPoint: { buildingNumber: "12", city: "Warszawa", description: "Przy stacji metra", postalCode: "00-640", street: "Mokotowska" },
     lockerUnconfirmed: false,
     methodName: "Paczkomat 24/7",
     type: "locker",

@@ -68,6 +68,7 @@ const orderRow = {
   deliveryMethod: { courier: { name: "InPost" }, name: "InPost Paczkomat", type: "locker" },
   email: "anna@example.com",
   lockerId: "WAW01M",
+  lockerPoint: JSON.stringify({ buildingNumber: "1", city: "Warszawa", postalCode: "00-001", street: "Marszałkowska" }),
   orderNumber: ORDER_NUMBER,
   total: 64_600,
 }
@@ -165,15 +166,15 @@ describe("sendNewOrderEmail", () => {
     ])
   })
 
-  it("names the customer's contact, the locker, the shipping address and the note", async () => {
+  it("names the customer's contact, the parcel locker the order goes to and the note", async () => {
     await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details).toStrictEqual({
       companyInvoice: undefined,
       customer: "Anna Kowalska\nanna@example.com\n+48 600 123 456",
       customerNote: "Please gift-wrap the bracelet.",
-      deliveryMethod: "InPost Paczkomat · WAW01M",
-      shippingAddress: "ul. Mokotowska 12/4\n00-640 Warszawa\nPL",
+      deliveryMethod: "InPost Paczkomat",
+      destination: { kind: "locker", locker: "WAW01M\nMarszałkowska 1\n00-001 Warszawa", recipient: undefined },
     })
   })
 
@@ -187,7 +188,7 @@ describe("sendNewOrderEmail", () => {
     await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details.companyInvoice).toBe(
-      `Pracownia Złotnicza sp. z o.o.\n${polishCopy.nipLabel} 5260001246\nul. Fakturowa 1\n00-640 Warszawa\nPL`,
+      `Pracownia Złotnicza sp. z o.o.\n${polishCopy.nipLabel} 5260001246\nul. Fakturowa 1\n00-640 Warszawa, Polska`,
     )
   })
 
@@ -208,13 +209,14 @@ describe("sendNewOrderEmail", () => {
     getAdminOrderDetailRow.mockResolvedValue({
       ...orderRow,
       addresses: [{ ...shippingSnapshot, address2: "lokal 3", phone: null, postalCode: null }],
+      deliveryMethod: { courier: { name: "InPost" }, name: "Kurier InPost", type: "courier" },
     })
 
     await sendNewOrderEmail(ORDER_ID, RETURN_URL)
 
     expect(sentEmail().react.props.details).toMatchObject({
       customer: "Anna Kowalska\nanna@example.com",
-      shippingAddress: "ul. Mokotowska 12/4\nlokal 3\nWarszawa\nPL",
+      destination: { address: "ul. Mokotowska 12/4\nlokal 3\nWarszawa, Polska", kind: "address" },
     })
   })
 
@@ -229,7 +231,7 @@ describe("sendNewOrderEmail", () => {
       customer: "anna@example.com",
       customerNote: undefined,
       deliveryMethod: englishCopy.unavailable,
-      shippingAddress: englishCopy.unavailable,
+      destination: { address: englishCopy.unavailable, kind: "address" },
     })
   })
 

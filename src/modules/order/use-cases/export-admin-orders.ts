@@ -4,7 +4,8 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
-import { getAdminOrdersExport as orderGetAdminOrdersExport } from "~/src/modules/order/order.accessors"
+import { getAdminOrderDestinationRows, getAdminOrdersExport as orderGetAdminOrdersExport } from "~/src/modules/order/order.accessors"
+import { describeOrderDestination } from "~/src/modules/order/order.detail.utils"
 import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
@@ -31,11 +32,14 @@ export const exportAdminOrders = createServerFn({
   .handler(async ({ data: input }): Promise<Order["adminExportItem"][]> => {
     const params = buildAdminOrdersExportParams(input)
     const rows = await orderGetAdminOrdersExport(params)
+    const destinationRows = await getAdminOrderDestinationRows(rows.map((row) => row.id))
+    const destinations = new Map(destinationRows.map((row) => [row.id, describeOrderDestination(row)]))
 
     return rows.map((row) =>
       Object.assign(toAdminOrderListItem(row), {
         billingCompanyName: row.billingCompanyName ?? undefined,
         billingNip: row.billingNip ?? undefined,
+        destination: destinations.get(row.id),
       }),
     )
   })

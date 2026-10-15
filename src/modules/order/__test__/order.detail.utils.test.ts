@@ -86,6 +86,11 @@ describe("mapAdminOrderDetailAddress", () => {
     })
   })
 
+  it("keeps whichever part of the name was captured", () => {
+    expect(mapAdminOrderDetailAddress({ ...addressRow, lastName: null })?.name).toBe("Anna")
+    expect(mapAdminOrderDetailAddress({ ...addressRow, firstName: "  " })?.name).toBe("Kowalska")
+  })
+
   it("falls back to a placeholder when no name was captured", () => {
     expect(mapAdminOrderDetailAddress({ ...addressRow, firstName: null, lastName: null })?.name).toBe("—")
   })

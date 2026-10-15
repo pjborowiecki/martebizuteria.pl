@@ -5,6 +5,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { isInpostShipxConfigured } from "~/src/integrations/inpost/inpost.shipx.server"
+import { parseInpostLockerPoint } from "~/src/integrations/inpost/inpost.utils"
 
 import { getOrderWithdrawals } from "~/src/modules/order-withdrawal/order-withdrawal.accessors"
 import {
@@ -80,6 +81,7 @@ const buildAdminOrderDetail = ({
         : {
             courierName: deliveryMethod.courier.name,
             lockerId: orderRow.lockerId ?? undefined,
+            lockerPoint: parseInpostLockerPoint(orderRow.lockerPoint),
             lockerUnconfirmed: orderRow.lockerUnconfirmed,
             methodName: deliveryMethod.name,
             type: deliveryMethod.type,

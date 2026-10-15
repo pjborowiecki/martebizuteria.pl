@@ -45,6 +45,7 @@ describe("checkout table", () => {
       "email",
       "id",
       "locker_id",
+      "locker_point",
       "locker_unconfirmed",
       "shipping_address_id",
       "status",
