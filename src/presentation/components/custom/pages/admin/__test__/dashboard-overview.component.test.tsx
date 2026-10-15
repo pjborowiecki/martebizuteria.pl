@@ -58,7 +58,7 @@ const orderRow = (overrides: Partial<Order["adminListItem"]> = {}): Order["admin
   customerName: "Anna Kowalska",
   email: "anna@example.test",
   fulfillmentStatus: "not_fulfilled",
-  fulfillmentUiKey: "unfulfilled",
+  fulfillmentUiKey: "confirmed",
   hasOpenDispute: false,
   id: "c3791f39-4f51-4d0d-a7b1-1ef49f0995ea",
   initials: "AK",
@@ -210,7 +210,7 @@ describe("DashboardRecentOrders", () => {
     expect(screen.getByText("Anna Kowalska")).toBeInTheDocument()
     expect(screen.getByText("AK")).toBeInTheDocument()
     expect(screen.getByText("Paid")).toBeInTheDocument()
-    expect(screen.getByText("Unfulfilled")).toBeInTheDocument()
+    expect(screen.getByText("Confirmed")).toBeInTheDocument()
     expect(screen.getByText("PLN 249.00")).toBeInTheDocument()
     expect(screen.getByText("Mar 14, 2026")).toBeInTheDocument()
   })
@@ -251,7 +251,17 @@ describe("DashboardRecentOrders", () => {
     snapshotRef.current = { ...emptySnapshot(), recentOrders: [orderRow()] }
     renderWithProviders(<DashboardRecentOrders />)
 
-    expect(screen.getByText("Unfulfilled")).not.toHaveClass("capitalize")
+    expect(screen.getByText("Confirmed")).not.toHaveClass("capitalize")
+  })
+
+  it("shows an order whose fulfilment started as in progress, as on the order page", () => {
+    snapshotRef.current = {
+      ...emptySnapshot(),
+      recentOrders: [orderRow({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "processing" })],
+    }
+    renderWithProviders(<DashboardRecentOrders />)
+
+    expect(screen.getByText("In progress")).toBeInTheDocument()
   })
 
   it("shows a refunded payment with the orders list's refunded badge", () => {
@@ -298,7 +308,7 @@ describe("DashboardRecentOrders row", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Actions for order MRT-2026-00002" }))
 
-    expect(await screen.findByRole("menuitem", { name: "Fulfill order" })).toBeInTheDocument()
+    expect(await screen.findByRole("menuitem", { name: "Start fulfillment" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Cancel order" })).toBeInTheDocument()
   })
 

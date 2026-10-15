@@ -33,7 +33,7 @@ test.describe("customer account", () => {
     await accountPage.gotoSection("orders")
     const order = page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") })
     await expect(order).toContainText(/PLN\s398\.99/u)
-    await expect(order).toContainText("Processing")
+    await expect(order).toContainText("Confirmed")
   })
 
   test("a customer withdraws from part of an order on its page and is emailed the statement", async ({ accountPage, authPage, page, request }, testInfo) => {

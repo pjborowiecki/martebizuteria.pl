@@ -198,7 +198,7 @@ test.describe("admin", () => {
 
     await adminOrderPage.gotoOrderFor(email)
     await expect(adminOrderPage.heading()).toHaveText(orderNumber)
-    await adminOrderPage.action("Fulfill").click()
+    await adminOrderPage.action("Start fulfillment").click()
     await adminOrderPage.dismissNotification("Fulfillment started for this order.")
     await adminOrderPage.action("Mark shipped").click()
     const dialog = page.getByRole("dialog", { name: "Mark order as shipped" })
@@ -244,7 +244,7 @@ test.describe("admin", () => {
     await adminOrderPage.action("Download label").click()
     expect((await label).suggestedFilename()).toBe(`${orderNumber}-inpost.pdf`)
 
-    await adminOrderPage.action("Fulfill").click()
+    await adminOrderPage.action("Start fulfillment").click()
     await adminOrderPage.dismissNotification("Fulfillment started for this order.")
     await adminOrderPage.action("Mark shipped").click()
     await page.getByRole("dialog", { name: "Mark order as shipped" }).getByRole("button", { name: "Mark shipped" }).click()
@@ -319,7 +319,7 @@ test.describe("admin", () => {
   }, testInfo) => {
     const email = await placeGuestOrder({ browser, handle: PRODUCTS.onyx.handle, label: "refund", request, testInfo })
     await adminOrderPage.gotoOrderFor(email)
-    await adminOrderPage.action("Fulfill").click()
+    await adminOrderPage.action("Start fulfillment").click()
     await adminOrderPage.dismissNotification("Fulfillment started for this order.")
     await adminOrderPage.action("Mark shipped").click()
     await page.getByRole("dialog", { name: "Mark order as shipped" }).getByRole("button", { name: "Mark shipped" }).click()
@@ -530,7 +530,7 @@ test.describe("admin", () => {
   }, testInfo) => {
     const email = await placeGuestOrder({ browser, handle: PRODUCTS.onyx.handle, label: "revisit", request, testInfo })
     await adminOrderPage.open("/en-US/admin/orders")
-    await expect(adminOrderPage.orderRow(email)).toContainText("Unfulfilled")
+    await expect(adminOrderPage.orderRow(email)).toContainText("Confirmed")
     await adminOrderPage.openOrderFor(email)
 
     const colleague = await browser.newContext({
@@ -541,7 +541,7 @@ test.describe("admin", () => {
     const colleaguePage = await colleague.newPage()
     const colleagueOrders = new AdminOrderPage(colleaguePage)
     await colleagueOrders.gotoOrderFor(email)
-    await colleagueOrders.action("Fulfill").click()
+    await colleagueOrders.action("Start fulfillment").click()
     await colleagueOrders.dismissNotification("Fulfillment started for this order.")
     await colleagueOrders.action("Mark shipped").click()
     await colleaguePage.getByRole("dialog", { name: "Mark order as shipped" }).getByRole("button", { name: "Mark shipped" }).click()

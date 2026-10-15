@@ -105,7 +105,7 @@ describe("admin order detail route", () => {
   })
 
   it("offers refund, cancel and ship for a paid order already in fulfillment", () => {
-    renderRoute({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "unfulfilled" })
+    renderRoute({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "processing" })
 
     expect(screen.getByRole("link", { name: "Print summary" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Refund" })).toBeInTheDocument()
@@ -114,9 +114,9 @@ describe("admin order detail route", () => {
   })
 
   it("offers fulfillment only while the order is unfulfilled", () => {
-    renderRoute({ fulfillmentStatus: "not_fulfilled", fulfillmentUiKey: "unfulfilled" })
+    renderRoute({ fulfillmentStatus: "not_fulfilled", fulfillmentUiKey: "confirmed" })
 
-    expect(screen.getByRole("button", { name: "Fulfill" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Start fulfillment" })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Mark delivered" })).not.toBeInTheDocument()
   })
 
@@ -124,7 +124,7 @@ describe("admin order detail route", () => {
     renderRoute({ fulfillmentStatus: "shipped" })
 
     expect(screen.getByRole("button", { name: "Mark delivered" })).toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Fulfill" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Start fulfillment" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument()
   })
 
@@ -132,7 +132,7 @@ describe("admin order detail route", () => {
     renderRoute({ canceledAt: new Date("2026-03-08T08:00:00.000Z"), fulfillmentStatus: "cancelled", status: "cancelled" })
 
     expect(screen.queryByRole("button", { name: "Refund" })).not.toBeInTheDocument()
-    expect(screen.queryByRole("button", { name: "Fulfill" })).not.toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "Start fulfillment" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Return to stock" })).not.toBeInTheDocument()
   })

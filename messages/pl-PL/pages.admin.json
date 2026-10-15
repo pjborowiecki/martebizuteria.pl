@@ -605,10 +605,10 @@
     },
     "filter": {
       "allPayments": "Wszystkie płatności",
-      "allFulfillment": "Wszystkie realizacje",
+      "allFulfillment": "Wszystkie etapy realizacji",
       "allStatuses": "Wszystkie statusy",
       "payment": "Filtruj wg płatności",
-      "fulfillment": "Filtruj wg realizacji",
+      "fulfillment": "Filtruj wg etapu realizacji",
       "status": "Filtruj wg statusu",
       "total": "Filtruj wg sumy",
       "createdAt": "Filtruj wg daty",
@@ -648,8 +648,8 @@
     },
     "status": {
       "pending": "Oczekujące",
-      "processing": "W realizacji",
-      "completed": "Zrealizowane",
+      "processing": "Otwarte",
+      "completed": "Zakończone",
       "cancelled": "Anulowane",
       "refunded": "Zwrócone"
     },
@@ -659,11 +659,12 @@
       "refunded": "Zwrócone"
     },
     "fulfillment": {
-      "unfulfilled": "Niezrealizowane",
-      "pending": "Oczekujące",
+      "pending": "Oczekuje na płatność",
+      "confirmed": "Potwierdzone",
+      "processing": "W realizacji",
       "shipped": "Wysłane",
       "delivered": "Dostarczone",
-      "returned": "Zwrócone"
+      "cancelled": "Anulowane"
     },
     "empty": "Brak zamówień pasujących do wyszukiwania.",
     "pagination": {
@@ -678,7 +679,7 @@
       "copyId": "Kopiuj ID",
       "copySuccess": "Skopiowano ID zamówienia",
       "copyError": "Nie udało się skopiować ID zamówienia",
-      "fulfill": "Realizuj zamówienie",
+      "fulfill": "Rozpocznij realizację",
       "markShipped": "Oznacz jako wysłane",
       "printSummary": "Drukuj podsumowanie zamówienia",
       "refund": "Zwrot",
@@ -723,7 +724,7 @@
       "refund": "Zwrot",
       "restock": "Przywróć na stan",
       "cancel": "Anuluj zamówienie",
-      "fulfill": "Realizuj",
+      "fulfill": "Rozpocznij realizację",
       "ship": "Oznacz jako wysłane",
       "markDelivered": "Oznacz jako dostarczone"
     },
@@ -734,20 +735,6 @@
       "payment": "Płatność",
       "total": "Suma"
     },
-    "orderStatus": {
-      "pending": "Oczekujące",
-      "processing": "W realizacji",
-      "completed": "Zakończone",
-      "cancelled": "Anulowane",
-      "refunded": "Zwrócone"
-    },
-    "status": {
-      "shipped": "Wysłano",
-      "delivered": "Dostarczono",
-      "pending": "Oczekujące",
-      "unfulfilled": "Niezrealizowane",
-      "returned": "Zwrócone"
-    },
     "payment": {
       "paid": "Opłacone",
       "authorized": "Autoryzowane",
@@ -755,13 +742,7 @@
     },
     "fulfillment": {
       "title": "Realizacja",
-      "cancelledAt": "Zamówienie anulowane {date}",
-      "steps": {
-        "confirmed": "Potwierdzone",
-        "processing": "Przetwarzanie",
-        "shipped": "Wysłane",
-        "delivered": "Dostarczone"
-      }
+      "cancelledAt": "Zamówienie anulowane {date}"
     },
     "items": {
       "title": "Produkty",

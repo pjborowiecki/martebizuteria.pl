@@ -9,7 +9,7 @@ import {
   mapCustomerOrderSummaryRow,
   matchesCustomerAccountOrderFilter,
   parseUserAgent,
-  resolveCustomerAccountOrderFilter,
+  resolveCustomerAccountOrderStatus,
 } from "~/src/modules/customer-account/customer-account.utils"
 
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (src?: string | null) => src ?? "placeholder.svg" }))
@@ -19,7 +19,7 @@ import { type Order } from "~/src/modules/order/order.types"
 const FILTER_BUCKET_CASES: [Order["select"]["fulfillmentStatus"], string][] = [
   ["delivered", "delivered"],
   ["shipped", "shipped"],
-  ["not_fulfilled", "processing"],
+  ["not_fulfilled", "confirmed"],
   ["fulfilled", "processing"],
 ]
 
@@ -71,14 +71,22 @@ const orderRow = {
 
 const ORDER_NUMBERS: ReadonlyMap<string, string> = new Map([[ORDER_ID, "MRT-2026-00001"]])
 
-describe("resolveCustomerAccountOrderFilter", () => {
+describe("resolveCustomerAccountOrderStatus", () => {
   it("treats a cancelled order or a cancelled fulfilment as cancelled", () => {
-    expect(resolveCustomerAccountOrderFilter("cancelled", "shipped")).toBe("cancelled")
-    expect(resolveCustomerAccountOrderFilter("processing", "cancelled")).toBe("cancelled")
+    expect(resolveCustomerAccountOrderStatus("cancelled", "shipped")).toBe("cancelled")
+    expect(resolveCustomerAccountOrderStatus("processing", "cancelled")).toBe("cancelled")
   })
 
   it.each(FILTER_BUCKET_CASES)("maps the fulfilment status %s to the %s bucket", (fulfillmentStatus, expected) => {
-    expect(resolveCustomerAccountOrderFilter("processing", fulfillmentStatus)).toBe(expected)
+    expect(resolveCustomerAccountOrderStatus("processing", fulfillmentStatus)).toBe(expected)
+  })
+
+  it("shows a refunded order as refunded whatever step it reached", () => {
+    expect(resolveCustomerAccountOrderStatus("refunded", "delivered")).toBe("refunded")
+  })
+
+  it("shows an order still awaiting payment as such", () => {
+    expect(resolveCustomerAccountOrderStatus("pending", "not_fulfilled")).toBe("pending")
   })
 })
 
@@ -97,7 +105,7 @@ describe("mapCustomerOrderSummaryRow", () => {
   it("maps the order and its lines into the summary shape", () => {
     const summary = mapCustomerOrderSummaryRow(orderRow, [itemRow])
 
-    expect(summary).toMatchObject({ filterStatus: "processing", id: ORDER_ID, totalMinorUnits: 25_500 })
+    expect(summary).toMatchObject({ filterStatus: "confirmed", id: ORDER_ID, totalMinorUnits: 25_500 })
     expect(summary.items).toStrictEqual([
       {
         handle: "silver-ring",

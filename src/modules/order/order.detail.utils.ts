@@ -14,7 +14,7 @@ import {
   type AdminOrderDetailTag,
   type AdminOrderFulfillmentStepKey,
 } from "~/src/modules/order/order.constants"
-import { parseOrderMetadata } from "~/src/modules/order/order.display.utils"
+import { parseOrderMetadata, resolveAdminOrderFulfillmentUiKey } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils"
@@ -84,25 +84,9 @@ export const mapAdminOrderDetailItem = (row: AdminOrderItemRow): Order["adminOrd
   variantTitle: row.variantTitle ?? undefined,
 })
 
-const resolveFulfillmentStepDone = (key: AdminOrderFulfillmentStepKey, snapshot: AdminOrderFulfillmentSnapshot): boolean => {
-  if (key === "confirmed") {
-    return snapshot.status !== "pending"
-  }
-
-  if (key === "processing") {
-    return snapshot.fulfillmentStartedAt !== undefined || snapshot.shippedAt !== null || snapshot.deliveredAt !== null
-  }
-
-  if (key === "shipped") {
-    return snapshot.shippedAt !== null || snapshot.deliveredAt !== null
-  }
-
-  return snapshot.deliveredAt !== null
-}
-
 const resolveFulfillmentStepAt = (key: AdminOrderFulfillmentStepKey, snapshot: AdminOrderFulfillmentSnapshot): Date | undefined => {
   if (key === "confirmed") {
-    return snapshot.status === "pending" ? undefined : snapshot.createdAt
+    return snapshot.createdAt
   }
 
   if (key === "processing") {
@@ -121,9 +105,13 @@ export const buildAdminOrderFulfillmentSteps = (snapshot: AdminOrderFulfillmentS
     return []
   }
 
-  return ADMIN_ORDER_FULFILLMENT_STEPS.map((key) => ({
-    at: resolveFulfillmentStepAt(key, snapshot),
-    done: resolveFulfillmentStepDone(key, snapshot),
+  const reached = (ADMIN_ORDER_FULFILLMENT_STEPS as readonly string[]).indexOf(
+    resolveAdminOrderFulfillmentUiKey(snapshot.status, snapshot.fulfillmentStatus),
+  )
+
+  return ADMIN_ORDER_FULFILLMENT_STEPS.map((key, index) => ({
+    at: index <= reached ? resolveFulfillmentStepAt(key, snapshot) : undefined,
+    done: index <= reached,
     key,
   }))
 }
@@ -292,6 +280,7 @@ export interface AdminOrderFulfillmentSnapshot {
   readonly createdAt: Date
   readonly deliveredAt: Date | null
   readonly fulfillmentStartedAt: Date | undefined
+  readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly shippedAt: Date | null
   readonly status: Order["select"]["status"]
 }

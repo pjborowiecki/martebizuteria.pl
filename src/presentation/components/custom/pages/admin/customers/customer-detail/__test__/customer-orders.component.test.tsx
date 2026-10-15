@@ -29,7 +29,7 @@ const orderRow = (overrides: Partial<Order["adminListItem"]> = {}): Order["admin
   customerName: "Anna Kowalska",
   email: "anna@example.com",
   fulfillmentStatus: "not_fulfilled",
-  fulfillmentUiKey: "unfulfilled",
+  fulfillmentUiKey: "confirmed",
   hasOpenDispute: false,
   id: "order-1",
   initials: "AK",
@@ -131,10 +131,22 @@ describe("CustomerOrders grid", () => {
       throw new Error("the history rendered no order rows")
     }
 
-    expect(within(first).getByText("Unfulfilled")).toBeInTheDocument()
-    expect(within(first).getByText("Processing")).toBeInTheDocument()
+    expect(within(first).getByText("Confirmed")).toBeInTheDocument()
+    expect(within(first).getByText("Open")).toBeInTheDocument()
     expect(within(first).getByText("Paid")).toBeInTheDocument()
     expect(first).toHaveTextContent("PLN 249.00")
+  })
+
+  it("shows an order whose fulfilment started as in progress, as on the order page", async () => {
+    pageFn.mockResolvedValue(page([orderRow({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "processing" })]))
+    renderHistory()
+    await screen.findByText("MRT-2026-00001")
+    const [first] = bodyRows()
+    if (first === undefined) {
+      throw new Error("the history rendered no order rows")
+    }
+
+    expect(within(first).getByText("In progress")).toBeInTheDocument()
   })
 
   it("offers the orders row actions on every order in a cell that does not open the order", async () => {

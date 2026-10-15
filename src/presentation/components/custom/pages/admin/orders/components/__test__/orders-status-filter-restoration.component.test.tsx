@@ -18,7 +18,7 @@ describe("restored order status filters", () => {
     })
 
     await userEvent.click(screen.getByRole("combobox", { name: "Filter by status" }))
-    expect(await screen.findByRole("option", { name: "Processing" })).toHaveAttribute("aria-selected", "true")
+    expect(await screen.findByRole("option", { name: "Open" })).toHaveAttribute("aria-selected", "true")
     await userEvent.keyboard("{Escape}")
 
     expect(screen.getByRole("combobox", { name: "Filter by status" })).toHaveAttribute("aria-expanded", "false")

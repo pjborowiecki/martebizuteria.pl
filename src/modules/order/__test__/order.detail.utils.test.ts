@@ -38,6 +38,7 @@ const fulfillmentSnapshot = (overrides: Partial<AdminOrderFulfillmentSnapshot> =
   createdAt: PLACED_AT,
   deliveredAt: null,
   fulfillmentStartedAt: undefined,
+  fulfillmentStatus: "not_fulfilled",
   shippedAt: null,
   status: "processing",
   ...overrides,
@@ -236,32 +237,52 @@ describe("buildAdminOrderFulfillmentSteps", () => {
     expect(steps.map((step) => step.done)).toStrictEqual([false, false, false, false])
   })
 
-  it("confirms the order once it leaves the pending state", () => {
-    const [confirmed] = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot())
+  it("confirms a paid order and stops there until fulfilment starts", () => {
+    const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot())
 
-    expect(confirmed).toStrictEqual({ at: PLACED_AT, done: true, key: "confirmed" })
+    expect(steps[0]).toStrictEqual({ at: PLACED_AT, done: true, key: "confirmed" })
+    expect(steps.map((step) => step.done)).toStrictEqual([true, false, false, false])
   })
 
   it("dates the processing step from the fulfilment audit entry", () => {
-    const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot({ fulfillmentStartedAt: SHIPPED_AT }))
+    const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot({ fulfillmentStartedAt: SHIPPED_AT, fulfillmentStatus: "fulfilled" }))
 
     expect(steps[1]).toStrictEqual({ at: SHIPPED_AT, done: true, key: "processing" })
+    expect(steps[2]).toStrictEqual({ at: undefined, done: false, key: "shipped" })
+  })
+
+  it("follows the order's own step rather than a fulfilment entry left in the log", () => {
+    const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot({ fulfillmentStartedAt: SHIPPED_AT }))
+
+    expect(steps[1]).toStrictEqual({ at: undefined, done: false, key: "processing" })
   })
 
   it("backfills earlier steps once the parcel has shipped", () => {
-    const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot({ shippedAt: SHIPPED_AT }))
+    const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot({ fulfillmentStatus: "shipped", shippedAt: SHIPPED_AT }))
 
     expect(steps.map((step) => step.done)).toStrictEqual([true, true, true, false])
     expect(steps[2]?.at).toBe(SHIPPED_AT)
   })
 
+  it("leaves the shipping time blank for a shipped order that never recorded one", () => {
+    const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot({ fulfillmentStatus: "shipped" }))
+
+    expect(steps[2]).toStrictEqual({ at: undefined, done: true, key: "shipped" })
+  })
+
   it("completes the track once the parcel is delivered", () => {
     const steps = buildAdminOrderFulfillmentSteps(
-      fulfillmentSnapshot({ deliveredAt: DELIVERED_AT, shippedAt: SHIPPED_AT, status: "completed" }),
+      fulfillmentSnapshot({ deliveredAt: DELIVERED_AT, fulfillmentStatus: "delivered", shippedAt: SHIPPED_AT, status: "completed" }),
     )
 
     expect(steps.map((step) => step.done)).toStrictEqual([true, true, true, true])
     expect(steps[3]?.at).toBe(DELIVERED_AT)
+  })
+
+  it("leaves the delivery time blank for a delivered order that never recorded one", () => {
+    const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot({ fulfillmentStatus: "delivered", status: "completed" }))
+
+    expect(steps[3]).toStrictEqual({ at: undefined, done: true, key: "delivered" })
   })
 
   it("drops the track for a cancelled order", () => {

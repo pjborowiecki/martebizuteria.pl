@@ -159,7 +159,8 @@ describe("account orders page", () => {
 
     expect(screen.getAllByRole("link").map((link) => link.textContent)).toStrictEqual([
       "All",
-      "Processing",
+      "Confirmed",
+      "In progress",
       "Shipped",
       "Delivered",
       "Cancelled",

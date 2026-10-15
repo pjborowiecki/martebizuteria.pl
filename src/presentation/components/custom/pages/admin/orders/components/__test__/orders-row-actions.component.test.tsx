@@ -59,7 +59,7 @@ const ORDER: Order["adminListItem"] = {
   customerName: "Ada Nowak",
   email: "ada@example.test",
   fulfillmentStatus: "not_fulfilled",
-  fulfillmentUiKey: "unfulfilled",
+  fulfillmentUiKey: "confirmed",
   hasOpenDispute: false,
   id: "order-1",
   initials: "AN",
@@ -109,7 +109,7 @@ describe("OrdersRowActions menu", () => {
 
     expect(await screen.findByRole("menuitem", { name: "View order" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Copy ID" })).toBeInTheDocument()
-    expect(screen.getByRole("menuitem", { name: "Fulfill order" })).toBeInTheDocument()
+    expect(screen.getByRole("menuitem", { name: "Start fulfillment" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Mark as shipped" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Print order summary" })).toBeInTheDocument()
     expect(screen.getByRole("menuitem", { name: "Refund" })).toBeInTheDocument()
@@ -119,7 +119,7 @@ describe("OrdersRowActions menu", () => {
   it.each([
     ["View order", "viewOrder"],
     ["Copy ID", "copyId"],
-    ["Fulfill order", "fulfill"],
+    ["Start fulfillment", "fulfill"],
     ["Mark as shipped", "markShipped"],
     ["Print order summary", "printSummary"],
     ["Refund", "refund"],
@@ -144,7 +144,7 @@ describe("OrdersRowActions availability", () => {
     }
     await openMenu()
 
-    expect(await screen.findByRole("menuitem", { name: "Fulfill order" })).toHaveAttribute("data-disabled")
+    expect(await screen.findByRole("menuitem", { name: "Start fulfillment" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Mark as shipped" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Print order summary" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Refund" })).toHaveAttribute("data-disabled")
@@ -171,7 +171,7 @@ describe("OrdersRowActions availability", () => {
     handlers.isPending = true
     await openMenu()
 
-    expect(await screen.findByRole("menuitem", { name: "Fulfill order" })).toHaveAttribute("data-disabled")
+    expect(await screen.findByRole("menuitem", { name: "Start fulfillment" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Mark as shipped" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Cancel order" })).toHaveAttribute("data-disabled")
     expect(screen.getByRole("menuitem", { name: "Print order summary" })).not.toHaveAttribute("data-disabled")

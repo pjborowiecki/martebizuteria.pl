@@ -17,7 +17,7 @@ describe("OrderFulfillmentTracker", () => {
     renderWithProviders(<OrderFulfillmentTracker canceledAt={undefined} steps={order.fulfillmentSteps} />)
 
     expect(screen.getByText("Fulfillment")).toBeInTheDocument()
-    for (const label of ["Confirmed", "Processing", "Shipped", "Delivered"]) {
+    for (const label of ["Confirmed", "In progress", "Shipped", "Delivered"]) {
       expect(screen.getByText(label)).toBeInTheDocument()
     }
   })

@@ -12,7 +12,7 @@ afterEach(() => {
 describe("OrderStatusBadge", () => {
   it.each([
     ["pending", "Pending"],
-    ["processing", "Processing"],
+    ["processing", "Open"],
     ["completed", "Completed"],
     ["cancelled", "Cancelled"],
     ["refunded", "Refunded"],

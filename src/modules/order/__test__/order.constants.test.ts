@@ -19,7 +19,7 @@ it.each([
   { check: isAdminOrderTab, invalid: "archived", valid: "all" },
   { check: isAdminOrderStatus, invalid: "shipped", valid: "completed" },
   { check: isAdminOrderPaymentUiKey, invalid: "succeeded", valid: "paid" },
-  { check: isAdminOrderFulfillmentUiKey, invalid: "not_fulfilled", valid: "unfulfilled" },
+  { check: isAdminOrderFulfillmentUiKey, invalid: "not_fulfilled", valid: "confirmed" },
 ])("distinguishes the public order filter key $valid from $invalid", ({ check, valid, invalid }) => {
   expect(check(valid)).toBe(true)
   expect(check(invalid)).toBe(false)
@@ -41,7 +41,7 @@ it.each(FULFILLMENT_UI_KEYS)("accepts the fulfillment badge key %s", (key) => {
   expect(isAdminOrderFulfillmentUiKey(key)).toBe(true)
 })
 
-it.each(["shipped", "delivered", "returned"])("keeps the fulfillment key %s out of the stored order statuses", (key) => {
+it.each(["confirmed", "shipped", "delivered"])("keeps the fulfillment key %s out of the stored order statuses", (key) => {
   expect(isAdminOrderFulfillmentUiKey(key)).toBe(true)
   expect(isAdminOrderStatus(key)).toBe(false)
 })
@@ -49,6 +49,10 @@ it.each(["shipped", "delivered", "returned"])("keeps the fulfillment key %s out 
 it.each(["processing", "completed", "cancelled", "refunded"])("keeps the stored status %s off the order tab bar", (status) => {
   expect(isAdminOrderStatus(status)).toBe(true)
   expect(isAdminOrderTab(status)).toBe(false)
+})
+
+it.each(["unfulfilled", "returned"])("no longer accepts the retired fulfillment key %s", (key) => {
+  expect(isAdminOrderFulfillmentUiKey(key)).toBe(false)
 })
 
 it.each(["paid", "authorized", "refunded"])("keeps the payment key %s off the fulfillment badge keys", (key) => {

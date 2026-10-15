@@ -722,7 +722,7 @@ describe("getAdminOrder customer, lines and timeline", () => {
   })
 
   it("dates the processing step from the latest fulfillment start in the timeline", async () => {
-    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow())
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow({ fulfillmentStatus: "fulfilled" }))
     accessors.getAdminOrderTimelineRows.mockResolvedValueOnce([
       {
         action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,

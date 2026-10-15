@@ -40,7 +40,7 @@ describe("OrdersStatusFilter", () => {
     expect(options.map((option) => option.textContent)).toStrictEqual([
       "All statuses",
       "Pending",
-      "Processing",
+      "Open",
       "Completed",
       "Cancelled",
       "Refunded",
@@ -50,7 +50,7 @@ describe("OrdersStatusFilter", () => {
   it("filters the table down to the chosen status", async () => {
     const seen = renderWithOrdersGrid(<OrdersStatusFilter />)
 
-    await pick("Processing")
+    await pick("Open")
 
     expect(seen.table?.getColumn(ADMIN_ORDER_TABLE_COLUMN_ID.status)?.getFilterValue()).toBe("processing")
     expect(seen.table?.getFilteredRowModel().rows.map((row) => row.id)).toStrictEqual(["order-2"])

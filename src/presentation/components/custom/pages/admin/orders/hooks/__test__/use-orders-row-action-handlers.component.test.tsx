@@ -43,7 +43,7 @@ const order = (overrides: Partial<Order["adminListItem"]> = {}): Order["adminLis
   customerName: "Ada Nowak",
   email: "ada@example.test",
   fulfillmentStatus: "not_fulfilled",
-  fulfillmentUiKey: "unfulfilled",
+  fulfillmentUiKey: "confirmed",
   hasOpenDispute: false,
   id: "order-1",
   initials: "AN",

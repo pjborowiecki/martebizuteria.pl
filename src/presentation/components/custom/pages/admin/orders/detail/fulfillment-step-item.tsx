@@ -3,10 +3,11 @@ import { type JSX } from "react"
 import { Check } from "lucide-react"
 import { useFormatter, useTranslations } from "use-intl/react"
 
+import { ADMIN_ORDER_FULFILLMENT_LABEL_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 export const FulfillmentStepItem = ({ index, step }: Readonly<FulfillmentStepItemProps>): JSX.Element => {
-  const t = useTranslations("pages.admin")
+  const t = useTranslations("pages.admin.orders")
   const format = useFormatter()
 
   return (
@@ -20,7 +21,7 @@ export const FulfillmentStepItem = ({ index, step }: Readonly<FulfillmentStepIte
         </div>
       </div>
       <p className={`mt-2 text-[12px] ${step.done ? "font-medium text-foreground" : "text-muted-foreground/50"}`}>
-        {t(`orderDetail.fulfillment.steps.${step.key}`)}
+        {t(ADMIN_ORDER_FULFILLMENT_LABEL_KEYS[step.key])}
       </p>
       {step.at !== undefined && (
         <p className="text-[10px] text-muted-foreground/40">

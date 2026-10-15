@@ -128,7 +128,7 @@ describe("order column cells", () => {
     renderGrid()
 
     expect(screen.getByText("Shipped")).toBeInTheDocument()
-    expect(screen.getByText("Processing")).toBeInTheDocument()
+    expect(screen.getByText("Open")).toBeInTheDocument()
     expect(screen.getByText("Paid")).toBeInTheDocument()
   })
 

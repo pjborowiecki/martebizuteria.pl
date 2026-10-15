@@ -605,10 +605,10 @@
     },
     "filter": {
       "allPayments": "All payments",
-      "allFulfillment": "All fulfillment",
+      "allFulfillment": "All fulfillment steps",
       "allStatuses": "All statuses",
       "payment": "Filter by payment",
-      "fulfillment": "Filter by fulfillment",
+      "fulfillment": "Filter by fulfillment step",
       "status": "Filter by status",
       "total": "Filter by total",
       "createdAt": "Filter by date",
@@ -648,7 +648,7 @@
     },
     "status": {
       "pending": "Pending",
-      "processing": "Processing",
+      "processing": "Open",
       "completed": "Completed",
       "cancelled": "Cancelled",
       "refunded": "Refunded"
@@ -659,11 +659,12 @@
       "refunded": "Refunded"
     },
     "fulfillment": {
-      "unfulfilled": "Unfulfilled",
-      "pending": "Pending",
+      "pending": "Awaiting payment",
+      "confirmed": "Confirmed",
+      "processing": "In progress",
       "shipped": "Shipped",
       "delivered": "Delivered",
-      "returned": "Returned"
+      "cancelled": "Cancelled"
     },
     "empty": "No orders match your search.",
     "pagination": {
@@ -678,7 +679,7 @@
       "copyId": "Copy ID",
       "copySuccess": "Order ID copied",
       "copyError": "Could not copy order ID",
-      "fulfill": "Fulfill order",
+      "fulfill": "Start fulfillment",
       "markShipped": "Mark as shipped",
       "printSummary": "Print order summary",
       "refund": "Refund",
@@ -723,7 +724,7 @@
       "refund": "Refund",
       "restock": "Return to stock",
       "cancel": "Cancel order",
-      "fulfill": "Fulfill",
+      "fulfill": "Start fulfillment",
       "ship": "Mark shipped",
       "markDelivered": "Mark delivered"
     },
@@ -734,20 +735,6 @@
       "payment": "Payment",
       "total": "Total"
     },
-    "orderStatus": {
-      "pending": "Pending",
-      "processing": "Processing",
-      "completed": "Completed",
-      "cancelled": "Cancelled",
-      "refunded": "Refunded"
-    },
-    "status": {
-      "shipped": "Shipped",
-      "delivered": "Delivered",
-      "pending": "Pending",
-      "unfulfilled": "Unfulfilled",
-      "returned": "Returned"
-    },
     "payment": {
       "paid": "Paid",
       "authorized": "Authorized",
@@ -755,13 +742,7 @@
     },
     "fulfillment": {
       "title": "Fulfillment",
-      "cancelledAt": "Order cancelled on {date}",
-      "steps": {
-        "confirmed": "Confirmed",
-        "processing": "Processing",
-        "shipped": "Shipped",
-        "delivered": "Delivered"
-      }
+      "cancelledAt": "Order cancelled on {date}"
     },
     "items": {
       "title": "Items",

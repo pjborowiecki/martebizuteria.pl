@@ -53,16 +53,19 @@
     "viewDetails": "View Details",
     "filter": {
       "all": "All",
-      "delivered": "Delivered",
+      "confirmed": "Confirmed",
+      "processing": "In progress",
       "shipped": "Shipped",
-      "processing": "Processing",
+      "delivered": "Delivered",
       "cancelled": "Cancelled",
       "refunded": "Refunded"
     },
     "status": {
-      "delivered": "Delivered",
+      "pending": "Awaiting payment",
+      "confirmed": "Confirmed",
+      "processing": "In progress",
       "shipped": "Shipped",
-      "processing": "Processing",
+      "delivered": "Delivered",
       "cancelled": "Cancelled",
       "refunded": "Refunded"
     },
@@ -92,9 +95,11 @@
     "deliveredOn": "Delivered on {date}",
     "notFound": "Order not found.",
     "status": {
-      "delivered": "Delivered",
+      "pending": "Awaiting payment",
+      "confirmed": "Confirmed",
+      "processing": "In progress",
       "shipped": "Shipped",
-      "processing": "Processing",
+      "delivered": "Delivered",
       "cancelled": "Cancelled",
       "refunded": "Refunded"
     },
