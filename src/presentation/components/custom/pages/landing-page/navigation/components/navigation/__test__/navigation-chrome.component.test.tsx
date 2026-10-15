@@ -224,8 +224,19 @@ describe("navigation chrome breakpoints", () => {
     )
     const content = screen.getByText("header slot").parentElement
 
-    expect(content).toHaveClass("px-4", "sm:max-w-400", "sm:px-6")
+    expect(content).toHaveClass("storefront-container")
     expect(content).not.toHaveClass("max-w-400")
+  })
+
+  it("stacks the sticky header under dialogs and sheets so their backdrop covers it", () => {
+    renderInNavigation(
+      <NavigationHeader>
+        <span>header slot</span>
+      </NavigationHeader>,
+    )
+
+    expect(screen.getByRole("banner")).toHaveClass("sticky", "z-40")
+    expect(screen.getByRole("banner")).not.toHaveClass("z-110")
   })
 
   it("hands the header over from the menu toggle to the desktop links at the xl breakpoint", () => {

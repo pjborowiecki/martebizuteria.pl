@@ -76,12 +76,12 @@ export const CollectionUnavailablePage = (): JSX.Element => {
   const suggestedProducts = newArrivals.slice(0, SUGGESTED_PRODUCT_LIMIT)
 
   return (
-    <main className="mx-auto max-w-400 px-6 pt-8 pb-24 lg:px-12 lg:pt-10 lg:pb-32">
+    <main className="storefront-container w-full pt-8 pb-24 lg:pt-10 lg:pb-32">
       <header className="mx-auto max-w-2xl space-y-5 text-center lg:space-y-6">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
         <h1 className="font-serif text-4xl leading-[1.02] tracking-tight md:text-5xl lg:text-6xl">{t("title")}</h1>
         <p className="text-sm/relaxed text-muted-foreground md:text-base/relaxed">{t("description")}</p>
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
           <LocalizedLink
             className="inline-flex h-12 items-center justify-center bg-primary px-8 text-[11px] tracking-[0.2em] text-primary-foreground uppercase transition-colors hover:bg-primary/90"
             to={ROUTES.COLLECTIONS}

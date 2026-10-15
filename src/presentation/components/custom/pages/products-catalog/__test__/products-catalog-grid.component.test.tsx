@@ -204,6 +204,12 @@ describe("ProductsCatalogGrid toolbar", () => {
     expect(onClearFilters).toHaveBeenCalledTimes(1)
   })
 
+  it("gives the clear button a finger-sized target on touch screens without moving the toolbar", () => {
+    renderGrid({ filtersActive: true })
+
+    expect(screen.getByRole("button", { name: "Clear filters" })).toHaveClass("pointer-coarse:-my-3", "pointer-coarse:min-h-10")
+  })
+
   it("shows three skeleton cards while the next page loads", () => {
     const { container } = renderWithProviders(
       <ProductsCatalogGrid

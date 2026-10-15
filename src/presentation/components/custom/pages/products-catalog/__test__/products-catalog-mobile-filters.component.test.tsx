@@ -63,6 +63,16 @@ describe("ProductsCatalogMobileFilters", () => {
     expect(screen.getByText("Filter body")).toBeInTheDocument()
   })
 
+  it("opens across the whole phone and keeps the heading clear of the close control", () => {
+    renderMobileFilters({ open: true })
+
+    const panel = screen.getByRole("dialog")
+
+    expect(panel).toHaveClass("data-[side=left]:w-full", "data-[side=left]:sm:max-w-md")
+    expect(panel).not.toHaveClass("data-[side=left]:w-3/4", "data-[side=left]:sm:max-w-sm")
+    expect(screen.getByText("Refine your selection").parentElement).toHaveClass("pr-14", "pl-4", "sm:pl-6")
+  })
+
   it("asks to open when the trigger is tapped", async () => {
     const handlers = renderMobileFilters()
 

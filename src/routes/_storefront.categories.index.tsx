@@ -28,7 +28,7 @@ const CategoriesPage = (): JSX.Element => {
 
   return (
     <main ref={rootRef} className="bg-background text-foreground">
-      <div className="mx-auto max-w-400 px-6 pt-10 pb-24 lg:px-12 lg:pt-14 lg:pb-36">
+      <div className="storefront-container pt-10 pb-24 lg:pt-14 lg:pb-36">
         <header className="reveal mb-14 space-y-4 lg:mb-18">
           <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
           <h1 className="font-serif text-4xl leading-[0.94] tracking-tight md:text-5xl lg:text-7xl">{t("title")}</h1>

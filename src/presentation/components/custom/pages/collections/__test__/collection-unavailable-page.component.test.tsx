@@ -125,6 +125,15 @@ describe("CollectionUnavailablePage header", () => {
     expect(await screen.findByRole("link", { name: "View collections" })).toHaveAttribute("href", "/collections")
     expect(screen.getByRole("link", { name: "Explore all products" })).toHaveAttribute("href", "/products")
   })
+
+  it("stacks the two ways out at the same width on phones and sets them side by side from sm up", async () => {
+    renderPage()
+
+    const collectionsLink = await screen.findByRole("link", { name: "View collections" })
+
+    expect(collectionsLink.parentElement).toHaveClass("flex-col", "sm:flex-row", "sm:flex-wrap", "sm:justify-center")
+    expect(screen.getByRole("main")).toHaveClass("storefront-container", "w-full")
+  })
 })
 
 describe("CollectionUnavailablePage suggested collections", () => {
