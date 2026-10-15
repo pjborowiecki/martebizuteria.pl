@@ -12,7 +12,7 @@ export const SettingsPage = (): JSX.Element => {
 
   return (
     <div className={ADMIN_PAGE_BODY_CLASS}>
-      <div className="flex gap-8">
+      <div className="flex flex-col gap-4 sm:gap-6 lg:flex-row lg:gap-8">
         <SettingsTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
         {activeTab === "general" ? <SettingsGeneral /> : <SettingsPlaceholder activeTab={activeTab} />}
