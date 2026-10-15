@@ -11,6 +11,7 @@ import orderCancelledCopy from "~/messages/en-US/emails.order-cancelled.json"
 import orderConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
 import orderRefundedCopy from "~/messages/en-US/emails.order-refunded.json"
 import orderShippedCopy from "~/messages/en-US/emails.order-shipped.json"
+import orderTrackingCopy from "~/messages/en-US/emails.order-tracking.json"
 import orderWithdrawalCopy from "~/messages/en-US/emails.order-withdrawal.json"
 import passwordChangedCopy from "~/messages/en-US/emails.password-changed.json"
 import paymentFailedCopy from "~/messages/en-US/emails.payment-failed.json"
@@ -33,7 +34,7 @@ describe("isEmailPreviewSlug", () => {
   })
 
   it("rejects a slug that has no preview", () => {
-    expect(isEmailPreviewSlug("order-delivered")).toBe(false)
+    expect(isEmailPreviewSlug("order-returned")).toBe(false)
     expect(isEmailPreviewSlug("")).toBe(false)
   })
 })
@@ -50,6 +51,7 @@ describe("EMAIL_PREVIEWS", () => {
       ["order-confirmation", "Order confirmation"],
       ["order-refunded", "Order refunded"],
       ["order-shipped", "Order shipped"],
+      ["order-tracking", "Tracking number"],
       ["order-withdrawal", "Withdrawal acknowledgement"],
       ["order-withdrawal-notice", "Withdrawal for the shop"],
       ["password-changed", "Password changed"],
@@ -167,8 +169,18 @@ describe("renderEmailPreview of the order emails", () => {
     )
   })
 
-  it("points the returning buyer at their own order", async () => {
-    await expect(text("order-shipped")).resolves.toContain("Zobacz zamówienie")
+  it("names the carrier and points the buyer at the carrier's tracking page", async () => {
+    const preview = await text("order-shipped")
+
+    expect(preview).toContain(`${orderShippedCopy.carrierLabel}\n\nInPost`)
+    expect(preview).toContain(`${orderShippedCopy.trackingCta} https://inpost.pl/sledzenie-przesylek?number=00259007123456789012`)
+  })
+
+  it("previews the tracking number sent after the parcel shipped", async () => {
+    const preview = await text("order-tracking")
+
+    expect(preview).toContain(orderTrackingCopy.heading.toUpperCase())
+    expect(preview).toContain(`${orderTrackingCopy.trackingNumberLabel}\n\n00259007123456789012`)
   })
 
   it("previews the cancellation with the refund it issued", async () => {

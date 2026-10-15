@@ -6,6 +6,7 @@
   "messageSecondary": "Poniżej znajdziesz najważniejsze informacje o dostawie.",
   "orderLabel": "Numer zamówienia",
   "deliveryMethodLabel": "Sposób dostawy",
+  "carrierLabel": "Przewoźnik",
   "shippingAddressLabel": "Adres dostawy",
   "trackingNumberLabel": "Numer przesyłki",
   "estimatedDeliveryLabel": "Szacowany czas dostawy",

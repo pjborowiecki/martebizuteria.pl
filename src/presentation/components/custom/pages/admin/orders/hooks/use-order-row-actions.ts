@@ -1,3 +1,5 @@
+import { useCallback } from "react"
+
 import { type UseMutationOptions, type UseMutationResult, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
@@ -6,7 +8,8 @@ import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.s
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
 import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { ORDER_EMAIL_KIND, ORDER_EMAIL_NOTICE_STATUS, ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { type Order } from "~/src/modules/order/order.types"
 import { cancelOrderMutation } from "~/src/modules/order/use-cases/cancel-order"
 import { fulfillOrderMutation } from "~/src/modules/order/use-cases/fulfill-order"
 import { markOrderDeliveredMutation } from "~/src/modules/order/use-cases/mark-order-delivered"
@@ -63,21 +66,43 @@ const useAdminOrderActionMutation = <TInput extends OrderIdInput, TResult extend
   })
 }
 
+const useOrderEmailNoticeToast = (): ((notice: Order["emailNotice"]) => void) => {
+  const t = useTranslations("pages.admin.orders.rowActions")
+  const tEmails = useTranslations("pages.admin.audit.details.emails")
+
+  return useCallback(
+    ({ kind, status }: Order["emailNotice"]) => {
+      if (status === ORDER_EMAIL_NOTICE_STATUS.ALREADY_SENT) {
+        toast.info(t("toast.emailAlreadySentTitle"), { description: t("toast.emailAlreadySentDescription", { email: tEmails(kind) }) })
+
+        return
+      }
+
+      if (status === ORDER_EMAIL_NOTICE_STATUS.FAILED) {
+        toast.warning(t("toast.emailFailedTitle"), { description: t("toast.emailFailedDescription", { email: tEmails(kind) }) })
+
+        return
+      }
+
+      if (kind === ORDER_EMAIL_KIND.TRACKING) {
+        toast.info(t("toast.trackingEmailSentTitle"), { description: t("toast.trackingEmailSentDescription") })
+      }
+    },
+    [t, tEmails],
+  )
+}
+
 export const useFulfillOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
   useAdminOrderActionMutation(fulfillOrderMutation, "toast.fulfillSuccessDescription")
 
-export const useMarkOrderShipped = (): UseMutationResult<ShipOrderResult, Error, ShipOrderInput> => {
-  const t = useTranslations("pages.admin.orders.rowActions")
+export const useMarkOrderShipped = (): UseMutationResult<OrderEmailActionResult, Error, ShipOrderInput> => {
+  const showEmailNotice = useOrderEmailNoticeToast()
 
   return useAdminOrderActionMutation(
     {
       ...shipOrderMutation,
-      onSuccess: ({ shippedEmailSent }) => {
-        if (!shippedEmailSent) {
-          toast.warning(t("toast.shipEmailFailedTitle"), {
-            description: t("toast.shipEmailFailedDescription"),
-          })
-        }
+      onSuccess: ({ email }) => {
+        showEmailNotice(email)
       },
     },
     "toast.shipSuccessDescription",
@@ -167,8 +192,8 @@ interface OrderActionResult {
   readonly orderId: string
 }
 
-interface ShipOrderResult extends OrderActionResult {
-  readonly shippedEmailSent: boolean
+interface OrderEmailActionResult extends OrderActionResult {
+  readonly email: Order["emailNotice"]
 }
 
 interface CancelOrderResult extends OrderActionResult {

@@ -65,6 +65,7 @@ vi.mock(import("~/src/integrations/inpost/inpost.shipx.server"), async (importOr
   postShipxShipment: shipx.postShipxShipment,
 }))
 vi.mock("~/src/modules/order/use-cases/send-order-shipped-email.server", () => ({ sendOrderShippedEmail: () => Promise.resolve(true) }))
+vi.mock("~/src/modules/order/use-cases/send-order-tracking-email.server", () => ({ sendOrderTrackingEmail: () => Promise.resolve(true) }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderShipmentCreatedAudit: vi.fn(),
   recordOrderShippedAudit: vi.fn(),

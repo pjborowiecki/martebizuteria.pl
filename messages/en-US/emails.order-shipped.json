@@ -6,6 +6,7 @@
   "messageSecondary": "Below are the key delivery details.",
   "orderLabel": "Order reference",
   "deliveryMethodLabel": "Delivery method",
+  "carrierLabel": "Carrier",
   "shippingAddressLabel": "Shipping address",
   "trackingNumberLabel": "Tracking number",
   "estimatedDeliveryLabel": "Estimated delivery",

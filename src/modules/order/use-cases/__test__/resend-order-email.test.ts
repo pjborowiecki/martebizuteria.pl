@@ -21,6 +21,7 @@ const notify = vi.hoisted(() => ({
   newOrder: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<boolean>>(),
   refunded: vi.fn<(refund: object, returnUrl: string | undefined) => Promise<boolean>>(),
   shipped: vi.fn<(orderId: string, origin: string) => Promise<boolean>>(),
+  tracking: vi.fn<(email: object) => Promise<boolean>>(),
 }))
 
 const orders = vi.hoisted(() => ({
@@ -46,6 +47,7 @@ vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ se
 vi.mock("~/src/modules/order/use-cases/send-order-cancelled-email.server", () => ({ sendOrderCancelledEmail: notify.cancelled }))
 vi.mock("~/src/modules/order/use-cases/send-order-refunded-email.server", () => ({ sendOrderRefundedEmail: notify.refunded }))
 vi.mock("~/src/modules/order/use-cases/send-order-shipped-email.server", () => ({ sendOrderShippedEmail: notify.shipped }))
+vi.mock("~/src/modules/order/use-cases/send-order-tracking-email.server", () => ({ sendOrderTrackingEmail: notify.tracking }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { checkout: { sessions: { retrieve: sessionsRetrieve } } } }))
 vi.mock("~/src/modules/order/use-cases/send-order-confirmation-email.server", () => ({ sendOrderConfirmationEmail: notify.confirmed }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailResendRequestedAudit }))
@@ -124,6 +126,15 @@ describe("resendOrderEmail", () => {
       detail: "Order shipped → anna@example.com — Resend did not answer within 10000 ms",
       metadata: { idempotencyKey: `order-email/${ORDER_ID}` },
     })
+  })
+
+  it("sends a tracking number email again with the number the failed delivery carried", async () => {
+    orders.getAdminOrderTimelineRows.mockResolvedValue(failedDelivery({ kind: "order-tracking", trackingNumber: "TRK-43" }))
+
+    await resend()
+
+    expect(notify.tracking).toHaveBeenCalledExactlyOnceWith({ orderId: ORDER_ID, origin: SHOP_ORIGIN, trackingNumber: "TRK-43" })
+    expect(notify.shipped).not.toHaveBeenCalled()
   })
 
   it("sends a cancellation again with the refund the failed delivery named", async () => {

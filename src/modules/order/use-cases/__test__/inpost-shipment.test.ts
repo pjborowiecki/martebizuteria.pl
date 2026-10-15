@@ -41,12 +41,17 @@ const orders = vi.hoisted(() => ({
 
 const audit = vi.hoisted(() => ({ shipmentCreated: vi.fn() }))
 
+const announcement = vi.hoisted(() => ({ announceOrderShipment: vi.fn<(orderId: string, origin: string) => Promise<unknown>>() }))
+
 vi.mock("cloudflare:workers", () => ({ env: {} }))
+vi.mock("@tanstack/react-start/server", () => ({
+  getRequest: () => new Request("http://127.0.0.1:3000/_serverFn/refresh-inpost-shipment"),
+}))
+vi.mock("~/src/modules/order/use-cases/announce-order-shipment.server", () => announcement)
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: { update: () => ({ set: database.set }) } }))
 vi.mock("~/src/integrations/inpost/inpost.shipx.server", () => ({
   fetchShipxLabelPdfBase64: shipx.fetchShipxLabelPdfBase64,
-  inpostTrackingUrl: (trackingNumber: string) => `https://inpost.pl/sledzenie-przesylek?number=${trackingNumber}`,
   postShipxShipment: shipx.postShipxShipment,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderShipmentCreatedAudit: audit.shipmentCreated }))
@@ -286,6 +291,7 @@ describe("refreshInpostShipment", () => {
   beforeEach(() => {
     orders.requireOrderInpostShipment.mockResolvedValue({ orderNumber: "MRT-2026-00012", shipmentId: "49" })
     orders.syncOrderInpostShipment.mockResolvedValue()
+    announcement.announceOrderShipment.mockResolvedValue({ kind: "order-tracking", status: "sent" })
   })
 
   it("reads the order's shipment back from InPost", async () => {
@@ -294,11 +300,18 @@ describe("refreshInpostShipment", () => {
     expect(orders.syncOrderInpostShipment).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "49")
   })
 
+  it("tells the customer a tracking number the refresh brought in, on the shop the admin works in", async () => {
+    await refreshInpostShipment({ data: { orderId: ORDER_ID } })
+
+    expect(announcement.announceOrderShipment).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "http://127.0.0.1:3000")
+  })
+
   it("refreshes nothing for an order without a shipment", async () => {
     orders.requireOrderInpostShipment.mockRejectedValue(INVALID_STATE)
 
     await expect(refreshInpostShipment({ data: { orderId: ORDER_ID } })).rejects.toThrow(INVALID_STATE)
     expect(orders.syncOrderInpostShipment).not.toHaveBeenCalled()
+    expect(announcement.announceOrderShipment).not.toHaveBeenCalled()
   })
 
   it("is keyed by the shared refresh key and refreshes the order it is handed", async () => {

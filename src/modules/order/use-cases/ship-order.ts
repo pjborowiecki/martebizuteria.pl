@@ -1,21 +1,18 @@
 import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
-import { eq, sql } from "drizzle-orm"
+import { sql } from "drizzle-orm"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
-import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { recordOrderShippedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { assertOrderActionState, getAdminOrderActionRow } from "~/src/modules/order/order.admin-action.server"
+import { assertOrderActionState, getAdminOrderActionRow, transitionOrder } from "~/src/modules/order/order.admin-action.server"
 import { canMarkAdminOrderShipped } from "~/src/modules/order/order.admin-actions.utils"
-import { ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
-import { order } from "~/src/modules/order/order.schema"
+import { ORDER_MUTATION_KEYS, SHIPPABLE_FULFILLMENT_STATUSES } from "~/src/modules/order/order.constants"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
-import { sendOrderShippedEmail } from "~/src/modules/order/use-cases/send-order-shipped-email.server"
+import { announceOrderShipment } from "~/src/modules/order/use-cases/announce-order-shipment.server"
 
-import { scheduleBackgroundWork } from "~/src/lib/background"
 import { resolveRequestOrigin } from "~/src/lib/request"
 
 const filledOrUndefined = (value: string | undefined): string | undefined => {
@@ -42,22 +39,15 @@ export const shipOrder = createServerFn({ method: "POST" })
       canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
     )
 
-    await db
-      .update(order)
-      .set({
-        fulfillmentStatus: "shipped",
-        shippedAt: new Date(),
-        ...trackingColumns(trackingNumber, filledOrUndefined(tracking.trackingUrl)),
-        updatedAt: new Date(),
-      })
-      .where(eq(order.id, orderId))
+    await transitionOrder(orderId, SHIPPABLE_FULFILLMENT_STATUSES, {
+      fulfillmentStatus: "shipped",
+      shippedAt: new Date(),
+      ...trackingColumns(trackingNumber, filledOrUndefined(tracking.trackingUrl)),
+    })
 
     recordOrderShippedAudit(orderId, { detail: trackingNumber })
-    const shippedEmailDelivery = sendOrderShippedEmail(orderId, origin)
-    scheduleBackgroundWork(shippedEmailDelivery)
-    const shippedEmailSent = await shippedEmailDelivery
 
-    return { ok: true, orderId, shippedEmailSent }
+    return { email: await announceOrderShipment(orderId, origin), ok: true, orderId }
   })
 
 export const shipOrderMutation = mutationOptions({

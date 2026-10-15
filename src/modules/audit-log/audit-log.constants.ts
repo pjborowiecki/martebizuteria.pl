@@ -103,6 +103,7 @@ export const AUDIT_EMAIL_KIND = {
   ORDER_CONFIRMATION: "order-confirmation",
   ORDER_REFUNDED: "order-refunded",
   ORDER_SHIPPED: "order-shipped",
+  ORDER_TRACKING: "order-tracking",
   ORDER_WITHDRAWAL: "order-withdrawal",
   ORDER_WITHDRAWAL_NOTICE: "order-withdrawal-notice",
   PASSWORD_CHANGED: "password-changed",

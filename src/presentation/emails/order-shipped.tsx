@@ -5,7 +5,7 @@ import { createTranslator } from "use-intl"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { type OrderAccountCta } from "~/src/modules/order/order.email.utils"
+import { type OrderAccountCta, type OrderTracking } from "~/src/modules/order/order.email.utils"
 
 import type emailMessages from "~/messages/en-US/emails.order-shipped.json"
 import {
@@ -44,6 +44,7 @@ export const OrderShipped = ({ accountCta, details, locale, messages, orderNumbe
         <Hr className="border-line my-[20px]" />
 
         <DetailRow isFirst label={t("deliveryMethodLabel")} value={details.deliveryMethod} />
+        {details.carrier !== undefined && <DetailRow label={t("carrierLabel")} value={details.carrier} />}
         <DetailRow label={t("shippingAddressLabel")} value={details.shippingAddress} />
         {details.trackingNumber !== undefined && <DetailRow label={t("trackingNumberLabel")} value={details.trackingNumber} />}
         <DetailRow label={t("estimatedDeliveryLabel")} value={details.estimatedDelivery} />
@@ -69,12 +70,10 @@ const DETAIL_LABEL_CLASS = "text-ink m-0 text-[11px] leading-[16px] font-semibol
 
 const DETAIL_VALUE_CLASS = "text-ink mt-[6px] mb-0 text-[14px] leading-[22px] whitespace-pre-line"
 
-export interface OrderShippedDetails {
+export interface OrderShippedDetails extends OrderTracking {
   readonly deliveryMethod: string
   readonly estimatedDelivery: string
   readonly shippingAddress: string
-  readonly trackingNumber: string | undefined
-  readonly trackingUrl: string | undefined
 }
 
 interface OrderShippedProps {

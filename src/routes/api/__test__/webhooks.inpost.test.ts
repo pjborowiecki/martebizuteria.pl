@@ -19,6 +19,7 @@ const captured: { current: RouteDefinition | undefined } = { current: undefined 
 const env = { INPOST_ORGANIZATION_ID: "1001" }
 
 const doubles = vi.hoisted(() => ({
+  announceOrderShipment: vi.fn<(orderId: string, origin: string) => Promise<unknown>>(),
   configured: { current: true },
   getOrderByInpostShipmentId: vi.fn<(shipmentId: string) => Promise<{ id: string } | undefined>>(),
   scheduleAdminOrdersInvalidation: vi.fn<() => void>(),
@@ -40,6 +41,8 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
 }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderByInpostShipmentId: doubles.getOrderByInpostShipmentId }))
 vi.mock("~/src/modules/order/order.shipment.server", () => ({ syncOrderInpostShipment: doubles.syncOrderInpostShipment }))
+vi.mock("~/src/modules/order/use-cases/announce-order-shipment.server", () => ({ announceOrderShipment: doubles.announceOrderShipment }))
+vi.mock("~/src/lib/request", () => ({ resolveDeploymentOrigin: (url: string) => new URL(url).origin }))
 vi.mock("~/src/lib/rate-limit", () => ({ clientAddress: () => "203.0.113.7", withinRateLimit: doubles.withinRateLimit }))
 
 const { SHIPX_SHIPMENT_ID, shipxStatusChangedEvent } = await import("~/src/integrations/inpost/__test__/fixtures/shipx")
@@ -69,6 +72,7 @@ beforeEach(() => {
   env.INPOST_ORGANIZATION_ID = "1001"
   doubles.getOrderByInpostShipmentId.mockResolvedValue({ id: ORDER_ID })
   doubles.syncOrderInpostShipment.mockResolvedValue()
+  doubles.announceOrderShipment.mockResolvedValue({ kind: "order-tracking", status: "sent" })
   doubles.withinRateLimit.mockResolvedValue(true)
 })
 
@@ -88,6 +92,14 @@ describe("InPost webhook route", () => {
     expect(doubles.getOrderByInpostShipmentId).toHaveBeenCalledWith(String(SHIPX_SHIPMENT_ID))
     expect(doubles.syncOrderInpostShipment).toHaveBeenCalledExactlyOnceWith(ORDER_ID, String(SHIPX_SHIPMENT_ID))
     expect(doubles.scheduleAdminOrdersInvalidation).toHaveBeenCalledOnce()
+  })
+
+  it("tells the customer a tracking number InPost assigned after the parcel shipped, linking back to this shop", async () => {
+    await postWebhook({ request: webhookRequest(shipxStatusChangedEvent) })
+
+    await vi.waitFor(() => {
+      expect(doubles.announceOrderShipment).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "https://store.test")
+    })
   })
 
   it("counts every call against its address within the one-minute request window", async () => {
@@ -162,6 +174,7 @@ describe("InPost webhook route", () => {
       outage,
     )
     expect(doubles.scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
+    expect(doubles.announceOrderShipment).not.toHaveBeenCalled()
     log.mockRestore()
   })
 })

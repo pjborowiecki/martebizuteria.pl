@@ -8,6 +8,7 @@ import { ORDER_SHIPPED_NAMESPACE, OrderShipped, type OrderShippedDetails } from 
 const ORDER_NUMBER = "MRT-2026-00042"
 
 const details: OrderShippedDetails = {
+  carrier: undefined,
   deliveryMethod: "DPD courier",
   estimatedDelivery: englishCopy.deliveryTiming.courier.estimatedDelivery,
   shippingAddress: "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa",
@@ -31,7 +32,7 @@ const renderTracked = (plainText = true): Promise<string> =>
   render(
     <OrderShipped
       accountCta={customerCta}
-      details={{ ...details, trackingNumber: "00259007123456789012", trackingUrl: TRACKING_URL }}
+      details={{ ...details, carrier: "InPost", trackingNumber: "00259007123456789012", trackingUrl: TRACKING_URL }}
       locale="en-US"
       messages={englishCopy}
       orderNumber={ORDER_NUMBER}
@@ -73,6 +74,14 @@ describe("OrderShipped", () => {
     const text = await renderShipped()
 
     expect(text).not.toContain("Dear")
+  })
+
+  it("names the carrier of a parcel that has one", async () => {
+    await expect(renderTracked()).resolves.toContain(`${englishCopy.carrierLabel}\n\nInPost`)
+  })
+
+  it("leaves the carrier out when the delivery has none", async () => {
+    await expect(renderShipped()).resolves.not.toContain(englishCopy.carrierLabel)
   })
 
   it("omits the tracking row when no parcel number was captured", async () => {

@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "Szesnaście e-maili transakcyjnych i newsletter, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
+description: "Siedemnaście e-maili transakcyjnych i newsletter, domena nadawcy, której potrzebują, sposób ich składania i podglądania."
 ---
 
 Każdy e-mail wysyłany przez sklep przechodzi przez Resend. Adapter w `src/integrations/resend/` zawiera klienta, jeden pomocnik `sendEmail`, flagę nadawcy, który nie może wysyłać, limity e-maili, o które mogą poprosić odwiedzający, oraz kontrolę nadawcy uruchamianą przed wdrożeniem. Każdy e-mail składa i wysyła przypadek użycia modułu, do którego należy, na przykład `src/modules/order/use-cases/send-order-shipped-email.server.ts`. Szablony React Email i renderer podglądów dla programisty mieszkają w `src/presentation/emails/`, ponieważ należą do warstwy prezentacji.
@@ -90,7 +90,7 @@ Nic innego nie pyta. E-maile o zamówieniu, wysyłce, anulowaniu, zwrocie, nieud
 
 `src/integrations/resend/__test__/resend.public-email-limits.integration.test.ts` sprawdza limity na tabeli `rate_limit`: czwarty e-mail jednego rodzaju na adres w ciągu godziny, wielkość liter i spacje w adresie, osobne rodzaje i adresy, upływ godziny i doby, skrót zamiast adresu, wpis w audycie przy limicie dziennym i tabelę, której nie da się odczytać.
 
-## Szesnaście e-maili
+## Siedemnaście e-maili
 
 | E-mail                          | Szablon                                                     | Przestrzeń nazw                        | Wysyłany z                                                                                                                                                                                                                              |
 | ------------------------------- | ----------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -100,7 +100,8 @@ Nic innego nie pyta. E-maile o zamówieniu, wysyłce, anulowaniu, zwrocie, nieud
 | Hasło zmienione                 | `src/presentation/emails/password-changed.tsx`              | `emails.password-changed`              | `sendPasswordChangedEmail` w `src/modules/account/use-cases/send-password-changed-email.server.ts`, przekazywane do `scheduleBackgroundWork` przez `onPasswordReset` Better Auth                                                        |
 | Konto usunięte                  | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail` w `src/modules/user/use-cases/send-account-deleted-email.server.ts`, wywoływane z oczekiwaniem na wynik przez `src/modules/user/use-cases/delete-customer.ts` i `afterDelete` Better Auth                     |
 | Potwierdzenie zamówienia        | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `sendOrderConfirmationEmail`, oczekiwane przez `handleFulfillCheckoutSession` w `stripe.webhooks.ts` po zrealizowaniu sesji Checkout                                                                                                    |
-| Zamówienie wysłane              | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `sendOrderShippedEmail`, oczekiwane przez `src/modules/order/use-cases/ship-order.ts`                                                                                                                                                   |
+| Zamówienie wysłane              | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `sendOrderShippedEmail`, przez `announceOrderShipment`, oczekiwane przez `src/modules/order/use-cases/ship-order.ts`                                                                                                                    |
+| Numer przesyłki                 | `src/presentation/emails/order-tracking.tsx`                | `emails.order-tracking`                | `sendOrderTrackingEmail`, przez `announceOrderShipment` z `ship-order.ts`, `refresh-inpost-shipment.ts` i webhooka InPost, dla numeru, którego klient wysłanego zamówienia nie dostał                                                   |
 | Zamówienie anulowane            | `src/presentation/emails/order-cancelled.tsx`               | `emails.order-cancelled`               | `sendOrderCancelledEmail`, oczekiwane przez `src/modules/order/use-cases/cancel-order.ts`, gdy zamówienie zostało anulowane                                                                                                             |
 | Zwrot środków                   | `src/presentation/emails/order-refunded.tsx`                | `emails.order-refunded`                | `sendOrderRefundedEmail`, oczekiwane przez `handleChargeRefunded` w `stripe.webhooks.ts` dla zwrotu, o którym klient jeszcze nie wie                                                                                                    |
 | Nieudana płatność               | `src/presentation/emails/payment-failed.tsx`                | `emails.payment-failed`                | `sendPaymentFailedEmail`, oczekiwane przez `handleAsyncPaymentFailed` w `stripe.webhooks.ts` po tym, jak `checkout.session.async_payment_failed` zwolniło sesję                                                                         |
@@ -111,7 +112,7 @@ Nic innego nie pyta. E-maile o zamówieniu, wysyłce, anulowaniu, zwrocie, nieud
 | Potwierdzenie newslettera       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmationEmail` w `send-newsletter-confirmation-email.server.ts`, wywoływane przez `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts` z oczekiwaniem na wynik                                              |
 | Adres już na liście newslettera | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribedEmail` w `send-newsletter-already-subscribed-email.server.ts`, wywoływane z oczekiwaniem na wynik przez `subscribe-to-newsletter.ts`, gdy potwierdzony adres wysyła ktoś inny niż zalogowany właściciel |
 
-Pierwszych pięć opisuje strona [Better Auth](/docs/integrations/better-auth); przypadki użycia, które wysyłają pozostałych jedenaście, opisuje dalsza część tej strony. Szablon newslettera, `newsletter-campaign.tsx`, opisuje część [Newsletter](#newsletter).
+Pierwszych pięć opisuje strona [Better Auth](/docs/integrations/better-auth); przypadki użycia, które wysyłają pozostałych dwanaście, opisuje dalsza część tej strony. Szablon newslettera, `newsletter-campaign.tsx`, opisuje część [Newsletter](#newsletter).
 
 Każdy szablon eksportuje własną stałą przestrzeni nazw obok komponentu, więc wywołujący nie może rozjechać się z komunikatami, które renderuje:
 
@@ -167,6 +168,7 @@ Każdy link, który aplikacja sama wpisuje do e-maila, prowadzi pod adres, któr
 | Newsletter i jego test                                           | `sendNewsletterCampaign` i `sendNewsletterTest`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora; kampania zapisuje go w `newsletter_campaign.origin` dla partii, które później wyśle kolejka |
 | Potwierdzenie zamówienia                                         | `return_url` sesji, zbudowany przez żądanie checkoutu: `resolveDeploymentOrigin(session.return_url)` w `sendOrderConfirmationEmail`                                                                                |
 | Zamówienie wysłane                                               | `shipOrder`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora                                                                                                                                  |
+| Numer przesyłki                                                  | `shipOrder` i `refreshInpostShipment`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora; webhook InPost przez `resolveDeploymentOrigin(request.url)`                                           |
 | Zamówienie anulowane                                             | `cancelOrder`, przez `resolveRequestOrigin(getRequest())` na żądaniu administratora                                                                                                                                |
 | Zwrot środków                                                    | `return_url` sesji Checkout, którą `resolveCheckoutSession` znajduje dla zwróconej płatności: `resolveDeploymentOrigin(returnUrl)` w `sendOrderRefundedEmail`                                                      |
 | Nieudana płatność                                                | `return_url` sesji: `resolveDeploymentOrigin(session.return_url)` w `sendPaymentFailedEmail`                                                                                                                       |
@@ -227,20 +229,21 @@ Język pochodzi z zamówienia, a nie z bieżącego żądania, więc klient, któ
 
 ## Czekanie na e-maile o zamówieniu
 
-Na każdy e-mail o zamówieniu kod czeka i żaden nie może wywrócić swojego wywołującego. `ship-order.ts` czeka na e-mail o wysyłce i przekazuje wynik administratorowi:
+Na każdy e-mail o zamówieniu kod czeka i żaden nie może wywrócić swojego wywołującego. `ship-order.ts` czeka na e-mail o wysyłce, który `announceOrderShipment` wysyła najwyżej raz, i przekazuje wynik administratorowi:
 
 ```ts
-recordOrderShippedAudit(orderId, {
-  detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+await transitionOrder(orderId, SHIPPABLE_FULFILLMENT_STATUSES, {
+  fulfillmentStatus: "shipped",
+  shippedAt: new Date(),
+  ...trackingColumns(trackingNumber, filledOrUndefined(tracking.trackingUrl)),
 })
-const shippedEmailDelivery = sendOrderShippedEmail(orderId, origin)
-scheduleBackgroundWork(shippedEmailDelivery)
-const shippedEmailSent = await shippedEmailDelivery
 
-return { ok: true, orderId, shippedEmailSent }
+recordOrderShippedAudit(orderId, { detail: trackingNumber })
+
+return { email: await announceOrderShipment(orderId, origin), ok: true, orderId }
 ```
 
-`scheduleBackgroundWork` przekazuje tę samą obietnicę do `ctx.waitUntil`, więc wysyłka i jej wpis w audycie kończą się nawet wtedy, gdy administrator zamknie kartę, zanim Resend odpowie. `useMarkOrderShipped` zawsze pokazuje „Zamówienie oznaczono jako wysłane.”, a gdy `shippedEmailSent` jest fałszem, także ostrzeżenie „Klient jeszcze nie otrzymał e-maila”, które mówi, że sklep spróbuje jeszcze dwa razy, a wiadomość można wysłać ponownie z sekcji „Aktywność” zamówienia, gdzie widać błąd. Żądanie administratora trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`; ponowienia odrzuconego e-maila wykonują się po odpowiedzi. `cancel-order.ts` robi to samo z `sendOrderCancelledEmail` i zwraca `cancelledEmailSent`, a `useCancelOrder` ostrzega „Klient jeszcze nie otrzymał e-maila”, gdy ma ono wartość `false`.
+`awaitOrderEmailNotice` przekazuje wysyłkę do `ctx.waitUntil` przez `scheduleBackgroundWork`, więc wysyłka i jej wpis w audycie kończą się nawet wtedy, gdy administrator zamknie kartę, zanim Resend odpowie. `useMarkOrderShipped` zawsze pokazuje „Zamówienie oznaczono jako wysłane.”, a gdy e-mail się nie udał, także ostrzeżenie „Klient jeszcze nie otrzymał e-maila”, które nazywa wiadomość i mówi, że sklep spróbuje jeszcze dwa razy, a wiadomość można wysłać ponownie z sekcji „Aktywność” zamówienia, gdzie widać błąd. Żądanie administratora trwa o jedno połączenie z Resend dłużej, najwyżej `SEND_EMAIL_TIMEOUT_MS`; ponowienia odrzuconego e-maila wykonują się po odpowiedzi. `cancel-order.ts` robi to samo z `sendOrderCancelledEmail` i zwraca `cancelledEmailSent`, a `useCancelOrder` ostrzega „Klient jeszcze nie otrzymał e-maila”, gdy ma ono wartość `false`.
 
 Webhook Stripe w ten sam sposób rejestruje `sendOrderConfirmationEmail` razem z `sendNewOrderEmail`, `sendOrderRefundedEmail` i `sendPaymentFailedEmail` przez `scheduleBackgroundWork` i czeka na ich pierwsze próby, a ponowienia odrzuconego e-maila trwają dalej po jego odpowiedzi. Zapisuje on każdy wynik i nigdy nie rzuca wyjątku, więc webhook odpowiada 200 nawet wtedy, gdy Resend odrzuci potwierdzenie, a e-mail kończy się także wtedy, gdy Stripe przestanie czekać. Ponownie dostarczone zdarzenie i tak nie wysłałoby ponownie potwierdzenia ani powiadomienia sklepu: `fulfillCheckout` zwraca `undefined` dla kasy, która nie jest już oczekująca, a handler kończy przed krokiem e-maila. Dwa pozostałe mają taką samą osłonę: `releaseCheckout` zgłasza, czy to dostarczenie ustawiło płatność sesji na `failed`, a `refundOrder` zwraca zwrot tylko wtedy, gdy płatność zwróciła więcej, niż miała zapisane, a sklep nie anulował zamówienia.
 

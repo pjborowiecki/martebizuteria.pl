@@ -185,7 +185,7 @@ return {
 ## What is not there
 
 - No carrier but InPost: shipments, labels and tracking go through InPost's ShipX API only, and an order picked up at the atelier has none.
-- No automatic order updates from the carrier: InPost's status is shown on the order and refreshed on demand or by InPost's webhook, but marking the order shipped and delivered stays with the admin. Without an InPost shipment, `order.tracking_number` and `order.tracking_url` are what the admin types into the ship dialog.
+- No automatic order updates from the carrier: InPost's status is shown on the order and refreshed on demand or by InPost's webhook, but marking the order shipped and delivered stays with the admin, and booking a parcel does not mark the order shipped, because a booked parcel has not left the atelier yet. Without an InPost shipment, `order.tracking_number` and `order.tracking_url` are what the admin types into the ship dialog. A number InPost assigns after the order was marked shipped is emailed to the customer once.
 - No shipping rules: the price is a flat per-method amount with no weight, size, basket-value or destination logic. The only destination rule is the `DELIVERY_COUNTRY_CODES` check.
 - No store locations table for `in_store`.
 - No admin screen for couriers or delivery methods — rows are managed directly in D1.

@@ -52,7 +52,10 @@ const isSameAdminOrderAddress = (left: AdminOrderAddressRow, right: AdminOrderAd
   left.postalCode === right.postalCode &&
   left.province === right.province
 
-export const resolveOrderShippingAddressRow = ({ addresses, checkout }: AdminOrderAddressSources): AdminOrderAddressRow | undefined =>
+export const resolveOrderShippingAddressRow = ({
+  addresses,
+  checkout,
+}: Readonly<OrderShippingAddressSources>): AdminOrderAddressRow | undefined =>
   addresses.find((row) => row.type === "shipping") ?? checkout?.shippingAddress ?? undefined
 
 export const resolveAdminOrderDetailAddresses = (
@@ -245,6 +248,11 @@ interface AdminOrderCheckoutAddresses {
 interface AdminOrderAddressSources {
   readonly addresses: readonly AdminOrderAddressSnapshotRow[]
   readonly checkout: AdminOrderCheckoutAddresses | null
+}
+
+interface OrderShippingAddressSources {
+  readonly addresses: readonly AdminOrderAddressSnapshotRow[]
+  readonly checkout: Pick<AdminOrderCheckoutAddresses, "shippingAddress"> | null
 }
 
 interface AdminOrderItemRow {

@@ -5,35 +5,14 @@ import { createTranslator } from "use-intl"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
-import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
 import { getOrderForShippedEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
 import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
-import { type CheckoutEmailContext, buildOrderShippedAccountCta, buildOrderShippedDetails } from "~/src/modules/order/order.email.utils"
+import { buildOrderShippedAccountCta, buildOrderShippedDetails, toOrderShipmentEmailSource } from "~/src/modules/order/order.email.utils"
 
 import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
 import { ORDER_SHIPPED_NAMESPACE, OrderShipped } from "~/src/presentation/emails/order-shipped"
-
-const mapCheckoutEmailContext = (
-  checkoutContext: Awaited<ReturnType<typeof getCheckoutEmailContext>>,
-): CheckoutEmailContext | undefined => {
-  if (checkoutContext === undefined) {
-    return undefined
-  }
-
-  return {
-    billingAddress: checkoutContext.billingAddress,
-    billingAddressId: checkoutContext.billingAddressId,
-    billingCompanyName: checkoutContext.billingCompanyName,
-    billingNip: checkoutContext.billingNip,
-    customerNote: checkoutContext.customerNote,
-    deliveryMethod: checkoutContext.deliveryMethod,
-    lockerId: checkoutContext.lockerId,
-    shippingAddress: checkoutContext.shippingAddress,
-    shippingAddressId: checkoutContext.shippingAddressId,
-  }
-}
 
 const ORDER_SHIPPED_LABEL = "Order shipped"
 
@@ -48,16 +27,9 @@ const attemptOrderShippedEmail = async (orderId: string, origin: string, idempot
   }
 
   const locale = resolveOrderLocale(orderRow.metadata)
-  const checkoutContext =
-    orderRow.checkoutId === null || orderRow.checkoutId === ""
-      ? undefined
-      : mapCheckoutEmailContext(await getCheckoutEmailContext(orderRow.checkoutId))
   const messages = await loadNamespace<typeof orderShippedMessages>({ locale, namespace: ORDER_SHIPPED_NAMESPACE })
-  const details = buildOrderShippedDetails(checkoutContext, messages, {
-    trackingNumber: orderRow.trackingNumber,
-    trackingUrl: orderRow.trackingUrl,
-  })
   const accountCta = buildOrderShippedAccountCta({ locale, messages, orderId: orderRow.id, origin, userId: orderRow.userId })
+  const details = buildOrderShippedDetails(toOrderShipmentEmailSource(orderRow), messages)
   const failure = await sendEmail({
     idempotencyKey,
     react: createElement(OrderShipped, {

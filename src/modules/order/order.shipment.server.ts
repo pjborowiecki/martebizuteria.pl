@@ -2,7 +2,8 @@ import { type SQL, and, eq, isNull, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { INPOST_CANCELED_SHIPMENT_STATUS } from "~/src/integrations/inpost/inpost.constants"
-import { fetchShipxShipment, inpostTrackingUrl } from "~/src/integrations/inpost/inpost.shipx.server"
+import { fetchShipxShipment } from "~/src/integrations/inpost/inpost.shipx.server"
+import { inpostTrackingUrl } from "~/src/integrations/inpost/inpost.utils"
 import { type InpostShipment } from "~/src/integrations/inpost/inpost.zod"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"

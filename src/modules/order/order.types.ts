@@ -14,6 +14,8 @@ import {
   type AdminOrderStatFilter,
   type AdminOrderTab,
   type AdminOrderTimelineKind,
+  type OrderEmailKind,
+  type OrderEmailNoticeStatus,
 } from "~/src/modules/order/order.constants"
 import { type order } from "~/src/modules/order/order.schema"
 import { type orderZodSchemas } from "~/src/modules/order/order.zod"
@@ -225,6 +227,11 @@ interface SettledOrder {
   paymentStatus: string
 }
 
+interface OrderEmailNotice {
+  readonly kind: OrderEmailKind
+  readonly status: OrderEmailNoticeStatus
+}
+
 interface UnannouncedOrderRefund {
   readonly amount: number
   readonly fullyRefunded: boolean
@@ -247,6 +254,7 @@ export interface Order {
   auditSnapshot: AdminOrderAuditSnapshot
   disputeMetadata: AdminOrderDisputeMetadata
   email: z.infer<(typeof orderZodSchemas)["email"]>
+  emailNotice: OrderEmailNotice
   insert: typeof order.$inferInsert
   refundInput: OrderRefundInput
   select: typeof order.$inferSelect

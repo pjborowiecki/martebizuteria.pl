@@ -1,0 +1,18 @@
+{
+  "subject": "Your parcel's tracking number — M'Arte",
+  "preview": "Your parcel is on its way. Here is the number to follow it.",
+  "heading": "Tracking number",
+  "message": "Your order is already on its way, and we now have its current tracking number for you.",
+  "messageSecondary": "Use it to see where your parcel is and when it will reach you.",
+  "orderLabel": "Order reference",
+  "carrierLabel": "Carrier",
+  "trackingNumberLabel": "Tracking number",
+  "unavailable": "Unavailable",
+  "createAccountCta": "Create account and track your order",
+  "viewOrderCta": "View your order",
+  "closingNote": "If you have any questions about your shipment, simply reply to this email — we are happy to help.",
+  "trackingCta": "Track your parcel",
+  "signoff": "With warm regards,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}

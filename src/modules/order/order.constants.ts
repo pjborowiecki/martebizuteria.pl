@@ -53,6 +53,10 @@ export const ORDER_SALE_STATUSES = ["processing", "completed"] as const
 
 export const DISPATCHED_FULFILLMENT_STATUSES = ["shipped", "delivered"] as const
 
+export const FULFILLABLE_FULFILLMENT_STATUSES = ["not_fulfilled", "partially_fulfilled"] as const
+
+export const SHIPPABLE_FULFILLMENT_STATUSES = ["fulfilled", "partially_fulfilled"] as const
+
 export const INPOST_DELIVERY_TYPES = ["courier", "locker"] as const
 
 export type InpostDeliveryType = (typeof INPOST_DELIVERY_TYPES)[number]
@@ -146,7 +150,18 @@ export const ORDER_EMAIL_KIND = {
   NEW_ORDER: "new-order",
   REFUNDED: "order-refunded",
   SHIPPED: "order-shipped",
+  TRACKING: "order-tracking",
 } as const
+
+export type OrderEmailKind = (typeof ORDER_EMAIL_KIND)[keyof typeof ORDER_EMAIL_KIND]
+
+export const ORDER_EMAIL_NOTICE_STATUS = {
+  ALREADY_SENT: "alreadySent",
+  FAILED: "failed",
+  SENT: "sent",
+} as const
+
+export type OrderEmailNoticeStatus = (typeof ORDER_EMAIL_NOTICE_STATUS)[keyof typeof ORDER_EMAIL_NOTICE_STATUS]
 
 export const ADMIN_ORDER_TIMELINE_ACTIONS = [
   AUDIT_LOG_ACTION.EMAIL_DEFERRED,
