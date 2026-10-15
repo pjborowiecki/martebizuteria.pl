@@ -5,6 +5,7 @@ export const getCheckoutErrorKey = (error: unknown): string => {
 }
 
 export const CHECKOUT_ERROR_CODES = {
+  CART_TOO_LARGE: "CART_TOO_LARGE",
   DELIVERY_METHOD_UNAVAILABLE: "DELIVERY_METHOD_UNAVAILABLE",
   INSUFFICIENT_INVENTORY: "INSUFFICIENT_INVENTORY",
   INVALID_PRICE: "INVALID_PRICE",
@@ -21,6 +22,7 @@ export const CHECKOUT_ERROR_CODES = {
 } as const
 
 export const CHECKOUT_ERRORS: Record<string, string> = {
+  [CHECKOUT_ERROR_CODES.CART_TOO_LARGE]: "cartTooLarge",
   [CHECKOUT_ERROR_CODES.DELIVERY_METHOD_UNAVAILABLE]: "deliveryMethodUnavailable",
   [CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY]: "insufficientInventory",
   [CHECKOUT_ERROR_CODES.INVALID_PRICE]: "invalidPrice",
