@@ -54,7 +54,7 @@ export const useDashboardChartRange = (): {
 
   const chartData = chartRange === "custom" ? (customChartQuery.data ?? []) : presetChartData
   const isCustomError = chartRange === "custom" && customChartQuery.isError
-  const isCustomLoading = chartRange === "custom" && customChartQuery.isFetching
+  const isCustomLoading = chartRange === "custom" && customChartQuery.isLoading
   const selectPresetRange = (range: Exclude<DashboardChartRange, "custom">): void => {
     setChartRange(range)
   }

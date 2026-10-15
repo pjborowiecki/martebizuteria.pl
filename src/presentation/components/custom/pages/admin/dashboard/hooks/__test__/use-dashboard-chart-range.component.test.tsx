@@ -1,6 +1,6 @@
 import { type ReactNode } from "react"
 
-import { QueryClient, QueryClientProvider, queryOptions } from "@tanstack/react-query"
+import { QueryClient, QueryClientProvider, queryOptions, useIsFetching, useQueryClient } from "@tanstack/react-query"
 import { act, cleanup, renderHook, waitFor } from "@testing-library/react"
 import { IntlProvider } from "use-intl/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
@@ -162,5 +162,47 @@ describe("useDashboardChartRange", () => {
     expect(result.current.chartRange).toBe("30d")
     expect(result.current.customRange).toBeUndefined()
     expect(result.current.chartData).toStrictEqual(snapshot.chartPoints30d)
+  })
+})
+
+describe("useDashboardChartRange during a background refresh", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
+
+  it("keeps a loaded custom range on screen without dimming it while a new order refreshes it", async () => {
+    const refresh = Promise.withResolvers<AdminDashboard["chartPoint"][]>()
+    const { result } = renderHook(
+      () => ({ chartRange: useDashboardChartRange(), fetchingQueries: useIsFetching(), queryClient: useQueryClient() }),
+      { wrapper },
+    )
+
+    act(() => {
+      result.current.chartRange.applyCustomRange({ endDate: "2026-09-30", startDate: "2026-09-01" })
+    })
+    await waitFor(() => {
+      expect(result.current.chartRange.chartData).toHaveLength(1)
+      expect(result.current.fetchingQueries).toBe(0)
+    })
+    custom.fetch.mockReturnValueOnce(refresh.promise)
+
+    act(() => {
+      void result.current.queryClient.invalidateQueries()
+    })
+    await waitFor(() => {
+      expect(result.current.fetchingQueries).toBe(1)
+    })
+
+    expect(result.current.chartRange.isCustomLoading).toBe(false)
+    expect(result.current.chartRange.chartData).toHaveLength(1)
+
+    refresh.resolve([point("2026-09-01", 1500)])
+    await waitFor(() => {
+      expect(result.current.chartRange.chartData).toStrictEqual([point("2026-09-01", 1500)])
+    })
   })
 })

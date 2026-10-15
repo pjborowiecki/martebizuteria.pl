@@ -1,3 +1,4 @@
+import { partialMatchKey } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
@@ -22,6 +23,7 @@ import {
   STOREFRONT_REALTIME_QUERY_PREFIXES,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 
+import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
@@ -159,12 +161,35 @@ describe("catalog invalidation scheduling", () => {
     expect(topicsFor("storefront")).toStrictEqual(serialized([[...CONTENT_PAGE_QUERY_KEYS.BY_HANDLE]]))
   })
 
+  it("refreshes the overview's snapshot and any custom chart range in every admin tab when an order changes", async () => {
+    scheduleAdminOrdersInvalidation()
+    await Promise.all(background.scheduled)
+
+    const invalidated = resolveInvalidatedQueryKeys(ADMIN_REALTIME_QUERY_PREFIXES, topicsFor("admin"))
+    const overviewQueryKeys = [
+      [...ADMIN_DASHBOARD_QUERY_KEYS.SNAPSHOT, "pl-PL"],
+      [...ADMIN_DASHBOARD_QUERY_KEYS.CHART_RANGE, "pl-PL", "2026-09-01", "2026-09-30"],
+    ]
+
+    expect(overviewQueryKeys.filter((queryKey) => invalidated.some((prefix) => partialMatchKey(queryKey, prefix)))).toStrictEqual(
+      overviewQueryKeys,
+    )
+  })
+
   it("tells admins and every open storefront tab that sales were paused or resumed", async () => {
     scheduleSalesStatusInvalidation()
     await Promise.all(background.scheduled)
 
     expect(topicsFor("admin")).toStrictEqual(serialized([[...STORE_SETTING_QUERY_KEYS.ADMIN.SALES]]))
     expect(topicsFor("storefront")).toStrictEqual(serialized([[...STORE_SETTING_QUERY_KEYS.SALES]]))
+  })
+})
+
+describe("invalidation topics by publisher", () => {
+  beforeEach(async () => {
+    hub.notified.length = 0
+    background.scheduled.length = 0
+    await Promise.resolve()
   })
 
   it.each([
@@ -180,7 +205,7 @@ describe("catalog invalidation scheduling", () => {
       scheduleAdminNewsletterSubscribersInvalidation,
       [NEWSLETTER_QUERY_KEYS.ADMIN.PAGE, NEWSLETTER_QUERY_KEYS.ADMIN.STATS],
     ],
-    ["orders", scheduleAdminOrdersInvalidation, [ORDER_QUERY_KEYS.ADMIN.ORDERS]],
+    ["orders", scheduleAdminOrdersInvalidation, [ORDER_QUERY_KEYS.ADMIN.ORDERS, ADMIN_DASHBOARD_QUERY_KEYS.ALL]],
   ])("keeps the %s invalidation off the storefront hub", async (_name, schedule, expected) => {
     schedule()
     await Promise.all(background.scheduled)
@@ -242,7 +267,7 @@ describe("catalog invalidation scheduling", () => {
       scheduleAdminNewsletterSubscribersInvalidation,
       { admin: [NEWSLETTER_QUERY_KEYS.ADMIN.PAGE, NEWSLETTER_QUERY_KEYS.ADMIN.STATS] },
     ],
-    ["orders", scheduleAdminOrdersInvalidation, { admin: [ORDER_QUERY_KEYS.ADMIN.ORDERS] }],
+    ["orders", scheduleAdminOrdersInvalidation, { admin: [ORDER_QUERY_KEYS.ADMIN.ORDERS, ADMIN_DASHBOARD_QUERY_KEYS.ALL] }],
   ])("resolves the %s topics to the exact keys a subscribed tab invalidates", async (_name, schedule, expected) => {
     schedule()
     await Promise.all(background.scheduled)
