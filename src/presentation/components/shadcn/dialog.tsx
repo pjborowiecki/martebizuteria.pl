@@ -34,7 +34,10 @@ const DialogOverlay = ({ className, ...props }: Readonly<DialogPrimitive.Backdro
 
 const DialogContent = ({ children, className, showCloseButton = true, ...props }: Readonly<DialogContentProps>): JSX.Element => {
   const t = useTranslations("components.shadcn.dialog")
-  const closeButtonRender = useMemo(() => <Button className="absolute top-2 right-2" size="icon-sm" variant="ghost" />, [])
+  const closeButtonRender = useMemo(
+    () => <Button className="absolute top-2 right-2 pointer-coarse:size-10" size="icon-sm" variant="ghost" />,
+    [],
+  )
   let closeButtonNode: ReactNode = undefined
   if (showCloseButton) {
     closeButtonNode = (
@@ -85,7 +88,7 @@ const DialogFooter = ({ children, className, showCloseButton = false, ...props }
 }
 
 const DialogTitle = ({ className, ...props }: Readonly<DialogPrimitive.Title.Props>): JSX.Element => (
-  <DialogPrimitive.Title className={cn("text-sm font-medium", className)} data-slot="dialog-title" {...props} />
+  <DialogPrimitive.Title className={cn("pr-8 text-sm font-medium", className)} data-slot="dialog-title" {...props} />
 )
 
 const DialogDescription = ({ className, ...props }: Readonly<DialogPrimitive.Description.Props>): JSX.Element => (

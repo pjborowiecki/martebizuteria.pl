@@ -40,7 +40,10 @@ const SheetContent = ({
   ...props
 }: Readonly<SheetContentProps>): JSX.Element => {
   const t = useTranslations("components.shadcn.sheet")
-  const closeButtonEl = useMemo(() => <Button variant="ghost" className="absolute top-3 right-3" size="icon-sm" />, [])
+  const closeButtonEl = useMemo(
+    () => <Button variant="ghost" className="absolute top-3 right-3 pointer-coarse:size-10" size="icon-sm" />,
+    [],
+  )
 
   return (
     <SheetPortal>
