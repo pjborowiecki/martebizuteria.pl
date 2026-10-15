@@ -87,6 +87,7 @@ Lektura handlera w `src/routes/api/webhooks.stripe.ts` mówi, jak interpretować
 - 400 `Missing signature or webhook secret` — brakuje nagłówka albo wartości ze środowiska.
 - 400 `Webhook Error: Invalid Signature` — sekret nie pasuje do sekretu nasłuchu.
 - 200 z `[Stripe] Ignoring live event <id> (<type>): development accepts only test events` w logu — zdarzenie pochodzi z trybu live, a każde środowisko poza produkcją obsługuje tylko zdarzenia testowe.
+- 200 z `[Stripe] Ignoring event <id> (<type>): its checkout belongs to martebizuteria-test, while development keeps its checkouts in martebizuteria-preview` w logu — sesję otworzył lokalny przebieg testów, na przykład pakiet E2E ze Stripe, który korzysta z tego samego konta testowego. Stripe wysyła jej zdarzenia do każdego endpointu, ale checkout ma tylko baza tego przebiegu. Zdarzenia sesji preview niosą `martebizuteria-preview` tak jak własne sesje developmentu, więc serwer deweloperski obsługuje je na wspólnej bazie (zobacz [Płatności](/docs/features/payments#punkt-końcowy-webhooka)).
 - 200 z `[Stripe] Safely ignoring unhandled event: <type>` w logu — ten typ zdarzenia nie ma wpisu w `webhookHandlers`.
 - 500 `Internal Server Error` z `[Stripe] Domain logic failed for <type>` — Twój handler rzucił wyjątek. Stripe ponowi, więc handler musi być idempotentny.
 

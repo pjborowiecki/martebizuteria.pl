@@ -204,7 +204,7 @@ Te same dwie zmienne muszą być ustawione przy budowaniu testowego Workera. Bui
 
 Stripe nie dosięgnie Workera na `127.0.0.1`, więc `forwardCheckoutCompletion` z `e2e/fixtures/stripe-test-mode.ts` robi to, co `stripe listen`: odczytuje zdarzenie `checkout.session.completed` sesji z Events API Stripe'a, podpisuje je `STRIPE_WEBHOOK_SECRET`, z którym zbudowano Workera (ze środowiska, a w przeciwnym razie z `.env.test`), i wysyła je do `/api/webhooks/stripe`. Specyfikacja oczekuje potem, że Stripe zgłosi sesję jako opłaconą na 398,99 zł, strony potwierdzenia z numerem zamówienia i e-maila z potwierdzeniem.
 
-Użyj kluczy sandboxa Stripe'a bez endpointu webhooka. Endpoint wskazujący Workera preview też dostałby te płatności, nie znalazłby dla nich checkoutu i wysłałby e-mail na `RESEND_EMAIL_FROM`. Lokalnie najpierw zatrzymaj serwer na porcie 3000, bo poza CI Playwright używa już działającego, a wcześniejszy build ma atrapowe klucze, i ustaw klucze tylko dla tego polecenia:
+Użyj kluczy sandboxa Stripe'a bez endpointu webhooka. Endpoint wskazujący Workera preview też dostałby te płatności, ale ich zdarzenia tylko zaloguje i potwierdzi, bo ich metadane `deployment` wskazują `martebizuteria-test` (zobacz [Płatności: punkt końcowy webhooka](/docs/features/payments#punkt-końcowy-webhooka)); osobny sandbox trzyma płatności testowe z dala od konta preview i jego dziennika zdarzeń. Lokalnie najpierw zatrzymaj serwer na porcie 3000, bo poza CI Playwright używa już działającego, a wcześniejszy build ma atrapowe klucze, i ustaw klucze tylko dla tego polecenia:
 
 ```sh
 STRIPE_SECRET_KEY=sk_test_… VITE_STRIPE_PUBLISHABLE_KEY=pk_test_… bun run test:e2e:stripe

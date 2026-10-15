@@ -1,3 +1,5 @@
+import { env } from "cloudflare:workers"
+
 import { getRequest } from "@tanstack/react-start/server"
 import type StripeType from "stripe"
 import { type z } from "zod"
@@ -15,6 +17,7 @@ import {
 import { CHECKOUT_SESSION_LIFETIME_SECONDS, STRIPE_CURRENCY } from "~/src/integrations/stripe/stripe.constants"
 import { deleteCheckoutCoupons, toSessionDiscounts } from "~/src/integrations/stripe/stripe.coupons.server"
 import { ensureStripeCustomer, getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
+import { stripeDeploymentOf } from "~/src/integrations/stripe/stripe.deployment"
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { isCheckoutSessionProcessing } from "~/src/integrations/stripe/stripe.utils"
@@ -305,6 +308,7 @@ const createStripeSession = async ({
   const returnUrl = `${buildLocalizedUrl(origin, ROUTES.CHECKOUT, locale)}?success=true&session_id={CHECKOUT_SESSION_ID}`
   const metadata = {
     checkoutId,
+    deployment: stripeDeploymentOf(env.APP_ENV),
     discountCode: discount?.code ?? "",
     discountTotal: String(discount?.amountMinorUnits ?? NO_COST),
     locale,
