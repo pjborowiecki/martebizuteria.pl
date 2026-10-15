@@ -75,7 +75,7 @@ Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](
 | `test:all`         | `test`, then `test:e2e:smoke`                                     |
 | `test:watch`       | `vp test`                                                         |
 
-`test:e2e` runs Chromium, WebKit, their shop-wide projects and the `stripe-test-mode` project, which skips its spec unless Stripe sandbox keys are set; `test:e2e:stripe` runs that project alone. See [Stripe test mode](/docs/tooling/testing#stripe-test-mode).
+`test:e2e` runs Chromium, WebKit, their shop-wide projects and the `stripe-test-mode` project, which skips its specs unless Stripe sandbox keys are set; `test:e2e:stripe` runs that project alone. See [Stripe test mode](/docs/tooling/testing#stripe-test-mode).
 
 `test:watch` does not watch — `vp test` with no subcommand runs once. Use `vp test watch`. See [Testing](/docs/tooling/testing).
 

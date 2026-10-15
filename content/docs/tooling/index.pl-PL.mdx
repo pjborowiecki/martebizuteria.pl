@@ -34,7 +34,7 @@ Nie ma tu osobnych wywołań ESLinta, Prettiera, Jesta czy `tsc`. `bun run check
 
 ## Czego tutaj nie ma
 
-Domyślny zestaw testów przeglądarkowych nigdy nie wywołuje Stripe'a. Rozlicza płatności przez emulator w testowym Workerze, więc sam formularz karty Stripe'a działa tylko we włączanym osobno projekcie `stripe-test-mode`, gdy ustawione są klucze sandboxa Stripe'a; zobacz [Testy](/docs/tooling/testing#tryb-testowy-stripe).
+Domyślny zestaw testów przeglądarkowych nigdy nie wywołuje Stripe'a. Rozlicza płatności przez emulator w testowym Workerze, więc sam formularz płatności Stripe'a, z obsługą karty, 3D Secure, BLIK-a i Przelewy24, działa tylko we włączanym osobno projekcie `stripe-test-mode`, gdy ustawione są klucze sandboxa Stripe'a; zobacz [Testy](/docs/tooling/testing#tryb-testowy-stripe).
 
 CI nie nakłada migracji bazy danych; robią to skrypty wdrożeniowe, tuż przed `wrangler deploy`, a produkcja wdraża tylko commit, który przeszedł CI. Zobacz [CI/CD](/docs/tooling/ci-cd) i [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 

@@ -34,7 +34,7 @@ There is no separate ESLint, Prettier, Jest or tsc invocation. `bun run check` i
 
 ## What is not here
 
-The default browser suite never calls Stripe. It settles payments through the emulator in the test Worker, so Stripe's own card form runs only in the opt-in `stripe-test-mode` project, when Stripe sandbox keys are set; see [Testing](/docs/tooling/testing#stripe-test-mode).
+The default browser suite never calls Stripe. It settles payments through the emulator in the test Worker, so Stripe's own payment form, with its card, 3D Secure, BLIK and Przelewy24 flows, runs only in the opt-in `stripe-test-mode` project, when Stripe sandbox keys are set; see [Testing](/docs/tooling/testing#stripe-test-mode).
 
 CI does not apply database migrations; the deploy scripts do, right before `wrangler deploy`, and production deploys only a commit that passed CI. See [CI/CD](/docs/tooling/ci-cd) and [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 

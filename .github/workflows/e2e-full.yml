@@ -38,6 +38,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+      - name: Report missing Stripe sandbox keys
+        if: env.STRIPE_SECRET_KEY == '' || env.VITE_STRIPE_PUBLISHABLE_KEY == ''
+        run: echo "::warning title=Stripe test mode skipped::The E2E_STRIPE_SECRET_KEY and E2E_STRIPE_PUBLISHABLE_KEY repository secrets are not set, so every Stripe test-mode spec is skipped and no card, BLIK or Przelewy24 payment reaches a Stripe sandbox."
       - name: Setup toolchain
         uses: ./.github/actions/setup
         with:

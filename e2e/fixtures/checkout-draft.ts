@@ -1,6 +1,7 @@
 import { type Page } from "@playwright/test"
 
 import { PARCEL_LOCKER, SHIPPING_ADDRESS } from "../data/catalog"
+import { expect } from "./test"
 
 const CHECKOUT_DRAFT_STORAGE_KEY = "marte-checkout-draft"
 
@@ -33,3 +34,13 @@ export const heldCheckoutSessionId = (page: Page): Promise<unknown> =>
 
     return held === null ? undefined : (JSON.parse(held) as { sessionId?: unknown }).sessionId
   }, HELD_CHECKOUT_SESSION_STORAGE_KEY)
+
+export const waitForHeldCheckoutSessionId = async (page: Page): Promise<string> => {
+  await expect.poll(() => heldCheckoutSessionId(page), { message: "Waiting for the payment step to hold a Checkout Session" }).toBeDefined()
+  const sessionId = await heldCheckoutSessionId(page)
+  if (typeof sessionId !== "string") {
+    throw new TypeError("The payment step holds no Checkout Session")
+  }
+
+  return sessionId
+}
