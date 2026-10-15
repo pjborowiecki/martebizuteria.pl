@@ -110,6 +110,26 @@ describe("InpostSelector", () => {
     expect(screen.getByTestId("map")).toBeInTheDocument()
   })
 
+  it("stacks the city search above the map on phones and keeps the search clear of the close control", async () => {
+    renderWithProviders(<SelectorHarness />)
+
+    await open()
+
+    const search = await screen.findByPlaceholderText("Enter city name...")
+    const sidebar = search.closest(".shrink-0.overflow-hidden")
+
+    expect(screen.getByRole("dialog")).toHaveClass("flex-col", "sm:flex-row")
+    expect(sidebar).toHaveClass("h-1/2", "w-full", "sm:h-auto", "sm:w-[350px]")
+    expect(search.parentElement?.parentElement).toHaveClass("pr-14", "sm:pr-4")
+    expect(screen.getByTestId("map").parentElement).toHaveClass("min-h-0", "flex-1")
+  })
+
+  it("lets the trigger label wrap inside the button on a narrow screen", () => {
+    renderWithProviders(<SelectorHarness />)
+
+    expect(screen.getByRole("button", { name: "Select Parcel Locker" })).toHaveClass("h-auto", "min-h-12", "whitespace-normal")
+  })
+
   it("asks for a longer city name before searching", async () => {
     renderWithProviders(<SelectorHarness lockerCity="Wa" />)
 

@@ -288,6 +288,15 @@ describe("PaymentStep notice when the payment form fails", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(FORM_UNAVAILABLE)
     expect(screen.getByRole("button", { name: "Try again" })).toHaveFocus()
   })
+
+  it("gives both ways out finger-sized targets on touch screens", async () => {
+    formState.session = session
+    getStripe.mockRejectedValueOnce(new Error("Failed to load Stripe.js"))
+    renderWithProviders(<PaymentStep />)
+
+    expect(await screen.findByRole("button", { name: "Try again" })).toHaveClass("pointer-coarse:h-10")
+    expect(screen.getByRole("link", { name: "Back to cart" })).toHaveClass("pointer-coarse:h-10")
+  })
 })
 
 describe("PaymentStep when Stripe Checkout cannot start for the session", () => {

@@ -219,14 +219,16 @@ export const OptionCard = ({ className, icon, id, label, value, description, ...
   <Label
     htmlFor={id}
     className={cn(
-      "flex cursor-pointer items-center gap-4 rounded-none border border-border/50 bg-background px-5 py-4 font-normal text-foreground transition-colors hover:border-border has-aria-checked:border-foreground/40",
+      "flex cursor-pointer items-center gap-3 rounded-none border border-border/50 bg-background px-4 py-4 font-normal text-foreground transition-colors hover:border-border has-aria-checked:border-foreground/40 sm:gap-4 sm:px-5",
       className,
     )}
   >
     <RadioGroupItem {...rest} value={value} id={id} className="size-4 shrink-0 rounded-full border-muted-foreground/40 text-foreground" />
     <span className="pointer-events-none shrink-0 text-muted-foreground/70">{icon}</span>
-    <span className="pointer-events-none flex-1 text-sm leading-snug font-medium">{label}</span>
-    {description !== undefined && <span className="pointer-events-none shrink-0 text-xs text-muted-foreground">{description}</span>}
+    <span className="pointer-events-none min-w-0 flex-1 text-sm leading-snug font-medium">{label}</span>
+    {description !== undefined && (
+      <span className="pointer-events-none shrink-0 text-xs whitespace-nowrap text-muted-foreground">{description}</span>
+    )}
   </Label>
 )
 

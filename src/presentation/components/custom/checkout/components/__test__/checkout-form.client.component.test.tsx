@@ -50,6 +50,12 @@ describe("CheckoutForm", () => {
     expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute("href", "/cart")
   })
 
+  it("gives the edit link a finger-sized target on touch screens", () => {
+    renderWithProviders(<CheckoutForm />)
+
+    expect(screen.getByRole("link", { name: "Edit" })).toHaveClass("pointer-coarse:inline-flex", "pointer-coarse:min-h-10")
+  })
+
   it("renders the order summary beside the steps", () => {
     renderWithProviders(<CheckoutForm />)
 

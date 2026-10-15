@@ -61,6 +61,12 @@ describe("DeliveryLocker", () => {
     expect(screen.getByTestId("inpost-selector")).toBeInTheDocument()
   })
 
+  it("pads the locker card less on phones", () => {
+    renderWithProviders(<LockerHarness lockerId="" />)
+
+    expect(screen.getByTestId("inpost-selector").closest(".border")).toHaveClass("p-4", "sm:p-6")
+  })
+
   it("hides the summary while no locker is chosen", () => {
     renderWithProviders(<LockerHarness lockerId="" />)
 

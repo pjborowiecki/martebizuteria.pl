@@ -34,7 +34,7 @@ export const CheckoutForm = (): JSX.Element => {
             <span>{t("checkoutSummary.title")}</span>
             <LocalizedLink
               to={ROUTES.CART}
-              className="shrink-0 tracking-[0.15em] underline underline-offset-4 transition-colors hover:text-foreground"
+              className="shrink-0 tracking-[0.15em] underline underline-offset-4 transition-colors hover:text-foreground pointer-coarse:-my-2 pointer-coarse:inline-flex pointer-coarse:min-h-10 pointer-coarse:min-w-10 pointer-coarse:items-center pointer-coarse:justify-end"
             >
               {t("checkoutSummary.edit")}
             </LocalizedLink>

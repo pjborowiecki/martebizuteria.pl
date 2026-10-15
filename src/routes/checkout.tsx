@@ -26,7 +26,7 @@ const coerceSuccess = (value: unknown): boolean | undefined => (value === true |
 
 const CheckoutLayout = (): JSX.Element => (
   <div className="min-h-dvh bg-background font-light">
-    <main className="mx-auto w-full max-w-400 px-6 py-10 md:py-14 lg:px-12">
+    <main className="storefront-container w-full py-10 md:py-14">
       <CheckoutHeader />
       <Outlet />
     </main>
