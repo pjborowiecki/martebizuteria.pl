@@ -69,6 +69,21 @@ const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element =
 
 const renderGrid = () => renderHook(() => useAuditDataGrid(), { wrapper: Wrapper })
 
+const renderGridWithClient = () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const hook = renderHook(() => useAuditDataGrid(), {
+    wrapper: ({ children }: Readonly<{ children: ReactNode }>) => (
+      <TestProviders queryClient={queryClient} router={createTestRouter()}>
+        {children}
+      </TestProviders>
+    ),
+  })
+
+  return { queryClient, ...hook }
+}
+
+const rowIds = (value: AuditDataGridValue): string[] => value.table.getRowModel().rows.map((row) => row.id)
+
 const withoutAuditFilter = (value: AuditDataGridValue): DataGridContextValue<AuditLog["adminListItem"]> => ({
   columnReorder: value.columnReorder,
   hasPreferenceOverrides: value.hasPreferenceOverrides,
@@ -116,6 +131,48 @@ describe("useAuditDataGrid page request", () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false)
     })
+  })
+
+  it("keeps the rows on screen while a refresh fetches the same page again", async () => {
+    const { queryClient, result } = renderGridWithClient()
+    await waitFor(() => {
+      expect(rowIds(result.current)).toStrictEqual(["log-1", "log-2"])
+    })
+    listFn.mockReturnValue(new Promise(() => {}))
+
+    void queryClient.invalidateQueries({ queryKey: ["admin", "audit-log", "page"] })
+    await waitFor(() => {
+      expect(listFn).toHaveBeenCalledTimes(2)
+    })
+
+    expect(result.current.isLoading).toBe(false)
+    expect(rowIds(result.current)).toStrictEqual(["log-1", "log-2"])
+  })
+
+  it("shows placeholder rows instead of the previous filter's rows while a new filter loads", async () => {
+    const { result } = renderGridWithClient()
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+    const errorsPage = Promise.withResolvers<unknown>()
+    listFn.mockReturnValue(errorsPage.promise)
+
+    act(() => {
+      result.current.applyAuditFilter({ severity: "error" })
+    })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(true)
+    })
+
+    act(() => {
+      errorsPage.resolve(page([auditRow({ id: "log-2", severity: "error" })]))
+    })
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+    expect(rowIds(result.current)).toStrictEqual(["log-2"])
   })
 
   it("feeds the fetched entries into the table, keyed by audit log id", async () => {

@@ -65,6 +65,8 @@ const card = (label: string): HTMLElement => screen.getByRole("button", { name: 
 
 const pressedCards = (): string[] => CARD_LABELS.filter((label) => card(label).getAttribute("aria-pressed") === "true")
 
+const severitySelect = (): HTMLElement => screen.getByRole("combobox", { name: "Filter by status" })
+
 const dateTrigger = (): HTMLElement => screen.getByRole("button", { name: "Filter by date range" })
 
 const lastListRequest = () => server.list.mock.calls.at(-1)?.[0]
@@ -79,6 +81,16 @@ const expectListRequest = async (filters: Readonly<{ createdAt: unknown; severit
       ...filters,
     })
   })
+}
+
+const pickSeverity = async (label: string): Promise<void> => {
+  await userEvent.click(severitySelect())
+  const options = await screen.findAllByRole("option")
+  const option = options.find((item) => item.textContent === label)
+  if (option === undefined) {
+    throw new Error(`No status option labelled ${label}`)
+  }
+  await userEvent.click(option)
 }
 
 beforeEach(() => {
@@ -105,5 +117,79 @@ describe("the audit stat cards just after midnight in Poland", () => {
     await expectListRequest({ createdAt: TODAY_FILTER, severity: undefined })
     expect(pressedCards()).toStrictEqual(["Today"])
     expect(dateTrigger()).toHaveTextContent("= Oct 15, 2026")
+  })
+
+  it("switch from today to the warnings and back to everything, each card replacing the last", async () => {
+    renderPage()
+
+    await userEvent.click(card("Today"))
+    await expectListRequest({ createdAt: TODAY_FILTER, severity: undefined })
+
+    await userEvent.click(card("Warnings"))
+    await expectListRequest({ createdAt: undefined, severity: "warning" })
+    expect(pressedCards()).toStrictEqual(["Warnings"])
+    expect(severitySelect()).toHaveTextContent("Warning")
+    expect(dateTrigger()).toHaveTextContent("Filter by date range")
+
+    await userEvent.click(card("Warnings"))
+    await expectListRequest({ createdAt: undefined, severity: undefined })
+    expect(pressedCards()).toStrictEqual(["Total events"])
+    expect(severitySelect()).toHaveTextContent("All statuses")
+  })
+
+  it("press the card of the status picked in the toolbar", async () => {
+    renderPage()
+
+    await pickSeverity("Error")
+
+    await expectListRequest({ createdAt: undefined, severity: "error" })
+    expect(pressedCards()).toStrictEqual(["Errors"])
+  })
+
+  it("press no card while the toolbar narrows today to its warnings, and show only today again from the today card", async () => {
+    renderPage()
+    await userEvent.click(card("Today"))
+    await pickSeverity("Warning")
+
+    await expectListRequest({ createdAt: TODAY_FILTER, severity: "warning" })
+    expect(pressedCards()).toStrictEqual([])
+
+    await userEvent.click(card("Today"))
+
+    await expectListRequest({ createdAt: TODAY_FILTER, severity: undefined })
+    expect(pressedCards()).toStrictEqual(["Today"])
+  })
+
+  it("keep today's filter, and its card pressed, when the admin applies it again from the date popover", async () => {
+    renderPage()
+    await userEvent.click(card("Today"))
+    await expectListRequest({ createdAt: TODAY_FILTER, severity: undefined })
+
+    await userEvent.click(dateTrigger())
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }))
+
+    await expectListRequest({ createdAt: TODAY_FILTER, severity: undefined })
+    expect(pressedCards()).toStrictEqual(["Today"])
+  })
+})
+
+describe("the audit stat cards while their counts refresh", () => {
+  it("keep their figures and still filter when pressed", async () => {
+    const { queryClient } = renderPage()
+    await screen.findByText("100")
+    server.stats.mockReturnValue(new Promise(() => {}))
+
+    void queryClient.invalidateQueries({ queryKey: ["admin", "audit-log", "stats"] })
+    await waitFor(() => {
+      expect(server.stats).toHaveBeenCalledTimes(2)
+    })
+
+    expect(screen.getByText("100")).toBeInTheDocument()
+    expect(card("Errors")).toBeEnabled()
+
+    await userEvent.click(card("Errors"))
+
+    await expectListRequest({ createdAt: undefined, severity: "error" })
+    expect(pressedCards()).toStrictEqual(["Errors"])
   })
 })

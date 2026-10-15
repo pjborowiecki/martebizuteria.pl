@@ -3,8 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
-
 import {
   AUDIT_STAT_CARDS,
   type AuditStatCardConfig,
@@ -12,18 +10,17 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/audit/audit-stats.config"
 import { AuditStatCard } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-stat-card"
 
-const configFor = (key: AuditStatKey): AuditStatCardConfig => {
-  const config = AUDIT_STAT_CARDS.find((card) => card.key === key)
-  if (config === undefined) {
-    throw new Error(`No audit stat card configured for ${key}`)
-  }
+const configFor = (key: AuditStatKey): AuditStatCardConfig => AUDIT_STAT_CARDS.find((card) => card.key === key)!
 
-  return config
+const renderCard = (props: Partial<Parameters<typeof AuditStatCard>[0]> & { readonly key?: AuditStatKey } = {}) => {
+  const onFilter = vi.fn<() => void>()
+  const { key = "total", ...overrides } = props
+  renderWithProviders(
+    <AuditStatCard config={configFor(key)} displayValue={0} isActive={false} onFilter={onFilter} valuesPending={false} {...overrides} />,
+  )
+
+  return { button: screen.getByRole("button"), onFilter }
 }
-
-const createSeveritySpy = () => vi.fn<(severity?: AuditLogSeverity) => void>()
-
-const createTodaySpy = () => vi.fn<() => void>()
 
 afterEach(() => {
   cleanup()
@@ -36,209 +33,67 @@ describe("AuditStatCard rendering", () => {
     ["warnings", "Warnings"],
     ["errors", "Errors"],
   ] as const)("labels the %s card", (key, label) => {
-    renderWithProviders(<AuditStatCard config={configFor(key)} displayValue={0} valuesPending={false} />)
+    renderCard({ key })
 
     expect(screen.getByText(label)).toBeInTheDocument()
   })
 
   it("groups the event count for the locale", () => {
-    renderWithProviders(<AuditStatCard config={configFor("total")} displayValue={12_345} valuesPending={false} />)
+    renderCard({ displayValue: 12_345 })
 
     expect(screen.getByText("12,345")).toBeInTheDocument()
   })
 
   it("cuts a long event count short beside its icon instead of running under it", () => {
-    renderWithProviders(<AuditStatCard config={configFor("total")} displayValue={1_234_567_890} valuesPending={false} />)
+    renderCard({ displayValue: 1_234_567_890 })
 
     expect(screen.getByText("1,234,567,890")).toHaveClass("min-w-0", "truncate")
   })
 
   it("shows zero when no count was supplied", () => {
-    renderWithProviders(<AuditStatCard config={configFor("errors")} valuesPending={false} />)
+    renderCard({ displayValue: undefined, key: "errors" })
 
     expect(screen.getByText("0")).toBeInTheDocument()
   })
 
   it("hides the count behind a placeholder while loading", () => {
-    renderWithProviders(<AuditStatCard config={configFor("total")} displayValue={12_345} valuesPending />)
+    renderCard({ displayValue: 12_345, valuesPending: true })
 
     expect(screen.queryByText("12,345")).not.toBeInTheDocument()
   })
 
   it("shows the caption it was given", () => {
-    renderWithProviders(<AuditStatCard caption="12% of total" config={configFor("warnings")} displayValue={12} valuesPending={false} />)
+    renderCard({ caption: "12% of total", displayValue: 12, key: "warnings" })
 
     expect(screen.getByText("12% of total")).toBeInTheDocument()
   })
-
-  it("is not a button without a filter handler", () => {
-    renderWithProviders(<AuditStatCard config={configFor("warnings")} displayValue={12} valuesPending={false} />)
-
-    expect(screen.queryByRole("button")).not.toBeInTheDocument()
-  })
-
-  it("does not make the today card pressable from the severity handler alone", () => {
-    renderWithProviders(<AuditStatCard config={configFor("today")} displayValue={4} onFilter={createSeveritySpy()} valuesPending={false} />)
-
-    expect(screen.queryByRole("button")).not.toBeInTheDocument()
-  })
 })
 
-describe("AuditStatCard severity filtering", () => {
-  it("shows the total card as active when nothing is filtered", () => {
-    renderWithProviders(
-      <AuditStatCard config={configFor("total")} displayValue={120} onFilter={createSeveritySpy()} valuesPending={false} />,
-    )
-
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true")
+describe("AuditStatCard filtering", () => {
+  it("shows itself pressed while its filter is the one applied", () => {
+    expect(renderCard({ isActive: true }).button).toHaveAttribute("aria-pressed", "true")
   })
 
-  it("shows the total card as inactive while a severity is filtered", () => {
-    renderWithProviders(
-      <AuditStatCard
-        activeSeverityFilter="error"
-        config={configFor("total")}
-        displayValue={120}
-        onFilter={createSeveritySpy()}
-        valuesPending={false}
-      />,
-    )
-
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false")
+  it("shows itself released while another filter is applied", () => {
+    expect(renderCard({ isActive: false }).button).toHaveAttribute("aria-pressed", "false")
   })
 
-  it("shows the total card as inactive while today is filtered", () => {
-    renderWithProviders(
-      <AuditStatCard
-        activeTodayFilter
-        config={configFor("total")}
-        displayValue={120}
-        onFilter={createSeveritySpy()}
-        valuesPending={false}
-      />,
-    )
-
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false")
-  })
-
-  it("clears the severity filter when the total card is pressed", () => {
-    const onFilter = createSeveritySpy()
-    renderWithProviders(
-      <AuditStatCard
-        activeSeverityFilter="error"
-        config={configFor("total")}
-        displayValue={120}
-        onFilter={onFilter}
-        valuesPending={false}
-      />,
-    )
-    fireEvent.click(screen.getByRole("button"))
-
-    expect(onFilter).toHaveBeenCalledWith()
-  })
-
-  it("applies the warning severity when its card is pressed", () => {
-    const onFilter = createSeveritySpy()
-    renderWithProviders(<AuditStatCard config={configFor("warnings")} displayValue={12} onFilter={onFilter} valuesPending={false} />)
-    fireEvent.click(screen.getByRole("button"))
-
-    expect(onFilter).toHaveBeenCalledWith("warning")
-  })
-
-  it("applies the error severity when its card is pressed", () => {
-    const onFilter = createSeveritySpy()
-    renderWithProviders(<AuditStatCard config={configFor("errors")} displayValue={3} onFilter={onFilter} valuesPending={false} />)
-    fireEvent.click(screen.getByRole("button"))
-
-    expect(onFilter).toHaveBeenCalledWith("error")
-  })
-
-  it("clears the severity when the already active card is pressed again", () => {
-    const onFilter = createSeveritySpy()
-    renderWithProviders(
-      <AuditStatCard
-        activeSeverityFilter="error"
-        config={configFor("errors")}
-        displayValue={3}
-        onFilter={onFilter}
-        valuesPending={false}
-      />,
-    )
-    const button = screen.getByRole("button")
-
-    expect(button).toHaveAttribute("aria-pressed", "true")
+  it("filters when pressed", () => {
+    const { button, onFilter } = renderCard({ key: "warnings" })
 
     fireEvent.click(button)
 
-    expect(onFilter).toHaveBeenCalledWith()
+    expect(onFilter).toHaveBeenCalledOnce()
   })
 
-  it("leaves a severity card inactive when a different severity is filtered", () => {
-    renderWithProviders(
-      <AuditStatCard
-        activeSeverityFilter="warning"
-        config={configFor("errors")}
-        displayValue={3}
-        onFilter={createSeveritySpy()}
-        valuesPending={false}
-      />,
-    )
+  it("still filters while its count is loading, marking only the count as busy", () => {
+    const { button, onFilter } = renderCard({ key: "today", valuesPending: true })
 
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false")
-  })
-})
-
-describe("AuditStatCard today filtering", () => {
-  it("becomes pressable once a today handler is supplied", () => {
-    renderWithProviders(
-      <AuditStatCard config={configFor("today")} displayValue={4} onTodayFilter={createTodaySpy()} valuesPending={false} />,
-    )
-
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "false")
-  })
-
-  it("reflects the today filter being on", () => {
-    renderWithProviders(
-      <AuditStatCard
-        activeTodayFilter
-        config={configFor("today")}
-        displayValue={4}
-        onTodayFilter={createTodaySpy()}
-        valuesPending={false}
-      />,
-    )
-
-    expect(screen.getByRole("button")).toHaveAttribute("aria-pressed", "true")
-  })
-
-  it("toggles the today filter rather than a severity", () => {
-    const onFilter = createSeveritySpy()
-    const onTodayFilter = createTodaySpy()
-    renderWithProviders(
-      <AuditStatCard
-        config={configFor("today")}
-        displayValue={4}
-        onFilter={onFilter}
-        onTodayFilter={onTodayFilter}
-        valuesPending={false}
-      />,
-    )
-    fireEvent.click(screen.getByRole("button"))
-
-    expect(onTodayFilter).toHaveBeenCalledTimes(1)
-    expect(onFilter).not.toHaveBeenCalled()
-  })
-
-  it("refuses to filter while the counts are still loading", () => {
-    const onTodayFilter = createTodaySpy()
-    renderWithProviders(<AuditStatCard config={configFor("today")} displayValue={4} onTodayFilter={onTodayFilter} valuesPending />)
-    const button = screen.getByRole("button")
-
-    expect(button).toBeDisabled()
+    expect(button).toBeEnabled()
     expect(button).toHaveAttribute("aria-busy", "true")
 
     fireEvent.click(button)
 
-    expect(onTodayFilter).not.toHaveBeenCalled()
+    expect(onFilter).toHaveBeenCalledOnce()
   })
 })

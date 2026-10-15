@@ -1,9 +1,9 @@
-import { type JSX, useCallback } from "react"
+import { type JSX } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { useTranslations } from "use-intl/react"
 
-import { type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
+import { resolveAuditLogToday } from "~/src/modules/audit-log/audit-log.utils"
 import { getAuditLogStatsQuery } from "~/src/modules/audit-log/use-cases/get-audit-log-stats"
 
 import { AUDIT_STAT_CARDS, type AuditStatKey } from "~/src/presentation/components/custom/pages/admin/audit/audit-stats.config"
@@ -11,9 +11,10 @@ import { AuditStatCard } from "~/src/presentation/components/custom/pages/admin/
 import { useAuditDataGridContext } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-data-grid"
 import { useAuditLogToday } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-log-today"
 import {
-  buildAuditTodayCreatedAtFilter,
-  isAuditTodayCreatedAtFilter,
-} from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-today-date-filter"
+  ALL_AUDIT_EVENTS_FILTERS,
+  buildAuditStatCardFilters,
+  isAuditStatCardFilterActive,
+} from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-stat-card-filters"
 
 const buildAuditStatCaption = ({
   key,
@@ -46,34 +47,6 @@ const buildAuditStatCaption = ({
   })
 }
 
-const resolveStatCardFilterHandlers = (
-  key: AuditStatKey,
-  handlers: Readonly<{
-    applySeverityFilter: (severity?: AuditLogSeverity) => void
-    applyTodayFilter: () => void
-    applyTotalFilter: () => void
-  }>,
-): Readonly<{
-  onFilter?: (severity?: AuditLogSeverity) => void
-  onTodayFilter?: () => void
-}> => {
-  if (key === "today") {
-    return {
-      onTodayFilter: handlers.applyTodayFilter,
-    }
-  }
-
-  if (key === "total") {
-    return {
-      onFilter: handlers.applyTotalFilter,
-    }
-  }
-
-  return {
-    onFilter: handlers.applySeverityFilter,
-  }
-}
-
 const resolveStatValue = (
   key: (typeof AUDIT_STAT_CARDS)[number]["key"],
   stats: {
@@ -102,9 +75,9 @@ const resolveStatValue = (
 export const AuditStats = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const { activeDateFilter, activeSeverityFilter, applyAuditFilter } = useAuditDataGridContext()
-  const { data, isFetching, isStale } = useQuery(getAuditLogStatsQuery(useAuditLogToday()))
-  const valuesPending = isFetching && isStale
-  const activeTodayFilter = isAuditTodayCreatedAtFilter(activeDateFilter)
+  const today = useAuditLogToday()
+  const { data, isPending } = useQuery(getAuditLogStatsQuery(today))
+  const activeFilters = { createdAt: activeDateFilter, severity: activeSeverityFilter }
   const stats = {
     errorCount: data?.errorCount ?? 0,
     todayCount: data?.todayCount ?? 0,
@@ -112,33 +85,12 @@ export const AuditStats = (): JSX.Element => {
     warningCount: data?.warningCount ?? 0,
   }
 
-  const applySeverityFilter = useCallback(
-    (severity?: AuditLogSeverity) => {
-      applyAuditFilter({
-        severity,
-      })
-    },
-    [applyAuditFilter],
-  )
-
-  const applyTotalFilter = useCallback(() => {
-    applyAuditFilter({
-      createdAt: undefined,
-      severity: undefined,
-    })
-  }, [applyAuditFilter])
-
-  const applyTodayFilter = useCallback(() => {
-    applyAuditFilter({
-      createdAt: activeTodayFilter ? undefined : buildAuditTodayCreatedAtFilter(),
-    })
-  }, [activeTodayFilter, applyAuditFilter])
-
   return (
     <div className="grid shrink-0 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {AUDIT_STAT_CARDS.map((config) => {
         const value = resolveStatValue(config.key, stats)
-        const caption = valuesPending
+        const isActive = isAuditStatCardFilterActive(buildAuditStatCardFilters(config, today), activeFilters)
+        const caption = isPending
           ? undefined
           : buildAuditStatCaption({
               key: config.key,
@@ -146,23 +98,18 @@ export const AuditStats = (): JSX.Element => {
               t,
               value,
             })
-        const { onFilter, onTodayFilter } = resolveStatCardFilterHandlers(config.key, {
-          applySeverityFilter,
-          applyTodayFilter,
-          applyTotalFilter,
-        })
 
         return (
           <AuditStatCard
             key={config.key}
-            activeSeverityFilter={activeSeverityFilter}
-            activeTodayFilter={activeTodayFilter}
             caption={caption}
             config={config}
-            displayValue={valuesPending ? undefined : value}
-            onFilter={onFilter}
-            onTodayFilter={onTodayFilter}
-            valuesPending={valuesPending}
+            displayValue={isPending ? undefined : value}
+            isActive={isActive}
+            onFilter={() => {
+              applyAuditFilter(isActive ? ALL_AUDIT_EVENTS_FILTERS : buildAuditStatCardFilters(config, resolveAuditLogToday()))
+            }}
+            valuesPending={isPending}
           />
         )
       })}
