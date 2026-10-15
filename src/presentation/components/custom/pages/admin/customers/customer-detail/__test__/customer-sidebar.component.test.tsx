@@ -89,7 +89,7 @@ describe("CustomerSidebar profile", () => {
       />,
     )
 
-    expect(screen.getByText("anna@example.com")).toBeInTheDocument()
+    expect(screen.getByText("anna@example.com")).toHaveAttribute("title", "anna@example.com")
     expect(screen.getByText("+48512345678")).toBeInTheDocument()
     expect(screen.getByText("Krucza 12/4, 00-548 Warszawa, PL")).toBeInTheDocument()
     expect(screen.getByText("Last active 2 hours ago")).toBeInTheDocument()

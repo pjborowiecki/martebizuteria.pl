@@ -41,6 +41,12 @@ describe("ContentEditor", () => {
     expect(within(textbox).getByText("14 days").closest("strong")).not.toBeNull()
   })
 
+  it("gives the text a narrower margin on phones than on wider screens", async () => {
+    const { textbox } = await renderEditor()
+
+    expect(textbox).toHaveClass("px-4", "py-5", "sm:px-8", "sm:py-7")
+  })
+
   it("offers only the formatting the storefront can show, in the admin's language", async () => {
     const { toolbar } = await renderEditor()
     const labels = [...toolbar.querySelectorAll("[aria-label]")].map((control) => control.getAttribute("aria-label"))

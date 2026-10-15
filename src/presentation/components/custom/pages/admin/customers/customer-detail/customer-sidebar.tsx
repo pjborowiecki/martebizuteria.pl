@@ -14,6 +14,7 @@ import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/presentation/components/shadcn/tooltip"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import {
   CUSTOMER_DETAIL_CARD_CLASS,
   CUSTOMER_DETAIL_COLUMN_CLASS,
@@ -23,7 +24,7 @@ import { CustomerTimelineCard } from "~/src/presentation/components/custom/pages
 export const CustomerSidebar = ({ customer }: CustomerSidebarProps): JSX.Element => (
   <div className={CUSTOMER_DETAIL_COLUMN_CLASS}>
     <Card className={cn("shrink-0", CUSTOMER_DETAIL_CARD_CLASS)}>
-      <CardContent className="p-5">
+      <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
         <CustomerIdentity customer={customer} />
         <Separator className={SECTION_SEPARATOR_CLASS} />
         <CustomerFacts customer={customer} />
@@ -75,7 +76,9 @@ const CustomerFacts = ({ customer }: CustomerSidebarProps): JSX.Element => {
     <div className="space-y-2.5">
       <div className="flex items-center gap-3 text-sm">
         <Mail className="size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />
-        <span className="truncate text-muted-foreground">{customer.email}</span>
+        <span className="truncate text-muted-foreground" title={customer.email}>
+          {customer.email}
+        </span>
       </div>
       <div className="flex items-center gap-3 text-sm">
         <Phone className="size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.5} />

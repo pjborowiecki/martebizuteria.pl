@@ -10,7 +10,7 @@ import { ContentEditorToolbar } from "~/src/presentation/components/custom/pages
 import { useContentEditorTranslation } from "~/src/presentation/components/custom/pages/admin/content/hooks/use-content-editor-translation"
 import { CONTENT_PROSE_CLASS } from "~/src/presentation/components/custom/pages/content-page/content-page.styles"
 
-const EDITABLE_CLASS = cn(CONTENT_PROSE_CLASS, "min-h-96 px-8 py-7")
+const EDITABLE_CLASS = cn(CONTENT_PROSE_CLASS, "min-h-96 px-4 py-5 sm:px-8 sm:py-7")
 
 const PLUGINS = [...CONTENT_EDITOR_PLUGINS, toolbarPlugin({ toolbarContents: () => <ContentEditorToolbar /> })]
 
