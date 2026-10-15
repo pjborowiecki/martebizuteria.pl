@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event"
 import { useFormContext } from "react-hook-form"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { TestProviders, renderWithProviders } from "~/src/platform/testing/lib/render"
 
 const { createCompleteProduct, setAllProductAttributes, toastError, toastSuccess, updateCompleteProduct, validateProductSkus } = vi.hoisted(
   () => ({
@@ -176,6 +176,45 @@ const EditHarness = ({ values = formValues() }: Readonly<{ values?: ProductFormV
     </ProductFormProvider>
   </CatalogFormLocaleControlsProvider>
 )
+
+const HandleField = (): JSX.Element => {
+  const { register, setError } = useFormContext<ProductFormValues>()
+
+  return (
+    <>
+      <input aria-label="Handle" {...register("handle")} />
+      <button
+        onClick={() => {
+          setError("handle", { message: "Slug taken" })
+        }}
+        type="button"
+      >
+        reject handle
+      </button>
+    </>
+  )
+}
+
+const RefetchHarness = ({ product }: Readonly<{ product: AdminProductDetail }>): JSX.Element => (
+  <CatalogFormLocaleControlsProvider>
+    <ProductFormProvider initialProduct={product} mode="edit" onDismiss={vi.fn<() => void>()} open>
+      <HandleField />
+      <Probe />
+    </ProductFormProvider>
+  </CatalogFormLocaleControlsProvider>
+)
+
+const renderRefetchable = () => {
+  const view = renderWithProviders(<RefetchHarness product={productDetail()} />)
+
+  return (product: AdminProductDetail) => {
+    view.rerender(
+      <TestProviders queryClient={view.queryClient} router={view.router}>
+        <RefetchHarness product={product} />
+      </TestProviders>,
+    )
+  }
+}
 
 const testQueryClient = () => new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
 
@@ -668,5 +707,27 @@ describe("ProductFormProvider repeated submissions", () => {
       expect(toastSuccess).toHaveBeenCalledTimes(1)
     })
     expect(toastError).not.toHaveBeenCalled()
+  })
+})
+
+describe("ProductFormProvider when the open product is fetched again", () => {
+  it("keeps what the admin typed and the error under it, so a catalogue refresh cannot undo an edit", async () => {
+    const refetch = renderRefetchable()
+    await userEvent.clear(screen.getByRole("textbox", { name: "Handle" }))
+    await userEvent.type(screen.getByRole("textbox", { name: "Handle" }), "onyx-necklace")
+    await userEvent.click(screen.getByRole("button", { name: "reject handle" }))
+
+    refetch({ ...productDetail(), updatedAt: new Date(AT.getTime() + 1000) })
+
+    expect(screen.getByRole("textbox", { name: "Handle" })).toHaveValue("onyx-necklace")
+    expect(screen.getByTestId("handle-error")).toHaveTextContent("Slug taken")
+  })
+
+  it("takes the product's fresh values while the admin has changed nothing", () => {
+    const refetch = renderRefetchable()
+
+    refetch({ ...productDetail(), handle: "srebrny-pierscionek-2" })
+
+    expect(screen.getByRole("textbox", { name: "Handle" })).toHaveValue("srebrny-pierscionek-2")
   })
 })
