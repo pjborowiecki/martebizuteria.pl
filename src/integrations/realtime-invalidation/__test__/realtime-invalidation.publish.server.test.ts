@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import {
   scheduleAdminAuditLogInvalidation,
   scheduleAdminCustomersInvalidation,
+  scheduleAdminNewsletterSubscribersInvalidation,
   scheduleAdminOrdersInvalidation,
   scheduleCategoryCatalogInvalidation,
   scheduleCollectionCatalogInvalidation,
@@ -24,6 +25,7 @@ import {
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
+import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter/newsletter.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
 import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
@@ -173,6 +175,11 @@ describe("catalog invalidation scheduling", () => {
     ],
     ["audit log", scheduleAdminAuditLogInvalidation, [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS]],
     ["customers", scheduleAdminCustomersInvalidation, [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE]],
+    [
+      "newsletter subscribers",
+      scheduleAdminNewsletterSubscribersInvalidation,
+      [NEWSLETTER_QUERY_KEYS.ADMIN.PAGE, NEWSLETTER_QUERY_KEYS.ADMIN.STATS],
+    ],
     ["orders", scheduleAdminOrdersInvalidation, [ORDER_QUERY_KEYS.ADMIN.ORDERS]],
   ])("keeps the %s invalidation off the storefront hub", async (_name, schedule, expected) => {
     schedule()
@@ -230,6 +237,11 @@ describe("catalog invalidation scheduling", () => {
     ["attribute", scheduleProductAttributeCatalogInvalidation, { admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL] }],
     ["audit log", scheduleAdminAuditLogInvalidation, { admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] }],
     ["customers", scheduleAdminCustomersInvalidation, { admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS] }],
+    [
+      "newsletter subscribers",
+      scheduleAdminNewsletterSubscribersInvalidation,
+      { admin: [NEWSLETTER_QUERY_KEYS.ADMIN.PAGE, NEWSLETTER_QUERY_KEYS.ADMIN.STATS] },
+    ],
     ["orders", scheduleAdminOrdersInvalidation, { admin: [ORDER_QUERY_KEYS.ADMIN.ORDERS] }],
   ])("resolves the %s topics to the exact keys a subscribed tab invalidates", async (_name, schedule, expected) => {
     schedule()

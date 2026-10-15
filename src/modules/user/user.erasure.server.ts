@@ -1,7 +1,10 @@
 import { eq, inArray, or } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
-import { scheduleAdminAuditLogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
+import {
+  scheduleAdminAuditLogInvalidation,
+  scheduleAdminNewsletterSubscribersInvalidation,
+} from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { deleteStripeCustomer } from "~/src/integrations/stripe/stripe.customer.server"
 
 import { recordCustomerDeletionFailedAudit } from "~/src/modules/audit-log/audit-log.events.server"
@@ -27,6 +30,7 @@ export const eraseAccountData = async ({ email, id }: ErasedAccount): Promise<bo
     db.delete(newsletterSubscriber).where(accountSubscription),
   ])
   scheduleAdminAuditLogInvalidation()
+  scheduleAdminNewsletterSubscribersInvalidation()
 
   return true
 }

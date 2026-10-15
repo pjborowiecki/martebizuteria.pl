@@ -55,7 +55,7 @@ A topic that falls under a subscription is invalidated as itself: `["admin", "pr
 
 ## Subscriptions
 
-`ADMIN_REALTIME_QUERY_PREFIXES` has 16 entries: the audit log page and stats, admin orders, admin customers, the `ALL`/`STATS` pair for categories, collections, products and product attributes, the content page `ADMIN.ALL`/`ADMIN.BY_HANDLE` pair, the store setting `ADMIN.SALES`, and the newsletter campaign `ADMIN.LIST`. `STOREFRONT_REALTIME_QUERY_PREFIXES` has 12: the product keys (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), cart availability, the category and collection `ALL`/`BY_HANDLE` pairs, the content page `BY_HANDLE`, and the store setting `SALES`.
+`ADMIN_REALTIME_QUERY_PREFIXES` has 18 entries: the audit log page and stats, admin orders, admin customers, the `ALL`/`STATS` pair for categories, collections, products and product attributes, the content page `ADMIN.ALL`/`ADMIN.BY_HANDLE` pair, the store setting `ADMIN.SALES`, the newsletter campaign `ADMIN.LIST`, and the newsletter subscriber `ADMIN.PAGE`/`ADMIN.STATS` pair. `STOREFRONT_REALTIME_QUERY_PREFIXES` has 12: the product keys (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), cart availability, the category and collection `ALL`/`BY_HANDLE` pairs, the content page `BY_HANDLE`, and the store setting `SALES`.
 
 Both lists are built from the modules' own `*_QUERY_KEYS` constants and typed `as const satisfies readonly QueryKey[]`, so a renamed key is a type error rather than a silently dead subscription.
 
@@ -63,16 +63,17 @@ Both lists are built from the modules' own `*_QUERY_KEYS` constants and typed `a
 
 `realtime-invalidation.catalog.server.ts` exposes the eight publishers the domain layer calls, each naming the audiences it affects:
 
-| Publisher                                     | Admin keys                                     | Storefront keys                                                                  |
-| --------------------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| `scheduleProductCatalogInvalidation`          | product `ADMIN.ALL`, `ADMIN.STATS`             | the five product keys plus cart availability                                     |
-| `scheduleCategoryCatalogInvalidation`         | category `ADMIN.ALL`, `ADMIN.STATS`            | category `ALL`, `BY_HANDLE`                                                      |
-| `scheduleCollectionCatalogInvalidation`       | collection `ADMIN.ALL`, `ADMIN.STATS`          | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
-| `scheduleContentPageInvalidation`             | content page `ADMIN.ALL`, `ADMIN.BY_HANDLE`    | content page `BY_HANDLE`                                                         |
-| `scheduleProductAttributeCatalogInvalidation` | attribute `ADMIN.ALL`, `ADMIN.STATS`           | —                                                                                |
-| `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                                                |
-| `scheduleAdminOrdersInvalidation`             | order `ADMIN.ORDERS`                           | —                                                                                |
-| `scheduleSalesStatusInvalidation`             | store setting `ADMIN.SALES`                    | store setting `SALES`                                                            |
+| Publisher                                        | Admin keys                                     | Storefront keys                                                                  |
+| ------------------------------------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------- |
+| `scheduleProductCatalogInvalidation`             | product `ADMIN.ALL`, `ADMIN.STATS`             | the five product keys plus cart availability                                     |
+| `scheduleCategoryCatalogInvalidation`            | category `ADMIN.ALL`, `ADMIN.STATS`            | category `ALL`, `BY_HANDLE`                                                      |
+| `scheduleCollectionCatalogInvalidation`          | collection `ADMIN.ALL`, `ADMIN.STATS`          | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
+| `scheduleContentPageInvalidation`                | content page `ADMIN.ALL`, `ADMIN.BY_HANDLE`    | content page `BY_HANDLE`                                                         |
+| `scheduleProductAttributeCatalogInvalidation`    | attribute `ADMIN.ALL`, `ADMIN.STATS`           | —                                                                                |
+| `scheduleAdminCustomersInvalidation`             | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                                                |
+| `scheduleAdminNewsletterSubscribersInvalidation` | newsletter `ADMIN.PAGE`, `ADMIN.STATS`         | —                                                                                |
+| `scheduleAdminOrdersInvalidation`                | order `ADMIN.ORDERS`                           | —                                                                                |
+| `scheduleSalesStatusInvalidation`                | store setting `ADMIN.SALES`                    | store setting `SALES`                                                            |
 
 The `schedule*` form hands the publish to `scheduleBackgroundWork`, so it runs under `waitUntil` and never delays the response. `publishRealtimeInvalidation` is the awaited form, used where there is no request to return from — the audit-log queue consumer awaits it after a successful batch insert.
 

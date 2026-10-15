@@ -15,10 +15,10 @@ It is deliberately _not_ a data channel. Nothing but query keys crosses the wire
 export const REALTIME_INVALIDATION_HUB = { ADMIN: "admin", STOREFRONT: "storefront" } as const
 ```
 
-| Hub          | Subscribed prefixes                                                                                                                                                                                                                                                                                                               |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — the audit log page and stats, admin orders, admin customers, the `ALL` and `STATS` keys of categories, collections, products and product attributes, the content page `ADMIN.ALL` and `ADMIN.BY_HANDLE` keys, the store setting `ADMIN.SALES` key, and the newsletter campaign `ADMIN.LIST` key |
-| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY`, category and collection `ALL` / `BY_HANDLE`, content page `BY_HANDLE`, and store setting `SALES`                                                                        |
+| Hub          | Subscribed prefixes                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — the audit log page and stats, admin orders, admin customers, the `ALL` and `STATS` keys of categories, collections, products and product attributes, the content page `ADMIN.ALL` and `ADMIN.BY_HANDLE` keys, the store setting `ADMIN.SALES` key, the newsletter campaign `ADMIN.LIST` key, and the newsletter subscriber `ADMIN.PAGE` and `ADMIN.STATS` keys |
+| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY`, category and collection `ALL` / `BY_HANDLE`, content page `BY_HANDLE`, and store setting `SALES`                                                                                                                                       |
 
 Both are `as const satisfies readonly QueryKey[]`, so a renamed key constant is a type error rather than a silently dead subscription. The split matters for privacy as well as noise: the storefront hub never carries an `["admin", …]` prefix, so a customer's browser learns nothing about admin activity.
 
@@ -78,16 +78,17 @@ export const scheduleRealtimeInvalidation = (input: PublishRealtimeInvalidationI
 
 Server code almost never calls either of these directly. `realtime-invalidation.catalog.server.ts` provides the named intentions instead:
 
-| Function                                        | Admin keys invalidated             | Storefront keys invalidated                                                                                       |
-| ----------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `scheduleProductCatalogInvalidation()`          | product `ALL`, `STATS`             | product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY` |
-| `scheduleCategoryCatalogInvalidation()`         | category `ALL`, `STATS`            | category `ALL`, `BY_HANDLE`                                                                                       |
-| `scheduleCollectionCatalogInvalidation()`       | collection `ALL`, `STATS`          | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE`                                  |
-| `scheduleContentPageInvalidation()`             | content-page `ALL`, `BY_HANDLE`    | content-page `BY_HANDLE`                                                                                          |
-| `scheduleProductAttributeCatalogInvalidation()` | product-attribute `ALL`, `STATS`   | —                                                                                                                 |
-| `scheduleAdminCustomersInvalidation()`          | user `CUSTOMERS`, `CUSTOMERS_PAGE` | —                                                                                                                 |
-| `scheduleAdminOrdersInvalidation()`             | order `ORDERS`                     | —                                                                                                                 |
-| `scheduleSalesStatusInvalidation()`             | store-setting `ADMIN.SALES`        | store-setting `SALES`                                                                                             |
+| Function                                           | Admin keys invalidated                 | Storefront keys invalidated                                                                                       |
+| -------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `scheduleProductCatalogInvalidation()`             | product `ALL`, `STATS`                 | product `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, cart `AVAILABILITY` |
+| `scheduleCategoryCatalogInvalidation()`            | category `ALL`, `STATS`                | category `ALL`, `BY_HANDLE`                                                                                       |
+| `scheduleCollectionCatalogInvalidation()`          | collection `ALL`, `STATS`              | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE`                                  |
+| `scheduleContentPageInvalidation()`                | content-page `ALL`, `BY_HANDLE`        | content-page `BY_HANDLE`                                                                                          |
+| `scheduleProductAttributeCatalogInvalidation()`    | product-attribute `ALL`, `STATS`       | —                                                                                                                 |
+| `scheduleAdminCustomersInvalidation()`             | user `CUSTOMERS`, `CUSTOMERS_PAGE`     | —                                                                                                                 |
+| `scheduleAdminNewsletterSubscribersInvalidation()` | newsletter `ADMIN.PAGE`, `ADMIN.STATS` | —                                                                                                                 |
+| `scheduleAdminOrdersInvalidation()`                | order `ORDERS`                         | —                                                                                                                 |
+| `scheduleSalesStatusInvalidation()`                | store-setting `ADMIN.SALES`            | store-setting `SALES`                                                                                             |
 
 Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefront's new-arrivals key, because the landing section is driven by the `nowosci` collection, and the catalogue page key, because a collection's `status` and `handle` decide which products its storefront grid lists; and that `scheduleProductCatalogInvalidation` invalidates the cart's availability key, because a stock change can make a cart line unpurchasable.
 
@@ -100,7 +101,7 @@ Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefron
 - **Identity.** The `user` create, update and delete hooks in `auth.hooks.server.ts` call `scheduleAdminCustomersInvalidation()`.
 - **Content pages.** `update-content-page.ts` calls `scheduleContentPageInvalidation()` after a save.
 - **Sales switch.** `set-sales-paused.ts` calls `scheduleSalesStatusInvalidation()` when an admin pauses or resumes sales, so the paused notice appears or goes in every open storefront tab and other admin tabs move their switch.
-- **Newsletter.** `send-newsletter-campaign.ts` refreshes the admin campaign list when a newsletter starts, and `newsletter-campaign.queue.server.ts` after every batch it sends and when it stops a campaign, so the Marketing page shows each newsletter's progress.
+- **Newsletter.** `send-newsletter-campaign.ts` refreshes the admin campaign list when a newsletter starts, and `newsletter-campaign.queue.server.ts` after every batch it sends and when it stops a campaign, so the Marketing page shows each newsletter's progress. `scheduleAdminNewsletterSubscribersInvalidation()` is called on every change to a subscriber row: by `subscribe-to-newsletter.ts` after it saves a sign-up, `confirm-newsletter-subscription.ts` after a confirmation, `unsubscribeSubscriber` in `newsletter.unsubscribe.server.ts`, which the unsubscribe link, the one-click route, the account preferences and the admin all use, `erase-newsletter-subscriber.ts`, and `eraseAccountData`, so open admin tabs update the subscriber list and its counts as shoppers sign up, confirm and leave.
 - **Audit.** `audit-log.queue.server.ts` and `delete-audit-logs.ts`.
 
 ## The Durable Object

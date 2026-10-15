@@ -26,7 +26,7 @@ useRealtimeQuerySync({
 })
 ```
 
-`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) lists fifteen key prefixes — audit log page and stats, admin orders, admin customers, the admin all/stats keys for categories, collections, products and product attributes, the admin all/by-handle keys for content pages, and the admin sales status. A mutation anywhere in the console refreshes every other open console tab.
+`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) lists eighteen key prefixes — audit log page and stats, admin orders, admin customers, the admin all/stats keys for categories, collections, products and product attributes, the admin all/by-handle keys for content pages, the admin sales status, the newsletter campaign list, and the newsletter subscriber page and stats. A mutation anywhere in the console refreshes every other open console tab.
 
 The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` from the `sidebar_state` cookie (`src/presentation/theme/sidebar-preference.ts`), and an inline `SIDEBAR_INIT_SCRIPT` copies the `localStorage` value into that cookie before hydration so the sidebar does not flash.
 

@@ -13,10 +13,15 @@ const accessors = vi.hoisted(() => ({
   updateSubscriberById: vi.fn<(id: string, values: Record<string, unknown>) => Promise<void>>(),
 }))
 
+const scheduleAdminNewsletterSubscribersInvalidation = vi.hoisted(() => vi.fn<() => void>())
+
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
   authorized: () => ({}),
   withRateLimit: () => ({}),
+}))
+vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
+  scheduleAdminNewsletterSubscribersInvalidation,
 }))
 vi.mock("~/src/modules/newsletter/newsletter.accessors", () => ({
   getSubscriberByEmail: accessors.getSubscriberByEmail,
@@ -87,6 +92,14 @@ describe("unsubscribeOwnNewsletter", () => {
     expect(accessors.updateSubscriberById.mock.calls[0]?.[1]).toMatchObject({ status: "unsubscribed" })
   })
 
+  it("refreshes the admin subscriber list once the address is off it", async () => {
+    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "confirmed" })
+
+    await unsubscribeOwnNewsletter()
+
+    expect(scheduleAdminNewsletterSubscribersInvalidation).toHaveBeenCalledOnce()
+  })
+
   it("takes a pending signup off the list as well", async () => {
     accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "pending" })
 
@@ -98,6 +111,7 @@ describe("unsubscribeOwnNewsletter", () => {
 
     await expect(unsubscribeOwnNewsletter()).resolves.toStrictEqual({ unsubscribed: false })
     expect(accessors.updateSubscriberById).not.toHaveBeenCalled()
+    expect(scheduleAdminNewsletterSubscribersInvalidation).not.toHaveBeenCalled()
   })
 
   it("writes nothing for someone who never signed up", async () => {

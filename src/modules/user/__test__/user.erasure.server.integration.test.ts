@@ -11,6 +11,7 @@ const effects = vi.hoisted(() => ({
   deleteStripeCustomer: vi.fn<(userId: string) => Promise<void>>(),
   recordCustomerDeletionFailedAudit: vi.fn<(email: string, options?: { detail?: string; resourceId?: string }) => void>(),
   scheduleAdminAuditLogInvalidation: vi.fn<() => void>(),
+  scheduleAdminNewsletterSubscribersInvalidation: vi.fn<() => void>(),
 }))
 
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
@@ -23,6 +24,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({ deleteStripeCustomer: effects.deleteStripeCustomer }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminAuditLogInvalidation: effects.scheduleAdminAuditLogInvalidation,
+  scheduleAdminNewsletterSubscribersInvalidation: effects.scheduleAdminNewsletterSubscribersInvalidation,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordCustomerDeletionFailedAudit: effects.recordCustomerDeletionFailedAudit,
@@ -111,10 +113,11 @@ describe("eraseAccountData", () => {
     expect(remainingIds("newsletter_subscriber")).toStrictEqual(["ola"])
   })
 
-  it("refreshes the admin audit log once the entries are gone", async () => {
+  it("refreshes the admin audit log and subscriber list once the entries are gone", async () => {
     await eraseAccountData(ANNA)
 
     expect(effects.scheduleAdminAuditLogInvalidation).toHaveBeenCalledOnce()
+    expect(effects.scheduleAdminNewsletterSubscribersInvalidation).toHaveBeenCalledOnce()
   })
 
   it("keeps everything and records why when Stripe cannot delete the customer", async () => {
@@ -134,6 +137,7 @@ describe("eraseAccountData", () => {
       expect.any(Error),
     )
     expect(effects.scheduleAdminAuditLogInvalidation).not.toHaveBeenCalled()
+    expect(effects.scheduleAdminNewsletterSubscribersInvalidation).not.toHaveBeenCalled()
     consoleError.mockRestore()
   })
 })

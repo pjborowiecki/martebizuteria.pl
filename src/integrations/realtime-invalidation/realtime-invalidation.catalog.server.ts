@@ -3,6 +3,7 @@ import { scheduleRealtimeInvalidation } from "~/src/integrations/realtime-invali
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
+import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter/newsletter.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
 import { CATEGORY_QUERY_KEYS } from "~/src/modules/product-category/product-category.constants"
@@ -60,6 +61,12 @@ export const scheduleProductAttributeCatalogInvalidation = (): void => {
 export const scheduleAdminCustomersInvalidation = (): void => {
   scheduleRealtimeInvalidation({
     admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE],
+  })
+}
+
+export const scheduleAdminNewsletterSubscribersInvalidation = (): void => {
+  scheduleRealtimeInvalidation({
+    admin: [NEWSLETTER_QUERY_KEYS.ADMIN.PAGE, NEWSLETTER_QUERY_KEYS.ADMIN.STATS],
   })
 }
 

@@ -54,6 +54,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminAuditLogInvalidation: vi.fn(),
   scheduleAdminCustomersInvalidation: vi.fn(),
+  scheduleAdminNewsletterSubscribersInvalidation: vi.fn(),
 }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))

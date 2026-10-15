@@ -389,6 +389,8 @@
       "email_deferred": "Email deferred",
       "email_resend_requested": "Email resend requested",
       "newsletter_sent": "Newsletter sent",
+      "newsletter_subscriber_unsubscribed": "Subscriber unsubscribed",
+      "newsletter_subscriber_erased": "Subscriber data erased",
       "order_cancelled": "Order cancelled",
       "order_delivered": "Order delivered",
       "order_shipped": "Order shipped",
@@ -1117,7 +1119,31 @@
       },
       "rowActions": {
         "copyEmail": "Copy email",
-        "copyEmailToast": "Email copied to clipboard"
+        "copyEmailToast": "Email copied to clipboard",
+        "unsubscribe": "Unsubscribe",
+        "erase": "Erase data"
+      },
+      "unsubscribeDialog": {
+        "title": "Unsubscribe this address?",
+        "description": "{email} will stop receiving the newsletter, just as if they had used the unsubscribe link. No email is sent to them. To come back, they have to sign up and confirm again.",
+        "cancel": "Cancel",
+        "confirm": "Unsubscribe",
+        "successTitle": "Address unsubscribed",
+        "successDescription": "{email} will no longer receive the newsletter.",
+        "errorTitle": "The address could not be unsubscribed"
+      },
+      "eraseDialog": {
+        "title": "Erase this subscriber's data?",
+        "description": "{email} will be removed from the list along with its language, sign-up place and dates, and the audit log entries about its unsubscribing and its failed newsletter emails will be deleted, leaving only the record of the erasure. This cannot be undone. A customer account with this address, and its own entries, stay as they are.",
+        "cancel": "Cancel",
+        "confirm": "Erase data",
+        "successTitle": "Data erased",
+        "successDescription": "{email} is no longer on the subscriber list.",
+        "errorTitle": "The data could not be erased"
+      },
+      "toast": {
+        "errorDescription": "Nothing has changed. Please try again in a moment.",
+        "notFoundDescription": "This address is no longer on the list. The table has been refreshed."
       }
     }
   },

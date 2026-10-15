@@ -6,6 +6,7 @@ import type * as zod from "zod"
 
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { scheduleAdminNewsletterSubscribersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { PUBLIC_EMAIL_KINDS, admitPublicEmail } from "~/src/integrations/resend/resend.public-email-limits.server"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
@@ -60,6 +61,7 @@ const mailSubscriber = async ({
   if (existing === undefined) {
     const token = crypto.randomUUID()
     await insertSubscriber({ email, locale, source, status: NEWSLETTER_STATUS.PENDING, token, userId })
+    scheduleAdminNewsletterSubscribersInvalidation()
 
     return reportDelivery({
       delivery: sendNewsletterConfirmationEmail({ email, locale, origin, token }),
@@ -86,6 +88,7 @@ const mailSubscriber = async ({
     updatedAt: new Date(),
     userId: existing.userId ?? userId,
   })
+  scheduleAdminNewsletterSubscribersInvalidation()
 
   return reportDelivery({
     delivery: sendNewsletterConfirmationEmail({ email, locale, origin, token }),
