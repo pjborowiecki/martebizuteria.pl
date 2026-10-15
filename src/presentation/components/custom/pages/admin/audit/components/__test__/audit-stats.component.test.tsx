@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/react-query"
-import { cleanup, screen } from "@testing-library/react"
+import { act, cleanup, screen, within } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
@@ -37,11 +37,12 @@ vi.mock("~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { AuditStats } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-stats"
-import { buildAuditTodayCreatedAtFilter } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-today-date-filter"
 
 const PAST_MIDNIGHT_IN_POLAND = new Date("2026-10-14T22:30:00.000Z")
 
 const TODAY_IN_POLAND = "2026-10-15"
+
+const TODAY_FILTER = { date: TODAY_IN_POLAND, operator: "on" }
 
 const renderStats = () => {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -52,14 +53,23 @@ const renderStats = () => {
   return renderWithProviders(<AuditStats />, { queryClient })
 }
 
+const card = (name: RegExp): HTMLElement => screen.getByRole("button", { name })
+
+const CARD_LABELS = ["Total events", "Today", "Warnings", "Errors"]
+
+const pressedCards = (): string[] =>
+  CARD_LABELS.filter(
+    (label) => screen.getByRole("button", { name: (name) => name.startsWith(label) }).getAttribute("aria-pressed") === "true",
+  )
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers({ now: PAST_MIDNIGHT_IN_POLAND, toFake: ["Date"] })
-  mocked.statsDays = []
   mocked.pendingForever.current = false
   mocked.context.activeDateFilter = undefined
   mocked.context.activeSeverityFilter = undefined
   mocked.stats = { errorCount: 60, todayCount: 300, totalCount: 1200, warningCount: 240 }
+  mocked.statsDays = []
 })
 
 afterEach(() => {
@@ -120,7 +130,7 @@ describe("AuditStats", () => {
     expect(screen.getAllByText("0")).toHaveLength(4)
   })
 
-  it("disables the cards and shows no figures until the statistics arrive", () => {
+  it("shows no figures until the statistics arrive but still lets every card filter", async () => {
     mocked.pendingForever.current = true
 
     renderStats()
@@ -129,73 +139,102 @@ describe("AuditStats", () => {
     expect(screen.queryByText(/of total/u)).not.toBeInTheDocument()
     for (const button of screen.getAllByRole("button")) {
       expect(button).toHaveAttribute("aria-busy", "true")
-      expect(button).toBeDisabled()
+      expect(button).toBeEnabled()
     }
+
+    await userEvent.click(card(/Today/u))
+
+    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: TODAY_FILTER, severity: undefined })
   })
 })
 
 describe("AuditStats filtering", () => {
-  it("filters by severity from the warnings card", async () => {
+  it("shows only warnings from the warnings card, dropping a date filter another card left", async () => {
+    mocked.context.activeDateFilter = TODAY_FILTER
+
     renderStats()
 
-    await userEvent.click(screen.getByRole("button", { name: /Warnings/u }))
+    await userEvent.click(card(/Warnings/u))
 
-    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ severity: "warning" })
+    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: undefined, severity: "warning" })
   })
 
-  it("filters by severity from the errors card", async () => {
+  it("shows only errors from the errors card", async () => {
     renderStats()
 
-    await userEvent.click(screen.getByRole("button", { name: /Errors/u }))
+    await userEvent.click(card(/Errors/u))
 
-    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ severity: "error" })
+    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: undefined, severity: "error" })
   })
 
-  it("clears the severity when the already active card is pressed again", async () => {
+  it("shows every event again when the pressed severity card is pressed a second time", async () => {
     mocked.context.activeSeverityFilter = "error"
 
     renderStats()
 
-    await userEvent.click(screen.getByRole("button", { name: /Errors/u }))
+    await userEvent.click(card(/Errors/u))
 
-    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ severity: undefined })
+    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: undefined, severity: undefined })
   })
 
-  it("marks the active severity card as pressed", () => {
+  it("marks the active severity card as the only pressed one", () => {
     mocked.context.activeSeverityFilter = "warning"
 
     renderStats()
 
-    expect(screen.getByRole("button", { name: /Warnings/u })).toHaveAttribute("aria-pressed", "true")
-    expect(screen.getByRole("button", { name: /Total events/u })).toHaveAttribute("aria-pressed", "false")
+    expect(pressedCards()).toStrictEqual(["Warnings"])
   })
 
-  it("applies the filter for the day it is in Poland from the today card", async () => {
-    renderStats()
-
-    await userEvent.click(screen.getByRole("button", { name: /Today/u }))
-
-    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: { date: TODAY_IN_POLAND, operator: "on" } })
-  })
-
-  it("clears the date filter when today is already the active filter", async () => {
-    mocked.context.activeDateFilter = buildAuditTodayCreatedAtFilter()
+  it("filters on the day it is in Poland from the today card, dropping a severity another card left", async () => {
+    mocked.context.activeSeverityFilter = "warning"
 
     renderStats()
 
-    expect(screen.getByRole("button", { name: /Today/u })).toHaveAttribute("aria-pressed", "true")
+    await userEvent.click(card(/Today/u))
 
-    await userEvent.click(screen.getByRole("button", { name: /Today/u }))
-
-    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: undefined })
+    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: TODAY_FILTER, severity: undefined })
   })
 
-  it("keeps the today card inactive for a filter on another day", () => {
-    mocked.context.activeDateFilter = { date: "1999-12-31", operator: "on" }
+  it("works out the day when the card is pressed, not when the page was drawn", async () => {
+    renderStats()
+    vi.setSystemTime(new Date("2026-10-15T22:05:00.000Z"))
+
+    await userEvent.click(card(/Today/u))
+
+    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: { date: "2026-10-16", operator: "on" }, severity: undefined })
+  })
+
+  it("shows every event again when today is already the active filter", async () => {
+    mocked.context.activeDateFilter = TODAY_FILTER
 
     renderStats()
 
-    expect(screen.getByRole("button", { name: /Today/u })).toHaveAttribute("aria-pressed", "false")
+    expect(pressedCards()).toStrictEqual(["Today"])
+
+    await userEvent.click(card(/Today/u))
+
+    expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: undefined, severity: undefined })
+  })
+
+  it("presses no card while today's warnings are shown, since no card counts them", () => {
+    mocked.context.activeDateFilter = TODAY_FILTER
+    mocked.context.activeSeverityFilter = "warning"
+
+    renderStats()
+
+    expect(pressedCards()).toStrictEqual([])
+  })
+
+  it.each([
+    ["another day", { date: "1999-12-31", operator: "on" }],
+    ["the first minute of today", { date: `${TODAY_IN_POLAND}T00:00`, operator: "on" }],
+    ["yesterday in UTC", { date: "2026-10-14", operator: "on" }],
+  ])("presses neither the today nor the total card for %s", (_label, filter) => {
+    mocked.context.activeDateFilter = filter
+
+    renderStats()
+
+    expect(pressedCards()).toStrictEqual([])
   })
 
   it("clears both the date and the severity from the total card", async () => {
@@ -203,14 +242,38 @@ describe("AuditStats filtering", () => {
 
     renderStats()
 
-    await userEvent.click(screen.getByRole("button", { name: /Total events/u }))
+    await userEvent.click(card(/Total events/u))
 
     expect(mocked.applyAuditFilter).toHaveBeenCalledWith({ createdAt: undefined, severity: undefined })
   })
 
-  it("marks the total card as active while nothing is filtered", () => {
+  it("marks the total card as the only pressed one while nothing is filtered", () => {
     renderStats()
 
-    expect(screen.getByRole("button", { name: /Total events/u })).toHaveAttribute("aria-pressed", "true")
+    expect(pressedCards()).toStrictEqual(["Total events"])
   })
 })
+
+describe("AuditStats at midnight in Poland", () => {
+  it("counts the new day and lets go of the card pressed for the old one while nothing else happens", () => {
+    vi.useFakeTimers({ now: new Date("2026-10-14T21:59:00.000Z"), toFake: ["Date", "setTimeout", "clearTimeout"] })
+    mocked.context.activeDateFilter = { date: "2026-10-14", operator: "on" }
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    queryClient.setQueryData([...mocked.statsKey, "2026-10-14"], { ...mocked.stats, todayCount: 9 })
+    queryClient.setQueryData([...mocked.statsKey, TODAY_IN_POLAND], { ...mocked.stats, todayCount: 0 })
+    renderWithProviders(<AuditStats />, { queryClient })
+
+    expect(pressedCards()).toStrictEqual(["Today"])
+    expect(within(card(/Today/u)).getByText("9")).toBeInTheDocument()
+
+    act(() => {
+      vi.advanceTimersByTime(MS_PER_MINUTE)
+    })
+
+    expect(mocked.statsDays).toContain(TODAY_IN_POLAND)
+    expect(pressedCards()).toStrictEqual([])
+    expect(within(card(/Today/u)).getByText("0")).toBeInTheDocument()
+  })
+})
+
+const MS_PER_MINUTE = 60_000

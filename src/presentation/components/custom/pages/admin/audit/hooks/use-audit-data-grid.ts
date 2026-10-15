@@ -56,8 +56,8 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
   const pageQueryOptions = listAuditLogsQuery(pageQueryInput)
   const {
     data = EMPTY_AUDIT_PAGE,
-    isFetching,
     isPending,
+    isPlaceholderData,
   } = useQuery({
     ...pageQueryOptions,
     placeholderData: keepPreviousData,
@@ -77,7 +77,7 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
     },
   })
 
-  const showSkeletonRows = isFetching || isPending
+  const showSkeletonRows = isPending || isPlaceholderData
   const columns = useAuditColumns()
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns])
   const resolvedListTotal = data.total ?? listTotalRef.current
