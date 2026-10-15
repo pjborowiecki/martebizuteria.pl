@@ -19,6 +19,7 @@ const mocked = vi.hoisted(() => ({
   updateCheckoutDelivery: vi.fn(),
 }))
 
+vi.mock("cloudflare:workers", () => ({ env: { APP_ENV: "preview" } }))
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: mocked.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: mocked.getRequestSession }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
@@ -185,6 +186,15 @@ describe("handleUpdateCheckoutSession authorization", () => {
     expect(params).not.toHaveProperty("customer")
     expect(mocked.ensureStripeCustomer).not.toHaveBeenCalled()
     expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ userId: undefined }))
+  })
+
+  it("stamps the replacement session and its payment intent with the deployment that keeps the checkout", async () => {
+    await handleUpdateCheckoutSession(updateInput())
+
+    expect(mocked.checkoutSessionsCreate.mock.calls[0]?.[0]).toMatchObject({
+      metadata: { deployment: "martebizuteria-preview" },
+      payment_intent_data: { metadata: { deployment: "martebizuteria-preview" } },
+    })
   })
 
   it("hands a guest's checkout to the account that signed in while it was held, with that account's Stripe customer", async () => {

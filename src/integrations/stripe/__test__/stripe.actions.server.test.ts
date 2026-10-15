@@ -47,6 +47,7 @@ const mocked = vi.hoisted(() => ({
   updateCheckoutDelivery: vi.fn(),
 }))
 
+vi.mock("cloudflare:workers", () => ({ env: { APP_ENV: "preview" } }))
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: mocked.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: mocked.getRequestSession }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
@@ -278,11 +279,12 @@ describe("handleCreateCheckoutSession", () => {
     )
   })
 
-  it("carries the checkout id, catalogue line snapshot, locale and user id in the session metadata", async () => {
+  it("carries the checkout id, catalogue line snapshot, locale, user id and deployment in the session metadata", async () => {
     await handleCreateCheckoutSession(createInput())
 
     const metadata = {
       checkoutId: "checkout-1",
+      deployment: "martebizuteria-preview",
       discountCode: "",
       discountTotal: "0",
       locale: "pl-PL",
@@ -303,7 +305,15 @@ describe("handleCreateCheckoutSession", () => {
 
     await handleCreateCheckoutSession(createInput())
 
-    const metadata = { checkoutId: "checkout-1", discountCode: "", discountTotal: "0", locale: "pl-PL", userId: "", ...EXPECTED_META_ITEMS }
+    const metadata = {
+      checkoutId: "checkout-1",
+      deployment: "martebizuteria-preview",
+      discountCode: "",
+      discountTotal: "0",
+      locale: "pl-PL",
+      userId: "",
+      ...EXPECTED_META_ITEMS,
+    }
 
     const createArgs = mocked.createCheckout.mock.calls[0]?.[0]
 

@@ -3,6 +3,7 @@ import { env } from "cloudflare:workers"
 import { createFileRoute } from "@tanstack/react-router"
 import type StripeType from "stripe"
 
+import { foreignStripeDeployment, stripeDeploymentOf } from "~/src/integrations/stripe/stripe.deployment"
 import { requiredStripeMode } from "~/src/integrations/stripe/stripe.keys"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
@@ -34,6 +35,19 @@ const isFromTheOtherStripeMode = (event: StripeType.Event): boolean => {
   return true
 }
 
+const isFromAnotherDeployment = (event: StripeType.Event): boolean => {
+  const deployment = foreignStripeDeployment(event.data.object, env.APP_ENV)
+  if (deployment === undefined) {
+    return false
+  }
+
+  console.info(
+    `[Stripe] Ignoring event ${event.id} (${event.type}): its checkout belongs to ${deployment}, while ${env.APP_ENV} keeps its checkouts in ${stripeDeploymentOf(env.APP_ENV)}`,
+  )
+
+  return true
+}
+
 export const Route = createFileRoute("/api/webhooks/stripe")({
   server: {
     handlers: {
@@ -51,7 +65,7 @@ export const Route = createFileRoute("/api/webhooks/stripe")({
           return new Response("Webhook Error: Invalid Signature", { status: HTTP_STATUS.BAD_REQUEST })
         }
 
-        if (isFromTheOtherStripeMode(event)) {
+        if (isFromTheOtherStripeMode(event) || (!event.livemode && isFromAnotherDeployment(event))) {
           return Response.json({ received: true })
         }
 

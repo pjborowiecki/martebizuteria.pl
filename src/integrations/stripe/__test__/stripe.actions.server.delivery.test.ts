@@ -34,6 +34,7 @@ const mocked = vi.hoisted(() => ({
     >(),
 }))
 
+vi.mock("cloudflare:workers", () => ({ env: { APP_ENV: "preview" } }))
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: mocked.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: mocked.getRequestSession }))
 vi.mock("~/src/integrations/inpost/inpost.api", () => ({ fetchPointByName: mocked.fetchPointByName }))
