@@ -1,0 +1,18 @@
+{
+  "subject": "Numer przesyłki Twojego zamówienia — M'Arte",
+  "preview": "Twoja paczka jest w drodze. Oto numer, dzięki któremu ją prześledzisz.",
+  "heading": "Numer przesyłki",
+  "message": "Twoje zamówienie jest już w drodze, a my mamy dla Ciebie aktualny numer przesyłki.",
+  "messageSecondary": "Dzięki niemu sprawdzisz, gdzie jest teraz paczka i kiedy do Ciebie dotrze.",
+  "orderLabel": "Numer zamówienia",
+  "carrierLabel": "Przewoźnik",
+  "trackingNumberLabel": "Numer przesyłki",
+  "unavailable": "Niedostępne",
+  "createAccountCta": "Załóż konto i śledź zamówienie",
+  "viewOrderCta": "Zobacz zamówienie",
+  "closingNote": "Jeśli masz pytania dotyczące przesyłki, odpowiedz na tę wiadomość — chętnie pomożemy.",
+  "trackingCta": "Śledź przesyłkę",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

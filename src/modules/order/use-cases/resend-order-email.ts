@@ -19,6 +19,7 @@ import { sendOrderCancelledEmail } from "~/src/modules/order/use-cases/send-orde
 import { sendOrderConfirmationEmail } from "~/src/modules/order/use-cases/send-order-confirmation-email.server"
 import { sendOrderRefundedEmail } from "~/src/modules/order/use-cases/send-order-refunded-email.server"
 import { sendOrderShippedEmail } from "~/src/modules/order/use-cases/send-order-shipped-email.server"
+import { sendOrderTrackingEmail } from "~/src/modules/order/use-cases/send-order-tracking-email.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { resolveRequestOrigin } from "~/src/lib/request"
@@ -36,6 +37,10 @@ const retrieveOrderCheckoutSession = async (orderId: string): Promise<StripeType
 const sendOrderEmailAgain = async (email: Order["email"], orderId: string, origin: string): Promise<boolean> => {
   if (email.kind === ORDER_EMAIL_KIND.SHIPPED) {
     return sendOrderShippedEmail(orderId, origin)
+  }
+
+  if (email.kind === ORDER_EMAIL_KIND.TRACKING) {
+    return sendOrderTrackingEmail({ orderId, origin, trackingNumber: email.trackingNumber })
   }
 
   if (email.kind === ORDER_EMAIL_KIND.CANCELLED) {

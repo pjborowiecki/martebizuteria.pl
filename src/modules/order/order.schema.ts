@@ -42,6 +42,7 @@ export const order = sqliteTable(
     paymentId: text("payment_id").references(() => payment.id, { onDelete: "set null" }),
     restockedAt: timestamp("restocked_at"),
     shippedAt: timestamp("shipped_at"),
+    shippedEmailAt: timestamp("shipped_email_at"),
     shippingTotal: integer("shipping_total").default(0).notNull(),
     status: text("status", {
       enum: ["pending", "processing", "completed", "cancelled", "refunded"],
@@ -52,6 +53,7 @@ export const order = sqliteTable(
     taxBasisPoints: integer("tax_basis_points").default(STANDARD_VAT_BASIS_POINTS).notNull(),
     taxTotal: integer("tax_total").default(0).notNull(),
     total: integer("total").default(0).notNull(),
+    trackingEmailNumber: text("tracking_email_number"),
     trackingNumber: text("tracking_number"),
     trackingUrl: text("tracking_url", { length: 2048 }),
     userId: text("user_id").references(() => user.id, { onDelete: "set null" }),

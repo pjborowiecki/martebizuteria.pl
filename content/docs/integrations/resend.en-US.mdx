@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "The sixteen transactional e-mails and the newsletter, the sender domain they need, how they are composed, and how to preview them."
+description: "The seventeen transactional e-mails and the newsletter, the sender domain they need, how they are composed, and how to preview them."
 ---
 
 Every e-mail the shop sends goes out through Resend. The adapter in `src/integrations/resend/` holds the client, one `sendEmail` helper, the flag that marks a sender unable to send, the limits on e-mails visitors can request and the sender check a deploy runs. Each e-mail is composed and sent by a use case of the module it belongs to, such as `src/modules/order/use-cases/send-order-shipped-email.server.ts`. The React Email templates and the developer preview renderer live in `src/presentation/emails/`, because they are presentation.
@@ -90,7 +90,7 @@ Nothing else asks. The order, shipped, cancelled, refunded, payment-failed, new-
 
 `src/integrations/resend/__test__/resend.public-email-limits.integration.test.ts` runs the limits against a `rate_limit` table: the fourth e-mail of a kind to an address in an hour, the case and spaces of an address, separate kinds and addresses, the hour and the day rolling over, the hash in place of the address, the audit entry for the daily limit, and an unreadable table.
 
-## The sixteen e-mails
+## The seventeen e-mails
 
 | E-mail                        | Template                                                    | Namespace                              | Sent from                                                                                                                                                                                                                          |
 | ----------------------------- | ----------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -100,7 +100,8 @@ Nothing else asks. The order, shipped, cancelled, refunded, payment-failed, new-
 | Password changed              | `src/presentation/emails/password-changed.tsx`              | `emails.password-changed`              | `sendPasswordChangedEmail` in `src/modules/account/use-cases/send-password-changed-email.server.ts`, handed to `scheduleBackgroundWork` by Better Auth's `onPasswordReset`                                                         |
 | Account deleted               | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail` in `src/modules/user/use-cases/send-account-deleted-email.server.ts`, awaited by `src/modules/user/use-cases/delete-customer.ts` and by Better Auth's `afterDelete`                                      |
 | Order confirmation            | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `sendOrderConfirmationEmail`, awaited by `handleFulfillCheckoutSession` in `stripe.webhooks.ts` once a checkout session is fulfilled                                                                                               |
-| Order shipped                 | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `sendOrderShippedEmail`, awaited by `src/modules/order/use-cases/ship-order.ts`                                                                                                                                                    |
+| Order shipped                 | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `sendOrderShippedEmail`, through `announceOrderShipment`, awaited by `src/modules/order/use-cases/ship-order.ts`                                                                                                                   |
+| Tracking number               | `src/presentation/emails/order-tracking.tsx`                | `emails.order-tracking`                | `sendOrderTrackingEmail`, through `announceOrderShipment` from `ship-order.ts`, `refresh-inpost-shipment.ts` and the InPost webhook, for a number the customer of a shipped order was not sent                                     |
 | Order cancelled               | `src/presentation/emails/order-cancelled.tsx`               | `emails.order-cancelled`               | `sendOrderCancelledEmail`, awaited by `src/modules/order/use-cases/cancel-order.ts` once the order is cancelled                                                                                                                    |
 | Order refunded                | `src/presentation/emails/order-refunded.tsx`                | `emails.order-refunded`                | `sendOrderRefundedEmail`, awaited by `handleChargeRefunded` in `stripe.webhooks.ts` for a refund the customer was not told about                                                                                                   |
 | Payment failed                | `src/presentation/emails/payment-failed.tsx`                | `emails.payment-failed`                | `sendPaymentFailedEmail`, awaited by `handleAsyncPaymentFailed` in `stripe.webhooks.ts` after `checkout.session.async_payment_failed` released the session                                                                         |
@@ -111,7 +112,7 @@ Nothing else asks. The order, shipped, cancelled, refunded, payment-failed, new-
 | Newsletter confirmation       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmationEmail` in `send-newsletter-confirmation-email.server.ts`, awaited by `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`                                                                      |
 | Newsletter already subscribed | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribedEmail` in `send-newsletter-already-subscribed-email.server.ts`, awaited by `subscribe-to-newsletter.ts` when a confirmed address is submitted by anyone but its signed-in owner                    |
 
-The first five are described in [Better Auth](/docs/integrations/better-auth); the use cases that send the other eleven are described below. The newsletter's template, `newsletter-campaign.tsx`, is described under [The newsletter](#the-newsletter).
+The first five are described in [Better Auth](/docs/integrations/better-auth); the use cases that send the other twelve are described below. The newsletter's template, `newsletter-campaign.tsx`, is described under [The newsletter](#the-newsletter).
 
 Each template exports its own namespace constant beside the component, so the caller cannot drift from the messages it renders:
 
@@ -167,6 +168,7 @@ Every link the app writes into an e-mail itself points at the address the custom
 | Newsletter and its test                               | `sendNewsletterCampaign` and `sendNewsletterTest`, with `resolveRequestOrigin(getRequest())` on the admin's request; the campaign stores it in `newsletter_campaign.origin` for the batches its queue sends later |
 | Order confirmation                                    | The session's `return_url`, which the checkout request built: `resolveDeploymentOrigin(session.return_url)` in `sendOrderConfirmationEmail`                                                                       |
 | Order shipped                                         | `shipOrder`, with `resolveRequestOrigin(getRequest())` on the admin's request                                                                                                                                     |
+| Tracking number                                       | `shipOrder` and `refreshInpostShipment`, with `resolveRequestOrigin(getRequest())` on the admin's request; the InPost webhook with `resolveDeploymentOrigin(request.url)`                                         |
 | Order cancelled                                       | `cancelOrder`, with `resolveRequestOrigin(getRequest())` on the admin's request                                                                                                                                   |
 | Order refunded                                        | The `return_url` of the Checkout Session `resolveCheckoutSession` finds for the refunded charge: `resolveDeploymentOrigin(returnUrl)` in `sendOrderRefundedEmail`                                                 |
 | Payment failed                                        | The session's `return_url`: `resolveDeploymentOrigin(session.return_url)` in `sendPaymentFailedEmail`                                                                                                             |
@@ -227,20 +229,21 @@ The locale comes from the order rather than from the current request, so a custo
 
 ## Waiting for the order e-mails
 
-Every order e-mail is awaited, and none can fail its caller. `ship-order.ts` waits for the shipped e-mail and hands the result to the admin:
+Every order e-mail is awaited, and none can fail its caller. `ship-order.ts` waits for the shipped e-mail, which `announceOrderShipment` sends at most once, and hands the result to the admin:
 
 ```ts
-recordOrderShippedAudit(orderId, {
-  detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+await transitionOrder(orderId, SHIPPABLE_FULFILLMENT_STATUSES, {
+  fulfillmentStatus: "shipped",
+  shippedAt: new Date(),
+  ...trackingColumns(trackingNumber, filledOrUndefined(tracking.trackingUrl)),
 })
-const shippedEmailDelivery = sendOrderShippedEmail(orderId, origin)
-scheduleBackgroundWork(shippedEmailDelivery)
-const shippedEmailSent = await shippedEmailDelivery
 
-return { ok: true, orderId, shippedEmailSent }
+recordOrderShippedAudit(orderId, { detail: trackingNumber })
+
+return { email: await announceOrderShipment(orderId, origin), ok: true, orderId }
 ```
 
-`scheduleBackgroundWork` puts the same promise on `ctx.waitUntil`, so the send and its audit entry finish even if the admin closes the tab while Resend is answering. `useMarkOrderShipped` always shows "Order marked as shipped.", and when `shippedEmailSent` is false also a warning toast, "Shipping email not sent yet", saying that the e-mail is tried twice more and can be resent from the order's Activity card, which shows the error. The admin's request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`; the retries of a refused e-mail run after the response. `cancel-order.ts` does the same with `sendOrderCancelledEmail` and returns `cancelledEmailSent`, and `useCancelOrder` warns "Cancellation email not sent yet" when it is false.
+`awaitOrderEmailNotice` puts the send on `ctx.waitUntil` through `scheduleBackgroundWork`, so the send and its audit entry finish even if the admin closes the tab while Resend is answering. `useMarkOrderShipped` always shows "Order marked as shipped.", and when the e-mail failed also a warning toast, "Customer email not sent yet", which names the e-mail and says it is tried twice more and can be resent from the order's Activity card, which shows the error. The admin's request takes one Resend round trip longer, at most `SEND_EMAIL_TIMEOUT_MS`; the retries of a refused e-mail run after the response. `cancel-order.ts` does the same with `sendOrderCancelledEmail` and returns `cancelledEmailSent`, and `useCancelOrder` warns "Cancellation email not sent yet" when it is false.
 
 The Stripe webhook registers `sendOrderConfirmationEmail` together with `sendNewOrderEmail`, `sendOrderRefundedEmail` and `sendPaymentFailedEmail` with `scheduleBackgroundWork` and awaits their first attempts the same way, and the retries of a refused e-mail go on after it has answered. It records every outcome and never throws, so the webhook answers 200 even when Resend refuses the confirmation, and the e-mail still finishes if Stripe stops waiting. A redelivered event would not send the confirmation or the shop's notice again: `fulfillCheckout` returns `undefined` for a checkout that is no longer pending, and the handler stops before the e-mail step. The other two have the same guard: `releaseCheckout` reports whether this delivery failed the session's payment, and `refundOrder` returns a refund only when the charge refunded more than the payment had recorded for an order the shop had not cancelled.
 

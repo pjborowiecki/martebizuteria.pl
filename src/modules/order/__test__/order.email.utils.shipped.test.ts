@@ -10,7 +10,13 @@ vi.mock("~/src/lib/url", () => ({
   resolveAssetURL: (src: string) => `https://assets.test/${src}`,
 }))
 
-import { type CheckoutEmailContext, buildOrderShippedAccountCta, buildOrderShippedDetails } from "~/src/modules/order/order.email.utils"
+import {
+  type OrderShipmentEmailSource,
+  buildOrderShippedAccountCta,
+  buildOrderShippedDetails,
+  resolveOrderTracking,
+  toOrderShipmentEmailSource,
+} from "~/src/modules/order/order.email.utils"
 
 import englishConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
 import englishCopy from "~/messages/en-US/emails.order-shipped.json"
@@ -26,36 +32,39 @@ const addressRow = {
   lastName: "Kowalska",
   phone: null,
   postalCode: "00-001",
+  province: null,
 }
 
-const context: CheckoutEmailContext = {
-  billingAddress: null,
-  billingAddressId: null,
-  billingCompanyName: null,
-  billingNip: null,
-  customerNote: null,
-  deliveryMethod: { name: "Kurier", type: "courier" },
+const INPOST = { name: "InPost" }
+
+const shipment: OrderShipmentEmailSource = {
+  deliveryMethod: { courier: INPOST, name: "Kurier InPost", type: "courier" },
   lockerId: null,
   shippingAddress: addressRow,
-  shippingAddressId: "address-1",
+  trackingNumber: undefined,
+  trackingUrl: undefined,
 }
 
 describe("buildOrderShippedDetails", () => {
-  it("renders the delivery method and shipping address from the checkout", () => {
-    const details = buildOrderShippedDetails(context, englishCopy)
+  it("renders the delivery method and the shipping address of the order", () => {
+    const details = buildOrderShippedDetails(shipment, englishCopy)
 
-    expect(details.deliveryMethod).toBe("Kurier")
+    expect(details.deliveryMethod).toBe("Kurier InPost")
     expect(details.shippingAddress).toBe("Anna Kowalska\nKrucza 1\n00-001 Warszawa\nPL")
   })
 
   it("appends the locker code to a locker shipment", () => {
-    const locker: CheckoutEmailContext = { ...context, deliveryMethod: { name: "Paczkomat", type: "locker" }, lockerId: "WAW01A" }
+    const locker: OrderShipmentEmailSource = {
+      ...shipment,
+      deliveryMethod: { courier: INPOST, name: "Paczkomat", type: "locker" },
+      lockerId: "WAW01A",
+    }
 
     expect(buildOrderShippedDetails(locker, englishCopy).deliveryMethod).toBe("Paczkomat · WAW01A")
   })
 
   it.each([["courier"], ["locker"], ["in_store"]] as const)("uses the %s estimated delivery", (type) => {
-    const details = buildOrderShippedDetails({ ...context, deliveryMethod: { name: "Method", type } }, englishCopy)
+    const details = buildOrderShippedDetails({ ...shipment, deliveryMethod: { courier: INPOST, name: "Method", type } }, englishCopy)
 
     expect(details.estimatedDelivery).toBe(englishCopy.deliveryTiming[type].estimatedDelivery)
   })
@@ -66,58 +75,97 @@ describe("buildOrderShippedDetails", () => {
     ["courier", polishCopy, polishConfirmationCopy],
     ["locker", polishCopy, polishConfirmationCopy],
   ] as const)("promises the %s transit time the order confirmation and the terms of service give", (type, copy, confirmationCopy) => {
-    const details = buildOrderShippedDetails({ ...context, deliveryMethod: { name: "Method", type } }, copy)
+    const details = buildOrderShippedDetails({ ...shipment, deliveryMethod: { courier: INPOST, name: "Method", type } }, copy)
 
     expect(details.estimatedDelivery).toBe(confirmationCopy.estimatedDelivery[type])
   })
 
-  it("assumes courier timings when no delivery method was captured", () => {
-    expect(buildOrderShippedDetails({ ...context, deliveryMethod: null }, englishCopy).estimatedDelivery).toBe(
-      englishCopy.deliveryTiming.courier.estimatedDelivery,
-    )
-  })
+  it("assumes courier timings and names no carrier when the order lost its delivery method", () => {
+    const details = buildOrderShippedDetails({ ...shipment, deliveryMethod: null }, englishCopy)
 
-  it("falls back to the unavailable copy without a checkout context", () => {
-    const details = buildOrderShippedDetails(undefined, englishCopy)
-
-    expect(details.deliveryMethod).toBe(englishCopy.unavailable)
-    expect(details.shippingAddress).toBe(englishCopy.unavailable)
     expect(details.estimatedDelivery).toBe(englishCopy.deliveryTiming.courier.estimatedDelivery)
+    expect(details.deliveryMethod).toBe(englishCopy.unavailable)
+    expect(details.carrier).toBeUndefined()
   })
 
-  it("falls back to the unavailable copy when the shipping address row was not loaded", () => {
-    expect(buildOrderShippedDetails({ ...context, shippingAddress: null }, englishCopy).shippingAddress).toBe(englishCopy.unavailable)
+  it("falls back to the unavailable copy when the order kept no shipping address", () => {
+    expect(buildOrderShippedDetails({ ...shipment, shippingAddress: undefined }, polishCopy).shippingAddress).toBe(polishCopy.unavailable)
+  })
+})
+
+describe("resolveOrderTracking", () => {
+  it("names the carrier of a parcel sent with InPost", () => {
+    expect(resolveOrderTracking(shipment).carrier).toBe("InPost")
   })
 
-  it("renders the Polish copy for a Polish shipment", () => {
-    expect(buildOrderShippedDetails(undefined, polishCopy).deliveryMethod).toBe(polishCopy.unavailable)
+  it("names no carrier for a piece collected at the atelier", () => {
+    const pickup = {
+      ...shipment,
+      deliveryMethod: { courier: { name: "M'ARTE Atelier" }, name: "Odbiór w atelier", type: "in_store" as const },
+    }
+
+    expect(resolveOrderTracking({ ...pickup, trackingNumber: "A-1" })).toStrictEqual({
+      carrier: undefined,
+      trackingNumber: "A-1",
+      trackingUrl: undefined,
+    })
   })
 
   it("passes the tracking number and link through without the whitespace they were typed with", () => {
-    const details = buildOrderShippedDetails(context, englishCopy, {
+    const tracking = resolveOrderTracking({
+      ...shipment,
       trackingNumber: "  INP-0042  ",
-      trackingUrl: " https://inpost.pl/sledzenie?number=INP-0042 ",
+      trackingUrl: " https://tracking.test/INP-0042 ",
     })
 
-    expect(details.trackingNumber).toBe("INP-0042")
-    expect(details.trackingUrl).toBe("https://inpost.pl/sledzenie?number=INP-0042")
+    expect(tracking.trackingNumber).toBe("INP-0042")
+    expect(tracking.trackingUrl).toBe("https://tracking.test/INP-0042")
+  })
+
+  it("links an InPost number to InPost's tracking page when no link was stored", () => {
+    expect(resolveOrderTracking({ ...shipment, trackingNumber: "00259007123456789012" }).trackingUrl).toBe(
+      "https://inpost.pl/sledzenie-przesylek?number=00259007123456789012",
+    )
   })
 
   it.each([
-    ["blank", { trackingNumber: "   ", trackingUrl: "" }],
-    ["missing", { trackingNumber: null, trackingUrl: null }],
-  ])("leaves the tracking details out when they are %s", (_case, tracking) => {
-    const details = buildOrderShippedDetails(context, englishCopy, tracking)
+    ["blank", "   ", ""],
+    ["missing", undefined, undefined],
+  ])("leaves the tracking details out when they are %s", (_case, trackingNumber, trackingUrl) => {
+    const tracking = resolveOrderTracking({ ...shipment, trackingNumber, trackingUrl })
 
-    expect(details.trackingNumber).toBeUndefined()
-    expect(details.trackingUrl).toBeUndefined()
+    expect(tracking.trackingNumber).toBeUndefined()
+    expect(tracking.trackingUrl).toBeUndefined()
+  })
+})
+
+describe("toOrderShipmentEmailSource", () => {
+  const checkoutAddress = { ...addressRow, address1: "Checkout 9" }
+
+  const row = { deliveryMethod: shipment.deliveryMethod, lockerId: null, trackingNumber: null, trackingUrl: null }
+
+  it("takes the shipping address from the order's own snapshot and reads blank tracking as none", () => {
+    const source = toOrderShipmentEmailSource({
+      ...row,
+      addresses: [{ ...addressRow, type: "shipping" }],
+      checkout: { shippingAddress: checkoutAddress },
+    })
+
+    expect(source.shippingAddress?.address1).toBe("Krucza 1")
+    expect(source.trackingNumber).toBeUndefined()
+    expect(source.trackingUrl).toBeUndefined()
   })
 
-  it("leaves the tracking details out when the shipment carries no tracking at all", () => {
-    const details = buildOrderShippedDetails(context, englishCopy)
-
-    expect(details.trackingNumber).toBeUndefined()
-    expect(details.trackingUrl).toBeUndefined()
+  it("falls back to the checkout's address for an order placed before snapshots", () => {
+    expect(
+      toOrderShipmentEmailSource({
+        ...row,
+        addresses: [],
+        checkout: { shippingAddress: checkoutAddress },
+        trackingNumber: "T-1",
+        trackingUrl: "https://t.test/1",
+      }),
+    ).toMatchObject({ shippingAddress: checkoutAddress, trackingNumber: "T-1", trackingUrl: "https://t.test/1" })
   })
 })
 

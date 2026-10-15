@@ -1,4 +1,5 @@
 import { recordOrderEmailOutcome } from "~/src/modules/audit-log/audit-log.events.server"
+import { ORDER_EMAIL_NOTICE_STATUS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
@@ -66,6 +67,15 @@ export const deliverOrderEmail = async (send: OrderEmailSend, delivery: Readonly
   }
 
   return sent
+}
+
+export const awaitOrderEmailNotice = async (
+  kind: Order["emailNotice"]["kind"],
+  delivery: Promise<boolean>,
+): Promise<Order["emailNotice"]> => {
+  scheduleBackgroundWork(delivery)
+
+  return { kind, status: (await delivery) ? ORDER_EMAIL_NOTICE_STATUS.SENT : ORDER_EMAIL_NOTICE_STATUS.FAILED }
 }
 
 export interface OrderEmailOutcome {

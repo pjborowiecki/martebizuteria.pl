@@ -31,6 +31,7 @@ const {
   shipFn,
   syncQueryInvalidation,
   toastError,
+  toastInfo,
   toastSuccess,
   toastWarning,
 } = vi.hoisted(() => ({
@@ -41,14 +42,20 @@ const {
   resendEmailFn: vi.fn<(input: { eventId: string; orderId: string }) => Promise<{ emailSent: boolean; ok: true; orderId: string }>>(),
   restockFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
   shipFn:
-    vi.fn<(input: { orderId: string; trackingNumber?: string }) => Promise<{ ok: true; orderId: string; shippedEmailSent: boolean }>>(),
+    vi.fn<
+      (input: {
+        orderId: string
+        trackingNumber?: string
+      }) => Promise<{ email: { kind: string; status: string }; ok: true; orderId: string }>
+    >(),
   syncQueryInvalidation: vi.fn(() => Promise.resolve(undefined)),
   toastError: vi.fn(),
+  toastInfo: vi.fn(),
   toastSuccess: vi.fn(),
   toastWarning: vi.fn(),
 }))
 
-vi.mock("sonner", () => ({ toast: { error: toastError, success: toastSuccess, warning: toastWarning } }))
+vi.mock("sonner", () => ({ toast: { error: toastError, info: toastInfo, success: toastSuccess, warning: toastWarning } }))
 
 vi.mock("~/src/integrations/tanstack-query/query.sync", () => ({ syncQueryInvalidation }))
 
@@ -84,7 +91,7 @@ describe("admin order action mutations", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fulfillFn.mockResolvedValue({ ok: true, orderId: "order-1" })
-    shipFn.mockResolvedValue({ ok: true, orderId: "order-1", shippedEmailSent: true })
+    shipFn.mockResolvedValue({ email: { kind: "order-shipped", status: "sent" }, ok: true, orderId: "order-1" })
     cancelFn.mockResolvedValue({ cancelledEmailSent: true, ok: true, orderId: "order-1" })
     deliverFn.mockResolvedValue({ ok: true, orderId: "order-1" })
     refundFn.mockResolvedValue({ ok: true, orderId: "order-1" })
@@ -125,8 +132,8 @@ describe("admin order action mutations", () => {
     expect(toastWarning).not.toHaveBeenCalled()
   })
 
-  it("warns the admin separately when the shipping email to the customer failed", async () => {
-    shipFn.mockResolvedValue({ ok: true, orderId: "order-1", shippedEmailSent: false })
+  it("warns the admin separately, naming the email, when the shipping email to the customer failed", async () => {
+    shipFn.mockResolvedValue({ email: { kind: "order-shipped", status: "failed" }, ok: true, orderId: "order-1" })
     const { result } = renderHook(() => useMarkOrderShipped(), { wrapper: Wrapper })
 
     result.current.mutate({ orderId: "order-1" })
@@ -135,9 +142,9 @@ describe("admin order action mutations", () => {
     })
 
     expect(toastSuccess).toHaveBeenCalledExactlyOnceWith("Order updated", { description: "Order marked as shipped." })
-    expect(toastWarning).toHaveBeenCalledWith("Shipping email not sent yet", {
+    expect(toastWarning).toHaveBeenCalledWith("Customer email not sent yet", {
       description:
-        "Resend did not take the shipping email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
+        "Resend did not take the “Shipping notice” email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
     })
   })
 
@@ -223,6 +230,42 @@ describe("admin order action mutations", () => {
   })
 })
 
+describe("admin order email notices", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("tells the admin the customer already had the shipping email when a stepped back order ships again", async () => {
+    shipFn.mockResolvedValue({ email: { kind: "order-shipped", status: "alreadySent" }, ok: true, orderId: "order-1" })
+    const { result } = renderHook(() => useMarkOrderShipped(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastInfo).toHaveBeenCalledOnce()
+    })
+
+    expect(toastInfo).toHaveBeenCalledWith("No repeat email", {
+      description: "The order already reached this step before, so the “Shipping notice” email was not sent again.",
+    })
+    expect(toastWarning).not.toHaveBeenCalled()
+  })
+
+  it("tells the admin only the new tracking number went out", async () => {
+    shipFn.mockResolvedValue({ email: { kind: "order-tracking", status: "sent" }, ok: true, orderId: "order-1" })
+    const { result } = renderHook(() => useMarkOrderShipped(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1", trackingNumber: "TRK-43" })
+    await waitFor(() => {
+      expect(toastInfo).toHaveBeenCalledOnce()
+    })
+
+    expect(toastInfo).toHaveBeenCalledWith("Tracking number sent", {
+      description:
+        "The order was already marked as shipped before, so the customer received only a short message with the current tracking number.",
+    })
+  })
+})
+
 describe("admin order return to stock", () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -299,7 +342,7 @@ describe("admin order action failures", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     fulfillFn.mockResolvedValue({ ok: true, orderId: "order-1" })
-    shipFn.mockResolvedValue({ ok: true, orderId: "order-1", shippedEmailSent: true })
+    shipFn.mockResolvedValue({ email: { kind: "order-shipped", status: "sent" }, ok: true, orderId: "order-1" })
     cancelFn.mockResolvedValue({ cancelledEmailSent: true, ok: true, orderId: "order-1" })
   })
 

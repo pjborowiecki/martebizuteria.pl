@@ -3,12 +3,7 @@ import { env } from "cloudflare:workers"
 import { parsePhoneNumberFromString } from "libphonenumber-js/mobile"
 import { Buffer } from "node:buffer"
 
-import {
-  INPOST_ERROR_CODES,
-  INPOST_PARCEL_DIMENSIONS_MM,
-  INPOST_TRACKING_PAGE_URL,
-  type InpostParcelTemplate,
-} from "~/src/integrations/inpost/inpost.constants"
+import { INPOST_ERROR_CODES, INPOST_PARCEL_DIMENSIONS_MM, type InpostParcelTemplate } from "~/src/integrations/inpost/inpost.constants"
 import { type InpostShipment, inpostShipmentSchema } from "~/src/integrations/inpost/inpost.zod"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
@@ -32,9 +27,6 @@ const SHIPX_SERVICE = {
 const isFilled = (value: string): boolean => Boolean(value) && value.trim() !== ""
 
 export const isInpostShipxConfigured = (): boolean => isFilled(env.INPOST_API_TOKEN) && isFilled(env.INPOST_ORGANIZATION_ID)
-
-export const inpostTrackingUrl = (trackingNumber: string): string =>
-  `${INPOST_TRACKING_PAGE_URL}?number=${encodeURIComponent(trackingNumber)}`
 
 const shipxBaseUrl = (appEnv: string): string => (appEnv === PRODUCTION_APP_ENV ? SHIPX_PRODUCTION_URL : SHIPX_SANDBOX_URL)
 

@@ -455,9 +455,9 @@ export const getOrderTotalsForEmail = (orderId: string) =>
 export const getOrderForShippedEmail = (orderId: string) =>
   db.query.order.findFirst({
     columns: {
-      checkoutId: true,
       email: true,
       id: true,
+      lockerId: true,
       metadata: true,
       orderNumber: true,
       trackingNumber: true,
@@ -465,6 +465,30 @@ export const getOrderForShippedEmail = (orderId: string) =>
       userId: true,
     },
     where: eq(order.id, orderId),
+    with: {
+      addresses: true,
+      checkout: {
+        columns: {
+          id: true,
+        },
+        with: {
+          shippingAddress: true,
+        },
+      },
+      deliveryMethod: {
+        columns: {
+          name: true,
+          type: true,
+        },
+        with: {
+          courier: {
+            columns: {
+              name: true,
+            },
+          },
+        },
+      },
+    },
   })
 
 export const getOrderForRefundEmail = (orderId: string) =>

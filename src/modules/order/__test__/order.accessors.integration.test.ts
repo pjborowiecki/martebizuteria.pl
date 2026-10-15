@@ -30,7 +30,6 @@ import {
   getOrderByCheckoutId,
   getOrderByInpostShipmentId,
   getOrderByTransactionId,
-  getOrderForShippedEmail,
   getOrderInpostShipment,
   getOrderMetadata,
   getOrderTotalsForEmail,
@@ -379,25 +378,6 @@ describe("single order lookups", () => {
     expect(await getOrderMetadata("o-shipped")).toStrictEqual({ metadata: null })
   })
 
-  it("reads only what the shipped email needs", async () => {
-    expect(await getOrderForShippedEmail("o-pending")).toStrictEqual({
-      checkoutId: "chk-1",
-      email: "anna@example.com",
-      id: "o-pending",
-      metadata: '{"locale":"en-US"}',
-      orderNumber: "MRT-2024-00001",
-      trackingNumber: null,
-      trackingUrl: null,
-      userId: "u-anna",
-    })
-  })
-
-  it("carries the captured tracking details into the shipped email lookup", async () => {
-    const shipped = await getOrderForShippedEmail("o-shipped")
-
-    expect(shipped?.trackingNumber).toBe("TRK-9")
-  })
-
   it("reads the InPost shipment an order holds with the order number its label is named after", async () => {
     sqlite.exec(`update "order" set inpost_shipment_id = '49' where id = 'o-shipped'`)
 
@@ -526,9 +506,9 @@ const createPlacedOrderTables = (): void => {
       discount_id text, discount_total integer not null default 0, email text not null,
       fulfillment_status text not null default 'not_fulfilled', inpost_shipment_id text, inpost_shipment_status text,
       locker_id text, locker_unconfirmed integer not null default 0, metadata text, order_number text not null,
-      payment_id text, restocked_at integer, shipped_at integer, shipping_total integer not null default 0, status text not null default 'pending',
+      payment_id text, restocked_at integer, shipped_at integer, shipped_email_at integer, shipping_total integer not null default 0, status text not null default 'pending',
       subtotal integer not null default 0, tax_basis_points integer not null default 2300, tax_total integer not null default 0,
-      total integer not null default 0, tracking_number text, tracking_url text, user_id text,
+      total integer not null default 0, tracking_email_number text, tracking_number text, tracking_url text, user_id text,
       created_at integer not null, updated_at integer not null
     );
     create table order_address (

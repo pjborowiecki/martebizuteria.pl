@@ -7,22 +7,24 @@ import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { ORDER_ERROR_CODES, ORDER_MUTATION_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
-import { executionContextStorage } from "~/src/lib/background"
-
 import { fulfillOrder, fulfillOrderMutation } from "../fulfill-order"
 import { markOrderDelivered, markOrderDeliveredMutation } from "../mark-order-delivered"
 import { shipOrder, shipOrderMutation } from "../ship-order"
 
 const ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
 
+const SHIPPED_EMAIL_SENT = { kind: "order-shipped", status: "sent" }
+
 const database = vi.hoisted(() => {
   const updates: Record<string, unknown>[] = []
+  const moved = { current: [{ id: "0192f3a4-5b6c-7d8e-9fab-cdef01234567" }] as { id: string }[] }
 
   return {
+    moved,
     updateSet: vi.fn((values: Record<string, unknown>) => {
       updates.push(values)
 
-      return { where: () => Promise.resolve(undefined) }
+      return { where: () => ({ returning: () => Promise.resolve(moved.current) }) }
     }),
     updates,
   }
@@ -41,7 +43,9 @@ const audit = vi.hoisted(() => ({
   shipped: vi.fn(),
 }))
 
-const shippedEmail = vi.hoisted(() => ({ sendOrderShippedEmail: vi.fn<(orderId: string, origin: string) => Promise<boolean>>() }))
+const announcement = vi.hoisted(() => ({
+  announceOrderShipment: vi.fn<(orderId: string, origin: string) => Promise<{ readonly kind: string; readonly status: string }>>(),
+}))
 
 const incoming = vi.hoisted(() => ({ getRequest: vi.fn<() => Request>() }))
 
@@ -50,9 +54,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: (
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { update: () => ({ set: database.updateSet }) },
 }))
-vi.mock("~/src/modules/order/use-cases/send-order-shipped-email.server", () => ({
-  sendOrderShippedEmail: shippedEmail.sendOrderShippedEmail,
-}))
+vi.mock("~/src/modules/order/use-cases/announce-order-shipment.server", () => announcement)
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderDeliveredAudit: audit.delivered,
   recordOrderFulfillmentStartedAudit: audit.fulfillmentStarted,
@@ -96,8 +98,9 @@ beforeEach(() => {
   incoming.getRequest.mockReturnValue(
     new Request("http://127.0.0.1:3000/_serverFn/ship-order", { headers: { origin: "https://attacker.example" } }),
   )
-  shippedEmail.sendOrderShippedEmail.mockResolvedValue(true)
+  announcement.announceOrderShipment.mockResolvedValue(SHIPPED_EMAIL_SENT)
   database.updates.length = 0
+  database.moved.current = [{ id: ORDER_ID }]
   orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
 })
 
@@ -146,32 +149,19 @@ describe("shipOrder", () => {
   })
 
   it("marks a fulfilled order shipped and stamps the shipping time", async () => {
-    await expect(shipOrder({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({ ok: true, orderId: ORDER_ID, shippedEmailSent: true })
+    await expect(shipOrder({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({
+      email: SHIPPED_EMAIL_SENT,
+      ok: true,
+      orderId: ORDER_ID,
+    })
     expect(database.updates[0]).toMatchObject({ fulfillmentStatus: "shipped" })
     expect(database.updates[0]?.["shippedAt"]).toBeInstanceOf(Date)
   })
 
-  it("answers with the shipping email result and keeps the send running for the Worker if the admin disconnects", async () => {
-    const delivery = Promise.withResolvers<boolean>()
-    shippedEmail.sendOrderShippedEmail.mockReturnValue(delivery.promise)
-    const kept: Promise<unknown>[] = []
+  it("announces the shipment to the customer on the shop the admin works in", async () => {
+    await shipOrder({ data: { orderId: ORDER_ID } })
 
-    const shipping = executionContextStorage.run(
-      {
-        waitUntil: (task) => {
-          kept.push(task)
-        },
-      },
-      () => shipOrder({ data: { orderId: ORDER_ID } }),
-    )
-    await vi.waitFor(() => {
-      expect(kept).toHaveLength(1)
-    })
-    delivery.resolve(false)
-
-    await expect(shipping).resolves.toStrictEqual({ ok: true, orderId: ORDER_ID, shippedEmailSent: false })
-    await Promise.all(kept)
-    expect(shippedEmail.sendOrderShippedEmail).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "http://127.0.0.1:3000")
+    expect(announcement.announceOrderShipment).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "http://127.0.0.1:3000")
   })
 
   it("refuses a request on a host this build does not serve before the order is touched", async () => {
@@ -179,16 +169,16 @@ describe("shipOrder", () => {
 
     await expect(shipOrder({ data: { orderId: ORDER_ID } })).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
     expect(database.updates).toHaveLength(0)
-    expect(shippedEmail.sendOrderShippedEmail).not.toHaveBeenCalled()
+    expect(announcement.announceOrderShipment).not.toHaveBeenCalled()
   })
 
   it("keeps the order shipped and tells the admin when the shipping email failed", async () => {
-    shippedEmail.sendOrderShippedEmail.mockResolvedValue(false)
+    announcement.announceOrderShipment.mockResolvedValue({ kind: "order-shipped", status: "failed" })
 
     await expect(shipOrder({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({
+      email: { kind: "order-shipped", status: "failed" },
       ok: true,
       orderId: ORDER_ID,
-      shippedEmailSent: false,
     })
     expect(database.updates[0]).toMatchObject({ fulfillmentStatus: "shipped" })
     expect(audit.shipped).toHaveBeenCalledOnce()
@@ -198,7 +188,17 @@ describe("shipOrder", () => {
     orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
 
     await expect(shipOrder({ data: { orderId: ORDER_ID } })).rejects.toThrow(AppError)
-    expect(shippedEmail.sendOrderShippedEmail).not.toHaveBeenCalled()
+    expect(announcement.announceOrderShipment).not.toHaveBeenCalled()
+  })
+
+  it("refuses a second shipping of an order another click already shipped, without a second email", async () => {
+    database.moved.current = []
+
+    await expect(shipOrder({ data: { orderId: ORDER_ID } })).rejects.toThrow(
+      new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE),
+    )
+    expect(audit.shipped).not.toHaveBeenCalled()
+    expect(announcement.announceOrderShipment).not.toHaveBeenCalled()
   })
 
   it("keys its mutation by the shared ship key", () => {
@@ -308,9 +308,9 @@ describe("markOrderDelivered", () => {
 it("ships a fulfilled order through its mutation and sends the notification", async () => {
   orderRow.current = { fulfillmentStatus: "fulfilled", status: "processing" }
   await expect(new MutationObserver(new QueryClient(), shipOrderMutation).mutate({ orderId: ORDER_ID })).resolves.toStrictEqual({
+    email: SHIPPED_EMAIL_SENT,
     ok: true,
     orderId: ORDER_ID,
-    shippedEmailSent: true,
   })
-  expect(shippedEmail.sendOrderShippedEmail).toHaveBeenCalledWith(ORDER_ID, "http://127.0.0.1:3000")
+  expect(announcement.announceOrderShipment).toHaveBeenCalledWith(ORDER_ID, "http://127.0.0.1:3000")
 })

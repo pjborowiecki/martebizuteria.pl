@@ -17,6 +17,7 @@ import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
 import type orderRefundedMessages from "~/messages/en-US/emails.order-refunded.json"
 import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
+import type orderTrackingMessages from "~/messages/en-US/emails.order-tracking.json"
 import type orderWithdrawalMessages from "~/messages/en-US/emails.order-withdrawal.json"
 import type passwordChangedMessages from "~/messages/en-US/emails.password-changed.json"
 import type paymentFailedMessages from "~/messages/en-US/emails.payment-failed.json"
@@ -34,6 +35,7 @@ import { ORDER_CANCELLED_NAMESPACE, OrderCancelled } from "~/src/presentation/em
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
 import { ORDER_REFUNDED_NAMESPACE, OrderRefunded } from "~/src/presentation/emails/order-refunded"
 import { ORDER_SHIPPED_NAMESPACE, OrderShipped } from "~/src/presentation/emails/order-shipped"
+import { ORDER_TRACKING_NAMESPACE, OrderTrackingUpdate } from "~/src/presentation/emails/order-tracking"
 import { ORDER_WITHDRAWAL_NAMESPACE, OrderWithdrawalNotice, OrderWithdrawalReceived } from "~/src/presentation/emails/order-withdrawal"
 import { PASSWORD_CHANGED_NAMESPACE, PasswordChanged } from "~/src/presentation/emails/password-changed"
 import { PAYMENT_FAILED_NAMESPACE, PaymentFailed } from "~/src/presentation/emails/payment-failed"
@@ -49,6 +51,12 @@ const PREVIEW_IMAGE = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/place
 const PREVIEW_ADDRESS = "Anna Kowalska\nul. Mokotowska 12/4\n00-640 Warszawa\nPL\n+48 600 123 456"
 
 const PREVIEW_TRACKING_NUMBER = "00259007123456789012"
+
+const PREVIEW_TRACKING = {
+  carrier: "InPost",
+  trackingNumber: PREVIEW_TRACKING_NUMBER,
+  trackingUrl: `https://inpost.pl/sledzenie-przesylek?number=${PREVIEW_TRACKING_NUMBER}`,
+}
 
 const PREVIEW_COMPANY_INVOICE = "Pracownia Złotnicza sp. z o.o.\nNIP 5260001246"
 
@@ -270,11 +278,10 @@ export const EMAIL_PREVIEWS = {
         <OrderShipped
           accountCta={PREVIEW_CUSTOMER_CTA}
           details={{
+            ...PREVIEW_TRACKING,
             deliveryMethod: PREVIEW_ORDER_CONFIRMATION_DETAILS.deliveryMethod,
             estimatedDelivery: messages.deliveryTiming.courier.estimatedDelivery,
             shippingAddress: PREVIEW_ADDRESS,
-            trackingNumber: PREVIEW_TRACKING_NUMBER,
-            trackingUrl: undefined,
           }}
           locale={locale}
           messages={messages}
@@ -283,6 +290,18 @@ export const EMAIL_PREVIEWS = {
       )
     },
     label: "Order shipped",
+  },
+  "order-tracking": {
+    element: async (locale) => (
+      <OrderTrackingUpdate
+        accountCta={PREVIEW_CUSTOMER_CTA}
+        locale={locale}
+        messages={await loadNamespace<typeof orderTrackingMessages>({ locale, namespace: ORDER_TRACKING_NAMESPACE })}
+        orderNumber={PREVIEW_ORDER_NUMBER}
+        tracking={PREVIEW_TRACKING}
+      />
+    ),
+    label: "Tracking number",
   },
   "order-withdrawal": {
     element: async (locale) => (

@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm"
+import { and, eq, inArray, notInArray } from "drizzle-orm"
+import { type SQLiteUpdateSetSource } from "drizzle-orm/sqlite-core"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { ORDER_ERROR_CODES } from "~/src/modules/order/order.constants"
+import { CANCELLED_ORDER_STATUSES, ORDER_ERROR_CODES } from "~/src/modules/order/order.constants"
 import { order } from "~/src/modules/order/order.schema"
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -29,6 +30,22 @@ export const assertOrderActionState = <TRow extends AdminOrderActionRow>(
   }
 
   return row
+}
+
+export const transitionOrder = async (
+  orderId: string,
+  from: readonly Order["select"]["fulfillmentStatus"][],
+  values: SQLiteUpdateSetSource<typeof order>,
+): Promise<void> => {
+  const moved = await db
+    .update(order)
+    .set({ ...values, updatedAt: new Date() })
+    .where(and(eq(order.id, orderId), inArray(order.fulfillmentStatus, [...from]), notInArray(order.status, [...CANCELLED_ORDER_STATUSES])))
+    .returning({ id: order.id })
+
+  if (moved.length === 0) {
+    throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE)
+  }
 }
 
 interface AdminOrderActionRow {

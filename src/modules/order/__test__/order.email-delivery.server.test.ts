@@ -13,6 +13,7 @@ import {
   ORDER_EMAIL_RETRY_BACKOFF,
   ORDER_EMAIL_RETRY_DELAY_MS,
   type OrderEmailOutcome,
+  awaitOrderEmailNotice,
   deliverOrderEmail,
 } from "~/src/modules/order/order.email-delivery.server"
 
@@ -185,6 +186,32 @@ describe("deliverOrderEmail", () => {
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith(
       expect.objectContaining({ metadata: { idempotencyKey: "payment-failed/cs_1", orderEmail: undefined }, orderId: "cs_1" }),
     )
+  })
+})
+
+describe("awaitOrderEmailNotice", () => {
+  it.each([
+    [true, "sent"],
+    [false, "failed"],
+  ])("names the email and reports a delivery that resolved %s as %s", async (delivered, status) => {
+    await expect(awaitOrderEmailNotice("order-shipped", Promise.resolve(delivered))).resolves.toStrictEqual({
+      kind: "order-shipped",
+      status,
+    })
+  })
+
+  it("keeps the delivery running for the Worker if the admin disconnects before Resend answers", async () => {
+    const delivery = Promise.withResolvers<boolean>()
+    const kept: Promise<unknown>[] = []
+
+    const keep = (task: Promise<unknown>): void => {
+      kept.push(task)
+    }
+    const notice = executionContextStorage.run({ waitUntil: keep }, () => awaitOrderEmailNotice("order-shipped", delivery.promise))
+    delivery.resolve(true)
+
+    await expect(notice).resolves.toStrictEqual({ kind: "order-shipped", status: "sent" })
+    expect(kept).toHaveLength(1)
   })
 })
 

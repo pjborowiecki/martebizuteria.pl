@@ -1,10 +1,13 @@
 import type Stripe from "stripe"
 
+import { inpostTrackingUrl } from "~/src/integrations/inpost/inpost.utils"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
+import { isInpostDeliveryType } from "~/src/modules/order/order.admin-actions.utils"
+import { resolveOrderShippingAddressRow } from "~/src/modules/order/order.detail.utils"
 import { type OrderLineFulfillmentTime, describeOrderFulfillmentTime } from "~/src/modules/order/order.fulfillment-time.utils"
 
 import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
@@ -141,23 +144,52 @@ export const buildOrderLegalLinks = (origin: string, locale: SupportedLocale, or
   withdrawal: `${buildLocalizedUrl(origin, ROUTES.WITHDRAW_FROM_CONTRACT, locale)}?${new URLSearchParams({ order: orderNumber }).toString()}`,
 })
 
-export const buildOrderShippedDetails = (
-  context: CheckoutEmailContext | undefined,
-  messages: typeof orderShippedMessages,
-  tracking?: Readonly<{ trackingNumber: string | null; trackingUrl: string | null }>,
-): OrderShippedDetails => {
-  const deliveryType = context?.deliveryMethod?.type ?? "courier"
-  const trackingNumber = tracking?.trackingNumber?.trim()
-  const trackingUrl = tracking?.trackingUrl?.trim()
+const filledText = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim()
+
+  return trimmed === undefined || trimmed === "" ? undefined : trimmed
+}
+
+export const resolveOrderTracking = ({
+  deliveryMethod,
+  trackingNumber,
+  trackingUrl,
+}: Readonly<OrderShipmentEmailSource>): OrderTracking => {
+  const deliveryType = deliveryMethod?.type
+  const number = filledText(trackingNumber)
+  const derivedUrl = number !== undefined && isInpostDeliveryType(deliveryType) ? inpostTrackingUrl(number) : undefined
 
   return {
-    deliveryMethod: resolveDeliveryMethodLabel(context, messages.unavailable),
-    estimatedDelivery: messages.deliveryTiming[deliveryType].estimatedDelivery,
-    shippingAddress: formatEmailAddress(context?.shippingAddress) ?? messages.unavailable,
-    trackingNumber: trackingNumber === undefined || trackingNumber === "" ? undefined : trackingNumber,
-    trackingUrl: trackingUrl === undefined || trackingUrl === "" ? undefined : trackingUrl,
+    carrier: isInpostDeliveryType(deliveryType) ? deliveryMethod?.courier.name : undefined,
+    trackingNumber: number,
+    trackingUrl: filledText(trackingUrl) ?? derivedUrl,
   }
 }
+
+export const toOrderShipmentEmailSource = ({
+  addresses,
+  checkout,
+  deliveryMethod,
+  lockerId,
+  trackingNumber,
+  trackingUrl,
+}: Readonly<OrderShipmentEmailRow>): OrderShipmentEmailSource => ({
+  deliveryMethod,
+  lockerId,
+  shippingAddress: resolveOrderShippingAddressRow({ addresses, checkout }),
+  trackingNumber: trackingNumber ?? undefined,
+  trackingUrl: trackingUrl ?? undefined,
+})
+
+export const buildOrderShippedDetails = (
+  shipment: Readonly<OrderShipmentEmailSource>,
+  messages: typeof orderShippedMessages,
+): OrderShippedDetails => ({
+  ...resolveOrderTracking(shipment),
+  deliveryMethod: resolveDeliveryMethodLabel(shipment, messages.unavailable),
+  estimatedDelivery: messages.deliveryTiming[shipment.deliveryMethod?.type ?? "courier"].estimatedDelivery,
+  shippingAddress: formatEmailAddress(shipment.shippingAddress) ?? messages.unavailable,
+})
 
 export const buildOrderShippedAccountCta = ({
   locale,
@@ -167,7 +199,7 @@ export const buildOrderShippedAccountCta = ({
   userId,
 }: Readonly<{
   locale: SupportedLocale
-  messages: typeof orderShippedMessages
+  messages: OrderAccountCtaInput["messages"]
   orderId: string
   origin: string
   userId: string | null | undefined
@@ -242,6 +274,31 @@ interface EmailAddressRow {
   readonly lastName: string | null
   readonly phone: string | null
   readonly postalCode: string | null
+}
+
+export interface OrderShipmentEmailSource {
+  readonly deliveryMethod: {
+    readonly courier: { readonly name: string }
+    readonly name: string
+    readonly type: "courier" | "locker" | "in_store"
+  } | null
+  readonly lockerId: string | null
+  readonly shippingAddress: EmailAddressRow | undefined
+  readonly trackingNumber: string | undefined
+  readonly trackingUrl: string | undefined
+}
+
+interface OrderShipmentEmailRow extends Pick<OrderShipmentEmailSource, "deliveryMethod" | "lockerId"> {
+  readonly addresses: Parameters<typeof resolveOrderShippingAddressRow>[0]["addresses"]
+  readonly checkout: Parameters<typeof resolveOrderShippingAddressRow>[0]["checkout"]
+  readonly trackingNumber: string | null
+  readonly trackingUrl: string | null
+}
+
+export interface OrderTracking {
+  readonly carrier: string | undefined
+  readonly trackingNumber: string | undefined
+  readonly trackingUrl: string | undefined
 }
 
 export interface CheckoutEmailContext {

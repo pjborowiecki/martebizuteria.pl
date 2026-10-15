@@ -1,6 +1,6 @@
 ---
 title: "Transactional email"
-description: "Sixteen React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales, and the newsletter the owner sends to confirmed subscribers."
+description: "Seventeen React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales, and the newsletter the owner sends to confirmed subscribers."
 ---
 
 ## Sending
@@ -60,7 +60,7 @@ Four of the emails go to any address a visitor types in: the verification email,
 
 The client is `src/integrations/resend/resend.config.ts`, a one-line `new Resend(env.RESEND_API_KEY)`. The default `from` is `APP_NAME <RESEND_EMAIL_FROM>`. Both `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in the `secrets.required` list of every environment in `wrangler.jsonc`. The sender's domain must be verified in Resend, and a deploy stops before the build when it is not; see [Resend](/docs/integrations/resend#sender-domain).
 
-## The sixteen templates
+## The seventeen templates
 
 All under `src/presentation/emails/`, built with `react-email` and rendered server-side inside the Worker:
 
@@ -72,7 +72,8 @@ All under `src/presentation/emails/`, built with `react-email` and rendered serv
 | `password-changed.tsx`              | `PASSWORD_CHANGED_NAMESPACE`              | `sendPasswordChangedEmail`, from Better Auth's `onPasswordReset`                                                                                                                                                                                                                        |
 | `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, awaited by `deleteCustomer` and `afterDelete`                                                                                                                                                                                                                |
 | `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `sendOrderConfirmationEmail`, from the Stripe webhook                                                                                                                                                                                                                                   |
-| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `sendOrderShippedEmail`, awaited by `shipOrder`                                                                                                                                                                                                                                         |
+| `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `sendOrderShippedEmail`, through `announceOrderShipment` once `shipOrder` ships the order                                                                                                                                                                                               |
+| `order-tracking.tsx`                | `ORDER_TRACKING_NAMESPACE`                | `sendOrderTrackingEmail`, through `announceOrderShipment` when a shipped order has a tracking number the customer was not sent: from `shipOrder`, `refreshInpostShipment` and the InPost webhook                                                                                        |
 | `order-cancelled.tsx`               | `ORDER_CANCELLED_NAMESPACE`               | `sendOrderCancelledEmail`, awaited by `cancelOrder`                                                                                                                                                                                                                                     |
 | `order-refunded.tsx`                | `ORDER_REFUNDED_NAMESPACE`                | `sendOrderRefundedEmail`, from the `charge.refunded` webhook                                                                                                                                                                                                                            |
 | `payment-failed.tsx`                | `PAYMENT_FAILED_NAMESPACE`                | `sendPaymentFailedEmail`, from the `async_payment_failed` webhook                                                                                                                                                                                                                       |
@@ -214,7 +215,7 @@ export const sendOrderShippedEmail = (orderId: string, origin: string): Promise<
   })
 ```
 
-`attemptOrderConfirmationEmail`, `attemptPaymentFailedEmail`, `attemptOrderShippedEmail`, `attemptOrderCancelledEmail`, `attemptOrderRefundedEmail` and `attemptNewOrderEmail`, each in the `send-*-email.server.ts` use case that hands it to `deliverOrderEmail`, read what their email needs, render it and pass the key to `sendEmail`. They return `{ failure, label }`, where `label` is a human string such as `Order confirmation → jane@example.com`.
+`attemptOrderConfirmationEmail`, `attemptPaymentFailedEmail`, `attemptOrderShippedEmail`, `attemptOrderTrackingEmail`, `attemptOrderCancelledEmail`, `attemptOrderRefundedEmail` and `attemptNewOrderEmail`, each in the `send-*-email.server.ts` use case that hands it to `deliverOrderEmail`, read what their email needs, render it and pass the key to `sendEmail`. They return `{ failure, label }`, where `label` is a human string such as `Order confirmation → jane@example.com`.
 
 Each key names the email and what it is about:
 
@@ -223,6 +224,7 @@ Each key names the email and what it is about:
 | Order confirmation            | `order-confirmation/<order id>`                                       |
 | New-order notice to the shop  | `new-order/<order id>`                                                |
 | Shipped                       | `order-shipped/<order id>`                                            |
+| Tracking number               | `order-tracking/<order id>/<tracking number>`                         |
 | Cancelled                     | `order-cancelled/<order id>`                                          |
 | Refunded                      | `order-refunded/<order id>/<total refunded once this refund is made>` |
 | Payment failed                | `payment-failed/<Checkout Session id>`                                |
@@ -234,6 +236,16 @@ Resend keeps a key for 24 hours and answers a request whose key it has already s
 `deliverOrderEmail` awaits the first attempt and returns whether Resend took it. When it did not, the attempt is recorded as `email.deferred` and the retries go to `scheduleBackgroundWork`, the request's `waitUntil`, so the response does not wait for them and no queue is involved. The email is tried again after `ORDER_EMAIL_RETRY_DELAY_MS` (one second) and again `ORDER_EMAIL_RETRY_BACKOFF` times that later (four seconds), `ORDER_EMAIL_RETRIES` retries in all, each preparing the email afresh and sending it under the same key. The first retry Resend takes is recorded as `email.sent`; an email still refused after the last one is recorded as `email.failed`, and `sendIncidentAlert` emails `RESEND_EMAIL_FROM` an `orderEmailFailed` alert keyed by the idempotency key, so each email that finally fails alerts once, like the shop's other incidents (see [The shop's incident alerts](#the-shops-incident-alerts)). With `SEND_EMAIL_TIMEOUT_MS` at ten seconds the retries end about 25 seconds after the response at the latest, inside the 30 seconds the Workers runtime gives `waitUntil` work. Every failure is retried, including one that comes from preparing the email, because a failed D1 read or asset fetch recovers as often as a rate-limited send does; one that cannot recover, such as an order without an address, ends as `email.failed` five seconds later.
 
 An error thrown while the email is prepared is logged with its stack as `<label> for order <id> could not be prepared:` and becomes the outcome, labelled without a recipient and described the way `sendEmail` describes an error it catches.
+
+## Order progress emails, once each
+
+Resend keeps a key for only 24 hours, and the audit log is written through a queue and expires, so neither can tell whether the customer was already told about a step. The order row does. `shipped_email_at` and `tracking_email_number`, added by `20261015150000_order_shipped_email.sql`, record that the customer was told the order shipped and the tracking number they were last sent. `announceOrderShipment` in `src/modules/order/use-cases/announce-order-shipment.server.ts` claims an email with one conditional `UPDATE … RETURNING` before it sends it:
+
+- The shipped email is claimed by setting `shipped_email_at` while the order is `shipped` and the column is empty. The same statement copies the order's tracking number into `tracking_email_number`, so the number the shipped email carries is not sent again.
+- Otherwise the tracking number email (`order-tracking.tsx`, sent by `sendOrderTrackingEmail`) is claimed by copying the tracking number into `tracking_email_number` while the order is `shipped`, its shipped email is claimed and its number is set and differs from the one last sent.
+- When neither claim matches, nothing is sent and the notice is `alreadySent`.
+
+Only the request whose claim matched sends, and nothing clears a claim, so repeated clicks, a second tab, and an order stepped back and shipped again never send the same email twice. `shipOrder` announces right after it ships the order. `refreshInpostShipment` and the InPost webhook announce in the background after they read the shipment back, so a number InPost assigns after the parcel was marked shipped reaches the customer once, while a number known before the order ships goes out in the shipped email itself. A different number typed when an order is shipped again goes out the same way. The migration counts every order that was already shipped or delivered as told, with the number it had, so none of them gets a late email. A claimed email whose delivery finally fails is not sent again by moving the order forward; **Resend email** in the Activity card sends it again under its own key.
 
 ## Withdrawal from the contract
 
@@ -284,7 +296,7 @@ The order id is the target and `resourceId` of every entry, and its metadata is 
 
 The Activity card offers **Resend email** under the newest `email.deferred` or `email.failed` entry of each order email that has not gone out since. `resolveResendableOrderEmails` in `src/modules/order/order.detail.utils.ts` reads the order's timeline newest first, takes the first delivery entry of each idempotency key whose metadata names an email, and offers it unless it is `email.sent`. Entries written before deliveries carried this metadata, and the failed payment email, which belongs to a session rather than an order, are never offered.
 
-The button calls `resendOrderEmail` in `src/modules/order/use-cases/resend-order-email.ts` with the order and the entry's id. It requires `order: ["update"]`, reads the timeline again and refuses with `CONFLICT` unless the entry is still the one to resend, so a second tab or an email that went out in the meantime sends nothing. It records `email.resend_requested` against the order through `scheduleAuditLogFromRequest`, with the admin as the actor, their IP address and the failed entry's detail, and then builds the email again from the sources its first attempt used. The shipped and cancellation emails link on the admin's origin, as `shipOrder` and `cancelOrder` do. The confirmation, the shop's notice and a refund email retrieve the order's Checkout Session from Stripe by the payment's `transaction_id`, and an order without one is refused with `CONFLICT`. The resend goes through the same notifier and `deliverOrderEmail` under the same key, with the same retries and entries, so within 24 hours of the first send an email that did reach Resend, although its outcome said otherwise, is not sent a second time.
+The button calls `resendOrderEmail` in `src/modules/order/use-cases/resend-order-email.ts` with the order and the entry's id. It requires `order: ["update"]`, reads the timeline again and refuses with `CONFLICT` unless the entry is still the one to resend, so a second tab or an email that went out in the meantime sends nothing. It records `email.resend_requested` against the order through `scheduleAuditLogFromRequest`, with the admin as the actor, their IP address and the failed entry's detail, and then builds the email again from the sources its first attempt used. The shipped, tracking number and cancellation emails link on the admin's origin, as `shipOrder` and `cancelOrder` do, and a tracking number email is sent again with the number its failed delivery carried. The confirmation, the shop's notice and a refund email retrieve the order's Checkout Session from Stripe by the payment's `transaction_id`, and an order without one is refused with `CONFLICT`. The resend goes through the same notifier and `deliverOrderEmail` under the same key, with the same retries and entries, so within 24 hours of the first send an email that did reach Resend, although its outcome said otherwise, is not sent a second time.
 
 The hook `useResendOrderEmail` toasts "Email sent" when Resend took the email, and "Email not sent yet", saying that it is tried twice more, when it did not. While the email has still not gone out, the button appears again under its newest entry.
 
@@ -318,17 +330,22 @@ Only `deliverOrderEmail` writes `email.deferred`. The other emails record a refu
 
 The shop's own senders wait for Resend's answer, so the result reaches whoever is looking. Better Auth's sign-up, password reset and change-email hooks are the exception: Better Auth runs them through `advanced.backgroundTasks`, which is `scheduleBackgroundWork` (`src/lib/background.ts`, the Worker's `waitUntil`), as [Better Auth](/docs/integrations/better-auth) describes. The password-changed email is the other exception: `onPasswordReset` hands `sendPasswordChangedEmail` to `scheduleBackgroundWork` itself and does not wait for it, because Better Auth signs every device out only after the hook returns.
 
-`shipOrder`, `cancelOrder`, `deleteCustomer` and the Stripe webhook also hand the send they wait for to `scheduleBackgroundWork` before awaiting it:
+`shipOrder`, `cancelOrder`, `deleteCustomer` and the Stripe webhook also hand the send they wait for to `scheduleBackgroundWork` before awaiting it. For the order progress emails `awaitOrderEmailNotice` in `order.email-delivery.server.ts` does it:
 
 ```ts
-const shippedEmailDelivery = sendOrderShippedEmail(orderId, origin)
-scheduleBackgroundWork(shippedEmailDelivery)
-const shippedEmailSent = await shippedEmailDelivery
+export const awaitOrderEmailNotice = async (
+  kind: Order["emailNotice"]["kind"],
+  delivery: Promise<boolean>,
+): Promise<Order["emailNotice"]> => {
+  scheduleBackgroundWork(delivery)
+
+  return { kind, status: (await delivery) ? ORDER_EMAIL_NOTICE_STATUS.SENT : ORDER_EMAIL_NOTICE_STATUS.FAILED }
+}
 ```
 
 When the admin closes the tab or Stripe stops waiting, the Workers runtime may cancel what the request was still awaiting, but not a promise passed to `waitUntil`. The email therefore still goes out and its outcome is still recorded. The request waits only for the first attempt: `deliverOrderEmail` schedules the retries of a refused order email the same way, so they run after the response. Better Auth's `afterDelete` awaits `sendAccountDeletedEmail` without this, so a customer who closes the tab during self-deletion can still cut the goodbye email short.
 
-`shipOrder` awaits `sendOrderShippedEmail` after the order row is updated and returns `shippedEmailSent`, whether Resend took the email at the first attempt. The admin always sees "Order marked as shipped.", and when it did not also a warning toast, "Shipping email not sent yet", saying that the email is tried twice more within a few seconds and that, if it still fails, it can be resent from the order's Activity card, which also shows the error. The order stays shipped either way, because `sendOrderShippedEmail` records the failure and returns `false` instead of throwing. Shipping from the orders list shows the same toasts.
+`shipOrder` returns `email`, the notice `announceOrderShipment` gives back: the email it claimed, `order-shipped` or `order-tracking`, with `sent` or `failed`, whether Resend took it at the first attempt, or `alreadySent` when the customer had been told before (see [Order progress emails, once each](#order-progress-emails-once-each)). The admin always sees "Order marked as shipped.". A failed email adds the warning "Customer email not sent yet", which names the email, says it is tried twice more within a few seconds and that, if it still fails, it can be resent from the order's Activity card, which also shows the error; `alreadySent` adds "No repeat email", and a tracking number email "Tracking number sent". The order stays shipped either way, because the senders record a failure and return `false` instead of throwing. Shipping from the orders list shows the same toasts.
 
 `cancelOrder` awaits `sendOrderCancelledEmail` after the cancel batch in the same way and returns `cancelledEmailSent`. The admin sees the cancellation toast and, when Resend did not take the email at once, a warning toast, "Cancellation email not sent yet", with the same retry and resend advice. The order stays cancelled and its refund stays issued.
 

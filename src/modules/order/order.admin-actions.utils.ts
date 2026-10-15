@@ -8,9 +8,11 @@ import {
   type AdminOrderRefundBlocker,
   CANCELLED_ORDER_STATUSES,
   DISPATCHED_FULFILLMENT_STATUSES,
+  FULFILLABLE_FULFILLMENT_STATUSES,
   INPOST_DELIVERY_TYPES,
   type InpostDeliveryType,
   OPEN_ORDER_STATUSES,
+  SHIPPABLE_FULFILLMENT_STATUSES,
 } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -106,10 +108,6 @@ export const canCreateAdminOrderInpostShipment = (snapshot: InpostShipmentSnapsh
   isInpostDeliveryType(snapshot.deliveryType) &&
   (OPEN_ORDER_STATUSES as readonly string[]).includes(snapshot.status) &&
   !isDispatchedFulfillmentStatus(snapshot.fulfillmentStatus)
-
-const FULFILLABLE_FULFILLMENT_STATUSES = ["not_fulfilled", "partially_fulfilled"] as const
-
-const SHIPPABLE_FULFILLMENT_STATUSES = ["fulfilled", "partially_fulfilled"] as const
 
 const TERMINAL_FULFILLMENT_STATUSES = ["shipped", "delivered", "cancelled"] as const
 

@@ -20,7 +20,6 @@ import {
   type InpostShipmentDraft,
   fetchShipxLabelPdfBase64,
   fetchShipxShipment,
-  inpostTrackingUrl,
   isInpostShipxConfigured,
   postShipxShipment,
 } from "~/src/integrations/inpost/inpost.shipx.server"
@@ -94,12 +93,6 @@ describe("isInpostShipxConfigured", () => {
     env[name] = value
 
     expect(isInpostShipxConfigured()).toBe(false)
-  })
-})
-
-describe("inpostTrackingUrl", () => {
-  it("links the tracking number to InPost's public tracking page", () => {
-    expect(inpostTrackingUrl(SHIPX_TRACKING_NUMBER)).toBe(`https://inpost.pl/sledzenie-przesylek?number=${SHIPX_TRACKING_NUMBER}`)
   })
 })
 

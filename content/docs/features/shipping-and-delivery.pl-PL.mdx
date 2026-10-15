@@ -185,7 +185,7 @@ Plik `messages/{locale}/emails.order-confirmation.json` ma obiekt `fulfillmentTi
 ## Czego nie ma
 
 - Nie ma przewoźnika poza InPost: przesyłki, etykiety i śledzenie idą wyłącznie przez API ShipX, a zamówienie odbierane w pracowni nie ma żadnej z nich.
-- Nie ma automatycznych zmian zamówienia od przewoźnika: status InPost jest widoczny na zamówieniu i odświeżany na żądanie albo przez webhook InPost, ale oznaczenie zamówienia jako wysłanego i dostarczonego zostaje w rękach administratora. Bez przesyłki InPost `order.tracking_number` i `order.tracking_url` to to, co administrator wpisze w oknie wysyłki.
+- Nie ma automatycznych zmian zamówienia od przewoźnika: status InPost jest widoczny na zamówieniu i odświeżany na żądanie albo przez webhook InPost, ale oznaczenie zamówienia jako wysłanego i dostarczonego zostaje w rękach administratora, a nadanie przesyłki nie oznacza zamówienia jako wysłanego, bo nadana paczka jeszcze nie opuściła pracowni. Bez przesyłki InPost `order.tracking_number` i `order.tracking_url` to to, co administrator wpisze w oknie wysyłki. Numer, który InPost nada po oznaczeniu zamówienia jako wysłanego, trafia do klienta e-mailem raz.
 - Nie ma reguł wysyłki: cena to płaska kwota na metodę, bez logiki wagi, rozmiaru, wartości koszyka ani miejsca dostawy. Jedyną regułą miejsca dostawy jest sprawdzenie `DELIVERY_COUNTRY_CODES`.
 - Nie ma tabeli lokalizacji sklepów dla `in_store`.
 - Nie ma ekranu panelu dla przewoźników ani metod dostawy — wiersze zarządza się bezpośrednio w D1.
