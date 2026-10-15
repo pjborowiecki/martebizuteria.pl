@@ -187,6 +187,13 @@ describe("CustomerOrders layout", () => {
     expect(screen.getByRole("link", { name: "View All" })).toHaveAttribute("href", "/admin/orders")
   })
 
+  it("keeps the link to every order on one line beside the heading", () => {
+    renderHistory()
+
+    expect(screen.getByRole("link", { name: "View All" })).toHaveClass("shrink-0", "whitespace-nowrap")
+    expect(screen.getByRole("heading", { name: "Order History" })).toHaveClass("min-w-0")
+  })
+
   it("takes the rest of the main column on wide, tall screens and lets the grid scroll inside it", () => {
     const { container } = renderHistory()
     const section = container.firstElementChild

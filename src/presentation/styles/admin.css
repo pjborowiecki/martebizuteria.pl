@@ -129,6 +129,7 @@
   }
 
   .content-editor [role="toolbar"] {
+    flex-wrap: wrap;
     border-radius: 0;
     border-bottom: 1px solid var(--border);
     background-color: color-mix(in oklab, var(--background) 95%, transparent);

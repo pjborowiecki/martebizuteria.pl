@@ -29,11 +29,11 @@ export const CustomerOrders = ({ customerId }: Readonly<CustomerOrdersProps>): J
     <section className="flex flex-col 2xl:[@media(min-height:57rem)]:min-h-60 2xl:[@media(min-height:57rem)]:flex-1">
       <Provider value={grid}>
         <div className={cn(ADMIN_CATALOG_DATAGRID_PAGE_CLASS, "gap-3")}>
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium">{t("orders.title")}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="min-w-0 text-sm font-medium">{t("orders.title")}</h2>
             <LocalizedLink
               to={ROUTES.ADMIN_ORDERS}
-              className="flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              className="flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs whitespace-nowrap text-muted-foreground transition-colors hover:bg-accent hover:text-foreground pointer-coarse:h-10"
             >
               {t("orders.viewAll")}
               <ArrowUpRight className="size-3" strokeWidth={2} />

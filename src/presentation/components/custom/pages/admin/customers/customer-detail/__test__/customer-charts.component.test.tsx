@@ -72,6 +72,13 @@ describe("CustomerCharts headings", () => {
     expect(screen.getByText("Category Breakdown")).toBeInTheDocument()
     expect(screen.getByText("Value of products bought across all orders")).toBeInTheDocument()
   })
+
+  it("pads both cards like the other admin cards, tighter on phones than on desktop", () => {
+    renderWithProviders(<CustomerCharts customer={detail()} />)
+
+    expect(screen.getByText("Spending Activity").closest("[data-slot='card-content']")).toHaveClass("p-4", "lg:p-5")
+    expect(screen.getByText("Category Breakdown").closest("[data-slot='card-content']")).toHaveClass("p-4", "lg:p-5")
+  })
 })
 
 describe("CustomerCharts spending card", () => {

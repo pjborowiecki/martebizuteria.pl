@@ -70,6 +70,15 @@ describe("NewsletterCampaignsTable", () => {
     expect(within(row).getByText("Oct 8, 2026, 11:42 AM")).toBeInTheDocument()
   })
 
+  it("keeps the subject column wide enough to read on phones and lets the table scroll instead", async () => {
+    remote.campaigns.current = [campaign({})]
+    renderWithProviders(<NewsletterCampaignsTable />)
+
+    const subject = await screen.findByText("Autumn pieces")
+
+    expect(subject.closest("td")).toHaveClass("whitespace-normal", "max-lg:min-w-52")
+  })
+
   it("shows a newsletter still going out with its progress and no end date", async () => {
     remote.campaigns.current = [campaign({ completedAt: null, sentCount: 100, status: "sending" })]
     renderWithProviders(<NewsletterCampaignsTable />)

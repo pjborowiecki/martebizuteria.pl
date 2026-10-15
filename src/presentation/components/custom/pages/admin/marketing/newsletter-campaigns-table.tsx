@@ -27,7 +27,7 @@ export const NewsletterCampaignsTable = (): JSX.Element => {
   return (
     <Card className={cn("min-h-0", ADMIN_CARD_CLASS)}>
       <CardContent className="flex min-h-0 flex-col p-0">
-        <h2 className="shrink-0 border-b border-border/60 px-6 py-4 text-sm font-semibold tracking-tight">{t("title")}</h2>
+        <h2 className="shrink-0 border-b border-border/60 px-4 py-4 text-sm font-semibold tracking-tight lg:px-6">{t("title")}</h2>
         {campaigns.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
             <p className="text-sm font-medium">{t("empty.title")}</p>
@@ -37,11 +37,11 @@ export const NewsletterCampaignsTable = (): JSX.Element => {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className={`pl-6 ${HEADER_CLASS}`}>{t("columns.subject")}</TableHead>
+                <TableHead className={`pl-4 lg:pl-6 ${HEADER_CLASS}`}>{t("columns.subject")}</TableHead>
                 <TableHead className={HEADER_CLASS}>{t("columns.status")}</TableHead>
                 <TableHead className={HEADER_CLASS}>{t("columns.delivered")}</TableHead>
                 <TableHead className={HEADER_CLASS}>{t("columns.started")}</TableHead>
-                <TableHead className={`pr-6 ${HEADER_CLASS}`}>{t("columns.finished")}</TableHead>
+                <TableHead className={`pr-4 lg:pr-6 ${HEADER_CLASS}`}>{t("columns.finished")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -64,7 +64,7 @@ const NewsletterCampaignRow = ({ campaign }: Readonly<{ campaign: NewsletterCamp
 
   return (
     <TableRow>
-      <TableCell className="max-w-md pl-6 whitespace-normal">
+      <TableCell className="max-w-md pl-4 whitespace-normal max-lg:min-w-52 lg:pl-6">
         <p className="text-[13px] font-medium">{resolveLocalizedString(campaign.subjects, locale)}</p>
         {campaign.failure !== null && <p className="text-[12px] text-destructive">{campaign.failure}</p>}
       </TableCell>
@@ -77,7 +77,7 @@ const NewsletterCampaignRow = ({ campaign }: Readonly<{ campaign: NewsletterCamp
         {t("campaigns.delivered", { sent: campaign.sentCount, total: campaign.recipientCount })}
       </TableCell>
       <TableCell className="text-[13px] text-muted-foreground">{format.dateTime(campaign.createdAt, DATE_TIME_FORMAT)}</TableCell>
-      <TableCell className="pr-6 text-[13px] text-muted-foreground">
+      <TableCell className="pr-4 text-[13px] text-muted-foreground lg:pr-6">
         {campaign.completedAt === null ? EMPTY_VALUE : format.dateTime(campaign.completedAt, DATE_TIME_FORMAT)}
       </TableCell>
     </TableRow>

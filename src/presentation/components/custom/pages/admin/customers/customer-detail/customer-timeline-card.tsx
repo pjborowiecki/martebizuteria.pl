@@ -1,5 +1,6 @@
 import { type JSX } from "react"
 
+import { cn } from "cn"
 import { Eye, LogIn, LogOut, type LucideIcon, ShoppingBag, ShoppingCart, UserRound } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
@@ -7,6 +8,7 @@ import { type User } from "~/src/modules/user/user.types"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.styles"
 
 const resolveTimelineDescription = (
@@ -75,7 +77,7 @@ export const CustomerTimelineCard = ({ timeline }: Readonly<CustomerTimelineCard
   return (
     <section className="flex flex-col 2xl:[@media(min-height:57rem)]:min-h-44 2xl:[@media(min-height:57rem)]:flex-1">
       <Card className={CUSTOMER_DETAIL_CARD_CLASS}>
-        <CardContent className="flex min-h-0 flex-col p-5">
+        <CardContent className={cn("flex min-h-0 flex-col", ADMIN_CARD_CONTENT_CLASS)}>
           <p className="mb-4 shrink-0 text-sm font-medium">{t("timeline.title")}</p>
           {timeline.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("timeline.empty")}</p>
