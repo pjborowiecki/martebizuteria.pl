@@ -1,0 +1,31 @@
+{
+  "subject": "Dziękujemy za zakupy w M'Arte",
+  "preview": "Twoje zamówienie jest już u Ciebie. Mamy nadzieję, że biżuteria sprawi Ci wiele radości.",
+  "heading": "Dziękujemy",
+  "message": "Twoje zamówienie jest już u Ciebie. Z całego serca dziękujemy za zaufanie i wybór biżuterii M'Arte.",
+  "messageSecondary": "Mamy nadzieję, że ręcznie wykonany egzemplarz z naszej pracowni sprawi Ci wiele radości i będzie Ci towarzyszyć przez lata.",
+  "orderLabel": "Numer zamówienia",
+  "care": {
+    "label": "Jak dbać o biżuterię",
+    "tips": {
+      "wipe": "Po noszeniu przetrzyj biżuterię miękką, suchą ściereczką i przechowuj każdy element osobno, w suchym miejscu.",
+      "takeOff": "Zdejmuj ją przed kąpielą, pływaniem, sauną, ćwiczeniami, sprzątaniem i snem.",
+      "putOnLast": "Zakładaj ją na końcu, gdy kosmetyki, perfumy i lakier do włosów już wyschną.",
+      "gentle": "Nie poleruj biżuterii pozłacanej, a kamieni naturalnych i pereł nie mocz w wodzie."
+    },
+    "more": "Więcej porad"
+  },
+  "returns": {
+    "label": "Gdyby coś było nie tak",
+    "period": "Jako konsument możesz odstąpić od umowy bez podawania przyczyny w ciągu 14 dni od dnia objęcia produktów w posiadanie. Najprościej zrobisz to przez formularz na naszej stronie.",
+    "exception": "Prawo odstąpienia nie dotyczy produktów wykonanych według Twojej specyfikacji, na przykład w rozmiarze spoza oferty sklepu albo z grawerem uzgodnionym z nami indywidualnie. Obejmuje natomiast rozmiary i wykończenia dostępne do wyboru w sklepie.",
+    "withdrawal": "Odstąp od umowy",
+    "exchangesAndReturns": "Wymiana i zwroty"
+  },
+  "contact": "Masz pytania albo chcesz podzielić się wrażeniami? Odpowiedz na tę wiadomość, napisz na {email} lub zadzwoń pod numer {phone}.",
+  "createAccountCta": "Załóż konto i zobacz swoje zamówienia",
+  "viewOrderCta": "Zobacz zamówienie",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

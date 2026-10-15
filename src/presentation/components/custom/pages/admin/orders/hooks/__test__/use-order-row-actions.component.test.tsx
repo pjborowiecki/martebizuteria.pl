@@ -36,7 +36,7 @@ const {
   toastWarning,
 } = vi.hoisted(() => ({
   cancelFn: vi.fn<(input: { orderId: string }) => Promise<{ cancelledEmailSent: boolean; ok: true; orderId: string }>>(),
-  deliverFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+  deliverFn: vi.fn<(input: { orderId: string }) => Promise<{ email: { kind: string; status: string }; ok: true; orderId: string }>>(),
   fulfillFn: vi.fn<(input: { orderId: string }) => Promise<{ email: { kind: string; status: string }; ok: true; orderId: string }>>(),
   refundFn: vi.fn<(input: { orderId: string; restock: boolean }) => Promise<{ ok: true; orderId: string }>>(),
   resendEmailFn: vi.fn<(input: { eventId: string; orderId: string }) => Promise<{ emailSent: boolean; ok: true; orderId: string }>>(),
@@ -93,7 +93,7 @@ describe("admin order action mutations", () => {
     fulfillFn.mockResolvedValue({ email: { kind: "order-in-progress", status: "sent" }, ok: true, orderId: "order-1" })
     shipFn.mockResolvedValue({ email: { kind: "order-shipped", status: "sent" }, ok: true, orderId: "order-1" })
     cancelFn.mockResolvedValue({ cancelledEmailSent: true, ok: true, orderId: "order-1" })
-    deliverFn.mockResolvedValue({ ok: true, orderId: "order-1" })
+    deliverFn.mockResolvedValue({ email: { kind: "order-delivered", status: "sent" }, ok: true, orderId: "order-1" })
     refundFn.mockResolvedValue({ ok: true, orderId: "order-1" })
   })
 
@@ -247,6 +247,22 @@ describe("admin order email notices", () => {
     expect(toastWarning).toHaveBeenCalledWith("Customer email not sent yet", {
       description:
         "Resend did not take the “Fulfillment started notice” email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
+    })
+  })
+
+  it("warns, naming the thank-you email, when it did not reach the customer yet", async () => {
+    deliverFn.mockResolvedValue({ email: { kind: "order-delivered", status: "failed" }, ok: true, orderId: "order-1" })
+    const { result } = renderHook(() => useMarkOrderDelivered(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastWarning).toHaveBeenCalledOnce()
+    })
+
+    expect(toastSuccess).toHaveBeenCalledExactlyOnceWith("Order updated", { description: "Order marked as delivered." })
+    expect(toastWarning).toHaveBeenCalledWith("Customer email not sent yet", {
+      description:
+        "Resend did not take the “Thank-you note” email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
     })
   })
 

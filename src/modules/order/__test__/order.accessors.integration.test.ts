@@ -502,7 +502,7 @@ const createPlacedOrderTables = (): void => {
     create table checkout (id text primary key, billing_address_id text, shipping_address_id text);
     create table "order" (
       id text primary key, billing_company_name text, billing_nip text, canceled_at integer, checkout_id text,
-      currency_code text not null default 'PLN', customer_note text, delivered_at integer, delivery_method_id text,
+      currency_code text not null default 'PLN', customer_note text, delivered_at integer, delivered_email_at integer, delivery_method_id text,
       discount_id text, discount_total integer not null default 0, email text not null,
       fulfillment_started_at integer, fulfillment_status text not null default 'not_fulfilled', in_progress_email_at integer,
       inpost_shipment_id text, inpost_shipment_status text,

@@ -15,6 +15,7 @@ import type newOrderMessages from "~/messages/en-US/emails.new-order.json"
 import type newsletterAlreadySubscribedMessages from "~/messages/en-US/emails.newsletter-already-subscribed.json"
 import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled.json"
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
+import type orderDeliveredMessages from "~/messages/en-US/emails.order-delivered.json"
 import type orderInProgressMessages from "~/messages/en-US/emails.order-in-progress.json"
 import type orderRefundedMessages from "~/messages/en-US/emails.order-refunded.json"
 import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
@@ -34,6 +35,7 @@ import {
 } from "~/src/presentation/emails/newsletter-already-subscribed"
 import { ORDER_CANCELLED_NAMESPACE, OrderCancelled } from "~/src/presentation/emails/order-cancelled"
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
+import { ORDER_DELIVERED_NAMESPACE, OrderDelivered } from "~/src/presentation/emails/order-delivered"
 import { ORDER_IN_PROGRESS_NAMESPACE, OrderInProgress } from "~/src/presentation/emails/order-in-progress"
 import { ORDER_REFUNDED_NAMESPACE, OrderRefunded } from "~/src/presentation/emails/order-refunded"
 import { ORDER_SHIPPED_NAMESPACE, OrderShipped } from "~/src/presentation/emails/order-shipped"
@@ -256,6 +258,22 @@ export const EMAIL_PREVIEWS = {
       )
     },
     label: "Order confirmation",
+  },
+  "order-delivered": {
+    element: async (locale) => (
+      <OrderDelivered
+        accountCta={PREVIEW_CUSTOMER_CTA}
+        links={{
+          care: "http://localhost:3000/faq",
+          exchangesAndReturns: PREVIEW_LEGAL_LINKS.exchangesAndReturns,
+          withdrawal: PREVIEW_LEGAL_LINKS.withdrawal,
+        }}
+        locale={locale}
+        messages={await loadNamespace<typeof orderDeliveredMessages>({ locale, namespace: ORDER_DELIVERED_NAMESPACE })}
+        orderNumber={PREVIEW_ORDER_NUMBER}
+      />
+    ),
+    label: "Order delivered",
   },
   "order-in-progress": {
     element: async (locale) => (

@@ -17,6 +17,8 @@ const SHIPPED_EMAIL_SENT = { kind: "order-shipped", status: "sent" }
 
 const IN_PROGRESS_EMAIL_SENT = { kind: "order-in-progress", status: "sent" }
 
+const DELIVERED_EMAIL_SENT = { kind: "order-delivered", status: "sent" }
+
 const database = vi.hoisted(() => {
   const updates: Record<string, unknown>[] = []
   const unmatched: number[] = []
@@ -50,7 +52,10 @@ const announcement = vi.hoisted(() => ({
   announceOrderShipment: vi.fn<(orderId: string, origin: string) => Promise<{ readonly kind: string; readonly status: string }>>(),
 }))
 
-const progressEmails = vi.hoisted(() => ({ sendOrderInProgressEmail: vi.fn<(orderId: string, origin: string) => Promise<boolean>>() }))
+const progressEmails = vi.hoisted(() => ({
+  sendOrderDeliveredEmail: vi.fn<(orderId: string, origin: string) => Promise<boolean>>(),
+  sendOrderInProgressEmail: vi.fn<(orderId: string, origin: string) => Promise<boolean>>(),
+}))
 
 const incoming = vi.hoisted(() => ({ getRequest: vi.fn<() => Request>() }))
 
@@ -62,6 +67,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
 }))
 vi.mock("~/src/modules/order/use-cases/announce-order-shipment.server", () => announcement)
 vi.mock("~/src/modules/order/use-cases/send-order-in-progress-email.server", () => progressEmails)
+vi.mock("~/src/modules/order/use-cases/send-order-delivered-email.server", () => progressEmails)
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderDeliveredAudit: audit.delivered,
   recordOrderFulfillmentStartedAudit: audit.fulfillmentStarted,
@@ -107,6 +113,7 @@ beforeEach(() => {
   )
   announcement.announceOrderShipment.mockResolvedValue(SHIPPED_EMAIL_SENT)
   progressEmails.sendOrderInProgressEmail.mockResolvedValue(true)
+  progressEmails.sendOrderDeliveredEmail.mockResolvedValue(true)
   database.updates.length = 0
   database.unmatched.length = 0
   orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
@@ -296,9 +303,39 @@ describe("markOrderDelivered", () => {
   })
 
   it("marks a shipped order delivered, completes it and stamps the delivery time", async () => {
-    await expect(markOrderDelivered({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({ ok: true, orderId: ORDER_ID })
+    await expect(markOrderDelivered({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({
+      email: DELIVERED_EMAIL_SENT,
+      ok: true,
+      orderId: ORDER_ID,
+    })
     expect(database.updates[0]).toMatchObject({ fulfillmentStatus: "delivered", status: "completed" })
     expect(database.updates[0]?.["deliveredAt"]).toBeInstanceOf(Date)
+  })
+
+  it("thanks the customer once, on the shop the admin works in", async () => {
+    await markOrderDelivered({ data: { orderId: ORDER_ID } })
+
+    expect(database.updates[1]?.["deliveredEmailAt"]).toBeInstanceOf(Date)
+    expect(progressEmails.sendOrderDeliveredEmail).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "http://127.0.0.1:3000")
+  })
+
+  it("does not thank the customer again when an order stepped back is delivered once more", async () => {
+    database.unmatched.push(2)
+
+    await expect(markOrderDelivered({ data: { orderId: ORDER_ID } })).resolves.toMatchObject({
+      email: { kind: "order-delivered", status: "alreadySent" },
+    })
+    expect(progressEmails.sendOrderDeliveredEmail).not.toHaveBeenCalled()
+  })
+
+  it("refuses a delivery another click already recorded, without a second thank-you", async () => {
+    database.unmatched.push(1)
+
+    await expect(markOrderDelivered({ data: { orderId: ORDER_ID } })).rejects.toThrow(
+      new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE),
+    )
+    expect(audit.delivered).not.toHaveBeenCalled()
+    expect(progressEmails.sendOrderDeliveredEmail).not.toHaveBeenCalled()
   })
 
   it("records the delivery of the order in the audit log", async () => {
@@ -345,6 +382,7 @@ describe("markOrderDelivered", () => {
 
   it("marks the order the mutation was handed delivered", async () => {
     await expect(new MutationObserver(new QueryClient(), markOrderDeliveredMutation).mutate({ orderId: ORDER_ID })).resolves.toStrictEqual({
+      email: DELIVERED_EMAIL_SENT,
       ok: true,
       orderId: ORDER_ID,
     })

@@ -18,6 +18,7 @@ const permissions = vi.hoisted(() => [] as unknown[])
 const notify = vi.hoisted(() => ({
   cancelled: vi.fn<(cancellation: object, origin: string) => Promise<boolean>>(),
   confirmed: vi.fn<(session: object, orderId: string) => Promise<boolean>>(),
+  delivered: vi.fn<(orderId: string, origin: string) => Promise<boolean>>(),
   inProgress: vi.fn<(orderId: string, origin: string) => Promise<boolean>>(),
   newOrder: vi.fn<(orderId: string, returnUrl: string | undefined) => Promise<boolean>>(),
   refunded: vi.fn<(refund: object, returnUrl: string | undefined) => Promise<boolean>>(),
@@ -49,6 +50,7 @@ vi.mock("~/src/modules/order/use-cases/send-order-cancelled-email.server", () =>
 vi.mock("~/src/modules/order/use-cases/send-order-refunded-email.server", () => ({ sendOrderRefundedEmail: notify.refunded }))
 vi.mock("~/src/modules/order/use-cases/send-order-shipped-email.server", () => ({ sendOrderShippedEmail: notify.shipped }))
 vi.mock("~/src/modules/order/use-cases/send-order-in-progress-email.server", () => ({ sendOrderInProgressEmail: notify.inProgress }))
+vi.mock("~/src/modules/order/use-cases/send-order-delivered-email.server", () => ({ sendOrderDeliveredEmail: notify.delivered }))
 vi.mock("~/src/modules/order/use-cases/send-order-tracking-email.server", () => ({ sendOrderTrackingEmail: notify.tracking }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { checkout: { sessions: { retrieve: sessionsRetrieve } } } }))
 vi.mock("~/src/modules/order/use-cases/send-order-confirmation-email.server", () => ({ sendOrderConfirmationEmail: notify.confirmed }))
@@ -136,6 +138,14 @@ describe("resendOrderEmail", () => {
     await resend()
 
     expect(notify.inProgress).toHaveBeenCalledExactlyOnceWith(ORDER_ID, SHOP_ORIGIN)
+  })
+
+  it("sends the thank-you email again, linked on the deployment the admin works on", async () => {
+    orders.getAdminOrderTimelineRows.mockResolvedValue(failedDelivery({ kind: "order-delivered" }))
+
+    await resend()
+
+    expect(notify.delivered).toHaveBeenCalledExactlyOnceWith(ORDER_ID, SHOP_ORIGIN)
   })
 
   it("sends a tracking number email again with the number the failed delivery carried", async () => {

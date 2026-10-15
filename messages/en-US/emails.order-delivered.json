@@ -1,0 +1,31 @@
+{
+  "subject": "Thank you for shopping with M'Arte",
+  "preview": "Your order is with you now. We hope your jewelry brings you joy.",
+  "heading": "Thank you",
+  "message": "Your order is with you now. Thank you from all of us for your trust and for choosing M'Arte jewelry.",
+  "messageSecondary": "We hope the handcrafted piece from our atelier brings you joy and stays with you for years to come.",
+  "orderLabel": "Order reference",
+  "care": {
+    "label": "Caring for your jewelry",
+    "tips": {
+      "wipe": "After wearing, wipe your jewelry with a soft, dry cloth and store each piece separately in a dry place.",
+      "takeOff": "Take it off before bathing, swimming, the sauna, exercise, cleaning and sleep.",
+      "putOnLast": "Put it on last, once your cosmetics, perfume and hairspray have dried.",
+      "gentle": "Do not polish gold-plated pieces, and never soak natural stones or pearls in water."
+    },
+    "more": "More care tips"
+  },
+  "returns": {
+    "label": "If something is not right",
+    "period": "As a consumer, you may withdraw from the contract without giving any reason within 14 days of the day you take possession of the products. The simplest way is the form on our website.",
+    "exception": "The right of withdrawal does not cover products made to your own specifications, such as a size outside our range or an engraving agreed with us individually. The sizes and finishes offered as variants in the shop are covered.",
+    "withdrawal": "Withdraw from the contract",
+    "exchangesAndReturns": "Exchanges and returns"
+  },
+  "contact": "Have a question, or would you like to share your impressions? Simply reply to this email, write to {email} or call {phone}.",
+  "createAccountCta": "Create account and see your orders",
+  "viewOrderCta": "View your order",
+  "signoff": "With warm regards,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}

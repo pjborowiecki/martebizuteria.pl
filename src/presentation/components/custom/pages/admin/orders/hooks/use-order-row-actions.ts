@@ -120,8 +120,19 @@ export const useMarkOrderShipped = (): UseMutationResult<OrderEmailActionResult,
   )
 }
 
-export const useMarkOrderDelivered = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
-  useAdminOrderActionMutation(markOrderDeliveredMutation, "toast.markDeliveredSuccessDescription")
+export const useMarkOrderDelivered = (): UseMutationResult<OrderEmailActionResult, Error, OrderIdInput> => {
+  const showEmailNotice = useOrderEmailNoticeToast()
+
+  return useAdminOrderActionMutation(
+    {
+      ...markOrderDeliveredMutation,
+      onSuccess: ({ email }) => {
+        showEmailNotice(email)
+      },
+    },
+    "toast.markDeliveredSuccessDescription",
+  )
+}
 
 export const useCancelOrder = (): UseMutationResult<CancelOrderResult, Error, OrderIdInput> => {
   const t = useTranslations("pages.admin.orders.rowActions")

@@ -21,6 +21,7 @@ import verifyEmailCopy from "~/messages/en-US/emails.verify-email.json"
 import polishIncidentAlertCopy from "~/messages/pl-PL/emails.incident-alert.json"
 import polishNewOrderCopy from "~/messages/pl-PL/emails.new-order.json"
 import polishOrderConfirmationCopy from "~/messages/pl-PL/emails.order-confirmation.json"
+import polishOrderDeliveredCopy from "~/messages/pl-PL/emails.order-delivered.json"
 import polishOrderShippedCopy from "~/messages/pl-PL/emails.order-shipped.json"
 import polishOrderWithdrawalCopy from "~/messages/pl-PL/emails.order-withdrawal.json"
 import polishPaymentFailedCopy from "~/messages/pl-PL/emails.payment-failed.json"
@@ -50,6 +51,7 @@ describe("EMAIL_PREVIEWS", () => {
       ["newsletter-already-subscribed", "Newsletter already subscribed"],
       ["order-cancelled", "Order cancelled"],
       ["order-confirmation", "Order confirmation"],
+      ["order-delivered", "Order delivered"],
       ["order-in-progress", "Order in progress"],
       ["order-refunded", "Order refunded"],
       ["order-shipped", "Order shipped"],
@@ -176,6 +178,17 @@ describe("renderEmailPreview of the order emails", () => {
 
     expect(preview).toContain(`${orderShippedCopy.carrierLabel}\n\nInPost`)
     expect(preview).toContain(`${orderShippedCopy.trackingCta} https://inpost.pl/sledzenie-przesylek?number=00259007123456789012`)
+  })
+
+  it("previews the thank-you with the care tips, the way to withdraw and the shop's contact", async () => {
+    const preview = await text("order-delivered", "pl-PL")
+
+    expect(preview).toContain(polishOrderDeliveredCopy.heading.toUpperCase())
+    expect(preview).toContain(polishOrderDeliveredCopy.care.tips.takeOff)
+    expect(preview).toContain(
+      `${polishOrderDeliveredCopy.returns.withdrawal} http://localhost:3000/withdraw-from-contract?order=MRT-2026-00042`,
+    )
+    expect(preview).toContain("kontakt@martebizuteria.pl")
   })
 
   it("previews the start of fulfilment with the promise of a tracking number to come", async () => {

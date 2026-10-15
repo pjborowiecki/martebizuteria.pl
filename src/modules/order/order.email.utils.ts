@@ -21,6 +21,7 @@ import {
   type OrderConfirmationItem,
   type OrderConfirmationLegalLinks,
 } from "~/src/presentation/emails/order-confirmation"
+import { type OrderDeliveredLinks } from "~/src/presentation/emails/order-delivered"
 import { type OrderShippedDetails } from "~/src/presentation/emails/order-shipped"
 import { ROUTES } from "~/src/routes"
 
@@ -143,6 +144,12 @@ export const buildOrderLegalLinks = (origin: string, locale: SupportedLocale, or
   termsOfService: buildLocalizedUrl(origin, ROUTES.TERMS_OF_SERVICE, locale),
   withdrawal: `${buildLocalizedUrl(origin, ROUTES.WITHDRAW_FROM_CONTRACT, locale)}?${new URLSearchParams({ order: orderNumber }).toString()}`,
 })
+
+export const buildOrderDeliveredLinks = (origin: string, locale: SupportedLocale, orderNumber: string): OrderDeliveredLinks => {
+  const { exchangesAndReturns, withdrawal } = buildOrderLegalLinks(origin, locale, orderNumber)
+
+  return { care: buildLocalizedUrl(origin, ROUTES.FAQ, locale), exchangesAndReturns, withdrawal }
+}
 
 const filledText = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim()
