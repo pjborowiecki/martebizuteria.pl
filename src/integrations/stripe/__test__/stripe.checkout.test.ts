@@ -1,4 +1,9 @@
-import { type StripeCheckoutConfirmResult, type StripeCheckoutContact, type StripeCheckoutRedirectBehavior } from "@stripe/stripe-js"
+import {
+  type StripeCheckoutConfirmResult,
+  type StripeCheckoutContact,
+  type StripeCheckoutRedirectBehavior,
+  type StripeCheckoutStatus,
+} from "@stripe/stripe-js"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { type OrderTotals } from "~/src/modules/order/order.totals"
@@ -548,6 +553,13 @@ const stubbedCheckout = () => {
   return elements.checkout
 }
 
+const PAID: StripeCheckoutStatus = { paymentStatus: "paid", type: "complete" }
+
+const confirmedAs = (status: StripeCheckoutStatus): StripeCheckoutConfirmResult => ({
+  session: { ...stubbedCheckout(), status },
+  type: "success",
+})
+
 describe("confirmCheckoutSession", () => {
   beforeEach(() => {
     vi.resetAllMocks()
@@ -555,7 +567,7 @@ describe("confirmCheckoutSession", () => {
 
   it("confirms with the billing contact and stays on the page for a card that needs no redirect", async () => {
     const checkout = stubbedCheckout()
-    confirm.mockResolvedValue({ session: checkout, type: "success" })
+    confirm.mockResolvedValue(confirmedAs(PAID))
 
     await expect(confirmCheckoutSession({ checkout, values: { ...shippingValues, sameAsShipping: true } })).resolves.toStrictEqual({
       status: "success",
@@ -572,7 +584,7 @@ describe("confirmCheckoutSession", () => {
 
   it("sends the shopper's phone number in international format, since the payment form asks for no billing details", async () => {
     const checkout = stubbedCheckout()
-    confirm.mockResolvedValue({ session: checkout, type: "success" })
+    confirm.mockResolvedValue(confirmedAs(PAID))
 
     await confirmCheckoutSession({ checkout, values: { ...shippingValues, phone: "600 123 456" } })
 
@@ -581,7 +593,7 @@ describe("confirmCheckoutSession", () => {
 
   it("sends the separate billing address when the shopper supplied one", async () => {
     const checkout = stubbedCheckout()
-    confirm.mockResolvedValue({ session: checkout, type: "success" })
+    confirm.mockResolvedValue(confirmedAs(PAID))
 
     await confirmCheckoutSession({
       checkout,
@@ -604,6 +616,28 @@ describe("confirmCheckoutSession", () => {
       },
       phoneNumber: "+48600123456",
       redirect: "if_required",
+    })
+  })
+
+  it("reports a session that needed no payment as paid", async () => {
+    confirm.mockResolvedValue(confirmedAs({ paymentStatus: "no_payment_required", type: "complete" }))
+
+    await expect(confirmCheckoutSession({ checkout: stubbedCheckout(), values: shippingValues })).resolves.toStrictEqual({
+      status: "success",
+    })
+  })
+
+  it.each<{ label: string; status: StripeCheckoutStatus }>([
+    {
+      label: "a delayed-notification payment that completed the session but has not settled",
+      status: { paymentStatus: "unpaid", type: "complete" },
+    },
+    { label: "a BLIK payment still waiting for approval in the banking app", status: { type: "open" } },
+  ])("reports $label as still processing instead of paid", async ({ status }) => {
+    confirm.mockResolvedValue(confirmedAs(status))
+
+    await expect(confirmCheckoutSession({ checkout: stubbedCheckout(), values: shippingValues })).resolves.toStrictEqual({
+      status: "processing",
     })
   })
 

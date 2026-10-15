@@ -22,12 +22,16 @@ export type CheckoutSessionStatus = "closed" | "complete" | "open" | "processing
 
 const readStripeSessionStatus = async (sessionId: string): Promise<CheckoutSessionStatus> => {
   const stripeSession = await stripe.checkout.sessions.retrieve(sessionId, { expand: ["payment_intent"] })
+  if (isCheckoutSessionProcessing(stripeSession)) {
+    return "processing"
+  }
+
   if (stripeSession.status === "complete") {
     return "complete"
   }
 
   if (stripeSession.status === "open") {
-    return isCheckoutSessionProcessing(stripeSession) ? "processing" : "open"
+    return "open"
   }
 
   if (stripeSession.status === "expired") {

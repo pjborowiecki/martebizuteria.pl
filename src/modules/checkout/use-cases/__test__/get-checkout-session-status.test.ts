@@ -156,6 +156,20 @@ describe("getCheckoutSessionStatus for an account's checkout asked about by whoe
     await expect(statusOf("cs_held")).resolves.toBe("processing")
   })
 
+  it("tells that account its completed session is still settling", async () => {
+    mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1" } })
+    mocked.retrieve.mockResolvedValue({ id: "cs_held", payment_status: "unpaid", status: "complete" })
+
+    await expect(statusOf("cs_held")).resolves.toBe("processing")
+  })
+
+  it("tells another account nothing about a completed session still settling, as for an unknown session", async () => {
+    mocked.getRequestSession.mockResolvedValue({ user: { id: "user-2" } })
+    mocked.retrieve.mockResolvedValue({ id: "cs_held", payment_status: "unpaid", status: "complete" })
+
+    await expect(statusOf("cs_held")).resolves.toBe("closed")
+  })
+
   it("tells another account nothing about a payment under way, as for an unknown session", async () => {
     mocked.getRequestSession.mockResolvedValue({ user: { id: "user-2" } })
     mocked.retrieve.mockResolvedValue({ id: "cs_held", payment_intent: AWAITING_BLIK_APPROVAL, status: "open" })
@@ -173,8 +187,15 @@ describe("getCheckoutSessionStatus for a payment still pending", () => {
     expect(mocked.releaseExpiredCheckoutSession).not.toHaveBeenCalled()
   })
 
-  it("reports a completed session whose asynchronous payment is still processing as complete", async () => {
+  it("reports a completed session whose asynchronous payment has not settled as processing, so the page waits for the bank instead of confirming it", async () => {
     mocked.retrieve.mockResolvedValue({ id: "cs_held", payment_status: "unpaid", status: "complete" })
+
+    await expect(statusOf("cs_held")).resolves.toBe("processing")
+    expect(mocked.releaseExpiredCheckoutSession).not.toHaveBeenCalled()
+  })
+
+  it("reports a completed session that needed no payment as complete", async () => {
+    mocked.retrieve.mockResolvedValue({ id: "cs_held", payment_status: "no_payment_required", status: "complete" })
 
     await expect(statusOf("cs_held")).resolves.toBe("complete")
   })

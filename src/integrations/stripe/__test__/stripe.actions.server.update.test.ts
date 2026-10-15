@@ -369,7 +369,12 @@ describe("handleUpdateCheckoutSession on a checkout that can no longer change", 
   })
 
   it("reports a Stripe session paid before its webhook as paid, not closed, and leaves its stock to fulfilment", async () => {
-    mocked.checkoutSessionsRetrieve.mockResolvedValue({ id: "cs_old", metadata: { items: JSON.stringify(HELD_LINES) }, status: "complete" })
+    mocked.checkoutSessionsRetrieve.mockResolvedValue({
+      id: "cs_old",
+      metadata: { items: JSON.stringify(HELD_LINES) },
+      payment_status: "paid",
+      status: "complete",
+    })
 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
       code: ERROR_CODES.CONFLICT,
@@ -478,6 +483,23 @@ describe("handleUpdateCheckoutSession on a checkout that can no longer change", 
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toThrow("stripe rejected the session")
     expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
     expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
+  })
+})
+
+describe("handleUpdateCheckoutSession on a completed session whose payment has not settled", () => {
+  it("keeps a completed session whose delayed-notification payment has not settled, instead of reporting it paid or replacing it", async () => {
+    mocked.checkoutSessionsRetrieve.mockResolvedValue({
+      id: "cs_old",
+      metadata: { items: JSON.stringify(HELD_LINES) },
+      payment_status: "unpaid",
+      status: "complete",
+    })
+
+    await expect(handleUpdateCheckoutSession(updateInput())).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: CHECKOUT_ERROR_CODES.SESSION_PROCESSING,
+    })
+    expectNothingTouched()
   })
 })
 

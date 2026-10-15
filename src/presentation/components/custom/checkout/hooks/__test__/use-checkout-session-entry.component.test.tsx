@@ -375,20 +375,59 @@ describe("useCheckoutSessionEntry on the return from a payment", () => {
     expect(loadCheckoutSessionId()).toBe("cs_own")
   })
 
-  it("shows the generic confirmation for a return that names no session", () => {
+  it("sends a return that names no session to the payment step, which checks the stored session itself, without claiming a payment", async () => {
+    holdSession("cs_stored")
     const { result } = renderEntry({ success: true })
 
-    expect(result.current).toBe("confirmation")
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledExactlyOnceWith({ replace: true, search: { step: 4 }, to: "." })
+    })
+    expect(result.current).toBe("checking")
     expect(readStatus).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+    expect(loadCheckoutSessionId()).toBe("cs_stored")
   })
 
-  it("shows the confirmation as before when the returned session's state cannot be learned", async () => {
+  it("keeps the basket and sends the shopper to the payment step, which asks again, when the returned session's state cannot be learned", async () => {
+    holdSession("cs_returned")
     readStatus.mockRejectedValue(new Error("TOO_MANY_REQUESTS"))
-    const { result } = renderEntry({ session_id: "cs_returned", success: true })
+    const { rerender, result } = renderEntry({ session_id: "cs_returned", success: true })
+
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalledExactlyOnceWith({ replace: true, search: { step: 4 }, to: "." })
+    })
+    expect(result.current).toBe("checking")
+    expect(toastError).not.toHaveBeenCalled()
+    expect(loadCheckoutSessionId()).toBe("cs_returned")
+    expect(useCartStore.getState().items).toStrictEqual([RING])
+
+    rerender({})
+
+    expect(result.current).toBe("checkout")
+    expect(readStatus).toHaveBeenCalledOnce()
+  })
+
+  it("shows the confirmation of a reopened address whose session the browser no longer holds when its state cannot be learned", async () => {
+    useCartStore.setState({ items: [] })
+    readStatus.mockRejectedValue(new Error("TOO_MANY_REQUESTS"))
+    const { result } = renderEntry({ session_id: "cs_confirmed", success: true })
 
     await waitFor(() => {
       expect(result.current).toBe("confirmation")
     })
     expect(navigate).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it("shows the confirmation of a reopened address when the browser holds a newer session instead", async () => {
+    holdSession("cs_newer")
+    readStatus.mockRejectedValue(new Error("TOO_MANY_REQUESTS"))
+    const { result } = renderEntry({ session_id: "cs_confirmed", success: true })
+
+    await waitFor(() => {
+      expect(result.current).toBe("confirmation")
+    })
+    expect(navigate).not.toHaveBeenCalled()
+    expect(loadCheckoutSessionId()).toBe("cs_newer")
   })
 })

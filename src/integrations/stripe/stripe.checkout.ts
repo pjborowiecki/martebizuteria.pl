@@ -1,5 +1,5 @@
 import { type StripeCheckoutElementsValue } from "@stripe/react-stripe-js/checkout"
-import { type StripeCheckoutContact } from "@stripe/stripe-js"
+import { type StripeCheckoutContact, type StripeCheckoutStatus } from "@stripe/stripe-js"
 
 import { createCheckoutSessionFn, updateCheckoutSessionFn } from "~/src/integrations/stripe/stripe.actions"
 import { ProcessingCheckoutSessionError } from "~/src/integrations/stripe/stripe.checkout.processing"
@@ -156,7 +156,9 @@ export const resetCheckoutSession = async ({ heldSessionId, session, ...request 
 
 const PAYMENT_FAILED_CODE = "paymentFailed"
 
-export type ConfirmOutcome = { status: "success" } | { status: "error"; message: string; recoverable: boolean }
+export type ConfirmOutcome = { status: "processing" } | { status: "success" } | { status: "error"; message: string; recoverable: boolean }
+
+const isCheckoutPaid = (status: StripeCheckoutStatus): boolean => status.type === "complete" && status.paymentStatus !== "unpaid"
 
 export const confirmCheckoutSession = async ({
   checkout,
@@ -176,5 +178,5 @@ export const confirmCheckoutSession = async ({
     }
   }
 
-  return { status: "success" }
+  return isCheckoutPaid(result.session.status) ? { status: "success" } : { status: "processing" }
 }
