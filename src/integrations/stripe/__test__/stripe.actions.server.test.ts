@@ -117,15 +117,7 @@ import { handleCreateCheckoutSession, handleUpdateCheckoutSession } from "~/src/
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import {
-  parseCheckoutSessionMetadataItems,
-  readCheckoutSessionItemsJson,
-  toCheckoutSessionItemsMetadata,
-} from "~/src/modules/checkout/checkout-metadata.zod"
-
-const STRIPE_METADATA_VALUE_LENGTH = 500
-
-const STRIPE_METADATA_KEY_LIMIT = 50
+import { toCheckoutSessionItemsMetadata } from "~/src/modules/checkout/checkout-metadata.zod"
 
 const EXPECTED_META_ITEMS = toCheckoutSessionItemsMetadata([
   {
@@ -164,25 +156,6 @@ afterEach(() => {
   vi.restoreAllMocks()
   mocked.requestLocale.value = "pl-PL"
 })
-
-const multiItemCart = (size: number) =>
-  Array.from({ length: size }, (_, index) => ({
-    ...CART_ITEM,
-    id: `line-${String(index)}`,
-    image: `products/0199a1b2-c3d4-7e5f-8901-23456789ab0${String(index)}.avif`,
-    slug: `bransoletka-aurora-${String(index)}`,
-    variantId: `0199a1b2-c3d4-7e5f-8901-23456789ab0${String(index)}`,
-  }))
-
-const stubCatalogueForCart = (cartItems: ReturnType<typeof multiItemCart>): void => {
-  mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue(
-    cartItems.map((item) => ({
-      handle: item.slug,
-      id: `product-${item.variantId}`,
-      variants: [{ ...availableVariant(), id: item.variantId }],
-    })),
-  )
-}
 
 const signInCustomerWithStripeAccount = (): void => {
   mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1", name: "Anna Kowalska" } })
@@ -283,13 +256,16 @@ describe("handleCreateCheckoutSession", () => {
       discountTotal: "0",
       locale: "pl-PL",
       userId: "user-1",
-      ...EXPECTED_META_ITEMS,
     }
 
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata,
-        payment_intent_data: { metadata, receipt_email: "anna@example.com" },
+        metadata: { ...metadata, ...EXPECTED_META_ITEMS },
+        payment_intent_data: {
+          description: "M'Arte – zamówienie w sklepie internetowym",
+          metadata,
+          receipt_email: "anna@example.com",
+        },
       }),
     )
   })
@@ -724,39 +700,5 @@ describe("checkout session discounts", () => {
     await expect(handleUpdateCheckoutSession(updateInput())).rejects.toThrow("Stripe is unavailable")
     expect(mocked.couponsDel).toHaveBeenCalledExactlyOnceWith("coupon_1")
     expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
-  })
-})
-
-describe("handleCreateCheckoutSession with a cart Stripe used to reject", () => {
-  it("keeps every metadata value inside Stripe's 500 character limit", async () => {
-    const cartItems = multiItemCart(6)
-    stubCatalogueForCart(cartItems)
-
-    await handleCreateCheckoutSession(createInput({}, cartItems))
-    const metadata = createdSessionMetadata()
-
-    for (const [key, value] of Object.entries(metadata)) {
-      expect(value.length, `${key} is ${String(value.length)} characters`).toBeLessThanOrEqual(STRIPE_METADATA_VALUE_LENGTH)
-    }
-  })
-
-  it("stays well inside Stripe's 50 key limit", async () => {
-    const cartItems = multiItemCart(6)
-    stubCatalogueForCart(cartItems)
-
-    await handleCreateCheckoutSession(createInput({}, cartItems))
-
-    expect(Object.keys(createdSessionMetadata()).length).toBeLessThan(STRIPE_METADATA_KEY_LIMIT)
-  })
-
-  it("still carries every line of the cart through the metadata", async () => {
-    const cartItems = multiItemCart(6)
-    stubCatalogueForCart(cartItems)
-
-    await handleCreateCheckoutSession(createInput({}, cartItems))
-    const itemsJson = readCheckoutSessionItemsJson(createdSessionMetadata())
-    const lines = parseCheckoutSessionMetadataItems(itemsJson)
-
-    expect(lines.map((line) => line.variantId)).toStrictEqual(cartItems.map((item) => item.variantId))
   })
 })

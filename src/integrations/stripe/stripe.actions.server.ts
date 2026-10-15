@@ -27,6 +27,7 @@ import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { isSellPriceCentsValid } from "~/src/modules/_core/utils/currency"
 import {
+  type CheckoutPaymentMetadata,
   type CheckoutReleaseLine,
   parseCheckoutSessionReleaseLines,
   readCheckoutSessionItemsJson,
@@ -286,6 +287,7 @@ interface CreateSessionArgs {
   deliveryType: DeliveryMethodType
   discount: Discount["applied"] | undefined
   email: string
+  itemsMetadata: Record<string, string>
   lines: OrderLine[]
   origin: string
   shippingCost: number
@@ -298,6 +300,7 @@ const createStripeSession = async ({
   deliveryType,
   discount,
   email,
+  itemsMetadata,
   lines,
   origin,
   shippingCost,
@@ -313,15 +316,14 @@ const createStripeSession = async ({
     discountTotal: String(discount?.amountMinorUnits ?? NO_COST),
     locale,
     userId: userId ?? "",
-    ...toMetaItems(lines),
-  }
+  } satisfies CheckoutPaymentMetadata
 
   const params: StripeType.Checkout.SessionCreateParams = {
     expires_at: Math.floor(Date.now() / MILLISECONDS_PER_SECOND) + CHECKOUT_SESSION_LIFETIME_SECONDS,
     line_items: toLineItems(lines, { cost: shippingCost, name: messages.deliveryLineItem[deliveryType] }),
-    metadata,
+    metadata: { ...metadata, ...itemsMetadata },
     mode: "payment",
-    payment_intent_data: { metadata, receipt_email: email },
+    payment_intent_data: { description: messages.paymentDescription, metadata, receipt_email: email },
     phone_number_collection: { enabled: true },
     return_url: returnUrl,
     ui_mode: "elements",
@@ -404,6 +406,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
 
   const validatedItems = await validateAndCalculateItems(data.items, [])
   const lines = toOrderLines(validatedItems)
+  const itemsMetadata = toMetaItems(lines)
   const applicableDiscount = await resolveCheckoutDiscount({
     code: checkoutValues.discountCode,
     email,
@@ -430,6 +433,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
       deliveryType,
       discount,
       email,
+      itemsMetadata,
       lines,
       origin,
       reservedLines: toReservedLines(validatedItems),
@@ -656,6 +660,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   await assertCheckoutStillEditable(data.sessionId, checkoutCreatedAt)
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
+  const itemsMetadata = toMetaItems(lines)
   const { checkoutValues, deliveryType, lockerPoint, lockerUnconfirmed, shippingCost } = await resolveDelivery(data.checkoutValues)
   const applicableDiscount = await resolveCheckoutDiscount({
     code: checkoutValues.discountCode,
@@ -680,6 +685,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
       deliveryType,
       discount,
       email: checkoutValues.email,
+      itemsMetadata,
       lines,
       origin,
       shippingCost,
