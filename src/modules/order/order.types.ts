@@ -257,6 +257,26 @@ interface UnannouncedOrderRefund {
   readonly refundedTotal: number
 }
 
+interface OrderRefundEmail extends UnannouncedOrderRefund {
+  readonly refundId: string | undefined
+}
+
+interface FailedOrderRefundInput {
+  readonly refund: {
+    readonly amount: number
+    readonly failureReason: string | undefined
+    readonly id: string
+    readonly status: string
+  }
+  readonly refundedAmount: number
+  readonly transactionId: string
+}
+
+interface FailedOrderRefund {
+  readonly orderId: string
+  readonly orderNumber: string
+}
+
 export interface Order {
   adminExportInput: Omit<AdminOrdersPageInput, "page" | "pageSize">
   adminExportItem: AdminOrderExportItem
@@ -273,8 +293,11 @@ export interface Order {
   disputeMetadata: AdminOrderDisputeMetadata
   email: z.infer<(typeof orderZodSchemas)["email"]>
   emailNotice: OrderEmailNotice
+  failedRefund: FailedOrderRefund
+  failedRefundInput: FailedOrderRefundInput
   locker: OrderLocker
   insert: typeof order.$inferInsert
+  refundEmail: OrderRefundEmail
   refundInput: OrderRefundInput
   select: typeof order.$inferSelect
   settled: SettledOrder

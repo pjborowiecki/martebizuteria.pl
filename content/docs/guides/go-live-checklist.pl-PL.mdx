@@ -24,7 +24,7 @@ Przejdź przez listę po kolei. Każdy punkt mówi, co musi być spełnione, jak
    - usuń wszystkie trzy nazwy z lokalnych `.env.development`, `.env.preview` i `.env.production`;
    - usuń aplikację OAuth GitHuba zarejestrowaną dla sklepu, jeśli istnieje, w `github.com/settings/developers`.
 
-6. **Stripe wysyła do sklepu zdarzenia live.** W panelu Stripe, w trybie live, endpoint webhooka dla `https://martebizuteria.pl/api/webhooks/stripe` nasłuchuje ośmiu zdarzeń z `STRIPE_WEBHOOK_EVENTS` (`src/integrations/stripe/stripe.constants.ts`):
+6. **Stripe wysyła do sklepu zdarzenia live.** W panelu Stripe, w trybie live, endpoint webhooka dla `https://martebizuteria.pl/api/webhooks/stripe` nasłuchuje dziesięciu zdarzeń z `STRIPE_WEBHOOK_EVENTS` (`src/integrations/stripe/stripe.constants.ts`):
 
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
@@ -32,10 +32,12 @@ Przejdź przez listę po kolei. Każdy punkt mówi, co musi być spełnione, jak
    - `checkout.session.expired`
    - `payment_intent.payment_failed`
    - `charge.refunded`
+   - `refund.failed`
+   - `refund.updated`
    - `charge.dispute.created`
    - `charge.dispute.closed`
 
-   Nadaj endpointowi wersję API `2026-08-26.dahlia`, tę, którą przypina `STRIPE_API_VERSION`, żeby treść zdarzeń miała kształt, który czytają handlery. Własny sekret podpisu endpointu, `whsec_…`, to produkcyjny `STRIPE_WEBHOOK_SECRET`. Endpoint preview, pod `https://preview.martebizuteria.pl/api/webhooks/stripe` albo pod hostem `workers.dev` preview, jest endpointem trybu testowego, a jego własny sekret to `STRIPE_WEBHOOK_SECRET` preview. Trasa potwierdza zdarzenie z drugiego trybu, nic z nim nie robiąc, więc wiersz `[Stripe] Ignoring … event` w logach Workera oznacza, że jego endpoint albo sekret należy do drugiego trybu; zastąp sekret sekretem endpointu we właściwym trybie. `checkout.session.expired` jest równie ważne jak zdarzenia płatności, bo to dzięki niemu wraca stan zarezerwowany przez porzucony checkout. Zobacz [Stripe](/docs/integrations/stripe#webhooki).
+   Nadaj endpointowi wersję API `2026-08-26.dahlia`, tę, którą przypina `STRIPE_API_VERSION`, żeby treść zdarzeń miała kształt, który czytają handlery. Własny sekret podpisu endpointu, `whsec_…`, to produkcyjny `STRIPE_WEBHOOK_SECRET`. Endpoint preview, pod `https://preview.martebizuteria.pl/api/webhooks/stripe` albo pod hostem `workers.dev` preview, jest endpointem trybu testowego, a jego własny sekret to `STRIPE_WEBHOOK_SECRET` preview. Trasa potwierdza zdarzenie z drugiego trybu, nic z nim nie robiąc, więc wiersz `[Stripe] Ignoring … event` w logach Workera oznacza, że jego endpoint albo sekret należy do drugiego trybu; zastąp sekret sekretem endpointu we właściwym trybie. `checkout.session.expired` jest równie ważne jak zdarzenia płatności, bo to dzięki niemu wraca stan zarezerwowany przez porzucony checkout. `refund.failed` i `refund.updated` są ważne przy każdym zwrocie: tylko z nich sklep dowiaduje się, że zwrot, który już zgłosił i o którym napisał klientowi, się nie powiódł albo został anulowany, więc zamówienie zostaje otwarte ponownie, a właściciel dostaje alert. Stripe nie dodaje nowych zdarzeń do istniejącego endpointu, więc endpoint utworzony, zanim sklep zaczął obsługiwać te dwa, także endpoint preview, musi mieć je zaznaczone na liście nasłuchiwanych zdarzeń. Zobacz [Stripe](/docs/integrations/stripe#webhooki).
 
 7. **Karty, BLIK i Przelewy24 są włączone w trybie live.** Sesja Checkout nie wymienia metod płatności, więc Stripe oferuje te włączone w panelu, a `CHECKOUT_PAYMENT_METHOD_ORDER` tylko ustala ich kolejność. W trybie live, w **Settings**, **Payment methods**, karty, BLIK i Przelewy24 są włączone; regulamin obiecuje wszystkie trzy. Ustawienia trybu testowego nie przechodzą do trybu live.
 

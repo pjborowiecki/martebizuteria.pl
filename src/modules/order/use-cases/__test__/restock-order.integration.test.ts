@@ -30,6 +30,8 @@ const { audit, catalogInvalidated, sqlite, stripeApi } = await vi.hoisted(async 
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
     stripeApi: {
       refundsCreate: vi.fn<(params: object, options: object) => Promise<{ amount: number; id: string }>>(),
+      refundsList:
+        vi.fn<(params: object) => { autoPagingToArray: (options: object) => Promise<{ amount: number; id: string; status: string }[]> }>(),
       sessionsList: vi.fn<(params: object) => Promise<{ data: { id: string; return_url: string }[] }>>(),
       sessionsRetrieve: vi.fn<(id: string) => Promise<{ payment_intent: string; payment_status: "paid" }>>(),
     },
@@ -67,7 +69,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   stripe: {
     checkout: { sessions: { list: stripeApi.sessionsList, retrieve: stripeApi.sessionsRetrieve } },
-    refunds: { create: stripeApi.refundsCreate },
+    refunds: { create: stripeApi.refundsCreate, list: stripeApi.refundsList },
   },
 }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail: () => Promise.resolve(undefined) }))
@@ -169,6 +171,9 @@ beforeEach(() => {
   stripeApi.sessionsList.mockResolvedValue({ data: [{ id: "cs_paid", return_url: `${SHOP_ORIGIN}/pl-PL/checkout?success=true` }] })
   stripeApi.sessionsRetrieve.mockResolvedValue({ payment_intent: "pi_paid", payment_status: "paid" })
   stripeApi.refundsCreate.mockResolvedValue({ amount: PAID_AMOUNT, id: "re_paid" })
+  stripeApi.refundsList.mockReturnValue({
+    autoPagingToArray: () => Promise.resolve([{ amount: PAID_AMOUNT, id: "re_paid", status: "succeeded" }]),
+  })
 })
 
 afterAll(() => {

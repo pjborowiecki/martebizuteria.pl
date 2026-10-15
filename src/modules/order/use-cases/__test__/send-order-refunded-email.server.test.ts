@@ -41,11 +41,11 @@ const ORDER_TOTAL = 39_899
 
 const RETURN_URL = "https://preview.martebizuteria.pl/en-US/checkout?success=true&session_id={CHECKOUT_SESSION_ID}"
 
-const PARTIAL_REFUND = { amount: 5000, fullyRefunded: false, orderId: ORDER_ID, refundedTotal: 8000 }
+const PARTIAL_REFUND = { amount: 5000, fullyRefunded: false, orderId: ORDER_ID, refundId: "re_partial", refundedTotal: 8000 }
 
 const REFUND_DELIVERY = {
-  idempotencyKey: `order-refunded/${ORDER_ID}/8000`,
-  orderEmail: { amount: 5000, fullyRefunded: false, kind: "order-refunded", refundedTotal: 8000 },
+  idempotencyKey: `order-refunded/${ORDER_ID}/re_partial`,
+  orderEmail: { amount: 5000, fullyRefunded: false, kind: "order-refunded", refundId: "re_partial", refundedTotal: 8000 },
 }
 
 const orderRow = {
@@ -106,7 +106,10 @@ describe("sendOrderRefundedEmail", () => {
     getOrderForRefundEmail.mockResolvedValue({ ...orderRow, metadata: null })
     loadNamespace.mockResolvedValue(polishCopy)
 
-    await sendOrderRefundedEmail({ amount: ORDER_TOTAL, fullyRefunded: true, orderId: ORDER_ID, refundedTotal: ORDER_TOTAL }, RETURN_URL)
+    await sendOrderRefundedEmail(
+      { amount: ORDER_TOTAL, fullyRefunded: true, orderId: ORDER_ID, refundId: "re_full", refundedTotal: ORDER_TOTAL },
+      RETURN_URL,
+    )
 
     expect(loadNamespace).toHaveBeenCalledWith({ locale: "pl-PL", namespace: "emails.order-refunded" })
     expect(sentEmail().subject).toBe(polishCopy.subject)
@@ -214,14 +217,30 @@ describe("sendOrderRefundedEmail", () => {
       willRetry: true,
     })
   })
+})
 
-  it("keys each refund's email by the total refunded once it is made, so two equal partial refunds both reach the customer", async () => {
+describe("sendOrderRefundedEmail idempotency key", () => {
+  it("keys each refund's email by its Stripe refund, so a refund issued again after one failed reaches the customer", async () => {
     await sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)
-    await sendOrderRefundedEmail({ ...PARTIAL_REFUND, refundedTotal: 13_000 }, RETURN_URL)
+    await sendOrderRefundedEmail({ ...PARTIAL_REFUND, refundId: "re_reissued" }, RETURN_URL)
 
     expect(sendEmail.mock.calls.map(([options]) => options.idempotencyKey)).toStrictEqual([
-      `order-refunded/${ORDER_ID}/8000`,
-      `order-refunded/${ORDER_ID}/13000`,
+      `order-refunded/${ORDER_ID}/re_partial`,
+      `order-refunded/${ORDER_ID}/re_reissued`,
     ])
+  })
+
+  it("keeps the total-based key of a refund email recorded before emails named their Stripe refund, so resending it settles that record", async () => {
+    await sendOrderRefundedEmail({ ...PARTIAL_REFUND, refundId: undefined }, RETURN_URL)
+
+    expect(sentEmail().idempotencyKey).toBe(`order-refunded/${ORDER_ID}/8000`)
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: {
+          idempotencyKey: `order-refunded/${ORDER_ID}/8000`,
+          orderEmail: { amount: 5000, fullyRefunded: false, kind: "order-refunded", refundId: undefined, refundedTotal: 8000 },
+        },
+      }),
+    )
   })
 })

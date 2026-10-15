@@ -147,6 +147,21 @@ const describeDisputeOpened = (source: AuditLogDetailSource): AuditLog["detail"]
 const describeDisputeClosed = (source: AuditLogDetailSource): AuditLog["detail"] | undefined =>
   describeValues(source, source.detail === null ? [] : [{ field: "disputeStatus", value: source.detail }])
 
+const describeRefundFailed = (source: AuditLogDetailSource): AuditLog["detail"] | undefined => {
+  const [amount, status, ...reasons] = source.detail?.split(DETAIL_PART_SEPARATOR) ?? []
+
+  return describeValues(
+    source,
+    amount === undefined || status === undefined || !MINOR_UNITS_PATTERN.test(amount) || reasons.length > 1
+      ? []
+      : [
+          { field: "amount", value: Number(amount) },
+          { field: "refundStatus", value: status },
+          ...reasons.map((reason) => ({ field: "refundFailureReason", value: reason })),
+        ],
+  )
+}
+
 const describeChanges = (source: AuditLogDetailSource): AuditLog["detail"] | undefined => {
   const changes = describeAuditLogChanges(source.metadata)
   if (changes === undefined) {
@@ -169,6 +184,7 @@ const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetai
   [AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED]: describeDisputeClosed,
   [AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED]: describeDisputeOpened,
   [AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED]: describePaidAmount,
+  [AUDIT_LOG_ACTION.ORDER_REFUND_FAILED]: describeRefundFailed,
   [AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED]: describeChanges,
   [AUDIT_LOG_ACTION.ORDER_STEPPED_BACK]: describeChanges,
   [AUDIT_LOG_ACTION.PRODUCT_UPDATED]: describeChanges,

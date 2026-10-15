@@ -19,6 +19,7 @@ const {
   recordOrderPlacedAudit,
   recordOrderReleasedAudit,
   refundOrder,
+  refundsList,
   releaseCheckout,
   scheduleAdminOrdersInvalidation,
   scheduleProductCatalogInvalidation,
@@ -44,6 +45,7 @@ const {
   recordOrderPlacedAudit: vi.fn(),
   recordOrderReleasedAudit: vi.fn(),
   refundOrder: vi.fn<(input: object) => Promise<void>>(),
+  refundsList: vi.fn<(params: object) => { autoPagingToArray: (options: object) => Promise<Stripe.Refund[]> }>(),
   releaseCheckout: vi.fn<(input: object) => Promise<boolean>>(),
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),
@@ -59,6 +61,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({
     checkout: { sessions: { list: sessionsList } },
     coupons: { del: couponsDel, retrieve: couponsRetrieve },
     paymentIntents: { retrieve: paymentIntentsRetrieve },
+    refunds: { list: refundsList },
   },
 }))
 vi.mock("~/src/lib/incident-alert.server", () => ({ sendIncidentAlert }))
@@ -91,6 +94,7 @@ vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderTotalsForEmail }
 vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrderDispute }))
 vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute }))
 vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder }))
+vi.mock("~/src/modules/order/use-cases/undo-failed-refund", () => ({ lowerRefundedAmount: vi.fn(), undoFailedRefund: vi.fn() }))
 
 import { STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/stripe/stripe.constants"
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
@@ -110,6 +114,7 @@ import {
   dispute,
   paymentIntent,
   paymentIntentFailedEvent,
+  refund,
 } from "./fixtures/stripe-webhook-events"
 
 const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
@@ -140,6 +145,8 @@ const paidSession = (metadata: Stripe.Metadata, email: string | null = "anna@exa
 
 const itemsMetadata = JSON.stringify(fulfillmentLines)
 
+const stripeRefunds = (refunds: readonly Stripe.Refund[]) => ({ autoPagingToArray: () => Promise.resolve([...refunds]) })
+
 const dispatch = async (event: Stripe.Event): Promise<void> => {
   const handler = webhookHandlers[event.type]
   if (handler === undefined) {
@@ -165,6 +172,7 @@ beforeEach(() => {
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
   releaseCheckout.mockResolvedValue(true)
   refundOrder.mockResolvedValue(undefined)
+  refundsList.mockReturnValue(stripeRefunds([refund({ amount: AMOUNT_TOTAL, status: "succeeded" })]))
   flagOrderDispute.mockResolvedValue(undefined)
   clearOrderDispute.mockResolvedValue(undefined)
   sendEmail.mockResolvedValue(undefined)
@@ -493,6 +501,7 @@ describe("payment intent failure", () => {
 
 describe("charge refunds", () => {
   it("resolves an expanded payment intent to the same checkout as its string reference", async () => {
+    refundsList.mockReturnValue(stripeRefunds([refund({ amount: SHIPPING_TOTAL, status: "succeeded" })]))
     const expandedCharge = {
       ...charge({ amount: AMOUNT_TOTAL, amountRefunded: SHIPPING_TOTAL, paymentIntent: "pi_test_1" }),
       payment_intent: paymentIntent({}),
@@ -512,6 +521,7 @@ describe("charge refunds", () => {
     await dispatch(chargeRefundedEvent(charge({ amount: AMOUNT_TOTAL, amountRefunded: AMOUNT_TOTAL, paymentIntent: "pi_test_1" })))
 
     expect(sessionsList).toHaveBeenCalledWith({ limit: 1, payment_intent: "pi_test_1" })
+    expect(refundsList.mock.calls).toStrictEqual([[{ charge: "ch_test_1", limit: 100 }], [{ charge: "ch_test_1", limit: 100 }]])
     expect(refundOrder).toHaveBeenCalledWith({
       fullyRefunded: true,
       refundedAmount: AMOUNT_TOTAL,
@@ -522,6 +532,8 @@ describe("charge refunds", () => {
   })
 
   it("reports a partial refund as such", async () => {
+    refundsList.mockReturnValue(stripeRefunds([refund({ amount: SHIPPING_TOTAL, status: "succeeded" })]))
+
     await dispatch(chargeRefundedEvent(charge({ amount: AMOUNT_TOTAL, amountRefunded: SHIPPING_TOTAL, paymentIntent: "pi_test_1" })))
 
     expect(refundOrder).toHaveBeenCalledWith({
@@ -529,6 +541,35 @@ describe("charge refunds", () => {
       refundedAmount: SHIPPING_TOTAL,
       transactionId: "cs_resolved_1",
     })
+  })
+
+  it("records only the refunds Stripe has not failed or cancelled by the time the event is handled", async () => {
+    refundsList.mockReturnValue(
+      stripeRefunds([
+        refund({ amount: AMOUNT_TOTAL - SHIPPING_TOTAL, id: "re_failed", status: "failed" }),
+        refund({ amount: 1000, id: "re_pending", status: "pending" }),
+        refund({ amount: 500, id: "re_cancelled", status: "canceled" }),
+        refund({ amount: SHIPPING_TOTAL, id: "re_shipping", status: "succeeded" }),
+      ]),
+    )
+
+    await dispatch(chargeRefundedEvent(charge({ amount: AMOUNT_TOTAL, amountRefunded: AMOUNT_TOTAL, paymentIntent: "pi_test_1" })))
+
+    expect(refundOrder).toHaveBeenCalledExactlyOnceWith({
+      fullyRefunded: false,
+      refundedAmount: SHIPPING_TOTAL + 1000,
+      transactionId: "cs_resolved_1",
+    })
+  })
+
+  it("records nothing when every refund on the charge failed or was cancelled before the event was handled", async () => {
+    refundsList.mockReturnValue(stripeRefunds([refund({ amount: AMOUNT_TOTAL, status: "failed" })]))
+
+    await dispatch(chargeRefundedEvent(charge({ amount: AMOUNT_TOTAL, amountRefunded: AMOUNT_TOTAL, paymentIntent: "pi_test_1" })))
+
+    expect(refundOrder).not.toHaveBeenCalled()
+    expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
+    expect(consoleInfo).toHaveBeenCalledWith("Charge ch_test_1 has no refund that still stands; nothing to record.")
   })
 
   it("skips a charge that carries no payment intent", async () => {

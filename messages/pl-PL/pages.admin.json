@@ -377,6 +377,7 @@
       "order_payment_captured": "Płatność pobrana",
       "order_fulfillment_started": "Realizacja rozpoczęta",
       "order_refund_initiated": "Zwrot zainicjowany",
+      "order_refund_failed": "Zwrot nieudany",
       "settings_updated": "Ustawienia zaktualizowane",
       "sales_paused": "Sprzedaż wstrzymana",
       "sales_resumed": "Sprzedaż wznowiona",
@@ -523,6 +524,19 @@
           "warning_needs_response": "Zapytanie wymaga odpowiedzi",
           "warning_under_review": "Zapytanie w trakcie rozpatrywania",
           "won": "Wygrany"
+        },
+        "refundStatus": {
+          "canceled": "Anulowany",
+          "failed": "Nieudany"
+        },
+        "refundFailureReason": {
+          "charge_for_pending_refund_disputed": "Klient zgłosił spór, zanim zwrot został zrealizowany",
+          "declined": "Odrzucony przez partnerów bankowych Stripe",
+          "expired_or_canceled_card": "Metoda płatności wygasła albo została zamknięta",
+          "insufficient_funds": "Saldo Stripe było za niskie, aż zwrot wygasł",
+          "lost_or_stolen_card": "Karta została zgłoszona jako zgubiona lub skradziona",
+          "merchant_request": "Anulowany na prośbę sklepu",
+          "unknown": "Nieznana przyczyna"
         }
       },
       "variants": {
@@ -797,6 +811,7 @@
         "cancelled": "Zamówienie anulowane",
         "refundInitiated": "Zarejestrowano zwrot",
         "refundRequested": "Zlecono zwrot",
+        "refundFailed": "Zwrot się nie powiódł",
         "withdrawalReceived": "Otrzymano odstąpienie od umowy",
         "restocked": "Produkty wróciły na stan",
         "shipmentCreated": "Utworzono przesyłkę InPost",

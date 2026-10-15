@@ -4,6 +4,11 @@
     "heading": "Opłacona płatność bez zamówienia",
     "message": "Stripe przyjął płatność klienta, ale sklep nie mógł utworzyć z niej zamówienia, a ponowna próba tego nie zmieni. Znajdź płatność w panelu Stripe po identyfikatorze poniżej, a następnie zwróć pieniądze albo ustal zamówienie z klientem."
   },
+  "refundFailed": {
+    "subject": "Alert: zwrot nie dotarł do klienta — M'Arte",
+    "heading": "Zwrot nie dotarł do klienta",
+    "message": "Stripe zgłasza, że zwrot się nie powiódł albo został anulowany, więc pieniądze wróciły na saldo Stripe sklepu zamiast do klienta. Zamówienie liczy teraz tylko zwroty, które nadal obowiązują. Sklep nie wysyła klientowi e-maila o niepowodzeniu; sprawdź w historii zamówienia, czy klient dostał już wiadomość, że ten zwrot jest w drodze. Zwróć pieniądze w inny sposób: gdy przyczyna zniknie, zleć zwrot ponownie w panelu Stripe albo przyciskiem „Zwrot” w zamówieniu, albo uzgodnij z klientem, jak oddasz mu pieniądze."
+  },
   "stripeWebhookFailed": {
     "subject": "Alert: sklep nie obsłużył zdarzenia Stripe — M'Arte",
     "heading": "Sklep nie obsłużył zdarzenia Stripe",

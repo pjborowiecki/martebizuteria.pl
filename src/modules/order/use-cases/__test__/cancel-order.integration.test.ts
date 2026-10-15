@@ -29,7 +29,10 @@ const { audit, catalogInvalidated, requestSession, sendEmail, sqlite, stripeApi 
     sendEmail: vi.fn<(options: Readonly<SentEmail>) => Promise<string | undefined>>(),
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
     stripeApi: {
+      refunds: { standing: [] as { amount: number; id: string; status: string }[] },
       refundsCreate: vi.fn<(params: object, options: object) => Promise<{ amount: number; id: string }>>(),
+      refundsList:
+        vi.fn<(params: object) => { autoPagingToArray: (options: object) => Promise<{ amount: number; id: string; status: string }[]> }>(),
       sessionsList: vi.fn<(params: object) => Promise<{ data: { id: string; return_url: string }[] }>>(),
       sessionsRetrieve: vi.fn<(id: string) => Promise<{ payment_intent: string; payment_status: "paid" }>>(),
     },
@@ -81,7 +84,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   stripe: {
     checkout: { sessions: { list: stripeApi.sessionsList, retrieve: stripeApi.sessionsRetrieve } },
-    refunds: { create: stripeApi.refundsCreate },
+    refunds: { create: stripeApi.refundsCreate, list: stripeApi.refundsList },
   },
 }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
@@ -109,7 +112,7 @@ const PAID_AMOUNT = 38_900
 
 const REFUND_REQUEST = { metadata: { orderId: PAID_ORDER_ID }, payment_intent: "pi_paid" }
 
-const REFUND_KEY = { idempotencyKey: `admin-order-refund-${PAID_ORDER_ID}` }
+const REFUND_KEY = { idempotencyKey: `admin-order-refund-${PAID_ORDER_ID}-0` }
 
 const INVALID_STATE = { code: ERROR_CODES.CONFLICT, message: ORDER_ERROR_CODES.INVALID_STATE }
 
@@ -167,6 +170,7 @@ const readPaidPayment = () =>
     .parse(sqlite.prepare(`select status, refunded_amount from payment where id = 'payment-paid'`).get())
 
 const confirmRefundFromStripe = async (amountRefunded = PAID_AMOUNT): Promise<void> => {
+  stripeApi.refunds.standing = [{ amount: amountRefunded, id: `re_${String(amountRefunded)}`, status: "succeeded" }]
   const event: Stripe.Event = chargeRefundedEvent(charge({ amount: PAID_AMOUNT, amountRefunded, paymentIntent: "pi_paid" }))
   const handler = webhookHandlers[event.type]
   if (handler === undefined) {
@@ -205,6 +209,8 @@ beforeEach(() => {
   stripeApi.sessionsList.mockResolvedValue({ data: [{ id: "cs_paid", return_url: `${SHOP_ORIGIN}/pl-PL/checkout?success=true` }] })
   stripeApi.sessionsRetrieve.mockResolvedValue({ payment_intent: "pi_paid", payment_status: "paid" })
   stripeApi.refundsCreate.mockResolvedValue({ amount: PAID_AMOUNT, id: "re_paid" })
+  stripeApi.refunds.standing = []
+  stripeApi.refundsList.mockImplementation(() => ({ autoPagingToArray: () => Promise.resolve(stripeApi.refunds.standing) }))
   sendEmail.mockResolvedValue(undefined)
 })
 
@@ -396,8 +402,14 @@ describe("emails to the customer", () => {
       failure: undefined,
       label: "Order refunded → ada@marte.test",
       metadata: {
-        idempotencyKey: `order-refunded/${PAID_ORDER_ID}/${PAID_AMOUNT}`,
-        orderEmail: { amount: PAID_AMOUNT, fullyRefunded: true, kind: "order-refunded", refundedTotal: PAID_AMOUNT },
+        idempotencyKey: `order-refunded/${PAID_ORDER_ID}/re_${String(PAID_AMOUNT)}`,
+        orderEmail: {
+          amount: PAID_AMOUNT,
+          fullyRefunded: true,
+          kind: "order-refunded",
+          refundId: `re_${String(PAID_AMOUNT)}`,
+          refundedTotal: PAID_AMOUNT,
+        },
       },
       orderId: PAID_ORDER_ID,
       willRetry: false,

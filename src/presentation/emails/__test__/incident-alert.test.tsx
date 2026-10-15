@@ -24,6 +24,7 @@ const KINDS: readonly IncidentKind[] = [
   "newsletterFailed",
   "orderEmailFailed",
   "paidCheckoutWithoutOrder",
+  "refundFailed",
   "stripeWebhookFailed",
 ]
 

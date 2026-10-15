@@ -109,6 +109,7 @@ describe("processAuditLogQueueBatch", () => {
     AUDIT_LOG_ACTION.ORDER_TRACKING_UPDATED,
     AUDIT_LOG_ACTION.ORDER_CANCELLED,
     AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED,
+    AUDIT_LOG_ACTION.ORDER_REFUND_FAILED,
     AUDIT_LOG_ACTION.ORDER_RESTOCKED,
     AUDIT_LOG_ACTION.ORDER_PAYMENT_FAILED,
   ])("refreshes the overview's figures and recent orders once %s reaches the audit log", async (action) => {

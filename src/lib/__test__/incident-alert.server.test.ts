@@ -103,7 +103,7 @@ describe("sendIncidentAlert", () => {
     expect(sentEmail().subject).toBe(polishCopy.auditQueueFailed.subject)
   })
 
-  it.each(["auditQueueFailed", "newsletterFailed", "orderEmailFailed", "paidCheckoutWithoutOrder"] as const)(
+  it.each(["auditQueueFailed", "newsletterFailed", "orderEmailFailed", "paidCheckoutWithoutOrder", "refundFailed"] as const)(
     "opens a %s incident, which Stripe does not retry, for an hour",
     async (kind) => {
       await sendIncidentAlert({ ...incident, kind, reference: "reference-1" })

@@ -35,7 +35,13 @@ export const IncidentAlert = ({ environment, incident, locale, messages }: Reado
   )
 }
 
-export type IncidentKind = "auditQueueFailed" | "newsletterFailed" | "orderEmailFailed" | "paidCheckoutWithoutOrder" | "stripeWebhookFailed"
+export type IncidentKind =
+  | "auditQueueFailed"
+  | "newsletterFailed"
+  | "orderEmailFailed"
+  | "paidCheckoutWithoutOrder"
+  | "refundFailed"
+  | "stripeWebhookFailed"
 
 export interface Incident {
   readonly detail: string

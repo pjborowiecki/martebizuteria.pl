@@ -377,6 +377,7 @@
       "order_payment_captured": "Payment captured",
       "order_fulfillment_started": "Fulfillment started",
       "order_refund_initiated": "Refund initiated",
+      "order_refund_failed": "Refund failed",
       "settings_updated": "Settings updated",
       "sales_paused": "Sales paused",
       "sales_resumed": "Sales resumed",
@@ -523,6 +524,19 @@
           "warning_needs_response": "Inquiry needs response",
           "warning_under_review": "Inquiry under review",
           "won": "Won"
+        },
+        "refundStatus": {
+          "canceled": "Cancelled",
+          "failed": "Failed"
+        },
+        "refundFailureReason": {
+          "charge_for_pending_refund_disputed": "The customer disputed the payment while the refund was pending",
+          "declined": "Declined by Stripe's banking partners",
+          "expired_or_canceled_card": "The payment method expired or was closed",
+          "insufficient_funds": "The Stripe balance stayed too low until the refund expired",
+          "lost_or_stolen_card": "The card was reported lost or stolen",
+          "merchant_request": "Cancelled at the shop's request",
+          "unknown": "Unknown reason"
         }
       },
       "variants": {
@@ -797,6 +811,7 @@
         "cancelled": "Order cancelled",
         "refundInitiated": "Refund recorded",
         "refundRequested": "Refund requested",
+        "refundFailed": "Refund failed",
         "withdrawalReceived": "Withdrawal from the contract received",
         "restocked": "Items returned to stock",
         "shipmentCreated": "InPost shipment created",

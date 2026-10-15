@@ -34,7 +34,7 @@ Każda usługa zewnętrzna wymagająca konfiguracji ma jeden katalog w `src/inte
 Integracja konfiguruje dostawcę i oddaje decyzję:
 
 - `src/routes/api/webhooks.stripe.ts` weryfikuje podpis sekretem `STRIPE_WEBHOOK_SECRET` i wyszukuje typ zdarzenia w `webhookHandlers`. Nieznany typ jest logowany i potwierdzany odpowiedzią `{ received: true }`; handler, który rzuci wyjątek, zwraca 500, żeby Stripe ponowił próbę.
-- `stripe.webhooks.ts` woła następnie przypadki użycia zamówienia i checkoutu: `fulfillCheckout`, `releaseCheckout`, `refundOrder`, `flagOrderDispute`, `clearOrderDispute`, oraz przypadki użycia e-maili `sendOrderConfirmationEmail`, `sendNewOrderEmail`, `sendOrderRefundedEmail` i `sendPaymentFailedEmail`. Nie jest właścicielem żadnej z tych logik.
+- `stripe.webhooks.ts` woła następnie przypadki użycia zamówienia i checkoutu: `fulfillCheckout`, `releaseCheckout`, `refundOrder`, `undoFailedRefund`, `flagOrderDispute`, `clearOrderDispute`, oraz przypadki użycia e-maili `sendOrderConfirmationEmail`, `sendNewOrderEmail`, `sendOrderRefundedEmail` i `sendPaymentFailedEmail`. Nie jest właścicielem żadnej z tych logik.
 - `auth.server.ts` przekazuje `databaseHooks` Better Auth i hook żądań do `auth.hooks.server.ts`, który wywołuje rejestratory audytu i `scheduleAdminCustomersInvalidation`, rejestruje wtyczki `signInAudit` i `accountSecurityAudit` z `auth.audit.server.ts`, a swoje callbacki e-mailowe przekazuje przypadkom użycia modułów verification, account i user, które renderują szablony z `src/presentation/emails`.
 - Wzorzec wysyłki e-maila jest zawsze taki sam: ustal locale, załaduj przestrzeń nazw szablonu, wyrenderuj, wyślij.
 

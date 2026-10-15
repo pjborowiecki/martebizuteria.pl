@@ -63,9 +63,9 @@ const sendOrderEmailAgain = async (email: Order["email"], orderId: string, origi
   }
 
   if (email.kind === ORDER_EMAIL_KIND.REFUNDED) {
-    const { amount, fullyRefunded, refundedTotal } = email
+    const { amount, fullyRefunded, refundId, refundedTotal } = email
 
-    return sendOrderRefundedEmail({ amount, fullyRefunded, orderId, refundedTotal }, session.return_url)
+    return sendOrderRefundedEmail({ amount, fullyRefunded, orderId, refundId, refundedTotal }, session.return_url)
   }
 
   return sendOrderConfirmationEmail(session, orderId)
