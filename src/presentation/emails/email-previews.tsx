@@ -15,6 +15,7 @@ import type newOrderMessages from "~/messages/en-US/emails.new-order.json"
 import type newsletterAlreadySubscribedMessages from "~/messages/en-US/emails.newsletter-already-subscribed.json"
 import type orderCancelledMessages from "~/messages/en-US/emails.order-cancelled.json"
 import type orderConfirmationMessages from "~/messages/en-US/emails.order-confirmation.json"
+import type orderInProgressMessages from "~/messages/en-US/emails.order-in-progress.json"
 import type orderRefundedMessages from "~/messages/en-US/emails.order-refunded.json"
 import type orderShippedMessages from "~/messages/en-US/emails.order-shipped.json"
 import type orderTrackingMessages from "~/messages/en-US/emails.order-tracking.json"
@@ -33,6 +34,7 @@ import {
 } from "~/src/presentation/emails/newsletter-already-subscribed"
 import { ORDER_CANCELLED_NAMESPACE, OrderCancelled } from "~/src/presentation/emails/order-cancelled"
 import { ORDER_CONFIRMATION_NAMESPACE, OrderConfirmation } from "~/src/presentation/emails/order-confirmation"
+import { ORDER_IN_PROGRESS_NAMESPACE, OrderInProgress } from "~/src/presentation/emails/order-in-progress"
 import { ORDER_REFUNDED_NAMESPACE, OrderRefunded } from "~/src/presentation/emails/order-refunded"
 import { ORDER_SHIPPED_NAMESPACE, OrderShipped } from "~/src/presentation/emails/order-shipped"
 import { ORDER_TRACKING_NAMESPACE, OrderTrackingUpdate } from "~/src/presentation/emails/order-tracking"
@@ -254,6 +256,18 @@ export const EMAIL_PREVIEWS = {
       )
     },
     label: "Order confirmation",
+  },
+  "order-in-progress": {
+    element: async (locale) => (
+      <OrderInProgress
+        accountCta={PREVIEW_CUSTOMER_CTA}
+        delivery={{ methodName: "Paczkomat InPost", type: "locker" }}
+        locale={locale}
+        messages={await loadNamespace<typeof orderInProgressMessages>({ locale, namespace: ORDER_IN_PROGRESS_NAMESPACE })}
+        orderNumber={PREVIEW_ORDER_NUMBER}
+      />
+    ),
+    label: "Order in progress",
   },
   "order-refunded": {
     element: async (locale) => (

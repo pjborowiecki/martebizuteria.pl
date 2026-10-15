@@ -79,6 +79,7 @@ const orderRow = (overrides: Record<string, unknown> = {}) => ({
   deliveredAt: null,
   deliveryMethod: { courier: { name: "InPost" }, name: "Kurier InPost", type: "courier" },
   discountTotal: 0,
+  fulfillmentStartedAt: null,
   fulfillmentStatus: "shipped",
   id: "order-1",
   lockerId: null,

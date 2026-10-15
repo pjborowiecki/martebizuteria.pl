@@ -107,6 +107,7 @@
       "delivered": "Delivered",
       "shipped": "Shipped",
       "confirmed": "Order Confirmed",
+      "processing": "Fulfillment Started",
       "placed": "Order Placed",
       "cancelled": "Order Cancelled",
       "refunded": "Refunded"

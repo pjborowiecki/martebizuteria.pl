@@ -107,6 +107,7 @@
       "delivered": "Dostarczono",
       "shipped": "Wysłano",
       "confirmed": "Zamówienie potwierdzone",
+      "processing": "Rozpoczęto realizację",
       "placed": "Zamówienie złożone",
       "cancelled": "Zamówienie anulowane",
       "refunded": "Zwrócono"

@@ -9,6 +9,7 @@ import newOrderCopy from "~/messages/en-US/emails.new-order.json"
 import newsletterAlreadySubscribedCopy from "~/messages/en-US/emails.newsletter-already-subscribed.json"
 import orderCancelledCopy from "~/messages/en-US/emails.order-cancelled.json"
 import orderConfirmationCopy from "~/messages/en-US/emails.order-confirmation.json"
+import orderInProgressCopy from "~/messages/en-US/emails.order-in-progress.json"
 import orderRefundedCopy from "~/messages/en-US/emails.order-refunded.json"
 import orderShippedCopy from "~/messages/en-US/emails.order-shipped.json"
 import orderTrackingCopy from "~/messages/en-US/emails.order-tracking.json"
@@ -49,6 +50,7 @@ describe("EMAIL_PREVIEWS", () => {
       ["newsletter-already-subscribed", "Newsletter already subscribed"],
       ["order-cancelled", "Order cancelled"],
       ["order-confirmation", "Order confirmation"],
+      ["order-in-progress", "Order in progress"],
       ["order-refunded", "Order refunded"],
       ["order-shipped", "Order shipped"],
       ["order-tracking", "Tracking number"],
@@ -174,6 +176,13 @@ describe("renderEmailPreview of the order emails", () => {
 
     expect(preview).toContain(`${orderShippedCopy.carrierLabel}\n\nInPost`)
     expect(preview).toContain(`${orderShippedCopy.trackingCta} https://inpost.pl/sledzenie-przesylek?number=00259007123456789012`)
+  })
+
+  it("previews the start of fulfilment with the promise of a tracking number to come", async () => {
+    const preview = await text("order-in-progress")
+
+    expect(preview).toContain(orderInProgressCopy.heading.toUpperCase())
+    expect(preview).toContain(orderInProgressCopy.nextStep.locker)
   })
 
   it("previews the tracking number sent after the parcel shipped", async () => {

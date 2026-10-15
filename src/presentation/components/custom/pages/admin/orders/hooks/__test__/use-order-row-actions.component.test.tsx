@@ -37,7 +37,7 @@ const {
 } = vi.hoisted(() => ({
   cancelFn: vi.fn<(input: { orderId: string }) => Promise<{ cancelledEmailSent: boolean; ok: true; orderId: string }>>(),
   deliverFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
-  fulfillFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
+  fulfillFn: vi.fn<(input: { orderId: string }) => Promise<{ email: { kind: string; status: string }; ok: true; orderId: string }>>(),
   refundFn: vi.fn<(input: { orderId: string; restock: boolean }) => Promise<{ ok: true; orderId: string }>>(),
   resendEmailFn: vi.fn<(input: { eventId: string; orderId: string }) => Promise<{ emailSent: boolean; ok: true; orderId: string }>>(),
   restockFn: vi.fn<(input: { orderId: string }) => Promise<{ ok: true; orderId: string }>>(),
@@ -90,7 +90,7 @@ const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element =
 describe("admin order action mutations", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    fulfillFn.mockResolvedValue({ ok: true, orderId: "order-1" })
+    fulfillFn.mockResolvedValue({ email: { kind: "order-in-progress", status: "sent" }, ok: true, orderId: "order-1" })
     shipFn.mockResolvedValue({ email: { kind: "order-shipped", status: "sent" }, ok: true, orderId: "order-1" })
     cancelFn.mockResolvedValue({ cancelledEmailSent: true, ok: true, orderId: "order-1" })
     deliverFn.mockResolvedValue({ ok: true, orderId: "order-1" })
@@ -235,6 +235,35 @@ describe("admin order email notices", () => {
     vi.clearAllMocks()
   })
 
+  it("warns, naming the email, when the customer was not yet told their order is being prepared", async () => {
+    fulfillFn.mockResolvedValue({ email: { kind: "order-in-progress", status: "failed" }, ok: true, orderId: "order-1" })
+    const { result } = renderHook(() => useFulfillOrder(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastWarning).toHaveBeenCalledOnce()
+    })
+
+    expect(toastWarning).toHaveBeenCalledWith("Customer email not sent yet", {
+      description:
+        "Resend did not take the “Fulfillment started notice” email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
+    })
+  })
+
+  it("says the customer already had the fulfilment email when an order stepped back starts again", async () => {
+    fulfillFn.mockResolvedValue({ email: { kind: "order-in-progress", status: "alreadySent" }, ok: true, orderId: "order-1" })
+    const { result } = renderHook(() => useFulfillOrder(), { wrapper: Wrapper })
+
+    result.current.mutate({ orderId: "order-1" })
+    await waitFor(() => {
+      expect(toastInfo).toHaveBeenCalledOnce()
+    })
+
+    expect(toastInfo).toHaveBeenCalledWith("No repeat email", {
+      description: "The order already reached this step before, so the “Fulfillment started notice” email was not sent again.",
+    })
+  })
+
   it("tells the admin the customer already had the shipping email when a stepped back order ships again", async () => {
     shipFn.mockResolvedValue({ email: { kind: "order-shipped", status: "alreadySent" }, ok: true, orderId: "order-1" })
     const { result } = renderHook(() => useMarkOrderShipped(), { wrapper: Wrapper })
@@ -341,7 +370,7 @@ describe("admin order email resend", () => {
 describe("admin order action failures", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    fulfillFn.mockResolvedValue({ ok: true, orderId: "order-1" })
+    fulfillFn.mockResolvedValue({ email: { kind: "order-in-progress", status: "sent" }, ok: true, orderId: "order-1" })
     shipFn.mockResolvedValue({ email: { kind: "order-shipped", status: "sent" }, ok: true, orderId: "order-1" })
     cancelFn.mockResolvedValue({ cancelledEmailSent: true, ok: true, orderId: "order-1" })
   })

@@ -1,6 +1,6 @@
 ---
 title: "E-maile transakcyjne"
-description: "Siedemnaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach, oraz newsletter, który właściciel wysyła potwierdzonym subskrybentom."
+description: "Osiemnaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach, oraz newsletter, który właściciel wysyła potwierdzonym subskrybentom."
 ---
 
 ## Wysyłka
@@ -60,7 +60,7 @@ Cztery z tych e-maili trafiają na dowolny adres wpisany przez odwiedzającego: 
 
 Klientem jest `src/integrations/resend/resend.config.ts`, jednolinijkowe `new Resend(env.RESEND_API_KEY)`. Domyślne `from` to `APP_NAME <RESEND_EMAIL_FROM>`. Zarówno `RESEND_API_KEY`, jak i `RESEND_EMAIL_FROM` są na liście `secrets.required` każdego środowiska w `wrangler.jsonc`. Domena nadawcy musi być zweryfikowana w Resend, a wdrożenie zatrzymuje się przed kompilacją, gdy nie jest; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 
-## Siedemnaście szablonów
+## Osiemnaście szablonów
 
 Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane po stronie serwera wewnątrz Workera:
 
@@ -72,6 +72,7 @@ Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane
 | `password-changed.tsx`              | `PASSWORD_CHANGED_NAMESPACE`              | `sendPasswordChangedEmail`, z `onPasswordReset` w Better Auth                                                                                                                                                                                                    |
 | `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, wywoływany przez `deleteCustomer` i `afterDelete` z oczekiwaniem na wynik                                                                                                                                                             |
 | `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `sendOrderConfirmationEmail`, z webhooka Stripe                                                                                                                                                                                                                  |
+| `order-in-progress.tsx`             | `ORDER_IN_PROGRESS_NAMESPACE`             | `sendOrderInProgressEmail`, gdy `fulfillOrder` rozpocznie realizację i zajmie ten e-mail                                                                                                                                                                         |
 | `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `sendOrderShippedEmail`, przez `announceOrderShipment`, gdy `shipOrder` oznaczy zamówienie jako wysłane                                                                                                                                                          |
 | `order-tracking.tsx`                | `ORDER_TRACKING_NAMESPACE`                | `sendOrderTrackingEmail`, przez `announceOrderShipment`, gdy wysłane zamówienie ma numer przesyłki, którego klient nie dostał: z `shipOrder`, `refreshInpostShipment` i webhooka InPost                                                                          |
 | `order-cancelled.tsx`               | `ORDER_CANCELLED_NAMESPACE`               | `sendOrderCancelledEmail`, oczekiwany przez `cancelOrder`                                                                                                                                                                                                        |
@@ -215,7 +216,7 @@ export const sendOrderShippedEmail = (orderId: string, origin: string): Promise<
   })
 ```
 
-`attemptOrderConfirmationEmail`, `attemptPaymentFailedEmail`, `attemptOrderShippedEmail`, `attemptOrderTrackingEmail`, `attemptOrderCancelledEmail`, `attemptOrderRefundedEmail` i `attemptNewOrderEmail`, każda w przypadku użycia `send-*-email.server.ts`, który przekazuje ją do `deliverOrderEmail`, odczytują to, czego potrzebuje ich e-mail, renderują go i przekazują klucz do `sendEmail`. Zwracają `{ failure, label }`, gdzie `label` to czytelny napis, na przykład `Order confirmation → jane@example.com`.
+`attemptOrderConfirmationEmail`, `attemptPaymentFailedEmail`, `attemptOrderInProgressEmail`, `attemptOrderShippedEmail`, `attemptOrderTrackingEmail`, `attemptOrderCancelledEmail`, `attemptOrderRefundedEmail` i `attemptNewOrderEmail`, każda w przypadku użycia `send-*-email.server.ts`, który przekazuje ją do `deliverOrderEmail`, odczytują to, czego potrzebuje ich e-mail, renderują go i przekazują klucz do `sendEmail`. Zwracają `{ failure, label }`, gdzie `label` to czytelny napis, na przykład `Order confirmation → jane@example.com`.
 
 Każdy klucz nazywa e-mail i to, czego dotyczy:
 
@@ -223,6 +224,7 @@ Każdy klucz nazywa e-mail i to, czego dotyczy:
 | ---------------------------------- | ------------------------------------------------------------------ |
 | Potwierdzenie zamówienia           | `order-confirmation/<id zamówienia>`                               |
 | Powiadomienie sklepu o zamówieniu  | `new-order/<id zamówienia>`                                        |
+| Rozpoczęcie realizacji             | `order-in-progress/<id zamówienia>`                                |
 | Wysłanie                           | `order-shipped/<id zamówienia>`                                    |
 | Numer przesyłki                    | `order-tracking/<id zamówienia>/<numer przesyłki>`                 |
 | Anulowanie                         | `order-cancelled/<id zamówienia>`                                  |
@@ -239,7 +241,11 @@ Wyjątek rzucony podczas przygotowywania e-maila trafia do logu razem ze stosem 
 
 ## E-maile o postępie zamówienia, każdy raz
 
-Resend pamięta klucz tylko przez 24 godziny, a dziennik zdarzeń zapisuje się przez kolejkę i wygasa, więc żadne z nich nie powie, czy klient już dostał wiadomość o danym etapie. Mówi to wiersz zamówienia. `shipped_email_at` i `tracking_email_number`, dodane przez `20261015150000_order_shipped_email.sql`, zapisują, że klient dowiedział się o wysyłce zamówienia, i numer przesyłki, który dostał ostatnio. `announceOrderShipment` w `src/modules/order/use-cases/announce-order-shipment.server.ts` zajmuje e-mail jednym warunkowym `UPDATE … RETURNING`, zanim go wyśle:
+Resend pamięta klucz tylko przez 24 godziny, a dziennik zdarzeń zapisuje się przez kolejkę i wygasa, więc żadne z nich nie powie, czy klient już dostał wiadomość o danym etapie. Mówi to wiersz zamówienia.
+
+`fulfillOrder` zajmuje e-mail o rozpoczęciu realizacji (`order-in-progress.tsx`, wysyłany przez `sendOrderInProgressEmail`) przez ustawienie `in_progress_email_at`, gdy zamówienie jest `fulfilled`, a kolumna pusta, i wysyła go tylko wtedy, gdy zajęcie się powiodło, przez `announceClaimedOrderEmail` w `order.email-delivery.server.ts`; w przeciwnym razie wynik to `alreadySent`. E-mail mówi, że ręcznie wykonywana biżuteria powstaje w pracowni, a zależnie od sposobu dostawy, że kolejna wiadomość przyniesie numer przesyłki, albo przy odbiorze osobistym, że sklep napisze, gdy zamówienie będzie gotowe do odbioru. `20261015200000_order_fulfillment_started.sql` dodała `in_progress_email_at` razem z `fulfillment_started_at`, czasem rozpoczęcia realizacji, i ustawiła obie kolumny w każdym zamówieniu, które było już za etapem potwierdzenia, na podstawie jego pierwszego wpisu `order.fulfillment_started` w dzienniku zdarzeń albo czasu wysyłki, dostarczenia lub ostatniej zmiany.
+
+`shipped_email_at` i `tracking_email_number`, dodane przez `20261015150000_order_shipped_email.sql`, zapisują, że klient dowiedział się o wysyłce zamówienia, i numer przesyłki, który dostał ostatnio. `announceOrderShipment` w `src/modules/order/use-cases/announce-order-shipment.server.ts` zajmuje e-mail jednym warunkowym `UPDATE … RETURNING`, zanim go wyśle:
 
 - E-mail o wysyłce zostaje zajęty przez ustawienie `shipped_email_at`, gdy zamówienie jest `shipped`, a kolumna pusta. Ta sama instrukcja kopiuje numer przesyłki zamówienia do `tracking_email_number`, więc numer z e-maila o wysyłce nie wychodzi drugi raz.
 - W przeciwnym razie zostaje zajęty e-mail z numerem przesyłki (`order-tracking.tsx`, wysyłany przez `sendOrderTrackingEmail`) przez skopiowanie numeru do `tracking_email_number`, gdy zamówienie jest `shipped`, jego e-mail o wysyłce jest już zajęty, a numer jest ustawiony i różni się od ostatnio wysłanego.
@@ -345,7 +351,7 @@ export const awaitOrderEmailNotice = async (
 
 Gdy administrator zamknie kartę albo Stripe przestanie czekać, środowisko Workers może przerwać to, na co żądanie jeszcze czekało, ale nie obietnicę przekazaną do `waitUntil`. Dzięki temu e-mail i tak wychodzi, a jego wynik zostaje zapisany. Żądanie czeka tylko na pierwszą próbę: `deliverOrderEmail` planuje ponowienia odrzuconego e-maila dotyczącego zamówienia w ten sam sposób, więc wykonują się po odpowiedzi. `afterDelete` w Better Auth czeka na `sendAccountDeletedEmail` bez tego zabezpieczenia, więc klient, który zamknie kartę podczas usuwania własnego konta, nadal może przerwać e-mail pożegnalny.
 
-`shipOrder` zwraca `email`, czyli wynik `announceOrderShipment`: zajęty e-mail, `order-shipped` albo `order-tracking`, ze stanem `sent` albo `failed`, zależnie od tego, czy Resend przyjął go przy pierwszej próbie, albo `alreadySent`, gdy klient już wcześniej dostał tę wiadomość (zobacz [E-maile o postępie zamówienia, każdy raz](#e-maile-o-postępie-zamówienia-każdy-raz)). Administrator zawsze widzi „Zamówienie oznaczono jako wysłane.”. Nieudany e-mail dodaje ostrzeżenie „Klient jeszcze nie otrzymał e-maila”, które nazywa wiadomość, mówi, że sklep spróbuje jeszcze dwa razy w ciągu kilku sekund, a jeśli i to się nie uda, można ją wysłać ponownie z sekcji „Aktywność” zamówienia, gdzie widać też błąd; `alreadySent` dodaje „Bez ponownego e-maila”, a e-mail z numerem przesyłki „Wysłano numer przesyłki”. Zamówienie i tak pozostaje oznaczone jako wysłane, bo funkcje wysyłające zapisują porażkę i zwracają `false` zamiast rzucać wyjątek. Wysyłka z listy zamówień pokazuje te same komunikaty.
+`fulfillOrder` zwraca taki sam wynik `email` dla e-maila o rozpoczęciu realizacji, a `useFulfillOrder` pokazuje te same ostrzeżenia. `shipOrder` zwraca `email`, czyli wynik `announceOrderShipment`: zajęty e-mail, `order-shipped` albo `order-tracking`, ze stanem `sent` albo `failed`, zależnie od tego, czy Resend przyjął go przy pierwszej próbie, albo `alreadySent`, gdy klient już wcześniej dostał tę wiadomość (zobacz [E-maile o postępie zamówienia, każdy raz](#e-maile-o-postępie-zamówienia-każdy-raz)). Administrator zawsze widzi „Zamówienie oznaczono jako wysłane.”. Nieudany e-mail dodaje ostrzeżenie „Klient jeszcze nie otrzymał e-maila”, które nazywa wiadomość, mówi, że sklep spróbuje jeszcze dwa razy w ciągu kilku sekund, a jeśli i to się nie uda, można ją wysłać ponownie z sekcji „Aktywność” zamówienia, gdzie widać też błąd; `alreadySent` dodaje „Bez ponownego e-maila”, a e-mail z numerem przesyłki „Wysłano numer przesyłki”. Zamówienie i tak pozostaje oznaczone jako wysłane, bo funkcje wysyłające zapisują porażkę i zwracają `false` zamiast rzucać wyjątek. Wysyłka z listy zamówień pokazuje te same komunikaty.
 
 `cancelOrder` czeka w ten sam sposób na `sendOrderCancelledEmail` po wsadzie anulowania i zwraca `cancelledEmailSent`. Administrator widzi komunikat o anulowaniu, a gdy Resend nie przyjął e-maila od razu, także ostrzeżenie „Klient jeszcze nie otrzymał e-maila” z tą samą informacją o ponowieniach i ponownej wysyłce. Zamówienie pozostaje anulowane, a zwrot wydany.
 

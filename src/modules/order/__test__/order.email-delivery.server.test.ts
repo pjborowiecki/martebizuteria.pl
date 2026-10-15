@@ -13,6 +13,7 @@ import {
   ORDER_EMAIL_RETRY_BACKOFF,
   ORDER_EMAIL_RETRY_DELAY_MS,
   type OrderEmailOutcome,
+  announceClaimedOrderEmail,
   awaitOrderEmailNotice,
   deliverOrderEmail,
 } from "~/src/modules/order/order.email-delivery.server"
@@ -212,6 +213,28 @@ describe("awaitOrderEmailNotice", () => {
 
     await expect(notice).resolves.toStrictEqual({ kind: "order-shipped", status: "sent" })
     expect(kept).toHaveLength(1)
+  })
+})
+
+describe("announceClaimedOrderEmail", () => {
+  it("sends the email whose claim this request won", async () => {
+    const sendClaimed = vi.fn(() => Promise.resolve(true))
+
+    await expect(announceClaimedOrderEmail("order-in-progress", true, sendClaimed)).resolves.toStrictEqual({
+      kind: "order-in-progress",
+      status: "sent",
+    })
+    expect(sendClaimed).toHaveBeenCalledOnce()
+  })
+
+  it("sends nothing and says so when the customer was told before", async () => {
+    const sendClaimed = vi.fn(() => Promise.resolve(true))
+
+    await expect(announceClaimedOrderEmail("order-in-progress", false, sendClaimed)).resolves.toStrictEqual({
+      kind: "order-in-progress",
+      status: "alreadySent",
+    })
+    expect(sendClaimed).not.toHaveBeenCalled()
   })
 })
 

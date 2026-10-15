@@ -37,7 +37,7 @@ const fulfillmentSnapshot = (overrides: Partial<AdminOrderFulfillmentSnapshot> =
   canceledAt: null,
   createdAt: PLACED_AT,
   deliveredAt: null,
-  fulfillmentStartedAt: undefined,
+  fulfillmentStartedAt: null,
   fulfillmentStatus: "not_fulfilled",
   shippedAt: null,
   status: "processing",
@@ -244,14 +244,14 @@ describe("buildAdminOrderFulfillmentSteps", () => {
     expect(steps.map((step) => step.done)).toStrictEqual([true, false, false, false])
   })
 
-  it("dates the processing step from the fulfilment audit entry", () => {
+  it("dates the processing step from the time fulfilment started", () => {
     const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot({ fulfillmentStartedAt: SHIPPED_AT, fulfillmentStatus: "fulfilled" }))
 
     expect(steps[1]).toStrictEqual({ at: SHIPPED_AT, done: true, key: "processing" })
     expect(steps[2]).toStrictEqual({ at: undefined, done: false, key: "shipped" })
   })
 
-  it("follows the order's own step rather than a fulfilment entry left in the log", () => {
+  it("leaves the in-progress step open for an order stepped back before it", () => {
     const steps = buildAdminOrderFulfillmentSteps(fulfillmentSnapshot({ fulfillmentStartedAt: SHIPPED_AT }))
 
     expect(steps[1]).toStrictEqual({ at: undefined, done: false, key: "processing" })

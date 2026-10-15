@@ -119,6 +119,7 @@ const buildOrderTimeline = (
     readonly canceledAt: Date | null
     readonly createdAt: Date
     readonly deliveredAt: Date | null
+    readonly fulfillmentStartedAt: Date | null
     readonly shippedAt: Date | null
     readonly status: Order["select"]["status"]
   },
@@ -143,6 +144,13 @@ const buildOrderTimeline = (
     timeline.push({
       date: payment.refundedAt,
       event: "refunded",
+    })
+  }
+
+  if (orderRow.fulfillmentStartedAt !== null) {
+    timeline.push({
+      date: orderRow.fulfillmentStartedAt,
+      event: "processing",
     })
   }
 
@@ -199,6 +207,7 @@ export const mapCustomerOrderDetail = (
     readonly customerNote: string | null
     readonly deliveredAt: Date | null
     readonly discountTotal: number
+    readonly fulfillmentStartedAt: Date | null
     readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
     readonly id: string
     readonly lockerId: string | null

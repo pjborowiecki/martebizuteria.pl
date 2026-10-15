@@ -147,6 +147,7 @@ export type AdminOrderEmailStatus = (typeof ADMIN_ORDER_EMAIL_STATUS)[keyof type
 export const ORDER_EMAIL_KIND = {
   CANCELLED: "order-cancelled",
   CONFIRMATION: "order-confirmation",
+  IN_PROGRESS: "order-in-progress",
   NEW_ORDER: "new-order",
   REFUNDED: "order-refunded",
   SHIPPED: "order-shipped",
