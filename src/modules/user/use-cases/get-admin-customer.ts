@@ -8,14 +8,8 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
-import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { type CalendarPeriod, formatShortDate } from "~/src/modules/_core/utils/datetime"
 import { type AdminDashboardChartWindow, resolveAdminDashboardMonths } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
-import {
-  formatAdminOrderDate,
-  resolveAdminOrderFulfillmentUiKey,
-  resolveAdminOrderPaymentUiKey,
-} from "~/src/modules/order/order.display.utils"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 import {
@@ -28,7 +22,6 @@ import {
   getCustomerPreferredCollectionQuery,
   getDefaultCustomerAddressFullQuery,
   getLatestSessionActivityQuery,
-  getOrderItemTitlesQuery,
   getUserById,
 } from "~/src/modules/user/user.accessors"
 import {
@@ -51,22 +44,6 @@ import {
   resolveAdminCustomerTags,
 } from "~/src/modules/user/user.utils"
 import { userZodSchemas } from "~/src/modules/user/user.zod"
-
-const groupOrderItemTitles = (
-  rows: readonly {
-    orderId: string
-    title: string
-  }[],
-): Map<string, string[]> => {
-  const titlesByOrderId = new Map<string, string[]>()
-  for (const row of rows) {
-    const existing = titlesByOrderId.get(row.orderId) ?? []
-    existing.push(row.title)
-    titlesByOrderId.set(row.orderId, existing)
-  }
-
-  return titlesByOrderId
-}
 
 const resolveLocalizedCategoryLabel = (titles: unknown, locale: string): string => {
   const label = resolveCategoryTitle(titles, locale).trim()
@@ -121,14 +98,12 @@ const loadAdminCustomerDetailQueryResult = async (
     getCustomerAuditTimelineQuery(userId),
   ])
 
-  const itemTitleRows = await getOrderItemTitlesQuery(orderRows.map((row) => row.id))
   const statsByUserId = mapCustomerOrderStats(orderStatsRows)
 
   return {
     addressRow: addressRows[0],
     auditRows,
     categoryBreakdownRows,
-    itemTitleRows,
     monthlySpendingRows,
     orderRows,
     orderStats: statsByUserId.get(userId),
@@ -138,23 +113,6 @@ const loadAdminCustomerDetailQueryResult = async (
   }
 }
 
-const mapAdminCustomerDetailOrders = (
-  orderRows: readonly AdminCustomerOrderRow[],
-  titlesByOrderId: Map<string, string[]>,
-  locale: string,
-): User["adminCustomerDetail"]["orders"] =>
-  orderRows.map((row) => ({
-    currencyCode: row.currencyCode,
-    date: formatAdminOrderDate(row.createdAt, locale),
-    fulfillment: resolveAdminOrderFulfillmentUiKey(row.status, row.fulfillmentStatus),
-    id: row.id,
-    itemTitles: titlesByOrderId.get(row.id) ?? [],
-    orderNumber: row.orderNumber,
-    payment: resolveAdminOrderPaymentUiKey(row.paymentStatus),
-    total: formatPrice(row.total, row.currencyCode, locale),
-    totalMinor: row.total,
-  }))
-
 const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadInput): User["adminCustomerDetail"] => {
   const { locale, queryResult, spendingPeriods, userRow } = input
   const orderCount = queryResult.orderStats?.orderCount ?? 0
@@ -162,8 +120,6 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
   const averageOrderValue = resolveAdminCustomerAverageOrderValue(orderCount, totalSpent)
   const returningRate = resolveAdminCustomerReturningRate(orderCount)
   const isReturning = orderCount >= ADMIN_CUSTOMER_MIN_REPEAT_ORDERS
-  const titlesByOrderId = groupOrderItemTitles(queryResult.itemTitleRows)
-  const orders = mapAdminCustomerDetailOrders(queryResult.orderRows, titlesByOrderId, locale)
   const monthlySpending = buildAdminCustomerMonthlySpendingSeries(queryResult.monthlySpendingRows, locale, spendingPeriods)
   const categoryBreakdown = queryResult.categoryBreakdownRows
     .filter((row) => row.titles !== null)
@@ -208,7 +164,6 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
     monthlySpending,
     notes: adminMetadata.notes,
     orderCount,
-    orders,
     preferredCategory: preferredCategory === EMPTY_VALUE ? undefined : preferredCategory,
     preferredCollection,
     returningRate,
@@ -234,7 +189,6 @@ type AdminCustomerOrderRow = Awaited<ReturnType<typeof getAdminCustomerOrderRows
 interface AdminCustomerDetailQueryResult {
   readonly addressRow: Awaited<ReturnType<typeof getDefaultCustomerAddressFullQuery>>[number] | undefined
   readonly categoryBreakdownRows: Awaited<ReturnType<typeof getCustomerCategoryBreakdownQuery>>
-  readonly itemTitleRows: Awaited<ReturnType<typeof getOrderItemTitlesQuery>>
   readonly monthlySpendingRows: Awaited<ReturnType<typeof getCustomerMonthlySpendingQuery>>
   readonly orderRows: AdminCustomerOrderRow[]
   readonly orderStats: User["customerOrderStats"] | undefined

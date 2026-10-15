@@ -36,28 +36,7 @@
     },
     "orders": {
       "title": "Historia zamówień",
-      "viewAll": "Zobacz wszystko",
-      "columns": {
-        "order": "Zamówienie",
-        "date": "Data",
-        "items": "Przedmioty",
-        "total": "Suma",
-        "status": "Status",
-        "payment": "Płatność"
-      },
-      "empty": "Brak zamówień.",
-      "status": {
-        "delivered": "Dostarczone",
-        "shipped": "Wysłane",
-        "returned": "Zwrócone",
-        "pending": "Oczekujące",
-        "unfulfilled": "Niezrealizowane"
-      },
-      "payment": {
-        "paid": "Opłacone",
-        "refunded": "Zwrócone",
-        "authorized": "Autoryzowane"
-      }
+      "viewAll": "Zobacz wszystko"
     },
     "profile": {
       "accountCreated": "Data utworzenia konta: {date}",

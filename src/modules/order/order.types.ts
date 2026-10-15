@@ -209,6 +209,7 @@ type AdminOrdersPageInput = AdminOrdersListFilters & {
   readonly search?: string | undefined
   readonly statFilter?: AdminOrderStatFilter | undefined
   readonly tab?: AdminOrderTab | undefined
+  readonly userId?: string | undefined
 }
 
 interface OrderRefundInput {

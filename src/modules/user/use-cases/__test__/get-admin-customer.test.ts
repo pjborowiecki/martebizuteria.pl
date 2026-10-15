@@ -4,7 +4,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
-import { ADMIN_ORDER_FULFILLMENT_UI_KEY, ADMIN_ORDER_PAYMENT_UI_KEY } from "~/src/modules/order/order.constants"
 import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_QUERY_STALE_MS, USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 
@@ -17,7 +16,6 @@ const access = vi.hoisted(() => ({
   defaultAddress: vi.fn(),
   latestSession: vi.fn(),
   monthlySpending: vi.fn(),
-  orderItemTitles: vi.fn(),
   orderStats: vi.fn(),
   preferredCategory: vi.fn(),
   preferredCollection: vi.fn(),
@@ -35,7 +33,6 @@ vi.mock("~/src/modules/user/user.accessors", () => ({
   getCustomerPreferredCollectionQuery: access.preferredCollection,
   getDefaultCustomerAddressFullQuery: access.defaultAddress,
   getLatestSessionActivityQuery: access.latestSession,
-  getOrderItemTitlesQuery: access.orderItemTitles,
   getUserById: access.userById,
 }))
 vi.mock("@tanstack/react-start", () => ({
@@ -85,27 +82,11 @@ const userRow = (overrides: Partial<User["select"]> = {}): User["select"] => ({
   ...overrides,
 })
 
-interface StubOrderRow {
-  readonly createdAt: Date
-  readonly currencyCode: string
-  readonly fulfillmentStatus: "cancelled" | "delivered" | "fulfilled" | "shipped" | "unfulfilled"
-  readonly id: string
-  readonly orderNumber: string
-  readonly paymentStatus: string | null
-  readonly status: "cancelled" | "completed" | "paid" | "pending" | "refunded"
-  readonly total: number
-}
-
-const orderRow = (overrides: Partial<StubOrderRow> = {}): StubOrderRow => ({
+const orderRow = (): User["adminCustomerTimelineOrder"] => ({
   createdAt: ORDER_AT,
   currencyCode: "PLN",
-  fulfillmentStatus: "shipped",
-  id: "order-1",
   orderNumber: "MRT-2026-00001",
-  paymentStatus: "succeeded",
-  status: "completed",
   total: 24_000,
-  ...overrides,
 })
 
 const addressRow = (overrides: Partial<Record<string, string | null>> = {}) => ({
@@ -128,7 +109,6 @@ const resetAccessors = (): void => {
   access.defaultAddress.mockResolvedValue([])
   access.latestSession.mockResolvedValue([])
   access.monthlySpending.mockResolvedValue([])
-  access.orderItemTitles.mockResolvedValue([])
   access.orderStats.mockResolvedValue([])
   access.preferredCategory.mockResolvedValue([])
   access.preferredCollection.mockResolvedValue([])
@@ -154,12 +134,13 @@ describe("getAdminCustomer reads", () => {
     expect(access.auditTimeline).toHaveBeenCalledWith("customer-1")
   })
 
-  it("asks for the item titles of the orders it just read", async () => {
-    access.adminOrderRows.mockResolvedValue([orderRow(), orderRow({ id: "order-2" })])
+  it("reads the customer's latest sales for the activity timeline only", async () => {
+    access.adminOrderRows.mockResolvedValue([orderRow()])
 
-    await detail()
+    const result = await detail()
 
-    expect(access.orderItemTitles).toHaveBeenCalledWith(["order-1", "order-2"])
+    expect(access.adminOrderRows).toHaveBeenCalledWith("customer-1")
+    expect(result).not.toHaveProperty("orders")
   })
 
   it("falls back to the store locale when the caller sends none", async () => {
@@ -268,74 +249,6 @@ describe("getAdminCustomer spending totals", () => {
     const result = await detail()
 
     expect(result?.lastOrderAt).toStrictEqual(ORDER_AT)
-  })
-})
-
-describe("getAdminCustomer orders", () => {
-  beforeEach(resetAccessors)
-
-  it("formats the money of each order in the requested locale", async () => {
-    access.adminOrderRows.mockResolvedValue([orderRow()])
-
-    const result = await detail()
-
-    expect(result?.orders[0]?.totalMinor).toBe(24_000)
-    expect(result?.orders[0]?.total).toBe("PLN 240.00")
-  })
-
-  it("dates each order in the requested locale, as the orders list does", async () => {
-    access.adminOrderRows.mockResolvedValue([orderRow()])
-
-    const result = await detail()
-
-    expect(result?.orders[0]?.date).toBe(ORDER_AT.toLocaleDateString("en-US", DATE_PARTS))
-  })
-
-  it("names each order by its order number and keeps its id for the link", async () => {
-    access.adminOrderRows.mockResolvedValue([orderRow()])
-
-    const result = await detail()
-
-    expect(result?.orders[0]).toMatchObject({ id: "order-1", orderNumber: "MRT-2026-00001" })
-  })
-
-  it("maps the payment and fulfillment keys the admin table renders", async () => {
-    access.adminOrderRows.mockResolvedValue([orderRow()])
-
-    const result = await detail()
-
-    expect(result?.orders[0]?.payment).toBe(ADMIN_ORDER_PAYMENT_UI_KEY.PAID)
-    expect(result?.orders[0]?.fulfillment).toBe(ADMIN_ORDER_FULFILLMENT_UI_KEY.SHIPPED)
-  })
-
-  it("marks a pending order as pending regardless of its fulfillment row", async () => {
-    access.adminOrderRows.mockResolvedValue([orderRow({ paymentStatus: null, status: "pending" })])
-
-    const result = await detail()
-
-    expect(result?.orders[0]?.fulfillment).toBe(ADMIN_ORDER_FULFILLMENT_UI_KEY.PENDING)
-    expect(result?.orders[0]?.payment).toBe(ADMIN_ORDER_PAYMENT_UI_KEY.AUTHORIZED)
-  })
-
-  it("groups every item title under the order it belongs to", async () => {
-    access.adminOrderRows.mockResolvedValue([orderRow(), orderRow({ id: "order-2" })])
-    access.orderItemTitles.mockResolvedValue([
-      { orderId: "order-1", title: "Silver ring" },
-      { orderId: "order-2", title: "Gold bracelet" },
-      { orderId: "order-1", title: "Pearl earrings" },
-    ])
-
-    const result = await detail()
-
-    expect(result?.orders.map((order) => order.itemTitles)).toStrictEqual([["Silver ring", "Pearl earrings"], ["Gold bracelet"]])
-  })
-
-  it("leaves an order without item rows with an empty title list", async () => {
-    access.adminOrderRows.mockResolvedValue([orderRow()])
-
-    const result = await detail()
-
-    expect(result?.orders[0]?.itemTitles).toStrictEqual([])
   })
 })
 

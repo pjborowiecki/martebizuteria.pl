@@ -32,7 +32,10 @@ const captured = vi.hoisted((): { current: RouteDefinition | undefined } => ({ c
 
 const state = vi.hoisted((): { detail: unknown } => ({ detail: undefined }))
 
-const spies = vi.hoisted(() => ({ customerQuery: vi.fn((id: string, locale?: string) => ({ queryKey: ["customer", id, locale] })) }))
+const spies = vi.hoisted(() => ({
+  customerQuery: vi.fn((id: string, locale?: string) => ({ queryKey: ["customer", id, locale] })),
+  ordersPageQuery: vi.fn((input: unknown) => ({ queryKey: ["admin", "orders", "page", input] })),
+}))
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof TanStackRouter>()
@@ -52,6 +55,7 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
   return { ...actual, useSuspenseQuery: () => ({ data: state.detail }) }
 })
 vi.mock("~/src/modules/user/use-cases/get-admin-customer", () => ({ getAdminCustomerQuery: spies.customerQuery }))
+vi.mock("~/src/modules/order/use-cases/get-admin-orders-page", () => ({ getAdminOrdersPageQuery: spies.ordersPageQuery }))
 vi.mock("~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-kpis", () => ({
   CustomerKpis: (): JSX.Element => <p>customer kpis</p>,
 }))
@@ -96,7 +100,6 @@ const detail: User["adminCustomerDetail"] = {
   monthlySpending: [],
   name: "Anna Kowalska",
   orderCount: 4,
-  orders: [],
   phone: null,
   returningRate: 0,
   role: ROLES.CUSTOMER,
@@ -217,5 +220,11 @@ describe("admin customer detail route wiring", () => {
   it("prefetches the customer the url names and lets the page render", async () => {
     expect(await runLoader(detail)).toBeUndefined()
     expect(spies.customerQuery).toHaveBeenCalledWith("user-1", "en-US")
+  })
+
+  it("prefetches the first page of that customer's orders so the history opens without a loading flash", async () => {
+    await runLoader(detail)
+
+    expect(spies.ordersPageQuery).toHaveBeenCalledExactlyOnceWith({ page: 1, pageSize: 10, userId: "user-1" })
   })
 })

@@ -44,7 +44,6 @@ const customer: User["adminCustomerDetail"] = {
   monthlySpending: [],
   name: "Anna Kowalska",
   orderCount: 4,
-  orders: [],
   phone: null,
   returningRate: 0,
   role: ROLES.CUSTOMER,

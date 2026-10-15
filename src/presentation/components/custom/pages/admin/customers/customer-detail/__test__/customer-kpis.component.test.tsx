@@ -35,7 +35,6 @@ const detail = (overrides: Partial<User["adminCustomerDetail"]> = {}): User["adm
   monthlySpending: [],
   name: "Anna Kowalska",
   orderCount: 4,
-  orders: [],
   phone: null,
   returningRate: 0,
   role: ROLES.CUSTOMER,

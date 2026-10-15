@@ -36,28 +36,7 @@
     },
     "orders": {
       "title": "Order History",
-      "viewAll": "View All",
-      "columns": {
-        "order": "Order",
-        "date": "Date",
-        "items": "Items",
-        "total": "Total",
-        "status": "Status",
-        "payment": "Payment"
-      },
-      "empty": "No orders yet.",
-      "status": {
-        "delivered": "Delivered",
-        "shipped": "Shipped",
-        "returned": "Returned",
-        "pending": "Pending",
-        "unfulfilled": "Unfulfilled"
-      },
-      "payment": {
-        "paid": "Paid",
-        "refunded": "Refunded",
-        "authorized": "Authorized"
-      }
+      "viewAll": "View All"
     },
     "profile": {
       "accountCreated": "Account created: {date}",

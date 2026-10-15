@@ -13,6 +13,7 @@ import { refundAdminOrderMutation } from "~/src/modules/order/use-cases/refund-a
 import { resendOrderEmailMutation } from "~/src/modules/order/use-cases/resend-order-email"
 import { restockOrderMutation } from "~/src/modules/order/use-cases/restock-order"
 import { shipOrderMutation } from "~/src/modules/order/use-cases/ship-order"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 const resolveOrderActionErrorMessage = (error: Error, t: ReturnType<typeof useTranslations<"pages.admin.orders.rowActions">>): string => {
   const code = errorCode(error)
@@ -48,6 +49,7 @@ const useAdminOrderActionMutation = <TInput extends OrderIdInput, TResult extend
     },
     onSettled: () => {
       void syncQueryInvalidation(queryClient, ORDER_QUERY_KEYS.ADMIN.ORDERS)
+      void syncQueryInvalidation(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
     },
     onSuccess: (...successArguments) => {
       toast.success(t("toast.successTitle"), {

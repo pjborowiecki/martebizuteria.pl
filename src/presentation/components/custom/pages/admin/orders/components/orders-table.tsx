@@ -1,9 +1,6 @@
-import { type JSX, useCallback } from "react"
-
-import { useNavigate } from "@tanstack/react-router"
+import { type JSX } from "react"
 
 import { ADMIN_ORDER_TABLE_COLUMN_ID } from "~/src/modules/order/order.constants"
-import { type Order } from "~/src/modules/order/order.types"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
@@ -15,25 +12,14 @@ import { OrdersPaymentFilter } from "~/src/presentation/components/custom/pages/
 import { OrdersRefreshAction } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-refresh-action"
 import { OrdersStats } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-stats"
 import { OrdersStatusFilter } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-status-filter"
+import { useOpenOrder } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-open-order"
 import { useOrdersDataGrid } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-orders-data-grid"
 import { ordersDataGrid } from "~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid"
 
 export const OrdersTableContent = (): JSX.Element => {
-  const navigate = useNavigate()
-  const handleRowClick = useCallback(
-    (order: Order["adminListItem"]) => {
-      void navigate({
-        params: {
-          orderId: order.id,
-        },
-        to: "/admin/orders/$orderId",
-      })
-    },
-    [navigate],
-  )
-
+  const openOrder = useOpenOrder()
   const grid = useOrdersDataGrid({
-    onRowClick: handleRowClick,
+    onRowClick: openOrder,
   })
 
   return (

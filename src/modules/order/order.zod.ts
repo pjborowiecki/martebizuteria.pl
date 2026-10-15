@@ -8,6 +8,7 @@ import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe
 import {
   MIN_FIELD_LENGTH,
   dateColumnFilterField,
+  idField,
   numericColumnFilterField,
   pageField,
   pageSizeField,
@@ -39,6 +40,7 @@ const adminOrdersExportInput = zod.object({
   status: zod.enum(ADMIN_ORDER_STATUSES).optional(),
   tab: zod.enum(ORDER_TABS).optional(),
   total: numericColumnFilterField.optional(),
+  userId: idField.optional(),
 })
 
 const adminOrdersPageInput = adminOrdersExportInput.extend({

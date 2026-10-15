@@ -8,6 +8,7 @@ import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/rend
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 import {
   useCancelOrder,
@@ -207,15 +208,16 @@ describe("admin order action mutations", () => {
     })
   })
 
-  it("invalidates the admin order list once the mutation settles", async () => {
+  it("refreshes the admin order list and the customer's figures once the mutation settles", async () => {
     const { result } = renderHook(() => useCancelOrder(), { wrapper: Wrapper })
 
     result.current.mutate({ orderId: "order-1" })
     await waitFor(() => {
-      expect(syncQueryInvalidation).toHaveBeenCalledOnce()
+      expect(syncQueryInvalidation).toHaveBeenCalledTimes(2)
     })
 
     expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), ORDER_QUERY_KEYS.ADMIN.ORDERS)
+    expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), USER_QUERY_KEYS.ADMIN.CUSTOMERS)
   })
 })
 
@@ -354,13 +356,13 @@ describe("admin order action failures", () => {
     expect(toastError).toHaveBeenCalledWith("Could not update order", { description: "Please try again in a moment." })
   })
 
-  it("still invalidates the admin order list after a failure", async () => {
+  it("still refreshes the admin order list and the customer's figures after a failure", async () => {
     shipFn.mockRejectedValue(new AppError("FORBIDDEN"))
     const { result } = renderHook(() => useMarkOrderShipped(), { wrapper: Wrapper })
 
     result.current.mutate({ orderId: "order-1" })
     await waitFor(() => {
-      expect(syncQueryInvalidation).toHaveBeenCalledOnce()
+      expect(syncQueryInvalidation).toHaveBeenCalledTimes(2)
     })
 
     expect(toastError).toHaveBeenCalledWith("Could not update order", { description: "Please try again in a moment." })
