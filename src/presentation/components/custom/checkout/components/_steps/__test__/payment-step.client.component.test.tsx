@@ -663,15 +663,17 @@ describe("PaymentStep confirmation", () => {
     expect(payButton()).toBeEnabled()
   })
 
-  it("shows the recovery panel when Stripe reports the elements failed to load", async () => {
+  it("says the payment form did not load, without blaming the cart, when Stripe reports the elements failed to load", async () => {
     formState.session = session
     elementsStatus.current = "error"
     renderWithProviders(<PaymentStep />)
 
     await waitFor(() => {
-      expect(screen.getByText("We couldn't prepare your payment")).toBeInTheDocument()
+      expect(screen.getByText("We could not load the payment form")).toBeInTheDocument()
     })
 
+    expect(screen.getByText("Stripe's secure payment form did not load. Check your internet connection and try again.")).toBeInTheDocument()
+    expect(screen.queryByText("We couldn't prepare your payment")).not.toBeInTheDocument()
     expect(screen.queryByTestId("payment-element")).not.toBeInTheDocument()
   })
 

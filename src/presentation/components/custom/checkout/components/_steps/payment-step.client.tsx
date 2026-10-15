@@ -86,6 +86,7 @@ const BLIK_PAYMENT_METHOD = "blik"
 
 const PAYMENT_ERROR_COPY = {
   expired: { action: "restartPayment", hint: "paymentExpiredHint", title: "paymentExpired" },
+  formUnavailable: { action: "retry", hint: "paymentFormUnavailableHint", title: "paymentFormUnavailable" },
   unavailable: { action: "retry", hint: "paymentUnavailableHint", title: "paymentUnavailable" },
 } as const
 
@@ -98,16 +99,20 @@ const PaymentError = ({
 }>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const copy = PAYMENT_ERROR_COPY[reason]
+  const actionRef = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    actionRef.current?.focus()
+  }, [])
 
   return (
     <div className="flex flex-col items-center gap-4 border border-destructive/30 bg-destructive/5 px-6 py-10 text-center">
       <AlertCircle aria-hidden className="size-7 text-destructive" strokeWidth={1.3} />
-      <div className="space-y-1.5">
+      <div role="alert" className="space-y-1.5">
         <p className="text-sm font-medium text-foreground">{t(copy.title)}</p>
         <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground">{t(copy.hint)}</p>
       </div>
       <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-        <Button type="button" onClick={onRetry} className="cursor-pointer rounded-none text-xs tracking-[0.15em] uppercase">
+        <Button ref={actionRef} type="button" onClick={onRetry} className="cursor-pointer rounded-none text-xs tracking-[0.15em] uppercase">
           {t(copy.action)}
         </Button>
         <LocalizedLink
@@ -176,25 +181,24 @@ const useCheckoutConfirmation = (): ((sessionId: string) => Promise<void>) => {
   )
 }
 
-const useConfirmFailure = ({ onProcessing, onReset }: Readonly<PaymentSessionHandoff>): HandleConfirmFailure => {
+const useSessionStatusHandoff = ({ onProcessing, onReset }: Readonly<PaymentSessionHandoff>): HandOffUnlessOpen => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const queryClient = useQueryClient()
   const showConfirmation = useCheckoutConfirmation()
 
   return useCallback(
-    async (sessionId: string, { message, status }: ConfirmFailure, paymentMethodType: string | undefined) => {
-      const sessionStatus =
-        status === "failed" ? await queryClient.query({ ...checkoutSessionStatusQuery(sessionId), staleTime: 0 }).catch(noop) : undefined
+    async (sessionId: string) => {
+      const sessionStatus = await queryClient.query({ ...checkoutSessionStatusQuery(sessionId), staleTime: 0 }).catch(noop)
       if (sessionStatus === "processing") {
         onProcessing(sessionId)
 
-        return
+        return true
       }
 
       if (sessionStatus === "complete") {
         await showConfirmation(sessionId)
 
-        return
+        return true
       }
 
       if (sessionStatus === "closed") {
@@ -203,6 +207,22 @@ const useConfirmFailure = ({ onProcessing, onReset }: Readonly<PaymentSessionHan
           toast.error(t("errors.paymentSessionStale"))
         }
 
+        return true
+      }
+
+      return false
+    },
+    [onProcessing, onReset, queryClient, showConfirmation, t],
+  )
+}
+
+const useConfirmFailure = (handoff: Readonly<PaymentSessionHandoff>): HandleConfirmFailure => {
+  const t = useTranslations("pages.checkout.checkoutForm")
+  const handOffUnlessOpen = useSessionStatusHandoff(handoff)
+
+  return useCallback(
+    async (sessionId: string, { message, status }: ConfirmFailure, paymentMethodType: string | undefined) => {
+      if (status === "failed" && (await handOffUnlessOpen(sessionId))) {
         return
       }
 
@@ -215,21 +235,25 @@ const useConfirmFailure = ({ onProcessing, onReset }: Readonly<PaymentSessionHan
 
       toast.error(reason)
     },
-    [onProcessing, onReset, queryClient, showConfirmation, t],
+    [handOffUnlessOpen, t],
   )
 }
 
 const usePaymentElementEvents = (): PaymentElementEvents => {
   const [isReady, setIsReady] = useState(false)
+  const [elementFailed, setElementFailed] = useState(false)
   const [paymentMethodType, setPaymentMethodType] = useState<string>()
   const handleReady = useCallback(() => {
     setIsReady(true)
+  }, [])
+  const handleLoadError = useCallback(() => {
+    setElementFailed(true)
   }, [])
   const handleChange = useCallback((event: StripePaymentElementChangeEvent) => {
     setPaymentMethodType(event.value.type)
   }, [])
 
-  return { handleChange, handleReady, isReady, paymentMethodType }
+  return { elementFailed, handleChange, handleLoadError, handleReady, isReady, paymentMethodType }
 }
 
 const isReadyToConfirm = async (checkout: StripeCheckoutElementsValue): Promise<boolean> => {
@@ -258,7 +282,7 @@ const PaymentForm = ({
   const handleConfirmFailure = useConfirmFailure({ onProcessing, onReset })
   const { checkoutSession, getValues } = useCheckoutForm()
   const checkoutState = useCheckoutElements()
-  const { handleChange, handleReady, isReady, paymentMethodType } = usePaymentElementEvents()
+  const { elementFailed, handleChange, handleLoadError, handleReady, isReady, paymentMethodType } = usePaymentElementEvents()
   const [isProcessing, setIsProcessing] = useState(false)
 
   const checkout = checkoutState.type === "success" ? checkoutState.checkout : undefined
@@ -308,15 +332,15 @@ const PaymentForm = ({
     [handlePay],
   )
 
-  if (checkoutState.type === "error") {
-    return <PaymentError onRetry={onRetry} reason="unavailable" />
+  if (checkoutState.type === "error" || elementFailed) {
+    return <PaymentError onRetry={onRetry} reason="formUnavailable" />
   }
 
   return (
     <form onSubmit={onFormSubmit} className="flex flex-col gap-6">
       {!isReady && <PaymentSkeleton />}
 
-      <PaymentElement options={PAYMENT_ELEMENT_OPTIONS} onChange={handleChange} onReady={handleReady} />
+      <PaymentElement options={PAYMENT_ELEMENT_OPTIONS} onChange={handleChange} onLoadError={handleLoadError} onReady={handleReady} />
 
       <div className="flex flex-col gap-3">
         <Button
@@ -588,14 +612,53 @@ const useCheckoutSessionExpired = (checkoutSession: CheckoutSession | undefined)
   return checkoutSession !== undefined && expiredSession === checkoutSession
 }
 
-export const PaymentStep = (): JSX.Element => {
+const usePaymentFormReload = ({
+  checkoutSession,
+  ...handoff
+}: Readonly<PaymentSessionHandoff & { checkoutSession: CheckoutSession | undefined }>): PaymentFormReload => {
+  const handOffUnlessOpen = useSessionStatusHandoff(handoff)
+  const [attempt, setAttempt] = useState(0)
+  const [isReloading, setIsReloading] = useState(false)
+  const reload = useCallback(async () => {
+    setIsReloading(true)
+    const handedOff = checkoutSession !== undefined && (await handOffUnlessOpen(checkoutSession.sessionId))
+    if (!handedOff) {
+      setAttempt((current) => current + 1)
+    }
+    setIsReloading(false)
+  }, [checkoutSession, handOffUnlessOpen])
+  const reloadPaymentForm = useCallback(() => {
+    void reload()
+  }, [reload])
+
+  return { attempt, isReloading, reloadPaymentForm }
+}
+
+const PaymentElementsProvider = ({
+  children,
+  options,
+}: Readonly<{ children: ReactNode; options: StripeCheckoutElementsSdkOptions }>): JSX.Element => {
   const locale = useLocale()
+  const [stripePromise] = useState(() => getStripe(locale))
+
+  return (
+    <CheckoutElementsProvider stripe={stripePromise} options={options}>
+      {children}
+    </CheckoutElementsProvider>
+  )
+}
+
+export const PaymentStep = (): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const { hasUnavailableItems, isChecking } = useCartAvailability()
   const checkoutBlocked = hasUnavailableItems || isChecking
-  const stripePromise = useMemo(() => getStripe(locale), [locale])
   const { awaitBank, checkoutSession, loadError, options, processingSessionId, resetSession, retry, settleSession } =
     useCheckoutSessionLoader()
+  const { attempt, isReloading, reloadPaymentForm } = usePaymentFormReload({
+    checkoutSession,
+    onProcessing: awaitBank,
+    onReset: resetSession,
+  })
   const isExpired = useCheckoutSessionExpired(checkoutSession)
   const restartPayment = useCallback(() => {
     void resetSession()
@@ -612,17 +675,17 @@ export const PaymentStep = (): JSX.Element => {
     return <PaymentError onRetry={retry} reason="unavailable" />
   }
 
-  if (options === undefined) {
+  if (options === undefined || isReloading) {
     return <PaymentSkeleton />
   }
 
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm text-muted-foreground">{t("paymentMethodsIntro")}</p>
-      <div className="mt-4">
-        <CheckoutElementsProvider key={checkoutSession?.sessionId} stripe={stripePromise} options={options}>
-          <PaymentForm checkoutBlocked={checkoutBlocked} onProcessing={awaitBank} onReset={resetSession} onRetry={retry} />
-        </CheckoutElementsProvider>
+      <div key={attempt} className="mt-4">
+        <PaymentElementsProvider key={checkoutSession?.sessionId} options={options}>
+          <PaymentForm checkoutBlocked={checkoutBlocked} onProcessing={awaitBank} onReset={resetSession} onRetry={reloadPaymentForm} />
+        </PaymentElementsProvider>
       </div>
     </div>
   )
@@ -679,11 +742,21 @@ type ConfirmFailure = Exclude<ConfirmOutcome, { status: "processing" | "success"
 
 type HandleConfirmFailure = (sessionId: string, failure: ConfirmFailure, paymentMethodType: string | undefined) => Promise<void>
 
+type HandOffUnlessOpen = (sessionId: string) => Promise<boolean>
+
 interface PaymentElementEvents {
+  elementFailed: boolean
   handleChange: (event: StripePaymentElementChangeEvent) => void
+  handleLoadError: () => void
   handleReady: () => void
   isReady: boolean
   paymentMethodType: string | undefined
+}
+
+interface PaymentFormReload {
+  attempt: number
+  isReloading: boolean
+  reloadPaymentForm: () => void
 }
 
 type SettleProcessingSession = (sessionId: string, status: CheckoutSessionStatus) => Promise<void>
