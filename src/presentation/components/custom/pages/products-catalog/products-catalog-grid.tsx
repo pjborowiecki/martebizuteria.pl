@@ -94,7 +94,7 @@ const CatalogResultsToolbar = ({
       disabled={!filtersActive}
       onClick={onClearFilters}
       className={cn(
-        "text-[11px] tracking-[0.18em] uppercase transition-colors duration-300",
+        "text-[11px] tracking-[0.18em] uppercase transition-colors duration-300 pointer-coarse:-my-3 pointer-coarse:min-h-10",
         filtersActive ? "cursor-pointer text-muted-foreground hover:text-foreground" : "cursor-default text-muted-foreground/35",
       )}
     >

@@ -20,7 +20,7 @@ const CollectionsPage = (): JSX.Element => {
   const [firstCollection] = collections
 
   return (
-    <main className="mx-auto max-w-400 px-6 pt-8 pb-24 lg:px-12 lg:pt-10 lg:pb-32">
+    <main className="storefront-container w-full pt-8 pb-24 lg:pt-10 lg:pb-32">
       <header className="mb-8 space-y-3 lg:mb-10">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
         <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl lg:text-6xl">{t("title")}</h1>

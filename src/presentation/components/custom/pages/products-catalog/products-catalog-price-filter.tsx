@@ -60,7 +60,7 @@ export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsC
             aria-label={t("minPrice")}
             value={search.minPrice ?? ""}
             onChange={handleMinPriceInputChange}
-            className="h-9 w-full border-0 border-b border-border/40 bg-transparent px-0 text-sm transition-colors outline-none placeholder:text-muted-foreground/45 focus:border-foreground"
+            className="h-9 w-full border-0 border-b border-border/40 bg-transparent px-0 text-sm transition-colors outline-none placeholder:text-muted-foreground/45 focus:border-foreground pointer-coarse:h-10"
           />
         </div>
         <div className="space-y-2">
@@ -76,7 +76,7 @@ export const ProductsCatalogPriceFilter = ({ onSearchChange, search }: ProductsC
             aria-label={t("maxPrice")}
             value={search.maxPrice ?? ""}
             onChange={handleMaxPriceInputChange}
-            className="h-9 w-full border-0 border-b border-border/40 bg-transparent px-0 text-sm transition-colors outline-none placeholder:text-muted-foreground/45 focus:border-foreground"
+            className="h-9 w-full border-0 border-b border-border/40 bg-transparent px-0 text-sm transition-colors outline-none placeholder:text-muted-foreground/45 focus:border-foreground pointer-coarse:h-10"
           />
         </div>
       </div>

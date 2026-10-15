@@ -12,10 +12,10 @@ export const NavigationHeader = ({
   const { scrolled } = useNavigation()
 
   return (
-    <header className="sticky top-0 z-110 w-full bg-background/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full bg-background/90 backdrop-blur-md">
       <div
         className={cn(
-          "mx-auto flex h-20 items-center border-b border-transparent px-4 transition-[border-color] duration-500 ease-out sm:max-w-400 sm:px-6 lg:px-12",
+          "storefront-container flex h-20 items-center border-b border-transparent transition-[border-color] duration-500 ease-out",
           { "border-border": scrolled },
         )}
       >

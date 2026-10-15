@@ -129,6 +129,15 @@ describe("ProductsCatalogPage header", () => {
 
     expect(onSearchChange).toHaveBeenCalledExactlyOnceWith({ q: undefined })
   })
+
+  it("fills the phone width with the 16px gutter instead of shrinking around a short result list", async () => {
+    renderPage()
+
+    const main = await screen.findByRole("main")
+
+    expect(main).toHaveClass("storefront-container", "w-full")
+    expect(main).not.toHaveClass("max-w-400", "px-6")
+  })
 })
 
 describe("ProductsCatalogPage filters", () => {

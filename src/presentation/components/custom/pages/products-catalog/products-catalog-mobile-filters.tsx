@@ -30,13 +30,17 @@ export const ProductsCatalogMobileFilters = ({
             </span>
           )}
         </SheetTrigger>
-        <SheetContent className="w-full gap-0 overflow-y-auto p-0 sm:max-w-md" showCloseButton side="left">
-          <SheetHeader className="border-b border-border/40 px-6 py-5">
+        <SheetContent
+          className="gap-0 overflow-y-auto p-0 data-[side=left]:w-full data-[side=left]:sm:max-w-md"
+          showCloseButton
+          side="left"
+        >
+          <SheetHeader className="border-b border-border/40 py-5 pr-14 pl-4 sm:pl-6">
             <SheetTitle className="font-serif text-2xl font-normal tracking-tight">{tFilters("title")}</SheetTitle>
             <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{tFilters("eyebrow")}</p>
           </SheetHeader>
-          <div className="px-6 py-6">{children}</div>
-          <SheetFooter className="border-t border-border/40 px-6 py-4">
+          <div className="px-4 py-6 sm:px-6">{children}</div>
+          <SheetFooter className="border-t border-border/40 px-4 py-4 sm:px-6">
             <Button
               className="h-12 w-full rounded-none bg-foreground text-[11px] tracking-[0.22em] text-background uppercase hover:bg-foreground/90"
               onClick={onClose}

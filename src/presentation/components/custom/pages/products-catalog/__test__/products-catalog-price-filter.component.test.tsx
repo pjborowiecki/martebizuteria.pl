@@ -48,6 +48,13 @@ describe("ProductsCatalogPriceFilter", () => {
     expect(to).toHaveValue(900)
   })
 
+  it("raises both bounds to finger-sized fields on touch screens", () => {
+    const { from, to } = renderFilter()
+
+    expect(from).toHaveClass("h-9", "pointer-coarse:h-10")
+    expect(to).toHaveClass("h-9", "pointer-coarse:h-10")
+  })
+
   it("keeps a multi digit bound the shopper types on top of the applied one", async () => {
     const { from, onSearchChange } = renderFilter({ minPrice: 25 })
 
