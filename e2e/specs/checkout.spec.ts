@@ -6,7 +6,7 @@ import { previewAutofill } from "../fixtures/autofill"
 import { rememberPriceWhenAdded } from "../fixtures/cart"
 import { keepCheckoutDraft, lockerCheckoutDraft } from "../fixtures/checkout-draft"
 import { registerCustomer } from "../fixtures/customers"
-import { linkIn, waitForEmail } from "../fixtures/emails"
+import { linkIn, sentEmails, waitForEmail } from "../fixtures/emails"
 import {
   SERVER_FUNCTIONS,
   recordServerFunctionRequests,
@@ -34,6 +34,8 @@ import { ProductPage } from "../pages/product-page"
 const STRIPE_MINIMUM_SESSION_SECONDS = 1800
 
 const ORDER_NUMBER = /MRT-\d{4}-\d{5}/u
+
+const ORDER_CONFIRMATION_SUBJECT = "Order confirmation — M'Arte"
 
 const CHECKOUT_HOLD_SECONDS = 1920
 
@@ -154,7 +156,7 @@ test.describe("guest checkout", () => {
     await expect(page.getByRole("main")).toContainText(/MRT-\d{4}-\d{5}/u)
     await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s398\.99/u)
     await expect(page.getByRole("main")).toContainText(`${SHIPPING_ADDRESS.postalCode} ${SHIPPING_ADDRESS.city}`)
-    const confirmation = await waitForEmail(request, email, "Order confirmation — M'Arte")
+    const confirmation = await waitForEmail(request, email, ORDER_CONFIRMATION_SUBJECT)
     expect(confirmation.html).toContain(PRODUCTS.lapis.title)
     expect(linkIn(confirmation, /\/products\//u).origin).toBe("http://127.0.0.1:3000")
     expect(linkIn(confirmation, /\/auth\/sign-up/u).origin).toBe("http://127.0.0.1:3000")
@@ -189,7 +191,7 @@ test.describe("guest checkout", () => {
     await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
     await expect(page.getByRole("main")).toContainText(/Paczkomat InPost\s*PLN\s14\.99/u)
     await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s393\.99/u)
-    const confirmation = await waitForEmail(request, email, "Order confirmation — M'Arte")
+    const confirmation = await waitForEmail(request, email, ORDER_CONFIRMATION_SUBJECT)
     expect(confirmation.html).toContain("Destination parcel locker")
     expect(confirmation.html).toContain(locker.name)
     expect(confirmation.html).toContain(`${locker.address_details.street} ${locker.address_details.building_number}`)
@@ -245,7 +247,7 @@ test.describe("guest checkout", () => {
     await checkoutPage.open(`/en-US/checkout?success=true&session_id=${fresh.id}`)
     await expect(page.getByRole("main")).toContainText(/MRT-\d{4}-\d{5}/u)
     await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s379\.00/u)
-    const confirmation = await waitForEmail(request, email, "Order confirmation — M'Arte")
+    const confirmation = await waitForEmail(request, email, ORDER_CONFIRMATION_SUBJECT)
     expect(confirmation.html).toContain(PRODUCTS.lapis.title)
   })
 
@@ -336,7 +338,7 @@ test.describe("guest checkout", () => {
     await expect(cartPage.heading()).toHaveText("Your cart is empty")
   })
 
-  test("a guest whose tab reloads after paying, before Stripe's webhook arrives, sees the order once it is recorded", async ({
+  test("a guest whose tab reloads after paying, before Stripe's webhook arrives, sees the order the return page placed, and the late webhook adds nothing", async ({
     checkoutPage,
     page,
     request,
@@ -347,10 +349,12 @@ test.describe("guest checkout", () => {
     const paymentSessionRequests = recordPaymentSessionRequests(page)
 
     await checkoutPage.reload()
-    await expect(page).toHaveURL(confirmationUrl(session))
-    await deliverStripeEvent(request, paid)
 
+    await expect(page).toHaveURL(confirmationUrl(session))
     await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    await waitForEmail(request, email, ORDER_CONFIRMATION_SUBJECT)
+    await deliverStripeEvent(request, paid)
+    expect((await sentEmails(request, email)).filter(({ subject }) => subject === ORDER_CONFIRMATION_SUBJECT)).toHaveLength(1)
     await expect(checkoutPage.paymentStep()).toBeHidden()
     expect(paymentSessionRequests.flat()).toHaveLength(0)
   })

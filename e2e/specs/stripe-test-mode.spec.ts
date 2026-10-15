@@ -1,6 +1,6 @@
 import { COURIER, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { heldCheckoutSessionId } from "../fixtures/checkout-draft"
-import { waitForEmail } from "../fixtures/emails"
+import { sentEmails, waitForEmail } from "../fixtures/emails"
 import {
   HAS_STRIPE_TEST_MODE_KEYS,
   STRIPE_ORIGINS,
@@ -16,6 +16,8 @@ const CONFIRMATION_URL = /\/en-US\/checkout\?(?=.*\bsuccess=true\b)(?=.*\bsessio
 
 const ORDER_NUMBER = /MRT-\d{4}-\d{5}/u
 
+const ORDER_CONFIRMATION_SUBJECT = "Order confirmation — M'Arte"
+
 const SESSION_REPLACED = "This payment session is no longer active."
 
 const BLIK_CODE = "123456"
@@ -26,7 +28,7 @@ test.describe("Stripe test mode", () => {
   test.skip(!HAS_STRIPE_TEST_MODE_KEYS, STRIPE_TEST_MODE_SKIP_REASON)
   test.use({ reachableOrigins: [STRIPE_ORIGINS] })
 
-  test("a guest pays with Stripe's test card in the real payment form and receives the order", async ({
+  test("a guest pays with Stripe's test card in the real payment form and sees the order before Stripe's event arrives", async ({
     checkoutPage,
     page,
     productPage,
@@ -44,6 +46,11 @@ test.describe("Stripe test mode", () => {
     await checkoutPage.payWithCard(STRIPE_TEST_CARD)
 
     await expect(page).toHaveURL(CONFIRMATION_URL)
+    await expect(checkoutPage.confirmationHeading()).toBeVisible()
+    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s398\.99/u)
+    const confirmation = await waitForEmail(request, email, ORDER_CONFIRMATION_SUBJECT)
+    expect(confirmation.html).toContain(PRODUCTS.lapis.title)
     const sessionId = new URL(page.url()).searchParams.get("session_id")
     if (sessionId === null) {
       throw new Error("The confirmation address names no Checkout Session")
@@ -53,11 +60,8 @@ test.describe("Stripe test mode", () => {
     expect(session.amount_total).toBe(39_899)
     expect(session.payment_status).toBe("paid")
     await checkoutPage.reload()
-    await expect(checkoutPage.confirmationHeading()).toBeVisible()
     await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
-    await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s398\.99/u)
-    const confirmation = await waitForEmail(request, email, "Order confirmation — M'Arte")
-    expect(confirmation.html).toContain(PRODUCTS.lapis.title)
+    expect((await sentEmails(request, email)).filter(({ subject }) => subject === ORDER_CONFIRMATION_SUBJECT)).toHaveLength(1)
   })
 
   test("a guest whose card number is incomplete cannot press pay, and pays on the same session once it is complete", async ({

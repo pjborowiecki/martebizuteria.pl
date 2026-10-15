@@ -25,8 +25,8 @@ const CheckoutPage = (): JSX.Element => {
     return <CheckoutFormSkeleton />
   }
 
-  if (entryView === "confirmation") {
-    return <CheckoutSuccess sessionId={search.session_id ?? ""} />
+  if (entryView === "confirmation" && search.session_id !== undefined) {
+    return <CheckoutSuccess sessionId={search.session_id} />
   }
 
   return <CheckoutGuard />

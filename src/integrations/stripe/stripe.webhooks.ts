@@ -7,42 +7,38 @@ import {
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/stripe/stripe.constants"
 import { deleteCheckoutCoupons } from "~/src/integrations/stripe/stripe.coupons.server"
+import {
+  FULFILLABLE_PAYMENT_STATUSES,
+  announcePlacedOrder,
+  createOrderFromPaidSession,
+  formatPaidAmount,
+} from "~/src/integrations/stripe/stripe.fulfillment.server"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
-import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
-import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
 import {
   recordOrderDisputeClosedAudit,
   recordOrderDisputeOpenedAudit,
   recordOrderFulfillmentFailedAudit,
-  recordOrderPaymentCapturedAudit,
   recordOrderPaymentFailedAudit,
-  recordOrderPlacedAudit,
   recordOrderReleasedAudit,
 } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   checkoutReleaseLinesSchema,
-  parseCheckoutSessionFulfillmentLines,
   readCheckoutSessionItemsJson,
   resolveCheckoutSessionCurrency,
   resolveCheckoutSessionLocale,
 } from "~/src/modules/checkout/checkout-metadata.zod"
-import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { sendPaymentFailedEmail } from "~/src/modules/checkout/use-cases/send-payment-failed-email.server"
 import { clearOrderDispute } from "~/src/modules/order/use-cases/clear-order-dispute"
 import { flagOrderDispute } from "~/src/modules/order/use-cases/flag-order-dispute"
 import { refundOrder } from "~/src/modules/order/use-cases/refund-order"
-import { sendNewOrderEmail } from "~/src/modules/order/use-cases/send-new-order-email.server"
-import { sendOrderConfirmationEmail } from "~/src/modules/order/use-cases/send-order-confirmation-email.server"
 import { sendOrderRefundedEmail } from "~/src/modules/order/use-cases/send-order-refunded-email.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
-
-const NO_AMOUNT = 0
 
 const SINGLE_RESULT = 1
 
@@ -64,33 +60,17 @@ const resolveCheckoutSession = async (paymentIntent: string | { id: string } | n
   return session
 }
 
-const FULFILLABLE_PAYMENT_STATUSES = new Set<StripeType.Checkout.Session["payment_status"]>(["no_payment_required", "paid"])
-
-const formatPaidAmount = (amountMinorUnits: number, currency: string, locale: SupportedLocale): string =>
-  `${formatMinorUnitsAsDecimal(amountMinorUnits, { currencyCode: currency, locale, useGrouping: false })} ${currency}`
-
-const describeUnfulfilledPaidSession = (session: StripeType.Checkout.Session, currency: string, error: unknown): string => {
+const describeUnfulfilledPaidSession = (session: StripeType.Checkout.Session, error: unknown): string => {
   const payer = session.customer_email ?? session.customer_details?.email ?? undefined
   const facts = [
-    session.amount_total === null ? undefined : formatPaidAmount(session.amount_total, currency, resolveCheckoutSessionLocale(session)),
+    session.amount_total === null
+      ? undefined
+      : formatPaidAmount(session.amount_total, resolveCheckoutSessionCurrency(session), resolveCheckoutSessionLocale(session)),
     payer,
     error instanceof Error ? error.message : String(error),
   ]
 
   return facts.filter((fact): fact is string => fact !== undefined).join(" — ")
-}
-
-const createOrderFromPaidSession = async (session: StripeType.Checkout.Session, currency: string): Promise<string | undefined> => {
-  const lines = parseCheckoutSessionFulfillmentLines(session)
-  const orderId = await fulfillCheckout({
-    currency,
-    lines,
-    locale: resolveCheckoutSessionLocale(session),
-    paidAmount: session.amount_total ?? NO_AMOUNT,
-    transactionId: session.id,
-  })
-
-  return orderId
 }
 
 const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session): Promise<void> => {
@@ -100,11 +80,9 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
     return
   }
 
-  const currency = resolveCheckoutSessionCurrency(session)
-  const locale = resolveCheckoutSessionLocale(session)
-  const orderId = await createOrderFromPaidSession(session, currency).catch((error: unknown) => {
+  const orderId = await createOrderFromPaidSession(session).catch((error: unknown) => {
     console.error(`Paid Checkout Session ${session.id} created no order:`, error)
-    const detail = describeUnfulfilledPaidSession(session, currency, error)
+    const detail = describeUnfulfilledPaidSession(session, error)
     recordOrderFulfillmentFailedAudit(session.id, { detail })
     if (errorCode(error) === ERROR_CODES.NOT_FOUND) {
       scheduleBackgroundWork(sendIncidentAlert({ detail, kind: "paidCheckoutWithoutOrder", reference: session.id }))
@@ -118,20 +96,8 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
   if (orderId === undefined) {
     return
   }
-  console.info(`Checkout converted to Order ${orderId} from session ${session.id}.`)
 
-  recordOrderPlacedAudit(orderId, {
-    detail: session.customer_email ?? session.customer_details?.email ?? undefined,
-    resourceId: orderId,
-  })
-  recordOrderPaymentCapturedAudit(orderId, {
-    detail: formatPaidAmount(session.amount_total ?? NO_AMOUNT, currency, locale),
-    resourceId: orderId,
-  })
-  scheduleAdminOrdersInvalidation()
-  scheduleProductCatalogInvalidation()
-
-  const orderEmailDeliveries = Promise.all([sendOrderConfirmationEmail(session, orderId), sendNewOrderEmail(orderId, session.return_url)])
+  const orderEmailDeliveries = announcePlacedOrder(session, orderId)
   scheduleBackgroundWork(orderEmailDeliveries)
   await orderEmailDeliveries
 }

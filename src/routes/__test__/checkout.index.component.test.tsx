@@ -147,11 +147,21 @@ describe("checkout page after payment", () => {
   })
 
   it("does not send the shopper back to the cart", () => {
+    search.session_id = "cs_paid"
     search.success = true
     entry.view = "confirmation"
     renderCheckout()
 
     expect(navigation.navigate).not.toHaveBeenCalled()
+  })
+
+  it("never shows a confirmation that names no session", () => {
+    useCartStore.setState({ items: [cartLine()] })
+    search.success = true
+    entry.view = "confirmation"
+    renderCheckout()
+
+    expect(screen.queryByTestId("checkout-success")).toBeNull()
   })
 })
 

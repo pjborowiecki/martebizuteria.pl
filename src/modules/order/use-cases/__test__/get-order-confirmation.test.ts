@@ -2,7 +2,7 @@ import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { ZodError } from "zod/v4"
 
-import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 
 import { getOrderConfirmation, getOrderConfirmationQuery } from "../get-order-confirmation"
@@ -44,11 +44,25 @@ const order = vi.hoisted(() => ({
   userId: null as string | null,
 }))
 
+const REQUEST_HEADERS = new Headers({ "cf-connecting-ip": "203.0.113.7" })
+
+const returned = vi.hoisted(() => ({
+  assertWithinRateLimit: vi.fn<(kind: string, rule: object, requestHeaders: Headers) => Promise<void>>(),
+  captured: { middleware: [] as unknown[] },
+  fulfillReturnedCheckoutSession: vi.fn<(sessionId: string) => Promise<void>>(),
+  getPaymentByTransactionId: vi.fn<(transactionId: string) => Promise<{ status: string } | undefined>>(),
+}))
+
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
-      handler: (handler: (options: { data: unknown }) => unknown) => (options: { data: unknown }) =>
-        handler({ data: builder.validate(options.data) }),
+      handler: (handler: (options: { context: { requestHeaders: Headers }; data: unknown }) => unknown) => (options: { data: unknown }) =>
+        handler({ context: { requestHeaders: REQUEST_HEADERS }, data: builder.validate(options.data) }),
+      middleware: (middleware: unknown[]) => {
+        returned.captured.middleware = middleware
+
+        return builder
+      },
       validate: (data: unknown) => data,
       validator: (validate: (data: unknown) => unknown) => {
         builder.validate = validate
@@ -60,9 +74,18 @@ vi.mock("@tanstack/react-start", () => ({
     return builder
   },
 }))
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
+  RATE_LIMITS: { CHECKOUT: { max: 10, window: 60 } },
+  assertWithinRateLimit: returned.assertWithinRateLimit,
+  withRequest: "withRequest",
+}))
 vi.mock("~/src/integrations/better-auth/auth.session", () => ({
   getRequestSession: () => Promise.resolve(order.sessionUserId === undefined ? null : { user: { id: order.sessionUserId } }),
 }))
+vi.mock("~/src/integrations/stripe/stripe.fulfillment.server", () => ({
+  fulfillReturnedCheckoutSession: returned.fulfillReturnedCheckoutSession,
+}))
+vi.mock("~/src/modules/payment/payment.accessors", () => ({ getPaymentByTransactionId: returned.getPaymentByTransactionId }))
 vi.mock("~/src/modules/order/order.accessors", () => ({
   getAdminOrderItemRows: () => Promise.resolve(order.itemRows),
   getOrderByTransactionId: (transactionId: string) => {
@@ -93,6 +116,10 @@ vi.mock("~/src/modules/order/order.accessors", () => ({
 }))
 
 beforeEach(() => {
+  vi.clearAllMocks()
+  returned.assertWithinRateLimit.mockResolvedValue(undefined)
+  returned.fulfillReturnedCheckoutSession.mockResolvedValue(undefined)
+  returned.getPaymentByTransactionId.mockResolvedValue({ status: "succeeded" })
   order.addresses = []
   order.deliveryMethod = null
   order.exists = true
@@ -120,9 +147,14 @@ describe("getOrderConfirmation shipping address", () => {
 })
 
 describe("getOrderConfirmation lookup", () => {
+  it("reads the request's address for the rate limit it applies before asking Stripe", () => {
+    expect(returned.captured.middleware).toStrictEqual(["withRequest"])
+  })
+
   it("looks the order up by the trimmed Checkout Session id", async () => {
     await getOrderConfirmation({ data: { sessionId: "  cs_test_1  " } })
 
+    expect(returned.getPaymentByTransactionId).toHaveBeenCalledWith("cs_test_1")
     expect(order.transactionIds).toStrictEqual(["cs_test_1"])
   })
 
@@ -218,18 +250,71 @@ describe("getOrderConfirmation ownership", () => {
   })
 })
 
+describe("getOrderConfirmation for a session whose payment is still pending", () => {
+  beforeEach(() => {
+    returned.getPaymentByTransactionId.mockResolvedValue({ status: "pending" })
+  })
+
+  it("places the order of a paid session its webhook has not reached yet and shows it", async () => {
+    order.exists = false
+    returned.fulfillReturnedCheckoutSession.mockImplementation(() => {
+      order.exists = true
+
+      return Promise.resolve()
+    })
+
+    await expect(getOrderConfirmation({ data: { sessionId: "cs_test_1" } })).resolves.toMatchObject({ id: "order-1" })
+    expect(returned.assertWithinRateLimit).toHaveBeenCalledWith("checkout-status", { max: 10, window: 60 }, REQUEST_HEADERS)
+    expect(returned.fulfillReturnedCheckoutSession).toHaveBeenCalledWith("cs_test_1")
+    expect(returned.assertWithinRateLimit.mock.invocationCallOrder[0]).toBeLessThan(
+      returned.fulfillReturnedCheckoutSession.mock.invocationCallOrder[0] ?? 0,
+    )
+    expect(order.transactionIds).toStrictEqual(["cs_test_1"])
+  })
+
+  it("reports nothing yet while Stripe has not reported the session paid", async () => {
+    order.exists = false
+
+    await expect(getOrderConfirmation({ data: { sessionId: "cs_test_1" } })).resolves.toBeUndefined()
+    expect(returned.fulfillReturnedCheckoutSession).toHaveBeenCalledOnce()
+  })
+
+  it("asks Stripe nothing once the client address has spent its checkout status rate", async () => {
+    returned.assertWithinRateLimit.mockRejectedValue(new AppError(ERROR_CODES.TOO_MANY_REQUESTS))
+
+    await expect(getOrderConfirmation({ data: { sessionId: "cs_test_1" } })).rejects.toMatchObject({ code: ERROR_CODES.TOO_MANY_REQUESTS })
+    expect(returned.fulfillReturnedCheckoutSession).not.toHaveBeenCalled()
+    expect(order.transactionIds).toStrictEqual([])
+  })
+})
+
+describe("getOrderConfirmation for a session whose payment is not pending", () => {
+  it.each([
+    { payment: { status: "succeeded" }, why: "a paid session whose order is recorded" },
+    { payment: { status: "refunded" }, why: "a refunded order" },
+    { payment: { status: "failed" }, why: "a released checkout" },
+    { payment: undefined, why: "a session no payment carries" },
+  ])("reads only the database for $why", async ({ payment }) => {
+    returned.getPaymentByTransactionId.mockResolvedValue(payment)
+
+    await getOrderConfirmation({ data: { sessionId: "cs_test_1" } })
+
+    expect(returned.assertWithinRateLimit).not.toHaveBeenCalled()
+    expect(returned.fulfillReturnedCheckoutSession).not.toHaveBeenCalled()
+    expect(order.transactionIds).toStrictEqual(["cs_test_1"])
+  })
+})
+
 describe("getOrderConfirmationQuery", () => {
   it("keys the confirmation by its Checkout Session id", () => {
     expect(getOrderConfirmationQuery("cs_test_1").queryKey).toStrictEqual([...ORDER_QUERY_KEYS.CONFIRMATION, "cs_test_1"])
   })
 
-  it("waits for a Checkout Session id before fetching", () => {
-    expect(getOrderConfirmationQuery("").enabled).toBe(false)
-    expect(getOrderConfirmationQuery("cs_test_1").enabled).toBe(true)
-  })
+  it("keeps asking for about two minutes, doubling the wait from one second up to thirty, while no order exists", () => {
+    const query = getOrderConfirmationQuery("cs_test_1")
 
-  it("keeps retrying while the webhook has not written the order yet", () => {
-    expect(getOrderConfirmationQuery("cs_test_1")).toMatchObject({ retry: 5, retryDelay: 1500 })
+    expect(query.retry).toBe(8)
+    expect(query.retryDelay).toBeUndefined()
   })
 
   it("fetches the confirmation through the server function", async () => {
@@ -252,6 +337,6 @@ describe("getOrderConfirmationQuery", () => {
     await expect(new QueryClient().query({ ...getOrderConfirmationQuery("cs_test_1"), retryDelay: 0 })).rejects.toMatchObject({
       code: ERROR_CODES.NOT_FOUND,
     })
-    expect(order.transactionIds).toHaveLength(6)
+    expect(order.transactionIds).toHaveLength(9)
   })
 })
