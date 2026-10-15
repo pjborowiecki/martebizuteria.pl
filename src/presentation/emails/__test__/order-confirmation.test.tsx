@@ -63,13 +63,19 @@ const renderConfirmation = (
   {
     confirmationDetails = details,
     discountTotal = 0,
-  }: Readonly<{ confirmationDetails?: OrderConfirmationDetails; discountTotal?: number }> = {},
+    inlineImageSources = new Map<string, string>(),
+  }: Readonly<{
+    confirmationDetails?: OrderConfirmationDetails
+    discountTotal?: number
+    inlineImageSources?: ReadonlyMap<string, string>
+  }> = {},
 ): Promise<string> =>
   render(
     <OrderConfirmation
       accountCta={accountCta}
       currency="PLN"
       details={confirmationDetails}
+      inlineImageSources={inlineImageSources}
       items={items}
       legalLinks={legalLinks}
       locale="en-US"
@@ -127,6 +133,16 @@ describe("OrderConfirmation", () => {
     const text = await renderConfirmation(customerCta)
 
     expect(text).toContain(`Includes VAT (23%): ${formatPrice(12_080, "PLN", "en-US")}`)
+  })
+
+  it("shows an image embedded in the email by its content id and links the images that were not", async () => {
+    const html = await renderConfirmation(guestCta, false, {
+      inlineImageSources: new Map([["https://assets.test/aurora.jpg", "cid:image-1"]]),
+    })
+
+    expect(html).toContain('src="cid:image-1"')
+    expect(html).not.toContain('src="https://assets.test/aurora.jpg"')
+    expect(html).toContain('src="https://assets.test/luna.jpg"')
   })
 
   it("lists every item with its own product link", async () => {
@@ -218,6 +234,7 @@ const renderContract = (locale: (typeof contractCopies)[number][0], messages: ty
       accountCta={customerCta}
       currency="PLN"
       details={details}
+      inlineImageSources={new Map()}
       items={items}
       legalLinks={legalLinks}
       locale={locale}

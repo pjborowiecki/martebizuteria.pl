@@ -31,7 +31,7 @@ const DetailRow = ({ isFirst = false, label, value }: Readonly<DetailRowProps>):
   </Section>
 )
 
-const OrderItemRow = ({ currency, isFirst, item, locale, viewProductLabel }: Readonly<OrderItemRowProps>): JSX.Element => (
+const OrderItemRow = ({ currency, imageSrc, isFirst, item, locale, viewProductLabel }: Readonly<OrderItemRowProps>): JSX.Element => (
   <Section className={isFirst ? FIRST_ITEM_TOP_MARGIN : ITEM_TOP_MARGIN}>
     <Row>
       <Column className="w-[72px] align-top">
@@ -39,7 +39,7 @@ const OrderItemRow = ({ currency, isFirst, item, locale, viewProductLabel }: Rea
           alt={item.title}
           className="box-border"
           height={PRODUCT_IMAGE_SIZE}
-          src={item.imageUrl}
+          src={imageSrc}
           style={EMAIL_PRODUCT_IMAGE_STYLE}
           width={PRODUCT_IMAGE_SIZE}
         />
@@ -140,6 +140,7 @@ export const OrderConfirmation = ({
   accountCta,
   currency,
   details,
+  inlineImageSources,
   items,
   legalLinks,
   discountTotal,
@@ -178,6 +179,7 @@ export const OrderConfirmation = ({
           <OrderItemRow
             key={`${item.title}-${item.productUrl}-${item.qty}`}
             currency={currency}
+            imageSrc={inlineImageSources.get(item.imageUrl) ?? item.imageUrl}
             isFirst={index === 0}
             item={item}
             locale={locale}
@@ -300,6 +302,7 @@ interface OrderConfirmationProps {
   readonly accountCta: OrderAccountCta
   readonly currency: string
   readonly details: OrderConfirmationDetails
+  readonly inlineImageSources: ReadonlyMap<string, string>
   readonly items: readonly OrderConfirmationItem[]
   readonly legalLinks: OrderConfirmationLegalLinks
   readonly locale: SupportedLocale
@@ -333,6 +336,7 @@ interface DetailRowProps {
 
 interface OrderItemRowProps {
   readonly currency: string
+  readonly imageSrc: string
   readonly isFirst: boolean
   readonly item: OrderConfirmationItem
   readonly locale: SupportedLocale

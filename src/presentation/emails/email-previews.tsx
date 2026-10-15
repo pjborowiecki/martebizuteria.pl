@@ -249,6 +249,7 @@ export const EMAIL_PREVIEWS = {
               messages,
             ),
           }}
+          inlineImageSources={new Map()}
           items={PREVIEW_ORDER_ITEMS}
           legalLinks={PREVIEW_LEGAL_LINKS}
           locale={locale}

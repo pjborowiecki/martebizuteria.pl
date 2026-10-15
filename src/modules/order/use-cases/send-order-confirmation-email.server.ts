@@ -4,6 +4,7 @@ import { type Attachment } from "resend"
 import type StripeType from "stripe"
 import { createTranslator } from "use-intl"
 
+import { embedEmailImages } from "~/src/integrations/cloudflare-r2/media.email.server"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
@@ -81,13 +82,14 @@ const buildOrderConfirmationEmailPayload = async (
   })
 
   const emailItems = buildOrderConfirmationItems(order.lines, locale, origin)
+  const inlineImages = await embedEmailImages(emailItems.map((item) => item.imageUrl))
   const rawUserId = session.metadata?.["userId"]
   const isGuest = rawUserId === undefined || rawUserId === ""
   const accountCta = buildOrderAccountCta({ isGuest, locale, messages, orderId: order.orderId, origin })
   const { orderNumber } = placedOrder
 
   return {
-    attachments: [await loadWithdrawalFormAttachment(origin)],
+    attachments: [await loadWithdrawalFormAttachment(origin), ...inlineImages.attachments],
     email: placedOrder.email,
     locale,
     react: createElement(OrderConfirmation, {
@@ -95,6 +97,7 @@ const buildOrderConfirmationEmailPayload = async (
       currency: order.currency,
       details,
       discountTotal: placedOrder.discountTotal,
+      inlineImageSources: inlineImages.sources,
       items: emailItems,
       legalLinks: buildOrderLegalLinks(origin, locale, orderNumber),
       locale,
