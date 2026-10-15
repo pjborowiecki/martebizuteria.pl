@@ -366,7 +366,7 @@ Use `bun run test`, not `bun test` — the latter bypasses the configured Vitest
 | `bun run test:unit` / `test:integration` / `test:component` | Run one project.                                                                      |
 | `bun run test:watch` / `test:changed`                       | Watch, or run only what changed.                                                      |
 | `bun run test:coverage`                                     | Run with the configured coverage gate and write `coverage/`.                          |
-| `bun run test:e2e` / `test:e2e:pr` / `test:e2e:stripe`      | Browser tests: every project, Chromium only, or one payment through a Stripe sandbox. |
+| `bun run test:e2e` / `test:e2e:pr` / `test:e2e:stripe`      | Browser tests: every project, Chromium only, or card, BLIK, P24 in a Stripe sandbox.  |
 | `bun run build:preview` / `build:production`                | Clean `dist`, compile content, build the Worker for that mode, then verify it.        |
 | `bun run start`                                             | Serve the last preview build at `127.0.0.1:3000`.                                     |
 | `bun run deploy:preview` / `deploy:production`              | Check config and keys, build, migrate, deploy, then check the live site.              |
@@ -414,7 +414,7 @@ What the suite is aimed at, beyond the number:
 - **Session cache** — shared pending lookup, revalidation on a new `Request`, anonymous/authenticated isolation, and that a rejection does not poison the next request.
 - **i18n** — every English key exists in Polish, file by file.
 
-Browser tests are separate: Playwright drives the built test Worker in Chromium and WebKit against a local D1 database, with Stripe and Resend emulated inside the Worker and InPost's point search answered in the browser, and the opt-in `stripe-test-mode` project pays one checkout through a Stripe sandbox when its keys are set. One honest limit: the integration transport emulates batch atomicity but not D1's parameter ceiling, so concurrency results are SQLite's, not proof against D1 under production load.
+Browser tests are separate: Playwright drives the built test Worker in Chromium and WebKit against a local D1 database, with Stripe and Resend emulated inside the Worker and InPost's point search answered in the browser, and the opt-in `stripe-test-mode` project pays through a Stripe sandbox by card (declines and 3D Secure included), BLIK and Przelewy24 when its keys are set. One honest limit: the integration transport emulates batch atomicity but not D1's parameter ceiling, so concurrency results are SQLite's, not proof against D1 under production load.
 
 ## Database and deployment
 
@@ -503,7 +503,7 @@ Both deploy workflows use GitHub `environment: preview` / `environment: producti
 
 `CLOUDFLARE_ACCESS_TOKEN` also needs the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone, because each deploy attaches the custom domains listed under `routes` in `wrangler.jsonc`.
 
-The Stripe test-mode job in `e2e-full.yml` reads two repository secrets, `E2E_STRIPE_SECRET_KEY` (`sk_test_`) and `E2E_STRIPE_PUBLISHABLE_KEY` (`pk_test_`), from a Stripe sandbox with no webhook endpoint; without them its spec is skipped. See [Testing](content/docs/tooling/testing.en-US.mdx).
+The Stripe test-mode job in `e2e-full.yml` reads two repository secrets, `E2E_STRIPE_SECRET_KEY` (`sk_test_`) and `E2E_STRIPE_PUBLISHABLE_KEY` (`pk_test_`), from a Stripe sandbox with no webhook endpoint and with Cards, BLIK and Przelewy24 turned on; without them its specs are skipped and the job warns that no payment reached Stripe. See [Testing](content/docs/tooling/testing.en-US.mdx).
 
 The deploy jobs `touch .env.<environment>` and rely on the process environment, because `verify-stripe-keys.ts`, `verify-email-sender.ts` and `prepare-deploy-secrets.ts` prefer `process.env[name]` over the file. The deploy scripts apply the environment's pending D1 migrations themselves, so a pull request's migration reaches the shared preview database with its preview deploy, and keep schema changes backward compatible with the currently deployed Worker.
 
@@ -580,7 +580,7 @@ Kept here rather than hidden, because an accurate map is more useful than a flat
 
 - No reconciliation job. The only Cron Trigger runs the daily retention clean-up, which releases no stock, so stale inventory reservations are reclaimed only when Stripe emits `checkout.session.expired`, 32 minutes after a Checkout Session opens.
 - An audit entry that still cannot be written after the dead-letter queue retries it on its own three times is dropped; its failures email `RESEND_EMAIL_FROM`. Better Auth's `/admin/revoke-user-session`, which names a session only by its token, and `/admin/impersonate-user` are not recorded in the audit log.
-- The default browser suite never loads Stripe.js. Only the opt-in `stripe-test-mode` project pays in Stripe's real card form, and only where Stripe sandbox keys are configured.
+- The default browser suite never loads Stripe.js. Only the opt-in `stripe-test-mode` project pays in Stripe's real payment form, by card, BLIK and Przelewy24, and only where Stripe sandbox keys are configured.
 - A newsletter batch that still fails on its third attempt stops its campaign, which cannot be resumed; the stop is audited and emails `RESEND_EMAIL_FROM`.
 
 **Security hardening**

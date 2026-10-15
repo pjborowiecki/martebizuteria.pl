@@ -1,29 +1,20 @@
 import { COURIER, PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
-import { heldCheckoutSessionId } from "../fixtures/checkout-draft"
+import { heldCheckoutSessionId, waitForHeldCheckoutSessionId } from "../fixtures/checkout-draft"
 import { registerCustomer } from "../fixtures/customers"
 import { sentEmails, waitForEmail } from "../fixtures/emails"
 import {
   HAS_STRIPE_TEST_MODE_KEYS,
+  ORDER_CONFIRMATION_SUBJECT,
+  ORDER_NUMBER,
   STRIPE_ORIGINS,
   STRIPE_TEST_CARD,
   STRIPE_TEST_MODE_SKIP_REASON,
+  expectOrderPaidOnSession,
   forwardCheckoutCompletion,
-  retrieveCheckoutSessionPayment,
+  openGuestPaymentStep,
 } from "../fixtures/stripe-test-mode"
 import { expect, test } from "../fixtures/test"
-import { stripeOutcomeEmail, uniqueEmail } from "../fixtures/unique"
-
-const CONFIRMATION_URL = /\/en-US\/checkout\?(?=.*\bsuccess=true\b)(?=.*\bsession_id=cs_test_\w+)/u
-
-const ORDER_NUMBER = /MRT-\d{4}-\d{5}/u
-
-const ORDER_CONFIRMATION_SUBJECT = "Order confirmation — M'Arte"
-
-const SESSION_REPLACED = "This payment session is no longer active."
-
-const BLIK_CODE = "123456"
-
-const BLIK_CODE_REFUSED = "Your BLIK code is incorrect. Please check the code in your banking app and try again."
+import { uniqueEmail } from "../fixtures/unique"
 
 test.describe("Stripe test mode", () => {
   test.skip(!HAS_STRIPE_TEST_MODE_KEYS, STRIPE_TEST_MODE_SKIP_REASON)
@@ -37,26 +28,15 @@ test.describe("Stripe test mode", () => {
   }, testInfo) => {
     test.slow()
     const email = uniqueEmail(testInfo, "stripe-test-mode")
-    await productPage.gotoProduct(PRODUCTS.lapis.handle)
-    await productPage.addToCart()
-    await checkoutPage.gotoCheckout()
-    await checkoutPage.fillContact(email, SHIPPING_ADDRESS.phone)
-    await checkoutPage.fillAddress(SHIPPING_ADDRESS)
-    await checkoutPage.chooseDelivery(COURIER.name)
+    const sessionId = await openGuestPaymentStep({ checkoutPage, page, productPage }, email)
 
     await checkoutPage.payWithCard(STRIPE_TEST_CARD)
 
-    await expect(page).toHaveURL(CONFIRMATION_URL)
-    await expect(checkoutPage.confirmationHeading()).toBeVisible()
-    await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
+    await expectOrderPaidOnSession({ checkoutPage, page }, sessionId)
     await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s398\.99/u)
     const confirmation = await waitForEmail(request, email, ORDER_CONFIRMATION_SUBJECT)
     expect(confirmation.html).toContain(PRODUCTS.lapis.title)
-    const sessionId = new URL(page.url()).searchParams.get("session_id")
-    if (sessionId === null) {
-      throw new Error("The confirmation address names no Checkout Session")
-    }
-
+    expect(confirmation.html).toContain("Credit or debit card")
     const session = await forwardCheckoutCompletion(request, sessionId)
     expect(session.amount_total).toBe(39_899)
     expect(session.payment_status).toBe("paid")
@@ -82,81 +62,22 @@ test.describe("Stripe test mode", () => {
     await checkoutPage.fillAddress(SHIPPING_ADDRESS)
     await checkoutPage.chooseDelivery(COURIER.name)
     await expect(checkoutPage.paymentStep()).toBeVisible()
-    await expect.poll(() => heldCheckoutSessionId(page)).toBeDefined()
-    const accountEmailSessionId = await heldCheckoutSessionId(page)
+    const accountEmailSessionId = await waitForHeldCheckoutSessionId(page)
 
     await checkoutPage.editStep("Contact Details")
     await checkoutPage.fillContact(orderEmail, SHIPPING_ADDRESS.phone)
     await checkoutPage.fillAddress(SHIPPING_ADDRESS)
     await checkoutPage.chooseDelivery(COURIER.name)
     await expect.poll(() => heldCheckoutSessionId(page)).not.toBe(accountEmailSessionId)
+    const sessionId = await waitForHeldCheckoutSessionId(page)
     await checkoutPage.payWithCard(STRIPE_TEST_CARD)
 
-    await expect(page).toHaveURL(CONFIRMATION_URL)
+    await expectOrderPaidOnSession({ checkoutPage, page }, sessionId)
     await expect(page.getByRole("main")).toContainText(`If the confirmation email has not reached ${orderEmail} within a few minutes`)
     await waitForEmail(request, orderEmail, ORDER_CONFIRMATION_SUBJECT)
-    const sessionId = new URL(page.url()).searchParams.get("session_id")
-    if (sessionId === null) {
-      throw new Error("The confirmation address names no Checkout Session")
-    }
-
     const session = await forwardCheckoutCompletion(request, sessionId)
     expect(session.customer).not.toBeNull()
     expect(session.customer_details?.email).toBe(orderEmail)
     expect((await sentEmails(request, customer.email)).map(({ subject }) => subject)).not.toContain(ORDER_CONFIRMATION_SUBJECT)
-  })
-
-  test("a guest whose card number is incomplete cannot press pay, and pays on the same session once it is complete", async ({
-    checkoutPage,
-    page,
-    productPage,
-  }, testInfo) => {
-    test.slow()
-    await productPage.gotoProduct(PRODUCTS.lapis.handle)
-    await productPage.addToCart()
-    await checkoutPage.gotoCheckout()
-    await checkoutPage.fillContact(uniqueEmail(testInfo, "stripe-incomplete-card"), SHIPPING_ADDRESS.phone)
-    await checkoutPage.fillAddress(SHIPPING_ADDRESS)
-    await checkoutPage.chooseDelivery(COURIER.name)
-
-    await checkoutPage.fillCard({ ...STRIPE_TEST_CARD, number: "4242 4242" })
-
-    await expect(checkoutPage.payButton()).toBeDisabled()
-    const sessionId = await heldCheckoutSessionId(page)
-    await checkoutPage.paymentForm().locator("input[name='number']").fill(STRIPE_TEST_CARD.number)
-    await checkoutPage.pay()
-    await expect(page).toHaveURL(CONFIRMATION_URL)
-    expect(new URL(page.url()).searchParams.get("session_id")).toBe(sessionId)
-  })
-
-  test("a guest whose BLIK code is refused sees Stripe's reason and keeps the same payment session", async ({
-    checkoutPage,
-    page,
-    productPage,
-  }, testInfo) => {
-    test.slow()
-    await productPage.gotoProduct(PRODUCTS.lapis.handle)
-    await productPage.addToCart()
-    await checkoutPage.gotoCheckout()
-    await checkoutPage.fillContact(stripeOutcomeEmail(testInfo, "invalid_code"), SHIPPING_ADDRESS.phone)
-    await checkoutPage.fillAddress(SHIPPING_ADDRESS)
-    await checkoutPage.chooseDelivery(COURIER.name)
-    await checkoutPage.fillBlikCode(BLIK_CODE)
-    const sessionId = await heldCheckoutSessionId(page)
-
-    await checkoutPage.pay()
-
-    await expect(checkoutPage.notification(BLIK_CODE_REFUSED)).toBeVisible()
-    await expect(checkoutPage.notification(SESSION_REPLACED)).toHaveCount(0)
-    expect(await heldCheckoutSessionId(page)).toBe(sessionId)
-    await expect(checkoutPage.paymentForm().getByRole("textbox", { name: "BLIK code" })).toHaveValue("123 456")
-    await expect(checkoutPage.payButton()).toBeEnabled()
-    if (typeof sessionId !== "string") {
-      throw new Error("The payment step holds no Checkout Session")
-    }
-
-    const session = await retrieveCheckoutSessionPayment(sessionId)
-    expect(session.status).toBe("open")
-    expect(session.payment_intent).toMatchObject({ last_payment_error: { decline_code: "code_invalid" }, status: "requires_payment_method" })
   })
 })

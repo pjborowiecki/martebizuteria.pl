@@ -22,6 +22,16 @@ interface PaymentCard {
   readonly number: string
 }
 
+type ThreeDSecureAnswer = "Complete" | "Fail"
+
+type TestPaymentAnswer = "Authorize test payment" | "Fail test payment"
+
+const THREE_D_SECURE_TEST_PAGE_FRAME = "stripe-challenge-frame"
+
+const THREE_D_SECURE_STEP_TIMEOUT_MS = 10_000
+
+const THREE_D_SECURE_ANSWER_TIMEOUT_MS = 60_000
+
 export class CheckoutPage extends BasePage {
   async gotoCheckout(): Promise<void> {
     await this.open("/en-US/checkout")
@@ -120,13 +130,49 @@ export class CheckoutPage extends BasePage {
   async pay(): Promise<void> {
     const payButton = this.payButton()
     await payButton.scrollIntoViewIfNeeded()
-    await expect(this.page.locator("html")).not.toHaveClass(/lenis-scrolling/u)
+    await expect(this.page.locator("html")).not.toHaveClass(/lenis-smooth/u)
     await payButton.click()
   }
 
   async payWithCard(card: PaymentCard): Promise<void> {
     await this.fillCard(card)
     await this.pay()
+  }
+
+  threeDSecureChallenge(): FrameLocator {
+    return this.page.locator("iframe[src*='three-ds-2-challenge']").contentFrame()
+  }
+
+  threeDSecureTestPage(): Locator {
+    return this.threeDSecureChallenge().locator(`iframe[name='${THREE_D_SECURE_TEST_PAGE_FRAME}']`)
+  }
+
+  async answerThreeDSecure(answer: ThreeDSecureAnswer): Promise<void> {
+    await this.pressInThreeDSecure(this.threeDSecureTestPage().contentFrame().getByRole("button", { exact: true, name: answer }))
+  }
+
+  async cancelThreeDSecure(): Promise<void> {
+    await this.threeDSecureTestPage().contentFrame().getByRole("button", { exact: true, name: "Complete" }).waitFor()
+    await this.pressInThreeDSecure(this.threeDSecureChallenge().getByRole("button", { name: "Cancel" }))
+  }
+
+  private async pressInThreeDSecure(button: Locator): Promise<void> {
+    await expect(async () => {
+      await this.threeDSecureTestPage().click({ timeout: THREE_D_SECURE_STEP_TIMEOUT_MS, trial: true })
+      await button.click({ timeout: THREE_D_SECURE_STEP_TIMEOUT_MS })
+      await expect(button).toBeHidden({ timeout: THREE_D_SECURE_STEP_TIMEOUT_MS })
+    }).toPass({ timeout: THREE_D_SECURE_ANSWER_TIMEOUT_MS })
+  }
+
+  async payWithPrzelewy24(bank: string): Promise<void> {
+    const paymentForm = this.paymentForm()
+    await paymentForm.getByRole("button", { exact: true, name: "Przelewy24" }).click()
+    await paymentForm.getByRole("combobox", { name: "Select bank" }).selectOption({ label: bank })
+    await this.pay()
+  }
+
+  async answerTestPayment(answer: TestPaymentAnswer): Promise<void> {
+    await this.page.getByRole("link", { name: answer }).click()
   }
 
   async applyDiscountCode(code: string): Promise<void> {

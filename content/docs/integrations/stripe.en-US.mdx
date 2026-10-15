@@ -234,7 +234,7 @@ bun run stripe:listen
 
 The `STRIPE_WEBHOOK_SECRET` printed by that command is the one your local environment file needs. Without it the webhook route answers 400 and nothing is fulfilled.
 
-The browser tests emulate Stripe in the test Worker. One Playwright project, `stripe-test-mode`, pays a checkout in the real Payment Element with Stripe's test card when it is built and run with a Stripe sandbox's keys, and forwards the sandbox's `checkout.session.completed` event to the local webhook itself, so it needs no Stripe CLI; see [Stripe test mode](/docs/tooling/testing#stripe-test-mode).
+The browser tests emulate Stripe in the test Worker. One Playwright project, `stripe-test-mode`, pays in the real Payment Element when it is built and run with a Stripe sandbox's keys: Stripe's test cards, including the declined ones and a 3D Secure challenge that is completed, failed or closed, the BLIK code 123456 and BLIK's simulated refusals, and Przelewy24 authorised or failed on Stripe's test page. Every card or BLIK refusal must leave the shopper on the same session with Stripe's message and the basket kept, and a failed Przelewy24 payment must bring them back to the payment step with the basket. The project forwards the sandbox's `checkout.session.completed` event to the local webhook itself, so it needs no Stripe CLI; see [Stripe test mode](/docs/tooling/testing#stripe-test-mode).
 
 ## Errors
 
