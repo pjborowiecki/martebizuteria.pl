@@ -28,11 +28,11 @@ export const DashboardRecentOrders = (): JSX.Element => {
   return (
     <Card className="border-border/40 bg-gradient-to-br from-cyan-500/10 via-sky-500/5 to-transparent shadow-none xl:col-span-3">
       <CardHeader className="pb-0">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-semibold">{t("dashboard.recentOrders.title")}</CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="min-w-0 text-base font-semibold">{t("dashboard.recentOrders.title")}</CardTitle>
           <LocalizedLink
             to={ROUTES.ADMIN_ORDERS}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex shrink-0 items-center gap-1.5 text-sm whitespace-nowrap text-muted-foreground transition-colors hover:text-foreground pointer-coarse:min-h-10"
           >
             {t("dashboard.recentOrders.viewAll")}
             <ArrowRight className="size-3.5" strokeWidth={1.5} />
@@ -41,18 +41,18 @@ export const DashboardRecentOrders = (): JSX.Element => {
       </CardHeader>
       <CardContent className="px-0 pt-4">
         {snapshot.recentOrders.length === 0 ? (
-          <p className="px-6 pb-6 text-sm text-muted-foreground">{t("dashboard.recentOrders.empty")}</p>
+          <p className="px-4 pb-4 text-sm text-muted-foreground lg:px-6 lg:pb-6">{t("dashboard.recentOrders.empty")}</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="pl-6 text-xs font-medium">{t("dashboard.recentOrders.columns.order")}</TableHead>
+                <TableHead className="pl-4 text-xs font-medium lg:pl-6">{t("dashboard.recentOrders.columns.order")}</TableHead>
                 <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.customer")}</TableHead>
                 <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.date")}</TableHead>
                 <TableHead className="text-right text-xs font-medium">{t("dashboard.recentOrders.columns.total")}</TableHead>
                 <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.payment")}</TableHead>
                 <TableHead className="text-xs font-medium">{t("dashboard.recentOrders.columns.fulfillment")}</TableHead>
-                <TableHead className="pr-6">
+                <TableHead className="pr-4 lg:pr-6">
                   <span className="sr-only">{t("orders.columns.actions")}</span>
                 </TableHead>
               </TableRow>
@@ -88,7 +88,7 @@ const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): 
 
   return (
     <TableRow className="cursor-pointer hover:bg-muted/50" onClick={handleRowClick}>
-      <TableCell className="pl-6 font-mono text-sm font-medium whitespace-nowrap">
+      <TableCell className="pl-4 font-mono text-sm font-medium whitespace-nowrap lg:pl-6">
         <LocalizedLink params={{ orderId: order.id }} to={ROUTES.ADMIN_ORDER} className="hover:underline">
           {order.orderNumber}
         </LocalizedLink>
@@ -111,7 +111,7 @@ const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): 
       <TableCell>
         <OrderFulfillmentCell fulfillmentUiKey={order.fulfillmentUiKey} />
       </TableCell>
-      <TableCell className="pr-6 text-right" data-prevent-row-click>
+      <TableCell className="pr-4 text-right lg:pr-6" data-prevent-row-click>
         <OrdersRowActions order={order} />
       </TableCell>
     </TableRow>

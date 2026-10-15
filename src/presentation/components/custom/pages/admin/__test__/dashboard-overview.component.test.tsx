@@ -154,6 +154,27 @@ describe("DashboardTopProducts", () => {
     expect(container.querySelector("img")).toHaveAttribute("src", "https://example.test/ring.jpg")
   })
 
+  it("lets a long product name wrap onto a second line below desktop instead of cutting it short", () => {
+    snapshotRef.current = {
+      ...emptySnapshot(),
+      topProducts: [
+        {
+          category: "Rings",
+          currencyCode: "PLN",
+          imageUrl: undefined,
+          name: "Hand engraved silver signet ring",
+          productId: "p-1",
+          revenueMinorUnits: 129_900,
+          sold: 42,
+        },
+      ],
+    }
+    renderWithProviders(<DashboardTopProducts />)
+
+    expect(screen.getByText("Hand engraved silver signet ring")).toHaveClass("truncate", "max-lg:line-clamp-2", "max-lg:whitespace-normal")
+    expect(screen.getByText("Hand engraved silver signet ring")).toHaveAttribute("title", "Hand engraved silver signet ring")
+  })
+
   it("falls back to the uncategorized label for a product with no category", () => {
     snapshotRef.current = {
       ...emptySnapshot(),
@@ -196,6 +217,12 @@ describe("DashboardTopProducts", () => {
 })
 
 describe("DashboardRecentOrders", () => {
+  it("keeps the view all link on one line beside the title", () => {
+    renderWithProviders(<DashboardRecentOrders />)
+
+    expect(screen.getByRole("link", { name: "View all" })).toHaveClass("shrink-0", "whitespace-nowrap")
+  })
+
   it("says there are no orders yet instead of rendering an empty table", () => {
     renderWithProviders(<DashboardRecentOrders />)
 

@@ -81,6 +81,12 @@ describe("DashboardChartRangeControls", () => {
     expect(onSelectRange).toHaveBeenCalledExactlyOnceWith(expected)
   })
 
+  it("sets the range buttons in a two by two grid on phones and in one row from the small breakpoint", () => {
+    renderControls("7d")
+
+    expect(screen.getByRole("button", { name: "Last 7 days" }).parentElement).toHaveClass("grid", "grid-cols-2", "max-sm:w-full", "sm:flex")
+  })
+
   it("renders every control as a plain button so it never submits a form", () => {
     renderControls("7d")
 

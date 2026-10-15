@@ -48,6 +48,26 @@ describe("DashboardStats", () => {
     expect(container.querySelectorAll("[data-slot='card']")).toHaveLength(4)
   })
 
+  it("sets the cards two to a row on phones and four across on wide screens", () => {
+    const { container } = renderWithProviders(<DashboardStats />)
+
+    expect(container.firstElementChild).toHaveClass("grid", "grid-cols-2", "xl:grid-cols-4")
+  })
+
+  it("pads each card once on phones instead of adding the card padding to the content padding", () => {
+    const { container } = renderWithProviders(<DashboardStats />)
+    const card = container.querySelector("[data-slot='card']")
+
+    expect(card).toHaveClass("max-lg:py-0")
+    expect(card?.querySelector("[data-slot='card-content']")).toHaveClass("p-4", "lg:p-5")
+  })
+
+  it("lets the comparison wrap under the trend badge below desktop", () => {
+    renderWithProviders(<DashboardStats />)
+
+    expect(screen.getAllByText("vs previous 30 days")[0]?.parentElement).toHaveClass("max-lg:flex-wrap")
+  })
+
   it("labels each card with its translated heading", () => {
     renderWithProviders(<DashboardStats />)
 
