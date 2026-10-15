@@ -9,6 +9,7 @@ const mocked = vi.hoisted(() => ({
   createCheckout: vi.fn<(input: { clientAddress: string }) => Promise<{ checkoutId: string; discountClaimed: boolean }>>(),
   ensureStripeCustomerWithEmail: vi.fn(),
   fetchPointByName: vi.fn<(name: string) => Promise<object | undefined>>(),
+  getHeldLinesByTransactionId: vi.fn(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -67,6 +68,7 @@ vi.mock("~/src/modules/inventory/inventory.utils", () => ({
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
   createPendingPayment: vi.fn(),
+  getHeldLinesByTransactionId: mocked.getHeldLinesByTransactionId,
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
 }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
@@ -101,6 +103,7 @@ const shopRequest = (): Request =>
   new Request("https://martebizuteria.pl/_serverFn/checkout", { headers: { "cf-connecting-ip": VISITOR_IP } })
 
 beforeEach(() => {
+  mocked.getHeldLinesByTransactionId.mockResolvedValue(HELD_LINES)
   vi.clearAllMocks()
   vi.stubEnv("MODE", "production")
   mocked.getRequest.mockReturnValue(shopRequest())

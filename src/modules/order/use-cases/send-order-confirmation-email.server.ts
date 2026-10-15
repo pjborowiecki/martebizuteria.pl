@@ -12,11 +12,11 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 import { getFulfillmentTimeAttributesByVariantId } from "~/src/modules/attribute-on-product/attribute-on-product.server"
 import {
   type CheckoutFulfillmentLine,
-  parseCheckoutSessionFulfillmentLines,
   resolveCheckoutSessionCurrency,
   resolveCheckoutSessionLocale,
 } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
+import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
 import { loadWithdrawalFormAttachment } from "~/src/modules/order-withdrawal/order-withdrawal.form.server"
 import { getOrderTotalsForEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
@@ -124,7 +124,7 @@ const attemptOrderConfirmationEmail = async (
     return { failure: "The Stripe session has no return URL to link the email to", label: ORDER_CONFIRMATION_LABEL }
   }
 
-  const order = { currency: resolveCheckoutSessionCurrency(session), lines: parseCheckoutSessionFulfillmentLines(session), orderId }
+  const order = { currency: resolveCheckoutSessionCurrency(session), lines: await readCheckoutSessionLines(session), orderId }
   const payload = await buildOrderConfirmationEmailPayload(session, order, resolveDeploymentOrigin(session.return_url))
   if (payload === undefined) {
     return { failure: `Order ${orderId} was not found`, label: ORDER_CONFIRMATION_LABEL }

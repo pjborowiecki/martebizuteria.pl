@@ -7,6 +7,7 @@ const mocked = vi.hoisted(() => ({
   claimCheckoutDiscount: vi.fn(),
   createCheckout: vi.fn(),
   ensureStripeCustomerWithEmail: vi.fn(),
+  getHeldLinesByTransactionId: vi.fn(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -66,6 +67,7 @@ vi.mock("~/src/modules/inventory/inventory.utils", () => ({
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
   createPendingPayment: vi.fn(),
+  getHeldLinesByTransactionId: mocked.getHeldLinesByTransactionId,
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
 }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
@@ -96,6 +98,7 @@ import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 const SALES_PAUSED_REFUSAL = { code: ERROR_CODES.CONFLICT, message: CHECKOUT_ERROR_CODES.SALES_PAUSED }
 
 beforeEach(() => {
+  mocked.getHeldLinesByTransactionId.mockResolvedValue(HELD_LINES)
   vi.clearAllMocks()
   mocked.isSalesPaused.mockResolvedValue(true)
   mocked.getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))

@@ -14,6 +14,7 @@ const mocked = vi.hoisted(() => ({
     >(),
   ensureStripeCustomerWithEmail: vi.fn<() => Promise<string>>(),
   fetchPointByName: vi.fn<(name: string) => Promise<object | undefined>>(),
+  getHeldLinesByTransactionId: vi.fn(),
   getOfferedDeliveryMethodByIdQuery: vi.fn<(id: string) => Promise<{ price: number; type: string } | undefined>>(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -78,6 +79,7 @@ vi.mock("~/src/modules/inventory/inventory.utils", () => ({
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
   createPendingPayment: vi.fn(),
+  getHeldLinesByTransactionId: mocked.getHeldLinesByTransactionId,
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
 }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
@@ -111,6 +113,7 @@ const COURIER = { price: 1999, type: "courier" }
 const PAID_PICKUP = { price: 500, type: "in_store" }
 
 beforeEach(() => {
+  mocked.getHeldLinesByTransactionId.mockResolvedValue(HELD_LINES)
   vi.clearAllMocks()
   vi.spyOn(console, "error").mockImplementation(() => {})
   mocked.getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))

@@ -5,6 +5,7 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
   ensureStripeCustomerWithEmail: vi.fn<() => Promise<string>>(),
+  getHeldLinesByTransactionId: vi.fn(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -63,6 +64,7 @@ vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventory
 vi.mock("~/src/modules/inventory/inventory.utils", () => ({ reserveInventoryForItems: mocked.reserveInventoryForItems }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
   createPendingPayment: vi.fn(),
+  getHeldLinesByTransactionId: mocked.getHeldLinesByTransactionId,
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
 }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
@@ -76,6 +78,7 @@ vi.mock("~/src/lib/rate-limit", () => ({ clientAddress: () => "203.0.113.7" }))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
 import {
+  CART_ITEM,
   CHECKOUT_VALUES,
   HELD_LINES,
   availableVariant,
@@ -90,6 +93,7 @@ import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 
 beforeEach(() => {
+  mocked.getHeldLinesByTransactionId.mockResolvedValue(HELD_LINES)
   vi.clearAllMocks()
   vi.spyOn(console, "error").mockImplementation(() => {})
   mocked.getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))
@@ -264,6 +268,16 @@ describe("handleUpdateCheckoutSession", () => {
       amount: 51_300,
       discountId: undefined,
       heldLines: HELD_LINES,
+      lines: [
+        {
+          handle: CART_ITEM.slug,
+          imageUrl: `https://assets.test/${CART_ITEM.image}`,
+          price: 24_900,
+          qty: 2,
+          title: "Bransoletka Aurora — Rozmiar M",
+          variantId: CART_ITEM.variantId,
+        },
+      ],
       newTransactionId: "cs_new",
       oldTransactionId: "cs_old",
       reservedLines: [{ qty: 2, variantId: "variant-1" }],
@@ -283,8 +297,8 @@ describe("handleUpdateCheckoutSession", () => {
     expect(order).toStrictEqual(order.toSorted((left = 0, right = 0) => left - right))
   })
 
-  it("treats a previous session without item metadata as having nothing reserved", async () => {
-    mocked.checkoutSessionsRetrieve.mockResolvedValue({ metadata: null, status: "open" })
+  it("treats a previous session whose payment holds nothing as having nothing reserved", async () => {
+    mocked.getHeldLinesByTransactionId.mockResolvedValue([])
 
     await handleUpdateCheckoutSession(updateInput())
 
@@ -319,10 +333,7 @@ describe("handleUpdateCheckoutSession", () => {
   })
 
   it("counts the stock its own session holds when checking the edited cart", async () => {
-    mocked.checkoutSessionsRetrieve.mockResolvedValue({
-      metadata: { items: JSON.stringify([{ qty: 1, variantId: "variant-1" }]) },
-      status: "open",
-    })
+    mocked.getHeldLinesByTransactionId.mockResolvedValue([{ qty: 1, variantId: "variant-1" }])
     const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1 } }
     mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([variant])])
 
@@ -331,10 +342,7 @@ describe("handleUpdateCheckoutSession", () => {
   })
 
   it("reserves nothing more when the edited cart keeps no more than the old session holds", async () => {
-    mocked.checkoutSessionsRetrieve.mockResolvedValue({
-      metadata: { items: JSON.stringify([{ qty: 3, variantId: "variant-1" }]) },
-      status: "open",
-    })
+    mocked.getHeldLinesByTransactionId.mockResolvedValue([{ qty: 3, variantId: "variant-1" }])
 
     await expect(handleUpdateCheckoutSession(updateInput())).resolves.toMatchObject({ sessionId: "cs_new" })
     expect(mocked.reserveInventoryForItems).toHaveBeenCalledExactlyOnceWith([])

@@ -6,8 +6,9 @@ import { createTranslator } from "use-intl"
 import { sendEmail } from "~/src/integrations/resend/resend.send"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
-import { parseCheckoutSessionFulfillmentLines, resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
+import { resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutEmailContext } from "~/src/modules/checkout/checkout.accessors"
+import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
 import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
 import { buildOrderConfirmationItems } from "~/src/modules/order/order.email.utils"
 
@@ -36,7 +37,7 @@ const attemptPaymentFailedEmail = async (session: StripeType.Checkout.Session, i
   const origin = resolveDeploymentOrigin(session.return_url)
   const locale = resolveCheckoutSessionLocale(session)
   const messages = await loadNamespace<typeof paymentFailedMessages>({ locale, namespace: PAYMENT_FAILED_NAMESPACE })
-  const lines = parseCheckoutSessionFulfillmentLines(session)
+  const lines = await readCheckoutSessionLines(session)
   const failure = await sendEmail({
     idempotencyKey,
     react: createElement(PaymentFailed, {

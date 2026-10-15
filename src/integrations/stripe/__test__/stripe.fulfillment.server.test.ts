@@ -21,6 +21,14 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderPaymentCapturedAudit: mocked.recordOrderPaymentCapturedAudit,
 }))
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout: mocked.fulfillCheckout }))
+vi.mock("~/src/modules/checkout/checkout.session-lines.server", async () => {
+  const { parseCheckoutSessionFulfillmentLines } = await import("~/src/modules/checkout/checkout-metadata.zod")
+
+  return {
+    readCheckoutSessionLines: (session: Parameters<typeof parseCheckoutSessionFulfillmentLines>[0]) =>
+      Promise.resolve(parseCheckoutSessionFulfillmentLines(session)),
+  }
+})
 vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ sendNewOrderEmail: mocked.sendNewOrderEmail }))
 vi.mock("~/src/modules/order/use-cases/send-order-confirmation-email.server", () => ({
   sendOrderConfirmationEmail: mocked.sendOrderConfirmationEmail,

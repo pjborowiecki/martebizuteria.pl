@@ -56,6 +56,19 @@ vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrder
 vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder }))
 vi.mock("~/src/modules/order/use-cases/undo-failed-refund", () => ({ lowerRefundedAmount: vi.fn(), undoFailedRefund: vi.fn() }))
+const { getHeldLinesByTransactionId } = vi.hoisted(() => ({
+  getHeldLinesByTransactionId: vi.fn<(transactionId: string) => Promise<{ qty: number; variantId: string }[]>>(),
+}))
+
+vi.mock("~/src/modules/payment/payment.accessors", () => ({ getHeldLinesByTransactionId }))
+vi.mock("~/src/modules/checkout/checkout.session-lines.server", async () => {
+  const { parseCheckoutSessionFulfillmentLines } = await import("~/src/modules/checkout/checkout-metadata.zod")
+
+  return {
+    readCheckoutSessionLines: (session: Parameters<typeof parseCheckoutSessionFulfillmentLines>[0]) =>
+      Promise.resolve(parseCheckoutSessionFulfillmentLines(session)),
+  }
+})
 
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
 
@@ -121,6 +134,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.useFakeTimers()
   releaseCheckout.mockResolvedValue(true)
+  getHeldLinesByTransactionId.mockResolvedValue([])
   getCheckoutEmailContext.mockResolvedValue({ email: "anna@example.com" })
   sendEmail.mockResolvedValue(undefined)
   refundOrder.mockResolvedValue(PARTIAL_REFUND)

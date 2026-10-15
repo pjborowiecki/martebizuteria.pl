@@ -72,6 +72,14 @@ vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderTotalsForEmail }
 vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder: vi.fn() }))
+vi.mock("~/src/modules/checkout/checkout.session-lines.server", async () => {
+  const { parseCheckoutSessionFulfillmentLines } = await import("~/src/modules/checkout/checkout-metadata.zod")
+
+  return {
+    readCheckoutSessionLines: (session: Parameters<typeof parseCheckoutSessionFulfillmentLines>[0]) =>
+      Promise.resolve(parseCheckoutSessionFulfillmentLines(session)),
+  }
+})
 
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
 

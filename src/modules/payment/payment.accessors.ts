@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout-metadata.zod"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
 import { payment } from "~/src/modules/payment/payment.schema"
@@ -11,6 +12,7 @@ export const createPendingPayment = async (data: CreatePaymentInput) => {
     amount: data.amount,
     checkoutId: data.checkoutId,
     currency: data.currency,
+    lines: data.lines,
     provider: data.provider,
     reservedLines: data.reservedLines,
     status: "pending",
@@ -28,6 +30,12 @@ export const getPaymentByTransactionId = (transactionId: string) =>
     },
     where: eq(payment.transactionId, transactionId),
   })
+
+export const getCheckoutLinesByTransactionId = async (transactionId: string): Promise<CheckoutFulfillmentLine[]> => {
+  const rows = await db.select({ lines: payment.lines }).from(payment).where(eq(payment.transactionId, transactionId))
+
+  return rows.flatMap((row) => row.lines)
+}
 
 export const getHeldLinesByTransactionId = async (transactionId: string): Promise<ReleaseLine[]> => {
   const rows = await db
@@ -108,6 +116,7 @@ interface CreatePaymentInput {
   amount: number
   checkoutId: string
   currency: string
+  lines: readonly CheckoutFulfillmentLine[]
   provider: "stripe"
   reservedLines: readonly ReleaseLine[]
   transactionId: string

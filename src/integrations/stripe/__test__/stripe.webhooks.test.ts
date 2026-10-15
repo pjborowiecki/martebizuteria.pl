@@ -92,6 +92,19 @@ vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrder
 vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute }))
 vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder }))
 vi.mock("~/src/modules/order/use-cases/undo-failed-refund", () => ({ lowerRefundedAmount: vi.fn(), undoFailedRefund: vi.fn() }))
+const { getHeldLinesByTransactionId } = vi.hoisted(() => ({
+  getHeldLinesByTransactionId: vi.fn<(transactionId: string) => Promise<{ qty: number; variantId: string }[]>>(),
+}))
+
+vi.mock("~/src/modules/payment/payment.accessors", () => ({ getHeldLinesByTransactionId }))
+vi.mock("~/src/modules/checkout/checkout.session-lines.server", async () => {
+  const { parseCheckoutSessionFulfillmentLines } = await import("~/src/modules/checkout/checkout-metadata.zod")
+
+  return {
+    readCheckoutSessionLines: (session: Parameters<typeof parseCheckoutSessionFulfillmentLines>[0]) =>
+      Promise.resolve(parseCheckoutSessionFulfillmentLines(session)),
+  }
+})
 
 import { STRIPE_WEBHOOK_EVENTS } from "~/src/integrations/stripe/stripe.constants"
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
@@ -168,6 +181,7 @@ beforeEach(() => {
   getCheckoutEmailContext.mockResolvedValue(undefined)
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
   releaseCheckout.mockResolvedValue(true)
+  getHeldLinesByTransactionId.mockResolvedValue([])
   refundOrder.mockResolvedValue(undefined)
   refundsList.mockReturnValue(stripeRefunds([refund({ amount: AMOUNT_TOTAL, status: "succeeded" })]))
   flagOrderDispute.mockResolvedValue(undefined)
@@ -339,22 +353,13 @@ describe("a paid checkout session that creates no order", () => {
 })
 
 describe("checkout session release", () => {
-  it("releases the reserved stock of an expired session", async () => {
-    await dispatch(checkoutSessionExpiredEvent(checkoutSession({ metadata: { items: itemsMetadata } })))
+  it("releases the stock the expired session's payment holds", async () => {
+    getHeldLinesByTransactionId.mockResolvedValue([{ qty: 2, variantId: "var-aurora" }])
 
-    expect(releaseCheckout).toHaveBeenCalledWith({
-      lines: [
-        {
-          handle: "bransoletka-aurora",
-          imageUrl: "products/aurora.jpg",
-          price: 24_900,
-          qty: 2,
-          title: "Bransoletka Aurora",
-          variantId: "var-aurora",
-        },
-      ],
-      transactionId: "cs_test_1",
-    })
+    await dispatch(checkoutSessionExpiredEvent(checkoutSession({ metadata: { checkoutId: "checkout-1" } })))
+
+    expect(getHeldLinesByTransactionId).toHaveBeenCalledExactlyOnceWith("cs_test_1")
+    expect(releaseCheckout).toHaveBeenCalledWith({ lines: [{ qty: 2, variantId: "var-aurora" }], transactionId: "cs_test_1" })
     expect(recordOrderReleasedAudit).toHaveBeenCalledWith("cs_test_1", { resourceId: "cs_test_1" })
     expect(scheduleProductCatalogInvalidation).toHaveBeenCalledOnce()
     expect(scheduleAdminOrdersInvalidation).not.toHaveBeenCalled()
@@ -368,7 +373,7 @@ describe("checkout session release", () => {
     expect(consoleInfo).toHaveBeenCalledWith("Checkout released after failed/expired session cs_test_1.")
   })
 
-  it("releases nothing but still reports the release when the session has no items", async () => {
+  it("releases nothing but still reports the release when the session's payment holds nothing", async () => {
     await dispatch(checkoutSessionExpiredEvent(checkoutSession({})))
 
     expect(releaseCheckout).toHaveBeenCalledWith({ lines: [], transactionId: "cs_test_1" })
