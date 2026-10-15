@@ -267,4 +267,23 @@ describe("WeeklyOrdersChart", () => {
     expect(new Set(dayLabels)).toStrictEqual(new Set(["Mon", "Tue"]))
     expect(document.querySelectorAll(".recharts-bar-rectangle")).toHaveLength(2)
   })
+
+  it("labels every day of the week even when the labels are too wide to leave a gap between them", () => {
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    const measurement = document.createElement("span")
+    measurement.id = "recharts_measurement_span"
+    Object.defineProperty(measurement, "getBoundingClientRect", { value: () => new DOMRect(0, 0, 200, 16) })
+    document.body.replaceChildren(measurement)
+    snapshotRef.current = {
+      ...baseSnapshot(),
+      weeklyOrders: days.map((dayLabel, index) => ({ dateKey: `2026-09-${String(21 + index)}`, dayLabel, orders: index })),
+    }
+    renderWithProviders(<DashboardCharts />)
+
+    const tickLabels = [...document.querySelectorAll(".recharts-cartesian-axis-tick-value")].map((tick) => tick.textContent)
+
+    expect(tickLabels).toStrictEqual(days)
+
+    measurement.remove()
+  })
 })

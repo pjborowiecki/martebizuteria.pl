@@ -61,6 +61,12 @@ describe("AdminHeader", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument()
   })
 
+  it("centres the divider beside the sidebar button on the header row", () => {
+    const { container } = renderHeader(<AdminHeader title="Products" />)
+
+    expect(container.querySelector("[data-slot='separator']")).toHaveClass("h-4", "data-vertical:self-center")
+  })
+
   it("replaces the sidebar trigger with a back link when a back target is given", () => {
     renderHeader(<AdminHeader backHref={ROUTES.ADMIN_PRODUCTS} title="Silver ring" />)
 

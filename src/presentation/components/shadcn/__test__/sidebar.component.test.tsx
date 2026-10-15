@@ -9,7 +9,7 @@ const viewport = vi.hoisted(() => ({ isMobile: false }))
 
 vi.mock("~/src/hooks/use-mobile", () => ({ useIsMobile: () => viewport.isMobile }))
 
-import { Sidebar, SidebarProvider, SidebarRail, SidebarTrigger } from "~/src/presentation/components/shadcn/sidebar"
+import { Sidebar, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger } from "~/src/presentation/components/shadcn/sidebar"
 
 import polishShadcnMessages from "~/messages/pl-PL/components.shadcn.json"
 
@@ -23,6 +23,16 @@ const renderInPolish = (children: ReactNode) =>
 afterEach(() => {
   cleanup()
   viewport.isMobile = false
+})
+
+describe("SidebarSeparator", () => {
+  it("stays inside the sidebar's side margins instead of running past its edge", () => {
+    const { container } = renderInPolish(<SidebarSeparator />)
+    const separator = container.querySelector("[data-slot='sidebar-separator']")
+
+    expect(separator).toHaveClass("mx-2", "data-horizontal:w-auto")
+    expect(separator).not.toHaveClass("data-horizontal:w-full")
+  })
 })
 
 describe("Sidebar labels", () => {

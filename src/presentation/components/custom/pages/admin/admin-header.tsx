@@ -28,7 +28,7 @@ export const AdminHeader = ({ actions, backHref, breadcrumbs, description, tabs,
           </LocalizedLink>
         )}
 
-        {backHref === undefined && <Separator orientation="vertical" className="mr-2 h-4 bg-sidebar-border" />}
+        {backHref === undefined && <Separator orientation="vertical" className="mr-2 h-4 bg-sidebar-border data-vertical:self-center" />}
 
         <div className="mr-auto flex items-center gap-1.5 max-lg:min-w-0 max-lg:flex-auto">
           {breadcrumbs !== undefined && breadcrumbs.length > 0 && (

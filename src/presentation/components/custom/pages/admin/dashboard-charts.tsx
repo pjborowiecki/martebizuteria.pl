@@ -173,7 +173,7 @@ const RevenueChart = ({ chartData, isCustomError, isCustomLoading }: Readonly<Re
         {REVENUE_CHART_DEFS}
         <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="var(--color-border)" strokeOpacity={0.5} />
         <XAxis dataKey="label" tickLine={false} axisLine={false} tickMargin={12} tick={TICK_FONT_12} />
-        <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_12} tickFormatter={formatYAxisTick} />
+        <YAxis tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_12} tickFormatter={formatYAxisTick} width="auto" />
         <ChartTooltip cursor={CHART_TOOLTIP_CURSOR} content={chartTooltipContent} />
         <Area dataKey="revenue" type="monotone" fill="url(#fillRevenue)" stroke="var(--color-revenue)" strokeWidth={2} dot={false} />
       </AreaChart>
@@ -205,7 +205,7 @@ const WeeklyOrdersChart = (): JSX.Element => {
       <CardContent>
         <ChartContainer config={ordersChartConfig} className="aspect-auto h-[148px] w-full">
           <BarChart data={weeklyOrdersData} margin={ORDERS_CHART_MARGIN}>
-            <XAxis dataKey="dayLabel" tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_11} />
+            <XAxis dataKey="dayLabel" interval={0} tickLine={false} axisLine={false} tickMargin={8} tick={TICK_FONT_11} />
             <YAxis tickLine={false} axisLine={false} tick={false} />
             <ChartTooltip cursor={false} content={chartTooltipContent} />
             <Bar dataKey="orders" fill="var(--color-orders)" radius={BAR_RADIUS} barSize={32} />
@@ -218,7 +218,7 @@ const WeeklyOrdersChart = (): JSX.Element => {
 
 const REVENUE_CHART_MARGIN = {
   bottom: 0,
-  left: -12,
+  left: 0,
   right: 8,
   top: 8,
 }
