@@ -27,6 +27,7 @@ const buildAdminOrdersListParams = (input: zod.output<typeof orderZodSchemas.adm
     search: normalizeAdminSearchTerm(input.search),
     statFilter: input.statFilter,
     tab: input.tab,
+    userId: input.userId,
   }
 }
 

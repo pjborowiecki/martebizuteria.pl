@@ -14,7 +14,7 @@ export const CustomerDetailPage = ({ customer }: Readonly<CustomerDetailPageProp
       <div className={CUSTOMER_DETAIL_COLUMN_CLASS}>
         <CustomerKpis customer={customer} />
         <CustomerCharts customer={customer} />
-        <CustomerOrders customer={customer} />
+        <CustomerOrders customerId={customer.id} />
       </div>
 
       <CustomerSidebar customer={customer} />

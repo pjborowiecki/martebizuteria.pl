@@ -464,15 +464,10 @@ export const getAdminCustomerOrderRowsQuery = (userId: string) =>
     .select({
       createdAt: order.createdAt,
       currencyCode: order.currencyCode,
-      fulfillmentStatus: order.fulfillmentStatus,
-      id: order.id,
       orderNumber: order.orderNumber,
-      paymentStatus: sql<(typeof payment.$inferSelect)["status"] | null>`${payment.status}`.as("payment_status"),
-      status: order.status,
       total: order.total,
     })
     .from(order)
-    .leftJoin(payment, eq(order.paymentId, payment.id))
     .where(and(eq(order.userId, userId), orderCountsAsSale))
     .orderBy(desc(order.createdAt))
     .limit(ADMIN_CUSTOMER_DETAIL_ORDERS_LIMIT)
@@ -489,21 +484,6 @@ export const getCustomerAuditTimelineQuery = (userId: string) =>
     .where(and(eq(auditLog.resourceId, userId), inArray(auditLog.action, [...CUSTOMER_AUDIT_TIMELINE_ACTIONS])))
     .orderBy(desc(auditLog.createdAt))
     .limit(CUSTOMER_AUDIT_TIMELINE_LIMIT)
-
-export const getOrderItemTitlesQuery = (orderIds: readonly string[]) => {
-  if (orderIds.length === 0) {
-    return Promise.resolve([])
-  }
-
-  return db
-    .select({
-      orderId: orderItem.orderId,
-      title: orderItem.title,
-    })
-    .from(orderItem)
-    .where(inJsonList(orderItem.orderId, orderIds))
-    .orderBy(orderItem.title)
-}
 
 const TOP_CATEGORY_LIMIT = 5
 

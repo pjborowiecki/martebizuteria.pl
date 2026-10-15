@@ -144,6 +144,12 @@ describe("getAdminOrdersPage parameters", () => {
     })
   })
 
+  it("scopes the page to the customer it was asked for", async () => {
+    await getAdminOrdersPage({ data: { userId: "u-anna" } })
+
+    expect(accessors.pageParams[0]).toMatchObject({ userId: "u-anna" })
+  })
+
   it("trims the search term", async () => {
     await getAdminOrdersPage({ data: { search: "  ada  " } })
 
@@ -228,7 +234,14 @@ describe("exportAdminOrders", () => {
       search: undefined,
       statFilter: undefined,
       tab: "delivered",
+      userId: undefined,
     })
+  })
+
+  it("scopes the export to the customer it was asked for", async () => {
+    await exportAdminOrders({ data: { userId: "u-anna" } })
+
+    expect(accessors.exportParams[0]).toMatchObject({ userId: "u-anna" })
   })
 
   it("returns the mapped list items rather than the raw rows", async () => {

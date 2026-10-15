@@ -121,8 +121,14 @@ const appendAdminOrdersListFilterConditions = (conditions: SQL[], filters: Order
   }
 }
 
-const buildAdminOrdersWhere = (params: Pick<AdminOrdersListParams, "filters" | "search" | "statFilter" | "tab">): SQL | undefined => {
+const buildAdminOrdersWhere = (
+  params: Pick<AdminOrdersListParams, "filters" | "search" | "statFilter" | "tab" | "userId">,
+): SQL | undefined => {
   const conditions: SQL[] = []
+  if (params.userId !== undefined) {
+    conditions.push(eq(order.userId, params.userId))
+  }
+
   const filters = params.filters ?? {}
   const searchCondition = buildAdminSearchOrCondition(params.search, [
     order.id,
@@ -515,4 +521,5 @@ export interface AdminOrdersListParams extends ListPaginationParams {
   readonly search?: string | undefined
   readonly statFilter?: AdminOrderStatFilter | undefined
   readonly tab?: AdminOrderTab | undefined
+  readonly userId?: string | undefined
 }

@@ -77,6 +77,14 @@ describe("orderZodSchemas.adminOrdersPageInput", () => {
     expect(orderZodSchemas.adminOrdersPageInput.parse(input)).toStrictEqual(input)
   })
 
+  it("keeps the customer a page is scoped to", () => {
+    expect(orderZodSchemas.adminOrdersPageInput.parse({ page: 1, userId: "u-anna" })).toStrictEqual({ page: 1, userId: "u-anna" })
+  })
+
+  it("rejects a blank customer scope", () => {
+    expect(orderZodSchemas.adminOrdersPageInput.safeParse({ userId: "  " }).success).toBe(false)
+  })
+
   it("rejects a status outside the order status enum", () => {
     expect(orderZodSchemas.adminOrdersPageInput.safeParse({ status: "archived" }).success).toBe(false)
   })

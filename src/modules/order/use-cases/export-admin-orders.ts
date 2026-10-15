@@ -20,6 +20,7 @@ const buildAdminOrdersExportParams = (input: zod.output<typeof orderZodSchemas.a
   search: normalizeAdminSearchTerm(input.search),
   statFilter: input.statFilter,
   tab: input.tab,
+  userId: input.userId,
 })
 
 export const exportAdminOrders = createServerFn({

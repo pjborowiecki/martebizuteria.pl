@@ -1,179 +1,187 @@
-import { cleanup, fireEvent, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { ROLES } from "~/src/integrations/better-auth/auth.access"
+import { type Order } from "~/src/modules/order/order.types"
 
-import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
-import { type User } from "~/src/modules/user/user.types"
-
-import {
-  CUSTOMER_DETAIL_FULFILLMENT_BADGE_STYLES,
-  CUSTOMER_DETAIL_PAYMENT_BADGE_STYLES,
-} from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.constants"
+import { dataGridPreferencesStorageKey } from "~/src/presentation/components/custom/datagrid/lib/data-grid-preferences"
 import { CustomerOrders } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-orders"
+import { ORDERS_DATA_GRID_KEY } from "~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid"
 
-const order = (overrides: Partial<User["adminCustomerDetail"]["orders"][number]> = {}): User["adminCustomerDetail"]["orders"][number] => ({
+const { pageFn } = vi.hoisted(() => ({ pageFn: vi.fn<(input: unknown) => Promise<unknown>>() }))
+
+vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions", () => ({
+  useCancelOrder: () => ({ isPending: false, mutate: vi.fn() }),
+  useFulfillOrder: () => ({ isPending: false, mutate: vi.fn() }),
+  useMarkOrderShipped: () => ({ isPending: false, mutate: vi.fn() }),
+}))
+vi.mock("~/src/modules/order/use-cases/get-admin-orders-page", () => ({
+  getAdminOrdersPageQuery: (input: unknown) => ({
+    queryFn: () => pageFn(input),
+    queryKey: ["admin", "orders", "page", input],
+  }),
+}))
+
+const orderRow = (overrides: Partial<Order["adminListItem"]> = {}): Order["adminListItem"] => ({
+  createdAt: new Date("2026-01-02T10:00:00.000Z"),
   currencyCode: "PLN",
-  date: "2 Jan 2026",
-  fulfillment: "shipped",
-  id: "ord_1",
-  itemTitles: ["Linen shirt", "Wool cap"],
+  customerName: "Anna Kowalska",
+  email: "anna@example.com",
+  fulfillmentStatus: "not_fulfilled",
+  fulfillmentUiKey: "unfulfilled",
+  hasOpenDispute: false,
+  id: "order-1",
+  initials: "AK",
+  itemCount: 2,
   orderNumber: "MRT-2026-00001",
-  payment: "paid",
-  total: "199,00 zl",
-  totalMinor: 19_900,
+  paymentUiKey: "paid",
+  status: "processing",
+  totalMinorUnits: 24_900,
+  userId: "user-1",
   ...overrides,
 })
 
-const detail = (orders: User["adminCustomerDetail"]["orders"]): User["adminCustomerDetail"] => ({
-  averageOrderValue: 49_975,
-  banExpires: null,
-  banReason: null,
-  banned: false,
-  categoryBreakdown: [],
-  createdAt: new Date(2023, 2, 4),
-  customTags: [],
-  email: "anna@example.com",
-  emailVerified: true,
-  id: "user-1",
-  image: null,
-  initials: "AK",
-  isAnonymous: false,
-  isReturning: false,
-  joinDate: "4 Mar 2023",
-  metadata: null,
-  monthlySpending: [],
-  name: "Anna Kowalska",
-  orderCount: orders.length,
-  orders,
-  phone: null,
-  returningRate: 0,
-  role: ROLES.CUSTOMER,
-  roleBadgeKey: "roleCustomer",
-  stripeCustomerId: null,
-  tags: [],
-  timeline: [],
-  timezone: null,
-  totalSpent: 199_900,
-  twoFactorEnabled: false,
-  updatedAt: new Date(2024, 0, 1),
+const page = (items: Order["adminListItem"][], total = items.length) => ({ hasMore: false, items, limit: 10, offset: 0, total })
+
+const renderHistory = () => renderWithProviders(<CustomerOrders customerId="user-1" />)
+
+const bodyRows = (): HTMLElement[] => screen.getAllByRole("row").filter((row) => row.closest("tbody") !== null)
+
+beforeEach(() => {
+  pageFn.mockReset()
+  pageFn.mockResolvedValue(page([orderRow(), orderRow({ id: "order-2", orderNumber: "MRT-2026-00002", status: "completed" })]))
 })
 
 afterEach(() => {
   cleanup()
-  vi.restoreAllMocks()
+  vi.useRealTimers()
+  localStorage.clear()
 })
 
-describe("CustomerOrders", () => {
-  it("always offers a way through to the full order list", () => {
-    renderWithProviders(<CustomerOrders customer={detail([])} />)
+describe("CustomerOrders data", () => {
+  it("asks the orders list for the first page of this customer's orders only", async () => {
+    renderHistory()
 
-    expect(screen.getByText("Order History")).toBeInTheDocument()
-    expect(screen.getByText("View All")).toBeInTheDocument()
+    await waitFor(() => {
+      expect(pageFn).toHaveBeenCalledWith({ page: 1, pageSize: 10, search: undefined, userId: "user-1" })
+    })
   })
 
-  it("says so when the customer has never ordered", () => {
-    renderWithProviders(<CustomerOrders customer={detail([])} />)
+  it("searches within this customer's orders from the grid toolbar and starts again from the first page", async () => {
+    pageFn.mockResolvedValue(page([orderRow()], 23))
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    renderHistory()
+    await screen.findByText("Page 1 of 3")
 
-    expect(screen.getByText("No orders yet.")).toBeInTheDocument()
-    expect(screen.queryByRole("table")).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }))
+    await waitFor(() => {
+      expect(pageFn).toHaveBeenLastCalledWith({ page: 2, pageSize: 10, search: undefined, userId: "user-1" })
+    })
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search orders…" }), { target: { value: "00002" } })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400)
+    })
+
+    await waitFor(() => {
+      expect(pageFn).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, search: "00002", userId: "user-1" })
+    })
   })
 
-  it("heads the table with every order column", () => {
-    renderWithProviders(<CustomerOrders customer={detail([order()])} />)
+  it("keeps its column layout apart from the orders page", async () => {
+    localStorage.setItem(dataGridPreferencesStorageKey(ORDERS_DATA_GRID_KEY), JSON.stringify({ columnVisibility: { total: false } }))
+    renderHistory()
+    await screen.findByText("MRT-2026-00001")
 
-    expect(screen.getByText("Order")).toBeInTheDocument()
-    expect(screen.getByText("Date")).toBeInTheDocument()
-    expect(screen.getByText("Items")).toBeInTheDocument()
-    expect(screen.getByText("Total")).toBeInTheDocument()
-    expect(screen.getByText("Status")).toBeInTheDocument()
-    expect(screen.getByText("Payment")).toBeInTheDocument()
+    expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toContain("Total")
+  })
+})
+
+describe("CustomerOrders grid", () => {
+  it("heads the history with the orders list columns in the shared grid header, without the customer it already belongs to", async () => {
+    renderHistory()
+    await screen.findByText("MRT-2026-00001")
+    const headers = screen.getAllByRole("columnheader")
+    const headerText = headers.map((header) => header.textContent)
+
+    expect(headerText).toStrictEqual(expect.arrayContaining(["Order", "Date", "Items", "Total", "Fulfillment", "Status", "Payment"]))
+    expect(headerText).not.toContain("Customer")
+    expect(headerText).not.toContain("Email")
+    expect(headers.find((header) => header.textContent === "Order")).toHaveClass("sticky", "normal-case")
   })
 
-  it("lists the order number, date, items and total", () => {
-    renderWithProviders(<CustomerOrders customer={detail([order()])} />)
+  it("pins only the order number and its actions so the total and progress stay in view in a narrow column", async () => {
+    renderHistory()
+    await screen.findByText("MRT-2026-00001")
+    const pinned = screen.getAllByRole("columnheader").flatMap((header) => {
+      const side = header.dataset["pinned"]
 
-    expect(screen.getByText("MRT-2026-00001")).toBeInTheDocument()
-    expect(screen.queryByText("ord_1")).not.toBeInTheDocument()
-    expect(screen.getByText("2 Jan 2026")).toBeInTheDocument()
-    expect(screen.getByText("Linen shirt, Wool cap")).toBeInTheDocument()
-    expect(screen.getByText("199,00 zl")).toBeInTheDocument()
+      return side === undefined ? [] : [`${header.textContent}:${side}`]
+    })
+
+    expect(pinned).toStrictEqual(["Order:start", "Row actions:end"])
+    expect(screen.queryAllByRole("checkbox")).toHaveLength(0)
   })
 
-  it("falls back to a placeholder for an order whose lines are unknown", () => {
-    renderWithProviders(<CustomerOrders customer={detail([order({ itemTitles: [] })])} />)
-
-    expect(screen.getByText(EMPTY_VALUE)).toBeInTheDocument()
-  })
-
-  it("translates the fulfillment and payment states", () => {
-    renderWithProviders(<CustomerOrders customer={detail([order({ fulfillment: "delivered", payment: "refunded" })])} />)
-
-    expect(screen.getByText("Delivered")).toBeInTheDocument()
-    expect(screen.getByText("Refunded")).toBeInTheDocument()
-  })
-
-  it("colours the fulfillment badge from the shared style map", () => {
-    renderWithProviders(<CustomerOrders customer={detail([order({ fulfillment: "returned" })])} />)
-
-    expect(screen.getByText("Returned").className).toContain(CUSTOMER_DETAIL_FULFILLMENT_BADGE_STYLES["returned"])
-  })
-
-  it("colours the payment badge from the shared style map", () => {
-    renderWithProviders(<CustomerOrders customer={detail([order({ payment: "authorized" })])} />)
-
-    expect(screen.getByText("Authorized").className).toContain(CUSTOMER_DETAIL_PAYMENT_BADGE_STYLES["authorized"])
-  })
-
-  it("keeps a state the style maps do not know on a plain badge", () => {
-    const missingLabel = vi.spyOn(console, "error").mockImplementation(() => {})
-    renderWithProviders(<CustomerOrders customer={detail([order({ fulfillment: "on_hold", payment: "disputed" })])} />)
-    const badges = [
-      screen.getByText("pages.admin.customerDetail.orders.status.on_hold"),
-      screen.getByText("pages.admin.customerDetail.orders.payment.disputed"),
-    ]
-    const knownColours = [
-      ...Object.values(CUSTOMER_DETAIL_FULFILLMENT_BADGE_STYLES),
-      ...Object.values(CUSTOMER_DETAIL_PAYMENT_BADGE_STYLES),
-    ]
-
-    for (const badge of badges) {
-      expect(badge).toHaveClass("border-0", "text-[11px]")
-      expect(badge.className).not.toContain("undefined")
-      expect(knownColours.filter((colour) => badge.className.includes(colour))).toStrictEqual([])
+  it("shows each order with the orders list badges and money", async () => {
+    renderHistory()
+    await screen.findByText("MRT-2026-00001")
+    const [first] = bodyRows()
+    if (first === undefined) {
+      throw new Error("the history rendered no order rows")
     }
-    expect(missingLabel).toHaveBeenCalled()
+
+    expect(within(first).getByText("Unfulfilled")).toBeInTheDocument()
+    expect(within(first).getByText("Processing")).toBeInTheDocument()
+    expect(within(first).getByText("Paid")).toBeInTheDocument()
+    expect(first).toHaveTextContent("PLN 249.00")
   })
 
-  it("fills the rest of the main column on wide, tall screens and scrolls a long history inside its card", () => {
-    const { container } = renderWithProviders(<CustomerOrders customer={detail([order()])} />)
+  it("offers the orders row actions on every order in a cell that does not open the order", async () => {
+    renderHistory()
+    await screen.findByText("MRT-2026-00001")
+    const triggers = bodyRows().map((row) => row.querySelector("[data-slot='dropdown-menu-trigger']"))
 
-    expect(container.firstElementChild).toHaveClass(
-      "flex",
-      "flex-col",
-      "2xl:[@media(min-height:57rem)]:min-h-60",
-      "2xl:[@media(min-height:57rem)]:flex-1",
+    expect(triggers).toHaveLength(2)
+    expect(triggers.every((trigger) => trigger?.closest("[data-prevent-row-click]") !== null)).toBe(true)
+  })
+
+  it("opens the exact order chosen from the history", async () => {
+    const { router } = renderHistory()
+    const navigate = vi.spyOn(router, "navigate").mockResolvedValue()
+
+    fireEvent.click(await screen.findByText("MRT-2026-00002"))
+
+    expect(navigate).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ params: { orderId: "order-2" }, to: "/admin/orders/$orderId" }),
     )
-    expect(screen.getByRole("table").closest("[data-slot='customer-orders-scroll']")).toHaveClass("min-h-0", "overflow-y-auto")
   })
 
-  it("renders one row per order", () => {
-    renderWithProviders(<CustomerOrders customer={detail([order(), order({ id: "ord_2", orderNumber: "MRT-2026-00002" })])} />)
+  it("pages through a long history instead of listing every order at once", async () => {
+    pageFn.mockResolvedValue(page([orderRow()], 23))
+    renderHistory()
+    await screen.findByText("MRT-2026-00001")
 
-    expect(screen.getByText("MRT-2026-00001")).toBeInTheDocument()
-    expect(screen.getByText("MRT-2026-00002")).toBeInTheDocument()
+    expect(screen.getByText("Page 1 of 3")).toBeInTheDocument()
   })
 })
 
-it("opens the exact order selected from the customer's history", () => {
-  const { router } = renderWithProviders(
-    <CustomerOrders customer={detail([order(), order({ id: "ord_2", orderNumber: "MRT-2026-00002" })])} />,
-  )
-  const navigate = vi.spyOn(router, "navigate").mockResolvedValue()
+describe("CustomerOrders layout", () => {
+  it("always offers a way through to the full order list", () => {
+    renderHistory()
 
-  fireEvent.click(screen.getByText("MRT-2026-00002"))
+    expect(screen.getByRole("heading", { name: "Order History" })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: "View All" })).toHaveAttribute("href", "/admin/orders")
+  })
 
-  expect(navigate).toHaveBeenCalledExactlyOnceWith({ to: "/admin/orders/ord_2" })
+  it("takes the rest of the main column on wide, tall screens and lets the grid scroll inside it", () => {
+    const { container } = renderHistory()
+    const section = container.firstElementChild
+    const stack = section?.firstElementChild
+
+    expect(section).toHaveClass("flex", "flex-col", "2xl:[@media(min-height:57rem)]:min-h-60", "2xl:[@media(min-height:57rem)]:flex-1")
+    expect(section).not.toHaveClass("flex-1")
+    expect(stack).toHaveClass("h-fit", "max-h-full", "min-h-0", "flex-col", "overflow-hidden", "gap-3")
+    expect(stack?.lastElementChild).toHaveClass("max-h-full", "min-h-0", "grid-rows-[auto_minmax(0,1fr)_auto]")
+  })
 })

@@ -24,7 +24,6 @@ import {
   getCustomerPreferredCollectionQuery,
   getDefaultCustomerAddressFullQuery,
   getLatestSessionActivityQuery,
-  getOrderItemTitlesQuery,
 } from "~/src/modules/user/user.accessors"
 import { ADMIN_CUSTOMER_DETAIL_ORDERS_LIMIT } from "~/src/modules/user/user.constants"
 
@@ -328,21 +327,13 @@ describe("getAdminCustomerOrderRowsQuery", () => {
   it("lists the customer's sales newest first and drops the unpaid pending, cancelled and refunded orders", async () => {
     const rows = await getAdminCustomerOrderRowsQuery("u-anna")
 
-    expect(rows.map((row) => row.id)).toStrictEqual(["o-feb", "o-jan"])
+    expect(rows.map((row) => row.orderNumber)).toStrictEqual(["MRT-o-feb", "MRT-o-jan"])
   })
 
-  it("joins the payment status and leaves it null without a payment row", async () => {
-    sqlite.exec(`update "order" set payment_id = null where id = 'o-feb'`)
+  it("reads only what the activity timeline shows for each order", async () => {
     const rows = await getAdminCustomerOrderRowsQuery("u-anna")
 
-    expect(rows.find((row) => row.id === "o-jan")?.paymentStatus).toBe("succeeded")
-    expect(rows.find((row) => row.id === "o-feb")?.paymentStatus).toBeNull()
-  })
-
-  it("carries the order number the shop shows next to the id the link needs", async () => {
-    const rows = await getAdminCustomerOrderRowsQuery("u-anna")
-
-    expect(rows[0]).toMatchObject({ id: "o-feb", orderNumber: "MRT-o-feb" })
+    expect(Object.keys(rows[0] ?? {}).toSorted()).toStrictEqual(["createdAt", "currencyCode", "orderNumber", "total"])
   })
 
   it("stops at the customer detail page limit", async () => {
@@ -379,46 +370,5 @@ describe("getCustomerAuditTimelineQuery", () => {
 
   it("returns nothing for a customer with no tracked activity", async () => {
     await expect(getCustomerAuditTimelineQuery("u-nobody")).resolves.toStrictEqual([])
-  })
-})
-
-describe("getOrderItemTitlesQuery", () => {
-  it("short circuits to an empty list without touching the database", async () => {
-    await expect(getOrderItemTitlesQuery([])).resolves.toStrictEqual([])
-  })
-
-  it("returns every line of the requested orders sorted by title", async () => {
-    const rows = await getOrderItemTitlesQuery(["o-jan", "o-feb"])
-
-    expect(rows).toStrictEqual([
-      { orderId: "o-feb", title: "Amber chain" },
-      { orderId: "o-jan", title: "Gift wrap" },
-      { orderId: "o-jan", title: "Gold chain" },
-      { orderId: "o-jan", title: "Silver ring" },
-    ])
-  })
-
-  it("ignores order ids that hold no lines", async () => {
-    await expect(getOrderItemTitlesQuery(["o-cancelled"])).resolves.toStrictEqual([])
-  })
-})
-
-describe("getOrderItemTitlesQuery for a long order history", () => {
-  const orderIds = Array.from({ length: 150 }, (_, index) => `history-${String(index).padStart(3, "0")}`)
-
-  beforeEach(() => {
-    const insertLine = sqlite.prepare(
-      "insert into order_item (id, order_id, quantity, subtotal, title, total, unit_price, created_at, updated_at) values (?, ?, 1, 100, ?, 100, 100, ?, ?)",
-    )
-
-    for (const orderId of orderIds) {
-      insertLine.run(`line-${orderId}`, orderId, `Title ${orderId}`, MARCH, MARCH)
-    }
-  })
-
-  it("returns the line titles of every requested order", async () => {
-    const rows = await getOrderItemTitlesQuery(orderIds)
-
-    expect(rows).toStrictEqual(orderIds.map((orderId) => ({ orderId, title: `Title ${orderId}` })))
   })
 })

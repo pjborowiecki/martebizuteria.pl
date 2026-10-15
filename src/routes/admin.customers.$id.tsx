@@ -5,6 +5,7 @@ import { createFileRoute, notFound } from "@tanstack/react-router"
 import { Pencil } from "lucide-react"
 import { useLocale, useTranslations } from "use-intl/react"
 
+import { getAdminOrdersPageQuery } from "~/src/modules/order/use-cases/get-admin-orders-page"
 import { getAdminCustomerQuery } from "~/src/modules/user/use-cases/get-admin-customer"
 import { ADMIN_CUSTOMER_QUERY_STALE_MS } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
@@ -16,6 +17,7 @@ import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/ad
 import { ADMIN_HEADER_SECONDARY_BUTTON_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CustomerDetailPage } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail-page"
 import { CustomerSheet } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-sheet"
+import { CUSTOMER_ORDERS_VIEW } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/utils/customer-orders-data-grid"
 
 import { ROUTES } from "~/src/routes"
 
@@ -87,10 +89,20 @@ export const Route = createFileRoute("/admin/customers/$id")({
   component: AdminCustomerDetailRoute,
   loader: async ({ context, params }) => {
     const { locale } = context
-    await context.queryClient.query({
-      ...getAdminCustomerQuery(params.id, locale),
-      staleTime: "static",
-    })
+    await Promise.all([
+      context.queryClient.query({
+        ...getAdminCustomerQuery(params.id, locale),
+        staleTime: "static",
+      }),
+      context.queryClient.query({
+        ...getAdminOrdersPageQuery({
+          page: 1,
+          pageSize: CUSTOMER_ORDERS_VIEW.pageSize,
+          userId: params.id,
+        }),
+        staleTime: "static",
+      }),
+    ])
   },
   shouldReload: false,
   staleTime: ADMIN_CUSTOMER_QUERY_STALE_MS,

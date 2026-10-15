@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
-import { type ColumnFiltersState, type PaginationState } from "@tanstack/react-table"
+import { type ColumnFiltersState, type ColumnPinningState, type PaginationState } from "@tanstack/react-table"
 import { useTranslations } from "use-intl/react"
 
 import { LIST_PAGE_STEP } from "~/src/modules/_core/utils/pagination"
@@ -28,12 +28,14 @@ const buildAdminOrdersPageInput = ({
   pageSize,
   search,
   statFilter,
+  userId,
 }: {
   readonly listFilters: ReturnType<typeof parseAdminOrdersListFilters>
   readonly pageIndex: number
   readonly pageSize: number
   readonly search: string
   readonly statFilter: AdminOrderStatFilter | undefined
+  readonly userId: string | undefined
 }): Order["adminPageInput"] => ({
   createdAt: listFilters.createdAt,
   fulfillment: listFilters.fulfillment,
@@ -44,13 +46,14 @@ const buildAdminOrdersPageInput = ({
   statFilter,
   status: listFilters.status,
   total: listFilters.total,
+  userId,
 })
 
-export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): OrdersDataGridValue => {
+export const useOrdersDataGrid = ({ onRowClick, userId, view = ORDERS_PAGE_VIEW }: UseOrdersDataGridOptions): OrdersDataGridValue => {
   const t = useTranslations("pages.admin.orders")
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize: ADMIN_ORDERS_PAGE_SIZE,
+    pageSize: view.pageSize,
   })
 
   const [statFilter, setStatFilter] = useState<AdminOrderStatFilter | undefined>()
@@ -65,39 +68,39 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
         pageSize: pagination.pageSize,
         search: serverSearch,
         statFilter,
+        userId,
       }),
-    [listFilters, pagination.pageIndex, pagination.pageSize, serverSearch, statFilter],
+    [listFilters, pagination.pageIndex, pagination.pageSize, serverSearch, statFilter, userId],
   )
 
-  const pageQueryOptions = getAdminOrdersPageQuery(pageInput)
   const {
     data = EMPTY_ORDERS_PAGE,
     isFetching,
     isPending,
   } = useQuery({
-    ...pageQueryOptions,
+    ...getAdminOrdersPageQuery(pageInput),
     placeholderData: keepPreviousData,
   })
 
   const showSkeletonRows = isFetching || isPending
-  const columns = useOrderColumns()
+  const orderColumns = useOrderColumns()
+  const columns = useMemo(() => orderColumns.filter((column) => !view.hiddenColumnIds.has(column.id)), [orderColumns, view.hiddenColumnIds])
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns])
-  const pageCount = Math.ceil(data.total / pagination.pageSize)
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
     columns,
     data: [...data.items],
     defaultColumnVisibility: ADMIN_ORDER_TABLE_DEFAULT_COLUMN_VISIBILITY,
-    defaultPageSize: ADMIN_ORDERS_PAGE_SIZE,
+    defaultPageSize: view.pageSize,
     getRowId: (row) => row.id,
     initialColumnOrder,
-    initialColumnPinning: ADMIN_ORDER_TABLE_COLUMN_PINNING,
+    initialColumnPinning: view.columnPinning,
     manualFiltering: true,
     manualPagination: true,
     onColumnFiltersChange: setColumnFilters,
     onPaginationChange: setPagination,
-    pageCount,
+    pageCount: Math.ceil(data.total / pagination.pageSize),
     pagination,
-    persistenceKey: ordersDataGrid.persistenceKey,
+    persistenceKey: view.persistenceKey,
     rowCount: data.total,
   })
 
@@ -133,8 +136,9 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
       statFilter,
       status: listFilters.status,
       total: listFilters.total,
+      userId,
     }),
-    [listFilters, serverSearch, statFilter],
+    [listFilters, serverSearch, statFilter, userId],
   )
 
   return useMemo(
@@ -146,7 +150,7 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
       hasPreferenceOverrides,
       isLoading: showSkeletonRows,
       onRowClick,
-      persistenceKey: ordersDataGrid.persistenceKey,
+      persistenceKey: view.persistenceKey,
       resetPreferences,
       rowReorder: undefined,
       searchPlaceholder: t("searchPlaceholder"),
@@ -163,6 +167,7 @@ export const useOrdersDataGrid = ({ onRowClick }: UseOrdersDataGridOptions): Ord
       statFilter,
       t,
       table,
+      view.persistenceKey,
     ],
   )
 }
@@ -187,12 +192,28 @@ const EMPTY_ORDERS_PAGE = {
   total: 0,
 } as const
 
+const ORDERS_PAGE_VIEW: OrdersDataGridView = {
+  columnPinning: ADMIN_ORDER_TABLE_COLUMN_PINNING,
+  hiddenColumnIds: new Set(),
+  pageSize: ADMIN_ORDERS_PAGE_SIZE,
+  persistenceKey: ordersDataGrid.persistenceKey,
+}
+
 export interface OrdersDataGridValue extends DataGridContextValue<Order["adminListItem"]> {
   readonly activeStatFilter: AdminOrderStatFilter | undefined
   readonly applyOrderStatFilter: (filter?: AdminOrderStatFilter) => void
   readonly exportListInput: Order["adminExportInput"]
 }
 
+export interface OrdersDataGridView {
+  readonly columnPinning: ColumnPinningState
+  readonly hiddenColumnIds: ReadonlySet<string | undefined>
+  readonly pageSize: number
+  readonly persistenceKey: string
+}
+
 interface UseOrdersDataGridOptions {
   readonly onRowClick?: ((order: Order["adminListItem"]) => void) | undefined
+  readonly userId?: string | undefined
+  readonly view?: OrdersDataGridView | undefined
 }

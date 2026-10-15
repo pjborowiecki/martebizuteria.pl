@@ -17,18 +17,6 @@ const userInsertSchema = createInsertSchema(user)
 
 const userUpdateSchema = createUpdateSchema(user)
 
-const adminCustomerDetailOrderSchema = zod.object({
-  currencyCode: zod.string(),
-  date: zod.string(),
-  fulfillment: zod.string(),
-  id: zod.string(),
-  itemTitles: zod.array(zod.string()),
-  orderNumber: zod.string(),
-  payment: zod.string(),
-  total: zod.string(),
-  totalMinor: zod.number(),
-})
-
 const adminCustomerCategoryBreakdownSchema = zod.object({
   amount: zod.number(),
   category: zod.string(),
@@ -131,7 +119,6 @@ const adminCustomerDetailSchema = userSelectSchema.extend({
   monthlySpending: zod.array(adminCustomerMonthlySpendingSchema),
   notes: zod.string().optional(),
   orderCount: zod.number(),
-  orders: zod.array(adminCustomerDetailOrderSchema),
   preferredCategory: zod.string().optional(),
   preferredCollection: zod.string().optional(),
   returningRate: zod.number(),
@@ -181,7 +168,6 @@ export const userZodSchemas = {
   adminCustomerAddressForm: adminCustomerAddressFormSchema,
   adminCustomerDetail: adminCustomerDetailSchema,
   adminCustomerDetailInput: adminCustomerDetailInputSchema,
-  adminCustomerDetailOrder: adminCustomerDetailOrderSchema,
   adminCustomerDetailTimelineEvent: adminCustomerDetailTimelineEventSchema,
   adminCustomerFormValues: adminCustomerFormValuesSchema,
   adminCustomerListItem: adminCustomerListItemSchema,

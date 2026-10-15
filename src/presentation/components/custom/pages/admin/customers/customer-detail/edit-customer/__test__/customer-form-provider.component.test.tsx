@@ -46,7 +46,6 @@ const customerDetail = (): User["adminCustomerDetail"] => ({
   name: "Anna Kowalska",
   notes: "Prefers pickup at the atelier.",
   orderCount: 3,
-  orders: [],
   phone: "+48600123456",
   returningRate: 0.5,
   role: "customer",
