@@ -114,10 +114,17 @@ describe("fulfilling a paid session that applied a discount code", () => {
   })
 
   it("counts the use once when a second delivery of the same payment races the first", async () => {
-    const deliveries = await Promise.allSettled([fulfillCheckout(paidSession), fulfillCheckout(paidSession)])
+    const info = vi.spyOn(console, "info").mockImplementation(() => {})
 
-    expect(deliveries.filter((delivery) => delivery.status === "fulfilled" && delivery.value !== undefined)).toHaveLength(1)
+    const orderIds = await Promise.all([fulfillCheckout(paidSession), fulfillCheckout(paidSession)])
+
+    const placed = orderIds.filter((orderId) => orderId !== undefined)
+    expect(placed).toHaveLength(1)
+    expect(info).toHaveBeenCalledWith(
+      `Checkout checkout-paid already became Order ${String(placed[0])} through another delivery of cs_paid.`,
+    )
     expect(readRedemptions()).toHaveLength(1)
     expect(readUsage()).toBe(3)
+    expect(recordDiscountRedeemedAudit).toHaveBeenCalledOnce()
   })
 })

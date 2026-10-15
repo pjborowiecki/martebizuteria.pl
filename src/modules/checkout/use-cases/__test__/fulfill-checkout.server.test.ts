@@ -18,6 +18,7 @@ interface DiscountRedemptionInput {
 const {
   findPendingCheckoutByTransaction,
   getCheckoutForFulfillment,
+  getOrderByCheckoutId,
   prepareDiscountRedemption,
   prepareFulfillCheckoutBatch,
   recordDiscountRedeemedAudit,
@@ -25,6 +26,7 @@ const {
 } = vi.hoisted(() => ({
   findPendingCheckoutByTransaction: vi.fn<(transactionId: string) => Promise<PendingContext | undefined>>(),
   getCheckoutForFulfillment: vi.fn<(checkoutId: string) => Promise<Record<string, unknown> | undefined>>(),
+  getOrderByCheckoutId: vi.fn<(checkoutId: string) => Promise<{ id: string; status: string } | undefined>>(),
   prepareDiscountRedemption: vi.fn<(input: DiscountRedemptionInput) => string[]>(),
   prepareFulfillCheckoutBatch:
     vi.fn<
@@ -44,6 +46,7 @@ vi.mock("~/src/modules/checkout/checkout.pending.server", () => ({ findPendingCh
 vi.mock("~/src/modules/checkout/checkout.utils", () => ({ prepareFulfillCheckoutBatch }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDiscountRedeemedAudit }))
 vi.mock("~/src/modules/discount/discount.redeem.server", () => ({ prepareDiscountRedemption }))
+vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderByCheckoutId }))
 
 import { type FulfillCheckoutFromSessionInput, fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 
@@ -54,6 +57,10 @@ const input: FulfillCheckoutFromSessionInput = {
   paidAmount: 21_500,
   transactionId: "pi_123",
 }
+
+const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {})
+
+const consoleWarn = vi.spyOn(console, "warn").mockImplementation(() => {})
 
 const context: PendingContext = { checkoutId: "chk-1", email: "buyer@example.com", paymentId: "pay-1", userId: null }
 
@@ -99,6 +106,7 @@ beforeEach(() => {
   prepareDiscountRedemption.mockReturnValue(["release-claims"])
   prepareFulfillCheckoutBatch.mockReturnValue({ orderId: "order-1", statements: ["stmt-a", "stmt-b"] })
   runDrizzleBatch.mockResolvedValue(undefined)
+  getOrderByCheckoutId.mockResolvedValue(undefined)
 })
 
 describe("fulfillCheckout", () => {
@@ -243,5 +251,67 @@ describe("fulfillCheckout", () => {
     runDrizzleBatch.mockRejectedValue(new Error("D1_ERROR"))
 
     await expect(fulfillCheckout(input)).rejects.toThrow("D1_ERROR")
+    expect(getOrderByCheckoutId).toHaveBeenCalledExactlyOnceWith("chk-1")
+  })
+})
+
+describe("fulfillCheckout when the order cannot be looked up after a failed batch", () => {
+  it("surfaces the batch's own error", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+    const lookupError = new Error("D1_ERROR: lookup timed out")
+    runDrizzleBatch.mockRejectedValue(new Error("D1_ERROR: SQLITE_BUSY"))
+    getOrderByCheckoutId.mockRejectedValue(lookupError)
+
+    await expect(fulfillCheckout(input)).rejects.toThrow("D1_ERROR: SQLITE_BUSY")
+    expect(error).toHaveBeenCalledExactlyOnceWith("Could not look up the order of checkout chk-1:", lookupError)
+    error.mockRestore()
+  })
+})
+
+describe("fulfillCheckout when D1 reports an error after committing its batch", () => {
+  const lostResponse = new Error("D1_ERROR: Network connection lost.")
+
+  beforeEach(() => {
+    runDrizzleBatch.mockRejectedValue(lostResponse)
+    getOrderByCheckoutId.mockResolvedValue({ id: "order-1", status: "processing" })
+  })
+
+  it("returns the order its own batch wrote, so the order is announced", async () => {
+    await expect(fulfillCheckout(input)).resolves.toBe("order-1")
+    expect(consoleWarn).toHaveBeenCalledExactlyOnceWith(
+      "Checkout chk-1 became Order order-1 although its batch reported an error:",
+      lostResponse,
+    )
+    expect(consoleInfo).not.toHaveBeenCalled()
+  })
+
+  it("audits the redemption its own batch recorded", async () => {
+    getCheckoutForFulfillment.mockResolvedValue(discountedCheckoutRow)
+
+    await expect(fulfillCheckout({ ...input, paidAmount: 19_500 })).resolves.toBe("order-1")
+    expect(recordDiscountRedeemedAudit).toHaveBeenCalledExactlyOnceWith("order-1", { detail: "2000" })
+  })
+})
+
+describe("fulfillCheckout racing another delivery of the same payment", () => {
+  const uniqueCheckoutConflict = new Error(
+    "D1_ERROR: UNIQUE constraint failed: order.checkout_id: SQLITE_CONSTRAINT (extended: SQLITE_CONSTRAINT_UNIQUE)",
+  )
+
+  beforeEach(() => {
+    runDrizzleBatch.mockRejectedValue(uniqueCheckoutConflict)
+    getOrderByCheckoutId.mockResolvedValue({ id: "order-placed", status: "processing" })
+  })
+
+  it("treats the checkout as fulfilled when the other delivery already placed its order", async () => {
+    await expect(fulfillCheckout(input)).resolves.toBeUndefined()
+    expect(consoleInfo).toHaveBeenCalledWith("Checkout chk-1 already became Order order-placed through another delivery of pi_123.")
+  })
+
+  it("audits no redemption for the batch that lost the race", async () => {
+    getCheckoutForFulfillment.mockResolvedValue(discountedCheckoutRow)
+
+    await expect(fulfillCheckout({ ...input, paidAmount: 19_500 })).resolves.toBeUndefined()
+    expect(recordDiscountRedeemedAudit).not.toHaveBeenCalled()
   })
 })
