@@ -1,3 +1,4 @@
+import { ORDER_CHANGE_ADMIN_QUERY_KEYS } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
 
 import { type AuditLogInsertRow, insertAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
@@ -8,7 +9,7 @@ import {
   type AuditLogCategory,
   type AuditLogSeverity,
 } from "~/src/modules/audit-log/audit-log.constants"
-import { ADMIN_ORDER_TIMELINE_ACTIONS, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import { ADMIN_ORDER_TIMELINE_ACTIONS } from "~/src/modules/order/order.constants"
 
 import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
 
@@ -60,7 +61,7 @@ export const processAuditLogQueueBatch = async (batch: MessageBatch<AuditLogQueu
 
     const changesOrderTimeline = batch.messages.some((message) => ORDER_TIMELINE_ACTIONS.has(message.body.action))
     await publishRealtimeInvalidation({
-      admin: changesOrderTimeline ? [...AUDIT_LOG_ADMIN_QUERY_KEYS, ORDER_QUERY_KEYS.ADMIN.ORDERS] : AUDIT_LOG_ADMIN_QUERY_KEYS,
+      admin: changesOrderTimeline ? [...AUDIT_LOG_ADMIN_QUERY_KEYS, ...ORDER_CHANGE_ADMIN_QUERY_KEYS] : AUDIT_LOG_ADMIN_QUERY_KEYS,
     })
   } catch (error) {
     console.error("[AuditLog Queue] Batch insert failed:", error)

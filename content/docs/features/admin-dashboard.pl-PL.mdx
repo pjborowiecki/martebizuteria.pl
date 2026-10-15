@@ -26,7 +26,7 @@ useRealtimeQuerySync({
 })
 ```
 
-`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) wymienia osiemnaście prefiksów kluczy — strona i statystyki dziennika zdarzeń, zamówienia w panelu, klienci w panelu, klucze all/stats kategorii, kolekcji, produktów i atrybutów produktu, klucze all/by-handle stron treści, stan sprzedaży w panelu, lista kampanii newslettera oraz strona i statystyki subskrybentów newslettera. Mutacja w dowolnym miejscu panelu odświeża każdą inną otwartą kartę panelu.
+`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) wymienia dziewiętnaście prefiksów kluczy — strona i statystyki dziennika zdarzeń, zamówienia w panelu, `ADMIN_DASHBOARD_QUERY_KEYS.ALL` tego przeglądu, klienci w panelu, klucze all/stats kategorii, kolekcji, produktów i atrybutów produktu, klucze all/by-handle stron treści, stan sprzedaży w panelu, lista kampanii newslettera oraz strona i statystyki subskrybentów newslettera. Mutacja w dowolnym miejscu panelu odświeża każdą inną otwartą kartę panelu.
 
 Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefaultOpen()` z ciasteczka `sidebar_state` (`src/presentation/theme/sidebar-preference.ts`), a wstawiony inline `SIDEBAR_INIT_SCRIPT` kopiuje wartość z `localStorage` do tego ciasteczka jeszcze przed hydratacją, żeby panel nie migał.
 
@@ -91,6 +91,8 @@ Okno porównania pochodzi z `resolveAdminDashboardComparisonPeriod(now)` z `ADMI
 **Odsłony stron pochodzą z dziennika zdarzeń**, zapisywane przez `trackPageViewed` w `src/modules/customer-activity`. Ponieważ ten tracker działa tylko dla zalogowanych użytkowników i deduplikuje odsłony w obrębie sesji przez `sessionStorage`, liczba oznacza „unikalne strony obejrzane przez zalogowanych klientów”, a nie cały ruch.
 
 `buildAdminDashboardKpiStat(current, previous)` wylicza `trendPercent` z `ADMIN_DASHBOARD_TREND_PERCENT_SCALE = 100`.
+
+**Odświeżanie po zmianie zamówienia.** Migawka (`[...SNAPSHOT, locale]`) i każdy własny zakres wykresu (`[...CHART_RANGE, locale, startDate, endDate]`) leżą pod `ADMIN_DASHBOARD_QUERY_KEYS.ALL`, czyli `["admin", "dashboard"]`, który subskrybuje layout panelu. Każde zdarzenie zamówienia publikuje ten klucz razem z kluczami zamówień panelu jako `ORDER_CHANGE_ADMIN_QUERY_KEYS`. `scheduleAdminOrdersInvalidation()` wysyła go, gdy tylko zostanie zapisane opłacone zamówienie, zwrot albo spór w Stripe, status przesyłki InPost lub odstąpienie od umowy. Konsument kolejki dziennika zdarzeń wysyła go dla każdego wsadu z akcją z osi czasu zamówienia, więc realizacja, wysyłka, doręczenie, anulowanie, zwrot albo przywrócenie na stan wykonane przez administratora, a także nieudana płatność docierają do pozostałych administratorów w ciągu `max_batch_timeout` (5 sekund). Akcje w wierszach `/admin/orders` po zakończeniu wywołują też `syncQueryInvalidation(queryClient, ADMIN_DASHBOARD_QUERY_KEYS.ALL)`, więc karta, w której uruchomiono akcję, i pozostałe karty tej samej przeglądarki odświeżają się od razu. Otwarty przegląd pobiera dane ponownie w tle i do ich nadejścia pokazuje dotychczasowe liczby; własny wykres przygasa tylko wtedy, gdy wczytuje zakres, dla którego nie ma jeszcze danych (`isLoading`), a nie przy takim odświeżeniu. Karta otwarta na innej stronie usuwa przegląd z cache i pobiera go od nowa przy następnym otwarciu.
 
 ## Wykresy
 

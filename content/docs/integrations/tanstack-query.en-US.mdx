@@ -187,7 +187,7 @@ export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryK
 
 `setupQueryClientInvalidationBroadcast(queryClient)` installs the listener, which applies `invalidateQueryPrefix` to every key it receives, and `src/router.tsx` calls it once per client, guarded by `if (!import.meta.env.SSR)`. Both functions are defensive: `getInvalidationChannel` returns `undefined` when `document` or `BroadcastChannel` is missing, a `WeakSet` prevents a duplicate listener on the same client, and the message handler ignores anything without an array `queryKey`.
 
-Use `syncQueryInvalidation` only for a local mutation whose keys the server does not publish over the realtime hub: today the coupon actions (`DISCOUNT_QUERY_KEYS.ADMIN.ALL`) and the order row actions (`ORDER_QUERY_KEYS.ADMIN.ORDERS`, which otherwise reach other browsers only after an audit-log queue batch). A change the server publishes already reaches every storefront and admin tab on its own socket, so posting it as well would make every other tab of the browser fetch the same queries again.
+Use `syncQueryInvalidation` only for a local mutation whose keys the server does not publish over the realtime hub: today the coupon actions (`DISCOUNT_QUERY_KEYS.ADMIN.ALL`) and the order row actions (`ORDER_QUERY_KEYS.ADMIN.ORDERS` and the overview's `ADMIN_DASHBOARD_QUERY_KEYS.ALL`, which otherwise reach other browsers only after an audit-log queue batch). A change the server publishes already reaches every storefront and admin tab on its own socket, so posting it as well would make every other tab of the browser fetch the same queries again.
 
 ## Server-pushed invalidation
 

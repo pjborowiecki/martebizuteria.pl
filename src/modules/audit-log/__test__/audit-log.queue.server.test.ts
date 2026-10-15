@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
+import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
+import { AUDIT_LOG_ACTION, AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modules/audit-log/audit-log.queue.server"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 
@@ -82,7 +83,7 @@ describe("processAuditLogQueueBatch", () => {
     })
   })
 
-  it("refreshes the admin order queries when the batch adds to an order timeline, such as a failed order email", async () => {
+  it("refreshes the admin order queries and the overview when the batch adds to an order timeline, such as a failed order email", async () => {
     await processAuditLogQueueBatch(
       createBatch([
         createMessage("first", { action: "product.updated", category: "catalog" }),
@@ -91,7 +92,33 @@ describe("processAuditLogQueueBatch", () => {
     )
 
     expect(queue.publishRealtimeInvalidation).toHaveBeenCalledWith({
-      admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS, ORDER_QUERY_KEYS.ADMIN.ORDERS],
+      admin: [
+        AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE,
+        AUDIT_LOG_QUERY_KEYS.ADMIN.STATS,
+        ORDER_QUERY_KEYS.ADMIN.ORDERS,
+        ADMIN_DASHBOARD_QUERY_KEYS.ALL,
+      ],
+    })
+  })
+
+  it.each([
+    AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,
+    AUDIT_LOG_ACTION.ORDER_SHIPPED,
+    AUDIT_LOG_ACTION.ORDER_DELIVERED,
+    AUDIT_LOG_ACTION.ORDER_CANCELLED,
+    AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED,
+    AUDIT_LOG_ACTION.ORDER_RESTOCKED,
+    AUDIT_LOG_ACTION.ORDER_PAYMENT_FAILED,
+  ])("refreshes the overview's figures and recent orders once %s reaches the audit log", async (action) => {
+    await processAuditLogQueueBatch(createBatch([createMessage("first", { action })]))
+
+    expect(queue.publishRealtimeInvalidation).toHaveBeenCalledExactlyOnceWith({
+      admin: [
+        AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE,
+        AUDIT_LOG_QUERY_KEYS.ADMIN.STATS,
+        ORDER_QUERY_KEYS.ADMIN.ORDERS,
+        ADMIN_DASHBOARD_QUERY_KEYS.ALL,
+      ],
     })
   })
 

@@ -1,5 +1,6 @@
 import { scheduleRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
 
+import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
@@ -76,9 +77,11 @@ export const scheduleAdminAuditLogInvalidation = (): void => {
   })
 }
 
+export const ORDER_CHANGE_ADMIN_QUERY_KEYS = [ORDER_QUERY_KEYS.ADMIN.ORDERS, ADMIN_DASHBOARD_QUERY_KEYS.ALL] as const
+
 export const scheduleAdminOrdersInvalidation = (): void => {
   scheduleRealtimeInvalidation({
-    admin: [ORDER_QUERY_KEYS.ADMIN.ORDERS],
+    admin: ORDER_CHANGE_ADMIN_QUERY_KEYS,
   })
 }
 

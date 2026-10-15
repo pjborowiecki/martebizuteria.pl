@@ -5,6 +5,7 @@ import { useTranslations } from "use-intl/react"
 import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.sync"
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
+import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { cancelOrderMutation } from "~/src/modules/order/use-cases/cancel-order"
 import { fulfillOrderMutation } from "~/src/modules/order/use-cases/fulfill-order"
@@ -50,6 +51,7 @@ const useAdminOrderActionMutation = <TInput extends OrderIdInput, TResult extend
     onSettled: () => {
       void syncQueryInvalidation(queryClient, ORDER_QUERY_KEYS.ADMIN.ORDERS)
       void syncQueryInvalidation(queryClient, USER_QUERY_KEYS.ADMIN.CUSTOMERS)
+      void syncQueryInvalidation(queryClient, ADMIN_DASHBOARD_QUERY_KEYS.ALL)
     },
     onSuccess: (...successArguments) => {
       toast.success(t("toast.successTitle"), {

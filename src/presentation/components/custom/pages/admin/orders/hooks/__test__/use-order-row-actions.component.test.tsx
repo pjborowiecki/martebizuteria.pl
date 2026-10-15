@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { TestProviders, createTestRouter } from "~/src/platform/testing/lib/render"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
@@ -208,16 +209,17 @@ describe("admin order action mutations", () => {
     })
   })
 
-  it("refreshes the admin order list and the customer's figures once the mutation settles", async () => {
+  it("refreshes the admin order list, the customer's figures and the overview in every tab once the mutation settles", async () => {
     const { result } = renderHook(() => useCancelOrder(), { wrapper: Wrapper })
 
     result.current.mutate({ orderId: "order-1" })
     await waitFor(() => {
-      expect(syncQueryInvalidation).toHaveBeenCalledTimes(2)
+      expect(syncQueryInvalidation).toHaveBeenCalledTimes(3)
     })
 
-    expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), ORDER_QUERY_KEYS.ADMIN.ORDERS)
-    expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), USER_QUERY_KEYS.ADMIN.CUSTOMERS)
+    expect(syncQueryInvalidation).toHaveBeenNthCalledWith(1, expect.anything(), ORDER_QUERY_KEYS.ADMIN.ORDERS)
+    expect(syncQueryInvalidation).toHaveBeenNthCalledWith(2, expect.anything(), USER_QUERY_KEYS.ADMIN.CUSTOMERS)
+    expect(syncQueryInvalidation).toHaveBeenNthCalledWith(3, expect.anything(), ADMIN_DASHBOARD_QUERY_KEYS.ALL)
   })
 })
 
@@ -356,15 +358,17 @@ describe("admin order action failures", () => {
     expect(toastError).toHaveBeenCalledWith("Could not update order", { description: "Please try again in a moment." })
   })
 
-  it("still refreshes the admin order list and the customer's figures after a failure", async () => {
+  it("still refreshes the admin order list, the customer's figures and the overview after a failure", async () => {
     shipFn.mockRejectedValue(new AppError("FORBIDDEN"))
     const { result } = renderHook(() => useMarkOrderShipped(), { wrapper: Wrapper })
 
     result.current.mutate({ orderId: "order-1" })
     await waitFor(() => {
-      expect(syncQueryInvalidation).toHaveBeenCalledTimes(2)
+      expect(syncQueryInvalidation).toHaveBeenCalledTimes(3)
     })
 
+    expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), USER_QUERY_KEYS.ADMIN.CUSTOMERS)
+    expect(syncQueryInvalidation).toHaveBeenCalledWith(expect.anything(), ADMIN_DASHBOARD_QUERY_KEYS.ALL)
     expect(toastError).toHaveBeenCalledWith("Could not update order", { description: "Please try again in a moment." })
   })
 })

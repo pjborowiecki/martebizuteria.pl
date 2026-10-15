@@ -29,6 +29,7 @@ export const ADMIN_DASHBOARD_DAY_LABEL_FORMAT: Intl.DateTimeFormatOptions = { da
 export const ADMIN_DASHBOARD_MONTH_LABEL_FORMAT: Intl.DateTimeFormatOptions = { month: "short", year: "numeric" }
 
 export const ADMIN_DASHBOARD_QUERY_KEYS = {
+  ALL: ["admin", "dashboard"] as const,
   CHART_RANGE: ["admin", "dashboard", "chart-range"] as const,
   SNAPSHOT: ["admin", "dashboard", "snapshot"] as const,
 } as const

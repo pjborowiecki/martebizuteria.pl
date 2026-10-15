@@ -1,5 +1,6 @@
 import { type QueryKey } from "@tanstack/react-query"
 
+import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
@@ -24,6 +25,7 @@ export const ADMIN_REALTIME_QUERY_PREFIXES = [
   AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE,
   AUDIT_LOG_QUERY_KEYS.ADMIN.STATS,
   ORDER_QUERY_KEYS.ADMIN.ORDERS,
+  ADMIN_DASHBOARD_QUERY_KEYS.ALL,
   USER_QUERY_KEYS.ADMIN.CUSTOMERS,
   CATEGORY_QUERY_KEYS.ADMIN.ALL,
   CATEGORY_QUERY_KEYS.ADMIN.STATS,
