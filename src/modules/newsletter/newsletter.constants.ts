@@ -1,3 +1,5 @@
+import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants"
+
 export const NEWSLETTER_STATUSES = ["pending", "confirmed", "unsubscribed"] as const
 
 export type NewsletterStatus = (typeof NEWSLETTER_STATUSES)[number]
@@ -56,6 +58,42 @@ export const NEWSLETTER_MUTATION_KEYS = {
   UNSUBSCRIBE: ["newsletter", "unsubscribe"] as const,
   UNSUBSCRIBE_OWN: ["newsletter", "unsubscribeOwn"] as const,
 } as const
+
+export const ADMIN_NEWSLETTER_TABLE_COLUMN_ID = {
+  account: "account",
+  actions: "actions",
+  confirmedAt: "confirmedAt",
+  createdAt: "createdAt",
+  email: "email",
+  locale: "locale",
+  recordId: "recordId",
+  source: "source",
+  status: "status",
+  unsubscribedAt: "unsubscribedAt",
+} as const
+
+export const ADMIN_NEWSLETTER_TABLE_DEFAULT_COLUMN_VISIBILITY = {
+  [ADMIN_NEWSLETTER_TABLE_COLUMN_ID.recordId]: false,
+  [ADMIN_NEWSLETTER_TABLE_COLUMN_ID.unsubscribedAt]: false,
+} as const
+
+export const ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE = {
+  account: 150,
+  actions: 48,
+  confirmedAt: 140,
+  createdAt: 140,
+  email: 280,
+  locale: 110,
+  recordId: CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX,
+  source: 160,
+  status: 190,
+  unsubscribedAt: 140,
+} as const
+
+export const ADMIN_NEWSLETTER_TABLE_COLUMN_PINNING = {
+  end: [ADMIN_NEWSLETTER_TABLE_COLUMN_ID.actions],
+  start: [ADMIN_NEWSLETTER_TABLE_COLUMN_ID.email],
+}
 
 export const NEWSLETTER_STATUS_BADGE_STYLES: Record<NewsletterStatus, NewsletterBadgeStyle> = {
   confirmed: { className: "bg-emerald-600 hover:bg-emerald-700", variant: "default" },

@@ -57,6 +57,8 @@ import {
   NEWSLETTER_STATUS,
   type NewsletterStatus,
 } from "~/src/modules/newsletter/newsletter.constants"
+import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
+import { exportAdminNewsletterSubscribers } from "~/src/modules/newsletter/use-cases/export-admin-newsletter-subscribers"
 import { getAdminNewsletterPage, getAdminNewsletterPageQuery } from "~/src/modules/newsletter/use-cases/get-admin-newsletter-page"
 import { getNewsletterStats, getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-newsletter-stats"
 
@@ -113,6 +115,7 @@ const seedThreeSubscribers = async () => {
     status: NEWSLETTER_STATUS.UNSUBSCRIBED,
     token: "token-cara",
     unsubscribedAt: UNSUBSCRIBED_AT,
+    userId: "user-1",
   })
 }
 
@@ -139,8 +142,8 @@ afterAll(() => {
 })
 
 describe("newsletter admin authorization", () => {
-  it("lets only staff who may list users read the subscriber list and its stats", () => {
-    expect(guards.permissions).toStrictEqual([LIST_USERS, LIST_USERS])
+  it("lets only staff who may list users export the subscribers and read their list and stats", () => {
+    expect(guards.permissions).toStrictEqual([LIST_USERS, LIST_USERS, LIST_USERS])
   })
 })
 
@@ -161,6 +164,7 @@ describe("getAdminNewsletterPage", () => {
         source: NEWSLETTER_SOURCE.ACCOUNT,
         status: NEWSLETTER_STATUS.UNSUBSCRIBED,
         unsubscribedAt: UNSUBSCRIBED_AT,
+        userId: "user-1",
       },
       {
         confirmedAt: undefined,
@@ -171,6 +175,7 @@ describe("getAdminNewsletterPage", () => {
         source: NEWSLETTER_SOURCE.CHECKOUT,
         status: NEWSLETTER_STATUS.PENDING,
         unsubscribedAt: undefined,
+        userId: undefined,
       },
       {
         confirmedAt: CONFIRMED_AT,
@@ -181,6 +186,7 @@ describe("getAdminNewsletterPage", () => {
         source: NEWSLETTER_SOURCE.LANDING,
         status: NEWSLETTER_STATUS.CONFIRMED,
         unsubscribedAt: undefined,
+        userId: undefined,
       },
     ])
   })
@@ -211,6 +217,30 @@ describe("getAdminNewsletterPage", () => {
     expect(page.items.map((item) => item.email)).toStrictEqual(["ben@example.com"])
   })
 
+  it("lists only the subscribers of the requested status", async () => {
+    await seedThreeSubscribers()
+    await seed("dora@example.com", NEWSLETTER_STATUS.PENDING, { createdAt: JOINED.cara })
+
+    const page = await getAdminNewsletterPage({ data: { status: NEWSLETTER_STATUS.PENDING } })
+
+    expect(page.total).toBe(2)
+    expect(page.items.map((item) => item.email)).toStrictEqual(["dora@example.com", "ben@example.com"])
+  })
+
+  it("narrows a search to the requested status", async () => {
+    await seedThreeSubscribers()
+
+    await expect(getAdminNewsletterPage({ data: { search: "example", status: NEWSLETTER_STATUS.CONFIRMED } })).resolves.toMatchObject({
+      items: [{ email: "anna@example.com" }],
+      total: 1,
+    })
+  })
+
+  it("refuses a status the subscriber list does not know", () => {
+    expect(newsletterZodSchemas.adminNewsletterPageInput.safeParse({ status: "bounced" }).success).toBe(false)
+    expect(newsletterZodSchemas.adminNewsletterExportInput.safeParse({ status: "bounced" }).success).toBe(false)
+  })
+
   it("lists everyone when the search is blank", async () => {
     await seedThreeSubscribers()
 
@@ -235,6 +265,37 @@ describe("getAdminNewsletterPage", () => {
 
   it("refuses a page number below the first page", async () => {
     await expect(getAdminNewsletterPage({ data: { page: 0 } })).rejects.toThrow()
+  })
+})
+
+describe("exportAdminNewsletterSubscribers", () => {
+  it("exports every subscriber newest first without the confirmation token", async () => {
+    await seedThreeSubscribers()
+
+    const subscribers = await exportAdminNewsletterSubscribers({ data: {} })
+
+    expect(subscribers.map((subscriber) => subscriber.email)).toStrictEqual(["cara@example.com", "ben@example.com", "anna@example.com"])
+    expect(subscribers.flatMap((subscriber) => Object.keys(subscriber))).not.toContain("token")
+    expect(subscribers[0]).toMatchObject({ unsubscribedAt: UNSUBSCRIBED_AT, userId: "user-1" })
+  })
+
+  it("exports all matching subscribers past the size of one page", async () => {
+    await Promise.all(
+      Array.from({ length: ADMIN_NEWSLETTER_PAGE_SIZE + 1 }, (_unused, index) =>
+        seed(`reader-${String(index)}@example.com`, NEWSLETTER_STATUS.PENDING),
+      ),
+    )
+
+    await expect(exportAdminNewsletterSubscribers({ data: {} })).resolves.toHaveLength(ADMIN_NEWSLETTER_PAGE_SIZE + 1)
+  })
+
+  it("exports only the subscribers the list's search and status select", async () => {
+    await seedThreeSubscribers()
+    await seed("bella@example.com", NEWSLETTER_STATUS.CONFIRMED)
+
+    const subscribers = await exportAdminNewsletterSubscribers({ data: { search: " BE ", status: NEWSLETTER_STATUS.PENDING } })
+
+    expect(subscribers.map((subscriber) => subscriber.email)).toStrictEqual(["ben@example.com"])
   })
 })
 

@@ -1002,10 +1002,15 @@
     "actions": {
       "newCampaign": "New newsletter"
     },
+    "tabs": {
+      "newsletters": "Newsletters",
+      "subscribers": "Subscribers"
+    },
     "stats": {
       "confirmed": "Confirmed subscribers",
       "pending": "Awaiting confirmation",
-      "unsubscribed": "Unsubscribed"
+      "unsubscribed": "Unsubscribed",
+      "total": "All addresses"
     },
     "campaigns": {
       "title": "Sent newsletters",
@@ -1069,6 +1074,50 @@
         "errorDescription": "Nothing went out. Your letter is still here, so try again in a moment.",
         "invalidTitle": "Some fields need attention",
         "invalidDescription": "Check: {locales}."
+      }
+    },
+    "subscribers": {
+      "title": "Subscribers",
+      "description": "Addresses signed up for the newsletter and where each subscription stands.",
+      "actions": {
+        "refresh": "Reload table data",
+        "exportCsv": "Download table as CSV",
+        "searchPlaceholder": "Search by email..."
+      },
+      "filter": {
+        "status": "Filter by status",
+        "allStatuses": "All statuses"
+      },
+      "columns": {
+        "email": "Email",
+        "id": "ID",
+        "status": "Status",
+        "locale": "Language",
+        "source": "Signed up on",
+        "account": "Account",
+        "createdAt": "Signed up",
+        "confirmedAt": "Confirmed",
+        "unsubscribedAt": "Unsubscribed",
+        "actions": "Actions"
+      },
+      "status": {
+        "confirmed": "Confirmed",
+        "pending": "Awaiting confirmation",
+        "unsubscribed": "Unsubscribed"
+      },
+      "source": {
+        "landing": "Home page",
+        "checkout": "Checkout",
+        "account": "Customer account",
+        "admin": "Admin panel"
+      },
+      "account": {
+        "open": "Open account",
+        "none": "No account"
+      },
+      "rowActions": {
+        "copyEmail": "Copy email",
+        "copyEmailToast": "Email copied to clipboard"
       }
     }
   },

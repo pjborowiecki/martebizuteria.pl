@@ -1002,10 +1002,15 @@
     "actions": {
       "newCampaign": "Nowy newsletter"
     },
+    "tabs": {
+      "newsletters": "Newslettery",
+      "subscribers": "Subskrybenci"
+    },
     "stats": {
       "confirmed": "Potwierdzeni subskrybenci",
       "pending": "Czekają na potwierdzenie",
-      "unsubscribed": "Wypisani"
+      "unsubscribed": "Wypisani",
+      "total": "Wszystkie adresy"
     },
     "campaigns": {
       "title": "Wysłane newslettery",
@@ -1069,6 +1074,50 @@
         "errorDescription": "Nic nie zostało wysłane. Twój list nadal tu jest, spróbuj ponownie za chwilę.",
         "invalidTitle": "Niektóre pola wymagają poprawy",
         "invalidDescription": "Sprawdź: {locales}."
+      }
+    },
+    "subscribers": {
+      "title": "Subskrybenci",
+      "description": "Adresy zapisane na newsletter i stan każdej subskrypcji.",
+      "actions": {
+        "refresh": "Odśwież dane tabeli",
+        "exportCsv": "Pobierz tabelę jako CSV",
+        "searchPlaceholder": "Szukaj po adresie e-mail..."
+      },
+      "filter": {
+        "status": "Filtruj według statusu",
+        "allStatuses": "Wszystkie statusy"
+      },
+      "columns": {
+        "email": "E-mail",
+        "id": "ID",
+        "status": "Status",
+        "locale": "Język",
+        "source": "Miejsce zapisu",
+        "account": "Konto",
+        "createdAt": "Zapisano",
+        "confirmedAt": "Potwierdzono",
+        "unsubscribedAt": "Wypisano",
+        "actions": "Akcje"
+      },
+      "status": {
+        "confirmed": "Potwierdzony",
+        "pending": "Czeka na potwierdzenie",
+        "unsubscribed": "Wypisany"
+      },
+      "source": {
+        "landing": "Strona główna",
+        "checkout": "Zamówienie",
+        "account": "Konto klienta",
+        "admin": "Panel administracyjny"
+      },
+      "account": {
+        "open": "Otwórz konto",
+        "none": "Bez konta"
+      },
+      "rowActions": {
+        "copyEmail": "Kopiuj e-mail",
+        "copyEmailToast": "E-mail skopiowany do schowka"
       }
     }
   },

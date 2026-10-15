@@ -1,6 +1,7 @@
 import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
+import { sql } from "drizzle-orm"
 import type * as zod from "zod"
 
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
@@ -77,9 +78,11 @@ const mailSubscriber = async ({
 
   const token = crypto.randomUUID()
   await updateSubscriberById(existing.id, {
+    confirmedAt: sql`null`,
     locale,
     status: NEWSLETTER_STATUS.PENDING,
     token,
+    unsubscribedAt: sql`null`,
     updatedAt: new Date(),
     userId: existing.userId ?? userId,
   })

@@ -4,7 +4,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
-import { NEWSLETTER_STATUS } from "~/src/modules/newsletter/newsletter.constants"
+import { NEWSLETTER_STATUS, type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
 import { newsletterSubscriber } from "~/src/modules/newsletter/newsletter.schema"
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 
@@ -30,11 +30,14 @@ export const updateSubscriberById = async (id: string, values: SubscriberUpdateS
   await db.update(newsletterSubscriber).set(values).where(eq(newsletterSubscriber.id, id))
 }
 
-const buildAdminSubscribersWhere = (search: string | undefined): SQL | undefined =>
-  buildAdminSearchOrCondition(search, [newsletterSubscriber.email])
+const buildAdminSubscribersWhere = ({ search, status }: AdminSubscribersFilters): SQL | undefined =>
+  and(
+    buildAdminSearchOrCondition(search, [newsletterSubscriber.email]),
+    status === undefined ? undefined : eq(newsletterSubscriber.status, status),
+  )
 
 export const getAdminSubscribersPage = async (params: AdminSubscribersListParams) => {
-  const whereClause = buildAdminSubscribersWhere(params.search)
+  const whereClause = buildAdminSubscribersWhere(params)
   const [[countRow], rows] = await db.batch([
     db.select({ count: count() }).from(newsletterSubscriber).where(whereClause),
     db
@@ -48,6 +51,9 @@ export const getAdminSubscribersPage = async (params: AdminSubscribersListParams
 
   return { rows, total: countRow?.count ?? NO_ROWS }
 }
+
+export const getAdminSubscribersFilteredList = (filters: AdminSubscribersFilters) =>
+  db.select().from(newsletterSubscriber).where(buildAdminSubscribersWhere(filters)).orderBy(desc(newsletterSubscriber.createdAt))
 
 const countByStatus = (status: Newsletter["select"]["status"]) =>
   db.select({ count: count() }).from(newsletterSubscriber).where(eq(newsletterSubscriber.status, status))
@@ -98,6 +104,9 @@ export const linkSubscriberToUser = async (email: string, userId: string): Promi
 
 type SubscriberUpdateSet = Parameters<ReturnType<typeof db.update<typeof newsletterSubscriber>>["set"]>[0]
 
-export interface AdminSubscribersListParams extends ListPaginationParams {
+export interface AdminSubscribersFilters {
   readonly search?: string | undefined
+  readonly status?: NewsletterStatus | undefined
 }
+
+export interface AdminSubscribersListParams extends AdminSubscribersFilters, ListPaginationParams {}

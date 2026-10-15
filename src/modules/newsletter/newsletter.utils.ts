@@ -9,4 +9,5 @@ export const toAdminNewsletterListItem = (row: Newsletter["select"]): Newsletter
   source: row.source,
   status: row.status,
   unsubscribedAt: row.unsubscribedAt ?? undefined,
+  userId: row.userId ?? undefined,
 })

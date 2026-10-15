@@ -55,7 +55,7 @@ describe("newsletter_subscriber table", () => {
     expect(columnByName.get("user_id")?.notNull).toBe(false)
   })
 
-  it("lets one address and one token belong to a single subscriber", () => {
+  it("lets one address and one token belong to a single subscriber and lists each status newest first from its index", () => {
     expect(
       config.indexes.map((index) => ({
         columns: index.config.columns.map((column) => ("name" in column ? column.name : column)),
@@ -65,7 +65,7 @@ describe("newsletter_subscriber table", () => {
     ).toStrictEqual([
       { columns: ["email"], name: "newsletter_subscriber_email_unique", unique: true },
       { columns: ["token"], name: "newsletter_subscriber_token_unique", unique: true },
-      { columns: ["status"], name: "newsletter_subscriber_status_idx", unique: false },
+      { columns: ["status", "created_at"], name: "newsletter_subscriber_status_createdAt_idx", unique: false },
       { columns: ["created_at"], name: "newsletter_subscriber_createdAt_idx", unique: false },
       { columns: ["user_id"], name: "newsletter_subscriber_userId_idx", unique: false },
     ])

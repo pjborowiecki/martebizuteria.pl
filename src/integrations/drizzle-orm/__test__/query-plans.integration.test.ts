@@ -216,6 +216,13 @@ describe("hot reads", () => {
     await expect(planSteps(() => getAdminSubscribersPage({ limit: 25, offset: 0 }))).resolves.not.toContain("USE TEMP B-TREE FOR ORDER BY")
   })
 
+  it("page the newsletter subscribers of one status newest first from the status index without sorting them", async () => {
+    const steps = await planSteps(() => getAdminSubscribersPage({ limit: 25, offset: 0, status: "pending" }))
+
+    expect(steps).toContain("SEARCH newsletter_subscriber USING INDEX newsletter_subscriber_status_createdAt_idx (status=?)")
+    expect(steps).not.toContain("USE TEMP B-TREE FOR ORDER BY")
+  })
+
   it("read a discount by its code and count the customer's redemptions of it from their indexes", async () => {
     await expect(planSteps(() => getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test"))).resolves.toStrictEqual(
       expect.arrayContaining([
