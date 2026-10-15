@@ -87,7 +87,7 @@ export const CloseAccountDialog = ({ hasPassword, onOpenChange, open }: Readonly
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="max-h-[calc(100dvh-12rem)] overflow-y-auto sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">

@@ -64,6 +64,15 @@ describe("TwoFactorScanStep", () => {
     expect(calls.toastSuccess).toHaveBeenCalledWith("Setup key copied")
   })
 
+  it("shows the whole setup key on narrow screens by wrapping it rather than cutting it off", () => {
+    renderStep()
+    const setupKey = screen.getByLabelText("Setup key")
+
+    expect(setupKey.tagName).toBe("TEXTAREA")
+    expect(setupKey).toHaveAttribute("readonly")
+    expect(setupKey).toHaveValue("JBSWY3DPEHPK3PXP")
+  })
+
   it("hands the six digit code to the enrolment", async () => {
     const user = userEvent.setup()
     const handlers = renderStep()
