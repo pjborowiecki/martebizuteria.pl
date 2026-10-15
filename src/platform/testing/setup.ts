@@ -15,24 +15,44 @@ configure({ asyncUtilTimeout: ASYNC_QUERY_TIMEOUT_MS })
 vi.setConfig({ testTimeout: COMPONENT_TEST_TIMEOUT_MS })
 
 const nativeSetInterval = globalThis.setInterval
+const nativeSetTimeout = globalThis.setTimeout
 const fileIntervals = new Set<ReturnType<typeof setInterval>>()
+const fileTimeouts = new Set<ReturnType<typeof setTimeout>>()
 
-Object.defineProperty(globalThis, "setInterval", {
-  configurable: true,
-  value: <TArgs extends unknown[]>(handler: (...args: TArgs) => void, timeout?: number, ...args: TArgs) => {
-    const interval = nativeSetInterval(handler, timeout, ...args)
-    fileIntervals.add(interval)
+Object.defineProperties(globalThis, {
+  setInterval: {
+    configurable: true,
+    value: <TArgs extends unknown[]>(handler: (...args: TArgs) => void, timeout?: number, ...args: TArgs) => {
+      const interval = nativeSetInterval(handler, timeout, ...args)
+      fileIntervals.add(interval)
 
-    return interval
+      return interval
+    },
+    writable: true,
   },
-  writable: true,
+  setTimeout: {
+    configurable: true,
+    value: <TArgs extends unknown[]>(handler: (...args: TArgs) => void, delay?: number, ...args: TArgs) => {
+      const timeout = nativeSetTimeout(handler, delay, ...args)
+      fileTimeouts.add(timeout)
+
+      return timeout
+    },
+    writable: true,
+  },
 })
 
 afterAll(() => {
   for (const interval of fileIntervals) {
     clearInterval(interval)
   }
-  Object.defineProperty(globalThis, "setInterval", { configurable: true, value: nativeSetInterval, writable: true })
+  for (const timeout of fileTimeouts) {
+    clearTimeout(timeout)
+  }
+  Object.defineProperties(globalThis, {
+    setInterval: { configurable: true, value: nativeSetInterval, writable: true },
+    setTimeout: { configurable: true, value: nativeSetTimeout, writable: true },
+  })
 })
 
 vi.stubGlobal("IntersectionObserver", StubIntersectionObserver)
