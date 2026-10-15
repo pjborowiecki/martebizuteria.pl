@@ -33,6 +33,7 @@ const {
   resetCheckoutSession,
   setCheckoutSession,
   toastError,
+  updatePhoneNumber,
 } = vi.hoisted(() => ({
   confirmCheckoutSession: vi.fn<() => Promise<StripeCheckout.ConfirmOutcome>>(),
   ensureCheckoutSession: vi.fn<(request: SessionRequest) => Promise<CheckoutSession>>(),
@@ -42,6 +43,7 @@ const {
   resetCheckoutSession: vi.fn<(request: SessionRequest) => Promise<CheckoutSession>>(),
   setCheckoutSession: vi.fn<(session: CheckoutSession) => void>(),
   toastError: vi.fn<(message: string) => void>(),
+  updatePhoneNumber: vi.fn<(phoneNumber: string) => Promise<unknown>>(),
 }))
 
 const completeValues: CheckoutFormSchema = {
@@ -114,7 +116,10 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({
 
     return <div data-testid="payment-element" />
   },
-  useCheckoutElements: () => ({ checkout: { total: { total: { amount: "PLN 215.00" } } }, type: "success" }),
+  useCheckoutElements: () => ({
+    checkout: { canConfirm: true, total: { total: { amount: "PLN 215.00" } }, updatePhoneNumber },
+    type: "success",
+  }),
 }))
 
 import { buildCheckoutValuesFingerprint } from "~/src/integrations/stripe/stripe.checkout"
@@ -270,10 +275,30 @@ describe("PaymentStep with a session whose payment the bank is still confirming"
     expect(toastError).not.toHaveBeenCalled()
   })
 
-  it("waits for the bank instead of asking for another attempt when a reset finds the payment still under way", async () => {
+  it("waits for the bank instead of asking for another attempt when Stripe.js gives up on a BLIK payment the bank is still confirming", async () => {
     formState.session = session
-    statusNeverArrives()
-    confirmCheckoutSession.mockResolvedValue({ message: "processing", recoverable: true, status: "error" })
+    readStatus.mockResolvedValue("processing")
+    confirmCheckoutSession.mockResolvedValue({ message: "Something went wrong. Please try again.", status: "failed" })
+    renderWithProviders(<PaymentStep />)
+    const user = userEvent.setup()
+    const payButton = await screen.findByRole("button", { name: "Order & Pay PLN 215.00" })
+    await waitFor(() => {
+      expect(payButton).toBeEnabled()
+    })
+
+    await user.click(payButton)
+
+    expect(await screen.findByText(AWAITING_BANK)).toBeInTheDocument()
+    expect(readStatus).toHaveBeenCalledWith("cs_test_1")
+    expect(resetCheckoutSession).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("waits for the bank instead of asking for another attempt when the reset of a closed session finds the payment under way", async () => {
+    formState.session = session
+    readStatus.mockResolvedValueOnce("closed").mockReturnValue(new Promise<CheckoutSessionStatus>(noop))
+    confirmCheckoutSession.mockResolvedValue({ message: "The checkout session is no longer active, please try again.", status: "failed" })
     resetCheckoutSession.mockRejectedValue(new ProcessingCheckoutSessionError("cs_test_1"))
     renderWithProviders(<PaymentStep />)
     const user = userEvent.setup()

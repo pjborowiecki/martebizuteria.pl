@@ -1,8 +1,17 @@
 import { type BaseSyntheticEvent, type JSX, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { CheckoutElementsProvider, PaymentElement, useCheckoutElements } from "@stripe/react-stripe-js/checkout"
-import { type StripeCheckoutElementsSdkOptions, type StripeCheckoutPaymentElementOptions } from "@stripe/stripe-js"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  CheckoutElementsProvider,
+  PaymentElement,
+  type StripeCheckoutElementsValue,
+  useCheckoutElements,
+} from "@stripe/react-stripe-js/checkout"
+import {
+  type StripeCheckoutElementsSdkOptions,
+  type StripeCheckoutPaymentElementOptions,
+  type StripePaymentElementChangeEvent,
+} from "@stripe/stripe-js"
+import { noop, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useNavigate } from "@tanstack/react-router"
 import "@tanstack/react-start/client-only"
 import { useTheme } from "@wrksz/themes/client"
@@ -14,6 +23,7 @@ import { useLocale, useTranslations } from "use-intl/react"
 import { STRIPE_FONTS, getStripeAppearance } from "~/src/integrations/stripe/stripe.appearance"
 import {
   type CheckoutSession,
+  type ConfirmOutcome,
   PaidCheckoutSessionError,
   buildCheckoutValuesFingerprint,
   confirmCheckoutSession,
@@ -28,6 +38,7 @@ import { CHECKOUT_ERROR_CODES, getCheckoutErrorKey } from "~/src/integrations/st
 
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { useCartStore } from "~/src/modules/cart/cart.store"
+import { toInternationalCheckoutPhone } from "~/src/modules/checkout/checkout.validation.utils"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { type CheckoutSessionStatus, checkoutSessionStatusQuery } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
 import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
@@ -70,6 +81,8 @@ const PaymentSkeleton = (): JSX.Element => (
 )
 
 const PROCESSING_SESSION_POLL_INTERVAL_MS = 8000
+
+const BLIK_PAYMENT_METHOD = "blik"
 
 const PAYMENT_ERROR_COPY = {
   expired: { action: "restartPayment", hint: "paymentExpiredHint", title: "paymentExpired" },
@@ -163,31 +176,101 @@ const useCheckoutConfirmation = (): ((sessionId: string) => Promise<void>) => {
   )
 }
 
+const useConfirmFailure = ({ onProcessing, onReset }: Readonly<PaymentSessionHandoff>): HandleConfirmFailure => {
+  const t = useTranslations("pages.checkout.checkoutForm")
+  const queryClient = useQueryClient()
+  const showConfirmation = useCheckoutConfirmation()
+
+  return useCallback(
+    async (sessionId: string, { message, status }: ConfirmFailure, paymentMethodType: string | undefined) => {
+      const sessionStatus =
+        status === "failed" ? await queryClient.query({ ...checkoutSessionStatusQuery(sessionId), staleTime: 0 }).catch(noop) : undefined
+      if (sessionStatus === "processing") {
+        onProcessing(sessionId)
+
+        return
+      }
+
+      if (sessionStatus === "complete") {
+        await showConfirmation(sessionId)
+
+        return
+      }
+
+      if (sessionStatus === "closed") {
+        const destination = await onReset()
+        if (destination === "payment") {
+          toast.error(t("errors.paymentSessionStale"))
+        }
+
+        return
+      }
+
+      const reason = message === "" ? t("validation.paymentFailed") : message
+      if (paymentMethodType === BLIK_PAYMENT_METHOD) {
+        toast.error(reason, { description: t("errors.blikNewCode") })
+
+        return
+      }
+
+      toast.error(reason)
+    },
+    [onProcessing, onReset, queryClient, showConfirmation, t],
+  )
+}
+
+const usePaymentElementEvents = (): PaymentElementEvents => {
+  const [isReady, setIsReady] = useState(false)
+  const [paymentMethodType, setPaymentMethodType] = useState<string>()
+  const handleReady = useCallback(() => {
+    setIsReady(true)
+  }, [])
+  const handleChange = useCallback((event: StripePaymentElementChangeEvent) => {
+    setPaymentMethodType(event.value.type)
+  }, [])
+
+  return { handleChange, handleReady, isReady, paymentMethodType }
+}
+
+const isReadyToConfirm = async (checkout: StripeCheckoutElementsValue): Promise<boolean> => {
+  if (checkout.canConfirm) {
+    return true
+  }
+
+  const validation = await checkout.validateElements()
+
+  return validation.type === "success"
+}
+
 const PaymentForm = ({
   checkoutBlocked,
   onProcessing,
   onReset,
   onRetry,
-}: Readonly<{
-  checkoutBlocked: boolean
-  onProcessing: (sessionId: string) => void
-  onReset: () => Promise<PaymentStepDestination>
-  onRetry: () => void
-}>): JSX.Element => {
+}: Readonly<
+  PaymentSessionHandoff & {
+    checkoutBlocked: boolean
+    onRetry: () => void
+  }
+>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const showConfirmation = useCheckoutConfirmation()
+  const handleConfirmFailure = useConfirmFailure({ onProcessing, onReset })
   const { checkoutSession, getValues } = useCheckoutForm()
   const checkoutState = useCheckoutElements()
-  const [isReady, setIsReady] = useState(false)
+  const { handleChange, handleReady, isReady, paymentMethodType } = usePaymentElementEvents()
   const [isProcessing, setIsProcessing] = useState(false)
-  const handleReady = useCallback(() => {
-    setIsReady(true)
-  }, [])
 
   const checkout = checkoutState.type === "success" ? checkoutState.checkout : undefined
+  const updatePhoneNumber = checkout?.updatePhoneNumber
+  useEffect(() => {
+    if (updatePhoneNumber !== undefined) {
+      void updatePhoneNumber(toInternationalCheckoutPhone(getValues().phone))
+    }
+  }, [getValues, updatePhoneNumber])
   const placeOrderLabel = checkout === undefined ? t("placeOrder") : t("placeOrderFor", { amount: checkout.total.total.amount })
   const handlePay = useCallback(async () => {
-    if (checkout === undefined || checkoutSession === undefined) {
+    if (checkout === undefined || checkoutSession === undefined || !(await isReadyToConfirm(checkout))) {
       return
     }
     setIsProcessing(true)
@@ -197,15 +280,8 @@ const PaymentForm = ({
         values: getValues(),
       })
 
-      if (outcome.status === "error") {
-        if (outcome.recoverable) {
-          const destination = await onReset()
-          if (destination === "payment") {
-            toast.error(t("errors.paymentSessionStale"))
-          }
-        } else {
-          toast.error(outcome.message === "" ? t("validation.paymentFailed") : outcome.message)
-        }
+      if (outcome.status === "success") {
+        await showConfirmation(checkoutSession.sessionId)
 
         return
       }
@@ -216,13 +292,13 @@ const PaymentForm = ({
         return
       }
 
-      await showConfirmation(checkoutSession.sessionId)
+      await handleConfirmFailure(checkoutSession.sessionId, outcome, paymentMethodType)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("validation.paymentFailed"))
     } finally {
       setIsProcessing(false)
     }
-  }, [checkout, checkoutSession, getValues, onProcessing, onReset, showConfirmation, t])
+  }, [checkout, checkoutSession, getValues, handleConfirmFailure, onProcessing, paymentMethodType, showConfirmation, t])
 
   const onFormSubmit = useCallback(
     (event: BaseSyntheticEvent) => {
@@ -240,14 +316,15 @@ const PaymentForm = ({
     <form onSubmit={onFormSubmit} className="flex flex-col gap-6">
       {!isReady && <PaymentSkeleton />}
 
-      <PaymentElement options={PAYMENT_ELEMENT_OPTIONS} onReady={handleReady} />
+      <PaymentElement options={PAYMENT_ELEMENT_OPTIONS} onChange={handleChange} onReady={handleReady} />
 
       <div className="flex flex-col gap-3">
         <Button
           size="lg"
           type="submit"
+          aria-disabled={checkout?.canConfirm === false}
           disabled={checkoutBlocked || !isReady || isProcessing || checkout === undefined}
-          className="group min-h-13 w-full cursor-pointer rounded-none text-sm tracking-[0.2em] uppercase disabled:pointer-events-auto disabled:cursor-not-allowed"
+          className="group min-h-13 w-full cursor-pointer rounded-none text-sm tracking-[0.2em] uppercase disabled:pointer-events-auto disabled:cursor-not-allowed aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
         >
           {isProcessing ? t("processingPayment") : placeOrderLabel}
           <ArrowRight aria-hidden className="ml-2 size-4 transition-transform group-hover:translate-x-1" strokeWidth={1.15} />
@@ -351,7 +428,7 @@ const useCheckoutSessionOutcome = (): CheckoutSessionOutcome => {
 
       reportFailure(error)
 
-      return Promise.resolve("payment")
+      return Promise.resolve("failed")
     },
     [awaitBank, openPaidSession, reportFailure],
   )
@@ -591,7 +668,23 @@ interface CheckoutSessionFailure {
   setLoadError: (failed: boolean) => void
 }
 
-type PaymentStepDestination = "confirmation" | "payment" | "processing"
+type PaymentStepDestination = "confirmation" | "failed" | "payment" | "processing"
+
+interface PaymentSessionHandoff {
+  onProcessing: (sessionId: string) => void
+  onReset: () => Promise<PaymentStepDestination>
+}
+
+type ConfirmFailure = Exclude<ConfirmOutcome, { status: "processing" | "success" }>
+
+type HandleConfirmFailure = (sessionId: string, failure: ConfirmFailure, paymentMethodType: string | undefined) => Promise<void>
+
+interface PaymentElementEvents {
+  handleChange: (event: StripePaymentElementChangeEvent) => void
+  handleReady: () => void
+  isReady: boolean
+  paymentMethodType: string | undefined
+}
 
 type SettleProcessingSession = (sessionId: string, status: CheckoutSessionStatus) => Promise<void>
 

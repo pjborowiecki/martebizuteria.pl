@@ -1,4 +1,4 @@
-import { type Locator, expect } from "@playwright/test"
+import { type FrameLocator, type Locator, expect } from "@playwright/test"
 
 import { type InpostLocker } from "../data/inpost"
 import { BasePage } from "./base-page"
@@ -95,16 +95,38 @@ export class CheckoutPage extends BasePage {
     await this.nextButton("Payment").click()
   }
 
-  async payWithCard(card: PaymentCard): Promise<void> {
-    const paymentForm = this.page.locator("iframe[title='Secure payment input frame'][src*='elements-inner-payment']").contentFrame()
+  paymentForm(): FrameLocator {
+    return this.page.locator("iframe[title='Secure payment input frame'][src*='elements-inner-payment']").contentFrame()
+  }
+
+  payButton(): Locator {
+    return this.page.getByRole("button", { name: /^Order & Pay/u })
+  }
+
+  async fillCard(card: PaymentCard): Promise<void> {
+    const paymentForm = this.paymentForm()
     await paymentForm.getByRole("button", { exact: true, name: "Card" }).click()
     await paymentForm.locator("input[name='number']").fill(card.number)
     await paymentForm.locator("input[name='expiry']").fill(card.expiry)
     await paymentForm.locator("input[name='cvc']").fill(card.cvc)
-    const payButton = this.page.getByRole("button", { name: /^Order & Pay/u })
+  }
+
+  async fillBlikCode(code: string): Promise<void> {
+    const paymentForm = this.paymentForm()
+    await paymentForm.getByRole("button", { exact: true, name: "BLIK" }).click()
+    await paymentForm.getByRole("textbox", { name: "BLIK code" }).fill(code)
+  }
+
+  async pay(): Promise<void> {
+    const payButton = this.payButton()
     await payButton.scrollIntoViewIfNeeded()
     await expect(this.page.locator("html")).not.toHaveClass(/lenis-scrolling/u)
     await payButton.click()
+  }
+
+  async payWithCard(card: PaymentCard): Promise<void> {
+    await this.fillCard(card)
+    await this.pay()
   }
 
   async applyDiscountCode(code: string): Promise<void> {

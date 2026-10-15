@@ -641,26 +641,36 @@ describe("confirmCheckoutSession", () => {
     })
   })
 
-  it("reports a declined payment as final, so the shopper is asked for another card", async () => {
-    confirm.mockResolvedValue({
-      error: { code: "paymentFailed", message: "Your card was declined.", paymentFailed: { declineCode: "generic_decline" } },
-      type: "error",
-    })
+  it.each([
+    { declineCode: "generic_decline", label: "a declined card", message: "Your card was declined." },
+    {
+      declineCode: "code_invalid",
+      label: "a BLIK code the bank refused",
+      message: "Your BLIK code is incorrect. Please check the code in your banking app and try again.",
+    },
+  ])("reports $label as declined, so the shopper is asked for another way to pay", async ({ declineCode, message }) => {
+    confirm.mockResolvedValue({ error: { code: "paymentFailed", message, paymentFailed: { declineCode } }, type: "error" })
 
     await expect(confirmCheckoutSession({ checkout: stubbedCheckout(), values: shippingValues })).resolves.toStrictEqual({
-      message: "Your card was declined.",
-      recoverable: false,
-      status: "error",
+      message,
+      status: "declined",
     })
   })
 
-  it("reports any other confirmation failure as recoverable, so the session can be retried", async () => {
-    confirm.mockResolvedValue({ error: { code: null, message: "This checkout session has expired." }, type: "error" })
+  it.each([
+    { label: "an incomplete card number", message: "Your card number is incomplete." },
+    { label: "an incomplete BLIK code", message: "Your BLIK code is invalid" },
+    {
+      label: "a failed or closed 3-D Secure check",
+      message: "We are unable to authenticate your payment method. Please choose a different payment method and try again.",
+    },
+    { label: "a session that is no longer open", message: "The checkout session is no longer active, please try again." },
+  ])("reports $label, which Stripe.js returns without a code, as failed with Stripe's message", async ({ message }) => {
+    confirm.mockResolvedValue({ error: { code: null, message }, type: "error" })
 
     await expect(confirmCheckoutSession({ checkout: stubbedCheckout(), values: shippingValues })).resolves.toStrictEqual({
-      message: "This checkout session has expired.",
-      recoverable: true,
-      status: "error",
+      message,
+      status: "failed",
     })
   })
 })

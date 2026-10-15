@@ -6,6 +6,8 @@ const CHECKOUT_DRAFT_STORAGE_KEY = "marte-checkout-draft"
 
 const CHECKOUT_DRAFT_VERSION = 1
 
+const HELD_CHECKOUT_SESSION_STORAGE_KEY = "marte-checkout-session"
+
 export const keepCheckoutDraft = async (page: Page, values: Readonly<Record<string, string | boolean>>): Promise<void> => {
   await page.evaluate(
     ({ draft, key }) => {
@@ -24,3 +26,10 @@ export const lockerCheckoutDraft = (email: string, lockerId: string): Readonly<R
   lockerId,
   sameAsShipping: true,
 })
+
+export const heldCheckoutSessionId = (page: Page): Promise<unknown> =>
+  page.evaluate((key) => {
+    const held = localStorage.getItem(key)
+
+    return held === null ? undefined : (JSON.parse(held) as { sessionId?: unknown }).sessionId
+  }, HELD_CHECKOUT_SESSION_STORAGE_KEY)

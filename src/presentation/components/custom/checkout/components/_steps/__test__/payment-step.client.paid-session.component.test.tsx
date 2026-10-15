@@ -11,6 +11,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import type * as StripeCheckout from "~/src/integrations/stripe/stripe.checkout"
 
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { type CheckoutSessionStatus } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
 
 type CheckoutSession = StripeCheckout.CheckoutSession
 
@@ -23,16 +24,27 @@ interface NavigateOptions {
   to: string
 }
 
-const { confirmCheckoutSession, ensureCheckoutSession, formState, navigate, resetCheckoutSession, setCheckoutSession, toastError } =
-  vi.hoisted(() => ({
-    confirmCheckoutSession: vi.fn<() => Promise<StripeCheckout.ConfirmOutcome>>(),
-    ensureCheckoutSession: vi.fn<(request: SessionRequest) => Promise<CheckoutSession>>(),
-    formState: { session: undefined as CheckoutSession | undefined },
-    navigate: vi.fn<(options: NavigateOptions) => Promise<void>>(),
-    resetCheckoutSession: vi.fn<(request: SessionRequest) => Promise<CheckoutSession>>(),
-    setCheckoutSession: vi.fn<(session: CheckoutSession) => void>(),
-    toastError: vi.fn<(message: string) => void>(),
-  }))
+const {
+  confirmCheckoutSession,
+  ensureCheckoutSession,
+  formState,
+  navigate,
+  readStatus,
+  resetCheckoutSession,
+  setCheckoutSession,
+  toastError,
+  updatePhoneNumber,
+} = vi.hoisted(() => ({
+  confirmCheckoutSession: vi.fn<() => Promise<StripeCheckout.ConfirmOutcome>>(),
+  ensureCheckoutSession: vi.fn<(request: SessionRequest) => Promise<CheckoutSession>>(),
+  formState: { session: undefined as CheckoutSession | undefined },
+  navigate: vi.fn<(options: NavigateOptions) => Promise<void>>(),
+  readStatus: vi.fn<(sessionId: string) => Promise<CheckoutSessionStatus>>(),
+  resetCheckoutSession: vi.fn<(request: SessionRequest) => Promise<CheckoutSession>>(),
+  setCheckoutSession: vi.fn<(session: CheckoutSession) => void>(),
+  toastError: vi.fn<(message: string) => void>(),
+  updatePhoneNumber: vi.fn<(phoneNumber: string) => Promise<unknown>>(),
+}))
 
 const completeValues: CheckoutFormSchema = {
   address1: "ul. Krucza 1",
@@ -65,7 +77,12 @@ vi.mock("~/src/integrations/stripe/stripe.checkout", async () => {
 vi.mock("~/src/modules/checkout/use-cases/get-checkout-session-status", async () => {
   const { CHECKOUT_QUERY_KEYS } = await import("~/src/modules/checkout/checkout.constants")
 
-  return { checkoutSessionStatusQuery: (sessionId: string) => ({ queryKey: [...CHECKOUT_QUERY_KEYS.SESSION_STATUS, sessionId] }) }
+  return {
+    checkoutSessionStatusQuery: (sessionId: string) => ({
+      queryFn: () => readStatus(sessionId),
+      queryKey: [...CHECKOUT_QUERY_KEYS.SESSION_STATUS, sessionId],
+    }),
+  }
 })
 vi.mock("~/src/hooks/use-cart-availability", () => ({
   useCartAvailability: () => ({ hasUnavailableItems: false, isChecking: false, issues: [], issuesByVariantId: new Map() }),
@@ -95,7 +112,10 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({
 
     return <div data-testid="payment-element" />
   },
-  useCheckoutElements: () => ({ checkout: { total: { total: { amount: "PLN 215.00" } } }, type: "success" }),
+  useCheckoutElements: () => ({
+    checkout: { canConfirm: true, total: { total: { amount: "PLN 215.00" } }, updatePhoneNumber },
+    type: "success",
+  }),
 }))
 
 import { PaidCheckoutSessionError, buildCheckoutValuesFingerprint } from "~/src/integrations/stripe/stripe.checkout"
@@ -158,6 +178,20 @@ afterEach(() => {
   useCartStore.setState({ items: [] })
 })
 
+const payWhenStripeJsReports = async (message: string): Promise<ReturnType<typeof renderWithProviders>> => {
+  formState.session = session
+  confirmCheckoutSession.mockResolvedValue({ message, status: "failed" })
+  const rendered = renderWithProviders(<PaymentStep />)
+  const payButton = await screen.findByRole("button", { name: "Order & Pay PLN 215.00" })
+  await waitFor(() => {
+    expect(payButton).toBeEnabled()
+  })
+
+  await userEvent.setup().click(payButton)
+
+  return rendered
+}
+
 describe("PaymentStep with a session that was paid before it could be continued", () => {
   it("opens the confirmation of the held session once, instead of a fresh payment form", async () => {
     holdSessionFor("cs_test_held", 1)
@@ -188,18 +222,23 @@ describe("PaymentStep with a session that was paid before it could be continued"
     expect(toastError).not.toHaveBeenCalled()
   })
 
-  it("opens the confirmation instead of asking for another attempt when the reset finds the payment went through", async () => {
-    formState.session = session
-    confirmCheckoutSession.mockResolvedValue({ message: "processing", recoverable: true, status: "error" })
-    resetCheckoutSession.mockRejectedValue(new PaidCheckoutSessionError("cs_test_1"))
-    const { queryClient } = renderWithProviders(<PaymentStep />)
-    const user = userEvent.setup()
-    const payButton = await screen.findByRole("button", { name: "Order & Pay PLN 215.00" })
-    await waitFor(() => {
-      expect(payButton).toBeEnabled()
-    })
+  it("opens the confirmation when a payment attempt Stripe.js reported as failed turns out to have gone through", async () => {
+    readStatus.mockResolvedValue("complete")
+    const { queryClient } = await payWhenStripeJsReports("Your payment has already been processed.")
 
-    await user.click(payButton)
+    await waitFor(() => {
+      expect(navigate).toHaveBeenCalled()
+    })
+    expectConfirmationOf("cs_test_1", queryClient)
+    expect(readStatus).toHaveBeenCalledExactlyOnceWith("cs_test_1")
+    expect(resetCheckoutSession).not.toHaveBeenCalled()
+    expect(toastError).not.toHaveBeenCalled()
+  })
+
+  it("opens the confirmation instead of asking for another attempt when the reset of a closed session finds the payment went through", async () => {
+    readStatus.mockResolvedValue("closed")
+    resetCheckoutSession.mockRejectedValue(new PaidCheckoutSessionError("cs_test_1"))
+    const { queryClient } = await payWhenStripeJsReports("The checkout session is no longer active, please try again.")
 
     await waitFor(() => {
       expect(navigate).toHaveBeenCalled()
