@@ -124,6 +124,14 @@ describe("CheckoutStep header", () => {
     expect(screen.getByRole("button").textContent).toBe("03Delivery Method")
   })
 
+  it("narrows the step padding on phones so the fields keep most of the screen", async () => {
+    renderStep(CHECKOUT_STEP_ID.CONTACT)
+    const body = await screen.findByText("Step body")
+
+    expect(screen.getByRole("button")).toHaveClass("px-4", "sm:px-6")
+    expect(body.parentElement).toHaveClass("px-4", "sm:px-6")
+  })
+
   it("asks to edit a step the customer already finished", async () => {
     completeStep(CHECKOUT_STEP_ID.CONTACT)
     renderStep(CHECKOUT_STEP_ID.CONTACT)

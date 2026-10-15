@@ -104,15 +104,15 @@ export const CheckoutSummary = (): JSX.Element => {
   })()
 
   return (
-    <aside className="sticky top-24 border border-border/50 bg-muted/40 p-6 text-card-foreground md:p-8">
+    <aside className="sticky top-24 border border-border/50 bg-muted/40 p-4 text-card-foreground sm:p-6 md:p-8">
       <div className="space-y-4 text-[12px]">
         <div className="flex justify-between gap-4">
-          <span className="font-medium tracking-[0.18em] text-foreground/80 uppercase">
+          <span className="font-medium tracking-[0.12em] text-foreground/80 uppercase sm:tracking-[0.18em]">
             {t("checkoutSummary.itemsCount", {
               count: itemCount(),
             })}
           </span>
-          <span className="font-light tracking-wider text-foreground tabular-nums">{money(totals.subtotal)}</span>
+          <span className="font-light tracking-wider whitespace-nowrap text-foreground tabular-nums">{money(totals.subtotal)}</span>
         </div>
         {totals.discountTotal > 0 && (
           <div className="flex justify-between gap-4 text-emerald-600">
@@ -145,12 +145,12 @@ export const CheckoutSummary = (): JSX.Element => {
 
       <div className="mt-8 space-y-6 border-t border-foreground/20 pt-8">
         {items.map((item) => (
-          <div key={item.id} className="flex items-start gap-5">
-            <div className="relative size-20 shrink-0 bg-muted/40">
+          <div key={item.id} className="flex items-start gap-4 sm:gap-5">
+            <div className="relative size-16 shrink-0 bg-muted/40 sm:size-20">
               <Image src={getProductImageUrl(item.image)} alt={item.title} width={80} height={80} className="size-full object-cover" />
             </div>
             <div className="min-w-0 flex-1 space-y-1.5 pt-1">
-              <h4 className="text-[11px] font-medium tracking-[0.18em] text-foreground uppercase">{item.title}</h4>
+              <h4 className="text-[11px] font-medium tracking-[0.12em] text-foreground uppercase sm:tracking-[0.18em]">{item.title}</h4>
               {item.variantTitle !== "" && <p className="text-[11px] font-light text-muted-foreground/80 italic">{item.variantTitle}</p>}
               <p className="pt-2 text-[13px] font-light tracking-wide text-foreground tabular-nums">
                 {item.qty} x {money(getCartLineUnitPriceCents(item))}

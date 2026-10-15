@@ -124,6 +124,12 @@ describe("checkout layout", () => {
 
     expect(screen.getByRole("main")).toContainElement(screen.getByTestId("outlet"))
   })
+
+  it("keeps the 16px phone margin and the wider tablet and desktop gutters", () => {
+    renderLayout()
+
+    expect(screen.getByRole("main")).toHaveClass("storefront-container", "w-full")
+  })
 })
 
 describe("checkout step search param", () => {

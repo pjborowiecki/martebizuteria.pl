@@ -330,6 +330,17 @@ describe("CheckoutRadioField", () => {
     expect(storedValues()).toContain('"deliveryMethod":"locker"')
     expect(screen.getByText("2 days")).toBeInTheDocument()
   })
+
+  it("lets a long option name wrap beside a price that stays on one line inside the card", () => {
+    renderWithProviders(<FieldsHarness defaultValues={{ deliveryMethod: "courier" }} />)
+
+    const price = screen.getByText("2 days")
+
+    expect(price).toHaveClass("shrink-0", "whitespace-nowrap")
+    expect(price.previousElementSibling).toHaveClass("min-w-0", "flex-1")
+    expect(price.previousElementSibling).toHaveTextContent("Locker")
+    expect(price.parentElement).toHaveClass("gap-3", "px-4", "sm:gap-4", "sm:px-5")
+  })
 })
 
 describe("CheckoutCheckboxField", () => {

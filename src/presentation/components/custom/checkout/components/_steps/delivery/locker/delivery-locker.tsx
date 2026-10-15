@@ -18,7 +18,7 @@ export const DeliveryLocker = (): JSX.Element => {
   })
 
   return (
-    <div className="flex flex-col gap-5 rounded-none border border-border/50 bg-background p-6">
+    <div className="flex flex-col gap-5 rounded-none border border-border/50 bg-background p-4 sm:p-6">
       <div className="space-y-1">
         <p className="text-[13px] font-medium tracking-[0.15em] text-foreground uppercase">{t("deliverySubsteps.lockerTitle")}</p>
         <p className="text-sm leading-relaxed text-muted-foreground">{t("deliverySubsteps.lockerText")}</p>

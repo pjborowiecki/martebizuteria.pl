@@ -249,6 +249,19 @@ describe("CheckoutSuccess", () => {
   })
 })
 
+describe("CheckoutSuccess order details", () => {
+  it("lines the order date up under the order number once the pair wraps on a phone", async () => {
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    const placedLabel = await screen.findByText("Placed")
+    const placed = placedLabel.parentElement
+
+    expect(placed).toHaveClass("sm:text-right")
+    expect(placed).not.toHaveClass("text-right")
+    expect(placed?.parentElement).toHaveClass("flex-wrap", "gap-x-8", "gap-y-4")
+  })
+})
+
 describe("CheckoutSuccess status mark", () => {
   it("shows the success mark beside an order it loaded", async () => {
     const { container } = renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)

@@ -105,7 +105,7 @@ export const CheckoutStep = ({
         type="button"
         onClick={handleClick}
         className={cn(
-          "flex h-auto w-full cursor-default items-center justify-start gap-4 rounded-none px-6 py-5 text-left font-normal whitespace-normal transition-colors hover:bg-transparent hover:text-inherit",
+          "flex h-auto w-full cursor-default items-center justify-start gap-4 rounded-none px-4 py-5 text-left font-normal whitespace-normal transition-colors hover:bg-transparent hover:text-inherit sm:px-6",
           isCompleted && "cursor-pointer hover:bg-muted/30",
         )}
       >
@@ -136,7 +136,7 @@ export const CheckoutStep = ({
         })}
       >
         <div className="overflow-hidden">
-          <div className="px-6 pt-2 pb-8">
+          <div className="px-4 pt-2 pb-8 sm:px-6">
             <Suspense fallback={stepSkeletonElement}>{isActive && <StepComponent />}</Suspense>
           </div>
         </div>

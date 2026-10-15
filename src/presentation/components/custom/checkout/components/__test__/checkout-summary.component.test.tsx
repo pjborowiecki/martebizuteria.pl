@@ -194,6 +194,15 @@ describe("CheckoutSummary", () => {
     expect(screen.getByText("Products (3)")).toBeInTheDocument()
   })
 
+  it("tightens the summary padding, the pictures and the letter spacing on phones", () => {
+    addLine({ qty: 3, rawPrice: 24_900, variantId: "variant-a" })
+    const { container } = renderSummary()
+
+    expect(container.querySelector("aside")).toHaveClass("p-4", "sm:p-6", "md:p-8")
+    expect(screen.getByText("Products (3)")).toHaveClass("tracking-[0.12em]", "sm:tracking-[0.18em]")
+    expect(container.querySelector("img")?.parentElement).toHaveClass("size-16", "sm:size-20")
+  })
+
   it("totals the cart lines as the subtotal and repeats it as the total", () => {
     addLine({ qty: 3, rawPrice: 24_900, variantId: "variant-a" })
     renderSummary()

@@ -34,7 +34,7 @@ const InpostMapContent = (): JSX.Element => {
   }, [setValue])
 
   return (
-    <div className="relative z-0 flex-1 bg-muted/20">
+    <div className="relative z-0 min-h-0 flex-1 bg-muted/20">
       <Map
         attributionControl={false}
         initialViewState={INITIAL_VIEW_STATE}
@@ -66,7 +66,10 @@ export const InpostSelector = (): JSX.Element => {
 
   const triggerRender = useMemo(
     () => (
-      <Button className="w-full cursor-pointer gap-2 rounded-none border-border/50 py-6 tracking-widest uppercase" variant="secondary" />
+      <Button
+        className="h-auto min-h-12 w-full cursor-pointer gap-2 rounded-none border-border/50 py-3 text-center tracking-widest whitespace-normal uppercase"
+        variant="secondary"
+      />
     ),
     [],
   )
@@ -79,13 +82,13 @@ export const InpostSelector = (): JSX.Element => {
           {t("selectLocker")}
         </DialogTrigger>
 
-        <DialogContent className="flex h-[80vh] w-[95vw] flex-row gap-0 overflow-hidden p-0 sm:max-w-5xl md:max-w-6xl">
+        <DialogContent className="flex h-[80vh] w-[95vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-5xl sm:flex-row md:max-w-6xl">
           <DialogHeader className="sr-only">
             <DialogTitle>{t("deliveryMethods.locker")}</DialogTitle>
             <DialogDescription>{t("deliverySubsteps.lockerText")}</DialogDescription>
           </DialogHeader>
 
-          <div className="flex min-h-0 w-[350px] shrink-0 flex-col overflow-hidden border-r bg-background">
+          <div className="flex h-1/2 min-h-0 w-full shrink-0 flex-col overflow-hidden border-b bg-background sm:h-auto sm:w-[350px] sm:border-r sm:border-b-0">
             <InpostSidebar />
           </div>
 

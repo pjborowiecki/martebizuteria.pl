@@ -121,12 +121,12 @@ const ConfirmationDetails = ({ order }: Readonly<{ order: Order["confirmation"] 
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-8 text-left">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-y border-border py-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-8 gap-y-4 border-y border-border py-4">
         <div>
           <p className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">{t("orderNumberLabel")}</p>
           <p className="mt-1 font-mono text-base">{order.orderNumber}</p>
         </div>
-        <div className="text-right">
+        <div className="sm:text-right">
           <p className="text-[10px] tracking-[0.2em] text-muted-foreground uppercase">{t("placedOnLabel")}</p>
           <p className="mt-1 text-sm">{format.dateTime(order.createdAt, { day: "numeric", month: "long", year: "numeric" })}</p>
         </div>

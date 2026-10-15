@@ -112,7 +112,12 @@ const PaymentError = ({
         <p className="mx-auto max-w-sm text-xs leading-relaxed text-muted-foreground">{t(copy.hint)}</p>
       </div>
       <div className="mt-2 flex flex-col gap-3 sm:flex-row">
-        <Button ref={actionRef} type="button" onClick={onRetry} className="cursor-pointer rounded-none text-xs tracking-[0.15em] uppercase">
+        <Button
+          ref={actionRef}
+          type="button"
+          onClick={onRetry}
+          className="cursor-pointer rounded-none text-xs tracking-[0.15em] uppercase pointer-coarse:h-10"
+        >
           {t(copy.action)}
         </Button>
         <LocalizedLink
@@ -121,7 +126,7 @@ const PaymentError = ({
             buttonVariants({
               variant: "outline",
             }),
-            "rounded-none text-xs tracking-[0.15em] uppercase",
+            "rounded-none text-xs tracking-[0.15em] uppercase pointer-coarse:h-10",
           )}
         >
           {t("backToCart")}

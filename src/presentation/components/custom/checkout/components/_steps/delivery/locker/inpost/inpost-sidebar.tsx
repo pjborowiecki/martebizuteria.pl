@@ -51,7 +51,7 @@ export const InpostSidebar = (): JSX.Element => {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="shrink-0 p-4">
+      <div className="shrink-0 p-4 pr-14 sm:pr-4">
         <div className="relative">
           <MapPin className="absolute top-3.5 left-2.5 size-4 text-muted-foreground" />
           <Input className="min-h-11 pl-9" onChange={handleChange} placeholder={t("searchCity")} value={cityInput} />
