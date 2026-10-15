@@ -23,7 +23,7 @@ export const Footer = (): JSX.Element => {
 
           <div className="flex flex-col space-y-4">
             <h3 className="mb-2 text-xs font-medium tracking-widest text-primary-foreground/50 uppercase">{t("info")}</h3>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-3 text-sm pointer-coarse:space-y-0">
               <FooterLink to={ROUTES.ABOUT}>{t("about")}</FooterLink>
               <FooterLink to={ROUTES.ABOUT} hash={ABOUT_CONTACT_HASH}>
                 {t("contact")}
@@ -34,7 +34,7 @@ export const Footer = (): JSX.Element => {
 
           <div className="flex flex-col space-y-4">
             <h3 className="mb-2 text-xs font-medium tracking-widest text-primary-foreground/50 uppercase">{t("legal")}</h3>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-3 text-sm pointer-coarse:space-y-0">
               <FooterLink to={ROUTES.TERMS_OF_SERVICE}>{t("terms")}</FooterLink>
               <FooterLink to={ROUTES.PRIVACY_POLICY}>{t("privacy")}</FooterLink>
               <FooterLink to={ROUTES.EXCHANGES_AND_RETURNS}>{t("returns")}</FooterLink>
@@ -44,7 +44,7 @@ export const Footer = (): JSX.Element => {
 
           <div className="flex flex-col space-y-4">
             <h3 className="mb-2 text-xs font-medium tracking-widest text-primary-foreground/50 uppercase">{t("tips")}</h3>
-            <ul className="space-y-3 text-sm">
+            <ul className="space-y-3 text-sm pointer-coarse:space-y-0">
               <FooterLink to={ROUTES.FAQ}>{t("care")}</FooterLink>
             </ul>
           </div>
@@ -58,12 +58,12 @@ export const Footer = (): JSX.Element => {
         <div className="mt-16 flex flex-col items-center justify-between gap-6 border-t border-primary-foreground/10 pt-8 md:mt-24 md:flex-row">
           <p className="text-xs text-primary-foreground/50">{t("copyright")}</p>
 
-          <div className="flex items-center space-x-6">
+          <div className="flex items-center space-x-6 pointer-coarse:space-x-1">
             <a
               href={SOCIALS.INSTAGRAM}
               rel="noopener noreferrer"
               target="_blank"
-              className="text-primary-foreground/50 transition-colors hover:text-primary-foreground"
+              className="text-primary-foreground/50 transition-colors hover:text-primary-foreground pointer-coarse:flex pointer-coarse:size-10 pointer-coarse:items-center pointer-coarse:justify-center"
               aria-label={t("instagram")}
             >
               <InstagramIcon title={t("instagram")} className="h-5 w-5" />
@@ -72,7 +72,7 @@ export const Footer = (): JSX.Element => {
               href={SOCIALS.FACEBOOK}
               rel="noopener noreferrer"
               target="_blank"
-              className="text-primary-foreground/50 transition-colors hover:text-primary-foreground"
+              className="text-primary-foreground/50 transition-colors hover:text-primary-foreground pointer-coarse:flex pointer-coarse:size-10 pointer-coarse:items-center pointer-coarse:justify-center"
               aria-label={t("facebook")}
             >
               <FacebookIcon title={t("facebook")} className="h-5 w-5" />
@@ -86,7 +86,10 @@ export const Footer = (): JSX.Element => {
 
 const FooterLink = (link: Pick<LocalizedLinkProps, "children" | "hash" | "to">) => (
   <li>
-    <LocalizedLink {...link} className="text-primary-foreground/80 transition-colors hover:text-primary-foreground" />
+    <LocalizedLink
+      {...link}
+      className="text-primary-foreground/80 transition-colors hover:text-primary-foreground pointer-coarse:inline-block pointer-coarse:py-2.5"
+    />
   </li>
 )
 

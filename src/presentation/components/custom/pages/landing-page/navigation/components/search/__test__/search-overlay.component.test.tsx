@@ -157,6 +157,16 @@ describe("SearchOverlay", () => {
     expect(logic.current?.handleClose).toHaveBeenCalledTimes(2)
   })
 
+  it("lines the overlay up with the 16px phone header gutter and gives the close control a finger-sized target", () => {
+    renderWithProviders(<SearchOverlay />)
+
+    const close = screen.getByRole("button", { hidden: true, name: /Close/u })
+
+    expect(close).toHaveClass("pointer-coarse:-my-3", "pointer-coarse:min-h-10")
+    expect(close.parentElement).toHaveClass("storefront-container")
+    expect(screen.getByRole("search", { hidden: true })).toHaveClass("storefront-container")
+  })
+
   it("offers the browse links only while idle and only when there are any", () => {
     logic.current = { ...defaults(), browseItems: [browse("Rings", "category"), browse("Archive", "collection")] }
     renderWithProviders(<SearchOverlay />)
@@ -164,6 +174,7 @@ describe("SearchOverlay", () => {
     expect(screen.getByRole("heading", { hidden: true, level: 2, name: "Browse" })).toBeInTheDocument()
     expect(screen.getByRole("link", { hidden: true, name: "Rings" }).getAttribute("href")).toContain("/categories/rings")
     expect(screen.getByRole("link", { hidden: true, name: "Archive" }).getAttribute("href")).toContain("/collections/archive")
+    expect(screen.getByRole("link", { hidden: true, name: "Rings" })).toHaveClass("py-2.5", "pointer-coarse:py-3")
 
     cleanup()
     logic.current = defaults()

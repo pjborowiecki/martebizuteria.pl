@@ -62,6 +62,65 @@ describe("route fallbacks without translation queries", () => {
     expect(renderToString(<RouterProvider router={router} />)).toContain("Page not found")
   })
 
+  it.each([
+    { cta: "Back to the shop", locale: "en-US", pathname: "/en-US/missing" },
+    { cta: "Wróć do sklepu", locale: "pl-PL", pathname: "/brak" },
+  ])("offers the $locale shopper a way back to the shop from a missing page", async ({ cta, pathname }) => {
+    currentRequest.mockReturnValue(new Request(`https://store.test${pathname}`))
+
+    const root = createRootRoute({ component: Outlet })
+    const router = createRouter({
+      defaultNotFoundComponent: DefaultNotFoundComponent,
+      history: createMemoryHistory({ initialEntries: [pathname] }),
+      isServer: true,
+      routeTree: root,
+    })
+    await router.load()
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain(cta)
+    expect(html).toContain('href="/"')
+    expect(html).toContain("min-h-[60svh]")
+  })
+
+  it.each([
+    { heading: "Page not found", pathname: "/en-US/missing" },
+    { heading: "Nie znaleziono strony", pathname: "/brak" },
+  ])("heads the shopper's missing page $pathname with its one level-one heading", async ({ heading, pathname }) => {
+    currentRequest.mockReturnValue(new Request(`https://store.test${pathname}`))
+
+    const root = createRootRoute({ component: Outlet })
+    const router = createRouter({
+      defaultNotFoundComponent: DefaultNotFoundComponent,
+      history: createMemoryHistory({ initialEntries: [pathname] }),
+      isServer: true,
+      routeTree: root,
+    })
+    await router.load()
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain(`>${heading}</h1>`)
+    expect(html.match(/<h1[ >]/gu)).toHaveLength(1)
+  })
+
+  it("keeps the admin not-found page plain and without the shop link", async () => {
+    currentRequest.mockReturnValue(new Request("https://store.test/en-US/admin/missing"))
+
+    const root = createRootRoute({ component: Outlet })
+    const router = createRouter({
+      defaultNotFoundComponent: DefaultNotFoundComponent,
+      history: createMemoryHistory({ initialEntries: ["/en-US/admin/missing"] }),
+      isServer: true,
+      routeTree: root,
+    })
+    await router.load()
+    const html = renderToString(<RouterProvider router={router} />)
+
+    expect(html).toContain("Page not found")
+    expect(html).not.toContain("Back to the shop")
+    expect(html).toContain("min-h-screen")
+  })
+
   it("renders a localized pending shell without a translation provider", async () => {
     const root = createRootRoute({ component: DefaultPendingComponent })
     const router = createRouter({

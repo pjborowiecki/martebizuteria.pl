@@ -96,6 +96,12 @@ describe("ContentPageArticle", () => {
     expect(container.querySelector("hr")).not.toBeNull()
   })
 
+  it("indents numbered lists far enough on phones to keep two-digit numbers inside the page margin", async () => {
+    const { container } = await renderArticle()
+
+    expect(container.querySelector("blockquote")?.parentElement).toHaveClass("[&_ol]:ml-6", "sm:[&_ol]:ml-5", "[&_ol]:list-decimal")
+  })
+
   it("anchors every heading so links to a section keep working", async () => {
     await renderArticle()
 

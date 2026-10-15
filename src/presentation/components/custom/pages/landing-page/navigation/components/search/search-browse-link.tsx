@@ -24,4 +24,4 @@ export const SearchBrowseLink = ({
 }
 
 const chipClassName =
-  "rounded-full border border-border/80 px-5 py-2.5 text-[11px] tracking-[0.12em] text-muted-foreground transition-all hover:border-foreground hover:text-foreground"
+  "rounded-full border border-border/80 px-5 py-2.5 text-[11px] tracking-[0.12em] text-muted-foreground transition-all hover:border-foreground hover:text-foreground pointer-coarse:py-3"
