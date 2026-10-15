@@ -9,11 +9,8 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
 import { recordOrderPaymentCapturedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import {
-  parseCheckoutSessionFulfillmentLines,
-  resolveCheckoutSessionCurrency,
-  resolveCheckoutSessionLocale,
-} from "~/src/modules/checkout/checkout-metadata.zod"
+import { resolveCheckoutSessionCurrency, resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
+import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 import { sendNewOrderEmail } from "~/src/modules/order/use-cases/send-new-order-email.server"
 import { sendOrderConfirmationEmail } from "~/src/modules/order/use-cases/send-order-confirmation-email.server"
@@ -30,7 +27,7 @@ export const formatPaidAmount = (amountMinorUnits: number, currency: string, loc
 export const createOrderFromPaidSession = async (session: StripeType.Checkout.Session): Promise<string | undefined> => {
   const orderId = await fulfillCheckout({
     currency: resolveCheckoutSessionCurrency(session),
-    lines: parseCheckoutSessionFulfillmentLines(session),
+    lines: await readCheckoutSessionLines(session),
     locale: resolveCheckoutSessionLocale(session),
     paidAmount: session.amount_total ?? NO_AMOUNT,
     transactionId: session.id,

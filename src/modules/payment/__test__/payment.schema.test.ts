@@ -20,6 +20,7 @@ describe("payment table", () => {
       "created_at",
       "currency",
       "id",
+      "lines",
       "provider",
       "refunded_amount",
       "refunded_at",

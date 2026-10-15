@@ -26,14 +26,9 @@ import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { isSellPriceCentsValid } from "~/src/modules/_core/utils/currency"
-import {
-  type CheckoutPaymentMetadata,
-  type CheckoutReleaseLine,
-  parseCheckoutSessionReleaseLines,
-  readCheckoutSessionItemsJson,
-  toCheckoutSessionItemsMetadata,
-} from "~/src/modules/checkout/checkout-metadata.zod"
+import { type CheckoutFulfillmentLine, type CheckoutPaymentMetadata } from "~/src/modules/checkout/checkout-metadata.zod"
 import { OPEN_CHECKOUTS_PER_CLIENT_ADDRESS_MAX, OPEN_CHECKOUTS_PER_EMAIL_MAX } from "~/src/modules/checkout/checkout.constants"
+import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { countOpenCheckouts } from "~/src/modules/checkout/use-cases/count-open-checkouts.server"
 import { createCheckout } from "~/src/modules/checkout/use-cases/create-checkout.server"
@@ -54,7 +49,11 @@ import { releaseInventoryForItems } from "~/src/modules/inventory/inventory.acce
 import { quantitiesBeyond, sumHeldQuantity } from "~/src/modules/inventory/inventory.availability.utils"
 import { reserveInventoryForItems } from "~/src/modules/inventory/inventory.utils"
 import { type OrderTotals, computeOrderTotals, sumOrderLineSubtotal } from "~/src/modules/order/order.totals"
-import { createPendingPayment, getPaymentContextByTransactionId } from "~/src/modules/payment/payment.accessors"
+import {
+  createPendingPayment,
+  getHeldLinesByTransactionId,
+  getPaymentContextByTransactionId,
+} from "~/src/modules/payment/payment.accessors"
 import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 import { isSalesPaused } from "~/src/modules/store-setting/store-setting.accessors"
 
@@ -206,7 +205,7 @@ const resolveVariant = (products: ResolvedProducts, item: CartItem): { product: 
   return { product, variant }
 }
 
-const validateAndCalculateItems = async (items: CartItem[], heldLines: readonly CheckoutReleaseLine[]) => {
+const validateAndCalculateItems = async (items: CartItem[], heldLines: readonly ReleaseLine[]) => {
   const products = await getPublishedProductsWithInventoryByHandles(items.map((item) => item.slug))
 
   return items.map((item) => {
@@ -269,17 +268,15 @@ const quoteCheckout = ({ discount, lines, shippingCost }: CheckoutQuoteArgs): Ch
   }),
 })
 
-const toMetaItems = (lines: OrderLine[]): Record<string, string> =>
-  toCheckoutSessionItemsMetadata(
-    lines.map((line) => ({
-      handle: line.handle,
-      imageUrl: line.imageUrl,
-      price: line.priceCents,
-      qty: line.qty,
-      title: line.title,
-      variantId: line.variantId,
-    })),
-  )
+const toCheckoutLines = (lines: OrderLine[]): CheckoutFulfillmentLine[] =>
+  lines.map((line) => ({
+    handle: line.handle,
+    imageUrl: line.imageUrl,
+    price: line.priceCents,
+    qty: line.qty,
+    title: line.title,
+    variantId: line.variantId,
+  }))
 
 interface CreateSessionArgs {
   checkoutId: string
@@ -287,7 +284,6 @@ interface CreateSessionArgs {
   deliveryType: DeliveryMethodType
   discount: Discount["applied"] | undefined
   email: string
-  itemsMetadata: Record<string, string>
   lines: OrderLine[]
   origin: string
   shippingCost: number
@@ -300,7 +296,6 @@ const createStripeSession = async ({
   deliveryType,
   discount,
   email,
-  itemsMetadata,
   lines,
   origin,
   shippingCost,
@@ -321,7 +316,7 @@ const createStripeSession = async ({
   const params: StripeType.Checkout.SessionCreateParams = {
     expires_at: Math.floor(Date.now() / MILLISECONDS_PER_SECOND) + CHECKOUT_SESSION_LIFETIME_SECONDS,
     line_items: toLineItems(lines, { cost: shippingCost, name: messages.deliveryLineItem[deliveryType] }),
-    metadata: { ...metadata, ...itemsMetadata },
+    metadata,
     mode: "payment",
     payment_intent_data: { description: messages.paymentDescription, metadata, receipt_email: email },
     phone_number_collection: { enabled: true },
@@ -362,11 +357,11 @@ const toOrderLines = (validatedItems: ValidatedCheckoutItem[]): OrderLine[] =>
     variantId: item.variantId,
   }))
 
-const toReservedLines = (validatedItems: ValidatedCheckoutItem[]): CheckoutReleaseLine[] =>
+const toReservedLines = (validatedItems: ValidatedCheckoutItem[]): ReleaseLine[] =>
   validatedItems.map((item) => ({ qty: item.qty, variantId: item.variantId }))
 
 interface OpenCheckoutSessionArgs extends CreateSessionArgs {
-  reservedLines: CheckoutReleaseLine[]
+  reservedLines: ReleaseLine[]
 }
 
 const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenCheckoutSessionArgs) => {
@@ -376,6 +371,7 @@ const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenChecko
       amount: result.amount,
       checkoutId: sessionArgs.checkoutId,
       currency: STRIPE_CURRENCY.toUpperCase(),
+      lines: toCheckoutLines(sessionArgs.lines),
       provider: "stripe",
       reservedLines,
       transactionId: result.sessionId,
@@ -406,7 +402,6 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
 
   const validatedItems = await validateAndCalculateItems(data.items, [])
   const lines = toOrderLines(validatedItems)
-  const itemsMetadata = toMetaItems(lines)
   const applicableDiscount = await resolveCheckoutDiscount({
     code: checkoutValues.discountCode,
     email,
@@ -433,7 +428,6 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
       deliveryType,
       discount,
       email,
-      itemsMetadata,
       lines,
       origin,
       reservedLines: toReservedLines(validatedItems),
@@ -462,16 +456,13 @@ interface SignedInUser {
 interface UpdatableCheckout {
   checkoutCreatedAt: Date
   checkoutId: string
-  heldLines: CheckoutReleaseLine[]
+  heldLines: ReleaseLine[]
   signedInUser: SignedInUser | undefined
 }
 
-const readHeldLines = (session: StripeType.Checkout.Session): CheckoutReleaseLine[] =>
-  parseCheckoutSessionReleaseLines(readCheckoutSessionItemsJson(session.metadata))
-
 export const releaseExpiredCheckoutSession = async (session: StripeType.Checkout.Session): Promise<void> => {
   try {
-    await releaseCheckout({ lines: readHeldLines(session), transactionId: session.id })
+    await releaseCheckout({ lines: await getHeldLinesByTransactionId(session.id), transactionId: session.id })
     scheduleProductCatalogInvalidation()
   } catch (releaseError) {
     console.error(`Failed to release expired Checkout Session ${session.id} ahead of its webhook:`, releaseError)
@@ -524,7 +515,7 @@ const resolveUpdatableCheckout = async (sessionId: string): Promise<UpdatableChe
   return {
     checkoutCreatedAt: context.checkoutCreatedAt,
     checkoutId: context.checkoutId,
-    heldLines: readHeldLines(stripeSession),
+    heldLines: await getHeldLinesByTransactionId(stripeSession.id),
     signedInUser,
   }
 }
@@ -547,16 +538,18 @@ const expireCheckoutSession = async (sessionId: string): Promise<void> => {
 
 interface RetireCheckoutSessionArgs {
   discountId: string | undefined
-  heldLines: CheckoutReleaseLine[]
+  heldLines: ReleaseLine[]
+  lines: CheckoutFulfillmentLine[]
   oldSessionId: string
   replacement: { amount: number; sessionId: string }
-  reservedLines: CheckoutReleaseLine[]
+  reservedLines: ReleaseLine[]
   userId: string | undefined
 }
 
 const retireCheckoutSession = async ({
   discountId,
   heldLines,
+  lines,
   oldSessionId,
   replacement,
   reservedLines,
@@ -568,6 +561,7 @@ const retireCheckoutSession = async ({
       amount: replacement.amount,
       discountId,
       heldLines,
+      lines,
       newTransactionId: replacement.sessionId,
       oldTransactionId: oldSessionId,
       reservedLines,
@@ -583,7 +577,7 @@ const retireCheckoutSession = async ({
   }
 }
 
-interface ReplaceCheckoutSessionArgs extends Omit<RetireCheckoutSessionArgs, "discountId" | "replacement"> {
+interface ReplaceCheckoutSessionArgs extends Omit<RetireCheckoutSessionArgs, "discountId" | "lines" | "replacement"> {
   addedStock: ValidatedCheckoutItem[]
   session: CreateSessionArgs
 }
@@ -592,7 +586,12 @@ const handOverCheckoutSession = async ({ addedStock, session, ...retirement }: R
   await reserveInventoryForItems(addedStock)
   try {
     const replacement = await createStripeSession(session)
-    await retireCheckoutSession({ ...retirement, discountId: session.discount?.discountId, replacement })
+    await retireCheckoutSession({
+      ...retirement,
+      discountId: session.discount?.discountId,
+      lines: toCheckoutLines(session.lines),
+      replacement,
+    })
 
     return replacement
   } catch (error) {
@@ -618,7 +617,7 @@ const replaceCheckoutSession = async (args: ReplaceCheckoutSessionArgs) => {
   }
 }
 
-const abandonReplacementCheckout = async (replacementSessionId: string, reservedLines: CheckoutReleaseLine[]): Promise<void> => {
+const abandonReplacementCheckout = async (replacementSessionId: string, reservedLines: ReleaseLine[]): Promise<void> => {
   await releaseCheckout({ lines: reservedLines, transactionId: replacementSessionId }).catch((releaseError: unknown) => {
     console.error("Failed to release checkout after checkout update error:", releaseError)
   })
@@ -660,7 +659,6 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   await assertCheckoutStillEditable(data.sessionId, checkoutCreatedAt)
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
-  const itemsMetadata = toMetaItems(lines)
   const { checkoutValues, deliveryType, lockerPoint, lockerUnconfirmed, shippingCost } = await resolveDelivery(data.checkoutValues)
   const applicableDiscount = await resolveCheckoutDiscount({
     code: checkoutValues.discountCode,
@@ -685,7 +683,6 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
       deliveryType,
       discount,
       email: checkoutValues.email,
-      itemsMetadata,
       lines,
       origin,
       shippingCost,

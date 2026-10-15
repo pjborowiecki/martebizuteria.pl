@@ -10,8 +10,9 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
   createCheckout: vi.fn(),
-  createPendingPayment: vi.fn(),
+  createPendingPayment: vi.fn<(input: { lines: readonly { variantId: string }[] }) => Promise<void>>(),
   ensureStripeCustomerWithEmail: vi.fn(),
+  getHeldLinesByTransactionId: vi.fn<(transactionId: string) => Promise<readonly { qty: number; variantId: string }[]>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -21,7 +22,7 @@ const mocked = vi.hoisted(() => ({
   requestLocale: { value: "pl-PL" },
   reserveInventoryForItems: vi.fn(),
   resolveCheckoutDiscount: vi.fn(),
-  supersedeCheckoutSession: vi.fn(),
+  supersedeCheckoutSession: vi.fn<(input: { lines: readonly { variantId: string }[] }) => Promise<boolean>>(),
   updateCheckoutDelivery: vi.fn(),
 }))
 
@@ -70,6 +71,7 @@ vi.mock("~/src/modules/inventory/inventory.utils", () => ({
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
   createPendingPayment: mocked.createPendingPayment,
+  getHeldLinesByTransactionId: mocked.getHeldLinesByTransactionId,
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
 }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
@@ -93,23 +95,15 @@ import {
   updateInput,
 } from "~/src/integrations/stripe/__test__/fixtures/checkout-session-inputs"
 import { handleCreateCheckoutSession, handleUpdateCheckoutSession } from "~/src/integrations/stripe/stripe.actions.server"
-import { STRIPE_METADATA_KEYS_MAX, STRIPE_METADATA_VALUE_LENGTH_MAX } from "~/src/integrations/stripe/stripe.constants"
-import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
-import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { CART_LINES_MAX } from "~/src/modules/cart/cart.constants"
-import { parseCheckoutSessionMetadataItems, readCheckoutSessionItemsJson } from "~/src/modules/checkout/checkout-metadata.zod"
 
 import enUsCheckoutMessages from "~/messages/en-US/pages.checkout.json"
 import plPlCheckoutMessages from "~/messages/pl-PL/pages.checkout.json"
 
-const STRIPE_METADATA_KEY_LENGTH_MAX = 40
-
 const BLIK_DESCRIPTION_LENGTH_MAX = 70
 
 const PAYMENT_INTENT_METADATA_KEYS = ["checkoutId", "deployment", "discountCode", "discountTotal", "locale", "userId"]
-
-const CART_TOO_LARGE = { code: ERROR_CODES.VALIDATION, message: CHECKOUT_ERROR_CODES.CART_TOO_LARGE }
 
 const variantIdOf = (index: number): string => `0199a1b2-c3d4-7e5f-8901-${String(index).padStart(12, "0")}`
 
@@ -166,6 +160,7 @@ beforeEach(() => {
   mocked.checkoutSessionsExpire.mockResolvedValue({})
   mocked.checkoutSessionsRetrieve.mockResolvedValue({ id: "cs_old", metadata: { items: JSON.stringify(HELD_LINES) }, status: "open" })
   mocked.getPaymentContextByTransactionId.mockResolvedValue(pendingContext())
+  mocked.getHeldLinesByTransactionId.mockResolvedValue(HELD_LINES)
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
 })
@@ -216,45 +211,27 @@ describe("the payment intent metadata", () => {
 })
 
 describe("a cart of the most lines the checkout takes", () => {
-  it("opens a session whose every metadata key and value Stripe accepts, carrying every line", async () => {
-    const cartItems = shortCart(CART_LINES_MAX)
+  it("opens a session whose metadata names only the checkout and keeps every line on its payment", async () => {
+    const cartItems = longCart(CART_LINES_MAX)
     stubCatalogueForCart(cartItems)
 
     await handleCreateCheckoutSession(createInput({}, cartItems))
-    const metadata = createdSession()?.metadata ?? {}
 
-    expect(Object.keys(metadata).length).toBeLessThanOrEqual(STRIPE_METADATA_KEYS_MAX)
-    for (const [key, value] of Object.entries(metadata)) {
-      expect(key.length, key).toBeLessThanOrEqual(STRIPE_METADATA_KEY_LENGTH_MAX)
-      expect(value.length, `${key} is ${String(value.length)} characters`).toBeLessThanOrEqual(STRIPE_METADATA_VALUE_LENGTH_MAX)
-    }
-    expect(parseCheckoutSessionMetadataItems(readCheckoutSessionItemsJson(metadata)).map((line) => line.variantId)).toStrictEqual(
+    expect(Object.keys(createdSession()?.metadata ?? {})).toStrictEqual(PAYMENT_INTENT_METADATA_KEYS)
+    expect(mocked.createPendingPayment.mock.lastCall?.[0].lines.map((line) => line.variantId)).toStrictEqual(
       cartItems.map((item) => item.variantId),
     )
   })
 
-  it("is refused before any stock is held when its lines no longer fit Stripe's metadata", async () => {
+  it("is edited into a replacement session that hands every line to the payment it supersedes", async () => {
     const cartItems = longCart(CART_LINES_MAX)
     stubCatalogueForCart(cartItems)
 
-    await expect(handleCreateCheckoutSession(createInput({}, cartItems))).rejects.toMatchObject(CART_TOO_LARGE)
+    await handleUpdateCheckoutSession(updateInput({}, cartItems))
 
-    expect(mocked.resolveCheckoutDiscount).not.toHaveBeenCalled()
-    expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
-    expect(mocked.createCheckout).not.toHaveBeenCalled()
-    expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()
-  })
-
-  it("is refused as an edit, leaving the open session, its stock and its delivery as they were", async () => {
-    const cartItems = longCart(CART_LINES_MAX)
-    stubCatalogueForCart(cartItems)
-
-    await expect(handleUpdateCheckoutSession(updateInput({}, cartItems))).rejects.toMatchObject(CART_TOO_LARGE)
-
-    expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
-    expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()
-    expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
-    expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
-    expect(mocked.updateCheckoutDelivery).not.toHaveBeenCalled()
+    expect(Object.keys(createdSession()?.metadata ?? {})).toStrictEqual(PAYMENT_INTENT_METADATA_KEYS)
+    expect(mocked.supersedeCheckoutSession.mock.lastCall?.[0].lines.map((line) => line.variantId)).toStrictEqual(
+      cartItems.map((item) => item.variantId),
+    )
   })
 })

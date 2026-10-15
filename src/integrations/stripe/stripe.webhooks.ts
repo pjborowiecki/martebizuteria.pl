@@ -25,12 +25,7 @@ import {
   recordOrderPaymentFailedAudit,
   recordOrderReleasedAudit,
 } from "~/src/modules/audit-log/audit-log.events.server"
-import {
-  checkoutReleaseLinesSchema,
-  readCheckoutSessionItemsJson,
-  resolveCheckoutSessionCurrency,
-  resolveCheckoutSessionLocale,
-} from "~/src/modules/checkout/checkout-metadata.zod"
+import { resolveCheckoutSessionCurrency, resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { sendPaymentFailedEmail } from "~/src/modules/checkout/use-cases/send-payment-failed-email.server"
 import { clearOrderDispute } from "~/src/modules/order/use-cases/clear-order-dispute"
@@ -38,6 +33,7 @@ import { flagOrderDispute } from "~/src/modules/order/use-cases/flag-order-dispu
 import { refundOrder } from "~/src/modules/order/use-cases/refund-order"
 import { sendOrderRefundedEmail } from "~/src/modules/order/use-cases/send-order-refunded-email.server"
 import { lowerRefundedAmount, undoFailedRefund } from "~/src/modules/order/use-cases/undo-failed-refund"
+import { getHeldLinesByTransactionId } from "~/src/modules/payment/payment.accessors"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
@@ -105,7 +101,7 @@ const handleFulfillCheckoutSession = async (session: StripeType.Checkout.Session
 }
 
 const handleReleaseCheckoutSession = async (session: StripeType.Checkout.Session): Promise<boolean> => {
-  const lines = checkoutReleaseLinesSchema.parse(JSON.parse(readCheckoutSessionItemsJson(session.metadata)))
+  const lines = await getHeldLinesByTransactionId(session.id)
   const released = await releaseCheckout({ lines, transactionId: session.id })
   if (!released) {
     console.info(`Session ${session.id} held nothing to release: its checkout was paid, released or moved to a newer session.`)

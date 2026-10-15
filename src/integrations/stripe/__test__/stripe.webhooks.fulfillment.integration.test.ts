@@ -7,7 +7,6 @@ import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 import type * as DrizzleBatch from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
 
-import { toCheckoutSessionItemsMetadata } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutSessionStatus } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
 import { getOrderConfirmation } from "~/src/modules/order/use-cases/get-order-confirmation"
 
@@ -113,7 +112,7 @@ const necklaceSession = (paymentStatus: Stripe.Checkout.Session["payment_status"
     amountTotal: PAID_AMOUNT,
     customerEmail: "ada@marte.test",
     id: SESSION_ID,
-    metadata: { checkoutId: "checkout-luna", locale: "pl-PL", ...toCheckoutSessionItemsMetadata([NECKLACE_LINE]) },
+    metadata: { checkoutId: "checkout-luna", items: JSON.stringify([NECKLACE_LINE]), locale: "pl-PL" },
     paymentIntent: "pi_test_luna",
     paymentStatus,
   })

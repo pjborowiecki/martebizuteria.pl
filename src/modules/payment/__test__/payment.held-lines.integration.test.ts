@@ -15,14 +15,24 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
-const { createPendingPayment, getHeldLinesByTransactionId, getOpenCheckoutSessionIdsHoldingVariants, isAnyVariantHeldByOpenCheckout } =
-  await import("~/src/modules/payment/payment.accessors")
+const {
+  createPendingPayment,
+  getCheckoutLinesByTransactionId,
+  getHeldLinesByTransactionId,
+  getOpenCheckoutSessionIdsHoldingVariants,
+  isAnyVariantHeldByOpenCheckout,
+} = await import("~/src/modules/payment/payment.accessors")
 
 const AT = Date.UTC(2026, 9, 5)
 
 const HELD_LINES = [
   { qty: 1, variantId: "var-ring" },
   { qty: 2, variantId: "var-chain" },
+]
+
+const CART_LINES = [
+  { handle: "ring", price: 24_900, qty: 1, title: "Ring", variantId: "var-ring" },
+  { handle: "chain", price: 37_450, qty: 2, title: "Chain", variantId: "var-chain" },
 ]
 
 const openCheckout = async (checkoutId: string, transactionId: string): Promise<void> => {
@@ -33,6 +43,7 @@ const openCheckout = async (checkoutId: string, transactionId: string): Promise<
     amount: 99_800,
     checkoutId,
     currency: "PLN",
+    lines: CART_LINES,
     provider: "stripe",
     reservedLines: HELD_LINES,
     transactionId,
@@ -47,6 +58,18 @@ beforeEach(() => {
 
 afterAll(() => {
   sqlite.close()
+})
+
+describe("getCheckoutLinesByTransactionId", () => {
+  it("reads back the cart the session's payment was opened with", async () => {
+    await openCheckout("checkout-open", "cs_open")
+
+    await expect(getCheckoutLinesByTransactionId("cs_open")).resolves.toStrictEqual(CART_LINES)
+  })
+
+  it("reads no lines for a session no payment carries", async () => {
+    await expect(getCheckoutLinesByTransactionId("cs_unknown")).resolves.toStrictEqual([])
+  })
 })
 
 describe("getHeldLinesByTransactionId", () => {

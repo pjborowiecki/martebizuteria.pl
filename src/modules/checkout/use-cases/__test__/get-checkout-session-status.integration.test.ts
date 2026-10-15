@@ -4,7 +4,6 @@ import { z } from "zod"
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { toCheckoutSessionItemsMetadata } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutSessionStatus } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 
@@ -108,7 +107,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(console, "error").mockImplementation(() => {})
   holdTheLastRing()
-  retrieveSession.mockResolvedValue({ id: "cs_held", metadata: toCheckoutSessionItemsMetadata([HELD_RING]), status: "open" })
+  retrieveSession.mockResolvedValue({ id: "cs_held", metadata: { items: JSON.stringify([HELD_RING]) }, status: "open" })
 })
 
 afterAll(() => {
@@ -133,7 +132,7 @@ describe("getCheckoutSessionStatus against the migrated schema", () => {
   it("reports a session whose BLIK payment waits for approval in the banking app as processing, with the last ring still held for it", async () => {
     retrieveSession.mockResolvedValue({
       id: "cs_held",
-      metadata: toCheckoutSessionItemsMetadata([HELD_RING]),
+      metadata: { items: JSON.stringify([HELD_RING]) },
       payment_intent: { next_action: { type: "blik_authorize" }, status: "requires_action" },
       status: "open",
     })
@@ -148,7 +147,7 @@ describe("getCheckoutSessionStatus against the migrated schema", () => {
   it("reports a session that completed before its delayed-notification payment settled as processing, with the last ring still held for it", async () => {
     retrieveSession.mockResolvedValue({
       id: "cs_held",
-      metadata: toCheckoutSessionItemsMetadata([HELD_RING]),
+      metadata: { items: JSON.stringify([HELD_RING]) },
       payment_intent: { next_action: null, status: "processing" },
       payment_status: "unpaid",
       status: "complete",
@@ -161,7 +160,7 @@ describe("getCheckoutSessionStatus against the migrated schema", () => {
   })
 
   it("returns the last ring of a session Stripe expired before its webhook, once, so a fresh checkout finds it free", async () => {
-    retrieveSession.mockResolvedValue({ id: "cs_held", metadata: toCheckoutSessionItemsMetadata([HELD_RING]), status: "expired" })
+    retrieveSession.mockResolvedValue({ id: "cs_held", metadata: { items: JSON.stringify([HELD_RING]) }, status: "expired" })
 
     await expect(statusOf("cs_held")).resolves.toBe("closed")
     await expect(statusOf("cs_held")).resolves.toBe("closed")

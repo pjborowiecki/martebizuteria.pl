@@ -3,6 +3,7 @@ import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqli
 
 import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
+import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout-metadata.zod"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
 
@@ -17,6 +18,7 @@ export const payment = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
+    lines: text("lines", { mode: "json" }).$type<readonly CheckoutFulfillmentLine[]>().default([]).notNull(),
     provider: text("provider").notNull(),
     refundedAmount: integer("refunded_amount").default(0).notNull(),
     refundedAt: timestamp("refunded_at"),

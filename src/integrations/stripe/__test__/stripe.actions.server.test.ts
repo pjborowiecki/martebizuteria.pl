@@ -28,6 +28,7 @@ const mocked = vi.hoisted(() => ({
     >(),
   createPendingPayment: vi.fn(),
   ensureStripeCustomerWithEmail: vi.fn<() => Promise<string>>(),
+  getHeldLinesByTransactionId: vi.fn(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
   getPublishedProductsWithInventoryByHandles: vi.fn(),
@@ -91,6 +92,7 @@ vi.mock("~/src/modules/inventory/inventory.utils", () => ({
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
   createPendingPayment: mocked.createPendingPayment,
+  getHeldLinesByTransactionId: mocked.getHeldLinesByTransactionId,
   getPaymentContextByTransactionId: mocked.getPaymentContextByTransactionId,
 }))
 vi.mock("~/src/modules/product/product.accessors", () => ({
@@ -117,9 +119,8 @@ import { handleCreateCheckoutSession, handleUpdateCheckoutSession } from "~/src/
 import { CHECKOUT_ERROR_CODES } from "~/src/integrations/stripe/stripe.errors"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { toCheckoutSessionItemsMetadata } from "~/src/modules/checkout/checkout-metadata.zod"
 
-const EXPECTED_META_ITEMS = toCheckoutSessionItemsMetadata([
+const EXPECTED_LINES = [
   {
     handle: CART_ITEM.slug,
     imageUrl: `https://assets.test/${CART_ITEM.image}`,
@@ -128,9 +129,10 @@ const EXPECTED_META_ITEMS = toCheckoutSessionItemsMetadata([
     title: "Bransoletka Aurora — Rozmiar M",
     variantId: CART_ITEM.variantId,
   },
-])
+]
 
 beforeEach(() => {
+  mocked.getHeldLinesByTransactionId.mockResolvedValue(HELD_LINES)
   vi.clearAllMocks()
   vi.spyOn(console, "error").mockImplementation(() => {})
   mocked.getRequest.mockReturnValue(requestOn("http://127.0.0.1:3000"))
@@ -260,7 +262,7 @@ describe("handleCreateCheckoutSession", () => {
 
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        metadata: { ...metadata, ...EXPECTED_META_ITEMS },
+        metadata,
         payment_intent_data: {
           description: "M'Arte – zamówienie w sklepie internetowym",
           metadata,
@@ -282,7 +284,6 @@ describe("handleCreateCheckoutSession", () => {
       discountTotal: "0",
       locale: "pl-PL",
       userId: "",
-      ...EXPECTED_META_ITEMS,
     }
 
     const createArgs = mocked.createCheckout.mock.calls[0]?.[0]
@@ -327,6 +328,7 @@ describe("handleCreateCheckoutSession", () => {
       amount: 51_300,
       checkoutId: "checkout-1",
       currency: "PLN",
+      lines: EXPECTED_LINES,
       provider: "stripe",
       reservedLines: [{ qty: 2, variantId: "variant-1" }],
       transactionId: "cs_new",

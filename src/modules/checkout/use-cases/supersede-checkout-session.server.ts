@@ -2,6 +2,7 @@ import { and, eq, exists, inArray, isNull, ne } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { type CheckoutFulfillmentLine } from "~/src/modules/checkout/checkout-metadata.zod"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
 import { discountClaim } from "~/src/modules/discount/discount.schema"
@@ -14,6 +15,7 @@ export const supersedeCheckoutSession = async ({
   amount,
   discountId,
   heldLines,
+  lines,
   newTransactionId,
   oldTransactionId,
   reservedLines,
@@ -46,7 +48,7 @@ export const supersedeCheckoutSession = async ({
   const [movedPayments] = await db.batch([
     db
       .update(payment)
-      .set({ amount, reservedLines, transactionId: newTransactionId })
+      .set({ amount, lines, reservedLines, transactionId: newTransactionId })
       .where(pendingOldPayment)
       .returning({ id: payment.id }),
     ...quantitiesBeyond(heldLines, reservedLines).map((line) =>
@@ -66,6 +68,7 @@ export interface SupersedeCheckoutSessionInput {
   readonly amount: number
   readonly discountId: string | undefined
   readonly heldLines: readonly ReleaseLine[]
+  readonly lines: readonly CheckoutFulfillmentLine[]
   readonly newTransactionId: string
   readonly oldTransactionId: string
   readonly reservedLines: readonly ReleaseLine[]

@@ -15,7 +15,6 @@ describe("getCheckoutErrorKey", () => {
     const keys = Object.values(CHECKOUT_ERROR_CODES).map((code) => getCheckoutErrorKey(new Error(code)))
 
     expect(keys).toStrictEqual([
-      "errors.cartTooLarge",
       "errors.deliveryMethodUnavailable",
       "errors.insufficientInventory",
       "errors.invalidPrice",

@@ -33,11 +33,14 @@ const HELD_LINES = [
 
 const RESERVED_LINES = [{ qty: 3, variantId: "var-1" }]
 
+const CART_LINES = [{ handle: "ring", price: 17_100, qty: 3, title: "Ring", variantId: "var-1" }]
+
 const continueAs = (userId: string | undefined, oldTransactionId: string, newTransactionId = NEW_SESSION) =>
   supersedeCheckoutSession({
     amount: 51_300,
     discountId: undefined,
     heldLines: HELD_LINES,
+    lines: CART_LINES,
     newTransactionId,
     oldTransactionId,
     reservedLines: RESERVED_LINES,
@@ -52,6 +55,7 @@ const supersedeApplying = (discountId: string) =>
     amount: 51_300,
     discountId,
     heldLines: HELD_LINES,
+    lines: CART_LINES,
     newTransactionId: NEW_SESSION,
     oldTransactionId: OLD_SESSION,
     reservedLines: RESERVED_LINES,
@@ -84,7 +88,7 @@ beforeEach(() => {
       locker_id text, locker_point text, shipping_address_id text, created_at integer not null, updated_at integer not null
     );
     create table payment (
-      id text primary key, amount integer not null, checkout_id text not null, currency text not null default 'PLN',
+      id text primary key, amount integer not null, checkout_id text not null, currency text not null default 'PLN', lines text not null default '[]',
       provider text not null, refunded_amount integer not null default 0, refunded_at integer, reserved_lines text not null default '[]',
       status text not null default 'pending', transaction_id text unique, created_at integer not null, updated_at integer not null
     );
@@ -128,6 +132,7 @@ describe("supersedeCheckoutSession", () => {
     expect(paymentRow("pay-1")).toEqual({ amount: 51_300, status: "pending", transactionId: NEW_SESSION })
     expect(checkoutStatus("chk-1")).toEqual({ status: "pending" })
     expect(inventoryRow("var-1")).toEqual({ available: 3, reserved: 4 })
+    expect(sqlite.prepare("select lines from payment where id = ?").get("pay-1")).toEqual({ lines: JSON.stringify(CART_LINES) })
     expect(inventoryRow("var-2")).toEqual({ available: 1, reserved: 0 })
   })
 
@@ -151,6 +156,7 @@ describe("supersedeCheckoutSession", () => {
         amount: 0,
         discountId: undefined,
         heldLines: [],
+        lines: [],
         newTransactionId: NEW_SESSION,
         oldTransactionId: OLD_SESSION,
         reservedLines: [],
@@ -279,6 +285,7 @@ describe("supersedeCheckoutSession and the stock the replacement keeps", () => {
         amount: 24_900,
         discountId: undefined,
         heldLines: [{ qty: 1, variantId: "var-1" }],
+        lines: [],
         newTransactionId: NEW_SESSION,
         oldTransactionId: OLD_SESSION,
         reservedLines: [{ qty: 1, variantId: "var-1" }],
@@ -295,6 +302,7 @@ describe("supersedeCheckoutSession and the stock the replacement keeps", () => {
         amount: 24_900,
         discountId: undefined,
         heldLines: HELD_LINES,
+        lines: [],
         newTransactionId: NEW_SESSION,
         oldTransactionId: OLD_SESSION,
         reservedLines: [{ qty: 1, variantId: "var-1" }],

@@ -5,7 +5,6 @@ import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
-import { toCheckoutSessionItemsMetadata } from "~/src/modules/checkout/checkout-metadata.zod"
 import { countOpenCheckouts } from "~/src/modules/checkout/use-cases/count-open-checkouts.server"
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
@@ -158,9 +157,11 @@ const withStatus = (values: ProductFormValues, status: ProductAdminStatus): Prod
 
 const expiredHeldSession = {
   id: TRANSACTION_ID,
-  metadata: toCheckoutSessionItemsMetadata([
-    { handle: HANDLE, imageUrl: "onyx.webp", price: PRICE, qty: HELD_LINE.qty, title: "Onyx earrings", variantId: VARIANT_ID },
-  ]),
+  metadata: {
+    items: JSON.stringify([
+      { handle: HANDLE, imageUrl: "onyx.webp", price: PRICE, qty: HELD_LINE.qty, title: "Onyx earrings", variantId: VARIANT_ID },
+    ]),
+  },
   status: "expired",
 }
 

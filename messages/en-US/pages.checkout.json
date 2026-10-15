@@ -182,7 +182,6 @@
       "nipInvalid": "Please enter a valid 10-digit Polish tax ID (NIP)"
     },
     "errors": {
-      "cartTooLarge": "Your cart holds more different pieces than one payment can carry. Remove some of them and order those separately.",
       "deliveryMethodUnavailable": "The delivery method you chose is no longer available. Please choose another one.",
       "lockerRequired": "Please choose a parcel locker for this delivery method.",
       "lockerNotFound": "InPost does not list the parcel locker you chose. Please choose another one.",

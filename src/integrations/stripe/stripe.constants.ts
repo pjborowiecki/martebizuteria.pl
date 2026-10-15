@@ -22,10 +22,6 @@ export const STRIPE_COUPON_SOURCE = "marte_checkout"
 
 export const STRIPE_CHECKOUT_LINE_ITEMS_MAX = 100
 
-export const STRIPE_METADATA_KEYS_MAX = 50
-
-export const STRIPE_METADATA_VALUE_LENGTH_MAX = 500
-
 export const CHECKOUT_SHIPPING_LINE_ITEMS = 1
 
 export const STRIPE_WEBHOOK_EVENTS = {

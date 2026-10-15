@@ -183,7 +183,6 @@
       "nipInvalid": "Wprowadź prawidłowy 10-cyfrowy NIP"
     },
     "errors": {
-      "cartTooLarge": "W koszyku jest więcej różnych produktów, niż zmieści jedna płatność. Usuń część z nich i zamów je osobno.",
       "deliveryMethodUnavailable": "Wybrana metoda dostawy nie jest już dostępna. Wybierz inną.",
       "lockerRequired": "Wybierz paczkomat dla tej metody dostawy.",
       "lockerNotFound": "InPost nie ma na liście wybranego paczkomatu. Wybierz inny.",
