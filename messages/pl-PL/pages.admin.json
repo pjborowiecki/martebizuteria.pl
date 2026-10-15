@@ -673,6 +673,7 @@
       "next": "Następna"
     },
     "rowActions": {
+      "menuLabel": "Akcje zamówienia {orderNumber}",
       "viewOrder": "Zobacz zamówienie",
       "copyId": "Kopiuj ID",
       "copySuccess": "Skopiowano ID zamówienia",

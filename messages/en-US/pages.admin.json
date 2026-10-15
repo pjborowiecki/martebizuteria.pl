@@ -673,6 +673,7 @@
       "next": "Next"
     },
     "rowActions": {
+      "menuLabel": "Actions for order {orderNumber}",
       "viewOrder": "View order",
       "copyId": "Copy ID",
       "copySuccess": "Order ID copied",

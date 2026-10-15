@@ -76,11 +76,7 @@ const DISPUTE_BLOCKS_CANCEL =
 
 const openMenu = async () => {
   renderWithProviders(<OrdersRowActions order={ORDER} />)
-  const [trigger] = screen.getAllByRole("button")
-  if (trigger === undefined) {
-    throw new Error("The row action trigger was not rendered")
-  }
-  await userEvent.click(trigger)
+  await userEvent.click(screen.getByRole("button", { name: "Actions for order MRT-2026-00001" }))
 }
 
 beforeEach(() => {
@@ -102,6 +98,12 @@ afterEach(() => {
 })
 
 describe("OrdersRowActions menu", () => {
+  it("names its menu button after the order for screen readers", () => {
+    renderWithProviders(<OrdersRowActions order={ORDER} />)
+
+    expect(screen.getByRole("button")).toHaveAccessibleName("Actions for order MRT-2026-00001")
+  })
+
   it("offers every action and names the order in the copy entry", async () => {
     await openMenu()
 

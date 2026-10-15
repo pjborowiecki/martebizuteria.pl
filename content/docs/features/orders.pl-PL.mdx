@@ -160,7 +160,7 @@ Numer i adres śledzenia pochodzą z `order-ship-dialog.tsx`, a menu wiersza nie
 - `components/orders-table.tsx` — `OrdersTableContent`, siatka danych
 - `components/orders-columns.tsx` — definicje kolumn; identyfikatory, szerokości i przypięcia pochodzą z `ADMIN_ORDER_TABLE_COLUMN_ID`, `ADMIN_ORDER_TABLE_COLUMN_SIZE` i `ADMIN_ORDER_TABLE_COLUMN_PINNING`
 - `components/orders-status-filter.tsx`, `orders-payment-filter.tsx`, `orders-fulfillment-filter.tsx`, `orders-date-column-filter.tsx`, `orders-numeric-column-filter.tsx`
-- `components/orders-row-actions.tsx` — menu wiersza wywołujące `fulfillOrder`, `shipOrder` (bez danych śledzenia) i `cancelOrder` oraz otwierające podsumowanie zamówienia w nowej karcie; gdy `resolveAdminOrderCancelBlocker` blokuje zamówienie, które dałoby się anulować, Anuluj zamówienie jest wyłączone, a pod nim widać powód z `pages.admin.orders.rowActions.cancelBlocked` jako opis pozycji
+- `components/orders-row-actions.tsx` — menu wiersza wywołujące `fulfillOrder`, `shipOrder` (bez danych śledzenia) i `cancelOrder` oraz otwierające podsumowanie zamówienia w nowej karcie; gdy `resolveAdminOrderCancelBlocker` blokuje zamówienie, które dałoby się anulować, Anuluj zamówienie jest wyłączone, a pod nim widać powód z `pages.admin.orders.rowActions.cancelBlocked` jako opis pozycji; przycisk menu bierze `aria-label` z `pages.admin.orders.rowActions.menuLabel` (`Akcje zamówienia {orderNumber}`), więc czytnik ekranu odróżnia przyciski kolejnych wierszy; ostatnie zamówienia na przeglądzie renderują to samo menu (zobacz [Pulpit admina](/docs/features/admin-dashboard#ostatnie-zamówienia))
 - `components/orders-stats.tsx` wraz z `orders-stats.config.ts`
 - `components/orders-export-action.tsx`, `orders-refresh-action.tsx`
 
