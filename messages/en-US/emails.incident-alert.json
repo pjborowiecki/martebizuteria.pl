@@ -4,6 +4,11 @@
     "heading": "A paid checkout has no order",
     "message": "Stripe took a customer's payment, but the shop could not turn the checkout into an order, and a retry would not change that. Find the payment in the Stripe Dashboard by the reference below, then refund it or arrange the order with the customer."
   },
+  "refundFailed": {
+    "subject": "Alert: a refund did not reach the customer — M'Arte",
+    "heading": "A refund did not reach the customer",
+    "message": "Stripe reports that a refund failed or was cancelled, so the money went back to the shop's Stripe balance instead of to the customer. The order now counts only the refunds that still stand. The shop does not email the customer about the failure; check the order's history to see whether they were already told that this refund is on its way. Arrange the refund another way: once the cause is fixed, refund the payment again in the Stripe Dashboard or with the Refund button on the order, or agree with the customer how to pay the money back."
+  },
   "stripeWebhookFailed": {
     "subject": "Alert: the shop failed a Stripe event — M'Arte",
     "heading": "The shop failed a Stripe event",

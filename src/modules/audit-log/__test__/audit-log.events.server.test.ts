@@ -41,6 +41,7 @@ import {
   recordOrderPaymentFailedAudit,
   recordOrderPlacedAudit,
   recordOrderRefundAudit,
+  recordOrderRefundFailedAudit,
   recordOrderRefundRequestedAudit,
   recordOrderReleasedAudit,
   recordOrderRestockedAudit,
@@ -534,6 +535,35 @@ describe("recordOrderFulfillmentFailedAudit", () => {
     expect(record.scheduleSystemAuditLog).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: "order.fulfillment_failed:cs_test_1" }))
     expect(record.scheduleSystemAuditLog).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: "order.fulfillment_failed:cs_test_1" }))
     expect(record.scheduleSystemAuditLog).toHaveBeenNthCalledWith(3, expect.objectContaining({ id: "order.fulfillment_failed:cs_test_2" }))
+  })
+})
+
+describe("recordOrderRefundFailedAudit", () => {
+  it("files a refund Stripe could not complete as a warning against the order, under the refund's own entry id", () => {
+    recordOrderRefundFailedAudit("order-7", "re_test_1", { detail: "38900 — failed — lost_or_stolen_card", resourceId: "order-7" })
+
+    expect(record.scheduleAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleAuditLogFromRequest).not.toHaveBeenCalled()
+    expect(record.scheduleSystemAuditLog).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.ORDER_REFUND_FAILED,
+      category: "orders",
+      detail: "38900 — failed — lost_or_stolen_card",
+      id: "order.refund_failed:re_test_1",
+      metadata: undefined,
+      resourceId: "order-7",
+      severity: "warning",
+      target: "order-7",
+    })
+  })
+
+  it("names the same entry for every delivery about one refund and a new one for another refund of the order", () => {
+    recordOrderRefundFailedAudit("order-7", "re_test_1")
+    recordOrderRefundFailedAudit("order-7", "re_test_1")
+    recordOrderRefundFailedAudit("order-7", "re_test_2")
+
+    expect(record.scheduleSystemAuditLog).toHaveBeenNthCalledWith(1, expect.objectContaining({ id: "order.refund_failed:re_test_1" }))
+    expect(record.scheduleSystemAuditLog).toHaveBeenNthCalledWith(2, expect.objectContaining({ id: "order.refund_failed:re_test_1" }))
+    expect(record.scheduleSystemAuditLog).toHaveBeenNthCalledWith(3, expect.objectContaining({ id: "order.refund_failed:re_test_2" }))
   })
 })
 

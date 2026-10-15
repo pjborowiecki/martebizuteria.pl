@@ -37,7 +37,14 @@ describe("stripe constants", () => {
       "checkout.session.completed",
       "checkout.session.expired",
       "payment_intent.payment_failed",
+      "refund.failed",
+      "refund.updated",
     ])
+  })
+
+  it("subscribes to the refund events that report a refund failing or being cancelled after it was issued", () => {
+    expect(STRIPE_WEBHOOK_EVENTS.REFUND_FAILED).toBe("refund.failed")
+    expect(STRIPE_WEBHOOK_EVENTS.REFUND_UPDATED).toBe("refund.updated")
   })
 
   it("subscribes to both outcomes of a delayed payment", () => {

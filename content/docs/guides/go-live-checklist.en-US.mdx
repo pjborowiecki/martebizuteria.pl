@@ -24,7 +24,7 @@ Work through the list in order. Each item says what must be true, how to check i
    - remove all three names from the local `.env.development`, `.env.preview` and `.env.production`;
    - delete any GitHub OAuth app registered for the shop at `github.com/settings/developers`.
 
-6. **Stripe sends live events to the shop.** In the Stripe Dashboard, in live mode, a webhook endpoint for `https://martebizuteria.pl/api/webhooks/stripe` listens to the eight events in `STRIPE_WEBHOOK_EVENTS` (`src/integrations/stripe/stripe.constants.ts`):
+6. **Stripe sends live events to the shop.** In the Stripe Dashboard, in live mode, a webhook endpoint for `https://martebizuteria.pl/api/webhooks/stripe` listens to the ten events in `STRIPE_WEBHOOK_EVENTS` (`src/integrations/stripe/stripe.constants.ts`):
 
    - `checkout.session.completed`
    - `checkout.session.async_payment_succeeded`
@@ -32,10 +32,12 @@ Work through the list in order. Each item says what must be true, how to check i
    - `checkout.session.expired`
    - `payment_intent.payment_failed`
    - `charge.refunded`
+   - `refund.failed`
+   - `refund.updated`
    - `charge.dispute.created`
    - `charge.dispute.closed`
 
-   Give the endpoint the API version `2026-08-26.dahlia`, the one `STRIPE_API_VERSION` pins, so the payloads have the shape the handlers read. The endpoint's own signing secret, `whsec_…`, is the production `STRIPE_WEBHOOK_SECRET`. Preview's endpoint, on `https://preview.martebizuteria.pl/api/webhooks/stripe` or the preview `workers.dev` host, is a test-mode endpoint whose own secret is preview's `STRIPE_WEBHOOK_SECRET`. The route acknowledges an event from the other mode without acting on it, so a `[Stripe] Ignoring … event` line in a Worker's logs means its endpoint or secret belongs to the other mode; replace the secret with the one of an endpoint in the right mode. `checkout.session.expired` matters as much as the payment events, because it is how the stock an abandoned checkout held comes back. See [Stripe](/docs/integrations/stripe#webhooks).
+   Give the endpoint the API version `2026-08-26.dahlia`, the one `STRIPE_API_VERSION` pins, so the payloads have the shape the handlers read. The endpoint's own signing secret, `whsec_…`, is the production `STRIPE_WEBHOOK_SECRET`. Preview's endpoint, on `https://preview.martebizuteria.pl/api/webhooks/stripe` or the preview `workers.dev` host, is a test-mode endpoint whose own secret is preview's `STRIPE_WEBHOOK_SECRET`. The route acknowledges an event from the other mode without acting on it, so a `[Stripe] Ignoring … event` line in a Worker's logs means its endpoint or secret belongs to the other mode; replace the secret with the one of an endpoint in the right mode. `checkout.session.expired` matters as much as the payment events, because it is how the stock an abandoned checkout held comes back. `refund.failed` and `refund.updated` matter for every refund: they are how the shop learns that a refund it already reported, and emailed the customer about, failed or was cancelled, so the order is reopened and the owner alerted. Stripe does not add new events to an existing endpoint, so an endpoint created before these two were handled, preview's included, needs them ticked under its listened-to events. See [Stripe](/docs/integrations/stripe#webhooks).
 
 7. **Cards, BLIK and Przelewy24 are on in live mode.** The Checkout Session names no payment methods, so Stripe offers the ones turned on in the Dashboard, and `CHECKOUT_PAYMENT_METHOD_ORDER` only orders them. In live mode, under **Settings**, **Payment methods**, cards, BLIK and Przelewy24 are on; the terms of service promise all three. Test-mode settings do not carry over to live mode.
 

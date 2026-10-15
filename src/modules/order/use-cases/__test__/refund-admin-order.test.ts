@@ -9,7 +9,7 @@ import { refundAdminOrder, refundAdminOrderMutation } from "../refund-admin-orde
 
 const ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
 
-const IDEMPOTENCY = { idempotencyKey: `admin-order-refund-${ORDER_ID}` }
+const IDEMPOTENCY = { idempotencyKey: `admin-order-refund-${ORDER_ID}-0` }
 
 const KEEP_OUT_OF_STOCK = { orderId: ORDER_ID, restock: false }
 
@@ -44,15 +44,27 @@ const returnOrderToStock = vi.hoisted(() => vi.fn<(orderId: string) => Promise<b
 
 const audit = vi.hoisted(() => ({ recordOrderRefundRequestedAudit: vi.fn() }))
 
+interface ListedRefunds {
+  readonly autoPagingToArray: (options: object) => Promise<readonly { readonly status: string | null }[]>
+}
+
 const stripeApi = vi.hoisted(() => ({
   refundsCreate: vi.fn<(params: object, options: object) => Promise<{ id: string }>>(),
+  refundsList: vi.fn<(params: object) => ListedRefunds>(),
   sessionsRetrieve: vi.fn<(id: string) => Promise<RetrievedSession>>(),
 }))
+
+const listedRefunds = (statuses: readonly (string | null)[]): ListedRefunds => ({
+  autoPagingToArray: () => Promise.resolve(statuses.map((status) => ({ status }))),
+})
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: {} }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
-  stripe: { checkout: { sessions: { retrieve: stripeApi.sessionsRetrieve } }, refunds: { create: stripeApi.refundsCreate } },
+  stripe: {
+    checkout: { sessions: { retrieve: stripeApi.sessionsRetrieve } },
+    refunds: { create: stripeApi.refundsCreate, list: stripeApi.refundsList },
+  },
 }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getAdminOrderRefundTarget: () => Promise.resolve(target.current) }))
 vi.mock("~/src/modules/order/order.restock.server", () => ({ returnOrderToStock }))
@@ -80,6 +92,7 @@ beforeEach(() => {
   target.current = PAID_TARGET
   stripeApi.sessionsRetrieve.mockResolvedValue({ payment_intent: "pi_test_paid", payment_status: "paid" })
   stripeApi.refundsCreate.mockResolvedValue({ id: "re_test_1" })
+  stripeApi.refundsList.mockReturnValue(listedRefunds([]))
   returnOrderToStock.mockResolvedValue(true)
 })
 
@@ -125,6 +138,23 @@ describe("refundAdminOrder", () => {
     expect(stripeApi.refundsCreate).toHaveBeenCalledWith(
       { metadata: { orderId: ORDER_ID }, payment_intent: "pi_test_expanded" },
       IDEMPOTENCY,
+    )
+  })
+
+  it("reads the refunds already made on the PaymentIntent before it asks for another", async () => {
+    await refundAdminOrder({ data: KEEP_OUT_OF_STOCK })
+
+    expect(stripeApi.refundsList).toHaveBeenCalledExactlyOnceWith({ limit: 100, payment_intent: "pi_test_paid" })
+  })
+
+  it("asks again under a new idempotency key once Stripe failed or cancelled the earlier refunds, so the new refund reaches Stripe", async () => {
+    stripeApi.refundsList.mockReturnValue(listedRefunds(["failed", "succeeded", "canceled", null, "pending"]))
+
+    await refundAdminOrder({ data: KEEP_OUT_OF_STOCK })
+
+    expect(stripeApi.refundsCreate).toHaveBeenCalledWith(
+      { metadata: { orderId: ORDER_ID }, payment_intent: "pi_test_paid" },
+      { idempotencyKey: `admin-order-refund-${ORDER_ID}-2` },
     )
   })
 

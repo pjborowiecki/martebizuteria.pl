@@ -59,14 +59,20 @@ const attemptOrderRefundedEmail = async (
   return { failure, label: `${ORDER_REFUNDED_LABEL} → ${orderRow.email}` }
 }
 
-export const sendOrderRefundedEmail = (refund: Order["unannouncedRefund"], returnUrl: string | undefined): Promise<boolean> =>
+const refundEmailIdempotencyKey = ({ orderId, refundId, refundedTotal }: Order["refundEmail"]): string =>
+  refundId === undefined
+    ? `${ORDER_EMAIL_KIND.REFUNDED}/${orderId}/${refundedTotal}`
+    : `${ORDER_EMAIL_KIND.REFUNDED}/${orderId}/${refundId}`
+
+export const sendOrderRefundedEmail = (refund: Order["refundEmail"], returnUrl: string | undefined): Promise<boolean> =>
   deliverOrderEmail((idempotencyKey) => attemptOrderRefundedEmail(refund, returnUrl, idempotencyKey), {
-    idempotencyKey: `${ORDER_EMAIL_KIND.REFUNDED}/${refund.orderId}/${refund.refundedTotal}`,
+    idempotencyKey: refundEmailIdempotencyKey(refund),
     label: ORDER_REFUNDED_LABEL,
     orderEmail: {
       amount: refund.amount,
       fullyRefunded: refund.fullyRefunded,
       kind: ORDER_EMAIL_KIND.REFUNDED,
+      refundId: refund.refundId,
       refundedTotal: refund.refundedTotal,
     },
     orderId: refund.orderId,

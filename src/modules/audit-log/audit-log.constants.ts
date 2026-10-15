@@ -73,6 +73,7 @@ export const AUDIT_LOG_ACTION = {
   ORDER_PAYMENT_CAPTURED: "order.payment_captured",
   ORDER_PAYMENT_FAILED: "order.payment_failed",
   ORDER_PLACED: "order.placed",
+  ORDER_REFUND_FAILED: "order.refund_failed",
   ORDER_REFUND_INITIATED: "order.refund_initiated",
   ORDER_REFUND_REQUESTED: "order.refund_requested",
   ORDER_RELEASED: "order.released",

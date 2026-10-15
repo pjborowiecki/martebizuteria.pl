@@ -512,6 +512,16 @@ export const recordOrderRefundAudit = (orderId: string, options?: AuditEventOpti
   })
 }
 
+export const recordOrderRefundFailedAudit = (orderId: string, refundId: string, options?: AuditEventOptions): void => {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.ORDER_REFUND_FAILED,
+    category: "orders",
+    id: `${AUDIT_LOG_ACTION.ORDER_REFUND_FAILED}:${refundId}`,
+    severity: "warning",
+    ...withResourceId(orderId, options),
+  })
+}
+
 export const recordOrderRefundRequestedAudit = (orderId: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED,

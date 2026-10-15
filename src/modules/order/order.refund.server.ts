@@ -1,3 +1,4 @@
+import { isUndoneRefund, listRefunds } from "~/src/integrations/stripe/stripe.refunds.server"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 
@@ -29,6 +30,8 @@ export const requestFullOrderRefund = async (orderId: string, target: AdminOrder
     throw new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE)
   }
 
+  const earlierRefunds = await listRefunds({ payment_intent: paymentIntentId })
+  const undoneRefunds = earlierRefunds.filter((earlierRefund) => isUndoneRefund(earlierRefund))
   const refund = await stripe.refunds.create(
     {
       metadata: {
@@ -36,7 +39,7 @@ export const requestFullOrderRefund = async (orderId: string, target: AdminOrder
       },
       payment_intent: paymentIntentId,
     },
-    { idempotencyKey: `admin-order-refund-${orderId}` },
+    { idempotencyKey: `admin-order-refund-${orderId}-${undoneRefunds.length}` },
   )
   recordOrderRefundRequestedAudit(orderId)
 

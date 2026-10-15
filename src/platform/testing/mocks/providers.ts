@@ -162,6 +162,7 @@ const coupons = new Map<string, EmulatedCoupon>()
 const customers = new Map<string, EmulatedCustomer>()
 const paymentIntents = new Map<string, Readonly<Record<string, unknown>>>()
 const paymentMethods = new Map<string, EmulatedPaymentMethod>()
+const refunds = new Map<string, Readonly<Record<string, unknown>>>()
 const setupIntents = new Map<string, EmulatedSetupIntent>()
 const inpostShipments = new Map<number, EmulatedInpostShipment>()
 
@@ -514,17 +515,28 @@ const createSetupIntent = (form: StripeForm): Response => {
   return Response.json(intent)
 }
 
-const handleRefunds = (form: StripeForm): Response => {
+const createRefund = (form: StripeForm): Response => {
   const params = stripeRefundParamsSchema.parse(form)
-
-  return Response.json({
+  const refund = {
     amount: params.amount ?? paymentIntents.get(params.payment_intent)?.["amount"],
     currency: STRIPE_CURRENCY,
     id: stripeId("re"),
     object: "refund",
     payment_intent: params.payment_intent,
     status: "succeeded",
-  })
+  }
+  refunds.set(refund.id, refund)
+
+  return Response.json(refund)
+}
+
+const listRefunds = (url: URL): Response => {
+  const paymentIntent = url.searchParams.get("payment_intent")
+
+  return stripeList(
+    url,
+    [...refunds.values()].filter((refund) => refund["payment_intent"] === paymentIntent),
+  )
 }
 
 const emulateStripe = async (request: Request, url: URL): Promise<Response> => {
@@ -556,8 +568,11 @@ const emulateStripe = async (request: Request, url: URL): Promise<Response> => {
     case "POST customers": {
       return handleCustomers(form)
     }
+    case "GET refunds": {
+      return listRefunds(url)
+    }
     case "POST refunds": {
-      return handleRefunds(form)
+      return createRefund(form)
     }
     case "POST setup_intents": {
       return createSetupIntent(form)

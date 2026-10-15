@@ -266,6 +266,34 @@ describe("describeAuditLogDetail for coded values", () => {
     expect(describeRow(AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED, detail)).toStrictEqual({ kind: "text", text: detail })
   })
 
+  it("reads the amount, status and Stripe's reason of a refund that failed", () => {
+    expect(describeRow(AUDIT_LOG_ACTION.ORDER_REFUND_FAILED, "38900 — failed — lost_or_stolen_card")).toStrictEqual({
+      kind: "values",
+      values: [
+        { field: "amount", value: 38_900 },
+        { field: "refundStatus", value: "failed" },
+        { field: "refundFailureReason", value: "lost_or_stolen_card" },
+      ],
+    })
+  })
+
+  it("reads a cancelled refund Stripe gave no reason for", () => {
+    expect(describeRow(AUDIT_LOG_ACTION.ORDER_REFUND_FAILED, "5000 — canceled")).toStrictEqual({
+      kind: "values",
+      values: [
+        { field: "amount", value: 5000 },
+        { field: "refundStatus", value: "canceled" },
+      ],
+    })
+  })
+
+  it.each([["38900"], ["38,900 — failed"], ["38900 — failed — declined — again"]])(
+    "keeps the failed refund %j it cannot split as text",
+    (detail) => {
+      expect(describeRow(AUDIT_LOG_ACTION.ORDER_REFUND_FAILED, detail)).toStrictEqual({ kind: "text", text: detail })
+    },
+  )
+
   it("reads the status a dispute closed with", () => {
     expect(describeRow(AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED, "won")).toStrictEqual({
       kind: "values",
@@ -273,10 +301,12 @@ describe("describeAuditLogDetail for coded values", () => {
     })
   })
 
-  it.each([[AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED], [AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED], [AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED]])(
-    "records no detail for a %s entry without one",
-    (action) => {
-      expect(describeRow(action, null)).toBeUndefined()
-    },
-  )
+  it.each([
+    [AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED],
+    [AUDIT_LOG_ACTION.ORDER_DISPUTE_CLOSED],
+    [AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED],
+    [AUDIT_LOG_ACTION.ORDER_REFUND_FAILED],
+  ])("records no detail for a %s entry without one", (action) => {
+    expect(describeRow(action, null)).toBeUndefined()
+  })
 })

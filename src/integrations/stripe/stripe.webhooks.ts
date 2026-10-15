@@ -13,6 +13,7 @@ import {
   createOrderFromPaidSession,
   formatPaidAmount,
 } from "~/src/integrations/stripe/stripe.fulfillment.server"
+import { isUndoneRefund, readStandingRefunds } from "~/src/integrations/stripe/stripe.refunds.server"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 
@@ -36,6 +37,7 @@ import { clearOrderDispute } from "~/src/modules/order/use-cases/clear-order-dis
 import { flagOrderDispute } from "~/src/modules/order/use-cases/flag-order-dispute"
 import { refundOrder } from "~/src/modules/order/use-cases/refund-order"
 import { sendOrderRefundedEmail } from "~/src/modules/order/use-cases/send-order-refunded-email.server"
+import { lowerRefundedAmount, undoFailedRefund } from "~/src/modules/order/use-cases/undo-failed-refund"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { sendIncidentAlert } from "~/src/lib/incident-alert.server"
@@ -136,6 +138,20 @@ const handlePaymentIntentFailed = (paymentIntent: StripeType.PaymentIntent): Pro
   return Promise.resolve()
 }
 
+const lowerRefundsFailedMeanwhile = async (chargeId: string, transactionId: string, recordedTotal: number): Promise<boolean> => {
+  const { total } = await readStandingRefunds(chargeId)
+  if (total >= recordedTotal) {
+    return false
+  }
+
+  await lowerRefundedAmount({ refundedAmount: total, transactionId })
+  console.warn(
+    `A refund of charge ${chargeId} failed while it was recorded; the payment records ${total} and the customer was not emailed.`,
+  )
+
+  return true
+}
+
 const handleChargeRefunded = async (charge: StripeType.Charge): Promise<void> => {
   const session = await resolveCheckoutSession(charge.payment_intent)
   if (session === undefined) {
@@ -144,20 +160,72 @@ const handleChargeRefunded = async (charge: StripeType.Charge): Promise<void> =>
     return
   }
 
-  const unannouncedRefund = await refundOrder({
-    fullyRefunded: charge.amount_refunded >= charge.amount,
-    refundedAmount: charge.amount_refunded,
-    transactionId: session.id,
-  })
-  scheduleAdminOrdersInvalidation()
-  console.info(`Recorded refund of ${charge.amount_refunded} for charge ${charge.id}.`)
-  if (unannouncedRefund === undefined) {
+  const standingRefunds = await readStandingRefunds(charge.id)
+  if (standingRefunds.latestId === undefined) {
+    console.info(`Charge ${charge.id} has no refund that still stands; nothing to record.`)
+
     return
   }
 
-  const refundEmailDelivery = sendOrderRefundedEmail(unannouncedRefund, session.return_url)
+  const unannouncedRefund = await refundOrder({
+    fullyRefunded: standingRefunds.total >= charge.amount,
+    refundedAmount: standingRefunds.total,
+    transactionId: session.id,
+  })
+  scheduleAdminOrdersInvalidation()
+  console.info(`Recorded refund of ${standingRefunds.total} for charge ${charge.id}.`)
+  if ((await lowerRefundsFailedMeanwhile(charge.id, session.id, standingRefunds.total)) || unannouncedRefund === undefined) {
+    return
+  }
+
+  const refundEmailDelivery = sendOrderRefundedEmail({ ...unannouncedRefund, refundId: standingRefunds.latestId }, session.return_url)
   scheduleBackgroundWork(refundEmailDelivery)
   await refundEmailDelivery
+}
+
+const describeUndoneRefund = (
+  refund: StripeType.Refund & { readonly status: string },
+  session: StripeType.Checkout.Session,
+  orderNumber: string,
+): string =>
+  [
+    orderNumber,
+    formatPaidAmount(refund.amount, resolveCheckoutSessionCurrency(session), resolveCheckoutSessionLocale(session)),
+    refund.status,
+    refund.failure_reason,
+  ]
+    .filter((fact): fact is string => fact !== undefined)
+    .join(" — ")
+
+const handleRefundUndone = async (refund: StripeType.Refund): Promise<void> => {
+  if (!isUndoneRefund(refund)) {
+    return
+  }
+
+  const chargeId = resolveStripeObjectId(refund.charge)
+  const session = await resolveCheckoutSession(refund.payment_intent)
+  if (chargeId === undefined || session === undefined) {
+    console.info(`Refund ${refund.id} ${refund.status} but no Checkout Session resolved; skipping.`)
+
+    return
+  }
+
+  const { total } = await readStandingRefunds(chargeId)
+  const failedRefund = await undoFailedRefund({
+    refund: { amount: refund.amount, failureReason: refund.failure_reason, id: refund.id, status: refund.status },
+    refundedAmount: total,
+    transactionId: session.id,
+  })
+  if (failedRefund === undefined) {
+    console.info(`Refund ${refund.id} ${refund.status} but Checkout Session ${session.id} has no order; skipping.`)
+
+    return
+  }
+
+  scheduleAdminOrdersInvalidation()
+  const detail = describeUndoneRefund(refund, session, failedRefund.orderNumber)
+  console.warn(`Refund ${refund.id} did not reach the customer; the shop was alerted: ${detail}`)
+  scheduleBackgroundWork(sendIncidentAlert({ detail, kind: "refundFailed", reference: refund.id }))
 }
 
 const handleChargeDisputeCreated = async (dispute: StripeType.Dispute): Promise<void> => {
@@ -238,5 +306,11 @@ export const webhookHandlers: Record<string, (event: StripeType.Event) => Promis
   },
   [STRIPE_WEBHOOK_EVENTS.PAYMENT_INTENT_PAYMENT_FAILED]: async (event) => {
     await handlePaymentIntentFailed(z.custom<StripeType.PaymentIntent>().parse(event.data.object))
+  },
+  [STRIPE_WEBHOOK_EVENTS.REFUND_FAILED]: async (event) => {
+    await handleRefundUndone(z.custom<StripeType.Refund>().parse(event.data.object))
+  },
+  [STRIPE_WEBHOOK_EVENTS.REFUND_UPDATED]: async (event) => {
+    await handleRefundUndone(z.custom<StripeType.Refund>().parse(event.data.object))
   },
 }

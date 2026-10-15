@@ -165,37 +165,6 @@ describe("resendOrderEmail", () => {
     expect(notify.cancelled).toHaveBeenCalledExactlyOnceWith({ orderId: ORDER_ID, refundedAmount: 38_900 }, SHOP_ORIGIN)
   })
 
-  it("sends the shop's new-order notice again, linked through the order's Checkout Session", async () => {
-    orders.getAdminOrderTimelineRows.mockResolvedValue(failedDelivery({ kind: "new-order" }))
-
-    await resend()
-
-    expect(orders.getAdminOrderRefundTarget).toHaveBeenCalledWith(ORDER_ID)
-    expect(sessionsRetrieve).toHaveBeenCalledExactlyOnceWith("cs_paid")
-    expect(notify.newOrder).toHaveBeenCalledExactlyOnceWith(ORDER_ID, RETURN_URL)
-  })
-
-  it("sends a refund email again with the amount of that refund", async () => {
-    orders.getAdminOrderTimelineRows.mockResolvedValue(
-      failedDelivery({ amount: 5000, fullyRefunded: false, kind: "order-refunded", refundedTotal: 8000 }),
-    )
-
-    await resend()
-
-    expect(notify.refunded).toHaveBeenCalledExactlyOnceWith(
-      { amount: 5000, fullyRefunded: false, orderId: ORDER_ID, refundedTotal: 8000 },
-      RETURN_URL,
-    )
-  })
-
-  it("sends the order confirmation again from the order's Checkout Session", async () => {
-    orders.getAdminOrderTimelineRows.mockResolvedValue(failedDelivery({ kind: "order-confirmation" }))
-
-    await resend()
-
-    expect(notify.confirmed).toHaveBeenCalledExactlyOnceWith(CHECKOUT_SESSION, ORDER_ID)
-  })
-
   it("reports an email Resend refused again as not sent", async () => {
     notify.shipped.mockResolvedValue(false)
 
@@ -228,20 +197,6 @@ describe("resendOrderEmail", () => {
     expect(notify.shipped).not.toHaveBeenCalled()
   })
 
-  it.each([
-    ["has no payment", undefined],
-    ["has no Stripe transaction", { transactionId: null }],
-    ["has an empty Stripe transaction", { transactionId: "" }],
-  ])("refuses to rebuild a webhook email for an order that %s", async (_case, target) => {
-    orders.getAdminOrderRefundTarget.mockResolvedValue(target)
-    orders.getAdminOrderTimelineRows.mockResolvedValue(failedDelivery({ kind: "order-confirmation" }))
-
-    await expect(resend()).rejects.toStrictEqual(INVALID_STATE)
-
-    expect(sessionsRetrieve).not.toHaveBeenCalled()
-    expect(notify.confirmed).not.toHaveBeenCalled()
-  })
-
   it("refuses an event id that cannot name an audit entry", () => {
     expect(() => resendOrderEmail({ data: { eventId: "audit-1", orderId: ORDER_ID } })).toThrow()
   })
@@ -254,5 +209,65 @@ describe("resendOrderEmail", () => {
     await expect(
       new MutationObserver(new QueryClient(), resendOrderEmailMutation).mutate({ eventId: FAILED_EVENT_ID, orderId: ORDER_ID }),
     ).resolves.toStrictEqual({ emailSent: true, ok: true, orderId: ORDER_ID })
+  })
+})
+
+describe("resendOrderEmail for an email built from the order's Checkout Session", () => {
+  it("sends the shop's new-order notice again, linked through the order's Checkout Session", async () => {
+    orders.getAdminOrderTimelineRows.mockResolvedValue(failedDelivery({ kind: "new-order" }))
+
+    await resend()
+
+    expect(orders.getAdminOrderRefundTarget).toHaveBeenCalledWith(ORDER_ID)
+    expect(sessionsRetrieve).toHaveBeenCalledExactlyOnceWith("cs_paid")
+    expect(notify.newOrder).toHaveBeenCalledExactlyOnceWith(ORDER_ID, RETURN_URL)
+  })
+
+  it("sends a refund email again with the amount and the Stripe refund of that refund", async () => {
+    orders.getAdminOrderTimelineRows.mockResolvedValue(
+      failedDelivery({ amount: 5000, fullyRefunded: false, kind: "order-refunded", refundId: "re_partial", refundedTotal: 8000 }),
+    )
+
+    await resend()
+
+    expect(notify.refunded).toHaveBeenCalledExactlyOnceWith(
+      { amount: 5000, fullyRefunded: false, orderId: ORDER_ID, refundId: "re_partial", refundedTotal: 8000 },
+      RETURN_URL,
+    )
+  })
+
+  it("sends a refund email recorded before emails named their Stripe refund again without one", async () => {
+    orders.getAdminOrderTimelineRows.mockResolvedValue(
+      failedDelivery({ amount: 5000, fullyRefunded: false, kind: "order-refunded", refundedTotal: 8000 }),
+    )
+
+    await resend()
+
+    expect(notify.refunded).toHaveBeenCalledExactlyOnceWith(
+      { amount: 5000, fullyRefunded: false, orderId: ORDER_ID, refundId: undefined, refundedTotal: 8000 },
+      RETURN_URL,
+    )
+  })
+
+  it("sends the order confirmation again from the order's Checkout Session", async () => {
+    orders.getAdminOrderTimelineRows.mockResolvedValue(failedDelivery({ kind: "order-confirmation" }))
+
+    await resend()
+
+    expect(notify.confirmed).toHaveBeenCalledExactlyOnceWith(CHECKOUT_SESSION, ORDER_ID)
+  })
+
+  it.each([
+    ["has no payment", undefined],
+    ["has no Stripe transaction", { transactionId: null }],
+    ["has an empty Stripe transaction", { transactionId: "" }],
+  ])("refuses to rebuild a webhook email for an order that %s", async (_case, target) => {
+    orders.getAdminOrderRefundTarget.mockResolvedValue(target)
+    orders.getAdminOrderTimelineRows.mockResolvedValue(failedDelivery({ kind: "order-confirmation" }))
+
+    await expect(resend()).rejects.toStrictEqual(INVALID_STATE)
+
+    expect(sessionsRetrieve).not.toHaveBeenCalled()
+    expect(notify.confirmed).not.toHaveBeenCalled()
   })
 })

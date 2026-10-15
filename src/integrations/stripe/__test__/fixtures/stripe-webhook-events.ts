@@ -269,6 +269,53 @@ export const paymentIntent = ({
   transfer_group: null,
 })
 
+export const refund = ({
+  amount,
+  charge: refundedCharge = "ch_test_1",
+  failureReason,
+  id = "re_test_1",
+  paymentIntent: refundedPaymentIntent = "pi_test_1",
+  status,
+}: Readonly<{
+  amount: number
+  charge?: string | null
+  failureReason?: string
+  id?: string
+  paymentIntent?: string | null
+  status: string | null
+}>): Stripe.Refund => ({
+  amount,
+  balance_transaction: null,
+  charge: refundedCharge,
+  created: EVENT_CREATED_AT,
+  currency: "pln",
+  customer: null,
+  customer_account: null,
+  ...(failureReason === undefined ? {} : { failure_reason: failureReason }),
+  id,
+  metadata: {},
+  object: "refund",
+  payment_intent: refundedPaymentIntent,
+  payment_method: null,
+  reason: null,
+  receipt_number: null,
+  source_transfer_reversal: null,
+  status,
+  transfer_reversal: null,
+})
+
+export const refundFailedEvent = (failedRefund: Stripe.Refund): Stripe.RefundFailedEvent => ({
+  ...EVENT_BASE,
+  data: { object: failedRefund },
+  type: STRIPE_WEBHOOK_EVENTS.REFUND_FAILED,
+})
+
+export const refundUpdatedEvent = (updatedRefund: Stripe.Refund): Stripe.RefundUpdatedEvent => ({
+  ...EVENT_BASE,
+  data: { object: updatedRefund },
+  type: STRIPE_WEBHOOK_EVENTS.REFUND_UPDATED,
+})
+
 export const checkoutSessionCompletedEvent = (session: Stripe.Checkout.Session): Stripe.CheckoutSessionCompletedEvent => ({
   ...EVENT_BASE,
   data: { object: session },

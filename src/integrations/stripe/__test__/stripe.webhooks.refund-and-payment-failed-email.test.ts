@@ -8,24 +8,35 @@ import { type Order } from "~/src/modules/order/order.types"
 
 type PaymentFailedElement = ReactElement<ComponentProps<typeof PaymentFailed>>
 
-const { recordOrderEmailOutcome, recordOrderReleasedAudit, refundOrder, releaseCheckout, sendEmail, sendOrderRefundedEmail, sessionsList } =
-  vi.hoisted(() => ({
-    recordOrderEmailOutcome: vi.fn(),
-    recordOrderReleasedAudit: vi.fn(),
-    refundOrder: vi.fn<(input: Order["refundInput"]) => Promise<Order["unannouncedRefund"] | undefined>>(),
-    releaseCheckout: vi.fn<(input: object) => Promise<boolean>>(),
-    sendEmail:
-      vi.fn<
-        (
-          options: Readonly<{ idempotencyKey?: string; react: PaymentFailedElement; subject: string; to: string }>,
-        ) => Promise<string | undefined>
-      >(),
-    sendOrderRefundedEmail: vi.fn<(refund: Order["unannouncedRefund"], returnUrl: string | undefined) => Promise<boolean>>(),
-    sessionsList: vi.fn<(params: object) => Promise<{ data: Stripe.Checkout.Session[] }>>(),
-  }))
+const {
+  recordOrderEmailOutcome,
+  recordOrderReleasedAudit,
+  refundOrder,
+  refundsList,
+  releaseCheckout,
+  sendEmail,
+  sendOrderRefundedEmail,
+  sessionsList,
+} = vi.hoisted(() => ({
+  recordOrderEmailOutcome: vi.fn(),
+  recordOrderReleasedAudit: vi.fn(),
+  refundOrder: vi.fn<(input: Order["refundInput"]) => Promise<Order["unannouncedRefund"] | undefined>>(),
+  refundsList: vi.fn<(params: object) => { autoPagingToArray: (options: object) => Promise<Stripe.Refund[]> }>(),
+  releaseCheckout: vi.fn<(input: object) => Promise<boolean>>(),
+  sendEmail:
+    vi.fn<
+      (
+        options: Readonly<{ idempotencyKey?: string; react: PaymentFailedElement; subject: string; to: string }>,
+      ) => Promise<string | undefined>
+    >(),
+  sendOrderRefundedEmail: vi.fn<(refund: Order["refundEmail"], returnUrl: string | undefined) => Promise<boolean>>(),
+  sessionsList: vi.fn<(params: object) => Promise<{ data: Stripe.Checkout.Session[] }>>(),
+}))
 
 vi.mock("cloudflare:workers", () => ({ env: {} }))
-vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { checkout: { sessions: { list: sessionsList } } } }))
+vi.mock("~/src/integrations/stripe/stripe.server", () => ({
+  stripe: { checkout: { sessions: { list: sessionsList } }, refunds: { list: refundsList } },
+}))
 vi.mock("~/src/integrations/stripe/stripe.coupons.server", () => ({ deleteCheckoutCoupons: vi.fn(() => Promise.resolve(undefined)) }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/modules/order/use-cases/send-order-refunded-email.server", () => ({ sendOrderRefundedEmail }))
@@ -42,6 +53,7 @@ vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderTotalsForEmail: 
 vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder }))
+vi.mock("~/src/modules/order/use-cases/undo-failed-refund", () => ({ lowerRefundedAmount: vi.fn(), undoFailedRefund: vi.fn() }))
 
 import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
 
@@ -51,6 +63,7 @@ import {
   checkoutSession,
   checkoutSessionAsyncPaymentFailedEvent,
   checkoutSessionExpiredEvent,
+  refund,
 } from "./fixtures/stripe-webhook-events"
 import englishCopy from "~/messages/en-US/emails.payment-failed.json"
 import polishCopy from "~/messages/pl-PL/emails.payment-failed.json"
@@ -109,6 +122,13 @@ beforeEach(() => {
   sendEmail.mockResolvedValue(undefined)
   refundOrder.mockResolvedValue(PARTIAL_REFUND)
   sendOrderRefundedEmail.mockResolvedValue(true)
+  refundsList.mockReturnValue({
+    autoPagingToArray: () =>
+      Promise.resolve([
+        refund({ amount: 3000, id: "re_newest", status: "pending" }),
+        refund({ amount: 2000, id: "re_older", status: "succeeded" }),
+      ]),
+  })
   sessionsList.mockResolvedValue({ data: [checkoutSession({ id: "cs_resolved_1", returnUrl: RETURN_URL })] })
 })
 
@@ -258,11 +278,11 @@ describe("failed asynchronous payment email", () => {
 })
 
 describe("refund email", () => {
-  it("announces a refund the order had not announced, linked through the session's return URL", async () => {
+  it("announces a refund the order had not announced under the newest Stripe refund, linked through the session's return URL", async () => {
     await dispatch(chargeRefundedEvent(charge({ amount: AMOUNT_TOTAL, amountRefunded: 5000, paymentIntent: "pi_test_1" })))
 
     expect(refundOrder).toHaveBeenCalledWith({ fullyRefunded: false, refundedAmount: 5000, transactionId: "cs_resolved_1" })
-    expect(sendOrderRefundedEmail).toHaveBeenCalledExactlyOnceWith(PARTIAL_REFUND, RETURN_URL)
+    expect(sendOrderRefundedEmail).toHaveBeenCalledExactlyOnceWith({ ...PARTIAL_REFUND, refundId: "re_newest" }, RETURN_URL)
   })
 
   it("sends nothing for a refund the cancellation or an earlier delivery already announced", async () => {
