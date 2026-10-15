@@ -27,7 +27,7 @@ export const TwoFactorBackupStep = ({ backupCodes, onAcknowledge }: Readonly<Two
             <li key={backupCode}>{backupCode}</li>
           ))}
         </ul>
-        <Button className="mt-3 w-full gap-2" onClick={copyBackupCodes} type="button" variant="outline">
+        <Button className="mt-3 w-full gap-2 pointer-coarse:h-10" onClick={copyBackupCodes} type="button" variant="outline">
           <Copy className="size-3.5" strokeWidth={1.5} />
           {t("copyBackupCodes")}
         </Button>

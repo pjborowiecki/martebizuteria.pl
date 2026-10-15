@@ -10,8 +10,8 @@ import { type TotpCodeFormValues, totpCodeSchema } from "~/src/integrations/bett
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/src/presentation/components/shadcn/dialog"
-import { Input } from "~/src/presentation/components/shadcn/input"
 import { Label } from "~/src/presentation/components/shadcn/label"
+import { Textarea } from "~/src/presentation/components/shadcn/textarea"
 
 import { TwoFactorQr } from "~/src/presentation/components/custom/pages/account/profile/sections/two-factor-qr"
 import { AuthTextField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
@@ -63,8 +63,21 @@ export const TwoFactorScanStep = ({ onCancel, onSubmit, totpUri }: Readonly<TwoF
         <div className="space-y-1.5">
           <Label htmlFor="two-factor-setup-key">{t("manualKey")}</Label>
           <div className="flex gap-2">
-            <Input className="font-mono text-xs" id="two-factor-setup-key" readOnly value={setupKey} />
-            <Button aria-label={t("copyKey")} onClick={copySetupKey} size="icon" type="button" variant="outline">
+            <Textarea
+              className="field-sizing-content min-h-11 resize-none py-3.5 font-mono text-xs wrap-anywhere"
+              id="two-factor-setup-key"
+              readOnly
+              rows={2}
+              value={setupKey}
+            />
+            <Button
+              aria-label={t("copyKey")}
+              className="pointer-coarse:size-10"
+              onClick={copySetupKey}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
               <Copy className="size-3.5" strokeWidth={1.5} />
             </Button>
           </div>

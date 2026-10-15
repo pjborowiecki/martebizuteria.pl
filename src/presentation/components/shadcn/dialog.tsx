@@ -53,7 +53,7 @@ const DialogContent = ({ children, className, showCloseButton = true, ...props }
       <DialogOverlay />
       <DialogPrimitive.Popup
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-popover p-4 text-xs/relaxed text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-lg bg-popover p-4 text-xs/relaxed text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
         )}
         data-slot="dialog-content"
@@ -80,7 +80,11 @@ const DialogFooter = ({ children, className, showCloseButton = false, ...props }
   }
 
   return (
-    <div className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", className)} data-slot="dialog-footer" {...props}>
+    <div
+      className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pointer-coarse:[&>[data-slot=button]]:h-10", className)}
+      data-slot="dialog-footer"
+      {...props}
+    >
       {children}
       {closeButtonNode}
     </div>
