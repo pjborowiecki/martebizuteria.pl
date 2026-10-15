@@ -147,6 +147,18 @@ describe("CustomerOrders", () => {
     expect(missingLabel).toHaveBeenCalled()
   })
 
+  it("fills the rest of the main column on wide, tall screens and scrolls a long history inside its card", () => {
+    const { container } = renderWithProviders(<CustomerOrders customer={detail([order()])} />)
+
+    expect(container.firstElementChild).toHaveClass(
+      "flex",
+      "flex-col",
+      "2xl:[@media(min-height:57rem)]:min-h-60",
+      "2xl:[@media(min-height:57rem)]:flex-1",
+    )
+    expect(screen.getByRole("table").closest("[data-slot='customer-orders-scroll']")).toHaveClass("min-h-0", "overflow-y-auto")
+  })
+
   it("renders one row per order", () => {
     renderWithProviders(<CustomerOrders customer={detail([order(), order({ id: "ord_2", orderNumber: "MRT-2026-00002" })])} />)
 

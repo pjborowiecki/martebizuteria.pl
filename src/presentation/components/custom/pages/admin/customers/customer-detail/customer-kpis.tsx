@@ -9,6 +9,7 @@ import { formatAdminCustomerDetailKpiPrice } from "~/src/modules/user/user.utils
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
 import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
+import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.styles"
 
 export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
@@ -43,7 +44,7 @@ export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
   return (
     <div className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-4">
       {kpis.map((kpi) => (
-        <Card key={kpi.label} className="shadow-none">
+        <Card key={kpi.label} className={CUSTOMER_DETAIL_CARD_CLASS}>
           <CardContent className="p-5">
             <div className="flex items-center gap-2">
               <div className="flex size-8 items-center justify-center rounded-md bg-secondary">

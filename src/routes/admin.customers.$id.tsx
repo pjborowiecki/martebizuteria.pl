@@ -14,10 +14,7 @@ import { Button } from "~/src/presentation/components/shadcn/button"
 import { type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
 import { ADMIN_HEADER_SECONDARY_BUTTON_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
-import { CustomerCharts } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-charts"
-import { CustomerKpis } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-kpis"
-import { CustomerOrders } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-orders"
-import { CustomerSidebar } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-sidebar"
+import { CustomerDetailPage } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail-page"
 import { CustomerSheet } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-sheet"
 
 import { ROUTES } from "~/src/routes"
@@ -67,17 +64,7 @@ const AdminCustomerDetailRoute = (): JSX.Element => {
     <>
       <AdminHeader backHref={ROUTES.ADMIN_CUSTOMERS} title={customer.name} breadcrumbs={breadcrumbs} actions={headerActions} />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-8">
-        <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
-          <div className="min-w-0 space-y-8">
-            <CustomerKpis customer={customer} />
-            <CustomerCharts customer={customer} />
-            <CustomerOrders customer={customer} />
-          </div>
-
-          <CustomerSidebar customer={customer} />
-        </div>
-      </div>
+      <CustomerDetailPage customer={customer} />
 
       {sheetOpen && <CustomerSheet customer={customer} open onOpenChange={setSheetOpen} />}
     </>
