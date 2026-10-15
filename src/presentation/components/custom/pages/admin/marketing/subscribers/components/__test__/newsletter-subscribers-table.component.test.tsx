@@ -4,14 +4,17 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 
 const calls = vi.hoisted(() => ({
+  erase: vi.fn<(input: { id: string }) => Promise<void>>(),
   exportSubscribers: vi.fn<(input: { data: unknown }) => Promise<Newsletter["adminListItem"][]>>(),
   page: vi.fn<(input: Record<string, unknown>) => Promise<SubscribersPage>>(),
   stats: vi.fn<() => Promise<Newsletter["adminStats"]>>(),
-  toastSuccess: vi.fn<(message: string) => void>(),
+  syncQueryInvalidation: vi.fn<(queryClient: object, queryKey: readonly string[]) => Promise<void>>(),
+  toastError: vi.fn<(message: string, options?: { description: string }) => void>(),
+  toastSuccess: vi.fn<(message: string, options?: { description: string }) => void>(),
+  unsubscribe: vi.fn<(input: { id: string }) => Promise<{ unsubscribed: boolean }>>(),
   writeText: vi.fn<(text: string) => Promise<void>>(),
 }))
 
@@ -23,7 +26,23 @@ interface SubscribersPage {
   readonly total: number
 }
 
-vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: calls.toastSuccess } }))
+vi.mock("sonner", () => ({ toast: { error: calls.toastError, success: calls.toastSuccess } }))
+vi.mock("~/src/integrations/tanstack-query/query.sync", () => ({ syncQueryInvalidation: calls.syncQueryInvalidation }))
+vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-newsletter-subscriber", async () => {
+  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+
+  return {
+    unsubscribeNewsletterSubscriberMutation: {
+      mutationFn: calls.unsubscribe,
+      mutationKey: NEWSLETTER_MUTATION_KEYS.UNSUBSCRIBE_SUBSCRIBER,
+    },
+  }
+})
+vi.mock("~/src/modules/newsletter/use-cases/erase-newsletter-subscriber", async () => {
+  const { NEWSLETTER_MUTATION_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
+
+  return { eraseNewsletterSubscriberMutation: { mutationFn: calls.erase, mutationKey: NEWSLETTER_MUTATION_KEYS.ERASE_SUBSCRIBER } }
+})
 vi.mock("~/src/modules/newsletter/use-cases/get-admin-newsletter-page", async () => {
   const { queryOptions } = await import("@tanstack/react-query")
   const { NEWSLETTER_QUERY_KEYS } = await import("~/src/modules/newsletter/newsletter.constants")
@@ -44,6 +63,8 @@ vi.mock("~/src/modules/newsletter/use-cases/export-admin-newsletter-subscribers"
 }))
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+
+import { NEWSLETTER_QUERY_KEYS, type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
 
 import {
   buildNewsletterStats,
@@ -96,12 +117,24 @@ const choose = async (select: string, option: string) => {
 
 const lastPageInput = () => calls.page.mock.calls.at(-1)?.[0]
 
+const SUBSCRIBER_ID = "5f0c2a8e-1b3d-4c5e-8f9a-0b1c2d3e4f50"
+
+const openRowMenuItem = async (email: string, item: string): Promise<void> => {
+  fireEvent.click(within(await rowOf(email)).getByRole("button", { name: "Actions" }))
+  fireEvent.click(await screen.findByRole("menuitem", { name: item }))
+}
+
+const notFound = (): Error => Object.assign(new Error("NEWSLETTER_SUBSCRIBER_NOT_FOUND"), { code: "NOT_FOUND" })
+
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
   calls.page.mockResolvedValue(pageOf([buildSubscriber()]))
   calls.stats.mockResolvedValue(buildNewsletterStats())
   calls.writeText.mockResolvedValue(undefined)
+  calls.unsubscribe.mockResolvedValue({ unsubscribed: true })
+  calls.erase.mockResolvedValue(undefined)
+  calls.syncQueryInvalidation.mockResolvedValue(undefined)
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: calls.writeText } })
 })
 
@@ -316,5 +349,114 @@ describe("NewsletterSubscribersTableContent toolbar", () => {
       expect(calls.page.mock.calls.length).toBeGreaterThan(pageReads)
     })
     expect(calls.stats).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe("NewsletterSubscribersTableContent unsubscribing", () => {
+  it("offers to unsubscribe only an address that is still on the newsletter", async () => {
+    calls.page.mockResolvedValue(pageOf([buildSubscriber({ status: "unsubscribed" })]))
+    renderSubscribers()
+    fireEvent.click(within(await rowOf("anna@example.com")).getByRole("button", { name: "Actions" }))
+
+    expect(await screen.findByRole("menuitem", { name: "Erase data" })).toBeInTheDocument()
+    expect(screen.queryByRole("menuitem", { name: "Unsubscribe" })).not.toBeInTheDocument()
+  })
+
+  it("confirms before unsubscribing an address and names it once it is out", async () => {
+    const { queryClient } = renderSubscribers()
+    await openRowMenuItem("anna@example.com", "Unsubscribe")
+    const dialog = await screen.findByRole("alertdialog")
+
+    expect(within(dialog).getByRole("heading", { name: "Unsubscribe this address?" })).toBeInTheDocument()
+    expect(within(dialog).getByText(/anna@example.com will stop receiving the newsletter/u)).toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Unsubscribe" }))
+
+    await waitFor(() => {
+      expect(calls.toastSuccess).toHaveBeenCalledExactlyOnceWith("Address unsubscribed", {
+        description: "anna@example.com will no longer receive the newsletter.",
+      })
+    })
+    expect(calls.unsubscribe.mock.calls[0]?.[0]).toStrictEqual({ id: SUBSCRIBER_ID })
+    expect(calls.erase).not.toHaveBeenCalled()
+    expect(calls.syncQueryInvalidation).toHaveBeenCalledExactlyOnceWith(queryClient, NEWSLETTER_QUERY_KEYS.ADMIN.ALL)
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    })
+  })
+
+  it("says the unsubscribe failed and keeps the confirmation open", async () => {
+    calls.unsubscribe.mockRejectedValue(new Error("database locked"))
+    renderSubscribers()
+    await openRowMenuItem("anna@example.com", "Unsubscribe")
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Unsubscribe" }))
+
+    await waitFor(() => {
+      expect(calls.toastError).toHaveBeenCalledExactlyOnceWith("The address could not be unsubscribed", {
+        description: "Nothing has changed. Please try again in a moment.",
+      })
+    })
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument()
+    expect(calls.toastSuccess).not.toHaveBeenCalled()
+  })
+
+  it("locks the confirmation while the address is being unsubscribed", async () => {
+    calls.unsubscribe.mockReturnValue(new Promise(() => {}))
+    renderSubscribers()
+    await openRowMenuItem("anna@example.com", "Unsubscribe")
+    const dialog = await screen.findByRole("alertdialog")
+    fireEvent.click(within(dialog).getByRole("button", { name: "Unsubscribe" }))
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole("button", { name: "Unsubscribe" })).toBeDisabled()
+    })
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeDisabled()
+  })
+})
+
+describe("NewsletterSubscribersTableContent erasing", () => {
+  it("confirms before erasing an address's data and says it is off the list once gone", async () => {
+    const { queryClient } = renderSubscribers()
+    await openRowMenuItem("anna@example.com", "Erase data")
+    const dialog = await screen.findByRole("alertdialog")
+
+    expect(within(dialog).getByRole("heading", { name: "Erase this subscriber's data?" })).toBeInTheDocument()
+    expect(within(dialog).getByText(/anna@example.com will be removed from the list/u)).toBeInTheDocument()
+
+    fireEvent.click(within(dialog).getByRole("button", { name: "Erase data" }))
+
+    await waitFor(() => {
+      expect(calls.toastSuccess).toHaveBeenCalledExactlyOnceWith("Data erased", {
+        description: "anna@example.com is no longer on the subscriber list.",
+      })
+    })
+    expect(calls.erase.mock.calls[0]?.[0]).toStrictEqual({ id: SUBSCRIBER_ID })
+    expect(calls.unsubscribe).not.toHaveBeenCalled()
+    expect(calls.syncQueryInvalidation).toHaveBeenCalledExactlyOnceWith(queryClient, NEWSLETTER_QUERY_KEYS.ADMIN.ALL)
+  })
+
+  it("says the address is already gone and refreshes the list when someone else removed it first", async () => {
+    calls.erase.mockRejectedValue(notFound())
+    const { queryClient } = renderSubscribers()
+    await openRowMenuItem("anna@example.com", "Erase data")
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Erase data" }))
+
+    await waitFor(() => {
+      expect(calls.toastError).toHaveBeenCalledExactlyOnceWith("The data could not be erased", {
+        description: "This address is no longer on the list. The table has been refreshed.",
+      })
+    })
+    expect(calls.syncQueryInvalidation).toHaveBeenCalledExactlyOnceWith(queryClient, NEWSLETTER_QUERY_KEYS.ADMIN.ALL)
+  })
+
+  it("closes the confirmation without erasing anything on cancel", async () => {
+    renderSubscribers()
+    await openRowMenuItem("anna@example.com", "Erase data")
+    fireEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Cancel" }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument()
+    })
+    expect(calls.erase).not.toHaveBeenCalled()
   })
 })

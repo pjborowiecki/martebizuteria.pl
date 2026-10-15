@@ -55,7 +55,7 @@ Następnie `toMinimalQueryKeyPrefixes` sprowadza ramkę do minimalnego zbioru kl
 
 ## Subskrypcje
 
-`ADMIN_REALTIME_QUERY_PREFIXES` ma 16 wpisów: strona i statystyki dziennika zdarzeń, zamówienia administracyjne, klienci administracyjni, pary `ALL`/`STATS` dla kategorii, kolekcji, produktów i atrybutów produktów, para `ADMIN.ALL`/`ADMIN.BY_HANDLE` stron treści, `ADMIN.SALES` ustawień sklepu oraz `ADMIN.LIST` kampanii newslettera. `STOREFRONT_REALTIME_QUERY_PREFIXES` ma 12: klucze produktów (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), dostępność koszyka, pary `ALL`/`BY_HANDLE` kategorii i kolekcji, `BY_HANDLE` stron treści oraz `SALES` ustawień sklepu.
+`ADMIN_REALTIME_QUERY_PREFIXES` ma 18 wpisów: strona i statystyki dziennika zdarzeń, zamówienia administracyjne, klienci administracyjni, pary `ALL`/`STATS` dla kategorii, kolekcji, produktów i atrybutów produktów, para `ADMIN.ALL`/`ADMIN.BY_HANDLE` stron treści, `ADMIN.SALES` ustawień sklepu, `ADMIN.LIST` kampanii newslettera oraz para `ADMIN.PAGE`/`ADMIN.STATS` subskrybentów newslettera. `STOREFRONT_REALTIME_QUERY_PREFIXES` ma 12: klucze produktów (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), dostępność koszyka, pary `ALL`/`BY_HANDLE` kategorii i kolekcji, `BY_HANDLE` stron treści oraz `SALES` ustawień sklepu.
 
 Obie listy są zbudowane ze stałych `*_QUERY_KEYS` samych modułów i typowane jako `as const satisfies readonly QueryKey[]`, więc zmiana nazwy klucza jest błędem typu, a nie po cichu martwą subskrypcją.
 
@@ -63,16 +63,17 @@ Obie listy są zbudowane ze stałych `*_QUERY_KEYS` samych modułów i typowane 
 
 `realtime-invalidation.catalog.server.ts` udostępnia osiem publikatorów, z których korzysta warstwa domenowa; każdy nazywa odbiorców, których dotyczy:
 
-| Publikator                                    | Klucze administracyjne                         | Klucze sklepu                                                                  |
-| --------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------ |
-| `scheduleProductCatalogInvalidation`          | produkt `ADMIN.ALL`, `ADMIN.STATS`             | pięć kluczy produktu plus dostępność koszyka                                   |
-| `scheduleCategoryCatalogInvalidation`         | kategoria `ADMIN.ALL`, `ADMIN.STATS`           | kategoria `ALL`, `BY_HANDLE`                                                   |
-| `scheduleCollectionCatalogInvalidation`       | kolekcja `ADMIN.ALL`, `ADMIN.STATS`            | kolekcja `ALL`, `BY_HANDLE`, produkt `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
-| `scheduleContentPageInvalidation`             | strona treści `ADMIN.ALL`, `ADMIN.BY_HANDLE`   | strona treści `BY_HANDLE`                                                      |
-| `scheduleProductAttributeCatalogInvalidation` | atrybut `ADMIN.ALL`, `ADMIN.STATS`             | —                                                                              |
-| `scheduleAdminCustomersInvalidation`          | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                                              |
-| `scheduleAdminOrdersInvalidation`             | zamówienie `ADMIN.ORDERS`                      | —                                                                              |
-| `scheduleSalesStatusInvalidation`             | ustawienia sklepu `ADMIN.SALES`                | ustawienia sklepu `SALES`                                                      |
+| Publikator                                       | Klucze administracyjne                         | Klucze sklepu                                                                  |
+| ------------------------------------------------ | ---------------------------------------------- | ------------------------------------------------------------------------------ |
+| `scheduleProductCatalogInvalidation`             | produkt `ADMIN.ALL`, `ADMIN.STATS`             | pięć kluczy produktu plus dostępność koszyka                                   |
+| `scheduleCategoryCatalogInvalidation`            | kategoria `ADMIN.ALL`, `ADMIN.STATS`           | kategoria `ALL`, `BY_HANDLE`                                                   |
+| `scheduleCollectionCatalogInvalidation`          | kolekcja `ADMIN.ALL`, `ADMIN.STATS`            | kolekcja `ALL`, `BY_HANDLE`, produkt `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
+| `scheduleContentPageInvalidation`                | strona treści `ADMIN.ALL`, `ADMIN.BY_HANDLE`   | strona treści `BY_HANDLE`                                                      |
+| `scheduleProductAttributeCatalogInvalidation`    | atrybut `ADMIN.ALL`, `ADMIN.STATS`             | —                                                                              |
+| `scheduleAdminCustomersInvalidation`             | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                                              |
+| `scheduleAdminNewsletterSubscribersInvalidation` | newsletter `ADMIN.PAGE`, `ADMIN.STATS`         | —                                                                              |
+| `scheduleAdminOrdersInvalidation`                | zamówienie `ADMIN.ORDERS`                      | —                                                                              |
+| `scheduleSalesStatusInvalidation`                | ustawienia sklepu `ADMIN.SALES`                | ustawienia sklepu `SALES`                                                      |
 
 Forma `schedule*` przekazuje publikację do `scheduleBackgroundWork`, więc wykonuje się pod `waitUntil` i nigdy nie opóźnia odpowiedzi. `publishRealtimeInvalidation` to forma oczekiwana, używana tam, gdzie nie ma żądania, z którego można wrócić — konsument kolejki audytu czeka na nią po udanym wstawieniu batcha.
 

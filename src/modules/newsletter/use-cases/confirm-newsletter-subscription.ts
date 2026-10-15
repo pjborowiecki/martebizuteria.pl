@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
+import { scheduleAdminNewsletterSubscribersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { getSubscriberByToken, updateSubscriberById } from "~/src/modules/newsletter/newsletter.accessors"
 import { NEWSLETTER_MUTATION_KEYS, NEWSLETTER_STATUS, NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
@@ -27,6 +28,7 @@ export const confirmNewsletterSubscription = createServerFn({ method: "POST" })
       status: NEWSLETTER_STATUS.CONFIRMED,
       updatedAt: new Date(),
     })
+    scheduleAdminNewsletterSubscribersInvalidation()
 
     return { email: subscriber.email, result: NEWSLETTER_TOKEN_RESULT.OK }
   })

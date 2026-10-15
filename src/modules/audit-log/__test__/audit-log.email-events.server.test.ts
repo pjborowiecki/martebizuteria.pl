@@ -7,6 +7,8 @@ import {
   recordEmailResendRequestedAudit,
   recordEmailSentAudit,
   recordNewsletterSentAudit,
+  recordNewsletterSubscriberErasedAudit,
+  recordNewsletterSubscriberUnsubscribedAudit,
   recordOrderEmailOutcome,
 } from "~/src/modules/audit-log/audit-log.events.server"
 
@@ -156,6 +158,36 @@ describe("recordNewsletterSentAudit", () => {
       resourceId: "campaign-1",
       severity: "info",
       target: "Jesienne projekty",
+    })
+  })
+})
+
+describe("newsletter subscriber recorders", () => {
+  it.each([
+    {
+      action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_UNSUBSCRIBED,
+      event: "an unsubscribe on someone's behalf",
+      recordEvent: recordNewsletterSubscriberUnsubscribedAudit,
+      severity: "info",
+    },
+    {
+      action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_ERASED,
+      event: "an erasure of someone's record",
+      recordEvent: recordNewsletterSubscriberErasedAudit,
+      severity: "warning",
+    },
+  ] as const)("files $event under email against the admin, keyed by the address", ({ action, recordEvent, severity }) => {
+    recordEvent("anna@example.com")
+
+    expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action,
+      category: "email",
+      detail: undefined,
+      metadata: undefined,
+      resourceId: "anna@example.com",
+      severity,
+      target: "anna@example.com",
     })
   })
 })

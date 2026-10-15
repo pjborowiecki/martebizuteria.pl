@@ -8,16 +8,22 @@ const { sqlite } = await vi.hoisted(async () => {
   return { sqlite: new DatabaseSync(":memory:") }
 })
 
-const { getRequest, getRequestSession, recordEmailFailedAudit, sendNewsletterAlreadySubscribedEmail, sendNewsletterConfirmationEmail } =
-  vi.hoisted(() => ({
-    getRequest: vi.fn<() => Request>(),
-    getRequestSession: vi.fn<() => Promise<{ user: { email: string; id: string } } | undefined>>(),
-    recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
-    sendNewsletterAlreadySubscribedEmail:
-      vi.fn<(input: { email: string; locale: string; origin: string }) => Promise<string | undefined>>(),
-    sendNewsletterConfirmationEmail:
-      vi.fn<(input: { email: string; locale: string; origin: string; token: string }) => Promise<string | undefined>>(),
-  }))
+const {
+  getRequest,
+  getRequestSession,
+  recordEmailFailedAudit,
+  scheduleAdminNewsletterSubscribersInvalidation,
+  sendNewsletterAlreadySubscribedEmail,
+  sendNewsletterConfirmationEmail,
+} = vi.hoisted(() => ({
+  getRequest: vi.fn<() => Request>(),
+  getRequestSession: vi.fn<() => Promise<{ user: { email: string; id: string } } | undefined>>(),
+  recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
+  scheduleAdminNewsletterSubscribersInvalidation: vi.fn<() => void>(),
+  sendNewsletterAlreadySubscribedEmail: vi.fn<(input: { email: string; locale: string; origin: string }) => Promise<string | undefined>>(),
+  sendNewsletterConfirmationEmail:
+    vi.fn<(input: { email: string; locale: string; origin: string; token: string }) => Promise<string | undefined>>(),
+}))
 
 const UNVERIFIED_DOMAIN = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
 
@@ -41,6 +47,9 @@ vi.mock("~/src/modules/newsletter/use-cases/send-newsletter-already-subscribed-e
 vi.mock("~/src/modules/newsletter/use-cases/send-newsletter-confirmation-email.server", () => ({ sendNewsletterConfirmationEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit }))
+vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
+  scheduleAdminNewsletterSubscribersInvalidation,
+}))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -562,6 +571,54 @@ describe("unsubscribeFromNewsletter", () => {
       email: undefined,
       result: NEWSLETTER_TOKEN_RESULT.INVALID,
     })
+  })
+})
+
+describe("admin subscriber list refresh", () => {
+  it("refreshes open subscriber lists when a new address signs up", async () => {
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    expect(scheduleAdminNewsletterSubscribersInvalidation).toHaveBeenCalledOnce()
+  })
+
+  it("refreshes them when a pending or unsubscribed address asks again", async () => {
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+    await unsubscribeFromNewsletter({ data: { token: lastConfirmationToken() } })
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    expect(scheduleAdminNewsletterSubscribersInvalidation).toHaveBeenCalledTimes(4)
+  })
+
+  it("leaves them alone when a confirmed address is submitted again", async () => {
+    await confirmAnna()
+    scheduleAdminNewsletterSubscribersInvalidation.mockClear()
+
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    expect(scheduleAdminNewsletterSubscribersInvalidation).not.toHaveBeenCalled()
+  })
+
+  it("leaves them alone when the day's emails are spent and nothing is saved", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    fillTodaysPublicEmails()
+
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+
+    expect(scheduleAdminNewsletterSubscribersInvalidation).not.toHaveBeenCalled()
+  })
+
+  it("refreshes them when a link confirms or unsubscribes an address, but not when the link changes nothing", async () => {
+    await subscribeToNewsletter({ data: { email: "anna@example.com" } })
+    const token = lastConfirmationToken()
+    scheduleAdminNewsletterSubscribersInvalidation.mockClear()
+
+    await confirmNewsletterSubscription({ data: { token } })
+    await confirmNewsletterSubscription({ data: { token } })
+    await unsubscribeFromNewsletter({ data: { token } })
+    await unsubscribeFromNewsletter({ data: { token } })
+
+    expect(scheduleAdminNewsletterSubscribersInvalidation).toHaveBeenCalledTimes(2)
   })
 })
 

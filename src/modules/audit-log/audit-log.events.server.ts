@@ -229,6 +229,24 @@ export const recordNewsletterSentAudit = (subject: string, options?: AuditEventO
   })
 }
 
+export const recordNewsletterSubscriberUnsubscribedAudit = (email: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_UNSUBSCRIBED,
+    category: "email",
+    severity: "info",
+    ...withResourceId(email, options),
+  })
+}
+
+export const recordNewsletterSubscriberErasedAudit = (email: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_ERASED,
+    category: "email",
+    severity: "warning",
+    ...withResourceId(email, options),
+  })
+}
+
 export const recordDiscountCreatedAudit = (code: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.DISCOUNT_CREATED,

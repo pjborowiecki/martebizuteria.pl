@@ -17,6 +17,11 @@ export const getSubscriberByEmail = (email: string) =>
     where: eq(newsletterSubscriber.email, normalizeSubscriberEmail(email)),
   })
 
+export const getSubscriberById = (id: string) =>
+  db.query.newsletterSubscriber.findFirst({
+    where: eq(newsletterSubscriber.id, id),
+  })
+
 export const getSubscriberByToken = (token: string) =>
   db.query.newsletterSubscriber.findFirst({
     where: eq(newsletterSubscriber.token, token),

@@ -61,6 +61,7 @@ vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminAuditLogInvalidation: vi.fn(),
   scheduleAdminCustomersInvalidation: vi.fn(),
+  scheduleAdminNewsletterSubscribersInvalidation: vi.fn(),
 }))
 vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: vi.fn(() => Promise.resolve(0)) }))
 vi.mock(import("~/src/modules/newsletter/newsletter.accessors"), async (importOriginal) => ({

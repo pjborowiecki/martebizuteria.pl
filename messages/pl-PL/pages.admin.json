@@ -389,6 +389,8 @@
       "email_deferred": "E-mail odroczony",
       "email_resend_requested": "Ponowna wysyłka e-maila",
       "newsletter_sent": "Newsletter wysłany",
+      "newsletter_subscriber_unsubscribed": "Subskrybent wypisany",
+      "newsletter_subscriber_erased": "Dane subskrybenta usunięte",
       "order_cancelled": "Zamówienie anulowane",
       "order_delivered": "Zamówienie dostarczone",
       "order_shipped": "Zamówienie wysłane",
@@ -1117,7 +1119,31 @@
       },
       "rowActions": {
         "copyEmail": "Kopiuj e-mail",
-        "copyEmailToast": "E-mail skopiowany do schowka"
+        "copyEmailToast": "E-mail skopiowany do schowka",
+        "unsubscribe": "Wypisz",
+        "erase": "Usuń dane"
+      },
+      "unsubscribeDialog": {
+        "title": "Wypisać ten adres?",
+        "description": "Na adres {email} przestanie trafiać newsletter, tak samo jak po kliknięciu linku do wypisania się. Nie wyślemy na ten adres żadnej wiadomości. Aby wrócić, trzeba będzie zapisać się ponownie i potwierdzić zapis.",
+        "cancel": "Anuluj",
+        "confirm": "Wypisz",
+        "successTitle": "Adres wypisany",
+        "successDescription": "Na adres {email} nie trafi już newsletter.",
+        "errorTitle": "Nie udało się wypisać adresu"
+      },
+      "eraseDialog": {
+        "title": "Usunąć dane subskrybenta?",
+        "description": "Adres {email} zniknie z listy razem z językiem, miejscem i datami zapisu, a z dziennika zdarzeń znikną wpisy o jego wypisaniu i nieudanych e-mailach newslettera, więc zostanie tam jedynie wpis o usunięciu danych. Tej operacji nie można cofnąć. Konto klienta z tym adresem i jego własne wpisy pozostaną bez zmian.",
+        "cancel": "Anuluj",
+        "confirm": "Usuń dane",
+        "successTitle": "Dane usunięte",
+        "successDescription": "{email} nie jest już na liście subskrybentów.",
+        "errorTitle": "Nie udało się usunąć danych"
+      },
+      "toast": {
+        "errorDescription": "Nic się nie zmieniło. Spróbuj ponownie za chwilę.",
+        "notFoundDescription": "Tego adresu nie ma już na liście. Tabela została odświeżona."
       }
     }
   },

@@ -54,9 +54,15 @@ export const NEWSLETTER_QUERY_KEYS = {
 
 export const NEWSLETTER_MUTATION_KEYS = {
   CONFIRM: ["newsletter", "confirmSubscription"] as const,
+  ERASE_SUBSCRIBER: ["newsletter", "eraseSubscriber"] as const,
   SUBSCRIBE: ["newsletter", "subscribe"] as const,
   UNSUBSCRIBE: ["newsletter", "unsubscribe"] as const,
   UNSUBSCRIBE_OWN: ["newsletter", "unsubscribeOwn"] as const,
+  UNSUBSCRIBE_SUBSCRIBER: ["newsletter", "unsubscribeSubscriber"] as const,
+} as const
+
+export const NEWSLETTER_ERROR_CODES = {
+  SUBSCRIBER_NOT_FOUND: "NEWSLETTER_SUBSCRIBER_NOT_FOUND",
 } as const
 
 export const ADMIN_NEWSLETTER_TABLE_COLUMN_ID = {

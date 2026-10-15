@@ -5,6 +5,8 @@ import { cleanup, renderHook } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 vi.mock("~/src/modules/newsletter/use-cases/get-admin-newsletter-page", () => ({ getAdminNewsletterPageQuery: vi.fn() }))
+vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-newsletter-subscriber", () => ({ unsubscribeNewsletterSubscriberMutation: {} }))
+vi.mock("~/src/modules/newsletter/use-cases/erase-newsletter-subscriber", () => ({ eraseNewsletterSubscriberMutation: {} }))
 
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 
