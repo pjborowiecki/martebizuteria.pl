@@ -9,6 +9,7 @@ import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-produc
 type OrderConfirmationElement = ReactElement<ComponentProps<typeof OrderConfirmation>>
 
 const {
+  embedEmailImages,
   fulfillCheckout,
   getCheckoutEmailContext,
   getFulfillmentTimeAttributesByVariantId,
@@ -20,6 +21,7 @@ const {
   sendEmail,
   sendNewOrderEmail,
 } = vi.hoisted(() => ({
+  embedEmailImages: vi.fn<(urls: readonly string[]) => Promise<{ attachments: Attachment[]; sources: ReadonlyMap<string, string> }>>(),
   fulfillCheckout: vi.fn<(input: object) => Promise<string | undefined>>(),
   getCheckoutEmailContext: vi.fn<(checkoutId: string) => Promise<object | undefined>>(),
   getFulfillmentTimeAttributesByVariantId:
@@ -48,6 +50,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: { paymentInt
 vi.mock("~/src/integrations/stripe/stripe.coupons.server", () => ({ deleteCheckoutCoupons: vi.fn(() => Promise.resolve(undefined)) }))
 vi.mock("~/src/modules/order/use-cases/send-new-order-email.server", () => ({ sendNewOrderEmail }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
+vi.mock("~/src/integrations/cloudflare-r2/media.email.server", () => ({ embedEmailImages }))
 vi.mock("~/src/modules/order-withdrawal/order-withdrawal.form.server", () => ({ loadWithdrawalFormAttachment }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminOrdersInvalidation: vi.fn(),
@@ -156,6 +159,7 @@ beforeEach(() => {
   getCheckoutEmailContext.mockResolvedValue(undefined)
   getFulfillmentTimeAttributesByVariantId.mockResolvedValue(new Map())
   loadWithdrawalFormAttachment.mockResolvedValue(WITHDRAWAL_FORM)
+  embedEmailImages.mockResolvedValue({ attachments: [], sources: new Map() })
   sendNewOrderEmail.mockResolvedValue(true)
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
   sendEmail.mockResolvedValue(undefined)
@@ -347,6 +351,19 @@ describe("order confirmation email as the confirmation of the contract", () => {
 
     expect(getFulfillmentTimeAttributesByVariantId).toHaveBeenCalledExactlyOnceWith(["var-aurora", "var-luna"])
     expect(sentEmail().react.props.details.fulfillmentTime).toBe(`3 weeks\n${englishCopy.fulfillmentTime.note}`)
+  })
+
+  it("embeds the ordered products' images and attaches them after the withdrawal form", async () => {
+    const image = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/aurora.jpg"
+    const inlineImage = { content: "aW1hZ2U=", contentId: "image-1", filename: "aurora.jpg" }
+    const sources = new Map([[image, "cid:image-1"]])
+    embedEmailImages.mockResolvedValue({ attachments: [inlineImage], sources })
+
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
+
+    expect(embedEmailImages).toHaveBeenCalledExactlyOnceWith([image])
+    expect(sentEmail().attachments).toStrictEqual([WITHDRAWAL_FORM, inlineImage])
+    expect(sentEmail().react.props.inlineImageSources).toBe(sources)
   })
 
   it("attaches the model withdrawal form read from the deployment the order was placed on", async () => {
