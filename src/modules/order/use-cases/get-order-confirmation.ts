@@ -2,7 +2,9 @@ import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
+import { RATE_LIMITS, assertWithinRateLimit, withRequest } from "~/src/integrations/better-auth/auth.middleware"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
+import { fulfillReturnedCheckoutSession } from "~/src/integrations/stripe/stripe.fulfillment.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getAdminOrderItemRows, getOrderByTransactionId } from "~/src/modules/order/order.accessors"
@@ -10,11 +12,23 @@ import { ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/orde
 import { mapAdminOrderDetailAddress, mapAdminOrderDetailItem, resolveOrderLocker } from "~/src/modules/order/order.detail.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { getPaymentByTransactionId } from "~/src/modules/payment/payment.accessors"
 
-export const getOrderConfirmation = createServerFn({ method: "GET" })
+const loadOrPlaceOrder = async (sessionId: string, requestHeaders: Headers) => {
+  const payment = await getPaymentByTransactionId(sessionId)
+  if (payment?.status === "pending") {
+    await assertWithinRateLimit("checkout-status", RATE_LIMITS.CHECKOUT, requestHeaders)
+    await fulfillReturnedCheckoutSession(sessionId)
+  }
+
+  return getOrderByTransactionId(sessionId)
+}
+
+export const getOrderConfirmation = createServerFn({ method: "POST" })
+  .middleware([withRequest])
   .validator((input: zod.input<typeof orderZodSchemas.orderConfirmationInput>) => orderZodSchemas.orderConfirmationInput.parse(input))
-  .handler(async ({ data: { sessionId } }): Promise<Order["confirmation"] | undefined> => {
-    const orderRow = await getOrderByTransactionId(sessionId)
+  .handler(async ({ context, data: { sessionId } }): Promise<Order["confirmation"] | undefined> => {
+    const orderRow = await loadOrPlaceOrder(sessionId, context.requestHeaders)
     if (orderRow === undefined) {
       return undefined
     }
@@ -59,14 +73,10 @@ const fetchRecordedOrderConfirmation = async (sessionId: string): Promise<Order[
 
 export const getOrderConfirmationQuery = (sessionId: string) =>
   queryOptions({
-    enabled: sessionId !== "",
     queryFn: () => fetchRecordedOrderConfirmation(sessionId),
     queryKey: [...ORDER_QUERY_KEYS.CONFIRMATION, sessionId],
     retry: CONFIRMATION_RETRIES,
-    retryDelay: CONFIRMATION_RETRY_DELAY_MS,
     staleTime: ORDER_QUERY_STALE_MS,
   })
 
-const CONFIRMATION_RETRIES = 5
-
-const CONFIRMATION_RETRY_DELAY_MS = 1500
+const CONFIRMATION_RETRIES = 8

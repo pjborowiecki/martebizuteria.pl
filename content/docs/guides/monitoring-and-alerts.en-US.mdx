@@ -22,15 +22,16 @@ The top level of `wrangler.jsonc` turns both on, and every environment inherits 
 
 The log lines that belong to this page:
 
-| Prefix                                                  | Source                                                                              |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `[Health] D1 did not answer:` (or `KV`, `R2`)           | `/api/health` caught an error from that binding                                     |
-| `[Alert] The <kind> alert to <address> was not sent: …` | Resend refused or timed out on an incident alert                                    |
-| `[Alert] The <kind> alert could not be sent:`           | Reading KV or rendering the alert threw; the error follows                          |
-| `[Stripe] Domain logic failed for <type>:`              | A webhook handler threw, the route answered 500 and Stripe will retry               |
-| `Paid Checkout Session <id> created no order:`          | `handleFulfillCheckoutSession` could not create the order for a paid session        |
-| `[AuditLog Queue] Batch insert failed:`                 | `processAuditLogQueueBatch` could not write a batch and asked the queue to retry it |
-| `[Retention] <kind> could not be cleared:`              | The daily retention clean-up failed for one kind of row; the run then fails         |
+| Prefix                                                              | Source                                                                                                                    |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `[Health] D1 did not answer:` (or `KV`, `R2`)                       | `/api/health` caught an error from that binding                                                                           |
+| `[Alert] The <kind> alert to <address> was not sent: …`             | Resend refused or timed out on an incident alert                                                                          |
+| `[Alert] The <kind> alert could not be sent:`                       | Reading KV or rendering the alert threw; the error follows                                                                |
+| `[Stripe] Domain logic failed for <type>:`                          | A webhook handler threw, the route answered 500 and Stripe will retry                                                     |
+| `Paid Checkout Session <id> created no order:`                      | `handleFulfillCheckoutSession` could not create the order for a paid session                                              |
+| `Paid Checkout Session <id> created no order from its return page:` | The return page could not create the order for a paid session; its webhook records the failure and alerts if it fails too |
+| `[AuditLog Queue] Batch insert failed:`                             | `processAuditLogQueueBatch` could not write a batch and asked the queue to retry it                                       |
+| `[Retention] <kind> could not be cleared:`                          | The daily retention clean-up failed for one kind of row; the run then fails                                               |
 
 `vp exec wrangler tail --env production` streams the same lines live; see [Local debugging](/docs/guides/local-debugging#watching-the-worker-in-a-deployed-environment).
 

@@ -9,6 +9,7 @@ import { webhookHandlers } from "~/src/integrations/stripe/stripe.webhooks"
 
 import { toCheckoutSessionItemsMetadata } from "~/src/modules/checkout/checkout-metadata.zod"
 import { getCheckoutSessionStatus } from "~/src/modules/checkout/use-cases/get-checkout-session-status"
+import { getOrderConfirmation } from "~/src/modules/order/use-cases/get-order-confirmation"
 
 import {
   checkoutSession,
@@ -238,6 +239,64 @@ describe("a paid session whose completed event Stripe delivers twice in the same
 
     expect(status).toBe("complete")
     expectOneOrderPlaced()
+  })
+})
+
+const confirmationOf = () => getOrderConfirmation({ data: { sessionId: SESSION_ID } })
+
+describe("a paid session whose shopper reaches the return page before its webhook", () => {
+  beforeEach(() => {
+    retrieveSession.mockResolvedValue(necklaceSession("paid"))
+  })
+
+  it("places the order from the return page and leaves the late webhook nothing to do", async () => {
+    await expect(confirmationOf()).resolves.toMatchObject({
+      email: "ada@marte.test",
+      items: [expect.objectContaining({ quantity: 1, title: "Naszyjnik Luna" })],
+      totalMinorUnits: PAID_AMOUNT,
+    })
+    expect(retrieveSession).toHaveBeenCalledExactlyOnceWith(SESSION_ID)
+
+    await dispatch(PAID_COMPLETED)
+    await dispatch(PAID_COMPLETED)
+
+    expectOneOrderPlaced()
+  })
+
+  it("places one order, announces it once and still shows it when the return page and two deliveries of the event arrive together", async () => {
+    const [confirmation] = await Promise.all([confirmationOf(), dispatch(PAID_COMPLETED), dispatch(PAID_COMPLETED)])
+
+    expect(confirmation).toMatchObject({ email: "ada@marte.test", totalMinorUnits: PAID_AMOUNT })
+    expectOneOrderPlaced()
+  })
+
+  it("reads the order the webhook placed without asking Stripe again", async () => {
+    await dispatch(PAID_COMPLETED)
+
+    await expect(confirmationOf()).resolves.toMatchObject({ email: "ada@marte.test" })
+    expect(retrieveSession).not.toHaveBeenCalled()
+    expectOneOrderPlaced()
+  })
+
+  it("places no order and shows nothing yet while the payment has not settled", async () => {
+    retrieveSession.mockResolvedValue(necklaceSession("unpaid"))
+
+    await expect(confirmationOf()).resolves.toBeUndefined()
+
+    expect(countRows("order")).toBe(0)
+    expect(readStatuses()).toStrictEqual({ checkout: "pending", payment: "pending" })
+    expect(emails.sendOrderConfirmationEmail).not.toHaveBeenCalled()
+  })
+
+  it("leaves a paid session whose order cannot be written to the webhook, without recording or alerting twice", async () => {
+    sqlite.exec(`create trigger order_insert_fails before insert on "order" begin select raise(abort, 'disk I/O error'); end;`)
+
+    await expect(confirmationOf()).resolves.toBeUndefined()
+
+    expect(countRows("order")).toBe(0)
+    expect(readStatuses()).toStrictEqual({ checkout: "pending", payment: "pending" })
+    expect(audits.recordOrderFulfillmentFailedAudit).not.toHaveBeenCalled()
+    expect(sendIncidentAlert).not.toHaveBeenCalled()
   })
 })
 

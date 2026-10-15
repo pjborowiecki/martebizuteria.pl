@@ -14,7 +14,6 @@ vi.mock("~/src/modules/order/use-cases/get-order-confirmation", async () => {
   return {
     getOrderConfirmationQuery: (sessionId: string) =>
       queryOptions({
-        enabled: sessionId !== "",
         queryFn: getOrderConfirmation,
         queryKey: ["order", "confirmation", sessionId],
       }),
@@ -192,14 +191,12 @@ describe("CheckoutSuccess", () => {
     renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
 
     expect(await screen.findByRole("heading", { name: "We could not load this order" })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        "Your payment may still have gone through. Check your inbox for a confirmation, or contact us and we will look it up.",
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "Return to store" })).toBeInTheDocument()
-  })
-
-  it("still thanks a shopper who arrives without a session id", () => {
-    renderWithProviders(<CheckoutSuccess sessionId="" />)
-
-    expect(screen.getByRole("heading", { name: "Order Confirmed" })).toBeInTheDocument()
-    expect(getOrderConfirmation).not.toHaveBeenCalled()
   })
 
   it("empties the cart that still holds what the session paid for", async () => {
@@ -252,6 +249,48 @@ describe("CheckoutSuccess", () => {
   })
 })
 
+describe("CheckoutSuccess status mark", () => {
+  it("shows the success mark beside an order it loaded", async () => {
+    const { container } = renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByRole("heading", { name: "Order Confirmed" })).toBeInTheDocument()
+    expect(container.querySelector(".text-success")).not.toBeNull()
+  })
+
+  it("shows no success mark when the order cannot be loaded", async () => {
+    getOrderConfirmation.mockResolvedValue(undefined)
+    const { container } = renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    expect(await screen.findByRole("heading", { name: "We could not load this order" })).toBeInTheDocument()
+    expect(container.querySelector(".text-success")).toBeNull()
+  })
+})
+
+describe("CheckoutSuccess for screen readers", () => {
+  it("announces the confirmed order in the status region that announced the wait", async () => {
+    const pending = Promise.withResolvers<ReturnType<typeof confirmation>>()
+    getOrderConfirmation.mockReturnValue(pending.promise)
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+    const status = screen.getByRole("status")
+    expect(status).toHaveTextContent("Confirming your payment")
+
+    pending.resolve(confirmation())
+
+    await waitFor(() => {
+      expect(status).toHaveTextContent("Order Confirmed")
+    })
+  })
+
+  it("announces in the same status region that the order could not be loaded", async () => {
+    getOrderConfirmation.mockResolvedValue(undefined)
+    renderWithProviders(<CheckoutSuccess sessionId={SESSION_ID} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("We could not load this order")
+    })
+  })
+})
+
 describe("CheckoutSuccess reopened after the basket moved on", () => {
   it.each([
     {
@@ -287,14 +326,6 @@ describe("CheckoutSuccess reopened after the basket moved on", () => {
     expect(loadCheckoutDraft()).toStrictEqual({ email: "anna@example.com" })
     expect(sessionStorage.getItem(CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY)).toBe("1")
     expect(loadCheckoutSessionId()).toBe(heldSessionId)
-  })
-
-  it("leaves the basket alone when the address names no session", () => {
-    renderWithProviders(<CheckoutSuccess sessionId="" />)
-
-    expect(screen.getByRole("heading", { name: "Order Confirmed" })).toBeInTheDocument()
-    expect(useCartStore.getState().items).toHaveLength(1)
-    expect(loadCheckoutSessionId()).toBe(SESSION_ID)
   })
 })
 

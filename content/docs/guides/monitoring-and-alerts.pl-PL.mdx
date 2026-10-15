@@ -22,15 +22,16 @@ Najwyższy poziom `wrangler.jsonc` włącza oba, a każde środowisko go dziedzi
 
 Linie logu związane z tą stroną:
 
-| Prefiks                                                 | Źródło                                                                              |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `[Health] D1 did not answer:` (albo `KV`, `R2`)         | `/api/health` przechwyciło błąd tego bindingu                                       |
-| `[Alert] The <kind> alert to <address> was not sent: …` | Resend odrzucił alert o incydencie albo nie odpowiedział na czas                    |
-| `[Alert] The <kind> alert could not be sent:`           | Odczyt KV albo renderowanie alertu rzuciło wyjątek; błąd jest dalej w linii         |
-| `[Stripe] Domain logic failed for <type>:`              | Handler webhooka rzucił wyjątek, trasa odpowiedziała 500, a Stripe ponowi zdarzenie |
-| `Paid Checkout Session <id> created no order:`          | `handleFulfillCheckoutSession` nie mógł utworzyć zamówienia dla opłaconej sesji     |
-| `[AuditLog Queue] Batch insert failed:`                 | `processAuditLogQueueBatch` nie zapisał partii i poprosił kolejkę o jej ponowienie  |
-| `[Retention] <kind> could not be cleared:`              | Czyszczenie danych zawiodło dla jednego rodzaju wierszy; uruchomienie też zawodzi   |
+| Prefiks                                                             | Źródło                                                                                                                            |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `[Health] D1 did not answer:` (albo `KV`, `R2`)                     | `/api/health` przechwyciło błąd tego bindingu                                                                                     |
+| `[Alert] The <kind> alert to <address> was not sent: …`             | Resend odrzucił alert o incydencie albo nie odpowiedział na czas                                                                  |
+| `[Alert] The <kind> alert could not be sent:`                       | Odczyt KV albo renderowanie alertu rzuciło wyjątek; błąd jest dalej w linii                                                       |
+| `[Stripe] Domain logic failed for <type>:`                          | Handler webhooka rzucił wyjątek, trasa odpowiedziała 500, a Stripe ponowi zdarzenie                                               |
+| `Paid Checkout Session <id> created no order:`                      | `handleFulfillCheckoutSession` nie mógł utworzyć zamówienia dla opłaconej sesji                                                   |
+| `Paid Checkout Session <id> created no order from its return page:` | Strona powrotu nie mogła utworzyć zamówienia dla opłaconej sesji; jeśli webhook też zawiedzie, to on zapisuje błąd i wysyła alert |
+| `[AuditLog Queue] Batch insert failed:`                             | `processAuditLogQueueBatch` nie zapisał partii i poprosił kolejkę o jej ponowienie                                                |
+| `[Retention] <kind> could not be cleared:`                          | Czyszczenie danych zawiodło dla jednego rodzaju wierszy; uruchomienie też zawodzi                                                 |
 
 `vp exec wrangler tail --env production` pokazuje te same linie na żywo; zobacz [Debugowanie lokalne](/docs/guides/local-debugging#obserwowanie-workera-we-wdrożonym-środowisku).
 

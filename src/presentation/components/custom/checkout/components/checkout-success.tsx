@@ -1,7 +1,7 @@
 import { type JSX, useEffect } from "react"
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { CheckCircle2, Loader2, Package } from "lucide-react"
+import { AlertCircle, CheckCircle2, Loader2, Package } from "lucide-react"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
 import { formatInpostLockerAddress } from "~/src/integrations/inpost/inpost.utils"
@@ -45,12 +45,16 @@ const ConfirmationItemImage = ({ imageUrl, title }: Readonly<{ imageUrl?: string
   return <Image alt={title} className="size-14 object-cover" height={56} src={imageUrl} width={56} />
 }
 
-const ConfirmationStatusIcon = ({ loading }: Readonly<{ loading: boolean }>): JSX.Element => {
-  if (loading) {
+const ConfirmationStatusIcon = ({ isPending, order }: Readonly<ConfirmationQueryState>): JSX.Element => {
+  if (order !== undefined) {
+    return <CheckCircle2 className="size-16 text-success md:size-20" strokeWidth={1} />
+  }
+
+  if (isPending) {
     return <Loader2 aria-hidden className="size-12 animate-spin text-muted-foreground/40" strokeWidth={1} />
   }
 
-  return <CheckCircle2 className="size-16 text-success md:size-20" strokeWidth={1} />
+  return <AlertCircle aria-hidden className="size-12 text-muted-foreground/60" strokeWidth={1} />
 }
 
 const ConfirmationItem = ({ currencyCode, item }: Readonly<ConfirmationItemProps>): JSX.Element => {
@@ -219,13 +223,11 @@ export const CheckoutSuccess = ({ sessionId }: Readonly<CheckoutSuccessProps>): 
 
   return (
     <div className="flex flex-col items-center justify-center space-y-8 py-12 text-center md:py-20">
-      <ConfirmationStatusIcon loading={isPending && sessionId !== ""} />
+      <ConfirmationStatusIcon isPending={isPending} order={order} />
 
-      <div className="space-y-2">
-        <h2 className="font-serif text-3xl md:text-4xl">{resolveTitle({ isPending, order, sessionId, t })}</h2>
-        <p className="mx-auto max-w-md text-sm text-muted-foreground md:text-base">
-          {resolveDescription({ isPending, order, sessionId, t })}
-        </p>
+      <div role="status" className="space-y-2">
+        <h2 className="font-serif text-3xl md:text-4xl">{resolveTitle({ isPending, order, t })}</h2>
+        <p className="mx-auto max-w-md text-sm text-muted-foreground md:text-base">{resolveDescription({ isPending, order, t })}</p>
       </div>
 
       {order === undefined ? undefined : (
@@ -246,34 +248,28 @@ export const CheckoutSuccess = ({ sessionId }: Readonly<CheckoutSuccessProps>): 
 
 type ConfirmationCopy = ReturnType<typeof useTranslations<"pages.checkout.checkoutSuccess">>
 
-const resolveTitle = ({ isPending, order, sessionId, t }: ConfirmationCopyInput): string => {
+const resolveTitle = ({ isPending, order, t }: ConfirmationCopyInput): string => {
   if (order !== undefined) {
     return t("title")
   }
 
-  if (isPending && sessionId !== "") {
-    return t("pendingTitle")
-  }
-
-  return sessionId === "" ? t("title") : t("unavailableTitle")
+  return isPending ? t("pendingTitle") : t("unavailableTitle")
 }
 
-const resolveDescription = ({ isPending, order, sessionId, t }: ConfirmationCopyInput): string => {
+const resolveDescription = ({ isPending, order, t }: ConfirmationCopyInput): string => {
   if (order !== undefined) {
     return t("description", { email: order.email })
   }
 
-  if (isPending && sessionId !== "") {
-    return t("pendingDescription")
-  }
-
-  return t("unavailableDescription")
+  return isPending ? t("pendingDescription") : t("unavailableDescription")
 }
 
-interface ConfirmationCopyInput {
+interface ConfirmationQueryState {
   readonly isPending: boolean
   readonly order: Order["confirmation"] | undefined
-  readonly sessionId: string
+}
+
+interface ConfirmationCopyInput extends ConfirmationQueryState {
   readonly t: ConfirmationCopy
 }
 
