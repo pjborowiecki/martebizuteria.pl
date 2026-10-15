@@ -95,6 +95,14 @@ describe("Navigation", () => {
     expect(document.querySelector("[data-menu-backdrop]")).toHaveStyle({ pointerEvents: "auto" })
   })
 
+  it("scrolls the menu from its first entry when the entries are taller than the screen", () => {
+    renderWithProviders(<Navigation />)
+    const column = document.querySelector("[data-menu-secondary]")?.parentElement
+
+    expect(column).toHaveClass("justify-center-safe", "lg:overflow-y-auto")
+    expect(column?.parentElement).toHaveClass("overflow-y-auto")
+  })
+
   it("links the cart badge to the cart page", () => {
     renderWithProviders(<Navigation />)
 

@@ -88,6 +88,13 @@ describe("PrimaryNav", () => {
     expect(screen.getByText("585")).toHaveClass("italic")
   })
 
+  it("lets a long destination wrap on a phone instead of running past the screen edge", () => {
+    renderWithProviders(<PrimaryNav />)
+
+    expect(menuLink(0)).not.toHaveClass("w-max")
+    expect(menuLink(0)).toHaveClass("text-4xl", "sm:text-6xl", "lg:text-5xl")
+  })
+
   it("points each destination at its localized route", () => {
     renderWithProviders(<PrimaryNav />)
 

@@ -16,7 +16,7 @@ const PrimaryNavItemContent = ({
   t: ReturnType<typeof useTranslations>
 }>): JSX.Element => (
   <>
-    <span className="relative top-3 mr-6 align-top font-sans text-xs tracking-[0.25em] text-primary-foreground/70 transition-colors duration-300 ease-out group-hover:text-primary-foreground/50 sm:top-5 sm:mr-8 sm:text-sm">
+    <span className="relative top-3 mr-4 align-top font-sans text-xs tracking-[0.25em] text-primary-foreground/70 transition-colors duration-300 ease-out group-hover:text-primary-foreground/50 sm:top-5 sm:mr-8 sm:text-sm">
       {String(item.step).padStart(PAD_LENGTH, "0")}
     </span>
     {t(item.labelKey)}
@@ -89,7 +89,7 @@ export const PrimaryNav = (): JSX.Element => {
   const t = useTranslations("components.custom.navigation")
 
   return (
-    <nav aria-label={t("overlayNavLabel")} className="flex flex-col gap-6 sm:gap-8">
+    <nav aria-label={t("overlayNavLabel")} className="flex flex-col gap-3 sm:gap-8 lg:gap-6">
       {PRIMARY.map((item, index) => (
         <PrimaryNavItem
           key={item.hash}
@@ -107,4 +107,4 @@ export const PrimaryNav = (): JSX.Element => {
 const PAD_LENGTH = 2
 
 const PRIMARY_MENU_LINK_CLASS_NAME =
-  "group w-max cursor-pointer border-0 bg-transparent p-0 text-left font-serif text-5xl font-light tracking-tight text-primary-foreground uppercase transition-transform duration-300 ease-out will-change-transform outline-none hover:translate-x-2 hover:text-primary-foreground/70 sm:text-6xl xl:text-7xl"
+  "group cursor-pointer border-0 bg-transparent p-0 text-left font-serif text-4xl font-light tracking-tight text-primary-foreground uppercase transition-transform duration-300 ease-out will-change-transform outline-none hover:translate-x-2 hover:text-primary-foreground/70 sm:text-6xl lg:text-5xl xl:text-7xl"

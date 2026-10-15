@@ -70,6 +70,16 @@ describe("SecondaryNav help destinations", () => {
   })
 })
 
+describe("SecondaryNav layout", () => {
+  it("keeps each link on one line and stacks the two groups when they do not fit side by side", () => {
+    renderMenu(undefined)
+    const shipping = screen.getByRole("link", { name: "Shipping & returns" })
+
+    expect(shipping).toHaveClass("whitespace-nowrap")
+    expect(shipping.closest("[data-menu-secondary]")).toHaveClass("flex-wrap")
+  })
+})
+
 const cartLine: CartItem = {
   id: "line",
   image: "https://assets.test/ring.jpg",

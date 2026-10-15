@@ -46,7 +46,7 @@ export const SearchOverlay = (): JSX.Element => {
       onCancel={handleCancel}
       style={OVERLAY_STYLE}
     >
-      <div className="mx-auto flex w-full max-w-400 items-center justify-between px-6 py-5 lg:px-12">
+      <div className="mx-auto flex w-full items-center justify-between px-6 py-5 sm:max-w-400 lg:px-12">
         <p className="font-serif text-sm tracking-wide">{t("brand")}</p>
         <button
           type="button"
@@ -61,7 +61,7 @@ export const SearchOverlay = (): JSX.Element => {
       <Separator className="bg-border/50" />
 
       <form
-        className="search-bar mx-auto w-full max-w-400 px-6 pt-10 pb-8 lg:px-12 lg:pt-16 lg:pb-10"
+        className="search-bar mx-auto w-full px-6 pt-10 pb-8 sm:max-w-400 lg:px-12 lg:pt-16 lg:pb-10"
         role="search"
         onSubmit={handleSubmit}
       >
@@ -76,7 +76,7 @@ export const SearchOverlay = (): JSX.Element => {
             type="search"
             aria-label={t("searchOverlay.placeholder")}
             autoComplete="off"
-            className="w-full border-b border-transparent bg-transparent py-3 pr-10 pl-9 font-serif text-3xl text-foreground placeholder:text-muted-foreground/40 focus:border-foreground/20 focus:outline-none lg:pl-11 lg:text-5xl"
+            className="w-full border-b border-transparent bg-transparent py-3 pr-10 pl-9 font-serif text-2xl text-foreground placeholder:text-muted-foreground/40 focus:border-foreground/20 focus:outline-none sm:text-3xl lg:pl-11 lg:text-5xl [&::-webkit-search-cancel-button]:hidden"
             enterKeyHint="search"
             maxLength={STOREFRONT_SEARCH_MAX_LENGTH}
             onChange={handleQueryChange}
@@ -89,7 +89,7 @@ export const SearchOverlay = (): JSX.Element => {
       </form>
 
       <div className="search-content flex-1 overflow-y-auto" data-lenis-prevent>
-        <div className="mx-auto max-w-400 px-6 pb-20 lg:px-12">
+        <div className="mx-auto px-6 pb-20 sm:max-w-400 lg:px-12">
           <p aria-live="polite" className="sr-only" role="status">
             {statusMessage}
           </p>

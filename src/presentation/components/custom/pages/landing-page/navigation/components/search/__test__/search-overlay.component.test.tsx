@@ -137,6 +137,17 @@ describe("SearchOverlay", () => {
     )
   })
 
+  it("sets the query in a smaller face on phones and drops the browser's own clear button so the placeholder fits the narrowest screens", () => {
+    renderWithProviders(<SearchOverlay />)
+
+    expect(screen.getByRole("searchbox", { hidden: true, name: "Search M'ARTE…" })).toHaveClass(
+      "text-2xl",
+      "sm:text-3xl",
+      "lg:text-5xl",
+      "[&::-webkit-search-cancel-button]:hidden",
+    )
+  })
+
   it("closes the overlay from the close control and from the dialog's own cancel", async () => {
     renderWithProviders(<SearchOverlay />)
 

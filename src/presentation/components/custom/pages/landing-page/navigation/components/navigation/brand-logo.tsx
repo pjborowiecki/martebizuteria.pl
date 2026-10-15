@@ -15,7 +15,7 @@ export const BrandLogo = (): JSX.Element => {
   const handleMouseLeave = hover.onMouseLeave
 
   return (
-    <div className="flex h-full min-w-0 items-center justify-center self-center px-2 pt-1 text-center">
+    <div className="flex h-full min-w-0 items-center justify-center self-center pt-1 text-center sm:px-2">
       <span ref={hover.ref} className="inline-block origin-center will-change-transform">
         <LocalizedLink
           to={ROUTES.HOME}

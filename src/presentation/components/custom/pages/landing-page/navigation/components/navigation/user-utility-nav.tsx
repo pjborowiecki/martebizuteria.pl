@@ -48,7 +48,7 @@ export const UserUtilityNav = (): JSX.Element => {
         onMouseLeave={accountHover.onMouseLeave}
         className={cn(
           buttonVariants({ size: "icon", variant: "ghost" }),
-          "size-10 rounded-none transition-colors hover:bg-transparent hover:text-muted-foreground focus-visible:bg-transparent active:bg-transparent aria-expanded:bg-transparent sm:inline-flex",
+          "hidden size-10 rounded-none transition-colors hover:bg-transparent hover:text-muted-foreground focus-visible:bg-transparent active:bg-transparent aria-expanded:bg-transparent sm:inline-flex",
         )}
       >
         <span ref={accountHover.ref} className="inline-flex will-change-transform">
