@@ -81,6 +81,8 @@
     "paymentMethodsIntro": "Choose how you'd like to pay. All transactions are encrypted and securely processed by Stripe.",
     "paymentUnavailable": "We couldn't prepare your payment",
     "paymentUnavailableHint": "Some items in your cart may no longer be available. Please review your cart and try again.",
+    "paymentFormUnavailable": "We could not load the payment form",
+    "paymentFormUnavailableHint": "Stripe's secure payment form did not load. Check your internet connection and try again.",
     "paymentExpired": "Your payment session has expired",
     "paymentExpiredHint": "Your items are held for a limited time while you pay, and that time has run out. Start the payment again to hold them once more.",
     "paymentAwaitingBank": "Waiting for your bank",

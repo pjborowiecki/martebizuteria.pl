@@ -81,6 +81,8 @@
     "paymentMethodsIntro": "Wybierz sposób płatności. Wszystkie transakcje są szyfrowane i bezpiecznie przetwarzane przez Stripe.",
     "paymentUnavailable": "Nie udało się przygotować płatności",
     "paymentUnavailableHint": "Niektóre produkty w koszyku mogą być już niedostępne. Sprawdź koszyk i spróbuj ponownie.",
+    "paymentFormUnavailable": "Nie udało się wczytać formularza płatności",
+    "paymentFormUnavailableHint": "Bezpieczny formularz płatności Stripe nie wczytał się. Sprawdź połączenie z internetem i spróbuj ponownie.",
     "paymentExpired": "Sesja płatności wygasła",
     "paymentExpiredHint": "Produkty są zarezerwowane dla Ciebie tylko przez określony czas na dokończenie płatności i ten czas już minął. Rozpocznij płatność ponownie, aby znów je zarezerwować.",
     "paymentAwaitingBank": "Czekamy na potwierdzenie z banku",
