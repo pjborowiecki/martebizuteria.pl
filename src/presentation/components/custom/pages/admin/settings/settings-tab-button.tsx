@@ -14,7 +14,7 @@ export const SettingsTabButton = ({ isActive, onSelect, tab }: SettingsTabButton
   return (
     <button
       className={cn(
-        "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+        "flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm whitespace-nowrap transition-colors lg:w-full",
         isActive ? "bg-secondary font-medium text-foreground" : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
       )}
       onClick={handleClick}

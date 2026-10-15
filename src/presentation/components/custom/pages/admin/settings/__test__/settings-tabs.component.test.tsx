@@ -62,6 +62,13 @@ describe("SettingsTabs", () => {
     expect(names).toStrictEqual(["General", "Account", "Shipping", "Appearance", "Security", "Localization"])
   })
 
+  it("lays the tabs out as a sideways-scrolling strip above the section until the desktop sidebar has room", () => {
+    renderWithProviders(<SettingsTabs activeTab="general" onTabChange={selectMock()} />)
+
+    expect(screen.getByRole("navigation")).toHaveClass("flex", "overflow-x-auto", "lg:block", "lg:w-56")
+    expect(screen.getByRole("button", { name: "General" })).toHaveClass("shrink-0", "whitespace-nowrap", "lg:w-full")
+  })
+
   it("reports the tab the user picked rather than the active one", async () => {
     const onTabChange = selectMock()
     renderWithProviders(<SettingsTabs activeTab="general" onTabChange={onTabChange} />)

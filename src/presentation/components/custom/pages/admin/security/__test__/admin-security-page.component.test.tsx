@@ -96,6 +96,14 @@ describe("admin security page", () => {
     expect(screen.getByRole("button", { name: "Disable" })).toBeInTheDocument()
   })
 
+  it("lets the long admin panel link wrap onto a second line on a phone instead of widening the page", async () => {
+    profile.fetchProfile.mockResolvedValue(adminProfile({ twoFactorEnabled: true }))
+    renderPage()
+
+    expect(await screen.findByRole("link", { name: "Go to the admin panel" })).toHaveClass("max-sm:h-auto", "max-sm:whitespace-normal")
+    expect(screen.getByRole("button", { name: "Sign out" })).toHaveClass("max-sm:h-auto", "max-sm:whitespace-normal")
+  })
+
   it("asks an admin who signed up with Google to set a password here before turning two-factor authentication on", async () => {
     profile.fetchProfile.mockResolvedValue(adminProfile({ hasPassword: false }))
     renderPage()
