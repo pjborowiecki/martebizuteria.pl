@@ -30,7 +30,9 @@ export const OrderTimelineEvent = ({ event, orderId }: Readonly<OrderTimelineEve
       <div className="min-w-0 pt-0.5">
         <p className="text-[13px] leading-snug">{t(`orderDetail.timeline.actions.${event.labelKey}`)}</p>
         {event.detail !== undefined && (
-          <p className="mt-0.5 text-[12px] leading-snug text-muted-foreground">{formatAuditLogDetail(event.detail, { locale, t })}</p>
+          <p className="mt-0.5 text-[12px] leading-snug wrap-break-word text-muted-foreground">
+            {formatAuditLogDetail(event.detail, { locale, t })}
+          </p>
         )}
         {event.resendable && <OrderEmailResendButton eventId={event.id} orderId={orderId} />}
         <div className="mt-0.5 flex items-center gap-2">

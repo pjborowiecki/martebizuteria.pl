@@ -9,6 +9,7 @@ import { type Order } from "~/src/modules/order/order.types"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 
 export const OrderWithdrawalsCard = ({ withdrawals }: Readonly<OrderWithdrawalsCardProps>): JSX.Element | undefined => {
@@ -21,7 +22,7 @@ export const OrderWithdrawalsCard = ({ withdrawals }: Readonly<OrderWithdrawalsC
 
   return (
     <Card className={cn(ORDER_DETAIL_CARD_CLASS, "border-amber-500/40")}>
-      <CardContent className="p-5">
+      <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
         <div className="mb-3 flex items-center gap-2">
           <Undo2 aria-hidden className="size-4 text-amber-600" strokeWidth={1.75} />
           <p className="text-sm font-medium">{t("title")}</p>

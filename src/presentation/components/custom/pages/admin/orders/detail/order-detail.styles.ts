@@ -33,7 +33,8 @@ export const ORDER_EMAIL_STATUS_CONFIG: Record<AdminOrderEmailStatus, EmailStatu
   [ADMIN_ORDER_EMAIL_STATUS.SENT]: { className: "text-emerald-500", icon: CheckCircle2 },
 }
 
-export const ORDER_DETAIL_CARD_CLASS = "border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none"
+export const ORDER_DETAIL_CARD_CLASS =
+  "border-border/40 bg-gradient-to-br from-slate-500/10 via-slate-500/5 to-transparent shadow-none max-lg:py-0"
 
 export interface EmailStatusConfig {
   readonly className: string

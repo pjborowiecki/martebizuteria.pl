@@ -19,8 +19,8 @@ import { OrderWithdrawalsCard } from "~/src/presentation/components/custom/pages
 
 export const OrderDetailPage = ({ order }: Readonly<OrderDetailPageProps>): JSX.Element => (
   <div className={ADMIN_PAGE_BODY_CLASS}>
-    <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
-      <div className="min-w-0 space-y-6">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 sm:gap-6 lg:gap-8 xl:grid-cols-[1fr_340px]">
+      <div className="min-w-0 space-y-4 sm:space-y-6">
         <OrderMetaStrip order={order} />
         <OrderWithdrawalsCard withdrawals={order.withdrawals} />
         <OrderFulfillmentTracker canceledAt={order.canceledAt} steps={order.fulfillmentSteps}>
@@ -30,7 +30,7 @@ export const OrderDetailPage = ({ order }: Readonly<OrderDetailPageProps>): JSX.
         <OrderTimelineCard orderId={order.id} timeline={order.timeline} />
       </div>
 
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-4 sm:space-y-6">
         <OrderCustomerCard currencyCode={order.currencyCode} customer={order.customer} />
         <OrderShippingCard
           delivery={order.delivery}
