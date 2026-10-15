@@ -13,6 +13,7 @@ import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/ad
 import {
   ADMIN_HEADER_PRIMARY_BUTTON_CLASS,
   ADMIN_HEADER_SECONDARY_BUTTON_CLASS,
+  ADMIN_PAGE_BODY_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { ContentPageLeaveDialog } from "~/src/presentation/components/custom/pages/admin/content/content-page-leave-dialog"
 import { ContentPageLocaleTabs } from "~/src/presentation/components/custom/pages/admin/content/content-page-locale-tabs"
@@ -41,7 +42,7 @@ export const NewsletterComposer = (): JSX.Element => {
 
   const actions = (
     <>
-      <span className="hidden text-[13px] text-sidebar-foreground/60 md:inline">
+      <span className="hidden text-[13px] text-sidebar-foreground/60 max-lg:whitespace-nowrap md:inline">
         {t("marketing.composer.recipients", { count: confirmed })}
       </span>
       <Button
@@ -84,7 +85,7 @@ export const NewsletterComposer = (): JSX.Element => {
         title={t("marketing.composer.title")}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-8">
+      <div className={ADMIN_PAGE_BODY_CLASS}>
         <ContentPageLocaleTabs
           invalidLocales={localesWithErrors(composer.form.formState.errors)}
           locale={composer.activeLocale}

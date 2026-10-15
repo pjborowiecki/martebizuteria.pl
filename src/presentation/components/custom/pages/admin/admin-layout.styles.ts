@@ -18,12 +18,15 @@ export const ADMIN_STAT_CAPTION_SLOT_CLASS = "flex min-h-4 items-center"
 
 export const ADMIN_STAT_CAPTION_CLASS = "text-xs text-muted-foreground/80"
 
-export const ADMIN_CATALOG_PAGE_BODY_CLASS = "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-8"
+export const ADMIN_PAGE_BODY_CLASS = "min-h-0 flex-1 p-4 sm:p-6 lg:overflow-y-auto lg:p-8"
+
+export const ADMIN_CATALOG_PAGE_BODY_CLASS = "flex min-h-0 min-w-0 flex-1 flex-col p-4 sm:p-6 lg:overflow-hidden lg:p-8"
 
 export const ADMIN_CATALOG_DATAGRID_PAGE_CLASS =
   "flex h-fit max-h-full min-h-0 w-full flex-col gap-5 overflow-hidden [&>:first-child]:shrink-0"
 
-export const ADMIN_HEADER_PRIMARY_BUTTON_CLASS = "h-8 gap-1.5 bg-foreground px-4 text-[13px] text-background hover:bg-foreground/90"
+export const ADMIN_HEADER_PRIMARY_BUTTON_CLASS =
+  "h-8 gap-1.5 bg-foreground px-4 text-[13px] text-background hover:bg-foreground/90 pointer-coarse:h-10"
 
 export const ADMIN_HEADER_SECONDARY_BUTTON_CLASS =
-  "h-8 gap-1.5 border-sidebar-border bg-sidebar px-3 text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground"
+  "h-8 gap-1.5 border-sidebar-border bg-sidebar px-3 text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground pointer-coarse:h-10"

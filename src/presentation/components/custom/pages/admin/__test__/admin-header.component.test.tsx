@@ -68,6 +68,55 @@ describe("AdminHeader", () => {
     expect(screen.getByRole("link")).toHaveAttribute("href", expect.stringContaining("products"))
   })
 
+  it("names the back link so a screen reader announces it", () => {
+    renderHeader(<AdminHeader backHref={ROUTES.ADMIN_PRODUCTS} title="Silver ring" />)
+
+    expect(screen.getByRole("link", { name: "Back" })).toBeInTheDocument()
+  })
+
+  it("lets the header scroll away with the page below desktop and keeps it pinned on desktop", () => {
+    renderHeader(<AdminHeader title="Products" />)
+    const headerBar = screen.getByRole("banner").parentElement
+
+    expect(headerBar).toHaveClass("lg:sticky", "lg:top-0")
+    expect(headerBar).not.toHaveClass("sticky")
+  })
+
+  it("lets the actions wrap under the title below desktop instead of running off the screen", () => {
+    renderHeader(<AdminHeader actions={<button type="button">Refund</button>} title="MRT-2026-00001" />)
+
+    expect(screen.getByRole("button", { name: "Refund" }).parentElement).toHaveClass("flex-wrap", "lg:flex-nowrap")
+    expect(screen.getByRole("heading", { level: 1 })).toHaveClass("max-lg:truncate")
+  })
+
+  it("lines actions that wrap onto a second row up on the right, like actions that fit beside the title", () => {
+    renderHeader(
+      <AdminHeader
+        actions={
+          <>
+            <button type="button">Print summary</button>
+            <button type="button">Cancel order</button>
+          </>
+        }
+        title="MRT-2026-00001"
+      />,
+    )
+
+    expect(screen.getByRole("button", { name: "Print summary" }).parentElement).toHaveClass("ml-auto", "max-lg:justify-end")
+  })
+
+  it("names the sidebar button so a screen reader announces it", () => {
+    renderHeader(<AdminHeader title="Products" />)
+
+    expect(screen.getByRole("button", { name: "Toggle Sidebar" })).toBeInTheDocument()
+  })
+
+  it("keeps the description off phone headers so the title stays readable", () => {
+    renderHeader(<AdminHeader description="Manage your catalog" title="Products" />)
+
+    expect(screen.getByText("Manage your catalog")).toHaveClass("max-sm:hidden", "max-lg:truncate")
+  })
+
   it("renders breadcrumb labels, linking only the ones that carry a target", () => {
     renderHeader(
       <AdminHeader breadcrumbs={[{ href: ROUTES.ADMIN_PRODUCTS, label: "Catalog" }, { label: "Silver ring" }]} title="Silver ring" />,

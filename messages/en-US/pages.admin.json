@@ -2,6 +2,7 @@
   "brand": "M'ARTE",
   "subtitle": "Admin panel",
   "a11y": {
+    "back": "Back",
     "selectAll": "Select all rows",
     "selectRow": "Select row"
   },

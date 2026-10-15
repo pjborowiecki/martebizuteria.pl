@@ -6,6 +6,7 @@ import { type ContentPageHandle } from "~/src/modules/content-page/content-page.
 import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
+import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { ContentPageEditorActions } from "~/src/presentation/components/custom/pages/admin/content/content-page-editor-actions"
 import { CONTENT_PAGE_FORM_ID, localesWithErrors } from "~/src/presentation/components/custom/pages/admin/content/content-page-editor.utils"
 import { ContentPageFields } from "~/src/presentation/components/custom/pages/admin/content/content-page-fields"
@@ -39,7 +40,7 @@ export const ContentPageEditor = ({ handle }: Readonly<{ handle: ContentPageHand
         title={resolveLocalizedString(page.titles, uiLocale)}
       />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-8">
+      <div className={ADMIN_PAGE_BODY_CLASS}>
         <form id={CONTENT_PAGE_FORM_ID} noValidate onSubmit={submit}>
           <ContentPageLocaleTabs
             invalidLocales={localesWithErrors(form.formState.errors)}

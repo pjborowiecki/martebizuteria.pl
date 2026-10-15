@@ -33,7 +33,7 @@ const AdminLayoutRoute = (): JSX.Element => {
     <SidebarProvider defaultOpen={sidebarDefaultOpen} className={cn("min-h-svh", ADMIN_LAYOUT_BG_CLASS)}>
       <AdminSidebar />
       <SidebarInset className={cn("min-w-0", ADMIN_LAYOUT_BG_CLASS)}>
-        <div data-admin-main className="flex h-svh min-w-0 flex-col overflow-hidden">
+        <div data-admin-main className="flex min-h-svh min-w-0 flex-col max-lg:overflow-x-clip lg:h-svh lg:overflow-hidden">
           <Outlet />
         </div>
       </SidebarInset>

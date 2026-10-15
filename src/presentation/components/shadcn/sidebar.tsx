@@ -16,6 +16,7 @@ import { useRender } from "@base-ui/react/use-render"
 import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
 import { PanelLeftIcon } from "lucide-react"
+import { useTranslations } from "use-intl/react"
 
 import { useIsMobile } from "~/src/hooks/use-mobile"
 
@@ -151,6 +152,7 @@ const Sidebar = ({
   variant?: "sidebar" | "floating" | "inset"
   collapsible?: "offcanvas" | "icon" | "none"
 }): JSX.Element => {
+  const t = useTranslations("components.shadcn.sidebar")
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
   if (collapsible === "none") {
     return (
@@ -177,8 +179,8 @@ const Sidebar = ({
           side={side}
         >
           <SheetHeader className="sr-only">
-            <SheetTitle>{SIDEBAR_MOBILE_TITLE}</SheetTitle>
-            <SheetDescription>{SIDEBAR_MOBILE_DESCRIPTION}</SheetDescription>
+            <SheetTitle>{t("title")}</SheetTitle>
+            <SheetDescription>{t("description")}</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>
@@ -236,6 +238,7 @@ const Sidebar = ({
 }
 
 const SidebarTrigger = ({ className, onClick, ...props }: ComponentProps<typeof Button>): JSX.Element => {
+  const t = useTranslations("components.shadcn.sidebar")
   const { toggleSidebar } = useSidebar()
   const handleClick = useCallback(
     (...args: Parameters<NonNullable<ComponentProps<typeof Button>["onClick"]>>) => {
@@ -256,22 +259,23 @@ const SidebarTrigger = ({ className, onClick, ...props }: ComponentProps<typeof 
       {...props}
     >
       <PanelLeftIcon />
-      <span className="sr-only">{SIDEBAR_TOGGLE_LABEL}</span>
+      <span className="sr-only">{t("toggle")}</span>
     </Button>
   )
 }
 
 const SidebarRail = ({ className, ...props }: ComponentProps<"button">): JSX.Element => {
+  const t = useTranslations("components.shadcn.sidebar")
   const { toggleSidebar } = useSidebar()
 
   return (
     <button
       data-sidebar="rail"
       data-slot="sidebar-rail"
-      aria-label={SIDEBAR_TOGGLE_LABEL}
+      aria-label={t("toggle")}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title={SIDEBAR_TOGGLE_LABEL}
+      title={t("toggle")}
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear group-data-[side=left]:-right-4 group-data-[side=right]:left-0 after:absolute after:inset-y-0 after:inset-s-1/2 after:w-[2px] hover:after:bg-sidebar-border sm:flex ltr:-translate-x-1/2 rtl:-translate-x-1/2",
         "in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",
@@ -586,12 +590,6 @@ const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_ICON = "4rem"
 
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
-
-const SIDEBAR_MOBILE_TITLE = "Sidebar"
-
-const SIDEBAR_MOBILE_DESCRIPTION = "Displays the mobile sidebar."
-
-const SIDEBAR_TOGGLE_LABEL = "Toggle Sidebar"
 
 interface SidebarVars extends CSSProperties {
   "--sidebar-width"?: string
