@@ -18,7 +18,7 @@ export const SilverPremiumSection = (): JSX.Element => {
 
   return (
     <section id="srebro" className="bg-primary text-primary-foreground">
-      <div className="mx-auto grid max-w-400 gap-12 px-6 py-20 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-12 lg:py-32">
+      <div className="storefront-container grid gap-12 py-20 lg:grid-cols-2 lg:items-center lg:gap-16 lg:py-32">
         <div className="reveal space-y-10 lg:space-y-12">
           <div className="space-y-6">
             <p className="text-[10px] tracking-[0.28em] text-primary-foreground/40 uppercase">{t("eyebrow")}</p>
@@ -28,17 +28,17 @@ export const SilverPremiumSection = (): JSX.Element => {
             <p className="max-w-md text-base/[1.7] text-primary-foreground/55 lg:text-lg/[1.7]">{t("description")}</p>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <LocalizedLink
               params={silverCollectionParams}
               to={ROUTES.COLLECTION}
-              className="inline-flex h-12 items-center justify-center bg-primary-foreground px-8 text-[11px] tracking-[0.2em] text-primary uppercase transition-colors hover:bg-primary-foreground/90"
+              className="inline-flex min-h-12 items-center justify-center bg-primary-foreground px-8 py-3 text-center text-[11px] tracking-[0.2em] text-primary uppercase transition-colors hover:bg-primary-foreground/90"
             >
               {t("ctaPrimary")}
             </LocalizedLink>
             <LocalizedLink
               to={ROUTES.PRODUCTS}
-              className="inline-flex h-12 items-center justify-center border border-primary-foreground/25 px-8 text-[11px] tracking-[0.2em] text-primary-foreground uppercase transition-colors hover:border-primary-foreground/60 hover:bg-primary-foreground/5"
+              className="inline-flex min-h-12 items-center justify-center border border-primary-foreground/25 px-8 py-3 text-center text-[11px] tracking-[0.2em] text-primary-foreground uppercase transition-colors hover:border-primary-foreground/60 hover:bg-primary-foreground/5"
             >
               {t("ctaSecondary")}
             </LocalizedLink>

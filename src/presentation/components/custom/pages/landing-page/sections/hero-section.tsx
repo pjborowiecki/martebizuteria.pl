@@ -29,11 +29,11 @@ export const HeroSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.heroSection")
 
   return (
-    <section className="mx-auto max-w-400 px-6 pt-10 pb-16 lg:px-12 lg:pt-14 lg:pb-20">
+    <section className="storefront-container pt-10 pb-16 lg:pt-14 lg:pb-20">
       <div className="grid gap-12 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
         <div className="flex flex-col justify-end gap-8">
           <div className="space-y-8">
-            <Badge className="rounded-none px-0 font-medium tracking-[0.28em] uppercase" variant="outline">
+            <Badge className="rounded-none px-2 font-medium tracking-[0.28em] uppercase lg:px-0" variant="outline">
               {t("eyebrow")}
             </Badge>
 
@@ -42,16 +42,16 @@ export const HeroSection = (): JSX.Element => {
               <p className="max-w-lg text-sm/relaxed font-light text-muted-foreground md:text-base/relaxed">{t("description")}</p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
               <LocalizedLink
                 to={ROUTES.PRODUCTS}
-                className="inline-flex h-13 items-center justify-center rounded-none bg-primary px-10 text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90"
+                className="inline-flex min-h-13 items-center justify-center rounded-none bg-primary px-6 py-3 text-center text-sm font-medium tracking-wide text-primary-foreground transition-colors hover:bg-primary/90 sm:px-10"
               >
                 {t("ctaPrimary")}
               </LocalizedLink>
               <LocalizedLink
                 to={ROUTES.ABOUT}
-                className="inline-flex h-13 items-center justify-center border border-foreground/20 px-8 text-[11px] tracking-[0.2em] uppercase transition-colors hover:border-foreground/50"
+                className="inline-flex min-h-13 items-center justify-center border border-foreground/20 px-6 py-3 text-center text-[11px] tracking-[0.2em] uppercase transition-colors hover:border-foreground/50 sm:px-8"
               >
                 {t("ctaSecondary")}
               </LocalizedLink>

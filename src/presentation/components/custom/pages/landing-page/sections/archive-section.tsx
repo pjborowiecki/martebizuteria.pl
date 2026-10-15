@@ -39,7 +39,7 @@ export const ArchiveSection = (): JSX.Element | undefined => {
   }
 
   return (
-    <section className="mx-auto max-w-400 px-6 py-16 lg:px-12 lg:py-24">
+    <section className="storefront-container py-16 lg:py-24">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-center lg:gap-12">
         <AspectRatio className="parallax-wrap reveal overflow-hidden bg-card" ratio={ASPECT_RATIO_PORTRAIT}>
           <div className="parallax-img absolute inset-x-0 top-[-8%] bottom-[-8%]">

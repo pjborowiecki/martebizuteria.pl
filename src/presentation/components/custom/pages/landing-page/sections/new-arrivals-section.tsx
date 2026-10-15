@@ -14,7 +14,7 @@ export const NewArrivalsSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.newArrivalsSection")
 
   return (
-    <section id="nowosci" className="mx-auto max-w-400 space-y-10 px-6 pt-20 pb-20 lg:px-12 lg:pt-28 lg:pb-28">
+    <section id="nowosci" className="storefront-container space-y-10 pt-20 pb-20 lg:pt-28 lg:pb-28">
       <div className="reveal flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-3">
           <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>

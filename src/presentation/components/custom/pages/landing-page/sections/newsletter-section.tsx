@@ -48,7 +48,7 @@ export const NewsletterSection = (): JSX.Element => {
 
   return (
     <section className="bg-secondary/40 py-20 lg:py-28">
-      <div className="reveal mx-auto max-w-400 px-6 lg:px-12">
+      <div className="reveal storefront-container">
         <div className="mx-auto max-w-3xl space-y-6 text-center">
           <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
           <h2 className="font-serif text-4xl leading-tight md:text-5xl">{t("title")}</h2>

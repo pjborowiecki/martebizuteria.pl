@@ -71,4 +71,12 @@ describe("VideoExperienceSection", () => {
 
     expect(container.querySelector("section")).toHaveAttribute("id", "experience")
   })
+
+  it("centres the copy between equal phone and tablet gutters and keeps the desktop column at the left edge", () => {
+    renderWithProviders(<VideoExperienceSection />)
+
+    const content = screen.getByRole("heading", { level: 2 }).parentElement?.parentElement
+
+    expect(content).toHaveClass("storefront-container", "lg:ml-0")
+  })
 })

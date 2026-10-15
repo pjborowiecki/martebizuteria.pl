@@ -15,7 +15,7 @@ export const MaisonHeritageSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.maisonHeritageSection")
 
   return (
-    <section id="marka" className="mx-auto max-w-400 px-6 py-16 lg:px-12 lg:py-24">
+    <section id="marka" className="storefront-container py-16 lg:py-24">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center lg:gap-12">
         <div className="reveal space-y-5">
           <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>

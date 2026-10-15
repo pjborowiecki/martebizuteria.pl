@@ -79,4 +79,17 @@ describe("SilverPremiumSection", () => {
 
     expect(container.querySelector("section")).toHaveAttribute("id", "srebro")
   })
+
+  it("stacks the two calls to action on phones and lets a long label grow the button instead of spilling out", () => {
+    renderWithProviders(<SilverPremiumSection />)
+
+    const primary = screen.getByRole("link", { name: "Discover the Collection" })
+    const secondary = screen.getByRole("link", { name: "View all products" })
+
+    expect(primary.parentElement).toHaveClass("flex-col", "sm:flex-row", "sm:items-center")
+    for (const link of [primary, secondary]) {
+      expect(link).toHaveClass("min-h-12", "text-center")
+      expect(link).not.toHaveClass("h-12")
+    }
+  })
 })

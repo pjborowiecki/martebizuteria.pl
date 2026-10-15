@@ -47,4 +47,20 @@ describe("HeroSection", () => {
 
     expect(screen.getByAltText("Editorial jewelry composition on stone")).toHaveAttribute("loading", "eager")
   })
+
+  it("stacks full-width calls to action on phones with centred labels and keeps the desktop row", () => {
+    renderWithProviders(<HeroSection />)
+
+    const primary = screen.getByRole("link", { name: "Find something for yourself" })
+
+    expect(primary.parentElement).toHaveClass("flex-col", "sm:flex-row", "sm:flex-wrap")
+    expect(primary).toHaveClass("min-h-13", "px-6", "text-center", "sm:px-10")
+    expect(screen.getByRole("link", { name: "Get to know us better" })).toHaveClass("min-h-13", "px-6", "sm:px-8")
+  })
+
+  it("keeps the eyebrow clear of its outline on phones and flush with the heading on desktop", () => {
+    renderWithProviders(<HeroSection />)
+
+    expect(screen.getByText("Everyday elegance")).toHaveClass("px-2", "lg:px-0")
+  })
 })

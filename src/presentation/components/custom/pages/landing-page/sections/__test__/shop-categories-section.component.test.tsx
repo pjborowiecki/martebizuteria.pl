@@ -88,6 +88,15 @@ describe("ShopCategoriesSection", () => {
     expect(screen.getByText("2 pieces")).toBeInTheDocument()
   })
 
+  it("moves the product count under a title it no longer fits beside on the half-width cards", async () => {
+    seed(2)
+    renderWithProviders(<ShopCategoriesSection />)
+
+    await screen.findByRole("heading", { level: 2, name: "Categories" })
+
+    expect(screen.getByText("1 piece").parentElement).toHaveClass("flex-wrap", "gap-x-4", "gap-y-1")
+  })
+
   it("links every card to its category handle", async () => {
     seed(2)
     renderWithProviders(<ShopCategoriesSection />)
