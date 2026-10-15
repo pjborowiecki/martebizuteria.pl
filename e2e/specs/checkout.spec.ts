@@ -2,6 +2,7 @@ import { type APIRequestContext, type Browser, type Page, type Request, type Tes
 
 import { COURIER, IN_STORE_PICKUP, PARCEL_LOCKER, PRODUCTS, SHIPPING_ADDRESS, WITHDRAWN_DELIVERY_METHOD } from "../data/catalog"
 import { INPOST_LOCKERS, INPOST_POINTS } from "../data/inpost"
+import { previewAutofill } from "../fixtures/autofill"
 import { rememberPriceWhenAdded } from "../fixtures/cart"
 import { keepCheckoutDraft, lockerCheckoutDraft } from "../fixtures/checkout-draft"
 import { registerCustomer } from "../fixtures/customers"
@@ -25,6 +26,7 @@ import {
   waitForOpenCheckoutSession,
 } from "../fixtures/stripe"
 import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
+import { themeColour } from "../fixtures/theme"
 import { uniqueEmail } from "../fixtures/unique"
 import { CheckoutPage } from "../pages/checkout-page"
 import { ProductPage } from "../pages/product-page"
@@ -512,6 +514,40 @@ test.describe("guest checkout", () => {
     const continued = await waitForOpenCheckoutSession(request, email, session)
     expect(continued.metadata["checkoutId"]).toBe(session.metadata["checkoutId"])
     await expectOnlyOpenSession(request, email, continued)
+  })
+
+  test("a shopper hovering an autofill suggestion after an empty first try reads it under floated labels, without the old errors or red underlines", async ({
+    browserName,
+    checkoutPage,
+    page,
+  }) => {
+    test.skip(browserName !== "chromium", "Only Chromium lets a test put a field in the autofill state")
+    const email = page.locator("#email")
+    const phone = page.locator("#phone")
+    const emailError = page.getByText("Please enter a valid email address", { exact: true })
+    const phoneError = page.getByText("Phone number is required", { exact: true })
+    const phoneLabel = page.locator("label[for=phone]")
+    await checkoutPage.gotoCheckout()
+    await checkoutPage.nextButton("Address").click()
+    await expect(phoneError).toBeVisible()
+    await expect(email).toBeFocused()
+    await expect(page.locator("label[for=email]")).toHaveCSS("top", "0px")
+    await expect(phoneLabel).toHaveCSS("top", "26px")
+    await expect(email).toHaveCSS("border-bottom-color", await themeColour(page, "--destructive"))
+
+    const preview = await previewAutofill(page, ["#email", "#phone"])
+
+    await expect(emailError).toBeHidden()
+    await expect(phoneError).toBeHidden()
+    await expect(phoneLabel).toHaveCSS("top", "0px")
+    await expect(email).toHaveCSS("border-bottom-color", await themeColour(page, "--foreground"))
+    await expect(phone).toHaveCSS("border-bottom-color", await themeColour(page, "--border"))
+
+    await preview.detach()
+
+    await expect(phoneError).toBeVisible()
+    await expect(phoneLabel).toHaveCSS("top", "26px")
+    await expect(email).toHaveCSS("border-bottom-color", await themeColour(page, "--destructive"))
   })
 
   test("the address step refuses a postal code that is not Polish", async ({ checkoutPage, page }, testInfo) => {
