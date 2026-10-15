@@ -27,6 +27,10 @@ export const CATALOG_SHEET_READ_ONLY_INPUT_CLASS = [
 
 export const CATALOG_SHEET_CARD_CONTENT_CLASS = "space-y-6"
 
+export const CATALOG_SHEET_PAIRED_FIELDS_CARD_CONTENT_CLASS = cn("@container", CATALOG_SHEET_CARD_CONTENT_CLASS)
+
+export const CATALOG_SHEET_FIELD_PAIR_CLASS = "grid gap-5 @sm:grid-cols-2"
+
 export const CATALOG_SHEET_FIELD_CLASS = [
   "gap-2",
   "[&_input]:h-10 [&_input]:min-h-10 [&_input]:max-h-10",

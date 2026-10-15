@@ -21,15 +21,15 @@ export const CatalogSheetControlsActionRow = ({
   children,
 }: Readonly<{
   children: ReactNode
-}>): JSX.Element => <div className="flex items-start gap-2">{children}</div>
+}>): JSX.Element => <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-2">{children}</div>
 
 export const CatalogSheetActionColumn = ({
   children,
 }: Readonly<{
   children: ReactNode
 }>): JSX.Element => (
-  <div className="flex shrink-0 flex-col gap-2">
-    <div aria-hidden className="min-h-5" />
+  <div className="flex shrink-0 flex-col gap-2 max-sm:items-start">
+    <div aria-hidden className="min-h-5 max-sm:hidden" />
     {children}
   </div>
 )

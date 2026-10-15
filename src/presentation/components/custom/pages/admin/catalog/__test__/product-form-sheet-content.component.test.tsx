@@ -52,6 +52,14 @@ describe("ProductFormSheetContent", () => {
     localStorage.clear()
   })
 
+  it("never grows wider than the screen and keeps the resize handle off phones and tablets, where the sheet fills the screen", () => {
+    renderSheet()
+
+    expect(panelOf()).toHaveClass("data-[side=right]:!w-[min(var(--catalog-form-sheet-width),100%)]", "data-[side=right]:!min-w-0")
+    expect(screen.getByRole("button", { name: "Resize panel" })).toHaveClass("hidden", "lg:flex")
+    expect(screen.getByRole("button", { name: "Resize panel" })).not.toHaveClass("sm:flex")
+  })
+
   it("renders the product form behind a labelled resize handle", () => {
     renderSheet()
 

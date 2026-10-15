@@ -7,7 +7,10 @@ import { Card, CardContent, CardHeader } from "~/src/presentation/components/sha
 import { SheetDescription, SheetHeader, SheetTitle } from "~/src/presentation/components/shadcn/sheet"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
-import { CATALOG_SHEET_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+import {
+  CATALOG_SHEET_FIELD_PAIR_CLASS,
+  CATALOG_SHEET_PAIRED_FIELDS_CARD_CONTENT_CLASS,
+} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
 
 const CatalogSheetFieldSkeleton = ({
   className,
@@ -33,7 +36,7 @@ const CatalogSheetCardSkeleton = ({
     <CardHeader>
       <Skeleton className={cn("h-5", titleWidth)} />
     </CardHeader>
-    <CardContent className={CATALOG_SHEET_CARD_CONTENT_CLASS}>{children}</CardContent>
+    <CardContent className={CATALOG_SHEET_PAIRED_FIELDS_CARD_CONTENT_CLASS}>{children}</CardContent>
   </Card>
 )
 
@@ -49,7 +52,7 @@ const ProductSheetLocalePickerSkeleton = (): JSX.Element => (
 
 const ProductSheetBasicSectionSkeleton = (): JSX.Element => (
   <CatalogSheetCardSkeleton className="flex h-full flex-col" titleWidth="w-24">
-    <div className="grid grid-cols-2 gap-5">
+    <div className={CATALOG_SHEET_FIELD_PAIR_CLASS}>
       <CatalogSheetFieldSkeleton />
       <CatalogSheetFieldSkeleton />
     </div>
@@ -79,7 +82,7 @@ const ProductSheetSidebarSectionSkeleton = (): JSX.Element => (
     </CatalogSheetCardSkeleton>
 
     <CatalogSheetCardSkeleton titleWidth="w-24">
-      <div className="grid grid-cols-2 gap-5">
+      <div className={CATALOG_SHEET_FIELD_PAIR_CLASS}>
         <CatalogSheetFieldSkeleton />
         <CatalogSheetFieldSkeleton />
       </div>

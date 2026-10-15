@@ -14,8 +14,9 @@ import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/page
 import { CatalogIntegerInput } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-integer-input"
 import { CatalogMoneyInput } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-money-input"
 import {
-  CATALOG_SHEET_CARD_CONTENT_CLASS,
   CATALOG_SHEET_FIELD_CLASS,
+  CATALOG_SHEET_FIELD_PAIR_CLASS,
+  CATALOG_SHEET_PAIRED_FIELDS_CARD_CONTENT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
 
 export const ProductEditorPricing = (): JSX.Element => {
@@ -78,8 +79,8 @@ export const ProductEditorPricing = (): JSX.Element => {
       <CardHeader>
         <CardTitle className="text-base font-semibold">{t("pricing.title")}</CardTitle>
       </CardHeader>
-      <CardContent className={CATALOG_SHEET_CARD_CONTENT_CLASS}>
-        <div className="grid grid-cols-2 gap-5">
+      <CardContent className={CATALOG_SHEET_PAIRED_FIELDS_CARD_CONTENT_CLASS}>
+        <div className={CATALOG_SHEET_FIELD_PAIR_CLASS}>
           <Field className={CATALOG_SHEET_FIELD_CLASS} data-invalid={priceFieldState.invalid}>
             <CatalogFormFieldLabel hint={t("form.hints.price")} label={t("pricing.price")} required />
             <div className="relative">

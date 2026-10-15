@@ -19,8 +19,9 @@ import {
   ProductCatalogLocaleTextareaFormField,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-locale-fields"
 import {
-  CATALOG_SHEET_CARD_CONTENT_CLASS,
   CATALOG_SHEET_FIELD_CLASS,
+  CATALOG_SHEET_FIELD_PAIR_CLASS,
+  CATALOG_SHEET_PAIRED_FIELDS_CARD_CONTENT_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
 import { normalizeSlugInput, slugify } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-slug.utils"
 import { useProductEditorBasicCopy } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/use-product-editor-basic-copy"
@@ -67,8 +68,8 @@ export const ProductEditorBasic = (): JSX.Element => {
       <CardHeader>
         <CardTitle className="text-base font-semibold">{t("basic.title")}</CardTitle>
       </CardHeader>
-      <CardContent className={cn("flex min-h-0 flex-1 flex-col", CATALOG_SHEET_CARD_CONTENT_CLASS)}>
-        <div className="grid grid-cols-2 gap-5">
+      <CardContent className={cn("flex min-h-0 flex-1 flex-col", CATALOG_SHEET_PAIRED_FIELDS_CARD_CONTENT_CLASS)}>
+        <div className={CATALOG_SHEET_FIELD_PAIR_CLASS}>
           <ProductCatalogLocaleFormField
             control={control}
             copy={titleCopy}

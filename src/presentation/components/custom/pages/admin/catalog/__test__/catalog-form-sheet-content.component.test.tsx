@@ -50,6 +50,13 @@ describe("CatalogFormSheetContent", () => {
     expect(screen.getByRole("button", { name: "Resize panel" })).toBeInTheDocument()
   })
 
+  it("never grows wider than the screen and keeps the mouse-only resize handle off phones", () => {
+    renderSheet()
+
+    expect(panelOf()).toHaveClass("data-[side=right]:!w-[min(var(--catalog-form-sheet-width),100%)]", "data-[side=right]:!min-w-0")
+    expect(screen.getByRole("button", { name: "Resize panel" })).toHaveClass("hidden", "sm:flex")
+  })
+
   it("opens at the shared default width when nothing has been stored", () => {
     renderSheet()
 

@@ -61,7 +61,7 @@ describe("CatalogSheetControlsActionRow", () => {
     cleanup()
   })
 
-  it("renders its children in a row", () => {
+  it("stacks its children on phones and lines them up in a row from the small breakpoint", () => {
     const { container } = renderWithProviders(
       <CatalogSheetControlsActionRow>
         <span>first</span>
@@ -69,7 +69,7 @@ describe("CatalogSheetControlsActionRow", () => {
       </CatalogSheetControlsActionRow>,
     )
 
-    expect(container.firstElementChild).toHaveClass("flex", "items-start")
+    expect(container.firstElementChild).toHaveClass("flex", "flex-col", "sm:flex-row", "sm:items-start")
     expect(screen.getByText("first")).toBeInTheDocument()
     expect(screen.getByText("second")).toBeInTheDocument()
   })
@@ -89,7 +89,7 @@ describe("CatalogSheetActionColumn", () => {
 
     const spacer = container.querySelector("[aria-hidden]")
 
-    expect(spacer).toHaveClass("min-h-5")
+    expect(spacer).toHaveClass("min-h-5", "max-sm:hidden")
     expect(screen.getByRole("button", { name: "Remove" })).toBeInTheDocument()
   })
 })
