@@ -491,6 +491,26 @@ export const getOrderForShippedEmail = (orderId: string) =>
     },
   })
 
+export const getOrderForProgressEmail = (orderId: string) =>
+  db.query.order.findFirst({
+    columns: {
+      email: true,
+      id: true,
+      metadata: true,
+      orderNumber: true,
+      userId: true,
+    },
+    where: eq(order.id, orderId),
+    with: {
+      deliveryMethod: {
+        columns: {
+          name: true,
+          type: true,
+        },
+      },
+    },
+  })
+
 export const getOrderForRefundEmail = (orderId: string) =>
   db.query.order.findFirst({
     columns: {

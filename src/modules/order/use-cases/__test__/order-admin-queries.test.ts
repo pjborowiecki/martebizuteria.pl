@@ -334,6 +334,7 @@ const detailRow = (overrides: Record<string, unknown> = {}) => ({
   deliveryMethod: null,
   discountTotal: 0,
   email: "ada@example.test",
+  fulfillmentStartedAt: null,
   fulfillmentStatus: "not_fulfilled",
   id: DETAIL_ORDER_ID,
   inpostShipmentId: null,
@@ -721,8 +722,10 @@ describe("getAdminOrder customer, lines and timeline", () => {
     expect(detail?.timeline.map((event) => event.id)).toStrictEqual(["audit-1"])
   })
 
-  it("dates the processing step from the latest fulfillment start in the timeline", async () => {
-    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow({ fulfillmentStatus: "fulfilled" }))
+  it("dates the processing step from when the order started fulfilment, not from the activity log", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(
+      detailRow({ fulfillmentStartedAt: FULFILLMENT_STARTED_AT, fulfillmentStatus: "fulfilled" }),
+    )
     accessors.getAdminOrderTimelineRows.mockResolvedValueOnce([
       {
         action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,
@@ -730,14 +733,6 @@ describe("getAdminOrder customer, lines and timeline", () => {
         createdAt: CREATED_AT,
         detail: null,
         id: "audit-2",
-        severity: "info",
-      },
-      {
-        action: AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED,
-        actorName: "Admin",
-        createdAt: FULFILLMENT_STARTED_AT,
-        detail: null,
-        id: "audit-3",
         severity: "info",
       },
     ])

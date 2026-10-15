@@ -16,7 +16,7 @@ The codebase exists for two reasons at once. It runs a real jewellery brand's sh
 | Currency            | `PLN` only — `STORE_CURRENCY_CODE` in `src/modules/_core/constants/currency.ts`                     |
 | Payment             | Stripe, card and Stripe-hosted methods, webhook-driven fulfilment                                   |
 | Delivery            | Courier and InPost parcel lockers, seeded into the `delivery_method` table                          |
-| Transactional email | Resend, seventeen React Email templates in `src/presentation/emails/`                               |
+| Transactional email | Resend, eighteen React Email templates in `src/presentation/emails/`                                |
 | Worker name         | `martebizuteria` in production, `martebizuteria-preview`, `martebizuteria-development`              |
 
 `wrangler.jsonc` attaches `preview.martebizuteria.pl` to the preview Worker as a custom domain and keeps both Workers on their `*.workers.dev` hostnames; the production Worker gets `martebizuteria.pl` when the shop goes live. The production URL recorded in `package.json` is `https://martebizuteria.pl`, the canonical address `APP_URL` gives every page.

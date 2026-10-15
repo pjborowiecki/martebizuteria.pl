@@ -15,16 +15,19 @@ const ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
 
 const SHIPPED_EMAIL_SENT = { kind: "order-shipped", status: "sent" }
 
+const IN_PROGRESS_EMAIL_SENT = { kind: "order-in-progress", status: "sent" }
+
 const database = vi.hoisted(() => {
   const updates: Record<string, unknown>[] = []
-  const moved = { current: [{ id: "0192f3a4-5b6c-7d8e-9fab-cdef01234567" }] as { id: string }[] }
+  const unmatched: number[] = []
 
   return {
-    moved,
+    unmatched,
     updateSet: vi.fn((values: Record<string, unknown>) => {
       updates.push(values)
+      const matched = !unmatched.includes(updates.length)
 
-      return { where: () => ({ returning: () => Promise.resolve(moved.current) }) }
+      return { where: () => ({ returning: () => Promise.resolve(matched ? [{ id: "0192f3a4-5b6c-7d8e-9fab-cdef01234567" }] : []) }) }
     }),
     updates,
   }
@@ -47,14 +50,18 @@ const announcement = vi.hoisted(() => ({
   announceOrderShipment: vi.fn<(orderId: string, origin: string) => Promise<{ readonly kind: string; readonly status: string }>>(),
 }))
 
+const progressEmails = vi.hoisted(() => ({ sendOrderInProgressEmail: vi.fn<(orderId: string, origin: string) => Promise<boolean>>() }))
+
 const incoming = vi.hoisted(() => ({ getRequest: vi.fn<() => Request>() }))
 
+vi.mock("cloudflare:workers", () => ({ env: {} }))
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: incoming.getRequest }))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { update: () => ({ set: database.updateSet }) },
 }))
 vi.mock("~/src/modules/order/use-cases/announce-order-shipment.server", () => announcement)
+vi.mock("~/src/modules/order/use-cases/send-order-in-progress-email.server", () => progressEmails)
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderDeliveredAudit: audit.delivered,
   recordOrderFulfillmentStartedAudit: audit.fulfillmentStarted,
@@ -99,8 +106,9 @@ beforeEach(() => {
     new Request("http://127.0.0.1:3000/_serverFn/ship-order", { headers: { origin: "https://attacker.example" } }),
   )
   announcement.announceOrderShipment.mockResolvedValue(SHIPPED_EMAIL_SENT)
+  progressEmails.sendOrderInProgressEmail.mockResolvedValue(true)
   database.updates.length = 0
-  database.moved.current = [{ id: ORDER_ID }]
+  database.unmatched.length = 0
   orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "pending" }
 })
 
@@ -125,10 +133,48 @@ describe("fulfillOrder", () => {
     await expect(fulfillOrder({ data: { orderId: ORDER_ID } })).rejects.toThrow(AppError)
   })
 
-  it("records the start of fulfillment in the audit log", async () => {
+  it("records the start of fulfillment in the audit log and on the order", async () => {
     await fulfillOrder({ data: { orderId: ORDER_ID } })
 
     expect(audit.fulfillmentStarted).toHaveBeenCalledWith(ORDER_ID)
+    expect(database.updates[0]?.["fulfillmentStartedAt"]).toBeInstanceOf(Date)
+  })
+
+  it("tells the customer, on the shop the admin works in, that their order is being prepared", async () => {
+    await expect(fulfillOrder({ data: { orderId: ORDER_ID } })).resolves.toStrictEqual({
+      email: IN_PROGRESS_EMAIL_SENT,
+      ok: true,
+      orderId: ORDER_ID,
+    })
+    expect(database.updates[1]?.["inProgressEmailAt"]).toBeInstanceOf(Date)
+    expect(progressEmails.sendOrderInProgressEmail).toHaveBeenCalledExactlyOnceWith(ORDER_ID, "http://127.0.0.1:3000")
+  })
+
+  it("does not tell the customer again when an order stepped back starts fulfilment a second time", async () => {
+    database.unmatched.push(2)
+
+    await expect(fulfillOrder({ data: { orderId: ORDER_ID } })).resolves.toMatchObject({
+      email: { kind: "order-in-progress", status: "alreadySent" },
+    })
+    expect(progressEmails.sendOrderInProgressEmail).not.toHaveBeenCalled()
+  })
+
+  it("refuses a second start of fulfilment another click already made, without a second email", async () => {
+    orderRow.current = { fulfillmentStatus: "not_fulfilled", status: "processing" }
+    database.unmatched.push(1)
+
+    await expect(fulfillOrder({ data: { orderId: ORDER_ID } })).rejects.toThrow(
+      new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE),
+    )
+    expect(audit.fulfillmentStarted).not.toHaveBeenCalled()
+    expect(progressEmails.sendOrderInProgressEmail).not.toHaveBeenCalled()
+  })
+
+  it("refuses a request on a host this build does not serve before the order is touched", async () => {
+    incoming.getRequest.mockReturnValue(new Request("https://martebizuteria.pl.attacker.example/_serverFn/fulfill-order"))
+
+    await expect(fulfillOrder({ data: { orderId: ORDER_ID } })).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+    expect(database.updates).toHaveLength(0)
   })
 
   it("keys its mutation by the shared fulfill key", () => {
@@ -137,6 +183,7 @@ describe("fulfillOrder", () => {
 
   it("fulfills the order the mutation was handed", async () => {
     await expect(new MutationObserver(new QueryClient(), fulfillOrderMutation).mutate({ orderId: ORDER_ID })).resolves.toStrictEqual({
+      email: IN_PROGRESS_EMAIL_SENT,
       ok: true,
       orderId: ORDER_ID,
     })
@@ -192,7 +239,7 @@ describe("shipOrder", () => {
   })
 
   it("refuses a second shipping of an order another click already shipped, without a second email", async () => {
-    database.moved.current = []
+    database.unmatched.push(1)
 
     await expect(shipOrder({ data: { orderId: ORDER_ID } })).rejects.toThrow(
       new AppError(ERROR_CODES.CONFLICT, ORDER_ERROR_CODES.INVALID_STATE),

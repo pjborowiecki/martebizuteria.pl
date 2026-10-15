@@ -25,6 +25,7 @@ export const order = sqliteTable(
     discountId: text("discount_id"),
     discountTotal: integer("discount_total").default(0).notNull(),
     email: text("email", { length: 320 }).notNull(),
+    fulfillmentStartedAt: timestamp("fulfillment_started_at"),
     fulfillmentStatus: text("fulfillment_status", {
       enum: ["not_fulfilled", "partially_fulfilled", "fulfilled", "shipped", "delivered", "cancelled"],
     })
@@ -33,6 +34,7 @@ export const order = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => crypto.randomUUID()),
+    inProgressEmailAt: timestamp("in_progress_email_at"),
     inpostShipmentId: text("inpost_shipment_id"),
     inpostShipmentStatus: text("inpost_shipment_status"),
     lockerId: text("locker_id"),

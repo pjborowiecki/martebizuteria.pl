@@ -78,6 +78,13 @@ export const awaitOrderEmailNotice = async (
   return { kind, status: (await delivery) ? ORDER_EMAIL_NOTICE_STATUS.SENT : ORDER_EMAIL_NOTICE_STATUS.FAILED }
 }
 
+export const announceClaimedOrderEmail = (
+  kind: Order["emailNotice"]["kind"],
+  claimed: boolean,
+  send: () => Promise<boolean>,
+): Promise<Order["emailNotice"]> =>
+  claimed ? awaitOrderEmailNotice(kind, send()) : Promise.resolve({ kind, status: ORDER_EMAIL_NOTICE_STATUS.ALREADY_SENT })
+
 export interface OrderEmailOutcome {
   readonly failure: string | undefined
   readonly label: string

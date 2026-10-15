@@ -49,7 +49,7 @@ interface CustomerAccountOrderAddress {
 
 interface CustomerAccountOrderTimelineEntry {
   readonly date: Date
-  readonly event: "cancelled" | "confirmed" | "delivered" | "placed" | "refunded" | "shipped"
+  readonly event: "cancelled" | "confirmed" | "delivered" | "placed" | "processing" | "refunded" | "shipped"
 }
 
 interface CustomerAccountOrderRefund {

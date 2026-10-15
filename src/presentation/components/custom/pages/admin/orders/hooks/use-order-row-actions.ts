@@ -92,8 +92,19 @@ const useOrderEmailNoticeToast = (): ((notice: Order["emailNotice"]) => void) =>
   )
 }
 
-export const useFulfillOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
-  useAdminOrderActionMutation(fulfillOrderMutation, "toast.fulfillSuccessDescription")
+export const useFulfillOrder = (): UseMutationResult<OrderEmailActionResult, Error, OrderIdInput> => {
+  const showEmailNotice = useOrderEmailNoticeToast()
+
+  return useAdminOrderActionMutation(
+    {
+      ...fulfillOrderMutation,
+      onSuccess: ({ email }) => {
+        showEmailNotice(email)
+      },
+    },
+    "toast.fulfillSuccessDescription",
+  )
+}
 
 export const useMarkOrderShipped = (): UseMutationResult<OrderEmailActionResult, Error, ShipOrderInput> => {
   const showEmailNotice = useOrderEmailNoticeToast()

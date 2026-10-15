@@ -6,7 +6,6 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { isInpostShipxConfigured } from "~/src/integrations/inpost/inpost.shipx.server"
 
-import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { getOrderWithdrawals } from "~/src/modules/order-withdrawal/order-withdrawal.accessors"
 import {
   type AdminOrderCustomerStats,
@@ -41,9 +40,6 @@ const GUEST_CUSTOMER_STATS: AdminOrderCustomerStats = {
   orderCount: 0,
   totalSpent: 0,
 }
-
-const resolveFulfillmentStartedAt = (timelineRows: AdminOrderTimelineRows): Date | undefined =>
-  timelineRows.findLast((row) => row.action === AUDIT_LOG_ACTION.ORDER_FULFILLMENT_STARTED)?.createdAt
 
 const buildAdminOrderDetail = ({
   customerStats,
@@ -96,7 +92,7 @@ const buildAdminOrderDetail = ({
       canceledAt: orderRow.canceledAt,
       createdAt: orderRow.createdAt,
       deliveredAt: orderRow.deliveredAt,
-      fulfillmentStartedAt: resolveFulfillmentStartedAt(timelineRows),
+      fulfillmentStartedAt: orderRow.fulfillmentStartedAt,
       fulfillmentStatus: orderRow.fulfillmentStatus,
       shippedAt: orderRow.shippedAt,
       status: orderRow.status,

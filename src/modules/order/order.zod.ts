@@ -60,6 +60,7 @@ const minorUnits = zod.number().int().nonnegative()
 const email = zod.discriminatedUnion("kind", [
   zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.CONFIRMATION) }),
   zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.NEW_ORDER) }),
+  zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.IN_PROGRESS) }),
   zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.SHIPPED) }),
   zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.TRACKING), trackingNumber: zod.string().min(MIN_FIELD_LENGTH) }),
   zod.object({ kind: zod.literal(ORDER_EMAIL_KIND.CANCELLED), refundedAmount: minorUnits.optional() }),

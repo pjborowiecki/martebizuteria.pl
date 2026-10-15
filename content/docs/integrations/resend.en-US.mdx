@@ -1,6 +1,6 @@
 ---
 title: "Resend"
-description: "The seventeen transactional e-mails and the newsletter, the sender domain they need, how they are composed, and how to preview them."
+description: "The eighteen transactional e-mails and the newsletter, the sender domain they need, how they are composed, and how to preview them."
 ---
 
 Every e-mail the shop sends goes out through Resend. The adapter in `src/integrations/resend/` holds the client, one `sendEmail` helper, the flag that marks a sender unable to send, the limits on e-mails visitors can request and the sender check a deploy runs. Each e-mail is composed and sent by a use case of the module it belongs to, such as `src/modules/order/use-cases/send-order-shipped-email.server.ts`. The React Email templates and the developer preview renderer live in `src/presentation/emails/`, because they are presentation.
@@ -90,7 +90,7 @@ Nothing else asks. The order, shipped, cancelled, refunded, payment-failed, new-
 
 `src/integrations/resend/__test__/resend.public-email-limits.integration.test.ts` runs the limits against a `rate_limit` table: the fourth e-mail of a kind to an address in an hour, the case and spaces of an address, separate kinds and addresses, the hour and the day rolling over, the hash in place of the address, the audit entry for the daily limit, and an unreadable table.
 
-## The seventeen e-mails
+## The eighteen e-mails
 
 | E-mail                        | Template                                                    | Namespace                              | Sent from                                                                                                                                                                                                                          |
 | ----------------------------- | ----------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -100,6 +100,7 @@ Nothing else asks. The order, shipped, cancelled, refunded, payment-failed, new-
 | Password changed              | `src/presentation/emails/password-changed.tsx`              | `emails.password-changed`              | `sendPasswordChangedEmail` in `src/modules/account/use-cases/send-password-changed-email.server.ts`, handed to `scheduleBackgroundWork` by Better Auth's `onPasswordReset`                                                         |
 | Account deleted               | `src/presentation/emails/account-deleted.tsx`               | `emails.account-deleted`               | `sendAccountDeletedEmail` in `src/modules/user/use-cases/send-account-deleted-email.server.ts`, awaited by `src/modules/user/use-cases/delete-customer.ts` and by Better Auth's `afterDelete`                                      |
 | Order confirmation            | `src/presentation/emails/order-confirmation.tsx`            | `emails.order-confirmation`            | `sendOrderConfirmationEmail`, awaited by `handleFulfillCheckoutSession` in `stripe.webhooks.ts` once a checkout session is fulfilled                                                                                               |
+| Order in progress             | `src/presentation/emails/order-in-progress.tsx`             | `emails.order-in-progress`             | `sendOrderInProgressEmail`, awaited by `src/modules/order/use-cases/fulfill-order.ts` once fulfilment starts and its claim matches                                                                                                 |
 | Order shipped                 | `src/presentation/emails/order-shipped.tsx`                 | `emails.order-shipped`                 | `sendOrderShippedEmail`, through `announceOrderShipment`, awaited by `src/modules/order/use-cases/ship-order.ts`                                                                                                                   |
 | Tracking number               | `src/presentation/emails/order-tracking.tsx`                | `emails.order-tracking`                | `sendOrderTrackingEmail`, through `announceOrderShipment` from `ship-order.ts`, `refresh-inpost-shipment.ts` and the InPost webhook, for a number the customer of a shipped order was not sent                                     |
 | Order cancelled               | `src/presentation/emails/order-cancelled.tsx`               | `emails.order-cancelled`               | `sendOrderCancelledEmail`, awaited by `src/modules/order/use-cases/cancel-order.ts` once the order is cancelled                                                                                                                    |
@@ -112,7 +113,7 @@ Nothing else asks. The order, shipped, cancelled, refunded, payment-failed, new-
 | Newsletter confirmation       | `src/presentation/emails/newsletter-confirmation.tsx`       | `emails.newsletter-confirmation`       | `sendNewsletterConfirmationEmail` in `send-newsletter-confirmation-email.server.ts`, awaited by `src/modules/newsletter/use-cases/subscribe-to-newsletter.ts`                                                                      |
 | Newsletter already subscribed | `src/presentation/emails/newsletter-already-subscribed.tsx` | `emails.newsletter-already-subscribed` | `sendNewsletterAlreadySubscribedEmail` in `send-newsletter-already-subscribed-email.server.ts`, awaited by `subscribe-to-newsletter.ts` when a confirmed address is submitted by anyone but its signed-in owner                    |
 
-The first five are described in [Better Auth](/docs/integrations/better-auth); the use cases that send the other twelve are described below. The newsletter's template, `newsletter-campaign.tsx`, is described under [The newsletter](#the-newsletter).
+The first five are described in [Better Auth](/docs/integrations/better-auth); the use cases that send the other thirteen are described below. The newsletter's template, `newsletter-campaign.tsx`, is described under [The newsletter](#the-newsletter).
 
 Each template exports its own namespace constant beside the component, so the caller cannot drift from the messages it renders:
 
@@ -167,6 +168,7 @@ Every link the app writes into an e-mail itself points at the address the custom
 | Newsletter confirmation and already-subscribed notice | `subscribeToNewsletter`, with `resolveRequestOrigin(getRequest())`                                                                                                                                                |
 | Newsletter and its test                               | `sendNewsletterCampaign` and `sendNewsletterTest`, with `resolveRequestOrigin(getRequest())` on the admin's request; the campaign stores it in `newsletter_campaign.origin` for the batches its queue sends later |
 | Order confirmation                                    | The session's `return_url`, which the checkout request built: `resolveDeploymentOrigin(session.return_url)` in `sendOrderConfirmationEmail`                                                                       |
+| Order in progress                                     | `fulfillOrder`, with `resolveRequestOrigin(getRequest())` on the admin's request                                                                                                                                  |
 | Order shipped                                         | `shipOrder`, with `resolveRequestOrigin(getRequest())` on the admin's request                                                                                                                                     |
 | Tracking number                                       | `shipOrder` and `refreshInpostShipment`, with `resolveRequestOrigin(getRequest())` on the admin's request; the InPost webhook with `resolveDeploymentOrigin(request.url)`                                         |
 | Order cancelled                                       | `cancelOrder`, with `resolveRequestOrigin(getRequest())` on the admin's request                                                                                                                                   |

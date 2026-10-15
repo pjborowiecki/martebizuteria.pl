@@ -93,7 +93,7 @@ const resolveFulfillmentStepAt = (key: AdminOrderFulfillmentStepKey, snapshot: A
   }
 
   if (key === "processing") {
-    return snapshot.fulfillmentStartedAt
+    return snapshot.fulfillmentStartedAt ?? undefined
   }
 
   if (key === "shipped") {
@@ -287,7 +287,7 @@ export interface AdminOrderFulfillmentSnapshot {
   readonly canceledAt: Date | null
   readonly createdAt: Date
   readonly deliveredAt: Date | null
-  readonly fulfillmentStartedAt: Date | undefined
+  readonly fulfillmentStartedAt: Date | null
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly shippedAt: Date | null
   readonly status: Order["select"]["status"]

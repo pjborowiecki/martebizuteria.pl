@@ -54,6 +54,7 @@ const orderRow = {
   customerNote: null,
   deliveredAt: null,
   discountTotal: 0,
+  fulfillmentStartedAt: null,
   fulfillmentStatus: "not_fulfilled" as const,
   id: ORDER_ID,
   lockerId: null,
@@ -222,6 +223,16 @@ describe("mapCustomerOrderDetail", () => {
     })
 
     expect(detail.timeline.map((entry) => entry.event)).toStrictEqual(["delivered", "shipped", "confirmed", "placed"])
+  })
+
+  it("tells the shopper when the atelier started preparing the order", () => {
+    const startedAt = new Date(2024, 4, 2)
+    const detail = mapCustomerOrderDetail({ ...orderRow, fulfillmentStartedAt: startedAt, fulfillmentStatus: "fulfilled" }, [itemRow], {
+      payment: paymentRow,
+    })
+
+    expect(detail.timeline[0]).toStrictEqual({ date: startedAt, event: "processing" })
+    expect(detail.filterStatus).toBe("processing")
   })
 
   it("records a cancellation on the timeline", () => {

@@ -1,0 +1,20 @@
+{
+  "subject": "Rozpoczęliśmy realizację Twojego zamówienia — M'Arte",
+  "preview": "Twoja biżuteria powstaje właśnie w naszej pracowni.",
+  "heading": "Realizacja rozpoczęta",
+  "message": "Z radością informujemy, że rozpoczęliśmy realizację Twojego zamówienia. Każdy egzemplarz M'Arte tworzymy ręcznie, więc Twoja biżuteria jest teraz starannie przygotowywana w naszej pracowni.",
+  "nextStep": {
+    "courier": "Gdy paczka będzie gotowa do drogi, wyślemy Ci kolejną wiadomość z numerem przesyłki, dzięki któremu łatwo ją prześledzisz.",
+    "locker": "Gdy paczka będzie gotowa do drogi, wyślemy Ci kolejną wiadomość z numerem przesyłki, dzięki któremu łatwo ją prześledzisz aż do paczkomatu.",
+    "in_store": "Gdy zamówienie będzie gotowe do odbioru, napiszemy do Ciebie, kiedy możesz odebrać je w naszej pracowni."
+  },
+  "orderLabel": "Numer zamówienia",
+  "deliveryMethodLabel": "Sposób dostawy",
+  "unavailable": "Niedostępne",
+  "closingNote": "Jeśli masz pytania dotyczące zamówienia, odpowiedz na tę wiadomość — chętnie pomożemy.",
+  "createAccountCta": "Załóż konto i śledź zamówienie",
+  "viewOrderCta": "Zobacz zamówienie",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

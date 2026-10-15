@@ -439,6 +439,7 @@
         "newsletter-test": "Test newsletter",
         "order-cancelled": "Order cancellation notice",
         "order-confirmation": "Order confirmation",
+        "order-in-progress": "Fulfillment started notice",
         "order-refunded": "Refund notice",
         "order-shipped": "Shipping notice",
         "order-tracking": "Tracking number notice",

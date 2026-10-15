@@ -1,0 +1,20 @@
+{
+  "subject": "We have started preparing your order — M'Arte",
+  "preview": "Your jewelry is taking shape in our atelier right now.",
+  "heading": "Your order is being prepared",
+  "message": "We are delighted to let you know that we have started preparing your order. Every M'Arte piece is crafted by hand, so your jewelry is now taking shape with care in our atelier.",
+  "nextStep": {
+    "courier": "As soon as your parcel is ready to leave, we will email you again with its tracking number so you can follow it easily.",
+    "locker": "As soon as your parcel is ready to leave, we will email you again with its tracking number so you can follow it all the way to the parcel locker.",
+    "in_store": "Once your order is ready, we will write to let you know when you can collect it from our atelier."
+  },
+  "orderLabel": "Order reference",
+  "deliveryMethodLabel": "Delivery method",
+  "unavailable": "Unavailable",
+  "closingNote": "If you have any questions about your order, simply reply to this email — we are happy to help.",
+  "createAccountCta": "Create account and track your order",
+  "viewOrderCta": "View your order",
+  "signoff": "With warm regards,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}
