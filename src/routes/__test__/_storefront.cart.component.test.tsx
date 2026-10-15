@@ -194,6 +194,17 @@ describe("cart page with items", () => {
     expect(screen.getAllByTestId("cart-line").map((line) => line.textContent)).toStrictEqual(["Bransoletka Aurora", "Kolczyki Luna"])
   })
 
+  it("sets the cart on the 16px phone margin and gives the phone-only way back a finger-sized target", () => {
+    fillCart([cartLine()])
+
+    renderCart()
+
+    const [, phoneLink] = screen.getAllByRole("link", { name: "Continue shopping" })
+
+    expect(screen.getByRole("main")).toHaveClass("storefront-container", "w-full")
+    expect(phoneLink).toHaveClass("sm:hidden", "pointer-coarse:min-h-10")
+  })
+
   it("converts the stored minor units into a złoty subtotal", () => {
     fillCart([cartLine({ qty: 2 })])
 

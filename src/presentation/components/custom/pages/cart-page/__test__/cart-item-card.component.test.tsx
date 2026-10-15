@@ -173,4 +173,23 @@ describe("CartItemCard", () => {
     expect(container.querySelector("img")).toHaveAttribute("src", "https://example.test/ring.jpg")
     expect(screen.getAllByRole("link")[0]).toHaveAttribute("href", expect.stringContaining("aura-hoop"))
   })
+
+  it("narrows the picture on phones and drops the price under the stepper instead of past the screen edge", () => {
+    renderWithProviders(<CartItemCard item={cartItem()} />)
+
+    const price = screen.getByText("PLN 340.00")
+
+    expect(price).toHaveClass("whitespace-nowrap")
+    expect(price.parentElement).toHaveClass("flex-wrap", "gap-x-4", "gap-y-3")
+    expect(price.closest(".grid")).toHaveClass("grid-cols-[88px_1fr]", "gap-4", "sm:grid-cols-[120px_1fr]", "lg:grid-cols-[140px_1fr]")
+  })
+
+  it("grows the stepper and remove controls to finger-sized targets on touch screens", () => {
+    renderWithProviders(<CartItemCard item={cartItem()} />)
+
+    expect(screen.getByRole("button", { name: "Remove item" })).toHaveClass("size-8", "pointer-coarse:size-10")
+    expect(screen.getByRole("button", { name: "Decrease quantity" })).toHaveClass("size-9", "pointer-coarse:size-10")
+    expect(screen.getByRole("button", { name: "Increase quantity" })).toHaveClass("size-9", "pointer-coarse:size-10")
+    expect(screen.getByRole("button", { name: "Decrease quantity" }).parentElement).toHaveClass("h-9", "pointer-coarse:h-10")
+  })
 })

@@ -47,7 +47,7 @@ const CartPage = (): JSX.Element => {
   }
 
   return (
-    <main className="mx-auto w-full max-w-400 px-6 py-12 lg:px-12 lg:py-20" style={FULL_VIEWPORT_STYLE}>
+    <main className="storefront-container w-full py-12 lg:py-20" style={FULL_VIEWPORT_STYLE}>
       <div className="mb-10 flex items-baseline justify-between lg:mb-14">
         <div className="space-y-2">
           <h1 className="font-serif text-4xl tracking-tight md:text-5xl lg:text-6xl">{t("title")}</h1>
@@ -72,7 +72,7 @@ const CartPage = (): JSX.Element => {
           ))}
 
           <LocalizedLink
-            className="mt-6 inline-flex text-sm text-foreground/50 underline underline-offset-4 transition-colors hover:text-foreground sm:hidden"
+            className="mt-6 inline-flex text-sm text-foreground/50 underline underline-offset-4 transition-colors hover:text-foreground sm:hidden pointer-coarse:min-h-10 pointer-coarse:items-center"
             to={ROUTES.PRODUCTS}
           >
             {t("continueShopping")}
@@ -89,10 +89,7 @@ const EmptyCart = (): JSX.Element => {
   const t = useTranslations("pages.cart")
 
   return (
-    <main
-      className="mx-auto flex w-full max-w-400 flex-col items-center justify-center px-6 py-16 text-center lg:px-12"
-      style={FULL_VIEWPORT_STYLE}
-    >
+    <main className="storefront-container flex w-full flex-col items-center justify-center py-16 text-center" style={FULL_VIEWPORT_STYLE}>
       <div className="mb-8 flex size-20 items-center justify-center rounded-full border border-border/60 bg-muted/20">
         <ShoppingBag className="size-7 text-muted-foreground/60" strokeWidth={1.25} />
       </div>

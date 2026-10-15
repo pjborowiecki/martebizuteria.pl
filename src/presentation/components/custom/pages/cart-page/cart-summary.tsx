@@ -14,24 +14,24 @@ export const CartSummary = ({ checkoutDisabled = false, salesPaused = false, sub
 
   return (
     <aside className="lg:sticky lg:top-28">
-      <div className="space-y-6 border border-foreground/10 p-6 sm:p-8">
+      <div className="space-y-6 border border-foreground/10 p-5 sm:p-8">
         <h2 className="font-serif text-xl tracking-tight">{t("summary.title")}</h2>
         <Separator className="bg-foreground/10" />
 
         <div className="space-y-3">
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between gap-4 text-sm">
             <span className="text-muted-foreground">{t("summary.subtotal")}</span>
-            <span>{subtotal}</span>
+            <span className="text-right">{subtotal}</span>
           </div>
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between gap-4 text-sm">
             <span className="text-muted-foreground">{t("summary.shipping")}</span>
-            <span className="text-muted-foreground">{t("summary.shippingValue")}</span>
+            <span className="text-right text-muted-foreground">{t("summary.shippingValue")}</span>
           </div>
         </div>
 
         <Separator className="bg-foreground/10" />
 
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-4">
           <span className="font-medium">{t("summary.total")}</span>
           <span className="font-medium">{subtotal}</span>
         </div>
