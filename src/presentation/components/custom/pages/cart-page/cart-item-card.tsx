@@ -53,7 +53,7 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
   )
 
   return (
-    <div className="grid grid-cols-[100px_1fr] gap-5 py-6 sm:grid-cols-[120px_1fr] sm:gap-6 lg:grid-cols-[140px_1fr] lg:py-8">
+    <div className="grid grid-cols-[88px_1fr] gap-4 py-6 sm:grid-cols-[120px_1fr] sm:gap-6 lg:grid-cols-[140px_1fr] lg:py-8">
       <LocalizedLink className="group relative aspect-4/5 overflow-hidden bg-secondary" params={productParams} to={ROUTES.PRODUCT}>
         <Image
           alt={item.title}
@@ -66,7 +66,7 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
       </LocalizedLink>
 
       <div className="flex min-w-0 flex-col justify-between">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-2 sm:gap-4">
           <div className="min-w-0">
             <LocalizedLink
               className="font-serif text-base tracking-tight transition-colors hover:text-muted-foreground sm:text-lg"
@@ -98,7 +98,7 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
           </div>
           <Button
             aria-label={t("removeItem")}
-            className="size-8 rounded-none text-muted-foreground hover:bg-secondary hover:text-foreground"
+            className="size-8 rounded-none text-muted-foreground hover:bg-secondary hover:text-foreground pointer-coarse:-mt-1 pointer-coarse:-mr-1 pointer-coarse:size-10"
             onClick={handleRemove}
             type="button"
             variant="ghost"
@@ -107,11 +107,11 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
           </Button>
         </div>
 
-        <div className="mt-4 flex items-end justify-between gap-4">
-          <div className="flex h-9 items-center border border-foreground/15">
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
+          <div className="flex h-9 items-center border border-foreground/15 pointer-coarse:h-10">
             <Button
               aria-label={t("decreaseQty")}
-              className="size-9 rounded-none text-muted-foreground hover:bg-secondary hover:text-foreground"
+              className="size-9 rounded-none text-muted-foreground hover:bg-secondary hover:text-foreground pointer-coarse:size-10"
               disabled={item.qty <= 1}
               onClick={handleDecrease}
               type="button"
@@ -122,7 +122,7 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
             <span className="flex w-8 items-center justify-center text-xs tabular-nums">{item.qty}</span>
             <Button
               aria-label={t("increaseQty")}
-              className="size-9 rounded-none text-muted-foreground hover:bg-secondary hover:text-foreground"
+              className="size-9 rounded-none text-muted-foreground hover:bg-secondary hover:text-foreground pointer-coarse:size-10"
               disabled={!canIncrease}
               onClick={handleIncrease}
               type="button"
@@ -132,7 +132,7 @@ export const CartItemCard = ({ item }: Readonly<CartItemCardProps>): JSX.Element
             </Button>
           </div>
 
-          <p className="text-sm tracking-wide tabular-nums">{unitPriceLabel}</p>
+          <p className="text-sm tracking-wide whitespace-nowrap tabular-nums">{unitPriceLabel}</p>
         </div>
       </div>
     </div>

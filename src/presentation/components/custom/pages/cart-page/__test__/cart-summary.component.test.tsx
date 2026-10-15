@@ -25,6 +25,15 @@ describe("CartSummary", () => {
     expect(screen.getByText("Shipping & taxes calculated at checkout.")).toBeInTheDocument()
   })
 
+  it("spaces each label from its value and keeps a wrapped value against the right edge", () => {
+    renderWithProviders(<CartSummary subtotal="PLN 340.00" />)
+
+    const shipping = screen.getByText("Calculated at checkout")
+
+    expect(shipping).toHaveClass("text-right")
+    expect(shipping.parentElement).toHaveClass("justify-between", "gap-4")
+  })
+
   it("offers a checkout link by default", () => {
     renderWithProviders(<CartSummary subtotal="PLN 340.00" />)
 
