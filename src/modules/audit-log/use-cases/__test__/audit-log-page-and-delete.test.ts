@@ -26,7 +26,6 @@ vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => audit)
 vi.mock("~/src/modules/audit-log/audit-log.utils", () => ({
-  resolveStartOfToday: () => new Date("2026-09-27T00:00:00Z"),
   toAdminAuditListItem: (row: { id: string }) => ({ ...row, mapped: true }),
 }))
 vi.mock("@tanstack/react-start", () => ({

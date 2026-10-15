@@ -80,6 +80,8 @@ const lastWhere = (): SQL => {
   return where
 }
 
+const renderWhere = (where: SQL | undefined) => (where === undefined ? undefined : dialect.sqlToQuery(where))
+
 const listParams = { limit: 50, offset: 0 }
 
 beforeEach(() => {
@@ -142,13 +144,13 @@ describe("getAdminAuditLogsPage where clause", () => {
     expect(query.params).toStrictEqual(["warning", "auth", "ada", "ada", "ada", "ada", "ada"])
   })
 
-  it("bounds a created at filter to the day", async () => {
-    await getAdminAuditLogsPage({ ...listParams, createdAt: { date: "2026-01-15T00:00", operator: "on" } })
+  it("bounds a created at filter to the day in Poland", async () => {
+    await getAdminAuditLogsPage({ ...listParams, createdAt: { date: "2026-01-15", operator: "on" } })
 
     const query = dialect.sqlToQuery(lastWhere())
 
-    expect(query.sql).toBe('("audit_log"."created_at" >= ? and "audit_log"."created_at" <= ?)')
-    expect(query.params).toHaveLength(2)
+    expect(query.sql).toBe('("audit_log"."created_at" >= ? and "audit_log"."created_at" < ?)')
+    expect(query.params).toStrictEqual([Date.parse("2026-01-14T23:00:00.000Z"), Date.parse("2026-01-15T23:00:00.000Z")])
   })
 
   it("applies the requested limit and offset to the row query", async () => {
@@ -186,7 +188,7 @@ describe("getAdminAuditLogStats", () => {
   it("maps the four batched counts onto the stats shape", async () => {
     database.batch.mockResolvedValue([[{ count: 10 }], [{ count: 4 }], [{ count: 2 }], [{ count: 1 }]])
 
-    await expect(getAdminAuditLogStats(new Date(1_700_000_000_000))).resolves.toStrictEqual({
+    await expect(getAdminAuditLogStats("2026-10-15")).resolves.toStrictEqual({
       errorCount: 1,
       todayCount: 4,
       totalCount: 10,
@@ -194,10 +196,23 @@ describe("getAdminAuditLogStats", () => {
     })
   })
 
+  it("counts each card with the where clause the list applies for that card's filter", async () => {
+    database.batch.mockResolvedValue([[], [], [], []])
+    await getAdminAuditLogStats("2026-10-15")
+    const statsWheres = database.wheres
+    database.wheres = []
+    await getAdminAuditLogsPage({ ...listParams, createdAt: { date: "2026-10-15", operator: "on" } })
+    await getAdminAuditLogsPage({ ...listParams, severity: "warning" })
+    await getAdminAuditLogsPage({ ...listParams, severity: "error" })
+    const listCountWheres = [database.wheres[0], database.wheres[2], database.wheres[4]]
+
+    expect(statsWheres.map((where) => renderWhere(where))).toStrictEqual([undefined, ...listCountWheres.map((where) => renderWhere(where))])
+  })
+
   it("defaults every count to zero when a row is missing", async () => {
     database.batch.mockResolvedValue([[], [], [], []])
 
-    await expect(getAdminAuditLogStats(new Date(1_700_000_000_000))).resolves.toStrictEqual({
+    await expect(getAdminAuditLogStats("2026-10-15")).resolves.toStrictEqual({
       errorCount: 0,
       todayCount: 0,
       totalCount: 0,

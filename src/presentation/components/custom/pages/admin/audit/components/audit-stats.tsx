@@ -9,6 +9,7 @@ import { getAuditLogStatsQuery } from "~/src/modules/audit-log/use-cases/get-aud
 import { AUDIT_STAT_CARDS, type AuditStatKey } from "~/src/presentation/components/custom/pages/admin/audit/audit-stats.config"
 import { AuditStatCard } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-stat-card"
 import { useAuditDataGridContext } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-data-grid"
+import { useAuditLogToday } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-log-today"
 import {
   buildAuditTodayCreatedAtFilter,
   isAuditTodayCreatedAtFilter,
@@ -101,7 +102,7 @@ const resolveStatValue = (
 export const AuditStats = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const { activeDateFilter, activeSeverityFilter, applyAuditFilter } = useAuditDataGridContext()
-  const { data, isFetching, isStale } = useQuery(getAuditLogStatsQuery())
+  const { data, isFetching, isStale } = useQuery(getAuditLogStatsQuery(useAuditLogToday()))
   const valuesPending = isFetching && isStale
   const activeTodayFilter = isAuditTodayCreatedAtFilter(activeDateFilter)
   const stats = {

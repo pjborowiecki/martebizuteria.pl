@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import {
   coerceNumber,
+  formatCalendarDateToIsoDate,
   formatRelativeFromNow,
   formatTimestamp,
+  instantOfWallClock,
   normalizeCalendarDate,
   startOfCalendarDate,
   toCalendarDate,
@@ -76,6 +78,44 @@ describe("startOfCalendarDate", () => {
 
     expect(toCalendarDate(start, "Europe/Warsaw")).toStrictEqual({ day: 25, month: 10, year: 2026 })
     expect(toCalendarDate(lastMomentBefore, "Europe/Warsaw")).toStrictEqual({ day: 24, month: 10, year: 2026 })
+  })
+})
+
+describe("instantOfWallClock", () => {
+  it.each([
+    ["a summer afternoon", { day: 15, hour: 14, minute: 30, month: 6, year: 2026 }, "2026-06-15T12:30:00.000Z"],
+    ["a winter afternoon", { day: 15, hour: 14, minute: 30, month: 1, year: 2026 }, "2026-01-15T13:30:00.000Z"],
+    [
+      "ten past midnight, still the previous day in UTC",
+      { day: 15, hour: 0, minute: 10, month: 10, year: 2026 },
+      "2026-10-14T22:10:00.000Z",
+    ],
+    ["the morning after clocks go forward", { day: 29, hour: 3, minute: 30, month: 3, year: 2026 }, "2026-03-29T01:30:00.000Z"],
+    ["the morning after clocks go back", { day: 25, hour: 3, minute: 30, month: 10, year: 2026 }, "2026-10-25T02:30:00.000Z"],
+  ])("reads %s on the Warsaw clock", (_label, wallClock, expected) => {
+    expect(instantOfWallClock(wallClock, "Europe/Warsaw").toISOString()).toBe(expected)
+  })
+
+  it("reads the same wall clock as a later instant west of Greenwich", () => {
+    expect(instantOfWallClock({ day: 1, hour: 9, minute: 0, month: 7, year: 2026 }, "America/New_York").toISOString()).toBe(
+      "2026-07-01T13:00:00.000Z",
+    )
+  })
+
+  it("starts a day where startOfCalendarDate does", () => {
+    expect(instantOfWallClock({ day: 25, hour: 0, minute: 0, month: 10, year: 2026 }, "Europe/Warsaw")).toStrictEqual(
+      startOfCalendarDate({ day: 25, month: 10, year: 2026 }, "Europe/Warsaw"),
+    )
+  })
+})
+
+describe("formatCalendarDateToIsoDate", () => {
+  it("pads the month and the day to two digits", () => {
+    expect(formatCalendarDateToIsoDate({ day: 3, month: 1, year: 2026 })).toBe("2026-01-03")
+  })
+
+  it("writes the Warsaw date that has already begun while UTC is still on the day before", () => {
+    expect(formatCalendarDateToIsoDate(toCalendarDate("2026-10-14T22:30:00.000Z", "Europe/Warsaw"))).toBe("2026-10-15")
   })
 })
 

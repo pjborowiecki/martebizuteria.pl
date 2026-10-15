@@ -7,18 +7,22 @@ import {
   isAuditTodayCreatedAtFilter,
 } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-today-date-filter"
 
-const REFERENCE = new Date(2024, 4, 9, 13, 45)
+const REFERENCE = new Date("2024-05-09T11:45:00.000Z")
 
 describe("buildAuditTodayCreatedAtFilter", () => {
-  it("builds an ON filter for the local calendar date of the reference", () => {
+  it("builds an ON filter for the date in Poland of the reference", () => {
     expect(buildAuditTodayCreatedAtFilter(REFERENCE)).toStrictEqual({
       date: "2024-05-09",
       operator: DATE_COLUMN_FILTER_OPERATOR.ON,
     })
   })
 
+  it("builds the filter for the day that has begun in Poland while it is still the day before in UTC", () => {
+    expect(buildAuditTodayCreatedAtFilter(new Date("2026-10-14T22:30:00.000Z")).date).toBe("2026-10-15")
+  })
+
   it("pads single digit months and days", () => {
-    expect(buildAuditTodayCreatedAtFilter(new Date(2024, 0, 3)).date).toBe("2024-01-03")
+    expect(buildAuditTodayCreatedAtFilter(new Date("2024-01-03T12:00:00.000Z")).date).toBe("2024-01-03")
   })
 
   it("defaults to the current date", () => {
@@ -43,6 +47,12 @@ describe("isAuditTodayCreatedAtFilter", () => {
 
   it("rejects an ON filter for a different day", () => {
     expect(isAuditTodayCreatedAtFilter({ date: "2024-05-08", operator: DATE_COLUMN_FILTER_OPERATOR.ON }, REFERENCE)).toBe(false)
+  })
+
+  it("rejects yesterday's filter once midnight has passed in Poland, though it is still yesterday in UTC", () => {
+    expect(
+      isAuditTodayCreatedAtFilter({ date: "2026-10-14", operator: DATE_COLUMN_FILTER_OPERATOR.ON }, new Date("2026-10-14T22:30:00.000Z")),
+    ).toBe(false)
   })
 
   it("rejects operators other than ON", () => {

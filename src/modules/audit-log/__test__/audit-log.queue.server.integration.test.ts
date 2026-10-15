@@ -6,6 +6,7 @@ import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 import { deleteAuditLogs, getAdminAuditLogStats } from "~/src/modules/audit-log/audit-log.accessors"
 import { recordOrderFulfillmentFailedAudit, recordOrderPlacedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { type AuditLogQueueMessage, processAuditLogQueueBatch } from "~/src/modules/audit-log/audit-log.queue.server"
+import { resolveAuditLogToday } from "~/src/modules/audit-log/audit-log.utils"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -108,7 +109,7 @@ describe("a paid session whose fulfilment fails on every Stripe delivery", () =>
         severity: "error",
       },
     ])
-    await expect(getAdminAuditLogStats(new Date(0))).resolves.toMatchObject({ errorCount: 1, totalCount: 1 })
+    await expect(getAdminAuditLogStats(resolveAuditLogToday())).resolves.toMatchObject({ errorCount: 1, totalCount: 1 })
   })
 
   it("stores and acknowledges the other events delivered in the same batch as a repeated failure", async () => {
@@ -131,7 +132,7 @@ describe("a paid session whose fulfilment fails on every Stripe delivery", () =>
     await deliverQueuedEvents()
 
     expect(storedEntries().map(({ resource_id }) => resource_id)).toStrictEqual([FAILED_SESSION_ID, "cs_test_other"])
-    await expect(getAdminAuditLogStats(new Date(0))).resolves.toMatchObject({ errorCount: 2 })
+    await expect(getAdminAuditLogStats(resolveAuditLogToday())).resolves.toMatchObject({ errorCount: 2 })
   })
 
   it("records the failure again when it recurs after the admin deleted the entry", async () => {

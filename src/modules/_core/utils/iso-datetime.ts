@@ -1,4 +1,5 @@
-import { JS_MONTH_INDEX_OFFSET, isIsoDateString, parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
+import { type CalendarDateTime } from "~/src/modules/_core/utils/datetime"
+import { JS_MONTH_INDEX_OFFSET, isIsoDateString, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
 
 export const isTimeInputValue = (value: string): boolean => TIME_INPUT_PATTERN.test(value)
 
@@ -69,28 +70,12 @@ export const parseIsoDateTimeLocalToMs = (value: string): number => {
   return new Date(year, month - JS_MONTH_INDEX_OFFSET, day, hours, minutes, seconds).getTime()
 }
 
-export const parseIsoDateTimeLocalToEndMs = (value: string): number => {
-  if (isIsoDateString(value)) {
-    return parseIsoDateToEndMs(value)
-  }
+export const parseIsoDateTimeLocal = (value: string): CalendarDateTime => {
+  const { date, time } = splitIsoDateTimeLocal(value)
+  const [yearPart, monthPart, dayPart] = date.split("-")
+  const [hourPart, minutePart] = time.split(":")
 
-  const [datePart, timePart] = value.split("T")
-  if (datePart === undefined || timePart === undefined) {
-    return Number.NaN
-  }
-
-  const [yearPart, monthPart, dayPart] = datePart.split("-")
-  const [hoursPart, minutesPart, secondsPart] = timePart.split(":")
-  const year = Number(yearPart)
-  const month = Number(monthPart)
-  const day = Number(dayPart)
-  const hours = Number(hoursPart)
-  const minutes = Number(minutesPart)
-  const hasSeconds = secondsPart !== undefined
-  const seconds = hasSeconds ? Number(secondsPart) : END_OF_MINUTE_SECOND
-  const milliseconds = hasSeconds ? 0 : END_OF_MINUTE_MILLISECOND
-
-  return new Date(year, month - JS_MONTH_INDEX_OFFSET, day, hours, minutes, seconds, milliseconds).getTime()
+  return { day: Number(dayPart), hour: Number(hourPart), minute: Number(minutePart), month: Number(monthPart), year: Number(yearPart) }
 }
 
 export const defaultDateTimeFilterEndTime = (): string => DEFAULT_END_TIME
@@ -98,10 +83,6 @@ export const defaultDateTimeFilterEndTime = (): string => DEFAULT_END_TIME
 const ISO_DATE_TIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/u
 
 const TIME_INPUT_PATTERN = /^(?:[01]\d|2[0-3]):[0-5]\d$/u
-
-const END_OF_MINUTE_SECOND = 59
-
-const END_OF_MINUTE_MILLISECOND = 999
 
 const DEFAULT_TIME = "00:00"
 

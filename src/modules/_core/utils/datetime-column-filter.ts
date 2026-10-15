@@ -97,7 +97,7 @@ export const dateTimeFilterValueFromDraft = (draft: DateTimeFilterDraft): DateTi
   }
 
   return {
-    date: combineIsoDateAndTime(draft.date, draft.time),
+    date: draft.operator === DATE_COLUMN_FILTER_OPERATOR.ON ? draft.date : combineIsoDateAndTime(draft.date, draft.time),
     operator: draft.operator,
   }
 }
@@ -122,7 +122,7 @@ export const isDateTimeFilterDraftValid = (draft: DateTimeFilterDraft): boolean 
     return false
   }
 
-  return isTimeInputValue(draft.time)
+  return draft.operator === DATE_COLUMN_FILTER_OPERATOR.ON || isTimeInputValue(draft.time)
 }
 
 export interface DateTimeColumnFilterValue {

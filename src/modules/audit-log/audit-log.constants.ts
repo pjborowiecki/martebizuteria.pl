@@ -1,17 +1,3 @@
-const MILLISECONDS_PER_SECOND = 1000
-
-const SECONDS_PER_MINUTE = 60
-
-const MINUTES_PER_HOUR = 60
-
-const HOURS_PER_DAY = 24
-
-const AUDIT_LOG_RANGE_DAYS_7 = 7
-
-const AUDIT_LOG_RANGE_DAYS_30 = 30
-
-const MILLISECONDS_PER_DAY = HOURS_PER_DAY * MINUTES_PER_HOUR * SECONDS_PER_MINUTE * MILLISECONDS_PER_SECOND
-
 export const ADMIN_AUDIT_LOG_PAGE_SIZE = 100
 
 export const AUDIT_LOG_QUERY_STALE_MS = 30_000
@@ -34,20 +20,6 @@ export type AuditLogSeverity = (typeof AUDIT_LOG_SEVERITIES)[number]
 export const AUDIT_LOG_ACTOR_ROLES = ["admin", "customer", "system", "unknown"] as const
 
 export type AuditLogActorRole = (typeof AUDIT_LOG_ACTOR_ROLES)[number]
-
-export const AUDIT_LOG_DATE_RANGE = {
-  ALL: "all",
-  DAYS_30: "30d",
-  DAYS_7: "7d",
-  TODAY: "today",
-} as const
-
-export type AuditLogDateRange = (typeof AUDIT_LOG_DATE_RANGE)[keyof typeof AUDIT_LOG_DATE_RANGE]
-
-export const AUDIT_LOG_DATE_RANGE_MS = {
-  DAYS_30: AUDIT_LOG_RANGE_DAYS_30 * MILLISECONDS_PER_DAY,
-  DAYS_7: AUDIT_LOG_RANGE_DAYS_7 * MILLISECONDS_PER_DAY,
-} as const
 
 export const AUDIT_LOG_ACTION = {
   ATTRIBUTE_CREATED: "attribute.created",

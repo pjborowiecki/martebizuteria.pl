@@ -2,7 +2,14 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod"
 
 import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
-import { type AuditLogInsertRow, deleteAuditLogs, insertAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
+import {
+  type AuditLogInsertRow,
+  deleteAuditLogs,
+  getAdminAuditLogStats,
+  getAdminAuditLogsPage,
+  insertAuditLogs,
+} from "~/src/modules/audit-log/audit-log.accessors"
+import { buildAuditLogDayFilter, resolveAuditLogToday } from "~/src/modules/audit-log/audit-log.utils"
 
 const { sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
@@ -111,5 +118,60 @@ describe("deleteAuditLogs on D1", () => {
     await expect(deleteAuditLogs(["log-000", "log-missing"])).resolves.toStrictEqual(["log-000"])
 
     expect(storedIds()).toStrictEqual(["log-001"])
+  })
+})
+
+const PAST_MIDNIGHT_IN_POLAND = new Date("2026-10-14T22:30:00.000Z")
+
+const eventAt = (id: string, createdAt: string, severity: AuditLogInsertRow["severity"] = "info"): AuditLogInsertRow => ({
+  ...fullyDescribedEvent(0),
+  createdAt: Date.parse(createdAt),
+  id,
+  severity,
+})
+
+const seedAroundMidnightInPoland = (): Promise<void> =>
+  insertAuditLogs([
+    eventAt("log-14-oct-02-00", "2026-10-14T00:00:00.000Z"),
+    eventAt("log-14-oct-23-35", "2026-10-14T21:35:00.000Z", "warning"),
+    eventAt("log-15-oct-00-10", "2026-10-14T22:10:00.000Z", "warning"),
+    eventAt("log-15-oct-23-59", "2026-10-15T21:59:59.999Z", "error"),
+    eventAt("log-16-oct-00-00", "2026-10-15T22:00:00.000Z"),
+  ])
+
+const listIds = async (params: Omit<Parameters<typeof getAdminAuditLogsPage>[0], "limit" | "offset">): Promise<string[]> => {
+  const { rows } = await getAdminAuditLogsPage({ ...params, limit: LIST_PAGE_SIZE_MAX, offset: 0 })
+
+  return rows.map(({ id }) => id).toSorted()
+}
+
+describe("the today card on D1 just after midnight in Poland", () => {
+  it("counts only what happened since midnight in Poland, though it is still the 14th in UTC", async () => {
+    await seedAroundMidnightInPoland()
+
+    await expect(getAdminAuditLogStats(resolveAuditLogToday(PAST_MIDNIGHT_IN_POLAND))).resolves.toMatchObject({ todayCount: 2 })
+  })
+
+  it("lists exactly the events it counts when its filter is applied", async () => {
+    await seedAroundMidnightInPoland()
+    const today = resolveAuditLogToday(PAST_MIDNIGHT_IN_POLAND)
+
+    await expect(listIds({ createdAt: buildAuditLogDayFilter(today) })).resolves.toStrictEqual(["log-15-oct-00-10", "log-15-oct-23-59"])
+  })
+
+  it("lists exactly the events the warning and error cards count", async () => {
+    await seedAroundMidnightInPoland()
+    const stats = await getAdminAuditLogStats(resolveAuditLogToday(PAST_MIDNIGHT_IN_POLAND))
+
+    await expect(listIds({ severity: "warning" })).resolves.toHaveLength(stats.warningCount)
+    await expect(listIds({ severity: "error" })).resolves.toHaveLength(stats.errorCount)
+    expect(stats).toStrictEqual({ errorCount: 1, todayCount: 2, totalCount: 5, warningCount: 2 })
+  })
+
+  it("shows today's warnings when the warning filter and the today filter are both applied", async () => {
+    await seedAroundMidnightInPoland()
+    const today = resolveAuditLogToday(PAST_MIDNIGHT_IN_POLAND)
+
+    await expect(listIds({ createdAt: buildAuditLogDayFilter(today), severity: "warning" })).resolves.toStrictEqual(["log-15-oct-00-10"])
   })
 })

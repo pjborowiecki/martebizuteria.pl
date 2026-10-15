@@ -68,7 +68,7 @@ describe("AuditDateFilter", () => {
     await userEvent.click(screen.getByRole("combobox"))
     const options = await screen.findAllByRole("option")
 
-    expect(options.map((option) => option.textContent)).toStrictEqual(["At", "Before", "After", "Date range"])
+    expect(options.map((option) => option.textContent)).toStrictEqual(["On", "Before", "After", "Date range"])
   })
 
   it("cannot be applied while no date has been chosen", async () => {
@@ -85,14 +85,24 @@ describe("AuditDateFilter", () => {
     expect(screen.queryByRole("button", { name: "Clear" })).not.toBeInTheDocument()
   })
 
-  it("spells the active single-date filter out on the trigger", () => {
+  it("spells a whole-day filter out as the day alone, with no midnight that would read as a single minute", () => {
     contextRef.current = {
-      activeDateFilter: { date: "2026-09-01T08:30", operator: "on" },
+      activeDateFilter: { date: "2026-10-15", operator: "on" },
       applyAuditFilter: contextRef.applyAuditFilter,
     }
     renderWithProviders(<AuditDateFilter />)
 
-    expect(trigger().textContent).toMatch(/^= Sep \d{1,2}, 2026, \d{1,2}:\d{2}\s?(?:AM|PM)$/u)
+    expect(trigger()).toHaveTextContent(/^= Oct 15, 2026$/u)
+  })
+
+  it("spells an active single-moment filter out on the trigger as the time in Poland", () => {
+    contextRef.current = {
+      activeDateFilter: { date: "2026-09-01T08:30", operator: "after" },
+      applyAuditFilter: contextRef.applyAuditFilter,
+    }
+    renderWithProviders(<AuditDateFilter />)
+
+    expect(trigger()).toHaveTextContent(/^> Sep 1, 2026, 8:30\sAM$/u)
   })
 
   it("spells an active range out as both ends of the range", () => {
@@ -102,7 +112,7 @@ describe("AuditDateFilter", () => {
     }
     renderWithProviders(<AuditDateFilter />)
 
-    expect(trigger().textContent).toMatch(/^Sep \d{1,2}, 2026, .+ – Sep \d{1,2}, 2026, .+$/u)
+    expect(trigger()).toHaveTextContent(/^Sep 1, 2026, 12:00\sAM – Sep 7, 2026, 11:59\sPM$/u)
   })
 
   it("drops the filter when the admin clears an active range", async () => {
@@ -119,13 +129,28 @@ describe("AuditDateFilter", () => {
 
   it("seeds the form from the filter already in force", async () => {
     contextRef.current = {
-      activeDateFilter: { date: "2026-09-01T08:30", operator: "on" },
+      activeDateFilter: { date: "2026-09-01", operator: "on" },
       applyAuditFilter: contextRef.applyAuditFilter,
     }
     renderWithProviders(<AuditDateFilter />)
     await userEvent.click(trigger())
 
-    expect(screen.getByRole("combobox")).toHaveTextContent("At")
+    expect(screen.getByRole("combobox")).toHaveTextContent("On")
     expect(screen.getByRole("button", { name: "Apply" })).toBeEnabled()
+  })
+
+  it("applies the day the today card chose unchanged when the admin presses apply", async () => {
+    contextRef.current = {
+      activeDateFilter: { date: "2026-10-15", operator: "on" },
+      applyAuditFilter: contextRef.applyAuditFilter,
+    }
+    renderWithProviders(<AuditDateFilter />)
+    await userEvent.click(trigger())
+
+    expect(screen.queryByRole("button", { name: "Time" })).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole("button", { name: "Apply" }))
+
+    expect(contextRef.applyAuditFilter).toHaveBeenCalledWith({ createdAt: { date: "2026-10-15", operator: "on" } })
   })
 })

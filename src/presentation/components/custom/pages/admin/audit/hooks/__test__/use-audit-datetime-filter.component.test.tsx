@@ -54,6 +54,12 @@ describe("useAuditDateTimeFilter", () => {
     expect(result.current.triggerLabel.startsWith("> ")).toBe(true)
   })
 
+  it("labels a whole-day filter with the day alone", () => {
+    const { result } = renderFilter({ date: "2026-10-15", operator: DATE_COLUMN_FILTER_OPERATOR.ON })
+
+    expect(result.current.triggerLabel).toBe("= Oct 15, 2026")
+  })
+
   it("renders a range trigger label for a between filter", () => {
     const { result } = renderFilter({
       endDate: "2024-05-10T23:59",
@@ -68,7 +74,7 @@ describe("useAuditDateTimeFilter", () => {
     const { result } = renderFilter(undefined)
 
     expect(result.current.operatorOptions).toStrictEqual([
-      { label: "At", value: "on" },
+      { label: "On", value: "on" },
       { label: "Before", value: "before" },
       { label: "After", value: "after" },
       { label: "Date range", value: "between" },
@@ -184,11 +190,30 @@ describe("useAuditDateTimeFilter validation and applying", () => {
     expect(applyAuditFilter).not.toHaveBeenCalled()
   })
 
-  it("applies a valid draft as a createdAt filter and closes", () => {
+  it("applies a picked day as a whole-day createdAt filter and closes", () => {
     const { applyAuditFilter, result } = renderFilter(undefined)
 
     act(() => {
       result.current.handleOpenChange(true)
+    })
+    act(() => {
+      result.current.handleDateChange("2024-05-09")
+    })
+    act(() => {
+      result.current.handleApply()
+    })
+
+    expect(applyAuditFilter).toHaveBeenCalledWith({
+      createdAt: { date: "2024-05-09", operator: DATE_COLUMN_FILTER_OPERATOR.ON },
+    })
+    expect(result.current.open).toBe(false)
+  })
+
+  it("applies a picked moment with its time", () => {
+    const { applyAuditFilter, result } = renderFilter(undefined)
+
+    act(() => {
+      result.current.handleOperatorChange(DATE_COLUMN_FILTER_OPERATOR.AFTER)
     })
     act(() => {
       result.current.handleDateChange("2024-05-09")
@@ -201,9 +226,8 @@ describe("useAuditDateTimeFilter validation and applying", () => {
     })
 
     expect(applyAuditFilter).toHaveBeenCalledWith({
-      createdAt: { date: "2024-05-09T09:15", operator: DATE_COLUMN_FILTER_OPERATOR.ON },
+      createdAt: { date: "2024-05-09T09:15", operator: DATE_COLUMN_FILTER_OPERATOR.AFTER },
     })
-    expect(result.current.open).toBe(false)
   })
 
   it("applies a valid range with both bounds", () => {
@@ -246,10 +270,14 @@ describe("useAuditDateTimeFilter validation and applying", () => {
     expect(result.current.open).toBe(false)
   })
 
-  it("exposes today as an iso date", () => {
-    const { result } = renderFilter(undefined)
+  it("exposes today as the iso date it is in Poland", () => {
+    vi.useFakeTimers({ now: new Date("2026-10-14T22:30:00.000Z"), toFake: ["Date"] })
 
-    expect(result.current.todayIso).toMatch(/^\d{4}-\d{2}-\d{2}$/u)
+    try {
+      expect(renderFilter(undefined).result.current.todayIso).toBe("2026-10-15")
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

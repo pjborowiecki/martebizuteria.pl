@@ -358,7 +358,7 @@
         "operatorAfter": "After",
         "operatorBefore": "Before",
         "operatorBetween": "Date range",
-        "operatorOn": "At",
+        "operatorOn": "On",
         "placeholder": "Select date",
         "startDate": "From",
         "startTime": "From (time)",

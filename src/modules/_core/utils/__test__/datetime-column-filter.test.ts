@@ -85,6 +85,19 @@ describe("draft round trip", () => {
     expect(dateTimeFilterValueFromDraft(dateTimeFilterDraftFromValue(value))).toStrictEqual(value)
   })
 
+  it("keeps a whole-day value to its date, so applying it again does not narrow it to midnight", () => {
+    const value = { date: "2026-10-15", operator: DATE_COLUMN_FILTER_OPERATOR.ON }
+
+    expect(dateTimeFilterValueFromDraft(dateTimeFilterDraftFromValue(value))).toStrictEqual(value)
+  })
+
+  it("drops a time picked before switching to a whole day", () => {
+    expect(dateTimeFilterValueFromDraft({ ...emptyDateTimeFilterDraft(), date: "2026-10-15", time: "08:30" })).toStrictEqual({
+      date: "2026-10-15",
+      operator: DATE_COLUMN_FILTER_OPERATOR.ON,
+    })
+  })
+
   it("rebuilds a range value from the draft", () => {
     const value = {
       endDate: "2024-03-09T18:45",
@@ -103,11 +116,18 @@ describe("isDateTimeFilterDraftValid", () => {
     expect(isDateTimeFilterDraftValid(base)).toBe(false)
   })
 
-  it("requires both a real date and a zero padded time for a single instant", () => {
-    expect(isDateTimeFilterDraftValid({ ...base, date: "2024-03-05", time: "10:30" })).toBe(true)
-    expect(isDateTimeFilterDraftValid({ ...base, date: "2024-03-05", time: "" })).toBe(false)
-    expect(isDateTimeFilterDraftValid({ ...base, date: "2024-02-30", time: "10:30" })).toBe(false)
-    expect(isDateTimeFilterDraftValid({ ...base, date: "2024-03-05T10:30", time: "10:30" })).toBe(false)
+  it("requires both a real date and a zero padded time before or after an instant", () => {
+    const before = { ...base, operator: DATE_COLUMN_FILTER_OPERATOR.BEFORE }
+
+    expect(isDateTimeFilterDraftValid({ ...before, date: "2024-03-05", time: "10:30" })).toBe(true)
+    expect(isDateTimeFilterDraftValid({ ...before, date: "2024-03-05", time: "" })).toBe(false)
+    expect(isDateTimeFilterDraftValid({ ...before, date: "2024-02-30", time: "10:30" })).toBe(false)
+    expect(isDateTimeFilterDraftValid({ ...before, date: "2024-03-05T10:30", time: "10:30" })).toBe(false)
+  })
+
+  it("needs only a real date for a whole day", () => {
+    expect(isDateTimeFilterDraftValid({ ...base, date: "2024-03-05", time: "" })).toBe(true)
+    expect(isDateTimeFilterDraftValid({ ...base, date: "2024-02-30", time: "" })).toBe(false)
   })
 
   it("requires both endpoints and an ordered range for between", () => {

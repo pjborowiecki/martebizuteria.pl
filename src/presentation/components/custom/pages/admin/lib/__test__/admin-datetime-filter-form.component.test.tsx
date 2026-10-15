@@ -28,6 +28,7 @@ const LABELS: AdminDateTimeFilterFormLabels = {
 
 const OPERATOR_OPTIONS = [
   { label: "On", value: DATE_COLUMN_FILTER_OPERATOR.ON },
+  { label: "Before", value: DATE_COLUMN_FILTER_OPERATOR.BEFORE },
   { label: "Between", value: DATE_COLUMN_FILTER_OPERATOR.BETWEEN },
 ]
 
@@ -37,6 +38,9 @@ const draft = (overrides: Partial<DateTimeFilterDraft> = {}): DateTimeFilterDraf
   ...emptyDateTimeFilterDraft(),
   ...overrides,
 })
+
+const momentDraft = (overrides: Partial<DateTimeFilterDraft> = {}): DateTimeFilterDraft =>
+  draft({ operator: DATE_COLUMN_FILTER_OPERATOR.BEFORE, ...overrides })
 
 const renderForm = (dateTimeDraft: DateTimeFilterDraft = draft()) => {
   const callbacks = {
@@ -65,23 +69,32 @@ afterEach(() => {
   cleanup()
 })
 
+describe("AdminDateTimeFilterForm in whole day mode", () => {
+  it("asks only for the day, since the filter covers all of it", () => {
+    renderForm(draft({ date: "2024-06-10", time: "08:30" }))
+
+    expect(screen.getByRole("button", { name: "Date" }).textContent).toBe("6/10/24")
+    expect(screen.queryByRole("button", { name: "Time" })).toBeNull()
+  })
+})
+
 describe("AdminDateTimeFilterForm in single moment mode", () => {
   it("pairs one date picker with one time picker", () => {
-    renderForm()
+    renderForm(momentDraft())
 
     expect(screen.getByRole("button", { name: "Date" })).toBeInTheDocument()
     expect(screen.getByRole("button", { name: "Time" })).toBeInTheDocument()
   })
 
   it("shows both placeholders while nothing is chosen", () => {
-    renderForm()
+    renderForm(momentDraft())
 
     expect(screen.getByRole("button", { name: "Date" }).textContent).toBe("Any date")
     expect(screen.getByRole("button", { name: "Time" }).textContent).toBe("--:--")
   })
 
   it("shows the chosen moment on both pickers", () => {
-    renderForm(draft({ date: "2024-06-10", time: "08:30" }))
+    renderForm(momentDraft({ date: "2024-06-10", time: "08:30" }))
 
     expect(screen.getByRole("button", { name: "Date" }).textContent).toBe("6/10/24")
     expect(screen.getByRole("button", { name: "Time" }).textContent).toBe("08:30")
@@ -97,7 +110,7 @@ describe("AdminDateTimeFilterForm in single moment mode", () => {
   })
 
   it("splits the chosen time into hour and minute controls", async () => {
-    renderForm(draft({ time: "08:30" }))
+    renderForm(momentDraft({ time: "08:30" }))
 
     await userEvent.click(screen.getByRole("button", { name: "Time" }))
 
@@ -105,7 +118,7 @@ describe("AdminDateTimeFilterForm in single moment mode", () => {
   })
 
   it("keeps the time panel closed until the time picker is pressed", () => {
-    renderForm()
+    renderForm(momentDraft())
 
     expect(screen.getByRole("button", { name: "Time" })).toHaveAttribute("aria-expanded", "false")
   })
