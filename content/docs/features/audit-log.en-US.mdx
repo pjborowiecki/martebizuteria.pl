@@ -45,7 +45,7 @@ Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_se
 
 ## Writing an event
 
-Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 66 exported `record*` functions, which are 65 action recorders, two of them for `order.released` (the checkout the Stripe webhook releases and the order an admin marks delivered), plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
+Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 66 exported `record*` functions, which are 65 action recorders, two of them for `order.released` (the checkout the Stripe webhook releases, recorded only when it actually released one, and the order an admin marks delivered), plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
 
 | Scheduler                     | Actor resolution                                                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |

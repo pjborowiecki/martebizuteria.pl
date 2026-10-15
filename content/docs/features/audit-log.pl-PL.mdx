@@ -45,7 +45,7 @@ Pięć indeksów: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_lo
 
 ## Zapis zdarzenia
 
-Nigdy nie zapisuj do `audit_log` bezpośrednio. `audit-log.events.server.ts` eksportuje nazwany rejestrator na każdą akcję: 66 eksportowanych funkcji `record*`, czyli 65 rejestratorów akcji, w tym dwa dla `order.released` (koszyk zwalniany przez webhook Stripe i zamówienie, które administrator oznacza jako dostarczone), plus wrapper `recordOrderEmailOutcome`. Każdy rejestrator uzupełnia akcję, kategorię i poziom ważności, a następnie deleguje do jednego z trzech schedulerów w `audit-log.record.server.ts`:
+Nigdy nie zapisuj do `audit_log` bezpośrednio. `audit-log.events.server.ts` eksportuje nazwany rejestrator na każdą akcję: 66 eksportowanych funkcji `record*`, czyli 65 rejestratorów akcji, w tym dwa dla `order.released` (koszyk zwalniany przez webhook Stripe, zapisywany tylko wtedy, gdy webhook faktycznie coś zwolnił, i zamówienie, które administrator oznacza jako dostarczone), plus wrapper `recordOrderEmailOutcome`. Każdy rejestrator uzupełnia akcję, kategorię i poziom ważności, a następnie deleguje do jednego z trzech schedulerów w `audit-log.record.server.ts`:
 
 | Scheduler                     | Rozwiązywanie aktora                                                                                        |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |

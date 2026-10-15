@@ -2,7 +2,7 @@ import { type SQL } from "drizzle-orm"
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { getAvailabilityByVariantIds, getInventoryIdsByVariantIds } from "~/src/modules/inventory/inventory.accessors"
+import { getAvailabilityByVariantIds } from "~/src/modules/inventory/inventory.accessors"
 
 const access = vi.hoisted(() => ({
   selectWhere: vi.fn<(condition: SQL | undefined) => Promise<Record<string, number | string>[]>>(),
@@ -23,37 +23,6 @@ const query = (condition: SQL | undefined) => {
 
   return dialect.sqlToQuery(condition)
 }
-
-describe("getInventoryIdsByVariantIds", () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it("answers an empty request without querying", async () => {
-    await expect(getInventoryIdsByVariantIds([])).resolves.toStrictEqual(new Map())
-
-    expect(access.selectWhere).not.toHaveBeenCalled()
-  })
-
-  it("keys each stock row id by variant, in one query for every variant", async () => {
-    access.selectWhere.mockResolvedValue([
-      { id: "inventory-a", variantId: "variant-a" },
-      { id: "inventory-b", variantId: "variant-b" },
-    ])
-
-    await expect(getInventoryIdsByVariantIds(["variant-a", "variant-b"])).resolves.toStrictEqual(
-      new Map([
-        ["variant-a", "inventory-a"],
-        ["variant-b", "inventory-b"],
-      ]),
-    )
-    expect(access.selectWhere).toHaveBeenCalledOnce()
-    expect(query(access.selectWhere.mock.calls[0]?.[0])).toMatchObject({
-      params: ['["variant-a","variant-b"]'],
-      sql: '"inventory"."variant_id" in (select value from json_each(?))',
-    })
-  })
-})
 
 describe("getAvailabilityByVariantIds", () => {
   beforeEach(() => {

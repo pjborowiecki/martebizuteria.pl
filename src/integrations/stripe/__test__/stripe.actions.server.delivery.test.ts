@@ -21,7 +21,6 @@ const mocked = vi.hoisted(() => ({
   getRequestSession: vi.fn(),
   getStripeCustomerId: vi.fn<() => Promise<string | undefined>>(),
   requestLocale: { value: "pl-PL" },
-  reserveInventoryByVariantLines: vi.fn(),
   reserveInventoryForItems: vi.fn(),
   supersedeCheckoutSession: vi.fn(),
   updateCheckoutDelivery:
@@ -77,7 +76,6 @@ vi.mock("~/src/modules/delivery-method/delivery-method.accessors", () => ({
 }))
 vi.mock("~/src/modules/inventory/inventory.accessors", () => ({ releaseInventoryForItems: vi.fn() }))
 vi.mock("~/src/modules/inventory/inventory.utils", () => ({
-  reserveInventoryByVariantLines: mocked.reserveInventoryByVariantLines,
   reserveInventoryForItems: mocked.reserveInventoryForItems,
 }))
 vi.mock("~/src/modules/payment/payment.accessors", () => ({
@@ -121,7 +119,6 @@ beforeEach(() => {
   mocked.getRequestSession.mockResolvedValue({ user: { id: "user-1", name: "Anna Kowalska" } })
   mocked.ensureStripeCustomer.mockResolvedValue("cus_1")
   mocked.getStripeCustomerId.mockResolvedValue("cus_1")
-  mocked.reserveInventoryByVariantLines.mockResolvedValue(undefined)
   mocked.reserveInventoryForItems.mockResolvedValue(undefined)
   mocked.supersedeCheckoutSession.mockResolvedValue(true)
   mocked.updateCheckoutDelivery.mockResolvedValue(undefined)
@@ -159,7 +156,7 @@ const expectHeldSessionUntouched = (): void => {
   expect(mocked.checkoutSessionsCreate).not.toHaveBeenCalled()
   expect(mocked.checkoutSessionsExpire).not.toHaveBeenCalled()
   expect(mocked.supersedeCheckoutSession).not.toHaveBeenCalled()
-  expect(mocked.reserveInventoryByVariantLines).not.toHaveBeenCalled()
+  expect(mocked.reserveInventoryForItems).not.toHaveBeenCalled()
   expect(mocked.updateCheckoutDelivery).not.toHaveBeenCalled()
 }
 

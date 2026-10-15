@@ -42,19 +42,6 @@ export const reserveInventoryRows = async (items: readonly InventoryRowQuantity[
 export const releaseInventoryForItems = (items: InventoryRowQuantity[]): Promise<void> =>
   runDrizzleBatch(items.map((item) => db.update(inventory).set(inventoryReleaseValues(item.qty)).where(eq(inventory.id, item.inventoryId))))
 
-export const getInventoryIdsByVariantIds = async (variantIds: readonly string[]): Promise<ReadonlyMap<string, string>> => {
-  if (variantIds.length === 0) {
-    return new Map()
-  }
-
-  const rows = await db
-    .select({ id: inventory.id, variantId: inventory.variantId })
-    .from(inventory)
-    .where(inJsonList(inventory.variantId, variantIds))
-
-  return new Map(rows.map((row) => [row.variantId, row.id]))
-}
-
 export const getAvailabilityByVariantIds = async (variantIds: readonly string[]): Promise<Map<string, number>> => {
   if (variantIds.length === 0) {
     return new Map()

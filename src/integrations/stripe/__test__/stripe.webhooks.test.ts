@@ -44,7 +44,7 @@ const {
   recordOrderPlacedAudit: vi.fn(),
   recordOrderReleasedAudit: vi.fn(),
   refundOrder: vi.fn<(input: object) => Promise<void>>(),
-  releaseCheckout: vi.fn<(input: object) => Promise<void>>(),
+  releaseCheckout: vi.fn<(input: object) => Promise<boolean>>(),
   scheduleAdminOrdersInvalidation: vi.fn(),
   scheduleProductCatalogInvalidation: vi.fn(),
   sendEmail: vi.fn<(options: Readonly<{ subject: string; to: string }>) => Promise<string | undefined>>(),
@@ -163,7 +163,7 @@ beforeEach(() => {
   })
   getCheckoutEmailContext.mockResolvedValue(undefined)
   paymentIntentsRetrieve.mockResolvedValue({ payment_method: { type: "blik" } })
-  releaseCheckout.mockResolvedValue(undefined)
+  releaseCheckout.mockResolvedValue(true)
   refundOrder.mockResolvedValue(undefined)
   flagOrderDispute.mockResolvedValue(undefined)
   clearOrderDispute.mockResolvedValue(undefined)
@@ -368,6 +368,28 @@ describe("checkout session release", () => {
     await dispatch(checkoutSessionExpiredEvent(checkoutSession({})))
 
     expect(releaseCheckout).toHaveBeenCalledWith({ lines: [], transactionId: "cs_test_1" })
+  })
+
+  it("records no release for a session whose checkout moved to a newer session before it expired", async () => {
+    releaseCheckout.mockResolvedValue(false)
+
+    await dispatch(checkoutSessionExpiredEvent(checkoutSession({ metadata: { items: itemsMetadata } })))
+
+    expect(releaseCheckout).toHaveBeenCalledOnce()
+    expect(recordOrderReleasedAudit).not.toHaveBeenCalled()
+    expect(scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
+    expect(consoleInfo).toHaveBeenCalledWith(
+      "Session cs_test_1 held nothing to release: its checkout was paid, released or moved to a newer session.",
+    )
+  })
+
+  it("records no release when a redelivered payment failure finds the session already released", async () => {
+    releaseCheckout.mockResolvedValue(false)
+
+    await dispatch(checkoutSessionAsyncPaymentFailedEvent(checkoutSession({ metadata: { items: itemsMetadata } })))
+
+    expect(recordOrderReleasedAudit).not.toHaveBeenCalled()
+    expect(scheduleProductCatalogInvalidation).not.toHaveBeenCalled()
   })
 })
 

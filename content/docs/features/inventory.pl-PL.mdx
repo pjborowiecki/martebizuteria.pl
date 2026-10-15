@@ -40,13 +40,14 @@ Wiersze powstają razem z wariantami: `prepareProductCatalogBatch` w `product.mu
 
 `inventory.availability.utils.ts` zawiera czyste pomocniki używane zarówno przez witrynę, jak i koszyk:
 
-| Funkcja                                       | Znaczenie                                      |
-| --------------------------------------------- | ---------------------------------------------- |
-| `getVariantQuantityAvailable(variant)`        | `variant?.inventory?.quantityAvailable ?? 0`   |
-| `isVariantPurchasable(variant, qty)`          | `qty > 0` i dostępne `>= qty`                  |
-| `resolveProductTotalAvailableStock(variants)` | suma po wariantach                             |
-| `isProductInStock(variants)`                  | suma większa od zera                           |
-| `sumHeldQuantity(heldLines, variantId)`       | sztuki wariantu trzymane przez sesję checkoutu |
+| Funkcja                                       | Znaczenie                                                              |
+| --------------------------------------------- | ---------------------------------------------------------------------- |
+| `getVariantQuantityAvailable(variant)`        | `variant?.inventory?.quantityAvailable ?? 0`                           |
+| `isVariantPurchasable(variant, qty)`          | `qty > 0` i dostępne `>= qty`                                          |
+| `resolveProductTotalAvailableStock(variants)` | suma po wariantach                                                     |
+| `isProductInStock(variants)`                  | suma większa od zera                                                   |
+| `sumHeldQuantity(heldLines, variantId)`       | sztuki wariantu trzymane przez sesję checkoutu                         |
+| `quantitiesBeyond(lines, baselineLines)`      | każda linia przycięta do sztuk, których nie pokrywają już linie bazowe |
 
 Brakujący wiersz `inventory` jest więc odczytywany jako zero, a nie jako wartość nieznana.
 
@@ -82,13 +83,21 @@ if (firstFailure !== undefined) {
     console.error("Failed to roll back partial inventory reservation:", error)
   })
 
-  throw new Error(`Inventory reservation failed for ${firstFailure.title}. Not enough stock available.`)
+  console.warn(`Inventory reservation failed for ${firstFailure.title}. Not enough stock available.`)
+  throw new AppError(ERROR_CODES.CONFLICT, CHECKOUT_ERROR_CODES.INSUFFICIENT_INVENTORY)
 }
 ```
 
-Warunek, który nie trafia w żaden wiersz, nie jest błędem, więc D1 zatwierdza linie, które trafiły; tę lukę zamyka kompensujące zwolnienie, samo będące jednym wsadem, a nie baza danych.
+Warunek, który nie trafia w żaden wiersz, nie jest błędem, więc D1 zatwierdza linie, które trafiły; tę lukę zamyka kompensujące zwolnienie, samo będące jednym wsadem, a nie baza danych. Odmowa niesie `INSUFFICIENT_INVENTORY`, ten sam kod, którego walidacja używa dla koszyka proszącego o więcej, niż zostało. Kupujący, któremu ostatni egzemplarz chwilę wcześniej zarezerwował inny checkout, widzi więc komunikat o braku towaru (`errors.insufficientInventory`) zamiast ogólnego `errors.unknownError`, a koszyk ponownie sprawdza dostępność. Log podaje linię, której zabrakło.
 
-`reserveInventoryByVariantLines(lines)` to wariant oparty na identyfikatorach wariantów, który rezerwuje edytowany koszyk podczas aktualizacji checkoutu, po zwolnieniu linii starej sesji: jednym zapytaniem przez `getInventoryIdsByVariantIds` odnajduje wiersz stanu każdej linii, a potem deleguje do `reserveInventoryForItems`.
+## Przeniesienie rezerwacji na sesję zastępczą
+
+Aktualizacja checkoutu zastępuje jego sesję Stripe, ale nigdy nie puszcza towaru, który kupujący zatrzymuje. `quantitiesBeyond(lines, baselineLines)` porównuje dwa zestawy linii po wariantach i z każdej linii zostawia tylko sztuki, których linie bazowe jeszcze nie pokrywają; bazę jednego wariantu wydaje raz na wszystkie jego linie. Aktualizacja używa jej w obie strony:
+
+- `quantitiesBeyond(validatedItems, heldLines)` daje sztuki, które edytowany koszyk dokłada. Są rezerwowane przez `reserveInventoryForItems` na identyfikatorach stanu zwróconych przez walidację, zanim powstanie sesja zastępcza i zanim stara wygaśnie. Odmowa zostawia starą sesję, jej towar i checkout bez zmian.
+- `quantitiesBeyond(heldLines, reservedLines)` daje sztuki, z których edytowany koszyk rezygnuje. `supersedeCheckoutSession` zwalnia tylko je, we wsadzie, który przenosi płatność.
+
+Sztuk trzymanych przez obie sesje nic więc nie zwalnia, a inny checkout nie może przejąć unikatowego egzemplarza, gdy jego kupujący zmienia adres dostawy albo ilość.
 
 ## Zwolnienie jest ograniczone
 
@@ -101,27 +110,27 @@ Obie instrukcje zwolnienia używają `min`/`max`, więc podwójne zwolnienie nie
 })
 ```
 
-`releaseInventoryForItems(items)` operuje po `inventoryId` i wysyła wszystkie linie jednym wsadem. `supersedeCheckoutSession` stosuje te same `inventoryReleaseValues`, po `variantId`, do linii trzymanych przez zastąpioną sesję checkoutu. W przeciwieństwie do rezerwacji zwolnienie nie ma warunku — musi się zawsze udać, a ograniczenie sprawia, że powtórzone niczego nie psuje.
+`releaseInventoryForItems(items)` operuje po `inventoryId` i wysyła wszystkie linie jednym wsadem. `supersedeCheckoutSession` stosuje te same `inventoryReleaseValues`, po `variantId`, do sztuk trzymanych przez zastąpioną sesję checkoutu, których jej następczyni nie zatrzymuje. W przeciwieństwie do rezerwacji zwolnienie nie ma warunku — musi się zawsze udać, a ograniczenie sprawia, że powtórzone niczego nie psuje.
 
 ## Pełny cykl
 
-| Moment                                                                                           | Efekt na wierszu                                                                                          |
-| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| utworzenie sesji Stripe (`handleCreateCheckoutSession`)                                          | `available -= qty`, `reserved += qty`, tylko gdy `available >= qty`                                       |
-| edycja checkoutu (`handleUpdateCheckoutSession`)                                                 | stare linie zwolnione przy przeniesieniu płatności (`supersedeCheckoutSession`), potem nowe zarezerwowane |
-| sesja opłacona (`prepareFulfillCheckoutBatch`)                                                   | `reserved -= qty`; `available` bez zmian — rezerwacja jest skonsumowana                                   |
-| sesja wygasła albo płatność asynchroniczna nieudana (`prepareReleaseCheckoutBatch`)              | `available += min(reserved, qty)`, `reserved -= qty`                                                      |
-| zapis produktu jako szkicu albo archiwum (`expireCheckoutsHoldingVariants`)                      | jego otwarte sesje są wygaszane, a potem zwalniane jak wyżej, przed webhookiem                            |
-| anulowanie zamówienia przez administratora (`prepareCancelOrderBatch`)                           | `available += quantity`, dopóki zamówienie jest niewysłane, a jego towar jeszcze nie wrócił na stan       |
-| administrator potwierdza, że produkty zwróconego zamówienia wróciły (`prepareRestockOrderBatch`) | `available += quantity`, z `getRestockLinesForOrder(orderId)`, raz na zamówienie                          |
-| sam zwrot pieniędzy, z przycisku Zwrot, z panelu Stripe albo po przegranym sporze                | nic — `refundOrder` nigdy nie przywraca stanu                                                             |
-| zmiana stanu przez administratora w edytorze produktu (`prepareProductCatalogBatch`)             | `available += nowy − wczytany`; odrzucona, gdy zeszłaby poniżej zera                                      |
+| Moment                                                                                           | Efekt na wierszu                                                                                                                              |
+| ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| utworzenie sesji Stripe (`handleCreateCheckoutSession`)                                          | `available -= qty`, `reserved += qty`, tylko gdy `available >= qty`                                                                           |
+| edycja checkoutu (`handleUpdateCheckoutSession`)                                                 | dokładane sztuki zarezerwowane najpierw; porzucone zwolnione przy przeniesieniu płatności (`supersedeCheckoutSession`); zatrzymane nietknięte |
+| sesja opłacona (`prepareFulfillCheckoutBatch`)                                                   | `reserved -= qty`; `available` bez zmian — rezerwacja jest skonsumowana                                                                       |
+| sesja wygasła albo płatność asynchroniczna nieudana (`prepareReleaseCheckoutBatch`)              | `available += min(reserved, qty)`, `reserved -= qty`                                                                                          |
+| zapis produktu jako szkicu albo archiwum (`expireCheckoutsHoldingVariants`)                      | jego otwarte sesje są wygaszane, a potem zwalniane jak wyżej, przed webhookiem                                                                |
+| anulowanie zamówienia przez administratora (`prepareCancelOrderBatch`)                           | `available += quantity`, dopóki zamówienie jest niewysłane, a jego towar jeszcze nie wrócił na stan                                           |
+| administrator potwierdza, że produkty zwróconego zamówienia wróciły (`prepareRestockOrderBatch`) | `available += quantity`, z `getRestockLinesForOrder(orderId)`, raz na zamówienie                                                              |
+| sam zwrot pieniędzy, z przycisku Zwrot, z panelu Stripe albo po przegranym sporze                | nic — `refundOrder` nigdy nie przywraca stanu                                                                                                 |
+| zmiana stanu przez administratora w edytorze produktu (`prepareProductCatalogBatch`)             | `available += nowy − wczytany`; odrzucona, gdy zeszłaby poniżej zera                                                                          |
 
-Rezerwacja trwa tylko tak długo, jak długo jej sesję Checkout da się opłacić. Każda sesja wygasa `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minuty, ze `stripe.constants.ts`) po otwarciu, a nie po domyślnych 24 godzinach Stripe, a jej webhook `checkout.session.expired` zwalnia linie. Aktualizacja checkoutu, która zastaje sesję już wygaszoną przez Stripe, sama najpierw uruchamia to samo strzeżone zwolnienie, podobnie jak sprawdzenie zapisanej sesji, które wykonuje strona kasy, więc nowy checkout kupującego nie czeka na webhook. Zapis produktu jako szkicu albo archiwum kończy jego rezerwacje wcześniej: wygasza każdą otwartą sesję trzymającą któryś z jego wariantów i dla każdej uruchamia to samo strzeżone zwolnienie, więc webhook, który przychodzi potem, nie ma już czego oddać (zobacz [Panel katalogu](/docs/features/admin-catalog#zapis)). Przeglądarka trzyma jedną otwartą sesję: kasa kontynuuje zapisaną sesję ścieżką aktualizacji, która zwalnia stare linie, rezerwując nowe, zamiast rezerwować koszyk ponownie po odświeżeniu, w drugiej karcie albo po wizycie w koszyku. Każda aktualizacja daje sesji zastępczej nowe `CHECKOUT_SESSION_LIFETIME_SECONDS`, więc ścieżka aktualizacji zmienia checkout tylko, dopóki jest od tego młodszy; starszemu checkoutowi wygasza sesję i zwalnia linie, a przeglądarka otwiera nowy checkout, który wlicza się do limitów otwartych checkoutów. Checkout trzyma więc towar najwyżej przez dwukrotność czasu życia sesji (zobacz [Kasa: limity trzymania towaru](/docs/features/checkout#limity-trzymania-towaru)).
+Rezerwacja trwa tylko tak długo, jak długo jej sesję Checkout da się opłacić. Każda sesja wygasa `CHECKOUT_SESSION_LIFETIME_SECONDS` (32 minuty, ze `stripe.constants.ts`) po otwarciu, a nie po domyślnych 24 godzinach Stripe, a jej webhook `checkout.session.expired` zwalnia linie. Aktualizacja checkoutu, która zastaje sesję już wygaszoną przez Stripe, sama najpierw uruchamia to samo strzeżone zwolnienie, podobnie jak sprawdzenie zapisanej sesji, które wykonuje strona kasy, więc nowy checkout kupującego nie czeka na webhook. Zapis produktu jako szkicu albo archiwum kończy jego rezerwacje wcześniej: wygasza każdą otwartą sesję trzymającą któryś z jego wariantów i dla każdej uruchamia to samo strzeżone zwolnienie, więc webhook, który przychodzi potem, nie ma już czego oddać (zobacz [Panel katalogu](/docs/features/admin-catalog#zapis)). Przeglądarka trzyma jedną otwartą sesję: kasa kontynuuje zapisaną sesję ścieżką aktualizacji, która przenosi rezerwację na sesję zastępczą, zamiast rezerwować koszyk ponownie po odświeżeniu, w drugiej karcie albo po wizycie w koszyku. Każda aktualizacja daje sesji zastępczej nowe `CHECKOUT_SESSION_LIFETIME_SECONDS`, więc ścieżka aktualizacji zmienia checkout tylko, dopóki jest od tego młodszy; starszemu checkoutowi wygasza sesję i zwalnia linie, a przeglądarka otwiera nowy checkout, który wlicza się do limitów otwartych checkoutów. Checkout trzyma więc towar najwyżej przez dwukrotność czasu życia sesji (zobacz [Kasa: limity trzymania towaru](/docs/features/checkout#limity-trzymania-towaru)).
 
 Każde przywrócenie na stan przechodzi przez `prepareRestockOrderBatch` (`order.utils.ts`), które dodaje każdą linię tylko wtedy, gdy zamówienie nie jest `cancelled`, a jego `restocked_at` jest puste, i w tym samym wsadzie ustawia `restocked_at`, więc towar zamówienia wraca na stan najwyżej raz, niezależnie od tego, co przyjdzie pierwsze: anulowanie, okno zwrotu czy Przywróć na stan, i jak często każde z nich zostanie powtórzone. Anulowanie wymaga też, by zamówienie nie zostało wysłane. Sam zwrot pieniędzy niczego nie przywraca, bo nie mówi, gdzie jest towar: zwrot za zagubioną przesyłkę albo zwrot z dobrej woli nie może wystawić unikatowego egzemplarza z powrotem na sprzedaż. Administrator odpowiada na to pytanie w oknie zwrotu, którego pole jest na początku zaznaczone tylko dla zamówienia niewysłanego, albo później przyciskiem Przywróć na stan w zamówieniu (zobacz [Zamówienia](/docs/features/orders#akcje-w-panelu)).
 
-Lokalna obsługa błędów w `stripe.actions.server.ts` zawsze kompensuje: porażka po rezerwacji wywołuje `releaseInventoryForItems`. Aktualizacja checkoutu zwalnia stare linie dopiero po wygaszeniu starej sesji, w tym samym wsadzie, który przenosi płatność, i tylko dopóki checkout jest nadal `pending`. Wsad zwolnienia z webhooka wygaśnięcia ma ten sam warunek na oczekującą płatność sesji, więc stare linie zwraca ten wsad, który zatwierdzi się pierwszy, a drugi nie znajduje nic, niezależnie od tego, jak przeplotą się oba żądania. Porażka po tym momencie nie przywraca ich: starej sesji nie da się już opłacić, więc `releaseCheckout` oznacza checkout jako nieudany i oddaje to, co zarezerwował edytowany koszyk.
+Lokalna obsługa błędów w `stripe.actions.server.ts` zawsze kompensuje: porażka po rezerwacji wywołuje `releaseInventoryForItems`. Aktualizacja checkoutu rezerwuje to, co dokłada edytowany koszyk, zanim cokolwiek innego się zmieni, i oddaje to przez `releaseInventoryForItems`, gdy nie uda się utworzyć sesji zastępczej, wygasić starej sesji albo przenieść płatności. To, z czego edytowany koszyk rezygnuje, zwalnia dopiero po wygaszeniu starej sesji, w tym samym wsadzie, który przenosi płatność, i tylko dopóki checkout jest nadal `pending`. Wsad zwolnienia z webhooka wygaśnięcia ma ten sam warunek na oczekującą płatność sesji, więc linie starej sesji zwraca ten wsad, który zatwierdzi się pierwszy, a drugi nie znajduje nic, niezależnie od tego, jak przeplotą się oba żądania: webhook, który wygra, zwraca je wszystkie, a aktualizacja oddaje to, co dołożyła, i dostaje odmowę. Porażka po przeniesieniu nie przywraca ich: starej sesji nie da się już opłacić, więc `releaseCheckout` oznacza checkout jako nieudany i oddaje z sesji zastępczej cały edytowany koszyk.
 
 ## Stan decyduje o widoczności
 
