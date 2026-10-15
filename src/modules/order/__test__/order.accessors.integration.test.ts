@@ -57,6 +57,9 @@ const orderIds = async (params: Parameters<typeof getAdminOrdersPage>[0]): Promi
   return result.rows.map((row) => row.id)
 }
 
+const placedOn = (date: string): Promise<string[]> =>
+  orderIds({ ...page, filters: { createdAt: { date, operator: DATE_COLUMN_FILTER_OPERATOR.ON } } })
+
 beforeEach(() => {
   sqlite.exec(`
     drop table if exists "order";
@@ -779,5 +782,16 @@ describe("a full admin page of orders", () => {
     const rows = await getAdminOrdersExport({ search: "bulk@example.com" })
 
     expect(rows.map(({ id, itemCount }) => ({ id, itemCount }))).toStrictEqual(newestFirstItemCounts)
+  })
+})
+
+describe("getAdminOrdersPage date filters on the Polish clock", () => {
+  it("files an order by the day in Poland, so half past midnight there is not the UTC day before", async () => {
+    const insertOrder = sqlite.prepare(`insert into "order" (id, email, created_at, updated_at) values (?, 'night@example.com', ?, ?)`)
+    insertOrder.run("o-late-14", Date.parse("2026-10-14T21:59:00.000Z"), JUNE)
+    insertOrder.run("o-early-15", Date.parse("2026-10-14T22:30:00.000Z"), JUNE)
+
+    expect(await placedOn("2026-10-14")).toStrictEqual(["o-late-14"])
+    expect(await placedOn("2026-10-15")).toStrictEqual(["o-early-15"])
   })
 })

@@ -7,7 +7,8 @@ import {
   type ValidatedDateColumnFilterValue,
   isDateColumnFilterValue,
 } from "~/src/modules/_core/utils/column-filters"
-import { isIsoDateString, parseIsoDateToEndMs, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
+import { storeWallClockEndMs, storeWallClockStartMs } from "~/src/modules/_core/utils/datetime-column-filter"
+import { isIsoDateString, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
 
 const resolveCellDateMs = (value: unknown): number | undefined => {
   if (value === undefined || value === null) {
@@ -56,19 +57,16 @@ export const formatDateFilterTriggerLabel = ({
 const matchesOperator = (cellMs: number, filter: ValidatedDateColumnFilterValue): boolean => {
   switch (filter.operator) {
     case DATE_COLUMN_FILTER_OPERATOR.ON: {
-      return cellMs >= parseIsoDateToStartMs(filter.date) && cellMs <= parseIsoDateToEndMs(filter.date)
+      return cellMs >= storeWallClockStartMs(filter.date) && cellMs < storeWallClockEndMs(filter.date)
     }
     case DATE_COLUMN_FILTER_OPERATOR.BEFORE: {
-      return cellMs < parseIsoDateToStartMs(filter.date)
+      return cellMs < storeWallClockStartMs(filter.date)
     }
     case DATE_COLUMN_FILTER_OPERATOR.AFTER: {
-      return cellMs > parseIsoDateToEndMs(filter.date)
+      return cellMs >= storeWallClockEndMs(filter.date)
     }
     case DATE_COLUMN_FILTER_OPERATOR.BETWEEN: {
-      const rangeStart = parseIsoDateToStartMs(filter.startDate)
-      const rangeEnd = parseIsoDateToEndMs(filter.endDate)
-
-      return cellMs >= rangeStart && cellMs <= rangeEnd
+      return cellMs >= storeWallClockStartMs(filter.startDate) && cellMs < storeWallClockEndMs(filter.endDate)
     }
   }
 }

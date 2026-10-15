@@ -1,16 +1,35 @@
+import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
 import {
   DATE_COLUMN_FILTER_OPERATOR,
   DATE_COLUMN_FILTER_OPERATOR_SYMBOL,
   type DateColumnFilterOperator,
 } from "~/src/modules/_core/utils/column-filters"
+import { instantOfWallClock, normalizeCalendarDate, startOfCalendarDate } from "~/src/modules/_core/utils/datetime"
 import { isIsoDateString } from "~/src/modules/_core/utils/iso-date"
 import {
   combineIsoDateAndTime,
+  hasIsoDateTimeTimeComponent,
   isIsoDateTimeLocalString,
   isTimeInputValue,
+  parseIsoDateTimeLocal,
   parseIsoDateTimeLocalToMs,
   splitIsoDateTimeLocal,
 } from "~/src/modules/_core/utils/iso-datetime"
+
+const MS_PER_MINUTE = 60_000
+
+export const storeWallClockStartMs = (value: string): number =>
+  instantOfWallClock(parseIsoDateTimeLocal(value), DEFAULT_TIMEZONE_CODE).getTime()
+
+export const storeWallClockEndMs = (value: string): number => {
+  if (hasIsoDateTimeTimeComponent(value)) {
+    return storeWallClockStartMs(value) + MS_PER_MINUTE
+  }
+
+  const { day, month, year } = parseIsoDateTimeLocal(value)
+
+  return startOfCalendarDate(normalizeCalendarDate({ day: day + 1, month, year }), DEFAULT_TIMEZONE_CODE).getTime()
+}
 
 export const formatDateTimeFilterTriggerLabel = ({
   activeFilter,

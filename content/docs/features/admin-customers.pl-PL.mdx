@@ -53,6 +53,8 @@ filters: {
 }
 ```
 
+`createdAt` i `lastOrderAt` są filtrowane według dnia w Polsce przez `buildAdminDateTimeFilterSql`, tak jak na stronie zamówień i w dzienniku zdarzeń.
+
 Akcesor zwraca pięć rzeczy — `rows`, `orderStats`, `defaultAddresses`, `latestShippingAddresses` i `total` — a use case zszywa je po stronie aplikacji:
 
 ```ts

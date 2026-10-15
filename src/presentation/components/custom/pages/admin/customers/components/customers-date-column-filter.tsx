@@ -12,7 +12,8 @@ import {
   isDateColumnFilterOperator,
   isDateColumnFilterValue,
 } from "~/src/modules/_core/utils/column-filters"
-import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
+import { storeWallClockStartMs } from "~/src/modules/_core/utils/datetime-column-filter"
+import { formatDateToIsoDateLocal, isIsoDateString } from "~/src/modules/_core/utils/iso-date"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"
@@ -107,7 +108,7 @@ export const CustomersDateColumnFilter = ({ ariaLabelKey, columnId, labelKey }: 
 
   const formatIsoDateLabel = useCallback(
     (isoDate: string): string =>
-      format.dateTime(new Date(parseIsoDateToStartMs(isoDate)), {
+      format.dateTime(new Date(storeWallClockStartMs(isoDate)), {
         dateStyle: "medium",
       }),
     [format],

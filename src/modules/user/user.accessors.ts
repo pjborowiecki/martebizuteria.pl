@@ -3,7 +3,8 @@ import { type SQL, and, count, desc, eq, getTableColumns, gte, inArray, isNotNul
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { calendarPeriodKey, inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
-import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
+import { buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
+import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-column-filter.server"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
 import { address } from "~/src/modules/address/address.schema"
@@ -80,7 +81,7 @@ const buildAdminCustomersUserConditions = (params: Pick<AdminCustomersListParams
   }
 
   if (filters.createdAt !== undefined) {
-    conditions.push(buildAdminDateFilterSql(sql`${user.createdAt}`, filters.createdAt))
+    conditions.push(buildAdminDateTimeFilterSql(user.createdAt, filters.createdAt))
   }
 
   return conditions
@@ -102,7 +103,7 @@ const buildAdminCustomersRollupConditions = (
   }
 
   if (filters.lastOrderAt !== undefined) {
-    conditions.push(sql`${rollup.lastOrderAt} is not null`, buildAdminDateFilterSql(sql`${rollup.lastOrderAt}`, filters.lastOrderAt))
+    conditions.push(sql`${rollup.lastOrderAt} is not null`, buildAdminDateTimeFilterSql(sql`${rollup.lastOrderAt}`, filters.lastOrderAt))
   }
 
   return conditions

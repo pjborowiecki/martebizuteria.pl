@@ -26,10 +26,10 @@ const columns = columnHelper.columns([
 ])
 
 const data: OrderRow[] = [
-  { createdAt: new Date(2024, 2, 4, 23, 59), id: "before" },
-  { createdAt: new Date(2024, 2, 5, 0, 0), id: "dayStart" },
-  { createdAt: new Date(2024, 2, 5, 23, 59, 59, 999), id: "dayEnd" },
-  { createdAt: new Date(2024, 2, 6, 0, 0), id: "after" },
+  { createdAt: new Date("2024-03-04T22:59:00.000Z"), id: "before" },
+  { createdAt: new Date("2024-03-04T23:00:00.000Z"), id: "dayStart" },
+  { createdAt: new Date("2024-03-05T22:59:59.999Z"), id: "dayEnd" },
+  { createdAt: new Date("2024-03-05T23:00:00.000Z"), id: "after" },
   { createdAt: null, id: "missing" },
 ]
 
@@ -46,7 +46,7 @@ describe("matchesDateColumnFilter", () => {
     expect(filterIds({ operator: "sometime" })).toHaveLength(data.length)
   })
 
-  it("includes both ends of the selected day for the on operator", () => {
+  it("reads the day on the Polish clock, so its first and last minutes belong to it whatever zone the browser is in", () => {
     expect(filterIds({ date: "2024-03-05", operator: DATE_COLUMN_FILTER_OPERATOR.ON })).toStrictEqual(["dayStart", "dayEnd"])
   })
 
@@ -72,14 +72,24 @@ describe("matchesDateColumnFilter", () => {
     expect(filterIds(range)).toStrictEqual(["before", "dayStart", "dayEnd"])
   })
 
+  it("spans all 25 hours of the day the clocks go back", () => {
+    const rows: OrderRow[] = [
+      { createdAt: new Date("2024-10-26T22:00:00.000Z"), id: "firstMinute" },
+      { createdAt: new Date("2024-10-27T22:59:00.000Z"), id: "lastMinute" },
+      { createdAt: new Date("2024-10-27T23:00:00.000Z"), id: "nextDay" },
+    ]
+
+    expect(filterIds({ date: "2024-10-27", operator: DATE_COLUMN_FILTER_OPERATOR.ON }, rows)).toStrictEqual(["firstMinute", "lastMinute"])
+  })
+
   it("drops rows with no date rather than showing them under every filter", () => {
     expect(filterIds({ date: "2024-03-05", operator: DATE_COLUMN_FILTER_OPERATOR.ON })).not.toContain("missing")
   })
 
   it("reads ISO strings and epoch milliseconds from the cell as well as Date objects", () => {
     const mixed: OrderRow[] = [
-      { createdAt: new Date(2024, 2, 5, 12).toISOString(), id: "iso" },
-      { createdAt: new Date(2024, 2, 5, 12).getTime(), id: "epoch" },
+      { createdAt: "2024-03-05T11:00:00.000Z", id: "iso" },
+      { createdAt: Date.parse("2024-03-05T11:00:00.000Z"), id: "epoch" },
       { createdAt: "not a date", id: "garbage" },
     ]
 

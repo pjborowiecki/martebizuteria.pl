@@ -53,6 +53,8 @@ filters: {
 }
 ```
 
+`createdAt` and `lastOrderAt` are filtered by the day in Poland through `buildAdminDateTimeFilterSql`, as on the orders page and in the audit log.
+
 The accessor returns five things — `rows`, `orderStats`, `defaultAddresses`, `latestShippingAddresses` and `total` — and the use case stitches them together client-side of the database:
 
 ```ts
