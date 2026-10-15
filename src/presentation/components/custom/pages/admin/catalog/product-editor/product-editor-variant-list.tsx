@@ -197,9 +197,9 @@ const VariantListRow = ({
   const variantLabel = name.trim() === "" ? t("unnamedVariant") : name
 
   return (
-    <section className="overflow-hidden rounded-lg border border-border/60 bg-card">
+    <section className="@container relative overflow-hidden rounded-lg border border-border/60 bg-card">
       <header className="border-b border-border/50 bg-muted/25 px-3 py-2.5">
-        <p className="text-sm font-medium text-foreground">
+        <p className="text-sm font-medium text-foreground @max-xl:pr-8">
           {t("variantRowTitle", {
             name: variantLabel,
           })}
@@ -217,15 +217,23 @@ const VariantListRow = ({
       )}
 
       <div className={cn(VARIANT_GRID_CLASS, "border-b border-border/30 px-3 py-2.5")}>
-        <Input
-          aria-label={t(`nameLabel.${activeLocale}`)}
-          maxLength={PRODUCT_COLUMN_LENGTH.optionValue}
-          onChange={handleNameInputChange}
-          placeholder={t(`namePlaceholder.${activeLocale}`)}
-          value={name}
-          variant="sheet"
-        />
-        <Field className="min-w-0 gap-1" data-invalid={skuFieldState.invalid}>
+        <div className={cn("grid min-w-0 gap-1", VARIANT_FULL_ROW_CLASS)}>
+          <span aria-hidden className={VARIANT_FIELD_LABEL_CLASS}>
+            {t(`nameLabel.${activeLocale}`)}
+          </span>
+          <Input
+            aria-label={t(`nameLabel.${activeLocale}`)}
+            maxLength={PRODUCT_COLUMN_LENGTH.optionValue}
+            onChange={handleNameInputChange}
+            placeholder={t(`namePlaceholder.${activeLocale}`)}
+            value={name}
+            variant="sheet"
+          />
+        </div>
+        <Field className={cn("min-w-0 gap-1", VARIANT_FULL_ROW_CLASS)} data-invalid={skuFieldState.invalid}>
+          <span aria-hidden className={VARIANT_FIELD_LABEL_CLASS}>
+            {t("sku")}
+          </span>
           <Input
             {...skuField}
             aria-invalid={skuFieldState.invalid}
@@ -239,15 +247,20 @@ const VariantListRow = ({
           />
           <CatalogFormFieldError fieldState={skuFieldState} translate={tProducts} validationKeySet={validationKeySet} />
         </Field>
-        <div className="relative min-w-0">
-          <span className="pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2 text-sm text-muted-foreground/40">PLN</span>
-          <CatalogMoneyInput aria-label={t("price")} className="pl-12" onValueChange={handlePriceChange} value={variant?.price ?? ""} />
+        <div className="grid min-w-0 gap-1">
+          <span aria-hidden className={VARIANT_FIELD_LABEL_CLASS}>
+            {t("price")}
+          </span>
+          <div className="relative min-w-0">
+            <span className="pointer-events-none absolute top-1/2 left-3 z-10 -translate-y-1/2 text-sm text-muted-foreground/40">PLN</span>
+            <CatalogMoneyInput aria-label={t("price")} className="pl-12" onValueChange={handlePriceChange} value={variant?.price ?? ""} />
+          </div>
         </div>
         <VariantListRowStock index={index} variant={variant} />
         {showRemove ? (
           <Button
             aria-label={t("removeVariant")}
-            className="size-10 shrink-0"
+            className="size-10 shrink-0 @max-xl:absolute @max-xl:top-0 @max-xl:right-0"
             onClick={handleRemoveClick}
             size="icon"
             type="button"
@@ -256,7 +269,7 @@ const VariantListRow = ({
             <Trash2 className="size-4" />
           </Button>
         ) : (
-          <div />
+          <div className="@max-xl:hidden" />
         )}
       </div>
 
@@ -291,9 +304,12 @@ const VariantListRowStock = ({
 
   return (
     <Field className="min-w-0 gap-1">
+      <span aria-hidden className={VARIANT_FIELD_LABEL_CLASS}>
+        {t("variants.stockQuantity")}
+      </span>
       <CatalogIntegerInput
         aria-label={t("variants.stockQuantity")}
-        className="min-w-0 text-center"
+        className="min-w-0 text-center @max-xs:text-left"
         min={0}
         onValueChange={handleStockChange}
         placeholder="0"
@@ -415,9 +431,13 @@ const MIN_VARIANT_ROWS = 1
 const VARIANT_ATTRIBUTES_FALLBACK = <div className="h-24 rounded-lg bg-muted/20" />
 
 const VARIANT_GRID_CLASS =
-  "grid grid-cols-[minmax(0,1.4fr)_minmax(108px,1fr)_minmax(116px,1fr)_minmax(80px,0.85fr)_2.5rem] items-center gap-3"
+  "grid grid-cols-1 items-start gap-3 @xs:grid-cols-2 @xl:grid-cols-[minmax(0,1.4fr)_minmax(108px,1fr)_minmax(116px,1fr)_minmax(80px,0.85fr)_2.5rem] @xl:items-center"
 
 const VARIANT_FIELDS_HEADER_CLASS = cn(
   VARIANT_GRID_CLASS,
-  "border-b border-border/30 bg-muted/15 px-3 py-2 text-[11px] font-medium text-muted-foreground",
+  "border-b border-border/30 bg-muted/15 px-3 py-2 text-[11px] font-medium text-muted-foreground @max-xl:hidden",
 )
+
+const VARIANT_FULL_ROW_CLASS = "@xs:col-span-2 @xl:col-span-1"
+
+const VARIANT_FIELD_LABEL_CLASS = "text-[11px] font-medium text-muted-foreground @xl:hidden"

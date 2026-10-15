@@ -13,6 +13,11 @@ import {
   resolveInitialSheetWidth,
   writeStoredSheetWidth,
 } from "~/src/presentation/components/custom/pages/admin/catalog/lib/sheet-resize"
+import {
+  CATALOG_SHEET_PANEL_CLASS,
+  CATALOG_SHEET_RESIZE_HANDLE_CLASS,
+  CATALOG_SHEET_RESIZE_LINE_CLASS,
+} from "~/src/presentation/components/custom/pages/admin/catalog/lib/sheet-resize.styles"
 
 const resolveCatalogFormSheetWidth = (): number => {
   if (hasStoredSheetWidth(CATALOG_FORM_SHEET_RESIZE_KEY)) {
@@ -89,30 +94,20 @@ export const CatalogFormSheetContent = ({ children, className, ...props }: Catal
   )
 
   return (
-    <SheetContent side="right" style={panelStyle} className={cn(CATALOG_FORM_SHEET_CLASS, className)} {...props}>
+    <SheetContent side="right" style={panelStyle} className={cn(CATALOG_SHEET_PANEL_CLASS, className)} {...props}>
       <button
         type="button"
         tabIndex={-1}
         aria-label={t("resizePanel")}
         onPointerDown={handleResizePointerDown}
-        className="group/sheet-resize absolute top-0 left-0 z-10 flex h-full w-3 -translate-x-1/2 cursor-col-resize touch-none justify-center select-none"
+        className={cn(CATALOG_SHEET_RESIZE_HANDLE_CLASS, "sm:flex")}
       >
-        <div
-          className={cn(
-            "h-full w-px bg-transparent transition-colors group-hover/sheet-resize:bg-foreground/50 group-active/sheet-resize:w-[2px] group-active/sheet-resize:bg-foreground",
-          )}
-        />
+        <div className={CATALOG_SHEET_RESIZE_LINE_CLASS} />
       </button>
       {children}
     </SheetContent>
   )
 }
-
-const CATALOG_FORM_SHEET_CLASS = cn(
-  "flex h-full flex-col gap-0 border-l border-border bg-background p-0 text-foreground shadow-none",
-
-  "data-[side=right]:!w-[var(--catalog-form-sheet-width)] data-[side=right]:!max-w-[var(--catalog-form-sheet-width)]",
-)
 
 const PRIMARY_MOUSE_BUTTON = 0
 

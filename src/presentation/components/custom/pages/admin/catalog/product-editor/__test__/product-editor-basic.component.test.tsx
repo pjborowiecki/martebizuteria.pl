@@ -84,6 +84,15 @@ describe("ProductEditorBasic layout", () => {
     expect(screen.getByPlaceholderText("MRT-0001")).toBeInTheDocument()
   })
 
+  it("sets the name and sku side by side only while their card is wide enough for both", () => {
+    renderWithProviders(<BasicHarness />)
+    const pair = screen.getByPlaceholderText("MRT-0001").closest("[data-slot='field']")?.parentElement
+
+    expect(pair).toHaveClass("grid", "@sm:grid-cols-2")
+    expect(pair).not.toHaveClass("sm:grid-cols-2")
+    expect(pair?.closest("[data-slot='card-content']")).toHaveClass("@container")
+  })
+
   it("drops the sku field once the product has its own variants", () => {
     renderWithProviders(<BasicHarness hasVariants />)
 

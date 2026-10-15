@@ -90,6 +90,15 @@ describe("ProductEditorPricing for a simple product", () => {
     expect(screen.getByText("Stock quantity (units)")).toBeInTheDocument()
   })
 
+  it("sets the price and stock side by side only while their card is wide enough for both", () => {
+    renderPricing()
+    const pair = screen.getByText("PLN").closest("[data-slot='field']")?.parentElement
+
+    expect(pair).toHaveClass("grid", "@sm:grid-cols-2")
+    expect(pair).not.toHaveClass("sm:grid-cols-2")
+    expect(pair?.closest("[data-slot='card-content']")).toHaveClass("@container")
+  })
+
   it("labels the price field with the store currency", () => {
     renderPricing()
 

@@ -196,10 +196,48 @@ describe("ProductEditorVariantList layout", () => {
     expect(screen.getByText("Variant: Silver")).toBeInTheDocument()
   })
 
-  it("shows the column headers only above the first row", () => {
+  it("shows the column headers only above the first row and drops them on a narrow card", () => {
+    renderTwoRows()
+    const columnHeaders = screen.getAllByText("Stock quantity (units)").filter((label) => !label.classList.contains("@xl:hidden"))
+
+    expect(columnHeaders).toHaveLength(1)
+    expect(columnHeaders[0]?.parentElement).toHaveClass("@max-xl:hidden")
+  })
+
+  it("labels every field of every row on a narrow card, where the column headers are hidden", () => {
+    renderTwoRows()
+    const fieldLabels = ["Variant name (EN)", "SKU", "Price", "Stock quantity (units)"].flatMap((label) =>
+      screen.getAllByText(label).filter((element) => element.classList.contains("@xl:hidden")),
+    )
+
+    expect(fieldLabels).toHaveLength(8)
+  })
+
+  it("stacks a row's fields on a narrow card, pairs the price and stock on a wider one and lines them up in columns once the card is wide", () => {
+    renderTwoRows()
+    const nameCell = elementAt(screen.getAllByRole("textbox", { name: "Variant name (EN)" }), 0).parentElement
+    const skuCell = elementAt(screen.getAllByRole("textbox", { name: "SKU" }), 0).parentElement
+
+    expect(nameCell?.parentElement).toHaveClass(
+      "grid-cols-1",
+      "@xs:grid-cols-2",
+      "@xl:grid-cols-[minmax(0,1.4fr)_minmax(108px,1fr)_minmax(116px,1fr)_minmax(80px,0.85fr)_2.5rem]",
+    )
+    expect(nameCell).toHaveClass("@xs:col-span-2", "@xl:col-span-1")
+    expect(skuCell).toHaveClass("@xs:col-span-2", "@xl:col-span-1")
+    expect(elementAt(screen.getAllByRole("textbox", { name: "Stock quantity (units)" }), 0)).toHaveClass("text-center", "@max-xs:text-left")
+    expect(nameCell?.closest("section")).toHaveClass("@container", "relative")
+  })
+
+  it("moves the remove control into the row header on a narrow card", () => {
     renderTwoRows()
 
-    expect(screen.getAllByText("Stock quantity (units)")).toHaveLength(1)
+    expect(elementAt(screen.getAllByRole("button", { name: "Remove variant" }), 0)).toHaveClass(
+      "@max-xl:absolute",
+      "@max-xl:top-0",
+      "@max-xl:right-0",
+    )
+    expect(screen.getByText("Variant: Gold plated")).toHaveClass("@max-xl:pr-8")
   })
 
   it("hides the remove control while a single row is left", () => {

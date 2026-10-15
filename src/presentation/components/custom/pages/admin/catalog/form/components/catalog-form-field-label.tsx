@@ -20,7 +20,7 @@ const CatalogFormFieldHintTrigger = ({
         type="button"
         variant="ghost"
         size="icon-xs"
-        className="size-5 shrink-0 text-muted-foreground hover:text-foreground"
+        className="relative size-5 shrink-0 text-muted-foreground hover:text-foreground pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5"
         aria-label={hint}
       >
         <Info className="size-3.5" strokeWidth={1.75} />
