@@ -2,7 +2,10 @@ import { INPOST_CANCELED_SHIPMENT_STATUS } from "~/src/integrations/inpost/inpos
 
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import {
+  ADMIN_ORDER_ADVANCED_STEPS,
   ADMIN_ORDER_CANCEL_BLOCKER,
+  ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP,
+  ADMIN_ORDER_PREVIOUS_STEP,
   ADMIN_ORDER_REFUND_BLOCKER,
   type AdminOrderCancelBlocker,
   type AdminOrderRefundBlocker,
@@ -54,6 +57,26 @@ export const canMarkAdminOrderDelivered = ({
   }
 
   return fulfillmentStatus === "shipped"
+}
+
+export const canSetAdminOrderTrackingNumber = ({
+  fulfillmentStatus,
+  status,
+}: Pick<OrderActionSnapshot, "fulfillmentStatus" | "status">): boolean => !isCancelledOrderStatus(status) && fulfillmentStatus === "shipped"
+
+export const resolveAdminOrderStepBack = ({
+  fulfillmentStatus,
+  status,
+}: Pick<OrderActionSnapshot, "fulfillmentStatus" | "status">): Order["stepBack"] | undefined => {
+  if (isCancelledOrderStatus(status)) {
+    return undefined
+  }
+
+  const from = ADMIN_ORDER_ADVANCED_STEPS.find((step) =>
+    (ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP[step] as readonly string[]).includes(fulfillmentStatus),
+  )
+
+  return from === undefined ? undefined : { from, to: ADMIN_ORDER_PREVIOUS_STEP[from] }
 }
 
 export const canCancelAdminOrder = ({ fulfillmentStatus, status }: Pick<OrderActionSnapshot, "fulfillmentStatus" | "status">): boolean =>

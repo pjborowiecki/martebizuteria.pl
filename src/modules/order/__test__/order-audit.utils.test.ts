@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { buildOrderRefundAuditChange } from "~/src/modules/order/order-audit.utils"
+import { buildOrderRefundAuditChange, buildOrderStepBackAuditChange } from "~/src/modules/order/order-audit.utils"
 
 describe("buildOrderRefundAuditChange", () => {
   it("records nothing when the refund changed no tracked field", () => {
@@ -49,5 +49,27 @@ describe("buildOrderRefundAuditChange", () => {
       new: { refundedAmount: 5000 },
       old: { refundedAmount: undefined },
     })
+  })
+})
+
+describe("buildOrderStepBackAuditChange", () => {
+  it("keeps the step the order left and the step it returned to", () => {
+    expect(
+      buildOrderStepBackAuditChange(
+        { fulfillmentStep: "shipped", orderStatus: "processing" },
+        { fulfillmentStep: "processing", orderStatus: "processing" },
+      ),
+    ).toStrictEqual({
+      metadata: { changed: ["fulfillmentStep"], new: { fulfillmentStep: "processing" }, old: { fulfillmentStep: "shipped" } },
+    })
+  })
+
+  it("adds the order status when a delivered order reopens", () => {
+    expect(
+      buildOrderStepBackAuditChange(
+        { fulfillmentStep: "delivered", orderStatus: "completed" },
+        { fulfillmentStep: "shipped", orderStatus: "processing" },
+      ).metadata,
+    ).toMatchObject({ changed: ["fulfillmentStep", "orderStatus"] })
   })
 })

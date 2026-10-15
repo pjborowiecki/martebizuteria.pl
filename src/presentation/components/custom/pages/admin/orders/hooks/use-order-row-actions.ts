@@ -8,7 +8,13 @@ import { syncQueryInvalidation } from "~/src/integrations/tanstack-query/query.s
 
 import { ERROR_CODES, errorCode } from "~/src/modules/_core/constants/errors"
 import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
-import { ORDER_EMAIL_KIND, ORDER_EMAIL_NOTICE_STATUS, ORDER_ERROR_CODES, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
+import {
+  type AdminOrderAdvancedStep,
+  ORDER_EMAIL_KIND,
+  ORDER_EMAIL_NOTICE_STATUS,
+  ORDER_ERROR_CODES,
+  ORDER_QUERY_KEYS,
+} from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 import { cancelOrderMutation } from "~/src/modules/order/use-cases/cancel-order"
 import { fulfillOrderMutation } from "~/src/modules/order/use-cases/fulfill-order"
@@ -16,7 +22,9 @@ import { markOrderDeliveredMutation } from "~/src/modules/order/use-cases/mark-o
 import { refundAdminOrderMutation } from "~/src/modules/order/use-cases/refund-admin-order"
 import { resendOrderEmailMutation } from "~/src/modules/order/use-cases/resend-order-email"
 import { restockOrderMutation } from "~/src/modules/order/use-cases/restock-order"
+import { setOrderTrackingNumberMutation } from "~/src/modules/order/use-cases/set-order-tracking-number"
 import { shipOrderMutation } from "~/src/modules/order/use-cases/ship-order"
+import { stepBackOrderMutation } from "~/src/modules/order/use-cases/step-back-order"
 import { USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 
 const resolveOrderActionErrorMessage = (error: Error, t: ReturnType<typeof useTranslations<"pages.admin.orders.rowActions">>): string => {
@@ -120,6 +128,20 @@ export const useMarkOrderShipped = (): UseMutationResult<OrderEmailActionResult,
   )
 }
 
+export const useSetOrderTrackingNumber = (): UseMutationResult<OrderEmailActionResult, Error, SetTrackingNumberInput> => {
+  const showEmailNotice = useOrderEmailNoticeToast()
+
+  return useAdminOrderActionMutation(
+    {
+      ...setOrderTrackingNumberMutation,
+      onSuccess: ({ email }) => {
+        showEmailNotice(email)
+      },
+    },
+    "toast.trackingSuccessDescription",
+  )
+}
+
 export const useMarkOrderDelivered = (): UseMutationResult<OrderEmailActionResult, Error, OrderIdInput> => {
   const showEmailNotice = useOrderEmailNoticeToast()
 
@@ -158,6 +180,9 @@ export const useRefundOrder = (): UseMutationResult<OrderActionResult, Error, Re
 export const useRestockOrder = (): UseMutationResult<OrderActionResult, Error, OrderIdInput> =>
   useAdminOrderActionMutation(restockOrderMutation, "toast.restockSuccessDescription")
 
+export const useStepBackOrder = (): UseMutationResult<OrderActionResult, Error, StepBackOrderInput> =>
+  useAdminOrderActionMutation(stepBackOrderMutation, "toast.stepBackSuccessDescription")
+
 export const useResendOrderEmail = (): UseMutationResult<ResendOrderEmailResult, Error, ResendOrderEmailInput> => {
   const t = useTranslations("pages.admin.orders.rowActions")
   const queryClient = useQueryClient()
@@ -191,6 +216,8 @@ type OrderActionSuccessKey =
   | "toast.refundSuccessDescription"
   | "toast.restockSuccessDescription"
   | "toast.shipSuccessDescription"
+  | "toast.stepBackSuccessDescription"
+  | "toast.trackingSuccessDescription"
 
 interface OrderIdInput {
   readonly orderId: string
@@ -202,6 +229,15 @@ interface RefundOrderInput extends OrderIdInput {
 
 interface ResendOrderEmailInput extends OrderIdInput {
   readonly eventId: string
+}
+
+interface StepBackOrderInput extends OrderIdInput {
+  readonly fromStep: AdminOrderAdvancedStep
+}
+
+interface SetTrackingNumberInput extends OrderIdInput {
+  readonly trackingNumber: string
+  readonly trackingUrl?: string | undefined
 }
 
 interface ShipOrderInput extends OrderIdInput {

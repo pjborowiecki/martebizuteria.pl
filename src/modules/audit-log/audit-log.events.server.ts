@@ -567,6 +567,24 @@ export const recordOrderDeliveredAudit = (orderId: string, options?: AuditEventO
   })
 }
 
+export const recordOrderSteppedBackAudit = (orderId: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.ORDER_STEPPED_BACK,
+    category: "orders",
+    severity: "warning",
+    ...withResourceId(orderId, options),
+  })
+}
+
+export const recordOrderTrackingUpdatedAudit = (orderId: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.ORDER_TRACKING_UPDATED,
+    category: "orders",
+    severity: "info",
+    ...withResourceId(orderId, options),
+  })
+}
+
 export const recordOrderPaymentFailedAudit = (paymentIntentId: string, options?: AuditEventOptions): void => {
   scheduleSystemAuditLog({
     action: AUDIT_LOG_ACTION.ORDER_PAYMENT_FAILED,

@@ -58,6 +58,12 @@ export class AdminOrderPage extends BasePage {
     return this.page.getByRole("main").getByRole("button", { exact: true, name })
   }
 
+  async startFulfillment(): Promise<void> {
+    await this.action("Start fulfillment").click()
+    await this.page.getByRole("alertdialog", { name: "Start fulfillment?" }).getByRole("button", { name: "Start fulfillment" }).click()
+    await this.dismissNotification("Fulfillment started for this order.")
+  }
+
   private async openSummaryTab(opener: Locator): Promise<Page> {
     const tab = this.page.context().waitForEvent("page")
     await opener.click()

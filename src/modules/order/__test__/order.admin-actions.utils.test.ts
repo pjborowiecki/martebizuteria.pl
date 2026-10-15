@@ -8,11 +8,13 @@ import {
   canPrintAdminOrderSummary,
   canRefundAdminOrder,
   canRestockAdminOrder,
+  canSetAdminOrderTrackingNumber,
   cancelRefundsAdminOrderPayment,
   isInpostDeliveryType,
   refundRestocksByDefault,
   resolveAdminOrderCancelBlocker,
   resolveAdminOrderRefundBlocker,
+  resolveAdminOrderStepBack,
 } from "~/src/modules/order/order.admin-actions.utils"
 import { ADMIN_ORDER_CANCEL_BLOCKER, ADMIN_ORDER_REFUND_BLOCKER, type AdminOrderPaymentUiKey } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
@@ -55,6 +57,27 @@ describe("canFulfillAdminOrder", () => {
   })
 })
 
+describe("resolveAdminOrderStepBack", () => {
+  it.each<[FulfillmentStatus, OrderStatus, Order["stepBack"]]>([
+    ["fulfilled", "processing", { from: "processing", to: "confirmed" }],
+    ["shipped", "processing", { from: "shipped", to: "processing" }],
+    ["delivered", "completed", { from: "delivered", to: "shipped" }],
+  ])("steps a %s %s order back", (fulfillmentStatus, status, stepBack) => {
+    expect(resolveAdminOrderStepBack({ fulfillmentStatus, status })).toStrictEqual(stepBack)
+  })
+
+  it.each<FulfillmentStatus>(["not_fulfilled", "partially_fulfilled", "cancelled"])(
+    "has no earlier step for a %s order",
+    (fulfillmentStatus) => {
+      expect(resolveAdminOrderStepBack({ fulfillmentStatus, status: "processing" })).toBeUndefined()
+    },
+  )
+
+  it.each(CLOSED_STATUSES)("never steps a %s order back", (status) => {
+    expect(resolveAdminOrderStepBack({ fulfillmentStatus: "delivered", status })).toBeUndefined()
+  })
+})
+
 describe("canMarkAdminOrderShipped", () => {
   it.each(SHIPPABLE)("allows shipping an order that is %s", (fulfillmentStatus) => {
     expect(canMarkAdminOrderShipped({ fulfillmentStatus, paymentUiKey: "paid", status: "processing" })).toBe(true)
@@ -70,6 +93,23 @@ describe("canMarkAdminOrderShipped", () => {
 
   it.each(CLOSED_STATUSES)("refuses to ship a %s order", (status) => {
     expect(canMarkAdminOrderShipped({ fulfillmentStatus: "fulfilled", paymentUiKey: "paid", status })).toBe(false)
+  })
+})
+
+describe("canSetAdminOrderTrackingNumber", () => {
+  it("allows a tracking number for an order on its way to the customer", () => {
+    expect(canSetAdminOrderTrackingNumber({ fulfillmentStatus: "shipped", status: "processing" })).toBe(true)
+  })
+
+  it.each<FulfillmentStatus>([...STILL_IN_THE_SHOP, "delivered", "cancelled"])(
+    "refuses a tracking number for an order that is %s",
+    (fulfillmentStatus) => {
+      expect(canSetAdminOrderTrackingNumber({ fulfillmentStatus, status: "processing" })).toBe(false)
+    },
+  )
+
+  it.each(CLOSED_STATUSES)("refuses a tracking number for a %s order", (status) => {
+    expect(canSetAdminOrderTrackingNumber({ fulfillmentStatus: "shipped", status })).toBe(false)
   })
 })
 

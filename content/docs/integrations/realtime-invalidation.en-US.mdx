@@ -97,6 +97,7 @@ Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefron
 - **Every catalogue mutation.** All the `create-`, `update-`, `delete-` and `reorder-` use cases under `src/modules/product/`, `product-category/`, `product-collection/` and `product-attribute/`.
 - **Checkout.** `stripe.actions.server.ts` calls `scheduleProductCatalogInvalidation()` when a session is created or updated, because reserving stock changes availability.
 - **Webhooks.** `stripe.webhooks.ts` calls `scheduleAdminOrdersInvalidation()` on fulfilment, refund and dispute, `webhooks.inpost.ts` after it reads a shipment's new status back from ShipX, and `scheduleProductCatalogInvalidation()` on fulfilment and release. A refund does not refresh the catalogue, because it never returns stock; `cancelOrder` and `returnOrderToStock` do when the admin puts an order's items back.
+- **Stepping an order back.** `stepBackOrder` calls `scheduleAdminOrdersInvalidation()` right after it moves the order, so every open admin tab shows the earlier step without waiting for the audit entry.
 - **Withdrawals.** `order-withdrawal.record.server.ts` calls `scheduleAdminOrdersInvalidation()` once a customer's statement of withdrawal is recorded, so an open admin order page shows the withdrawal card.
 - **Identity.** The `user` create, update and delete hooks in `auth.hooks.server.ts` call `scheduleAdminCustomersInvalidation()`.
 - **Content pages.** `update-content-page.ts` calls `scheduleContentPageInvalidation()` after a save.

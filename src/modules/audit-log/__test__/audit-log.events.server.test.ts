@@ -46,6 +46,8 @@ import {
   recordOrderRestockedAudit,
   recordOrderShipmentCreatedAudit,
   recordOrderShippedAudit,
+  recordOrderSteppedBackAudit,
+  recordOrderTrackingUpdatedAudit,
   recordOrderWithdrawalReceivedAudit,
   recordSalesPausedAudit,
   recordSalesResumedAudit,
@@ -436,6 +438,13 @@ const ADMIN_ORDER_CASES: readonly TargetAuditCase[] = [
   },
   { action: AUDIT_LOG_ACTION.ORDER_SHIPPED, name: "a shipped order", record: recordOrderShippedAudit, severity: "success" },
   { action: AUDIT_LOG_ACTION.ORDER_DELIVERED, name: "a delivered order", record: recordOrderDeliveredAudit, severity: "info" },
+  { action: AUDIT_LOG_ACTION.ORDER_STEPPED_BACK, name: "an order stepped back", record: recordOrderSteppedBackAudit, severity: "warning" },
+  {
+    action: AUDIT_LOG_ACTION.ORDER_TRACKING_UPDATED,
+    name: "a tracking number saved on a shipped order",
+    record: recordOrderTrackingUpdatedAudit,
+    severity: "info",
+  },
   { action: AUDIT_LOG_ACTION.ORDER_CANCELLED, name: "a cancelled order", record: recordOrderCancelledAudit, severity: "warning" },
   {
     action: AUDIT_LOG_ACTION.ORDER_REFUND_REQUESTED,

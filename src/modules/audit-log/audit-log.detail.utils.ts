@@ -170,6 +170,7 @@ const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetai
   [AUDIT_LOG_ACTION.ORDER_DISPUTE_OPENED]: describeDisputeOpened,
   [AUDIT_LOG_ACTION.ORDER_PAYMENT_CAPTURED]: describePaidAmount,
   [AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED]: describeChanges,
+  [AUDIT_LOG_ACTION.ORDER_STEPPED_BACK]: describeChanges,
   [AUDIT_LOG_ACTION.PRODUCT_UPDATED]: describeChanges,
 }
 

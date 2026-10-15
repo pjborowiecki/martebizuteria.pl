@@ -23,6 +23,7 @@ const row = (id: string, totalMinorUnits: number): OrderRow => ({
   currencyCode: "PLN",
   customerName: "Anna Kowalska",
   email: "anna@example.com",
+  emailedSteps: [],
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.CONFIRMED,
   hasOpenDispute: false,

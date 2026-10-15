@@ -8,6 +8,7 @@ import {
   canPrintAdminOrderSummary,
   canRefundAdminOrder,
   canRestockAdminOrder,
+  canSetAdminOrderTrackingNumber,
   cancelRefundsAdminOrderPayment,
   refundRestocksByDefault,
   resolveAdminOrderCancelBlocker,
@@ -23,7 +24,44 @@ import {
   useMarkOrderShipped,
   useRefundOrder,
   useRestockOrder,
+  useSetOrderTrackingNumber,
 } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions"
+
+const useConfirmedOrderAction = (action: ConfirmableOrderAction, orderId: string): ConfirmedOrderAction => {
+  const [open, setOpen] = useState(false)
+  const confirm = useCallback(() => {
+    action.mutate(
+      { orderId },
+      {
+        onSuccess: () => {
+          setOpen(false)
+        },
+      },
+    )
+  }, [action, orderId])
+
+  return { confirm, open, setOpen }
+}
+
+const useTrackingNumberAction = (orderId: string): TrackingNumberAction => {
+  const setOrderTrackingNumber = useSetOrderTrackingNumber()
+  const [open, setOpen] = useState(false)
+  const confirm = useCallback(
+    (tracking: OrderTrackingInput) => {
+      setOrderTrackingNumber.mutate(
+        { orderId, ...tracking },
+        {
+          onSuccess: () => {
+            setOpen(false)
+          },
+        },
+      )
+    },
+    [orderId, setOrderTrackingNumber],
+  )
+
+  return { confirm, isPending: setOrderTrackingNumber.isPending, open, setOpen }
+}
 
 export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrderDetailActionsResult => {
   const hasOpenDispute = order.dispute !== undefined
@@ -33,21 +71,21 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
   const cancelOrder = useCancelOrder()
   const refundOrder = useRefundOrder()
   const restockOrder = useRestockOrder()
+  const fulfillAction = useConfirmedOrderAction(fulfillOrder, order.id)
+  const deliverAction = useConfirmedOrderAction(markOrderDelivered, order.id)
+  const cancelAction = useConfirmedOrderAction(cancelOrder, order.id)
+  const restockAction = useConfirmedOrderAction(restockOrder, order.id)
+  const trackingAction = useTrackingNumberAction(order.id)
   const [shipDialogOpen, setShipDialogOpen] = useState(false)
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [refundDialogOpen, setRefundDialogOpen] = useState(false)
-  const [restockDialogOpen, setRestockDialogOpen] = useState(false)
   const isPending =
     fulfillOrder.isPending ||
     markOrderShipped.isPending ||
     markOrderDelivered.isPending ||
     cancelOrder.isPending ||
     refundOrder.isPending ||
-    restockOrder.isPending
-
-  const handleFulfill = useCallback(() => {
-    fulfillOrder.mutate({ orderId: order.id })
-  }, [fulfillOrder, order.id])
+    restockOrder.isPending ||
+    trackingAction.isPending
 
   const handleConfirmShip = useCallback(
     (tracking: { readonly trackingNumber: string | undefined; readonly trackingUrl: string | undefined }) => {
@@ -63,21 +101,6 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
     [markOrderShipped, order.id],
   )
 
-  const handleMarkDelivered = useCallback(() => {
-    markOrderDelivered.mutate({ orderId: order.id })
-  }, [markOrderDelivered, order.id])
-
-  const handleConfirmCancel = useCallback(() => {
-    cancelOrder.mutate(
-      { orderId: order.id },
-      {
-        onSuccess: () => {
-          setCancelDialogOpen(false)
-        },
-      },
-    )
-  }, [cancelOrder, order.id])
-
   const handleConfirmRefund = useCallback(
     (restock: boolean) => {
       refundOrder.mutate(
@@ -92,17 +115,6 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
     [order.id, refundOrder],
   )
 
-  const handleConfirmRestock = useCallback(() => {
-    restockOrder.mutate(
-      { orderId: order.id },
-      {
-        onSuccess: () => {
-          setRestockDialogOpen(false)
-        },
-      },
-    )
-  }, [order.id, restockOrder])
-
   return {
     canCancel: canCancelAdminOrder(order),
     canFulfill: canFulfillAdminOrder({
@@ -114,6 +126,7 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
     canPrintSummary: canPrintAdminOrderSummary(order),
     canRefund: canRefundAdminOrder(order),
     canRestock: canRestockAdminOrder(order),
+    canSetTrackingNumber: canSetAdminOrderTrackingNumber(order),
     canShip: canMarkAdminOrderShipped({
       fulfillmentStatus: order.fulfillmentStatus,
       paymentUiKey: order.paymentUiKey,
@@ -124,14 +137,17 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
       paymentUiKey: order.paymentUiKey,
       totalMinorUnits: order.totalMinorUnits,
     }),
-    cancelDialogOpen,
+    cancelDialogOpen: cancelAction.open,
     cancelRefundsPayment: cancelRefundsAdminOrderPayment(order),
-    handleConfirmCancel,
+    deliverDialogOpen: deliverAction.open,
+    fulfillDialogOpen: fulfillAction.open,
+    handleConfirmCancel: cancelAction.confirm,
+    handleConfirmDelivered: deliverAction.confirm,
+    handleConfirmFulfill: fulfillAction.confirm,
     handleConfirmRefund,
-    handleConfirmRestock,
+    handleConfirmRestock: restockAction.confirm,
     handleConfirmShip,
-    handleFulfill,
-    handleMarkDelivered,
+    handleConfirmTracking: trackingAction.confirm,
     isPending,
     refundBlocker: resolveAdminOrderRefundBlocker({
       hasOpenDispute,
@@ -139,13 +155,39 @@ export const useOrderDetailActions = (order: Order["adminOrderDetail"]): UseOrde
     }),
     refundDialogOpen,
     refundRestocksByDefault: refundRestocksByDefault(order),
-    restockDialogOpen,
-    setCancelDialogOpen,
+    restockDialogOpen: restockAction.open,
+    setCancelDialogOpen: cancelAction.setOpen,
+    setDeliverDialogOpen: deliverAction.setOpen,
+    setFulfillDialogOpen: fulfillAction.setOpen,
     setRefundDialogOpen,
-    setRestockDialogOpen,
+    setRestockDialogOpen: restockAction.setOpen,
     setShipDialogOpen,
+    setTrackingDialogOpen: trackingAction.setOpen,
     shipDialogOpen,
+    trackingDialogOpen: trackingAction.open,
   }
+}
+
+interface ConfirmableOrderAction {
+  readonly mutate: (input: { readonly orderId: string }, options: { readonly onSuccess: () => void }) => void
+}
+
+interface OrderTrackingInput {
+  readonly trackingNumber: string
+  readonly trackingUrl: string | undefined
+}
+
+interface TrackingNumberAction {
+  readonly confirm: (tracking: OrderTrackingInput) => void
+  readonly isPending: boolean
+  readonly open: boolean
+  readonly setOpen: (open: boolean) => void
+}
+
+interface ConfirmedOrderAction {
+  readonly confirm: () => void
+  readonly open: boolean
+  readonly setOpen: (open: boolean) => void
 }
 
 interface UseOrderDetailActionsResult {
@@ -155,24 +197,32 @@ interface UseOrderDetailActionsResult {
   readonly canPrintSummary: boolean
   readonly canRefund: boolean
   readonly canRestock: boolean
+  readonly canSetTrackingNumber: boolean
   readonly canShip: boolean
   readonly cancelBlocker: AdminOrderCancelBlocker | undefined
   readonly cancelDialogOpen: boolean
   readonly cancelRefundsPayment: boolean
+  readonly deliverDialogOpen: boolean
+  readonly fulfillDialogOpen: boolean
   readonly handleConfirmCancel: () => void
+  readonly handleConfirmDelivered: () => void
+  readonly handleConfirmFulfill: () => void
   readonly handleConfirmRefund: (restock: boolean) => void
   readonly handleConfirmRestock: () => void
   readonly handleConfirmShip: (tracking: { readonly trackingNumber: string | undefined; readonly trackingUrl: string | undefined }) => void
-  readonly handleFulfill: () => void
-  readonly handleMarkDelivered: () => void
+  readonly handleConfirmTracking: (tracking: OrderTrackingInput) => void
   readonly isPending: boolean
   readonly refundBlocker: AdminOrderRefundBlocker | undefined
   readonly refundDialogOpen: boolean
   readonly refundRestocksByDefault: boolean
   readonly restockDialogOpen: boolean
   readonly setCancelDialogOpen: (open: boolean) => void
+  readonly setDeliverDialogOpen: (open: boolean) => void
+  readonly setFulfillDialogOpen: (open: boolean) => void
   readonly setRefundDialogOpen: (open: boolean) => void
   readonly setRestockDialogOpen: (open: boolean) => void
   readonly setShipDialogOpen: (open: boolean) => void
+  readonly setTrackingDialogOpen: (open: boolean) => void
   readonly shipDialogOpen: boolean
+  readonly trackingDialogOpen: boolean
 }

@@ -52,6 +52,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order
   useMarkOrderShipped: stubMutation,
   useRefundOrder: stubMutation,
   useRestockOrder: stubMutation,
+  useSetOrderTrackingNumber: stubMutation,
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/orders/detail/order-detail-page", () => ({
   OrderDetailPage: (): JSX.Element => <p>order detail body</p>,
@@ -124,6 +125,7 @@ describe("admin order detail route", () => {
     renderRoute({ fulfillmentStatus: "shipped" })
 
     expect(screen.getByRole("button", { name: "Mark delivered" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /tracking number/u })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Start fulfillment" })).not.toBeInTheDocument()
     expect(screen.queryByRole("button", { name: "Cancel order" })).not.toBeInTheDocument()
   })

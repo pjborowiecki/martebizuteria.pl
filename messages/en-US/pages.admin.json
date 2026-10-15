@@ -371,6 +371,8 @@
       "order_cancelled": "Order cancelled",
       "order_delivered": "Order delivered",
       "order_shipped": "Order shipped",
+      "order_stepped_back": "Order stepped back",
+      "order_tracking_updated": "Tracking number saved",
       "order_placed": "Order placed",
       "order_payment_captured": "Payment captured",
       "order_fulfillment_started": "Fulfillment started",
@@ -453,6 +455,7 @@
       },
       "emailDailyLimit": "the shop reached its daily limit of {limit} emails that visitors can request",
       "fields": {
+        "fulfillmentStep": "Fulfillment step",
         "orderStatus": "Order status",
         "paymentStatus": "Payment status",
         "refundedAmount": "Refunded amount",
@@ -475,8 +478,14 @@
           "cancelled": "Cancelled",
           "completed": "Completed",
           "pending": "Pending",
-          "processing": "Processing",
+          "processing": "Open",
           "refunded": "Refunded"
+        },
+        "fulfillmentStep": {
+          "confirmed": "Confirmed",
+          "processing": "In progress",
+          "shipped": "Shipped",
+          "delivered": "Delivered"
         },
         "paymentStatus": {
           "failed": "Failed",
@@ -702,6 +711,7 @@
         "successTitle": "Order updated",
         "fulfillSuccessDescription": "Fulfillment started for this order.",
         "shipSuccessDescription": "Order marked as shipped.",
+        "trackingSuccessDescription": "Tracking number saved.",
         "emailFailedTitle": "Customer email not sent yet",
         "emailFailedDescription": "Resend did not take the “{email}” email. It is tried twice more within a few seconds. If it still fails, resend it from the order's Activity card, which also shows the error.",
         "emailAlreadySentTitle": "No repeat email",
@@ -717,6 +727,7 @@
         "invalidStateDescription": "This action is not available for the order's current state.",
         "openDisputeDescription": "This order has an open dispute, which decides what happens to its payment. Until the dispute closes, the payment cannot be refunded and the order cannot be cancelled.",
         "markDeliveredSuccessDescription": "Order marked as delivered.",
+        "stepBackSuccessDescription": "The order is back at the previous step.",
         "refundSuccessDescription": "Refund submitted to Stripe. The order updates once Stripe confirms it.",
         "restockSuccessDescription": "The order's items are back in stock.",
         "resendEmailSentTitle": "Email sent",
@@ -734,6 +745,8 @@
       "cancel": "Cancel order",
       "fulfill": "Start fulfillment",
       "ship": "Mark shipped",
+      "addTracking": "Add tracking number",
+      "changeTracking": "Change tracking number",
       "markDelivered": "Mark delivered"
     },
     "meta": {
@@ -779,6 +792,8 @@
         "fulfillmentStarted": "Fulfillment started",
         "shipped": "Order shipped",
         "delivered": "Order delivered",
+        "steppedBack": "Moved back a step",
+        "trackingUpdated": "Tracking number saved",
         "cancelled": "Order cancelled",
         "refundInitiated": "Refund recorded",
         "refundRequested": "Refund requested",
@@ -931,6 +946,39 @@
       "trackingUrlPlaceholder": "https://inpost.pl/sledzenie-przesylek?number=...",
       "cancel": "Cancel",
       "confirm": "Mark shipped"
+    },
+    "trackingDialog": {
+      "title": "Save the tracking number?",
+      "description": "The order is already marked as shipped. The number and link you enter replace the saved tracking details, and the customer sees them in their account. The shipping date stays as it is.",
+      "emailNote": "The customer receives the “{email}” email with this number, unless it is the number already saved.",
+      "confirm": "Save tracking number"
+    },
+    "advanceDialog": {
+      "processing": {
+        "title": "Start fulfillment?",
+        "description": "Order {id} moves to “In progress”.",
+        "confirm": "Start fulfillment"
+      },
+      "delivered": {
+        "title": "Mark the order as delivered?",
+        "description": "Order {id} moves to “Delivered” and is completed.",
+        "confirm": "Mark delivered"
+      },
+      "cancel": "Not now"
+    },
+    "customerEmail": {
+      "willSend": "The customer receives the “{email}” email.",
+      "alreadySent": "The order already reached this step before, so the “{email}” email is not sent again.",
+      "trackingUpdate": "If you enter a new tracking number, the customer receives only a short message with that number."
+    },
+    "stepBack": {
+      "action": "Back to previous step",
+      "title": "Move the order back a step?",
+      "description": "Order {id} goes back from “{from}” to “{to}”. The customer is not emailed about it.",
+      "emailNote": "Moving the order forward again later sends no second email for a step the order has already been through.",
+      "inpostWarning": "The InPost shipment is not cancelled, and its tracking number stays on the order. If the parcel will not be sent, cancel the shipment in InPost Manager.",
+      "confirm": "Move back",
+      "cancel": "Keep as is"
     },
     "refundDialog": {
       "title": "Refund this order?",

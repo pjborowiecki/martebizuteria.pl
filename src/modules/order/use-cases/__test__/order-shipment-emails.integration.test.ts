@@ -13,6 +13,7 @@ import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getOrderForShippedEmail } from "~/src/modules/order/order.accessors"
 import { ORDER_ERROR_CODES } from "~/src/modules/order/order.constants"
 import { refreshInpostShipment } from "~/src/modules/order/use-cases/refresh-inpost-shipment"
+import { setOrderTrackingNumber } from "~/src/modules/order/use-cases/set-order-tracking-number"
 import { shipOrder } from "~/src/modules/order/use-cases/ship-order"
 
 import shippedCopy from "~/messages/pl-PL/emails.order-shipped.json"
@@ -72,6 +73,7 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordOrderEmailOutcome: vi.fn(),
   recordOrderShippedAudit: vi.fn(),
+  recordOrderTrackingUpdatedAudit: vi.fn(),
 }))
 
 const ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
@@ -93,6 +95,13 @@ const stepBackToFulfilled = (): void => {
 const sentEmails = (): SentEmail[] => sendEmail.mock.calls.map(([email]) => email)
 
 const sentSubjects = (): string[] => sentEmails().map((email) => email.subject)
+
+const saveTrackingNumber = (trackingNumber: string) => setOrderTrackingNumber({ data: { orderId: ORDER_ID, trackingNumber } })
+
+const readShipping = () =>
+  z
+    .object({ fulfillment_status: z.string(), shipped_at: z.number().nullable(), tracking_number: z.string().nullable() })
+    .parse(sqlite.prepare(`select fulfillment_status, shipped_at, tracking_number from "order" where id = ?`).get(ORDER_ID))
 
 const readClaims = () =>
   z
@@ -211,5 +220,35 @@ describe("the tracking number email", () => {
 
     expect(sentSubjects()).toStrictEqual([shippedCopy.subject])
     expect(sentEmails()[0]?.react.props["details"]).toMatchObject({ trackingNumber: SHIPX_TRACKING_NUMBER })
+  })
+})
+
+describe("a tracking number added to a shipped order", () => {
+  it("goes out once as the tracking number email, while the order stays shipped on its first shipping date", async () => {
+    await ship()
+    const shippedAt = readShipping().shipped_at
+
+    await expect(saveTrackingNumber("TRK-50")).resolves.toMatchObject({ email: TRACKING_SENT })
+    await expect(saveTrackingNumber("TRK-50")).resolves.toMatchObject({ email: ALREADY_SENT })
+
+    expect(sentSubjects()).toStrictEqual([shippedCopy.subject, trackingCopy.subject])
+    expect(sentEmails()[1]?.idempotencyKey).toBe(`order-tracking/${ORDER_ID}/TRK-50`)
+    expect(readShipping()).toStrictEqual({ fulfillment_status: "shipped", shipped_at: shippedAt, tracking_number: "TRK-50" })
+  })
+
+  it("brings a corrected number to the customer once more", async () => {
+    await ship({ trackingNumber: "TRK-42" })
+
+    await expect(saveTrackingNumber("TRK-43")).resolves.toMatchObject({ email: TRACKING_SENT })
+
+    expect(sentSubjects()).toStrictEqual([shippedCopy.subject, trackingCopy.subject])
+    expect(readClaims().tracking_email_number).toBe("TRK-43")
+  })
+
+  it("is refused for an order that has not shipped yet, which tells the customer nothing", async () => {
+    await expect(saveTrackingNumber("TRK-50")).rejects.toMatchObject(INVALID_STATE)
+
+    expect(sendEmail).not.toHaveBeenCalled()
+    expect(readShipping().tracking_number).toBeNull()
   })
 })

@@ -31,6 +31,7 @@ const orderRow = (overrides: Partial<OrderRow> = {}): OrderRow => ({
   currencyCode: "PLN",
   customerName: "Anna Kowalska",
   email: "anna@example.com",
+  emailedSteps: [],
   fulfillmentStatus: "shipped",
   fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.SHIPPED,
   hasOpenDispute: false,

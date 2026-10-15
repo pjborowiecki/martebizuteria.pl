@@ -320,6 +320,36 @@ describe("mapAdminOrderTimeline", () => {
     })
   })
 
+  it("shows an order stepped back as a fulfilment entry naming the steps it moved between", () => {
+    const steppedBack = {
+      ...auditRow,
+      action: AUDIT_LOG_ACTION.ORDER_STEPPED_BACK,
+      detail: null,
+      metadata: JSON.stringify({
+        changed: ["fulfillmentStep"],
+        new: { fulfillmentStep: "processing" },
+        old: { fulfillmentStep: "shipped" },
+      }),
+      severity: "warning" as const,
+    }
+
+    expect(mapAdminOrderTimeline([steppedBack])[0]).toMatchObject({
+      detail: { changes: [{ field: "fulfillmentStep", from: "shipped", to: "processing" }], kind: "changes" },
+      kind: "fulfillment",
+      labelKey: "steppedBack",
+    })
+  })
+
+  it("shows a tracking number saved on a shipped order as a shipping entry with the number", () => {
+    const trackingUpdated = { ...auditRow, action: AUDIT_LOG_ACTION.ORDER_TRACKING_UPDATED, detail: "TRK-50", severity: "info" as const }
+
+    expect(mapAdminOrderTimeline([trackingUpdated])[0]).toMatchObject({
+      detail: { kind: "text", text: "TRK-50" },
+      kind: "shipping",
+      labelKey: "trackingUpdated",
+    })
+  })
+
   it("offers to resend an email whose last delivery failed", () => {
     const failed = {
       ...auditRow,

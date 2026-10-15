@@ -79,6 +79,8 @@ export const AUDIT_LOG_ACTION = {
   ORDER_RESTOCKED: "order.restocked",
   ORDER_SHIPMENT_CREATED: "order.shipment_created",
   ORDER_SHIPPED: "order.shipped",
+  ORDER_STEPPED_BACK: "order.stepped_back",
+  ORDER_TRACKING_UPDATED: "order.tracking_updated",
   ORDER_WITHDRAWAL_RECEIVED: "order.withdrawal_received",
   PRODUCT_CREATED: "product.created",
   PRODUCT_DELETED: "product.deleted",

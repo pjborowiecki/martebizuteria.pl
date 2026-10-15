@@ -8,6 +8,7 @@ import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import {
+  type AdminOrderAdvancedStep,
   type AdminOrderDetailTag,
   type AdminOrderEmailStatus,
   type AdminOrderFulfillmentStepKey,
@@ -49,6 +50,7 @@ interface AdminOrderListItem {
   readonly currencyCode: string
   readonly customerName: string
   readonly email: string
+  readonly emailedSteps: readonly AdminOrderAdvancedStep[]
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly fulfillmentUiKey: AdminOrderFulfillmentUiKey
   readonly hasOpenDispute: boolean
@@ -157,6 +159,7 @@ interface AdminOrderDetail {
   readonly discountTotalMinorUnits: number
   readonly displayId: string
   readonly dispute: AdminOrderDisputeMetadata | undefined
+  readonly emailedSteps: readonly AdminOrderAdvancedStep[]
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
   readonly fulfillmentSteps: readonly AdminOrderDetailFulfillmentStep[]
   readonly fulfillmentUiKey: AdminOrderFulfillmentUiKey
@@ -242,6 +245,11 @@ interface OrderEmailNotice {
   readonly status: OrderEmailNoticeStatus
 }
 
+interface AdminOrderStepBack {
+  readonly from: AdminOrderAdvancedStep
+  readonly to: AdminOrderFulfillmentStepKey
+}
+
 interface UnannouncedOrderRefund {
   readonly amount: number
   readonly fullyRefunded: boolean
@@ -270,5 +278,6 @@ export interface Order {
   refundInput: OrderRefundInput
   select: typeof order.$inferSelect
   settled: SettledOrder
+  stepBack: AdminOrderStepBack
   unannouncedRefund: UnannouncedOrderRefund
 }

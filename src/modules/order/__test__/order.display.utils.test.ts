@@ -174,13 +174,16 @@ describe("toAdminOrderListItem", () => {
     createdAt: new Date(2024, 5, 15),
     currencyCode: "PLN",
     customerName: "Anna Kowalska",
+    deliveredEmailAt: null,
     email: "anna@example.com",
     fulfillmentStatus: "not_fulfilled" as const,
     id: "order-1",
+    inProgressEmailAt: null,
     itemCount: 3,
     metadata: '{"locale":"pl-PL"}',
     orderNumber: "MRT-2024-00001",
     paymentStatus: "succeeded",
+    shippedEmailAt: null,
     status: "processing" as const,
     total: 30_000,
     userId: "user-1",
@@ -192,6 +195,7 @@ describe("toAdminOrderListItem", () => {
       currencyCode: "PLN",
       customerName: "Anna Kowalska",
       email: "anna@example.com",
+      emailedSteps: [],
       fulfillmentStatus: "not_fulfilled",
       fulfillmentUiKey: ADMIN_ORDER_FULFILLMENT_UI_KEY.CONFIRMED,
       hasOpenDispute: false,
@@ -225,5 +229,15 @@ describe("toAdminOrderListItem", () => {
     const closed = clearDisputeMetadata(mergeDisputeMetadata(row.metadata, dispute))
 
     expect(toAdminOrderListItem({ ...row, metadata: closed }).hasOpenDispute).toBe(false)
+  })
+
+  it("lists the steps whose e-mail the customer was already sent", () => {
+    const sentAt = new Date(2024, 5, 16)
+
+    expect(toAdminOrderListItem({ ...row, inProgressEmailAt: sentAt, shippedEmailAt: sentAt }).emailedSteps).toStrictEqual([
+      "processing",
+      "shipped",
+    ])
+    expect(toAdminOrderListItem({ ...row, deliveredEmailAt: sentAt }).emailedSteps).toStrictEqual(["delivered"])
   })
 })

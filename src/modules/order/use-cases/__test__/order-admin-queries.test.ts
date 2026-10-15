@@ -4,29 +4,16 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { ADMIN_ORDER_DETAIL_TAG, ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
-import { type Order } from "~/src/modules/order/order.types"
+import { type toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
 
 import { exportAdminOrders } from "../export-admin-orders"
 import { getAdminOrder, getAdminOrderQuery } from "../get-admin-order"
 import { getAdminOrderStats, getAdminOrderStatsQuery } from "../get-admin-order-stats"
 import { getAdminOrdersPage, getAdminOrdersPageQuery } from "../get-admin-orders-page"
 
-interface SourceRow {
+type SourceRow = Parameters<typeof toAdminOrderListItem>[0] & {
   readonly billingCompanyName: string | null
   readonly billingNip: string | null
-  readonly createdAt: Date
-  readonly currencyCode: string
-  readonly customerName: string | null
-  readonly email: string
-  readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
-  readonly id: string
-  readonly itemCount: number | null
-  readonly metadata: string | null
-  readonly orderNumber: string
-  readonly paymentStatus: string | null
-  readonly status: Order["select"]["status"]
-  readonly total: number
-  readonly userId: string | null
 }
 
 const CREATED_AT = new Date(1_700_000_000_000)
@@ -37,13 +24,16 @@ const sourceRow = (overrides: Partial<SourceRow> = {}): SourceRow => ({
   createdAt: CREATED_AT,
   currencyCode: "PLN",
   customerName: "Ada Lovelace",
+  deliveredEmailAt: null,
   email: "ada@example.test",
   fulfillmentStatus: "shipped",
   id: "order-1",
+  inProgressEmailAt: CREATED_AT,
   itemCount: 3,
   metadata: null,
   orderNumber: "MRT-2026-00001",
   paymentStatus: "succeeded",
+  shippedEmailAt: CREATED_AT,
   status: "processing",
   total: 19_900,
   userId: "user-1",
@@ -176,6 +166,7 @@ describe("getAdminOrdersPage result", () => {
         currencyCode: "PLN",
         customerName: "Ada Lovelace",
         email: "ada@example.test",
+        emailedSteps: ["processing", "shipped"],
         fulfillmentStatus: "shipped",
         fulfillmentUiKey: "shipped",
         hasOpenDispute: false,
@@ -354,12 +345,14 @@ const detailRow = (overrides: Record<string, unknown> = {}) => ({
   currencyCode: "PLN",
   customerNote: null,
   deliveredAt: null,
+  deliveredEmailAt: null,
   deliveryMethod: null,
   discountTotal: 0,
   email: "ada@example.test",
   fulfillmentStartedAt: null,
   fulfillmentStatus: "not_fulfilled",
   id: DETAIL_ORDER_ID,
+  inProgressEmailAt: null,
   inpostShipmentId: null,
   inpostShipmentStatus: null,
   lockerId: null,
@@ -369,6 +362,7 @@ const detailRow = (overrides: Record<string, unknown> = {}) => ({
   payment: null,
   restockedAt: null,
   shippedAt: null,
+  shippedEmailAt: null,
   shippingTotal: 1500,
   status: "processing",
   subtotal: 10_000,
@@ -783,11 +777,12 @@ describe("getAdminOrderQuery", () => {
     expect(options.refetchOnWindowFocus).toBe(false)
   })
 
-  it("loads the order through the server function", async () => {
-    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow())
+  it("loads the order through the server function, with the step e-mails the customer already received", async () => {
+    accessors.getAdminOrderDetailRow.mockResolvedValue(detailRow({ inProgressEmailAt: CREATED_AT }))
 
     await expect(new QueryClient().query(getAdminOrderQuery(DETAIL_ORDER_ID))).resolves.toMatchObject({
       displayId: "MRT-2026-00001",
+      emailedSteps: ["processing"],
       id: DETAIL_ORDER_ID,
     })
   })

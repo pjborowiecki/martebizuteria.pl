@@ -24,19 +24,21 @@ const handlers = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-orders-row-action-handlers", () => ({
-  useOrdersRowActionHandlers: (order: { id: string }, closeMenu: () => void, setConfirmOpen: (open: boolean) => void) => ({
+  useOrdersRowActionHandlers: (order: { id: string }, setConfirmOpen: (open: boolean) => void) => ({
     ...handlers.availability,
-    handleCancelRequest: () => {
-      handlers.calls.push("cancelRequest")
-      closeMenu()
-    },
     handleConfirmCancel: () => {
       handlers.calls.push(`confirmCancel:${order.id}`)
       setConfirmOpen(false)
     },
+    handleConfirmFulfill: () => {
+      handlers.calls.push(`confirmFulfill:${order.id}`)
+      setConfirmOpen(false)
+    },
+    handleConfirmShip: ({ trackingNumber }: { readonly trackingNumber: string | undefined }) => {
+      handlers.calls.push(`confirmShip:${order.id}:${String(trackingNumber)}`)
+      setConfirmOpen(false)
+    },
     handleCopyId: () => handlers.calls.push("copyId"),
-    handleFulfill: () => handlers.calls.push("fulfill"),
-    handleMarkShipped: () => handlers.calls.push("markShipped"),
     handlePrintSummary: () => handlers.calls.push("printSummary"),
     handleRefund: () => handlers.calls.push("refund"),
     handleStopRowClick: (event: MouseEvent) => {
@@ -58,6 +60,7 @@ const ORDER: Order["adminListItem"] = {
   currencyCode: "PLN",
   customerName: "Ada Nowak",
   email: "ada@example.test",
+  emailedSteps: [],
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: "confirmed",
   hasOpenDispute: false,
@@ -74,9 +77,9 @@ const ORDER: Order["adminListItem"] = {
 const DISPUTE_BLOCKS_CANCEL =
   "This order has an open dispute. Cancelling would refund its payment, which the dispute now decides, so the order cannot be cancelled until the dispute closes."
 
-const openMenu = async () => {
-  renderWithProviders(<OrdersRowActions order={ORDER} />)
-  await userEvent.click(screen.getByRole("button", { name: "Actions for order MRT-2026-00001" }))
+const openMenu = async (order: Order["adminListItem"] = ORDER) => {
+  renderWithProviders(<OrdersRowActions order={order} />)
+  await userEvent.click(screen.getByRole("button", { name: `Actions for order ${order.orderNumber}` }))
 }
 
 beforeEach(() => {
@@ -119,8 +122,6 @@ describe("OrdersRowActions menu", () => {
   it.each([
     ["View order", "viewOrder"],
     ["Copy ID", "copyId"],
-    ["Start fulfillment", "fulfill"],
-    ["Mark as shipped", "markShipped"],
     ["Print order summary", "printSummary"],
     ["Refund", "refund"],
   ])("runs the %s action", async (label, expected) => {
@@ -208,11 +209,11 @@ describe("OrdersRowActions cancellation", () => {
     await openMenu()
     await userEvent.click(await screen.findByRole("menuitem", { name: "Cancel order" }))
 
-    expect(handlers.calls).toStrictEqual(["cancelRequest"])
+    expect(handlers.calls).toStrictEqual([])
 
     await userEvent.click(await screen.findByRole("button", { name: "Cancel order" }))
 
-    expect(handlers.calls).toStrictEqual(["cancelRequest", "confirmCancel:order-1"])
+    expect(handlers.calls).toStrictEqual(["confirmCancel:order-1"])
   })
 
   it("never renders the confirmation for an order that cannot be cancelled", async () => {
@@ -242,5 +243,52 @@ describe("OrdersRowActions cancellation", () => {
 
     expect(await screen.findByRole("menuitem", { name: "Cancel order" })).not.toHaveAccessibleDescription()
     expect(screen.queryByText(DISPUTE_BLOCKS_CANCEL)).toBeNull()
+  })
+})
+
+describe("OrdersRowActions fulfilment and shipping", () => {
+  it("asks before starting fulfilment and names the email the customer receives", async () => {
+    await openMenu()
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Start fulfillment" }))
+    const dialog = await screen.findByRole("alertdialog", { name: "Start fulfillment?" })
+
+    expect(dialog).toHaveTextContent("Order MRT-2026-00001 moves to “In progress”.")
+    expect(dialog).toHaveTextContent("The customer receives the “Fulfillment started notice” email.")
+    expect(handlers.calls).toStrictEqual([])
+
+    await userEvent.click(screen.getByRole("button", { name: "Start fulfillment" }))
+
+    expect(handlers.calls).toStrictEqual(["confirmFulfill:order-1"])
+  })
+
+  it("tells the admin the customer already had the fulfilment email after a step back", async () => {
+    await openMenu({ ...ORDER, emailedSteps: ["processing"] })
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Start fulfillment" }))
+
+    expect(await screen.findByRole("alertdialog", { name: "Start fulfillment?" })).toHaveTextContent(
+      "The order already reached this step before, so the “Fulfillment started notice” email is not sent again.",
+    )
+  })
+
+  it("opens the shipping dialog for the tracking number instead of shipping at once", async () => {
+    await openMenu({ ...ORDER, fulfillmentStatus: "fulfilled", fulfillmentUiKey: "processing" })
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Mark as shipped" }))
+    const dialog = await screen.findByRole("dialog", { name: "Mark order as shipped" })
+
+    expect(dialog).toHaveTextContent("The customer receives the “Shipping notice” email.")
+    expect(handlers.calls).toStrictEqual([])
+
+    await userEvent.type(screen.getByRole("textbox", { name: "Tracking number" }), "00259007123456789012")
+    await userEvent.click(screen.getByRole("button", { name: "Mark shipped" }))
+
+    expect(handlers.calls).toStrictEqual(["confirmShip:order-1:00259007123456789012"])
+  })
+
+  it("renders neither dialog for an order that can be neither fulfilled nor shipped", async () => {
+    handlers.availability = { ...handlers.availability, canFulfill: false, canShip: false }
+    await openMenu()
+
+    expect(screen.queryByRole("alertdialog")).toBeNull()
+    expect(screen.queryByRole("dialog")).toBeNull()
   })
 })

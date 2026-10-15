@@ -134,9 +134,20 @@ describe("AuditDetailCell for changes", () => {
         ],
         kind: "changes",
       }),
-    ).toHaveTextContent(
-      "Status zamówienia: W realizacji → Zwrócone; Status płatności: Opłacona → Zwrócona; Zwrócona kwota: 0,00 zł → 19,99 zł",
-    )
+    ).toHaveTextContent("Status zamówienia: Otwarte → Zwrócone; Status płatności: Opłacona → Zwrócona; Zwrócona kwota: 0,00 zł → 19,99 zł")
+  })
+
+  it("names the steps an order was moved back between in the same words as the order page", () => {
+    const steppedBack: AuditLog["detail"] = {
+      changes: [
+        { field: "fulfillmentStep", from: "delivered", to: "shipped" },
+        { field: "orderStatus", from: "completed", to: "processing" },
+      ],
+      kind: "changes",
+    }
+
+    expect(renderPolish(steppedBack)).toHaveTextContent("Etap realizacji: Dostarczone → Wysłane; Status zamówienia: Zakończone → Otwarte")
+    expect(renderEnglish(steppedBack)).toHaveTextContent("Fulfillment step: Delivered → Shipped; Order status: Completed → Open")
   })
 
   it("lists every variant that moved, came or went", () => {

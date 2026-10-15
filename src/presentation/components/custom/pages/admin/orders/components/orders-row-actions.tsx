@@ -1,4 +1,4 @@
-import { type JSX, useId, useMemo, useState } from "react"
+import { type JSX, useCallback, useId, useMemo, useState } from "react"
 
 import { Copy, Eye, MoreHorizontal, Package, Printer, RefreshCw, Trash2, Truck } from "lucide-react"
 import { useTranslations } from "use-intl/react"
@@ -16,17 +16,35 @@ import {
 
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
 import { useCatalogRowActionMenu } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/lib/use-catalog-row-action-menu"
+import { OrderAdvanceDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-advance-dialog"
+import { OrderShipDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-ship-dialog"
 import { useOrdersRowActionHandlers } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-orders-row-action-handlers"
+
+const ORDER_ROW_DIALOG = {
+  CANCEL: "cancel",
+  FULFILL: "fulfill",
+  SHIP: "ship",
+} as const
+
+type OrderRowDialog = (typeof ORDER_ROW_DIALOG)[keyof typeof ORDER_ROW_DIALOG]
 
 export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JSX.Element => {
   const t = useTranslations("pages.admin.orders.rowActions")
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [dialog, setDialog] = useState<OrderRowDialog>(ORDER_ROW_DIALOG.CANCEL)
   const { closeMenuAndRequestDeleteConfirm, handleConfirmOpenChange, handleMenuOpenChange, menuOpen } = useCatalogRowActionMenu(
     confirmOpen,
     setConfirmOpen,
   )
 
-  const handlers = useOrdersRowActionHandlers(order, closeMenuAndRequestDeleteConfirm, handleConfirmOpenChange)
+  const handlers = useOrdersRowActionHandlers(order, handleConfirmOpenChange)
+  const requestDialog = useCallback(
+    (next: OrderRowDialog) => () => {
+      setDialog(next)
+      closeMenuAndRequestDeleteConfirm()
+    },
+    [closeMenuAndRequestDeleteConfirm],
+  )
   const cancelBlockedReasonId = useId()
   const cancelBlockedReason =
     handlers.canCancel && handlers.cancelBlocker !== undefined ? t(`cancelBlocked.${handlers.cancelBlocker}`) : undefined
@@ -63,7 +81,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
           <DropdownMenuItem
             className={ITEM_CLASS}
             disabled={!handlers.canFulfill || handlers.isPending}
-            onClick={handlers.runMenuAction(handlers.handleFulfill)}
+            onClick={handlers.runMenuAction(requestDialog(ORDER_ROW_DIALOG.FULFILL))}
           >
             <Package className="size-4" strokeWidth={1.5} />
             {t("fulfill")}
@@ -71,7 +89,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
           <DropdownMenuItem
             className={ITEM_CLASS}
             disabled={!handlers.canShip || handlers.isPending}
-            onClick={handlers.runMenuAction(handlers.handleMarkShipped)}
+            onClick={handlers.runMenuAction(requestDialog(ORDER_ROW_DIALOG.SHIP))}
           >
             <Truck className="size-4" strokeWidth={1.5} />
             {t("markShipped")}
@@ -94,7 +112,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
             className={ITEM_CLASS}
             disabled={!handlers.canCancel || cancelBlockedReason !== undefined || handlers.isPending}
             variant="destructive"
-            onClick={handlers.runMenuAction(handlers.handleCancelRequest)}
+            onClick={handlers.runMenuAction(requestDialog(ORDER_ROW_DIALOG.CANCEL))}
           >
             <Trash2 className="size-4" strokeWidth={1.5} />
             {t("cancel")}
@@ -107,6 +125,28 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {handlers.canFulfill && (
+        <OrderAdvanceDialog
+          displayId={order.orderNumber}
+          emailedSteps={order.emailedSteps}
+          isPending={handlers.isPending}
+          onConfirm={handlers.handleConfirmFulfill}
+          onOpenChange={handleConfirmOpenChange}
+          open={confirmOpen && dialog === ORDER_ROW_DIALOG.FULFILL}
+          step="processing"
+        />
+      )}
+
+      {handlers.canShip && (
+        <OrderShipDialog
+          emailedSteps={order.emailedSteps}
+          isPending={handlers.isPending}
+          onConfirm={handlers.handleConfirmShip}
+          onOpenChange={handleConfirmOpenChange}
+          open={confirmOpen && dialog === ORDER_ROW_DIALOG.SHIP}
+        />
+      )}
+
       {handlers.canCancel && (
         <CatalogDeleteConfirmDialog
           cancelLabel={t("cancelDialog.cancel")}
@@ -117,7 +157,7 @@ export const OrdersRowActions = ({ order }: Readonly<OrdersRowActionsProps>): JS
           isPending={handlers.isPending}
           onConfirm={handlers.handleConfirmCancel}
           onOpenChange={handleConfirmOpenChange}
-          open={confirmOpen}
+          open={confirmOpen && dialog === ORDER_ROW_DIALOG.CANCEL}
           title={t("cancelDialog.title")}
         />
       )}

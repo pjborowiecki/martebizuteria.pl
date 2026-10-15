@@ -22,6 +22,16 @@ describe("OrderFulfillmentTracker", () => {
     }
   })
 
+  it("puts the action it is given beside its title", () => {
+    renderWithProviders(
+      <OrderFulfillmentTracker canceledAt={undefined} steps={order.fulfillmentSteps}>
+        <button type="button">Back to previous step</button>
+      </OrderFulfillmentTracker>,
+    )
+
+    expect(screen.getByText("Fulfillment").parentElement).toContainElement(screen.getByRole("button", { name: "Back to previous step" }))
+  })
+
   it("replaces the steps with a cancellation notice for cancelled orders", () => {
     renderWithProviders(<OrderFulfillmentTracker canceledAt={new Date("2026-03-08T08:00:00.000Z")} steps={[]} />)
 

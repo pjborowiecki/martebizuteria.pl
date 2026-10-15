@@ -1,4 +1,4 @@
-import { type JSX } from "react"
+import { type JSX, type ReactNode } from "react"
 
 import { XCircle } from "lucide-react"
 import { useFormatter, useTranslations } from "use-intl/react"
@@ -10,14 +10,17 @@ import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { FulfillmentStepItem } from "~/src/presentation/components/custom/pages/admin/orders/detail/fulfillment-step-item"
 import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 
-export const OrderFulfillmentTracker = ({ canceledAt, steps }: Readonly<OrderFulfillmentTrackerProps>): JSX.Element => {
+export const OrderFulfillmentTracker = ({ canceledAt, children, steps }: Readonly<OrderFulfillmentTrackerProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
       <CardContent className="p-5">
-        <p className="mb-5 text-sm font-medium">{t("orderDetail.fulfillment.title")}</p>
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <p className="text-sm font-medium">{t("orderDetail.fulfillment.title")}</p>
+          {children}
+        </div>
         {canceledAt === undefined ? (
           <div className="flex items-start justify-between">
             {steps.map((step, index) => (
@@ -41,5 +44,6 @@ export const OrderFulfillmentTracker = ({ canceledAt, steps }: Readonly<OrderFul
 
 interface OrderFulfillmentTrackerProps {
   readonly canceledAt: Date | undefined
+  readonly children?: ReactNode
   readonly steps: Order["adminOrderDetail"]["fulfillmentSteps"]
 }

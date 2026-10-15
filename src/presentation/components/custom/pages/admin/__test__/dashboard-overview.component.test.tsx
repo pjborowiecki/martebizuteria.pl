@@ -57,6 +57,7 @@ const orderRow = (overrides: Partial<Order["adminListItem"]> = {}): Order["admin
   currencyCode: "PLN",
   customerName: "Anna Kowalska",
   email: "anna@example.test",
+  emailedSteps: [],
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: "confirmed",
   hasOpenDispute: false,

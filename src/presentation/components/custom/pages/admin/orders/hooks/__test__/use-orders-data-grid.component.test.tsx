@@ -40,6 +40,7 @@ const orderRow = (id: string): Order["adminListItem"] => ({
   currencyCode: "PLN",
   customerName: "Ada Nowak",
   email: "ada@example.test",
+  emailedSteps: [],
   fulfillmentStatus: "not_fulfilled",
   fulfillmentUiKey: "confirmed",
   hasOpenDispute: false,
