@@ -21,15 +21,15 @@ import { SalesPausedBanner } from "~/src/presentation/components/custom/sales-pa
 import type accountMetaMessages from "~/messages/en-US/pages.account.meta.json"
 
 const AccountSidebarFallback = (): JSX.Element => (
-  <aside aria-hidden className="lg:sticky lg:top-28 lg:w-[220px] lg:shrink-0 lg:self-start">
-    <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-    <div className="mt-6 space-y-2">
+  <aside aria-hidden className="min-w-0 overflow-hidden lg:sticky lg:top-28 lg:w-[220px] lg:shrink-0 lg:self-start">
+    <div className="hidden h-3 w-16 animate-pulse rounded bg-muted lg:block" />
+    <div className="flex gap-1 lg:mt-6 lg:block lg:space-y-2">
       {Array.from(
         {
           length: 7,
         },
         (_, index) => (
-          <div key={`sk-${String(index)}`} className="h-9 animate-pulse rounded-md bg-muted/35" />
+          <div key={`sk-${String(index)}`} className="h-10 w-24 shrink-0 animate-pulse rounded-md bg-muted/35 lg:h-9 lg:w-auto" />
         ),
       )}
     </div>
@@ -52,8 +52,8 @@ const AccountLayout = (): JSX.Element => {
     <div className="flex min-h-dvh flex-col">
       <Navigation />
       <SalesPausedBanner />
-      <main className="mx-auto w-full max-w-400 flex-1 px-6 font-light lg:px-12">
-        <div className="grid gap-x-16 gap-y-10 py-12 lg:grid-cols-[220px_1fr] lg:py-20 lg:pl-[116px]">
+      <main className="mx-auto w-full flex-1 px-4 font-light sm:max-w-400 sm:px-6 lg:px-12">
+        <div className="grid gap-x-16 gap-y-6 py-6 sm:gap-y-10 sm:py-12 lg:grid-cols-[220px_1fr] lg:py-20 lg:pl-[116px]">
           <Suspense fallback={sidebarFallback}>
             <AccountSidebar />
           </Suspense>

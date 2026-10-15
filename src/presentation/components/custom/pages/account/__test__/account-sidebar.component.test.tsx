@@ -26,6 +26,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 describe("AccountSidebar", () => {
@@ -145,6 +146,36 @@ describe("AccountSidebar", () => {
       expect(location.href).toBe("/")
     })
     vi.unstubAllGlobals()
+  })
+})
+
+describe("AccountSidebar on a phone", () => {
+  it("keeps the text of the sign out icon as its name for screen readers", () => {
+    renderWithProviders(<AccountSidebar />)
+
+    expect(screen.getByRole("button", { name: "Sign Out" })).toHaveTextContent("Sign Out")
+  })
+
+  it("scrolls the phone tab strip so the tab of the current page sits in the middle", () => {
+    const scrollLeft = vi.spyOn(Element.prototype, "scrollLeft", "set")
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function boxOf(this: Element) {
+      return this.getAttribute("aria-current") === "page"
+        ? DOMRect.fromRect({ height: 40, width: 100, x: 600, y: 0 })
+        : DOMRect.fromRect({ height: 48, width: 300, x: 0, y: 0 })
+    })
+
+    renderWithProviders(<AccountSidebar />, { router: createTestRouter("/account/sessions") })
+
+    expect(screen.getByRole("link", { name: "Sessions" })).toHaveAttribute("aria-current", "page")
+    expect(scrollLeft).toHaveBeenCalledWith(500)
+  })
+
+  it("leaves the tab strip where it is on a page none of the tabs is for", () => {
+    const scrollLeft = vi.spyOn(Element.prototype, "scrollLeft", "set")
+
+    renderWithProviders(<AccountSidebar />, { router: createTestRouter("/account") })
+
+    expect(scrollLeft).not.toHaveBeenCalled()
   })
 })
 
