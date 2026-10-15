@@ -317,7 +317,12 @@ export const ProductFormProvider = ({
     shouldFocusError: true,
   })
 
-  const { clearErrors, reset, setError } = form
+  const {
+    clearErrors,
+    formState: { isDirty },
+    reset,
+    setError,
+  } = form
   const resetFormState = useCallback(
     (values: ProductFormValues) => {
       reset(values, {
@@ -330,8 +335,10 @@ export const ProductFormProvider = ({
     [clearErrors, reset],
   )
   useEffect(() => {
-    resetFormState(initialValues)
-  }, [initialValues, resetFormState])
+    if (!isDirty) {
+      reset(initialValues, { keepErrors: true })
+    }
+  }, [initialValues, isDirty, reset])
   useEffect(() => {
     if (!open) {
       resetFormState(initialValues)
