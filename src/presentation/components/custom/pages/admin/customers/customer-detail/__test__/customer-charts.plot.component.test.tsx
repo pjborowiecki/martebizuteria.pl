@@ -139,7 +139,7 @@ describe("CustomerCharts spending plot", () => {
   it("labels an axis below a thousand in plain major units instead of zero thousands", () => {
     const { container } = renderInPolish(withOctoberSpending())
 
-    expect(tickTexts(container)).toStrictEqual(["paź", "lis", "0", "100", "200", "300", "400", "Bransoletki"])
+    expect(tickTexts(container)).toStrictEqual(["paź", "lis", "0", "100", "200", "300", "400"])
   })
 
   it("fades the area under the curve with its own gradient", () => {
@@ -193,41 +193,51 @@ describe("CustomerCharts spending plot", () => {
   })
 })
 
-describe("CustomerCharts category plot", () => {
-  it("names every category on the vertical axis", () => {
-    const { container } = renderWithProviders(
-      <CustomerCharts
-        customer={detail({
-          categoryBreakdown: [
-            { amount: 19_900, category: "Rings" },
-            { amount: 9900, category: "Necklaces" },
-          ],
-        })}
-      />,
-    )
-    const labels = [...container.querySelectorAll("text")].map((node) => node.textContent)
-
-    expect(labels).toContain("Rings")
-    expect(labels).toContain("Necklaces")
+describe("CustomerCharts category breakdown", () => {
+  const breakdown = detail({
+    categoryBreakdown: [
+      { amount: 23_900, category: "Naszyjniki" },
+      { amount: 9900, category: "Bransoletki urodzeniowe z grawerem i zawieszką" },
+    ],
   })
 
-  it("fills the bars in the series colour the chart config defines", () => {
-    const { container } = renderWithProviders(<CustomerCharts customer={withOctoberSpending()} />)
+  it("names every category with its product value in złoty without needing a hover", () => {
+    renderInPolish(breakdown)
+    const rows = screen.getAllByRole("listitem").map((row) => [...row.querySelectorAll("span")].map((cell) => cell.textContent))
 
-    expect(container.querySelector(".recharts-bar-rectangle path")?.getAttribute("fill")).toBe("var(--color-amount)")
+    expect(rows).toStrictEqual([
+      ["Naszyjniki", "239,00\u00A0zł"],
+      ["Bransoletki urodzeniowe z grawerem i zawieszką", "99,00\u00A0zł"],
+    ])
   })
 
-  it("shows a category's product value as money in the tooltip", () => {
-    renderWithProviders(<CustomerCharts customer={withOctoberSpending()} />)
-    const [, categoryChart] = chartWrappers()
-    if (categoryChart === undefined) {
-      throw new Error("the category chart never rendered")
-    }
+  it("draws the breakdown without a plot whose cursor or tooltip the card could cut off", () => {
+    renderInPolish(breakdown)
 
-    const tooltip = openTooltip(categoryChart)
+    expect(chartWrappers()).toHaveLength(0)
+    expect(document.querySelector(".recharts-tooltip-cursor")).toBeNull()
+  })
 
-    expect(tooltip).toHaveTextContent("Bransoletki")
-    expect(tooltip).toHaveTextContent("Product value")
-    expect(tooltip.textContent).toContain("PLN 398.99")
+  it("sizes every bar against the customer's biggest category", () => {
+    const { container } = renderInPolish(breakdown)
+    const widths = [...container.querySelectorAll<HTMLElement>("[data-slot='category-bar']")].map((bar) => bar.style.width)
+
+    expect(widths).toStrictEqual(["100%", `${(9900 / 23_900) * 100}%`])
+  })
+
+  it("truncates a long category name and keeps the whole name in its title", () => {
+    renderInPolish(breakdown)
+    const label = screen.getByText("Bransoletki urodzeniowe z grawerem i zawieszką")
+
+    expect(label).toHaveClass("truncate")
+    expect(label).toHaveAttribute("title", "Bransoletki urodzeniowe z grawerem i zawieszką")
+  })
+
+  it("draws the bars in the theme foreground instead of a fixed colour", () => {
+    const { container } = renderInPolish(breakdown)
+    const bar = container.querySelector("[data-slot='category-bar']")
+
+    expect(bar).toHaveClass("bg-foreground/80")
+    expect(bar?.parentElement).toHaveAttribute("aria-hidden", "true")
   })
 })
