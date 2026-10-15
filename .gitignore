@@ -40,7 +40,6 @@ src/types/worker-configuration.d.ts
 *.sw?
 
 opensrc/
-graphify-out/
 
 NOTES.md
 
