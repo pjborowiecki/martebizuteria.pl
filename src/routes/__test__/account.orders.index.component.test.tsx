@@ -263,6 +263,39 @@ describe("account orders page", () => {
   })
 })
 
+describe("account order thumbnails on a phone", () => {
+  it("keeps both pictures of a two item order", () => {
+    pageRef.current = ordersPage({
+      orders: [orderSummary({ items: [orderItem({ id: "a", name: "One" }), orderItem({ id: "b", name: "Two" })] })],
+      total: 1,
+    })
+    renderOrders()
+
+    const header = orderToggle()
+
+    expect(within(header).getAllByRole("img")).toHaveLength(2)
+    expect(within(header).queryByText(/^\+\d/u)).toBeNull()
+  })
+
+  it("leaves a phone the first picture and a count of the other items once an order has more than two", () => {
+    pageRef.current = ordersPage({
+      orders: [
+        orderSummary({
+          itemCount: 3,
+          items: [orderItem({ id: "a", name: "One" }), orderItem({ id: "b", name: "Two" }), orderItem({ id: "c", name: "Three" })],
+        }),
+      ],
+      total: 1,
+    })
+    renderOrders()
+
+    const header = orderToggle()
+
+    expect(within(header).getByText("+2")).toBeInTheDocument()
+    expect(within(header).getAllByText(/^\+\d/u)).toHaveLength(1)
+  })
+})
+
 describe("account orders paging", () => {
   beforeEach(() => {
     pageRef.current = ordersPage()

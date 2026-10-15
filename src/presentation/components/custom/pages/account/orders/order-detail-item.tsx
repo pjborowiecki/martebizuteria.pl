@@ -21,8 +21,8 @@ export const OrderItem = ({
   const money = useOrderMoney(currencyCode)
 
   return (
-    <div className="flex items-center gap-5 py-5">
-      <div className="relative size-20 shrink-0 overflow-hidden bg-muted">
+    <div className="flex items-center gap-4 py-5 sm:gap-5">
+      <div className="relative size-16 shrink-0 overflow-hidden bg-muted sm:size-20">
         <Image
           alt={item.name}
           className="absolute inset-0 size-full object-cover"
@@ -31,16 +31,18 @@ export const OrderItem = ({
           width={80}
         />
       </div>
-      <div className="min-w-0 flex-1">
-        <ItemTitle handle={item.handle} name={item.name} />
-        {item.variantTitle === undefined || item.variantTitle === "" ? undefined : (
-          <p className="mt-1 text-[12px] text-muted-foreground">{item.variantTitle}</p>
-        )}
-        <p className="mt-0.5 text-[12px] text-muted-foreground">
-          {t("qtyAtPrice", { price: money(item.unitPriceMinorUnits), qty: item.qty })}
-        </p>
+      <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-5">
+        <div className="sm:min-w-0 sm:flex-1">
+          <ItemTitle handle={item.handle} name={item.name} />
+          {item.variantTitle === undefined || item.variantTitle === "" ? undefined : (
+            <p className="mt-1 text-[12px] text-muted-foreground">{item.variantTitle}</p>
+          )}
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            {t("qtyAtPrice", { price: money(item.unitPriceMinorUnits), qty: item.qty })}
+          </p>
+        </div>
+        <p className="mt-1 text-[14px] tabular-nums sm:mt-0">{money(item.lineTotalMinorUnits)}</p>
       </div>
-      <p className="text-[14px] tabular-nums">{money(item.lineTotalMinorUnits)}</p>
     </div>
   )
 }

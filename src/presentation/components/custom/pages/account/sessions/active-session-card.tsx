@@ -48,12 +48,12 @@ export const ActiveSessionCard = ({
   }
 
   return (
-    <div className="flex items-center gap-5 py-5">
+    <div className="flex items-center gap-4 py-5 sm:gap-5">
       <div className="flex size-10 shrink-0 items-center justify-center bg-muted/50">
         <DeviceIcon className="size-4 text-muted-foreground" strokeWidth={1.2} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <p className="text-[13px] tracking-[0.02em]">{session.device}</p>
           {session.isCurrent && <SessionCurrentBadge />}
         </div>

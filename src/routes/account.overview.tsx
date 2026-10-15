@@ -55,11 +55,11 @@ const StatsGrid = ({
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-px bg-border lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px bg-border xl:grid-cols-4">
       {stats.map((stat) => (
-        <div key={stat.key} className="bg-background px-5 py-6">
+        <div key={stat.key} className="bg-background px-4 py-5 sm:px-5 sm:py-6">
           <p className="text-[10px] tracking-[0.15em] text-muted-foreground uppercase">{t(`stats.${stat.key}`)}</p>
-          <p className="mt-2 font-serif text-2xl tracking-tight lg:text-3xl">{stat.value}</p>
+          <p className="mt-2 font-serif text-xl tracking-tight sm:text-2xl lg:text-3xl">{stat.value}</p>
         </div>
       ))}
     </div>
@@ -90,10 +90,12 @@ const ActivityFeed = ({
                 <div className="flex size-8 shrink-0 items-center justify-center">
                   <Icon className="size-3.5 text-muted-foreground/50" strokeWidth={1.2} />
                 </div>
-                <p className="min-w-0 flex-1 text-[13px] text-foreground/80">{t(`activityItems.${item.actionKey}`, item.params)}</p>
-                <span className="shrink-0 text-[11px] text-muted-foreground/50 tabular-nums">
-                  {formatRelativeFromNow(item.createdAt, locale)}
-                </span>
+                <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
+                  <p className="text-[13px] text-foreground/80 sm:min-w-0 sm:flex-1">{t(`activityItems.${item.actionKey}`, item.params)}</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground/50 tabular-nums sm:mt-0 sm:shrink-0">
+                    {formatRelativeFromNow(item.createdAt, locale)}
+                  </p>
+                </div>
               </div>
             )
           })}
@@ -113,11 +115,11 @@ const RecentOrders = ({
 
   return (
     <section>
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-4">
         <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("recentOrders")}</h2>
         <LocalizedLink
           to={ROUTES.ACCOUNT_ORDERS}
-          className="flex items-center gap-1.5 text-[11px] tracking-[0.15em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center gap-1.5 text-[11px] tracking-[0.15em] whitespace-nowrap text-muted-foreground uppercase transition-colors hover:text-foreground"
         >
           {t("viewAllOrders")}
           <ArrowRight className="size-3" strokeWidth={1.5} />
@@ -252,8 +254,8 @@ const Recommendations = ({
 
   return (
     <section>
-      <div className="flex items-baseline justify-between">
-        <div>
+      <div className="flex items-baseline justify-between gap-4">
+        <div className="min-w-0">
           <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
             {t(source === "orders" ? "recommendations" : "newArrivals")}
           </h2>
@@ -261,7 +263,7 @@ const Recommendations = ({
         </div>
         <LocalizedLink
           to={ROUTES.PRODUCTS}
-          className="flex items-center gap-1.5 text-[11px] tracking-[0.15em] text-muted-foreground uppercase transition-colors hover:text-foreground"
+          className="flex shrink-0 items-center gap-1.5 text-[11px] tracking-[0.15em] whitespace-nowrap text-muted-foreground uppercase transition-colors hover:text-foreground"
         >
           {t("viewAllProducts")}
           <ArrowRight className="size-3" strokeWidth={1.5} />
@@ -327,7 +329,7 @@ const AccountOverviewPage = (): JSX.Element => {
 
       <Separator className="my-10" />
 
-      <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
+      <div className="grid gap-10 xl:grid-cols-2 xl:gap-16">
         <ActivityFeed activity={overview.activity} />
         <RecentOrders orders={overview.recentOrders} />
       </div>

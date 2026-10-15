@@ -37,7 +37,7 @@ export const WishlistGrid = ({ items }: Readonly<WishlistGridProps>): JSX.Elemen
   }
 
   return (
-    <ul className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid gap-x-6 gap-y-10 sm:grid-cols-2 xl:grid-cols-3">
       {items.map((item) => (
         <WishlistCard item={item} key={item.productId} />
       ))}
