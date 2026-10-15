@@ -26,12 +26,12 @@ describe("ShipmentBanner", () => {
     expect(screen.queryByRole("button")).toBeNull()
   })
 
-  it("says a tracked parcel is on its way and offers its tracking number", () => {
+  it("says a tracked parcel is on its way and offers to copy its tracking number", () => {
     renderWithProviders(<ShipmentBanner order={buildAccountOrderDetail({ shippedAt: SHIPPED_AT, trackingNumber: "PL123" })} />)
 
     expect(screen.getByText("On its way since Feb 3, 2026")).toBeInTheDocument()
     expect(screen.getByText("PL123")).toBeInTheDocument()
-    expect(screen.getByRole("button")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Copy tracking number" })).toBeInTheDocument()
   })
 
   it("links the tracking number to the carrier's tracking page", () => {

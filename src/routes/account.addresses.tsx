@@ -57,7 +57,7 @@ const AddressesPage = (): JSX.Element => {
         <h1 className="font-serif text-4xl leading-[0.94] tracking-tight lg:text-5xl">{t("title")}</h1>
       </div>
 
-      <div className="mb-10">
+      <div className="sm:mb-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
             {t("savedHeading")} ({addresses.length})
@@ -319,7 +319,7 @@ const AddressCard = ({
   }, [addr.id, deleteMutation])
 
   return (
-    <div className="group flex gap-5 py-6">
+    <div className="group flex gap-4 py-6 sm:gap-5">
       <MapPin className="mt-0.5 size-4 shrink-0 text-muted-foreground/50" strokeWidth={1.2} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
@@ -342,12 +342,12 @@ const AddressCard = ({
           {addr.phone !== null && addr.phone !== "" ? <p className="pt-1">{addr.phone}</p> : undefined}
         </div>
       </div>
-      <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-        <Button variant="ghost" size="icon-xs" aria-label={t("edit")} onClick={handleEdit}>
+      <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100 has-focus-visible:opacity-100 pointer-coarse:flex-col pointer-coarse:gap-4 pointer-coarse:opacity-100">
+        <Button variant="ghost" size="account-icon" aria-label={t("edit")} onClick={handleEdit}>
           <Pencil className="size-3.5" strokeWidth={1.5} />
         </Button>
         {addr.isDefault ? undefined : (
-          <Button variant="ghost" size="icon-xs" aria-label={t("delete")} className="hover:text-destructive" onClick={handleDelete}>
+          <Button variant="ghost" size="account-icon" aria-label={t("delete")} className="hover:text-destructive" onClick={handleDelete}>
             <Trash2 className="size-3.5" strokeWidth={1.5} />
           </Button>
         )}

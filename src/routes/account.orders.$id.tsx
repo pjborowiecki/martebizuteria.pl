@@ -89,7 +89,7 @@ const OrderDetailPage = (): JSX.Element => {
       <Separator className="my-10" />
 
       <LocalizedLink
-        className="text-[11px] tracking-[0.15em] text-muted-foreground uppercase underline underline-offset-4 hover:text-foreground"
+        className="touch-target inline-block text-[11px] tracking-[0.15em] text-muted-foreground uppercase underline underline-offset-4 hover:text-foreground"
         to={ROUTES.FAQ}
       >
         {t("needHelp")}

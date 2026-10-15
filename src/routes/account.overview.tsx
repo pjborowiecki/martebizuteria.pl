@@ -119,7 +119,7 @@ const RecentOrders = ({
         <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("recentOrders")}</h2>
         <LocalizedLink
           to={ROUTES.ACCOUNT_ORDERS}
-          className="flex shrink-0 items-center gap-1.5 text-[11px] tracking-[0.15em] whitespace-nowrap text-muted-foreground uppercase transition-colors hover:text-foreground"
+          className="touch-target flex shrink-0 items-center gap-1.5 text-[11px] tracking-[0.15em] whitespace-nowrap text-muted-foreground uppercase transition-colors hover:text-foreground"
         >
           {t("viewAllOrders")}
           <ArrowRight className="size-3" strokeWidth={1.5} />
@@ -263,7 +263,7 @@ const Recommendations = ({
         </div>
         <LocalizedLink
           to={ROUTES.PRODUCTS}
-          className="flex shrink-0 items-center gap-1.5 text-[11px] tracking-[0.15em] whitespace-nowrap text-muted-foreground uppercase transition-colors hover:text-foreground"
+          className="touch-target flex shrink-0 items-center gap-1.5 text-[11px] tracking-[0.15em] whitespace-nowrap text-muted-foreground uppercase transition-colors hover:text-foreground"
         >
           {t("viewAllProducts")}
           <ArrowRight className="size-3" strokeWidth={1.5} />

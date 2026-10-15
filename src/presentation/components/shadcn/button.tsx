@@ -33,7 +33,8 @@ const buttonVariants = cva(
     variants: {
       size: {
         account: "h-10 gap-2 px-8 text-[11px] tracking-[0.15em] uppercase",
-        "account-sm": "h-9 gap-1.5 px-6 text-[11px] tracking-[0.15em] uppercase",
+        "account-icon": "touch-target size-6 [&_svg:not([class*='size-'])]:size-3",
+        "account-sm": "touch-target h-9 gap-1.5 px-6 text-[11px] tracking-[0.15em] uppercase",
         default: "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         icon: "size-8",
         "icon-lg": "size-9",
@@ -48,7 +49,7 @@ const buttonVariants = cva(
         account: "bg-foreground text-background hover:bg-foreground/90",
         "account-destructive": "border border-destructive/30 text-destructive hover:border-destructive hover:bg-destructive/5",
         "account-ghost":
-          "relative h-auto p-0 text-[11px] tracking-[0.15em] text-muted-foreground uppercase after:absolute after:inset-x-0 after:-inset-y-1 hover:text-foreground",
+          "touch-target h-auto p-0 text-[11px] tracking-[0.15em] text-muted-foreground uppercase after:absolute after:inset-x-0 after:-inset-y-1 hover:text-foreground",
         "account-outline": "border border-border bg-transparent text-foreground hover:bg-muted",
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:

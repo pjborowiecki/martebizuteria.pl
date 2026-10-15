@@ -124,7 +124,8 @@
     "nip": "NIP {nip}",
     "note": "Twoja uwaga",
     "shippedOn": "Wysłano {date}",
-    "inTransitSince": "W drodze od {date}"
+    "inTransitSince": "W drodze od {date}",
+    "copyTrackingNumber": "Kopiuj numer przesyłki"
   },
   "addresses": {
     "eyebrow": "Książka adresowa",

@@ -43,19 +43,19 @@ const FieldActions = ({
 
   if (!editing) {
     return (
-      <Button aria-label={t("editField", { field: label })} onClick={handleEdit} size="icon-xs" variant="ghost">
+      <Button aria-label={t("editField", { field: label })} onClick={handleEdit} size="account-icon" variant="ghost">
         <Pencil className="size-3.5" strokeWidth={1.5} />
       </Button>
     )
   }
 
   return (
-    <div className="flex shrink-0 gap-1">
+    <div className="flex shrink-0 gap-1 pointer-coarse:gap-4">
       <Button
         aria-label={t("saveField", { field: label })}
         className="text-foreground hover:text-foreground"
         onClick={handleSave}
-        size="icon-xs"
+        size="account-icon"
         variant="ghost"
       >
         <Save className="size-3.5" strokeWidth={1.5} />
@@ -64,7 +64,7 @@ const FieldActions = ({
         aria-label={t("cancelField", { field: label })}
         className="text-muted-foreground hover:text-destructive"
         onClick={handleCancel}
-        size="icon-xs"
+        size="account-icon"
         variant="ghost"
       >
         <X className="size-3.5" strokeWidth={1.5} />

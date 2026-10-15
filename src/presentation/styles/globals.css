@@ -24,6 +24,18 @@
 
 @custom-variant peer-floated (&:is(:where(.peer):is(:focus, :not(:placeholder-shown), :autofill) ~ *));
 
+@utility touch-target {
+  position: relative;
+
+  @media (pointer: coarse) {
+    &::before {
+      content: "";
+      position: absolute;
+      inset: min(0px, (100% - 2.5rem) / 2);
+    }
+  }
+}
+
 :root {
   --sea-ink: #173a40;
   --sea-ink-soft: #416166;
