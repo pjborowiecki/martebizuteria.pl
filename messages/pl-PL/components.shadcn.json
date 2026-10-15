@@ -26,5 +26,10 @@
   "sheet": {
     "close": "Zamknij",
     "resizePanel": "Zmień szerokość panelu"
+  },
+  "sidebar": {
+    "description": "Wyświetla menu boczne na telefonie.",
+    "title": "Menu boczne",
+    "toggle": "Przełącz menu boczne"
   }
 }

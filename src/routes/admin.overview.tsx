@@ -1,6 +1,7 @@
 import { type JSX } from "react"
 
 import { createFileRoute } from "@tanstack/react-router"
+import { cn } from "cn"
 import { useTranslations } from "use-intl/react"
 
 import { ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
@@ -8,6 +9,7 @@ import { getDashboardSnapshotQuery } from "~/src/modules/admin-dashboard/use-cas
 import { getAdminSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
+import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { DashboardOverviewContent } from "~/src/presentation/components/custom/pages/admin/dashboard-overview-content"
 import { DashboardSalesSwitch } from "~/src/presentation/components/custom/pages/admin/dashboard/components/dashboard-sales-switch"
 
@@ -18,7 +20,7 @@ const AdminOverviewPage = (): JSX.Element => {
     <>
       <AdminHeader title={t("dashboard.title")} description={t("dashboard.description")} />
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-8">
+      <div className={cn(ADMIN_PAGE_BODY_CLASS, "space-y-4 lg:space-y-6")}>
         <DashboardSalesSwitch />
         <DashboardOverviewContent />
       </div>

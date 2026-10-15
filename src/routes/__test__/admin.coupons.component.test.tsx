@@ -73,6 +73,6 @@ describe("the admin coupons page", () => {
     const table = screen.getByTestId("coupons-table")
 
     expect(table).toHaveAttribute("data-sheet-mode", "closed")
-    expect(table.parentElement).toHaveClass("flex", "min-h-0", "flex-1", "flex-col", "overflow-hidden", "p-8")
+    expect(table.parentElement).toHaveClass("flex", "min-h-0", "flex-1", "flex-col", "p-4", "lg:overflow-hidden", "lg:p-8")
   })
 })

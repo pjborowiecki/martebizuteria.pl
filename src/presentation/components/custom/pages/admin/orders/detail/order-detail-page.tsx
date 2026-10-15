@@ -2,6 +2,7 @@ import { type JSX } from "react"
 
 import { type Order } from "~/src/modules/order/order.types"
 
+import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { OrderBillingCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-billing-card"
 import { OrderCustomerCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-customer-card"
 import { OrderFulfillmentTracker } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-fulfillment-tracker"
@@ -17,7 +18,7 @@ import { OrderTimelineCard } from "~/src/presentation/components/custom/pages/ad
 import { OrderWithdrawalsCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-withdrawals-card"
 
 export const OrderDetailPage = ({ order }: Readonly<OrderDetailPageProps>): JSX.Element => (
-  <div className="min-h-0 flex-1 overflow-y-auto p-8">
+  <div className={ADMIN_PAGE_BODY_CLASS}>
     <div className="grid gap-8 xl:grid-cols-[1fr_340px]">
       <div className="min-w-0 space-y-6">
         <OrderMetaStrip order={order} />

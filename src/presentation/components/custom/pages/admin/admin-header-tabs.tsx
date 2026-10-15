@@ -8,7 +8,7 @@ import { ADMIN_LAYOUT_BG_CLASS } from "~/src/presentation/components/custom/page
 export const AdminHeaderTabs = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => (
   <div
     className={cn(
-      "scrollbar-hide flex h-12 w-full items-center gap-6 overflow-x-auto border-b border-border/40 px-6",
+      "scrollbar-hide flex h-12 w-full items-center gap-6 overflow-x-auto border-b border-border/40 px-4 sm:px-6",
       ADMIN_LAYOUT_BG_CLASS,
     )}
   >

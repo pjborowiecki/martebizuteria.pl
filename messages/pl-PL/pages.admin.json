@@ -2,6 +2,7 @@
   "brand": "M'ARTE",
   "subtitle": "Panel administracyjny",
   "a11y": {
+    "back": "Wróć",
     "selectAll": "Zaznacz wszystkie wiersze",
     "selectRow": "Zaznacz wiersz"
   },

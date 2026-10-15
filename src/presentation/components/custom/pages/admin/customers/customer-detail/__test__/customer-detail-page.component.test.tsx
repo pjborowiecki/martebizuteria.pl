@@ -106,8 +106,8 @@ describe("CustomerDetailPage", () => {
   it("scrolls the page as a whole on narrower or shorter screens without trapping the scroll in a column", () => {
     const { container } = renderPage()
 
-    expect(container.firstElementChild).toHaveClass("overflow-y-auto")
-    expect(container.firstElementChild).not.toHaveClass("xl:overflow-hidden")
+    expect(container.firstElementChild).toHaveClass("lg:overflow-y-auto")
+    expect(container.firstElementChild).not.toHaveClass("overflow-hidden", "xl:overflow-hidden")
     expect(screen.getByText("customer orders").parentElement).not.toHaveClass("overflow-y-auto", "xl:overflow-y-auto")
   })
 })
