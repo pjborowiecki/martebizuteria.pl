@@ -114,7 +114,7 @@ assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
 | ----------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `use-cases/fulfill-order.ts`        | `canFulfillAdminOrder`       | `fulfillment_status = "fulfilled"`, `fulfillment_started_at = now`; `status` moves `pending → processing`; emails the customer once           |
 | `use-cases/ship-order.ts`           | `canMarkAdminOrderShipped`   | `fulfillment_status = "shipped"`, `shipped_at = now`, and `tracking_number` and `tracking_url` when the admin gives them                      |
-| `use-cases/mark-order-delivered.ts` | `canMarkAdminOrderDelivered` | `fulfillment_status = "delivered"`, `status = "completed"`, `delivered_at = now`                                                              |
+| `use-cases/mark-order-delivered.ts` | `canMarkAdminOrderDelivered` | `fulfillment_status = "delivered"`, `status = "completed"`, `delivered_at = now`; thanks the customer by email once                           |
 | `use-cases/cancel-order.ts`         | `canCancelAdminOrder`        | `status = "cancelled"`, `fulfillment_status = "cancelled"`, `canceled_at = now`; restocks the lines and sets `restocked_at` in the same batch |
 | `use-cases/restock-order.ts`        | `canRestockAdminOrder`       | `restocked_at = now`; restocks the lines in the same batch                                                                                    |
 

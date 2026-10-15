@@ -21,6 +21,7 @@ export const order = sqliteTable(
     currencyCode: text("currency_code", { length: 3 }).default("PLN").notNull(),
     customerNote: text("customer_note"),
     deliveredAt: timestamp("delivered_at"),
+    deliveredEmailAt: timestamp("delivered_email_at"),
     deliveryMethodId: text("delivery_method_id").references(() => deliveryMethod.id, { onDelete: "set null" }),
     discountId: text("discount_id"),
     discountTotal: integer("discount_total").default(0).notNull(),

@@ -10,7 +10,9 @@ import { ROLES } from "~/src/integrations/better-auth/auth.access"
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { ORDER_ERROR_CODES } from "~/src/modules/order/order.constants"
 import { fulfillOrder } from "~/src/modules/order/use-cases/fulfill-order"
+import { markOrderDelivered } from "~/src/modules/order/use-cases/mark-order-delivered"
 
+import deliveredCopy from "~/messages/pl-PL/emails.order-delivered.json"
 import inProgressCopy from "~/messages/pl-PL/emails.order-in-progress.json"
 
 const { sendEmail, sqlite } = await vi.hoisted(async () => {
@@ -60,6 +62,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+  recordOrderDeliveredAudit: vi.fn(),
   recordOrderEmailOutcome: vi.fn(),
   recordOrderFulfillmentStartedAudit: vi.fn(),
 }))
@@ -69,6 +72,12 @@ const ORDER_ID = "0192f3a4-5b6c-7d8e-9fab-cdef01234567"
 const INVALID_STATE = { code: ERROR_CODES.CONFLICT, message: ORDER_ERROR_CODES.INVALID_STATE }
 
 const fulfil = () => fulfillOrder({ data: { orderId: ORDER_ID } })
+
+const deliver = () => markOrderDelivered({ data: { orderId: ORDER_ID } })
+
+const markShipped = (): void => {
+  sqlite.prepare(`update "order" set fulfillment_status = 'shipped', status = 'processing', delivered_at = null where id = ?`).run(ORDER_ID)
+}
 
 const stepBackToConfirmed = (): void => {
   sqlite.prepare(`update "order" set fulfillment_status = 'not_fulfilled', fulfillment_started_at = null where id = ?`).run(ORDER_ID)
@@ -131,5 +140,36 @@ describe("the fulfilment started email", () => {
     await expect(fulfil()).resolves.toMatchObject({ email: { kind: "order-in-progress", status: "alreadySent" } })
     expect(sentSubjects()).toStrictEqual([inProgressCopy.subject])
     expect(readOrder().fulfillment_started_at).toBeTypeOf("number")
+  })
+})
+
+describe("the thank-you email", () => {
+  beforeEach(() => {
+    markShipped()
+  })
+
+  it("goes out once when the order is marked delivered, and completes the order", async () => {
+    await expect(deliver()).resolves.toMatchObject({ email: { kind: "order-delivered", status: "sent" } })
+
+    expect(sentSubjects()).toStrictEqual([deliveredCopy.subject])
+    expect(sendEmail.mock.calls[0]?.[0].idempotencyKey).toBe(`order-delivered/${ORDER_ID}`)
+    expect(z.object({ status: z.string() }).parse(sqlite.prepare(`select status from "order" where id = ?`).get(ORDER_ID)).status).toBe(
+      "completed",
+    )
+  })
+
+  it("is not sent a second time when a second click delivers the same order", async () => {
+    await deliver()
+
+    await expect(deliver()).rejects.toMatchObject(INVALID_STATE)
+    expect(sentSubjects()).toStrictEqual([deliveredCopy.subject])
+  })
+
+  it("is not sent again when an order stepped back from delivered is delivered once more", async () => {
+    await deliver()
+    markShipped()
+
+    await expect(deliver()).resolves.toMatchObject({ email: { kind: "order-delivered", status: "alreadySent" } })
+    expect(sentSubjects()).toStrictEqual([deliveredCopy.subject])
   })
 })

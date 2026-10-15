@@ -1,6 +1,6 @@
 ---
 title: "Transactional email"
-description: "Eighteen React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales, and the newsletter the owner sends to confirmed subscribers."
+description: "Nineteen React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales, and the newsletter the owner sends to confirmed subscribers."
 ---
 
 ## Sending
@@ -60,7 +60,7 @@ Four of the emails go to any address a visitor types in: the verification email,
 
 The client is `src/integrations/resend/resend.config.ts`, a one-line `new Resend(env.RESEND_API_KEY)`. The default `from` is `APP_NAME <RESEND_EMAIL_FROM>`. Both `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in the `secrets.required` list of every environment in `wrangler.jsonc`. The sender's domain must be verified in Resend, and a deploy stops before the build when it is not; see [Resend](/docs/integrations/resend#sender-domain).
 
-## The eighteen templates
+## The nineteen templates
 
 All under `src/presentation/emails/`, built with `react-email` and rendered server-side inside the Worker:
 
@@ -72,6 +72,7 @@ All under `src/presentation/emails/`, built with `react-email` and rendered serv
 | `password-changed.tsx`              | `PASSWORD_CHANGED_NAMESPACE`              | `sendPasswordChangedEmail`, from Better Auth's `onPasswordReset`                                                                                                                                                                                                                        |
 | `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, awaited by `deleteCustomer` and `afterDelete`                                                                                                                                                                                                                |
 | `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `sendOrderConfirmationEmail`, from the Stripe webhook                                                                                                                                                                                                                                   |
+| `order-delivered.tsx`               | `ORDER_DELIVERED_NAMESPACE`               | `sendOrderDeliveredEmail`, once `markOrderDelivered` marks the order delivered and claims it                                                                                                                                                                                            |
 | `order-in-progress.tsx`             | `ORDER_IN_PROGRESS_NAMESPACE`             | `sendOrderInProgressEmail`, once `fulfillOrder` starts fulfilment and claims it                                                                                                                                                                                                         |
 | `order-shipped.tsx`                 | `ORDER_SHIPPED_NAMESPACE`                 | `sendOrderShippedEmail`, through `announceOrderShipment` once `shipOrder` ships the order                                                                                                                                                                                               |
 | `order-tracking.tsx`                | `ORDER_TRACKING_NAMESPACE`                | `sendOrderTrackingEmail`, through `announceOrderShipment` when a shipped order has a tracking number the customer was not sent: from `shipOrder`, `refreshInpostShipment` and the InPost webhook                                                                                        |
@@ -216,7 +217,7 @@ export const sendOrderShippedEmail = (orderId: string, origin: string): Promise<
   })
 ```
 
-`attemptOrderConfirmationEmail`, `attemptPaymentFailedEmail`, `attemptOrderInProgressEmail`, `attemptOrderShippedEmail`, `attemptOrderTrackingEmail`, `attemptOrderCancelledEmail`, `attemptOrderRefundedEmail` and `attemptNewOrderEmail`, each in the `send-*-email.server.ts` use case that hands it to `deliverOrderEmail`, read what their email needs, render it and pass the key to `sendEmail`. They return `{ failure, label }`, where `label` is a human string such as `Order confirmation → jane@example.com`.
+`attemptOrderConfirmationEmail`, `attemptPaymentFailedEmail`, `attemptOrderInProgressEmail`, `attemptOrderShippedEmail`, `attemptOrderDeliveredEmail`, `attemptOrderTrackingEmail`, `attemptOrderCancelledEmail`, `attemptOrderRefundedEmail` and `attemptNewOrderEmail`, each in the `send-*-email.server.ts` use case that hands it to `deliverOrderEmail`, read what their email needs, render it and pass the key to `sendEmail`. They return `{ failure, label }`, where `label` is a human string such as `Order confirmation → jane@example.com`.
 
 Each key names the email and what it is about:
 
@@ -226,6 +227,7 @@ Each key names the email and what it is about:
 | New-order notice to the shop  | `new-order/<order id>`                                                |
 | Fulfilment started            | `order-in-progress/<order id>`                                        |
 | Shipped                       | `order-shipped/<order id>`                                            |
+| Delivered, the thank-you      | `order-delivered/<order id>`                                          |
 | Tracking number               | `order-tracking/<order id>/<tracking number>`                         |
 | Cancelled                     | `order-cancelled/<order id>`                                          |
 | Refunded                      | `order-refunded/<order id>/<total refunded once this refund is made>` |
@@ -244,6 +246,8 @@ An error thrown while the email is prepared is logged with its stack as `<label>
 Resend keeps a key for only 24 hours, and the audit log is written through a queue and expires, so neither can tell whether the customer was already told about a step. The order row does.
 
 `fulfillOrder` claims the fulfilment started email (`order-in-progress.tsx`, sent by `sendOrderInProgressEmail`) by setting `in_progress_email_at` while the order is `fulfilled` and the column is empty, and sends it only when the claim matched, through `announceClaimedOrderEmail` in `order.email-delivery.server.ts`; otherwise the notice is `alreadySent`. The email says the handmade piece is being prepared in the atelier and, by delivery type, that a shipping email with the tracking number follows, or for a pickup that the shop writes when it can be collected. `20261015200000_order_fulfillment_started.sql` added `in_progress_email_at` together with `fulfillment_started_at`, the time fulfilment started, and set both for every order already past confirmation, from its first `order.fulfillment_started` audit entry or else its shipping, delivery or last update time.
+
+`markOrderDelivered` claims the thank-you email (`order-delivered.tsx`, sent by `sendOrderDeliveredEmail`) the same way, by setting `delivered_email_at` while the order is `delivered` and the column is empty; `20261015300000_order_delivered_email.sql` set it for every order already delivered. The email thanks the customer, hopes they enjoy the handcrafted piece, gives four care tips condensed from the FAQ's jewellery care answers with a link to `/faq`, repeats that a consumer may withdraw within 14 days of taking possession of the products, except for pieces made to their own specifications, in the order confirmation's words, with links to the withdrawal form for this order and to Exchanges and returns, and gives `BUSINESS.EMAIL` and `BUSINESS.PHONE`. It names no deadline date, because the admin may mark the order delivered later than the customer received it.
 
 `shipped_email_at` and `tracking_email_number`, added by `20261015150000_order_shipped_email.sql`, record that the customer was told the order shipped and the tracking number they were last sent. `announceOrderShipment` in `src/modules/order/use-cases/announce-order-shipment.server.ts` claims an email with one conditional `UPDATE … RETURNING` before it sends it:
 
@@ -351,7 +355,7 @@ export const awaitOrderEmailNotice = async (
 
 When the admin closes the tab or Stripe stops waiting, the Workers runtime may cancel what the request was still awaiting, but not a promise passed to `waitUntil`. The email therefore still goes out and its outcome is still recorded. The request waits only for the first attempt: `deliverOrderEmail` schedules the retries of a refused order email the same way, so they run after the response. Better Auth's `afterDelete` awaits `sendAccountDeletedEmail` without this, so a customer who closes the tab during self-deletion can still cut the goodbye email short.
 
-`fulfillOrder` returns the same `email` notice for the fulfilment started email, and `useFulfillOrder` shows the same warnings. `shipOrder` returns `email`, the notice `announceOrderShipment` gives back: the email it claimed, `order-shipped` or `order-tracking`, with `sent` or `failed`, whether Resend took it at the first attempt, or `alreadySent` when the customer had been told before (see [Order progress emails, once each](#order-progress-emails-once-each)). The admin always sees "Order marked as shipped.". A failed email adds the warning "Customer email not sent yet", which names the email, says it is tried twice more within a few seconds and that, if it still fails, it can be resent from the order's Activity card, which also shows the error; `alreadySent` adds "No repeat email", and a tracking number email "Tracking number sent". The order stays shipped either way, because the senders record a failure and return `false` instead of throwing. Shipping from the orders list shows the same toasts.
+`fulfillOrder` and `markOrderDelivered` return the same `email` notice for the fulfilment started and thank-you emails, and `useFulfillOrder` and `useMarkOrderDelivered` show the same warnings. `shipOrder` returns `email`, the notice `announceOrderShipment` gives back: the email it claimed, `order-shipped` or `order-tracking`, with `sent` or `failed`, whether Resend took it at the first attempt, or `alreadySent` when the customer had been told before (see [Order progress emails, once each](#order-progress-emails-once-each)). The admin always sees "Order marked as shipped.". A failed email adds the warning "Customer email not sent yet", which names the email, says it is tried twice more within a few seconds and that, if it still fails, it can be resent from the order's Activity card, which also shows the error; `alreadySent` adds "No repeat email", and a tracking number email "Tracking number sent". The order stays shipped either way, because the senders record a failure and return `false` instead of throwing. Shipping from the orders list shows the same toasts.
 
 `cancelOrder` awaits `sendOrderCancelledEmail` after the cancel batch in the same way and returns `cancelledEmailSent`. The admin sees the cancellation toast and, when Resend did not take the email at once, a warning toast, "Cancellation email not sent yet", with the same retry and resend advice. The order stays cancelled and its refund stays issued.
 

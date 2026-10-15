@@ -17,6 +17,7 @@ import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { sendNewOrderEmail } from "~/src/modules/order/use-cases/send-new-order-email.server"
 import { sendOrderCancelledEmail } from "~/src/modules/order/use-cases/send-order-cancelled-email.server"
 import { sendOrderConfirmationEmail } from "~/src/modules/order/use-cases/send-order-confirmation-email.server"
+import { sendOrderDeliveredEmail } from "~/src/modules/order/use-cases/send-order-delivered-email.server"
 import { sendOrderInProgressEmail } from "~/src/modules/order/use-cases/send-order-in-progress-email.server"
 import { sendOrderRefundedEmail } from "~/src/modules/order/use-cases/send-order-refunded-email.server"
 import { sendOrderShippedEmail } from "~/src/modules/order/use-cases/send-order-shipped-email.server"
@@ -42,6 +43,10 @@ const sendOrderEmailAgain = async (email: Order["email"], orderId: string, origi
 
   if (email.kind === ORDER_EMAIL_KIND.SHIPPED) {
     return sendOrderShippedEmail(orderId, origin)
+  }
+
+  if (email.kind === ORDER_EMAIL_KIND.DELIVERED) {
+    return sendOrderDeliveredEmail(orderId, origin)
   }
 
   if (email.kind === ORDER_EMAIL_KIND.TRACKING) {

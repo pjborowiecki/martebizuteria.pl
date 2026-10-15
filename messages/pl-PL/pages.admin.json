@@ -439,6 +439,7 @@
         "newsletter-test": "Testowy newsletter",
         "order-cancelled": "Informacja o anulowaniu zamówienia",
         "order-confirmation": "Potwierdzenie zamówienia",
+        "order-delivered": "Podziękowanie za zamówienie",
         "order-in-progress": "Informacja o rozpoczęciu realizacji",
         "order-refunded": "Informacja o zwrocie środków",
         "order-shipped": "Informacja o wysyłce zamówienia",

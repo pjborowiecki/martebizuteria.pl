@@ -38,6 +38,7 @@ describe("order table", () => {
       "currency_code",
       "customer_note",
       "delivered_at",
+      "delivered_email_at",
       "delivery_method_id",
       "discount_id",
       "discount_total",

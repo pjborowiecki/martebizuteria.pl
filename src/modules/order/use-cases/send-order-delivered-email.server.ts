@@ -1,0 +1,49 @@
+import { createElement } from "react"
+
+import { createTranslator } from "use-intl"
+
+import { sendEmail } from "~/src/integrations/resend/resend.send"
+import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
+
+import { getOrderForProgressEmail } from "~/src/modules/order/order.accessors"
+import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
+import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
+import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
+import { buildOrderDeliveredLinks, buildOrderShippedAccountCta } from "~/src/modules/order/order.email.utils"
+
+import type orderDeliveredMessages from "~/messages/en-US/emails.order-delivered.json"
+import { ORDER_DELIVERED_NAMESPACE, OrderDelivered } from "~/src/presentation/emails/order-delivered"
+
+const ORDER_DELIVERED_LABEL = "Order delivered"
+
+const attemptOrderDeliveredEmail = async (orderId: string, origin: string, idempotencyKey: string): Promise<OrderEmailOutcome> => {
+  const orderRow = await getOrderForProgressEmail(orderId)
+  if (orderRow === undefined) {
+    return { failure: "The order could not be found", label: ORDER_DELIVERED_LABEL }
+  }
+
+  if (orderRow.email.trim() === "") {
+    return { failure: "The order has no email address", label: ORDER_DELIVERED_LABEL }
+  }
+
+  const locale = resolveOrderLocale(orderRow.metadata)
+  const messages = await loadNamespace<typeof orderDeliveredMessages>({ locale, namespace: ORDER_DELIVERED_NAMESPACE })
+  const accountCta = buildOrderShippedAccountCta({ locale, messages, orderId: orderRow.id, origin, userId: orderRow.userId })
+  const links = buildOrderDeliveredLinks(origin, locale, orderRow.orderNumber)
+  const failure = await sendEmail({
+    idempotencyKey,
+    react: createElement(OrderDelivered, { accountCta, links, locale, messages, orderNumber: orderRow.orderNumber }),
+    subject: createTranslator({ locale, messages })("subject"),
+    to: orderRow.email,
+  })
+
+  return { failure, label: `${ORDER_DELIVERED_LABEL} → ${orderRow.email}` }
+}
+
+export const sendOrderDeliveredEmail = (orderId: string, origin: string): Promise<boolean> =>
+  deliverOrderEmail((idempotencyKey) => attemptOrderDeliveredEmail(orderId, origin, idempotencyKey), {
+    idempotencyKey: `${ORDER_EMAIL_KIND.DELIVERED}/${orderId}`,
+    label: ORDER_DELIVERED_LABEL,
+    orderEmail: { kind: ORDER_EMAIL_KIND.DELIVERED },
+    orderId,
+  })
