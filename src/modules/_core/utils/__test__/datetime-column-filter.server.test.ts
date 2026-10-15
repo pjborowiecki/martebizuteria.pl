@@ -1,4 +1,4 @@
-import { type SQL } from "drizzle-orm"
+import { type SQL, sql as sqlExpression } from "drizzle-orm"
 import { SQLiteSyncDialect, integer, sqliteTable } from "drizzle-orm/sqlite-core"
 import { describe, expect, it } from "vite-plus/test"
 
@@ -137,5 +137,19 @@ describe("buildAdminDateTimeFilterSql with an operator it does not know", () => 
 
     expect(sql).toBe("1 = 1")
     expect(params).toStrictEqual([])
+  })
+})
+
+describe("buildAdminDateTimeFilterSql with a computed column", () => {
+  it("bounds an expression such as a customer's last order by the same Polish day as a table column", () => {
+    const query = render(
+      buildAdminDateTimeFilterSql(sqlExpression`"rollup"."last_order_at"`, {
+        date: "2026-10-15",
+        operator: DATE_COLUMN_FILTER_OPERATOR.ON,
+      }),
+    )
+
+    expect(query.sql).toBe(`("rollup"."last_order_at" >= ? and "rollup"."last_order_at" < ?)`)
+    expect(query.params).toStrictEqual([Date.parse("2026-10-14T22:00:00.000Z"), Date.parse("2026-10-15T22:00:00.000Z")])
   })
 })

@@ -1,13 +1,8 @@
 import { type SQL, sql } from "drizzle-orm"
 import { describe, expect, it } from "vite-plus/test"
 
-import {
-  DATE_COLUMN_FILTER_OPERATOR,
-  DATE_COLUMN_FILTER_OPERATORS,
-  NUMERIC_COLUMN_FILTER_OPERATOR,
-  NUMERIC_COLUMN_FILTER_OPERATORS,
-} from "~/src/modules/_core/utils/column-filters"
-import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
+import { NUMERIC_COLUMN_FILTER_OPERATOR, NUMERIC_COLUMN_FILTER_OPERATORS } from "~/src/modules/_core/utils/column-filters"
+import { buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
 import {
   buildAdminSearchOrCondition,
   containsAdminSearchTerm,
@@ -50,8 +45,6 @@ const retiredOperator = <TOperator extends string>(operators: readonly TOperator
   operators.find((operator) => operator === name)!
 
 const retiredNumericOperator = retiredOperator(NUMERIC_COLUMN_FILTER_OPERATORS, "sometime")
-
-const retiredDateOperator = retiredOperator(DATE_COLUMN_FILTER_OPERATORS, "sometime")
 
 describe("buildAdminNumericFilterSql", () => {
   it.each([
@@ -97,57 +90,6 @@ describe("buildAdminNumericFilterSql", () => {
     })
 
     expect(params(fragment).every((value) => typeof value === "number")).toBe(true)
-  })
-})
-
-describe("buildAdminDateFilterSql", () => {
-  it.each([[DATE_COLUMN_FILTER_OPERATOR.ON], [DATE_COLUMN_FILTER_OPERATOR.BEFORE], [DATE_COLUMN_FILTER_OPERATOR.AFTER]])(
-    "binds epoch milliseconds for the %s operator, the only shape a D1 statement accepts",
-    (operator) => {
-      const fragment = buildAdminDateFilterSql(column, { date: "2024-06-10", operator })
-      const bound = params(fragment)
-
-      expect(bound.length).toBeGreaterThan(0)
-      expect(bound.every((value) => typeof value === "number" && Number.isInteger(value))).toBe(true)
-    },
-  )
-
-  it("binds both range endpoints as epoch milliseconds for the between operator", () => {
-    const fragment = buildAdminDateFilterSql(column, {
-      endDate: "2024-06-30",
-      operator: DATE_COLUMN_FILTER_OPERATOR.BETWEEN,
-      startDate: "2024-06-01",
-    })
-
-    expect(params(fragment)).toStrictEqual([new Date("2024-06-01T00:00:00.000").getTime(), new Date("2024-06-30T23:59:59.999").getTime()])
-  })
-
-  it.each([[DATE_COLUMN_FILTER_OPERATOR.ON], [DATE_COLUMN_FILTER_OPERATOR.BEFORE], [DATE_COLUMN_FILTER_OPERATOR.AFTER]])(
-    "matches everything when the %s operator has no date",
-    (operator) => {
-      expect(isAlwaysTrue(buildAdminDateFilterSql(column, { operator }))).toBe(true)
-    },
-  )
-
-  it("matches everything when a between endpoint is missing", () => {
-    expect(isAlwaysTrue(buildAdminDateFilterSql(column, { operator: DATE_COLUMN_FILTER_OPERATOR.BETWEEN, startDate: "2024-06-01" }))).toBe(
-      true,
-    )
-  })
-
-  it("keeps every row when the operator is not one it builds SQL for", () => {
-    const fragment = buildAdminDateFilterSql(column, { date: "2024-06-10", operator: retiredDateOperator })
-
-    expect(isAlwaysTrue(fragment)).toBe(true)
-    expect(params(fragment)).toStrictEqual([])
-  })
-
-  it("spans the whole selected day for the on operator", () => {
-    const fragment = buildAdminDateFilterSql(column, { date: "2024-06-10", operator: DATE_COLUMN_FILTER_OPERATOR.ON })
-    const bounds = params(fragment).filter((value): value is number => typeof value === "number")
-
-    expect(bounds).toHaveLength(2)
-    expect((bounds[1] ?? 0) - (bounds[0] ?? 0)).toBe(86_400_000 - 1)
   })
 })
 

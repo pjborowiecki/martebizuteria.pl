@@ -4,7 +4,8 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
-import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
+import { buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
+import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-column-filter.server"
 import { type ListPaginationParams, sortRowsByIdOrder } from "~/src/modules/_core/utils/pagination"
 import { categoryOnProduct } from "~/src/modules/category-on-product/category-on-product.schema"
 import { collectionOnProduct } from "~/src/modules/collection-on-product/collection-on-product.schema"
@@ -391,7 +392,7 @@ const buildAdminProductsWhere = (params: AdminProductsFilterParams): SQL | undef
   }
 
   if (params.createdAt !== undefined) {
-    conditions.push(buildAdminDateFilterSql(sql`${product.createdAt}`, params.createdAt))
+    conditions.push(buildAdminDateTimeFilterSql(product.createdAt, params.createdAt))
   }
 
   if (params.categoryId !== undefined) {

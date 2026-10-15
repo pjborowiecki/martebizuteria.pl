@@ -4,7 +4,8 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
-import { buildAdminDateFilterSql, buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
+import { buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
+import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-column-filter.server"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
@@ -116,7 +117,7 @@ const appendAdminOrdersListFilterConditions = (conditions: SQL[], filters: Order
   }
 
   if (filters.createdAt !== undefined) {
-    conditions.push(buildAdminDateFilterSql(sql`${order.createdAt}`, filters.createdAt))
+    conditions.push(buildAdminDateTimeFilterSql(order.createdAt, filters.createdAt))
   }
 }
 

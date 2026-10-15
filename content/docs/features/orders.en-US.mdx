@@ -45,6 +45,8 @@ await Promise.all([
 
 `getAdminOrdersPage` requires the `order: ["read"]` permission via `authorized({ order: ["read"] })`. It accepts a page, a page size, a search term matched against the order's id, number, email and tracking number and the customer's name, id and email, a `tab`, a `statFilter` and five column filters (`createdAt`, `fulfillment`, `payment`, `status`, `total`), and returns a `buildListPaginationResult`.
 
+The `createdAt` filter goes through `buildAdminDateTimeFilterSql`, the builder the audit log uses, so a picked day is the day in Poland: `on` runs from its midnight in Warsaw to the next, `before` ends at that midnight, `after` starts at the next one, and `between` runs from the first day's midnight to the midnight after the last, whatever zone the Worker runs in.
+
 Tabs are `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Stat filters are `ADMIN_ORDER_STAT_FILTER` — `total` and `pending`, so clicking a stat card narrows the table.
 
 ## Two derived UI keys
