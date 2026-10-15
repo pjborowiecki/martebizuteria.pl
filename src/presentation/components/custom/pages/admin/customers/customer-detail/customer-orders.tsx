@@ -16,6 +16,7 @@ import {
   CUSTOMER_DETAIL_FULFILLMENT_BADGE_STYLES,
   CUSTOMER_DETAIL_PAYMENT_BADGE_STYLES,
 } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.constants"
+import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.styles"
 
 import { ROUTES } from "~/src/routes"
 
@@ -24,50 +25,59 @@ export const CustomerOrders = ({ customer }: CustomerOrdersProps): JSX.Element =
   const ordersLink = useMemo(() => <Link to={ROUTES.ADMIN_ORDERS} />, [])
 
   return (
-    <Card className="shadow-none">
-      <CardContent className="p-0">
-        <div className="flex items-center justify-between px-5 py-4">
-          <p className="text-sm font-medium">{t("orders.title")}</p>
-          <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground" render={ordersLink}>
-            {t("orders.viewAll")}
-            <ArrowUpRight className="size-3" strokeWidth={2} />
-          </Button>
-        </div>
-        {customer.orders.length === 0 ? (
-          <p className="px-5 pb-5 text-sm text-muted-foreground">{t("orders.empty")}</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="pl-5 text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
-                  {t("orders.columns.order")}
-                </TableHead>
-                <TableHead className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
-                  {t("orders.columns.date")}
-                </TableHead>
-                <TableHead className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
-                  {t("orders.columns.items")}
-                </TableHead>
-                <TableHead className="text-right text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
-                  {t("orders.columns.total")}
-                </TableHead>
-                <TableHead className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
-                  {t("orders.columns.status")}
-                </TableHead>
-                <TableHead className="pr-5 text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
-                  {t("orders.columns.payment")}
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {customer.orders.map((order) => (
-                <CustomerOrderRow key={order.id} order={order} />
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+    <section className="flex flex-col 2xl:[@media(min-height:57rem)]:min-h-60 2xl:[@media(min-height:57rem)]:flex-1">
+      <Card className={CUSTOMER_DETAIL_CARD_CLASS}>
+        <CardContent className="flex min-h-0 flex-col p-0">
+          <div className="flex shrink-0 items-center justify-between px-5 py-4">
+            <p className="text-sm font-medium">{t("orders.title")}</p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+              render={ordersLink}
+            >
+              {t("orders.viewAll")}
+              <ArrowUpRight className="size-3" strokeWidth={2} />
+            </Button>
+          </div>
+          {customer.orders.length === 0 ? (
+            <p className="px-5 pb-5 text-sm text-muted-foreground">{t("orders.empty")}</p>
+          ) : (
+            <div className="min-h-0 overflow-y-auto" data-slot="customer-orders-scroll">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="pl-5 text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
+                      {t("orders.columns.order")}
+                    </TableHead>
+                    <TableHead className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
+                      {t("orders.columns.date")}
+                    </TableHead>
+                    <TableHead className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
+                      {t("orders.columns.items")}
+                    </TableHead>
+                    <TableHead className="text-right text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
+                      {t("orders.columns.total")}
+                    </TableHead>
+                    <TableHead className="text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
+                      {t("orders.columns.status")}
+                    </TableHead>
+                    <TableHead className="pr-5 text-xs font-medium tracking-wider text-muted-foreground/60 uppercase">
+                      {t("orders.columns.payment")}
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {customer.orders.map((order) => (
+                    <CustomerOrderRow key={order.id} order={order} />
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
   )
 }
 

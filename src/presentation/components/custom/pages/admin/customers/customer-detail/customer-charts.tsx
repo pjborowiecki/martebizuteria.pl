@@ -11,6 +11,7 @@ import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/presentation/components/shadcn/chart"
 
 import { AdminChartMoneyTooltipRow } from "~/src/presentation/components/custom/pages/admin/admin-chart-money-tooltip-row"
+import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.styles"
 
 export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
@@ -47,8 +48,8 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
   const hasCategoryData = customer.categoryBreakdown.length > 0
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_280px]">
-      <Card className="shadow-none">
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px] 2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <Card className={CUSTOMER_DETAIL_CARD_CLASS}>
         <CardContent className="p-5">
           <div className="mb-4">
             <p className="text-sm font-medium">{t("spending.title")}</p>
@@ -64,7 +65,7 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
         </CardContent>
       </Card>
 
-      <Card className="shadow-none">
+      <Card className={CUSTOMER_DETAIL_CARD_CLASS}>
         <CardContent className="p-5">
           <div className="mb-4">
             <p className="text-sm font-medium">{t("categoryBreakdown.title")}</p>

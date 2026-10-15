@@ -50,7 +50,7 @@ afterEach(() => {
   cleanup()
 })
 
-describe("CustomerSidebar profile card", () => {
+describe("CustomerSidebar profile", () => {
   it("identifies the customer by initials, name and id", () => {
     renderWithProviders(<CustomerSidebar customer={detail()} />)
 
@@ -122,7 +122,7 @@ describe("CustomerSidebar profile card", () => {
   })
 })
 
-describe("CustomerSidebar tags card", () => {
+describe("CustomerSidebar tags", () => {
   it("says so when the customer carries no tags at all", () => {
     renderWithProviders(<CustomerSidebar customer={detail()} />)
 
@@ -151,7 +151,7 @@ describe("CustomerSidebar tags card", () => {
   })
 })
 
-describe("CustomerSidebar notes card", () => {
+describe("CustomerSidebar notes", () => {
   it("shows the internal note", () => {
     renderWithProviders(<CustomerSidebar customer={detail({ notes: "Prefers courier delivery" })} />)
 
@@ -162,6 +162,40 @@ describe("CustomerSidebar notes card", () => {
     renderWithProviders(<CustomerSidebar customer={detail()} />)
 
     expect(screen.getByText("No internal notes.")).toBeInTheDocument()
+  })
+})
+
+describe("CustomerSidebar layout", () => {
+  it("keeps to the screen on a wide, tall screen and scrolls with the page otherwise", () => {
+    const { container } = renderWithProviders(<CustomerSidebar customer={detail()} />)
+    const sidebar = container.firstElementChild
+
+    expect(sidebar).toHaveClass(
+      "flex",
+      "flex-col",
+      "2xl:[@media(min-height:57rem)]:min-h-0",
+      "2xl:[@media(min-height:57rem)]:overflow-y-auto",
+    )
+    expect(sidebar).not.toHaveClass("overflow-y-auto")
+  })
+
+  it("keeps the profile, tags and notes at their own height so only the timeline gives way", () => {
+    renderWithProviders(<CustomerSidebar customer={detail({ notes: "Prefers e-mail." })} />)
+    const profile = screen.getByText("Anna Kowalska").closest("[data-slot='card']")
+
+    expect(profile).toHaveClass("shrink-0")
+    expect(profile).toContainElement(screen.getByText("No tags for this customer."))
+    expect(profile).toContainElement(screen.getByText("Prefers e-mail."))
+    expect(profile).not.toContainElement(screen.getByText("Activity Timeline"))
+  })
+
+  it("keeps the tag explanation one tap away instead of taking up the sidebar", () => {
+    renderWithProviders(<CustomerSidebar customer={detail()} />)
+
+    expect(
+      screen.getByRole("button", { name: "System tags are automatic. Add or remove your own labels via Edit customer." }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText("System tags are automatic. Add or remove your own labels via Edit customer.")).not.toBeInTheDocument()
   })
 })
 
