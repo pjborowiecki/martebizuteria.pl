@@ -1,4 +1,5 @@
 import { type JSX, useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
@@ -69,7 +70,7 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
     }
 
     const observer = new IntersectionObserver(updateVisibility, {
-      rootMargin: "0px 0px -12px 0px",
+      rootMargin: SCREEN_EXTENDED_PAST_PAGE_END,
       threshold: 0,
     })
 
@@ -122,7 +123,7 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
           <QuantityPicker maxQuantity={Math.min(availableQuantity, CART_LINE_QUANTITY_MAX)} quantity={quantity} setQuantity={setQuantity} />
 
           <Button
-            className="h-14 flex-1 bg-foreground px-8 text-[12px] tracking-[0.24em] text-background uppercase hover:bg-foreground/90"
+            className="h-14 bg-foreground px-8 text-[12px] tracking-[0.24em] text-background uppercase hover:bg-foreground/90 sm:flex-1"
             disabled={!canPurchase}
             onClick={handleAddToCart}
             type="button"
@@ -138,14 +139,19 @@ export const ProductHeroInfo = ({ onSelectOptionValue, product, selectedValueIds
 
       <ProductHeroDetails description={product.description} specifications={specifications} />
 
-      {showMobileBuyBar && !isOutOfStock && (
-        <ProductMobileBuyBar canPurchase={canPurchase} isAdded={isAdded} onAddToCart={handleAddToCart} price={price} />
-      )}
+      {showMobileBuyBar &&
+        !isOutOfStock &&
+        createPortal(
+          <ProductMobileBuyBar canPurchase={canPurchase} isAdded={isAdded} onAddToCart={handleAddToCart} price={price} />,
+          document.body,
+        )}
     </aside>
   )
 }
 
 const EMPTY_SKU = ""
+
+const SCREEN_EXTENDED_PAST_PAGE_END = "0px 0px 100000px 0px"
 
 interface ProductHeroInfoProps {
   readonly onSelectOptionValue: (optionId: string, valueId: string) => void

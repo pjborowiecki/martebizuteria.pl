@@ -90,7 +90,7 @@ const OptionValueButton = ({
     <button
       aria-pressed={isSelected}
       className={cn(
-        "min-w-16 rounded-md border px-3 py-2 text-[11px] tracking-[0.14em] uppercase transition-colors",
+        "min-w-16 rounded-md border px-3 py-2 text-[11px] tracking-[0.14em] uppercase transition-colors pointer-coarse:min-h-10",
         isSelected ? "border-foreground bg-foreground text-background" : "border-border bg-background text-foreground",
         !isAvailable && "opacity-40",
       )}

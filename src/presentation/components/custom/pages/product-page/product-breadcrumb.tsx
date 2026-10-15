@@ -19,16 +19,20 @@ export const ProductBreadcrumb = ({ productTitle }: ProductBreadcrumbProps): JSX
   const t = useTranslations("pages.product.heroSection")
 
   return (
-    <Breadcrumb className="reveal mx-auto max-w-400 px-6 pt-8 lg:px-12 lg:pt-10">
-      <BreadcrumbList className="flex-nowrap gap-2 overflow-hidden text-[10px] tracking-[0.2em] uppercase sm:gap-2">
+    <Breadcrumb className="reveal storefront-container pt-8 lg:pt-10">
+      <BreadcrumbList className="flex-nowrap gap-2 overflow-hidden text-[10px] tracking-[0.2em] uppercase sm:gap-2 pointer-coarse:-my-3">
         <BreadcrumbItem>
-          <BreadcrumbLink render={HOME_LINK}>{t("breadcrumbHome")}</BreadcrumbLink>
+          <BreadcrumbLink className={TOUCH_LINK_CLASS} render={HOME_LINK}>
+            {t("breadcrumbHome")}
+          </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator>
           <span>/</span>
         </BreadcrumbSeparator>
         <BreadcrumbItem>
-          <BreadcrumbLink render={PRODUCTS_LINK}>{t("breadcrumbProducts")}</BreadcrumbLink>
+          <BreadcrumbLink className={TOUCH_LINK_CLASS} render={PRODUCTS_LINK}>
+            {t("breadcrumbProducts")}
+          </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator>
           <span>/</span>
@@ -44,6 +48,8 @@ export const ProductBreadcrumb = ({ productTitle }: ProductBreadcrumbProps): JSX
 const HOME_LINK = <LocalizedLink to={ROUTES.HOME} />
 
 const PRODUCTS_LINK = <LocalizedLink to={ROUTES.PRODUCTS} />
+
+const TOUCH_LINK_CLASS = "pointer-coarse:inline-flex pointer-coarse:min-h-10 pointer-coarse:items-center"
 
 interface ProductBreadcrumbProps {
   readonly productTitle: string

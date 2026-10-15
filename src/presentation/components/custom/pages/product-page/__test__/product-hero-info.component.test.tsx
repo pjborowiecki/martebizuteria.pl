@@ -165,6 +165,16 @@ describe("ProductHeroInfo purchase row", () => {
     expect(screen.getByRole("button", { name: "Add to cart" })).toBeEnabled()
   })
 
+  it("keeps the add button at its full height under the quantity picker on phones and lets it fill the row beside it from sm up", () => {
+    renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })] }))
+
+    const addButton = screen.getByRole("button", { name: "Add to cart" })
+
+    expect(addButton.parentElement).toHaveClass("flex-col", "sm:flex-row")
+    expect(addButton).toHaveClass("h-14", "sm:flex-1")
+    expect(addButton).not.toHaveClass("flex-1")
+  })
+
   it("lets the shopper pick no more of a well stocked piece than one order may hold", async () => {
     renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 50 })] }))
     const increase = screen.getByRole("button", { name: "Increase quantity" })

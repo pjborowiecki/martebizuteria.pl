@@ -1,7 +1,7 @@
 import { act, cleanup, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { TestProviders, renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { type Product } from "~/src/modules/product/product.types"
@@ -18,17 +18,37 @@ vi.mock("~/src/modules/customer-activity/customer-activity.tracking", () => ({ t
 
 type VisibilityCallback = (entries: readonly { readonly isIntersecting: boolean }[]) => void
 
+type RowPosition = "above" | "below" | "visible"
+
+const SCREEN_HEIGHT = 844
+
+const ROW_HEIGHT = 56
+
+const ROW_TOP: Readonly<Record<RowPosition, number>> = { above: -240, below: 1028, visible: 300 }
+
 const observed: {
-  callbacks: VisibilityCallback[]
   disconnectCount: number
+  observers: ScreenIntersectionObserver[]
   targets: Element[]
-} = { callbacks: [], disconnectCount: 0, targets: [] }
+} = { disconnectCount: 0, observers: [], targets: [] }
 
 const viewport: { listeners: Set<() => void>; matches: boolean } = { listeners: new Set(), matches: true }
 
-class CapturingIntersectionObserver {
-  constructor(callback: VisibilityCallback) {
-    observed.callbacks.push(callback)
+class ScreenIntersectionObserver {
+  readonly callback: VisibilityCallback
+
+  readonly rootBottom: number
+
+  readonly rootTop: number
+
+  intersecting: boolean | undefined
+
+  constructor(callback: VisibilityCallback, options: IntersectionObserverInit) {
+    const [top = 0, , bottom = 0] = (options.rootMargin ?? "0px").split(" ").map((margin) => Number(margin.replace(/px$/u, "")))
+    this.callback = callback
+    this.rootTop = -top
+    this.rootBottom = SCREEN_HEIGHT + bottom
+    observed.observers.push(this)
   }
 
   observe(target: Element): void {
@@ -39,6 +59,15 @@ class CapturingIntersectionObserver {
 
   disconnect(): void {
     observed.disconnectCount += 1
+  }
+
+  scrollRowTo(rowTop: number): void {
+    const intersecting = rowTop < this.rootBottom && rowTop + ROW_HEIGHT > this.rootTop
+    if (intersecting === this.intersecting) {
+      return
+    }
+    this.intersecting = intersecting
+    this.callback([{ isIntersecting: intersecting }])
   }
 }
 
@@ -59,37 +88,47 @@ const matchMediaStub = (query: string) => ({
   removeListener: () => {},
 })
 
-const renderInfo = (product: Product["storefront"]) =>
-  renderWithProviders(
-    <ProductHeroInfo
-      onSelectOptionValue={vi.fn<(optionId: string, valueId: string) => void>()}
-      product={product}
-      selectedValueIds={{}}
-      selectedVariant={product.variants[0]}
-    />,
-  )
+const heroInfo = (product: Product["storefront"]) => (
+  <ProductHeroInfo
+    onSelectOptionValue={vi.fn<(optionId: string, valueId: string) => void>()}
+    product={product}
+    selectedValueIds={{}}
+    selectedVariant={product.variants[0]}
+  />
+)
 
-const reportVisibility = (isIntersecting: boolean): void => {
-  const [notify] = observed.callbacks
-  if (notify === undefined) {
+const renderInfo = (product: Product["storefront"]) => renderWithProviders(heroInfo(product))
+
+const purchasableProduct = (overrides: Partial<Product["storefront"]> = {}) =>
+  storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })], ...overrides })
+
+const watcher = (): ScreenIntersectionObserver => {
+  const observer = observed.observers.at(-1)
+  if (observer === undefined) {
     throw new Error("the purchase row was never observed")
   }
 
-  act(() => {
-    notify([{ isIntersecting }])
-  })
+  return observer
+}
+
+const scrollRow = (...positions: readonly RowPosition[]): void => {
+  for (const position of positions) {
+    act(() => {
+      watcher().scrollRowTo(ROW_TOP[position])
+    })
+  }
 }
 
 const buyButtons = () => screen.getAllByRole("button", { name: "Add to cart" })
 
 beforeEach(() => {
   useCartStore.setState({ items: [] })
-  observed.callbacks = []
   observed.disconnectCount = 0
+  observed.observers = []
   observed.targets = []
   viewport.listeners.clear()
   viewport.matches = true
-  vi.stubGlobal("IntersectionObserver", CapturingIntersectionObserver)
+  vi.stubGlobal("IntersectionObserver", ScreenIntersectionObserver)
   vi.stubGlobal("matchMedia", matchMediaStub)
 })
 
@@ -100,41 +139,83 @@ afterEach(() => {
 
 describe("ProductHeroInfo mobile buy bar", () => {
   it("watches the purchase row while the product can be bought", () => {
-    renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })] }))
+    renderInfo(purchasableProduct())
 
     expect(observed.targets).toHaveLength(1)
     expect(buyButtons()).toHaveLength(1)
   })
 
-  it("raises the buy bar once the purchase row scrolls out of sight on a phone", () => {
-    renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })] }))
+  it("raises the buy bar once the purchase row scrolls above the screen on a phone", () => {
+    renderInfo(purchasableProduct())
 
-    reportVisibility(false)
+    scrollRow("visible", "above")
 
     expect(buyButtons()).toHaveLength(2)
   })
 
-  it("drops the buy bar again once the purchase row is back in sight", () => {
-    renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })] }))
-    reportVisibility(false)
+  it("keeps the buy bar down while the purchase row is still below the screen", () => {
+    renderInfo(purchasableProduct())
 
-    reportVisibility(true)
+    scrollRow("below")
+
+    expect(buyButtons()).toHaveLength(1)
+  })
+
+  it("drops the buy bar when the page jumps from past the purchase row back to the top", () => {
+    renderInfo(purchasableProduct())
+    scrollRow("visible", "above")
+
+    scrollRow("below")
+
+    expect(buyButtons()).toHaveLength(1)
+  })
+
+  it("drops the buy bar when a related product opens at the top of its page", () => {
+    const { queryClient, rerender, router } = renderInfo(purchasableProduct())
+    scrollRow("visible", "above")
+
+    rerender(
+      <TestProviders queryClient={queryClient} router={router}>
+        {heroInfo(purchasableProduct({ handle: "onyx-necklace", id: "product-2", title: "Onyx Necklace" }))}
+      </TestProviders>,
+    )
+    scrollRow("below")
+
+    expect(screen.getByRole("heading", { level: 1, name: "Onyx Necklace" })).toBeInTheDocument()
+    expect(buyButtons()).toHaveLength(1)
+  })
+
+  it("pins the buy bar to the screen from the page body so the animated panel cannot hold it mid-page", () => {
+    const { container } = renderInfo(purchasableProduct())
+
+    scrollRow("visible", "above")
+    const bar = buyButtons()[1]?.closest(".sticky")
+
+    expect(bar?.parentElement).toBe(document.body)
+    expect(container.querySelector("aside")?.contains(bar ?? null)).toBe(false)
+  })
+
+  it("drops the buy bar again once the purchase row is back in sight", () => {
+    renderInfo(purchasableProduct())
+    scrollRow("visible", "above")
+
+    scrollRow("visible")
 
     expect(buyButtons()).toHaveLength(1)
   })
 
   it("never raises the buy bar on a wide viewport", () => {
     viewport.matches = false
-    renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })] }))
+    renderInfo(purchasableProduct())
 
-    reportVisibility(false)
+    scrollRow("visible", "above")
 
     expect(buyButtons()).toHaveLength(1)
   })
 
   it("drops the buy bar when the viewport grows past the mobile breakpoint", () => {
-    renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })] }))
-    reportVisibility(false)
+    renderInfo(purchasableProduct())
+    scrollRow("visible", "above")
 
     viewport.matches = false
     act(() => {
@@ -147,8 +228,8 @@ describe("ProductHeroInfo mobile buy bar", () => {
   })
 
   it("keeps the buy bar as it is while the viewport stays mobile", () => {
-    renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })] }))
-    reportVisibility(false)
+    renderInfo(purchasableProduct())
+    scrollRow("visible", "above")
 
     act(() => {
       for (const listener of viewport.listeners) {
@@ -160,11 +241,10 @@ describe("ProductHeroInfo mobile buy bar", () => {
   })
 
   it("ignores a report that carries no entry", () => {
-    renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })] }))
-    const [notify] = observed.callbacks
+    renderInfo(purchasableProduct())
 
     act(() => {
-      notify?.([])
+      watcher().callback([])
     })
 
     expect(buyButtons()).toHaveLength(1)
@@ -178,7 +258,7 @@ describe("ProductHeroInfo mobile buy bar", () => {
   })
 
   it("stops watching the purchase row once the panel is gone", () => {
-    const { unmount } = renderInfo(storefrontProduct({ variants: [storefrontVariant({ quantityAvailable: 4 })] }))
+    const { unmount } = renderInfo(purchasableProduct())
 
     unmount()
 

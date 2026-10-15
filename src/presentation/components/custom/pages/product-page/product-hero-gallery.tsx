@@ -52,8 +52,10 @@ const ProductHeroCarouselDot = ({
       aria-label={`Image ${index + 1}`}
       aria-current={selectedIndex === index ? "true" : undefined}
       onClick={handleDotClick}
-      className={cn("size-1.5 rounded-full transition-colors", selectedIndex === index ? "bg-foreground" : "bg-foreground/25")}
-    />
+      className="flex size-10 items-center justify-center"
+    >
+      <span className={cn("size-1.5 rounded-full transition-colors", selectedIndex === index ? "bg-foreground" : "bg-foreground/25")} />
+    </button>
   )
 }
 
@@ -88,7 +90,7 @@ const ProductHeroCarouselDots = ({
   }
 
   return (
-    <div className="mt-4 flex items-center justify-center gap-2">
+    <div className="mt-1 flex items-center justify-center">
       {Array.from(
         {
           length: count,
