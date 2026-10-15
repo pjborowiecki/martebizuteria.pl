@@ -9,6 +9,11 @@ import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboa
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
+import {
+  ADMIN_CARD_CONTENT_CLASS,
+  ADMIN_DASHBOARD_CONTENT_CARD_CLASS,
+  ADMIN_DASHBOARD_STAT_GRID_CLASS,
+} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
 import { DashboardTrendBadge } from "~/src/presentation/components/custom/pages/admin/dashboard/dashboard-trend-badge"
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
@@ -60,7 +65,7 @@ export const DashboardStats = (): JSX.Element => {
   const { data: snapshot } = useAdminDashboardSnapshot()
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+    <div className={ADMIN_DASHBOARD_STAT_GRID_CLASS}>
       {STAT_CARDS.map((card) => {
         const stat = resolveStatValue(card.key, snapshot)
         const displayValue = formatStatDisplayValue({
@@ -72,16 +77,16 @@ export const DashboardStats = (): JSX.Element => {
         })
 
         return (
-          <Card key={card.key} className={cn("border-border/40 bg-gradient-to-br shadow-none", card.gradient)}>
-            <CardContent className="p-5">
+          <Card key={card.key} className={cn(ADMIN_DASHBOARD_CONTENT_CARD_CLASS, "bg-gradient-to-br", card.gradient)}>
+            <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
               <div className="flex items-center justify-between">
                 <span className="text-[13px] text-muted-foreground">{t(`dashboard.stats.${card.key}.label`)}</span>
-                <div className="flex size-9 items-center justify-center rounded-lg bg-secondary">
+                <div className="hidden size-9 items-center justify-center rounded-lg bg-secondary sm:flex">
                   <card.icon className="size-4 text-muted-foreground" strokeWidth={1.5} />
                 </div>
               </div>
               <AdminStatValue className="mt-3" value={displayValue} />
-              <div className="mt-2 flex items-center gap-1.5">
+              <div className="mt-2 flex items-center gap-1.5 max-lg:flex-wrap max-lg:gap-y-1">
                 <DashboardTrendBadge trendPercent={stat.trendPercent} />
                 <span className="text-xs text-muted-foreground">{t("dashboard.stats.vsPrevious")}</span>
               </div>

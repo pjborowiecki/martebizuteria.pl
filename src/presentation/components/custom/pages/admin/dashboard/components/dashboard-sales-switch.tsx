@@ -12,6 +12,11 @@ import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Switch } from "~/src/presentation/components/shadcn/switch"
 
+import {
+  ADMIN_CARD_CONTENT_CLASS,
+  ADMIN_DASHBOARD_CONTENT_CARD_CLASS,
+} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+
 export const DashboardSalesSwitch = (): JSX.Element => {
   const t = useTranslations("pages.admin.dashboard.sales")
   const queryClient = useQueryClient()
@@ -45,8 +50,8 @@ export const DashboardSalesSwitch = (): JSX.Element => {
   )
 
   return (
-    <Card className={cn("border-border/40 shadow-none", salesPaused && "border-amber-500/40 bg-amber-500/5")}>
-      <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+    <Card className={cn(ADMIN_DASHBOARD_CONTENT_CARD_CLASS, salesPaused && "border-amber-500/40 bg-amber-500/5")}>
+      <CardContent className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", ADMIN_CARD_CONTENT_CLASS)}>
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-[14px] font-semibold tracking-tight">{t("title")}</h2>

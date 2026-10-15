@@ -39,5 +39,9 @@ export const ADMIN_CATALOG_DATAGRID_PAGE_CLASS =
 export const ADMIN_HEADER_PRIMARY_BUTTON_CLASS =
   "h-8 gap-1.5 bg-foreground px-4 text-[13px] text-background hover:bg-foreground/90 pointer-coarse:h-10"
 
+export const ADMIN_DASHBOARD_STAT_GRID_CLASS = "grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4"
+
+export const ADMIN_DASHBOARD_CONTENT_CARD_CLASS = "border-border/40 shadow-none max-lg:py-0"
+
 export const ADMIN_HEADER_SECONDARY_BUTTON_CLASS =
   "h-8 gap-1.5 border-sidebar-border bg-sidebar px-3 text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground pointer-coarse:h-10"

@@ -107,6 +107,12 @@ describe("DashboardCharts revenue card", () => {
     expect(screen.getByRole("button", { name: "Custom" })).toBeInTheDocument()
   })
 
+  it("stacks the title above the range buttons until desktop", () => {
+    renderWithProviders(<DashboardCharts />)
+
+    expect(screen.getByText("Revenue Overview").parentElement?.parentElement).toHaveClass("flex-col", "lg:flex-row")
+  })
+
   it("describes the thirty day preset with the day count it actually queries", () => {
     renderWithProviders(<DashboardCharts />)
 
@@ -216,6 +222,17 @@ describe("DashboardCharts side cards", () => {
     expect(screen.getByText("Average Order Value")).toBeInTheDocument()
     expect(screen.getByText("PLN 249.00")).toBeInTheDocument()
     expect(screen.getByText("+25%")).toBeInTheDocument()
+  })
+
+  it("pads the side cards once on phones and lines their text up with the cards around them", () => {
+    renderWithProviders(<DashboardCharts />)
+
+    for (const label of ["Average Order Value", "Year-to-date sales"]) {
+      const content = screen.getByText(label).closest("[data-slot='card-content']")
+
+      expect(content).toHaveClass("p-4", "lg:p-5")
+      expect(content?.parentElement).toHaveClass("max-lg:py-0")
+    }
   })
 
   it("formats the year to date total and links to the orders page", () => {

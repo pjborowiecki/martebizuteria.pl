@@ -25,7 +25,10 @@ export const DashboardTopProducts = (): JSX.Element => {
           <p className="px-2.5 py-2 text-sm text-muted-foreground">{t("dashboard.topProducts.empty")}</p>
         ) : (
           snapshot.topProducts.map((product) => (
-            <div key={product.productId} className="flex items-center gap-4 rounded-lg p-2.5 transition-colors hover:bg-secondary/50">
+            <div
+              key={product.productId}
+              className="flex items-center gap-3 rounded-lg p-2.5 transition-colors hover:bg-secondary/50 lg:gap-4"
+            >
               <div className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-secondary">
                 {product.imageUrl === undefined ? (
                   <div className="flex size-full items-center justify-center text-[10px] font-medium text-muted-foreground">
@@ -36,7 +39,9 @@ export const DashboardTopProducts = (): JSX.Element => {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{product.name}</p>
+                <p className="truncate text-sm font-medium max-lg:line-clamp-2 max-lg:whitespace-normal" title={product.name}>
+                  {product.name}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {product.category === "" ? t("dashboard.topProducts.uncategorized") : product.category}
                 </p>

@@ -8,10 +8,10 @@ import { DashboardTopProducts } from "~/src/presentation/components/custom/pages
 
 export const DashboardOverviewContent = (): JSX.Element => (
   <Suspense fallback={dashboardOverviewFallback}>
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       <DashboardStats />
       <DashboardCharts />
-      <div className="grid gap-5 xl:grid-cols-4">
+      <div className="grid gap-4 lg:gap-5 xl:grid-cols-4">
         <DashboardRecentOrders />
         <DashboardTopProducts />
       </div>

@@ -31,7 +31,7 @@ export const DashboardChartRangeControls = ({
   }, [onSelectRange])
 
   return (
-    <div className="flex max-w-full flex-wrap items-center justify-end gap-0.5 rounded-lg border border-border/50 p-0.5">
+    <div className="grid max-w-full grid-cols-2 items-center gap-0.5 self-start rounded-lg border border-border/50 p-0.5 max-sm:w-full sm:flex sm:flex-wrap sm:justify-end lg:self-auto">
       <Button
         variant={chartRange === "7d" ? "secondary" : "ghost"}
         size="sm"

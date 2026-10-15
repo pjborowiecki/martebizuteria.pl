@@ -1,5 +1,6 @@
 import { type JSX, useCallback, useMemo } from "react"
 
+import { cn } from "cn"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, type TooltipValueType, XAxis, YAxis } from "recharts"
 import { useFormatter, useLocale, useTranslations } from "use-intl/react"
 
@@ -13,6 +14,10 @@ import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } f
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { AdminChartMoneyTooltipRow } from "~/src/presentation/components/custom/pages/admin/admin-chart-money-tooltip-row"
+import {
+  ADMIN_CARD_CONTENT_CLASS,
+  ADMIN_DASHBOARD_CONTENT_CARD_CLASS,
+} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { DashboardChartRangeControls } from "~/src/presentation/components/custom/pages/admin/dashboard/components/dashboard-chart-range-controls"
 import { DashboardTrendBadge } from "~/src/presentation/components/custom/pages/admin/dashboard/dashboard-trend-badge"
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"
@@ -64,10 +69,10 @@ export const DashboardCharts = (): JSX.Element => {
   }, [chartRange, customRange, formatIsoDateLabel, t])
 
   return (
-    <div className="grid gap-5 xl:grid-cols-4">
+    <div className="grid gap-4 lg:gap-5 xl:grid-cols-4">
       <Card className="border-border/40 bg-gradient-to-br from-blue-500/10 via-purple-500/5 to-transparent shadow-none xl:col-span-3">
         <CardHeader className="pb-2">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <CardTitle className="text-base font-semibold">{t("dashboard.chart.title")}</CardTitle>
               <p className="mt-0.5 text-sm text-muted-foreground">{chartDescription}</p>
@@ -86,9 +91,9 @@ export const DashboardCharts = (): JSX.Element => {
         </CardContent>
       </Card>
 
-      <div className="space-y-5">
-        <Card className="border-border/40 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent shadow-none">
-          <CardContent className="p-5">
+      <div className="space-y-4 lg:space-y-5">
+        <Card className={cn(ADMIN_DASHBOARD_CONTENT_CARD_CLASS, "bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent")}>
+          <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
             <p className="text-sm text-muted-foreground">{t("dashboard.avgOrder.label")}</p>
             <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
               {formatPrice(snapshot.averageOrderValue.current, snapshot.currencyCode, locale)}
@@ -99,15 +104,15 @@ export const DashboardCharts = (): JSX.Element => {
 
         <WeeklyOrdersChart />
 
-        <Card className="bg-foreground text-background shadow-none">
-          <CardContent className="p-5">
+        <Card className={cn(ADMIN_DASHBOARD_CONTENT_CARD_CLASS, "bg-foreground text-background")}>
+          <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
             <p className="text-xs text-background/50">{t("dashboard.totalSales.label")}</p>
             <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
               {formatPrice(snapshot.yearToDateRevenueMinorUnits, snapshot.currencyCode, locale)}
             </p>
             <LocalizedLink
               to={ROUTES.ADMIN_ORDERS}
-              className="mt-3 inline-block text-xs text-background/60 underline underline-offset-2 transition-colors hover:text-background/80"
+              className="mt-3 inline-block text-xs text-background/60 underline underline-offset-2 transition-colors hover:text-background/80 pointer-coarse:py-3"
             >
               {t("dashboard.totalSales.period")}
             </LocalizedLink>

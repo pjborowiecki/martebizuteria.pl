@@ -17,6 +17,15 @@ describe("DashboardOverviewFallback", () => {
     expect(statRow?.querySelectorAll("div[data-slot='card']")).toHaveLength(4)
   })
 
+  it("sets the stat placeholders two to a row and pads them like the loaded cards", () => {
+    const { container } = render()
+    const statRow = container.querySelector(String.raw`div.xl\:grid-cols-4`)
+
+    expect(statRow).toHaveClass("grid-cols-2")
+    expect(statRow?.querySelector("[data-slot='card']")).toHaveClass("max-lg:py-0")
+    expect(statRow?.querySelector("[data-slot='card-content']")).toHaveClass("p-4", "lg:p-5")
+  })
+
   it("lays out every card the loaded overview shows", () => {
     const { container } = render()
 
