@@ -2,9 +2,10 @@ import { type JSX } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { cn } from "cn"
-import { useLocale } from "use-intl/react"
 
 import { getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-newsletter-stats"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Card } from "~/src/presentation/components/shadcn/card"
 
@@ -22,7 +23,7 @@ import {
 import { useNewsletterSubscribersDataGridContext } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/hooks/use-newsletter-subscribers-data-grid"
 
 export const NewsletterSubscribersStats = (): JSX.Element => {
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { data: stats, isFetching, isStale } = useSuspenseQuery(getNewsletterStatsQuery())
   const valuesPending = isFetching && isStale
   const { activeStatus, applyStatusFilter } = useNewsletterSubscribersDataGridContext()
@@ -54,7 +55,11 @@ export const NewsletterSubscribersStats = (): JSX.Element => {
               }}
               type="button"
             >
-              <NewsletterStatCardContent config={config} value={stats[config.key].toLocaleString(locale)} valuesPending={valuesPending} />
+              <NewsletterStatCardContent
+                config={config}
+                value={stats[config.key].toLocaleString(formatLocale)}
+                valuesPending={valuesPending}
+              />
             </button>
           </Card>
         )

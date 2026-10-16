@@ -1,9 +1,11 @@
 import { type JSX, type ReactNode } from "react"
 
 import { XCircle } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { type Order } from "~/src/modules/order/order.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 

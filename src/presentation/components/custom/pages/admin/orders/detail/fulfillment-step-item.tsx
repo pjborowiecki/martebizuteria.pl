@@ -1,10 +1,12 @@
 import { type JSX } from "react"
 
 import { Check } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { ADMIN_ORDER_FULFILLMENT_LABEL_KEYS } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 export const FulfillmentStepItem = ({ index, step }: Readonly<FulfillmentStepItemProps>): JSX.Element => {
   const t = useTranslations("pages.admin.orders")

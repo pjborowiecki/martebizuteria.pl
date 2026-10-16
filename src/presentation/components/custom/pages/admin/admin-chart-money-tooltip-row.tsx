@@ -1,8 +1,8 @@
 import { type CSSProperties, type JSX, type ReactNode, useMemo } from "react"
 
-import { useLocale } from "use-intl/react"
-
 import { formatPrice } from "~/src/modules/_core/utils/currency"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 export const AdminChartMoneyTooltipRow = ({
   amount,
@@ -10,7 +10,7 @@ export const AdminChartMoneyTooltipRow = ({
   label,
   seriesKey,
 }: Readonly<AdminChartMoneyTooltipRowProps>): JSX.Element => {
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const indicatorStyle = useMemo<CSSProperties>(() => ({ backgroundColor: `var(--color-${seriesKey})` }), [seriesKey])
 
   return (
@@ -18,7 +18,7 @@ export const AdminChartMoneyTooltipRow = ({
       <div className="h-2.5 w-2.5 shrink-0 rounded-[2px]" data-slot="chart-tooltip-indicator" style={indicatorStyle} />
       <div className="flex flex-1 items-center justify-between gap-4 leading-none">
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-mono font-medium text-foreground tabular-nums">{formatPrice(amount, currencyCode, locale)}</span>
+        <span className="font-mono font-medium text-foreground tabular-nums">{formatPrice(amount, currencyCode, formatLocale)}</span>
       </div>
     </>
   )

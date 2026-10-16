@@ -1,6 +1,8 @@
 import { useMemo } from "react"
 
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
+
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { buildCustomerColumns } from "~/src/presentation/components/custom/pages/admin/customers/lib/customers-column-defs"
 
@@ -8,16 +10,16 @@ export const useCustomerColumns = () => {
   const t = useTranslations("pages.admin.customers")
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
 
   return useMemo(
     () =>
       buildCustomerColumns({
         format,
-        locale,
+        formatLocale,
         t,
         tAdmin,
       }),
-    [format, locale, t, tAdmin],
+    [format, formatLocale, t, tAdmin],
   )
 }

@@ -1,9 +1,11 @@
 import { type JSX } from "react"
 
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { type Order } from "~/src/modules/order/order.types"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
@@ -14,7 +16,7 @@ import { OrderLineItemRow } from "~/src/presentation/components/custom/pages/adm
 
 export const OrderLineItemsCard = ({ order }: Readonly<OrderLineItemsCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
@@ -47,12 +49,12 @@ export const OrderLineItemsCard = ({ order }: Readonly<OrderLineItemsCardProps>)
         <div className="ml-auto max-w-xs space-y-2 px-4 py-4 lg:px-5">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t("orderDetail.summary.subtotal")}</span>
-            <span className="font-mono">{formatPrice(order.subtotalMinorUnits, order.currencyCode, locale)}</span>
+            <span className="font-mono">{formatPrice(order.subtotalMinorUnits, order.currencyCode, formatLocale)}</span>
           </div>
           {order.discountTotalMinorUnits > 0 && (
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{t("orderDetail.summary.discount")}</span>
-              <span className="font-mono">−{formatPrice(order.discountTotalMinorUnits, order.currencyCode, locale)}</span>
+              <span className="font-mono">−{formatPrice(order.discountTotalMinorUnits, order.currencyCode, formatLocale)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm">
@@ -62,16 +64,18 @@ export const OrderLineItemsCard = ({ order }: Readonly<OrderLineItemsCardProps>)
                 <span className="ml-1 text-[11px] text-muted-foreground/40">({order.delivery.methodName})</span>
               )}
             </span>
-            <span className="font-mono">{formatPrice(order.shippingTotalMinorUnits, order.currencyCode, locale)}</span>
+            <span className="font-mono">{formatPrice(order.shippingTotalMinorUnits, order.currencyCode, formatLocale)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">{t("orderDetail.summary.tax")}</span>
-            <span className="font-mono">{formatPrice(order.taxTotalMinorUnits, order.currencyCode, locale)}</span>
+            <span className="font-mono">{formatPrice(order.taxTotalMinorUnits, order.currencyCode, formatLocale)}</span>
           </div>
           <Separator className="bg-border/40" />
           <div className="flex justify-between pt-1">
             <span className="text-sm font-medium">{t("orderDetail.summary.total")}</span>
-            <span className="font-mono text-base font-semibold">{formatPrice(order.totalMinorUnits, order.currencyCode, locale)}</span>
+            <span className="font-mono text-base font-semibold">
+              {formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale)}
+            </span>
           </div>
         </div>
       </CardContent>

@@ -15,6 +15,8 @@ import { type TooltipValueType } from "recharts"
 import * as RechartsPrimitive from "recharts"
 import { type Payload as TooltipPayload } from "recharts/types/component/DefaultTooltipContent"
 
+import { useFormatLocale } from "~/src/hooks/use-display-format"
+
 const useChart = (): ChartContextProps => {
   const context = useContext(ChartContext)
   if (context === undefined) {
@@ -73,6 +75,7 @@ const ChartTooltipItem = ({
   formatter,
   payload,
 }: Readonly<ChartTooltipItemProps>): JSX.Element => {
+  const formatLocale = useFormatLocale()
   const itemPayloadRaw: unknown = item.payload
   const itemPayload =
     typeof itemPayloadRaw === "object" && itemPayloadRaw !== null && !Array.isArray(itemPayloadRaw)
@@ -121,7 +124,7 @@ const ChartTooltipItem = ({
         </div>
         {item.value !== undefined && (
           <span className="font-mono font-medium text-foreground tabular-nums">
-            {typeof item.value === "number" ? item.value.toLocaleString() : String(item.value)}
+            {typeof item.value === "number" ? item.value.toLocaleString(formatLocale) : String(item.value)}
           </span>
         )}
       </div>

@@ -3,7 +3,7 @@ import { type JSX, useMemo } from "react"
 import { flexRender, useTable } from "@tanstack/react-table"
 import { cleanup, screen, within } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useFormatter, useTranslations } from "use-intl/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { markAsCut } from "~/src/platform/testing/lib/cut-text"
@@ -11,6 +11,8 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { ADMIN_DISCOUNT_TABLE_COLUMN_ID, ADMIN_DISCOUNT_TABLE_COLUMN_SIZE, DISCOUNT_TYPE } from "~/src/modules/discount/discount.constants"
 import { type Discount } from "~/src/modules/discount/discount.types"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 
@@ -31,8 +33,8 @@ const ColumnsProbe = ({ row }: Readonly<{ row: CouponRow }>): JSX.Element => {
   const t = useTranslations("pages.admin.coupons")
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
-  const locale = useLocale()
-  const columns = useMemo(() => buildCouponColumns({ format, locale, t, tAdmin }), [format, locale, t, tAdmin])
+  const formatLocale = useFormatLocale()
+  const columns = useMemo(() => buildCouponColumns({ format, formatLocale, t, tAdmin }), [format, formatLocale, t, tAdmin])
   const table = useTable<DataGridFeatures, CouponRow>({
     columns,
     data: [row],
@@ -64,8 +66,8 @@ const renderDefinitions = () => {
     const t = useTranslations("pages.admin.coupons")
     const tAdmin = useTranslations("pages.admin")
     const format = useFormatter()
-    const locale = useLocale()
-    definitions.current = buildCouponColumns({ format, locale, t, tAdmin })
+    const formatLocale = useFormatLocale()
+    definitions.current = buildCouponColumns({ format, formatLocale, t, tAdmin })
 
     return null
   }

@@ -1,8 +1,10 @@
 import { type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatDateToIsoDateLocal, parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { LocaleDatePicker } from "~/src/presentation/components/shadcn/locale-date-picker"

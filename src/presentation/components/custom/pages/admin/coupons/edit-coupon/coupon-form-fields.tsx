@@ -2,10 +2,12 @@ import { type ChangeEvent, type JSX, useCallback } from "react"
 
 import { cn } from "cn"
 import { useController } from "react-hook-form"
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { formatMinorUnitsToMoneyInput, parseMoneyInputToMinorUnits } from "~/src/modules/_core/utils/currency"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Field } from "~/src/presentation/components/shadcn/field"
 import { Input } from "~/src/presentation/components/shadcn/input"
@@ -26,15 +28,15 @@ const toDisplayValue = (value: number | undefined, required: boolean, format: (v
 
 export const CouponMoneyField = ({ hint, label, name, required = false }: Readonly<CouponNumberFieldProps>): JSX.Element => {
   const t = useTranslations("pages.admin.coupons")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { control } = useCouponForm()
   const { field, fieldState } = useController({ control, name })
   const blankValue = required ? 0 : undefined
   const handleChange = useCallback(
     (next: string) => {
-      field.onChange(next === "" ? blankValue : (parseMoneyInputToMinorUnits(next, STORE_CURRENCY_CODE, locale) ?? blankValue))
+      field.onChange(next === "" ? blankValue : (parseMoneyInputToMinorUnits(next, STORE_CURRENCY_CODE, formatLocale) ?? blankValue))
     },
-    [blankValue, field, locale],
+    [blankValue, field, formatLocale],
   )
 
   return (
@@ -49,7 +51,7 @@ export const CouponMoneyField = ({ hint, label, name, required = false }: Readon
           ariaInvalid={fieldState.invalid}
           className="pl-12"
           onValueChange={handleChange}
-          value={toDisplayValue(field.value, required, (amount) => formatMinorUnitsToMoneyInput(amount, STORE_CURRENCY_CODE, locale))}
+          value={toDisplayValue(field.value, required, (amount) => formatMinorUnitsToMoneyInput(amount, STORE_CURRENCY_CODE, formatLocale))}
         />
       </div>
       <CatalogFormFieldError fieldState={fieldState} translate={t} validationKeySet={COUPON_FORM_VALIDATION_KEYS} />

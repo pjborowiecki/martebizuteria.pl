@@ -3,13 +3,15 @@ import { type JSX, useCallback, useMemo, useState } from "react"
 import { cn } from "cn"
 import { CalendarIcon } from "lucide-react"
 import { type Matcher } from "react-day-picker"
-import { useFormatter, useLocale } from "use-intl/react"
+import { useLocale } from "use-intl/react"
 
 import { getDayPickerLocale } from "~/src/integrations/react-day-picker/react-day-picker.locale"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
 import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Calendar } from "~/src/presentation/components/shadcn/calendar"

@@ -2,10 +2,12 @@ import { type JSX } from "react"
 
 import { cn } from "cn"
 import { Undo2 } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { ORDER_WITHDRAWAL_SCOPE } from "~/src/modules/order-withdrawal/order-withdrawal.constants"
 import { type Order } from "~/src/modules/order/order.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 

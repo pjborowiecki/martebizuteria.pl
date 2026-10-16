@@ -1,21 +1,23 @@
 import { useMemo } from "react"
 
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { buildOrderColumns } from "~/src/presentation/components/custom/pages/admin/orders/lib/orders-column-defs"
 
 export const useOrderColumns = () => {
   const t = useTranslations("pages.admin.orders")
   const tAdmin = useTranslations("pages.admin")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
 
   return useMemo(
     () =>
       buildOrderColumns({
-        locale,
+        formatLocale,
         t,
         tAdmin,
       }),
-    [locale, t, tAdmin],
+    [formatLocale, t, tAdmin],
   )
 }

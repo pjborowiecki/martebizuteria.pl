@@ -3,13 +3,15 @@ import { type JSX } from "react"
 import { cn } from "cn"
 import { ExternalLink, Loader2 } from "lucide-react"
 import { type Control, useFormState, useWatch } from "react-hook-form"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { localizePathname } from "~/src/integrations/use-intl/i18n.paths"
 
 import { CONTENT_PAGE_PATHS, type ContentPageHandle } from "~/src/modules/content-page/content-page.constants"
 import { type ContentPage } from "~/src/modules/content-page/content-page.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button, buttonVariants } from "~/src/presentation/components/shadcn/button"
 

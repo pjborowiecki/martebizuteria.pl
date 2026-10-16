@@ -1,11 +1,13 @@
 import { type JSX, useCallback, useMemo, useState } from "react"
 
 import { FileSpreadsheet } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { downloadCsvFile, escapeCsvField } from "~/src/modules/_core/utils/csv"
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 import { exportAdminNewsletterSubscribers } from "~/src/modules/newsletter/use-cases/export-admin-newsletter-subscribers"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 

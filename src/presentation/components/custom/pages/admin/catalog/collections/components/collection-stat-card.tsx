@@ -93,14 +93,14 @@ export const CollectionStatCard = ({
   )
 }
 
-export const formatCollectionStatValue = (key: CollectionStatKey, value: number): string => {
+export const formatCollectionStatValue = (key: CollectionStatKey, value: number, formatLocale: string): string => {
   if (key === "avgProducts") {
-    return value.toLocaleString(undefined, {
+    return value.toLocaleString(formatLocale, {
       maximumFractionDigits: AVG_PRODUCTS_DECIMALS,
     })
   }
 
-  return value.toLocaleString()
+  return value.toLocaleString(formatLocale)
 }
 
 const statShare = (part: number, total: number): number => {
@@ -111,7 +111,13 @@ const statShare = (part: number, total: number): number => {
   return Math.round((part / total) * PERCENT_SCALE)
 }
 
-export const buildCollectionStatCaption = ({ key, stats, t, value }: Readonly<BuildCollectionStatCaptionInput>): string | undefined => {
+export const buildCollectionStatCaption = ({
+  formatLocale,
+  key,
+  stats,
+  t,
+  value,
+}: Readonly<BuildCollectionStatCaptionInput>): string | undefined => {
   const sharePercent = key === "active" || key === "draft" ? statShare(value, stats.total) : undefined
   if (sharePercent !== undefined) {
     return t("stats.shareCaption", {
@@ -121,7 +127,7 @@ export const buildCollectionStatCaption = ({ key, stats, t, value }: Readonly<Bu
 
   if (key === "avgProducts") {
     return t("stats.avgProducts.caption", {
-      count: Math.round(stats.avgProducts * stats.total).toLocaleString(),
+      count: Math.round(stats.avgProducts * stats.total).toLocaleString(formatLocale),
     })
   }
 
@@ -142,6 +148,7 @@ const PERCENT_SCALE = 100
 const AVG_PRODUCTS_DECIMALS = 1
 
 interface BuildCollectionStatCaptionInput {
+  readonly formatLocale: string
   readonly key: CollectionStatKey
   readonly stats: ProductCollection["stats"]
   readonly t: ReturnType<typeof useTranslations<"pages.admin.catalog.collections">>

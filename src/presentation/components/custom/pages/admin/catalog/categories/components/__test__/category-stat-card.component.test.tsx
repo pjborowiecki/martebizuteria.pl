@@ -37,7 +37,9 @@ const CaptionProbe = ({
 }: Readonly<{ statKey: CategoryStatKey; stats: ProductCategory["stats"]; value: number }>): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.categories")
 
-  return <span data-testid="caption">{buildCategoryStatCaption({ key: statKey, stats, t, value }) ?? "no caption"}</span>
+  return (
+    <span data-testid="caption">{buildCategoryStatCaption({ formatLocale: "en-US", key: statKey, stats, t, value }) ?? "no caption"}</span>
+  )
 }
 
 const captionFor = (statKey: CategoryStatKey, value: number, stats: ProductCategory["stats"] = STATS): string => {
@@ -52,15 +54,16 @@ afterEach(() => {
 
 describe("formatCategoryStatValue", () => {
   it("rounds the average products to one decimal", () => {
-    expect(formatCategoryStatValue("avgProducts", 2.46)).toBe("2.5")
+    expect(formatCategoryStatValue("avgProducts", 2.46, "en-US")).toBe("2.5")
   })
 
   it("drops a trailing zero decimal from the average", () => {
-    expect(formatCategoryStatValue("avgProducts", 3)).toBe("3")
+    expect(formatCategoryStatValue("avgProducts", 3, "en-US")).toBe("3")
   })
 
   it("formats a count with thousands grouping", () => {
-    expect(formatCategoryStatValue("total", 1234)).toBe((1234).toLocaleString())
+    expect(formatCategoryStatValue("total", 1234, "en-US")).toBe("1,234")
+    expect(formatCategoryStatValue("total", 1234, "de-DE")).toBe("1.234")
   })
 })
 

@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo, useState } from "react"
 
 import { FileSpreadsheet } from "lucide-react"
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { downloadCsvFile, escapeCsvField } from "~/src/modules/_core/utils/csv"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
@@ -14,6 +14,8 @@ import {
 } from "~/src/modules/order/order.constants"
 import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { exportAdminOrders } from "~/src/modules/order/use-cases/export-admin-orders"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -28,7 +30,7 @@ const resolveFulfillmentLabel = (fulfillmentUiKey: string, t: ReturnType<typeof 
 
 export const OrdersExportAction = (): JSX.Element => {
   const t = useTranslations("pages.admin.orders")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { exportListInput } = useOrdersDataGridContext()
   const [isExporting, setIsExporting] = useState(false)
   const handleExport = useCallback(() => {
@@ -62,9 +64,9 @@ export const OrdersExportAction = (): JSX.Element => {
               order.email,
               order.billingCompanyName,
               order.billingNip,
-              formatAdminOrderDate(order.createdAt, locale),
+              formatAdminOrderDate(order.createdAt, formatLocale),
               String(order.itemCount),
-              formatPrice(order.totalMinorUnits, order.currencyCode, locale),
+              formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale),
               resolvePaymentLabel(order.paymentUiKey, t),
               resolveFulfillmentLabel(order.fulfillmentUiKey, t),
               t(ADMIN_ORDER_STATUS_LABEL_KEYS[order.status]),
@@ -80,7 +82,7 @@ export const OrdersExportAction = (): JSX.Element => {
         setIsExporting(false)
       }
     })()
-  }, [exportListInput, locale, t])
+  }, [exportListInput, formatLocale, t])
 
   const button = useMemo(
     () => (

@@ -1,7 +1,6 @@
 import { type ChangeEvent, type FocusEvent, type JSX, type KeyboardEvent, useCallback, useEffect, useMemo, useState } from "react"
 
 import { cn } from "cn"
-import { useFormatter, useLocale } from "use-intl/react"
 
 import { STORE_CURRENCY_CODE, type SupportedCurrencyCode } from "~/src/modules/_core/constants/currency"
 import {
@@ -13,15 +12,17 @@ import {
   toNumberMoneyInputValue,
 } from "~/src/modules/_core/utils/currency"
 
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
+
 import { Input } from "~/src/presentation/components/shadcn/input"
 import { sheetNumberInputNoSpinnerClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
 
-const formatStoredMoneyValue = (value: string, currencyCode: SupportedCurrencyCode, locale: string): string => {
+const formatStoredMoneyValue = (value: string, currencyCode: SupportedCurrencyCode, formatLocale: string): string => {
   if (value === EMPTY_VALUE) {
     return EMPTY_VALUE
   }
 
-  return toNumberMoneyInputValue(value, currencyCode, locale)
+  return toNumberMoneyInputValue(value, currencyCode, formatLocale)
 }
 
 export const CatalogMoneyInput = ({
@@ -33,15 +34,15 @@ export const CatalogMoneyInput = ({
   value,
 }: Readonly<CatalogMoneyInputProps>): JSX.Element => {
   const format = useFormatter()
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { minorUnitExponent } = getCurrencyDefinition(currencyCode)
-  const [displayValue, setDisplayValue] = useState(() => formatStoredMoneyValue(value, currencyCode, locale))
+  const [displayValue, setDisplayValue] = useState(() => formatStoredMoneyValue(value, currencyCode, formatLocale))
   const [isEditing, setIsEditing] = useState(false)
   useEffect(() => {
     if (!isEditing) {
-      setDisplayValue(formatStoredMoneyValue(value, currencyCode, locale))
+      setDisplayValue(formatStoredMoneyValue(value, currencyCode, formatLocale))
     }
-  }, [currencyCode, isEditing, locale, value])
+  }, [currencyCode, isEditing, formatLocale, value])
 
   const placeholder = useMemo(() => {
     const example = getExampleMajorAmount(currencyCode)
@@ -60,12 +61,12 @@ export const CatalogMoneyInput = ({
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       const next = event.target.value
-      if (next === EMPTY_VALUE || isPartialMoneyInput(next, currencyCode, locale)) {
+      if (next === EMPTY_VALUE || isPartialMoneyInput(next, currencyCode, formatLocale)) {
         setDisplayValue(next)
         onValueChange(next)
       }
     },
-    [currencyCode, locale, onValueChange],
+    [currencyCode, formatLocale, onValueChange],
   )
 
   const handleKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
@@ -82,19 +83,19 @@ export const CatalogMoneyInput = ({
       return
     }
 
-    const minor = parseMoneyInputToMinorUnits(displayValue, currencyCode, locale)
+    const minor = parseMoneyInputToMinorUnits(displayValue, currencyCode, formatLocale)
     if (minor === undefined) {
-      const fallback = formatStoredMoneyValue(value, currencyCode, locale)
+      const fallback = formatStoredMoneyValue(value, currencyCode, formatLocale)
       setDisplayValue(fallback)
       onValueChange(fallback)
 
       return
     }
 
-    const formatted = formatMinorUnitsToMoneyInput(minor, currencyCode, locale)
+    const formatted = formatMinorUnitsToMoneyInput(minor, currencyCode, formatLocale)
     setDisplayValue(formatted)
     onValueChange(formatted)
-  }, [currencyCode, displayValue, locale, onValueChange, value])
+  }, [currencyCode, displayValue, formatLocale, onValueChange, value])
 
   return (
     <Input

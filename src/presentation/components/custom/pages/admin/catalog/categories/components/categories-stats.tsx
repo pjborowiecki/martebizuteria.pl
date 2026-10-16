@@ -6,6 +6,8 @@ import { useTranslations } from "use-intl/react"
 import { type CATEGORY_STATUS } from "~/src/modules/product-category/product-category.constants"
 import { getCategoryStatsQuery } from "~/src/modules/product-category/use-cases/get-category-stats"
 
+import { useFormatLocale } from "~/src/hooks/use-display-format"
+
 import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CATEGORY_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/categories/categories-stats.config"
 import {
@@ -16,6 +18,7 @@ import {
 import { categoriesDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/categories/utils/categories-data-grid"
 
 export const CategoriesStats = (): JSX.Element => {
+  const formatLocale = useFormatLocale()
   const t = useTranslations("pages.admin.catalog.categories")
   const { data: resolvedStats, isFetching } = useSuspenseQuery(getCategoryStatsQuery())
   const valuesPending = isFetching
@@ -38,6 +41,7 @@ export const CategoriesStats = (): JSX.Element => {
         const caption = valuesPending
           ? undefined
           : buildCategoryStatCaption({
+              formatLocale,
               key: config.key,
               stats: resolvedStats,
               t,
@@ -49,7 +53,7 @@ export const CategoriesStats = (): JSX.Element => {
             activeFilter={activeFilter}
             caption={caption}
             config={config}
-            displayValue={formatCategoryStatValue(config.key, value)}
+            displayValue={formatCategoryStatValue(config.key, value, formatLocale)}
             onFilter={applyStatusFilter}
             valuesPending={valuesPending}
           />

@@ -1,9 +1,10 @@
 import { type JSX } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useLocale } from "use-intl/react"
 
 import { getAdminOrderStatsQuery } from "~/src/modules/order/use-cases/get-admin-order-stats"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import {
@@ -15,7 +16,7 @@ import { useOrdersDataGridContext } from "~/src/presentation/components/custom/p
 import { ORDER_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/orders/orders-stats.config"
 
 export const OrdersStats = (): JSX.Element => {
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { data: stats, isFetching, isStale } = useSuspenseQuery(getAdminOrderStatsQuery())
   const valuesPending = isFetching && isStale
   const { activeStatFilter, applyOrderStatFilter } = useOrdersDataGridContext()
@@ -37,7 +38,7 @@ export const OrdersStats = (): JSX.Element => {
                 : formatOrderStatDisplayValue({
                     currencyCode: stats.currencyCode,
                     key: config.key,
-                    locale,
+                    locale: formatLocale,
                     value,
                   })
             }

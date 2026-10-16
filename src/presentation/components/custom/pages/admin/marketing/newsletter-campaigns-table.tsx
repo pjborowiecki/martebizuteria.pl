@@ -2,13 +2,15 @@ import { type JSX } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { cn } from "cn"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { NEWSLETTER_CAMPAIGN_STATUS_BADGE_STYLES } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
 import { type NewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.types"
 import { getAdminNewsletterCampaignsQuery } from "~/src/modules/newsletter-campaign/use-cases/get-admin-newsletter-campaigns"
 import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"

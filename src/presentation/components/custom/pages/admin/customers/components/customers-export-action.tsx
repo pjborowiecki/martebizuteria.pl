@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo, useState } from "react"
 
 import { FileSpreadsheet } from "lucide-react"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
@@ -15,6 +15,8 @@ import {
 } from "~/src/modules/user/user.constants"
 import { formatAdminCustomerLocation } from "~/src/modules/user/user.utils"
 
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
+
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { DataGridIconTooltip } from "~/src/presentation/components/custom/datagrid/components/data-grid-icon-tooltip"
@@ -22,7 +24,7 @@ import { useCustomersDataGridContext } from "~/src/presentation/components/custo
 
 export const CustomersExportAction = (): JSX.Element => {
   const t = useTranslations("pages.admin.customers")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const format = useFormatter()
   const { exportListInput } = useCustomersDataGridContext()
   const [isExporting, setIsExporting] = useState(false)
@@ -95,8 +97,8 @@ export const CustomersExportAction = (): JSX.Element => {
               bannedLabel,
               `"${escapeCsvField(location)}"`,
               customer.orderCount,
-              formatPrice(customer.totalSpent, DEFAULT_ADMIN_CUSTOMER_CURRENCY, locale),
-              formatPrice(customer.averageOrderValue, DEFAULT_ADMIN_CUSTOMER_CURRENCY, locale),
+              formatPrice(customer.totalSpent, DEFAULT_ADMIN_CUSTOMER_CURRENCY, formatLocale),
+              formatPrice(customer.averageOrderValue, DEFAULT_ADMIN_CUSTOMER_CURRENCY, formatLocale),
               `"${escapeCsvField(lastOrder)}"`,
               `"${escapeCsvField(createdAt)}"`,
             ].join(",")
@@ -107,7 +109,7 @@ export const CustomersExportAction = (): JSX.Element => {
         setIsExporting(false)
       }
     })()
-  }, [exportListInput, format, locale, t])
+  }, [exportListInput, format, formatLocale, t])
 
   const button = useMemo(
     () => (

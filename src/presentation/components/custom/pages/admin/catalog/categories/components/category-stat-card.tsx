@@ -93,17 +93,23 @@ export const CategoryStatCard = ({
   )
 }
 
-export const formatCategoryStatValue = (key: CategoryStatKey, value: number): string => {
+export const formatCategoryStatValue = (key: CategoryStatKey, value: number, formatLocale: string): string => {
   if (key === "avgProducts") {
-    return value.toLocaleString(undefined, {
+    return value.toLocaleString(formatLocale, {
       maximumFractionDigits: AVG_PRODUCTS_DECIMALS,
     })
   }
 
-  return value.toLocaleString()
+  return value.toLocaleString(formatLocale)
 }
 
-export const buildCategoryStatCaption = ({ key, stats, t, value }: Readonly<BuildCategoryStatCaptionInput>): string | undefined => {
+export const buildCategoryStatCaption = ({
+  formatLocale,
+  key,
+  stats,
+  t,
+  value,
+}: Readonly<BuildCategoryStatCaptionInput>): string | undefined => {
   const sharePercent = key === "active" || key === "draft" ? statShare(value, stats.total) : undefined
   if (sharePercent !== undefined) {
     return t("stats.shareCaption", {
@@ -113,7 +119,7 @@ export const buildCategoryStatCaption = ({ key, stats, t, value }: Readonly<Buil
 
   if (key === "avgProducts") {
     return t("stats.avgProducts.caption", {
-      count: Math.round(stats.avgProducts * stats.total).toLocaleString(),
+      count: Math.round(stats.avgProducts * stats.total).toLocaleString(formatLocale),
     })
   }
 
@@ -142,6 +148,7 @@ const PERCENT_SCALE = 100
 const AVG_PRODUCTS_DECIMALS = 1
 
 interface BuildCategoryStatCaptionInput {
+  readonly formatLocale: string
   readonly key: CategoryStatKey
   readonly stats: ProductCategory["stats"]
   readonly t: ReturnType<typeof useTranslations<"pages.admin.catalog.categories">>

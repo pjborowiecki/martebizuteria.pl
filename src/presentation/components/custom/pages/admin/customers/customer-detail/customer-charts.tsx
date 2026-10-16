@@ -1,11 +1,13 @@
 import { type CSSProperties, type JSX, useCallback, useMemo } from "react"
 
 import { Area, AreaChart, CartesianGrid, type TooltipValueType, XAxis, YAxis } from "recharts"
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatMinorUnitsAsCompactNumber, formatPrice } from "~/src/modules/_core/utils/currency"
 import { DEFAULT_ADMIN_CUSTOMER_CURRENCY } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/presentation/components/shadcn/chart"
@@ -16,7 +18,7 @@ import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom
 
 export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const spendingConfig: ChartConfig = useMemo(
     () => ({
       amount: {
@@ -28,8 +30,8 @@ export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element =
   )
 
   const tickFormatter = useCallback(
-    (value: number) => formatMinorUnitsAsCompactNumber(value, DEFAULT_ADMIN_CUSTOMER_CURRENCY, locale),
-    [locale],
+    (value: number) => formatMinorUnitsAsCompactNumber(value, DEFAULT_ADMIN_CUSTOMER_CURRENCY, formatLocale),
+    [formatLocale],
   )
 
   const formatSpendingTooltip = useCallback(
@@ -127,7 +129,7 @@ const CategoryBreakdownRow = ({
   category: string
   largestAmount: number
 }>): JSX.Element => {
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const barStyle = useMemo<CSSProperties>(() => ({ width: `${(amount / largestAmount) * FULL_BAR_PERCENT}%` }), [amount, largestAmount])
 
   return (
@@ -137,7 +139,7 @@ const CategoryBreakdownRow = ({
           {category}
         </span>
         <span className="shrink-0 font-mono text-xs font-medium tabular-nums">
-          {formatPrice(amount, DEFAULT_ADMIN_CUSTOMER_CURRENCY, locale)}
+          {formatPrice(amount, DEFAULT_ADMIN_CUSTOMER_CURRENCY, formatLocale)}
         </span>
       </div>
       <div aria-hidden className="mt-1.5 h-2 rounded-r-[4px] bg-foreground/5">

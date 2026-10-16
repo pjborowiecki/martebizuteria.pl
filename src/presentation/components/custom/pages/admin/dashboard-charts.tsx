@@ -2,12 +2,14 @@ import { type JSX, useCallback, useMemo } from "react"
 
 import { cn } from "cn"
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, type TooltipValueType, XAxis, YAxis } from "recharts"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatMinorUnitsAsCompactNumber, formatPrice } from "~/src/modules/_core/utils/currency"
 import { parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
 import { ADMIN_DASHBOARD_CHART_DAYS_30, ADMIN_DASHBOARD_CHART_DAYS_7 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/presentation/components/shadcn/chart"
@@ -28,7 +30,7 @@ import { ROUTES } from "~/src/routes"
 export const DashboardCharts = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { data: snapshot } = useAdminDashboardSnapshot()
   const { applyCustomRange, chartData, chartRange, clearCustomRange, customRange, isCustomError, isCustomLoading, selectPresetRange } =
     useDashboardChartRange()
@@ -96,7 +98,7 @@ export const DashboardCharts = (): JSX.Element => {
           <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
             <p className="text-sm text-muted-foreground">{t("dashboard.avgOrder.label")}</p>
             <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
-              {formatPrice(snapshot.averageOrderValue.current, snapshot.currencyCode, locale)}
+              {formatPrice(snapshot.averageOrderValue.current, snapshot.currencyCode, formatLocale)}
             </p>
             <DashboardTrendBadge className="mt-1.5" trendPercent={snapshot.averageOrderValue.trendPercent} />
           </CardContent>
@@ -108,7 +110,7 @@ export const DashboardCharts = (): JSX.Element => {
           <CardContent className={ADMIN_CARD_CONTENT_CLASS}>
             <p className="text-xs text-background/50">{t("dashboard.totalSales.label")}</p>
             <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
-              {formatPrice(snapshot.yearToDateRevenueMinorUnits, snapshot.currencyCode, locale)}
+              {formatPrice(snapshot.yearToDateRevenueMinorUnits, snapshot.currencyCode, formatLocale)}
             </p>
             <LocalizedLink
               to={ROUTES.ADMIN_ORDERS}
@@ -125,7 +127,7 @@ export const DashboardCharts = (): JSX.Element => {
 
 const RevenueChart = ({ chartData, isCustomError, isCustomLoading }: Readonly<RevenueChartProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { data: snapshot } = useAdminDashboardSnapshot()
   const revenueChartConfig: ChartConfig = useMemo(
     () => ({
@@ -151,8 +153,8 @@ const RevenueChart = ({ chartData, isCustomError, isCustomLoading }: Readonly<Re
 
   const chartTooltipContent = useMemo(() => <ChartTooltipContent formatter={formatRevenueTooltip} />, [formatRevenueTooltip])
   const formatYAxisTick = useCallback(
-    (value: number) => formatMinorUnitsAsCompactNumber(value, snapshot.currencyCode, locale),
-    [locale, snapshot.currencyCode],
+    (value: number) => formatMinorUnitsAsCompactNumber(value, snapshot.currencyCode, formatLocale),
+    [formatLocale, snapshot.currencyCode],
   )
 
   const chartDataPoints = useMemo(() => [...chartData], [chartData])

@@ -3,6 +3,8 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { DisplayPreferencesContext } from "~/src/hooks/use-display-format"
+
 vi.mock("~/src/presentation/components/custom/image", () => ({
   Image: ({ alt, src }: { readonly alt: string; readonly src: string }) => <img alt={alt} src={src} />,
 }))
@@ -48,6 +50,17 @@ describe("OrderLineItemsCard", () => {
     expect(screen.getByText("Shipping")).toBeInTheDocument()
     expect(screen.getByText("Tax")).toBeInTheDocument()
     expect(screen.getByText(/19[.,]00/u)).toBeInTheDocument()
+  })
+
+  it("formats the amounts in the admin's format locale rather than the page's language", () => {
+    renderWithProviders(
+      <DisplayPreferencesContext value={{ formatLocale: "de-DE", timeZone: "Europe/Berlin" }}>
+        <OrderLineItemsCard order={buildAdminOrderDetail()} />
+      </DisplayPreferencesContext>,
+    )
+
+    expect(screen.getByText("389,00 PLN")).toBeInTheDocument()
+    expect(screen.getByText("Subtotal")).toBeInTheDocument()
   })
 
   it("adds a discount line only when the order carries one", () => {

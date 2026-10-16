@@ -1,9 +1,11 @@
 import { type JSX, useCallback } from "react"
 
 import { ArrowLeft, Printer } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { type Order } from "~/src/modules/order/order.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { useAdminLightTheme } from "~/src/presentation/theme/use-admin-light-theme"
 

@@ -39,7 +39,7 @@ const CaptionProbe = ({
 }: Readonly<{ statKey: CollectionStatKey; stats: ProductCollection["stats"]; value: number }>) => {
   const t = useTranslations("pages.admin.catalog.collections")
 
-  return <span data-testid="caption">{buildCollectionStatCaption({ key: statKey, stats, t, value }) ?? "none"}</span>
+  return <span data-testid="caption">{buildCollectionStatCaption({ formatLocale: "en-US", key: statKey, stats, t, value }) ?? "none"}</span>
 }
 
 const renderCaption = (statKey: CollectionStatKey, stats: ProductCollection["stats"], value: number) => {
@@ -60,11 +60,13 @@ const stats = (overrides: Partial<ProductCollection["stats"]> = {}): ProductColl
 
 describe("formatCollectionStatValue", () => {
   it("renders a count without decimals", () => {
-    expect(formatCollectionStatValue("total", 1234)).toBe((1234).toLocaleString())
+    expect(formatCollectionStatValue("total", 1234, "en-US")).toBe("1,234")
+    expect(formatCollectionStatValue("total", 1234, "pl-PL")).toBe("1234")
   })
 
   it("keeps a single decimal for the average products per collection", () => {
-    expect(formatCollectionStatValue("avgProducts", 12.55)).toBe((12.6).toLocaleString(undefined, { maximumFractionDigits: 1 }))
+    expect(formatCollectionStatValue("avgProducts", 12.55, "en-US")).toBe("12.6")
+    expect(formatCollectionStatValue("avgProducts", 12.55, "de-DE")).toBe("12,6")
   })
 })
 
