@@ -9,6 +9,7 @@ import {
 import {
   type AuditEventOptions,
   recordAuthEmailChangedAudit,
+  recordAuthEmailVerifiedAudit,
   recordAuthPasswordChangedAudit,
   recordAuthPasswordResetAudit,
   recordAuthRoleChangedAudit,
@@ -18,6 +19,7 @@ import {
   recordAuthUserBannedAudit,
   recordAuthUserUnbannedAudit,
   recordCustomerDeletedAudit,
+  recordCustomerOrdersClaimedAudit,
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.record.server"
 
@@ -58,6 +60,13 @@ const ACCOUNT_CASES: readonly AccountAuditCase[] = [
     name: "a changed address",
     record: recordAuthEmailChangedAudit,
     severity: "warning",
+  },
+  {
+    action: AUDIT_LOG_ACTION.AUTH_EMAIL_VERIFIED,
+    category: "auth",
+    name: "a verified address",
+    record: recordAuthEmailVerifiedAudit,
+    severity: "success",
   },
   {
     action: AUDIT_LOG_ACTION.AUTH_TWO_FACTOR_ENABLED,
@@ -146,5 +155,25 @@ describe("account audit events", () => {
     recordAudit({ id: "user-8", name: "Grace", role: "unknown" })
 
     expect(record.scheduleAuditLog).toHaveBeenCalledWith(expect.objectContaining({ ip: undefined, metadata: undefined, target: "Grace" }))
+  })
+})
+
+describe("recordCustomerOrdersClaimedAudit", () => {
+  it("files the guest orders an account took over under customers, from the system, against the account", () => {
+    recordCustomerOrdersClaimedAudit("ada@example.test", {
+      metadata: { orderCount: 2, orderIds: ["order-1", "order-2"] },
+      resourceId: "user-7",
+    })
+
+    expect(record.scheduleAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleSystemAuditLog).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.CUSTOMER_ORDERS_CLAIMED,
+      category: "customers",
+      detail: undefined,
+      metadata: { orderCount: 2, orderIds: ["order-1", "order-2"] },
+      resourceId: "user-7",
+      severity: "info",
+      target: "ada@example.test",
+    })
   })
 })

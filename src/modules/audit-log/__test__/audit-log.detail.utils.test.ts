@@ -189,7 +189,15 @@ describe("describeAuditLogDetail for counts", () => {
     })
   })
 
-  it.each([[AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED], [AUDIT_LOG_ACTION.NEWSLETTER_SENT]])(
+  it("counts the guest orders an account took over", () => {
+    expect(describeRow(AUDIT_LOG_ACTION.CUSTOMER_ORDERS_CLAIMED, null, { orderCount: 2, orderIds: ["order-1", "order-2"] })).toStrictEqual({
+      kind: "message",
+      message: "claimedOrderCount",
+      values: { count: 2 },
+    })
+  })
+
+  it.each([[AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED], [AUDIT_LOG_ACTION.CUSTOMER_ORDERS_CLAIMED], [AUDIT_LOG_ACTION.NEWSLETTER_SENT]])(
     "keeps the text of a %s entry without counts",
     (action) => {
       expect(describeRow(action, "3 things")).toStrictEqual({ kind: "text", text: "3 things" })

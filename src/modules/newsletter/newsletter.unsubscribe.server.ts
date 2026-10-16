@@ -1,10 +1,15 @@
 import { scheduleAdminNewsletterSubscribersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
+import { recordNewsletterSubscriberUnsubscribedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getSubscriberByToken, updateSubscriberById } from "~/src/modules/newsletter/newsletter.accessors"
 import { NEWSLETTER_STATUS, NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 
-export const unsubscribeSubscriber = async ({ id, status }: Pick<Newsletter["select"], "id" | "status">): Promise<boolean> => {
+export const unsubscribeSubscriber = async ({
+  email,
+  id,
+  status,
+}: Pick<Newsletter["select"], "email" | "id" | "status">): Promise<boolean> => {
   if (status === NEWSLETTER_STATUS.UNSUBSCRIBED) {
     return false
   }
@@ -14,6 +19,7 @@ export const unsubscribeSubscriber = async ({ id, status }: Pick<Newsletter["sel
     unsubscribedAt: new Date(),
     updatedAt: new Date(),
   })
+  recordNewsletterSubscriberUnsubscribedAudit(email)
   scheduleAdminNewsletterSubscribersInvalidation()
 
   return true

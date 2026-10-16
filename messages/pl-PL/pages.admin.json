@@ -429,7 +429,14 @@
       "customer_cart_abandoned": "Porzucony koszyk",
       "customer_cart_item_added": "Dodano do koszyka",
       "customer_deletion_failed": "Usunięcie konta nieudane",
-      "customer_page_viewed": "Odwiedzona strona"
+      "customer_page_viewed": "Odwiedzona strona",
+      "auth_email_verified": "Adres e-mail potwierdzony",
+      "customer_orders_claimed": "Przypisano zamówienia gościa",
+      "newsletter_subscriber_confirmed": "Subskrypcja potwierdzona",
+      "customer_list_exported": "Wyeksportowano listę klientów",
+      "order_list_exported": "Wyeksportowano listę zamówień",
+      "product_list_exported": "Wyeksportowano listę produktów",
+      "newsletter_subscriber_list_exported": "Wyeksportowano listę subskrybentów"
     },
     "details": {
       "emails": {
@@ -467,6 +474,7 @@
       },
       "messages": {
         "cartItemCount": "{count, plural, one {# produkt w koszyku} few {# produkty w koszyku} many {# produktów w koszyku} other {# produktu w koszyku}}",
+        "claimedOrderCount": "{count, plural, one {# zamówienie} few {# zamówienia} many {# zamówień} other {# zamówienia}}",
         "recipientCount": "{count, plural, one {# potwierdzony subskrybent} other {# potwierdzonych subskrybentów}}",
         "stripeCustomerKept": "Nie udało się usunąć klienta w Stripe, więc konto zostało zachowane — {error}"
       },

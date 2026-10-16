@@ -4,6 +4,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
+import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getAdminSubscribersFilteredList } from "~/src/modules/newsletter/newsletter.accessors"
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
 import { toAdminNewsletterListItem } from "~/src/modules/newsletter/newsletter.utils"
@@ -16,6 +17,7 @@ export const exportAdminNewsletterSubscribers = createServerFn({ method: "GET" }
   )
   .handler(async ({ data: input }): Promise<Newsletter["adminListItem"][]> => {
     const rows = await getAdminSubscribersFilteredList({ search: normalizeAdminSearchTerm(input.search), status: input.status })
+    recordListExportedAudit("newsletterSubscribers", rows.length, { metadata: { filters: input } })
 
     return rows.map((row) => toAdminNewsletterListItem(row))
   })

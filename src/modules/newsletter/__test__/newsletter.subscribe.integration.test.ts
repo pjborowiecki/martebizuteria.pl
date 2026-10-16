@@ -12,6 +12,8 @@ const {
   getRequest,
   getRequestSession,
   recordEmailFailedAudit,
+  recordNewsletterSubscriberConfirmedAudit,
+  recordNewsletterSubscriberUnsubscribedAudit,
   scheduleAdminNewsletterSubscribersInvalidation,
   sendNewsletterAlreadySubscribedEmail,
   sendNewsletterConfirmationEmail,
@@ -19,6 +21,8 @@ const {
   getRequest: vi.fn<() => Request>(),
   getRequestSession: vi.fn<() => Promise<{ user: { email: string; id: string } } | undefined>>(),
   recordEmailFailedAudit: vi.fn<(target: string, options?: { detail?: string; metadata?: Record<string, unknown> }) => void>(),
+  recordNewsletterSubscriberConfirmedAudit: vi.fn<(email: string) => void>(),
+  recordNewsletterSubscriberUnsubscribedAudit: vi.fn<(email: string) => void>(),
   scheduleAdminNewsletterSubscribersInvalidation: vi.fn<() => void>(),
   sendNewsletterAlreadySubscribedEmail: vi.fn<(input: { email: string; locale: string; origin: string }) => Promise<string | undefined>>(),
   sendNewsletterConfirmationEmail:
@@ -46,7 +50,11 @@ vi.mock("~/src/modules/newsletter/use-cases/send-newsletter-already-subscribed-e
 }))
 vi.mock("~/src/modules/newsletter/use-cases/send-newsletter-confirmation-email.server", () => ({ sendNewsletterConfirmationEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "pl-PL" }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordEmailFailedAudit }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+  recordEmailFailedAudit,
+  recordNewsletterSubscriberConfirmedAudit,
+  recordNewsletterSubscriberUnsubscribedAudit,
+}))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminNewsletterSubscribersInvalidation,
 }))
@@ -497,9 +505,10 @@ describe("confirmNewsletterSubscription", () => {
       result: NEWSLETTER_TOKEN_RESULT.OK,
     })
     expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.CONFIRMED)
+    expect(recordNewsletterSubscriberConfirmedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com")
   })
 
-  it("is harmless to follow the link twice", async () => {
+  it("is harmless to follow the link twice, and records the consent once", async () => {
     await subscribeToNewsletter({ data: { email: "anna@example.com" } })
     const token = lastConfirmationToken()
     await confirmNewsletterSubscription({ data: { token } })
@@ -507,6 +516,7 @@ describe("confirmNewsletterSubscription", () => {
     await expect(confirmNewsletterSubscription({ data: { token } })).resolves.toMatchObject({
       result: NEWSLETTER_TOKEN_RESULT.ALREADY_DONE,
     })
+    expect(recordNewsletterSubscriberConfirmedAudit).toHaveBeenCalledOnce()
   })
 
   it("reveals nothing for a token that matches no subscription", async () => {
@@ -539,6 +549,7 @@ describe("unsubscribeFromNewsletter", () => {
       result: NEWSLETTER_TOKEN_RESULT.OK,
     })
     expect(subscriberRow("anna@example.com")?.status).toBe(NEWSLETTER_STATUS.UNSUBSCRIBED)
+    expect(recordNewsletterSubscriberUnsubscribedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com")
   })
 
   it("works straight from a pending subscription, without confirming first", async () => {
@@ -564,6 +575,7 @@ describe("unsubscribeFromNewsletter", () => {
     await expect(unsubscribeFromNewsletter({ data: { token } })).resolves.toMatchObject({
       result: NEWSLETTER_TOKEN_RESULT.ALREADY_DONE,
     })
+    expect(recordNewsletterSubscriberUnsubscribedAudit).toHaveBeenCalledOnce()
   })
 
   it("reveals nothing for a token that matches no subscription", async () => {

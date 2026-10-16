@@ -3,6 +3,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
+import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getAdminProductsFilteredList } from "~/src/modules/product/product.accessors"
 import { buildAdminProductsFilterParams, loadAdminListAggregates } from "~/src/modules/product/product.admin-list.server"
 import { toAdminProductListItem } from "~/src/modules/product/product.utils"
@@ -16,6 +17,7 @@ export const exportAdminProducts = createServerFn({ method: "GET" })
   .handler(async ({ data: input }) => {
     const rows = await getAdminProductsFilteredList(buildAdminProductsFilterParams(input))
     const aggregates = await loadAdminListAggregates(rows)
+    recordListExportedAudit("products", rows.length, { metadata: { filters: input } })
 
     return rows.map((row) => toAdminProductListItem(row, aggregates.statsByProductId, aggregates.skuSummaryByProductId))
   })

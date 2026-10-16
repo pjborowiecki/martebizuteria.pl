@@ -5,6 +5,7 @@ import type * as zod from "zod"
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleAdminNewsletterSubscribersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
+import { recordNewsletterSubscriberConfirmedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getSubscriberByToken, updateSubscriberById } from "~/src/modules/newsletter/newsletter.accessors"
 import { NEWSLETTER_MUTATION_KEYS, NEWSLETTER_STATUS, NEWSLETTER_TOKEN_RESULT } from "~/src/modules/newsletter/newsletter.constants"
 import { type Newsletter } from "~/src/modules/newsletter/newsletter.types"
@@ -28,6 +29,7 @@ export const confirmNewsletterSubscription = createServerFn({ method: "POST" })
       status: NEWSLETTER_STATUS.CONFIRMED,
       updatedAt: new Date(),
     })
+    recordNewsletterSubscriberConfirmedAudit(subscriber.email)
     scheduleAdminNewsletterSubscribersInvalidation()
 
     return { email: subscriber.email, result: NEWSLETTER_TOKEN_RESULT.OK }

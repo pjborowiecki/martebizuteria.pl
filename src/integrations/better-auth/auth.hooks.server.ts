@@ -15,6 +15,7 @@ import { isEmailSenderUnavailable } from "~/src/integrations/resend/resend.avail
 
 import { sendPasswordChangedEmail } from "~/src/modules/account/use-cases/send-password-changed-email.server"
 import {
+  recordAuthEmailVerifiedAudit,
   recordAuthPasswordResetAudit,
   recordCustomerDeletedAudit,
   recordCustomerRegisteredAudit,
@@ -82,7 +83,8 @@ export const handlePasswordReset = async ({ user }: { readonly user: User }, req
   await Promise.resolve()
 }
 
-export const handleEmailVerified = async (user: User): Promise<void> => {
+export const handleEmailVerified = async (user: User, request: Request | undefined): Promise<void> => {
+  recordAuthEmailVerifiedAudit(resolveAuthAuditActor(user), { ip: auditRequestIp(request?.headers) })
   await Promise.all([claimGuestOrdersForUser({ email: user.email, userId: user.id }), linkSubscriberToUser(user.email, user.id)])
 }
 

@@ -4,6 +4,7 @@ const collaborators = vi.hoisted(() => ({
   aggregates: vi.fn(),
   filterParams: vi.fn(),
   list: vi.fn(),
+  recordListExportedAudit: vi.fn<(list: string, rowCount: number, options: { metadata: object }) => void>(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: vi.fn() }))
@@ -12,6 +13,7 @@ vi.mock("~/src/modules/product/product.admin-list.server", () => ({
   buildAdminProductsFilterParams: collaborators.filterParams,
   loadAdminListAggregates: collaborators.aggregates,
 }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: collaborators.recordListExportedAudit }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const state: { validate: ((input: unknown) => unknown) | undefined } = { validate: undefined }
@@ -130,6 +132,16 @@ describe("exportAdminProducts rows", () => {
     const result = await exportAdminProducts({ data: {} })
 
     expect(result[0]?.titles).toStrictEqual({ "en-US": "", "pl-PL": "Bransoletka Aurora" })
+  })
+
+  it("records in the audit log how many products were exported and with which filters", async () => {
+    collaborators.list.mockResolvedValue([productRow(), productRow({ handle: "kolczyki-luna", id: "product-2" })])
+
+    await exportAdminProducts({ data: { search: "aurora" } })
+
+    expect(collaborators.recordListExportedAudit).toHaveBeenCalledExactlyOnceWith("products", 2, {
+      metadata: { filters: { search: "aurora" } },
+    })
   })
 
   it("keeps the order the accessor returned the rows in", async () => {

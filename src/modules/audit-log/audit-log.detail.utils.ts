@@ -105,6 +105,14 @@ const describeRecipientCount = (source: AuditLogDetailSource): AuditLog["detail"
     : { kind: "message", message: "recipientCount", values: { count: metadata.recipientCount } }
 }
 
+const describeClaimedOrderCount = (source: AuditLogDetailSource): AuditLog["detail"] | undefined => {
+  const metadata = auditLogZodSchemas.ordersClaimedMetadata.safeParse(source.metadata).data
+
+  return metadata === undefined
+    ? describeText(source)
+    : { kind: "message", message: "claimedOrderCount", values: { count: metadata.orderCount } }
+}
+
 const describeStripeCustomerKept = ({ detail }: AuditLogDetailSource): AuditLog["detail"] | undefined => {
   if (detail === null) {
     return undefined
@@ -175,6 +183,7 @@ const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetai
   [AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED]: describeRole,
   [AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED]: describeCartItemCount,
   [AUDIT_LOG_ACTION.CUSTOMER_DELETION_FAILED]: describeStripeCustomerKept,
+  [AUDIT_LOG_ACTION.CUSTOMER_ORDERS_CLAIMED]: describeClaimedOrderCount,
   [AUDIT_LOG_ACTION.DISCOUNT_REDEEMED]: describeRedeemedAmount,
   [AUDIT_LOG_ACTION.EMAIL_DEFERRED]: describeEmail,
   [AUDIT_LOG_ACTION.EMAIL_FAILED]: describeEmail,

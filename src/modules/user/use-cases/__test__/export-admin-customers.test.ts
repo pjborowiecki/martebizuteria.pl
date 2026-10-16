@@ -4,10 +4,14 @@ import { type User } from "~/src/modules/user/user.types"
 
 const validated = vi.hoisted((): { parse?: (input: unknown) => unknown } => ({}))
 
-const access = vi.hoisted(() => ({ filteredList: vi.fn() }))
+const access = vi.hoisted(() => ({
+  filteredList: vi.fn(),
+  recordListExportedAudit: vi.fn<(list: string, rowCount: number, options: { metadata: object }) => void>(),
+}))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getAdminCustomersFilteredList: access.filteredList }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: access.recordListExportedAudit }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -116,6 +120,12 @@ describe("exportAdminCustomers filters", () => {
 })
 
 describe("exportAdminCustomers rows", () => {
+  it("records in the audit log how many customers were exported and with which filters", async () => {
+    await exportRows({ role: "customer" })
+
+    expect(access.recordListExportedAudit).toHaveBeenCalledExactlyOnceWith("customers", 1, { metadata: { filters: { role: "customer" } } })
+  })
+
   it("starts a customer with no orders at zero", async () => {
     const rows = await exportRows()
 

@@ -7,6 +7,7 @@ import {
   recordEmailResendRequestedAudit,
   recordEmailSentAudit,
   recordNewsletterSentAudit,
+  recordNewsletterSubscriberConfirmedAudit,
   recordNewsletterSubscriberErasedAudit,
   recordNewsletterSubscriberUnsubscribedAudit,
   recordOrderEmailOutcome,
@@ -165,8 +166,14 @@ describe("recordNewsletterSentAudit", () => {
 describe("newsletter subscriber recorders", () => {
   it.each([
     {
+      action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_CONFIRMED,
+      event: "a confirmed subscription",
+      recordEvent: recordNewsletterSubscriberConfirmedAudit,
+      severity: "success",
+    },
+    {
       action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_UNSUBSCRIBED,
-      event: "an unsubscribe on someone's behalf",
+      event: "an unsubscribe",
       recordEvent: recordNewsletterSubscriberUnsubscribedAudit,
       severity: "info",
     },
@@ -176,7 +183,7 @@ describe("newsletter subscriber recorders", () => {
       recordEvent: recordNewsletterSubscriberErasedAudit,
       severity: "warning",
     },
-  ] as const)("files $event under email against the admin, keyed by the address", ({ action, recordEvent, severity }) => {
+  ] as const)("files $event under email against whoever made the request, keyed by the address", ({ action, recordEvent, severity }) => {
     recordEvent("anna@example.com")
 
     expect(record.scheduleSystemAuditLog).not.toHaveBeenCalled()

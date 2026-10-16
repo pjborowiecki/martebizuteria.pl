@@ -238,6 +238,15 @@ export const recordNewsletterSubscriberUnsubscribedAudit = (email: string, optio
   })
 }
 
+export const recordNewsletterSubscriberConfirmedAudit = (email: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_CONFIRMED,
+    category: "email",
+    severity: "success",
+    ...withResourceId(email, options),
+  })
+}
+
 export const recordNewsletterSubscriberErasedAudit = (email: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_ERASED,
@@ -340,6 +349,35 @@ export const recordCustomerUpdatedAudit = (email: string, options?: AuditEventOp
   })
 }
 
+export const recordCustomerOrdersClaimedAudit = (email: string, options?: AuditEventOptions): void => {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.CUSTOMER_ORDERS_CLAIMED,
+    category: "customers",
+    severity: "info",
+    ...withResourceId(email, options),
+  })
+}
+
+const LIST_EXPORT_AUDIT_EVENTS = {
+  customers: { action: AUDIT_LOG_ACTION.CUSTOMER_LIST_EXPORTED, category: "customers" },
+  newsletterSubscribers: { action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_LIST_EXPORTED, category: "email" },
+  orders: { action: AUDIT_LOG_ACTION.ORDER_LIST_EXPORTED, category: "orders" },
+  products: { action: AUDIT_LOG_ACTION.PRODUCT_LIST_EXPORTED, category: "catalog" },
+} as const satisfies Record<string, Pick<AccountAuditEvent, "action" | "category">>
+
+export const recordListExportedAudit = (
+  list: keyof typeof LIST_EXPORT_AUDIT_EVENTS,
+  rowCount: number,
+  options?: Pick<AuditEventOptions, "metadata">,
+): void => {
+  scheduleAuditLogFromRequest({
+    ...LIST_EXPORT_AUDIT_EVENTS[list],
+    metadata: options?.metadata,
+    severity: "info",
+    target: String(rowCount),
+  })
+}
+
 export const recordCustomerDeletedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
   scheduleAccountAudit({ action: AUDIT_LOG_ACTION.CUSTOMER_DELETED, category: "customers", severity: "warning" }, account, options)
 }
@@ -354,6 +392,10 @@ export const recordAuthPasswordResetAudit = (account: AuditLogActorInput, option
 
 export const recordAuthEmailChangedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
   scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED, category: "auth", severity: "warning" }, account, options)
+}
+
+export const recordAuthEmailVerifiedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
+  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_EMAIL_VERIFIED, category: "auth", severity: "success" }, account, options)
 }
 
 export const recordAuthTwoFactorEnabledAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {

@@ -249,7 +249,8 @@ describe("eraseNewsletterSubscriber", () => {
     expect(doubles.scheduleRealtimeInvalidation.mock.calls).toStrictEqual([[SUBSCRIBERS_REFRESH], [AUDIT_LOG_REFRESH]])
   })
 
-  it("deletes the audit entries about the address's newsletter emails and unsubscribing, and keeps every other entry", async () => {
+  it("deletes the audit entries about the address's newsletter emails, consent and unsubscribing, and keeps every other entry", async () => {
+    seedAuditEntry({ action: "newsletter.subscriber_confirmed", id: "anna-confirmed", resourceId: "anna@example.com" })
     seedAuditEntry({ action: "newsletter.subscriber_unsubscribed", id: "anna-unsubscribed", resourceId: "anna@example.com" })
     seedAuditEntry({
       action: "email.failed",
@@ -278,6 +279,7 @@ describe("eraseNewsletterSubscriber", () => {
     seedAuditEntry({ action: "email.failed", id: "anna-failed-without-kind", resourceId: "anna@example.com" })
     seedAuditEntry({ action: "newsletter.subscriber_erased", id: "anna-erased-before", resourceId: "anna@example.com" })
     seedAuditEntry({ action: "customer.registered", id: "anna-registered", resourceId: "anna@example.com" })
+    seedAuditEntry({ action: "newsletter.subscriber_confirmed", id: "ben-confirmed", resourceId: "ben@example.com" })
     seedAuditEntry({ action: "newsletter.subscriber_unsubscribed", id: "ben-unsubscribed", resourceId: "ben@example.com" })
     seedAuditEntry({
       action: "email.failed",
@@ -294,6 +296,7 @@ describe("eraseNewsletterSubscriber", () => {
       "anna-registered",
       "anna-verification-failed",
       "ben-confirmation-failed",
+      "ben-confirmed",
       "ben-unsubscribed",
     ])
   })

@@ -32,5 +32,6 @@ export const auditLogZodSchemas = {
     idempotencyKey: zod.string().optional(),
   }),
   newsletterSentMetadata: zod.object({ recipientCount: count }),
+  ordersClaimedMetadata: zod.object({ orderCount: count }),
   variantSnapshots: zod.array(zod.object({ price: zod.number(), quantity: zod.number(), sku: zod.string() })),
 }

@@ -29,6 +29,7 @@ const { sqlite } = await vi.hoisted(async () => {
 
 const audit = vi.hoisted(() => ({
   recordAuthEmailChangedAudit: vi.fn(),
+  recordAuthEmailVerifiedAudit: vi.fn(),
   recordAuthLoginAudit: vi.fn(),
   recordAuthPasswordChangedAudit: vi.fn(),
   recordAuthPasswordResetAudit: vi.fn(),
@@ -239,7 +240,7 @@ describe("two-factor authentication", () => {
 })
 
 describe("a change of e-mail address", () => {
-  it("is recorded with the old and new address once the link to the new address confirms it", async () => {
+  it("is recorded with the old and new address, and the new address as verified, once the link to the new address confirms it", async () => {
     const { browser, userId } = await signedIn("before@marte.test", "198.51.100.69")
 
     await browser.follow(await emailChangeLink("before@marte.test", "after@marte.test", "change-email-verification"))
@@ -248,6 +249,7 @@ describe("a change of e-mail address", () => {
       detail: "before@marte.test → after@marte.test",
       ip: "198.51.100.69",
     })
+    expect(audit.recordAuthEmailVerifiedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${userId}`, { ip: "198.51.100.69" })
   })
 
   it("is recorded when the link is opened on a device that is not signed in", async () => {
@@ -269,6 +271,7 @@ describe("a change of e-mail address", () => {
     await browser.follow(await emailChangeLink("confirm-old@marte.test", "confirm-new@marte.test", "change-email-confirmation"))
 
     expect(audit.recordAuthEmailChangedAudit).not.toHaveBeenCalled()
+    expect(audit.recordAuthEmailVerifiedAudit).not.toHaveBeenCalled()
   })
 
   it("is not recorded when a new account confirms its address", async () => {

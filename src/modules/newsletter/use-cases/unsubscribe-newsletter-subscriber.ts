@@ -5,7 +5,6 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordNewsletterSubscriberUnsubscribedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getSubscriberById } from "~/src/modules/newsletter/newsletter.accessors"
 import { NEWSLETTER_ERROR_CODES, NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter/newsletter.constants"
 import { unsubscribeSubscriber } from "~/src/modules/newsletter/newsletter.unsubscribe.server"
@@ -20,12 +19,7 @@ export const unsubscribeNewsletterSubscriber = createServerFn({ method: "POST" }
       throw new AppError(ERROR_CODES.NOT_FOUND, NEWSLETTER_ERROR_CODES.SUBSCRIBER_NOT_FOUND)
     }
 
-    const unsubscribed = await unsubscribeSubscriber(subscriber)
-    if (unsubscribed) {
-      recordNewsletterSubscriberUnsubscribedAudit(subscriber.email)
-    }
-
-    return { unsubscribed }
+    return { unsubscribed: await unsubscribeSubscriber(subscriber) }
   })
 
 export const unsubscribeNewsletterSubscriberMutation = mutationOptions({

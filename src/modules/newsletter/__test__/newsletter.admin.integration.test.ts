@@ -8,7 +8,10 @@ const { sqlite } = await vi.hoisted(async () => {
   return { sqlite: new DatabaseSync(":memory:") }
 })
 
-const guards = vi.hoisted(() => ({ permissions: [] as unknown[] }))
+const guards = vi.hoisted(() => ({
+  permissions: [] as unknown[],
+  recordListExportedAudit: vi.fn<(list: string, rowCount: number, options: { metadata: object }) => void>(),
+}))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   authorized: (permission: unknown) => {
@@ -17,6 +20,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
     return {}
   },
 }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: guards.recordListExportedAudit }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const state: { validate: (input: unknown) => unknown } = { validate: (input) => input }
@@ -296,6 +300,9 @@ describe("exportAdminNewsletterSubscribers", () => {
     const subscribers = await exportAdminNewsletterSubscribers({ data: { search: " BE ", status: NEWSLETTER_STATUS.PENDING } })
 
     expect(subscribers.map((subscriber) => subscriber.email)).toStrictEqual(["ben@example.com"])
+    expect(guards.recordListExportedAudit).toHaveBeenLastCalledWith("newsletterSubscribers", 1, {
+      metadata: { filters: { search: " BE ", status: NEWSLETTER_STATUS.PENDING } },
+    })
   })
 })
 

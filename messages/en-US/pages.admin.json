@@ -429,7 +429,14 @@
       "customer_cart_abandoned": "Cart abandoned",
       "customer_cart_item_added": "Added to cart",
       "customer_deletion_failed": "Account deletion failed",
-      "customer_page_viewed": "Page viewed"
+      "customer_page_viewed": "Page viewed",
+      "auth_email_verified": "Email verified",
+      "customer_orders_claimed": "Guest orders linked",
+      "newsletter_subscriber_confirmed": "Subscription confirmed",
+      "customer_list_exported": "Customer list exported",
+      "order_list_exported": "Order list exported",
+      "product_list_exported": "Product list exported",
+      "newsletter_subscriber_list_exported": "Subscriber list exported"
     },
     "details": {
       "emails": {
@@ -467,6 +474,7 @@
       },
       "messages": {
         "cartItemCount": "{count, plural, one {# item in cart} other {# items in cart}}",
+        "claimedOrderCount": "{count, plural, one {# order} other {# orders}}",
         "recipientCount": "{count, plural, one {# confirmed subscriber} other {# confirmed subscribers}}",
         "stripeCustomerKept": "Stripe customer not deleted, account kept — {error}"
       },

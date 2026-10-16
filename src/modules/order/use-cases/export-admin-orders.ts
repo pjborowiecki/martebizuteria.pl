@@ -4,6 +4,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
+import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getAdminOrderDestinationRows, getAdminOrdersExport as orderGetAdminOrdersExport } from "~/src/modules/order/order.accessors"
 import { describeOrderDestination } from "~/src/modules/order/order.detail.utils"
 import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
@@ -34,6 +35,7 @@ export const exportAdminOrders = createServerFn({
     const rows = await orderGetAdminOrdersExport(params)
     const destinationRows = await getAdminOrderDestinationRows(rows.map((row) => row.id))
     const destinations = new Map(destinationRows.map((row) => [row.id, describeOrderDestination(row)]))
+    recordListExportedAudit("orders", rows.length, { metadata: { filters: input } })
 
     return rows.map((row) =>
       Object.assign(toAdminOrderListItem(row), {
