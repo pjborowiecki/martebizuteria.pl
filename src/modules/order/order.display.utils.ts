@@ -3,6 +3,7 @@ import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.con
 import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
+import { formatCountryName } from "~/src/modules/_core/utils/country-name"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import { isInpostDelivery } from "~/src/modules/order/order.admin-actions.utils"
 import {
@@ -121,14 +122,6 @@ export const formatAdminOrderDate = (createdAt: Date | string, { formatLocale, t
     timeZone,
     year: "numeric",
   })
-}
-
-const formatCountryName = (countryCode: string, locale: string): string => {
-  try {
-    return new Intl.DisplayNames([locale], { fallback: "none", type: "region" }).of(countryCode) ?? countryCode
-  } catch {
-    return countryCode
-  }
 }
 
 const isFilledAddressPart = (part: string | null | undefined): part is string => part !== null && part !== undefined && part.trim() !== ""

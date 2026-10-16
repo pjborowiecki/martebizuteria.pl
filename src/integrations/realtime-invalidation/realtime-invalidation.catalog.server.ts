@@ -106,3 +106,10 @@ export const scheduleSalesStatusInvalidation = (): void => {
     storefront: [STORE_SETTING_QUERY_KEYS.SALES],
   })
 }
+
+export const scheduleSellerDetailsInvalidation = (): void => {
+  scheduleRealtimeInvalidation({
+    admin: [STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS],
+    storefront: [STORE_SETTING_QUERY_KEYS.SELLER_DETAILS],
+  })
+}
