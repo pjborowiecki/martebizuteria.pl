@@ -23,6 +23,7 @@ export const AuditTableContent = (): JSX.Element => {
         <DataGridShell>
           <Toolbar actions={toolbarActions}>
             <AuditRefreshAction />
+            <Export />
             <AuditCategoryFilter />
             <AuditSeverityFilter />
             <AuditDateFilter />
@@ -35,4 +36,4 @@ export const AuditTableContent = (): JSX.Element => {
   )
 }
 
-const { Body, Pagination, Provider, Toolbar } = auditDataGrid
+const { Body, Export, Pagination, Provider, Toolbar } = auditDataGrid

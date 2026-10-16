@@ -10,11 +10,17 @@ import { ADMIN_AUDIT_LOG_PAGE_SIZE, AUDIT_LOG_TABLE_COLUMN_ID } from "~/src/modu
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { listAuditLogsQuery } from "~/src/modules/audit-log/use-cases/list-audit-logs"
 
-const { listFn } = vi.hoisted(() => ({ listFn: vi.fn<(input: unknown) => Promise<unknown>>() }))
+const { exportFn, listFn } = vi.hoisted(() => ({
+  exportFn: vi.fn<(input: unknown) => Promise<unknown>>(),
+  listFn: vi.fn<(input: unknown) => Promise<unknown>>(),
+}))
 
 vi.mock("~/src/modules/audit-log/use-cases/list-audit-logs", () => ({
   listAuditLogs: ({ data }: Readonly<{ data: unknown }>) => listFn(data),
   listAuditLogsQuery: (input: unknown) => ({ queryKey: ["admin", "audit-log", "page", input] }),
+}))
+vi.mock("~/src/modules/audit-log/use-cases/export-audit-logs", () => ({
+  exportAuditLogs: ({ data }: Readonly<{ data: unknown }>) => exportFn(data),
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/audit/components/audit-columns", () => ({
   useAuditColumns: () => [
@@ -418,6 +424,40 @@ describe("useAuditDataGrid search", () => {
 
     await waitFor(() => {
       expect(result.current.table.atoms.pagination.get().pageIndex).toBe(0)
+    })
+  })
+})
+
+describe("useAuditDataGrid export", () => {
+  it("exports the whole audit log under its own title while no filter is set", async () => {
+    const { result } = renderGrid()
+
+    await waitFor(() => {
+      expect(listFn).toHaveBeenCalled()
+    })
+
+    expect(result.current.exportSource).toMatchObject({ filters: [], list: "audit-log", title: "Audit Log" })
+  })
+
+  it("loads the rows to export with the filters and the search of the list, without its paging", async () => {
+    exportFn.mockResolvedValue({ hasMore: false, items: [auditRow()], until: 1_790_000_000_000 })
+    const { result } = renderGrid()
+    act(() => {
+      result.current.applyAuditFilter({ category: "orders", severity: "error" })
+      result.current.table.setGlobalFilter("refund")
+    })
+    await waitFor(() => {
+      expect(lastRequest()).toMatchObject({ search: "refund" })
+    })
+
+    await expect(result.current.exportSource?.loadRows?.()).resolves.toStrictEqual([auditRow()])
+    expect(exportFn).toHaveBeenCalledWith({
+      category: "orders",
+      createdAt: undefined,
+      page: 1,
+      search: "refund",
+      severity: "error",
+      until: undefined,
     })
   })
 })

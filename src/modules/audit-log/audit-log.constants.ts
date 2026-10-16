@@ -26,6 +26,7 @@ export const AUDIT_LOG_ACTION = {
   ATTRIBUTE_DELETED: "attribute.deleted",
   ATTRIBUTE_UPDATED: "attribute.updated",
   AUDIT_LOG_DELETED: "audit_log.deleted",
+  AUDIT_LOG_EXPORTED: "audit_log.exported",
   AUTH_EMAIL_CHANGED: "auth.email_changed",
   AUTH_EMAIL_VERIFIED: "auth.email_verified",
   AUTH_LOGIN: "auth.login",

@@ -17,6 +17,7 @@ beforeEach(() => {
 
 describe("recordListExportedAudit", () => {
   it.each([
+    { action: AUDIT_LOG_ACTION.AUDIT_LOG_EXPORTED, category: "settings", list: "auditLogs" },
     { action: AUDIT_LOG_ACTION.CUSTOMER_LIST_EXPORTED, category: "customers", list: "customers" },
     { action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_LIST_EXPORTED, category: "email", list: "newsletterSubscribers" },
     { action: AUDIT_LOG_ACTION.ORDER_LIST_EXPORTED, category: "orders", list: "orders" },

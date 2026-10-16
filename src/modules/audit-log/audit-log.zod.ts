@@ -8,15 +8,22 @@ const emailKind = zod.enum(AUDIT_EMAIL_KIND)
 
 const count = zod.number().int().nonnegative()
 
+const adminAuditLogsFilters = zod.object({
+  category: zod.enum(AUDIT_LOG_CATEGORIES).optional(),
+  createdAt: dateTimeColumnFilterField.optional(),
+  search: zod.string().optional(),
+  severity: zod.enum(AUDIT_LOG_SEVERITIES).optional(),
+})
+
 export const auditLogZodSchemas = {
   adminAuditLogStatsInput: zod.object({ today: zod.iso.date() }),
-  adminAuditLogsPageInput: zod.object({
-    category: zod.enum(AUDIT_LOG_CATEGORIES).optional(),
-    createdAt: dateTimeColumnFilterField.optional(),
+  adminAuditLogsExportInput: adminAuditLogsFilters.extend({
+    page: pageField.optional(),
+    until: zod.number().int().positive().optional(),
+  }),
+  adminAuditLogsPageInput: adminAuditLogsFilters.extend({
     page: pageField.optional(),
     pageSize: pageSizeField.optional(),
-    search: zod.string().optional(),
-    severity: zod.enum(AUDIT_LOG_SEVERITIES).optional(),
   }),
   cartAbandonedMetadata: zod.object({ itemCount: count }),
   changeMetadata: zod.object({

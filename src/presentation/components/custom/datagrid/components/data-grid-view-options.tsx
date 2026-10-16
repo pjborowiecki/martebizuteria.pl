@@ -17,13 +17,11 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/presentation/components/shadcn/tooltip"
 
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
+import { getDataGridColumnLabel } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 
 interface DataGridViewOptionsProps<TData extends RowData> {
   readonly table: Table<DataGridFeatures, TData>
 }
-
-const columnLabel = <TData extends RowData>(column: Column<DataGridFeatures, TData>): string =>
-  typeof column.columnDef.header === "string" ? column.columnDef.header : column.id
 
 const ColumnToggleItem = <TData extends RowData>({ column }: Readonly<{ column: Column<DataGridFeatures, TData> }>): JSX.Element => {
   const isVisible = column.getIsVisible()
@@ -40,7 +38,7 @@ const ColumnToggleItem = <TData extends RowData>({ column }: Readonly<{ column: 
 
   return (
     <DropdownMenuCheckboxItem checked={isVisible} onCheckedChange={handleChange}>
-      {columnLabel(column)}
+      {getDataGridColumnLabel(column)}
     </DropdownMenuCheckboxItem>
   )
 }

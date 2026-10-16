@@ -32,6 +32,7 @@ describe("collectionsDataGrid", () => {
   it("exposes the grid slots the collections page composes", () => {
     expect(Object.keys(collectionsDataGrid).toSorted()).toStrictEqual([
       "Body",
+      "Export",
       "Pagination",
       "Provider",
       "Toolbar",

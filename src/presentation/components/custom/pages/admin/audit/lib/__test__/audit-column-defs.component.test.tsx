@@ -42,7 +42,7 @@ const LONG_IPV6 = "2a0b:b01:4b0:7500:1234:5678:9abc:def0"
 
 const ColumnsProbe = ({ row }: Readonly<{ row: AuditRow }>): JSX.Element => {
   const t = useTranslations("pages.admin")
-  const columns = useMemo(() => buildAuditColumns({ selectionLabels: SELECTION_LABELS, t }), [t])
+  const columns = useMemo(() => buildAuditColumns({ formatLocale: "pl-PL", selectionLabels: SELECTION_LABELS, t }), [t])
   const table = useTable<DataGridFeatures, AuditRow>({
     columns,
     data: [row],
@@ -82,7 +82,7 @@ const renderDefinitions = () => {
   const definitions: { current?: ReturnType<typeof buildAuditColumns> } = {}
   const Probe = (): null => {
     const t = useTranslations("pages.admin")
-    definitions.current = buildAuditColumns({ selectionLabels: SELECTION_LABELS, t })
+    definitions.current = buildAuditColumns({ formatLocale: "pl-PL", selectionLabels: SELECTION_LABELS, t })
 
     return null
   }
@@ -307,5 +307,49 @@ describe("buildAuditColumns cells", () => {
     renderColumns()
 
     expect(screen.getByRole("checkbox", { name: "Select row" })).toBeInTheDocument()
+  })
+})
+
+const exportValueOf = (id: string, overrides: Partial<AuditRow> = {}): string | undefined =>
+  renderDefinitions().get(id)?.meta?.exportValue?.(auditRow(overrides))
+
+describe("buildAuditColumns export values", () => {
+  it.each([
+    [AUDIT_LOG_TABLE_COLUMN_ID.severity, "Success"],
+    [AUDIT_LOG_TABLE_COLUMN_ID.action, "Order placed"],
+    [AUDIT_LOG_TABLE_COLUMN_ID.target, "Order MB-1042 (order-1042)"],
+    [AUDIT_LOG_TABLE_COLUMN_ID.detail, "Order MB-1042 for 890,00 zl"],
+    [AUDIT_LOG_TABLE_COLUMN_ID.category, "Orders"],
+    [AUDIT_LOG_TABLE_COLUMN_ID.actor, "Anna Kowalska"],
+    [AUDIT_LOG_TABLE_COLUMN_ID.ip, "192.0.2.10"],
+    [AUDIT_LOG_TABLE_COLUMN_ID.timestamp, "2026-02-03 08:15"],
+  ])("exports the %s column as the text its cell shows", (id, text) => {
+    expect(exportValueOf(id)).toBe(text)
+  })
+
+  it("exports the subject alone when it points at no record of its own", () => {
+    expect(exportValueOf(AUDIT_LOG_TABLE_COLUMN_ID.target, { resourceId: undefined })).toBe("Order MB-1042")
+  })
+
+  it("exports the stored action of an event the shop no longer names", () => {
+    expect(exportValueOf(AUDIT_LOG_TABLE_COLUMN_ID.action, { action: "customer.tier_changed" })).toBe("customer.tier_changed")
+  })
+
+  it("formats amounts in the detail with the admin's format locale", () => {
+    const detail: AuditRow["detail"] = { kind: "values", values: [{ field: "amount", value: 89_000 }] }
+
+    expect(exportValueOf(AUDIT_LOG_TABLE_COLUMN_ID.detail, { detail })).toMatch(/^890,00\szł$/u)
+  })
+
+  it("leaves a missing detail and a missing IP address empty", () => {
+    expect(exportValueOf(AUDIT_LOG_TABLE_COLUMN_ID.detail, { detail: undefined })).toBeUndefined()
+    expect(exportValueOf(AUDIT_LOG_TABLE_COLUMN_ID.ip, { ip: undefined })).toBeUndefined()
+  })
+
+  it("never exports the selection or the row actions column", () => {
+    const byId = renderDefinitions()
+
+    expect(byId.get("select")?.meta?.exportValue).toBeUndefined()
+    expect(byId.get(AUDIT_LOG_TABLE_COLUMN_ID.actions)?.meta?.exportValue).toBeUndefined()
   })
 })

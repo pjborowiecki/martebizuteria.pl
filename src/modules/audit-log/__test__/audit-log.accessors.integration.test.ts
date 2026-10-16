@@ -177,3 +177,19 @@ describe("the today card on D1 just after midnight in Poland", () => {
     await expect(listIds({ createdAt: buildAuditLogDayFilter(today), severity: "warning" })).resolves.toStrictEqual(["log-15-oct-00-10"])
   })
 })
+
+describe("reading the audit log up to a moment on D1", () => {
+  it("leaves out entries recorded after the moment, so an export read in pages is not shifted by new entries", async () => {
+    await seedAroundMidnightInPoland()
+
+    const { rows, total } = await getAdminAuditLogsPage({
+      limit: LIST_PAGE_SIZE_MAX,
+      offset: 0,
+      timeZone: "Europe/Warsaw",
+      until: new Date("2026-10-14T22:10:00.000Z"),
+    })
+
+    expect(rows.map(({ id }) => id)).toStrictEqual(["log-15-oct-00-10", "log-14-oct-23-35", "log-14-oct-02-00"])
+    expect(total).toBe(3)
+  })
+})

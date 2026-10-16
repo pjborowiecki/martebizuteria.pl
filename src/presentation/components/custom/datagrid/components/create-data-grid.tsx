@@ -2,6 +2,7 @@ import { type JSX, type ReactNode, createContext, useContext } from "react"
 
 import { type RowData } from "@tanstack/react-table"
 
+import { DataGridExport } from "~/src/presentation/components/custom/datagrid/components/data-grid-export"
 import { DataGridPagination } from "~/src/presentation/components/custom/datagrid/components/data-grid-pagination"
 import { DataGridTable } from "~/src/presentation/components/custom/datagrid/components/data-grid-table"
 import { DataGridToolbar } from "~/src/presentation/components/custom/datagrid/components/data-grid-toolbar"
@@ -14,6 +15,7 @@ export interface CreateDataGridOptions {
 export interface DataGrid<TData extends RowData> {
   readonly persistenceKey: string
   readonly Body: () => JSX.Element
+  readonly Export: () => JSX.Element
   readonly Pagination: () => JSX.Element
   readonly Provider: (props: Readonly<{ children: ReactNode; value: DataGridContextValue<TData> }>) => JSX.Element
   readonly Toolbar: (props: Readonly<{ actions?: ReactNode; children?: ReactNode; filters?: ReactNode }>) => JSX.Element
@@ -81,5 +83,14 @@ export const createDataGrid = <TData extends RowData>({ persistenceKey }: Create
     return <DataGridPagination table={table} />
   }
 
-  return { Body, Pagination, Provider, Toolbar, persistenceKey, useDataGrid }
+  const Export = (): JSX.Element => {
+    const { exportSource, table } = useDataGrid()
+    if (exportSource === undefined) {
+      throw new Error("<DataGrid.Export> needs the exportSource of the grid's context value")
+    }
+
+    return <DataGridExport source={exportSource} table={table} />
+  }
+
+  return { Body, Export, Pagination, Provider, Toolbar, persistenceKey, useDataGrid }
 }

@@ -161,6 +161,12 @@ export const omitNonResizableColumnSizing = (sizing: ColumnSizingState, nonResiz
   return next
 }
 
+export const getDataGridSearch = <TData extends RowData>(table: Table<DataGridFeatures, TData>): string =>
+  String(table.atoms.globalFilter.get() ?? "").trim()
+
+export const getDataGridColumnLabel = <TData extends RowData>(column: Column<DataGridFeatures, TData>): string =>
+  typeof column.columnDef.header === "string" ? column.columnDef.header : column.id
+
 export const getDataGridLayoutHeaders = <TData extends RowData>(
   table: Table<DataGridFeatures, TData>,
 ): Header<DataGridFeatures, TData>[] => {

@@ -15,5 +15,29 @@
     "previous": "Poprzednia strona",
     "next": "Następna strona",
     "last": "Ostatnia strona"
+  },
+  "export": {
+    "label": "Eksportuj",
+    "menuLabel": "Eksportuj jako",
+    "failed": "Nie udało się wyeksportować tabeli",
+    "formats": {
+      "csv": "Do Excela, Numbers i Arkuszy Google",
+      "json": "Dane strukturalne dla programów i asystentów AI",
+      "xml": "Dla systemów, które importują XML",
+      "txt": "Zwykły tekst do przeczytania lub wklejenia do czatu z AI"
+    },
+    "text": {
+      "exportedAt": "Wyeksportowano",
+      "rowCount": "Liczba wierszy",
+      "filters": "Filtry",
+      "noFilters": "brak"
+    },
+    "filters": {
+      "search": "Wyszukiwanie",
+      "dateOn": "w dniu {date}",
+      "dateBefore": "przed {date}",
+      "dateAfter": "po {date}",
+      "dateBetween": "od {start} do {end}"
+    }
   }
 }

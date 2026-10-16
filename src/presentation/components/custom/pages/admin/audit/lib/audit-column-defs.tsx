@@ -9,7 +9,7 @@ import {
   SEVERITY_BADGE_COLORS,
 } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
-import { toAuditActionMessageKey } from "~/src/modules/audit-log/audit-log.utils"
+import { formatAdminAuditTarget, toAuditActionMessageKey } from "~/src/modules/audit-log/audit-log.utils"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 
@@ -21,6 +21,7 @@ import { AuditDetailCell } from "~/src/presentation/components/custom/pages/admi
 import { AuditTableCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-table-cell"
 import { AuditTargetCell } from "~/src/presentation/components/custom/pages/admin/audit/audit-table/audit-target-cell"
 import { AuditRowActions } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-row-actions"
+import { formatAuditLogDetail } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-detail-format"
 import { CatalogTruncatedTextCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 
 const resolveAuditActionLabel = (t: BuildAuditColumnsOptions["t"], action: string): string => {
@@ -29,7 +30,7 @@ const resolveAuditActionLabel = (t: BuildAuditColumnsOptions["t"], action: strin
   return t.has(messageKey) ? t(messageKey) : action
 }
 
-export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptions) =>
+export const buildAuditColumns = ({ formatLocale, selectionLabels, t }: BuildAuditColumnsOptions) =>
   columnHelper.columns([
     selectionColumn(columnHelper, selectionLabels),
     columnHelper.accessor("severity", {
@@ -47,6 +48,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       header: t("audit.columns.status"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.severity,
       meta: {
+        exportValue: (row) => t(`audit.severity.${row.severity}`),
         skeletonVariant: "badge",
       },
       minSize: AUDIT_LOG_TABLE_COLUMN_SIZE.severity,
@@ -61,6 +63,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       header: t("audit.columns.event"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.action,
       meta: {
+        exportValue: (row) => resolveAuditActionLabel(t, row.action),
         skeletonVariant: "text",
       },
       size: AUDIT_LOG_TABLE_COLUMN_SIZE.action,
@@ -70,6 +73,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       header: t("audit.columns.target"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.target,
       meta: {
+        exportValue: (row) => formatAdminAuditTarget(row.target, row.resourceId),
         fillsRemainingWidth: true,
         skeletonVariant: "recordId",
       },
@@ -81,6 +85,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       header: t("audit.columns.detail"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.detail,
       meta: {
+        exportValue: (row) => (row.detail === undefined ? undefined : formatAuditLogDetail(row.detail, { locale: formatLocale, t })),
         skeletonVariant: "text",
       },
       size: AUDIT_LOG_TABLE_COLUMN_SIZE.detail,
@@ -96,6 +101,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       header: t("audit.columns.category"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.category,
       meta: {
+        exportValue: (row) => t(`audit.categories.${row.category}`),
         skeletonVariant: "badge",
       },
       minSize: AUDIT_LOG_TABLE_COLUMN_SIZE.category,
@@ -112,6 +118,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       header: t("audit.columns.actor"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.actor,
       meta: {
+        exportValue: (row) => row.actor.name,
         skeletonVariant: "text",
       },
       size: AUDIT_LOG_TABLE_COLUMN_SIZE.actor,
@@ -133,6 +140,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       header: t("audit.columns.ip"),
       id: AUDIT_LOG_TABLE_COLUMN_ID.ip,
       meta: {
+        exportValue: (row) => row.ip,
         skeletonVariant: "text",
       },
       size: AUDIT_LOG_TABLE_COLUMN_SIZE.ip,
@@ -147,6 +155,7 @@ export const buildAuditColumns = ({ selectionLabels, t }: BuildAuditColumnsOptio
       id: AUDIT_LOG_TABLE_COLUMN_ID.timestamp,
       maxSize: AUDIT_LOG_TABLE_COLUMN_SIZE.timestampMax,
       meta: {
+        exportValue: (row) => row.timestamp,
         skeletonVariant: "date",
       },
       minSize: AUDIT_LOG_TABLE_COLUMN_SIZE.timestamp,
@@ -173,6 +182,7 @@ const columnHelper = createColumnHelper<DataGridFeatures, AuditLog["adminListIte
 const IP_TEXT_CLASS = "font-mono text-[10px] text-muted-foreground/40"
 
 interface BuildAuditColumnsOptions {
+  readonly formatLocale: string
   readonly selectionLabels: {
     readonly all: string
     readonly row: string
