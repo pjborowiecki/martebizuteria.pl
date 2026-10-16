@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react"
 
 import { useQuery } from "@tanstack/react-query"
-import { useLocale } from "use-intl/react"
 
 import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 import { isAdminDashboardCustomChartRangeValid } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
@@ -19,14 +18,12 @@ export const useDashboardChartRange = (): {
   readonly isCustomLoading: boolean
   readonly selectPresetRange: (range: Exclude<DashboardChartRange, "custom">) => void
 } => {
-  const locale = useLocale()
   const { data: snapshot } = useAdminDashboardSnapshot()
   const [chartRange, setChartRange] = useState<DashboardChartRange>(DEFAULT_CHART_RANGE)
   const [customRange, setCustomRange] = useState<DashboardCustomChartRange | undefined>()
   const customChartQuery = useQuery({
     ...getDashboardChartRangeQuery({
       endDate: customRange?.endDate ?? "",
-      locale,
       startDate: customRange?.startDate ?? "",
     }),
     enabled:

@@ -1,8 +1,8 @@
 import { type ColumnFiltersState } from "@tanstack/react-table"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
+import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
 
-import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
 import { isDateColumnFilterValue, isNumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import {
@@ -222,14 +222,14 @@ export const resolveAdminCustomerTags = (row: User["select"], orderCount: number
 
 const mapAuditRowToTimelineEvent = (
   row: User["adminCustomerAuditTimelineRow"],
-  locale: string,
+  { formatLocale, timeZone }: DisplayPreferences,
 ):
   | (User["adminCustomerDetail"]["timeline"][number] & {
       readonly sortAt: number
     })
   | undefined => {
   const metadata = parseJsonRecord(row.metadata)
-  const date = formatShortDate(row.createdAt, locale)
+  const date = formatShortDate(row.createdAt, formatLocale, timeZone)
   const sortAt = row.createdAt.getTime()
 
   if (row.action === AUDIT_LOG_ACTION.AUTH_LOGIN) {
@@ -286,7 +286,7 @@ export const buildAdminCustomerTimeline = (input: User["adminCustomerTimelineInp
 
   const events: TimelineEvent[] = [
     {
-      date: formatShortDate(input.createdAt, input.locale),
+      date: formatShortDate(input.createdAt, input.preferences.formatLocale, input.preferences.timeZone),
       kind: "account_created",
       sortAt: input.createdAt.getTime(),
     },
@@ -294,16 +294,16 @@ export const buildAdminCustomerTimeline = (input: User["adminCustomerTimelineInp
 
   for (const orderRow of input.orders) {
     events.push({
-      date: formatShortDate(orderRow.createdAt, input.locale),
+      date: formatShortDate(orderRow.createdAt, input.preferences.formatLocale, input.preferences.timeZone),
       kind: "order_placed",
       orderNumber: orderRow.orderNumber,
       sortAt: orderRow.createdAt.getTime(),
-      total: formatPrice(orderRow.total, orderRow.currencyCode, input.locale),
+      total: formatPrice(orderRow.total, orderRow.currencyCode, input.preferences.formatLocale),
     })
   }
 
   for (const auditRow of input.auditEvents ?? []) {
-    const mapped = mapAuditRowToTimelineEvent(auditRow, input.locale)
+    const mapped = mapAuditRowToTimelineEvent(auditRow, input.preferences)
     if (mapped !== undefined) {
       events.push(mapped)
     }
@@ -317,14 +317,14 @@ export const buildAdminCustomerMonthlySpendingSeries = (
     amount: number | string | bigint
     monthKey: string
   }[],
-  locale: string,
+  { formatLocale, timeZone }: DisplayPreferences,
   periods: readonly CalendarPeriod[],
 ): User["adminCustomerDetail"]["monthlySpending"] => {
   const amountByMonthKey = new Map(rows.map(({ amount, monthKey }) => [monthKey, Number(amount)]))
 
   return periods.map(({ key, start }) => ({
     amount: amountByMonthKey.get(key) ?? 0,
-    month: start.toLocaleDateString(locale, { month: "short", timeZone: DEFAULT_TIMEZONE_CODE }),
+    month: start.toLocaleDateString(formatLocale, { month: "short", timeZone }),
   }))
 }
 

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vite-plus/test"
 
 import { DATE_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
 
-import { matchesDateColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
+import { matchesDateColumnFilterIn } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
 import { dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 
 interface CellRow {
@@ -18,7 +18,7 @@ const columnHelper = createColumnHelper<typeof features, CellRow>()
 
 const columns = columnHelper.columns([
   columnHelper.accessor("id", {}),
-  columnHelper.accessor("createdAt", { filterFn: matchesDateColumnFilter }),
+  columnHelper.accessor("createdAt", { filterFn: matchesDateColumnFilterIn("Europe/Warsaw") }),
 ])
 
 const ON_MARCH_5 = { date: "2024-03-05", operator: DATE_COLUMN_FILTER_OPERATOR.ON }
@@ -32,7 +32,7 @@ const keptIds = (rows: CellRow[]): string[] => {
 
 const IN_RANGE = new Date(2024, 2, 5, 12)
 
-describe("matchesDateColumnFilter cell values", () => {
+describe("matchesDateColumnFilterIn cell values", () => {
   it("keeps a row whose cell is a Date inside the selected day", () => {
     expect(keptIds([{ createdAt: IN_RANGE, id: "date" }])).toStrictEqual(["date"])
   })

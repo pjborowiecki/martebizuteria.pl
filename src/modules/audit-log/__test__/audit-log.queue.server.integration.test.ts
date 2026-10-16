@@ -109,7 +109,10 @@ describe("a paid session whose fulfilment fails on every Stripe delivery", () =>
         severity: "error",
       },
     ])
-    await expect(getAdminAuditLogStats(resolveAuditLogToday())).resolves.toMatchObject({ errorCount: 1, totalCount: 1 })
+    await expect(getAdminAuditLogStats(resolveAuditLogToday("Europe/Warsaw"), "Europe/Warsaw")).resolves.toMatchObject({
+      errorCount: 1,
+      totalCount: 1,
+    })
   })
 
   it("stores and acknowledges the other events delivered in the same batch as a repeated failure", async () => {
@@ -132,7 +135,7 @@ describe("a paid session whose fulfilment fails on every Stripe delivery", () =>
     await deliverQueuedEvents()
 
     expect(storedEntries().map(({ resource_id }) => resource_id)).toStrictEqual([FAILED_SESSION_ID, "cs_test_other"])
-    await expect(getAdminAuditLogStats(resolveAuditLogToday())).resolves.toMatchObject({ errorCount: 2 })
+    await expect(getAdminAuditLogStats(resolveAuditLogToday("Europe/Warsaw"), "Europe/Warsaw")).resolves.toMatchObject({ errorCount: 2 })
   })
 
   it("records the failure again when it recurs after the admin deleted the entry", async () => {

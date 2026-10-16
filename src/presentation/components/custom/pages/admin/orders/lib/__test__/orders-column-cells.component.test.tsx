@@ -57,7 +57,7 @@ const OrdersGrid = ({ rows }: Readonly<{ rows: OrderRow[] }>): ReactNode => {
   const t = useTranslations("pages.admin.orders")
   const tAdmin = useTranslations("pages.admin")
   const table = useTable<DataGridFeatures, OrderRow>({
-    columns: buildOrderColumns({ formatLocale: "en-US", t, tAdmin }),
+    columns: buildOrderColumns({ formatLocale: "en-US", t, tAdmin, timeZone: "Europe/Warsaw" }),
     data: rows,
     features: dataGridFeatures,
     getRowId: (row) => row.id,
@@ -87,7 +87,7 @@ describe("order column cells", () => {
   it("formats the order date for the active locale", () => {
     renderGrid()
 
-    expect(screen.getByText(formatAdminOrderDate(CREATED_AT, "en-US"))).toBeInTheDocument()
+    expect(screen.getByText(formatAdminOrderDate(CREATED_AT, { formatLocale: "en-US", timeZone: "Europe/Warsaw" }))).toBeInTheDocument()
   })
 
   it("shows the customer name, initials and email", () => {

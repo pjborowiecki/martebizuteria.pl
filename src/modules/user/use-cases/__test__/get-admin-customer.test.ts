@@ -2,8 +2,6 @@ import { QueryClient } from "@tanstack/react-query"
 import { isNotFound } from "@tanstack/react-router"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { I18N } from "~/src/integrations/use-intl/i18n.config"
-
 import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_QUERY_STALE_MS, USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 
@@ -22,6 +20,13 @@ const access = vi.hoisted(() => ({
   userById: vi.fn(),
 }))
 
+const viewer = vi.hoisted(() => ({
+  preferences: { formatLocale: "en-US", timeZone: "Europe/Warsaw" },
+}))
+
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
+  resolveRequestDisplayPreferences: () => Promise.resolve(viewer.preferences),
+}))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/user/user.accessors", () => ({
   getAdminCustomerOrderRowsQuery: access.adminOrderRows,
@@ -59,7 +64,7 @@ const UPDATED_AT = new Date("2024-11-02T12:00:00.000Z")
 
 const ORDER_AT = new Date("2025-06-10T08:00:00.000Z")
 
-const DATE_PARTS = { day: "numeric", month: "short", year: "numeric" } as const
+const DATE_PARTS = { day: "numeric", month: "short", timeZone: "Europe/Warsaw", year: "numeric" } as const
 
 const userRow = (overrides: Partial<User["select"]> = {}): User["select"] => ({
   banExpires: null,
@@ -144,16 +149,18 @@ describe("getAdminCustomer reads", () => {
     expect(result).not.toHaveProperty("orders")
   })
 
-  it("falls back to the store locale when the caller sends none", async () => {
+  it("still answers when the caller names no page language", async () => {
     const result = await getAdminCustomer({ data: { id: "customer-1" } })
 
-    expect(result?.joinDate).toBe(CREATED_AT.toLocaleDateString(I18N.DEFAULT_LOCALE, DATE_PARTS))
+    expect(result?.joinDate).toBe(CREATED_AT.toLocaleDateString("en-US", DATE_PARTS))
   })
 
-  it("formats the join date in the requested locale", async () => {
+  it("formats the join date in the viewer's format locale and time zone", async () => {
+    viewer.preferences = { formatLocale: "pl-PL", timeZone: "UTC" }
     const result = await detail()
+    viewer.preferences = { formatLocale: "en-US", timeZone: "Europe/Warsaw" }
 
-    expect(result?.joinDate).toBe(CREATED_AT.toLocaleDateString("en-US", DATE_PARTS))
+    expect(result?.joinDate).toBe(CREATED_AT.toLocaleDateString("pl-PL", { ...DATE_PARTS, timeZone: "UTC" }))
   })
 })
 
@@ -569,7 +576,7 @@ describe("getAdminCustomerQuery fetching", () => {
 
     expect(access.userById).toHaveBeenCalledWith("customer-1")
     expect(result?.email).toBe("anna@example.com")
-    expect(result?.joinDate).toBe(CREATED_AT.toLocaleDateString("pl-PL", DATE_PARTS))
+    expect(result?.joinDate).toBe(CREATED_AT.toLocaleDateString("en-US", DATE_PARTS))
   })
 
   it("raises a not found for a customer the detail read cannot find", async () => {

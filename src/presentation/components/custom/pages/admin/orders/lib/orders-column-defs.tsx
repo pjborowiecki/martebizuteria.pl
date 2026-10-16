@@ -20,7 +20,7 @@ import { OrderPaymentBadge } from "~/src/presentation/components/custom/pages/ad
 import { OrderStatusBadge } from "~/src/presentation/components/custom/pages/admin/orders/components/order-status-badge"
 import { OrdersRowActions } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-row-actions"
 
-export const buildOrderColumns = ({ formatLocale, t, tAdmin }: BuildOrderColumnsInput) =>
+export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOrderColumnsInput) =>
   columnHelper.columns([
     selectionColumn(columnHelper, {
       all: tAdmin(ADMIN_ORDER_TABLE_A11Y_KEYS.selectAll),
@@ -37,7 +37,7 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin }: BuildOrderColumns
     columnHelper.accessor("createdAt", {
       cell: ({ row }) => (
         <span className="text-sm whitespace-nowrap text-muted-foreground">
-          {formatAdminOrderDate(row.original.createdAt, formatLocale)}
+          {formatAdminOrderDate(row.original.createdAt, { formatLocale, timeZone })}
         </span>
       ),
       enableSorting: false,
@@ -163,4 +163,5 @@ interface BuildOrderColumnsInput {
   readonly formatLocale: string
   readonly t: ReturnType<typeof useTranslations<"pages.admin.orders">>
   readonly tAdmin: ReturnType<typeof useTranslations<"pages.admin">>
+  readonly timeZone: string
 }

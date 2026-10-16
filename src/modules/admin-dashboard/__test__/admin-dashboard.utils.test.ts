@@ -20,6 +20,8 @@ import {
   resolveAdminDashboardYearStart,
 } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 
+const POLAND = "Europe/Warsaw"
+
 const REFERENCE = new Date("2026-06-15T12:30:00.000Z")
 
 const describeWindow = (window: AdminDashboardChartWindow) => ({
@@ -45,7 +47,7 @@ describe("resolveAdminDashboardComparisonPeriod", () => {
 
 describe("resolveAdminDashboardDays", () => {
   it("ends on today in Poland while UTC is still on the day before", () => {
-    const window = resolveAdminDashboardDays(new Date("2026-06-14T22:30:00.000Z"), 2)
+    const window = resolveAdminDashboardDays(new Date("2026-06-14T22:30:00.000Z"), 2, POLAND)
 
     expect(describeWindow(window)).toStrictEqual({
       end: "2026-06-15T22:00:00.000Z",
@@ -58,7 +60,7 @@ describe("resolveAdminDashboardDays", () => {
   })
 
   it("moves each day's start an hour earlier from the day clocks go forward", () => {
-    const window = resolveAdminDashboardDays(new Date("2026-03-30T10:00:00.000Z"), 3)
+    const window = resolveAdminDashboardDays(new Date("2026-03-30T10:00:00.000Z"), 3, POLAND)
 
     expect(describeWindow(window)).toStrictEqual({
       end: "2026-03-30T22:00:00.000Z",
@@ -72,7 +74,7 @@ describe("resolveAdminDashboardDays", () => {
   })
 
   it("moves each day's start an hour later from the day clocks go back", () => {
-    const window = resolveAdminDashboardDays(new Date("2026-10-26T10:00:00.000Z"), 3)
+    const window = resolveAdminDashboardDays(new Date("2026-10-26T10:00:00.000Z"), 3, POLAND)
 
     expect(describeWindow(window)).toStrictEqual({
       end: "2026-10-26T23:00:00.000Z",
@@ -86,7 +88,7 @@ describe("resolveAdminDashboardDays", () => {
   })
 
   it("counts New Year's Day from midnight in Poland", () => {
-    const window = resolveAdminDashboardDays(new Date("2026-12-31T23:30:00.000Z"), 2)
+    const window = resolveAdminDashboardDays(new Date("2026-12-31T23:30:00.000Z"), 2, POLAND)
 
     expect(window.periods.map((period) => [period.key, period.start.toISOString()])).toStrictEqual([
       ["2026-12-31", "2026-12-30T23:00:00.000Z"],
@@ -97,7 +99,7 @@ describe("resolveAdminDashboardDays", () => {
 
 describe("resolveAdminDashboardMonths", () => {
   it("ends on the month it is in Poland while UTC is still in the month before", () => {
-    const window = resolveAdminDashboardMonths(new Date("2026-09-30T22:30:00.000Z"), 1)
+    const window = resolveAdminDashboardMonths(new Date("2026-09-30T22:30:00.000Z"), 1, POLAND)
 
     expect(describeWindow(window)).toStrictEqual({
       end: "2026-10-31T23:00:00.000Z",
@@ -107,7 +109,7 @@ describe("resolveAdminDashboardMonths", () => {
   })
 
   it("starts each month at midnight in Poland on its first day, across a new year", () => {
-    const window = resolveAdminDashboardMonths(new Date("2027-01-10T12:00:00.000Z"), 3)
+    const window = resolveAdminDashboardMonths(new Date("2027-01-10T12:00:00.000Z"), 3, POLAND)
 
     expect(describeWindow(window)).toStrictEqual({
       end: "2027-01-31T23:00:00.000Z",
@@ -121,7 +123,7 @@ describe("resolveAdminDashboardMonths", () => {
   })
 
   it("covers a full year ending on the reference month", () => {
-    const window = resolveAdminDashboardMonths(REFERENCE, 12)
+    const window = resolveAdminDashboardMonths(REFERENCE, 12, POLAND)
 
     expect(window.periods).toHaveLength(12)
     expect(window.periods[0]?.key).toBe("2025-07")
@@ -131,7 +133,7 @@ describe("resolveAdminDashboardMonths", () => {
 
 describe("resolveAdminDashboardDateRange", () => {
   it("covers every day from the start to the end inclusively, until midnight in Poland after the last", () => {
-    const window = resolveAdminDashboardDateRange("2026-10-24", "2026-10-26")
+    const window = resolveAdminDashboardDateRange("2026-10-24", "2026-10-26", POLAND)
 
     expect(describeWindow(window)).toStrictEqual({
       end: "2026-10-26T23:00:00.000Z",
@@ -145,7 +147,7 @@ describe("resolveAdminDashboardDateRange", () => {
   })
 
   it("covers a single Polish day when both ends are the same date", () => {
-    const window = resolveAdminDashboardDateRange("2026-03-29", "2026-03-29")
+    const window = resolveAdminDashboardDateRange("2026-03-29", "2026-03-29", POLAND)
 
     expect(describeWindow(window)).toStrictEqual({
       end: "2026-03-29T22:00:00.000Z",
@@ -155,7 +157,7 @@ describe("resolveAdminDashboardDateRange", () => {
   })
 
   it("keeps one day per date across New Year", () => {
-    const window = resolveAdminDashboardDateRange("2026-12-30", "2027-01-02")
+    const window = resolveAdminDashboardDateRange("2026-12-30", "2027-01-02", POLAND)
 
     expect(window.periods.map((period) => period.key)).toStrictEqual(["2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02"])
   })
@@ -163,11 +165,11 @@ describe("resolveAdminDashboardDateRange", () => {
 
 describe("resolveAdminDashboardYearStart", () => {
   it("starts the year at midnight on 1 January in Poland", () => {
-    expect(resolveAdminDashboardYearStart(REFERENCE).toISOString()).toBe("2025-12-31T23:00:00.000Z")
+    expect(resolveAdminDashboardYearStart(REFERENCE, POLAND).toISOString()).toBe("2025-12-31T23:00:00.000Z")
   })
 
   it("starts the new year in the first hour of 1 January in Poland, while UTC is still in December", () => {
-    expect(resolveAdminDashboardYearStart(new Date("2026-12-31T23:30:00.000Z")).toISOString()).toBe("2026-12-31T23:00:00.000Z")
+    expect(resolveAdminDashboardYearStart(new Date("2026-12-31T23:30:00.000Z"), POLAND).toISOString()).toBe("2026-12-31T23:00:00.000Z")
   })
 })
 
@@ -198,14 +200,15 @@ describe("computeAdminDashboardTrendPercent", () => {
 })
 
 describe("buildAdminDashboardChartPoints", () => {
-  const days = resolveAdminDashboardDays(new Date("2026-06-15T10:00:00.000Z"), 3)
+  const days = resolveAdminDashboardDays(new Date("2026-06-15T10:00:00.000Z"), 3, POLAND)
 
   it("emits one point per period in chronological order", () => {
     const points = buildAdminDashboardChartPoints({
+      formatLocale: "en-US",
       labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
-      locale: "en-US",
       periods: days.periods,
       rows: [],
+      timeZone: POLAND,
     })
 
     expect(points.map((point) => point.dateKey)).toStrictEqual(["2026-06-13", "2026-06-14", "2026-06-15"])
@@ -213,10 +216,11 @@ describe("buildAdminDashboardChartPoints", () => {
 
   it("fills the periods with no activity with zeroes and attaches the aggregate of the others", () => {
     const points = buildAdminDashboardChartPoints({
+      formatLocale: "en-US",
       labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
-      locale: "en-US",
       periods: days.periods,
       rows: [{ orders: 2, periodKey: "2026-06-14", revenue: 12_000 }],
+      timeZone: POLAND,
     })
 
     expect(points.map((point) => [point.orders, point.revenue])).toStrictEqual([
@@ -228,10 +232,11 @@ describe("buildAdminDashboardChartPoints", () => {
 
   it("ignores aggregate rows for periods outside the window", () => {
     const points = buildAdminDashboardChartPoints({
+      formatLocale: "en-US",
       labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
-      locale: "en-US",
       periods: days.periods,
       rows: [{ orders: 9, periodKey: "2020-01-01", revenue: 9 }],
+      timeZone: POLAND,
     })
 
     expect(points.every((point) => point.orders === 0)).toBe(true)
@@ -239,16 +244,18 @@ describe("buildAdminDashboardChartPoints", () => {
 
   it("names each day as it is in Poland, in the requested locale", () => {
     const english = buildAdminDashboardChartPoints({
+      formatLocale: "en-US",
       labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
-      locale: "en-US",
       periods: days.periods,
       rows: [],
+      timeZone: POLAND,
     })
     const polish = buildAdminDashboardChartPoints({
+      formatLocale: "pl-PL",
       labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
-      locale: "pl-PL",
       periods: days.periods,
       rows: [],
+      timeZone: POLAND,
     })
 
     expect(english.map((point) => point.label)).toStrictEqual(["Jun 13", "Jun 14", "Jun 15"])
@@ -256,12 +263,13 @@ describe("buildAdminDashboardChartPoints", () => {
   })
 
   it("names each month with its year", () => {
-    const months = resolveAdminDashboardMonths(new Date("2027-01-10T12:00:00.000Z"), 2)
+    const months = resolveAdminDashboardMonths(new Date("2027-01-10T12:00:00.000Z"), 2, POLAND)
     const points = buildAdminDashboardChartPoints({
+      formatLocale: "en-US",
       labelFormat: ADMIN_DASHBOARD_MONTH_LABEL_FORMAT,
-      locale: "en-US",
       periods: months.periods,
       rows: [],
+      timeZone: POLAND,
     })
 
     expect(points.map((point) => [point.dateKey, point.label])).toStrictEqual([
@@ -288,26 +296,27 @@ describe("isAdminDashboardCustomChartRangeValid", () => {
 })
 
 describe("buildAdminDashboardWeeklyOrderPoints", () => {
-  const week = resolveAdminDashboardDays(new Date("2026-06-14T22:30:00.000Z"), 7)
+  const week = resolveAdminDashboardDays(new Date("2026-06-14T22:30:00.000Z"), 7, POLAND)
 
   it("emits one point per day of the week, ending on today in Poland", () => {
-    const points = buildAdminDashboardWeeklyOrderPoints({ locale: "en-US", periods: week.periods, rows: [] })
+    const points = buildAdminDashboardWeeklyOrderPoints({ formatLocale: "en-US", periods: week.periods, rows: [], timeZone: POLAND })
 
     expect(points).toHaveLength(7)
     expect(points.at(-1)?.dateKey).toBe("2026-06-15")
   })
 
   it("names each day by its weekday in Poland", () => {
-    const points = buildAdminDashboardWeeklyOrderPoints({ locale: "en-US", periods: week.periods, rows: [] })
+    const points = buildAdminDashboardWeeklyOrderPoints({ formatLocale: "en-US", periods: week.periods, rows: [], timeZone: POLAND })
 
     expect(points.at(-1)?.dayLabel).toBe("Mon")
   })
 
   it("carries the order counts through and drops the revenue", () => {
     const points = buildAdminDashboardWeeklyOrderPoints({
-      locale: "en-US",
+      formatLocale: "en-US",
       periods: week.periods,
       rows: [{ orders: 5, periodKey: "2026-06-15", revenue: 50_000 }],
+      timeZone: POLAND,
     })
 
     expect(points.at(-1)).toStrictEqual({ dateKey: "2026-06-15", dayLabel: "Mon", orders: 5 })

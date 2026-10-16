@@ -5,6 +5,7 @@ const accessors = vi.hoisted(() => ({
   stats: vi.fn(() => Promise.resolve({ errorCount: 2, todayCount: 5, totalCount: 41, warningCount: 3 })),
 }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({ getAdminAuditLogStats: accessors.stats }))
 vi.mock("@tanstack/react-start", () => ({
@@ -60,7 +61,7 @@ describe("getAuditLogStatsQuery", () => {
       signal: new AbortController().signal,
     })
 
-    expect(accessors.stats).toHaveBeenCalledWith("2026-10-15")
+    expect(accessors.stats).toHaveBeenCalledWith("2026-10-15", "Europe/Warsaw")
     expect(result).toStrictEqual({ errorCount: 2, todayCount: 5, totalCount: 41, warningCount: 3 })
   })
 })
@@ -68,7 +69,7 @@ describe("getAuditLogStatsQuery", () => {
 describe("getAuditLogStats input validation", () => {
   it("counts the day the request names once it passes the schema", async () => {
     await expect(getAuditLogStats({ data: { today: "2026-10-15" } })).resolves.toMatchObject({ todayCount: 5 })
-    expect(accessors.stats).toHaveBeenCalledWith("2026-10-15")
+    expect(accessors.stats).toHaveBeenCalledWith("2026-10-15", "Europe/Warsaw")
   })
 
   it.each([["2026-10-15T00:00"], ["2026-02-30"], ["15.10.2026"], [""]])("refuses %j as the day to count", async (today) => {

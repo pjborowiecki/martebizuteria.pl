@@ -6,6 +6,8 @@ import type * as zod from "zod"
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
+import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
+import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { type CalendarPeriod, formatShortDate } from "~/src/modules/_core/utils/datetime"
@@ -114,13 +116,13 @@ const loadAdminCustomerDetailQueryResult = async (
 }
 
 const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadInput): User["adminCustomerDetail"] => {
-  const { locale, queryResult, spendingPeriods, userRow } = input
+  const { locale, preferences, queryResult, spendingPeriods, userRow } = input
   const orderCount = queryResult.orderStats?.orderCount ?? 0
   const totalSpent = queryResult.orderStats?.totalSpent ?? 0
   const averageOrderValue = resolveAdminCustomerAverageOrderValue(orderCount, totalSpent)
   const returningRate = resolveAdminCustomerReturningRate(orderCount)
   const isReturning = orderCount >= ADMIN_CUSTOMER_MIN_REPEAT_ORDERS
-  const monthlySpending = buildAdminCustomerMonthlySpendingSeries(queryResult.monthlySpendingRows, locale, spendingPeriods)
+  const monthlySpending = buildAdminCustomerMonthlySpendingSeries(queryResult.monthlySpendingRows, preferences, spendingPeriods)
   const categoryBreakdown = queryResult.categoryBreakdownRows
     .filter((row) => row.titles !== null)
     .map((row) => ({
@@ -158,7 +160,7 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
     customTags: adminMetadata.tags ?? [],
     initials: resolveAdminCustomerInitials(userRow.name),
     isReturning,
-    joinDate: formatShortDate(userRow.createdAt, locale),
+    joinDate: formatShortDate(userRow.createdAt, preferences.formatLocale, preferences.timeZone),
     lastActive: formatAdminCustomerLastActive(lastActiveAt, locale),
     lastOrderAt: queryResult.orderStats?.lastOrderAt,
     monthlySpending,
@@ -177,8 +179,8 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
         metadata: row.metadata,
       })),
       createdAt: userRow.createdAt,
-      locale,
       orders: queryResult.orderRows,
+      preferences,
     }),
     totalSpent,
   }
@@ -200,6 +202,7 @@ interface AdminCustomerDetailQueryResult {
 
 interface BuildAdminCustomerDetailPayloadInput {
   readonly locale: string
+  readonly preferences: DisplayPreferences
   readonly queryResult: AdminCustomerDetailQueryResult
   readonly spendingPeriods: readonly CalendarPeriod[]
   readonly userRow: User["select"]
@@ -217,11 +220,13 @@ export const getAdminCustomer = createServerFn({
       return undefined
     }
 
-    const spendingWindow = resolveAdminDashboardMonths(new Date(), ADMIN_CUSTOMER_DETAIL_MONTHS)
+    const preferences = await resolveRequestDisplayPreferences()
+    const spendingWindow = resolveAdminDashboardMonths(new Date(), ADMIN_CUSTOMER_DETAIL_MONTHS, preferences.timeZone)
     const queryResult = await loadAdminCustomerDetailQueryResult(input.id, spendingWindow)
 
     return buildAdminCustomerDetailPayload({
       locale,
+      preferences,
       queryResult,
       spendingPeriods: spendingWindow.periods,
       userRow,

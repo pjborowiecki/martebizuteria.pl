@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
@@ -15,7 +16,10 @@ import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { toAdminAuditListItem } from "~/src/modules/audit-log/audit-log.utils"
 import { auditLogZodSchemas } from "~/src/modules/audit-log/audit-log.zod"
 
-const buildAdminAuditLogsListParams = (input: zod.output<typeof auditLogZodSchemas.adminAuditLogsPageInput>): AdminAuditLogsListParams => {
+const buildAdminAuditLogsListParams = (
+  input: zod.output<typeof auditLogZodSchemas.adminAuditLogsPageInput>,
+  timeZone: string,
+): AdminAuditLogsListParams => {
   const pageSize = input.pageSize ?? ADMIN_AUDIT_LOG_PAGE_SIZE
 
   return {
@@ -24,6 +28,7 @@ const buildAdminAuditLogsListParams = (input: zod.output<typeof auditLogZodSchem
     createdAt: input.createdAt,
     search: normalizeAdminSearchTerm(input.search),
     severity: input.severity,
+    timeZone,
   }
 }
 
@@ -60,9 +65,10 @@ export const listAuditLogs = createServerFn({ method: "GET" })
     auditLogZodSchemas.adminAuditLogsPageInput.parse(input),
   )
   .handler(async ({ data }): Promise<AdminAuditLogsPageResult> => {
-    const params = buildAdminAuditLogsListParams(data)
+    const preferences = await resolveRequestDisplayPreferences()
+    const params = buildAdminAuditLogsListParams(data, preferences.timeZone)
     const { rows, total } = await auditLogGetAdminAuditLogsPage(params)
-    const items = rows.map((row) => toAdminAuditListItem(row))
+    const items = rows.map((row) => toAdminAuditListItem(row, preferences))
 
     return buildAdminAuditLogsPageResult(items, total, params)
   })

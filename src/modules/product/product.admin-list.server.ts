@@ -42,9 +42,20 @@ export const loadAdminListAggregates = async (
 
 export const buildAdminProductsFilterParams = (
   input: Product["adminProductsPageInput"] | Product["adminProductsExportInput"],
+  timeZone: string,
 ): Pick<
   AdminProductsExportListParams,
-  "categoryId" | "collectionId" | "createdAt" | "inventoryLevel" | "minPrice" | "search" | "sort" | "status" | "totalStock" | "variantKind"
+  | "categoryId"
+  | "collectionId"
+  | "createdAt"
+  | "inventoryLevel"
+  | "minPrice"
+  | "search"
+  | "sort"
+  | "status"
+  | "timeZone"
+  | "totalStock"
+  | "variantKind"
 > => ({
   categoryId: input.categoryId,
   collectionId: input.collectionId,
@@ -54,6 +65,7 @@ export const buildAdminProductsFilterParams = (
   search: normalizeAdminSearchTerm(input.search),
   sort: input.sort,
   status: input.status,
+  timeZone,
   totalStock: input.totalStock,
   variantKind: input.variantKind,
 })

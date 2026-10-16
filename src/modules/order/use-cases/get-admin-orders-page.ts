@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
@@ -12,7 +13,7 @@ import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
-const buildAdminOrdersListParams = (input: zod.output<typeof orderZodSchemas.adminOrdersPageInput>) => {
+const buildAdminOrdersListParams = (input: zod.output<typeof orderZodSchemas.adminOrdersPageInput>, timeZone: string) => {
   const pageSize = input.pageSize ?? ADMIN_ORDERS_PAGE_SIZE
 
   return {
@@ -27,6 +28,7 @@ const buildAdminOrdersListParams = (input: zod.output<typeof orderZodSchemas.adm
     search: normalizeAdminSearchTerm(input.search),
     statFilter: input.statFilter,
     tab: input.tab,
+    timeZone,
     userId: input.userId,
   }
 }
@@ -37,7 +39,8 @@ export const getAdminOrdersPage = createServerFn({
   .middleware([authorized({ order: ["read"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminOrdersPageInput>) => orderZodSchemas.adminOrdersPageInput.parse(input))
   .handler(async ({ data: input }) => {
-    const params = buildAdminOrdersListParams(input)
+    const { timeZone } = await resolveRequestDisplayPreferences()
+    const params = buildAdminOrdersListParams(input, timeZone)
     const { rows, total } = await orderGetAdminOrdersPage(params)
     const items = rows.map((row) => toAdminOrderListItem(row))
 

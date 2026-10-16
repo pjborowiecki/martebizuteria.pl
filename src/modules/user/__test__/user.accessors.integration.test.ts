@@ -38,7 +38,7 @@ const MARCH = Date.UTC(2024, 2, 10)
 
 const JUNE = Date.UTC(2024, 5, 10)
 
-const page = { limit: 25, offset: 0 }
+const page = { limit: 25, offset: 0, timeZone: "Europe/Warsaw" }
 
 const AUGUST = Date.UTC(2024, 7, 10)
 
@@ -309,8 +309,8 @@ describe("getAdminCustomersPage", () => {
   })
 
   it("pages through the list", async () => {
-    const first = await getAdminCustomersPage({ limit: 2, offset: 0 })
-    const second = await getAdminCustomersPage({ limit: 2, offset: 2 })
+    const first = await getAdminCustomersPage({ limit: 2, offset: 0, timeZone: "Europe/Warsaw" })
+    const second = await getAdminCustomersPage({ limit: 2, offset: 2, timeZone: "Europe/Warsaw" })
 
     expect(first.rows).toHaveLength(2)
     expect(second.rows).toHaveLength(2)
@@ -318,7 +318,7 @@ describe("getAdminCustomersPage", () => {
   })
 
   it("returns no rollup work for a page beyond the end of the list", async () => {
-    const result = await getAdminCustomersPage({ limit: 25, offset: 100 })
+    const result = await getAdminCustomersPage({ limit: 25, offset: 100, timeZone: "Europe/Warsaw" })
 
     expect(result.rows).toStrictEqual([])
     expect(result.orderStats).toStrictEqual([])
@@ -466,6 +466,7 @@ describe("getAdminCustomersFilteredList", () => {
   it("exports all matches for an order-total filter and includes their addresses and orders", async () => {
     const result = await getAdminCustomersFilteredList({
       filters: { totalSpent: { amountMinorUnits: 20_000, operator: NUMERIC_COLUMN_FILTER_OPERATOR.GTE } },
+      timeZone: "Europe/Warsaw",
     })
 
     expect(result.rows.map((row) => row.id)).toStrictEqual(["u-anna"])
@@ -475,34 +476,34 @@ describe("getAdminCustomersFilteredList", () => {
   })
 
   it("exports the full set of returning customers with matching order totals", async () => {
-    const result = await getAdminCustomersFilteredList({ statFilter: ADMIN_CUSTOMER_STAT_FILTER.RETURNING })
+    const result = await getAdminCustomersFilteredList({ statFilter: ADMIN_CUSTOMER_STAT_FILTER.RETURNING, timeZone: "Europe/Warsaw" })
 
     expect(result.rows.map((row) => row.id)).toStrictEqual(["u-anna"])
     expect(result.orderStats).toMatchObject([{ orderCount: 2, totalSpent: 30_000, userId: "u-anna" }])
   })
 
   it("returns every matching row without paging", async () => {
-    const result = await getAdminCustomersFilteredList({})
+    const result = await getAdminCustomersFilteredList({ timeZone: "Europe/Warsaw" })
 
     expect(result.rows).toHaveLength(4)
     expect(result.orderStats).toHaveLength(3)
   })
 
   it("applies the same filters as the paged query", async () => {
-    const result = await getAdminCustomersFilteredList({ filters: { role: "admin" } })
+    const result = await getAdminCustomersFilteredList({ filters: { role: "admin" }, timeZone: "Europe/Warsaw" })
 
     expect(result.rows.map((row) => row.id)).toStrictEqual(["u-admin"])
   })
 
   it("exports the unpaged rollup join for a last-order-day filter", async () => {
     const filters = { lastOrderAt: { date: "2024-06-10", operator: DATE_COLUMN_FILTER_OPERATOR.ON } }
-    const result = await getAdminCustomersFilteredList({ filters })
+    const result = await getAdminCustomersFilteredList({ filters, timeZone: "Europe/Warsaw" })
 
     expect(result.rows.map((row) => row.id).toSorted()).toStrictEqual(["u-anna", "u-jan"])
   })
 
   it("skips the rollup queries when nothing matches", async () => {
-    const result = await getAdminCustomersFilteredList({ search: "nobody" })
+    const result = await getAdminCustomersFilteredList({ search: "nobody", timeZone: "Europe/Warsaw" })
 
     expect(result).toStrictEqual({ defaultAddresses: [], latestShippingAddresses: [], orderStats: [], rows: [] })
   })
@@ -522,7 +523,7 @@ describe("the customer location on the admin list and its export", () => {
   it("exports the same locations as the list, falling back to the latest order only without a default address", async () => {
     sqlite.exec("update address set is_default = 0 where user_id = 'u-jan'")
 
-    const exported = locationsOf(await getAdminCustomersFilteredList({}))
+    const exported = locationsOf(await getAdminCustomersFilteredList({ timeZone: "Europe/Warsaw" }))
 
     expect(exported).toStrictEqual({ "u-anna": "Warszawa, Mazowieckie, PL", "u-jan": "Gdynia, PL" })
     expect(exported).toStrictEqual(locationsOf(await getAdminCustomersPage(page)))
@@ -576,7 +577,7 @@ describe("a full admin page of customers", () => {
   })
 
   it("attaches the order rollup, default address and latest shipping address of every customer on the page", async () => {
-    const result = await getAdminCustomersPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0 })
+    const result = await getAdminCustomersPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0, timeZone: "Europe/Warsaw" })
 
     expect(result.rows.map((row) => row.id)).toStrictEqual(ids.toReversed())
     expect(new Map(result.orderStats.map((row) => [row.userId, row.totalSpent]))).toStrictEqual(totalSpentByCustomer)
@@ -585,7 +586,7 @@ describe("a full admin page of customers", () => {
   })
 
   it("exports the order rollup, default address and latest shipping address of every matching customer", async () => {
-    const result = await getAdminCustomersFilteredList({ search: "bulk" })
+    const result = await getAdminCustomersFilteredList({ search: "bulk", timeZone: "Europe/Warsaw" })
 
     expect(result.rows).toHaveLength(LIST_PAGE_SIZE_MAX)
     expect(new Map(result.orderStats.map((row) => [row.userId, row.totalSpent]))).toStrictEqual(totalSpentByCustomer)

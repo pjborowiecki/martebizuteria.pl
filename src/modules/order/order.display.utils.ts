@@ -1,4 +1,5 @@
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
 import {
@@ -81,12 +82,13 @@ export const resolveAdminOrderFulfillmentUiKey = (
   )
 }
 
-export const formatAdminOrderDate = (createdAt: Date | string, locale: string = I18N.DEFAULT_LOCALE): string => {
+export const formatAdminOrderDate = (createdAt: Date | string, { formatLocale, timeZone }: DisplayPreferences): string => {
   const date = createdAt instanceof Date ? createdAt : new Date(createdAt)
 
-  return date.toLocaleDateString(locale, {
+  return date.toLocaleDateString(formatLocale, {
     day: "numeric",
     month: "short",
+    timeZone,
     year: "numeric",
   })
 }

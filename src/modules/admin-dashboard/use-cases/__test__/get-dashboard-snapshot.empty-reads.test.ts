@@ -5,6 +5,9 @@ const reads = vi.hoisted(() => ({
   query: () => ({}),
 }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
+  resolveRequestDisplayPreferences: () => Promise.resolve({ formatLocale: "en-US", timeZone: "Europe/Warsaw" }),
+}))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: { batch: reads.batch } }))
 vi.mock("~/src/modules/admin-dashboard/admin-dashboard.accessors", async (importOriginal) => ({

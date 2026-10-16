@@ -2,7 +2,7 @@ import { useMemo } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
+import { useDisplayTimeZone, useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { buildCustomerColumns } from "~/src/presentation/components/custom/pages/admin/customers/lib/customers-column-defs"
 
@@ -11,6 +11,7 @@ export const useCustomerColumns = () => {
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
   const formatLocale = useFormatLocale()
+  const timeZone = useDisplayTimeZone()
 
   return useMemo(
     () =>
@@ -19,7 +20,8 @@ export const useCustomerColumns = () => {
         formatLocale,
         t,
         tAdmin,
+        timeZone,
       }),
-    [format, formatLocale, t, tAdmin],
+    [format, formatLocale, t, tAdmin, timeZone],
   )
 }

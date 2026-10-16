@@ -35,7 +35,7 @@ const MARCH = Date.UTC(2026, 2, 10)
 
 const MID_APRIL = new Date("2026-04-15T12:00:00.000Z")
 
-const FIRST_QUARTER = resolveAdminDashboardMonths(new Date(MARCH), 3)
+const FIRST_QUARTER = resolveAdminDashboardMonths(new Date(MARCH), 3, "Europe/Warsaw")
 
 const DDL = `
   drop table if exists address;
@@ -218,13 +218,13 @@ describe("getCustomerMonthlySpendingQuery", () => {
   })
 
   it("leaves out orders placed before the window opens", async () => {
-    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(new Date(MARCH), 2))
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(new Date(MARCH), 2, "Europe/Warsaw"))
 
     expect(rows).toStrictEqual([{ amount: 10_000, monthKey: "2026-02" }])
   })
 
   it("leaves out orders placed after the window closes", async () => {
-    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(new Date(JANUARY), 1))
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(new Date(JANUARY), 1, "Europe/Warsaw"))
 
     expect(rows).toStrictEqual([{ amount: 30_000, monthKey: "2026-01" }])
   })
@@ -233,7 +233,7 @@ describe("getCustomerMonthlySpendingQuery", () => {
     placeAnnasCompletedOrder("o-march-last-hour", "2026-03-31T21:30:00.000Z")
     placeAnnasCompletedOrder("o-april-first-hour", "2026-03-31T22:30:00.000Z")
 
-    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(MID_APRIL, 2))
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(MID_APRIL, 2, "Europe/Warsaw"))
 
     expect(rows).toStrictEqual([
       { amount: 1000, monthKey: "2026-03" },
@@ -244,7 +244,7 @@ describe("getCustomerMonthlySpendingQuery", () => {
   it("puts an order placed half an hour into 1 February in Poland in February", async () => {
     placeAnnasCompletedOrder("o-february-first-hour", "2026-01-31T23:30:00.000Z")
 
-    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(new Date(FEBRUARY), 2))
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(new Date(FEBRUARY), 2, "Europe/Warsaw"))
 
     expect(rows).toStrictEqual([
       { amount: 30_000, monthKey: "2026-01" },
@@ -256,7 +256,7 @@ describe("getCustomerMonthlySpendingQuery", () => {
     placeAnnasCompletedOrder("o-march-last-hour", "2026-03-31T21:30:00.000Z")
     placeAnnasCompletedOrder("o-april-first-hour", "2026-03-31T22:30:00.000Z")
 
-    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(MID_APRIL, 1))
+    const rows = await getCustomerMonthlySpendingQuery("u-anna", resolveAdminDashboardMonths(MID_APRIL, 1, "Europe/Warsaw"))
 
     expect(rows).toStrictEqual([{ amount: 1000, monthKey: "2026-04" }])
   })

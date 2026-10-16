@@ -15,7 +15,7 @@ import { formatAdminCustomerLocation } from "~/src/modules/user/user.utils"
 import { type useFormatter } from "~/src/hooks/use-display-format"
 
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
-import { matchesDateColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
+import { matchesDateColumnFilterIn } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
 import { matchesNumericColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-numeric-filter"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
@@ -160,7 +160,12 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
     ),
   ])
 
-const buildCustomerMetricsColumns = ({ format, formatLocale, t }: Pick<BuildCustomerColumnsInput, "format" | "formatLocale" | "t">) =>
+const buildCustomerMetricsColumns = ({
+  format,
+  formatLocale,
+  t,
+  timeZone,
+}: Pick<BuildCustomerColumnsInput, "format" | "formatLocale" | "t" | "timeZone">) =>
   columnHelper.columns([
     columnHelper.accessor("orderCount", {
       cell: ({ getValue }) => <span className="font-mono text-sm tabular-nums">{getValue()}</span>,
@@ -222,7 +227,7 @@ const buildCustomerMetricsColumns = ({ format, formatLocale, t }: Pick<BuildCust
           </span>
         )
       },
-      filterFn: matchesDateColumnFilter,
+      filterFn: matchesDateColumnFilterIn(timeZone),
       header: t("columns.lastOrder"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.lastOrderAt,
       maxSize: DATE_COLUMN_MAX_SIZE,
@@ -240,7 +245,7 @@ const buildCustomerMetricsColumns = ({ format, formatLocale, t }: Pick<BuildCust
           })}
         </span>
       ),
-      filterFn: matchesDateColumnFilter,
+      filterFn: matchesDateColumnFilterIn(timeZone),
       header: t("columns.createdAt"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.createdAt,
       maxSize: DATE_COLUMN_MAX_SIZE,
@@ -281,4 +286,5 @@ interface BuildCustomerColumnsInput {
   readonly formatLocale: string
   readonly t: ReturnType<typeof useTranslations<"pages.admin.customers">>
   readonly tAdmin: ReturnType<typeof useTranslations<"pages.admin">>
+  readonly timeZone: string
 }

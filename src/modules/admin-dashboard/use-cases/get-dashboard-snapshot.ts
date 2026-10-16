@@ -4,6 +4,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import {
@@ -43,10 +44,11 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
   .validator((input: zod.input<typeof adminDashboardZodSchemas.snapshotInput>) => adminDashboardZodSchemas.snapshotInput.parse(input))
   .handler(async ({ data: { locale } }): Promise<AdminDashboard["snapshot"]> => {
     const now = new Date()
+    const { formatLocale, timeZone } = await resolveRequestDisplayPreferences()
     const { currentStart, previousEnd, previousStart } = resolveAdminDashboardComparisonPeriod(now)
-    const days = resolveAdminDashboardDays(now, ADMIN_DASHBOARD_CHART_DAYS_30)
-    const months = resolveAdminDashboardMonths(now, ADMIN_DASHBOARD_CHART_MONTHS_1Y)
-    const yearStart = resolveAdminDashboardYearStart(now)
+    const days = resolveAdminDashboardDays(now, ADMIN_DASHBOARD_CHART_DAYS_30, timeZone)
+    const months = resolveAdminDashboardMonths(now, ADMIN_DASHBOARD_CHART_MONTHS_1Y, timeZone)
+    const yearStart = resolveAdminDashboardYearStart(now, timeZone)
 
     const [
       [currentSalesRow],
@@ -77,18 +79,20 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
     const currencyCode = topProductRows[0]?.currencyCode ?? recentOrderRows[0]?.currencyCode ?? STORE_CURRENCY_CODE
 
     const chartPoints30d = buildAdminDashboardChartPoints({
+      formatLocale,
       labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
-      locale,
       periods: days.periods,
       rows: dailyAggregateRows,
+      timeZone,
     })
 
     const chartPoints7d = chartPoints30d.slice(-ADMIN_DASHBOARD_CHART_DAYS_7)
     const chartPoints1y = buildAdminDashboardChartPoints({
+      formatLocale,
       labelFormat: ADMIN_DASHBOARD_MONTH_LABEL_FORMAT,
-      locale,
       periods: months.periods,
       rows: monthlyAggregateRows,
+      timeZone,
     })
 
     const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
@@ -114,9 +118,10 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
         sold: row.sold,
       })),
       weeklyOrders: buildAdminDashboardWeeklyOrderPoints({
-        locale,
+        formatLocale,
         periods: days.periods.slice(-ADMIN_DASHBOARD_CHART_DAYS_7),
         rows: dailyAggregateRows,
+        timeZone,
       }),
       yearToDateRevenueMinorUnits: yearToDateSalesRow?.revenue ?? 0,
     }

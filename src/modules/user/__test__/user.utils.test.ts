@@ -26,6 +26,8 @@ import {
   toAdminCustomerListItem,
 } from "~/src/modules/user/user.utils"
 
+const PREFERENCES = { formatLocale: "en-US", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+
 const NOW = new Date(2024, 5, 15, 12, 0, 0)
 
 const userRow = (overrides: Partial<User["select"]> = {}): User["select"] => ({
@@ -391,7 +393,7 @@ describe("buildAdminCustomerTimeline", () => {
   const createdAt = new Date(2023, 2, 4)
 
   it("always starts from the account creation event", () => {
-    const timeline = buildAdminCustomerTimeline({ createdAt, locale: "en-US", orders: [] })
+    const timeline = buildAdminCustomerTimeline({ createdAt, orders: [], preferences: PREFERENCES })
 
     expect(timeline).toHaveLength(1)
     expect(timeline[0]).toMatchObject({ kind: "account_created" })
@@ -400,11 +402,11 @@ describe("buildAdminCustomerTimeline", () => {
   it("lists the newest event first", () => {
     const timeline = buildAdminCustomerTimeline({
       createdAt,
-      locale: "en-US",
       orders: [
         { createdAt: new Date(2024, 0, 1), currencyCode: "PLN", orderNumber: "MRT-2024-00001", total: 12_000 },
         { createdAt: new Date(2024, 5, 1), currencyCode: "PLN", orderNumber: "MRT-2024-00002", total: 30_000 },
       ],
+      preferences: PREFERENCES,
     })
 
     expect(timeline.map((event) => event.kind)).toStrictEqual(["order_placed", "order_placed", "account_created"])
@@ -413,8 +415,8 @@ describe("buildAdminCustomerTimeline", () => {
   it("formats each order total as money", () => {
     const [event] = buildAdminCustomerTimeline({
       createdAt,
-      locale: "en-US",
       orders: [{ createdAt: new Date(2024, 0, 1), currencyCode: "PLN", orderNumber: "MRT-2024-00001", total: 12_000 }],
+      preferences: PREFERENCES,
     })
 
     expect(event).toMatchObject({ kind: "order_placed", orderNumber: "MRT-2024-00001" })
@@ -429,8 +431,8 @@ describe("buildAdminCustomerTimeline", () => {
         { action: AUDIT_LOG_ACTION.PRODUCT_CREATED, createdAt: new Date(2024, 1, 3), detail: null, metadata: null },
       ],
       createdAt,
-      locale: "en-US",
       orders: [],
+      preferences: PREFERENCES,
     })
 
     expect(timeline.map((event) => event.kind)).toStrictEqual(["signed_out", "signed_in", "account_created"])
@@ -447,8 +449,8 @@ describe("buildAdminCustomerTimeline", () => {
         },
       ],
       createdAt,
-      locale: "en-US",
       orders: [],
+      preferences: PREFERENCES,
     })
 
     expect(event).toMatchObject({ kind: "cart_item_added", productTitle: "Onyx earrings", quantity: 3 })
@@ -465,8 +467,8 @@ describe("buildAdminCustomerTimeline", () => {
         },
       ],
       createdAt,
-      locale: "en-US",
       orders: [],
+      preferences: PREFERENCES,
     })
 
     expect(event).toMatchObject({ kind: "cart_item_added", productTitle: "Silver ring", quantity: 1 })
@@ -489,8 +491,8 @@ describe("buildAdminCustomerTimeline", () => {
         },
       ],
       createdAt,
-      locale: "en-US",
       orders: [],
+      preferences: PREFERENCES,
     })
 
     expect(timeline[0]).toMatchObject({ kind: "page_viewed", path: "/products/silver-ring" })
@@ -498,23 +500,24 @@ describe("buildAdminCustomerTimeline", () => {
   })
 
   it("leaves no sort key behind on the returned events", () => {
-    const [event] = buildAdminCustomerTimeline({ createdAt, locale: "en-US", orders: [] })
+    const [event] = buildAdminCustomerTimeline({ createdAt, orders: [], preferences: PREFERENCES })
 
     expect(event === undefined ? [] : Object.keys(event)).not.toContain("sortAt")
   })
 })
 
 describe("buildAdminCustomerMonthlySpendingSeries", () => {
-  const { periods } = resolveAdminDashboardMonths(new Date("2026-04-15T12:00:00.000Z"), 3)
+  const inPoland = { formatLocale: "en-US", timeZone: "Europe/Warsaw" }
+  const { periods } = resolveAdminDashboardMonths(new Date("2026-04-15T12:00:00.000Z"), 3, inPoland.timeZone)
 
   it("returns one bucket per month of the window, named after its month in Poland", () => {
-    const series = buildAdminCustomerMonthlySpendingSeries([], "en-US", periods)
+    const series = buildAdminCustomerMonthlySpendingSeries([], inPoland, periods)
 
     expect(series.map((point) => point.month)).toStrictEqual(["Feb", "Mar", "Apr"])
   })
 
   it("fills the months with no spending with zero", () => {
-    const series = buildAdminCustomerMonthlySpendingSeries([{ amount: 12_000, monthKey: "2026-03" }], "en-US", periods)
+    const series = buildAdminCustomerMonthlySpendingSeries([{ amount: 12_000, monthKey: "2026-03" }], inPoland, periods)
 
     expect(series.map((point) => point.amount)).toStrictEqual([0, 12_000, 0])
   })
@@ -525,7 +528,7 @@ describe("buildAdminCustomerMonthlySpendingSeries", () => {
         { amount: "7000", monthKey: "2026-04" },
         { amount: 100, monthKey: "2026-01" },
       ],
-      "en-US",
+      inPoland,
       periods,
     )
 
@@ -561,8 +564,8 @@ describe("audit timeline metadata parsing", () => {
     buildAdminCustomerTimeline({
       auditEvents: [{ action: "customer.cart_item_added", createdAt: new Date(2024, 0, 1), detail: "Silver ring", metadata }],
       createdAt,
-      locale: "en-US",
       orders: [],
+      preferences: PREFERENCES,
     })
 
   it("falls back to the audit detail when the metadata is not an object", () => {

@@ -10,7 +10,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import { PRODUCT_TABLE_COLUMN_ID } from "~/src/modules/product/product.constants"
 import { type Product } from "~/src/modules/product/product.types"
 
-import { matchesDateColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
+import { matchesDateColumnFilterIn } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { type DataGridContextValue } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { ProductsCreatedAtColumnFilter } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-created-at-column-filter"
@@ -48,7 +48,7 @@ const helper = createColumnHelper<DataGridFeatures, ProductRow>()
 
 const COLUMNS = helper.columns([
   helper.accessor("createdAt", {
-    filterFn: matchesDateColumnFilter,
+    filterFn: matchesDateColumnFilterIn("Europe/Warsaw"),
     header: "Created at",
     id: PRODUCT_TABLE_COLUMN_ID.createdAt,
   }),

@@ -177,6 +177,8 @@ A saved value wins over a detected one. After the first render, `TranslationsPro
 
 The storefront, the checkout and the customer account format every date, time and price through that `useFormatter`, or through `formatPrice` with `useFormatLocale()`. The admin does the same in its tables, cards, charts, CSV exports and money fields, where an admin types a price the way their format locale writes it and it is read back the same way. Localized titles and country names stay in the page's language, because they are words rather than formats. Relative times such as "3 days ago" are phrases rather than formats, so they keep the page's language, like every other message. E-mails are formatted in the order's locale, because the recipient's preferences are not known when they are sent.
 
+Server functions that decide where a day begins or that format a label themselves apply the same rules to their own request, through `resolveRequestDisplayPreferences()` in `i18n.display-preferences.ts`. These are the admin list date filters, the audit log's times and its count for today, the dashboard's charts and the customer detail. The shop's own business dates stay in Polish time: the year in an order number and the legal deadlines. Saving a preference invalidates every cached query, so whatever was formatted or dated with the old value is fetched again.
+
 **Forgetting a namespace is a runtime error**, not a silent fallback: `useTranslations` on a missing namespace throws. Adding a page means adding its namespace to the route's `staticData`.
 
 ## Outside React

@@ -16,6 +16,8 @@ import {
   toAdminAuditListItem,
 } from "~/src/modules/audit-log/audit-log.utils"
 
+const IN_POLAND = { formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }
+
 const PRODUCT_UUID = "0195b6f4-1111-7000-8000-000000000001"
 
 describe("isAuditLogCategoryFilter", () => {
@@ -48,7 +50,7 @@ describe("resolveAuditLogToday", () => {
     ["a minute before midnight in Poland", "2026-10-14T21:59:00.000Z", "2026-10-14"],
     ["half past midnight on a winter night", "2026-01-14T23:30:00.000Z", "2026-01-15"],
   ])("names the day in Poland at %s", (_label, instant, expected) => {
-    expect(resolveAuditLogToday(new Date(instant))).toBe(expected)
+    expect(resolveAuditLogToday(IN_POLAND.timeZone, new Date(instant))).toBe(expected)
   })
 
   describe("without a reference instant", () => {
@@ -61,7 +63,7 @@ describe("resolveAuditLogToday", () => {
     })
 
     it("names the day it is in Poland now", () => {
-      expect(resolveAuditLogToday()).toBe("2026-10-15")
+      expect(resolveAuditLogToday(IN_POLAND.timeZone)).toBe("2026-10-15")
     })
   })
 })
@@ -75,7 +77,7 @@ describe("resolveNextAuditLogDayStart", () => {
     ["the 23-hour day the clocks go forward", "2026-03-29T12:00:00.000Z", "2026-03-29T22:00:00.000Z"],
     ["the last evening of the year", "2026-12-31T20:00:00.000Z", "2026-12-31T23:00:00.000Z"],
   ])("finds the next midnight in Poland at %s", (_label, instant, expected) => {
-    expect(resolveNextAuditLogDayStart(new Date(instant)).toISOString()).toBe(expected)
+    expect(resolveNextAuditLogDayStart(new Date(instant), IN_POLAND.timeZone).toISOString()).toBe(expected)
   })
 })
 
@@ -86,16 +88,22 @@ describe("buildAuditLogDayFilter", () => {
 })
 
 describe("formatAdminAuditTimestamp", () => {
-  it("renders the time in Poland down to the second, whatever zone the Worker runs in", () => {
-    expect(formatAdminAuditTimestamp(new Date("2026-10-14T23:35:07.000Z"))).toBe("15 paź 2026, 01:35:07")
+  it("renders the time in the viewer's zone and format down to the second, whatever zone the Worker runs in", () => {
+    expect(formatAdminAuditTimestamp(new Date("2026-10-14T23:35:07.000Z"), IN_POLAND)).toBe("15 paź 2026, 01:35:07")
   })
 
   it("renders a winter time an hour ahead of UTC", () => {
-    expect(formatAdminAuditTimestamp(new Date("2026-01-15T13:30:05.000Z"))).toBe("15 sty 2026, 14:30:05")
+    expect(formatAdminAuditTimestamp(new Date("2026-01-15T13:30:05.000Z"), IN_POLAND)).toBe("15 sty 2026, 14:30:05")
+  })
+
+  it("follows another viewer's zone and format", () => {
+    expect(formatAdminAuditTimestamp(new Date("2026-10-14T23:35:07.000Z"), { formatLocale: "en-US", timeZone: "America/New_York" })).toBe(
+      "Oct 14, 2026, 07:35:07 PM",
+    )
   })
 
   it("accepts a stored timestamp string", () => {
-    expect(formatAdminAuditTimestamp("2026-10-14T23:35:07.000Z")).toBe("15 paź 2026, 01:35:07")
+    expect(formatAdminAuditTimestamp("2026-10-14T23:35:07.000Z", IN_POLAND)).toBe("15 paź 2026, 01:35:07")
   })
 })
 
@@ -175,7 +183,7 @@ describe("toAdminAuditListItem", () => {
   }
 
   it("derives the actor's initials for the avatar", () => {
-    expect(toAdminAuditListItem(row).actor).toStrictEqual({
+    expect(toAdminAuditListItem(row, IN_POLAND).actor).toStrictEqual({
       id: "user-1",
       initials: "AK",
       name: "Anna Kowalska",
@@ -184,11 +192,11 @@ describe("toAdminAuditListItem", () => {
   })
 
   it("resolves the readable target from the metadata handle", () => {
-    expect(toAdminAuditListItem(row)).toMatchObject({ resourceId: PRODUCT_UUID, target: "silver-ring" })
+    expect(toAdminAuditListItem(row, IN_POLAND)).toMatchObject({ resourceId: PRODUCT_UUID, target: "silver-ring" })
   })
 
   it("normalises the nullable columns to absent", () => {
-    const item = toAdminAuditListItem({ ...row, actorId: null, detail: null, ip: null, metadata: null, resourceId: null })
+    const item = toAdminAuditListItem({ ...row, actorId: null, detail: null, ip: null, metadata: null, resourceId: null }, IN_POLAND)
 
     expect(item.actor.id).toBeUndefined()
     expect(item.detail).toBeUndefined()
@@ -197,26 +205,29 @@ describe("toAdminAuditListItem", () => {
   })
 
   it("describes the detail from what the row stored instead of passing its text through", () => {
-    const sent = toAdminAuditListItem({
-      ...row,
-      action: "email.sent",
-      detail: "Order confirmation → anna@example.com",
-      metadata: JSON.stringify({ idempotencyKey: "order-confirmation/order-1" }),
-    })
+    const sent = toAdminAuditListItem(
+      {
+        ...row,
+        action: "email.sent",
+        detail: "Order confirmation → anna@example.com",
+        metadata: JSON.stringify({ idempotencyKey: "order-confirmation/order-1" }),
+      },
+      IN_POLAND,
+    )
 
     expect(sent.detail).toMatchObject({ emailKind: "order-confirmation", kind: "email", recipient: "anna@example.com" })
   })
 
   it("survives metadata that is not valid JSON", () => {
-    expect(toAdminAuditListItem({ ...row, metadata: "{not json" }).target).toBe(PRODUCT_UUID)
+    expect(toAdminAuditListItem({ ...row, metadata: "{not json" }, IN_POLAND).target).toBe(PRODUCT_UUID)
   })
 
   it("survives metadata that parses to something other than an object", () => {
-    expect(toAdminAuditListItem({ ...row, metadata: '["silver-ring"]' }).target).toBe(PRODUCT_UUID)
+    expect(toAdminAuditListItem({ ...row, metadata: '["silver-ring"]' }, IN_POLAND).target).toBe(PRODUCT_UUID)
   })
 
   it("renders the stored timestamp for display", () => {
-    expect(toAdminAuditListItem(row).timestamp).toBe(formatAdminAuditTimestamp(row.createdAt))
+    expect(toAdminAuditListItem(row, IN_POLAND).timestamp).toBe(formatAdminAuditTimestamp(row.createdAt, IN_POLAND))
   })
 })
 

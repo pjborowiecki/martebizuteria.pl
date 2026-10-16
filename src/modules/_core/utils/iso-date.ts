@@ -21,6 +21,10 @@ export const parseIsoDateToLocalDate = (isoDate: string): Date => {
   return new Date(year, month - JS_MONTH_INDEX_OFFSET, day)
 }
 
+export const ISO_DATE_TIME_ZONE = "UTC"
+
+export const parseIsoDateToUtcDate = (isoDate: string): Date => new Date(`${isoDate}T00:00:00.000Z`)
+
 export const parseIsoDateToStartMs = (isoDate: string): number => parseIsoDateToLocalDate(isoDate).getTime()
 
 export const parseIsoDateToEndMs = (isoDate: string): number => {

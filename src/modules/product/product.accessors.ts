@@ -47,6 +47,7 @@ export interface AdminProductsListParams extends ListPaginationParams {
   readonly search?: string | undefined
   readonly sort?: AdminProductsListSort | undefined
   readonly status?: ProductStatus | undefined
+  readonly timeZone: string
   readonly totalStock?: NumericColumnFilterValue | undefined
   readonly variantKind?: ProductVariantKind | undefined
 }
@@ -378,7 +379,10 @@ const buildInventoryLevelStockCondition = (level: ProductInventoryLevel, totalSt
   return or(ne(product.status, PRODUCT_STATUS.PUBLISHED), sql`${stock} > ${PRODUCT_LOW_STOCK_THRESHOLD}`)!
 }
 
-type AdminProductsFilterParams = Pick<AdminProductsListParams, "categoryId" | "collectionId" | "createdAt" | "search" | "status">
+type AdminProductsFilterParams = Pick<
+  AdminProductsListParams,
+  "categoryId" | "collectionId" | "createdAt" | "search" | "status" | "timeZone"
+>
 
 const buildAdminProductsWhere = (params: AdminProductsFilterParams): SQL | undefined => {
   const conditions: SQL[] = []
@@ -392,7 +396,7 @@ const buildAdminProductsWhere = (params: AdminProductsFilterParams): SQL | undef
   }
 
   if (params.createdAt !== undefined) {
-    conditions.push(buildAdminDateTimeFilterSql(product.createdAt, params.createdAt))
+    conditions.push(buildAdminDateTimeFilterSql(product.createdAt, params.createdAt, params.timeZone))
   }
 
   if (params.categoryId !== undefined) {

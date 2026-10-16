@@ -4,10 +4,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { DISPLAY_PREFERENCES_QUERY_KEY } from "~/src/integrations/use-intl/i18n.display"
-
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 import { updateDisplayPreferenceMutation } from "~/src/modules/user/use-cases/update-display-preference"
 
 import { AUTOMATIC_PREFERENCE } from "~/src/presentation/components/custom/display-preferences/use-display-preference-options"
@@ -21,11 +17,7 @@ export const useSaveDisplayPreference = (preference: DisplayPreferenceName): Sav
       toast.error(t("error"))
     },
     onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: DISPLAY_PREFERENCES_QUERY_KEY }),
-        queryClient.invalidateQueries({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE }),
-        queryClient.invalidateQueries({ queryKey: SESSION_QUERY_KEYS.CURRENT }),
-      ])
+      await queryClient.invalidateQueries()
       toast.success(t("saved"))
     },
   })

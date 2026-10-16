@@ -1,4 +1,3 @@
-import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
 import {
   DATE_COLUMN_FILTER_OPERATOR,
   DATE_COLUMN_FILTER_OPERATOR_SYMBOL,
@@ -18,17 +17,17 @@ import {
 
 const MS_PER_MINUTE = 60_000
 
-export const storeWallClockStartMs = (value: string): number =>
-  instantOfWallClock(parseIsoDateTimeLocal(value), DEFAULT_TIMEZONE_CODE).getTime()
+export const wallClockStartMs = (value: string, timeZone: string): number =>
+  instantOfWallClock(parseIsoDateTimeLocal(value), timeZone).getTime()
 
-export const storeWallClockEndMs = (value: string): number => {
+export const wallClockEndMs = (value: string, timeZone: string): number => {
   if (hasIsoDateTimeTimeComponent(value)) {
-    return storeWallClockStartMs(value) + MS_PER_MINUTE
+    return wallClockStartMs(value, timeZone) + MS_PER_MINUTE
   }
 
   const { day, month, year } = parseIsoDateTimeLocal(value)
 
-  return startOfCalendarDate(normalizeCalendarDate({ day: day + 1, month, year }), DEFAULT_TIMEZONE_CODE).getTime()
+  return startOfCalendarDate(normalizeCalendarDate({ day: day + 1, month, year }), timeZone).getTime()
 }
 
 export const formatDateTimeFilterTriggerLabel = ({

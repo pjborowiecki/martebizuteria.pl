@@ -49,7 +49,7 @@ const JUNE = Date.UTC(2024, 5, 10)
 
 const SHIPPED_EMAIL_DELIVERY = JSON.stringify({ idempotencyKey: "order-shipped/o-placed", orderEmail: { kind: "order-shipped" } })
 
-const page = { limit: 25, offset: 0 }
+const page = { limit: 25, offset: 0, timeZone: "Europe/Warsaw" }
 
 const orderIds = async (params: Parameters<typeof getAdminOrdersPage>[0]): Promise<string[]> => {
   const result = await getAdminOrdersPage(params)
@@ -162,8 +162,8 @@ describe("getAdminOrdersPage row shape", () => {
   })
 
   it("pages through the list", async () => {
-    const first = await getAdminOrdersPage({ limit: 2, offset: 0 })
-    const second = await getAdminOrdersPage({ limit: 2, offset: 2 })
+    const first = await getAdminOrdersPage({ limit: 2, offset: 0, timeZone: "Europe/Warsaw" })
+    const second = await getAdminOrdersPage({ limit: 2, offset: 2, timeZone: "Europe/Warsaw" })
 
     expect(first.rows).toHaveLength(2)
     expect(second.rows).toHaveLength(2)
@@ -171,7 +171,7 @@ describe("getAdminOrdersPage row shape", () => {
   })
 
   it("does no line lookup for a page beyond the end", async () => {
-    const result = await getAdminOrdersPage({ limit: 25, offset: 100 })
+    const result = await getAdminOrdersPage({ limit: 25, offset: 100, timeZone: "Europe/Warsaw" })
 
     expect(result.rows).toStrictEqual([])
     expect(result.total).toBe(5)
@@ -288,24 +288,24 @@ describe("getAdminOrdersPage filtering", () => {
 
 describe("getAdminOrdersExport", () => {
   it("returns every matching order without paging", async () => {
-    expect(await getAdminOrdersExport({})).toHaveLength(5)
+    expect(await getAdminOrdersExport({ timeZone: "Europe/Warsaw" })).toHaveLength(5)
   })
 
   it("applies the same filters as the paged query", async () => {
-    const rows = await getAdminOrdersExport({ tab: ADMIN_ORDER_TAB.SHIPPED })
+    const rows = await getAdminOrdersExport({ tab: ADMIN_ORDER_TAB.SHIPPED, timeZone: "Europe/Warsaw" })
 
     expect(rows.map((row) => row.id)).toStrictEqual(["o-shipped"])
     expect(rows[0]?.itemCount).toBe(1)
   })
 
   it("maps the duplicated status column correctly, unlike the batched paged query", async () => {
-    const rows = await getAdminOrdersExport({ tab: ADMIN_ORDER_TAB.UNFULFILLED })
+    const rows = await getAdminOrdersExport({ tab: ADMIN_ORDER_TAB.UNFULFILLED, timeZone: "Europe/Warsaw" })
 
     expect(rows[0]).toMatchObject({ paymentStatus: "succeeded", status: "processing", total: 20_000, userId: "u-anna" })
   })
 
   it("reads the company and NIP a business buyer gave, and nothing for an order without them", async () => {
-    const rows = await getAdminOrdersExport({})
+    const rows = await getAdminOrdersExport({ timeZone: "Europe/Warsaw" })
     const company = rows.find((row) => row.id === "o-unfulfilled")
     const guest = rows.find((row) => row.id === "o-shipped")
 
@@ -314,7 +314,7 @@ describe("getAdminOrdersExport", () => {
   })
 
   it("returns nothing when no order matches", async () => {
-    expect(await getAdminOrdersExport({ search: "nobody" })).toStrictEqual([])
+    expect(await getAdminOrdersExport({ search: "nobody", timeZone: "Europe/Warsaw" })).toStrictEqual([])
   })
 })
 
@@ -773,14 +773,14 @@ describe("a full admin page of orders", () => {
   })
 
   it("counts the items of every order on the page", async () => {
-    const result = await getAdminOrdersPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0 })
+    const result = await getAdminOrdersPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0, timeZone: "Europe/Warsaw" })
 
     expect(result.total).toBe(LIST_PAGE_SIZE_MAX + 5)
     expect(result.rows.map(({ id, itemCount }) => ({ id, itemCount }))).toStrictEqual(newestFirstItemCounts)
   })
 
   it("counts the items of every exported order", async () => {
-    const rows = await getAdminOrdersExport({ search: "bulk@example.com" })
+    const rows = await getAdminOrdersExport({ search: "bulk@example.com", timeZone: "Europe/Warsaw" })
 
     expect(rows.map(({ id, itemCount }) => ({ id, itemCount }))).toStrictEqual(newestFirstItemCounts)
   })

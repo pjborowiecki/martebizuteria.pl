@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
@@ -12,7 +13,10 @@ import { type User } from "~/src/modules/user/user.types"
 import { mapCustomerLocations, mapCustomerOrderStats, toAdminCustomerListItem } from "~/src/modules/user/user.utils"
 import { userZodSchemas } from "~/src/modules/user/user.zod"
 
-const buildAdminCustomersListParams = (input: zod.output<typeof userZodSchemas.adminCustomersPageInput>): AdminCustomersListParams => {
+const buildAdminCustomersListParams = (
+  input: zod.output<typeof userZodSchemas.adminCustomersPageInput>,
+  timeZone: string,
+): AdminCustomersListParams => {
   const pageSize = input.pageSize ?? ADMIN_CUSTOMER_PAGE_SIZE
 
   return {
@@ -28,6 +32,7 @@ const buildAdminCustomersListParams = (input: zod.output<typeof userZodSchemas.a
     },
     search: normalizeAdminSearchTerm(input.search),
     statFilter: input.statFilter,
+    timeZone,
   }
 }
 
@@ -37,7 +42,8 @@ export const getAdminCustomersPage = createServerFn({
   .middleware([authorized({ user: ["list"] })])
   .validator((input: zod.input<typeof userZodSchemas.adminCustomersPageInput>) => userZodSchemas.adminCustomersPageInput.parse(input))
   .handler(async ({ data: input }) => {
-    const params = buildAdminCustomersListParams(input)
+    const { timeZone } = await resolveRequestDisplayPreferences()
+    const params = buildAdminCustomersListParams(input, timeZone)
     const { defaultAddresses, latestShippingAddresses, orderStats, rows, total } = await userGetAdminCustomersPage(params)
     const statsByUserId = mapCustomerOrderStats(orderStats)
     const locationByUserId = mapCustomerLocations(defaultAddresses, latestShippingAddresses)

@@ -154,9 +154,9 @@ const seedCatalog = (): void => {
   insertVariant({ id: "v3", price: 19_900, productId: "p3", sku: "CUFF-1", stock: 50 })
 }
 
-const PAGE = { limit: 10, offset: 0 }
+const PAGE = { limit: 10, offset: 0, timeZone: "Europe/Warsaw" }
 
-const LARGEST_PAGE = { limit: LIST_PAGE_SIZE_MAX, offset: 0 }
+const LARGEST_PAGE = { limit: LIST_PAGE_SIZE_MAX, offset: 0, timeZone: "Europe/Warsaw" }
 
 const BULK_PRODUCT_IDS = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${index}`)
 
@@ -226,14 +226,14 @@ describe("getAdminProductsPage without variant statistics", () => {
   })
 
   it("pages through the list while still reporting the full total", async () => {
-    const page = await getAdminProductsPage({ limit: 2, offset: 2 })
+    const page = await getAdminProductsPage({ limit: 2, offset: 2, timeZone: "Europe/Warsaw" })
 
     expect(page.total).toBe(4)
     expect(idsOf(page.rows)).toStrictEqual(["p4", "p2"])
   })
 
   it("returns no rows past the end of the list", async () => {
-    const page = await getAdminProductsPage({ limit: 2, offset: 10 })
+    const page = await getAdminProductsPage({ limit: 2, offset: 10, timeZone: "Europe/Warsaw" })
 
     expect(page.rows).toStrictEqual([])
     expect(page.total).toBe(4)
@@ -410,11 +410,14 @@ describe("getAdminProductsPage with variant statistics", () => {
 
 describe("getAdminProductsFilteredList", () => {
   it("returns every matching row without a page window", async () => {
-    await expect(getAdminProductsFilteredList({}).then(idsOf)).resolves.toStrictEqual(["p1", "p3", "p4", "p2"])
+    await expect(getAdminProductsFilteredList({ timeZone: "Europe/Warsaw" }).then(idsOf)).resolves.toStrictEqual(["p1", "p3", "p4", "p2"])
   })
 
   it("honours the same filters as the paged list", async () => {
-    await expect(getAdminProductsFilteredList({ status: "published" }).then(idsOf)).resolves.toStrictEqual(["p1", "p2"])
+    await expect(getAdminProductsFilteredList({ status: "published", timeZone: "Europe/Warsaw" }).then(idsOf)).resolves.toStrictEqual([
+      "p1",
+      "p2",
+    ])
   })
 
   it("carries the localized titles of the linked category, collection and attribute", async () => {
@@ -435,7 +438,7 @@ describe("getAdminProductsFilteredList", () => {
       )
       .run(NOW, NOW)
 
-    const [first] = await getAdminProductsFilteredList({ search: "silver-ring" })
+    const [first] = await getAdminProductsFilteredList({ search: "silver-ring", timeZone: "Europe/Warsaw" })
 
     expect(first?.categories.map((link) => link.productCategory.titles["en-US"])).toStrictEqual(["rings"])
     expect(first?.collections.map((link) => link.productCollection.titles["en-US"])).toStrictEqual(["sale"])
@@ -477,7 +480,7 @@ describe("getAdminProductsPage at the largest page size", () => {
   })
 
   it("exports every product of a catalog larger than the largest page in the same order", async () => {
-    await expect(getAdminProductsFilteredList({}).then(idsOf)).resolves.toStrictEqual([
+    await expect(getAdminProductsFilteredList({ timeZone: "Europe/Warsaw" }).then(idsOf)).resolves.toStrictEqual([
       ...BULK_PRODUCT_IDS.toReversed(),
       "p1",
       "p3",

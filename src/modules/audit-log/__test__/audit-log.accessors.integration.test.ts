@@ -139,8 +139,8 @@ const seedAroundMidnightInPoland = (): Promise<void> =>
     eventAt("log-16-oct-00-00", "2026-10-15T22:00:00.000Z"),
   ])
 
-const listIds = async (params: Omit<Parameters<typeof getAdminAuditLogsPage>[0], "limit" | "offset">): Promise<string[]> => {
-  const { rows } = await getAdminAuditLogsPage({ ...params, limit: LIST_PAGE_SIZE_MAX, offset: 0 })
+const listIds = async (params: Omit<Parameters<typeof getAdminAuditLogsPage>[0], "limit" | "offset" | "timeZone">): Promise<string[]> => {
+  const { rows } = await getAdminAuditLogsPage({ ...params, limit: LIST_PAGE_SIZE_MAX, offset: 0, timeZone: "Europe/Warsaw" })
 
   return rows.map(({ id }) => id).toSorted()
 }
@@ -149,19 +149,21 @@ describe("the today card on D1 just after midnight in Poland", () => {
   it("counts only what happened since midnight in Poland, though it is still the 14th in UTC", async () => {
     await seedAroundMidnightInPoland()
 
-    await expect(getAdminAuditLogStats(resolveAuditLogToday(PAST_MIDNIGHT_IN_POLAND))).resolves.toMatchObject({ todayCount: 2 })
+    await expect(
+      getAdminAuditLogStats(resolveAuditLogToday("Europe/Warsaw", PAST_MIDNIGHT_IN_POLAND), "Europe/Warsaw"),
+    ).resolves.toMatchObject({ todayCount: 2 })
   })
 
   it("lists exactly the events it counts when its filter is applied", async () => {
     await seedAroundMidnightInPoland()
-    const today = resolveAuditLogToday(PAST_MIDNIGHT_IN_POLAND)
+    const today = resolveAuditLogToday("Europe/Warsaw", PAST_MIDNIGHT_IN_POLAND)
 
     await expect(listIds({ createdAt: buildAuditLogDayFilter(today) })).resolves.toStrictEqual(["log-15-oct-00-10", "log-15-oct-23-59"])
   })
 
   it("lists exactly the events the warning and error cards count", async () => {
     await seedAroundMidnightInPoland()
-    const stats = await getAdminAuditLogStats(resolveAuditLogToday(PAST_MIDNIGHT_IN_POLAND))
+    const stats = await getAdminAuditLogStats(resolveAuditLogToday("Europe/Warsaw", PAST_MIDNIGHT_IN_POLAND), "Europe/Warsaw")
 
     await expect(listIds({ severity: "warning" })).resolves.toHaveLength(stats.warningCount)
     await expect(listIds({ severity: "error" })).resolves.toHaveLength(stats.errorCount)
@@ -170,7 +172,7 @@ describe("the today card on D1 just after midnight in Poland", () => {
 
   it("shows today's warnings when the warning filter and the today filter are both applied", async () => {
     await seedAroundMidnightInPoland()
-    const today = resolveAuditLogToday(PAST_MIDNIGHT_IN_POLAND)
+    const today = resolveAuditLogToday("Europe/Warsaw", PAST_MIDNIGHT_IN_POLAND)
 
     await expect(listIds({ createdAt: buildAuditLogDayFilter(today), severity: "warning" })).resolves.toStrictEqual(["log-15-oct-00-10"])
   })

@@ -5,6 +5,7 @@ const accessors = vi.hoisted(() => ({
   page: vi.fn(() => Promise.resolve({ rows: [{ id: "log-1" }], total: 1 })),
 }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({ getAdminAuditLogsPage: accessors.page }))
 vi.mock("~/src/modules/audit-log/audit-log.utils", () => ({ toAdminAuditListItem: (row: { id: string }) => ({ ...row, mapped: true }) }))

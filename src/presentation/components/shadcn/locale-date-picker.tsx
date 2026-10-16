@@ -9,7 +9,13 @@ import { getDayPickerLocale } from "~/src/integrations/react-day-picker/react-da
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
-import { formatDateToIsoDateLocal, isIsoDateString, parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
+import {
+  ISO_DATE_TIME_ZONE,
+  formatDateToIsoDateLocal,
+  isIsoDateString,
+  parseIsoDateToLocalDate,
+  parseIsoDateToUtcDate,
+} from "~/src/modules/_core/utils/iso-date"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 
@@ -56,8 +62,9 @@ export const LocaleDatePicker = ({
       return placeholder
     }
 
-    return format.dateTime(parseIsoDateToLocalDate(value), {
+    return format.dateTime(parseIsoDateToUtcDate(value), {
       dateStyle: "short",
+      timeZone: ISO_DATE_TIME_ZONE,
     })
   }, [format, placeholder, value])
 

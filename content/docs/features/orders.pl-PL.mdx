@@ -45,7 +45,7 @@ await Promise.all([
 
 `getAdminOrdersPage` wymaga uprawnienia `order: ["read"]` przez `authorized({ order: ["read"] })`. Przyjmuje stronę, rozmiar strony, frazę wyszukiwania dopasowywaną do identyfikatora, numeru, e-maila i numeru przesyłki zamówienia oraz imienia i nazwiska, identyfikatora i e-maila klienta, `tab`, `statFilter` i pięć filtrów kolumn (`createdAt`, `fulfillment`, `payment`, `status`, `total`), a zwraca `buildListPaginationResult`.
 
-Filtr `createdAt` przechodzi przez `buildAdminDateTimeFilterSql`, tę samą funkcję co w dzienniku zdarzeń, więc wybrany dzień to dzień w Polsce: `on` trwa od północy w Warszawie do następnej, `before` kończy się o tej północy, `after` zaczyna o następnej, a `between` trwa od północy pierwszego dnia do północy po ostatnim, niezależnie od strefy, w której działa Worker.
+Filtr `createdAt` przechodzi przez `buildAdminDateTimeFilterSql`, tę samą funkcję co w dzienniku zdarzeń, więc wybrany dzień to dzień w strefie administratora: `on` trwa od tamtejszej północy do następnej, `before` kończy się o tej północy, `after` zaczyna o następnej, a `between` trwa od północy pierwszego dnia do północy po ostatnim, niezależnie od strefy, w której działa Worker.
 
 Zakładki to `ORDER_TABS = ["all", "pending", "unfulfilled", "shipped", "delivered"]`. Filtry statystyk to `ADMIN_ORDER_STAT_FILTER` — `total` i `pending`, więc kliknięcie karty statystyki zawęża tabelę.
 

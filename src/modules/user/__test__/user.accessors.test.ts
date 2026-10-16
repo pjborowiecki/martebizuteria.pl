@@ -34,7 +34,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   },
 }))
 
-const page = { limit: 25, offset: 0 }
+const page = { limit: 25, offset: 0, timeZone: "Europe/Warsaw" }
 
 beforeEach(() => {
   database.state.leftJoins = 0

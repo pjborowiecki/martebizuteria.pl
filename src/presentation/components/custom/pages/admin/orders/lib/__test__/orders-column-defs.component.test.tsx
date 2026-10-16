@@ -29,7 +29,7 @@ const renderColumns = () =>
       const t = useTranslations("pages.admin.orders")
       const tAdmin = useTranslations("pages.admin")
 
-      return buildOrderColumns({ formatLocale: "en-US", t, tAdmin })
+      return buildOrderColumns({ formatLocale: "en-US", t, tAdmin, timeZone: "Europe/Warsaw" })
     },
     { wrapper: Wrapper },
   )

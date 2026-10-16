@@ -8,7 +8,7 @@ import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 
-import { useFormatLocale } from "~/src/hooks/use-display-format"
+import { useDisplayTimeZone, useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Avatar, AvatarFallback } from "~/src/presentation/components/shadcn/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
@@ -76,6 +76,7 @@ const isOrderCellClick = ({ currentTarget, target }: MouseEvent<HTMLTableRowElem
 
 const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): JSX.Element => {
   const formatLocale = useFormatLocale()
+  const timeZone = useDisplayTimeZone()
   const navigate = useNavigate()
   const handleRowClick = useCallback(
     (event: MouseEvent<HTMLTableRowElement>) => {
@@ -103,7 +104,7 @@ const RecentOrderRow = ({ order }: { readonly order: Order["adminListItem"] }): 
           <span className="text-sm">{order.customerName}</span>
         </div>
       </TableCell>
-      <TableCell className="text-sm text-muted-foreground">{formatAdminOrderDate(order.createdAt, formatLocale)}</TableCell>
+      <TableCell className="text-sm text-muted-foreground">{formatAdminOrderDate(order.createdAt, { formatLocale, timeZone })}</TableCell>
       <TableCell className="text-right font-mono text-sm font-medium">
         {formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale)}
       </TableCell>

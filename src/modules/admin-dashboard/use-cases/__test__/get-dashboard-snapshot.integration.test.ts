@@ -7,6 +7,11 @@ const { sqlite } = await vi.hoisted(async () => {
   return { sqlite: new DatabaseSync(":memory:") }
 })
 
+const viewer = vi.hoisted(() => ({ preferences: { formatLocale: "en-US", timeZone: "Europe/Warsaw" } }))
+
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
+  resolveRequestDisplayPreferences: () => Promise.resolve(viewer.preferences),
+}))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", async () => {
   const { drizzle } = await import("drizzle-orm/d1")
@@ -306,15 +311,17 @@ describe("getDashboardSnapshot chart frames", () => {
     expect(result.chartPoints1y[0]?.dateKey).toBe("2025-07")
   })
 
-  it("labels the daily points in the requested locale", async () => {
-    const english = await snapshot()
-    const polish = await snapshot("pl-PL")
+  it("labels the daily points in the viewer's format locale, whatever the page's language", async () => {
+    const english = await snapshot("pl-PL")
+    viewer.preferences = { formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }
+    const polish = await snapshot()
+    viewer.preferences = { formatLocale: "en-US", timeZone: "Europe/Warsaw" }
 
     expect(english.chartPoints30d.at(-1)?.label).toBe("Jun 15")
     expect(polish.chartPoints30d.at(-1)?.label).toBe("15 cze")
   })
 
-  it("labels the monthly points in the requested locale", async () => {
+  it("labels the monthly points in the viewer's format locale", async () => {
     const result = await snapshot()
 
     expect(result.chartPoints1y.at(-1)?.label).toBe("Jun 2026")
