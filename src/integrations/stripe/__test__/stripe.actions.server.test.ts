@@ -195,6 +195,29 @@ describe("handleCreateCheckoutSession quote", () => {
   })
 })
 
+describe("handleCreateCheckoutSession free delivery", () => {
+  it("delivers for free once the products reach the shop's threshold and records the free delivery on the payment", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ freeDeliveryThreshold: 40_000, price: 1500, type: "courier" })
+    mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 49_800, client_secret: "cs_secret_1", id: "cs_new" })
+
+    const result = await handleCreateCheckoutSession(createInput())
+
+    expect(result.totals).toMatchObject({ shippingTotal: 0, subtotal: 49_800, total: 49_800 })
+    expect(createdSessionMetadata()).toMatchObject({ shippingTotal: "0" })
+  })
+
+  it("charges delivery when a discount code takes the products under the threshold", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ freeDeliveryThreshold: 49_000, price: 1500, type: "courier" })
+    mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
+    mocked.checkoutSessionsCreate.mockResolvedValue({ amount_total: 49_300, client_secret: "cs_secret_1", id: "cs_new" })
+
+    const result = await handleCreateCheckoutSession(createInput({ discountCode: "SPRING" }))
+
+    expect(result.totals).toMatchObject({ discountTotal: 2000, shippingTotal: 1500, total: 49_300 })
+    expect(createdSessionMetadata()).toMatchObject({ shippingTotal: "1500" })
+  })
+})
+
 describe("handleCreateCheckoutSession", () => {
   it("returns the Stripe session with the catalogue prices and totals it charges", async () => {
     await expect(handleCreateCheckoutSession(createInput())).resolves.toStrictEqual({
@@ -257,6 +280,7 @@ describe("handleCreateCheckoutSession", () => {
       discountCode: "",
       discountTotal: "0",
       locale: "pl-PL",
+      shippingTotal: "1500",
       userId: "user-1",
     }
 
@@ -283,6 +307,7 @@ describe("handleCreateCheckoutSession", () => {
       discountCode: "",
       discountTotal: "0",
       locale: "pl-PL",
+      shippingTotal: "1500",
       userId: "",
     }
 

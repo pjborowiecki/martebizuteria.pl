@@ -103,7 +103,7 @@ import plPlCheckoutMessages from "~/messages/pl-PL/pages.checkout.json"
 
 const BLIK_DESCRIPTION_LENGTH_MAX = 70
 
-const PAYMENT_INTENT_METADATA_KEYS = ["checkoutId", "deployment", "discountCode", "discountTotal", "locale", "userId"]
+const PAYMENT_INTENT_METADATA_KEYS = ["checkoutId", "deployment", "discountCode", "discountTotal", "locale", "shippingTotal", "userId"]
 
 const variantIdOf = (index: number): string => `0199a1b2-c3d4-7e5f-8901-${String(index).padStart(12, "0")}`
 

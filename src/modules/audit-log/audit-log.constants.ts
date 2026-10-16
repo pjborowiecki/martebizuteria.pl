@@ -132,7 +132,7 @@ export const AUDIT_EMAIL_KIND = {
 
 export type AuditEmailKind = (typeof AUDIT_EMAIL_KIND)[keyof typeof AUDIT_EMAIL_KIND]
 
-export const AUDIT_LOG_MONEY_FIELDS: ReadonlySet<string> = new Set(["amount", "price", "refundedAmount"])
+export const AUDIT_LOG_MONEY_FIELDS: ReadonlySet<string> = new Set(["amount", "freeDeliveryThreshold", "price", "refundedAmount"])
 
 export const SEVERITY_DOT_COLORS: Record<AuditLogSeverity, string> = {
   error: "bg-red-500",

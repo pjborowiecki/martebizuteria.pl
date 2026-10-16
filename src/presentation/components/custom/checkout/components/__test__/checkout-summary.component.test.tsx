@@ -24,6 +24,14 @@ const deliveryMethods: { id: string; name: string; price: number }[] = [
   { id: "pickup", name: "Atelier pickup", price: 0 },
 ]
 
+const freeDelivery = vi.hoisted(() => ({ threshold: undefined as number | undefined }))
+
+vi.mock("~/src/modules/store-setting/use-cases/get-free-delivery", () => ({
+  getFreeDeliveryQuery: () => ({
+    queryFn: () => Promise.resolve({ threshold: freeDelivery.threshold }),
+    queryKey: ["store-setting", "free-delivery"],
+  }),
+}))
 vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", () => ({
   listDeliveryMethodsQuery: () => ({ queryFn: () => Promise.resolve(deliveryMethods), queryKey: ["delivery-method", "all"] }),
 }))
@@ -176,6 +184,7 @@ beforeEach(() => {
     ]),
   )
   search.step = 1
+  freeDelivery.threshold = undefined
   sessionStorage.clear()
   localStorage.clear()
   useCartStore.getState().clearCart()
@@ -311,6 +320,27 @@ describe("CheckoutSummary delivery cost", () => {
     await screen.findByText("Free")
 
     expect(screen.getAllByText("PLN 249.00")).toHaveLength(2)
+  })
+
+  it("delivers for free once the products reach the shop's threshold", async () => {
+    freeDelivery.threshold = 20_000
+    addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
+    chooseDeliveryMethod("courier")
+    renderSummary()
+
+    expect(await screen.findByText("Free")).toBeInTheDocument()
+    expect(screen.getAllByText("PLN 249.00")).toHaveLength(2)
+    expect(screen.queryByText(/more for free delivery/u)).not.toBeInTheDocument()
+  })
+
+  it("tells the shopper how much more the products need for free delivery", async () => {
+    freeDelivery.threshold = 30_000
+    addLine({ qty: 1, rawPrice: 24_900, variantId: "variant-a" })
+    chooseDeliveryMethod("courier")
+    renderSummary()
+
+    expect(await screen.findByText("Add PLN 51.00 more for free delivery.")).toBeInTheDocument()
+    expect(screen.getByText("PLN 19.00")).toBeInTheDocument()
   })
 })
 

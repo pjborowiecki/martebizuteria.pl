@@ -93,6 +93,13 @@ export const scheduleDeliveryMethodsInvalidation = (): void => {
   })
 }
 
+export const scheduleFreeDeliveryInvalidation = (): void => {
+  scheduleRealtimeInvalidation({
+    admin: [STORE_SETTING_QUERY_KEYS.ADMIN.FREE_DELIVERY],
+    storefront: [STORE_SETTING_QUERY_KEYS.FREE_DELIVERY],
+  })
+}
+
 export const scheduleSalesStatusInvalidation = (): void => {
   scheduleRealtimeInvalidation({
     admin: [STORE_SETTING_QUERY_KEYS.ADMIN.SALES],

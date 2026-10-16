@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vite-plus/test"
 
 import { DELIVERY_METHOD_ERROR } from "~/src/modules/delivery-method/delivery-method.constants"
-import { resolveOfferedDeliveryConflict, toDeliveryMethodAuditSnapshot } from "~/src/modules/delivery-method/delivery-method.utils"
+import {
+  resolveDeliveryPrice,
+  resolveFreeDeliveryShortfall,
+  resolveOfferedDeliveryConflict,
+  toDeliveryMethodAuditSnapshot,
+} from "~/src/modules/delivery-method/delivery-method.utils"
 
 const OFFERED = [
   { id: "courier", type: "courier" },
@@ -51,5 +56,33 @@ describe("toDeliveryMethodAuditSnapshot", () => {
       { availability: "hidden", nameEn: "Courier", namePl: "Kurier", price: 1999 },
     )
     expect(toDeliveryMethodAuditSnapshot({ isActive: true, names: { "en-US": "", "pl-PL": "" }, price: 0 }).availability).toBe("offered")
+  })
+})
+
+describe("free delivery", () => {
+  const TENTH_OFF = { amountMinorUnits: 3000, type: "percentage" as const }
+  const FREE_SHIPPING_CODE = { amountMinorUnits: 1999, type: "free_shipping" as const }
+
+  it("charges the method's price when the shop sets no threshold", () => {
+    expect(resolveDeliveryPrice({ discount: undefined, freeDeliveryThreshold: undefined, itemsSubtotal: 99_900, price: 1999 })).toBe(1999)
+    expect(resolveFreeDeliveryShortfall({ discount: undefined, freeDeliveryThreshold: undefined, itemsSubtotal: 99_900 })).toBeUndefined()
+  })
+
+  it("delivers for free once the products reach the threshold, and says how much is missing before that", () => {
+    expect(resolveDeliveryPrice({ discount: undefined, freeDeliveryThreshold: 30_000, itemsSubtotal: 30_000, price: 1999 })).toBe(0)
+    expect(resolveDeliveryPrice({ discount: undefined, freeDeliveryThreshold: 30_000, itemsSubtotal: 29_999, price: 1999 })).toBe(1999)
+    expect(resolveFreeDeliveryShortfall({ discount: undefined, freeDeliveryThreshold: 30_000, itemsSubtotal: 25_000 })).toBe(5000)
+    expect(resolveFreeDeliveryShortfall({ discount: undefined, freeDeliveryThreshold: 30_000, itemsSubtotal: 40_000 })).toBe(0)
+  })
+
+  it("counts the products after a discount code that takes money off them", () => {
+    expect(resolveDeliveryPrice({ discount: TENTH_OFF, freeDeliveryThreshold: 30_000, itemsSubtotal: 32_000, price: 1999 })).toBe(1999)
+    expect(resolveFreeDeliveryShortfall({ discount: TENTH_OFF, freeDeliveryThreshold: 30_000, itemsSubtotal: 32_000 })).toBe(1000)
+  })
+
+  it("ignores a free shipping code, which takes nothing off the products", () => {
+    expect(resolveDeliveryPrice({ discount: FREE_SHIPPING_CODE, freeDeliveryThreshold: 30_000, itemsSubtotal: 30_000, price: 1999 })).toBe(
+      0,
+    )
   })
 })

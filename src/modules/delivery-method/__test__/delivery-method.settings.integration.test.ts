@@ -8,6 +8,7 @@ import { ROLES } from "~/src/integrations/better-auth/auth.access"
 import deliveryMethodSeed from "~/src/integrations/drizzle-orm/seeds/delivery-methods.sql?raw"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { getOfferedDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { DELIVERY_METHOD_ERROR } from "~/src/modules/delivery-method/delivery-method.constants"
 import { archiveDeliveryMethod, archiveDeliveryMethodMutation } from "~/src/modules/delivery-method/use-cases/archive-delivery-method"
@@ -25,13 +26,9 @@ const { effects, sqlite } = await vi.hoisted(async () => {
 
   return {
     effects: {
-      archived: vi.fn<(name: string) => void>(),
-      created: vi.fn<(name: string) => void>(),
+      audit: vi.fn<(action: string, target: string, options?: { metadata?: Record<string, unknown> }) => void>(),
       invalidate: vi.fn<() => void>(),
-      reordered: vi.fn<() => void>(),
       requestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } } | null>>(),
-      restored: vi.fn<(name: string) => void>(),
-      updated: vi.fn<(name: string, options?: { metadata?: Record<string, unknown> }) => void>(),
     },
     sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }),
   }
@@ -66,13 +63,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleDeliveryMethodsInvalidation: effects.invalidate,
 }))
-vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
-  recordDeliveryMethodArchivedAudit: effects.archived,
-  recordDeliveryMethodCreatedAudit: effects.created,
-  recordDeliveryMethodRestoredAudit: effects.restored,
-  recordDeliveryMethodUpdatedAudit: effects.updated,
-  recordDeliveryMethodsReorderedAudit: effects.reordered,
-}))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordDeliveryMethodAudit: effects.audit }))
 
 const INPOST_ID = "019f4a10-0000-7000-8000-000000000001"
 
@@ -155,7 +146,7 @@ describe("adding a delivery method", () => {
 
     expect(readMethod(id)).toMatchObject({ archived_at: null, is_active: 1, name: "Kurier InPost ekspres", price: 2999, rank: 3 })
     await expect(listDeliveryMethods()).resolves.toContainEqual(expect.objectContaining({ id, name: "InPost express courier" }))
-    expect(effects.created).toHaveBeenCalledWith("Kurier InPost ekspres")
+    expect(effects.audit).toHaveBeenCalledWith(AUDIT_LOG_ACTION.DELIVERY_METHOD_CREATED, "Kurier InPost ekspres")
     expect(effects.invalidate).toHaveBeenCalledOnce()
   })
 
@@ -208,7 +199,7 @@ describe("changing a delivery method", () => {
     await updateDeliveryMethod({ data: { ...(await editInput(METHOD.COURIER, { price: 2199 })), names: NAMES } })
 
     expect(readMethod(METHOD.COURIER)).toMatchObject({ name: "Kurier InPost ekspres", price: 2199 })
-    expect(effects.updated).toHaveBeenCalledWith("Kurier InPost ekspres", {
+    expect(effects.audit).toHaveBeenCalledWith(AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED, "Kurier InPost ekspres", {
       metadata: {
         changed: ["nameEn", "namePl", "price"],
         new: { nameEn: "InPost express courier", namePl: "Kurier InPost ekspres", price: 2199 },
@@ -220,7 +211,7 @@ describe("changing a delivery method", () => {
   it("records no change when nothing changed", async () => {
     await updateDeliveryMethod({ data: await editInput(METHOD.COURIER) })
 
-    expect(effects.updated).toHaveBeenCalledWith("Kurier InPost", undefined)
+    expect(effects.audit).toHaveBeenCalledWith(AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED, "Kurier InPost", undefined)
   })
 
   it("refuses a change made on a method someone else changed in the meantime", async () => {
@@ -252,12 +243,12 @@ describe("archiving and ordering delivery methods", () => {
     await expect(updateDeliveryMethod({ data: await editInput(METHOD.LOCKER) })).rejects.toMatchObject({
       message: DELIVERY_METHOD_ERROR.NOT_FOUND,
     })
-    expect(effects.archived).toHaveBeenCalledWith("Paczkomat InPost")
+    expect(effects.audit).toHaveBeenCalledWith(AUDIT_LOG_ACTION.DELIVERY_METHOD_ARCHIVED, "Paczkomat InPost")
 
     await archiveDeliveryMethod({ data: { archived: false, id: METHOD.LOCKER } })
 
     expect(readMethod(METHOD.LOCKER)).toMatchObject({ archived_at: null, is_active: 0 })
-    expect(effects.restored).toHaveBeenCalledWith("Paczkomat InPost")
+    expect(effects.audit).toHaveBeenCalledWith(AUDIT_LOG_ACTION.DELIVERY_METHOD_RESTORED, "Paczkomat InPost")
   })
 
   it("refuses to archive the last method offered at checkout", async () => {
@@ -281,7 +272,7 @@ describe("archiving and ordering delivery methods", () => {
     const offered = await listDeliveryMethods()
 
     expect(offered.map((method) => method.id)).toStrictEqual([METHOD.IN_STORE, METHOD.LOCKER, METHOD.COURIER])
-    expect(effects.reordered).toHaveBeenCalledOnce()
+    expect(effects.audit).toHaveBeenCalledExactlyOnceWith(AUDIT_LOG_ACTION.DELIVERY_METHOD_REORDERED, "delivery-methods")
   })
 })
 

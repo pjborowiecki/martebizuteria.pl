@@ -16,7 +16,8 @@
     "free": "Za darmo",
     "itemsCount": "Produkty ({count})",
     "priceChanged": "Cena zmieniła się od czasu dodania tego produktu do koszyka.",
-    "vatIncluded": "W tym VAT ({rate}%)"
+    "vatIncluded": "W tym VAT ({rate}%)",
+    "freeDeliveryShortfall": "Do darmowej dostawy brakuje {amount}."
   },
   "checkoutSuccess": {
     "title": "Zamówienie potwierdzone",

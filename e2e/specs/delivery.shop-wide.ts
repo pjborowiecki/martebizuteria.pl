@@ -13,6 +13,14 @@ const DELIVERY_SETTINGS = "/en-US/admin/settings/delivery"
 const methodRow = (page: Page) =>
   page.locator("[data-slot=settings-row]").filter({ has: page.getByRole("button", { name: "Edit" }), hasText: TEST_METHOD.english })
 
+const freeDeliverySwitch = (page: Page) => page.getByRole("switch", { name: "Offer free delivery" })
+
+const turnOffFreeDelivery = async (page: Page): Promise<void> => {
+  await freeDeliverySwitch(page).click()
+  await page.getByRole("button", { name: "Save", exact: true }).click()
+  await expect(new BasePage(page).notification("Free delivery saved.")).toBeVisible()
+}
+
 const archiveTestMethod = async (page: Page): Promise<void> => {
   await methodRow(page).getByRole("button", { name: "Edit" }).click()
   await page.getByRole("dialog", { name: `Edit ${TEST_METHOD.english}` }).getByRole("button", { name: "Archive" }).click()
@@ -27,6 +35,9 @@ test.describe("delivery settings", { lock: "shop-wide" }, () => {
     await new BasePage(page).open(DELIVERY_SETTINGS)
     if ((await methodRow(page).count()) > 0) {
       await archiveTestMethod(page)
+    }
+    if ((await freeDeliverySwitch(page).getAttribute("aria-checked")) === "true") {
+      await turnOffFreeDelivery(page)
     }
   })
 
@@ -71,6 +82,46 @@ test.describe("delivery settings", { lock: "shop-wide" }, () => {
     await archiveTestMethod(page)
 
     await expect(testCourier).toHaveCount(0)
+    await shopper.close()
+  })
+
+  test("an admin offers free delivery above a threshold, and a shopper's basket that reaches it is delivered for free", async ({
+    browser,
+    page,
+  }, testInfo) => {
+    const settings = new BasePage(page)
+    await settings.open(DELIVERY_SETTINGS)
+    await freeDeliverySwitch(page).click()
+    await page.getByLabel("Free delivery from").fill("1")
+    await page.getByRole("button", { name: "Save", exact: true }).click()
+
+    await expect(settings.notification("Free delivery saved.")).toBeVisible()
+
+    const shopper = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
+      storageState: { cookies: [], origins: [] },
+    })
+    await isolateNetwork(shopper)
+    const shopperPage = await shopper.newPage()
+    const productPage = new ProductPage(shopperPage)
+    const checkoutPage = new CheckoutPage(shopperPage)
+    await productPage.gotoProduct(PRODUCTS.lapis.handle)
+    await productPage.addToCart()
+    await checkoutPage.gotoCheckout()
+    await checkoutPage.fillContact(uniqueEmail(testInfo, "free-delivery"), SHIPPING_ADDRESS.phone)
+    await checkoutPage.fillAddress(SHIPPING_ADDRESS)
+    const courier = shopperPage.getByRole("radio", { name: /^Courier/u })
+
+    await expect(courier).toHaveAccessibleName(/Free/u)
+
+    await courier.check()
+    const inpostCourier = shopperPage.getByRole("radio", { name: /InPost courier/u })
+    await expect(inpostCourier).toHaveAccessibleName(/Free/u)
+    await inpostCourier.check()
+
+    await expect(checkoutPage.summary()).toContainText("Free")
+
+    await turnOffFreeDelivery(page)
     await shopper.close()
   })
 })

@@ -332,6 +332,15 @@ describe("handleUpdateCheckoutSession", () => {
     expect(result.totals).toMatchObject({ discountTotal: 0, shippingTotal: 1500, subtotal: 53_800, total: 55_300 })
   })
 
+  it("delivers the replacement for free once the products reach the shop's threshold", async () => {
+    mocked.getOfferedDeliveryMethodByIdQuery.mockResolvedValue({ freeDeliveryThreshold: 40_000, price: 1500, type: "courier" })
+
+    const result = await handleUpdateCheckoutSession(updateInput())
+
+    expect(result.totals).toMatchObject({ shippingTotal: 0, subtotal: 49_800, total: 49_800 })
+    expect(mocked.checkoutSessionsCreate.mock.lastCall?.[0].metadata).toMatchObject({ shippingTotal: "0" })
+  })
+
   it("counts the stock its own session holds when checking the edited cart", async () => {
     mocked.getHeldLinesByTransactionId.mockResolvedValue([{ qty: 1, variantId: "variant-1" }])
     const variant = { ...availableVariant(), inventory: { id: "inventory-1", quantityAvailable: 1 } }

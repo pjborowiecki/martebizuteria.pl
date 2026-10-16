@@ -20,6 +20,8 @@ const delivery = vi.hoisted(() => ({ fetchMethods: vi.fn<() => Promise<unknown[]
 
 const sales = vi.hoisted(() => ({ fetchStatus: vi.fn<() => Promise<{ salesPaused: boolean }>>() }))
 
+const freeDelivery = vi.hoisted(() => ({ fetchThreshold: vi.fn<() => Promise<{ threshold: number | undefined }>>() }))
+
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof ReactRouter>()),
   createFileRoute: () => (options: RouteDefinition) => {
@@ -37,6 +39,11 @@ vi.mock("~/src/modules/store-setting/use-cases/get-sales-status", async () => {
   const { STORE_SETTING_QUERY_KEYS: keys } = await import("~/src/modules/store-setting/store-setting.constants")
 
   return { getSalesStatusQuery: () => ({ queryFn: sales.fetchStatus, queryKey: keys.SALES }) }
+})
+vi.mock("~/src/modules/store-setting/use-cases/get-free-delivery", async () => {
+  const { STORE_SETTING_QUERY_KEYS: keys } = await import("~/src/modules/store-setting/store-setting.constants")
+
+  return { getFreeDeliveryQuery: () => ({ queryFn: freeDelivery.fetchThreshold, queryKey: keys.FREE_DELIVERY }) }
 })
 vi.mock("~/src/hooks/use-cart-availability", () => ({ useCartAvailability: vi.fn() }))
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-form.client", () => ({ CheckoutForm: () => null }))
@@ -61,6 +68,7 @@ const load = (queryClient: QueryClient, success?: boolean): Promise<void> | unde
 beforeEach(() => {
   delivery.fetchMethods.mockReset().mockResolvedValue([COURIER_METHOD])
   sales.fetchStatus.mockReset().mockResolvedValue({ salesPaused: false })
+  freeDelivery.fetchThreshold.mockReset().mockResolvedValue({ threshold: 30_000 })
 })
 
 describe("checkout page loader dependencies", () => {
@@ -131,5 +139,22 @@ describe("checkout page sales status", () => {
 
     await expect(load(queryClient)).resolves.toBeUndefined()
     expect(queryClient.getQueryState(STORE_SETTING_QUERY_KEYS.SALES)).toMatchObject({ data: undefined, status: "error" })
+  })
+})
+
+describe("checkout page free delivery", () => {
+  it("knows the free delivery threshold before the checkout renders", async () => {
+    const queryClient = new QueryClient()
+
+    await load(queryClient)
+
+    expect(queryClient.getQueryData(STORE_SETTING_QUERY_KEYS.FREE_DELIVERY)).toStrictEqual({ threshold: 30_000 })
+  })
+
+  it("still opens the checkout when the threshold cannot be read", async () => {
+    freeDelivery.fetchThreshold.mockRejectedValue(new Error("D1 unavailable"))
+    const queryClient = new QueryClient()
+
+    await expect(load(queryClient)).resolves.toBeUndefined()
   })
 })

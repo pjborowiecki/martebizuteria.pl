@@ -77,8 +77,14 @@ vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/sett
 vi.mock("~/src/modules/delivery-method/use-cases/list-admin-delivery-methods", () => ({
   listAdminDeliveryMethodsQuery: () => ({ queryKey: ["admin", "delivery-methods"] }),
 }))
+vi.mock("~/src/modules/store-setting/use-cases/get-free-delivery", () => ({
+  getAdminFreeDeliveryQuery: () => ({ queryKey: ["admin", "store-setting", "free-delivery"] }),
+}))
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/delivery/settings-delivery-methods-card", () => ({
   SettingsDeliveryMethodsCard: (): JSX.Element => <section>delivery methods</section>,
+}))
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/delivery/settings-free-delivery-card", () => ({
+  SettingsFreeDeliveryCard: (): JSX.Element => <section>free delivery</section>,
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/settings-login-history-card", () => ({
   SettingsLoginHistoryCard: (): JSX.Element => <section>history</section>,
@@ -190,16 +196,19 @@ describe("admin settings security route", () => {
 })
 
 describe("admin settings delivery route", () => {
-  it("loads every delivery method and carrier before the page renders", async () => {
-    await expect(prefetched("/admin/settings/delivery")).resolves.toStrictEqual([["admin", "delivery-methods"]])
+  it("loads every delivery method, carrier and the free delivery threshold before the page renders", async () => {
+    await expect(prefetched("/admin/settings/delivery")).resolves.toStrictEqual([
+      ["admin", "delivery-methods"],
+      ["admin", "store-setting", "free-delivery"],
+    ])
   })
 
-  it("shows the delivery methods under the delivery tab", () => {
+  it("shows the delivery methods and free delivery under the delivery tab", () => {
     render("/admin/settings/delivery")
 
     const main = screen.getByRole("main")
 
     expect(main).toHaveAttribute("data-active", "delivery")
-    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["delivery methods"])
+    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["delivery methods", "free delivery"])
   })
 })

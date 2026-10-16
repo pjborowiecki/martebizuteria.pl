@@ -16,7 +16,8 @@
     "itemsCount": "Products ({count})",
     "priceChanged": "The price has changed since you added this piece to your cart.",
     "title": "Your order",
-    "vatIncluded": "Includes VAT ({rate}%)"
+    "vatIncluded": "Includes VAT ({rate}%)",
+    "freeDeliveryShortfall": "Add {amount} more for free delivery."
   },
   "checkoutSuccess": {
     "title": "Order Confirmed",

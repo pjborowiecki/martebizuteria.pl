@@ -65,7 +65,7 @@ export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): P
 
   const checkoutRow = await getCheckoutForFulfillment(context.checkoutId)
   const itemsSubtotal = sumOrderLineSubtotal(input.lines)
-  const shippingTotal = checkoutRow?.deliveryMethod?.price ?? NO_AMOUNT
+  const shippingTotal = input.shippingTotal ?? checkoutRow?.deliveryMethod?.price ?? NO_AMOUNT
   const discount =
     checkoutRow?.discount === null || checkoutRow?.discount === undefined
       ? undefined
@@ -135,4 +135,5 @@ interface FulfillmentCommit {
 
 export interface FulfillCheckoutFromSessionInput extends Pick<FulfillCheckoutInput, "currency" | "lines" | "locale" | "transactionId"> {
   readonly paidAmount: number
+  readonly shippingTotal?: number | undefined
 }

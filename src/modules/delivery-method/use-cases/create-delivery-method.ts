@@ -6,7 +6,8 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleDeliveryMethodsInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordDeliveryMethodCreatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
+import { recordDeliveryMethodAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { findCourierById } from "~/src/modules/courier/courier.accessors"
 import { INPOST_COURIER_CODE } from "~/src/modules/courier/courier.constants"
 import {
@@ -70,7 +71,7 @@ export const createDeliveryMethod = createServerFn({ method: "POST" })
       newCourier: carrier.isNew ? { id: carrier.id, internalCode: carrier.internalCode, name: carrier.name } : undefined,
     })
     scheduleDeliveryMethodsInvalidation()
-    recordDeliveryMethodCreatedAudit(data.names["pl-PL"])
+    recordDeliveryMethodAudit(AUDIT_LOG_ACTION.DELIVERY_METHOD_CREATED, data.names["pl-PL"])
 
     return { id }
   })

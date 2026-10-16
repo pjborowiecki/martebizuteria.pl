@@ -207,7 +207,10 @@ describe("validateDiscountCode prices the basket from the shop", () => {
       applied: { amountMinorUnits: 1990, type: DISCOUNT_TYPE.FREE_SHIPPING },
     })
     expect(roundTrips).toHaveLength(4)
-    expect(roundTrips.at(-1)).toStrictEqual({ kind: "statement", sql: [expect.stringContaining("delivery_method")] })
+    expect(roundTrips.at(-1)).toStrictEqual({
+      kind: "batch",
+      sql: [expect.stringContaining("delivery_method"), expect.stringContaining("store_setting")],
+    })
   })
 
   it("takes nothing off for a delivery method the shop has retired", async () => {

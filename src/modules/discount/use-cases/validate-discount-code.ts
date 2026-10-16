@@ -6,6 +6,7 @@ import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
 import { getOfferedDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
+import { resolveDeliveryPrice } from "~/src/modules/delivery-method/delivery-method.utils"
 import { getDiscountByCodeForPreviewQuery } from "~/src/modules/discount/discount.accessors"
 import {
   DISCOUNT_MUTATION_KEYS,
@@ -32,14 +33,16 @@ const sumBasketAtSellPrices = (lines: DiscountCheckBasket["lines"], priceByVaria
     }),
   )
 
-const priceDeliveryCoveredBy = async (type: DiscountType, deliveryMethodId: string | undefined): Promise<number> => {
+const priceDeliveryCoveredBy = async (type: DiscountType, deliveryMethodId: string | undefined, itemsSubtotal: number): Promise<number> => {
   if (type !== DISCOUNT_TYPE.FREE_SHIPPING || deliveryMethodId === undefined) {
     return NO_DELIVERY_COST
   }
 
   const method = await getOfferedDeliveryMethodByIdQuery(deliveryMethodId)
 
-  return method === undefined ? NO_DELIVERY_COST : method.price
+  return method === undefined
+    ? NO_DELIVERY_COST
+    : resolveDeliveryPrice({ discount: undefined, freeDeliveryThreshold: method.freeDeliveryThreshold, itemsSubtotal, price: method.price })
 }
 
 export const validateDiscountCode = createServerFn({ method: "POST" })
@@ -67,7 +70,7 @@ export const validateDiscountCode = createServerFn({ method: "POST" })
         amountMinorUnits: calculateDiscountAmount({
           itemsSubtotal,
           row,
-          shippingTotal: await priceDeliveryCoveredBy(row.type, data.deliveryMethodId),
+          shippingTotal: await priceDeliveryCoveredBy(row.type, data.deliveryMethodId, itemsSubtotal),
         }),
         code: row.code,
         discountId: row.id,

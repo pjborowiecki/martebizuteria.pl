@@ -10,6 +10,7 @@ import {
   scheduleCollectionCatalogInvalidation,
   scheduleContentPageInvalidation,
   scheduleDeliveryMethodsInvalidation,
+  scheduleFreeDeliveryInvalidation,
   scheduleProductAttributeCatalogInvalidation,
   scheduleProductCatalogInvalidation,
   scheduleSalesStatusInvalidation,
@@ -260,6 +261,11 @@ describe("invalidation topics by publisher", () => {
       "delivery methods",
       scheduleDeliveryMethodsInvalidation,
       { admin: [DELIVERY_METHOD_QUERY_KEYS.ADMIN.ALL], storefront: [DELIVERY_METHOD_QUERY_KEYS.ALL] },
+    ],
+    [
+      "free delivery",
+      scheduleFreeDeliveryInvalidation,
+      { admin: [STORE_SETTING_QUERY_KEYS.ADMIN.FREE_DELIVERY], storefront: [STORE_SETTING_QUERY_KEYS.FREE_DELIVERY] },
     ],
     [
       "sales status",

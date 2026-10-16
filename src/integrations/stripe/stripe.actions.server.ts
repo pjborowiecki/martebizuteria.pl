@@ -37,6 +37,7 @@ import { supersedeCheckoutSession } from "~/src/modules/checkout/use-cases/super
 import { updateCheckoutDelivery } from "~/src/modules/checkout/use-cases/update-checkout-delivery.server"
 import { getOfferedDeliveryMethodByIdQuery } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { DELIVERY_METHOD, type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
+import { resolveDeliveryPrice } from "~/src/modules/delivery-method/delivery-method.utils"
 import { resolveCheckoutDiscount } from "~/src/modules/discount/discount.checkout.server"
 import {
   claimCheckoutDiscount,
@@ -115,8 +116,9 @@ interface LockerConfirmation {
 
 interface ResolvedDelivery extends LockerConfirmation {
   checkoutValues: CheckoutSessionValues
+  deliveryPrice: number
   deliveryType: DeliveryMethodType
-  shippingCost: number
+  freeDeliveryThreshold: number | undefined
 }
 
 const assertSalesOpen = async (): Promise<void> => {
@@ -167,10 +169,11 @@ const resolveDelivery = async (checkoutValues: CheckoutSessionValues): Promise<R
   if (method.type !== DELIVERY_METHOD.LOCKER) {
     return {
       checkoutValues: { ...checkoutValues, lockerId: undefined },
+      deliveryPrice: method.price,
       deliveryType: method.type,
+      freeDeliveryThreshold: method.freeDeliveryThreshold,
       lockerPoint: undefined,
       lockerUnconfirmed: false,
-      shippingCost: method.price,
     }
   }
 
@@ -182,8 +185,9 @@ const resolveDelivery = async (checkoutValues: CheckoutSessionValues): Promise<R
   return {
     ...(await confirmLocker(lockerId)),
     checkoutValues: { ...checkoutValues, lockerId },
+    deliveryPrice: method.price,
     deliveryType: method.type,
-    shippingCost: method.price,
+    freeDeliveryThreshold: method.freeDeliveryThreshold,
   }
 }
 
@@ -248,6 +252,24 @@ const toLineItems = (lines: OrderLine[], delivery: DeliveryLine): SessionLineIte
 const sumItemsSubtotal = (lines: OrderLine[]): number =>
   sumOrderLineSubtotal(lines.map((line) => ({ price: line.priceCents, qty: line.qty })))
 
+const resolveCheckoutPricing = async ({ checkoutValues, deliveryPrice, freeDeliveryThreshold, lines }: Readonly<CheckoutPricingArgs>) => {
+  const itemsSubtotal = sumItemsSubtotal(lines)
+  const shippingFor = (discount: Discount["applied"] | undefined): number =>
+    resolveDeliveryPrice({ discount, freeDeliveryThreshold, itemsSubtotal, price: deliveryPrice })
+  const applicableDiscount = await resolveCheckoutDiscount({
+    code: checkoutValues.discountCode,
+    email: checkoutValues.email,
+    itemsSubtotal,
+    shippingTotal: shippingFor(undefined),
+  })
+
+  return { applicableDiscount, shippingFor }
+}
+
+interface CheckoutPricingArgs extends Pick<ResolvedDelivery, "checkoutValues" | "deliveryPrice" | "freeDeliveryThreshold"> {
+  lines: OrderLine[]
+}
+
 interface CheckoutQuoteArgs {
   discount: Discount["applied"] | undefined
   lines: OrderLine[]
@@ -310,6 +332,7 @@ const createStripeSession = async ({
     discountCode: discount?.code ?? "",
     discountTotal: String(discount?.amountMinorUnits ?? NO_COST),
     locale,
+    shippingTotal: String(shippingCost),
     userId: userId ?? "",
   } satisfies CheckoutPaymentMetadata
 
@@ -391,7 +414,9 @@ const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenChecko
 
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
   const { origin, visitorAddress } = await admitNewCheckout(data)
-  const { checkoutValues, deliveryType, lockerPoint, lockerUnconfirmed, shippingCost } = await resolveDelivery(data.checkoutValues)
+  const { checkoutValues, deliveryPrice, deliveryType, freeDeliveryThreshold, lockerPoint, lockerUnconfirmed } = await resolveDelivery(
+    data.checkoutValues,
+  )
   const session = await getRequestSession()
   const userId = session?.user.id
   const { email } = checkoutValues
@@ -402,12 +427,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
 
   const validatedItems = await validateAndCalculateItems(data.items, [])
   const lines = toOrderLines(validatedItems)
-  const applicableDiscount = await resolveCheckoutDiscount({
-    code: checkoutValues.discountCode,
-    email,
-    itemsSubtotal: sumItemsSubtotal(lines),
-    shippingTotal: shippingCost,
-  })
+  const { applicableDiscount, shippingFor } = await resolveCheckoutPricing({ checkoutValues, deliveryPrice, freeDeliveryThreshold, lines })
 
   await reserveInventoryForItems(validatedItems)
 
@@ -422,6 +442,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
       userId,
     })
     const discount = keepClaimedDiscount(applicableDiscount, discountClaimed)
+    const shippingCost = shippingFor(discount)
     const result = await openCheckoutSession({
       checkoutId,
       customerId,
@@ -659,19 +680,17 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   await assertCheckoutStillEditable(data.sessionId, checkoutCreatedAt)
   const validatedItems = await validateAndCalculateItems(data.items, heldLines)
   const lines = toOrderLines(validatedItems)
-  const { checkoutValues, deliveryType, lockerPoint, lockerUnconfirmed, shippingCost } = await resolveDelivery(data.checkoutValues)
-  const applicableDiscount = await resolveCheckoutDiscount({
-    code: checkoutValues.discountCode,
-    email: checkoutValues.email,
-    itemsSubtotal: sumItemsSubtotal(lines),
-    shippingTotal: shippingCost,
-  })
+  const { checkoutValues, deliveryPrice, deliveryType, freeDeliveryThreshold, lockerPoint, lockerUnconfirmed } = await resolveDelivery(
+    data.checkoutValues,
+  )
+  const { applicableDiscount, shippingFor } = await resolveCheckoutPricing({ checkoutValues, deliveryPrice, freeDeliveryThreshold, lines })
 
   const customerId =
     signedInUser === undefined
       ? undefined
       : await ensureStripeCustomerWithEmail({ email: checkoutValues.email, name: signedInUser.name, userId: signedInUser.id })
   const discount = await claimCheckoutDiscount({ applied: applicableDiscount, checkoutId, email: checkoutValues.email })
+  const shippingCost = shippingFor(discount)
   const replacement = await replaceCheckoutSession({
     addedStock: quantitiesBeyond(validatedItems, heldLines),
     heldLines,

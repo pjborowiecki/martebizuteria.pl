@@ -1,4 +1,4 @@
-import { eq, ne } from "drizzle-orm"
+import { eq, ne, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
@@ -23,4 +23,22 @@ export const changeSalesPaused = async (salesPaused: boolean): Promise<boolean> 
     .returning({ id: storeSetting.id })
 
   return changed.length > 0
+}
+
+export const findFreeDeliveryThreshold = async (): Promise<number | undefined> => {
+  const [row] = await db
+    .select({ freeDeliveryThreshold: storeSetting.freeDeliveryThreshold })
+    .from(storeSetting)
+    .where(eq(storeSetting.id, STORE_SETTING_ID))
+    .limit(1)
+
+  return row?.freeDeliveryThreshold ?? undefined
+}
+
+export const saveFreeDeliveryThreshold = async (threshold: number | undefined): Promise<void> => {
+  const freeDeliveryThreshold = threshold ?? sql`NULL`
+  await db
+    .insert(storeSetting)
+    .values({ freeDeliveryThreshold, id: STORE_SETTING_ID })
+    .onConflictDoUpdate({ set: { freeDeliveryThreshold }, target: storeSetting.id })
 }

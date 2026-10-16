@@ -136,6 +136,18 @@
       "priceTooHigh": "Wpisz niższą cenę.",
       "courierNameRequired": "Wpisz nazwę przewoźnika.",
       "courierNameTooLong": "Użyj najwyżej 60 znaków."
+    },
+    "freeDelivery": {
+      "title": "Darmowa dostawa",
+      "description": "Dostawa nic nie kosztuje, gdy produkty w koszyku osiągną tę wartość, liczoną po kodzie rabatowym i bez dostawy. Kasa pokazuje kupującym, ile im brakuje.",
+      "enabled": "Oferuj darmową dostawę",
+      "threshold": "Darmowa dostawa od",
+      "save": "Zapisz",
+      "saved": "Zapisano darmową dostawę.",
+      "validation": {
+        "thresholdInvalid": "Wpisz wartość większą od 0.",
+        "thresholdTooHigh": "Wpisz niższą wartość."
+      }
     }
   }
 }

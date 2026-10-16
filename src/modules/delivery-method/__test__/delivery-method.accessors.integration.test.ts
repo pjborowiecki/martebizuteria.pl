@@ -22,6 +22,7 @@ beforeEach(() => {
   sqlite.exec(`
     drop table if exists delivery_method;
     drop table if exists courier;
+    drop table if exists store_setting;
 
     create table courier (
       id text primary key, internal_code text not null unique, is_active integer not null default 1, logo text, name text not null,
@@ -34,6 +35,7 @@ beforeEach(() => {
       price integer not null, rank integer not null default 0, archived_at integer, type text not null,
       created_at integer not null, updated_at integer not null
     );
+    create table store_setting (id text primary key, free_delivery_threshold integer);
 
     insert into courier (id, internal_code, is_active, logo, name, created_at, updated_at) values
       ('courier-inpost', 'inpost', 1, null, 'InPost', ${EPOCH}, ${EPOCH}),
@@ -56,7 +58,11 @@ afterAll(() => {
 
 describe("getOfferedDeliveryMethodByIdQuery", () => {
   it("reads the price and type of a method the checkout offers", async () => {
-    await expect(getOfferedDeliveryMethodByIdQuery("dm-locker")).resolves.toStrictEqual({ price: 1290, type: "locker" })
+    await expect(getOfferedDeliveryMethodByIdQuery("dm-locker")).resolves.toStrictEqual({
+      freeDeliveryThreshold: undefined,
+      price: 1290,
+      type: "locker",
+    })
   })
 
   it("hides a delivery method that was switched off", async () => {
@@ -76,12 +82,26 @@ describe("getOfferedDeliveryMethodByIdQuery", () => {
   })
 
   it("reads each method by its own id rather than the first offered row", async () => {
-    await expect(getOfferedDeliveryMethodByIdQuery("dm-courier")).resolves.toStrictEqual({ price: 1990, type: "courier" })
+    await expect(getOfferedDeliveryMethodByIdQuery("dm-courier")).resolves.toStrictEqual({
+      freeDeliveryThreshold: undefined,
+      price: 1990,
+      type: "courier",
+    })
   })
 
   it("offers a method again once its courier is switched back on", async () => {
     sqlite.exec(`update courier set is_active = 1 where id = 'courier-retired';`)
 
-    await expect(getOfferedDeliveryMethodByIdQuery("dm-orphaned")).resolves.toStrictEqual({ price: 990, type: "courier" })
+    await expect(getOfferedDeliveryMethodByIdQuery("dm-orphaned")).resolves.toStrictEqual({
+      freeDeliveryThreshold: undefined,
+      price: 990,
+      type: "courier",
+    })
+  })
+
+  it("reads the free delivery threshold in the same round trip", async () => {
+    sqlite.exec(`insert into store_setting (id, free_delivery_threshold) values ('store', 30000);`)
+
+    await expect(getOfferedDeliveryMethodByIdQuery("dm-courier")).resolves.toMatchObject({ freeDeliveryThreshold: 30_000, price: 1990 })
   })
 })

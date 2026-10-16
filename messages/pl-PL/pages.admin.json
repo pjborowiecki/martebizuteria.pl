@@ -470,6 +470,7 @@
       "emailDailyLimit": "sklep osiągnął dzienny limit {limit} e-maili wysyłanych na prośbę odwiedzających",
       "fields": {
         "availability": "W kasie",
+        "freeDeliveryThreshold": "Darmowa dostawa od",
         "fulfillmentStep": "Etap realizacji",
         "nameEn": "Nazwa (angielska)",
         "namePl": "Nazwa (polska)",

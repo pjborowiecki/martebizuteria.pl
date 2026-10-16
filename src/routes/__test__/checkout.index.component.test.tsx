@@ -32,6 +32,9 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 })
 
 vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", () => ({ listDeliveryMethodsQuery: vi.fn() }))
+vi.mock("~/src/modules/store-setting/use-cases/get-free-delivery", () => ({
+  getFreeDeliveryQuery: () => ({ queryFn: () => Promise.resolve({ threshold: undefined }), queryKey: ["store-setting", "free-delivery"] }),
+}))
 
 vi.mock("~/src/modules/store-setting/use-cases/get-sales-status", async () => {
   const { STORE_SETTING_QUERY_KEYS: keys } = await import("~/src/modules/store-setting/store-setting.constants")
