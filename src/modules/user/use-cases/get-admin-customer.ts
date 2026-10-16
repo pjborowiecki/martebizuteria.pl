@@ -161,7 +161,7 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
     initials: resolveAdminCustomerInitials(userRow.name),
     isReturning,
     joinDate: formatShortDate(userRow.createdAt, preferences.formatLocale, preferences.timeZone),
-    lastActive: formatAdminCustomerLastActive(lastActiveAt, locale),
+    lastActive: formatAdminCustomerLastActive(lastActiveAt, { ...preferences, locale }),
     lastOrderAt: queryResult.orderStats?.lastOrderAt,
     monthlySpending,
     notes: adminMetadata.notes,

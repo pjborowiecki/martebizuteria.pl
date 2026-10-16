@@ -30,6 +30,8 @@ const PREFERENCES = { formatLocale: "en-US", timeZone: Intl.DateTimeFormat().res
 
 const NOW = new Date(2024, 5, 15, 12, 0, 0)
 
+const IN_ENGLISH = { ...PREFERENCES, locale: "en-US" }
+
 const userRow = (overrides: Partial<User["select"]> = {}): User["select"] => ({
   banExpires: null,
   banReason: null,
@@ -332,23 +334,31 @@ describe("relative and absolute dates", () => {
   ])("describes activity %i ms ago as %s", (diffMs, expected) => {
     const lastActiveAt = new Date(NOW.getTime() - diffMs)
 
-    expect(formatAdminCustomerLastActive(lastActiveAt, "en-US")).toBe(expected)
+    expect(formatAdminCustomerLastActive(lastActiveAt, IN_ENGLISH)).toBe(expected)
   })
 
   it("switches to an absolute date once the activity is more than a week old", () => {
     const lastActiveAt = new Date(NOW.getTime() - 8 * 86_400_000)
 
-    expect(formatAdminCustomerLastActive(lastActiveAt, "en-US")).toBe("Jun 7, 2024")
+    expect(formatAdminCustomerLastActive(lastActiveAt, IN_ENGLISH)).toBe("Jun 7, 2024")
+  })
+
+  it("dates activity older than a week in the viewer's format locale and time zone", () => {
+    vi.setSystemTime(new Date("2024-06-20T12:00:00.000Z"))
+
+    expect(
+      formatAdminCustomerLastActive("2024-06-07T23:30:00.000Z", { formatLocale: "de-DE", locale: "pl-PL", timeZone: "Europe/Warsaw" }),
+    ).toBe("8. Juni 2024")
   })
 
   it("accepts a serialized activity date without changing the relative interval", () => {
     const lastActiveAt = new Date(NOW.getTime() - 5 * 60_000).toISOString()
 
-    expect(formatAdminCustomerLastActive(lastActiveAt, "en-US")).toBe("5 minutes ago")
+    expect(formatAdminCustomerLastActive(lastActiveAt, IN_ENGLISH)).toBe("5 minutes ago")
   })
 
   it.each([[null], [undefined]])("reports nothing for %j", (lastActiveAt) => {
-    expect(formatAdminCustomerLastActive(lastActiveAt, "en-US")).toBeUndefined()
+    expect(formatAdminCustomerLastActive(lastActiveAt, IN_ENGLISH)).toBeUndefined()
   })
 })
 

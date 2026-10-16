@@ -14,7 +14,7 @@ import { getCustomerOverviewQuery } from "~/src/modules/customer-account/use-cas
 
 import { Route as AccountRoute } from "~/src/routes/account"
 
-import { useFormatter } from "~/src/hooks/use-display-format"
+import { useDisplayPreferences, useFormatter } from "~/src/hooks/use-display-format"
 
 import { pageHead } from "~/src/lib/seo"
 
@@ -75,6 +75,7 @@ const ActivityFeed = ({
 }>): JSX.Element => {
   const t = useTranslations("pages.account.overview")
   const locale = useLocale()
+  const displayPreferences = useDisplayPreferences()
 
   return (
     <section>
@@ -95,7 +96,7 @@ const ActivityFeed = ({
                 <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
                   <p className="text-[13px] text-foreground/80 sm:min-w-0 sm:flex-1">{t(`activityItems.${item.actionKey}`, item.params)}</p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground/50 tabular-nums sm:mt-0 sm:shrink-0">
-                    {formatRelativeFromNow(item.createdAt, locale)}
+                    {formatRelativeFromNow(item.createdAt, { ...displayPreferences, locale })}
                   </p>
                 </div>
               </div>

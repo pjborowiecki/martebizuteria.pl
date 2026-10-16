@@ -1,4 +1,5 @@
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
+import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
 
 export type DateInput = Date | string
 
@@ -46,6 +47,10 @@ const TIMESTAMP_PARTS: Intl.DateTimeFormatOptions = {
 }
 
 const toDate = (value: DateInput): Date => (value instanceof Date ? value : new Date(value))
+
+export interface RelativeDateFormat extends DisplayPreferences {
+  readonly locale: string
+}
 
 export interface CalendarDate {
   readonly day: number
@@ -107,7 +112,11 @@ export const formatShortDate = (value: DateInput, locale: string = I18N.DEFAULT_
 export const formatTimestamp = (value: DateInput, locale: string = I18N.DEFAULT_LOCALE): string =>
   toDate(value).toLocaleString(locale, TIMESTAMP_PARTS)
 
-export const formatRelativeFromNow = (value: DateInput, locale: string, nowMs: number = Date.now()): string => {
+export const formatRelativeFromNow = (
+  value: DateInput,
+  { formatLocale, locale, timeZone }: RelativeDateFormat,
+  nowMs: number = Date.now(),
+): string => {
   const date = toDate(value)
   const elapsedMs = nowMs - date.getTime()
   const relative = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
@@ -128,7 +137,7 @@ export const formatRelativeFromNow = (value: DateInput, locale: string, nowMs: n
     return relative.format(-Math.floor(elapsedMs / MS_PER.day), "day")
   }
 
-  return formatShortDate(date, locale)
+  return formatShortDate(date, formatLocale, timeZone)
 }
 
 export const coerceNumber = (value: NumericInput): number => (value === null || value === undefined ? 0 : Number(value))
