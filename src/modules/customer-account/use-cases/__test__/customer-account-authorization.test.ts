@@ -42,6 +42,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
     update: access.update,
   },
 }))
+vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {

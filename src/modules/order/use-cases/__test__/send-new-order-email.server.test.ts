@@ -65,7 +65,7 @@ const orderRow = {
   checkout: null,
   currencyCode: "PLN",
   customerNote: "  Please gift-wrap the bracelet.  ",
-  deliveryMethod: { courier: { name: "InPost" }, name: "InPost Paczkomat", type: "locker" },
+  deliveryMethod: { courier: { name: "InPost" }, names: { "en-US": "InPost locker", "pl-PL": "InPost Paczkomat" }, type: "locker" },
   email: "anna@example.com",
   lockerId: "WAW01M",
   lockerPoint: JSON.stringify({ buildingNumber: "1", city: "Warszawa", postalCode: "00-001", street: "Marszałkowska" }),
@@ -209,7 +209,7 @@ describe("sendNewOrderEmail", () => {
     getAdminOrderDetailRow.mockResolvedValue({
       ...orderRow,
       addresses: [{ ...shippingSnapshot, address2: "lokal 3", phone: null, postalCode: null }],
-      deliveryMethod: { courier: { name: "InPost" }, name: "Kurier InPost", type: "courier" },
+      deliveryMethod: { courier: { name: "InPost" }, names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }, type: "courier" },
     })
 
     await sendNewOrderEmail(ORDER_ID, RETURN_URL)

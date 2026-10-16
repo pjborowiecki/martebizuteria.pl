@@ -33,7 +33,7 @@ import { sendOrderInProgressEmail } from "~/src/modules/order/use-cases/send-ord
 const ORIGIN = "https://preview.martebizuteria.pl"
 
 const orderRow = {
-  deliveryMethod: { name: "Paczkomat InPost", type: "locker" },
+  deliveryMethod: { names: { "en-US": "InPost parcel locker", "pl-PL": "Paczkomat InPost" }, type: "locker" },
   email: "anna@example.com",
   id: "order-abcdef12",
   metadata: JSON.stringify({ locale: "en-US" }),
@@ -102,7 +102,7 @@ describe("sendOrderInProgressEmail", () => {
     )
     const text = await sentHtml()
     expect(text).toContain(englishCopy.nextStep.locker)
-    expect(text).toContain("Paczkomat InPost")
+    expect(text).toContain("InPost parcel locker")
     expect(text).toContain(`${ORIGIN}/en-US/account/orders/order-abcdef12`)
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: undefined,

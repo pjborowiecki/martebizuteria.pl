@@ -4,6 +4,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
+import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
@@ -42,7 +43,7 @@ export const getAdminOrdersPage = createServerFn({
     const { timeZone } = await resolveRequestDisplayPreferences()
     const params = buildAdminOrdersListParams(input, timeZone)
     const { rows, total } = await orderGetAdminOrdersPage(params)
-    const items = await loadAdminOrderListItems(rows)
+    const items = await loadAdminOrderListItems(rows, getCurrentLocale())
 
     return buildListPaginationResult(items, total, params)
   })

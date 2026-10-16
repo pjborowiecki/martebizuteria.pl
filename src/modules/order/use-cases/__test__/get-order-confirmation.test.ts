@@ -35,7 +35,7 @@ const editedAddress: AddressRow = { ...placedAddress, address1: "ul. Nowa 5", ci
 
 const order = vi.hoisted(() => ({
   addresses: [] as readonly ({ type: string } & object)[],
-  deliveryMethod: null as { name: string } | null,
+  deliveryMethod: null as { names: { "en-US": string; "pl-PL": string } } | null,
   exists: true,
   itemRows: [] as readonly object[],
   lookupsBeforeRecorded: 0,
@@ -53,6 +53,7 @@ const returned = vi.hoisted(() => ({
   getPaymentByTransactionId: vi.fn<(transactionId: string) => Promise<{ status: string } | undefined>>(),
 }))
 
+vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -172,7 +173,7 @@ describe("getOrderConfirmation lookup", () => {
   })
 
   it("carries the totals, the delivery method and the lines of the order", async () => {
-    order.deliveryMethod = { name: "Kurier DPD" }
+    order.deliveryMethod = { names: { "en-US": "DPD courier", "pl-PL": "Kurier DPD" } }
     order.itemRows = [
       {
         id: "item-1",
@@ -190,7 +191,7 @@ describe("getOrderConfirmation lookup", () => {
     const confirmation = await getOrderConfirmation({ data: { sessionId: "cs_test_1" } })
 
     expect(confirmation).toMatchObject({
-      deliveryMethodName: "Kurier DPD",
+      deliveryMethodName: "DPD courier",
       discountTotalMinorUnits: 0,
       email: "anna@example.test",
       id: "order-1",

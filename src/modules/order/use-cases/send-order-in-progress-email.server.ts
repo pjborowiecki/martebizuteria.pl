@@ -10,6 +10,7 @@ import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
 import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
 import { buildOrderShippedAccountCta } from "~/src/modules/order/order.email.utils"
+import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 
 import type orderInProgressMessages from "~/messages/en-US/emails.order-in-progress.json"
 import { ORDER_IN_PROGRESS_NAMESPACE, OrderInProgress } from "~/src/presentation/emails/order-in-progress"
@@ -29,7 +30,11 @@ const attemptOrderInProgressEmail = async (orderId: string, origin: string, idem
   const locale = resolveOrderLocale(orderRow.metadata)
   const messages = await loadNamespace<typeof orderInProgressMessages>({ locale, namespace: ORDER_IN_PROGRESS_NAMESPACE })
   const accountCta = buildOrderShippedAccountCta({ locale, messages, orderId: orderRow.id, origin, userId: orderRow.userId })
-  const delivery = { methodName: orderRow.deliveryMethod?.name, type: orderRow.deliveryMethod?.type ?? "courier" }
+  const { deliveryMethod } = orderRow
+  const delivery = {
+    methodName: deliveryMethod === null ? undefined : resolveLocalizedString(deliveryMethod.names, locale),
+    type: deliveryMethod?.type ?? "courier",
+  }
   const failure = await sendEmail({
     idempotencyKey,
     react: createElement(OrderInProgress, { accountCta, delivery, locale, messages, orderNumber: orderRow.orderNumber }),

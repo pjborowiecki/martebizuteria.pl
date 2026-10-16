@@ -493,8 +493,8 @@ const createPlacedOrderTables = (): void => {
     create table courier (id text primary key, name text not null);
     create table delivery_method (
       id text primary key, api_service_code text not null, courier_id text not null, description text,
-      is_active integer not null default 1, name text not null, price integer not null, type text not null,
-      created_at integer not null, updated_at integer not null
+      is_active integer not null default 1, name text not null, names text not null default '{"pl-PL":"","en-US":""}',
+      price integer not null, type text not null, created_at integer not null, updated_at integer not null
     );
     create table address (
       id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
@@ -606,8 +606,8 @@ const seedPlacedOrderReads = (): void => {
     );
 
     insert into courier (id, name) values ('courier-inpost', 'InPost');
-    insert into delivery_method (id, api_service_code, courier_id, name, price, type, created_at, updated_at) values
-      ('dm-locker', 'inpost_locker', 'courier-inpost', 'Paczkomat 24/7', 1500, 'locker', ${JANUARY}, ${JANUARY});
+    insert into delivery_method (id, api_service_code, courier_id, name, names, price, type, created_at, updated_at) values
+      ('dm-locker', 'inpost_locker', 'courier-inpost', 'Paczkomat 24/7', '{"pl-PL":"Paczkomat 24/7","en-US":"Parcel locker 24/7"}', 1500, 'locker', ${JANUARY}, ${JANUARY});
     insert into address (id, address1, city, country_code, first_name, last_name, created_at, updated_at) values
       ('addr-edited', 'ul. Edited 1', 'Gdansk', 'PL', 'Anna', 'Kowalska', ${JUNE}, ${JUNE});
     insert into checkout (id, billing_address_id, shipping_address_id) values ('chk-placed', 'addr-edited', 'addr-edited');

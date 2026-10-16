@@ -28,6 +28,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
     }),
   },
 }))
+vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -77,7 +78,7 @@ const orderRow = (overrides: Record<string, unknown> = {}) => ({
   currencyCode: "PLN",
   customerNote: null,
   deliveredAt: null,
-  deliveryMethod: { courier: { name: "InPost" }, name: "Kurier InPost", type: "courier" },
+  deliveryMethod: { courier: { name: "InPost" }, names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }, type: "courier" },
   discountTotal: 0,
   fulfillmentStartedAt: null,
   fulfillmentStatus: "shipped",
@@ -251,17 +252,31 @@ describe("getCustomerOrder destination and invoice", () => {
     expect(detail?.shippingAddress).toMatchObject({ line1: "Snapshot 9", name: "Ada Nowak" })
   })
 
+  it("leaves the delivery method out of an order whose method no longer exists", async () => {
+    access.findFirst.mockResolvedValue(orderRow({ deliveryMethod: null }))
+
+    const detail = await fetchOrder()
+
+    expect(detail?.deliveryMethodName).toBeUndefined()
+    expect(detail?.lockerId).toBeUndefined()
+  })
+
   it("names the delivery method and hides a locker for a courier order", async () => {
     access.findFirst.mockResolvedValue(orderRow({ lockerId: "WAW01A" }))
 
     const detail = await fetchOrder()
 
-    expect(detail?.deliveryMethodName).toBe("Kurier InPost")
+    expect(detail?.deliveryMethodName).toBe("InPost courier")
     expect(detail?.lockerId).toBeUndefined()
   })
 
   it("shows the parcel locker as the destination of a locker order", async () => {
-    access.findFirst.mockResolvedValue(orderRow({ deliveryMethod: { name: "Paczkomat InPost", type: "locker" }, lockerId: "WAW01A" }))
+    access.findFirst.mockResolvedValue(
+      orderRow({
+        deliveryMethod: { names: { "en-US": "InPost parcel locker", "pl-PL": "Paczkomat InPost" }, type: "locker" },
+        lockerId: "WAW01A",
+      }),
+    )
 
     const detail = await fetchOrder()
 

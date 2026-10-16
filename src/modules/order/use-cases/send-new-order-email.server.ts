@@ -61,7 +61,7 @@ const buildNewOrderDetails = (orderRow: AdminOrderDetailRow, messages: typeof ne
     companyInvoice: describeInvoicedCompany(orderRow, billingAddress, messages),
     customer: joinLines([shippingAddress?.name, orderRow.email, shippingAddress?.phone]),
     customerNote: customerNote === undefined || customerNote === "" ? undefined : customerNote,
-    deliveryMethod: resolveDeliveryMethodLabel(orderRow.deliveryMethod, messages.unavailable),
+    deliveryMethod: resolveDeliveryMethodLabel(orderRow.deliveryMethod, { locale: I18N.DEFAULT_LOCALE, unavailable: messages.unavailable }),
     destination:
       locker === undefined
         ? { address: shippingAddress === undefined ? messages.unavailable : describeAddress(shippingAddress), kind: "address" }

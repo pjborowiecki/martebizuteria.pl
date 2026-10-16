@@ -5,6 +5,7 @@ import type * as zod from "zod"
 import { RATE_LIMITS, assertWithinRateLimit, withRequest } from "~/src/integrations/better-auth/auth.middleware"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 import { fulfillReturnedCheckoutSession } from "~/src/integrations/stripe/stripe.fulfillment.server"
+import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { getAdminOrderItemRows, getOrderByTransactionId } from "~/src/modules/order/order.accessors"
@@ -13,6 +14,7 @@ import { mapAdminOrderDetailAddress, mapAdminOrderDetailItem, resolveOrderLocker
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { getPaymentByTransactionId } from "~/src/modules/payment/payment.accessors"
+import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 
 const loadOrPlaceOrder = async (sessionId: string, requestHeaders: Headers) => {
   const payment = await getPaymentByTransactionId(sessionId)
@@ -38,7 +40,8 @@ export const getOrderConfirmation = createServerFn({ method: "POST" })
     return {
       createdAt: orderRow.createdAt,
       currencyCode: orderRow.currencyCode,
-      deliveryMethodName: orderRow.deliveryMethod?.name,
+      deliveryMethodName:
+        orderRow.deliveryMethod === null ? undefined : resolveLocalizedString(orderRow.deliveryMethod.names, getCurrentLocale()),
       discountTotalMinorUnits: orderRow.discountTotal,
       email: orderRow.email,
       id: orderRow.id,

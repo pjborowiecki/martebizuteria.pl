@@ -249,7 +249,7 @@ describe("order confirmation email from the checkout", () => {
       billingCompanyName: "Pracownia Złotnicza sp. z o.o.",
       billingNip: "5260001246",
       customerNote: null,
-      deliveryMethod: { name: "Paczkomat InPost", type: "locker" },
+      deliveryMethod: { names: { "en-US": "InPost parcel locker", "pl-PL": "Paczkomat InPost" }, type: "locker" },
       lockerId: "WAW01A",
       lockerPoint: JSON.stringify({ buildingNumber: "1", city: "Warszawa", postalCode: "00-001", street: "Marszałkowska" }),
       shippingAddress: {

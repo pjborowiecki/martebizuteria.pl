@@ -42,7 +42,7 @@ const ORIGIN = "https://preview.martebizuteria.pl"
 const orderRow = {
   addresses: [],
   checkout: null,
-  deliveryMethod: { courier: { name: "InPost" }, name: "Kurier InPost", type: "courier" },
+  deliveryMethod: { courier: { name: "InPost" }, names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }, type: "courier" },
   email: "anna@example.com",
   id: "order-abcdef12",
   lockerId: null,

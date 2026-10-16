@@ -33,7 +33,7 @@ import { sendOrderDeliveredEmail } from "~/src/modules/order/use-cases/send-orde
 const ORIGIN = "https://preview.martebizuteria.pl"
 
 const orderRow = {
-  deliveryMethod: { name: "Kurier InPost", type: "courier" },
+  deliveryMethod: { names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }, type: "courier" },
   email: "anna@example.com",
   id: "order-abcdef12",
   metadata: JSON.stringify({ locale: "en-US" }),
