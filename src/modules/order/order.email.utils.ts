@@ -1,6 +1,5 @@
 import type Stripe from "stripe"
 
-import { inpostTrackingUrl } from "~/src/integrations/inpost/inpost.utils"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
 import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
@@ -8,7 +7,7 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
 import { isInpostDeliveryType } from "~/src/modules/order/order.admin-actions.utils"
 import { describeOrderLocker, resolveOrderLocker, resolveOrderShippingAddressRow } from "~/src/modules/order/order.detail.utils"
-import { formatOrderAddressLocality } from "~/src/modules/order/order.display.utils"
+import { formatOrderAddressLocality, resolveOrderTrackingUrl } from "~/src/modules/order/order.display.utils"
 import { type OrderLineFulfillmentTime, describeOrderFulfillmentTime } from "~/src/modules/order/order.fulfillment-time.utils"
 
 import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
@@ -179,13 +178,11 @@ export const resolveOrderTracking = ({
   trackingUrl,
 }: Readonly<OrderShipmentEmailSource>): OrderTracking => {
   const deliveryType = deliveryMethod?.type
-  const number = filledText(trackingNumber)
-  const derivedUrl = number !== undefined && isInpostDeliveryType(deliveryType) ? inpostTrackingUrl(number) : undefined
 
   return {
     carrier: isInpostDeliveryType(deliveryType) ? deliveryMethod?.courier.name : undefined,
-    trackingNumber: number,
-    trackingUrl: filledText(trackingUrl) ?? derivedUrl,
+    trackingNumber: filledText(trackingNumber),
+    trackingUrl: resolveOrderTrackingUrl({ deliveryType, trackingNumber, trackingUrl }),
   }
 }
 

@@ -29,7 +29,7 @@ import {
 } from "~/src/presentation/components/custom/pages/admin/orders/detail/__test__/order-detail.fixture"
 import { OrderInpostCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-inpost-card"
 
-const NOT_CONFIGURED = /InPost shipping is not set up for this shop/u
+const NOT_CONFIGURED = /Automatic InPost shipping is not connected/u
 
 const openLockerOrder = (overrides: Parameters<typeof buildAdminOrderDetail>[0] = {}) =>
   buildAdminOrderDetail({ fulfillmentStatus: "fulfilled", fulfillmentUiKey: "processing", trackingNumber: undefined, ...overrides })
@@ -127,7 +127,7 @@ describe("OrderInpostCard", () => {
     expect(screen.queryByRole("button", { name: "Create shipment" })).toBeNull()
   })
 
-  it("explains that InPost is not set up instead of offering a shipment it cannot book", () => {
+  it("explains how to ship by hand instead of offering a shipment it cannot book", () => {
     renderWithProviders(<OrderInpostCard order={openLockerOrder({ inpostConfigured: false })} />)
 
     expect(screen.getByText(NOT_CONFIGURED)).toBeInTheDocument()

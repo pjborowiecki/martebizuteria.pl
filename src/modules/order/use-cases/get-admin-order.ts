@@ -30,6 +30,7 @@ import {
   resolveAdminOrderEmailedSteps,
   resolveAdminOrderFulfillmentUiKey,
   resolveAdminOrderPaymentUiKey,
+  resolveOrderTrackingUrl,
 } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
@@ -143,7 +144,11 @@ const buildAdminOrderDetail = ({
     timeline: mapAdminOrderTimeline(timelineRows),
     totalMinorUnits: orderRow.total,
     trackingNumber: orderRow.trackingNumber ?? undefined,
-    trackingUrl: orderRow.trackingUrl ?? undefined,
+    trackingUrl: resolveOrderTrackingUrl({
+      deliveryType: deliveryMethod?.type,
+      trackingNumber: orderRow.trackingNumber,
+      trackingUrl: orderRow.trackingUrl,
+    }),
     withdrawals,
   }
 }
