@@ -1,30 +1,22 @@
 ---
 title: "Wprowadzenie"
-description: "Co każda część sklepu robi dzisiaj, gdzie leży jej kod i które ekrany panelu są jeszcze makietami."
+description: "Co każda część sklepu robi dzisiaj, gdzie leży jej kod i co jest jeszcze placeholderem."
 ---
 
-Każda strona w tym rozdziale opisuje kod w takim stanie, w jakim jest w repozytorium, a nie w takim, jaki jest planowany. Funkcja jest **działająca**, gdy czyta lub zapisuje prawdziwe dane przez use case modułu, Better Auth albo Stripe. **Makieta** renderuje stałe z `src/data` i nic nie zapisuje. **Placeholder** renderuje treść z katalogu komunikatów i nie ma za sobą żadnych danych.
+Każda strona w tym rozdziale opisuje kod w takim stanie, w jakim jest w repozytorium, a nie w takim, jaki jest planowany. Funkcja jest **działająca**, gdy czyta lub zapisuje prawdziwe dane przez use case modułu, Better Auth albo Stripe. **Placeholder** renderuje treść z katalogu komunikatów i nie ma za sobą żadnych danych.
 
 Każda strona wskazuje konkretne pliki: trasę w `src/routes`, use case'y w `src/modules/{feature}/use-cases`, tabele w `src/modules/{feature}/*.schema.ts` oraz komponenty w `src/presentation/components/custom`.
 
 ## Działające
 
-| Obszar       | Strony                                                                                                                                                                                              |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Witryna      | [Strona główna](/docs/features/landing-page), [Katalog i wyszukiwanie](/docs/features/catalog-and-search), [Karta produktu](/docs/features/product-page)                                            |
-| Zakup        | [Koszyk](/docs/features/cart), [Kasa](/docs/features/checkout), [Płatności](/docs/features/payments), [Wysyłka i dostawa](/docs/features/shipping-and-delivery), [Rabaty](/docs/features/discounts) |
-| Realizacja   | [Zamówienia](/docs/features/orders), [Stany magazynowe](/docs/features/inventory)                                                                                                                   |
-| Klienci      | [Konto](/docs/features/account)                                                                                                                                                                     |
-| Panel admina | [Pulpit](/docs/features/admin-dashboard), [Katalog](/docs/features/admin-catalog), [Klienci](/docs/features/admin-customers), [Dziennik zdarzeń](/docs/features/audit-log)                          |
-| Platforma    | [E-maile transakcyjne](/docs/features/email), [Internacjonalizacja](/docs/features/internationalization), [Strony prawne](/docs/features/legal-pages)                                               |
-
-## Makiety
-
-Ta trasa istnieje, renderuje się w całości i jest objęta testami komponentów, ale jej wiersze pochodzą z `src/data`:
-
-| Trasa             | Moduł danych           | Opisana w                                       |
-| ----------------- | ---------------------- | ----------------------------------------------- |
-| `/admin/settings` | `src/data/settings.ts` | [Pulpit admina](/docs/features/admin-dashboard) |
+| Obszar       | Strony                                                                                                                                                                                                                  |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Witryna      | [Strona główna](/docs/features/landing-page), [Katalog i wyszukiwanie](/docs/features/catalog-and-search), [Karta produktu](/docs/features/product-page)                                                                |
+| Zakup        | [Koszyk](/docs/features/cart), [Kasa](/docs/features/checkout), [Płatności](/docs/features/payments), [Wysyłka i dostawa](/docs/features/shipping-and-delivery), [Rabaty](/docs/features/discounts)                     |
+| Realizacja   | [Zamówienia](/docs/features/orders), [Stany magazynowe](/docs/features/inventory)                                                                                                                                       |
+| Klienci      | [Konto](/docs/features/account)                                                                                                                                                                                         |
+| Panel admina | [Pulpit](/docs/features/admin-dashboard), [Katalog](/docs/features/admin-catalog), [Klienci](/docs/features/admin-customers), [Ustawienia](/docs/features/admin-settings), [Dziennik zdarzeń](/docs/features/audit-log) |
+| Platforma    | [E-maile transakcyjne](/docs/features/email), [Internacjonalizacja](/docs/features/internationalization), [Strony prawne](/docs/features/legal-pages)                                                                   |
 
 ## Placeholdery
 

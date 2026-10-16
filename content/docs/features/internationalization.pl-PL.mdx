@@ -166,7 +166,7 @@ Zapisuje też ciasteczko języka w efekcie, więc nawigacja po stronie klienta d
 
 `timeZone` oraz format dat i liczb pochodzą z `displayPreferencesQuery` (`src/integrations/use-intl/i18n.display-preferences.ts`). Główna trasa wczytuje je przed pierwszym renderowaniem, więc serwer i przeglądarka formatują tak samo. Jej funkcja serwerowa zwraca to, co użytkownik zapisał, i to, co wynika z żądania:
 
-- **Zapisane:** `user.timezone` i `user.format_locale`. Zalogowany użytkownik wybiera je w `/account/profile` albo w panelu w Ustawienia → Lokalizacja, a każda lista zaczyna się od pozycji Automatycznie. `updateDisplayPreference` (`src/modules/user/use-cases/update-display-preference.ts`) zapisuje strefę albo format tylko wtedy, gdy środowisko potrafi według nich formatować, a dla pozycji Automatycznie czyści wartość. Better Auth nie przyjmuje żadnego z tych pól jako danych wejściowych.
+- **Zapisane:** `user.timezone` i `user.format_locale`. Zalogowany użytkownik wybiera je w `/account/profile` albo w panelu w [Ustawienia → Moje konto](/docs/features/admin-settings#preferencje), a każda lista zaczyna się od pozycji Automatycznie. `updateDisplayPreference` (`src/modules/user/use-cases/update-display-preference.ts`) zapisuje strefę albo format tylko wtedy, gdy środowisko potrafi według nich formatować, a dla pozycji Automatycznie czyści wartość. Better Auth nie przyjmuje żadnego z tych pól jako danych wejściowych.
 - **Wykryte:**
   - **Strefa czasowa:** strefa, którą przeglądarka zapisała w ciasteczku `marte_time_zone`, potem strefa, którą Cloudflare wyznacza z adresu odwiedzającego (`request.cf.timezone`, przekazywana w kontekście żądania jako `edgeTimeZone`), a na końcu `UTC`.
   - **Format:** pierwszy użyteczny język z nagłówka `Accept-Language`, a na końcu `en-US`.
@@ -293,7 +293,7 @@ Formularz Stripe Elements jest lokalizowany osobno, przez mapowanie języka apli
 
 ## Czego brakuje
 
-- **Nie ma przełącznika języka w interfejsie.** Nic w nawigacji, stopce ani strefie konta nie zmienia języka; odwiedzający musi edytować adres. Mechanizm jest kompletny — kontrolki nie ma.
+- **Nie ma przełącznika języka w sklepie.** Nic w nawigacji sklepu, stopce ani strefie konta nie zmienia języka; odwiedzający musi edytować adres. Jedyną kontrolką jest **Język panelu** w [Ustawienia → Moje konto](/docs/features/admin-settings#preferencje), który wczytuje tę samą stronę z prefiksem drugiego języka.
 - Nie ma preferencji języka per użytkownik. Strefa czasowa i format dat i liczb są zapisywane dla każdego użytkownika, ale język strony zawsze wynika z adresu URL.
 - Nie ma sprawdzania zgodności katalogów komunikatów. Oba katalogi mają obecnie te same 56 nazw plików, ale nic w `bun run check` nie weryfikuje, czy klucze w środku są zgodne.
 

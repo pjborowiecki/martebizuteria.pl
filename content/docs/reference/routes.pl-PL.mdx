@@ -90,7 +90,7 @@ Layoutem `/account` jest `account.tsx`, a jego `beforeLoad` uruchamia `requireCu
 
 ## Panel administracyjny
 
-Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`, który wysyła administratora bez uwierzytelniania dwuskładnikowego na `/admin/security`; ponadto ładuje `admin.css`, wymusza jasny motyw, renderuje sidebar panelu i otwiera administracyjny WebSocket realtime przez `useRealtimeQuerySync`. `admin.index.tsx` przekierowuje `/admin` na `/admin/overview`, a `admin.catalog.index.tsx` przekierowuje `/admin/catalog` na `/admin/catalog/products`.
+Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`, który wysyła administratora bez uwierzytelniania dwuskładnikowego na `/admin/security`; ponadto ładuje `admin.css`, wymusza jasny motyw, renderuje sidebar panelu i otwiera administracyjny WebSocket realtime przez `useRealtimeQuerySync`. `admin.index.tsx` przekierowuje `/admin` na `/admin/overview`, `admin.catalog.index.tsx` przekierowuje `/admin/catalog` na `/admin/catalog/products`, a `admin.settings.index.tsx` przekierowuje `/admin/settings` na `/admin/settings/account`.
 
 | Ścieżka                              | Stała w `ROUTES`               | Plik trasy                                                               |
 | ------------------------------------ | ------------------------------ | ------------------------------------------------------------------------ |
@@ -114,15 +114,15 @@ Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`, 
 | `/admin/marketing`                   | `ADMIN_MARKETING`              | `admin.marketing.index.tsx`                                              |
 | `/admin/marketing/new`               | `ADMIN_NEWSLETTER_NEW`         | `admin.marketing.new.tsx`                                                |
 | `/admin/marketing/subscribers`       | `ADMIN_NEWSLETTER_SUBSCRIBERS` | `admin.marketing.subscribers.tsx`                                        |
-| `/admin/settings`                    | `ADMIN_SETTINGS`               | `admin.settings.tsx`                                                     |
+| `/admin/settings`                    | `ADMIN_SETTINGS`               | `admin.settings.tsx`, `admin.settings.index.tsx`                         |
+| `/admin/settings/account`            | `ADMIN_SETTINGS_ACCOUNT`       | `admin.settings.account.tsx`                                             |
+| `/admin/settings/security`           | `ADMIN_SETTINGS_SECURITY`      | `admin.settings.security.tsx`                                            |
 | `/admin/security`                    | `ADMIN_SECURITY`               | `admin_.security.tsx` (poza layoutem)                                    |
 | `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY`          | `admin_.orders.$orderId.summary.tsx` (poza layoutem)                     |
 
-`/admin/security` włącza i wyłącza uwierzytelnianie dwuskładnikowe zalogowanego administratora. Podkreślnik w `admin_.security.tsx` trzyma tę trasę poza layoutem `/admin`, więc nie ma sidebaru, `admin.css` ani gniazda realtime, a jej własny strażnik, `requireAdminRole`, wpuszcza administratora, który jeszcze nie włączył uwierzytelniania dwuskładnikowego. Jej strona, `AdminSecurityPage`, sama wywołuje `useAdminLightTheme`.
+`/admin/security` włącza i wyłącza uwierzytelnianie dwuskładnikowe zalogowanego administratora i tam `requireAdmin` kieruje administratora, który go nie ma; na co dzień administrator zarządza nim w [Ustawieniach](/docs/features/admin-settings). Podkreślnik w `admin_.security.tsx` trzyma tę trasę poza layoutem `/admin`, więc nie ma sidebaru, `admin.css` ani gniazda realtime, a jej własny strażnik, `requireAdminRole`, wpuszcza administratora, który jeszcze nie włączył uwierzytelniania dwuskładnikowego. Jej strona, `AdminSecurityPage`, sama wywołuje `useAdminLightTheme`.
 
 `/admin/orders/$orderId/summary` to podsumowanie zamówienia do druku, które mówi, że nie jest fakturą VAT. Podkreślnik w `admin_.orders.$orderId.summary.tsx` również trzyma tę trasę poza layoutem `/admin`, więc wydruk nie ma sidebaru, ale jej strażnikiem jest `requireAdmin`, ten sam co layoutu, a jej strona, `OrderSummaryPage`, sama wywołuje `useAdminLightTheme`. Zobacz [Zamówienia](/docs/features/orders#podsumowanie-zamówienia).
-
-Strona `/admin/settings` nadal renderuje dane z fikstur w `src/data/settings.ts`.
 
 ## Dokumentacja
 

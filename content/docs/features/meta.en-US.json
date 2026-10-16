@@ -16,6 +16,7 @@
     "admin-dashboard",
     "admin-catalog",
     "admin-customers",
+    "admin-settings",
     "audit-log",
     "legal-pages",
     "email",

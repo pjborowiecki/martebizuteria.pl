@@ -1,0 +1,96 @@
+---
+title: "Ustawienia panelu"
+description: "Własne konto administratora i bezpieczeństwo logowania pod /admin/settings: profil, język panelu, strefa czasowa i format, hasło, uwierzytelnianie dwuskładnikowe, metody logowania, sesje i historia logowania."
+---
+
+Ustawienia to miejsce, w którym administrator zarządza własnym kontem. Prowadzi do nich pozycja **Ustawienia** na dole paska bocznego, a w nagłówku mają dwie zakładki: **Moje konto** oraz **Logowanie i bezpieczeństwo**. Każde wywołanie działa na koncie zalogowanego administratora, przez te same przypadki użycia i wywołania Better Auth co strona klienta `/account/profile`, więc ustawienia nie dodają żadnego uprawnienia, tabeli ani funkcji serwerowej.
+
+## Trasy
+
+| Trasa                      | Plik                          | Pokazuje                                                                                 |
+| -------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------- |
+| `/admin/settings`          | `admin.settings.tsx`          | Layout: `Outlet` dla zakładki i przestrzenie nazw komunikatów ustawień                   |
+| `/admin/settings/`         | `admin.settings.index.tsx`    | Przekierowuje w `beforeLoad` na `/admin/settings/account`                                |
+| `/admin/settings/account`  | `admin.settings.account.tsx`  | **Moje konto**: Profil i Preferencje                                                     |
+| `/admin/settings/security` | `admin.settings.security.tsx` | **Logowanie i bezpieczeństwo**: hasło, dwa składniki, metody logowania, sesje i historia |
+
+Ścieżki to `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT` i `ROUTES.ADMIN_SETTINGS_SECURITY` w `src/routes.ts`. Wszystkie leżą w layoucie `/admin`, więc strzeże ich `requireAdmin`, a administratora bez uwierzytelniania dwuskładnikowego najpierw odsyła na `/admin/security` (zobacz [Pulpit admina](/docs/features/admin-dashboard#layout)).
+
+Layout deklaruje `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` zawiera teksty samej strony; pozostałe trzy są potrzebne, bo ustawienia używają okien konta, które czytają z nich swoje teksty i komunikaty walidacji.
+
+Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loader zakładki bezpieczeństwa wczytuje go razem z `listCustomerSessionsQuery()` i `listCustomerLoginHistoryQuery()`, więc obie zakładki renderują się bez stanu ładowania.
+
+## Układ
+
+`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renderuje nagłówek panelu z tytułem, opisem i `SettingsTabs`, czyli linkami `AdminHeaderTabLink`, z których trasa zaznacza aktywny. Treść to jedna kolumna kart `SettingsCard` o szerokości najwyżej `max-w-3xl`. Karta ma tytuł, opis, opcjonalną akcję po prawej i, pod linią podziału, swoje wiersze; `SettingsRow` to jeden opisany wiersz z opcjonalną wartością i akcją.
+
+Pasek boczny zaznacza **Ustawienia** jako aktywne na każdej stronie `/admin/settings/*`.
+
+## Moje konto
+
+### Profil
+
+`SettingsProfileCard` czyta profil z `getCustomerProfileQuery()` i pokazuje cztery wiersze:
+
+| Wiersz          | Działanie                                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Imię i nazwisko | **Edytuj** zmienia wiersz w pole. **Zapisz** wywołuje `authClient.updateUser({ name })` z Better Auth                                                                                             |
+| Adres e-mail    | **Zmień** otwiera `ChangeEmailDialog`. Better Auth wysyła link potwierdzający na obecny adres, a adres zmienia się po jego otwarciu. Plakietka **Niepotwierdzony** oznacza niezweryfikowany adres |
+| Numer telefonu  | **Edytuj**, jak przy imieniu, zapis przez `updateCustomerPhone`. Pusta wartość usuwa numer; dopóki go nie ma, widać **Nie podano**                                                                |
+| Konto założone  | `createdAt` konta, w formacie i strefie czasowej administratora                                                                                                                                   |
+
+Przed zapisem `SettingsEditableRow` sprawdza pole tym samym `customerAccountZodSchemas.profileForm`, którego używa profil klienta, i pokazuje błąd pod polem. `useSaveProfileField` wykonuje wywołanie, pokazuje komunikat **Zapisano profil.** albo błąd, a po powodzeniu unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE` i `SESSION_QUERY_KEYS.CURRENT`, bo zapamiętana sesja też zawiera imię. Potwierdzona zmiana adresu e-mail trafia do [dziennika zdarzeń](/docs/features/audit-log#zdarzenia-bezpieczeństwa-konta) jako `auth.email_changed`.
+
+### Preferencje
+
+`SettingsPreferencesCard` ma trzy pola:
+
+- **Język panelu.** Lista zawiera `I18N.SUPPORTED_LOCALES`. Wybór drugiego języka wczytuje tę samą stronę przez `localizePathname`, z zachowaniem parametrów zapytania: polski jest językiem domyślnym i nie ma prefiksu (`/admin/settings/account`), angielski ma `/en-US`. Middleware języka ustawia potem ciasteczko języka na język z adresu, więc wybór obowiązuje przy następnej wizycie. Wybór języka, który już widać, niczego nie zmienia.
+- **Strefa czasowa** oraz **Format dat i liczb.** To te same pola `DisplayPreferenceField` co w profilu klienta. Każda lista zaczyna się od pozycji Automatycznie, opisanej tym, co wykryto w przeglądarce, a `updateDisplayPreference` zapisuje wybór w `user.timezone` albo `user.format_locale`. Stosują się do nich wszystkie daty, godziny i liczby w panelu: siatki zamówień i klientów, dni i miesiące pulpitu, dziennik zdarzeń i wykresy. Zobacz [Internacjonalizacja](/docs/features/internationalization).
+
+## Logowanie i bezpieczeństwo
+
+Trasa bezpieczeństwa czyta profil raz i przekazuje kartom `hasPassword`, `hasGoogle` i `twoFactorEnabled` jako propsy.
+
+### Hasło
+
+Dla konta z hasłem `SettingsPasswordCard` proponuje **Zmień hasło**, co otwiera `ChangePasswordDialog`. Konto założone przez Google go nie ma, więc karta proponuje zamiast tego **Ustaw hasło** i otwiera `SetPasswordDialog`, który wywołuje `setAccountPassword`. Ten przypadek użycia odrzuca sesję starszą niż 24 godziny, żeby skradziona starsza sesja nie mogła dodać trwałego hasła. Oba opisują strony [Konto](/docs/features/account#profil) i [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów).
+
+### Uwierzytelnianie dwuskładnikowe
+
+`SettingsTwoFactorCard` pokazuje **Włączone** albo **Wyłączone** i przycisk **Włącz** albo **Wyłącz**, który otwiera `TwoFactorDialog`: przy włączaniu hasło, potem kod QR albo klucz konfiguracji, sześciocyfrowy kod i kody odzyskiwania, a przy wyłączaniu hasło. Po zamknięciu okna karta unieważnia profil, sesję i `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, bo Better Auth zastępuje bieżącą sesję, gdy uwierzytelnianie dwuskładnikowe się zmienia.
+
+Pod kartą mogą pojawić się dwie uwagi:
+
+- Tam, gdzie zachodzi `isAdminTwoFactorRequired()` (produkcja i build E2E), karta mówi, że każdy administrator potrzebuje uwierzytelniania dwuskładnikowego i że jego wyłączenie zamyka panel, dopóki nie zostanie znów włączone. Następne wejście do `/admin` odsyła wtedy administratora na `/admin/security`.
+- Na koncie bez hasła przycisk jest wyłączony, a karta prosi najpierw o hasło, bo włączenie uwierzytelniania dwuskładnikowego o nie pyta.
+
+### Metody logowania
+
+`SettingsSignInMethodsCard` wymienia **E-mail i hasło** oraz **Google**, każdą jako **Połączone** albo **Niepołączone**. `getCustomerProfile` czyta obie przez `listAccountProviderIds` (`src/modules/account/account.accessors.ts`), które zwraca `provider_id` każdego wiersza `account` użytkownika; `credential` oznacza hasło, a `google` (`GOOGLE_PROVIDER_ID`) połączone konto Google.
+
+Gdy Google jest połączone, karta ostrzega, że logowanie przez Google nie prosi o sześciocyfrowy kod sklepu. Wtyczka `twoFactor` z Better Auth sprawdza kod tylko na ścieżkach logowania hasłem, więc przy logowaniu przez Google miejsce kodu sklepu zajmuje weryfikacja dwuetapowa samego konta Google (zobacz [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów)). Właściciel sklepu postanowił zostawić administratorom logowanie przez Google i powiedzieć o tym tutaj, zamiast je blokować.
+
+### Aktywne sesje i historia logowania
+
+`SettingsSessionsCard` wymienia zalogowane urządzenia przez `ActiveSessionList` ze strony sesji konta. Dopóki zalogowane jest jakiekolwiek inne urządzenie, karta proponuje **Wyloguj pozostałe urządzenia**, co wywołuje `revokeOtherCustomerSessions`, pokazuje wynik i unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. `SettingsLoginHistoryCard` wymienia ostatnie udane i nieudane logowania przez `LoginHistoryList`. Obie czytają te same zapytania co `/account/sessions`.
+
+## Wygląd okien
+
+Okna konta przyjmują `variant`: `"editorial"`, domyślny, dla stron konta klienta, oraz `"default"` dla panelu. Ustawienia przekazują `variant="default"` do `ChangeEmailDialog`, `ChangePasswordDialog`, `SetPasswordDialog` i `TwoFactorDialog`, więc wyglądają one jak pozostałe okna panelu, a `AccountDialogEyebrow` w tym wariancie się ukrywa. Oba warianty opisuje strona [Komponenty shadcn](/docs/ui/shadcn-components#okna-dialogowe).
+
+## Związek z `/admin/security`
+
+`/admin/security` (`admin_.security.tsx`) zostaje bramką włączania dwóch składników. Leży poza layoutem `/admin` i strzeże jej tylko `requireAdminRole`, więc administrator bez uwierzytelniania dwuskładnikowego, którego `requireAdmin` nie wpuszcza do panelu, nadal może je tam włączyć. Nie ma jej w pasku bocznym: po włączeniu dwóch składników administrator zarządza nimi, hasłem i sesjami w **Ustawienia → Logowanie i bezpieczeństwo**.
+
+## Czego jeszcze nie ma w ustawieniach
+
+Na razie ustawienia obejmują własne konto administratora. Nie ma w nich jeszcze ustawień całego sklepu: danych sklepu i sprzedawcy, metod i cen dostawy z progiem darmowej dostawy, zespołu administratorów, powiadomień dla obsługi, stanu płatności i integracji ani danych stron prawnych. Sprzedaż wstrzymuje się [przełącznikiem sprzedaży](/docs/features/admin-dashboard#przełącznik-sprzedaży) na pulpicie, a strony prawne edytuje się w sekcji [Treść](/docs/features/legal-pages).
+
+## Powiązane strony
+
+- [Konto](/docs/features/account) — profil klienta, który dzieli z ustawieniami przypadki użycia i okna
+- [Pulpit admina](/docs/features/admin-dashboard)
+- [Internacjonalizacja](/docs/features/internationalization) — preferencje języka, strefy czasowej i formatu
+- [Dziennik zdarzeń](/docs/features/audit-log)
+- [Integracje: Better Auth](/docs/integrations/better-auth)

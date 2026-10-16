@@ -1,6 +1,6 @@
 ---
 title: "Pulpit admina"
-description: "Layout i strażnik /admin, migawka przeglądu zbudowana z jednego wsadu D1 oraz dwa ekrany narzędziowe wyłączone w panelu bocznym."
+description: "Layout i strażnik /admin, panel boczny, migawka przeglądu zbudowana z jednego wsadu D1 oraz ekrany marketingu i kuponów."
 ---
 
 ## Layout
@@ -41,9 +41,9 @@ Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefau
 | (góra) | Pulpit (`/admin/overview`)                                                                   |
 | Main   | Zamówienia, Klienci oraz rozwijany Katalog z Produktami, Kategoriami, Kolekcjami, Atrybutami |
 | Tools  | Marketing, Kupony oraz Treść                                                                 |
-| System | Dziennik zdarzeń, Ustawienia — Ustawienia mają `disabled: true`                              |
+| System | Dziennik zdarzeń i Ustawienia                                                                |
 
-Pozycja wyłączona renderuje się jako nieinteraktywny `SidebarMenuButton disabled` z `cursor-not-allowed opacity-50`, więc dwa wyłączone ekrany są w ogóle nieosiągalne z interfejsu — tylko po wpisaniu adresu.
+Pozycja jest aktywna, dopóki adres zawiera jej ścieżkę, więc **Ustawienia** pozostają aktywne na każdej zakładce `/admin/settings/*`. `/admin/security`, strony, na której administrator włącza uwierzytelnianie dwuskładnikowe, nie ma w panelu bocznym: strażnik kieruje tam administratora, gdy jest ono wyłączone, a po włączeniu administrator zarządza nim w [Ustawieniach](/docs/features/admin-settings).
 
 Przycisk wylogowania w stopce panelu bocznego wywołuje `signOut`, a potem pełnym przeładowaniem strony wczytuje `/auth/sign-in`, co odrzuca cache zapytań.
 
@@ -148,19 +148,18 @@ const validTopProductRows = topProductRows.filter((row): row is typeof row & { p
 
 `buildAdminDashboardWeeklyOrderPoints` korzysta z tych samych `dailyAggregateRows` i ostatnich siedmiu dni okna 30-dniowego, żeby wyprodukować punkty `{ dateKey, dayLabel, orders }` z nazwą dnia tygodnia w Polsce, również bez dodatkowego zapytania.
 
-## Marketing, kupony i ustawienia
+## Marketing i kupony
 
-| Trasa                          | Plik                              | Komponenty                                                                             | Dane                                                                                                                                            |
-| ------------------------------ | --------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/admin/marketing`             | `admin.marketing.index.tsx`       | `NewsletterStats`, `NewsletterCampaignsTable`                                          | `getNewsletterStatsQuery`, `getAdminNewsletterCampaignsQuery`; zobacz [E-maile](/docs/features/email#newsletter)                                |
-| `/admin/marketing/new`         | `admin.marketing.new.tsx`         | `NewsletterComposer` z `NewsletterComposerFields` i `NewsletterSendDialog`             | `getNewsletterStatsQuery`, `sendNewsletterTest`, `sendNewsletterCampaign`                                                                       |
-| `/admin/marketing/subscribers` | `admin.marketing.subscribers.tsx` | `NewsletterSubscribersTableContent` z `NewsletterSubscribersStats`                     | `getAdminNewsletterPageQuery`, `getNewsletterStatsQuery`, `exportAdminNewsletterSubscribers`; zobacz [E-maile](/docs/features/email#newsletter) |
-| `/admin/coupons`               | `admin.coupons.tsx`               | `CouponStats`, `CouponListTable` z `CouponFormDialog`                                  | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; zobacz [Rabaty](/docs/features/discounts)                                                |
-| `/admin/settings`              | `admin.settings.tsx`              | `SettingsPage` z `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`)                                               |
+| Trasa                          | Plik                              | Komponenty                                                                 | Dane                                                                                                                                            |
+| ------------------------------ | --------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/admin/marketing`             | `admin.marketing.index.tsx`       | `NewsletterStats`, `NewsletterCampaignsTable`                              | `getNewsletterStatsQuery`, `getAdminNewsletterCampaignsQuery`; zobacz [E-maile](/docs/features/email#newsletter)                                |
+| `/admin/marketing/new`         | `admin.marketing.new.tsx`         | `NewsletterComposer` z `NewsletterComposerFields` i `NewsletterSendDialog` | `getNewsletterStatsQuery`, `sendNewsletterTest`, `sendNewsletterCampaign`                                                                       |
+| `/admin/marketing/subscribers` | `admin.marketing.subscribers.tsx` | `NewsletterSubscribersTableContent` z `NewsletterSubscribersStats`         | `getAdminNewsletterPageQuery`, `getNewsletterStatsQuery`, `exportAdminNewsletterSubscribers`; zobacz [E-maile](/docs/features/email#newsletter) |
+| `/admin/coupons`               | `admin.coupons.tsx`               | `CouponStats`, `CouponListTable` z `CouponFormDialog`                      | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; zobacz [Rabaty](/docs/features/discounts)                                                |
 
 Marketing to newsletter, podzielony na dwie karty w nagłówku. **Newslettery** pokazują, ilu subskrybentów jest potwierdzonych, czeka na potwierdzenie i się wypisało, a każda z tych liczb prowadzi do karty **Subskrybenci** zawężonej do danego statusu, oraz listę 50 ostatnich newsletterów z postępem wysyłki, odświeżaną przez hub realtime panelu w miarę wychodzenia kolejnych partii. **Subskrybenci** to lista wszystkich adresów zapisanych na newsletter we wspólnej tabeli danych, ze statusem, językiem, miejscem zapisu, kontem klienta i datami, filtrowana według statusu kartami lub filtrem i eksportowana do CSV. **Nowy newsletter** otwiera edytor, w którym właściciel pisze list po polsku i po angielsku w edytorze treści, wysyła test na własny adres i wysyła go do wszystkich potwierdzonych subskrybentów; wysyłkę opisują [E-maile](/docs/features/email#newsletter).
 
-Ustawienia nie mają loadera, zapytania ani mutacji. Zakładka General w ustawieniach renderuje `STORE_INFO_DEFAULTS` do pól i `TOGGLE_SETTING_KEYS` do przełączników trzymających wyłącznie stan lokalny, więc jej przełącznik trybu konserwacji nic nie robi; sprzedaż wstrzymuje się [przełącznikiem sprzedaży](#przełącznik-sprzedaży) na przeglądzie. Pozostałe zakładki renderują `settings-placeholder.tsx`.
+Ustawienia mają własną stronę: [Ustawienia panelu](/docs/features/admin-settings).
 
 Kupony to działający ekran: jego loader wczytuje wstępnie `getAdminDiscountsPageQuery({})` i `getDiscountStatsQuery()`, a `use-coupon-actions.ts` wywołuje `createDiscount`, `updateDiscount` i `deleteDiscounts`.
 
@@ -173,5 +172,6 @@ Treść to działający ekran, który edytuje strony prawne i FAQ. Zobacz [Stron
 - [Zamówienia](/docs/features/orders)
 - [Panel katalogu](/docs/features/admin-catalog)
 - [Klienci w panelu](/docs/features/admin-customers)
+- [Ustawienia panelu](/docs/features/admin-settings)
 - [Dziennik zdarzeń](/docs/features/audit-log)
 - [Integracje: unieważnianie w czasie rzeczywistym](/docs/integrations/realtime-invalidation)

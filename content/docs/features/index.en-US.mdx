@@ -1,30 +1,22 @@
 ---
 title: "Introduction"
-description: "What each part of the shop does today, where its code lives, and which admin screens are still demo screens."
+description: "What each part of the shop does today, where its code lives, and what is still a placeholder."
 ---
 
-Every page in this chapter describes the code as it is in the repository, not as it is planned. A feature is **live** when it reads or writes real data through a module use case, Better Auth or Stripe. A **demo screen** renders constants from `src/data` and stores nothing. A **placeholder** renders copy from a message catalogue and has no data behind it at all.
+Every page in this chapter describes the code as it is in the repository, not as it is planned. A feature is **live** when it reads or writes real data through a module use case, Better Auth or Stripe. A **placeholder** renders copy from a message catalogue and has no data behind it at all.
 
 Each page names the concrete files: the route in `src/routes`, the use cases in `src/modules/{feature}/use-cases`, the tables in `src/modules/{feature}/*.schema.ts` and the components in `src/presentation/components/custom`.
 
 ## Live
 
-| Area          | Pages                                                                                                                                                                                                       |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Storefront    | [Landing page](/docs/features/landing-page), [Catalog and search](/docs/features/catalog-and-search), [Product page](/docs/features/product-page)                                                           |
-| Buying        | [Cart](/docs/features/cart), [Checkout](/docs/features/checkout), [Payments](/docs/features/payments), [Shipping and delivery](/docs/features/shipping-and-delivery), [Discounts](/docs/features/discounts) |
-| Fulfilment    | [Orders](/docs/features/orders), [Inventory](/docs/features/inventory)                                                                                                                                      |
-| Customers     | [Account](/docs/features/account)                                                                                                                                                                           |
-| Admin console | [Dashboard](/docs/features/admin-dashboard), [Catalog](/docs/features/admin-catalog), [Customers](/docs/features/admin-customers), [Audit log](/docs/features/audit-log)                                    |
-| Platform      | [Transactional email](/docs/features/email), [Internationalization](/docs/features/internationalization), [Legal pages](/docs/features/legal-pages)                                                         |
-
-## Demo screens
-
-This route exists, renders fully and is covered by component tests, but its rows come from `src/data`:
-
-| Route             | Data module            | Described in                                      |
-| ----------------- | ---------------------- | ------------------------------------------------- |
-| `/admin/settings` | `src/data/settings.ts` | [Admin dashboard](/docs/features/admin-dashboard) |
+| Area          | Pages                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Storefront    | [Landing page](/docs/features/landing-page), [Catalog and search](/docs/features/catalog-and-search), [Product page](/docs/features/product-page)                                                                   |
+| Buying        | [Cart](/docs/features/cart), [Checkout](/docs/features/checkout), [Payments](/docs/features/payments), [Shipping and delivery](/docs/features/shipping-and-delivery), [Discounts](/docs/features/discounts)         |
+| Fulfilment    | [Orders](/docs/features/orders), [Inventory](/docs/features/inventory)                                                                                                                                              |
+| Customers     | [Account](/docs/features/account)                                                                                                                                                                                   |
+| Admin console | [Dashboard](/docs/features/admin-dashboard), [Catalog](/docs/features/admin-catalog), [Customers](/docs/features/admin-customers), [Settings](/docs/features/admin-settings), [Audit log](/docs/features/audit-log) |
+| Platform      | [Transactional email](/docs/features/email), [Internationalization](/docs/features/internationalization), [Legal pages](/docs/features/legal-pages)                                                                 |
 
 ## Placeholders
 

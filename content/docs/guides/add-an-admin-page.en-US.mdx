@@ -188,9 +188,9 @@ A route lists the namespaces its subtree needs in `staticData.namespaces`. `getR
 | `SIMPLE_NAV`  | Dashboard, Orders, Customers                                         |
 | `CATALOG_SUB` | Products, Categories, Collections, Attributes — nested under Catalog |
 | `TOOLS_NAV`   | Marketing, Coupons, Content                                          |
-| `SYSTEM_NAV`  | Audit, Settings — Settings is `disabled: true`                       |
+| `SYSTEM_NAV`  | Audit, Settings                                                      |
 
-A `NavItem` is `{ href: LocalizedTo, icon, labelKey, disabled? }`. The icon is a `lucide-react` component, and `labelKey` resolves inside `pages.admin`, so `nav.coupons` reads from `messages/{locale}/pages.admin.json`. Set `disabled: true` for a page that exists as a placeholder but is not ready. `/admin/settings` is in that state today.
+A `NavItem` is `{ href: LocalizedTo, icon, labelKey }`. The icon is a `lucide-react` component, and `labelKey` resolves inside `pages.admin`, so `nav.coupons` reads from `messages/{locale}/pages.admin.json`. An item is active while the address contains its `href`, so one item covers a page with header tabs, such as Settings. There is no disabled state: leave a page out of the sidebar until it works.
 
 ## 8. Test the route
 
