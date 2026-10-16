@@ -3,7 +3,7 @@ title: "Komponenty shadcn"
 description: "Prymitywy Base UI w src/presentation/components/shadcn, ich konwencje propsów i sposób użycia na ekranach."
 ---
 
-`src/presentation/components/shadcn/` zawiera 57 prymitywów wygenerowanych przez CLI shadcn w stylu `base-lyra`. Jego folder `_styles/` zawiera `sheet-control.styles.ts`, który jest zestawem łańcuchów klas, a nie komponentem. **Są zbudowane na Base UI, nie na Radix.** Trzydzieści jeden z nich re-eksportuje części `@base-ui/react` z klasami projektu; pozostałe opakowują inną bibliotekę albo są zwykłymi znacznikami. Ekrany importują prymitywy bezpośrednio — nie ma wokół nich żadnych nakładek.
+`src/presentation/components/shadcn/` zawiera 57 prymitywów wygenerowanych przez CLI shadcn w stylu `base-lyra`. Jego folder `_styles/` zawiera `sheet-control.styles.ts` i `dialog.styles.ts`, które są zestawami łańcuchów klas, a nie komponentami. **Są zbudowane na Base UI, nie na Radix.** Trzydzieści jeden z nich re-eksportuje części `@base-ui/react` z klasami projektu; pozostałe opakowują inną bibliotekę albo są zwykłymi znacznikami. Ekrany importują prymitywy bezpośrednio — nie ma wokół nich żadnych nakładek.
 
 `components.json` zapisuje konfigurację:
 
@@ -104,6 +104,15 @@ const menuTrigger = useMemo(() => <DropdownMenuTrigger render={button} />, [butt
 `sheet-control.styles.ts` nie jest komponentem — eksportuje łańcuchy klas (`SHEET_CONTROL_HEIGHT`, `sheetInputClassName`, `sheetInputGroupClassName`, `sheetSelectTriggerClassName`, …), które trzymają każdą kontrolkę w panelu wysuwanym na tej samej wysokości 40px i z tym samym `rounded-lg`. `globals.css` dodaje regułę w warstwie komponentów wymuszającą `var(--radius)` na polach, selectach, grupach pól i obszarach tekstowych wewnątrz `[data-slot="sheet-content"]`.
 
 `SelectContent` (`select.tsx`) ogranicza każdą otwartą listę do `20rem` albo do miejsca, które zostaje między wyzwalaczem a krawędzią okna, jeśli jest go mniej (`max-h-[min(var(--available-height),20rem)]`). Dłuższa lista, na przykład 195 stref czasowych na `/account/profile`, przewija się wewnątrz panelu z własnym paskiem przewijania. Otwarcie kliknięciem albo z klawiatury pokazuje wybraną pozycję, a klawiatura utrzymuje podświetloną pozycję w polu widzenia. `overscroll-contain` nie pozwala, by przesunięcie palcem na końcu listy przewijało stronę; ma to znaczenie na ekranach dotykowych, gdzie Base UI nie blokuje strony. Na stronach sklepu portal ma atrybut `data-lenis-prevent`, więc Lenis zostawia ruch kółka nad listą samej liście. Gdy lista jest otwarta, Base UI blokuje stronę, a `SmoothScroll` zostawia każdy ruch kółka przeglądarce, dopóki ta blokada trwa (zobacz [GSAP i Lenis](/docs/integrations/gsap-and-lenis)). Dlatego ruch kółka nad polem, które otworzyło listę, nad przyklejonym nagłówkiem albo w dowolnym innym miejscu nie przesuwa strony. `__test__/select.component.test.tsx` sprawdza kółko z prawdziwym Lenis i Base UI, a `e2e/specs/account.spec.ts` sprawdza wysokość, kółko, klawiaturę i przesunięcie palcem na liście stref czasowych.
+
+## Okna dialogowe
+
+`Dialog` i `AlertDialog` mają wspólny wygląd z `_styles/dialog.styles.ts`. `DialogContent` i `AlertDialogContent` przyjmują `variant`:
+
+- `default`, dla panelu administracyjnego: szerokość 448px, odstęp wewnętrzny 24px, róg 6px i miękki cień. Tytuł 16px w półgrubym kroju i opis 13px pasują do paneli wysuwanych. Stopka to szary pas pod górną krawędzią, z przyciskami o wysokości 36px. Przycisk `destructive` w stopce okna jest pełnym czerwonym przyciskiem, bo stopka stylizuje przyciski przez `data-variant`, który ustawia `Button`.
+- `editorial`, dla konta klienta: kwadratowe rogi, odstęp 32px, tytuł krojem szeryfowym oraz przyciski 44px pisane wersalikami z rozstrzeloną literą, jak na stronach konta. Okna konta umieszczają nad tytułem mały nagłówek pisany wersalikami z `account-dialog-eyebrow.tsx`.
+
+`AlertDialogMedia` pokazuje ikonę w kafelku 40px obok tytułu, a na telefonie nad nim; `tone="destructive"` barwi go na czerwono. Potwierdzenia w panelu używają ikony przycisku, który je otworzył. Notatka w opisie, na przykład „klient dostanie e-mail”, korzysta z `AdminDialogNote` (`admin-dialog-note.tsx`) z `kind` równym `email` albo `warning`. Pola w oknach panelu używają wariantu `sheet` i `ADMIN_DIALOG_LABEL_CLASS` z `admin-layout.styles.ts`, więc wyglądają jak w panelach wysuwanych.
 
 ## Formularze
 

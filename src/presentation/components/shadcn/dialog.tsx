@@ -5,6 +5,16 @@ import { cn } from "cn"
 import { XIcon } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
+import {
+  DIALOG_CLOSE_CLASS,
+  DIALOG_DESCRIPTION_CLASS,
+  DIALOG_FOOTER_CLASS,
+  DIALOG_HEADER_CLASS,
+  DIALOG_OVERLAY_CLASS,
+  DIALOG_SURFACE_CLASS,
+  DIALOG_TITLE_CLASS,
+  type DialogVariant,
+} from "~/src/presentation/components/shadcn/_styles/dialog.styles"
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 const Dialog = ({ ...props }: Readonly<DialogPrimitive.Root.Props>): JSX.Element => <DialogPrimitive.Root data-slot="dialog" {...props} />
@@ -22,22 +32,18 @@ const DialogClose = ({ ...props }: Readonly<DialogPrimitive.Close.Props>): JSX.E
 )
 
 const DialogOverlay = ({ className, ...props }: Readonly<DialogPrimitive.Backdrop.Props>): JSX.Element => (
-  <DialogPrimitive.Backdrop
-    className={cn(
-      "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
-      className,
-    )}
-    data-slot="dialog-overlay"
-    {...props}
-  />
+  <DialogPrimitive.Backdrop className={cn(DIALOG_OVERLAY_CLASS, className)} data-slot="dialog-overlay" {...props} />
 )
 
-const DialogContent = ({ children, className, showCloseButton = true, ...props }: Readonly<DialogContentProps>): JSX.Element => {
+const DialogContent = ({
+  children,
+  className,
+  showCloseButton = true,
+  variant = "default",
+  ...props
+}: Readonly<DialogContentProps>): JSX.Element => {
   const t = useTranslations("components.shadcn.dialog")
-  const closeButtonRender = useMemo(
-    () => <Button className="absolute top-2 right-2 pointer-coarse:size-10" size="icon-sm" variant="ghost" />,
-    [],
-  )
+  const closeButtonRender = useMemo(() => <Button className={DIALOG_CLOSE_CLASS} size="icon-sm" variant="ghost" />, [])
   let closeButtonNode: ReactNode = undefined
   if (showCloseButton) {
     closeButtonNode = (
@@ -52,11 +58,9 @@ const DialogContent = ({ children, className, showCloseButton = true, ...props }
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
-        className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-lg bg-popover p-4 text-xs/relaxed text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-          className,
-        )}
+        className={cn(DIALOG_SURFACE_CLASS, "max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md", className)}
         data-slot="dialog-content"
+        data-variant={variant}
         {...props}
       >
         {children}
@@ -67,7 +71,7 @@ const DialogContent = ({ children, className, showCloseButton = true, ...props }
 }
 
 const DialogHeader = ({ className, ...props }: Readonly<ComponentProps<"div">>): JSX.Element => (
-  <div className={cn("flex flex-col gap-1 text-left", className)} data-slot="dialog-header" {...props} />
+  <div className={cn(DIALOG_HEADER_CLASS, className)} data-slot="dialog-header" {...props} />
 )
 
 const DialogFooter = ({ children, className, showCloseButton = false, ...props }: Readonly<DialogFooterProps>): JSX.Element => {
@@ -80,11 +84,7 @@ const DialogFooter = ({ children, className, showCloseButton = false, ...props }
   }
 
   return (
-    <div
-      className={cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pointer-coarse:[&>[data-slot=button]]:h-10", className)}
-      data-slot="dialog-footer"
-      {...props}
-    >
+    <div className={cn(DIALOG_FOOTER_CLASS, className)} data-slot="dialog-footer" {...props}>
       {children}
       {closeButtonNode}
     </div>
@@ -92,19 +92,16 @@ const DialogFooter = ({ children, className, showCloseButton = false, ...props }
 }
 
 const DialogTitle = ({ className, ...props }: Readonly<DialogPrimitive.Title.Props>): JSX.Element => (
-  <DialogPrimitive.Title className={cn("pr-8 text-sm font-medium", className)} data-slot="dialog-title" {...props} />
+  <DialogPrimitive.Title className={cn(DIALOG_TITLE_CLASS, "pr-8", className)} data-slot="dialog-title" {...props} />
 )
 
 const DialogDescription = ({ className, ...props }: Readonly<DialogPrimitive.Description.Props>): JSX.Element => (
-  <DialogPrimitive.Description
-    className={cn("text-xs/relaxed text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground", className)}
-    data-slot="dialog-description"
-    {...props}
-  />
+  <DialogPrimitive.Description className={cn(DIALOG_DESCRIPTION_CLASS, className)} data-slot="dialog-description" {...props} />
 )
 
 interface DialogContentProps extends DialogPrimitive.Popup.Props {
   readonly showCloseButton?: boolean
+  readonly variant?: DialogVariant
 }
 
 interface DialogFooterProps extends ComponentProps<"div"> {

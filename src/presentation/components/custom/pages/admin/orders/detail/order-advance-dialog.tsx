@@ -1,11 +1,14 @@
 import { type JSX } from "react"
 
+import { CheckCheck, type LucideIcon, Package } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { type AdminOrderAdvancedStep } from "~/src/modules/order/order.constants"
 
 import { OrderCustomerEmailNote } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-customer-email-note"
 import { OrderStepConfirmDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-step-confirm-dialog"
+
+const STEP_ICONS: Readonly<Record<OrderAdvanceDialogProps["step"], LucideIcon>> = { delivered: CheckCheck, processing: Package }
 
 export const OrderAdvanceDialog = ({
   displayId,
@@ -28,6 +31,7 @@ export const OrderAdvanceDialog = ({
           <OrderCustomerEmailNote emailedSteps={emailedSteps} step={step} />
         </>
       }
+      icon={STEP_ICONS[step]}
       isPending={isPending}
       onConfirm={onConfirm}
       onOpenChange={onOpenChange}

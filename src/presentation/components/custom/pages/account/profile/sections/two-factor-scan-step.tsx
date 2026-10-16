@@ -13,6 +13,7 @@ import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/sr
 import { Label } from "~/src/presentation/components/shadcn/label"
 import { Textarea } from "~/src/presentation/components/shadcn/textarea"
 
+import { AccountDialogEyebrow } from "~/src/presentation/components/custom/pages/account/account-dialog-eyebrow"
 import { TwoFactorQr } from "~/src/presentation/components/custom/pages/account/profile/sections/two-factor-qr"
 import { AuthTextField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
@@ -28,6 +29,7 @@ export const readSetupKey = (uri: string): string => {
 
 export const TwoFactorScanStep = ({ onCancel, onSubmit, totpUri }: Readonly<TwoFactorScanStepProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.twoFactorDialog")
+  const tProfile = useTranslations("pages.account.profile")
   const setupKey = readSetupKey(totpUri)
   const form = useForm<TotpCodeFormValues>({
     defaultValues: { code: "" },
@@ -53,6 +55,7 @@ export const TwoFactorScanStep = ({ onCancel, onSubmit, totpUri }: Readonly<TwoF
   return (
     <form onSubmit={handleSubmit}>
       <DialogHeader>
+        <AccountDialogEyebrow>{tProfile("security")}</AccountDialogEyebrow>
         <DialogTitle>{t("scanTitle")}</DialogTitle>
         <DialogDescription>{t("scanDescription")}</DialogDescription>
       </DialogHeader>

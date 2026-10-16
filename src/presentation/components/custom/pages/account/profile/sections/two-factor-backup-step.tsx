@@ -7,8 +7,11 @@ import { useTranslations } from "use-intl/react"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/src/presentation/components/shadcn/dialog"
 
+import { AccountDialogEyebrow } from "~/src/presentation/components/custom/pages/account/account-dialog-eyebrow"
+
 export const TwoFactorBackupStep = ({ backupCodes, onAcknowledge }: Readonly<TwoFactorBackupStepProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.twoFactorDialog")
+  const tProfile = useTranslations("pages.account.profile")
   const copyBackupCodes = useCallback(() => {
     void navigator.clipboard.writeText(backupCodes.join("\n"))
     toast.success(t("backupCodesCopied"))
@@ -17,6 +20,7 @@ export const TwoFactorBackupStep = ({ backupCodes, onAcknowledge }: Readonly<Two
   return (
     <>
       <DialogHeader>
+        <AccountDialogEyebrow>{tProfile("security")}</AccountDialogEyebrow>
         <DialogTitle>{t("backupTitle")}</DialogTitle>
         <DialogDescription>{t("backupDescription")}</DialogDescription>
       </DialogHeader>

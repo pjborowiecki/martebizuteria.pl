@@ -19,6 +19,7 @@ const Button = ({
       }),
     )}
     data-slot="button"
+    data-variant={variant}
     {...props}
   />
 )

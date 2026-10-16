@@ -76,6 +76,7 @@ const OrderDetailActionDialogs = ({ actions, order }: Readonly<OrderDetailAction
         cancelLabel={t("restockDialog.cancel")}
         confirmLabel={t("restockDialog.confirm")}
         description={t("restockDialog.description", { id: order.displayId })}
+        icon={PackagePlus}
         isPending={actions.isPending}
         onConfirm={actions.handleConfirmRestock}
         onOpenChange={actions.setRestockDialogOpen}
@@ -89,6 +90,7 @@ const OrderDetailActionDialogs = ({ actions, order }: Readonly<OrderDetailAction
         description={t(actions.cancelRefundsPayment ? "cancelDialog.refundDescription" : "cancelDialog.description", {
           id: order.displayId,
         })}
+        icon={XCircle}
         isPending={actions.isPending}
         onConfirm={actions.handleConfirmCancel}
         onOpenChange={actions.setCancelDialogOpen}

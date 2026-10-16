@@ -11,6 +11,7 @@ import { type Order } from "~/src/modules/order/order.types"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
+import { AdminDialogNote } from "~/src/presentation/components/custom/pages/admin/admin-dialog-note"
 import { OrderStepConfirmDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-step-confirm-dialog"
 import { useStepBackOrder } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions"
 
@@ -54,12 +55,11 @@ const OrderStepBackControl = ({ order, stepBack }: Readonly<OrderStepBackControl
                 to: t(`orders.${ADMIN_ORDER_FULFILLMENT_LABEL_KEYS[stepBack.to]}`),
               })}
             </span>
-            <span className="mt-2 block">{t("orderDetail.stepBack.emailNote")}</span>
-            {keepsInpostShipment && (
-              <span className="mt-2 block font-medium text-foreground">{t("orderDetail.stepBack.inpostWarning")}</span>
-            )}
+            <AdminDialogNote kind="email">{t("orderDetail.stepBack.emailNote")}</AdminDialogNote>
+            {keepsInpostShipment && <AdminDialogNote kind="warning">{t("orderDetail.stepBack.inpostWarning")}</AdminDialogNote>}
           </>
         }
+        icon={Undo2}
         isPending={stepBackOrder.isPending}
         onConfirm={handleConfirm}
         onOpenChange={setOpen}

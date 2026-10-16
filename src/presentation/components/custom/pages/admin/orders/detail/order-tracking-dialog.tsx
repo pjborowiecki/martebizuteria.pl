@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "~/src/presentation/components/shadcn/dialog"
 
+import { AdminDialogNote } from "~/src/presentation/components/custom/pages/admin/admin-dialog-note"
 import { OrderTrackingFields } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-tracking-fields"
 
 export const OrderTrackingDialog = ({ isPending, onConfirm, onOpenChange, open }: Readonly<OrderTrackingDialogProps>): JSX.Element => {
@@ -55,9 +56,9 @@ export const OrderTrackingDialog = ({ isPending, onConfirm, onOpenChange, open }
             <DialogTitle>{t("orderDetail.trackingDialog.title")}</DialogTitle>
             <DialogDescription>
               <span className="block">{t("orderDetail.trackingDialog.description")}</span>
-              <span className="mt-2 block font-medium text-foreground">
+              <AdminDialogNote kind="email">
                 {t("orderDetail.trackingDialog.emailNote", { email: t(`audit.details.emails.${ORDER_EMAIL_KIND.TRACKING}`) })}
-              </span>
+              </AdminDialogNote>
             </DialogDescription>
           </DialogHeader>
 

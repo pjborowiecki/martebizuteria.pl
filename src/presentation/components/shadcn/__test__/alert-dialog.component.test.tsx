@@ -19,7 +19,6 @@ describe("AlertDialogContent", () => {
 
     const dialog = await screen.findByRole("alertdialog", { name: "Cancel this order?" })
 
-    expect(dialog).toHaveClass("w-[calc(100%-2rem)]", "data-[size=default]:max-w-xs")
-    expect(dialog).not.toHaveClass("w-full")
+    expect(dialog).toHaveClass("w-full", "max-w-[calc(100%-2rem)]", "data-[size=default]:sm:max-w-md")
   })
 })

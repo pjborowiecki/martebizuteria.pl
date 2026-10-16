@@ -13,6 +13,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from "~/src/presentation/components/shadcn/alert-dialog"
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -86,6 +87,9 @@ export const AuditRowActions = ({ entry, eventLabel }: Readonly<AuditRowActionsP
       <AlertDialog open={confirmOpen} onOpenChange={handleConfirmOpenChange}>
         <AlertDialogContent>
           <AlertDialogHeader>
+            <AlertDialogMedia tone="destructive">
+              <Trash2 />
+            </AlertDialogMedia>
             <AlertDialogTitle>{t("audit.rowActions.deleteTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("audit.rowActions.deleteDescription", {

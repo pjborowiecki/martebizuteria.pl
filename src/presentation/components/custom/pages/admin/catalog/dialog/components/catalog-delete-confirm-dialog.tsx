@@ -1,6 +1,6 @@
 import { type JSX, type MouseEvent, type ReactNode, useCallback } from "react"
 
-import { Loader2 } from "lucide-react"
+import { Loader2, type LucideIcon, Trash2 } from "lucide-react"
 
 import {
   AlertDialog,
@@ -10,6 +10,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from "~/src/presentation/components/shadcn/alert-dialog"
 
@@ -19,6 +20,7 @@ export const CatalogDeleteConfirmDialog = ({
   cancelLabel,
   confirmLabel,
   description,
+  icon: Icon = Trash2,
   isPending,
   onConfirm,
   onOpenChange,
@@ -56,6 +58,9 @@ export const CatalogDeleteConfirmDialog = ({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
+          <AlertDialogMedia tone="destructive">
+            <Icon />
+          </AlertDialogMedia>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
@@ -84,6 +89,7 @@ interface CatalogDeleteConfirmDialogProps {
   readonly cancelLabel: string
   readonly confirmLabel: string
   readonly description: ReactNode
+  readonly icon?: LucideIcon
   readonly isPending: boolean
   readonly onConfirm: () => void
   readonly onOpenChange: (open: boolean) => void

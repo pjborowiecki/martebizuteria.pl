@@ -10,10 +10,12 @@ import { type PasswordConfirmFormValues, passwordConfirmSchema } from "~/src/int
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/src/presentation/components/shadcn/dialog"
 
+import { AccountDialogEyebrow } from "~/src/presentation/components/custom/pages/account/account-dialog-eyebrow"
 import { AuthPasswordField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
 export const TwoFactorPasswordStep = ({ disabling, onCancel, onSubmit }: Readonly<TwoFactorPasswordStepProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.twoFactorDialog")
+  const tProfile = useTranslations("pages.account.profile")
   const form = useForm<PasswordConfirmFormValues>({
     defaultValues: { password: "" },
     mode: "onChange",
@@ -33,6 +35,7 @@ export const TwoFactorPasswordStep = ({ disabling, onCancel, onSubmit }: Readonl
   return (
     <form onSubmit={handleSubmit}>
       <DialogHeader>
+        <AccountDialogEyebrow>{tProfile("security")}</AccountDialogEyebrow>
         <DialogTitle>{disabling ? t("disableTitle") : t("enableTitle")}</DialogTitle>
         <DialogDescription>{disabling ? t("disableDescription") : t("enableDescription")}</DialogDescription>
       </DialogHeader>

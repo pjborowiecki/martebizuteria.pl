@@ -28,6 +28,7 @@ import {
 } from "~/src/presentation/components/shadcn/dialog"
 import { Label } from "~/src/presentation/components/shadcn/label"
 
+import { AccountDialogEyebrow } from "~/src/presentation/components/custom/pages/account/account-dialog-eyebrow"
 import { AuthPasswordField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
 const changePasswordRequest = createClientOnlyFn((input: Parameters<typeof authClient.changePassword>[0]) =>
@@ -36,6 +37,7 @@ const changePasswordRequest = createClientOnlyFn((input: Parameters<typeof authC
 
 export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePasswordDialogProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.passwordDialog")
+  const tProfile = useTranslations("pages.account.profile")
   const actionError = useActionError()
   const queryClient = useQueryClient()
   const form = useForm<ChangePasswordFormValues>({
@@ -94,9 +96,10 @@ export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePass
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" variant="editorial">
         <form onSubmit={handleFormSubmit}>
           <DialogHeader>
+            <AccountDialogEyebrow>{tProfile("security")}</AccountDialogEyebrow>
             <DialogTitle>{t("title")}</DialogTitle>
             <DialogDescription>{t("description")}</DialogDescription>
           </DialogHeader>

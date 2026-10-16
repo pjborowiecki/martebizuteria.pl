@@ -3,6 +3,15 @@ import { type ComponentProps, type JSX, useMemo } from "react"
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog"
 import { cn } from "cn"
 
+import {
+  DIALOG_DESCRIPTION_CLASS,
+  DIALOG_FOOTER_CLASS,
+  DIALOG_HEADER_CLASS,
+  DIALOG_OVERLAY_CLASS,
+  DIALOG_SURFACE_CLASS,
+  DIALOG_TITLE_CLASS,
+  type DialogVariant,
+} from "~/src/presentation/components/shadcn/_styles/dialog.styles"
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 const AlertDialog = ({ ...props }: Readonly<AlertDialogPrimitive.Root.Props>): JSX.Element => (
@@ -18,23 +27,18 @@ const AlertDialogPortal = ({ ...props }: Readonly<AlertDialogPrimitive.Portal.Pr
 )
 
 const AlertDialogOverlay = ({ className, ...props }: Readonly<AlertDialogPrimitive.Backdrop.Props>): JSX.Element => (
-  <AlertDialogPrimitive.Backdrop
-    data-slot="alert-dialog-overlay"
-    className={cn(
-      "fixed inset-0 isolate z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
-      className,
-    )}
-    {...props}
-  />
+  <AlertDialogPrimitive.Backdrop data-slot="alert-dialog-overlay" className={cn(DIALOG_OVERLAY_CLASS, className)} {...props} />
 )
 
 const AlertDialogContent = ({
   className,
   size = "default",
+  variant = "default",
   ...props
 }: Readonly<
   AlertDialogPrimitive.Popup.Props & {
     size?: "default" | "sm"
+    variant?: DialogVariant
   }
 >): JSX.Element => (
   <AlertDialogPortal>
@@ -42,10 +46,8 @@ const AlertDialogContent = ({
     <AlertDialogPrimitive.Popup
       data-slot="alert-dialog-content"
       data-size={size}
-      className={cn(
-        "group/alert-dialog-content fixed top-1/2 left-1/2 z-50 grid w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-lg bg-popover p-4 text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-[size=default]:max-w-xs data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-        className,
-      )}
+      data-variant={variant}
+      className={cn(DIALOG_SURFACE_CLASS, "data-[size=default]:sm:max-w-md data-[size=sm]:sm:max-w-xs", className)}
       {...props}
     />
   </AlertDialogPortal>
@@ -55,7 +57,8 @@ const AlertDialogHeader = ({ className, ...props }: Readonly<ComponentProps<"div
   <div
     data-slot="alert-dialog-header"
     className={cn(
-      "grid grid-rows-[auto_1fr] place-items-center gap-1.5 text-center has-data-[slot=alert-dialog-media]:grid-rows-[auto_auto_1fr] has-data-[slot=alert-dialog-media]:gap-x-4 sm:group-data-[size=default]/alert-dialog-content:place-items-start sm:group-data-[size=default]/alert-dialog-content:text-left sm:group-data-[size=default]/alert-dialog-content:has-data-[slot=alert-dialog-media]:grid-rows-[auto_1fr]",
+      DIALOG_HEADER_CLASS,
+      "sm:has-data-[slot=alert-dialog-media]:grid sm:has-data-[slot=alert-dialog-media]:grid-cols-[auto_minmax(0,1fr)] sm:has-data-[slot=alert-dialog-media]:gap-x-4 sm:has-data-[slot=alert-dialog-media]:gap-y-1.5",
       className,
     )}
     {...props}
@@ -63,21 +66,21 @@ const AlertDialogHeader = ({ className, ...props }: Readonly<ComponentProps<"div
 )
 
 const AlertDialogFooter = ({ className, ...props }: Readonly<ComponentProps<"div">>): JSX.Element => (
-  <div
-    data-slot="alert-dialog-footer"
-    className={cn(
-      "flex flex-col-reverse gap-2 group-data-[size=sm]/alert-dialog-content:grid group-data-[size=sm]/alert-dialog-content:grid-cols-2 sm:flex-row sm:justify-end",
-      className,
-    )}
-    {...props}
-  />
+  <div data-slot="alert-dialog-footer" className={cn(DIALOG_FOOTER_CLASS, className)} {...props} />
 )
 
-const AlertDialogMedia = ({ className, ...props }: Readonly<ComponentProps<"div">>): JSX.Element => (
+const AlertDialogMedia = ({
+  className,
+  tone = "default",
+  ...props
+}: Readonly<ComponentProps<"div"> & { tone?: "default" | "destructive" }>): JSX.Element => (
   <div
+    aria-hidden
     data-slot="alert-dialog-media"
+    data-tone={tone}
     className={cn(
-      "mb-2 inline-flex size-10 items-center justify-center rounded-lg bg-muted sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-6",
+      "mb-2 inline-flex size-10 items-center justify-center rounded-lg bg-muted text-foreground sm:row-span-2 sm:mb-0 *:[svg:not([class*='size-'])]:size-[18px]",
+      "data-[tone=destructive]:bg-destructive/10 data-[tone=destructive]:text-destructive",
       className,
     )}
     {...props}
@@ -85,28 +88,14 @@ const AlertDialogMedia = ({ className, ...props }: Readonly<ComponentProps<"div"
 )
 
 const AlertDialogTitle = ({ className, ...props }: Readonly<ComponentProps<typeof AlertDialogPrimitive.Title>>): JSX.Element => (
-  <AlertDialogPrimitive.Title
-    data-slot="alert-dialog-title"
-    className={cn(
-      "text-sm font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
-      className,
-    )}
-    {...props}
-  />
+  <AlertDialogPrimitive.Title data-slot="alert-dialog-title" className={cn(DIALOG_TITLE_CLASS, className)} {...props} />
 )
 
 const AlertDialogDescription = ({
   className,
   ...props
 }: Readonly<ComponentProps<typeof AlertDialogPrimitive.Description>>): JSX.Element => (
-  <AlertDialogPrimitive.Description
-    data-slot="alert-dialog-description"
-    className={cn(
-      "text-xs/relaxed text-balance text-muted-foreground md:text-pretty *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
-      className,
-    )}
-    {...props}
-  />
+  <AlertDialogPrimitive.Description data-slot="alert-dialog-description" className={cn(DIALOG_DESCRIPTION_CLASS, className)} {...props} />
 )
 
 const AlertDialogAction = ({ className, ...props }: Readonly<ComponentProps<typeof Button>>): JSX.Element => (

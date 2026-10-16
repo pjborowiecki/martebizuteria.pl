@@ -23,12 +23,14 @@ import {
   DialogTitle,
 } from "~/src/presentation/components/shadcn/dialog"
 
+import { AccountDialogEyebrow } from "~/src/presentation/components/custom/pages/account/account-dialog-eyebrow"
 import { AuthTextField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
 const changeEmailRequest = createClientOnlyFn((input: Parameters<typeof authClient.changeEmail>[0]) => authClient.changeEmail(input))
 
 export const ChangeEmailDialog = ({ currentEmail, onOpenChange, open }: Readonly<ChangeEmailDialogProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.emailDialog")
+  const tProfile = useTranslations("pages.account.profile")
   const actionError = useActionError()
   const form = useForm<ChangeEmailFormValues>({
     defaultValues: { email: "" },
@@ -83,9 +85,10 @@ export const ChangeEmailDialog = ({ currentEmail, onOpenChange, open }: Readonly
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" variant="editorial">
         <form onSubmit={handleFormSubmit}>
           <DialogHeader>
+            <AccountDialogEyebrow>{tProfile("personalInfo")}</AccountDialogEyebrow>
             <DialogTitle>{t("title")}</DialogTitle>
             <DialogDescription>{t("description", { email: currentEmail })}</DialogDescription>
           </DialogHeader>
