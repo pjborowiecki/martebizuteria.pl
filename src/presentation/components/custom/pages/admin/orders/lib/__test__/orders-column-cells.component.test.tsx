@@ -57,7 +57,7 @@ const OrdersGrid = ({ rows }: Readonly<{ rows: OrderRow[] }>): ReactNode => {
   const t = useTranslations("pages.admin.orders")
   const tAdmin = useTranslations("pages.admin")
   const table = useTable<DataGridFeatures, OrderRow>({
-    columns: buildOrderColumns({ locale: "en-US", t, tAdmin }),
+    columns: buildOrderColumns({ formatLocale: "en-US", t, tAdmin }),
     data: rows,
     features: dataGridFeatures,
     getRowId: (row) => row.id,

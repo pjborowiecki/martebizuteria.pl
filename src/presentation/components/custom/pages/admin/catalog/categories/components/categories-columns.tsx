@@ -1,7 +1,7 @@
 import { type JSX, useMemo } from "react"
 
 import { createColumnHelper } from "@tanstack/react-table"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import {
@@ -18,6 +18,8 @@ import {
   resolveCategorySubtitle,
   resolveCategoryTitle,
 } from "~/src/modules/product-category/product-category.utils"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"

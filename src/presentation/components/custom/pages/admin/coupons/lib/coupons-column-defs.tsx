@@ -1,7 +1,7 @@
 import { type JSX } from "react"
 
 import { createColumnHelper } from "@tanstack/react-table"
-import { type useFormatter, type useTranslations } from "use-intl/react"
+import { type useTranslations } from "use-intl/react"
 
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
@@ -13,6 +13,8 @@ import {
   DISCOUNT_TYPE,
 } from "~/src/modules/discount/discount.constants"
 import { type Discount } from "~/src/modules/discount/discount.types"
+
+import { type useFormatter } from "~/src/hooks/use-display-format"
 
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
@@ -36,7 +38,7 @@ const DateCell = ({ format, value }: Readonly<{ format: ColumnsInput["format"]; 
     <span className="whitespace-nowrap text-muted-foreground">{format.dateTime(value, { dateStyle: "medium" })}</span>
   )
 
-const formatCouponDiscount = (coupon: Pick<Discount["adminListItem"], "type" | "value">, locale: string): string | undefined => {
+const formatCouponDiscount = (coupon: Pick<Discount["adminListItem"], "type" | "value">, formatLocale: string): string | undefined => {
   if (coupon.type === DISCOUNT_TYPE.FREE_SHIPPING) {
     return undefined
   }
@@ -45,7 +47,7 @@ const formatCouponDiscount = (coupon: Pick<Discount["adminListItem"], "type" | "
     return `${String(coupon.value)}%`
   }
 
-  return formatPrice(coupon.value, STORE_CURRENCY_CODE, locale)
+  return formatPrice(coupon.value, STORE_CURRENCY_CODE, formatLocale)
 }
 
 const buildCouponIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | "tAdmin">) =>
@@ -93,11 +95,11 @@ const buildCouponIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | "tAd
     }),
   ])
 
-const buildCouponTermsColumns = ({ format, locale, t }: Pick<ColumnsInput, "format" | "locale" | "t">) =>
+const buildCouponTermsColumns = ({ format, formatLocale, t }: Pick<ColumnsInput, "format" | "formatLocale" | "t">) =>
   columnHelper.columns([
     columnHelper.accessor("value", {
       cell: ({ row }) => {
-        const discount = formatCouponDiscount(row.original, locale)
+        const discount = formatCouponDiscount(row.original, formatLocale)
 
         return discount === undefined ? (
           <EmptyCell />
@@ -120,7 +122,11 @@ const buildCouponTermsColumns = ({ format, locale, t }: Pick<ColumnsInput, "form
         return minOrder === undefined ? (
           <EmptyCell />
         ) : (
-          <CatalogTruncatedTextCell className={NUMBER_TEXT_CLASS} muted={false} text={formatPrice(minOrder, STORE_CURRENCY_CODE, locale)} />
+          <CatalogTruncatedTextCell
+            className={NUMBER_TEXT_CLASS}
+            muted={false}
+            text={formatPrice(minOrder, STORE_CURRENCY_CODE, formatLocale)}
+          />
         )
       },
       header: t("columns.minOrder"),
@@ -205,7 +211,7 @@ const NUMBER_TEXT_CLASS = "font-mono text-sm tabular-nums"
 
 interface ColumnsInput {
   readonly format: ReturnType<typeof useFormatter>
-  readonly locale: string
+  readonly formatLocale: string
   readonly t: ReturnType<typeof useTranslations<"pages.admin.coupons">>
   readonly tAdmin: ReturnType<typeof useTranslations<"pages.admin">>
 }

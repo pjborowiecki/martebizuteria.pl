@@ -2,7 +2,7 @@ import { type JSX, useMemo } from "react"
 
 import { createColumnHelper } from "@tanstack/react-table"
 import { cn } from "cn"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
@@ -16,6 +16,8 @@ import {
 } from "~/src/modules/product/product.constants"
 import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductTitle, resolveProductVariantKind } from "~/src/modules/product/product.utils"
+
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 
@@ -142,7 +144,7 @@ const buildProductTimestampColumns = ({ format, t }: ProductColumnBuildContext) 
   ])
 
 const buildProductDataGridColumns = (context: ProductColumnBuildContext) => {
-  const { locale, t, tAdmin } = context
+  const { formatLocale, locale, t, tAdmin } = context
 
   return columnHelper.columns([
     selectionColumn(columnHelper, {
@@ -215,7 +217,7 @@ const buildProductDataGridColumns = (context: ProductColumnBuildContext) => {
           return <span className="text-muted-foreground/40">{EMPTY_VALUE}</span>
         }
 
-        return <span className="block font-mono text-sm font-medium tabular-nums">{formatPrice(price, "PLN", locale)}</span>
+        return <span className="block font-mono text-sm font-medium tabular-nums">{formatPrice(price, "PLN", formatLocale)}</span>
       },
       filterFn: matchesNumericColumnFilter,
       header: t("columns.price"),
@@ -296,16 +298,18 @@ export const useProductColumns = () => {
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
   const locale = useLocale()
+  const formatLocale = useFormatLocale()
 
   return useMemo(
     () =>
       buildProductDataGridColumns({
         format,
+        formatLocale,
         locale,
         t,
         tAdmin,
       }),
-    [format, locale, t, tAdmin],
+    [format, formatLocale, locale, t, tAdmin],
   )
 }
 
@@ -315,6 +319,7 @@ const columnHelper = createColumnHelper<DataGridFeatures, Product["adminListItem
 
 interface ProductColumnBuildContext {
   readonly format: ReturnType<typeof useFormatter>
+  readonly formatLocale: string
   readonly locale: string
   readonly t: ReturnType<typeof useTranslations<"pages.admin.catalog.products.catalogList">>
   readonly tAdmin: ReturnType<typeof useTranslations<"pages.admin">>

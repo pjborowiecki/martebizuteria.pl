@@ -1,6 +1,6 @@
 import { type JSX } from "react"
 
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import {
@@ -11,6 +11,8 @@ import {
 } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
+
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
@@ -20,7 +22,7 @@ export const OrderMetaStrip = ({ order }: Readonly<OrderMetaStripProps>): JSX.El
   const t = useTranslations("pages.admin")
   const tOrders = useTranslations("pages.admin.orders")
   const format = useFormatter()
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const statusStyle = ORDER_STATUS_BADGE_STYLES[order.status]
   const paymentStyle = PAYMENT_BADGE_STYLES[order.paymentUiKey]
 
@@ -59,7 +61,9 @@ export const OrderMetaStrip = ({ order }: Readonly<OrderMetaStripProps>): JSX.El
         </div>
         <div className="ml-auto">
           <p className={`text-right ${LABEL_CLASS}`}>{t("orderDetail.meta.total")}</p>
-          <p className="mt-0.5 text-lg font-semibold tracking-tight">{formatPrice(order.totalMinorUnits, order.currencyCode, locale)}</p>
+          <p className="mt-0.5 text-lg font-semibold tracking-tight">
+            {formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale)}
+          </p>
         </div>
       </CardContent>
     </Card>

@@ -2,10 +2,12 @@ import { type JSX } from "react"
 
 import { cn } from "cn"
 import { DollarSign, Eye, ShoppingCart, Users } from "lucide-react"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
+
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
@@ -42,17 +44,17 @@ const formatStatDisplayValue = ({
   currencyCode,
   format,
   key,
-  locale,
+  formatLocale,
   stat,
 }: Readonly<{
   currencyCode: string
   format: ReturnType<typeof useFormatter>
   key: DashboardStatKey
-  locale: string
+  formatLocale: string
   stat: AdminDashboard["kpiStat"]
 }>): string => {
   if (key === "revenue") {
-    return formatPrice(stat.current, currencyCode, locale)
+    return formatPrice(stat.current, currencyCode, formatLocale)
   }
 
   return format.number(stat.current)
@@ -61,7 +63,7 @@ const formatStatDisplayValue = ({
 export const DashboardStats = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { data: snapshot } = useAdminDashboardSnapshot()
 
   return (
@@ -71,8 +73,8 @@ export const DashboardStats = (): JSX.Element => {
         const displayValue = formatStatDisplayValue({
           currencyCode: snapshot.currencyCode,
           format,
+          formatLocale,
           key: card.key,
-          locale,
           stat,
         })
 

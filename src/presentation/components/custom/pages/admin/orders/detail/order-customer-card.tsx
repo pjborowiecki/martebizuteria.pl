@@ -1,10 +1,12 @@
 import { type JSX } from "react"
 
 import { ArrowUpRight, Mail, Phone } from "lucide-react"
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { type Order } from "~/src/modules/order/order.types"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Avatar, AvatarFallback } from "~/src/presentation/components/shadcn/avatar"
 import { Badge } from "~/src/presentation/components/shadcn/badge"
@@ -19,7 +21,7 @@ import { ROUTES } from "~/src/routes"
 
 export const OrderCustomerCard = ({ customer, currencyCode }: Readonly<OrderCustomerCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
 
   return (
     <Card className={ORDER_DETAIL_CARD_CLASS}>
@@ -41,7 +43,7 @@ export const OrderCustomerCard = ({ customer, currencyCode }: Readonly<OrderCust
           </div>
           {customer.userId !== undefined && customer.totalSpentMinorUnits > 0 && (
             <Badge className="ml-auto text-[11px]" variant="secondary">
-              {formatPrice(customer.totalSpentMinorUnits, currencyCode, locale)}
+              {formatPrice(customer.totalSpentMinorUnits, currencyCode, formatLocale)}
             </Badge>
           )}
         </div>

@@ -1,8 +1,10 @@
 import { type JSX } from "react"
 
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
+
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/components/shadcn/card"
 
@@ -12,7 +14,7 @@ import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/
 export const DashboardTopProducts = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { data: snapshot } = useAdminDashboardSnapshot()
 
   return (
@@ -48,7 +50,7 @@ export const DashboardTopProducts = (): JSX.Element => {
               </div>
               <div className="text-right">
                 <p className="font-mono text-sm font-semibold tabular-nums">
-                  {formatPrice(product.revenueMinorUnits, product.currencyCode, locale)}
+                  {formatPrice(product.revenueMinorUnits, product.currencyCode, formatLocale)}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {t("dashboard.topProducts.soldCount", {

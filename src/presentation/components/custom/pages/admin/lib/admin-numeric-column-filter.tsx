@@ -2,7 +2,6 @@ import { type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
 import { type RowData, type Table } from "@tanstack/react-table"
 import { ListFilter } from "lucide-react"
-import { useLocale } from "use-intl/react"
 
 import { type SupportedCurrencyCode } from "~/src/modules/_core/constants/currency"
 import {
@@ -12,6 +11,8 @@ import {
   isNumericColumnFilterOperator,
   isNumericColumnFilterValue,
 } from "~/src/modules/_core/utils/column-filters"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"
 
@@ -43,14 +44,14 @@ export const AdminNumericColumnFilter = <TData extends RowData>({
   labels,
   table,
 }: Readonly<AdminNumericColumnFilterProps<TData>>): JSX.Element => {
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const formatContext = useMemo<NumericFilterFormatContext>(
     () => ({
       currencyCode,
       inputMode,
-      locale,
+      locale: formatLocale,
     }),
-    [currencyCode, inputMode, locale],
+    [currencyCode, inputMode, formatLocale],
   )
 
   const column = table.getColumn(columnId)

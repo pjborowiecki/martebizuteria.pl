@@ -5,6 +5,8 @@ import { useTranslations } from "use-intl/react"
 
 import { getProductStatsQuery } from "~/src/modules/product/use-cases/get-product-stats"
 
+import { useFormatLocale } from "~/src/hooks/use-display-format"
+
 import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import {
   ProductStatCard,
@@ -15,6 +17,7 @@ import { PRODUCT_STAT_CARDS } from "~/src/presentation/components/custom/pages/a
 
 export const ProductsStats = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products.catalogList")
+  const formatLocale = useFormatLocale()
   const { data: resolvedStats, isFetching, isStale } = useSuspenseQuery(getProductStatsQuery())
 
   const valuesPending = isFetching && isStale
@@ -49,7 +52,7 @@ export const ProductsStats = (): JSX.Element => {
             activeVariantKindFilter={activeVariantKindFilter}
             caption={caption}
             config={config}
-            displayValue={value.toLocaleString()}
+            displayValue={value.toLocaleString(formatLocale)}
             onFilter={applyProductsFilter}
             valuesPending={valuesPending}
           />

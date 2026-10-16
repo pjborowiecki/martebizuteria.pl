@@ -175,7 +175,7 @@ Wartość zapisana wygrywa z wykrytą. Po pierwszym renderowaniu `TranslationsPr
 
 `IntlProvider` dostaje wynikową strefę czasową. Format trafia do `DisplayPreferencesContext`, z którego czytają `useFormatter`, `useFormatLocale` i `useDisplayTimeZone` z `src/hooks/use-display-format.ts`. Własne `locale` providera pozostaje językiem strony, bo decyduje też o formach liczby mnogiej w komunikatach. Polska strona może więc pokazywać daty i liczby sformatowane dla innego kraju.
 
-Sklep, kasa i konto klienta formatują każdą datę, godzinę i cenę przez to `useFormatter` albo przez `formatPrice` z `useFormatLocale()`. Czasy względne, takie jak „3 dni temu”, są zwrotami, a nie formatami, więc zostają w języku strony, jak każdy inny komunikat. E-maile są formatowane według języka zamówienia, bo w chwili wysyłki preferencje odbiorcy nie są znane.
+Sklep, kasa i konto klienta formatują każdą datę, godzinę i cenę przez to `useFormatter` albo przez `formatPrice` z `useFormatLocale()`. Panel robi to samo w tabelach, kartach, wykresach, eksportach CSV i polach kwot, w których administrator wpisuje cenę tak, jak zapisuje ją jego format, i w ten sam sposób jest ona odczytywana. Zlokalizowane tytuły i nazwy krajów zostają w języku strony, bo są słowami, a nie formatami. Czasy względne, takie jak „3 dni temu”, są zwrotami, a nie formatami, więc zostają w języku strony, jak każdy inny komunikat. E-maile są formatowane według języka zamówienia, bo w chwili wysyłki preferencje odbiorcy nie są znane.
 
 **Zapomnienie przestrzeni nazw to błąd czasu wykonania**, a nie ciche zastępstwo: `useTranslations` na brakującej przestrzeni rzuca wyjątek. Dodanie strony oznacza dodanie jej przestrzeni nazw do `staticData` trasy.
 

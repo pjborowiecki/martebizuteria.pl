@@ -1,9 +1,11 @@
 import { type JSX } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { getAdminCustomerStatsQuery } from "~/src/modules/user/use-cases/get-admin-customer-stats"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import {
@@ -16,7 +18,7 @@ import { useCustomersDataGridContext } from "~/src/presentation/components/custo
 
 export const CustomersStats = (): JSX.Element => {
   const t = useTranslations("pages.admin.customers")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { data: resolvedStats, isFetching, isStale } = useSuspenseQuery(getAdminCustomerStatsQuery())
   const valuesPending = isFetching && isStale
   const { activeStatFilter, applyCustomerStatFilter } = useCustomersDataGridContext()
@@ -37,7 +39,7 @@ export const CustomersStats = (): JSX.Element => {
             activeFilter={activeStatFilter}
             caption={caption}
             config={config}
-            displayValue={formatCustomerStatDisplayValue(config.key, value, locale)}
+            displayValue={formatCustomerStatDisplayValue(config.key, value, formatLocale)}
             onFilter={applyCustomerStatFilter}
             valuesPending={valuesPending}
           />

@@ -6,6 +6,8 @@ import { useTranslations } from "use-intl/react"
 import { type COLLECTION_STATUS } from "~/src/modules/product-collection/product-collection.constants"
 import { getCollectionStatsQuery } from "~/src/modules/product-collection/use-cases/get-collection-stats"
 
+import { useFormatLocale } from "~/src/hooks/use-display-format"
+
 import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { COLLECTION_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/collections/collections-stats.config"
 import {
@@ -16,6 +18,7 @@ import {
 import { collectionsDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/collections/utils/collections-data-grid"
 
 export const CollectionsStats = (): JSX.Element => {
+  const formatLocale = useFormatLocale()
   const t = useTranslations("pages.admin.catalog.collections")
   const { data: resolvedStats, isFetching } = useSuspenseQuery(getCollectionStatsQuery())
   const valuesPending = isFetching
@@ -38,6 +41,7 @@ export const CollectionsStats = (): JSX.Element => {
         const caption = valuesPending
           ? undefined
           : buildCollectionStatCaption({
+              formatLocale,
               key: config.key,
               stats: resolvedStats,
               t,
@@ -49,7 +53,7 @@ export const CollectionsStats = (): JSX.Element => {
             activeFilter={activeFilter}
             caption={caption}
             config={config}
-            displayValue={formatCollectionStatValue(config.key, value)}
+            displayValue={formatCollectionStatValue(config.key, value, formatLocale)}
             onFilter={applyStatusFilter}
             valuesPending={valuesPending}
           />

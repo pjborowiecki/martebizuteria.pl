@@ -5,6 +5,8 @@ import { useTranslations } from "use-intl/react"
 
 import { getProductAttributeStatsQuery } from "~/src/modules/product-attribute/use-cases/get-product-attribute-stats"
 
+import { useFormatLocale } from "~/src/hooks/use-display-format"
+
 import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { PRODUCT_ATTRIBUTE_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/attributes-stats.config"
 import {
@@ -15,6 +17,7 @@ import { useAttributesDataGridContext } from "~/src/presentation/components/cust
 
 export const AttributesStats = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.attributes")
+  const formatLocale = useFormatLocale()
   const { data: resolvedStats, isFetching, isStale } = useSuspenseQuery(getProductAttributeStatsQuery())
   const valuesPending = isFetching && isStale
   const { activeStatFilter, applyAttributeStatFilter } = useAttributesDataGridContext()
@@ -37,7 +40,7 @@ export const AttributesStats = (): JSX.Element => {
             activeFilter={activeStatFilter}
             caption={caption}
             config={config}
-            displayValue={value.toLocaleString()}
+            displayValue={value.toLocaleString(formatLocale)}
             onFilter={applyAttributeStatFilter}
             valuesPending={valuesPending}
           />

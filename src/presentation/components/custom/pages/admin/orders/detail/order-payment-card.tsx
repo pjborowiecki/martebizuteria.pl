@@ -2,10 +2,12 @@ import { type JSX } from "react"
 
 import { Copy, CreditCard, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { type Order } from "~/src/modules/order/order.types"
+
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
@@ -16,7 +18,7 @@ import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pa
 export const OrderPaymentCard = ({ currencyCode, payment }: Readonly<OrderPaymentCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin")
   const format = useFormatter()
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const transactionId = payment?.transactionId
 
   return (
@@ -30,7 +32,7 @@ export const OrderPaymentCard = ({ currencyCode, payment }: Readonly<OrderPaymen
             <div className="flex items-center gap-2.5 text-sm">
               <CreditCard className="size-3.5 shrink-0 text-muted-foreground/40" strokeWidth={1.5} />
               <span className="text-muted-foreground capitalize">{payment.provider}</span>
-              <span className="ml-auto font-mono text-xs">{formatPrice(payment.amountMinorUnits, currencyCode, locale)}</span>
+              <span className="ml-auto font-mono text-xs">{formatPrice(payment.amountMinorUnits, currencyCode, formatLocale)}</span>
             </div>
             {transactionId !== undefined && (
               <div className="flex items-center gap-2.5 text-sm">
@@ -62,7 +64,7 @@ export const OrderPaymentCard = ({ currencyCode, payment }: Readonly<OrderPaymen
                     : ` · ${format.dateTime(payment.refundedAt, { day: "numeric", month: "short", year: "numeric" })}`}
                 </span>
                 <span className="ml-auto font-mono text-xs text-red-500">
-                  −{formatPrice(payment.refundedAmountMinorUnits, currencyCode, locale)}
+                  −{formatPrice(payment.refundedAmountMinorUnits, currencyCode, formatLocale)}
                 </span>
               </div>
             )}

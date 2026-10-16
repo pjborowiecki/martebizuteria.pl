@@ -1,11 +1,12 @@
 import { type JSX } from "react"
 
 import { Package } from "lucide-react"
-import { useLocale } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { type Order } from "~/src/modules/order/order.types"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { TableCell, TableRow } from "~/src/presentation/components/shadcn/table"
 
@@ -13,7 +14,7 @@ import { Image } from "~/src/presentation/components/custom/image"
 import { CatalogTruncatedTextCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 
 export const OrderLineItemRow = ({ currencyCode, item }: Readonly<OrderLineItemRowProps>): JSX.Element => {
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
 
   return (
     <TableRow className="group">
@@ -36,9 +37,9 @@ export const OrderLineItemRow = ({ currencyCode, item }: Readonly<OrderLineItemR
         {item.sku === undefined ? EMPTY_VALUE : <CatalogTruncatedTextCell text={item.sku} />}
       </TableCell>
       <TableCell className="text-center font-mono text-sm">{item.quantity}</TableCell>
-      <TableCell className="text-right font-mono text-sm">{formatPrice(item.unitPriceMinorUnits, currencyCode, locale)}</TableCell>
+      <TableCell className="text-right font-mono text-sm">{formatPrice(item.unitPriceMinorUnits, currencyCode, formatLocale)}</TableCell>
       <TableCell className="pr-4 text-right font-mono text-sm font-medium lg:pr-5">
-        {formatPrice(item.totalMinorUnits, currencyCode, locale)}
+        {formatPrice(item.totalMinorUnits, currencyCode, formatLocale)}
       </TableCell>
     </TableRow>
   )

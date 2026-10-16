@@ -2,13 +2,15 @@ import { type JSX, useMemo } from "react"
 
 import { type Table, useTable } from "@tanstack/react-table"
 import { act, cleanup } from "@testing-library/react"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useFormatter, useTranslations } from "use-intl/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { ADMIN_CUSTOMER_TABLE_COLUMN_ID } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 
@@ -63,8 +65,8 @@ const TableProbe = ({ onTable }: Readonly<{ onTable: (table: CustomersTable) => 
   const t = useTranslations("pages.admin.customers")
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
-  const locale = useLocale()
-  const columns = useMemo(() => buildCustomerColumns({ format, locale, t, tAdmin }), [format, locale, t, tAdmin])
+  const formatLocale = useFormatLocale()
+  const columns = useMemo(() => buildCustomerColumns({ format, formatLocale, t, tAdmin }), [format, formatLocale, t, tAdmin])
   const table = useTable<DataGridFeatures, AdminCustomerRow>({
     columns,
     data: ROWS,

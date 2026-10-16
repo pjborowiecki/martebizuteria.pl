@@ -1,11 +1,13 @@
 import { type JSX, useMemo } from "react"
 
 import { ChevronRight, FileText } from "lucide-react"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { CONTENT_PAGE_PATHS } from "~/src/modules/content-page/content-page.constants"
 import { type ContentPage } from "~/src/modules/content-page/content-page.types"
 import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Item, ItemActions, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "~/src/presentation/components/shadcn/item"
 

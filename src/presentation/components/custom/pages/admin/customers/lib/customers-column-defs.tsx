@@ -1,5 +1,5 @@
 import { type Row, createColumnHelper } from "@tanstack/react-table"
-import { type useFormatter, type useTranslations } from "use-intl/react"
+import { type useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
@@ -11,6 +11,8 @@ import {
 } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 import { formatAdminCustomerLocation } from "~/src/modules/user/user.utils"
+
+import { type useFormatter } from "~/src/hooks/use-display-format"
 
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
 import { matchesDateColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
@@ -158,7 +160,7 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
     ),
   ])
 
-const buildCustomerMetricsColumns = ({ format, locale, t }: Pick<BuildCustomerColumnsInput, "format" | "locale" | "t">) =>
+const buildCustomerMetricsColumns = ({ format, formatLocale, t }: Pick<BuildCustomerColumnsInput, "format" | "formatLocale" | "t">) =>
   columnHelper.columns([
     columnHelper.accessor("orderCount", {
       cell: ({ getValue }) => <span className="font-mono text-sm tabular-nums">{getValue()}</span>,
@@ -174,7 +176,7 @@ const buildCustomerMetricsColumns = ({ format, locale, t }: Pick<BuildCustomerCo
     columnHelper.accessor("totalSpent", {
       cell: ({ getValue }) => (
         <span className="block font-mono text-sm font-medium tabular-nums">
-          {formatPrice(getValue(), DEFAULT_ADMIN_CUSTOMER_CURRENCY, locale)}
+          {formatPrice(getValue(), DEFAULT_ADMIN_CUSTOMER_CURRENCY, formatLocale)}
         </span>
       ),
       filterFn: matchesNumericColumnFilter,
@@ -190,7 +192,9 @@ const buildCustomerMetricsColumns = ({ format, locale, t }: Pick<BuildCustomerCo
     }),
     columnHelper.accessor("averageOrderValue", {
       cell: ({ getValue }) => (
-        <span className="block font-mono text-sm tabular-nums">{formatPrice(getValue(), DEFAULT_ADMIN_CUSTOMER_CURRENCY, locale)}</span>
+        <span className="block font-mono text-sm tabular-nums">
+          {formatPrice(getValue(), DEFAULT_ADMIN_CUSTOMER_CURRENCY, formatLocale)}
+        </span>
       ),
       filterFn: matchesNumericColumnFilter,
       header: t("columns.averageOrderValue"),
@@ -274,7 +278,7 @@ type AdminCustomerRow = User["adminCustomerListItem"]
 
 interface BuildCustomerColumnsInput {
   readonly format: ReturnType<typeof useFormatter>
-  readonly locale: string
+  readonly formatLocale: string
   readonly t: ReturnType<typeof useTranslations<"pages.admin.customers">>
   readonly tAdmin: ReturnType<typeof useTranslations<"pages.admin">>
 }

@@ -2,7 +2,6 @@ import { type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
 import { type RowData, type Table } from "@tanstack/react-table"
 import { ListFilter } from "lucide-react"
-import { useFormatter } from "use-intl/react"
 
 import {
   DATE_COLUMN_FILTER_OPERATOR,
@@ -15,6 +14,8 @@ import {
 } from "~/src/modules/_core/utils/column-filters"
 import { storeWallClockStartMs } from "~/src/modules/_core/utils/datetime-column-filter"
 import { formatDateToIsoDateLocal, isIsoDateString } from "~/src/modules/_core/utils/iso-date"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"

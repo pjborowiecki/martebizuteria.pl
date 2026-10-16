@@ -1,10 +1,12 @@
 import { type JSX } from "react"
 
 import { ArrowUpRight, CreditCard, ShoppingBag, TrendingUp } from "lucide-react"
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { type User } from "~/src/modules/user/user.types"
 import { formatAdminCustomerDetailKpiPrice } from "~/src/modules/user/user.utils"
+
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
@@ -14,13 +16,13 @@ import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom
 
 export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const kpis = [
     {
       color: "text-foreground",
       icon: CreditCard,
       label: t("kpi.totalSpent"),
-      value: formatAdminCustomerDetailKpiPrice(customer.totalSpent, locale),
+      value: formatAdminCustomerDetailKpiPrice(customer.totalSpent, formatLocale),
     },
     {
       color: "text-foreground",
@@ -32,7 +34,7 @@ export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
       color: "text-foreground",
       icon: TrendingUp,
       label: t("kpi.avgOrder"),
-      value: formatAdminCustomerDetailKpiPrice(customer.averageOrderValue, locale),
+      value: formatAdminCustomerDetailKpiPrice(customer.averageOrderValue, formatLocale),
     },
     {
       color: customer.isReturning ? "text-emerald-600" : "text-foreground",
