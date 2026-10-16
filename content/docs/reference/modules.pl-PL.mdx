@@ -61,7 +61,7 @@ Cztery moduły istnieją dla operacji, a nie dla wierszy.
 
 | Moduł               | Dlaczego nie ma tabeli                                                                                                       |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `_core`             | Wspólny rdzeń: kody błędów, katalogi walut i krajów, CSV, paginacja, filtry kolumn, helpery daty i czasu                     |
+| `_core`             | Wspólny rdzeń: kody błędów, katalogi walut i krajów, eksport tabel, paginacja, filtry kolumn, helpery daty i czasu           |
 | `admin-dashboard`   | Agregaty po `order`, `payment`, `product` i `user` dla kart i wykresów w przeglądzie panelu                                  |
 | `customer-account`  | Widok `user`, `order`, `session` i `address` dostępny dla klienta, zawsze zawężony do zalogowanego użytkownika               |
 | `customer-activity` | Rejestruje aktywność przeglądania; stan leży w `src/modules/customer-activity/customer-activity.tracking.ts`, a nie w tabeli |
@@ -84,7 +84,7 @@ Cztery moduły istnieją dla operacji, a nie dla wierszy.
 
 `country.ts` to dane referencyjne trzymane świadomie; jedynym importem z niego jest typ `CountryCode` w `timezone.ts`. `timezone.ts` jest w użyciu: pole strefy czasowej na stronie profilu i w Ustawienia → Moje konto w panelu wyświetla `TIMEZONES`, `list-saved-payment-methods` ustala strefę klienta przez `resolveTimezoneCode`, żeby rozstrzygnąć, czy zapisana karta straciła ważność, a `DEFAULT_TIMEZONE_CODE` (`Europe/Warsaw`) to strefa samego sklepu dla roku w numerze zamówienia i terminów prawnych. Dni i miesiące w panelu podążają za strefą każdego administratora.
 
-`_core/utils/` zawiera `column-filters.ts` i `column-filters.server.ts`, `datetime-column-filter.ts` wraz z bliźniakiem `.server`, `search-conditions.server.ts`, `pagination.ts`, `csv.ts`, `currency.ts`, `datetime.ts`, `download.ts`, `iso-date.ts`, `iso-datetime.ts`, `json.ts`, `polish-deadline.ts`, `table-export.ts`, `tax.ts` oraz `zod-fields.ts`. Połówki `.server` budują SQL; zwykłe połówki są dzielone z przeglądarką. `table-export.ts` zamienia eksport tabeli panelu na CSV, JSON, XML albo zwykły tekst i nadaje plikowi nazwę, a `download.ts` przekazuje plik tekstowy przeglądarce.
+`_core/utils/` zawiera `column-filters.ts` i `column-filters.server.ts`, `datetime-column-filter.ts` wraz z bliźniakiem `.server`, `search-conditions.server.ts`, `pagination.ts`, `currency.ts`, `datetime.ts`, `download.ts`, `iso-date.ts`, `iso-datetime.ts`, `json.ts`, `polish-deadline.ts`, `table-export.ts`, `tax.ts` oraz `zod-fields.ts`. Połówki `.server` budują SQL; zwykłe połówki są dzielone z przeglądarką. `table-export.ts` zamienia eksport tabeli panelu na CSV, JSON, XML albo zwykły tekst i nadaje plikowi nazwę, a `download.ts` przekazuje plik tekstowy przeglądarce.
 
 ## Przypadki użycia bez endpointu RPC
 

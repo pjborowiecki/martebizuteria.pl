@@ -31,33 +31,35 @@ Ustawione jest `passWithNoTests: false`, więc projekt, który nic nie dopasuje,
 
 | Źródło                                          | Test                                                                     |
 | ----------------------------------------------- | ------------------------------------------------------------------------ |
-| `src/modules/_core/utils/csv.ts`                | `src/modules/_core/utils/__test__/csv.test.ts`                           |
+| `src/modules/_core/utils/download.ts`           | `src/modules/_core/utils/__test__/download.test.ts`                      |
 | `src/modules/address/use-cases/*.ts`            | `src/modules/address/use-cases/__test__/address-use-cases.test.ts`       |
 | `src/routes/admin.catalog.categories.index.tsx` | `src/routes/__test__/admin.catalog.categories.index.component.test.tsx`  |
 | Loader testowany osobno od komponentu           | `src/routes/__test__/account.addresses.loader.test.ts`                   |
 | Zapytanie wymagające prawdziwego SQL-a          | `src/modules/_core/utils/__test__/search-conditions.integration.test.ts` |
 
-Małe moduły umieszczają wszystkie operacje w jednym pliku; duże dzielą się tematycznie, jak testy `_core/utils` (`currency.test.ts`, `currency.configuration.test.ts`, `currency.zero-decimal.test.ts`).
+Małe moduły umieszczają wszystkie operacje w jednym pliku; duże dzielą się tematycznie, jak testy `_core/utils` (`currency.test.ts`, `currency.configuration.test.ts`, `currency.zero-decimal.test.ts` oraz `table-export.csv.test.ts`, `table-export.json.test.ts`, `table-export.xml.component.test.ts` i `table-export.txt.test.ts` obok `table-export.test.ts`). Wspólne dane testowe leżą w tym samym katalogu, bez przyrostka `.test`, jak `table-export.fixtures.ts`.
 
 Pliki testowe mają w `vite.config.ts` złagodzone reguły lintera — `no-await-in-loop`, `no-magic-numbers` i `unicorn/no-null` są wyłączone — ale wszystko pozostałe obowiązuje, w tym zakaz `any` i wyciszania reguł.
 
 ## Test jednostkowy
 
-Zwykłe funkcje nie wymagają ceremonii. `src/modules/_core/utils/__test__/csv.test.ts`:
+Zwykłe funkcje nie wymagają ceremonii. `src/modules/_core/utils/__test__/table-export.csv.test.ts`:
 
 ```ts
-import { afterEach, describe, expect, it, vi } from "vite-plus/test"
+import { describe, expect, it } from "vite-plus/test"
 
-import { downloadCsvFile, escapeCsvField } from "~/src/modules/_core/utils/csv"
+import { serializeTableExportCsv } from "~/src/modules/_core/utils/table-export"
 
-describe("escapeCsvField", () => {
-  it("doubles embedded quotes so the field survives a round trip", () => {
-    expect(escapeCsvField('Ring "Aurora"')).toBe('Ring ""Aurora""')
+import { singleCellDocument } from "./table-export.fixtures"
+
+describe("serializeTableExportCsv", () => {
+  it("turns a value that starts like a formula into text so a spreadsheet does not run it", () => {
+    expect(serializeTableExportCsv(singleCellDocument("=SUM(A1:A2)"))).toContain("\r\n'=SUM(A1:A2)\r\n")
   })
 })
 ```
 
-Dwie rzeczy warte skopiowania. Po pierwsze, opis w `it` mówi o **zachowaniu i o tym, dlaczego jest ważne**, a nie o mechanice — „doubles embedded quotes so the field survives a round trip”, nie „escapes quotes”. Po drugie, globalne obiekty przeglądarki podstawia się przez `vi.stubGlobal` i zwalnia w `afterEach` przez `vi.unstubAllGlobals()`:
+Dwie rzeczy warte skopiowania. Po pierwsze, opis w `it` mówi o **zachowaniu i o tym, dlaczego jest ważne**, a nie o mechanice — „turns a value that starts like a formula into text so a spreadsheet does not run it”, nie „prefixes an apostrophe”. Po drugie, globalne obiekty przeglądarki podstawia się przez `vi.stubGlobal` i zwalnia w `afterEach` przez `vi.unstubAllGlobals()`, tak jak robi to `download.test.ts` dla `downloadTextFile`:
 
 ```ts
 vi.stubGlobal("URL", { createObjectURL, revokeObjectURL })

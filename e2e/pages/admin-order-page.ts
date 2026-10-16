@@ -33,9 +33,18 @@ export class AdminOrderPage extends BasePage {
     await this.page.waitForURL(/\/admin\/orders$/u)
   }
 
-  async exportOrders(): Promise<string> {
+  async showOrderColumns(names: readonly string[]): Promise<void> {
+    await this.page.getByRole("button", { name: "Show or hide columns" }).click()
+    for (const name of names) {
+      await this.page.getByRole("menuitemcheckbox", { name }).click()
+    }
+    await this.page.keyboard.press("Escape")
+  }
+
+  async exportOrders(format: "CSV" | "JSON" | "TXT" | "XML"): Promise<string> {
     const download = this.page.waitForEvent("download")
     await this.page.getByRole("button", { name: "Export" }).click()
+    await this.page.getByRole("menuitem", { name: new RegExp(`^${format}`, "u") }).click()
 
     return readFile(await (await download).path(), "utf8")
   }

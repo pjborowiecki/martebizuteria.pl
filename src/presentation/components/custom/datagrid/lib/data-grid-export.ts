@@ -1,7 +1,12 @@
 import { type RowData, type Table } from "@tanstack/react-table"
 import { type useTranslations } from "use-intl/react"
 
-import { DATE_COLUMN_FILTER_OPERATOR, type DateColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
+import {
+  DATE_COLUMN_FILTER_OPERATOR,
+  type DateColumnFilterValue,
+  NUMERIC_COLUMN_FILTER_OPERATOR,
+  type NumericColumnFilterValue,
+} from "~/src/modules/_core/utils/column-filters"
 import { type TableExportDocument, type TableExportFilter } from "~/src/modules/_core/utils/table-export"
 
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
@@ -67,4 +72,31 @@ export const describeDateFilter = (
   }
 
   return filter.date === undefined ? undefined : t(DATE_FILTER_MESSAGE_KEYS[filter.operator], { date: formatDate(filter.date) })
+}
+
+const AMOUNT_FILTER_MESSAGE_KEYS = {
+  [NUMERIC_COLUMN_FILTER_OPERATOR.EQ]: "export.filters.amountEq",
+  [NUMERIC_COLUMN_FILTER_OPERATOR.GT]: "export.filters.amountGt",
+  [NUMERIC_COLUMN_FILTER_OPERATOR.GTE]: "export.filters.amountGte",
+  [NUMERIC_COLUMN_FILTER_OPERATOR.LT]: "export.filters.amountLt",
+  [NUMERIC_COLUMN_FILTER_OPERATOR.LTE]: "export.filters.amountLte",
+} as const
+
+export const describeAmountFilter = (
+  filter: NumericColumnFilterValue,
+  formatAmount: (amount: number) => string,
+  t: ReturnType<typeof useTranslations<"components.datagrid">>,
+): string | undefined => {
+  if (filter.operator === NUMERIC_COLUMN_FILTER_OPERATOR.BETWEEN) {
+    return filter.startAmountMinorUnits === undefined || filter.endAmountMinorUnits === undefined
+      ? undefined
+      : t("export.filters.amountBetween", {
+          end: formatAmount(filter.endAmountMinorUnits),
+          start: formatAmount(filter.startAmountMinorUnits),
+        })
+  }
+
+  return filter.amountMinorUnits === undefined
+    ? undefined
+    : t(AMOUNT_FILTER_MESSAGE_KEYS[filter.operator], { amount: formatAmount(filter.amountMinorUnits) })
 }

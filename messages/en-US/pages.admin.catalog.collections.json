@@ -3,7 +3,6 @@
   "description": "Group your products into curated collections.",
   "actions": {
     "addCollection": "Add collection",
-    "exportCsv": "Download table as CSV",
     "refresh": "Reload table data"
   },
   "columns": {
@@ -15,7 +14,8 @@
     "image": "Image",
     "products": "Products",
     "slug": "Slug",
-    "status": "Status"
+    "status": "Status",
+    "collectionIn": "Collection ({language})"
   },
   "filter": {
     "status": "Filter by status",

@@ -37,7 +37,14 @@
       "dateOn": "w dniu {date}",
       "dateBefore": "przed {date}",
       "dateAfter": "po {date}",
-      "dateBetween": "od {start} do {end}"
+      "dateBetween": "od {start} do {end}",
+      "amountEq": "dokładnie {amount}",
+      "amountGt": "więcej niż {amount}",
+      "amountGte": "co najmniej {amount}",
+      "amountLt": "mniej niż {amount}",
+      "amountLte": "najwyżej {amount}",
+      "amountBetween": "od {start} do {end}",
+      "quickFilter": "Szybki filtr"
     }
   }
 }

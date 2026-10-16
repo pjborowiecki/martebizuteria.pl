@@ -577,7 +577,6 @@
     "title": "Zamówienia",
     "description": "Zarządzaj i śledź zamówienia klientów.",
     "actions": {
-      "export": "Eksportuj",
       "newOrder": "Nowe zamówienie",
       "refresh": "Odśwież zamówienia"
     },
@@ -631,13 +630,10 @@
       "payment": "Płatność",
       "fulfillment": "Realizacja",
       "status": "Status",
-      "actions": "Akcje wiersza"
-    },
-    "exportColumns": {
-      "orderId": "Numer zamówienia",
       "companyName": "Firma",
       "nip": "NIP",
-      "destination": "Dostawa"
+      "destination": "Dostawa",
+      "actions": "Akcje wiersza"
     },
     "status": {
       "pending": "Oczekujące",
@@ -1088,7 +1084,6 @@
       "description": "Adresy zapisane na newsletter i stan każdej subskrypcji.",
       "actions": {
         "refresh": "Odśwież dane tabeli",
-        "exportCsv": "Pobierz tabelę jako CSV",
         "searchPlaceholder": "Szukaj po adresie e-mail..."
       },
       "filter": {

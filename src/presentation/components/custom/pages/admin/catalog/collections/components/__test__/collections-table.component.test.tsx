@@ -17,6 +17,7 @@ const sheetProps = vi.hoisted(() => ({
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/collections/utils/collections-data-grid", () => ({
   collectionsDataGrid: {
     Body: (): JSX.Element => <div data-testid="grid-body" />,
+    Export: (): JSX.Element => <div data-testid="collections-export" />,
     Pagination: (): JSX.Element => <div data-testid="grid-pagination" />,
     Provider: ({ children }: { readonly children: ReactNode }): JSX.Element => <div data-testid="grid-provider">{children}</div>,
     Toolbar: ({ actions, children }: { readonly actions: ReactNode; readonly children: ReactNode }): JSX.Element => (
@@ -38,10 +39,6 @@ vi.mock("~/src/presentation/components/custom/pages/admin/catalog/collections/co
 
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-bulk-actions", () => ({
   CollectionsBulkActions: (): JSX.Element => <div data-testid="collections-bulk" />,
-}))
-
-vi.mock("~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-export-action", () => ({
-  CollectionsExportAction: (): JSX.Element => <div data-testid="collections-export" />,
 }))
 
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-refresh-action", () => ({

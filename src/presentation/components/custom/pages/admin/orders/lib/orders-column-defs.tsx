@@ -1,8 +1,14 @@
+import { type JSX } from "react"
+
 import { createColumnHelper } from "@tanstack/react-table"
 import { type useTranslations } from "use-intl/react"
 
+import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import {
+  ADMIN_ORDER_FULFILLMENT_LABEL_KEYS,
+  ADMIN_ORDER_PAYMENT_LABEL_KEYS,
+  ADMIN_ORDER_STATUS_LABEL_KEYS,
   ADMIN_ORDER_TABLE_A11Y_KEYS,
   ADMIN_ORDER_TABLE_COLUMN_ID,
   ADMIN_ORDER_TABLE_COLUMN_SIZE,
@@ -14,11 +20,52 @@ import { selectionColumn } from "~/src/presentation/components/custom/datagrid/c
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
+import { CatalogTruncatedTextCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 import { OrderCustomerCell } from "~/src/presentation/components/custom/pages/admin/orders/components/order-customer-cell"
 import { OrderFulfillmentCell } from "~/src/presentation/components/custom/pages/admin/orders/components/order-fulfillment-cell"
 import { OrderPaymentBadge } from "~/src/presentation/components/custom/pages/admin/orders/components/order-payment-badge"
 import { OrderStatusBadge } from "~/src/presentation/components/custom/pages/admin/orders/components/order-status-badge"
 import { OrdersRowActions } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-row-actions"
+
+const OptionalTextCell = ({ text }: Readonly<{ text: string | undefined }>): JSX.Element =>
+  text === undefined ? <span className="text-sm text-muted-foreground/40">{EMPTY_VALUE}</span> : <CatalogTruncatedTextCell text={text} />
+
+const buildOrderBillingColumns = ({ t }: Pick<BuildOrderColumnsInput, "t">) =>
+  columnHelper.columns([
+    columnHelper.accessor("billingCompanyName", {
+      cell: ({ getValue }) => <OptionalTextCell text={getValue()} />,
+      enableSorting: false,
+      header: t("columns.companyName"),
+      id: ADMIN_ORDER_TABLE_COLUMN_ID.companyName,
+      meta: {
+        exportValue: (row) => row.billingCompanyName,
+        skeletonVariant: "text",
+      },
+      size: ADMIN_ORDER_TABLE_COLUMN_SIZE.companyName,
+    }),
+    columnHelper.accessor("billingNip", {
+      cell: ({ getValue }) => <OptionalTextCell text={getValue()} />,
+      enableSorting: false,
+      header: t("columns.nip"),
+      id: ADMIN_ORDER_TABLE_COLUMN_ID.nip,
+      meta: {
+        exportValue: (row) => row.billingNip,
+        skeletonVariant: "text",
+      },
+      size: ADMIN_ORDER_TABLE_COLUMN_SIZE.nip,
+    }),
+    columnHelper.accessor("destination", {
+      cell: ({ getValue }) => <OptionalTextCell text={getValue()} />,
+      enableSorting: false,
+      header: t("columns.destination"),
+      id: ADMIN_ORDER_TABLE_COLUMN_ID.destination,
+      meta: {
+        exportValue: (row) => row.destination,
+        skeletonVariant: "text",
+      },
+      size: ADMIN_ORDER_TABLE_COLUMN_SIZE.destination,
+    }),
+  ])
 
 export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOrderColumnsInput) =>
   columnHelper.columns([
@@ -31,7 +78,7 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOr
       enableSorting: false,
       header: t("columns.order"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.orderId,
-      meta: CATALOG_RECORD_ID_COLUMN_META,
+      meta: { ...CATALOG_RECORD_ID_COLUMN_META, exportValue: (row) => row.orderNumber },
       ...fixedDataGridColumnWidth(ADMIN_ORDER_TABLE_COLUMN_SIZE.orderId),
     }),
     columnHelper.accessor("createdAt", {
@@ -46,6 +93,7 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOr
       id: ADMIN_ORDER_TABLE_COLUMN_ID.createdAt,
       maxSize: DATE_COLUMN_MAX_SIZE,
       meta: {
+        exportValue: (row) => formatAdminOrderDate(row.createdAt, { formatLocale, timeZone }),
         skeletonVariant: "text",
       },
       minSize: ADMIN_ORDER_TABLE_COLUMN_SIZE.createdAt,
@@ -64,6 +112,7 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOr
       header: t("columns.customer"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.customer,
       meta: {
+        exportValue: (row) => row.customerName,
         skeletonVariant: "title",
       },
       size: ADMIN_ORDER_TABLE_COLUMN_SIZE.customer,
@@ -74,6 +123,7 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOr
       header: t("columns.email"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.email,
       meta: {
+        exportValue: (row) => row.email,
         skeletonVariant: "text",
       },
       size: ADMIN_ORDER_TABLE_COLUMN_SIZE.email,
@@ -84,6 +134,7 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOr
       header: t("columns.items"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.itemCount,
       meta: {
+        exportValue: (row) => String(row.itemCount),
         skeletonVariant: "text",
       },
       size: ADMIN_ORDER_TABLE_COLUMN_SIZE.itemCount,
@@ -99,6 +150,7 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOr
       header: t("columns.total"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.total,
       meta: {
+        exportValue: (row) => formatPrice(row.totalMinorUnits, row.currencyCode, formatLocale),
         skeletonVariant: "text",
       },
       minSize: ADMIN_ORDER_TABLE_COLUMN_SIZE.total,
@@ -111,6 +163,7 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOr
       header: t("columns.fulfillment"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.fulfillment,
       meta: {
+        exportValue: (row) => t(ADMIN_ORDER_FULFILLMENT_LABEL_KEYS[row.fulfillmentUiKey]),
         skeletonVariant: "badge",
       },
       size: ADMIN_ORDER_TABLE_COLUMN_SIZE.fulfillment,
@@ -122,6 +175,7 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOr
       header: t("columns.status"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.status,
       meta: {
+        exportValue: (row) => t(ADMIN_ORDER_STATUS_LABEL_KEYS[row.status]),
         skeletonVariant: "badge",
       },
       minSize: ADMIN_ORDER_TABLE_COLUMN_SIZE.status,
@@ -134,11 +188,13 @@ export const buildOrderColumns = ({ formatLocale, t, tAdmin, timeZone }: BuildOr
       header: t("columns.payment"),
       id: ADMIN_ORDER_TABLE_COLUMN_ID.payment,
       meta: {
+        exportValue: (row) => t(ADMIN_ORDER_PAYMENT_LABEL_KEYS[row.paymentUiKey]),
         skeletonVariant: "badge",
       },
       minSize: ADMIN_ORDER_TABLE_COLUMN_SIZE.payment,
       size: ADMIN_ORDER_TABLE_COLUMN_SIZE.payment,
     }),
+    ...buildOrderBillingColumns({ t }),
     columnHelper.display({
       cell: ({ row }) => <OrdersRowActions order={row.original} />,
       enableHiding: false,

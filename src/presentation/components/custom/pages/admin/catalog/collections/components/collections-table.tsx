@@ -6,7 +6,6 @@ import { DataGridShell } from "~/src/presentation/components/custom/datagrid/com
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { CollectionSheet } from "~/src/presentation/components/custom/pages/admin/catalog/collections/add-collection/collection-sheet"
 import { CollectionsBulkActions } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-bulk-actions"
-import { CollectionsExportAction } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-export-action"
 import { CollectionsRefreshAction } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-refresh-action"
 import { CollectionsStats } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-stats"
 import { CollectionsStatusFilter } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-status-filter"
@@ -55,7 +54,7 @@ export const CollectionsTableContent = (): JSX.Element => {
           <DataGridShell>
             <Toolbar actions={toolbarActions}>
               <CollectionsRefreshAction />
-              <CollectionsExportAction />
+              <Export />
               <CollectionsStatusFilter />
             </Toolbar>
             <Body />
@@ -79,4 +78,4 @@ export const CollectionsTable = (): JSX.Element => {
   )
 }
 
-const { Body, Pagination, Provider, Toolbar } = collectionsDataGrid
+const { Body, Export, Pagination, Provider, Toolbar } = collectionsDataGrid

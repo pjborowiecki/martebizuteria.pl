@@ -67,9 +67,6 @@ vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/compo
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/components/products-created-at-column-filter", () => ({
   ProductsCreatedAtColumnFilter: stub("created filter"),
 }))
-vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/components/products-export-action", () => ({
-  ProductsExportAction: stub("export action"),
-}))
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/components/products-price-column-filter", () => ({
   ProductsPriceColumnFilter: stub("price filter"),
 }))
@@ -98,6 +95,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/hooks
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/utils/products-data-grid", () => ({
   productsDataGrid: {
     Body: stub("grid body"),
+    Export: stub("export action"),
     Pagination: stub("grid pagination"),
     Provider: ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => <>{children}</>,
     Toolbar: ({ actions, children, filters }: Readonly<{ actions: ReactNode; children: ReactNode; filters: ReactNode }>): JSX.Element => (

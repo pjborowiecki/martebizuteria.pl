@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { CatalogTitleHandleCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
+import {
+  CatalogTitleHandleCell,
+  formatCatalogTitleHandle,
+} from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
 
 describe("CatalogTitleHandleCell", () => {
   afterEach(() => {
@@ -35,5 +38,15 @@ describe("CatalogTitleHandleCell", () => {
 
     expect(screen.getByText("/silver-rings").className).toContain("font-mono")
     expect(screen.getByText("Silver rings").className).toContain("font-medium")
+  })
+})
+
+describe("formatCatalogTitleHandle", () => {
+  it("writes the title with the handle after it, the way the cell shows both", () => {
+    expect(formatCatalogTitleHandle("Silver rings", "silver-rings")).toBe("Silver rings (/silver-rings)")
+  })
+
+  it("does not double the leading slash of a handle that already carries one", () => {
+    expect(formatCatalogTitleHandle("Silver rings", "/silver-rings")).toBe("Silver rings (/silver-rings)")
   })
 })

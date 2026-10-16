@@ -577,7 +577,6 @@
     "title": "Orders",
     "description": "Manage and track customer orders.",
     "actions": {
-      "export": "Export",
       "newOrder": "New Order",
       "refresh": "Refresh orders"
     },
@@ -631,13 +630,10 @@
       "payment": "Payment",
       "fulfillment": "Fulfillment",
       "status": "Status",
-      "actions": "Row actions"
-    },
-    "exportColumns": {
-      "orderId": "Order number",
       "companyName": "Company",
       "nip": "NIP",
-      "destination": "Delivery"
+      "destination": "Delivery",
+      "actions": "Row actions"
     },
     "status": {
       "pending": "Pending",
@@ -1088,7 +1084,6 @@
       "description": "Addresses signed up for the newsletter and where each subscription stands.",
       "actions": {
         "refresh": "Reload table data",
-        "exportCsv": "Download table as CSV",
         "searchPlaceholder": "Search by email..."
       },
       "filter": {

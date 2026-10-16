@@ -30,6 +30,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order
 vi.mock("~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid", () => ({
   ordersDataGrid: {
     Body: () => <div data-testid="grid-body" />,
+    Export: () => <div data-testid="action-export" />,
     Pagination: () => <div data-testid="grid-pagination" />,
     Provider: ({ children }: Readonly<{ children: ReactNode }>) => <div data-testid="grid-provider">{children}</div>,
     Toolbar: ({ children, filters }: Readonly<{ children: ReactNode; filters: ReactNode }>) => (
@@ -63,9 +64,6 @@ vi.mock("~/src/presentation/components/custom/pages/admin/orders/components/orde
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/orders/components/orders-refresh-action", () => ({
   OrdersRefreshAction: () => <div data-testid="action-refresh" />,
-}))
-vi.mock("~/src/presentation/components/custom/pages/admin/orders/components/orders-export-action", () => ({
-  OrdersExportAction: () => <div data-testid="action-export" />,
 }))
 
 import { ADMIN_ORDER_FULFILLMENT_UI_KEY, ADMIN_ORDER_TABLE_COLUMN_ID } from "~/src/modules/order/order.constants"

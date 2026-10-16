@@ -21,6 +21,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/attributes/utils/attributes-data-grid", () => ({
   attributesDataGrid: {
     Body: (): JSX.Element => <div data-testid="grid-body" />,
+    Export: (): JSX.Element => <div data-testid="attributes-export" />,
     Pagination: (): JSX.Element => <div data-testid="grid-pagination" />,
     Provider: ({ children }: { readonly children: ReactNode }): JSX.Element => <div data-testid="grid-provider">{children}</div>,
     Toolbar: ({ actions, children }: { readonly actions: ReactNode; readonly children: ReactNode }): JSX.Element => (
@@ -42,10 +43,6 @@ vi.mock("~/src/presentation/components/custom/pages/admin/catalog/attributes/com
 
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-bulk-actions", () => ({
   AttributesBulkActions: (): JSX.Element => <div data-testid="attributes-bulk" />,
-}))
-
-vi.mock("~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-export-action", () => ({
-  AttributesExportAction: (): JSX.Element => <div data-testid="attributes-export" />,
 }))
 
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-refresh-action", () => ({

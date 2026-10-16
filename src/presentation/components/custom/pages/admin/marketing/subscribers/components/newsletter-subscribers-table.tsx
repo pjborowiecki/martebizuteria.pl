@@ -4,7 +4,6 @@ import { type NewsletterStatus } from "~/src/modules/newsletter/newsletter.const
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
-import { NewsletterSubscribersExportAction } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/components/newsletter-subscribers-export-action"
 import { NewsletterSubscribersStatusFilter } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/components/newsletter-subscribers-filters"
 import { NewsletterSubscribersRefreshAction } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/components/newsletter-subscribers-refresh-action"
 import { NewsletterSubscribersStats } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/components/newsletter-subscribers-stats"
@@ -24,7 +23,7 @@ export const NewsletterSubscribersTableContent = ({
         <DataGridShell>
           <Toolbar filters={toolbarFilters}>
             <NewsletterSubscribersRefreshAction />
-            <NewsletterSubscribersExportAction />
+            <Export />
           </Toolbar>
           <Body />
           <Pagination />
@@ -34,4 +33,4 @@ export const NewsletterSubscribersTableContent = ({
   )
 }
 
-const { Body, Pagination, Provider, Toolbar } = newsletterSubscribersDataGrid
+const { Body, Export, Pagination, Provider, Toolbar } = newsletterSubscribersDataGrid

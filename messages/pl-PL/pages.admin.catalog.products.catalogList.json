@@ -3,7 +3,6 @@
   "description": "Zarządzaj produktami sklepu i ich wariantami.",
   "actions": {
     "addProduct": "Dodaj produkt",
-    "exportCsv": "Pobierz tabelę jako CSV",
     "refresh": "Odśwież dane tabeli"
   },
   "columns": {
@@ -38,6 +37,7 @@
     "createdAt": "Filtruj datę utworzenia",
     "minPrice": "Filtruj według ceny",
     "stock": "Filtruj według stanu",
+    "inventoryLevel": "Poziom stanu magazynowego",
     "variantKind": "Filtruj według wariantów",
     "allVariantKinds": "Wszystkie typy wariantów",
     "date": {
@@ -86,6 +86,7 @@
   "statusActive": "Aktywny",
   "statusDraft": "Wersja robocza",
   "statusArchived": "Zarchiwizowany",
+  "stockOk": "Na stanie",
   "stockOut": "Brak na stanie",
   "stockLow": "Niski stan magazynowy",
   "searchPlaceholder": "Szukaj produktów, SKU lub ID...",
@@ -115,10 +116,18 @@
     "reorderErrorDescription": "Nie udało się zapisać nowej kolejności produktów. Spróbuj ponownie."
   },
   "stats": {
-    "total": { "label": "Wszystkie produkty" },
-    "active": { "label": "Aktywne produkty" },
-    "draft": { "label": "Wersje robocze" },
-    "lowStock": { "label": "Niski stan magazynowy" },
+    "total": {
+      "label": "Wszystkie produkty"
+    },
+    "active": {
+      "label": "Aktywne produkty"
+    },
+    "draft": {
+      "label": "Wersje robocze"
+    },
+    "lowStock": {
+      "label": "Niski stan magazynowy"
+    },
     "shareCaption": "{percent}% wszystkich"
   }
 }

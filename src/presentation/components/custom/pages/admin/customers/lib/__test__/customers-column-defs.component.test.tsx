@@ -107,6 +107,7 @@ describe("buildCustomerColumns headers", () => {
     renderColumns()
 
     expect(screen.getByTestId("head-customer")).toHaveTextContent("Customer")
+    expect(screen.getByTestId("head-email")).toHaveTextContent("Email")
     expect(screen.getByTestId("head-recordId")).toHaveTextContent("ID")
   })
 
@@ -143,6 +144,12 @@ describe("buildCustomerColumns cells", () => {
     renderColumns()
 
     expect(cell("customer")).toHaveTextContent("Ada Lovelace")
+  })
+
+  it("renders the email address in its own column", () => {
+    renderColumns()
+
+    expect(cell("email")).toHaveTextContent("ada@example.test")
   })
 
   it("renders the raw record id", () => {

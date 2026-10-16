@@ -19,6 +19,7 @@ import { useDataGridInstance } from "~/src/presentation/components/custom/datagr
 import { type DataGridContextValue } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useNewsletterSubscriberColumns } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/components/newsletter-subscribers-columns"
+import { useNewsletterSubscribersExportSource } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/hooks/use-newsletter-subscribers-export-source"
 import { newsletterSubscribersDataGrid } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/utils/newsletter-subscribers-data-grid"
 
 const FIRST_PAGE_INDEX = 0
@@ -85,13 +86,14 @@ export const useNewsletterSubscribersDataGrid = ({
   }, [])
 
   const showSkeletonRows = isFetching || isPending
+  const exportSource = useNewsletterSubscribersExportSource(exportListInput)
 
   return useMemo(
     () => ({
       activeStatus,
       applyStatusFilter,
       columnReorder,
-      exportListInput,
+      exportSource,
       hasPreferenceOverrides,
       isLoading: showSkeletonRows,
       persistenceKey: newsletterSubscribersDataGrid.persistenceKey,
@@ -100,7 +102,7 @@ export const useNewsletterSubscribersDataGrid = ({
       searchPlaceholder: t("actions.searchPlaceholder"),
       table,
     }),
-    [activeStatus, applyStatusFilter, columnReorder, exportListInput, hasPreferenceOverrides, resetPreferences, showSkeletonRows, t, table],
+    [activeStatus, applyStatusFilter, columnReorder, exportSource, hasPreferenceOverrides, resetPreferences, showSkeletonRows, t, table],
   )
 }
 
@@ -128,7 +130,6 @@ const EMPTY_NEWSLETTER_SUBSCRIBERS_PAGE = {
 export interface NewsletterSubscribersDataGridValue extends DataGridContextValue<Newsletter["adminListItem"]> {
   readonly activeStatus: NewsletterStatus | undefined
   readonly applyStatusFilter: (status: NewsletterStatus | undefined) => void
-  readonly exportListInput: Newsletter["adminExportInput"]
 }
 
 interface UseNewsletterSubscribersDataGridOptions {

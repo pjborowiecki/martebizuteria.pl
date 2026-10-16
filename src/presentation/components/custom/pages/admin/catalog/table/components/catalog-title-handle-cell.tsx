@@ -2,6 +2,8 @@ import { type JSX } from "react"
 
 const catalogSlugPath = (handle: string): string => (handle.startsWith("/") ? handle : `/${handle}`)
 
+export const formatCatalogTitleHandle = (title: string, handle: string): string => `${title} (${catalogSlugPath(handle)})`
+
 export const CatalogTitleHandleCell = ({
   handle,
   title,

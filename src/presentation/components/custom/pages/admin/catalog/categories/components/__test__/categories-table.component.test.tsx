@@ -11,6 +11,7 @@ const grid = vi.hoisted(() => ({ useDataGrid: vi.fn<(options: { readonly onRowCl
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/categories/utils/categories-data-grid", () => ({
   categoriesDataGrid: {
     Body: (): JSX.Element => <div data-testid="grid-body" />,
+    Export: (): JSX.Element => <div data-testid="categories-export" />,
     Pagination: (): JSX.Element => <div data-testid="grid-pagination" />,
     Provider: ({ children }: { readonly children: ReactNode }): JSX.Element => <div data-testid="grid-provider">{children}</div>,
     Toolbar: ({ actions, children }: { readonly actions: ReactNode; readonly children: ReactNode }): JSX.Element => (
@@ -29,9 +30,6 @@ vi.mock("~/src/presentation/components/custom/pages/admin/catalog/categories/com
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-bulk-actions", () => ({
   CategoriesBulkActions: (): JSX.Element => <div data-testid="categories-bulk" />,
-}))
-vi.mock("~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-export-action", () => ({
-  CategoriesExportAction: (): JSX.Element => <div data-testid="categories-export" />,
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-refresh-action", () => ({
   CategoriesRefreshAction: (): JSX.Element => <div data-testid="categories-refresh" />,

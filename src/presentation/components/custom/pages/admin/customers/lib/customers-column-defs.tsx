@@ -1,9 +1,13 @@
 import { type Row, createColumnHelper } from "@tanstack/react-table"
 import { type useTranslations } from "use-intl/react"
 
+import { ROLES } from "~/src/integrations/better-auth/auth.access"
+
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import {
+  ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS,
+  ADMIN_CUSTOMER_ROLE_LABEL_KEYS,
   ADMIN_CUSTOMER_TABLE_A11Y_KEYS,
   ADMIN_CUSTOMER_TABLE_COLUMN_ID,
   ADMIN_CUSTOMER_TABLE_COLUMN_SIZE,
@@ -47,6 +51,20 @@ const matchesBannedColumnFilter = (row: Row<DataGridFeatures, AdminCustomerRow>,
   return (row.getValue(columnId) === true) === filterValue
 }
 
+const resolveCustomerLocation = (row: AdminCustomerRow): string | undefined =>
+  formatAdminCustomerLocation(
+    row.city === undefined || row.countryCode === undefined
+      ? undefined
+      : {
+          city: row.city,
+          countryCode: row.countryCode,
+          province: row.province,
+        },
+  )
+
+const yesNo = (t: BuildCustomerColumnsInput["t"], value: boolean): string =>
+  t(value ? ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS.yes : ADMIN_CUSTOMER_BOOLEAN_LABEL_KEYS.no)
+
 const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInput, "t" | "tAdmin">) =>
   columnHelper.columns([
     selectionColumn(columnHelper, {
@@ -59,22 +77,34 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
       header: t("columns.customer"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.customer,
       meta: {
+        exportValue: (row) => row.name,
         skeletonVariant: "title",
       },
       size: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.customer,
+    }),
+    columnHelper.accessor("email", {
+      cell: ({ getValue }) => <span className="block truncate text-sm text-muted-foreground">{getValue()}</span>,
+      enableSorting: false,
+      header: t("columns.email"),
+      id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.email,
+      meta: {
+        exportValue: (row) => row.email,
+        skeletonVariant: "text",
+      },
+      size: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.email,
     }),
     columnHelper.accessor((row) => row.id, {
       cell: ({ row }) => <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{row.original.id}</span>,
       header: t("columns.id"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.recordId,
-      meta: CATALOG_RECORD_ID_COLUMN_META,
+      meta: { ...CATALOG_RECORD_ID_COLUMN_META, exportValue: (row) => row.id },
       ...fixedDataGridColumnWidth(ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.recordId),
     }),
     columnHelper.accessor((row) => row.stripeCustomerId ?? "", {
       cell: ({ row }) => <CustomerStripeCustomerIdCell stripeCustomerId={row.original.stripeCustomerId} />,
       header: t("columns.stripeCustomerId"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.stripeCustomerId,
-      meta: CATALOG_RECORD_ID_COLUMN_META,
+      meta: { ...CATALOG_RECORD_ID_COLUMN_META, exportValue: (row) => row.stripeCustomerId ?? undefined },
       ...fixedDataGridColumnWidth(ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.stripeCustomerId),
     }),
     columnHelper.accessor("role", {
@@ -83,6 +113,7 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
       header: t("columns.role"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.role,
       meta: {
+        exportValue: (row) => t(row.role === ROLES.ADMIN ? ADMIN_CUSTOMER_ROLE_LABEL_KEYS.admin : ADMIN_CUSTOMER_ROLE_LABEL_KEYS.customer),
         skeletonVariant: "badge",
       },
       minSize: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.role,
@@ -93,6 +124,7 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
       header: t("columns.phone"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.phone,
       meta: {
+        exportValue: (row) => row.phone ?? undefined,
         skeletonVariant: "text",
       },
       size: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.phone,
@@ -103,6 +135,7 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
       header: t("columns.emailVerified"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.emailVerified,
       meta: {
+        exportValue: (row) => yesNo(t, row.emailVerified),
         skeletonVariant: "badge",
       },
       minSize: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.emailVerified,
@@ -114,50 +147,32 @@ const buildCustomerProfileColumns = ({ t, tAdmin }: Pick<BuildCustomerColumnsInp
       header: t("columns.banned"),
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.banned,
       meta: {
+        exportValue: (row) => yesNo(t, row.banned === true),
         skeletonVariant: "badge",
       },
       minSize: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.banned,
       size: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.banned,
     }),
-    columnHelper.accessor(
-      (row) =>
-        formatAdminCustomerLocation(
-          row.city === undefined || row.countryCode === undefined
-            ? undefined
-            : {
-                city: row.city,
-                countryCode: row.countryCode,
-                province: row.province,
-              },
-        ) ?? "",
-      {
-        cell: ({ row }) => {
-          const location = formatAdminCustomerLocation(
-            row.original.city === undefined || row.original.countryCode === undefined
-              ? undefined
-              : {
-                  city: row.original.city,
-                  countryCode: row.original.countryCode,
-                  province: row.original.province,
-                },
-          )
+    columnHelper.accessor((row) => resolveCustomerLocation(row) ?? "", {
+      cell: ({ row }) => {
+        const location = resolveCustomerLocation(row.original)
 
-          return location === undefined ? (
-            <span className={EMPTY_DASH_CLASS}>{EMPTY_VALUE}</span>
-          ) : (
-            <CatalogTruncatedTextCell text={location} />
-          )
-        },
-        header: t("columns.location"),
-        id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.location,
-        meta: {
-          fillsRemainingWidth: true,
-          skeletonVariant: "text",
-        },
-        minSize: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.location,
-        size: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.location,
+        return location === undefined ? (
+          <span className={EMPTY_DASH_CLASS}>{EMPTY_VALUE}</span>
+        ) : (
+          <CatalogTruncatedTextCell text={location} />
+        )
       },
-    ),
+      header: t("columns.location"),
+      id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.location,
+      meta: {
+        exportValue: resolveCustomerLocation,
+        fillsRemainingWidth: true,
+        skeletonVariant: "text",
+      },
+      minSize: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.location,
+      size: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.location,
+    }),
   ])
 
 const buildCustomerMetricsColumns = ({
@@ -173,6 +188,7 @@ const buildCustomerMetricsColumns = ({
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.orderCount,
       meta: {
         cellClassName: "text-right",
+        exportValue: (row) => String(row.orderCount),
         headClassName: "text-right",
         skeletonVariant: "number",
       },
@@ -189,6 +205,7 @@ const buildCustomerMetricsColumns = ({
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.totalSpent,
       meta: {
         cellClassName: "text-right",
+        exportValue: (row) => formatPrice(row.totalSpent, DEFAULT_ADMIN_CUSTOMER_CURRENCY, formatLocale),
         headClassName: "text-right",
         skeletonVariant: "number",
       },
@@ -206,6 +223,7 @@ const buildCustomerMetricsColumns = ({
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.averageOrderValue,
       meta: {
         cellClassName: "text-right",
+        exportValue: (row) => formatPrice(row.averageOrderValue, DEFAULT_ADMIN_CUSTOMER_CURRENCY, formatLocale),
         headClassName: "text-right",
         skeletonVariant: "number",
       },
@@ -232,6 +250,8 @@ const buildCustomerMetricsColumns = ({
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.lastOrderAt,
       maxSize: DATE_COLUMN_MAX_SIZE,
       meta: {
+        exportValue: (row) =>
+          row.lastOrderAt === undefined ? undefined : format.dateTime(new Date(row.lastOrderAt), { dateStyle: "medium" }),
         skeletonVariant: "date",
       },
       minSize: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.lastOrderAt,
@@ -250,6 +270,7 @@ const buildCustomerMetricsColumns = ({
       id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.createdAt,
       maxSize: DATE_COLUMN_MAX_SIZE,
       meta: {
+        exportValue: (row) => format.dateTime(new Date(row.createdAt), { dateStyle: "medium" }),
         skeletonVariant: "date",
       },
       minSize: ADMIN_CUSTOMER_TABLE_COLUMN_SIZE.createdAt,

@@ -18,9 +18,11 @@ import { type DataGridContextValue, type RowReorderApi } from "~/src/presentatio
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useCollectionColumns } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-columns"
 import { useCollectionOrdering } from "~/src/presentation/components/custom/pages/admin/catalog/collections/hooks/use-collection-ordering"
+import { useCollectionsExportSource } from "~/src/presentation/components/custom/pages/admin/catalog/collections/hooks/use-collections-export-source"
 import { useReorderCollections } from "~/src/presentation/components/custom/pages/admin/catalog/collections/hooks/use-reorder-collections"
 import { collectionsDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/collections/utils/collections-data-grid"
 import { getCollectionAdminSearchParts } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-table-search"
+import { CATALOG_LOCALIZED_TITLE_COLUMN_VISIBILITY } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-localized-title-columns"
 
 export const useCollectionsDataGrid = ({
   onRowClick,
@@ -47,7 +49,7 @@ export const useCollectionsDataGrid = ({
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
     columns,
     data: ordering.items,
-    defaultColumnVisibility: COLLECTION_TABLE_DEFAULT_COLUMN_VISIBILITY,
+    defaultColumnVisibility: COLLECTIONS_DEFAULT_COLUMN_VISIBILITY,
     getRowId: (row) => row.id,
     globalFilterFn,
     initialColumnOrder,
@@ -71,9 +73,12 @@ export const useCollectionsDataGrid = ({
     [naturalOrder, ordering],
   )
 
+  const exportSource = useCollectionsExportSource(table)
+
   return useMemo(
     () => ({
       columnReorder,
+      exportSource,
       hasPreferenceOverrides,
       isLoading: showSkeletonRows,
       onRowClick,
@@ -83,10 +88,15 @@ export const useCollectionsDataGrid = ({
       searchPlaceholder: t("searchPlaceholder"),
       table,
     }),
-    [columnReorder, hasPreferenceOverrides, onRowClick, resetPreferences, rowReorder, showSkeletonRows, t, table],
+    [columnReorder, exportSource, hasPreferenceOverrides, onRowClick, resetPreferences, rowReorder, showSkeletonRows, t, table],
   )
 }
 
 interface UseCollectionsDataGridOptions {
   readonly onRowClick?: (collection: ProductCollection["adminListItem"]) => void
+}
+
+const COLLECTIONS_DEFAULT_COLUMN_VISIBILITY = {
+  ...COLLECTION_TABLE_DEFAULT_COLUMN_VISIBILITY,
+  ...CATALOG_LOCALIZED_TITLE_COLUMN_VISIBILITY,
 }

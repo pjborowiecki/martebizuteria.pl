@@ -10,7 +10,14 @@ import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
 import { ADMIN_CUSTOMER_PAGE_SIZE, ADMIN_CUSTOMER_TABLE_COLUMN_ID } from "~/src/modules/user/user.constants"
 
-const { pageFn } = vi.hoisted(() => ({ pageFn: vi.fn<(input: unknown) => Promise<unknown>>() }))
+const { exportFn, pageFn } = vi.hoisted(() => ({
+  exportFn: vi.fn<(input: unknown) => Promise<unknown>>(),
+  pageFn: vi.fn<(input: unknown) => Promise<unknown>>(),
+}))
+
+vi.mock("~/src/modules/user/use-cases/export-admin-customers", () => ({
+  exportAdminCustomers: ({ data }: Readonly<{ data: unknown }>) => exportFn(data),
+}))
 
 vi.mock("~/src/modules/user/use-cases/get-admin-customers-page", () => ({
   getAdminCustomersPageQuery: (input: unknown) => ({
@@ -31,6 +38,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/customers/components/c
 }))
 
 import {
+  type CustomersDataGridValue,
   useCustomersDataGrid,
   useCustomersDataGridContext,
 } from "~/src/presentation/components/custom/pages/admin/customers/hooks/use-customers-data-grid"
@@ -54,6 +62,12 @@ const page = (items: ReturnType<typeof customerRow>[], total = items.length) => 
   offset: 0,
   total,
 })
+
+const sentExportInput = async (source: CustomersDataGridValue["exportSource"]): Promise<unknown> => {
+  await source?.loadRows?.()
+
+  return exportFn.mock.lastCall?.[0]
+}
 
 afterEach(cleanup)
 
@@ -163,14 +177,14 @@ describe("useCustomersDataGrid context value", () => {
 })
 
 describe("useCustomersDataGrid filters", () => {
-  it("starts with no stat filter applied", () => {
+  it("starts with no stat filter applied", async () => {
     const { result } = renderGrid()
 
     expect(result.current.activeStatFilter).toBeUndefined()
-    expect(result.current.exportListInput.statFilter).toBeUndefined()
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ statFilter: undefined })
   })
 
-  it("applies a stat filter to both the page request and the export input", async () => {
+  it("applies a stat filter to both the page request and the export", async () => {
     const { result } = renderGrid()
 
     await waitFor(() => {
@@ -181,13 +195,13 @@ describe("useCustomersDataGrid filters", () => {
     })
 
     expect(result.current.activeStatFilter).toBe("returning")
-    expect(result.current.exportListInput.statFilter).toBe("returning")
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ statFilter: "returning" })
     await waitFor(() => {
       expect(pageFn).toHaveBeenCalledWith(expect.objectContaining({ page: 1, statFilter: "returning" }))
     })
   })
 
-  it("clears the stat filter again", () => {
+  it("clears the stat filter again", async () => {
     const { result } = renderGrid()
 
     act(() => {
@@ -198,7 +212,7 @@ describe("useCustomersDataGrid filters", () => {
     })
 
     expect(result.current.activeStatFilter).toBeUndefined()
-    expect(result.current.exportListInput.statFilter).toBeUndefined()
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ statFilter: undefined })
   })
 
   it("returns to the first page when a stat filter is applied from a later page", async () => {
@@ -221,7 +235,7 @@ describe("useCustomersDataGrid filters", () => {
     expect(result.current.table.atoms.pagination.get().pageIndex).toBe(0)
   })
 
-  it("carries a column filter into both the page request and the export input", async () => {
+  it("carries a column filter into both the page request and the export", async () => {
     const { result } = renderGrid()
 
     await waitFor(() => {
@@ -231,9 +245,7 @@ describe("useCustomersDataGrid filters", () => {
       result.current.table.setColumnFilters([{ id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.role, value: ROLES.ADMIN }])
     })
 
-    await waitFor(() => {
-      expect(result.current.exportListInput.role).toBe(ROLES.ADMIN)
-    })
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ role: ROLES.ADMIN })
     expect(pageFn).toHaveBeenCalledWith(expect.objectContaining({ role: ROLES.ADMIN }))
   })
 
@@ -244,9 +256,7 @@ describe("useCustomersDataGrid filters", () => {
       result.current.table.setColumnFilters([{ id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.role, value: "moderator" }])
     })
 
-    await waitFor(() => {
-      expect(result.current.exportListInput.role).toBeUndefined()
-    })
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ role: undefined })
   })
 
   it("returns to the first page whenever the column filters change", async () => {
@@ -266,13 +276,14 @@ describe("useCustomersDataGrid filters", () => {
     await waitFor(() => {
       expect(result.current.table.atoms.pagination.get().pageIndex).toBe(0)
     })
-    expect(result.current.exportListInput.banned).toBe(true)
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ banned: true })
   })
 
-  it("keeps an empty export search undefined rather than an empty string", () => {
+  it("keeps an empty export search undefined rather than an empty string", async () => {
     const { result } = renderGrid()
 
-    expect(result.current.exportListInput.search).toBeUndefined()
+    expect(result.current.exportSource?.search).toBeUndefined()
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ search: undefined })
   })
 })
 
@@ -314,10 +325,11 @@ it("debounces and trims customer search for both the server page and export", as
     result.current.table.setGlobalFilter("  anna  ")
   })
 
-  expect(result.current.exportListInput.search).toBeUndefined()
+  expect(result.current.exportSource?.search).toBeUndefined()
   await waitFor(() => {
-    expect(result.current.exportListInput.search).toBe("anna")
+    expect(result.current.exportSource?.search).toBe("anna")
   })
+  await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ search: "anna" })
   expect(pageFn).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, search: "anna" }))
   expect(result.current.table.atoms.pagination.get().pageIndex).toBe(0)
 
@@ -325,7 +337,7 @@ it("debounces and trims customer search for both the server page and export", as
     result.current.table.setGlobalFilter("   ")
   })
   await waitFor(() => {
-    expect(result.current.exportListInput.search).toBeUndefined()
+    expect(result.current.exportSource?.search).toBeUndefined()
   })
   expect(pageFn).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, search: undefined }))
 })
@@ -342,4 +354,19 @@ it("rejects a provider whose customer filtering API is not callable", () => {
   expect(() => renderHook(() => useCustomersDataGridContext(), { wrapper: invalidWrapper })).toThrow(
     "useCustomersDataGridContext must be used within the customers table Provider.",
   )
+})
+
+describe("useCustomersDataGrid export", () => {
+  it("exports every customer of the list through the server, with the filters of the list", async () => {
+    exportFn.mockResolvedValue([])
+    const { result } = renderGrid()
+    act(() => {
+      result.current.applyCustomerStatFilter("returning")
+    })
+
+    await result.current.exportSource?.loadRows?.()
+
+    expect(exportFn).toHaveBeenCalledWith(expect.objectContaining({ statFilter: "returning" }))
+    expect(result.current.exportSource).toMatchObject({ list: "customers", title: "Customers" })
+  })
 })

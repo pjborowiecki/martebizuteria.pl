@@ -16,6 +16,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/orders/hooks/use-order
   useFulfillOrder: () => ({ isPending: false, mutate: vi.fn() }),
   useMarkOrderShipped: () => ({ isPending: false, mutate: vi.fn() }),
 }))
+vi.mock("~/src/modules/order/use-cases/export-admin-orders", () => ({ exportAdminOrders: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/get-admin-orders-page", () => ({
   getAdminOrdersPageQuery: (input: unknown) => ({
     queryFn: () => pageFn(input),

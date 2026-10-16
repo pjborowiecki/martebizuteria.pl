@@ -43,7 +43,7 @@ const listedIds = async (params: Omit<Parameters<typeof getAdminOrdersPage>[0], 
 const shownSteps = async (): Promise<ReadonlyMap<string, AdminOrderFulfillmentUiKey>> => {
   const { rows } = await getAdminOrdersPage(page)
 
-  return new Map(rows.map((row) => [row.id, toAdminOrderListItem(row).fulfillmentUiKey]))
+  return new Map(rows.map((row) => [row.id, toAdminOrderListItem({ ...row, itemCount: 0 }).fulfillmentUiKey]))
 }
 
 beforeAll(() => {

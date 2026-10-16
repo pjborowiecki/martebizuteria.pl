@@ -7,7 +7,6 @@ import { DataGridShell } from "~/src/presentation/components/custom/datagrid/com
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AttributeSheet } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/add-attribute/attribute-sheet"
 import { AttributesBulkActions } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-bulk-actions"
-import { AttributesExportAction } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-export-action"
 import { AttributesRefreshAction } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-refresh-action"
 import { AttributesStats } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-stats"
 import { AttributesTypeFilter } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-type-filter"
@@ -65,7 +64,7 @@ export const AttributesTableContent = (): JSX.Element => {
           <DataGridShell>
             <Toolbar actions={toolbarActions}>
               <AttributesRefreshAction />
-              <AttributesExportAction />
+              <Export />
               <AttributesTypeFilter />
             </Toolbar>
             <Body />
@@ -89,4 +88,4 @@ export const AttributesTable = (): JSX.Element => {
   )
 }
 
-const { Body, Pagination, Provider, Toolbar } = attributesDataGrid
+const { Body, Export, Pagination, Provider, Toolbar } = attributesDataGrid

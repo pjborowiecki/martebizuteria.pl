@@ -6,9 +6,8 @@ import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i1
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { getAdminOrderDestinationRows, getAdminOrdersExport as orderGetAdminOrdersExport } from "~/src/modules/order/order.accessors"
-import { describeOrderDestination } from "~/src/modules/order/order.detail.utils"
-import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
+import { getAdminOrdersExport as orderGetAdminOrdersExport } from "~/src/modules/order/order.accessors"
+import { loadAdminOrderListItems } from "~/src/modules/order/order.admin-list.server"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
@@ -32,19 +31,10 @@ export const exportAdminOrders = createServerFn({
 })
   .middleware([authorized({ order: ["read"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminOrdersExportInput>) => orderZodSchemas.adminOrdersExportInput.parse(input))
-  .handler(async ({ data: input }): Promise<Order["adminExportItem"][]> => {
+  .handler(async ({ data: input }): Promise<Order["adminListItem"][]> => {
     const { timeZone } = await resolveRequestDisplayPreferences()
-    const params = buildAdminOrdersExportParams(input, timeZone)
-    const rows = await orderGetAdminOrdersExport(params)
-    const destinationRows = await getAdminOrderDestinationRows(rows.map((row) => row.id))
-    const destinations = new Map(destinationRows.map((row) => [row.id, describeOrderDestination(row)]))
+    const rows = await orderGetAdminOrdersExport(buildAdminOrdersExportParams(input, timeZone))
     recordListExportedAudit("orders", rows.length, { metadata: { filters: input } })
 
-    return rows.map((row) =>
-      Object.assign(toAdminOrderListItem(row), {
-        billingCompanyName: row.billingCompanyName ?? undefined,
-        billingNip: row.billingNip ?? undefined,
-        destination: destinations.get(row.id),
-      }),
-    )
+    return loadAdminOrderListItems(rows)
   })

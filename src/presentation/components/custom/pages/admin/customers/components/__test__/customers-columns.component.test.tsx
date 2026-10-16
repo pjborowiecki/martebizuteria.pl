@@ -36,6 +36,7 @@ describe("useCustomerColumns", () => {
     expect(result.current.map((column) => column.id)).toStrictEqual([
       ADMIN_CUSTOMER_TABLE_COLUMN_ID.select,
       ADMIN_CUSTOMER_TABLE_COLUMN_ID.customer,
+      ADMIN_CUSTOMER_TABLE_COLUMN_ID.email,
       ADMIN_CUSTOMER_TABLE_COLUMN_ID.recordId,
       ADMIN_CUSTOMER_TABLE_COLUMN_ID.stripeCustomerId,
       ADMIN_CUSTOMER_TABLE_COLUMN_ID.role,
@@ -57,6 +58,7 @@ describe("useCustomerColumns", () => {
     const headers = new Map(result.current.map((column) => [column.id, column.header]))
 
     expect(headers.get(ADMIN_CUSTOMER_TABLE_COLUMN_ID.customer)).toBe("Customer")
+    expect(headers.get(ADMIN_CUSTOMER_TABLE_COLUMN_ID.email)).toBe("Email")
     expect(headers.get(ADMIN_CUSTOMER_TABLE_COLUMN_ID.orderCount)).toBe("Orders")
     expect(headers.get(ADMIN_CUSTOMER_TABLE_COLUMN_ID.location)).toBe("Location")
   })

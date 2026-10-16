@@ -95,6 +95,8 @@ describe("useCollectionColumns", () => {
       "drag",
       "image",
       "title",
+      "title-pl-PL",
+      "title-en-US",
       "recordId",
       "status",
       "productCount",

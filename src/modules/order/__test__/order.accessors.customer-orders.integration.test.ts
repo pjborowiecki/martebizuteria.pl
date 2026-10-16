@@ -28,7 +28,6 @@ const page = { limit: 10, offset: 0, timeZone: "Europe/Warsaw" }
 beforeEach(() => {
   sqlite.exec(`
     drop table if exists "order";
-    drop table if exists order_item;
     drop table if exists payment;
     drop table if exists user;
 
@@ -46,7 +45,6 @@ beforeEach(() => {
       in_progress_email_at integer, shipped_email_at integer, delivered_email_at integer,
       created_at integer not null, updated_at integer not null
     );
-    create table order_item (id text primary key, order_id text, quantity integer not null default 1, created_at integer not null, updated_at integer not null);
 
     insert into user (id, name, email, created_at, updated_at) values
       ('u-anna', 'Anna Kowalska', 'anna@example.com', ${JANUARY}, ${JANUARY}),
@@ -58,9 +56,6 @@ beforeEach(() => {
       ('o-anna-completed', 'u-anna', 'anna@example.com', 'completed', 'delivered', 30000, 'MRT-2026-00003', ${JUNE}, ${JUNE}),
       ('o-jan', 'u-jan', 'jan@example.com', 'processing', 'not_fulfilled', 40000, 'MRT-2026-00004', ${JUNE}, ${JUNE}),
       ('o-guest', null, 'anna@example.com', 'processing', 'not_fulfilled', 50000, 'MRT-2026-00005', ${JUNE}, ${JUNE});
-
-    insert into order_item (id, order_id, quantity, created_at, updated_at) values
-      ('oi-1', 'o-anna-completed', 2, ${JUNE}, ${JUNE});
   `)
 })
 
@@ -82,10 +77,10 @@ describe("getAdminOrdersPage scoped to a customer", () => {
     expect(result.rows.map((row) => row.id)).not.toContain("o-guest")
   })
 
-  it("carries the item count and customer the shared order columns show", async () => {
+  it("carries the customer the shared order columns show", async () => {
     const result = await getAdminOrdersPage({ ...page, userId: "u-anna" })
 
-    expect(result.rows[0]).toMatchObject({ customerName: "Anna Kowalska", itemCount: 2, userId: "u-anna" })
+    expect(result.rows[0]).toMatchObject({ customerName: "Anna Kowalska", userId: "u-anna" })
   })
 
   it("pages through that customer's orders only", async () => {

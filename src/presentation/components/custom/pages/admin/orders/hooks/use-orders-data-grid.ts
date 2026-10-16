@@ -20,6 +20,7 @@ import { useDataGridInstance } from "~/src/presentation/components/custom/datagr
 import { type DataGridContextValue } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useOrderColumns } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-columns"
+import { useOrdersExportSource } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-orders-export-source"
 import { ordersDataGrid } from "~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid"
 
 const buildAdminOrdersPageInput = ({
@@ -141,12 +142,14 @@ export const useOrdersDataGrid = ({ onRowClick, userId, view = ORDERS_PAGE_VIEW 
     [listFilters, serverSearch, statFilter, userId],
   )
 
+  const exportSource = useOrdersExportSource(exportListInput)
+
   return useMemo(
     () => ({
       activeStatFilter: statFilter,
       applyOrderStatFilter,
       columnReorder,
-      exportListInput,
+      exportSource,
       hasPreferenceOverrides,
       isLoading: showSkeletonRows,
       onRowClick,
@@ -159,7 +162,7 @@ export const useOrdersDataGrid = ({ onRowClick, userId, view = ORDERS_PAGE_VIEW 
     [
       applyOrderStatFilter,
       columnReorder,
-      exportListInput,
+      exportSource,
       hasPreferenceOverrides,
       onRowClick,
       resetPreferences,
@@ -202,7 +205,6 @@ const ORDERS_PAGE_VIEW: OrdersDataGridView = {
 export interface OrdersDataGridValue extends DataGridContextValue<Order["adminListItem"]> {
   readonly activeStatFilter: AdminOrderStatFilter | undefined
   readonly applyOrderStatFilter: (filter?: AdminOrderStatFilter) => void
-  readonly exportListInput: Order["adminExportInput"]
 }
 
 export interface OrdersDataGridView {

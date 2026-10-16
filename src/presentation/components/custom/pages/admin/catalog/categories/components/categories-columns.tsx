@@ -27,9 +27,13 @@ import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/d
 import { Image } from "~/src/presentation/components/custom/image"
 import { CategoriesRowActions } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-row-actions"
 import { CategoryReorderCell } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/category-reorder-cell"
+import { buildCatalogLocalizedTitleColumns } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-localized-title-columns"
 import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
 import { CatalogStatusBadge } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-status-badge"
-import { CatalogTitleHandleCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
+import {
+  CatalogTitleHandleCell,
+  formatCatalogTitleHandle,
+} from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
 import {
   CATALOG_DATAGRID_EMPTY_TEXT_CLASS,
   CATALOG_DATAGRID_MUTED_TEXT_CLASS,
@@ -62,6 +66,7 @@ const buildCategoryTimestampColumns = ({ format, t }: CategoryColumnBuildContext
       id: CATEGORY_TABLE_COLUMN_ID.createdAt,
       maxSize: 320,
       meta: {
+        exportValue: (row) => format.dateTime(new Date(row.createdAt), { dateStyle: "medium" }),
         skeletonVariant: "date",
       },
       minSize: CATEGORY_TABLE_COLUMN_SIZE.createdAt,
@@ -79,6 +84,7 @@ const buildCategoryTimestampColumns = ({ format, t }: CategoryColumnBuildContext
       id: CATEGORY_TABLE_COLUMN_ID.editedAt,
       maxSize: 320,
       meta: {
+        exportValue: (row) => format.dateTime(new Date(row.updatedAt), { dateStyle: "medium" }),
         skeletonVariant: "date",
       },
       minSize: CATEGORY_TABLE_COLUMN_SIZE.editedAt,
@@ -122,15 +128,17 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       header: t("columns.category"),
       id: CATEGORY_TABLE_COLUMN_ID.title,
       meta: {
+        exportValue: (row) => formatCatalogTitleHandle(resolveCategoryTitle(row.titles, locale), row.handle),
         skeletonVariant: "title",
       },
       size: CATEGORY_TABLE_COLUMN_SIZE.title,
     }),
+    ...buildCatalogLocalizedTitleColumns(columnHelper, (language) => t("columns.categoryIn", { language })),
     columnHelper.accessor((row) => row.id, {
       cell: ({ row }) => <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{row.original.id}</span>,
       header: t("columns.id"),
       id: CATEGORY_TABLE_COLUMN_ID.recordId,
-      meta: CATALOG_RECORD_ID_COLUMN_META,
+      meta: { ...CATALOG_RECORD_ID_COLUMN_META, exportValue: (row) => row.id },
       ...fixedDataGridColumnWidth(CATEGORY_TABLE_COLUMN_SIZE.recordId),
     }),
     columnHelper.accessor("status", {
@@ -149,6 +157,8 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       header: t("columns.status"),
       id: CATEGORY_TABLE_COLUMN_ID.status,
       meta: {
+        exportValue: (row) =>
+          t(row.status === CATEGORY_STATUS.ACTIVE ? CATEGORY_STATUS_LABEL_KEYS.active : CATEGORY_STATUS_LABEL_KEYS.draft),
         skeletonVariant: "badge",
       },
       minSize: CATEGORY_TABLE_COLUMN_SIZE.status,
@@ -160,6 +170,7 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       id: CATEGORY_TABLE_COLUMN_ID.productCount,
       meta: {
         cellClassName: "text-right",
+        exportValue: (row) => String(row.productCount),
         headClassName: "text-right",
         skeletonVariant: "number",
       },
@@ -177,6 +188,7 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       header: t("columns.parent"),
       id: CATEGORY_TABLE_COLUMN_ID.parent,
       meta: {
+        exportValue: (row) => (row.parentTitles === undefined ? undefined : resolveCategoryTitle(row.parentTitles, locale)),
         skeletonVariant: "text",
       },
       size: CATEGORY_TABLE_COLUMN_SIZE.parent,
@@ -186,6 +198,7 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       header: t("columns.subtitle"),
       id: CATEGORY_TABLE_COLUMN_ID.subtitle,
       meta: {
+        exportValue: (row) => resolveCategorySubtitle(row.subtitles, locale),
         skeletonVariant: "text",
       },
       size: CATEGORY_TABLE_COLUMN_SIZE.subtitle,
@@ -195,6 +208,7 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       header: t("columns.shortDescription"),
       id: CATEGORY_TABLE_COLUMN_ID.shortDescription,
       meta: {
+        exportValue: (row) => resolveCategoryShortDescription(row.shortDescriptions, locale),
         skeletonVariant: "text",
       },
       size: CATEGORY_TABLE_COLUMN_SIZE.shortDescription,
@@ -204,6 +218,7 @@ const buildCategoryDataGridColumns = (context: CategoryColumnBuildContext) => {
       header: t("columns.description"),
       id: CATEGORY_TABLE_COLUMN_ID.description,
       meta: {
+        exportValue: (row) => resolveCategoryDescription(row.descriptions, locale),
         fillsRemainingWidth: true,
         skeletonVariant: "text",
       },

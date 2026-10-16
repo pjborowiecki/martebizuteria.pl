@@ -81,11 +81,14 @@ export const ADMIN_ORDER_TABLE_A11Y_KEYS = {
 
 export const ADMIN_ORDER_TABLE_COLUMN_ID = {
   actions: "actions",
+  companyName: "companyName",
   createdAt: "createdAt",
   customer: "customer",
+  destination: "destination",
   email: "email",
   fulfillment: "fulfillment",
   itemCount: "itemCount",
+  nip: "nip",
   orderId: "orderId",
   payment: "payment",
   select: "select",
@@ -93,15 +96,22 @@ export const ADMIN_ORDER_TABLE_COLUMN_ID = {
   total: "total",
 } as const
 
-export const ADMIN_ORDER_TABLE_DEFAULT_COLUMN_VISIBILITY = {} as const
+export const ADMIN_ORDER_TABLE_DEFAULT_COLUMN_VISIBILITY = {
+  [ADMIN_ORDER_TABLE_COLUMN_ID.companyName]: false,
+  [ADMIN_ORDER_TABLE_COLUMN_ID.destination]: false,
+  [ADMIN_ORDER_TABLE_COLUMN_ID.nip]: false,
+} as const
 
 export const ADMIN_ORDER_TABLE_COLUMN_SIZE = {
   actions: 48,
+  companyName: 220,
   createdAt: 160,
   customer: 280,
+  destination: 320,
   email: 220,
   fulfillment: 160,
   itemCount: 88,
+  nip: 130,
   orderId: 160,
   payment: 120,
   select: 44,

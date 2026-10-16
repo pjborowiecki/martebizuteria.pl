@@ -188,23 +188,8 @@ const adminOrdersBaseQuery = (whereClause: SQL | undefined) =>
     .where(whereClause)
     .orderBy(desc(order.createdAt))
 
-const attachItemCounts = async <
-  TRow extends {
-    id: string
-  },
->(
-  rows: readonly TRow[],
-): Promise<
-  (TRow & {
-    itemCount: number
-  })[]
-> => {
-  if (rows.length === 0) {
-    return []
-  }
-
-  const orderIds = rows.map((row) => row.id)
-  const itemCountRows = await db
+export const getAdminOrderItemCountRows = (orderIds: readonly string[]) =>
+  db
     .select({
       itemCount: sql<number>`coalesce(sum(${orderItem.quantity}), 0)`,
       orderId: orderItem.orderId,
@@ -212,13 +197,6 @@ const attachItemCounts = async <
     .from(orderItem)
     .where(inJsonList(orderItem.orderId, orderIds))
     .groupBy(orderItem.orderId)
-  const itemCountByOrderId = new Map(itemCountRows.map((row) => [row.orderId, row.itemCount]))
-
-  return rows.map((row) => ({
-    ...row,
-    itemCount: itemCountByOrderId.get(row.id) ?? 0,
-  }))
-}
 
 export const getAdminOrdersPage = async (params: AdminOrdersListParams) => {
   const whereClause = buildAdminOrdersWhere(params)
@@ -234,20 +212,14 @@ export const getAdminOrdersPage = async (params: AdminOrdersListParams) => {
     adminOrdersBaseQuery(whereClause).limit(params.limit).offset(params.offset),
   ])
 
-  const rowsWithItemCounts = await attachItemCounts(rows)
-
   return {
-    rows: rowsWithItemCounts,
+    rows,
     total: countRow?.count ?? 0,
   }
 }
 
-export const getAdminOrdersExport = async (params: Omit<AdminOrdersListParams, "limit" | "offset">) => {
-  const whereClause = buildAdminOrdersWhere(params)
-  const rows = await adminOrdersBaseQuery(whereClause)
-
-  return attachItemCounts(rows)
-}
+export const getAdminOrdersExport = (params: Omit<AdminOrdersListParams, "limit" | "offset">) =>
+  adminOrdersBaseQuery(buildAdminOrdersWhere(params))
 
 export const getAdminOrderDestinationRows = (orderIds: readonly string[]) =>
   db.query.order.findMany({
