@@ -1,7 +1,10 @@
+import { inpostTrackingUrl } from "~/src/integrations/inpost/inpost.utils"
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
+import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
+import { isInpostDeliveryType } from "~/src/modules/order/order.admin-actions.utils"
 import {
   ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP,
   ADMIN_ORDER_FULFILLMENT_STEPS,
@@ -14,6 +17,24 @@ import {
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils"
+
+const filledText = (value: string | null | undefined): string | undefined => {
+  const trimmed = value?.trim()
+
+  return trimmed === undefined || trimmed === "" ? undefined : trimmed
+}
+
+export const resolveOrderTrackingUrl = ({ deliveryType, trackingNumber, trackingUrl }: OrderTrackingLinkSource): string | undefined => {
+  const number = filledText(trackingNumber)
+
+  return filledText(trackingUrl) ?? (number !== undefined && isInpostDeliveryType(deliveryType) ? inpostTrackingUrl(number) : undefined)
+}
+
+interface OrderTrackingLinkSource {
+  readonly deliveryType: DeliveryMethodType | undefined
+  readonly trackingNumber: string | null | undefined
+  readonly trackingUrl: string | null | undefined
+}
 
 export const parseOrderMetadata = (raw: string | null | undefined): Record<string, unknown> => {
   if (raw === null || raw === undefined || raw === "") {

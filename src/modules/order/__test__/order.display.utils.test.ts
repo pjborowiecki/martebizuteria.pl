@@ -11,6 +11,7 @@ import {
   resolveAdminOrderFulfillmentUiKey,
   resolveAdminOrderPaymentUiKey,
   resolveOrderLocale,
+  resolveOrderTrackingUrl,
   toAdminOrderListItem,
 } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
@@ -242,5 +243,28 @@ describe("toAdminOrderListItem", () => {
       "shipped",
     ])
     expect(toAdminOrderListItem({ ...row, deliveredEmailAt: sentAt }).emailedSteps).toStrictEqual(["delivered"])
+  })
+})
+
+describe("resolveOrderTrackingUrl", () => {
+  it("links a tracking number pasted by hand for an InPost delivery to InPost's tracking page", () => {
+    expect(resolveOrderTrackingUrl({ deliveryType: "locker", trackingNumber: " 520000011395200025754311 ", trackingUrl: null })).toBe(
+      "https://inpost.pl/sledzenie-przesylek?number=520000011395200025754311",
+    )
+    expect(resolveOrderTrackingUrl({ deliveryType: "courier", trackingNumber: "PL 123", trackingUrl: "" })).toBe(
+      "https://inpost.pl/sledzenie-przesylek?number=PL%20123",
+    )
+  })
+
+  it("keeps the link the admin entered", () => {
+    expect(resolveOrderTrackingUrl({ deliveryType: "locker", trackingNumber: "PL123", trackingUrl: " https://tracking.test/PL123 " })).toBe(
+      "https://tracking.test/PL123",
+    )
+  })
+
+  it("links nothing for a delivery InPost does not carry, or without a number", () => {
+    expect(resolveOrderTrackingUrl({ deliveryType: "in_store", trackingNumber: "PL123", trackingUrl: null })).toBeUndefined()
+    expect(resolveOrderTrackingUrl({ deliveryType: undefined, trackingNumber: "PL123", trackingUrl: undefined })).toBeUndefined()
+    expect(resolveOrderTrackingUrl({ deliveryType: "locker", trackingNumber: " ", trackingUrl: null })).toBeUndefined()
   })
 })

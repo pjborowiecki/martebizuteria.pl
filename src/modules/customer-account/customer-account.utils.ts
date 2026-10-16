@@ -4,7 +4,7 @@ import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { type CustomerAccountOrderFilter, type CustomerAccountOrderStatus } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { type deliveryMethod } from "~/src/modules/delivery-method/delivery-method.schema"
-import { resolveAdminOrderFulfillmentUiKey } from "~/src/modules/order/order.display.utils"
+import { resolveAdminOrderFulfillmentUiKey, resolveOrderTrackingUrl } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { type Payment } from "~/src/modules/payment/payment.types"
 
@@ -220,7 +220,11 @@ export const mapCustomerOrderDetail = (
     taxMinorUnits: orderRow.taxTotal,
     timeline: buildOrderTimeline(orderRow, options.payment),
     trackingNumber: orderRow.trackingNumber ?? undefined,
-    trackingUrl: orderRow.trackingUrl ?? undefined,
+    trackingUrl: resolveOrderTrackingUrl({
+      deliveryType: options.deliveryMethodType,
+      trackingNumber: orderRow.trackingNumber,
+      trackingUrl: orderRow.trackingUrl,
+    }),
   }
 }
 

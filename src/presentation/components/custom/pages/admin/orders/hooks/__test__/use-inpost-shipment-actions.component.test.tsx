@@ -82,9 +82,13 @@ describe("useCreateInpostShipment", () => {
     [
       INPOST_ERROR_CODES.CREDENTIALS_REJECTED,
       ERROR_CODES.FORBIDDEN,
-      "InPost did not accept the shop's API token or organisation ID. Check INPOST_API_TOKEN and INPOST_ORGANIZATION_ID.",
+      "InPost did not accept the shop's access details, so the parcel cannot be created from here. Create it in InPost Manager and paste its tracking number when you mark the order shipped.",
     ],
-    [INPOST_ERROR_CODES.NOT_CONFIGURED, ERROR_CODES.CONFLICT, "InPost shipping is not set up for this shop."],
+    [
+      INPOST_ERROR_CODES.NOT_CONFIGURED,
+      ERROR_CODES.CONFLICT,
+      "Automatic InPost shipping is not connected. Create the parcel in InPost Manager and paste its tracking number when you mark the order shipped.",
+    ],
     [INPOST_ERROR_CODES.UNAVAILABLE, ERROR_CODES.INTERNAL_ERROR, "InPost did not answer. Try again in a moment."],
     [ORDER_ERROR_CODES.INVALID_STATE, ERROR_CODES.CONFLICT, "This action is not available for the order's current state."],
     [ORDER_ERROR_CODES.NOT_FOUND, ERROR_CODES.NOT_FOUND, "This order no longer exists."],

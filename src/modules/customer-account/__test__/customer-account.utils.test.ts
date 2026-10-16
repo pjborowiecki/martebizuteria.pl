@@ -238,6 +238,14 @@ describe("mapCustomerOrderDetail", () => {
     expect(detail.lockerPoint).toBeUndefined()
   })
 
+  it("links a tracking number pasted by hand for an InPost delivery to InPost's tracking page", () => {
+    const detail = mapCustomerOrderDetail({ ...orderRow, trackingNumber: "520000011395200025754311" }, [itemRow], {
+      deliveryMethodType: "locker",
+    })
+
+    expect(detail.trackingUrl).toBe("https://inpost.pl/sledzenie-przesylek?number=520000011395200025754311")
+  })
+
   it("normalises the nullable tracking and date columns to absent", () => {
     const detail = mapCustomerOrderDetail(orderRow, [itemRow], {})
 
