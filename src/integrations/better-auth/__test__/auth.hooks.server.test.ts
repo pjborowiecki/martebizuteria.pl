@@ -179,9 +179,16 @@ describe("customer list invalidation hooks", () => {
   })
 
   it("refreshes the admin customer list after an update", async () => {
-    await handleUserUpdated()
+    await handleUserUpdated({ ...createdUser, emailVerified: false })
 
     expect(stubs.scheduleAdminCustomersInvalidation).toHaveBeenCalledOnce()
+    expect(stubs.claimGuestOrdersForUser).not.toHaveBeenCalled()
+  })
+
+  it("claims the guest orders placed with the verified address an update leaves on the account, such as a changed email", async () => {
+    await handleUserUpdated({ ...createdUser, email: "nowy@example.com", emailVerified: true })
+
+    expect(stubs.claimGuestOrdersForUser).toHaveBeenCalledExactlyOnceWith({ email: "nowy@example.com", userId: createdUser.id })
   })
 
   it("refreshes the admin customer list after a deletion", async () => {

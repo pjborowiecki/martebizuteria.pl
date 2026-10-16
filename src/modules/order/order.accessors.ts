@@ -480,6 +480,7 @@ export const getOrderTotalsForEmail = (orderId: string) =>
       taxBasisPoints: true,
       taxTotal: true,
       total: true,
+      userId: true,
     },
     where: eq(order.id, orderId),
   })

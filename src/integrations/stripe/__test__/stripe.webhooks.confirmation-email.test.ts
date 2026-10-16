@@ -111,6 +111,18 @@ const SHIPPING_TOTAL = 5000
 
 const AMOUNT_TOTAL = ITEMS_TOTAL + SHIPPING_TOTAL
 
+const PLACED_ORDER = {
+  discountTotal: 0,
+  email: "anna@example.com",
+  orderNumber: "MRT-2026-00042",
+  shippingTotal: SHIPPING_TOTAL,
+  subtotal: ITEMS_TOTAL,
+  taxBasisPoints: 2300,
+  taxTotal: 12_080,
+  total: AMOUNT_TOTAL,
+  userId: null,
+}
+
 const WITHDRAWAL_FORM: Attachment = { content: "JVBERi0=", contentType: "application/pdf", filename: "formularz_zwrotu.pdf" }
 
 const DOMAIN_NOT_VERIFIED = "The pjborowiecki.com domain is not verified. Please, add and verify your domain on https://resend.com/domains"
@@ -154,16 +166,7 @@ const sentEmail = () => {
 beforeEach(() => {
   vi.clearAllMocks()
   fulfillCheckout.mockResolvedValue("order-1")
-  getOrderTotalsForEmail.mockResolvedValue({
-    discountTotal: 0,
-    email: "anna@example.com",
-    orderNumber: "MRT-2026-00042",
-    shippingTotal: SHIPPING_TOTAL,
-    subtotal: ITEMS_TOTAL,
-    taxBasisPoints: 2300,
-    taxTotal: 12_080,
-    total: AMOUNT_TOTAL,
-  })
+  getOrderTotalsForEmail.mockResolvedValue(PLACED_ORDER)
   getCheckoutEmailContext.mockResolvedValue(undefined)
   getFulfillmentTimeAttributesByVariantId.mockResolvedValue(new Map())
   loadWithdrawalFormAttachment.mockResolvedValue(WITHDRAWAL_FORM)
@@ -278,30 +281,24 @@ describe("order confirmation email from the checkout", () => {
     expect(details.companyInvoice).toBe(`Pracownia Złotnicza sp. z o.o.\n${polishCopy.nipLabel} 5260001246`)
   })
 
-  it("invites a guest buyer to create an account and links a signed-in buyer to the order", async () => {
+  it("invites the buyer of an order without an account to create one", async () => {
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
-    const guestCta = sentEmail().react.props.accountCta
-    vi.clearAllMocks()
-    sendEmail.mockResolvedValue(undefined)
-    fulfillCheckout.mockResolvedValue("order-1")
-    getOrderTotalsForEmail.mockResolvedValue({
-      discountTotal: 0,
-      orderNumber: "MRT-2026-00042",
-      shippingTotal: SHIPPING_TOTAL,
-      subtotal: ITEMS_TOTAL,
-      taxBasisPoints: 2300,
-      taxTotal: 12_080,
-      total: AMOUNT_TOTAL,
-    })
-    getCheckoutEmailContext.mockResolvedValue(undefined)
 
-    await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata, userId: "usr-1" })))
-
-    expect(guestCta).toStrictEqual({
+    expect(sentEmail().react.props.accountCta).toStrictEqual({
       href: "http://127.0.0.1:3000/auth/sign-up",
       isGuest: true,
       label: polishCopy.createAccountCta,
     })
+  })
+
+  it.each([
+    ["a signed-in buyer's order", { items: itemsMetadata, userId: "usr-1" }],
+    ["a guest checkout the store filed under the verified account with its email", { items: itemsMetadata }],
+  ])("links %s to the order in the account", async (_case, metadata) => {
+    getOrderTotalsForEmail.mockResolvedValue({ ...PLACED_ORDER, userId: "usr-1" })
+
+    await dispatch(checkoutSessionCompletedEvent(paidSession(metadata)))
+
     expect(sentEmail().react.props.accountCta).toStrictEqual({
       href: "http://127.0.0.1:3000/account/orders/order-1",
       isGuest: false,
@@ -414,6 +411,7 @@ describe("order confirmation email links", () => {
     "links a checkout made on 127.0.0.1 back to 127.0.0.1 when the %s deployment's webhook fulfils it",
     async (mode) => {
       vi.stubEnv("MODE", mode)
+      getOrderTotalsForEmail.mockResolvedValue({ ...PLACED_ORDER, userId: "usr-1" })
 
       await dispatch(checkoutSessionCompletedEvent(sessionCheckedOutOn("http://127.0.0.1:3000", { items: itemsMetadata, userId: "usr-1" })))
 
@@ -474,11 +472,11 @@ describe("order confirmation email delivery", () => {
     expect(getCheckoutEmailContext).not.toHaveBeenCalled()
   })
 
-  it("treats empty metadata identifiers as a guest without looking up an empty checkout ID", async () => {
-    await dispatch(checkoutSessionCompletedEvent(paidSession({ checkoutId: "", items: itemsMetadata, userId: "" })))
+  it("does not look up an empty checkout ID", async () => {
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ checkoutId: "", items: itemsMetadata })))
 
     expect(getCheckoutEmailContext).not.toHaveBeenCalled()
-    expect(sentEmail().react.props.accountCta.isGuest).toBe(true)
+    expect(sendEmail).toHaveBeenCalledOnce()
   })
 
   it("sends the confirmation to the order's address when Stripe collected customer details without an email address", async () => {
@@ -515,16 +513,7 @@ describe("order confirmation email delivery", () => {
   })
 
   it("sends a signed-in shopper's confirmation to the order's address, not to the one Stripe now holds for the account", async () => {
-    getOrderTotalsForEmail.mockResolvedValue({
-      discountTotal: 0,
-      email: "first-tab@example.com",
-      orderNumber: "MRT-2026-00042",
-      shippingTotal: SHIPPING_TOTAL,
-      subtotal: ITEMS_TOTAL,
-      taxBasisPoints: 2300,
-      taxTotal: 12_080,
-      total: AMOUNT_TOTAL,
-    })
+    getOrderTotalsForEmail.mockResolvedValue({ ...PLACED_ORDER, email: "first-tab@example.com", userId: "user-1" })
     const session = checkoutSession({
       amountTotal: AMOUNT_TOTAL,
       customerDetails: {

@@ -18,6 +18,7 @@ import { order } from "~/src/modules/order/order.schema"
 import { type OrderTotals } from "~/src/modules/order/order.totals"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
+import { user } from "~/src/modules/user/user.schema"
 
 export interface PrepareCreateCheckoutInput {
   readonly checkoutValues: CheckoutFormSchema
@@ -399,6 +400,11 @@ const toOrderAddressValues = (
         ],
   )
 
+const verifiedAccountWithEmail = (email: string) =>
+  sql<
+    string | null
+  >`(select ${user.id} from ${user} where lower(${user.email}) = ${email.trim().toLowerCase()} and ${user.emailVerified} = 1 limit 1)`
+
 export const prepareFulfillCheckoutBatch = (
   context: PendingCheckout,
   { currency, lines, locale, totals, transactionId }: FulfillCheckoutInput,
@@ -467,7 +473,7 @@ export const prepareFulfillCheckoutBatch = (
         taxBasisPoints: totals.vatBasisPoints,
         taxTotal: totals.taxTotal,
         total: totals.total,
-        userId: context.userId,
+        userId: context.userId ?? verifiedAccountWithEmail(context.email),
       }),
       ...(addressSnapshots.length > 0 ? [db.insert(orderAddress).values(addressSnapshots)] : []),
       ...tail,

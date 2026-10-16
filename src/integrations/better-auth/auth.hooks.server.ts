@@ -63,9 +63,11 @@ export const handleUserDeleted = async (deleted: User, endpoint: AuthEndpoint | 
   await Promise.resolve()
 }
 
-export const handleUserUpdated = async (): Promise<void> => {
+export const handleUserUpdated = async (updated: User): Promise<void> => {
   scheduleAdminCustomersInvalidation()
-  await Promise.resolve()
+  if (updated.emailVerified) {
+    await claimGuestOrdersForUser({ email: updated.email, userId: updated.id })
+  }
 }
 
 export const handlePasswordReset = async ({ user }: { readonly user: User }, request: Request | undefined): Promise<void> => {

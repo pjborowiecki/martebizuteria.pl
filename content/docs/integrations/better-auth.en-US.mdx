@@ -50,6 +50,7 @@ This is separate from the application's own `withRateLimit` middleware described
 
 - `user.create.after` calls `scheduleAdminCustomersInvalidation()` and `recordCustomerRegisteredAudit(...)`.
 - `user.update.after` and `user.delete.after` both call `scheduleAdminCustomersInvalidation()`, so the admin customer list refreshes without a poll.
+- `user.update.after` also runs `claimGuestOrdersForUser` for a verified account, so an address that becomes verified without the verification link, as through `/admin/update-user`, still brings in its guest orders. The verification link itself claims them in `afterEmailVerification`, for a new account and for a changed address alike.
 - `user.delete.after` also records `customer.deleted` for every account except an anonymous one, credited to the session of the endpoint that deleted it: the admin for `/admin/remove-user`, which `deleteCustomer` calls through `auth.api.removeUser`, the customer for `/delete-user`, and the system when no session asked.
 
 ### Account deletion

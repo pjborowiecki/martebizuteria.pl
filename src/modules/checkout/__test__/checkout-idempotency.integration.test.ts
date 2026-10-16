@@ -110,7 +110,9 @@ beforeEach(() => {
       drop table if exists inventory;
       drop table if exists product_variant;
       drop table if exists order_number_sequence;
+      drop table if exists user;
 
+      create table user (id text primary key, email text not null, email_verified integer not null default 0);
       create table checkout (id text primary key, billing_company_name text, billing_nip text, client_address text, status text not null, email text, user_id text, customer_note text, delivery_method_id text, locker_id text, locker_point text, locker_unconfirmed integer not null default 0, created_at integer, updated_at integer);
       create table payment (id text primary key, checkout_id text, status text, transaction_id text unique, created_at integer, updated_at integer);
       create table "order" (

@@ -4,7 +4,7 @@ import { PRODUCTS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
 import { registerCustomer } from "../fixtures/customers"
 import { placeOrder } from "../fixtures/orders"
-import { waitForEmail } from "../fixtures/emails"
+import { linkIn, waitForEmail } from "../fixtures/emails"
 import { confirmCardSetupIntent, stripeCustomerIds, waitForCardSetupIntent } from "../fixtures/stripe"
 import { expect, test } from "../fixtures/test"
 import { swipeUp } from "../fixtures/touch"
@@ -34,6 +34,27 @@ test.describe("customer account", () => {
     const order = page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") })
     await expect(order).toContainText(/PLN\s398\.99/u)
     await expect(order).toContainText("Confirmed")
+  })
+
+  test("an order placed without signing in, with the account's email, appears in the account and its confirmation links there", async ({
+    accountPage,
+    authPage,
+    page,
+    request,
+  }, testInfo) => {
+    const customer = await registerCustomer({ authPage, page, request }, testInfo)
+    await page.context().clearCookies()
+
+    const { orderNumber } = await placeOrder({ email: customer.email, handle: PRODUCTS.lapis.handle, page, request })
+
+    const confirmation = await waitForEmail(request, customer.email, "Order confirmation — M'Arte")
+    expect(linkIn(confirmation, /\/account\/orders\//u).origin).toBe("http://127.0.0.1:3000")
+    expect(confirmation.html).not.toContain("/auth/sign-up")
+    await authPage.signIn(customer.email, customer.password)
+    await expect(page).toHaveURL(/\/en-US\/account\/overview$/u)
+    await expect(accountPage.navigation()).toBeVisible()
+    await accountPage.gotoSection("orders")
+    await expect(page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") })).toBeVisible()
   })
 
   test("a customer withdraws from part of an order on its page and is emailed the statement", async ({ accountPage, authPage, page, request }, testInfo) => {
