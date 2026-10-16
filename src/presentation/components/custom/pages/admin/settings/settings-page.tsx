@@ -2,7 +2,7 @@ import { type JSX, useState } from "react"
 
 import { type SettingsTab } from "~/src/data/settings"
 
-import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { SettingsGeneral } from "~/src/presentation/components/custom/pages/admin/settings/settings-general/settings-general"
 import { SettingsLocalization } from "~/src/presentation/components/custom/pages/admin/settings/settings-localization/settings-localization"
 import { SettingsPlaceholder } from "~/src/presentation/components/custom/pages/admin/settings/settings-placeholder"

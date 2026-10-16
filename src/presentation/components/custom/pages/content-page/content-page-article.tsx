@@ -12,7 +12,7 @@ import { getContentPageQuery } from "~/src/modules/content-page/use-cases/get-co
 import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { mdxComponents } from "~/src/presentation/components/custom/mdx"
-import { CONTENT_PROSE_CLASS } from "~/src/presentation/components/custom/pages/content-page/content-page.styles"
+import { CONTENT_PROSE_CLASS } from "~/src/presentation/components/custom/pages/content-page/_styles/content-page.styles"
 
 const { Markdown } = createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkHeading] })
 

@@ -26,7 +26,7 @@ import {
 import {
   CATALOG_SHEET_ACTION_BUTTON_CLASS,
   CATALOG_SHEET_FIELD_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/_styles/catalog-form.styles"
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
 import { slugify } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-slug.utils"
 

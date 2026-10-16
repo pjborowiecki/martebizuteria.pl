@@ -12,8 +12,8 @@ import { resolveAuditLogToday } from "~/src/modules/audit-log/audit-log.utils"
 import { getAuditLogStatsQuery } from "~/src/modules/audit-log/use-cases/get-audit-log-stats"
 import { listAuditLogsQuery } from "~/src/modules/audit-log/use-cases/list-audit-logs"
 
+import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
-import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { AuditLog } from "~/src/presentation/components/custom/pages/admin/audit/audit-log"
 
 const prefetchAuditQueries = async (context: { queryClient: QueryClient }): Promise<void> => {

@@ -5,7 +5,7 @@ import { cn } from "cn"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/presentation/components/shadcn/tooltip"
 
-import { ADMIN_HEADER_SECONDARY_BUTTON_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_HEADER_SECONDARY_BUTTON_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 
 export const OrderActionButton = ({ blockedReason, children, isPending, onClick }: Readonly<OrderActionButtonProps>): JSX.Element => {
   const button = (

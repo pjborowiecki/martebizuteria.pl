@@ -3,8 +3,8 @@ import { type JSX, useMemo } from "react"
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 import { useTranslations } from "use-intl/react"
 
+import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
-import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CatalogTabs } from "~/src/presentation/components/custom/pages/admin/catalog/catalog-tabs"
 
 const ProductsSectionLayoutRoute = (): JSX.Element => {

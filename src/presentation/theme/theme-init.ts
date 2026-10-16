@@ -1,6 +1,6 @@
 import { APP_NAME } from "~/src/presentation/branding/app"
 
-import { ADMIN_SHELL_CHROME_BG } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_SHELL_CHROME_BG } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { isAdminPathname } from "~/src/presentation/components/custom/pages/admin/lib/admin-route"
 
 export const adminShellCriticalStyle = (pathname: string): string | undefined => {

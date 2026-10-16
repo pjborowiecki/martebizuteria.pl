@@ -6,7 +6,7 @@ import { getAdminContentPagesQuery } from "~/src/modules/content-page/use-cases/
 
 import { Card } from "~/src/presentation/components/shadcn/card"
 
-import { ADMIN_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { ContentPageListItem } from "~/src/presentation/components/custom/pages/admin/content/content-page-list-item"
 
 export const ContentPageList = (): JSX.Element => {

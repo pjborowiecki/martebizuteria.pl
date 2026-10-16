@@ -2,8 +2,8 @@ import { type ChangeEvent, type JSX, type KeyboardEvent, useCallback } from "rea
 
 import { cn } from "cn"
 
+import { sheetNumberInputNoSpinnerClassName } from "~/src/presentation/components/shadcn/_styles/sheet-control.styles"
 import { Input } from "~/src/presentation/components/shadcn/input"
-import { sheetNumberInputNoSpinnerClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
 
 const sanitizeIntegerInput = (raw: string): string => raw.replace(NON_DIGIT_PATTERN, "")
 

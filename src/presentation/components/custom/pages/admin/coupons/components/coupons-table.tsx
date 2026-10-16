@@ -3,7 +3,7 @@ import { type JSX, useMemo } from "react"
 import { useTranslations } from "use-intl/react"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
-import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { CatalogToolbarAddButton } from "~/src/presentation/components/custom/pages/admin/catalog/toolbar/components/catalog-toolbar-add-button"
 import { CouponsBulkActions } from "~/src/presentation/components/custom/pages/admin/coupons/components/coupons-bulk-actions"
 import { CouponsStatusFilter, CouponsTypeFilter } from "~/src/presentation/components/custom/pages/admin/coupons/components/coupons-filters"

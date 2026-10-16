@@ -16,7 +16,7 @@ import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/src/presentation/components/shadcn/table"
 
-import { ADMIN_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 
 const HEADER_CLASS = "text-xs font-medium uppercase tracking-wider text-muted-foreground/60"
 

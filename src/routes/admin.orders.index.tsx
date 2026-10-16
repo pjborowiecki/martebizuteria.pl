@@ -8,8 +8,8 @@ import { ADMIN_ORDERS_PAGE_SIZE, ORDER_QUERY_STALE_MS } from "~/src/modules/orde
 import { getAdminOrderStatsQuery } from "~/src/modules/order/use-cases/get-admin-order-stats"
 import { getAdminOrdersPageQuery } from "~/src/modules/order/use-cases/get-admin-orders-page"
 
+import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
-import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { OrdersTableContent } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-table"
 
 const prefetchOrdersQueries = async (context: { queryClient: QueryClient }): Promise<void> => {

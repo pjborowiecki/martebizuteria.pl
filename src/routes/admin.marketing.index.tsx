@@ -11,12 +11,12 @@ import { getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-
 import { buttonVariants } from "~/src/presentation/components/shadcn/button"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
-import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
 import {
   ADMIN_CATALOG_DATAGRID_PAGE_CLASS,
   ADMIN_CATALOG_PAGE_BODY_CLASS,
   ADMIN_HEADER_PRIMARY_BUTTON_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
+import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
 import { MarketingTabs } from "~/src/presentation/components/custom/pages/admin/marketing/marketing-tabs"
 import { NewsletterCampaignsTable } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-campaigns-table"
 import { NewsletterStats } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-stats"

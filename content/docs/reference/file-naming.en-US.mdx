@@ -59,7 +59,7 @@ Route files never contain a locale segment. `src/routeTree.gen.ts` is generated 
 | `components/shadcn/<primitive>.tsx`         | A shadcn primitive, generated and left alone                                          | `components/shadcn/sidebar.tsx`                                       |
 | `components/custom/<name>.tsx`              | An application component shared across areas                                          | `components/custom/product-card.tsx`                                  |
 | `components/custom/pages/<area>/<name>.tsx` | A component belonging to one page or area                                             | `components/custom/pages/admin/admin-sidebar.tsx`                     |
-| `<name>.styles.ts`                          | Class-name constants extracted out of a component                                     | `components/custom/pages/admin/admin-layout.styles.ts`                |
+| `<name>.styles.ts`                          | Class-name constants extracted out of a component, in a `_styles/` folder beside it   | `components/custom/pages/admin/_styles/admin-layout.styles.ts`        |
 | `<name>.loader.ts`                          | Prefetch helpers a route loader calls                                                 | `components/custom/pages/products-catalog/products-catalog.loader.ts` |
 | `emails/<name>.tsx`                         | A React Email template                                                                | `emails/order-confirmation.tsx`                                       |
 | `styles/<layer>.css`                        | One stylesheet per shell: `globals`, `storefront`, `admin`, `fonts`, `critical-fonts` | `styles/admin.css`                                                    |

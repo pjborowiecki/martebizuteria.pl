@@ -9,12 +9,12 @@ import { getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
-import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
 import {
   ADMIN_HEADER_PRIMARY_BUTTON_CLASS,
   ADMIN_HEADER_SECONDARY_BUTTON_CLASS,
   ADMIN_PAGE_BODY_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
+import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
 import { ContentPageLeaveDialog } from "~/src/presentation/components/custom/pages/admin/content/content-page-leave-dialog"
 import { ContentPageLocaleTabs } from "~/src/presentation/components/custom/pages/admin/content/content-page-locale-tabs"
 import {

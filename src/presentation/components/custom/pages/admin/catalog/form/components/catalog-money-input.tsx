@@ -14,8 +14,8 @@ import {
 
 import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
+import { sheetNumberInputNoSpinnerClassName } from "~/src/presentation/components/shadcn/_styles/sheet-control.styles"
 import { Input } from "~/src/presentation/components/shadcn/input"
-import { sheetNumberInputNoSpinnerClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
 
 const formatStoredMoneyValue = (value: string, currencyCode: SupportedCurrencyCode, formatLocale: string): string => {
   if (value === EMPTY_VALUE) {

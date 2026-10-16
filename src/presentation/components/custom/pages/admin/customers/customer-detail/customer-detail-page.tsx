@@ -4,9 +4,9 @@ import { cn } from "cn"
 
 import { type User } from "~/src/modules/user/user.types"
 
-import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
+import { CUSTOMER_DETAIL_COLUMN_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/_styles/customer-detail.styles"
 import { CustomerCharts } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-charts"
-import { CUSTOMER_DETAIL_COLUMN_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.styles"
 import { CustomerKpis } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-kpis"
 import { CustomerOrders } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-orders"
 import { CustomerSidebar } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-sidebar"

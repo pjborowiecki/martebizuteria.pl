@@ -5,7 +5,7 @@ import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 
-import { sheetSelectTriggerClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
+import { sheetSelectTriggerClassName } from "~/src/presentation/components/shadcn/_styles/sheet-control.styles"
 
 const SelectGroup = ({ className, ...props }: Readonly<SelectPrimitive.Group.Props>): JSX.Element => (
   <SelectPrimitive.Group data-slot="select-group" className={cn("scroll-my-1", className)} {...props} />

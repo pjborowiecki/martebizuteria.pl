@@ -12,13 +12,13 @@ import {
   renderDataGridHeaderLabel,
 } from "~/src/presentation/components/custom/datagrid/components/data-grid-header-content"
 import { useDataGridColumnMetrics } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-column-metrics"
-import { buildDataGridCellStyle } from "~/src/presentation/components/custom/datagrid/lib/data-grid-cell-style"
-import { createDataGridColumnResizeHandler } from "~/src/presentation/components/custom/datagrid/lib/data-grid-column-resize"
 import {
   DATA_GRID_HEADER_CELL_CLASS,
   DATA_GRID_HEADER_CELL_SORTED_CLASS,
   DATA_GRID_HEADER_SORT_BUTTON_CLASS,
-} from "~/src/presentation/components/custom/datagrid/lib/data-grid-header.styles"
+} from "~/src/presentation/components/custom/datagrid/lib/_styles/data-grid-header.styles"
+import { buildDataGridCellStyle } from "~/src/presentation/components/custom/datagrid/lib/data-grid-cell-style"
+import { createDataGridColumnResizeHandler } from "~/src/presentation/components/custom/datagrid/lib/data-grid-column-resize"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { type ColumnReorderApi } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 

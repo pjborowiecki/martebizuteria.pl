@@ -16,7 +16,7 @@ import { useAdminLightTheme } from "~/src/presentation/theme/use-admin-light-the
 
 import { SidebarInset, SidebarProvider } from "~/src/presentation/components/shadcn/sidebar"
 
-import { ADMIN_LAYOUT_BG_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_LAYOUT_BG_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminSidebar } from "~/src/presentation/components/custom/pages/admin/admin-sidebar"
 
 import adminCss from "~/src/presentation/styles/admin.css?url"

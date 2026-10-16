@@ -19,7 +19,7 @@ import { useCatalogActiveLocale } from "~/src/presentation/components/custom/pag
 import {
   CATALOG_FORM_DESCRIPTION_TEXTAREA_CLASS,
   CATALOG_SHEET_TEXTAREA_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/_styles/catalog-form.styles"
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
 
 const useCategoryLocaleMapField = (

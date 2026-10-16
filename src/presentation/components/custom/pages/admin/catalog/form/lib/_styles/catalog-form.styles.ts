@@ -4,7 +4,7 @@ import {
   SHEET_CONTROL_HEIGHT,
   SHEET_CONTROL_RADIUS_CLASS,
   sheetNumberInputNoSpinnerClassName,
-} from "~/src/presentation/components/shadcn/sheet-control.styles"
+} from "~/src/presentation/components/shadcn/_styles/sheet-control.styles"
 
 export const CATALOG_SHEET_ACTION_BUTTON_CLASS = cn(
   SHEET_CONTROL_HEIGHT,

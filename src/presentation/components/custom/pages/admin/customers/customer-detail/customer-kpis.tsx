@@ -10,9 +10,9 @@ import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
-import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
-import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.styles"
+import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/_styles/customer-detail.styles"
 
 export const CustomerKpis = ({ customer }: CustomerKpisProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")

@@ -8,9 +8,9 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 
 import type emailMessages from "~/messages/en-US/emails.newsletter-campaign.json"
+import { EMAIL_MARKDOWN_CONTAINER_STYLE, EMAIL_MARKDOWN_STYLES } from "~/src/presentation/emails/_styles/email-styles"
 import { EMAIL_MUTED_TEXT_CLASS } from "~/src/presentation/emails/email-highlight-box"
 import { EmailLayout } from "~/src/presentation/emails/email-layout"
-import { EMAIL_MARKDOWN_CONTAINER_STYLE, EMAIL_MARKDOWN_STYLES } from "~/src/presentation/emails/email-styles"
 
 export const NEWSLETTER_CAMPAIGN_NAMESPACE = "emails.newsletter-campaign"
 

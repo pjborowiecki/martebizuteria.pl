@@ -3,7 +3,7 @@ import { type JSX, type ReactNode } from "react"
 import { cn } from "cn"
 
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
-import { ADMIN_LAYOUT_BG_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_LAYOUT_BG_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 
 export const AdminHeaderTabs = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element => (
   <div

@@ -21,7 +21,7 @@ import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/page
 import {
   CATALOG_SHEET_CARD_CONTENT_CLASS,
   CATALOG_SHEET_FIELD_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/_styles/catalog-form.styles"
 
 export const ProductEditorOrganization = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")

@@ -2,7 +2,7 @@ import { type JSX, type ReactNode } from "react"
 
 import { Section, Text } from "react-email"
 
-import { EMAIL_HIGHLIGHT_BOX_STYLE } from "~/src/presentation/emails/email-styles"
+import { EMAIL_HIGHLIGHT_BOX_STYLE } from "~/src/presentation/emails/_styles/email-styles"
 
 export const EmailBorderedSection = ({ children }: Readonly<EmailBorderedSectionProps>): JSX.Element => (
   <Section className="box-border" style={EMAIL_HIGHLIGHT_BOX_STYLE}>
@@ -28,7 +28,7 @@ export const EmailDetailRow = ({ children, isFirst = false, label }: Readonly<Em
   </Section>
 )
 
-export { EMAIL_HIGHLIGHT_BOX_STYLE } from "~/src/presentation/emails/email-styles"
+export { EMAIL_HIGHLIGHT_BOX_STYLE } from "~/src/presentation/emails/_styles/email-styles"
 
 interface EmailBorderedSectionProps {
   readonly children: ReactNode

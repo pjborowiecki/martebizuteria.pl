@@ -4,7 +4,7 @@ import { Body, Container, Head, Hr, Html, Preview, Section, Tailwind, Text } fro
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { EMAIL_BODY_STYLE, EMAIL_CONTAINER_STYLE } from "~/src/presentation/emails/email-styles"
+import { EMAIL_BODY_STYLE, EMAIL_CONTAINER_STYLE } from "~/src/presentation/emails/_styles/email-styles"
 
 export const EmailLayout = ({ children, locale, preview, tagline }: Readonly<EmailLayoutProps>): JSX.Element => (
   <Html lang={locale}>

@@ -4,7 +4,7 @@ import { THEME_INIT_SCRIPT, THEME_STORAGE_KEY, adminShellCriticalStyle } from "~
 
 import { APP_NAME } from "~/src/presentation/branding/app"
 
-import { ADMIN_SHELL_CHROME_BG } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_SHELL_CHROME_BG } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 
 describe("adminShellCriticalStyle", () => {
   it.each([["/admin"], ["/pl-PL/admin/orders"], ["/en-US/admin"]])("paints the admin chrome for %s", (pathname) => {

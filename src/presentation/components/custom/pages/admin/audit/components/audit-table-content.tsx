@@ -1,7 +1,7 @@
 import { type JSX, useMemo } from "react"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
-import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AuditBulkActions } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-bulk-actions"
 import { AuditDateFilter } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-date-filter"
 import { AuditCategoryFilter, AuditSeverityFilter } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-filters"

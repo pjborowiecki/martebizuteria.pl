@@ -12,7 +12,7 @@ import { LocalizedLink } from "~/src/presentation/components/custom/localized-li
 import {
   ADMIN_HEADER_PRIMARY_BUTTON_CLASS,
   ADMIN_HEADER_SECONDARY_BUTTON_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { CatalogDeleteConfirmDialog } from "~/src/presentation/components/custom/pages/admin/catalog/dialog/components/catalog-delete-confirm-dialog"
 import { OrderActionButton } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-action-button"
 import { OrderAdvanceDialog } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-advance-dialog"

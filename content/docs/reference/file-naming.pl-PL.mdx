@@ -59,7 +59,7 @@ Pliki tras nigdy nie zawierają segmentu lokalizacji. `src/routeTree.gen.ts` gen
 | `components/shadcn/<primitive>.tsx`            | Primitywę shadcn, generowaną i nietykaną                                             | `components/shadcn/sidebar.tsx`                                       |
 | `components/custom/<nazwa>.tsx`                | Komponent aplikacji wspólny dla wielu obszarów                                       | `components/custom/product-card.tsx`                                  |
 | `components/custom/pages/<obszar>/<nazwa>.tsx` | Komponent należący do jednej strony lub obszaru                                      | `components/custom/pages/admin/admin-sidebar.tsx`                     |
-| `<nazwa>.styles.ts`                            | Stałe z nazwami klas wyciągnięte z komponentu                                        | `components/custom/pages/admin/admin-layout.styles.ts`                |
+| `<nazwa>.styles.ts`                            | Stałe z nazwami klas wyciągnięte z komponentu, w folderze `_styles/` obok niego      | `components/custom/pages/admin/_styles/admin-layout.styles.ts`        |
 | `<nazwa>.loader.ts`                            | Helpery prefetch wywoływane przez loader trasy                                       | `components/custom/pages/products-catalog/products-catalog.loader.ts` |
 | `emails/<nazwa>.tsx`                           | Szablon React Email                                                                  | `emails/order-confirmation.tsx`                                       |
 | `styles/<warstwa>.css`                         | Jeden arkusz na powłokę: `globals`, `storefront`, `admin`, `fonts`, `critical-fonts` | `styles/admin.css`                                                    |

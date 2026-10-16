@@ -8,8 +8,8 @@ import { ADMIN_DISCOUNTS_PAGE_SIZE, DISCOUNT_QUERY_STALE_MS } from "~/src/module
 import { getDiscountStatsQuery } from "~/src/modules/discount/use-cases/get-admin-discount-stats"
 import { getAdminDiscountsPageQuery } from "~/src/modules/discount/use-cases/get-admin-discounts-page"
 
+import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
-import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { CouponsTableContent } from "~/src/presentation/components/custom/pages/admin/coupons/components/coupons-table"
 import {
   CouponsSheetProvider,

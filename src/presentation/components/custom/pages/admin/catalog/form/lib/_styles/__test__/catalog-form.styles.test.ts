@@ -4,7 +4,7 @@ import {
   SHEET_CONTROL_HEIGHT,
   SHEET_CONTROL_RADIUS_CLASS,
   sheetNumberInputNoSpinnerClassName,
-} from "~/src/presentation/components/shadcn/sheet-control.styles"
+} from "~/src/presentation/components/shadcn/_styles/sheet-control.styles"
 
 import {
   CATALOG_FORM_DESCRIPTION_TEXTAREA_CLASS,
@@ -14,7 +14,7 @@ import {
   CATALOG_SHEET_INLINE_INPUT_CLASS,
   CATALOG_SHEET_READ_ONLY_INPUT_CLASS,
   CATALOG_SHEET_TEXTAREA_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/_styles/catalog-form.styles"
 
 const classesOf = (value: string): Set<string> => new Set(value.split(" ").filter((entry) => entry !== ""))
 
