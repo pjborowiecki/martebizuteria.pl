@@ -283,6 +283,51 @@ export const recordDiscountDeletedAudit = (code: string, options?: AuditEventOpt
   })
 }
 
+export const recordDeliveryMethodCreatedAudit = (name: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_CREATED,
+    category: "settings",
+    severity: "info",
+    ...withResourceId(name, options),
+  })
+}
+
+export const recordDeliveryMethodUpdatedAudit = (name: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED,
+    category: "settings",
+    severity: "info",
+    ...withResourceId(name, options),
+  })
+}
+
+export const recordDeliveryMethodArchivedAudit = (name: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_ARCHIVED,
+    category: "settings",
+    severity: "warning",
+    ...withResourceId(name, options),
+  })
+}
+
+export const recordDeliveryMethodRestoredAudit = (name: string, options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_RESTORED,
+    category: "settings",
+    severity: "info",
+    ...withResourceId(name, options),
+  })
+}
+
+export const recordDeliveryMethodsReorderedAudit = (options?: AuditEventOptions): void => {
+  scheduleAuditLogFromRequest({
+    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_REORDERED,
+    category: "settings",
+    severity: "info",
+    ...withResourceId("delivery-methods", options),
+  })
+}
+
 export const recordSalesPausedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
     action: AUDIT_LOG_ACTION.SALES_PAUSED,

@@ -7,7 +7,7 @@ import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { courier } from "~/src/modules/courier/courier.schema"
-import { offeredDeliveryMethod } from "~/src/modules/delivery-method/delivery-method.accessors"
+import { deliveryMethodOrder, offeredDeliveryMethod } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 import { deliveryMethod } from "~/src/modules/delivery-method/delivery-method.schema"
 import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
@@ -20,6 +20,7 @@ export const listDeliveryMethods = createServerFn({ method: "GET" })
       .from(deliveryMethod)
       .innerJoin(courier, eq(deliveryMethod.courierId, courier.id))
       .where(offeredDeliveryMethod)
+      .orderBy(...deliveryMethodOrder)
 
     const locale = getCurrentLocale()
 

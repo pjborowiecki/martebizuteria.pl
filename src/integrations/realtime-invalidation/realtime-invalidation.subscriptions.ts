@@ -4,6 +4,7 @@ import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
+import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 import { NEWSLETTER_CAMPAIGN_QUERY_KEYS } from "~/src/modules/newsletter-campaign/newsletter-campaign.constants"
 import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter/newsletter.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
@@ -38,6 +39,7 @@ export const ADMIN_REALTIME_QUERY_PREFIXES = [
   CONTENT_PAGE_QUERY_KEYS.ADMIN.ALL,
   CONTENT_PAGE_QUERY_KEYS.ADMIN.BY_HANDLE,
   STORE_SETTING_QUERY_KEYS.ADMIN.SALES,
+  DELIVERY_METHOD_QUERY_KEYS.ADMIN.ALL,
   NEWSLETTER_CAMPAIGN_QUERY_KEYS.ADMIN.LIST,
   NEWSLETTER_QUERY_KEYS.ADMIN.PAGE,
   NEWSLETTER_QUERY_KEYS.ADMIN.STATS,
@@ -56,4 +58,5 @@ export const STOREFRONT_REALTIME_QUERY_PREFIXES = [
   COLLECTION_QUERY_KEYS.BY_HANDLE,
   CONTENT_PAGE_QUERY_KEYS.BY_HANDLE,
   STORE_SETTING_QUERY_KEYS.SALES,
+  DELIVERY_METHOD_QUERY_KEYS.ALL,
 ] as const satisfies readonly QueryKey[]

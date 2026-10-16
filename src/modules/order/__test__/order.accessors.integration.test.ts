@@ -494,7 +494,8 @@ const createPlacedOrderTables = (): void => {
     create table delivery_method (
       id text primary key, api_service_code text not null, courier_id text not null, description text,
       is_active integer not null default 1, name text not null, names text not null default '{"pl-PL":"","en-US":""}',
-      price integer not null, type text not null, created_at integer not null, updated_at integer not null
+      price integer not null, rank integer not null default 0, archived_at integer, type text not null,
+      created_at integer not null, updated_at integer not null
     );
     create table address (
       id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,

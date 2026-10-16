@@ -5,7 +5,7 @@ import { ArrowRight, Package, Store, Truck } from "lucide-react"
 import { useWatch } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
 
-import { DELIVERY_METHOD, DELIVERY_METHODS, type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
+import { DELIVERY_METHOD, type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
@@ -129,13 +129,10 @@ export const DeliveryStep = (): JSX.Element => {
             <OptionCardSkeleton />
           </>
         ) : (
-          DELIVERY_METHODS.flatMap((type) => {
+          [...new Set(deliveryMethods.map((method) => method.type))].map((type) => {
             const methods = deliveryMethods.filter((m) => m.type === type)
-            if (methods.length === 0) {
-              return []
-            }
 
-            return [
+            return (
               <OptionCard
                 key={type}
                 value={type}
@@ -143,8 +140,8 @@ export const DeliveryStep = (): JSX.Element => {
                 label={t(`deliveryMethods.${type}`)}
                 description={getDeliveryDescription({ format, methods, t })}
                 icon={DELIVERY_ICONS[type]}
-              />,
-            ]
+              />
+            )
           })
         )}
       </CheckoutRadioField>

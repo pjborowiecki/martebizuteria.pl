@@ -385,6 +385,11 @@
       "discount_updated": "Kod rabatowy zaktualizowany",
       "discount_deleted": "Usunięto kody rabatowe",
       "discount_redeemed": "Kod rabatowy wykorzystany",
+      "delivery_method_created": "Metoda dostawy dodana",
+      "delivery_method_updated": "Metoda dostawy zmieniona",
+      "delivery_method_archived": "Metoda dostawy zarchiwizowana",
+      "delivery_method_restored": "Metoda dostawy przywrócona",
+      "delivery_method_reordered": "Kolejność metod dostawy zmieniona",
       "product_updated": "Produkt zaktualizowany",
       "product_created": "Produkt utworzony",
       "product_deleted": "Produkt usunięty",
@@ -464,9 +469,13 @@
       },
       "emailDailyLimit": "sklep osiągnął dzienny limit {limit} e-maili wysyłanych na prośbę odwiedzających",
       "fields": {
+        "availability": "W kasie",
         "fulfillmentStep": "Etap realizacji",
+        "nameEn": "Nazwa (angielska)",
+        "namePl": "Nazwa (polska)",
         "orderStatus": "Status zamówienia",
         "paymentStatus": "Status płatności",
+        "price": "Cena",
         "refundedAmount": "Zwrócona kwota",
         "status": "Status",
         "totalStock": "Stan magazynowy",
@@ -546,6 +555,10 @@
           "lost_or_stolen_card": "Karta została zgłoszona jako zgubiona lub skradziona",
           "merchant_request": "Anulowany na prośbę sklepu",
           "unknown": "Nieznana przyczyna"
+        },
+        "availability": {
+          "offered": "Oferowana",
+          "hidden": "Ukryta"
         }
       },
       "variants": {

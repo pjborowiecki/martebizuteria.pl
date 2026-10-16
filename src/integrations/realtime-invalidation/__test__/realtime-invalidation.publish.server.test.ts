@@ -9,6 +9,7 @@ import {
   scheduleCategoryCatalogInvalidation,
   scheduleCollectionCatalogInvalidation,
   scheduleContentPageInvalidation,
+  scheduleDeliveryMethodsInvalidation,
   scheduleProductAttributeCatalogInvalidation,
   scheduleProductCatalogInvalidation,
   scheduleSalesStatusInvalidation,
@@ -27,6 +28,7 @@ import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
+import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter/newsletter.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
@@ -253,6 +255,11 @@ describe("invalidation topics by publisher", () => {
         admin: [CONTENT_PAGE_QUERY_KEYS.ADMIN.ALL, CONTENT_PAGE_QUERY_KEYS.ADMIN.BY_HANDLE],
         storefront: [CONTENT_PAGE_QUERY_KEYS.BY_HANDLE],
       },
+    ],
+    [
+      "delivery methods",
+      scheduleDeliveryMethodsInvalidation,
+      { admin: [DELIVERY_METHOD_QUERY_KEYS.ADMIN.ALL], storefront: [DELIVERY_METHOD_QUERY_KEYS.ALL] },
     ],
     [
       "sales status",

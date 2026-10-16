@@ -1,9 +1,10 @@
 {
   "title": "Settings",
-  "description": "Your account, its security and how the admin panel works for you.",
+  "description": "Your account, its security and the shop's delivery.",
   "tabs": {
     "account": "My account",
-    "security": "Sign-in & security"
+    "security": "Sign-in & security",
+    "delivery": "Delivery"
   },
   "account": {
     "profile": {
@@ -66,6 +67,75 @@
     "history": {
       "title": "Sign-in history",
       "description": "Recent successful and failed attempts to sign in to your account."
+    }
+  },
+  "delivery": {
+    "methods": {
+      "title": "Delivery methods",
+      "description": "What shoppers can choose at checkout, in this order. Each name is shown in the shopper's language.",
+      "add": "Add method",
+      "empty": "No delivery methods yet. Add one so shoppers can check out.",
+      "free": "Free",
+      "hidden": "Hidden",
+      "hiddenCarrier": "Carrier switched off",
+      "edit": "Edit",
+      "moveUp": "Move {name} up",
+      "moveDown": "Move {name} down",
+      "archived": "Archived methods ({count})",
+      "archivedDescription": "Hidden from the checkout. Orders placed with them keep them.",
+      "restore": "Restore",
+      "types": {
+        "courier": "Courier",
+        "in_store": "Pickup in person",
+        "locker": "Parcel locker"
+      },
+      "created": "Delivery method added.",
+      "saved": "Delivery method saved.",
+      "reordered": "Checkout order saved.",
+      "restored": "{name} restored. Turn it on to offer it again.",
+      "archivedToast": "{name} archived."
+    },
+    "form": {
+      "addTitle": "Add a delivery method",
+      "editTitle": "Edit {name}",
+      "description": "Shoppers see the name in their language and the price at checkout.",
+      "type": "Type",
+      "carrier": "Carrier",
+      "newCarrier": "New carrier",
+      "newCarrierName": "Carrier name",
+      "lockerCarrier": "Parcel lockers are InPost's, so this method uses InPost.",
+      "manualShipping": "Only InPost parcels are booked from the order page. For this carrier, book the parcel on its site and save the tracking number on the order.",
+      "namePl": "Name in Polish",
+      "nameEn": "Name in English",
+      "price": "Price",
+      "priceHint": "0 makes it free.",
+      "offered": "Offer at checkout",
+      "offeredHint": "Turn off to hide it from the checkout without archiving it.",
+      "archive": "Archive",
+      "cancel": "Cancel",
+      "save": "Save",
+      "create": "Add method"
+    },
+    "archiveDialog": {
+      "title": "Archive {name}?",
+      "description": "It disappears from the checkout. Orders already placed with it keep it, and you can restore it later.",
+      "confirm": "Archive",
+      "cancel": "Cancel"
+    },
+    "errors": {
+      "DELIVERY_METHOD_LAST_OFFERED": "Keep at least one method offered at checkout. To stop selling, pause sales on the dashboard instead.",
+      "DELIVERY_METHOD_LOCKER_NEEDS_INPOST": "Parcel lockers work only with InPost.",
+      "DELIVERY_METHOD_NOT_FOUND": "This method no longer exists or was archived. Reload the page.",
+      "DELIVERY_METHOD_TYPE_ALREADY_OFFERED": "The checkout offers one parcel locker method and one pickup method at a time. Turn the other one off first.",
+      "conflict": "Someone changed this method in the meantime. Reload the page to see the change."
+    },
+    "validation": {
+      "nameRequired": "Enter a name.",
+      "nameTooLong": "Use at most 80 characters.",
+      "priceInvalid": "Enter a price of 0 or more.",
+      "priceTooHigh": "Enter a lower price.",
+      "courierNameRequired": "Enter the carrier's name.",
+      "courierNameTooLong": "Use at most 60 characters."
     }
   }
 }

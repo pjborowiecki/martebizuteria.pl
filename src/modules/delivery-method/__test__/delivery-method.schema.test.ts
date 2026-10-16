@@ -29,6 +29,7 @@ describe("delivery method table", () => {
   it("declares the shipping option columns and the shared timestamps", () => {
     expect(config.columns.map((column) => column.name)).toStrictEqual([
       "api_service_code",
+      "archived_at",
       "courier_id",
       "description",
       "id",
@@ -36,6 +37,7 @@ describe("delivery method table", () => {
       "name",
       "names",
       "price",
+      "rank",
       "type",
       "created_at",
       "updated_at",

@@ -122,6 +122,25 @@ describe("DeliveryStep options", () => {
     expect(screen.getByRole("radio", { name: /In-Store Pickup/u })).toBeInTheDocument()
   })
 
+  it("orders the families by their first method in the order the shop set", async () => {
+    methodsState.rows = [
+      method({ id: "dm-store", price: 0, type: "in_store" }),
+      method(),
+      method({ id: "dm-locker", price: 1299, type: "locker" }),
+      method({ id: "dm-courier-express", price: 2999 }),
+    ]
+
+    renderWithProviders(<DeliveryStepHarness />)
+
+    const courier = await screen.findByRole("radio", { name: /Courier/u })
+
+    expect(screen.getAllByRole("radio")).toStrictEqual([
+      screen.getByRole("radio", { name: /In-Store Pickup/u }),
+      courier,
+      screen.getByRole("radio", { name: /Parcel Locker/u }),
+    ])
+  })
+
   it("leaves out a delivery family nothing is configured for", async () => {
     renderWithProviders(<DeliveryStepHarness />)
 

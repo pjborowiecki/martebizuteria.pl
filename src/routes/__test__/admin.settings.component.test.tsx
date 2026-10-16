@@ -74,6 +74,12 @@ vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/sett
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/settings-sessions-card", () => ({
   SettingsSessionsCard: (): JSX.Element => <section>sessions</section>,
 }))
+vi.mock("~/src/modules/delivery-method/use-cases/list-admin-delivery-methods", () => ({
+  listAdminDeliveryMethodsQuery: () => ({ queryKey: ["admin", "delivery-methods"] }),
+}))
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/delivery/settings-delivery-methods-card", () => ({
+  SettingsDeliveryMethodsCard: (): JSX.Element => <section>delivery methods</section>,
+}))
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/settings-login-history-card", () => ({
   SettingsLoginHistoryCard: (): JSX.Element => <section>history</section>,
 }))
@@ -82,6 +88,7 @@ await import("~/src/routes/admin.settings")
 await import("~/src/routes/admin.settings.index")
 await import("~/src/routes/admin.settings.account")
 await import("~/src/routes/admin.settings.security")
+await import("~/src/routes/admin.settings.delivery")
 
 const routeAt = (path: string): RouteDefinition => {
   const route = captured.get(path)
@@ -179,5 +186,20 @@ describe("admin settings security route", () => {
       "sessions",
       "history",
     ])
+  })
+})
+
+describe("admin settings delivery route", () => {
+  it("loads every delivery method and carrier before the page renders", async () => {
+    await expect(prefetched("/admin/settings/delivery")).resolves.toStrictEqual([["admin", "delivery-methods"]])
+  })
+
+  it("shows the delivery methods under the delivery tab", () => {
+    render("/admin/settings/delivery")
+
+    const main = screen.getByRole("main")
+
+    expect(main).toHaveAttribute("data-active", "delivery")
+    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["delivery methods"])
   })
 })

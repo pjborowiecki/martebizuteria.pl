@@ -385,6 +385,11 @@
       "discount_updated": "Coupon updated",
       "discount_deleted": "Coupons deleted",
       "discount_redeemed": "Coupon redeemed",
+      "delivery_method_created": "Delivery method added",
+      "delivery_method_updated": "Delivery method changed",
+      "delivery_method_archived": "Delivery method archived",
+      "delivery_method_restored": "Delivery method restored",
+      "delivery_method_reordered": "Delivery methods reordered",
       "product_updated": "Product updated",
       "product_created": "Product created",
       "product_deleted": "Product deleted",
@@ -464,9 +469,13 @@
       },
       "emailDailyLimit": "the shop reached its daily limit of {limit} emails that visitors can request",
       "fields": {
+        "availability": "At checkout",
         "fulfillmentStep": "Fulfillment step",
+        "nameEn": "Name (English)",
+        "namePl": "Name (Polish)",
         "orderStatus": "Order status",
         "paymentStatus": "Payment status",
+        "price": "Price",
         "refundedAmount": "Refunded amount",
         "status": "Status",
         "totalStock": "Stock",
@@ -546,6 +555,10 @@
           "lost_or_stolen_card": "The card was reported lost or stolen",
           "merchant_request": "Cancelled at the shop's request",
           "unknown": "Unknown reason"
+        },
+        "availability": {
+          "offered": "Offered",
+          "hidden": "Hidden"
         }
       },
       "variants": {

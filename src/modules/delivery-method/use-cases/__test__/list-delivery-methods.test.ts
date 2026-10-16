@@ -1,7 +1,7 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { offeredDeliveryMethod } from "~/src/modules/delivery-method/delivery-method.accessors"
+import { deliveryMethodOrder, offeredDeliveryMethod } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 
 import { listDeliveryMethods, listDeliveryMethodsQuery } from "../list-delivery-methods"
@@ -13,12 +13,13 @@ interface JoinedRow {
 
 const query = vi.hoisted(() => {
   const rows: { current: readonly unknown[] } = { current: [] }
-  const where = vi.fn(() => Promise.resolve(rows.current))
+  const orderBy = vi.fn(() => Promise.resolve(rows.current))
+  const where = vi.fn(() => ({ orderBy }))
   const innerJoin = vi.fn(() => ({ where }))
   const from = vi.fn(() => ({ innerJoin }))
   const select = vi.fn(() => ({ from }))
 
-  return { from, innerJoin, rows, select, where }
+  return { from, innerJoin, orderBy, rows, select, where }
 })
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
@@ -70,12 +71,13 @@ describe("listDeliveryMethods", () => {
     ])
   })
 
-  it("filters on the active method joined to an active courier", async () => {
+  it("filters on the active method joined to an active courier, in the order the admin set", async () => {
     await listDeliveryMethods()
 
     expect(query.select).toHaveBeenCalledTimes(1)
     expect(query.innerJoin).toHaveBeenCalledTimes(1)
     expect(query.where).toHaveBeenCalledExactlyOnceWith(offeredDeliveryMethod)
+    expect(query.orderBy).toHaveBeenCalledExactlyOnceWith(...deliveryMethodOrder)
   })
 
   it("returns an empty list when nothing is active", async () => {
