@@ -1,12 +1,16 @@
 import { type JSX, useCallback } from "react"
 
-import { MDXEditor, type MDXEditorMethods, toolbarPlugin } from "@mdxeditor/editor"
+import { MDXEditor, type MDXEditorMethods, Separator, toolbarPlugin } from "@mdxeditor/editor"
 import { cn } from "cn"
 import { type RefCallBack } from "react-hook-form"
 
 import { CONTENT_EDITOR_MARKDOWN_OPTIONS, CONTENT_EDITOR_PLUGINS } from "~/src/integrations/mdxeditor/mdxeditor.plugins"
 
 import { ContentEditorToolbar } from "~/src/presentation/components/custom/pages/admin/content/editor/content-editor-toolbar"
+import {
+  InsertSellerDetail,
+  sellerDetailDirectivesPlugin,
+} from "~/src/presentation/components/custom/pages/admin/content/editor/seller-detail-directive"
 import { useContentEditorTranslation } from "~/src/presentation/components/custom/pages/admin/content/hooks/use-content-editor-translation"
 import { CONTENT_PROSE_CLASS } from "~/src/presentation/components/custom/pages/content-page/_styles/content-page.styles"
 
@@ -14,7 +18,28 @@ const EDITABLE_CLASS = cn(CONTENT_PROSE_CLASS, "min-h-96 px-4 py-5 sm:px-8 sm:py
 
 const PLUGINS = [...CONTENT_EDITOR_PLUGINS, toolbarPlugin({ toolbarContents: () => <ContentEditorToolbar /> })]
 
-export const ContentEditor = ({ fieldRef, invalid, label, markdown, onChange }: Readonly<ContentEditorProps>): JSX.Element => {
+const SELLER_DETAIL_PLUGINS = [
+  ...CONTENT_EDITOR_PLUGINS,
+  sellerDetailDirectivesPlugin,
+  toolbarPlugin({
+    toolbarContents: () => (
+      <>
+        <ContentEditorToolbar />
+        <Separator />
+        <InsertSellerDetail />
+      </>
+    ),
+  }),
+]
+
+export const ContentEditor = ({
+  fieldRef,
+  invalid,
+  label,
+  markdown,
+  onChange,
+  withSellerDetails,
+}: Readonly<ContentEditorProps>): JSX.Element => {
   const translation = useContentEditorTranslation(label)
   const registerFocusTarget = useCallback(
     (methods: MDXEditorMethods | null) => {
@@ -44,7 +69,7 @@ export const ContentEditor = ({ fieldRef, invalid, label, markdown, onChange }: 
       contentEditableClassName={EDITABLE_CLASS}
       markdown={markdown}
       onChange={reportChange}
-      plugins={PLUGINS}
+      plugins={withSellerDetails ? SELLER_DETAIL_PLUGINS : PLUGINS}
       ref={registerFocusTarget}
       toMarkdownOptions={CONTENT_EDITOR_MARKDOWN_OPTIONS}
       translation={translation}
@@ -58,4 +83,5 @@ interface ContentEditorProps {
   readonly label: string
   readonly markdown: string
   readonly onChange: (markdown: string) => void
+  readonly withSellerDetails: boolean
 }

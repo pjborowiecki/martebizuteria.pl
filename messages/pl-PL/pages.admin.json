@@ -1326,7 +1326,7 @@
         "description": "Opis w wyszukiwarce",
         "descriptionHint": "Wyświetlany przez wyszukiwarki i w podglądach linków.",
         "body": "Treść strony",
-        "bodyHint": "Shift+Enter zaczyna nową linię w obrębie akapitu, np. w adresie pocztowym."
+        "bodyHint": "Shift+Enter zaczyna nową linię w obrębie akapitu, np. w adresie pocztowym. Dane sklepu wstawione z paska narzędzi zawsze pokazują to, co zapisano w Ustawieniach › Dane sklepu."
       },
       "counter": "{count}/{max}",
       "actions": {
@@ -1362,7 +1362,24 @@
         "descriptionTooLong": "Opis może mieć najwyżej 300 znaków.",
         "bodyRequired": "Strona musi mieć treść.",
         "bodyTooLong": "Strona jest zbyt długa, aby ją zapisać.",
-        "bodyUnsupported": "Strona zawiera obraz lub adres linku, którego nie można opublikować."
+        "bodyUnsupported": "Strona zawiera obraz, adres linku lub dane sklepu, których nie można opublikować."
+      },
+      "sellerDetails": {
+        "insert": "Wstaw dane sklepu",
+        "unknown": "Nieznane dane sklepu",
+        "fields": {
+          "legalName": "Pełna nazwa firmy",
+          "street": "Ulica i numer",
+          "postalCode": "Kod pocztowy",
+          "city": "Miejscowość",
+          "country": "Kraj",
+          "nip": "NIP",
+          "regon": "REGON",
+          "email": "E-mail",
+          "emailLink": "E-mail (link)",
+          "phone": "Telefon",
+          "phoneLink": "Telefon (link)"
+        }
       },
       "mdx": {
         "toolbar": {

@@ -1,20 +1,21 @@
-import { type JSX } from "react"
+import { type JSX, useMemo } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createMarkdownRenderer } from "fumadocs-core/content/md"
 import { remarkGfm } from "fumadocs-core/mdx-plugins/remark-gfm"
 import { remarkHeading } from "fumadocs-core/mdx-plugins/remark-heading"
+import remarkDirective from "remark-directive"
 import { useLocale, useTranslations } from "use-intl/react"
 
 import { type ContentPageHandle } from "~/src/modules/content-page/content-page.constants"
 import { getContentPageQuery } from "~/src/modules/content-page/use-cases/get-content-page"
+import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { mdxComponents } from "~/src/presentation/components/custom/mdx"
 import { CONTENT_PROSE_CLASS } from "~/src/presentation/components/custom/pages/content-page/_styles/content-page.styles"
-
-const { Markdown } = createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkHeading] })
+import { remarkSellerDetails } from "~/src/presentation/components/custom/pages/content-page/remark-seller-details"
 
 const MARKDOWN_COMPONENTS = { a: mdxComponents.a }
 
@@ -23,6 +24,11 @@ export const ContentPageArticle = ({ handle }: Readonly<{ handle: ContentPageHan
   const format = useFormatter()
   const locale = useLocale()
   const { data: page } = useSuspenseQuery(getContentPageQuery(handle, locale))
+  const { data: seller } = useSuspenseQuery(getSellerDetailsQuery())
+  const { Markdown } = useMemo(
+    () => createMarkdownRenderer({ remarkPlugins: [remarkGfm, remarkHeading, remarkDirective, [remarkSellerDetails, { locale, seller }]] }),
+    [locale, seller],
+  )
 
   return (
     <main className="container mx-auto max-w-3xl px-4 py-16 md:py-24">

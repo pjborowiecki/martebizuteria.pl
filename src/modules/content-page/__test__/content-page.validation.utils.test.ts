@@ -7,7 +7,11 @@ describe("hasOnlyPublishableMarkdown", () => {
     "## Returns\n\nWrite to [us](mailto:kontakt@martebizuteria.pl) or read the [FAQ](/faq).",
     "[Form](/forms/formularz_zwrotu.pdf) and [our site](https://martebizuteria.pl/products)",
     "Call [us](tel:+48663150820).",
+    String.raw`Write to [us](mailto\:kontakt@martebizuteria.pl), as the editor saves an e-mail link.`,
     String.raw`Escaped \![not an image] and \](not a link)`,
+    "Write to :seller[emailLink] or call :seller[phoneLink], NIP :seller[nip].",
+    "Seller: :seller[legalName](PL), :seller[street]",
+    String.raw`Escaped \:seller[anything] is plain text.`,
   ])("accepts %j", (body) => {
     expect(hasOnlyPublishableMarkdown(body)).toBe(true)
   })
@@ -17,6 +21,10 @@ describe("hasOnlyPublishableMarkdown", () => {
     "[Click](javascript:alert)",
     "[Form](//evil.example/form.pdf)",
     "[Data](data:text/html;base64,AAAA)",
+    String.raw`[Form](/\/evil.example/form.pdf)`,
+    String.raw`[Script](javascript\:alert)`,
+    "Unknown store detail :seller[iban]",
+    "Write to :seller[emailLink] and [click](javascript:alert)",
   ])("rejects %j", (body) => {
     expect(hasOnlyPublishableMarkdown(body)).toBe(false)
   })

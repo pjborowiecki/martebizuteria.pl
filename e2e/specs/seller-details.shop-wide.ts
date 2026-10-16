@@ -53,4 +53,15 @@ test.describe("store details settings", { lock: "shop-wide" }, () => {
     await expect(footer).not.toContainText(PUBLISHED.street)
     await shopper.close()
   })
+
+  test("the terms of service write out the seller's details saved in Settings, with a working phone link", async ({ page }) => {
+    await new BasePage(page).open(STORE_SETTINGS)
+    await saveSellerDetails(page, CHANGED)
+
+    await new BasePage(page).open("/en-US/terms-of-service")
+    const terms = page.getByRole("article")
+
+    await expect(terms).toContainText(CHANGED.street)
+    await expect(terms.getByRole("link", { name: CHANGED.phone })).toHaveAttribute("href", "tel:+48600700800")
+  })
 })

@@ -73,6 +73,7 @@ export const ContentPageFields = ({
               label={t("fields.body")}
               markdown={field.value}
               onChange={field.onChange}
+              withSellerDetails
             />
           )}
         />

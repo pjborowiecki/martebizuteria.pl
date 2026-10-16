@@ -1326,7 +1326,7 @@
         "description": "Search description",
         "descriptionHint": "Shown by search engines and in link previews.",
         "body": "Page content",
-        "bodyHint": "Shift+Enter starts a new line within a paragraph, as in a postal address."
+        "bodyHint": "Shift+Enter starts a new line within a paragraph, as in a postal address. Store details inserted from the toolbar always show what Settings › Store details holds."
       },
       "counter": "{count}/{max}",
       "actions": {
@@ -1362,7 +1362,24 @@
         "descriptionTooLong": "Keep the description to 300 characters.",
         "bodyRequired": "The page needs some content.",
         "bodyTooLong": "The page is too long to save.",
-        "bodyUnsupported": "The page contains an image or a link address that cannot be published."
+        "bodyUnsupported": "The page contains an image, a link address or a store detail that cannot be published."
+      },
+      "sellerDetails": {
+        "insert": "Insert store detail",
+        "unknown": "Unknown store detail",
+        "fields": {
+          "legalName": "Legal name",
+          "street": "Street and number",
+          "postalCode": "Postal code",
+          "city": "City",
+          "country": "Country",
+          "nip": "NIP",
+          "regon": "REGON",
+          "email": "Email",
+          "emailLink": "Email (link)",
+          "phone": "Phone",
+          "phoneLink": "Phone (link)"
+        }
       },
       "mdx": {
         "toolbar": {

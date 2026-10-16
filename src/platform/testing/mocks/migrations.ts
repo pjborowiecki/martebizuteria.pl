@@ -30,6 +30,7 @@ export const MIGRATION = {
   PRIVACY_POLICY_WITHOUT_BOT_CHECK: "20261012100000_privacy_policy_without_bot_check",
   RETURNS_AND_COMPLAINTS_PAGE: "20261005210000_returns_and_complaints_page",
   SELLER_DETAILS: "20261016160000_seller_details",
+  SELLER_PLACEHOLDERS: "20261016161000_seller_placeholders",
   STOREFRONT_SEARCH: "20261002100000_storefront_search",
   STORE_SETTINGS: "20261005420000_store_settings",
   TERMS_OF_SERVICE_PAGE: "20261005200000_terms_of_service_page",
