@@ -21,6 +21,7 @@ import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
   getAdminOrderCustomerStats,
   getAdminOrderDetailRow,
+  getAdminOrderItemCountRows,
   getAdminOrderItemRows,
   getAdminOrderRefundTarget,
   getAdminOrderStats,
@@ -141,17 +142,15 @@ describe("getAdminOrdersPage row shape", () => {
     expect(row?.userId).toBe("u-anna")
   })
 
-  it("sums the line quantities into the item count", async () => {
-    const result = await getAdminOrdersPage(page)
+  it("sums the line quantities into the item count, and reads no count for an order with no lines", async () => {
+    const rows = await getAdminOrderItemCountRows(["o-pending", "o-shipped", "o-delivered"])
 
-    expect(result.rows.find((row) => row.id === "o-pending")?.itemCount).toBe(5)
-    expect(result.rows.find((row) => row.id === "o-shipped")?.itemCount).toBe(1)
-  })
-
-  it("reports zero items for an order with no lines", async () => {
-    const result = await getAdminOrdersPage(page)
-
-    expect(result.rows.find((row) => row.id === "o-delivered")?.itemCount).toBe(0)
+    expect(new Map(rows.map((row) => [row.orderId, row.itemCount]))).toStrictEqual(
+      new Map([
+        ["o-pending", 5],
+        ["o-shipped", 1],
+      ]),
+    )
   })
 
   it("carries the metadata a dispute flag lives in, so the list can block the cancellation of a disputed order", async () => {
@@ -295,7 +294,6 @@ describe("getAdminOrdersExport", () => {
     const rows = await getAdminOrdersExport({ tab: ADMIN_ORDER_TAB.SHIPPED, timeZone: "Europe/Warsaw" })
 
     expect(rows.map((row) => row.id)).toStrictEqual(["o-shipped"])
-    expect(rows[0]?.itemCount).toBe(1)
   })
 
   it("maps the duplicated status column correctly, unlike the batched paged query", async () => {
@@ -760,8 +758,6 @@ describe("order reads for the confirmation page and the emails", () => {
 describe("a full admin page of orders", () => {
   const ids = Array.from({ length: LIST_PAGE_SIZE_MAX }, (_, index) => `bulk-${String(index).padStart(3, "0")}`)
 
-  const newestFirstItemCounts = ids.map((id, index) => ({ id, itemCount: index + 1 })).toReversed()
-
   beforeEach(() => {
     const insertOrder = sqlite.prepare(`insert into "order" (id, email, created_at, updated_at) values (?, 'bulk@example.com', ?, ?)`)
     const insertLine = sqlite.prepare("insert into order_item (id, order_id, quantity, created_at, updated_at) values (?, ?, ?, ?, ?)")
@@ -772,17 +768,19 @@ describe("a full admin page of orders", () => {
     }
   })
 
-  it("counts the items of every order on the page", async () => {
+  it("lists every order of the page and of the export newest first", async () => {
     const result = await getAdminOrdersPage({ limit: LIST_PAGE_SIZE_MAX, offset: 0, timeZone: "Europe/Warsaw" })
+    const exported = await getAdminOrdersExport({ search: "bulk@example.com", timeZone: "Europe/Warsaw" })
 
     expect(result.total).toBe(LIST_PAGE_SIZE_MAX + 5)
-    expect(result.rows.map(({ id, itemCount }) => ({ id, itemCount }))).toStrictEqual(newestFirstItemCounts)
+    expect(result.rows.map(({ id }) => id)).toStrictEqual(ids.toReversed())
+    expect(exported.map(({ id }) => id)).toStrictEqual(ids.toReversed())
   })
 
-  it("counts the items of every exported order", async () => {
-    const rows = await getAdminOrdersExport({ search: "bulk@example.com", timeZone: "Europe/Warsaw" })
+  it("counts the items of every order on the page", async () => {
+    const rows = await getAdminOrderItemCountRows(ids)
 
-    expect(rows.map(({ id, itemCount }) => ({ id, itemCount }))).toStrictEqual(newestFirstItemCounts)
+    expect(new Map(rows.map((row) => [row.orderId, row.itemCount]))).toStrictEqual(new Map(ids.map((id, index) => [id, index + 1])))
   })
 })
 

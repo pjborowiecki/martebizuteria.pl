@@ -72,7 +72,7 @@ return (
           }
         >
           <OrdersRefreshAction />
-          <OrdersExportAction />
+          <Export />
         </Toolbar>
         <Body />
         <Pagination />
@@ -82,7 +82,7 @@ return (
 )
 ```
 
-`const { Body, Pagination, Provider, Toolbar } = ordersDataGrid` znajduje się na końcu pliku. `DataGridShell` to `Card` z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i paginacja zostają na miejscu, a przewija się tylko treść.
+`const { Body, Export, Pagination, Provider, Toolbar } = ordersDataGrid` znajduje się na końcu pliku. `DataGridShell` to `Card` z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i paginacja zostają na miejscu, a przewija się tylko treść.
 
 `Toolbar` zawsze renderuje pole wyszukiwania, menu widoczności kolumn i przycisk resetowania układu. Slot `filters` to drugi wiersz, `children` sąsiadują z wbudowanymi kontrolkami, a slot `actions` jest wyrównany do prawej. `Export` to menu eksportu; ekran umieszcza je wśród `children` paska narzędzi, za akcją odświeżania, a wymaga ono `exportSource` w wartości kontekstu (zobacz [Eksport](#eksport)).
 
@@ -208,10 +208,11 @@ Hook w trybie serwerowym jest właścicielem wejścia zapytania i przekazuje ste
 - `isLoading: isFetching || isPending`, dzięki czemu `Body` rysuje wiersze szkieletu, a nie pustą tabelę.
 - `pageCount: Math.ceil(data.total / pagination.pageSize)` oraz `rowCount: data.total`.
 - Efekty, które przy każdej zmianie tekstu wyszukiwania albo filtrów kolumn ustawiają `pageIndex` na 0.
+- Te same filtry i opóźnione wyszukiwanie, bez strony, zapamiętane jako wejście, które `useOrdersExportSource` wysyła do `exportAdminOrders`.
 
 Sortowanie w trybie serwerowym jest opcjonalne: `manualSorting` ustawia tylko tabela produktów. Tabele zamówień, klientów i dziennika zdarzeń ustawiają na swoich kolumnach `enableSorting: false`, więc rozstrzygające jest sortowanie serwera.
 
-Wartość kontekstu można rozszerzyć dla konkretnego ekranu. `OrdersDataGridValue` rozszerza `DataGridContextValue` o `activeStatFilter`, `applyOrderStatFilter` i `exportListInput`, a `useOrdersDataGridContext()` zawęża bazowy kontekst z powrotem do tego typu, używając strażnika typu, który poza właściwym `Provider` rzuca czytelny błąd.
+Wartość kontekstu można rozszerzyć dla konkretnego ekranu. `OrdersDataGridValue` rozszerza `DataGridContextValue` o `activeStatFilter` i `applyOrderStatFilter`, a `useOrdersDataGridContext()` zawęża bazowy kontekst z powrotem do tego typu, używając strażnika typu, który poza właściwym `Provider` rzuca czytelny błąd.
 
 ## Paginacja
 
@@ -227,7 +228,7 @@ Wszystkie teksty leżą w przestrzeni nazw `components.datagrid`: `view.label`, 
 
 `DataGridExport` (`datagrid/components/data-grid-export.tsx`) to przycisk z menu z formatami CSV, JSON, XML i TXT. Wybór formatu uruchamia `useDataGridExport`: kolumny do eksportu bierze z `getDataGridExportColumns(table)` — widoczne kolumny w kolejności i z przypięciem, jakie pokazuje tabela, te, których meta ma `exportValue` — a wiersze z `exportSource.loadRows()` albo, w tabeli bez tej funkcji, wiersze po filtrowaniu i sortowaniu z `table.getPrePaginatedRowModel()`. Do filtrów źródła dodaje wyszukiwanie — `search` źródła, gdy samo wczytuje wiersze, a w przeciwnym razie pole wyszukiwania — buduje dokument, serializuje go przez `serializeTableExport` z `src/modules/_core/utils/table-export.ts` i zapisuje przez `downloadTextFile`. Przycisk jest wyłączony, dopóki wiersze się wczytują, a nieudane wczytanie pokazuje komunikat zamiast pliku.
 
-Tabela dziennika zdarzeń eksportuje przez serwer, więc plik zawiera wszystkie wiersze bieżącego wyboru, a tabela wczytywana w całości eksportuje to, co trzyma. [Dodawanie tabeli danych](/docs/guides/add-a-data-table) pokazuje, jak włączyć eksport kolumny i tabeli.
+Tabele zamówień, klientów, subskrybentów newslettera i dziennika zdarzeń, a także tabela produktów, gdy pyta serwer, eksportują przez serwerową funkcję eksportu swojej listy, więc plik zawiera wszystkie wiersze bieżącego wyboru; tabele kategorii, kolekcji i atrybutów, wczytywane w całości, eksportują to, co trzymają. Każdy hook `use-<obszar>-export-source.ts` buduje `exportSource` swojej tabeli. [Dodawanie tabeli danych](/docs/guides/add-a-data-table) pokazuje, jak włączyć eksport kolumny i tabeli.
 
 ## Układ, zmiana rozmiaru i kolejności
 
@@ -254,7 +255,8 @@ bun run test:component
 3. Napisz definicje kolumn z `createColumnHelper<DataGridFeatures, Row>()` i hook `use<Obszar>Columns()` dla tłumaczeń.
 4. Napisz `hooks/use-<obszar>-data-grid.ts` zwracający `DataGridContextValue`.
 5. Złóż `components/<obszar>-table.tsx` z `Provider`, `DataGridShell`, `Toolbar`, `Body` i `Pagination`.
-6. Dodaj potrzebne klucze `components.datagrid` w obu językach oraz testy obok każdego pliku.
+6. Daj każdej kolumnie danych `exportValue`, zwróć z hooka `exportSource` i wstaw `<Export />` na pasek narzędzi, żeby listę dało się pobrać; [Dodawanie tabeli danych](/docs/guides/add-a-data-table) pokazuje, jak to zrobić.
+7. Dodaj potrzebne klucze `components.datagrid` w obu językach oraz testy obok każdego pliku.
 
 ## Powiązane strony
 

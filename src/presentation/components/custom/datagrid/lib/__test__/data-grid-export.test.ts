@@ -5,6 +5,7 @@ import { TEST_LOCALE, TEST_MESSAGES } from "~/src/platform/testing/lib/messages"
 
 import {
   buildDataGridExportDocument,
+  describeAmountFilter,
   describeDateFilter,
   exportFilter,
 } from "~/src/presentation/components/custom/datagrid/lib/data-grid-export"
@@ -51,6 +52,35 @@ describe("describeDateFilter", () => {
   it("describes nothing for a range missing an end", () => {
     expect(describeDateFilter({ operator: "between", startDate: "2026-10-01" }, formatDate, t)).toBeUndefined()
     expect(describeDateFilter({ endDate: "2026-10-31", operator: "between" }, formatDate, t)).toBeUndefined()
+  })
+})
+
+const formatAmount = (amount: number): string => `${String(amount / 100)} zł`
+
+describe("describeAmountFilter", () => {
+  it.each([
+    ["eq", "exactly 120 zł"],
+    ["gt", "more than 120 zł"],
+    ["gte", "at least 120 zł"],
+    ["lt", "less than 120 zł"],
+    ["lte", "at most 120 zł"],
+  ] as const)("describes the %s condition in words", (operator, description) => {
+    expect(describeAmountFilter({ amountMinorUnits: 12_000, operator }, formatAmount, t)).toBe(description)
+  })
+
+  it("describes a range by both its ends", () => {
+    expect(describeAmountFilter({ endAmountMinorUnits: 50_000, operator: "between", startAmountMinorUnits: 10_000 }, formatAmount, t)).toBe(
+      "from 100 zł to 500 zł",
+    )
+  })
+
+  it("describes nothing for a condition without its amount", () => {
+    expect(describeAmountFilter({ operator: "gte" }, formatAmount, t)).toBeUndefined()
+  })
+
+  it("describes nothing for a range missing an end", () => {
+    expect(describeAmountFilter({ operator: "between", startAmountMinorUnits: 10_000 }, formatAmount, t)).toBeUndefined()
+    expect(describeAmountFilter({ endAmountMinorUnits: 50_000, operator: "between" }, formatAmount, t)).toBeUndefined()
   })
 })
 

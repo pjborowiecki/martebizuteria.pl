@@ -55,6 +55,9 @@ describe("buildOrderColumns layout", () => {
       ADMIN_ORDER_TABLE_COLUMN_ID.fulfillment,
       ADMIN_ORDER_TABLE_COLUMN_ID.status,
       ADMIN_ORDER_TABLE_COLUMN_ID.payment,
+      ADMIN_ORDER_TABLE_COLUMN_ID.companyName,
+      ADMIN_ORDER_TABLE_COLUMN_ID.nip,
+      ADMIN_ORDER_TABLE_COLUMN_ID.destination,
       ADMIN_ORDER_TABLE_COLUMN_ID.actions,
     ])
   })

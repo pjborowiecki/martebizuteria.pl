@@ -48,7 +48,6 @@
     "totalSpent": "Filter by total spent"
   },
   "actions": {
-    "exportCsv": "Download table as CSV",
     "refresh": "Reload table data",
     "sendEmail": "Send Email"
   },
@@ -57,6 +56,7 @@
     "banned": "Banned",
     "customer": "Customer",
     "createdAt": "Account created",
+    "email": "Email",
     "emailVerified": "Email verified",
     "id": "ID",
     "lastOrder": "Last Order",

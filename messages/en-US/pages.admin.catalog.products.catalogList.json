@@ -3,7 +3,6 @@
   "description": "Manage your store's individual products and their variants.",
   "actions": {
     "addProduct": "Add product",
-    "exportCsv": "Download table as CSV",
     "refresh": "Reload table data"
   },
   "columns": {
@@ -38,6 +37,7 @@
     "createdAt": "Filter by created date",
     "minPrice": "Filter by price",
     "stock": "Filter by stock",
+    "inventoryLevel": "Stock level",
     "variantKind": "Filter by variants",
     "allVariantKinds": "All variant types",
     "date": {
@@ -86,6 +86,7 @@
   "statusActive": "Active",
   "statusDraft": "Draft",
   "statusArchived": "Archived",
+  "stockOk": "In stock",
   "stockOut": "Out of stock",
   "stockLow": "Low stock",
   "searchPlaceholder": "Search products, SKU, or ID...",
@@ -115,10 +116,18 @@
     "reorderErrorDescription": "The new product order could not be saved. Please try again."
   },
   "stats": {
-    "total": { "label": "Total products" },
-    "active": { "label": "Active products" },
-    "draft": { "label": "Drafts" },
-    "lowStock": { "label": "Low stock" },
+    "total": {
+      "label": "Total products"
+    },
+    "active": {
+      "label": "Active products"
+    },
+    "draft": {
+      "label": "Drafts"
+    },
+    "lowStock": {
+      "label": "Low stock"
+    },
     "shareCaption": "{percent}% of total"
   }
 }

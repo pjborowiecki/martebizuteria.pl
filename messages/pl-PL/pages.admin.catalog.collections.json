@@ -3,7 +3,6 @@
   "description": "Zgrupuj swoje produkty w wyselekcjonowane kolekcje.",
   "actions": {
     "addCollection": "Dodaj kolekcję",
-    "exportCsv": "Pobierz dane jako CSV",
     "refresh": "Odśwież dane tabeli"
   },
   "columns": {
@@ -15,7 +14,8 @@
     "image": "Zdjęcie",
     "products": "Produkty",
     "slug": "Slug",
-    "status": "Status"
+    "status": "Status",
+    "collectionIn": "Kolekcja ({language})"
   },
   "filter": {
     "status": "Filtruj wg statusu",

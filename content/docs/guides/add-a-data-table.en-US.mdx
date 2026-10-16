@@ -151,7 +151,7 @@ The drag handlers themselves come from a `use-<entity>-ordering.ts` hook that ke
 Destructure the grid's components once, at the bottom of the file, and lay them out inside `DataGridShell`:
 
 ```tsx
-const { Body, Pagination, Provider, Toolbar } = categoriesDataGrid
+const { Body, Export, Pagination, Provider, Toolbar } = categoriesDataGrid
 ```
 
 ```tsx
@@ -161,7 +161,7 @@ const { Body, Pagination, Provider, Toolbar } = categoriesDataGrid
     <DataGridShell>
       <Toolbar actions={toolbarActions}>
         <CategoriesRefreshAction />
-        <CategoriesExportAction />
+        <Export />
         <CategoriesStatusFilter />
       </Toolbar>
       <Body />

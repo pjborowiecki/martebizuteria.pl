@@ -65,7 +65,7 @@ Handle są walidowane tym samym wzorcem w każdym module, na przykład `PRODUCT_
 | `get-admin-products.ts`      | `product: ["read"]` | pełną listę, z której startuje siatka                 |
 | `get-admin-product.ts`       | `product: ["read"]` | jeden produkt ze wszystkim, czego potrzebuje edytor   |
 | `get-product-stats.ts`       | `product: ["read"]` | karty statystyk, w tym licznik niskiego stanu         |
-| `export-admin-products.ts`   | `product: ["read"]` | wszystkie pasujące wiersze na potrzeby CSV            |
+| `export-admin-products.ts`   | `product: ["read"]` | wszystkie pasujące wiersze na potrzeby eksportu       |
 | `validate-product-skus.ts`   | `product: ["read"]` | `{ takenSkus }` z `findTakenSkus(skus, productId)`    |
 
 Filtry listy składają `product.admin-list-filters.ts`, `product.admin-list-variant-filters.server.ts`, `product.admin-list-search.server.ts` i `product.admin-list-sort.ts`, a wykonuje `product.admin-list.server.ts`. Tak jak w witrynie, złączenie ze statystykami wariantów jest warunkowe: `adminProductsListNeedsVariantStatsJoin` jest prawdziwe tylko wtedy, gdy w grze jest poziom stanu, rodzaj wariantów albo sortowanie zależne od ceny.
@@ -207,6 +207,14 @@ if ((await env.IMAGES.head(key)) === null) {
 `catalog/table/`, `catalog/toolbar/`, `catalog/form/`, `catalog/dialog/` i `catalog/lib/` przechowują elementy współdzielone przez cztery zakładki, w tym `catalog-admin-datagrid.constants.ts` — stąd pochodzi `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX`, importowana nawet przez `order.constants.ts` i `user.constants.ts`, żeby kolumna identyfikatora w każdej siatce miała tę samą szerokość. Sama generyczna siatka danych to `src/presentation/components/custom/datagrid/`, tłumaczona przez przestrzeń nazw `components.datagrid`.
 
 Edycję per język w każdej zakładce wspiera `pages.admin.catalog.localePicker` oraz `product-form-locale.utils.ts`.
+
+### Eksport zakładki
+
+Każda zakładka ma na pasku narzędzi, obok odświeżania, wspólne menu **Eksportuj**, które pobiera tabelę jako CSV, JSON, XML albo zwykły tekst (zobacz [Tabela danych](/docs/ui/data-table#eksport)). Plik zawiera kolumny, które pokazuje tabela, w ich kolejności i pod ich nagłówkami, oraz wszystkie wiersze wybrane filtrami, wyszukiwaniem, kartą statystyk i sortowaniem, ze wszystkich stron. Każda komórka to tekst widoczny w tabeli: tytuł w języku strony z handle za nim, na przykład `Srebrny pierścionek (/srebrny-pierscionek)`, statusy i typy z nazwy, ceny w złotych, a daty w formacie administratora. Jedynym wyjątkiem jest kolumna Kategorie produktów: komórka pokazuje kategorię główną, a plik wymienia wszystkie kategorie produktu.
+
+Kategorie, kolekcje i atrybuty są wczytywane w całości, więc ich eksport bierze wiersze, które tabela trzyma po filtrowaniu i sortowaniu; `use-categories-export-source.ts`, `use-collections-export-source.ts` i `use-attributes-export-source.ts` nazywają listę i opisują filtr statusu, typu albo karty. Produkty eksportują przez `exportAdminProducts`, z filtrami, wyszukiwaniem i sortowaniem listy serwerowej, gdy karta statystyk, filtr kolumny albo wyszukiwanie przenosi listę na serwer, a w przeciwnym razie z tabeli, w kolejności jej sortowania; samo sortowanie zostawia cały katalog w tabeli (`hasProductsServerListQuery` go nie uwzględnia). `use-products-export-source.ts` podaje filtr kategorii i kolekcji z tytułu, czytając listy kategorii i kolekcji przez ich zapytania, więc tytuły są dostępne, zanim wczytają je menu filtrów, a poziom stanu wybrany kartą statystyk opisuje jako „Poziom stanu magazynowego”, a ilość ustawioną filtrem kolumny Stan jako „Stan (szt.)”. Do dziennika zdarzeń trafia tylko eksport produktów, jako `product.list_exported`, bo tylko on przechodzi przez serwer.
+
+Tabele kategorii, kolekcji i atrybutów mają ukrytą kolumnę tytułu dla każdego języka sklepu, na przykład **Kategoria (PL)** i **Kategoria (EN)**, budowaną przez `buildCatalogLocalizedTitleColumns` w `catalog/lib/catalog-localized-title-columns.tsx`; po ich pokazaniu tytuły we wszystkich językach stoją obok siebie w tabeli i w pliku.
 
 ## Powiązane strony
 

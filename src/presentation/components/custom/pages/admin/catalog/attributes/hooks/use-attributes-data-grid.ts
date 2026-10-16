@@ -23,9 +23,11 @@ import { type DataGridContextValue, type RowReorderApi } from "~/src/presentatio
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useAttributeColumns } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-columns"
 import { useAttributeOrdering } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/hooks/use-attribute-ordering"
+import { useAttributesExportSource } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/hooks/use-attributes-export-source"
 import { useReorderAttributes } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/hooks/use-reorder-attributes"
 import { attributesDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/utils/attributes-data-grid"
 import { getAttributeAdminSearchParts } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-table-search"
+import { CATALOG_LOCALIZED_TITLE_COLUMN_VISIBILITY } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-localized-title-columns"
 
 const isAttributesNaturalOrder = (
   table: AttributesDataGridValue["table"],
@@ -70,7 +72,7 @@ export const useAttributesDataGrid = ({ onRowClick }: UseAttributesDataGridOptio
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
     columns,
     data: ordering.items,
-    defaultColumnVisibility: PRODUCT_ATTRIBUTE_TABLE_DEFAULT_COLUMN_VISIBILITY,
+    defaultColumnVisibility: ATTRIBUTES_DEFAULT_COLUMN_VISIBILITY,
     defaultPageSize: ADMIN_PRODUCT_ATTRIBUTES_PAGE_SIZE,
     getRowId: (row) => row.id,
     globalFilterFn,
@@ -100,11 +102,14 @@ export const useAttributesDataGrid = ({ onRowClick }: UseAttributesDataGridOptio
     [naturalOrder, ordering],
   )
 
+  const exportSource = useAttributesExportSource(table, statFilter)
+
   return useMemo(
     () => ({
       activeStatFilter: statFilter,
       applyAttributeStatFilter,
       columnReorder,
+      exportSource,
       hasPreferenceOverrides,
       isLoading: showSkeletonRows,
       onRowClick,
@@ -117,6 +122,7 @@ export const useAttributesDataGrid = ({ onRowClick }: UseAttributesDataGridOptio
     [
       applyAttributeStatFilter,
       columnReorder,
+      exportSource,
       hasPreferenceOverrides,
       onRowClick,
       resetPreferences,
@@ -148,4 +154,9 @@ export interface AttributesDataGridValue extends DataGridContextValue<ProductAtt
 
 interface UseAttributesDataGridOptions {
   readonly onRowClick?: (attribute: ProductAttribute["adminListItem"]) => void
+}
+
+const ATTRIBUTES_DEFAULT_COLUMN_VISIBILITY = {
+  ...PRODUCT_ATTRIBUTE_TABLE_DEFAULT_COLUMN_VISIBILITY,
+  ...CATALOG_LOCALIZED_TITLE_COLUMN_VISIBILITY,
 }

@@ -3,7 +3,6 @@
   "description": "Reusable specification fields (materials, dimensions, care, etc.) assigned per product.",
   "actions": {
     "addProperty": "Add attribute",
-    "exportCsv": "Download table as CSV",
     "refresh": "Reload table data"
   },
   "columns": {
@@ -15,7 +14,8 @@
     "products": "Products",
     "id": "ID",
     "createdAt": "Created at",
-    "editedAt": "Last edited"
+    "editedAt": "Last edited",
+    "titleIn": "Attribute ({language})"
   },
   "types": {
     "text": "Text",

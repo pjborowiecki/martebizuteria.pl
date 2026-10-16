@@ -21,9 +21,13 @@ import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/d
 import { Image } from "~/src/presentation/components/custom/image"
 import { CollectionReorderCell } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collection-reorder-cell"
 import { CollectionsRowActions } from "~/src/presentation/components/custom/pages/admin/catalog/collections/components/collections-row-actions"
+import { buildCatalogLocalizedTitleColumns } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-localized-title-columns"
 import { CATALOG_RECORD_ID_COLUMN_META } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-record-id-column"
 import { CatalogStatusBadge } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-status-badge"
-import { CatalogTitleHandleCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
+import {
+  CatalogTitleHandleCell,
+  formatCatalogTitleHandle,
+} from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-title-handle-cell"
 import { CatalogTruncatedTextCell } from "~/src/presentation/components/custom/pages/admin/catalog/table/components/catalog-truncated-text-cell"
 
 const CollectionImageCell = ({
@@ -38,155 +42,176 @@ const CollectionImageCell = ({
   </div>
 )
 
+const buildCollectionTimestampColumns = ({ format, t }: CollectionColumnBuildContext) =>
+  columnHelper.columns([
+    columnHelper.accessor("createdAt", {
+      cell: ({ getValue }) => (
+        <span className="text-muted-foreground">
+          {format.dateTime(new Date(getValue()), {
+            dateStyle: "medium",
+          })}
+        </span>
+      ),
+      header: t("columns.createdAt"),
+      id: COLLECTION_TABLE_COLUMN_ID.createdAt,
+      maxSize: 320,
+      meta: {
+        exportValue: (row) => format.dateTime(new Date(row.createdAt), { dateStyle: "medium" }),
+        skeletonVariant: "date",
+      },
+      minSize: COLLECTION_TABLE_COLUMN_SIZE.createdAt,
+      size: COLLECTION_TABLE_COLUMN_SIZE.createdAt,
+    }),
+    columnHelper.accessor("updatedAt", {
+      cell: ({ getValue }) => (
+        <span className="text-muted-foreground">
+          {format.dateTime(new Date(getValue()), {
+            dateStyle: "medium",
+          })}
+        </span>
+      ),
+      header: t("columns.editedAt"),
+      id: COLLECTION_TABLE_COLUMN_ID.editedAt,
+      maxSize: 320,
+      meta: {
+        exportValue: (row) => format.dateTime(new Date(row.updatedAt), { dateStyle: "medium" }),
+        skeletonVariant: "date",
+      },
+      minSize: COLLECTION_TABLE_COLUMN_SIZE.editedAt,
+      size: COLLECTION_TABLE_COLUMN_SIZE.editedAt,
+    }),
+  ])
+
+const buildCollectionDataGridColumns = (context: CollectionColumnBuildContext) => {
+  const { locale, t, tAdmin } = context
+
+  return columnHelper.columns([
+    selectionColumn(columnHelper, {
+      all: tAdmin(COLLECTION_TABLE_A11Y_KEYS.selectAll),
+      row: tAdmin(COLLECTION_TABLE_A11Y_KEYS.selectRow),
+    }),
+    columnHelper.display({
+      cell: ({ row }) => <CollectionReorderCell id={row.original.id} />,
+      enableHiding: false,
+      enableSorting: false,
+      id: COLLECTION_TABLE_COLUMN_ID.drag,
+      meta: {
+        cellClassName: "px-1 text-center",
+        headClassName: "px-1",
+        preventRowClick: true,
+        skeletonVariant: "icon",
+      },
+      ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.drag),
+    }),
+    columnHelper.display({
+      cell: ({ row }) => <CollectionImageCell title={resolveCollectionTitle(row.original.titles, locale)} image={row.original.image} />,
+      enableSorting: false,
+      header: t("columns.image"),
+      id: COLLECTION_TABLE_COLUMN_ID.image,
+      meta: {
+        skeletonVariant: "thumbnail",
+      },
+      ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.image),
+    }),
+    columnHelper.accessor((row) => resolveCollectionTitle(row.titles, locale), {
+      cell: ({ row }) => (
+        <CatalogTitleHandleCell handle={row.original.handle} title={resolveCollectionTitle(row.original.titles, locale)} />
+      ),
+      header: t("columns.collection"),
+      id: COLLECTION_TABLE_COLUMN_ID.title,
+      meta: {
+        exportValue: (row) => formatCatalogTitleHandle(resolveCollectionTitle(row.titles, locale), row.handle),
+        skeletonVariant: "title",
+      },
+      size: COLLECTION_TABLE_COLUMN_SIZE.title,
+    }),
+    ...buildCatalogLocalizedTitleColumns(columnHelper, (language) => t("columns.collectionIn", { language })),
+    columnHelper.accessor((row) => row.id, {
+      cell: ({ row }) => <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{row.original.id}</span>,
+      header: t("columns.id"),
+      id: COLLECTION_TABLE_COLUMN_ID.recordId,
+      meta: { ...CATALOG_RECORD_ID_COLUMN_META, exportValue: (row) => row.id },
+      ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.recordId),
+    }),
+    columnHelper.accessor("status", {
+      cell: ({ getValue }) => {
+        const status = getValue()
+        const isActive = status === COLLECTION_STATUS.ACTIVE
+
+        return (
+          <CatalogStatusBadge
+            isActive={isActive}
+            label={t(isActive ? COLLECTION_STATUS_LABEL_KEYS.active : COLLECTION_STATUS_LABEL_KEYS.draft)}
+          />
+        )
+      },
+      filterFn: "equalsString",
+      header: t("columns.status"),
+      id: COLLECTION_TABLE_COLUMN_ID.status,
+      meta: {
+        exportValue: (row) => t(COLLECTION_STATUS_LABEL_KEYS[row.status]),
+        skeletonVariant: "badge",
+      },
+      minSize: COLLECTION_TABLE_COLUMN_SIZE.status,
+      size: COLLECTION_TABLE_COLUMN_SIZE.status,
+    }),
+    columnHelper.accessor("productCount", {
+      cell: ({ getValue }) => <span className="font-mono text-sm">{getValue()}</span>,
+      header: t("columns.products"),
+      id: COLLECTION_TABLE_COLUMN_ID.productCount,
+      meta: {
+        cellClassName: "text-right",
+        exportValue: (row) => String(row.productCount),
+        headClassName: "text-right",
+        skeletonVariant: "number",
+      },
+      size: COLLECTION_TABLE_COLUMN_SIZE.productCount,
+    }),
+    columnHelper.accessor((row) => resolveCollectionDescription(row.descriptions, locale), {
+      cell: ({ row }) => <CatalogTruncatedTextCell text={resolveCollectionDescription(row.original.descriptions, locale)} />,
+      header: t("columns.description"),
+      id: COLLECTION_TABLE_COLUMN_ID.description,
+      meta: {
+        exportValue: (row) => resolveCollectionDescription(row.descriptions, locale),
+        fillsRemainingWidth: true,
+        skeletonVariant: "text",
+      },
+      minSize: COLLECTION_TABLE_COLUMN_SIZE.description,
+      size: COLLECTION_TABLE_COLUMN_SIZE.description,
+    }),
+    ...buildCollectionTimestampColumns(context),
+    columnHelper.display({
+      cell: ({ row }) => <CollectionsRowActions collection={row.original} />,
+      enableHiding: false,
+      enableSorting: false,
+      id: COLLECTION_TABLE_COLUMN_ID.actions,
+      meta: {
+        cellClassName: "pr-4 text-right",
+        headClassName: "pr-4",
+        preventRowClick: true,
+        skeletonVariant: "iconEnd",
+      },
+      ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.actions),
+    }),
+  ])
+}
+
 export const useCollectionColumns = () => {
   const t = useTranslations("pages.admin.catalog.collections")
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
   const locale = useLocale()
 
-  return useMemo(
-    () =>
-      columnHelper.columns([
-        selectionColumn(columnHelper, {
-          all: tAdmin(COLLECTION_TABLE_A11Y_KEYS.selectAll),
-          row: tAdmin(COLLECTION_TABLE_A11Y_KEYS.selectRow),
-        }),
-        columnHelper.display({
-          cell: ({ row }) => <CollectionReorderCell id={row.original.id} />,
-          enableHiding: false,
-          enableSorting: false,
-          id: COLLECTION_TABLE_COLUMN_ID.drag,
-          meta: {
-            cellClassName: "px-1 text-center",
-            headClassName: "px-1",
-            preventRowClick: true,
-            skeletonVariant: "icon",
-          },
-          ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.drag),
-        }),
-        columnHelper.display({
-          cell: ({ row }) => <CollectionImageCell title={resolveCollectionTitle(row.original.titles, locale)} image={row.original.image} />,
-          enableSorting: false,
-          header: t("columns.image"),
-          id: COLLECTION_TABLE_COLUMN_ID.image,
-          meta: {
-            skeletonVariant: "thumbnail",
-          },
-          ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.image),
-        }),
-        columnHelper.accessor((row) => resolveCollectionTitle(row.titles, locale), {
-          cell: ({ row }) => (
-            <CatalogTitleHandleCell handle={row.original.handle} title={resolveCollectionTitle(row.original.titles, locale)} />
-          ),
-          header: t("columns.collection"),
-          id: COLLECTION_TABLE_COLUMN_ID.title,
-          meta: {
-            skeletonVariant: "title",
-          },
-          size: COLLECTION_TABLE_COLUMN_SIZE.title,
-        }),
-        columnHelper.accessor((row) => row.id, {
-          cell: ({ row }) => <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{row.original.id}</span>,
-          header: t("columns.id"),
-          id: COLLECTION_TABLE_COLUMN_ID.recordId,
-          meta: CATALOG_RECORD_ID_COLUMN_META,
-          ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.recordId),
-        }),
-        columnHelper.accessor("status", {
-          cell: ({ getValue }) => {
-            const status = getValue()
-            const isActive = status === COLLECTION_STATUS.ACTIVE
-
-            return (
-              <CatalogStatusBadge
-                isActive={isActive}
-                label={t(isActive ? COLLECTION_STATUS_LABEL_KEYS.active : COLLECTION_STATUS_LABEL_KEYS.draft)}
-              />
-            )
-          },
-          filterFn: "equalsString",
-          header: t("columns.status"),
-          id: COLLECTION_TABLE_COLUMN_ID.status,
-          meta: {
-            skeletonVariant: "badge",
-          },
-          minSize: COLLECTION_TABLE_COLUMN_SIZE.status,
-          size: COLLECTION_TABLE_COLUMN_SIZE.status,
-        }),
-        columnHelper.accessor("productCount", {
-          cell: ({ getValue }) => <span className="font-mono text-sm">{getValue()}</span>,
-          header: t("columns.products"),
-          id: COLLECTION_TABLE_COLUMN_ID.productCount,
-          meta: {
-            cellClassName: "text-right",
-            headClassName: "text-right",
-            skeletonVariant: "number",
-          },
-          size: COLLECTION_TABLE_COLUMN_SIZE.productCount,
-        }),
-        columnHelper.accessor((row) => resolveCollectionDescription(row.descriptions, locale), {
-          cell: ({ row }) => <CatalogTruncatedTextCell text={resolveCollectionDescription(row.original.descriptions, locale)} />,
-          header: t("columns.description"),
-          id: COLLECTION_TABLE_COLUMN_ID.description,
-          meta: {
-            fillsRemainingWidth: true,
-            skeletonVariant: "text",
-          },
-          minSize: COLLECTION_TABLE_COLUMN_SIZE.description,
-          size: COLLECTION_TABLE_COLUMN_SIZE.description,
-        }),
-        columnHelper.accessor("createdAt", {
-          cell: ({ getValue }) => (
-            <span className="text-muted-foreground">
-              {format.dateTime(new Date(getValue()), {
-                dateStyle: "medium",
-              })}
-            </span>
-          ),
-          header: t("columns.createdAt"),
-          id: COLLECTION_TABLE_COLUMN_ID.createdAt,
-          maxSize: 320,
-          meta: {
-            skeletonVariant: "date",
-          },
-          minSize: COLLECTION_TABLE_COLUMN_SIZE.createdAt,
-          size: COLLECTION_TABLE_COLUMN_SIZE.createdAt,
-        }),
-        columnHelper.accessor("updatedAt", {
-          cell: ({ getValue }) => (
-            <span className="text-muted-foreground">
-              {format.dateTime(new Date(getValue()), {
-                dateStyle: "medium",
-              })}
-            </span>
-          ),
-          header: t("columns.editedAt"),
-          id: COLLECTION_TABLE_COLUMN_ID.editedAt,
-          maxSize: 320,
-          meta: {
-            skeletonVariant: "date",
-          },
-          minSize: COLLECTION_TABLE_COLUMN_SIZE.editedAt,
-          size: COLLECTION_TABLE_COLUMN_SIZE.editedAt,
-        }),
-        columnHelper.display({
-          cell: ({ row }) => <CollectionsRowActions collection={row.original} />,
-          enableHiding: false,
-          enableSorting: false,
-          id: COLLECTION_TABLE_COLUMN_ID.actions,
-          meta: {
-            cellClassName: "pr-4 text-right",
-            headClassName: "pr-4",
-            preventRowClick: true,
-            skeletonVariant: "iconEnd",
-          },
-          ...fixedDataGridColumnWidth(COLLECTION_TABLE_COLUMN_SIZE.actions),
-        }),
-      ]),
-    [format, locale, t, tAdmin],
-  )
+  return useMemo(() => buildCollectionDataGridColumns({ format, locale, t, tAdmin }), [format, locale, t, tAdmin])
 }
 
 const THUMBNAIL_SIZE = 36
 
 const columnHelper = createColumnHelper<DataGridFeatures, ProductCollection["adminListItem"]>()
+
+interface CollectionColumnBuildContext {
+  readonly format: ReturnType<typeof useFormatter>
+  readonly locale: string
+  readonly t: ReturnType<typeof useTranslations<"pages.admin.catalog.collections">>
+  readonly tAdmin: ReturnType<typeof useTranslations<"pages.admin">>
+}

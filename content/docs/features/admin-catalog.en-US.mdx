@@ -65,7 +65,7 @@ Handles are validated against the same pattern in each module, for example `PROD
 | `get-admin-products.ts`      | `product: ["read"]` | The unpaginated list the grid boots from              |
 | `get-admin-product.ts`       | `product: ["read"]` | One product with everything the editor needs          |
 | `get-product-stats.ts`       | `product: ["read"]` | The stat cards, including the low-stock count         |
-| `export-admin-products.ts`   | `product: ["read"]` | Every matching row, for the CSV                       |
+| `export-admin-products.ts`   | `product: ["read"]` | Every matching row, for the export                    |
 | `validate-product-skus.ts`   | `product: ["read"]` | `{ takenSkus }` from `findTakenSkus(skus, productId)` |
 
 The list filters are assembled by `product.admin-list-filters.ts`, `product.admin-list-variant-filters.server.ts`, `product.admin-list-search.server.ts` and `product.admin-list-sort.ts`, and executed by `product.admin-list.server.ts`. As on the storefront, the variant-stats join is conditional: `adminProductsListNeedsVariantStatsJoin` is true only when an inventory level, a variant kind or a price-dependent sort is in play.
@@ -207,6 +207,14 @@ if ((await env.IMAGES.head(key)) === null) {
 `catalog/table/`, `catalog/toolbar/`, `catalog/form/`, `catalog/dialog/` and `catalog/lib/` hold the pieces the four tabs share, including `catalog-admin-datagrid.constants.ts` — which is where `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX` comes from, imported even by `order.constants.ts` and `user.constants.ts` so every grid's id column lines up. The generic data grid itself is `src/presentation/components/custom/datagrid/`, translated through the `components.datagrid` namespace.
 
 Each tab's per-locale editing is helped by `pages.admin.catalog.localePicker` and `product-form-locale.utils.ts`.
+
+### Exporting a tab
+
+Every tab has the shared **Export** menu in its toolbar, next to the refresh button, which downloads the table as CSV, JSON, XML or plain text (see [Data grid](/docs/ui/data-table#export)). A file holds the columns the table shows, in their order and under their headers, and every row the filters, the search, the stat card and the sort select, across all pages. Each cell is the text the table shows: a title in the page language with its handle after it, such as `Silver ring (/silver-ring)`, statuses and types by name, prices in złoty and dates in the admin's format locale. The one exception is the products' Categories column: its cell shows the main category, and the file lists every category of the product.
+
+Categories, collections and attributes are loaded whole, so their export takes the rows the grid holds after filtering and sorting; `use-categories-export-source.ts`, `use-collections-export-source.ts` and `use-attributes-export-source.ts` name the list and describe the status, type or card filter. Products export through `exportAdminProducts`, with the filters, the search and the sort of the server list, while a stat card, a column filter or a search moves the list to the server, and from the grid otherwise, in the order its sort shows; a sort alone keeps the whole catalogue in the grid (`hasProductsServerListQuery` ignores it). `use-products-export-source.ts` names the category and the collection filter by their titles, reading the category and collection lists through their queries so the titles are there even before the filter menus load them, and words the stock level a stat card selects under "Stock level" and the amount the Stock column filter sets under "Stock". Only the products export is recorded in the audit log, as `product.list_exported`, because only it reaches the server.
+
+The category, collection and attribute grids have a hidden title column for each shop language, such as **Category (PL)** and **Category (EN)**, built by `buildCatalogLocalizedTitleColumns` in `catalog/lib/catalog-localized-title-columns.tsx`; showing them puts the titles of every language side by side in the table and in the file.
 
 ## Related pages
 

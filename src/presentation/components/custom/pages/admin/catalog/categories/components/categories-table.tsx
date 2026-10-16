@@ -6,7 +6,6 @@ import { DataGridShell } from "~/src/presentation/components/custom/datagrid/com
 import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { CategorySheet } from "~/src/presentation/components/custom/pages/admin/catalog/categories/add-category/category-sheet"
 import { CategoriesBulkActions } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-bulk-actions"
-import { CategoriesExportAction } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-export-action"
 import { CategoriesRefreshAction } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-refresh-action"
 import { CategoriesStats } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-stats"
 import { CategoriesStatusFilter } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-status-filter"
@@ -55,7 +54,7 @@ export const CategoriesTableContent = (): JSX.Element => {
           <DataGridShell>
             <Toolbar actions={toolbarActions}>
               <CategoriesRefreshAction />
-              <CategoriesExportAction />
+              <Export />
               <CategoriesStatusFilter />
             </Toolbar>
             <Body />
@@ -79,4 +78,4 @@ export const CategoriesTable = (): JSX.Element => {
   )
 }
 
-const { Body, Pagination, Provider, Toolbar } = categoriesDataGrid
+const { Body, Export, Pagination, Provider, Toolbar } = categoriesDataGrid

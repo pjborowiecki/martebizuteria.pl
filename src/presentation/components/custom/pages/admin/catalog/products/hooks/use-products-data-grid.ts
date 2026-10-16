@@ -26,6 +26,7 @@ import { type DataGridFeatures } from "~/src/presentation/components/custom/data
 import { type DataGridContextValue } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useProductColumns } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-columns"
+import { useProductsExportSource } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-export-source"
 import { useProductsListData } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-list-data"
 import { useProductsRowReorder } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-row-reorder"
 import { useProductsServerListSync } from "~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-server-list-sync"
@@ -215,15 +216,25 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerDown }: UseProduct
     setServerSorting,
   })
 
-  const sorting = table.atoms.sorting.get()
   const rowReorder = useProductsRowReorder({
     columnFilters,
     hasServerListQuery,
     ordering,
-    sorting,
+    sorting: table.atoms.sorting.get(),
   })
   useUnfilteredProductsPageSize(table, hasServerListQuery, tableData.length)
   const applyProductsFilter = useProductsApplyFilter(table, setFilters, setPagination)
+  const exportListInput = useMemo(
+    () =>
+      buildProductsExportListInput({
+        columnFilters: serverListState.listColumnFilters,
+        filters,
+        listSort: serverListState.listSort,
+        serverSearch,
+      }),
+    [filters, serverListState, serverSearch],
+  )
+  const exportSource = useProductsExportSource(exportListInput, hasServerListQuery)
 
   return useMemo(
     () => ({
@@ -234,12 +245,7 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerDown }: UseProduct
       activeVariantKindFilter: filters.variantKind,
       applyProductsFilter,
       columnReorder,
-      exportListInput: buildProductsExportListInput({
-        columnFilters: serverListState.listColumnFilters,
-        filters,
-        listSort: serverListState.listSort,
-        serverSearch,
-      }),
+      exportSource,
       hasPreferenceOverrides,
       hasServerListQuery,
       isLoading: showSkeletonRows,
@@ -254,15 +260,14 @@ export const useProductsDataGrid = ({ onRowClick, onRowPointerDown }: UseProduct
     [
       applyProductsFilter,
       columnReorder,
+      exportSource,
       filters,
       hasPreferenceOverrides,
       hasServerListQuery,
-      serverListState,
       onRowClick,
       onRowPointerDown,
       resetPreferences,
       rowReorder,
-      serverSearch,
       showSkeletonRows,
       t,
       table,
@@ -303,7 +308,6 @@ export interface ProductsDataGridValue extends DataGridContextValue<Product["adm
   readonly activeStatusFilter: ProductStatus | undefined
   readonly activeVariantKindFilter: ProductVariantKind | undefined
   readonly applyProductsFilter: (patch?: ProductsListFilterPatch) => void
-  readonly exportListInput: Product["adminProductsExportInput"]
   readonly hasServerListQuery: boolean
 }
 

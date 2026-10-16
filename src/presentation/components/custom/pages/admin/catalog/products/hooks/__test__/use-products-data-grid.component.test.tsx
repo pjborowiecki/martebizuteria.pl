@@ -42,6 +42,15 @@ vi.mock("~/src/lib/url", () => ({
 }))
 const listData = vi.hoisted(() => ({ rows: 0, search: undefined as string | undefined }))
 
+const { exportFn } = vi.hoisted(() => ({ exportFn: vi.fn<(input: unknown) => Promise<unknown>>() }))
+
+vi.mock("~/src/modules/product/use-cases/export-admin-products", () => ({
+  exportAdminProducts: ({ data }: Readonly<{ data: unknown }>) => exportFn(data),
+}))
+vi.mock("~/src/modules/product-category/use-cases/get-admin-categories", () => ({
+  getAdminCategoriesQuery: () => ({ queryFn: () => Promise.resolve([]), queryKey: ["admin", "categories"] }),
+}))
+
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/hooks/use-products-list-data", () => ({
   useProductsListData: ({ search }: Readonly<{ search?: string }>) => {
     listData.search = search
@@ -117,6 +126,7 @@ const renderContext = (Provider: (props: Readonly<{ children: ReactNode }>) => J
   })
 
 beforeEach(() => {
+  exportFn.mockClear()
   listData.rows = 0
   localStorage.clear()
 })
@@ -191,19 +201,18 @@ describe("useProductsDataGrid", () => {
     expect(result.current.hasServerListQuery).toBe(false)
   })
 
-  it("carries the active facets into the export input and leaves an empty search out", () => {
+  it("carries the active facets into the export and leaves an empty search out", async () => {
     const { result } = renderGrid()
 
     act(() => {
       result.current.applyProductsFilter({ categoryId: "cat-1", inventoryLevel: "out", status: "published" })
     })
+    await result.current.exportSource?.loadRows?.()
 
-    expect(result.current.exportListInput).toMatchObject({
-      categoryId: "cat-1",
-      inventoryLevel: "out",
-      status: "published",
-    })
-    expect(result.current.exportListInput.search).toBeUndefined()
+    expect(result.current.exportSource?.search).toBeUndefined()
+    expect(exportFn).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ categoryId: "cat-1", inventoryLevel: "out", search: undefined, status: "published" }),
+    )
   })
 })
 
@@ -232,7 +241,7 @@ describe("useProductsDataGrid rows, search and pagination", () => {
 
     await waitFor(() => {
       expect(result.current.hasServerListQuery).toBe(true)
-      expect(result.current.exportListInput.search).toBe("Silver ring")
+      expect(result.current.exportSource?.search).toBe("Silver ring")
       expect(listData.search).toBe("Silver ring")
     })
 
@@ -242,7 +251,7 @@ describe("useProductsDataGrid rows, search and pagination", () => {
 
     await waitFor(() => {
       expect(result.current.hasServerListQuery).toBe(false)
-      expect(result.current.exportListInput.search).toBeUndefined()
+      expect(result.current.exportSource?.search).toBeUndefined()
       expect(listData.search).toBeUndefined()
     })
   })

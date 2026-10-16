@@ -17,10 +17,12 @@ import { createCatalogTableGlobalFilterFn } from "~/src/presentation/components/
 import { type DataGridContextValue, type RowReorderApi } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useCategoryColumns } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-columns"
+import { useCategoriesExportSource } from "~/src/presentation/components/custom/pages/admin/catalog/categories/hooks/use-categories-export-source"
 import { useCategoryOrdering } from "~/src/presentation/components/custom/pages/admin/catalog/categories/hooks/use-category-ordering"
 import { useReorderCategories } from "~/src/presentation/components/custom/pages/admin/catalog/categories/hooks/use-reorder-categories"
 import { categoriesDataGrid } from "~/src/presentation/components/custom/pages/admin/catalog/categories/utils/categories-data-grid"
 import { getCategoryAdminSearchParts } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-table-search"
+import { CATALOG_LOCALIZED_TITLE_COLUMN_VISIBILITY } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-localized-title-columns"
 
 export const useCategoriesDataGrid = ({
   onRowClick,
@@ -45,7 +47,7 @@ export const useCategoriesDataGrid = ({
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
     columns,
     data: ordering.items,
-    defaultColumnVisibility: CATEGORY_TABLE_DEFAULT_COLUMN_VISIBILITY,
+    defaultColumnVisibility: CATEGORIES_DEFAULT_COLUMN_VISIBILITY,
     getRowId: (row) => row.id,
     globalFilterFn,
     initialColumnOrder,
@@ -69,9 +71,12 @@ export const useCategoriesDataGrid = ({
     [naturalOrder, ordering],
   )
 
+  const exportSource = useCategoriesExportSource(table)
+
   return useMemo(
     () => ({
       columnReorder,
+      exportSource,
       hasPreferenceOverrides,
       isLoading: showSkeletonRows,
       onRowClick,
@@ -81,10 +86,12 @@ export const useCategoriesDataGrid = ({
       searchPlaceholder: t("searchPlaceholder"),
       table,
     }),
-    [columnReorder, hasPreferenceOverrides, onRowClick, resetPreferences, rowReorder, showSkeletonRows, t, table],
+    [columnReorder, exportSource, hasPreferenceOverrides, onRowClick, resetPreferences, rowReorder, showSkeletonRows, t, table],
   )
 }
 
 interface UseCategoriesDataGridOptions {
   readonly onRowClick?: (category: ProductCategory["adminListItem"]) => void
 }
+
+const CATEGORIES_DEFAULT_COLUMN_VISIBILITY = { ...CATEGORY_TABLE_DEFAULT_COLUMN_VISIBILITY, ...CATALOG_LOCALIZED_TITLE_COLUMN_VISIBILITY }

@@ -28,6 +28,9 @@ const DateCell = ({ format, value }: Readonly<{ format: ColumnsInput["format"]; 
     <span className="whitespace-nowrap text-muted-foreground">{format.dateTime(value, { dateStyle: "medium" })}</span>
   )
 
+const formatOptionalDate = (format: ColumnsInput["format"], value: Date | undefined): string | undefined =>
+  value === undefined ? undefined : format.dateTime(value, { dateStyle: "medium" })
+
 const buildSubscriberIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | "tAdmin">) =>
   columnHelper.columns([
     columnHelper.accessor("email", {
@@ -35,6 +38,7 @@ const buildSubscriberIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | 
       header: t("columns.email"),
       id: ADMIN_NEWSLETTER_TABLE_COLUMN_ID.email,
       meta: {
+        exportValue: (row) => row.email,
         skeletonVariant: "title",
       },
       minSize: ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE.email,
@@ -44,7 +48,7 @@ const buildSubscriberIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | 
       cell: ({ getValue }) => <span className="block font-mono text-xs whitespace-nowrap text-muted-foreground">{getValue()}</span>,
       header: t("columns.id"),
       id: ADMIN_NEWSLETTER_TABLE_COLUMN_ID.recordId,
-      meta: CATALOG_RECORD_ID_COLUMN_META,
+      meta: { ...CATALOG_RECORD_ID_COLUMN_META, exportValue: (row) => row.id },
       ...fixedDataGridColumnWidth(ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE.recordId),
     }),
     columnHelper.accessor("status", {
@@ -52,6 +56,7 @@ const buildSubscriberIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | 
       header: t("columns.status"),
       id: ADMIN_NEWSLETTER_TABLE_COLUMN_ID.status,
       meta: {
+        exportValue: (row) => t(`status.${row.status}`),
         skeletonVariant: "badge",
       },
       minSize: ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE.status,
@@ -64,6 +69,7 @@ const buildSubscriberIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | 
       header: t("columns.locale"),
       id: ADMIN_NEWSLETTER_TABLE_COLUMN_ID.locale,
       meta: {
+        exportValue: (row) => tAdmin(`content.editor.localeNames.${row.locale}`),
         skeletonVariant: "text",
       },
       minSize: ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE.locale,
@@ -74,6 +80,7 @@ const buildSubscriberIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | 
       header: t("columns.source"),
       id: ADMIN_NEWSLETTER_TABLE_COLUMN_ID.source,
       meta: {
+        exportValue: (row) => t(`source.${row.source}`),
         fillsRemainingWidth: true,
         skeletonVariant: "text",
       },
@@ -86,6 +93,7 @@ const buildSubscriberIdentityColumns = ({ t, tAdmin }: Pick<ColumnsInput, "t" | 
       header: t("columns.account"),
       id: ADMIN_NEWSLETTER_TABLE_COLUMN_ID.account,
       meta: {
+        exportValue: (row) => row.userId,
         skeletonVariant: "text",
       },
       minSize: ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE.account,
@@ -100,6 +108,7 @@ const buildSubscriberDateColumns = ({ format, t }: Pick<ColumnsInput, "format" |
       header: t("columns.createdAt"),
       id: ADMIN_NEWSLETTER_TABLE_COLUMN_ID.createdAt,
       meta: {
+        exportValue: (row) => formatOptionalDate(format, row.createdAt),
         skeletonVariant: "date",
       },
       minSize: ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE.createdAt,
@@ -110,6 +119,7 @@ const buildSubscriberDateColumns = ({ format, t }: Pick<ColumnsInput, "format" |
       header: t("columns.confirmedAt"),
       id: ADMIN_NEWSLETTER_TABLE_COLUMN_ID.confirmedAt,
       meta: {
+        exportValue: (row) => formatOptionalDate(format, row.confirmedAt),
         skeletonVariant: "date",
       },
       minSize: ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE.confirmedAt,
@@ -120,6 +130,7 @@ const buildSubscriberDateColumns = ({ format, t }: Pick<ColumnsInput, "format" |
       header: t("columns.unsubscribedAt"),
       id: ADMIN_NEWSLETTER_TABLE_COLUMN_ID.unsubscribedAt,
       meta: {
+        exportValue: (row) => formatOptionalDate(format, row.unsubscribedAt),
         skeletonVariant: "date",
       },
       minSize: ADMIN_NEWSLETTER_TABLE_COLUMN_SIZE.unsubscribedAt,

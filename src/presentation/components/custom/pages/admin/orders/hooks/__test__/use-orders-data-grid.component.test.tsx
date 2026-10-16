@@ -10,12 +10,20 @@ import { ADMIN_ORDERS_PAGE_SIZE } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
 import {
+  type OrdersDataGridValue,
   useOrdersDataGrid,
   useOrdersDataGridContext,
 } from "~/src/presentation/components/custom/pages/admin/orders/hooks/use-orders-data-grid"
 import { ORDERS_DATA_GRID_KEY } from "~/src/presentation/components/custom/pages/admin/orders/utils/orders-data-grid"
 
-const { pageFn } = vi.hoisted(() => ({ pageFn: vi.fn<(input: unknown) => Promise<unknown>>() }))
+const { exportFn, pageFn } = vi.hoisted(() => ({
+  exportFn: vi.fn<(input: unknown) => Promise<unknown>>(),
+  pageFn: vi.fn<(input: unknown) => Promise<unknown>>(),
+}))
+
+vi.mock("~/src/modules/order/use-cases/export-admin-orders", () => ({
+  exportAdminOrders: ({ data }: Readonly<{ data: unknown }>) => exportFn(data),
+}))
 
 vi.mock("~/src/modules/order/use-cases/get-admin-orders-page", () => ({
   getAdminOrdersPageQuery: (input: unknown) => ({
@@ -61,6 +69,12 @@ const Wrapper = ({ children }: Readonly<{ children: ReactNode }>): JSX.Element =
 )
 
 const renderGrid = () => renderHook(() => useOrdersDataGrid({}), { wrapper: Wrapper })
+
+const sentExportInput = async (source: OrdersDataGridValue["exportSource"]): Promise<unknown> => {
+  await source?.loadRows?.()
+
+  return exportFn.mock.lastCall?.[0]
+}
 
 describe("useOrdersDataGrid", () => {
   beforeEach(() => {
@@ -151,7 +165,7 @@ describe("useOrdersDataGrid filters", () => {
     expect(result.current.activeStatFilter).toBeUndefined()
   })
 
-  it("applies a stat filter to both the page request and the export input", async () => {
+  it("applies a stat filter to both the page request and the export", async () => {
     const { result } = renderGrid()
 
     await waitFor(() => {
@@ -162,13 +176,13 @@ describe("useOrdersDataGrid filters", () => {
     })
 
     expect(result.current.activeStatFilter).toBe("pending")
-    expect(result.current.exportListInput.statFilter).toBe("pending")
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ statFilter: "pending" })
     await waitFor(() => {
       expect(pageFn).toHaveBeenCalledWith(expect.objectContaining({ page: 1, statFilter: "pending" }))
     })
   })
 
-  it("clears the stat filter again", () => {
+  it("clears the stat filter again", async () => {
     const { result } = renderGrid()
 
     act(() => {
@@ -179,7 +193,7 @@ describe("useOrdersDataGrid filters", () => {
     })
 
     expect(result.current.activeStatFilter).toBeUndefined()
-    expect(result.current.exportListInput.statFilter).toBeUndefined()
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ statFilter: undefined })
   })
 
   it("returns to the first page when a stat filter is applied from a later page", async () => {
@@ -202,7 +216,7 @@ describe("useOrdersDataGrid filters", () => {
     expect(result.current.table.atoms.pagination.get().pageIndex).toBe(0)
   })
 
-  it("carries the column filters into the export input", async () => {
+  it("carries the column filters into the export", async () => {
     const { result } = renderGrid()
 
     await waitFor(() => {
@@ -212,15 +226,14 @@ describe("useOrdersDataGrid filters", () => {
       result.current.table.setColumnFilters([{ id: "status", value: "processing" }])
     })
 
-    await waitFor(() => {
-      expect(result.current.exportListInput.status).toBe("processing")
-    })
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ status: "processing" })
   })
 
-  it("keeps an empty export search undefined rather than an empty string", () => {
+  it("keeps an empty export search undefined rather than an empty string", async () => {
     const { result } = renderGrid()
 
-    expect(result.current.exportListInput.search).toBeUndefined()
+    expect(result.current.exportSource?.search).toBeUndefined()
+    await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ search: undefined })
   })
 
   it("derives the page count from the reported total", async () => {
@@ -252,10 +265,25 @@ it("debounces order search and resets pagination for matching exports and server
     result.current.table.setGlobalFilter("  ada  ")
   })
 
-  expect(result.current.exportListInput.search).toBeUndefined()
+  expect(result.current.exportSource?.search).toBeUndefined()
   await waitFor(() => {
-    expect(result.current.exportListInput.search).toBe("ada")
+    expect(result.current.exportSource?.search).toBe("ada")
   })
+  await expect(sentExportInput(result.current.exportSource)).resolves.toMatchObject({ search: "ada" })
   expect(pageFn).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, search: "ada" }))
   expect(result.current.table.atoms.pagination.get().pageIndex).toBe(0)
+})
+
+describe("useOrdersDataGrid export", () => {
+  it("exports every order of the list through the server, with the filters of the list", async () => {
+    exportFn.mockResolvedValue([orderRow("order-1")])
+    const { result } = renderGrid()
+    act(() => {
+      result.current.applyOrderStatFilter("pending")
+    })
+
+    await expect(result.current.exportSource?.loadRows?.()).resolves.toStrictEqual([orderRow("order-1")])
+    expect(exportFn).toHaveBeenCalledWith(expect.objectContaining({ statFilter: "pending" }))
+    expect(result.current.exportSource).toMatchObject({ list: "orders", title: "Orders" })
+  })
 })

@@ -11,7 +11,7 @@ import { getAdminOrder, getAdminOrderQuery } from "../get-admin-order"
 import { getAdminOrderStats, getAdminOrderStatsQuery } from "../get-admin-order-stats"
 import { getAdminOrdersPage, getAdminOrdersPageQuery } from "../get-admin-orders-page"
 
-type SourceRow = Parameters<typeof toAdminOrderListItem>[0] & {
+type SourceRow = Omit<Parameters<typeof toAdminOrderListItem>[0], "itemCount"> & {
   readonly billingCompanyName: string | null
   readonly billingNip: string | null
 }
@@ -29,7 +29,6 @@ const sourceRow = (overrides: Partial<SourceRow> = {}): SourceRow => ({
   fulfillmentStatus: "shipped",
   id: "order-1",
   inProgressEmailAt: CREATED_AT,
-  itemCount: 3,
   metadata: null,
   orderNumber: "MRT-2026-00001",
   paymentStatus: "succeeded",
@@ -50,6 +49,7 @@ const accessors = vi.hoisted(() => {
     getAdminOrderCustomerStats: vi.fn(() => Promise.resolve({ orderCount: 1, totalSpent: 0 })),
     getAdminOrderDestinationRows: vi.fn(() => Promise.resolve(accessors.destinationRows)),
     getAdminOrderDetailRow: vi.fn(),
+    getAdminOrderItemCountRows: vi.fn(() => Promise.resolve(accessors.itemCountRows)),
     getAdminOrderItemRows: vi.fn<() => Promise<unknown[]>>(() => Promise.resolve([])),
     getAdminOrderStats: vi.fn(() => Promise.resolve({ pending: 2, total: 9 })),
     getAdminOrderTimelineRows: vi.fn<() => Promise<unknown[]>>(() => Promise.resolve([])),
@@ -64,6 +64,7 @@ const accessors = vi.hoisted(() => {
       return Promise.resolve({ rows: accessors.rows, total: accessors.total })
     }),
     getOrderWithdrawals: vi.fn<() => Promise<unknown[]>>(() => Promise.resolve([])),
+    itemCountRows: [] as unknown[],
     pageParams,
     recordListExportedAudit: vi.fn(),
     rows: [] as unknown[],
@@ -80,6 +81,7 @@ vi.mock("~/src/modules/order/order.accessors", () => ({
   getAdminOrderCustomerStats: accessors.getAdminOrderCustomerStats,
   getAdminOrderDestinationRows: accessors.getAdminOrderDestinationRows,
   getAdminOrderDetailRow: accessors.getAdminOrderDetailRow,
+  getAdminOrderItemCountRows: accessors.getAdminOrderItemCountRows,
   getAdminOrderItemRows: accessors.getAdminOrderItemRows,
   getAdminOrderStats: accessors.getAdminOrderStats,
   getAdminOrderTimelineRows: accessors.getAdminOrderTimelineRows,
@@ -111,6 +113,7 @@ beforeEach(() => {
   accessors.pageParams.length = 0
   accessors.exportParams.length = 0
   accessors.rows = [sourceRow()]
+  accessors.itemCountRows = [{ itemCount: 3, orderId: "order-1" }]
   accessors.total = 1
   shipx.configured.current = true
 })
@@ -165,9 +168,12 @@ describe("getAdminOrdersPage result", () => {
 
     expect(items).toStrictEqual([
       {
+        billingCompanyName: undefined,
+        billingNip: undefined,
         createdAt: CREATED_AT,
         currencyCode: "PLN",
         customerName: "Ada Lovelace",
+        destination: undefined,
         email: "ada@example.test",
         emailedSteps: ["processing", "shipped"],
         fulfillmentStatus: "shipped",
@@ -195,8 +201,9 @@ describe("getAdminOrdersPage result", () => {
     expect(items[0]?.hasOpenDispute).toBe(true)
   })
 
-  it("falls back to the email when the customer has no name", async () => {
-    accessors.rows = [sourceRow({ customerName: null, itemCount: null })]
+  it("falls back to the email when the customer has no name, and to no items when the order has no lines", async () => {
+    accessors.rows = [sourceRow({ customerName: null })]
+    accessors.itemCountRows = []
 
     const { items } = await getAdminOrdersPage({ data: {} })
 
@@ -272,25 +279,6 @@ describe("exportAdminOrders", () => {
     expect(items[0]?.billingCompanyName).toBeUndefined()
     expect(items[0]?.destination).toBeUndefined()
     expect(items[0]?.billingNip).toBeUndefined()
-  })
-
-  it("names where each exported order goes, the parcel locker of a locker order", async () => {
-    accessors.destinationRows = [
-      {
-        addresses: [],
-        checkout: null,
-        deliveryMethod: { name: "Paczkomat InPost", type: "locker" },
-        id: "order-1",
-        lockerId: "WAW01M",
-        lockerPoint: JSON.stringify({ city: "Warszawa", postalCode: "00-001", street: "Marszałkowska" }),
-      },
-    ]
-
-    const items = await exportAdminOrders({ data: {} })
-
-    expect(accessors.getAdminOrderDestinationRows).toHaveBeenCalledWith(["order-1"])
-    expect(items[0]?.destination).toBe("Paczkomat InPost: WAW01M, Marszałkowska, 00-001 Warszawa")
-    accessors.destinationRows = []
   })
 })
 

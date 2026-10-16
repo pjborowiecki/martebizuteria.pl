@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+vi.mock("~/src/modules/order/use-cases/export-admin-orders", () => ({ exportAdminOrders: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/get-admin-orders-page", () => ({
   getAdminOrdersPageQuery: (input: unknown) => ({ queryFn: () => Promise.resolve(undefined), queryKey: ["admin", "orders", input] }),
 }))
@@ -63,7 +64,6 @@ const ProviderHarness = ({ children, withOrdersApi }: Readonly<{ children: React
     ...base,
     activeStatFilter: "pending",
     applyOrderStatFilter: () => {},
-    exportListInput: {},
   }
 
   return <ordersDataGrid.Provider value={withOrdersApi ? ordersValue : base}>{children}</ordersDataGrid.Provider>

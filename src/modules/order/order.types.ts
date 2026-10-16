@@ -46,9 +46,12 @@ interface AdminOrdersListFilters {
 }
 
 interface AdminOrderListItem {
+  readonly billingCompanyName?: string | undefined
+  readonly billingNip?: string | undefined
   readonly createdAt: Date
   readonly currencyCode: string
   readonly customerName: string
+  readonly destination?: string | undefined
   readonly email: string
   readonly emailedSteps: readonly AdminOrderAdvancedStep[]
   readonly fulfillmentStatus: Order["select"]["fulfillmentStatus"]
@@ -62,12 +65,6 @@ interface AdminOrderListItem {
   readonly status: Order["select"]["status"]
   readonly totalMinorUnits: number
   readonly userId: string | null
-}
-
-interface AdminOrderExportItem extends AdminOrderListItem {
-  readonly billingCompanyName: string | undefined
-  readonly billingNip: string | undefined
-  readonly destination: string | undefined
 }
 
 interface AdminOrderDetailAddress {
@@ -279,7 +276,6 @@ interface FailedOrderRefund {
 
 export interface Order {
   adminExportInput: Omit<AdminOrdersPageInput, "page" | "pageSize">
-  adminExportItem: AdminOrderExportItem
   adminListFilters: AdminOrdersListFilters
   adminListItem: AdminOrderListItem
   adminOrderDetail: AdminOrderDetail

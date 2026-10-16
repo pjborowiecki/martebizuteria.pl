@@ -3,7 +3,6 @@
   "description": "Pola specyfikacji wielokrotnego użytku (materiały, wymiary, pielęgnacja itd.) przypisywane do produktów.",
   "actions": {
     "addProperty": "Dodaj atrybut",
-    "exportCsv": "Pobierz tabelę jako CSV",
     "refresh": "Odśwież dane tabeli"
   },
   "columns": {
@@ -15,7 +14,8 @@
     "products": "Produkty",
     "id": "ID",
     "createdAt": "Data utworzenia",
-    "editedAt": "Ostatnia edycja"
+    "editedAt": "Ostatnia edycja",
+    "titleIn": "Atrybut ({language})"
   },
   "types": {
     "text": "Tekst",

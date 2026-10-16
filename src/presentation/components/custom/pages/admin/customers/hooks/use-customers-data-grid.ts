@@ -20,6 +20,7 @@ import { useDataGridInstance } from "~/src/presentation/components/custom/datagr
 import { type DataGridContextValue } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useCustomerColumns } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-columns"
+import { useCustomersExportSource } from "~/src/presentation/components/custom/pages/admin/customers/hooks/use-customers-export-source"
 import { customersDataGrid } from "~/src/presentation/components/custom/pages/admin/customers/utils/customers-data-grid"
 
 const buildAdminCustomersPageInput = ({
@@ -71,13 +72,12 @@ export const useCustomersDataGrid = ({ onRowClick }: UseCustomersDataGridOptions
     [listFilters, pagination.pageIndex, pagination.pageSize, serverSearch, statFilter],
   )
 
-  const pageQueryOptions = getAdminCustomersPageQuery(pageInput)
   const {
     data = EMPTY_CUSTOMERS_PAGE,
     isFetching,
     isPending,
   } = useQuery({
-    ...pageQueryOptions,
+    ...getAdminCustomersPageQuery(pageInput),
     placeholderData: keepPreviousData,
   })
 
@@ -141,12 +141,14 @@ export const useCustomersDataGrid = ({ onRowClick }: UseCustomersDataGridOptions
     [listFilters, serverSearch, statFilter],
   )
 
+  const exportSource = useCustomersExportSource(exportListInput)
+
   return useMemo(
     () => ({
       activeStatFilter: statFilter,
       applyCustomerStatFilter,
       columnReorder,
-      exportListInput,
+      exportSource,
       hasPreferenceOverrides,
       isLoading: showSkeletonRows,
       onRowClick,
@@ -159,7 +161,7 @@ export const useCustomersDataGrid = ({ onRowClick }: UseCustomersDataGridOptions
     [
       applyCustomerStatFilter,
       columnReorder,
-      exportListInput,
+      exportSource,
       hasPreferenceOverrides,
       onRowClick,
       resetPreferences,
@@ -194,7 +196,6 @@ const EMPTY_CUSTOMERS_PAGE = {
 export interface CustomersDataGridValue extends DataGridContextValue<User["adminCustomerListItem"]> {
   readonly activeStatFilter: AdminCustomerStatFilter | undefined
   readonly applyCustomerStatFilter: (filter?: AdminCustomerStatFilter) => void
-  readonly exportListInput: User["adminCustomersExportInput"]
 }
 
 interface UseCustomersDataGridOptions {

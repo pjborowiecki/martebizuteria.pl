@@ -9,7 +9,6 @@ import { ProductsBulkActions } from "~/src/presentation/components/custom/pages/
 import { ProductsCategoryFilter } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-category-filter"
 import { ProductsCollectionFilter } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-collection-filter"
 import { ProductsCreatedAtColumnFilter } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-created-at-column-filter"
-import { ProductsExportAction } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-export-action"
 import { ProductsPriceColumnFilter } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-price-column-filter"
 import { ProductsRefreshAction } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-refresh-action"
 import { ProductsStats } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-stats"
@@ -77,7 +76,7 @@ export const ProductsTableContent = (): JSX.Element => {
           <DataGridShell>
             <Toolbar actions={toolbarActions} filters={toolbarFilters}>
               <ProductsRefreshAction />
-              <ProductsExportAction />
+              <Export />
             </Toolbar>
             <Body />
             <Pagination />
@@ -100,4 +99,4 @@ export const ProductsTable = (): JSX.Element => {
   )
 }
 
-const { Body, Pagination, Provider, Toolbar } = productsDataGrid
+const { Body, Export, Pagination, Provider, Toolbar } = productsDataGrid

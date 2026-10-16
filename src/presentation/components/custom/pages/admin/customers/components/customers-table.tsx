@@ -10,7 +10,6 @@ import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components
 import { CustomersBannedFilter } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-banned-filter"
 import { CustomersDateColumnFilter } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-date-column-filter"
 import { CustomersEmailVerifiedFilter } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-email-verified-filter"
-import { CustomersExportAction } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-export-action"
 import { CustomersNumericColumnFilter } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-numeric-column-filter"
 import { CustomersRefreshAction } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-refresh-action"
 import { CustomersRoleFilter } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-role-filter"
@@ -73,7 +72,7 @@ export const CustomersTableContent = (): JSX.Element => {
             }
           >
             <CustomersRefreshAction />
-            <CustomersExportAction />
+            <Export />
           </Toolbar>
           <Body />
           <Pagination />
@@ -85,4 +84,4 @@ export const CustomersTableContent = (): JSX.Element => {
 
 export const CustomersTable = (): JSX.Element => <CustomersTableContent />
 
-const { Body, Pagination, Provider, Toolbar } = customersDataGrid
+const { Body, Export, Pagination, Provider, Toolbar } = customersDataGrid

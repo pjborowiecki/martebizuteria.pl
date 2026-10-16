@@ -61,7 +61,7 @@ Four modules exist for operations rather than for rows.
 
 | Module              | Why it has no table                                                                                                     |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `_core`             | Shared kernel: error codes, currency and country catalogs, CSV, pagination, column filters, datetime helpers            |
+| `_core`             | Shared kernel: error codes, currency and country catalogs, table export, pagination, column filters, datetime helpers   |
 | `admin-dashboard`   | Aggregates over `order`, `payment`, `product` and `user` for the admin overview cards and charts                        |
 | `customer-account`  | The customer-facing view of `user`, `order`, `session` and `address`, always scoped to the signed-in user               |
 | `customer-activity` | Records browsing activity; state lives in `src/modules/customer-activity/customer-activity.tracking.ts`, not in a table |
@@ -84,7 +84,7 @@ Four modules exist for operations rather than for rows.
 
 `country.ts` is reference data kept intentionally; the only import from it is the `CountryCode` type in `timezone.ts`. `timezone.ts` is in use: the time zone field on the profile page and in the admin's Settings → My account lists `TIMEZONES`, `list-saved-payment-methods` resolves the customer's zone with `resolveTimezoneCode` to decide whether a saved card has expired, and `DEFAULT_TIMEZONE_CODE` (`Europe/Warsaw`) is the shop's own zone for the order-number year and the legal deadlines. The admin's days and months follow each admin's own time zone.
 
-`_core/utils/` holds `column-filters.ts` and `column-filters.server.ts`, `datetime-column-filter.ts` and its `.server` twin, `search-conditions.server.ts`, `pagination.ts`, `csv.ts`, `currency.ts`, `datetime.ts`, `download.ts`, `iso-date.ts`, `iso-datetime.ts`, `json.ts`, `polish-deadline.ts`, `table-export.ts`, `tax.ts` and `zod-fields.ts`. The `.server` halves build SQL; the plain halves are shared with the browser. `table-export.ts` turns an admin table export into CSV, JSON, XML or plain text and names its file, and `download.ts` hands a text file to the browser.
+`_core/utils/` holds `column-filters.ts` and `column-filters.server.ts`, `datetime-column-filter.ts` and its `.server` twin, `search-conditions.server.ts`, `pagination.ts`, `currency.ts`, `datetime.ts`, `download.ts`, `iso-date.ts`, `iso-datetime.ts`, `json.ts`, `polish-deadline.ts`, `table-export.ts`, `tax.ts` and `zod-fields.ts`. The `.server` halves build SQL; the plain halves are shared with the browser. `table-export.ts` turns an admin table export into CSV, JSON, XML or plain text and names its file, and `download.ts` hands a text file to the browser.
 
 ## Use cases without an RPC endpoint
 

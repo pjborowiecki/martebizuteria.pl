@@ -30,6 +30,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/customers/hooks/use-cu
 vi.mock("~/src/presentation/components/custom/pages/admin/customers/utils/customers-data-grid", () => ({
   customersDataGrid: {
     Body: () => <div data-testid="grid-body" />,
+    Export: () => <div data-testid="action-export" />,
     Pagination: () => <div data-testid="grid-pagination" />,
     Provider: ({ children }: Readonly<{ children: ReactNode }>) => <div data-testid="grid-provider">{children}</div>,
     Toolbar: ({ children, filters }: Readonly<{ children: ReactNode; filters: ReactNode }>) => (
@@ -63,9 +64,6 @@ vi.mock("~/src/presentation/components/custom/pages/admin/customers/components/c
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/customers/components/customers-refresh-action", () => ({
   CustomersRefreshAction: () => <div data-testid="action-refresh" />,
-}))
-vi.mock("~/src/presentation/components/custom/pages/admin/customers/components/customers-export-action", () => ({
-  CustomersExportAction: () => <div data-testid="action-export" />,
 }))
 
 import { ADMIN_CUSTOMER_TABLE_COLUMN_ID } from "~/src/modules/user/user.constants"

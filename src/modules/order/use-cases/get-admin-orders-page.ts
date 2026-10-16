@@ -8,8 +8,8 @@ import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i1
 import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { getAdminOrdersPage as orderGetAdminOrdersPage } from "~/src/modules/order/order.accessors"
+import { loadAdminOrderListItems } from "~/src/modules/order/order.admin-list.server"
 import { ADMIN_ORDERS_PAGE_SIZE, ORDER_QUERY_KEYS, ORDER_QUERY_STALE_MS } from "~/src/modules/order/order.constants"
-import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
@@ -42,7 +42,7 @@ export const getAdminOrdersPage = createServerFn({
     const { timeZone } = await resolveRequestDisplayPreferences()
     const params = buildAdminOrdersListParams(input, timeZone)
     const { rows, total } = await orderGetAdminOrdersPage(params)
-    const items = rows.map((row) => toAdminOrderListItem(row))
+    const items = await loadAdminOrderListItems(rows)
 
     return buildListPaginationResult(items, total, params)
   })

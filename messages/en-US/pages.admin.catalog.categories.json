@@ -3,7 +3,6 @@
   "description": "Organize your products into collections and categories.",
   "actions": {
     "addCategory": "Add category",
-    "exportCsv": "Download table as CSV",
     "refresh": "Reload table data"
   },
   "columns": {
@@ -19,7 +18,8 @@
     "slug": "Slug",
     "status": "Status",
     "subtitle": "Subtitle",
-    "title": "Title"
+    "title": "Title",
+    "categoryIn": "Category ({language})"
   },
   "filter": {
     "status": "Filter by status",

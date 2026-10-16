@@ -133,6 +133,21 @@ describe("order column cells", () => {
     expect(screen.getByText("Paid")).toBeInTheDocument()
   })
 
+  it("shows the company, the NIP and the destination of the columns hidden by default", () => {
+    renderGrid([orderRow({ billingCompanyName: "Pracownia Złotnicza", billingNip: "5260001246", destination: "Kurier: Warszawa" })])
+
+    expect(screen.getByText("Pracownia Złotnicza")).toBeInTheDocument()
+    expect(screen.getByText("5260001246")).toBeInTheDocument()
+    expect(screen.getByText("Kurier: Warszawa")).toBeInTheDocument()
+  })
+
+  it("dashes out the company, the NIP and the destination an order does not have", () => {
+    const { container } = renderGrid()
+    const cells = [...container.querySelectorAll("tbody td")].map((cell) => cell.textContent)
+
+    expect(cells.filter((text) => text === "—")).toHaveLength(3)
+  })
+
   it("renders the row actions for the order the row belongs to", () => {
     renderGrid()
 
