@@ -9,6 +9,11 @@ import { type ContentPage } from "~/src/modules/content-page/content-page.types"
 const remote = vi.hoisted(() => ({ page: undefined as ContentPage["view"] | undefined, requests: [] as string[] }))
 
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("~/src/modules/content-page/use-cases/get-content-page", () => ({
   getContentPageQuery: (handle: string, locale: string) => ({
     queryFn: () => {
@@ -119,6 +124,36 @@ describe("ContentPageArticle", () => {
 
     expect(screen.getByRole("link", { name: "FAQ" })).toHaveAttribute("href", "/en-US/faq")
     expect(screen.getByRole("link", { name: "download the form" })).toHaveAttribute("href", "/forms/formularz_zwrotu.pdf")
+  })
+
+  it("writes the seller's stored details where the page names them, with working e-mail and phone links", async () => {
+    const { container } = await renderArticle({
+      body: [
+        ":seller[legalName]\\",
+        ":seller[street]\\",
+        ":seller[postalCode] :seller[city]\\",
+        ":seller[country]\\",
+        "NIP :seller[nip], REGON :seller[regon]",
+        "",
+        "Write to :seller[emailLink] or :seller[email], call :seller[phoneLink] or :seller[phone].",
+      ].join("\n"),
+    })
+    const [address, contact] = container.querySelectorAll("article p:not(header p)")
+
+    expect(address).toHaveTextContent("Pracownia Testowa Anna Nowak ul. Floriańska 1 31-001 Kraków Poland NIP 5260250274, REGON 100000050")
+    expect(contact).toHaveTextContent("Write to sklep@marte.test or sklep@marte.test, call +48 600 100 200 or +48 600 100 200.")
+    expect(screen.getByRole("link", { name: "sklep@marte.test" })).toHaveAttribute("href", "mailto:sklep@marte.test")
+    expect(screen.getByRole("link", { name: "+48 600 100 200" })).toHaveAttribute("href", "tel:+48600100200")
+  })
+
+  it("shows text that only looks like a placeholder exactly as it was written", async () => {
+    const { container } = await renderArticle({
+      body: ["Ref:ABC and :seller[iban] and :seller[**nip**] and :shop[nip]{x=1}", "", "::note", "", ":::box", "Inside", ":::"].join("\n"),
+    })
+
+    expect(container.querySelector("article div")).toHaveTextContent(
+      "Ref:ABC and :seller[iban] and :seller[**nip**] and :shop[nip]{x=1} ::note :::box Inside :::",
+    )
   })
 
   it("drops raw HTML instead of rendering it", async () => {

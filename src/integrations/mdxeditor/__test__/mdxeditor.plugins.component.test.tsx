@@ -1,15 +1,18 @@
 import { createRef } from "react"
 
 import { MDXEditor, type MDXEditorMethods, createRootEditorSubscription$, realmPlugin } from "@mdxeditor/editor"
-import { cleanup, render, waitFor } from "@testing-library/react"
+import { cleanup, waitFor } from "@testing-library/react"
 import { $getRoot, $isTextNode, type LexicalEditor, PASTE_COMMAND } from "lexical"
 import { DatabaseSync } from "node:sqlite"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migrations"
 
 import { CONTENT_EDITOR_MARKDOWN_OPTIONS, CONTENT_EDITOR_PLUGINS } from "~/src/integrations/mdxeditor/mdxeditor.plugins"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
+
+import { sellerDetailDirectivesPlugin } from "~/src/presentation/components/custom/pages/admin/content/editor/seller-detail-directive"
 
 class DataTransferStub {
   readonly files: File[] = []
@@ -40,6 +43,7 @@ const seededBodies = (): { readonly body: string; readonly label: string }[] => 
   applyMigration(sqlite, MIGRATION.PRIVACY_POLICY_PAGE)
   applyMigration(sqlite, MIGRATION.WITHDRAWAL_FUNCTION_LINKS)
   applyMigration(sqlite, MIGRATION.FAQ_PAGE)
+  applyMigration(sqlite, MIGRATION.SELLER_PLACEHOLDERS)
   const rows = sqlite
     .prepare("select handle, json_extract(bodies, '$.\"pl-PL\"') as pl, json_extract(bodies, '$.\"en-US\"') as en from content_page")
     .all()
@@ -65,10 +69,10 @@ const mountEditor = (markdown: string): Promise<{ readonly lexical: LexicalEdito
       })
     },
   })
-  render(
+  renderWithProviders(
     <MDXEditor
       markdown={markdown}
-      plugins={[...CONTENT_EDITOR_PLUGINS, captureRootEditor()]}
+      plugins={[...CONTENT_EDITOR_PLUGINS, sellerDetailDirectivesPlugin, captureRootEditor()]}
       ref={editor}
       toMarkdownOptions={CONTENT_EDITOR_MARKDOWN_OPTIONS}
     />,
@@ -116,9 +120,12 @@ const pasteOverWord = async (markdown: string, word: string, pasted: string): Pr
 afterEach(cleanup)
 
 describe("the content editor's Markdown", () => {
-  it.each(seededBodies())("round-trips the $label page byte for byte, postal-address breaks included", async ({ body }) => {
-    await expect(savedMarkdown(body)).resolves.toBe(body)
-  })
+  it.each(seededBodies())(
+    "round-trips the $label page byte for byte, postal-address breaks and store details included",
+    async ({ body }) => {
+      await expect(savedMarkdown(body)).resolves.toBe(body)
+    },
+  )
 
   it.each([
     ["a line break written as a backslash", "Pyciak Mariusz Firma Jubilerska\\\nul. Wąska 11"],
@@ -127,13 +134,25 @@ describe("the content editor's Markdown", () => {
     ["emphasis next to punctuation", "Article &#x36;*(1)* GDPR"],
     ["bold before a letter", "**Ważne!**&#x5A;wrotom"],
     ["a heading ending in a hash", String.raw`## Ring \#`],
-    ["links to mail, pages and files", "[Napisz](mailto:kontakt@martebizuteria.pl), [FAQ](/faq) or [form](/forms/formularz_zwrotu.pdf)"],
+    ["links to pages and files", "[FAQ](/faq) or [form](/forms/formularz_zwrotu.pdf)"],
+    ["store details, an unknown one included", "NIP :seller[nip], :seller[emailLink] and :seller[iban]"],
+    ["text that merely mentions a colon and brackets", String.raw`Time 10:30 \[draft]`],
   ])("keeps %s exactly as written", async (_case, markdown) => {
     await expect(savedMarkdown(markdown)).resolves.toBe(markdown)
   })
 
   it("writes bullets with a dash, the way the pages were written", async () => {
     await expect(savedMarkdown("* one\n* two")).resolves.toBe("- one\n- two")
+  })
+
+  it("escapes a typed colon before a word, so it never turns into a store detail", async () => {
+    await expect(savedMarkdown("Ref:ABC")).resolves.toBe(String.raw`Ref\:ABC`)
+  })
+
+  it("escapes the colon of an e-mail link the way the content page check and the storefront read it back", async () => {
+    await expect(savedMarkdown("[Napisz](mailto:kontakt@martebizuteria.pl)")).resolves.toBe(
+      String.raw`[Napisz](mailto\:kontakt@martebizuteria.pl)`,
+    )
   })
 
   it("saves two line breaks in a row as a paragraph break instead of stacked backslashes", async () => {

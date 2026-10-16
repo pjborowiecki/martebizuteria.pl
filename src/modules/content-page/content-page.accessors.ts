@@ -12,6 +12,9 @@ export const findContentPageByHandle = async (handle: ContentPageHandle): Promis
   return row
 }
 
+export const listContentPageBodies = (): Promise<Pick<ContentPage["select"], "bodies" | "handle">[]> =>
+  db.select({ bodies: contentPage.bodies, handle: contentPage.handle }).from(contentPage)
+
 export const listContentPages = (): Promise<ContentPage["adminListItem"][]> =>
   db
     .select({ handle: contentPage.handle, titles: contentPage.titles, updatedAt: contentPage.updatedAt })

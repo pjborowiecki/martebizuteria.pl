@@ -58,6 +58,7 @@ export const NewsletterComposerFields = ({
               label={t("fields.body")}
               markdown={field.value}
               onChange={field.onChange}
+              withSellerDetails={false}
             />
           )}
         />

@@ -20,6 +20,7 @@ const { effects, sqlite } = await vi.hoisted(async () => {
 
   return {
     effects: {
+      contentPagesInvalidate: vi.fn<() => void>(),
       invalidate: vi.fn<() => void>(),
       requestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } } | null>>(),
       settingsUpdated: vi.fn<(target: string, options?: unknown) => void>(),
@@ -54,6 +55,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
+  scheduleContentPageInvalidation: effects.contentPagesInvalidate,
   scheduleSellerDetailsInvalidation: effects.invalidate,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
@@ -84,6 +86,8 @@ beforeEach(() => {
   applyMigration(sqlite, MIGRATION.FREE_DELIVERY_THRESHOLD)
   sqlite.exec(`update store_setting set updated_at = ${String(MIGRATED_AT.getTime())}`)
   applyMigration(sqlite, MIGRATION.SELLER_DETAILS)
+  sqlite.exec("drop table if exists content_page")
+  applyMigration(sqlite, MIGRATION.CONTENT_PAGES)
 })
 
 afterAll(() => {
@@ -124,7 +128,7 @@ describe("readSellerDetails", () => {
 
 describe("saveSellerDetailsIfUnchanged", () => {
   it("saves the details and moves their stamp forward when nobody saved them in the meantime", async () => {
-    const saved = await saveSellerDetailsIfUnchanged({ details: MOVED, expectedUpdatedAt: MIGRATED_AT })
+    const saved = await saveSellerDetailsIfUnchanged({ details: MOVED, expectedUpdatedAt: MIGRATED_AT, revisedPages: [] })
 
     expect(saved).toMatchObject(MOVED)
     expect(saved?.updatedAt.getTime()).toBeGreaterThan(MIGRATED_AT.getTime())
@@ -132,7 +136,9 @@ describe("saveSellerDetailsIfUnchanged", () => {
   })
 
   it("saves nothing when someone saved the details after the admin loaded them", async () => {
-    await expect(saveSellerDetailsIfUnchanged({ details: MOVED, expectedUpdatedAt: new Date(0) })).resolves.toBeUndefined()
+    await expect(
+      saveSellerDetailsIfUnchanged({ details: MOVED, expectedUpdatedAt: new Date(0), revisedPages: [] }),
+    ).resolves.toBeUndefined()
     await expect(readSellerDetails()).resolves.toMatchObject(SELLER)
   })
 })
@@ -161,6 +167,7 @@ describe("updateSellerDetails", () => {
     expect(saved).toMatchObject(MOVED)
     await expect(readSellerDetails()).resolves.toStrictEqual(saved)
     expect(effects.invalidate).toHaveBeenCalledOnce()
+    expect(effects.contentPagesInvalidate).not.toHaveBeenCalled()
     expect(effects.settingsUpdated).toHaveBeenCalledExactlyOnceWith("seller-details", {
       metadata: {
         changed: ["street", "postalCode", "city"],

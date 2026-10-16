@@ -3,11 +3,16 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
-import { scheduleSellerDetailsInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
+import {
+  scheduleContentPageInvalidation,
+  scheduleSellerDetailsInvalidation,
+} from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
 import { recordSettingsUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { listContentPageBodies } from "~/src/modules/content-page/content-page.accessors"
+import { findLocalesShowingSellerFields } from "~/src/modules/content-page/content-page.seller-placeholders"
 import { readSellerDetails, saveSellerDetailsIfUnchanged } from "~/src/modules/store-setting/store-setting.accessors"
 import {
   SELLER_DETAILS_AUDIT_TARGET,
@@ -28,12 +33,19 @@ export const updateSellerDetails = createServerFn({ method: "POST" })
       return current
     }
 
-    const saved = await saveSellerDetailsIfUnchanged({ details, expectedUpdatedAt })
+    const pages = await listContentPageBodies()
+    const revisedPages = pages
+      .map(({ bodies, handle }) => ({ handle, locales: findLocalesShowingSellerFields(bodies, change.changed) }))
+      .filter(({ locales }) => locales.length > 0)
+    const saved = await saveSellerDetailsIfUnchanged({ details, expectedUpdatedAt, revisedPages })
     if (saved === undefined) {
       throw new AppError(ERROR_CODES.CONFLICT)
     }
 
     scheduleSellerDetailsInvalidation()
+    if (revisedPages.length > 0) {
+      scheduleContentPageInvalidation()
+    }
     recordSettingsUpdatedAudit(SELLER_DETAILS_AUDIT_TARGET, { metadata: toAuditMetadataRecord(change) })
 
     return saved

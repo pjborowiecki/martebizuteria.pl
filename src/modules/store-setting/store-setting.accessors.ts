@@ -1,8 +1,11 @@
-import { and, eq, ne, sql } from "drizzle-orm"
+import { and, eq, exists, ne, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { type ContentPageHandle } from "~/src/modules/content-page/content-page.constants"
+import { contentPage } from "~/src/modules/content-page/content-page.schema"
 import { STORE_SETTING_ID } from "~/src/modules/store-setting/store-setting.constants"
 import { storeSetting } from "~/src/modules/store-setting/store-setting.schema"
 import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
@@ -67,13 +70,32 @@ export const readSellerDetails = async (): Promise<StoreSetting["storedSellerDet
   return row
 }
 
+const sellerSavedAt = (savedAt: Date) => and(eq(storeSetting.id, STORE_SETTING_ID), eq(storeSetting.sellerUpdatedAt, savedAt))
+
+const isSellerSavedAt = (savedAt: Date) => exists(db.select({ id: storeSetting.id }).from(storeSetting).where(sellerSavedAt(savedAt)))
+
+const reviseLegalPage = ({ handle, locales }: Readonly<RevisedLegalPage>, savedAt: Date) =>
+  db
+    .update(contentPage)
+    .set({
+      revisedAts: sql`json_set(${contentPage.revisedAts}, ${sql.join(
+        locales.map((locale) => sql`${`$."${locale}"`}, ${savedAt.getTime()}`),
+        sql`, `,
+      )})`,
+    })
+    .where(and(eq(contentPage.handle, handle), isSellerSavedAt(savedAt)))
+
 export const saveSellerDetailsIfUnchanged = async ({
   details,
   expectedUpdatedAt,
-}: Readonly<{ details: StoreSetting["sellerDetails"]; expectedUpdatedAt: Date }>): Promise<
-  StoreSetting["storedSellerDetails"] | undefined
-> => {
-  const [row] = await db
+  revisedPages,
+}: Readonly<{
+  details: StoreSetting["sellerDetails"]
+  expectedUpdatedAt: Date
+  revisedPages: readonly RevisedLegalPage[]
+}>): Promise<StoreSetting["storedSellerDetails"] | undefined> => {
+  const savedAt = new Date()
+  const saveDetails = db
     .update(storeSetting)
     .set({
       sellerCity: details.city,
@@ -85,10 +107,16 @@ export const saveSellerDetailsIfUnchanged = async ({
       sellerPostalCode: details.postalCode,
       sellerRegon: details.regon,
       sellerStreet: details.street,
-      sellerUpdatedAt: new Date(),
+      sellerUpdatedAt: savedAt,
     })
     .where(and(eq(storeSetting.id, STORE_SETTING_ID), eq(storeSetting.sellerUpdatedAt, expectedUpdatedAt)))
     .returning(SELLER_DETAILS_COLUMNS)
+  const [[row]] = await db.batch([saveDetails, ...revisedPages.map((page) => reviseLegalPage(page, savedAt))])
 
   return row
+}
+
+interface RevisedLegalPage {
+  readonly handle: ContentPageHandle
+  readonly locales: readonly SupportedLocale[]
 }
