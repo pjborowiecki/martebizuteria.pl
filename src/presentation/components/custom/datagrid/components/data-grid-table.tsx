@@ -14,8 +14,8 @@ import { DATA_GRID_BODY_SCROLL_CLASS } from "~/src/presentation/components/custo
 import { DataGridTableBody } from "~/src/presentation/components/custom/datagrid/components/data-grid-table-body"
 import { useDataGridPinning } from "~/src/presentation/components/custom/datagrid/hooks/use-data-grid-pinning"
 import { useDatagridContainerWidth } from "~/src/presentation/components/custom/datagrid/hooks/use-datagrid-table-layout"
+import { DATA_GRID_HEADER_ROW_CLASS } from "~/src/presentation/components/custom/datagrid/lib/_styles/data-grid-header.styles"
 import { buildDataGridColumnWidthStyle } from "~/src/presentation/components/custom/datagrid/lib/data-grid-column-width"
-import { DATA_GRID_HEADER_ROW_CLASS } from "~/src/presentation/components/custom/datagrid/lib/data-grid-header.styles"
 import {
   getDataGridColumnLayoutWidth,
   getDataGridContentWidth,

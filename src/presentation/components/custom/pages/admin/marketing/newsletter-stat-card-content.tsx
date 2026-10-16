@@ -10,7 +10,7 @@ import {
   ADMIN_STAT_ICON_CLASS,
   ADMIN_STAT_LABEL_CLASS,
   ADMIN_STAT_VALUE_SLOT_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
 import { type NewsletterStatCardConfig } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-stats.config"
 

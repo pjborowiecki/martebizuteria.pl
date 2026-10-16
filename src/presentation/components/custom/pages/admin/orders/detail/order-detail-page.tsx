@@ -2,7 +2,7 @@ import { type JSX } from "react"
 
 import { type Order } from "~/src/modules/order/order.types"
 
-import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { OrderBillingCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-billing-card"
 import { OrderCustomerCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-customer-card"
 import { OrderFulfillmentTracker } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-fulfillment-tracker"

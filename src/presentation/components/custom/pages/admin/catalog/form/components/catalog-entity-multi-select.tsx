@@ -6,11 +6,11 @@ import { useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 
+import { sheetSelectTriggerClassName } from "~/src/presentation/components/shadcn/_styles/sheet-control.styles"
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "~/src/presentation/components/shadcn/command"
 import { Popover, PopoverContent, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"
-import { sheetSelectTriggerClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
 
 const buildTriggerLabel = (
   selectedOptions: readonly CatalogEntityMultiSelectOption[],

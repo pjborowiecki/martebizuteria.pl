@@ -8,7 +8,7 @@ import { getCategoryStatsQuery } from "~/src/modules/product-category/use-cases/
 
 import { useFormatLocale } from "~/src/hooks/use-display-format"
 
-import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { CATEGORY_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/categories/categories-stats.config"
 import {
   CategoryStatCard,

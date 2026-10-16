@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { ADMIN_STAT_VALUE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_STAT_VALUE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminStatValue } from "~/src/presentation/components/custom/pages/admin/admin-stat-value"
 
 const VALUE_COLUMN_WIDTH_PX = 134

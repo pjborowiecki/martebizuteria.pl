@@ -3,7 +3,7 @@ import { type JSX, useMemo } from "react"
 import { type NewsletterStatus } from "~/src/modules/newsletter/newsletter.constants"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
-import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { NewsletterSubscribersExportAction } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/components/newsletter-subscribers-export-action"
 import { NewsletterSubscribersStatusFilter } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/components/newsletter-subscribers-filters"
 import { NewsletterSubscribersRefreshAction } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/components/newsletter-subscribers-refresh-action"

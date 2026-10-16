@@ -138,7 +138,7 @@ className={cn("relative", className)}
 className={cn("peer", showValid && VALID_INPUT_CLASS)}
 ```
 
-Długie, powtarzalne łańcuchy klas trzymamy w pliku `*.styles.ts` obok ekranu. `vite.config.ts` konfiguruje formater tak, aby sortował klasy Tailwinda w `className`, `classList` oraz w funkcjach `cn`, `cva` i `tw`, względem `globals.css` — kolejność klas nie jest więc kwestią gustu: uruchom `bun run format` i się ułoży.
+Długie, powtarzalne łańcuchy klas trzymamy w pliku `*.styles.ts` w folderze `_styles/` obok ekranu, nigdy między plikami `.tsx`. `vite.config.ts` konfiguruje formater tak, aby sortował klasy Tailwinda w `className`, `classList` oraz w funkcjach `cn`, `cva` i `tw`, względem `globals.css` — kolejność klas nie jest więc kwestią gustu: uruchom `bun run format` i się ułoży.
 
 Warianty komponentu należą do `cva`, w prymitywie, a nie do warunku w miejscu użycia. Jeśli trzy ekrany potrzebują tego samego kształtu przycisku, dodaj wariant w `button.tsx`.
 

@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it } from "vite-plus/test"
 
-import { ADMIN_STAT_CAPTION_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_STAT_CAPTION_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminStatCaption } from "~/src/presentation/components/custom/pages/admin/admin-stat-caption"
 
 afterEach(() => {

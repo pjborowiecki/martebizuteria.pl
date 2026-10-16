@@ -10,7 +10,7 @@ import { formatAuditLogDetail } from "~/src/presentation/components/custom/pages
 import {
   ORDER_EMAIL_STATUS_CONFIG,
   ORDER_TIMELINE_ICONS,
-} from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
+} from "~/src/presentation/components/custom/pages/admin/orders/detail/_styles/order-detail.styles"
 import { OrderEmailResendButton } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-email-resend-button"
 
 export const OrderTimelineEvent = ({ event, orderId }: Readonly<OrderTimelineEventProps>): JSX.Element => {

@@ -14,7 +14,7 @@ import {
   CatalogSheetControlColumn,
   CatalogSheetControlsActionRow,
 } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-sheet-field-layout"
-import { CATALOG_SHEET_ACTION_BUTTON_CLASS } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+import { CATALOG_SHEET_ACTION_BUTTON_CLASS } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/_styles/catalog-form.styles"
 import { catalogFieldStringValue } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.utils"
 import { type ProductAttributeFieldArrayName } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-editor-attribute-list-panel"
 import { ProductEditorAttributeValueInput } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/product-editor-attribute-value-input"

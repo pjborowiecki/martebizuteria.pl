@@ -7,7 +7,7 @@ import { getProductStatsQuery } from "~/src/modules/product/use-cases/get-produc
 
 import { useFormatLocale } from "~/src/hooks/use-display-format"
 
-import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import {
   ProductStatCard,
   buildProductStatCaption,

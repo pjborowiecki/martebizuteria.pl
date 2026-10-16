@@ -12,6 +12,7 @@ import { type OrderAccountCta, type OrderEmailDestination } from "~/src/modules/
 import { BUSINESS, BUSINESS_PHONE_HREF, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 
 import type emailMessages from "~/messages/en-US/emails.order-confirmation.json"
+import { EMAIL_PRODUCT_IMAGE_STYLE } from "~/src/presentation/emails/_styles/email-styles"
 import {
   EMAIL_CTA_BUTTON_CLASS,
   EMAIL_CTA_SECTION_WITH_TOP_SPACING_CLASS,
@@ -20,7 +21,6 @@ import {
   EmailBorderedSection,
 } from "~/src/presentation/emails/email-highlight-box"
 import { EmailLayout } from "~/src/presentation/emails/email-layout"
-import { EMAIL_PRODUCT_IMAGE_STYLE } from "~/src/presentation/emails/email-styles"
 
 export const ORDER_CONFIRMATION_NAMESPACE = "emails.order-confirmation"
 

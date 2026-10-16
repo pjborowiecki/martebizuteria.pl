@@ -15,7 +15,7 @@ import { Switch } from "~/src/presentation/components/shadcn/switch"
 import {
   ADMIN_CARD_CONTENT_CLASS,
   ADMIN_DASHBOARD_CONTENT_CARD_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 
 export const DashboardSalesSwitch = (): JSX.Element => {
   const t = useTranslations("pages.admin.dashboard.sales")

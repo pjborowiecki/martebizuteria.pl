@@ -4,7 +4,7 @@ import { useSearch } from "@tanstack/react-router"
 import { useTranslations } from "use-intl/react"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
-import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AttributeSheet } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/add-attribute/attribute-sheet"
 import { AttributesBulkActions } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-bulk-actions"
 import { AttributesExportAction } from "~/src/presentation/components/custom/pages/admin/catalog/attributes/components/attributes-export-action"

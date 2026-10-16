@@ -14,11 +14,11 @@ import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/src/presentation/components/shadcn/tooltip"
 
-import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import {
   CUSTOMER_DETAIL_CARD_CLASS,
   CUSTOMER_DETAIL_COLUMN_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.styles"
+} from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/_styles/customer-detail.styles"
 import { CustomerTimelineCard } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-timeline-card"
 
 export const CustomerSidebar = ({ customer }: CustomerSidebarProps): JSX.Element => (

@@ -8,7 +8,7 @@ import { getCollectionStatsQuery } from "~/src/modules/product-collection/use-ca
 
 import { useFormatLocale } from "~/src/hooks/use-display-format"
 
-import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { COLLECTION_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/catalog/collections/collections-stats.config"
 import {
   CollectionStatCard,

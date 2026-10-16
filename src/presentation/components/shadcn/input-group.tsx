@@ -3,9 +3,9 @@ import { type ComponentProps, type JSX, createContext, useContext } from "react"
 import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
 
+import { sheetInputGroupClassName } from "~/src/presentation/components/shadcn/_styles/sheet-control.styles"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Input, type inputVariants } from "~/src/presentation/components/shadcn/input"
-import { sheetInputGroupClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
 import { Textarea } from "~/src/presentation/components/shadcn/textarea"
 
 const InputGroup = ({ className, variant: variantProp = "default", ...props }: Readonly<InputGroupProps>): JSX.Element => {

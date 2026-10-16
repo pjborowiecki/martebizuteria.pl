@@ -15,11 +15,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/src/presentation/com
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/presentation/components/shadcn/chart"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
-import { AdminChartMoneyTooltipRow } from "~/src/presentation/components/custom/pages/admin/admin-chart-money-tooltip-row"
 import {
   ADMIN_CARD_CONTENT_CLASS,
   ADMIN_DASHBOARD_CONTENT_CARD_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
+import { AdminChartMoneyTooltipRow } from "~/src/presentation/components/custom/pages/admin/admin-chart-money-tooltip-row"
 import { DashboardChartRangeControls } from "~/src/presentation/components/custom/pages/admin/dashboard/components/dashboard-chart-range-controls"
 import { DashboardTrendBadge } from "~/src/presentation/components/custom/pages/admin/dashboard/dashboard-trend-badge"
 import { useAdminDashboardSnapshot } from "~/src/presentation/components/custom/pages/admin/dashboard/hooks/use-admin-dashboard-snapshot"

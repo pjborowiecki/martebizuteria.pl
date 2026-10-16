@@ -6,7 +6,7 @@ import { ADMIN_CUSTOMER_TABLE_COLUMN_ID } from "~/src/modules/user/user.constant
 import { type User } from "~/src/modules/user/user.types"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
-import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { CustomersBannedFilter } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-banned-filter"
 import { CustomersDateColumnFilter } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-date-column-filter"
 import { CustomersEmailVerifiedFilter } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-email-verified-filter"

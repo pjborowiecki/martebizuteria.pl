@@ -8,8 +8,8 @@ import { ADMIN_DASHBOARD_QUERY_STALE_MS } from "~/src/modules/admin-dashboard/ad
 import { getDashboardSnapshotQuery } from "~/src/modules/admin-dashboard/use-cases/get-dashboard-snapshot"
 import { getAdminSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
+import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
-import { ADMIN_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { DashboardOverviewContent } from "~/src/presentation/components/custom/pages/admin/dashboard-overview-content"
 import { DashboardSalesSwitch } from "~/src/presentation/components/custom/pages/admin/dashboard/components/dashboard-sales-switch"
 

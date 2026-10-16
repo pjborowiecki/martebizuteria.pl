@@ -4,7 +4,7 @@ import { Input as InputPrimitive } from "@base-ui/react/input"
 import { type VariantProps, cva } from "class-variance-authority"
 import { cn } from "cn"
 
-import { sheetInputClassName, sheetInputGroupInputClassName } from "~/src/presentation/components/shadcn/sheet-control.styles"
+import { sheetInputClassName, sheetInputGroupInputClassName } from "~/src/presentation/components/shadcn/_styles/sheet-control.styles"
 
 const Input = ({ className, type, variant = "default", ...props }: Readonly<InputProps>): JSX.Element => (
   <InputPrimitive

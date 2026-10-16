@@ -3,7 +3,7 @@ import { type JSX, useCallback, useMemo } from "react"
 import { useTranslations } from "use-intl/react"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
-import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { CategorySheet } from "~/src/presentation/components/custom/pages/admin/catalog/categories/add-category/category-sheet"
 import { CategoriesBulkActions } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-bulk-actions"
 import { CategoriesExportAction } from "~/src/presentation/components/custom/pages/admin/catalog/categories/components/categories-export-action"

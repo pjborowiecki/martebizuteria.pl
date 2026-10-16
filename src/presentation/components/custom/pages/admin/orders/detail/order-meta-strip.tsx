@@ -16,7 +16,7 @@ import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
-import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
+import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/_styles/order-detail.styles"
 
 export const OrderMetaStrip = ({ order }: Readonly<OrderMetaStripProps>): JSX.Element => {
   const t = useTranslations("pages.admin")

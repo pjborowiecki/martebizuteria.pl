@@ -9,7 +9,7 @@ import {
   ADMIN_CARD_CONTENT_CLASS,
   ADMIN_DASHBOARD_CONTENT_CARD_CLASS,
   ADMIN_DASHBOARD_STAT_GRID_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 
 const StatCardSkeleton = (): JSX.Element => (
   <Card className={ADMIN_DASHBOARD_CONTENT_CARD_CLASS}>

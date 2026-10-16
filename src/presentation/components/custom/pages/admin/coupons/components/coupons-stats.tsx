@@ -8,7 +8,7 @@ import { getDiscountStatsQuery } from "~/src/modules/discount/use-cases/get-admi
 
 import { useFormatLocale } from "~/src/hooks/use-display-format"
 
-import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { CouponStatCard } from "~/src/presentation/components/custom/pages/admin/coupons/components/coupon-stat-card"
 import {
   COUPON_STAT_CARDS,

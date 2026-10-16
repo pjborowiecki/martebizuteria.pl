@@ -8,7 +8,7 @@ import { CONTENT_EDITOR_MARKDOWN_OPTIONS, CONTENT_EDITOR_PLUGINS } from "~/src/i
 
 import { ContentEditorToolbar } from "~/src/presentation/components/custom/pages/admin/content/editor/content-editor-toolbar"
 import { useContentEditorTranslation } from "~/src/presentation/components/custom/pages/admin/content/hooks/use-content-editor-translation"
-import { CONTENT_PROSE_CLASS } from "~/src/presentation/components/custom/pages/content-page/content-page.styles"
+import { CONTENT_PROSE_CLASS } from "~/src/presentation/components/custom/pages/content-page/_styles/content-page.styles"
 
 const EDITABLE_CLASS = cn(CONTENT_PROSE_CLASS, "min-h-96 px-4 py-5 sm:px-8 sm:py-7")
 

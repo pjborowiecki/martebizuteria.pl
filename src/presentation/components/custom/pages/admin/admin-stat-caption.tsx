@@ -2,7 +2,7 @@ import { type JSX } from "react"
 
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
-import { ADMIN_STAT_CAPTION_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_STAT_CAPTION_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 
 interface AdminStatCaptionProps {
   readonly caption?: string | undefined

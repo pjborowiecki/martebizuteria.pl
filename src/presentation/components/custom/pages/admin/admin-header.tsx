@@ -8,7 +8,7 @@ import { Separator } from "~/src/presentation/components/shadcn/separator"
 import { SidebarTrigger } from "~/src/presentation/components/shadcn/sidebar"
 
 import { LocalizedLink, type LocalizedTo } from "~/src/presentation/components/custom/localized-link"
-import { ADMIN_LAYOUT_BG_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_LAYOUT_BG_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 
 export const AdminHeader = ({ actions, backHref, breadcrumbs, description, tabs, title }: Readonly<AdminHeaderProps>): JSX.Element => {
   const t = useTranslations("pages.admin")

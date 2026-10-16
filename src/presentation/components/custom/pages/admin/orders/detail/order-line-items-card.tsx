@@ -11,7 +11,7 @@ import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 import { Table, TableBody, TableHead, TableHeader, TableRow } from "~/src/presentation/components/shadcn/table"
 
-import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
+import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/_styles/order-detail.styles"
 import { OrderLineItemRow } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-line-item-row"
 
 export const OrderLineItemsCard = ({ order }: Readonly<OrderLineItemsCardProps>): JSX.Element => {

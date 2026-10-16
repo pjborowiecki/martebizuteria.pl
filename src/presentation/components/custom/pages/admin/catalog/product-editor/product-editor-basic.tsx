@@ -22,7 +22,7 @@ import {
   CATALOG_SHEET_FIELD_CLASS,
   CATALOG_SHEET_FIELD_PAIR_CLASS,
   CATALOG_SHEET_PAIRED_FIELDS_CARD_CONTENT_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/_styles/catalog-form.styles"
 import { normalizeSlugInput, slugify } from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-slug.utils"
 import { useProductEditorBasicCopy } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/use-product-editor-basic-copy"
 import { useProductEditorBasicFields } from "~/src/presentation/components/custom/pages/admin/catalog/product-editor/use-product-editor-basic-fields"

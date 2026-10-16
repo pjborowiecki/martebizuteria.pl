@@ -10,7 +10,10 @@ import { useFormatLocale } from "~/src/hooks/use-display-format"
 import { Card } from "~/src/presentation/components/shadcn/card"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
-import { ADMIN_CARD_CLASS, ADMIN_STAT_CARD_FILTER_HOVER_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import {
+  ADMIN_CARD_CLASS,
+  ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { NewsletterStatCardContent } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-stat-card-content"
 import { NEWSLETTER_STATUS_STAT_CARDS } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-stats.config"
 

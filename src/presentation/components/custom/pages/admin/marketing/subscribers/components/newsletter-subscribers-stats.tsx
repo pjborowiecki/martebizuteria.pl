@@ -14,7 +14,7 @@ import {
   ADMIN_STAT_CARD_FILTER_ACTIVE_CLASS,
   ADMIN_STAT_CARD_FILTER_HOVER_CLASS,
   ADMIN_STAT_GRID_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { NewsletterStatCardContent } from "~/src/presentation/components/custom/pages/admin/marketing/newsletter-stat-card-content"
 import {
   NEWSLETTER_STATUS_STAT_CARDS,

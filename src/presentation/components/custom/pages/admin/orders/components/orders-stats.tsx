@@ -6,7 +6,7 @@ import { getAdminOrderStatsQuery } from "~/src/modules/order/use-cases/get-admin
 
 import { useFormatLocale } from "~/src/hooks/use-display-format"
 
-import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import {
   OrderStatCard,
   formatOrderStatDisplayValue,

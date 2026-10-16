@@ -17,7 +17,7 @@ import {
   CATALOG_SHEET_FIELD_CLASS,
   CATALOG_SHEET_FIELD_PAIR_CLASS,
   CATALOG_SHEET_PAIRED_FIELDS_CARD_CONTENT_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/catalog-form.styles"
+} from "~/src/presentation/components/custom/pages/admin/catalog/form/lib/_styles/catalog-form.styles"
 
 export const ProductEditorPricing = (): JSX.Element => {
   const t = useTranslations("pages.admin.catalog.products")

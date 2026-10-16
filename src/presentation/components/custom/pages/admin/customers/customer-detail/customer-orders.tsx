@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl/react"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
-import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import {
   CUSTOMER_ORDERS_VIEW,
   customerOrdersDataGrid,

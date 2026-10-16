@@ -9,9 +9,9 @@ import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 
-import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
+import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/_styles/order-detail.styles"
 import { FulfillmentStepItem } from "~/src/presentation/components/custom/pages/admin/orders/detail/fulfillment-step-item"
-import { ORDER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-detail.styles"
 
 export const OrderFulfillmentTracker = ({ canceledAt, children, steps }: Readonly<OrderFulfillmentTrackerProps>): JSX.Element => {
   const t = useTranslations("pages.admin")

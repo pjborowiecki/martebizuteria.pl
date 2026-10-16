@@ -18,7 +18,7 @@ import { Button, buttonVariants } from "~/src/presentation/components/shadcn/but
 import {
   ADMIN_HEADER_PRIMARY_BUTTON_CLASS,
   ADMIN_HEADER_SECONDARY_BUTTON_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { CONTENT_PAGE_FORM_ID } from "~/src/presentation/components/custom/pages/admin/content/content-page-editor.utils"
 
 export const ContentPageEditorActions = ({ control, handle, isPending, locale }: Readonly<ContentPageEditorActionsProps>): JSX.Element => {

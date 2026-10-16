@@ -14,8 +14,8 @@ import {
 import { getAdminNewsletterPageQuery } from "~/src/modules/newsletter/use-cases/get-admin-newsletter-page"
 import { getNewsletterStatsQuery } from "~/src/modules/newsletter/use-cases/get-newsletter-stats"
 
+import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
-import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { MarketingTabs } from "~/src/presentation/components/custom/pages/admin/marketing/marketing-tabs"
 import { NewsletterSubscribersTableContent } from "~/src/presentation/components/custom/pages/admin/marketing/subscribers/components/newsletter-subscribers-table"
 

@@ -12,9 +12,9 @@ import { useFormatLocale } from "~/src/hooks/use-display-format"
 import { Card, CardContent } from "~/src/presentation/components/shadcn/card"
 import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "~/src/presentation/components/shadcn/chart"
 
+import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminChartMoneyTooltipRow } from "~/src/presentation/components/custom/pages/admin/admin-chart-money-tooltip-row"
-import { ADMIN_CARD_CONTENT_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
-import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail.styles"
+import { CUSTOMER_DETAIL_CARD_CLASS } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/_styles/customer-detail.styles"
 
 export const CustomerCharts = ({ customer }: CustomerChartsProps): JSX.Element => {
   const t = useTranslations("pages.admin.customerDetail")

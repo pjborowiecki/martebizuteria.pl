@@ -6,16 +6,16 @@ import { useTranslations } from "use-intl/react"
 import { SheetContent } from "~/src/presentation/components/shadcn/sheet"
 
 import {
+  CATALOG_SHEET_PANEL_CLASS,
+  CATALOG_SHEET_RESIZE_HANDLE_CLASS,
+  CATALOG_SHEET_RESIZE_LINE_CLASS,
+} from "~/src/presentation/components/custom/pages/admin/catalog/lib/_styles/sheet-resize.styles"
+import {
   bindSheetWidthPointerListeners,
   getMaxSheetWidthPx,
   resolveInitialSheetWidth,
   writeStoredSheetWidth,
 } from "~/src/presentation/components/custom/pages/admin/catalog/lib/sheet-resize"
-import {
-  CATALOG_SHEET_PANEL_CLASS,
-  CATALOG_SHEET_RESIZE_HANDLE_CLASS,
-  CATALOG_SHEET_RESIZE_LINE_CLASS,
-} from "~/src/presentation/components/custom/pages/admin/catalog/lib/sheet-resize.styles"
 
 const resolveProductFormSheetWidth = (): number =>
   resolveInitialSheetWidth({

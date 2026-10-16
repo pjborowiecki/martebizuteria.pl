@@ -3,7 +3,7 @@ import { type JSX } from "react"
 import { ADMIN_ORDER_TABLE_COLUMN_ID } from "~/src/modules/order/order.constants"
 
 import { DataGridShell } from "~/src/presentation/components/custom/datagrid/components/data-grid-shell"
-import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
+import { ADMIN_CATALOG_DATAGRID_PAGE_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { OrdersDateColumnFilter } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-date-column-filter"
 import { OrdersExportAction } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-export-action"
 import { OrdersFulfillmentFilter } from "~/src/presentation/components/custom/pages/admin/orders/components/orders-fulfillment-filter"
