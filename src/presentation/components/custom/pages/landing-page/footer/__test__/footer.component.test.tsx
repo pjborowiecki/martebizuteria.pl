@@ -1,14 +1,20 @@
 import { cleanup, screen } from "@testing-library/react"
-import { afterEach, describe, expect, it } from "vite-plus/test"
+import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { TEST_SELLER_DETAILS, createSellerDetailsQueryClient } from "~/src/platform/testing/mocks/seller-details"
 
-import { BUSINESS, BUSINESS_PHONE_HREF } from "~/src/presentation/branding/business"
 import { SOCIALS } from "~/src/presentation/branding/socials"
 
 import { Footer } from "~/src/presentation/components/custom/pages/landing-page/footer/footer"
 
 import { ABOUT_CONTACT_HASH, ROUTES } from "~/src/routes"
+
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 
 describe("Footer", () => {
   afterEach(() => {
@@ -16,7 +22,7 @@ describe("Footer", () => {
   })
 
   it("leads with the brand name and its description", () => {
-    renderWithProviders(<Footer />)
+    renderWithProviders(<Footer />, { queryClient: createSellerDetailsQueryClient() })
 
     expect(screen.getByRole("heading", { level: 2, name: "M'Arte" })).toBeInTheDocument()
     expect(
@@ -25,7 +31,7 @@ describe("Footer", () => {
   })
 
   it.each([["Information"], ["Legal"], ["Tips"], ["Seller and contact"]])("groups the footer under the %s heading", (name) => {
-    renderWithProviders(<Footer />)
+    renderWithProviders(<Footer />, { queryClient: createSellerDetailsQueryClient() })
 
     expect(screen.getByRole("heading", { level: 3, name })).toBeInTheDocument()
   })
@@ -40,27 +46,27 @@ describe("Footer", () => {
     ["Withdraw from the contract", ROUTES.WITHDRAW_FROM_CONTRACT],
     ["How to care for jewelry", ROUTES.FAQ],
   ])("sends %s to %s", (name, href) => {
-    renderWithProviders(<Footer />)
+    renderWithProviders(<Footer />, { queryClient: createSellerDetailsQueryClient() })
 
     expect(screen.getByRole("link", { name })).toHaveAttribute("href", href)
   })
 
-  it("shows the seller's identity and how to reach it on every page", () => {
-    renderWithProviders(<Footer />)
+  it("shows the stored seller's identity and how to reach it on every page", () => {
+    renderWithProviders(<Footer />, { queryClient: createSellerDetailsQueryClient() })
 
-    expect(screen.getByText(BUSINESS.LEGAL_NAME, { exact: false })).toHaveTextContent(
-      `${BUSINESS.STREET} ${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY}`,
+    expect(screen.getByText(TEST_SELLER_DETAILS.legalName, { exact: false })).toHaveTextContent(
+      `${TEST_SELLER_DETAILS.street} ${TEST_SELLER_DETAILS.postalCode} ${TEST_SELLER_DETAILS.city}`,
     )
-    expect(screen.getByText(BUSINESS.REGON, { exact: false })).toHaveTextContent(BUSINESS.NIP)
-    expect(screen.getByRole("link", { name: BUSINESS.EMAIL })).toHaveAttribute("href", `mailto:${BUSINESS.EMAIL}`)
-    expect(screen.getByRole("link", { name: BUSINESS.PHONE })).toHaveAttribute("href", BUSINESS_PHONE_HREF)
+    expect(screen.getByText(TEST_SELLER_DETAILS.regon, { exact: false })).toHaveTextContent(TEST_SELLER_DETAILS.nip)
+    expect(screen.getByRole("link", { name: TEST_SELLER_DETAILS.email })).toHaveAttribute("href", `mailto:${TEST_SELLER_DETAILS.email}`)
+    expect(screen.getByRole("link", { name: TEST_SELLER_DETAILS.phone })).toHaveAttribute("href", "tel:+48600100200")
   })
 
   it.each([
     ["Instagram", SOCIALS.INSTAGRAM],
     ["Facebook", SOCIALS.FACEBOOK],
   ])("opens the %s profile in a new tab without leaking the referrer", (name, href) => {
-    renderWithProviders(<Footer />)
+    renderWithProviders(<Footer />, { queryClient: createSellerDetailsQueryClient() })
     const link = screen.getByRole("link", { name })
 
     expect(link).toHaveAttribute("href", href)
@@ -69,25 +75,25 @@ describe("Footer", () => {
   })
 
   it("names each social icon for assistive technology", () => {
-    const { container } = renderWithProviders(<Footer />)
+    const { container } = renderWithProviders(<Footer />, { queryClient: createSellerDetailsQueryClient() })
 
     expect([...container.querySelectorAll("svg > title")].map((title) => title.textContent)).toStrictEqual(["Instagram", "Facebook"])
   })
 
   it("closes with the copyright line", () => {
-    renderWithProviders(<Footer />)
+    renderWithProviders(<Footer />, { queryClient: createSellerDetailsQueryClient() })
 
     expect(screen.getByText("© 2026 M'Arte. All rights reserved.")).toBeInTheDocument()
   })
 
   it("puts every navigation link in a list item", () => {
-    const { container } = renderWithProviders(<Footer />)
+    const { container } = renderWithProviders(<Footer />, { queryClient: createSellerDetailsQueryClient() })
 
     expect(container.querySelectorAll("li")).toHaveLength(8)
   })
 
   it("gives every link and social icon a finger-sized target on touch screens", () => {
-    renderWithProviders(<Footer />)
+    renderWithProviders(<Footer />, { queryClient: createSellerDetailsQueryClient() })
 
     const terms = screen.getByRole("link", { name: "Store regulations" })
 

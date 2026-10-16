@@ -15,18 +15,21 @@ interface SentEmail {
   readonly to: string
 }
 
-const { batchSend, env } = vi.hoisted(() => ({
+const { batchSend, env, readSellerDetails } = vi.hoisted(() => ({
   batchSend: vi.fn<(emails: SentEmail[], options: { idempotencyKey?: string }) => Promise<{ error: { message: string } | null }>>(),
   env: { RESEND_API_KEY: "re_test", RESEND_EMAIL_FROM: "atelier@marte.test" },
+  readSellerDetails: vi.fn<() => Promise<unknown>>(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env }))
 vi.mock("~/src/integrations/resend/resend.config", () => ({ resend: { batch: { send: batchSend } } }))
+vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ readSellerDetails }))
+
+import { TEST_SELLER_DETAILS, TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
 import { sendNewsletterBatch } from "~/src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
-import { BUSINESS } from "~/src/presentation/branding/business"
 
 const ORIGIN = "https://martebizuteria.pl"
 
@@ -61,6 +64,8 @@ const sentEmail = (index: number): SentEmail => {
 beforeEach(() => {
   batchSend.mockReset()
   batchSend.mockResolvedValue({ error: null })
+  readSellerDetails.mockReset()
+  readSellerDetails.mockResolvedValue(TEST_STORED_SELLER_DETAILS)
 })
 
 describe("sendNewsletterBatch", () => {
@@ -74,11 +79,25 @@ describe("sendNewsletterBatch", () => {
     expect(sentEmails().map((email) => email.to)).toStrictEqual([ANNA.email, BEN.email])
   })
 
-  it("sends from the shop under its name and takes replies at the shop's contact address", async () => {
+  it("sends from the shop under its name and takes replies at the seller's contact address", async () => {
     await sendNewsletterBatch({ content: CONTENT, recipients: [ANNA] })
 
     expect(sentEmail(0).from).toBe(`${APP_NAME} <${env.RESEND_EMAIL_FROM}>`)
-    expect(sentEmail(0).replyTo).toBe(BUSINESS.EMAIL)
+    expect(sentEmail(0).replyTo).toBe(TEST_SELLER_DETAILS.email)
+  })
+
+  it("reads the seller once for the whole batch and signs each email with the seller's address", async () => {
+    await sendNewsletterBatch({ content: CONTENT, recipients: [ANNA, BEN] })
+
+    expect(readSellerDetails).toHaveBeenCalledOnce()
+    await expect(render(sentEmail(1).react, { plainText: true })).resolves.toContain("ul. Floriańska 1")
+  })
+
+  it("sends nothing and reports why when the seller's details cannot be read", async () => {
+    readSellerDetails.mockRejectedValueOnce(new Error("D1 is unavailable"))
+
+    await expect(sendNewsletterBatch({ content: CONTENT, recipients: [ANNA] })).resolves.toBe("D1 is unavailable")
+    expect(batchSend).not.toHaveBeenCalled()
   })
 
   it("writes each email in the subscriber's language", async () => {

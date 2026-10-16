@@ -1,9 +1,9 @@
 import { render } from "react-email"
 import { describe, expect, it } from "vite-plus/test"
 
-import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
+import { TEST_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
-import { BUSINESS } from "~/src/presentation/branding/business"
+import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 
 import englishCopy from "~/messages/en-US/emails.order-withdrawal.json"
 import polishCopy from "~/messages/pl-PL/emails.order-withdrawal.json"
@@ -30,6 +30,7 @@ const renderReceived = (withdrawal: OrderWithdrawal["statement"], locale: "en-US
       locale={locale}
       messages={locale === "en-US" ? englishCopy : polishCopy}
       orderNumber={ORDER_NUMBER}
+      seller={TEST_SELLER_DETAILS}
       statement={withdrawal}
     />,
     { plainText: true },
@@ -71,12 +72,13 @@ describe("OrderWithdrawalReceived", () => {
     expect(text).toContain(polishCopy.statement.noReason)
   })
 
-  it("tells the customer where to send the products back and how the refund works", async () => {
+  it("tells the customer to send the products back to the stored seller address, and how the refund works", async () => {
     const text = await renderReceived(statement)
 
     expect(text).toContain(englishCopy.received.returnBody)
-    expect(text).toContain(`${BUSINESS.LEGAL_NAME} ${BUSINESS.STREET} ${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY} Poland`)
+    expect(text).toContain("Pracownia Testowa Anna Nowak ul. Floriańska 1 31-001 Kraków Poland")
     expect(text).toContain(englishCopy.received.refundBody)
+    await expect(renderReceived(statement, "pl-PL")).resolves.toContain("31-001 Kraków Polska")
   })
 })
 

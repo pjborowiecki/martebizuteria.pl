@@ -7,6 +7,7 @@ import { loadDocsNavigation } from "~/src/integrations/fumadocs/fumadocs.docs"
 
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
+import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
 
 import { DocsSidebar } from "~/src/presentation/components/custom/pages/docs/docs-sidebar"
 import { Footer } from "~/src/presentation/components/custom/pages/landing-page/footer/footer"
@@ -45,6 +46,7 @@ export const Route = createFileRoute("/docs")({
         })
         .catch(noop),
       context.queryClient.query(getSalesStatusQuery()).catch(noop),
+      context.queryClient.query(getSellerDetailsQuery()),
     ])
 
     return navigation

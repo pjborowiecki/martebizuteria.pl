@@ -8,8 +8,8 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { type OrderAccountCta, type OrderEmailDestination } from "~/src/modules/order/order.email.utils"
-
-import { BUSINESS, BUSINESS_PHONE_HREF, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
+import { formatSellerPostalAddress, toSellerPhoneHref } from "~/src/modules/store-setting/store-setting.utils"
 
 import type emailMessages from "~/messages/en-US/emails.order-confirmation.json"
 import { EMAIL_PRODUCT_IMAGE_STYLE } from "~/src/presentation/emails/_styles/email-styles"
@@ -64,7 +64,7 @@ const ContractSection = ({ children, isFirst = false, label }: Readonly<Contract
   </Section>
 )
 
-const OrderContractInformation = ({ legalLinks, locale, messages }: Readonly<OrderContractInformationProps>): JSX.Element => {
+const OrderContractInformation = ({ legalLinks, locale, messages, seller }: Readonly<OrderContractInformationProps>): JSX.Element => {
   const t = createTranslator({
     locale,
     messages: { emails: { "order-confirmation": messages } },
@@ -79,7 +79,7 @@ const OrderContractInformation = ({ legalLinks, locale, messages }: Readonly<Ord
 
       <ContractSection label={t("withdrawal.label")}>
         <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.period")}</Text>
-        <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.how", { email: BUSINESS.EMAIL })}</Text>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("withdrawal.how", { email: seller.email })}</Text>
         <Text className={CONTRACT_TEXT_CLASS}>
           <Link className={CONTRACT_LINK_CLASS} href={legalLinks.withdrawal}>
             {t("withdrawal.online")}
@@ -92,7 +92,7 @@ const OrderContractInformation = ({ legalLinks, locale, messages }: Readonly<Ord
 
       <ContractSection label={t("complaints.label")}>
         <Text className={CONTRACT_TEXT_CLASS}>{t("complaints.liability")}</Text>
-        <Text className={CONTRACT_TEXT_CLASS}>{t("complaints.how", { email: BUSINESS.EMAIL })}</Text>
+        <Text className={CONTRACT_TEXT_CLASS}>{t("complaints.how", { email: seller.email })}</Text>
         <Text className={CONTRACT_TEXT_CLASS}>{t("complaints.outOfCourt")}</Text>
       </ContractSection>
 
@@ -113,22 +113,20 @@ const OrderContractInformation = ({ legalLinks, locale, messages }: Readonly<Ord
       </ContractSection>
 
       <ContractSection label={t("seller.label")}>
-        <Text className={`${CONTRACT_TEXT_CLASS} whitespace-pre-line`}>
-          {[...BUSINESS_POSTAL_ADDRESS_LINES, t("seller.country")].join("\n")}
-        </Text>
+        <Text className={`${CONTRACT_TEXT_CLASS} whitespace-pre-line`}>{formatSellerPostalAddress(seller, locale).join("\n")}</Text>
         <Text className={CONTRACT_TEXT_CLASS}>
-          {t("seller.taxIdLabel")}: {BUSINESS.NIP}
+          {t("seller.taxIdLabel")}: {seller.nip}
         </Text>
         <Text className={CONTRACT_TEXT_CLASS}>
           {t("seller.emailLabel")}:{" "}
-          <Link className={CONTRACT_LINK_CLASS} href={`mailto:${BUSINESS.EMAIL}`}>
-            {BUSINESS.EMAIL}
+          <Link className={CONTRACT_LINK_CLASS} href={`mailto:${seller.email}`}>
+            {seller.email}
           </Link>
         </Text>
         <Text className={CONTRACT_TEXT_CLASS}>
           {t("seller.phoneLabel")}:{" "}
-          <Link className={CONTRACT_LINK_CLASS} href={BUSINESS_PHONE_HREF}>
-            {BUSINESS.PHONE}
+          <Link className={CONTRACT_LINK_CLASS} href={toSellerPhoneHref(seller.phone)}>
+            {seller.phone}
           </Link>
         </Text>
       </ContractSection>
@@ -147,6 +145,7 @@ export const OrderConfirmation = ({
   locale,
   messages,
   orderNumber,
+  seller,
   shippingTotal,
   subtotal,
   taxBasisPoints,
@@ -246,7 +245,7 @@ export const OrderConfirmation = ({
 
       <Hr className="border-line mt-[44px] mb-[28px]" />
 
-      <OrderContractInformation legalLinks={legalLinks} locale={locale} messages={messages} />
+      <OrderContractInformation legalLinks={legalLinks} locale={locale} messages={messages} seller={seller} />
     </EmailLayout>
   )
 }
@@ -309,6 +308,7 @@ interface OrderConfirmationProps {
   readonly discountTotal: number
   readonly messages: typeof emailMessages
   readonly orderNumber: string
+  readonly seller: StoreSetting["sellerDetails"]
   readonly shippingTotal: number
   readonly subtotal: number
   readonly taxBasisPoints: number
@@ -326,6 +326,7 @@ interface OrderContractInformationProps {
   readonly legalLinks: OrderConfirmationLegalLinks
   readonly locale: SupportedLocale
   readonly messages: typeof emailMessages
+  readonly seller: StoreSetting["sellerDetails"]
 }
 
 interface DetailRowProps {

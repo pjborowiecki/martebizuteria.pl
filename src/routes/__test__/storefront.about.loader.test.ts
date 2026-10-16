@@ -28,6 +28,11 @@ const requested = vi.hoisted(() => ({ options: [] as unknown[] }))
 
 const captured: { current: AboutRouteDefinition | undefined } = { current: undefined }
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("~/src/integrations/use-intl/i18n.messages", async (importOriginal) => {
   const actual = await importOriginal<typeof I18nMessages>()
 

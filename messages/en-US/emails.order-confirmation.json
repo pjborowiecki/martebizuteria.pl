@@ -72,7 +72,6 @@
   },
   "seller": {
     "label": "Seller",
-    "country": "Poland",
     "taxIdLabel": "NIP (tax identification number)",
     "emailLabel": "E-mail",
     "phoneLabel": "Phone"

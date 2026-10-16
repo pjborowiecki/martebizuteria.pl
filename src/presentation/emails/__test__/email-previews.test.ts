@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vite-plus/test"
+import { describe, expect, it, vi } from "vite-plus/test"
+
+import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
 
@@ -27,6 +29,10 @@ import polishOrderWithdrawalCopy from "~/messages/pl-PL/emails.order-withdrawal.
 import polishPaymentFailedCopy from "~/messages/pl-PL/emails.payment-failed.json"
 import polishVerifyEmailCopy from "~/messages/pl-PL/emails.verify-email.json"
 import { EMAIL_PREVIEWS, type EmailPreviewSlug, isEmailPreviewSlug, renderEmailPreview } from "~/src/presentation/emails/email-previews"
+
+vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({
+  readSellerDetails: () => Promise.resolve(TEST_STORED_SELLER_DETAILS),
+}))
 
 const text = (slug: EmailPreviewSlug, locale: "en-US" | "pl-PL" = "en-US"): Promise<string> => renderEmailPreview(slug, locale, true)
 
@@ -189,7 +195,7 @@ describe("renderEmailPreview of the order emails", () => {
     expect(preview).toContain(
       `${polishOrderDeliveredCopy.returns.withdrawal} http://localhost:3000/withdraw-from-contract?order=MRT-2026-00042`,
     )
-    expect(preview).toContain("kontakt@martebizuteria.pl")
+    expect(preview).toContain(TEST_STORED_SELLER_DETAILS.email)
   })
 
   it("previews the start of fulfilment with the promise of a tracking number to come", async () => {
@@ -266,6 +272,7 @@ describe("renderEmailPreview for a withdrawal from the contract", () => {
     expect(preview).toContain(orderWithdrawalCopy.received.heading.toUpperCase())
     expect(preview).toContain("Kolczyki Luna — Srebro × 2")
     expect(preview).toContain("Rozmiar nie pasuje.")
+    expect(preview).toContain("Pracownia Testowa Anna Nowak ul. Floriańska 1 31-001 Kraków Poland")
   })
 
   it("previews the shop's withdrawal notice in the language asked for", async () => {

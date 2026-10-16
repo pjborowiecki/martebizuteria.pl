@@ -1,6 +1,8 @@
 import { render } from "react-email"
 import { describe, expect, it } from "vite-plus/test"
 
+import { TEST_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
+
 import englishCopy from "~/messages/en-US/emails.order-delivered.json"
 import polishCopy from "~/messages/pl-PL/emails.order-delivered.json"
 import { ORDER_DELIVERED_NAMESPACE, OrderDelivered } from "~/src/presentation/emails/order-delivered"
@@ -23,6 +25,7 @@ const renderDelivered = (messages = englishCopy): Promise<string> =>
       locale={messages === englishCopy ? "en-US" : "pl-PL"}
       messages={messages}
       orderNumber={ORDER_NUMBER}
+      seller={TEST_SELLER_DETAILS}
     />,
     { plainText: true },
   )
@@ -62,8 +65,8 @@ describe("OrderDelivered", () => {
   it("says how to reach the shop and links the customer's order", async () => {
     const text = await renderDelivered()
 
-    expect(text).toContain("kontakt@martebizuteria.pl")
-    expect(text).toContain("+48 663 150 820")
+    expect(text).toContain(TEST_SELLER_DETAILS.email)
+    expect(text).toContain(TEST_SELLER_DETAILS.phone)
     expect(text).toContain(`${customerCta.label} ${customerCta.href}`)
   })
 

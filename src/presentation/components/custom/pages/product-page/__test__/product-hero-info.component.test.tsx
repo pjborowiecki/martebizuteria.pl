@@ -12,6 +12,11 @@ import { ProductHeroInfo } from "~/src/presentation/components/custom/pages/prod
 
 import { storefrontProduct, storefrontVariant } from "./storefront-product-fixture"
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("~/src/lib/image", () => ({ getProductImageUrl: (path: string | null) => `cdn/${path ?? "placeholder"}` }))
 const wishlist = vi.hoisted(() => ({ saved: new Set<string>(), toggle: vi.fn<(productId: string) => void>() }))
 

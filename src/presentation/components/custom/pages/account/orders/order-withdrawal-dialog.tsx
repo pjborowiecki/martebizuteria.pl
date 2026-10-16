@@ -1,7 +1,7 @@
 import { type JSX, type SyntheticEvent } from "react"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
 import { useForm, useWatch } from "react-hook-form"
 import { toast } from "sonner"
@@ -16,10 +16,9 @@ import {
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import { orderWithdrawalZodSchemas } from "~/src/modules/order-withdrawal/order-withdrawal.zod"
 import { withdrawFromCustomerOrderMutation } from "~/src/modules/order-withdrawal/use-cases/withdraw-from-customer-order"
+import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
 
 import { useActionError } from "~/src/hooks/use-action-error"
-
-import { BUSINESS } from "~/src/presentation/branding/business"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {
@@ -45,6 +44,7 @@ export const OrderWithdrawalDialog = ({ onOpenChange, open, order, withdrawal }:
   const queryClient = useQueryClient()
   const actionError = useActionError()
   const describeReceipt = useDescribeWithdrawalReceipt()
+  const { data: seller } = useSuspenseQuery(getSellerDetailsQuery())
   const form = useForm<OrderWithdrawal["customerFormValues"]>({
     defaultValues: { consumerName: withdrawal.consumerName, orderItemIds: [], reason: "", scope: ORDER_WITHDRAWAL_SCOPE.ORDER },
     mode: "onTouched",
@@ -66,7 +66,7 @@ export const OrderWithdrawalDialog = ({ onOpenChange, open, order, withdrawal }:
         return
       }
 
-      toast.error(t(`result.${result.outcome}`, { shopEmail: BUSINESS.EMAIL }))
+      toast.error(t(`result.${result.outcome}`, { shopEmail: seller.email }))
     },
   })
 

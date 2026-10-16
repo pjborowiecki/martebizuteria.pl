@@ -3,12 +3,18 @@ import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { createSellerDetailsQueryClient } from "~/src/platform/testing/mocks/seller-details"
 
 const calls = vi.hoisted(() => ({
   toastError: vi.fn<(message: string) => void>(),
   withdraw: vi.fn<(data: Record<string, unknown>) => Promise<void>>(),
 }))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("sonner", () => ({ toast: { error: calls.toastError } }))
 vi.mock("~/src/modules/order-withdrawal/use-cases/withdraw-from-guest-order", () => ({
   withdrawFromGuestOrderMutation: {
@@ -35,7 +41,7 @@ afterEach(cleanup)
 
 describe("GuestWithdrawalForm", () => {
   it("sends the statement for the order named in the email link and answers without saying whether the order was found", async () => {
-    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />)
+    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />, { queryClient: createSellerDetailsQueryClient() })
     expect(screen.getByLabelText(/Order number/u)).toHaveValue("MRT-2026-00042")
 
     await fillStatement()
@@ -45,7 +51,7 @@ describe("GuestWithdrawalForm", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "If an order with this number was placed with this email address and can still be withdrawn from, we have recorded your statement of withdrawal",
     )
-    expect(screen.getByRole("status")).toHaveTextContent(/or write to us at kontakt@martebizuteria\.pl\.$/u)
+    expect(screen.getByRole("status")).toHaveTextContent(/or write to us at sklep@marte\.test\.$/u)
     expect(calls.withdraw).toHaveBeenCalledExactlyOnceWith({
       consumerName: "Anna Kowalska",
       email: "anna@example.com",
@@ -57,7 +63,7 @@ describe("GuestWithdrawalForm", () => {
   })
 
   it("asks for the order number, the email and the name before sending anything", async () => {
-    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber={undefined} />)
+    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber={undefined} />, { queryClient: createSellerDetailsQueryClient() })
 
     await userEvent.click(confirmButton())
 
@@ -68,7 +74,7 @@ describe("GuestWithdrawalForm", () => {
   })
 
   it("asks which products a partial statement covers", async () => {
-    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />)
+    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />, { queryClient: createSellerDetailsQueryClient() })
     await fillStatement()
     await userEvent.click(screen.getByRole("radio", { name: "Only some products" }))
 
@@ -87,7 +93,7 @@ describe("GuestWithdrawalForm", () => {
   it("keeps the button disabled while the statement is on its way", async () => {
     const answer = Promise.withResolvers<undefined>()
     calls.withdraw.mockReturnValueOnce(answer.promise)
-    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />)
+    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />, { queryClient: createSellerDetailsQueryClient() })
     await fillStatement()
 
     await userEvent.click(confirmButton())
@@ -99,7 +105,7 @@ describe("GuestWithdrawalForm", () => {
 
   it("reports a request the server turned away", async () => {
     calls.withdraw.mockRejectedValue(new Error("TOO_MANY_REQUESTS"))
-    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />)
+    renderWithProviders(<GuestWithdrawalForm defaultOrderNumber="MRT-2026-00042" />, { queryClient: createSellerDetailsQueryClient() })
     await fillStatement()
 
     await userEvent.click(confirmButton())

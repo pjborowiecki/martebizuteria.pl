@@ -10,6 +10,7 @@ import {
 
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
+import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
 
 import { useRealtimeQuerySync } from "~/src/hooks/use-realtime-query-sync"
 
@@ -60,6 +61,7 @@ export const Route = createFileRoute("/_storefront")({
         })
         .catch(noop),
       context.queryClient.query(getSalesStatusQuery()).catch(noop),
+      context.queryClient.query(getSellerDetailsQuery()),
     ])
   },
   staticData: {

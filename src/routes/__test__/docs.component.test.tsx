@@ -5,6 +5,8 @@ import type * as ReactRouter from "@tanstack/react-router"
 import { cleanup, screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
+
 import { type DocsNavigationSection } from "~/src/integrations/fumadocs/fumadocs.docs"
 
 interface DocsPageMeta {
@@ -47,6 +49,11 @@ const docs = vi.hoisted(() => ({
   loadDocsPage: vi.fn<(splat?: string) => Promise<DocsPageMeta>>(),
 }))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouter>()
 
@@ -211,6 +218,15 @@ describe("documentation layout", () => {
 
     await expect(loadAt("/docs", {}, queryClient)).resolves.toStrictEqual({ sections: SECTIONS })
     expect(queryClient.getQueryState(STORE_SETTING_QUERY_KEYS.SALES)).toMatchObject({ data: undefined, status: "error" })
+  })
+
+  it("renders the documentation with the seller's stored details, so the footer names the seller in the first paint", async () => {
+    docs.loadDocsNavigation.mockResolvedValue({ sections: SECTIONS })
+    const queryClient = new QueryClient()
+
+    await loadAt("/docs", {}, queryClient)
+
+    expect(queryClient.getQueryData(STORE_SETTING_QUERY_KEYS.SELLER_DETAILS)).toStrictEqual(TEST_STORED_SELLER_DETAILS)
   })
 })
 

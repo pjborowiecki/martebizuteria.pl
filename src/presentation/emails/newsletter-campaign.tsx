@@ -5,7 +5,8 @@ import { createTranslator } from "use-intl"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
+import { formatSellerPostalAddress } from "~/src/modules/store-setting/store-setting.utils"
 
 import type emailMessages from "~/messages/en-US/emails.newsletter-campaign.json"
 import { EMAIL_MARKDOWN_CONTAINER_STYLE, EMAIL_MARKDOWN_STYLES } from "~/src/presentation/emails/_styles/email-styles"
@@ -18,6 +19,7 @@ export const NewsletterCampaignEmail = ({
   body,
   locale,
   messages,
+  seller,
   subject,
   unsubscribeUrl,
 }: Readonly<NewsletterCampaignEmailProps>): JSX.Element => {
@@ -44,12 +46,12 @@ export const NewsletterCampaignEmail = ({
 
       <Section className="mt-[24px] text-center">
         <Text className={`${EMAIL_MUTED_TEXT_CLASS} whitespace-pre-line`}>
-          {[t("sender.label"), ...BUSINESS_POSTAL_ADDRESS_LINES, t("sender.country")].join("\n")}
+          {[t("sender.label"), ...formatSellerPostalAddress(seller, locale)].join("\n")}
         </Text>
         <Text className={EMAIL_MUTED_TEXT_CLASS}>
           {t("sender.emailLabel")}:{" "}
-          <Link className="text-muted underline" href={`mailto:${BUSINESS.EMAIL}`}>
-            {BUSINESS.EMAIL}
+          <Link className="text-muted underline" href={`mailto:${seller.email}`}>
+            {seller.email}
           </Link>
         </Text>
       </Section>
@@ -61,6 +63,7 @@ interface NewsletterCampaignEmailProps {
   readonly body: string
   readonly locale: SupportedLocale
   readonly messages: typeof emailMessages
+  readonly seller: StoreSetting["sellerDetails"]
   readonly subject: string
   readonly unsubscribeUrl: string
 }

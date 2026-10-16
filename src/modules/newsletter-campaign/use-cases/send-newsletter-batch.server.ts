@@ -8,10 +8,10 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { type NewsletterCampaign } from "~/src/modules/newsletter-campaign/newsletter-campaign.types"
+import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 
 import { buildLocalizedUrl } from "~/src/lib/seo"
-
-import { BUSINESS } from "~/src/presentation/branding/business"
 
 import type campaignMessages from "~/messages/en-US/emails.newsletter-campaign.json"
 import { NEWSLETTER_CAMPAIGN_NAMESPACE, NewsletterCampaignEmail } from "~/src/presentation/emails/newsletter-campaign"
@@ -37,6 +37,7 @@ const oneClickUnsubscribeHeaders = (origin: string, token: string | undefined): 
 
 const composeNewsletterEmail = async (
   { bodies, origin, subjects }: NewsletterContent,
+  seller: StoreSetting["sellerDetails"],
   { email, locale, unsubscribeToken }: NewsletterCampaign["recipient"],
 ): Promise<CreateBatchEmailOptions> => ({
   ...oneClickUnsubscribeHeaders(origin, unsubscribeToken),
@@ -45,10 +46,11 @@ const composeNewsletterEmail = async (
     body: bodies[locale],
     locale,
     messages: await loadNamespace<typeof campaignMessages>({ locale, namespace: NEWSLETTER_CAMPAIGN_NAMESPACE }),
+    seller,
     subject: subjects[locale],
     unsubscribeUrl: unsubscribePageUrl(origin, locale, unsubscribeToken),
   }),
-  replyTo: BUSINESS.EMAIL,
+  replyTo: seller.email,
   subject: subjects[locale],
   to: email,
 })
@@ -59,7 +61,8 @@ export const sendNewsletterBatch = async ({
   recipients,
 }: Readonly<NewsletterBatch>): Promise<string | undefined> => {
   try {
-    const emails = await Promise.all(recipients.map((recipient) => composeNewsletterEmail(content, recipient)))
+    const seller = await readSellerDetails()
+    const emails = await Promise.all(recipients.map((recipient) => composeNewsletterEmail(content, seller, recipient)))
     const { error } = await resend.batch.send(emails, idempotencyKey === undefined ? {} : { idempotencyKey })
 
     return error?.message

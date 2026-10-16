@@ -69,6 +69,11 @@ vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailCo
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout }))
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout: vi.fn() }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderTotalsForEmail }))
+vi.mock("~/src/modules/store-setting/store-setting.accessors", async () => {
+  const { TEST_STORED_SELLER_DETAILS } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return { readSellerDetails: () => Promise.resolve(TEST_STORED_SELLER_DETAILS) }
+})
 vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder: vi.fn() }))
@@ -192,6 +197,7 @@ describe("order confirmation email", () => {
     expect(sentEmail().subject).toBe(polishCopy.subject)
     expect(sentEmail().react.type).toBe(OrderConfirmation)
     expect(sentEmail().react.props.locale).toBe("pl-PL")
+    expect(sentEmail().react.props.seller).toMatchObject({ legalName: "Pracownia Testowa Anna Nowak", nip: "5260250274" })
   })
 
   it("translates the subject into the locale the checkout was made in", async () => {

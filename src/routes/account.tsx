@@ -8,6 +8,7 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
+import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
@@ -85,6 +86,7 @@ export const Route = createFileRoute("/account")({
         })
         .catch(noop),
       context.queryClient.query(getSalesStatusQuery()).catch(noop),
+      context.queryClient.query(getSellerDetailsQuery()),
     ])
 
     return {

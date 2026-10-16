@@ -6,8 +6,7 @@ import { createTranslator } from "use-intl"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type OrderAccountCta } from "~/src/modules/order/order.email.utils"
-
-import { BUSINESS } from "~/src/presentation/branding/business"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 
 import type emailMessages from "~/messages/en-US/emails.order-delivered.json"
 import {
@@ -23,7 +22,14 @@ export const ORDER_DELIVERED_NAMESPACE = "emails.order-delivered"
 
 const CARE_TIPS = ["wipe", "takeOff", "putOnLast", "gentle"] as const
 
-export const OrderDelivered = ({ accountCta, links, locale, messages, orderNumber }: Readonly<OrderDeliveredProps>): JSX.Element => {
+export const OrderDelivered = ({
+  accountCta,
+  links,
+  locale,
+  messages,
+  orderNumber,
+  seller,
+}: Readonly<OrderDeliveredProps>): JSX.Element => {
   const t = createTranslator({ locale, messages: { emails: { "order-delivered": messages } }, namespace: ORDER_DELIVERED_NAMESPACE })
 
   return (
@@ -67,7 +73,7 @@ export const OrderDelivered = ({ accountCta, links, locale, messages, orderNumbe
         </Link>
       </Text>
 
-      <EmailBodyText className="mt-[28px]">{t("contact", { email: BUSINESS.EMAIL, phone: BUSINESS.PHONE })}</EmailBodyText>
+      <EmailBodyText className="mt-[28px]">{t("contact", { email: seller.email, phone: seller.phone })}</EmailBodyText>
 
       <Section className={EMAIL_CTA_SECTION_WITH_TOP_SPACING_CLASS}>
         <Button className={EMAIL_CTA_BUTTON_CLASS} href={accountCta.href}>
@@ -99,4 +105,5 @@ interface OrderDeliveredProps {
   readonly locale: SupportedLocale
   readonly messages: typeof emailMessages
   readonly orderNumber: string
+  readonly seller: StoreSetting["sellerDetails"]
 }

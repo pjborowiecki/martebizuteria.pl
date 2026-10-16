@@ -2,24 +2,27 @@ import { createElement } from "react"
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { emailsSend, env, markEmailSenderUnavailable } = vi.hoisted(() => ({
+const { emailsSend, env, markEmailSenderUnavailable, readSellerDetails } = vi.hoisted(() => ({
   emailsSend: vi.fn(),
   env: { RESEND_API_KEY: "re_test", RESEND_EMAIL_FROM: "atelier@marte.test" },
   markEmailSenderUnavailable: vi.fn<(reason: string) => Promise<void>>(),
+  readSellerDetails: vi.fn<() => Promise<{ readonly email: string }>>(),
 }))
 
 vi.mock("cloudflare:workers", () => ({ env }))
 vi.mock("~/src/integrations/resend/resend.availability.server", () => ({ markEmailSenderUnavailable }))
+vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ readSellerDetails }))
 vi.mock("resend", () => ({
   Resend: class {
     public readonly emails = { send: emailsSend }
   },
 }))
 
+import { TEST_SELLER_DETAILS, TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
+
 import { SEND_EMAIL_TIMEOUT_MS, sendEmail } from "~/src/integrations/resend/resend.send"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
-import { BUSINESS } from "~/src/presentation/branding/business"
 
 const body = createElement("p", undefined, "Your order is on its way")
 
@@ -33,6 +36,7 @@ beforeEach(() => {
   emailsSend.mockReset()
   markEmailSenderUnavailable.mockReset()
   markEmailSenderUnavailable.mockResolvedValue(undefined)
+  readSellerDetails.mockResolvedValue(TEST_STORED_SELLER_DETAILS)
 })
 
 afterEach(() => {
@@ -55,7 +59,7 @@ describe("sendEmail", () => {
       {
         from: `${APP_NAME} <atelier@marte.test>`,
         react: body,
-        replyTo: BUSINESS.EMAIL,
+        replyTo: TEST_SELLER_DETAILS.email,
         subject: "Order shipped",
         to: "anna@example.com",
       },
@@ -83,7 +87,7 @@ describe("sendEmail", () => {
         attachments,
         from: `${APP_NAME} <atelier@marte.test>`,
         react: body,
-        replyTo: BUSINESS.EMAIL,
+        replyTo: TEST_SELLER_DETAILS.email,
         subject: "Order confirmation",
         to: "anna@example.com",
       },
@@ -99,12 +103,36 @@ describe("sendEmail", () => {
     expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: "support@marte.test" }), {})
   })
 
-  it("sends the customer's reply to the shop's contact address when the email comes from another address", async () => {
+  it("sends the customer's reply to the seller's contact address when the email comes from another address", async () => {
     emailsSend.mockResolvedValueOnce({ data: { id: "email_1" }, error: null })
 
     await sendEmail({ from: "noreply@marte.test", react: body, subject: "Order shipped", to: "anna@example.com" })
 
-    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: "noreply@marte.test", replyTo: BUSINESS.EMAIL }), {})
+    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ from: "noreply@marte.test", replyTo: TEST_SELLER_DETAILS.email }), {})
+  })
+
+  it("sends replies to the contact address the owner saved last", async () => {
+    emailsSend.mockResolvedValueOnce({ data: { id: "email_1" }, error: null })
+    readSellerDetails.mockResolvedValueOnce({ ...TEST_STORED_SELLER_DETAILS, email: "nowy@marte.test" })
+
+    await sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })
+
+    expect(emailsSend).toHaveBeenCalledWith(expect.objectContaining({ replyTo: "nowy@marte.test" }), {})
+  })
+
+  it("still sends, without a Reply-To and with a note in the log, when the seller's details cannot be read", async () => {
+    emailsSend.mockResolvedValueOnce({ data: { id: "email_1" }, error: null })
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    readSellerDetails.mockRejectedValueOnce(new Error("D1 is unavailable"))
+
+    await expect(sendEmail({ react: body, subject: "Order shipped", to: "anna@example.com" })).resolves.toBeUndefined()
+
+    expect(emailsSend).toHaveBeenCalledWith(
+      { from: `${APP_NAME} <atelier@marte.test>`, react: body, subject: "Order shipped", to: "anna@example.com" },
+      {},
+    )
+    expect(consoleError).toHaveBeenCalledOnce()
+    consoleError.mockRestore()
   })
 
   it("surfaces the message Resend rejected the email with", async () => {

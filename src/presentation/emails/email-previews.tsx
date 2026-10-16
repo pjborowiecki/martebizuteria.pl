@@ -7,6 +7,8 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import { describeOrderFulfillmentTime } from "~/src/modules/order/order.fulfillment-time.utils"
+import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 
 import type accountDeletedMessages from "~/messages/en-US/emails.account-deleted.json"
 import type changeEmailMessages from "~/messages/en-US/emails.change-email.json"
@@ -234,7 +236,7 @@ export const EMAIL_PREVIEWS = {
     label: "Order cancelled",
   },
   "order-confirmation": {
-    element: async (locale) => {
+    element: async (locale, seller) => {
       const messages = await loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE })
 
       return (
@@ -256,6 +258,7 @@ export const EMAIL_PREVIEWS = {
           messages={messages}
           discountTotal={0}
           orderNumber={PREVIEW_ORDER_NUMBER}
+          seller={seller}
           shippingTotal={1900}
           subtotal={62_700}
           taxBasisPoints={STANDARD_VAT_BASIS_POINTS}
@@ -267,7 +270,7 @@ export const EMAIL_PREVIEWS = {
     label: "Order confirmation",
   },
   "order-delivered": {
-    element: async (locale) => (
+    element: async (locale, seller) => (
       <OrderDelivered
         accountCta={PREVIEW_CUSTOMER_CTA}
         links={{
@@ -278,6 +281,7 @@ export const EMAIL_PREVIEWS = {
         locale={locale}
         messages={await loadNamespace<typeof orderDeliveredMessages>({ locale, namespace: ORDER_DELIVERED_NAMESPACE })}
         orderNumber={PREVIEW_ORDER_NUMBER}
+        seller={seller}
       />
     ),
     label: "Order delivered",
@@ -343,11 +347,12 @@ export const EMAIL_PREVIEWS = {
     label: "Tracking number",
   },
   "order-withdrawal": {
-    element: async (locale) => (
+    element: async (locale, seller) => (
       <OrderWithdrawalReceived
         locale={locale}
         messages={await loadNamespace<typeof orderWithdrawalMessages>({ locale, namespace: ORDER_WITHDRAWAL_NAMESPACE })}
         orderNumber={PREVIEW_ORDER_NUMBER}
+        seller={seller}
         statement={PREVIEW_WITHDRAWAL_STATEMENT}
       />
     ),
@@ -419,7 +424,7 @@ export const isEmailPreviewSlug = (value: string): value is EmailPreviewSlug => 
 
 export const renderEmailPreview = async (slug: EmailPreviewSlug, locale: SupportedLocale, plainText: boolean): Promise<string> =>
   render(
-    await EMAIL_PREVIEWS[slug].element(locale),
+    await EMAIL_PREVIEWS[slug].element(locale, await readSellerDetails()),
     plainText
       ? {
           plainText: true,
@@ -430,7 +435,7 @@ export const renderEmailPreview = async (slug: EmailPreviewSlug, locale: Support
   )
 
 interface EmailPreview {
-  readonly element: (locale: SupportedLocale) => Promise<ReactElement>
+  readonly element: (locale: SupportedLocale, seller: StoreSetting["sellerDetails"]) => Promise<ReactElement>
   readonly label: string
 }
 

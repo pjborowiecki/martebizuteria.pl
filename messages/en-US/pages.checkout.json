@@ -107,7 +107,7 @@
     "selectedLocker": "Selected Parcel Locker:",
     "deliverySubsteps": {
       "parcelDeliveryTime": "We prepare your order within the fulfillment time stated on the product page, counted from the acceptance of the order; with several products, the longest applies. InPost delivery then takes up to 4 business days from dispatch, and we email you the tracking number.",
-      "inStoreText": "Collect your order at our shop in Bochnia, ul. Wąska 11, between 09:00 and 17:00. It will be ready by the end of the fulfillment time stated on the product page, or the longest of them if you order several products, and we will let you know as soon as it is.",
+      "inStoreText": "Collect your order at our shop at {street}, {postalCode} {city}, between 09:00 and 17:00. It will be ready by the end of the fulfillment time stated on the product page, or the longest of them if you order several products, and we will let you know as soon as it is.",
       "lockerText": "Have your package delivered to a secure parcel locker (e.g. InPost Paczkomat).",
       "lockerTitle": "InPost Parcel Lockers",
       "from": "From",
@@ -146,7 +146,6 @@
     "deliveryNotes": "Delivery Instructions (Optional)",
     "deliveryNotesPlaceholder": "e.g. Leave at the front door",
     "storeLocation": "Store Location",
-    "storeLocationPlaceholder": "e.g. Bochnia, Wąska 11",
     "lockerId": "Locker ID / Paczkomat Code",
     "lockerIdPlaceholder": "e.g. WAW123A",
     "lockerActive": "Active",

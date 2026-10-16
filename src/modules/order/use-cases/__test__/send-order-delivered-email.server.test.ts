@@ -26,6 +26,11 @@ vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
 vi.mock("~/src/integrations/resend/resend.send", () => ({ sendEmail }))
 vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({ loadNamespace }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordOrderEmailOutcome }))
+vi.mock("~/src/modules/store-setting/store-setting.accessors", async () => {
+  const { TEST_STORED_SELLER_DETAILS } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return { readSellerDetails: () => Promise.resolve(TEST_STORED_SELLER_DETAILS) }
+})
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderForProgressEmail }))
 
 import { sendOrderDeliveredEmail } from "~/src/modules/order/use-cases/send-order-delivered-email.server"
@@ -100,6 +105,7 @@ describe("sendOrderDeliveredEmail", () => {
     expect(text).toContain(`${englishCopy.care.more} ${ORIGIN}/en-US/faq`)
     expect(text).toContain(`${englishCopy.returns.withdrawal} ${ORIGIN}/en-US/withdraw-from-contract?order=MRT-2026-00042`)
     expect(text).toContain(`${englishCopy.viewOrderCta} ${ORIGIN}/en-US/account/orders/order-abcdef12`)
+    expect(text).toContain("sklep@marte.test or call +48 600 100 200")
     expect(recordOrderEmailOutcome).toHaveBeenCalledWith({
       failure: undefined,
       label: "Order delivered → anna@example.com",

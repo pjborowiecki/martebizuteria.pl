@@ -6,7 +6,6 @@
     "message": "Potwierdzamy, że otrzymaliśmy Twoje oświadczenie o odstąpieniu od umowy dla zamówienia {orderNumber}. Poniżej znajdziesz jego treść oraz datę i godzinę, w której do nas dotarło. Zachowaj tę wiadomość jako potwierdzenie.",
     "returnLabel": "Odesłanie produktów",
     "returnBody": "Odeślij produkty na adres podany niżej najpóźniej w ciągu 14 dni od dnia odstąpienia od umowy; wystarczy nadać je przed upływem tego terminu. Bezpośredni koszt odesłania ponosisz Ty. Włóż do paczki numer zamówienia.",
-    "country": "Polska",
     "refundLabel": "Zwrot płatności",
     "refundBody": "Zwrócimy płatności objęte odstąpieniem na zasadach z Regulaminu, nie później niż w ciągu 14 dni od otrzymania oświadczenia, przy użyciu takiego samego sposobu płatności, jakiego użyto przy zamówieniu. Możemy wstrzymać się ze zwrotem do chwili otrzymania produktów z powrotem albo dowodu ich odesłania, w zależności od tego, co nastąpi wcześniej.",
     "closingNote": "Jeśli masz pytania, po prostu odpowiedz na tę wiadomość.",

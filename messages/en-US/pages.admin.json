@@ -1015,7 +1015,6 @@
     "orderNumber": "Order number",
     "orderDate": "Order date",
     "seller": "Seller",
-    "sellerCountry": "Poland",
     "buyer": "Buyer",
     "delivery": "Delivery",
     "vatIncluded": "Including VAT {rate}%",

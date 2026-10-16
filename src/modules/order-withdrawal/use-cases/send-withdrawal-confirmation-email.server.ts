@@ -8,6 +8,7 @@ import { loadNamespace } from "~/src/integrations/use-intl/i18n.messages"
 
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
+import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
 
 import type orderWithdrawalMessages from "~/messages/en-US/emails.order-withdrawal.json"
 import { ORDER_WITHDRAWAL_NAMESPACE, OrderWithdrawalReceived } from "~/src/presentation/emails/order-withdrawal"
@@ -20,10 +21,13 @@ const sendAcknowledgement = async (
   { locale, orderNumber, statement }: Readonly<WithdrawalAcknowledgement>,
   idempotencyKey: string,
 ): Promise<OrderEmailOutcome> => {
-  const messages = await loadNamespace<typeof orderWithdrawalMessages>({ locale, namespace: ORDER_WITHDRAWAL_NAMESPACE })
+  const [messages, seller] = await Promise.all([
+    loadNamespace<typeof orderWithdrawalMessages>({ locale, namespace: ORDER_WITHDRAWAL_NAMESPACE }),
+    readSellerDetails(),
+  ])
   const failure = await sendEmail({
     idempotencyKey,
-    react: createElement(OrderWithdrawalReceived, { locale, messages, orderNumber, statement }),
+    react: createElement(OrderWithdrawalReceived, { locale, messages, orderNumber, seller, statement }),
     subject: createTranslator({ locale, messages })("received.subject", { orderNumber }),
     to: statement.email,
   })
