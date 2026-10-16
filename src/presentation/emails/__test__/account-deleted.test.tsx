@@ -78,11 +78,11 @@ describe("AccountDeleted", () => {
     expect(text).not.toContain("expire")
   })
 
-  it("renders Polish copy with the feminine Polish greeting", async () => {
+  it("renders Polish copy with a greeting that does not assume gender", async () => {
     const html = await render(<AccountDeleted locale="pl-PL" messages={polishCopy} name="Anna" storefrontUrl={STOREFRONT_URL} />)
 
     expect(html).toContain('lang="pl-PL"')
-    expect(html).toContain("Droga Anna,")
+    expect(html).toContain("Witaj Anna,")
     expect(html).toContain(asHtmlText(polishCopy.heading))
   })
 })

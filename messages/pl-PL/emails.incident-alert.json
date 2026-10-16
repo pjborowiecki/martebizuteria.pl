@@ -7,12 +7,12 @@
   "refundFailed": {
     "subject": "Alert: zwrot nie dotarł do klienta — M'Arte",
     "heading": "Zwrot nie dotarł do klienta",
-    "message": "Stripe zgłasza, że zwrot się nie powiódł albo został anulowany, więc pieniądze wróciły na saldo Stripe sklepu zamiast do klienta. Zamówienie liczy teraz tylko zwroty, które nadal obowiązują. Sklep nie wysyła klientowi e-maila o niepowodzeniu; sprawdź w historii zamówienia, czy klient dostał już wiadomość, że ten zwrot jest w drodze. Zwróć pieniądze w inny sposób: gdy przyczyna zniknie, zleć zwrot ponownie w panelu Stripe albo przyciskiem „Zwrot” w zamówieniu, albo uzgodnij z klientem, jak oddasz mu pieniądze."
+    "message": "Stripe zgłasza, że zwrot się nie powiódł albo został anulowany, więc pieniądze wróciły na saldo Stripe sklepu zamiast do klienta. Zamówienie liczy teraz tylko zwroty, które nadal obowiązują. Sklep nie wysyła klientowi e-maila o niepowodzeniu; sprawdź w historii zamówienia, czy do klienta trafiła już wiadomość, że ten zwrot jest w drodze. Zwróć pieniądze w inny sposób: gdy przyczyna zniknie, zleć zwrot ponownie w panelu Stripe albo przyciskiem „Zwrot” w zamówieniu, albo uzgodnij z klientem, jak oddasz pieniądze."
   },
   "stripeWebhookFailed": {
     "subject": "Alert: sklep nie obsłużył zdarzenia Stripe — M'Arte",
     "heading": "Sklep nie obsłużył zdarzenia Stripe",
-    "message": "Sklep odpowiedział błędem na zdarzenie ze Stripe, więc Stripe będzie je wysyłać ponownie przez maksymalnie trzy dni. Dopóki ponowna próba się nie powiedzie, w sklepie brakuje tego, o czym informuje zdarzenie: po zakończonej płatności klient zapłacił, ale nie ma jeszcze zamówienia."
+    "message": "Sklep odpowiedział błędem na zdarzenie ze Stripe, więc Stripe będzie je wysyłać ponownie przez maksymalnie trzy dni. Dopóki ponowna próba się nie powiedzie, w sklepie brakuje tego, o czym informuje zdarzenie: po zakończonej płatności pieniądze od klienta już wpłynęły, ale nie ma jeszcze zamówienia."
   },
   "auditQueueFailed": {
     "subject": "Alert: błąd kolejki dziennika zdarzeń — M'Arte",
@@ -22,12 +22,12 @@
   "newsletterFailed": {
     "subject": "Alert: wysyłka newslettera zatrzymała się w połowie — M'Arte",
     "heading": "Wysyłka newslettera zatrzymała się w połowie",
-    "message": "Sklep trzy razy nie zdołał wysłać partii newslettera i zatrzymał kampanię, więc subskrybenci po ostatniej wysłanej partii go nie dostali. Marketing w panelu administracyjnym pokazuje, do ilu subskrybentów dotarł i dlaczego się zatrzymał. Zanim wyślesz coś jeszcze, sprawdź stan konta Resend i jego limit wysyłki."
+    "message": "Sklep trzy razy nie zdołał wysłać partii newslettera i zatrzymał kampanię, więc newsletter nie dotarł do subskrybentów po ostatniej wysłanej partii. Marketing w panelu administracyjnym pokazuje, do ilu subskrybentów dotarł i dlaczego się zatrzymał. Zanim wyślesz coś jeszcze, sprawdź stan konta Resend i jego limit wysyłki."
   },
   "orderEmailFailed": {
     "subject": "Alert: e-mail do zamówienia nie został wysłany — M'Arte",
     "heading": "E-mail do zamówienia nie został wysłany",
-    "message": "Sklep trzy razy próbował wysłać e-mail do zamówienia i Resend nie przyjął żadnej próby, więc klient go nie dostał. Identyfikator wskazuje e-mail oraz zamówienie albo płatność, której dotyczy. Gdy Resend znów działa, otwórz zamówienie w panelu administracyjnym i naciśnij „Wyślij ponownie” w sekcji „Aktywność”; e-maila o nieudanej płatności ani e-maila o odstąpieniu nie da się stamtąd wysłać ponownie, więc napisz do tego klienta sam."
+    "message": "Sklep trzy razy próbował wysłać e-mail do zamówienia i Resend nie przyjął żadnej próby, więc e-mail nie dotarł do klienta. Identyfikator wskazuje e-mail oraz zamówienie albo płatność, której dotyczy. Gdy Resend znów działa, otwórz zamówienie w panelu administracyjnym i naciśnij „Wyślij ponownie” w sekcji „Aktywność”; e-maila o nieudanej płatności ani e-maila o odstąpieniu nie da się stamtąd wysłać ponownie, więc napisz do tego klienta samodzielnie."
   },
   "preview": "Coś w sklepie wymaga Twojej uwagi.",
   "referenceLabel": "Dotyczy",
