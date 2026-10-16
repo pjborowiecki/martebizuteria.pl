@@ -16,9 +16,9 @@
   },
   "notice": {
     "subject": "Odstąpienie od umowy — zamówienie {orderNumber} — M'Arte",
-    "preview": "Klient odstąpił od umowy przez stronę sklepu. Oto treść oświadczenia.",
+    "preview": "Przez stronę sklepu złożono oświadczenie o odstąpieniu od umowy. Oto jego treść.",
     "heading": "Odstąpienie od umowy",
-    "message": "Klient odstąpił od umowy dla zamówienia {orderNumber} przez funkcję odstąpienia od umowy na stronie sklepu. Treść oświadczenia znajdziesz poniżej. Klientowi wysyłamy też e-mailem potwierdzenie jego otrzymania.",
+    "message": "Przez funkcję odstąpienia na stronie sklepu złożono oświadczenie o odstąpieniu od umowy dla zamówienia {orderNumber}. Treść oświadczenia znajdziesz poniżej. Klientowi wysyłamy też e-mailem potwierdzenie jego otrzymania.",
     "adminCta": "Otwórz zamówienie w panelu",
     "tagline": "Powiadomienie sklepu"
   },

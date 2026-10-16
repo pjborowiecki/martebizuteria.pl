@@ -1,8 +1,8 @@
 {
   "subject": "Nowe zamówienie {orderNumber} — M'Arte",
-  "preview": "Klient złożył zamówienie. Oto, co przygotować i dokąd je wysłać.",
+  "preview": "W sklepie złożono zamówienie. Oto, co przygotować i dokąd je wysłać.",
   "heading": "Nowe zamówienie",
-  "message": "Klient właśnie złożył zamówienie w sklepie.",
+  "message": "W sklepie właśnie złożono zamówienie.",
   "messageSecondary": "Poniżej znajdziesz produkty do przygotowania, wybraną dostawę i dane kontaktowe klienta.",
   "orderLabel": "Numer zamówienia",
   "itemsLabel": "Produkty",

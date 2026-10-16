@@ -84,7 +84,7 @@ describe("OrderWithdrawalNotice", () => {
   it("gives the shop the statement and the order number", async () => {
     const text = await renderNotice(true)
 
-    expect(text).toContain("Klient odstąpił od umowy dla zamówienia MRT-2026-00042")
+    expect(text).toContain("złożono oświadczenie o odstąpieniu od umowy dla zamówienia MRT-2026-00042")
     expect(text).toContain("Odstępuję od umowy sprzedaży tych produktów z zamówienia MRT-2026-00042:")
     expect(text).toContain("The size does not fit.")
   })
