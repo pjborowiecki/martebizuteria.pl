@@ -806,8 +806,8 @@
       "subtotal": "Produkty",
       "discount": "Rabat",
       "shipping": "Wysyłka",
-      "tax": "Podatek",
-      "total": "Suma"
+      "total": "Suma",
+      "vatIncluded": "W tym VAT {rate}%"
     },
     "timeline": {
       "title": "Aktywność",

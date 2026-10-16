@@ -214,7 +214,7 @@ Nic więcej się nie zmienia. Numer i link śledzenia, przesyłka InPost, stany 
 | `order-meta-strip.tsx`          | `status`, `paymentUiKey`, `fulfillmentUiKey`, `createdAt`, `totalMinorUnits`                                                     |
 | `order-withdrawals-card.tsx`    | `withdrawals`, widoczne tylko wtedy, gdy klient wysłał oświadczenie o odstąpieniu od umowy                                       |
 | `order-fulfillment-tracker.tsx` | `fulfillmentSteps` z `buildAdminOrderFulfillmentSteps`, `canceledAt`                                                             |
-| `order-line-items-card.tsx`     | `items`, `delivery` i pięć kwot `*MinorUnits`                                                                                    |
+| `order-line-items-card.tsx`     | `items`, `delivery` i pięć kwot `*MinorUnits`; VAT widać pod sumą jako „W tym VAT {rate}%”, a nie jako składnik sumy             |
 | `order-timeline-card.tsx`       | `id` oraz `timeline` z `mapAdminOrderTimeline` z `resendable` z `resolveResendableOrderEmails`                                   |
 | `order-customer-card.tsx`       | `customer` z `buildAdminOrderDetailCustomer`                                                                                     |
 | `order-shipping-card.tsx`       | `delivery`, łącznie z `lockerUnconfirmed`, `shippingAddress`, `trackingNumber`, `trackingUrl`                                    |
