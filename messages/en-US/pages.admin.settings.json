@@ -1,0 +1,71 @@
+{
+  "title": "Settings",
+  "description": "Your account, its security and how the admin panel works for you.",
+  "tabs": {
+    "account": "My account",
+    "security": "Sign-in & security"
+  },
+  "account": {
+    "profile": {
+      "title": "Profile",
+      "description": "How you appear in the admin panel and in the audit log.",
+      "name": "Full name",
+      "email": "Email address",
+      "emailUnverified": "Not confirmed",
+      "phone": "Phone number",
+      "phoneEmpty": "Not given",
+      "memberSince": "Account created",
+      "edit": "Edit",
+      "change": "Change",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saved": "Profile saved.",
+      "saveError": "Could not save the profile. Try again."
+    },
+    "preferences": {
+      "title": "Preferences",
+      "description": "The language of the admin panel, and the time zone and format it shows dates, times and numbers in. Automatic follows your browser.",
+      "language": "Admin panel language",
+      "languages": {
+        "en-US": "English",
+        "pl-PL": "Polski"
+      }
+    }
+  },
+  "security": {
+    "password": {
+      "title": "Password",
+      "changeDescription": "Change the password you sign in with. You stay signed in here and can sign out your other devices.",
+      "setDescription": "You sign in with Google and have no password yet. Set one to sign in with your email address too, and to turn on two-factor authentication.",
+      "change": "Change password",
+      "set": "Set password"
+    },
+    "twoFactor": {
+      "title": "Two-factor authentication",
+      "description": "After your password, signing in also asks for a six-digit code from an authenticator app.",
+      "on": "On",
+      "off": "Off",
+      "enable": "Turn on",
+      "disable": "Turn off",
+      "requiredNote": "Required for every admin in this shop. If you turn it off, the admin panel stays closed until you turn it on again.",
+      "needsPassword": "Set a password first: turning on two-factor authentication asks for it."
+    },
+    "signInMethods": {
+      "title": "Sign-in methods",
+      "description": "The ways you can sign in to this account.",
+      "password": "Email and password",
+      "google": "Google",
+      "connected": "Connected",
+      "notConnected": "Not connected",
+      "googleNotice": "Signing in with Google does not ask for this shop's six-digit code, so keep two-step verification turned on in your Google account."
+    },
+    "sessions": {
+      "title": "Active sessions",
+      "description": "Devices that are signed in to your account right now."
+    },
+    "history": {
+      "title": "Sign-in history",
+      "description": "Recent successful and failed attempts to sign in to your account."
+    }
+  }
+}

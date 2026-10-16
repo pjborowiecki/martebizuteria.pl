@@ -15,7 +15,6 @@ import {
   Package,
   ScrollText,
   Settings,
-  ShieldCheck,
   ShoppingBag,
   ShoppingCart,
   SlidersHorizontal,
@@ -275,19 +274,8 @@ const AdminSidebarCatalogSubMenu = ({ pathname }: { readonly pathname: string })
 
 const AdminSidebarNavItem = ({ item, pathname }: { readonly item: NavItem; readonly pathname: string }): JSX.Element => {
   const t = useTranslations("pages.admin")
-  const isDisabled = item.disabled === true
-  const active = !isDisabled && matchRoute(pathname, item.href)
+  const active = matchRoute(pathname, item.href)
   const link = useMemo(() => <LocalizedLink to={item.href} />, [item.href])
-  if (isDisabled) {
-    return (
-      <SidebarMenuItem>
-        <SidebarMenuButton disabled tooltip={t(item.labelKey)} size="default" className="cursor-not-allowed opacity-50">
-          <item.icon className="size-4" strokeWidth={1.5} />
-          <span className="text-[13px]">{t(item.labelKey)}</span>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    )
-  }
 
   return (
     <SidebarMenuItem>
@@ -317,7 +305,6 @@ interface NavItem {
   readonly href: LocalizedTo
   readonly icon: typeof LayoutDashboard
   readonly labelKey: string
-  readonly disabled?: boolean
 }
 
 const SIMPLE_NAV: readonly NavItem[] = [
@@ -388,12 +375,6 @@ const SYSTEM_NAV: readonly NavItem[] = [
     labelKey: "nav.audit",
   },
   {
-    href: ROUTES.ADMIN_SECURITY,
-    icon: ShieldCheck,
-    labelKey: "nav.security",
-  },
-  {
-    disabled: true,
     href: ROUTES.ADMIN_SETTINGS,
     icon: Settings,
     labelKey: "nav.settings",

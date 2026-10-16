@@ -150,7 +150,6 @@
     "coupons": "Kupony",
     "content": "Treść",
     "audit": "Dziennik zdarzeń",
-    "security": "Bezpieczeństwo",
     "settings": "Ustawienia"
   },
   "media": {
@@ -572,53 +571,6 @@
     "optional": "W tym środowisku uwierzytelnianie dwuskładnikowe jest opcjonalne, więc panel administracyjny jest już dostępny. W wersji produkcyjnej panel otworzy się dopiero po jego włączeniu.",
     "enabled": "Uwierzytelnianie dwuskładnikowe jest włączone. Logowanie hasłem wymaga też kodu z aplikacji uwierzytelniającej.",
     "openAdmin": "Przejdź do panelu administracyjnego"
-  },
-  "settings": {
-    "title": "Ustawienia",
-    "description": "Zarządzaj konfiguracją i preferencjami sklepu.",
-    "tabs": {
-      "general": "Ogólne",
-      "account": "Konto",
-      "shipping": "Wysyłka",
-      "appearance": "Wygląd",
-      "security": "Bezpieczeństwo",
-      "localization": "Lokalizacja"
-    },
-    "general": {
-      "storeInfo": {
-        "title": "Informacje o sklepie",
-        "description": "Podstawowe dane o Twoim sklepie.",
-        "name": "Nazwa sklepu",
-        "email": "E-mail kontaktowy",
-        "desc": "Opis"
-      },
-      "preferences": {
-        "title": "Preferencje",
-        "description": "Konfiguruj działanie sklepu.",
-        "maintenance": {
-          "label": "Tryb konserwacji",
-          "description": "Tymczasowo wyłącz witrynę sklepu dla odwiedzających."
-        },
-        "inventoryTracking": {
-          "label": "Śledzenie zapasów",
-          "description": "Automatycznie śledź poziom zapasów dla wszystkich produktów."
-        },
-        "autoFulfillment": {
-          "label": "Automatyczna realizacja",
-          "description": "Automatycznie realizuj zamówienia po pobraniu płatności."
-        },
-        "orderConfirmation": {
-          "label": "E-maile potwierdzenia zamówienia",
-          "description": "Wyślij e-mail z potwierdzeniem po złożeniu zamówienia."
-        }
-      },
-      "save": "Zapisz zmiany"
-    },
-    "comingSoon": "Ta sekcja będzie dostępna wkrótce.",
-    "localization": {
-      "title": "Twoja strefa czasowa i formaty",
-      "description": "Wybierz strefę czasową, w której widzisz daty i godziny, oraz format dat i liczb. Ustawienie automatyczne podąża za przeglądarką."
-    }
   },
   "orders": {
     "title": "Zamówienia",
