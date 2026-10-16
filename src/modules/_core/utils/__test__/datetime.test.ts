@@ -13,6 +13,8 @@ import {
 
 const NOW = new Date(2024, 5, 15, 12, 0, 0)
 
+const IN_ENGLISH_HERE = { formatLocale: "en-US", locale: "en-US", timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+
 const MONTH_BOUNDARY = new Date("2026-10-01T00:30:00.000Z")
 
 describe("toCalendarDate", () => {
@@ -137,13 +139,21 @@ describe("formatRelativeFromNow", () => {
   ])("describes %i ms ago as %s", (diffMs, expected) => {
     const at = new Date(NOW.getTime() - diffMs)
 
-    expect(formatRelativeFromNow(at, "en-US")).toBe(expected)
+    expect(formatRelativeFromNow(at, IN_ENGLISH_HERE)).toBe(expected)
   })
 
   it("switches to an absolute date beyond a week", () => {
     const at = new Date(NOW.getTime() - 8 * 86_400_000)
 
-    expect(formatRelativeFromNow(at, "en-US")).toBe("Jun 7, 2024")
+    expect(formatRelativeFromNow(at, IN_ENGLISH_HERE)).toBe("Jun 7, 2024")
+  })
+
+  it("dates the absolute day in the format locale and time zone while phrases stay in the page's language", () => {
+    const format = { formatLocale: "de-DE", locale: "pl-PL", timeZone: "Europe/Warsaw" }
+    const nowMs = Date.parse("2024-06-20T12:00:00.000Z")
+
+    expect(formatRelativeFromNow("2024-06-07T23:30:00.000Z", format, nowMs)).toBe("8. Juni 2024")
+    expect(formatRelativeFromNow("2024-06-18T12:00:00.000Z", format, nowMs)).toBe("przedwczoraj")
   })
 })
 

@@ -9,6 +9,8 @@ import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/cust
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 import { revokeCustomerSessionMutation } from "~/src/modules/customer-account/use-cases/revoke-customer-session"
 
+import { useDisplayPreferences } from "~/src/hooks/use-display-format"
+
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { formatSessionLastActive } from "~/src/presentation/components/custom/pages/account/sessions/format-session-last-active"
@@ -28,6 +30,7 @@ export const ActiveSessionCard = ({
 }>): JSX.Element => {
   const t = useTranslations("pages.account.sessions")
   const locale = useLocale()
+  const displayPreferences = useDisplayPreferences()
   const queryClient = useQueryClient()
   const DeviceIcon = DEVICE_ICONS[session.deviceType]
   const revokeMutation = useMutation({
@@ -62,7 +65,7 @@ export const ActiveSessionCard = ({
           {session.ipAddress === undefined ? "" : ` · ${session.ipAddress}`}
         </p>
         <p className="mt-0.5 text-[11px] text-muted-foreground/60">
-          {formatSessionLastActive(session.lastActiveAt, locale, t("activeNow"))}
+          {formatSessionLastActive(session.lastActiveAt, t("activeNow"), { ...displayPreferences, locale })}
         </p>
       </div>
       {session.isCurrent ? undefined : (

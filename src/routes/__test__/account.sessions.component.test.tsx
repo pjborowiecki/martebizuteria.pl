@@ -15,6 +15,8 @@ import {
 } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 
+import { DisplayPreferencesContext } from "~/src/hooks/use-display-format"
+
 import polishAccountMessages from "~/messages/pl-PL/pages.account.json"
 
 interface SessionsState {
@@ -162,6 +164,19 @@ describe("account sessions page", () => {
     await screen.findByText("MacBook Pro")
 
     expect(screen.queryByText("Active now")).toBeNull()
+  })
+
+  it("dates a session idle for over a week in the customer's format locale and time zone", async () => {
+    state.sessions = [session({ lastActiveAt: new Date("2026-01-10T23:30:00.000Z") })]
+    renderWithProviders(
+      <DisplayPreferencesContext value={{ formatLocale: "de-DE", timeZone: "Asia/Tokyo" }}>
+        <Suspense fallback={<p>loading sessions</p>}>
+          <SessionsPage />
+        </Suspense>
+      </DisplayPreferencesContext>,
+    )
+
+    expect(await screen.findByText("11. Jan. 2026")).toBeInTheDocument()
   })
 
   it("offers no sign-out action at all while this is the only device", async () => {

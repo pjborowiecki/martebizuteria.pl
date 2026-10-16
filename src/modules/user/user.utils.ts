@@ -8,6 +8,7 @@ import { formatPrice } from "~/src/modules/_core/utils/currency"
 import {
   type CalendarPeriod,
   type DateInput,
+  type RelativeDateFormat,
   coerceNumber,
   formatRelativeFromNow,
   formatShortDate,
@@ -52,8 +53,10 @@ export const resolveAdminCustomerInitials = (name: string): string => {
   return `${first.slice(0, 1)}${last.slice(0, 1)}`.toUpperCase()
 }
 
-export const formatAdminCustomerLastActive = (lastActiveAt: DateInput | null | undefined, locale: string): string | undefined =>
-  lastActiveAt === null || lastActiveAt === undefined ? undefined : formatRelativeFromNow(lastActiveAt, locale)
+export const formatAdminCustomerLastActive = (
+  lastActiveAt: DateInput | null | undefined,
+  format: RelativeDateFormat,
+): string | undefined => (lastActiveAt === null || lastActiveAt === undefined ? undefined : formatRelativeFromNow(lastActiveAt, format))
 
 export const formatAdminCustomerLocation = (address: User["customerAddressRow"] | undefined): string | undefined => {
   if (address === undefined) {

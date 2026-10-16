@@ -26,7 +26,11 @@ vi.mock("~/src/presentation/components/custom/image", () => ({
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
+import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
+
 import { Route } from "~/src/routes/account.overview"
+
+import { DisplayPreferencesContext } from "~/src/hooks/use-display-format"
 
 const PLACED_AT = new Date("2026-03-14T10:00:00.000Z")
 
@@ -71,15 +75,17 @@ const overview = (overrides: Partial<CustomerAccount["overview"]> = {}): Custome
 
 const overviewRef: { current: CustomerAccount["overview"] } = { current: overview() }
 
-const renderOverview = async () => {
+const renderOverview = async (displayPreferences?: DisplayPreferences) => {
   const OverviewPage = Route.options.component
   if (OverviewPage === undefined) {
     throw new Error("the account overview route registered no component")
   }
   const rendered = renderWithProviders(
-    <Suspense fallback={<p>loading overview</p>}>
-      <OverviewPage />
-    </Suspense>,
+    <DisplayPreferencesContext value={displayPreferences}>
+      <Suspense fallback={<p>loading overview</p>}>
+        <OverviewPage />
+      </Suspense>
+    </DisplayPreferencesContext>,
   )
   await screen.findByText("Welcome back")
 
@@ -151,6 +157,13 @@ describe("account overview activity feed", () => {
 
     expect(screen.getByText("Added Aurora to cart")).toBeInTheDocument()
     expect(screen.getByText("Signed in successfully")).toBeInTheDocument()
+  })
+
+  it("dates activity older than a week in the customer's format locale and time zone", async () => {
+    overviewRef.current = overview({ activity: [activityItem({ createdAt: new Date("2026-03-14T23:30:00.000Z") })] })
+    await renderOverview({ formatLocale: "de-DE", timeZone: "Europe/Warsaw" })
+
+    expect(screen.getByText("15. März 2026")).toBeInTheDocument()
   })
 })
 
