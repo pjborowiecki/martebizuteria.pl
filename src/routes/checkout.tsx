@@ -3,8 +3,14 @@ import { type JSX } from "react"
 import { Outlet, createFileRoute } from "@tanstack/react-router"
 import { z } from "zod/v4"
 
+import {
+  CHECKOUT_REALTIME_QUERY_PREFIXES,
+  REALTIME_INVALIDATION_HUB,
+} from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
+
+import { useRealtimeQuerySync } from "~/src/hooks/use-realtime-query-sync"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
@@ -24,14 +30,21 @@ const coerceStep = (value: unknown): number => {
 
 const coerceSuccess = (value: unknown): boolean | undefined => (value === true || value === "true" ? true : undefined)
 
-const CheckoutLayout = (): JSX.Element => (
-  <div className="min-h-dvh bg-background font-light">
-    <main className="storefront-container w-full py-10 md:py-14">
-      <CheckoutHeader />
-      <Outlet />
-    </main>
-  </div>
-)
+const CheckoutLayout = (): JSX.Element => {
+  useRealtimeQuerySync({
+    hub: REALTIME_INVALIDATION_HUB.STOREFRONT,
+    subscriptions: CHECKOUT_REALTIME_QUERY_PREFIXES,
+  })
+
+  return (
+    <div className="min-h-dvh bg-background font-light">
+      <main className="storefront-container w-full py-10 md:py-14">
+        <CheckoutHeader />
+        <Outlet />
+      </main>
+    </div>
+  )
+}
 
 const DEFAULT_STEP = 1
 

@@ -37,6 +37,10 @@ interface CheckoutRouteDefinition {
 
 const captured: { current: CheckoutRouteDefinition | undefined } = { current: undefined }
 
+const realtime = vi.hoisted(() => ({
+  sync: vi.fn<(options: { readonly hub: string; readonly subscriptions: readonly unknown[] }) => void>(),
+}))
+
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouter>()
 
@@ -50,11 +54,17 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     },
   }
 })
+vi.mock("~/src/hooks/use-realtime-query-sync", () => ({ useRealtimeQuerySync: realtime.sync }))
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-header", () => ({
   CheckoutHeader: (): JSX.Element => <header data-testid="checkout-header" />,
 }))
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+
+import {
+  CHECKOUT_REALTIME_QUERY_PREFIXES,
+  REALTIME_INVALIDATION_HUB,
+} from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
 
 await import("~/src/routes/checkout")
 
@@ -107,6 +117,7 @@ const loadMeta = (locale: SupportedLocale = "en-US"): Promise<PageMeta> => {
 
 afterEach(() => {
   cleanup()
+  realtime.sync.mockReset()
 })
 
 describe("checkout layout", () => {
@@ -129,6 +140,15 @@ describe("checkout layout", () => {
     renderLayout()
 
     expect(screen.getByRole("main")).toHaveClass("storefront-container", "w-full")
+  })
+
+  it("follows the storefront realtime hub for the delivery methods and the free delivery threshold", () => {
+    renderLayout()
+
+    expect(realtime.sync).toHaveBeenCalledWith({
+      hub: REALTIME_INVALIDATION_HUB.STOREFRONT,
+      subscriptions: CHECKOUT_REALTIME_QUERY_PREFIXES,
+    })
   })
 })
 
