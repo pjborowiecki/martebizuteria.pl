@@ -14,6 +14,7 @@ import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/cust
 
 import { useActionError } from "~/src/hooks/use-action-error"
 
+import { type DialogVariant } from "~/src/presentation/components/shadcn/_styles/dialog.styles"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {
   Dialog,
@@ -27,7 +28,7 @@ import {
 import { AccountDialogEyebrow } from "~/src/presentation/components/custom/pages/account/account-dialog-eyebrow"
 import { AuthPasswordField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
-export const SetPasswordDialog = ({ onOpenChange, open }: Readonly<SetPasswordDialogProps>): JSX.Element => {
+export const SetPasswordDialog = ({ onOpenChange, open, variant = "editorial" }: Readonly<SetPasswordDialogProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.setPasswordDialog")
   const tProfile = useTranslations("pages.account.profile")
   const actionError = useActionError()
@@ -86,7 +87,7 @@ export const SetPasswordDialog = ({ onOpenChange, open }: Readonly<SetPasswordDi
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" variant="editorial">
+      <DialogContent className="sm:max-w-md" variant={variant}>
         <form onSubmit={handleFormSubmit}>
           <DialogHeader>
             <AccountDialogEyebrow>{tProfile("security")}</AccountDialogEyebrow>
@@ -129,4 +130,5 @@ export const SetPasswordDialog = ({ onOpenChange, open }: Readonly<SetPasswordDi
 interface SetPasswordDialogProps {
   readonly onOpenChange: (open: boolean) => void
   readonly open: boolean
+  readonly variant?: DialogVariant
 }

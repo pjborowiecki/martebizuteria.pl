@@ -16,6 +16,7 @@ import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/cust
 
 import { useActionError } from "~/src/hooks/use-action-error"
 
+import { type DialogVariant } from "~/src/presentation/components/shadcn/_styles/dialog.styles"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Checkbox } from "~/src/presentation/components/shadcn/checkbox"
 import {
@@ -35,7 +36,7 @@ const changePasswordRequest = createClientOnlyFn((input: Parameters<typeof authC
   authClient.changePassword(input),
 )
 
-export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePasswordDialogProps>): JSX.Element => {
+export const ChangePasswordDialog = ({ onOpenChange, open, variant = "editorial" }: Readonly<ChangePasswordDialogProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.passwordDialog")
   const tProfile = useTranslations("pages.account.profile")
   const actionError = useActionError()
@@ -96,7 +97,7 @@ export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePass
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md" variant="editorial">
+      <DialogContent className="sm:max-w-md" variant={variant}>
         <form onSubmit={handleFormSubmit}>
           <DialogHeader>
             <AccountDialogEyebrow>{tProfile("security")}</AccountDialogEyebrow>
@@ -162,4 +163,5 @@ export const ChangePasswordDialog = ({ onOpenChange, open }: Readonly<ChangePass
 interface ChangePasswordDialogProps {
   readonly onOpenChange: (open: boolean) => void
   readonly open: boolean
+  readonly variant?: DialogVariant
 }
