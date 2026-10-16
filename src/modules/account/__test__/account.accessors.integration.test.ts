@@ -14,8 +14,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-import { hasCredentialAccount } from "~/src/modules/account/account.accessors"
-import { CREDENTIAL_PROVIDER_ID } from "~/src/modules/account/account.constants"
+import { listAccountProviderIds } from "~/src/modules/account/account.accessors"
+import { CREDENTIAL_PROVIDER_ID, GOOGLE_PROVIDER_ID } from "~/src/modules/account/account.constants"
 
 const CREATED_AT = Date.UTC(2026, 0, 10)
 
@@ -40,29 +40,31 @@ afterAll(() => {
   sqlite.close()
 })
 
-describe("hasCredentialAccount", () => {
-  it("reports a password for a customer who signed up with email and password", async () => {
+describe("listAccountProviderIds", () => {
+  it("lists the password of a customer who signed up with email and password", async () => {
     insertAccount("account-1", "user-1", CREDENTIAL_PROVIDER_ID)
 
-    await expect(hasCredentialAccount("user-1")).resolves.toBe(true)
+    await expect(listAccountProviderIds("user-1")).resolves.toStrictEqual([CREDENTIAL_PROVIDER_ID])
   })
 
-  it("still reports a password for a customer who later linked a social sign-in", async () => {
-    insertAccount("account-1", "user-1", "google")
+  it("lists every way a customer who later linked Google can sign in", async () => {
+    insertAccount("account-1", "user-1", GOOGLE_PROVIDER_ID)
     insertAccount("account-2", "user-1", CREDENTIAL_PROVIDER_ID)
 
-    await expect(hasCredentialAccount("user-1")).resolves.toBe(true)
+    await expect(listAccountProviderIds("user-1")).resolves.toStrictEqual(
+      expect.arrayContaining([CREDENTIAL_PROVIDER_ID, GOOGLE_PROVIDER_ID]),
+    )
   })
 
-  it("reports no password for a customer who only signs in through a social provider", async () => {
-    insertAccount("account-1", "user-1", "google")
+  it("lists only Google for a customer who never set a password", async () => {
+    insertAccount("account-1", "user-1", GOOGLE_PROVIDER_ID)
 
-    await expect(hasCredentialAccount("user-1")).resolves.toBe(false)
+    await expect(listAccountProviderIds("user-1")).resolves.toStrictEqual([GOOGLE_PROVIDER_ID])
   })
 
-  it("does not borrow another customer's password", async () => {
+  it("does not borrow another customer's sign-in methods", async () => {
     insertAccount("account-1", "user-2", CREDENTIAL_PROVIDER_ID)
 
-    await expect(hasCredentialAccount("user-1")).resolves.toBe(false)
+    await expect(listAccountProviderIds("user-1")).resolves.toStrictEqual([])
   })
 })

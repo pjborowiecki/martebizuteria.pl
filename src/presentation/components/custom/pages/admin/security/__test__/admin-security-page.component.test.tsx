@@ -44,6 +44,7 @@ const adminProfile = (overrides: Partial<CustomerAccount["profile"]>): CustomerA
   createdAt: new Date("2026-01-10T00:00:00.000Z"),
   email: "owner@marte.test",
   emailVerified: true,
+  hasGoogle: false,
   hasPassword: true,
   name: "Owner",
   twoFactorEnabled: false,

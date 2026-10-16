@@ -18,12 +18,12 @@ const CALLER_CONTEXT = { auth: { session: { id: "session-current" }, user: { id:
 
 const accessors = vi.hoisted(() => ({
   getUserById: vi.fn<(userId: string) => Promise<UserRow | undefined>>(),
-  hasCredentialAccount: vi.fn<(userId: string) => Promise<boolean>>(),
+  listAccountProviderIds: vi.fn<(userId: string) => Promise<readonly string[]>>(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getUserById: accessors.getUserById }))
-vi.mock("~/src/modules/account/account.accessors", () => ({ hasCredentialAccount: accessors.hasCredentialAccount }))
+vi.mock("~/src/modules/account/account.accessors", () => ({ listAccountProviderIds: accessors.listAccountProviderIds }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -50,7 +50,7 @@ const userRow = (overrides: Partial<UserRow> = {}): UserRow => ({
 describe("getCustomerProfile", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    accessors.hasCredentialAccount.mockResolvedValue(true)
+    accessors.listAccountProviderIds.mockResolvedValue(["credential"])
   })
 
   it("looks the profile up by the authenticated customer id", async () => {
@@ -68,6 +68,7 @@ describe("getCustomerProfile", () => {
       createdAt: new Date("2025-06-01T00:00:00.000Z"),
       email: "shopper@example.com",
       emailVerified: true,
+      hasGoogle: false,
       hasPassword: true,
       name: "Anna Kowalska",
       phone: "+48123456789",
@@ -76,13 +77,13 @@ describe("getCustomerProfile", () => {
     })
   })
 
-  it("says the account has no password when it signs in through a provider", async () => {
+  it("says the account has no password when it signs in through Google only", async () => {
     accessors.getUserById.mockResolvedValue(userRow())
-    accessors.hasCredentialAccount.mockResolvedValue(false)
+    accessors.listAccountProviderIds.mockResolvedValue(["google"])
 
     const profile = await getCustomerProfile()
 
-    expect(profile?.hasPassword).toBe(false)
+    expect(profile).toMatchObject({ hasGoogle: true, hasPassword: false })
   })
 
   it("reports an unconfirmed email address as such", async () => {
@@ -134,7 +135,7 @@ describe("getCustomerProfileQuery", () => {
   })
 
   it("reads the caller's own profile when the cache runs the query", async () => {
-    accessors.hasCredentialAccount.mockResolvedValue(true)
+    accessors.listAccountProviderIds.mockResolvedValue(["credential"])
     accessors.getUserById.mockResolvedValue(userRow())
 
     await expect(new QueryClient().query(getCustomerProfileQuery())).resolves.toMatchObject({
@@ -144,7 +145,7 @@ describe("getCustomerProfileQuery", () => {
   })
 
   it("refuses to hand the page a missing profile, so the account shows its not-found state", async () => {
-    accessors.hasCredentialAccount.mockResolvedValue(true)
+    accessors.listAccountProviderIds.mockResolvedValue(["credential"])
     accessors.getUserById.mockResolvedValue(undefined)
 
     await expect(new QueryClient({ defaultOptions: { queries: { retry: false } } }).query(getCustomerProfileQuery())).rejects.toBeDefined()
