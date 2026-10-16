@@ -18,6 +18,7 @@ import {
 import { OrderShippingCard } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-shipping-card"
 
 const COURIER_DELIVERY = {
+  courierCode: "inpost",
   courierName: "InPost",
   lockerId: undefined,
   lockerPoint: undefined,
@@ -27,6 +28,7 @@ const COURIER_DELIVERY = {
 } as const
 
 const LOCKER_DELIVERY = {
+  courierCode: "inpost",
   courierName: "InPost",
   lockerId: "WAW01A",
   lockerPoint: { buildingNumber: "12", city: "Warszawa", description: "Przy stacji metra", postalCode: "00-640", street: "Mokotowska" },

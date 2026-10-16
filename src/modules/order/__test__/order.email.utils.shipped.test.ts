@@ -35,7 +35,7 @@ const addressRow = {
   province: null,
 }
 
-const INPOST = { name: "InPost" }
+const INPOST = { internalCode: "inpost", name: "InPost" }
 
 const COURIER_NAMES = { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }
 
@@ -154,7 +154,7 @@ describe("resolveOrderTracking", () => {
     const pickup = {
       ...shipment,
       deliveryMethod: {
-        courier: { name: "M'ARTE Atelier" },
+        courier: { internalCode: "marte-atelier", name: "M'ARTE Atelier" },
         names: { "en-US": "Pickup at the atelier", "pl-PL": "Odbiór w atelier" },
         type: "in_store" as const,
       },
@@ -182,6 +182,19 @@ describe("resolveOrderTracking", () => {
     expect(resolveOrderTracking({ ...shipment, trackingNumber: "00259007123456789012" }).trackingUrl).toBe(
       "https://inpost.pl/sledzenie-przesylek?number=00259007123456789012",
     )
+  })
+
+  it("names another carrier and keeps its number away from InPost's tracking page", () => {
+    const dpd = {
+      ...shipment,
+      deliveryMethod: { courier: { internalCode: "dpd", name: "DPD" }, names: METHOD_NAMES, type: "courier" as const },
+    }
+
+    expect(resolveOrderTracking({ ...dpd, trackingNumber: "DPD-1" })).toStrictEqual({
+      carrier: "DPD",
+      trackingNumber: "DPD-1",
+      trackingUrl: undefined,
+    })
   })
 
   it.each([

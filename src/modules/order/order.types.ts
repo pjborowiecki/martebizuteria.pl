@@ -89,6 +89,7 @@ interface AdminOrderDetailCustomer {
 }
 
 interface AdminOrderDetailDelivery {
+  readonly courierCode: string | undefined
   readonly courierName: string | undefined
   readonly lockerId: string | undefined
   readonly lockerPoint: InpostLockerPoint | undefined

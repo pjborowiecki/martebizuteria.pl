@@ -14,6 +14,7 @@ afterEach(() => {
 })
 
 const COURIER_DELIVERY = {
+  courierCode: "inpost",
   courierName: "InPost",
   lockerId: undefined,
   lockerPoint: undefined,

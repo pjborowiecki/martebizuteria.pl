@@ -5,8 +5,8 @@ import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
+import { DELIVERY_METHOD } from "~/src/modules/delivery-method/delivery-method.constants"
 import { type DeliveryMethod } from "~/src/modules/delivery-method/delivery-method.types"
-import { isInpostDeliveryType } from "~/src/modules/order/order.admin-actions.utils"
 import { describeOrderLocker, resolveOrderLocker, resolveOrderShippingAddressRow } from "~/src/modules/order/order.detail.utils"
 import { formatOrderAddressLocality, resolveOrderTrackingUrl } from "~/src/modules/order/order.display.utils"
 import { type OrderLineFulfillmentTime, describeOrderFulfillmentTime } from "~/src/modules/order/order.fulfillment-time.utils"
@@ -184,9 +184,9 @@ export const resolveOrderTracking = ({
   const deliveryType = deliveryMethod?.type
 
   return {
-    carrier: isInpostDeliveryType(deliveryType) ? deliveryMethod?.courier.name : undefined,
+    carrier: deliveryType === undefined || deliveryType === DELIVERY_METHOD.IN_STORE ? undefined : deliveryMethod?.courier.name,
     trackingNumber: filledText(trackingNumber),
-    trackingUrl: resolveOrderTrackingUrl({ deliveryType, trackingNumber, trackingUrl }),
+    trackingUrl: resolveOrderTrackingUrl({ courierCode: deliveryMethod?.courier.internalCode, deliveryType, trackingNumber, trackingUrl }),
   }
 }
 
@@ -307,7 +307,7 @@ interface EmailAddressRow {
 
 export interface OrderShipmentEmailSource {
   readonly deliveryMethod: {
-    readonly courier: { readonly name: string }
+    readonly courier: { readonly internalCode: string; readonly name: string }
     readonly names: DeliveryMethod["names"]
     readonly type: "courier" | "locker" | "in_store"
   } | null

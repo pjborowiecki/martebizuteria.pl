@@ -6,7 +6,7 @@ import { useTranslations } from "use-intl/react"
 import { INPOST_CANCELED_SHIPMENT_STATUS, type InpostParcelTemplate } from "~/src/integrations/inpost/inpost.constants"
 import { formatInpostLockerAddress } from "~/src/integrations/inpost/inpost.utils"
 
-import { canCreateAdminOrderInpostShipment, isInpostDeliveryType } from "~/src/modules/order/order.admin-actions.utils"
+import { canCreateAdminOrderInpostShipment, isInpostDelivery } from "~/src/modules/order/order.admin-actions.utils"
 import { type InpostDeliveryType } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -142,16 +142,17 @@ const InpostShipmentCreator = ({ deliveryType, orderId }: Readonly<InpostShipmen
 
 const InpostShipmentStart = ({ order }: Readonly<OrderInpostCardProps>): JSX.Element | undefined => {
   const t = useTranslations("pages.admin.orderDetail.inpost")
-  const deliveryType = order.delivery?.type
+  const delivery = { courierCode: order.delivery?.courierCode, type: order.delivery?.type }
 
   if (!order.inpostConfigured) {
     return undefined
   }
 
   if (
-    !isInpostDeliveryType(deliveryType) ||
+    !isInpostDelivery(delivery) ||
     !canCreateAdminOrderInpostShipment({
-      deliveryType,
+      courierCode: delivery.courierCode,
+      deliveryType: delivery.type,
       fulfillmentStatus: order.fulfillmentStatus,
       inpostShipmentId: order.inpostShipment?.id,
       inpostShipmentStatus: order.inpostShipment?.status,
@@ -161,7 +162,7 @@ const InpostShipmentStart = ({ order }: Readonly<OrderInpostCardProps>): JSX.Ele
     return <p className="text-[13px] text-muted-foreground">{t("notAvailable")}</p>
   }
 
-  return <InpostShipmentCreator deliveryType={deliveryType} orderId={order.id} />
+  return <InpostShipmentCreator deliveryType={delivery.type} orderId={order.id} />
 }
 
 const InpostTargetLocker = ({ delivery }: Readonly<Pick<OrderInpostCardProps["order"], "delivery">>): JSX.Element | undefined => {
@@ -182,7 +183,7 @@ const InpostTargetLocker = ({ delivery }: Readonly<Pick<OrderInpostCardProps["or
 export const OrderInpostCard = ({ order }: Readonly<OrderInpostCardProps>): JSX.Element | undefined => {
   const t = useTranslations("pages.admin.orderDetail.inpost")
 
-  if (order.inpostShipment === undefined && !isInpostDeliveryType(order.delivery?.type)) {
+  if (order.inpostShipment === undefined && !isInpostDelivery({ courierCode: order.delivery?.courierCode, type: order.delivery?.type })) {
     return undefined
   }
 

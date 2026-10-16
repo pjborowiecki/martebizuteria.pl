@@ -78,7 +78,11 @@ const orderRow = (overrides: Record<string, unknown> = {}) => ({
   currencyCode: "PLN",
   customerNote: null,
   deliveredAt: null,
-  deliveryMethod: { courier: { name: "InPost" }, names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }, type: "courier" },
+  deliveryMethod: {
+    courier: { internalCode: "inpost", name: "InPost" },
+    names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" },
+    type: "courier",
+  },
   discountTotal: 0,
   fulfillmentStartedAt: null,
   fulfillmentStatus: "shipped",
@@ -273,7 +277,11 @@ describe("getCustomerOrder destination and invoice", () => {
   it("shows the parcel locker as the destination of a locker order", async () => {
     access.findFirst.mockResolvedValue(
       orderRow({
-        deliveryMethod: { names: { "en-US": "InPost parcel locker", "pl-PL": "Paczkomat InPost" }, type: "locker" },
+        deliveryMethod: {
+          courier: { internalCode: "inpost", name: "InPost" },
+          names: { "en-US": "InPost parcel locker", "pl-PL": "Paczkomat InPost" },
+          type: "locker",
+        },
         lockerId: "WAW01A",
       }),
     )

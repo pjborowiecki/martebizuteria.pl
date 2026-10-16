@@ -1,5 +1,6 @@
 import { INPOST_CANCELED_SHIPMENT_STATUS } from "~/src/integrations/inpost/inpost.constants"
 
+import { INPOST_COURIER_CODE } from "~/src/modules/courier/courier.constants"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import {
   ADMIN_ORDER_ADVANCED_STEPS,
@@ -19,8 +20,10 @@ import {
 } from "~/src/modules/order/order.constants"
 import { type Order } from "~/src/modules/order/order.types"
 
-export const isInpostDeliveryType = (deliveryType: DeliveryMethodType | undefined): deliveryType is InpostDeliveryType =>
-  deliveryType !== undefined && (INPOST_DELIVERY_TYPES as readonly string[]).includes(deliveryType)
+export const isInpostDelivery = (delivery: Readonly<InpostDeliverySource>): delivery is InpostDelivery =>
+  delivery.courierCode === INPOST_COURIER_CODE &&
+  delivery.type !== undefined &&
+  (INPOST_DELIVERY_TYPES as readonly string[]).includes(delivery.type)
 
 const isCancelledOrderStatus = (status: Order["select"]["status"]): boolean =>
   (CANCELLED_ORDER_STATUSES as readonly string[]).includes(status)
@@ -128,7 +131,7 @@ const holdsLiveInpostShipment = ({
 
 export const canCreateAdminOrderInpostShipment = (snapshot: InpostShipmentSnapshot): boolean =>
   !holdsLiveInpostShipment(snapshot) &&
-  isInpostDeliveryType(snapshot.deliveryType) &&
+  isInpostDelivery({ courierCode: snapshot.courierCode, type: snapshot.deliveryType }) &&
   (OPEN_ORDER_STATUSES as readonly string[]).includes(snapshot.status) &&
   !isDispatchedFulfillmentStatus(snapshot.fulfillmentStatus)
 
@@ -136,7 +139,17 @@ const TERMINAL_FULFILLMENT_STATUSES = ["shipped", "delivered", "cancelled"] as c
 
 type OrderActionSnapshot = Pick<Order["adminListItem"], "fulfillmentStatus" | "paymentUiKey" | "status">
 
+export interface InpostDeliverySource {
+  readonly courierCode: string | undefined
+  readonly type: DeliveryMethodType | undefined
+}
+
+interface InpostDelivery extends InpostDeliverySource {
+  readonly type: InpostDeliveryType
+}
+
 interface InpostShipmentSnapshot extends Pick<OrderActionSnapshot, "fulfillmentStatus" | "status"> {
+  readonly courierCode: string | undefined
   readonly deliveryType: DeliveryMethodType | undefined
   readonly inpostShipmentId: string | undefined
   readonly inpostShipmentStatus: string | undefined

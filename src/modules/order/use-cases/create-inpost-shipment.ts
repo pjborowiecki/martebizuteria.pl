@@ -75,6 +75,7 @@ export const createInpostShipment = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const row = assertOrderActionState(await getAdminOrderDetailRow(data.orderId), (snapshot) =>
       canCreateAdminOrderInpostShipment({
+        courierCode: snapshot.deliveryMethod?.courier.internalCode,
         deliveryType: snapshot.deliveryMethod?.type,
         fulfillmentStatus: snapshot.fulfillmentStatus,
         inpostShipmentId: snapshot.inpostShipmentId ?? undefined,

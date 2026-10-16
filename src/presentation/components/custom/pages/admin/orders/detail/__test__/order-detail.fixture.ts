@@ -49,6 +49,7 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
   customerNote: "Please gift wrap.",
   deliveredAt: undefined,
   delivery: {
+    courierCode: "inpost",
     courierName: "InPost",
     lockerId: "WAW01A",
     lockerPoint: { buildingNumber: "12", city: "Warszawa", description: "Przy stacji metra", postalCode: "00-640", street: "Mokotowska" },

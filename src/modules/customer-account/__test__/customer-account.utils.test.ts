@@ -240,6 +240,7 @@ describe("mapCustomerOrderDetail", () => {
 
   it("links a tracking number pasted by hand for an InPost delivery to InPost's tracking page", () => {
     const detail = mapCustomerOrderDetail({ ...orderRow, trackingNumber: "520000011395200025754311" }, [itemRow], {
+      deliveryCourierCode: "inpost",
       deliveryMethodType: "locker",
     })
 

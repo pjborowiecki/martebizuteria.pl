@@ -4,7 +4,7 @@ import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.displa
 import { isSupportedLocale } from "~/src/integrations/use-intl/i18n.paths"
 
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
-import { isInpostDeliveryType } from "~/src/modules/order/order.admin-actions.utils"
+import { isInpostDelivery } from "~/src/modules/order/order.admin-actions.utils"
 import {
   ADMIN_ORDER_FULFILLMENT_STATUSES_BY_STEP,
   ADMIN_ORDER_FULFILLMENT_STEPS,
@@ -24,13 +24,22 @@ const filledText = (value: string | null | undefined): string | undefined => {
   return trimmed === undefined || trimmed === "" ? undefined : trimmed
 }
 
-export const resolveOrderTrackingUrl = ({ deliveryType, trackingNumber, trackingUrl }: OrderTrackingLinkSource): string | undefined => {
+export const resolveOrderTrackingUrl = ({
+  courierCode,
+  deliveryType,
+  trackingNumber,
+  trackingUrl,
+}: OrderTrackingLinkSource): string | undefined => {
   const number = filledText(trackingNumber)
 
-  return filledText(trackingUrl) ?? (number !== undefined && isInpostDeliveryType(deliveryType) ? inpostTrackingUrl(number) : undefined)
+  return (
+    filledText(trackingUrl) ??
+    (number !== undefined && isInpostDelivery({ courierCode, type: deliveryType }) ? inpostTrackingUrl(number) : undefined)
+  )
 }
 
 interface OrderTrackingLinkSource {
+  readonly courierCode: string | undefined
   readonly deliveryType: DeliveryMethodType | undefined
   readonly trackingNumber: string | null | undefined
   readonly trackingUrl: string | null | undefined

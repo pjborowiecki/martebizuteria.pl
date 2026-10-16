@@ -42,7 +42,11 @@ const ORIGIN = "https://preview.martebizuteria.pl"
 const orderRow = {
   addresses: [],
   checkout: null,
-  deliveryMethod: { courier: { name: "InPost" }, names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }, type: "courier" },
+  deliveryMethod: {
+    courier: { internalCode: "inpost", name: "InPost" },
+    names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" },
+    type: "courier",
+  },
   email: "anna@example.com",
   id: "order-abcdef12",
   lockerId: null,
@@ -147,7 +151,7 @@ describe("sendOrderTrackingEmail", () => {
   it("links a guest to creating an account when the carrier gives no tracking page", async () => {
     getOrderForShippedEmail.mockResolvedValueOnce({
       ...orderRow,
-      deliveryMethod: { courier: { name: "M'ARTE Atelier" }, name: "Odbiór w atelier", type: "in_store" },
+      deliveryMethod: { courier: { internalCode: "marte-atelier", name: "M'ARTE Atelier" }, name: "Odbiór w atelier", type: "in_store" },
       trackingUrl: null,
       userId: null,
     })

@@ -99,10 +99,14 @@ const shippingSnapshot = {
   type: "shipping",
 }
 
+const INPOST = { internalCode: "inpost", name: "InPost" }
+
+const ATELIER = { internalCode: "marte-atelier", name: "M'ARTE Atelier" }
+
 const orderRow = (overrides: Record<string, unknown> = {}) => ({
   addresses: [shippingSnapshot],
   checkout: null,
-  deliveryMethod: { courier: { name: "InPost" }, name: "Paczkomat InPost", type: "locker" },
+  deliveryMethod: { courier: INPOST, name: "Paczkomat InPost", type: "locker" },
   email: "anna@example.test",
   fulfillmentStatus: "fulfilled",
   inpostShipmentId: null,
@@ -180,7 +184,7 @@ describe("createInpostShipment", () => {
     orders.getAdminOrderDetailRow.mockResolvedValue(
       orderRow({
         addresses: [{ ...shippingSnapshot, address2: "klatka B", firstName: null, lastName: null, phone: null, postalCode: null }],
-        deliveryMethod: { courier: { name: "InPost" }, name: "Kurier InPost", type: "courier" },
+        deliveryMethod: { courier: INPOST, name: "Kurier InPost", type: "courier" },
         lockerId: null,
         status: "pending",
       }),
@@ -204,7 +208,7 @@ describe("createInpostShipment", () => {
 
   it("sends a courier address without the second line it does not have", async () => {
     orders.getAdminOrderDetailRow.mockResolvedValue(
-      orderRow({ deliveryMethod: { courier: { name: "InPost" }, name: "Kurier InPost", type: "courier" }, lockerId: null }),
+      orderRow({ deliveryMethod: { courier: INPOST, name: "Kurier InPost", type: "courier" }, lockerId: null }),
     )
 
     await createInpostShipment({ data: { orderId: ORDER_ID, parcelTemplate: "small", weightKg: 0.2 } })
@@ -244,7 +248,7 @@ describe("createInpostShipment", () => {
       "a shipped order whose shipment was cancelled",
       { fulfillmentStatus: "shipped", inpostShipmentId: "48", inpostShipmentStatus: "canceled" },
     ],
-    ["an in-store pickup", { deliveryMethod: { courier: { name: "M'ARTE Atelier" }, name: "Odbiór w atelier", type: "in_store" } }],
+    ["an in-store pickup", { deliveryMethod: { courier: ATELIER, name: "Odbiór w atelier", type: "in_store" } }],
     ["an order without a delivery method", { deliveryMethod: null }],
     ["a shipped order", { fulfillmentStatus: "shipped" }],
     ["a cancelled order", { status: "cancelled" }],

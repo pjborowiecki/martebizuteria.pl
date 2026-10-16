@@ -10,7 +10,7 @@ import {
   canRestockAdminOrder,
   canSetAdminOrderTrackingNumber,
   cancelRefundsAdminOrderPayment,
-  isInpostDeliveryType,
+  isInpostDelivery,
   refundRestocksByDefault,
   resolveAdminOrderCancelBlocker,
   resolveAdminOrderRefundBlocker,
@@ -225,18 +225,23 @@ describe("canPrintAdminOrderSummary", () => {
   })
 })
 
-describe("isInpostDeliveryType", () => {
-  it.each(["courier", "locker"] as const)("hands a %s delivery to InPost", (deliveryType) => {
-    expect(isInpostDeliveryType(deliveryType)).toBe(true)
+describe("isInpostDelivery", () => {
+  it.each(["courier", "locker"] as const)("hands an InPost %s delivery to InPost", (type) => {
+    expect(isInpostDelivery({ courierCode: "inpost", type })).toBe(true)
   })
 
-  it.each(["in_store", undefined] as const)("keeps a %s delivery away from InPost", (deliveryType) => {
-    expect(isInpostDeliveryType(deliveryType)).toBe(false)
+  it.each(["in_store", undefined] as const)("keeps a %s delivery away from InPost", (type) => {
+    expect(isInpostDelivery({ courierCode: "inpost", type })).toBe(false)
+  })
+
+  it.each(["dpd", undefined])("keeps a courier delivery with the %s carrier away from InPost", (courierCode) => {
+    expect(isInpostDelivery({ courierCode, type: "courier" })).toBe(false)
   })
 })
 
 describe("canCreateAdminOrderInpostShipment", () => {
   const shippable = {
+    courierCode: "inpost",
     deliveryType: "locker" as const,
     fulfillmentStatus: "fulfilled" as const,
     inpostShipmentId: undefined,
@@ -250,6 +255,10 @@ describe("canCreateAdminOrderInpostShipment", () => {
 
   it("books a shipment for a pending courier order", () => {
     expect(canCreateAdminOrderInpostShipment({ ...shippable, deliveryType: "courier", status: "pending" })).toBe(true)
+  })
+
+  it("books no InPost shipment for a parcel another carrier takes", () => {
+    expect(canCreateAdminOrderInpostShipment({ ...shippable, courierCode: "dpd", deliveryType: "courier" })).toBe(false)
   })
 
   it.each(["created", "confirmed", undefined])("books no second shipment while the order holds one InPost reports as %s", (status) => {
