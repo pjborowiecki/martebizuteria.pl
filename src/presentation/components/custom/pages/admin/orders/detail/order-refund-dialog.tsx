@@ -1,6 +1,6 @@
 import { type JSX, useCallback, useState } from "react"
 
-import { Loader2 } from "lucide-react"
+import { Loader2, RotateCcw } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import {
@@ -11,6 +11,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from "~/src/presentation/components/shadcn/alert-dialog"
 import { Checkbox } from "~/src/presentation/components/shadcn/checkbox"
@@ -26,21 +27,27 @@ const RefundConfirmation = ({ displayId, isPending, onConfirm, restockByDefault 
   return (
     <>
       <AlertDialogHeader>
+        <AlertDialogMedia tone="destructive">
+          <RotateCcw />
+        </AlertDialogMedia>
         <AlertDialogTitle>{t("title")}</AlertDialogTitle>
         <AlertDialogDescription>{t("description", { id: displayId })}</AlertDialogDescription>
       </AlertDialogHeader>
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 rounded-lg border border-border/70 p-3.5 has-data-checked:border-foreground/30 has-data-checked:bg-muted/40">
         <Checkbox
           checked={restock}
+          className="mt-0.5"
           disabled={isPending}
           id="refund-restock"
           onCheckedChange={(checked) => {
             setRestock(checked)
           }}
         />
-        <div className="space-y-1">
-          <Label htmlFor="refund-restock">{t("restockLabel")}</Label>
-          <p className="text-[11px] text-muted-foreground">{t("restockHint")}</p>
+        <div className="space-y-1.5">
+          <Label className="text-[13px] leading-5 font-medium text-foreground" htmlFor="refund-restock">
+            {t("restockLabel")}
+          </Label>
+          <p className="text-[12px] leading-relaxed text-muted-foreground">{t("restockHint")}</p>
         </div>
       </div>
       <AlertDialogFooter>

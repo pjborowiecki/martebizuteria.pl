@@ -3,7 +3,7 @@ import { type JSX, type SyntheticEvent } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
-import { AlertTriangle, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "~/src/presentation/components/shadcn/dialog"
 
+import { AccountDialogEyebrow } from "~/src/presentation/components/custom/pages/account/account-dialog-eyebrow"
 import {
   CloseAccountCredential,
   PROFILE_VALIDATION_NAMESPACE,
@@ -87,21 +88,19 @@ export const CloseAccountDialog = ({ hasPassword, onOpenChange, open }: Readonly
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" variant="editorial">
         <form onSubmit={submit}>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <AlertTriangle className="size-5 text-destructive" strokeWidth={1.5} />
-              {t("closeDialogTitle")}
-            </DialogTitle>
+            <AccountDialogEyebrow destructive>{t("closeAccount")}</AccountDialogEyebrow>
+            <DialogTitle>{t("closeDialogTitle")}</DialogTitle>
             <DialogDescription>{t("closeDialogDesc")}</DialogDescription>
           </DialogHeader>
 
-          <ul className="space-y-1.5 pl-4 text-[12px] leading-relaxed text-muted-foreground">
-            <li className="list-disc">{t("closeDialogPoint1")}</li>
-            <li className="list-disc">{t("closeDialogPoint2")}</li>
-            <li className="list-disc">{t("closeDialogPoint3")}</li>
-            <li className="list-disc">{t("closeDialogPoint4")}</li>
+          <ul className="mt-5 space-y-2.5 border-l border-destructive/30 pl-4 text-[13px] leading-relaxed text-muted-foreground">
+            <li>{t("closeDialogPoint1")}</li>
+            <li>{t("closeDialogPoint2")}</li>
+            <li>{t("closeDialogPoint3")}</li>
+            <li>{t("closeDialogPoint4")}</li>
           </ul>
 
           <div className="space-y-4 py-4">

@@ -1,5 +1,6 @@
 import { cleanup, screen } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
+import { Package } from "lucide-react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
@@ -15,6 +16,7 @@ const renderDialog = (isPending: boolean) => {
       cancelLabel="Not now"
       confirmLabel="Start fulfillment"
       description="Order MRT-2026-00001 moves to “In progress”."
+      icon={Package}
       isPending={isPending}
       onConfirm={onConfirm}
       onOpenChange={onOpenChange}

@@ -1,5 +1,6 @@
 import { type JSX } from "react"
 
+import { TriangleAlert } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import {
@@ -10,6 +11,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from "~/src/presentation/components/shadcn/alert-dialog"
 
@@ -25,6 +27,9 @@ export const ContentPageLeaveDialog = ({ onLeave, onStay, open }: Readonly<Conte
     <AlertDialog onOpenChange={stayOnDismiss} open={open}>
       <AlertDialogContent>
         <AlertDialogHeader>
+          <AlertDialogMedia tone="destructive">
+            <TriangleAlert />
+          </AlertDialogMedia>
           <AlertDialogTitle>{t("title")}</AlertDialogTitle>
           <AlertDialogDescription>{t("description")}</AlertDialogDescription>
         </AlertDialogHeader>

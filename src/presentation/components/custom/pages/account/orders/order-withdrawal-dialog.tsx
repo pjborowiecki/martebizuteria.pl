@@ -93,7 +93,7 @@ export const OrderWithdrawalDialog = ({ onOpenChange, open, order, withdrawal }:
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" variant="editorial">
         <form noValidate onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>{t("account.action")}</DialogTitle>

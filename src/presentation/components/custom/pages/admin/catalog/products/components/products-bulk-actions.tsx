@@ -11,6 +11,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/src/presentation/components/shadcn/alert-dialog"
@@ -63,6 +64,9 @@ export const ProductsBulkActions = (): JSX.Element | undefined => {
         <AlertDialogTrigger render={trigger} />
         <AlertDialogContent>
           <AlertDialogHeader>
+            <AlertDialogMedia tone="destructive">
+              <Trash2 />
+            </AlertDialogMedia>
             <AlertDialogTitle>{t("bulk.confirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("bulk.confirmDescription", {

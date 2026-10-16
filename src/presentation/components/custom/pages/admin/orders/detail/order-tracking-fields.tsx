@@ -7,6 +7,8 @@ import { ORDER_TRACKING_NUMBER_MAX_LENGTH, ORDER_TRACKING_URL_MAX_LENGTH } from 
 import { Input } from "~/src/presentation/components/shadcn/input"
 import { Label } from "~/src/presentation/components/shadcn/label"
 
+import { ADMIN_DIALOG_LABEL_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
+
 export const OrderTrackingFields = ({
   onTrackingNumberChange,
   onTrackingUrlChange,
@@ -19,9 +21,11 @@ export const OrderTrackingFields = ({
   const trackingUrlId = useId()
 
   return (
-    <div className="space-y-4 py-4">
+    <div className="space-y-4 pt-1 pb-5">
       <div className="space-y-2">
-        <Label htmlFor={trackingNumberId}>{t("trackingNumberLabel")}</Label>
+        <Label className={ADMIN_DIALOG_LABEL_CLASS} htmlFor={trackingNumberId}>
+          {t("trackingNumberLabel")}
+        </Label>
         <Input
           autoComplete="off"
           id={trackingNumberId}
@@ -32,10 +36,13 @@ export const OrderTrackingFields = ({
           placeholder={t("trackingNumberPlaceholder")}
           required={trackingNumberRequired}
           value={trackingNumber}
+          variant="sheet"
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor={trackingUrlId}>{t("trackingUrlLabel")}</Label>
+        <Label className={ADMIN_DIALOG_LABEL_CLASS} htmlFor={trackingUrlId}>
+          {t("trackingUrlLabel")}
+        </Label>
         <Input
           autoComplete="off"
           id={trackingUrlId}
@@ -46,6 +53,7 @@ export const OrderTrackingFields = ({
           placeholder={t("trackingUrlPlaceholder")}
           type="url"
           value={trackingUrl}
+          variant="sheet"
         />
       </div>
     </div>

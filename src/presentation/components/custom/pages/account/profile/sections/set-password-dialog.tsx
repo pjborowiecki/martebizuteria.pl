@@ -24,10 +24,12 @@ import {
   DialogTitle,
 } from "~/src/presentation/components/shadcn/dialog"
 
+import { AccountDialogEyebrow } from "~/src/presentation/components/custom/pages/account/account-dialog-eyebrow"
 import { AuthPasswordField } from "~/src/presentation/components/custom/pages/auth/auth-fields"
 
 export const SetPasswordDialog = ({ onOpenChange, open }: Readonly<SetPasswordDialogProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.setPasswordDialog")
+  const tProfile = useTranslations("pages.account.profile")
   const actionError = useActionError()
   const queryClient = useQueryClient()
   const setPassword = useMutation(setAccountPasswordMutation)
@@ -84,9 +86,10 @@ export const SetPasswordDialog = ({ onOpenChange, open }: Readonly<SetPasswordDi
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" variant="editorial">
         <form onSubmit={handleFormSubmit}>
           <DialogHeader>
+            <AccountDialogEyebrow>{tProfile("security")}</AccountDialogEyebrow>
             <DialogTitle>{t("title")}</DialogTitle>
             <DialogDescription>{t("description")}</DialogDescription>
           </DialogHeader>

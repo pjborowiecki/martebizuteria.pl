@@ -1,6 +1,6 @@
 import { type JSX, type MouseEvent, type ReactNode, useCallback } from "react"
 
-import { Loader2 } from "lucide-react"
+import { Loader2, type LucideIcon } from "lucide-react"
 
 import {
   AlertDialog,
@@ -10,6 +10,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from "~/src/presentation/components/shadcn/alert-dialog"
 
@@ -19,6 +20,7 @@ export const OrderStepConfirmDialog = ({
   cancelLabel,
   confirmLabel,
   description,
+  icon: Icon,
   isPending,
   onConfirm,
   onOpenChange,
@@ -48,6 +50,9 @@ export const OrderStepConfirmDialog = ({
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
       <AlertDialogContent data-prevent-row-click>
         <AlertDialogHeader>
+          <AlertDialogMedia>
+            <Icon />
+          </AlertDialogMedia>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
@@ -67,6 +72,7 @@ interface OrderStepConfirmDialogProps {
   readonly cancelLabel: string
   readonly confirmLabel: string
   readonly description: ReactNode
+  readonly icon: LucideIcon
   readonly isPending: boolean
   readonly onConfirm: () => void
   readonly onOpenChange: (open: boolean) => void

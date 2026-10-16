@@ -1,6 +1,6 @@
 import { type JSX } from "react"
 
-import { Loader2 } from "lucide-react"
+import { Loader2, Send } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import {
@@ -11,6 +11,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
+  AlertDialogMedia,
   AlertDialogTitle,
 } from "~/src/presentation/components/shadcn/alert-dialog"
 
@@ -32,6 +33,9 @@ export const NewsletterSendDialog = ({
     <AlertDialog onOpenChange={stayOpenWhileSending} open={open}>
       <AlertDialogContent>
         <AlertDialogHeader>
+          <AlertDialogMedia>
+            <Send />
+          </AlertDialogMedia>
           <AlertDialogTitle>{t("title")}</AlertDialogTitle>
           <AlertDialogDescription>{t("description", { count: recipientCount })}</AlertDialogDescription>
         </AlertDialogHeader>

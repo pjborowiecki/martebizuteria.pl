@@ -45,3 +45,8 @@ export const ADMIN_DASHBOARD_CONTENT_CARD_CLASS = "border-border/40 shadow-none 
 
 export const ADMIN_HEADER_SECONDARY_BUTTON_CLASS =
   "h-8 gap-1.5 border-sidebar-border bg-sidebar px-3 text-[13px] text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground pointer-coarse:h-10"
+
+export const ADMIN_DIALOG_LABEL_CLASS = "text-[13px] leading-5 font-medium text-foreground"
+
+export const ADMIN_DIALOG_NATIVE_SELECT_CLASS =
+  "w-full [&_select]:h-10 [&_select]:rounded-lg [&_select]:border-border [&_select]:bg-background [&_select]:pl-3 [&_select]:text-sm [&_select]:focus-visible:border-foreground [&_select]:focus-visible:ring-0"

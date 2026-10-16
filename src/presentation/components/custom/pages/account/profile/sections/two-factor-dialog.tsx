@@ -49,7 +49,7 @@ export const TwoFactorDialog = ({ enabled, onEnabledChange, onOpenChange, open }
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" variant="editorial">
         {setup.step === TWO_FACTOR_STEP.PASSWORD && (
           <TwoFactorPasswordStep disabling={enabled} onCancel={close} onSubmit={submitPassword} />
         )}

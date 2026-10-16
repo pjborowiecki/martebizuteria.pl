@@ -26,6 +26,11 @@ import { Input } from "~/src/presentation/components/shadcn/input"
 import { Label } from "~/src/presentation/components/shadcn/label"
 import { NativeSelect, NativeSelectOption } from "~/src/presentation/components/shadcn/native-select"
 
+import {
+  ADMIN_DIALOG_LABEL_CLASS,
+  ADMIN_DIALOG_NATIVE_SELECT_CLASS,
+} from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
+
 const MILLIMETRES_PER_CENTIMETRE = 10
 
 const WEIGHT_STEP_KG = 0.01
@@ -69,10 +74,17 @@ export const OrderInpostShipmentDialog = ({
             <DialogDescription>{deliveryType === "courier" ? t("courierDescription") : t("lockerDescription")}</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 pt-1 pb-5">
             <div className="space-y-2">
-              <Label htmlFor="inpost-parcel-template">{t("sizeLabel")}</Label>
-              <NativeSelect className="w-full" defaultValue="small" id="inpost-parcel-template" name="parcelTemplate">
+              <Label className={ADMIN_DIALOG_LABEL_CLASS} htmlFor="inpost-parcel-template">
+                {t("sizeLabel")}
+              </Label>
+              <NativeSelect
+                className={ADMIN_DIALOG_NATIVE_SELECT_CLASS}
+                defaultValue="small"
+                id="inpost-parcel-template"
+                name="parcelTemplate"
+              >
                 {INPOST_PARCEL_TEMPLATES.map((template) => (
                   <NativeSelectOption key={template} value={template}>
                     {t(`sizes.${template}`, {
@@ -86,7 +98,9 @@ export const OrderInpostShipmentDialog = ({
             </div>
             {deliveryType === "courier" && (
               <div className="space-y-2">
-                <Label htmlFor="inpost-parcel-weight">{t("weightLabel")}</Label>
+                <Label className={ADMIN_DIALOG_LABEL_CLASS} htmlFor="inpost-parcel-weight">
+                  {t("weightLabel")}
+                </Label>
                 <Input
                   id="inpost-parcel-weight"
                   inputMode="decimal"
@@ -96,6 +110,7 @@ export const OrderInpostShipmentDialog = ({
                   required
                   step={WEIGHT_STEP_KG}
                   type="number"
+                  variant="sheet"
                 />
               </div>
             )}
