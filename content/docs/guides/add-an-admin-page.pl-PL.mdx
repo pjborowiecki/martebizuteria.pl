@@ -188,9 +188,9 @@ Trasa wymienia przestrzenie nazw potrzebne jej poddrzewu w `staticData.namespace
 | `SIMPLE_NAV`  | Pulpit, Zamówienia, Klienci                                           |
 | `CATALOG_SUB` | Produkty, Kategorie, Kolekcje, Atrybuty — zagnieżdżone pod Katalogiem |
 | `TOOLS_NAV`   | Marketing, Kupony, Treści                                             |
-| `SYSTEM_NAV`  | Dziennik zdarzeń, Ustawienia — Ustawienia mają `disabled: true`       |
+| `SYSTEM_NAV`  | Dziennik zdarzeń, Ustawienia                                          |
 
-`NavItem` to `{ href: LocalizedTo, icon, labelKey, disabled? }`. Ikona jest komponentem z `lucide-react`, a `labelKey` rozwiązuje się wewnątrz `pages.admin`, więc `nav.coupons` czyta z `messages/{locale}/pages.admin.json`. Ustaw `disabled: true` dla strony, która istnieje jako zaślepka, ale nie jest gotowa. `/admin/settings` jest dziś właśnie w tym stanie.
+`NavItem` to `{ href: LocalizedTo, icon, labelKey }`. Ikona jest komponentem z `lucide-react`, a `labelKey` rozwiązuje się wewnątrz `pages.admin`, więc `nav.coupons` czyta z `messages/{locale}/pages.admin.json`. Pozycja jest aktywna, dopóki adres zawiera jej `href`, więc jedna pozycja obejmuje stronę z zakładkami w nagłówku, taką jak Ustawienia. Stanu wyłączonego nie ma: nie dodawaj strony do paska bocznego, dopóki nie działa.
 
 ## 8. Przetestuj trasę
 

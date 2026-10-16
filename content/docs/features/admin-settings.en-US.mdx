@@ -1,0 +1,96 @@
+---
+title: "Admin settings"
+description: "The admin's own account and sign-in security under /admin/settings: profile, panel language, time zone and format, password, two-factor authentication, sign-in methods, sessions and sign-in history."
+---
+
+Settings is where an admin manages their own account. It is the **Settings** item at the bottom of the sidebar, and it has two header tabs: **My account** and **Sign-in & security**. Every call it makes acts on the signed-in admin's own account, through the same use cases and Better Auth calls as the customer's `/account/profile` page, so it adds no permission, table or server function.
+
+## Routes
+
+| Route                      | File                          | Shows                                                                               |
+| -------------------------- | ----------------------------- | ----------------------------------------------------------------------------------- |
+| `/admin/settings`          | `admin.settings.tsx`          | The layout: an `Outlet` for the tab, with the settings copy namespaces              |
+| `/admin/settings/`         | `admin.settings.index.tsx`    | Redirects to `/admin/settings/account` in `beforeLoad`                              |
+| `/admin/settings/account`  | `admin.settings.account.tsx`  | **My account**: Profile and Preferences                                             |
+| `/admin/settings/security` | `admin.settings.security.tsx` | **Sign-in & security**: password, two-factor, sign-in methods, sessions and history |
+
+The paths are `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT` and `ROUTES.ADMIN_SETTINGS_SECURITY` in `src/routes.ts`. All of them sit inside the `/admin` layout, so `requireAdmin` guards them and an admin without two-factor authentication is sent to `/admin/security` first (see [Admin dashboard](/docs/features/admin-dashboard#layout)).
+
+The layout declares `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` holds the page's own copy; the other three are there because Settings reuses the account dialogs, which read their copy and validation messages from them.
+
+The account loader prefetches `getCustomerProfileQuery()`. The security loader prefetches it together with `listCustomerSessionsQuery()` and `listCustomerLoginHistoryQuery()`, so both tabs render without a loading state.
+
+## Layout
+
+`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renders the admin header with the title, description and `SettingsTabs`, which are `AdminHeaderTabLink`s marked active by the route. The body is a single column, at most `max-w-3xl` wide, of `SettingsCard`s. A card has a title, a description, an optional action on the right and, below a divider, its rows; `SettingsRow` is one labelled row with an optional value and action.
+
+The sidebar marks **Settings** active on every `/admin/settings/*` page.
+
+## My account
+
+### Profile
+
+`SettingsProfileCard` reads the profile from `getCustomerProfileQuery()` and shows four rows:
+
+| Row             | What it does                                                                                                                                                                                         |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full name       | **Edit** turns the row into a field. **Save** calls Better Auth's `authClient.updateUser({ name })`                                                                                                  |
+| Email address   | **Change** opens `ChangeEmailDialog`. Better Auth sends a confirmation link to the current address, and the address changes once it is opened. A **Not confirmed** badge marks an unverified address |
+| Phone number    | **Edit**, as for the name, saved with `updateCustomerPhone`. An empty value clears the number; **Not given** is shown while there is none                                                            |
+| Account created | The account's `createdAt`, in the admin's format locale and time zone                                                                                                                                |
+
+`SettingsEditableRow` validates the field with the same `customerAccountZodSchemas.profileForm` the customer profile uses before it saves, and shows the error under the field. `useSaveProfileField` makes the call, toasts **Profile saved.** or an error, and on success invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE` and `SESSION_QUERY_KEYS.CURRENT`, because the cached session holds the name too. A confirmed change of email address is recorded as `auth.email_changed` in [the audit log](/docs/features/audit-log#account-security-events).
+
+### Preferences
+
+`SettingsPreferencesCard` has three fields:
+
+- **Admin panel language.** The list holds `I18N.SUPPORTED_LOCALES`. Choosing the other language reloads the same page with `localizePathname`, keeping the query string: Polish is the default locale and has no prefix (`/admin/settings/account`), English has `/en-US`. The locale middleware then sets the locale cookie to the language in the URL, so the choice holds for the next visit. Choosing the language already shown does nothing.
+- **Time zone** and **Date and number format.** These are the same `DisplayPreferenceField`s as on the customer profile. Each list opens with Automatic, labelled with what was detected from the browser, and `updateDisplayPreference` saves the choice to `user.timezone` or `user.format_locale`. Every date, time and number in the admin panel follows them: the order and customer grids, the dashboard's days and months, the audit log and the charts. See [Internationalization](/docs/features/internationalization).
+
+## Sign-in & security
+
+The security route reads the profile once and passes `hasPassword`, `hasGoogle` and `twoFactorEnabled` to the cards as props.
+
+### Password
+
+`SettingsPasswordCard` offers **Change password** for an account with a password, which opens `ChangePasswordDialog`. An account created with Google has none, so the card offers **Set password** instead and opens `SetPasswordDialog`, which calls `setAccountPassword`. That use case refuses a session older than 24 hours, so a stolen older session cannot add a lasting password. Both are described in [Account](/docs/features/account#profile) and [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins).
+
+### Two-factor authentication
+
+`SettingsTwoFactorCard` shows **On** or **Off** and a **Turn on** or **Turn off** button, which opens `TwoFactorDialog`: the password, then the QR code or setup key, a six-digit code and the recovery codes when turning it on, and the password when turning it off. When the dialog finishes, the card invalidates the profile, the session and `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, because Better Auth replaces the current session when two-factor authentication changes.
+
+Two notes can appear under the card:
+
+- Where `isAdminTwoFactorRequired()` holds (production and the E2E build), the card says that every admin needs two-factor authentication and that turning it off closes the admin panel until it is turned on again. The next navigation into `/admin` then sends the admin to `/admin/security`.
+- On an account without a password, the button is disabled and the card asks for a password first, because turning two-factor authentication on asks for it.
+
+### Sign-in methods
+
+`SettingsSignInMethodsCard` lists **Email and password** and **Google**, each **Connected** or **Not connected**. `getCustomerProfile` reads both from `listAccountProviderIds` (`src/modules/account/account.accessors.ts`), which returns the `provider_id` of every `account` row of the user; `credential` means a password and `google` (`GOOGLE_PROVIDER_ID`) a linked Google account.
+
+When Google is connected, the card warns that signing in with Google does not ask for the shop's six-digit code. Better Auth's `twoFactor` plugin checks the code only on the password sign-in paths, so for a Google sign-in the Google account's own 2-Step Verification takes the place of the shop's code (see [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins)). The owner chose to keep Google sign-in open for admins and to say so here, rather than refuse it.
+
+### Active sessions and sign-in history
+
+`SettingsSessionsCard` lists the signed-in devices with `ActiveSessionList` from the account's sessions page. While any other device is signed in, the card offers **Sign out other devices**, which calls `revokeOtherCustomerSessions`, toasts the result and invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. `SettingsLoginHistoryCard` lists the recent successful and failed sign-ins with `LoginHistoryList`. Both read the same queries as `/account/sessions`.
+
+## Dialog styling
+
+The account dialogs take a `variant`: `"editorial"`, the default, for the customer's account pages, and `"default"` for the admin. Settings passes `variant="default"` to `ChangeEmailDialog`, `ChangePasswordDialog`, `SetPasswordDialog` and `TwoFactorDialog`, so they match the admin panel's other dialogs, and `AccountDialogEyebrow` hides itself in that variant. See [shadcn components](/docs/ui/shadcn-components#dialogs) for the two variants.
+
+## Relation to `/admin/security`
+
+`/admin/security` (`admin_.security.tsx`) stays as the enrolment gate. It is outside the `/admin` layout and guarded by `requireAdminRole` alone, so an admin without two-factor authentication, whom `requireAdmin` keeps out of the panel, can still turn it on there. It is not in the sidebar: once two-factor authentication is on, the admin manages it, the password and the sessions under **Settings → Sign-in & security**.
+
+## Not in Settings yet
+
+Settings covers the admin's own account for now. Shop-wide settings are not in it yet: the shop's details and seller identity, delivery methods and prices with the free-shipping threshold, the team of admins, staff notifications, the payment and integration status, and the legal pages' data. Sales are paused from the [sales switch](/docs/features/admin-dashboard#sales-switch) on the overview, and the legal pages are edited under [Content](/docs/features/legal-pages).
+
+## Related pages
+
+- [Account](/docs/features/account) — the customer's profile, which shares these use cases and dialogs
+- [Admin dashboard](/docs/features/admin-dashboard)
+- [Internationalization](/docs/features/internationalization) — the language, time zone and format preferences
+- [Audit log](/docs/features/audit-log)
+- [Integrations: Better Auth](/docs/integrations/better-auth)

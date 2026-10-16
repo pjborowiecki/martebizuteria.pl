@@ -1,6 +1,6 @@
 ---
 title: "Admin dashboard"
-description: "The /admin layout and guard, the overview snapshot built from one D1 batch, and the two tool screens disabled in the sidebar."
+description: "The /admin layout and guard, the sidebar, the overview snapshot built from one D1 batch, and the marketing and coupon screens."
 ---
 
 ## Layout
@@ -41,9 +41,9 @@ The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` f
 | (top)  | Dashboard (`/admin/overview`)                                                                   |
 | Main   | Orders, Customers, and a collapsible Catalog with Products, Categories, Collections, Attributes |
 | Tools  | Marketing, Coupons, and Content                                                                 |
-| System | Audit, Settings — Settings has `disabled: true`                                                 |
+| System | Audit and Settings                                                                              |
 
-A disabled item renders as a non-interactive `SidebarMenuButton disabled` with `cursor-not-allowed opacity-50`, so the two disabled screens are not reachable from the UI at all — only by typing the URL.
+An item is active while the address contains its path, so **Settings** stays active on every `/admin/settings/*` tab. `/admin/security`, the page where an admin turns two-factor authentication on, is not in the sidebar: the guard sends an admin there when it is off, and once it is on the admin manages it under [Settings](/docs/features/admin-settings).
 
 The sidebar footer's sign-out button calls `signOut` and then does a full page load of `/auth/sign-in`, which discards the query cache.
 
@@ -148,19 +148,18 @@ const validTopProductRows = topProductRows.filter((row): row is typeof row & { p
 
 `buildAdminDashboardWeeklyOrderPoints` reuses the same `dailyAggregateRows` with the last seven days of the 30-day window to produce `{ dateKey, dayLabel, orders }` points, the weekday named as it is in Poland, again with no extra query.
 
-## Marketing, coupons and settings
+## Marketing and coupons
 
-| Route                          | File                              | Components                                                                                | Data                                                                                                                                            |
-| ------------------------------ | --------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/admin/marketing`             | `admin.marketing.index.tsx`       | `NewsletterStats`, `NewsletterCampaignsTable`                                             | `getNewsletterStatsQuery`, `getAdminNewsletterCampaignsQuery`; see [E-mail](/docs/features/email#the-newsletter)                                |
-| `/admin/marketing/new`         | `admin.marketing.new.tsx`         | `NewsletterComposer` with `NewsletterComposerFields` and `NewsletterSendDialog`           | `getNewsletterStatsQuery`, `sendNewsletterTest`, `sendNewsletterCampaign`                                                                       |
-| `/admin/marketing/subscribers` | `admin.marketing.subscribers.tsx` | `NewsletterSubscribersTableContent` with `NewsletterSubscribersStats`                     | `getAdminNewsletterPageQuery`, `getNewsletterStatsQuery`, `exportAdminNewsletterSubscribers`; see [E-mail](/docs/features/email#the-newsletter) |
-| `/admin/coupons`               | `admin.coupons.tsx`               | `CouponStats`, `CouponListTable` with `CouponFormDialog`                                  | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; see [Discounts](/docs/features/discounts)                                                |
-| `/admin/settings`              | `admin.settings.tsx`              | `SettingsPage` with `settings-tabs.tsx`, `settings-general/*`, `settings-placeholder.tsx` | `src/data/settings.ts` (`SETTINGS_TAB_DEFINITIONS`, `STORE_INFO_DEFAULTS`, `TOGGLE_SETTING_KEYS`)                                               |
+| Route                          | File                              | Components                                                                      | Data                                                                                                                                            |
+| ------------------------------ | --------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/admin/marketing`             | `admin.marketing.index.tsx`       | `NewsletterStats`, `NewsletterCampaignsTable`                                   | `getNewsletterStatsQuery`, `getAdminNewsletterCampaignsQuery`; see [E-mail](/docs/features/email#the-newsletter)                                |
+| `/admin/marketing/new`         | `admin.marketing.new.tsx`         | `NewsletterComposer` with `NewsletterComposerFields` and `NewsletterSendDialog` | `getNewsletterStatsQuery`, `sendNewsletterTest`, `sendNewsletterCampaign`                                                                       |
+| `/admin/marketing/subscribers` | `admin.marketing.subscribers.tsx` | `NewsletterSubscribersTableContent` with `NewsletterSubscribersStats`           | `getAdminNewsletterPageQuery`, `getNewsletterStatsQuery`, `exportAdminNewsletterSubscribers`; see [E-mail](/docs/features/email#the-newsletter) |
+| `/admin/coupons`               | `admin.coupons.tsx`               | `CouponStats`, `CouponListTable` with `CouponFormDialog`                        | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; see [Discounts](/docs/features/discounts)                                                |
 
 Marketing is the newsletter, in two header tabs. **Newsletters** shows how many subscribers are confirmed, awaiting confirmation and unsubscribed, each count linking to the **Subscribers** tab narrowed to that status, and lists the 50 most recent newsletters with their progress, refreshed by the admin realtime hub as batches go out. **Subscribers** lists every address on the newsletter in the shared data grid, with its status, language, sign-up place, customer account and dates, filtered by status from its cards or its filter and exported to CSV. **New newsletter** opens the composer, where the owner writes the letter in Polish and English in the content editor, sends a test to their own address and sends it to every confirmed subscriber; [E-mail](/docs/features/email#the-newsletter) describes the sending.
 
-Settings has no loader, query or mutation. The settings screen's General tab renders `STORE_INFO_DEFAULTS` into inputs and `TOGGLE_SETTING_KEYS` into switches that hold local state only, so its maintenance switch does nothing; sales are paused from the [Sales switch](#sales-switch) on the overview. The other tabs render `settings-placeholder.tsx`.
+Settings has its own page: [Admin settings](/docs/features/admin-settings).
 
 Coupons is a working screen: its loader prefetches `getAdminDiscountsPageQuery({})` and `getDiscountStatsQuery()`, and `use-coupon-actions.ts` calls `createDiscount`, `updateDiscount` and `deleteDiscounts`.
 
@@ -173,5 +172,6 @@ Content is a working screen that edits the legal pages and the FAQ. See [Legal p
 - [Orders](/docs/features/orders)
 - [Admin catalog](/docs/features/admin-catalog)
 - [Admin customers](/docs/features/admin-customers)
+- [Admin settings](/docs/features/admin-settings)
 - [Audit log](/docs/features/audit-log)
 - [Integrations: realtime invalidation](/docs/integrations/realtime-invalidation)

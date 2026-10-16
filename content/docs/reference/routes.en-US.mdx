@@ -90,7 +90,7 @@ The `/account` layout is `account.tsx` and its `beforeLoad` runs `requireCustome
 
 ## Admin
 
-The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`, which sends an admin without two-factor authentication to `/admin/security`; it also loads `admin.css`, forces the light theme, renders the admin sidebar and opens the admin realtime WebSocket through `useRealtimeQuerySync`. `admin.index.tsx` redirects `/admin` to `/admin/overview`, and `admin.catalog.index.tsx` redirects `/admin/catalog` to `/admin/catalog/products`.
+The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`, which sends an admin without two-factor authentication to `/admin/security`; it also loads `admin.css`, forces the light theme, renders the admin sidebar and opens the admin realtime WebSocket through `useRealtimeQuerySync`. `admin.index.tsx` redirects `/admin` to `/admin/overview`, `admin.catalog.index.tsx` redirects `/admin/catalog` to `/admin/catalog/products`, and `admin.settings.index.tsx` redirects `/admin/settings` to `/admin/settings/account`.
 
 | Path                                 | `ROUTES` constant              | Route file                                                             |
 | ------------------------------------ | ------------------------------ | ---------------------------------------------------------------------- |
@@ -114,15 +114,15 @@ The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`, which 
 | `/admin/marketing`                   | `ADMIN_MARKETING`              | `admin.marketing.index.tsx`                                            |
 | `/admin/marketing/new`               | `ADMIN_NEWSLETTER_NEW`         | `admin.marketing.new.tsx`                                              |
 | `/admin/marketing/subscribers`       | `ADMIN_NEWSLETTER_SUBSCRIBERS` | `admin.marketing.subscribers.tsx`                                      |
-| `/admin/settings`                    | `ADMIN_SETTINGS`               | `admin.settings.tsx`                                                   |
+| `/admin/settings`                    | `ADMIN_SETTINGS`               | `admin.settings.tsx`, `admin.settings.index.tsx`                       |
+| `/admin/settings/account`            | `ADMIN_SETTINGS_ACCOUNT`       | `admin.settings.account.tsx`                                           |
+| `/admin/settings/security`           | `ADMIN_SETTINGS_SECURITY`      | `admin.settings.security.tsx`                                          |
 | `/admin/security`                    | `ADMIN_SECURITY`               | `admin_.security.tsx` (outside the layout)                             |
 | `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY`          | `admin_.orders.$orderId.summary.tsx` (outside the layout)              |
 
-`/admin/security` turns two-factor authentication on and off for the signed-in admin. The trailing underscore in `admin_.security.tsx` keeps it out of the `/admin` layout, so it has no sidebar, `admin.css` or realtime socket, and its own guard, `requireAdminRole`, admits an admin who has not turned two-factor authentication on yet. Its page, `AdminSecurityPage`, calls `useAdminLightTheme` itself.
+`/admin/security` turns two-factor authentication on and off for the signed-in admin, and is where `requireAdmin` sends an admin who has it off; day to day the admin manages it under [Settings](/docs/features/admin-settings). The trailing underscore in `admin_.security.tsx` keeps it out of the `/admin` layout, so it has no sidebar, `admin.css` or realtime socket, and its own guard, `requireAdminRole`, admits an admin who has not turned two-factor authentication on yet. Its page, `AdminSecurityPage`, calls `useAdminLightTheme` itself.
 
 `/admin/orders/$orderId/summary` is the printable order summary, which says it is not a VAT invoice. The trailing underscore in `admin_.orders.$orderId.summary.tsx` keeps it out of the `/admin` layout too, so the printout has no sidebar, but its guard is `requireAdmin`, the layout's own, and its page, `OrderSummaryPage`, calls `useAdminLightTheme` itself. See [Orders](/docs/features/orders#the-order-summary).
-
-`/admin/settings` still renders from fixtures in `src/data/settings.ts`.
 
 ## Documentation
 

@@ -110,7 +110,7 @@ const menuTrigger = useMemo(() => <DropdownMenuTrigger render={button} />, [butt
 `Dialog` and `AlertDialog` share one look from `_styles/dialog.styles.ts`. `DialogContent` and `AlertDialogContent` take a `variant`:
 
 - `default`, for the admin: 448px wide with 24px padding, a 6px corner and a soft shadow. The 16px semibold title and 13px description match the admin sheets. The footer is a grey band under a top border, with 36px buttons. A `destructive` button in a dialog footer is solid red, because the footer styles buttons through `data-variant`, which `Button` sets.
-- `editorial`, for the account: square corners, 32px padding, a serif title and uppercase, letter-spaced 44px buttons, like the account pages. The account dialogs put a small uppercase heading from `account-dialog-eyebrow.tsx` above the title.
+- `editorial`, for the account: square corners, 32px padding, a serif title and uppercase, letter-spaced 44px buttons, like the account pages. The account dialogs put a small uppercase heading from `account-dialog-eyebrow.tsx` above the title. They take the variant as a prop, and [Admin settings](/docs/features/admin-settings#dialog-styling) opens them with `default`, which hides that heading.
 
 `AlertDialogMedia` shows an icon in a 40px tile beside the title, or above it on a phone, and `tone="destructive"` tints it red. Admin confirmations use the icon of the button that opened them. A note inside a description, such as "the customer gets an email", uses `AdminDialogNote` (`admin-dialog-note.tsx`), with `kind` set to `email` or `warning`. Fields in admin dialogs use the `sheet` input variant and `ADMIN_DIALOG_LABEL_CLASS` from `admin-layout.styles.ts`, so they look the same as in the sheets.
 

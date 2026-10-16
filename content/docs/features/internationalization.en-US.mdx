@@ -166,7 +166,7 @@ It also writes the locale cookie in an effect, so a client-side navigation into 
 
 `timeZone`, and the locale dates and numbers are formatted in, come from `displayPreferencesQuery` (`src/integrations/use-intl/i18n.display-preferences.ts`). The root route loads it before the first render, so the server and the browser format the same way. Its server function returns what the user saved and what the request reveals:
 
-- **Saved:** `user.timezone` and `user.format_locale`. A signed-in user picks them on `/account/profile`, or in the admin under Settings → Localization, and each list starts with an Automatic entry. `updateDisplayPreference` (`src/modules/user/use-cases/update-display-preference.ts`) stores a time zone or a locale only if the runtime can format with it, and clears it for Automatic. Better Auth does not accept either field as input.
+- **Saved:** `user.timezone` and `user.format_locale`. A signed-in user picks them on `/account/profile`, or in the admin under [Settings → My account](/docs/features/admin-settings#preferences), and each list starts with an Automatic entry. `updateDisplayPreference` (`src/modules/user/use-cases/update-display-preference.ts`) stores a time zone or a locale only if the runtime can format with it, and clears it for Automatic. Better Auth does not accept either field as input.
 - **Detected:**
   - **Time zone:** the zone the browser reported in the `marte_time_zone` cookie, then the one Cloudflare derives from the visitor's address (`request.cf.timezone`, carried in the request context as `edgeTimeZone`), then `UTC`.
   - **Format locale:** the first usable language in the `Accept-Language` header, then `en-US`.
@@ -293,7 +293,7 @@ The Stripe Elements form is localised separately, by mapping the app locale to a
 
 ## What is missing
 
-- **No locale switcher in the UI.** Nothing in the navigation, the footer or the account area changes language; a visitor has to edit the URL. The mechanism is complete — the control is not.
+- **No locale switcher on the storefront.** Nothing in the shop's navigation, the footer or the account area changes language; a visitor has to edit the URL. The only control is the admin's **Admin panel language** in [Settings → My account](/docs/features/admin-settings#preferences), which reloads the same page under the other locale's prefix.
 - No per-user language preference. The time zone and the format locale are stored per user, but the page's language always follows the URL.
 - No message-catalogue parity check. The two directories currently hold the same 56 filenames, but nothing in `bun run check` verifies that the keys inside them match.
 
