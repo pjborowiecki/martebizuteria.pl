@@ -3,6 +3,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
+import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
@@ -36,5 +37,5 @@ export const exportAdminOrders = createServerFn({
     const rows = await orderGetAdminOrdersExport(buildAdminOrdersExportParams(input, timeZone))
     recordListExportedAudit("orders", rows.length, { metadata: { filters: input } })
 
-    return loadAdminOrderListItems(rows)
+    return loadAdminOrderListItems(rows, getCurrentLocale())
   })

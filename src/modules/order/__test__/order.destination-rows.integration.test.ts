@@ -24,16 +24,16 @@ const LOCKER_POINT = JSON.stringify({ buildingNumber: "12", city: "Warszawa", po
 const describedDestinations = async (orderIds: readonly string[]): Promise<ReadonlyMap<string, string | undefined>> => {
   const rows = await getAdminOrderDestinationRows(orderIds)
 
-  return new Map(rows.map((row) => [row.id, describeOrderDestination(row)]))
+  return new Map(rows.map((row) => [row.id, describeOrderDestination(row, "pl-PL")]))
 }
 
 beforeAll(() => {
   applyMigrationHistory(sqlite)
   sqlite.exec(`
     insert into courier (id, internal_code, name) values ('courier-inpost', 'inpost', 'InPost');
-    insert into delivery_method (id, api_service_code, courier_id, name, price, type) values
-      ('dm-locker', 'inpost_locker_standard', 'courier-inpost', 'Paczkomat InPost', 1299, 'locker'),
-      ('dm-courier', 'inpost_courier', 'courier-inpost', 'Kurier InPost', 1999, 'courier');
+    insert into delivery_method (id, api_service_code, courier_id, name, names, price, type) values
+      ('dm-locker', 'inpost_locker_standard', 'courier-inpost', 'Paczkomat InPost', '{"pl-PL":"Paczkomat InPost","en-US":"InPost parcel locker"}', 1299, 'locker'),
+      ('dm-courier', 'inpost_courier', 'courier-inpost', 'Kurier InPost', '{"pl-PL":"Kurier InPost","en-US":"InPost courier"}', 1999, 'courier');
     insert into address (id, address1, city, country_code, postal_code) values ('address-checkout', 'ul. Krucza 1/4', 'Kraków', 'PL', '30-001');
     insert into checkout (id, email, shipping_address_id) values ('checkout-old', 'old@marte.test', 'address-checkout');
     insert into "order" (id, email, order_number, delivery_method_id, locker_id, locker_point, checkout_id) values

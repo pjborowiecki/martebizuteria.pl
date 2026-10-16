@@ -5,6 +5,7 @@ import { tryParseJsonRecord } from "~/src/modules/_core/utils/json"
 import { AUDIT_LOG_ACTION, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.detail.utils"
 import { type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
+import { type DeliveryMethod } from "~/src/modules/delivery-method/delivery-method.types"
 import {
   ADMIN_ORDER_DETAIL_RETURNING_MIN_ORDERS,
   ADMIN_ORDER_DETAIL_TAG,
@@ -19,6 +20,7 @@ import {
 import { parseOrderMetadata, resolveAdminOrderFulfillmentUiKey } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 import { resolveAdminCustomerInitials } from "~/src/modules/user/user.utils"
 
 const filledOrUndefined = (value: string | null): string | undefined => {
@@ -246,13 +248,14 @@ const describeOrderAddress = (address: Order["adminOrderDetailAddress"] | undefi
     ? []
     : [address.line1, address.line2, [address.postalCode, address.city].filter((part) => part !== undefined).join(" "), address.countryCode]
 
-export const describeOrderDestination = (row: Readonly<OrderDestinationRow>): string | undefined => {
+export const describeOrderDestination = (row: Readonly<OrderDestinationRow>, locale: string): string | undefined => {
   const locker = resolveOrderLocker({ deliveryType: row.deliveryMethod?.type, lockerId: row.lockerId, lockerPoint: row.lockerPoint })
   const lines =
     locker === undefined
       ? describeOrderAddress(mapAdminOrderDetailAddress(resolveOrderShippingAddressRow(row)))
       : describeOrderLocker(locker)
-  const parts = [row.deliveryMethod?.name, lines.filter((line) => line !== undefined).join(", ")].filter(
+  const methodName = row.deliveryMethod === null ? undefined : resolveLocalizedString(row.deliveryMethod.names, locale)
+  const parts = [methodName, lines.filter((line) => line !== undefined).join(", ")].filter(
     (part): part is string => part !== undefined && part !== "",
   )
 
@@ -263,7 +266,7 @@ export const resolveAdminOrderDeliveryLocker = (delivery: Order["adminOrderDetai
   delivery?.type === "locker" && delivery.lockerId !== undefined ? { code: delivery.lockerId, point: delivery.lockerPoint } : undefined
 
 interface OrderDestinationRow extends OrderShippingAddressSources {
-  readonly deliveryMethod: { readonly name: string; readonly type: DeliveryMethodType } | null
+  readonly deliveryMethod: { readonly names: DeliveryMethod["names"]; readonly type: DeliveryMethodType } | null
   readonly lockerId: string | null
   readonly lockerPoint: string | null
 }

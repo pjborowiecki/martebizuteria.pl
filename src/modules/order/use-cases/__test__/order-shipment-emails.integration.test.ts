@@ -112,8 +112,8 @@ beforeAll(() => {
   applyMigrationHistory(sqlite)
   sqlite.exec(`
     insert into courier (id, internal_code, name) values ('courier-inpost', 'inpost', 'InPost');
-    insert into delivery_method (id, api_service_code, courier_id, name, price, type)
-      values ('dm-courier', 'inpost_courier', 'courier-inpost', 'Kurier InPost', 1999, 'courier');
+    insert into delivery_method (id, api_service_code, courier_id, name, names, price, type)
+      values ('dm-courier', 'inpost_courier', 'courier-inpost', 'Kurier InPost', '{"pl-PL":"Kurier InPost","en-US":"InPost courier"}', 1999, 'courier');
   `)
 })
 
@@ -172,7 +172,7 @@ describe("the order the shipment emails read", () => {
     await expect(getOrderForShippedEmail(ORDER_ID)).resolves.toMatchObject({
       addresses: [{ address1: "ul. Krucza 1/4", type: "shipping" }],
       checkout: null,
-      deliveryMethod: { courier: { name: "InPost" }, name: "Kurier InPost", type: "courier" },
+      deliveryMethod: { courier: { name: "InPost" }, names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }, type: "courier" },
       email: "anna@example.test",
       lockerId: null,
       orderNumber: "MRT-2026-00012",

@@ -8,7 +8,7 @@ import { listDeliveryMethods, listDeliveryMethodsQuery } from "../list-delivery-
 
 interface JoinedRow {
   readonly courier: { id: string; name: string }
-  readonly deliveryMethod: { courierId: string; id: string; title: string }
+  readonly deliveryMethod: { courierId: string; id: string; name: string; names: { "en-US": string; "pl-PL": string } }
 }
 
 const query = vi.hoisted(() => {
@@ -23,6 +23,7 @@ const query = vi.hoisted(() => {
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ withRequest: {} }))
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({ db: { select: query.select } }))
+vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => "en-US" }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -37,7 +38,7 @@ vi.mock("@tanstack/react-start", () => ({
 
 const joinedRow = (id: string): JoinedRow => ({
   courier: { id: `courier-${id}`, name: `Courier ${id}` },
-  deliveryMethod: { courierId: `courier-${id}`, id, title: `Method ${id}` },
+  deliveryMethod: { courierId: `courier-${id}`, id, name: `Metoda ${id}`, names: { "en-US": `Method ${id}`, "pl-PL": `Metoda ${id}` } },
 })
 
 describe("listDeliveryMethods", () => {
@@ -46,7 +47,7 @@ describe("listDeliveryMethods", () => {
     query.rows.current = []
   })
 
-  it("flattens the joined courier onto each delivery method", async () => {
+  it("flattens the joined courier onto each delivery method and names it in the shopper's language", async () => {
     query.rows.current = [joinedRow("standard"), joinedRow("express")]
 
     const methods = await listDeliveryMethods()
@@ -56,9 +57,16 @@ describe("listDeliveryMethods", () => {
         courier: { id: "courier-standard", name: "Courier standard" },
         courierId: "courier-standard",
         id: "standard",
-        title: "Method standard",
+        name: "Method standard",
+        names: { "en-US": "Method standard", "pl-PL": "Metoda standard" },
       },
-      { courier: { id: "courier-express", name: "Courier express" }, courierId: "courier-express", id: "express", title: "Method express" },
+      {
+        courier: { id: "courier-express", name: "Courier express" },
+        courierId: "courier-express",
+        id: "express",
+        name: "Method express",
+        names: { "en-US": "Method express", "pl-PL": "Metoda express" },
+      },
     ])
   })
 
@@ -86,7 +94,8 @@ describe("listDeliveryMethods", () => {
         courier: { id: "courier-standard", name: "Courier standard" },
         courierId: "courier-standard",
         id: "standard",
-        title: "Method standard",
+        name: "Method standard",
+        names: { "en-US": "Method standard", "pl-PL": "Metoda standard" },
       },
     ])
   })

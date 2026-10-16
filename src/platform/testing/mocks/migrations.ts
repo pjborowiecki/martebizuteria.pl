@@ -14,6 +14,7 @@ export const MIGRATION = {
   CLAIM_PAST_GUEST_ORDERS: "20261016140000_claim_past_guest_orders",
   CONTENT_PAGES: "20261002120000_content_pages",
   DELIVERY_METHOD_DESCRIPTIONS: "20261010220000_delivery_method_descriptions",
+  DELIVERY_METHOD_NAMES: "20261016150000_delivery_method_names",
   FAQ_PAGE: "20261010232000_faq_page",
   ORDER_DELIVERED_EMAIL: "20261015300000_order_delivered_email",
   ORDER_FULFILLMENT_STARTED: "20261015200000_order_fulfillment_started",
@@ -43,11 +44,19 @@ export const applyMigration = (sqlite: DatabaseSync, migration: (typeof MIGRATIO
   }
 }
 
-export const applyMigrationHistory = (sqlite: DatabaseSync): void => {
+const applyHistory = (sqlite: DatabaseSync, include: (path: string) => boolean): void => {
   const history = Object.entries(MIGRATION_SQL).toSorted(([left], [right]) => left.localeCompare(right))
-  for (const [, sql] of history) {
+  for (const [, sql] of history.filter(([path]) => include(path))) {
     for (const statement of sql.split(STATEMENT_BREAKPOINT)) {
       sqlite.exec(statement)
     }
   }
+}
+
+export const applyMigrationHistory = (sqlite: DatabaseSync): void => {
+  applyHistory(sqlite, () => true)
+}
+
+export const applyMigrationHistoryBefore = (sqlite: DatabaseSync, migration: (typeof MIGRATION)[keyof typeof MIGRATION]): void => {
+  applyHistory(sqlite, (path) => path.localeCompare(`${MIGRATION_DIRECTORY}/${migration}.sql`) < 0)
 }

@@ -46,7 +46,7 @@ const context: CheckoutEmailContext = {
   billingCompanyName: null,
   billingNip: null,
   customerNote: null,
-  deliveryMethod: { name: "Kurier", type: "courier" },
+  deliveryMethod: { names: { "en-US": "Courier", "pl-PL": "Kurier" }, type: "courier" },
   lockerId: null,
   lockerPoint: null,
   shippingAddress: addressRow,
@@ -125,10 +125,11 @@ describe("buildOrderConfirmationDetails", () => {
       paymentMethod,
     })
 
-  it("renders the shipping address and delivery method from the checkout", () => {
+  it("renders the shipping address and delivery method from the checkout, naming the method in the order's language", () => {
     const details = detailsFor(context)
 
-    expect(details.deliveryMethod).toBe("Kurier")
+    expect(details.deliveryMethod).toBe("Courier")
+    expect(detailsFor(context, polishCopy).deliveryMethod).toBe("Kurier")
     expect(details.paymentMethod).toBe("Card")
     expect(details.destination).toMatchObject({ kind: "address" })
     expect(details.destination).toStrictEqual({
@@ -176,13 +177,13 @@ describe("buildOrderConfirmationDetails", () => {
   it("sends a locker delivery to the locker the customer chose, with the customer as its recipient", () => {
     const locker: CheckoutEmailContext = {
       ...context,
-      deliveryMethod: { name: "Paczkomat", type: "locker" },
+      deliveryMethod: { names: { "en-US": "Parcel locker", "pl-PL": "Paczkomat" }, type: "locker" },
       lockerId: " WAW01A ",
       lockerPoint: JSON.stringify({ city: "Warszawa", postalCode: "00-001", street: "Marszałkowska" }),
     }
     const details = detailsFor(locker)
 
-    expect(details.deliveryMethod).toBe("Paczkomat")
+    expect(details.deliveryMethod).toBe("Parcel locker")
     expect(details.destination).toStrictEqual({
       kind: "locker",
       locker: "WAW01A\nMarszałkowska\n00-001 Warszawa",
@@ -191,13 +192,17 @@ describe("buildOrderConfirmationDetails", () => {
   })
 
   it("keeps the shipping address of a locker delivery that captured no locker code", () => {
-    const locker: CheckoutEmailContext = { ...context, deliveryMethod: { name: "Paczkomat", type: "locker" }, lockerId: "  " }
+    const locker: CheckoutEmailContext = {
+      ...context,
+      deliveryMethod: { names: { "en-US": "Parcel locker", "pl-PL": "Paczkomat" }, type: "locker" },
+      lockerId: "  ",
+    }
 
     expect(detailsFor(locker).destination).toMatchObject({ kind: "address" })
   })
 
   it.each([["courier"], ["locker"], ["in_store"]] as const)("promises the %s delivery time", (type) => {
-    const details = detailsFor({ ...context, deliveryMethod: { name: "Method", type } })
+    const details = detailsFor({ ...context, deliveryMethod: { names: { "en-US": "Method", "pl-PL": "Metoda" }, type } })
 
     expect(details.estimatedDelivery).toBe(englishCopy.estimatedDelivery[type])
   })
@@ -205,7 +210,11 @@ describe("buildOrderConfirmationDetails", () => {
   it.each([["courier"], ["locker"], ["in_store"]] as const)(
     "states the fulfillment time of § 7 for a product page without one for %s delivery",
     (type) => {
-      const details = detailsFor({ ...context, deliveryMethod: { name: "Method", type } }, polishCopy, "Karta")
+      const details = detailsFor(
+        { ...context, deliveryMethod: { names: { "en-US": "Method", "pl-PL": "Metoda" }, type } },
+        polishCopy,
+        "Karta",
+      )
 
       expect(details.fulfillmentTime).toBe(`${polishCopy.fulfillmentTime.fallback}\n${polishCopy.fulfillmentTime.note}`)
     },

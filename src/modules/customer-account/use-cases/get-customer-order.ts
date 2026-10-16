@@ -6,6 +6,7 @@ import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
+import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { customerOrderItemThumbnail, customerOrderItemVariantTitle } from "~/src/modules/customer-account/customer-account.accessors.server"
 import { CUSTOMER_ACCOUNT_QUERY_KEYS, CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
@@ -15,6 +16,7 @@ import { customerAccountZodSchemas } from "~/src/modules/customer-account/custom
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import { mapAdminOrderDetailAddress } from "~/src/modules/order/order.detail.utils"
 import { order } from "~/src/modules/order/order.schema"
+import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 import { product } from "~/src/modules/product/product.schema"
 
@@ -64,7 +66,8 @@ export const getCustomerOrder = createServerFn({ method: "GET" })
 
     return mapCustomerOrderDetail(orderRow, items, {
       billingAddress: mapAdminOrderDetailAddress(billingSnapshot ?? orderRow.checkout?.billingAddress),
-      deliveryMethodName: orderRow.deliveryMethod?.name,
+      deliveryMethodName:
+        orderRow.deliveryMethod === null ? undefined : resolveLocalizedString(orderRow.deliveryMethod.names, getCurrentLocale()),
       deliveryMethodType: orderRow.deliveryMethod?.type,
       payment: orderRow.payment,
       shippingAddress: mapAdminOrderDetailAddress(shippingSnapshot ?? orderRow.checkout?.shippingAddress),

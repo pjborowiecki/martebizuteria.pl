@@ -33,8 +33,8 @@ beforeEach(() => {
     );
     create table delivery_method (
       id text primary key, api_service_code text not null, courier_id text not null, description text,
-      is_active integer not null default 1, name text not null, price integer not null, type text not null,
-      created_at integer not null, updated_at integer not null
+      is_active integer not null default 1, name text not null, names text not null default '{"pl-PL":"","en-US":""}',
+      price integer not null, type text not null, created_at integer not null, updated_at integer not null
     );
     create table discount (
       id text primary key, code text not null, description text, ends_at integer, is_active integer not null default 1,
@@ -52,8 +52,8 @@ beforeEach(() => {
       ('adr-ship', 'ul. Mokotowska 12/4', 'Warszawa', 'PL', 'Anna', 'Kowalska', '00-640', ${CREATED_AT}, ${CREATED_AT}),
       ('adr-bill', 'ul. Firmowa 1', 'Kraków', 'PL', 'Anna', 'Kowalska', '30-001', ${CREATED_AT}, ${CREATED_AT});
 
-    insert into delivery_method (id, api_service_code, courier_id, name, price, type, created_at, updated_at) values
-      ('dm-locker', 'INPOST_LOCKER', 'courier-inpost', 'Paczkomat InPost', 1299, 'locker', ${CREATED_AT}, ${CREATED_AT});
+    insert into delivery_method (id, api_service_code, courier_id, name, names, price, type, created_at, updated_at) values
+      ('dm-locker', 'INPOST_LOCKER', 'courier-inpost', 'Paczkomat InPost', '{"pl-PL":"Paczkomat InPost","en-US":"InPost parcel locker"}', 1299, 'locker', ${CREATED_AT}, ${CREATED_AT});
 
     insert into checkout (id, billing_address_id, cart_id, customer_note, delivery_method_id, email, locker_id, locker_point, shipping_address_id, status, user_id, created_at, updated_at) values
       ('chk-full', 'adr-bill', 'cart-1', 'Please gift wrap', 'dm-locker', 'anna@example.com', 'WAW01A', '${LOCKER_POINT}', 'adr-ship', 'completed', 'user-1', ${CREATED_AT}, ${CREATED_AT}),

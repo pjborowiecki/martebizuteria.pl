@@ -179,7 +179,7 @@ test.describe("guest checkout", () => {
     await checkoutPage.chooseParcelLocker(locker)
 
     await expect(page).toHaveURL(/\/en-US\/checkout\?step=4$/u)
-    await expect(page.getByRole("main")).toContainText(`Paczkomat InPost ${locker.name}`)
+    await expect(page.getByRole("main")).toContainText(`InPost parcel locker ${locker.name}`)
     await expect(checkoutPage.summary()).toContainText(/Total\s*PLN\s393\.99/u)
     const session = await waitForOpenCheckoutSession(request, email)
     expect(session.amount_total).toBe(39_399)
@@ -189,7 +189,7 @@ test.describe("guest checkout", () => {
 
     await expect(checkoutPage.confirmationHeading()).toBeVisible()
     await expect(page.getByRole("main")).toContainText(ORDER_NUMBER)
-    await expect(page.getByRole("main")).toContainText(/Paczkomat InPost\s*PLN\s14\.99/u)
+    await expect(page.getByRole("main")).toContainText(/InPost parcel locker\s*PLN\s14\.99/u)
     await expect(page.getByRole("main")).toContainText(/Total\s*PLN\s393\.99/u)
     const confirmation = await waitForEmail(request, email, ORDER_CONFIRMATION_SUBJECT)
     expect(confirmation.html).toContain("Destination parcel locker")

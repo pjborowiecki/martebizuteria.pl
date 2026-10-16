@@ -5,6 +5,7 @@ import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { courier } from "~/src/modules/courier/courier.schema"
+import { type DeliveryMethod } from "~/src/modules/delivery-method/delivery-method.types"
 import { order } from "~/src/modules/order/order.schema"
 
 export const deliveryMethod = sqliteTable(
@@ -20,6 +21,7 @@ export const deliveryMethod = sqliteTable(
       .$defaultFn(() => crypto.randomUUID()),
     isActive: integer("is_active", { mode: "boolean" }).default(true).notNull(),
     name: text("name").notNull(),
+    names: text("names", { mode: "json" }).$type<DeliveryMethod["names"]>().notNull(),
     price: integer("price").notNull(),
     type: text("type", { enum: ["locker", "courier", "in_store"] }).notNull(),
     ...timestamps(),

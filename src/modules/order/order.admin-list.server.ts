@@ -8,7 +8,7 @@ type AdminOrderListRow = Omit<Parameters<typeof toAdminOrderListItem>[0], "itemC
   readonly billingNip: string | null
 }
 
-export const loadAdminOrderListItems = async (rows: readonly AdminOrderListRow[]): Promise<Order["adminListItem"][]> => {
+export const loadAdminOrderListItems = async (rows: readonly AdminOrderListRow[], locale: string): Promise<Order["adminListItem"][]> => {
   if (rows.length === 0) {
     return []
   }
@@ -16,7 +16,7 @@ export const loadAdminOrderListItems = async (rows: readonly AdminOrderListRow[]
   const orderIds = rows.map((row) => row.id)
   const [itemCountRows, destinationRows] = await Promise.all([getAdminOrderItemCountRows(orderIds), getAdminOrderDestinationRows(orderIds)])
   const itemCounts = new Map(itemCountRows.map((row) => [row.orderId, row.itemCount]))
-  const destinations = new Map(destinationRows.map((row) => [row.id, describeOrderDestination(row)]))
+  const destinations = new Map(destinationRows.map((row) => [row.id, describeOrderDestination(row, locale)]))
 
   return rows.map((row) => ({
     ...toAdminOrderListItem({ ...row, itemCount: itemCounts.get(row.id) ?? 0 }),

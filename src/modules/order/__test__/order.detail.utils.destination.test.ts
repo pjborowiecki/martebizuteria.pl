@@ -18,9 +18,9 @@ const LOCKER_POINT = {
 
 const STORED_LOCKER_POINT = JSON.stringify(LOCKER_POINT)
 
-const LOCKER_METHOD = { name: "Paczkomat InPost", type: "locker" } as const
+const LOCKER_METHOD = { names: { "en-US": "InPost parcel locker", "pl-PL": "Paczkomat InPost" }, type: "locker" } as const
 
-const COURIER_METHOD = { name: "Kurier InPost", type: "courier" } as const
+const COURIER_METHOD = { names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }, type: "courier" } as const
 
 const shippingAddress = {
   address1: "ul. Mokotowska 12/4",
@@ -116,11 +116,19 @@ describe("describeOrderLocker", () => {
 
 describe("describeOrderDestination", () => {
   it("describes a locker order by its parcel locker, never by the shopper's address", () => {
-    expect(describeOrderDestination(destinationRow())).toBe("Paczkomat InPost: WAW01A, Przy sklepie Żabka, Mokotowska 12, 00-640 Warszawa")
+    expect(describeOrderDestination(destinationRow(), "pl-PL")).toBe(
+      "Paczkomat InPost: WAW01A, Przy sklepie Żabka, Mokotowska 12, 00-640 Warszawa",
+    )
+  })
+
+  it("names the delivery method in the language of the admin who exports it", () => {
+    expect(describeOrderDestination(destinationRow(), "en-US")).toBe(
+      "InPost parcel locker: WAW01A, Przy sklepie Żabka, Mokotowska 12, 00-640 Warszawa",
+    )
   })
 
   it("describes a courier order by the shipping address", () => {
-    expect(describeOrderDestination(destinationRow({ deliveryMethod: COURIER_METHOD, lockerId: null, lockerPoint: null }))).toBe(
+    expect(describeOrderDestination(destinationRow({ deliveryMethod: COURIER_METHOD, lockerId: null, lockerPoint: null }), "pl-PL")).toBe(
       "Kurier InPost: ul. Mokotowska 12/4, 00-640 Warszawa, PL",
     )
   })
@@ -128,21 +136,21 @@ describe("describeOrderDestination", () => {
   it("keeps the second line and drops a postal code that was never captured", () => {
     const addresses = [{ ...shippingAddress, address2: "lok. 4", postalCode: null }]
 
-    expect(describeOrderDestination(destinationRow({ addresses, deliveryMethod: COURIER_METHOD }))).toBe(
+    expect(describeOrderDestination(destinationRow({ addresses, deliveryMethod: COURIER_METHOD }), "pl-PL")).toBe(
       "Kurier InPost: ul. Mokotowska 12/4, lok. 4, Warszawa, PL",
     )
   })
 
   it("names only the method when a courier order has no address", () => {
-    expect(describeOrderDestination(destinationRow({ addresses: [], deliveryMethod: COURIER_METHOD }))).toBe("Kurier InPost")
+    expect(describeOrderDestination(destinationRow({ addresses: [], deliveryMethod: COURIER_METHOD }), "pl-PL")).toBe("Kurier InPost")
   })
 
   it("describes only the address when the order has no delivery method", () => {
-    expect(describeOrderDestination(destinationRow({ deliveryMethod: null }))).toBe("ul. Mokotowska 12/4, 00-640 Warszawa, PL")
+    expect(describeOrderDestination(destinationRow({ deliveryMethod: null }), "pl-PL")).toBe("ul. Mokotowska 12/4, 00-640 Warszawa, PL")
   })
 
   it("has nothing to describe without a delivery method or an address", () => {
-    expect(describeOrderDestination(destinationRow({ addresses: [], deliveryMethod: null }))).toBeUndefined()
+    expect(describeOrderDestination(destinationRow({ addresses: [], deliveryMethod: null }), "pl-PL")).toBeUndefined()
   })
 })
 

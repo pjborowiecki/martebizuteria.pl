@@ -34,6 +34,7 @@ describe("delivery method table", () => {
       "id",
       "is_active",
       "name",
+      "names",
       "price",
       "type",
       "created_at",
@@ -59,6 +60,11 @@ describe("delivery method table", () => {
   it("requires a display name and a price", () => {
     expect(columnByName.get("name")?.notNull).toBe(true)
     expect(columnByName.get("price")?.notNull).toBe(true)
+  })
+
+  it("keeps a name for every language as JSON", () => {
+    expect(columnByName.get("names")?.notNull).toBe(true)
+    expect(columnByName.get("names")?.getSQLType()).toBe("text")
   })
 
   it("stores the price as whole minor units", () => {

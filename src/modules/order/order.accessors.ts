@@ -241,7 +241,7 @@ export const getAdminOrderDestinationRows = (orderIds: readonly string[]) =>
       },
       deliveryMethod: {
         columns: {
-          name: true,
+          names: true,
           type: true,
         },
       },
@@ -483,7 +483,7 @@ export const getOrderForShippedEmail = (orderId: string) =>
       },
       deliveryMethod: {
         columns: {
-          name: true,
+          names: true,
           type: true,
         },
         with: {
@@ -510,7 +510,7 @@ export const getOrderForProgressEmail = (orderId: string) =>
     with: {
       deliveryMethod: {
         columns: {
-          name: true,
+          names: true,
           type: true,
         },
       },

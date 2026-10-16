@@ -5,10 +5,12 @@ import { resolveStripeObjectId } from "~/src/integrations/stripe/stripe.utils"
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type FulfillmentLine } from "~/src/modules/checkout/checkout.utils"
+import { type DeliveryMethod } from "~/src/modules/delivery-method/delivery-method.types"
 import { isInpostDeliveryType } from "~/src/modules/order/order.admin-actions.utils"
 import { describeOrderLocker, resolveOrderLocker, resolveOrderShippingAddressRow } from "~/src/modules/order/order.detail.utils"
 import { formatOrderAddressLocality, resolveOrderTrackingUrl } from "~/src/modules/order/order.display.utils"
 import { type OrderLineFulfillmentTime, describeOrderFulfillmentTime } from "~/src/modules/order/order.fulfillment-time.utils"
+import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 
 import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
 import { buildLocalizedUrl } from "~/src/lib/seo"
@@ -39,8 +41,10 @@ export const formatEmailAddress = (addressRow: EmailAddressRow | null | undefine
   return lines.length === EMPTY_COUNT ? undefined : lines.join("\n")
 }
 
-export const resolveDeliveryMethodLabel = (deliveryMethod: { readonly name: string } | null | undefined, unavailable: string): string =>
-  deliveryMethod?.name ?? unavailable
+export const resolveDeliveryMethodLabel = (
+  deliveryMethod: { readonly names: DeliveryMethod["names"] } | null | undefined,
+  { locale, unavailable }: Readonly<{ locale: SupportedLocale; unavailable: string }>,
+): string => (deliveryMethod === null || deliveryMethod === undefined ? unavailable : resolveLocalizedString(deliveryMethod.names, locale))
 
 const isFilledLine = (line: string | null | undefined): line is string => typeof line === "string" && line.trim() !== ""
 
@@ -105,7 +109,7 @@ export const buildOrderConfirmationDetails = ({
   return {
     billingAddress: resolveBillingAddress(context, messages, locale),
     companyInvoice: context === undefined ? undefined : describeCompanyInvoice(context, messages.nipLabel),
-    deliveryMethod: resolveDeliveryMethodLabel(context?.deliveryMethod, messages.unavailable),
+    deliveryMethod: resolveDeliveryMethodLabel(context?.deliveryMethod, { locale, unavailable: messages.unavailable }),
     destination:
       context === undefined
         ? { address: messages.unavailable, kind: "address" }
@@ -209,7 +213,7 @@ export const buildOrderShippedDetails = (
   locale: SupportedLocale,
 ): OrderShippedDetails => ({
   ...resolveOrderTracking(shipment),
-  deliveryMethod: resolveDeliveryMethodLabel(shipment.deliveryMethod, messages.unavailable),
+  deliveryMethod: resolveDeliveryMethodLabel(shipment.deliveryMethod, { locale, unavailable: messages.unavailable }),
   destination: describeEmailDestination(shipment, messages.unavailable, locale),
   estimatedDelivery: messages.deliveryTiming[shipment.deliveryMethod?.type ?? "courier"].estimatedDelivery,
 })
@@ -304,7 +308,7 @@ interface EmailAddressRow {
 export interface OrderShipmentEmailSource {
   readonly deliveryMethod: {
     readonly courier: { readonly name: string }
-    readonly name: string
+    readonly names: DeliveryMethod["names"]
     readonly type: "courier" | "locker" | "in_store"
   } | null
   readonly lockerId: string | null
@@ -345,7 +349,7 @@ export interface CheckoutEmailContext {
   readonly billingNip: string | null
   readonly customerNote: string | null
   readonly deliveryMethod: {
-    readonly name: string
+    readonly names: DeliveryMethod["names"]
     readonly type: "courier" | "locker" | "in_store"
   } | null
   readonly lockerId: string | null

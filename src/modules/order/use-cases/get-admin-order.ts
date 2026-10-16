@@ -6,6 +6,7 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { isInpostShipxConfigured } from "~/src/integrations/inpost/inpost.shipx.server"
 import { parseInpostLockerPoint } from "~/src/integrations/inpost/inpost.utils"
+import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
 import { getOrderWithdrawals } from "~/src/modules/order-withdrawal/order-withdrawal.accessors"
 import {
@@ -34,6 +35,7 @@ import {
 } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
+import { resolveLocalizedString } from "~/src/modules/product-attribute/product-attribute.utils"
 
 type AdminOrderDetailRow = NonNullable<Awaited<ReturnType<typeof getAdminOrderDetailRow>>>
 
@@ -48,6 +50,7 @@ const buildAdminOrderDetail = ({
   customerStats,
   inpostConfigured,
   itemRows,
+  locale,
   orderRow,
   timelineRows,
   withdrawals,
@@ -85,7 +88,7 @@ const buildAdminOrderDetail = ({
             lockerId: orderRow.lockerId ?? undefined,
             lockerPoint: parseInpostLockerPoint(orderRow.lockerPoint),
             lockerUnconfirmed: orderRow.lockerUnconfirmed,
-            methodName: deliveryMethod.name,
+            methodName: resolveLocalizedString(deliveryMethod.names, locale),
             type: deliveryMethod.type,
           },
     discountTotalMinorUnits: orderRow.discountTotal,
@@ -157,6 +160,7 @@ interface BuildAdminOrderDetailInput {
   readonly customerStats: AdminOrderCustomerStats
   readonly inpostConfigured: boolean
   readonly itemRows: Awaited<ReturnType<typeof getAdminOrderItemRows>>
+  readonly locale: string
   readonly orderRow: AdminOrderDetailRow
   readonly timelineRows: AdminOrderTimelineRows
   readonly withdrawals: Order["adminOrderDetail"]["withdrawals"]
@@ -184,6 +188,7 @@ export const getAdminOrder = createServerFn({
       customerStats,
       inpostConfigured: isInpostShipxConfigured(),
       itemRows,
+      locale: getCurrentLocale(),
       orderRow,
       timelineRows,
       withdrawals,

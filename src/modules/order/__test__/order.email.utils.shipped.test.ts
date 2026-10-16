@@ -37,8 +37,14 @@ const addressRow = {
 
 const INPOST = { name: "InPost" }
 
+const COURIER_NAMES = { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }
+
+const LOCKER_NAMES = { "en-US": "InPost parcel locker", "pl-PL": "Paczkomat InPost" }
+
+const METHOD_NAMES = { "en-US": "Method", "pl-PL": "Metoda" }
+
 const shipment: OrderShipmentEmailSource = {
-  deliveryMethod: { courier: INPOST, name: "Kurier InPost", type: "courier" },
+  deliveryMethod: { courier: INPOST, names: COURIER_NAMES, type: "courier" },
   lockerId: null,
   lockerPoint: null,
   shippingAddress: addressRow,
@@ -47,10 +53,11 @@ const shipment: OrderShipmentEmailSource = {
 }
 
 describe("buildOrderShippedDetails", () => {
-  it("renders the delivery method and the shipping address of the order, naming the country in the order's language", () => {
+  it("renders the delivery method and the shipping address of the order, naming both in the order's language", () => {
     const details = buildOrderShippedDetails(shipment, englishCopy, "en-US")
 
-    expect(details.deliveryMethod).toBe("Kurier InPost")
+    expect(details.deliveryMethod).toBe("InPost courier")
+    expect(buildOrderShippedDetails(shipment, polishCopy, "pl-PL").deliveryMethod).toBe("Kurier InPost")
     expect(details.destination).toStrictEqual({ address: "Anna Kowalska\nKrucza 1\n00-001 Warszawa, Poland", kind: "address" })
     expect(buildOrderShippedDetails(shipment, polishCopy, "pl-PL").destination).toStrictEqual({
       address: "Anna Kowalska\nKrucza 1\n00-001 Warszawa, Polska",
@@ -61,7 +68,7 @@ describe("buildOrderShippedDetails", () => {
   it("sends a locker shipment to the locker, naming the customer only as its recipient", () => {
     const locker: OrderShipmentEmailSource = {
       ...shipment,
-      deliveryMethod: { courier: INPOST, name: "Paczkomat InPost", type: "locker" },
+      deliveryMethod: { courier: INPOST, names: LOCKER_NAMES, type: "locker" },
       lockerId: "WAW01A",
       lockerPoint: JSON.stringify({
         buildingNumber: "5",
@@ -74,7 +81,7 @@ describe("buildOrderShippedDetails", () => {
     }
     const details = buildOrderShippedDetails(locker, englishCopy, "en-US")
 
-    expect(details.deliveryMethod).toBe("Paczkomat InPost")
+    expect(details.deliveryMethod).toBe("InPost parcel locker")
     expect(details.destination).toStrictEqual({
       kind: "locker",
       locker: "WAW01A\nPrzy Biedronce\nKazimierza Wielkiego 5\n32-700 Bochnia",
@@ -86,7 +93,7 @@ describe("buildOrderShippedDetails", () => {
     const details = buildOrderShippedDetails(
       {
         ...shipment,
-        deliveryMethod: { courier: INPOST, name: "Paczkomat InPost", type: "locker" },
+        deliveryMethod: { courier: INPOST, names: LOCKER_NAMES, type: "locker" },
         lockerId: "WAW01A",
         shippingAddress: undefined,
       },
@@ -99,7 +106,7 @@ describe("buildOrderShippedDetails", () => {
 
   it.each([["courier"], ["locker"], ["in_store"]] as const)("uses the %s estimated delivery", (type) => {
     const details = buildOrderShippedDetails(
-      { ...shipment, deliveryMethod: { courier: INPOST, name: "Method", type } },
+      { ...shipment, deliveryMethod: { courier: INPOST, names: METHOD_NAMES, type } },
       englishCopy,
       "en-US",
     )
@@ -114,7 +121,7 @@ describe("buildOrderShippedDetails", () => {
     ["locker", polishCopy, polishConfirmationCopy],
   ] as const)("promises the %s transit time the order confirmation and the terms of service give", (type, copy, confirmationCopy) => {
     const details = buildOrderShippedDetails(
-      { ...shipment, deliveryMethod: { courier: INPOST, name: "Method", type } },
+      { ...shipment, deliveryMethod: { courier: INPOST, names: METHOD_NAMES, type } },
       copy,
       copy === polishCopy ? "pl-PL" : "en-US",
     )
@@ -146,7 +153,11 @@ describe("resolveOrderTracking", () => {
   it("names no carrier for a piece collected at the atelier", () => {
     const pickup = {
       ...shipment,
-      deliveryMethod: { courier: { name: "M'ARTE Atelier" }, name: "Odbiór w atelier", type: "in_store" as const },
+      deliveryMethod: {
+        courier: { name: "M'ARTE Atelier" },
+        names: { "en-US": "Pickup at the atelier", "pl-PL": "Odbiór w atelier" },
+        type: "in_store" as const,
+      },
     }
 
     expect(resolveOrderTracking({ ...pickup, trackingNumber: "A-1" })).toStrictEqual({
