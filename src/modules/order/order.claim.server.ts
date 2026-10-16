@@ -2,6 +2,7 @@ import { and, eq, isNull, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { recordCustomerOrdersClaimedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { order } from "~/src/modules/order/order.schema"
 
 export const claimGuestOrdersForUser = async ({ email, userId }: ClaimGuestOrdersInput): Promise<number> => {
@@ -18,6 +19,10 @@ export const claimGuestOrdersForUser = async ({ email, userId }: ClaimGuestOrder
 
   if (claimed.length > NO_ORDERS) {
     console.info(`Linked ${String(claimed.length)} guest order(s) to user ${userId}.`)
+    recordCustomerOrdersClaimedAudit(normalizedEmail, {
+      metadata: { orderCount: claimed.length, orderIds: claimed.map(({ id }) => id) },
+      resourceId: userId,
+    })
   }
 
   return claimed.length

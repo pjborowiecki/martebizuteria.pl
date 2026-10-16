@@ -24,18 +24,20 @@ const SUBSCRIBER_EMAIL_KINDS = [
   AUDIT_EMAIL_KIND.NEWSLETTER_SUBSCRIPTION,
 ]
 
+const SUBSCRIPTION_CHANGE_ACTIONS = [AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_CONFIRMED, AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_UNSUBSCRIBED]
+
 const newsletterAuditEntriesOf = (subscriberId: string) => {
   const subscriberEmail = db
     .select({ email: newsletterSubscriber.email })
     .from(newsletterSubscriber)
     .where(eq(newsletterSubscriber.id, subscriberId))
   const emailKind = sql`json_extract(${auditLog.metadata}, '$.emailKind')`
-  const unsubscribed = eq(auditLog.action, AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_UNSUBSCRIBED)
+  const subscriptionChange = inArray(auditLog.action, SUBSCRIPTION_CHANGE_ACTIONS)
 
   return and(
     inArray(auditLog.resourceId, subscriberEmail),
-    inArray(auditLog.action, [AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_UNSUBSCRIBED, AUDIT_LOG_ACTION.EMAIL_FAILED]),
-    or(unsubscribed, inArray(emailKind, SUBSCRIBER_EMAIL_KINDS)),
+    inArray(auditLog.action, [...SUBSCRIPTION_CHANGE_ACTIONS, AUDIT_LOG_ACTION.EMAIL_FAILED]),
+    or(subscriptionChange, inArray(emailKind, SUBSCRIBER_EMAIL_KINDS)),
   )
 }
 

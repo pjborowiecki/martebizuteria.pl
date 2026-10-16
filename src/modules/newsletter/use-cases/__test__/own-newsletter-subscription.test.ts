@@ -9,11 +9,13 @@ import { unsubscribeOwnNewsletter, unsubscribeOwnNewsletterMutation } from "../u
 const CALLER_EMAIL = "Anna@Example.COM"
 
 const accessors = vi.hoisted(() => ({
-  getSubscriberByEmail: vi.fn<(email: string) => Promise<{ id: string; status: string } | undefined>>(),
+  getSubscriberByEmail: vi.fn<(email: string) => Promise<{ email: string; id: string; status: string } | undefined>>(),
   updateSubscriberById: vi.fn<(id: string, values: Record<string, unknown>) => Promise<void>>(),
 }))
 
 const scheduleAdminNewsletterSubscribersInvalidation = vi.hoisted(() => vi.fn<() => void>())
+
+const recordNewsletterSubscriberUnsubscribedAudit = vi.hoisted(() => vi.fn<(email: string) => void>())
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
@@ -23,6 +25,7 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
   scheduleAdminNewsletterSubscribersInvalidation,
 }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordNewsletterSubscriberUnsubscribedAudit }))
 vi.mock("~/src/modules/newsletter/newsletter.accessors", () => ({
   getSubscriberByEmail: accessors.getSubscriberByEmail,
   normalizeSubscriberEmail: (email: string) => email.trim().toLowerCase(),
@@ -48,7 +51,7 @@ beforeEach(() => {
 
 describe("getOwnNewsletterSubscription", () => {
   it("looks the caller up by their own address, normalised", async () => {
-    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "confirmed" })
+    accessors.getSubscriberByEmail.mockResolvedValue({ email: "anna@example.com", id: "sub-1", status: "confirmed" })
 
     await expect(getOwnNewsletterSubscription()).resolves.toStrictEqual({ status: "confirmed" })
     expect(accessors.getSubscriberByEmail).toHaveBeenCalledWith("anna@example.com")
@@ -69,7 +72,7 @@ describe("getOwnNewsletterSubscription", () => {
   })
 
   it("fetches the caller's status through the server function", async () => {
-    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "pending" })
+    accessors.getSubscriberByEmail.mockResolvedValue({ email: "anna@example.com", id: "sub-1", status: "pending" })
 
     await expect(
       getOwnNewsletterSubscriptionQuery().queryFn?.({
@@ -85,33 +88,35 @@ describe("getOwnNewsletterSubscription", () => {
 
 describe("unsubscribeOwnNewsletter", () => {
   it("takes a confirmed subscriber off the list and dates it", async () => {
-    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "confirmed" })
+    accessors.getSubscriberByEmail.mockResolvedValue({ email: "anna@example.com", id: "sub-1", status: "confirmed" })
 
     await expect(unsubscribeOwnNewsletter()).resolves.toStrictEqual({ unsubscribed: true })
     expect(accessors.updateSubscriberById.mock.calls[0]?.[0]).toBe("sub-1")
     expect(accessors.updateSubscriberById.mock.calls[0]?.[1]).toMatchObject({ status: "unsubscribed" })
   })
 
-  it("refreshes the admin subscriber list once the address is off it", async () => {
-    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "confirmed" })
+  it("refreshes the admin subscriber list and records the unsubscription once the address is off it", async () => {
+    accessors.getSubscriberByEmail.mockResolvedValue({ email: "anna@example.com", id: "sub-1", status: "confirmed" })
 
     await unsubscribeOwnNewsletter()
 
     expect(scheduleAdminNewsletterSubscribersInvalidation).toHaveBeenCalledOnce()
+    expect(recordNewsletterSubscriberUnsubscribedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com")
   })
 
   it("takes a pending signup off the list as well", async () => {
-    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "pending" })
+    accessors.getSubscriberByEmail.mockResolvedValue({ email: "anna@example.com", id: "sub-1", status: "pending" })
 
     await expect(unsubscribeOwnNewsletter()).resolves.toStrictEqual({ unsubscribed: true })
   })
 
   it("writes nothing for someone who is already off the list", async () => {
-    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "unsubscribed" })
+    accessors.getSubscriberByEmail.mockResolvedValue({ email: "anna@example.com", id: "sub-1", status: "unsubscribed" })
 
     await expect(unsubscribeOwnNewsletter()).resolves.toStrictEqual({ unsubscribed: false })
     expect(accessors.updateSubscriberById).not.toHaveBeenCalled()
     expect(scheduleAdminNewsletterSubscribersInvalidation).not.toHaveBeenCalled()
+    expect(recordNewsletterSubscriberUnsubscribedAudit).not.toHaveBeenCalled()
   })
 
   it("writes nothing for someone who never signed up", async () => {
@@ -126,7 +131,7 @@ describe("unsubscribeOwnNewsletter", () => {
   })
 
   it("unsubscribes the caller through the mutation the account page runs", async () => {
-    accessors.getSubscriberByEmail.mockResolvedValue({ id: "sub-1", status: "confirmed" })
+    accessors.getSubscriberByEmail.mockResolvedValue({ email: "anna@example.com", id: "sub-1", status: "confirmed" })
 
     await expect(
       unsubscribeOwnNewsletterMutation.mutationFn?.(undefined, { client: new QueryClient(), meta: undefined }),

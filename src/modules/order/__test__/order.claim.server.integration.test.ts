@@ -1,10 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { z } from "zod"
 
-const { sqlite } = await vi.hoisted(async () => {
+const { recordCustomerOrdersClaimedAudit, sqlite } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")
 
-  return { sqlite: new DatabaseSync(":memory:") }
+  return {
+    recordCustomerOrdersClaimedAudit: vi.fn<(email: string, options: { metadata: object; resourceId: string }) => void>(),
+    sqlite: new DatabaseSync(":memory:"),
+  }
 })
 
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
@@ -14,6 +17,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCustomerOrdersClaimedAudit }))
+vi.spyOn(console, "info").mockImplementation(() => {})
 
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
 
@@ -23,6 +28,7 @@ const ownerOf = (orderId: string): string | null =>
   z.object({ user_id: z.string().nullable() }).parse(sqlite.prepare(`select user_id from "order" where id = ?`).get(orderId)).user_id
 
 beforeEach(() => {
+  recordCustomerOrdersClaimedAudit.mockClear()
   sqlite.exec(`
     drop table if exists "order";
     create table "order" (
@@ -45,6 +51,15 @@ describe("claimGuestOrdersForUser", () => {
   it("links every unowned order placed with that address", async () => {
     await expect(claimGuestOrdersForUser({ email: "anna@example.com", userId: "user-1" })).resolves.toBe(2)
     expect(ownerOf("guest-1")).toBe("user-1")
+  })
+
+  it("records which orders it linked to the account in the audit log", async () => {
+    await claimGuestOrdersForUser({ email: " Anna@Example.com", userId: "user-1" })
+
+    expect(recordCustomerOrdersClaimedAudit).toHaveBeenCalledExactlyOnceWith("anna@example.com", {
+      metadata: { orderCount: 2, orderIds: ["guest-1", "guest-2"] },
+      resourceId: "user-1",
+    })
   })
 
   it("matches the address regardless of how it was typed", async () => {
@@ -74,5 +89,6 @@ describe("claimGuestOrdersForUser", () => {
     await claimGuestOrdersForUser({ email: "anna@example.com", userId: "user-1" })
 
     await expect(claimGuestOrdersForUser({ email: "anna@example.com", userId: "user-1" })).resolves.toBe(0)
+    expect(recordCustomerOrdersClaimedAudit).toHaveBeenCalledOnce()
   })
 })

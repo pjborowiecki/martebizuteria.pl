@@ -24,6 +24,7 @@ const stubs = vi.hoisted(() => ({
   getCurrentLocale: vi.fn<() => string>(),
   isEmailSenderUnavailable: vi.fn<() => Promise<boolean>>(),
   linkSubscriberToUser: vi.fn<(email: string, userId: string) => Promise<void>>(),
+  recordAuthEmailVerifiedAudit: vi.fn(),
   recordAuthLoginAudit: vi.fn(),
   recordAuthPasswordResetAudit: vi.fn(),
   recordCustomerDeletedAudit: vi.fn(),
@@ -66,6 +67,7 @@ vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: stu
 vi.mock("~/src/lib/seo", () => ({ buildLocalizedUrl: stubs.buildLocalizedUrl }))
 
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
+  recordAuthEmailVerifiedAudit: stubs.recordAuthEmailVerifiedAudit,
   recordAuthLoginAudit: stubs.recordAuthLoginAudit,
   recordAuthPasswordResetAudit: stubs.recordAuthPasswordResetAudit,
   recordCustomerDeletedAudit: stubs.recordCustomerDeletedAudit,
@@ -167,15 +169,27 @@ describe("customer list invalidation hooks", () => {
   })
 
   it("adopts guest orders once the address is verified", async () => {
-    await handleEmailVerified(createdUser)
+    await handleEmailVerified(createdUser, undefined)
 
     expect(stubs.claimGuestOrdersForUser).toHaveBeenCalledWith({ email: createdUser.email, userId: createdUser.id })
   })
 
   it("links a newsletter subscription on that address to the verified account", async () => {
-    await handleEmailVerified(createdUser)
+    await handleEmailVerified(createdUser, undefined)
 
     expect(stubs.linkSubscriberToUser).toHaveBeenCalledWith(createdUser.email, createdUser.id)
+  })
+
+  it("records the verification against the account, from the address the link was opened on", async () => {
+    stubs.resolveAuthAuditActor.mockReturnValue("customer-actor")
+
+    await handleEmailVerified(
+      createdUser,
+      new Request("https://marte.test/api/auth/verify-email", { headers: { "cf-connecting-ip": "198.51.100.9" } }),
+    )
+
+    expect(stubs.resolveAuthAuditActor).toHaveBeenCalledWith(createdUser)
+    expect(stubs.recordAuthEmailVerifiedAudit).toHaveBeenCalledExactlyOnceWith("customer-actor", { ip: "198.51.100.9" })
   })
 
   it("refreshes the admin customer list after an update", async () => {

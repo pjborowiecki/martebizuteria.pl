@@ -65,6 +65,7 @@ const accessors = vi.hoisted(() => {
     }),
     getOrderWithdrawals: vi.fn<() => Promise<unknown[]>>(() => Promise.resolve([])),
     pageParams,
+    recordListExportedAudit: vi.fn(),
     rows: [] as unknown[],
     total: 0,
   }
@@ -84,6 +85,7 @@ vi.mock("~/src/modules/order/order.accessors", () => ({
   getAdminOrdersExport: accessors.getAdminOrdersExport,
   getAdminOrdersPage: accessors.getAdminOrdersPage,
 }))
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: accessors.recordListExportedAudit }))
 vi.mock("~/src/modules/order-withdrawal/order-withdrawal.accessors", () => ({ getOrderWithdrawals: accessors.getOrderWithdrawals }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
@@ -232,10 +234,11 @@ describe("exportAdminOrders", () => {
     })
   })
 
-  it("scopes the export to the customer it was asked for", async () => {
+  it("scopes the export to the customer it was asked for, and records the export in the audit log", async () => {
     await exportAdminOrders({ data: { userId: "u-anna" } })
 
     expect(accessors.exportParams[0]).toMatchObject({ userId: "u-anna" })
+    expect(accessors.recordListExportedAudit).toHaveBeenCalledExactlyOnceWith("orders", 1, { metadata: { filters: { userId: "u-anna" } } })
   })
 
   it("returns the mapped list items rather than the raw rows", async () => {
