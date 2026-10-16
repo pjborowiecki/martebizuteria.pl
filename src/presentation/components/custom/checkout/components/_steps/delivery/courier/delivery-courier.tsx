@@ -2,10 +2,12 @@ import { type JSX } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { Truck } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { DELIVERY_METHOD } from "~/src/modules/delivery-method/delivery-method.constants"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { CheckoutRadioField, CheckoutTextField, OptionCard } from "~/src/presentation/components/custom/checkout/components/checkout-fields"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"

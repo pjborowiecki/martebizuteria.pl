@@ -3,12 +3,14 @@ import { type JSX, useCallback } from "react"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { ArrowLeft } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
 import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
 import { getCustomerOrderQuery } from "~/src/modules/customer-account/use-cases/get-customer-order"
 import { getCustomerOrderWithdrawalQuery } from "~/src/modules/order-withdrawal/use-cases/get-customer-order-withdrawal"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { pageHead } from "~/src/lib/seo"
 

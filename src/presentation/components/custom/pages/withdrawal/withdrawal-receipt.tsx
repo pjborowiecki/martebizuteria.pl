@@ -1,9 +1,11 @@
 import { type JSX } from "react"
 
 import { CheckCircle2 } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { BUSINESS } from "~/src/presentation/branding/business"
 

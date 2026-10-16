@@ -3,10 +3,12 @@ import { type JSX, type MouseEvent, useCallback } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArrowRight, Package, Store, Truck } from "lucide-react"
 import { useWatch } from "react-hook-form"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { DELIVERY_METHOD, DELIVERY_METHODS, type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"

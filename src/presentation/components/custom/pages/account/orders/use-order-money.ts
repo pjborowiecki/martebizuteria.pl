@@ -1,6 +1,6 @@
-import { useFormatter } from "use-intl/react"
-
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 export const useOrderMoney = (currencyCode: string): ((minorUnits: number) => string) => {
   const format = useFormatter()

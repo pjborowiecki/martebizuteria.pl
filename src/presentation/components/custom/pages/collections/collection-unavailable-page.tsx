@@ -1,7 +1,7 @@
 import { type JSX, useMemo } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
@@ -10,6 +10,8 @@ import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-var
 import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils"
 import { getNewArrivalsQuery } from "~/src/modules/product/use-cases/get-new-arrivals"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { getProductImageUrl } from "~/src/lib/image"
 

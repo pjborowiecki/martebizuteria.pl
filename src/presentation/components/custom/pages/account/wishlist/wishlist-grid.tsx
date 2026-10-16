@@ -3,13 +3,15 @@ import { type JSX, useCallback, useMemo } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Heart, ShoppingBag, Trash2 } from "lucide-react"
 import { toast } from "sonner"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { useCartStore } from "~/src/modules/cart/cart.store"
 import { toggleWishlistItemMutation } from "~/src/modules/wishlist/use-cases/toggle-wishlist-item"
 import { WISHLIST_QUERY_KEYS } from "~/src/modules/wishlist/wishlist.constants"
 import { type Wishlist } from "~/src/modules/wishlist/wishlist.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 

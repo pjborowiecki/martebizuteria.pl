@@ -2,10 +2,12 @@ import { type JSX } from "react"
 
 import { cn } from "cn"
 import { ChevronDown } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { PLACEHOLDER_IMAGE } from "~/src/lib/image"
 

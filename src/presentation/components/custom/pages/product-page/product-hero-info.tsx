@@ -1,13 +1,15 @@
 import { type JSX, useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { EMPTY_VALUE } from "~/src/modules/_core/constants/placeholder"
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
 import { type Product } from "~/src/modules/product/product.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Separator } from "~/src/presentation/components/shadcn/separator"

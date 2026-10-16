@@ -26,6 +26,18 @@ test.describe("locales", () => {
     await expect(productPage.heading()).toHaveText(PRODUCTS.lapis.title)
   })
 
+  test("a Polish page prices in the visitor's own format, here an English browser's", async ({ page, productPage }) => {
+    await productPage.open(`/products/${PRODUCTS.lapis.handle}`)
+
+    await expect(page.locator("html")).toHaveAttribute("lang", "pl-PL")
+    await expect(productPage.heading()).toHaveText(POLISH_TITLE)
+    await expect(productPage.details()).toContainText(PRODUCTS.lapis.price)
+  })
+})
+
+test.describe("locales in a Polish browser", () => {
+  test.use({ locale: "pl-PL" })
+
   test("a guest checks out in Polish without a prefix and receives the order confirmation in Polish", async ({
     checkoutPage,
     page,

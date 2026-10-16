@@ -1,7 +1,7 @@
 import { type JSX, useCallback, useMemo } from "react"
 
 import { Minus, Plus, X } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
@@ -9,6 +9,7 @@ import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { getProductImageUrl } from "~/src/lib/image"
 

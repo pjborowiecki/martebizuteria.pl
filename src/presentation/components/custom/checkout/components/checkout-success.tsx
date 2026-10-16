@@ -2,7 +2,7 @@ import { type JSX, useEffect } from "react"
 
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { AlertCircle, CheckCircle2, Loader2, Package } from "lucide-react"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { formatInpostLockerAddress } from "~/src/integrations/inpost/inpost.utils"
 
@@ -13,6 +13,8 @@ import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/cust
 import { resetCartAbandonedTracking } from "~/src/modules/customer-activity/customer-activity.tracking"
 import { type Order } from "~/src/modules/order/order.types"
 import { getOrderConfirmationQuery } from "~/src/modules/order/use-cases/get-order-confirmation"
+
+import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 
@@ -58,7 +60,7 @@ const ConfirmationStatusIcon = ({ isPending, order }: Readonly<ConfirmationQuery
 }
 
 const ConfirmationItem = ({ currencyCode, item }: Readonly<ConfirmationItemProps>): JSX.Element => {
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
 
   return (
     <div className="flex items-center gap-4 py-3">
@@ -70,7 +72,7 @@ const ConfirmationItem = ({ currencyCode, item }: Readonly<ConfirmationItemProps
         {item.variantTitle !== undefined && <p className="text-xs text-muted-foreground">{item.variantTitle}</p>}
         <p className="text-xs text-muted-foreground">× {item.quantity}</p>
       </div>
-      <span className="text-sm tabular-nums">{formatPrice(item.totalMinorUnits, currencyCode, locale)}</span>
+      <span className="text-sm tabular-nums">{formatPrice(item.totalMinorUnits, currencyCode, formatLocale)}</span>
     </div>
   )
 }
@@ -117,7 +119,7 @@ const ConfirmationDestination = ({ order }: Readonly<{ order: Order["confirmatio
 const ConfirmationDetails = ({ order }: Readonly<{ order: Order["confirmation"] }>): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutSuccess")
   const format = useFormatter()
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
 
   return (
     <div className="mx-auto w-full max-w-xl space-y-8 text-left">
@@ -142,22 +144,25 @@ const ConfirmationDetails = ({ order }: Readonly<{ order: Order["confirmation"] 
       </div>
 
       <div className="space-y-2">
-        <SummaryRow label={t("subtotalLabel")} value={formatPrice(order.subtotalMinorUnits, order.currencyCode, locale)} />
+        <SummaryRow label={t("subtotalLabel")} value={formatPrice(order.subtotalMinorUnits, order.currencyCode, formatLocale)} />
         {order.discountTotalMinorUnits > NO_AMOUNT && (
-          <SummaryRow label={t("discountLabel")} value={`−${formatPrice(order.discountTotalMinorUnits, order.currencyCode, locale)}`} />
+          <SummaryRow
+            label={t("discountLabel")}
+            value={`−${formatPrice(order.discountTotalMinorUnits, order.currencyCode, formatLocale)}`}
+          />
         )}
         <SummaryRow
           label={order.deliveryMethodName ?? t("shippingLabel")}
-          value={formatPrice(order.shippingTotalMinorUnits, order.currencyCode, locale)}
+          value={formatPrice(order.shippingTotalMinorUnits, order.currencyCode, formatLocale)}
         />
         <Separator />
         <div className="flex justify-between pt-1">
           <span className="text-sm font-medium">{t("totalLabel")}</span>
-          <span className="text-base font-medium tabular-nums">{formatPrice(order.totalMinorUnits, order.currencyCode, locale)}</span>
+          <span className="text-base font-medium tabular-nums">{formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale)}</span>
         </div>
         <p className="text-right text-[11px] text-muted-foreground">
           {t("vatIncludedLabel", { rate: formatVatRatePercent(order.taxBasisPoints) })}{" "}
-          {formatPrice(order.taxTotalMinorUnits, order.currencyCode, locale)}
+          {formatPrice(order.taxTotalMinorUnits, order.currencyCode, formatLocale)}
         </p>
       </div>
 
