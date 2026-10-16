@@ -9,6 +9,7 @@ const access = vi.hoisted(() => ({
   recordListExportedAudit: vi.fn<(list: string, rowCount: number, options: { metadata: object }) => void>(),
 }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getAdminCustomersFilteredList: access.filteredList }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordListExportedAudit: access.recordListExportedAudit }))
@@ -89,6 +90,7 @@ describe("exportAdminCustomers filters", () => {
       },
       search: undefined,
       statFilter: undefined,
+      timeZone: "Europe/Warsaw",
     })
   })
 

@@ -18,7 +18,7 @@ const render = (fragment: SQL): { readonly params: readonly unknown[]; readonly 
 }
 
 const build = (filter: Parameters<typeof buildAdminDateTimeFilterSql>[1]) =>
-  render(buildAdminDateTimeFilterSql(auditEvent.occurredAt, filter))
+  render(buildAdminDateTimeFilterSql(auditEvent.occurredAt, filter, "Europe/Warsaw"))
 
 const RANGE_SQL = `("audit_event"."occurred_at" >= ? and "audit_event"."occurred_at" < ?)`
 
@@ -143,10 +143,14 @@ describe("buildAdminDateTimeFilterSql with an operator it does not know", () => 
 describe("buildAdminDateTimeFilterSql with a computed column", () => {
   it("bounds an expression such as a customer's last order by the same Polish day as a table column", () => {
     const query = render(
-      buildAdminDateTimeFilterSql(sqlExpression`"rollup"."last_order_at"`, {
-        date: "2026-10-15",
-        operator: DATE_COLUMN_FILTER_OPERATOR.ON,
-      }),
+      buildAdminDateTimeFilterSql(
+        sqlExpression`"rollup"."last_order_at"`,
+        {
+          date: "2026-10-15",
+          operator: DATE_COLUMN_FILTER_OPERATOR.ON,
+        },
+        "Europe/Warsaw",
+      ),
     )
 
     expect(query.sql).toBe(`("rollup"."last_order_at" >= ? and "rollup"."last_order_at" < ?)`)

@@ -66,7 +66,10 @@ const TableProbe = ({ onTable }: Readonly<{ onTable: (table: CustomersTable) => 
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
   const formatLocale = useFormatLocale()
-  const columns = useMemo(() => buildCustomerColumns({ format, formatLocale, t, tAdmin }), [format, formatLocale, t, tAdmin])
+  const columns = useMemo(
+    () => buildCustomerColumns({ format, formatLocale, t, tAdmin, timeZone: "Europe/Warsaw" }),
+    [format, formatLocale, t, tAdmin],
+  )
   const table = useTable<DataGridFeatures, AdminCustomerRow>({
     columns,
     data: ROWS,

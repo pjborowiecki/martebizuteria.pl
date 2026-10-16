@@ -5,7 +5,7 @@ import { Area, AreaChart, Bar, BarChart, CartesianGrid, type TooltipValueType, X
 import { useTranslations } from "use-intl/react"
 
 import { formatMinorUnitsAsCompactNumber, formatPrice } from "~/src/modules/_core/utils/currency"
-import { parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
+import { ISO_DATE_TIME_ZONE, parseIsoDateToUtcDate } from "~/src/modules/_core/utils/iso-date"
 import { ADMIN_DASHBOARD_CHART_DAYS_30, ADMIN_DASHBOARD_CHART_DAYS_7 } from "~/src/modules/admin-dashboard/admin-dashboard.constants"
 import { type AdminDashboard } from "~/src/modules/admin-dashboard/admin-dashboard.types"
 
@@ -36,8 +36,9 @@ export const DashboardCharts = (): JSX.Element => {
     useDashboardChartRange()
   const formatIsoDateLabel = useCallback(
     (isoDate: string) =>
-      format.dateTime(parseIsoDateToLocalDate(isoDate), {
+      format.dateTime(parseIsoDateToUtcDate(isoDate), {
         dateStyle: "medium",
+        timeZone: ISO_DATE_TIME_ZONE,
       }),
     [format],
   )

@@ -101,8 +101,8 @@ const padIsoDatePart = (value: number): string => String(value).padStart(ISO_DAT
 export const formatCalendarDateToIsoDate = ({ day, month, year }: CalendarDate): string =>
   `${String(year)}-${padIsoDatePart(month)}-${padIsoDatePart(day)}`
 
-export const formatShortDate = (value: DateInput, locale: string = I18N.DEFAULT_LOCALE): string =>
-  toDate(value).toLocaleDateString(locale, SHORT_DATE_PARTS)
+export const formatShortDate = (value: DateInput, locale: string = I18N.DEFAULT_LOCALE, timeZone?: string): string =>
+  toDate(value).toLocaleDateString(locale, timeZone === undefined ? SHORT_DATE_PARTS : { ...SHORT_DATE_PARTS, timeZone })
 
 export const formatTimestamp = (value: DateInput, locale: string = I18N.DEFAULT_LOCALE): string =>
   toDate(value).toLocaleString(locale, TIMESTAMP_PARTS)

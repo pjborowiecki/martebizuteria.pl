@@ -7,7 +7,7 @@ import {
   type ValidatedDateColumnFilterValue,
   isDateColumnFilterValue,
 } from "~/src/modules/_core/utils/column-filters"
-import { storeWallClockEndMs, storeWallClockStartMs } from "~/src/modules/_core/utils/datetime-column-filter"
+import { wallClockEndMs, wallClockStartMs } from "~/src/modules/_core/utils/datetime-column-filter"
 import { isIsoDateString, parseIsoDateToStartMs } from "~/src/modules/_core/utils/iso-date"
 
 const resolveCellDateMs = (value: unknown): number | undefined => {
@@ -54,19 +54,19 @@ export const formatDateFilterTriggerLabel = ({
   return `${DATE_COLUMN_FILTER_OPERATOR_SYMBOL[activeFilter.operator]} ${formatIsoDateLabel(activeFilter.date)}`
 }
 
-const matchesOperator = (cellMs: number, filter: ValidatedDateColumnFilterValue): boolean => {
+const matchesOperator = (cellMs: number, filter: ValidatedDateColumnFilterValue, timeZone: string): boolean => {
   switch (filter.operator) {
     case DATE_COLUMN_FILTER_OPERATOR.ON: {
-      return cellMs >= storeWallClockStartMs(filter.date) && cellMs < storeWallClockEndMs(filter.date)
+      return cellMs >= wallClockStartMs(filter.date, timeZone) && cellMs < wallClockEndMs(filter.date, timeZone)
     }
     case DATE_COLUMN_FILTER_OPERATOR.BEFORE: {
-      return cellMs < storeWallClockStartMs(filter.date)
+      return cellMs < wallClockStartMs(filter.date, timeZone)
     }
     case DATE_COLUMN_FILTER_OPERATOR.AFTER: {
-      return cellMs >= storeWallClockEndMs(filter.date)
+      return cellMs >= wallClockEndMs(filter.date, timeZone)
     }
     case DATE_COLUMN_FILTER_OPERATOR.BETWEEN: {
-      return cellMs >= storeWallClockStartMs(filter.startDate) && cellMs < storeWallClockEndMs(filter.endDate)
+      return cellMs >= wallClockStartMs(filter.startDate, timeZone) && cellMs < wallClockEndMs(filter.endDate, timeZone)
     }
   }
 }
@@ -79,22 +79,20 @@ export const isDateFilterRangeValid = (startDate: string, endDate: string): bool
   return parseIsoDateToStartMs(startDate) <= parseIsoDateToStartMs(endDate)
 }
 
-export const matchesDateColumnFilter = <TFeatures extends TableFeatures, TData extends RowData>(
-  row: Row<TFeatures, TData>,
-  columnId: string,
-  filterValue: unknown,
-): boolean => {
-  if (!isDateColumnFilterValue(filterValue)) {
-    return true
-  }
+export const matchesDateColumnFilterIn =
+  (timeZone: string) =>
+  <TFeatures extends TableFeatures, TData extends RowData>(row: Row<TFeatures, TData>, columnId: string, filterValue: unknown): boolean => {
+    if (!isDateColumnFilterValue(filterValue)) {
+      return true
+    }
 
-  const cellMs = resolveCellDateMs(row.getValue(columnId))
-  if (cellMs === undefined) {
-    return false
-  }
+    const cellMs = resolveCellDateMs(row.getValue(columnId))
+    if (cellMs === undefined) {
+      return false
+    }
 
-  return matchesOperator(cellMs, filterValue)
-}
+    return matchesOperator(cellMs, filterValue, timeZone)
+  }
 
 interface FormatDateFilterTriggerLabelInput {
   readonly activeFilter: DateColumnFilterValue | undefined

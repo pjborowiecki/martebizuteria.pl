@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
 import { DATE_COLUMN_FILTER_OPERATOR, isDateColumnFilterOperator } from "~/src/modules/_core/utils/column-filters"
 import { instantOfWallClock } from "~/src/modules/_core/utils/datetime"
 import {
@@ -16,7 +15,7 @@ import {
 } from "~/src/modules/_core/utils/datetime-column-filter"
 import { defaultDateTimeFilterEndTime, hasIsoDateTimeTimeComponent, parseIsoDateTimeLocal } from "~/src/modules/_core/utils/iso-datetime"
 
-import { useFormatter } from "~/src/hooks/use-display-format"
+import { useDisplayTimeZone, useFormatter } from "~/src/hooks/use-display-format"
 
 import { useAuditLogToday } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-log-today"
 import {
@@ -24,9 +23,22 @@ import {
   buildAuditDateTimeFilterOperatorOptions,
 } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-datetime-filter-labels"
 
+const useAuditDateTimeLabel = (): ((isoDateTime: string) => string) => {
+  const format = useFormatter()
+  const timeZone = useDisplayTimeZone()
+
+  return useCallback(
+    (isoDateTime: string): string =>
+      format.dateTime(
+        instantOfWallClock(parseIsoDateTimeLocal(isoDateTime), timeZone),
+        hasIsoDateTimeTimeComponent(isoDateTime) ? DATE_TIME_LABEL_FORMAT : DATE_LABEL_FORMAT,
+      ),
+    [format, timeZone],
+  )
+}
+
 export const useAuditDateTimeFilter = ({ activeDateFilter, applyAuditFilter }: UseAuditDateTimeFilterInput) => {
   const t = useTranslations("pages.admin")
-  const format = useFormatter()
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<DateTimeFilterDraft>(() => dateTimeFilterDraftFromValue(activeDateFilter))
   const todayIso = useAuditLogToday()
@@ -45,14 +57,7 @@ export const useAuditDateTimeFilter = ({ activeDateFilter, applyAuditFilter }: U
     }
   }, [t])
 
-  const formatIsoDateTimeLabel = useCallback(
-    (isoDateTime: string): string =>
-      format.dateTime(
-        instantOfWallClock(parseIsoDateTimeLocal(isoDateTime), DEFAULT_TIMEZONE_CODE),
-        hasIsoDateTimeTimeComponent(isoDateTime) ? DATE_TIME_LABEL_FORMAT : DATE_LABEL_FORMAT,
-      ),
-    [format],
-  )
+  const formatIsoDateTimeLabel = useAuditDateTimeLabel()
 
   const triggerLabel = formatDateTimeFilterTriggerLabel({
     activeFilter: activeDateFilter,
@@ -170,7 +175,7 @@ export const useAuditDateTimeFilter = ({ activeDateFilter, applyAuditFilter }: U
 
 const DEFAULT_START_TIME = "00:00"
 
-const DATE_LABEL_FORMAT = { dateStyle: "medium", timeZone: DEFAULT_TIMEZONE_CODE } as const
+const DATE_LABEL_FORMAT = { dateStyle: "medium" } as const
 
 const DATE_TIME_LABEL_FORMAT = { ...DATE_LABEL_FORMAT, timeStyle: "short" } as const
 

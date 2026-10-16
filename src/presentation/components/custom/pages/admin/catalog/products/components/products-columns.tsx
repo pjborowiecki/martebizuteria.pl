@@ -17,12 +17,12 @@ import {
 import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductTitle, resolveProductVariantKind } from "~/src/modules/product/product.utils"
 
-import { useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
+import { useDisplayTimeZone, useFormatLocale, useFormatter } from "~/src/hooks/use-display-format"
 
 import { Badge } from "~/src/presentation/components/shadcn/badge"
 
 import { selectionColumn } from "~/src/presentation/components/custom/datagrid/components/selection-column"
-import { matchesDateColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
+import { matchesDateColumnFilterIn } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
 import { matchesNumericColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-numeric-filter"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { fixedDataGridColumnWidth } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
@@ -104,7 +104,7 @@ const ProductVariantKindCell = ({
   )
 }
 
-const buildProductTimestampColumns = ({ format, t }: ProductColumnBuildContext) =>
+const buildProductTimestampColumns = ({ format, t, timeZone }: ProductColumnBuildContext) =>
   columnHelper.columns([
     columnHelper.accessor("createdAt", {
       cell: ({ getValue }) => (
@@ -114,7 +114,7 @@ const buildProductTimestampColumns = ({ format, t }: ProductColumnBuildContext) 
           })}
         </span>
       ),
-      filterFn: matchesDateColumnFilter,
+      filterFn: matchesDateColumnFilterIn(timeZone),
       header: t("columns.createdAt"),
       id: PRODUCT_TABLE_COLUMN_ID.createdAt,
       maxSize: 320,
@@ -299,6 +299,7 @@ export const useProductColumns = () => {
   const format = useFormatter()
   const locale = useLocale()
   const formatLocale = useFormatLocale()
+  const timeZone = useDisplayTimeZone()
 
   return useMemo(
     () =>
@@ -308,8 +309,9 @@ export const useProductColumns = () => {
         locale,
         t,
         tAdmin,
+        timeZone,
       }),
-    [format, formatLocale, locale, t, tAdmin],
+    [format, formatLocale, locale, t, tAdmin, timeZone],
   )
 }
 
@@ -323,4 +325,5 @@ interface ProductColumnBuildContext {
   readonly locale: string
   readonly t: ReturnType<typeof useTranslations<"pages.admin.catalog.products.catalogList">>
   readonly tAdmin: ReturnType<typeof useTranslations<"pages.admin">>
+  readonly timeZone: string
 }

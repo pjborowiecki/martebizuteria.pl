@@ -53,7 +53,7 @@ filters: {
 }
 ```
 
-`createdAt` and `lastOrderAt` are filtered by the day in Poland through `buildAdminDateTimeFilterSql`, as on the orders page and in the audit log.
+`createdAt` and `lastOrderAt` are filtered by the day in the admin's time zone through `buildAdminDateTimeFilterSql`, as on the orders page and in the audit log.
 
 The accessor returns five things — `rows`, `orderStats`, `defaultAddresses`, `latestShippingAddresses` and `total` — and the use case stitches them together client-side of the database:
 
@@ -113,7 +113,7 @@ return computeAdminCustomerStatsFromAggregates({
 | `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                           |
 | `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                              |
 
-The spending chart counts months as the dashboard does (see [Admin dashboard](/docs/features/admin-dashboard#charts)). `resolveAdminDashboardMonths(now, ADMIN_CUSTOMER_DETAIL_MONTHS)` gives the last twelve months up to the one it is in Poland now, each starting at midnight in Warsaw on its first day, and `getCustomerMonthlySpendingQuery(userId, window)` sums the customer's sales from the window's `start` until its `end`, grouped with `calendarPeriodKey`. An order placed at 00:30 on 1 April in Poland therefore counts in April, although it is still 31 March in UTC. `buildAdminCustomerMonthlySpendingSeries` gives each month of the window one point, zero where nothing was bought, named after its month in Warsaw.
+The spending chart counts months as the dashboard does (see [Admin dashboard](/docs/features/admin-dashboard#charts)). `resolveAdminDashboardMonths(now, ADMIN_CUSTOMER_DETAIL_MONTHS, timeZone)` gives the last twelve months up to the one it is in the admin's time zone now, each starting at midnight there on its first day, and `getCustomerMonthlySpendingQuery(userId, window)` sums the customer's sales from the window's `start` until its `end`, grouped with `calendarPeriodKey`. For an admin in Poland, an order placed at 00:30 on 1 April therefore counts in April, although it is still 31 March in UTC. `buildAdminCustomerMonthlySpendingSeries` gives each month of the window one point, zero where nothing was bought, named in the admin's format locale. The join date and the timeline's dates and totals use the same preferences; the category names keep the page's language.
 
 Order rows are formatted with the **same** helpers the orders grid uses — `formatAdminOrderDate`, `resolveAdminOrderPaymentUiKey`, `resolveAdminOrderFulfillmentUiKey` — so the badges on a customer's orders match the badges in `/admin/orders`, and the date is written in the admin's language as it is there. Each row, and the timeline's "Placed order" entry, names the order by its `orderNumber` (`MRT-2026-00001`); the row still opens the order by its id.
 

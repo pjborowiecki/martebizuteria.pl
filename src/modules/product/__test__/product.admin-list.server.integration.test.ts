@@ -144,15 +144,18 @@ describe("loadAdminListAggregates", () => {
 
 describe("buildAdminProductsFilterParams", () => {
   it("carries every catalog facet through untouched", () => {
-    const params = buildAdminProductsFilterParams({
-      categoryId: "c-rings",
-      collectionId: "col-bridal",
-      inventoryLevel: "low",
-      minPrice: { amountMinorUnits: 100, operator: "gte" },
-      sort: { columnId: "minPrice", desc: false },
-      status: "published",
-      variantKind: "multi",
-    })
+    const params = buildAdminProductsFilterParams(
+      {
+        categoryId: "c-rings",
+        collectionId: "col-bridal",
+        inventoryLevel: "low",
+        minPrice: { amountMinorUnits: 100, operator: "gte" },
+        sort: { columnId: "minPrice", desc: false },
+        status: "published",
+        variantKind: "multi",
+      },
+      "Europe/Warsaw",
+    )
 
     expect(params).toStrictEqual({
       categoryId: "c-rings",
@@ -163,17 +166,18 @@ describe("buildAdminProductsFilterParams", () => {
       search: undefined,
       sort: { columnId: "minPrice", desc: false },
       status: "published",
+      timeZone: "Europe/Warsaw",
       totalStock: undefined,
       variantKind: "multi",
     })
   })
 
   it("trims the search term the admin typed", () => {
-    expect(buildAdminProductsFilterParams({ search: "  Luna Ring " }).search).toBe("Luna Ring")
+    expect(buildAdminProductsFilterParams({ search: "  Luna Ring " }, "Europe/Warsaw").search).toBe("Luna Ring")
   })
 
   it("drops a search term that holds no characters", () => {
-    expect(buildAdminProductsFilterParams({ search: "   " }).search).toBeUndefined()
+    expect(buildAdminProductsFilterParams({ search: "   " }, "Europe/Warsaw").search).toBeUndefined()
   })
 })
 

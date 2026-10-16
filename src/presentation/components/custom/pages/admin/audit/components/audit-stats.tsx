@@ -6,6 +6,8 @@ import { useTranslations } from "use-intl/react"
 import { resolveAuditLogToday } from "~/src/modules/audit-log/audit-log.utils"
 import { getAuditLogStatsQuery } from "~/src/modules/audit-log/use-cases/get-audit-log-stats"
 
+import { useDisplayTimeZone } from "~/src/hooks/use-display-format"
+
 import { ADMIN_STAT_GRID_CLASS } from "~/src/presentation/components/custom/pages/admin/admin-layout.styles"
 import { AUDIT_STAT_CARDS, type AuditStatKey } from "~/src/presentation/components/custom/pages/admin/audit/audit-stats.config"
 import { AuditStatCard } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-stat-card"
@@ -77,6 +79,7 @@ export const AuditStats = (): JSX.Element => {
   const t = useTranslations("pages.admin")
   const { activeDateFilter, activeSeverityFilter, applyAuditFilter } = useAuditDataGridContext()
   const today = useAuditLogToday()
+  const timeZone = useDisplayTimeZone()
   const { data, isPending } = useQuery(getAuditLogStatsQuery(today))
   const activeFilters = { createdAt: activeDateFilter, severity: activeSeverityFilter }
   const stats = {
@@ -108,7 +111,7 @@ export const AuditStats = (): JSX.Element => {
             displayValue={isPending ? undefined : value}
             isActive={isActive}
             onFilter={() => {
-              applyAuditFilter(isActive ? ALL_AUDIT_EVENTS_FILTERS : buildAuditStatCardFilters(config, resolveAuditLogToday()))
+              applyAuditFilter(isActive ? ALL_AUDIT_EVENTS_FILTERS : buildAuditStatCardFilters(config, resolveAuditLogToday(timeZone)))
             }}
             valuesPending={isPending}
           />

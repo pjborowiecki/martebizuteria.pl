@@ -8,6 +8,7 @@ const validated = vi.hoisted((): { parse?: (input: unknown) => unknown } => ({})
 
 const access = vi.hoisted(() => ({ customersPage: vi.fn() }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/user/user.accessors", () => ({ getAdminCustomersPage: access.customersPage }))
 vi.mock("@tanstack/react-start", () => ({

@@ -2,9 +2,10 @@ import { type JSX, useCallback, useEffect, useMemo, useState } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { formatDateToIsoDateLocal, parseIsoDateToLocalDate } from "~/src/modules/_core/utils/iso-date"
+import { formatCalendarDateToIsoDate, toCalendarDate } from "~/src/modules/_core/utils/datetime"
+import { ISO_DATE_TIME_ZONE, parseIsoDateToUtcDate } from "~/src/modules/_core/utils/iso-date"
 
-import { useFormatter } from "~/src/hooks/use-display-format"
+import { useDisplayTimeZone, useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { LocaleDatePicker } from "~/src/presentation/components/shadcn/locale-date-picker"
@@ -24,7 +25,8 @@ export const DashboardChartCustomRangeFilter = ({
   const [open, setOpen] = useState(false)
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
-  const todayIso = formatDateToIsoDateLocal(new Date())
+  const timeZone = useDisplayTimeZone()
+  const todayIso = formatCalendarDateToIsoDate(toCalendarDate(new Date(), timeZone))
   useEffect(() => {
     if (open) {
       setStartDate(activeRange?.startDate ?? "")
@@ -37,12 +39,14 @@ export const DashboardChartCustomRangeFilter = ({
       return t("dashboard.chart.custom")
     }
 
-    const startLabel = format.dateTime(parseIsoDateToLocalDate(activeRange.startDate), {
+    const startLabel = format.dateTime(parseIsoDateToUtcDate(activeRange.startDate), {
       dateStyle: "medium",
+      timeZone: ISO_DATE_TIME_ZONE,
     })
 
-    const endLabel = format.dateTime(parseIsoDateToLocalDate(activeRange.endDate), {
+    const endLabel = format.dateTime(parseIsoDateToUtcDate(activeRange.endDate), {
       dateStyle: "medium",
+      timeZone: ISO_DATE_TIME_ZONE,
     })
 
     return `${startLabel} – ${endLabel}`

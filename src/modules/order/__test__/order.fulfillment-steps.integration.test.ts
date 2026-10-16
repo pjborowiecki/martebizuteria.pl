@@ -20,7 +20,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-const page = { limit: 25, offset: 0 }
+const page = { limit: 25, offset: 0, timeZone: "Europe/Warsaw" }
 
 const ORDERS = [
   ["awaiting-payment", "pending", "not_fulfilled"],
@@ -34,7 +34,7 @@ const ORDERS = [
   ["refunded-in-progress", "refunded", "fulfilled"],
 ] as const
 
-const listedIds = async (params: Omit<Parameters<typeof getAdminOrdersPage>[0], "limit" | "offset">): Promise<string[]> => {
+const listedIds = async (params: Omit<Parameters<typeof getAdminOrdersPage>[0], "limit" | "offset" | "timeZone">): Promise<string[]> => {
   const { rows } = await getAdminOrdersPage({ ...page, ...params })
 
   return rows.map((row) => row.id).toSorted()

@@ -42,6 +42,17 @@ const spies = vi.hoisted(() => ({
   statsQuery: vi.fn((today: string) => ({ queryKey: ["audit", "stats", today] })),
 }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
+  displayPreferencesQuery: {
+    queryFn: () =>
+      Promise.resolve({
+        detected: { formatLocale: "pl-PL", timeZone: "Europe/Warsaw" },
+        saved: { formatLocale: undefined, timeZone: undefined },
+      }),
+    queryKey: ["i18n", "displayPreferences"],
+    staleTime: Number.POSITIVE_INFINITY,
+  },
+}))
 vi.mock("~/src/modules/audit-log/use-cases/get-audit-log-stats", () => ({ getAuditLogStatsQuery: spies.statsQuery }))
 vi.mock("~/src/modules/audit-log/use-cases/list-audit-logs", () => ({ listAuditLogsQuery: spies.listQuery }))
 vi.mock("~/src/presentation/components/custom/pages/admin/audit/audit-log", () => ({
@@ -71,12 +82,19 @@ const renderAuditPage = () => {
   )
 }
 
-const runLoader = async (): Promise<{ queried: PrefetchedQuery[] }> => {
+const runLoader = async (timeZone = "Europe/Warsaw"): Promise<{ queried: PrefetchedQuery[] }> => {
   const queried: PrefetchedQuery[] = []
   await route.loader?.({
     context: {
       queryClient: {
         query: (options: PrefetchedQuery) => {
+          if (options.queryKey[1] === "displayPreferences") {
+            return Promise.resolve({
+              detected: { formatLocale: "pl-PL", timeZone },
+              saved: { formatLocale: undefined, timeZone: undefined },
+            })
+          }
+
           queried.push(options)
 
           return Promise.resolve(undefined)
@@ -128,6 +146,18 @@ describe("admin audit route loader", () => {
     }
 
     expect(spies.statsQuery).toHaveBeenCalledWith("2026-10-15")
+  })
+
+  it("prefetches the statistics for the viewer's own day", async () => {
+    vi.useFakeTimers({ now: new Date("2026-10-14T22:30:00.000Z"), toFake: ["Date"] })
+
+    try {
+      await runLoader("America/New_York")
+    } finally {
+      vi.useRealTimers()
+    }
+
+    expect(spies.statsQuery).toHaveBeenCalledWith("2026-10-14")
   })
 
   it("treats the prefetched pages as already fresh", async () => {

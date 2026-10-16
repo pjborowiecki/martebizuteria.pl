@@ -135,12 +135,15 @@ describe("resolveAdminOrderFulfillmentUiKey", () => {
 })
 
 describe("formatAdminOrderDate", () => {
-  it("formats in the requested locale", () => {
-    expect(formatAdminOrderDate(new Date(2024, 5, 15), "en-US")).toBe("Jun 15, 2024")
+  it("formats in the viewer's format locale", () => {
+    expect(formatAdminOrderDate(new Date("2024-06-15T12:00:00.000Z"), { formatLocale: "en-US", timeZone: "Europe/Warsaw" })).toBe(
+      "Jun 15, 2024",
+    )
   })
 
-  it("accepts a stored date string and defaults to the store locale", () => {
-    expect(formatAdminOrderDate(new Date(2024, 5, 15).toISOString())).toContain("2024")
+  it("accepts a stored date string and names the day in the viewer's time zone", () => {
+    expect(formatAdminOrderDate("2024-06-15T23:30:00.000Z", { formatLocale: "pl-PL", timeZone: "Europe/Warsaw" })).toBe("16 cze 2024")
+    expect(formatAdminOrderDate("2024-06-15T23:30:00.000Z", { formatLocale: "en-US", timeZone: "America/New_York" })).toBe("Jun 15, 2024")
   })
 })
 

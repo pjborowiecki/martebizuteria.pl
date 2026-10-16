@@ -9,6 +9,7 @@ const server = vi.hoisted(() => ({
 
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => ({ handler: (handler: unknown) => handler }),
+  createServerOnlyFn: (fn: unknown) => fn,
   getGlobalStartContext: () => ({ edgeTimeZone: server.edgeTimeZone }),
 }))
 vi.mock("@tanstack/react-start/server", () => ({ getRequest: () => server.request }))
@@ -17,7 +18,11 @@ vi.mock("~/src/integrations/better-auth/auth.session", () => ({
 }))
 
 import { DISPLAY_PREFERENCES_QUERY_KEY } from "~/src/integrations/use-intl/i18n.display"
-import { displayPreferencesQuery, getDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
+import {
+  displayPreferencesQuery,
+  getDisplayPreferences,
+  resolveRequestDisplayPreferences,
+} from "~/src/integrations/use-intl/i18n.display-preferences"
 
 beforeEach(() => {
   server.edgeTimeZone = undefined
@@ -45,6 +50,16 @@ describe("getDisplayPreferences", () => {
       detected: { formatLocale: "en-US", timeZone: "Asia/Tokyo" },
       saved: { formatLocale: "en-GB", timeZone: "America/New_York" },
     })
+  })
+})
+
+describe("resolveRequestDisplayPreferences", () => {
+  it("lets what the user saved win over what the request reveals", async () => {
+    server.request = new Request("https://store.test/", { headers: { "accept-language": "pl-PL" } })
+    server.edgeTimeZone = "Europe/Warsaw"
+    server.user = { formatLocale: null, timezone: "America/New_York" }
+
+    await expect(resolveRequestDisplayPreferences()).resolves.toStrictEqual({ formatLocale: "pl-PL", timeZone: "America/New_York" })
   })
 })
 

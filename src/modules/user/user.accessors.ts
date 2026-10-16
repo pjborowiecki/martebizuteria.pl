@@ -56,7 +56,9 @@ const customerOrderRollupSubquery = () =>
     .groupBy(order.userId)
     .as("customer_order_rollup")
 
-const buildAdminCustomersUserConditions = (params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters">): SQL[] => {
+const buildAdminCustomersUserConditions = (
+  params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters" | "timeZone">,
+): SQL[] => {
   const conditions: SQL[] = []
   const filters = params.filters ?? {}
   const searchCondition = buildAdminSearchOrCondition(params.search, [user.name, user.email, user.phone, user.id, user.stripeCustomerId])
@@ -81,7 +83,7 @@ const buildAdminCustomersUserConditions = (params: Pick<AdminCustomersListParams
   }
 
   if (filters.createdAt !== undefined) {
-    conditions.push(buildAdminDateTimeFilterSql(user.createdAt, filters.createdAt))
+    conditions.push(buildAdminDateTimeFilterSql(user.createdAt, filters.createdAt, params.timeZone))
   }
 
   return conditions
@@ -90,6 +92,7 @@ const buildAdminCustomersUserConditions = (params: Pick<AdminCustomersListParams
 const buildAdminCustomersRollupConditions = (
   filters: User["adminCustomersListFilters"],
   rollup: ReturnType<typeof customerOrderRollupSubquery>,
+  timeZone: string,
 ): SQL[] => {
   const conditions: SQL[] = []
   const coalescedTotalSpent = sql<number>`coalesce(${rollup.totalSpent}, 0)`
@@ -103,7 +106,10 @@ const buildAdminCustomersRollupConditions = (
   }
 
   if (filters.lastOrderAt !== undefined) {
-    conditions.push(sql`${rollup.lastOrderAt} is not null`, buildAdminDateTimeFilterSql(sql`${rollup.lastOrderAt}`, filters.lastOrderAt))
+    conditions.push(
+      sql`${rollup.lastOrderAt} is not null`,
+      buildAdminDateTimeFilterSql(sql`${rollup.lastOrderAt}`, filters.lastOrderAt, timeZone),
+    )
   }
 
   return conditions
@@ -112,7 +118,7 @@ const buildAdminCustomersRollupConditions = (
 const combineSqlConditions = (conditions: SQL[]): SQL | undefined => (conditions.length === 0 ? undefined : and(...conditions))
 
 const buildAdminCustomersQueryParts = (
-  params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters">,
+  params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters" | "timeZone">,
 ): {
   needsRollupJoin: boolean
   rollup?: ReturnType<typeof customerOrderRollupSubquery>
@@ -129,7 +135,7 @@ const buildAdminCustomersQueryParts = (
   }
 
   const rollup = customerOrderRollupSubquery()
-  const rollupConditions = buildAdminCustomersRollupConditions(filters, rollup)
+  const rollupConditions = buildAdminCustomersRollupConditions(filters, rollup, params.timeZone)
 
   return {
     needsRollupJoin,
@@ -203,7 +209,7 @@ export const getLatestOrderShippingAddressesQuery = (userIds: readonly string[])
 }
 
 const selectAdminCustomerRows = (
-  params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters">,
+  params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters" | "timeZone">,
   pagination?: Pick<ListPaginationParams, "limit" | "offset">,
 ) => {
   const { needsRollupJoin, rollup, whereClause } = buildAdminCustomersQueryParts(params)
@@ -230,7 +236,7 @@ const selectAdminCustomerRows = (
   return baseQuery.limit(pagination.limit).offset(pagination.offset)
 }
 
-const countAdminCustomerRows = async (params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters">) => {
+const countAdminCustomerRows = async (params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters" | "timeZone">) => {
   const { needsRollupJoin, rollup, whereClause } = buildAdminCustomersQueryParts(params)
   if (needsRollupJoin && rollup !== undefined) {
     const [countRow] = await db
@@ -287,7 +293,9 @@ export const getAdminCustomersPage = async (params: AdminCustomersListParams) =>
   }
 }
 
-export const getAdminCustomersFilteredList = async (params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters">) => {
+export const getAdminCustomersFilteredList = async (
+  params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters" | "timeZone">,
+) => {
   const rows = await selectAdminCustomerRows(params)
   if (rows.length === 0) {
     return {
@@ -331,6 +339,7 @@ export interface AdminCustomersListParams extends ListPaginationParams {
   readonly filters?: User["adminCustomersListFilters"] | undefined
   readonly search?: string | undefined
   readonly statFilter?: AdminCustomerStatFilter | undefined
+  readonly timeZone: string
 }
 
 export const getAdminCustomerTotalCountQuery = () =>

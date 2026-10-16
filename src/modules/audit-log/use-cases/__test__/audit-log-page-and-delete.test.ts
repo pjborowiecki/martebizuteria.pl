@@ -16,6 +16,7 @@ const publish = vi.hoisted(() => vi.fn(() => Promise.resolve(undefined)))
 
 const audit = vi.hoisted(() => ({ recordAuditLogsDeletedAudit: vi.fn() }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server", () => ({
   publishRealtimeInvalidation: publish,

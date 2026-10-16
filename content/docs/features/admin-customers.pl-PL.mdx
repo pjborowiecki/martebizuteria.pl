@@ -53,7 +53,7 @@ filters: {
 }
 ```
 
-`createdAt` i `lastOrderAt` są filtrowane według dnia w Polsce przez `buildAdminDateTimeFilterSql`, tak jak na stronie zamówień i w dzienniku zdarzeń.
+`createdAt` i `lastOrderAt` są filtrowane według dnia w strefie administratora przez `buildAdminDateTimeFilterSql`, tak jak na stronie zamówień i w dzienniku zdarzeń.
 
 Akcesor zwraca pięć rzeczy — `rows`, `orderStats`, `defaultAddresses`, `latestShippingAddresses` i `total` — a use case zszywa je po stronie aplikacji:
 
@@ -113,7 +113,7 @@ return computeAdminCustomerStatsFromAggregates({
 | `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                                       |
 | `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                                          |
 
-Wykres wydatków liczy miesiące tak jak pulpit (zobacz [Pulpit admina](/docs/features/admin-dashboard#wykresy)). `resolveAdminDashboardMonths(now, ADMIN_CUSTOMER_DETAIL_MONTHS)` daje ostatnie dwanaście miesięcy aż do tego, który trwa teraz w Polsce, każdy zaczynający się o północy w Warszawie pierwszego dnia, a `getCustomerMonthlySpendingQuery(userId, window)` sumuje sprzedaże klienta od `start` okna do jego `end`, grupując je przez `calendarPeriodKey`. Zamówienie złożone o 00:30 1 kwietnia w Polsce liczy się więc w kwietniu, choć w UTC jest jeszcze 31 marca. `buildAdminCustomerMonthlySpendingSeries` daje każdemu miesiącowi okna jeden punkt, z zerem tam, gdzie nic nie kupiono, nazwany jego miesiącem w Warszawie.
+Wykres wydatków liczy miesiące tak jak pulpit (zobacz [Pulpit admina](/docs/features/admin-dashboard#wykresy)). `resolveAdminDashboardMonths(now, ADMIN_CUSTOMER_DETAIL_MONTHS, timeZone)` daje ostatnie dwanaście miesięcy aż do tego, który trwa teraz w strefie administratora, każdy zaczynający się tam o północy pierwszego dnia, a `getCustomerMonthlySpendingQuery(userId, window)` sumuje sprzedaże klienta od `start` okna do jego `end`, grupując je przez `calendarPeriodKey`. Dla administratora w Polsce zamówienie złożone o 00:30 1 kwietnia liczy się więc w kwietniu, choć w UTC jest jeszcze 31 marca. `buildAdminCustomerMonthlySpendingSeries` daje każdemu miesiącowi okna jeden punkt, z zerem tam, gdzie nic nie kupiono, nazwany w formacie administratora. Data rejestracji oraz daty i kwoty na osi czasu korzystają z tych samych preferencji; nazwy kategorii zostają w języku strony.
 
 Wiersze zamówień są formatowane **tymi samymi** pomocnikami, których używa siatka zamówień — `formatAdminOrderDate`, `resolveAdminOrderPaymentUiKey`, `resolveAdminOrderFulfillmentUiKey` — więc plakietki przy zamówieniach klienta zgadzają się z tymi w `/admin/orders`, a data jest zapisana w języku administratora, tak jak tam. Każdy wiersz i wpis „Złożono zamówienie” na osi czasu nazywają zamówienie jego numerem `orderNumber` (`MRT-2026-00001`); wiersz nadal otwiera zamówienie po jego identyfikatorze.
 

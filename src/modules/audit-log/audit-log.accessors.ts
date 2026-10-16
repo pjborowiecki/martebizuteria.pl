@@ -18,6 +18,7 @@ export interface AdminAuditLogsListParams extends ListPaginationParams {
   readonly createdAt?: DateTimeColumnFilterValue | undefined
   readonly search?: string | undefined
   readonly severity?: AuditLogSeverity | undefined
+  readonly timeZone: string
 }
 
 export interface AuditLogInsertRow {
@@ -58,12 +59,12 @@ const adminAuditLogListColumns = {
 } as const
 
 const buildAdminAuditLogsWhere = (
-  params: Pick<AdminAuditLogsListParams, "category" | "createdAt" | "search" | "severity">,
+  params: Pick<AdminAuditLogsListParams, "category" | "createdAt" | "search" | "severity" | "timeZone">,
 ): SQL | undefined => {
   const conditions: SQL[] = []
 
   if (params.createdAt !== undefined) {
-    conditions.push(buildAdminDateTimeFilterSql(auditLog.createdAt, params.createdAt))
+    conditions.push(buildAdminDateTimeFilterSql(auditLog.createdAt, params.createdAt, params.timeZone))
   }
 
   if (params.severity !== undefined) {
@@ -105,7 +106,7 @@ const selectAdminAuditLogRows = (params: AdminAuditLogsListParams) => {
     .offset(params.offset)
 }
 
-const countAdminAuditLogRows = (params: Pick<AdminAuditLogsListParams, "category" | "createdAt" | "search" | "severity">) => {
+const countAdminAuditLogRows = (params: Pick<AdminAuditLogsListParams, "category" | "createdAt" | "search" | "severity" | "timeZone">) => {
   const whereClause = buildAdminAuditLogsWhere(params)
 
   return db.select({ count: count() }).from(auditLog).where(whereClause)
@@ -128,12 +129,12 @@ export const getAdminAuditLogsPage = async (params: AdminAuditLogsListParams): P
   }
 }
 
-export const getAdminAuditLogStats = async (today: string): Promise<AuditLog["stats"]> => {
+export const getAdminAuditLogStats = async (today: string, timeZone: string): Promise<AuditLog["stats"]> => {
   const [[totalRow], [todayRow], [warningRow], [errorRow]] = await db.batch([
-    countAdminAuditLogRows({}),
-    countAdminAuditLogRows({ createdAt: buildAuditLogDayFilter(today) }),
-    countAdminAuditLogRows({ severity: "warning" }),
-    countAdminAuditLogRows({ severity: "error" }),
+    countAdminAuditLogRows({ timeZone }),
+    countAdminAuditLogRows({ createdAt: buildAuditLogDayFilter(today), timeZone }),
+    countAdminAuditLogRows({ severity: "warning", timeZone }),
+    countAdminAuditLogRows({ severity: "error", timeZone }),
   ])
 
   return {

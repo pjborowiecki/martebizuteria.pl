@@ -12,10 +12,7 @@ import {
   isDateColumnFilterOperator,
   isDateColumnFilterValue,
 } from "~/src/modules/_core/utils/column-filters"
-import { storeWallClockStartMs } from "~/src/modules/_core/utils/datetime-column-filter"
-import { formatDateToIsoDateLocal, isIsoDateString } from "~/src/modules/_core/utils/iso-date"
-
-import { useFormatter } from "~/src/hooks/use-display-format"
+import { isIsoDateString } from "~/src/modules/_core/utils/iso-date"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 import { Popover, PopoverContent, PopoverHeader, PopoverTitle, PopoverTrigger } from "~/src/presentation/components/shadcn/popover"
@@ -31,6 +28,7 @@ import {
   type AdminDateFilterFormLabels,
   type DateFilterDraft,
 } from "~/src/presentation/components/custom/pages/admin/lib/admin-date-filter-form"
+import { useAdminDateFilterDay } from "~/src/presentation/components/custom/pages/admin/lib/use-admin-date-filter-day"
 
 const emptyDraft = (): DateFilterDraft => ({
   date: "",
@@ -91,13 +89,12 @@ export const AdminDateColumnFilter = <TData extends RowData>({
   labels,
   table,
 }: Readonly<AdminDateColumnFilterProps<TData>>): JSX.Element => {
-  const format = useFormatter()
   const column = table.getColumn(columnId)
   const rawFilter = column?.getFilterValue()
   const activeFilter = isDateColumnFilterValue(rawFilter) ? rawFilter : undefined
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState<DateFilterDraft>(() => toDraft(activeFilter))
-  const todayIso = formatDateToIsoDateLocal(new Date())
+  const { formatIsoDateLabel, todayIso } = useAdminDateFilterDay()
   useEffect(() => {
     if (open) {
       setDraft(toDraft(activeFilter))
@@ -111,14 +108,6 @@ export const AdminDateColumnFilter = <TData extends RowData>({
         value: operator,
       })),
     [labels],
-  )
-
-  const formatIsoDateLabel = useCallback(
-    (isoDate: string): string =>
-      format.dateTime(new Date(storeWallClockStartMs(isoDate)), {
-        dateStyle: "medium",
-      }),
-    [format],
   )
 
   const triggerLabel = formatDateFilterTriggerLabel({

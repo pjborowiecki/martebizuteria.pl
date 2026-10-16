@@ -7,6 +7,7 @@ const collaborators = vi.hoisted(() => ({
   page: vi.fn(),
 }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: vi.fn() }))
 vi.mock("~/src/modules/product/product.accessors", () => ({ getAdminProductsPage: collaborators.page }))
 vi.mock("~/src/modules/product/product.admin-list.server", () => ({
@@ -92,7 +93,7 @@ describe("getAdminProductsPage paging", () => {
 
     await getAdminProductsPage({ data: { search: "aurora", status: "published" } })
 
-    expect(collaborators.filterParams).toHaveBeenCalledWith({ search: "aurora", status: "published" })
+    expect(collaborators.filterParams).toHaveBeenCalledWith({ search: "aurora", status: "published" }, "Europe/Warsaw")
     expect(collaborators.page).toHaveBeenCalledWith(expect.objectContaining({ search: "aurora", status: "published" }))
   })
 

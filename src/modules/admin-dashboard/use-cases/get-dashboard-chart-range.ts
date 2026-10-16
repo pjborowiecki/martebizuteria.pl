@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { orderAggregatesQuery } from "~/src/modules/admin-dashboard/admin-dashboard.accessors"
 import {
@@ -22,20 +23,22 @@ export const getDashboardChartRange = createServerFn({ method: "GET" })
   .middleware([authorized({ settings: ["manage"] })])
   .validator((input: zod.input<typeof adminDashboardZodSchemas.chartRangeInput>) => adminDashboardZodSchemas.chartRangeInput.parse(input))
   .handler(async ({ data: input }): Promise<readonly AdminDashboard["chartPoint"][]> => {
-    const { endDate, locale, startDate } = input
+    const { endDate, startDate } = input
 
     if (!isAdminDashboardCustomChartRangeValid(startDate, endDate)) {
       return []
     }
 
-    const days = resolveAdminDashboardDateRange(startDate, endDate)
+    const { formatLocale, timeZone } = await resolveRequestDisplayPreferences()
+    const days = resolveAdminDashboardDateRange(startDate, endDate, timeZone)
     const dailyAggregateRows = await orderAggregatesQuery(days)
 
     return buildAdminDashboardChartPoints({
+      formatLocale,
       labelFormat: ADMIN_DASHBOARD_DAY_LABEL_FORMAT,
-      locale,
       periods: days.periods,
       rows: dailyAggregateRows,
+      timeZone,
     })
   })
 
@@ -43,7 +46,7 @@ export const getDashboardChartRangeQuery = (input: AdminDashboard["chartRangeInp
   queryOptions({
     enabled: isAdminDashboardCustomChartRangeValid(input.startDate, input.endDate),
     queryFn: () => getDashboardChartRange({ data: input }),
-    queryKey: [...ADMIN_DASHBOARD_QUERY_KEYS.CHART_RANGE, input.locale, input.startDate, input.endDate],
+    queryKey: [...ADMIN_DASHBOARD_QUERY_KEYS.CHART_RANGE, input.startDate, input.endDate],
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     staleTime: ADMIN_DASHBOARD_QUERY_STALE_MS,

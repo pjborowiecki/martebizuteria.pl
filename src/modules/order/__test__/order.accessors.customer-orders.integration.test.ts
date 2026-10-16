@@ -23,7 +23,7 @@ const MARCH = Date.UTC(2026, 2, 10)
 
 const JUNE = Date.UTC(2026, 5, 10)
 
-const page = { limit: 10, offset: 0 }
+const page = { limit: 10, offset: 0, timeZone: "Europe/Warsaw" }
 
 beforeEach(() => {
   sqlite.exec(`
@@ -89,7 +89,7 @@ describe("getAdminOrdersPage scoped to a customer", () => {
   })
 
   it("pages through that customer's orders only", async () => {
-    const result = await getAdminOrdersPage({ limit: 2, offset: 2, userId: "u-anna" })
+    const result = await getAdminOrdersPage({ limit: 2, offset: 2, timeZone: "Europe/Warsaw", userId: "u-anna" })
 
     expect(result.rows.map((row) => row.id)).toStrictEqual(["o-anna-pending"])
     expect(result.total).toBe(3)
@@ -108,7 +108,7 @@ describe("getAdminOrdersPage scoped to a customer", () => {
 
 describe("getAdminOrdersExport scoped to a customer", () => {
   it("exports that customer's orders only", async () => {
-    const rows = await getAdminOrdersExport({ userId: "u-jan" })
+    const rows = await getAdminOrdersExport({ timeZone: "Europe/Warsaw", userId: "u-jan" })
 
     expect(rows.map((row) => row.id)).toStrictEqual(["o-jan"])
   })

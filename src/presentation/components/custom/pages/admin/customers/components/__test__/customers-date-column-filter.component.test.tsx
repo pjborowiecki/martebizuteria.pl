@@ -13,7 +13,7 @@ import { DATE_COLUMN_FILTER_OPERATOR, type DateColumnFilterValue } from "~/src/m
 import { ADMIN_CUSTOMER_TABLE_COLUMN_ID } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 
-import { matchesDateColumnFilter } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
+import { matchesDateColumnFilterIn } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 import { type DataGridContextValue } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { CustomersDateColumnFilter } from "~/src/presentation/components/custom/pages/admin/customers/components/customers-date-column-filter"
@@ -56,7 +56,7 @@ const helper = createColumnHelper<DataGridFeatures, CustomerRow>()
 
 const COLUMNS = helper.columns([
   helper.accessor("createdAt", {
-    filterFn: matchesDateColumnFilter,
+    filterFn: matchesDateColumnFilterIn("Europe/Warsaw"),
     header: "Account created",
     id: ADMIN_CUSTOMER_TABLE_COLUMN_ID.createdAt,
   }),

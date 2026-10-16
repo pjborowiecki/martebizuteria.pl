@@ -1,6 +1,7 @@
 import { type z } from "zod/v4"
 
 import { type ROLES } from "~/src/integrations/better-auth/auth.access"
+import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
 
 import { type DateColumnFilterValue, type NumericColumnFilterValue } from "~/src/modules/_core/utils/column-filters"
 import { type NumericInput } from "~/src/modules/_core/utils/datetime"
@@ -45,8 +46,8 @@ interface AdminCustomerAggregateStatsInput {
 interface AdminCustomerTimelineInput {
   readonly auditEvents?: readonly AdminCustomerAuditTimelineRow[] | undefined
   readonly createdAt: Date
-  readonly locale: string
   readonly orders: readonly AdminCustomerTimelineOrder[]
+  readonly preferences: DisplayPreferences
 }
 
 interface AdminCustomersListFilters {

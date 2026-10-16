@@ -99,7 +99,7 @@ const buildAdminOrderStatFilterCondition = (statFilter: AdminOrderStatFilter | u
   return eq(order.status, "pending")
 }
 
-const appendAdminOrdersListFilterConditions = (conditions: SQL[], filters: Order["adminListFilters"]): void => {
+const appendAdminOrdersListFilterConditions = (conditions: SQL[], filters: Order["adminListFilters"], timeZone: string): void => {
   if (filters.status !== undefined) {
     conditions.push(eq(order.status, filters.status))
   }
@@ -117,12 +117,12 @@ const appendAdminOrdersListFilterConditions = (conditions: SQL[], filters: Order
   }
 
   if (filters.createdAt !== undefined) {
-    conditions.push(buildAdminDateTimeFilterSql(order.createdAt, filters.createdAt))
+    conditions.push(buildAdminDateTimeFilterSql(order.createdAt, filters.createdAt, timeZone))
   }
 }
 
 const buildAdminOrdersWhere = (
-  params: Pick<AdminOrdersListParams, "filters" | "search" | "statFilter" | "tab" | "userId">,
+  params: Pick<AdminOrdersListParams, "filters" | "search" | "statFilter" | "tab" | "timeZone" | "userId">,
 ): SQL | undefined => {
   const conditions: SQL[] = []
   if (params.userId !== undefined) {
@@ -153,7 +153,7 @@ const buildAdminOrdersWhere = (
   if (statCondition !== undefined) {
     conditions.push(statCondition)
   }
-  appendAdminOrdersListFilterConditions(conditions, filters)
+  appendAdminOrdersListFilterConditions(conditions, filters, params.timeZone)
   if (conditions.length === 0) {
     return undefined
   }
@@ -598,5 +598,6 @@ export interface AdminOrdersListParams extends ListPaginationParams {
   readonly search?: string | undefined
   readonly statFilter?: AdminOrderStatFilter | undefined
   readonly tab?: AdminOrderTab | undefined
+  readonly timeZone: string
   readonly userId?: string | undefined
 }

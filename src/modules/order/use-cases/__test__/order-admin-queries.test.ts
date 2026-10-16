@@ -73,6 +73,7 @@ const accessors = vi.hoisted(() => {
 
 const shipx = vi.hoisted(() => ({ configured: { current: true } }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/integrations/inpost/inpost.shipx.server", () => ({ isInpostShipxConfigured: () => shipx.configured.current }))
 vi.mock("~/src/modules/order/order.accessors", () => ({
@@ -230,6 +231,7 @@ describe("exportAdminOrders", () => {
       search: undefined,
       statFilter: undefined,
       tab: "delivered",
+      timeZone: "Europe/Warsaw",
       userId: undefined,
     })
   })

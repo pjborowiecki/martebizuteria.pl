@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { recordListExportedAudit } from "~/src/modules/audit-log/audit-log.events.server"
@@ -11,7 +12,7 @@ import { toAdminOrderListItem } from "~/src/modules/order/order.display.utils"
 import { type Order } from "~/src/modules/order/order.types"
 import { orderZodSchemas } from "~/src/modules/order/order.zod"
 
-const buildAdminOrdersExportParams = (input: zod.output<typeof orderZodSchemas.adminOrdersExportInput>) => ({
+const buildAdminOrdersExportParams = (input: zod.output<typeof orderZodSchemas.adminOrdersExportInput>, timeZone: string) => ({
   filters: {
     createdAt: input.createdAt,
     fulfillment: input.fulfillment,
@@ -22,6 +23,7 @@ const buildAdminOrdersExportParams = (input: zod.output<typeof orderZodSchemas.a
   search: normalizeAdminSearchTerm(input.search),
   statFilter: input.statFilter,
   tab: input.tab,
+  timeZone,
   userId: input.userId,
 })
 
@@ -31,7 +33,8 @@ export const exportAdminOrders = createServerFn({
   .middleware([authorized({ order: ["read"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminOrdersExportInput>) => orderZodSchemas.adminOrdersExportInput.parse(input))
   .handler(async ({ data: input }): Promise<Order["adminExportItem"][]> => {
-    const params = buildAdminOrdersExportParams(input)
+    const { timeZone } = await resolveRequestDisplayPreferences()
+    const params = buildAdminOrdersExportParams(input, timeZone)
     const rows = await orderGetAdminOrdersExport(params)
     const destinationRows = await getAdminOrderDestinationRows(rows.map((row) => row.id))
     const destinations = new Map(destinationRows.map((row) => [row.id, describeOrderDestination(row)]))

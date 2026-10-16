@@ -27,9 +27,6 @@ vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: mocks.toas
 
 import { DISPLAY_PREFERENCES_QUERY_KEY, type SavedDisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
-import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
-
 import { DisplayPreferenceField } from "~/src/presentation/components/custom/display-preferences/display-preference-field"
 import {
   describeFormatSample,
@@ -106,7 +103,7 @@ describe("DisplayPreferenceField", () => {
     expect(screen.getByLabelText("Zone")).toHaveTextContent("America/Indiana/Indianapolis")
   })
 
-  it("saves the time zone the user picks, refreshes what depends on it and confirms", async () => {
+  it("saves the time zone the user picks, refreshes everything formatted or dated with it and confirms", async () => {
     const queryClient = renderFields()
     const invalidate = vi.spyOn(queryClient, "invalidateQueries")
 
@@ -116,9 +113,7 @@ describe("DisplayPreferenceField", () => {
       expect(mocks.toastSuccess).toHaveBeenCalledWith("Preference saved")
     })
     expect(mocks.update.mock.calls[0]?.[0]).toStrictEqual({ preference: "timeZone", value: "America/New_York" })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: DISPLAY_PREFERENCES_QUERY_KEY })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: SESSION_QUERY_KEYS.CURRENT })
+    expect(invalidate).toHaveBeenCalledExactlyOnceWith()
   })
 
   it("saves automatic as no choice, so the format follows the browser again", async () => {

@@ -58,7 +58,10 @@ const ColumnsProbe = ({ filters = [], row }: Readonly<{ filters?: ColumnFiltersS
   const tAdmin = useTranslations("pages.admin")
   const format = useFormatter()
   const formatLocale = useFormatLocale()
-  const columns = useMemo(() => buildCustomerColumns({ format, formatLocale, t, tAdmin }), [format, formatLocale, t, tAdmin])
+  const columns = useMemo(
+    () => buildCustomerColumns({ format, formatLocale, t, tAdmin, timeZone: "Europe/Warsaw" }),
+    [format, formatLocale, t, tAdmin],
+  )
   const table = useTable<DataGridFeatures, AdminCustomerRow>({
     columns,
     data: [row],
@@ -123,7 +126,7 @@ describe("buildCustomerColumns sizes", () => {
       const tAdmin = useTranslations("pages.admin")
       const format = useFormatter()
       const formatLocale = useFormatLocale()
-      definitions.current = buildCustomerColumns({ format, formatLocale, t, tAdmin })
+      definitions.current = buildCustomerColumns({ format, formatLocale, t, tAdmin, timeZone: "Europe/Warsaw" })
 
       return null
     }

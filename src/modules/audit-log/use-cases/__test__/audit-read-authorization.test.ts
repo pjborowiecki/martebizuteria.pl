@@ -8,6 +8,7 @@ const access = vi.hoisted(() => ({
   stats: vi.fn(() => Promise.resolve({ errorCount: 0, todayCount: 0, totalCount: 0, warningCount: 0 })),
 }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
 vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({
   getAdminAuditLogStats: access.stats,
@@ -50,7 +51,7 @@ describe("audit log admin reads", () => {
   it("counts audit statistics for the day the stat cards ask about", async () => {
     const result = await getAuditLogStats({ data: { today: "2026-09-20" } })
 
-    expect(access.stats).toHaveBeenCalledWith("2026-09-20")
+    expect(access.stats).toHaveBeenCalledWith("2026-09-20", "Europe/Warsaw")
     expect(result).toStrictEqual({ errorCount: 0, todayCount: 0, totalCount: 0, warningCount: 0 })
   })
 })

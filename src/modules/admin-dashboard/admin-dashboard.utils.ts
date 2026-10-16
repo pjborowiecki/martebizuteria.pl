@@ -1,4 +1,3 @@
-import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
 import {
   type CalendarDate,
   type CalendarPeriod,
@@ -29,6 +28,13 @@ export const resolveAdminDashboardComparisonPeriod = (
   }
 }
 
+interface ChartWindowInput {
+  readonly count: number
+  readonly dateAt: (index: number) => CalendarDate
+  readonly keyOf: (date: CalendarDate) => string
+  readonly timeZone: string
+}
+
 export interface AdminDashboardChartWindow {
   readonly end: Date
   readonly periods: readonly CalendarPeriod[]
@@ -41,47 +47,48 @@ const toMonthKey = ({ month, year }: CalendarDate): string => `${String(year)}-$
 
 const toDayKey = (date: CalendarDate): string => `${toMonthKey(date)}-${padDatePart(date.day)}`
 
-const buildChartWindow = (
-  count: number,
-  dateAt: (index: number) => CalendarDate,
-  keyOf: (date: CalendarDate) => string,
-): AdminDashboardChartWindow => {
+const buildChartWindow = ({ count, dateAt, keyOf, timeZone }: ChartWindowInput): AdminDashboardChartWindow => {
   const periods = Array.from({ length: count }, (_, index) => {
     const date = dateAt(index)
 
-    return { key: keyOf(date), start: startOfCalendarDate(date, DEFAULT_TIMEZONE_CODE) }
+    return { key: keyOf(date), start: startOfCalendarDate(date, timeZone) }
   })
 
   return {
-    end: startOfCalendarDate(dateAt(count), DEFAULT_TIMEZONE_CODE),
+    end: startOfCalendarDate(dateAt(count), timeZone),
     periods,
-    start: startOfCalendarDate(dateAt(0), DEFAULT_TIMEZONE_CODE),
+    start: startOfCalendarDate(dateAt(0), timeZone),
   }
 }
 
-const buildDayWindow = (first: CalendarDate, count: number): AdminDashboardChartWindow =>
-  buildChartWindow(count, (index) => normalizeCalendarDate({ ...first, day: first.day + index }), toDayKey)
+const buildDayWindow = (first: CalendarDate, count: number, timeZone: string): AdminDashboardChartWindow =>
+  buildChartWindow({ count, dateAt: (index) => normalizeCalendarDate({ ...first, day: first.day + index }), keyOf: toDayKey, timeZone })
 
-export const resolveAdminDashboardDays = (referenceDate: Date, count: number): AdminDashboardChartWindow => {
-  const today = toCalendarDate(referenceDate, DEFAULT_TIMEZONE_CODE)
+export const resolveAdminDashboardDays = (referenceDate: Date, count: number, timeZone: string): AdminDashboardChartWindow => {
+  const today = toCalendarDate(referenceDate, timeZone)
 
-  return buildDayWindow({ ...today, day: today.day + 1 - count }, count)
+  return buildDayWindow({ ...today, day: today.day + 1 - count }, count, timeZone)
 }
 
-export const resolveAdminDashboardDateRange = (startDate: string, endDate: string): AdminDashboardChartWindow => {
+export const resolveAdminDashboardDateRange = (startDate: string, endDate: string, timeZone: string): AdminDashboardChartWindow => {
   const dayCount = (Date.parse(endDate) - Date.parse(startDate)) / ADMIN_DASHBOARD_MS_PER_DAY + 1
 
-  return buildDayWindow(toCalendarDate(startDate, "UTC"), dayCount)
+  return buildDayWindow(toCalendarDate(startDate, "UTC"), dayCount, timeZone)
 }
 
-export const resolveAdminDashboardMonths = (referenceDate: Date, count: number): AdminDashboardChartWindow => {
-  const { month, year } = toCalendarDate(referenceDate, DEFAULT_TIMEZONE_CODE)
+export const resolveAdminDashboardMonths = (referenceDate: Date, count: number, timeZone: string): AdminDashboardChartWindow => {
+  const { month, year } = toCalendarDate(referenceDate, timeZone)
 
-  return buildChartWindow(count, (index) => normalizeCalendarDate({ day: 1, month: month + 1 - count + index, year }), toMonthKey)
+  return buildChartWindow({
+    count,
+    dateAt: (index) => normalizeCalendarDate({ day: 1, month: month + 1 - count + index, year }),
+    keyOf: toMonthKey,
+    timeZone,
+  })
 }
 
-export const resolveAdminDashboardYearStart = (referenceDate: Date): Date =>
-  startOfCalendarDate({ day: 1, month: 1, year: toCalendarDate(referenceDate, DEFAULT_TIMEZONE_CODE).year }, DEFAULT_TIMEZONE_CODE)
+export const resolveAdminDashboardYearStart = (referenceDate: Date, timeZone: string): Date =>
+  startOfCalendarDate({ day: 1, month: 1, year: toCalendarDate(referenceDate, timeZone).year }, timeZone)
 
 export const computeAdminDashboardTrendPercent = (current: number, previous: number): number => {
   if (previous <= 0) {
@@ -98,22 +105,24 @@ export const buildAdminDashboardKpiStat = (current: number, previous: number): A
 })
 
 export const buildAdminDashboardChartPoints = ({
+  formatLocale,
   labelFormat,
-  locale,
   periods,
   rows,
+  timeZone,
 }: Readonly<{
+  formatLocale: string
   labelFormat: Intl.DateTimeFormatOptions
-  locale: string
   periods: readonly CalendarPeriod[]
   rows: readonly OrderAggregateRow[]
+  timeZone: string
 }>): AdminDashboard["chartPoint"][] => {
   const rowByPeriodKey = new Map(rows.map((row) => [row.periodKey, row]))
 
   return periods.map(({ key, start }) => {
     const point = {
       dateKey: key,
-      label: start.toLocaleDateString(locale, { ...labelFormat, timeZone: DEFAULT_TIMEZONE_CODE }),
+      label: start.toLocaleDateString(formatLocale, { ...labelFormat, timeZone }),
       orders: 0,
       revenue: 0,
     }
@@ -124,19 +133,23 @@ export const buildAdminDashboardChartPoints = ({
 }
 
 export const buildAdminDashboardWeeklyOrderPoints = ({
-  locale,
+  formatLocale,
   periods,
   rows,
+  timeZone,
 }: Readonly<{
-  locale: string
+  formatLocale: string
   periods: readonly CalendarPeriod[]
   rows: readonly OrderAggregateRow[]
+  timeZone: string
 }>): AdminDashboard["weeklyOrderPoint"][] =>
-  buildAdminDashboardChartPoints({ labelFormat: WEEKDAY_LABEL_FORMAT, locale, periods, rows }).map(({ dateKey, label, orders }) => ({
-    dateKey,
-    dayLabel: label,
-    orders,
-  }))
+  buildAdminDashboardChartPoints({ formatLocale, labelFormat: WEEKDAY_LABEL_FORMAT, periods, rows, timeZone }).map(
+    ({ dateKey, label, orders }) => ({
+      dateKey,
+      dayLabel: label,
+      orders,
+    }),
+  )
 
 export const isAdminDashboardCustomChartRangeValid = (startDate: string, endDate: string): boolean => {
   if (!isIsoDateString(startDate) || !isIsoDateString(endDate)) {

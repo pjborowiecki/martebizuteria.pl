@@ -7,7 +7,7 @@ import { DATE_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-fi
 import {
   formatDateFilterTriggerLabel,
   isDateFilterRangeValid,
-  matchesDateColumnFilter,
+  matchesDateColumnFilterIn,
 } from "~/src/presentation/components/custom/datagrid/lib/data-grid-date-filter"
 import { dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 
@@ -22,7 +22,7 @@ const columnHelper = createColumnHelper<typeof features, OrderRow>()
 
 const columns = columnHelper.columns([
   columnHelper.accessor("id", {}),
-  columnHelper.accessor("createdAt", { filterFn: matchesDateColumnFilter }),
+  columnHelper.accessor("createdAt", { filterFn: matchesDateColumnFilterIn("Europe/Warsaw") }),
 ])
 
 const data: OrderRow[] = [
@@ -40,7 +40,7 @@ const filterIds = (filterValue: unknown, rows: OrderRow[] = data): string[] => {
   return table.getFilteredRowModel().rows.map((row) => row.original.id)
 }
 
-describe("matchesDateColumnFilter", () => {
+describe("matchesDateColumnFilterIn", () => {
   it("keeps every row when the filter value is not a recognised filter", () => {
     expect(filterIds(undefined)).toHaveLength(data.length)
     expect(filterIds({ operator: "sometime" })).toHaveLength(data.length)

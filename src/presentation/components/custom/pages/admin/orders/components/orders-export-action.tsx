@@ -15,7 +15,7 @@ import {
 import { formatAdminOrderDate } from "~/src/modules/order/order.display.utils"
 import { exportAdminOrders } from "~/src/modules/order/use-cases/export-admin-orders"
 
-import { useFormatLocale } from "~/src/hooks/use-display-format"
+import { useDisplayTimeZone, useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 
@@ -31,6 +31,7 @@ const resolveFulfillmentLabel = (fulfillmentUiKey: string, t: ReturnType<typeof 
 export const OrdersExportAction = (): JSX.Element => {
   const t = useTranslations("pages.admin.orders")
   const formatLocale = useFormatLocale()
+  const timeZone = useDisplayTimeZone()
   const { exportListInput } = useOrdersDataGridContext()
   const [isExporting, setIsExporting] = useState(false)
   const handleExport = useCallback(() => {
@@ -64,7 +65,7 @@ export const OrdersExportAction = (): JSX.Element => {
               order.email,
               order.billingCompanyName,
               order.billingNip,
-              formatAdminOrderDate(order.createdAt, formatLocale),
+              formatAdminOrderDate(order.createdAt, { formatLocale, timeZone }),
               String(order.itemCount),
               formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale),
               resolvePaymentLabel(order.paymentUiKey, t),
@@ -82,7 +83,7 @@ export const OrdersExportAction = (): JSX.Element => {
         setIsExporting(false)
       }
     })()
-  }, [exportListInput, formatLocale, t])
+  }, [exportListInput, formatLocale, t, timeZone])
 
   const button = useMemo(
     () => (

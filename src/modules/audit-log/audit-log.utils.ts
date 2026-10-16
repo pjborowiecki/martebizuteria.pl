@@ -1,6 +1,5 @@
-import { I18N } from "~/src/integrations/use-intl/i18n.config"
+import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
 
-import { DEFAULT_TIMEZONE_CODE } from "~/src/modules/_core/constants/timezone"
 import { DATE_COLUMN_FILTER_OPERATOR } from "~/src/modules/_core/utils/column-filters"
 import { formatCalendarDateToIsoDate, normalizeCalendarDate, startOfCalendarDate, toCalendarDate } from "~/src/modules/_core/utils/datetime"
 import { type DateTimeColumnFilterValue } from "~/src/modules/_core/utils/datetime-column-filter"
@@ -27,13 +26,13 @@ export const resolveAuditLogCategoryFilter = (value: AuditLogCategoryFilter | un
   return value
 }
 
-export const resolveAuditLogToday = (now: Date = new Date()): string =>
-  formatCalendarDateToIsoDate(toCalendarDate(now, DEFAULT_TIMEZONE_CODE))
+export const resolveAuditLogToday = (timeZone: string, now: Date = new Date()): string =>
+  formatCalendarDateToIsoDate(toCalendarDate(now, timeZone))
 
-export const resolveNextAuditLogDayStart = (now: Date): Date => {
-  const today = toCalendarDate(now, DEFAULT_TIMEZONE_CODE)
+export const resolveNextAuditLogDayStart = (now: Date, timeZone: string): Date => {
+  const today = toCalendarDate(now, timeZone)
 
-  return startOfCalendarDate(normalizeCalendarDate({ ...today, day: today.day + 1 }), DEFAULT_TIMEZONE_CODE)
+  return startOfCalendarDate(normalizeCalendarDate({ ...today, day: today.day + 1 }), timeZone)
 }
 
 export const buildAuditLogDayFilter = (isoDate: string): DateTimeColumnFilterValue => ({
@@ -43,16 +42,16 @@ export const buildAuditLogDayFilter = (isoDate: string): DateTimeColumnFilterVal
 
 export const toAuditActionMessageKey = (action: string): string => `audit.actions.${action.replaceAll(".", "_")}`
 
-export const formatAdminAuditTimestamp = (createdAt: Date | string): string => {
+export const formatAdminAuditTimestamp = (createdAt: Date | string, { formatLocale, timeZone }: DisplayPreferences): string => {
   const date = createdAt instanceof Date ? createdAt : new Date(createdAt)
 
-  return date.toLocaleString(I18N.DEFAULT_LOCALE, {
+  return date.toLocaleString(formatLocale, {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     month: "short",
     second: "2-digit",
-    timeZone: DEFAULT_TIMEZONE_CODE,
+    timeZone,
     year: "numeric",
   })
 }
@@ -146,7 +145,7 @@ export const resolveAuditLogAction = (action: string, resourceId: string | null)
     ? AUDIT_LOG_ACTION.ORDER_DELIVERED
     : action
 
-export const toAdminAuditListItem = (row: AuditLogListSourceRow): AuditLog["adminListItem"] => {
+export const toAdminAuditListItem = (row: AuditLogListSourceRow, preferences: DisplayPreferences): AuditLog["adminListItem"] => {
   const metadata = parseAuditMetadata(row.metadata)
   const presentation = resolveAdminAuditTargetPresentation({
     metadata,
@@ -169,7 +168,7 @@ export const toAdminAuditListItem = (row: AuditLogListSourceRow): AuditLog["admi
     resourceId: presentation.resourceId,
     severity: row.severity,
     target: presentation.label,
-    timestamp: formatAdminAuditTimestamp(row.createdAt),
+    timestamp: formatAdminAuditTimestamp(row.createdAt, preferences),
   }
 }
 

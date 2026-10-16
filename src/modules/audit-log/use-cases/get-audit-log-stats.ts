@@ -3,6 +3,7 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
+import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { getAdminAuditLogStats as auditLogGetAdminAuditLogStats } from "~/src/modules/audit-log/audit-log.accessors"
 import { AUDIT_LOG_QUERY_KEYS, AUDIT_LOG_QUERY_STALE_MS } from "~/src/modules/audit-log/audit-log.constants"
@@ -13,7 +14,11 @@ export const getAuditLogStats = createServerFn({ method: "GET" })
   .validator((input: zod.input<typeof auditLogZodSchemas.adminAuditLogStatsInput>) =>
     auditLogZodSchemas.adminAuditLogStatsInput.parse(input),
   )
-  .handler(({ data }) => auditLogGetAdminAuditLogStats(data.today))
+  .handler(async ({ data }) => {
+    const { timeZone } = await resolveRequestDisplayPreferences()
+
+    return auditLogGetAdminAuditLogStats(data.today, timeZone)
+  })
 
 export const getAuditLogStatsQuery = (today: string) =>
   queryOptions({

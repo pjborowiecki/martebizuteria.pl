@@ -7,6 +7,7 @@ const collaborators = vi.hoisted(() => ({
   recordListExportedAudit: vi.fn<(list: string, rowCount: number, options: { metadata: object }) => void>(),
 }))
 
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: vi.fn() }))
 vi.mock("~/src/modules/product/product.accessors", () => ({ getAdminProductsFilteredList: collaborators.list }))
 vi.mock("~/src/modules/product/product.admin-list.server", () => ({
@@ -74,7 +75,7 @@ describe("exportAdminProducts selection", () => {
 
     await exportAdminProducts({ data: { search: "aurora", status: "published" } })
 
-    expect(collaborators.filterParams).toHaveBeenCalledWith({ search: "aurora", status: "published" })
+    expect(collaborators.filterParams).toHaveBeenCalledWith({ search: "aurora", status: "published" }, "Europe/Warsaw")
     expect(collaborators.list).toHaveBeenCalledExactlyOnceWith({ search: "aurora", status: "published" })
   })
 
@@ -85,7 +86,7 @@ describe("exportAdminProducts selection", () => {
   it("passes a sort order straight through to the filter builder", async () => {
     await exportAdminProducts({ data: { sort: { columnId: "handle", desc: true } } })
 
-    expect(collaborators.filterParams).toHaveBeenCalledWith({ sort: { columnId: "handle", desc: true } })
+    expect(collaborators.filterParams).toHaveBeenCalledWith({ sort: { columnId: "handle", desc: true } }, "Europe/Warsaw")
   })
 })
 
