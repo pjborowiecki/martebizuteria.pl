@@ -209,20 +209,20 @@ Nothing else moves. The tracking number and link, the InPost shipment, the stock
 
 `getAdminOrder` (`use-cases/get-admin-order.ts`) requires `order: ["read"]`. `getAdminOrderDetailRow` loads the order with its `order_address` snapshots, its checkout addresses, delivery method and courier, payment and user; then four reads run in parallel: `getAdminOrderItemRows` (lines joined to their variant and product for SKU, handle and thumbnail), `getAdminOrderTimelineRows` (the order's `audit_log` rows), `getOrderWithdrawals` (the customer's statements of withdrawal) and, when the order has a `user_id`, `getAdminOrderCustomerStats`. `resolveAdminOrderDetailAddresses` (`order.detail.utils.ts`) takes each address from its snapshot, falling back to the checkout's row only when that snapshot is missing, and sets `billingSameAsShipping` by comparing the billing and shipping snapshots field by field. Only an order with no snapshots, placed before they were written, compares the checkout's `billing_address_id` with its `shipping_address_id` instead. When the order does not exist, `getAdminOrderQuery` throws `notFound()`.
 
-| Component                       | Reads from the detail                                                                                                            |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `order-meta-strip.tsx`          | `status`, `paymentUiKey`, `fulfillmentUiKey`, `createdAt`, `totalMinorUnits`                                                     |
-| `order-withdrawals-card.tsx`    | `withdrawals`, shown only when the customer sent a statement of withdrawal                                                       |
-| `order-fulfillment-tracker.tsx` | `fulfillmentSteps` from `buildAdminOrderFulfillmentSteps`, `canceledAt`                                                          |
-| `order-line-items-card.tsx`     | `items`, `delivery` and the five `*MinorUnits` totals                                                                            |
-| `order-timeline-card.tsx`       | `id`, and `timeline` from `mapAdminOrderTimeline` with `resendable` from `resolveResendableOrderEmails`                          |
-| `order-customer-card.tsx`       | `customer` from `buildAdminOrderDetailCustomer`                                                                                  |
-| `order-shipping-card.tsx`       | `delivery`, including `lockerUnconfirmed`, `shippingAddress`, `trackingNumber`, `trackingUrl`                                    |
-| `order-inpost-card.tsx`         | `inpostShipment`, `inpostConfigured`, `delivery`, `fulfillmentStatus` and `status`, for a locker or courier order                |
-| `order-billing-card.tsx`        | `billingAddress`, `billingSameAsShipping`, `billingCompanyName`, `billingNip`                                                    |
-| `order-payment-card.tsx`        | `payment`, including the refunded amount and date                                                                                |
-| `order-tags-card.tsx`           | `tags` from `resolveAdminOrderDetailTags`, including `notRestocked` ("Not returned to stock") while `canRestockAdminOrder` holds |
-| `order-notes-card.tsx`          | `customerNote`                                                                                                                   |
+| Component                       | Reads from the detail                                                                                                             |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `order-meta-strip.tsx`          | `status`, `paymentUiKey`, `fulfillmentUiKey`, `createdAt`, `totalMinorUnits`                                                      |
+| `order-withdrawals-card.tsx`    | `withdrawals`, shown only when the customer sent a statement of withdrawal                                                        |
+| `order-fulfillment-tracker.tsx` | `fulfillmentSteps` from `buildAdminOrderFulfillmentSteps`, `canceledAt`                                                           |
+| `order-line-items-card.tsx`     | `items`, `delivery` and the five `*MinorUnits` totals; the VAT shows under the total as "Including VAT {rate}%", not as a summand |
+| `order-timeline-card.tsx`       | `id`, and `timeline` from `mapAdminOrderTimeline` with `resendable` from `resolveResendableOrderEmails`                           |
+| `order-customer-card.tsx`       | `customer` from `buildAdminOrderDetailCustomer`                                                                                   |
+| `order-shipping-card.tsx`       | `delivery`, including `lockerUnconfirmed`, `shippingAddress`, `trackingNumber`, `trackingUrl`                                     |
+| `order-inpost-card.tsx`         | `inpostShipment`, `inpostConfigured`, `delivery`, `fulfillmentStatus` and `status`, for a locker or courier order                 |
+| `order-billing-card.tsx`        | `billingAddress`, `billingSameAsShipping`, `billingCompanyName`, `billingNip`                                                     |
+| `order-payment-card.tsx`        | `payment`, including the refunded amount and date                                                                                 |
+| `order-tags-card.tsx`           | `tags` from `resolveAdminOrderDetailTags`, including `notRestocked` ("Not returned to stock") while `canRestockAdminOrder` holds  |
+| `order-notes-card.tsx`          | `customerNote`                                                                                                                    |
 
 When the customer asked for an invoice for a company at checkout, the billing card adds an "Invoice for a company" block under the address with the company name and `NIP <digits>`, which `getAdminOrder` reads from the order's `billing_company_name` and `billing_nip`. The block shows whichever of the two the order has and is absent when it has neither. The app issues no VAT invoice: the owner issues it in the accounting system and KSeF, from the order summary or the orders export.
 

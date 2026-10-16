@@ -806,8 +806,8 @@
       "subtotal": "Subtotal",
       "discount": "Discount",
       "shipping": "Shipping",
-      "tax": "Tax",
-      "total": "Total"
+      "total": "Total",
+      "vatIncluded": "Including VAT {rate}%"
     },
     "timeline": {
       "title": "Activity",

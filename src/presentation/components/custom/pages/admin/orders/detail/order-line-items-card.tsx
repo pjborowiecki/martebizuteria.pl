@@ -3,6 +3,7 @@ import { type JSX } from "react"
 import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
+import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { type Order } from "~/src/modules/order/order.types"
 
 import { useFormatLocale } from "~/src/hooks/use-display-format"
@@ -66,16 +67,16 @@ export const OrderLineItemsCard = ({ order }: Readonly<OrderLineItemsCardProps>)
             </span>
             <span className="font-mono">{formatPrice(order.shippingTotalMinorUnits, order.currencyCode, formatLocale)}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{t("orderDetail.summary.tax")}</span>
-            <span className="font-mono">{formatPrice(order.taxTotalMinorUnits, order.currencyCode, formatLocale)}</span>
-          </div>
           <Separator className="bg-border/40" />
           <div className="flex justify-between pt-1">
             <span className="text-sm font-medium">{t("orderDetail.summary.total")}</span>
             <span className="font-mono text-base font-semibold">
               {formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale)}
             </span>
+          </div>
+          <div className="flex justify-between text-[12px] text-muted-foreground">
+            <span>{t("orderDetail.summary.vatIncluded", { rate: formatVatRatePercent(order.taxBasisPoints) })}</span>
+            <span className="font-mono">{formatPrice(order.taxTotalMinorUnits, order.currencyCode, formatLocale)}</span>
           </div>
         </div>
       </CardContent>

@@ -43,13 +43,15 @@ describe("OrderLineItemsCard", () => {
     expect(container.querySelectorAll("tbody tr")).toHaveLength(2)
   })
 
-  it("summarises subtotal, shipping, tax and total", () => {
-    renderWithProviders(<OrderLineItemsCard order={buildAdminOrderDetail()} />)
+  it("adds subtotal and shipping up to the total and shows the VAT as included in it, not added to it", () => {
+    renderWithProviders(<OrderLineItemsCard order={buildAdminOrderDetail({ taxTotalMinorUnits: 7274, totalMinorUnits: 38_900 })} />)
 
     expect(screen.getByText("Subtotal")).toBeInTheDocument()
     expect(screen.getByText("Shipping")).toBeInTheDocument()
-    expect(screen.getByText("Tax")).toBeInTheDocument()
     expect(screen.getByText(/19[.,]00/u)).toBeInTheDocument()
+    expect(screen.queryByText("Tax")).not.toBeInTheDocument()
+    expect(screen.getByText("Including VAT 23%")).toBeInTheDocument()
+    expect(screen.getByText(/72[.,]74/u)).toBeInTheDocument()
   })
 
   it("formats the amounts in the admin's format locale rather than the page's language", () => {
