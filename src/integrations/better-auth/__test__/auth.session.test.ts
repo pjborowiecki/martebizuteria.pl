@@ -7,6 +7,7 @@ import {
   getCurrentSessionQuery,
   getRequestSession,
 } from "~/src/integrations/better-auth/auth.session"
+import { DISPLAY_PREFERENCES_QUERY_KEY } from "~/src/integrations/use-intl/i18n.display"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
 import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
@@ -151,6 +152,18 @@ describe("clearing the cache when the signed-in user changes", () => {
     expect(queryClient.getQueryData(CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE)).toBeUndefined()
     expect(queryClient.getQueryData(MESSAGES_KEY)).toStrictEqual({ title: "M'Arte" })
     expect(queryClient.getQueryData(SESSION_QUERY_KEYS.CURRENT)).toStrictEqual(sessionFor("customer-2"))
+  })
+
+  it("keeps the display preferences across a change of user and refetches them for the new one", () => {
+    const { queryClient } = watchedClient()
+    const preferences = { detected: { formatLocale: "en-US", timeZone: "UTC" }, saved: { formatLocale: undefined, timeZone: undefined } }
+    queryClient.setQueryData(DISPLAY_PREFERENCES_QUERY_KEY, preferences)
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-1"))
+
+    queryClient.setQueryData(SESSION_QUERY_KEYS.CURRENT, sessionFor("customer-2"))
+
+    expect(queryClient.getQueryData(DISPLAY_PREFERENCES_QUERY_KEY)).toStrictEqual(preferences)
+    expect(queryClient.getQueryState(DISPLAY_PREFERENCES_QUERY_KEY)?.isInvalidated).toBe(true)
   })
 
   it("forgets what was cached while signed out once someone signs in", () => {

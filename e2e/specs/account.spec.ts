@@ -227,11 +227,11 @@ interface OpenTimezoneList {
   readonly list: Locator
 }
 
-const timezoneField = (page: Page): Locator => page.getByRole("combobox", { name: "Timezone" })
+const timezoneField = (page: Page): Locator => page.getByRole("combobox", { name: "Time zone" })
 
 const settledTimezoneList = async (page: Page): Promise<OpenTimezoneList> => {
   const list = page.locator('[data-slot="select-content"]')
-  await expect(page.getByRole("option", { name: "Europe/Warsaw" })).toBeInViewport()
+  await expect(page.getByRole("option", { exact: true, name: "Europe/Warsaw" })).toBeInViewport()
   await list.evaluate(async (element) => {
     await Promise.all(element.getAnimations().map((animation) => animation.finished))
   })
@@ -321,14 +321,14 @@ test.describe("the timezone list on the profile page", () => {
 
     await page.keyboard.press("Enter")
     await settledTimezoneList(page)
-    await expect(page.getByRole("option", { name: "Europe/Warsaw" })).toHaveAttribute("data-highlighted")
+    await expect(page.getByRole("option", { exact: true, name: "Europe/Warsaw" })).toHaveAttribute("data-highlighted")
     for (const { key, zone } of [
-      { key: "Home", zone: "Africa/Abidjan" },
+      { key: "Home", zone: "Automatic (Europe/Warsaw)" },
       { key: "End", zone: "UTC" },
       { key: "ArrowUp", zone: "Pacific/Honolulu" },
     ]) {
       await page.keyboard.press(key)
-      const option = page.getByRole("option", { name: zone })
+      const option = page.getByRole("option", { exact: true, name: zone })
       await expect(option).toHaveAttribute("data-highlighted")
       await expect(option).toBeInViewport()
     }

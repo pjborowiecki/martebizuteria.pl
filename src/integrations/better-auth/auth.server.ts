@@ -124,8 +124,13 @@ export const auth = betterAuth({
   telemetry: { enabled: false },
   user: {
     additionalFields: {
+      formatLocale: {
+        input: false,
+        required: false,
+        type: "string",
+      },
       timezone: {
-        input: true,
+        input: false,
         required: false,
         type: "string",
       },

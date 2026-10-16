@@ -34,6 +34,7 @@ const customerRow = (id: string, createdAt: Date): CustomerRow => ({
   createdAt,
   email: `${id}@example.test`,
   emailVerified: true,
+  formatLocale: null,
   id,
   image: null,
   isAnonymous: false,

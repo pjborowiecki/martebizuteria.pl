@@ -122,4 +122,5 @@ export const USER_QUERY_KEYS = {
 export const USER_MUTATION_KEYS = {
   DELETE_CUSTOMER: ["user", "deleteCustomer"] as const,
   UPDATE_CUSTOMER: ["user", "updateCustomer"] as const,
+  UPDATE_DISPLAY_PREFERENCE: ["user", "updateDisplayPreference"] as const,
 } as const

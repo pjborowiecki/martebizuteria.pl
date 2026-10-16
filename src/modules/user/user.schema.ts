@@ -15,6 +15,7 @@ export const user = sqliteTable(
     banned: integer("banned", { mode: "boolean" }).default(false),
     email: text("email", { length: 320 }).notNull().unique(),
     emailVerified: integer("email_verified", { mode: "boolean" }).default(false).notNull(),
+    formatLocale: text("format_locale", { length: 35 }),
     id: text("id").primaryKey(),
     image: text("image", { length: 2048 }),
     isAnonymous: integer("is_anonymous", { mode: "boolean" }).default(false),

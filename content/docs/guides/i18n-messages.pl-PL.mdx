@@ -95,7 +95,7 @@ const messages = useSuspenseQueries({
 ```
 
 4. `buildMessageTree` zamienia płaską listę par `["pages.admin.catalog.categories", {...}]` w zagnieżdżony obiekt, jakiego oczekuje `use-intl`, dzieląc każdą przestrzeń po kropkach, zagnieżdżając od środka i scalając głęboko.
-5. `IntlProvider` otrzymuje to drzewo, język i `I18N.DEFAULT_TIMEZONE`.
+5. `IntlProvider` otrzymuje to drzewo, język i strefę czasową wyznaczoną z `displayPreferencesQuery`.
 
 Ponieważ właściwy JSON ładuje się przez `import.meta.glob`, każda przestrzeń nazw jest osobnym fragmentem paczki. Gość witryny sklepowej nigdy nie pobiera napisów katalogu w panelu.
 
@@ -123,7 +123,7 @@ tLocale("incompleteToastDescription", {
 
 ## Formatowanie liczb, dat i pieniędzy
 
-Nigdy nie wywołuj `Intl` bezpośrednio w komponencie. `useFormatter()` z `use-intl/react` uwzględnia język i strefę czasową:
+Nigdy nie wywołuj `Intl` bezpośrednio w komponencie. `useFormatter()` z `src/hooks/use-display-format.ts` formatuje według formatu i strefy czasowej użytkownika, które mogą się różnić od języka strony; własne `useFormatter` z use-intl użyłoby języka strony:
 
 ```tsx
 const format = useFormatter()
@@ -131,7 +131,7 @@ const format = useFormatter()
 format.dateTime(new Date(getValue()), { dateStyle: "medium" })
 ```
 
-Dla pieniędzy używaj funkcji z `src/modules/_core/utils/currency.ts` razem ze stałymi z `src/modules/_core/constants/currency.ts`, gdzie `CURRENCIES` przechowuje kod numeryczny i wykładnik ISO każdej waluty. Ceny są zapisywane jako całkowite jednostki podrzędne — `1499` to 14,99 zł — więc formatowanie jest przeliczeniem, nie rzutowaniem. `src/hooks/use-date-formatter.ts` opakowuje najczęstsze przypadki daty.
+Dla pieniędzy używaj funkcji z `src/modules/_core/utils/currency.ts` razem ze stałymi z `src/modules/_core/constants/currency.ts`, gdzie `CURRENCIES` przechowuje kod numeryczny i wykładnik ISO każdej waluty. Ceny są zapisywane jako całkowite jednostki podrzędne — `1499` to 14,99 zł — więc formatowanie jest przeliczeniem, nie rzutowaniem.
 
 ## Typowanie pliku tłumaczeń
 

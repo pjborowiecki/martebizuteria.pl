@@ -42,6 +42,7 @@ const isAuditLogQueueBatch = (batch: MessageBatch<WorkerQueueMessage>): batch is
   !isNewsletterQueueBatch(batch)
 
 export interface RequestContext {
+  edgeTimeZone: string | undefined
   env: Env
   nonce: string
   passThroughOnException: () => void
@@ -105,6 +106,7 @@ const server: ExportedHandler<Env, WorkerQueueMessage> = {
 
     const nonce = createContentSecurityPolicyNonce()
     const context: RequestContext = {
+      edgeTimeZone: request.cf?.timezone,
       env,
       nonce,
       passThroughOnException: ctx.passThroughOnException.bind(ctx),

@@ -8,6 +8,7 @@ import { ThemesProvider } from "~/src/providers/themes-provider"
 import { TranslationsProvider } from "~/src/providers/translations-provider"
 
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+import { displayPreferencesQuery } from "~/src/integrations/use-intl/i18n.display-preferences"
 import { getRouteNamespaces, preloadNamespaces } from "~/src/integrations/use-intl/i18n.messages"
 import { localeLinks, localizePathname } from "~/src/integrations/use-intl/i18n.paths"
 import { getCurrentLocale, getCurrentPathname } from "~/src/integrations/use-intl/i18n.utils"
@@ -110,11 +111,14 @@ interface RootRouteContext {
 const Route = createRootRouteWithContext<RouterContext>()({
   beforeLoad: async ({ context, location, matches }): Promise<RootRouteContext> => {
     const locale = getCurrentLocale()
-    await preloadNamespaces({
-      locale,
-      namespaces: getRouteNamespaces(matches),
-      queryClient: context.queryClient,
-    })
+    await Promise.all([
+      preloadNamespaces({
+        locale,
+        namespaces: getRouteNamespaces(matches),
+        queryClient: context.queryClient,
+      }),
+      context.queryClient.query(displayPreferencesQuery),
+    ])
 
     return {
       internalPathname: location.pathname,

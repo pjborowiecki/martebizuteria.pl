@@ -2,6 +2,7 @@ import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
+import { isTimeZone, toFormatLocale } from "~/src/integrations/use-intl/i18n.display"
 
 import { dateColumnFilterField, idField, numericColumnFilterField, pageField, pageSizeField } from "~/src/modules/_core/utils/zod-fields"
 import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_FORM_FIELD_MAX, ADMIN_CUSTOMER_STAT_FILTER } from "~/src/modules/user/user.constants"
@@ -159,6 +160,24 @@ const deleteCustomerInputSchema = zod.object({
   userId: zod.string().nonempty(),
 })
 
+const automaticDisplayPreferenceSchema = zod.literal("")
+
+const formatLocaleSchema = zod.string().refine((value) => toFormatLocale(value) === value, { message: "Unsupported format locale" })
+
+const timeZoneSchema = zod.string().refine((value) => isTimeZone(value), { message: "Unknown time zone" })
+
+const formatLocalePreferenceSchema = zod.object({
+  preference: zod.literal("formatLocale"),
+  value: zod.union([automaticDisplayPreferenceSchema, formatLocaleSchema]),
+})
+
+const timeZonePreferenceSchema = zod.object({
+  preference: zod.literal("timeZone"),
+  value: zod.union([automaticDisplayPreferenceSchema, timeZoneSchema]),
+})
+
+const displayPreferenceInputSchema = zod.discriminatedUnion("preference", [formatLocalePreferenceSchema, timeZonePreferenceSchema])
+
 const updateAdminCustomerInputSchema = zod.object({
   id: zod.string().nonempty(),
   values: adminCustomerFormValuesSchema,
@@ -176,6 +195,7 @@ export const userZodSchemas = {
   adminCustomersPageInput: adminCustomersPageInputSchema,
   adminUserMetadata: adminUserMetadataSchema,
   deleteCustomerInput: deleteCustomerInputSchema,
+  displayPreferenceInput: displayPreferenceInputSchema,
   insert: userInsertSchema,
   select: userSelectSchema,
   update: userUpdateSchema,

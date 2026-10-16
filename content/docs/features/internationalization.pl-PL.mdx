@@ -164,7 +164,16 @@ beforeLoad: async ({ context, location, matches }): Promise<RootRouteContext> =>
 
 Zapisuje też ciasteczko języka w efekcie, więc nawigacja po stronie klienta do `/en-US` aktualizuje ciasteczko bez żądania.
 
-`timeZone` to `user.timezone` zalogowanego klienta, odczytywana z zapytania o sesję, a dla gości i klientów, którzy jej nie wybrali — `I18N.DEFAULT_TIMEZONE` (`Europe/Warsaw`). Klient wybiera ją w `/account/profile` spośród stref IANA wymienionych w `TIMEZONES` (`src/modules/_core/constants/timezone.ts`).
+`timeZone` oraz format dat i liczb pochodzą z `displayPreferencesQuery` (`src/integrations/use-intl/i18n.display-preferences.ts`). Główna trasa wczytuje je przed pierwszym renderowaniem, więc serwer i przeglądarka formatują tak samo. Jej funkcja serwerowa zwraca to, co użytkownik zapisał, i to, co wynika z żądania:
+
+- **Zapisane:** `user.timezone` i `user.format_locale`. Zalogowany użytkownik wybiera je w `/account/profile` albo w panelu w Ustawienia → Lokalizacja, a każda lista zaczyna się od pozycji Automatycznie. `updateDisplayPreference` (`src/modules/user/use-cases/update-display-preference.ts`) zapisuje strefę albo format tylko wtedy, gdy środowisko potrafi według nich formatować, a dla pozycji Automatycznie czyści wartość. Better Auth nie przyjmuje żadnego z tych pól jako danych wejściowych.
+- **Wykryte:**
+  - **Strefa czasowa:** strefa, którą przeglądarka zapisała w ciasteczku `marte_time_zone`, potem strefa, którą Cloudflare wyznacza z adresu odwiedzającego (`request.cf.timezone`, przekazywana w kontekście żądania jako `edgeTimeZone`), a na końcu `UTC`.
+  - **Format:** pierwszy użyteczny język z nagłówka `Accept-Language`, a na końcu `en-US`.
+
+Wartość zapisana wygrywa z wykrytą. Po pierwszym renderowaniu `TranslationsProvider` odczytuje strefę czasową samej przeglądarki i zapisuje ją w `marte_time_zone` na potrzeby następnego żądania. Przełącza się na nią od razu, gdy nic nie jest zapisane, a żądanie jedynie ją zgadywało.
+
+`IntlProvider` dostaje wynikową strefę czasową. Format trafia do `DisplayPreferencesContext`, z którego czytają `useFormatter`, `useFormatLocale` i `useDisplayTimeZone` z `src/hooks/use-display-format.ts`. Własne `locale` providera pozostaje językiem strony, bo decyduje też o formach liczby mnogiej w komunikatach. Polska strona może więc pokazywać daty i liczby sformatowane dla innego kraju.
 
 **Zapomnienie przestrzeni nazw to błąd czasu wykonania**, a nie ciche zastępstwo: `useTranslations` na brakującej przestrzeni rzuca wyjątek. Dodanie strony oznacza dodanie jej przestrzeni nazw do `staticData` trasy.
 
@@ -281,7 +290,7 @@ Formularz Stripe Elements jest lokalizowany osobno, przez mapowanie języka apli
 ## Czego brakuje
 
 - **Nie ma przełącznika języka w interfejsie.** Nic w nawigacji, stopce ani strefie konta nie zmienia języka; odwiedzający musi edytować adres. Mechanizm jest kompletny — kontrolki nie ma.
-- Nie ma preferencji języka per użytkownik. `user.timezone` jest zapisywana w `/account/profile` i ustawia strefę czasową providera, ale preferencja języka nie jest nigdzie przechowywana.
+- Nie ma preferencji języka per użytkownik. Strefa czasowa i format dat i liczb są zapisywane dla każdego użytkownika, ale język strony zawsze wynika z adresu URL.
 - Nie ma sprawdzania zgodności katalogów komunikatów. Oba katalogi mają obecnie te same 56 nazw plików, ale nic w `bun run check` nie weryfikuje, czy klucze w środku są zgodne.
 
 ## Dodanie języka

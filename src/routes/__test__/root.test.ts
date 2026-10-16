@@ -18,6 +18,17 @@ vi.mock("~/src/integrations/use-intl/i18n.messages", () => ({
   getRouteNamespaces: () => [],
   preloadNamespaces,
 }))
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
+  displayPreferencesQuery: {
+    queryFn: () =>
+      Promise.resolve({
+        detected: { formatLocale: "en-US", timeZone: "Europe/Warsaw" },
+        saved: { formatLocale: undefined, timeZone: undefined },
+      }),
+    queryKey: ["i18n", "displayPreferences"],
+    staleTime: Number.POSITIVE_INFINITY,
+  },
+}))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({
   getCurrentLocale: () => intl.locale,
   getCurrentPathname: () => intl.pathname,

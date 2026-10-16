@@ -95,7 +95,7 @@ const messages = useSuspenseQueries({
 ```
 
 4. `buildMessageTree` turns the flat list of `["pages.admin.catalog.categories", {...}]` pairs into the nested object `use-intl` expects, by splitting each namespace on `.` and nesting from the inside out, then deep-merging.
-5. `IntlProvider` receives that tree, the locale and `I18N.DEFAULT_TIMEZONE`.
+5. `IntlProvider` receives that tree, the locale and the time zone resolved from `displayPreferencesQuery`.
 
 Because the actual JSON is loaded through `import.meta.glob`, each namespace is a separate chunk. A visitor to the storefront never downloads the admin catalog strings.
 
@@ -123,7 +123,7 @@ tLocale("incompleteToastDescription", {
 
 ## Formatting numbers, dates and money
 
-Never call `Intl` directly in a component. `useFormatter()` from `use-intl/react` is locale- and timezone-aware:
+Never call `Intl` directly in a component. `useFormatter()` from `src/hooks/use-display-format.ts` formats in the user's format locale and time zone, which can differ from the page's language; use-intl's own `useFormatter` would use the page's language:
 
 ```tsx
 const format = useFormatter()
@@ -131,7 +131,7 @@ const format = useFormatter()
 format.dateTime(new Date(getValue()), { dateStyle: "medium" })
 ```
 
-For money, use the currency helpers in `src/modules/_core/utils/currency.ts` with the constants in `src/modules/_core/constants/currency.ts`. Prices are stored as integer minor units — `1499` is 14,99 zł — so formatting is a conversion, not a cast. `src/hooks/use-date-formatter.ts` wraps the common date cases.
+For money, use the currency helpers in `src/modules/_core/utils/currency.ts` with the constants in `src/modules/_core/constants/currency.ts`. Prices are stored as integer minor units — `1499` is 14,99 zł — so formatting is a conversion, not a cast.
 
 ## Typing a message file
 

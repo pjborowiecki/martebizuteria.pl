@@ -227,7 +227,7 @@ A test Worker built with them sends every Stripe call to Stripe, so the other sp
 
 ### Data
 
-`bun run db:reset:test` deletes `.wrangler/test`, applies the whole migration history with `wrangler d1 migrations apply --local`, and runs `scripts/seed-test.ts`. The seed loads the same catalog files as `db:seed:preview` (two necklaces with stock, categories, collections, attributes and delivery methods) and three verified accounts from `e2e/data/accounts.ts`: `admin@marte.example.test`, `new-admin@marte.example.test` and `customer@marte.example.test`. The first admin has two-factor authentication on: the seed stores `ADMIN_TOTP_SECRET` in `two_factor`, encrypted with the `AUTH_SECRET` from `.env.test` as the test Worker expects. `new-admin@marte.example.test` has it off, so a spec can show that such an admin is sent to `/admin/security`.
+`bun run db:reset:test` deletes `.wrangler/test`, applies the whole migration history with `wrangler d1 migrations apply --local`, and runs `scripts/seed-test.ts`. The seed loads the same catalog files as `db:seed:preview` (two necklaces with stock, categories, collections, attributes and delivery methods) and three verified accounts from `e2e/data/accounts.ts`: `admin@marte.example.test`, `new-admin@marte.example.test` and `customer@marte.example.test`. The first admin has two-factor authentication on: the seed stores `ADMIN_TOTP_SECRET` in `two_factor`, encrypted with the `AUTH_SECRET` from `.env.test` as the test Worker expects. `new-admin@marte.example.test` has it off, so a spec can show that such an admin is sent to `/admin/security`. The customer has `Europe/Warsaw` saved as their time zone, so the profile's time zone list opens on a saved choice rather than on Automatic.
 
 ### Writing specs
 

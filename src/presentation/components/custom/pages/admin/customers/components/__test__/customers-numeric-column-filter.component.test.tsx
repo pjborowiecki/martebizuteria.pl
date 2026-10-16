@@ -32,6 +32,7 @@ const customerRow = (id: string, totalSpent: number, averageOrderValue: number):
   createdAt: EPOCH,
   email: `${id}@example.test`,
   emailVerified: true,
+  formatLocale: null,
   id,
   image: null,
   isAnonymous: false,

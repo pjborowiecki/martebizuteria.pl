@@ -1,4 +1,11 @@
 {
+  "displayPreferences": {
+    "timeZone": "Strefa czasowa",
+    "formatLocale": "Format dat i liczb",
+    "automatic": "Automatycznie ({value})",
+    "saved": "Zapisano ustawienie",
+    "error": "Nie udało się zapisać ustawienia"
+  },
   "contentPage": {
     "updated": "Ostatnia aktualizacja: {date}"
   },
