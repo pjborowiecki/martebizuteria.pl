@@ -97,6 +97,7 @@ const profile: CustomerAccount["profile"] = {
   createdAt: new Date("2024-01-10T00:00:00.000Z"),
   email: "anna@example.com",
   emailVerified: true,
+  hasGoogle: false,
   hasPassword: true,
   name: "Anna Kowalska",
   phone: "+48600123456",
