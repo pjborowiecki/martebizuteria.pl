@@ -26,7 +26,7 @@ useRealtimeQuerySync({
 })
 ```
 
-`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) wymienia dziewiętnaście prefiksów kluczy — strona i statystyki dziennika zdarzeń, zamówienia w panelu, `ADMIN_DASHBOARD_QUERY_KEYS.ALL` tego przeglądu, klienci w panelu, klucze all/stats kategorii, kolekcji, produktów i atrybutów produktu, klucze all/by-handle stron treści, stan sprzedaży w panelu, lista kampanii newslettera oraz strona i statystyki subskrybentów newslettera. Mutacja w dowolnym miejscu panelu odświeża każdą inną otwartą kartę panelu.
+`ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`) wymienia dwadzieścia jeden prefiksów kluczy — strona i statystyki dziennika zdarzeń, zamówienia w panelu, `ADMIN_DASHBOARD_QUERY_KEYS.ALL` tego przeglądu, klienci w panelu, klucze all/stats kategorii, kolekcji, produktów i atrybutów produktu, klucze all/by-handle stron treści, stan sprzedaży i próg darmowej dostawy w panelu, metody dostawy w panelu, lista kampanii newslettera oraz strona i statystyki subskrybentów newslettera. Mutacja w dowolnym miejscu panelu odświeża każdą inną otwartą kartę panelu.
 
 Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefaultOpen()` z ciasteczka `sidebar_state` (`src/presentation/theme/sidebar-preference.ts`), a wstawiony inline `SIDEBAR_INIT_SCRIPT` kopiuje wartość z `localStorage` do tego ciasteczka jeszcze przed hydratacją, żeby panel nie migał.
 

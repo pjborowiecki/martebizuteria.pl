@@ -27,7 +27,7 @@ The audit log is the shop's event history and doubles as its analytics store. It
 
 Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` and the composite `audit_log_resource_idx` on (`category`, `resource_id`) — which is what makes "everything that happened to this order" cheap.
 
-## The 75 actions
+## The 80 actions
 
 `AUDIT_LOG_ACTION` in `audit-log.constants.ts`:
 
@@ -39,13 +39,13 @@ Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_se
 | `auth`      | `auth.login`, `auth.login_failed`, `auth.logout`, `auth.password_changed`, `auth.password_reset`, `auth.email_changed`, `auth.email_verified`, `auth.two_factor_enabled`, `auth.two_factor_disabled`, `auth.sessions_revoked`, `auth.role_changed`, `auth.user_banned`, `auth.user_unbanned`                                                                                                                                                                                                        |
 | `customers` | `customer.registered`, `customer.updated`, `customer.deleted`, `customer.cart_item_added`, `customer.cart_abandoned`, `customer.page_viewed`, `customer.deletion_failed`, `customer.orders_claimed`, `customer.list_exported`                                                                                                                                                                                                                                                                       |
 | `email`     | `email.sent`, `email.failed`, `email.deferred`, `email.resend_requested`, `newsletter.sent`, `newsletter.subscriber_confirmed`, `newsletter.subscriber_unsubscribed`, `newsletter.subscriber_erased`, `newsletter.subscriber_list_exported`                                                                                                                                                                                                                                                         |
-| `settings`  | `settings.updated`, `discount.created/updated/deleted`, `sales.paused`, `sales.resumed`, `audit_log.deleted`, `audit_log.exported`                                                                                                                                                                                                                                                                                                                                                                  |
+| `settings`  | `settings.updated`, `discount.created/updated/deleted`, `delivery_method.created/updated/archived/restored/reordered`, `sales.paused`, `sales.resumed`, `audit_log.deleted`, `audit_log.exported`                                                                                                                                                                                                                                                                                                   |
 
-`settings.updated` is declared but nothing emits it. `email.deferred` records an order email whose first attempt Resend did not take and that is being retried, and `email.resend_requested` an admin pressing **Resend email** on the order; see [E-mail](/docs/features/email#delivery-and-retries).
+`settings.updated` is recorded by `setFreeDeliveryThreshold` through `recordSettingsUpdatedAudit`, with the target `free-delivery` and the old and new threshold in its metadata; the `delivery_method.*` actions record the changes made under Settings → Delivery (see [Shipping and delivery](/docs/features/shipping-and-delivery#managing-delivery-methods)). `email.deferred` records an order email whose first attempt Resend did not take and that is being retried, and `email.resend_requested` an admin pressing **Resend email** on the order; see [E-mail](/docs/features/email#delivery-and-retries).
 
 ## Writing an event
 
-Never write `audit_log` directly. `audit-log.events.server.ts` exports a named recorder per action: 67 exported `record*` functions, which are 66 action recorders, two of them for `order.released` (the checkout the Stripe webhook releases, recorded only when it actually released one, and the order an admin marks delivered), plus the `recordOrderEmailOutcome` wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
+Never write `audit_log` directly. `audit-log.events.server.ts` exports the recorders, 73 `record*` functions. Most name one action; `recordListExportedAudit` covers the five list exports, `recordDeliveryMethodAudit` takes one of the five `delivery_method.*` actions and gives an archive its warning severity, and `recordOrderEmailOutcome` is a wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
 
 | Scheduler                     | Actor resolution                                                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -154,7 +154,7 @@ For update actions the recorders carry a structured diff. `audit-log.diff.utils.
 - `formatAuditDetailFromChanges(…)` — the one-line human summary
 - `toAuditMetadataRecord(metadata)` — flattens it for storage
 
-Callers build a snapshot on each side. For a product, `product-audit.utils.ts` has `extractProductAuditSnapshot` and `buildProductAuditChange`, used by `updateCompleteProduct`, which reads the product before and after the write. For a refund, `order-audit.utils.ts` has `buildOrderRefundAuditChange`.
+Callers build a snapshot on each side. For a product, `product-audit.utils.ts` has `extractProductAuditSnapshot` and `buildProductAuditChange`, used by `updateCompleteProduct`, which reads the product before and after the write. For a refund, `order-audit.utils.ts` has `buildOrderRefundAuditChange`. For a delivery method, `toDeliveryMethodAuditSnapshot` in `delivery-method.utils.ts` gives `updateDeliveryMethod` the method's `availability` (offered or hidden), `namePl`, `nameEn` and `price` on each side. The admin shows the fields in `AUDIT_LOG_MONEY_FIELDS` (`amount`, `freeDeliveryThreshold`, `price` and `refundedAmount`) as amounts of money.
 
 ## Automatic auth events
 

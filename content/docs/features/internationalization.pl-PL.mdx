@@ -215,7 +215,7 @@ descriptions: text("descriptions", { mode: "json" }).$type<Product["localeMap"] 
 tags: text("tags", { mode: "json" }).$type<Product["tagsLocaleMap"] | null>(),
 ```
 
-Ten sam kształt pojawia się w `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles` oraz etykiety wewnątrz `allowed_values`) i `content_page` (`titles`, `descriptions` i `bodies`, przy czym `bodies` zawiera Markdown stron `/terms-of-service`, `/privacy-policy` i `/exchanges-and-returns`).
+Ten sam kształt pojawia się w `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles` oraz etykiety wewnątrz `allowed_values`), `content_page` (`titles`, `descriptions` i `bodies`, przy czym `bodies` zawiera Markdown stron `/terms-of-service`, `/privacy-policy` i `/exchanges-and-returns`) i `delivery_method` (`names`, edytowane w Ustawienia → Dostawa, gdzie oba języki są wymagane; zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery#dwie-tabele)).
 
 Odczyt ma trzy poziomy fallbacku. `resolveLocalizedString` w `src/modules/product-attribute/product-attribute.utils.ts` to wspólna implementacja:
 
@@ -303,7 +303,7 @@ Formularz Stripe Elements jest lokalizowany osobno, przez mapowanie języka apli
 2. Utwórz `messages/<locale>/` ze wszystkimi 56 plikami. `loadNamespace` rzuca wyjątek przy brakującym, więc nie jest to opcjonalne.
 3. Dodaj język do każdego zestawu `*.<locale>.mdx` w `content/docs` oraz do każdego `meta.<locale>.json`.
 4. Dodaj nowy język do map `titles`, `descriptions`, `bodies` i `revised_ats` każdego wiersza `content_page` w migracji, zaczynając od polskiego tekstu. Potem przetłumacz każdą stronę w edytorze pod `/admin/content`, który nie zapisze strony, dopóki każdy język nie ma wszystkich trzech pól.
-5. Uzupełnij mapy lokalizacji w JSON w D1; `coerceProductLocaleMap` utrzymuje w tym czasie istniejące wiersze czytelnymi, a `resolveLocalizedString` wraca do polskiego.
+5. Uzupełnij mapy lokalizacji w JSON w D1, także `delivery_method.names`; `coerceProductLocaleMap` utrzymuje w tym czasie istniejące wiersze czytelnymi, a `resolveLocalizedString` wraca do polskiego. Formularz metody dostawy w ustawieniach ma po jednym polu nazwy na język w `NAME_FIELDS` (`delivery-method-fields.tsx`), więc potrzebuje też pola dla nowego języka.
 6. Dodaj język Stripe Elements w `STRIPE_LOCALES` (`stripe.client.ts`) — jest tam `satisfies Record<SupportedLocale, StripeElementLocale>`, więc kontroler typów sam wskaże to miejsce.
 7. Sprawdź `DELIVERY_COUNTRY_CODES` w `delivery-method.constants.ts`, według którego kasa odrzuca każdy inny kraj wysyłki, oraz `POSTAL_CODE_PATTERNS` i kraj dla `libphonenumber-js` w `checkout.validation.utils.ts`, jeśli nowy język oznacza nowy kraj wysyłki.
 

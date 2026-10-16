@@ -41,7 +41,7 @@ INSERT OR IGNORE INTO courier (id, internal_code, is_active, logo, name, created
 ('019f4a10-0000-7000-8000-000000000002', 'marte-atelier', 1, NULL, 'M''ARTE Atelier', unixepoch() * 1000, unixepoch() * 1000);
 ```
 
-It seeds three delivery methods against two couriers: `inpost_locker_standard` (Paczkomat InPost, `type: "locker"`, 1499), `inpost_courier_standard` (Kurier InPost, `type: "courier"`, 1999) and `marte_atelier_pickup` (Odbiór w atelier, `type: "in_store"`, 0).
+It seeds three delivery methods against two couriers, each with its Polish `name`, its `names` in Polish and English and its `rank` in the checkout: `inpost_courier_standard` (Kurier InPost / InPost courier, `type: "courier"`, 1999, rank 0), `inpost_locker_standard` (Paczkomat InPost / InPost parcel locker, `type: "locker"`, 1499, rank 1) and `marte_atelier_pickup` (Odbiór w atelier / Pickup at the atelier, `type: "in_store"`, 0, rank 2). Once the shop is live, the methods are changed in the admin under Settings → Delivery, not in this file (see [Shipping and delivery](/docs/features/shipping-and-delivery#managing-delivery-methods)).
 
 The catalog files are destructive by design. `products.sql` opens with:
 

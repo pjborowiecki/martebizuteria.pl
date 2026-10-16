@@ -186,6 +186,8 @@ return {
 }
 ```
 
+Każdy e-mail do klienta, który podaje metodę dostawy, czyli potwierdzenie oraz e-maile o rozpoczęciu realizacji i o wysyłce, nazywa ją w języku zamówienia, z `names` metody, a e-mail sklepu o nowym zamówieniu w języku sklepu. E-maile o wysyłce i z numerem przesyłki podają też przewoźnika, czyli przewoźnika metody, przy każdym zamówieniu kurierem albo do paczkomatu, a przy odbiorze w pracowni żadnego; numer łączą ze stroną śledzenia InPost tylko wtedy, gdy tym przewoźnikiem jest InPost.
+
 ## Anulowanie, zwrot i nieudana płatność
 
 **Anulowanie.** `cancelOrder` wysyła `order-cancelled.tsx` dopiero wtedy, gdy jego wsad anulował zamówienie, więc anulowanie odrzucone przez wsad niczego nie wysyła. `requestFullOrderRefund` zwraca `amount` zwrotu utworzonego w Stripe, a e-mail podaje tę kwotę i mówi, jak pieniądze wracają; klient z bezpłatnym zamówieniem dowiaduje się, że nie było czego zwracać. `sendOrderCancelledEmail` w `send-order-cancelled-email.server.ts` odczytuje adres, numer, walutę, sumę, język i konto zamówienia przez `getOrderForRefundEmail` i linkuje przycisk konta na originie administratora, tak jak e-mail o wysyłce.

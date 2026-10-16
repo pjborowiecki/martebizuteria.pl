@@ -47,9 +47,9 @@ Wszystkie strony sklepu leżą pod layoutem bez ścieżki `_storefront.tsx`, kt�
 
 ## Proces zamówienia
 
-| Ścieżka     | Stała w `ROUTES` | Plik trasy                           | Uwagi                                                                          |
-| ----------- | ---------------- | ------------------------------------ | ------------------------------------------------------------------------------ |
-| `/checkout` | `CHECKOUT`       | `checkout.tsx`, `checkout.index.tsx` | Własny layout, bez chromu sklepu; brak strażnika — zamówienie działa dla gości |
+| Ścieżka     | Stała w `ROUTES` | Plik trasy                           | Uwagi                                                                                                                                          |
+| ----------- | ---------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/checkout` | `CHECKOUT`       | `checkout.tsx`, `checkout.index.tsx` | Własny layout, bez chromu sklepu, z własną subskrypcją realtime metod dostawy i darmowej dostawy; brak strażnika — zamówienie działa dla gości |
 
 `checkout.tsx` waliduje trzy parametry wyszukiwania: `step`, liczbę całkowitą ograniczoną do zakresu 1–4, `success`, opcjonalną wartość logiczną, oraz `session_id`, identyfikator sesji Checkout, który Stripe dopisuje do `return_url` sesji, a krok płatności dopisuje po płatności potwierdzonej na stronie, o długości co najwyżej 255 znaków. Razem z `success` strona pokazuje potwierdzenie dopiero wtedy, gdy `getCheckoutSessionStatus` zgłosi tę sesję jako `complete`, a w przeciwnym razie wraca do `step=4`. Numer kroku żyje w adresie URL, więc odświeżenie strony zachowuje miejsce, w którym był klient.
 
@@ -116,6 +116,7 @@ Layoutem `/admin` jest `admin.tsx`. Jego `beforeLoad` uruchamia `requireAdmin`, 
 | `/admin/marketing/subscribers`       | `ADMIN_NEWSLETTER_SUBSCRIBERS` | `admin.marketing.subscribers.tsx`                                        |
 | `/admin/settings`                    | `ADMIN_SETTINGS`               | `admin.settings.tsx`, `admin.settings.index.tsx`                         |
 | `/admin/settings/account`            | `ADMIN_SETTINGS_ACCOUNT`       | `admin.settings.account.tsx`                                             |
+| `/admin/settings/delivery`           | `ADMIN_SETTINGS_DELIVERY`      | `admin.settings.delivery.tsx`                                            |
 | `/admin/settings/security`           | `ADMIN_SETTINGS_SECURITY`      | `admin.settings.security.tsx`                                            |
 | `/admin/security`                    | `ADMIN_SECURITY`               | `admin_.security.tsx` (poza layoutem)                                    |
 | `/admin/orders/$orderId/summary`     | `ADMIN_ORDER_SUMMARY`          | `admin_.orders.$orderId.summary.tsx` (poza layoutem)                     |

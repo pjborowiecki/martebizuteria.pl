@@ -63,9 +63,13 @@ D1 nie ma transakcji interaktywnych. `db.batch()` jest atomowe, więc wszystko, 
 
 Jako liczby całkowite w jednostce podrzędnej waluty. `product_variant.price` i `compare_at_price` oraz `order.subtotal`, `tax_total`, `shipping_total`, `discount_total` i `total` to wszystko kolumny `integer`. `order.currency_code` ma trzy znaki i domyślną wartość `PLN`; `STORE_CURRENCY_CODE` również wynosi `PLN`. Wykładniki pochodzą z tabeli ISO 4217 w `src/modules/_core/constants/currency.ts`, więc formatowanie nigdy nie zgaduje dwóch miejsc po przecinku.
 
+## Gdzie zmienia się metody i ceny dostawy?
+
+W panelu, w **Ustawienia → Dostawa** (`/admin/settings/delivery`). Tam dodaje się metody, zmienia ich nazwy w obu językach i ceny, ukrywa, archiwizuje i przywraca je, ustala kolejność, w jakiej wymienia je kasa, oraz ustawia próg darmowej dostawy. `delivery_method.price` i `store_setting.free_delivery_threshold` to jednostki podrzędne, jak każda inna kwota. Plik seeda, `delivery-methods.sql`, wstawia tylko te wiersze, których jeszcze nie ma (`INSERT OR IGNORE`). Zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery#zarządzanie-metodami-dostawy).
+
 ## Jak zmiana w jednej karcie przeglądarki dociera na ekran innego administratora?
 
-Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 14 dla panelu, 11 dla sklepu — i odrzucają komunikaty, które się nie pokrywają.
+Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 21 dla panelu, 14 dla sklepu, 2 dla kasy — i odrzucają komunikaty, które się nie pokrywają.
 
 ## Jak podejrzeć e-mail transakcyjny?
 
@@ -73,7 +77,7 @@ Uruchom serwer developerski i otwórz `/dev/emails`. Trasa jest zdefiniowana w `
 
 ## Co jest zaczęte, ale niedokończone?
 
-Przesyłki InPost nadaje się, drukuje ich etykiety i śledzi ze strony zamówienia w panelu, ale status InPost nie zmienia zamówienia; administrator nadal oznacza je jako wysłane i dostarczone. `cart` i `cart_item` są zarejestrowane w schemacie Drizzle, ale nieużywane. `/admin/settings` obejmuje własne konto administratora i bezpieczeństwo logowania; ustawień całego sklepu, takich jak metody dostawy, jeszcze w nim nie ma.
+Przesyłki InPost nadaje się, drukuje ich etykiety i śledzi ze strony zamówienia w panelu, ale status InPost nie zmienia zamówienia; administrator nadal oznacza je jako wysłane i dostarczone. `cart` i `cart_item` są zarejestrowane w schemacie Drizzle, ale nieużywane. `/admin/settings` obejmuje własne konto administratora i bezpieczeństwo logowania oraz metody dostawy i darmową dostawę w sklepie; innych ustawień całego sklepu, takich jak dane sklepu i zespół administratorów, jeszcze w nim nie ma.
 
 ## Jak zorganizowana jest sama dokumentacja?
 

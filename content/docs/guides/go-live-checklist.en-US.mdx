@@ -78,7 +78,8 @@ Work through the list in order. Each item says what must be true, how to check i
     - the first step of "How to withdraw" on `/exchanges-and-returns` and § 8 on `/terms-of-service` link `/withdraw-from-contract`;
     - `/exchanges-and-returns` no longer says "Okres gwarancji na biżuterię M'Arte wynosi 2 lata" or "The warranty period for M'Arte jewellery is 2 years", and no product description or other text entered in the admin says "gwarancja", "warranty" or "guarantee": the shop gives no guarantee, only the statutory liability for lack of conformity;
     - `/faq` and `/en-US/faq` describe how invoices reach the buyer and how customers hear that a collection order is ready the way the shop does it, and the care advice suits every finish and stone it sells;
-    - every `delivery_method` description in D1 gives the delivery times of § 7 of the terms; the migration that rewrote them left alone a description edited since it was seeded.
+    - every `delivery_method` description in D1 gives the delivery times of § 7 of the terms; the migration that rewrote them left alone a description edited since it was seeded;
+    - **Settings → Delivery** offers the methods § 7 describes, each with its carrier, its price and its name in Polish and English, and free delivery is on only if the shop means to offer it, at the value it means.
 
     A migration that changes one of these sentences skips a language whose sentence was edited, so a sentence still missing has to be added by hand.
 
@@ -108,6 +109,7 @@ These stay with the shop for as long as it sells:
 - Repeat the database export and the image copy of item 16 regularly, for example every week and before a risky migration, and keep only the last few encrypted exports, outside Cloudflare.
 - Act on every alert that reaches `RESEND_EMAIL_FROM`; [Monitoring and alerts](/docs/guides/monitoring-and-alerts#e-mail-alerts-from-the-shop) says what each one means.
 - Before shipping a parcel-locker order, look for the **Locker not confirmed** tag on its admin page. It means InPost could not be reached to confirm the locker when the order was placed, so check in InPost that the locker exists.
+- A delivery method whose carrier is not InPost is shipped by hand: book the parcel on the carrier's own site, then enter both its tracking number and its tracking link when marking the order shipped, because only InPost numbers get a tracking link by themselves.
 - Watch `/admin/audit` for **Account deletion failed**: each one is a customer whose account was kept because Stripe could not delete their Stripe customer. Ask them to try again, or delete the account from `/admin/customers` once Stripe answers.
 - The product editor has no compare-at field yet. To put a variant on sale, lower `product_variant.price` and set `compare_at_price` in D1; the database records the change in `price_history`, and the storefront shows the reduction, with the lowest price of the 30 days before it struck through, only when the new price is below that lowest price. A variant that already had a compare-at price when the price history began shows only its price until its price is cut again. See [Product page](/docs/features/product-page#reduced-prices-and-the-lowest-price-of-the-30-days-before).
 

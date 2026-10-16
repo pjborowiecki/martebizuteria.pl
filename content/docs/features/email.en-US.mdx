@@ -186,6 +186,8 @@ return {
 }
 ```
 
+Every customer e-mail that names the delivery method, the confirmation, the fulfilment started and the shipped e-mails, names it in the order's language from the method's `names`, and the shop's new-order e-mail in the shop's. The shipped and tracking number e-mails also name the carrier, the method's courier, for any courier or locker order, and none for a pickup at the atelier; they link the number to InPost's tracking page only when that carrier is InPost.
+
 ## Cancellation, refund and failed payment
 
 **Cancelled.** `cancelOrder` sends `order-cancelled.tsx` after its batch has cancelled the order, so a cancellation the batch refuses sends nothing. `requestFullOrderRefund` returns the `amount` of the refund Stripe created, and the email states it with how the money comes back; a free order is told there was nothing to refund. `sendOrderCancelledEmail` in `send-order-cancelled-email.server.ts` reads the address, number, currency, total, locale and account of the order with `getOrderForRefundEmail` and links the account button on the admin's origin, as the shipped email does.

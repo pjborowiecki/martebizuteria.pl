@@ -41,7 +41,7 @@ INSERT OR IGNORE INTO courier (id, internal_code, is_active, logo, name, created
 ('019f4a10-0000-7000-8000-000000000002', 'marte-atelier', 1, NULL, 'M''ARTE Atelier', unixepoch() * 1000, unixepoch() * 1000);
 ```
 
-Wstawia trzy metody dostawy dla dwóch kurierów: `inpost_locker_standard` (Paczkomat InPost, `type: "locker"`, 1499), `inpost_courier_standard` (Kurier InPost, `type: "courier"`, 1999) oraz `marte_atelier_pickup` (Odbiór w atelier, `type: "in_store"`, 0).
+Wstawia trzy metody dostawy dla dwóch kurierów, każdą z polską `name`, z `names` po polsku i po angielsku oraz z `rank` w kasie: `inpost_courier_standard` (Kurier InPost / InPost courier, `type: "courier"`, 1999, rank 0), `inpost_locker_standard` (Paczkomat InPost / InPost parcel locker, `type: "locker"`, 1499, rank 1) oraz `marte_atelier_pickup` (Odbiór w atelier / Pickup at the atelier, `type: "in_store"`, 0, rank 2). W działającym sklepie metody zmienia się w panelu, w Ustawienia → Dostawa, a nie w tym pliku (zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery#zarządzanie-metodami-dostawy)).
 
 Pliki katalogowe są celowo destrukcyjne. `products.sql` zaczyna się tak:
 
