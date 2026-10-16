@@ -42,7 +42,7 @@
     "profile": {
       "accountCreated": "Data utworzenia konta: {date}",
       "lastActive": "Ostatnia aktywność {time}",
-      "returningBadge": "Powracający",
+      "returningBadge": "Ponowne zakupy",
       "preferredCategory": "Preferowana kategoria",
       "preferredCollection": "Preferowana kolekcja"
     },
@@ -54,10 +54,10 @@
       "empty": "Brak tagów dla tego klienta.",
       "values": {
         "admin": "Administrator",
-        "banned": "Zablokowany",
+        "banned": "Konto zablokowane",
         "customer": "Klient",
-        "returning": "Powracający",
-        "verified": "Zweryfikowany"
+        "returning": "Ponowne zakupy",
+        "verified": "E-mail zweryfikowany"
       }
     },
     "notes": {
@@ -72,8 +72,8 @@
       "signedIn": "Zalogowano się",
       "signedOut": "Wylogowano się",
       "cartItemAdded": "Dodano {product} do koszyka (×{quantity})",
-      "cartAbandoned": "Opuścił sklep z {count} produktami w koszyku",
-      "pageViewed": "Odwiedził {path}"
+      "cartAbandoned": "Opuszczono sklep z {count} produktami w koszyku",
+      "pageViewed": "Odwiedzono {path}"
     },
     "form": {
       "title": "Edytuj klienta",
@@ -86,7 +86,7 @@
         "addressDescription": "Wyświetlany w profilu klienta i używany jako domyślny adres dostawy, gdy jest dostępny.",
         "notes": "Wewnętrzne notatki",
         "tags": "Własne tagi",
-        "tagsDescription": "Tagi systemowe, np. Zweryfikowany lub Powracający, są przypisywane automatycznie."
+        "tagsDescription": "Tagi systemowe, np. „E-mail zweryfikowany” lub „Ponowne zakupy”, są przypisywane automatycznie."
       },
       "id": "ID klienta",
       "name": "Imię i nazwisko",
@@ -130,7 +130,7 @@
       "toast": {
         "errorTitle": "Nie udało się zapisać klienta",
         "errorDescription": "Sprawdź formularz i spróbuj ponownie.",
-        "successTitle": "Klient zaktualizowany",
+        "successTitle": "Dane klienta zaktualizowane",
         "successDescription": "Zmiany zostały zapisane."
       }
     }
@@ -182,7 +182,7 @@
       "statusOpen": "Otwarta",
       "statusPaused": "Wstrzymana",
       "open": "Klienci mogą przejść do kasy i zapłacić.",
-      "paused": "Sklep wyświetla komunikat, a kasa odrzuca nowe płatności. Płatność, którą klient już rozpoczął, nadal staje się zamówieniem.",
+      "paused": "Sklep wyświetla komunikat, a kasa odrzuca nowe płatności. Płatność rozpoczęta już przez klienta nadal staje się zamówieniem.",
       "switchLabel": "Wstrzymaj sprzedaż",
       "toast": {
         "pausedTitle": "Sprzedaż wstrzymana",
@@ -202,7 +202,7 @@
         "label": "Zamówienia (30 dni)"
       },
       "customers": {
-        "label": "Nowi klienci (30 dni)"
+        "label": "Nowe konta klientów (30 dni)"
       },
       "views": {
         "label": "Wyświetlenia stron (30 dni)"
@@ -366,7 +366,7 @@
       "email_deferred": "E-mail odroczony",
       "email_resend_requested": "Ponowna wysyłka e-maila",
       "newsletter_sent": "Newsletter wysłany",
-      "newsletter_subscriber_unsubscribed": "Subskrybent wypisany",
+      "newsletter_subscriber_unsubscribed": "Wypisanie z newslettera",
       "newsletter_subscriber_erased": "Dane subskrybenta usunięte",
       "order_cancelled": "Zamówienie anulowane",
       "order_delivered": "Zamówienie dostarczone",
@@ -411,7 +411,7 @@
       "order_payment_failed": "Płatność nieudana",
       "order_fulfillment_failed": "Nie utworzono opłaconego zamówienia",
       "customer_tier_upgrade": "Awans poziomu",
-      "customer_registered": "Klient zarejestrowany",
+      "customer_registered": "Rejestracja klienta",
       "auth_login": "Logowanie",
       "auth_login_failed": "Logowanie nieudane",
       "auth_logout": "Wylogowanie",
@@ -424,8 +424,8 @@
       "auth_role_changed": "Rola zmieniona",
       "auth_user_banned": "Konto zablokowane",
       "auth_user_unbanned": "Konto odblokowane",
-      "customer_updated": "Klient zaktualizowany",
-      "customer_deleted": "Klient usunięty",
+      "customer_updated": "Dane klienta zaktualizowane",
+      "customer_deleted": "Konto klienta usunięte",
       "image_uploaded": "Zdjęcie przesłane",
       "audit_log_deleted": "Usunięto wpisy dziennika",
       "audit_log_exported": "Wyeksportowano dziennik zdarzeń",
@@ -485,7 +485,7 @@
       "messages": {
         "cartItemCount": "{count, plural, one {# produkt w koszyku} few {# produkty w koszyku} many {# produktów w koszyku} other {# produktu w koszyku}}",
         "claimedOrderCount": "{count, plural, one {# zamówienie} few {# zamówienia} many {# zamówień} other {# zamówienia}}",
-        "recipientCount": "{count, plural, one {# potwierdzony subskrybent} other {# potwierdzonych subskrybentów}}",
+        "recipientCount": "{count, plural, one {# potwierdzony adres} few {# potwierdzone adresy} many {# potwierdzonych adresów} other {# potwierdzonego adresu}}",
         "stripeCustomerKept": "Nie udało się usunąć klienta w Stripe, więc konto zostało zachowane — {error}"
       },
       "values": {
@@ -549,7 +549,7 @@
           "failed": "Nieudany"
         },
         "refundFailureReason": {
-          "charge_for_pending_refund_disputed": "Klient zgłosił spór, zanim zwrot został zrealizowany",
+          "charge_for_pending_refund_disputed": "Spór zgłoszony przez klienta, zanim zwrot został zrealizowany",
           "declined": "Odrzucony przez partnerów bankowych Stripe",
           "expired_or_canceled_card": "Metoda płatności wygasła albo została zamknięta",
           "insufficient_funds": "Saldo Stripe było za niskie, aż zwrot wygasł",
@@ -702,14 +702,14 @@
         "fulfillSuccessDescription": "Rozpoczęto realizację zamówienia.",
         "shipSuccessDescription": "Zamówienie oznaczono jako wysłane.",
         "trackingSuccessDescription": "Zapisano numer przesyłki.",
-        "emailFailedTitle": "Klient jeszcze nie otrzymał e-maila",
+        "emailFailedTitle": "E-mail do klienta jeszcze nie wysłany",
         "emailFailedDescription": "Resend nie przyjął wiadomości „{email}”. Sklep spróbuje jeszcze dwa razy w ciągu kilku sekund. Jeśli i to się nie uda, wyślij ją ponownie z sekcji „Aktywność” zamówienia, gdzie znajdziesz też szczegóły błędu.",
         "emailAlreadySentTitle": "Bez ponownego e-maila",
         "emailAlreadySentDescription": "Zamówienie było już wcześniej na tym etapie, więc wiadomości „{email}” nie wysłaliśmy drugi raz.",
         "trackingEmailSentTitle": "Wysłano numer przesyłki",
-        "trackingEmailSentDescription": "Zamówienie było już wcześniej oznaczone jako wysłane, więc klient dostał tylko krótką wiadomość z aktualnym numerem przesyłki.",
+        "trackingEmailSentDescription": "Zamówienie było już wcześniej oznaczone jako wysłane, więc do klienta trafiła tylko krótka wiadomość z aktualnym numerem przesyłki.",
         "cancelSuccessDescription": "Zamówienie anulowane, a jego produkty wróciły na stan magazynowy. Opłacone zamówienie pokaże zwrot po potwierdzeniu przez Stripe.",
-        "cancelEmailFailedTitle": "Klient jeszcze nie otrzymał e-maila",
+        "cancelEmailFailedTitle": "E-mail o anulowaniu jeszcze nie wysłany",
         "cancelEmailFailedDescription": "Resend nie przyjął wiadomości o anulowaniu zamówienia. Sklep spróbuje jeszcze dwa razy w ciągu kilku sekund. Jeśli i to się nie uda, wyślij ją ponownie z sekcji „Aktywność” zamówienia, gdzie znajdziesz też szczegóły błędu.",
         "errorTitle": "Nie udało się zaktualizować zamówienia",
         "errorDescription": "Spróbuj ponownie za chwilę.",
@@ -904,7 +904,7 @@
       "empty": "Brak tagów.",
       "labels": {
         "guest": "Bez konta",
-        "returning": "Klient powracający",
+        "returning": "Kolejne zamówienie",
         "locker": "Dostawa do paczkomatu",
         "lockerUnconfirmed": "Paczkomat niepotwierdzony",
         "inStore": "Odbiór w sklepie",
@@ -917,7 +917,7 @@
     },
     "notes": {
       "title": "Notatka klienta",
-      "empty": "Klient nie zostawił notatki."
+      "empty": "Brak notatki od klienta."
     },
     "withdrawals": {
       "title": "Odstąpienie od umowy",
@@ -1024,9 +1024,9 @@
       "subscribers": "Subskrybenci"
     },
     "stats": {
-      "confirmed": "Potwierdzeni subskrybenci",
+      "confirmed": "Potwierdzone adresy",
       "pending": "Czekają na potwierdzenie",
-      "unsubscribed": "Wypisani",
+      "unsubscribed": "Wypisane adresy",
       "total": "Wszystkie adresy"
     },
     "campaigns": {
@@ -1051,7 +1051,7 @@
     },
     "composer": {
       "title": "Nowy newsletter",
-      "description": "Każdy potwierdzony subskrybent otrzyma go w języku, w którym się zapisał.",
+      "description": "Każdy potwierdzony adres otrzyma go w języku wybranym przy zapisie.",
       "fields": {
         "subject": "Temat",
         "body": "Treść listu",
@@ -1062,10 +1062,10 @@
         "sendTest": "Wyślij test do mnie",
         "send": "Wyślij do subskrybentów"
       },
-      "recipients": "{count, plural, =0 {Brak potwierdzonych subskrybentów} one {# potwierdzony subskrybent} few {# potwierdzeni subskrybenci} many {# potwierdzonych subskrybentów} other {# potwierdzonego subskrybenta}}",
+      "recipients": "{count, plural, =0 {Brak potwierdzonych adresów} one {# potwierdzony adres} few {# potwierdzone adresy} many {# potwierdzonych adresów} other {# potwierdzonego adresu}}",
       "confirm": {
         "title": "Wysłać ten newsletter?",
-        "description": "Trafi teraz do {count, plural, one {# potwierdzonego subskrybenta} few {# potwierdzonych subskrybentów} many {# potwierdzonych subskrybentów} other {# potwierdzonego subskrybenta}}, do każdego w jego języku. Wysłanego newslettera nie można cofnąć ani wysłać ponownie.",
+        "description": "Trafi teraz na {count, plural, one {# potwierdzony adres} few {# potwierdzone adresy} many {# potwierdzonych adresów} other {# potwierdzonego adresu}}, na każdy w języku wybranym przy zapisie. Wysłanego newslettera nie można cofnąć ani wysłać ponownie.",
         "cancel": "Edytuj dalej",
         "confirm": "Wyślij teraz"
       },
@@ -1086,7 +1086,7 @@
         "alreadySentTitle": "Ten newsletter został już wysłany",
         "alreadySentDescription": "Jest na liście wysłanych newsletterów i nie zostanie wysłany drugi raz.",
         "noRecipientsTitle": "Nie ma jeszcze do kogo wysłać",
-        "noRecipientsDescription": "Newsletter trafia tylko do potwierdzonych subskrybentów, a na razie nie ma żadnego.",
+        "noRecipientsDescription": "Newsletter trafia tylko na potwierdzone adresy, a na razie nie ma żadnego.",
         "errorTitle": "Nie udało się wysłać newslettera",
         "errorDescription": "Nic nie zostało wysłane. Twój list nadal tu jest, spróbuj ponownie za chwilę.",
         "invalidTitle": "Niektóre pola wymagają poprawy",
@@ -1334,7 +1334,7 @@
         "savedTitle": "Strona zapisana",
         "savedDescription": "Klienci od razu widzą nową wersję.",
         "conflictTitle": "Strona zmieniła się podczas edycji",
-        "conflictDescription": "Ktoś inny zapisał ją wcześniej. Wczytaj ponownie, aby zobaczyć jego wersję — Twoje niezapisane zmiany zostaną odrzucone.",
+        "conflictDescription": "W międzyczasie zapisano inną wersję tej strony. Wczytaj ponownie, aby ją zobaczyć — Twoje niezapisane zmiany zostaną odrzucone.",
         "reload": "Wczytaj ponownie",
         "errorTitle": "Nie udało się zapisać strony",
         "errorDescription": "Twoje zmiany nadal tu są. Sprawdź połączenie i spróbuj ponownie.",

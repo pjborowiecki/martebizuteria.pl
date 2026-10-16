@@ -60,7 +60,7 @@
     "noSavedAddresses": "Brak zapisanych adresów.",
     "blikCode": "Kod BLIK",
     "blikRedirect": "Wpisz 6-cyfrowy kod BLIK z aplikacji bankowej.",
-    "p24Redirect": "Po kliknięciu 'Podsumowanie zamówienia' zostaniesz przekierowany do Przelewy24 w celu opłacenia zamówienia.",
+    "p24Redirect": "Po kliknięciu 'Podsumowanie zamówienia' przekierujemy Cię do Przelewy24 w celu opłacenia zamówienia.",
     "addressBilling": "Adres rozliczeniowy",
     "steps": {
       "contact": "Dane kontaktowe",
@@ -124,7 +124,7 @@
     "paymentSubsteps": {
       "blik": "Po złożeniu zamówienia otrzymasz żądanie kodu BLIK w aplikacji bankowej.",
       "bankTransfer": "Dane do przelewu zostaną podane po złożeniu zamówienia. Przesyłka wysyłana po zaksięgowaniu płatności.",
-      "bankTransferText": "Po kliknięciu \"Złóż zamówienie\", zostaniesz bezpiecznie przekierowany do Przelewy24, aby wybrać swój bank i dokończyć płatność.",
+      "bankTransferText": "Po kliknięciu \"Złóż zamówienie\" bezpiecznie przekierujemy Cię do Przelewy24, gdzie wybierzesz swój bank i dokończysz płatność.",
       "p24Title": "Przelewy24 (P24)"
     },
     "cardholderName": "Imię i nazwisko posiadacza karty",
@@ -232,7 +232,7 @@
       "notStarted": "Ten kod jeszcze nie obowiązuje.",
       "expired": "Ten kod wygasł.",
       "exhausted": "Ten kod został już w pełni wykorzystany.",
-      "alreadyUsed": "Już korzystałeś z tego kodu.",
+      "alreadyUsed": "Ten kod został już przez Ciebie wykorzystany.",
       "held": "Ten kod jest zarezerwowany dla zamówień oczekujących na płatność. Spróbuj ponownie później.",
       "minOrderNotMet": "Twój koszyk nie osiąga minimalnej kwoty dla tego kodu.",
       "error": "Nie udało się sprawdzić kodu. Spróbuj ponownie."
