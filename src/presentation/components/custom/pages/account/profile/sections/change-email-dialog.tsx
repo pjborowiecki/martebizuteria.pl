@@ -13,6 +13,7 @@ import { type ChangeEmailFormValues, changeEmailSchema } from "~/src/integration
 
 import { useActionError } from "~/src/hooks/use-action-error"
 
+import { type DialogVariant } from "~/src/presentation/components/shadcn/_styles/dialog.styles"
 import { Button } from "~/src/presentation/components/shadcn/button"
 import {
   Dialog,
@@ -28,7 +29,12 @@ import { AuthTextField } from "~/src/presentation/components/custom/pages/auth/a
 
 const changeEmailRequest = createClientOnlyFn((input: Parameters<typeof authClient.changeEmail>[0]) => authClient.changeEmail(input))
 
-export const ChangeEmailDialog = ({ currentEmail, onOpenChange, open }: Readonly<ChangeEmailDialogProps>): JSX.Element => {
+export const ChangeEmailDialog = ({
+  currentEmail,
+  onOpenChange,
+  open,
+  variant = "editorial",
+}: Readonly<ChangeEmailDialogProps>): JSX.Element => {
   const t = useTranslations("pages.account.profile.emailDialog")
   const tProfile = useTranslations("pages.account.profile")
   const actionError = useActionError()
@@ -85,7 +91,7 @@ export const ChangeEmailDialog = ({ currentEmail, onOpenChange, open }: Readonly
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="sm:max-w-md" variant="editorial">
+      <DialogContent className="sm:max-w-md" variant={variant}>
         <form onSubmit={handleFormSubmit}>
           <DialogHeader>
             <AccountDialogEyebrow>{tProfile("personalInfo")}</AccountDialogEyebrow>
@@ -116,4 +122,5 @@ interface ChangeEmailDialogProps {
   readonly currentEmail: string
   readonly onOpenChange: (open: boolean) => void
   readonly open: boolean
+  readonly variant?: DialogVariant
 }

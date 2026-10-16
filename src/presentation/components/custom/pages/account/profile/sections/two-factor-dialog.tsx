@@ -1,5 +1,6 @@
 import { type JSX, useCallback } from "react"
 
+import { type DialogVariant } from "~/src/presentation/components/shadcn/_styles/dialog.styles"
 import { Dialog, DialogContent } from "~/src/presentation/components/shadcn/dialog"
 
 import { TwoFactorBackupStep } from "~/src/presentation/components/custom/pages/account/profile/sections/two-factor-backup-step"
@@ -10,7 +11,13 @@ import {
   useTwoFactorSetup,
 } from "~/src/presentation/components/custom/pages/account/profile/sections/use-two-factor-setup"
 
-export const TwoFactorDialog = ({ enabled, onEnabledChange, onOpenChange, open }: Readonly<TwoFactorDialogProps>): JSX.Element => {
+export const TwoFactorDialog = ({
+  enabled,
+  onEnabledChange,
+  onOpenChange,
+  open,
+  variant = "editorial",
+}: Readonly<TwoFactorDialogProps>): JSX.Element => {
   const setup = useTwoFactorSetup({ onEnabled: onEnabledChange })
 
   const close = useCallback(() => {
@@ -49,7 +56,7 @@ export const TwoFactorDialog = ({ enabled, onEnabledChange, onOpenChange, open }
 
   return (
     <Dialog onOpenChange={handleOpenChange} open={open}>
-      <DialogContent className="sm:max-w-md" variant="editorial">
+      <DialogContent className="sm:max-w-md" variant={variant}>
         {setup.step === TWO_FACTOR_STEP.PASSWORD && (
           <TwoFactorPasswordStep disabling={enabled} onCancel={close} onSubmit={submitPassword} />
         )}
@@ -69,4 +76,5 @@ interface TwoFactorDialogProps {
   readonly onEnabledChange: () => void
   readonly onOpenChange: (open: boolean) => void
   readonly open: boolean
+  readonly variant?: DialogVariant
 }
