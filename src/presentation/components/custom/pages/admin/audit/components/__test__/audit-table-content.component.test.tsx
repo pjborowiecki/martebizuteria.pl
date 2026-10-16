@@ -44,6 +44,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-
           onColumnDragOver: () => {},
           onColumnDragStart: () => {},
         },
+        exportSource: { filters: [], list: "audit-log", title: "Audit Log" },
         hasPreferenceOverrides: false,
         isLoading: false,
         persistenceKey: AUDIT_DATA_GRID_KEY,
@@ -69,10 +70,11 @@ describe("AuditTableContent", () => {
     expect(screen.getByText("audit stats")).toBeInTheDocument()
   })
 
-  it("offers the refresh action and every audit facet in the toolbar", () => {
+  it("offers the refresh action, the export and every audit facet in the toolbar", () => {
     renderWithProviders(<AuditTableContent />)
 
     expect(screen.getByText("refresh action")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument()
     expect(screen.getByText("category filter")).toBeInTheDocument()
     expect(screen.getByText("severity filter")).toBeInTheDocument()
     expect(screen.getByText("date filter")).toBeInTheDocument()

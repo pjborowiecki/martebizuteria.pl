@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import {
   coerceNumber,
   formatCalendarDateToIsoDate,
+  formatCalendarTime,
   formatRelativeFromNow,
   formatTimestamp,
   instantOfWallClock,
   normalizeCalendarDate,
   startOfCalendarDate,
   toCalendarDate,
+  toCalendarDateTime,
 } from "~/src/modules/_core/utils/datetime"
 
 const NOW = new Date(2024, 5, 15, 12, 0, 0)
@@ -118,6 +120,32 @@ describe("formatCalendarDateToIsoDate", () => {
 
   it("writes the Warsaw date that has already begun while UTC is still on the day before", () => {
     expect(formatCalendarDateToIsoDate(toCalendarDate("2026-10-14T22:30:00.000Z", "Europe/Warsaw"))).toBe("2026-10-15")
+  })
+})
+
+describe("toCalendarDateTime", () => {
+  it("reads the wall clock of the zone, a day ahead of UTC once Warsaw passes midnight", () => {
+    expect(toCalendarDateTime("2026-10-14T22:30:00.000Z", "Europe/Warsaw")).toStrictEqual({
+      day: 15,
+      hour: 0,
+      minute: 30,
+      month: 10,
+      year: 2026,
+    })
+  })
+
+  it("counts midnight as hour zero rather than twenty-four", () => {
+    expect(toCalendarDateTime(new Date("2026-03-01T00:05:00.000Z"), "UTC")).toMatchObject({ hour: 0, minute: 5 })
+  })
+})
+
+describe("formatCalendarTime", () => {
+  it("pads the hour and the minute with a colon between them", () => {
+    expect(formatCalendarTime({ hour: 9, minute: 5 })).toBe("09:05")
+  })
+
+  it("joins them with the separator it is given", () => {
+    expect(formatCalendarTime({ hour: 14, minute: 34 }, "")).toBe("1434")
   })
 })
 

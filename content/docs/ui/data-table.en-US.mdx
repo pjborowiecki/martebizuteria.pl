@@ -8,13 +8,13 @@ There are two layers with similar names. Keep them apart:
 | Layer                                               | What it is                                                                                                                                      |
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/presentation/components/shadcn/data-table.tsx` | Three tiny primitives: `DataTable` (a `table-fixed` `border-separate` table), `DataTableContainer` (the scroll box) and `dataTableContentStyle` |
-| `src/presentation/components/custom/datagrid/`      | The actual kit: a factory, a table hook, the preference store and 18 components                                                                 |
+| `src/presentation/components/custom/datagrid/`      | The actual kit: a factory, a table hook, the preference store and 19 components                                                                 |
 
 Nothing but the data grid uses the primitives. Every admin list screen uses the kit.
 
 ## The factory
 
-`createDataGrid` (`datagrid/components/create-data-grid.tsx`) builds one grid per screen. It creates a private React context and returns the four compound components bound to it:
+`createDataGrid` (`datagrid/components/create-data-grid.tsx`) builds one grid per screen. It creates a private React context and returns the five compound components bound to it:
 
 ```ts
 export const ORDERS_DATA_GRID_KEY = "admin.orders"
@@ -28,6 +28,7 @@ export const ordersDataGrid = createDataGrid<Order["adminListItem"]>({
 interface DataGrid<TData extends RowData> {
   readonly persistenceKey: string
   readonly Body: () => JSX.Element
+  readonly Export: () => JSX.Element
   readonly Pagination: () => JSX.Element
   readonly Provider: (props: Readonly<{ children: ReactNode; value: DataGridContextValue<TData> }>) => JSX.Element
   readonly Toolbar: (props: Readonly<{ actions?: ReactNode; children?: ReactNode; filters?: ReactNode }>) => JSX.Element
@@ -83,13 +84,13 @@ return (
 
 `const { Body, Pagination, Provider, Toolbar } = ordersDataGrid` sits at the bottom of the file. `DataGridShell` is a `Card` with `grid-rows-[auto_minmax(0,1fr)_auto]`, so toolbar and pagination stay put and only the body scrolls.
 
-`Toolbar` always renders the search box, the column-visibility menu and the reset-layout button. Its `filters` slot is the second row, its `children` sit next to the built-in controls, and its `actions` slot is right-aligned.
+`Toolbar` always renders the search box, the column-visibility menu and the reset-layout button. Its `filters` slot is the second row, its `children` sit next to the built-in controls, and its `actions` slot is right-aligned. `Export` is the export menu; a screen places it among the toolbar's `children`, after its refresh action, and it needs an `exportSource` in the context value (see [Export](#export)).
 
 ## The feature set
 
 `datagrid/lib/data-grid.features.ts` declares the TanStack Table v9 feature set once with `tableFeatures`, and every grid shares it:
 
-- **Columns**: filtering, ordering, pinning, resizing, sizing, visibility, plus a `metaHelper<DataGridColumnMeta>()`.
+- **Columns**: filtering, ordering, pinning, resizing, sizing, visibility. Column meta is not a slot of the feature set: `data-grid.types.ts` adds `DataGridColumnMeta` and `exportValue` to TanStack's own `ColumnMeta` interface, so that `exportValue` is typed with each grid's row.
 - **Rows**: pagination, selection, sorting; filtered, paginated and sorted row models.
 - **Filter functions**: `arrIncludes`, `equals`, `equalsString`, `inDateRange`, `inNumberRange`, `includesString`, `weakEquals`.
 - **Sort functions**: `alphanumeric`, `basic`, `datetime`, `text`.
@@ -171,6 +172,7 @@ columnHelper.accessor("createdAt", {
 | `fillsRemainingWidth`            | This column grows to fill the container                                             |
 | `absorbsTrailingSlack`           | This column takes leftover pixels after layout                                      |
 | `filterOnly`                     | The column stays in the table for filtering but is left out of the rendered layout  |
+| `exportValue`                    | The text the cell shows, for the export; a column without it is never exported      |
 | `preventRowClick`                | Presses and clicks in this cell trigger neither `onRowClick` nor `onRowPointerDown` |
 | `skeletonVariant`                | Which placeholder to draw while loading                                             |
 
@@ -219,7 +221,13 @@ The context value may be widened per screen. `OrdersDataGridValue` extends `Data
 
 In manual mode the total comes from `table.options.rowCount`; otherwise from the filtered row model.
 
-All of the text lives in the `components.datagrid` namespace: `view.label`, `view.columns`, `view.reset`, `sortBy`, `reorderColumn`, `resizeColumn` and `pagination.*`. The `/admin` route preloads that namespace via `staticData.namespaces`.
+All of the text lives in the `components.datagrid` namespace: `view.label`, `view.columns`, `view.reset`, `sortBy`, `reorderColumn`, `resizeColumn`, `pagination.*` and `export.*`. The `/admin` route preloads that namespace via `staticData.namespaces`.
+
+## Export
+
+`DataGridExport` (`datagrid/components/data-grid-export.tsx`) is a menu button with CSV, JSON, XML and TXT. Choosing a format runs `useDataGridExport`: it takes the exportable columns from `getDataGridExportColumns(table)` — the visible columns in the order and pinning the grid shows, those whose meta has an `exportValue` — and the rows from `exportSource.loadRows()`, or, for a grid without it, the rows after filtering and sorting from `table.getPrePaginatedRowModel()`. It adds the search to the source's filters — the source's `search` when it loads its rows, the search box otherwise — builds the document, serialises it with `serializeTableExport` from `src/modules/_core/utils/table-export.ts` and saves it with `downloadTextFile`. The button stays disabled while the rows load, and a failed load shows a toast instead of a file.
+
+The audit grid exports through the server, so a file holds every row of the current selection, while a grid loaded whole exports what it holds. [Add a data table](/docs/guides/add-a-data-table) walks through making a column and a grid exportable.
 
 ## Layout, resizing and reordering
 

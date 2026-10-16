@@ -1,5 +1,6 @@
-import { type RowData, type Table } from "@tanstack/react-table"
+import { type CellData, type RowData, type Table, type TableFeatures } from "@tanstack/react-table"
 
+import { type DataGridExportSource } from "~/src/presentation/components/custom/datagrid/lib/data-grid-export"
 import { type DataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
 
 export type DataGridSkeletonVariant =
@@ -24,6 +25,16 @@ export interface DataGridColumnMeta {
   readonly skeletonVariant?: DataGridSkeletonVariant
 }
 
+declare module "@tanstack/react-table" {
+  interface ColumnMeta<
+    in out TFeatures extends TableFeatures,
+    in out TData extends RowData,
+    TValue extends CellData = CellData,
+  > extends DataGridColumnMeta {
+    readonly exportValue?: (row: TData) => string | undefined
+  }
+}
+
 export type RowMoveDirection = "up" | "down"
 
 export interface ColumnReorderApi {
@@ -44,6 +55,7 @@ export interface RowReorderApi {
 
 export interface DataGridContextValue<TData extends RowData> {
   readonly columnReorder: ColumnReorderApi
+  readonly exportSource?: DataGridExportSource<TData> | undefined
   readonly persistenceKey: string
   readonly onRowClick?: ((row: TData) => void) | undefined
   readonly onRowPointerDown?: ((row: TData) => void) | undefined

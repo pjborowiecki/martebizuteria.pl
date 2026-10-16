@@ -80,6 +80,12 @@ export const toCalendarDate = (value: DateInput, timeZone: string): CalendarDate
   return { day: numberOf("day"), month: numberOf("month"), year: numberOf("year") }
 }
 
+export const toCalendarDateTime = (value: DateInput, timeZone: string): CalendarDateTime => {
+  const numberOf = readNumericParts(value, { ...WALL_CLOCK_PARTS, timeZone })
+
+  return { day: numberOf("day"), hour: numberOf("hour"), minute: numberOf("minute"), month: numberOf("month"), year: numberOf("year") }
+}
+
 export const normalizeCalendarDate = ({ day, month, year }: CalendarDate): CalendarDate =>
   toCalendarDate(new Date(Date.UTC(year, month - 1, day)), "UTC")
 
@@ -105,6 +111,9 @@ const padIsoDatePart = (value: number): string => String(value).padStart(ISO_DAT
 
 export const formatCalendarDateToIsoDate = ({ day, month, year }: CalendarDate): string =>
   `${String(year)}-${padIsoDatePart(month)}-${padIsoDatePart(day)}`
+
+export const formatCalendarTime = ({ hour, minute }: Pick<CalendarDateTime, "hour" | "minute">, separator = ":"): string =>
+  `${padIsoDatePart(hour)}${separator}${padIsoDatePart(minute)}`
 
 export const formatShortDate = (value: DateInput, locale: string = I18N.DEFAULT_LOCALE, timeZone?: string): string =>
   toDate(value).toLocaleDateString(locale, timeZone === undefined ? SHORT_DATE_PARTS : { ...SHORT_DATE_PARTS, timeZone })

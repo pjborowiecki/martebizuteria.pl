@@ -23,6 +23,7 @@ import { useDataGridInstance } from "~/src/presentation/components/custom/datagr
 import { type DataGridContextValue } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
 import { getDataGridColumnIds } from "~/src/presentation/components/custom/datagrid/lib/data-grid.utils"
 import { useAuditColumns } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-columns"
+import { useAuditExportSource } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-export-source"
 import { auditDataGrid } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-data-grid"
 
 export const useAuditDataGrid = (): AuditDataGridValue => {
@@ -38,28 +39,30 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
 
   const [serverSearch, setServerSearch] = useState("")
   const listTotalRef = useRef<number>(EMPTY_AUDIT_PAGE.total)
-  const pageQueryInput = useMemo(
+  const listInput = useMemo(
     () => ({
       category: resolveAuditLogCategoryFilter(filters.category),
       createdAt: filters.createdAt,
-      page: pagination.pageIndex + LIST_PAGE_STEP,
-      pageSize: pagination.pageSize,
       search: serverSearch === "" ? undefined : serverSearch,
       severity: filters.severity,
     }),
-    [filters.category, filters.createdAt, filters.severity, pagination.pageIndex, pagination.pageSize, serverSearch],
+    [filters.category, filters.createdAt, filters.severity, serverSearch],
+  )
+  const pageQueryInput = useMemo(
+    () => ({ ...listInput, page: pagination.pageIndex + LIST_PAGE_STEP, pageSize: pagination.pageSize }),
+    [listInput, pagination.pageIndex, pagination.pageSize],
   )
   useEffect(() => {
     listTotalRef.current = EMPTY_AUDIT_PAGE.total
-  }, [filters.category, filters.createdAt, filters.severity, serverSearch])
+  }, [listInput])
 
-  const pageQueryOptions = listAuditLogsQuery(pageQueryInput)
+  const exportSource = useAuditExportSource(listInput)
   const {
     data = EMPTY_AUDIT_PAGE,
     isPending,
     isPlaceholderData,
   } = useQuery({
-    ...pageQueryOptions,
+    ...listAuditLogsQuery(pageQueryInput),
     placeholderData: keepPreviousData,
     queryFn: async () => {
       const page = await listAuditLogs({
@@ -130,6 +133,7 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
       activeSeverityFilter: filters.severity,
       applyAuditFilter,
       columnReorder,
+      exportSource,
       hasPreferenceOverrides,
       isLoading: showSkeletonRows,
       persistenceKey: auditDataGrid.persistenceKey,
@@ -141,6 +145,7 @@ export const useAuditDataGrid = (): AuditDataGridValue => {
     [
       applyAuditFilter,
       columnReorder,
+      exportSource,
       filters.category,
       filters.createdAt,
       filters.severity,

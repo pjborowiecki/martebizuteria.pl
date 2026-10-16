@@ -359,6 +359,7 @@ export const recordCustomerOrdersClaimedAudit = (email: string, options?: AuditE
 }
 
 const LIST_EXPORT_AUDIT_EVENTS = {
+  auditLogs: { action: AUDIT_LOG_ACTION.AUDIT_LOG_EXPORTED, category: "settings" },
   customers: { action: AUDIT_LOG_ACTION.CUSTOMER_LIST_EXPORTED, category: "customers" },
   newsletterSubscribers: { action: AUDIT_LOG_ACTION.NEWSLETTER_SUBSCRIBER_LIST_EXPORTED, category: "email" },
   orders: { action: AUDIT_LOG_ACTION.ORDER_LIST_EXPORTED, category: "orders" },

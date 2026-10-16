@@ -18,6 +18,7 @@ vi.mock("~/src/modules/audit-log/use-cases/list-audit-logs", () => ({
   listAuditLogs: ({ data }: Readonly<{ data: unknown }>) => server.list(data),
   listAuditLogsQuery: (input: unknown) => ({ queryKey: ["admin", "audit-log", "page", input] }),
 }))
+vi.mock("~/src/modules/audit-log/use-cases/export-audit-logs", () => ({ exportAuditLogs: vi.fn() }))
 vi.mock("~/src/modules/audit-log/use-cases/get-audit-log-stats", () => ({
   getAuditLogStatsQuery: (today: string) => ({
     queryFn: () => server.stats(today),

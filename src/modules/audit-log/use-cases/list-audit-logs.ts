@@ -6,11 +6,11 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
 import { LIST_PAGE_FIRST, buildListPaginationResult, listPaginationParamsFromPage } from "~/src/modules/_core/utils/pagination"
-import { normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import {
   type AdminAuditLogsListParams,
   getAdminAuditLogsPage as auditLogGetAdminAuditLogsPage,
 } from "~/src/modules/audit-log/audit-log.accessors"
+import { buildAdminAuditLogsFilterParams } from "~/src/modules/audit-log/audit-log.admin-list.server"
 import { ADMIN_AUDIT_LOG_PAGE_SIZE, AUDIT_LOG_QUERY_KEYS, AUDIT_LOG_QUERY_STALE_MS } from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { toAdminAuditListItem } from "~/src/modules/audit-log/audit-log.utils"
@@ -19,18 +19,10 @@ import { auditLogZodSchemas } from "~/src/modules/audit-log/audit-log.zod"
 const buildAdminAuditLogsListParams = (
   input: zod.output<typeof auditLogZodSchemas.adminAuditLogsPageInput>,
   timeZone: string,
-): AdminAuditLogsListParams => {
-  const pageSize = input.pageSize ?? ADMIN_AUDIT_LOG_PAGE_SIZE
-
-  return {
-    ...listPaginationParamsFromPage(input.page ?? LIST_PAGE_FIRST, pageSize),
-    category: input.category,
-    createdAt: input.createdAt,
-    search: normalizeAdminSearchTerm(input.search),
-    severity: input.severity,
-    timeZone,
-  }
-}
+): AdminAuditLogsListParams => ({
+  ...listPaginationParamsFromPage(input.page ?? LIST_PAGE_FIRST, input.pageSize ?? ADMIN_AUDIT_LOG_PAGE_SIZE),
+  ...buildAdminAuditLogsFilterParams(input, timeZone),
+})
 
 export interface AdminAuditLogsPageResult {
   readonly hasMore: boolean

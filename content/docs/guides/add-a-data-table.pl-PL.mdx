@@ -1,6 +1,6 @@
 ---
 title: "Dodawanie tabeli danych"
-description: "Zbuduj tabelę panelu na wspólnym datagridzie: kolumny, instancja tabeli, zapamiętane preferencje, akcje paska narzędzi i stronicowanie po stronie serwera."
+description: "Zbuduj tabelę panelu na wspólnym datagridzie: kolumny, instancja tabeli, zapamiętane preferencje, akcje paska narzędzi, eksport i stronicowanie po stronie serwera."
 ---
 
 Każda lista w panelu M'Arte jest zbudowana na jednej wspólnej tabeli danych w `src/presentation/components/custom/datagrid/`. Owija ona TanStack Table v9 i dokłada zmianę szerokości kolumn, przeciąganie kolumn, przypinanie, zapamiętywane per użytkownik preferencje, stan szkieletowy podczas ładowania, pole wyszukiwania z opóźnieniem, przeciąganie wierszy i stronicowanie.
@@ -18,6 +18,8 @@ Najczytelniejszym przykładem od początku do końca jest tabela kategorii w `sr
 | `datagrid/components/selection-column.tsx`       | `selectionColumn(...)` — kolumna z polami wyboru                  |
 | `datagrid/lib/data-grid.features.ts`             | Zestaw `tableFeatures(...)` oraz funkcje filtrowania i sortowania |
 | `datagrid/lib/data-grid.types.ts`                | `DataGridContextValue`, `DataGridColumnMeta`, API przeciągania    |
+| `datagrid/components/data-grid-export.tsx`       | `DataGridExport` — menu eksportu na pasku narzędzi                |
+| `datagrid/lib/data-grid-export.ts`               | `DataGridExportSource`, eksportowane kolumny i filtry             |
 | `datagrid/lib/catalog-table-global-filter.ts`    | `createCatalogTableGlobalFilterFn`                                |
 | `datagrid/lib/data-grid-pagination.constants.ts` | Rozmiary stron: 10, 25, 50, 100, 250, domyślnie 10                |
 
@@ -37,7 +39,7 @@ export const categoriesDataGrid = createDataGrid<ProductCategory["adminListItem"
 })
 ```
 
-`createDataGrid` zwraca `{ Body, Pagination, Provider, Toolbar, persistenceKey, useDataGrid }` — prywatny kontekst React plus cztery komponenty, które z niego czytają. Każda tabela dostaje własny kontekst, więc dwie tabele na jednej stronie nigdy nie dzielą stanu.
+`createDataGrid` zwraca `{ Body, Export, Pagination, Provider, Toolbar, persistenceKey, useDataGrid }` — prywatny kontekst React plus pięć komponentów, które z niego czytają. Każda tabela dostaje własny kontekst, więc dwie tabele na jednej stronie nigdy nie dzielą stanu.
 
 `persistenceKey` jest kluczem przechowywania. Preferencje zapisują się pod `marte:datagrid:v1:<persistenceKey>` w `localStorage`, a wbudowany skrypt z `datagrid/datagrid-init.ts` — wstawiany przez `src/routes/__root.tsx` — czyta je przed hydratacją i ustawia na `<html>` zmienne CSS `--marte-dg-<slug>-<column>`, żeby szerokości kolumn nie skakały przy pierwszym renderowaniu. **Zmiana `persistenceKey` odrzuca zapisany układ tej tabeli u każdego użytkownika.**
 
@@ -64,7 +66,7 @@ columnHelper.accessor("createdAt", {
 Konwencje:
 
 - `id` pochodzi z mapy `*_TABLE_COLUMN_ID` modułu, a `size` i `minSize` z `*_TABLE_COLUMN_SIZE` — oba w pliku stałych modułu. Zapamiętane preferencje są kluczowane identyfikatorem kolumny, więc identyfikator jest tak trwały jak `persistenceKey`.
-- `meta` ma typ `DataGridColumnMeta`. Dostępne opcje to `cellClassName`, `headClassName`, `fillsRemainingWidth`, `absorbsTrailingSlack`, `filterOnly`, `preventRowClick` i `skeletonVariant`. `skeletonVariant` wybiera kształt zaślepki podczas pobierania danych: `badge`, `checkbox`, `date`, `icon`, `iconEnd`, `number`, `recordId`, `text`, `thumbnail` albo `title`.
+- `meta` ma typ `DataGridColumnMeta`. Dostępne opcje to `cellClassName`, `headClassName`, `fillsRemainingWidth`, `absorbsTrailingSlack`, `exportValue`, `filterOnly`, `preventRowClick` i `skeletonVariant`. `exportValue` włącza kolumnę do eksportu; opisuje go krok 5. `skeletonVariant` wybiera kształt zaślepki podczas pobierania danych: `badge`, `checkbox`, `date`, `icon`, `iconEnd`, `number`, `recordId`, `text`, `thumbnail` albo `title`.
 - Kolumny pomocnicze to `select`, `drag`, `image` i `actions` — identyfikatory wymienione w `DATAGRID_UTILITY_COLUMN_IDS`. Nigdy nie da się zmienić ich szerokości ani kolejności i są wyłączone z zapamiętywanych rozmiarów. Ustaw im stałą szerokość przez `fixedDataGridColumnWidth(size)`, które zwraca spójne `size`, `minSize` i `maxSize`.
 - Kolumna z polami wyboru to `selectionColumn(columnHelper, { all: t(...), row: t(...) })`, z etykietami pobieranymi z `*_TABLE_A11Y_KEYS` modułu.
 - Komórki są małymi komponentami deklarowanymi nad budownikiem kolumn, a nie domknięciami w miejscu — dzięki temu można je memoizować i nie przekraczać limitu długości funkcji.
@@ -171,7 +173,75 @@ const { Body, Pagination, Provider, Toolbar } = categoriesDataGrid
 
 `DataGridShell` to karta z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i stronicowanie zachowują wysokość, a treść się przewija. Trzy slota `Toolbar` to `children` (kontrolki wstawiane obok pola wyszukiwania), `filters` oraz `actions` (wyrównane do prawej). Kiedy `hasPreferenceOverrides` jest prawdą, pasek narzędzi pokazuje przycisk resetu połączony z `resetPreferences`.
 
-## 5. Dodaj akcje wiersza i akcje zbiorcze
+## 5. Pozwól wyeksportować tabelę
+
+Menu **Eksportuj** na pasku narzędzi pobiera tabelę jako CSV, JSON, XML albo zwykły tekst. Plik zawiera kolumny, które administrator widzi, w kolejności, w jakiej je widzi, pod nagłówkami, które czyta, oraz wszystkie wiersze wybrane bieżącymi filtrami i wyszukiwaniem — a nie tylko widoczną stronę. Tabela wczytywana w całości eksportuje wiersze w kolejności, którą pokazuje jej sortowanie. Tabela stronicowana na serwerze — dziennik zdarzeń, zamówienia, klienci i subskrybenci newslettera — eksportuje w kolejności serwera, bo sortowanie po nagłówku zmienia tam tylko kolejność widocznej strony; tabela produktów wysyła swoje sortowanie na serwer i eksportuje w tej kolejności.
+
+Kolumna trafia do eksportu, gdy jej `meta` ma `exportValue`: funkcję, która z wiersza robi tekst widoczny w komórce, albo zwraca `undefined` dla pustej komórki. Zapisuj to, co widzi administrator — przetłumaczone etykiety, ceny przez `formatPrice` w formacie administratora, daty przez `useFormatter` — bo plik nie przechowuje surowych wartości. Kolumny bez tej funkcji, takie jak `select`, `drag`, `image` i `actions`, nigdy nie są eksportowane, a kolumna, której nagłówek nie jest zwykłym tekstem, trafiłaby do pliku pod swoim identyfikatorem, więc kolumna do eksportu potrzebuje przetłumaczonego `header`. Z `.../audit/lib/audit-column-defs.tsx`:
+
+```tsx
+columnHelper.accessor("detail", {
+  cell: ({ getValue }) => <AuditDetailCell detail={getValue()} />,
+  header: t("audit.columns.detail"),
+  id: AUDIT_LOG_TABLE_COLUMN_ID.detail,
+  meta: {
+    exportValue: (row) => (row.detail === undefined ? undefined : formatAuditLogDetail(row.detail, { locale: formatLocale, t })),
+    skeletonVariant: "text",
+  },
+  size: AUDIT_LOG_TABLE_COLUMN_SIZE.detail,
+})
+```
+
+`exportValue` ma typ wiersza danej tabeli: `data-grid.types.ts` deklaruje go na interfejsie `ColumnMeta` z TanStack, który zna typ wiersza i rozszerza `DataGridColumnMeta` o pozostałe opcje.
+
+Następnie hook tabeli mówi, co jest eksportowane, dodając `exportSource` do wartości kontekstu:
+
+| Pole       | Znaczenie                                                                                                                                                                          |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list`     | Stała nazwa do nazwy pliku i metadanych, na przykład `audit-log`                                                                                                                   |
+| `title`    | Tytuł strony w języku strony                                                                                                                                                       |
+| `filters`  | Aktywne filtry opisane słowami, jako `{ label, value }`. `exportFilter(label, value)` pomija filtr, który nie jest ustawiony, a `describeDateFilter` opisuje filtr daty            |
+| `loadRows` | Dla tabeli stronicowanej na serwerze wczytuje wszystkie wiersze przez serwerową funkcję eksportu listy, z filtrami, wyszukiwaniem i sortowaniem zapytania o stronę, ale bez strony |
+| `search`   | Dla źródła z `loadRows` wyszukiwanie, które wysłało na serwer — wartość po odczekaniu, a nie tekst wciąż wpisywany w pole wyszukiwania                                             |
+
+Wyszukiwanie eksport dodaje do filtrów sam: `search` źródła z `loadRows` albo pole wyszukiwania tabeli wczytywanej w całości. Taka tabela pomija `loadRows`, a eksport bierze wiersze, które trzyma po zastosowaniu filtrów i sortowania, ze wszystkich stron. Lista zbyt długa na jedno żądanie do Workera wczytuje eksport stronami: `loadRows` dziennika zdarzeń prosi `exportAuditLogs` o kolejne strony po `LIST_PAGE_SIZE_MAX` wpisów, dopóki strona nie wróci niepełna, a każda strona po pierwszej czyta tylko wpisy zapisane przed chwilą ustaloną przez pierwszą stronę, więc wpisy dodane w międzyczasie nie przesuwają stron. Skrót z `.../audit/hooks/use-audit-export-source.ts`:
+
+```ts
+const loadAuditLogPages = async (input: AuditExportInput, page: number, until?: number): Promise<AuditLog["adminListItem"][]> => {
+  const result = await exportAuditLogs({ data: { ...input, page, until } })
+
+  return result.hasMore ? [...result.items, ...(await loadAuditLogPages(input, page + LIST_PAGE_STEP, result.until))] : result.items
+}
+
+return useMemo(
+  () => ({
+    filters: [
+      ...exportFilter(t("audit.columns.category"), input.category === undefined ? undefined : t(`audit.categories.${input.category}`)),
+      ...exportFilter(t("audit.columns.status"), input.severity === undefined ? undefined : t(`audit.severity.${input.severity}`)),
+    ],
+    list: AUDIT_LOG_EXPORT_LIST,
+    loadRows: () => loadAuditLogPages(input, LIST_PAGE_FIRST),
+    search: input.search,
+    title: t("audit.title"),
+  }),
+  [input, t],
+)
+```
+
+Serwerowa funkcja eksportu leży obok listy, w `use-cases/export-<entity>.ts`. Jest zabezpieczona tak samo jak lista, przyjmuje dane wejściowe listy bez `page` i `pageSize`, zwraca wiersze w postaci elementów listy i zapisuje eksport przez `recordListExportedAudit` z wpisem dla listy w `LIST_EXPORT_AUDIT_EVENTS` oraz akcją `*_LIST_EXPORTED` z etykietami w obu językach.
+
+Na koniec wstaw `<Export />` na pasek narzędzi, obok przycisku odświeżania. `Export` rzuca błąd, gdy wartość kontekstu nie ma `exportSource`, więc tabela, której nie należy eksportować, po prostu pomija ten komponent.
+
+Serializatory to zwykłe funkcje w `src/modules/_core/utils/table-export.ts`, testowane w jego katalogu `__test__/`:
+
+- **CSV**: znacznik kolejności bajtów UTF-8, żeby Excel poprawnie odczytał polskie litery, końce wierszy CRLF i cytowanie według RFC 4180. Pola rozdziela średnik, gdy format administratora zapisuje ułamki przecinkiem, jak polski, żeby dwukrotnie kliknięty plik otworzył się w polskim Excelu w kolumnach, a w przeciwnym razie przecinek; pole zawierające separator jest cytowane. Wartość zaczynająca się od `=`, `+`, `-`, `@`, tabulatora albo powrotu karetki dostaje na początku `'`, więc arkusz ją pokazuje, zamiast wykonywać jako formułę.
+- **JSON**: sformatowany, z obiektem `metadata` (`list`, `title`, `exportedAt` w ISO UTC, `timeZone`, `rowCount`, `filters`, `columns`) i `rows` z kluczami według identyfikatorów kolumn.
+- **XML**: XML 1.0 z korzeniem `<export>`, w którym są `<metadata>` i `<rows>`, a w nich jeden `<row>` na wiersz z elementem na każdą kolumnę; pięć znaków specjalnych jest zamienianych na encje, a znaki niedozwolone w XML 1.0 są usuwane.
+- **TXT**: nagłówek z tytułem, czasem eksportu i strefą czasową, liczbą wierszy i filtrami, a potem jeden rekord na wiersz jako linie `Kolumna: wartość`, rozdzielone pustą linią.
+
+Pliki mają nazwy `<list>-<RRRR-MM-DD-GGmm>.<rozszerzenie>` według zegara administratora i są zapisywane przez `downloadTextFile` z `src/modules/_core/utils/download.ts`. Teksty menu leżą pod `export` w przestrzeni `components.datagrid`.
+
+## 6. Dodaj akcje wiersza i akcje zbiorcze
 
 Każda tabela ma dwa komponenty obok siebie:
 
@@ -180,7 +250,7 @@ Każda tabela ma dwa komponenty obok siebie:
 
 Oba wywołują hook `use-delete-<entity>.ts` albo `use-reorder-<entity>.ts`, który jest właścicielem mutacji, powiadomienia i unieważniania cache'u.
 
-## 6. Stronicowanie po stronie serwera, jeśli tabela jest duża
+## 7. Stronicowanie po stronie serwera, jeśli tabela jest duża
 
 Kategorie, kolekcje i atrybuty są ładowane w całości i filtrowane w przeglądarce. Produkty nie: `src/routes/admin.catalog.products.index.tsx` napędza zapytanie serwerowe. Różnicę robią cztery flagi w `useDataGridInstance` plus kontrolowany stan:
 
@@ -208,7 +278,7 @@ const pageQueryOptions = getAdminProductsPageQuery({
 
 Wyszukiwania są opóźniane przed dotarciem do zapytania przez `use-admin-debounced-table-search.ts`, zbudowane na `src/hooks/use-debounce.ts`.
 
-## 7. Przetestuj
+## 8. Przetestuj
 
 Hooki i komponenty tabeli mają testy w `datagrid/**/__test__/`, a każda tabela panelu ma własne w swoim katalogu funkcjonalności. Testy tabel działają w projekcie Vitest `component` (`*.component.test.tsx`), który używa `jsdom` i `src/platform/testing/setup.ts` — ten plik podstawia `ResizeObserver` i `IntersectionObserver`, których tabela potrzebuje do mierzenia kolumn. Zobacz [Pisanie testów](/docs/guides/writing-tests).
 

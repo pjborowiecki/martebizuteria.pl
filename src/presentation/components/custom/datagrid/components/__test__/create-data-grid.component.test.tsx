@@ -36,14 +36,17 @@ const ContextProbe = (): JSX.Element => {
   return <output>{`${persistenceKey}:${searchPlaceholder}`}</output>
 }
 
-const renderGrid = (children: JSX.Element) =>
+const renderGrid = (children: JSX.Element, overrides: Partial<DataGridContextValue<HarnessRow>> = {}) =>
   renderWithProviders(
-    <DataGridHarness>{(table) => <DataGrid.Provider value={contextValue(table)}>{children}</DataGrid.Provider>}</DataGridHarness>,
+    <DataGridHarness>
+      {(table) => <DataGrid.Provider value={{ ...contextValue(table), ...overrides }}>{children}</DataGrid.Provider>}
+    </DataGridHarness>,
   )
 
 describe("createDataGrid", () => {
   afterEach(() => {
     cleanup()
+    vi.restoreAllMocks()
   })
 
   it("keeps the persistence key it was created with", () => {
@@ -77,6 +80,18 @@ describe("createDataGrid", () => {
     renderGrid(<DataGrid.Pagination />)
 
     expect(screen.getByText("1–3 of 3")).toBeInTheDocument()
+  })
+
+  it("renders the export control for a grid that names what it exports", () => {
+    renderGrid(<DataGrid.Export />, { exportSource: { filters: [], list: "products", title: "Products" } })
+
+    expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument()
+  })
+
+  it("refuses to render the export control for a grid that exports nothing", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+
+    expect(() => renderGrid(<DataGrid.Export />)).toThrow("<DataGrid.Export> needs the exportSource of the grid's context value")
   })
 
   it("gives separate grids separate contexts", () => {

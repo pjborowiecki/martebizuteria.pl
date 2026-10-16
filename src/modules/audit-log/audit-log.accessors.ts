@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, lte } from "drizzle-orm"
 
 import { insertRowChunks, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -13,13 +13,16 @@ import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { buildAuditLogDayFilter } from "~/src/modules/audit-log/audit-log.utils"
 
-export interface AdminAuditLogsListParams extends ListPaginationParams {
+export interface AdminAuditLogsFilterParams {
   readonly category?: AuditLogCategory | undefined
   readonly createdAt?: DateTimeColumnFilterValue | undefined
   readonly search?: string | undefined
   readonly severity?: AuditLogSeverity | undefined
   readonly timeZone: string
+  readonly until?: Date | undefined
 }
+
+export interface AdminAuditLogsListParams extends AdminAuditLogsFilterParams, ListPaginationParams {}
 
 export interface AuditLogInsertRow {
   readonly action: string
@@ -58,9 +61,7 @@ const adminAuditLogListColumns = {
   target: auditLog.target,
 } as const
 
-const buildAdminAuditLogsWhere = (
-  params: Pick<AdminAuditLogsListParams, "category" | "createdAt" | "search" | "severity" | "timeZone">,
-): SQL | undefined => {
+const buildAdminAuditLogsWhere = (params: AdminAuditLogsFilterParams): SQL | undefined => {
   const conditions: SQL[] = []
 
   if (params.createdAt !== undefined) {
@@ -73,6 +74,10 @@ const buildAdminAuditLogsWhere = (
 
   if (params.category !== undefined) {
     conditions.push(eq(auditLog.category, params.category))
+  }
+
+  if (params.until !== undefined) {
+    conditions.push(lte(auditLog.createdAt, params.until))
   }
 
   const searchCondition = buildAdminSearchOrCondition(params.search, [
@@ -94,19 +99,16 @@ const buildAdminAuditLogsWhere = (
   return and(...conditions)
 }
 
-const selectAdminAuditLogRows = (params: AdminAuditLogsListParams) => {
-  const whereClause = buildAdminAuditLogsWhere(params)
-
-  return db
+const selectAdminAuditLogRows = (params: AdminAuditLogsListParams) =>
+  db
     .select(adminAuditLogListColumns)
     .from(auditLog)
-    .where(whereClause)
+    .where(buildAdminAuditLogsWhere(params))
     .orderBy(desc(auditLog.createdAt))
     .limit(params.limit)
     .offset(params.offset)
-}
 
-const countAdminAuditLogRows = (params: Pick<AdminAuditLogsListParams, "category" | "createdAt" | "search" | "severity" | "timeZone">) => {
+const countAdminAuditLogRows = (params: AdminAuditLogsFilterParams) => {
   const whereClause = buildAdminAuditLogsWhere(params)
 
   return db.select({ count: count() }).from(auditLog).where(whereClause)

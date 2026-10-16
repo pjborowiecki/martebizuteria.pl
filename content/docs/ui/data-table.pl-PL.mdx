@@ -8,13 +8,13 @@ Istnieją dwie warstwy o podobnych nazwach. Nie mieszaj ich:
 | Warstwa                                             | Czym jest                                                                                                                                            |
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/presentation/components/shadcn/data-table.tsx` | Trzy drobne prymitywy: `DataTable` (tabela `table-fixed` z `border-separate`), `DataTableContainer` (kontener przewijania) i `dataTableContentStyle` |
-| `src/presentation/components/custom/datagrid/`      | Właściwy zestaw: fabryka, hook tabeli, magazyn preferencji i 18 komponentów                                                                          |
+| `src/presentation/components/custom/datagrid/`      | Właściwy zestaw: fabryka, hook tabeli, magazyn preferencji i 19 komponentów                                                                          |
 
 Prymitywów nie używa nic poza tabelą danych. Każdy ekran z listą w panelu używa tego zestawu.
 
 ## Fabryka
 
-`createDataGrid` (`datagrid/components/create-data-grid.tsx`) buduje jedną tabelę na ekran. Tworzy prywatny kontekst Reacta i zwraca cztery komponenty złożone powiązane z tym kontekstem:
+`createDataGrid` (`datagrid/components/create-data-grid.tsx`) buduje jedną tabelę na ekran. Tworzy prywatny kontekst Reacta i zwraca pięć komponentów złożonych powiązanych z tym kontekstem:
 
 ```ts
 export const ORDERS_DATA_GRID_KEY = "admin.orders"
@@ -28,6 +28,7 @@ export const ordersDataGrid = createDataGrid<Order["adminListItem"]>({
 interface DataGrid<TData extends RowData> {
   readonly persistenceKey: string
   readonly Body: () => JSX.Element
+  readonly Export: () => JSX.Element
   readonly Pagination: () => JSX.Element
   readonly Provider: (props: Readonly<{ children: ReactNode; value: DataGridContextValue<TData> }>) => JSX.Element
   readonly Toolbar: (props: Readonly<{ actions?: ReactNode; children?: ReactNode; filters?: ReactNode }>) => JSX.Element
@@ -83,13 +84,13 @@ return (
 
 `const { Body, Pagination, Provider, Toolbar } = ordersDataGrid` znajduje się na końcu pliku. `DataGridShell` to `Card` z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i paginacja zostają na miejscu, a przewija się tylko treść.
 
-`Toolbar` zawsze renderuje pole wyszukiwania, menu widoczności kolumn i przycisk resetowania układu. Slot `filters` to drugi wiersz, `children` sąsiadują z wbudowanymi kontrolkami, a slot `actions` jest wyrównany do prawej.
+`Toolbar` zawsze renderuje pole wyszukiwania, menu widoczności kolumn i przycisk resetowania układu. Slot `filters` to drugi wiersz, `children` sąsiadują z wbudowanymi kontrolkami, a slot `actions` jest wyrównany do prawej. `Export` to menu eksportu; ekran umieszcza je wśród `children` paska narzędzi, za akcją odświeżania, a wymaga ono `exportSource` w wartości kontekstu (zobacz [Eksport](#eksport)).
 
 ## Zestaw funkcji
 
 `datagrid/lib/data-grid.features.ts` deklaruje zestaw funkcji TanStack Table v9 raz, przez `tableFeatures`, i wszystkie tabele go współdzielą:
 
-- **Kolumny**: filtrowanie, kolejność, przypinanie, zmiana rozmiaru, rozmiary, widoczność oraz `metaHelper<DataGridColumnMeta>()`.
+- **Kolumny**: filtrowanie, kolejność, przypinanie, zmiana rozmiaru, rozmiary, widoczność. Meta kolumn nie jest slotem zestawu funkcji: `data-grid.types.ts` dodaje `DataGridColumnMeta` i `exportValue` do interfejsu `ColumnMeta` z TanStack, dzięki czemu `exportValue` ma typ wiersza danej tabeli.
 - **Wiersze**: paginacja, zaznaczanie, sortowanie; modele wierszy filtrowane, paginowane i sortowane.
 - **Funkcje filtrujące**: `arrIncludes`, `equals`, `equalsString`, `inDateRange`, `inNumberRange`, `includesString`, `weakEquals`.
 - **Funkcje sortujące**: `alphanumeric`, `basic`, `datetime`, `text`.
@@ -171,6 +172,7 @@ columnHelper.accessor("createdAt", {
 | `fillsRemainingWidth`            | Ta kolumna rozciąga się, wypełniając kontener                                           |
 | `absorbsTrailingSlack`           | Ta kolumna wchłania piksele pozostałe po rozłożeniu układu                              |
 | `filterOnly`                     | Kolumna zostaje w tabeli do filtrowania, ale jest pomijana w renderowanym układzie      |
+| `exportValue`                    | Tekst widoczny w komórce, do eksportu; kolumna bez tej funkcji nie jest eksportowana    |
 | `preventRowClick`                | Naciśnięcia i kliknięcia w tej komórce nie wywołują `onRowClick` ani `onRowPointerDown` |
 | `skeletonVariant`                | Jaki placeholder rysować w czasie ładowania                                             |
 
@@ -219,7 +221,13 @@ Wartość kontekstu można rozszerzyć dla konkretnego ekranu. `OrdersDataGridVa
 
 W trybie ręcznym suma wierszy pochodzi z `table.options.rowCount`; w przeciwnym razie z modelu wierszy po filtrowaniu.
 
-Wszystkie teksty leżą w przestrzeni nazw `components.datagrid`: `view.label`, `view.columns`, `view.reset`, `sortBy`, `reorderColumn`, `resizeColumn` i `pagination.*`. Trasa `/admin` wczytuje tę przestrzeń z wyprzedzeniem przez `staticData.namespaces`.
+Wszystkie teksty leżą w przestrzeni nazw `components.datagrid`: `view.label`, `view.columns`, `view.reset`, `sortBy`, `reorderColumn`, `resizeColumn`, `pagination.*` i `export.*`. Trasa `/admin` wczytuje tę przestrzeń z wyprzedzeniem przez `staticData.namespaces`.
+
+## Eksport
+
+`DataGridExport` (`datagrid/components/data-grid-export.tsx`) to przycisk z menu z formatami CSV, JSON, XML i TXT. Wybór formatu uruchamia `useDataGridExport`: kolumny do eksportu bierze z `getDataGridExportColumns(table)` — widoczne kolumny w kolejności i z przypięciem, jakie pokazuje tabela, te, których meta ma `exportValue` — a wiersze z `exportSource.loadRows()` albo, w tabeli bez tej funkcji, wiersze po filtrowaniu i sortowaniu z `table.getPrePaginatedRowModel()`. Do filtrów źródła dodaje wyszukiwanie — `search` źródła, gdy samo wczytuje wiersze, a w przeciwnym razie pole wyszukiwania — buduje dokument, serializuje go przez `serializeTableExport` z `src/modules/_core/utils/table-export.ts` i zapisuje przez `downloadTextFile`. Przycisk jest wyłączony, dopóki wiersze się wczytują, a nieudane wczytanie pokazuje komunikat zamiast pliku.
+
+Tabela dziennika zdarzeń eksportuje przez serwer, więc plik zawiera wszystkie wiersze bieżącego wyboru, a tabela wczytywana w całości eksportuje to, co trzyma. [Dodawanie tabeli danych](/docs/guides/add-a-data-table) pokazuje, jak włączyć eksport kolumny i tabeli.
 
 ## Układ, zmiana rozmiaru i kolejności
 

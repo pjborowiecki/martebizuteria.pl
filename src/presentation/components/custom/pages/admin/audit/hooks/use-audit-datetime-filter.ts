@@ -23,7 +23,7 @@ import {
   buildAuditDateTimeFilterOperatorOptions,
 } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-datetime-filter-labels"
 
-const useAuditDateTimeLabel = (): ((isoDateTime: string) => string) => {
+export const useAuditDateTimeLabel = (): ((isoDateTime: string) => string) => {
   const format = useFormatter()
   const timeZone = useDisplayTimeZone()
 

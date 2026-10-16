@@ -423,6 +423,7 @@
       "customer_deleted": "Customer deleted",
       "image_uploaded": "Image uploaded",
       "audit_log_deleted": "Audit entries deleted",
+      "audit_log_exported": "Audit log exported",
       "order_refund_requested": "Refund requested",
       "order_withdrawal_received": "Withdrawal received",
       "customer_cart_abandoned": "Cart abandoned",

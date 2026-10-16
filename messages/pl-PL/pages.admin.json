@@ -423,6 +423,7 @@
       "customer_deleted": "Klient usunięty",
       "image_uploaded": "Zdjęcie przesłane",
       "audit_log_deleted": "Usunięto wpisy dziennika",
+      "audit_log_exported": "Wyeksportowano dziennik zdarzeń",
       "order_refund_requested": "Zlecono zwrot",
       "order_withdrawal_received": "Otrzymano odstąpienie",
       "customer_cart_abandoned": "Porzucony koszyk",

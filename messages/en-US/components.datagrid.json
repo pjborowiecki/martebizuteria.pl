@@ -15,5 +15,29 @@
     "previous": "Previous page",
     "next": "Next page",
     "last": "Last page"
+  },
+  "export": {
+    "label": "Export",
+    "menuLabel": "Export as",
+    "failed": "The table could not be exported",
+    "formats": {
+      "csv": "For Excel, Numbers and Google Sheets",
+      "json": "Structured data for programs and AI assistants",
+      "xml": "For systems that import XML",
+      "txt": "Plain text to read or paste into an AI chat"
+    },
+    "text": {
+      "exportedAt": "Exported",
+      "rowCount": "Rows",
+      "filters": "Filters",
+      "noFilters": "none"
+    },
+    "filters": {
+      "search": "Search",
+      "dateOn": "on {date}",
+      "dateBefore": "before {date}",
+      "dateAfter": "after {date}",
+      "dateBetween": "from {start} to {end}"
+    }
   }
 }

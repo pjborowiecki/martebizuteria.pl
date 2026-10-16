@@ -16,7 +16,6 @@ import {
   filterFn_includesString,
   filterFn_weakEquals,
   globalFilteringFeature,
-  metaHelper,
   rowPaginationFeature,
   rowSelectionFeature,
   rowSortingFeature,
@@ -27,11 +26,8 @@ import {
   tableFeatures,
 } from "@tanstack/react-table"
 
-import { type DataGridColumnMeta } from "~/src/presentation/components/custom/datagrid/lib/data-grid.types"
-
 export const dataGridFeatures = tableFeatures({
   columnFilteringFeature,
-  columnMeta: metaHelper<DataGridColumnMeta>(),
   columnOrderingFeature,
   columnPinningFeature,
   columnResizingFeature,
