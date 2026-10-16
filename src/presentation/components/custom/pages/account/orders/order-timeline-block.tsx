@@ -1,8 +1,10 @@
 import { type JSX } from "react"
 
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 

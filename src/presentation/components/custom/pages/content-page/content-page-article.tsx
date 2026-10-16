@@ -4,10 +4,12 @@ import { useSuspenseQuery } from "@tanstack/react-query"
 import { createMarkdownRenderer } from "fumadocs-core/content/md"
 import { remarkGfm } from "fumadocs-core/mdx-plugins/remark-gfm"
 import { remarkHeading } from "fumadocs-core/mdx-plugins/remark-heading"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { type ContentPageHandle } from "~/src/modules/content-page/content-page.constants"
 import { getContentPageQuery } from "~/src/modules/content-page/use-cases/get-content-page"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { mdxComponents } from "~/src/presentation/components/custom/mdx"
 import { CONTENT_PROSE_CLASS } from "~/src/presentation/components/custom/pages/content-page/content-page.styles"

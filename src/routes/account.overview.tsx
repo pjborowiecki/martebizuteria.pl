@@ -3,7 +3,7 @@ import { type JSX, useMemo } from "react"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { ArrowRight, Heart, Package, Sparkles } from "lucide-react"
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { formatRelativeFromNow } from "~/src/modules/_core/utils/datetime"
@@ -13,6 +13,8 @@ import { type CustomerAccount } from "~/src/modules/customer-account/customer-ac
 import { getCustomerOverviewQuery } from "~/src/modules/customer-account/use-cases/get-customer-overview"
 
 import { Route as AccountRoute } from "~/src/routes/account"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { pageHead } from "~/src/lib/seo"
 

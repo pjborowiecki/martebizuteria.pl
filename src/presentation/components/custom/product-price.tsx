@@ -1,9 +1,11 @@
 import { type JSX } from "react"
 
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 export const ProductPrice = ({ className, price, priceReduction }: ProductPriceProps): JSX.Element => {
   const t = useTranslations("components.custom.productPrice")

@@ -6,6 +6,8 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
+import { DisplayPreferencesContext } from "~/src/hooks/use-display-format"
+
 import { ProductPrice } from "~/src/presentation/components/custom/product-price"
 
 import polishCopy from "~/messages/pl-PL/components.custom.json"
@@ -28,6 +30,16 @@ describe("ProductPrice", () => {
     expect(screen.getByText("PLN 280.00").tagName).toBe("S")
     expect(screen.getByText("PLN 280.00")).toHaveAttribute("aria-hidden", "true")
     expect(screen.getByText("Lowest price in the 30 days before the reduction: PLN 280.00")).toBeInTheDocument()
+  })
+
+  it("formats the lowest price for the shopper's format locale while keeping the page's wording", () => {
+    renderWithProviders(
+      <DisplayPreferencesContext value={{ formatLocale: "de-DE", timeZone: "Europe/Berlin" }}>
+        <ProductPrice className="text-lg" price="200,00 PLN" priceReduction={REDUCTION} />
+      </DisplayPreferencesContext>,
+    )
+
+    expect(screen.getByText("Lowest price in the 30 days before the reduction: 280,00 PLN")).toBeInTheDocument()
   })
 
   it("words the lowest price the way Polish law expects", () => {

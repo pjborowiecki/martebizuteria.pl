@@ -3,10 +3,12 @@ import { type JSX, useCallback } from "react"
 import { type UseQueryResult } from "@tanstack/react-query"
 import { cn } from "cn"
 import { Loader2, Tag, X } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { type Discount } from "~/src/modules/discount/discount.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
 

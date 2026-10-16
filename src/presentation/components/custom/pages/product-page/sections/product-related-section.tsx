@@ -1,10 +1,12 @@
 import { type JSX, useMemo, useRef } from "react"
 
-import { useFormatter, useLocale, useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { type PriceReduction } from "~/src/modules/price-history/price-history.types"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Separator } from "~/src/presentation/components/shadcn/separator"
 

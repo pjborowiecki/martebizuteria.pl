@@ -2,7 +2,7 @@ import { type JSX, useCallback, useMemo, useSyncExternalStore } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { useWatch } from "react-hook-form"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { isCheckoutSessionFor } from "~/src/integrations/stripe/stripe.checkout"
 
@@ -13,6 +13,8 @@ import { useCartStore } from "~/src/modules/cart/cart.store"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 import { type DiscountCheckBasket, validateDiscountCodeQuery } from "~/src/modules/discount/use-cases/validate-discount-code"
 import { computeOrderTotals } from "~/src/modules/order/order.totals"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { getProductImageUrl } from "~/src/lib/image"
 

@@ -3,7 +3,7 @@ import { Fragment, type JSX, useMemo } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 import { ArrowRight, ShoppingBag } from "lucide-react"
-import { useLocale, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
@@ -13,6 +13,7 @@ import { useCartStore } from "~/src/modules/cart/cart.store"
 import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
+import { useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
@@ -27,7 +28,7 @@ import { ROUTES } from "~/src/routes"
 
 const CartPage = (): JSX.Element => {
   const t = useTranslations("pages.cart")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
   const { items, cartTotal } = useCartStore()
   const { hasUnavailableItems, isChecking } = useCartAvailability()
   const { data: salesStatus } = useQuery(getSalesStatusQuery())
@@ -40,7 +41,7 @@ const CartPage = (): JSX.Element => {
     [itemCount],
   )
 
-  const subtotal = formatPrice(cartTotal(), STORE_CURRENCY_CODE, locale)
+  const subtotal = formatPrice(cartTotal(), STORE_CURRENCY_CODE, formatLocale)
 
   if (items.length <= 0) {
     return <EmptyCart />

@@ -1,9 +1,11 @@
 import { type JSX } from "react"
 
 import { Truck } from "lucide-react"
-import { useFormatter, useTranslations } from "use-intl/react"
+import { useTranslations } from "use-intl/react"
 
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
+
+import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { TrackingNumberRow } from "~/src/presentation/components/custom/pages/account/orders/order-tracking-number-row"
 
