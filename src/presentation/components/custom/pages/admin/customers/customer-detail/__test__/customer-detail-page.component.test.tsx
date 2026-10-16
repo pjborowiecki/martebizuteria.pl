@@ -34,6 +34,7 @@ const customer: User["adminCustomerDetail"] = {
   customTags: [],
   email: "anna@example.com",
   emailVerified: true,
+  formatLocale: null,
   id: "user-1",
   image: null,
   initials: "AK",

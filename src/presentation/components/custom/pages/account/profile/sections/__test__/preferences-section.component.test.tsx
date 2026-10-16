@@ -12,11 +12,20 @@ const mocks = vi.hoisted(() => ({
   subscriptionKey: ["newsletter", "ownSubscription"] as const,
   toastSuccess: vi.fn<(message: string) => void>(),
   unsubscribe: vi.fn<() => Promise<unknown>>(),
-  updateUser: vi.fn<(input: { timezone: string }) => Promise<{ error?: { message?: string } }>>(),
+  updateDisplayPreference: vi.fn<(input: { preference: string; value: string }) => Promise<boolean>>(),
 }))
 
-vi.mock("~/src/integrations/better-auth/auth.client", () => ({ authClient: { updateUser: mocks.updateUser } }))
+vi.mock("~/src/modules/user/use-cases/update-display-preference", () => ({
+  updateDisplayPreferenceMutation: { mutationFn: mocks.updateDisplayPreference, mutationKey: ["user", "updateDisplayPreference"] },
+}))
 vi.mock("~/src/modules/session/session.constants", () => ({ SESSION_QUERY_KEYS: { CURRENT: mocks.sessionKey } }))
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
+  displayPreferencesQuery: {
+    queryFn: () => Promise.reject(new Error("display preferences are seeded by the test")),
+    queryKey: ["i18n", "displayPreferences"],
+    staleTime: Number.POSITIVE_INFINITY,
+  },
+}))
 vi.mock("sonner", () => ({ toast: { error: vi.fn(), success: mocks.toastSuccess } }))
 vi.mock("~/src/modules/newsletter/use-cases/get-own-newsletter-subscription", () => ({
   getOwnNewsletterSubscriptionQuery: () => ({
@@ -31,19 +40,25 @@ vi.mock("~/src/modules/newsletter/use-cases/unsubscribe-own-newsletter", () => (
   unsubscribeOwnNewsletterMutation: { mutationFn: mocks.unsubscribe, mutationKey: ["newsletter", "unsubscribeOwn"] },
 }))
 
+import { DISPLAY_PREFERENCES_QUERY_KEY } from "~/src/integrations/use-intl/i18n.display"
+
 import { PreferencesSection } from "~/src/presentation/components/custom/pages/account/profile/sections/preferences-section"
 
-const renderSection = (options: { readonly subscription?: string; readonly timezone?: string } = {}) => {
+const renderSection = (options: { readonly subscription?: string; readonly timeZone?: string } = {}) => {
   mocks.status.current = options.subscription
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
   queryClient.setQueryData(mocks.subscriptionKey, { status: options.subscription })
+  queryClient.setQueryData(DISPLAY_PREFERENCES_QUERY_KEY, {
+    detected: { formatLocale: "en-GB", timeZone: "Europe/Warsaw" },
+    saved: { formatLocale: undefined, timeZone: options.timeZone },
+  })
 
-  return renderWithProviders(<PreferencesSection email="anna@example.com" timezone={options.timezone} />, { queryClient })
+  return renderWithProviders(<PreferencesSection email="anna@example.com" />, { queryClient })
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.updateUser.mockResolvedValue({})
+  mocks.updateDisplayPreference.mockResolvedValue(true)
   mocks.subscribe.mockResolvedValue({ outcome: "confirmationSent" })
   mocks.unsubscribe.mockResolvedValue({ unsubscribed: true })
   mocks.status.current = undefined
@@ -58,22 +73,24 @@ describe("PreferencesSection", () => {
     expect(screen.getByRole("heading", { name: "Preferences" })).toBeInTheDocument()
   })
 
-  it("offers the timezone control", () => {
+  it("offers the time zone and the date and number format", () => {
     renderSection()
 
-    expect(screen.getByLabelText("Timezone")).toBeInTheDocument()
+    expect(screen.getByLabelText("Time zone")).toBeInTheDocument()
+    expect(screen.getByLabelText("Date and number format")).toBeInTheDocument()
   })
 
-  it("shows the timezone the profile carries", () => {
-    renderSection({ timezone: "America/New_York" })
+  it("shows the time zone the customer chose", () => {
+    renderSection({ timeZone: "America/New_York" })
 
-    expect(screen.getByRole("combobox")).toHaveTextContent("America/New_York")
+    expect(screen.getByLabelText("Time zone")).toHaveTextContent("America/New_York")
   })
 
-  it("falls back to the store timezone when the profile carries none", () => {
+  it("follows the detected time zone and format until the customer chooses", () => {
     renderSection()
 
-    expect(screen.getByRole("combobox")).toHaveTextContent("Europe/Warsaw")
+    expect(screen.getByLabelText("Time zone")).toHaveTextContent("Automatic (Europe/Warsaw)")
+    expect(screen.getByLabelText("Date and number format")).toHaveTextContent("Automatic (British English")
   })
 })
 

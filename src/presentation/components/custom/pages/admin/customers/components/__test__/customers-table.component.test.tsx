@@ -135,6 +135,7 @@ const customerRow = (): CustomerRow => ({
   createdAt: new Date("2026-01-01T00:00:00.000Z"),
   email: "anna@example.com",
   emailVerified: true,
+  formatLocale: null,
   id: "user-7",
   image: null,
   isAnonymous: false,

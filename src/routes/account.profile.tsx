@@ -32,7 +32,7 @@ const ProfilePage = (): JSX.Element => {
       <PersonalInfoSection profile={profile} />
       <Separator className="my-10" />
 
-      <PreferencesSection email={profile.email} timezone={profile.timezone} />
+      <PreferencesSection email={profile.email} />
       <Separator className="my-10" />
 
       <SecuritySection hasPassword={profile.hasPassword} twoFactorEnabled={profile.twoFactorEnabled} />

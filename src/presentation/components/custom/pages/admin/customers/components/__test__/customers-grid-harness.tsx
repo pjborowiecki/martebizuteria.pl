@@ -22,6 +22,7 @@ export const customerRow = (overrides: Partial<CustomerRow> = {}): CustomerRow =
   createdAt: new Date(2024, 0, 1),
   email: "anna@example.com",
   emailVerified: true,
+  formatLocale: null,
   id: "user-1",
   image: null,
   isAnonymous: false,

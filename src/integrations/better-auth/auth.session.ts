@@ -3,6 +3,7 @@ import { createServerFn, createServerOnlyFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
 
 import { auth } from "~/src/integrations/better-auth/auth.server"
+import { DISPLAY_PREFERENCES_QUERY_KEY } from "~/src/integrations/use-intl/i18n.display"
 import { isMessagesQuery } from "~/src/integrations/use-intl/i18n.messages"
 
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
@@ -10,6 +11,8 @@ import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 const SESSION_STALE_TIME_MS = 60_000
 
 const SESSION_QUERY_HASH = hashKey(SESSION_QUERY_KEYS.CURRENT)
+
+const DISPLAY_PREFERENCES_QUERY_HASH = hashKey(DISPLAY_PREFERENCES_QUERY_KEY)
 
 const requestSessions = new WeakMap<Request, ReturnType<typeof auth.api.getSession>>()
 
@@ -54,7 +57,11 @@ export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) =
     }
 
     if ("session" in seen && seen.session?.user.id !== session?.user.id) {
-      queryClient.removeQueries({ predicate: (cached) => cached.queryHash !== SESSION_QUERY_HASH && !isMessagesQuery(cached) })
+      queryClient.removeQueries({
+        predicate: (cached) =>
+          cached.queryHash !== SESSION_QUERY_HASH && cached.queryHash !== DISPLAY_PREFERENCES_QUERY_HASH && !isMessagesQuery(cached),
+      })
+      void queryClient.invalidateQueries({ exact: true, queryKey: DISPLAY_PREFERENCES_QUERY_KEY })
     }
     seen.session = session
   })

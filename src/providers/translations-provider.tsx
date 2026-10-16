@@ -1,23 +1,44 @@
-import { type JSX, type ReactNode, useEffect } from "react"
+import { type JSX, type ReactNode, useEffect, useMemo } from "react"
 
-import { useQuery, useSuspenseQueries } from "@tanstack/react-query"
+import { useQueryClient, useSuspenseQueries, useSuspenseQuery } from "@tanstack/react-query"
 import { useMatches, useRouterState } from "@tanstack/react-router"
 import { type AbstractIntlMessages } from "use-intl"
 import { IntlProvider } from "use-intl/react"
 
-import { type getCurrentSession, getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
+import { TIME_ZONE_COOKIE_NAME, isTimeZone, readBrowserTimeZone, resolveDisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
+import { displayPreferencesQuery } from "~/src/integrations/use-intl/i18n.display-preferences"
 import { type NamespaceEntry, buildMessageTree, getRouteNamespaces, messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 import { getCurrentLocale } from "~/src/integrations/use-intl/i18n.utils"
 
-import { serializeCookie } from "~/src/lib/cookie"
+import { DisplayPreferencesContext } from "~/src/hooks/use-display-format"
 
-type CurrentSession = Awaited<ReturnType<typeof getCurrentSession>>
+import { readCookie, serializeCookie } from "~/src/lib/cookie"
 
-const selectTimeZone = (session: CurrentSession): string | undefined => {
-  const timezone = session?.user.timezone
+const useBrowserTimeZone = (detectedTimeZone: string): void => {
+  const queryClient = useQueryClient()
 
-  return timezone === null || timezone === undefined || timezone === "" ? undefined : timezone
+  useEffect(() => {
+    const browserTimeZone = readBrowserTimeZone()
+    if (!isTimeZone(browserTimeZone)) {
+      return
+    }
+
+    if (readCookie({ header: document.cookie, name: TIME_ZONE_COOKIE_NAME }) !== browserTimeZone) {
+      document.cookie = serializeCookie({
+        name: TIME_ZONE_COOKIE_NAME,
+        options: { secure: globalThis.location.protocol === "https:" },
+        value: browserTimeZone,
+      })
+    }
+
+    if (detectedTimeZone !== browserTimeZone) {
+      queryClient.setQueryData(
+        displayPreferencesQuery.queryKey,
+        (state) => state && { ...state, detected: { ...state.detected, timeZone: browserTimeZone } },
+      )
+    }
+  }, [detectedTimeZone, queryClient])
 }
 
 export const TranslationsProvider = ({
@@ -43,7 +64,10 @@ export const TranslationsProvider = ({
     select: getRouteNamespaces,
   })
 
-  const timeZone = useQuery({ ...getCurrentSessionQuery, select: selectTimeZone }).data ?? I18N.DEFAULT_TIMEZONE
+  const { data: preferenceState } = useSuspenseQuery(displayPreferencesQuery)
+  const displayPreferences = useMemo(() => resolveDisplayPreferences(preferenceState), [preferenceState])
+  useBrowserTimeZone(preferenceState.detected.timeZone)
+
   const messages = useSuspenseQueries({
     combine: (results) => buildMessageTree(results.map((result) => result.data)),
     queries: namespaces.map((namespace) =>
@@ -54,8 +78,8 @@ export const TranslationsProvider = ({
   })
 
   return (
-    <IntlProvider locale={locale} messages={messages} timeZone={timeZone}>
-      {children}
+    <IntlProvider locale={locale} messages={messages} timeZone={displayPreferences.timeZone}>
+      <DisplayPreferencesContext value={displayPreferences}>{children}</DisplayPreferencesContext>
     </IntlProvider>
   )
 }

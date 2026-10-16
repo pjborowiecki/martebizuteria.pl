@@ -70,6 +70,7 @@ const ROWS: CustomerRow[] = [
     createdAt: CREATED_AT,
     email: "anna@example.test",
     emailVerified: true,
+    formatLocale: null,
     id: "anna",
     image: null,
     isAnonymous: false,

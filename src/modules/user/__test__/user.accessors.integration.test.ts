@@ -90,7 +90,7 @@ beforeEach(() => {
     create table user (
       id text primary key, name text not null, email text not null, email_verified integer not null default 0,
       phone text, role text not null default 'customer', banned integer default 0, ban_reason text, ban_expires integer,
-      image text, is_anonymous integer default 0, metadata text, stripe_customer_id text, timezone text,
+      image text, is_anonymous integer default 0, metadata text, stripe_customer_id text, timezone text, format_locale text,
       two_factor_enabled integer default 0, created_at integer not null, updated_at integer not null
     );
     create table payment (id text primary key, refunded_amount integer not null default 0, status text);

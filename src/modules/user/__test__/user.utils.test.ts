@@ -35,6 +35,7 @@ const userRow = (overrides: Partial<User["select"]> = {}): User["select"] => ({
   createdAt: new Date(2023, 2, 4),
   email: "anna@example.com",
   emailVerified: false,
+  formatLocale: null,
   id: "user-1",
   image: null,
   isAnonymous: false,

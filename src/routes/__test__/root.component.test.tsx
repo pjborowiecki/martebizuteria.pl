@@ -21,6 +21,17 @@ vi.mock("~/src/integrations/better-auth/auth.session", () => ({
   getCurrentSession: () => Promise.resolve(undefined),
   getCurrentSessionQuery: { queryFn: () => Promise.resolve(undefined), queryKey: ["session", "current"] },
 }))
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
+  displayPreferencesQuery: {
+    queryFn: () =>
+      Promise.resolve({
+        detected: { formatLocale: "en-US", timeZone: "Europe/Warsaw" },
+        saved: { formatLocale: undefined, timeZone: undefined },
+      }),
+    queryKey: ["i18n", "displayPreferences"],
+    staleTime: Number.POSITIVE_INFINITY,
+  },
+}))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({
   getCurrentLocale: () => intl.locale,
   getCurrentPathname: () => intl.pathname,

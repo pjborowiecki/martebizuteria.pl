@@ -164,7 +164,16 @@ beforeLoad: async ({ context, location, matches }): Promise<RootRouteContext> =>
 
 It also writes the locale cookie in an effect, so a client-side navigation into `/en-US` updates the cookie without a request.
 
-`timeZone` is the signed-in customer's `user.timezone`, read from the session query, and `I18N.DEFAULT_TIMEZONE` (`Europe/Warsaw`) for guests and for customers who have not picked one. Customers pick it on `/account/profile` from the IANA zones listed in `TIMEZONES` (`src/modules/_core/constants/timezone.ts`).
+`timeZone`, and the locale dates and numbers are formatted in, come from `displayPreferencesQuery` (`src/integrations/use-intl/i18n.display-preferences.ts`). The root route loads it before the first render, so the server and the browser format the same way. Its server function returns what the user saved and what the request reveals:
+
+- **Saved:** `user.timezone` and `user.format_locale`. A signed-in user picks them on `/account/profile`, or in the admin under Settings → Localization, and each list starts with an Automatic entry. `updateDisplayPreference` (`src/modules/user/use-cases/update-display-preference.ts`) stores a time zone or a locale only if the runtime can format with it, and clears it for Automatic. Better Auth does not accept either field as input.
+- **Detected:**
+  - **Time zone:** the zone the browser reported in the `marte_time_zone` cookie, then the one Cloudflare derives from the visitor's address (`request.cf.timezone`, carried in the request context as `edgeTimeZone`), then `UTC`.
+  - **Format locale:** the first usable language in the `Accept-Language` header, then `en-US`.
+
+A saved value wins over a detected one. After the first render, `TranslationsProvider` reads the browser's own time zone and writes it to `marte_time_zone` for the next request. It switches to that zone straight away when nothing is saved and the request only guessed.
+
+`IntlProvider` gets the resulting time zone. The format locale goes to `DisplayPreferencesContext`, which `useFormatter`, `useFormatLocale` and `useDisplayTimeZone` in `src/hooks/use-display-format.ts` read. The provider's own `locale` stays the page's language, because it also decides the plural forms of the messages. A Polish page can therefore show dates and numbers formatted for another country.
 
 **Forgetting a namespace is a runtime error**, not a silent fallback: `useTranslations` on a missing namespace throws. Adding a page means adding its namespace to the route's `staticData`.
 
@@ -281,7 +290,7 @@ The Stripe Elements form is localised separately, by mapping the app locale to a
 ## What is missing
 
 - **No locale switcher in the UI.** Nothing in the navigation, the footer or the account area changes language; a visitor has to edit the URL. The mechanism is complete — the control is not.
-- No per-user locale preference. `user.timezone` is stored on `/account/profile` and sets the provider's time zone, but no language preference is stored anywhere.
+- No per-user language preference. The time zone and the format locale are stored per user, but the page's language always follows the URL.
 - No message-catalogue parity check. The two directories currently hold the same 56 filenames, but nothing in `bun run check` verifies that the keys inside them match.
 
 ## Adding a locale

@@ -190,9 +190,9 @@ Pliki `migrations/schema.ts` i `migrations/relations.ts` są wynikiem introspekc
 
 ## Katalog migracji
 
-`src/integrations/drizzle-orm/migrations/` zawiera 94 pliki `.sql`. Wrangler stosuje je w kolejności nazw plików i zapisuje zastosowane migracje we własnej tabeli `d1_migrations`; plik `meta/_journal.json` Drizzle czytany jest wyłącznie przez `drizzle-kit generate` przy obliczaniu kolejnej różnicy.
+`src/integrations/drizzle-orm/migrations/` zawiera 95 plików `.sql`. Wrangler stosuje je w kolejności nazw plików i zapisuje zastosowane migracje we własnej tabeli `d1_migrations`; plik `meta/_journal.json` Drizzle czytany jest wyłącznie przez `drizzle-kit generate` przy obliczaniu kolejnej różnicy.
 
-Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc czterdziestu dwóch plików z katalogu w nim nie ma:
+Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc czterdziestu trzech plików z katalogu w nim nie ma:
 
 ```
 20260604143000_product_status_updated_at_idx
@@ -237,6 +237,7 @@ Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc czterdziestu d
 20261015300000_order_delivered_email
 20261015400000_locker_point
 20261016100000_payment_lines
+20261016120000_user_format_locale
 ```
 
 Migracje pisane ręcznie, takie jak `20260927120000_fix_silver_collection_handle.sql`, są w tym repozytorium normalne: naprawy danych, zmiany dotyczące wyłącznie indeksów i nowsze tabele, takie jak `order_number_sequence`, `discount_redemption`, `discount_claim`, `newsletter_subscriber`, `wishlist_item`, `storefront_search`, `content_page`, `store_setting`, `price_history` i `newsletter_campaign`, pisze się bezpośrednio i stosuje Wranglerem. Dziennikowi brakuje jednak także całego indeksu 38 (numeracja biegnie 0–52 z luką), a najnowszy zrzut, `meta/20260930151544_snapshot.json`, jest starszy od każdej z tych tabel, co oznacza, że `drizzle-kit generate` liczy różnicę ze zrzutu, który nie obejmuje wszystkiego, co faktycznie jest w bazie. Po `db:generate` przeczytaj wygenerowane SQL przed zastosowaniem i usuń wszystko, co ponownie tworzy już istniejący obiekt.

@@ -25,7 +25,7 @@ export const I18N = { COOKIE_NAME, DEFAULT_LOCALE, DEFAULT_TIMEZONE, SUPPORTED_L
 
 `SupportedLocale` is derived from the tuple, so adding a locale here is what makes the type system demand the rest: a Stripe locale in `stripe.client.ts`, a `react-day-picker` locale in `react-day-picker.locale.ts`, a JSON file per namespace under `messages/<locale>/`, a second MDX file for every page in `content/docs`, and a title, description and body in that locale for every `content_page` row, entered in the editor at `/admin/content`.
 
-`DEFAULT_TIMEZONE` is the only time zone defined here. The list customers choose from on `/account/profile` is `TIMEZONES` in `src/modules/_core/constants/timezone.ts`.
+`DEFAULT_TIMEZONE` is the store's time zone, which the test providers and the withdrawal form use. The time zone and format locale a page is shown in come from the user's preferences; the lists users choose from are `TIMEZONES` in `src/modules/_core/constants/timezone.ts` and `FORMAT_LOCALES` in `src/integrations/use-intl/i18n.display.ts` (see [Internationalization](/docs/features/internationalization)).
 
 ## URL shape
 
@@ -146,7 +146,7 @@ export const ROOT_NAMESPACES = [...new Set(rootMessagePaths.map((path) => toName
 </IntlProvider>
 ```
 
-`timeZone` is the signed-in customer's `user.timezone` from the session query, or `I18N.DEFAULT_TIMEZONE` for guests and customers who have not picked one.
+`timeZone` is the user's saved time zone, or the one detected for the request, or `UTC` (see [Internationalization](/docs/features/internationalization)). The format locale goes to `DisplayPreferencesContext` next to the provider rather than into it, because the provider's `locale` also picks the plural forms of the messages.
 
 It also writes the locale back into the `marte_locale` cookie from an effect, so a direct visit to `/en-US/...` is remembered.
 

@@ -38,12 +38,13 @@ const adminTwoFactorStatements = [
   `UPDATE user SET two_factor_enabled = 1 WHERE id = ${literal(TEST_ACCOUNTS.admin.id)};`,
   `INSERT INTO two_factor (id, secret, backup_codes, user_id) VALUES (${literal(`${TEST_ACCOUNTS.admin.id}-two-factor`)}, ${literal(await encryptForTestWorker(ADMIN_TOTP_SECRET))}, ${literal(await encryptForTestWorker("[]"))}, ${literal(TEST_ACCOUNTS.admin.id)}) ON CONFLICT(id) DO UPDATE SET secret = excluded.secret, backup_codes = excluded.backup_codes;`,
 ]
+const customerTimeZoneStatement = `UPDATE user SET timezone = 'Europe/Warsaw' WHERE id = ${literal(TEST_ACCOUNTS.customer.id)};`
 const catalogStatements = await Promise.all(CATALOG_SEEDS.map((name) => readFile(`src/integrations/drizzle-orm/seeds/${name}.sql`, "utf8")))
 
 const directory = await mkdtemp(join(tmpdir(), "marte-test-seed-"))
 try {
   const file = join(directory, "seed.sql")
-  await writeFile(file, [...catalogStatements, ...accountStatements, ...adminTwoFactorStatements].join("\n"))
+  await writeFile(file, [...catalogStatements, ...accountStatements, ...adminTwoFactorStatements, customerTimeZoneStatement].join("\n"))
   const result = spawnSync(
     "bun",
     ["x", "wrangler", "d1", "execute", "DB", "--env", "test", "--local", "--persist-to", ".wrangler/test", "--file", file],

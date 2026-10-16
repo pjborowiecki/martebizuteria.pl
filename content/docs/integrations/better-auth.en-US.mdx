@@ -26,7 +26,7 @@ Better Auth owns identity: e-mail and password sign-in, Google OAuth, e-mail ver
 | `account.accountLinking`       | Enabled, with no `trustedProviders` (see [Account linking](#account-linking))                                                                                                                                                                          |
 | `account.encryptOAuthTokens`   | `true`                                                                                                                                                                                                                                                 |
 | `telemetry`                    | Disabled                                                                                                                                                                                                                                               |
-| `user.additionalFields`        | `timezone` (string, optional, accepted as input)                                                                                                                                                                                                       |
+| `user.additionalFields`        | `formatLocale` and `timezone` (strings, optional, not accepted as input: `updateDisplayPreference` validates and writes them)                                                                                                                          |
 | `user.changeEmail`             | Enabled, with `sendChangeEmailConfirmationEmail`                                                                                                                                                                                                       |
 
 Plugins: `admin({ ac, adminRoles, defaultRole, roles })`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })`, the local `signInAudit` and `accountSecurityAudit` from `auth.audit.server.ts`, and `tanstackStartCookies()`. The last one is what makes Better Auth's cookies work with TanStack Start's response handling, and it must stay last in the array.
@@ -351,7 +351,7 @@ export const authClient = createAuthClient({
 export const { signIn, signOut, signUp, resetPassword } = authClient
 ```
 
-`inferAdditionalFields<typeof auth>()` is what gives the client the `timezone` field without a second declaration.
+`inferAdditionalFields<typeof auth>()` is what gives the client the `formatLocale` and `timezone` fields without a second declaration.
 
 Better Auth's `useSession` hook is deliberately not exported: it would run during server rendering, which TanStack Start's import protection rejects for `*.client.*` files in the server build, and it would add a second session request. Components read the session with `useQuery(getCurrentSessionQuery)` instead.
 
@@ -382,7 +382,7 @@ export const Route = createFileRoute("/api/auth/$")({
 
 ## Tables
 
-`user`, `session`, `account`, `verification`, `two_factor` and `rate_limit`. Each is defined in its own module (`src/modules/user/user.schema.ts` and so on) and re-exported from `drizzle.schemas.ts`. `user` carries the application's additions beyond Better Auth's own columns: `role` (enumerated `admin` / `customer`), `phone`, `timezone`, `stripe_customer_id`, `metadata`, and the ban and two-factor flags. `session.token` is a 16 KiB unique text column and `session.user_id` cascades on delete.
+`user`, `session`, `account`, `verification`, `two_factor` and `rate_limit`. Each is defined in its own module (`src/modules/user/user.schema.ts` and so on) and re-exported from `drizzle.schemas.ts`. `user` carries the application's additions beyond Better Auth's own columns: `role` (enumerated `admin` / `customer`), `phone`, `timezone`, `format_locale`, `stripe_customer_id`, `metadata`, and the ban and two-factor flags. `session.token` is a 16 KiB unique text column and `session.user_id` cascades on delete.
 
 ## Secrets
 

@@ -1,4 +1,11 @@
 {
+  "displayPreferences": {
+    "timeZone": "Time zone",
+    "formatLocale": "Date and number format",
+    "automatic": "Automatic ({value})",
+    "saved": "Preference saved",
+    "error": "Could not save the preference"
+  },
   "contentPage": {
     "updated": "Last updated {date}"
   },

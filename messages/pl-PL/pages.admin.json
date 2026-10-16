@@ -614,7 +614,11 @@
       },
       "save": "Zapisz zmiany"
     },
-    "comingSoon": "Ta sekcja będzie dostępna wkrótce."
+    "comingSoon": "Ta sekcja będzie dostępna wkrótce.",
+    "localization": {
+      "title": "Twoja strefa czasowa i formaty",
+      "description": "Wybierz strefę czasową, w której widzisz daty i godziny, oraz format dat i liczb. Ustawienie automatyczne podąża za przeglądarką."
+    }
   },
   "orders": {
     "title": "Zamówienia",

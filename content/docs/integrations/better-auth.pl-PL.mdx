@@ -26,7 +26,7 @@ Plik `src/integrations/better-auth/auth.server.ts` konfiguruje jedną instancję
 | `account.accountLinking`       | Włączone, bez `trustedProviders` (zobacz [Łączenie kont](#łączenie-kont))                                                                                                                                                             |
 | `account.encryptOAuthTokens`   | `true`                                                                                                                                                                                                                                |
 | `telemetry`                    | Wyłączona                                                                                                                                                                                                                             |
-| `user.additionalFields`        | `timezone` (łańcuch, opcjonalne, przyjmowane na wejściu)                                                                                                                                                                              |
+| `user.additionalFields`        | `formatLocale` i `timezone` (łańcuchy, opcjonalne, nieprzyjmowane na wejściu: sprawdza je i zapisuje `updateDisplayPreference`)                                                                                                       |
 | `user.changeEmail`             | Włączone, wraz z `sendChangeEmailConfirmationEmail`                                                                                                                                                                                   |
 
 Wtyczki: `admin({ ac, adminRoles, defaultRole, roles })`, `multiSession({ maximumSessions: 5 })`, `twoFactor({ issuer: APP_NAME })`, lokalne `signInAudit` i `accountSecurityAudit` z `auth.audit.server.ts` oraz `tanstackStartCookies()`. Ostatnia sprawia, że ciasteczka Better Auth współpracują z obsługą odpowiedzi w TanStack Start, i musi pozostać ostatnia w tablicy.
@@ -351,7 +351,7 @@ export const authClient = createAuthClient({
 export const { signIn, signOut, signUp, resetPassword } = authClient
 ```
 
-`inferAdditionalFields<typeof auth>()` daje klientowi pole `timezone` bez drugiej deklaracji.
+`inferAdditionalFields<typeof auth>()` daje klientowi pola `formatLocale` i `timezone` bez drugiej deklaracji.
 
 Hook `useSession` z Better Auth celowo nie jest eksportowany: uruchamiałby się podczas renderowania na serwerze, czego ochrona importów TanStack Start zabrania plikom `*.client.*` w buildzie serwerowym, i dodawałby drugie żądanie o sesję. Komponenty czytają sesję przez `useQuery(getCurrentSessionQuery)`.
 
@@ -382,7 +382,7 @@ Funkcja `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.ser
 
 ## Tabele
 
-`user`, `session`, `account`, `verification`, `two_factor` i `rate_limit`. Każda z nich definiowana jest we własnym module (`src/modules/user/user.schema.ts` i tak dalej) i ponownie eksportowana z `drizzle.schemas.ts`. Tabela `user` nosi dodatki aplikacji wykraczające poza własne kolumny Better Auth: `role` (wyliczenie `admin` / `customer`), `phone`, `timezone`, `stripe_customer_id`, `metadata` oraz flagi blokady i dwóch czynników. `session.token` to unikalna kolumna tekstowa o długości 16 KiB, a `session.user_id` kaskaduje przy usuwaniu.
+`user`, `session`, `account`, `verification`, `two_factor` i `rate_limit`. Każda z nich definiowana jest we własnym module (`src/modules/user/user.schema.ts` i tak dalej) i ponownie eksportowana z `drizzle.schemas.ts`. Tabela `user` nosi dodatki aplikacji wykraczające poza własne kolumny Better Auth: `role` (wyliczenie `admin` / `customer`), `phone`, `timezone`, `format_locale`, `stripe_customer_id`, `metadata` oraz flagi blokady i dwóch czynników. `session.token` to unikalna kolumna tekstowa o długości 16 KiB, a `session.user_id` kaskaduje przy usuwaniu.
 
 ## Sekrety
 

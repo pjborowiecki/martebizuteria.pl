@@ -614,7 +614,11 @@
       },
       "save": "Save changes"
     },
-    "comingSoon": "This section is coming soon."
+    "comingSoon": "This section is coming soon.",
+    "localization": {
+      "title": "Your time zone and formats",
+      "description": "Choose the time zone dates and times are shown in, and the locale that formats dates and numbers. Automatic follows your browser."
+    }
   },
   "orders": {
     "title": "Orders",

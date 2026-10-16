@@ -34,6 +34,7 @@ const customer = (overrides: Partial<AdminCustomerRow> = {}): AdminCustomerRow =
   createdAt: CREATED_AT,
   email: "ada@example.test",
   emailVerified: true,
+  formatLocale: null,
   id: "user-verified",
   image: null,
   isAnonymous: false,
