@@ -150,7 +150,6 @@
     "coupons": "Coupons",
     "content": "Content",
     "audit": "Audit Log",
-    "security": "Security",
     "settings": "Settings"
   },
   "media": {
@@ -572,53 +571,6 @@
     "optional": "Two-factor authentication is optional in this environment, so the admin panel is already open. In production, the admin panel opens only once it is on.",
     "enabled": "Two-factor authentication is on. Signing in with your password also asks for a code from your authenticator app.",
     "openAdmin": "Go to the admin panel"
-  },
-  "settings": {
-    "title": "Settings",
-    "description": "Manage your store configuration and preferences.",
-    "tabs": {
-      "general": "General",
-      "account": "Account",
-      "shipping": "Shipping",
-      "appearance": "Appearance",
-      "security": "Security",
-      "localization": "Localization"
-    },
-    "general": {
-      "storeInfo": {
-        "title": "Store Information",
-        "description": "Basic details about your store.",
-        "name": "Store name",
-        "email": "Contact email",
-        "desc": "Description"
-      },
-      "preferences": {
-        "title": "Preferences",
-        "description": "Configure how your store operates.",
-        "maintenance": {
-          "label": "Maintenance mode",
-          "description": "Temporarily disable the storefront for visitors."
-        },
-        "inventoryTracking": {
-          "label": "Inventory tracking",
-          "description": "Automatically track stock levels for all products."
-        },
-        "autoFulfillment": {
-          "label": "Automatic fulfillment",
-          "description": "Automatically fulfill orders when payment is captured."
-        },
-        "orderConfirmation": {
-          "label": "Order confirmation emails",
-          "description": "Send a confirmation email when an order is placed."
-        }
-      },
-      "save": "Save changes"
-    },
-    "comingSoon": "This section is coming soon.",
-    "localization": {
-      "title": "Your time zone and formats",
-      "description": "Choose the time zone dates and times are shown in, and the locale that formats dates and numbers. Automatic follows your browser."
-    }
   },
   "orders": {
     "title": "Orders",

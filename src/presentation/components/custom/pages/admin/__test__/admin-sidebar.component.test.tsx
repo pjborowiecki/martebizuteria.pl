@@ -51,7 +51,7 @@ describe("AdminSidebar", () => {
     expect(screen.getByText("Orders").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_ORDERS)
     expect(screen.getByText("Customers").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_CUSTOMERS)
     expect(screen.getByText("Audit Log").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_AUDIT)
-    expect(screen.getByText("Security").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_SECURITY)
+    expect(screen.getByText("Settings").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_SETTINGS)
     expect(screen.getByText("Coupons").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_COUPONS)
     expect(screen.getByText("Content").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_CONTENT)
     expect(screen.getByText("Marketing").closest("a")).toHaveAttribute("href", ROUTES.ADMIN_MARKETING)
@@ -69,14 +69,11 @@ describe("AdminSidebar", () => {
     expect(screen.getByText("Marketing").closest("a")).toHaveAttribute("data-active")
   })
 
-  it("renders the unbuilt settings as a plain button that navigates nowhere", () => {
-    renderSidebar(ROUTES.ADMIN_OVERVIEW)
+  it("keeps the settings entry active on every settings section and drops the separate security entry", () => {
+    renderSidebar(ROUTES.ADMIN_SETTINGS_SECURITY)
 
-    const trigger = screen.getByText("Settings").closest("button")
-
-    expect(trigger).toBeInTheDocument()
-    expect(trigger).toHaveAttribute("data-trigger-disabled")
-    expect(screen.getByText("Settings").closest("a")).toBeNull()
+    expect(screen.getByText("Settings").closest("a")).toHaveAttribute("data-active")
+    expect(screen.queryByText("Security")).toBeNull()
   })
 
   it("marks the dashboard entry active on the overview route", () => {

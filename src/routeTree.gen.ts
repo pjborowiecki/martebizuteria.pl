@@ -72,6 +72,9 @@ import { Route as AdminMarketingNewRouteImport } from './routes/admin.marketing.
 import { Route as AdminMarketingSubscribersRouteImport } from './routes/admin.marketing.subscribers'
 import { Route as AdminOrdersIndexRouteImport } from './routes/admin.orders.index'
 import { Route as AdminOrdersOrderIdRouteImport } from './routes/admin.orders.$orderId'
+import { Route as AdminSettingsIndexRouteImport } from './routes/admin.settings.index'
+import { Route as AdminSettingsAccountRouteImport } from './routes/admin.settings.account'
+import { Route as AdminSettingsSecurityRouteImport } from './routes/admin.settings.security'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 import { Route as ApiNewsletterUnsubscribeRouteImport } from './routes/api/newsletter.unsubscribe'
 import { Route as ApiWebhooksInpostRouteImport } from './routes/api/webhooks.inpost'
@@ -409,6 +412,21 @@ const AdminOrdersOrderIdRoute = AdminOrdersOrderIdRouteImport.update({
   path: '/orders/$orderId',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdminSettingsRoute,
+} as any)
+const AdminSettingsAccountRoute = AdminSettingsAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AdminSettingsRoute,
+} as any)
+const AdminSettingsSecurityRoute = AdminSettingsSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => AdminSettingsRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -497,7 +515,7 @@ export interface FileRoutesByFullPath {
   '/admin/catalog': typeof AdminCatalogRouteWithChildren
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/overview': typeof AdminOverviewRoute
-  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/settings': typeof AdminSettingsRouteWithChildren
   '/admin/security': typeof AdminSecurityRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -526,6 +544,8 @@ export interface FileRoutesByFullPath {
   '/admin/marketing/new': typeof AdminMarketingNewRoute
   '/admin/marketing/subscribers': typeof AdminMarketingSubscribersRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
+  '/admin/settings/account': typeof AdminSettingsAccountRoute
+  '/admin/settings/security': typeof AdminSettingsSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
   '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
@@ -540,6 +560,7 @@ export interface FileRoutesByFullPath {
   '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/marketing/': typeof AdminMarketingIndexRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
   '/admin/catalog/collections/$handle': typeof AdminCatalogCollectionsHandleRoute
   '/admin/orders/$orderId/summary': typeof AdminOrdersOrderIdSummaryRoute
@@ -566,7 +587,6 @@ export interface FileRoutesByTo {
   '/admin/audit': typeof AdminAuditRoute
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/overview': typeof AdminOverviewRoute
-  '/admin/settings': typeof AdminSettingsRoute
   '/admin/security': typeof AdminSecurityRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -592,6 +612,8 @@ export interface FileRoutesByTo {
   '/admin/marketing/new': typeof AdminMarketingNewRoute
   '/admin/marketing/subscribers': typeof AdminMarketingSubscribersRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
+  '/admin/settings/account': typeof AdminSettingsAccountRoute
+  '/admin/settings/security': typeof AdminSettingsSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
   '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
@@ -606,6 +628,7 @@ export interface FileRoutesByTo {
   '/admin/customers': typeof AdminCustomersIndexRoute
   '/admin/marketing': typeof AdminMarketingIndexRoute
   '/admin/orders': typeof AdminOrdersIndexRoute
+  '/admin/settings': typeof AdminSettingsIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
   '/admin/catalog/collections/$handle': typeof AdminCatalogCollectionsHandleRoute
   '/admin/orders/$orderId/summary': typeof AdminOrdersOrderIdSummaryRoute
@@ -639,7 +662,7 @@ export interface FileRoutesById {
   '/admin/catalog': typeof AdminCatalogRouteWithChildren
   '/admin/coupons': typeof AdminCouponsRoute
   '/admin/overview': typeof AdminOverviewRoute
-  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/settings': typeof AdminSettingsRouteWithChildren
   '/admin_/security': typeof AdminSecurityRoute
   '/api/health': typeof ApiHealthRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -669,6 +692,8 @@ export interface FileRoutesById {
   '/admin/marketing/new': typeof AdminMarketingNewRoute
   '/admin/marketing/subscribers': typeof AdminMarketingSubscribersRoute
   '/admin/orders/$orderId': typeof AdminOrdersOrderIdRoute
+  '/admin/settings/account': typeof AdminSettingsAccountRoute
+  '/admin/settings/security': typeof AdminSettingsSecurityRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
   '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
@@ -683,6 +708,7 @@ export interface FileRoutesById {
   '/admin/customers/': typeof AdminCustomersIndexRoute
   '/admin/marketing/': typeof AdminMarketingIndexRoute
   '/admin/orders/': typeof AdminOrdersIndexRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
   '/admin/catalog/categories/$handle': typeof AdminCatalogCategoriesHandleRoute
   '/admin/catalog/collections/$handle': typeof AdminCatalogCollectionsHandleRoute
   '/admin_/orders/$orderId/summary': typeof AdminOrdersOrderIdSummaryRoute
@@ -746,6 +772,8 @@ export interface FileRouteTypes {
     | '/admin/marketing/new'
     | '/admin/marketing/subscribers'
     | '/admin/orders/$orderId'
+    | '/admin/settings/account'
+    | '/admin/settings/security'
     | '/api/auth/$'
     | '/api/newsletter/unsubscribe'
     | '/api/webhooks/inpost'
@@ -760,6 +788,7 @@ export interface FileRouteTypes {
     | '/admin/customers/'
     | '/admin/marketing/'
     | '/admin/orders/'
+    | '/admin/settings/'
     | '/admin/catalog/categories/$handle'
     | '/admin/catalog/collections/$handle'
     | '/admin/orders/$orderId/summary'
@@ -786,7 +815,6 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/coupons'
     | '/admin/overview'
-    | '/admin/settings'
     | '/admin/security'
     | '/api/health'
     | '/auth/forgot-password'
@@ -812,6 +840,8 @@ export interface FileRouteTypes {
     | '/admin/marketing/new'
     | '/admin/marketing/subscribers'
     | '/admin/orders/$orderId'
+    | '/admin/settings/account'
+    | '/admin/settings/security'
     | '/api/auth/$'
     | '/api/newsletter/unsubscribe'
     | '/api/webhooks/inpost'
@@ -826,6 +856,7 @@ export interface FileRouteTypes {
     | '/admin/customers'
     | '/admin/marketing'
     | '/admin/orders'
+    | '/admin/settings'
     | '/admin/catalog/categories/$handle'
     | '/admin/catalog/collections/$handle'
     | '/admin/orders/$orderId/summary'
@@ -888,6 +919,8 @@ export interface FileRouteTypes {
     | '/admin/marketing/new'
     | '/admin/marketing/subscribers'
     | '/admin/orders/$orderId'
+    | '/admin/settings/account'
+    | '/admin/settings/security'
     | '/api/auth/$'
     | '/api/newsletter/unsubscribe'
     | '/api/webhooks/inpost'
@@ -902,6 +935,7 @@ export interface FileRouteTypes {
     | '/admin/customers/'
     | '/admin/marketing/'
     | '/admin/orders/'
+    | '/admin/settings/'
     | '/admin/catalog/categories/$handle'
     | '/admin/catalog/collections/$handle'
     | '/admin_/orders/$orderId/summary'
@@ -1371,6 +1405,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminOrdersOrderIdRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/settings/': {
+      id: '/admin/settings/'
+      path: '/'
+      fullPath: '/admin/settings/'
+      preLoaderRoute: typeof AdminSettingsIndexRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
+    '/admin/settings/account': {
+      id: '/admin/settings/account'
+      path: '/account'
+      fullPath: '/admin/settings/account'
+      preLoaderRoute: typeof AdminSettingsAccountRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
+    '/admin/settings/security': {
+      id: '/admin/settings/security'
+      path: '/security'
+      fullPath: '/admin/settings/security'
+      preLoaderRoute: typeof AdminSettingsSecurityRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -1601,12 +1656,28 @@ const AdminCatalogRouteWithChildren = AdminCatalogRoute._addFileChildren(
   AdminCatalogRouteChildren,
 )
 
+interface AdminSettingsRouteChildren {
+  AdminSettingsAccountRoute: typeof AdminSettingsAccountRoute
+  AdminSettingsSecurityRoute: typeof AdminSettingsSecurityRoute
+  AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
+}
+
+const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
+  AdminSettingsAccountRoute: AdminSettingsAccountRoute,
+  AdminSettingsSecurityRoute: AdminSettingsSecurityRoute,
+  AdminSettingsIndexRoute: AdminSettingsIndexRoute,
+}
+
+const AdminSettingsRouteWithChildren = AdminSettingsRoute._addFileChildren(
+  AdminSettingsRouteChildren,
+)
+
 interface AdminRouteChildren {
   AdminAuditRoute: typeof AdminAuditRoute
   AdminCatalogRoute: typeof AdminCatalogRouteWithChildren
   AdminCouponsRoute: typeof AdminCouponsRoute
   AdminOverviewRoute: typeof AdminOverviewRoute
-  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSettingsRoute: typeof AdminSettingsRouteWithChildren
   AdminIndexRoute: typeof AdminIndexRoute
   AdminContentHandleRoute: typeof AdminContentHandleRoute
   AdminCustomersIdRoute: typeof AdminCustomersIdRoute
@@ -1624,7 +1695,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCatalogRoute: AdminCatalogRouteWithChildren,
   AdminCouponsRoute: AdminCouponsRoute,
   AdminOverviewRoute: AdminOverviewRoute,
-  AdminSettingsRoute: AdminSettingsRoute,
+  AdminSettingsRoute: AdminSettingsRouteWithChildren,
   AdminIndexRoute: AdminIndexRoute,
   AdminContentHandleRoute: AdminContentHandleRoute,
   AdminCustomersIdRoute: AdminCustomersIdRoute,

@@ -1,0 +1,71 @@
+{
+  "title": "Ustawienia",
+  "description": "Twoje konto, jego bezpieczeństwo i to, jak działa dla Ciebie panel.",
+  "tabs": {
+    "account": "Moje konto",
+    "security": "Logowanie i bezpieczeństwo"
+  },
+  "account": {
+    "profile": {
+      "title": "Profil",
+      "description": "Jak przedstawiasz się w panelu i w dzienniku zdarzeń.",
+      "name": "Imię i nazwisko",
+      "email": "Adres e-mail",
+      "emailUnverified": "Niepotwierdzony",
+      "phone": "Numer telefonu",
+      "phoneEmpty": "Nie podano",
+      "memberSince": "Konto założone",
+      "edit": "Edytuj",
+      "change": "Zmień",
+      "save": "Zapisz",
+      "cancel": "Anuluj",
+      "saved": "Zapisano profil.",
+      "saveError": "Nie udało się zapisać profilu. Spróbuj ponownie."
+    },
+    "preferences": {
+      "title": "Preferencje",
+      "description": "Język panelu oraz strefa czasowa i format, w których widzisz daty, godziny i liczby. Ustawienie automatyczne podąża za przeglądarką.",
+      "language": "Język panelu",
+      "languages": {
+        "en-US": "English",
+        "pl-PL": "Polski"
+      }
+    }
+  },
+  "security": {
+    "password": {
+      "title": "Hasło",
+      "changeDescription": "Zmień hasło, którym się logujesz. To urządzenie pozostanie zalogowane, a pozostałe możesz wylogować.",
+      "setDescription": "Logujesz się przez Google i nie masz jeszcze hasła. Ustaw je, aby logować się też adresem e-mail i aby włączyć uwierzytelnianie dwuskładnikowe.",
+      "change": "Zmień hasło",
+      "set": "Ustaw hasło"
+    },
+    "twoFactor": {
+      "title": "Uwierzytelnianie dwuskładnikowe",
+      "description": "Po haśle logowanie prosi też o sześciocyfrowy kod z aplikacji uwierzytelniającej.",
+      "on": "Włączone",
+      "off": "Wyłączone",
+      "enable": "Włącz",
+      "disable": "Wyłącz",
+      "requiredNote": "Wymagane od każdego administratora tego sklepu. Jeśli je wyłączysz, panel pozostanie zamknięty, dopóki nie włączysz go ponownie.",
+      "needsPassword": "Najpierw ustaw hasło: włączenie uwierzytelniania dwuskładnikowego o nie prosi."
+    },
+    "signInMethods": {
+      "title": "Metody logowania",
+      "description": "Sposoby, w jakie możesz zalogować się na to konto.",
+      "password": "E-mail i hasło",
+      "google": "Google",
+      "connected": "Połączone",
+      "notConnected": "Niepołączone",
+      "googleNotice": "Logowanie przez Google nie prosi o sześciocyfrowy kod tego sklepu, dlatego miej włączoną weryfikację dwuetapową na koncie Google."
+    },
+    "sessions": {
+      "title": "Aktywne sesje",
+      "description": "Urządzenia, które są teraz zalogowane na Twoje konto."
+    },
+    "history": {
+      "title": "Historia logowania",
+      "description": "Ostatnie udane i nieudane próby zalogowania się na Twoje konto."
+    }
+  }
+}

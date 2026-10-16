@@ -587,11 +587,27 @@ test.describe("admin", () => {
     await expireCheckoutSession(request, session.id)
   })
 
-  test("an admin with two-factor authentication finds it on the security page and goes back to the panel", async ({ page }) => {
+  test("an admin opens their settings, sees their preferences and finds two-factor authentication on under sign-in and security", async ({
+    page,
+  }) => {
     await new BasePage(page).open("/en-US/admin/overview")
-    await page.getByRole("link", { exact: true, name: "Security" }).click()
+    await page.getByRole("link", { exact: true, name: "Settings" }).click()
 
-    await expect(page).toHaveURL(/\/en-US\/admin\/security$/u)
+    await expect(page).toHaveURL(/\/en-US\/admin\/settings\/account$/u)
+    await expect(page.getByRole("combobox", { name: "Admin panel language" })).toContainText("English")
+    await expect(page.getByRole("combobox", { name: "Time zone" })).toBeVisible()
+    await expect(page.getByRole("combobox", { name: "Date and number format" })).toBeVisible()
+
+    await page.getByRole("link", { exact: true, name: "Sign-in & security" }).click()
+
+    await expect(page).toHaveURL(/\/en-US\/admin\/settings\/security$/u)
+    await expect(page.getByText("On", { exact: true })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Change password" })).toBeVisible()
+  })
+
+  test("an admin who already has two-factor authentication and opens its set-up page goes back to the panel", async ({ page }) => {
+    await new BasePage(page).open("/en-US/admin/security")
+
     await expect(page.getByText(/^Two-factor authentication is on\./u)).toBeVisible()
     await page.getByRole("link", { name: "Go to the admin panel" }).click()
     await expect(page).toHaveURL(/\/en-US\/admin\/overview$/u)
