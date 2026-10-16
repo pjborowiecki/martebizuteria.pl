@@ -738,7 +738,7 @@ describe("order reads for the confirmation page and the emails", () => {
     expect(await getOrderByTransactionId("cs_unknown")).toBeUndefined()
   })
 
-  it("reads only the recipient and the totals the confirmation email prints", async () => {
+  it("reads only the recipient, the account and the totals the confirmation email prints", async () => {
     expect(await getOrderTotalsForEmail("o-placed")).toStrictEqual({
       discountTotal: 1000,
       email: "anna@example.com",
@@ -748,6 +748,7 @@ describe("order reads for the confirmation page and the emails", () => {
       taxBasisPoints: 2300,
       taxTotal: 2412,
       total: 12_900,
+      userId: null,
     })
   })
 

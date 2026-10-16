@@ -50,6 +50,7 @@ Jest to mechanizm odrębny od własnego middleware `withRateLimit` opisanego pon
 
 - `user.create.after` wywołuje `scheduleAdminCustomersInvalidation()` oraz `recordCustomerRegisteredAudit(...)`.
 - `user.update.after` i `user.delete.after` wywołują `scheduleAdminCustomersInvalidation()`, więc lista klientów w panelu odświeża się bez odpytywania.
+- `user.update.after` uruchamia też `claimGuestOrdersForUser` dla zweryfikowanego konta, więc adres, który staje się zweryfikowany bez linku weryfikacyjnego, na przykład przez `/admin/update-user`, i tak przejmuje swoje zamówienia gości. Sam link weryfikacyjny przejmuje je w `afterEmailVerification`, zarówno dla nowego konta, jak i dla zmienionego adresu.
 - `user.delete.after` zapisuje też `customer.deleted` dla każdego konta poza anonimowym i przypisuje wpis sesji endpointu, który je usunął: administratorowi dla `/admin/remove-user`, które `deleteCustomer` wywołuje przez `auth.api.removeUser`, klientowi dla `/delete-user`, a systemowi, gdy żadna sesja o to nie prosiła.
 
 ### Usunięcie konta

@@ -83,9 +83,7 @@ const buildOrderConfirmationEmailPayload = async (
 
   const emailItems = buildOrderConfirmationItems(order.lines, locale, origin)
   const inlineImages = await embedEmailImages(emailItems.map((item) => item.imageUrl))
-  const rawUserId = session.metadata?.["userId"]
-  const isGuest = rawUserId === undefined || rawUserId === ""
-  const accountCta = buildOrderAccountCta({ isGuest, locale, messages, orderId: order.orderId, origin })
+  const accountCta = buildOrderAccountCta({ isGuest: placedOrder.userId === null, locale, messages, orderId: order.orderId, origin })
   const { orderNumber } = placedOrder
 
   return {
