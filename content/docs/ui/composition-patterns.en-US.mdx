@@ -26,7 +26,7 @@ const HomePage = (): JSX.Element => {
 }
 ```
 
-A layout route does the same for chrome. `src/routes/_storefront.tsx` mounts `Navigation`, `Footer`, the paused-sales notice, the cart banner and the activity tracker, subscribes to realtime invalidation, attaches its route stylesheet, and loads the collections the navigation's full-screen menu shows together with the sales status the notice reads:
+A layout route does the same for chrome. `src/routes/_storefront.tsx` mounts `Navigation`, `Footer`, the paused-sales notice, the cart banner and the activity tracker, subscribes to realtime invalidation, attaches its route stylesheet, and loads the collections the navigation's full-screen menu shows together with the sales status the notice reads and the seller's details the footer shows:
 
 ```tsx
 export const Route = createFileRoute("/_storefront")({
@@ -36,6 +36,7 @@ export const Route = createFileRoute("/_storefront")({
     await Promise.all([
       context.queryClient.query({ ...getCollectionsQuery(), staleTime: "static" }).catch(noop),
       context.queryClient.query(getSalesStatusQuery()).catch(noop),
+      context.queryClient.query(getSellerDetailsQuery()),
     ])
   },
   staticData: { namespaces: ["pages.cart"] },

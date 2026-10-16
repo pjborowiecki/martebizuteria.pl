@@ -105,11 +105,11 @@ This is why `index` must **not** be listed in a folder's `meta.<locale>.json` `p
 
 ## The routes
 
-| Route     | File                        | What it does                                                                                                                                                             |
-| --------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/docs`   | `src/routes/docs.tsx`       | The layout: navigation, paused-sales notice, `DocsSidebar`, footer; the loader runs `loadDocsNavigation()`, `getCollectionsQuery()` and `getSalesStatusQuery()` together |
-| `/docs`   | `src/routes/docs.index.tsx` | The root page, `loadDocsPage()` with no splat                                                                                                                            |
-| `/docs/$` | `src/routes/docs.$.tsx`     | Every other page, `loadDocsPage(params._splat)`                                                                                                                          |
+| Route     | File                        | What it does                                                                                                                                                                                        |
+| --------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/docs`   | `src/routes/docs.tsx`       | The layout: navigation, paused-sales notice, `DocsSidebar`, footer; the loader runs `loadDocsNavigation()`, `getCollectionsQuery()`, `getSalesStatusQuery()` and `getSellerDetailsQuery()` together |
+| `/docs`   | `src/routes/docs.index.tsx` | The root page, `loadDocsPage()` with no splat                                                                                                                                                       |
+| `/docs/$` | `src/routes/docs.$.tsx`     | Every other page, `loadDocsPage(params._splat)`                                                                                                                                                     |
 
 The layout declares `staticData: { namespaces: ["pages.cart", "pages.docs"] }`. `pages.cart` holds the text of `SalesPausedBanner`, the notice shown under the navigation while sales are paused (see [Checkout: Pausing sales](/docs/features/checkout#pausing-sales)), and `pages.docs` is where the sidebar's own labels come from (`messages/{locale}/pages.docs.json`: `navigation.title`, `navigation.label`, `navigation.overview`). The page routes both set `head: pageHead` and `wrapInSuspense: false`.
 
@@ -155,7 +155,7 @@ The legal pages reuse only the link from `mdxComponents`. Their article passes `
 
 ## Markdown at render time
 
-`createMarkdownRenderer` from `fumadocs-core/content/md` compiles a Markdown string on render instead of at build time. `ContentPageArticle` creates one with `remarkGfm` and `remarkHeading`, which gives every heading a slug `id`. Raw HTML in the string is dropped. It is the right tool for text that lives in the database, while `fumadocs-mdx` remains the tool for files in the repository.
+`createMarkdownRenderer` from `fumadocs-core/content/md` compiles a Markdown string on render instead of at build time. `ContentPageArticle` creates one with `remarkGfm`, `remarkHeading`, which gives every heading a slug `id`, and `remarkDirective` from `remark-directive` with `remarkSellerDetails`, which write out the store detail placeholders such as `:seller[nip]` (see [Legal pages](/docs/features/legal-pages#store-details-in-the-pages)). Raw HTML in the string is dropped. It is the right tool for text that lives in the database, while `fumadocs-mdx` remains the tool for files in the repository.
 
 ## Adding a documentation page
 

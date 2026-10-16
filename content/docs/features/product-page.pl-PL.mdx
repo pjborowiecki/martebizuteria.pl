@@ -10,9 +10,10 @@ description: "/products/$handle: odroczone zapytanie o produkty powiązane, wyb�
 ```ts
 loader: async ({ context, params }) => {
   const { locale } = context
-  const [data, messages] = await Promise.all([
+  const [data, messages, seller] = await Promise.all([
     context.queryClient.query({ ...getProductQuery(params.handle, locale), staleTime: "static" }),
     context.queryClient.query(messagesQueryOptions<typeof productMessages>({ locale, namespace: "pages.product" })),
+    context.queryClient.query(getSellerDetailsQuery()),
   ])
 
   if (data === false) {
@@ -30,6 +31,7 @@ loader: async ({ context, params }) => {
       locale,
       product: data,
       section: messages.heroSection.breadcrumbProducts,
+      seller,
     }),
     title: messages.metaTitle.replace("{title}", data.title),
   }
@@ -38,7 +40,7 @@ loader: async ({ context, params }) => {
 
 Zapytanie o produkty powiązane jest **odroczone**: sekcja hero renderuje się natychmiast po rozwiązaniu produktu, a `<Await promise={deferredRelated}>` strumieniuje siatkę powiązanych za nią, z fallbackiem `Suspense` pokazującym `pages.product.loadingRelated`.
 
-`head: pageHead` z `src/lib/seo.ts` zamienia zwrócone `PageMeta` w znaczniki tytułu i opisu, główne zdjęcie produktu w rozmiarze karty społecznościowej 1200 × 630 w `og:image` i `twitter:image` oraz JSON-LD `Product` ze sprzedawcą z `BUSINESS` jako producentem, tak jak podaje go sekcja „Producent” strony, z jedną `Offer` w PLN na wariant, dostępną albo wyprzedaną według dostępnej ilości, i okruszkami strona główna › produkty › produkt. [Internacjonalizacja](/docs/features/internationalization#seo) wymienia dane strukturalne każdej strony.
+`head: pageHead` z `src/lib/seo.ts` zamienia zwrócone `PageMeta` w znaczniki tytułu i opisu, główne zdjęcie produktu w rozmiarze karty społecznościowej 1200 × 630 w `og:image` i `twitter:image` oraz JSON-LD `Product` ze sprzedawcą z Ustawienia → Dane sklepu, którego loader czyta przez `getSellerDetailsQuery()`, jako producentem, tak jak podaje go sekcja „Producent” strony, z jedną `Offer` w PLN na wariant, dostępną albo wyprzedaną według dostępnej ilości, i okruszkami strona główna › produkty › produkt. [Internacjonalizacja](/docs/features/internationalization#seo) wymienia dane strukturalne każdej strony.
 
 ## Wczytanie produktu
 
@@ -145,7 +147,7 @@ Najniższa cena należy do dnia obniżki, więc nie zmienia się, dopóki obniż
 
 Specyfikacje pochodzą z systemu atrybutów produktu: wiersze `attribute_on_product` mapowane przez `mapAttributeRowsToSpecifications`. Sposób definiowania atrybutów opisuje [Panel katalogu](/docs/features/admin-catalog).
 
-Sekcja „Producent” podaje to, czego unijne rozporządzenie w sprawie ogólnego bezpieczeństwa produktów (art. 19 rozporządzenia (UE) 2023/988) wymaga w ofercie internetowej: nazwę producenta, jego adres pocztowy i adres elektroniczny. Sklep sam wykonuje swoją biżuterię, więc sekcja pokazuje sprzedawcę z `src/presentation/branding/business.ts`: nazwę firmy i adres pocztowy z `BUSINESS_POSTAL_ADDRESS_LINES` wraz z krajem oraz `BUSINESS.EMAIL` jako odnośnik `mailto:`. Komunikatami w `pages.product.heroSection.details.manufacturer` są tylko etykiety i nazwa kraju. Sekcja nie podaje własnych ostrzeżeń: wskazówki pielęgnacyjne albo ostrzeżenia dołączone do danego wyrobu należą do jego specyfikacji jako atrybut produktu. Zobacz [Strony prawne](/docs/features/legal-pages#producent-na-kartach-produktu).
+Sekcja „Producent” podaje to, czego unijne rozporządzenie w sprawie ogólnego bezpieczeństwa produktów (art. 19 rozporządzenia (UE) 2023/988) wymaga w ofercie internetowej: nazwę producenta, jego adres pocztowy i adres elektroniczny. Sklep sam wykonuje swoją biżuterię, więc sekcja pokazuje sprzedawcę zapisanego w Ustawienia → Dane sklepu, odczytanego przez `getSellerDetailsQuery()`: nazwę firmy, adres pocztowy i kraj, nazwany w języku kupującego na podstawie zapisanego kodu, oraz e-mail kontaktowy jako odnośnik `mailto:`. Komunikatami w `pages.product.heroSection.details.manufacturer` są tylko etykiety. „Dodatkowe informacje” zawierają zaproszenie do napisania w sprawie innego rozmiaru albo ponownego złocenia, `additionalInfo.flexibleOffer.text`, które linkuje ten sam zapisany e-mail przez `<emailLink>{email}</emailLink>`. Sekcja nie podaje własnych ostrzeżeń: wskazówki pielęgnacyjne albo ostrzeżenia dołączone do danego wyrobu należą do jego specyfikacji jako atrybut produktu. Zobacz [Strony prawne](/docs/features/legal-pages#producent-na-kartach-produktu).
 
 ## Pasek zakupu na mobile
 

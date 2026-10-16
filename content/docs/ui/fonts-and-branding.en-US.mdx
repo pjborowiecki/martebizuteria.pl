@@ -1,6 +1,6 @@
 ---
 title: "Fonts & branding"
-description: "Self-hosted Manrope and Cormorant Garamond, locale-aware critical preloads, and the brand and business constants."
+description: "Self-hosted Manrope and Cormorant Garamond, locale-aware critical preloads, the brand constants and where the seller's details come from."
 ---
 
 ## Two typefaces
@@ -131,33 +131,22 @@ These feed more than the chrome:
 
 Because `THEME_STORAGE_KEY` is derived from `APP_NAME`, renaming the app changes the `localStorage` key and silently resets every visitor's stored theme. That is acceptable today (there is no switcher) but worth remembering.
 
-## Business identity
+## Seller details
 
-`src/presentation/branding/business.ts` holds the legal identity of the shop:
+The legal identity of the shop is data rather than a constant. The legal name, street, postal code, city, country, NIP, REGON, contact e-mail and phone are columns of the `store_setting` row, which the owner edits under **Settings → Store details**; `20261016160000_seller_details.sql` filled them with the details the code held until then (see [Admin settings](/docs/features/admin-settings#store-details)). The storefront reads them through `getSellerDetailsQuery()`, the admin through `getAdminSellerDetailsQuery()` and server code through `readSellerDetails()`, and two helpers in `src/modules/store-setting/store-setting.utils.ts` format them:
 
 ```ts
-export const BUSINESS = {
-  CITY: "Bochnia",
-  COUNTRY_CODE: "PL",
-  EMAIL: "kontakt@martebizuteria.pl",
-  LEGAL_NAME: "Pyciak Mariusz Firma Jubilerska",
-  NIP: "8681772646",
-  OPENING_HOURS_CLOSE: "17:00",
-  OPENING_HOURS_OPEN: "09:00",
-  PHONE: "+48 663 150 820",
-  POSTAL_CODE: "32-700",
-  REGON: "384616568",
-  STREET: "ul. Wąska 11",
-} as const
+export const formatSellerPostalAddress = (
+  { city, countryCode, legalName, postalCode, street }: Readonly<StoreSetting["sellerDetails"]>,
+  locale: string,
+): string[] => [legalName, street, `${postalCode} ${city}`, formatCountryName(countryCode, locale)]
 
-export const BUSINESS_POSTAL_ADDRESS_LINES = [BUSINESS.LEGAL_NAME, BUSINESS.STREET, `${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY}`] as const
-
-export const BUSINESS_PHONE_HREF = `tel:${BUSINESS.PHONE.replaceAll(" ", "")}`
+export const toSellerPhoneHref = (phone: string): string => `tel:${phone.replaceAll(NOT_DIALLED, "")}`
 ```
 
-`SellerContactDetails` in `src/presentation/components/custom/seller-contact-details.tsx` renders these details in the storefront footer and in the contact section at the end of `/about`, every product page names the seller as the manufacturer in its "Manufacturer" section, the order confirmation email names the seller with them, `sendEmail` uses `BUSINESS.EMAIL` as every message's reply-to address, and `buildStoreStructuredData` and `buildProductStructuredData` in `src/lib/seo.ts` publish the legal name, postal address, e-mail, phone and NIP in the home page's structured data and the legal name, postal address and e-mail as each product's manufacturer, so search engines read the same details customers do. The file is also the assertion side of a test: `src/presentation/branding/__test__/business.test.ts` applies `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql`, `20261005200000_terms_of_service_page.sql`, `20261005210000_returns_and_complaints_page.sql` and `20261010200000_privacy_policy_page.sql` to an in-memory SQLite database and, for every supported locale, fails if the postal address lines or `mailto:` address in the seeded `exchanges-and-returns` and `privacy-policy` bodies drift from these constants. The seeded `privacy-policy` body must also name the legal name, NIP, REGON, phone and its `tel:` link, and the seeded `terms-of-service` body is held to every detail: the legal name, NIP, REGON, phone and its `tel:` link, postal address lines, `mailto:` address and the opening hours.
+`SellerContactDetails` in `src/presentation/components/custom/seller-contact-details.tsx` renders them in the storefront footer and in the contact section at the end of `/about`, every product page names the seller as the manufacturer in its "Manufacturer" section, the order e-mails and the newsletter name the seller with them, `sendEmail` uses the contact e-mail as every message's reply-to address, and `buildStoreStructuredData` and `buildProductStructuredData` in `src/lib/seo.ts`, handed the details as `seller`, publish the legal name, postal address, e-mail, phone and NIP in the home page's structured data and the legal name, postal address and e-mail as each product's manufacturer, so search engines read the same details customers do. The country is named from the stored code in the reader's language. The legal pages name the seller through store detail placeholders such as `:seller[nip]` (see [Legal pages](/docs/features/legal-pages#store-details-in-the-pages)).
 
-So when the business details change, edit `business.ts` first, then update every page in every locale at `/admin/content`, because the saved rows are what customers read. The test only sees the rows those migrations insert, which never overwrite a saved page, so a green `bun run test:unit` does not prove the published text matches.
+So when the business details change, save them under Settings → Store details, and the storefront, the e-mails and the legal pages follow at once. The pickup sentences in the terms and the FAQ, which write the street and city in words, and the two PDF forms in `public/forms`, which have the details printed in them, still need an edit of their own. `APP_NAME` stays in `app.ts`, because it names the brand rather than the seller.
 
 `src/presentation/branding/socials.ts` holds the two live profiles:
 
@@ -182,3 +171,4 @@ They are read by `src/lib/seo.ts` (the `sameAs` entries in structured data), the
 
 - [Theme](/docs/ui/theme)
 - [Composition patterns](/docs/ui/composition-patterns)
+- [Admin settings](/docs/features/admin-settings#store-details) — where the seller's details are edited

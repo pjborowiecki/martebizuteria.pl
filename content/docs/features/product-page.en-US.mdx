@@ -10,9 +10,10 @@ description: "/products/$handle: the deferred related-products query, variant se
 ```ts
 loader: async ({ context, params }) => {
   const { locale } = context
-  const [data, messages] = await Promise.all([
+  const [data, messages, seller] = await Promise.all([
     context.queryClient.query({ ...getProductQuery(params.handle, locale), staleTime: "static" }),
     context.queryClient.query(messagesQueryOptions<typeof productMessages>({ locale, namespace: "pages.product" })),
+    context.queryClient.query(getSellerDetailsQuery()),
   ])
 
   if (data === false) {
@@ -30,6 +31,7 @@ loader: async ({ context, params }) => {
       locale,
       product: data,
       section: messages.heroSection.breadcrumbProducts,
+      seller,
     }),
     title: messages.metaTitle.replace("{title}", data.title),
   }
@@ -38,7 +40,7 @@ loader: async ({ context, params }) => {
 
 The related-products query is **deferred**: the hero renders as soon as the product resolves, and `<Await promise={deferredRelated}>` streams the related grid in behind a `Suspense` fallback that shows `pages.product.loadingRelated`.
 
-`head: pageHead` from `src/lib/seo.ts` turns the returned `PageMeta` into the title and description tags, the product's main image at the 1200 × 630 social card size in `og:image` and `twitter:image`, and a JSON-LD `Product` with the seller from `BUSINESS` as its manufacturer, as the page's "Manufacturer" section names it, one PLN `Offer` per variant, in or out of stock by its available quantity, and the breadcrumb home › products › product. [Internationalization](/docs/features/internationalization#seo) lists the structured data of every page.
+`head: pageHead` from `src/lib/seo.ts` turns the returned `PageMeta` into the title and description tags, the product's main image at the 1200 × 630 social card size in `og:image` and `twitter:image`, and a JSON-LD `Product` with the seller from Settings → Store details, which the loader reads with `getSellerDetailsQuery()`, as its manufacturer, as the page's "Manufacturer" section names it, one PLN `Offer` per variant, in or out of stock by its available quantity, and the breadcrumb home › products › product. [Internationalization](/docs/features/internationalization#seo) lists the structured data of every page.
 
 ## Loading the product
 
@@ -145,7 +147,7 @@ The lowest price belongs to the day of the reduction, so it stays the same while
 
 Specifications come from the product attribute system: `attribute_on_product` rows mapped by `mapAttributeRowsToSpecifications`. See [Admin catalog](/docs/features/admin-catalog) for how attributes are defined.
 
-The "Manufacturer" section gives what the EU General Product Safety Regulation (Article 19 of Regulation (EU) 2023/988) requires an online offer to name: the manufacturer's name, postal address and electronic address. The shop makes its own pieces, so the section shows the seller from `src/presentation/branding/business.ts`: the legal name and postal address from `BUSINESS_POSTAL_ADDRESS_LINES` with the country, and `BUSINESS.EMAIL` as a `mailto:` link. Only the labels and the country name are messages, in `pages.product.heroSection.details.manufacturer`. The section shows no warnings of its own: a care note or warning that comes with a piece belongs in its specifications as a product attribute. See [Legal pages](/docs/features/legal-pages#manufacturer-on-product-pages).
+The "Manufacturer" section gives what the EU General Product Safety Regulation (Article 19 of Regulation (EU) 2023/988) requires an online offer to name: the manufacturer's name, postal address and electronic address. The shop makes its own pieces, so the section shows the seller saved under Settings → Store details, read with `getSellerDetailsQuery()`: the legal name, the postal address and the country, named in the shopper's language from the stored code, and the contact e-mail as a `mailto:` link. Only the labels are messages, in `pages.product.heroSection.details.manufacturer`. "Additional information" includes an invitation to write about another size or re-plating, `additionalInfo.flexibleOffer.text`, which links the same stored e-mail through `<emailLink>{email}</emailLink>`. The section shows no warnings of its own: a care note or warning that comes with a piece belongs in its specifications as a product attribute. See [Legal pages](/docs/features/legal-pages#manufacturer-on-product-pages).
 
 ## Mobile buy bar
 

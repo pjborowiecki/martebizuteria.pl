@@ -18,6 +18,18 @@ export const resend = new Resend(env.RESEND_API_KEY)
 Plik `resend.send.ts` wysyła nim każdy e-mail transakcyjny i nigdy nie rzuca wyjątku. Jedynym innym wywołującym jest newsletter; zobacz [Newsletter](#newsletter).
 
 ```ts
+const sellerReplyTo = async (): Promise<{ readonly replyTo?: string }> => {
+  try {
+    const { email } = await readSellerDetails()
+
+    return { replyTo: email }
+  } catch (error) {
+    console.error("[Email] Sending without Reply-To: the seller's contact e-mail could not be read", error)
+
+    return {}
+  }
+}
+
 const deliver = async ({
   from,
   idempotencyKey,
@@ -27,7 +39,7 @@ const deliver = async ({
   const sender = from ?? shopSender()
   try {
     const { error } = await resend.emails.send(
-      { ...message, from: sender, replyTo: BUSINESS.EMAIL },
+      { ...message, ...(await sellerReplyTo()), from: sender },
       idempotencyKey === undefined ? {} : { idempotencyKey },
     )
 
@@ -55,7 +67,7 @@ export const sendEmail = async (options: Readonly<SendEmailOptions>): Promise<st
 }
 ```
 
-Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. SDK Resend nie ma limitu czasu i nie przyjmuje sygnału przerwania, więc wywołanie, na które nie przyszła odpowiedź po `SEND_EMAIL_TIMEOUT_MS` (10 sekund), też jest porażką, zgłaszaną jako `Resend did not answer within 10000 ms`. Ta sygnatura niesie ciężar projektowy: awaria poczty nigdy nie może wycofać rejestracji ani zamówienia. Wywołujący logują komunikat albo zapisują go w dzienniku zdarzeń i idą dalej. Domyślne `from` to `M'Arte <${env.RESEND_EMAIL_FROM}>`, zbudowane z `APP_NAME` w `src/presentation/branding/app.ts`. Każda wiadomość niesie też `replyTo: BUSINESS.EMAIL`, czyli adres kontaktowy sklepu `kontakt@martebizuteria.pl` z `src/presentation/branding/business.ts`, więc klient, który odpowie na e-mail, do czego zachęcają potwierdzenie zamówienia, informacja o wysyłce i informacja o usunięciu konta, pisze do sklepu bez względu na to, jaki adres wskazuje `RESEND_EMAIL_FROM`. `SendEmailOptions` nie ma na to pola, więc żaden wywołujący nie wyśle wiadomości bez niego. Wywołujący może przekazać `idempotencyKey`, który trafia do Resend jako nagłówek `Idempotency-Key`. Przekazuje go każdy e-mail o zamówieniu, aby jego ponowienia i ponowna wysyłka przez administratora nigdy nie wysłały go dwa razy; zobacz [E-mail](/docs/features/email#wysyłka-i-ponawianie).
+Zwraca `undefined` przy sukcesie i komunikat błędu w przeciwnym razie. SDK Resend nie ma limitu czasu i nie przyjmuje sygnału przerwania, więc wywołanie, na które nie przyszła odpowiedź po `SEND_EMAIL_TIMEOUT_MS` (10 sekund), też jest porażką, zgłaszaną jako `Resend did not answer within 10000 ms`. Ta sygnatura niesie ciężar projektowy: awaria poczty nigdy nie może wycofać rejestracji ani zamówienia. Wywołujący logują komunikat albo zapisują go w dzienniku zdarzeń i idą dalej. Domyślne `from` to `M'Arte <${env.RESEND_EMAIL_FROM}>`, zbudowane z `APP_NAME` w `src/presentation/branding/app.ts`. Każda wiadomość niesie też `replyTo` z e-mailem kontaktowym sklepu, który `sellerReplyTo` czyta z danych sprzedawcy zapisanych w Ustawienia → Dane sklepu, więc klient, który odpowie na e-mail, do czego zachęcają potwierdzenie zamówienia, informacja o wysyłce i informacja o usunięciu konta, pisze do sklepu bez względu na to, jaki adres wskazuje `RESEND_EMAIL_FROM`. `SendEmailOptions` nie ma na to pola, więc żaden wywołujący go nie zmieni. Gdy danych nie da się odczytać, wiadomość i tak wychodzi, bez `Reply-To`, a Worker zapisuje w logu `[Email] Sending without Reply-To: …`, więc nieudany odczyt z D1 nigdy nie wstrzymuje e-maila, także alertu o incydencie. Wywołujący może przekazać `idempotencyKey`, który trafia do Resend jako nagłówek `Idempotency-Key`. Przekazuje go każdy e-mail o zamówieniu, aby jego ponowienia i ponowna wysyłka przez administratora nigdy nie wysłały go dwa razy; zobacz [E-mail](/docs/features/email#wysyłka-i-ponawianie).
 
 ### Załączniki
 
@@ -126,7 +138,7 @@ export const ORDER_SHIPPED_NAMESPACE = "emails.order-shipped"
 
 ## Newsletter
 
-Newslettery wysyła `src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server.ts`, jedyny inny kod korzystający z klienta. `sendNewsletterBatch({ content, idempotencyKey, recipients })` renderuje `newsletter-campaign.tsx` dla każdego odbiorcy w jego języku, z tematem i listem w Markdownie napisanym przez właściciela, i wysyła wszystkie jednym `resend.batch.send(emails, { idempotencyKey })`, czyli endpointem wsadowym Resend, który przyjmuje do 100 e-maili na wywołanie. Tak jak `sendEmail` zwraca `undefined` przy powodzeniu, a w przeciwnym razie komunikat błędu, i nigdy nie rzuca wyjątku. Każdy e-mail wychodzi od `M'Arte <RESEND_EMAIL_FROM>` z `Reply-To: kontakt@martebizuteria.pl`, tak jak poczta transakcyjna.
+Newslettery wysyła `src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server.ts`, jedyny inny kod korzystający z klienta. `sendNewsletterBatch({ content, idempotencyKey, recipients })` renderuje `newsletter-campaign.tsx` dla każdego odbiorcy w jego języku, z tematem i listem w Markdownie napisanym przez właściciela, i wysyła wszystkie jednym `resend.batch.send(emails, { idempotencyKey })`, czyli endpointem wsadowym Resend, który przyjmuje do 100 e-maili na wywołanie. Tak jak `sendEmail` zwraca `undefined` przy powodzeniu, a w przeciwnym razie komunikat błędu, i nigdy nie rzuca wyjątku. Każdy e-mail wychodzi od `M'Arte <RESEND_EMAIL_FROM>` z zapisanym e-mailem kontaktowym w `Reply-To`, tak jak poczta transakcyjna. Partia czyta dane sprzedawcy raz, dla tego adresu i stopki nadawcy; gdy nie da się ich odczytać, partia nie zostaje wysłana i zwraca komunikat błędu.
 
 Odbiorca z tokenem wypisania dostaje dwa nagłówki:
 
@@ -309,7 +321,7 @@ Resend odrzuca każdą wiadomość, której domena w polu `from` nie jest zweryf
 
 `RESEND_API_KEY` i `RESEND_EMAIL_FROM` są w `secrets.required` dla wszystkich trzech środowisk w `wrangler.jsonc`. `RESEND_EMAIL_FROM` to sam adres, na przykład `sklep@martebizuteria.pl`, bez nazwy wyświetlanej, bo nazwę dodaje `sendEmail` i wysyła jako `M'Arte <sklep@martebizuteria.pl>`. Jego domena musi dokładnie odpowiadać domenie zweryfikowanej w Resend: subdomena, na przykład `mail.martebizuteria.pl`, to w Resend osobna domena z własnymi rekordami.
 
-Odpowiedzi nigdy nie trafiają na ten adres. `sendEmail` przekazuje przy każdej wiadomości `replyTo: BUSINESS.EMAIL`, więc każdy e-mail niesie nagłówek `Reply-To: kontakt@martebizuteria.pl`, a program pocztowy odbiorcy kieruje tam odpowiedź. `kontakt@martebizuteria.pl` musi więc być skrzynką, którą sklep czyta: klienci wysyłają na nią pytania, anulowania, odstąpienia od umowy i reklamacje. To, z jakiej domeny sklep wysyła pocztę, jest ustawieniem właściciela. [Kontrola przed wdrożeniem](#kontrola-przed-wdrożeniem) sprawdza, czy Resend wyśle e-mail jako `RESEND_EMAIL_FROM`, a nie, czy jego domeną jest `martebizuteria.pl`.
+Odpowiedzi nigdy nie trafiają na ten adres. `sendEmail` przekazuje przy każdej wiadomości e-mail kontaktowy z Ustawienia → Dane sklepu jako `replyTo`, więc każdy e-mail niesie nagłówek `Reply-To: kontakt@martebizuteria.pl`, tak jak wypełniła dane migracja, a program pocztowy odbiorcy kieruje tam odpowiedź. E-mail kontaktowy musi więc być skrzynką, którą sklep czyta: klienci wysyłają na nią pytania, anulowania, odstąpienia od umowy i reklamacje. To, z jakiej domeny sklep wysyła pocztę, jest ustawieniem właściciela. [Kontrola przed wdrożeniem](#kontrola-przed-wdrożeniem) sprawdza, czy Resend wyśle e-mail jako `RESEND_EMAIL_FROM`, a nie, czy jego domeną jest `martebizuteria.pl`.
 
 Własne powiadomienie sklepu o każdym nowym zamówieniu i alerty sklepu o incydentach trafiają natomiast na sam `RESEND_EMAIL_FROM`, w każdym środowisku, więc ten adres też potrzebuje skrzynki, którą właściciel czyta.
 

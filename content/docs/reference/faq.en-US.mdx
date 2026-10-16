@@ -67,9 +67,13 @@ As integers in the currency's minor unit. `product_variant.price` and `compare_a
 
 In the admin, under **Settings → Delivery** (`/admin/settings/delivery`). It adds methods, changes their names in both languages and their prices, hides, archives and restores them, sets the order the checkout lists them in, and sets the free delivery threshold. `delivery_method.price` and `store_setting.free_delivery_threshold` are minor units like every other amount. The seed file, `delivery-methods.sql`, only inserts the rows that are not there yet (`INSERT OR IGNORE`). See [Shipping and delivery](/docs/features/shipping-and-delivery#managing-delivery-methods).
 
+## Where are the shop's legal name, address and NIP changed?
+
+In the admin, under **Settings → Store details** (`/admin/settings/store`): the legal name, street, postal code, city, country, NIP, REGON, contact e-mail and phone. The footer, the about page, product pages, the checkout's pickup step, the e-mails, the structured data and the legal pages read them from the `store_setting` row, so a save shows everywhere without a release. The legal pages name them through placeholders such as `:seller[nip]`; the pickup sentences in the terms and the FAQ and the two PDF forms in `public/forms` still need an edit of their own. See [Admin settings](/docs/features/admin-settings#store-details).
+
 ## How does a change in one browser tab reach another admin's screen?
 
-Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 21 for admin, 14 for storefront, 2 for the checkout — and discard messages that do not overlap.
+Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 22 for admin, 15 for storefront, 3 for the checkout — and discard messages that do not overlap.
 
 ## How do I preview a transactional email?
 

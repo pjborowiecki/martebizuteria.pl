@@ -11,7 +11,7 @@ Cała warstwa wizualna mieszka w `src/presentation`. Żadna inna część repozy
 | `src/presentation/components/custom/` | Komponenty aplikacji: płaskie pliki współdzielone (`image.tsx`, `product-card.tsx`, `localized-link.tsx`, `icons.tsx`, …), zestawy `datagrid/`, `checkout/` i `image-upload/` oraz po jednym katalogu na ekran w `pages/` |
 | `src/presentation/styles/`            | `globals.css` (Tailwind, tokeny, warstwa bazowa), `fonts.css`, `critical-fonts.css`, `admin.css`, `storefront.css`                                                                                                        |
 | `src/presentation/theme/`             | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                                                                                                                                                      |
-| `src/presentation/branding/`          | `app.ts`, `business.ts`, `socials.ts`                                                                                                                                                                                     |
+| `src/presentation/branding/`          | `app.ts`, `socials.ts`                                                                                                                                                                                                    |
 | `src/presentation/emails/`            | Szablony React Email oraz `_styles/email-styles.ts`                                                                                                                                                                       |
 | `src/presentation/document-assets.ts` | `getCriticalFontPreloads(locale)`                                                                                                                                                                                         |
 | `src/providers/`                      | `ThemesProvider`, `TranslationsProvider`                                                                                                                                                                                  |
@@ -38,7 +38,7 @@ bun run test:component
 ## W tym rozdziale
 
 - [Motyw](/docs/ui/theme): zestawy tokenów, skrypty uruchamiane przed pierwszym renderem, nadpisanie dla panelu i preferencje zapisywane w przeglądarce.
-- [Fonty i branding](/docs/ui/fonts-and-branding): Manrope i Cormorant Garamond, preloady zależne od języka oraz stałe marki i firmy.
+- [Fonty i branding](/docs/ui/fonts-and-branding): Manrope i Cormorant Garamond, preloady zależne od języka, stałe marki i źródło danych sprzedawcy.
 - [Komponenty shadcn](/docs/ui/shadcn-components): prymitywy Base UI i konwencje propsów, które różnią się od Radix.
 - [Tabela danych](/docs/ui/data-table): zestaw tabel panelu — funkcje, trwałość ustawień, kolumny, filtry i paginacja po stronie serwera.
 - [Wzorce kompozycji](/docs/ui/composition-patterns): jak trasy, ekrany i komponenty łączą się w całość i jakie reguły utrzymują w nich spójność.

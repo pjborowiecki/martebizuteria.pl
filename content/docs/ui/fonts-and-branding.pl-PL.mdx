@@ -1,6 +1,6 @@
 ---
 title: "Fonty i branding"
-description: "Samodzielnie hostowane Manrope i Cormorant Garamond, krytyczne preloady zależne od języka oraz stałe marki i firmy."
+description: "Samodzielnie hostowane Manrope i Cormorant Garamond, krytyczne preloady zależne od języka, stałe marki i źródło danych sprzedawcy."
 ---
 
 ## Dwa kroje pisma
@@ -131,33 +131,22 @@ Zasilają one znacznie więcej niż chrom strony:
 
 Ponieważ `THEME_STORAGE_KEY` wywodzi się z `APP_NAME`, zmiana nazwy aplikacji zmienia klucz w `localStorage` i po cichu resetuje zapisany motyw każdemu odwiedzającemu. Dziś to nieszkodliwe (nie ma przełącznika), ale warto o tym pamiętać.
 
-## Dane firmy
+## Dane sprzedawcy
 
-`src/presentation/branding/business.ts` przechowuje tożsamość prawną sklepu:
+Tożsamość prawna sklepu to dane, a nie stała. Pełna nazwa firmy, ulica, kod pocztowy, miejscowość, kraj, NIP, REGON, e-mail kontaktowy i telefon to kolumny wiersza `store_setting`, które właściciel zmienia w **Ustawienia → Dane sklepu**; `20261016160000_seller_details.sql` wypełniła je danymi, które do tej pory były w kodzie (zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu)). Sklep czyta je przez `getSellerDetailsQuery()`, panel przez `getAdminSellerDetailsQuery()`, a kod serwerowy przez `readSellerDetails()`, a dwie funkcje pomocnicze w `src/modules/store-setting/store-setting.utils.ts` je formatują:
 
 ```ts
-export const BUSINESS = {
-  CITY: "Bochnia",
-  COUNTRY_CODE: "PL",
-  EMAIL: "kontakt@martebizuteria.pl",
-  LEGAL_NAME: "Pyciak Mariusz Firma Jubilerska",
-  NIP: "8681772646",
-  OPENING_HOURS_CLOSE: "17:00",
-  OPENING_HOURS_OPEN: "09:00",
-  PHONE: "+48 663 150 820",
-  POSTAL_CODE: "32-700",
-  REGON: "384616568",
-  STREET: "ul. Wąska 11",
-} as const
+export const formatSellerPostalAddress = (
+  { city, countryCode, legalName, postalCode, street }: Readonly<StoreSetting["sellerDetails"]>,
+  locale: string,
+): string[] => [legalName, street, `${postalCode} ${city}`, formatCountryName(countryCode, locale)]
 
-export const BUSINESS_POSTAL_ADDRESS_LINES = [BUSINESS.LEGAL_NAME, BUSINESS.STREET, `${BUSINESS.POSTAL_CODE} ${BUSINESS.CITY}`] as const
-
-export const BUSINESS_PHONE_HREF = `tel:${BUSINESS.PHONE.replaceAll(" ", "")}`
+export const toSellerPhoneHref = (phone: string): string => `tel:${phone.replaceAll(NOT_DIALLED, "")}`
 ```
 
-`SellerContactDetails` z `src/presentation/components/custom/seller-contact-details.tsx` pokazuje te dane w stopce sklepu i w sekcji kontaktowej na końcu `/about`, każda karta produktu podaje sprzedawcę jako producenta w sekcji „Producent”, potwierdzenie zamówienia wymienia z nimi sprzedawcę, `sendEmail` ustawia `BUSINESS.EMAIL` jako adres odpowiedzi każdej wiadomości, a `buildStoreStructuredData` i `buildProductStructuredData` w `src/lib/seo.ts` publikują nazwę prawną, adres pocztowy, e-mail, telefon i NIP w danych strukturalnych strony głównej oraz nazwę prawną, adres pocztowy i e-mail jako producenta każdego produktu, więc wyszukiwarki czytają te same dane co klienci. Plik jest też stroną asercji w teście: `src/presentation/branding/__test__/business.test.ts` stosuje `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql`, `20261005200000_terms_of_service_page.sql`, `20261005210000_returns_and_complaints_page.sql` i `20261010200000_privacy_policy_page.sql` na bazie SQLite w pamięci i dla każdego obsługiwanego języka zawodzi, jeśli wiersze adresu pocztowego albo adres `mailto:` w treści stron `exchanges-and-returns` i `privacy-policy` wstawionych przez migracje rozjadą się z tymi stałymi. Treść strony `privacy-policy` musi ponadto podawać nazwę prawną, NIP, REGON i telefon wraz z odnośnikiem `tel:`, a treść strony `terms-of-service` wszystkie dane: nazwę prawną, NIP, REGON, telefon wraz z odnośnikiem `tel:`, wiersze adresu pocztowego, adres `mailto:` i godziny otwarcia.
+`SellerContactDetails` z `src/presentation/components/custom/seller-contact-details.tsx` pokazuje je w stopce sklepu i w sekcji kontaktowej na końcu `/about`, każda karta produktu podaje sprzedawcę jako producenta w sekcji „Producent”, e-maile o zamówieniach i newsletter wymieniają z nimi sprzedawcę, `sendEmail` ustawia e-mail kontaktowy jako adres odpowiedzi każdej wiadomości, a `buildStoreStructuredData` i `buildProductStructuredData` w `src/lib/seo.ts`, które dostają dane jako `seller`, publikują nazwę prawną, adres pocztowy, e-mail, telefon i NIP w danych strukturalnych strony głównej oraz nazwę prawną, adres pocztowy i e-mail jako producenta każdego produktu, więc wyszukiwarki czytają te same dane co klienci. Kraj jest nazwany na podstawie zapisanego kodu w języku czytelnika. Strony prawne podają sprzedawcę przez znaczniki danych sklepu, na przykład `:seller[nip]` (zobacz [Strony prawne](/docs/features/legal-pages#dane-sklepu-na-stronach)).
 
-Gdy więc dane firmy się zmienią, najpierw popraw `business.ts`, a potem zaktualizuj każdą stronę we wszystkich językach w `/admin/content`, bo klienci czytają zapisane wiersze. Test widzi tylko treść wstawioną przez migracje, które nigdy nie nadpisują zapisanej strony, więc zielony wynik `bun run test:unit` nie dowodzi, że opublikowany tekst się zgadza.
+Gdy więc dane firmy się zmienią, wystarczy zapisać je w Ustawienia → Dane sklepu, a sklep, e-maile i strony prawne od razu za nimi pójdą. Zdania o odbiorze w regulaminie i w FAQ, które podają ulicę i miejscowość słowami, oraz dwa formularze PDF w `public/forms`, w których dane są wydrukowane, nadal wymagają osobnej zmiany. `APP_NAME` zostaje w `app.ts`, bo nazywa markę, a nie sprzedawcę.
 
 `src/presentation/branding/socials.ts` przechowuje dwa aktywne profile:
 
@@ -182,3 +171,4 @@ Czytają je `src/lib/seo.ts` (wpisy `sameAs` w danych strukturalnych), stopka or
 
 - [Motyw](/docs/ui/theme)
 - [Wzorce kompozycji](/docs/ui/composition-patterns)
+- [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu) — gdzie zmienia się dane sprzedawcy

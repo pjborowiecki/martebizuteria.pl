@@ -3,7 +3,7 @@ title: "Theming and branding"
 description: "Change colours, typography, fonts and the shop's identity: the token layers, the two shells, the theme bootstrap and the branding constants."
 ---
 
-Everything visual lives under `src/presentation/`. Styles are in `styles/`, theme mechanics in `theme/`, identity constants in `branding/`, and email styling in `emails/`. Nothing outside `src/presentation` declares a colour, a font or a business fact.
+Everything visual lives under `src/presentation/`. Styles are in `styles/`, theme mechanics in `theme/`, identity constants in `branding/`, and email styling in `emails/`. Nothing outside `src/presentation` declares a colour, a font or a brand fact; the seller's details are data, edited under Settings → Store details.
 
 ## The three stylesheets
 
@@ -142,7 +142,7 @@ export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriti
 
 ## Branding constants
 
-`src/presentation/branding/` holds three files and is the only place these facts appear.
+`src/presentation/branding/` holds two files, `app.ts` and `socials.ts`, and is the only place these facts appear.
 
 `app.ts` — the product identity:
 
@@ -162,27 +162,9 @@ export const APP_GITHUB_REPO = APP_DOMAIN
 
 `APP_NAME` feeds the document title, the Better Auth `appName`, the two-factor issuer and the theme storage key. `THEME_COLOR` is the `theme-color` meta tag and matches `--bg-base`. `APP_DOMAIN` feeds `appHostsForMode` in `src/modules/_core/constants/api.ts`, which is Better Auth's `baseURL.allowedHosts` — so changing the domain changes the auth host allow-list too, and with it the hosts `resolveRequestOrigin` accepts for email links and the Stripe return URL. `APP_URL` itself is only the canonical production address used in SEO metadata; emails link to the host the request came in on.
 
-`business.ts` — the legal entity, shown in the storefront footer, in the contact section at the end of `/about` and as the manufacturer on every product page, named in the order confirmation email, and checked against the seeded legal pages:
-
-```ts
-export const BUSINESS = {
-  CITY: "Bochnia",
-  COUNTRY_CODE: "PL",
-  EMAIL: "kontakt@martebizuteria.pl",
-  LEGAL_NAME: "Pyciak Mariusz Firma Jubilerska",
-  NIP: "8681772646",
-  OPENING_HOURS_CLOSE: "17:00",
-  OPENING_HOURS_OPEN: "09:00",
-  PHONE: "+48 663 150 820",
-  POSTAL_CODE: "32-700",
-  REGON: "384616568",
-  STREET: "ul. Wąska 11",
-} as const
-```
-
-`BUSINESS_POSTAL_ADDRESS_LINES` in the same file composes the three-line postal address, and `BUSINESS_PHONE_HREF` the `tel:` link for the phone number.
-
 `socials.ts` — the Facebook and Instagram URLs.
+
+The legal entity is not a constant. Its legal name, address, NIP, REGON, contact e-mail and phone are stored in the `store_setting` row and changed under Settings → Store details, and the storefront footer, the contact section at the end of `/about`, the manufacturer on every product page, the order e-mails and the legal pages all read them from there (see [Admin settings](/docs/features/admin-settings#store-details)).
 
 ## Emails
 
@@ -193,7 +175,7 @@ Email styling is separate: no Tailwind, no CSS variables, because mail clients s
 - A colour changes in `:root` **and** `.dark` in `globals.css`, never in a component.
 - An admin-only rule goes in `admin.css`, scoped to `[data-admin-main]` or `html[data-admin-shell]`.
 - A repeated admin class string goes in `admin-layout.styles.ts`.
-- A shop fact goes in `branding/`, and the component imports it from there.
+- A brand fact goes in `branding/`, and the component imports it from there. The seller's details come from `getSellerDetailsQuery()`, never from a constant.
 - Font changes keep the critical/non-critical split and update the fallback metrics.
 - `bun run format` sorts your Tailwind classes — `vite.config.ts` points the sorter at `globals.css`, so a custom utility you add there is understood.
 

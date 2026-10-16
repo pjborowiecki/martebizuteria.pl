@@ -99,14 +99,15 @@ The three `CLOUDFLARE_*` values are read through `process.env` in the Drizzle co
 
 Several settings people expect to find in `.env` are constants:
 
-| What                                                                         | Where                                                   |
-| ---------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, OG image, theme colour, R2 fallback URL | `src/presentation/branding/app.ts`                      |
-| Legal name, NIP, REGON, address, phone, opening hours                        | `src/presentation/branding/business.ts`                 |
-| Facebook and Instagram links                                                 | `src/presentation/branding/socials.ts`                  |
-| Hosts each mode serves: auth, email links, the Stripe return URL             | `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts` |
-| Supported locales, default locale, locale cookie name, timezones             | `src/integrations/use-intl/i18n.config.ts`              |
-| D1, R2, KV and Queue identifiers, Worker names, custom domains               | `wrangler.jsonc`                                        |
+| What                                                                         | Where                                                                                                            |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, OG image, theme colour, R2 fallback URL | `src/presentation/branding/app.ts`                                                                               |
+| Legal name, NIP, REGON, address, contact e-mail, phone                       | Not in code: the `store_setting` row in D1, edited under Settings → Store details (`/admin/settings/store`)      |
+| Pickup opening hours                                                         | `deliverySubsteps.inStoreText` in `messages/*/pages.checkout.json`, and the terms and FAQ under `/admin/content` |
+| Facebook and Instagram links                                                 | `src/presentation/branding/socials.ts`                                                                           |
+| Hosts each mode serves: auth, email links, the Stripe return URL             | `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts`                                                          |
+| Supported locales, default locale, locale cookie name, timezones             | `src/integrations/use-intl/i18n.config.ts`                                                                       |
+| D1, R2, KV and Queue identifiers, Worker names, custom domains               | `wrangler.jsonc`                                                                                                 |
 
 `appHostsForMode` is the one to remember when you change domains:
 
