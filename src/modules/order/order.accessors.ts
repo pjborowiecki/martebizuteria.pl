@@ -301,6 +301,7 @@ export const getAdminOrderDetailRow = (orderId: string) =>
         with: {
           courier: {
             columns: {
+              internalCode: true,
               name: true,
             },
           },
@@ -433,6 +434,7 @@ export const getOrderByTransactionId = (transactionId: string) =>
         with: {
           courier: {
             columns: {
+              internalCode: true,
               name: true,
             },
           },
@@ -489,6 +491,7 @@ export const getOrderForShippedEmail = (orderId: string) =>
         with: {
           courier: {
             columns: {
+              internalCode: true,
               name: true,
             },
           },

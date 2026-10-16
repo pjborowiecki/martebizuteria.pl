@@ -84,6 +84,7 @@ const buildAdminOrderDetail = ({
       deliveryMethod === null
         ? undefined
         : {
+            courierCode: deliveryMethod.courier.internalCode,
             courierName: deliveryMethod.courier.name,
             lockerId: orderRow.lockerId ?? undefined,
             lockerPoint: parseInpostLockerPoint(orderRow.lockerPoint),
@@ -148,6 +149,7 @@ const buildAdminOrderDetail = ({
     totalMinorUnits: orderRow.total,
     trackingNumber: orderRow.trackingNumber ?? undefined,
     trackingUrl: resolveOrderTrackingUrl({
+      courierCode: deliveryMethod?.courier.internalCode,
       deliveryType: deliveryMethod?.type,
       trackingNumber: orderRow.trackingNumber,
       trackingUrl: orderRow.trackingUrl,

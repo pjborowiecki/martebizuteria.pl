@@ -490,7 +490,7 @@ const createPlacedOrderTables = (): void => {
       provider text not null, refunded_amount integer not null default 0, refunded_at integer, reserved_lines text not null default '[]',
       status text not null default 'pending', transaction_id text, created_at integer not null, updated_at integer not null
     );
-    create table courier (id text primary key, name text not null);
+    create table courier (id text primary key, internal_code text not null, name text not null);
     create table delivery_method (
       id text primary key, api_service_code text not null, courier_id text not null, description text,
       is_active integer not null default 1, name text not null, names text not null default '{"pl-PL":"","en-US":""}',
@@ -605,7 +605,7 @@ const seedPlacedOrderReads = (): void => {
       severity text not null, created_at integer not null
     );
 
-    insert into courier (id, name) values ('courier-inpost', 'InPost');
+    insert into courier (id, internal_code, name) values ('courier-inpost', 'inpost', 'InPost');
     insert into delivery_method (id, api_service_code, courier_id, name, names, price, type, created_at, updated_at) values
       ('dm-locker', 'inpost_locker', 'courier-inpost', 'Paczkomat 24/7', '{"pl-PL":"Paczkomat 24/7","en-US":"Parcel locker 24/7"}', 1500, 'locker', ${JANUARY}, ${JANUARY});
     insert into address (id, address1, city, country_code, first_name, last_name, created_at, updated_at) values
@@ -722,7 +722,7 @@ describe("order reads for the confirmation page and the emails", () => {
     expect(found?.addresses.map((row) => row.address1)).toStrictEqual(["ul. Mokotowska 12"])
     expect(found?.checkout?.shippingAddress?.address1).toBe("ul. Edited 1")
     expect(found?.deliveryMethod?.name).toBe("Paczkomat 24/7")
-    expect(found?.deliveryMethod?.courier).toStrictEqual({ name: "InPost" })
+    expect(found?.deliveryMethod?.courier).toStrictEqual({ internalCode: "inpost", name: "InPost" })
   })
 
   it("matches the transaction against each order's own payment", async () => {

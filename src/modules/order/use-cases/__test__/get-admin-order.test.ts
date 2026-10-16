@@ -282,7 +282,11 @@ const paymentRow = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 })
 
-const lockerDelivery = { courier: { name: "InPost" }, names: { "en-US": "Parcel locker 24/7", "pl-PL": "Paczkomat 24/7" }, type: "locker" }
+const lockerDelivery = {
+  courier: { internalCode: "inpost", name: "InPost" },
+  names: { "en-US": "Parcel locker 24/7", "pl-PL": "Paczkomat 24/7" },
+  type: "locker",
+}
 
 describe("getAdminOrder delivery and payment", () => {
   it("reports nothing for an order that does not exist without reading its lines", async () => {
@@ -301,6 +305,7 @@ describe("getAdminOrder delivery and payment", () => {
     const detail = await fetchAdminOrder()
 
     expect(detail?.delivery).toStrictEqual({
+      courierCode: "inpost",
       courierName: "InPost",
       lockerId: "WAW01A",
       lockerPoint: undefined,

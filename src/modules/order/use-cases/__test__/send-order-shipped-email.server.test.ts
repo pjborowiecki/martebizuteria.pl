@@ -54,7 +54,11 @@ const addressRow = {
 const orderRow = {
   addresses: [{ ...addressRow, type: "shipping" }],
   checkout: { shippingAddress: { ...addressRow, address1: "Edited later 9" } },
-  deliveryMethod: { courier: { name: "InPost" }, names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" }, type: "courier" },
+  deliveryMethod: {
+    courier: { internalCode: "inpost", name: "InPost" },
+    names: { "en-US": "InPost courier", "pl-PL": "Kurier InPost" },
+    type: "courier",
+  },
   email: "anna@example.com",
   id: "order-abcdef12",
   lockerId: null,

@@ -66,6 +66,7 @@ export const getCustomerOrder = createServerFn({ method: "GET" })
 
     return mapCustomerOrderDetail(orderRow, items, {
       billingAddress: mapAdminOrderDetailAddress(billingSnapshot ?? orderRow.checkout?.billingAddress),
+      deliveryCourierCode: orderRow.deliveryMethod?.courier.internalCode,
       deliveryMethodName:
         orderRow.deliveryMethod === null ? undefined : resolveLocalizedString(orderRow.deliveryMethod.names, getCurrentLocale()),
       deliveryMethodType: orderRow.deliveryMethod?.type,

@@ -191,6 +191,7 @@ export const mapCustomerOrderDetail = (
   items: readonly CustomerOrderItemRow[],
   options: {
     readonly billingAddress?: CustomerAccount["orderAddress"] | undefined
+    readonly deliveryCourierCode?: string | undefined
     readonly deliveryMethodName?: string | undefined
     readonly deliveryMethodType?: (typeof deliveryMethod.$inferSelect)["type"] | undefined
     readonly payment?: CustomerOrderPaymentRow | null | undefined
@@ -221,6 +222,7 @@ export const mapCustomerOrderDetail = (
     timeline: buildOrderTimeline(orderRow, options.payment),
     trackingNumber: orderRow.trackingNumber ?? undefined,
     trackingUrl: resolveOrderTrackingUrl({
+      courierCode: options.deliveryCourierCode,
       deliveryType: options.deliveryMethodType,
       trackingNumber: orderRow.trackingNumber,
       trackingUrl: orderRow.trackingUrl,

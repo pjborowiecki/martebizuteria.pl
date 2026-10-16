@@ -47,6 +47,7 @@ const destinationRow = (overrides: Partial<DestinationRow> = {}): DestinationRow
 })
 
 const adminDelivery = (overrides = {}) => ({
+  courierCode: "inpost",
   courierName: undefined,
   lockerId: "WAW01A",
   lockerPoint: LOCKER_POINT,

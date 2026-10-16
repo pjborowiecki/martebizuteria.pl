@@ -47,12 +47,13 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
-describe("OrderInpostCard", () => {
+describe("OrderInpostCard for deliveries InPost does not carry", () => {
   it("stays off an in-store pickup that InPost never carries", () => {
     const { container } = renderWithProviders(
       <OrderInpostCard
         order={openLockerOrder({
           delivery: {
+            courierCode: "marte-atelier",
             courierName: undefined,
             lockerId: undefined,
             lockerPoint: undefined,
@@ -67,6 +68,28 @@ describe("OrderInpostCard", () => {
     expect(container).toBeEmptyDOMElement()
   })
 
+  it("stays off a courier order another carrier takes, which the shop ships by hand", () => {
+    const { container } = renderWithProviders(
+      <OrderInpostCard
+        order={openLockerOrder({
+          delivery: {
+            courierCode: "dpd",
+            courierName: "DPD",
+            lockerId: undefined,
+            lockerPoint: undefined,
+            lockerUnconfirmed: false,
+            methodName: "Kurier DPD",
+            type: "courier",
+          },
+        })}
+      />,
+    )
+
+    expect(container).toBeEmptyDOMElement()
+  })
+})
+
+describe("OrderInpostCard", () => {
   it("books a shipment for an open locker order in the size the admin picks", async () => {
     renderWithProviders(<OrderInpostCard order={openLockerOrder()} />)
 
@@ -104,6 +127,7 @@ describe("OrderInpostCard", () => {
       <OrderInpostCard
         order={openLockerOrder({
           delivery: {
+            courierCode: "inpost",
             courierName: "InPost",
             lockerId: undefined,
             lockerPoint: undefined,
