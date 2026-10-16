@@ -102,7 +102,7 @@
     "duplicateSku": "Ten kod SKU jest już używany przez inny wariant.",
     "duplicateAttribute": "Ten sam atrybut nie może być przypisany do produktu więcej niż raz.",
     "variantReservedInCheckout": "Klient właśnie płaci za wariant, który usuwasz, więc nie można go jeszcze usunąć. Zostaw wariant i zarchiwizuj produkt, aby wycofać go ze sprzedaży, a wariant usuń dopiero wtedy, gdy ta płatność się zakończy albo wygaśnie.",
-    "stockChangedWhileEditing": "Podczas edycji klient zarezerwował lub kupił ten produkt, więc wpisany stan magazynowy spadłby poniżej zera. Nic nie zostało zapisane. Odśwież stronę, aby zobaczyć aktualny stan, i wprowadź zmiany ponownie.",
+    "stockChangedWhileEditing": "Podczas edycji ten produkt został zarezerwowany lub kupiony, więc wpisany stan magazynowy spadłby poniżej zera. Nic nie zostało zapisane. Odśwież stronę, aby zobaczyć aktualny stan, i wprowadź zmiany ponownie.",
     "databaseSchemaOutdated": "Baza danych jest nieaktualna. Uruchom migracje: bun run db:migrate"
   },
   "basic": {

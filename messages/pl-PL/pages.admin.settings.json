@@ -48,7 +48,7 @@
       "off": "Wyłączone",
       "enable": "Włącz",
       "disable": "Wyłącz",
-      "requiredNote": "Wymagane od każdego administratora tego sklepu. Jeśli je wyłączysz, panel pozostanie zamknięty, dopóki nie włączysz go ponownie.",
+      "requiredNote": "Wymagane na każdym koncie administracyjnym tego sklepu. Jeśli je wyłączysz, panel pozostanie zamknięty, dopóki nie włączysz go ponownie.",
       "needsPassword": "Najpierw ustaw hasło: włączenie uwierzytelniania dwuskładnikowego o nie prosi."
     },
     "signInMethods": {
@@ -74,7 +74,7 @@
       "title": "Metody dostawy",
       "description": "Co kupujący mogą wybrać w kasie, w tej kolejności. Każda nazwa wyświetla się w języku kupującego.",
       "add": "Dodaj metodę",
-      "empty": "Nie ma jeszcze metod dostawy. Dodaj jedną, aby kupujący mogli złożyć zamówienie.",
+      "empty": "Nie ma jeszcze metod dostawy. Dodaj jedną, aby można było składać zamówienia.",
       "free": "Bezpłatnie",
       "hidden": "Ukryta",
       "hiddenCarrier": "Przewoźnik wyłączony",
@@ -127,7 +127,7 @@
       "DELIVERY_METHOD_LOCKER_NEEDS_INPOST": "Paczkomaty działają tylko z InPostem.",
       "DELIVERY_METHOD_NOT_FOUND": "Tej metody już nie ma albo została zarchiwizowana. Odśwież stronę.",
       "DELIVERY_METHOD_TYPE_ALREADY_OFFERED": "Kasa oferuje naraz jedną metodę z paczkomatem i jedną z odbiorem osobistym. Najpierw wyłącz tę drugą.",
-      "conflict": "W międzyczasie ktoś zmienił tę metodę. Odśwież stronę, aby zobaczyć zmianę."
+      "conflict": "W międzyczasie ta metoda została zmieniona. Odśwież stronę, aby zobaczyć zmianę."
     },
     "validation": {
       "nameRequired": "Wpisz nazwę.",

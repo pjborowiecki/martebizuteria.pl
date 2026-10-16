@@ -61,8 +61,9 @@ describe("AuditDetailCell for messages", () => {
   })
 
   it.each([
-    [1, "1 potwierdzony subskrybent"],
-    [4, "4 potwierdzonych subskrybentów"],
+    [1, "1 potwierdzony adres"],
+    [4, "4 potwierdzone adresy"],
+    [5, "5 potwierdzonych adresów"],
   ])("counts %i newsletter recipients", (count, text) => {
     expect(renderPolish({ kind: "message", message: "recipientCount", values: { count } })).toHaveTextContent(text)
   })

@@ -25,7 +25,7 @@
   "providerNotConfigured": "Ten dostawca logowania nie jest skonfigurowany.",
   "sessionExpired": "Twoja sesja wygasła. Zaloguj się ponownie.",
   "sessionNotFresh": "Ze względów bezpieczeństwa wyloguj się i zaloguj ponownie przed wprowadzeniem tej zmiany.",
-  "socialAccountAlreadyLinked": "To konto społecznościowe jest już powiązane z innym użytkownikiem.",
+  "socialAccountAlreadyLinked": "To konto społecznościowe jest już powiązane z innym kontem M'Arte.",
   "tooManyAttempts": "Zbyt wiele prób. Spróbuj ponownie później.",
   "tooManyRequests": "Zbyt wiele żądań. Zwolnij.",
   "unknownError": "Coś poszło nie tak. Spróbuj ponownie.",
