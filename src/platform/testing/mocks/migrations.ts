@@ -15,6 +15,7 @@ export const MIGRATION = {
   CONTENT_PAGES: "20261002120000_content_pages",
   DELIVERY_METHOD_DESCRIPTIONS: "20261010220000_delivery_method_descriptions",
   DELIVERY_METHOD_NAMES: "20261016150000_delivery_method_names",
+  DELIVERY_METHOD_SETTINGS: "20261016151000_delivery_method_settings",
   FAQ_PAGE: "20261010232000_faq_page",
   ORDER_DELIVERED_EMAIL: "20261015300000_order_delivered_email",
   ORDER_FULFILLMENT_STARTED: "20261015200000_order_fulfillment_started",

@@ -1,7 +1,7 @@
 import { relations } from "drizzle-orm"
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core"
 
-import { timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
+import { timestamp, timestamps } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { courier } from "~/src/modules/courier/courier.schema"
@@ -12,6 +12,7 @@ export const deliveryMethod = sqliteTable(
   "delivery_method",
   {
     apiServiceCode: text("api_service_code").notNull(),
+    archivedAt: timestamp("archived_at"),
     courierId: text("courier_id")
       .references(() => courier.id, { onDelete: "cascade" })
       .notNull(),
@@ -23,6 +24,7 @@ export const deliveryMethod = sqliteTable(
     name: text("name").notNull(),
     names: text("names", { mode: "json" }).$type<DeliveryMethod["names"]>().notNull(),
     price: integer("price").notNull(),
+    rank: integer("rank").notNull().default(0),
     type: text("type", { enum: ["locker", "courier", "in_store"] }).notNull(),
     ...timestamps(),
   },

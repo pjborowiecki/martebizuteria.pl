@@ -31,9 +31,10 @@ describe("SettingsPageLayout", () => {
     )
 
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument()
-    expect(screen.getByText("Your account, its security and how the admin panel works for you.")).toBeInTheDocument()
+    expect(screen.getByText("Your account, its security and the shop's delivery.")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "My account" })).toHaveAttribute("href", ROUTES.ADMIN_SETTINGS_ACCOUNT)
     expect(screen.getByRole("link", { name: "Sign-in & security" })).toHaveAttribute("href", ROUTES.ADMIN_SETTINGS_SECURITY)
+    expect(screen.getByRole("link", { name: "Delivery" })).toHaveAttribute("href", ROUTES.ADMIN_SETTINGS_DELIVERY)
     expect(screen.getByText("section body")).toBeInTheDocument()
   })
 

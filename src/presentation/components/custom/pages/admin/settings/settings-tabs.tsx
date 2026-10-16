@@ -13,11 +13,12 @@ export const SettingsTabs = ({ active }: Readonly<SettingsTabsProps>): JSX.Eleme
     <AdminHeaderTabs>
       <AdminHeaderTabLink href={ROUTES.ADMIN_SETTINGS_ACCOUNT} isActive={active === "account"} label={t("account")} />
       <AdminHeaderTabLink href={ROUTES.ADMIN_SETTINGS_SECURITY} isActive={active === "security"} label={t("security")} />
+      <AdminHeaderTabLink href={ROUTES.ADMIN_SETTINGS_DELIVERY} isActive={active === "delivery"} label={t("delivery")} />
     </AdminHeaderTabs>
   )
 }
 
-export type SettingsSection = "account" | "security"
+export type SettingsSection = "account" | "delivery" | "security"
 
 interface SettingsTabsProps {
   readonly active: SettingsSection

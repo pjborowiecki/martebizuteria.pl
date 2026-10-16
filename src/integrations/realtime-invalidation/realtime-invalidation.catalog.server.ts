@@ -4,6 +4,7 @@ import { ADMIN_DASHBOARD_QUERY_KEYS } from "~/src/modules/admin-dashboard/admin-
 import { AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 import { CONTENT_PAGE_QUERY_KEYS } from "~/src/modules/content-page/content-page.constants"
+import { DELIVERY_METHOD_QUERY_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 import { NEWSLETTER_QUERY_KEYS } from "~/src/modules/newsletter/newsletter.constants"
 import { ORDER_QUERY_KEYS } from "~/src/modules/order/order.constants"
 import { PRODUCT_ATTRIBUTE_QUERY_KEYS } from "~/src/modules/product-attribute/product-attribute.constants"
@@ -82,6 +83,13 @@ export const ORDER_CHANGE_ADMIN_QUERY_KEYS = [ORDER_QUERY_KEYS.ADMIN.ORDERS, ADM
 export const scheduleAdminOrdersInvalidation = (): void => {
   scheduleRealtimeInvalidation({
     admin: ORDER_CHANGE_ADMIN_QUERY_KEYS,
+  })
+}
+
+export const scheduleDeliveryMethodsInvalidation = (): void => {
+  scheduleRealtimeInvalidation({
+    admin: [DELIVERY_METHOD_QUERY_KEYS.ADMIN.ALL],
+    storefront: [DELIVERY_METHOD_QUERY_KEYS.ALL],
   })
 }
 

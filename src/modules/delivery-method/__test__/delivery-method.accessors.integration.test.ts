@@ -31,7 +31,8 @@ beforeEach(() => {
     create table delivery_method (
       id text primary key, api_service_code text not null, courier_id text not null, description text,
       is_active integer not null default 1, name text not null, names text not null default '{"pl-PL":"","en-US":""}',
-      price integer not null, type text not null, created_at integer not null, updated_at integer not null
+      price integer not null, rank integer not null default 0, archived_at integer, type text not null,
+      created_at integer not null, updated_at integer not null
     );
 
     insert into courier (id, internal_code, is_active, logo, name, created_at, updated_at) values
@@ -44,6 +45,8 @@ beforeEach(() => {
       ('dm-courier', 'inpost_courier', 'courier-inpost', null, 1, 'InPost courier', 1990, 'courier', ${EPOCH}, ${EPOCH}),
       ('dm-retired', 'dpd_classic', 'courier-dpd', null, 0, 'DPD classic', 1990, 'courier', ${EPOCH}, ${EPOCH}),
       ('dm-orphaned', 'retired_courier', 'courier-retired', null, 1, 'Retired courier', 990, 'courier', ${EPOCH}, ${EPOCH});
+    insert into delivery_method (id, api_service_code, courier_id, is_active, name, price, type, archived_at, created_at, updated_at) values
+      ('dm-archived', 'inpost_courier_express', 'courier-inpost', 1, 'Archived courier', 2990, 'courier', ${EPOCH}, ${EPOCH}, ${EPOCH});
   `)
 })
 
@@ -62,6 +65,10 @@ describe("getOfferedDeliveryMethodByIdQuery", () => {
 
   it("hides an active method whose courier was switched off, as the delivery step does", async () => {
     await expect(getOfferedDeliveryMethodByIdQuery("dm-orphaned")).resolves.toBeUndefined()
+  })
+
+  it("hides an archived method", async () => {
+    await expect(getOfferedDeliveryMethodByIdQuery("dm-archived")).resolves.toBeUndefined()
   })
 
   it("reports nothing for an unknown id", async () => {

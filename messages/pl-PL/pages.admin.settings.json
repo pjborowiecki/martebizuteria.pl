@@ -1,9 +1,10 @@
 {
   "title": "Ustawienia",
-  "description": "Twoje konto, jego bezpieczeństwo i to, jak działa dla Ciebie panel.",
+  "description": "Twoje konto, jego bezpieczeństwo i dostawa w sklepie.",
   "tabs": {
     "account": "Moje konto",
-    "security": "Logowanie i bezpieczeństwo"
+    "security": "Logowanie i bezpieczeństwo",
+    "delivery": "Dostawa"
   },
   "account": {
     "profile": {
@@ -66,6 +67,75 @@
     "history": {
       "title": "Historia logowania",
       "description": "Ostatnie udane i nieudane próby zalogowania się na Twoje konto."
+    }
+  },
+  "delivery": {
+    "methods": {
+      "title": "Metody dostawy",
+      "description": "Co kupujący mogą wybrać w kasie, w tej kolejności. Każda nazwa wyświetla się w języku kupującego.",
+      "add": "Dodaj metodę",
+      "empty": "Nie ma jeszcze metod dostawy. Dodaj jedną, aby kupujący mogli złożyć zamówienie.",
+      "free": "Bezpłatnie",
+      "hidden": "Ukryta",
+      "hiddenCarrier": "Przewoźnik wyłączony",
+      "edit": "Edytuj",
+      "moveUp": "Przesuń {name} w górę",
+      "moveDown": "Przesuń {name} w dół",
+      "archived": "Zarchiwizowane metody ({count})",
+      "archivedDescription": "Ukryte w kasie. Zamówienia złożone z ich wyborem je zachowują.",
+      "restore": "Przywróć",
+      "types": {
+        "courier": "Kurier",
+        "in_store": "Odbiór osobisty",
+        "locker": "Paczkomat"
+      },
+      "created": "Dodano metodę dostawy.",
+      "saved": "Zapisano metodę dostawy.",
+      "reordered": "Zapisano kolejność w kasie.",
+      "restored": "Przywrócono: {name}. Włącz ją, aby znów ją oferować.",
+      "archivedToast": "Zarchiwizowano: {name}."
+    },
+    "form": {
+      "addTitle": "Dodaj metodę dostawy",
+      "editTitle": "Edytuj: {name}",
+      "description": "Kupujący widzą w kasie nazwę w swoim języku i cenę.",
+      "type": "Rodzaj",
+      "carrier": "Przewoźnik",
+      "newCarrier": "Nowy przewoźnik",
+      "newCarrierName": "Nazwa przewoźnika",
+      "lockerCarrier": "Paczkomaty należą do InPostu, więc ta metoda korzysta z InPostu.",
+      "manualShipping": "Ze strony zamówienia nadaje się tylko przesyłki InPostu. Przesyłkę tego przewoźnika nadaj na jego stronie i zapisz numer przesyłki w zamówieniu.",
+      "namePl": "Nazwa po polsku",
+      "nameEn": "Nazwa po angielsku",
+      "price": "Cena",
+      "priceHint": "0 oznacza dostawę bezpłatną.",
+      "offered": "Oferuj w kasie",
+      "offeredHint": "Wyłącz, aby ukryć metodę w kasie bez archiwizowania jej.",
+      "archive": "Archiwizuj",
+      "cancel": "Anuluj",
+      "save": "Zapisz",
+      "create": "Dodaj metodę"
+    },
+    "archiveDialog": {
+      "title": "Zarchiwizować: {name}?",
+      "description": "Metoda zniknie z kasy. Zamówienia już złożone z jej wyborem ją zachowają, a później można ją przywrócić.",
+      "confirm": "Archiwizuj",
+      "cancel": "Anuluj"
+    },
+    "errors": {
+      "DELIVERY_METHOD_LAST_OFFERED": "W kasie musi pozostać co najmniej jedna metoda. Aby wstrzymać sprzedaż, użyj przełącznika na pulpicie.",
+      "DELIVERY_METHOD_LOCKER_NEEDS_INPOST": "Paczkomaty działają tylko z InPostem.",
+      "DELIVERY_METHOD_NOT_FOUND": "Tej metody już nie ma albo została zarchiwizowana. Odśwież stronę.",
+      "DELIVERY_METHOD_TYPE_ALREADY_OFFERED": "Kasa oferuje naraz jedną metodę z paczkomatem i jedną z odbiorem osobistym. Najpierw wyłącz tę drugą.",
+      "conflict": "W międzyczasie ktoś zmienił tę metodę. Odśwież stronę, aby zobaczyć zmianę."
+    },
+    "validation": {
+      "nameRequired": "Wpisz nazwę.",
+      "nameTooLong": "Użyj najwyżej 80 znaków.",
+      "priceInvalid": "Wpisz cenę równą 0 lub wyższą.",
+      "priceTooHigh": "Wpisz niższą cenę.",
+      "courierNameRequired": "Wpisz nazwę przewoźnika.",
+      "courierNameTooLong": "Użyj najwyżej 60 znaków."
     }
   }
 }

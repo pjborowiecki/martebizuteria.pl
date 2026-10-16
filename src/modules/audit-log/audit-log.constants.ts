@@ -56,6 +56,11 @@ export const AUDIT_LOG_ACTION = {
   CUSTOMER_PAGE_VIEWED: "customer.page_viewed",
   CUSTOMER_REGISTERED: "customer.registered",
   CUSTOMER_UPDATED: "customer.updated",
+  DELIVERY_METHOD_ARCHIVED: "delivery_method.archived",
+  DELIVERY_METHOD_CREATED: "delivery_method.created",
+  DELIVERY_METHOD_REORDERED: "delivery_method.reordered",
+  DELIVERY_METHOD_RESTORED: "delivery_method.restored",
+  DELIVERY_METHOD_UPDATED: "delivery_method.updated",
   DISCOUNT_CREATED: "discount.created",
   DISCOUNT_DELETED: "discount.deleted",
   DISCOUNT_REDEEMED: "discount.redeemed",
@@ -127,7 +132,7 @@ export const AUDIT_EMAIL_KIND = {
 
 export type AuditEmailKind = (typeof AUDIT_EMAIL_KIND)[keyof typeof AUDIT_EMAIL_KIND]
 
-export const AUDIT_LOG_MONEY_FIELDS: ReadonlySet<string> = new Set(["amount", "refundedAmount"])
+export const AUDIT_LOG_MONEY_FIELDS: ReadonlySet<string> = new Set(["amount", "price", "refundedAmount"])
 
 export const SEVERITY_DOT_COLORS: Record<AuditLogSeverity, string> = {
   error: "bg-red-500",

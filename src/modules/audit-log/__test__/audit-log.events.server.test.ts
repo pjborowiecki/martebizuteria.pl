@@ -26,6 +26,11 @@ import {
   recordCustomerPageViewedAudit,
   recordCustomerRegisteredAudit,
   recordCustomerUpdatedAudit,
+  recordDeliveryMethodArchivedAudit,
+  recordDeliveryMethodCreatedAudit,
+  recordDeliveryMethodRestoredAudit,
+  recordDeliveryMethodUpdatedAudit,
+  recordDeliveryMethodsReorderedAudit,
   recordDiscountCreatedAudit,
   recordDiscountDeletedAudit,
   recordDiscountRedeemedAudit,
@@ -689,6 +694,37 @@ describe("sales switch audit events", () => {
       severity,
       target: "store",
     })
+  })
+})
+
+const DELIVERY_METHOD_CASES: readonly TargetAuditCase[] = [
+  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_CREATED, name: "adding", record: recordDeliveryMethodCreatedAudit, severity: "info" },
+  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED, name: "changing", record: recordDeliveryMethodUpdatedAudit, severity: "info" },
+  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_ARCHIVED, name: "archiving", record: recordDeliveryMethodArchivedAudit, severity: "warning" },
+  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_RESTORED, name: "restoring", record: recordDeliveryMethodRestoredAudit, severity: "info" },
+]
+
+describe("delivery method audit events", () => {
+  it.each(DELIVERY_METHOD_CASES)("files $name a method under settings, naming it", ({ action, record: recordAudit, severity }) => {
+    recordAudit("Kurier InPost")
+
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action,
+      category: "settings",
+      detail: undefined,
+      metadata: undefined,
+      resourceId: "Kurier InPost",
+      severity,
+      target: "Kurier InPost",
+    })
+  })
+
+  it("files a new checkout order of the methods under settings", () => {
+    recordDeliveryMethodsReorderedAudit()
+
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ action: AUDIT_LOG_ACTION.DELIVERY_METHOD_REORDERED, category: "settings", target: "delivery-methods" }),
+    )
   })
 })
 
