@@ -1,7 +1,5 @@
-import { type JSX, useCallback, useMemo, useSyncExternalStore } from "react"
+import { type JSX, useCallback } from "react"
 
-import { useQuery } from "@tanstack/react-query"
-import { useWatch } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
 
 import { isCheckoutSessionFor } from "~/src/integrations/stripe/stripe.checkout"
@@ -10,8 +8,6 @@ import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { formatVatRatePercent } from "~/src/modules/_core/utils/tax"
 import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
 import { useCartStore } from "~/src/modules/cart/cart.store"
-import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
-import { type DiscountCheckBasket, validateDiscountCodeQuery } from "~/src/modules/discount/use-cases/validate-discount-code"
 import { computeOrderTotals } from "~/src/modules/order/order.totals"
 
 import { useFormatter } from "~/src/hooks/use-display-format"
@@ -22,41 +18,21 @@ import { CheckoutDiscountCode } from "~/src/presentation/components/custom/check
 import { CheckoutDiscountField } from "~/src/presentation/components/custom/checkout/components/checkout-discount-field"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
 import {
-  loadCheckoutSessionId,
-  loadCheckoutSessionIdOnServer,
-  subscribeToCheckoutSessionId,
-} from "~/src/presentation/components/custom/checkout/lib/checkout-draft"
-import { CHECKOUT_STEP_DEFINITIONS, CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
+  useCheckoutDeliveryPricing,
+  useCheckoutDiscountCheck,
+} from "~/src/presentation/components/custom/checkout/hooks/use-checkout-delivery-pricing"
 import { Image } from "~/src/presentation/components/custom/image"
 
 const useCheckoutSummaryFigures = () => {
-  const { activeStepIndex, checkoutSession, control, getValues } = useCheckoutForm()
+  const { checkoutSession, getValues } = useCheckoutForm()
   const { items, cartTotal } = useCartStore()
-  const [deliveryMethodId, email, discountCode] = useWatch({
-    control,
-    name: ["deliveryMethod", "email", "discountCode"],
-  })
-  const { data: deliveryMethods = [] } = useQuery(listDeliveryMethodsQuery())
-  const heldSessionId = useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, loadCheckoutSessionIdOnServer)
-  const selectedDeliveryMethod = deliveryMethods.find((m) => m.id === deliveryMethodId)
-  const deliveryCostCents = selectedDeliveryMethod?.price ?? 0
-  const subtotalCents = cartTotal()
-  const redemptionEmail = activeStepIndex > CONTACT_STEP_INDEX ? email : undefined
-  const discountBasket = useMemo(
-    (): DiscountCheckBasket => ({
-      deliveryMethodId: selectedDeliveryMethod?.id,
-      email: redemptionEmail,
-      heldSessionId,
-      lines: items.map((item) => ({ qty: item.qty, variantId: item.variantId })),
-    }),
-    [heldSessionId, items, redemptionEmail, selectedDeliveryMethod?.id],
-  )
-  const discountCheck = useQuery(validateDiscountCodeQuery({ ...discountBasket, code: discountCode }))
-  const enteredCode = discountCode === "" ? undefined : discountCode
+  const { discountBasket, discountCheck, enteredCode, selectedDeliveryMethod } = useCheckoutDiscountCheck()
+  const { priceOf, shortfall } = useCheckoutDeliveryPricing()
   const shared = {
     discountBasket,
     discountCheck,
     enteredCode,
+    freeDeliveryShortfall: shortfall,
     hasDeliveryMethod: selectedDeliveryMethod !== undefined,
   }
   if (checkoutSession !== undefined && isCheckoutSessionFor(checkoutSession, { items, values: getValues() })) {
@@ -70,8 +46,8 @@ const useCheckoutSummaryFigures = () => {
     isTotalFinal: enteredCode === undefined || discountCheck.isSuccess,
     totals: computeOrderTotals({
       discountTotal: applied?.amountMinorUnits,
-      itemsSubtotal: subtotalCents,
-      shippingTotal: deliveryCostCents,
+      itemsSubtotal: cartTotal(),
+      shippingTotal: selectedDeliveryMethod === undefined ? 0 : priceOf(selectedDeliveryMethod.price),
     }),
   }
 }
@@ -81,7 +57,8 @@ export const CheckoutSummary = (): JSX.Element => {
   const format = useFormatter()
   const { items, itemCount } = useCartStore()
   const { setValue } = useCheckoutForm()
-  const { discountBasket, discountCheck, enteredCode, hasDeliveryMethod, isTotalFinal, totals } = useCheckoutSummaryFigures()
+  const { discountBasket, discountCheck, enteredCode, freeDeliveryShortfall, hasDeliveryMethod, isTotalFinal, totals } =
+    useCheckoutSummaryFigures()
   const handleDiscountApplied = useCallback(
     (code: string) => {
       setValue("discountCode", code, { shouldDirty: true })
@@ -126,6 +103,11 @@ export const CheckoutSummary = (): JSX.Element => {
           <span className="font-medium tracking-[0.18em] uppercase">{t("checkoutSummary.delivery")}</span>
           <span className="font-light tracking-wider tabular-nums">{deliveryLabel}</span>
         </div>
+        {freeDeliveryShortfall !== undefined && freeDeliveryShortfall > 0 && (
+          <p className="text-right text-[11px] text-muted-foreground">
+            {t("checkoutSummary.freeDeliveryShortfall", { amount: money(freeDeliveryShortfall) })}
+          </p>
+        )}
         <div className="mt-2 flex justify-between gap-4 border-t border-border/30 pt-6">
           <span className="text-[14px] font-medium tracking-[0.18em] text-foreground uppercase">{t("checkoutSummary.total")}</span>
           {isTotalFinal && (
@@ -169,5 +151,3 @@ export const CheckoutSummary = (): JSX.Element => {
     </aside>
   )
 }
-
-const CONTACT_STEP_INDEX = CHECKOUT_STEP_DEFINITIONS.findIndex((step) => step.id === CHECKOUT_STEP_ID.CONTACT)

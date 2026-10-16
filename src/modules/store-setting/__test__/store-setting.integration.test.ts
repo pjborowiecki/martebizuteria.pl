@@ -7,9 +7,19 @@ import { MIGRATION, applyMigration } from "~/src/platform/testing/mocks/migratio
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 
 import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { changeSalesPaused, isSalesPaused } from "~/src/modules/store-setting/store-setting.accessors"
+import {
+  changeSalesPaused,
+  findFreeDeliveryThreshold,
+  isSalesPaused,
+  saveFreeDeliveryThreshold,
+} from "~/src/modules/store-setting/store-setting.accessors"
 import { STORE_SETTING_MUTATION_KEYS, STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
+import { getAdminFreeDeliveryQuery, getFreeDelivery, getFreeDeliveryQuery } from "~/src/modules/store-setting/use-cases/get-free-delivery"
 import { getAdminSalesStatusQuery, getSalesStatus, getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
+import {
+  setFreeDeliveryThreshold,
+  setFreeDeliveryThresholdMutation,
+} from "~/src/modules/store-setting/use-cases/set-free-delivery-threshold"
 import { setSalesPaused, setSalesPausedMutation } from "~/src/modules/store-setting/use-cases/set-sales-paused"
 
 const { effects, sqlite } = await vi.hoisted(async () => {
@@ -17,10 +27,12 @@ const { effects, sqlite } = await vi.hoisted(async () => {
 
   return {
     effects: {
+      freeDeliveryInvalidate: vi.fn<() => void>(),
       invalidate: vi.fn<() => void>(),
       paused: vi.fn<(target: string) => void>(),
       requestSession: vi.fn<() => Promise<{ user: { role: string; twoFactorEnabled?: boolean } } | null>>(),
       resumed: vi.fn<(target: string) => void>(),
+      settingsUpdated: vi.fn<(target: string, options?: unknown) => void>(),
     },
     sqlite: new DatabaseSync(":memory:"),
   }
@@ -52,11 +64,13 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => ({
+  scheduleFreeDeliveryInvalidation: effects.freeDeliveryInvalidate,
   scheduleSalesStatusInvalidation: effects.invalidate,
 }))
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({
   recordSalesPausedAudit: effects.paused,
   recordSalesResumedAudit: effects.resumed,
+  recordSettingsUpdatedAudit: effects.settingsUpdated,
 }))
 
 const MIGRATED_AT = Date.UTC(2026, 9, 5, 12)
@@ -70,6 +84,7 @@ beforeEach(() => {
   effects.requestSession.mockResolvedValue({ user: { role: ROLES.ADMIN, twoFactorEnabled: true } })
   sqlite.exec("drop table if exists store_setting")
   applyMigration(sqlite, MIGRATION.STORE_SETTINGS)
+  applyMigration(sqlite, MIGRATION.FREE_DELIVERY_THRESHOLD)
   sqlite.exec(`update store_setting set created_at = ${String(MIGRATED_AT)}, updated_at = ${String(MIGRATED_AT)}`)
 })
 
@@ -211,5 +226,93 @@ describe("setSalesPausedMutation", () => {
       salesPaused: true,
     })
     await expect(isSalesPaused()).resolves.toBe(true)
+  })
+})
+
+describe("free delivery threshold", () => {
+  it("starts without a threshold, so every delivery is charged", async () => {
+    await expect(findFreeDeliveryThreshold()).resolves.toBeUndefined()
+  })
+
+  it("saves a threshold, clears it again and recreates a missing settings row", async () => {
+    await saveFreeDeliveryThreshold(30_000)
+
+    await expect(findFreeDeliveryThreshold()).resolves.toBe(30_000)
+
+    await saveFreeDeliveryThreshold(undefined)
+
+    await expect(findFreeDeliveryThreshold()).resolves.toBeUndefined()
+
+    sqlite.exec("delete from store_setting")
+    await saveFreeDeliveryThreshold(25_000)
+
+    await expect(findFreeDeliveryThreshold()).resolves.toBe(25_000)
+    await expect(isSalesPaused()).resolves.toBe(false)
+  })
+
+  it("tells shoppers the threshold, keyed apart from the admin read", async () => {
+    effects.requestSession.mockResolvedValue(null)
+    sqlite.exec("update store_setting set free_delivery_threshold = 30000")
+    const queryClient = new QueryClient()
+
+    await expect(getFreeDelivery()).resolves.toStrictEqual({ threshold: 30_000 })
+    expect(getFreeDeliveryQuery().queryKey).toStrictEqual(STORE_SETTING_QUERY_KEYS.FREE_DELIVERY)
+    expect(getAdminFreeDeliveryQuery().queryKey).toStrictEqual(STORE_SETTING_QUERY_KEYS.ADMIN.FREE_DELIVERY)
+    await expect(queryClient.query(getFreeDeliveryQuery())).resolves.toStrictEqual({ threshold: 30_000 })
+    await expect(queryClient.query(getAdminFreeDeliveryQuery())).resolves.toStrictEqual({ threshold: 30_000 })
+  })
+})
+
+describe("setFreeDeliveryThreshold", () => {
+  it("sets the threshold, refreshes every open tab and records the old and new amounts", async () => {
+    await expect(setFreeDeliveryThreshold({ data: { threshold: 30_000 } })).resolves.toStrictEqual({ threshold: 30_000 })
+
+    await expect(findFreeDeliveryThreshold()).resolves.toBe(30_000)
+    expect(effects.freeDeliveryInvalidate).toHaveBeenCalledOnce()
+    expect(effects.settingsUpdated).toHaveBeenCalledExactlyOnceWith("free-delivery", {
+      metadata: { changed: ["freeDeliveryThreshold"], new: { freeDeliveryThreshold: 30_000 }, old: { freeDeliveryThreshold: undefined } },
+    })
+  })
+
+  it("turns free delivery off when no threshold is sent", async () => {
+    sqlite.exec("update store_setting set free_delivery_threshold = 30000")
+
+    await expect(setFreeDeliveryThreshold({ data: {} })).resolves.toStrictEqual({ threshold: undefined })
+
+    await expect(findFreeDeliveryThreshold()).resolves.toBeUndefined()
+    expect(effects.settingsUpdated).toHaveBeenCalledExactlyOnceWith("free-delivery", {
+      metadata: { changed: ["freeDeliveryThreshold"], new: { freeDeliveryThreshold: undefined }, old: { freeDeliveryThreshold: 30_000 } },
+    })
+  })
+
+  it("records nothing and refreshes nothing when the threshold is already set to that amount", async () => {
+    sqlite.exec("update store_setting set free_delivery_threshold = 30000")
+
+    await expect(setFreeDeliveryThreshold({ data: { threshold: 30_000 } })).resolves.toStrictEqual({ threshold: 30_000 })
+
+    expect(effects.freeDeliveryInvalidate).not.toHaveBeenCalled()
+    expect(effects.settingsUpdated).not.toHaveBeenCalled()
+  })
+
+  it("refuses a threshold that is not a positive whole amount or is too high", async () => {
+    await expect(setFreeDeliveryThreshold({ data: { threshold: 0 } })).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION })
+    await expect(setFreeDeliveryThreshold({ data: { threshold: 10.5 } })).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION })
+    await expect(setFreeDeliveryThreshold({ data: { threshold: 10_000_001 } })).rejects.toMatchObject({ code: ERROR_CODES.VALIDATION })
+    await expect(findFreeDeliveryThreshold()).resolves.toBeUndefined()
+  })
+
+  it("turns away a customer, who cannot manage the shop's settings", async () => {
+    effects.requestSession.mockResolvedValue({ user: { role: ROLES.CUSTOMER } })
+
+    await expect(setFreeDeliveryThreshold({ data: { threshold: 30_000 } })).rejects.toMatchObject({ code: ERROR_CODES.FORBIDDEN })
+    await expect(findFreeDeliveryThreshold()).resolves.toBeUndefined()
+  })
+
+  it("keys the mutation and saves the threshold it is handed", async () => {
+    expect(setFreeDeliveryThresholdMutation.mutationKey).toStrictEqual(STORE_SETTING_MUTATION_KEYS.SET_FREE_DELIVERY_THRESHOLD)
+    await expect(
+      new MutationObserver(new QueryClient(), setFreeDeliveryThresholdMutation).mutate({ threshold: 20_000 }),
+    ).resolves.toStrictEqual({ threshold: 20_000 })
+    await expect(findFreeDeliveryThreshold()).resolves.toBe(20_000)
   })
 })

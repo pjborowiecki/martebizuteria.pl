@@ -26,11 +26,7 @@ import {
   recordCustomerPageViewedAudit,
   recordCustomerRegisteredAudit,
   recordCustomerUpdatedAudit,
-  recordDeliveryMethodArchivedAudit,
-  recordDeliveryMethodCreatedAudit,
-  recordDeliveryMethodRestoredAudit,
-  recordDeliveryMethodUpdatedAudit,
-  recordDeliveryMethodsReorderedAudit,
+  recordDeliveryMethodAudit,
   recordDiscountCreatedAudit,
   recordDiscountDeletedAudit,
   recordDiscountRedeemedAudit,
@@ -57,6 +53,7 @@ import {
   recordOrderWithdrawalReceivedAudit,
   recordSalesPausedAudit,
   recordSalesResumedAudit,
+  recordSettingsUpdatedAudit,
   resolveAuthAuditActor,
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.record.server"
@@ -697,16 +694,17 @@ describe("sales switch audit events", () => {
   })
 })
 
-const DELIVERY_METHOD_CASES: readonly TargetAuditCase[] = [
-  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_CREATED, name: "adding", record: recordDeliveryMethodCreatedAudit, severity: "info" },
-  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED, name: "changing", record: recordDeliveryMethodUpdatedAudit, severity: "info" },
-  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_ARCHIVED, name: "archiving", record: recordDeliveryMethodArchivedAudit, severity: "warning" },
-  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_RESTORED, name: "restoring", record: recordDeliveryMethodRestoredAudit, severity: "info" },
-]
+const DELIVERY_METHOD_CASES = [
+  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_CREATED, severity: "info" },
+  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED, severity: "info" },
+  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_ARCHIVED, severity: "warning" },
+  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_RESTORED, severity: "info" },
+  { action: AUDIT_LOG_ACTION.DELIVERY_METHOD_REORDERED, severity: "info" },
+] as const
 
-describe("delivery method audit events", () => {
-  it.each(DELIVERY_METHOD_CASES)("files $name a method under settings, naming it", ({ action, record: recordAudit, severity }) => {
-    recordAudit("Kurier InPost")
+describe("recordDeliveryMethodAudit", () => {
+  it.each(DELIVERY_METHOD_CASES)("files $action under settings with $severity severity, naming the method", ({ action, severity }) => {
+    recordDeliveryMethodAudit(action, "Kurier InPost")
 
     expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
       action,
@@ -718,13 +716,21 @@ describe("delivery method audit events", () => {
       target: "Kurier InPost",
     })
   })
+})
 
-  it("files a new checkout order of the methods under settings", () => {
-    recordDeliveryMethodsReorderedAudit()
+describe("recordSettingsUpdatedAudit", () => {
+  it("files a changed shop setting under settings, with what changed", () => {
+    recordSettingsUpdatedAudit("free-delivery", { metadata: { changed: ["freeDeliveryThreshold"] } })
 
-    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith(
-      expect.objectContaining({ action: AUDIT_LOG_ACTION.DELIVERY_METHOD_REORDERED, category: "settings", target: "delivery-methods" }),
-    )
+    expect(record.scheduleAuditLogFromRequest).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.SETTINGS_UPDATED,
+      category: "settings",
+      detail: undefined,
+      metadata: { changed: ["freeDeliveryThreshold"] },
+      resourceId: "free-delivery",
+      severity: "info",
+      target: "free-delivery",
+    })
   })
 })
 

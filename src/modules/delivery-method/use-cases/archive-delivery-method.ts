@@ -6,7 +6,8 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleDeliveryMethodsInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
-import { recordDeliveryMethodArchivedAudit, recordDeliveryMethodRestoredAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
+import { recordDeliveryMethodAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   findDeliveryMethodById,
   listOfferedDeliveryMethods,
@@ -37,11 +38,10 @@ export const archiveDeliveryMethod = createServerFn({ method: "POST" })
 
     await setDeliveryMethodArchived(data.id, data.archived)
     scheduleDeliveryMethodsInvalidation()
-    if (data.archived) {
-      recordDeliveryMethodArchivedAudit(current.names["pl-PL"])
-    } else {
-      recordDeliveryMethodRestoredAudit(current.names["pl-PL"])
-    }
+    recordDeliveryMethodAudit(
+      data.archived ? AUDIT_LOG_ACTION.DELIVERY_METHOD_ARCHIVED : AUDIT_LOG_ACTION.DELIVERY_METHOD_RESTORED,
+      current.names["pl-PL"],
+    )
 
     return { id: data.id }
   })

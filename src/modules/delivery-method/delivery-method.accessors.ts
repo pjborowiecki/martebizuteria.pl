@@ -6,20 +6,29 @@ import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
 import { courier } from "~/src/modules/courier/courier.schema"
 import { deliveryMethod } from "~/src/modules/delivery-method/delivery-method.schema"
+import { STORE_SETTING_ID } from "~/src/modules/store-setting/store-setting.constants"
+import { storeSetting } from "~/src/modules/store-setting/store-setting.schema"
 
 export const offeredDeliveryMethod = and(eq(deliveryMethod.isActive, true), isNull(deliveryMethod.archivedAt), eq(courier.isActive, true))
 
 export const deliveryMethodOrder = [asc(deliveryMethod.rank), asc(deliveryMethod.createdAt)]
 
 export const getOfferedDeliveryMethodByIdQuery = async (id: string) => {
-  const [method] = await db
+  const offeredMethod = and(eq(deliveryMethod.id, id), offeredDeliveryMethod)
+  const methodQuery = db
     .select({ price: deliveryMethod.price, type: deliveryMethod.type })
     .from(deliveryMethod)
     .innerJoin(courier, eq(deliveryMethod.courierId, courier.id))
-    .where(and(eq(deliveryMethod.id, id), offeredDeliveryMethod))
+    .where(offeredMethod)
     .limit(1)
+  const settingQuery = db
+    .select({ freeDeliveryThreshold: storeSetting.freeDeliveryThreshold })
+    .from(storeSetting)
+    .where(eq(storeSetting.id, STORE_SETTING_ID))
+    .limit(1)
+  const [[method], [setting]] = await db.batch([methodQuery, settingQuery])
 
-  return method
+  return method === undefined ? undefined : { ...method, freeDeliveryThreshold: setting?.freeDeliveryThreshold ?? undefined }
 }
 
 export const listOfferedDeliveryMethods = () =>

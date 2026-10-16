@@ -17,6 +17,7 @@ export const MIGRATION = {
   DELIVERY_METHOD_NAMES: "20261016150000_delivery_method_names",
   DELIVERY_METHOD_SETTINGS: "20261016151000_delivery_method_settings",
   FAQ_PAGE: "20261010232000_faq_page",
+  FREE_DELIVERY_THRESHOLD: "20261016152000_free_delivery_threshold",
   ORDER_DELIVERED_EMAIL: "20261015300000_order_delivered_email",
   ORDER_FULFILLMENT_STARTED: "20261015200000_order_fulfillment_started",
   ORDER_ITEM_PRODUCT_BACKFILL: "20261003120000_order_item_product_backfill",

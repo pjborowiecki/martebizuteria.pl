@@ -9,7 +9,11 @@ import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
 import { recordOrderPaymentCapturedAudit } from "~/src/modules/audit-log/audit-log.events.server"
-import { resolveCheckoutSessionCurrency, resolveCheckoutSessionLocale } from "~/src/modules/checkout/checkout-metadata.zod"
+import {
+  resolveCheckoutSessionCurrency,
+  resolveCheckoutSessionLocale,
+  resolveCheckoutSessionShippingTotal,
+} from "~/src/modules/checkout/checkout-metadata.zod"
 import { readCheckoutSessionLines } from "~/src/modules/checkout/checkout.session-lines.server"
 import { fulfillCheckout } from "~/src/modules/checkout/use-cases/fulfill-checkout.server"
 import { sendNewOrderEmail } from "~/src/modules/order/use-cases/send-new-order-email.server"
@@ -30,6 +34,7 @@ export const createOrderFromPaidSession = async (session: StripeType.Checkout.Se
     lines: await readCheckoutSessionLines(session),
     locale: resolveCheckoutSessionLocale(session),
     paidAmount: session.amount_total ?? NO_AMOUNT,
+    shippingTotal: resolveCheckoutSessionShippingTotal(session),
     transactionId: session.id,
   })
 

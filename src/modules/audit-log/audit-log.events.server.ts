@@ -283,48 +283,33 @@ export const recordDiscountDeletedAudit = (code: string, options?: AuditEventOpt
   })
 }
 
-export const recordDeliveryMethodCreatedAudit = (name: string, options?: AuditEventOptions): void => {
+const DELIVERY_METHOD_AUDIT_SEVERITY = {
+  [AUDIT_LOG_ACTION.DELIVERY_METHOD_ARCHIVED]: "warning",
+  [AUDIT_LOG_ACTION.DELIVERY_METHOD_CREATED]: "info",
+  [AUDIT_LOG_ACTION.DELIVERY_METHOD_REORDERED]: "info",
+  [AUDIT_LOG_ACTION.DELIVERY_METHOD_RESTORED]: "info",
+  [AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED]: "info",
+} as const satisfies Record<string, AuditLogSeverity>
+
+export const recordDeliveryMethodAudit = (
+  action: keyof typeof DELIVERY_METHOD_AUDIT_SEVERITY,
+  target: string,
+  options?: AuditEventOptions,
+): void => {
   scheduleAuditLogFromRequest({
-    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_CREATED,
+    action,
     category: "settings",
-    severity: "info",
-    ...withResourceId(name, options),
+    severity: DELIVERY_METHOD_AUDIT_SEVERITY[action],
+    ...withResourceId(target, options),
   })
 }
 
-export const recordDeliveryMethodUpdatedAudit = (name: string, options?: AuditEventOptions): void => {
+export const recordSettingsUpdatedAudit = (target: string, options?: AuditEventOptions): void => {
   scheduleAuditLogFromRequest({
-    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED,
+    action: AUDIT_LOG_ACTION.SETTINGS_UPDATED,
     category: "settings",
     severity: "info",
-    ...withResourceId(name, options),
-  })
-}
-
-export const recordDeliveryMethodArchivedAudit = (name: string, options?: AuditEventOptions): void => {
-  scheduleAuditLogFromRequest({
-    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_ARCHIVED,
-    category: "settings",
-    severity: "warning",
-    ...withResourceId(name, options),
-  })
-}
-
-export const recordDeliveryMethodRestoredAudit = (name: string, options?: AuditEventOptions): void => {
-  scheduleAuditLogFromRequest({
-    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_RESTORED,
-    category: "settings",
-    severity: "info",
-    ...withResourceId(name, options),
-  })
-}
-
-export const recordDeliveryMethodsReorderedAudit = (options?: AuditEventOptions): void => {
-  scheduleAuditLogFromRequest({
-    action: AUDIT_LOG_ACTION.DELIVERY_METHOD_REORDERED,
-    category: "settings",
-    severity: "info",
-    ...withResourceId("delivery-methods", options),
+    ...withResourceId(target, options),
   })
 }
 

@@ -470,6 +470,7 @@
       "emailDailyLimit": "the shop reached its daily limit of {limit} emails that visitors can request",
       "fields": {
         "availability": "At checkout",
+        "freeDeliveryThreshold": "Free delivery from",
         "fulfillmentStep": "Fulfillment step",
         "nameEn": "Name (English)",
         "namePl": "Name (Polish)",

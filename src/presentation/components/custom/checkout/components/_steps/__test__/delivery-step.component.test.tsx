@@ -25,6 +25,14 @@ const { checkoutForm, methodsState } = vi.hoisted(() => ({
 vi.mock("~/src/presentation/components/custom/checkout/components/checkout-form-provider", () => ({
   useCheckoutForm: () => checkoutForm,
 }))
+const pricing = vi.hoisted(() => ({ free: false, shortfall: undefined as number | undefined }))
+
+vi.mock("~/src/presentation/components/custom/checkout/hooks/use-checkout-delivery-pricing", () => ({
+  useCheckoutDeliveryPricing: () => ({
+    priceOf: (price: number) => (pricing.free ? 0 : price),
+    shortfall: pricing.shortfall,
+  }),
+}))
 vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", async () => {
   const { DELIVERY_METHOD_QUERY_KEYS } = await import("~/src/modules/delivery-method/delivery-method.constants")
 
@@ -91,6 +99,8 @@ beforeEach(() => {
   checkoutForm.isPending = false
   methodsState.pending = false
   methodsState.rows = [method()]
+  pricing.free = false
+  pricing.shortfall = undefined
   delete observed.form
 })
 
@@ -192,6 +202,28 @@ describe("DeliveryStep options", () => {
     renderWithProviders(<DeliveryStepHarness />)
 
     expect(await screen.findByText("Free")).toBeInTheDocument()
+  })
+})
+
+describe("DeliveryStep free delivery", () => {
+  it("announces every family as free once the basket reaches the shop's threshold", async () => {
+    methodsState.rows = [method(), method({ id: "dm-locker", price: 1299, type: "locker" })]
+    pricing.free = true
+    pricing.shortfall = 0
+
+    renderWithProviders(<DeliveryStepHarness />)
+
+    expect(await screen.findAllByText("Free")).toHaveLength(2)
+    expect(screen.queryByText(/more for free delivery/u)).not.toBeInTheDocument()
+  })
+
+  it("tells the shopper how much more the basket needs for free delivery", async () => {
+    pricing.shortfall = 5000
+
+    renderWithProviders(<DeliveryStepHarness />)
+
+    expect(await screen.findByText("PLN 19.99")).toBeInTheDocument()
+    expect(screen.getByText("Add PLN 50.00 more for free delivery.")).toBeInTheDocument()
   })
 })
 

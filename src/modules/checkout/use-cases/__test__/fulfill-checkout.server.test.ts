@@ -119,6 +119,27 @@ describe("fulfillCheckout audit of the placed order", () => {
   })
 })
 
+describe("fulfillCheckout delivery charge", () => {
+  it("takes shipping from the delivery method rather than inferring it from the paid amount", async () => {
+    await fulfillCheckout(input)
+
+    expect(batchInput()?.totals).toMatchObject({ shippingTotal: 1500, subtotal: 20_000, total: 21_500 })
+  })
+
+  it("takes the delivery charge the session was priced with, so free delivery stays free", async () => {
+    await fulfillCheckout({ ...input, paidAmount: 20_000, shippingTotal: 0 })
+
+    expect(batchInput()?.totals).toMatchObject({ shippingTotal: 0, subtotal: 20_000, total: 20_000 })
+  })
+
+  it("treats a checkout with no delivery method as free shipping", async () => {
+    getCheckoutForFulfillment.mockResolvedValue({ ...checkoutRow, deliveryMethod: null })
+    await fulfillCheckout({ ...input, paidAmount: 20_000 })
+
+    expect(batchInput()?.totals).toMatchObject({ shippingTotal: 0, total: 20_000 })
+  })
+})
+
 describe("fulfillCheckout", () => {
   it("looks the pending checkout up by the payment transaction", async () => {
     await fulfillCheckout(input)
@@ -131,23 +152,10 @@ describe("fulfillCheckout", () => {
     expect(runDrizzleBatch).toHaveBeenCalledExactlyOnceWith(["stmt-a", "stmt-b", "release-claims"])
   })
 
-  it("takes shipping from the delivery method rather than inferring it from the paid amount", async () => {
-    await fulfillCheckout(input)
-
-    expect(batchInput()?.totals).toMatchObject({ shippingTotal: 1500, subtotal: 20_000, total: 21_500 })
-  })
-
   it("carves VAT out of the gross total instead of adding it on top", async () => {
     await fulfillCheckout(input)
 
     expect(batchInput()?.totals["taxTotal"]).toBe(4020)
-  })
-
-  it("treats a checkout with no delivery method as free shipping", async () => {
-    getCheckoutForFulfillment.mockResolvedValue({ ...checkoutRow, deliveryMethod: null })
-    await fulfillCheckout({ ...input, paidAmount: 20_000 })
-
-    expect(batchInput()?.totals).toMatchObject({ shippingTotal: 0, total: 20_000 })
   })
 
   it("carries the stored checkout snapshot onto the order", async () => {

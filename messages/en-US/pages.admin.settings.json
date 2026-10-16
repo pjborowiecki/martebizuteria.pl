@@ -136,6 +136,18 @@
       "priceTooHigh": "Enter a lower price.",
       "courierNameRequired": "Enter the carrier's name.",
       "courierNameTooLong": "Use at most 60 characters."
+    },
+    "freeDelivery": {
+      "title": "Free delivery",
+      "description": "Delivery costs nothing once the products in the basket reach this value, counted after a discount code and before delivery. The checkout tells shoppers how much they have left to spend.",
+      "enabled": "Offer free delivery",
+      "threshold": "Free delivery from",
+      "save": "Save",
+      "saved": "Free delivery saved.",
+      "validation": {
+        "thresholdInvalid": "Enter a value above 0.",
+        "thresholdTooHigh": "Enter a lower value."
+      }
     }
   }
 }

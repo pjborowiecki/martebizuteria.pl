@@ -6,8 +6,9 @@ import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleDeliveryMethodsInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { buildAuditChangeMetadata, toAuditMetadataRecord } from "~/src/modules/audit-log/audit-log.diff.utils"
-import { recordDeliveryMethodUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { recordDeliveryMethodAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   findDeliveryMethodById,
   listOfferedDeliveryMethods,
@@ -50,7 +51,11 @@ export const updateDeliveryMethod = createServerFn({ method: "POST" })
       "price",
     ])
     scheduleDeliveryMethodsInvalidation()
-    recordDeliveryMethodUpdatedAudit(data.names["pl-PL"], change === undefined ? undefined : { metadata: toAuditMetadataRecord(change) })
+    recordDeliveryMethodAudit(
+      AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED,
+      data.names["pl-PL"],
+      change === undefined ? undefined : { metadata: toAuditMetadataRecord(change) },
+    )
 
     return { id: updated.id }
   })

@@ -16,6 +16,11 @@ const methods = vi.hoisted(() => {
   return { rows }
 })
 
+const pricing = vi.hoisted(() => ({ free: false }))
+
+vi.mock("~/src/presentation/components/custom/checkout/hooks/use-checkout-delivery-pricing", () => ({
+  useCheckoutDeliveryPricing: () => ({ priceOf: (price: number) => (pricing.free ? 0 : price) }),
+}))
 vi.mock("~/src/modules/delivery-method/use-cases/list-delivery-methods", () => ({
   listDeliveryMethodsQuery: () => ({ queryFn: () => Promise.resolve(methods.rows.current), queryKey: ["deliveryMethods"] }),
 }))
@@ -43,6 +48,7 @@ afterEach(() => {
 })
 
 beforeEach(() => {
+  pricing.free = false
   methods.rows.current = [
     { id: "dhl", name: "DHL Express", price: 1999, type: "courier" },
     { id: "inpost-locker", name: "InPost Locker", price: 1299, type: "locker" },
@@ -69,6 +75,16 @@ describe("DeliveryCourier", () => {
     await screen.findByText(COURIER_TITLE)
 
     expect(screen.getByText("PLN 19.99")).toBeInTheDocument()
+  })
+
+  it("names a courier free once the basket earns free delivery", async () => {
+    pricing.free = true
+
+    renderWithProviders(<DeliveryCourier />)
+    await screen.findByText(COURIER_TITLE)
+
+    expect(screen.getByText("Free")).toBeInTheDocument()
+    expect(screen.queryByText("PLN 19.99")).not.toBeInTheDocument()
   })
 
   it("renders nothing while the methods are still loading", () => {

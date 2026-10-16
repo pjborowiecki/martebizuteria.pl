@@ -5,6 +5,8 @@ import {
   SINGLE_OFFER_DELIVERY_METHODS,
 } from "~/src/modules/delivery-method/delivery-method.constants"
 import { type DeliveryMethod } from "~/src/modules/delivery-method/delivery-method.types"
+import { DISCOUNT_TYPE } from "~/src/modules/discount/discount.constants"
+import { type Discount } from "~/src/modules/discount/discount.types"
 
 export const resolveOfferedDeliveryConflict = ({
   candidate,
@@ -42,4 +44,27 @@ interface DeliveryMethodAuditSource {
   readonly isActive: boolean
   readonly names: DeliveryMethod["names"]
   readonly price: number
+}
+
+export const resolveFreeDeliveryShortfall = ({
+  discount,
+  freeDeliveryThreshold,
+  itemsSubtotal,
+}: Readonly<FreeDeliveryInput>): number | undefined => {
+  if (freeDeliveryThreshold === undefined) {
+    return undefined
+  }
+
+  const productsDiscount = discount === undefined || discount.type === DISCOUNT_TYPE.FREE_SHIPPING ? 0 : discount.amountMinorUnits
+
+  return Math.max(freeDeliveryThreshold - (itemsSubtotal - productsDiscount), 0)
+}
+
+export const resolveDeliveryPrice = ({ price, ...input }: Readonly<FreeDeliveryInput & { readonly price: number }>): number =>
+  resolveFreeDeliveryShortfall(input) === 0 ? 0 : price
+
+interface FreeDeliveryInput {
+  readonly discount: Pick<Discount["applied"], "amountMinorUnits" | "type"> | undefined
+  readonly freeDeliveryThreshold: number | undefined
+  readonly itemsSubtotal: number
 }

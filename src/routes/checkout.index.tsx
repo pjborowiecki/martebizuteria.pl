@@ -5,6 +5,7 @@ import { ClientOnly, createFileRoute, useNavigate, useSearch } from "@tanstack/r
 
 import { useCartHydrated, useCartStore } from "~/src/modules/cart/cart.store"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
+import { getFreeDeliveryQuery } from "~/src/modules/store-setting/use-cases/get-free-delivery"
 import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
@@ -80,6 +81,7 @@ export const Route = createFileRoute("/checkout/")({
           })
           .catch(noop),
         context.queryClient.query(getSalesStatusQuery()).catch(noop),
+        context.queryClient.query(getFreeDeliveryQuery()).catch(noop),
       ])
     }
   },

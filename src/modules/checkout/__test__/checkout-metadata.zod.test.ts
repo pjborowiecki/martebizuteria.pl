@@ -2,7 +2,11 @@ import { describe, expect, it } from "vite-plus/test"
 
 import { checkoutSession } from "~/src/integrations/stripe/__test__/fixtures/stripe-webhook-events"
 
-import { checkoutFulfillmentLinesSchema, parseCheckoutSessionFulfillmentLines } from "~/src/modules/checkout/checkout-metadata.zod"
+import {
+  checkoutFulfillmentLinesSchema,
+  parseCheckoutSessionFulfillmentLines,
+  resolveCheckoutSessionShippingTotal,
+} from "~/src/modules/checkout/checkout-metadata.zod"
 
 const SHIRT = { handle: "linen-shirt", imageUrl: "https://cdn.test/1.jpg", price: 19_900, qty: 2, title: "Linen shirt", variantId: "var_1" }
 
@@ -66,5 +70,24 @@ describe("checkoutFulfillmentLinesSchema", () => {
 
   it("refuses a single object rather than a list", () => {
     expect(() => checkoutFulfillmentLinesSchema.parse(CAP)).toThrow()
+  })
+})
+
+describe("resolveCheckoutSessionShippingTotal", () => {
+  it("reads the delivery charge the session was priced with, including free delivery", () => {
+    expect(resolveCheckoutSessionShippingTotal(sessionWith({ shippingTotal: "1999" }))).toBe(1999)
+    expect(resolveCheckoutSessionShippingTotal(sessionWith({ shippingTotal: "0" }))).toBe(0)
+  })
+
+  it.each([
+    ["a session created before the charge was recorded", { checkoutId: "checkout-1" }],
+    ["an empty value", { shippingTotal: "" }],
+    ["a value that is not a whole amount", { shippingTotal: "19.99" }],
+  ])("leaves the charge to the delivery method for %s", (_name, metadata) => {
+    expect(resolveCheckoutSessionShippingTotal(sessionWith(metadata))).toBeUndefined()
+  })
+
+  it("leaves the charge to the delivery method for a session without metadata", () => {
+    expect(resolveCheckoutSessionShippingTotal(checkoutSession({ metadata: null }))).toBeUndefined()
   })
 })

@@ -9,7 +9,15 @@ const ITEMS_CHUNK_KEY_PREFIX = "items"
 
 const EMPTY_ITEMS_JSON = "[]"
 
-const CHECKOUT_PAYMENT_METADATA_KEYS = ["checkoutId", "deployment", "discountCode", "discountTotal", "locale", "userId"] as const
+const CHECKOUT_PAYMENT_METADATA_KEYS = [
+  "checkoutId",
+  "deployment",
+  "discountCode",
+  "discountTotal",
+  "locale",
+  "shippingTotal",
+  "userId",
+] as const
 
 const readCheckoutSessionItemsJson = (metadata: Record<string, string | undefined> | null | undefined): string => {
   if (metadata === null || metadata === undefined) {
@@ -43,6 +51,14 @@ export const resolveCheckoutSessionLocale = (session: StripeType.Checkout.Sessio
   const raw = session.metadata?.["locale"]
 
   return typeof raw === "string" && isSupportedLocale(raw) ? raw : I18N.DEFAULT_LOCALE
+}
+
+const shippingTotalSchema = zod.string().regex(/^\d+$/u).transform(Number)
+
+export const resolveCheckoutSessionShippingTotal = (session: StripeType.Checkout.Session): number | undefined => {
+  const parsed = shippingTotalSchema.safeParse(session.metadata?.["shippingTotal"])
+
+  return parsed.success ? parsed.data : undefined
 }
 
 export const checkoutFulfillmentLinesSchema = zod.array(

@@ -11,12 +11,14 @@ import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { CheckoutRadioField, CheckoutTextField, OptionCard } from "~/src/presentation/components/custom/checkout/components/checkout-fields"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+import { useCheckoutDeliveryPricing } from "~/src/presentation/components/custom/checkout/hooks/use-checkout-delivery-pricing"
 
 export const DeliveryCourier = (): JSX.Element | undefined => {
   const t = useTranslations("pages.checkout.checkoutForm")
   const format = useFormatter()
   const { control } = useCheckoutForm()
   const { data: deliveryMethods = [] } = useQuery(listDeliveryMethodsQuery())
+  const { priceOf } = useCheckoutDeliveryPricing()
   const couriers = deliveryMethods.filter((m) => m.type === DELIVERY_METHOD.COURIER)
   if (couriers.length === 0) {
     return undefined
@@ -33,10 +35,14 @@ export const DeliveryCourier = (): JSX.Element | undefined => {
             value={method.id}
             id={`checkout-delivery-courier-${method.id}`}
             label={method.name}
-            description={format.number(method.price / CENTS_IN_ZLOTY, {
-              currency: "PLN",
-              style: "currency",
-            })}
+            description={
+              priceOf(method.price) === 0
+                ? t("deliverySubsteps.free")
+                : format.number(priceOf(method.price) / CENTS_IN_ZLOTY, {
+                    currency: "PLN",
+                    style: "currency",
+                  })
+            }
             icon={courierIcon}
           />
         ))}

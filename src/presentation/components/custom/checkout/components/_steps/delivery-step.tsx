@@ -18,6 +18,7 @@ import { DeliveryLocker } from "~/src/presentation/components/custom/checkout/co
 import { DeliveryInStore } from "~/src/presentation/components/custom/checkout/components/_steps/delivery/store/delivery-in-store"
 import { CheckoutRadioField, OptionCard } from "~/src/presentation/components/custom/checkout/components/checkout-fields"
 import { useCheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form-provider"
+import { useCheckoutDeliveryPricing } from "~/src/presentation/components/custom/checkout/hooks/use-checkout-delivery-pricing"
 import { CHECKOUT_STEP_ID } from "~/src/presentation/components/custom/checkout/lib/checkout-steps"
 
 type Formatter = ReturnType<typeof useFormatter>
@@ -41,13 +42,15 @@ interface HelperMethod {
 const getDeliveryDescription = ({
   format,
   methods,
+  priceOf,
   t,
 }: Readonly<{
   format: Formatter
   methods: readonly HelperMethod[]
+  priceOf: (price: number) => number
   t: Translator
 }>): string => {
-  const lowestPrice = Math.min(...methods.map((m) => m.price))
+  const lowestPrice = Math.min(...methods.map((m) => priceOf(m.price)))
   if (lowestPrice === 0) {
     return t("deliverySubsteps.free")
   }
@@ -89,10 +92,12 @@ const OptionCardSkeleton = (): JSX.Element => (
 
 export const DeliveryStep = (): JSX.Element => {
   const t = useTranslations("pages.checkout.checkoutForm")
+  const tSummary = useTranslations("pages.checkout.checkoutSummary")
   const format = useFormatter()
   const { control, isPending, onNext, setValue } = useCheckoutForm()
 
   const { data: deliveryMethods = [], isLoading: isLoadingMethods } = useQuery(listDeliveryMethodsQuery())
+  const { priceOf, shortfall } = useCheckoutDeliveryPricing()
 
   const deliveryMethodType = useWatch({ control, name: "deliveryMethodType" })
 
@@ -138,13 +143,19 @@ export const DeliveryStep = (): JSX.Element => {
                 value={type}
                 id={`checkout-delivery-type-${type}`}
                 label={t(`deliveryMethods.${type}`)}
-                description={getDeliveryDescription({ format, methods, t })}
+                description={getDeliveryDescription({ format, methods, priceOf, t })}
                 icon={DELIVERY_ICONS[type]}
               />
             )
           })
         )}
       </CheckoutRadioField>
+
+      {shortfall !== undefined && shortfall > 0 && (
+        <p className="text-sm text-muted-foreground">
+          {tSummary("freeDeliveryShortfall", { amount: format.number(shortfall / CENTS_IN_ZLOTY, { currency: "PLN", style: "currency" }) })}
+        </p>
+      )}
 
       <DeliverySubstep type={deliveryMethodType} />
 

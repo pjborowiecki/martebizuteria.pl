@@ -5,7 +5,8 @@ import type * as zod from "zod"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { scheduleDeliveryMethodsInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
-import { recordDeliveryMethodsReorderedAudit } from "~/src/modules/audit-log/audit-log.events.server"
+import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
+import { recordDeliveryMethodAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { setDeliveryMethodRanks } from "~/src/modules/delivery-method/delivery-method.accessors"
 import { DELIVERY_METHOD_MUTATION_KEYS } from "~/src/modules/delivery-method/delivery-method.constants"
 import { deliveryMethodZodSchemas } from "~/src/modules/delivery-method/delivery-method.zod"
@@ -16,7 +17,7 @@ export const reorderDeliveryMethods = createServerFn({ method: "POST" })
   .handler(async ({ data: orderedIds }) => {
     await setDeliveryMethodRanks(orderedIds)
     scheduleDeliveryMethodsInvalidation()
-    recordDeliveryMethodsReorderedAudit()
+    recordDeliveryMethodAudit(AUDIT_LOG_ACTION.DELIVERY_METHOD_REORDERED, "delivery-methods")
 
     return { ok: true }
   })
