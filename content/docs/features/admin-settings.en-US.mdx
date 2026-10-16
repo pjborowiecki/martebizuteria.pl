@@ -1,9 +1,9 @@
 ---
 title: "Admin settings"
-description: "The admin's own account and sign-in security under /admin/settings: profile, panel language, time zone and format, password, two-factor authentication, sign-in methods, sessions and sign-in history."
+description: "The admin's own account and sign-in security, and the shop's delivery, under /admin/settings: profile, panel language, time zone and format, password, two-factor authentication, sign-in methods, sessions and sign-in history, delivery methods and free delivery."
 ---
 
-Settings is where an admin manages their own account. It is the **Settings** item at the bottom of the sidebar, and it has two header tabs: **My account** and **Sign-in & security**. Every call it makes acts on the signed-in admin's own account, through the same use cases and Better Auth calls as the customer's `/account/profile` page, so it adds no permission, table or server function.
+Settings is where an admin manages their own account and the shop's delivery. It is the **Settings** item at the bottom of the sidebar, and it has three header tabs: **My account**, **Sign-in & security** and **Delivery**. The first two act on the signed-in admin's own account, through the same use cases and Better Auth calls as the customer's `/account/profile` page, so they add no permission, table or server function. **Delivery** changes the whole shop: listing and changing the delivery methods and saving the free delivery threshold require `settings: ["manage"]`, the permission the dashboard and the audit log use, while the threshold itself is read through the public `getFreeDelivery` the checkout uses.
 
 ## Routes
 
@@ -13,12 +13,13 @@ Settings is where an admin manages their own account. It is the **Settings** ite
 | `/admin/settings/`         | `admin.settings.index.tsx`    | Redirects to `/admin/settings/account` in `beforeLoad`                              |
 | `/admin/settings/account`  | `admin.settings.account.tsx`  | **My account**: Profile and Preferences                                             |
 | `/admin/settings/security` | `admin.settings.security.tsx` | **Sign-in & security**: password, two-factor, sign-in methods, sessions and history |
+| `/admin/settings/delivery` | `admin.settings.delivery.tsx` | **Delivery**: delivery methods and free delivery                                    |
 
-The paths are `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT` and `ROUTES.ADMIN_SETTINGS_SECURITY` in `src/routes.ts`. All of them sit inside the `/admin` layout, so `requireAdmin` guards them and an admin without two-factor authentication is sent to `/admin/security` first (see [Admin dashboard](/docs/features/admin-dashboard#layout)).
+The paths are `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY` and `ROUTES.ADMIN_SETTINGS_DELIVERY` in `src/routes.ts`. All of them sit inside the `/admin` layout, so `requireAdmin` guards them and an admin without two-factor authentication is sent to `/admin/security` first (see [Admin dashboard](/docs/features/admin-dashboard#layout)).
 
 The layout declares `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` holds the page's own copy; the other three are there because Settings reuses the account dialogs, which read their copy and validation messages from them.
 
-The account loader prefetches `getCustomerProfileQuery()`. The security loader prefetches it together with `listCustomerSessionsQuery()` and `listCustomerLoginHistoryQuery()`, so both tabs render without a loading state.
+The account loader prefetches `getCustomerProfileQuery()`. The security loader prefetches it together with `listCustomerSessionsQuery()` and `listCustomerLoginHistoryQuery()`, and the delivery loader prefetches `listAdminDeliveryMethodsQuery()` and `getAdminFreeDeliveryQuery()`, so every tab renders without a loading state.
 
 ## Layout
 
@@ -75,6 +76,34 @@ When Google is connected, the card warns that signing in with Google does not as
 
 `SettingsSessionsCard` lists the signed-in devices with `ActiveSessionList` from the account's sessions page. While any other device is signed in, the card offers **Sign out other devices**, which calls `revokeOtherCustomerSessions`, toasts the result and invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. `SettingsLoginHistoryCard` lists the recent successful and failed sign-ins with `LoginHistoryList`. Both read the same queries as `/account/sessions`.
 
+## Delivery
+
+The Delivery tab holds two cards, from `src/presentation/components/custom/pages/admin/settings/delivery/`. [Shipping and delivery](/docs/features/shipping-and-delivery#managing-delivery-methods) describes the rules the server applies and what the checkout does with them.
+
+### Delivery methods
+
+`SettingsDeliveryMethodsCard` reads `listAdminDeliveryMethodsQuery()` and lists the methods that are not archived in the order the checkout offers them. Each row shows the type's icon, the name in the panel's language, the type and the carrier (for example **Courier · InPost**), the price or **Free**, a **Hidden** badge for a method the checkout does not offer and **Carrier switched off** for one whose carrier is off in D1. The arrows move a method up or down; the new order is saved at once, the toast says **Checkout order saved.**, and the checkout lists the delivery families in that order.
+
+**Add method** opens `DeliveryMethodDialog` with these fields:
+
+| Field                                   | What it takes                                                                                                                                                                                                                                                               |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Type**                                | **Courier**, **Parcel locker** or **Pickup in person**                                                                                                                                                                                                                      |
+| **Carrier**                             | An existing carrier, or **New carrier** with its **Carrier name** (up to 60 characters). A parcel locker always uses InPost, and for a carrier that is not InPost the dialog warns that its parcels are booked on its own site, with the tracking number saved on the order |
+| **Name in Polish**, **Name in English** | Both required, up to 80 characters each; shoppers see the name in their language                                                                                                                                                                                            |
+| **Price**                               | In PLN; 0 makes the method free                                                                                                                                                                                                                                             |
+| **Offer at checkout**                   | Off keeps the method in the list, hidden from the checkout                                                                                                                                                                                                                  |
+
+**Edit** opens the same dialog for an existing method with its type and carrier under the title, since neither can change, and offers the names, the price and **Offer at checkout**. Its **Archive** button asks for confirmation first: the method disappears from the checkout, and orders already placed with it keep it. Archived methods are listed under **Archived methods** below the list, each with **Restore**, which brings the method back switched off, so it is offered again only once it is turned on.
+
+A refused change is shown as a toast in the panel's language: a second offered parcel locker or pickup method, switching off or archiving the last offered method (the toast points to the sales switch on the dashboard instead), a parcel locker with another carrier, and an edit of a method someone changed in the meantime, which asks to reload the page. `useDeliveryMethodActions` refreshes the Settings list and the checkout's list after every change, and every change reaches other admin tabs, storefront tabs and open checkouts through realtime invalidation.
+
+### Free delivery
+
+`SettingsFreeDeliveryCard` reads `getAdminFreeDeliveryQuery()`. **Offer free delivery** turns the threshold on or off, and **Free delivery from** takes the products' value in PLN from which delivery costs nothing, counted after a discount code and before delivery. **Save** calls `setFreeDeliveryThreshold`, with no value when the switch is off, and toasts **Free delivery saved.**; with the switch on and no value above zero, the field asks for one instead. The checkout then shows delivery as free once a basket reaches the value and tells shoppers how much they have left to spend before that; an open checkout follows a change at once. See [Shipping and delivery: Free delivery](/docs/features/shipping-and-delivery#free-delivery).
+
+Every change on this tab is recorded in the [audit log](/docs/features/audit-log) under the `settings` category.
+
 ## Dialog styling
 
 The account dialogs take a `variant`: `"editorial"`, the default, for the customer's account pages, and `"default"` for the admin. Settings passes `variant="default"` to `ChangeEmailDialog`, `ChangePasswordDialog`, `SetPasswordDialog` and `TwoFactorDialog`, so they match the admin panel's other dialogs, and `AccountDialogEyebrow` hides itself in that variant. See [shadcn components](/docs/ui/shadcn-components#dialogs) for the two variants.
@@ -85,11 +114,12 @@ The account dialogs take a `variant`: `"editorial"`, the default, for the custom
 
 ## Not in Settings yet
 
-Settings covers the admin's own account for now. Shop-wide settings are not in it yet: the shop's details and seller identity, delivery methods and prices with the free-shipping threshold, the team of admins, staff notifications, the payment and integration status, and the legal pages' data. Sales are paused from the [sales switch](/docs/features/admin-dashboard#sales-switch) on the overview, and the legal pages are edited under [Content](/docs/features/legal-pages).
+Settings covers the admin's own account and the shop's delivery for now. Other shop-wide settings are not in it yet: the shop's details and seller identity, the carriers themselves, the team of admins, staff notifications, the payment and integration status, and the legal pages' data. Sales are paused from the [sales switch](/docs/features/admin-dashboard#sales-switch) on the overview, and the legal pages are edited under [Content](/docs/features/legal-pages).
 
 ## Related pages
 
 - [Account](/docs/features/account) — the customer's profile, which shares these use cases and dialogs
+- [Shipping and delivery](/docs/features/shipping-and-delivery) — the delivery methods and free delivery behind the Delivery tab
 - [Admin dashboard](/docs/features/admin-dashboard)
 - [Internationalization](/docs/features/internationalization) — the language, time zone and format preferences
 - [Audit log](/docs/features/audit-log)

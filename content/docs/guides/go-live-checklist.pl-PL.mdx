@@ -78,7 +78,8 @@ Przejdź przez listę po kolei. Każdy punkt mówi, co musi być spełnione, jak
     - pierwszy krok „Jak odstąpić od umowy” na `/exchanges-and-returns` i § 8 na `/terms-of-service` prowadzą do `/withdraw-from-contract`;
     - `/exchanges-and-returns` nie mówi już „Okres gwarancji na biżuterię M'Arte wynosi 2 lata” ani „The warranty period for M'Arte jewellery is 2 years”, a żaden opis produktu ani inny tekst wpisany w panelu nie mówi o „gwarancji”, „warranty” ani „guarantee”: sklep nie udziela gwarancji, odpowiada tylko ustawowo za brak zgodności z umową;
     - `/faq` i `/en-US/faq` opisują to, jak faktura trafia do kupującego i jak klient dowiaduje się, że zamówienie do odbioru jest gotowe, tak, jak robi to sklep, a porady pielęgnacyjne pasują do każdego wykończenia i kamienia, które sklep sprzedaje;
-    - każdy opis `delivery_method` w D1 podaje czasy dostawy z § 7 regulaminu; migracja, która je przepisała, pominęła opis edytowany od czasu zasiania.
+    - każdy opis `delivery_method` w D1 podaje czasy dostawy z § 7 regulaminu; migracja, która je przepisała, pominęła opis edytowany od czasu zasiania;
+    - **Ustawienia → Dostawa** oferują metody opisane w § 7, każdą z jej przewoźnikiem, ceną i nazwą po polsku i po angielsku, a darmowa dostawa jest włączona tylko wtedy, gdy sklep chce ją oferować, i od wartości, którą zamierza.
 
     Migracja, która zmienia któreś z tych zdań, pomija język, w którym zdanie edytowano, więc zdanie, którego nadal brakuje, trzeba dopisać ręcznie.
 
@@ -108,6 +109,7 @@ Te czynności zostają przy sklepie tak długo, jak sprzedaje:
 - Powtarzaj eksport bazy i kopię zdjęć z punktu 16 regularnie, na przykład co tydzień i przed ryzykowną migracją, i trzymaj tylko kilka ostatnich zaszyfrowanych eksportów, poza Cloudflare.
 - Reaguj na każdy alert, który trafia na `RESEND_EMAIL_FROM`; [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts#alerty-e-mail-ze-sklepu) mówią, co oznacza każdy z nich.
 - Zanim nadasz zamówienie do paczkomatu, poszukaj na jego stronie w panelu oznaczenia **Paczkomat niepotwierdzony**. Oznacza ono, że przy składaniu zamówienia nie udało się połączyć z InPost, żeby potwierdzić paczkomat, więc sprawdź w InPost, że paczkomat istnieje.
+- Metodę dostawy, której przewoźnikiem nie jest InPost, obsługuje się ręcznie: paczkę nadaje się na stronie przewoźnika, a przy oznaczaniu zamówienia jako wysłanego wpisuje się zarówno numer przesyłki, jak i link do śledzenia, bo tylko numery InPost dostają link do śledzenia samoczynnie.
 - Pilnuj w `/admin/audit` wpisów **Usunięcie konta nieudane**: każdy to klient, którego konto zostało, bo Stripe nie usunął jego klienta Stripe. Poproś go o ponowną próbę albo usuń konto z `/admin/customers`, gdy Stripe odpowie.
 - Edytor produktu nie ma jeszcze pola ceny porównawczej. Żeby przecenić wariant, obniż `product_variant.price` i ustaw `compare_at_price` w D1; baza zapisuje zmianę w `price_history`, a sklep pokazuje obniżkę, z przekreśloną najniższą ceną z 30 dni przed nią, tylko wtedy, gdy nowa cena jest niższa od tej najniższej ceny. Wariant, który miał już cenę porównawczą, gdy zaczęła się historia cen, pokazuje tylko swoją cenę, dopóki jego cena znów nie zostanie obniżona. Zobacz [Karta produktu](/docs/features/product-page#obniżone-ceny-i-najniższa-cena-z-30-dni-przed-obniżką).
 

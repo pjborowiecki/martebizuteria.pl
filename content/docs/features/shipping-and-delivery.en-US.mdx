@@ -1,6 +1,6 @@
 ---
 title: "Shipping and delivery"
-description: "The courier and delivery_method tables, the three delivery types, the InPost point picker on a MapLibre map, and how delivery reaches the order."
+description: "The courier and delivery_method tables, the three delivery types, the delivery methods and the free delivery threshold managed in Settings, the InPost point picker on a MapLibre map, and how delivery reaches the order."
 ---
 
 ## Two tables
@@ -14,19 +14,26 @@ description: "The courier and delivery_method tables, the three delivery types, 
 | `logo`          | Nullable, up to 2048 characters  |
 | `is_active`     | Boolean, default `true`          |
 
+Only the carrier whose `internal_code` is `inpost` (`INPOST_COURIER_CODE` in `src/modules/courier/courier.constants.ts`) is InPost. A carrier the owner adds in Settings by name gets a random UUID as its `internal_code`, so it never counts as InPost, whatever it is called. `courier.accessors.ts` lists the carriers by name for the Settings form and reads one by id. No screen switches a carrier off; that stays a change in D1.
+
 `delivery_method` (`src/modules/delivery-method/delivery-method.schema.ts`) is what the customer picks:
 
-| Column             | Notes                                                                |
-| ------------------ | -------------------------------------------------------------------- |
-| `courier_id`       | `references(() => courier.id, { onDelete: "cascade" })`, not null    |
-| `name`             | Not null; shown verbatim in checkout, so it is **not** translated    |
-| `description`      | Nullable                                                             |
-| `price`            | Integer minor units, not null; `0` means free                        |
-| `type`             | `locker \| courier \| in_store`, not null                            |
-| `api_service_code` | Not null; a carrier service identifier, currently informational only |
-| `is_active`        | Boolean, default `true`                                              |
+| Column             | Notes                                                                                                                                            |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `courier_id`       | `references(() => courier.id, { onDelete: "cascade" })`, not null                                                                                |
+| `names`            | JSON locale map, `{ "pl-PL": …, "en-US": … }`, not null; the name in each language                                                               |
+| `name`             | Not null; the Polish name, written together with `names` so a Worker of the previous release can still read it, until a later migration drops it |
+| `description`      | Nullable; no page shows it, and a method added in Settings has none                                                                              |
+| `price`            | Integer minor units, not null; `0` means free                                                                                                    |
+| `type`             | `locker \| courier \| in_store`, not null                                                                                                        |
+| `api_service_code` | Not null; a carrier service identifier, currently informational only                                                                             |
+| `rank`             | Integer, default `0`; the method's place in the checkout's list                                                                                  |
+| `is_active`        | Boolean, default `true`; **Offer at checkout** in Settings                                                                                       |
+| `archived_at`      | Nullable timestamp; set while the method is archived                                                                                             |
 
-`api_service_code` is stored but never read. An InPost shipment booked from the admin takes its ShipX service from the method's `type` instead: `inpost_locker_standard` for `locker` and `inpost_courier_standard` for `courier` (see [InPost](/docs/integrations/inpost#shipments-through-shipx)).
+`api_service_code` is stored but never read. A method added in Settings gets `<carrier internal_code>_<type>`. An InPost shipment booked from the admin takes its ShipX service from the method's `type` instead: `inpost_locker_standard` for `locker` and `inpost_courier_standard` for `courier` (see [InPost](/docs/integrations/inpost#shipments-through-shipx)).
+
+`20261016150000_delivery_method_names.sql` added `names`. It copies each Polish `name` into it and gives the three seeded methods their English names, InPost parcel locker, InPost courier and Pickup at the atelier. Any other method gets its Polish name in English as well, until the owner translates it in Settings. `20261016151000_delivery_method_settings.sql` added `rank` and `archived_at`, and numbered the existing methods courier first, then locker, then pickup, oldest first within a type, the order the checkout showed them in before.
 
 ## The three types
 
@@ -35,55 +42,120 @@ description: "The courier and delivery_method tables, the three delivery types, 
 ```ts
 export const DELIVERY_METHOD = { COURIER: "courier", IN_STORE: "in_store", LOCKER: "locker" } as const
 export const DELIVERY_METHODS = [DELIVERY_METHOD.COURIER, DELIVERY_METHOD.LOCKER, DELIVERY_METHOD.IN_STORE] as const
-export const DELIVERY_METHOD_QUERY_KEYS = { ALL: ["deliveryMethods"] as const } as const
+export const SINGLE_OFFER_DELIVERY_METHODS: ReadonlySet<DeliveryMethodType> = new Set([DELIVERY_METHOD.LOCKER, DELIVERY_METHOD.IN_STORE])
 ```
 
-`DELIVERY_METHODS` fixes the display order in the checkout step: courier, then locker, then in-store.
+`DELIVERY_METHODS` is the list of types the Settings form offers and `createDeliveryMethod` accepts. The checkout's order comes from the methods' `rank`, not from this list (see [Delivery step](#delivery-step)). `SINGLE_OFFER_DELIVERY_METHODS` holds the two types the checkout offers one method of at a time: the locker step opens the InPost map and the pickup step is copy only, so neither lets the shopper choose between two methods of its type. The courier step lists every offered courier method.
+
+`DELIVERY_METHOD_QUERY_KEYS` has `ALL` (`["deliveryMethods"]`), the checkout's list, and `ADMIN.ALL` (`["admin", "delivery-methods"]`), the Settings list.
 
 ## Listing methods
 
-`listDeliveryMethods` (`use-cases/list-delivery-methods.ts`) is public (`withRequest`) and returns only rows whose method **and** courier are both active. The rule is `offeredDeliveryMethod` in `delivery-method.accessors.ts`, which the checkout's server-side lookup shares:
+`listDeliveryMethods` (`use-cases/list-delivery-methods.ts`) is public (`withRequest`) and returns only the rows the shop offers: the method is switched on and not archived, and its courier is active. The rule is `offeredDeliveryMethod` in `delivery-method.accessors.ts`, which the checkout's server-side lookup shares. The rows come in `deliveryMethodOrder`, by `rank` and then by `created_at`, and each one's `name` is resolved from `names` in the request's language:
 
 ```ts
-export const offeredDeliveryMethod = and(eq(deliveryMethod.isActive, true), eq(courier.isActive, true))
+export const offeredDeliveryMethod = and(eq(deliveryMethod.isActive, true), isNull(deliveryMethod.archivedAt), eq(courier.isActive, true))
 
 const rows = await db
   .select({ courier, deliveryMethod })
   .from(deliveryMethod)
   .innerJoin(courier, eq(deliveryMethod.courierId, courier.id))
   .where(offeredDeliveryMethod)
+  .orderBy(...deliveryMethodOrder)
 
-return rows.map((row) => Object.assign(row.deliveryMethod, { courier: row.courier }))
+const locale = getCurrentLocale()
+
+return rows.map((row) =>
+  Object.assign(row.deliveryMethod, { courier: row.courier, name: resolveLocalizedString(row.deliveryMethod.names, locale) }),
+)
 ```
 
-Deactivating a courier therefore hides all of its methods at once.
+`resolveLocalizedString` falls back to the Polish name when the other language's is empty. Deactivating a courier hides all of its methods at once.
 
-`listDeliveryMethodsQuery()` has no `staleTime`, so it follows the client's default. It is read by the delivery step, the courier sub-step and the payment step (which needs the price to compute the Stripe amount). The `/checkout/` page loader loads it with `staleTime: "static"` while the layout reads the checkout messages, so those steps read the methods from the cache instead of requesting them after the form appears. The loader skips the read on the confirmation after payment, and a failed read leaves the steps to request the methods themselves.
+`listDeliveryMethodsQuery()` has no `staleTime`, so it follows the client's default. It is read by the delivery step, the courier sub-step and the payment step (which needs the price to compute the Stripe amount). The `/checkout/` page loader loads it with `staleTime: "static"`, together with the free delivery threshold, while the layout reads the checkout messages, so those steps read both from the cache instead of requesting them after the form appears. The loader skips the reads on the confirmation after payment, and a failed read leaves the steps to request the data themselves.
 
-`getOfferedDeliveryMethodByIdQuery(id)` in `delivery-method.accessors.ts` is the server-side lookup `resolveDelivery` in `stripe.actions.server.ts` uses when a payment session is opened or replaced. It joins the courier and applies `offeredDeliveryMethod`, and returns only the method's `price` and `type`. A method that is unknown, switched off, or whose courier is switched off, including one deactivated mid-checkout, is refused with `DELIVERY_METHOD_UNAVAILABLE`; the payment step then toasts `errors.deliveryMethodUnavailable` and sends the shopper back to the delivery step with the method list fetched again. See [Checkout](/docs/features/checkout#server-side).
+`getOfferedDeliveryMethodByIdQuery(id)` in `delivery-method.accessors.ts` is the server-side lookup `resolveDelivery` in `stripe.actions.server.ts` and `validateDiscountCode` use. It joins the courier, applies `offeredDeliveryMethod` and reads `store_setting.free_delivery_threshold` in the same D1 batch, and returns only the method's `price` and `type` with the threshold. A method that is unknown, switched off, archived, or whose courier is switched off, including one withdrawn mid-checkout, is refused with `DELIVERY_METHOD_UNAVAILABLE`; the payment step then toasts `errors.deliveryMethodUnavailable` and sends the shopper back to the delivery step with the method list fetched again. See [Checkout](/docs/features/checkout#server-side).
 
 Delivery goes only to the countries in `DELIVERY_COUNTRY_CODES` (`delivery-method.constants.ts`), currently `PL`. `checkoutSchema` refuses any other shipping `countryCode`; nothing in `delivery_method` or `courier` records a country.
+
+## Managing delivery methods
+
+The owner manages the methods under **Settings → Delivery** (`/admin/settings/delivery`); [Admin settings](/docs/features/admin-settings#delivery) describes the screen. Five server functions in `src/modules/delivery-method/use-cases/` do the work, each guarded by `authorized({ settings: ["manage"] })`:
+
+| Use case                      | What it does                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `list-admin-delivery-methods` | Every method, archived ones included, in checkout order, with its carrier, and every carrier for the form           |
+| `create-delivery-method`      | Adds a method with an existing carrier or with a new carrier by name, written in one batch, at the end of the list  |
+| `update-delivery-method`      | Changes the names, the price and whether the checkout offers it; the type and the carrier stay as they were created |
+| `archive-delivery-method`     | Archives a method, which also switches it off, or restores it, switched off                                         |
+| `reorder-delivery-methods`    | Takes the ids of the methods that are not archived in their new order and writes each one's `rank`                  |
+
+The rules, checked on the server with the methods offered at that moment (`listOfferedDeliveryMethods`, `resolveOfferedDeliveryConflict` in `delivery-method.utils.ts`):
+
+- **A parcel locker method uses InPost.** `createDeliveryMethod` refuses any other carrier for a `locker` method with `DELIVERY_METHOD_LOCKER_NEEDS_INPOST`, and the form picks InPost for that type by itself.
+- **One offered parcel locker method and one offered pickup method.** Offering a second method of a type in `SINGLE_OFFER_DELIVERY_METHODS`, by adding it switched on or switching it on, is refused with `DELIVERY_METHOD_TYPE_ALREADY_OFFERED`. Courier methods have no such limit.
+- **At least one method stays offered.** Switching off or archiving the last offered method is refused with `DELIVERY_METHOD_LAST_OFFERED`. To stop selling, the owner pauses sales on the dashboard instead (see [Checkout: Pausing sales](/docs/features/checkout#pausing-sales)).
+- **An edit applies only to the method as it was read.** `updateDeliveryMethodIfUnchanged` writes only while the row's `updated_at` still equals the one the form was opened with, so an edit made from a page that someone else changed since is refused with `CONFLICT` and the owner is asked to reload. An archived method cannot be edited (`DELIVERY_METHOD_NOT_FOUND`).
+
+Archiving keeps the row. Checkouts and orders keep pointing at it, so an order placed with an archived method still names it, while the checkout no longer offers it. A restored method comes back switched off, which is why restoring never clashes with the one-of-a-type rule.
+
+Each change is recorded in the audit log under `settings` by `recordDeliveryMethodAudit`: `delivery_method.created`, `delivery_method.updated` with the changed name, price and availability, `delivery_method.archived` as a warning, `delivery_method.restored` and `delivery_method.reordered`. The target is the method's Polish name, or `delivery-methods` for a new order. Each change also calls `scheduleDeliveryMethodsInvalidation()`, which publishes `DELIVERY_METHOD_QUERY_KEYS.ADMIN.ALL` to the admin hub and `DELIVERY_METHOD_QUERY_KEYS.ALL` to the storefront hub (see [Realtime invalidation](/docs/architecture/realtime-invalidation)). The checkout layout follows that storefront key and the free delivery threshold (`CHECKOUT_REALTIME_QUERY_PREFIXES`), so an open checkout drops a hidden or archived method and shows new names, prices and order without a reload. Whatever the browser shows, the server checks the chosen method again each time it opens or replaces a payment session.
+
+The texts around the methods name InPost: the delivery time under the courier and locker steps (`deliverySubsteps.parcelDeliveryTime`) and § 7 of the terms of service. A method with another carrier also needs those texts changed, in `messages/{locale}/pages.checkout.json` and at `/admin/content` (see [Legal pages](/docs/features/legal-pages#the-terms-of-service)). Its parcels are not booked from the order page: the owner books them on the carrier's site and saves the tracking number, with the tracking link, when marking the order shipped (see [Orders](/docs/features/orders)).
+
+## Free delivery
+
+The owner can make delivery free once the products in the basket reach a value, with the **Free delivery** card under **Settings → Delivery**. The value is `store_setting.free_delivery_threshold` (`20261016152000_free_delivery_threshold.sql`), in minor units, and `NULL` means the shop offers no free delivery. `getFreeDelivery` in `src/modules/store-setting/use-cases/get-free-delivery.ts` is public and returns `{ threshold }`: the checkout reads it with `getFreeDeliveryQuery()` under `STORE_SETTING_QUERY_KEYS.FREE_DELIVERY` (`["store-setting", "free-delivery"]`), and Settings with `getAdminFreeDeliveryQuery()` under `STORE_SETTING_QUERY_KEYS.ADMIN.FREE_DELIVERY` (`["admin", "store-setting", "free-delivery"]`). `setFreeDeliveryThreshold` (`set-free-delivery-threshold.ts`, `settings: ["manage"]`) takes a whole number of minor units from 1 to `FREE_DELIVERY_THRESHOLD_MAX` (10 000 000, that is 100 000 zł), or none to turn free delivery off, and upserts the single `store_setting` row.
+
+Two pure functions in `delivery-method.utils.ts` decide it, and the checkout in the browser, the discount check and the server all call them:
+
+```ts
+export const resolveFreeDeliveryShortfall = ({
+  discount,
+  freeDeliveryThreshold,
+  itemsSubtotal,
+}: Readonly<FreeDeliveryInput>): number | undefined => {
+  if (freeDeliveryThreshold === undefined) {
+    return undefined
+  }
+
+  const productsDiscount = discount === undefined || discount.type === DISCOUNT_TYPE.FREE_SHIPPING ? 0 : discount.amountMinorUnits
+
+  return Math.max(freeDeliveryThreshold - (itemsSubtotal - productsDiscount), 0)
+}
+
+export const resolveDeliveryPrice = ({ price, ...input }: Readonly<FreeDeliveryInput & { readonly price: number }>): number =>
+  resolveFreeDeliveryShortfall(input) === 0 ? 0 : price
+```
+
+The products' value is counted after a discount code that takes money off the products, a percentage or a fixed amount, and before delivery. A free shipping code does not count towards it, so it never pushes a basket over the threshold. Once the basket has reached the threshold, delivery is already free and a free shipping code has nothing left to take off: the code check shows it with an amount of zero, and the server drops it like any code that would take nothing off (see [Discounts](/docs/features/discounts#free-delivery-and-discount-codes)).
+
+In the checkout, `useCheckoutDeliveryPricing` (`src/presentation/components/custom/checkout/hooks/use-checkout-delivery-pricing.ts`) applies the threshold to the basket and the code the summary's check accepted. The delivery step's type cards and the courier sub-step show a method as `deliverySubsteps.free` once the threshold is reached, and the summary shows the delivery as `checkoutSummary.free`. Before that, the delivery step and the summary say how much is missing with `checkoutSummary.freeDeliveryShortfall`, "Add {amount} more for free delivery."
+
+The server decides the charge itself. `resolveDelivery` returns the method's price with the threshold, and the session handlers price delivery with `resolveDeliveryPrice` for the products and the code the checkout claimed. A free delivery leaves no delivery line on the Stripe session, and the session and its payment intent record the delivery charge as `shippingTotal` in their metadata. Fulfilment takes the order's shipping total from that field, falling back to the method's price only for a session opened before the field existed, so a threshold or price the owner changes while the shopper pays cannot change what the order says was charged (see [Payments](/docs/features/payments#fulfilment)).
+
+Changing the threshold records `settings.updated` with the target `free-delivery` and the old and new `freeDeliveryThreshold` in its metadata, which the audit log shows as amounts of money, and calls `scheduleFreeDeliveryInvalidation()`, which publishes both keys above, so an open checkout applies the new threshold at once. Saving the value the shop already has changes and records nothing.
 
 ## Seed data
 
 `src/integrations/drizzle-orm/seeds/delivery-methods.sql` inserts two couriers (`inpost` and `marte-atelier`) and three methods:
 
-| Method           | Type       | Price (minor units) | `api_service_code`        |
-| ---------------- | ---------- | ------------------- | ------------------------- |
-| Paczkomat InPost | `locker`   | 1499                | `inpost_locker_standard`  |
-| Kurier InPost    | `courier`  | 1999                | `inpost_courier_standard` |
-| Odbiór w atelier | `in_store` | 0                   | `marte_atelier_pickup`    |
+| Method (`pl-PL` / `en-US`)               | Type       | Price (minor units) | `rank` | `api_service_code`        |
+| ---------------------------------------- | ---------- | ------------------- | ------ | ------------------------- |
+| Paczkomat InPost / InPost parcel locker  | `locker`   | 1499                | 1      | `inpost_locker_standard`  |
+| Kurier InPost / InPost courier           | `courier`  | 1999                | 0      | `inpost_courier_standard` |
+| Odbiór w atelier / Pickup at the atelier | `in_store` | 0                   | 2      | `marte_atelier_pickup`    |
 
-The seed uses `INSERT OR IGNORE` with fixed UUIDv7 ids. Do not run `bun run db:seed:preview` against the live database — the seed files lag behind production data.
+The seed uses `INSERT OR IGNORE` with fixed UUIDv7 ids. Do not run `bun run db:seed:preview` against the live database — the seed files lag behind production data. On a live shop the methods are changed in Settings.
 
 Each seeded method also has a Polish `description`, which no page shows. The descriptions follow § 7 of the terms of service: up to 4 business days from dispatch for the locker and the courier, and collection from the workshop in Bochnia, ready by the end of the fulfilment time. `20261010220000_delivery_method_descriptions.sql` gives rows seeded before that the same descriptions, replacing the 1–2 day transit and the Warsaw atelier ready in 24 hours. It changes a row only while its description is still the old seeded text, so a description the owner has rewritten stays as it is.
 
 ## Delivery step
 
-`_steps/delivery-step.tsx` renders one `OptionCard` per **type** that has at least one active method, using `DELIVERY_ICONS` (`Truck`, `Package`, `Store` from lucide). The card description shows the cheapest price in the group:
+`_steps/delivery-step.tsx` renders one `OptionCard` per **type** that has at least one offered method, using `DELIVERY_ICONS` (`Truck`, `Package`, `Store` from lucide). The types come in the order of their first method in the list, so the owner's order in Settings decides which family the checkout shows first. The card description shows the cheapest price in the group, after free delivery (`priceOf` from `useCheckoutDeliveryPricing`):
 
 ```ts
-const lowestPrice = Math.min(...methods.map((m) => m.price))
+const lowestPrice = Math.min(...methods.map((m) => priceOf(m.price)))
 if (lowestPrice === 0) {
   return t("deliverySubsteps.free")
 }
@@ -93,11 +165,13 @@ const price = format.number(lowestPrice / CENTS_IN_ZLOTY, { currency: "PLN", sty
 return methods.length > 1 ? `${t("deliverySubsteps.from")} ${price}` : price
 ```
 
+Below the cards, while the shop offers free delivery and the basket has not reached it, the step says how much is missing with `checkoutSummary.freeDeliveryShortfall` (see [Free delivery](#free-delivery)).
+
 Picking a type writes `deliveryMethodType` and either auto-selects the single method or clears `deliveryMethod` so the sub-step must choose.
 
 ### Courier
 
-`delivery/courier/delivery-courier.tsx` renders a radio group of the `courier` methods with their formatted prices, then `deliverySubsteps.parcelDeliveryTime`, plus the free-text `deliveryNotes` field. That paragraph gives the delivery time of § 7 of the terms of service: the fulfilment time stated on the product page, counted from the acceptance of the order and the longest one for several products, then up to 4 business days from dispatch with InPost, with the tracking number sent by e-mail. That field is persisted as `checkout.customer_note` and copied onto `order.customer_note`. The component returns `undefined` when there are no courier methods.
+`delivery/courier/delivery-courier.tsx` renders a radio group of the `courier` methods with their names in the shopper's language and their prices, or `deliverySubsteps.free` once delivery is free, then `deliverySubsteps.parcelDeliveryTime`, plus the free-text `deliveryNotes` field. That paragraph gives the delivery time of § 7 of the terms of service: the fulfilment time stated on the product page, counted from the acceptance of the order and the longest one for several products, then up to 4 business days from dispatch with InPost, with the tracking number sent by e-mail. That field is persisted as `checkout.customer_note` and copied onto `order.customer_note`. The component returns `undefined` when there are no courier methods.
 
 ### In-store
 
@@ -152,14 +226,16 @@ The map is `react-map-gl/maplibre` with the Carto Voyager basemap (`https://base
 ## How delivery reaches the order
 
 1. `deliveryMethod` (the method id) is submitted with the checkout form.
-2. `resolveDelivery` refuses a method the shop does not offer, a locker method without a locker and a locker InPost does not list, keeps `lockerId` only for a locker method, notes whether InPost could be asked about it, and reads the method's `price`.
-3. `prepareCreateCheckoutBatch` writes the method to `checkout.delivery_method_id`, `lockerId` to `checkout.locker_id`, the locker's address InPost returned to `checkout.locker_point` and the unanswered lookup to `checkout.locker_unconfirmed`; `createStripeSession` adds a delivery line item for the price when it is above zero, named for the method's type in the shopper's language (`deliveryLineItem` in `pages.checkout`).
-4. `prepareFulfillCheckoutBatch` copies `deliveryMethodId`, `lockerId`, `lockerPoint`, `lockerUnconfirmed` and `customerNote` from the checkout snapshot onto the new `order` row, and computes `shippingTotal = Math.max(session.amount_total - itemsSubtotal, 0)`.
-5. For a locker or courier order, an admin can book the parcel with InPost from the order page. The shipment's id and status land on `order.inpost_shipment_id` and `order.inpost_shipment_status`, its tracking number and link on `order.tracking_number` and `order.tracking_url`, and its PDF label is downloaded from the same card. See [InPost](/docs/integrations/inpost#shipments-through-shipx).
+2. `resolveDelivery` refuses a method the shop does not offer, a locker method without a locker and a locker InPost does not list, keeps `lockerId` only for a locker method, notes whether InPost could be asked about it, and reads the method's `price` and the free delivery threshold.
+3. `prepareCreateCheckoutBatch` writes the method to `checkout.delivery_method_id`, `lockerId` to `checkout.locker_id`, the locker's address InPost returned to `checkout.locker_point` and the unanswered lookup to `checkout.locker_unconfirmed`. `createStripeSession` adds a delivery line item when delivery costs more than zero after free delivery, named for the method's type in the shopper's language (`deliveryLineItem` in `pages.checkout`), and records the delivery charge as `shippingTotal` in the session's metadata.
+4. `fulfillCheckout` takes the order's shipping total from `shippingTotal` in the paid session's metadata, or from the method's current price for a session opened before that field existed, and `prepareFulfillCheckoutBatch` copies `deliveryMethodId`, `lockerId`, `lockerPoint`, `lockerUnconfirmed` and `customerNote` from the checkout snapshot onto the new `order` row.
+5. For a locker or courier order whose method's carrier is InPost, an admin can book the parcel with InPost from the order page. The shipment's id and status land on `order.inpost_shipment_id` and `order.inpost_shipment_status`, its tracking number and link on `order.tracking_number` and `order.tracking_url`, and its PDF label is downloaded from the same card. See [InPost](/docs/integrations/inpost#shipments-through-shipx). A parcel with another carrier is booked on that carrier's site, and the admin saves its tracking number and link on the order.
+
+The order keeps pointing at its method, so the checkout confirmation, the order in the shopper's account, the admin order page and the orders export name it in the reader's language, resolved from `names` with the request's locale. A method archived later is still named.
 
 ## Delivery in the emails
 
-`src/modules/order/order.email.utils.ts` renders the delivery block. `resolveDeliveryMethodLabel` gives the method's name, and `describeEmailDestination` decides where the parcel goes. A locker order gets the locker under "Destination parcel locker", its code, directions and address one per line from `describeOrderLocker`, and the shopper's name and phone under "Recipient (pickup code by text)"; any other order gets the shipping address:
+`src/modules/order/order.email.utils.ts` renders the delivery block. `resolveDeliveryMethodLabel` gives the method's name in the order's language, from `names`, and `describeEmailDestination` decides where the parcel goes. The shop's new-order e-mail names it in the shop's language. A locker order gets the locker under "Destination parcel locker", its code, directions and address one per line from `describeOrderLocker`, and the shopper's name and phone under "Recipient (pickup code by text)"; any other order gets the shipping address:
 
 ```ts
 return locker === undefined
@@ -168,6 +244,8 @@ return locker === undefined
 ```
 
 The confirmation and shipped e-mails render it the same way. The shop's new-order e-mail puts the locker in place of the shipping address, since its customer row already names the shopper.
+
+The shipped and tracking number e-mails name the carrier, the method's courier, for any courier or locker order, and none for a pickup at the atelier (`resolveOrderTracking`). Their tracking button opens the link stored on the order, or InPost's tracking page for a number on a method whose carrier is InPost; for a number with another carrier and no stored link, the button leads to the account link instead (`buildOrderShippedAccountCta`).
 
 The estimated delivery is copy, looked up by delivery type. The fulfilment time is read from the catalogue when the email is built:
 
@@ -186,15 +264,17 @@ return {
 
 ## What is not there
 
-- No carrier but InPost: shipments, labels and tracking go through InPost's ShipX API only, and an order picked up at the atelier has none.
+- No carrier integration but InPost: shipments, labels and tracking go through InPost's ShipX API only. A method with another carrier is shipped by hand, and an order picked up at the atelier has no shipment.
 - No automatic order updates from the carrier: InPost's status is shown on the order and refreshed on demand or by InPost's webhook, but marking the order shipped and delivered stays with the admin, and booking a parcel does not mark the order shipped, because a booked parcel has not left the atelier yet. Without an InPost shipment, `order.tracking_number` and `order.tracking_url` are what the admin types into the ship dialog. A number InPost assigns after the order was marked shipped is emailed to the customer once.
-- No shipping rules: the price is a flat per-method amount with no weight, size, basket-value or destination logic. The only destination rule is the `DELIVERY_COUNTRY_CODES` check.
-- No store locations table for `in_store`.
-- No admin screen for couriers or delivery methods — rows are managed directly in D1.
+- No shipping rules beyond the free delivery threshold: the price is a flat per-method amount with no weight, size or destination logic. The only destination rule is the `DELIVERY_COUNTRY_CODES` check.
+- No store locations table for `in_store`, and one pickup method offered at a time.
+- No screen for the carriers themselves: Settings adds a carrier with a new method, but renaming one or switching it off is a change in D1. Neither the type nor the carrier of an existing method can be changed; archive it and add another.
 
 ## Related pages
 
+- [Admin settings](/docs/features/admin-settings#delivery) — the Delivery tab
 - [Checkout](/docs/features/checkout)
+- [Discounts](/docs/features/discounts)
 - [Orders](/docs/features/orders)
 - [Transactional email](/docs/features/email)
 - [Integrations: InPost](/docs/integrations/inpost)

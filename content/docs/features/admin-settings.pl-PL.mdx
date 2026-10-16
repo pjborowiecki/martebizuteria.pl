@@ -1,9 +1,9 @@
 ---
 title: "Ustawienia panelu"
-description: "Własne konto administratora i bezpieczeństwo logowania pod /admin/settings: profil, język panelu, strefa czasowa i format, hasło, uwierzytelnianie dwuskładnikowe, metody logowania, sesje i historia logowania."
+description: "Własne konto administratora i bezpieczeństwo logowania oraz dostawa w sklepie pod /admin/settings: profil, język panelu, strefa czasowa i format, hasło, uwierzytelnianie dwuskładnikowe, metody logowania, sesje i historia logowania, metody dostawy i darmowa dostawa."
 ---
 
-Ustawienia to miejsce, w którym administrator zarządza własnym kontem. Prowadzi do nich pozycja **Ustawienia** na dole paska bocznego, a w nagłówku mają dwie zakładki: **Moje konto** oraz **Logowanie i bezpieczeństwo**. Każde wywołanie działa na koncie zalogowanego administratora, przez te same przypadki użycia i wywołania Better Auth co strona klienta `/account/profile`, więc ustawienia nie dodają żadnego uprawnienia, tabeli ani funkcji serwerowej.
+Ustawienia to miejsce, w którym administrator zarządza własnym kontem i dostawą w sklepie. Prowadzi do nich pozycja **Ustawienia** na dole paska bocznego, a w nagłówku mają trzy zakładki: **Moje konto**, **Logowanie i bezpieczeństwo** oraz **Dostawa**. Dwie pierwsze działają na koncie zalogowanego administratora, przez te same przypadki użycia i wywołania Better Auth co strona klienta `/account/profile`, więc nie dodają żadnego uprawnienia, tabeli ani funkcji serwerowej. **Dostawa** zmienia cały sklep: wypisywanie i zmiana metod dostawy oraz zapis progu darmowej dostawy wymagają `settings: ["manage"]`, tego samego uprawnienia co pulpit i dziennik zdarzeń, a sam próg jest odczytywany przez publiczne `getFreeDelivery`, którego używa kasa.
 
 ## Trasy
 
@@ -13,12 +13,13 @@ Ustawienia to miejsce, w którym administrator zarządza własnym kontem. Prowad
 | `/admin/settings/`         | `admin.settings.index.tsx`    | Przekierowuje w `beforeLoad` na `/admin/settings/account`                                |
 | `/admin/settings/account`  | `admin.settings.account.tsx`  | **Moje konto**: Profil i Preferencje                                                     |
 | `/admin/settings/security` | `admin.settings.security.tsx` | **Logowanie i bezpieczeństwo**: hasło, dwa składniki, metody logowania, sesje i historia |
+| `/admin/settings/delivery` | `admin.settings.delivery.tsx` | **Dostawa**: metody dostawy i darmowa dostawa                                            |
 
-Ścieżki to `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT` i `ROUTES.ADMIN_SETTINGS_SECURITY` w `src/routes.ts`. Wszystkie leżą w layoucie `/admin`, więc strzeże ich `requireAdmin`, a administratora bez uwierzytelniania dwuskładnikowego najpierw odsyła na `/admin/security` (zobacz [Pulpit admina](/docs/features/admin-dashboard#layout)).
+Ścieżki to `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY` i `ROUTES.ADMIN_SETTINGS_DELIVERY` w `src/routes.ts`. Wszystkie leżą w layoucie `/admin`, więc strzeże ich `requireAdmin`, a administratora bez uwierzytelniania dwuskładnikowego najpierw odsyła na `/admin/security` (zobacz [Pulpit admina](/docs/features/admin-dashboard#layout)).
 
 Layout deklaruje `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` zawiera teksty samej strony; pozostałe trzy są potrzebne, bo ustawienia używają okien konta, które czytają z nich swoje teksty i komunikaty walidacji.
 
-Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loader zakładki bezpieczeństwa wczytuje go razem z `listCustomerSessionsQuery()` i `listCustomerLoginHistoryQuery()`, więc obie zakładki renderują się bez stanu ładowania.
+Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loader zakładki bezpieczeństwa wczytuje go razem z `listCustomerSessionsQuery()` i `listCustomerLoginHistoryQuery()`, a loader zakładki dostawy wczytuje `listAdminDeliveryMethodsQuery()` i `getAdminFreeDeliveryQuery()`, więc każda zakładka renderuje się bez stanu ładowania.
 
 ## Układ
 
@@ -75,6 +76,34 @@ Gdy Google jest połączone, karta ostrzega, że logowanie przez Google nie pros
 
 `SettingsSessionsCard` wymienia zalogowane urządzenia przez `ActiveSessionList` ze strony sesji konta. Dopóki zalogowane jest jakiekolwiek inne urządzenie, karta proponuje **Wyloguj pozostałe urządzenia**, co wywołuje `revokeOtherCustomerSessions`, pokazuje wynik i unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. `SettingsLoginHistoryCard` wymienia ostatnie udane i nieudane logowania przez `LoginHistoryList`. Obie czytają te same zapytania co `/account/sessions`.
 
+## Dostawa
+
+Zakładka Dostawa ma dwie karty z `src/presentation/components/custom/pages/admin/settings/delivery/`. Reguły, które stosuje serwer, i to, co robi z nimi kasa, opisuje strona [Wysyłka i dostawa](/docs/features/shipping-and-delivery#zarządzanie-metodami-dostawy).
+
+### Metody dostawy
+
+`SettingsDeliveryMethodsCard` czyta `listAdminDeliveryMethodsQuery()` i wymienia niezarchiwizowane metody w kolejności, w jakiej oferuje je kasa. Każdy wiersz pokazuje ikonę typu, nazwę w języku panelu, typ i przewoźnika (na przykład **Kurier · InPost**), cenę albo **Bezpłatnie**, plakietkę **Ukryta** przy metodzie, której kasa nie oferuje, i **Przewoźnik wyłączony** przy metodzie, której przewoźnik jest wyłączony w D1. Strzałki przesuwają metodę w górę albo w dół; nowa kolejność zapisuje się od razu, komunikat brzmi **Zapisano kolejność w kasie.**, a kasa wymienia rodziny dostawy w tej kolejności.
+
+**Dodaj metodę** otwiera `DeliveryMethodDialog` z tymi polami:
+
+| Pole                                        | Co przyjmuje                                                                                                                                                                                                                                                               |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rodzaj**                                  | **Kurier**, **Paczkomat** albo **Odbiór osobisty**                                                                                                                                                                                                                         |
+| **Przewoźnik**                              | Istniejący przewoźnik albo **Nowy przewoźnik** z polem **Nazwa przewoźnika** (do 60 znaków). Paczkomat zawsze korzysta z InPostu, a przy przewoźniku innym niż InPost okno ostrzega, że jego przesyłki nadaje się na jego stronie, a numer przesyłki zapisuje w zamówieniu |
+| **Nazwa po polsku**, **Nazwa po angielsku** | Obie wymagane, każda do 80 znaków; kupujący widzą nazwę w swoim języku                                                                                                                                                                                                     |
+| **Cena**                                    | W PLN; 0 oznacza dostawę bezpłatną                                                                                                                                                                                                                                         |
+| **Oferuj w kasie**                          | Wyłączone zostawia metodę na liście, ukrytą w kasie                                                                                                                                                                                                                        |
+
+**Edytuj** otwiera to samo okno dla istniejącej metody, z jej rodzajem i przewoźnikiem pod tytułem, bo żadnego z nich nie da się zmienić, i proponuje nazwy, cenę i **Oferuj w kasie**. Przycisk **Archiwizuj** najpierw prosi o potwierdzenie: metoda znika z kasy, a zamówienia już z nią złożone ją zachowują. Zarchiwizowane metody są wymienione pod listą w sekcji **Zarchiwizowane metody**, każda z przyciskiem **Przywróć**, który przywraca metodę wyłączoną, więc wraca do oferty dopiero po włączeniu.
+
+Odrzucona zmiana pojawia się jako komunikat w języku panelu: druga oferowana metoda z paczkomatem albo z odbiorem osobistym, wyłączenie albo zarchiwizowanie ostatniej oferowanej metody (komunikat odsyła zamiast tego do przełącznika sprzedaży na pulpicie), paczkomat z innym przewoźnikiem oraz edycja metody zmienionej w międzyczasie, z prośbą o odświeżenie strony. `useDeliveryMethodActions` po każdej zmianie odświeża listę w ustawieniach i listę w kasie, a każda zmiana dociera do innych kart panelu i sklepu oraz do otwartych kas przez unieważnianie w czasie rzeczywistym.
+
+### Darmowa dostawa
+
+`SettingsFreeDeliveryCard` czyta `getAdminFreeDeliveryQuery()`. **Oferuj darmową dostawę** włącza i wyłącza próg, a **Darmowa dostawa od** przyjmuje w PLN wartość produktów, od której dostawa nic nie kosztuje, liczoną po kodzie rabatowym i bez dostawy. **Zapisz** wywołuje `setFreeDeliveryThreshold`, bez wartości, gdy przełącznik jest wyłączony, i pokazuje komunikat **Zapisano darmową dostawę.**; przy włączonym przełączniku i braku wartości większej od zera pole prosi o nią zamiast zapisu. Kasa pokazuje wtedy dostawę jako darmową, gdy koszyk osiągnie tę wartość, a wcześniej podaje kupującym, ile im brakuje; otwarta kasa od razu śledzi zmianę. Zobacz [Wysyłka i dostawa: Darmowa dostawa](/docs/features/shipping-and-delivery#darmowa-dostawa).
+
+Każda zmiana na tej zakładce trafia do [dziennika zdarzeń](/docs/features/audit-log) w kategorii `settings`.
+
 ## Wygląd okien
 
 Okna konta przyjmują `variant`: `"editorial"`, domyślny, dla stron konta klienta, oraz `"default"` dla panelu. Ustawienia przekazują `variant="default"` do `ChangeEmailDialog`, `ChangePasswordDialog`, `SetPasswordDialog` i `TwoFactorDialog`, więc wyglądają one jak pozostałe okna panelu, a `AccountDialogEyebrow` w tym wariancie się ukrywa. Oba warianty opisuje strona [Komponenty shadcn](/docs/ui/shadcn-components#okna-dialogowe).
@@ -85,11 +114,12 @@ Okna konta przyjmują `variant`: `"editorial"`, domyślny, dla stron konta klien
 
 ## Czego jeszcze nie ma w ustawieniach
 
-Na razie ustawienia obejmują własne konto administratora. Nie ma w nich jeszcze ustawień całego sklepu: danych sklepu i sprzedawcy, metod i cen dostawy z progiem darmowej dostawy, zespołu administratorów, powiadomień dla obsługi, stanu płatności i integracji ani danych stron prawnych. Sprzedaż wstrzymuje się [przełącznikiem sprzedaży](/docs/features/admin-dashboard#przełącznik-sprzedaży) na pulpicie, a strony prawne edytuje się w sekcji [Treść](/docs/features/legal-pages).
+Na razie ustawienia obejmują własne konto administratora i dostawę w sklepie. Nie ma w nich jeszcze innych ustawień całego sklepu: danych sklepu i sprzedawcy, samych przewoźników, zespołu administratorów, powiadomień dla obsługi, stanu płatności i integracji ani danych stron prawnych. Sprzedaż wstrzymuje się [przełącznikiem sprzedaży](/docs/features/admin-dashboard#przełącznik-sprzedaży) na pulpicie, a strony prawne edytuje się w sekcji [Treść](/docs/features/legal-pages).
 
 ## Powiązane strony
 
 - [Konto](/docs/features/account) — profil klienta, który dzieli z ustawieniami przypadki użycia i okna
+- [Wysyłka i dostawa](/docs/features/shipping-and-delivery) — metody dostawy i darmowa dostawa za zakładką Dostawa
 - [Pulpit admina](/docs/features/admin-dashboard)
 - [Internacjonalizacja](/docs/features/internationalization) — preferencje języka, strefy czasowej i formatu
 - [Dziennik zdarzeń](/docs/features/audit-log)

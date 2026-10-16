@@ -63,9 +63,13 @@ D1 has no interactive transactions. `db.batch()` is atomic, so anything that mus
 
 As integers in the currency's minor unit. `product_variant.price` and `compare_at_price`, and `order.subtotal`, `tax_total`, `shipping_total`, `discount_total` and `total` are all `integer`. `order.currency_code` is a three-character column defaulting to `PLN`. Exponents come from the ISO 4217 table in `src/modules/_core/constants/currency.ts`, so formatting never guesses at two decimal places.
 
+## Where are delivery methods and prices changed?
+
+In the admin, under **Settings → Delivery** (`/admin/settings/delivery`). It adds methods, changes their names in both languages and their prices, hides, archives and restores them, sets the order the checkout lists them in, and sets the free delivery threshold. `delivery_method.price` and `store_setting.free_delivery_threshold` are minor units like every other amount. The seed file, `delivery-methods.sql`, only inserts the rows that are not there yet (`INSERT OR IGNORE`). See [Shipping and delivery](/docs/features/shipping-and-delivery#managing-delivery-methods).
+
 ## How does a change in one browser tab reach another admin's screen?
 
-Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 14 for admin, 11 for storefront — and discard messages that do not overlap.
+Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 21 for admin, 14 for storefront, 2 for the checkout — and discard messages that do not overlap.
 
 ## How do I preview a transactional email?
 
@@ -73,7 +77,7 @@ Run the dev server and open `/dev/emails`. The route is defined in `src/routes/d
 
 ## What is scaffolded but not finished?
 
-InPost shipments are booked, labelled and tracked from the admin order page, but InPost's status does not move the order; the admin still marks it shipped and delivered. `cart` and `cart_item` are registered in the Drizzle schema but unused. `/admin/settings` covers the admin's own account and sign-in security; shop-wide settings such as delivery methods are not in it yet.
+InPost shipments are booked, labelled and tracked from the admin order page, but InPost's status does not move the order; the admin still marks it shipped and delivered. `cart` and `cart_item` are registered in the Drizzle schema but unused. `/admin/settings` covers the admin's own account and sign-in security and the shop's delivery methods and free delivery; other shop-wide settings, such as the shop's details and the team of admins, are not in it yet.
 
 ## How are the docs themselves organized?
 

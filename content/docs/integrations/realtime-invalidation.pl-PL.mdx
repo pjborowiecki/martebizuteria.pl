@@ -15,12 +15,12 @@ Plik `realtime-invalidation.subscriptions.ts` nazywa je i wypisuje, co każdy z 
 export const REALTIME_INVALIDATION_HUB = { ADMIN: "admin", STOREFRONT: "storefront" } as const
 ```
 
-| Hub          | Subskrybowane prefiksy                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — strona i statystyki dziennika zdarzeń, zamówienia panelu, `ADMIN_DASHBOARD_QUERY_KEYS.ALL` pulpitu przeglądu, klienci panelu, klucze `ALL` i `STATS` kategorii, kolekcji, produktów i atrybutów produktów, klucze `ADMIN.ALL` i `ADMIN.BY_HANDLE` stron treści, klucz `ADMIN.SALES` ustawień sklepu, klucz `ADMIN.LIST` kampanii newslettera oraz klucze `ADMIN.PAGE` i `ADMIN.STATS` subskrybentów newslettera |
-| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY`, kategorie i kolekcje `ALL` / `BY_HANDLE`, strony treści `BY_HANDLE` oraz ustawienia sklepu `SALES`                                                                                                                                                                                   |
+| Hub          | Subskrybowane prefiksy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `admin`      | `ADMIN_REALTIME_QUERY_PREFIXES` — strona i statystyki dziennika zdarzeń, zamówienia panelu, `ADMIN_DASHBOARD_QUERY_KEYS.ALL` pulpitu przeglądu, klienci panelu, klucze `ALL` i `STATS` kategorii, kolekcji, produktów i atrybutów produktów, klucze `ADMIN.ALL` i `ADMIN.BY_HANDLE` stron treści, klucze `ADMIN.SALES` i `ADMIN.FREE_DELIVERY` ustawień sklepu, klucz `ADMIN.ALL` metod dostawy, klucz `ADMIN.LIST` kampanii newslettera oraz klucze `ADMIN.PAGE` i `ADMIN.STATS` subskrybentów newslettera |
+| `storefront` | `STOREFRONT_REALTIME_QUERY_PREFIXES` — produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY`, kategorie i kolekcje `ALL` / `BY_HANDLE`, strony treści `BY_HANDLE`, ustawienia sklepu `SALES` i `FREE_DELIVERY` oraz metody dostawy `ALL`                                                                                                                                                                                                     |
 
-Obie listy to `as const satisfies readonly QueryKey[]`, więc zmiana nazwy stałej klucza jest błędem typowania, a nie cicho martwą subskrypcją. Podział ma znaczenie zarówno dla prywatności, jak i dla ograniczenia szumu: hub sklepu nigdy nie niesie prefiksu `["admin", …]`, więc przeglądarka klienta nie dowiaduje się niczego o działaniach administratora.
+Kasa także łączy się z hubem sklepu, z własną listą `CHECKOUT_REALTIME_QUERY_PREFIXES`: ustawienia sklepu `FREE_DELIVERY` i metody dostawy `ALL`, nic więcej, więc otwarta kasa pokazuje zmiany dostawy, a zmiana stanu magazynowego gdzie indziej nigdy nie uruchamia ponownie jej sprawdzenia dostępności. Wszystkie trzy listy to `as const satisfies readonly QueryKey[]`, więc zmiana nazwy stałej klucza jest błędem typowania, a nie cicho martwą subskrypcją. Podział ma znaczenie zarówno dla prywatności, jak i dla ograniczenia szumu: hub sklepu nigdy nie niesie prefiksu `["admin", …]`, więc przeglądarka klienta nie dowiaduje się niczego o działaniach administratora.
 
 ## Protokół
 
@@ -78,17 +78,20 @@ export const scheduleRealtimeInvalidation = (input: PublishRealtimeInvalidationI
 
 Kod serwerowy prawie nigdy nie wywołuje żadnej z tych funkcji bezpośrednio. Plik `realtime-invalidation.catalog.server.ts` dostarcza zamiast tego nazwane intencje:
 
-| Funkcja                                            | Unieważniane klucze panelu                | Unieważniane klucze sklepu                                                                                           |
-| -------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `scheduleProductCatalogInvalidation()`             | produkty `ALL`, `STATS`                   | produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY` |
-| `scheduleCategoryCatalogInvalidation()`            | kategorie `ALL`, `STATS`                  | kategorie `ALL`, `BY_HANDLE`                                                                                         |
-| `scheduleCollectionCatalogInvalidation()`          | kolekcje `ALL`, `STATS`                   | kolekcje `ALL`, `BY_HANDLE`, produkty `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE`                                      |
-| `scheduleContentPageInvalidation()`                | strony treści `ALL`, `BY_HANDLE`          | strony treści `BY_HANDLE`                                                                                            |
-| `scheduleProductAttributeCatalogInvalidation()`    | atrybuty produktów `ALL`, `STATS`         | —                                                                                                                    |
-| `scheduleAdminCustomersInvalidation()`             | użytkownicy `CUSTOMERS`, `CUSTOMERS_PAGE` | —                                                                                                                    |
-| `scheduleAdminNewsletterSubscribersInvalidation()` | newsletter `ADMIN.PAGE`, `ADMIN.STATS`    | —                                                                                                                    |
-| `scheduleAdminOrdersInvalidation()`                | zamówienia `ORDERS`, pulpit `ALL`         | —                                                                                                                    |
-| `scheduleSalesStatusInvalidation()`                | ustawienia sklepu `ADMIN.SALES`           | ustawienia sklepu `SALES`                                                                                            |
+| Funkcja                                            | Unieważniane klucze panelu                   | Unieważniane klucze sklepu                                                                                           |
+| -------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `scheduleProductCatalogInvalidation()`             | produkty `ALL`, `STATS`                      | produkty `ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`, koszyk `AVAILABILITY` |
+| `scheduleCategoryCatalogInvalidation()`            | kategorie `ALL`, `STATS`                     | kategorie `ALL`, `BY_HANDLE`                                                                                         |
+| `scheduleCollectionCatalogInvalidation()`          | kolekcje `ALL`, `STATS`                      | kolekcje `ALL`, `BY_HANDLE`, produkty `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE`                                      |
+| `scheduleContentPageInvalidation()`                | strony treści `ALL`, `BY_HANDLE`             | strony treści `BY_HANDLE`                                                                                            |
+| `scheduleProductAttributeCatalogInvalidation()`    | atrybuty produktów `ALL`, `STATS`            | —                                                                                                                    |
+| `scheduleAdminCustomersInvalidation()`             | użytkownicy `CUSTOMERS`, `CUSTOMERS_PAGE`    | —                                                                                                                    |
+| `scheduleAdminNewsletterSubscribersInvalidation()` | newsletter `ADMIN.PAGE`, `ADMIN.STATS`       | —                                                                                                                    |
+| `scheduleAdminAuditLogInvalidation()`              | dziennik zdarzeń `ADMIN.PAGE`, `ADMIN.STATS` | —                                                                                                                    |
+| `scheduleAdminOrdersInvalidation()`                | zamówienia `ORDERS`, pulpit `ALL`            | —                                                                                                                    |
+| `scheduleDeliveryMethodsInvalidation()`            | metody dostawy `ADMIN.ALL`                   | metody dostawy `ALL`                                                                                                 |
+| `scheduleFreeDeliveryInvalidation()`               | ustawienia sklepu `ADMIN.FREE_DELIVERY`      | ustawienia sklepu `FREE_DELIVERY`                                                                                    |
+| `scheduleSalesStatusInvalidation()`                | ustawienia sklepu `ADMIN.SALES`              | ustawienia sklepu `SALES`                                                                                            |
 
 Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także sklepowy klucz nowości, ponieważ sekcja na stronie startowej napędzana jest kolekcją `nowosci`, oraz klucz strony katalogu, ponieważ `status` i `handle` kolekcji decydują o tym, które produkty pokazuje jej siatka w sklepie; a `scheduleProductCatalogInvalidation` unieważnia klucz dostępności koszyka, ponieważ zmiana stanu magazynowego może uczynić pozycję koszyka niemożliwą do kupienia. `scheduleAdminOrdersInvalidation` publikuje `ORDER_CHANGE_ADMIN_QUERY_KEYS`, czyli klucze zamówień panelu razem z kluczem pulpitu przeglądu, bo każde zdarzenie zamówienia zmienia liczby, wykres albo ostatnie zamówienia na przeglądzie.
 
@@ -102,6 +105,7 @@ Zwróć uwagę, że `scheduleCollectionCatalogInvalidation` unieważnia także s
 - **Tożsamość.** Hooki tworzenia, aktualizacji i usuwania użytkownika w `auth.hooks.server.ts` wywołują `scheduleAdminCustomersInvalidation()`.
 - **Strony treści.** `update-content-page.ts` wywołuje `scheduleContentPageInvalidation()` po zapisie.
 - **Przełącznik sprzedaży.** `set-sales-paused.ts` wywołuje `scheduleSalesStatusInvalidation()`, gdy administrator wstrzymuje albo wznawia sprzedaż, więc komunikat o wstrzymaniu pojawia się albo znika w każdej otwartej karcie sklepu, a inne karty panelu przestawiają przełącznik.
+- **Ustawienia dostawy.** `create-delivery-method.ts`, `update-delivery-method.ts`, `archive-delivery-method.ts` i `reorder-delivery-methods.ts` wywołują `scheduleDeliveryMethodsInvalidation()`, a `set-free-delivery-threshold.ts` wywołuje `scheduleFreeDeliveryInvalidation()`, gdy próg się zmienia, więc inne karty panelu pokazują zmianę, a otwarta kasa ponownie pobiera metody dostawy albo próg.
 - **Newsletter.** `send-newsletter-campaign.ts` odświeża listę kampanii w panelu, gdy newsletter rusza, a `newsletter-campaign.queue.server.ts` po każdej wysłanej partii i po zatrzymaniu kampanii, więc strona Marketing pokazuje postęp każdego newslettera. `scheduleAdminNewsletterSubscribersInvalidation()` jest wywoływane przy każdej zmianie wiersza subskrybenta: przez `subscribe-to-newsletter.ts` po zapisaniu adresu, `confirm-newsletter-subscription.ts` po potwierdzeniu, `unsubscribeSubscriber` z `newsletter.unsubscribe.server.ts`, z którego korzystają link do wypisania się, trasa jednego kliknięcia, preferencje konta i panel, `erase-newsletter-subscriber.ts` oraz `eraseAccountData`, więc otwarte karty panelu odświeżają listę subskrybentów i jej liczniki, gdy klienci się zapisują, potwierdzają i wypisują.
 - **Dziennik zdarzeń.** `audit-log.queue.server.ts`, który dodaje `ORDER_CHANGE_ADMIN_QUERY_KEYS` dla wsadu z akcją z osi czasu zamówienia, oraz `delete-audit-logs.ts`.
 
@@ -184,11 +188,14 @@ Dwie ścieżki to `/api/realtime/admin/ws` i `/api/realtime/storefront/ws`, obie
 
 ## Klient
 
-Hook `src/hooks/use-realtime-query-sync.ts` utrzymuje połączenie. Używany jest dokładnie dwa razy, po jednym na układ:
+Hook `src/hooks/use-realtime-query-sync.ts` utrzymuje połączenie. Używają go trzy układy:
 
 ```tsx
 // src/routes/_storefront.tsx
 useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.STOREFRONT, subscriptions: STOREFRONT_REALTIME_QUERY_PREFIXES })
+
+// src/routes/checkout.tsx
+useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.STOREFRONT, subscriptions: CHECKOUT_REALTIME_QUERY_PREFIXES })
 
 // src/routes/admin.tsx
 useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })
