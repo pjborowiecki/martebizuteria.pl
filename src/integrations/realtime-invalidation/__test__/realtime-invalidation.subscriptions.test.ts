@@ -3,9 +3,12 @@ import { describe, expect, it } from "vite-plus/test"
 import { serializeQueryKeyPrefix } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 import {
   ADMIN_REALTIME_QUERY_PREFIXES,
+  CHECKOUT_REALTIME_QUERY_PREFIXES,
   REALTIME_INVALIDATION_HUB,
   STOREFRONT_REALTIME_QUERY_PREFIXES,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.subscriptions"
+
+import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
 
 import { ROUTES } from "~/src/routes"
 
@@ -40,6 +43,13 @@ describe("realtime subscription prefixes", () => {
     const serialized = topics(prefixes)
 
     expect(new Set(serialized).size).toBe(serialized.length)
+  })
+
+  it("subscribes the checkout to storefront prefixes only, and not to the basket availability check a payment in progress relies on", () => {
+    const storefrontTopics = new Set(topics(STOREFRONT_REALTIME_QUERY_PREFIXES))
+
+    expect(topics(CHECKOUT_REALTIME_QUERY_PREFIXES).every((topic) => storefrontTopics.has(topic))).toBe(true)
+    expect(topics(CHECKOUT_REALTIME_QUERY_PREFIXES)).not.toContain(serializeQueryKeyPrefix([...CART_QUERY_KEYS.AVAILABILITY]))
   })
 
   it("names the hubs after the websocket routes the clients connect to", () => {
