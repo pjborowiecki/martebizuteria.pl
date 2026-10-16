@@ -26,7 +26,7 @@ const HomePage = (): JSX.Element => {
 }
 ```
 
-Trasa layoutu robi to samo dla chromu. `src/routes/_storefront.tsx` montuje `Navigation`, `Footer`, komunikat o wstrzymanej sprzedaży, banner koszyka i tracker aktywności, subskrybuje unieważnianie w czasie rzeczywistym, dołącza swój arkusz stylów i ładuje kolekcje pokazywane w pełnoekranowym menu nawigacji razem ze stanem sprzedaży, który czyta komunikat:
+Trasa layoutu robi to samo dla chromu. `src/routes/_storefront.tsx` montuje `Navigation`, `Footer`, komunikat o wstrzymanej sprzedaży, banner koszyka i tracker aktywności, subskrybuje unieważnianie w czasie rzeczywistym, dołącza swój arkusz stylów i ładuje kolekcje pokazywane w pełnoekranowym menu nawigacji razem ze stanem sprzedaży, który czyta komunikat, i danymi sprzedawcy, które pokazuje stopka:
 
 ```tsx
 export const Route = createFileRoute("/_storefront")({
@@ -36,6 +36,7 @@ export const Route = createFileRoute("/_storefront")({
     await Promise.all([
       context.queryClient.query({ ...getCollectionsQuery(), staleTime: "static" }).catch(noop),
       context.queryClient.query(getSalesStatusQuery()).catch(noop),
+      context.queryClient.query(getSellerDetailsQuery()),
     ])
   },
   staticData: { namespaces: ["pages.cart"] },

@@ -105,11 +105,11 @@ Dlatego `index` **nie może** być wymieniony w tablicy `pages` w pliku `meta.<l
 
 ## Trasy
 
-| Trasa     | Plik                        | Działanie                                                                                                                                                                           |
-| --------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/docs`   | `src/routes/docs.tsx`       | Układ: nawigacja, komunikat o wstrzymanej sprzedaży, `DocsSidebar`, stopka; loader uruchamia jednocześnie `loadDocsNavigation()`, `getCollectionsQuery()` i `getSalesStatusQuery()` |
-| `/docs`   | `src/routes/docs.index.tsx` | Strona główna, `loadDocsPage()` bez splata                                                                                                                                          |
-| `/docs/$` | `src/routes/docs.$.tsx`     | Każda inna strona, `loadDocsPage(params._splat)`                                                                                                                                    |
+| Trasa     | Plik                        | Działanie                                                                                                                                                                                                      |
+| --------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/docs`   | `src/routes/docs.tsx`       | Układ: nawigacja, komunikat o wstrzymanej sprzedaży, `DocsSidebar`, stopka; loader uruchamia jednocześnie `loadDocsNavigation()`, `getCollectionsQuery()`, `getSalesStatusQuery()` i `getSellerDetailsQuery()` |
+| `/docs`   | `src/routes/docs.index.tsx` | Strona główna, `loadDocsPage()` bez splata                                                                                                                                                                     |
+| `/docs/$` | `src/routes/docs.$.tsx`     | Każda inna strona, `loadDocsPage(params._splat)`                                                                                                                                                               |
 
 Układ deklaruje `staticData: { namespaces: ["pages.cart", "pages.docs"] }`. W `pages.cart` jest tekst `SalesPausedBanner`, komunikatu pokazywanego pod nawigacją, dopóki sprzedaż jest wstrzymana (zobacz [Kasa: wstrzymanie sprzedaży](/docs/features/checkout#wstrzymanie-sprzedaży)), a z `pages.docs` pochodzą własne etykiety panelu bocznego (`messages/{locale}/pages.docs.json`: `navigation.title`, `navigation.label`, `navigation.overview`). Obie trasy stron ustawiają `head: pageHead` i `wrapInSuspense: false`.
 
@@ -155,7 +155,7 @@ Strony prawne używają z `mdxComponents` tylko odnośnika. Ich artykuł przekaz
 
 ## Markdown w czasie renderowania
 
-`createMarkdownRenderer` z `fumadocs-core/content/md` kompiluje ciąg Markdown podczas renderowania, a nie budowania. `ContentPageArticle` tworzy go z `remarkGfm` i `remarkHeading`, który nadaje każdemu nagłówkowi `id` ze slugiem. Surowy HTML w ciągu jest pomijany. To właściwe narzędzie dla tekstu z bazy danych, a `fumadocs-mdx` pozostaje narzędziem dla plików w repozytorium.
+`createMarkdownRenderer` z `fumadocs-core/content/md` kompiluje ciąg Markdown podczas renderowania, a nie budowania. `ContentPageArticle` tworzy go z `remarkGfm`, `remarkHeading`, który nadaje każdemu nagłówkowi `id` ze slugiem, oraz `remarkDirective` z `remark-directive` z `remarkSellerDetails`, które wypisują znaczniki danych sklepu, na przykład `:seller[nip]` (zobacz [Strony prawne](/docs/features/legal-pages#dane-sklepu-na-stronach)). Surowy HTML w ciągu jest pomijany. To właściwe narzędzie dla tekstu z bazy danych, a `fumadocs-mdx` pozostaje narzędziem dla plików w repozytorium.
 
 ## Dodawanie strony dokumentacji
 

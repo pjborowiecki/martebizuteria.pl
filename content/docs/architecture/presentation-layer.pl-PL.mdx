@@ -14,7 +14,7 @@ description: "Gdzie mieszkają komponenty, style, motyw, branding i szablony e-m
 | `emails`             | Szablony React Email, `email-layout.tsx`, `email-highlight-box.tsx`, `_styles/email-styles.ts` |
 | `styles`             | `globals.css`, `storefront.css`, `admin.css`, `fonts.css`, `critical-fonts.css`                |
 | `theme`              | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                           |
-| `branding`           | `app.ts`, `business.ts`, `socials.ts`                                                          |
+| `branding`           | `app.ts`, `socials.ts`                                                                         |
 | `document-assets.ts` | `getCriticalFontPreloads(locale)`                                                              |
 
 ## Organizacja komponentów
@@ -58,7 +58,7 @@ Na trasach sklepu `StorefrontCriticalFontsHead` wstawia krytyczne reguły `@font
 
 ## Branding
 
-`branding/app.ts` zawiera `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR` i stałe obrazu Open Graph; `business.ts` — dane prawne i kontaktowe sklepu; `socials.ts` — `SOCIALS`. Zarówno `src/lib/seo.ts`, jak i `_core/constants/api.ts` czytają z nich, dlatego lista dozwolonych hostów dla każdego trybu builda wynika z `APP_DOMAIN`. `APP_URL` to kanoniczny adres produkcyjny wyłącznie dla metadanych SEO. Linki w e-mailach i adres powrotu ze Stripe używają zamiast niego originu, na którym był klient albo administrator, przez `resolveRequestOrigin` i `resolveDeploymentOrigin` w `src/lib/request.ts`.
+`branding/app.ts` zawiera `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR` i stałe obrazu Open Graph, a `socials.ts` — `SOCIALS`. Dane prawne i kontaktowe sklepu nie są stałymi marki: są zapisane w wierszu `store_setting` i zmienia się je w Ustawienia → Dane sklepu (zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu)). Zarówno `src/lib/seo.ts`, jak i `_core/constants/api.ts` czytają z nich, dlatego lista dozwolonych hostów dla każdego trybu builda wynika z `APP_DOMAIN`. `APP_URL` to kanoniczny adres produkcyjny wyłącznie dla metadanych SEO. Linki w e-mailach i adres powrotu ze Stripe używają zamiast niego originu, na którym był klient albo administrator, przez `resolveRequestOrigin` i `resolveDeploymentOrigin` w `src/lib/request.ts`.
 
 ## E-maile
 

@@ -1,9 +1,9 @@
 ---
 title: "Ustawienia panelu"
-description: "Własne konto administratora i bezpieczeństwo logowania oraz dostawa w sklepie pod /admin/settings: profil, język panelu, strefa czasowa i format, hasło, uwierzytelnianie dwuskładnikowe, metody logowania, sesje i historia logowania, metody dostawy i darmowa dostawa."
+description: "Własne konto administratora i bezpieczeństwo logowania oraz dane sklepu i dostawa pod /admin/settings: profil, język panelu, strefa czasowa i format, hasło, uwierzytelnianie dwuskładnikowe, metody logowania, sesje i historia logowania, dane sprzedawcy, metody dostawy i darmowa dostawa."
 ---
 
-Ustawienia to miejsce, w którym administrator zarządza własnym kontem i dostawą w sklepie. Prowadzi do nich pozycja **Ustawienia** na dole paska bocznego, a w nagłówku mają trzy zakładki: **Moje konto**, **Logowanie i bezpieczeństwo** oraz **Dostawa**. Dwie pierwsze działają na koncie zalogowanego administratora, przez te same przypadki użycia i wywołania Better Auth co strona klienta `/account/profile`, więc nie dodają żadnego uprawnienia, tabeli ani funkcji serwerowej. **Dostawa** zmienia cały sklep: wypisywanie i zmiana metod dostawy oraz zapis progu darmowej dostawy wymagają `settings: ["manage"]`, tego samego uprawnienia co pulpit i dziennik zdarzeń, a sam próg jest odczytywany przez publiczne `getFreeDelivery`, którego używa kasa.
+Ustawienia to miejsce, w którym administrator zarządza własnym kontem, danymi sklepu i dostawą. Prowadzi do nich pozycja **Ustawienia** na dole paska bocznego, a w nagłówku mają cztery zakładki: **Moje konto**, **Logowanie i bezpieczeństwo**, **Dane sklepu** oraz **Dostawa**. Dwie pierwsze działają na koncie zalogowanego administratora, przez te same przypadki użycia i wywołania Better Auth co strona klienta `/account/profile`, więc nie dodają żadnego uprawnienia, tabeli ani funkcji serwerowej. **Dane sklepu** i **Dostawa** zmieniają cały sklep: zapis danych sprzedawcy, wypisywanie i zmiana metod dostawy oraz zapis progu darmowej dostawy wymagają `settings: ["manage"]`, tego samego uprawnienia co pulpit i dziennik zdarzeń, a same dane sprzedawcy i próg są odczytywane przez publiczne `getSellerDetails` i `getFreeDelivery`, których używają sklep i kasa.
 
 ## Trasy
 
@@ -13,13 +13,14 @@ Ustawienia to miejsce, w którym administrator zarządza własnym kontem i dosta
 | `/admin/settings/`         | `admin.settings.index.tsx`    | Przekierowuje w `beforeLoad` na `/admin/settings/account`                                |
 | `/admin/settings/account`  | `admin.settings.account.tsx`  | **Moje konto**: Profil i Preferencje                                                     |
 | `/admin/settings/security` | `admin.settings.security.tsx` | **Logowanie i bezpieczeństwo**: hasło, dwa składniki, metody logowania, sesje i historia |
+| `/admin/settings/store`    | `admin.settings.store.tsx`    | **Dane sklepu**: dane sprzedawcy                                                         |
 | `/admin/settings/delivery` | `admin.settings.delivery.tsx` | **Dostawa**: metody dostawy i darmowa dostawa                                            |
 
-Ścieżki to `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY` i `ROUTES.ADMIN_SETTINGS_DELIVERY` w `src/routes.ts`. Wszystkie leżą w layoucie `/admin`, więc strzeże ich `requireAdmin`, a administratora bez uwierzytelniania dwuskładnikowego najpierw odsyła na `/admin/security` (zobacz [Pulpit admina](/docs/features/admin-dashboard#layout)).
+Ścieżki to `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY`, `ROUTES.ADMIN_SETTINGS_STORE` i `ROUTES.ADMIN_SETTINGS_DELIVERY` w `src/routes.ts`. Wszystkie leżą w layoucie `/admin`, więc strzeże ich `requireAdmin`, a administratora bez uwierzytelniania dwuskładnikowego najpierw odsyła na `/admin/security` (zobacz [Pulpit admina](/docs/features/admin-dashboard#layout)).
 
 Layout deklaruje `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` zawiera teksty samej strony; pozostałe trzy są potrzebne, bo ustawienia używają okien konta, które czytają z nich swoje teksty i komunikaty walidacji.
 
-Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loader zakładki bezpieczeństwa wczytuje go razem z `listCustomerSessionsQuery()` i `listCustomerLoginHistoryQuery()`, a loader zakładki dostawy wczytuje `listAdminDeliveryMethodsQuery()` i `getAdminFreeDeliveryQuery()`, więc każda zakładka renderuje się bez stanu ładowania.
+Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loader zakładki bezpieczeństwa wczytuje go razem z `listCustomerSessionsQuery()` i `listCustomerLoginHistoryQuery()`, loader zakładki danych sklepu wczytuje `getAdminSellerDetailsQuery()`, a loader zakładki dostawy wczytuje `listAdminDeliveryMethodsQuery()` i `getAdminFreeDeliveryQuery()`, więc każda zakładka renderuje się bez stanu ładowania.
 
 ## Układ
 
@@ -76,6 +77,57 @@ Gdy Google jest połączone, karta ostrzega, że logowanie przez Google nie pros
 
 `SettingsSessionsCard` wymienia zalogowane urządzenia przez `ActiveSessionList` ze strony sesji konta. Dopóki zalogowane jest jakiekolwiek inne urządzenie, karta proponuje **Wyloguj pozostałe urządzenia**, co wywołuje `revokeOtherCustomerSessions`, pokazuje wynik i unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. `SettingsLoginHistoryCard` wymienia ostatnie udane i nieudane logowania przez `LoginHistoryList`. Obie czytają te same zapytania co `/account/sessions`.
 
+## Dane sklepu
+
+Zakładka Dane sklepu ma jedną kartę, **Dane sprzedawcy**, z `src/presentation/components/custom/pages/admin/settings/store/`. Zmienia się w niej firmę, która prowadzi sklep i którą kupujący widzą w stopce, na stronie „O M'Arte” i na stronach produktów, w kasie, w e-mailach o zamówieniach i na stronach prawnych. Dane to kolumny jedynego wiersza `store_setting` (`20261016160000_seller_details.sql`), więc ich zmiana nie wymaga nowego wydania. Migracja wypełniła wiersz danymi, które do tej pory były w kodzie, więc dla kupujących nic się wtedy nie zmieniło.
+
+### Dane sprzedawcy
+
+`SettingsSellerDetailsCard` czyta `getAdminSellerDetailsQuery()`, a `SellerDetailsFields` (`seller-details-fields.tsx`) pokazuje te pola, każde z komunikatem pod spodem, gdy jest błędne:
+
+| Pole                   | Co przyjmuje                                                                                                                 |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Pełna nazwa firmy**  | Do 200 znaków, tak jak w rejestrze (CEIDG lub KRS)                                                                           |
+| **Ulica i numer**      | Do 120 znaków                                                                                                                |
+| **Kod pocztowy**       | Do 12 znaków, w formacie `00-000`, gdy krajem jest Polska                                                                    |
+| **Miejscowość**        | Do 80 znaków                                                                                                                 |
+| **Kraj**               | Jeden z krajów z `src/modules/_core/constants/country.ts`, wymienionych z nazwy w języku panelu                              |
+| **NIP**                | 10 cyfr z prawidłową cyfrą kontrolną; spacje, myślniki i przedrostek `PL` są pomijane, więc NIP zapisuje się jako same cyfry |
+| **REGON**              | 9 albo 14 cyfr z prawidłową cyfrą kontrolną; spacje i myślniki są pomijane                                                   |
+| **E-mail kontaktowy**  | Prawidłowy adres do 254 znaków. Podpowiedź mówi, że trafiają na niego też odpowiedzi na e-maile sklepu                       |
+| **Telefon kontaktowy** | Do 30 znaków, prawidłowy numer zapisany z numerem kierunkowym kraju, na przykład `+48 600 000 000`                           |
+
+Każde pole jest wymagane. Reguły to `storeSettingZodSchemas.sellerDetails` w `src/modules/store-setting/store-setting.zod.ts`. Sprawdzenia NIP i REGON to `isValidNip` i `isValidRegon` w `src/modules/_core/utils/polish-business-ids.ts`, których używa też NIP do faktury na firmę w kasie, a sprawdzenie telefonu to `isValidPhoneNumber` z `libphonenumber-js`. Nazwy krajów pochodzą z `formatCountryName` w `src/modules/_core/utils/country-name.ts`. **Zapisz** najpierw uruchamia ten sam schemat w przeglądarce (`toSellerDetailsSubmission` w `seller-details-form.utils.ts`), więc błędne pole jest oznaczone, zanim cokolwiek zostanie wysłane, a serwer jeszcze raz parsuje dane wejściowe.
+
+**Zapisz** wywołuje `updateSellerDetails` (`src/modules/store-setting/use-cases/update-seller-details.ts`), które wymaga `settings: ["manage"]`, z danymi i czasem ich ostatniego zapisu jako `expectedUpdatedAt`. Przypadek użycia:
+
+1. czyta zapisane dane i, gdy nic się nie zmieniło, zwraca je bez zapisu, wpisu w dzienniku i odświeżania czegokolwiek;
+2. ustala, które strony treści i które z ich języków pokazują zmienioną daną przez znacznik danych sklepu (zobacz [Strony prawne: Dane sklepu na stronach](/docs/features/legal-pages#dane-sklepu-na-stronach));
+3. zapisuje w jednej partii D1 przez `saveSellerDetailsIfUnchanged`: wiersz zmienia się tylko wtedy, gdy jego `seller_updated_at` nadal równa się `expectedUpdatedAt`, a każda z tych stron dostaje czas zapisu jako datę „Ostatnia aktualizacja” w tych językach, dopiero gdy wiersz ma ten czas, więc odrzucony zapis niczego nie datuje;
+4. odrzuca zapis z `CONFLICT`, gdy inny administrator zapisał dane po otwarciu formularza, a karta pokazuje komunikat **W międzyczasie ktoś zmienił dane sprzedawcy. Odśwież stronę, aby zobaczyć zmianę.**;
+5. publikuje `scheduleSellerDetailsInvalidation()`, a gdy datował stronę, także `scheduleContentPageInvalidation()`, i zapisuje w [dzienniku zdarzeń](/docs/features/audit-log) `settings.updated` z celem `seller-details` i zmienionymi polami, starymi i nowymi.
+
+Po powodzeniu karta wypełnia formularz zapisanymi danymi, odświeża `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` i `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS` i pokazuje komunikat **Zapisano dane sprzedawcy.** Unieważnienie wysyła klucz panelu do huba panelu, a klucz sklepu do huba sklepu, więc inne karty panelu oraz otwarte karty sklepu i kasy pokazują nowe dane bez przeładowania. Strony konta i dokumentacja, które nie śledzą unieważniania w czasie rzeczywistym, pokazują je przy następnym wczytaniu.
+
+### Gdzie widać te dane
+
+Sklep czyta dane przez publiczne `getSellerDetails` (`get-seller-details.ts`) i `getSellerDetailsQuery()`, które z wyprzedzeniem wczytują loadery layoutów `_storefront`, `account`, `docs` i `checkout`, więc widać je już przy pierwszym renderze; błąd odczytu pokazuje stronę błędu. Panel czyta je pod własnym kluczem przez `getAdminSellerDetailsQuery()`, a kod serwerowy wywołuje `readSellerDetails()`. Kraj jest wypisywany z zapisanego kodu w języku czytelnika.
+
+| Gdzie                                                                  | Co pokazuje                                                                                                                                 |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stopka i sekcja kontaktowa `/about`                                    | `SellerContactDetails`: pełną nazwę firmy, adres z krajem, NIP i REGON oraz e-mail i telefon jako linki                                     |
+| Strony produktów                                                       | Sekcję „Producent” i e-mail kontaktowy w zaproszeniu do napisania o innym rozmiarze albo ponownym złoceniu                                  |
+| Krok odbioru osobistego w kasie                                        | `DeliveryInStore`: ulicę, kod pocztowy i miejscowość w `deliverySubsteps.inStoreText`                                                       |
+| Potwierdzenie na `/withdraw-from-contract` i okno odstąpienia w koncie | E-mail kontaktowy                                                                                                                           |
+| Podsumowanie zamówienia do druku                                       | `OrderSummaryParties`: pełną nazwę firmy, adres, kraj, NIP i e-mail, czytane pod kluczem panelu                                             |
+| Dane strukturalne                                                      | `buildStoreStructuredData` na stronie głównej i producenta w `buildProductStructuredData`                                                   |
+| E-maile                                                                | Potwierdzenie zamówienia, podziękowanie po dostawie, potwierdzenie odstąpienia i stopkę nadawcy newslettera oraz `Reply-To` każdego e-maila |
+| Strony prawne i FAQ                                                    | Każdy znacznik danych sklepu w Markdownie strony                                                                                            |
+
+Dwa ostatnie opisują strony [Strony prawne](/docs/features/legal-pages#dane-sklepu-na-stronach) i [E-maile transakcyjne](/docs/features/email#dane-sprzedawcy-w-e-mailach).
+
+Niektóre miejsca nadal mają dane sprzedawcy poza ustawieniami i wymagają osobnej zmiany: dwa formularze PDF w `public/forms`, w których dane są wydrukowane (formularz odstąpienia jest dołączany do każdego potwierdzenia zamówienia), dopóki nie będą generowane z zapisanych danych; publiczne dane firmy w panelu Stripe; profil nadawcy organizacji InPost; oraz ekran zgody Google OAuth. `APP_NAME` w `src/presentation/branding/app.ts`, nazwa marki, której używają wystawca kodów dwuskładnikowych, nazwa nadawcy e-maili i `appInfo` Stripe, pozostaje stałą.
+
 ## Dostawa
 
 Zakładka Dostawa ma dwie karty z `src/presentation/components/custom/pages/admin/settings/delivery/`. Reguły, które stosuje serwer, i to, co robi z nimi kasa, opisuje strona [Wysyłka i dostawa](/docs/features/shipping-and-delivery#zarządzanie-metodami-dostawy).
@@ -114,11 +166,12 @@ Okna konta przyjmują `variant`: `"editorial"`, domyślny, dla stron konta klien
 
 ## Czego jeszcze nie ma w ustawieniach
 
-Na razie ustawienia obejmują własne konto administratora i dostawę w sklepie. Nie ma w nich jeszcze innych ustawień całego sklepu: danych sklepu i sprzedawcy, samych przewoźników, zespołu administratorów, powiadomień dla obsługi, stanu płatności i integracji ani danych stron prawnych. Sprzedaż wstrzymuje się [przełącznikiem sprzedaży](/docs/features/admin-dashboard#przełącznik-sprzedaży) na pulpicie, a strony prawne edytuje się w sekcji [Treść](/docs/features/legal-pages).
+Na razie ustawienia obejmują własne konto administratora, dane sprzedawcy i dostawę w sklepie. Nie ma w nich jeszcze innych ustawień całego sklepu: samych przewoźników, zespołu administratorów, powiadomień dla obsługi ani stanu płatności i integracji. Sprzedaż wstrzymuje się [przełącznikiem sprzedaży](/docs/features/admin-dashboard#przełącznik-sprzedaży) na pulpicie, a strony prawne edytuje się w sekcji [Treść](/docs/features/legal-pages), gdzie biorą dane sprzedawcy z zakładki Dane sklepu przez znaczniki.
 
 ## Powiązane strony
 
 - [Konto](/docs/features/account) — profil klienta, który dzieli z ustawieniami przypadki użycia i okna
+- [Strony prawne](/docs/features/legal-pages) — znaczniki danych sklepu, które podają sprzedawcę na stronach prawnych
 - [Wysyłka i dostawa](/docs/features/shipping-and-delivery) — metody dostawy i darmowa dostawa za zakładką Dostawa
 - [Pulpit admina](/docs/features/admin-dashboard)
 - [Internacjonalizacja](/docs/features/internationalization) — preferencje języka, strefy czasowej i formatu

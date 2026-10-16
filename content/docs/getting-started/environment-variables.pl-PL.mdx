@@ -99,14 +99,15 @@ Trzy wartości `CLOUDFLARE_*` są odczytywane przez `process.env` w konfiguracji
 
 Kilka ustawień, których ludzie szukają w `.env`, jest stałymi:
 
-| Co                                                                                | Gdzie                                                  |
-| --------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, obrazek OG, kolor motywu, zapasowy URL R2    | `src/presentation/branding/app.ts`                     |
-| Nazwa firmy, NIP, REGON, adres, telefon, godziny otwarcia                         | `src/presentation/branding/business.ts`                |
-| Linki do Facebooka i Instagrama                                                   | `src/presentation/branding/socials.ts`                 |
-| Hosty obsługiwane w każdym trybie: logowanie, linki w e-mailach, powrót ze Stripe | `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts` |
-| Obsługiwane lokalizacje, lokalizacja domyślna, nazwa ciasteczka, strefy czasowe   | `src/integrations/use-intl/i18n.config.ts`             |
-| Identyfikatory D1, R2, KV i kolejki, nazwy Workerów, domeny własne                | `wrangler.jsonc`                                       |
+| Co                                                                                | Gdzie                                                                                                     |
+| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, obrazek OG, kolor motywu, zapasowy URL R2    | `src/presentation/branding/app.ts`                                                                        |
+| Nazwa firmy, NIP, REGON, adres, e-mail kontaktowy, telefon                        | Nie w kodzie: wiersz `store_setting` w D1, zmieniany w Ustawienia → Dane sklepu (`/admin/settings/store`) |
+| Godziny otwarcia punktu odbioru                                                   | `deliverySubsteps.inStoreText` w `messages/*/pages.checkout.json` oraz regulamin i FAQ w `/admin/content` |
+| Linki do Facebooka i Instagrama                                                   | `src/presentation/branding/socials.ts`                                                                    |
+| Hosty obsługiwane w każdym trybie: logowanie, linki w e-mailach, powrót ze Stripe | `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts`                                                    |
+| Obsługiwane lokalizacje, lokalizacja domyślna, nazwa ciasteczka, strefy czasowe   | `src/integrations/use-intl/i18n.config.ts`                                                                |
+| Identyfikatory D1, R2, KV i kolejki, nazwy Workerów, domeny własne                | `wrangler.jsonc`                                                                                          |
 
 O `appHostsForMode` trzeba pamiętać przy każdej zmianie domeny:
 

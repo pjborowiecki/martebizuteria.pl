@@ -51,7 +51,7 @@ Note that `product` covers the whole catalog, not only the `product` table: cate
 
 ## Where each permission is checked
 
-Of the 132 server functions in `src/modules/*/use-cases/`, 82 require a permission, 27 require only a session and 23 are public.
+Of the 134 server functions in `src/modules/*/use-cases/`, 83 require a permission, 27 require only a session and 24 are public.
 
 | Permission               | Checked by                                                                                                                                                                                                                                                                                                                                                                                      |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -64,7 +64,7 @@ Of the 132 server functions in `src/modules/*/use-cases/`, 82 require a permissi
 | `order: ["refund"]`      | `refund-admin-order`, and `cancel-order` for an order with a payment to refund, checked in its handler once it has read the order                                                                                                                                                                                                                                                               |
 | `content: ["read"]`      | `get-admin-content-pages`, `get-admin-content-page`, `get-admin-newsletter-campaigns`                                                                                                                                                                                                                                                                                                           |
 | `content: ["update"]`    | `update-content-page`, `send-newsletter-test`, `send-newsletter-campaign`                                                                                                                                                                                                                                                                                                                       |
-| `settings: ["manage"]`   | `get-dashboard-snapshot`, `get-dashboard-chart-range`, `list-audit-logs`, `export-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`, `set-sales-paused`, `set-free-delivery-threshold`, `list-admin-delivery-methods`, `create-delivery-method`, `update-delivery-method`, `archive-delivery-method`, `reorder-delivery-methods`                                                          |
+| `settings: ["manage"]`   | `get-dashboard-snapshot`, `get-dashboard-chart-range`, `list-audit-logs`, `export-audit-logs`, `get-audit-log-stats`, `delete-audit-logs`, `set-sales-paused`, `set-free-delivery-threshold`, `update-seller-details`, `list-admin-delivery-methods`, `create-delivery-method`, `update-delivery-method`, `archive-delivery-method`, `reorder-delivery-methods`                                 |
 | `user: ["list"]`         | `get-admin-customers-page`, `get-admin-customer-stats`, `export-admin-customers`, `get-admin-newsletter-page`, `get-newsletter-stats`, `export-admin-newsletter-subscribers`                                                                                                                                                                                                                    |
 | `user: ["get"]`          | `get-admin-customer`                                                                                                                                                                                                                                                                                                                                                                            |
 | `user: ["update"]`       | `update-customer`, `unsubscribe-newsletter-subscriber`                                                                                                                                                                                                                                                                                                                                          |
@@ -75,7 +75,7 @@ Of the 132 server functions in `src/modules/*/use-cases/`, 82 require a permissi
 
 ## Public endpoints
 
-Twenty-three use cases deliberately take no `authorized` middleware, because the storefront must serve anonymous visitors. The list is not implicit — it is written down in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` as `PUBLIC_USE_CASES`:
+Twenty-four use cases deliberately take no `authorized` middleware, because the storefront must serve anonymous visitors. The list is not implicit — it is written down in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` as `PUBLIC_USE_CASES`:
 
 | Use case                                                    |
 | ----------------------------------------------------------- |
@@ -100,6 +100,7 @@ Twenty-three use cases deliberately take no `authorized` middleware, because the
 | `product/use-cases/get-storefront-products-page.ts`         |
 | `store-setting/use-cases/get-free-delivery.ts`              |
 | `store-setting/use-cases/get-sales-status.ts`               |
+| `store-setting/use-cases/get-seller-details.ts`             |
 | `storefront-search/use-cases/get-trending-searches.ts`      |
 | `storefront-search/use-cases/search-storefront.ts`          |
 

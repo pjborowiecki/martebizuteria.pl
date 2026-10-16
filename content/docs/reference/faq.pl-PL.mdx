@@ -67,9 +67,13 @@ Jako liczby całkowite w jednostce podrzędnej waluty. `product_variant.price` i
 
 W panelu, w **Ustawienia → Dostawa** (`/admin/settings/delivery`). Tam dodaje się metody, zmienia ich nazwy w obu językach i ceny, ukrywa, archiwizuje i przywraca je, ustala kolejność, w jakiej wymienia je kasa, oraz ustawia próg darmowej dostawy. `delivery_method.price` i `store_setting.free_delivery_threshold` to jednostki podrzędne, jak każda inna kwota. Plik seeda, `delivery-methods.sql`, wstawia tylko te wiersze, których jeszcze nie ma (`INSERT OR IGNORE`). Zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery#zarządzanie-metodami-dostawy).
 
+## Gdzie zmienia się nazwę firmy, adres i NIP sklepu?
+
+W panelu, w **Ustawienia → Dane sklepu** (`/admin/settings/store`): pełną nazwę firmy, ulicę, kod pocztowy, miejscowość, kraj, NIP, REGON, e-mail kontaktowy i telefon. Stopka, strona „O M'Arte”, strony produktów, krok odbioru osobistego w kasie, e-maile, dane strukturalne i strony prawne czytają je z wiersza `store_setting`, więc zapis pojawia się wszędzie bez nowego wydania. Strony prawne podają je przez znaczniki, na przykład `:seller[nip]`; zdania o odbiorze w regulaminie i w FAQ oraz dwa formularze PDF w `public/forms` nadal wymagają osobnej zmiany. Zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu).
+
 ## Jak zmiana w jednej karcie przeglądarki dociera na ekran innego administratora?
 
-Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 21 dla panelu, 14 dla sklepu, 2 dla kasy — i odrzucają komunikaty, które się nie pokrywają.
+Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 22 dla panelu, 15 dla sklepu, 3 dla kasy — i odrzucają komunikaty, które się nie pokrywają.
 
 ## Jak podejrzeć e-mail transakcyjny?
 

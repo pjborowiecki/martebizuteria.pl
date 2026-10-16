@@ -78,11 +78,11 @@ Liczby policzone na drzewie roboczym, nie życzeniowe:
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Moduły funkcjonalne                                | 43 w `src/modules/`, łącznie z `_core`                                                                |
 | Tabele w bazie                                     | 41 eksportowanych z `drizzle.schemas.ts` oraz tabela FTS5 `storefront_search`                         |
-| Migracje D1                                        | 88 plików SQL w `src/integrations/drizzle-orm/migrations/`                                            |
-| Przypadki użycia                                   | 169 plików w `src/modules/*/use-cases/`                                                               |
-| Funkcje serwerowe                                  | 120 wywołań `createServerFn(...)`                                                                     |
+| Migracje D1                                        | 101 plików SQL w `src/integrations/drizzle-orm/migrations/`                                           |
+| Przypadki użycia                                   | 171 plików w `src/modules/*/use-cases/`                                                               |
+| Funkcje serwerowe                                  | 142 wywołania `createServerFn(...)`                                                                   |
 | Integracje                                         | 14 adapterów dostawców w `src/integrations/`                                                          |
-| Pliki tras                                         | 74 w `src/routes/`                                                                                    |
+| Pliki tras                                         | 80 w `src/routes/`                                                                                    |
 | Pliki warstwy prezentacji                          | 650 plików nietestowych w `src/presentation/`, w tym 57 komponentów shadcn i 430 komponentów własnych |
 | Przestrzenie nazw tłumaczeń                        | 56 plików JSON na język w `messages/en-US/` i `messages/pl-PL/`                                       |
 | Pliki testowe                                      | 1104 — 432 jednostkowe, 98 integracyjnych, 574 komponentowe                                           |
@@ -115,7 +115,7 @@ Katalog (produkty, warianty, opcje, atrybuty, kategorie, kolekcje, wyszukiwanie,
 Cztery konwencje widać już w pierwszym otwartym pliku i wszystkie cztery wymusza `bun run check`, a nie recenzja:
 
 - **Moduł jest właścicielem tabeli.** `src/modules/{feature}/` zawiera tabelę Drizzle, schematy Zod, krotki kluczy zapytań, wywnioskowane typy, czyste funkcje pomocnicze i akcesory dokładnie jednej tabeli. Jedna operacja na plik w `use-cases/`, nazwana `{verb-noun}.ts`, eksportująca funkcję serwerową obok opcji zapytania TanStack Query, które ją pobierają.
-- **Autoryzacja mieszka na funkcji serwerowej.** Funkcja serwerowa jest publicznym endpointem HTTP, więc strażnicy tras nie mogą jej chronić. Middleware `authorized(permission)` z `src/integrations/better-auth/auth.middleware.ts` jest użyte w 110 miejscach — 27 razy jako gołe `authorized()`, które wymaga tylko poprawnej sesji, i 82 razy z uprawnieniem, na przykład `authorized({ order: ["update"] })`, sprawdzanym wobec macierzy ról w `auth.access.ts`.
+- **Autoryzacja mieszka na funkcji serwerowej.** Funkcja serwerowa jest publicznym endpointem HTTP, więc strażnicy tras nie mogą jej chronić. Middleware `authorized(permission)` z `src/integrations/better-auth/auth.middleware.ts` jest użyte w 111 miejscach — 27 razy jako gołe `authorized()`, które wymaga tylko poprawnej sesji, i 84 razy z uprawnieniem, na przykład `authorized({ order: ["update"] })`, sprawdzanym wobec macierzy ról w `auth.access.ts`.
 - **Warstwa prezentacji nigdy nie dotyka bazy.** Wszystko w `src/presentation/` importuje przypadki użycia, nigdy `db`.
 - **Kod nie zawiera narracji.** W całym `src/` istnieje pięć komentarzy, trzy w TypeScripcie i dwa w CSS, każdy opisujący ograniczenie, którego nie da się wyrazić nazwami ani typami. Intencja idzie w nazwy i typy.
 

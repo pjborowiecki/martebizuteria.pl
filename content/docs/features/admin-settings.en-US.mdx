@@ -1,9 +1,9 @@
 ---
 title: "Admin settings"
-description: "The admin's own account and sign-in security, and the shop's delivery, under /admin/settings: profile, panel language, time zone and format, password, two-factor authentication, sign-in methods, sessions and sign-in history, delivery methods and free delivery."
+description: "The admin's own account and sign-in security, and the shop's details and delivery, under /admin/settings: profile, panel language, time zone and format, password, two-factor authentication, sign-in methods, sessions and sign-in history, the seller's details, delivery methods and free delivery."
 ---
 
-Settings is where an admin manages their own account and the shop's delivery. It is the **Settings** item at the bottom of the sidebar, and it has three header tabs: **My account**, **Sign-in & security** and **Delivery**. The first two act on the signed-in admin's own account, through the same use cases and Better Auth calls as the customer's `/account/profile` page, so they add no permission, table or server function. **Delivery** changes the whole shop: listing and changing the delivery methods and saving the free delivery threshold require `settings: ["manage"]`, the permission the dashboard and the audit log use, while the threshold itself is read through the public `getFreeDelivery` the checkout uses.
+Settings is where an admin manages their own account, the shop's details and its delivery. It is the **Settings** item at the bottom of the sidebar, and it has four header tabs: **My account**, **Sign-in & security**, **Store details** and **Delivery**. The first two act on the signed-in admin's own account, through the same use cases and Better Auth calls as the customer's `/account/profile` page, so they add no permission, table or server function. **Store details** and **Delivery** change the whole shop: saving the seller's details, listing and changing the delivery methods and saving the free delivery threshold require `settings: ["manage"]`, the permission the dashboard and the audit log use, while the seller's details and the threshold themselves are read through the public `getSellerDetails` and `getFreeDelivery` that the storefront and the checkout use.
 
 ## Routes
 
@@ -13,13 +13,14 @@ Settings is where an admin manages their own account and the shop's delivery. It
 | `/admin/settings/`         | `admin.settings.index.tsx`    | Redirects to `/admin/settings/account` in `beforeLoad`                              |
 | `/admin/settings/account`  | `admin.settings.account.tsx`  | **My account**: Profile and Preferences                                             |
 | `/admin/settings/security` | `admin.settings.security.tsx` | **Sign-in & security**: password, two-factor, sign-in methods, sessions and history |
+| `/admin/settings/store`    | `admin.settings.store.tsx`    | **Store details**: the seller's details                                             |
 | `/admin/settings/delivery` | `admin.settings.delivery.tsx` | **Delivery**: delivery methods and free delivery                                    |
 
-The paths are `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY` and `ROUTES.ADMIN_SETTINGS_DELIVERY` in `src/routes.ts`. All of them sit inside the `/admin` layout, so `requireAdmin` guards them and an admin without two-factor authentication is sent to `/admin/security` first (see [Admin dashboard](/docs/features/admin-dashboard#layout)).
+The paths are `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY`, `ROUTES.ADMIN_SETTINGS_STORE` and `ROUTES.ADMIN_SETTINGS_DELIVERY` in `src/routes.ts`. All of them sit inside the `/admin` layout, so `requireAdmin` guards them and an admin without two-factor authentication is sent to `/admin/security` first (see [Admin dashboard](/docs/features/admin-dashboard#layout)).
 
 The layout declares `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` holds the page's own copy; the other three are there because Settings reuses the account dialogs, which read their copy and validation messages from them.
 
-The account loader prefetches `getCustomerProfileQuery()`. The security loader prefetches it together with `listCustomerSessionsQuery()` and `listCustomerLoginHistoryQuery()`, and the delivery loader prefetches `listAdminDeliveryMethodsQuery()` and `getAdminFreeDeliveryQuery()`, so every tab renders without a loading state.
+The account loader prefetches `getCustomerProfileQuery()`. The security loader prefetches it together with `listCustomerSessionsQuery()` and `listCustomerLoginHistoryQuery()`, the store details loader prefetches `getAdminSellerDetailsQuery()`, and the delivery loader prefetches `listAdminDeliveryMethodsQuery()` and `getAdminFreeDeliveryQuery()`, so every tab renders without a loading state.
 
 ## Layout
 
@@ -76,6 +77,57 @@ When Google is connected, the card warns that signing in with Google does not as
 
 `SettingsSessionsCard` lists the signed-in devices with `ActiveSessionList` from the account's sessions page. While any other device is signed in, the card offers **Sign out other devices**, which calls `revokeOtherCustomerSessions`, toasts the result and invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. `SettingsLoginHistoryCard` lists the recent successful and failed sign-ins with `LoginHistoryList`. Both read the same queries as `/account/sessions`.
 
+## Store details
+
+The Store details tab holds one card, **Seller details**, from `src/presentation/components/custom/pages/admin/settings/store/`. It edits the business that runs the shop, which shoppers see in the footer, on the About and product pages, at the checkout, in order e-mails and on the legal pages. The details are columns of the single `store_setting` row (`20261016160000_seller_details.sql`), so changing them needs no release. The migration filled the row with the details the code held until then, so nothing changed for shoppers when it ran.
+
+### Seller details
+
+`SettingsSellerDetailsCard` reads `getAdminSellerDetailsQuery()`, and `SellerDetailsFields` (`seller-details-fields.tsx`) shows these fields, each with its message under it when it is wrong:
+
+| Field                 | What it takes                                                                                                         |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **Legal name**        | Up to 200 characters, as in the business register (CEIDG or KRS)                                                      |
+| **Street and number** | Up to 120 characters                                                                                                  |
+| **Postal code**       | Up to 12 characters, in the `00-000` form when the country is Poland                                                  |
+| **City**              | Up to 80 characters                                                                                                   |
+| **Country**           | One of the countries in `src/modules/_core/constants/country.ts`, listed by name in the panel's language              |
+| **NIP**               | 10 digits with a valid check digit; spaces, dashes and a `PL` prefix are dropped, so the NIP is stored as bare digits |
+| **REGON**             | 9 or 14 digits with a valid check digit; spaces and dashes are dropped                                                |
+| **Contact email**     | A valid address of up to 254 characters. The hint says that replies to the shop's e-mails go to it too                |
+| **Contact phone**     | Up to 30 characters, a valid number written with its country code, such as `+48 600 000 000`                          |
+
+Every field is required. The rules are `storeSettingZodSchemas.sellerDetails` in `src/modules/store-setting/store-setting.zod.ts`. The NIP and REGON checks are `isValidNip` and `isValidRegon` in `src/modules/_core/utils/polish-business-ids.ts`, which the checkout's company invoice NIP uses too, and the phone check is `isValidPhoneNumber` from `libphonenumber-js`. Country names come from `formatCountryName` in `src/modules/_core/utils/country-name.ts`. **Save** runs the same schema in the browser first (`toSellerDetailsSubmission` in `seller-details-form.utils.ts`), so a wrong field is marked before anything is sent, and the server parses the input again.
+
+**Save** calls `updateSellerDetails` (`src/modules/store-setting/use-cases/update-seller-details.ts`), which requires `settings: ["manage"]`, with the details and the time they were last saved as `expectedUpdatedAt`. The use case:
+
+1. reads the stored details and, when nothing changed, returns them without writing, recording or refreshing anything;
+2. works out which content pages, and which of their languages, show a changed detail through a store detail placeholder (see [Legal pages: Store details in the pages](/docs/features/legal-pages#store-details-in-the-pages));
+3. saves in one D1 batch through `saveSellerDetailsIfUnchanged`: the row is updated only while its `seller_updated_at` still equals `expectedUpdatedAt`, and each of those pages gets the save time as the "Last updated" date of those languages, only once the row carries that time, so a refused save dates nothing;
+4. refuses with `CONFLICT` when another admin saved the details after the form was opened, and the card toasts **Someone changed the seller details in the meantime. Reload the page to see the change.**;
+5. publishes `scheduleSellerDetailsInvalidation()`, and `scheduleContentPageInvalidation()` when it dated a page, and records `settings.updated` with the target `seller-details` and the changed fields, old and new, in the [audit log](/docs/features/audit-log).
+
+On success the card fills the form with the saved details, refreshes `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` and `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS`, and toasts **Seller details saved.** The invalidation sends the admin key to the admin hub and the storefront key to the storefront hub, so other admin tabs and open storefront and checkout tabs show the new details without a reload. The account pages and the docs, which do not follow realtime invalidation, show them on their next load.
+
+### Where the details show
+
+The storefront reads the details through the public `getSellerDetails` (`get-seller-details.ts`) and `getSellerDetailsQuery()`, which the `_storefront`, `account`, `docs` and `checkout` layout loaders prefetch, so the first paint already shows them; a failure to read them shows the error page. The admin reads them under its own key through `getAdminSellerDetailsQuery()`, and server code calls `readSellerDetails()`. The country is written out from the stored code in the reader's language.
+
+| Where                                                                        | What it shows                                                                                                                                          |
+| ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| The footer and the contact section of `/about`                               | `SellerContactDetails`: the legal name, the address with the country, the NIP and REGON, and the e-mail and phone as links                             |
+| Product pages                                                                | The "Manufacturer" section, and the contact e-mail in the invitation to write about another size or re-plating                                         |
+| The checkout's pickup step                                                   | `DeliveryInStore`: the street, postal code and city in `deliverySubsteps.inStoreText`                                                                  |
+| The receipt on `/withdraw-from-contract` and the account's withdrawal dialog | The contact e-mail                                                                                                                                     |
+| The printable order summary                                                  | `OrderSummaryParties`: the legal name, address, country, NIP and e-mail, read under the admin key                                                      |
+| Structured data                                                              | `buildStoreStructuredData` on the home page and the manufacturer in `buildProductStructuredData`                                                       |
+| E-mails                                                                      | The order confirmation, the thank-you after delivery, the withdrawal acknowledgement and the newsletter's sender footer, and every e-mail's `Reply-To` |
+| The legal pages and the FAQ                                                  | Each store detail placeholder in a page's Markdown                                                                                                     |
+
+See [Legal pages](/docs/features/legal-pages#store-details-in-the-pages) and [Transactional email](/docs/features/email#seller-details-in-e-mails) for the last two.
+
+Some places still carry the seller's details outside Settings and need a change of their own: the two PDF forms in `public/forms`, which have the details printed in them (the withdrawal form is attached to every order confirmation) until they are generated from the stored details; the public business details in the Stripe Dashboard; the sender profile of the InPost organisation; and the Google OAuth consent screen. `APP_NAME` in `src/presentation/branding/app.ts`, the brand name the two-factor issuer, the e-mail sender's name and Stripe's `appInfo` use, stays a constant.
+
 ## Delivery
 
 The Delivery tab holds two cards, from `src/presentation/components/custom/pages/admin/settings/delivery/`. [Shipping and delivery](/docs/features/shipping-and-delivery#managing-delivery-methods) describes the rules the server applies and what the checkout does with them.
@@ -114,11 +166,12 @@ The account dialogs take a `variant`: `"editorial"`, the default, for the custom
 
 ## Not in Settings yet
 
-Settings covers the admin's own account and the shop's delivery for now. Other shop-wide settings are not in it yet: the shop's details and seller identity, the carriers themselves, the team of admins, staff notifications, the payment and integration status, and the legal pages' data. Sales are paused from the [sales switch](/docs/features/admin-dashboard#sales-switch) on the overview, and the legal pages are edited under [Content](/docs/features/legal-pages).
+Settings covers the admin's own account, the seller's details and the shop's delivery for now. Other shop-wide settings are not in it yet: the carriers themselves, the team of admins, staff notifications, and the payment and integration status. Sales are paused from the [sales switch](/docs/features/admin-dashboard#sales-switch) on the overview, and the legal pages are edited under [Content](/docs/features/legal-pages), where they take the seller's details from Store details through placeholders.
 
 ## Related pages
 
 - [Account](/docs/features/account) — the customer's profile, which shares these use cases and dialogs
+- [Legal pages](/docs/features/legal-pages) — the store detail placeholders that name the seller in the legal pages
 - [Shipping and delivery](/docs/features/shipping-and-delivery) — the delivery methods and free delivery behind the Delivery tab
 - [Admin dashboard](/docs/features/admin-dashboard)
 - [Internationalization](/docs/features/internationalization) — the language, time zone and format preferences
