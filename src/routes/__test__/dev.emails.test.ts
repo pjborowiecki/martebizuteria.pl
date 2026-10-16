@@ -17,6 +17,7 @@ const rendered = vi.hoisted(() => ({
 
 const captured: { current: RouteDefinition | undefined } = { current: undefined }
 
+vi.mock("~/src/modules/store-setting/store-setting.accessors", () => ({ readSellerDetails: vi.fn() }))
 vi.mock("~/src/presentation/emails/email-previews", async (importOriginal) => {
   const actual = await importOriginal<typeof EmailPreviews>()
 

@@ -121,7 +121,6 @@
     "wishlistSignInAction": "Sign in"
   },
   "sellerContactDetails": {
-    "country": "Poland",
     "nip": "NIP (tax identification number): {nip}",
     "regon": "REGON (business statistics number): {regon}"
   },

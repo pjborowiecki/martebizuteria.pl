@@ -42,14 +42,13 @@
         },
         "flexibleOffer": {
           "title": "Elastyczna oferta",
-          "text": "Potrzebujesz inny rozmiar? Chcesz odnowić swoją biżuterię i wykonać ponowne złocenie? Napisz do nas na <email>kontakt@martebizuteria.pl</email>"
+          "text": "Potrzebujesz innego rozmiaru? Chcesz odnowić swoją biżuterię i wykonać ponowne złocenie? Napisz do nas na <emailLink>{email}</emailLink>"
         }
       },
       "manufacturer": {
         "title": "Producent",
         "nameAndAddress": "Nazwa i adres pocztowy",
-        "email": "Adres e-mail",
-        "country": "Polska"
+        "email": "Adres e-mail"
       }
     }
   },

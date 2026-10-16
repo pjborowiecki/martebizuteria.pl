@@ -8,11 +8,11 @@ import { markEmailSenderUnavailable } from "~/src/integrations/resend/resend.ava
 import { resend } from "~/src/integrations/resend/resend.config"
 
 import { HTTP_STATUS } from "~/src/modules/_core/constants/api"
+import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 
 import { APP_NAME } from "~/src/presentation/branding/app"
-import { BUSINESS } from "~/src/presentation/branding/business"
 
 export const SEND_EMAIL_TIMEOUT_MS = 10_000
 
@@ -33,6 +33,18 @@ const refusesEverySend = ({ name, statusCode }: ErrorResponse, sender: string): 
 
 export const shopSender = (): string => `${APP_NAME} <${env.RESEND_EMAIL_FROM}>`
 
+const sellerReplyTo = async (): Promise<{ readonly replyTo?: string }> => {
+  try {
+    const { email } = await readSellerDetails()
+
+    return { replyTo: email }
+  } catch (error) {
+    console.error("[Email] Sending without Reply-To: the seller's contact e-mail could not be read", error)
+
+    return {}
+  }
+}
+
 const deliver = async ({
   from,
   idempotencyKey,
@@ -42,7 +54,7 @@ const deliver = async ({
   const sender = from ?? shopSender()
   try {
     const { error } = await resend.emails.send(
-      { ...message, from: sender, replyTo: BUSINESS.EMAIL },
+      { ...message, ...(await sellerReplyTo()), from: sender },
       idempotencyKey === undefined ? {} : { idempotencyKey },
     )
 

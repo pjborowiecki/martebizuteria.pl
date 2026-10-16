@@ -10,6 +10,8 @@ import {
 import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
 import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 
+import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
+
 import { useRealtimeQuerySync } from "~/src/hooks/use-realtime-query-sync"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
@@ -63,7 +65,10 @@ export const Route = createFileRoute("/checkout")({
   head: pageHead,
   loader: async ({ context }) => {
     const { locale } = context
-    const messages = await context.queryClient.query(messagesQueryOptions<typeof checkoutMessages>({ locale, namespace: "pages.checkout" }))
+    const [messages] = await Promise.all([
+      context.queryClient.query(messagesQueryOptions<typeof checkoutMessages>({ locale, namespace: "pages.checkout" })),
+      context.queryClient.query(getSellerDetailsQuery()),
+    ])
 
     return {
       description: messages.metadata.description,

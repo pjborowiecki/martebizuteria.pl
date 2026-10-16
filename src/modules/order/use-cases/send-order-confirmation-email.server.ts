@@ -29,6 +29,7 @@ import {
   resolveStripePaymentMethodLabel,
 } from "~/src/modules/order/order.email.utils"
 import { resolveOrderLineFulfillmentTimes } from "~/src/modules/order/order.fulfillment-time.utils"
+import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
 
 import { resolveDeploymentOrigin } from "~/src/lib/request"
 
@@ -56,7 +57,10 @@ const buildOrderConfirmationEmailPayload = async (
   const locale = resolveCheckoutSessionLocale(session)
   const checkoutId = session.metadata?.["checkoutId"]
   const checkoutContext = typeof checkoutId === "string" && checkoutId !== "" ? await getCheckoutEmailContext(checkoutId) : undefined
-  const messages = await loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE })
+  const [messages, seller] = await Promise.all([
+    loadNamespace<typeof orderConfirmationMessages>({ locale, namespace: ORDER_CONFIRMATION_NAMESPACE }),
+    readSellerDetails(),
+  ])
   const paymentMethod = await resolveStripePaymentMethodLabel(session, messages)
   const fulfillmentTimeAttributes = await getFulfillmentTimeAttributesByVariantId(order.lines.map((line) => line.variantId))
   const details = buildOrderConfirmationDetails({
@@ -101,6 +105,7 @@ const buildOrderConfirmationEmailPayload = async (
       locale,
       messages,
       orderNumber,
+      seller,
       shippingTotal: placedOrder.shippingTotal,
       subtotal: placedOrder.subtotal,
       taxBasisPoints: placedOrder.taxBasisPoints,

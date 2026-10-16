@@ -1,7 +1,7 @@
 import { render } from "react-email"
 import { describe, expect, it } from "vite-plus/test"
 
-import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+import { TEST_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
 import englishCopy from "~/messages/en-US/emails.newsletter-campaign.json"
 import polishCopy from "~/messages/pl-PL/emails.newsletter-campaign.json"
@@ -14,7 +14,14 @@ const BODY = "## New rings\n\nThe **Luna** ring is back. [See it](https://marteb
 const asHtmlText = (copy: string): string => copy.replaceAll("'", "&#x27;")
 
 const englishLetter = (
-  <NewsletterCampaignEmail body={BODY} locale="en-US" messages={englishCopy} subject="Autumn pieces" unsubscribeUrl={UNSUBSCRIBE_URL} />
+  <NewsletterCampaignEmail
+    body={BODY}
+    locale="en-US"
+    messages={englishCopy}
+    seller={TEST_SELLER_DETAILS}
+    subject="Autumn pieces"
+    unsubscribeUrl={UNSUBSCRIBE_URL}
+  />
 )
 
 const renderEnglish = (): Promise<string> => render(englishLetter)
@@ -46,16 +53,16 @@ describe("NewsletterCampaignEmail", () => {
     await expect(render(englishLetter, { plainText: true })).resolves.toContain(UNSUBSCRIBE_URL)
   })
 
-  it("names the trader who sends it, with their address and e-mail, in the HTML and the plain text", async () => {
+  it("names the seller who sends it, with the stored address and e-mail, in the HTML and the plain text", async () => {
     const html = await renderEnglish()
     const text = await render(englishLetter, { plainText: true })
 
-    for (const line of [englishCopy.sender.label, ...BUSINESS_POSTAL_ADDRESS_LINES, englishCopy.sender.country]) {
+    for (const line of [englishCopy.sender.label, "Pracownia Testowa Anna Nowak", "ul. Floriańska 1", "31-001 Kraków", "Poland"]) {
       expect(html).toContain(line)
       expect(text).toContain(line)
     }
-    expect(html).toContain(`href="mailto:${BUSINESS.EMAIL}"`)
-    expect(text).toContain(`${englishCopy.sender.emailLabel}: ${BUSINESS.EMAIL}`)
+    expect(html).toContain(`href="mailto:${TEST_SELLER_DETAILS.email}"`)
+    expect(text).toContain(`${englishCopy.sender.emailLabel}: ${TEST_SELLER_DETAILS.email}`)
   })
 
   it("declares the document language and the inbox preview line", async () => {
@@ -71,6 +78,7 @@ describe("NewsletterCampaignEmail", () => {
         body="Nowe pierścionki."
         locale="pl-PL"
         messages={polishCopy}
+        seller={TEST_SELLER_DETAILS}
         subject="Jesień"
         unsubscribeUrl={UNSUBSCRIBE_URL}
       />,
@@ -79,8 +87,8 @@ describe("NewsletterCampaignEmail", () => {
     expect(html).toContain('lang="pl-PL"')
     expect(html).toContain(polishCopy.unsubscribe)
     expect(html).toContain(polishCopy.sender.label)
-    expect(html).toContain(polishCopy.sender.country)
+    expect(html).toContain("Polska")
     expect(html).not.toContain(englishCopy.unsubscribe)
-    expect(html).not.toContain(englishCopy.sender.country)
+    expect(html).not.toContain("Poland")
   })
 })

@@ -3,6 +3,7 @@ import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { createSellerDetailsQueryClient } from "~/src/platform/testing/mocks/seller-details"
 
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 
@@ -17,6 +18,11 @@ const calls = vi.hoisted(() => ({
   withdraw: vi.fn<(data: Record<string, unknown>) => Promise<OrderWithdrawal["result"]>>(),
 }))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("sonner", () => ({ toast: { error: calls.toastError, success: calls.toastSuccess } }))
 vi.mock("~/src/modules/order-withdrawal/use-cases/withdraw-from-customer-order", () => ({
   withdrawFromCustomerOrderMutation: {
@@ -58,6 +64,7 @@ const renderDialog = (open = true) => {
   const onOpenChange = vi.fn<(open: boolean) => void>()
   const rendered = renderWithProviders(
     <OrderWithdrawalDialog onOpenChange={onOpenChange} open={open} order={order} withdrawal={withdrawal} />,
+    { queryClient: createSellerDetailsQueryClient() },
   )
 
   return { onOpenChange, queryClient: rendered.queryClient }
@@ -136,7 +143,7 @@ describe("OrderWithdrawalDialog", () => {
 
     await waitFor(() => {
       expect(calls.toastError).toHaveBeenCalledWith(
-        "The withdrawal period for this order has ended, or the order was cancelled. If you think this is a mistake, write to us at kontakt@martebizuteria.pl.",
+        "The withdrawal period for this order has ended, or the order was cancelled. If you think this is a mistake, write to us at sklep@marte.test.",
       )
     })
     expect(calls.toastSuccess).not.toHaveBeenCalled()

@@ -10,6 +10,7 @@ import { ORDER_EMAIL_KIND } from "~/src/modules/order/order.constants"
 import { resolveOrderLocale } from "~/src/modules/order/order.display.utils"
 import { type OrderEmailOutcome, deliverOrderEmail } from "~/src/modules/order/order.email-delivery.server"
 import { buildOrderDeliveredLinks, buildOrderShippedAccountCta } from "~/src/modules/order/order.email.utils"
+import { readSellerDetails } from "~/src/modules/store-setting/store-setting.accessors"
 
 import type orderDeliveredMessages from "~/messages/en-US/emails.order-delivered.json"
 import { ORDER_DELIVERED_NAMESPACE, OrderDelivered } from "~/src/presentation/emails/order-delivered"
@@ -27,12 +28,15 @@ const attemptOrderDeliveredEmail = async (orderId: string, origin: string, idemp
   }
 
   const locale = resolveOrderLocale(orderRow.metadata)
-  const messages = await loadNamespace<typeof orderDeliveredMessages>({ locale, namespace: ORDER_DELIVERED_NAMESPACE })
+  const [messages, seller] = await Promise.all([
+    loadNamespace<typeof orderDeliveredMessages>({ locale, namespace: ORDER_DELIVERED_NAMESPACE }),
+    readSellerDetails(),
+  ])
   const accountCta = buildOrderShippedAccountCta({ locale, messages, orderId: orderRow.id, origin, userId: orderRow.userId })
   const links = buildOrderDeliveredLinks(origin, locale, orderRow.orderNumber)
   const failure = await sendEmail({
     idempotencyKey,
-    react: createElement(OrderDelivered, { accountCta, links, locale, messages, orderNumber: orderRow.orderNumber }),
+    react: createElement(OrderDelivered, { accountCta, links, locale, messages, orderNumber: orderRow.orderNumber, seller }),
     subject: createTranslator({ locale, messages })("subject"),
     to: orderRow.email,
   })

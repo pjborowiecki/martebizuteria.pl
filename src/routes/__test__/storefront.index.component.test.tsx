@@ -5,6 +5,7 @@ import { cleanup, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
 import type * as I18nMessages from "~/src/integrations/use-intl/i18n.messages"
 
@@ -32,6 +33,11 @@ const spies = vi.hoisted(() => ({
   prefetchProductThumbnails: vi.fn<(products: readonly { thumbnail: string }[], service: unknown) => void>(),
 }))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof TanStackRouter>()
 
@@ -128,8 +134,10 @@ const LANDING_MESSAGES = {
 
 const NEW_ARRIVALS = [{ thumbnail: "products/aurora.webp" }]
 
+const QUERY_RESULTS: Readonly<Record<string, unknown>> = { messages: LANDING_MESSAGES, "store-setting": TEST_STORED_SELLER_DETAILS }
+
 const query = (options: { readonly queryKey: readonly string[] }): Promise<unknown> =>
-  Promise.resolve(options.queryKey[0] === "messages" ? LANDING_MESSAGES : NEW_ARRIVALS)
+  Promise.resolve(QUERY_RESULTS[options.queryKey[0] ?? ""] ?? NEW_ARRIVALS)
 
 const runLoader = (): Promise<PageMeta> | undefined =>
   route.loader?.({ context: { imagePrefetchService: { preload: () => {} }, locale: "en-US", queryClient: { query } } })
@@ -178,10 +186,14 @@ describe("landing page", () => {
 })
 
 describe("landing route loader", () => {
-  it("titles the page from the landing message catalogue and describes the store to search engines", async () => {
+  it("titles the page from the landing message catalogue and describes the store and its stored seller to search engines", async () => {
     await expect(runLoader()).resolves.toStrictEqual({
       description: LANDING_MESSAGES.meta.description,
-      structuredData: buildStoreStructuredData({ description: LANDING_MESSAGES.meta.description, locale: "en-US" }),
+      structuredData: buildStoreStructuredData({
+        description: LANDING_MESSAGES.meta.description,
+        locale: "en-US",
+        seller: TEST_STORED_SELLER_DETAILS,
+      }),
       title: "M'Arte | Handcrafted Jewelry",
     })
   })

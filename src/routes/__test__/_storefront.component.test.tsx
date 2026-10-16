@@ -5,6 +5,7 @@ import { cleanup, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
 const realtime = vi.hoisted(() => ({
   sync: vi.fn<(options: { readonly hub: string; readonly subscriptions: readonly unknown[] }) => void>(),
@@ -24,6 +25,11 @@ const menu = vi.hoisted(() => ({ fetchCollections: vi.fn<() => Promise<unknown[]
 
 const sales = vi.hoisted(() => ({ fetchStatus: vi.fn<() => Promise<{ salesPaused: boolean }>>() }))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<Record<string, unknown>>()
 
@@ -184,5 +190,13 @@ describe("storefront layout loader", () => {
 
     await expect(metadata.loader?.({ context: { queryClient } })).resolves.toBeUndefined()
     expect(queryClient.getQueryState(STORE_SETTING_QUERY_KEYS.SALES)).toMatchObject({ data: undefined, status: "error" })
+  })
+
+  it("renders the page with the seller's stored details, so the footer names the seller in the first paint", async () => {
+    const queryClient = new QueryClient()
+
+    await metadata.loader?.({ context: { queryClient } })
+
+    expect(queryClient.getQueryData(STORE_SETTING_QUERY_KEYS.SELLER_DETAILS)).toStrictEqual(TEST_STORED_SELLER_DETAILS)
   })
 })

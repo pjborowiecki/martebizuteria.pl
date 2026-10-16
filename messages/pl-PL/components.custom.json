@@ -121,7 +121,6 @@
     "wishlistSignInAction": "Zaloguj się"
   },
   "sellerContactDetails": {
-    "country": "Polska",
     "nip": "NIP: {nip}",
     "regon": "REGON: {regon}"
   },

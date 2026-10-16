@@ -7,6 +7,7 @@ import { cleanup, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
 import { type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
@@ -83,6 +84,11 @@ const catalog = vi.hoisted(() => ({
   relatedArgs: vi.fn<(categoryId: unknown, excludeProductId: unknown, locale: unknown) => void>(),
 }))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouter>()
 
@@ -310,6 +316,7 @@ describe("storefront product loader", () => {
         locale: "en-US",
         product: silverRing,
         section: "Products",
+        seller: TEST_STORED_SELLER_DETAILS,
       }),
     })
   })

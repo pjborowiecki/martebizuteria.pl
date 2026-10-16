@@ -5,7 +5,6 @@
   "unsubscribe": "Wypisz się z newslettera",
   "sender": {
     "label": "Nadawca",
-    "country": "Polska",
     "emailLabel": "E-mail"
   }
 }

@@ -6,8 +6,8 @@ import { createTranslator } from "use-intl"
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
-
-import { BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
+import { formatSellerPostalAddress } from "~/src/modules/store-setting/store-setting.utils"
 
 import type emailMessages from "~/messages/en-US/emails.order-withdrawal.json"
 import {
@@ -53,7 +53,7 @@ const WithdrawalStatement = ({ locale, messages, orderNumber, statement }: Reado
   )
 }
 
-export const OrderWithdrawalReceived = (props: Readonly<OrderWithdrawalEmailProps>): JSX.Element => {
+export const OrderWithdrawalReceived = ({ seller, ...props }: Readonly<OrderWithdrawalReceivedProps>): JSX.Element => {
   const t = translatorFor(props.locale, props.messages)
 
   return (
@@ -67,7 +67,7 @@ export const OrderWithdrawalReceived = (props: Readonly<OrderWithdrawalEmailProp
       <EmailDetailRow isFirst label={t("received.returnLabel")}>
         {t("received.returnBody")}
       </EmailDetailRow>
-      <Text className={STATEMENT_TEXT_CLASS}>{[...BUSINESS_POSTAL_ADDRESS_LINES, t("received.country")].join("\n")}</Text>
+      <Text className={STATEMENT_TEXT_CLASS}>{formatSellerPostalAddress(seller, props.locale).join("\n")}</Text>
       <EmailDetailRow label={t("received.refundLabel")}>{t("received.refundBody")}</EmailDetailRow>
 
       <EmailBodyText className="mt-[30px]">{t("received.closingNote")}</EmailBodyText>
@@ -102,6 +102,10 @@ interface OrderWithdrawalEmailProps {
   readonly messages: typeof emailMessages
   readonly orderNumber: string
   readonly statement: OrderWithdrawal["statement"]
+}
+
+interface OrderWithdrawalReceivedProps extends OrderWithdrawalEmailProps {
+  readonly seller: StoreSetting["sellerDetails"]
 }
 
 interface OrderWithdrawalNoticeProps extends OrderWithdrawalEmailProps {

@@ -30,6 +30,11 @@ interface WithdrawalRouteDefinition {
 
 const route = vi.hoisted((): { options?: WithdrawalRouteDefinition; search: { order?: string } } => ({ search: {} }))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("@tanstack/react-router", async (importOriginal) => ({
   ...(await importOriginal<typeof ReactRouter>()),
   createFileRoute: () => (options: WithdrawalRouteDefinition) => {

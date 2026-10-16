@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vite-plus/test"
 
+import { TEST_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
+
 import {
   buildBlogPostStructuredData,
   buildBlogStructuredData,
@@ -11,7 +13,6 @@ import {
 } from "~/src/lib/seo"
 
 import { APP_NAME, APP_URL, OG_IMAGE_PATH } from "~/src/presentation/branding/app"
-import { BUSINESS } from "~/src/presentation/branding/business"
 import { SOCIALS } from "~/src/presentation/branding/socials"
 
 import {
@@ -60,7 +61,7 @@ describe("buildWebPageStructuredData", () => {
 })
 
 describe("buildStoreStructuredData", () => {
-  const graph = buildStoreStructuredData({ description: "Srebrna biżuteria.", locale: "pl-PL" })["@graph"]
+  const graph = buildStoreStructuredData({ description: "Srebrna biżuteria.", locale: "pl-PL", seller: TEST_SELLER_DETAILS })["@graph"]
 
   it("declares the website node the other builders reference", () => {
     expect(graph[0]).toStrictEqual({
@@ -84,19 +85,19 @@ describe("buildStoreStructuredData", () => {
     })
   })
 
-  it("names the business behind the store with its address, contacts and tax number", () => {
+  it("names the seller behind the store with the address, contacts and tax number stored in the settings", () => {
     expect(graph[1]).toMatchObject({
       address: {
         "@type": "PostalAddress",
         addressCountry: "PL",
-        addressLocality: "Bochnia",
-        postalCode: "32-700",
-        streetAddress: "ul. Wąska 11",
+        addressLocality: "Kraków",
+        postalCode: "31-001",
+        streetAddress: "ul. Floriańska 1",
       },
-      email: BUSINESS.EMAIL,
-      legalName: BUSINESS.LEGAL_NAME,
-      taxID: BUSINESS.NIP,
-      telephone: BUSINESS.PHONE,
+      email: "sklep@marte.test",
+      legalName: "Pracownia Testowa Anna Nowak",
+      taxID: "5260250274",
+      telephone: "+48 600 100 200",
     })
   })
 })
@@ -226,7 +227,13 @@ describe("buildProductStructuredData", () => {
     ],
   })
   const images = ["https://images.example.test/products/ring.webp", "https://images.example.test/products/ring-side.webp"]
-  const [product, breadcrumbs] = buildProductStructuredData({ images, locale: "en-US", product: ring, section: "Products" })["@graph"]
+  const [product, breadcrumbs] = buildProductStructuredData({
+    images,
+    locale: "en-US",
+    product: ring,
+    section: "Products",
+    seller: TEST_SELLER_DETAILS,
+  })["@graph"]
 
   it("describes the product under the store's brand with its images", () => {
     expect(product).toMatchObject({
@@ -239,19 +246,19 @@ describe("buildProductStructuredData", () => {
     })
   })
 
-  it("names the manufacturer with the postal and e-mail address the product page shows", () => {
+  it("names the seller as the manufacturer with the postal and e-mail address the product page shows", () => {
     expect(product).toMatchObject({
       manufacturer: {
         "@type": "Organization",
         address: {
           "@type": "PostalAddress",
           addressCountry: "PL",
-          addressLocality: "Bochnia",
-          postalCode: "32-700",
-          streetAddress: "ul. Wąska 11",
+          addressLocality: "Kraków",
+          postalCode: "31-001",
+          streetAddress: "ul. Floriańska 1",
         },
-        email: BUSINESS.EMAIL,
-        name: BUSINESS.LEGAL_NAME,
+        email: "sklep@marte.test",
+        name: "Pracownia Testowa Anna Nowak",
       },
     })
   })
@@ -292,6 +299,7 @@ describe("buildProductStructuredData", () => {
         variants: [storefrontVariant({ compareAtPrice: 29_900, price: 19_900, priceReduction: { lowestPrice: 24_900 } })],
       }),
       section: "Produkty",
+      seller: TEST_SELLER_DETAILS,
     })["@graph"]
 
     expect(reduced).toMatchObject({ offers: [{ price: "199.00", priceCurrency: "PLN" }] })
@@ -304,6 +312,7 @@ describe("buildProductStructuredData", () => {
       locale: "pl-PL",
       product: storefrontProduct({ variants: [storefrontVariant({ inventory: null })] }),
       section: "Produkty",
+      seller: TEST_SELLER_DETAILS,
     })["@graph"]
 
     expect(untracked).toMatchObject({ offers: [{ availability: "https://schema.org/OutOfStock", price: "1200.00" }] })

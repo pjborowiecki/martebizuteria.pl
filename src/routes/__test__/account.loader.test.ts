@@ -2,6 +2,8 @@ import { QueryClient } from "@tanstack/react-query"
 import type * as ReactRouter from "@tanstack/react-router"
 import { describe, expect, it, vi } from "vite-plus/test"
 
+import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
+
 import { COLLECTION_QUERY_KEYS } from "~/src/modules/product-collection/product-collection.constants"
 import { STORE_SETTING_QUERY_KEYS } from "~/src/modules/store-setting/store-setting.constants"
 
@@ -27,6 +29,11 @@ const menu = vi.hoisted(() => ({ fetchCollections: vi.fn<() => Promise<unknown[]
 
 const sales = vi.hoisted(() => ({ fetchStatus: vi.fn<() => Promise<{ salesPaused: boolean }>>() }))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouter>()
 
@@ -129,5 +136,15 @@ describe("account route sales status", () => {
 
     await expect(route.loader?.({ context: { locale: "en-US", queryClient } })).resolves.toMatchObject({ title: "Your Account | M'Arte" })
     expect(queryClient.getQueryState(STORE_SETTING_QUERY_KEYS.SALES)).toMatchObject({ data: undefined, status: "error" })
+  })
+})
+
+describe("account route seller details", () => {
+  it("loads the seller's details with the account page, so the footer names the seller in the first paint", async () => {
+    const queryClient = new QueryClient()
+
+    await loadMeta("en-US", queryClient)
+
+    expect(queryClient.getQueryData(STORE_SETTING_QUERY_KEYS.SELLER_DETAILS)).toStrictEqual(TEST_STORED_SELLER_DETAILS)
   })
 })

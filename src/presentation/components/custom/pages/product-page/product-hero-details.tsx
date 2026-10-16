@@ -1,5 +1,6 @@
-import { type JSX, type ReactNode, useMemo } from "react"
+import { type JSX, type ReactNode, useCallback, useMemo } from "react"
 
+import { useSuspenseQuery } from "@tanstack/react-query"
 import { useLocale, useTranslations } from "use-intl/react"
 
 import { FULFILLMENT_TIME_ATTRIBUTE_HANDLE } from "~/src/modules/product-attribute/product-attribute.constants"
@@ -8,22 +9,16 @@ import {
   resolveProductAttributeTitle,
 } from "~/src/modules/product-attribute/product-attribute.utils"
 import { type Product } from "~/src/modules/product/product.types"
-
-import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
+import { formatSellerPostalAddress } from "~/src/modules/store-setting/store-setting.utils"
+import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
 
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/src/presentation/components/shadcn/accordion"
 
-const BusinessEmailLink = ({
-  children,
-}: Readonly<{
-  children: ReactNode
-}>): JSX.Element => (
-  <a className="text-foreground underline underline-offset-4 transition-colors hover:text-foreground/70" href={`mailto:${BUSINESS.EMAIL}`}>
+const SellerEmailLink = ({ children, email }: Readonly<{ children: ReactNode; email: string }>): JSX.Element => (
+  <a className="text-foreground underline underline-offset-4 transition-colors hover:text-foreground/70" href={`mailto:${email}`}>
     {children}
   </a>
 )
-
-const renderAdditionalInfoEmail = (chunks: ReactNode): JSX.Element => <BusinessEmailLink>{chunks}</BusinessEmailLink>
 
 const formatSpecificationValue = (spec: Product["specification"], locale: string): string =>
   formatProductAttributeValueForDisplay(spec.type, spec.value, {
@@ -57,6 +52,11 @@ const ProductAdditionalInfo = ({
   fulfillmentTime?: string | undefined
 }>): JSX.Element => {
   const t = useTranslations("pages.product.heroSection.details.additionalInfo")
+  const { data: seller } = useSuspenseQuery(getSellerDetailsQuery())
+  const renderEmailLink = useCallback(
+    (chunks: ReactNode) => <SellerEmailLink email={seller.email}>{chunks}</SellerEmailLink>,
+    [seller.email],
+  )
   const sections = useMemo(
     () =>
       [
@@ -79,13 +79,14 @@ const ProductAdditionalInfo = ({
         },
         {
           body: t.rich("flexibleOffer.text", {
-            email: renderAdditionalInfoEmail,
+            email: seller.email,
+            emailLink: renderEmailLink,
           }),
           key: "flexibleOffer",
           title: t("flexibleOffer.title"),
         },
       ] as const,
-    [fulfillmentTime, t],
+    [fulfillmentTime, renderEmailLink, seller.email, t],
   )
 
   return (
@@ -102,17 +103,19 @@ const ProductAdditionalInfo = ({
 
 const ProductManufacturer = (): JSX.Element => {
   const t = useTranslations("pages.product.heroSection.details.manufacturer")
+  const locale = useLocale()
+  const { data: seller } = useSuspenseQuery(getSellerDetailsQuery())
 
   return (
     <dl className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
       <div className="space-y-1">
         <dt className="text-sm font-medium text-foreground">{t("nameAndAddress")}</dt>
-        <dd className="text-sm whitespace-pre-line text-muted-foreground">{[...BUSINESS_POSTAL_ADDRESS_LINES, t("country")].join("\n")}</dd>
+        <dd className="text-sm whitespace-pre-line text-muted-foreground">{formatSellerPostalAddress(seller, locale).join("\n")}</dd>
       </div>
       <div className="space-y-1">
         <dt className="text-sm font-medium text-foreground">{t("email")}</dt>
         <dd className="text-sm text-muted-foreground">
-          <BusinessEmailLink>{BUSINESS.EMAIL}</BusinessEmailLink>
+          <SellerEmailLink email={seller.email}>{seller.email}</SellerEmailLink>
         </dd>
       </div>
     </dl>

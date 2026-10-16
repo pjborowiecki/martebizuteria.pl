@@ -2,10 +2,10 @@ import { render } from "react-email"
 import { createTranslator } from "use-intl"
 import { describe, expect, it } from "vite-plus/test"
 
+import { TEST_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
+
 import { STANDARD_VAT_BASIS_POINTS } from "~/src/modules/_core/constants/tax"
 import { formatPrice } from "~/src/modules/_core/utils/currency"
-
-import { BUSINESS, BUSINESS_POSTAL_ADDRESS_LINES } from "~/src/presentation/branding/business"
 
 import englishCopy from "~/messages/en-US/emails.order-confirmation.json"
 import polishCopy from "~/messages/pl-PL/emails.order-confirmation.json"
@@ -82,6 +82,7 @@ const renderConfirmation = (
       messages={englishCopy}
       discountTotal={discountTotal}
       orderNumber={ORDER_NUMBER}
+      seller={TEST_SELLER_DETAILS}
       shippingTotal={1900}
       subtotal={62_700}
       taxBasisPoints={STANDARD_VAT_BASIS_POINTS}
@@ -241,6 +242,7 @@ const renderContract = (locale: (typeof contractCopies)[number][0], messages: ty
       messages={messages}
       discountTotal={0}
       orderNumber={ORDER_NUMBER}
+      seller={TEST_SELLER_DETAILS}
       shippingTotal={1900}
       subtotal={62_700}
       taxBasisPoints={STANDARD_VAT_BASIS_POINTS}
@@ -254,16 +256,16 @@ const translate = (locale: (typeof contractCopies)[number][0], messages: typeof 
   createTranslator({ locale, messages: { emails: { "order-confirmation": messages } }, namespace: ORDER_CONFIRMATION_NAMESPACE })
 
 describe("OrderConfirmation as the confirmation of the contract", () => {
-  it.each(contractCopies)("names the seller in %s with the legal name, address, NIP, e-mail and phone", async (locale, messages) => {
+  it.each([
+    ["en-US", englishCopy, "Poland"],
+    ["pl-PL", polishCopy, "Polska"],
+  ] as const)("names the stored seller in %s with the legal name, address, NIP, e-mail and phone", async (locale, messages, country) => {
     const text = await renderContract(locale, messages)
 
-    for (const line of BUSINESS_POSTAL_ADDRESS_LINES) {
-      expect(text).toContain(line)
-    }
-    expect(text).toContain(messages.seller.country)
-    expect(text).toContain(`${messages.seller.taxIdLabel}: ${BUSINESS.NIP}`)
-    expect(text).toContain(`${messages.seller.emailLabel}: ${BUSINESS.EMAIL}`)
-    expect(text).toContain(`${messages.seller.phoneLabel}: ${BUSINESS.PHONE}`)
+    expect(text).toContain(["Pracownia Testowa Anna Nowak", "ul. Floriańska 1", "31-001 Kraków", country].join(" "))
+    expect(text).toContain(`${messages.seller.taxIdLabel}: ${TEST_SELLER_DETAILS.nip}`)
+    expect(text).toContain(`${messages.seller.emailLabel}: ${TEST_SELLER_DETAILS.email}`)
+    expect(text).toContain(`${messages.seller.phoneLabel}: ${TEST_SELLER_DETAILS.phone}`)
   })
 
   it.each(contractCopies)(
@@ -274,7 +276,7 @@ describe("OrderConfirmation as the confirmation of the contract", () => {
 
       expect(text).toContain(messages.contract.body)
       expect(text).toContain(messages.withdrawal.period)
-      expect(text).toContain(t("withdrawal.how", { email: BUSINESS.EMAIL }))
+      expect(text).toContain(t("withdrawal.how", { email: TEST_SELLER_DETAILS.email }))
       expect(text).toContain(messages.withdrawal.returnShipping)
       expect(text).toContain(messages.withdrawal.refund)
       expect(text).toContain(messages.withdrawal.exception)
@@ -286,7 +288,7 @@ describe("OrderConfirmation as the confirmation of the contract", () => {
     const t = translate(locale, messages)
 
     expect(text).toContain(messages.complaints.liability)
-    expect(text).toContain(t("complaints.how", { email: BUSINESS.EMAIL }))
+    expect(text).toContain(t("complaints.how", { email: TEST_SELLER_DETAILS.email }))
   })
 
   it.each(contractCopies)(
@@ -302,12 +304,12 @@ describe("OrderConfirmation as the confirmation of the contract", () => {
     },
   )
 
-  it("names the withdrawal and complaint routes with the shop's e-mail address", () => {
+  it("names the withdrawal and complaint routes with the seller's e-mail address", () => {
     for (const [locale, messages] of contractCopies) {
       const t = translate(locale, messages)
 
-      expect(t("withdrawal.how", { email: BUSINESS.EMAIL })).toContain(BUSINESS.EMAIL)
-      expect(t("complaints.how", { email: BUSINESS.EMAIL })).toContain(BUSINESS.EMAIL)
+      expect(t("withdrawal.how", { email: TEST_SELLER_DETAILS.email })).toContain(TEST_SELLER_DETAILS.email)
+      expect(t("complaints.how", { email: TEST_SELLER_DETAILS.email })).toContain(TEST_SELLER_DETAILS.email)
     }
   })
 
@@ -336,7 +338,7 @@ describe("OrderConfirmation as the confirmation of the contract", () => {
   it("lets the customer write to or call the seller straight from the email", async () => {
     const html = await renderContract("en-US", englishCopy, false)
 
-    expect(html).toContain(`href="mailto:${BUSINESS.EMAIL}"`)
-    expect(html).toContain(`href="tel:${BUSINESS.PHONE.replaceAll(" ", "")}"`)
+    expect(html).toContain(`href="mailto:${TEST_SELLER_DETAILS.email}"`)
+    expect(html).toContain('href="tel:+48600100200"')
   })
 })

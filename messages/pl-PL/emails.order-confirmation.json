@@ -72,7 +72,6 @@
   },
   "seller": {
     "label": "Sprzedawca",
-    "country": "Polska",
     "taxIdLabel": "NIP",
     "emailLabel": "E-mail",
     "phoneLabel": "Telefon"

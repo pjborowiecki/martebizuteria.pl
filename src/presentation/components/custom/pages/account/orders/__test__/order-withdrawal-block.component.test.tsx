@@ -12,6 +12,11 @@ import { buildAccountOrderDetail } from "~/src/presentation/components/custom/pa
 
 const state = vi.hoisted((): { withdrawal?: OrderWithdrawal["customerOrder"] } => ({}))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("~/src/modules/order-withdrawal/use-cases/get-customer-order-withdrawal", () => ({
   getCustomerOrderWithdrawalQuery: (orderId: string) => ({
     queryFn: () => Promise.resolve(state.withdrawal),

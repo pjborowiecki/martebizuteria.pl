@@ -11,6 +11,7 @@ import { type Product } from "~/src/modules/product/product.types"
 import { resolveProductSubtitle, resolveProductTitle } from "~/src/modules/product/product.utils"
 import { getProductQuery } from "~/src/modules/product/use-cases/get-product"
 import { getRelatedProductsQuery } from "~/src/modules/product/use-cases/get-related-products"
+import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
 
 import { getProductImageUrl, prefetchSingleProductImage, resolveProductImageUrls, resolveProductSocialImageUrl } from "~/src/lib/image"
 import { type PageMeta, buildProductStructuredData, pageHead } from "~/src/lib/seo"
@@ -87,12 +88,13 @@ export const Route = createFileRoute("/_storefront/products/$handle")({
   head: pageHead,
   loader: async ({ context, params }) => {
     const { locale } = context
-    const [data, messages] = await Promise.all([
+    const [data, messages, seller] = await Promise.all([
       context.queryClient.query({
         ...getProductQuery(params.handle, locale),
         staleTime: "static",
       }),
       context.queryClient.query(messagesQueryOptions<typeof productMessages>({ locale, namespace: "pages.product" })),
+      context.queryClient.query(getSellerDetailsQuery()),
     ])
 
     if (data === false) {
@@ -110,6 +112,7 @@ export const Route = createFileRoute("/_storefront/products/$handle")({
         locale,
         product: data,
         section: messages.heroSection.breadcrumbProducts,
+        seller,
       }),
       title: messages.metaTitle.replace("{title}", data.title),
     } satisfies PageMeta & { deferredRelated: typeof deferredRelated }

@@ -41,6 +41,11 @@ const realtime = vi.hoisted(() => ({
   sync: vi.fn<(options: { readonly hub: string; readonly subscriptions: readonly unknown[] }) => void>(),
 }))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouter>()
 
@@ -208,9 +213,12 @@ describe("checkout route metadata", () => {
     })
   })
 
-  it("asks for the checkout messages of the active locale", async () => {
+  it("asks for the checkout messages of the active locale and the seller's address the pickup step names", async () => {
     await loadMeta()
 
-    expect(seenQueryKeys).toStrictEqual([["messages", "en-US", "pages.checkout"]])
+    expect(seenQueryKeys).toStrictEqual([
+      ["messages", "en-US", "pages.checkout"],
+      ["store-setting", "seller-details"],
+    ])
   })
 })

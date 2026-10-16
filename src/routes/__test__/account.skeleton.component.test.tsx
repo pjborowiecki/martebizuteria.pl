@@ -6,6 +6,11 @@ import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
 const NeverLoads = lazy(() => new Promise<{ default: () => null }>(() => {}))
 
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", async () => {
+  const { SELLER_DETAILS_QUERIES } = await import("~/src/platform/testing/mocks/seller-details")
+
+  return SELLER_DETAILS_QUERIES
+})
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual = await importOriginal<typeof ReactRouter>()
 
@@ -23,6 +28,7 @@ vi.mock("~/src/presentation/components/custom/pages/landing-page/navigation/comp
 vi.mock("~/src/presentation/components/custom/sales-paused-banner", () => ({ SalesPausedBanner: () => null }))
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { createSellerDetailsQueryClient } from "~/src/platform/testing/mocks/seller-details"
 
 import { Route } from "~/src/routes/account"
 
@@ -32,7 +38,7 @@ const renderLayout = () => {
     throw new Error("the account route registered no component")
   }
 
-  return renderWithProviders(<AccountLayout />)
+  return renderWithProviders(<AccountLayout />, { queryClient: createSellerDetailsQueryClient() })
 }
 
 afterEach(cleanup)

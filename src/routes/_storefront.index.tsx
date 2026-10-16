@@ -7,6 +7,7 @@ import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
 import { getCategoriesQuery } from "~/src/modules/product-category/use-cases/get-categories"
 import { getCollectionsQuery } from "~/src/modules/product-collection/use-cases/get-collections"
 import { getNewArrivalsQuery } from "~/src/modules/product/use-cases/get-new-arrivals"
+import { getSellerDetailsQuery } from "~/src/modules/store-setting/use-cases/get-seller-details"
 
 import { useLandingAnimations } from "~/src/hooks/use-landing-animations"
 
@@ -63,12 +64,13 @@ export const Route = createFileRoute("/_storefront/")({
   head: pageHead,
   loader: async ({ context }) => {
     const { locale } = context
-    const [messages, newArrivals] = await Promise.all([
+    const [messages, newArrivals, seller] = await Promise.all([
       context.queryClient.query(messagesQueryOptions<typeof landingMessages>({ locale, namespace: "pages.landing" })),
       context.queryClient.query({
         ...getNewArrivalsQuery(),
         staleTime: "static",
       }),
+      context.queryClient.query(getSellerDetailsQuery()),
       context.queryClient.query({
         ...getCategoriesQuery(),
         staleTime: "static",
@@ -82,7 +84,7 @@ export const Route = createFileRoute("/_storefront/")({
 
     return {
       description: messages.meta.description,
-      structuredData: buildStoreStructuredData({ description: messages.meta.description, locale }),
+      structuredData: buildStoreStructuredData({ description: messages.meta.description, locale, seller }),
       title: messages.meta.title,
     } satisfies PageMeta
   },

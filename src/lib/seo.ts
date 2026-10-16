@@ -5,9 +5,9 @@ import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { formatMinorUnitsToNumberInput } from "~/src/modules/_core/utils/currency"
 import { getVariantQuantityAvailable } from "~/src/modules/inventory/inventory.availability.utils"
 import { type Product } from "~/src/modules/product/product.types"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 
 import { APP_NAME, APP_URL, OG_IMAGE_PATH } from "~/src/presentation/branding/app"
-import { BUSINESS } from "~/src/presentation/branding/business"
 import { SOCIALS } from "~/src/presentation/branding/socials"
 
 import { ROUTES } from "~/src/routes"
@@ -33,13 +33,13 @@ const toAbsoluteUrl = (appUrl: string, pathOrUrl: string): string =>
 
 const publisherRef = (appUrl: string) => ({ "@id": `${appUrl}#organization` })
 
-const BUSINESS_POSTAL_ADDRESS = {
+const toPostalAddress = ({ city, countryCode, postalCode, street }: StoreSetting["sellerDetails"]) => ({
   "@type": "PostalAddress",
-  addressCountry: BUSINESS.COUNTRY_CODE,
-  addressLocality: BUSINESS.CITY,
-  postalCode: BUSINESS.POSTAL_CODE,
-  streetAddress: BUSINESS.STREET,
-} as const
+  addressCountry: countryCode,
+  addressLocality: city,
+  postalCode,
+  streetAddress: street,
+})
 
 export interface PageMeta {
   readonly description: string
@@ -145,7 +145,15 @@ export const buildWebPageStructuredData = ({
   }
 }
 
-export const buildStoreStructuredData = ({ description, locale }: { readonly description: string; readonly locale: SupportedLocale }) => {
+export const buildStoreStructuredData = ({
+  description,
+  locale,
+  seller,
+}: {
+  readonly description: string
+  readonly locale: SupportedLocale
+  readonly seller: StoreSetting["sellerDetails"]
+}) => {
   const appUrl = APP_URL
 
   return {
@@ -163,14 +171,14 @@ export const buildStoreStructuredData = ({ description, locale }: { readonly des
       {
         "@id": `${appUrl}#organization`,
         "@type": "OnlineStore",
-        address: BUSINESS_POSTAL_ADDRESS,
+        address: toPostalAddress(seller),
         description,
-        email: BUSINESS.EMAIL,
-        legalName: BUSINESS.LEGAL_NAME,
+        email: seller.email,
+        legalName: seller.legalName,
         name: APP_NAME,
         sameAs: [SOCIALS.FACEBOOK, SOCIALS.INSTAGRAM],
-        taxID: BUSINESS.NIP,
-        telephone: BUSINESS.PHONE,
+        taxID: seller.nip,
+        telephone: seller.phone,
         url: appUrl,
       },
     ],
@@ -291,11 +299,13 @@ export const buildProductStructuredData = ({
   locale,
   product,
   section,
+  seller,
 }: {
   readonly images: readonly string[]
   readonly locale: SupportedLocale
   readonly product: Product["storefront"]
   readonly section: string
+  readonly seller: StoreSetting["sellerDetails"]
 }) => {
   const canonicalUrl = `${APP_URL}${localizePathname({ locale, pathname: ROUTES.PRODUCT.replace("$handle", product.handle) })}`
 
@@ -307,7 +317,7 @@ export const buildProductStructuredData = ({
         brand: { "@type": "Brand", name: APP_NAME },
         description: product.description,
         image: images,
-        manufacturer: { "@type": "Organization", address: BUSINESS_POSTAL_ADDRESS, email: BUSINESS.EMAIL, name: BUSINESS.LEGAL_NAME },
+        manufacturer: { "@type": "Organization", address: toPostalAddress(seller), email: seller.email, name: seller.legalName },
         name: product.title,
         offers: product.variants.map((variant) => ({
           "@type": "Offer",
