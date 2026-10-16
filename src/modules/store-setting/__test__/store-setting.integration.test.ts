@@ -85,6 +85,7 @@ beforeEach(() => {
   sqlite.exec("drop table if exists store_setting")
   applyMigration(sqlite, MIGRATION.STORE_SETTINGS)
   applyMigration(sqlite, MIGRATION.FREE_DELIVERY_THRESHOLD)
+  applyMigration(sqlite, MIGRATION.SELLER_DETAILS)
   sqlite.exec(`update store_setting set created_at = ${String(MIGRATED_AT)}, updated_at = ${String(MIGRATED_AT)}`)
 })
 

@@ -35,6 +35,7 @@ export const ROUTES = {
   ADMIN_SETTINGS_ACCOUNT: "/admin/settings/account",
   ADMIN_SETTINGS_DELIVERY: "/admin/settings/delivery",
   ADMIN_SETTINGS_SECURITY: "/admin/settings/security",
+  ADMIN_SETTINGS_STORE: "/admin/settings/store",
   API_AUTH: {
     CHANGE_EMAIL: "/change-email",
     REQUEST_PASSWORD_RESET: "/request-password-reset",

@@ -1,9 +1,10 @@
 {
   "title": "Ustawienia",
-  "description": "Twoje konto, jego bezpieczeństwo i dostawa w sklepie.",
+  "description": "Twoje konto, jego bezpieczeństwo, dane sklepu i dostawa.",
   "tabs": {
     "account": "Moje konto",
     "security": "Logowanie i bezpieczeństwo",
+    "store": "Dane sklepu",
     "delivery": "Dostawa"
   },
   "account": {
@@ -67,6 +68,49 @@
     "history": {
       "title": "Historia logowania",
       "description": "Ostatnie udane i nieudane próby zalogowania się na Twoje konto."
+    }
+  },
+  "store": {
+    "sellerDetails": {
+      "title": "Dane sprzedawcy",
+      "description": "Firma, która prowadzi ten sklep, tak jak widzą ją kupujący: w stopce, na stronie O nas i na stronach produktów, w e-mailach o zamówieniach i na stronach prawnych. Zmiana wprowadzona tutaj pojawia się wszędzie naraz.",
+      "legalName": "Pełna nazwa firmy",
+      "legalNameHint": "Tak jak w rejestrze (CEIDG lub KRS).",
+      "street": "Ulica i numer",
+      "postalCode": "Kod pocztowy",
+      "city": "Miejscowość",
+      "country": "Kraj",
+      "nip": "NIP",
+      "regon": "REGON",
+      "email": "E-mail kontaktowy",
+      "emailHint": "Na ten adres trafiają też odpowiedzi na e-maile sklepu.",
+      "phone": "Telefon kontaktowy",
+      "phoneHint": "Z numerem kierunkowym kraju, np. +48 600 000 000.",
+      "save": "Zapisz",
+      "saved": "Zapisano dane sprzedawcy.",
+      "conflict": "W międzyczasie ktoś zmienił dane sprzedawcy. Odśwież stronę, aby zobaczyć zmianę.",
+      "validation": {
+        "legalNameRequired": "Wpisz pełną nazwę firmy.",
+        "legalNameTooLong": "Użyj najwyżej 200 znaków.",
+        "streetRequired": "Wpisz ulicę i numer.",
+        "streetTooLong": "Użyj najwyżej 120 znaków.",
+        "postalCodeRequired": "Wpisz kod pocztowy.",
+        "postalCodeTooLong": "Użyj najwyżej 12 znaków.",
+        "postalCodeInvalid": "Wpisz polski kod pocztowy w formacie 00-000.",
+        "cityRequired": "Wpisz miejscowość.",
+        "cityTooLong": "Użyj najwyżej 80 znaków.",
+        "countryInvalid": "Wybierz kraj.",
+        "nipRequired": "Wpisz NIP.",
+        "nipInvalid": "Ten NIP jest nieprawidłowy. Sprawdź jego 10 cyfr.",
+        "regonRequired": "Wpisz REGON.",
+        "regonInvalid": "Ten REGON jest nieprawidłowy. Sprawdź jego 9 lub 14 cyfr.",
+        "emailRequired": "Wpisz adres e-mail.",
+        "emailTooLong": "Użyj najwyżej 254 znaków.",
+        "emailInvalid": "Wpisz prawidłowy adres e-mail.",
+        "phoneRequired": "Wpisz numer telefonu.",
+        "phoneTooLong": "Użyj najwyżej 30 znaków.",
+        "phoneInvalid": "Wpisz prawidłowy numer z numerem kierunkowym kraju, np. +48 600 000 000."
+      }
     }
   },
   "delivery": {

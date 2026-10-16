@@ -1,9 +1,24 @@
-import { eq, ne, sql } from "drizzle-orm"
+import { and, eq, ne, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { STORE_SETTING_ID } from "~/src/modules/store-setting/store-setting.constants"
 import { storeSetting } from "~/src/modules/store-setting/store-setting.schema"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
+
+const SELLER_DETAILS_COLUMNS = {
+  city: storeSetting.sellerCity,
+  countryCode: storeSetting.sellerCountryCode,
+  email: storeSetting.sellerEmail,
+  legalName: storeSetting.sellerLegalName,
+  nip: storeSetting.sellerNip,
+  phone: storeSetting.sellerPhone,
+  postalCode: storeSetting.sellerPostalCode,
+  regon: storeSetting.sellerRegon,
+  street: storeSetting.sellerStreet,
+  updatedAt: storeSetting.sellerUpdatedAt,
+}
 
 export const isSalesPaused = async (): Promise<boolean> => {
   const [row] = await db
@@ -41,4 +56,39 @@ export const saveFreeDeliveryThreshold = async (threshold: number | undefined): 
     .insert(storeSetting)
     .values({ freeDeliveryThreshold, id: STORE_SETTING_ID })
     .onConflictDoUpdate({ set: { freeDeliveryThreshold }, target: storeSetting.id })
+}
+
+export const readSellerDetails = async (): Promise<StoreSetting["storedSellerDetails"]> => {
+  const [row] = await db.select(SELLER_DETAILS_COLUMNS).from(storeSetting).where(eq(storeSetting.id, STORE_SETTING_ID)).limit(1)
+  if (row === undefined) {
+    throw new AppError(ERROR_CODES.NOT_FOUND)
+  }
+
+  return row
+}
+
+export const saveSellerDetailsIfUnchanged = async ({
+  details,
+  expectedUpdatedAt,
+}: Readonly<{ details: StoreSetting["sellerDetails"]; expectedUpdatedAt: Date }>): Promise<
+  StoreSetting["storedSellerDetails"] | undefined
+> => {
+  const [row] = await db
+    .update(storeSetting)
+    .set({
+      sellerCity: details.city,
+      sellerCountryCode: details.countryCode,
+      sellerEmail: details.email,
+      sellerLegalName: details.legalName,
+      sellerNip: details.nip,
+      sellerPhone: details.phone,
+      sellerPostalCode: details.postalCode,
+      sellerRegon: details.regon,
+      sellerStreet: details.street,
+      sellerUpdatedAt: new Date(),
+    })
+    .where(and(eq(storeSetting.id, STORE_SETTING_ID), eq(storeSetting.sellerUpdatedAt, expectedUpdatedAt)))
+    .returning(SELLER_DETAILS_COLUMNS)
+
+  return row
 }

@@ -1,9 +1,10 @@
 {
   "title": "Settings",
-  "description": "Your account, its security and the shop's delivery.",
+  "description": "Your account, its security, the shop's details and its delivery.",
   "tabs": {
     "account": "My account",
     "security": "Sign-in & security",
+    "store": "Store details",
     "delivery": "Delivery"
   },
   "account": {
@@ -67,6 +68,49 @@
     "history": {
       "title": "Sign-in history",
       "description": "Recent successful and failed attempts to sign in to your account."
+    }
+  },
+  "store": {
+    "sellerDetails": {
+      "title": "Seller details",
+      "description": "The business that runs this shop, as shoppers see it in the footer, on the About and product pages, in order emails and on the legal pages. A change here shows everywhere at once.",
+      "legalName": "Legal name",
+      "legalNameHint": "As in the business register (CEIDG or KRS).",
+      "street": "Street and number",
+      "postalCode": "Postal code",
+      "city": "City",
+      "country": "Country",
+      "nip": "NIP",
+      "regon": "REGON",
+      "email": "Contact email",
+      "emailHint": "Replies to the shop's emails go to this address too.",
+      "phone": "Contact phone",
+      "phoneHint": "With the country code, e.g. +48 600 000 000.",
+      "save": "Save",
+      "saved": "Seller details saved.",
+      "conflict": "Someone changed the seller details in the meantime. Reload the page to see the change.",
+      "validation": {
+        "legalNameRequired": "Enter the legal name.",
+        "legalNameTooLong": "Use at most 200 characters.",
+        "streetRequired": "Enter the street and number.",
+        "streetTooLong": "Use at most 120 characters.",
+        "postalCodeRequired": "Enter the postal code.",
+        "postalCodeTooLong": "Use at most 12 characters.",
+        "postalCodeInvalid": "Enter a Polish postal code in the form 00-000.",
+        "cityRequired": "Enter the city.",
+        "cityTooLong": "Use at most 80 characters.",
+        "countryInvalid": "Choose a country.",
+        "nipRequired": "Enter the NIP.",
+        "nipInvalid": "This NIP is not valid. Check its 10 digits.",
+        "regonRequired": "Enter the REGON.",
+        "regonInvalid": "This REGON is not valid. Check its 9 or 14 digits.",
+        "emailRequired": "Enter an email address.",
+        "emailTooLong": "Use at most 254 characters.",
+        "emailInvalid": "Enter a valid email address.",
+        "phoneRequired": "Enter a phone number.",
+        "phoneTooLong": "Use at most 30 characters.",
+        "phoneInvalid": "Enter a valid number with its country code, e.g. +48 600 000 000."
+      }
     }
   },
   "delivery": {

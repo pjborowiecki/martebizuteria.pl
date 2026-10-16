@@ -1,6 +1,7 @@
 import { isValidPhoneNumber, parsePhoneNumberWithError } from "libphonenumber-js/mobile"
 import type zod from "zod/v4"
 
+import { isValidNip } from "~/src/modules/_core/utils/polish-business-ids"
 import { type CheckoutValues } from "~/src/modules/checkout/checkout.zod"
 import { DELIVERY_COUNTRY_CODES } from "~/src/modules/delivery-method/delivery-method.constants"
 
@@ -11,18 +12,6 @@ const LOCKER_DELIVERY_TYPE = "locker"
 const POSTAL_CODE_PATTERNS: Record<string, RegExp> = {
   PL: /^\d{2}-\d{3}$/u,
 }
-
-const NIP_CHECK_WEIGHTS = Array.from("657234567", Number)
-
-const NIP_CHECK_MODULUS = 11
-
-const NIP_PATTERN = /^\d{10}$/u
-
-const NIP_SEPARATORS = /[\s-]/gu
-
-const NIP_COUNTRY_PREFIX = /^PL/iu
-
-const NO_WEIGHTED_SUM = 0
 
 const REQUIRED_BILLING_FIELDS = [
   ["billingAddress1", "validation.addressRequired"],
@@ -55,18 +44,6 @@ const refineBillingAddress = (data: CheckoutValues, ctx: zod.RefinementCtx): voi
   if (isFilled(data.billingPostalCode) && !isValidPostalCode(data.billingCountryCode ?? DEFAULT_COUNTRY, data.billingPostalCode)) {
     addCheckoutIssue(ctx, "billingPostalCode", "validation.postCodeInvalid")
   }
-}
-
-export const normalizeNip = (value: string): string => value.replaceAll(NIP_SEPARATORS, "").replace(NIP_COUNTRY_PREFIX, "")
-
-const isValidNip = (nip: string): boolean => {
-  if (!NIP_PATTERN.test(nip)) {
-    return false
-  }
-
-  const weightedSum = NIP_CHECK_WEIGHTS.reduce((sum, weight, index) => sum + weight * Number(nip.charAt(index)), NO_WEIGHTED_SUM)
-
-  return weightedSum % NIP_CHECK_MODULUS === Number(nip.charAt(NIP_CHECK_WEIGHTS.length))
 }
 
 const refineCompanyInvoice = (data: CheckoutValues, ctx: zod.RefinementCtx): void => {

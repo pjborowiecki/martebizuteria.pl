@@ -26,6 +26,7 @@ const PUBLIC_USE_CASES = new Set([
   "product/use-cases/get-storefront-products-page.ts",
   "store-setting/use-cases/get-free-delivery.ts",
   "store-setting/use-cases/get-sales-status.ts",
+  "store-setting/use-cases/get-seller-details.ts",
   "storefront-search/use-cases/get-trending-searches.ts",
   "storefront-search/use-cases/search-storefront.ts",
 ])

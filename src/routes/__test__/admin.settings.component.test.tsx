@@ -89,12 +89,19 @@ vi.mock("~/src/presentation/components/custom/pages/admin/settings/delivery/sett
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/settings-login-history-card", () => ({
   SettingsLoginHistoryCard: (): JSX.Element => <section>history</section>,
 }))
+vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", () => ({
+  getAdminSellerDetailsQuery: () => ({ queryKey: ["admin", "store-setting", "seller-details"] }),
+}))
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/store/settings-seller-details-card", () => ({
+  SettingsSellerDetailsCard: (): JSX.Element => <section>seller details</section>,
+}))
 
 await import("~/src/routes/admin.settings")
 await import("~/src/routes/admin.settings.index")
 await import("~/src/routes/admin.settings.account")
 await import("~/src/routes/admin.settings.security")
 await import("~/src/routes/admin.settings.delivery")
+await import("~/src/routes/admin.settings.store")
 
 const routeAt = (path: string): RouteDefinition => {
   const route = captured.get(path)
@@ -210,5 +217,20 @@ describe("admin settings delivery route", () => {
 
     expect(main).toHaveAttribute("data-active", "delivery")
     expect([...main.children].map((section) => section.textContent)).toStrictEqual(["delivery methods", "free delivery"])
+  })
+})
+
+describe("admin settings store route", () => {
+  it("loads the seller details before the page renders", async () => {
+    await expect(prefetched("/admin/settings/store")).resolves.toStrictEqual([["admin", "store-setting", "seller-details"]])
+  })
+
+  it("shows the seller details under the store tab", () => {
+    render("/admin/settings/store")
+
+    const main = screen.getByRole("main")
+
+    expect(main).toHaveAttribute("data-active", "store")
+    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["seller details"])
   })
 })

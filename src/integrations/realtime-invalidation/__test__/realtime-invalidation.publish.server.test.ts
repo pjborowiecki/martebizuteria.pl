@@ -14,6 +14,7 @@ import {
   scheduleProductAttributeCatalogInvalidation,
   scheduleProductCatalogInvalidation,
   scheduleSalesStatusInvalidation,
+  scheduleSellerDetailsInvalidation,
 } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { resolveInvalidatedQueryKeys } from "~/src/integrations/realtime-invalidation/realtime-invalidation.protocol"
 import {
@@ -271,6 +272,11 @@ describe("invalidation topics by publisher", () => {
       "sales status",
       scheduleSalesStatusInvalidation,
       { admin: [STORE_SETTING_QUERY_KEYS.ADMIN.SALES], storefront: [STORE_SETTING_QUERY_KEYS.SALES] },
+    ],
+    [
+      "seller details",
+      scheduleSellerDetailsInvalidation,
+      { admin: [STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS], storefront: [STORE_SETTING_QUERY_KEYS.SELLER_DETAILS] },
     ],
     ["attribute", scheduleProductAttributeCatalogInvalidation, { admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL] }],
     ["audit log", scheduleAdminAuditLogInvalidation, { admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] }],

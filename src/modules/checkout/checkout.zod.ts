@@ -1,10 +1,11 @@
 import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
+import { normalizeNip } from "~/src/modules/_core/utils/polish-business-ids"
 import { address } from "~/src/modules/address/address.schema"
 import { COMPANY_NAME_MAX_LENGTH } from "~/src/modules/checkout/checkout.constants"
 import { checkout } from "~/src/modules/checkout/checkout.schema"
-import { isValidCheckoutPhone, normalizeNip, refineCheckout } from "~/src/modules/checkout/checkout.validation.utils"
+import { isValidCheckoutPhone, refineCheckout } from "~/src/modules/checkout/checkout.validation.utils"
 import { DISCOUNT_CODE_MAX_LENGTH } from "~/src/modules/discount/discount.constants"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
