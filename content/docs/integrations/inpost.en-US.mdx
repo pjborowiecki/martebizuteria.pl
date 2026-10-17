@@ -171,6 +171,8 @@ ShipX confirms a new shipment shortly after it is created and assigns the tracki
 
 **Mark shipped** keeps the tracking number and link the shipment stored when its fields are left blank, so the shipped email links to InPost's tracking page. A number typed into the dialog replaces the stored one, and later refreshes and webhooks leave it alone. When a refresh or a webhook brings the first number of an order already marked shipped, `announceOrderShipment` sends the customer a tracking number email once, in the background; see [Transactional email](/docs/features/email#order-progress-emails-once-each).
 
+On an order already marked shipped, **Save tracking number** sets or edits the number by hand: `setOrderTrackingNumber` (`src/modules/order/use-cases/set-order-tracking-number.ts`, `order: ["update"]`) replaces the stored number and link, clearing the link when none is given, records `order.tracking_updated` and awaits `announceOrderShipment`, so the customer gets the tracking number email for a number they were not sent yet, and the admin is told whether it went out. Without a stored link, `resolveOrderTrackingUrl` links an InPost order's number to InPost's tracking page.
+
 ### Label
 
 **Download label** calls `getInpostShipmentLabel` (`order: ["read"]`), which fetches `/v1/shipments/{id}/label` in InPost's default PDF layout and returns it base64-encoded; the browser saves it as `<order number>-inpost.pdf`. ShipX has a label only once it has confirmed the shipment, and until then the admin is told to refresh the status first.
