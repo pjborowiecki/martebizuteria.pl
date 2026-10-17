@@ -10,6 +10,8 @@ export { twoFactor, twoFactorRelations } from "~/src/modules/two-factor/two-fact
 
 export { user, userRelations } from "~/src/modules/user/user.schema"
 
+export { userEmailHistory } from "~/src/modules/user-email-history/user-email-history.schema"
+
 export { verification } from "~/src/modules/verification/verification.schema"
 export { wishlistItem, wishlistItemRelations } from "~/src/modules/wishlist/wishlist.schema"
 

@@ -63,7 +63,10 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminCustomersInvalidation: vi.fn(),
   scheduleAdminNewsletterSubscribersInvalidation: vi.fn(),
 }))
-vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: vi.fn(() => Promise.resolve(0)) }))
+vi.mock(import("~/src/modules/order/order.claim.server"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  claimGuestOrdersForUser: vi.fn(() => Promise.resolve(0)),
+}))
 vi.mock(import("~/src/modules/newsletter/newsletter.accessors"), async (importOriginal) => ({
   ...(await importOriginal()),
   linkSubscriberToUser: vi.fn(() => Promise.resolve()),

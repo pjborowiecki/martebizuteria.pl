@@ -11,6 +11,8 @@ import { recordCustomerDeletionFailedAudit } from "~/src/modules/audit-log/audit
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { normalizeSubscriberEmail } from "~/src/modules/newsletter/newsletter.accessors"
 import { newsletterSubscriber } from "~/src/modules/newsletter/newsletter.schema"
+import { prepareKeepingDeletedAccountOrdersFromClaims } from "~/src/modules/order/order.claim.server"
+import { keyedByFormerAddressOf } from "~/src/modules/user-email-history/user-email-history.accessors"
 
 export const eraseAccountData = async ({ email, id }: ErasedAccount): Promise<boolean> => {
   try {
@@ -24,10 +26,15 @@ export const eraseAccountData = async ({ email, id }: ErasedAccount): Promise<bo
 
   const subscriberEmail = normalizeSubscriberEmail(email)
   const accountSubscription = or(eq(newsletterSubscriber.userId, id), eq(newsletterSubscriber.email, subscriberEmail))
+  const accountEntry = or(
+    inArray(auditLog.resourceId, [id, email]),
+    keyedByFormerAddressOf(id, { address: auditLog.resourceId, at: auditLog.createdAt }),
+  )
 
   await db.batch([
-    db.delete(auditLog).where(inArray(auditLog.resourceId, [id, email])),
+    db.delete(auditLog).where(accountEntry),
     db.delete(newsletterSubscriber).where(accountSubscription),
+    prepareKeepingDeletedAccountOrdersFromClaims({ email, userId: id }),
   ])
   scheduleAdminAuditLogInvalidation()
   scheduleAdminNewsletterSubscribersInvalidation()

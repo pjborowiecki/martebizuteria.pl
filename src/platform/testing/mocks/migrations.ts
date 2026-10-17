@@ -38,6 +38,7 @@ export const MIGRATION = {
   STORE_SETTINGS: "20261005420000_store_settings",
   TERMS_OF_SERVICE_NEUTRAL_WORDING: "20261017120000_terms_of_service_neutral_wording",
   TERMS_OF_SERVICE_PAGE: "20261005200000_terms_of_service_page",
+  USER_EMAIL_HISTORY: "20261017140000_user_email_history",
   WITHDRAWAL_FUNCTION_LINKS: "20261010231000_withdrawal_function_links",
 } as const
 

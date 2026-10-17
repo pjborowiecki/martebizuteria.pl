@@ -20,12 +20,25 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCustomerOrdersClaimedAudit }))
 vi.spyOn(console, "info").mockImplementation(() => {})
 
-import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
+import { claimGuestOrdersForUser, prepareKeepingDeletedAccountOrdersFromClaims } from "~/src/modules/order/order.claim.server"
 
 const NOW = Date.UTC(2026, 0, 10)
 
 const ownerOf = (orderId: string): string | null =>
   z.object({ user_id: z.string().nullable() }).parse(sqlite.prepare(`select user_id from "order" where id = ?`).get(orderId)).user_id
+
+const DAY = 86_400_000
+
+const recordAddressHistory = (rows: readonly (readonly [string, string, number, number | null])[]): void => {
+  for (const [userId, email, addedAt, replacedAt] of rows) {
+    sqlite
+      .prepare("insert into user_email_history (user_id, email, added_at, replaced_at) values (?, ?, ?, ?)")
+      .run(userId, email, addedAt, replacedAt)
+  }
+}
+
+const metadataOf = (orderId: string): string | null =>
+  z.object({ metadata: z.string().nullable() }).parse(sqlite.prepare(`select metadata from "order" where id = ?`).get(orderId)).metadata
 
 const redeemerOf = (redemptionId: string) =>
   z
@@ -37,9 +50,11 @@ beforeEach(() => {
   sqlite.exec(`
     drop table if exists "order";
     drop table if exists discount_redemption;
+    drop table if exists user_email_history;
+    create table user_email_history (id integer primary key, user_id text not null, email text not null, added_at integer not null, replaced_at integer);
     create table discount_redemption (id text primary key, order_id text unique, user_id text, updated_at integer not null);
     create table "order" (
-      id text primary key, user_id text, email text not null, order_number text not null,
+      id text primary key, user_id text, email text not null, order_number text not null, metadata text,
       created_at integer not null, updated_at integer not null
     );
     insert into "order" (id, user_id, email, order_number, created_at, updated_at) values
@@ -116,6 +131,54 @@ describe("claimGuestOrdersForUser", () => {
 
     expect(redeemerOf("redeemed-by-someone")).toStrictEqual({ updated_at: NOW, user_id: null })
     expect(redeemerOf("redeemed-by-owner")).toStrictEqual({ updated_at: NOW, user_id: "user-existing" })
+  })
+
+  it("leaves an order placed while another account held the address to that account", async () => {
+    recordAddressHistory([
+      ["user-before", "anna@example.com", NOW - DAY, NOW + 1],
+      ["user-1", "anna@example.com", NOW + 1, null],
+    ])
+
+    await expect(claimGuestOrdersForUser({ email: "anna@example.com", userId: "user-1" })).resolves.toBe(0)
+    await expect(claimGuestOrdersForUser({ email: "anna@new.example", userId: "user-before" })).resolves.toBe(2)
+    expect(ownerOf("guest-1")).toBe("user-before")
+  })
+
+  it("links an order placed with an address the account held then, though it has changed it since", async () => {
+    recordAddressHistory([
+      ["user-1", "anna@example.com", NOW - DAY, NOW + 1],
+      ["user-1", "anna@new.example", NOW + 1, null],
+    ])
+
+    await expect(claimGuestOrdersForUser({ email: "anna@new.example", userId: "user-1" })).resolves.toBe(2)
+    expect(ownerOf("guest-other")).toBeNull()
+  })
+
+  it("leaves an order placed after the account gave the address up to whoever proves it next", async () => {
+    recordAddressHistory([
+      ["user-before", "anna@example.com", NOW - DAY, NOW],
+      ["user-before", "anna@new.example", NOW, null],
+    ])
+
+    await expect(claimGuestOrdersForUser({ email: "anna@new.example", userId: "user-before" })).resolves.toBe(0)
+    await expect(claimGuestOrdersForUser({ email: "anna@example.com", userId: "user-1" })).resolves.toBe(2)
+  })
+
+  it("leaves alone the orders a deleted account placed with an address other than its last one", async () => {
+    sqlite.exec(`
+      insert into "order" (id, user_id, email, order_number, metadata, created_at, updated_at) values
+        ('deleted-old-address', 'user-deleted', 'anna@example.com', 'MRT-2026-00005', '{"locale":"pl-PL"}', ${NOW}, ${NOW}),
+        ('deleted-last-address', 'user-deleted', 'Anna@New.example', 'MRT-2026-00006', 'not json', ${NOW}, ${NOW});
+    `)
+
+    await prepareKeepingDeletedAccountOrdersFromClaims({ email: " anna@new.example", userId: "user-deleted" })
+    sqlite.exec(`update "order" set user_id = null where user_id = 'user-deleted'`)
+
+    expect(metadataOf("deleted-old-address")).toBe('{"locale":"pl-PL","keptFromClaims":true}')
+    expect(metadataOf("deleted-last-address")).toBe("not json")
+    await expect(claimGuestOrdersForUser({ email: "anna@example.com", userId: "user-1" })).resolves.toBe(2)
+    await expect(claimGuestOrdersForUser({ email: "anna@new.example", userId: "user-2" })).resolves.toBe(1)
+    expect(ownerOf("deleted-old-address")).toBeNull()
   })
 
   it("files a redemption left without an account under the owner of its order when nothing is left to claim", async () => {
