@@ -95,7 +95,7 @@
       "phoneHint": "Z numerem kierunkowym kraju, np. +48 600 000 000.",
       "save": "Zapisz",
       "saved": "Zapisano dane sprzedawcy.",
-      "conflict": "W międzyczasie ktoś zmienił dane sprzedawcy. Odśwież stronę, aby zobaczyć zmianę.",
+      "conflict": "W międzyczasie dane sprzedawcy zostały zmienione. Odśwież stronę, aby zobaczyć zmianę.",
       "validation": {
         "legalNameRequired": "Wpisz pełną nazwę firmy.",
         "legalNameTooLong": "Użyj najwyżej 200 znaków.",
