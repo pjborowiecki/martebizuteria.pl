@@ -206,7 +206,10 @@
       "success": "Successful sign-in",
       "failed": "Failed sign-in attempt"
     },
-    "loginHistoryLimit": "{count, plural, one {Showing your most recent sign-in attempt.} other {Showing your # most recent sign-in attempts.}}",
+    "historyPagination": "Sign-in history pages",
+    "previousPage": "Previous",
+    "nextPage": "Next",
+    "pageOf": "Page {page} of {total}",
     "onlyThisDevice": "You're signed in on this device only.",
     "revokeSuccess": "Device signed out.",
     "revokeError": "We couldn't sign that device out. Please try again.",

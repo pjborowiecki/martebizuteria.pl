@@ -1,6 +1,7 @@
 import zod from "zod/v4"
 
-import { CUSTOMER_ACCOUNT_ORDER_FILTERS } from "~/src/modules/customer-account/customer-account.constants"
+import { pageField, pageSizeField, searchTermField } from "~/src/modules/_core/utils/zod-fields"
+import { CUSTOMER_ACCOUNT_LOGIN_STATUSES, CUSTOMER_ACCOUNT_ORDER_FILTERS } from "~/src/modules/customer-account/customer-account.constants"
 
 const MAX_PHONE_LENGTH = 32
 
@@ -19,6 +20,12 @@ export const closeAccountFormSchema = (hasPassword: boolean) =>
 export type CloseAccountFormValues = zod.infer<ReturnType<typeof closeAccountFormSchema>>
 
 export const customerAccountZodSchemas = {
+  loginHistoryPageInput: zod.object({
+    page: pageField.optional(),
+    pageSize: pageSizeField.optional(),
+    search: searchTermField.optional(),
+    status: zod.enum(CUSTOMER_ACCOUNT_LOGIN_STATUSES).optional(),
+  }),
   orderIdInput: zod.object({
     orderId: zod.string().min(1),
   }),

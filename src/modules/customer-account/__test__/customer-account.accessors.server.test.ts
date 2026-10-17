@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import {
   countCustomerOrders,
   getCustomerActivityAuditRows,
+  getCustomerLoginAuditPage,
   getCustomerOrderRows,
   getCustomerSpendStats,
   getOrderItemsForOrders,
@@ -48,6 +49,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", async () => {
 
   return {
     db: {
+      batch: () => Promise.resolve([[], database.state.rows]),
       select: () => ({
         from: (table: Parameters<typeof getTableName>[0]) => {
           database.state.tables.push(getTableName(table))
@@ -182,5 +184,16 @@ describe("getOrderItemsForOrders", () => {
     await getOrderItemsForOrders(["order-1"])
 
     expect(database.state.limits).toStrictEqual([])
+  })
+})
+
+describe("getCustomerLoginAuditPage", () => {
+  it("counts no attempts when the count query returns no row", async () => {
+    database.state.rows = [{ action: "auth.login", createdAt: new Date("2026-10-01T00:00:00.000Z"), id: "audit-1", ip: null }]
+
+    await expect(getCustomerLoginAuditPage({ limit: 10, offset: 0, userId: "user-1" })).resolves.toStrictEqual({
+      rows: database.state.rows,
+      total: 0,
+    })
   })
 })

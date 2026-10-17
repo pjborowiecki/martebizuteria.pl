@@ -1,6 +1,7 @@
 {
   "title": "Ustawienia",
   "description": "Twoje konto, jego bezpieczeństwo, dane sklepu, dostawa i zespół.",
+  "refresh": "Odśwież dane tabeli",
   "tabs": {
     "account": "Moje konto",
     "security": "Logowanie i bezpieczeństwo",
@@ -70,11 +71,41 @@
     },
     "sessions": {
       "title": "Aktywne sesje",
-      "description": "Urządzenia, które są teraz zalogowane na Twoje konto."
+      "description": "Urządzenia, które są teraz zalogowane na Twoje konto.",
+      "searchPlaceholder": "Szukaj urządzenia...",
+      "thisDevice": "To urządzenie",
+      "activeNow": "Aktywne teraz",
+      "unknownAddress": "Nie zapisano",
+      "columns": {
+        "device": "Urządzenie",
+        "browser": "Przeglądarka",
+        "ipAddress": "Adres IP",
+        "lastActive": "Ostatnia aktywność",
+        "signedIn": "Zalogowano"
+      },
+      "rowActions": {
+        "menu": "Działania: {device}",
+        "signOut": "Wyloguj to urządzenie"
+      }
     },
     "history": {
       "title": "Historia logowania",
-      "description": "Ostatnie udane i nieudane próby zalogowania się na Twoje konto."
+      "description": "Wszystkie udane i nieudane próby zalogowania się na Twoje konto, od najnowszych.",
+      "searchPlaceholder": "Szukaj po adresie IP...",
+      "unknownAddress": "Nie zapisano",
+      "columns": {
+        "createdAt": "Data i godzina",
+        "status": "Wynik",
+        "ipAddress": "Adres IP"
+      },
+      "status": {
+        "success": "Udane logowanie",
+        "failed": "Nieudana próba"
+      },
+      "filter": {
+        "status": "Filtruj według wyniku",
+        "allResults": "Wszystkie wyniki"
+      }
     }
   },
   "store": {

@@ -1,6 +1,7 @@
 {
   "title": "Settings",
   "description": "Your account, its security, the shop's details, its delivery and its team.",
+  "refresh": "Reload table data",
   "tabs": {
     "account": "My account",
     "security": "Sign-in & security",
@@ -70,11 +71,41 @@
     },
     "sessions": {
       "title": "Active sessions",
-      "description": "Devices that are signed in to your account right now."
+      "description": "Devices that are signed in to your account right now.",
+      "searchPlaceholder": "Search devices...",
+      "thisDevice": "This device",
+      "activeNow": "Active now",
+      "unknownAddress": "Not recorded",
+      "columns": {
+        "device": "Device",
+        "browser": "Browser",
+        "ipAddress": "IP address",
+        "lastActive": "Last active",
+        "signedIn": "Signed in"
+      },
+      "rowActions": {
+        "menu": "Actions for {device}",
+        "signOut": "Sign out this device"
+      }
     },
     "history": {
       "title": "Sign-in history",
-      "description": "Recent successful and failed attempts to sign in to your account."
+      "description": "Every successful and failed attempt to sign in to your account, newest first.",
+      "searchPlaceholder": "Search by IP address...",
+      "unknownAddress": "Not recorded",
+      "columns": {
+        "createdAt": "Date and time",
+        "status": "Result",
+        "ipAddress": "IP address"
+      },
+      "status": {
+        "success": "Successful sign-in",
+        "failed": "Failed attempt"
+      },
+      "filter": {
+        "status": "Filter by result",
+        "allResults": "All results"
+      }
     }
   },
   "store": {

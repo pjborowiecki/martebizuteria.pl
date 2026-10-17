@@ -18,7 +18,7 @@ import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import {
   countCustomerOrders,
   getCustomerActivityAuditRows,
-  getCustomerLoginAuditRows,
+  getCustomerLoginAuditPage,
   getCustomerOrderNumbers,
   getCustomerOrderRows,
   getCustomerPurchasedCategoryIds,
@@ -27,7 +27,6 @@ import {
   getOrderItemsForOrders,
 } from "~/src/modules/customer-account/customer-account.accessors.server"
 import {
-  CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT,
   CUSTOMER_ACCOUNT_ORDERS_LIMIT,
   CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT,
 } from "~/src/modules/customer-account/customer-account.constants"
@@ -225,8 +224,10 @@ describe("getCustomerPurchasedProductIds", () => {
   })
 })
 
-describe("getCustomerLoginAuditRows", () => {
-  it("lists only the customer's own sign-in attempts newest first", async () => {
+describe("getCustomerLoginAuditPage", () => {
+  const FIRST_PAGE = { limit: 10, offset: 0, userId: CUSTOMER }
+
+  const insertSignIns = (): void => {
     insertAudit({ action: AUDIT_LOG_ACTION.AUTH_LOGIN, createdAt: dayOf(1), id: "audit-1", ip: "203.0.113.7", resourceId: CUSTOMER })
     insertAudit({
       action: AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED,
@@ -238,28 +239,55 @@ describe("getCustomerLoginAuditRows", () => {
     insertAudit({ action: AUDIT_LOG_ACTION.AUTH_LOGOUT, createdAt: dayOf(3), id: "audit-3", ip: null, resourceId: CUSTOMER })
     insertAudit({ action: AUDIT_LOG_ACTION.ORDER_PLACED, createdAt: dayOf(4), id: "audit-4", ip: null, resourceId: CUSTOMER })
     insertAudit({ action: AUDIT_LOG_ACTION.AUTH_LOGIN, createdAt: dayOf(5), id: "audit-5", ip: null, resourceId: OTHER_CUSTOMER })
+  }
 
-    await expect(getCustomerLoginAuditRows(CUSTOMER)).resolves.toStrictEqual([
-      { action: AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED, createdAt: new Date(dayOf(2)), ip: "198.51.100.4" },
-      { action: AUDIT_LOG_ACTION.AUTH_LOGIN, createdAt: new Date(dayOf(1)), ip: "203.0.113.7" },
-    ])
+  it("lists only the customer's own sign-in attempts newest first, with their count", async () => {
+    insertSignIns()
+
+    await expect(getCustomerLoginAuditPage(FIRST_PAGE)).resolves.toStrictEqual({
+      rows: [
+        { action: AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED, createdAt: new Date(dayOf(2)), id: "audit-2", ip: "198.51.100.4" },
+        { action: AUDIT_LOG_ACTION.AUTH_LOGIN, createdAt: new Date(dayOf(1)), id: "audit-1", ip: "203.0.113.7" },
+      ],
+      total: 2,
+    })
   })
 
-  it("stops at the login history limit and keeps the most recent attempts", async () => {
-    for (let index = 0; index <= CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT; index += 1) {
+  it("keeps only the successful or only the failed attempts", async () => {
+    insertSignIns()
+
+    const failed = await getCustomerLoginAuditPage({ ...FIRST_PAGE, status: "failed" })
+    const successful = await getCustomerLoginAuditPage({ ...FIRST_PAGE, status: "success" })
+
+    expect(failed.rows.map((row) => row.id)).toStrictEqual(["audit-2"])
+    expect(successful).toMatchObject({ rows: [{ id: "audit-1" }], total: 1 })
+  })
+
+  it("finds the attempts from an address", async () => {
+    insertSignIns()
+
+    await expect(getCustomerLoginAuditPage({ ...FIRST_PAGE, search: "203.0" })).resolves.toMatchObject({
+      rows: [{ id: "audit-1" }],
+      total: 1,
+    })
+  })
+
+  it("pages through every attempt, so no sign-in drops out of the history", async () => {
+    for (let index = 0; index < 25; index += 1) {
       insertAudit({
         action: AUDIT_LOG_ACTION.AUTH_LOGIN,
         createdAt: dayOf(1) + index * DAY_MS,
-        id: `audit-${index}`,
+        id: `audit-${String(index).padStart(2, "0")}`,
         ip: null,
         resourceId: CUSTOMER,
       })
     }
 
-    const rows = await getCustomerLoginAuditRows(CUSTOMER)
+    const lastPage = await getCustomerLoginAuditPage({ limit: 10, offset: 20, userId: CUSTOMER })
 
-    expect(rows).toHaveLength(CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT)
-    expect(rows.at(-1)?.createdAt).toStrictEqual(new Date(dayOf(1) + DAY_MS))
+    expect(lastPage.total).toBe(25)
+    expect(lastPage.rows).toHaveLength(5)
+    expect(lastPage.rows.at(-1)?.createdAt).toStrictEqual(new Date(dayOf(1)))
   })
 })
 

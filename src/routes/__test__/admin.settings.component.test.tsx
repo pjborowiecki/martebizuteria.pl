@@ -40,8 +40,8 @@ vi.mock("~/src/modules/customer-account/use-cases/get-customer-profile", () => (
 vi.mock("~/src/modules/customer-account/use-cases/list-customer-sessions", () => ({
   listCustomerSessionsQuery: () => ({ queryKey: ["customer-account", "sessions"] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/list-customer-login-history", () => ({
-  listCustomerLoginHistoryQuery: () => ({ queryKey: ["customer-account", "login-history"] }),
+vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-page", () => ({
+  getCustomerLoginHistoryPageQuery: (input: unknown) => ({ queryKey: ["customer-account", "login-history", input] }),
 }))
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/settings-page-layout", () => ({
   SettingsPageLayout: ({ active, children }: { active: string; children: ReactNode }): JSX.Element => (
@@ -74,8 +74,8 @@ vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/sett
     </section>
   ),
 }))
-vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/settings-sessions-card", () => ({
-  SettingsSessionsCard: (): JSX.Element => <section>sessions</section>,
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/components/settings-sessions-grid", () => ({
+  SettingsSessionsGrid: (): JSX.Element => <section>sessions</section>,
 }))
 vi.mock("~/src/modules/delivery-method/use-cases/list-admin-delivery-methods", () => ({
   listAdminDeliveryMethodsQuery: () => ({ queryKey: ["admin", "delivery-methods"] }),
@@ -86,8 +86,8 @@ vi.mock("~/src/modules/store-setting/use-cases/get-free-delivery", () => ({
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/delivery/settings-delivery-page", () => ({
   SettingsDeliveryPage: (): JSX.Element => <main data-active="delivery">delivery page</main>,
 }))
-vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/settings-login-history-card", () => ({
-  SettingsLoginHistoryCard: (): JSX.Element => <section>history</section>,
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/components/settings-login-history-grid", () => ({
+  SettingsLoginHistoryGrid: (): JSX.Element => <section>history</section>,
 }))
 vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", () => ({
   getAdminSellerDetailsQuery: () => ({ queryKey: ["admin", "store-setting", "seller-details"] }),
@@ -185,11 +185,11 @@ describe("admin settings account route", () => {
 })
 
 describe("admin settings security route", () => {
-  it("loads the profile, the signed-in devices and the sign-in history before the page renders", async () => {
+  it("loads the profile, the signed-in devices and the first page of the sign-in history before the page renders", async () => {
     await expect(prefetched("/admin/settings/security")).resolves.toStrictEqual([
       ["customer-account", "profile"],
       ["customer-account", "sessions"],
-      ["customer-account", "login-history"],
+      ["customer-account", "login-history", { page: 1, pageSize: 10 }],
     ])
   })
 

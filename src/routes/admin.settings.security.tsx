@@ -3,13 +3,15 @@ import { type JSX } from "react"
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
 
+import { LIST_PAGE_FIRST } from "~/src/modules/_core/utils/pagination"
+import { CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE } from "~/src/modules/customer-account/customer-account.constants"
+import { getCustomerLoginHistoryPageQuery } from "~/src/modules/customer-account/use-cases/get-customer-login-history-page"
 import { getCustomerProfileQuery } from "~/src/modules/customer-account/use-cases/get-customer-profile"
-import { listCustomerLoginHistoryQuery } from "~/src/modules/customer-account/use-cases/list-customer-login-history"
 import { listCustomerSessionsQuery } from "~/src/modules/customer-account/use-cases/list-customer-sessions"
 
-import { SettingsLoginHistoryCard } from "~/src/presentation/components/custom/pages/admin/settings/security/settings-login-history-card"
+import { SettingsLoginHistoryGrid } from "~/src/presentation/components/custom/pages/admin/settings/security/components/settings-login-history-grid"
+import { SettingsSessionsGrid } from "~/src/presentation/components/custom/pages/admin/settings/security/components/settings-sessions-grid"
 import { SettingsPasswordCard } from "~/src/presentation/components/custom/pages/admin/settings/security/settings-password-card"
-import { SettingsSessionsCard } from "~/src/presentation/components/custom/pages/admin/settings/security/settings-sessions-card"
 import { SettingsSignInMethodsCard } from "~/src/presentation/components/custom/pages/admin/settings/security/settings-sign-in-methods-card"
 import { SettingsTwoFactorCard } from "~/src/presentation/components/custom/pages/admin/settings/security/settings-two-factor-card"
 import { SettingsPageLayout } from "~/src/presentation/components/custom/pages/admin/settings/settings-page-layout"
@@ -22,8 +24,8 @@ const AdminSettingsSecurityRoute = (): JSX.Element => {
       <SettingsPasswordCard hasPassword={profile.hasPassword} />
       <SettingsTwoFactorCard enabled={profile.twoFactorEnabled} hasPassword={profile.hasPassword} />
       <SettingsSignInMethodsCard hasGoogle={profile.hasGoogle} hasPassword={profile.hasPassword} />
-      <SettingsSessionsCard />
-      <SettingsLoginHistoryCard />
+      <SettingsSessionsGrid />
+      <SettingsLoginHistoryGrid />
     </SettingsPageLayout>
   )
 }
@@ -34,7 +36,9 @@ export const Route = createFileRoute("/admin/settings/security")({
     await Promise.all([
       context.queryClient.query(getCustomerProfileQuery()),
       context.queryClient.query(listCustomerSessionsQuery()),
-      context.queryClient.query(listCustomerLoginHistoryQuery()),
+      context.queryClient.query(
+        getCustomerLoginHistoryPageQuery({ page: LIST_PAGE_FIRST, pageSize: CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE }),
+      ),
     ])
   },
 })
