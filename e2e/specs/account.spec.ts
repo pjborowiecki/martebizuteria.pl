@@ -4,10 +4,12 @@ import { PRODUCTS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
 import { registerCustomer } from "../fixtures/customers"
 import { placeOrder } from "../fixtures/orders"
-import { linkIn, waitForEmail } from "../fixtures/emails"
+import { linkIn, sentEmails, waitForEmail } from "../fixtures/emails"
 import { confirmCardSetupIntent, stripeCustomerIds, waitForCardSetupIntent } from "../fixtures/stripe"
-import { expect, test } from "../fixtures/test"
+import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
 import { swipeUp } from "../fixtures/touch"
+import { uniqueEmail } from "../fixtures/unique"
+import { AdminOrderPage } from "../pages"
 
 test.describe("customer account", () => {
   test("a saved piece shows up in the wishlist and can be removed again", async ({ accountPage, authPage, page, productPage, request }, testInfo) => {
@@ -55,6 +57,54 @@ test.describe("customer account", () => {
     await expect(accountPage.navigation()).toBeVisible()
     await accountPage.gotoSection("orders")
     await expect(page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") })).toBeVisible()
+  })
+
+  test("a customer who changes their sign-in email keeps their orders, the old address is told, and the order's emails follow the new one", async ({
+    accountPage,
+    authPage,
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const customer = await registerCustomer({ authPage, page, request }, testInfo)
+    const { orderNumber } = await placeOrder({ email: customer.email, handle: PRODUCTS.lapis.handle, page, request })
+    const newEmail = uniqueEmail(testInfo, "moved")
+
+    await accountPage.gotoSection("profile")
+    await page.getByRole("button", { exact: true, name: "Change" }).click()
+    const dialog = page.getByRole("dialog", { name: "Change your email address" })
+    await dialog.getByLabel("New email address").fill(newEmail)
+    await dialog.getByRole("button", { name: "Send confirmation" }).click()
+    await expect(dialog).toBeHidden()
+    await page.goto(linkIn(await waitForEmail(request, customer.email, "Email address change — M'Arte"), /verify-email/u).href)
+    await expect(page).toHaveURL(/\/en-US\/account\/profile$/u)
+    await accountPage.waitForAppReady()
+    await page.goto(linkIn(await waitForEmail(request, newEmail, "Welcome to M'Arte — confirm your email"), /verify-email/u).href)
+    await expect(page).toHaveURL(/\/en-US\/account\/profile$/u)
+    await accountPage.waitForAppReady()
+
+    const notice = await waitForEmail(request, customer.email, "The sign-in email of your M'Arte account has been changed")
+    expect(notice.html).toContain("m***@e***.test")
+    expect(notice.html).not.toContain(newEmail)
+    await expect(page.getByRole("main")).toContainText(newEmail)
+    await accountPage.gotoSection("orders")
+    await expect(page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") })).toBeVisible()
+
+    const admin = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "admin") },
+      storageState: STORAGE_STATE.admin,
+    })
+    await isolateNetwork(admin)
+    const adminPage = await admin.newPage()
+    const adminOrderPage = new AdminOrderPage(adminPage)
+    await adminOrderPage.gotoOrderFor(customer.email)
+    await expect(adminPage.getByRole("main")).toContainText(`Account email now: ${newEmail}`)
+    await adminOrderPage.startFulfillment()
+    await waitForEmail(request, newEmail, "We have started preparing your order — M'Arte")
+    await admin.close()
+    expect((await sentEmails(request, customer.email)).map(({ subject }) => subject)).not.toContain(
+      "We have started preparing your order — M'Arte",
+    )
   })
 
   test("a customer withdraws from part of an order on its page and is emailed the statement", async ({ accountPage, authPage, page, request }, testInfo) => {
