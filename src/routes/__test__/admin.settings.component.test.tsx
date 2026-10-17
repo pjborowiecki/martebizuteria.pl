@@ -95,6 +95,15 @@ vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", () => ({
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/store/settings-seller-details-card", () => ({
   SettingsSellerDetailsCard: (): JSX.Element => <section>seller details</section>,
 }))
+vi.mock("~/src/modules/user/use-cases/list-admin-team", () => ({
+  listAdminTeamQuery: () => ({ queryKey: ["admin", "users", "team"] }),
+}))
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/team/settings-team-card", () => ({
+  SettingsTeamCard: (): JSX.Element => <section>team</section>,
+}))
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/team/settings-team-rules-card", () => ({
+  SettingsTeamRulesCard: (): JSX.Element => <section>team rules</section>,
+}))
 
 await import("~/src/routes/admin.settings")
 await import("~/src/routes/admin.settings.index")
@@ -102,6 +111,7 @@ await import("~/src/routes/admin.settings.account")
 await import("~/src/routes/admin.settings.security")
 await import("~/src/routes/admin.settings.delivery")
 await import("~/src/routes/admin.settings.store")
+await import("~/src/routes/admin.settings.team")
 
 const routeAt = (path: string): RouteDefinition => {
   const route = captured.get(path)
@@ -232,5 +242,20 @@ describe("admin settings store route", () => {
 
     expect(main).toHaveAttribute("data-active", "store")
     expect([...main.children].map((section) => section.textContent)).toStrictEqual(["seller details"])
+  })
+})
+
+describe("admin settings team route", () => {
+  it("loads the admins before the page renders", async () => {
+    await expect(prefetched("/admin/settings/team")).resolves.toStrictEqual([["admin", "users", "team"]])
+  })
+
+  it("shows the admins and then the rules under the team tab", () => {
+    render("/admin/settings/team")
+
+    const main = screen.getByRole("main")
+
+    expect(main).toHaveAttribute("data-active", "team")
+    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["team", "team rules"])
   })
 })

@@ -31,11 +31,12 @@ describe("SettingsPageLayout", () => {
     )
 
     expect(screen.getByRole("heading", { name: "Settings" })).toBeInTheDocument()
-    expect(screen.getByText("Your account, its security, the shop's details and its delivery.")).toBeInTheDocument()
+    expect(screen.getByText("Your account, its security, the shop's details, its delivery and its team.")).toBeInTheDocument()
     expect(screen.getByRole("link", { name: "My account" })).toHaveAttribute("href", ROUTES.ADMIN_SETTINGS_ACCOUNT)
     expect(screen.getByRole("link", { name: "Sign-in & security" })).toHaveAttribute("href", ROUTES.ADMIN_SETTINGS_SECURITY)
     expect(screen.getByRole("link", { name: "Store details" })).toHaveAttribute("href", ROUTES.ADMIN_SETTINGS_STORE)
     expect(screen.getByRole("link", { name: "Delivery" })).toHaveAttribute("href", ROUTES.ADMIN_SETTINGS_DELIVERY)
+    expect(screen.getByRole("link", { name: "Team" })).toHaveAttribute("href", ROUTES.ADMIN_SETTINGS_TEAM)
     expect(screen.getByText("section body")).toBeInTheDocument()
   })
 
