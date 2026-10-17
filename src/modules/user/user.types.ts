@@ -67,6 +67,31 @@ type AdminCustomersPageInput = AdminCustomersListFilters & {
   readonly statFilter?: AdminCustomerStatFilter | undefined
 }
 
+interface AdminTeamMember {
+  readonly email: string
+  readonly hasGoogle: boolean
+  readonly hasPassword: boolean
+  readonly id: string
+  readonly isCurrentUser: boolean
+  readonly lastSignInAt?: Date | undefined
+  readonly name: string
+  readonly twoFactorEnabled: boolean
+}
+
+interface AdminTeam {
+  readonly members: readonly AdminTeamMember[]
+  readonly recentSignIn: boolean
+}
+
+interface TeamCandidate {
+  readonly banned: boolean
+  readonly email: string
+  readonly emailVerified: boolean
+  readonly id: string
+  readonly name: string
+  readonly twoFactorEnabled: boolean
+}
+
 export interface User {
   adminCustomerAddressForm: z.infer<(typeof userZodSchemas)["adminCustomerAddressForm"]>
   adminCustomerAggregateStatsInput: AdminCustomerAggregateStatsInput
@@ -81,10 +106,13 @@ export interface User {
   adminCustomersExportInput: Omit<AdminCustomersPageInput, "page" | "pageSize">
   adminCustomersListFilters: AdminCustomersListFilters
   adminCustomersPageInput: AdminCustomersPageInput
+  adminTeam: AdminTeam
+  adminTeamMember: AdminTeamMember
   adminUserMetadata: z.infer<(typeof userZodSchemas)["adminUserMetadata"]>
   customerAddressRow: CustomerAddressRow
   customerLocationRow: CustomerLocationRow
   customerOrderStats: CustomerOrderStats
   insert: typeof user.$inferInsert
   select: typeof user.$inferSelect
+  teamCandidate: TeamCandidate
 }

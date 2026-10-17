@@ -41,9 +41,10 @@ vi.mock("@tanstack/react-start", () => {
   return { createMiddleware: () => builder, createServerOnlyFn: (fn: unknown) => fn }
 })
 
-const { RATE_LIMITS, assertWithinRateLimit, authorized, withRateLimit } = await import("~/src/integrations/better-auth/auth.middleware")
+const { RATE_LIMITS, assertWithinRateLimit, authorized, isRecentSignIn, withRateLimit } =
+  await import("~/src/integrations/better-auth/auth.middleware")
 
-const [requestBoundary] = stubs.handlers
+const [requestBoundary, , recentSignInBoundary] = stubs.handlers
 
 const { hasPermission, isAdminTwoFactorRequired, needsTwoFactorSetup } = await import("~/src/integrations/better-auth/auth.access")
 
@@ -191,6 +192,54 @@ describe("needsTwoFactorSetup", () => {
 
     expect(isAdminTwoFactorRequired()).toBe(false)
     expect(needsTwoFactorSetup({ role: ROLES.ADMIN, twoFactorEnabled: false })).toBe(false)
+  })
+})
+
+const DAY_MS = 86_400_000
+
+const SIGNED_IN_AT = new Date("2026-10-16T09:00:00.000Z")
+
+const runRecentSignIn = (now: number): unknown => {
+  if (recentSignInBoundary === undefined) {
+    throw new Error("recentSignIn did not register a server handler")
+  }
+  vi.setSystemTime(now)
+  const options = { context: { auth: { session: { createdAt: SIGNED_IN_AT } }, requestHeaders }, next }
+
+  return recentSignInBoundary(options)
+}
+
+describe("recent sign-in middleware", () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it("lets a change through while the session is less than a day old", async () => {
+    await runRecentSignIn(SIGNED_IN_AT.getTime() + DAY_MS - 1)
+
+    expect(next).toHaveBeenCalledOnce()
+  })
+
+  it("asks for a fresh sign-in once the session is a day old, so a stolen cookie cannot make the change", async () => {
+    await expect(Promise.resolve().then(() => runRecentSignIn(SIGNED_IN_AT.getTime() + DAY_MS))).rejects.toMatchObject({
+      body: { code: "SESSION_NOT_FRESH" },
+      statusCode: 403,
+    })
+    expect(next).not.toHaveBeenCalled()
+  })
+
+  it("tells a session's age apart at the same one-day boundary for the pages that warn before a change", () => {
+    vi.setSystemTime(SIGNED_IN_AT.getTime() + DAY_MS - 1)
+
+    expect(isRecentSignIn({ createdAt: SIGNED_IN_AT })).toBe(true)
+
+    vi.setSystemTime(SIGNED_IN_AT.getTime() + DAY_MS)
+
+    expect(isRecentSignIn({ createdAt: SIGNED_IN_AT })).toBe(false)
   })
 })
 

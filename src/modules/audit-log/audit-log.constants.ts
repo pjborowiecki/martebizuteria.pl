@@ -102,6 +102,8 @@ export const AUDIT_LOG_ACTION = {
   SALES_PAUSED: "sales.paused",
   SALES_RESUMED: "sales.resumed",
   SETTINGS_UPDATED: "settings.updated",
+  TEAM_ADMIN_GRANTED: "team.admin_granted",
+  TEAM_ADMIN_REVOKED: "team.admin_revoked",
 } as const
 
 export type AuditLogAction = (typeof AUDIT_LOG_ACTION)[keyof typeof AUDIT_LOG_ACTION]

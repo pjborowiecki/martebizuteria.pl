@@ -65,13 +65,18 @@ export const STRIPE_CUSTOMER_NOT_DELETED = {
 
 export const SESSION_NOT_FRESH = {
   code: "SESSION_NOT_FRESH",
-  message: "Sign in again before adding a password",
+  message: "Sign in again before making this change",
 } as const satisfies AuthRefusal
 
 export const ADMIN_TWO_FACTOR_REQUIRED = {
   code: "ADMIN_TWO_FACTOR_REQUIRED",
   message: "Turn on two-factor authentication before using the admin panel",
 } as const satisfies AuthRefusal
+
+export const ROLE_MANAGED_IN_TEAM_SETTINGS = {
+  code: "ROLE_MANAGED_IN_TEAM_SETTINGS",
+  message: "Admin access is granted and revoked in Settings, Team",
+} as const
 
 export const ADMIN_PLUGIN_PATH_PREFIX = "/admin/"
 
@@ -94,13 +99,16 @@ export const OWN_ACCOUNT_AUDIT_PATHS: ReadonlySet<string> = new Set([
 export const ADMIN_PATHS = {
   BAN_USER: "/admin/ban-user",
   REVOKE_USER_SESSIONS: "/admin/revoke-user-sessions",
-  SET_ROLE: "/admin/set-role",
   SET_USER_PASSWORD: "/admin/set-user-password",
   UNBAN_USER: "/admin/unban-user",
   UPDATE_USER: "/admin/update-user",
 } as const
 
 export const ADMIN_ACCOUNT_AUDIT_PATHS: ReadonlySet<string> = new Set(Object.values(ADMIN_PATHS))
+
+export const SET_ROLE_PATH = "/admin/set-role"
+
+export const ROLE_FIELD_ADMIN_PATHS: ReadonlySet<string> = new Set(["/admin/create-user", ADMIN_PATHS.UPDATE_USER])
 
 export const VERIFY_TOTP_PATH = "/two-factor/verify-totp"
 

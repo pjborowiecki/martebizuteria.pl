@@ -62,7 +62,7 @@ export const scheduleProductAttributeCatalogInvalidation = (): void => {
 
 export const scheduleAdminCustomersInvalidation = (): void => {
   scheduleRealtimeInvalidation({
-    admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE],
+    admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE, USER_QUERY_KEYS.ADMIN.TEAM],
   })
 }
 

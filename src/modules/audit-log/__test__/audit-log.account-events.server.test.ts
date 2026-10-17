@@ -12,7 +12,6 @@ import {
   recordAuthEmailVerifiedAudit,
   recordAuthPasswordChangedAudit,
   recordAuthPasswordResetAudit,
-  recordAuthRoleChangedAudit,
   recordAuthSessionsRevokedAudit,
   recordAuthTwoFactorDisabledAudit,
   recordAuthTwoFactorEnabledAudit,
@@ -20,6 +19,7 @@ import {
   recordAuthUserUnbannedAudit,
   recordCustomerDeletedAudit,
   recordCustomerOrdersClaimedAudit,
+  recordTeamAccessAudit,
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.record.server"
 
@@ -90,10 +90,21 @@ const ACCOUNT_CASES: readonly AccountAuditCase[] = [
     severity: "info",
   },
   {
-    action: AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED,
-    category: "auth",
-    name: "a changed role",
-    record: recordAuthRoleChangedAudit,
+    action: AUDIT_LOG_ACTION.TEAM_ADMIN_GRANTED,
+    category: "settings",
+    name: "granted admin access",
+    record: (account, options = {}) => {
+      recordTeamAccessAudit(AUDIT_LOG_ACTION.TEAM_ADMIN_GRANTED, account, options)
+    },
+    severity: "warning",
+  },
+  {
+    action: AUDIT_LOG_ACTION.TEAM_ADMIN_REVOKED,
+    category: "settings",
+    name: "revoked admin access",
+    record: (account, options = {}) => {
+      recordTeamAccessAudit(AUDIT_LOG_ACTION.TEAM_ADMIN_REVOKED, account, options)
+    },
     severity: "warning",
   },
   { action: AUDIT_LOG_ACTION.AUTH_USER_BANNED, category: "auth", name: "a ban", record: recordAuthUserBannedAudit, severity: "warning" },

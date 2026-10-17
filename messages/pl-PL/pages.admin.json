@@ -390,6 +390,8 @@
       "delivery_method_archived": "Metoda dostawy zarchiwizowana",
       "delivery_method_restored": "Metoda dostawy przywrócona",
       "delivery_method_reordered": "Kolejność metod dostawy zmieniona",
+      "team_admin_granted": "Nadano dostęp administracyjny",
+      "team_admin_revoked": "Odebrano dostęp administracyjny",
       "product_updated": "Produkt zaktualizowany",
       "product_created": "Produkt utworzony",
       "product_deleted": "Produkt usunięty",

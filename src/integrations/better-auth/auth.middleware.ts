@@ -1,10 +1,11 @@
 import { isNotFound } from "@tanstack/react-router"
 import { createMiddleware, createServerOnlyFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
-import { isAPIError } from "better-auth/api"
+import { APIError, isAPIError } from "better-auth/api"
 import { ZodError } from "zod"
 
 import { type Permission, hasPermission, needsTwoFactorSetup } from "~/src/integrations/better-auth/auth.access"
+import { SESSION_FRESH_AGE_IN_SECONDS, SESSION_NOT_FRESH } from "~/src/integrations/better-auth/auth.constants"
 import { authErrorKey } from "~/src/integrations/better-auth/auth.errors"
 import { getRequestSession } from "~/src/integrations/better-auth/auth.session"
 
@@ -21,6 +22,8 @@ export const RATE_LIMITS = {
 } as const
 
 const ERROR_REASON_PATTERN = /^[A-Z][A-Z\d_]*$/u
+
+const MILLISECONDS_PER_SECOND = 1000
 
 const handleRequestError = (error: unknown): never => {
   if (isNotFound(error)) {
@@ -62,6 +65,19 @@ export const authorized = (permission?: Permission) =>
 
       return next({ context: { auth: session } })
     })
+
+export const isRecentSignIn = ({ createdAt }: Readonly<{ createdAt: Date }>): boolean =>
+  Date.now() - createdAt.getTime() < SESSION_FRESH_AGE_IN_SECONDS * MILLISECONDS_PER_SECOND
+
+export const recentSignIn = createMiddleware({ type: "function" })
+  .middleware([authorized()])
+  .server(({ context, next }) => {
+    if (!isRecentSignIn(context.auth.session)) {
+      throw APIError.from("FORBIDDEN", SESSION_NOT_FRESH)
+    }
+
+    return next()
+  })
 
 interface RateLimitRule {
   readonly max: number

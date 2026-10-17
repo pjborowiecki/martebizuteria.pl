@@ -390,6 +390,8 @@
       "delivery_method_archived": "Delivery method archived",
       "delivery_method_restored": "Delivery method restored",
       "delivery_method_reordered": "Delivery methods reordered",
+      "team_admin_granted": "Admin access granted",
+      "team_admin_revoked": "Admin access removed",
       "product_updated": "Product updated",
       "product_created": "Product created",
       "product_deleted": "Product deleted",

@@ -5,7 +5,13 @@ import { ROLES } from "~/src/integrations/better-auth/auth.access"
 import { isTimeZone, toFormatLocale } from "~/src/integrations/use-intl/i18n.display"
 
 import { dateColumnFilterField, idField, numericColumnFilterField, pageField, pageSizeField } from "~/src/modules/_core/utils/zod-fields"
-import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_FORM_FIELD_MAX, ADMIN_CUSTOMER_STAT_FILTER } from "~/src/modules/user/user.constants"
+import {
+  ADMIN_CUSTOMER_DETAIL_TAGS,
+  ADMIN_CUSTOMER_FORM_FIELD_MAX,
+  ADMIN_CUSTOMER_STAT_FILTER,
+  TEAM_CANDIDATE_SEARCH_MAX_LENGTH,
+  TEAM_CANDIDATE_SEARCH_MIN_LENGTH,
+} from "~/src/modules/user/user.constants"
 import { user } from "~/src/modules/user/user.schema"
 
 const { createInsertSchema, createSelectSchema, createUpdateSchema } = createSchemaFactory({
@@ -183,6 +189,12 @@ const updateAdminCustomerInputSchema = zod.object({
   values: adminCustomerFormValuesSchema,
 })
 
+const teamAccessInputSchema = zod.object({ userId: idField })
+
+const teamCandidateSearchInputSchema = zod.object({
+  search: zod.string().trim().min(TEAM_CANDIDATE_SEARCH_MIN_LENGTH).max(TEAM_CANDIDATE_SEARCH_MAX_LENGTH),
+})
+
 export const userZodSchemas = {
   adminCustomerAddressForm: adminCustomerAddressFormSchema,
   adminCustomerDetail: adminCustomerDetailSchema,
@@ -198,6 +210,8 @@ export const userZodSchemas = {
   displayPreferenceInput: displayPreferenceInputSchema,
   insert: userInsertSchema,
   select: userSelectSchema,
+  teamAccessInput: teamAccessInputSchema,
+  teamCandidateSearchInput: teamCandidateSearchInputSchema,
   update: userUpdateSchema,
   updateAdminCustomerInput: updateAdminCustomerInputSchema,
 }
