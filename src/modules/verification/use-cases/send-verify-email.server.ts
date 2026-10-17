@@ -39,7 +39,7 @@ const resolveEmailVerificationCallbackUrl = (url: string, locale: SupportedLocal
 }
 
 export const sendVerifyEmail = async ({ user, url }: AuthEmailParams): Promise<void> => {
-  if (!(await admitPublicEmail({ kind: PUBLIC_EMAIL_KINDS.VERIFICATION, to: user.email }))) {
+  if (!(await admitPublicEmail({ kind: PUBLIC_EMAIL_KINDS.VERIFICATION, to: user.email, userId: user.id }))) {
     return
   }
 
@@ -55,5 +55,6 @@ export const sendVerifyEmail = async ({ user, url }: AuthEmailParams): Promise<v
     }),
     subject: createTranslator({ locale, messages })("subject"),
     to: user.email,
+    userId: user.id,
   })
 }

@@ -119,7 +119,7 @@ const createdUser = {
   updatedAt: NOW,
 }
 
-const user = { email: "shopper@marte.test", name: "Ada" }
+const user = { email: "shopper@marte.test", id: "user-ada", name: "Ada" }
 
 const goodbye = { email: user.email, name: user.name, origin: "http://127.0.0.1:3000" }
 
@@ -172,6 +172,7 @@ describe("auth email delivery", () => {
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
       detail: DOMAIN_NOT_VERIFIED,
       metadata: { emailKind: "reset-password" },
+      resourceId: user.id,
     })
     expect(JSON.stringify(stubs.recordEmailFailedAudit.mock.calls)).not.toContain("secret-reset-token")
   })
@@ -214,6 +215,7 @@ describe("auth email delivery", () => {
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
       detail: DOMAIN_NOT_VERIFIED,
       metadata: { emailKind: "password-changed" },
+      resourceId: user.id,
     })
   })
 

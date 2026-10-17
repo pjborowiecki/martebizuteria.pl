@@ -164,6 +164,7 @@ describe("a password reset", () => {
       expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith("refused@marte.test", {
         detail: DOMAIN_NOT_VERIFIED,
         metadata: { emailKind: "password-changed" },
+        resourceId: customerId,
       })
     })
   })

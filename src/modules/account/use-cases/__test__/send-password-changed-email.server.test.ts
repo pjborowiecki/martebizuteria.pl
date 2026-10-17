@@ -49,7 +49,7 @@ const seo = await vi.importActual<typeof Seo>("~/src/lib/seo")
 
 const LOCALE = "pl-PL"
 
-const user = { email: "shopper@marte.test", name: "Ada" }
+const user = { email: "shopper@marte.test", id: "user-ada", name: "Ada" }
 
 const resetOn = (origin: string): Request => new Request(`${origin}/api/auth/reset-password`, { method: "POST" })
 
@@ -87,6 +87,7 @@ describe("account emails", () => {
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(user.email, {
       detail: `AppError: ${ERROR_CODES.FORBIDDEN}`,
       metadata: { emailKind: "password-changed" },
+      resourceId: user.id,
     })
   })
 })

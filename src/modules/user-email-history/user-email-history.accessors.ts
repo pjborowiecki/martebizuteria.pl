@@ -1,4 +1,4 @@
-import { type SQL, and, eq, exists, isNull, ne, sql } from "drizzle-orm"
+import { type SQL, and, eq, exists, inArray, isNull, ne, sql } from "drizzle-orm"
 import { type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -19,7 +19,7 @@ export const accountHeldAddressAt = (userId: string, moment: AddressAtMoment): S
 export const anotherAccountHeldAddressAt = (userId: string, moment: AddressAtMoment): SQL =>
   heldAt(ne(userEmailHistory.userId, userId), moment)
 
-export const keyedByFormerAddressOf = (userId: string, { address, at }: AddressAtMoment): SQL => {
+export const keyedByFormerAddressOf = (userId: SQL | string, { address, at }: AddressAtMoment): SQL => {
   const heldThen = sql`${at} between ${userEmailHistory.addedAt} and ${userEmailHistory.replacedAt}`
 
   return historyRowWhere(and(eq(userEmailHistory.userId, userId), eq(userEmailHistory.email, address), heldThen))
@@ -33,6 +33,18 @@ export const getCurrentAddressHolder = (email: string) => {
     where: and(eq(userEmailHistory.email, address), isNull(userEmailHistory.replacedAt)),
   })
 }
+
+export const accountsWithAddressContaining = (term: string) =>
+  db
+    .selectDistinct({ userId: userEmailHistory.userId })
+    .from(userEmailHistory)
+    .where(sql`instr(${userEmailHistory.email}, ${term.toLowerCase()}) > 0`)
+
+export const addressesOfAccountsWithAddressContaining = (term: string) =>
+  db
+    .selectDistinct({ email: userEmailHistory.email })
+    .from(userEmailHistory)
+    .where(inArray(userEmailHistory.userId, accountsWithAddressContaining(term)))
 
 interface AddressAtMoment {
   readonly address: AnySQLiteColumn | SQL

@@ -118,6 +118,9 @@ const isVerified = (email: string): boolean =>
   z.object({ verified: z.number() }).parse(sqlite.prepare("select email_verified as verified from user where email = ?").get(email))
     .verified === 1
 
+const userIdOf = (email: string): string =>
+  z.object({ id: z.string() }).parse(sqlite.prepare("select id from user where email = ?").get(email)).id
+
 const sessionCookie = (response: Response): string =>
   response.headers
     .getSetCookie()
@@ -194,6 +197,7 @@ describe("auth emails when Resend refuses them", () => {
     expect(recordEmailFailedAudit).toHaveBeenCalledWith("anna@example.com", {
       detail: DOMAIN_NOT_VERIFIED.error.message,
       metadata: { emailKind: "verification" },
+      resourceId: userIdOf("anna@example.com"),
     })
   })
 

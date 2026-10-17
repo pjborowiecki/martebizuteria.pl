@@ -11,7 +11,7 @@ import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.j
 import { RESET_PASSWORD_NAMESPACE, ResetPassword } from "~/src/presentation/emails/reset-password"
 
 export const sendResetPasswordEmail = async ({ user, url }: AuthEmailParams): Promise<void> => {
-  if (!(await admitPublicEmail({ kind: PUBLIC_EMAIL_KINDS.PASSWORD_RESET, to: user.email }))) {
+  if (!(await admitPublicEmail({ kind: PUBLIC_EMAIL_KINDS.PASSWORD_RESET, to: user.email, userId: user.id }))) {
     return
   }
 
@@ -26,5 +26,6 @@ export const sendResetPasswordEmail = async ({ user, url }: AuthEmailParams): Pr
     }),
     subject: createTranslator({ locale, messages })("subject"),
     to: user.email,
+    userId: user.id,
   })
 }

@@ -57,7 +57,7 @@ const STOREFRONT_HOME = `/${LOCALE}`
 
 const ACCOUNT_CALLBACK = `/${LOCALE}/account/overview?verified=true`
 
-const user = { email: "shopper@marte.test", name: "Ada" }
+const user = { email: "shopper@marte.test", id: "user-ada", name: "Ada" }
 
 const verifyUrl = (callback?: string): string =>
   callback === undefined
@@ -115,7 +115,7 @@ describe("verification email", () => {
   it("counts the email against the verification emails the address may receive", async () => {
     await sendVerifyEmail({ url: verifyUrl(), user })
 
-    expect(stubs.admitPublicEmail).toHaveBeenCalledExactlyOnceWith({ kind: "verification", to: user.email })
+    expect(stubs.admitPublicEmail).toHaveBeenCalledExactlyOnceWith({ kind: "verification", to: user.email, userId: user.id })
   })
 
   it("sends nothing, and answers as if it had, once the limits refuse the email", async () => {
