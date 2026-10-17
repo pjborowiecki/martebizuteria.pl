@@ -18,6 +18,7 @@ import {
   formatAdminCustomerLocation,
   mapCustomerLocations,
   mapCustomerOrderStats,
+  maskEmailAddress,
   normalizeAverageProductsPerOrder,
   resolveAdminCustomerAverageOrderValue,
   resolveAdminCustomerInitials,
@@ -588,5 +589,15 @@ describe("audit timeline metadata parsing", () => {
 
   it("falls back to the audit detail when there is no metadata at all", () => {
     expect(timelineFor(null)[0]).toMatchObject({ kind: "cart_item_added", productTitle: "Silver ring" })
+  })
+})
+
+describe("maskEmailAddress", () => {
+  it.each([
+    ["nowy.adres@gmail.com", "n***@g***.com"],
+    ["a@b.co.uk", "a***@b***.uk"],
+    ["ola@localhost", "o***@***"],
+  ])("hides all but the first letters and the top-level domain of %s", (email, masked) => {
+    expect(maskEmailAddress(email)).toBe(masked)
   })
 })

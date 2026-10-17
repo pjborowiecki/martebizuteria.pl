@@ -41,6 +41,7 @@ const audit = vi.hoisted(() => ({
   recordCustomerDeletedAudit: vi.fn(),
   recordCustomerRegisteredAudit: vi.fn(),
   recordEmailFailedAudit: vi.fn(),
+  recordEmailSentAudit: vi.fn(),
   resolveAuthAuditActor: vi.fn((user: { id: string }) => `actor:${user.id}`),
 }))
 
@@ -250,6 +251,7 @@ describe("a change of e-mail address", () => {
     expect(audit.recordAuthEmailChangedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${userId}`, {
       detail: "before@marte.test → after@marte.test",
       ip: "198.51.100.69",
+      metadata: { changed: ["email"], new: { email: "after@marte.test" }, old: { email: "before@marte.test" } },
     })
     expect(audit.recordAuthEmailVerifiedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${userId}`, { ip: "198.51.100.69" })
   })
@@ -264,6 +266,7 @@ describe("a change of e-mail address", () => {
     expect(audit.recordAuthEmailChangedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${userId}`, {
       detail: "phone-before@marte.test → phone-after@marte.test",
       ip: "198.51.100.70",
+      metadata: { changed: ["email"], new: { email: "phone-after@marte.test" }, old: { email: "phone-before@marte.test" } },
     })
   })
 
@@ -354,12 +357,11 @@ describe("an admin changing another account through Better Auth's admin endpoint
     const credited = { actor: `actor:${admin.userId}`, ip: "203.0.113.11" }
 
     await admin.browser.post("/admin/update-user", {
-      data: { banReason: "Fraud", banned: true, email: "renamed@marte.test" },
+      data: { banReason: "Fraud", banned: true, name: "Grace" },
       userId: customerId,
     })
 
     expect(audit.recordAuthUserBannedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${customerId}`, { ...credited, detail: "Fraud" })
-    expect(audit.recordAuthEmailChangedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${customerId}`, credited)
     expect(audit.recordAuthUserUnbannedAudit).not.toHaveBeenCalled()
 
     await admin.browser.post("/admin/update-user", { data: { banned: false }, userId: customerId })

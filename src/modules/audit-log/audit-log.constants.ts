@@ -55,6 +55,7 @@ export const AUDIT_LOG_ACTION = {
   CUSTOMER_ORDERS_CLAIMED: "customer.orders_claimed",
   CUSTOMER_PAGE_VIEWED: "customer.page_viewed",
   CUSTOMER_REGISTERED: "customer.registered",
+  CUSTOMER_STRIPE_EMAIL_FAILED: "customer.stripe_email_failed",
   CUSTOMER_UPDATED: "customer.updated",
   DELIVERY_METHOD_ARCHIVED: "delivery_method.archived",
   DELIVERY_METHOD_CREATED: "delivery_method.created",
@@ -111,6 +112,7 @@ export type AuditLogAction = (typeof AUDIT_LOG_ACTION)[keyof typeof AUDIT_LOG_AC
 export const AUDIT_EMAIL_KIND = {
   ACCOUNT_DELETED: "account-deleted",
   CHANGE_EMAIL: "change-email",
+  EMAIL_CHANGED: "email-changed",
   NEWSLETTER_ALREADY_SUBSCRIBED: "newsletter-already-subscribed",
   NEWSLETTER_CAMPAIGN: "newsletter-campaign",
   NEWSLETTER_CONFIRMATION: "newsletter-confirmation",

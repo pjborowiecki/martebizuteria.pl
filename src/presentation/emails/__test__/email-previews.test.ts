@@ -52,6 +52,7 @@ describe("EMAIL_PREVIEWS", () => {
     expect(Object.entries(EMAIL_PREVIEWS).map(([slug, preview]) => [slug, preview.label])).toStrictEqual([
       ["account-deleted", "Account deleted"],
       ["change-email", "Change email"],
+      ["email-changed", "Email changed, to the old address"],
       ["incident-alert", "Incident alert for the shop"],
       ["new-order", "New order for the shop"],
       ["newsletter-already-subscribed", "Newsletter already subscribed"],
@@ -111,6 +112,13 @@ describe("renderEmailPreview", () => {
 
   it("renders the change email notice", async () => {
     await expect(text("change-email")).resolves.toContain(changeEmailCopy.highlightTitle)
+  })
+
+  it("renders the notice to the old address with the shop's contact details", async () => {
+    const preview = await text("email-changed")
+
+    expect(preview).toContain("j***@e***.com")
+    expect(preview).toContain(TEST_STORED_SELLER_DETAILS.email)
   })
 
   it("renders the notice for an address already on the newsletter", async () => {

@@ -4,8 +4,10 @@ import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/a
 import { hasAdminAccess, needsTwoFactorSetup } from "~/src/integrations/better-auth/auth.access"
 import {
   ADMIN_ACCOUNT_NOT_DELETABLE,
+  ADMIN_PATHS,
   ADMIN_PLUGIN_PATH_PREFIX,
   ADMIN_TWO_FACTOR_REQUIRED,
+  EMAIL_CHANGED_BY_ITS_OWNER,
   EMAIL_DELIVERY_UNAVAILABLE,
   EMAIL_SENDING_AUTH_PATHS,
   REMOVE_USER_PATH,
@@ -13,9 +15,11 @@ import {
   ROLE_MANAGED_IN_TEAM_SETTINGS,
   SET_ROLE_PATH,
   STRIPE_CUSTOMER_NOT_DELETED,
+  VERIFY_EMAIL_PATH,
 } from "~/src/integrations/better-auth/auth.constants"
 import { recordAuthEmailFailure } from "~/src/integrations/better-auth/auth.email-delivery.server"
-import { adminRoleFieldsSchema, adminTargetAccountSchema } from "~/src/integrations/better-auth/auth.zod"
+import { refuseSupersededEmailLink } from "~/src/integrations/better-auth/auth.email-link.server"
+import { adminAddressFieldsSchema, adminRoleFieldsSchema, adminTargetAccountSchema } from "~/src/integrations/better-auth/auth.zod"
 import { scheduleAdminCustomersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { isEmailSenderUnavailable } from "~/src/integrations/resend/resend.availability.server"
 
@@ -47,9 +51,18 @@ const removesAdminAccount = async ({ body, path }: Readonly<{ body: unknown; pat
   return hasAdminAccess(account?.role)
 }
 
+const requestsAddressChange = ({ body, path }: Readonly<{ body: unknown; path: string }>): boolean =>
+  path === ADMIN_PATHS.UPDATE_USER && adminAddressFieldsSchema.safeParse(body).data === true
+
 export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
   if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
     throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
+  }
+
+  if (ctx.path === VERIFY_EMAIL_PATH) {
+    await refuseSupersededEmailLink(ctx)
+
+    return
   }
 
   if (!ctx.path.startsWith(ADMIN_PLUGIN_PATH_PREFIX)) {
@@ -58,6 +71,10 @@ export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
 
   if (requestsRoleChange(ctx)) {
     throw APIError.from("FORBIDDEN", ROLE_MANAGED_IN_TEAM_SETTINGS)
+  }
+
+  if (requestsAddressChange(ctx)) {
+    throw APIError.from("FORBIDDEN", EMAIL_CHANGED_BY_ITS_OWNER)
   }
 
   const caller = await getSessionFromCtx<{ role?: string | null; twoFactorEnabled?: boolean | null }>(ctx)

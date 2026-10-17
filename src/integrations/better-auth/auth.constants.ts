@@ -83,6 +83,21 @@ export const ROLE_MANAGED_IN_TEAM_SETTINGS = {
   message: "Admin access is granted and revoked in Settings, Team",
 } as const
 
+export const EMAIL_CHANGED_BY_ITS_OWNER = {
+  code: "EMAIL_CHANGED_BY_ITS_OWNER",
+  message: "An account's email address is changed by its owner, from the account page, with a confirmation from both addresses",
+} as const
+
+export const EMAIL_LINK_SUPERSEDED = {
+  code: "INVALID_TOKEN",
+  message: "This link was sent before the account's email address last changed",
+} as const satisfies AuthRefusal
+
+export const EMAIL_ADDRESS_TAKEN = {
+  code: "USER_ALREADY_EXISTS",
+  message: "Another account already uses this email address",
+} as const satisfies AuthRefusal
+
 export const ADMIN_PLUGIN_PATH_PREFIX = "/admin/"
 
 export const TWO_FACTOR_VERIFY_PATH_PREFIX = "/two-factor/verify-"

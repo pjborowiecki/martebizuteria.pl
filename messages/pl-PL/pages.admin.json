@@ -414,6 +414,7 @@
       "order_fulfillment_failed": "Nie utworzono opłaconego zamówienia",
       "customer_tier_upgrade": "Awans poziomu",
       "customer_registered": "Rejestracja klienta",
+      "customer_stripe_email_failed": "Nie zaktualizowano e-maila w Stripe",
       "auth_login": "Logowanie",
       "auth_login_failed": "Logowanie nieudane",
       "auth_logout": "Wylogowanie",
@@ -449,6 +450,7 @@
       "emails": {
         "account-deleted": "Informacja o usunięciu konta",
         "change-email": "Potwierdzenie zmiany adresu e-mail",
+        "email-changed": "Informacja o zmianie adresu e-mail na poprzedni adres",
         "new-order": "Powiadomienie o nowym zamówieniu",
         "newsletter-already-subscribed": "Informacja o aktywnej subskrypcji",
         "newsletter-campaign": "Kampania newslettera",

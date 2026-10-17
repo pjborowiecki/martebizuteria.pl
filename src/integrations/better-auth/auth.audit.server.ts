@@ -1,6 +1,5 @@
 import { type BetterAuthPlugin } from "better-auth"
 import { createAuthMiddleware, isAPIError } from "better-auth/api"
-import { verifyJWT } from "better-auth/crypto"
 import { type z } from "zod/v4"
 
 import {
@@ -11,14 +10,12 @@ import {
   OWN_ACCOUNT_AUDIT_PATHS,
   SIGN_IN_PATH_PREFIXES,
   TWO_FACTOR_VERIFY_PATH_PREFIX,
-  VERIFY_EMAIL_PATH,
   VERIFY_TOTP_PATH,
 } from "~/src/integrations/better-auth/auth.constants"
-import { adminAccountChangeSchema, confirmedEmailChangeSchema, passwordChangeSchema } from "~/src/integrations/better-auth/auth.zod"
+import { adminAccountChangeSchema, passwordChangeSchema } from "~/src/integrations/better-auth/auth.zod"
 
 import {
   type AuditEventOptions,
-  recordAuthEmailChangedAudit,
   recordAuthLoginAudit,
   recordAuthPasswordChangedAudit,
   recordAuthSessionsRevokedAudit,
@@ -100,10 +97,6 @@ const recordAdminUserUpdate = (
   if (data?.banned === false) {
     recordAuthUserUnbannedAudit(account, options)
   }
-
-  if (data?.email !== undefined) {
-    recordAuthEmailChangedAudit(account, options)
-  }
 }
 
 const recordAdminAccountChange = ({ account, change, path }: AdminAccountChange, options: AuditEventOptions): void => {
@@ -181,21 +174,6 @@ export const accountSecurityAudit = {
           await Promise.resolve()
         }),
         matcher: (ctx) => ctx.path === VERIFY_TOTP_PATH,
-      },
-      {
-        handler: createAuthMiddleware(async (ctx) => {
-          const changed = ctx.context.newSession
-          const token = confirmedEmailChangeSchema.safeParse(await verifyJWT(String(ctx.query?.["token"]), ctx.context.secret))
-          if (!token.success || changed?.user.email !== token.data.updateTo) {
-            return
-          }
-
-          recordAuthEmailChangedAudit(resolveAuthAuditActor(changed.user), {
-            detail: `${token.data.email} → ${token.data.updateTo}`,
-            ip: auditRequestIp(ctx.headers),
-          })
-        }),
-        matcher: (ctx) => ctx.path === VERIFY_EMAIL_PATH,
       },
     ],
   },

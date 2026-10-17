@@ -35,6 +35,8 @@ vi.mock("cloudflare:workers", () => ({
   },
 }))
 
+vi.mock("~/src/integrations/stripe/stripe.server", () => ({ stripe: {} }))
+
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: {},
 }))

@@ -19,6 +19,7 @@ import {
   recordAuthUserUnbannedAudit,
   recordCustomerDeletedAudit,
   recordCustomerOrdersClaimedAudit,
+  recordCustomerStripeEmailFailedAudit,
   recordTeamAccessAudit,
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { type AuditLogActorInput } from "~/src/modules/audit-log/audit-log.record.server"
@@ -184,6 +185,24 @@ describe("recordCustomerOrdersClaimedAudit", () => {
       metadata: { orderCount: 2, orderIds: ["order-1", "order-2"] },
       resourceId: "user-7",
       severity: "info",
+      target: "ada@example.test",
+    })
+  })
+})
+
+describe("recordCustomerStripeEmailFailedAudit", () => {
+  it("files the Stripe customer that kept the old address under customers, from the system, against the account", () => {
+    recordCustomerStripeEmailFailedAudit(customer, { detail: "Error: Stripe is down", ip: "198.51.100.4" })
+
+    expect(record.scheduleAuditLog).not.toHaveBeenCalled()
+    expect(record.scheduleSystemAuditLog).toHaveBeenCalledExactlyOnceWith({
+      action: AUDIT_LOG_ACTION.CUSTOMER_STRIPE_EMAIL_FAILED,
+      category: "customers",
+      detail: "Error: Stripe is down",
+      ip: "198.51.100.4",
+      metadata: { email: "ada@example.test" },
+      resourceId: "user-7",
+      severity: "warning",
       target: "ada@example.test",
     })
   })

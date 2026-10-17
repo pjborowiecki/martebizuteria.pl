@@ -92,10 +92,19 @@ export const adminAccountChangeSchema = z.object({
     .object({
       banReason: z.string().optional(),
       banned: z.boolean().optional(),
-      email: z.string().optional(),
     })
     .optional(),
   userId: z.string(),
+})
+
+export const adminAddressFieldsSchema = z
+  .object({ data: z.object({ email: z.unknown().optional(), emailVerified: z.unknown().optional() }).optional() })
+  .transform(({ data }) => data?.email !== undefined || data?.emailVerified !== undefined)
+
+export const emailLinkSchema = z.object({
+  email: z.string(),
+  iat: z.number(),
+  updateTo: z.string().optional(),
 })
 
 export const adminTargetAccountSchema = z.object({ userId: z.string() })
