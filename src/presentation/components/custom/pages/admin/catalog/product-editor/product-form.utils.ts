@@ -205,22 +205,21 @@ const mapVariantsToFormRows = (
   }
 
   const remainingVariants = new Set(sortVariantsByOptionValueRank(productVariants, option))
-  // Reserve explicit identities before legacy fallbacks so no stored variant can populate two rows.
-  const linkedVariants = option.values.map((value) =>
+  const variantsReservedByValueId = option.values.map((value) =>
     takeMatchingVariant(
       remainingVariants,
       (variant) => value.id !== undefined && value.id !== "" && variant.optionOnVariants.some((row) => row.value.id === value.id),
     ),
   )
-  const namedVariants = option.values.map(
+  const variantsReservedByValueIdOrTitle = option.values.map(
     (value, index) =>
-      linkedVariants[index] ??
+      variantsReservedByValueId[index] ??
       takeMatchingVariant(remainingVariants, (variant) => variant.title.trim() === value.labels[I18N.DEFAULT_LOCALE].trim()),
   )
 
   return option.values.map((value, index) => {
     const optionValues = buildFormOptionValues(option, value, index)
-    const dbVariant = namedVariants[index] ?? remainingVariants.values().next().value
+    const dbVariant = variantsReservedByValueIdOrTitle[index] ?? remainingVariants.values().next().value
     if (dbVariant === undefined) {
       return createEmptyVariantFormRow(option, value, index)
     }

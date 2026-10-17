@@ -247,8 +247,7 @@ interface PendingCheckoutAddressValues {
 }
 
 const preparePendingCheckoutAddressUpsert = (checkoutId: string, values: PendingCheckoutAddressValues): BatchItem<"sqlite"> => {
-  // INSERT SELECT requires the table's column order, including the timestamps appended by its schema.
-  const addressFields = {
+  const columnsBeforeTimestamps = {
     address1: sql<string>`${values.address1}`.as("address1"),
     address2: sql<string | null>`${values.address2 ?? sql`NULL`}`.as("address2"),
     city: sql<string>`${values.city}`.as("city"),
@@ -262,19 +261,18 @@ const preparePendingCheckoutAddressUpsert = (checkoutId: string, values: Pending
     province: sql<string | null>`${values.province ?? sql`NULL`}`.as("province"),
     userId: sql<string | null>`${values.userId ?? sql`NULL`}`.as("user_id"),
   }
-  const fields = Object.assign(addressFields, {
+  const columnsInTableOrder = Object.assign(columnsBeforeTimestamps, {
     createdAt: sql<Date>`${sql.param(new Date(), address.createdAt)}`.as("created_at"),
     updatedAt: sql<Date>`${sql.param(new Date(), address.updatedAt)}`.as("updated_at"),
   })
-  const pendingAddress = db
-    .select(fields)
+  const addressOfPendingCheckout = db
+    .select(columnsInTableOrder)
     .from(checkout)
     .where(and(eq(checkout.id, checkoutId), eq(checkout.status, "pending")))
 
-  // No pending source row means neither an insert nor a conflict update runs.
   return db
     .insert(address)
-    .select(pendingAddress)
+    .select(addressOfPendingCheckout)
     .onConflictDoUpdate({
       set: {
         ...values,

@@ -1,5 +1,3 @@
--- Depends on products.sql and product-collections.sql.
-
 DELETE FROM collection_on_product
 WHERE product_id IN (
   '019e99d8-9f56-777d-8f3c-95c393be568b',

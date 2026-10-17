@@ -1,5 +1,3 @@
--- Depends on product-categories.sql (primary_category_id).
-
 DELETE FROM product
 WHERE handle IN ('lapis-lazuli-necklace', 'onyx-necklace')
   AND id NOT IN (

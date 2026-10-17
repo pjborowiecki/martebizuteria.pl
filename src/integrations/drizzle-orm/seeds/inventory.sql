@@ -1,5 +1,3 @@
--- Depends on product-variants.sql.
-
 DELETE FROM inventory
 WHERE id NOT IN (
   '019e99eb-0c52-734e-a734-bfdd8f764517',
