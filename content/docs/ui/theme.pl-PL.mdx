@@ -5,12 +5,17 @@ description: "Zestawy tokenów w globals.css, skrypty uruchamiane przed pierwszy
 
 ## Gdzie mieszkają tokeny
 
-`src/presentation/styles/globals.css` to jedyny punkt wejścia Tailwinda. Importuje fonty, uruchamia Tailwind na całym repozytorium i deklaruje każdy token projektowy dwukrotnie — raz w `:root`, raz w `.dark`:
+`src/presentation/styles/globals.css` to jedyny punkt wejścia Tailwinda. Importuje fonty, uruchamia Tailwind na repozytorium z wyłączeniem kilku ścieżek, definiuje własne warianty i narzędzia projektu oraz deklaruje każdy token projektowy dwukrotnie — raz w `:root`, raz w `.dark`:
 
 ```css
 @import "./fonts.css";
 
 @import "tailwindcss" source("../../");
+
+@source not "../../**/*.{test,spec}.{ts,tsx}";
+@source not "../../**/__test__/**";
+@source not "../../platform/testing/**";
+@source not "../components/shadcn/{alert,button-group,context-menu,drawer,empty,hover-card,input-otp,kbd,menubar,navigation-menu,pagination,progress,resizable,scroll-area,slider,toggle-group,toggle,typography}.tsx";
 
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -21,7 +26,11 @@ description: "Zestawy tokenów w globals.css, skrypty uruchamiane przed pierwszy
 }
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant autofill-preview (&:autofill[value=""]);
+@custom-variant peer-floated (&:is(:where(.peer):is(:focus, :not(:placeholder-shown), :autofill) ~ *));
 ```
+
+Linie `@source not` wyłączają ze skanowania klas testy, katalogi `__test__/`, `src/platform/testing/` oraz osiemnaście prymitywów shadcn, których nie importuje żaden plik aplikacji, więc ich nazwy klas nie trafiają do arkusza stylów. Oprócz `dark` dwa własne warianty obsługują pola z pływającą etykietą: `autofill-preview` pasuje do autouzupełnionego pola, którego atrybut `value` jest jeszcze pusty — czyli do podglądu autouzupełniania przeglądarki — i używają go `shadcn/input.tsx`, `shadcn/input-group.tsx` oraz `custom/floating-field.tsx`; `peer-floated` stylizuje etykietę po polu `.peer`, które ma fokus, wartość albo zostało autouzupełnione, i używają go `floating-field.tsx` oraz `checkout-fields.tsx` z kasy.
 
 W `:root` obok siebie stoją dwie rodziny zmiennych.
 
@@ -62,7 +71,33 @@ Dwa szczegóły warto znać:
 }
 ```
 
-`max-w-400` to standardowy kontener strony: ogranicza szerokość do `100rem`, a poza tym zostawia `0.75rem` marginesu z każdej strony. Używaj go zamiast ręcznego `mx-auto max-w-[...] px-6`.
+`max-w-400` ogranicza szerokość bloku do `100rem`, a poza tym zostawia `0.75rem` marginesu z każdej strony.
+
+## Narzędzia
+
+`globals.css` definiuje dwie własne klasy `@utility`:
+
+```css
+@utility touch-target {
+  position: relative;
+
+  @media (pointer: coarse) {
+    &::before {
+      content: "";
+      position: absolute;
+      inset: min(0px, (100% - 2.5rem) / 2);
+    }
+  }
+}
+
+@utility storefront-container {
+  @apply mx-auto px-4 sm:max-w-400 sm:px-6 lg:px-12;
+}
+```
+
+`storefront-container` to kontener stron sklepu: na telefonach pełna szerokość z odstępem `1rem`, od `sm` szerokość ograniczona przez `max-w-400`, z odstępem `1.5rem` od `sm` i `3rem` od `lg`. Używają go sekcje strony głównej, strony produktu i katalogu, nagłówek nawigacji, nakładka wyszukiwania, koszyk, strony kategorii, kolekcji i „o nas” oraz layout kasy — używaj go zamiast ręcznego `mx-auto max-w-[...] px-6`. Samo `max-w-400` występuje tam, gdzie potrzebne jest tylko ograniczenie szerokości: w layoutach `account.tsx` i `docs.tsx`, w menu pełnoekranowym i w desktopowej sekcji kategorii.
+
+`touch-target` powiększa obszar dotyku małej kontrolki na ekranach dotykowych bez zmiany jej układu: przy wskaźniku `coarse` pseudoelement `::before` rozszerza element do co najmniej `2.5rem` w każdym wymiarze. Zawierają go rozmiary przycisku `account-icon` i `account-sm` oraz wariant `account-ghost`, a drobne linki i kontrolki na stronach konta — wiersze zamówień, paginacja zamówień, zapisane karty, strona przeglądu — dodają go bezpośrednio.
 
 ## Jasny i ciemny motyw
 
@@ -87,11 +122,11 @@ Klasa ustawiana jest w dwóch miejscach:
 
 `THEME_STORAGE_KEY` to `` `${APP_NAME}-theme` ``, czyli dosłownie `M'Arte-theme` w `localStorage`. `enableSystem` jest wyłączone, więc nie ma motywu `system`: tylko `light` i `dark`, z domyślnym `light`.
 
-W interfejsie **nie ma obecnie przełącznika motywu.** Nic w `src/presentation` nie wywołuje `setTheme`; jedynymi konsumentami `useTheme` są `shadcn/sonner.tsx` (kolorystyka powiadomień) oraz krok płatności Stripe (wybór wyglądu Stripe Elements). Ciemny zestaw tokenów jest kompletny i mechanizm działa, ale dopóki nie pojawi się przełącznik, sklep renderuje się jasno — chyba że ktoś ręcznie ustawi `M'Arte-theme` na `dark`.
+W interfejsie **nie ma obecnie przełącznika motywu.** Nic w `src/presentation` nie wywołuje `setTheme`; jedynymi konsumentami `useTheme` są `shadcn/sonner.tsx` (kolorystyka powiadomień), krok płatności Stripe w kasie oraz formularz dodawania karty na koncie (oba wybierają wygląd Stripe Elements). Ciemny zestaw tokenów jest kompletny i mechanizm działa, ale dopóki nie pojawi się przełącznik, sklep renderuje się jasno — chyba że ktoś ręcznie ustawi `M'Arte-theme` na `dark`.
 
 ## Nadpisanie dla panelu
 
-`src/presentation/styles/admin.css` to niewielki arkusz stylów dołączany przez trasę `/admin` jako link `?url`. Zaczyna się od `@reference "./globals.css"`, co pozwala Tailwindowi rozwiązać motyw bez ponownego emitowania frameworka, a potem nadpisuje tokeny zwykłym CSS — nie ma tu `@apply` ani drugiego builda narzędzi:
+`src/presentation/styles/admin.css` to niewielki arkusz stylów dołączany przez trasę `/admin` jako link `?url`. Pierwsza linia importuje arkusz MDXEditor do warstwy `components` (`@import "@mdxeditor/editor/style.css" layer(components);`). Dalej deklaruje `@reference "./globals.css"`, co pozwala Tailwindowi rozwiązać motyw bez ponownego emitowania frameworka, i nadpisuje tokeny zwykłym CSS — nie ma tu `@apply` ani drugiego builda narzędzi:
 
 ```css
 @layer base {
@@ -102,6 +137,10 @@ W interfejsie **nie ma obecnie przełącznika motywu.** Nic w `src/presentation`
   }
 
   [data-admin-main] {
+    --radius-sm: max(0px, calc(var(--radius) - 2px));
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 2px);
     --background: oklch(1 0 0);
     --foreground: oklch(0.141 0.005 285.823);
     /* … card, popover, muted, secondary, accent, border, input, ring … */
@@ -118,7 +157,7 @@ Konsola jest więc zawsze jasna, niezależnie od zapisanego motywu. Współdzia�
 | `adminShellCriticalStyle(pathname)`                 | Emituje to samo tło jako wbudowany `<style>` w `head`                 |
 | `useAdminLightTheme()` (`use-admin-light-theme.ts`) | Usuwa `dark` przy montowaniu i przywraca je przy opuszczaniu `/admin` |
 
-`admin.css` stylizuje też paski przewijania tabel danych i przemalowuje powiadomienia Sonner wewnątrz powłoki panelu, tak aby korzystały z palety panelu bocznego. `admin-layout.styles.ts` przechowuje współdzielone łańcuchy klas — `ADMIN_LAYOUT_BG_CLASS` (`bg-zinc-100`), `ADMIN_CARD_CLASS`, zestaw `ADMIN_STAT_*` oraz dwie klasy stron katalogu.
+`admin.css` stylizuje też paski przewijania tabel danych, przemalowuje powiadomienia Sonner wewnątrz powłoki panelu, tak aby korzystały z palety panelu bocznego, oraz mapuje zmienne MDXEditor `--base*` i `--accent*` na tokeny shadcn dla `.content-editor` i `.mdxeditor-popup-container`, z obwódką fokusu i zawijanym paskiem narzędzi edytora treści. `src/presentation/components/custom/pages/admin/_styles/admin-layout.styles.ts` przechowuje `ADMIN_SHELL_CHROME_BG` i współdzielone łańcuchy klas — `ADMIN_LAYOUT_BG_CLASS` (`bg-zinc-100`), `ADMIN_CARD_CLASS`, zestaw `ADMIN_STAT_*`, klasy treści strony (`ADMIN_PAGE_BODY_CLASS` i dwie klasy stron katalogu), klasy przycisków nagłówka, klasy siatki i kart pulpitu oraz klasy etykiety i natywnego selecta w dialogach.
 
 Arkusz sklepu, `storefront.css`, jest znacznie mniejszy: ustawia stan początkowy animacji `.reveal` i `.line-reveal` w obrębie `[data-landing-page]` i spłaszcza oba przy `prefers-reduced-motion: reduce`.
 
@@ -135,6 +174,8 @@ W sekcji `head` uruchamiają się trzy wbudowane skrypty, w tej kolejności, z `
 Skrypt panelu bocznego działa tylko na ścieżkach `/admin`. Kopiuje `sidebar_state` z `localStorage` do rocznego ciasteczka `Path=/`, żeby serwer mógł je odczytać, i ustawia `data-sidebar-collapsed` na `html`, gdy wartość to `0`. `adminSidebarCollapsedCriticalStyle(pathname)` emituje wtedy wbudowany CSS przypinający szczelinę i kontener panelu do `4rem`, co usuwa przeskok „rozwiń, potem zwiń" przy pełnym odświeżeniu. Na serwerze `getAdminSidebarDefaultOpen()` — `createIsomorphicFn`, który czyta ciasteczko żądania na serwerze i `localStorage` w przeglądarce — zasila prop `defaultOpen` w `SidebarProvider`.
 
 Skrypt tabel danych przepisuje zapisane szerokości kolumn na właściwości niestandardowe CSS o nazwach `--marte-dg-<slug-klucza>-<id-kolumny>` na `documentElement`, żeby zmieniona szerokość przetrwała SSR. Zobacz [Tabela danych](/docs/ui/data-table).
+
+Dwie kolejne preferencje zapisuje się po hydratacji, a nie wbudowanym skryptem: arkusze katalogu w panelu trzymają zmienioną szerokość w `localStorage` pod kluczem `admin-sheet-width:<klucz-trwałości>`, a `TranslationsProvider` zapisuje strefę czasową IANA przeglądarki w ciasteczku `marte_time_zone`, które serwer odczytuje jako wykrytą strefę odwiedzającego (zobacz [Internacjonalizacja](/docs/architecture/i18n-architecture)).
 
 ## Powiadomienia
 

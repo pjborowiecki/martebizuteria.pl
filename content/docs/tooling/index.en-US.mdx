@@ -12,14 +12,14 @@ There is no separate ESLint, Prettier, Jest or tsc invocation. `bun run check` i
 | Tool        | Version                | Comes from                    | Used for                                                      |
 | ----------- | ---------------------- | ----------------------------- | ------------------------------------------------------------- |
 | Bun         | `1.4.0`                | `packageManager`              | Install, script runner, `Bun.Transpiler` in `verify-build.ts` |
-| Vite+       | `1.0.0-rc.0`           | `devDependencies.vite-plus`   | `vp dev`, `vp build`, `vp test`, `vp check`, `vp staged`      |
-| Vitest      | `5.0.1`                | `overrides.vitest`            | Test runner behind `vp test`                                  |
+| Vite+       | `1.1.0`                | `devDependencies.vite-plus`   | `vp dev`, `vp build`, `vp test`, `vp check`, `vp staged`      |
+| Vitest      | `5.0.3`                | `overrides.vitest`            | Test runner behind `vp test`                                  |
 | TypeScript  | `~7.0.2`               | `devDependencies.typescript`  | Types, checked through Vite+ rather than a separate `tsc` run |
-| Wrangler    | `^4.138.0`             | `devDependencies.wrangler`    | D1 migrations, deploys, binding types                         |
+| Wrangler    | `^4.149.0`             | `devDependencies.wrangler`    | D1 migrations, deploys, binding types                         |
 | drizzle-kit | `^0.31.11`             | `devDependencies.drizzle-kit` | Migration generation, introspection, Studio                   |
-| Fumadocs    | `fumadocs-mdx@^15.4.4` | `dependencies`                | Compiles `content/` into `.source/`                           |
+| Fumadocs    | `fumadocs-mdx@^15.4.7` | `dependencies`                | Compiles `content/` into `.source/`                           |
 
-`package.json` also rewires Vite itself: `overrides.vite` points at `npm:@voidzero-dev/vite-plus-core@1.0.0-rc.0`, so the Vite that the project resolves is the one Vite+ ships.
+`package.json` also rewires Vite itself: `overrides.vite` points at `npm:@voidzero-dev/vite-plus-core@1.1.0`, so the Vite that the project resolves is the one Vite+ ships.
 
 ## In this chapter
 
@@ -34,9 +34,9 @@ There is no separate ESLint, Prettier, Jest or tsc invocation. `bun run check` i
 
 ## What is not here
 
-The default browser suite never calls Stripe. It settles payments through the emulator in the test Worker, so Stripe's own payment form, with its card, 3D Secure, BLIK and Przelewy24 flows, runs only in the opt-in `stripe-test-mode` project, when Stripe sandbox keys are set; see [Testing](/docs/tooling/testing#stripe-test-mode).
+The default browser suite never calls Stripe. It settles payments through the emulator in the test Worker, so Stripe's own payment form, with its card, 3D Secure, BLIK and Przelewy24 flows, runs only in the separate `stripe-test-mode` project, which needs Stripe sandbox keys. CI has them as repository secrets, so the `stripe-test-mode` job of `e2e-full.yml` pays through a Stripe sandbox on every run of that workflow: after each push to `main`, on Mondays at 03:15 UTC and when started by hand. Locally the project skips its specs until the keys are set; see [Testing](/docs/tooling/testing#stripe-test-mode).
 
-CI does not apply database migrations; the deploy scripts do, right before `wrangler deploy`, and production deploys only a commit that passed CI. See [CI/CD](/docs/tooling/ci-cd) and [Roll back a deploy](/docs/guides/roll-back-a-deploy).
+CI never migrates a deployed database. Each end-to-end job applies the full migration history only to its own local test database, through `bun run db:reset:test`; the deployed databases are migrated by the deploy scripts, right before `wrangler deploy`, and production deploys only a commit that passed CI. See [CI/CD](/docs/tooling/ci-cd) and [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
 ## First run
 

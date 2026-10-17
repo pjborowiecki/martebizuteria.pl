@@ -12,14 +12,14 @@ Nie ma tu osobnych wywołań ESLinta, Prettiera, Jesta czy `tsc`. `bun run check
 | Narzędzie   | Wersja                 | Skąd pochodzi                 | Do czego służy                                                          |
 | ----------- | ---------------------- | ----------------------------- | ----------------------------------------------------------------------- |
 | Bun         | `1.4.0`                | `packageManager`              | Instalacja, uruchamianie skryptów, `Bun.Transpiler` w `verify-build.ts` |
-| Vite+       | `1.0.0-rc.0`           | `devDependencies.vite-plus`   | `vp dev`, `vp build`, `vp test`, `vp check`, `vp staged`                |
-| Vitest      | `5.0.1`                | `overrides.vitest`            | Runner testów pod `vp test`                                             |
+| Vite+       | `1.1.0`                | `devDependencies.vite-plus`   | `vp dev`, `vp build`, `vp test`, `vp check`, `vp staged`                |
+| Vitest      | `5.0.3`                | `overrides.vitest`            | Runner testów pod `vp test`                                             |
 | TypeScript  | `~7.0.2`               | `devDependencies.typescript`  | Typy, sprawdzane przez Vite+, a nie osobnym wywołaniem `tsc`            |
-| Wrangler    | `^4.138.0`             | `devDependencies.wrangler`    | Migracje D1, wdrożenia, typy bindingów                                  |
+| Wrangler    | `^4.149.0`             | `devDependencies.wrangler`    | Migracje D1, wdrożenia, typy bindingów                                  |
 | drizzle-kit | `^0.31.11`             | `devDependencies.drizzle-kit` | Generowanie migracji, introspekcja, Studio                              |
-| Fumadocs    | `fumadocs-mdx@^15.4.4` | `dependencies`                | Kompiluje `content/` do `.source/`                                      |
+| Fumadocs    | `fumadocs-mdx@^15.4.7` | `dependencies`                | Kompiluje `content/` do `.source/`                                      |
 
-`package.json` przestawia także samo Vite: `overrides.vite` wskazuje na `npm:@voidzero-dev/vite-plus-core@1.0.0-rc.0`, więc Vite, które projekt rozwiązuje, jest tym dostarczanym przez Vite+.
+`package.json` przestawia także samo Vite: `overrides.vite` wskazuje na `npm:@voidzero-dev/vite-plus-core@1.1.0`, więc Vite, które projekt rozwiązuje, jest tym dostarczanym przez Vite+.
 
 ## W tym rozdziale
 
@@ -34,9 +34,9 @@ Nie ma tu osobnych wywołań ESLinta, Prettiera, Jesta czy `tsc`. `bun run check
 
 ## Czego tutaj nie ma
 
-Domyślny zestaw testów przeglądarkowych nigdy nie wywołuje Stripe'a. Rozlicza płatności przez emulator w testowym Workerze, więc sam formularz płatności Stripe'a, z obsługą karty, 3D Secure, BLIK-a i Przelewy24, działa tylko we włączanym osobno projekcie `stripe-test-mode`, gdy ustawione są klucze sandboxa Stripe'a; zobacz [Testy](/docs/tooling/testing#tryb-testowy-stripe).
+Domyślny zestaw testów przeglądarkowych nigdy nie wywołuje Stripe'a. Rozlicza płatności przez emulator w testowym Workerze, więc sam formularz płatności Stripe'a, z obsługą karty, 3D Secure, BLIK-a i Przelewy24, działa tylko w osobnym projekcie `stripe-test-mode`, który potrzebuje kluczy sandboxa Stripe'a. CI ma je w sekretach repozytorium, więc zadanie `stripe-test-mode` w `e2e-full.yml` płaci przez sandbox Stripe'a przy każdym uruchomieniu tego przepływu: po każdym pushu do `main`, w poniedziałki o 03:15 UTC i przy uruchomieniu ręcznym. Lokalnie projekt pomija swoje specyfikacje, dopóki klucze nie są ustawione; zobacz [Testy](/docs/tooling/testing#tryb-testowy-stripe).
 
-CI nie nakłada migracji bazy danych; robią to skrypty wdrożeniowe, tuż przed `wrangler deploy`, a produkcja wdraża tylko commit, który przeszedł CI. Zobacz [CI/CD](/docs/tooling/ci-cd) i [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
+CI nigdy nie migruje wdrożonej bazy. Każde zadanie end-to-end nakłada całą historię migracji wyłącznie na własną lokalną bazę testową, przez `bun run db:reset:test`; wdrożone bazy migrują skrypty wdrożeniowe, tuż przed `wrangler deploy`, a produkcja wdraża tylko commit, który przeszedł CI. Zobacz [CI/CD](/docs/tooling/ci-cd) i [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
 ## Pierwsze uruchomienie
 

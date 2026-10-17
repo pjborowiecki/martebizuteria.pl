@@ -7,9 +7,9 @@ description: "The steps a page request, a server function call and a webhook go 
 
 1. **Four short-circuits.** `src/server.ts` checks the pathname first. `/sitemap.xml` and `/robots.txt` are generated from `src/lib/seo.ts`, the sitemap from the pages `listSitemapPages` in `src/lib/sitemap.ts` reads from D1. `ROUTES.API_REALTIME.ADMIN_WS` and `ROUTES.API_REALTIME.STOREFRONT_WS` are handed to `handleRealtimeInvalidationWebSocket`. None of these loads React.
 2. **Locale canonicalization.** `resolveLocale` runs for `GET` and `HEAD` document requests — decided by `sec-fetch-dest`, falling back to the `Accept` header — outside `/api`, `/rpc`, `/_serverFn`, `/assets` and `/forms`. A language-only or redundant default-locale prefix is redirected with `301` to its canonical form: `/pl/products` and `/pl-PL/products` both become `/products`. When the URL locale differs from the `marte_locale` cookie, the cookie is queued for the response instead.
-3. **The execution context is captured.** `src/server.ts` draws a fresh Content-Security-Policy nonce for the request. The Start handler is invoked inside `executionContextStorage.run({ waitUntil }, …)` and receives `{ env, nonce, passThroughOnException, waitUntil }` as its request context, plus `responseLinkHeader: true`.
+3. **The execution context is captured.** `src/server.ts` draws a fresh Content-Security-Policy nonce for the request. The Start handler is invoked inside `executionContextStorage.run({ waitUntil }, …)` and receives `{ edgeTimeZone, env, nonce, passThroughOnException, waitUntil }` as its request context, plus `responseLinkHeader: true`. `edgeTimeZone` is `request.cf?.timezone`, the IANA time zone Cloudflare's edge assigns to the visitor's location.
 4. **Routing.** `getRouter` creates a new router and a new `QueryClient`, and copies the request's nonce into `ssr.nonce` so Start stamps it on every script it renders. The router's `rewrite.input` de-localizes the URL before matching, so `/en-US/products` matches the `/_storefront/products` route, and `rewrite.output` re-applies the prefix when generating links.
-5. **Root `beforeLoad`.** `__root.tsx` resolves the locale with `getCurrentLocale()`, collects the namespaces of every matched route with `getRouteNamespaces(matches)` and preloads them into the request's `QueryClient`. It returns `{ internalPathname, locale }` as the root route context.
+5. **Root `beforeLoad`.** `__root.tsx` resolves the locale with `getCurrentLocale()`, collects the namespaces of every matched route with `getRouteNamespaces(matches)` and preloads them into the request's `QueryClient`. In parallel it awaits `context.queryClient.query(displayPreferencesQuery)`, which returns the formatting locale and time zone detected from the request (`Accept-Language`, the `marte_time_zone` cookie, `edgeTimeZone`) and the ones saved on the signed-in user; see [Display preferences](/docs/architecture/i18n-architecture#display-preferences). It returns `{ internalPathname, locale }` as the root route context.
 6. **Guards.** Layout `beforeLoad` functions run next: `requireAdmin` on `/admin`, `requireCustomer` on `/account`, `redirectIfSignedIn` on `/auth`. They only read the session, through `loadRouteSession`, which calls `context.queryClient.query` with `getCurrentSessionQuery`, and throw a `redirect` when access is not allowed; otherwise `requireAdmin` and `requireCustomer` return `{ user }` as route context. The session stays in the request's `QueryClient`, so it is serialized with the rest of the cache and an `/account` or `/admin` page renders signed-in on the server.
 7. **Loaders** run in parallel. A typical loader resolves its page metadata namespace and its data queries together, marking the data query `staleTime: "static"` so it is not refetched during the same render:
 
@@ -22,16 +22,16 @@ description: "The steps a page request, a server function call and a webhook go 
 
    Loaders return `{ title, description }` — `satisfies PageMeta` — which `pageHead` from `src/lib/seo.ts` turns into the page's `<title>`, description and Open Graph tags; an optional `image` becomes the page's social image and an optional `structuredData` its JSON-LD. Secondary data can be deferred with `defer()` and awaited in the component with `<Await>`, as the product page does for related products.
 
-8. **Rendering.** `RootDocument` renders `<html lang={locale}>`, inlines the theme, sidebar and data-grid init scripts, adds the storefront critical fonts on non-admin routes, then `<HeadContent />`. The body is wrapped in `TranslationsProvider` and `ThemesProvider`. `setupRouterSsrQueryIntegration` serializes the server query cache into the HTML.
+8. **Rendering.** `RootDocument` renders `<html lang={locale}>`, inlines the theme, sidebar and data-grid init scripts, adds the storefront critical fonts on non-admin routes, then `<HeadContent />`. The body is wrapped in `TranslationsProvider` and `ThemesProvider`. `TranslationsProvider` reads `displayPreferencesQuery` with `useSuspenseQuery`, resolves it (a saved preference wins over a detected one), passes the time zone to use-intl's `IntlProvider` as `timeZone` and provides the formatting locale and time zone through `DisplayPreferencesContext`. `setupRouterSsrQueryIntegration` serializes the server query cache into the HTML.
 9. **Response headers.** `responseLinkHeader: true` makes the Start handler emit a `Link` preload header for the assets it knows about. If `resolveLocale` asked for a cookie, `src/server.ts` clones the response and appends `Set-Cookie`. `withSecurityHeaders` then copies the response once more and sets the Content-Security-Policy that allows this request's nonce, the framing, sniffing, referrer and permissions headers, and HSTS on a deployed environment. The sitemap, `robots.txt` and the locale redirect get the same headers; only the WebSocket upgrades skip them. See [Security model](/docs/architecture/security-model#response-headers).
-10. **Hydration.** The browser hydrates with the serialized cache. `TranslationsProvider` writes the locale cookie from the client as well, so a locale reached by a client-side navigation stays sticky. In the browser, `getRouter` also installs `clearCacheOnUserChange`, which removes every cached query except the session and the message catalogues when the session switches to a different user; the server skips it because every request starts with an empty `QueryClient`. Later navigations run guards and loaders in the browser and fetch through server functions.
+10. **Hydration.** The browser hydrates with the serialized cache. `TranslationsProvider` writes the locale cookie from the client as well, so a locale reached by a client-side navigation stays sticky. It also writes the browser's IANA time zone into the `marte_time_zone` cookie, so the next server render detects it, and, when that zone differs from the detected one, patches `detected.timeZone` in the cached `displayPreferencesQuery`. In the browser, `getRouter` also installs `clearCacheOnUserChange`, which removes every cached query except the session, the display preferences and the message catalogues when the session switches to a different user, then invalidates the display preferences so the new user's saved ones load; the server skips it because every request starts with an empty `QueryClient`. Later navigations run guards and loaders in the browser and fetch through server functions.
 
 ```text
 GET /en-US/products/pierscionek-z-perla
   src/server.ts          sitemap? robots? ws? → no; resolveLocale → canonical
   executionContextStorage.run({ waitUntil })
   router rewrite.input   /products/pierscionek-z-perla
-  __root beforeLoad      getCurrentLocale, preloadNamespaces(root + route)
+  __root beforeLoad      getCurrentLocale, preloadNamespaces(root + route), displayPreferencesQuery
   _storefront            no guard, loads storefront.css
   route loader           getProductQuery (staleTime: "static") + pages.product messages
                          defer(getRelatedProductsQuery)
@@ -42,7 +42,7 @@ GET /en-US/products/pierscionek-z-perla
 ## Server function call
 
 1. The build replaced the browser-side call with an RPC request. `shouldIgnorePath` matches `/_serverFn`, so `resolveLocale` skips it and `getCurrentLocale()` falls back to the `marte_locale` cookie instead of the URL.
-2. Middleware runs in declared order. `withRequest` captures `getRequest().headers` into context and wraps the rest in a `.catch(handleRequestError)`. `withRateLimit(kind, limit)` counts the attempt. `authorized(permission?)` loads the session and checks the permission.
+2. Middleware runs in declared order. `withRequest` captures `getRequest().headers` into context and wraps the rest in a `.catch(handleRequestError)`. `withRateLimit(kind, limit)` counts the attempt. `authorized(permission?)` loads the session and answers `UNAUTHORIZED` without one. With a permission it answers `FORBIDDEN` when the role lacks it, or when `needsTwoFactorSetup` reports an admin who has not enabled two-factor authentication in a build that requires it (production and the E2E test build).
 3. The validator parses the input with the module's Zod schema.
 4. The handler queries D1 or calls a provider, schedules any audit work in the background, and returns plain data. An email the response reports on is awaited, and the same promise is handed to `waitUntil` so the send finishes if the caller disconnects.
 5. Errors are normalized on the way out. `handleRequestError` first re-throws a TanStack `notFound()` unchanged (`isNotFound`), so a route answers 404 instead of a 500. It then re-throws an `AppError` with its code and, when its message is a reason code such as `WISHLIST_FULL`, that reason, maps a Better Auth API error to `AUTH_API_ERROR` with a translation key, maps a `ZodError` to `VALIDATION`, and turns anything else into `INTERNAL_ERROR` after logging the original.
@@ -52,14 +52,17 @@ GET /en-US/products/pierscionek-z-perla
 POST /_serverFn/…  (shipOrder)
   withRequest      capture headers, install the error normalizer
   authorized({ order: ["update"] })
-                   getRequestSession → hasPermission → context.auth
-  validator        orderZodSchemas.adminOrderIdInput.parse
-  handler          assertOrderActionState → UPDATE order
+                   getRequestSession → hasPermission, needsTwoFactorSetup → context.auth
+  validator        orderZodSchemas.adminShipOrderInput.parse
+  handler          assertOrderActionState → transitionOrder (conditional UPDATE order)
                    recordOrderShippedAudit      → AUDIT_LOG_QUEUE (waitUntil)
-                   sendOrderShippedEmail         → Resend, outcome → AUDIT_LOG_QUEUE
-                                                   (waitUntil, then awaited)
-  response         { ok: true, orderId, shippedEmailSent }  or  AppError code
+                   announceOrderShipment        → sendOrderShippedEmail → Resend,
+                                                  outcome → AUDIT_LOG_QUEUE
+                                                  (waitUntil, then awaited)
+  response         { email: { kind, status }, ok: true, orderId }  or  AppError code
 ```
+
+`transitionOrder` updates the row only while its fulfilment status is one of the expected ones (`SHIPPABLE_FULFILLMENT_STATUSES` for a shipment) and the order is not cancelled, so of two admins shipping at once, one gets `CONFLICT` with `ORDER_INVALID_STATE`. `announceOrderShipment` claims the shipped email on the row (`shippedEmailAt`) before sending it; when it was already sent, it sends the tracking email for a tracking number the customer has not been told yet, or reports `alreadySent`. `email.status` is `sent`, `failed` or `alreadySent`.
 
 ## Webhook request
 
@@ -67,12 +70,17 @@ POST /_serverFn/…  (shipOrder)
 
 1. The handler requires a `stripe-signature` header and `env.STRIPE_WEBHOOK_SECRET`; a missing either is a `400`.
 2. `stripe.webhooks.constructEventAsync` verifies the signature. A failure is logged and answered `400`.
-3. The event type is looked up in `webhookHandlers`. An unhandled type is logged with `console.info` and acknowledged `{ received: true }`, so Stripe stops retrying it.
-4. A handler that throws is logged and answered `500`, which makes Stripe retry. `sendIncidentAlert` is handed to `scheduleBackgroundWork` on the way, so `RESEND_EMAIL_FROM` hears of each failed event once, however often Stripe retries it, without delaying the answer.
+3. An event from the other Stripe mode is acknowledged `{ received: true }` without being handled: `requiredStripeMode` accepts only live events in production and only test events everywhere else, and the mismatch is logged with `console.error`. A test-mode event whose object carries a `metadata.deployment` naming another deployment is acknowledged the same way and logged with `console.info`; `createStripeSession` stamps `stripeDeploymentOf(env.APP_ENV)` on every Checkout Session and its PaymentIntent, and development and preview share `martebizuteria-preview`.
+4. The event type is looked up in `webhookHandlers`. An unhandled type is logged with `console.info` and acknowledged `{ received: true }`, so Stripe stops retrying it.
+5. A handler that throws is logged and answered `500`, which makes Stripe retry. `sendIncidentAlert` is handed to `scheduleBackgroundWork` on the way, so `RESEND_EMAIL_FROM` hears of each failed event once, however often Stripe retries it, without delaying the answer.
 
-`GET /api/health` reads D1, KV and R2 and answers `200` or `503` for an uptime monitor; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
+`GET /api/webhooks/stripe` answers `405 Method Not Allowed` with `Allow: POST`.
 
-`GET|POST /api/auth/$` is the third handler. It delegates to `handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts`, which wraps `auth.handler(request)`: before the call it clones the body to read the sign-in email and resolves the session that is about to be destroyed; after it, a failed `POST /sign-in/email` becomes an `auth.login_failed` event and a successful `POST /sign-out` becomes an `auth.logout` event. The successful-login event comes from a different place — the `signInAudit` plugin's after hook in `auth.audit.server.ts`, which records a login whenever a sign-in path produces a session, unless that session only continues the one the request arrived with (a confirmed e-mail change or two-factor set-up).
+`GET /api/health` reads D1, KV and R2 and answers `200` or `503` with `Cache-Control: no-store` for an uptime monitor; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts).
+
+`GET|POST /api/auth/$` delegates to `handleAuthRequestWithAudit` in `src/modules/audit-log/audit-log.auth.server.ts`, which wraps `auth.handler(request)`: before the call it clones the body to read the sign-in email and resolves the session that is about to be destroyed; after it, a failed `POST /sign-in/email` becomes an `auth.login_failed` event and a successful `POST /sign-out` becomes an `auth.logout` event. The successful-login event comes from a different place — the `signInAudit` plugin's after hook in `auth.audit.server.ts`, which records a login whenever a sign-in path produces a session, unless that session only continues the one the request arrived with (a confirmed e-mail change or two-factor set-up).
+
+The other HTTP handlers are `POST /api/webhooks/inpost`, which takes ShipX status events for the configured InPost organization (`GET` answers `{ ready: true }`), and `POST /api/newsletter/unsubscribe`, the one-click target of the newsletter's `List-Unsubscribe` header, which takes the subscriber's token from the query string.
 
 ## Queue message
 
@@ -81,7 +89,7 @@ The audit log is written by the queue consumer, not by the request that produced
 1. A recorder calls `scheduleAuditLog` or `scheduleAuditLogFromRequest`, which mints the row id with `uuidv7()`, unless the recorder names it, and stamps `createdAt` with `Date.now()` at enqueue time, so ordering survives batching.
 2. `scheduleBackgroundWork` hands the `env.AUDIT_LOG_QUEUE.send(...)` promise to `waitUntil`.
 3. Cloudflare delivers a batch of up to 50 messages to the `queue` export in `src/server.ts`.
-4. `processAuditLogQueueBatch` inserts the whole batch with `insertAuditLogs`, which skips an id that is already stored, acks each message, then publishes a realtime invalidation for `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` and `.STATS`, plus `ORDER_QUERY_KEYS.ADMIN.ORDERS` when the batch carries an action from an order timeline, so open admin tabs refetch their order list, stats and order page and pick up a failed order email. If the insert throws, every message is retried and `RESEND_EMAIL_FROM` is emailed, at most once an hour for the queue. After three retries the messages move to the dead-letter queue, whose consumer runs each one through the same function on its own, so the rest of a batch is written even when one message cannot be, and a message delivered again after its row was written is skipped instead of failing; a message that still fails three times there is dropped.
+4. `processAuditLogQueueBatch` inserts the whole batch with `insertAuditLogs`, which skips an id that is already stored, acks each message, then publishes a realtime invalidation for `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` and `.STATS`, plus `ORDER_CHANGE_ADMIN_QUERY_KEYS` (`ORDER_QUERY_KEYS.ADMIN.ORDERS` and `ADMIN_DASHBOARD_QUERY_KEYS.ALL`) when the batch carries an action from an order timeline, so open admin tabs refetch their order list, stats, order page and overview and pick up a failed order email. If the insert throws, every message is retried and `RESEND_EMAIL_FROM` is emailed, at most once an hour for the queue. After three retries the messages move to the dead-letter queue, whose consumer runs each one through the same function on its own, so the rest of a batch is written even when one message cannot be, and a message delivered again after its row was written is skipped instead of failing; a message that still fails three times there is dropped.
 
 ## Related pages
 

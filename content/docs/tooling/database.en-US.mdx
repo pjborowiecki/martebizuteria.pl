@@ -8,26 +8,28 @@ M'Arte stores everything in Cloudflare D1 (SQLite) and reaches it through Drizzl
 - **drizzle-kit** reads the TypeScript schema and _writes_ SQL migration files. It never applies them in this repository.
 - **Wrangler** _applies_ migration files to a D1 database and records them in the `d1_migrations` table it maintains itself.
 
-Keeping those apart matters: `bun run db:generate` is safe and offline, while every `db:migrate:*` script talks to a real database.
+Keeping those apart matters: `bun run db:generate` is safe and offline, while every `db:migrate:*` script changes a database, and all of them but `db:migrate:local` and `db:migrate:test` a remote one.
 
 ## Where the schema lives
 
-Each feature module owns its table. The schema file sits at the module root and exports the table plus its relations:
+Each feature module owns its table. The schema file sits at the module root and exports its tables plus their relations; `order.schema.ts` also holds `order_number_sequence`:
 
 ```
 src/modules/order/
-  order.schema.ts        → export const order, export const orderRelations
+  order.schema.ts        → export const order, orderNumberSequence, orderRelations
   order.types.ts
   order.zod.ts
   order.accessors.ts
   use-cases/
 ```
 
-`src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports every table and relation object. It is the only file drizzle-kit reads, and the only thing that makes a new table visible to migration generation:
+`src/integrations/drizzle-orm/drizzle.schemas.ts` re-exports 41 of the 42 tables and all 32 relation objects; ten tables, such as `audit_log` and `store_setting`, declare no relations. It is the only file drizzle-kit reads, and the only thing that makes a new table visible to migration generation:
 
 ```ts
-export { order, orderRelations } from "~/src/modules/order/order.schema"
+export { order, orderNumberSequence, orderRelations } from "~/src/modules/order/order.schema"
 ```
+
+The table it leaves out is `storefrontSearch`. `storefront_search` is an FTS5 virtual table that the hand-written migration `20261002100000_storefront_search.sql` creates together with the triggers that fill it, and its schema file only gives the search accessors typed columns.
 
 `src/integrations/drizzle-orm/drizzle.database.ts` builds the single runtime client:
 
@@ -70,17 +72,19 @@ Wrangler adds one more, `d1_migrations`, which is bookkeeping and not part of th
 
 ### Shared column helpers
 
-`src/integrations/drizzle-orm/drizzle.utils.ts` holds the conventions every table follows:
+`src/integrations/drizzle-orm/drizzle.utils.ts` holds the shared column conventions and SQL helpers:
 
-| Export                               | What it does                                                                                                                                                                                                 |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `timestamp(name)`                    | `integer(name, { mode: "timestamp_ms" })` — all times are epoch milliseconds                                                                                                                                 |
-| `timestampNow(name)`                 | The same, defaulting to `(unixepoch() * 1000)` in SQL and `new Date()` in JS, `notNull`                                                                                                                      |
-| `timestamps()`                       | Spreads `created_at` and `updated_at`; `updated_at` carries `$onUpdateFn`                                                                                                                                    |
-| `UUID_STRING_LENGTH`                 | `36`, the length used for id columns                                                                                                                                                                         |
-| `calendarPeriodKey(column, periods)` | The key of the last of `periods` (`{ key, start }`) that starts at or before `column`, bound as one JSON parameter, for grouping by days or months in a time zone, such as the admin dashboard's Polish days |
+| Export                               | What it does                                                                                                                                                                                                                                                                     |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `timestamp(name)`                    | `integer(name, { mode: "timestamp_ms" })` — all times are epoch milliseconds                                                                                                                                                                                                     |
+| `timestampNow(name)`                 | The same, defaulting to `(unixepoch() * 1000)` in SQL and `new Date()` in JS, `notNull`                                                                                                                                                                                          |
+| `timestamps()`                       | Spreads `created_at` and `updated_at`; `updated_at` carries `$onUpdateFn`                                                                                                                                                                                                        |
+| `UUID_STRING_LENGTH`                 | `36`, the length used for id columns                                                                                                                                                                                                                                             |
+| `calendarPeriodKey(column, periods)` | The key of the last of `periods` (`{ key, start }`) that starts at or before `column`, bound as one JSON parameter, for grouping by days or months in a time zone, such as the admin dashboard's order chart and a customer's monthly spending in the viewer's display time zone |
+| `inJsonList(column, values)`         | `column in (select value from json_each(...))`, with the whole list bound as one JSON parameter, so a list of any length uses one of D1's 100 bound parameters                                                                                                                   |
+| `notInJsonList(column, values)`      | The same with `not in`                                                                                                                                                                                                                                                           |
 
-A new table ends with `...timestamps()` and uses `timestamp(...)` for every other date column. Primary keys are `text("id").primaryKey().$defaultFn(() => crypto.randomUUID())`.
+A new table ends with `...timestamps()` and uses `timestamp(...)` for every other date column. 35 of the 42 tables do; `audit_log`, `category_on_product`, `collection_on_product`, `order_number_sequence`, `price_history`, `rate_limit` and `storefront_search` have no `timestamps()`. 21 tables generate their primary key with `text("id").primaryKey().$defaultFn(() => crypto.randomUUID())`. The other text keys come from the code that writes the row — Better Auth, for example, issues UUIDv7 ids through `generateId` in `auth.server.ts` — and a few tables use another key: an integer `id` on `price_history`, `period` on `order_number_sequence`, a composite key of product and category or collection on `category_on_product` and `collection_on_product`, and none on `storefront_search`.
 
 ### Batches
 
@@ -100,7 +104,9 @@ export const runDrizzleBatch = async (statements: readonly DrizzleBatchStatement
 }
 ```
 
-The destructuring exists because `db.batch` requires a non-empty tuple. Anything that must happen all-or-nothing — order fulfilment, inventory compensation — goes through `runDrizzleBatch`.
+The destructuring exists because `db.batch` requires a non-empty tuple. `runDrizzleBatch` returns nothing, so it carries the all-or-nothing writes whose results are not needed, such as order fulfilment, the inventory release and the catalog editors' saves. Code that reads what a batch returns calls `db.batch` itself: the guarded stock reservation, creating and releasing a checkout, cancelling, restocking and refunding an order, and the admin lists that fetch a page of rows and its count in one round trip.
+
+The same file keeps statements under D1's limit of 100 bound parameters (`D1_MAX_BOUND_PARAMETERS`): `chunkByBoundParameters` splits rows into chunks that fit, `insertRowChunks` sizes them by the table's column count for multi-row inserts, and `chunkRankUpdates` builds `case` expressions for rank updates.
 
 ## Generating a migration
 
@@ -131,7 +137,7 @@ export default defineConfig({
 
 Generated file names look like `20260612120000_product_variants_enhanced.sql`. Many migrations in the tree are hand-named instead (`20260604120000_catalog_indexes_and_integrity.sql`, `20260925000000_locale_maps_bcp47.sql`, `20260927120000_fix_silver_collection_handle.sql`) because they were written by hand for index work or data repair that a schema diff cannot express. Wrangler applies both kinds identically — it simply runs the files in the directory in name order.
 
-> The drizzle-kit bookkeeping has drifted from the directory. At the time of writing `migrations/` holds 101 `.sql` files, `meta/_journal.json` lists 52 entries, and `meta/` contains 37 snapshots. Forty-nine files are missing from the journal, including everything after `20260930151544_collection_short_descriptions`. That means `db:generate` diffs against the newest _snapshot_, not against what the directory actually contains, so it can emit SQL for a change that a later hand-written migration already made. Read every generated migration and delete statements that describe work already applied.
+> The drizzle-kit bookkeeping has drifted from the directory. At the time of writing `migrations/` holds 101 `.sql` files, `meta/_journal.json` lists 52 entries, and `meta/` contains 37 snapshots. Forty-nine files are missing from the journal, including all 43 after `20260930151544_collection_short_descriptions`. That means `db:generate` diffs against the newest _snapshot_, not against what the directory actually contains, so it can emit SQL for a change that a later hand-written migration already made. Read every generated migration and delete statements that describe work already applied.
 
 Always read the generated SQL before committing it for a second reason too: SQLite cannot drop or alter a column in place, so drizzle-kit rewrites the whole table. On a live database that is the step most likely to lose data.
 
@@ -142,9 +148,10 @@ bun run db:migrate:local        # local D1 in .wrangler, development environment
 bun run db:migrate:development  # remote — the preview database
 bun run db:migrate:preview      # remote preview
 bun run db:migrate:production   # remote production
+bun run db:migrate:test         # local test D1 in .wrangler/test
 ```
 
-Each is `vp exec wrangler d1 migrations apply DB --env <environment>` with `--local` or `--remote`. Wrangler reads the directory from `wrangler.jsonc`, where every environment sets `"migrations_dir": "./src/integrations/drizzle-orm/migrations"`.
+Each is `vp exec wrangler d1 migrations apply DB --env <environment>` with `--local` or `--remote`; `db:migrate:test` also passes `--persist-to .wrangler/test`. `bun run db:reset:test` deletes `.wrangler/test` and runs `db:migrate:test` and `db:seed:test`, which gives the end-to-end suite a fresh database; see [Testing](/docs/tooling/testing#data). Wrangler reads the directory from `wrangler.jsonc`, where every environment sets `"migrations_dir": "./src/integrations/drizzle-orm/migrations"`.
 
 `bun run db:migrate` with no suffix is an alias for `db:migrate:preview`, which is **remote**. There is no dry run; check which environment you mean first.
 
@@ -162,25 +169,28 @@ CI migrates nothing. `deploy:preview` and `deploy:production` run `db:migrate:pr
 
 ### Which database is which
 
-| Environment   | D1 `database_name`       | Notes                                                    |
-| ------------- | ------------------------ | -------------------------------------------------------- |
-| `development` | `martebizuteria-preview` | Same database as preview, with `"remote": true` bindings |
-| `preview`     | `martebizuteria-preview` | Shared by every preview deployment                       |
-| `production`  | `martebizuteria`         | The live shop                                            |
+| Environment   | D1 `database_name`       | Notes                                                                                   |
+| ------------- | ------------------------ | --------------------------------------------------------------------------------------- |
+| `development` | `martebizuteria-preview` | Same database as preview, with `"remote": true` bindings                                |
+| `preview`     | `martebizuteria-preview` | Shared by every preview deployment                                                      |
+| `production`  | `martebizuteria`         | The live shop                                                                           |
+| `test`        | `martebizuteria-test`    | Local only (`"remote": false`), persisted in `.wrangler/test`, for the end-to-end suite |
 
-`development` and `preview` point at the same D1 database and the same KV namespace and R2 bucket, `martebizuteria-preview`; production has its own of each. `bun run dev` therefore writes to the preview database, and `bun run db:migrate:local` does **not** affect what the dev server sees — `db:migrate:development` does.
+`development` and `preview` point at the same D1 database and the same KV namespace and R2 bucket, `martebizuteria-preview`; production has its own of each, and `test` has local ones under the `martebizuteria-test` names with placeholder ids. `bun run dev` therefore writes to the preview database, and `bun run db:migrate:local` does **not** affect what the dev server sees — `db:migrate:development` does.
 
 ## Push, pull and Studio
 
 These use drizzle-kit's D1 HTTP driver, so they need `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID` and `CLOUDFLARE_ACCESS_TOKEN` from the matching environment file. That is why they are the only scripts that opt into Bun's env loading with `bun --env-file=.env.<environment>` — `bunfig.toml` sets `env = false` globally.
 
-| Script                           | Runs                                            |
-| -------------------------------- | ----------------------------------------------- |
-| `db:push`, `db:push:development` | `drizzle-kit push` against the preview database |
-| `db:push:preview`                | `drizzle-kit push` against the preview database |
-| `db:push:production`             | `drizzle-kit push` against production           |
-| `db:pull`, `db:introspect:*`     | `drizzle-kit introspect`                        |
-| `db:studio`, `db:studio:*`       | `drizzle-kit studio`                            |
+| Script                                           | Runs                                                  |
+| ------------------------------------------------ | ----------------------------------------------------- |
+| `db:push`, `db:push:development`                 | `drizzle-kit push` against the preview database       |
+| `db:push:preview`                                | `drizzle-kit push` against the preview database       |
+| `db:push:production`                             | `drizzle-kit push` against production                 |
+| `db:pull`, `db:introspect:development`           | `drizzle-kit introspect` against the preview database |
+| `db:introspect:preview`                          | `drizzle-kit introspect` against the preview database |
+| `db:pull:production`, `db:introspect:production` | `drizzle-kit introspect` against production           |
+| `db:studio`, `db:studio:*`                       | `drizzle-kit studio`                                  |
 
 > `drizzle-kit push` applies the schema diff directly and bypasses the migration files entirely, so the database ends up in a state no committed migration describes. Prefer `db:generate` plus `db:migrate:*`. `db:push:production` in particular has no safety net.
 
@@ -190,7 +200,7 @@ Drizzle Studio (`bun run db:studio`) opens a browser UI against the environment'
 
 ## Seeds
 
-`src/integrations/drizzle-orm/seeds/` holds eleven SQL files, all built from `INSERT OR IGNORE` statements with fixed UUIDs:
+`src/integrations/drizzle-orm/seeds/` holds eleven SQL files that write rows with fixed UUIDs:
 
 ```
 delivery-methods.sql   product-categories.sql   product-collections.sql
@@ -199,9 +209,13 @@ inventory.sql          product-images.sql       category-on-product.sql
 collection-on-product.sql                       attribute-on-product.sql
 ```
 
-`db:seed:preview` and `db:seed:production` chain `wrangler d1 execute DB --env <environment> --remote --file=<each file>` in that order — dependency order, since the join tables reference products, categories and collections that the earlier files create.
+Only `delivery-methods.sql`, which adds the two couriers and the delivery methods, uses `INSERT OR IGNORE` and leaves existing rows as they are. The other ten first delete the rows that would collide with the seed — rows carrying a seeded handle or SKU under another id, the two seeded products' other images and attribute links, all their category and collection links, and other stock rows of their variants — and then write their rows over any with the same id: eight with `INSERT … ON CONFLICT(id) DO UPDATE`, and `category-on-product.sql` and `collection-on-product.sql` with `INSERT OR REPLACE`.
 
-> **Do not run `bun run db:seed:preview` or `bun run db:seed:production`.** The seed files are stale relative to the live catalog, and although the statements are `INSERT OR IGNORE`, running them would reintroduce removed fixture rows and fight the real data that is now managed through the admin console. There is no local-only seed script.
+`db:seed:preview` and `db:seed:production` chain `wrangler d1 execute DB --env <environment> --remote --file=<each file>` in that order — dependency order, since the join tables reference products, categories and collections that the earlier files create. `bun run db:seed` with no suffix is an alias for `db:seed:preview`.
+
+> **Do not run `bun run db:seed`, `bun run db:seed:preview` or `bun run db:seed:production`.** On a live database they would delete the rows they collide with, overwrite the seeded products, variants, categories, collections, attributes and images with the seed's values, which fights the real data now managed through the admin console, and set both seeded variants' stock back to 99 available and 0 reserved.
+
+`bun run db:seed:test` is the local seed. It runs `scripts/seed-test.ts`, which loads the same eleven files plus the end-to-end accounts into the local `test` database in `.wrangler/test`; see [Testing](/docs/tooling/testing#data).
 
 ## Changing the schema safely
 
@@ -209,8 +223,8 @@ collection-on-product.sql                       attribute-on-product.sql
 2. Add the table to `drizzle.schemas.ts` if it is new.
 3. Update the module's `*.zod.ts` and `*.types.ts` so validation and types follow the column.
 4. Run `bun run db:generate` and read the SQL it produced.
-5. Update the module's `*.schema.test.ts` — the column list, foreign keys and relations are asserted explicitly, so the test will fail until you do.
-6. Update the `create table` statements in any `*.integration.test.ts` that touches the table; the integration suite builds its own SQLite tables and does not read the migration files.
+5. Update the module's `*.schema.test.ts` if it has one (28 of the 39 module schema files do) — the column list and foreign keys, and in some the relations, are asserted explicitly, so the test will fail until you do.
+6. Update the `create table` statements in any `*.integration.test.ts` that writes its own tables for the table you changed. The integration suites that call `applyMigrationHistory` replay every migration file, the new one included.
 7. Run `bun run check` and `bun run test`.
 8. Keep the migration backward compatible with the Worker deployed before it: add, do not drop or rename, and remove what is no longer read in a later release. The deploy applies it right before `wrangler deploy`; see [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 

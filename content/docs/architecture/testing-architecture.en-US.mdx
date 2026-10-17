@@ -7,13 +7,13 @@ description: "The three Vitest projects, the in-process server-function bridge, 
 
 `vp test run` runs Vitest through Vite+ with three projects defined in `vite.config.ts`. Tests live in a `__test__` folder next to the code they cover and import their test APIs from `vite-plus/test`.
 
-| Project       | Environment | Files                                      | Count |
-| ------------- | ----------- | ------------------------------------------ | ----- |
-| `node`        | Node        | `*.test.{ts,tsx}`, excluding the two below | 426   |
-| `integration` | Node        | `*.integration.test.ts`                    | 98    |
-| `component`   | jsdom       | `*.component.test.{ts,tsx}`                | 576   |
+| Project       | Environment | Files                                             | Count |
+| ------------- | ----------- | ------------------------------------------------- | ----- |
+| `node`        | Node        | `*.{test,spec}.{ts,tsx}`, excluding the two below | 477   |
+| `integration` | Node        | `*.integration.test.{ts,tsx}`                     | 123   |
+| `component`   | jsdom       | `*.component.test.{ts,tsx}`                       | 623   |
 
-1,104 test files in total. Only the `component` project loads `src/platform/testing/setup.ts`; node and integration tests import what they need explicitly.
+1,223 test files in total, in 221 `__test__` folders. Only the `component` project loads `src/platform/testing/setup.ts`; node and integration tests import what they need explicitly. The `integration` project raises the test and hook timeouts to 30 seconds.
 
 ```sh
 bun run test              # all three projects
@@ -49,7 +49,9 @@ vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
 
 `withTestRpc` wraps the builder, intercepts `.handler()` and runs the compiled function inside `runWithStartContext`, supplying a `request` from the mocked `getRequest()` — a plain `Request` for `http://127.0.0.1:3000/`. Its fake context deliberately throws if anything asks for `getRouter`, so a test that accidentally triggers route rendering fails loudly.
 
-The practical effect: a test for `shipOrder` really passes through `withRequest`, `authorized({ order: ["update"] })` and the Zod validator. Authorization cannot be tested away.
+The practical effect: a test for `shipOrder` really passes through `withRequest`, `authorized({ order: ["update"] })` and the Zod validator. Authorization cannot be tested away. Component tests get the proxy from `setup.ts`; the 28 node and integration suites that call server functions install it with their own `vi.mock`.
+
+`src/integrations/better-auth/__test__/use-case-authorization.test.ts` requires `authorized(` in every use case under `src/modules/` that calls `createServerFn`, except the 24 public ones on its allowlist, and forbids `assertAdmin(` in every use-case file.
 
 ## D1 over `node:sqlite`
 
@@ -67,11 +69,13 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 ```
 
+58 of the 123 integration suites build their schema by replaying every migration file with `applyMigrationHistory` from `src/platform/testing/mocks/migrations.ts`; the others create the tables they need themselves, or apply only the migration under test with `applyMigration`.
+
 **What this does not emulate:** D1's network latency and its concurrency characteristics. A concurrency result from the integration suite is SQLite's behaviour, not proof about D1 under production load.
 
 ## Component tests
 
-`renderWithProviders` from `src/platform/testing/lib/render.tsx` wraps the tree in use-intl's `IntlProvider` (with `TEST_LOCALE`, `TEST_MESSAGES` and `I18N.DEFAULT_TIMEZONE`), a real `QueryClientProvider` with retries disabled, and a `RouterContextProvider` over a memory-history router. `setup.ts` also stubs `IntersectionObserver`, `ResizeObserver` and `matchMedia`, which the GSAP and Lenis code paths need in jsdom.
+`renderWithProviders` from `src/platform/testing/lib/render.tsx` wraps the tree in use-intl's `IntlProvider` (with `TEST_LOCALE`, `TEST_MESSAGES` and `I18N.DEFAULT_TIMEZONE`), a real `QueryClientProvider` with retries disabled, and a `RouterContextProvider` over a memory-history router. `setup.ts` also stubs `IntersectionObserver`, `ResizeObserver` and `matchMedia`, which the GSAP and Lenis code paths need in jsdom, gives `HTMLDialogElement` working `showModal` and `close`, makes `document.elementFromPoint` return `null` and mocks `getRequest`. It sets a 15-second test timeout and a 5-second Testing Library `asyncUtilTimeout`, and clears the timers a test file left pending once the file has finished.
 
 ## What the suites are aimed at
 
@@ -81,8 +85,11 @@ Coverage is broad, but the suites that earn their keep are the ones where a sile
 - **Inventory** — `inventory-reservation.integration.test.ts` and `inventory-release.integration.test.ts` exercise the guarded reserve and the `min`/`max`-clamped release; the reservation suite runs on the migrated schema, interleaves two checkouts that read the same stock before either reserves, and counts round trips, so a cart that stops being reserved in one batch fails it. It also writes a stock row through the schema and loads it back with only the columns the schema declares, while the migrated table still holds the undeclared `version` column.
 - **Rate limiting** — `rate-limit.integration.test.ts` fires concurrent attempts at the real limiter over in-memory SQLite and asserts the admitted and rejected counts.
 - **Auth storage** — `auth.storage.integration.test.ts` pins the Better Auth configuration, including the absence of `secondaryStorage`, and shows that Better Auth's limiter, counting through `withinRateLimit`, refuses past its maximum and leaves the e-mail caps standing when one of its windows starts again.
-- **Checkout batches** — `checkout-batches.integration.test.ts` records the compiled SQL through `onQuery` and asserts the statement shape of the create, update-delivery and release batches.
-- **Accessors** — one integration suite per data-access module: product (five files), order, user (two), address, checkout (three), category-on-product, delivery-method, product-image (two), product-category, product-collection, admin-dashboard (two), storefront-search.
+- **Checkout batches** — `checkout-batches.integration.test.ts` runs the create, update-delivery and release batches against in-memory SQLite and asserts the rows they leave: one shared or two separate addresses, the delivery selection and note, the released discount claim, and the payment and checkout failed together.
+- **Query plans** — `query-plans.integration.test.ts` replays the migrations, checks that every foreign key is indexed and that every index the schema declares exists on the same columns, and runs `explain query plan` on the statements of the hot reads, recorded through `onQuery`, to show they use an index instead of scanning a table.
+- **Accessors** — 19 accessor suites run data-access modules against SQLite: account, address, audit-log, category-on-product, checkout, collection-on-product, customer-account, delivery-method, discount, inventory, order (two), product (four), user (two) and wishlist.
+
+The integration project holds 123 suites in all. Besides those above, the largest groups cover the order module (20 suites), the checkout (13) and Better Auth (12), and some test the data migrations, such as the backfills in `src/modules/order/__test__/`.
 
 ## Coverage
 
@@ -105,11 +112,11 @@ The suite covers every statement, branch, function and line, and the thresholds 
 
 ## Browser tests
 
-The Playwright suite in `e2e/` runs the built Worker in Chromium and WebKit against a local D1 database created from the full migration history. A dedicated test Worker, `src/platform/testing/worker.ts`, captures Resend email, emulates the Stripe API and InPost's ShipX sandbox in memory, and signs `checkout.session.completed` events with the test webhook secret, so a spec covers a whole purchase: the four checkout steps, the stock reservation, the signed webhook, fulfilment, the confirmation page and email, the customer's order history and the admin's fulfilment. Courier, in-store pickup and a parcel locker chosen in the map picker, whose InPost point search the browser answers from local fixtures, are each paid for, and one full checkout runs in Polish under the default locale. Sign-up with the real verification link, protected-route redirects, coupons, search, the cart, pausing sales and both locales are covered too. Stripe's own payment form is covered only by the opt-in `stripe-test-mode` project, which pays through a Stripe sandbox by card (including declined cards and 3D Secure), BLIK and Przelewy24 when its keys are set and is skipped otherwise. [Testing](/docs/tooling/testing#end-to-end-tests) describes the harness and how to write specs.
+The Playwright suite in `e2e/` runs the built Worker in Chromium and WebKit against a local D1 database created from the full migration history. A dedicated test Worker, `src/platform/testing/worker.ts`, captures Resend email, emulates the Stripe API and InPost's ShipX sandbox in memory, answers the server's InPost point lookups, and signs `checkout.session.completed`, `checkout.session.expired` and `charge.dispute.created` events with the test webhook secret, so a spec covers a whole purchase: the four checkout steps, the stock reservation, the signed webhook, fulfilment, the confirmation page and email, the customer's order history and the admin's fulfilment. Courier, in-store pickup and a parcel locker chosen in the map picker, whose InPost point search the browser answers from local fixtures, are each paid for, and one full checkout runs in Polish under the default locale. Sign-up with the real verification link, protected-route redirects, coupons, search, the cart, pausing sales and both locales are covered too. Stripe's own payment form is covered only by the `stripe-test-mode` project, which pays through a Stripe sandbox by card (including declined cards and 3D Secure), BLIK and Przelewy24. It needs sandbox keys, which every E2E (full) run in CI supplies, and its specs are skipped without them. [Testing](/docs/tooling/testing#end-to-end-tests) describes the harness and how to write specs.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`, with concurrency cancellation and a 25-minute timeout. It uses the shared composite action `.github/actions/setup`, which installs Bun 1.4.0, sets up Vite+ with Node 24, runs `bun install --frozen-lockfile --ignore-scripts`, copies `.env.test` over `.env.development` and `.env.preview`, and runs `bun run typegen`.
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`, with concurrency cancellation. Its `verify` job has a 25-minute timeout and uses the shared composite action `.github/actions/setup`, which installs Bun 1.4.0, sets up Vite+ with Node 24, runs `bun install --frozen-lockfile --ignore-scripts`, copies `.env.test` over `.env.development` and `.env.preview` when the job passes `test-environment: "true"`, as every CI and end-to-end job does, and runs `bun run typegen`.
 
 Then, in order:
 
@@ -118,17 +125,19 @@ Then, in order:
 3. `bun run build:preview`
 4. Upload `coverage/` as an artifact
 
-The same workflow's `e2e` job runs the Playwright suite on Chromium through `e2e-reusable.yml`, and `e2e-full.yml` runs it on WebKit after every push to `main` and on both browsers every Monday, together with the Stripe test-mode project.
+The same workflow's `e2e` job runs the Playwright suite on Chromium through `e2e-reusable.yml`, whose job has a 30-minute timeout. `e2e-full.yml` runs it on WebKit after every push to `main`, and on both browsers on the Monday 03:15 UTC schedule and on a manual run. Its `stripe-test-mode` job, also limited to 30 minutes, runs the Stripe test-mode project on every one of those runs with the sandbox keys from the `E2E_STRIPE_SECRET_KEY` and `E2E_STRIPE_PUBLISHABLE_KEY` repository secrets.
 
 `.github/workflows/deploy-preview.yml` uses the same setup action and re-runs the full check before building. `deploy-production.yml` starts only after this workflow has passed for a push to `main`, so production never ships a commit whose tests failed.
 
 ## Local gate
 
 ```sh
-bun run check       # vp check: format, lint, type check
-bun run check:fix   # the same, applying fixes
-bun run check:staged
+bun run check        # vp check: format, lint, type check
+bun run check:fix    # the same, applying fixes
+bun run check:staged # vp staged --no-fmt
 ```
+
+Two Git hooks in `.vite-hooks/` run on every commit; `bun install` sets them up through the `prepare` script, `vp config --no-agent`. `pre-commit` runs `bun run check:pre-commit`, which is `vp staged`: the `staged` block in `vite.config.ts` runs `vp check --fix` on the staged files. `prepare-commit-msg` runs `bun scripts/commit-msg.ts`, which rejects a subject that does not follow `type(scope): description` with one of its eleven types and prefixes the subject with the type's emoji; see [Conventional commits](/docs/tooling/conventional-commits).
 
 `bun run check` is the same gate CI runs. Lint is strict: six Oxlint categories set to `error` including `nursery`, `typeAware` and `typeCheck` on, `denyWarnings: true` and `reportUnusedDisableDirectives: "error"`, with an 800-line file limit, a 150-line function limit and a 20-statement function limit. Overrides are narrow and file-scoped: tests and mocks relax `no-magic-numbers` and a few others, `src/presentation` and `src/hooks` relax `typescript/consistent-return`, `src/routes/**` relaxes `sort-keys`, and `vite.config.ts` relaxes `max-lines`.
 

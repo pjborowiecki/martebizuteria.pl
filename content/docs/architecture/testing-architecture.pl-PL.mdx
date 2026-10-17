@@ -7,13 +7,13 @@ description: "Trzy projekty Vitest, uruchamianie funkcji serwerowych w procesie,
 
 `vp test run` uruchamia Vitest przez Vite+ z trzema projektami zdefiniowanymi w `vite.config.ts`. Testy leżą w katalogu `__test__` obok kodu, który pokrywają, i importują API testowe z `vite-plus/test`.
 
-| Projekt       | Środowisko | Pliki                                        | Liczba |
-| ------------- | ---------- | -------------------------------------------- | ------ |
-| `node`        | Node       | `*.test.{ts,tsx}`, z wyłączeniem dwóch niżej | 426    |
-| `integration` | Node       | `*.integration.test.ts`                      | 98     |
-| `component`   | jsdom      | `*.component.test.{ts,tsx}`                  | 576    |
+| Projekt       | Środowisko | Pliki                                               | Liczba |
+| ------------- | ---------- | --------------------------------------------------- | ------ |
+| `node`        | Node       | `*.{test,spec}.{ts,tsx}`, z wyłączeniem dwóch niżej | 477    |
+| `integration` | Node       | `*.integration.test.{ts,tsx}`                       | 123    |
+| `component`   | jsdom      | `*.component.test.{ts,tsx}`                         | 623    |
 
-Łącznie 1104 pliki testowe. Tylko projekt `component` ładuje `src/platform/testing/setup.ts`; testy node i integracyjne importują to, czego potrzebują, jawnie.
+Łącznie 1223 pliki testowe w 221 katalogach `__test__`. Tylko projekt `component` ładuje `src/platform/testing/setup.ts`; testy node i integracyjne importują to, czego potrzebują, jawnie. Projekt `integration` podnosi limity czasu testów i hooków do 30 sekund.
 
 ```sh
 bun run test              # wszystkie trzy projekty
@@ -49,7 +49,9 @@ vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
 
 `withTestRpc` opakowuje builder, przechwytuje `.handler()` i uruchamia skompilowaną funkcję wewnątrz `runWithStartContext`, dostarczając `request` z zamockowanego `getRequest()` — zwykłe `Request` dla `http://127.0.0.1:3000/`. Jego sztuczny kontekst celowo rzuca wyjątek, gdy cokolwiek poprosi o `getRouter`, więc test, który przypadkiem wywoła renderowanie trasy, kończy się głośnym błędem.
 
-Praktyczny skutek: test dla `shipOrder` naprawdę przechodzi przez `withRequest`, `authorized({ order: ["update"] })` i walidator Zod. Autoryzacji nie da się odtestować na boku.
+Praktyczny skutek: test dla `shipOrder` naprawdę przechodzi przez `withRequest`, `authorized({ order: ["update"] })` i walidator Zod. Autoryzacji nie da się odtestować na boku. Testy komponentów dostają proxy z `setup.ts`; 28 zestawów node i integracyjnych, które wywołują funkcje serwerowe, instalują je własnym `vi.mock`.
+
+`src/integrations/better-auth/__test__/use-case-authorization.test.ts` wymaga `authorized(` w każdym przypadku użycia pod `src/modules/`, który wywołuje `createServerFn`, z wyjątkiem 24 publicznych z jego listy dozwolonych, i zabrania `assertAdmin(` w każdym pliku przypadku użycia.
 
 ## D1 nad `node:sqlite`
 
@@ -67,11 +69,13 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 ```
 
+58 ze 123 zestawów integracyjnych buduje schemat, odtwarzając każdy plik migracji przez `applyMigrationHistory` z `src/platform/testing/mocks/migrations.ts`; pozostałe same tworzą potrzebne tabele albo nakładają tylko testowaną migrację przez `applyMigration`.
+
 **Czego to nie emuluje:** opóźnień sieciowych D1 i charakterystyki jego współbieżności. Wynik dotyczący współbieżności z pakietu integracyjnego jest zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
 
 ## Testy komponentów
 
-`renderWithProviders` z `src/platform/testing/lib/render.tsx` owija drzewo w `IntlProvider` z use-intl (z `TEST_LOCALE`, `TEST_MESSAGES` i `I18N.DEFAULT_TIMEZONE`), prawdziwy `QueryClientProvider` z wyłączonymi ponowieniami oraz `RouterContextProvider` nad routerem z historią pamięciową. `setup.ts` stubuje dodatkowo `IntersectionObserver`, `ResizeObserver` i `matchMedia`, których ścieżki kodu GSAP i Lenis potrzebują w jsdom.
+`renderWithProviders` z `src/platform/testing/lib/render.tsx` owija drzewo w `IntlProvider` z use-intl (z `TEST_LOCALE`, `TEST_MESSAGES` i `I18N.DEFAULT_TIMEZONE`), prawdziwy `QueryClientProvider` z wyłączonymi ponowieniami oraz `RouterContextProvider` nad routerem z historią pamięciową. `setup.ts` stubuje dodatkowo `IntersectionObserver`, `ResizeObserver` i `matchMedia`, których ścieżki kodu GSAP i Lenis potrzebują w jsdom, daje `HTMLDialogElement` działające `showModal` i `close`, sprawia, że `document.elementFromPoint` zwraca `null`, i mockuje `getRequest`. Ustawia 15-sekundowy limit czasu testu i 5-sekundowy `asyncUtilTimeout` Testing Library, a po zakończeniu pliku testowego czyści timery, które zostawił oczekujące.
 
 ## W co celują pakiety testów
 
@@ -81,8 +85,11 @@ Pokrycie jest szerokie, ale pakietami, które naprawdę zarabiają na siebie, s�
 - **Stan magazynowy** — `inventory-reservation.integration.test.ts` i `inventory-release.integration.test.ts` sprawdzają warunkową rezerwację oraz zwolnienie ograniczone funkcjami `min`/`max`; zestaw rezerwacji działa na schemacie po migracjach, przeplata dwa checkouty, które odczytały ten sam stan, zanim którykolwiek zarezerwował, i liczy żądania do bazy, więc koszyk, który przestanie być rezerwowany w jednym batchu, go nie przejdzie. Zapisuje też wiersz stanu przez schemat i wczytuje go z powrotem tylko z kolumnami, które schemat deklaruje, choć tabela po migracjach wciąż ma niezadeklarowaną kolumnę `version`.
 - **Limity żądań** — `rate-limit.integration.test.ts` wysyła współbieżne próby do prawdziwego limitera nad SQLite w pamięci i sprawdza liczby dopuszczonych i odrzuconych.
 - **Magazyn uwierzytelniania** — `auth.storage.integration.test.ts` przypina konfigurację Better Auth, w tym brak `secondaryStorage`, i pokazuje, że limiter Better Auth, liczący przez `withinRateLimit`, odmawia po przekroczeniu maksimum i nie rusza limitów e-maili, gdy któreś z jego okien zaczyna się od nowa.
-- **Batche checkoutu** — `checkout-batches.integration.test.ts` zapisuje skompilowany SQL przez `onQuery` i sprawdza kształt instrukcji batchy tworzenia, aktualizacji dostawy i zwolnienia.
-- **Akcesory** — po jednym pakiecie integracyjnym na moduł dostępu do danych: produkt (pięć plików), zamówienie, użytkownik (dwa), adres, checkout (trzy), category-on-product, delivery-method, product-image (dwa), product-category, product-collection, admin-dashboard (dwa), storefront-search.
+- **Batche checkoutu** — `checkout-batches.integration.test.ts` uruchamia batche tworzenia, aktualizacji dostawy i zwolnienia na SQLite w pamięci i sprawdza wiersze, które zostawiają: jeden wspólny albo dwa osobne adresy, wybór dostawy i notatkę, zwolnione zgłoszenie rabatu oraz płatność i checkout oznaczone jako nieudane razem.
+- **Plany zapytań** — `query-plans.integration.test.ts` odtwarza migracje, sprawdza, że każdy klucz obcy ma indeks i że każdy indeks zadeklarowany w schemacie istnieje na tych samych kolumnach, i uruchamia `explain query plan` na instrukcjach gorących odczytów, zapisanych przez `onQuery`, żeby pokazać, że korzystają z indeksu zamiast skanować tabelę.
+- **Akcesory** — 19 pakietów akcesorów uruchamia moduły dostępu do danych na SQLite: account, address, audit-log, category-on-product, checkout, collection-on-product, customer-account, delivery-method, discount, inventory, order (dwa), product (cztery), user (dwa) i wishlist.
+
+Projekt integracyjny ma łącznie 123 pakiety. Poza powyższymi największe grupy obejmują moduł zamówień (20 pakietów), checkout (13) i Better Auth (12), a część sprawdza migracje danych, na przykład uzupełnienia w `src/modules/order/__test__/`.
 
 ## Pokrycie
 
@@ -105,11 +112,11 @@ Zestaw pokrywa każdą instrukcję, gałąź, funkcję i linię, a progi go przy
 
 ## Testy przeglądarkowe
 
-Zestaw Playwrighta w `e2e/` uruchamia zbudowanego Workera w Chromium i WebKicie na lokalnej bazie D1 utworzonej z całej historii migracji. Osobny testowy Worker, `src/platform/testing/worker.ts`, przechwytuje e-maile Resend, emuluje w pamięci API Stripe'a i piaskownicę ShipX InPost oraz podpisuje zdarzenia `checkout.session.completed` testowym sekretem webhooka, więc specyfikacja obejmuje cały zakup: cztery kroki checkoutu, rezerwację stanu, podpisany webhook, realizację, stronę i e-mail z potwierdzeniem, historię zamówień klienta i wysyłkę zamówienia przez administratora. Opłacane są dostawa kurierem, odbiór osobisty i paczkomat wybrany na mapie, którego wyszukiwanie punktów InPostu przeglądarka obsługuje z lokalnych danych, a jeden pełny checkout przechodzi po polsku w domyślnym języku. Pokryte są też rejestracja z prawdziwym linkiem weryfikacyjnym, przekierowania z chronionych tras, kupony, wyszukiwarka, koszyk, wstrzymanie sprzedaży i oba języki. Formularz płatności samego Stripe'a sprawdza tylko włączany osobno projekt `stripe-test-mode`, który płaci przez sandbox Stripe'a kartą (także odrzucaną i z 3D Secure), BLIK-iem i przez Przelewy24, gdy ustawione są jego klucze, a bez nich jest pomijany. [Testowanie](/docs/tooling/testing#testy-end-to-end) opisuje zestaw i pisanie specyfikacji.
+Zestaw Playwrighta w `e2e/` uruchamia zbudowanego Workera w Chromium i WebKicie na lokalnej bazie D1 utworzonej z całej historii migracji. Osobny testowy Worker, `src/platform/testing/worker.ts`, przechwytuje e-maile Resend, emuluje w pamięci API Stripe'a i piaskownicę ShipX InPost, odpowiada na zapytania serwera o punkty InPost oraz podpisuje zdarzenia `checkout.session.completed`, `checkout.session.expired` i `charge.dispute.created` testowym sekretem webhooka, więc specyfikacja obejmuje cały zakup: cztery kroki checkoutu, rezerwację stanu, podpisany webhook, realizację, stronę i e-mail z potwierdzeniem, historię zamówień klienta i wysyłkę zamówienia przez administratora. Opłacane są dostawa kurierem, odbiór osobisty i paczkomat wybrany na mapie, którego wyszukiwanie punktów InPostu przeglądarka obsługuje z lokalnych danych, a jeden pełny checkout przechodzi po polsku w domyślnym języku. Pokryte są też rejestracja z prawdziwym linkiem weryfikacyjnym, przekierowania z chronionych tras, kupony, wyszukiwarka, koszyk, wstrzymanie sprzedaży i oba języki. Formularz płatności samego Stripe'a sprawdza tylko projekt `stripe-test-mode`, który płaci przez sandbox Stripe'a kartą (także odrzucaną i z 3D Secure), BLIK-iem i przez Przelewy24. Potrzebuje kluczy sandboxa, które dostarcza każdy przebieg E2E (full) w CI, a bez nich jego specyfikacje są pomijane. [Testowanie](/docs/tooling/testing#testy-end-to-end) opisuje zestaw i pisanie specyfikacji.
 
 ## CI
 
-`.github/workflows/ci.yml` działa dla każdego pull requesta i dla pushy do `main`, z anulowaniem współbieżnych uruchomień i limitem 25 minut. Korzysta ze współdzielonej akcji złożonej `.github/actions/setup`, która instaluje Bun 1.4.0, konfiguruje Vite+ z Node 24, uruchamia `bun install --frozen-lockfile --ignore-scripts`, kopiuje `.env.test` na `.env.development` i `.env.preview` oraz uruchamia `bun run typegen`.
+`.github/workflows/ci.yml` działa dla każdego pull requesta i dla pushy do `main`, z anulowaniem współbieżnych uruchomień. Jego zadanie `verify` ma limit 25 minut i korzysta ze współdzielonej akcji złożonej `.github/actions/setup`, która instaluje Bun 1.4.0, konfiguruje Vite+ z Node 24, uruchamia `bun install --frozen-lockfile --ignore-scripts`, kopiuje `.env.test` na `.env.development` i `.env.preview`, gdy zadanie przekazuje `test-environment: "true"`, jak robi to każde zadanie CI i end-to-end, oraz uruchamia `bun run typegen`.
 
 Następnie, po kolei:
 
@@ -118,17 +125,19 @@ Następnie, po kolei:
 3. `bun run build:preview`
 4. Upload `coverage/` jako artefaktu
 
-Zadanie `e2e` tego samego przepływu uruchamia zestaw Playwrighta w Chromium przez `e2e-reusable.yml`, a `e2e-full.yml` uruchamia go w WebKicie po każdym pushu do `main` i w obu przeglądarkach w każdy poniedziałek, razem z projektem trybu testowego Stripe'a.
+Zadanie `e2e` tego samego przepływu uruchamia zestaw Playwrighta w Chromium przez `e2e-reusable.yml`, którego zadanie ma limit 30 minut. `e2e-full.yml` uruchamia go w WebKicie po każdym pushu do `main`, a w obu przeglądarkach w harmonogramie w poniedziałki o 03:15 UTC i przy ręcznym uruchomieniu. Jego zadanie `stripe-test-mode`, również ograniczone do 30 minut, uruchamia projekt trybu testowego Stripe'a przy każdym z tych przebiegów z kluczami sandboxa z sekretów repozytorium `E2E_STRIPE_SECRET_KEY` i `E2E_STRIPE_PUBLISHABLE_KEY`.
 
 `.github/workflows/deploy-preview.yml` używa tej samej akcji setup i ponownie uruchamia pełny `check` przed buildem. `deploy-production.yml` startuje dopiero wtedy, gdy ten przepływ przejdzie dla pusha do `main`, więc produkcja nigdy nie dostaje commita, którego testy nie przeszły.
 
 ## Lokalna bramka
 
 ```sh
-bun run check       # vp check: formatowanie, lint, sprawdzenie typów
-bun run check:fix   # to samo, z automatycznymi poprawkami
-bun run check:staged
+bun run check        # vp check: formatowanie, lint, sprawdzenie typów
+bun run check:fix    # to samo, z automatycznymi poprawkami
+bun run check:staged # vp staged --no-fmt
 ```
+
+Przy każdym commicie działają dwa hooki Gita z `.vite-hooks/`; `bun install` instaluje je przez skrypt `prepare`, `vp config --no-agent`. `pre-commit` uruchamia `bun run check:pre-commit`, czyli `vp staged`: blok `staged` w `vite.config.ts` uruchamia `vp check --fix` na plikach w poczekalni. `prepare-commit-msg` uruchamia `bun scripts/commit-msg.ts`, który odrzuca temat niezgodny z `type(scope): description` z jednym z jego jedenastu typów i poprzedza temat emoji typu; zobacz [Konwencjonalne commity](/docs/tooling/conventional-commits).
 
 `bun run check` to ta sama bramka, którą uruchamia CI. Lint jest surowy: sześć kategorii Oxlint ustawionych na `error`, w tym `nursery`, włączone `typeAware` i `typeCheck`, `denyWarnings: true` i `reportUnusedDisableDirectives: "error"`, z limitem 800 linii na plik, 150 linii na funkcję i 20 instrukcji na funkcję. Nadpisania są wąskie i ograniczone do plików: testy i mocki rozluźniają `no-magic-numbers` i kilka innych reguł, `src/presentation` i `src/hooks` rozluźniają `typescript/consistent-return`, `src/routes/**` rozluźnia `sort-keys`, a `vite.config.ts` rozluźnia `max-lines`.
 

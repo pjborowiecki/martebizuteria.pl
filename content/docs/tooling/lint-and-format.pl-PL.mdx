@@ -13,7 +13,7 @@ bun run format       # vp fmt
 bun run format:check # vp fmt --check
 ```
 
-`bun run check` to bramka. CI uruchamia ją we wszystkich trzech przepływach, a hook pre-commit uruchamia jej odpowiednik dla plików w przechowalni.
+`bun run check` to bramka. Z pięciu przepływów uruchamiają ją `ci.yml` i `deploy-preview.yml`, a hook pre-commit uruchamia jej odpowiednik dla plików w przechowalni.
 
 ## Formatowanie
 
@@ -131,7 +131,7 @@ Wyjątek w `only-throw-error` istnieje, bo TanStack Router sygnalizuje 404 i prz
 
 ### Wyjątki
 
-Pięć wąskich wyjątków rozluźnia konkretne reguły dla konkretnych drzew. Nic więcej nie jest wyłączone.
+Pięć wąskich wyjątków rozluźnia konkretne reguły dla konkretnych drzew. Poza nimi regułom wymykają się tylko ścieżki z `ignorePatterns`: ta lista wyłącza z formatowania i lintowania drzewa generowane i vendorowane, raporty z testów, `e2e/` i `scripts/` (zobacz [Vite+](/docs/tooling/vite-plus)).
 
 | Pliki                                                                     | Wyłączone reguły                                                                   |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -141,13 +141,13 @@ Pięć wąskich wyjątków rozluźnia konkretne reguły dla konkretnych drzew. N
 | `src/routes/**`                                                           | `sort-keys`                                                                        |
 | `vite.config.ts`                                                          | `max-lines`                                                                        |
 
-Testy potrzebują literałów liczbowych, wartości `null` w danych testowych i sekwencyjnych `await`. Kod komponentów zwraca z niektórych gałęzi `undefined` z założenia. Mocki Cloudflare potwierdzają swój kształt raz, na granicy (`createTestD1Database` kończy się `client as unknown as D1Database`), i to jedyne miejsce, gdzie takie rzutowanie jest dopuszczalne. Pliki tras są uporządkowane według konwencji opcji TanStacka, a nie alfabetycznie. A `vite.config.ts` to sama konfiguracja o objętości przekraczającej 800 linii.
+Testy potrzebują literałów liczbowych, wartości `null` w danych testowych i sekwencyjnych `await`. Kod komponentów zwraca z niektórych gałęzi `undefined` z założenia. Mocki Cloudflare potwierdzają swój kształt raz, na granicy (`createTestD1Database` kończy się `client as unknown as D1Database`), i to jedyne miejsce, gdzie takie rzutowanie jest dopuszczalne. Pliki tras są uporządkowane według konwencji opcji TanStacka, a nie alfabetycznie. `vite.config.ts` wyłącza `max-lines` dla samego siebie, choć plik ma mniej niż 300 linii, czyli daleko poniżej limitu 800, więc ten wyjątek obecnie niczego nie zmienia.
 
 ## Zasada dotycząca wyciszeń
 
 Napraw przyczynę. Nie dodawaj `// oxlint-disable`, `@ts-expect-error`, `@ts-nocheck`, `any`, `as never` ani `as unknown as`, żeby przejść przez regułę. `reportUnusedDisableDirectives` jest błędem właśnie po to, by wyciszenia nie mogły się cicho odkładać, a `denyWarnings` oznacza, że nie ma ścieżki „stopniowego wdrażania”, za którą można się schować. Jeśli reguła naprawdę nie dotyczy całego drzewa katalogów, dodaj udokumentowany wyjątek w `vite.config.ts`, a nie komentarz w pliku.
 
-To samo dotyczy komentarzy w ogóle: w tym repozytorium nie ma komentarzy objaśniających w TypeScripcie ani TSX. Intencję przenoszą nazwy i typy.
+Komentarze w ogóle to konwencja przeglądu kodu, a nie reguła lintera: żadna reguła ich nie zabrania — `capitalized-comments` wymaga jedynie wielkiej pierwszej litery — ale komentarzy objaśniających się unika, a przeglądy je usuwają. Intencję przenoszą nazwy i typy, a objaśnienia należą do tej dokumentacji i do testów.
 
 ## Kontrole plików w przechowalni
 
@@ -159,11 +159,11 @@ staged: { "*": ["vp check --fix"] }
 
 Wzorzec `*` obejmuje każdy plik w przechowalni, nie tylko TypeScript. `bun run check:pre-commit` uruchamia `vp staged`, i to właśnie wywołuje `.vite-hooks/pre-commit`.
 
-`bun run check:fix` uruchamia `vp check --fix` na całym repozytorium. Z przyjemnością przeformatuje pliki, których nigdy nie tknąłeś, więc przeczytaj jego diff przed commitem. Aby poprawić tylko to, co zmieniłeś, przekaż ścieżki wprost do `vp`:
+`bun run check:fix` uruchamia `vp check --fix` na całym repozytorium. Z przyjemnością przeformatuje pliki, których zmiana w ogóle nie dotyczyła, więc przeczytaj jego diff przed commitem. Aby poprawić tylko zmienione pliki, przekaż ścieżki wprost do `vp`:
 
 ```sh
-vp fmt src/modules/order/use-cases/create-order.ts
-vp lint --fix src/modules/order/use-cases/create-order.ts
+vp fmt src/modules/order/use-cases/cancel-order.ts
+vp lint --fix src/modules/order/use-cases/cancel-order.ts
 ```
 
 > `bun run check:staged` i `bun run lint:staged` to oba `vp staged --no-fmt`, ale `--no-fmt` nie jest opcją `vp staged` (należy do `vp check`). Każdy z tych skryptów kończy się natychmiast błędem `error: unexpected argument '--no-fmt' found`. Używaj `bun run check:pre-commit`, czyli czystego `vp staged`.

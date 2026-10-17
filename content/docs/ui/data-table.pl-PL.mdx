@@ -36,17 +36,20 @@ interface DataGrid<TData extends RowData> {
 }
 ```
 
-Istnieje siedem tabel, każda w `pages/admin/<obszar>/utils/<obszar>-data-grid.ts`:
+Istnieje dziesięć tabel, każda w pliku `utils/<nazwa>-data-grid.ts` w katalogu swojego ekranu w `pages/admin/`:
 
-| Tabela                | `persistenceKey`              | Tryb                                                                             |
-| --------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
-| `ordersDataGrid`      | `admin.orders`                | Serwer: ręczne filtrowanie i paginacja                                           |
-| `customersDataGrid`   | `admin.customers`             | Serwer: ręczne filtrowanie i paginacja                                           |
-| `auditDataGrid`       | `admin.audit:v3`              | Serwer: ręczne filtrowanie i paginacja                                           |
-| `productsDataGrid`    | `admin.catalog.products:v2`   | Serwer, gdy jest zapytanie listy, inaczej w pamięci; dodatkowo ręczne sortowanie |
-| `categoriesDataGrid`  | `admin.catalog.categories`    | W pamięci, własny filtr globalny, zmiana kolejności wierszy                      |
-| `collectionsDataGrid` | `admin.catalog.collections`   | W pamięci, własny filtr globalny, zmiana kolejności wierszy                      |
-| `attributesDataGrid`  | `admin.catalog.attributes:v6` | W pamięci, własny filtr globalny, zmiana kolejności wierszy                      |
+| Tabela                          | `persistenceKey`               | Tryb                                                                                                                  |
+| ------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| `ordersDataGrid`                | `admin.orders`                 | Serwer: ręczne filtrowanie i paginacja                                                                                |
+| `customerOrdersDataGrid`        | `admin.customer-orders`        | Serwer: hook zamówień z `userId`, na stronie szczegółów klienta                                                       |
+| `customersDataGrid`             | `admin.customers`              | Serwer: ręczne filtrowanie i paginacja                                                                                |
+| `auditDataGrid`                 | `admin.audit:v3`               | Serwer: ręczne filtrowanie i paginacja                                                                                |
+| `couponsDataGrid`               | `admin.coupons`                | Serwer: ręczna paginacja; filtry statusu i typu trzymane w hooku                                                      |
+| `newsletterSubscribersDataGrid` | `admin.newsletter-subscribers` | Serwer: ręczna paginacja; filtr statusu trzymany w hooku; bez zaznaczania wierszy                                     |
+| `productsDataGrid`              | `admin.catalog.products:v2`    | Serwer, gdy jest zapytanie listy, inaczej w pamięci; dodatkowo ręczne sortowanie; zmiana kolejności wierszy w pamięci |
+| `categoriesDataGrid`            | `admin.catalog.categories`     | W pamięci, własny filtr globalny, zmiana kolejności wierszy                                                           |
+| `collectionsDataGrid`           | `admin.catalog.collections`    | W pamięci, własny filtr globalny, zmiana kolejności wierszy                                                           |
+| `attributesDataGrid`            | `admin.catalog.attributes:v6`  | W pamięci, własny filtr globalny, zmiana kolejności wierszy                                                           |
 
 Sufiksy `:v2`, `:v3` i `:v6` unieważniają cache. Podnieś sufiks, gdy zmieniasz kolumny tabeli tak, że zapisane układy tracą sens — każdy odwiedzający zacznie wtedy od wartości domyślnych, a nie od nieaktualnej szerokości czy kolejności.
 
@@ -55,7 +58,10 @@ Sufiksy `:v2`, `:v3` i `:v6` unieważniają cache. Podnieś sufiks, gdy zmienias
 Ekran to trzy pliki: obiekt tabeli, hook produkujący wartość kontekstu i komponent rozkładający części. Z `pages/admin/orders/components/orders-table.tsx`:
 
 ```tsx
-const grid = useOrdersDataGrid({ onRowClick: handleRowClick })
+const openOrder = useOpenOrder()
+const grid = useOrdersDataGrid({
+  onRowClick: openOrder,
+})
 
 return (
   <Provider value={grid}>
@@ -82,7 +88,7 @@ return (
 )
 ```
 
-`const { Body, Export, Pagination, Provider, Toolbar } = ordersDataGrid` znajduje się na końcu pliku. `DataGridShell` to `Card` z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i paginacja zostają na miejscu, a przewija się tylko treść.
+`useOpenOrder()` (`orders/hooks/use-open-order.ts`) zwraca funkcję, która przechodzi do `/admin/orders/$orderId`. `const { Body, Export, Pagination, Provider, Toolbar } = ordersDataGrid` znajduje się na końcu pliku. `DataGridShell` to `Card` z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i paginacja zostają na miejscu, a przewija się tylko treść.
 
 `Toolbar` zawsze renderuje pole wyszukiwania, menu widoczności kolumn i przycisk resetowania układu. Slot `filters` to drugi wiersz, `children` sąsiadują z wbudowanymi kontrolkami, a slot `actions` jest wyrównany do prawej. `Export` to menu eksportu; ekran umieszcza je wśród `children` paska narzędzi, za akcją odświeżania, a wymaga ono `exportSource` w wartości kontekstu (zobacz [Eksport](#eksport)).
 
@@ -133,31 +139,48 @@ Trzy mechanizmy chronią to od mrugania i rozjeżdżania się:
 
 ## Kolumny
 
-Definicje kolumn buduje zwykła funkcja, a cienki hook dostarcza tłumaczenia i język, z memoizacją. Ekrany zamówień, klientów i dziennika zdarzeń trzymają builder w `lib/<obszar>-column-defs.tsx`, a hook w `components/<obszar>-columns.tsx`; cztery ekrany katalogu trzymają jedno i drugie w `components/<obszar>-columns.tsx`.
+Definicje kolumn buduje zwykła funkcja, a cienki hook dostarcza tłumaczenia i preferencje wyświetlania oglądającego, z memoizacją. Ekrany zamówień, klientów, dziennika zdarzeń, kuponów i subskrybentów newslettera trzymają builder w `lib/<obszar>-column-defs.tsx`, a hook w `components/<obszar>-columns.tsx`; cztery ekrany katalogu trzymają jedno i drugie w `components/<obszar>-columns.tsx`. Tabela zamówień klienta używa `useOrderColumns` i pomija kolumny ukryte przez swój widok.
 
 ```tsx
 export const useOrderColumns = () => {
   const t = useTranslations("pages.admin.orders")
   const tAdmin = useTranslations("pages.admin")
-  const locale = useLocale()
+  const formatLocale = useFormatLocale()
+  const timeZone = useDisplayTimeZone()
 
-  return useMemo(() => buildOrderColumns({ locale, t, tAdmin }), [locale, t, tAdmin])
+  return useMemo(
+    () =>
+      buildOrderColumns({
+        formatLocale,
+        t,
+        tAdmin,
+        timeZone,
+      }),
+    [formatLocale, t, tAdmin, timeZone],
+  )
 }
 ```
+
+`useFormatLocale` i `useDisplayTimeZone` pochodzą z `src/hooks/use-display-format.ts` i zwracają język formatowania oraz strefę czasową, które oglądający zapisał albo które dla niego wykryto, więc daty w tabeli podlegają tym samym preferencjom co reszta konsoli.
 
 Identyfikatory kolumn nigdy nie są literałami w miejscu użycia — pochodzą ze stałej modułu, na przykład `ADMIN_ORDER_TABLE_COLUMN_ID`, a szerokości z `ADMIN_ORDER_TABLE_COLUMN_SIZE`, obie w `src/modules/order/order.constants.ts`. Dzięki temu identyfikatory używane przez tabelę, konfigurację przypięcia, filtry i mapowanie sortowania na serwerze nie mogą się rozjechać.
 
 ```tsx
 columnHelper.accessor("createdAt", {
   cell: ({ row }) => (
-    <span className="text-sm whitespace-nowrap text-muted-foreground">{formatAdminOrderDate(row.original.createdAt, locale)}</span>
+    <span className="text-sm whitespace-nowrap text-muted-foreground">
+      {formatAdminOrderDate(row.original.createdAt, { formatLocale, timeZone })}
+    </span>
   ),
   enableSorting: false,
   filterFn: "auto",
   header: t("columns.date"),
   id: ADMIN_ORDER_TABLE_COLUMN_ID.createdAt,
   maxSize: DATE_COLUMN_MAX_SIZE,
-  meta: { skeletonVariant: "text" },
+  meta: {
+    skeletonVariant: "text",
+  },
+  minSize: ADMIN_ORDER_TABLE_COLUMN_SIZE.createdAt,
   size: ADMIN_ORDER_TABLE_COLUMN_SIZE.createdAt,
 })
 ```
@@ -180,13 +203,13 @@ Warianty szkieletu to `badge`, `checkbox`, `date`, `icon`, `iconEnd`, `number`, 
 
 ### Kolumny stałe i pomocnicze
 
-`fixedDataGridColumnWidth(size)` zwraca `{ enableResizing: false, minSize: size, maxSize: size, size }` — rozwiń to w kolumnie, która nie może się ruszać. `selectionColumn(columnHelper, labels)` buduje kolumnę z checkboxem (identyfikator `select`, szerokość 40, `preventRowClick`, `skeletonVariant: "checkbox"`) i przyjmuje dwie etykiety dostępności jako argumenty, żeby tłumaczenia dostarczał wywołujący. `DATAGRID_UTILITY_COLUMN_IDS` to `["actions", "drag", "image", "select"]`; te kolumny są wyłączone ze zmiany rozmiaru i z zapisywanej mapy rozmiarów.
+`fixedDataGridColumnWidth(size)` zwraca `{ enableResizing: false, minSize: size, maxSize: size, size }` — rozwiń to w kolumnie, która nie może się ruszać. `selectionColumn(columnHelper, labels)` buduje kolumnę z checkboxem (identyfikator `select`, szerokość 40, `preventRowClick`, `skeletonVariant: "checkbox"`) i przyjmuje dwie etykiety dostępności jako argumenty, żeby tłumaczenia pochodziły od wywołującego. `DATAGRID_UTILITY_COLUMN_IDS` to `["actions", "drag", "image", "select"]`; te kolumny są wyłączone ze zmiany rozmiaru i z zapisywanej mapy rozmiarów.
 
 Akcje wiersza to kolumna `display` z `enableHiding: false`, nagłówkiem tylko dla czytników ekranu, `meta.preventRowClick` i komponentem w komórce, takim jak `OrdersRowActions`.
 
 ## Filtry
 
-Filtry to komponenty konkretnego ekranu, które zapisują do stanu `columnFilters` tabeli; współdzielony pasek narzędzi nie ma żadnej abstrakcji filtra. Ekran zamówień dostarcza `OrdersStatusFilter`, `OrdersPaymentFilter`, `OrdersFulfillmentFilter`, `OrdersNumericColumnFilter` i `OrdersDateColumnFilter`. `datagrid/lib/` dostarcza części wielokrotnego użytku odpowiedzialne za parsowanie: `data-grid-date-filter.ts` i `data-grid-numeric-filter.ts`.
+Filtry to komponenty konkretnego ekranu; współdzielony pasek narzędzi nie ma żadnej abstrakcji filtra. Większość zapisuje do stanu `columnFilters` tabeli — ekran zamówień dostarcza `OrdersStatusFilter`, `OrdersPaymentFilter`, `OrdersFulfillmentFilter`, `OrdersNumericColumnFilter` i `OrdersDateColumnFilter`, a ekran klientów ma własne filtry roli, blokady, weryfikacji e-maila, liczbowe i dat. Ekrany dziennika zdarzeń, kuponów i subskrybentów newslettera trzymają swoje filtry w stanie hooka tabeli i udostępniają w kontekście funkcję, która je ustawia (`applyAuditFilter`, `applyCouponsFilter`, `applyStatusFilter`). `datagrid/lib/` dostarcza części wielokrotnego użytku odpowiedzialne za parsowanie: `data-grid-date-filter.ts` i `data-grid-numeric-filter.ts`.
 
 Wyszukiwanie jest osobne. `DataGridSearch` zapisuje do filtra globalnego tabeli; `useAdminDebouncedTableSearch(table)` zwraca jego opóźnioną kopię, którą ekrany w trybie serwerowym wstawiają do wejścia zapytania. Tabele katalogu działające w pamięci przekazują zamiast tego `globalFilterFn` zbudowany przez `createCatalogTableGlobalFilterFn`, który scala wyszukiwalne części wiersza w jeden ciąg zapisany małymi literami:
 
@@ -209,8 +232,9 @@ Hook w trybie serwerowym jest właścicielem wejścia zapytania i przekazuje ste
 - `pageCount: Math.ceil(data.total / pagination.pageSize)` oraz `rowCount: data.total`.
 - Efekty, które przy każdej zmianie tekstu wyszukiwania albo filtrów kolumn ustawiają `pageIndex` na 0.
 - Te same filtry i opóźnione wyszukiwanie, bez strony, zapamiętane jako wejście, które `useOrdersExportSource` wysyła do `exportAdminOrders`.
+- Dwie opcje pozwalają użyć hooka ponownie: `userId` zawęża listę do zamówień jednego klienta, a `view` (`OrdersDataGridView`) ustala klucz trwałości, przypięcie, rozmiar strony i identyfikatory kolumn do pominięcia. Strona szczegółów klienta przekazuje `CUSTOMER_ORDERS_VIEW`, który używa `admin.customer-orders`, domyślnego rozmiaru strony 10 i pomija kolumny klienta, e-maila i zaznaczenia.
 
-Sortowanie w trybie serwerowym jest opcjonalne: `manualSorting` ustawia tylko tabela produktów. Tabele zamówień, klientów i dziennika zdarzeń ustawiają na swoich kolumnach `enableSorting: false`, więc rozstrzygające jest sortowanie serwera.
+Sortowanie w trybie serwerowym jest opcjonalne: `manualSorting` ustawia tylko tabela produktów. Tabela zamówień ustawia `enableSorting: false` na każdej kolumnie, więc rozstrzygające jest sortowanie serwera. Tabele klientów, dziennika zdarzeń, kuponów i subskrybentów newslettera nie ustawiają `manualSorting`, a większość ich kolumn da się sortować, więc sortowanie z nagłówka zmienia kolejność tylko wierszy wczytanej strony.
 
 Wartość kontekstu można rozszerzyć dla konkretnego ekranu. `OrdersDataGridValue` rozszerza `DataGridContextValue` o `activeStatFilter` i `applyOrderStatFilter`, a `useOrdersDataGridContext()` zawęża bazowy kontekst z powrotem do tego typu, używając strażnika typu, który poza właściwym `Provider` rzuca czytelny błąd.
 
@@ -218,7 +242,7 @@ Wartość kontekstu można rozszerzyć dla konkretnego ekranu. `OrdersDataGridVa
 
 `DataGridPagination` renderuje wybór liczby wierszy na stronę, licznik zakresu, wskaźnik strony oraz przyciski pierwsza/poprzednia/następna/ostatnia. Dozwolone rozmiary strony są ustalone w `data-grid-pagination.constants.ts` jako `DATA_GRID_PAGE_SIZE_OPTIONS`, co daje `[10, 25, 50, 100, 250]`. Największa opcja to `LIST_PAGE_SIZE_MAX` z `src/modules/_core/utils/pagination.ts`, którą `pageSizeField` egzekwuje także na serwerze, więc żądanie listy nie może poprosić o większą stronę, niż oferuje siatka.
 
-`DATA_GRID_DEFAULT_PAGE_SIZE` to 10; `normalizeDataGridPageSize` zaokrągla każdą inną liczbę w górę do najbliższego dozwolonego rozmiaru, a efekt w komponencie poprawia rozmiar strony, którego nie ma na liście. Ekrany nadpisują wartość domyślną — zamówienia używają `ADMIN_ORDERS_PAGE_SIZE` (25), klienci `ADMIN_CUSTOMER_PAGE_SIZE`, dziennik zdarzeń `ADMIN_AUDIT_LOG_PAGE_SIZE`.
+`DATA_GRID_DEFAULT_PAGE_SIZE` to 10; `normalizeDataGridPageSize` zaokrągla każdą inną liczbę w górę do najbliższego dozwolonego rozmiaru, a efekt w komponencie poprawia rozmiar strony, którego nie ma na liście. Ekrany nadpisują wartość domyślną — zamówienia używają `ADMIN_ORDERS_PAGE_SIZE` (25), klienci `ADMIN_CUSTOMER_PAGE_SIZE` (25), dziennik zdarzeń `ADMIN_AUDIT_LOG_PAGE_SIZE` (100), kupony `ADMIN_DISCOUNTS_PAGE_SIZE` (25), a subskrybenci newslettera `ADMIN_NEWSLETTER_PAGE_SIZE` (50); tabela zamówień klienta zostaje przy wartości domyślnej.
 
 W trybie ręcznym suma wierszy pochodzi z `table.options.rowCount`; w przeciwnym razie z modelu wierszy po filtrowaniu.
 
@@ -234,7 +258,7 @@ Tabele zamówień, klientów, subskrybentów newslettera i dziennika zdarzeń, a
 
 `DataGridTable` mierzy swój kontener przewijania przez `ResizeObserver` (`useDatagridContainerWidth`) i wyznacza układ na podstawie rozmiarów kolumn, stanu przypięcia oraz `fillsRemainingWidth`/`absorbsTrailingSlack`. Szerokości kolumn są podawane jako zmienne CSS, nie jako style inline — właśnie dlatego skrypt z sekcji `head` może je przywrócić, zanim uruchomi się React.
 
-Zmiana kolejności kolumn odbywa się przez przeciąganie, za pomocą `useColumnReorder` i `ColumnReorderApi` w kontekście. Zmiana kolejności wierszy jest opcjonalna: cztery tabele katalogu dostarczają `RowReorderApi` (`onRowDragStart`, `onRowDragEnter`, `onRowDrop`, `onRowMove`, `draggingId`, `enabled`), a pozostałe przekazują `rowReorder: undefined`.
+Zmiana kolejności kolumn odbywa się przez przeciąganie, za pomocą `useColumnReorder` i `ColumnReorderApi` w kontekście. Zmiana kolejności wierszy jest opcjonalna: cztery tabele katalogu dostarczają `RowReorderApi` (`onRowDragStart`, `onRowDragEnter`, `onRowDrop`, `onRowMove`, `draggingId`, `enabled`), a pozostałe przekazują `rowReorder: undefined`. Każda tabela katalogu ustawia `enabled` tylko wtedy, gdy wiersze są w zapisanej kolejności — nie działa żadne sortowanie, filtr kolumny ani wyszukiwanie, a w przypadku produktów także zapytanie listy po stronie serwera.
 
 Kliknięcia wiersza mają jeden niuans. `DataGridRow` oznacza komórki kolumn z `meta.preventRowClick` atrybutem `data-prevent-row-click`, a przed wywołaniem `onRowClick` sprawdza `consumeDataGridRowClickSuppression()`. Kod zamykający dialog albo menu nad tabelą wywołuje `suppressNextDataGridRowClick()` (300 ms) lub `suppressDataGridRowClickAfterDialogDismiss()` (500 ms) z `lib/data-grid-row-click.ts`, więc zamknięcie nakładki nie otwiera jednocześnie wiersza pod nią.
 
@@ -242,7 +266,7 @@ Kliknięcia wiersza mają jeden niuans. `DataGridRow` oznacza komórki kolumn z 
 
 ## Testy
 
-Każdy komponent i hook w `datagrid/` ma siostrzany test w `__test__/`, w tym `use-data-grid-preferences-snapshot.ssr.test.tsx` dla ścieżki SSR oraz `data-grid-harness.tsx` jako współdzieloną obudowę testową. Ekrany dodają własną — `pages/admin/orders/components/__test__/orders-grid-harness.tsx`.
+Każdy komponent i hook w `datagrid/` ma siostrzany test w `__test__/`, w tym `use-data-grid-preferences-snapshot.ssr.test.tsx` i `use-data-grid-pinning.ssr.test.tsx` dla ścieżki SSR oraz `data-grid-harness.tsx` jako współdzieloną obudowę testową. Ekrany dodają własną — `pages/admin/orders/components/__test__/orders-grid-harness.tsx`.
 
 ```bash
 bun run test:component

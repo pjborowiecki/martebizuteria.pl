@@ -3,40 +3,40 @@ title: "Architecture"
 description: "How M'Arte is organized: one Worker, locale-free routes, feature modules that own their tables, and adapters around every vendor."
 ---
 
-M'Arte is a single TanStack Start application deployed as one Cloudflare Worker. The same Worker serves the public storefront, the customer account area, the admin console, this documentation site and the five HTTP handlers under `/api`. There is no separate backend.
+M'Arte is a single TanStack Start application deployed as one Cloudflare Worker. The same Worker serves the public storefront, the customer account area, the admin console, this documentation site, the five HTTP route handlers under `/api` and the two realtime WebSocket endpoints, `/api/realtime/admin/ws` and `/api/realtime/storefront/ws`, which `src/server.ts` hands to the Durable Object hub before the router runs. The same entry also consumes both queues and runs the daily retention job. There is no separate backend.
 
 The code is split by responsibility, not by page:
 
 - **Routes** (`src/routes`) compose pages. A route file declares its translation namespaces, its guard, its loader and its `head` tags, then renders components. Route files carry no locale segment — the router rewrites the URL instead.
-- **Modules** (`src/modules/{feature}`) own domain logic. 42 feature folders hold the Drizzle table, Zod schemas, constants, types, helpers, plain data **accessors** and the **use cases** that wrap them in a server function.
+- **Modules** (`src/modules/{feature}`) own domain logic. 42 feature folders hold Zod schemas, constants, types, helpers, plain data **accessors** and the **use cases** that wrap them in a server function. 39 of them own a Drizzle table; `admin-dashboard`, `customer-account` and `customer-activity` have no table of their own and work over the tables of other modules.
 - **Integrations** (`src/integrations/{vendor}`) configure third parties: Better Auth, Drizzle against D1, Cloudflare R2, Stripe, Resend, InPost, use-intl, Fumadocs, GSAP, Lenis, react-day-picker, TanStack Query, MDXEditor and the realtime invalidation hub.
 - **Presentation** (`src/presentation`) owns everything visual: the shadcn primitives, the application components, the React Email templates, the Tailwind layers, the theme and the branding constants.
-- **Platform** (`src/platform/testing`) holds shared test infrastructure, and `src/durable-objects` holds the WebSocket invalidation hub.
+- **Platform** (`src/platform/testing`) holds shared test infrastructure and the Worker entry of the local `test` environment, and `src/durable-objects` holds the WebSocket invalidation hub.
 
 ```text
 src/
 ├── routes/              Locale-free TanStack file routes, plus api/ handlers
 ├── routes.ts            The ROUTES path table
 ├── router.tsx           getRouter: router, per-request QueryClient, locale rewrite
-├── server.ts            Cloudflare Worker entry and queue consumer
+├── server.ts            Worker entry: fetch, realtime WebSockets, queues, cron
 ├── modules/             42 feature folders, plus _core
 ├── integrations/        14 vendor folders
 ├── presentation/        Components, emails, styles, theme, branding
 ├── providers/           TranslationsProvider, ThemesProvider
-├── data/                Static data and fixtures shared by several files
+├── data/                Static data: blog posts, landing media, sitemap pages
 ├── lib/                 Small request-scoped helpers
 ├── hooks/               Shared React hooks
 ├── durable-objects/     RealtimeInvalidationHub
-├── platform/testing/    Test setup, D1 transport, render helpers
+├── platform/testing/    Test setup, D1 transport, render helpers, test Worker
 └── types/               Bindings, router and generated Worker declarations
 ```
 
 ## Rules that shape the code
 
-- **Accessors do not know who is asking; use cases do.** `*.accessors.ts` is plain data access. `use-cases/*.ts` wraps it in `createServerFn`, validates input with the module's Zod schema, applies the `authorized()` middleware and exports the TanStack Query options next to the operation. Authorization can only be forgotten in one layer.
+- **Accessors do not know who is asking; use cases do.** `*.accessors.ts` is plain data access. `use-cases/*.ts` wraps it in `createServerFn`, validates input with the module's Zod schema, applies the `authorized()` middleware (public storefront reads and forms use `withRequest` or `withRateLimit()` instead) and exports the TanStack Query options next to the operation. Authorization can only be forgotten in one layer.
 - **A server function is a public endpoint.** Route `beforeLoad` guards redirect for navigation only. The real boundary is the middleware on the server function.
 - **Query options live with the operation.** `getProductQuery`, `getAdminOrdersPageQuery` and `shipOrderMutation` are exported from the same file as the server function, so a loader and the component that later refetches share one key and one fetcher by construction.
-- **No comments in TypeScript source.** Intent is expressed through names and types. The prose in these `.mdx` files is the documentation.
+- **Comments are avoided by convention.** Intent is expressed through names and types, and reviews remove explanatory comments instead of adding them. No lint rule enforces this. The prose in these `.mdx` files is the documentation.
 - **Import from the defining file.** There is no dependency-injection container, no barrel files and no wrapper layer.
 
 ## In this section

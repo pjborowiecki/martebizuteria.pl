@@ -4,27 +4,40 @@ description: "Każdy katalog najwyższego poziomu w repozytorium M'Arte i zasady
 ---
 
 ```text
+.github/
+├── actions/setup/                     Wspólne kroki Bun, Vite+, instalacji i typegen
+└── workflows/                         ci, e2e-reusable, e2e-full, deploy-preview,
+                                       deploy-production
+.vite-hooks/                           Hooki Git pre-commit i prepare-commit-msg
+.cursor/rules/                         Reguły Cursora kierujące agentów do opensrc/ i skilli
+.vscode/                               Zalecane rozszerzenia i ustawienia workspace
 content/
 └── docs/                              <strona>.<locale>.mdx i meta.<locale>.json
+e2e/                                   Playwright: specs/, pages/, fixtures/ i data/
 messages/<locale>/<namespace>.json     Jeden plik na przestrzeń nazw tłumaczeń
 public/                                Fonty, obrazy i inne zasoby statyczne
 scripts/                               verify-bindings, verify-stripe-keys, verify-email-sender,
                                        verify-build, verify-deployment, prepare-deploy-secrets,
-                                       commit-msg, sync-skills
+                                       commit-msg, sync-skills, seed-test
 src/
+├── __test__/                          Testy server.ts i router.tsx oraz doubles/
 ├── routes/                            Płaskie trasy plikowe bez segmentu locale
 │   ├── __root.tsx                     Dokument shellowy, tagi head, root beforeLoad
 │   ├── _storefront.*.tsx              Publiczne strony sklepu pod layoutem _storefront
 │   ├── account.*.tsx                  Strefa konta klienta
 │   ├── admin.*.tsx                    Panel administracyjny
+│   ├── admin_.*.tsx                   Strony panelu poza jego layoutem: podsumowanie
+│   │                                  zamówienia do druku i strona bezpieczeństwa
 │   ├── auth.*.tsx                     Logowanie, rejestracja, odzyskiwanie hasła
 │   ├── checkout.*.tsx                 Layout i strona kroków zamówienia
 │   ├── docs.tsx, docs.index.tsx,
 │   │   docs.$.tsx                     Ta dokumentacja
 │   ├── dev.emails.tsx                 Podglądy szablonów e-mail
-│   └── api/                           auth.$.ts, health.ts i webhooks.stripe.ts
+│   └── api/                           auth.$.ts, health.ts, newsletter.unsubscribe.ts,
+│                                      webhooks.inpost.ts i webhooks.stripe.ts
 ├── routes.ts                          ROUTES: każda ścieżka jako stała
 ├── router.tsx                         getRouter, domyślne opcje QueryClient, rewrite
+├── routeTree.gen.ts                   Wygenerowane drzewo tras
 ├── server.ts                          Handlery fetch, queue i scheduled Workera
 ├── modules/
 │   ├── _core/
@@ -32,7 +45,8 @@ src/
 │   │   │                              tax
 │   │   └── utils/                     pagination, zod-fields, table-export, download,
 │   │                                  currency, datetime, iso-date, iso-datetime, json,
-│   │                                  column-filters, search-conditions, polish-deadline, tax
+│   │                                  column-filters, datetime-column-filter,
+│   │                                  search-conditions, polish-deadline, tax
 │   └── <feature>/
 │       ├── <feature>.schema.ts        Tabela Drizzle i relacje
 │       ├── <feature>.zod.ts           Schematy wejścia wspólne dla formularzy i funkcji serwerowych
@@ -53,6 +67,7 @@ src/
 │   │       ├── image-upload/          Widget uploadu do R2
 │   │       ├── checkout/              Kroki zamówienia i wybór dostawy
 │   │       ├── defaults/              Komponenty błędu, ładowania i 404 routera
+│   │       ├── display-preferences/   Pola locale formatowania i strefy czasowej
 │   │       └── pages/<area>/          Komponenty jednej strony lub obszaru
 │   ├── emails/                        Szablony React Email, wspólne style i ich podglądy
 │   ├── pdf/                           Formularze PDF odstąpienia i reklamacji oraz ich układ A4
@@ -62,29 +77,30 @@ src/
 │   ├── branding/                      app.ts, socials.ts
 │   └── document-assets.ts             Krytyczne preloady fontów zależne od locale
 ├── providers/                         translations-provider, themes-provider
-├── data/                              Dane statyczne i fixture'y panelu administracyjnego
+├── data/                              blog-posts, landing, static-pages
 ├── lib/                               background, cookie, image, incident-alert, rate-limit,
-│                                      request, security-headers, seo, sitemap, url,
-│                                      catalog-debug-log
+│                                      request, retention, security-headers, seo, sitemap,
+│                                      url, catalog-debug-log, deployment
 ├── hooks/                             Współdzielone hooki React
 ├── durable-objects/                   realtime-invalidation-hub.ts
-├── platform/testing/                  setup.ts, lib/, mocks/
+├── platform/testing/                  setup.ts, lib/, mocks/, vitest-env.d.ts i worker.ts
+│                                      (punkt wejścia Workera lokalnego środowiska test)
 └── types/                             globals, router, vite-env, worker-configuration
 ```
 
 ## Zasady rozmieszczania
 
 - **Pliki i katalogi używają kebab-case.** Testy leżą w siostrzanym katalogu `__test__` i noszą nazwy `*.test.ts`, `*.integration.test.ts` lub `*.component.test.tsx`.
-- **Trasy tylko komponują.** Plik trasy definiuje komponent strony lub layoutu, swoje `staticData.namespaces`, guard `beforeLoad`, `loader` i `head`. Widżety, dialogi, formularze i definicje kolumn należą do `src/presentation/components/custom`.
-- **Moduł to funkcjonalność, nie zawsze tabela.** Większość z 43 modułów jest właścicielem jednej tabeli Drizzle, ale `admin-dashboard`, `customer-account` i `customer-activity` są modelami odczytu obejmującymi kilka tabel i nie mają własnego pliku schematu. `storefront-search` deklaruje tylko indeks FTS5 `storefront_search`, który tworzy ręcznie napisana migracja.
-- **`_core` to współdzielone jądro.** Znajdują się tam `AppError` i `ERROR_CODES`, helpery paginacji, wielokrotnie używane pola Zod, formatery walut i buildery filtrów kolumn. `_core/constants/timezone.ts` dostarcza `TIMEZONES`, listę stref czasowych, z której wybierają klienci, oraz `DEFAULT_TIMEZONE_CODE`, strefę samego sklepu (`Europe/Warsaw`), w której numery zamówień i panel administracyjny liczą lata, miesiące i dni, a `_core/utils/polish-deadline.ts` liczy termin odstąpienia od umowy; wszystkie czytają polską datę przez `toCalendarDate` z `_core/utils/datetime.ts`. `_core/constants/country.ts` to tablica referencyjna ISO utrzymywana świadomie na potrzeby planowanych prac — nie ma importerów i nie wolno jej usuwać jako martwego kodu.
-- **`src/data` zawiera dane, nie logikę.** `landing.ts` i `static-pages.ts` zasilają prawdziwe strony, a `blog-posts.ts` wymienia artykuły bloga, na razie żadnego, co trzyma blog w ukryciu; `settings.ts` to fixture'y stojące za stroną ustawień w panelu, która jest jeszcze szkieletem.
+- **Trasy tylko komponują.** Plik trasy definiuje komponent strony lub layoutu, swoje `staticData.namespaces`, guard `beforeLoad`, `loader` i `head`. Widżety, dialogi, formularze i definicje kolumn należą do `src/presentation/components/custom`. Wyjątkami są `account.addresses.tsx` i `account.overview.tsx`: nadal definiują w pliku trasy swój formularz i karty adresów oraz sekcje przeglądu konta.
+- **Moduł to funkcjonalność, nie zawsze tabela.** `src/modules` zawiera 42 moduły funkcjonalne plus `_core`. 39 z nich ma plik schematu Drizzle, zwykle z jedną tabelą; `discount` deklaruje też `discount_redemption` i `discount_claim`, a `order` — `order_number_sequence`. `admin-dashboard`, `customer-account` i `customer-activity` są modelami odczytu (a `customer-activity` także zapisuje zdarzenia audytu) obejmującymi tabele innych modułów i nie mają własnego pliku schematu. `storefront-search` deklaruje tylko indeks FTS5 `storefront_search`, który tworzy ręcznie napisana migracja.
+- **`_core` to współdzielone jądro.** Znajdują się tam `AppError` i `ERROR_CODES`, helpery paginacji, wielokrotnie używane pola Zod, formatery walut i buildery filtrów kolumn. `_core/constants/timezone.ts` dostarcza `TIMEZONES`, listę stref IANA, którą oferuje pole strefy czasowej w `custom/display-preferences/`, oraz `DEFAULT_TIMEZONE_CODE`, strefę samego sklepu (`Europe/Warsaw`). `order.number.server.ts` bierze w tej strefie rok numeru zamówienia, `_core/utils/polish-deadline.ts` liczy w niej termin odstąpienia od umowy, a `resolveTimezoneCode` wraca do niej, gdy użytkownik nie ma zapisanej poprawnej strefy (sprawdzanie ważności zapisanych kart w `list-saved-payment-methods.ts`); dwa pierwsze czytają polską datę przez `toCalendarDate` z `_core/utils/datetime.ts`. Panel administracyjny liczy dni, miesiące i rok na dashboardzie w rozstrzygniętej strefie czasowej wyświetlania osoby, która go ogląda. `_core/constants/country.ts` to tablica referencyjna ISO utrzymywana świadomie na potrzeby planowanych prac — poza testami importuje z niej tylko `timezone.ts`, i to wyłącznie typ `CountryCode`, a mimo to nie wolno jej usuwać jako martwego kodu.
+- **`src/data` zawiera dane, nie logikę.** `landing.ts` i `static-pages.ts` zasilają prawdziwe strony, a `blog-posts.ts` wymienia artykuły bloga, na razie żadnego, co trzyma blog w ukryciu.
 - **`src/lib` zawiera małe helpery w zakresie żądania**, a nie funkcjonalności: `background.ts` (magazyn `waitUntil`), `cookie.ts`, `image.ts`, `incident-alert.server.ts` (`sendIncidentAlert`, który raz na incydent wysyła e-mail do sklepu), `rate-limit.ts`, `request.ts` (adres klienta oraz `resolveRequestOrigin` i `resolveDeploymentOrigin`, sprawdzone originy, z których budowany jest każdy link w e-mailu i adres powrotu ze Stripe), `retention.ts` (codzienne czyszczenie, które uruchamia handler `scheduled`), `security-headers.ts` (nonce Content-Security-Policy dla każdego żądania i nagłówki, które dostaje każda odpowiedź Workera), `seo.ts`, `sitemap.ts` (strony, które wymienia `/sitemap.xml`, czytane z D1) i `url.ts`. Wyjątkiem jest `deployment.ts`: `verifyDeployment`, kontrola działającej strony, którą `scripts/verify-deployment.ts` uruchamia po wdrożeniu i której nie wywołuje żadne żądanie.
-- **Plików generowanych nie edytuje się ręcznie.** Plugin routera zapisuje `src/routeTree.gen.ts`, `bun run cf-typegen` zapisuje `src/types/worker-configuration.d.ts` (poza repozytorium), a `bun run content` zapisuje `.source/`, które `tsconfig.json` mapuje na prefiks importu `collections/*`.
+- **Plików generowanych nie edytuje się ręcznie.** Plugin routera zapisuje `src/routeTree.gen.ts`, `bun run cf-typegen` (część `bun run typegen`) zapisuje `src/types/worker-configuration.d.ts` (poza repozytorium), a `bun run content` zapisuje `.source/`, które `tsconfig.json` mapuje na prefiks importu `collections/*`.
 
 ## Treści i tłumaczenia leżą poza `src`
 
-`content/docs` zawiera te strony, po jednym pliku na locale, a każdy katalog wymienia swoje strony w kolejności w `meta.<locale>.json`. Regulamin, polityka prywatności, strona wymiany i zwrotów oraz FAQ nie są plikami: ich treść w Markdownie leży w tabeli D1 `content_page`, którą wypełniają migracje `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql`, `20261005200000_terms_of_service_page.sql` i `20261010232000_faq_page.sql` (treść strony zwrotów przepisuje potem `20261005210000_returns_and_complaints_page.sql`, a polityki prywatności `20261010200000_privacy_policy_page.sql`, `20261010210000_privacy_policy_account_deletion.sql` i `20261012100000_privacy_policy_without_bot_check.sql`), a edytuje się ją w `/admin/content`. Formularze odstąpienia i reklamacji, do których linkują te strony, to pliki PDF, które Worker tworzy z `src/presentation/pdf`. `messages/{en-US,pl-PL}` zawiera po 56 plików przestrzeni nazw.
+`content/docs` zawiera te strony, po jednym pliku na locale, a każdy katalog wymienia swoje strony w kolejności w `meta.<locale>.json`. Regulamin, polityka prywatności, strona wymiany i zwrotów oraz FAQ nie są plikami: ich treść w Markdownie leży w tabeli D1 `content_page`, którą wypełniają migracje `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql`, `20261005200000_terms_of_service_page.sql` i `20261010232000_faq_page.sql` (treść strony zwrotów przepisuje potem `20261005210000_returns_and_complaints_page.sql`, strony zwrotów i regulaminu `20261010231000_withdrawal_function_links.sql`, który dodaje linki do formularza odstąpienia pod `/withdraw-from-contract`, a polityki prywatności `20261010200000_privacy_policy_page.sql`, `20261010210000_privacy_policy_account_deletion.sql` i `20261012100000_privacy_policy_without_bot_check.sql`), a edytuje się ją w `/admin/content`. `20261016161000_seller_placeholders.sql` zastąpiła dane sprzedawcy we wszystkich czterech placeholderami danych sklepu. Formularze odstąpienia i reklamacji, do których linkują te strony, to pliki PDF, które Worker tworzy z `src/presentation/pdf`. `messages/{en-US,pl-PL}` zawiera po 60 plików przestrzeni nazw.
 
 ## Powiązane strony
 

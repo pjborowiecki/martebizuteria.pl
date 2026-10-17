@@ -3,40 +3,40 @@ title: "Architektura"
 description: "Jak zorganizowane jest M'Arte: jeden Worker, trasy bez segmentu locale, moduły funkcjonalne będące właścicielami swoich tabel i adaptery wokół każdego dostawcy."
 ---
 
-M'Arte to jedna aplikacja TanStack Start wdrożona jako pojedynczy Cloudflare Worker. Ten sam Worker obsługuje publiczny sklep, strefę konta klienta, panel administracyjny, tę dokumentację i pięć handlerów HTTP pod `/api`. Nie ma osobnego backendu.
+M'Arte to jedna aplikacja TanStack Start wdrożona jako pojedynczy Cloudflare Worker. Ten sam Worker obsługuje publiczny sklep, strefę konta klienta, panel administracyjny, tę dokumentację, pięć handlerów tras HTTP pod `/api` oraz dwa endpointy WebSocket czasu rzeczywistego, `/api/realtime/admin/ws` i `/api/realtime/storefront/ws`, które `src/server.ts` przekazuje do huba Durable Object, zanim zadziała router. Ten sam punkt wejścia konsumuje też obie kolejki i uruchamia codzienne zadanie retencji danych. Nie ma osobnego backendu.
 
 Kod jest podzielony według odpowiedzialności, nie według stron:
 
 - **Trasy** (`src/routes`) komponują strony. Plik trasy deklaruje swoje przestrzenie nazw tłumaczeń, guard, loader i tagi `head`, a następnie renderuje komponenty. Pliki tras nie zawierają segmentu locale — router przepisuje URL za nie.
-- **Moduły** (`src/modules/{feature}`) są właścicielami logiki domenowej. 42 katalogi funkcjonalne zawierają tabelę Drizzle, schematy Zod, stałe, typy, helpery, zwykłe **akcesory** danych oraz **przypadki użycia**, które opakowują je w funkcję serwerową.
+- **Moduły** (`src/modules/{feature}`) są właścicielami logiki domenowej. 42 katalogi funkcjonalne zawierają schematy Zod, stałe, typy, helpery, zwykłe **akcesory** danych oraz **przypadki użycia**, które opakowują je w funkcję serwerową. 39 z nich jest właścicielem tabeli Drizzle; `admin-dashboard`, `customer-account` i `customer-activity` nie mają własnej tabeli i operują na tabelach innych modułów.
 - **Integracje** (`src/integrations/{vendor}`) konfigurują zewnętrzne usługi: Better Auth, Drizzle na D1, Cloudflare R2, Stripe, Resend, InPost, use-intl, Fumadocs, GSAP, Lenis, react-day-picker, TanStack Query, MDXEditor i hub unieważniania w czasie rzeczywistym.
 - **Warstwa prezentacji** (`src/presentation`) odpowiada za wszystko, co widoczne: prymitywy shadcn, komponenty aplikacji, szablony React Email, warstwy Tailwind, motyw i stałe brandingowe.
-- **Platforma** (`src/platform/testing`) zawiera współdzieloną infrastrukturę testową, a `src/durable-objects` — hub unieważniania oparty na WebSocket.
+- **Platforma** (`src/platform/testing`) zawiera współdzieloną infrastrukturę testową i punkt wejścia Workera lokalnego środowiska `test`, a `src/durable-objects` — hub unieważniania oparty na WebSocket.
 
 ```text
 src/
 ├── routes/              Trasy plikowe TanStack bez locale, plus handlery api/
 ├── routes.ts            Tablica ścieżek ROUTES
 ├── router.tsx           getRouter: router, QueryClient na żądanie, rewrite locale
-├── server.ts            Punkt wejścia Workera i konsument kolejki
+├── server.ts            Punkt wejścia Workera: fetch, WebSockety, kolejki, cron
 ├── modules/             42 katalogi funkcjonalne plus _core
 ├── integrations/        14 katalogów dostawców
 ├── presentation/        Komponenty, e-maile, style, motyw, branding
 ├── providers/           TranslationsProvider, ThemesProvider
-├── data/                Dane statyczne i fixture'y współdzielone przez kilka plików
+├── data/                Dane statyczne: wpisy bloga, media strony głównej, strony mapy witryny
 ├── lib/                 Małe helpery w zakresie żądania
 ├── hooks/               Współdzielone hooki React
 ├── durable-objects/     RealtimeInvalidationHub
-├── platform/testing/    Setup testów, transport D1, helpery renderowania
+├── platform/testing/    Setup testów, transport D1, helpery renderowania, Worker testowy
 └── types/               Deklaracje bindingów, routera i wygenerowane typy Workera
 ```
 
 ## Zasady kształtujące kod
 
-- **Akcesory nie wiedzą, kto pyta; przypadki użycia wiedzą.** `*.accessors.ts` to zwykły dostęp do danych. `use-cases/*.ts` opakowuje go w `createServerFn`, waliduje wejście schematem Zod modułu, stosuje middleware `authorized()` i eksportuje opcje TanStack Query obok samej operacji. Autoryzację można pominąć tylko w jednej warstwie.
+- **Akcesory nie wiedzą, kto pyta; przypadki użycia wiedzą.** `*.accessors.ts` to zwykły dostęp do danych. `use-cases/*.ts` opakowuje go w `createServerFn`, waliduje wejście schematem Zod modułu, stosuje middleware `authorized()` (publiczne odczyty i formularze sklepu używają zamiast niego `withRequest` lub `withRateLimit()`) i eksportuje opcje TanStack Query obok samej operacji. Autoryzację można pominąć tylko w jednej warstwie.
 - **Funkcja serwerowa jest publicznym endpointem.** Guardy w `beforeLoad` trasy przekierowują wyłącznie na potrzeby nawigacji. Prawdziwą granicą jest middleware funkcji serwerowej.
 - **Opcje zapytań mieszkają razem z operacją.** `getProductQuery`, `getAdminOrdersPageQuery` i `shipOrderMutation` są eksportowane z tego samego pliku co funkcja serwerowa, więc loader i komponent, który później odświeży dane, z definicji korzystają z jednego klucza i jednego fetchera.
-- **Brak komentarzy w źródłach TypeScript.** Intencję wyraża się nazwami i typami. Proza w tych plikach `.mdx` jest dokumentacją.
+- **Komentarzy unika się z konwencji.** Intencję wyraża się nazwami i typami, a w code review komentarze wyjaśniające są usuwane, a nie dopisywane. Żadna reguła lintera tego nie wymusza. Proza w tych plikach `.mdx` jest dokumentacją.
 - **Importuj z pliku, który definiuje.** Nie ma kontenera wstrzykiwania zależności, plików barrel ani warstwy wrapperów.
 
 ## W tej sekcji

@@ -3,7 +3,7 @@ title: "Modules and use cases"
 description: "How a feature module is laid out, what each file suffix means, and the shape every use case follows."
 ---
 
-## The 43 modules
+## The modules
 
 ```text
 _core                   account                 address
@@ -27,56 +27,56 @@ wishlist
 
 ## File suffixes
 
-| File                       | Contains                                                                   |
-| -------------------------- | -------------------------------------------------------------------------- |
-| `<feature>.schema.ts`      | The `sqliteTable` definition, its indexes and its `relations`              |
-| `<feature>.zod.ts`         | Input schemas shared by react-hook-form and the server function validators |
-| `<feature>.constants.ts`   | Query keys, mutation keys, enums, page sizes, stale times, column metadata |
-| `<feature>.types.ts`       | Row and input types derived from the schema and the Zod shapes             |
-| `<feature>.utils.ts`       | Pure helpers with no database or request access                            |
-| `<feature>.accessors.ts`   | Data access: Drizzle queries, prepared statements, batch builders          |
-| `<feature>.*.server.ts`    | Server-only helpers that are not RPC endpoints                             |
-| `use-cases/<verb-noun>.ts` | One `createServerFn` plus the query or mutation options that call it       |
+| File                              | Contains                                                                   |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `<feature>.schema.ts`             | The `sqliteTable` definition, its indexes and its `relations`              |
+| `<feature>.zod.ts`                | Input schemas shared by react-hook-form and the server function validators |
+| `<feature>.constants.ts`          | Query keys, mutation keys, enums, page sizes, stale times, column metadata |
+| `<feature>.types.ts`              | Row and input types derived from the schema and the Zod shapes             |
+| `<feature>.utils.ts`              | Pure helpers with no database or request access                            |
+| `<feature>.accessors.ts`          | Data access: Drizzle queries, prepared statements, batch builders          |
+| `<feature>.*.server.ts`           | Server-only helpers that are not RPC endpoints                             |
+| `use-cases/<verb-noun>.ts`        | One `createServerFn` plus the query or mutation options that call it       |
+| `use-cases/<verb-noun>.server.ts` | One server-only operation that other server code calls; no RPC endpoint    |
 
-`order` is a good module to read end to end: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` and thirteen files under `use-cases/`.
+`order` is a good module to read end to end: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.email.utils.ts`, `order.fulfillment-time.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order.email-delivery.server.ts`, `order.refund.server.ts`, `order.restock.server.ts`, `order.shipment.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` and thirty files under `use-cases/`.
 
 ## A mutation use case
 
 ```ts
-const trimmedOrNull = (value: string | undefined) => {
+const filledOrUndefined = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim()
 
-  return trimmed === undefined || trimmed === "" ? sql`null` : trimmed
+  return trimmed === "" ? undefined : trimmed
+}
+
+const trackingColumns = (trackingNumber: string | undefined, trackingUrl: string | undefined) => {
+  if (trackingNumber !== undefined) {
+    return { trackingNumber, trackingUrl: trackingUrl ?? sql`null` }
+  }
+
+  return trackingUrl === undefined ? {} : { trackingUrl }
 }
 
 export const shipOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminShipOrderInput>) => orderZodSchemas.adminShipOrderInput.parse(input))
-  .handler(async ({ data: { orderId, trackingNumber, trackingUrl } }) => {
+  .handler(async ({ data: { orderId, ...tracking } }) => {
     const origin = resolveRequestOrigin(getRequest())
+    const trackingNumber = filledOrUndefined(tracking.trackingNumber)
     assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
       canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
     )
 
-    await db
-      .update(order)
-      .set({
-        fulfillmentStatus: "shipped",
-        shippedAt: new Date(),
-        trackingNumber: trimmedOrNull(trackingNumber),
-        trackingUrl: trimmedOrNull(trackingUrl),
-        updatedAt: new Date(),
-      })
-      .where(eq(order.id, orderId))
-
-    recordOrderShippedAudit(orderId, {
-      detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+    await transitionOrder(orderId, SHIPPABLE_FULFILLMENT_STATUSES, {
+      fulfillmentStatus: "shipped",
+      shippedAt: new Date(),
+      ...trackingColumns(trackingNumber, filledOrUndefined(tracking.trackingUrl)),
     })
-    const shippedEmailDelivery = sendOrderShippedEmail(orderId, origin)
-    scheduleBackgroundWork(shippedEmailDelivery)
-    const shippedEmailSent = await shippedEmailDelivery
 
-    return { ok: true, orderId, shippedEmailSent }
+    recordOrderShippedAudit(orderId, { detail: trackingNumber })
+
+    return { email: await announceOrderShipment(orderId, origin), ok: true, orderId }
   })
 
 export const shipOrderMutation = mutationOptions({
@@ -87,11 +87,11 @@ export const shipOrderMutation = mutationOptions({
 
 Every part of that is load-bearing:
 
-- **Middleware** comes from `src/integrations/better-auth/auth.middleware.ts`. `withRequest` captures the request headers and normalizes errors; `authorized()` requires a session; `authorized({ order: ["update"] })` also checks the role's permission from `auth.access.ts`; `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` counts attempts per operation and IP.
+- **Middleware** comes from `src/integrations/better-auth/auth.middleware.ts`. `withRequest` captures the request headers and normalizes errors; `authorized()` requires a session; `authorized({ order: ["update"] })` also checks the role's permission from `auth.access.ts` and refuses with `FORBIDDEN` while `needsTwoFactorSetup` holds — an admin-role account without two-factor authentication in a build that requires it (production and test); `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` counts attempts per operation and IP.
 - **Validation** parses the input with the module's Zod schema before the handler runs, so the handler receives `zod.output` types.
-- **State guards** live in the module, not the component. `assertOrderActionState` refuses transitions that `order.admin-actions.utils.ts` says are impossible.
+- **State guards** live in the module, not the component. `assertOrderActionState` refuses transitions that `order.admin-actions.utils.ts` says are impossible, and `transitionOrder` from `order.admin-action.server.ts` repeats the check in the write: its `UPDATE` only matches an order whose fulfilment status is still one of `SHIPPABLE_FULFILLMENT_STATUSES` and which is not cancelled, and it throws a conflict when no row matched.
 - **Links follow the request.** `resolveRequestOrigin(getRequest())` runs first, so a request on a host this build does not serve is refused with `FORBIDDEN` before the order changes, and the shipping email links to the deployment the admin is using. See [Security model](/docs/architecture/security-model).
-- **Audit is background work; the email is awaited.** The recorder enqueues to the Cloudflare Queue, so it does not delay the response. The email is awaited because the admin is told whether it went out: `sendOrderShippedEmail` records a failure on the order and returns `false` instead of throwing, so a refused email never undoes the shipment. The same promise also goes to `scheduleBackgroundWork`, so the send and its audit entry finish even if the admin disconnects first.
+- **Audit is background work; the email is awaited.** The recorder enqueues to the Cloudflare Queue, so it does not delay the response. The email is awaited because the admin is told whether it went out. `announceOrderShipment` first claims the e-mail with a conditional `UPDATE` (`shippedEmailAt` for the shipped e-mail, `trackingEmailNumber` for a later tracking e-mail), so a repeated call reports `alreadySent` instead of sending twice. `sendOrderShippedEmail` goes through `deliverOrderEmail` in `order.email-delivery.server.ts`, which records the outcome in the audit log and returns `false` instead of throwing; a failed send is retried twice in the background and then raises an incident alert, and a refused email never undoes the shipment. `awaitOrderEmailNotice` hands the delivery promise to `scheduleBackgroundWork`, so the send finishes even if the admin disconnects first, and returns `{ kind, status }` with `status` set to `sent` or `failed`, which the admin order actions show as a toast.
 - **The mutation options are exported next to the function**, keyed by `ORDER_MUTATION_KEYS.SHIP`.
 
 ## A read use case
@@ -111,22 +111,27 @@ export const getAdminOrdersPageQuery = (input: Order["adminPageInput"]) =>
 
 Paginated admin lists all resolve `{ hasMore, items, limit, offset, total }` through `buildListPaginationResult` and `listPaginationParamsFromPage` from `src/modules/_core/utils/pagination.ts`, so the data grid does not care which entity it is showing.
 
-Public storefront reads use `withRequest` alone — no session is required — and return `false` rather than throwing when nothing matches, which is how `get-product.ts` distinguishes "no such published product" from an error:
+Public storefront reads need no session: most use `withRequest` alone, and `search-storefront.ts` uses `withRateLimit()` instead. The product, category and collection reads return `false` rather than throwing when nothing matches, which is how `get-product.ts` distinguishes "no such published product" from an error:
 
 ```ts
 export const getProduct = createServerFn({ method: "GET" })
   .middleware([withRequest])
   .validator((input: zod.input<typeof productZodSchemas.productByHandleInput>) => productZodSchemas.productByHandleInput.parse(input))
   .handler(async ({ data }) => {
-    const prod = await getPublishedProductByHandleQuery.execute({ handle: data.handle })
+    const { handle } = data
+    const locale = data.locale ?? I18N.DEFAULT_LOCALE
+
+    const prod = await getPublishedProductByHandleQuery.execute({ handle })
 
     if (prod === undefined || !isProductInStock(prod.variants)) {
       return false
     }
 
-    return mapPublishedProductForStorefront(prod, data.locale ?? I18N.DEFAULT_LOCALE)
+    return attachPriceReductions(mapPublishedProductForStorefront(prod, locale), await getPriceReductions(prod.variants))
   })
 ```
+
+`getPriceReductions` reads the price history of the variants whose price is reduced, and `attachPriceReductions` sets each variant's `priceReduction` on the mapped product; both come from the `price-history` module.
 
 ## Query keys
 
@@ -152,7 +157,7 @@ Preserve the tuple values when you move code. The same constants are used by loa
 
 ## Server functions without an RPC boundary
 
-Not every operation is a server function. The nine files in `src/modules/checkout/use-cases/*.server.ts` export plain async functions. `fulfillCheckout` and `sendPaymentFailedEmail` are only ever called from the Stripe webhook handler, which is already authenticated by signature verification. `createCheckout`, `supersedeCheckoutSession` and `updateCheckoutDelivery` are called from `src/integrations/stripe/stripe.actions.server.ts`, behind the rate-limited `createCheckoutSessionFn` and `updateCheckoutSessionFn`. `countOpenCheckouts` is called from the same file before a new checkout is created, to count the open checkouts of the shopper's address and email. `releaseCheckout` is called from both: by the webhook handler, by a checkout update that fails after its old session was expired, and by one that finds Stripe has already expired its old session. `getCheckoutSessionStatus` reaches the last of those through `releaseExpiredCheckoutSession`, behind its own rate limit. `anonymizeEndedCheckouts` is called only by the daily retention clean-up in `src/lib/retention.ts`, which the Worker's `scheduled` handler runs. `expireCheckoutsHoldingVariants` is called from `updateCompleteProduct`, behind its `authorized({ product: ["update"] })`, when a save takes a product off sale, and reaches `releaseCheckout` the same way for each session it expires. Exposing any of them as its own endpoint would only widen the surface. The e-mails other modules send are server-only use cases of the same kind, such as `src/modules/order/use-cases/send-order-shipped-email.server.ts`, called by the use cases, webhooks and queue consumers that decide an e-mail is due.
+Not every operation is a server function. The nine files in `src/modules/checkout/use-cases/*.server.ts` export plain async functions. `sendPaymentFailedEmail` is only ever called from the Stripe webhook handler, which is already authenticated by signature verification. `fulfillCheckout` is called from that handler and from the order confirmation page: when `getOrderConfirmation` finds the payment still `pending`, it checks the `checkout-status` rate limit and calls `fulfillReturnedCheckoutSession` in `src/integrations/stripe/stripe.fulfillment.server.ts`, which retrieves the session from Stripe and creates the order only when Stripe reports it complete and paid. `createCheckout`, `supersedeCheckoutSession` and `updateCheckoutDelivery` are called from `src/integrations/stripe/stripe.actions.server.ts`, behind the rate-limited `createCheckoutSessionFn` and `updateCheckoutSessionFn`. `countOpenCheckouts` is called from the same file before a new checkout is created, to count the open checkouts of the shopper's address and email. `releaseCheckout` is called from both: by the webhook handler, by a checkout update that fails after its old session was expired, and by one that finds Stripe has already expired its old session. `getCheckoutSessionStatus` reaches the last of those through `releaseExpiredCheckoutSession`, behind its own rate limit. `anonymizeEndedCheckouts` is called only by the daily retention clean-up in `src/lib/retention.ts`, which the Worker's `scheduled` handler runs. `expireCheckoutsHoldingVariants` is called from `updateCompleteProduct`, behind its `authorized({ product: ["update"] })`, when a save takes a product off sale, and reaches `releaseCheckout` the same way for each session it expires. Four order use cases without the `.server` suffix are plain functions of the same kind: `refund-order.ts`, `flag-order-dispute.ts`, `clear-order-dispute.ts` and `undo-failed-refund.ts` are called only from the Stripe webhook handler in `src/integrations/stripe/stripe.webhooks.ts`. Exposing any of them as its own endpoint would only widen the surface. The e-mails other modules send are server-only use cases of the same kind, such as `src/modules/order/use-cases/send-order-shipped-email.server.ts`, called by the use cases, webhooks and queue consumers that decide an e-mail is due.
 
 ## Calling a use case from a component
 

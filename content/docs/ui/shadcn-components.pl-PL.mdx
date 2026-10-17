@@ -22,7 +22,7 @@ description: "Prymitywy Base UI w src/presentation/components/shadcn, ich konwen
 }
 ```
 
-Alias `utils` to goła nazwa pakietu `cn` — `cn@0.3` z projektu shadcn, skompilowany zamiennik `clsx` + `tailwind-merge` — dlatego każdy komponent pisze `import { cn } from "cn"`, a nie z lokalnego pliku.
+Alias `utils` to goła nazwa pakietu `cn` — `cn@0.4` z projektu shadcn, skompilowany zamiennik `clsx` + `tailwind-merge` — dlatego każdy komponent pisze `import { cn } from "cn"`, a nie z lokalnego pliku.
 
 ## Co opakowuje co
 
@@ -41,7 +41,7 @@ Alias `utils` to goła nazwa pakietu `cn` — `cn@0.3` z projektu shadcn, skompi
 
 ## Konwencje Base UI
 
-Jeśli pracowałeś wcześniej z shadcn na Radix, to są różnice, które faktycznie dają się we znaki:
+Względem shadcn opartego na Radix we znaki faktycznie dają się te różnice:
 
 | Nawyk z Radix                 | Base UI tutaj                                                          |
 | ----------------------------- | ---------------------------------------------------------------------- |
@@ -88,7 +88,7 @@ const menuTrigger = useMemo(() => <DropdownMenuTrigger render={button} />, [butt
 
 ## Warianty warte znajomości
 
-`Button` (`button.tsx`) to najbogatszy prymityw. Warianty: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive` oraz zestaw sklepowy `account`, `account-outline`, `account-ghost`, `account-destructive`. Rozmiary: `xs`, `sm`, `default`, `lg`, `xl`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`, `account`, `account-sm`. Konsola administratora używa `outline` z `icon-lg` lub `icon-sm`; sklep używa zestawu `account-*`, pisany wersalikami z rozstrzelonym światłem liter. `account-ghost` to sam tekst z `h-auto p-0`, cel wysoki na około 16,5 px, dlatego przezroczysta warstwa `after:` (`after:absolute after:inset-x-0 after:-inset-y-1`) sięga 4 px nad i pod niego. Daje to cel wysoki na około 24 px, czyli minimum z WCAG 2.5.8, bez zmiany układu i obrysu fokusu. Naciśnięcie górnego rzędu pikseli napisu zostaje też na przycisku, gdy `active:translate-y-px` przesuwa go o piksel w dół. Polega na tym **Anuluj** w formularzu adresu, a `e2e/specs/account.spec.ts` naciska tuż nad napisem.
+`Button` (`button.tsx`) to najbogatszy prymityw. Warianty: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive` oraz zestaw sklepowy `account`, `account-outline`, `account-ghost`, `account-destructive`. Rozmiary: `xs`, `sm`, `default`, `lg`, `xl`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`, `account`, `account-sm`, `account-icon`. Konsola administratora używa `outline` z `icon-lg` lub `icon-sm`; sklep używa zestawu `account-*`, pisany wersalikami z rozstrzelonym światłem liter. `account-ghost` to sam tekst z `h-auto p-0`, cel wysoki na około 16,5 px, dlatego przezroczysta warstwa `after:` (`after:absolute after:inset-x-0 after:-inset-y-1`) sięga 4 px nad i pod niego. Daje to cel wysoki na około 24 px, czyli minimum z WCAG 2.5.8, bez zmiany układu i obrysu fokusu. Naciśnięcie górnego rzędu pikseli napisu zostaje też na przycisku, gdy `active:translate-y-px` przesuwa go o piksel w dół. Polega na tym **Anuluj** w formularzu adresu, a `e2e/specs/account.spec.ts` naciska tuż nad napisem. Wariant `account-ghost` oraz rozmiary `account-sm` i `account-icon` mają też narzędzie `touch-target` (zobacz [Motyw](/docs/ui/theme)), więc na ekranie dotykowym warstwa `::before` powiększa każdy z nich do co najmniej 2.5rem (40px) w każdym wymiarze; `account-icon` to przycisk ikony 24px, używany przy kopiowaniu numeru przesyłki, w akcjach pól profilu i na kartach sesji.
 
 `Input` (`input.tsx`) ma sześć wariantów i domyślnie brak zaokrągleń — pola w tym sklepie to podkreślenia, nie ramki:
 
@@ -152,14 +152,14 @@ Dla komunikatów walidacji z serwera i komunikatów współdzielonych używaj `V
 
 ## Tłumaczenia
 
-Prymitywy, które potrzebują słów, czytają je same z przestrzeni nazw `components.shadcn`: `breadcrumb.navLabel`, `carousel.nextSlide`, `dialog.close`, `command.title`, `pagination.*` i `sheet.close`. Nigdy nie przekazuj etykiety do prymitywu jako propa, jeśli prymityw ma już własny klucz. Nowe teksty dodawaj do `messages/en-US/components.shadcn.json` **oraz** `messages/pl-PL/components.shadcn.json`.
+Prymitywy, które potrzebują słów, czytają je same z przestrzeni nazw `components.shadcn`: `breadcrumb.navLabel` i `breadcrumb.more`, `carousel.carouselLabel`, `carousel.previousSlide` i `carousel.nextSlide`, `command.title` i `command.description`, `dialog.close`, `pagination.*`, `sheet.close` oraz `sidebar.title`, `sidebar.description` i `sidebar.toggle`. `sheet.resizePanel` to jedyny klucz czytany poza prymitywami: arkusze formularzy produktu i katalogu w panelu opisują nim uchwyt zmiany szerokości. Nigdy nie przekazuj etykiety do prymitywu jako propa, jeśli prymityw ma już własny klucz. Nowe teksty dodawaj do `messages/en-US/components.shadcn.json` **oraz** `messages/pl-PL/components.shadcn.json`.
 
 ## Rozmiar CSS
 
 `globals.css` wyłącza nieużywane prymitywy ze skanowania źródeł przez Tailwind, więc ich klasy nigdy nie są kompilowane:
 
 ```css
-@source not "../components/shadcn/{alert,button-group,context-menu,drawer,empty,hover-card,input-otp,item,kbd,menubar,native-select,navigation-menu,pagination,progress,resizable,scroll-area,slider,tabs,toggle-group,toggle,typography}.tsx";
+@source not "../components/shadcn/{alert,button-group,context-menu,drawer,empty,hover-card,input-otp,kbd,menubar,navigation-menu,pagination,progress,resizable,scroll-area,slider,toggle-group,toggle,typography}.tsx";
 ```
 
 Wyłącza też `**/*.{test,spec}.{ts,tsx}`, `**/__test__/**` i `platform/testing/**`.

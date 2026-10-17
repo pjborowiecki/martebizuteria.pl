@@ -4,27 +4,40 @@ description: "Every top-level folder in the M'Arte repository and the rules for 
 ---
 
 ```text
+.github/
+├── actions/setup/                     Shared Bun, Vite+, install and typegen steps
+└── workflows/                         ci, e2e-reusable, e2e-full, deploy-preview,
+                                       deploy-production
+.vite-hooks/                           pre-commit and prepare-commit-msg Git hooks
+.cursor/rules/                         Cursor rules pointing agents at opensrc/ and skills
+.vscode/                               Recommended extensions and workspace settings
 content/
 └── docs/                              <page>.<locale>.mdx and meta.<locale>.json
+e2e/                                   Playwright specs/, pages/, fixtures/ and data/
 messages/<locale>/<namespace>.json     One file per translation namespace
 public/                                Fonts, images and other static assets
 scripts/                               verify-bindings, verify-stripe-keys, verify-email-sender,
                                        verify-build, verify-deployment, prepare-deploy-secrets,
-                                       commit-msg, sync-skills
+                                       commit-msg, sync-skills, seed-test
 src/
+├── __test__/                          Tests of server.ts and router.tsx, plus doubles/
 ├── routes/                            Locale-free flat file routes
 │   ├── __root.tsx                     Shell document, head tags, root beforeLoad
 │   ├── _storefront.*.tsx              Public storefront pages under the _storefront layout
 │   ├── account.*.tsx                  Customer account area
 │   ├── admin.*.tsx                    Admin console
+│   ├── admin_.*.tsx                   Admin pages outside the console layout: the
+│   │                                  printable order summary and the security page
 │   ├── auth.*.tsx                     Sign-in, sign-up, forgot and reset password
 │   ├── checkout.*.tsx                 Checkout layout and step page
 │   ├── docs.tsx, docs.index.tsx,
 │   │   docs.$.tsx                     This documentation site
 │   ├── dev.emails.tsx                 Email template preview
-│   └── api/                           auth.$.ts, health.ts and webhooks.stripe.ts
+│   └── api/                           auth.$.ts, health.ts, newsletter.unsubscribe.ts,
+│                                      webhooks.inpost.ts and webhooks.stripe.ts
 ├── routes.ts                          ROUTES: every path as a constant
 ├── router.tsx                         getRouter, QueryClient defaults, rewrite
+├── routeTree.gen.ts                   Generated route tree
 ├── server.ts                          Worker fetch, queue and scheduled handlers
 ├── modules/
 │   ├── _core/
@@ -32,7 +45,8 @@ src/
 │   │   │                              tax
 │   │   └── utils/                     pagination, zod-fields, table-export, download,
 │   │                                  currency, datetime, iso-date, iso-datetime, json,
-│   │                                  column-filters, search-conditions, polish-deadline, tax
+│   │                                  column-filters, datetime-column-filter,
+│   │                                  search-conditions, polish-deadline, tax
 │   └── <feature>/
 │       ├── <feature>.schema.ts        Drizzle table and relations
 │       ├── <feature>.zod.ts           Input schemas shared by forms and server functions
@@ -53,6 +67,7 @@ src/
 │   │       ├── image-upload/          R2 upload widget
 │   │       ├── checkout/              Checkout steps and delivery pickers
 │   │       ├── defaults/              Router error, pending and not-found components
+│   │       ├── display-preferences/   Formatting-locale and time-zone fields
 │   │       └── pages/<area>/          Components for one page or area
 │   ├── emails/                        React Email templates, shared styles and their previews
 │   ├── pdf/                           The withdrawal and complaint PDF forms and their A4 layout
@@ -62,29 +77,30 @@ src/
 │   ├── branding/                      app.ts, socials.ts
 │   └── document-assets.ts             Locale-specific critical font preloads
 ├── providers/                         translations-provider, themes-provider
-├── data/                              Static data and admin fixtures
+├── data/                              blog-posts, landing, static-pages
 ├── lib/                               background, cookie, image, incident-alert, rate-limit,
-│                                      request, security-headers, seo, sitemap, url,
-│                                      catalog-debug-log
+│                                      request, retention, security-headers, seo, sitemap,
+│                                      url, catalog-debug-log, deployment
 ├── hooks/                             Shared React hooks
 ├── durable-objects/                   realtime-invalidation-hub.ts
-├── platform/testing/                  setup.ts, lib/, mocks/
+├── platform/testing/                  setup.ts, lib/, mocks/, vitest-env.d.ts and worker.ts
+│                                      (the Worker entry of the local test environment)
 └── types/                             globals, router, vite-env, worker-configuration
 ```
 
 ## Placement rules
 
 - **Files and folders use kebab-case.** Tests live in a sibling `__test__` folder and are named `*.test.ts`, `*.integration.test.ts` or `*.component.test.tsx`.
-- **Routes only compose.** A route file defines the page or layout component, its `staticData.namespaces`, its `beforeLoad` guard, its `loader` and its `head`. Widgets, dialogs, forms and column definitions live in `src/presentation/components/custom`.
-- **A module is a feature, not strictly a table.** Most of the 43 modules own one Drizzle table, but `admin-dashboard`, `customer-account` and `customer-activity` own read models that span several tables and have no schema file of their own. `storefront-search` declares only the FTS5 `storefront_search` index, which a hand-written migration creates.
-- **`_core` is the shared kernel.** `AppError` and `ERROR_CODES`, the pagination helpers, the reusable Zod fields, the currency formatters and the column-filter builders live there. `_core/constants/timezone.ts` supplies `TIMEZONES`, the time-zone list customers pick from, and `DEFAULT_TIMEZONE_CODE`, the shop's own zone (`Europe/Warsaw`) that order numbers and the admin dashboard count years, months and days in, and that `_core/utils/polish-deadline.ts` counts the withdrawal period in; all of them read the Polish date through `toCalendarDate` in `_core/utils/datetime.ts`. `_core/constants/country.ts` is an ISO reference table kept deliberately for planned work — it has no importers and must not be deleted as dead code.
-- **`src/data` holds data, not logic.** `landing.ts` and `static-pages.ts` feed real pages, and `blog-posts.ts` lists the blog's articles, none yet, which keeps the blog hidden; `settings.ts` holds the fixtures behind the admin settings page, which is still scaffolding.
+- **Routes only compose.** A route file defines the page or layout component, its `staticData.namespaces`, its `beforeLoad` guard, its `loader` and its `head`. Widgets, dialogs, forms and column definitions live in `src/presentation/components/custom`. `account.addresses.tsx` and `account.overview.tsx` are the exceptions: they still define their address form and cards, and their overview sections, in the route file.
+- **A module is a feature, not strictly a table.** `src/modules` holds 42 feature modules plus `_core`. 39 of them own a Drizzle schema file, usually with one table; `discount` also declares `discount_redemption` and `discount_claim`, and `order` declares `order_number_sequence`. `admin-dashboard`, `customer-account` and `customer-activity` own read models (and, for `customer-activity`, the audit events it records) that span other modules' tables, and have no schema file of their own. `storefront-search` declares only the FTS5 `storefront_search` index, which a hand-written migration creates.
+- **`_core` is the shared kernel.** `AppError` and `ERROR_CODES`, the pagination helpers, the reusable Zod fields, the currency formatters and the column-filter builders live there. `_core/constants/timezone.ts` supplies `TIMEZONES`, the IANA zone list that the time-zone field in `custom/display-preferences/` offers, and `DEFAULT_TIMEZONE_CODE`, the shop's own zone (`Europe/Warsaw`). `order.number.server.ts` takes the order-number year in that zone, `_core/utils/polish-deadline.ts` counts the withdrawal period in it, and `resolveTimezoneCode` falls back to it when a user has no valid saved zone (the saved-card expiry check in `list-saved-payment-methods.ts`); the first two read the Polish date through `toCalendarDate` in `_core/utils/datetime.ts`. The admin dashboard counts its days, months and year in the viewer's resolved display time zone instead. `_core/constants/country.ts` is an ISO reference table kept deliberately for planned work — outside its tests only `timezone.ts` imports it, for the `CountryCode` type alone, and it must not be deleted as dead code.
+- **`src/data` holds data, not logic.** `landing.ts` and `static-pages.ts` feed real pages, and `blog-posts.ts` lists the blog's articles, none yet, which keeps the blog hidden.
 - **`src/lib` holds small request-scoped helpers**, not features: `background.ts` (the `waitUntil` store), `cookie.ts`, `image.ts`, `incident-alert.server.ts` (`sendIncidentAlert`, which emails the shop once per incident), `rate-limit.ts`, `request.ts` (the client address, and `resolveRequestOrigin` and `resolveDeploymentOrigin`, the validated origins every email link and Stripe return URL are built from), `retention.ts` (the daily clean-up the `scheduled` handler runs), `security-headers.ts` (the per-request Content-Security-Policy nonce and the headers every Worker response gets), `seo.ts`, `sitemap.ts` (the pages `/sitemap.xml` lists, read from D1) and `url.ts`. `deployment.ts` is the exception: `verifyDeployment`, the live-site check that `scripts/verify-deployment.ts` runs after a deploy, which no request ever calls.
-- **Generated files are never edited by hand.** The router plugin writes `src/routeTree.gen.ts`, `bun run cf-typegen` writes `src/types/worker-configuration.d.ts` (gitignored), and `bun run content` writes `.source/`, which `tsconfig.json` maps to the `collections/*` import prefix.
+- **Generated files are never edited by hand.** The router plugin writes `src/routeTree.gen.ts`, `bun run cf-typegen` (part of `bun run typegen`) writes `src/types/worker-configuration.d.ts` (gitignored), and `bun run content` writes `.source/`, which `tsconfig.json` maps to the `collections/*` import prefix.
 
 ## Content and messages live outside `src`
 
-`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. The terms of service, the privacy policy, the exchanges-and-returns page and the FAQ are not files: their Markdown lives in the D1 `content_page` table, seeded by `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql`, `20261005200000_terms_of_service_page.sql` and `20261010232000_faq_page.sql`, rewritten for the returns page by `20261005210000_returns_and_complaints_page.sql` and for the privacy policy by `20261010200000_privacy_policy_page.sql`, `20261010210000_privacy_policy_account_deletion.sql` and `20261012100000_privacy_policy_without_bot_check.sql`, and edited at `/admin/content`. The withdrawal and complaint forms those pages link are PDFs the Worker makes from `src/presentation/pdf`. `messages/{en-US,pl-PL}` holds 56 namespace files each.
+`content/docs` holds these pages, one file per locale, and every folder lists its pages in order in `meta.<locale>.json`. The terms of service, the privacy policy, the exchanges-and-returns page and the FAQ are not files: their Markdown lives in the D1 `content_page` table, seeded by `src/integrations/drizzle-orm/migrations/20261002120000_content_pages.sql`, `20261005200000_terms_of_service_page.sql` and `20261010232000_faq_page.sql`, rewritten for the returns page by `20261005210000_returns_and_complaints_page.sql`, for the returns page and the terms of service by `20261010231000_withdrawal_function_links.sql` (links to the withdrawal form at `/withdraw-from-contract`) and for the privacy policy by `20261010200000_privacy_policy_page.sql`, `20261010210000_privacy_policy_account_deletion.sql` and `20261012100000_privacy_policy_without_bot_check.sql`, and edited at `/admin/content`. `20261016161000_seller_placeholders.sql` put store detail placeholders in place of the seller's details in all four. The withdrawal and complaint forms those pages link are PDFs the Worker makes from `src/presentation/pdf`. `messages/{en-US,pl-PL}` holds 60 namespace files each.
 
 ## Related pages
 

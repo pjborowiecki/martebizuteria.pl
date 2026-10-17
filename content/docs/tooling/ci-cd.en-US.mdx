@@ -15,7 +15,7 @@ description: "Five GitHub Actions workflows, one shared setup action, what a pro
 
 ## The setup action
 
-`.github/actions/setup/action.yml` is four steps and one input:
+`.github/actions/setup/action.yml` is five steps, one of them conditional, and one input:
 
 ```yaml
 - uses: oven-sh/setup-bun@v2
@@ -26,14 +26,21 @@ description: "Five GitHub Actions workflows, one shared setup action, what a pro
     node-version: "24"
     cache: true
     run-install: false
-- run: bun install --frozen-lockfile --ignore-scripts
-- run: bun run typegen # when test-environment == 'true', preceded by the .env.test copies
+- name: Install dependencies
+  run: bun install --frozen-lockfile --ignore-scripts
+- name: Configure test environment
+  if: inputs.test-environment == 'true'
+  run: |
+    cp .env.test .env.development
+    cp .env.test .env.preview
+- name: Generate binding types
+  run: bun run typegen
 ```
 
 Two details matter:
 
 - **`--ignore-scripts`** means the `prepare` and `postinstall` lifecycle scripts do not run, so no Git hooks are installed on the runner and `typegen` is invoked explicitly as its own step. `typegen` is `bun run cf-typegen && bun run content`, which writes `src/types/worker-configuration.d.ts` and `.source/`. Both are gitignored, and `bun run check` cannot type check without them.
-- **`test-environment`** (default `"false"`) copies `.env.test` over `.env.development` and `.env.preview` when set to `"true"`. `ci.yml` sets it; the two deploy workflows do not, because they inject the real values as environment variables instead.
+- **`test-environment`** (default `"false"`) copies `.env.test` over `.env.development` and `.env.preview` when set to `"true"`. The `verify` job of `ci.yml`, `e2e-reusable.yml` and the `stripe-test-mode` job of `e2e-full.yml` set it; the two deploy workflows do not, because they inject the real values as environment variables instead.
 
 ## ci.yml
 
@@ -53,11 +60,11 @@ The build step runs against the dummy `.env.preview` the setup action copied fro
 
 ## The end-to-end workflows
 
-`e2e-reusable.yml` takes a `browser` input and an optional `suite` path (default `e2e/specs`). It runs the setup action with `test-environment: "true"`, then `bun run db:reset:test` to create and seed the local D1 database, `bun run build:test`, restores the Playwright browser cache keyed on the browser and `bun.lock`, installs the browser with its system dependencies, and runs `bunx playwright test <suite> --project=<browser> --project=<browser>-shop-wide` with a 30-minute timeout, so the shop-wide specs run after the browser's suite (see [Testing](/docs/tooling/testing#projects)). With `CI` set, Playwright only starts the built Worker, retries a failed test twice and runs two workers. On failure it uploads `playwright-report/` and `test-results/`, which hold traces, screenshots and videos, for seven days.
+`e2e-reusable.yml` takes a `browser` input and an optional `suite` path (default `e2e/specs`). It runs the setup action with `test-environment: "true"`, then `bun run db:reset:test` to create and seed the local D1 database, `bun run build:test`, restores the Playwright browser cache (key `<os>-playwright-chromium-<browser>-<hash of bun.lock>`), installs Chromium and the requested browser with their system dependencies (`bunx playwright install --with-deps chromium <browser>`; Chromium is always needed because the `setup` project, which signs in the seeded admin and customer, runs on it), and runs `bunx playwright test <suite> --project=<browser> --project=<browser>-shop-wide` with a 30-minute timeout, so the shop-wide specs run after the browser's suite (see [Testing](/docs/tooling/testing#projects)). With `CI` set, Playwright only starts the built Worker, retries a failed test twice and runs two workers. On failure it uploads `playwright-report/` and `test-results/`, which hold traces, screenshots and videos, for seven days.
 
-`e2e-full.yml` runs the same workflow as a matrix with `fail-fast: false`: WebKit after a push to `main`, because the pull request already ran Chromium, and both browsers on the weekly schedule or a manual run.
+`e2e-full.yml` runs the same workflow as a matrix with `fail-fast: false`: WebKit after a push to `main`, because the pull request already ran Chromium, and both browsers on the weekly schedule or a manual run. It has the same `concurrency` block as `ci.yml` (group `${{ github.workflow }}-${{ github.ref }}`, `cancel-in-progress: true`), so a newer run on `main`, whether from a push, the schedule or a manual start, cancels the one in progress, and it grants only `contents: read`.
 
-Its second job, `stripe-test-mode`, pays through a Stripe sandbox on every run of the workflow: by card, with declined and 3D Secure cards, with BLIK and with Przelewy24. It sets `STRIPE_SECRET_KEY` and `VITE_STRIPE_PUBLISHABLE_KEY` from the repository secrets `E2E_STRIPE_SECRET_KEY` and `E2E_STRIPE_PUBLISHABLE_KEY` for the whole job, so `bun run build:test` bakes the sandbox's publishable key into the client and gives the test Worker its secret key. The job then installs Chromium and runs `bun run test:e2e:stripe`. Without those secrets the build still runs, Playwright reports every spec skipped with the reason and the job stays green, so a step right after the checkout, **Report missing Stripe sandbox keys**, adds a warning to the run's summary saying that no payment reached Stripe. Once the test Worker is serving, the specs reach nothing outside the runner but the Stripe API, Stripe.js, its frames and Stripe's test payment pages; [Stripe test mode](/docs/tooling/testing#stripe-test-mode) describes it. On failure the job uploads its report as `playwright-report-stripe-test-mode`.
+Its second job, `stripe-test-mode`, pays through a Stripe sandbox on every run of the workflow: by card, with declined and 3D Secure cards, with BLIK and with Przelewy24. It sets `STRIPE_SECRET_KEY` and `VITE_STRIPE_PUBLISHABLE_KEY` from the repository secrets `E2E_STRIPE_SECRET_KEY` and `E2E_STRIPE_PUBLISHABLE_KEY` for the whole job. Like `e2e-reusable.yml`, it has a 30-minute timeout, runs the setup action with `test-environment: "true"` and creates and seeds the local D1 database with `bun run db:reset:test`; `bun run build:test` then bakes the sandbox's publishable key into the client and gives the test Worker its secret key. The job restores its own Playwright cache (key `<os>-playwright-chromium-<hash of bun.lock>`), installs Chromium and runs `bun run test:e2e:stripe`. Both secrets are set, so every run pays through the sandbox. The step right after the checkout, **Report missing Stripe sandbox keys**, runs only when either secret is empty: the build would then still run, Playwright would report every spec skipped with the reason and the job would stay green, so the step adds a warning to the run's summary saying that no payment reached Stripe. Once the test Worker is serving, the browser reaches no outside host but those under `stripe.com`, `stripe.network`, `stripecdn.com` and `hcaptcha.com` (`STRIPE_ORIGINS` in `e2e/fixtures/stripe-test-mode.ts`), which serve the Stripe API, Stripe.js, its frames and Stripe's test payment pages; the shared fixture blocks every other outside request. [Stripe test mode](/docs/tooling/testing#stripe-test-mode) describes the specs. On failure the job uploads its report as `playwright-report-stripe-test-mode`.
 
 ## The deploy workflows
 
@@ -127,7 +134,7 @@ It runs before the build so that a sender Resend would refuse stops the deploy w
 
 ### 4. build
 
-`bun run build:preview` removes `dist`, regenerates `.source/`, runs `CLOUDFLARE_ENV=preview vp build --mode preview`, and then `bun scripts/verify-build.ts preview`. `verify-build.ts` reads `.wrangler/deploy/config.json`, follows its `configPath`, and asserts it resolves to exactly `dist/server/wrangler.json`; that the built config's `vars.APP_ENV` matches the target and its `name` is `martebizuteria-preview` (or `martebizuteria` for production); that `main` and `dist/client` exist; that `dist/client/fonts` exists; that `dist/client/assets` contains at least one `.js` and one `.css`; and finally it scans every client `.js` file with `new Bun.Transpiler({ loader: "js" })` and fails on any import of `cloudflare:workers` or a `node:` module.
+`bun run build:preview` removes `dist`, regenerates `.source/`, runs `CLOUDFLARE_ENV=preview vp build --mode preview`, and then `bun scripts/verify-build.ts preview`. `verify-build.ts` reads `.wrangler/deploy/config.json`, follows its `configPath`, and asserts it resolves to exactly `dist/server/wrangler.json`; that the built config's `vars.APP_ENV` matches the target and its `name` is `martebizuteria-preview` (or `martebizuteria` for production); that its `main` exists and its assets directory resolves to `dist/client`; that `dist/client/fonts` exists; that `dist/client/assets` contains at least one `.js` and one `.css`; and finally it scans every client `.js` file with `new Bun.Transpiler({ loader: "js" })` and fails on any import of `cloudflare:workers` or a `node:` module.
 
 ### 5. prepare-deploy-secrets.ts
 
@@ -153,20 +160,23 @@ env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json
 
 Calls `verifyDeployment` in `src/lib/deployment.ts`, which asks the environment's own `workers.dev` host, from `WORKERS_DEV_HOSTS` in `src/modules/_core/constants/api.ts`, for five paths without following redirects. `/` and `/products` must answer `200` with `text/html`, `/robots.txt` must answer `200` with `text/plain`, `/api/webhooks/stripe` must refuse a `GET` with `405` and `text/plain`, which shows the request reached the route's own handler rather than a rendered page, and `/api/health` must answer `200` with `application/json`, which it does only when D1, KV and R2 all answer; its `503` fails the deploy. Each request gives up after 15 seconds, and a page that fails is asked up to three times in all, five seconds apart. A page still failing then fails the deploy with one line per page. The new version is already live by then, so the next step is [Roll back a deploy](/docs/guides/roll-back-a-deploy).
 
-It only reads public pages: it signs nobody in, opens no checkout and writes nothing. It asks the `workers.dev` host, which `workers_dev: true` in `wrangler.jsonc` keeps on next to the custom domain, so the check does not depend on the zone's DNS or on a certificate Cloudflare may still be issuing for a newly attached domain.
+It only reads public pages: it signs nobody in, opens no checkout and writes nothing. It asks the `workers.dev` host, which `workers_dev: true` in `wrangler.jsonc` keeps on in both environments, next to preview's custom domain `preview.martebizuteria.pl` (production's `routes` list is empty), so the check does not depend on the zone's DNS or on a certificate Cloudflare may still be issuing for a newly attached domain.
 
 ## Repository configuration
 
-| Kind                | Names                                                                                                                                                                                                                                                      |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Actions **secrets** | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
-| Actions **vars**    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                                                               |
+| Kind                                             | Names                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Actions **secrets**                              | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `RESEND_MANAGEMENT_API_KEY` (optional), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| Actions **secrets** for the Stripe test-mode job | `E2E_STRIPE_SECRET_KEY`, `E2E_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                                                                                                              |
+| Actions **vars**                                 | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                                                                                                       |
 
-`CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Besides deploying the Worker, the token needs the D1 edit permission, because the deploy applies the migrations with it, and the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone, because the deploy attaches the custom domains from `routes` in `wrangler.jsonc`. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
+`CLOUDFLARE_ACCESS_TOKEN` is passed to the step as `CLOUDFLARE_API_TOKEN`, which is the name Wrangler reads. Besides deploying the Worker, the token needs the D1 edit permission, because the deploy applies the migrations with it, and, for the preview deploy, the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone, because that deploy attaches the custom domain `preview.martebizuteria.pl` from preview's `routes` in `wrangler.jsonc`. Production's `routes` list is empty, so the production deploy attaches no custom domain. Both deploy workflows use GitHub environments (`preview`, `production`), so the secrets can be scoped per environment there.
 
-The Stripe test-mode job reads two repository secrets outside those environments: `E2E_STRIPE_SECRET_KEY`, a Stripe sandbox's secret key (`sk_test_`), and `E2E_STRIPE_PUBLISHABLE_KEY`, the same sandbox's `pk_test_` key. Take them from a sandbox with no webhook endpoint and with Cards, BLIK and Przelewy24 turned on in its payment method settings, not from the account preview uses, so the test payments stay out of preview's account and its event log. An endpoint pointing at the preview Worker would still only log and acknowledge their events, because their `deployment` metadata names `martebizuteria-test` (see [Payments: The webhook endpoint](/docs/features/payments#the-webhook-endpoint)).
+The Stripe test-mode job reads two repository secrets outside those environments, and both are set: `E2E_STRIPE_SECRET_KEY`, a Stripe sandbox's secret key (`sk_test_`), and `E2E_STRIPE_PUBLISHABLE_KEY`, the same sandbox's `pk_test_` key. Take them from a sandbox with no webhook endpoint and with Cards, BLIK and Przelewy24 turned on in its payment method settings, not from the account preview uses, so the test payments stay out of preview's account and its event log. An endpoint pointing at the preview Worker would still only log and acknowledge their events, because their `deployment` metadata names `martebizuteria-test` (see [Payments: The webhook endpoint](/docs/features/payments#the-webhook-endpoint)).
 
 `VITE_R2_URL` is listed in `secrets.required` in `wrangler.jsonc` but supplied from Actions **vars**, not secrets — it is a public bucket URL and also needs to be visible to the client bundle through its `VITE_` prefix. `prepare-deploy-secrets.ts` reads it from `process.env`, so this works. Preview and production read different buckets, so set it on the GitHub `preview` and `production` environments rather than once for the repository; [Image delivery](/docs/guides/image-delivery) lists the values.
+
+`VITE_APP_URL` is passed to both deploy steps, but nothing reads it: it is not in `secrets.required`, and no code under `src/` or `scripts/` uses it. The shop's canonical address is `APP_URL` in `src/presentation/branding/app.ts`.
 
 ## Migrations and CI
 

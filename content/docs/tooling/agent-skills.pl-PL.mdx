@@ -3,7 +3,7 @@ title: "Umiejętności agentów"
 description: "skills-lock.json, scripts/sync-skills.ts, grupy dostawców i pliki z instrukcjami dla agentów w tym repozytorium."
 ---
 
-Repozytorium przypina zestaw umiejętności (skills) z dokumentacją dostawców, przeznaczonych dla agentów kodujących. Plik blokady jest w repozytorium, zainstalowane umiejętności nie — `.gitignore` wyłącza w całości `.agents/`, `.claude/`, `.codex/` i `.cursor/`, z komentarzem „Skills are restored from `skills-lock.json` with `bun run skills:sync`”.
+Repozytorium przypina zestaw umiejętności (skills) z dokumentacją dostawców, przeznaczonych dla agentów kodujących. Plik blokady jest w repozytorium, zainstalowane umiejętności nie — `.gitignore` wyłącza `.agents/`, `.claude/`, `.codex/` i `.cursor/`, z komentarzem „Skills are restored from `skills-lock.json` with `bun run skills:sync`”. Git nadal śledzi dwa pliki w `.cursor/`, `.cursor/rules/opensrc.mdc` i `.cursor/rules/skills.mdc`, bo reguła ignorowania nie usuwa ze śledzenia plików już zacommitowanych; opisuje je sekcja [Korzystanie z umiejętności](#korzystanie-z-umiejętności).
 
 ```sh
 bun run skills:sync    # odtwórz dokładnie to, co przypina plik blokady
@@ -33,7 +33,7 @@ bun run skills:update  # zaktualizuj plik blokady, a potem zsynchronizuj
 | `cloudflare/skills`               | `cloudflare` | 6            | Praktyki Workers, Wrangler, Durable Objects, e-mail, wydajność webowa                           |
 | `resend/resend-skills`            | `resend`     | 5            | API Resend, React Email, CLI, agent skrzynki, praktyki e-mailowe                                |
 | `stripe/ai`                       | `stripe`     | 3            | Praktyki Stripe, wzorce projektowe, aktualizacje wersji                                         |
-| `antfu/skills`                    | `antfu`      | 1            | Wytyczne projektowania stron                                                                    |
+| `vercel-labs/agent-skills`        | `vercel`     | 1            | Wytyczne projektowania stron                                                                    |
 
 Zestawy Medusa i GSAP są materiałem referencyjnym dotyczącym wzorców, a nie zależnościami: M'Arte nie działa na Medusie, a umiejętności GSAP stoją za pracą animacyjną w `src/integrations/gsap/` i kodem ruchu w storefroncie.
 
@@ -43,38 +43,38 @@ Zestawy Medusa i GSAP są materiałem referencyjnym dotyczącym wzorców, a nie 
 
 ```ts
 const GROUPS: Record<string, string> = {
-  "antfu/skills": "antfu",
   "cloudflare/skills": "cloudflare",
   "greensock/gsap-skills": "gsap",
   "medusajs/medusa-agent-skills": "medusa",
   "resend/resend-skills": "resend",
   "stripe/ai": "stripe",
   "tanstack-skills/tanstack-skills": "tanstack",
+  "vercel-labs/agent-skills": "vercel",
 }
 ```
 
 Źródło bez mapowania to twardy błąd: `Add a vendor group for <source> before syncing <name>.` Dodanie nowego źródła oznacza więc edycję tego obiektu, a nie tylko pliku blokady.
 
-Źródła, które dostarczają umiejętności w katalogach wtyczek, dostają drugi segment ścieżki. Skrypt wyciąga nazwę wtyczki z `skillPath` wyrażeniem `/^plugins\/([^/]+)\//` i usuwa z niej przedrostek grupy, więc `plugins/tanstack-start/…` staje się grupą `tanstack/start`, a `plugins/medusa-cloud/…` grupą `medusa/cloud`. Nazwa wtyczki, która nie zaczyna się od nazwy grupy, zostaje w całości — dlatego `plugins/learn-medusa/…` trafia do `medusa/learn-medusa`.
+Źródła, które dostarczają umiejętności w katalogach wtyczek, dostają drugi segment ścieżki. Skrypt wyciąga nazwę wtyczki z `skillPath` wyrażeniem `/^plugins\/([^/]+)\//` i usuwa z niej pierwsze wystąpienie `<grupa>-` zwykłym tekstowym `replace`, więc `plugins/tanstack-start/…` staje się grupą `tanstack/start`, a `plugins/medusa-cloud/…` grupą `medusa/cloud`. Nazwa wtyczki, która nie zawiera `<grupa>-`, zostaje w całości — dlatego `plugins/learn-medusa/…` trafia do `medusa/learn-medusa`, a `plugins/ecommerce-storefront/…` do `medusa/ecommerce-storefront`.
 
 Dalej skrypt wykonuje pracę w katalogu tymczasowym i podmienia zainstalowane drzewo tylko wtedy, gdy cały zamiennik został zbudowany i sprawdzony:
 
 1. Utwórz katalog przygotowawczy w katalogu tymczasowym systemu.
 2. Skopiuj do niego `skills-lock.json` i uruchom tam `bun x --bun skills experimental_install`. Niezerowy kod wyjścia przerywa pracę komunikatem „Skill restore failed; the existing installation has been preserved.”
-3. Dla każdej przypiętej umiejętności skopiuj ją do `staging/grouped/<grupa>/<nazwa>`. Brakujący `SKILL.md` przerywa pracę w ten sam sposób, przed usunięciem czegokolwiek.
+3. Dla każdej przypiętej umiejętności skopiuj ją do `staging/grouped/<grupa>/<nazwa>`. Brakujący `SKILL.md` przerywa pracę komunikatem „Missing `<nazwa>`; the existing installation has been preserved.”, przed usunięciem czegokolwiek.
 4. Usuń `.agents/skills`, skopiuj przygotowane drzewo, usuń `.claude/skills`, odtwórz je i utwórz dowiązanie symboliczne dla każdej grupy najwyższego poziomu: `.claude/skills/<grupa> → ../../.agents/skills/<grupa>`.
 
 Wynikiem jest siedem dowiązań i pogrupowane drzewo:
 
 ```
 .agents/skills/
-  antfu/web-design-guidelines/
   cloudflare/{cloudflare,cloudflare-email-service,durable-objects,web-perf,workers-best-practices,wrangler}/
   gsap/gsap-core/ … gsap/gsap-utils/
   medusa/{cloud,dev,ecommerce-storefront,learn-medusa}/
   resend/{agent-email-inbox,email-best-practices,react-email,resend,resend-cli}/
   stripe/{stripe-best-practices,stripe-projects,upgrade-stripe}/
   tanstack/{router,start,query,table,form,store,virtual,db,pacer,ranger,cli,config,devtools,ai}/
+  vercel/web-design-guidelines/
 ```
 
 Synchronizacja **podmienia oba katalogi w całości**, więc cokolwiek wstawisz ręcznie do `.agents/skills` albo `.claude/skills`, zostanie usunięte przy następnym uruchomieniu. Własne umiejętności trzymaj poza tymi dwoma drzewami.
@@ -93,12 +93,14 @@ Przed zmianą kodu dotykającego TanStack Start, Routera, Query albo Table, Stri
 
 Te żyją w dwóch innych miejscach:
 
-| Plik            | Zawartość                                                                                |
-| --------------- | ---------------------------------------------------------------------------------------- |
-| `AGENTS.md`     | Konwencje projektu: użycie Vite+, lista kontrolna przeglądu, zasady warstw i nazewnictwa |
-| `content/docs/` | Te strony                                                                                |
+| Plik            | Zawartość                                                                                                                    |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `AGENTS.md`     | Konwencje projektu: użycie Vite+, lista kontrolna przeglądu, odniesienie do źródeł w `opensrc/`, zasady warstw i nazewnictwa |
+| `content/docs/` | Te strony                                                                                                                    |
 
 Gdy umiejętność dostawcy i `AGENTS.md` nie zgadzają się co do tego, jak dana rzecz jest robiona w tym repozytorium, rozstrzyga `AGENTS.md`.
+
+Dwie śledzone reguły Cursora, obie z `alwaysApply: true`, kierują agentów do tych zasobów. `.cursor/rules/skills.mdc` każe im przeczytać odpowiedni `SKILL.md` w `.agents/skills`, zanim zajmą się biblioteką albo platformą, którą obejmuje któraś umiejętność, a `.cursor/rules/opensrc.mdc` każe czytać prawdziwą implementację w lustrach źródeł w `opensrc/`, a nie tylko definicje typów. `AGENTS.md` daje te same wskazówki dotyczące `opensrc/` w sekcji „Source Code Reference”, łącznie z `npx opensrc <package>` do pobierania kolejnych źródeł.
 
 ## Powiązane strony
 
