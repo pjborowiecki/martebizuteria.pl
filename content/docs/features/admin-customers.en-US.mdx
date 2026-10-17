@@ -193,6 +193,8 @@ It does **not** change email, name, role or ban state; those are Better Auth ope
 | `targetUser.id === context.auth.user.id`                             | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
 | `targetUser.role === ROLES.ADMIN`                                    | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
 
+An admin account cannot be deleted from here. The row menu shows **Delete account** greyed out on every admin's row, the signed-in admin's own included, with "Remove the admin access in Settings › Team first."; should the server still refuse, the toast says "Admin accounts cannot be deleted. Remove the admin access in Settings › Team first." Once the access is removed under [Settings › Team](/docs/features/admin-settings#team) the account is a customer account and can be deleted. Better Auth's own `/admin/remove-user` refuses an admin account too (see [Better Auth: Admin roles](/docs/integrations/better-auth#admin-roles)).
+
 It captures the email, name, current locale and request origin **before** deleting, erases the account's data with `eraseAccountData`, hands the deletion to `auth.api.removeUser`, and then waits for the goodbye email:
 
 ```ts
@@ -223,7 +225,7 @@ Because deletion goes through Better Auth, its `databaseHooks.user.delete.after`
 
 ## Realtime
 
-`USER_QUERY_KEYS.ADMIN.CUSTOMERS` is in `ADMIN_REALTIME_QUERY_PREFIXES`, and `scheduleAdminCustomersInvalidation()` pushes both `CUSTOMERS` and `CUSTOMERS_PAGE`. Customer registration audit events also invalidate the audit-log keys, so a new sign-up shows up in an open console without a reload.
+`USER_QUERY_KEYS.ADMIN.CUSTOMERS` is in `ADMIN_REALTIME_QUERY_PREFIXES`, and `scheduleAdminCustomersInvalidation()` pushes `CUSTOMERS` and `CUSTOMERS_PAGE`, and `TEAM` for the Settings › Team list, since an account's role, two-factor state or deletion can change it. Customer registration audit events also invalidate the audit-log keys, so a new sign-up shows up in an open console without a reload.
 
 ## Related pages
 

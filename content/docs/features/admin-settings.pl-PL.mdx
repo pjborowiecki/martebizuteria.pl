@@ -1,9 +1,9 @@
 ---
 title: "Ustawienia panelu"
-description: "Własne konto administratora i bezpieczeństwo logowania oraz dane sklepu i dostawa pod /admin/settings: profil, język panelu, strefa czasowa i format, hasło, uwierzytelnianie dwuskładnikowe, metody logowania, sesje i historia logowania, dane sprzedawcy, metody dostawy i darmowa dostawa."
+description: "Własne konto administratora i bezpieczeństwo logowania, dane sklepu, dostawa i zespół pod /admin/settings: profil, język panelu, strefa czasowa i format, hasło, uwierzytelnianie dwuskładnikowe, metody logowania, sesje i historia logowania, dane sprzedawcy, metody dostawy, darmowa dostawa i to, kto ma dostęp do panelu."
 ---
 
-Ustawienia to miejsce, w którym administrator zarządza własnym kontem, danymi sklepu i dostawą. Prowadzi do nich pozycja **Ustawienia** na dole paska bocznego, a w nagłówku mają cztery zakładki: **Moje konto**, **Logowanie i bezpieczeństwo**, **Dane sklepu** oraz **Dostawa**. Dwie pierwsze działają na koncie zalogowanego administratora, przez te same przypadki użycia i wywołania Better Auth co strona klienta `/account/profile`, więc nie dodają żadnego uprawnienia, tabeli ani funkcji serwerowej. **Dane sklepu** i **Dostawa** zmieniają cały sklep: zapis danych sprzedawcy, wypisywanie i zmiana metod dostawy oraz zapis progu darmowej dostawy wymagają `settings: ["manage"]`, tego samego uprawnienia co pulpit i dziennik zdarzeń, a same dane sprzedawcy i próg są odczytywane przez publiczne `getSellerDetails` i `getFreeDelivery`, których używają sklep i kasa.
+Ustawienia to miejsce, w którym administrator zarządza własnym kontem, danymi sklepu, dostawą i zespołem. Prowadzi do nich pozycja **Ustawienia** na dole paska bocznego, a w nagłówku mają pięć zakładek: **Moje konto**, **Logowanie i bezpieczeństwo**, **Dane sklepu**, **Dostawa** oraz **Zespół**. Dwie pierwsze działają na koncie zalogowanego administratora, przez te same przypadki użycia i wywołania Better Auth co strona klienta `/account/profile`, więc nie dodają żadnego uprawnienia, tabeli ani funkcji serwerowej. **Dane sklepu** i **Dostawa** zmieniają cały sklep: zapis danych sprzedawcy, wypisywanie i zmiana metod dostawy oraz zapis progu darmowej dostawy wymagają `settings: ["manage"]`, tego samego uprawnienia co pulpit i dziennik zdarzeń, a same dane sprzedawcy i próg są odczytywane przez publiczne `getSellerDetails` i `getFreeDelivery`, których używają sklep i kasa. **Zespół** decyduje o tym, kto może korzystać z panelu: lista administratorów i wyszukiwanie kont wymagają `user: ["list"]`, a nadanie lub odebranie dostępu wymaga `user: ["set-role"]` i logowania z ostatnich 24 godzin.
 
 ## Trasy
 
@@ -11,16 +11,17 @@ Ustawienia to miejsce, w którym administrator zarządza własnym kontem, danymi
 | -------------------------- | ----------------------------- | ---------------------------------------------------------------------------------------- |
 | `/admin/settings`          | `admin.settings.tsx`          | Layout: `Outlet` dla zakładki i przestrzenie nazw komunikatów ustawień                   |
 | `/admin/settings/`         | `admin.settings.index.tsx`    | Przekierowuje w `beforeLoad` na `/admin/settings/account`                                |
-| `/admin/settings/account`  | `admin.settings.account.tsx`  | **Moje konto**: Profil i Preferencje                                                     |
+| `/admin/settings/account`  | `admin.settings.account.tsx`  | **Moje konto**: Profil, Preferencje i Usunięcie konta                                    |
 | `/admin/settings/security` | `admin.settings.security.tsx` | **Logowanie i bezpieczeństwo**: hasło, dwa składniki, metody logowania, sesje i historia |
 | `/admin/settings/store`    | `admin.settings.store.tsx`    | **Dane sklepu**: dane sprzedawcy                                                         |
 | `/admin/settings/delivery` | `admin.settings.delivery.tsx` | **Dostawa**: metody dostawy i darmowa dostawa                                            |
+| `/admin/settings/team`     | `admin.settings.team.tsx`     | **Zespół**: osoby z dostępem do panelu i zasady tego dostępu                             |
 
-Ścieżki to `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY`, `ROUTES.ADMIN_SETTINGS_STORE` i `ROUTES.ADMIN_SETTINGS_DELIVERY` w `src/routes.ts`. Wszystkie leżą w layoucie `/admin`, więc strzeże ich `requireAdmin`, a administratora bez uwierzytelniania dwuskładnikowego najpierw odsyła na `/admin/security` (zobacz [Pulpit admina](/docs/features/admin-dashboard#layout)).
+Ścieżki to `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY`, `ROUTES.ADMIN_SETTINGS_STORE`, `ROUTES.ADMIN_SETTINGS_DELIVERY` i `ROUTES.ADMIN_SETTINGS_TEAM` w `src/routes.ts`. Wszystkie leżą w layoucie `/admin`, więc strzeże ich `requireAdmin`, a administratora bez uwierzytelniania dwuskładnikowego najpierw odsyła na `/admin/security` (zobacz [Pulpit admina](/docs/features/admin-dashboard#layout)).
 
 Layout deklaruje `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` zawiera teksty samej strony; pozostałe trzy są potrzebne, bo ustawienia używają okien konta, które czytają z nich swoje teksty i komunikaty walidacji.
 
-Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loader zakładki bezpieczeństwa wczytuje go razem z `listCustomerSessionsQuery()` i `listCustomerLoginHistoryQuery()`, loader zakładki danych sklepu wczytuje `getAdminSellerDetailsQuery()`, a loader zakładki dostawy wczytuje `listAdminDeliveryMethodsQuery()` i `getAdminFreeDeliveryQuery()`, więc każda zakładka renderuje się bez stanu ładowania.
+Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loader zakładki bezpieczeństwa wczytuje go razem z `listCustomerSessionsQuery()` i `listCustomerLoginHistoryQuery()`, loader zakładki danych sklepu wczytuje `getAdminSellerDetailsQuery()`, loader zakładki dostawy wczytuje `listAdminDeliveryMethodsQuery()` i `getAdminFreeDeliveryQuery()`, a loader zakładki zespołu wczytuje `listAdminTeamQuery()`, więc każda zakładka renderuje się bez stanu ładowania.
 
 ## Układ
 
@@ -50,13 +51,17 @@ Przed zapisem `SettingsEditableRow` sprawdza pole tym samym `customerAccountZodS
 - **Język panelu.** Lista zawiera `I18N.SUPPORTED_LOCALES`. Wybór drugiego języka wczytuje tę samą stronę przez `localizePathname`, z zachowaniem parametrów zapytania: polski jest językiem domyślnym i nie ma prefiksu (`/admin/settings/account`), angielski ma `/en-US`. Middleware języka ustawia potem ciasteczko języka na język z adresu, więc wybór obowiązuje przy następnej wizycie. Wybór języka, który już widać, niczego nie zmienia.
 - **Strefa czasowa** oraz **Format dat i liczb.** To te same pola `DisplayPreferenceField` co w profilu klienta. Każda lista zaczyna się od pozycji Automatycznie, opisanej tym, co wykryto w przeglądarce, a `updateDisplayPreference` zapisuje wybór w `user.timezone` albo `user.format_locale`. Stosują się do nich wszystkie daty, godziny i liczby w panelu: siatki zamówień i klientów, dni i miesiące pulpitu, dziennik zdarzeń i wykresy. Zobacz [Internacjonalizacja](/docs/features/internationalization).
 
+### Usunięcie konta
+
+`SettingsAccountDeletionCard` wyjaśnia, dlaczego panel nie ma sposobu na usunięcie konta: konta z dostępem do panelu nie da się usunąć, aby sklep przypadkiem nie stracił osób, które go prowadzą. Aby je zamknąć, inna osoba z dostępem do panelu odbiera mu ten dostęp w zakładce [Zespół](#zespół); konto staje się wtedy kontem klienta, które można usunąć na stronie konta w sklepie. **Przejdź do zespołu** prowadzi do tej zakładki. Endpoint usuwania konta sam też odrzuca konto z dostępem do panelu (zobacz [Konto: Usunięcie konta](/docs/features/account#usunięcie-konta)).
+
 ## Logowanie i bezpieczeństwo
 
 Trasa bezpieczeństwa czyta profil raz i przekazuje kartom `hasPassword`, `hasGoogle` i `twoFactorEnabled` jako propsy.
 
 ### Hasło
 
-Dla konta z hasłem `SettingsPasswordCard` proponuje **Zmień hasło**, co otwiera `ChangePasswordDialog`. Konto założone przez Google go nie ma, więc karta proponuje zamiast tego **Ustaw hasło** i otwiera `SetPasswordDialog`, który wywołuje `setAccountPassword`. Ten przypadek użycia odrzuca sesję starszą niż 24 godziny, żeby skradziona starsza sesja nie mogła dodać trwałego hasła. Oba opisują strony [Konto](/docs/features/account#profil) i [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów).
+Dla konta z hasłem `SettingsPasswordCard` proponuje **Zmień hasło**, co otwiera `ChangePasswordDialog`. Konto założone przez Google go nie ma, więc karta proponuje zamiast tego **Ustaw hasło** i otwiera `SetPasswordDialog`, który wywołuje `setAccountPassword`. Ten przypadek użycia przechodzi przez middleware `recentSignIn`, które odrzuca sesję starszą niż 24 godziny, żeby skradziona starsza sesja nie mogła dodać trwałego hasła; tego samego middleware używa zakładka Zespół. Oba opisują strony [Konto](/docs/features/account#profil) i [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów).
 
 ### Uwierzytelnianie dwuskładnikowe
 
@@ -157,6 +162,52 @@ Odrzucona zmiana pojawia się jako komunikat w języku panelu: druga oferowana m
 
 Każda zmiana na tej zakładce trafia do [dziennika zdarzeń](/docs/features/audit-log) w kategorii `settings`.
 
+## Zespół
+
+Zakładka Zespół ma dwie karty z `src/presentation/components/custom/pages/admin/settings/team/`. To tu istniejące konto klienta dostaje dostęp do panelu i tu ten dostęp się odbiera. Własne endpointy administracyjne Better Auth nie zmieniają już ról, więc poza edycją D1 nie ma na to innej drogi (zobacz [Model bezpieczeństwa](/docs/architecture/security-model#dostęp-administracyjny)).
+
+### Dostęp do panelu
+
+`SettingsTeamCard` czyta `listAdminTeamQuery()` i wypisuje każde konto z rolą `admin`, w kolejności nazw. Każdy wiersz pokazuje imię i nazwisko, plakietkę **Ty** we własnym wierszu zalogowanej osoby, plakietkę **Dwuskładnikowe: włączone** albo **Dwuskładnikowe: wyłączone**, adres e-mail, sposób logowania (hasło, Google, oba albo **Brak metody logowania**) i ostatnie logowanie albo **Brak zapisanych logowań**. Tam, gdzie obowiązuje `isAdminTwoFactorRequired()`, konto bez uwierzytelniania dwuskładnikowego ma uwagę, że trzeba je włączyć przed otwarciem panelu, bo `requireAdmin` najpierw odsyła takie konto na `/admin/security`.
+
+`listAdminTeam` (`src/modules/user/use-cases/list-admin-team.ts`) wymaga `user: ["list"]`. `listAdminTeamRows` w `src/modules/user/user.team.server.ts` czyta metody logowania z wierszy `account` konta (`credential` i `google`), a ostatnie logowanie z najnowszego wpisu `auth.login`, jaki dziennik zdarzeń ma dla tego konta, więc konto, którego wpisy usunęło czyszczenie po okresie przechowywania, nie pokazuje żadnego. Odpowiedź zawiera też `recentSignIn`, czyli to, czy sesja wywołującego jest młodsza niż 24 godziny (`isRecentSignIn` w `auth.middleware.ts`).
+
+**Nadaj dostęp** jest w nagłówku karty, a każdy wiersz poza własnym ma **Odbierz dostęp**. Własny wiersz go nie ma i mówi, że ten dostęp może zmienić tylko inna osoba z dostępem do panelu. Dopóki `recentSignIn` jest fałszywe, karta mówi, że ostatnie logowanie było ponad 24 godziny temu, oba przyciski są wyłączone, a **Zaloguj się ponownie** wylogowuje i otwiera stronę logowania z `redirect` ustawionym na zakładkę Zespół, więc następne logowanie do niej wraca.
+
+### Nadanie dostępu
+
+**Nadaj dostęp** otwiera `AddAdminDialog`. Jego pole, **Adres e-mail lub imię i nazwisko**, szuka od trzech znaków, 300 ms po ostatnim klawiszu, przez `searchTeamCandidatesQuery(search)`, które wywołuje `searchTeamCandidates` (`user: ["list"]`). Wyszukiwanie obejmuje tylko konta klientów, dopasowuje fragment adresu e-mail albo imienia i nazwiska bez względu na wielkość liter i zwraca najwyżej osiem kont. Konto z niepotwierdzonym adresem ma oznaczenie **Adres e-mail niepotwierdzony**, a zablokowane **Konto zablokowane**; żadnego z nich nie da się wybrać, a uwaga pod listą wyjaśnia dlaczego. Gdy nic nie pasuje, okno mówi, że ta osoba musi najpierw mieć w sklepie konto z potwierdzonym adresem.
+
+**Wybierz** przechodzi do potwierdzenia, które wymienia, co konto będzie mogło: przeglądać i zmieniać wszystkie zamówienia, zwracać płatności i nadawać przesyłki; edytować produkty, kolekcje, strony i kody rabatowe oraz wstrzymywać sprzedaż; przeglądać dane wszystkich klientów i usuwać ich konta; zmieniać ustawienia sklepu oraz nadawać i odbierać dostęp do panelu. Tam, gdzie uwierzytelnianie dwuskładnikowe jest wymagane, a konto jeszcze go nie używa, mówi też, że trzeba je włączyć przed otwarciem panelu. **Wstecz** wraca do wyszukiwania, a **Nadaj dostęp** wywołuje `grantAdminAccess`, pokazuje komunikat o nadaniu dostępu z imieniem i nazwiskiem z konta i zamyka okno.
+
+### Odebranie dostępu
+
+**Odbierz dostęp** otwiera `RemoveAdminDialog`, który mówi, że konto klienta pozostanie, ale nie otworzy już panelu i od razu zostanie wylogowane na wszystkich urządzeniach, a dostęp można później nadać ponownie. Jego **Odbierz dostęp** wywołuje `revokeAdminAccess` i pokazuje komunikat o odebraniu dostępu z imieniem i nazwiskiem z konta.
+
+### Zasady
+
+`grantAdminAccess` i `revokeAdminAccess` (`src/modules/user/use-cases/`) same pilnują zasad, więc wywołanie z pominięciem strony dostaje te same odpowiedzi:
+
+| Zasada                                                | Kto sprawdza                          | Odmowa                                                                                  |
+| ----------------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------- |
+| Zalogowany administrator, który może zmieniać role    | `authorized({ user: ["set-role"] })`  | `FORBIDDEN`                                                                             |
+| Logowanie z ostatnich 24 godzin                       | `recentSignIn` w `auth.middleware.ts` | `SESSION_NOT_FRESH`, pokazane jako „wyloguj się i zaloguj ponownie”                     |
+| Nigdy własny dostęp                                   | Handler                               | `FORBIDDEN` / `TEAM_OWN_ACCESS`                                                         |
+| Konto istnieje                                        | Handler, po zapisie                   | `NOT_FOUND` / `TEAM_ACCOUNT_NOT_FOUND`                                                  |
+| Nadanie: konto klienta, potwierdzone i niezablokowane | `grantAdminRole`                      | `CONFLICT` / `TEAM_ALREADY_ADMIN`, `TEAM_EMAIL_NOT_VERIFIED` albo `TEAM_ACCOUNT_BANNED` |
+| Odebranie: konto z dostępem do panelu                 | `revokeAdminRole`                     | `CONFLICT` / `TEAM_NOT_ADMIN`                                                           |
+| Odebranie: nigdy ostatnia osoba z dostępem            | `revokeAdminRole`                     | `CONFLICT` / `TEAM_LAST_ADMIN`                                                          |
+
+`user: ["set-role"]` to uprawnienie, które sprawdza własny endpoint `/admin/set-role` z Better Auth, i ma je tylko rola `admin`, przez `adminAc`. Jest węższe niż `settings: ["manage"]`, którego używają dane sklepu i dostawa, więc przyszła rola zarządzająca ustawieniami sklepu nie będzie przez to samo mogła nadawać dostępu do panelu.
+
+Każda zmiana to jedno warunkowe `UPDATE` w `user.team.server.ts`. `grantAdminRole` ustawia `role` na `admin` tylko wtedy, gdy konto nadal jest potwierdzonym, niezablokowanym kontem klienta. `revokeAdminRole` ustawia ją z powrotem na `customer` tylko wtedy, gdy konto nadal ma dostęp do panelu, a osoba wprowadzająca zmianę jest kimś innym i sama wciąż ma tę rolę, więc ta osoba zawsze zostaje, a dwie osoby odbierające sobie nawzajem dostęp w tej samej chwili nie mogą obie odnieść skutku. Gdy zapis niczego nie zmienia, przypadek użycia czyta konto jeszcze raz, żeby podać powód. Po odebraniu dostępu `revokeAdminRole` usuwa wiersze `session` konta, więc zostaje ono wylogowane wszędzie; sesje są czytane z D1 przy każdym żądaniu, więc nowa rola i tak obowiązuje od następnego żądania.
+
+Po powodzeniu oba wywołują `scheduleAdminCustomersInvalidation()`, które odświeża w każdej karcie panelu `USER_QUERY_KEYS.ADMIN.TEAM` razem z listą klientów, i zapisują `team.admin_granted` albo `team.admin_revoked` w [dzienniku zdarzeń](/docs/features/audit-log#dostęp-do-panelu) w kategorii `settings`. `useTeamAccess` odświeża zespół i listę klientów po każdej zmianie, a także po odmowie, więc sesja, która zestarzała się przy otwartej stronie, przywraca uwagę o logowaniu. Odmowa to komunikat w języku panelu.
+
+### Jak działa dostęp do panelu
+
+`SettingsTeamRulesCard` wymienia te zasady prostymi słowami: dostęp można nadać tylko kontu z potwierdzonym adresem e-mail; nikt nie zmienia własnego dostępu, więc sklep zawsze ma osobę z dostępem do panelu; zmiana wymaga logowania z ostatnich 24 godzin; odebranie dostępu wylogowuje konto na wszystkich urządzeniach; konta z dostępem do panelu nie da się usunąć, dopóki ten dostęp nie zostanie odebrany; a każda zmiana trafia do dziennika zdarzeń razem z informacją, z którego konta ją wprowadzono.
+
 ## Wygląd okien
 
 Okna konta przyjmują `variant`: `"editorial"`, domyślny, dla stron konta klienta, oraz `"default"` dla panelu. Ustawienia przekazują `variant="default"` do `ChangeEmailDialog`, `ChangePasswordDialog`, `SetPasswordDialog` i `TwoFactorDialog`, więc wyglądają one jak pozostałe okna panelu, a `AccountDialogEyebrow` w tym wariancie się ukrywa. Oba warianty opisuje strona [Komponenty shadcn](/docs/ui/shadcn-components#okna-dialogowe).
@@ -167,7 +218,7 @@ Okna konta przyjmują `variant`: `"editorial"`, domyślny, dla stron konta klien
 
 ## Czego jeszcze nie ma w ustawieniach
 
-Na razie ustawienia obejmują własne konto administratora, dane sprzedawcy i dostawę w sklepie. Nie ma w nich jeszcze innych ustawień całego sklepu: samych przewoźników, zespołu administratorów, powiadomień dla obsługi ani stanu płatności i integracji. Sprzedaż wstrzymuje się [przełącznikiem sprzedaży](/docs/features/admin-dashboard#przełącznik-sprzedaży) na pulpicie, a strony prawne edytuje się w sekcji [Treść](/docs/features/legal-pages), gdzie biorą dane sprzedawcy z zakładki Dane sklepu przez znaczniki.
+Na razie ustawienia obejmują własne konto administratora, dane sprzedawcy, dostawę w sklepie i zespół. Nie ma w nich jeszcze innych ustawień całego sklepu: samych przewoźników, powiadomień dla obsługi ani stanu płatności i integracji. Jest jedna rola z dostępem do panelu: każda osoba z tym dostępem może zrobić wszystko, także zarządzać zespołem. Sprzedaż wstrzymuje się [przełącznikiem sprzedaży](/docs/features/admin-dashboard#przełącznik-sprzedaży) na pulpicie, a strony prawne edytuje się w sekcji [Treść](/docs/features/legal-pages), gdzie biorą dane sprzedawcy z zakładki Dane sklepu przez znaczniki.
 
 ## Powiązane strony
 
@@ -175,6 +226,8 @@ Na razie ustawienia obejmują własne konto administratora, dane sprzedawcy i do
 - [Strony prawne](/docs/features/legal-pages) — znaczniki danych sklepu, które podają sprzedawcę na stronach prawnych
 - [Wysyłka i dostawa](/docs/features/shipping-and-delivery) — metody dostawy i darmowa dostawa za zakładką Dostawa
 - [Pulpit admina](/docs/features/admin-dashboard)
+- [Klienci w panelu](/docs/features/admin-customers) — konta klientów, z których zakładka Zespół wybiera nowe osoby, i powód, dla którego konta z dostępem do panelu nie da się tam usunąć
+- [Model bezpieczeństwa](/docs/architecture/security-model#dostęp-administracyjny) — zasady stojące za dostępem do panelu
 - [Internacjonalizacja](/docs/features/internationalization) — preferencje języka, strefy czasowej i formatu
 - [Dziennik zdarzeń](/docs/features/audit-log)
 - [Integracje: Better Auth](/docs/integrations/better-auth)
