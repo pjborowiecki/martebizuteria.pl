@@ -91,6 +91,7 @@ src/modules/discount/
 │   ├── discount.accessors.integration.test.ts
 │   ├── discount.checkout.server.test.ts
 │   ├── discount.claim.server.integration.test.ts
+│   ├── discount.delete.integration.test.ts
 │   ├── discount.persist.utils.test.ts
 │   ├── discount.redeem.server.integration.test.ts
 │   ├── discount.redemption-account-migration.integration.test.ts
@@ -313,7 +314,7 @@ These are the seams the current code leaves, not recommendations about product d
 1. **The cart column.** `cart.discount_id` is neither written nor read; the applied code lives only in the checkout form.
 2. **Permissions.** There is no `discount` resource in `src/integrations/better-auth/auth.access.ts`, so the coupons functions reuse the `order` read and update permissions.
 3. **Realtime invalidation.** `ADMIN_REALTIME_QUERY_PREFIXES` has no `DISCOUNT_QUERY_KEYS` entry and there is no `scheduleDiscountInvalidation()` in `realtime-invalidation.catalog.server.ts`, so neither a change made from another browser nor a redemption recorded by a paid checkout reaches a coupons page that is already open; its refresh button reloads it.
-4. **Deletion.** Deleting a code also deletes its `discount_redemption` and `discount_claim` rows (`onDelete: "cascade"`), so its redemptions also leave the redemptions and given-away cards. `checkout.discount_id` and `order.discount_id` have no foreign key and keep the old id. A checkout paid with a code deleted meanwhile records the discount Stripe took off, but no redemption.
+4. **Deletion.** Deleting a code also deletes its `discount_redemption` and `discount_claim` rows (`onDelete: "cascade"`), so its redemptions also leave the redemptions and given-away cards. Both delete dialogs say so: the code stops working at once, and orders that used it keep their discount, but its uses no longer count in those statistics. `checkout.discount_id` and `order.discount_id` have no foreign key and keep the old id, and `order.discount_total` and the order's totals do not change, which `discount.delete.integration.test.ts` checks. A checkout paid with a code deleted meanwhile records the discount Stripe took off, but no redemption. Once the redemptions are gone, which code an order used is no longer recorded in the shop's database, only in its Stripe session's `discountCode` metadata. Keeping that history would mean archiving a code instead of deleting it.
 5. **Holds in the admin.** The coupons page counts redemptions only: the usage column, the status and the active card read `usage_count`, so a code whose remaining uses are all held by open checkouts still reads as having uses left.
 
 ## Related pages

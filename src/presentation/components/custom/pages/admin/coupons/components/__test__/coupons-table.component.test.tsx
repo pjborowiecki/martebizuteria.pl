@@ -384,7 +384,11 @@ describe("CouponsTableContent deleting", () => {
     fireEvent.click(await screen.findByRole("menuitem", { name: "Delete coupon" }))
     const dialog = await screen.findByRole("alertdialog")
 
-    expect(within(dialog).getByText(/SPRING20 will stop working/u)).toBeInTheDocument()
+    expect(
+      within(dialog).getByText(
+        "SPRING20 will stop working immediately. Orders that used it keep their discount, but its uses no longer count in the Redemptions and Given away statistics.",
+      ),
+    ).toBeInTheDocument()
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete coupon" }))
 
@@ -442,7 +446,11 @@ describe("CouponsTableContent deleting", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete (2)" }))
     const dialog = await screen.findByRole("alertdialog")
 
-    expect(within(dialog).getByText(/2 code\(s\) will stop working/u)).toBeInTheDocument()
+    expect(
+      within(dialog).getByText(
+        "2 code(s) will stop working immediately. Orders that used them keep their discount, but their uses no longer count in the Redemptions and Given away statistics.",
+      ),
+    ).toBeInTheDocument()
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }))
 

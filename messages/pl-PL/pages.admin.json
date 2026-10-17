@@ -1232,7 +1232,7 @@
       "selected": "Zaznaczono: {count}",
       "delete": "Usuń ({count})",
       "confirmTitle": "Usunąć kody?",
-      "confirmDescription": "Zaznaczone kody ({count}) przestaną działać natychmiast. Nie wpływa to na zamówienia, które już ich użyły.",
+      "confirmDescription": "Zaznaczone kody ({count}) przestaną działać natychmiast. Zamówienia, w których ich użyto, zachowają rabat, ale te wykorzystania przestaną się liczyć w statystykach „Wykorzystania” i „Udzielone rabaty”.",
       "cancel": "Anuluj",
       "confirm": "Usuń"
     },
@@ -1305,7 +1305,7 @@
     },
     "deleteDialog": {
       "title": "Usunąć ten kod?",
-      "description": "{code} przestanie działać natychmiast. Nie wpływa to na zamówienia, które już go użyły.",
+      "description": "{code} przestanie działać natychmiast. Zamówienia, w których go użyto, zachowają rabat, ale te wykorzystania przestaną się liczyć w statystykach „Wykorzystania” i „Udzielone rabaty”.",
       "cancel": "Zachowaj kod",
       "confirm": "Usuń kod"
     }
