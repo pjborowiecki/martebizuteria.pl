@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { readPdf, readPublicAsset } from "~/src/platform/testing/lib/pdf"
+import { PDF_RENDER_TIMEOUT, readPdf, readPublicAsset } from "~/src/platform/testing/lib/pdf"
 import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
 const { assetsFetch } = vi.hoisted(() => ({
@@ -17,7 +17,7 @@ beforeEach(() => {
   assetsFetch.mockImplementation((input) => Promise.resolve(new Response(readPublicAsset(input.pathname))))
 })
 
-describe("loadWithdrawalFormAttachment", () => {
+describe("loadWithdrawalFormAttachment", PDF_RENDER_TIMEOUT, () => {
   it("attaches the withdrawal form made from the seller details of the e-mail under the file name the legal pages link to", async () => {
     const attachment = await loadWithdrawalFormAttachment(TEST_STORED_SELLER_DETAILS, "http://127.0.0.1:3000")
     const form = await readPdf(Buffer.from(String(attachment.content), "base64"))

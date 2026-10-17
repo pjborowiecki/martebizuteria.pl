@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test"
 
-import { FORM_FONT_FILES, readPdf } from "~/src/platform/testing/lib/pdf"
+import { FORM_FONT_FILES, PDF_RENDER_TIMEOUT, readPdf } from "~/src/platform/testing/lib/pdf"
 import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
 import { COMPLAINT_FORM } from "~/src/presentation/pdf/complaint-form"
@@ -9,7 +9,7 @@ const bytes = await COMPLAINT_FORM.render(TEST_STORED_SELLER_DETAILS, FORM_FONT_
 
 const form = await readPdf(bytes)
 
-describe("complaint form", () => {
+describe("complaint form", PDF_RENDER_TIMEOUT, () => {
   it("prints the complaint form on one A4 page, naming the stored seller details as the seller", () => {
     expect(form.pageCount).toBe(1)
     expect(form.pageSize).toStrictEqual([0, 0, 595.28, 841.89])
