@@ -12,7 +12,7 @@ M'Arte używa dokładnie dwóch rodzin, obie hostowane samodzielnie z `public/fo
 | **Manrope**            | Tekst, interfejs, nawigacja, panel       | `font-sans`  | Jeden plik zmienny na podzbiór, oś grubości `200 800` |
 | **Cormorant Garamond** | Nagłówki ekspozycyjne, treści redakcyjne | `font-serif` | Kroje statyczne 400, 500 i 600; kursywy 400 i 500     |
 
-W `public/fonts` leży dwanaście plików. Każda rodzina ma wariant `latin` i `latin-ext` każdego kroju, bo polszczyzna potrzebuje zakresu rozszerzonego:
+W `public/fonts` leży dwanaście plików fontów strony, a w `public/fonts/forms` trzy kroje, które osadzają formularze PDF (zobacz [Fonty w formularzach PDF](#fonty-w-formularzach-pdf)). Każda rodzina ma wariant `latin` i `latin-ext` każdego kroju, bo polszczyzna potrzebuje zakresu rozszerzonego:
 
 ```
 manrope-latin-wght-normal.woff2
@@ -100,6 +100,20 @@ export const getCriticalFontPreloads = (locale: SupportedLocale) => {
 
 Dodając język, rozszerz warunek. Dodając trzeci krój krytyczny, dopisz go do `critical-fonts.css` _oraz_ do tej funkcji, inaczej zostanie pobrany za późno.
 
+## Fonty w formularzach PDF
+
+Formularze odstąpienia i reklamacji powstają w Workerze przez `pdf-lib` i `@pdf-lib/fontkit` (zobacz [Strony prawne: Jak powstają formularze](/docs/features/legal-pages#jak-powstają-formularze)) i używają tych samych dwóch rodzin, ale nie powyższych plików strony. Każdy krój strony jest podzielony na plik `latin` i `latin-ext`, więc polskie słowo potrzebowałoby dwóch fontów, a Manrope jest fontem zmiennym, z którego fontkit osadza tylko domyślną odmianę ExtraLight. Dlatego w `public/fonts/forms` leżą trzy statyczne kroje TrueType:
+
+| Plik                                | Krój                                      | Źródło                                                                                                  |
+| ----------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `manrope-400-normal.ttf`            | Manrope Regular, wersja 4.504             | Statyczna odmiana, którą serwuje Google Fonts                                                           |
+| `manrope-600-normal.ttf`            | Manrope SemiBold, wersja 4.504            | Statyczna odmiana, którą serwuje Google Fonts                                                           |
+| `cormorant-garamond-600-normal.ttf` | Cormorant Garamond SemiBold, wersja 4.001 | Statyczna odmiana, którą serwuje Google Fonts, zapisana ponownie z każdym glifem wyrównanym do 4 bajtów |
+
+Obie rodziny są na licencji SIL Open Font License 1.1, bez zastrzeżonej nazwy fontu. Licencja musi towarzyszyć każdej kopii fontów, więc `public/fonts/forms/OFL.txt` zawiera ją z obiema informacjami o prawach autorskich; pozwala ona osadzać fonty w dokumentach, takich jak formularze. Plik Cormorant Garamond jest wersją zmodyfikowaną. Google Fonts zapisuje jego glify bez wyrównania, a podzbiór, który tworzy fontkit, ma krótkie przesunięcia `loca`, wskazujące tylko parzyste pozycje, więc większość glifów osadzonego podzbioru wychodziła uszkodzona. fontTools zapisał go ponownie z `font["glyf"].padding = 4`, co zmienia tylko wyrównanie tabeli glifów.
+
+Formularz osadza tylko użyte glify, około 15 KB na formularz. Fonty są zasobami statycznymi, więc nie zwiększają rozmiaru Workera, a `loadFormFonts` czyta je przez `ASSETS` za każdym razem, gdy powstaje formularz. `/fonts/*` jest cache'owane przez rok jako niezmienne, więc zmieniony font formularzy potrzebuje nowej nazwy pliku, którą musi podać `FORM_FONT_PATHS` w `src/presentation/pdf/form-document.ts`.
+
 ## Stałe marki
 
 `src/presentation/branding/app.ts` jest jedynym źródłem prawdy o marce:
@@ -146,7 +160,7 @@ export const toSellerPhoneHref = (phone: string): string => `tel:${phone.replace
 
 `SellerContactDetails` z `src/presentation/components/custom/seller-contact-details.tsx` pokazuje je w stopce sklepu i w sekcji kontaktowej na końcu `/about`, każda karta produktu podaje sprzedawcę jako producenta w sekcji „Producent”, e-maile o zamówieniach i newsletter wymieniają z nimi sprzedawcę, `sendEmail` ustawia e-mail kontaktowy jako adres odpowiedzi każdej wiadomości, a `buildStoreStructuredData` i `buildProductStructuredData` w `src/lib/seo.ts`, które dostają dane jako `seller`, publikują nazwę prawną, adres pocztowy, e-mail, telefon i NIP w danych strukturalnych strony głównej oraz nazwę prawną, adres pocztowy i e-mail jako producenta każdego produktu, więc wyszukiwarki czytają te same dane co klienci. Kraj jest nazwany na podstawie zapisanego kodu w języku czytelnika. Strony prawne podają sprzedawcę przez znaczniki danych sklepu, na przykład `:seller[nip]` (zobacz [Strony prawne](/docs/features/legal-pages#dane-sklepu-na-stronach)).
 
-Gdy więc dane firmy się zmienią, wystarczy zapisać je w Ustawienia → Dane sklepu, a sklep, e-maile i strony prawne od razu za nimi pójdą. Zdania o odbiorze w regulaminie i w FAQ, które podają ulicę i miejscowość słowami, oraz dwa formularze PDF w `public/forms`, w których dane są wydrukowane, nadal wymagają osobnej zmiany. `APP_NAME` zostaje w `app.ts`, bo nazywa markę, a nie sprzedawcę.
+Gdy więc dane firmy się zmienią, wystarczy zapisać je w Ustawienia → Dane sklepu, a sklep, e-maile i strony prawne od razu za nimi pójdą. Dwa formularze PDF powstają z zapisanych danych przy każdym otwarciu. Zdania o odbiorze w regulaminie i w FAQ, które podają ulicę i miejscowość słowami, nadal wymagają osobnej zmiany. `APP_NAME` zostaje w `app.ts`, bo nazywa markę, a nie sprzedawcę.
 
 `src/presentation/branding/socials.ts` przechowuje dwa aktywne profile:
 
@@ -164,7 +178,7 @@ Czytają je `src/lib/seo.ts` (wpisy `sameAs` w danych strukturalnych), stopka or
 - Favikona to `public/favicon.svg`, podłączona przez `APP_ICON`. Nie ma pliku `.ico`.
 - `public/og.png` to karta społecznościowa 1200×630.
 - `src/presentation/components/custom/icons.tsx` przechowuje dwa wbudowane SVG marek, których nie pokrywa Lucide: `GoogleIcon` i `FacebookIcon`. Wszystko pozostałe pochodzi z `lucide-react`.
-- `public/video/landing-video.mp4` to materiał wideo strony głównej; `public/screenshots` zawiera osiem zrzutów do README, a `public/forms` dwa polskie formularze PDF zwrotu i reklamacji.
+- `public/video/landing-video.mp4` to materiał wideo strony głównej; `public/screenshots` zawiera osiem zrzutów do README.
 - `public/icons.svg` to sprite SVG z symbolami `bluesky`, `discord`, `documentation`, `github`, `social` i `x`. Nic w `src` się do niego nie odwołuje — traktuj go jako pozostałość, nie jako API.
 
 ## Powiązane strony

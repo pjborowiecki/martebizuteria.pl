@@ -12,7 +12,7 @@ description: "The Cloudflare runtime: the Worker entry, its bindings, the three 
 | `DB`                        | D1 database    | All 41 tables, including sessions, verification and rate-limit counters         |
 | `IMAGES`                    | R2 bucket      | Product images uploaded through `src/integrations/cloudflare-r2`                |
 | `CACHE`                     | KV namespace   | Holds the five-minute email sender flag (`resend.availability.server.ts`)       |
-| `ASSETS`                    | Static assets  | Everything in `public/`, including the fonts and the withdrawal form PDF        |
+| `ASSETS`                    | Static assets  | Everything in `public/`, including the fonts of the site and of the PDF forms   |
 | `REALTIME_INVALIDATION_HUB` | Durable Object | The `RealtimeInvalidationHub` class, one instance per audience name             |
 | `AUDIT_LOG_QUEUE`           | Queue          | Audit events, produced by the app and consumed by the same Worker               |
 | `NEWSLETTER_QUEUE`          | Queue          | Newsletter batches, one campaign batch per message, consumed by the same Worker |
@@ -89,6 +89,7 @@ The deploy runs against `dist/server/wrangler.json` — the config the Cloudflar
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
 | `setup.ts`                                                   | jest-dom matchers, `IntersectionObserver`/`ResizeObserver`/`matchMedia` stubs, and the `createServerFn` replacement |
 | `lib/server-function.ts`                                     | `withTestRpc`, which runs a server function in-process through its real middleware and validator                    |
+| `lib/pdf.ts`                                                 | `readPdf`, which reads a PDF back with pdf.js, and the form fonts from `public/fonts/forms`                         |
 | `lib/render.tsx`                                             | `renderWithProviders`, `TestProviders`, `createTestRouter`                                                          |
 | `lib/messages.ts`                                            | `TEST_LOCALE` and `TEST_MESSAGES` for the `IntlProvider` in tests                                                   |
 | `mocks/d1.ts`                                                | `createTestD1Database`, a D1-shaped transport over `node:sqlite`                                                    |

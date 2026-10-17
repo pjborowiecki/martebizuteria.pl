@@ -26,7 +26,7 @@ Język domyślny **nie ma prefiksu**. `/products` to polski, `/en-US/products` t
 | Funkcja                 | Zachowanie                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------- |
 | `isSupportedLocale`     | przynależność do zbioru                                                             |
-| `shouldIgnorePath`      | prawda dla `/api`, `/rpc`, `/_serverFn` i `/assets`                                 |
+| `shouldIgnorePath`      | prawda dla `/api`, `/rpc`, `/_serverFn`, `/assets` i `/forms`                       |
 | `extractLocaleFromPath` | zwraca prefiks **tylko wtedy, gdy nie jest domyślny** — `/pl-PL/x` daje `undefined` |
 | `deLocalizePathname`    | usuwa dowolny obsługiwany prefiks                                                   |
 | `localizePathname`      | dodaje prefiks, z wyjątkiem języka domyślnego                                       |

@@ -69,7 +69,7 @@ W panelu, w **Ustawienia → Dostawa** (`/admin/settings/delivery`). Tam dodaje 
 
 ## Gdzie zmienia się nazwę firmy, adres i NIP sklepu?
 
-W panelu, w **Ustawienia → Dane sklepu** (`/admin/settings/store`): pełną nazwę firmy, ulicę, kod pocztowy, miejscowość, kraj, NIP, REGON, e-mail kontaktowy i telefon. Stopka, strona „O M'Arte”, strony produktów, krok odbioru osobistego w kasie, e-maile, dane strukturalne i strony prawne czytają je z wiersza `store_setting`, więc zapis pojawia się wszędzie bez nowego wydania. Strony prawne podają je przez znaczniki, na przykład `:seller[nip]`; zdania o odbiorze w regulaminie i w FAQ oraz dwa formularze PDF w `public/forms` nadal wymagają osobnej zmiany. Zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu).
+W panelu, w **Ustawienia → Dane sklepu** (`/admin/settings/store`): pełną nazwę firmy, ulicę, kod pocztowy, miejscowość, kraj, NIP, REGON, e-mail kontaktowy i telefon. Stopka, strona „O M'Arte”, strony produktów, krok odbioru osobistego w kasie, e-maile, dane strukturalne i strony prawne czytają je z wiersza `store_setting`, więc zapis pojawia się wszędzie bez nowego wydania. Strony prawne podają je przez znaczniki, na przykład `:seller[nip]`, a dwa formularze PDF powstają z nich przy każdym otwarciu; osobnej zmiany wymagają już tylko zdania o odbiorze w regulaminie i w FAQ. Zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu).
 
 ## Jak zmiana w jednej karcie przeglądarki dociera na ekran innego administratora?
 

@@ -12,7 +12,7 @@ description: "Runtime Cloudflare: punkt wejścia Workera, jego bindingi, trzy ś
 | `DB`                        | Baza D1          | Wszystkich 41 tabel, w tym sesji, weryfikacji i liczników limitów żądań                     |
 | `IMAGES`                    | Bucket R2        | Zdjęć produktów uploadowanych przez `src/integrations/cloudflare-r2`                        |
 | `CACHE`                     | Namespace KV     | Przechowuje pięciominutową flagę nadawcy e-maili (`resend.availability.server.ts`)          |
-| `ASSETS`                    | Zasoby statyczne | Wszystkiego z `public/`, w tym fontów i PDF formularza odstąpienia od umowy                 |
+| `ASSETS`                    | Zasoby statyczne | Wszystkiego z `public/`, w tym fontów strony i formularzy PDF                               |
 | `REALTIME_INVALIDATION_HUB` | Durable Object   | Klasy `RealtimeInvalidationHub`, jedna instancja na odbiorcę                                |
 | `AUDIT_LOG_QUEUE`           | Kolejka          | Zdarzeń audytowych, produkowanych i konsumowanych przez ten sam Worker                      |
 | `NEWSLETTER_QUEUE`          | Kolejka          | Partii newslettera, jednej partii kampanii na wiadomość, konsumowanych przez ten sam Worker |
@@ -89,6 +89,7 @@ Wdrożenie działa na `dist/server/wrangler.json` — konfiguracji emitowanej pr
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
 | `setup.ts`                                                   | Matchery jest-dom, stuby `IntersectionObserver`/`ResizeObserver`/`matchMedia` i podmianę `createServerFn` |
 | `lib/server-function.ts`                                     | `withTestRpc`, uruchamiający funkcję serwerową w procesie przez jej prawdziwe middleware i walidator      |
+| `lib/pdf.ts`                                                 | `readPdf`, odczytujący PDF z powrotem przez pdf.js, oraz fonty formularzy z `public/fonts/forms`          |
 | `lib/render.tsx`                                             | `renderWithProviders`, `TestProviders`, `createTestRouter`                                                |
 | `lib/messages.ts`                                            | `TEST_LOCALE` i `TEST_MESSAGES` dla `IntlProvider` w testach                                              |
 | `mocks/d1.ts`                                                | `createTestD1Database`, transport w kształcie D1 nad `node:sqlite`                                        |

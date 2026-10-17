@@ -241,7 +241,7 @@ The image hosts are the origins of `DEFAULT_R2_PUBLIC_URL` and of `getAssetCdnBa
 
 **Zod's eval probe.** Zod 4 calls `new Function("")` once per page to decide whether to compile its object parsers. The policy has no `'unsafe-eval'`, so the browser refuses the call and reports one `script-src` violation for `eval`; Zod catches the refusal and parses without compiling, as it already does on Workers. Zod's `jitless` setting skips the probe, but it has to be set before the first schema module runs, and the client bundle evaluates the route chunks before any module the app could set it in.
 
-**Static files.** Files under `public/` are answered by the assets layer and never reach the Worker. `public/_headers` gives every one of them `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`. HSTS is left to the Worker's responses, because the browser applies it to the whole host.
+**Static files.** Files under `public/` are answered by the assets layer and never reach the Worker. `public/_headers` gives every one of them `X-Content-Type-Options: nosniff` and `Referrer-Policy: strict-origin-when-cross-origin`. HSTS is left to the Worker's responses, because the browser applies it to the whole host. The two PDF forms at `/forms/…` are not static files: the Worker makes them, so they carry the same headers as a page.
 
 `security-headers.test.ts` checks every header and directive, `server.test.ts` checks that each Worker response carries them with the nonce the application was handed, and `e2e/specs/smoke.spec.ts` loads the home, product, sign-in and documentation pages in a browser and fails if they do not hydrate or if the browser refuses anything other than Zod's probe.
 

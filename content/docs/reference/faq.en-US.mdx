@@ -69,7 +69,7 @@ In the admin, under **Settings → Delivery** (`/admin/settings/delivery`). It a
 
 ## Where are the shop's legal name, address and NIP changed?
 
-In the admin, under **Settings → Store details** (`/admin/settings/store`): the legal name, street, postal code, city, country, NIP, REGON, contact e-mail and phone. The footer, the about page, product pages, the checkout's pickup step, the e-mails, the structured data and the legal pages read them from the `store_setting` row, so a save shows everywhere without a release. The legal pages name them through placeholders such as `:seller[nip]`; the pickup sentences in the terms and the FAQ and the two PDF forms in `public/forms` still need an edit of their own. See [Admin settings](/docs/features/admin-settings#store-details).
+In the admin, under **Settings → Store details** (`/admin/settings/store`): the legal name, street, postal code, city, country, NIP, REGON, contact e-mail and phone. The footer, the about page, product pages, the checkout's pickup step, the e-mails, the structured data and the legal pages read them from the `store_setting` row, so a save shows everywhere without a release. The legal pages name them through placeholders such as `:seller[nip]`, and the two PDF forms are made from them each time they are opened; only the pickup sentences in the terms and the FAQ still need an edit of their own. See [Admin settings](/docs/features/admin-settings#store-details).
 
 ## How does a change in one browser tab reach another admin's screen?
 

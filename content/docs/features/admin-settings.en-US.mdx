@@ -107,7 +107,7 @@ Every field is required. The rules are `storeSettingZodSchemas.sellerDetails` in
 4. refuses with `CONFLICT` when another admin saved the details after the form was opened, and the card toasts **Someone changed the seller details in the meantime. Reload the page to see the change.**;
 5. publishes `scheduleSellerDetailsInvalidation()`, and `scheduleContentPageInvalidation()` when it dated a page, and records `settings.updated` with the target `seller-details` and the changed fields, old and new, in the [audit log](/docs/features/audit-log).
 
-On success the card fills the form with the saved details, refreshes `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` and `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS`, and toasts **Seller details saved.** The invalidation sends the admin key to the admin hub and the storefront key to the storefront hub, so other admin tabs and open storefront and checkout tabs show the new details without a reload. The account pages and the docs, which do not follow realtime invalidation, show them on their next load.
+On success the card fills the form with the saved details, refreshes `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` and `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS`, and toasts **Seller details saved.** The invalidation sends the admin key to the admin hub and the storefront key to the storefront hub, so other admin tabs and open storefront and checkout tabs show the new details without a reload. The account pages and the docs, which do not follow realtime invalidation, show them on their next load, and the two PDF forms carry them the next time they are opened, because their `ETag` is the time of the save.
 
 ### Where the details show
 
@@ -123,10 +123,11 @@ The storefront reads the details through the public `getSellerDetails` (`get-sel
 | Structured data                                                              | `buildStoreStructuredData` on the home page and the manufacturer in `buildProductStructuredData`                                                       |
 | E-mails                                                                      | The order confirmation, the thank-you after delivery, the withdrawal acknowledgement and the newsletter's sender footer, and every e-mail's `Reply-To` |
 | The legal pages and the FAQ                                                  | Each store detail placeholder in a page's Markdown                                                                                                     |
+| The withdrawal and complaint PDF forms                                       | The legal name, street, postal code, city and e-mail, written into the PDF each time a form is opened or attached to an order confirmation             |
 
-See [Legal pages](/docs/features/legal-pages#store-details-in-the-pages) and [Transactional email](/docs/features/email#seller-details-in-e-mails) for the last two.
+See [Transactional email](/docs/features/email#seller-details-in-e-mails), [Legal pages](/docs/features/legal-pages#store-details-in-the-pages) and [How the forms are made](/docs/features/legal-pages#how-the-forms-are-made) for the last three.
 
-Some places still carry the seller's details outside Settings and need a change of their own: the two PDF forms in `public/forms`, which have the details printed in them (the withdrawal form is attached to every order confirmation) until they are generated from the stored details; the public business details in the Stripe Dashboard; the sender profile of the InPost organisation; and the Google OAuth consent screen. `APP_NAME` in `src/presentation/branding/app.ts`, the brand name the two-factor issuer, the e-mail sender's name and Stripe's `appInfo` use, stays a constant.
+Some places still carry the seller's details outside Settings and need a change of their own: the public business details in the Stripe Dashboard; the sender profile of the InPost organisation; and the Google OAuth consent screen. `APP_NAME` in `src/presentation/branding/app.ts`, the brand name the two-factor issuer, the e-mail sender's name and Stripe's `appInfo` use, stays a constant.
 
 ## Delivery
 

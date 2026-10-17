@@ -143,21 +143,23 @@ The `/admin` layout is `admin.tsx`. Its `beforeLoad` runs `requireAdmin`, which 
 
 ## API and Worker-level paths
 
-API paths are never localized — `shouldIgnorePath` in `src/integrations/use-intl/i18n.paths.ts` exempts `/api`, `/rpc`, `/_serverFn` and `/assets` from locale handling.
+API paths and the PDF forms are never localized — `shouldIgnorePath` in `src/integrations/use-intl/i18n.paths.ts` exempts `/api`, `/rpc`, `/_serverFn`, `/assets` and `/forms` from locale handling.
 
-| Path                          | Handled by                                                                       | Notes                                                                                                                  |
-| ----------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `/api/auth/*`                 | `src/routes/api/auth.$.ts`                                                       | Better Auth's own handler                                                                                              |
-| `/api/webhooks/stripe`        | `src/routes/api/webhooks.stripe.ts`                                              | Signature-verified Stripe events                                                                                       |
-| `/api/webhooks/inpost`        | `src/routes/api/webhooks.inpost.ts`                                              | InPost ShipX events, at most 120 a minute from one address; each named shipment is read back from ShipX                |
-| `/api/newsletter/unsubscribe` | `src/routes/api/newsletter.unsubscribe.ts` → `ROUTES.API_NEWSLETTER_UNSUBSCRIBE` | One-click unsubscribe (RFC 8058) a mail provider posts with a newsletter's token                                       |
-| `/api/health`                 | `src/routes/api/health.ts`                                                       | 200 or 503 for an uptime monitor after reading D1, KV and R2                                                           |
-| `/api/realtime/admin/ws`      | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`                                 | WebSocket upgrade, open to an admin with two-factor authentication on, checked in the Worker before the Durable Object |
-| `/api/realtime/storefront/ws` | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS`                            | WebSocket upgrade, open to anyone                                                                                      |
-| `/sitemap.xml`                | `src/server.ts` → `generateSitemapXml`                                           | Pages read from D1 by `listSitemapPages`, cached for a day                                                             |
-| `/robots.txt`                 | `src/server.ts` → `generateRobotsTxt`                                            | Content depends on `env.APP_ENV`                                                                                       |
+| Path                              | Handled by                                                                       | Notes                                                                                                                  |
+| --------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `/api/auth/*`                     | `src/routes/api/auth.$.ts`                                                       | Better Auth's own handler                                                                                              |
+| `/api/webhooks/stripe`            | `src/routes/api/webhooks.stripe.ts`                                              | Signature-verified Stripe events                                                                                       |
+| `/api/webhooks/inpost`            | `src/routes/api/webhooks.inpost.ts`                                              | InPost ShipX events, at most 120 a minute from one address; each named shipment is read back from ShipX                |
+| `/api/newsletter/unsubscribe`     | `src/routes/api/newsletter.unsubscribe.ts` → `ROUTES.API_NEWSLETTER_UNSUBSCRIBE` | One-click unsubscribe (RFC 8058) a mail provider posts with a newsletter's token                                       |
+| `/api/health`                     | `src/routes/api/health.ts`                                                       | 200 or 503 for an uptime monitor after reading D1, KV and R2                                                           |
+| `/forms/formularz_zwrotu.pdf`     | `src/routes/forms.formularz_zwrotu[.]pdf.ts`                                     | The model withdrawal form made from the stored seller details, with an `ETag` from their last save                     |
+| `/forms/formularz_reklamacji.pdf` | `src/routes/forms.formularz_reklamacji[.]pdf.ts`                                 | The complaint form, made the same way                                                                                  |
+| `/api/realtime/admin/ws`          | `src/server.ts` → `ROUTES.API_REALTIME.ADMIN_WS`                                 | WebSocket upgrade, open to an admin with two-factor authentication on, checked in the Worker before the Durable Object |
+| `/api/realtime/storefront/ws`     | `src/server.ts` → `ROUTES.API_REALTIME.STOREFRONT_WS`                            | WebSocket upgrade, open to anyone                                                                                      |
+| `/sitemap.xml`                    | `src/server.ts` → `generateSitemapXml`                                           | Pages read from D1 by `listSitemapPages`, cached for a day                                                             |
+| `/robots.txt`                     | `src/server.ts` → `generateRobotsTxt`                                            | Content depends on `env.APP_ENV`                                                                                       |
 
-The last four are checked in `src/server.ts` before the request reaches TanStack Start, so none of them pays for an SSR render. `/api/auth/*`, `/api/webhooks/stripe`, `/api/webhooks/inpost`, `/api/newsletter/unsubscribe` and `/api/health` are TanStack Start server routes under `src/routes/api/`, so they go through the router but never render a page.
+The last four are checked in `src/server.ts` before the request reaches TanStack Start, so none of them pays for an SSR render. `/api/auth/*`, `/api/webhooks/stripe`, `/api/webhooks/inpost`, `/api/newsletter/unsubscribe` and `/api/health` are TanStack Start server routes under `src/routes/api/`, and the two forms are server routes in `src/routes/`, so they go through the router but never render a page.
 
 ## Guards
 

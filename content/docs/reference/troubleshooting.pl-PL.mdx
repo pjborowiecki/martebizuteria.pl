@@ -88,7 +88,7 @@ co uruchamia `cf-typegen` (`wrangler types --env development`), a potem `content
 
 **Klucz renderuje się jako własna ścieżka.** Klucza brakuje w aktywnej lokalizacji albo komponent czyta poza zasięgiem swojego wywołania `useTranslations`. `src/integrations/use-intl/__test__/i18n.messages.test.ts` sprawdza, że polski zawiera każdy angielski klucz, więc uruchom testy, żeby znaleźć lukę.
 
-**Tekst pojawia się w niewłaściwym języku na ścieżce API.** `shouldIgnorePath` wyłącza `/api`, `/rpc`, `/_serverFn` i `/assets` z rozwiązywania lokalizacji, a `getCurrentLocale` sięga dla tych ścieżek do cookie `marte_locale`. Cokolwiek wyprowadza lokalizację z lokalizacji routera, zobaczy ścieżkę bez prefiksu, a więc lokalizację domyślną — używaj `getCurrentLocale()`.
+**Tekst pojawia się w niewłaściwym języku na ścieżce API.** `shouldIgnorePath` wyłącza `/api`, `/rpc`, `/_serverFn`, `/assets` i `/forms` z rozwiązywania lokalizacji, a `getCurrentLocale` sięga dla tych ścieżek do cookie `marte_locale`. Cokolwiek wyprowadza lokalizację z lokalizacji routera, zobaczy ścieżkę bez prefiksu, a więc lokalizację domyślną — używaj `getCurrentLocale()`.
 
 ## Dokumentacja
 

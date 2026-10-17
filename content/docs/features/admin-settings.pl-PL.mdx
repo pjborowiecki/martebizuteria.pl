@@ -107,7 +107,7 @@ Każde pole jest wymagane. Reguły to `storeSettingZodSchemas.sellerDetails` w `
 4. odrzuca zapis z `CONFLICT`, gdy inny administrator zapisał dane po otwarciu formularza, a karta pokazuje komunikat **W międzyczasie ktoś zmienił dane sprzedawcy. Odśwież stronę, aby zobaczyć zmianę.**;
 5. publikuje `scheduleSellerDetailsInvalidation()`, a gdy datował stronę, także `scheduleContentPageInvalidation()`, i zapisuje w [dzienniku zdarzeń](/docs/features/audit-log) `settings.updated` z celem `seller-details` i zmienionymi polami, starymi i nowymi.
 
-Po powodzeniu karta wypełnia formularz zapisanymi danymi, odświeża `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` i `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS` i pokazuje komunikat **Zapisano dane sprzedawcy.** Unieważnienie wysyła klucz panelu do huba panelu, a klucz sklepu do huba sklepu, więc inne karty panelu oraz otwarte karty sklepu i kasy pokazują nowe dane bez przeładowania. Strony konta i dokumentacja, które nie śledzą unieważniania w czasie rzeczywistym, pokazują je przy następnym wczytaniu.
+Po powodzeniu karta wypełnia formularz zapisanymi danymi, odświeża `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` i `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS` i pokazuje komunikat **Zapisano dane sprzedawcy.** Unieważnienie wysyła klucz panelu do huba panelu, a klucz sklepu do huba sklepu, więc inne karty panelu oraz otwarte karty sklepu i kasy pokazują nowe dane bez przeładowania. Strony konta i dokumentacja, które nie śledzą unieważniania w czasie rzeczywistym, pokazują je przy następnym wczytaniu, a dwa formularze PDF zawierają je przy następnym otwarciu, bo ich `ETag` to chwila zapisu.
 
 ### Gdzie widać te dane
 
@@ -123,10 +123,11 @@ Sklep czyta dane przez publiczne `getSellerDetails` (`get-seller-details.ts`) i 
 | Dane strukturalne                                                      | `buildStoreStructuredData` na stronie głównej i producenta w `buildProductStructuredData`                                                   |
 | E-maile                                                                | Potwierdzenie zamówienia, podziękowanie po dostawie, potwierdzenie odstąpienia i stopkę nadawcy newslettera oraz `Reply-To` każdego e-maila |
 | Strony prawne i FAQ                                                    | Każdy znacznik danych sklepu w Markdownie strony                                                                                            |
+| Formularze PDF odstąpienia i reklamacji                                | Pełna nazwa firmy, ulica, kod pocztowy, miejscowość i e-mail, wpisywane do PDF przy otwarciu i dołączeniu do potwierdzenia zamówienia       |
 
-Dwa ostatnie opisują strony [Strony prawne](/docs/features/legal-pages#dane-sklepu-na-stronach) i [E-maile transakcyjne](/docs/features/email#dane-sprzedawcy-w-e-mailach).
+Trzy ostatnie opisują strony [E-maile transakcyjne](/docs/features/email#dane-sprzedawcy-w-e-mailach), [Strony prawne](/docs/features/legal-pages#dane-sklepu-na-stronach) i [Jak powstają formularze](/docs/features/legal-pages#jak-powstają-formularze).
 
-Niektóre miejsca nadal mają dane sprzedawcy poza ustawieniami i wymagają osobnej zmiany: dwa formularze PDF w `public/forms`, w których dane są wydrukowane (formularz odstąpienia jest dołączany do każdego potwierdzenia zamówienia), dopóki nie będą generowane z zapisanych danych; publiczne dane firmy w panelu Stripe; profil nadawcy organizacji InPost; oraz ekran zgody Google OAuth. `APP_NAME` w `src/presentation/branding/app.ts`, nazwa marki, której używają wystawca kodów dwuskładnikowych, nazwa nadawcy e-maili i `appInfo` Stripe, pozostaje stałą.
+Niektóre miejsca nadal mają dane sprzedawcy poza ustawieniami i wymagają osobnej zmiany: publiczne dane firmy w panelu Stripe; profil nadawcy organizacji InPost; oraz ekran zgody Google OAuth. `APP_NAME` w `src/presentation/branding/app.ts`, nazwa marki, której używają wystawca kodów dwuskładnikowych, nazwa nadawcy e-maili i `appInfo` Stripe, pozostaje stałą.
 
 ## Dostawa
 

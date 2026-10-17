@@ -32,10 +32,10 @@ Typ `SupportedLocale` wyprowadzany jest z krotki, więc dodanie tu języka spraw
 Plik `i18n.paths.ts` implementuje reguły prefiksów. Wzorzec ignorowanych ścieżek to istotny punkt wyjścia:
 
 ```ts
-const IGNORED_PATHS_REGEX = /^\/(?:api|rpc|_serverFn|assets)(?:\/|$)/u
+const IGNORED_PATHS_REGEX = /^\/(?:api|rpc|_serverFn|assets|forms)(?:\/|$)/u
 ```
 
-Te prefiksy nigdy nie otrzymują segmentu języka, ponieważ są punktami końcowymi dla maszyn.
+Te prefiksy nigdy nie otrzymują segmentu języka, ponieważ są punktami końcowymi dla maszyn albo, w przypadku `/forms`, formularzami PDF, które są takie same w każdym języku.
 
 | Eksport                                  | Zachowanie                                                                                           |
 | ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
