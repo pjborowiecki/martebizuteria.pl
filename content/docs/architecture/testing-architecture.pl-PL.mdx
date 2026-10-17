@@ -69,7 +69,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 ```
 
-58 ze 123 zestawów integracyjnych buduje schemat, odtwarzając każdy plik migracji przez `applyMigrationHistory` z `src/platform/testing/mocks/migrations.ts`; pozostałe same tworzą potrzebne tabele albo nakładają tylko testowaną migrację przez `applyMigration`.
+61 ze 130 zestawów integracyjnych buduje schemat, odtwarzając każdy plik migracji przez `applyMigrationHistory` z `src/platform/testing/mocks/migrations.ts`; pozostałe same tworzą potrzebne tabele albo nakładają tylko testowaną migrację przez `applyMigration`.
 
 **Czego to nie emuluje:** opóźnień sieciowych D1 i charakterystyki jego współbieżności. Wynik dotyczący współbieżności z pakietu integracyjnego jest zachowaniem SQLite, a nie dowodem na zachowanie D1 pod obciążeniem produkcyjnym.
 
@@ -89,7 +89,7 @@ Pokrycie jest szerokie, ale pakietami, które naprawdę zarabiają na siebie, s�
 - **Plany zapytań** — `query-plans.integration.test.ts` odtwarza migracje, sprawdza, że każdy klucz obcy ma indeks i że każdy indeks zadeklarowany w schemacie istnieje na tych samych kolumnach, i uruchamia `explain query plan` na instrukcjach gorących odczytów, zapisanych przez `onQuery`, żeby pokazać, że korzystają z indeksu zamiast skanować tabelę.
 - **Akcesory** — 19 pakietów akcesorów uruchamia moduły dostępu do danych na SQLite: account, address, audit-log, category-on-product, checkout, collection-on-product, customer-account, delivery-method, discount, inventory, order (dwa), product (cztery), user (dwa) i wishlist.
 
-Projekt integracyjny ma łącznie 123 pakiety. Poza powyższymi największe grupy obejmują moduł zamówień (20 pakietów), checkout (13) i Better Auth (12), a część sprawdza migracje danych, na przykład uzupełnienia w `src/modules/order/__test__/`.
+Projekt integracyjny ma łącznie 130 pakietów. Poza powyższymi największe grupy obejmują moduł zamówień (20 pakietów), checkout (14) i Better Auth (12), a część sprawdza migracje danych, na przykład uzupełnienia w `src/modules/order/__test__/`.
 
 ## Pokrycie
 

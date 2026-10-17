@@ -216,7 +216,7 @@ it("claims nothing more when it runs again", () => {
 
 Its other cases cover what the migration must change (guest orders whose e-mail matches a verified account, ignoring case, and the older account when two share the address), what it must leave alone (unverified accounts, orders already on an account, addresses with no account) and the audit entries it writes. Cover the same three things for yours, plus a second run.
 
-When a migration depends on the real schema or on seeded rows, build the schema with `applyMigrationHistory` instead, as `src/modules/delivery-method/__test__/delivery-method.descriptions-migration.integration.test.ts` does. The history already contains the migration under test, so that test resets the rows the migration reads and then applies it again with `applyMigration`. All 58 suites that call `applyMigrationHistory` open their `DatabaseSync` with `enableDoubleQuotedStringLiterals: true`; do the same.
+When a migration depends on the real schema or on seeded rows, build the schema with `applyMigrationHistory` instead, as `src/modules/delivery-method/__test__/delivery-method.descriptions-migration.integration.test.ts` does. The history already contains the migration under test, so that test resets the rows the migration reads and then applies it again with `applyMigration`. All 61 suites that call `applyMigrationHistory` open their `DatabaseSync` with `enableDoubleQuotedStringLiterals: true`; do the same.
 
 Put the test in the `__test__/` folder of the module whose table the migration changes and name it `*.integration.test.ts`, so it runs in the `integration` project (`bun run test:integration`, and `bun run test`).
 

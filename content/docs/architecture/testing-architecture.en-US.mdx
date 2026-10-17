@@ -69,7 +69,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 ```
 
-58 of the 123 integration suites build their schema by replaying every migration file with `applyMigrationHistory` from `src/platform/testing/mocks/migrations.ts`; the others create the tables they need themselves, or apply only the migration under test with `applyMigration`.
+61 of the 130 integration suites build their schema by replaying every migration file with `applyMigrationHistory` from `src/platform/testing/mocks/migrations.ts`; the others create the tables they need themselves, or apply only the migration under test with `applyMigration`.
 
 **What this does not emulate:** D1's network latency and its concurrency characteristics. A concurrency result from the integration suite is SQLite's behaviour, not proof about D1 under production load.
 
@@ -89,7 +89,7 @@ Coverage is broad, but the suites that earn their keep are the ones where a sile
 - **Query plans** — `query-plans.integration.test.ts` replays the migrations, checks that every foreign key is indexed and that every index the schema declares exists on the same columns, and runs `explain query plan` on the statements of the hot reads, recorded through `onQuery`, to show they use an index instead of scanning a table.
 - **Accessors** — 19 accessor suites run data-access modules against SQLite: account, address, audit-log, category-on-product, checkout, collection-on-product, customer-account, delivery-method, discount, inventory, order (two), product (four), user (two) and wishlist.
 
-The integration project holds 123 suites in all. Besides those above, the largest groups cover the order module (20 suites), the checkout (13) and Better Auth (12), and some test the data migrations, such as the backfills in `src/modules/order/__test__/`.
+The integration project holds 130 suites in all. Besides those above, the largest groups cover the order module (20 suites), the checkout (14) and Better Auth (12), and some test the data migrations, such as the backfills in `src/modules/order/__test__/`.
 
 ## Coverage
 
