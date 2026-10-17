@@ -184,6 +184,7 @@ const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetai
   [AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED]: describeCartItemCount,
   [AUDIT_LOG_ACTION.CUSTOMER_DELETION_FAILED]: describeStripeCustomerKept,
   [AUDIT_LOG_ACTION.CUSTOMER_ORDERS_CLAIMED]: describeClaimedOrderCount,
+  [AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED]: describeChanges,
   [AUDIT_LOG_ACTION.DISCOUNT_REDEEMED]: describeRedeemedAmount,
   [AUDIT_LOG_ACTION.EMAIL_DEFERRED]: describeEmail,
   [AUDIT_LOG_ACTION.EMAIL_FAILED]: describeEmail,
@@ -197,6 +198,7 @@ const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetai
   [AUDIT_LOG_ACTION.ORDER_REFUND_INITIATED]: describeChanges,
   [AUDIT_LOG_ACTION.ORDER_STEPPED_BACK]: describeChanges,
   [AUDIT_LOG_ACTION.PRODUCT_UPDATED]: describeChanges,
+  [AUDIT_LOG_ACTION.SETTINGS_UPDATED]: describeChanges,
 }
 
 export const describeAuditLogDetail = (source: AuditLogDetailSource): AuditLog["detail"] | undefined =>
