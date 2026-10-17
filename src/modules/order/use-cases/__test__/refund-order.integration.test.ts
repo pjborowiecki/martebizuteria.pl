@@ -5,7 +5,7 @@ import { type TestD1RoundTrip } from "~/src/platform/testing/mocks/d1"
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { type Order } from "~/src/modules/order/order.types"
-import { refundOrder } from "~/src/modules/order/use-cases/refund-order"
+import { refundOrder } from "~/src/modules/order/use-cases/refund-order.server"
 
 const { recordRefundAudit, sqlite, trips } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")

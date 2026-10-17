@@ -14,7 +14,7 @@ import { listAuditLogsQuery } from "~/src/modules/audit-log/use-cases/list-audit
 
 import { ADMIN_CATALOG_PAGE_BODY_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
-import { AuditLog } from "~/src/presentation/components/custom/pages/admin/audit/audit-log"
+import { AuditTableContent } from "~/src/presentation/components/custom/pages/admin/audit/components/audit-table-content"
 
 const prefetchAuditQueries = async (context: { queryClient: QueryClient }): Promise<void> => {
   const { timeZone } = resolveDisplayPreferences(await context.queryClient.query(displayPreferencesQuery))
@@ -41,7 +41,7 @@ const AuditPage = (): JSX.Element => {
     <>
       <AdminHeader description={t("audit.description")} title={t("audit.title")} />
       <div className={ADMIN_CATALOG_PAGE_BODY_CLASS}>
-        <AuditLog />
+        <AuditTableContent />
       </div>
     </>
   )

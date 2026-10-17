@@ -5,7 +5,7 @@ import { type TestD1RoundTrip } from "~/src/platform/testing/mocks/d1"
 import { applyMigrationHistory } from "~/src/platform/testing/mocks/migrations"
 
 import { type Order } from "~/src/modules/order/order.types"
-import { undoFailedRefund } from "~/src/modules/order/use-cases/undo-failed-refund"
+import { undoFailedRefund } from "~/src/modules/order/use-cases/undo-failed-refund.server"
 
 const { recordRefundFailedAudit, sqlite, trips } = await vi.hoisted(async () => {
   const { DatabaseSync } = await import("node:sqlite")

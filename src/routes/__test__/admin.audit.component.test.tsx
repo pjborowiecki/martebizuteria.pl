@@ -55,8 +55,8 @@ vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
 }))
 vi.mock("~/src/modules/audit-log/use-cases/get-audit-log-stats", () => ({ getAuditLogStatsQuery: spies.statsQuery }))
 vi.mock("~/src/modules/audit-log/use-cases/list-audit-logs", () => ({ listAuditLogsQuery: spies.listQuery }))
-vi.mock("~/src/presentation/components/custom/pages/admin/audit/audit-log", () => ({
-  AuditLog: (): JSX.Element => <p>audit log table</p>,
+vi.mock("~/src/presentation/components/custom/pages/admin/audit/components/audit-table-content", () => ({
+  AuditTableContent: (): JSX.Element => <p>audit log table</p>,
 }))
 
 import { ADMIN_AUDIT_LOG_PAGE_SIZE, AUDIT_LOG_QUERY_STALE_MS } from "~/src/modules/audit-log/audit-log.constants"

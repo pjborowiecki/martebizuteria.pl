@@ -1,8 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { type Order } from "~/src/modules/order/order.types"
-
-import { refundOrder } from "../refund-order"
+import { refundOrder } from "~/src/modules/order/use-cases/refund-order.server"
 
 interface RecordedRefund {
   readonly orderStatus: string | null
