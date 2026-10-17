@@ -9,10 +9,11 @@ const TEAM_SETTINGS = "/en-US/admin/settings/team"
 
 const NEW_ADMIN_NAME = "Zofia Nowak"
 
-const memberRow = (page: Page, email: string) => page.locator("[data-slot=settings-row]").filter({ hasText: email })
+const memberRow = (page: Page, email: string) => page.getByRole("row").filter({ hasText: email })
 
 const removeAccess = async (page: Page, email: string): Promise<void> => {
-  await memberRow(page, email).getByRole("button", { name: `Remove admin access for ${NEW_ADMIN_NAME}` }).click()
+  await memberRow(page, email).getByRole("button", { name: `Actions for ${NEW_ADMIN_NAME}` }).click()
+  await page.getByRole("menuitem", { name: "Remove access" }).click()
   await page.getByRole("alertdialog", { name: `Remove admin access for ${NEW_ADMIN_NAME}?` }).getByRole("button", { name: "Remove access" }).click()
   await expect(new BasePage(page).notification(`${NEW_ADMIN_NAME} is no longer an admin.`)).toBeVisible()
   await expect(memberRow(page, email)).toHaveCount(0)
@@ -61,7 +62,7 @@ test.describe("team settings", { lock: "shop-wide" }, () => {
     await confirmation.getByRole("button", { name: "Make admin" }).click()
 
     await expect(new BasePage(page).notification(`${NEW_ADMIN_NAME} is now an admin.`)).toBeVisible()
-    await expect(memberRow(page, customer.email).getByText("Two-factor off")).toBeVisible()
+    await expect(memberRow(page, customer.email).getByText("Off", { exact: true })).toBeVisible()
     await newcomerPage.goto("/en-US/account/overview")
     await expect(newcomerPage).toHaveURL(/\/en-US\/admin\/security$/u)
 

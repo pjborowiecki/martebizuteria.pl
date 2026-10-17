@@ -256,22 +256,39 @@
     }
   },
   "team": {
+    "searchPlaceholder": "Szukaj konta...",
+    "actions": {
+      "refresh": "Odśwież dane tabeli"
+    },
+    "stats": {
+      "total": "Konta z dostępem",
+      "twoFactorOn": "Dwuskładnikowe włączone",
+      "twoFactorOff": "Dwuskładnikowe wyłączone",
+      "google": "Logowanie przez Google",
+      "shareCaption": "{percent}% wszystkich",
+      "twoFactorRequiredCaption": "Panel otworzy się dopiero po włączeniu"
+    },
+    "columns": {
+      "name": "Imię i nazwisko",
+      "email": "Adres e-mail",
+      "twoFactor": "Dwuskładnikowe",
+      "signInMethods": "Logowanie",
+      "lastSignIn": "Ostatnie logowanie"
+    },
+    "rowActions": {
+      "menu": "Działania: {name}"
+    },
     "admins": {
       "title": "Dostęp do panelu",
-      "description": "Osoby, które mogą logować się do tego panelu. Każda z nich może tu zrobić wszystko, także nadawać i odbierać dostęp innym osobom.",
       "add": "Nadaj dostęp",
       "you": "Ty",
-      "twoFactorOn": "Dwuskładnikowe: włączone",
-      "twoFactorOff": "Dwuskładnikowe: wyłączone",
-      "twoFactorPending": "Przed otwarciem panelu trzeba włączyć uwierzytelnianie dwuskładnikowe.",
-      "signInMethods": "Logowanie: {methods}",
-      "password": "hasło",
+      "twoFactorOn": "Włączone",
+      "twoFactorOff": "Wyłączone",
+      "password": "Hasło",
       "google": "Google",
       "noSignInMethod": "Brak metody logowania",
-      "lastSignIn": "Ostatnie logowanie: {date}",
       "neverSignedIn": "Brak zapisanych logowań",
       "remove": "Odbierz dostęp",
-      "removeLabel": "Odbierz dostęp do panelu: {name}",
       "ownAccess": "Twój dostęp może zmienić tylko inna osoba z dostępem do panelu.",
       "recentSignInNeeded": "Aby nadać lub odebrać dostęp, najpierw zaloguj się ponownie. Ostatnie logowanie było ponad 24 godziny temu.",
       "signInAgain": "Zaloguj się ponownie"
@@ -289,6 +306,7 @@
     "add": {
       "title": "Nadaj dostęp do panelu",
       "description": "Znajdź konto klienta osoby, która ma pomagać w prowadzeniu sklepu. Ta osoba musi mieć już konto w sklepie.",
+      "find": "Znajdź konto",
       "search": "Adres e-mail lub imię i nazwisko",
       "searchPlaceholder": "np. anna@example.com",
       "searchHint": "Wpisz co najmniej 3 znaki.",
@@ -301,6 +319,7 @@
       "choose": "Wybierz",
       "chooseLabel": "Wybierz konto: {name}",
       "confirmTitle": "Nadać dostęp do panelu: {name}?",
+      "confirmDescription": "Sprawdź, co to konto będzie mogło robić, i nadaj mu dostęp.",
       "confirmIntro": "Konto {email} będzie mogło:",
       "allowsOrders": "przeglądać i zmieniać wszystkie zamówienia, zwracać płatności i nadawać przesyłki",
       "allowsCatalog": "edytować produkty, kolekcje, strony i kody rabatowe oraz wstrzymywać sprzedaż",

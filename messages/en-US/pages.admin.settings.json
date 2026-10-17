@@ -256,22 +256,39 @@
     }
   },
   "team": {
-    "admins": {
-      "title": "Admins",
-      "description": "People who can sign in to this admin panel. Every admin can do everything here, including adding and removing other admins.",
-      "add": "Add admin",
-      "you": "You",
+    "searchPlaceholder": "Search admins...",
+    "actions": {
+      "refresh": "Reload table data"
+    },
+    "stats": {
+      "total": "Admins",
       "twoFactorOn": "Two-factor on",
       "twoFactorOff": "Two-factor off",
-      "twoFactorPending": "Must turn on two-factor authentication before the panel opens.",
-      "signInMethods": "Signs in with {methods}",
-      "password": "a password",
+      "google": "Sign in with Google",
+      "shareCaption": "{percent}% of all",
+      "twoFactorRequiredCaption": "The panel opens only once it is on"
+    },
+    "columns": {
+      "name": "Name",
+      "email": "Email address",
+      "twoFactor": "Two-factor",
+      "signInMethods": "Signs in with",
+      "lastSignIn": "Last sign-in"
+    },
+    "rowActions": {
+      "menu": "Actions for {name}"
+    },
+    "admins": {
+      "title": "Admins",
+      "add": "Add admin",
+      "you": "You",
+      "twoFactorOn": "On",
+      "twoFactorOff": "Off",
+      "password": "Password",
       "google": "Google",
       "noSignInMethod": "No sign-in method",
-      "lastSignIn": "Last sign-in {date}",
       "neverSignedIn": "No sign-in recorded",
       "remove": "Remove access",
-      "removeLabel": "Remove admin access for {name}",
       "ownAccess": "Only another admin can change your access.",
       "recentSignInNeeded": "To add or remove an admin, sign in again first. Your last sign-in was more than 24 hours ago.",
       "signInAgain": "Sign in again"
@@ -289,6 +306,7 @@
     "add": {
       "title": "Add an admin",
       "description": "Find the customer account of the person who will help run the shop. They need an account in the shop already.",
+      "find": "Find the account",
       "search": "Email address or name",
       "searchPlaceholder": "e.g. anna@example.com",
       "searchHint": "Type at least 3 characters.",
@@ -301,6 +319,7 @@
       "choose": "Choose",
       "chooseLabel": "Choose {name}",
       "confirmTitle": "Make {name} an admin?",
+      "confirmDescription": "Check what the account will be able to do, then give it access.",
       "confirmIntro": "The account {email} will be able to:",
       "allowsOrders": "see and change every order, refund payments and book shipments",
       "allowsCatalog": "edit products, collections, pages and coupons, and pause sales",

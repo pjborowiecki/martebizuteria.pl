@@ -29,7 +29,7 @@ vi.mock("~/src/modules/user/use-cases/search-team-candidates", () => ({
   }),
 }))
 
-const { AddAdminDialog } = await import("~/src/presentation/components/custom/pages/admin/settings/team/add-admin-dialog")
+const { AddAdminSheet } = await import("~/src/presentation/components/custom/pages/admin/settings/team/add-admin-sheet")
 
 const candidate = (overrides: Partial<User["teamCandidate"]>): User["teamCandidate"] => ({
   banned: false,
@@ -52,7 +52,7 @@ const user = () => userEvent.setup({ delay: null })
 const renderDialog = () => {
   const onClose = vi.fn<() => void>()
 
-  return { onClose, ...renderWithProviders(<AddAdminDialog onClose={onClose} />) }
+  return { onClose, ...renderWithProviders(<AddAdminSheet onClose={onClose} />) }
 }
 
 const search = async (term: string): Promise<HTMLElement> => {
@@ -79,7 +79,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-describe("AddAdminDialog search", () => {
+describe("AddAdminSheet search", () => {
   it("waits for three characters before it searches", async () => {
     renderDialog()
 
@@ -133,6 +133,29 @@ describe("AddAdminDialog search", () => {
     expect(await screen.findByText(/No customer account matches/u)).toBeInTheDocument()
   })
 
+  it("lists the rules every change to admin access follows under the search", () => {
+    renderDialog()
+
+    expect(screen.getByRole("heading", { name: "How admin access works" })).toBeInTheDocument()
+    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toStrictEqual([
+      "Only an account with a confirmed email address can become an admin.",
+      "Nobody can change their own access, so the shop always keeps at least one admin.",
+      "Adding or removing an admin needs a sign-in from the last 24 hours.",
+      "Removing access signs the person out on every device at once. Their customer account stays.",
+      "An admin account cannot be deleted. Its admin access has to be removed first.",
+      "Every change is recorded in the audit log, with who made it.",
+    ])
+  })
+
+  it("grants nothing when Enter is pressed in the search before an account is chosen", async () => {
+    const { onClose } = renderDialog()
+
+    await user().type(screen.getByLabelText("Email address or name"), "celina{Enter}")
+
+    expect(mocks.grant).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it("closes when called off", async () => {
     const { onClose } = renderDialog()
 
@@ -142,12 +165,14 @@ describe("AddAdminDialog search", () => {
   })
 })
 
-describe("AddAdminDialog confirmation", () => {
+describe("AddAdminSheet confirmation", () => {
   it("says what admin access allows and that two-factor authentication comes first", async () => {
     renderDialog()
 
     const dialog = await chooseCelina()
 
+    expect(within(dialog).getByText("Check what the account will be able to do, then give it access.")).toBeInTheDocument()
+    expect(within(dialog).getByRole("heading", { name: "Celina Klientka" })).toBeInTheDocument()
     expect(within(dialog).getByText("The account celina@marte.test will be able to:")).toBeInTheDocument()
     expect(within(dialog).getAllByRole("listitem")).toHaveLength(4)
     expect(within(dialog).getByText(/two-factor authentication has to be turned on/u)).toBeInTheDocument()

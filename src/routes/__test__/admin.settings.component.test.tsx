@@ -98,11 +98,8 @@ vi.mock("~/src/presentation/components/custom/pages/admin/settings/store/setting
 vi.mock("~/src/modules/user/use-cases/list-admin-team", () => ({
   listAdminTeamQuery: () => ({ queryKey: ["admin", "users", "team"] }),
 }))
-vi.mock("~/src/presentation/components/custom/pages/admin/settings/team/settings-team-card", () => ({
-  SettingsTeamCard: (): JSX.Element => <section>team</section>,
-}))
-vi.mock("~/src/presentation/components/custom/pages/admin/settings/team/settings-team-rules-card", () => ({
-  SettingsTeamRulesCard: (): JSX.Element => <section>team rules</section>,
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/team/components/team-table", () => ({
+  TeamTable: (): JSX.Element => <section>team</section>,
 }))
 
 await import("~/src/routes/admin.settings")
@@ -247,12 +244,12 @@ describe("admin settings team route", () => {
     await expect(prefetched("/admin/settings/team")).resolves.toStrictEqual([["admin", "users", "team"]])
   })
 
-  it("shows the admins and then the rules under the team tab", () => {
+  it("shows the admins grid under the team tab", () => {
     render("/admin/settings/team")
 
     const main = screen.getByRole("main")
 
     expect(main).toHaveAttribute("data-active", "team")
-    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["team", "team rules"])
+    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["team"])
   })
 })

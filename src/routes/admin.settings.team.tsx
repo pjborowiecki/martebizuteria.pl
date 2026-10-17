@@ -5,13 +5,11 @@ import { createFileRoute } from "@tanstack/react-router"
 import { listAdminTeamQuery } from "~/src/modules/user/use-cases/list-admin-team"
 
 import { SettingsPageLayout } from "~/src/presentation/components/custom/pages/admin/settings/settings-page-layout"
-import { SettingsTeamCard } from "~/src/presentation/components/custom/pages/admin/settings/team/settings-team-card"
-import { SettingsTeamRulesCard } from "~/src/presentation/components/custom/pages/admin/settings/team/settings-team-rules-card"
+import { TeamTable } from "~/src/presentation/components/custom/pages/admin/settings/team/components/team-table"
 
 const AdminSettingsTeamRoute = (): JSX.Element => (
-  <SettingsPageLayout active="team">
-    <SettingsTeamCard />
-    <SettingsTeamRulesCard />
+  <SettingsPageLayout active="team" body="grid">
+    <TeamTable />
   </SettingsPageLayout>
 )
 

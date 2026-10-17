@@ -111,6 +111,39 @@ export const TEAM_CANDIDATE_SEARCH_MAX_LENGTH = 320
 
 export const TEAM_CANDIDATE_LIMIT = 8
 
+export const TEAM_STAT_FILTER = {
+  GOOGLE: "google",
+  TWO_FACTOR_OFF: "twoFactorOff",
+  TWO_FACTOR_ON: "twoFactorOn",
+} as const
+
+export type TeamStatFilter = (typeof TEAM_STAT_FILTER)[keyof typeof TEAM_STAT_FILTER]
+
+export const ADMIN_TEAM_PAGE_SIZE = 25
+
+export const TEAM_TABLE_COLUMN_ID = {
+  actions: "actions",
+  email: "email",
+  lastSignIn: "lastSignIn",
+  name: "name",
+  signInMethods: "signInMethods",
+  twoFactor: "twoFactor",
+} as const
+
+export const TEAM_TABLE_COLUMN_SIZE = {
+  actions: 48,
+  email: 260,
+  lastSignIn: 200,
+  name: 240,
+  signInMethods: 200,
+  twoFactor: 140,
+} as const
+
+export const TEAM_TABLE_COLUMN_PINNING = {
+  end: [TEAM_TABLE_COLUMN_ID.actions],
+  start: [TEAM_TABLE_COLUMN_ID.name],
+}
+
 export const TEAM_ERROR = {
   ACCOUNT_BANNED: "TEAM_ACCOUNT_BANNED",
   ALREADY_ADMIN: "TEAM_ALREADY_ADMIN",
