@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lt, sql } from "drizzle-orm"
+import { and, count, desc, eq, gte, isNotNull, lt, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { calendarPeriodKey } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -128,7 +128,7 @@ export const topProductsQuery = () =>
     .select({
       categoryTitles: sql<string | null>`max(${productCategory.titles})`.as("category_titles"),
       currencyCode: sql<string>`max(${order.currencyCode})`,
-      productId: orderItem.productId,
+      productId: sql<string>`${orderItem.productId}`,
       productTitles: sql<string | null>`max(${product.titles})`.as("product_titles"),
       revenue: sql<number>`coalesce(sum(${orderItem.total}), ${0})`,
       sold: sql<number>`coalesce(sum(${orderItem.quantity}), ${0})`,
@@ -140,7 +140,7 @@ export const topProductsQuery = () =>
     .leftJoin(product, eq(product.id, orderItem.productId))
     .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
     .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
-    .where(orderCountsAsSale)
+    .where(and(orderCountsAsSale, isNotNull(orderItem.productId)))
     .groupBy(orderItem.productId)
     .orderBy(sql`coalesce(sum(${orderItem.quantity}), ${0}) desc`)
     .limit(ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT)

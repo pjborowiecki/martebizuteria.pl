@@ -127,7 +127,7 @@ A click anywhere else on a row opens the same order page through `useNavigate`. 
 
 ## Top products
 
-`topProductsQuery` groups `order_item` by `product_id`:
+`topProductsQuery` groups `order_item` by `product_id` and leaves out the lines that have none:
 
 ```ts
 .from(orderItem)
@@ -135,19 +135,15 @@ A click anywhere else on a row opens the same order page through `useNavigate`. 
 .leftJoin(product, eq(product.id, orderItem.productId))
 .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
 .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
-.where(orderCountsAsSale)
+.where(and(orderCountsAsSale, isNotNull(orderItem.productId)))
 .groupBy(orderItem.productId)
 ```
 
-and the snapshot drops rows with a null id, which only lines whose variant was gone before their product was recorded have: lines written before the backfill below whose variant had since been deleted, and lines whose variant was deleted while the customer paid:
-
-```ts
-const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
-```
+Only lines whose variant was gone before their product was recorded have no `product_id`: lines written before the backfill below whose variant had since been deleted, and lines whose variant was deleted while the customer paid. Grouped together they would make one row that names no product.
 
 `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) records each line's product and variant by looking them up through the line's variant in the same insert, and the migration `20261003120000_order_item_product_backfill.sql` filled in the lines written before that whose variant still existed. The thumbnail is read with `max(...)` from the grouped lines.
 
-The query ranks the products by units sold across every sale, with no date window, and keeps `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` (4) before the null-id rows are dropped. Each row's revenue is the sum of its lines' `order_item.total`, not net of refunds. `resolveTopProductName` and `resolveTopProductCategoryLabel` pick the page's locale out of the JSON title maps of the product and its primary category. A product whose row is gone falls back to the stored `order_item.title`, and a product without a primary category gets an empty label, which the card shows as "Uncategorized". The card shows the thumbnail, or the name's first two letters without one, the revenue as a price and "4 sold", and "No product sales data yet." when nothing has sold.
+The query ranks the products by units sold across every sale, with no date window, and keeps the first `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` (4). The lines without a product are left out before that limit, so the card shows four products whenever four have sold. Each row's revenue is the sum of its lines' `order_item.total`, not net of refunds. `resolveTopProductName` and `resolveTopProductCategoryLabel` pick the page's locale out of the JSON title maps of the product and its primary category. A product whose row is gone falls back to the stored `order_item.title`, and a product without a primary category gets an empty label, which the card shows as "Uncategorized". The card shows the thumbnail, or the name's first two letters without one, the revenue as a price and "4 sold", and "No product sales data yet." when nothing has sold.
 
 ## Weekly orders
 

@@ -352,4 +352,23 @@ describe("topProductsQuery", () => {
 
     expect(rows.length).toBeLessThanOrEqual(ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT)
   })
+
+  it("fills the whole ranking with products when the lines that carry no product sold the most", async () => {
+    sqlite.exec(`
+      insert into order_item (id, order_id, product_id, quantity, thumbnail, title, total, created_at, updated_at) values
+        ('oi-no-product', 'o-mar-completed', null, 50, null, 'Unknown line', 50000, ${MARCH}, ${MARCH}),
+        ('oi-chain', 'o-mar-completed', 'p-chain', 4, null, 'Gold chain', 4000, ${MARCH}, ${MARCH}),
+        ('oi-pendant', 'o-mar-completed', 'p-pendant', 3, null, 'Silver pendant', 3000, ${MARCH}, ${MARCH}),
+        ('oi-hoops', 'o-mar-completed', 'p-hoops', 1, null, 'Gold hoops', 1000, ${MARCH}, ${MARCH});
+    `)
+
+    const rows = await topProductsQuery()
+
+    expect(rows.map((row) => [row.productId, row.sold])).toStrictEqual([
+      ["p-ring", 5],
+      ["p-chain", 4],
+      ["p-pendant", 3],
+      ["p-cuff", 2],
+    ])
+  })
 })
