@@ -273,6 +273,18 @@ describe("claiming guest orders", () => {
     )
     expect(paths).not.toContain("SEARCH discount_redemption USING INDEX discount_redemption_userId_idx (user_id=?)")
   })
+
+  it("reads only the guest orders and asks the address history who held each one's address through the address index", async () => {
+    const paths = await planPaths(() => claimGuestOrdersForUser({ email: "ada@marte.test", userId: "user-1" }))
+
+    expect(paths).toStrictEqual(
+      expect.arrayContaining([
+        "SEARCH order USING INDEX order_userId_status_idx (user_id=?)",
+        "CORRELATED SCALAR SUBQUERY 1 > SEARCH user_email_history USING INDEX user_email_history_email_idx (email=?)",
+        "CORRELATED SCALAR SUBQUERY 2 > SEARCH user_email_history USING INDEX user_email_history_email_idx (email=?)",
+      ]),
+    )
+  })
 })
 
 describe("retention clean-up", () => {

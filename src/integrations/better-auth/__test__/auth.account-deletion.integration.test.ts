@@ -38,7 +38,10 @@ vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.
   scheduleAdminCustomersInvalidation: vi.fn(),
   scheduleAdminNewsletterSubscribersInvalidation: vi.fn(),
 }))
-vi.mock("~/src/modules/order/order.claim.server", () => ({ claimGuestOrdersForUser: vi.fn(() => Promise.resolve(0)) }))
+vi.mock(import("~/src/modules/order/order.claim.server"), async (importOriginal) => ({
+  ...(await importOriginal()),
+  claimGuestOrdersForUser: vi.fn(() => Promise.resolve(0)),
+}))
 vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   const { drizzle } = await import("drizzle-orm/d1")
   const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
