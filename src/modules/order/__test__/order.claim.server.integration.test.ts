@@ -27,10 +27,17 @@ const NOW = Date.UTC(2026, 0, 10)
 const ownerOf = (orderId: string): string | null =>
   z.object({ user_id: z.string().nullable() }).parse(sqlite.prepare(`select user_id from "order" where id = ?`).get(orderId)).user_id
 
+const redeemerOf = (redemptionId: string) =>
+  z
+    .object({ updated_at: z.number(), user_id: z.string().nullable() })
+    .parse(sqlite.prepare("select user_id, updated_at from discount_redemption where id = ?").get(redemptionId))
+
 beforeEach(() => {
   recordCustomerOrdersClaimedAudit.mockClear()
   sqlite.exec(`
     drop table if exists "order";
+    drop table if exists discount_redemption;
+    create table discount_redemption (id text primary key, order_id text unique, user_id text, updated_at integer not null);
     create table "order" (
       id text primary key, user_id text, email text not null, order_number text not null,
       created_at integer not null, updated_at integer not null
@@ -40,6 +47,10 @@ beforeEach(() => {
       ('guest-2', null, 'ANNA@Example.com', 'MRT-2026-00002', ${NOW}, ${NOW}),
       ('guest-other', null, 'someone@example.com', 'MRT-2026-00003', ${NOW}, ${NOW}),
       ('owned', 'user-existing', 'anna@example.com', 'MRT-2026-00004', ${NOW}, ${NOW});
+    insert into discount_redemption (id, order_id, user_id, updated_at) values
+      ('redeemed-as-guest', 'guest-1', null, ${NOW}),
+      ('redeemed-by-someone', 'guest-other', null, ${NOW}),
+      ('redeemed-by-owner', 'owned', 'user-existing', ${NOW});
   `)
 })
 
@@ -90,5 +101,27 @@ describe("claimGuestOrdersForUser", () => {
 
     await expect(claimGuestOrdersForUser({ email: "anna@example.com", userId: "user-1" })).resolves.toBe(0)
     expect(recordCustomerOrdersClaimedAudit).toHaveBeenCalledOnce()
+  })
+
+  it("files the code a claimed order redeemed under the account too", async () => {
+    vi.useFakeTimers({ now: NOW + 1, toFake: ["Date"] })
+    await claimGuestOrdersForUser({ email: "anna@example.com", userId: "user-1" })
+    vi.useRealTimers()
+
+    expect(redeemerOf("redeemed-as-guest")).toStrictEqual({ updated_at: NOW + 1, user_id: "user-1" })
+  })
+
+  it("leaves the codes redeemed on other people's orders alone", async () => {
+    await claimGuestOrdersForUser({ email: "anna@example.com", userId: "user-1" })
+
+    expect(redeemerOf("redeemed-by-someone")).toStrictEqual({ updated_at: NOW, user_id: null })
+    expect(redeemerOf("redeemed-by-owner")).toStrictEqual({ updated_at: NOW, user_id: "user-existing" })
+  })
+
+  it("files a redemption left without an account under the owner of its order when nothing is left to claim", async () => {
+    sqlite.exec(`update "order" set user_id = 'user-1' where id = 'guest-1'`)
+
+    await expect(claimGuestOrdersForUser({ email: "someone-else@example.com", userId: "user-1" })).resolves.toBe(0)
+    expect(redeemerOf("redeemed-as-guest").user_id).toBe("user-1")
   })
 })

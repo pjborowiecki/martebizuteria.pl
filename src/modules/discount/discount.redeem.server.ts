@@ -4,13 +4,13 @@ import { type BatchItem } from "drizzle-orm/batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { discount, discountClaim, discountRedemption } from "~/src/modules/discount/discount.schema"
+import { order } from "~/src/modules/order/order.schema"
 
 export const prepareDiscountRedemption = ({
   checkoutId,
   email,
   orderId,
   redeemed,
-  userId,
 }: DiscountRedemptionInput): [BatchItem<"sqlite">, ...BatchItem<"sqlite">[]] => {
   const releaseCheckoutClaims = db.delete(discountClaim).where(eq(discountClaim.checkoutId, checkoutId))
   if (redeemed === undefined) {
@@ -24,7 +24,7 @@ export const prepareDiscountRedemption = ({
     email: sql<string>`${email}`.as("email"),
     id: sql<string>`${crypto.randomUUID()}`.as("id"),
     orderId: sql<string>`${orderId}`.as("order_id"),
-    userId: sql<string | null>`${userId}`.as("user_id"),
+    userId: sql<string | null>`(select ${order.userId} from ${order} where ${order.id} = ${orderId})`.as("user_id"),
   }
   const redemptionRowInTableOrder = Object.assign(redemptionColumns, {
     createdAt: sql<Date>`${sql.param(redeemedAt, discountRedemption.createdAt)}`.as("created_at"),
@@ -46,7 +46,6 @@ interface DiscountRedemptionInput {
   readonly email: string
   readonly orderId: string
   readonly redeemed: RedeemedDiscount | undefined
-  readonly userId: string | null
 }
 
 interface RedeemedDiscount {

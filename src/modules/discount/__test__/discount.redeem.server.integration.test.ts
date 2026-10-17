@@ -28,7 +28,6 @@ const REDEMPTION = {
   email: "ada@marte.test",
   orderId: "order-1",
   redeemed: { amountMinorUnits: 3000, discountId: "discount-1" },
-  userId: "user-1",
 }
 
 const usageOf = (discountId: string) =>
@@ -57,7 +56,7 @@ beforeEach(() => {
       ('discount-1', 'SPRING-24', 'percentage', 15, 4, ${EPOCH}, ${EPOCH}),
       ('discount-2', 'SUMMER-25', 'percentage', 10, 0, ${EPOCH}, ${EPOCH});
     insert into checkout (id, email, status) values ('chk-ada', 'ada@marte.test', 'pending'), ('chk-grace', 'grace@marte.test', 'pending');
-    insert into "order" (id, email) values ('order-1', 'ada@marte.test');
+    insert into "order" (id, email, user_id) values ('order-1', 'ada@marte.test', 'user-1'), ('order-guest', 'grace@marte.test', null);
     insert into discount_claim (id, checkout_id, discount_id, email) values
       ('claim-ada', 'chk-ada', 'discount-1', 'ada@marte.test'),
       ('claim-ada-stale', 'chk-ada', 'discount-2', 'ada@marte.test'),
@@ -74,7 +73,7 @@ afterAll(() => {
 })
 
 describe("prepareDiscountRedemption", () => {
-  it("records who redeemed the code on which order and for how much", async () => {
+  it("records who redeemed the code on which order and for how much, under the account the order belongs to", async () => {
     await runDrizzleBatch(prepareDiscountRedemption(REDEMPTION))
 
     expect(redemptionsOf("discount-1")).toEqual([
@@ -82,10 +81,10 @@ describe("prepareDiscountRedemption", () => {
     ])
   })
 
-  it("records a guest redemption without an account", async () => {
-    await runDrizzleBatch(prepareDiscountRedemption({ ...REDEMPTION, userId: null }))
+  it("records the redemption of a guest order without an account", async () => {
+    await runDrizzleBatch(prepareDiscountRedemption({ ...REDEMPTION, email: "grace@marte.test", orderId: "order-guest" }))
 
-    expect(redemptionsOf("discount-1")).toMatchObject([{ user_id: null }])
+    expect(redemptionsOf("discount-1")).toMatchObject([{ order_id: "order-guest", user_id: null }])
   })
 
   it("counts the use against the discount and stamps when it changed", async () => {

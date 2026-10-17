@@ -17,6 +17,7 @@ export const MIGRATION = {
   DELIVERY_METHOD_DESCRIPTIONS: "20261010220000_delivery_method_descriptions",
   DELIVERY_METHOD_NAMES: "20261016150000_delivery_method_names",
   DELIVERY_METHOD_SETTINGS: "20261016151000_delivery_method_settings",
+  DISCOUNT_REDEMPTION_ORDER_ACCOUNT: "20261017130000_discount_redemption_order_account",
   FAQ_PAGE: "20261010232000_faq_page",
   FREE_DELIVERY_THRESHOLD: "20261016152000_free_delivery_threshold",
   ORDER_DELIVERED_EMAIL: "20261015300000_order_delivered_email",

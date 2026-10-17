@@ -423,7 +423,7 @@ Coverage thresholds, from `test.coverage.thresholds` in `vite.config.ts`; `bun r
 | Functions  | 100%            |
 | Lines      | 100%            |
 
-1,228 test files — 478 unit, 127 integration and 623 component, in 223 `__test__` folders — use 692 `it.each`, `test.each` and `describe.each` tables across about 193,500 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
+1,229 test files — 478 unit, 128 integration and 623 component, in 223 `__test__` folders — use 692 `it.each`, `test.each` and `describe.each` tables across about 193,500 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
 
 Every configured threshold is 100%, so a change that leaves a statement, branch, function or line uncovered fails `bun run test:coverage` and CI. `autoUpdate` is off, so the thresholds never move on their own.
 
@@ -480,7 +480,7 @@ bun run db:generate
 
 Review and commit the SQL under `src/integrations/drizzle-orm/migrations/` together with the schema change. The deploy scripts apply pending migrations right before `wrangler deploy`, while the previous Worker is still serving, so a migration only adds what that Worker can live with; drops and renames wait for a later release. See [Roll back a deploy](content/docs/guides/roll-back-a-deploy.en-US.mdx).
 
-Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **104 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
+Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **105 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
 
 | Command                          | Database affected                                                             |
 | -------------------------------- | ----------------------------------------------------------------------------- |

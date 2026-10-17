@@ -122,7 +122,6 @@ export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): P
         email: context.email,
         orderId,
         redeemed: discount,
-        userId: context.userId,
       }),
     ],
     { checkoutId: context.checkoutId, orderId, transactionId: input.transactionId },
