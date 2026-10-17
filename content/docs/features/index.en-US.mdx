@@ -18,9 +18,10 @@ Each page names the concrete files: the route in `src/routes`, the use cases in 
 | Admin console | [Dashboard](/docs/features/admin-dashboard), [Catalog](/docs/features/admin-catalog), [Customers](/docs/features/admin-customers), [Settings](/docs/features/admin-settings), [Audit log](/docs/features/audit-log) |
 | Platform      | [Transactional email](/docs/features/email), [Internationalization](/docs/features/internationalization), [Legal pages](/docs/features/legal-pages)                                                                 |
 
+The terms of service, the privacy policy, the exchanges-and-returns page and the FAQ are live too: each is a `content_page` row in D1 that admins edit at `/admin/content`.
+
 ## Placeholders
 
-- `/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns` are the three legal documents, editable rows in D1, and `/faq` is a fourth row. See [Legal pages](/docs/features/legal-pages).
 - The blog at `/blog` is hidden: `src/data/blog-posts.ts` lists no articles, so its routes answer 404 and the home page and the sitemap leave it out. See [Landing page](/docs/features/landing-page#the-guide-section-and-the-hidden-blog).
 
 ## Schema without behaviour

@@ -11,7 +11,7 @@ description: "The /admin layout and guard, the sidebar, the overview snapshot bu
 beforeLoad: requireAdmin,
 ```
 
-`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) requires a session whose role passes `hasAdminAccess`, which checks membership of `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`). A signed-in customer is redirected to `/account/overview`, an admin without two-factor authentication to `/admin/security`, and an anonymous visitor to `/auth/sign-in?redirect=<path>`. The guard re-checks the session on every real navigation into `/admin`, leaves it in the TanStack Query cache, and resolves to `{ user }`, which becomes route context. See [Integrations: Better Auth](/docs/integrations/better-auth).
+`requireAdmin` (`src/integrations/better-auth/auth.routes.ts`) requires a session whose role passes `hasAdminAccess`, which checks membership of `ADMIN_PANEL_ROLES = [ROLES.ADMIN]` (`src/integrations/better-auth/auth.access.ts`). A signed-in customer is redirected to `/account/overview`, an admin without two-factor authentication, in production and the end-to-end test build, to `/admin/security`, and an anonymous visitor to `/auth/sign-in?redirect=<path>`. The guard re-checks the session on every real navigation into `/admin`, leaves it in the TanStack Query cache, and resolves to `{ user }`, which becomes route context. See [Integrations: Better Auth](/docs/integrations/better-auth).
 
 Three things the layout does that nothing else does:
 
@@ -34,14 +34,15 @@ The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` f
 
 ## Navigation
 
-`admin-sidebar.tsx` defines four groups:
+`admin-sidebar.tsx` defines three groups:
 
-| Group  | Items                                                                                           |
-| ------ | ----------------------------------------------------------------------------------------------- |
-| (top)  | Dashboard (`/admin/overview`)                                                                   |
-| Main   | Orders, Customers, and a collapsible Catalog with Products, Categories, Collections, Attributes |
-| Tools  | Marketing, Coupons, and Content                                                                 |
-| System | Audit and Settings                                                                              |
+| Group  | Items                                                                                                                         |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| Main   | Dashboard (`/admin/overview`), a collapsible Catalog with Products, Categories, Collections and Attributes, Orders, Customers |
+| Tools  | Marketing, Coupons, and Content                                                                                               |
+| System | Audit and Settings                                                                                                            |
+
+Catalog starts expanded when the console opens on a catalog route (`defaultOpen`), and pressing it on any other route goes to Products. The sidebar trigger at the start of every `AdminHeader` that has no back link collapses the sidebar to its icons; below 768 pixels (`useIsMobile` in `src/hooks/use-mobile.ts`) the sidebar is a sheet that the same button opens.
 
 An item is active while the address contains its path, so **Settings** stays active on every `/admin/settings/*` tab. `/admin/security`, the page where an admin turns two-factor authentication on, is not in the sidebar: the guard sends an admin there when it is off, and once it is on the admin manages it under [Settings](/docs/features/admin-settings).
 
@@ -53,16 +54,18 @@ The sidebar footer's sign-out button calls `signOut` and then does a full page l
 
 ```tsx
 <Suspense fallback={dashboardOverviewFallback}>
-  <div className="space-y-6">
+  <div className="space-y-4 lg:space-y-6">
     <DashboardStats />
     <DashboardCharts />
-    <div className="grid gap-5 xl:grid-cols-4">
+    <div className="grid gap-4 lg:gap-5 xl:grid-cols-4">
       <DashboardRecentOrders />
       <DashboardTopProducts />
     </div>
   </div>
 </Suspense>
 ```
+
+The fallback, `DashboardOverviewFallback`, is a skeleton of the same layout. All four sections read the same cached snapshot through `useAdminDashboardSnapshot()` (`dashboard/hooks/use-admin-dashboard-snapshot.ts`), a `useSuspenseQuery` for the page's locale. The layout narrows by breakpoint rather than switching to a separate mobile view: the stat cards sit two to a row until `xl` and hide their icons below `sm`, and below `xl` the chart's side column, the recent orders and the top products each take the full width under one another.
 
 ## Sales switch
 
@@ -74,7 +77,7 @@ What a pause does to the storefront and the checkout is described in [Checkout: 
 
 ## The snapshot
 
-`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) is guarded by `authorized({ settings: ["manage"] })` — the same permission as the audit log, not an `order` or `product` permission. It takes a `locale` so the chart labels can be formatted server-side, and runs **eleven queries in one `db.batch`**.
+`getDashboardSnapshot` (`src/modules/admin-dashboard/use-cases/get-dashboard-snapshot.ts`) is guarded by `authorized({ settings: ["manage"] })` — the same permission as the audit log, not an `order` or `product` permission. It takes a `locale`, which only names the top products and their categories, reads the admin's time zone and format locale with `resolveRequestDisplayPreferences` to date and label the charts on the server (see [Charts](#charts)), and runs **eleven queries in one `db.batch`**.
 
 The comparison window comes from `resolveAdminDashboardComparisonPeriod(now)` with `ADMIN_DASHBOARD_COMPARISON_PERIOD_DAYS = 30`, so every KPI is "the last 30 days versus the 30 before that".
 
@@ -90,9 +93,9 @@ The comparison window comes from `resolveAdminDashboardComparisonPeriod(now)` wi
 
 **Page views come from the audit log**, written by `trackPageViewed` in `src/modules/customer-activity`. Because that tracker only fires for signed-in users and de-duplicates per session via `sessionStorage`, the figure is "unique pages viewed by logged-in customers", not total traffic.
 
-`buildAdminDashboardKpiStat(current, previous)` computes the `trendPercent` with `ADMIN_DASHBOARD_TREND_PERCENT_SCALE = 100`.
+`buildAdminDashboardKpiStat(current, previous)` computes the `trendPercent` with `ADMIN_DASHBOARD_TREND_PERCENT_SCALE = 100`: the change as a whole percent of the previous period, 100 when the previous period had nothing and this one has something, and 0 when both are empty.
 
-**Refreshing after an order changes.** The snapshot (`[...SNAPSHOT, locale]`) and every custom chart range (`[...CHART_RANGE, locale, startDate, endDate]`) sit under `ADMIN_DASHBOARD_QUERY_KEYS.ALL`, `["admin", "dashboard"]`, which the admin layout subscribes to. Every order event publishes it with the admin order keys as `ORDER_CHANGE_ADMIN_QUERY_KEYS`. `scheduleAdminOrdersInvalidation()` sends it as soon as a paid order, a Stripe refund or dispute, an InPost status or a withdrawal is written. The audit-log queue consumer sends it for every batch with an order timeline action, so an admin's fulfilment, shipment, delivery, cancellation, refund or return to stock and a failed payment reach the other admins within `max_batch_timeout` (5 seconds). The row actions of `/admin/orders`, which the overview's [recent orders](#recent-orders) reuse, also call `syncQueryInvalidation(queryClient, ADMIN_DASHBOARD_QUERY_KEYS.ALL)` when they settle, so the tab that ran one and the other tabs of the same browser refresh at once. An open overview refetches in the background and keeps the figures it shows until the new ones arrive; the custom chart dims only while it loads a range it has no data for yet (`isLoading`), not during such a refresh. A tab on another page drops the cached overview and fetches it again when the overview next opens.
+**Refreshing after an order changes.** The snapshot (`[...SNAPSHOT, locale]`) and every custom chart range (`[...CHART_RANGE, startDate, endDate]`) sit under `ADMIN_DASHBOARD_QUERY_KEYS.ALL`, `["admin", "dashboard"]`, which the admin layout subscribes to. Every order event publishes it with the admin order keys as `ORDER_CHANGE_ADMIN_QUERY_KEYS`. `scheduleAdminOrdersInvalidation()` sends it as soon as a paid order, a Stripe refund or dispute, an InPost status, a withdrawal or an admin's step back is written. The audit-log queue consumer sends it for every batch with an order timeline action, so an admin's fulfilment, shipment, delivery, cancellation, refund or return to stock and a failed payment reach the other admins within `max_batch_timeout` (5 seconds). The row actions of `/admin/orders`, which the overview's [recent orders](#recent-orders) reuse, also call `syncQueryInvalidation(queryClient, ADMIN_DASHBOARD_QUERY_KEYS.ALL)` when they settle, so the tab that ran one and the other tabs of the same browser refresh at once. An open overview refetches in the background and keeps the figures it shows until the new ones arrive; the custom chart dims only while it loads a range it has no data for yet (`isLoading`), not during such a refresh. A tab on another page drops the cached overview and fetches it again when the overview next opens.
 
 ## Charts
 
@@ -102,23 +105,25 @@ Days, months and years on the dashboard are the admin's own, in the time zone `r
 
 Three series are precomputed in the same snapshot:
 
-- `chartPoints30d` — `orderAggregatesQuery` over `resolveAdminDashboardDays(now, ADMIN_DASHBOARD_CHART_DAYS_30)`, with `ADMIN_DASHBOARD_CHART_DAYS_30 = 30`
-- `chartPoints7d` — `chartPoints30d.slice(-7)`, so no extra query
-- `chartPoints1y` — `orderAggregatesQuery` over `resolveAdminDashboardMonths(now, ADMIN_DASHBOARD_CHART_MONTHS_1Y)`, with `ADMIN_DASHBOARD_CHART_MONTHS_1Y = 12`
+- `chartPoints30d` — `orderAggregatesQuery` over `resolveAdminDashboardDays(now, ADMIN_DASHBOARD_CHART_DAYS_30, timeZone)`, with `ADMIN_DASHBOARD_CHART_DAYS_30 = 30`
+- `chartPoints7d` — `chartPoints30d.slice(-ADMIN_DASHBOARD_CHART_DAYS_7)`, the last seven days, so no extra query
+- `chartPoints1y` — `orderAggregatesQuery` over `resolveAdminDashboardMonths(now, ADMIN_DASHBOARD_CHART_MONTHS_1Y, timeZone)`, with `ADMIN_DASHBOARD_CHART_MONTHS_1Y = 12`
 
 `yearToDateRevenueMinorUnits` is the revenue of a separate `salesTotalsQuery(resolveAdminDashboardYearStart(now, timeZone))`, from midnight on 1 January in the admin's time zone. The KPI comparison above stays a rolling window of 30 times 24 hours back from now.
 
-A custom range is a second server function. `getDashboardChartRange` takes `{ startDate, endDate }` as ISO dates, returns `[]` when `isAdminDashboardCustomChartRangeValid` rejects the pair, and otherwise builds the window of every day from `startDate` to `endDate` with `resolveAdminDashboardDateRange`, from midnight on the first day in the admin's time zone until midnight after the last, and runs `orderAggregatesQuery` over it. Its query is `enabled` only for a valid range. The controls are `dashboard/components/dashboard-chart-range-controls.tsx` driven by `dashboard/hooks/use-dashboard-chart-range.ts`, using `react-day-picker`.
+A custom range is a second server function. `getDashboardChartRange` takes `{ startDate, endDate }` as ISO dates, returns `[]` when `isAdminDashboardCustomChartRangeValid` rejects the pair, and otherwise builds the window of every day from `startDate` to `endDate` with `resolveAdminDashboardDateRange`, from midnight on the first day in the admin's time zone until midnight after the last, and runs `orderAggregatesQuery` over it. Its query is `enabled` only for a valid range. The controls are `dashboard/components/dashboard-chart-range-controls.tsx` driven by `dashboard/hooks/use-dashboard-chart-range.ts`: Last 7 days, Last 30 days, which the chart opens on, Last year, and Custom, a popover (`dashboard-chart-custom-range-filter.tsx`) with two `LocaleDatePicker` fields built on `react-day-picker`. Neither day can be later than today in the admin's time zone and the start cannot follow the end, Apply stays disabled until both are set, and Clear goes back to the 30 days. The card's caption names the range, a custom one with both dates in the admin's format.
+
+The revenue chart (`dashboard-charts.tsx`) is a Recharts area chart. The X axis shows the labels the server built, the Y axis the revenue in compact notation in the admin's format locale (`formatMinorUnitsAsCompactNumber`), and the tooltip the period's label with the revenue as a price (`AdminChartMoneyTooltipRow`). When every point of the range is zero the card shows "No sales in this period." instead of a flat line, and when the custom range's request fails it shows "Could not load revenue for this range." (`dashboard.chart.empty` and `dashboard.chart.error`). Beside the chart, the right column holds the average order value with its trend, the weekly orders bar chart (see [Weekly orders](#weekly-orders)) and the year-to-date sales with a "View all orders" link to `/admin/orders`.
 
 ## Stat cards
 
-`dashboard-stats.tsx` renders four cards from a local `STAT_CARDS` constant keyed `revenue`, `orders`, `customers` and `views`, each with a lucide icon and a Tailwind gradient. Labels come from `pages.admin.dashboard.stats.<key>.label` and the comparison caption from `dashboard.stats.vsPrevious`. `dashboard/dashboard-trend-badge.tsx` renders the up/down badge.
+`dashboard-stats.tsx` renders four cards from a local `STAT_CARDS` constant keyed `revenue`, `orders`, `customers` and `views`, each with a lucide icon and a Tailwind gradient. Labels come from `pages.admin.dashboard.stats.<key>.label` and the comparison caption from `dashboard.stats.vsPrevious`. Revenue is formatted as a price and the counts as numbers, both in the admin's format locale. `dashboard/dashboard-trend-badge.tsx` renders the badge: green with an up arrow and a `+` for a change of zero or more, red with a down arrow below zero. The average order value, the fifth KPI, has its own card beside the revenue chart.
 
 ## Recent orders
 
-`recentOrdersQuery` selects the latest `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` orders, left-joining `user` for the customer name and `payment` for the status, and the snapshot maps each row through `toAdminOrderListItem`, the mapper the orders grid uses. Note it passes `itemCount: 0`, so the recent-orders list never shows an item count. It also selects the order's `metadata`, from which the mapper sets `hasOpenDispute`; the dashboard shows no dispute. Each row names the order by its `orderNumber` (`MRT-2026-00001`), not its database id, as a link to `/admin/orders/$orderId`, and renders the payment and fulfilment with the orders grid's own `OrderPaymentBadge` and `OrderFulfillmentCell`, so the labels and colours are the ones `/admin/orders` shows.
+`recentOrdersQuery` selects the latest `ADMIN_DASHBOARD_RECENT_ORDERS_LIMIT = 5` orders, left-joining `user` for the customer name and `payment` for the status, and the snapshot maps each row through `toAdminOrderListItem`, the mapper the orders grid uses. Note it passes `itemCount: 0`, so the recent-orders list never shows an item count. It also selects the order's `metadata`, from which the mapper sets `hasOpenDispute`; the dashboard shows no dispute badge, but the row actions below use it. Each row names the order by its `orderNumber` (`MRT-2026-00001`), not its database id, as a link to `/admin/orders/$orderId`, shows the customer's initials and name, the date in the admin's format locale and time zone (`formatAdminOrderDate`) and the total, and renders the payment and fulfilment with the orders grid's own `OrderPaymentBadge` and `OrderFulfillmentCell`, so the labels and colours are the ones `/admin/orders` shows. The card's "View all" links to `/admin/orders`, and without any order it reads "No orders yet.". On a narrow screen the table scrolls sideways inside the card.
 
-A click anywhere else on a row opens the same order page through `useNavigate`. The order-number link stays the route for the keyboard and for opening the order in a new tab, so the row ignores a click on a link instead of opening the order twice. The last column, headed by the screen-reader-only `orders.columns.actions` label ("Row actions", "Akcje wiersza"), renders the orders grid's own `OrdersRowActions` for the order, whose button a screen reader announces as "Actions for order" followed by the order number, so View order, Copy ID, Fulfill order, Mark as shipped, Print order summary, Refund and Cancel order work and are enabled exactly as on `/admin/orders`. That cell carries `data-prevent-row-click`, and the row also ignores a click whose target is outside the row's own DOM, such as in the menu or the cancel confirmation, which render in portals but still pass their React events up to the row. It honours `consumeDataGridRowClickSuppression()` like the grid, so closing the menu with a click on the row does not open the order. An action run from this menu refreshes the overview at once (see [The snapshot](#the-snapshot)).
+A click anywhere else on a row opens the same order page through `useNavigate`. The order-number link stays the route for the keyboard and for opening the order in a new tab, so the row ignores a click on a link instead of opening the order twice. The last column, headed by the screen-reader-only `orders.columns.actions` label ("Row actions", "Akcje wiersza"), renders the orders grid's own `OrdersRowActions` for the order, whose button a screen reader announces as "Actions for order" followed by the order number, so View order, Copy ID, Start fulfillment, Mark as shipped, Print order summary, Refund and Cancel order work and are enabled exactly as on `/admin/orders`: Start fulfillment and Mark as shipped open the same confirmation dialogs, Print order summary opens the summary in a new tab, and Refund opens the order page, where the refund is entered. While a paid order has an open dispute, Cancel order is disabled and the menu explains under it that cancelling would refund a payment the dispute now decides (`resolveAdminOrderCancelBlocker`). That cell carries `data-prevent-row-click`, and the row also ignores a click whose target is outside the row's own DOM, such as in the menu or the cancel confirmation, which render in portals but still pass their React events up to the row. It honours `consumeDataGridRowClickSuppression()` like the grid, so closing the menu with a click on the row does not open the order. An action run from this menu refreshes the overview at once (see [The snapshot](#the-snapshot)).
 
 ## Top products
 
@@ -142,26 +147,26 @@ const validTopProductRows = topProductRows.filter((row): row is typeof row & { p
 
 `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) records each line's product and variant by looking them up through the line's variant in the same insert, and the migration `20261003120000_order_item_product_backfill.sql` filled in the lines written before that whose variant still existed. The thumbnail is read with `max(...)` from the grouped lines.
 
-`ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` is 4. `resolveTopProductName` and `resolveTopProductCategoryLabel` pick the locale out of the JSON title maps, falling back to the stored `order_item.title`.
+The query ranks the products by units sold across every sale, with no date window, and keeps `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` (4) before the null-id rows are dropped. Each row's revenue is the sum of its lines' `order_item.total`, not net of refunds. `resolveTopProductName` and `resolveTopProductCategoryLabel` pick the page's locale out of the JSON title maps of the product and its primary category. A product whose row is gone falls back to the stored `order_item.title`, and a product without a primary category gets an empty label, which the card shows as "Uncategorized". The card shows the thumbnail, or the name's first two letters without one, the revenue as a price and "4 sold", and "No product sales data yet." when nothing has sold.
 
 ## Weekly orders
 
-`buildAdminDashboardWeeklyOrderPoints` reuses the same `dailyAggregateRows` with the last seven days of the 30-day window to produce `{ dateKey, dayLabel, orders }` points, the weekday named as it is in Poland, again with no extra query.
+`buildAdminDashboardWeeklyOrderPoints` reuses the same `dailyAggregateRows` with the last seven days of the 30-day window to produce `{ dateKey, dayLabel, orders }` points, again with no extra query. The day is the admin's, and its label is the short weekday (`{ weekday: "short" }`) in the admin's time zone and format locale. The card, "Orders this week", is a bar chart of the number of sales on each of those seven days, ending today, not a calendar week.
 
 ## Marketing and coupons
 
-| Route                          | File                              | Components                                                                      | Data                                                                                                                                            |
-| ------------------------------ | --------------------------------- | ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/admin/marketing`             | `admin.marketing.index.tsx`       | `NewsletterStats`, `NewsletterCampaignsTable`                                   | `getNewsletterStatsQuery`, `getAdminNewsletterCampaignsQuery`; see [E-mail](/docs/features/email#the-newsletter)                                |
-| `/admin/marketing/new`         | `admin.marketing.new.tsx`         | `NewsletterComposer` with `NewsletterComposerFields` and `NewsletterSendDialog` | `getNewsletterStatsQuery`, `sendNewsletterTest`, `sendNewsletterCampaign`                                                                       |
-| `/admin/marketing/subscribers` | `admin.marketing.subscribers.tsx` | `NewsletterSubscribersTableContent` with `NewsletterSubscribersStats`           | `getAdminNewsletterPageQuery`, `getNewsletterStatsQuery`, `exportAdminNewsletterSubscribers`; see [E-mail](/docs/features/email#the-newsletter) |
-| `/admin/coupons`               | `admin.coupons.tsx`               | `CouponStats`, `CouponListTable` with `CouponFormDialog`                        | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; see [Discounts](/docs/features/discounts)                                                |
+| Route                          | File                              | Components                                                                                 | Data                                                                                                                                            |
+| ------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/admin/marketing`             | `admin.marketing.index.tsx`       | `NewsletterStats`, `NewsletterCampaignsTable`                                              | `getNewsletterStatsQuery`, `getAdminNewsletterCampaignsQuery`; see [E-mail](/docs/features/email#the-newsletter)                                |
+| `/admin/marketing/new`         | `admin.marketing.new.tsx`         | `NewsletterComposer` with `NewsletterComposerFields` and `NewsletterSendDialog`            | `getNewsletterStatsQuery`, `sendNewsletterTest`, `sendNewsletterCampaign`                                                                       |
+| `/admin/marketing/subscribers` | `admin.marketing.subscribers.tsx` | `NewsletterSubscribersTableContent` with `NewsletterSubscribersStats`                      | `getAdminNewsletterPageQuery`, `getNewsletterStatsQuery`, `exportAdminNewsletterSubscribers`; see [E-mail](/docs/features/email#the-newsletter) |
+| `/admin/coupons`               | `admin.coupons.tsx`               | `CouponsTableContent` with `CouponsStats` and `CouponSheet`, inside `CouponsSheetProvider` | `getAdminDiscountsPageQuery`, `getDiscountStatsQuery`; see [Discounts](/docs/features/discounts)                                                |
 
-Marketing is the newsletter, in two header tabs. **Newsletters** shows how many subscribers are confirmed, awaiting confirmation and unsubscribed, each count linking to the **Subscribers** tab narrowed to that status, and lists the 50 most recent newsletters with their progress, refreshed by the admin realtime hub as batches go out. **Subscribers** lists every address on the newsletter in the shared data grid, with its status, language, sign-up place, customer account and dates, filtered by status from its cards or its filter and exported as CSV, JSON, XML or plain text. **New newsletter** opens the composer, where the owner writes the letter in Polish and English in the content editor, sends a test to their own address and sends it to every confirmed subscriber; [E-mail](/docs/features/email#the-newsletter) describes the sending.
+Marketing is the newsletter, in two header tabs. **Newsletters** shows how many subscribers are confirmed, awaiting confirmation and unsubscribed, each count linking to the **Subscribers** tab narrowed to that status, and lists the 50 most recent newsletters with their progress, refreshed by the admin realtime hub as batches go out. **Subscribers** lists every address on the newsletter in the shared data grid, with its status, language, sign-up place, customer account and dates, filtered by status from its cards or its filter and exported as CSV, JSON, XML or plain text. A row's menu copies the address, unsubscribes it (not offered once the address has unsubscribed) or erases its data; the last two ask for a confirmation (see [E-mail: The subscriber list](/docs/features/email#the-subscriber-list)). **New newsletter** opens the composer, where the owner writes the letter in Polish and English in the content editor, sends a test to their own address and sends it to every confirmed subscriber; [E-mail](/docs/features/email#the-newsletter) describes the sending.
 
 Settings has its own page: [Admin settings](/docs/features/admin-settings).
 
-Coupons is a working screen: its loader prefetches `getAdminDiscountsPageQuery({})` and `getDiscountStatsQuery()`, and `use-coupon-actions.ts` calls `createDiscount`, `updateDiscount` and `deleteDiscounts`.
+Coupons is a working screen built like the catalog lists: its loader prefetches `getAdminDiscountsPageQuery({ page: 1, pageSize: ADMIN_DISCOUNTS_PAGE_SIZE })` and `getDiscountStatsQuery()`, and `CouponsTableContent` (`.../admin/coupons/components/coupons-table.tsx`) renders `CouponsStats` above the shared data grid, with a search, status and type filters, a refresh button, bulk delete and paging. **Create coupon** and a click on a row open `CouponSheet` (`edit-coupon/coupon-sheet.tsx`), a side sheet in create or edit mode whose state `CouponsSheetProvider` holds for the page. `edit-coupon/coupon-form-provider.tsx` calls `createDiscount` and `updateDiscount`, and `hooks/use-delete-coupons.ts` calls `deleteDiscounts` for the row menu and the bulk action.
 
 `/admin/orders/$orderId` is a working screen that loads one order through `getAdminOrder`. See [Orders](/docs/features/orders).
 

@@ -1,9 +1,9 @@
 ---
 title: "Audit log"
-description: "Every significant event goes through a Cloudflare Queue into the audit_log table, feeding the admin audit screen, the customer timeline and the dashboard's page-view KPI."
+description: "Every significant event goes through a Cloudflare Queue into the audit_log table, feeding the admin audit screen, the order Activity card, the customer timelines and the dashboard's page-view KPI."
 ---
 
-The audit log is the shop's event history and doubles as its analytics store. It is the only part of the system that writes through a queue rather than directly to D1.
+The audit log is the shop's event history and doubles as its analytics store. The code that records an event never writes the row itself: the event goes onto a Cloudflare Queue, and the queue's consumer writes it to D1.
 
 ## The table
 
@@ -25,7 +25,7 @@ The audit log is the shop's event history and doubles as its analytics store. It
 | `metadata`    | Nullable JSON string                                                          |
 | `ip`          | Nullable                                                                      |
 
-Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_severity_idx`, `audit_log_action_idx` and the composite `audit_log_resource_idx` on (`category`, `resource_id`) — which is what makes "everything that happened to this order" cheap.
+Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx` and `audit_log_severity_idx` for the admin screen's newest-first order and its filters, the composite `audit_log_action_createdAt_idx` on (`action`, `created_at`), which serves the dashboard's page-view count and the retention clean-up, and the composite `audit_log_resourceId_action_createdAt_idx` on (`resource_id`, `action`, `created_at`), which makes "everything of these kinds that happened to this order or account, newest first" cheap: the order's Activity card, the customer timelines and the sign-in history.
 
 ## The 82 actions
 
@@ -45,13 +45,13 @@ Five indexes: `audit_log_createdAt_idx`, `audit_log_category_idx`, `audit_log_se
 
 ## Writing an event
 
-Never write `audit_log` directly. `audit-log.events.server.ts` exports the recorders, 73 `record*` functions. Most name one action; `recordListExportedAudit` covers the five list exports, `recordDeliveryMethodAudit` takes one of the five `delivery_method.*` actions and gives an archive its warning severity, `recordTeamAccessAudit` takes `team.admin_granted` or `team.admin_revoked`, and `recordOrderEmailOutcome` is a wrapper. Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
+Never write `audit_log` directly. `audit-log.events.server.ts` exports the recorders: 73 `record*` functions, which are 69 that each record one action, `recordListExportedAudit`, shared by the five list exports described below, `recordDeliveryMethodAudit`, which takes one of the five `delivery_method.*` actions and gives an archive its warning severity, `recordTeamAccessAudit`, which takes `team.admin_granted` or `team.admin_revoked`, and the `recordOrderEmailOutcome` wrapper, which records `email.sent`, `email.deferred` or `email.failed` for an order email. `order.released` is recorded only for a Checkout Session the Stripe webhook actually released, and marking an order delivered records `order.delivered` (`recordOrderDeliveredAudit`). Each recorder fills in the action, category and severity and delegates to one of three schedulers in `audit-log.record.server.ts`:
 
-| Scheduler                     | Actor resolution                                                                                                       |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `scheduleAuditLogFromRequest` | `resolveRequestAuditActor()` from the session, falling back to `SYSTEM_AUDIT_ACTOR`; IP from `resolveRequestAuditIp()` |
-| `scheduleAuditLog`            | The caller supplies the actor                                                                                          |
-| `scheduleSystemAuditLog`      | Always `SYSTEM_AUDIT_ACTOR` (`{ name: "System", role: "system" }`)                                                     |
+| Scheduler                     | Actor resolution                                                                                                                                                                  |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scheduleAuditLogFromRequest` | The actor the recorder names, else `resolveRequestAuditActor()` from the session, falling back to `SYSTEM_AUDIT_ACTOR`; the IP the recorder names, else `resolveRequestAuditIp()` |
+| `scheduleAuditLog`            | The caller supplies the actor                                                                                                                                                     |
+| `scheduleSystemAuditLog`      | Always `SYSTEM_AUDIT_ACTOR` (`{ name: "System", role: "system" }`)                                                                                                                |
 
 All three are **fire and forget**:
 
@@ -67,15 +67,15 @@ export const scheduleAuditLog = (input: AuditLogEventInput): void => {
 
 A recorder can name the id instead, for an event the log should hold once however often it happens. `recordOrderFulfillmentFailedAudit` uses `order.fulfillment_failed:<session id>`, so every failed delivery of one Checkout Session names the same entry, and the consumer keeps the one already stored (see [The queue](#the-queue)). `recordOrderRefundFailedAudit` does the same with `order.refund_failed:<refund id>`, a warning against the order whose detail is the refund's amount in minor units, its status and Stripe's `failure_reason`, so `refund.failed` and `refund.updated` for one refund, and every redelivery of them, leave one entry. The admin shows that detail as the amount, then the status and the reason in the admin's language.
 
-Two helpers shape `target` and `resource_id` consistently: `withResourceId(target, options)` defaults `resourceId` to `target`, and `resolveActorAuditTarget(actor, options)` prefers the actor's email as the target and puts it in the metadata, falling back to the name.
+Two helpers shape `target` and `resource_id` consistently: `withResourceId(target, options)` defaults `resourceId` to `target`, and `resolveActorAuditTarget(actor, options)`, used for the account events, sign-ins, sign-outs and customer activity, defaults `resourceId` to the actor's id and prefers the actor's email as the target, putting it in the metadata and making the actor's name the detail unless the recorder gives one; without an email the name is the target.
 
-Who an entry is credited to follows from the scheduler. Every action an admin takes on an order — fulfil, ship, mark delivered, step back (`order.stepped_back`), save a tracking number (`order.tracking_updated`), cancel, ask Stripe for a refund (`order.refund_requested`, from both the Refund button and a cancellation) return to stock (`order.restocked`) and book an InPost shipment (`order.shipment_created`) — goes through `scheduleAuditLogFromRequest`, so the order's Activity card and `/admin/audit` name the signed-in admin and the address they acted from. The order events the Stripe webhook records, among them `order.refund_initiated` when Stripe confirms the refund and `order.refund_failed` when the refund later fails or is cancelled, stay with `SYSTEM_AUDIT_ACTOR`. The account events, `auth.password_changed` to `auth.user_unbanned` and `customer.deleted`, take the account that changed and share `scheduleAccountAudit`: the account is the target, and the entry is credited to `options.actor` when an admin made the change and to the account holder otherwise. Customer edits (`customer.updated`), image uploads (`image.uploaded`), deleted audit entries (`audit_log.deleted`) and sent newsletters (`newsletter.sent`) are credited to the admin making the request. A withdrawal from the contract (`order.withdrawal_received`), sent from the account or by order number at `/withdraw-from-contract`, is a warning credited to the consumer who signed the statement, with the order's address, the order number as its detail and the scope in its metadata, so the order's Activity card shows it beside the withdrawals card.
+Who an entry is credited to follows from the scheduler. Every action an admin takes on an order — fulfil, ship, mark delivered, step back (`order.stepped_back`), save a tracking number (`order.tracking_updated`), cancel, ask Stripe for a refund (`order.refund_requested`, from both the Refund button and a cancellation), return to stock (`order.restocked`) and book an InPost shipment (`order.shipment_created`) — goes through `scheduleAuditLogFromRequest`, so the order's Activity card and `/admin/audit` name the signed-in admin and the address they acted from. The order events the Stripe webhook records, among them `order.refund_initiated` when Stripe confirms the refund and `order.refund_failed` when the refund later fails or is cancelled, stay with `SYSTEM_AUDIT_ACTOR`. The account events, `auth.password_changed` to `auth.user_unbanned` and `customer.deleted`, take the account that changed and share `scheduleAccountAudit`: the account is the target, and the entry is credited to `options.actor` when an admin made the change and to the account holder otherwise. Customer edits (`customer.updated`), image uploads (`image.uploaded`), deleted audit entries (`audit_log.deleted`) and sent newsletters (`newsletter.sent`) are credited to the admin making the request. A withdrawal from the contract (`order.withdrawal_received`), sent from the account or by order number at `/withdraw-from-contract`, is a warning credited to the consumer who signed the statement, with the order's address, the order number as its detail and the scope in its metadata, so the order's Activity card shows it beside the withdrawals card.
 
 Downloading a list is recorded too. The exports from the customers, orders, newsletter subscribers and products pages record `customer.list_exported`, `order.list_exported`, `newsletter.subscriber_list_exported` and `product.list_exported`, and the export of the audit log itself records `audit_log.exported` under `settings`, all through `recordListExportedAudit`, credited to the admin, with the number of rows as the target and the filters the export used in the metadata.
 
 Newsletter consent is on record at both ends. `newsletter.subscriber_confirmed` records the link in the confirmation email confirming a subscription. `newsletter.subscriber_unsubscribed` records every subscription that ends, recorded by `unsubscribeSubscriber` whichever way it ends: the link in a newsletter, the one-click unsubscribe a mail app sends, the customer's account page or an admin. Each is credited to whoever made the request, so a mail app's unsubscribe is the system's.
 
-`auth.email_verified` records an address that a verification link confirms, for a new account and for a changed address alike, against the account, from `emailVerification.afterEmailVerification`. When that verification, a sign-up with an already verified address or a later update brings in guest orders placed with the address, `claimGuestOrdersForUser` records `customer.orders_claimed` from the system. The entry has the address as its target, the account id as its resource, and the number and ids of the orders in its metadata (see [Orders](/docs/features/orders)).
+`auth.email_verified` records an address that a verification link confirms, for a new account and for a changed address alike, against the account, from `emailVerification.afterEmailVerification`. When that verification, a sign-up with an already verified address or a later update brings in guest orders placed with the address, `claimGuestOrdersForUser` records `customer.orders_claimed` from the system. The entry has the address in lower case as its target, the account id as its resource, and `{ orderCount, orderIds }` in its metadata, which the admin shows as the number of orders (see [Orders: Customer order history](/docs/features/orders#customer-order-history)). The one-time migration `20261016140000_claim_past_guest_orders.sql`, which linked the guest orders placed before these rules to the verified account with their email, inserted the same entry directly in SQL for each account it linked orders to: `System` as the actor with no actor id, `created_at` set to when the migration ran, and a random UUIDv4 rather than a UUIDv7 as its id.
 
 ## The queue
 
@@ -87,7 +87,7 @@ const enqueueAuditLogMessage = async (message: AuditLogQueueMessage): Promise<vo
 }
 ```
 
-`wrangler.jsonc` declares a producer and a consumer per environment, for example in `development`:
+`wrangler.jsonc` declares two producers in every environment, `AUDIT_LOG_QUEUE` and the newsletter's `NEWSLETTER_QUEUE` (see [E-mail: The newsletter](/docs/features/email#the-newsletter)), and four consumers. The audit queue's part, in `development`:
 
 ```jsonc
 "queues": {
@@ -105,15 +105,25 @@ const enqueueAuditLogMessage = async (message: AuditLogQueueMessage): Promise<vo
 },
 ```
 
-The Worker consumes two queues per environment: the audit queue and its dead-letter queue, named after it with `-dlq` (`martebizuteria-audit-log-preview-dlq` for development and preview, `martebizuteria-audit-log-test-dlq` for the local test Worker, `martebizuteria-audit-log-dlq` for production). The consumer entry point for both is the `queue` export in `src/server.ts`:
+The Worker consumes four queues per environment: the audit queue and its dead-letter queue, named after it with `-dlq` (`martebizuteria-audit-log-preview-dlq` for development and preview, `martebizuteria-audit-log-test-dlq` for the local test Worker, `martebizuteria-audit-log-dlq` for production), and the newsletter queue with its own dead-letter queue. The local test Worker waits at most one second for a batch (`max_batch_timeout: 1`) instead of five. Every batch reaches the `queue` export in `src/server.ts`:
 
 ```ts
-async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
-  await processAuditLogQueueBatch(batch)
+async queue(batch: MessageBatch<WorkerQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  if (isNewsletterQueueBatch(batch)) {
+    const { processNewsletterQueueBatch } = await import("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server")
+    await processNewsletterQueueBatch(batch)
+  }
+
+  if (isAuditLogQueueBatch(batch)) {
+    const { processAuditLogQueueBatch } = await import("~/src/modules/audit-log/audit-log.queue.server")
+    await processAuditLogQueueBatch(batch)
+  }
 },
 ```
 
-`processAuditLogQueueBatch` (`audit-log.queue.server.ts`) inserts the whole batch in one statement and only then acknowledges:
+`WorkerQueueMessage` is the union of the two message types. `isNewsletterQueueBatch` (`newsletter-campaign.utils.ts`) tells the batches apart by the queue's name, which starts with `NEWSLETTER_QUEUE_PREFIX` (`martebizuteria-newsletter`) for the newsletter queue and its dead-letter queue, and `isAuditLogQueueBatch` takes every other batch, so the audit queue and its dead-letter queue share one path. Each processor is imported only when a batch of its kind arrives.
+
+`processAuditLogQueueBatch` (`audit-log.queue.server.ts`) writes the whole batch in one `db.batch` call and only then acknowledges:
 
 ```ts
 try {
@@ -142,23 +152,39 @@ try {
 }
 ```
 
-So up to 50 events become one D1 insert, and a failed batch is retried up to three times. A batch that still fails is not deleted: Cloudflare moves its messages to the dead-letter queue, whose consumer takes them **one at a time** (`max_batch_size: 1`) and runs each through the same `processAuditLogQueueBatch`, retrying it up to three more times five minutes apart (`retry_delay: 300`). One message the insert rejects therefore no longer takes the other 49 entries of its batch with it: they are written on their own, and only a message that still cannot be written after its third retry on the dead-letter queue is dropped, with the Worker log and an alert under the dead-letter queue's name as its record. `scripts/verify-bindings.ts` refuses a preview or production deploy whose audit consumer names no `dead_letter_queue` or whose dead-letter queue has no consumer, and each `-dlq` queue has to exist in Cloudflare before the deploy that names it (`bunx wrangler queues create martebizuteria-audit-log-dlq` for production). A failed batch also emails `RESEND_EMAIL_FROM` once the messages are marked for retry, at most once an hour for the queue, and the alert never throws, so it cannot change the retry; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts). The consequence to keep in mind: **an audit entry is eventually consistent** — it can take up to `max_batch_timeout` (5 seconds) to appear, which is why the consumer publishes a realtime invalidation instead of relying on the writer to refresh the UI. `AUDIT_LOG_ADMIN_QUERY_KEYS` is the audit page and its stats. When a row in the batch is one of `ADMIN_ORDER_TIMELINE_ACTIONS`, the consumer adds `ORDER_CHANGE_ADMIN_QUERY_KEYS` from `realtime-invalidation.catalog.server.ts`, the list `scheduleAdminOrdersInvalidation()` publishes: `ORDER_QUERY_KEYS.ADMIN.ORDERS` and the overview's `ADMIN_DASHBOARD_QUERY_KEYS.ALL`. Every open admin tab then refetches the order list, stats, order page or overview it has on screen and drops the order and overview queries it only has cached, so a new timeline row, such as a failed order email, appears without a reload, and a fulfilment, shipment or cancellation moves the overview's figures and recent orders. The `email.*` actions are part of that list whatever the email was for, so a failed newsletter or Better Auth email triggers the refetch too.
+`insertAuditLogs` (`audit-log.accessors.ts`) splits the rows with `insertRowChunks` from `src/integrations/drizzle-orm/drizzle.batch.ts` into inserts of at most seven rows, because D1 binds at most 100 parameters to a statement (`D1_MAX_BOUND_PARAMETERS`) and a row has 13 columns, and sends them in one `db.batch`, which D1 runs as a single transaction. So up to 50 events become eight inserts that are written or refused together, and a failed batch is retried up to three times. A batch that still fails is not deleted: Cloudflare moves its messages to the dead-letter queue, whose consumer takes them **one at a time** (`max_batch_size: 1`) and runs each through the same `processAuditLogQueueBatch`, retrying it up to three more times five minutes apart (`retry_delay: 300`). One message the insert rejects therefore no longer takes the other 49 entries of its batch with it: they are written on their own, and only a message that still cannot be written after its third retry on the dead-letter queue is dropped, with the Worker log and an alert under the dead-letter queue's name as its record. `scripts/verify-bindings.ts` refuses a preview or production deploy whose audit consumer names no `dead_letter_queue` or whose dead-letter queue has no consumer, and each `-dlq` queue has to exist in Cloudflare before the deploy that names it (`bunx wrangler queues create martebizuteria-audit-log-dlq` for production). A failed batch also emails `RESEND_EMAIL_FROM` once the messages are marked for retry, at most once an hour for the queue, and the alert never throws, so it cannot change the retry; see [Monitoring and alerts](/docs/guides/monitoring-and-alerts). The consequence to keep in mind: **an audit entry is eventually consistent** — it can take up to `max_batch_timeout` (5 seconds) to appear, which is why the consumer publishes a realtime invalidation instead of relying on the writer to refresh the UI. `AUDIT_LOG_ADMIN_QUERY_KEYS` is the audit page and its stats. When a row in the batch is one of `ADMIN_ORDER_TIMELINE_ACTIONS`, the consumer adds `ORDER_CHANGE_ADMIN_QUERY_KEYS` from `realtime-invalidation.catalog.server.ts`, the list `scheduleAdminOrdersInvalidation()` publishes: `ORDER_QUERY_KEYS.ADMIN.ORDERS` and the overview's `ADMIN_DASHBOARD_QUERY_KEYS.ALL`. Every open admin tab then refetches the order list, stats, order page or overview it has on screen and drops the order and overview queries it only has cached, so a new timeline row, such as a failed order email, appears without a reload, and a fulfilment, shipment or cancellation moves the overview's figures and recent orders. The `email.*` actions are part of that list whatever the email was for, so a failed newsletter or Better Auth email triggers the refetch too.
 
 `insertAuditLogs` inserts with `on conflict (id) do nothing`, so an event whose id is already stored is skipped while the rest of the batch is written and acknowledged. A message the queue delivers a second time, and a repeat of an event whose recorder names its id, therefore leave the stored entry as it was.
 
 ## Change diffs
 
-For update actions the recorders carry a structured diff. `audit-log.diff.utils.ts` exports three generic helpers:
+For update actions the recorders carry a structured diff in the metadata instead of a sentence. `audit-log.diff.utils.ts` exports two generic helpers:
 
-- `buildAuditChangeMetadata(before, after, …)` — the changed fields
-- `formatAuditDetailFromChanges(…)` — the one-line human summary
-- `toAuditMetadataRecord(metadata)` — flattens it for storage
+- `buildAuditChangeMetadata(before, after, fields)` — `{ changed, old, new }` for the listed fields whose value differs (`Object.is`), or `undefined` when none does
+- `toAuditMetadataRecord(metadata)` — the same three keys as a plain record for the recorder's `metadata`
 
-Callers build a snapshot on each side. For a product, `product-audit.utils.ts` has `extractProductAuditSnapshot` and `buildProductAuditChange`, used by `updateCompleteProduct`, which reads the product before and after the write. For a refund, `order-audit.utils.ts` has `buildOrderRefundAuditChange`. For a delivery method, `toDeliveryMethodAuditSnapshot` in `delivery-method.utils.ts` gives `updateDeliveryMethod` the method's `availability` (offered or hidden), `namePl`, `nameEn` and `price` on each side. The admin shows the fields in `AUDIT_LOG_MONEY_FIELDS` (`amount`, `freeDeliveryThreshold`, `price` and `refundedAmount`) as amounts of money.
+Callers build a snapshot on each side. For a product, `product-audit.utils.ts` has `extractProductAuditSnapshot` (the status, the total stock and each variant's SKU, price and stock, sorted by SKU) and `buildProductAuditChange`, which adds `variants` to the changed fields when any variant differs; `updateCompleteProduct` reads the product before and after the write and records the result with `product.updated`. For an order, `order-audit.utils.ts` has `buildOrderRefundAuditChange` (order status, payment status and refunded amount), which `refundOrder` records with `order.refund_initiated` once Stripe confirms a refund, and `buildOrderStepBackAuditChange` (fulfilment step and order status), which `stepBackOrder` records with `order.stepped_back`. For a delivery method, `toDeliveryMethodAuditSnapshot` in `delivery-method.utils.ts` gives `updateDeliveryMethod` the method's `availability` (offered or hidden), `namePl`, `nameEn` and `price` on each side, and `setFreeDeliveryThreshold` records the old and new `freeDeliveryThreshold`. `updateSellerDetails` records the changed seller details the same way, old and new. `delivery_method.updated` and `settings.updated` are described as changes in `audit-log.detail.utils.ts`, so the list shows those diffs like a product's, and `AUDIT_LOG_MONEY_FIELDS` (`amount`, `freeDeliveryThreshold`, `price` and `refundedAmount`) names the fields a diff shows as amounts of money.
+
+## How entries are displayed
+
+The stored `detail` is English text or a raw value written when the event happened, so the admin does not show it as it is. `toAdminAuditListItem` (`audit-log.utils.ts`) parses each row's metadata and hands the action, detail and metadata to `describeAuditLogDetail` (`audit-log.detail.utils.ts`), which returns a typed detail, `text`, `email`, `message`, `values` or `changes`, through the describer `AUDIT_LOG_DETAIL_DESCRIBERS` names for the action, and keeps the text for every other action or for a row a describer cannot read:
+
+| Actions                                                                                                          | Shown as                                                                                                                                                                                                                                                                     |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `email.sent`, `email.deferred`, `email.failed`, `email.resend_requested`                                         | The email's name, from `emailKind` in the metadata, else from the prefix of an order email's idempotency key or the English label an older row starts with, then the recipient an older row names and the failure; a refusal at the daily limit is translated with the limit |
+| `customer.cart_abandoned`, `customer.orders_claimed`, `newsletter.sent`                                          | A count from the metadata: items in the cart (`itemCount`), linked orders (`orderCount`), confirmed subscribers (`recipientCount`)                                                                                                                                           |
+| `customer.deletion_failed`                                                                                       | "Stripe customer not deleted, account kept" with Stripe's error                                                                                                                                                                                                              |
+| `discount.redeemed`, `order.payment_captured`                                                                    | The amount as a price                                                                                                                                                                                                                                                        |
+| `auth.role_changed`, `order.dispute_opened`, `order.dispute_closed`, `order.refund_failed`                       | The role; the dispute's reason and status; the refund's amount, status and failure reason                                                                                                                                                                                    |
+| `product.updated`, `order.refund_initiated`, `order.stepped_back`, `delivery_method.updated`, `settings.updated` | The change diff: "Field: old → new" per field, and the variants as added, removed or with their price and stock moves, each by SKU                                                                                                                                           |
+
+`formatAuditLogDetail` (`utils/audit-detail-format.ts` in the admin's audit folder) turns that into one line in the admin's language and format locale, with the messages under `pages.admin.audit.details`: a field name is translated under `fields.<field>`, a string value under `values.<field>.<value>` (statuses, fulfilment steps, roles, dispute and refund reasons) or kept as it is, and a field in `AUDIT_LOG_MONEY_FIELDS` (`amount`, `freeDeliveryThreshold`, `price`, `refundedAmount`) is formatted as a price. The action column translates `audit.actions.<action>` (`toAuditActionMessageKey`, dots as underscores) and shows the raw action when no message exists. `resolveAuditLogAction` shows an `order.released` row whose `resource_id` is not a Checkout Session id (`cs_…`) as `order.delivered`: marking an order delivered recorded `order.released` against the order before `order.delivered` existed.
+
+The order's Activity card uses the same describers: `mapAdminOrderTimeline` (`src/modules/order/order.detail.utils.ts`) calls `describeAuditLogDetail` and `order-timeline-event.tsx` renders it with `formatAuditLogDetail`, and both `order.delivered` and the older `order.released` rows are labelled as the delivery there.
 
 ## Automatic auth events
 
-`audit-log.auth.server.ts` wraps the Better Auth handler so login and logout are recorded without touching Better Auth itself:
+`audit-log.auth.server.ts` wraps the Better Auth handler so a failed sign-in (`auth.login_failed`) and a sign-out (`auth.logout`) are recorded without touching Better Auth itself. A successful sign-in (`auth.login`) is recorded from inside Better Auth by the `signInAudit` plugin (see [Account security events](#account-security-events)). The wrapper:
 
 ```ts
 export const handleAuthRequestWithAudit = async (request: Request): Promise<Response> => {
@@ -177,11 +203,12 @@ Details worth knowing:
 - It matches on `ROUTES.API_AUTH.SIGN_IN_EMAIL` and `ROUTES.API_AUTH.SIGN_OUT` under the `/api/auth` prefix, so the route table stays the single source of those paths.
 - The request body is read with `request.clone().json()` so the real handler still receives it.
 - For a sign-out it reads the session **before** calling the handler, because afterwards there is none.
-- A failed login is recorded only when the response is not `ok`, and the email becomes the `target` — which is how the log shows attempts against addresses that may not exist.
+- A failed login is recorded only when the response is not `ok`, and the email becomes the `target` — which is how the log shows attempts against addresses that may not exist. When an account has that address, its id becomes the `resource_id`, so the attempt also appears in that account's sign-in history.
+- A sign-out is recorded only when the response is `ok` and the request carried a session.
 
 ### Account security events
 
-Changes to an account are recorded from inside Better Auth, so they are caught whichever client calls the endpoint. `auth.server.ts` registers the `accountSecurityAudit` plugin next to `signInAudit`, both defined in `auth.audit.server.ts`. Its after hooks run once the endpoint has answered, skip an answer that is an error, and read the caller from `ctx.context.session` and the address from the request's `cf-connecting-ip`:
+Changes to an account are recorded from inside Better Auth, so they are caught whichever client calls the endpoint. `auth.server.ts` registers the `accountSecurityAudit` plugin next to `signInAudit`, both defined in `auth.audit.server.ts`. `signInAudit` records `auth.login`, with the new session's IP, after a request on a sign-in, sign-up, OAuth callback, email verification or two-factor path (`SIGN_IN_PATH_PREFIXES`) creates a session; it skips a request whose caller was already signed in when the session stays the same or the request is a two-factor code, so turning two-factor on records no sign-in. The `accountSecurityAudit` after hooks run once the endpoint has answered, skip an answer that is an error, and read the caller from `ctx.context.session` and the address from the request's `cf-connecting-ip`:
 
 | Endpoint                                                        | Recorded                                                                                                                                                |
 | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -194,7 +221,7 @@ Changes to an account are recorded from inside Better Auth, so they are caught w
 | `/admin/update-user`                                            | Each of `auth.user_banned`, `auth.user_unbanned` and `auth.email_changed` whose field the update sets                                                   |
 | `/admin/revoke-user-sessions`, `/admin/set-user-password`       | `auth.sessions_revoked`, `auth.password_changed`                                                                                                        |
 
-The admin endpoints look the account up by `userId` and credit the entry to the admin. Two more events need no plugin: `emailAndPassword.onPasswordReset` records `auth.password_reset` once a reset link sets the new password, and `databaseHooks.user.delete.after` records `customer.deleted` for every account Better Auth deletes except the anonymous ones it drops itself, credited to the session that asked — the admin for `/admin/remove-user`, which the admin customers page reaches through `auth.api.removeUser`, or the customer for `/delete-user` — and to the system when there is none. The account page's own server functions for signing out one device or all others, `revokeCustomerSession` and `revokeOtherCustomerSessions`, record `auth.sessions_revoked` themselves when they delete a session. Better Auth's `/admin/revoke-user-session`, which names a session by its token, and `/admin/impersonate-user` are not recorded. Better Auth's role endpoints are refused outright (see [Security model](/docs/architecture/security-model#admin-access)), so nothing records `auth.role_changed` any more; the action stays in the catalogue so that older entries keep their label and their role detail.
+The admin endpoints look the account up by `userId` and credit the entry to the admin. Two more events need no plugin: `emailAndPassword.onPasswordReset` records `auth.password_reset` once a reset link sets the new password, and `databaseHooks.user.delete.after` records `customer.deleted` for every account Better Auth deletes, credited to the session that asked — the admin for `/admin/remove-user`, which the admin customers page reaches through `auth.api.removeUser`, or the customer for `/delete-user` — and to the system when there is none. The account page's own server functions for signing out one device or all others, `revokeCustomerSession` and `revokeOtherCustomerSessions`, record `auth.sessions_revoked` themselves when they delete a session, and `setAccountPassword` (`src/modules/account/use-cases/set-account-password.ts`), with which an account without a password, such as one created through Google, sets one from the profile page, records `auth.password_changed` itself once `auth.api.setPassword` has saved it, because Better Auth's `/set-password` is not among the audited paths. Better Auth's `/admin/revoke-user-session`, which names a session by its token, and `/admin/impersonate-user` are not recorded. Better Auth's role endpoints are refused outright (see [Security model](/docs/architecture/security-model#admin-access)), so nothing records `auth.role_changed` any more; the action stays in the catalogue so that older entries keep their label and their role detail.
 
 ### Admin access
 
@@ -204,13 +231,13 @@ Giving and removing admin access under **Settings › Team** is recorded by `gra
 
 `recordCustomerActivity` (`src/modules/customer-activity/use-cases/record-customer-activity.ts`) is public but returns `{ ok: true, recorded: false }` without writing when there is no session, so anonymous traffic is never logged. It sits behind `withRateLimit("record-customer-activity", RATE_LIMITS.BROWSING)`: 120 calls a minute per client address, in a bucket of its own, which a shopper's page views and basket additions never reach and which keeps one address from filling the audit log. Past the limit it answers `TOO_MANY_REQUESTS` and records nothing.
 
-It handles three kinds and formats a detail line for each:
+It handles three kinds, each recorded against the signed-in customer with their email as the target and their account id as the resource:
 
-| `kind`            | Recorder                           | Detail                         |
-| ----------------- | ---------------------------------- | ------------------------------ |
-| `cart_item_added` | `recordCustomerCartItemAddedAudit` | `"<title> (<variant>) ×<qty>"` |
-| `cart_abandoned`  | `recordCustomerCartAbandonedAudit` | `"<n> items in cart"`          |
-| `page_viewed`     | `recordCustomerPageViewedAudit`    | The path                       |
+| `kind`            | Recorder                           | Detail and metadata                                                                                                                              |
+| ----------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `cart_item_added` | `recordCustomerCartItemAddedAudit` | `"<title> (<variant>) ×<qty>"`, without the variant when it has no title and without `×1`; `{ productTitle, quantity, variantId, variantTitle }` |
+| `cart_abandoned`  | `recordCustomerCartAbandonedAudit` | No detail of its own, so the customer's name; `{ itemCount, lineCount }`, which the admin shows as "3 items in cart" in its language             |
+| `page_viewed`     | `recordCustomerPageViewedAudit`    | The path; `{ path }`                                                                                                                             |
 
 The client side is `customer-activity.tracking.ts`, whose `trackCartItemAdded`, `trackCartAbandoned` and `trackPageViewed` are wrapped in `createClientOnlyFn` and swallow their own errors (`fireAndForget`), so tracking can never break a page. Page views and abandonment are de-duplicated per session through `sessionStorage` keys prefixed `customer-activity:page-view:` and `customer-activity:cart-abandoned-sent`.
 
@@ -218,7 +245,7 @@ This is what makes the dashboard's "page views" KPI possible — see [Admin dash
 
 ## Admin screen
 
-`/admin/audit` (`src/routes/admin.audit.tsx`) prefetches `getAuditLogStatsQuery(resolveAuditLogToday(timeZone))`, the day it is in the admin's time zone read from `displayPreferencesQuery`, and `listAuditLogsQuery({ page: 1, pageSize: ADMIN_AUDIT_LOG_PAGE_SIZE })`. The page size is **100** and `AUDIT_LOG_QUERY_STALE_MS` is 30 000 — the shortest stale time in the codebase.
+`/admin/audit` (`src/routes/admin.audit.tsx`) prefetches `getAuditLogStatsQuery(resolveAuditLogToday(timeZone))`, the day it is in the admin's time zone read from `displayPreferencesQuery`, and `listAuditLogsQuery({ page: 1, pageSize: ADMIN_AUDIT_LOG_PAGE_SIZE })`. The page size is **100** and `AUDIT_LOG_QUERY_STALE_MS` is 30 000, half the 60 000 most other admin queries use. Neither query refetches on mount or on window focus; the realtime invalidation the queue consumer publishes after each batch refreshes them, and the toolbar's refresh button (`components/audit-refresh-action.tsx`) invalidates every audit query at once.
 
 All four use cases are guarded by `authorized({ settings: ["manage"] })`, so reading the audit log is a settings-level permission rather than a per-resource one:
 
@@ -229,7 +256,7 @@ All four use cases are guarded by `authorized({ settings: ["manage"] })`, so rea
 | `delete-audit-logs.ts`   | `{ deleted, ok }` and publishes a realtime invalidation                    |
 | `export-audit-logs.ts`   | One page of the entries the list's filters select, for the export          |
 
-`getAdminAuditLogStats(today)` is one `db.batch` of four counts, each built by the same where clause `listAuditLogs` uses for that card's filter, so with no category or search set a card lists exactly the events it counts. "Today" is the day in Poland: `resolveAuditLogToday()` in `audit-log.utils.ts` names it as an ISO date (`2026-10-15`) with `toCalendarDate(now, DEFAULT_TIMEZONE_CODE)`, the stats query is keyed by it (`[...AUDIT_LOG_QUERY_KEYS.ADMIN.STATS, today]`), and `useAuditLogToday()` (`hooks/use-audit-log-today.ts`) reads it through `useSyncExternalStore` and wakes the page at the next midnight in Poland (`resolveNextAuditLogDayStart`), so the counts, the "Today" card and the last day the popover offers move to the new day even on a page left open with nothing happening, and `buildAuditLogDayFilter(today)` is both the filter the count uses and the one the "Today" card applies. At 00:30 on 15 October in Poland it is still the 14th in UTC, where the Worker runs, and the card counts and lists the events since midnight in Poland.
+`getAdminAuditLogStats(today, timeZone)` is one `db.batch` of four counts, each built by the same where clause `listAuditLogs` uses for that card's filter, so with no category or search set a card lists exactly the events it counts. "Today" is the day in the admin's time zone: `resolveAuditLogToday(timeZone, now)` in `audit-log.utils.ts` names it as an ISO date (`2026-10-15`) with `toCalendarDate(now, timeZone)`, the stats query is keyed by it (`[...AUDIT_LOG_QUERY_KEYS.ADMIN.STATS, today]`), and `getAuditLogStats` reads that day on the clock `resolveRequestDisplayPreferences` resolves for the request. `useAuditLogToday()` (`hooks/use-audit-log-today.ts`) reads the day through `useSyncExternalStore`, with the time zone from `useDisplayTimeZone()`, and wakes the page at the next midnight there (`resolveNextAuditLogDayStart(now, timeZone)`), so the counts, the "Today" card and the last day the popover offers move to the new day even on a page left open with nothing happening, and `buildAuditLogDayFilter(today)` is both the filter the count uses and the one the "Today" card applies. For an admin in Poland, at 00:30 on 15 October it is still the 14th in UTC, where the Worker runs, and the card counts and lists the events since midnight in Poland.
 
 `buildAdminDateTimeFilterSql` (`src/modules/_core/utils/datetime-column-filter.server.ts`) reads every date and time of the filter on the admin's clock, the time zone `resolveRequestDisplayPreferences` resolves for the request, with `instantOfWallClock` from `datetime.ts`, whatever zone the Worker runs in. `on` covers the whole day, from its midnight to the next, so a day on which the clocks change has 23 or 25 hours, and the popover asks only for the day. `before` stops at the chosen minute, `after` starts once it is over, and `between` runs from the first minute to the end of the last. The trigger shows a whole day without a time (`= Oct 15, 2026`), and `formatAdminAuditTimestamp` writes row times in the admin's time zone and format locale. The orders, customers and products lists filter their date columns with the same builder, and the shared grid's `matchesDateColumnFilterIn(timeZone)` reads days with the same `wallClockStartMs` and `wallClockEndMs` from `datetime-column-filter.ts`.
 
@@ -243,7 +270,7 @@ const hasMore = total === undefined ? items.length === params.limit : params.off
 
 The filter constant is `AUDIT_LOG_CATEGORY_FILTER` (the categories plus `all`). Presentation maps: `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS`, `ACTOR_ROLE_COLORS`, plus `AUDIT_LOG_TABLE_COLUMN_ID`, `_SIZE` and `_PINNING`.
 
-Components live in `.../admin/audit/`: `audit-log.tsx`, `components/audit-columns.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, the cells in `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-table-cell`), and `audit-stats.config.ts`.
+Components live in `.../admin/audit/`: `audit-log.tsx`, which renders `components/audit-table-content.tsx` (the stat cards above the shared data grid), `components/audit-columns.tsx` with the column definitions in `lib/audit-column-defs.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, `components/audit-row-actions.tsx` (delete one entry after a confirmation), `components/audit-refresh-action.tsx`, the cells in `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-detail-cell`, `audit-table-cell`), the grid state in `hooks/use-audit-data-grid.ts`, and `audit-stats.config.ts`.
 
 ### Exporting the log
 
@@ -257,11 +284,13 @@ Deletion is the only mutation an admin can make, and it is recorded too. `delete
 
 ## Read as a feed elsewhere
 
-Three other screens read `audit_log` rather than a table of their own:
+Five other screens read `audit_log` rather than a table of their own:
 
-- `/account/overview` — the activity feed, through `getCustomerActivityAuditRows` and `mapAuditLogToActivityItem`
+- `/account/overview` — the activity feed, through `getCustomerActivityAuditRows` and `mapAuditLogToActivityItem`: the account's sign-ins, failed sign-ins, sign-outs and basket additions, and the placement, shipment and delivery of its orders, at most `CUSTOMER_AUDIT_TIMELINE_LIMIT` (50) entries
 - `/account/sessions` — the login history, filtered to `auth.login` and `auth.login_failed`
-- `/admin/customers/$id` — the customer timeline, `getCustomerAuditTimelineQuery` with `CUSTOMER_AUDIT_TIMELINE_LIMIT = 50`
+- `/admin/customers/$id` — the customer timeline, `getCustomerAuditTimelineQuery` with `CUSTOMER_AUDIT_TIMELINE_LIMIT = 50`: sign-ins, sign-outs, basket additions, abandoned baskets and page views
+- `/admin/orders/$orderId` — the order's Activity card, `getAdminOrderTimelineRows` in `src/modules/order/order.accessors.ts`, every entry whose `resource_id` is the order and whose action is in `ADMIN_ORDER_TIMELINE_ACTIONS` (see [Orders: The order detail screen](/docs/features/orders#the-order-detail-screen))
+- `/admin/overview` — the page-view KPI, `pageViewsQuery` counting `customer.page_viewed` (see [Admin dashboard](/docs/features/admin-dashboard#the-snapshot))
 
 Deleting audit rows therefore also erases those views.
 
