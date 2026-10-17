@@ -59,17 +59,28 @@ The same file exports the Durable Object class, a `queue` handler and a `schedul
 ```ts
 export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub"
 
-async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
-  await processAuditLogQueueBatch(batch)
+async queue(batch: MessageBatch<WorkerQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  if (isNewsletterQueueBatch(batch)) {
+    const { processNewsletterQueueBatch } = await import("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server")
+    await processNewsletterQueueBatch(batch)
+  }
+
+  if (isAuditLogQueueBatch(batch)) {
+    const { processAuditLogQueueBatch } = await import("~/src/modules/audit-log/audit-log.queue.server")
+    await processAuditLogQueueBatch(batch)
+  }
 },
 async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  const { enforceRetentionPeriods } = await import("~/src/lib/retention")
   await enforceRetentionPeriods(new Date(controller.scheduledTime))
 },
 ```
 
-The preview and production Cron Triggers call `scheduled` once a day for the retention clean-up described in [Data retention](/docs/guides/data-retention).
+`WorkerQueueMessage` is the union of an audit-log message and a newsletter campaign message. One Worker consumes both queues, so `queue` tells them apart by the batch's queue name: `isNewsletterQueueBatch` matches the names that start with `martebizuteria-newsletter`, and every other batch is the audit log's. Each processor, and the retention code behind `scheduled`, is imported lazily, so none of it is loaded for an ordinary request.
 
-`RequestContext` is declared into `@tanstack/react-start` in the same file, so `env`, `nonce`, `waitUntil` and `passThroughOnException` are typed everywhere a server function reads the request context.
+The preview and production Cron Triggers (`0 3 * * *`) call `scheduled` once a day for the retention clean-up described in [Data retention](/docs/guides/data-retention).
+
+`RequestContext` is declared into `@tanstack/react-start` in the same file, so `edgeTimeZone`, `env`, `nonce`, `waitUntil` and `passThroughOnException` are typed everywhere a server function reads the request context. `edgeTimeZone` is `request.cf?.timezone`, the time zone Cloudflare derives from the visitor's address; [use-intl](/docs/integrations/use-intl#display-preferences) uses it when the browser has not yet reported its own.
 
 ## File routes
 
@@ -109,7 +120,13 @@ loader: async ({ context, deps }) => {
     prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
   ])
 
-  return { description: messages.description, title: messages.title }
+  const t = createTranslator({ locale: context.locale, messages })
+
+  return {
+    description: messages.description,
+    structuredData: buildBreadcrumbStructuredData({ leaf: messages.title, locale: context.locale, sections: [] }),
+    title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
+  }
 },
 loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
 staticData: { namespaces: ["pages.products"] },
@@ -118,7 +135,7 @@ validateSearch: storefrontProductsSearchSchema,
 
 Widgets, dialogs, forms and table columns live under `src/presentation/components/custom/` and read their own translations and their own queries. The simpler routes use `head: pageHead` from `src/lib/seo.ts`, which turns the loader's `{ title, description }` into `<title>`, `description` and the two matching Open Graph tags, plus the page's own `og:image` and `twitter:image` when the loader returns an `image` and a JSON-LD script when it returns `structuredData`.
 
-`src/routes/__root.tsx` owns the document shell: `beforeLoad` resolves the locale and preloads every namespace the matched routes ask for, `shellComponent` renders `<html lang>` with the theme, sidebar and datagrid init scripts, and `head` assembles the canonical and `hreflang` links from `localeLinks`. Storefront pages are wrapped in `SmoothScroll`; admin pages are not.
+`src/routes/__root.tsx` owns the document shell: `beforeLoad` resolves the locale and, in one `Promise.all`, preloads every namespace the matched routes ask for and the user's `displayPreferencesQuery`, `shellComponent` renders `<html lang>` with the theme, sidebar and datagrid init scripts, and `head` assembles the canonical and `hreflang` links from `localeLinks`. Storefront pages are wrapped in `SmoothScroll`; admin pages are not.
 
 ## Server functions
 
@@ -178,6 +195,6 @@ The realtime WebSocket endpoints are deliberately _not_ file routes — they are
 ## Related pages
 
 - [Request lifecycle](/docs/architecture/request-lifecycle)
-- [Routing](/docs/architecture/request-lifecycle)
+- [Routes](/docs/reference/routes)
 - [TanStack Query](/docs/integrations/tanstack-query)
 - [Guides](/docs/guides)

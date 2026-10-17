@@ -101,6 +101,22 @@ queryOptions({
 
 `TranslationsProvider` reads them with `useSuspenseQueries` and combines the results into one message tree. See [use-intl](/docs/integrations/use-intl).
 
+## Display preferences
+
+The time zone and format locale a page is shown in are cached the same way. `displayPreferencesQuery` in `src/integrations/use-intl/i18n.display-preferences.ts` holds what the user saved and what the request revealed, under `DISPLAY_PREFERENCES_QUERY_KEY` (`["i18n", "displayPreferences"]`):
+
+```ts
+export const displayPreferencesQuery = queryOptions({
+  queryFn: () => getDisplayPreferences(),
+  queryKey: DISPLAY_PREFERENCES_QUERY_KEY,
+  refetchOnReconnect: false,
+  refetchOnWindowFocus: false,
+  staleTime: Infinity,
+})
+```
+
+`__root.tsx`'s `beforeLoad` awaits it next to the message namespaces, so the server render and the hydrated page format with the same values, and `TranslationsProvider` reads it with `useSuspenseQuery`. Nothing refetches it in the background. It changes in three ways: `TranslationsProvider` patches the detected time zone with `setQueryData` once the browser reports its own, `clearCacheOnUserChange` invalidates it when the user changes, and saving a preference calls `queryClient.invalidateQueries()` with no filter, so every query whose result was dated or formatted with the old value is fetched again. See [use-intl](/docs/integrations/use-intl#display-preferences).
+
 ## The session query
 
 `src/integrations/better-auth/auth.session.ts` exports `getCurrentSessionQuery`, which deliberately opts out of background refetching so a signed-in header does not flicker:
@@ -116,9 +132,9 @@ export const getCurrentSessionQuery = queryOptions({
 })
 ```
 
-It is the only way routes and components read the session. The route guards in `src/integrations/better-auth/auth.routes.ts` load it with `context.queryClient.query(getCurrentSessionQuery)`: a real navigation into `/account` or `/admin` re-checks with `staleTime: 0`, while a link preload and the `/auth` guard reuse a cached session younger than 60 seconds. On a server render the session is dehydrated into the page with the loaders' data, so guarded pages render signed-in on the server. Components read the same entry with `useQuery(getCurrentSessionQuery)`; the navigation link, the translations time zone, the wishlist and the checkout prefill all do.
+It is the only way routes and components read the session. The route guards in `src/integrations/better-auth/auth.routes.ts` load it with `context.queryClient.query(getCurrentSessionQuery)`: a real navigation into `/account` or `/admin` re-checks with `staleTime: 0`, while a link preload and the `/auth` guard reuse a cached session younger than 60 seconds. On a server render the session is dehydrated into the page with the loaders' data, so guarded pages render signed-in on the server. Components read the same entry with `useQuery(getCurrentSessionQuery)`: the fullscreen menu's secondary navigation, the wishlist, the checkout's contact and address steps, the customer activity tracker and the admin customers' row actions.
 
-The guards only read the session. A change of user is handled in one place: `clearCacheOnUserChange(queryClient)`, also exported from `auth.session.ts`, subscribes to the query cache. Whenever the session query's data switches to a different user id, including signed out to signed in and back, it removes every cached query except the session itself and the translation message catalogues, matched by `isMessagesQuery` from `src/integrations/use-intl/i18n.messages.ts`. It ignores the first session it sees and the session entry being removed:
+The guards only read the session. A change of user is handled in one place: `clearCacheOnUserChange(queryClient)`, also exported from `auth.session.ts`, subscribes to the query cache. Whenever the session query's data switches to a different user id, including signed out to signed in and back, it removes every cached query except the session itself, the display preferences and the translation message catalogues, matched by `isMessagesQuery` from `src/integrations/use-intl/i18n.messages.ts`. The display preferences entry is invalidated instead of removed, so the new user's saved time zone and format locale replace it. It ignores the first session it sees and the session entry being removed:
 
 ```ts
 export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) => {
@@ -131,14 +147,18 @@ export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) =
     }
 
     if ("session" in seen && seen.session?.user.id !== session?.user.id) {
-      queryClient.removeQueries({ predicate: (cached) => cached.queryHash !== SESSION_QUERY_HASH && !isMessagesQuery(cached) })
+      queryClient.removeQueries({
+        predicate: (cached) =>
+          cached.queryHash !== SESSION_QUERY_HASH && cached.queryHash !== DISPLAY_PREFERENCES_QUERY_HASH && !isMessagesQuery(cached),
+      })
+      void queryClient.invalidateQueries({ exact: true, queryKey: DISPLAY_PREFERENCES_QUERY_KEY })
     }
     seen.session = session
   })
 }
 ```
 
-Because it watches the cache, it catches a change whoever fetched the session: a guard, a component such as the navigation link, the wishlist or the translations time zone, a refetch after invalidation, or hydration. `getRouter` in `src/router.tsx` installs it in the browser only, next to `setupQueryClientInvalidationBroadcast`. Server rendering skips it, because every request starts with an empty `QueryClient`.
+Because it watches the cache, it catches a change whoever fetched the session: a guard, a component such as the navigation, the wishlist or a checkout step, a refetch after invalidation, or hydration. `getRouter` in `src/router.tsx` installs it in the browser only, next to `setupQueryClientInvalidationBroadcast`. Server rendering skips it, because every request starts with an empty `QueryClient`.
 
 After a password sign-in or a two-factor challenge, `usePostAuthRedirect` removes only the cached session entry, then clears the router's cached matches and invalidates the router. The `/auth` guard fetches the fresh session, and `clearCacheOnUserChange` forgets what was cached while signed out. Sign-out is a full page load, which discards the whole cache. The guards and the redirect flow are described in [Better Auth](/docs/integrations/better-auth).
 
@@ -187,7 +207,14 @@ export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryK
 
 `setupQueryClientInvalidationBroadcast(queryClient)` installs the listener, which applies `invalidateQueryPrefix` to every key it receives, and `src/router.tsx` calls it once per client, guarded by `if (!import.meta.env.SSR)`. Both functions are defensive: `getInvalidationChannel` returns `undefined` when `document` or `BroadcastChannel` is missing, a `WeakSet` prevents a duplicate listener on the same client, and the message handler ignores anything without an array `queryKey`.
 
-Use `syncQueryInvalidation` only for a local mutation whose keys the server does not publish over the realtime hub: today the coupon actions (`DISCOUNT_QUERY_KEYS.ADMIN.ALL`) and the order row actions (`ORDER_QUERY_KEYS.ADMIN.ORDERS` and the overview's `ADMIN_DASHBOARD_QUERY_KEYS.ALL`, which otherwise reach other browsers only after an audit-log queue batch). A change the server publishes already reaches every storefront and admin tab on its own socket, so posting it as well would make every other tab of the browser fetch the same queries again.
+Use `syncQueryInvalidation` only for a local mutation whose keys the server does not publish over the realtime hub. Its callers today:
+
+- the coupon actions: `DISCOUNT_QUERY_KEYS.ADMIN.ALL`
+- the order row actions: `ORDER_QUERY_KEYS.ADMIN.ORDERS`, `USER_QUERY_KEYS.ADMIN.CUSTOMERS` and the overview's `ADMIN_DASHBOARD_QUERY_KEYS.ALL`; for most order actions the server publishes the order and overview keys only after an audit-log queue batch. Resending an order e-mail posts `ORDER_QUERY_KEYS.ADMIN.ORDERS` alone
+- the InPost actions that change an order, creating and refreshing a shipment: `ORDER_QUERY_KEYS.ADMIN.ORDERS`
+- the newsletter subscriber actions, unsubscribe and erase: `NEWSLETTER_QUERY_KEYS.ADMIN.ALL`. Their server side also publishes the narrower `NEWSLETTER_QUERY_KEYS.ADMIN.PAGE` and `ADMIN.STATS`
+
+A change the server publishes already reaches every storefront and admin tab on its own socket, so posting it as well would make every other tab of the browser fetch the same queries again.
 
 ## Server-pushed invalidation
 

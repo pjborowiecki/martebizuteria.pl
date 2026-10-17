@@ -101,7 +101,7 @@ const folderPages = (folder: Folder): Item[] => [
 ]
 ```
 
-Dlatego `index` **nie może** być wymieniony w tablicy `pages` w pliku `meta.<locale>.json` katalogu — Fumadocs już traktuje go jako indeks katalogu, a wypisanie umieściłoby go dwukrotnie.
+Strona indeksu pojawia się raz w obu przypadkach. Gdy `meta.<locale>.json` katalogu pomija `index` w `pages`, Fumadocs robi z niej `folder.index`. Gdy `pages` ją wymienia, fumadocs-core 16.17.1 usuwa ją z `folder.index` i zostawia wśród dzieci na wskazanej pozycji. Każdy katalog w `content/docs`, który ma stronę indeksu, wymienia `"index"` jako pierwszy, więc indeks nadal otwiera swoją sekcję.
 
 ## Trasy
 
@@ -160,7 +160,7 @@ Strony prawne używają z `mdxComponents` tylko odnośnika. Ich artykuł przekaz
 ## Dodawanie strony dokumentacji
 
 1. Utwórz `content/docs/<section>/<slug>.en-US.mdx` **oraz** `<slug>.pl-PL.mdx`. Frontmatter to `title` i `description`.
-2. Dodaj `"<slug>"` do tablicy `pages` w **obu** plikach: `content/docs/<section>/meta.en-US.json` i `meta.pl-PL.json`, w kolejności czytania. Nie wypisuj `index`.
+2. Dodaj `"<slug>"` do tablicy `pages` w **obu** plikach: `content/docs/<section>/meta.en-US.json` i `meta.pl-PL.json`, w kolejności czytania. Pliki `meta` nowego katalogu wymieniają `"index"` jako pierwszy, tak jak istniejące.
 3. Pisz czystym Markdownem. Rozpocznij treść od `##`. Odnośniki wewnętrzne zapisuj bez prefiksu językowego.
 4. Uruchom `bun run content` (albo zrestartuj `bun run dev`), aby `.source` zauważyło pliki.
 5. Uruchom `bun run format`, `bun run check` i `bun run test`.

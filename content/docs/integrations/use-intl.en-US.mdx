@@ -3,7 +3,7 @@ title: "use-intl"
 description: "Locales, URL prefixes, message namespaces and how a page gets its translations."
 ---
 
-The shop is Polish first and English second. `pl-PL` is the default locale and is served without a prefix, so `/products` is Polish and `/en-US/products` is English. `src/integrations/use-intl/` holds five files that together define the locales, rewrite the URLs, load the message namespaces and keep the choice in a cookie.
+The shop is Polish first and English second. `pl-PL` is the default locale and is served without a prefix, so `/products` is Polish and `/en-US/products` is English. `src/integrations/use-intl/` holds seven files. Five define the locales, rewrite the URLs, load the message namespaces and keep the choice in a cookie; `i18n.display.ts` and `i18n.display-preferences.ts` decide the time zone and the format locale each user sees dates and numbers in.
 
 ## Configuration
 
@@ -25,7 +25,7 @@ export const I18N = { COOKIE_NAME, DEFAULT_LOCALE, DEFAULT_TIMEZONE, SUPPORTED_L
 
 `SupportedLocale` is derived from the tuple, so adding a locale here is what makes the type system demand the rest: a Stripe locale in `stripe.client.ts`, a `react-day-picker` locale in `react-day-picker.locale.ts`, a JSON file per namespace under `messages/<locale>/`, a second MDX file for every page in `content/docs`, and a title, description and body in that locale for every `content_page` row, entered in the editor at `/admin/content`.
 
-`DEFAULT_TIMEZONE` is the store's time zone, which the test providers and the withdrawal form use. The time zone and format locale a page is shown in come from the user's preferences; the lists users choose from are `TIMEZONES` in `src/modules/_core/constants/timezone.ts` and `FORMAT_LOCALES` in `src/integrations/use-intl/i18n.display.ts` (see [Internationalization](/docs/features/internationalization)).
+`DEFAULT_TIMEZONE` is the store's time zone. The test render provider in `src/platform/testing/lib/render.tsx` and the withdrawal e-mail template, `order-withdrawal.tsx`, which states when the statement was submitted, use it. The shop's own business dates use the same zone through `DEFAULT_TIMEZONE_CODE` in `src/modules/_core/constants/timezone.ts`: the year in an order number and the withdrawal deadlines in `polish-deadline.ts`. The time zone and format locale a page is shown in come from the user's preferences (see [Display preferences](#display-preferences)); the lists users choose from are `TIMEZONES` in `src/modules/_core/constants/timezone.ts` and `FORMAT_LOCALES` in `src/integrations/use-intl/i18n.display.ts`.
 
 ## URL shape
 
@@ -97,7 +97,7 @@ The cookie is consulted only for ignored paths — which is exactly the case tha
 
 ## Messages
 
-`messages/<locale>/<namespace>.json` — 56 namespaces per locale, identical file names in both. The namespace _is_ the file name, with dots for nesting: `pages.admin.catalog.products.json` becomes `pages.admin.catalog.products`.
+`messages/<locale>/<namespace>.json` — 60 namespaces per locale, identical file names in both. The namespace _is_ the file name, with dots for nesting: `pages.admin.catalog.products.json` becomes `pages.admin.catalog.products`.
 
 `i18n.messages.ts` does four things.
 
@@ -146,7 +146,7 @@ export const ROOT_NAMESPACES = [...new Set(rootMessagePaths.map((path) => toName
 </IntlProvider>
 ```
 
-`timeZone` is the user's saved time zone, or the one detected for the request, or `UTC` (see [Internationalization](/docs/features/internationalization)). The format locale goes to `DisplayPreferencesContext` next to the provider rather than into it, because the provider's `locale` also picks the plural forms of the messages.
+`timeZone` is the user's saved time zone, or the one detected for the request, or `UTC`. The format locale goes to `DisplayPreferencesContext` inside the provider rather than into it, because the provider's `locale` also picks the plural forms of the messages. See [Display preferences](#display-preferences).
 
 It also writes the locale back into the `marte_locale` cookie from an effect, so a direct visit to `/en-US/...` is remembered.
 
@@ -163,6 +163,54 @@ const [messages] = await Promise.all([
 
 Note the `<typeof productsMessages>` type argument, taken from a type-only import of the English JSON. That is the project's convention for typed message access outside React context, and it is why a key present in English but missing in Polish is a type error.
 
+## Display preferences
+
+The page's language comes from the URL, but the time zone and the format locale, which decides how dates, times and numbers are written, belong to the user. `i18n.display.ts` holds the rules and `i18n.display-preferences.ts` the server function and query that bring them to the page. [Internationalization](/docs/features/internationalization) describes what the shopper and the admin see.
+
+### Detection order
+
+`detectDisplayPreferences({ acceptLanguage, cookieHeader, edgeTimeZone })` reads what the request reveals, and `toSavedDisplayPreferences(user)` what the signed-in user saved in `user.timezone` and `user.format_locale`. `resolveDisplayPreferences({ detected, saved })` lets each saved value win over its detected one on its own:
+
+| Preference    | Used in this order                                                                                                                                                                                                                                                                                       |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Time zone     | The saved `user.timezone`; the `marte_time_zone` cookie (`TIME_ZONE_COOKIE_NAME`), where the browser reports its own zone; `edgeTimeZone`, the zone Cloudflare derives from the visitor's address (`request.cf?.timezone`, put into the request context by `src/server.ts`); `FALLBACK_TIME_ZONE`, `UTC` |
+| Format locale | The saved `user.format_locale`; the first `Accept-Language` entry, in header order with `q` weights ignored, that `toFormatLocale` accepts; `FALLBACK_FORMAT_LOCALE`, `en-US`                                                                                                                            |
+
+Every candidate is checked before it is used, a saved one included, so a value the runtime cannot format with is skipped. `isTimeZone` accepts at most 64 characters that `Intl.DateTimeFormat` takes as a `timeZone`. `toFormatLocale` canonicalizes at most 35 characters with `Intl.getCanonicalLocales` and keeps the tag only when `Intl.DateTimeFormat.supportedLocalesOf` supports it.
+
+### The query and its cache
+
+`getDisplayPreferences` is a `GET` server function that returns both halves, `{ detected, saved }`: it reads the headers with `getRequest()`, the session with `getRequestSession()`, which is memoized per request, and `edgeTimeZone` with `getGlobalStartContext()`. A visitor has nothing saved. `displayPreferencesQuery` caches the answer under `DISPLAY_PREFERENCES_QUERY_KEY`, `["i18n", "displayPreferences"]`, with `staleTime: Infinity` and no refetch on window focus or reconnect. `__root.tsx`'s `beforeLoad` awaits it in the same `Promise.all` as the namespaces, so the server render and the hydrated page format with the same values.
+
+The entry changes in three ways:
+
+- In the browser, `useBrowserTimeZone` in `TranslationsProvider` reads `Intl.DateTimeFormat().resolvedOptions().timeZone` after the first render. When it is a valid zone, it writes it to `marte_time_zone` if the cookie holds something else (a year, `Path=/`, `SameSite=Lax`, `Secure` over HTTPS), and when it differs from the detected zone it patches `detected.timeZone` in the cached entry with `setQueryData`. A user with no saved zone sees the browser's zone at once, and the next request detects it from the cookie.
+- When the session switches to another user, `clearCacheOnUserChange` keeps the entry and invalidates it, so the new user's saved values replace it (see [TanStack Query](/docs/integrations/tanstack-query#display-preferences)).
+- Saving a preference invalidates every cached query, described below.
+
+### The context and the hooks
+
+`TranslationsProvider` gives `IntlProvider` the resolved `timeZone` and renders `DisplayPreferencesContext` from `src/hooks/use-display-format.ts` inside it, with the resolved `{ formatLocale, timeZone }`. The hooks in the same file read it:
+
+| Hook                      | Returns                                                                                                       |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `useDisplayPreferences()` | `{ formatLocale, timeZone }`; outside the context, the page's locale and `IntlProvider`'s time zone, or `UTC` |
+| `useFormatLocale()`       | The format locale, for code that formats by hand, such as `formatPrice(amount, currency, formatLocale)`       |
+| `useDisplayTimeZone()`    | The time zone                                                                                                 |
+| `useFormatter()`          | `createFormatter({ locale: formatLocale, timeZone })` from `use-intl`, memoized on both values                |
+
+Application code formats through this `useFormatter`. `use-intl`'s own `useFormatter` would format in the page's language, because it reads `IntlProvider`'s `locale`.
+
+### On the server
+
+`resolveRequestDisplayPreferences()`, a `createServerOnlyFn` in `i18n.display-preferences.ts`, makes the same reads for the current request and returns the resolved `{ formatLocale, timeZone }`. Server functions call it when their answer depends on where a day begins or holds a date or label they format themselves: the admin orders, customers and products pages and their exports, the audit log list and its count for today, the dashboard snapshot and chart range, and the customer detail. Use-case tests mock `i18n.display-preferences.ts` with `src/platform/testing/mocks/display-preferences.ts`, whose `resolveRequestDisplayPreferences` answers `pl-PL` and `Europe/Warsaw`.
+
+### Saving a preference
+
+`updateDisplayPreference` in `src/modules/user/use-cases/update-display-preference.ts` is a `POST` server function behind `withRateLimit("update-display-preference", RATE_LIMITS.SENSITIVE)`, three calls a minute, and `authorized()`, so every signed-in user may change their own and only their own row. `userZodSchemas.displayPreferenceInput` accepts `{ preference: "formatLocale" | "timeZone", value }`, where `value` is `""` for Automatic, stored as `NULL`, or a value `toFormatLocale` returns unchanged or `isTimeZone` accepts. Better Auth declares both columns with `input: false`, so its own endpoints cannot write them.
+
+`DisplayPreferenceField` in `src/presentation/components/custom/display-preferences/` is the picker. `useDisplayPreferenceOptions` lists Automatic first, labelled with the detected value, then the eighteen `FORMAT_LOCALES`, each with a sample date and number, or every zone in `TIMEZONES`, plus a saved value the list does not hold. `useSaveDisplayPreference` sends the choice and, on success, calls `queryClient.invalidateQueries()` with no filter, so every query whose result was dated or formatted with the old value is fetched again.
+
 ## Outside React
 
 E-mails and webhooks render on the Worker without a provider, so they use `createTranslator({ locale, messages })` from `use-intl` directly. See [Resend](/docs/integrations/resend).
@@ -175,7 +223,7 @@ E-mails and webhooks render on the Worker without a provider, so they use `creat
 | `src/integrations/react-day-picker/react-day-picker.locale.ts` | `pl-PL` → `pl`, `en-US` → `enUS` for the calendar                        |
 | `src/integrations/fumadocs/fumadocs.i18n.ts`                   | Feeds `I18N.SUPPORTED_LOCALES` into Fumadocs with `hideLocale: "always"` |
 
-All three use `satisfies Record<SupportedLocale, …>` or an explicit `Record<SupportedLocale, …>`, so a new locale breaks the build until every mapping is filled in.
+The first two use `satisfies Record<SupportedLocale, …>` and an explicit `Record<SupportedLocale, …>`, so a new locale breaks the build until both mappings are filled in. `fumadocs.i18n.ts` spreads `I18N.SUPPORTED_LOCALES` into `languages`, so it takes a new locale without a change, and a page that has no MDX file in that locale falls back to `pl-PL` (`fallbackLanguage`).
 
 ## Translated content in the database
 
@@ -187,7 +235,7 @@ Worth knowing before you go looking for it: the storefront has no language-switc
 
 ## Tests
 
-`src/integrations/use-intl/__test__/` holds six files covering server locale resolution, client locale resolution, client pathname resolution, the routing and canonicalization rules, navigation helpers, and the message tree.
+`src/integrations/use-intl/__test__/` holds eight files covering server locale resolution, client locale resolution, client pathname resolution, the routing and canonicalization rules, navigation helpers, the message tree, the display preference rules in `i18n.display.ts` and the server function, server-side resolution and query in `i18n.display-preferences.ts`.
 
 ## Related pages
 

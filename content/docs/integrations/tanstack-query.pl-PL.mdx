@@ -101,6 +101,22 @@ queryOptions({
 
 `TranslationsProvider` czyta je przez `useSuspenseQueries` i scala wyniki w jedno drzewo komunikatów. Zobacz [use-intl](/docs/integrations/use-intl).
 
+## Preferencje wyświetlania
+
+Strefa czasowa i format, w których wyświetla się strona, trafiają do cache w ten sam sposób. `displayPreferencesQuery` w `src/integrations/use-intl/i18n.display-preferences.ts` przechowuje zapisany wybór użytkownika i to, co ujawniło żądanie, pod kluczem `DISPLAY_PREFERENCES_QUERY_KEY` (`["i18n", "displayPreferences"]`):
+
+```ts
+export const displayPreferencesQuery = queryOptions({
+  queryFn: () => getDisplayPreferences(),
+  queryKey: DISPLAY_PREFERENCES_QUERY_KEY,
+  refetchOnReconnect: false,
+  refetchOnWindowFocus: false,
+  staleTime: Infinity,
+})
+```
+
+`beforeLoad` w `__root.tsx` czeka na nie obok przestrzeni nazw komunikatów, więc render na serwerze i strona po hydracji formatują z tymi samymi wartościami, a `TranslationsProvider` czyta je przez `useSuspenseQuery`. Nic nie pobiera go ponownie w tle. Zmienia się na trzy sposoby: `TranslationsProvider` podmienia wykrytą strefę czasową przez `setQueryData`, gdy przeglądarka zgłosi własną, `clearCacheOnUserChange` unieważnia je przy zmianie użytkownika, a zapisanie preferencji wywołuje `queryClient.invalidateQueries()` bez filtra, więc każde zapytanie, którego wynik datowano lub sformatowano poprzednią wartością, jest pobierane ponownie. Zobacz [use-intl](/docs/integrations/use-intl#preferencje-wyświetlania).
+
 ## Zapytanie o sesję
 
 Plik `src/integrations/better-auth/auth.session.ts` eksportuje `getCurrentSessionQuery`, które świadomie rezygnuje z odświeżania w tle, aby nagłówek zalogowanego użytkownika nie migał:
@@ -116,9 +132,9 @@ export const getCurrentSessionQuery = queryOptions({
 })
 ```
 
-To jedyna droga, którą trasy i komponenty czytają sesję. Strażnicy tras w `src/integrations/better-auth/auth.routes.ts` ładują ją przez `context.queryClient.query(getCurrentSessionQuery)`: prawdziwa nawigacja do `/account` lub `/admin` sprawdza ją ponownie ze `staleTime: 0`, a wstępne ładowanie linku i strażnik `/auth` korzystają z sesji z cache, jeśli ma ona mniej niż 60 sekund. Przy renderowaniu na serwerze sesja jest serializowana do strony razem z danymi loaderów, więc chronione strony renderują się na serwerze jako zalogowane. Komponenty czytają ten sam wpis przez `useQuery(getCurrentSessionQuery)`; tak robią link w nawigacji, strefa czasowa tłumaczeń, lista życzeń i wstępne wypełnianie checkoutu.
+To jedyna droga, którą trasy i komponenty czytają sesję. Strażnicy tras w `src/integrations/better-auth/auth.routes.ts` ładują ją przez `context.queryClient.query(getCurrentSessionQuery)`: prawdziwa nawigacja do `/account` lub `/admin` sprawdza ją ponownie ze `staleTime: 0`, a wstępne ładowanie linku i strażnik `/auth` korzystają z sesji z cache, jeśli ma ona mniej niż 60 sekund. Przy renderowaniu na serwerze sesja jest serializowana do strony razem z danymi loaderów, więc chronione strony renderują się na serwerze jako zalogowane. Komponenty czytają ten sam wpis przez `useQuery(getCurrentSessionQuery)`: dodatkowa nawigacja menu pełnoekranowego, lista życzeń, kroki kontaktu i adresu w checkoucie, rejestrator aktywności klienta oraz akcje w wierszach klientów w panelu.
 
-Strażnicy jedynie czytają sesję. Zmianę użytkownika obsługuje jedno miejsce: `clearCacheOnUserChange(queryClient)`, eksportowana również z `auth.session.ts`, subskrybuje cache zapytań. Za każdym razem, gdy dane zapytania o sesję przełączają się na inny identyfikator użytkownika, także z wylogowanego na zalogowanego i z powrotem, funkcja usuwa z cache każde zapytanie poza samą sesją i katalogami komunikatów tłumaczeń, rozpoznawanymi przez `isMessagesQuery` z `src/integrations/use-intl/i18n.messages.ts`. Pomija pierwszą sesję, którą zobaczy, oraz usunięcie wpisu sesji:
+Strażnicy jedynie czytają sesję. Zmianę użytkownika obsługuje jedno miejsce: `clearCacheOnUserChange(queryClient)`, eksportowana również z `auth.session.ts`, subskrybuje cache zapytań. Za każdym razem, gdy dane zapytania o sesję przełączają się na inny identyfikator użytkownika, także z wylogowanego na zalogowanego i z powrotem, funkcja usuwa z cache każde zapytanie poza samą sesją, preferencjami wyświetlania i katalogami komunikatów tłumaczeń, rozpoznawanymi przez `isMessagesQuery` z `src/integrations/use-intl/i18n.messages.ts`. Wpis preferencji wyświetlania jest unieważniany zamiast usuwany, więc zastępują go strefa czasowa i format zapisane przez nowego użytkownika. Pomija pierwszą sesję, którą zobaczy, oraz usunięcie wpisu sesji:
 
 ```ts
 export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) => {
@@ -131,14 +147,18 @@ export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) =
     }
 
     if ("session" in seen && seen.session?.user.id !== session?.user.id) {
-      queryClient.removeQueries({ predicate: (cached) => cached.queryHash !== SESSION_QUERY_HASH && !isMessagesQuery(cached) })
+      queryClient.removeQueries({
+        predicate: (cached) =>
+          cached.queryHash !== SESSION_QUERY_HASH && cached.queryHash !== DISPLAY_PREFERENCES_QUERY_HASH && !isMessagesQuery(cached),
+      })
+      void queryClient.invalidateQueries({ exact: true, queryKey: DISPLAY_PREFERENCES_QUERY_KEY })
     }
     seen.session = session
   })
 }
 ```
 
-Ponieważ funkcja obserwuje cache, wychwytuje zmianę bez względu na to, kto pobrał sesję: strażnik, komponent, taki jak link w nawigacji, lista życzeń czy strefa czasowa tłumaczeń, ponowne pobranie po unieważnieniu albo hydracja. `getRouter` w `src/router.tsx` instaluje ją wyłącznie w przeglądarce, obok `setupQueryClientInvalidationBroadcast`. Renderowanie na serwerze ją pomija, ponieważ każde żądanie zaczyna od pustego `QueryClient`.
+Ponieważ funkcja obserwuje cache, wychwytuje zmianę bez względu na to, kto pobrał sesję: strażnik, komponent, taki jak nawigacja, lista życzeń czy krok checkoutu, ponowne pobranie po unieważnieniu albo hydracja. `getRouter` w `src/router.tsx` instaluje ją wyłącznie w przeglądarce, obok `setupQueryClientInvalidationBroadcast`. Renderowanie na serwerze ją pomija, ponieważ każde żądanie zaczyna od pustego `QueryClient`.
 
 Po logowaniu hasłem lub weryfikacji dwuskładnikowej `usePostAuthRedirect` usuwa z cache wyłącznie wpis sesji, a następnie czyści zapamiętane dopasowania routera i unieważnia router. Strażnik `/auth` pobiera świeżą sesję, a `clearCacheOnUserChange` zapomina to, co trafiło do cache przed zalogowaniem. Wylogowanie to pełne przeładowanie strony, które odrzuca cały cache. Strażników i przebieg przekierowań opisuje strona [Better Auth](/docs/integrations/better-auth).
 
@@ -187,7 +207,14 @@ export const syncQueryInvalidation = (queryClient: QueryClient, queryKey: QueryK
 
 `setupQueryClientInvalidationBroadcast(queryClient)` instaluje nasłuchiwanie, które stosuje `invalidateQueryPrefix` do każdego odebranego klucza, a `src/router.tsx` wywołuje je raz na klienta, pod warunkiem `if (!import.meta.env.SSR)`. Obie funkcje są odporne na brak środowiska: `getInvalidationChannel` zwraca `undefined`, gdy brakuje `document` lub `BroadcastChannel`, `WeakSet` zapobiega zduplikowanemu nasłuchiwaniu na tym samym kliencie, a handler wiadomości ignoruje wszystko, co nie zawiera tablicowego `queryKey`.
 
-Używaj `syncQueryInvalidation` tylko przy lokalnej mutacji, której kluczy serwer nie publikuje przez hub realtime: dziś są to akcje kuponów (`DISCOUNT_QUERY_KEYS.ADMIN.ALL`) i akcje w wierszach zamówień (`ORDER_QUERY_KEYS.ADMIN.ORDERS` i `ADMIN_DASHBOARD_QUERY_KEYS.ALL` przeglądu, które inaczej docierają do innych przeglądarek dopiero po wsadzie z kolejki dziennika zdarzeń). Zmiana publikowana przez serwer dociera już do każdej karty sklepu i panelu przez jej własne gniazdo, więc publikowanie jej także na kanale kazałoby każdej innej karcie przeglądarki pobrać te same zapytania jeszcze raz.
+Używaj `syncQueryInvalidation` tylko przy lokalnej mutacji, której kluczy serwer nie publikuje przez hub realtime. Dziś wywołują ją:
+
+- akcje kuponów: `DISCOUNT_QUERY_KEYS.ADMIN.ALL`
+- akcje w wierszach zamówień: `ORDER_QUERY_KEYS.ADMIN.ORDERS`, `USER_QUERY_KEYS.ADMIN.CUSTOMERS` i `ADMIN_DASHBOARD_QUERY_KEYS.ALL` przeglądu; przy większości akcji na zamówieniu serwer publikuje klucze zamówień i przeglądu dopiero po wsadzie z kolejki dziennika zdarzeń. Ponowne wysłanie e-maila zamówienia publikuje na kanale samo `ORDER_QUERY_KEYS.ADMIN.ORDERS`
+- akcje InPost zmieniające zamówienie, czyli utworzenie i odświeżenie przesyłki: `ORDER_QUERY_KEYS.ADMIN.ORDERS`
+- akcje na subskrybentach newslettera, wypisanie i usunięcie danych: `NEWSLETTER_QUERY_KEYS.ADMIN.ALL`. Ich strona serwerowa publikuje też węższe `NEWSLETTER_QUERY_KEYS.ADMIN.PAGE` i `ADMIN.STATS`
+
+Zmiana publikowana przez serwer dociera już do każdej karty sklepu i panelu przez jej własne gniazdo, więc publikowanie jej także na kanale kazałoby każdej innej karcie przeglądarki pobrać te same zapytania jeszcze raz.
 
 ## Unieważnianie wypychane z serwera
 

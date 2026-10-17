@@ -100,7 +100,8 @@ Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefron
 
 - **Every catalogue mutation.** All the `create-`, `update-`, `delete-` and `reorder-` use cases under `src/modules/product/`, `product-category/`, `product-collection/` and `product-attribute/`.
 - **Checkout.** `stripe.actions.server.ts` calls `scheduleProductCatalogInvalidation()` when a session is created or updated, because reserving stock changes availability.
-- **Webhooks.** `stripe.webhooks.ts` calls `scheduleAdminOrdersInvalidation()` on fulfilment, refund and dispute, `webhooks.inpost.ts` after it reads a shipment's new status back from ShipX, and `scheduleProductCatalogInvalidation()` on fulfilment and release. A refund does not refresh the catalogue, because it never returns stock; `cancelOrder` and `returnOrderToStock` do when the admin puts an order's items back.
+- **Fulfilment.** `announcePlacedOrder` in `stripe.fulfillment.server.ts` calls `scheduleAdminOrdersInvalidation()` and `scheduleProductCatalogInvalidation()` once a paid session has become an order, whether the Stripe webhook or the checkout's return page placed it.
+- **Webhooks.** `stripe.webhooks.ts` calls `scheduleAdminOrdersInvalidation()` on a refund, a failed or cancelled refund and a dispute, and `scheduleProductCatalogInvalidation()` on release; `webhooks.inpost.ts` calls `scheduleAdminOrdersInvalidation()` after it reads a shipment's new status back from ShipX. A refund does not refresh the catalogue, because it never returns stock; `cancelOrder` and `returnOrderToStock` do when the admin puts an order's items back.
 - **Stepping an order back.** `stepBackOrder` calls `scheduleAdminOrdersInvalidation()` right after it moves the order, so every open admin tab shows the earlier step without waiting for the audit entry.
 - **Withdrawals.** `order-withdrawal.record.server.ts` calls `scheduleAdminOrdersInvalidation()` once a customer's statement of withdrawal is recorded, so an open admin order page shows the withdrawal card.
 - **Identity.** The `user` create, update and delete hooks in `auth.hooks.server.ts` call `scheduleAdminCustomersInvalidation()`, and so do `grantAdminAccess` and `revokeAdminAccess`, which change the role without Better Auth.
@@ -109,7 +110,8 @@ Note that `scheduleCollectionCatalogInvalidation` also invalidates the storefron
 - **Delivery settings.** `create-delivery-method.ts`, `update-delivery-method.ts`, `archive-delivery-method.ts` and `reorder-delivery-methods.ts` call `scheduleDeliveryMethodsInvalidation()`, and `set-free-delivery-threshold.ts` calls `scheduleFreeDeliveryInvalidation()` when the threshold changes, so other admin tabs show the change and an open checkout fetches the delivery methods or the threshold again.
 - **Seller details.** `update-seller-details.ts` calls `scheduleSellerDetailsInvalidation()` after a save that changed something, so other admin tabs show the new details and the footer, the product pages and the checkout's pickup step follow in open storefront and checkout tabs.
 - **Newsletter.** `send-newsletter-campaign.ts` refreshes the admin campaign list when a newsletter starts, and `newsletter-campaign.queue.server.ts` after every batch it sends and when it stops a campaign, so the Marketing page shows each newsletter's progress. `scheduleAdminNewsletterSubscribersInvalidation()` is called on every change to a subscriber row: by `subscribe-to-newsletter.ts` after it saves a sign-up, `confirm-newsletter-subscription.ts` after a confirmation, `unsubscribeSubscriber` in `newsletter.unsubscribe.server.ts`, which the unsubscribe link, the one-click route, the account preferences and the admin all use, `erase-newsletter-subscriber.ts`, and `eraseAccountData`, so open admin tabs update the subscriber list and its counts as shoppers sign up, confirm and leave.
-- **Audit.** `audit-log.queue.server.ts`, which adds `ORDER_CHANGE_ADMIN_QUERY_KEYS` for a batch that carries an order timeline action, and `delete-audit-logs.ts`.
+- **Erasure.** `erase-newsletter-subscriber.ts` and `eraseAccountData` in `user.erasure.server.ts` also call `scheduleAdminAuditLogInvalidation()`, because they delete the person's audit entries along with the subscriber or the account.
+- **Audit.** `audit-log.queue.server.ts`, which adds `ORDER_CHANGE_ADMIN_QUERY_KEYS` for a batch that carries an order timeline action, and `delete-audit-logs.ts`. Both call `publishRealtimeInvalidation` directly and await it, so `delete-audit-logs.ts` is a use case that does not follow step 5 of [Adding a new invalidation](#adding-a-new-invalidation).
 
 ## The Durable Object
 
@@ -176,7 +178,7 @@ export const handleRealtimeInvalidationWebSocket = async (request, env, hubName)
 }
 ```
 
-The admin hub requires a session whose user passes `hasAdminAccess(role)` and has two-factor authentication on (`needsTwoFactorSetup(user)` is false), and returns 401 otherwise. The storefront hub is open, which is correct — it only ever broadcasts public catalogue keys.
+The admin hub requires a session whose user passes `hasAdminAccess(role)` and for whom `needsTwoFactorSetup(user)` is false, which in the `production` and `test` builds means two-factor authentication is on, and returns 401 otherwise. The storefront hub is open, which is correct — it only ever broadcasts public catalogue keys.
 
 These are routed in `src/server.ts` before the TanStack Start handler, because a WebSocket upgrade has to be answered by the Durable Object rather than by a route component:
 
@@ -203,7 +205,7 @@ useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.STOREFRONT, subscriptions:
 useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })
 ```
 
-The hook builds `wss://` or `ws://` from `globalThis.location.protocol`, connects, and on each message parses the payload, resolves its topics against the subscription list with `resolveInvalidatedQueryKeys`, taking the narrower key of each overlapping topic and subscription, each key once, and applies `invalidateQueryPrefix` to each key: queries on screen refetch, queries that are only cached are dropped, so the next visit fetches them fresh, and an infinite list such as the storefront catalogue keeps its loaded pages and refetches them on the next visit. Nothing is posted to the viewer's other tabs: every storefront and admin tab receives the same frame on its own socket, and tabs outside those layouts hold no socket and see the change on their next fetch. See [TanStack Query](/docs/integrations/tanstack-query).
+The hook builds `wss://` or `ws://` from `globalThis.location.protocol`, connects, and on each message parses the payload, resolves its topics against the subscription list with `resolveInvalidatedQueryKeys`, taking the narrower key of each overlapping topic and subscription, each key once, and applies `invalidateQueryPrefix` to each key: queries on screen refetch, queries that are only cached are dropped, so the next visit fetches them fresh, and an infinite list such as the storefront catalogue keeps its loaded pages and refetches them on the next visit. Nothing is posted to the viewer's other tabs: every storefront and admin tab, and every checkout tab for the three keys it follows, receives the same frame on its own socket, and tabs outside those layouts hold no socket and see the change on their next fetch. See [TanStack Query](/docs/integrations/tanstack-query).
 
 Reconnection is exponential with a ceiling:
 

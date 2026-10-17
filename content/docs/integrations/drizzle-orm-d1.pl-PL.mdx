@@ -33,17 +33,17 @@ export { inventory, inventoryRelations } from "~/src/modules/inventory/inventory
 
 Zbiorczy eksport udostępnia 41 tabel. Drizzle potrzebuje jednego grafu obiektów do rozwiązania relacji, a drizzle-kit jednego punktu wejścia — dlatego ten plik istnieje, mimo ogólnej zasady projektu, by nie tworzyć zbiorczych eksportów.
 
-| Obszar              | Tabele                                                                                                                                                                        |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tożsamość           | `user`, `session`, `account`, `verification`, `two_factor`, `rate_limit`                                                                                                      |
-| Katalog             | `product`, `product_variant`, `product_image`, `product_option`, `product_option_value`, `option_on_variant`, `product_category`, `product_collection`, `product_attribute`   |
-| Powiązania katalogu | `category_on_product`, `collection_on_product`, `attribute_on_product`                                                                                                        |
-| Ceny                | `price_history`                                                                                                                                                               |
-| Sprzedaż            | `cart`, `cart_item`, `checkout`, `payment`, `order`, `order_item`, `order_address`, `order_number_sequence`, `inventory`, `discount`, `discount_redemption`, `discount_claim` |
-| Realizacja dostaw   | `delivery_method`, `courier`                                                                                                                                                  |
-| Dane klienta        | `address`, `wishlist_item`, `newsletter_subscriber`                                                                                                                           |
-| Treści              | `content_page`, `newsletter_campaign`                                                                                                                                         |
-| Operacje            | `audit_log`, `store_setting`                                                                                                                                                  |
+| Obszar              | Tabele                                                                                                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tożsamość           | `user`, `session`, `account`, `verification`, `two_factor`, `rate_limit`                                                                                                                          |
+| Katalog             | `product`, `product_variant`, `product_image`, `product_option`, `product_option_value`, `option_on_variant`, `product_category`, `product_collection`, `product_attribute`                       |
+| Powiązania katalogu | `category_on_product`, `collection_on_product`, `attribute_on_product`                                                                                                                            |
+| Ceny                | `price_history`                                                                                                                                                                                   |
+| Sprzedaż            | `cart`, `cart_item`, `checkout`, `payment`, `order`, `order_item`, `order_address`, `order_number_sequence`, `order_withdrawal`, `inventory`, `discount`, `discount_redemption`, `discount_claim` |
+| Realizacja dostaw   | `delivery_method`, `courier`                                                                                                                                                                      |
+| Dane klienta        | `address`, `wishlist_item`, `newsletter_subscriber`                                                                                                                                               |
+| Treści              | `content_page`, `newsletter_campaign`                                                                                                                                                             |
+| Operacje            | `audit_log`, `store_setting`                                                                                                                                                                      |
 
 `storefront_search`, indeks FTS5 stojący za wyszukiwarką sklepu, to jedyna tabela pominięta w zbiorczym eksporcie. `storefront-search.schema.ts` deklaruje ją na potrzeby akcesorów wyszukiwania, a ręcznie napisana migracja `20261002100000_storefront_search.sql` tworzy ją razem z wyzwalaczami, które utrzymują ją w zgodzie z `product`, `product_category` i `product_collection`.
 
@@ -84,7 +84,7 @@ Pola tłumaczone przechowywane są jako mapy językowe w JSON (`titles`, `subtit
 | `timestamps()`                       | Rozwija `createdAt` i `updatedAt`, gdzie `updatedAt` nosi dodatkowo `$onUpdateFn(() => new Date())`                                |
 | `calendarPeriodKey(column, periods)` | `(select key from json_each(?) where value <= column order by value desc limit 1)` do grupowania po okresach o podanych początkach |
 
-Znaczniki czasu to milisekundy od epoki przechowywane jako liczby całkowite, więc każde surowe SQL pisane przeciwko nim musi dzielić przez 1000 przed `strftime`. `strftime` odczytuje czas w UTC, a D1 nie zna innej strefy, więc grupowanie według kalendarza sklepu idzie przez `calendarPeriodKey`: przyjmuje okresy jako `{ key, start }`, wysyła ich klucze i początki jako jeden obiekt JSON i nadaje każdemu wierszowi klucz ostatniego okresu, który zaczął się nie później niż on. Panel administracyjny buduje swoje dni i miesiące przez `startOfCalendarDate` z `src/modules/_core/utils/datetime.ts`, a wykres wydatków klienta korzysta z tych samych miesięcy, więc zaczynają się o północy w Warszawie po obu stronach zmiany czasu; zobacz [Panel administracyjny](/docs/features/admin-dashboard#wykresy). Klucze główne to łańcuchy UUIDv7 generowane przez `v7 as uuidv7` z paczki `uuid`, zarówno w przypadkach użycia, jak i w `advanced.database.generateId` w Better Auth.
+Znaczniki czasu to milisekundy od epoki przechowywane jako liczby całkowite, więc każde surowe SQL pisane przeciwko nim musi dzielić przez 1000 przed `strftime`. `strftime` odczytuje czas w UTC, a D1 nie zna innej strefy, więc grupowanie według kalendarza sklepu idzie przez `calendarPeriodKey`: przyjmuje okresy jako `{ key, start }`, wysyła ich klucze i początki jako jeden obiekt JSON i nadaje każdemu wierszowi klucz ostatniego okresu, który zaczął się nie później niż on. Panel administracyjny buduje swoje dni, miesiące i początek roku przez `startOfCalendarDate` z `src/modules/_core/utils/datetime.ts`, w strefie czasowej, którą `resolveRequestDisplayPreferences()` ustala dla żądania administratora, a wykres wydatków klienta korzysta z tych samych miesięcy. Każdy okres zaczyna się więc o północy we własnej strefie czasowej administratora, po obu stronach zmiany czasu; zobacz [Panel administracyjny](/docs/features/admin-dashboard#wykresy) i [use-intl](/docs/integrations/use-intl#preferencje-wyświetlania). Klucze główne to łańcuchy UUIDv7 generowane przez `v7 as uuidv7` z paczki `uuid`, zarówno w przypadkach użycia, jak i w `advanced.database.generateId` w Better Auth.
 
 ## Wsady
 
@@ -146,9 +146,12 @@ Przygotowane zapytania wywołuje się przez `.execute({ productIds: … })`. Szt
 | ------------------- | ------------------------ | -------------------------------------- |
 | `development`       | `martebizuteria-preview` | `1660d0df-fff9-463b-bbc6-dec65f754302` |
 | `preview`           | `martebizuteria-preview` | `1660d0df-fff9-463b-bbc6-dec65f754302` |
+| `test`              | `martebizuteria-test`    | `00000000-0000-0000-0000-000000000001` |
 | `production`        | `martebizuteria`         | `2bf4f35e-0a01-43c0-8a10-df5cc84ceb89` |
 
-Środowiska `development` i `preview` wskazują na **tę samą zdalną bazę**, a wszystkie trzy powiązania mają `"remote": true`. W normalnym trybie pracy nie ma lokalnego pliku SQLite: `bun run dev` rozmawia z prawdziwą bazą preview. Traktuj dane preview jako stan współdzielony.
+Środowiska `development` i `preview` wskazują na **tę samą zdalną bazę**, a one i `production` mają `"remote": true`. W normalnym trybie pracy nie ma lokalnego pliku SQLite: `bun run dev` rozmawia z prawdziwą bazą preview. Traktuj dane preview jako stan współdzielony.
+
+Wyjątkiem jest `test`. Jego powiązanie ma `"remote": false`, a identyfikator jest zaślepką, bo baza istnieje tylko na Twojej maszynie: `db:reset:test` odbudowuje ją w `.wrangler/test`, a build testów end-to-end (`build:test`, `start:test`) działa na niej. Playwright resetuje ją przed lokalnym uruchomieniem.
 
 ## Konfiguracja drizzle-kit
 
@@ -175,16 +178,20 @@ Te trzy zmienne pochodzą z pliku środowiska — dlatego skrypty `db:*` przekaz
 
 ## Skrypty
 
-| Skrypt                          | Działanie                                                                             |
-| ------------------------------- | ------------------------------------------------------------------------------------- |
-| `bun run db:generate`           | `drizzle-kit generate` — zapisuje nową migrację SQL wraz ze zrzutem stanu ze schematu |
-| `bun run db:migrate:local`      | `wrangler d1 migrations apply DB --env development --local`                           |
-| `bun run db:migrate:preview`    | To samo z `--remote` na bazie preview (jest to również domyślne `db:migrate`)         |
-| `bun run db:migrate:production` | To samo na bazie produkcyjnej                                                         |
-| `bun run db:migrations:<env>`   | `wrangler d1 migrations list` — pokazuje, czego jeszcze nie zastosowano               |
-| `bun run db:push:<env>`         | `drizzle-kit push` — wypycha schemat bez pliku migracji                               |
-| `bun run db:introspect:<env>`   | `drizzle-kit introspect` — odtwarza `migrations/schema.ts` i `relations.ts`           |
-| `bun run db:studio:<env>`       | `drizzle-kit studio`                                                                  |
+| Skrypt                           | Działanie                                                                                                                                                                    |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run db:generate`            | `drizzle-kit generate` — zapisuje nową migrację SQL wraz ze zrzutem stanu ze schematu                                                                                        |
+| `bun run db:migrate:local`       | `wrangler d1 migrations apply DB --env development --local`                                                                                                                  |
+| `bun run db:migrate:preview`     | To samo z `--remote` na bazie preview (jest to również domyślne `db:migrate`)                                                                                                |
+| `bun run db:migrate:production`  | To samo na bazie produkcyjnej                                                                                                                                                |
+| `bun run db:migrate:development` | To samo z `--remote` na powiązaniu `development`, czyli na bazie preview                                                                                                     |
+| `bun run db:migrate:test`        | `--env test --local --persist-to .wrangler/test` — lokalna baza testów end-to-end                                                                                            |
+| `bun run db:seed:test`           | `scripts/seed-test.ts` — jedenaście plików danych katalogu, konta testowe, sekret dwuskładnikowy administratora i zapisana strefa czasowa klienta, do lokalnej bazy testowej |
+| `bun run db:reset:test`          | Usuwa `.wrangler/test`, a potem uruchamia `db:migrate:test` i `db:seed:test`                                                                                                 |
+| `bun run db:migrations:<env>`    | `wrangler d1 migrations list` — pokazuje, czego jeszcze nie zastosowano                                                                                                      |
+| `bun run db:push:<env>`          | `drizzle-kit push` — wypycha schemat bez pliku migracji                                                                                                                      |
+| `bun run db:introspect:<env>`    | `drizzle-kit introspect` — odtwarza `migrations/schema.ts` i `relations.ts`                                                                                                  |
+| `bun run db:studio:<env>`        | `drizzle-kit studio`                                                                                                                                                         |
 
 Pliki `migrations/schema.ts` i `migrations/relations.ts` są wynikiem introspekcji, nie źródłami pisanymi ręcznie. Ścieżka `src/integrations/**/migrations/**` jest wyłączona z formattera, lintera i uruchomienia testów w `vite.config.ts`.
 
@@ -246,11 +253,11 @@ Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc czterdziestu d
 20261016161000_seller_placeholders
 ```
 
-Migracje pisane ręcznie, takie jak `20260927120000_fix_silver_collection_handle.sql`, są w tym repozytorium normalne: naprawy danych, zmiany dotyczące wyłącznie indeksów i nowsze tabele, takie jak `order_number_sequence`, `discount_redemption`, `discount_claim`, `newsletter_subscriber`, `wishlist_item`, `storefront_search`, `content_page`, `store_setting`, `price_history` i `newsletter_campaign`, pisze się bezpośrednio i stosuje Wranglerem. Dziennikowi brakuje jednak także całego indeksu 38 (numeracja biegnie 0–52 z luką), a najnowszy zrzut, `meta/20260930151544_snapshot.json`, jest starszy od każdej z tych tabel, co oznacza, że `drizzle-kit generate` liczy różnicę ze zrzutu, który nie obejmuje wszystkiego, co faktycznie jest w bazie. Po `db:generate` przeczytaj wygenerowane SQL przed zastosowaniem i usuń wszystko, co ponownie tworzy już istniejący obiekt.
+Migracje pisane ręcznie, takie jak `20260927120000_fix_silver_collection_handle.sql`, są w tym repozytorium normalne: naprawy danych, zmiany dotyczące wyłącznie indeksów i nowsze tabele, takie jak `order_number_sequence`, `discount_redemption`, `discount_claim`, `newsletter_subscriber`, `wishlist_item`, `storefront_search`, `content_page`, `store_setting`, `order_withdrawal`, `price_history` i `newsletter_campaign`, pisze się bezpośrednio i stosuje Wranglerem. Dziennikowi brakuje jednak także całego indeksu 38 (numeracja biegnie 0–52 z luką), a najnowszy zrzut, `meta/20260930151544_snapshot.json`, jest starszy od każdej z tych tabel, co oznacza, że `drizzle-kit generate` liczy różnicę ze zrzutu, który nie obejmuje wszystkiego, co faktycznie jest w bazie. Po `db:generate` przeczytaj wygenerowane SQL przed zastosowaniem i usuń wszystko, co ponownie tworzy już istniejący obiekt.
 
 ## Dane początkowe
 
-Katalog `seeds/` zawiera jedenaście plików `.sql`, a skrypty `db:seed:preview` i `db:seed:production` stosują je w kolejności zależności. **Te pliki są przestarzałe wobec działających baz i nadpisałyby prawdziwe dane katalogu.** Nie uruchamiaj ich.
+Katalog `seeds/` zawiera jedenaście plików `.sql`, a skrypty `db:seed:preview` i `db:seed:production` stosują je w kolejności zależności. **Te pliki są przestarzałe wobec działających baz i nadpisałyby prawdziwe dane katalogu.** Nie uruchamiaj ich na preview ani na produkcji. `db:seed:test` wczytuje te same pliki, w tej samej kolejności, do lokalnej bazy testowej.
 
 ## Dodawanie migracji
 
@@ -262,6 +269,7 @@ Katalog `seeds/` zawiera jedenaście plików `.sql`, a skrypty `db:seed:preview`
 
 ## Powiązane strony
 
-- [Schemat bazy danych](/docs/integrations/drizzle-orm-d1)
+- [Katalog modułów](/docs/reference/modules)
+- [Migracje bazy danych](/docs/guides/database-migrations)
 - [Moduły i przypadki użycia](/docs/architecture/modules-and-use-cases)
 - [Better Auth](/docs/integrations/better-auth)
