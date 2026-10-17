@@ -2,16 +2,16 @@ import { queryOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
-import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { getWishlistRows } from "~/src/modules/wishlist/wishlist.accessors"
 import { WISHLIST_QUERY_KEYS, WISHLIST_QUERY_STALE_MS } from "~/src/modules/wishlist/wishlist.constants"
 import { type Wishlist } from "~/src/modules/wishlist/wishlist.types"
 import { toWishlistProduct } from "~/src/modules/wishlist/wishlist.utils"
+import { wishlistZodSchemas } from "~/src/modules/wishlist/wishlist.zod"
 
 export const listWishlistItems = createServerFn({ method: "GET" })
   .middleware([authorized()])
-  .validator((input: { readonly locale?: string | undefined } | undefined) => ({ locale: input?.locale ?? I18N.DEFAULT_LOCALE }))
+  .validator((input: { readonly locale?: string | undefined } | undefined) => wishlistZodSchemas.listInput.parse(input))
   .handler(async ({ context, data }): Promise<Wishlist["product"][]> => {
     const rows = await getWishlistRows(context.auth.user.id)
 
