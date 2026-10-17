@@ -193,6 +193,8 @@ Kolumna zawierająca zwykły tekst, a nie JSON, jest traktowana jako notatka, wi
 | `targetUser.id === context.auth.user.id`                                  | `ERROR_CODES.CONFLICT` / `CANNOT_DELETE_SELF`          |
 | `targetUser.role === ROLES.ADMIN`                                         | `ERROR_CODES.FORBIDDEN` / `CANNOT_DELETE_ADMIN`        |
 
+Konta z dostępem do panelu nie da się tu usunąć. Menu wiersza pokazuje w wierszu każdego takiego konta, także własnym wierszu zalogowanej osoby, wyszarzone **Usuń konto** z dopiskiem „Najpierw odbierz dostęp do panelu w Ustawieniach › Zespół.”; gdyby serwer mimo to odmówił, komunikat brzmi „Konta z dostępem do panelu nie można usunąć. Najpierw odbierz ten dostęp w Ustawieniach › Zespół.”. Po odebraniu dostępu w [Ustawienia › Zespół](/docs/features/admin-settings#zespół) konto jest kontem klienta i można je usunąć. Własny `/admin/remove-user` z Better Auth też odrzuca konto z dostępem do panelu (zobacz [Better Auth: Role administracyjne](/docs/integrations/better-auth#role-administracyjne)).
+
 Zapamiętuje adres e-mail, nazwę, bieżący język i origin żądania **przed** usunięciem, usuwa dane konta przez `eraseAccountData`, przekazuje usunięcie do `auth.api.removeUser`, a potem czeka na e-mail pożegnalny:
 
 ```ts
@@ -223,7 +225,7 @@ Przycisk **Eksportuj** na pasku narzędzi pobiera listę jako CSV, JSON, XML alb
 
 ## Czas rzeczywisty
 
-`USER_QUERY_KEYS.ADMIN.CUSTOMERS` występuje w `ADMIN_REALTIME_QUERY_PREFIXES`, a `scheduleAdminCustomersInvalidation()` wypycha zarówno `CUSTOMERS`, jak i `CUSTOMERS_PAGE`. Zdarzenia audytu rejestracji klienta unieważniają też klucze dziennika zdarzeń, więc nowa rejestracja pojawia się w otwartym panelu bez przeładowania.
+`USER_QUERY_KEYS.ADMIN.CUSTOMERS` występuje w `ADMIN_REALTIME_QUERY_PREFIXES`, a `scheduleAdminCustomersInvalidation()` wypycha `CUSTOMERS` i `CUSTOMERS_PAGE` oraz `TEAM` dla listy w Ustawienia › Zespół, bo rola konta, jego uwierzytelnianie dwuskładnikowe albo jego usunięcie mogą ją zmienić. Zdarzenia audytu rejestracji klienta unieważniają też klucze dziennika zdarzeń, więc nowa rejestracja pojawia się w otwartym panelu bez przeładowania.
 
 ## Powiązane strony
 

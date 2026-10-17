@@ -75,7 +75,7 @@ export const authorized = (permission?: Permission) =>
     })
 ```
 
-W `src/modules` i `src/integrations` `authorized()` występuje 110 razy: 27 razy bez argumentu (wystarcza sesja), a pozostałe z uprawnieniem — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×13, `order: ["read"]` ×7, `order: ["update"]` ×13, `order: ["update", "refund"]` ×1 (`refundAdminOrder`), `content: ["read"]` ×3, `content: ["update"]` ×3 oraz statementy administracyjne Better Auth `user: ["list" | "get" | "update" | "delete"]`.
+W `src/modules` i `src/integrations` `authorized()` występuje 116 razy: 28 razy bez argumentu (wystarcza sesja; jedno z nich jest wewnątrz `recentSignIn`), a pozostałe z uprawnieniem — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×14, `order: ["read"]` ×7, `order: ["update"]` ×13, `order: ["update", "refund"]` ×1 (`refundAdminOrder`), `content: ["read"]` ×3, `content: ["update"]` ×3 oraz statementy administracyjne Better Auth `user: ["list"]` ×8, `user: ["get"]` ×1, `user: ["update"]` ×2, `user: ["delete"]` ×2 i `user: ["set-role"]` ×2.
 
 ## Role i uprawnienia
 
@@ -89,6 +89,16 @@ W `src/modules` i `src/integrations` `authorized()` występuje 110 razy: 27 razy
 
 Ponieważ rola customer nie ma żadnych statementów, macierz zasobów zachowuje się dziś jak binarne sprawdzenie „czy admin”. Warto o tym pamiętać przed dodaniem trzeciej roli: macierz już istnieje, a pieniądze mają już własną akcję, bo `refundAdminOrder` i `cancelOrder` dla opłaconego zamówienia żądają `order: ["refund"]` oprócz `order: ["update"]`, więc rola z samym `order: ["read", "update"]` mogłaby obsługiwać zamówienia bez zwracania pieniędzy.
 
+## Dostęp administracyjny
+
+To, kto ma rolę `admin`, zmienia się w jednym miejscu, **Ustawienia › Zespół**, przez `grantAdminAccess` i `revokeAdminAccess` z `src/modules/user/use-cases/`. Oba wymagają `user: ["set-role"]` i middleware `recentSignIn`, odrzucają własne konto wywołującego, nadają dostęp tylko potwierdzonemu, niezablokowanemu kontu klienta i nigdy nie odbierają go ostatniej osobie z dostępem: odebranie to jedno warunkowe `UPDATE`, które przechodzi tylko wtedy, gdy osoba wprowadzająca zmianę, inna niż to konto, nadal ma tę rolę, i usuwa sesje konta. Zobacz [Ustawienia panelu: Zespół](/docs/features/admin-settings#zespół).
+
+Wtyczka administracyjna Better Auth też potrafi zmieniać role, dlatego `guardAuthRequest` (`hooks.before` w `auth.hooks.server.ts`) odrzuca `/admin/set-role`, a także `/admin/update-user` i `/admin/create-user`, gdy ich treść zawiera `role` albo `data.role`, z kodem `403 ROLE_MANAGED_IN_TEAM_SETTINGS`, bez względu na to, kto je wywołuje. Inaczej bezpośrednie żądanie pozwalałoby ominąć wszystkie powyższe zasady. Nic w aplikacji nie wywołuje tych ścieżek z rolą.
+
+Kont z dostępem do panelu nie da się usunąć. Samodzielne `/delete-user` odrzuca takie konto w `prepareSelfServiceDeletion`, zanim cokolwiek zostanie wymazane, `deleteCustomer` odrzuca je jako cel, a `guardAuthRequest` odrzuca dla niego `/admin/remove-user`, za każdym razem z kodem `CANNOT_DELETE_ADMIN`. Najpierw trzeba odebrać dostęp do panelu, a zasady zakładki Zespół nigdy nie odbierają go ostatniej osobie.
+
+`recentSignIn` (`auth.middleware.ts`) uruchamia `authorized()`, a potem odrzuca sesję utworzoną ponad `SESSION_FRESH_AGE_IN_SECONDS` (24 godziny) temu z kodem `403 SESSION_NOT_FRESH`, więc skradzione starsze ciasteczko sesji nie nada dostępu do panelu ani nie doda hasła. Strzeże obu zmian roli i `setAccountPassword`, a `isRecentSignIn` pozwala `listAdminTeam` uprzedzić o tym stronę.
+
 ## Własność jest wkompilowana w SQL
 
 Odczyty i zapisy po stronie klienta nigdy nie ufają identyfikatorowi z wejścia. Filtrują po `context.auth.user.id` wewnątrz zapytania:
@@ -99,7 +109,7 @@ where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
 
 Ten sam wzorzec występuje w `list-customer-orders.ts`, `list-customer-sessions.ts`, `list-customer-login-history.ts`, `get-customer-overview.ts`, `revoke-customer-session.ts`, `revoke-other-customer-sessions.ts`, `update-customer-phone.ts`, `get-customer-order-withdrawal.ts`, `withdraw-from-customer-order.ts` i we wszystkich pięciu przypadkach użycia adresów. Obcy identyfikator nie zwraca żadnego wiersza, więc nie ma czego filtrować później ani czego wyciekać. Publiczny formularz odstąpienia, `withdraw-from-guest-order.ts`, znajduje zamówienie tylko po jego numerze razem z adresem e-mail, z którego je złożono, niczego nie zwraca bez względu na to, czy je znalazł, i nigdy nie zwraca zawartości zamówienia.
 
-`revoke-customer-session.ts` odmawia dodatkowo unieważnienia własnej sesji wywołującego, a `delete-customer.ts` odmawia usunięcia działającego administratora.
+`revoke-customer-session.ts` odmawia dodatkowo unieważnienia własnej sesji wywołującego, a `delete-customer.ts` odmawia usunięcia działającego administratora i każdego innego konta z dostępem do panelu.
 
 ## Sesje
 

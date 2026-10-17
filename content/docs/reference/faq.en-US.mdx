@@ -71,6 +71,10 @@ In the admin, under **Settings → Delivery** (`/admin/settings/delivery`). It a
 
 In the admin, under **Settings → Store details** (`/admin/settings/store`): the legal name, street, postal code, city, country, NIP, REGON, contact e-mail and phone. The footer, the about page, product pages, the checkout's pickup step, the e-mails, the structured data and the legal pages read them from the `store_setting` row, so a save shows everywhere without a release. The legal pages name them through placeholders such as `:seller[nip]`, and the two PDF forms are made from them each time they are opened; only the pickup sentences in the terms and the FAQ still need an edit of their own. See [Admin settings](/docs/features/admin-settings#store-details).
 
+## How do I give someone admin access?
+
+The person creates an account in the shop and confirms their e-mail address. Then, under **Settings › Team** (`/admin/settings/team`), **Add admin** finds the account by its address or name and makes it an admin; **Remove access** on its row takes the access away and signs it out everywhere. Nobody can change their own access, so the shop always keeps an admin, and a change needs a sign-in from the last 24 hours. The new admin turns on two-factor authentication before the panel opens. See [Admin settings: Team](/docs/features/admin-settings#team).
+
 ## How does a change in one browser tab reach another admin's screen?
 
 Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 22 for admin, 15 for storefront, 3 for the checkout — and discard messages that do not overlap.

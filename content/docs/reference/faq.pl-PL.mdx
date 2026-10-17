@@ -71,6 +71,10 @@ W panelu, w **Ustawienia → Dostawa** (`/admin/settings/delivery`). Tam dodaje 
 
 W panelu, w **Ustawienia → Dane sklepu** (`/admin/settings/store`): pełną nazwę firmy, ulicę, kod pocztowy, miejscowość, kraj, NIP, REGON, e-mail kontaktowy i telefon. Stopka, strona „O M'Arte”, strony produktów, krok odbioru osobistego w kasie, e-maile, dane strukturalne i strony prawne czytają je z wiersza `store_setting`, więc zapis pojawia się wszędzie bez nowego wydania. Strony prawne podają je przez znaczniki, na przykład `:seller[nip]`, a dwa formularze PDF powstają z nich przy każdym otwarciu; osobnej zmiany wymagają już tylko zdania o odbiorze w regulaminie i w FAQ. Zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu).
 
+## Jak nadać komuś dostęp do panelu?
+
+Ta osoba zakłada konto w sklepie i potwierdza adres e-mail. Potem w **Ustawienia › Zespół** (`/admin/settings/team`) przycisk **Nadaj dostęp** znajduje to konto po adresie albo imieniu i nazwisku i nadaje mu dostęp do panelu; **Odbierz dostęp** w jego wierszu odbiera go i wylogowuje konto wszędzie. Nikt nie zmienia własnego dostępu, więc sklep zawsze ma osobę z dostępem do panelu, a zmiana wymaga logowania z ostatnich 24 godzin. Przed otwarciem panelu nowe konto włącza uwierzytelnianie dwuskładnikowe. Zobacz [Ustawienia panelu: Zespół](/docs/features/admin-settings#zespół).
+
 ## Jak zmiana w jednej karcie przeglądarki dociera na ekran innego administratora?
 
 Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 22 dla panelu, 15 dla sklepu, 3 dla kasy — i odrzucają komunikaty, które się nie pokrywają.

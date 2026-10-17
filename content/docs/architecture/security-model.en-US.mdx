@@ -75,7 +75,7 @@ export const authorized = (permission?: Permission) =>
     })
 ```
 
-Across `src/modules` and `src/integrations`, `authorized()` appears 110 times: 27 bare (a session is enough), and the rest with a permission — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×13, `order: ["read"]` ×7, `order: ["update"]` ×13, `order: ["update", "refund"]` ×1 (`refundAdminOrder`), `content: ["read"]` ×3, `content: ["update"]` ×3, and the Better Auth admin statements `user: ["list" | "get" | "update" | "delete"]`.
+Across `src/modules` and `src/integrations`, `authorized()` appears 116 times: 28 bare (a session is enough; one of them is inside `recentSignIn`), and the rest with a permission — `product: ["read"]` ×14, `product: ["update"]` ×10, `product: ["create"]` ×4, `product: ["delete"]` ×4, `settings: ["manage"]` ×14, `order: ["read"]` ×7, `order: ["update"]` ×13, `order: ["update", "refund"]` ×1 (`refundAdminOrder`), `content: ["read"]` ×3, `content: ["update"]` ×3, and the Better Auth admin statements `user: ["list"]` ×8, `user: ["get"]` ×1, `user: ["update"]` ×2, `user: ["delete"]` ×2 and `user: ["set-role"]` ×2.
 
 ## Roles and permissions
 
@@ -89,6 +89,16 @@ Across `src/modules` and `src/integrations`, `authorized()` appears 110 times: 2
 
 Because the customer role holds no statements, the resource matrix currently behaves as a binary admin check. It is worth keeping in mind before adding a third role: the matrix is already there, and money already has its own action, since `refundAdminOrder` and `cancelOrder` on a paid order ask for `order: ["refund"]` on top of `order: ["update"]`, so a role granted only `order: ["read", "update"]` could run orders without refunding them.
 
+## Admin access
+
+Who holds the `admin` role changes in one place, **Settings › Team**, through `grantAdminAccess` and `revokeAdminAccess` in `src/modules/user/use-cases/`. Both require `user: ["set-role"]` and the `recentSignIn` middleware, refuse the caller's own account, give access only to a verified, unblocked customer account, and never remove the last admin: removing access is one conditional `UPDATE` that goes through only while the acting admin, someone other than the account, still holds the role, and it deletes the account's sessions. See [Admin settings: Team](/docs/features/admin-settings#team).
+
+Better Auth's admin plugin can change roles as well, so `guardAuthRequest` (the `hooks.before` in `auth.hooks.server.ts`) refuses `/admin/set-role`, and `/admin/update-user` and `/admin/create-user` when their body carries `role` or `data.role`, with `403 ROLE_MANAGED_IN_TEAM_SETTINGS`, whoever calls them. Otherwise an admin could skip every rule above with a direct request. Nothing in the app calls those paths with a role.
+
+Admin accounts cannot be deleted. The self-service `/delete-user` refuses an account with admin access in `prepareSelfServiceDeletion` before anything is erased, `deleteCustomer` refuses an admin target, and `guardAuthRequest` refuses `/admin/remove-user` for one, all with `CANNOT_DELETE_ADMIN`. The admin access has to be removed first, and the Team rules never remove the last admin's.
+
+`recentSignIn` (`auth.middleware.ts`) runs `authorized()` and then refuses a session created more than `SESSION_FRESH_AGE_IN_SECONDS` (24 hours) ago with `403 SESSION_NOT_FRESH`, so a stolen older session cookie cannot hand out admin access or add a password. It guards the two role changes and `setAccountPassword`, and `isRecentSignIn` lets `listAdminTeam` tell the page beforehand.
+
 ## Ownership is compiled into the SQL
 
 Customer-facing reads and writes never trust an id from the input. They filter by `context.auth.user.id` inside the query:
@@ -99,7 +109,7 @@ where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
 
 The same pattern appears in `list-customer-orders.ts`, `list-customer-sessions.ts`, `list-customer-login-history.ts`, `get-customer-overview.ts`, `revoke-customer-session.ts`, `revoke-other-customer-sessions.ts`, `update-customer-phone.ts`, `get-customer-order-withdrawal.ts`, `withdraw-from-customer-order.ts` and all five address use cases. A foreign id returns no row, so there is nothing to filter out afterwards and nothing to leak. The public withdrawal form, `withdraw-from-guest-order.ts`, finds an order only by its number together with the e-mail address it was placed with, returns nothing whether or not it found one, and never returns the order's contents.
 
-`revoke-customer-session.ts` additionally refuses to revoke the caller's own session, and `delete-customer.ts` refuses to delete the acting admin.
+`revoke-customer-session.ts` additionally refuses to revoke the caller's own session, and `delete-customer.ts` refuses to delete the acting admin or any other admin account.
 
 ## Sessions
 

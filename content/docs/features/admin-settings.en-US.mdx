@@ -1,9 +1,9 @@
 ---
 title: "Admin settings"
-description: "The admin's own account and sign-in security, and the shop's details and delivery, under /admin/settings: profile, panel language, time zone and format, password, two-factor authentication, sign-in methods, sessions and sign-in history, the seller's details, delivery methods and free delivery."
+description: "The admin's own account and sign-in security, the shop's details and delivery, and its team, under /admin/settings: profile, panel language, time zone and format, password, two-factor authentication, sign-in methods, sessions and sign-in history, the seller's details, delivery methods, free delivery, and who has admin access."
 ---
 
-Settings is where an admin manages their own account, the shop's details and its delivery. It is the **Settings** item at the bottom of the sidebar, and it has four header tabs: **My account**, **Sign-in & security**, **Store details** and **Delivery**. The first two act on the signed-in admin's own account, through the same use cases and Better Auth calls as the customer's `/account/profile` page, so they add no permission, table or server function. **Store details** and **Delivery** change the whole shop: saving the seller's details, listing and changing the delivery methods and saving the free delivery threshold require `settings: ["manage"]`, the permission the dashboard and the audit log use, while the seller's details and the threshold themselves are read through the public `getSellerDetails` and `getFreeDelivery` that the storefront and the checkout use.
+Settings is where an admin manages their own account, the shop's details, its delivery and its team. It is the **Settings** item at the bottom of the sidebar, and it has five header tabs: **My account**, **Sign-in & security**, **Store details**, **Delivery** and **Team**. The first two act on the signed-in admin's own account, through the same use cases and Better Auth calls as the customer's `/account/profile` page, so they add no permission, table or server function. **Store details** and **Delivery** change the whole shop: saving the seller's details, listing and changing the delivery methods and saving the free delivery threshold require `settings: ["manage"]`, the permission the dashboard and the audit log use, while the seller's details and the threshold themselves are read through the public `getSellerDetails` and `getFreeDelivery` that the storefront and the checkout use. **Team** decides who can use the panel: listing the admins and searching accounts require `user: ["list"]`, and giving or removing admin access requires `user: ["set-role"]` and a sign-in from the last 24 hours.
 
 ## Routes
 
@@ -11,16 +11,17 @@ Settings is where an admin manages their own account, the shop's details and its
 | -------------------------- | ----------------------------- | ----------------------------------------------------------------------------------- |
 | `/admin/settings`          | `admin.settings.tsx`          | The layout: an `Outlet` for the tab, with the settings copy namespaces              |
 | `/admin/settings/`         | `admin.settings.index.tsx`    | Redirects to `/admin/settings/account` in `beforeLoad`                              |
-| `/admin/settings/account`  | `admin.settings.account.tsx`  | **My account**: Profile and Preferences                                             |
+| `/admin/settings/account`  | `admin.settings.account.tsx`  | **My account**: Profile, Preferences and Delete account                             |
 | `/admin/settings/security` | `admin.settings.security.tsx` | **Sign-in & security**: password, two-factor, sign-in methods, sessions and history |
 | `/admin/settings/store`    | `admin.settings.store.tsx`    | **Store details**: the seller's details                                             |
 | `/admin/settings/delivery` | `admin.settings.delivery.tsx` | **Delivery**: delivery methods and free delivery                                    |
+| `/admin/settings/team`     | `admin.settings.team.tsx`     | **Team**: the admins and how admin access works                                     |
 
-The paths are `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY`, `ROUTES.ADMIN_SETTINGS_STORE` and `ROUTES.ADMIN_SETTINGS_DELIVERY` in `src/routes.ts`. All of them sit inside the `/admin` layout, so `requireAdmin` guards them and an admin without two-factor authentication is sent to `/admin/security` first (see [Admin dashboard](/docs/features/admin-dashboard#layout)).
+The paths are `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY`, `ROUTES.ADMIN_SETTINGS_STORE`, `ROUTES.ADMIN_SETTINGS_DELIVERY` and `ROUTES.ADMIN_SETTINGS_TEAM` in `src/routes.ts`. All of them sit inside the `/admin` layout, so `requireAdmin` guards them and an admin without two-factor authentication is sent to `/admin/security` first (see [Admin dashboard](/docs/features/admin-dashboard#layout)).
 
 The layout declares `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` holds the page's own copy; the other three are there because Settings reuses the account dialogs, which read their copy and validation messages from them.
 
-The account loader prefetches `getCustomerProfileQuery()`. The security loader prefetches it together with `listCustomerSessionsQuery()` and `listCustomerLoginHistoryQuery()`, the store details loader prefetches `getAdminSellerDetailsQuery()`, and the delivery loader prefetches `listAdminDeliveryMethodsQuery()` and `getAdminFreeDeliveryQuery()`, so every tab renders without a loading state.
+The account loader prefetches `getCustomerProfileQuery()`. The security loader prefetches it together with `listCustomerSessionsQuery()` and `listCustomerLoginHistoryQuery()`, the store details loader prefetches `getAdminSellerDetailsQuery()`, the delivery loader prefetches `listAdminDeliveryMethodsQuery()` and `getAdminFreeDeliveryQuery()`, and the team loader prefetches `listAdminTeamQuery()`, so every tab renders without a loading state.
 
 ## Layout
 
@@ -50,13 +51,17 @@ The sidebar marks **Settings** active on every `/admin/settings/*` page.
 - **Admin panel language.** The list holds `I18N.SUPPORTED_LOCALES`. Choosing the other language reloads the same page with `localizePathname`, keeping the query string: Polish is the default locale and has no prefix (`/admin/settings/account`), English has `/en-US`. The locale middleware then sets the locale cookie to the language in the URL, so the choice holds for the next visit. Choosing the language already shown does nothing.
 - **Time zone** and **Date and number format.** These are the same `DisplayPreferenceField`s as on the customer profile. Each list opens with Automatic, labelled with what was detected from the browser, and `updateDisplayPreference` saves the choice to `user.timezone` or `user.format_locale`. Every date, time and number in the admin panel follows them: the order and customer grids, the dashboard's days and months, the audit log and the charts. See [Internationalization](/docs/features/internationalization).
 
+### Delete account
+
+`SettingsAccountDeletionCard` explains why the panel offers no way to delete the account: an admin account cannot be deleted, so the shop never loses the people who run it by accident. To close it, another admin removes its admin access under [Team](#team); it is then a customer account, which can be deleted from the account page in the shop. **Open Team** links to the tab. The account deletion endpoint refuses an admin account on its own too (see [Account: Closing the account](/docs/features/account#closing-the-account)).
+
 ## Sign-in & security
 
 The security route reads the profile once and passes `hasPassword`, `hasGoogle` and `twoFactorEnabled` to the cards as props.
 
 ### Password
 
-`SettingsPasswordCard` offers **Change password** for an account with a password, which opens `ChangePasswordDialog`. An account created with Google has none, so the card offers **Set password** instead and opens `SetPasswordDialog`, which calls `setAccountPassword`. That use case refuses a session older than 24 hours, so a stolen older session cannot add a lasting password. Both are described in [Account](/docs/features/account#profile) and [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins).
+`SettingsPasswordCard` offers **Change password** for an account with a password, which opens `ChangePasswordDialog`. An account created with Google has none, so the card offers **Set password** instead and opens `SetPasswordDialog`, which calls `setAccountPassword`. That use case runs the `recentSignIn` middleware, which refuses a session older than 24 hours, so a stolen older session cannot add a lasting password; the Team tab uses the same middleware. Both are described in [Account](/docs/features/account#profile) and [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins).
 
 ### Two-factor authentication
 
@@ -157,6 +162,52 @@ A refused change is shown as a toast in the panel's language: a second offered p
 
 Every change on this tab is recorded in the [audit log](/docs/features/audit-log) under the `settings` category.
 
+## Team
+
+The Team tab holds two cards, from `src/presentation/components/custom/pages/admin/settings/team/`. It is where admin access is given to an existing customer account and taken away again. Better Auth's own admin endpoints no longer change roles, so this is the only way to do it short of editing D1 (see [Security model](/docs/architecture/security-model#admin-access)).
+
+### Admins
+
+`SettingsTeamCard` reads `listAdminTeamQuery()` and lists every account with the `admin` role, sorted by name. Each row shows the name, a **You** badge on the signed-in admin's own row, a **Two-factor on** or **Two-factor off** badge, the e-mail address, how the account signs in (a password, Google, both, or **No sign-in method**) and its latest sign-in, or **No sign-in recorded**. Where `isAdminTwoFactorRequired()` holds, an admin without two-factor authentication carries a note that it must be turned on before the panel opens, because `requireAdmin` sends that account to `/admin/security` first.
+
+`listAdminTeam` (`src/modules/user/use-cases/list-admin-team.ts`) requires `user: ["list"]`. `listAdminTeamRows` in `src/modules/user/user.team.server.ts` reads the sign-in methods from the account's `account` rows (`credential` and `google`) and the latest sign-in from the newest `auth.login` entry the audit log holds for the account, so an account whose entries the retention clean-up removed shows none. The answer also carries `recentSignIn`, whether the caller's session is younger than 24 hours (`isRecentSignIn` in `auth.middleware.ts`).
+
+**Add admin** sits in the card's header, and every row but your own has **Remove access**. Your own row has none and says that only another admin can change your access. While `recentSignIn` is false, the card says that the last sign-in was more than 24 hours ago, both buttons are off, and **Sign in again** signs the admin out and opens the sign-in page with `redirect` set to the Team tab, so the next sign-in comes back to it.
+
+### Adding an admin
+
+**Add admin** opens `AddAdminDialog`. Its field, **Email address or name**, searches from three characters on, 300 ms after the last key, through `searchTeamCandidatesQuery(search)`, which calls `searchTeamCandidates` (`user: ["list"]`). The search covers customer accounts only, matches a part of the e-mail address or the name in any case, and returns at most eight. An account whose address is not confirmed is marked **Email address not confirmed** and a blocked one **Account blocked**; neither can be chosen, and a note under the list says why. When nothing matches, the dialog says that the person needs an account in the shop with a confirmed address first.
+
+**Choose** moves to the confirmation, which lists what the account will be able to do: see and change every order, refund payments and book shipments; edit products, collections, pages and coupons, and pause sales; see every customer's details and delete customer accounts; change the shop's settings, and add and remove admins. Where two-factor authentication is required and the account does not use it yet, it also says that it has to be turned on before the panel opens. **Back** returns to the search, and **Make admin** calls `grantAdminAccess`, toasts that the account's owner is now an admin, by name, and closes.
+
+### Removing access
+
+**Remove access** opens `RemoveAdminDialog`, which says that the customer account stays, that it can no longer open the panel and is signed out on every device at once, and that access can be given back later. Its **Remove access** calls `revokeAdminAccess` and toasts, by name, that the person is no longer an admin.
+
+### The rules
+
+`grantAdminAccess` and `revokeAdminAccess` (`src/modules/user/use-cases/`) enforce the rules themselves, so a call that skips the page gets the same answers:
+
+| Rule                                                    | Checked by                             | Refusal                                                                               |
+| ------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------- |
+| A signed-in admin who may change roles                  | `authorized({ user: ["set-role"] })`   | `FORBIDDEN`                                                                           |
+| A sign-in from the last 24 hours                        | `recentSignIn` in `auth.middleware.ts` | `SESSION_NOT_FRESH`, shown as "sign out and sign in again before making this change"  |
+| Never your own access                                   | The handler                            | `FORBIDDEN` / `TEAM_OWN_ACCESS`                                                       |
+| The account exists                                      | The handler, after the write           | `NOT_FOUND` / `TEAM_ACCOUNT_NOT_FOUND`                                                |
+| Granting: a customer account, confirmed and not blocked | `grantAdminRole`                       | `CONFLICT` / `TEAM_ALREADY_ADMIN`, `TEAM_EMAIL_NOT_VERIFIED` or `TEAM_ACCOUNT_BANNED` |
+| Removing: an admin account                              | `revokeAdminRole`                      | `CONFLICT` / `TEAM_NOT_ADMIN`                                                         |
+| Removing: never the last admin                          | `revokeAdminRole`                      | `CONFLICT` / `TEAM_LAST_ADMIN`                                                        |
+
+`user: ["set-role"]` is the statement Better Auth's own `/admin/set-role` checks, and only the `admin` role holds it, through `adminAc`. It is narrower than `settings: ["manage"]`, which the store details and delivery use, so a future role that manages the shop's settings would not hand out admin access by that alone.
+
+Each change is one conditional `UPDATE` in `user.team.server.ts`. `grantAdminRole` sets `role` to `admin` only while the account is still a confirmed, unblocked customer. `revokeAdminRole` sets it back to `customer` only while the account is still an admin and the admin making the change is someone else who still holds the role, so the acting admin always remains and two admins removing each other at the same moment cannot both succeed. When the write changes nothing, the use case reads the account again to say why. After a removal, `revokeAdminRole` deletes the account's `session` rows, so it is signed out everywhere; sessions are read from D1 on every request, so the new role applies to the next request either way.
+
+On success, both call `scheduleAdminCustomersInvalidation()`, which refreshes `USER_QUERY_KEYS.ADMIN.TEAM` as well as the customer list in every admin tab, and record `team.admin_granted` or `team.admin_revoked` in the [audit log](/docs/features/audit-log#admin-access) under `settings`. `useTeamAccess` refreshes the team and the customer list after every change and after a refusal too, so a session that went stale while the page was open brings back the sign-in notice. A refusal is a toast in the panel's language.
+
+### How admin access works
+
+`SettingsTeamRulesCard` lists the rules for the owner in plain words: only an account with a confirmed e-mail address can become an admin; nobody changes their own access, so the shop always keeps an admin; a change needs a sign-in from the last 24 hours; removing access signs the person out on every device; an admin account cannot be deleted until its admin access is removed; and every change is in the audit log with who made it.
+
 ## Dialog styling
 
 The account dialogs take a `variant`: `"editorial"`, the default, for the customer's account pages, and `"default"` for the admin. Settings passes `variant="default"` to `ChangeEmailDialog`, `ChangePasswordDialog`, `SetPasswordDialog` and `TwoFactorDialog`, so they match the admin panel's other dialogs, and `AccountDialogEyebrow` hides itself in that variant. See [shadcn components](/docs/ui/shadcn-components#dialogs) for the two variants.
@@ -167,7 +218,7 @@ The account dialogs take a `variant`: `"editorial"`, the default, for the custom
 
 ## Not in Settings yet
 
-Settings covers the admin's own account, the seller's details and the shop's delivery for now. Other shop-wide settings are not in it yet: the carriers themselves, the team of admins, staff notifications, and the payment and integration status. Sales are paused from the [sales switch](/docs/features/admin-dashboard#sales-switch) on the overview, and the legal pages are edited under [Content](/docs/features/legal-pages), where they take the seller's details from Store details through placeholders.
+Settings covers the admin's own account, the seller's details, the shop's delivery and its team for now. Other shop-wide settings are not in it yet: the carriers themselves, staff notifications, and the payment and integration status. There is one role with admin access: every admin can do everything, including managing the team. Sales are paused from the [sales switch](/docs/features/admin-dashboard#sales-switch) on the overview, and the legal pages are edited under [Content](/docs/features/legal-pages), where they take the seller's details from Store details through placeholders.
 
 ## Related pages
 
@@ -175,6 +226,8 @@ Settings covers the admin's own account, the seller's details and the shop's del
 - [Legal pages](/docs/features/legal-pages) — the store detail placeholders that name the seller in the legal pages
 - [Shipping and delivery](/docs/features/shipping-and-delivery) — the delivery methods and free delivery behind the Delivery tab
 - [Admin dashboard](/docs/features/admin-dashboard)
+- [Admin customers](/docs/features/admin-customers) — the customer accounts the Team tab picks admins from, and why an admin account cannot be deleted there
+- [Security model](/docs/architecture/security-model#admin-access) — the rules behind admin access
 - [Internationalization](/docs/features/internationalization) — the language, time zone and format preferences
 - [Audit log](/docs/features/audit-log)
 - [Integrations: Better Auth](/docs/integrations/better-auth)

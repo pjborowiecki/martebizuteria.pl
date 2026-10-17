@@ -55,7 +55,7 @@ A topic that falls under a subscription is invalidated as itself: `["admin", "pr
 
 ## Subscriptions
 
-`ADMIN_REALTIME_QUERY_PREFIXES` has 22 entries: the audit log page and stats, admin orders, the admin dashboard `ALL`, admin customers, the `ALL`/`STATS` pair for categories, collections, products and product attributes, the content page `ADMIN.ALL`/`ADMIN.BY_HANDLE` pair, the store setting `ADMIN.SALES`, `ADMIN.FREE_DELIVERY` and `ADMIN.SELLER_DETAILS`, the delivery method `ADMIN.ALL`, the newsletter campaign `ADMIN.LIST`, and the newsletter subscriber `ADMIN.PAGE`/`ADMIN.STATS` pair. `STOREFRONT_REALTIME_QUERY_PREFIXES` has 15: the product keys (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), cart availability, the category and collection `ALL`/`BY_HANDLE` pairs, the content page `BY_HANDLE`, the store setting `SALES`, `FREE_DELIVERY` and `SELLER_DETAILS`, and the delivery method `ALL`. `CHECKOUT_REALTIME_QUERY_PREFIXES` has 3, the store setting `FREE_DELIVERY` and `SELLER_DETAILS` and the delivery method `ALL`, a subset of the storefront list that the checkout layout follows on the storefront hub.
+`ADMIN_REALTIME_QUERY_PREFIXES` has 23 entries: the audit log page and stats, admin orders, the admin dashboard `ALL`, admin customers, the admin team, the `ALL`/`STATS` pair for categories, collections, products and product attributes, the content page `ADMIN.ALL`/`ADMIN.BY_HANDLE` pair, the store setting `ADMIN.SALES`, `ADMIN.FREE_DELIVERY` and `ADMIN.SELLER_DETAILS`, the delivery method `ADMIN.ALL`, the newsletter campaign `ADMIN.LIST`, and the newsletter subscriber `ADMIN.PAGE`/`ADMIN.STATS` pair. `STOREFRONT_REALTIME_QUERY_PREFIXES` has 15: the product keys (`ALL`, `BY_HANDLE`, `LANDING_NEW_ARRIVALS`, `RELATED_BY_CATEGORY`, `STOREFRONT_PAGE`), cart availability, the category and collection `ALL`/`BY_HANDLE` pairs, the content page `BY_HANDLE`, the store setting `SALES`, `FREE_DELIVERY` and `SELLER_DETAILS`, and the delivery method `ALL`. `CHECKOUT_REALTIME_QUERY_PREFIXES` has 3, the store setting `FREE_DELIVERY` and `SELLER_DETAILS` and the delivery method `ALL`, a subset of the storefront list that the checkout layout follows on the storefront hub.
 
 All three lists are built from the modules' own `*_QUERY_KEYS` constants and typed `as const satisfies readonly QueryKey[]`, so a renamed key is a type error rather than a silently dead subscription.
 
@@ -63,21 +63,21 @@ All three lists are built from the modules' own `*_QUERY_KEYS` constants and typ
 
 `realtime-invalidation.catalog.server.ts` exposes the thirteen publishers the domain layer calls, each naming the audiences it affects:
 
-| Publisher                                        | Admin keys                                     | Storefront keys                                                                  |
-| ------------------------------------------------ | ---------------------------------------------- | -------------------------------------------------------------------------------- |
-| `scheduleProductCatalogInvalidation`             | product `ADMIN.ALL`, `ADMIN.STATS`             | the five product keys plus cart availability                                     |
-| `scheduleCategoryCatalogInvalidation`            | category `ADMIN.ALL`, `ADMIN.STATS`            | category `ALL`, `BY_HANDLE`                                                      |
-| `scheduleCollectionCatalogInvalidation`          | collection `ADMIN.ALL`, `ADMIN.STATS`          | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
-| `scheduleContentPageInvalidation`                | content page `ADMIN.ALL`, `ADMIN.BY_HANDLE`    | content page `BY_HANDLE`                                                         |
-| `scheduleProductAttributeCatalogInvalidation`    | attribute `ADMIN.ALL`, `ADMIN.STATS`           | —                                                                                |
-| `scheduleAdminCustomersInvalidation`             | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE` | —                                                                                |
-| `scheduleAdminNewsletterSubscribersInvalidation` | newsletter `ADMIN.PAGE`, `ADMIN.STATS`         | —                                                                                |
-| `scheduleAdminAuditLogInvalidation`              | audit log `ADMIN.PAGE`, `ADMIN.STATS`          | —                                                                                |
-| `scheduleAdminOrdersInvalidation`                | order `ADMIN.ORDERS`, admin dashboard `ALL`    | —                                                                                |
-| `scheduleDeliveryMethodsInvalidation`            | delivery method `ADMIN.ALL`                    | delivery method `ALL`                                                            |
-| `scheduleFreeDeliveryInvalidation`               | store setting `ADMIN.FREE_DELIVERY`            | store setting `FREE_DELIVERY`                                                    |
-| `scheduleSalesStatusInvalidation`                | store setting `ADMIN.SALES`                    | store setting `SALES`                                                            |
-| `scheduleSellerDetailsInvalidation`              | store setting `ADMIN.SELLER_DETAILS`           | store setting `SELLER_DETAILS`                                                   |
+| Publisher                                        | Admin keys                                                   | Storefront keys                                                                  |
+| ------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `scheduleProductCatalogInvalidation`             | product `ADMIN.ALL`, `ADMIN.STATS`                           | the five product keys plus cart availability                                     |
+| `scheduleCategoryCatalogInvalidation`            | category `ADMIN.ALL`, `ADMIN.STATS`                          | category `ALL`, `BY_HANDLE`                                                      |
+| `scheduleCollectionCatalogInvalidation`          | collection `ADMIN.ALL`, `ADMIN.STATS`                        | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
+| `scheduleContentPageInvalidation`                | content page `ADMIN.ALL`, `ADMIN.BY_HANDLE`                  | content page `BY_HANDLE`                                                         |
+| `scheduleProductAttributeCatalogInvalidation`    | attribute `ADMIN.ALL`, `ADMIN.STATS`                         | —                                                                                |
+| `scheduleAdminCustomersInvalidation`             | user `ADMIN.CUSTOMERS`, `ADMIN.CUSTOMERS_PAGE`, `ADMIN.TEAM` | —                                                                                |
+| `scheduleAdminNewsletterSubscribersInvalidation` | newsletter `ADMIN.PAGE`, `ADMIN.STATS`                       | —                                                                                |
+| `scheduleAdminAuditLogInvalidation`              | audit log `ADMIN.PAGE`, `ADMIN.STATS`                        | —                                                                                |
+| `scheduleAdminOrdersInvalidation`                | order `ADMIN.ORDERS`, admin dashboard `ALL`                  | —                                                                                |
+| `scheduleDeliveryMethodsInvalidation`            | delivery method `ADMIN.ALL`                                  | delivery method `ALL`                                                            |
+| `scheduleFreeDeliveryInvalidation`               | store setting `ADMIN.FREE_DELIVERY`                          | store setting `FREE_DELIVERY`                                                    |
+| `scheduleSalesStatusInvalidation`                | store setting `ADMIN.SALES`                                  | store setting `SALES`                                                            |
+| `scheduleSellerDetailsInvalidation`              | store setting `ADMIN.SELLER_DETAILS`                         | store setting `SELLER_DETAILS`                                                   |
 
 The `schedule*` form hands the publish to `scheduleBackgroundWork`, so it runs under `waitUntil` and never delays the response. `publishRealtimeInvalidation` is the awaited form, used where there is no request to return from — the audit-log queue consumer awaits it after a successful batch insert, adding `ORDER_CHANGE_ADMIN_QUERY_KEYS`, the list `scheduleAdminOrdersInvalidation` publishes, when the batch carries an order timeline action.
 
