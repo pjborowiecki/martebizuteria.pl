@@ -1,4 +1,4 @@
-import { cleanup, screen } from "@testing-library/react"
+import { act, cleanup, screen, waitFor } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
@@ -135,6 +135,24 @@ describe("AdminSidebar", () => {
     await userEvent.click(screen.getByText("Catalog"))
 
     expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it("opens the catalog submenu once the admin moves into the catalog from another page", async () => {
+    const { router } = renderSidebar(ROUTES.ADMIN_ORDERS)
+
+    await act(() => router.navigate({ to: ROUTES.ADMIN_PRODUCTS }))
+
+    expect(await screen.findByText("Categories")).toBeInTheDocument()
+  })
+
+  it("lets the admin fold the catalog submenu away while inside the catalog", async () => {
+    renderSidebar(ROUTES.ADMIN_PRODUCTS)
+
+    await userEvent.click(screen.getByText("Catalog"))
+
+    await waitFor(() => {
+      expect(screen.queryByText("Categories")).toBeNull()
+    })
   })
 
   it("signs the admin out and resolves the sign in page for the browser redirect", async () => {

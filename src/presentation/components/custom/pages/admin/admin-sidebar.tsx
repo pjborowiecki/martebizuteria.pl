@@ -1,4 +1,4 @@
-import { type JSX, type MouseEvent, useCallback, useMemo } from "react"
+import { type JSX, type MouseEvent, useCallback, useMemo, useState } from "react"
 
 import { useLocation, useRouter } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
@@ -165,6 +165,12 @@ const AdminSidebarMainGroup = ({
   readonly handleCatalogClick: (event: MouseEvent<HTMLButtonElement>) => void
 }): JSX.Element => {
   const t = useTranslations("pages.admin")
+  const [catalogOpen, setCatalogOpen] = useState(isCatalogRoute)
+  const [enteredCatalog, setEnteredCatalog] = useState(isCatalogRoute)
+  if (enteredCatalog !== isCatalogRoute) {
+    setEnteredCatalog(isCatalogRoute)
+    setCatalogOpen(isCatalogRoute)
+  }
   const adminLink = useMemo(() => <LocalizedLink to={ROUTES.ADMIN_OVERVIEW} />, [])
   const catalogTriggerButton = useMemo(
     () => (
@@ -195,7 +201,7 @@ const AdminSidebarMainGroup = ({
       </SidebarMenuItem>
 
       <SidebarMenuItem>
-        <Collapsible defaultOpen={isCatalogRoute} className="group/collapsible">
+        <Collapsible className="group/collapsible" onOpenChange={setCatalogOpen} open={catalogOpen}>
           <CollapsibleTrigger render={catalogTriggerButton}>
             <Package className="size-4" strokeWidth={1.5} />
             <span className="flex-1 text-[13px]">{t("nav.catalog")}</span>
