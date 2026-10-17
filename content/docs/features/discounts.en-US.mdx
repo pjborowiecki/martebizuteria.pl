@@ -77,7 +77,7 @@ export const discountClaim = sqliteTable(
 )
 ```
 
-The three types are `percentage`, `fixed_amount` and `free_shipping` (`DISCOUNT_TYPES` in `discount.constants.ts`). `value` is a single integer: a whole percentage for `percentage`, an amount in minor units for `fixed_amount`, and ignored for `free_shipping`. The limit columns are nullable, and null means no limit: `usage_limit` caps redemptions overall, `per_customer_limit` caps them per e-mail address, `min_order_total` is the minimum item subtotal in minor units, and `max_discount_amount` caps what a percentage may take off.
+The three types are `percentage`, `fixed_amount` and `free_shipping` (`DISCOUNT_TYPES` in `discount.constants.ts`). `value` is a single integer: a whole percentage for `percentage`, an amount in minor units for `fixed_amount`, and ignored for `free_shipping`. The limit columns are nullable, and null means no limit: `usage_limit` caps redemptions overall, `per_customer_limit` caps them per e-mail address, `min_order_total` is the minimum item subtotal in minor units, and `max_discount_amount` caps what a percentage may take off. `toDiscountInsertValues` and `toDiscountUpdateValues` (`discount.persist.utils.ts`) store `max_discount_amount` only for a `percentage` code and leave it `null` for the other two types, whatever the form sends.
 
 `discountRelations` declares `many(cart)`, `many(checkout)`, `many(discountClaim)`, `many(order)` and `many(discountRedemption)`. `cart`, `checkout` and `order` each carry a `discount_id` column, and `order` additionally has `discount_total`. The `description` column, the three rule columns, the `is_active` index and the `discount_redemption` table come from `20260930200000_discount_rules_and_redemptions.sql`. `20261003130000_query_indexes.sql` later dropped the `discount_redemption_discountId_idx` that migration created, because `discount_redemption_discountId_email_idx` starts with the same column, and added `discount_redemption_userId_idx` for the `user_id` foreign key. `query-plans.integration.test.ts` fails when a foreign key has no index, so deleting an account or a code never scans the redemptions.
 
@@ -111,6 +111,7 @@ src/modules/discount/
     ├── __test__/
     │   ├── create-discount.test.ts
     │   ├── delete-discounts.test.ts
+    │   ├── discount-code-race.integration.test.ts
     │   ├── get-admin-discount-stats.test.ts
     │   ├── get-admin-discounts-page.test.ts
     │   ├── update-discount.test.ts
@@ -126,7 +127,7 @@ src/modules/discount/
 
 Each of the six use cases is one `createServerFn`. `validate-discount-code.ts` serves the storefront; the other five serve `/admin/coupons`.
 
-The `*.integration.test.ts` suites run their SQL against an in-memory `node:sqlite` database through `createTestD1Database` (`src/platform/testing/mocks/d1.ts`). The claim, redemption and validator suites build it from the migration history with `applyMigrationHistory`, so the race for a code's last use and the redemption of a code deleted mid-payment are tested with the SQL D1 runs.
+The `*.integration.test.ts` suites run their SQL against an in-memory `node:sqlite` database through `createTestD1Database` (`src/platform/testing/mocks/d1.ts`). The claim, redemption, validator and `discount-code-race` suites build it from the migration history with `applyMigrationHistory`, so the race for a code's last use, the redemption of a code deleted mid-payment and two admins saving the same code at once are tested with the SQL D1 runs.
 
 ## Rules
 
@@ -283,7 +284,7 @@ Clicking a row opens the sheet on that code (`onRowClick` is `openEdit`); the ac
 `CouponSheet` (`edit-coupon/coupon-sheet.tsx`) wraps `CouponFormProvider` in `CatalogFormSheetContent`, the resizable side sheet of the catalog forms, and shares their saved width (persistence key `admin.catalog.form-sheet`). The provider holds a `react-hook-form` form resolved with `discountZodSchemas.adminDiscountFormValues`, the schema the server functions parse. Its defaults come from `toCouponFormValues`: the row being edited, or an active percentage code with no value. A submit the schema rejects marks the fields and shows a toast. The form has four sections in `edit-coupon/_sections/`:
 
 - **Code** (`DetailsSection`): the id, read-only, when editing; the code, shown upper-case with a character counter and upper-cased by `normalizeDiscountCode` when saved; the internal description.
-- **Discount** (`DiscountSection`): the type, then the value: a whole percentage with a `%` suffix, an amount for `fixed_amount`, or a note that free shipping needs none. Changing the type resets the value to 0. The maximum discount appears only for a percentage, the minimum basket value for every type.
+- **Discount** (`DiscountSection`): the type, then the value: a whole percentage with a `%` suffix, an amount for `fixed_amount`, or a note that free shipping needs none. Changing the type resets the value to 0 and empties the maximum discount, so a cap typed for a percentage is not saved, hidden, with another type. The maximum discount appears only for a percentage, the minimum basket value for every type.
 - **Limits** (`LimitsSection`): total uses and uses per customer, blank for unlimited.
 - **Availability** (`AvailabilitySection`): active or disabled, and the start and end.
 
@@ -291,13 +292,13 @@ Money fields (`CouponMoneyField`) take złoty, not grosze. `parseMoneyInputToMin
 
 ### Server functions
 
-| Use case                      | Guard                               | Effect                                                                                                                                                                                                                                      |
-| ----------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `get-admin-discounts-page.ts` | `authorized({ order: ["read"] })`   | One page of codes, newest first, narrowed by `search`, `status` and `type`; `page` defaults to 1 and `pageSize` to `ADMIN_DISCOUNTS_PAGE_SIZE` (25), at most `LIST_PAGE_SIZE_MAX` (250)                                                     |
-| `get-admin-discount-stats.ts` | `authorized({ order: ["read"] })`   | The four card values                                                                                                                                                                                                                        |
-| `create-discount.ts`          | `authorized({ order: ["update"] })` | Inserts the row with the normalised code; a taken code throws `CONFLICT` with `DISCOUNT_CODE_TAKEN`; audits `discount.created`                                                                                                              |
-| `update-discount.ts`          | `authorized({ order: ["update"] })` | An unknown id throws `NOT_FOUND` with `DISCOUNT_NOT_FOUND`, and a changed code another row already has throws `CONFLICT` with `DISCOUNT_CODE_TAKEN`; otherwise updates the row, sets emptied fields to `null` and audits `discount.updated` |
-| `delete-discounts.ts`         | `authorized({ order: ["update"] })` | Deletes by id and returns how many were deleted; audits `discount.deleted` with the ids                                                                                                                                                     |
+| Use case                      | Guard                               | Effect                                                                                                                                                                                                                                                                                                    |
+| ----------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get-admin-discounts-page.ts` | `authorized({ order: ["read"] })`   | One page of codes, newest first, narrowed by `search`, `status` and `type`; `page` defaults to 1 and `pageSize` to `ADMIN_DISCOUNTS_PAGE_SIZE` (25), at most `LIST_PAGE_SIZE_MAX` (250)                                                                                                                   |
+| `get-admin-discount-stats.ts` | `authorized({ order: ["read"] })`   | The four card values                                                                                                                                                                                                                                                                                      |
+| `create-discount.ts`          | `authorized({ order: ["update"] })` | Inserts the row with the normalised code; a taken code throws `CONFLICT` with `DISCOUNT_CODE_TAKEN`, also when another admin saves the same code between the check and the insert, whose unique-constraint failure `refuseTakenDiscountCode` turns into the same error; audits `discount.created`         |
+| `update-discount.ts`          | `authorized({ order: ["update"] })` | An unknown id throws `NOT_FOUND` with `DISCOUNT_NOT_FOUND`, and a changed code another row already has throws `CONFLICT` with `DISCOUNT_CODE_TAKEN`, also when that row is saved between the check and the update; otherwise updates the row, sets emptied fields to `null` and audits `discount.updated` |
+| `delete-discounts.ts`         | `authorized({ order: ["update"] })` | Deletes by id and returns how many were deleted; audits `discount.deleted` with the ids                                                                                                                                                                                                                   |
 
 The page query's key is `DISCOUNT_QUERY_KEYS.ADMIN.PAGE` followed by its input, and the stats query's is `DISCOUNT_QUERY_KEYS.ADMIN.STATS`. Both set `refetchOnMount` and `refetchOnWindowFocus` to `false`.
 

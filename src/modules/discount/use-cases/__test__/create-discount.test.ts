@@ -97,6 +97,35 @@ describe("createDiscount", () => {
     expect(stubs.recordDiscountCreatedAudit).not.toHaveBeenCalled()
   })
 
+  it("refuses a code another admin saved between the check and the insert like one that was already taken", async () => {
+    stubs.insertDiscount.mockRejectedValue(
+      new Error("Failed query: insert into discount", {
+        cause: new Error("D1_ERROR: UNIQUE constraint failed: discount.code: SQLITE_CONSTRAINT"),
+      }),
+    )
+
+    await expect(createDiscount({ data: { values: FORM_VALUES } })).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: DISCOUNT_ERROR_CODES.CODE_TAKEN,
+    })
+    expect(stubs.recordDiscountCreatedAudit).not.toHaveBeenCalled()
+  })
+
+  it("reports any other failure to store the code as an internal error", async () => {
+    stubs.insertDiscount.mockRejectedValue(new Error("D1_ERROR: Network connection lost."))
+
+    await expect(createDiscount({ data: { values: FORM_VALUES } })).rejects.toMatchObject({ code: ERROR_CODES.INTERNAL_ERROR })
+    expect(stubs.recordDiscountCreatedAudit).not.toHaveBeenCalled()
+  })
+
+  it("keeps no maximum discount for a code that takes off a fixed amount", async () => {
+    await createDiscount({ data: { values: { ...FORM_VALUES, maxDiscountAmount: 5000, type: DISCOUNT_TYPE.FIXED_AMOUNT, value: 2500 } } })
+
+    expect(stubs.insertDiscount).toHaveBeenCalledWith(
+      expect.objectContaining({ maxDiscountAmount: undefined, type: DISCOUNT_TYPE.FIXED_AMOUNT }),
+    )
+  })
+
   it("turns away a visitor who is not signed in", async () => {
     stubs.getRequestSession.mockResolvedValue(null)
 

@@ -53,7 +53,8 @@ export const DiscountSection = (): JSX.Element => {
 
       typeField.onChange(next)
       setValue("value", 0)
-      clearErrors("value")
+      setValue("maxDiscountAmount", undefined)
+      clearErrors(["maxDiscountAmount", "value"])
     },
     [clearErrors, setValue, typeField],
   )

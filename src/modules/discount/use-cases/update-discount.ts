@@ -8,7 +8,7 @@ import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordDiscountUpdatedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { getDiscountByCode, getDiscountById, updateDiscountById } from "~/src/modules/discount/discount.accessors"
 import { DISCOUNT_ERROR_CODES, DISCOUNT_MUTATION_KEYS } from "~/src/modules/discount/discount.constants"
-import { toDiscountUpdateValues } from "~/src/modules/discount/discount.persist.utils"
+import { refuseTakenDiscountCode, toDiscountUpdateValues } from "~/src/modules/discount/discount.persist.utils"
 import { discountZodSchemas } from "~/src/modules/discount/discount.zod"
 
 export const updateDiscount = createServerFn({ method: "POST" })
@@ -28,7 +28,7 @@ export const updateDiscount = createServerFn({ method: "POST" })
       }
     }
 
-    await updateDiscountById(id, row)
+    await updateDiscountById(id, row).catch(refuseTakenDiscountCode)
     recordDiscountUpdatedAudit(row.code, { detail: values.description })
 
     return { code: row.code, ok: true }

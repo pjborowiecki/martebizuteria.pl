@@ -2,8 +2,14 @@ import { SQL } from "drizzle-orm"
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { DISCOUNT_STATUS, DISCOUNT_TYPE } from "~/src/modules/discount/discount.constants"
-import { toAdminDiscountListItem, toDiscountInsertValues, toDiscountUpdateValues } from "~/src/modules/discount/discount.persist.utils"
+import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { DISCOUNT_ERROR_CODES, DISCOUNT_STATUS, DISCOUNT_TYPE } from "~/src/modules/discount/discount.constants"
+import {
+  refuseTakenDiscountCode,
+  toAdminDiscountListItem,
+  toDiscountInsertValues,
+  toDiscountUpdateValues,
+} from "~/src/modules/discount/discount.persist.utils"
 import { type Discount } from "~/src/modules/discount/discount.types"
 
 const NOW = new Date("2026-06-01T12:00:00.000Z")
@@ -96,6 +102,13 @@ describe("toDiscountInsertValues", () => {
   it("drops a date it cannot read rather than storing an invalid one", () => {
     expect(toDiscountInsertValues({ ...BARE_VALUES, endsAt: "next tuesday" }).endsAt).toBeUndefined()
   })
+
+  it.each([DISCOUNT_TYPE.FIXED_AMOUNT, DISCOUNT_TYPE.FREE_SHIPPING])(
+    "keeps no maximum discount for a %s code, which only a percentage uses",
+    (type) => {
+      expect(toDiscountInsertValues({ ...BARE_VALUES, maxDiscountAmount: 5000, type }).maxDiscountAmount).toBeUndefined()
+    },
+  )
 })
 
 describe("toDiscountUpdateValues", () => {
@@ -142,6 +155,30 @@ describe("toDiscountUpdateValues", () => {
       usageLimit: cleared,
       value: 2500,
     })
+  })
+})
+
+describe("toDiscountUpdateValues for a code that is not a percentage", () => {
+  it.each([DISCOUNT_TYPE.FIXED_AMOUNT, DISCOUNT_TYPE.FREE_SHIPPING])("clears the maximum discount a %s code was given", (type) => {
+    expect(renderSql(toDiscountUpdateValues({ ...FORM_VALUES, type }).maxDiscountAmount)).toStrictEqual({ params: [], sql: "null" })
+  })
+})
+
+describe("refuseTakenDiscountCode", () => {
+  it("answers a write that broke the unique code, however deeply the driver wrapped it, as a taken code", () => {
+    const unique = new Error("UNIQUE constraint failed: discount.code")
+    const wrapped = new Error("Failed query: insert into discount", { cause: new Error("D1_ERROR", { cause: unique }) })
+
+    expect(() => refuseTakenDiscountCode(wrapped)).toThrow(
+      expect.objectContaining({ code: ERROR_CODES.CONFLICT, message: DISCOUNT_ERROR_CODES.CODE_TAKEN }),
+    )
+  })
+
+  it.each([
+    ["another constraint", new Error("UNIQUE constraint failed: discount_redemption.order_id")],
+    ["a failure that is not an error", "D1 is unavailable"],
+  ])("passes on %s unchanged", (_name, failure) => {
+    expect(() => refuseTakenDiscountCode(failure)).toThrow(failure)
   })
 })
 
