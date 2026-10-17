@@ -1,19 +1,21 @@
 import { type User } from "better-auth"
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api"
 
-import { needsTwoFactorSetup } from "~/src/integrations/better-auth/auth.access"
+import { hasAdminAccess, needsTwoFactorSetup } from "~/src/integrations/better-auth/auth.access"
 import {
+  ADMIN_ACCOUNT_NOT_DELETABLE,
   ADMIN_PLUGIN_PATH_PREFIX,
   ADMIN_TWO_FACTOR_REQUIRED,
   EMAIL_DELIVERY_UNAVAILABLE,
   EMAIL_SENDING_AUTH_PATHS,
+  REMOVE_USER_PATH,
   ROLE_FIELD_ADMIN_PATHS,
   ROLE_MANAGED_IN_TEAM_SETTINGS,
   SET_ROLE_PATH,
   STRIPE_CUSTOMER_NOT_DELETED,
 } from "~/src/integrations/better-auth/auth.constants"
 import { recordAuthEmailFailure } from "~/src/integrations/better-auth/auth.email-delivery.server"
-import { adminRoleFieldsSchema } from "~/src/integrations/better-auth/auth.zod"
+import { adminRoleFieldsSchema, adminTargetAccountSchema } from "~/src/integrations/better-auth/auth.zod"
 import { scheduleAdminCustomersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { isEmailSenderUnavailable } from "~/src/integrations/resend/resend.availability.server"
 
@@ -29,6 +31,7 @@ import { SYSTEM_AUDIT_ACTOR } from "~/src/modules/audit-log/audit-log.record.ser
 import { linkSubscriberToUser } from "~/src/modules/newsletter/newsletter.accessors"
 import { claimGuestOrdersForUser } from "~/src/modules/order/order.claim.server"
 import { sendAccountDeletedEmail } from "~/src/modules/user/use-cases/send-account-deleted-email.server"
+import { getUserById } from "~/src/modules/user/user.accessors"
 import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
@@ -36,6 +39,13 @@ import { auditRequestIp, resolveRequestOrigin } from "~/src/lib/request"
 
 const requestsRoleChange = ({ body, path }: Readonly<{ body: unknown; path: string }>): boolean =>
   path === SET_ROLE_PATH || (ROLE_FIELD_ADMIN_PATHS.has(path) && adminRoleFieldsSchema.safeParse(body).data === true)
+
+const removesAdminAccount = async ({ body, path }: Readonly<{ body: unknown; path: string }>): Promise<boolean> => {
+  const target = path === REMOVE_USER_PATH ? adminTargetAccountSchema.safeParse(body).data : undefined
+  const account = target === undefined ? undefined : await getUserById(target.userId)
+
+  return hasAdminAccess(account?.role)
+}
 
 export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
   if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
@@ -53,6 +63,10 @@ export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
   const caller = await getSessionFromCtx<{ role?: string | null; twoFactorEnabled?: boolean | null }>(ctx)
   if (caller !== null && needsTwoFactorSetup(caller.user)) {
     throw APIError.from("FORBIDDEN", ADMIN_TWO_FACTOR_REQUIRED)
+  }
+
+  if (hasAdminAccess(caller?.user.role) && (await removesAdminAccount(ctx))) {
+    throw APIError.from("FORBIDDEN", ADMIN_ACCOUNT_NOT_DELETABLE)
   }
 })
 
@@ -99,7 +113,11 @@ export const handleEmailVerified = async (user: User, request: Request | undefin
   await Promise.all([claimGuestOrdersForUser({ email: user.email, userId: user.id }), linkSubscriberToUser(user.email, user.id)])
 }
 
-export const requireAccountDataErased = async (deleting: User): Promise<void> => {
+export const prepareSelfServiceDeletion = async (deleting: User & { readonly role?: string | null }): Promise<void> => {
+  if (hasAdminAccess(deleting.role)) {
+    throw APIError.from("FORBIDDEN", ADMIN_ACCOUNT_NOT_DELETABLE)
+  }
+
   if (!(await eraseAccountData(deleting))) {
     throw APIError.from("SERVICE_UNAVAILABLE", STRIPE_CUSTOMER_NOT_DELETED)
   }

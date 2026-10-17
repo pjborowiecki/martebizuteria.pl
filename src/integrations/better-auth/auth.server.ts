@@ -25,7 +25,7 @@ import {
   handleUserCreated,
   handleUserDeleted,
   handleUserUpdated,
-  requireAccountDataErased,
+  prepareSelfServiceDeletion,
 } from "~/src/integrations/better-auth/auth.hooks.server"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
@@ -141,7 +141,7 @@ export const auth = betterAuth({
     },
     deleteUser: {
       afterDelete: handleSelfServiceDeletion,
-      beforeDelete: requireAccountDataErased,
+      beforeDelete: prepareSelfServiceDeletion,
       enabled: true,
     },
   },

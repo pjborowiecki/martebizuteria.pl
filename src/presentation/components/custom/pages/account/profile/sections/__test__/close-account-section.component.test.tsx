@@ -206,6 +206,20 @@ describe("CloseAccountSection deletion", () => {
     expect(screen.getByRole("dialog", { name: DIALOG_TITLE })).toBeInTheDocument()
   })
 
+  it("says an account with admin access cannot be deleted until another admin removes that access", async () => {
+    calls.deleteUser.mockResolvedValue({ error: { code: "CANNOT_DELETE_ADMIN" } })
+    await openDialog()
+    await typeConfirmation()
+    await typePassword()
+    await userEvent.click(confirmButton())
+
+    await waitFor(() => {
+      expect(calls.toastError).toHaveBeenCalledWith(
+        "This account has access to the shop's admin panel, so it cannot be deleted. Ask another admin to remove that access first.",
+      )
+    })
+  })
+
   it("reports any other failure and keeps the account", async () => {
     calls.deleteUser.mockResolvedValue({ error: { code: "SESSION_EXPIRED" } })
     await openDialog()

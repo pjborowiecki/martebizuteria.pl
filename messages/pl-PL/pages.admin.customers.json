@@ -82,10 +82,11 @@
     "copyStripeCustomerIdMissingToast": "To konto nie ma ID klienta Stripe",
     "copyStripeCustomerIdToast": "ID klienta Stripe skopiowane do schowka",
     "delete": "Usuń konto",
+    "deleteAdminHint": "Najpierw odbierz dostęp do panelu w Ustawieniach › Zespół.",
     "deleteDescription": "To działanie jest nieodwracalne. Usuniemy konto {name} ({email}) wraz z profilem, zapisanymi adresami, listą życzeń, subskrypcją newslettera, historią logowania, dziennikiem aktywności oraz profilem klienta i zapisanymi kartami w Stripe. Zamówienia i płatności pozostaną w dokumentacji księgowej przez 5 lat, zgodnie z przepisami. Na adres e-mail klienta wyślemy potwierdzenie usunięcia konta.",
     "deleteTitle": "Usunąć konto klienta?",
     "toast": {
-      "cannotDeleteAdminDescription": "Nie można usunąć konta administratora.",
+      "cannotDeleteAdminDescription": "Konta z dostępem do panelu nie można usunąć. Najpierw odbierz ten dostęp w Ustawieniach › Zespół.",
       "cannotDeleteSelfDescription": "Nie możesz usunąć własnego konta z tego widoku.",
       "deleteEmailFailedDescription": "Nie udało się wysłać klientowi potwierdzenia usunięcia konta. Błąd zapisano w dzienniku zdarzeń.",
       "deleteEmailFailedTitle": "Konto usunięte — e-mail nie został wysłany",

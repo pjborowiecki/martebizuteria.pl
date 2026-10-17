@@ -174,3 +174,21 @@ describe("a customer deleting their account", () => {
     expect(signInAgain.status).toBe(200)
   })
 })
+
+describe("an admin deleting their own account", () => {
+  it("is refused before anything is erased, so the shop cannot lose its admins this way", async () => {
+    const userId = await createCustomerWithData()
+    const browser = openAuthBrowser("198.51.100.35")
+    await browser.signIn(EMAIL)
+    sqlite.prepare("update user set role = 'admin' where id = ?").run(userId)
+
+    const response = await browser.post("/delete-user", { password: CUSTOMER_PASSWORD })
+
+    expect(response.status).toBe(403)
+    expect(errorBody.parse(await response.json()).code).toBe("CANNOT_DELETE_ADMIN")
+    expect(stripeCustomers.del).not.toHaveBeenCalled()
+    expect(count("user")).toBe(1)
+    expect(count("session where user_id = ?", userId)).toBe(1)
+    expect(auditLogIds()).toStrictEqual(["order-placed", "page-view", "reset-email-failed"])
+  })
+})

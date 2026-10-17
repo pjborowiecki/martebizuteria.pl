@@ -142,11 +142,14 @@ describe("CustomersRowActions deletion guard", () => {
     })
   })
 
-  it("never offers to delete another administrator", async () => {
+  it("never offers to delete another administrator, and says the admin access has to go first", async () => {
     await openMenu(customerRow({ id: "user-2", role: ROLES.ADMIN }))
 
-    expect(await screen.findByRole("menuitem", { name: "Copy ID" })).toBeInTheDocument()
-    expect(screen.queryByRole("menuitem", { name: "Delete account" })).toBeNull()
+    const deleteItem = await screen.findByRole("menuitem", { name: /^Delete account/u })
+
+    expect(deleteItem).toHaveAttribute("aria-disabled", "true")
+    expect(deleteItem).toHaveTextContent("Remove the admin access in Settings › Team first.")
+    expect(screen.queryByRole("alertdialog")).toBeNull()
   })
 })
 

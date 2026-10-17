@@ -63,6 +63,11 @@ export const STRIPE_CUSTOMER_NOT_DELETED = {
   message: "The saved cards could not be deleted at Stripe, so the account was kept",
 } as const
 
+export const ADMIN_ACCOUNT_NOT_DELETABLE = {
+  code: USER_ERROR_CODES.CANNOT_DELETE_ADMIN,
+  message: "An admin account cannot be deleted until its admin access is removed in Settings, Team",
+} as const
+
 export const SESSION_NOT_FRESH = {
   code: "SESSION_NOT_FRESH",
   message: "Sign in again before making this change",
@@ -107,6 +112,8 @@ export const ADMIN_PATHS = {
 export const ADMIN_ACCOUNT_AUDIT_PATHS: ReadonlySet<string> = new Set(Object.values(ADMIN_PATHS))
 
 export const SET_ROLE_PATH = "/admin/set-role"
+
+export const REMOVE_USER_PATH = "/admin/remove-user"
 
 export const ROLE_FIELD_ADMIN_PATHS: ReadonlySet<string> = new Set(["/admin/create-user", ADMIN_PATHS.UPDATE_USER])
 

@@ -34,7 +34,9 @@ const INVALID_PASSWORD_CODE = "INVALID_PASSWORD"
 
 const deleteAccountRequest = createClientOnlyFn((input: Parameters<typeof authClient.deleteUser>[0]) => authClient.deleteUser(input))
 
-const closeAccountErrorKey = (code: string | undefined): "closeAccountError" | "closeStripeCustomerError" | "closeWrongPassword" => {
+const closeAccountErrorKey = (
+  code: string | undefined,
+): "closeAccountError" | "closeAdminAccountError" | "closeStripeCustomerError" | "closeWrongPassword" => {
   if (code === INVALID_PASSWORD_CODE) {
     return "closeWrongPassword"
   }
@@ -43,7 +45,7 @@ const closeAccountErrorKey = (code: string | undefined): "closeAccountError" | "
     return "closeStripeCustomerError"
   }
 
-  return "closeAccountError"
+  return code === USER_ERROR_CODES.CANNOT_DELETE_ADMIN ? "closeAdminAccountError" : "closeAccountError"
 }
 
 export const CloseAccountDialog = ({ hasPassword, onOpenChange, open }: Readonly<CloseAccountDialogProps>): JSX.Element => {

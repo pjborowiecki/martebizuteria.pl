@@ -115,7 +115,7 @@ describe("useDeleteCustomer on success", () => {
 describe("useDeleteCustomer on failure", () => {
   it.each([
     [ERROR_CODES.CONFLICT, "You cannot delete your own account from this view."],
-    [ERROR_CODES.FORBIDDEN, "Admin accounts cannot be deleted from here."],
+    [ERROR_CODES.FORBIDDEN, "Admin accounts cannot be deleted. Remove the admin access in Settings › Team first."],
     [ERROR_CODES.NOT_FOUND, "This customer was not found. Refresh the table and try again."],
     [ERROR_CODES.INTERNAL_ERROR, "The customer account could not be deleted. Please try again."],
   ])("explains the %s failure to the admin", async (code, description) => {

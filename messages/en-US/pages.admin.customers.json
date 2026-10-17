@@ -82,10 +82,11 @@
     "copyStripeCustomerIdMissingToast": "This customer has no Stripe customer ID",
     "copyStripeCustomerIdToast": "Stripe customer ID copied to clipboard",
     "delete": "Delete account",
+    "deleteAdminHint": "Remove the admin access in Settings › Team first.",
     "deleteDescription": "This action cannot be undone. We will delete the account of {name} ({email}) with their profile, saved addresses, wishlist, newsletter subscription, sign-in history, activity log, and their customer profile and saved cards at Stripe. Their orders and payments stay in the accounting records for 5 years, as the law requires. We will send the customer an account-deletion confirmation email.",
     "deleteTitle": "Delete customer account?",
     "toast": {
-      "cannotDeleteAdminDescription": "Admin accounts cannot be deleted from here.",
+      "cannotDeleteAdminDescription": "Admin accounts cannot be deleted. Remove the admin access in Settings › Team first.",
       "cannotDeleteSelfDescription": "You cannot delete your own account from this view.",
       "deleteEmailFailedDescription": "The confirmation email to the customer could not be sent. The error is recorded in the audit log.",
       "deleteEmailFailedTitle": "Account deleted — email not sent",

@@ -109,7 +109,7 @@ const {
   handleUserCreated,
   handleUserDeleted,
   handleUserUpdated,
-  requireAccountDataErased,
+  prepareSelfServiceDeletion,
 } = await import("~/src/integrations/better-auth/auth.hooks.server")
 
 const seo = await vi.importActual<typeof Seo>("~/src/lib/seo")
@@ -216,7 +216,7 @@ describe("account deletion", () => {
   it("erases the account's data before Better Auth deletes the account", async () => {
     stubs.eraseAccountData.mockResolvedValue(true)
 
-    await expect(requireAccountDataErased(createdUser)).resolves.toBeUndefined()
+    await expect(prepareSelfServiceDeletion(createdUser)).resolves.toBeUndefined()
 
     expect(stubs.eraseAccountData).toHaveBeenCalledExactlyOnceWith(createdUser)
   })
@@ -224,10 +224,19 @@ describe("account deletion", () => {
   it("stops the deletion with a retryable STRIPE_CUSTOMER_NOT_DELETED while Stripe keeps the saved cards", async () => {
     stubs.eraseAccountData.mockResolvedValue(false)
 
-    await expect(requireAccountDataErased(createdUser)).rejects.toMatchObject({
+    await expect(prepareSelfServiceDeletion(createdUser)).rejects.toMatchObject({
       body: { code: "STRIPE_CUSTOMER_NOT_DELETED" },
       statusCode: 503,
     })
+  })
+
+  it("refuses to delete an admin account before erasing anything, so the shop never loses its last admin", async () => {
+    await expect(prepareSelfServiceDeletion({ ...createdUser, role: "admin" })).rejects.toMatchObject({
+      body: { code: "CANNOT_DELETE_ADMIN" },
+      statusCode: 403,
+    })
+
+    expect(stubs.eraseAccountData).not.toHaveBeenCalled()
   })
 })
 
