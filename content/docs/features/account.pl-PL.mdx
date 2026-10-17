@@ -48,16 +48,16 @@ beforeLoad: () => {
 
 ## Osiem stron
 
-| Trasa                 | Plik                       | Zapytanie                                                          | Stan   |
-| --------------------- | -------------------------- | ------------------------------------------------------------------ | ------ |
-| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                                 | działa |
-| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`, `getOwnNewsletterSubscriptionQuery()` | działa |
-| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                        | działa |
-| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`, `getCustomerOrderWithdrawalQuery(id)` | działa |
-| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                         | działa |
-| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()`   | działa |
-| `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                   | działa |
-| `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                   | działa |
+| Trasa                 | Plik                       | Zapytanie                                                           | Stan   |
+| --------------------- | -------------------------- | ------------------------------------------------------------------- | ------ |
+| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                                  | działa |
+| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`, `getOwnNewsletterSubscriptionQuery()`  | działa |
+| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                         | działa |
+| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`, `getCustomerOrderWithdrawalQuery(id)`  | działa |
+| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                          | działa |
+| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `getCustomerLoginHistoryPageQuery()` | działa |
+| `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                    | działa |
+| `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                    | działa |
 
 Kolejność w panelu bocznym to `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`); strona zamówienia `/account/orders/$id` nie ma własnej pozycji i zostawia podświetlone **Zamówienia**. Przycisk wylogowania w panelu bocznym wywołuje `signOut`, a potem pełnym przeładowaniem strony wczytuje `/`, co odrzuca cache zapytań. Gdy wylogowanie się nie uda, pokazuje toast `signOutError`, a klient zostaje na stronie.
 
@@ -193,7 +193,7 @@ Każda z nich, gdy usunie sesję, zapisuje `auth.sessions_revoked` przypisane kl
 
 Strona podpisuje akcję zbiorczą „Wyloguj pozostałe urządzenia” i pokazuje ją tylko wtedy, gdy na liście jest sesja inna niż bieżąca. Gdy zalogowane jest jedno urządzenie, akcja nie miałaby czego zrobić, więc zamiast niej lista informuje, że klient nie ma aktywnych sesji na innych urządzeniach. Wylogowanie bieżącego urządzenia pozostaje przy przycisku wylogowania w panelu bocznym konta.
 
-`listCustomerLoginHistory` korzysta z tych samych wierszy audytu i zachowuje tylko `auth.login` oraz `auth.login_failed`, mapując niepowodzenie na `status: "failed"`. Historia logowań jest więc widokiem na [dziennik zdarzeń](/docs/features/audit-log), a nie osobną tabelą, i sięga najwyżej 12 miesięcy wstecz, bo starsze wpisy usuwa codzienne [czyszczenie po okresie przechowywania](/docs/guides/data-retention). `getCustomerLoginAuditRows` zwraca `CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT` (20) najnowszych wierszy; gdy lista osiąga ten limit, notka pod nią mówi, że widać tylko ostatnie próby. Każdy wiersz podaje wynik raz — „Udane logowanie” albo „Nieudana próba logowania” — z adresem i datą obok.
+`getCustomerLoginHistoryPage` czyta historię logowań stronami z tych samych wierszy audytu, zachowując tylko `auth.login` oraz `auth.login_failed` i mapując niepowodzenie na `status: "failed"`. Historia logowań jest więc widokiem na [dziennik zdarzeń](/docs/features/audit-log), a nie osobną tabelą, i sięga najwyżej 12 miesięcy wstecz, bo starsze wpisy usuwa codzienne [czyszczenie po okresie przechowywania](/docs/guides/data-retention). `getCustomerLoginAuditPage` zwraca jedną stronę wierszy, od najnowszych, z łączną liczbą, opcjonalnie tylko udane albo tylko nieudane próby albo te z danego adresu IP; tej samej funkcji używa [tabela historii logowania](/docs/features/admin-settings#historia-logowania) w panelu. Strona pokazuje po dziesięć prób (`CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE`), a gdy jest więcej niż jedna strona, pod listą pojawiają się **Poprzednia**, **Strona n z m** i **Następna**, więc da się przeczytać każdą próbę, a strona nie rośnie razem z historią. Każdy wiersz podaje wynik raz — „Udane logowanie” albo „Nieudana próba logowania” — z adresem i datą obok.
 
 Zamknięcia konta nie ma na tej stronie. Znajduje się wyłącznie na stronie profilu, gdzie `CloseAccountSection` otwiera okno potwierdzenia wywołujące `deleteUser` z Better Auth; zobacz [Usunięcie konta](#usunięcie-konta).
 

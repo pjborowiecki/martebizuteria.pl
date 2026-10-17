@@ -15,17 +15,33 @@ Settings is where an admin manages their own account, the shop's details, its de
 | `/admin/settings/security` | `admin.settings.security.tsx` | **Sign-in & security**: password, two-factor, sign-in methods, sessions and history |
 | `/admin/settings/store`    | `admin.settings.store.tsx`    | **Store details**: the seller's details                                             |
 | `/admin/settings/delivery` | `admin.settings.delivery.tsx` | **Delivery**: delivery methods and free delivery                                    |
-| `/admin/settings/team`     | `admin.settings.team.tsx`     | **Team**: the admins and how admin access works                                     |
+| `/admin/settings/team`     | `admin.settings.team.tsx`     | **Team**: the admins and who can be given admin access                              |
 
 The paths are `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY`, `ROUTES.ADMIN_SETTINGS_STORE`, `ROUTES.ADMIN_SETTINGS_DELIVERY` and `ROUTES.ADMIN_SETTINGS_TEAM` in `src/routes.ts`. All of them sit inside the `/admin` layout, so `requireAdmin` guards them and an admin without two-factor authentication is sent to `/admin/security` first (see [Admin dashboard](/docs/features/admin-dashboard#layout)).
 
 The layout declares `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` holds the page's own copy; the other three are there because Settings reuses the account dialogs, which read their copy and validation messages from them.
 
-The account loader prefetches `getCustomerProfileQuery()`. The security loader prefetches it together with `listCustomerSessionsQuery()` and `listCustomerLoginHistoryQuery()`, the store details loader prefetches `getAdminSellerDetailsQuery()`, the delivery loader prefetches `listAdminDeliveryMethodsQuery()` and `getAdminFreeDeliveryQuery()`, and the team loader prefetches `listAdminTeamQuery()`, so every tab renders without a loading state.
+The account loader prefetches `getCustomerProfileQuery()`. The security loader prefetches it together with `listCustomerSessionsQuery()` and the first page of the sign-in history, `getCustomerLoginHistoryPageQuery({ page: 1, pageSize: 10 })`, the store details loader prefetches `getAdminSellerDetailsQuery()`, the delivery loader prefetches `listAdminDeliveryMethodsQuery()` and `getAdminFreeDeliveryQuery()`, and the team loader prefetches `listAdminTeamQuery()`, so every tab renders without a loading state.
 
 ## Layout
 
-`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renders the admin header with the title, description and `SettingsTabs`, which are `AdminHeaderTabLink`s marked active by the route. The body is a single column of `SettingsCard`s across the full width of the page body, as on the other admin pages; a card lays its form fields out in two columns from medium screens up. A card has a title, a description, an optional action on the right and, below a divider, its rows; `SettingsRow` is one labelled row with an optional value and action.
+`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renders the admin header with the title, description and `SettingsTabs`, which are `AdminHeaderTabLink`s marked active by the route, and the header actions a tab passes in `actions`. Its `body` decides how the page below scrolls:
+
+- `body="form"`, the default, is `ADMIN_PAGE_BODY_CLASS`: a column of cards across the full width of the page body that scrolls as one page. **My account**, **Sign-in & security** and **Store details** use it.
+- `body="grid"` is `ADMIN_CATALOG_PAGE_BODY_CLASS`, the body of the catalog, coupons and audit log pages: stat cards above one data grid that fills the rest of the screen on desktop and scrolls inside itself. **Delivery** and **Team** use it.
+
+The tabs follow the patterns of the rest of the panel rather than patterns of their own:
+
+| Pattern                   | Where else it is used                                     | In Settings                                                                                                      |
+| ------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Data grid with stat cards | Attributes, Products, Coupons, Customers, the audit log   | Delivery methods, admins, signed-in devices and the sign-in history ([Data table](/docs/ui/data-table))          |
+| Add button in the toolbar | `CatalogToolbarAddButton` on the catalog and coupon grids | **Add method**, **Add admin**                                                                                    |
+| Row menu                  | `…RowActions` with `CatalogDeleteConfirmDialog`           | Edit, archive and restore a method; remove an admin's access; sign out a device                                  |
+| Side sheet for a form     | The attribute, category, coupon and customer sheets       | Adding and editing a delivery method, free delivery, adding an admin, editing the profile (`SettingsSheet`)      |
+| Page action in the header | The customer's **Edit**, the content page's **Save**      | **Free delivery** on Delivery; **Save** with the saved or unsaved state on Store details (`SettingsSaveActions`) |
+| Status badge              | The product, coupon and order status badges               | `SettingsStatusBadge`: tinted green, amber, red or grey                                                          |
+
+A card (`SettingsCard`) has a title, a description, an optional action and, below a divider, its rows; `SettingsRow` is one labelled row with an optional value and action. A card is a container query: when it is narrow, as the three security cards are side by side, its action moves under the text. Buttons inside a card are the outline, small, icon-and-label buttons of the order page's cards. A form inside a sheet uses `SettingsFormSection` (an icon, a title and a description, like the catalog sheets' sections), the catalog's `CatalogFormFieldLabel` with the hint in its info tooltip, a required marker and a character counter, and `ValidationFieldError` under the field.
 
 The sidebar marks **Settings** active on every `/admin/settings/*` page.
 
@@ -33,16 +49,11 @@ The sidebar marks **Settings** active on every `/admin/settings/*` page.
 
 ### Profile
 
-`SettingsProfileCard` reads the profile from `getCustomerProfileQuery()` and shows four rows:
+`SettingsProfileCard` reads the profile from `getCustomerProfileQuery()` and shows four rows: **Full name**, **Email address** (with a **Not confirmed** badge while the address is unverified), **Phone number** (**Not given** while there is none) and **Account created**, the account's `createdAt` in the admin's format locale and time zone.
 
-| Row             | What it does                                                                                                                                                                                         |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Full name       | **Edit** turns the row into a field. **Save** calls Better Auth's `authClient.updateUser({ name })`                                                                                                  |
-| Email address   | **Change** opens `ChangeEmailDialog`. Better Auth sends a confirmation link to the current address, and the address changes once it is opened. A **Not confirmed** badge marks an unverified address |
-| Phone number    | **Edit**, as for the name, saved with `updateCustomerPhone`. An empty value clears the number; **Not given** is shown while there is none                                                            |
-| Account created | The account's `createdAt`, in the admin's format locale and time zone                                                                                                                                |
+**Edit profile**, the card's action, opens `SettingsProfileSheet` with the name (required, up to 120 characters) and the phone (up to 32), each with its counter. **Save** checks them with the same `customerAccountZodSchemas.profileForm` the customer profile uses and shows a wrong field's message under it. `useSaveProfile` then saves only what changed: the name through Better Auth's `authClient.updateUser({ name })` and the phone through `updateCustomerPhone`, where an empty value clears the number. It toasts **Profile saved.** or an error, and on success invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE` and `SESSION_QUERY_KEYS.CURRENT`, because the cached session holds the name too; the sheet closes, or stays open after an error.
 
-`SettingsEditableRow` validates the field with the same `customerAccountZodSchemas.profileForm` the customer profile uses before it saves, and shows the error under the field. `useSaveProfileField` makes the call, toasts **Profile saved.** or an error, and on success invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE` and `SESSION_QUERY_KEYS.CURRENT`, because the cached session holds the name too. A confirmed change of email address is recorded as `auth.email_changed` in [the audit log](/docs/features/audit-log#account-security-events).
+**Change email**, in the email row, opens `ChangeEmailDialog`. Better Auth sends a confirmation link to the current address, and the address changes once it is opened. A confirmed change of email address is recorded as `auth.email_changed` in [the audit log](/docs/features/audit-log#account-security-events).
 
 ### Preferences
 
@@ -57,7 +68,7 @@ The sidebar marks **Settings** active on every `/admin/settings/*` page.
 
 ## Sign-in & security
 
-The security route reads the profile once and passes `hasPassword`, `hasGoogle` and `twoFactorEnabled` to the cards as props.
+The security route reads the profile once and passes `hasPassword`, `hasGoogle` and `twoFactorEnabled` to the cards as props. The password, two-factor and sign-in method cards sit side by side on wide screens (three columns from `xl` up) and one under another on smaller ones, above the grids of signed-in devices and sign-in attempts.
 
 ### Password
 
@@ -65,7 +76,7 @@ The security route reads the profile once and passes `hasPassword`, `hasGoogle` 
 
 ### Two-factor authentication
 
-`SettingsTwoFactorCard` shows **On** or **Off** and a **Turn on** or **Turn off** button, which opens `TwoFactorDialog`: the password, then the QR code or setup key, a six-digit code and the recovery codes when turning it on, and the password when turning it off. When the dialog finishes, the card invalidates the profile, the session and `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, because Better Auth replaces the current session when two-factor authentication changes.
+`SettingsTwoFactorCard` shows an **On** or **Off** badge and a **Turn on** or **Turn off** button, which opens `TwoFactorDialog`: the password, then the QR code or setup key, a six-digit code and the recovery codes when turning it on, and the password when turning it off. When the dialog finishes, the card invalidates the profile, the session and `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, because Better Auth replaces the current session when two-factor authentication changes.
 
 Two notes can appear under the card:
 
@@ -78,9 +89,15 @@ Two notes can appear under the card:
 
 When Google is connected, the card warns that signing in with Google does not ask for the shop's six-digit code. Better Auth's `twoFactor` plugin checks the code only on the password sign-in paths, so for a Google sign-in the Google account's own 2-Step Verification takes the place of the shop's code (see [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins)). The owner chose to keep Google sign-in open for admins and to say so here, rather than refuse it.
 
-### Active sessions and sign-in history
+### Active sessions
 
-`SettingsSessionsCard` lists the signed-in devices with `ActiveSessionList` from the account's sessions page. While any other device is signed in, the card offers **Sign out other devices**, which calls `revokeOtherCustomerSessions`, toasts the result and invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. `SettingsLoginHistoryCard` lists the recent successful and failed sign-ins with `LoginHistoryList`. Both read the same queries as `/account/sessions`.
+`SettingsSessionsGrid` lists the signed-in devices from `listCustomerSessionsQuery()` in a data grid like the rest of the panel's: the device with its icon and a **This device** badge on the current one, the browser, the IP address (**Not recorded** when there is none), the last activity (**Active now** for the last five minutes) and when the device signed in. The toolbar has the grid's search, column options, reset and refresh, and, while any other device is signed in, **Sign out other devices**, which calls `revokeOtherCustomerSessions`, toasts the result and invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. Every other device's row menu has **Sign out this device**, which calls `revokeCustomerSession`; the current device's row has no menu.
+
+### Sign-in history
+
+`SettingsLoginHistoryGrid` is a server-paged data grid like the audit log's: the date and time of each attempt, its result (**Successful sign-in** or **Failed attempt**) and the IP address, newest first, ten to a page by default. The footer has the page size selector (10 to 250), the range and total, and the page buttons; the grid's body scrolls inside a bounded height on desktop, so the page never grows with the history. The toolbar searches by IP address on the server, filters by result, refreshes, and exports every page that matches, not only the one on screen.
+
+Each page comes from `getCustomerLoginHistoryPage` (`src/modules/customer-account/use-cases/get-customer-login-history-page.ts`), which `authorized()` guards and which reads only the caller's own entries. Its input is `page`, `pageSize`, an optional `status` (`success` or `failed`) and an optional `search`, and it answers with the page's items and the total count. It reads the same audit entries as the customer's [Sessions page](/docs/features/account#sessions), which pages through it too, ten at a time.
 
 ## Store details
 
@@ -88,7 +105,7 @@ The Store details tab holds one card, **Seller details**, from `src/presentation
 
 ### Seller details
 
-`SettingsSellerDetailsCard` reads `getAdminSellerDetailsQuery()`, and `SellerDetailsFields` (`seller-details-fields.tsx`) shows these fields, each with its message under it when it is wrong:
+`SettingsStorePage` reads `getAdminSellerDetailsQuery()`, and `SellerDetailsFields` (`seller-details-fields.tsx`) shows these fields in the admin's field style, each with its required marker, a counter where the field has a length limit, its hint in the info tooltip, and its message under it when it is wrong:
 
 | Field                 | What it takes                                                                                                         |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -102,7 +119,7 @@ The Store details tab holds one card, **Seller details**, from `src/presentation
 | **Contact email**     | A valid address of up to 254 characters. The hint says that replies to the shop's e-mails go to it too                |
 | **Contact phone**     | Up to 30 characters, a valid number written with its country code, such as `+48 600 000 000`                          |
 
-Every field is required. The rules are `storeSettingZodSchemas.sellerDetails` in `src/modules/store-setting/store-setting.zod.ts`. The NIP and REGON checks are `isValidNip` and `isValidRegon` in `src/modules/_core/utils/polish-business-ids.ts`, which the checkout's company invoice NIP uses too, and the phone check is `isValidPhoneNumber` from `libphonenumber-js`. Country names come from `formatCountryName` in `src/modules/_core/utils/country-name.ts`. **Save** runs the same schema in the browser first (`toSellerDetailsSubmission` in `seller-details-form.utils.ts`), so a wrong field is marked before anything is sent, and the server parses the input again.
+Every field is required. The rules are `storeSettingZodSchemas.sellerDetails` in `src/modules/store-setting/store-setting.zod.ts`. The NIP and REGON checks are `isValidNip` and `isValidRegon` in `src/modules/_core/utils/polish-business-ids.ts`, which the checkout's company invoice NIP uses too, and the phone check is `isValidPhoneNumber` from `libphonenumber-js`. Country names come from `formatCountryName` in `src/modules/_core/utils/country-name.ts`. **Save**, in the page header, runs the same schema in the browser first (`toSellerDetailsSubmission` in `seller-details-form.utils.ts`), so a wrong field is marked before anything is sent, and the server parses the input again.
 
 **Save** calls `updateSellerDetails` (`src/modules/store-setting/use-cases/update-seller-details.ts`), which requires `settings: ["manage"]`, with the details and the time they were last saved as `expectedUpdatedAt`. The use case:
 
@@ -112,7 +129,7 @@ Every field is required. The rules are `storeSettingZodSchemas.sellerDetails` in
 4. refuses with `CONFLICT` when another admin saved the details after the form was opened, and the card toasts **Someone changed the seller details in the meantime. Reload the page to see the change.**;
 5. publishes `scheduleSellerDetailsInvalidation()`, and `scheduleContentPageInvalidation()` when it dated a page, and records `settings.updated` with the target `seller-details` and the changed fields, old and new, in the [audit log](/docs/features/audit-log).
 
-On success the card fills the form with the saved details, refreshes `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` and `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS`, and toasts **Seller details saved.** The invalidation sends the admin key to the admin hub and the storefront key to the storefront hub, so other admin tabs and open storefront and checkout tabs show the new details without a reload. The account pages and the docs, which do not follow realtime invalidation, show them on their next load, and the two PDF forms carry them the next time they are opened, because their `ETag` is the time of the save.
+Next to **Save** the header says **Unsaved changes** while a field differs from what was saved, **Saving…** while the request runs and **Saved** with the date and time of the last save otherwise, as on the content page editor; **Save** is enabled only while something changed, and the fields are locked while it saves. On success the page fills the form with the saved details, refreshes `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` and `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS`, and toasts **Seller details saved.** The invalidation sends the admin key to the admin hub and the storefront key to the storefront hub, so other admin tabs and open storefront and checkout tabs show the new details without a reload. The account pages and the docs, which do not follow realtime invalidation, show them on their next load, and the two PDF forms carry them the next time they are opened, because their `ETag` is the time of the save.
 
 ### Where the details show
 
@@ -136,53 +153,61 @@ Some places still carry the seller's details outside Settings and need a change 
 
 ## Delivery
 
-The Delivery tab holds two cards, from `src/presentation/components/custom/pages/admin/settings/delivery/`. [Shipping and delivery](/docs/features/shipping-and-delivery#managing-delivery-methods) describes the rules the server applies and what the checkout does with them.
+The Delivery tab is a data grid of the delivery methods, from `src/presentation/components/custom/pages/admin/settings/delivery/`, built like the attributes grid. [Shipping and delivery](/docs/features/shipping-and-delivery#managing-delivery-methods) describes the rules the server applies and what the checkout does with them.
 
 ### Delivery methods
 
-`SettingsDeliveryMethodsCard` reads `listAdminDeliveryMethodsQuery()` and lists the methods that are not archived in the order the checkout offers them. Each row shows the type's icon, the name in the panel's language, the type and the carrier (for example **Courier · InPost**), the price or **Free**, a **Hidden** badge for a method the checkout does not offer and **Carrier switched off** for one whose carrier is off in D1. The arrows move a method up or down; the new order is saved at once, the toast says **Checkout order saved.**, and the checkout lists the delivery families in that order.
+`DeliveryMethodsTable` reads `listAdminDeliveryMethodsQuery()`. Four stat cards sit above the grid: **Offered at checkout**, **Hidden** and **Archived** count the methods with that status, each with its share of all methods, and a click on one filters the grid to them (a second click shows all again); **Free delivery from** shows the threshold, or **Off**.
 
-**Add method** opens `DeliveryMethodDialog` with these fields:
+The grid lists the methods that are not archived in the order the checkout offers them, then the archived ones. Its columns are the drag handle, the method's name in the panel's language (and the name in each language, hidden until turned on in the column options), the type, the carrier, the price or **Free**, the status and the last edit (hidden by default). The status is **Offered**, **Hidden** for a method the checkout does not offer, **Carrier switched off** for one whose carrier is off in D1, or **Archived**. The toolbar has the grid's search (by either name, the type, the carrier or the status), column options, reset, refresh and export, a status filter with **All statuses**, **Offered**, **Hidden** and **Archived**, and **Add method**.
 
-| Field                                   | What it takes                                                                                                                                                                                                                                                               |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Type**                                | **Courier**, **Parcel locker** or **Pickup in person**                                                                                                                                                                                                                      |
-| **Carrier**                             | An existing carrier, or **New carrier** with its **Carrier name** (up to 60 characters). A parcel locker always uses InPost, and for a carrier that is not InPost the dialog warns that its parcels are booked on its own site, with the tracking number saved on the order |
-| **Name in Polish**, **Name in English** | Both required, up to 80 characters each; shoppers see the name in their language                                                                                                                                                                                            |
-| **Price**                               | In PLN; 0 makes the method free                                                                                                                                                                                                                                             |
-| **Offer at checkout**                   | Off keeps the method in the list, hidden from the checkout                                                                                                                                                                                                                  |
+The checkout order is set by dragging a method's handle onto another row, or by focusing the handle and pressing the up or down arrow, as on the attributes grid (`useDeliveryMethodOrdering`). Dropping saves the new order of the methods that are not archived through `reorderDeliveryMethods`, the toast says **Checkout order saved.**, and the checkout lists the delivery families in that order. Reordering is off while the grid is sorted, filtered or searched, and an archived method's handle is off, since it has no place in the checkout.
 
-**Edit** opens the same dialog for an existing method with its type and carrier under the title, since neither can change, and offers the names, the price and **Offer at checkout**. Its **Archive** button asks for confirmation first: the method disappears from the checkout, and orders already placed with it keep it. Archived methods are listed under **Archived methods** below the list, each with **Restore**, which brings the method back switched off, so it is offered again only once it is turned on.
+Clicking a method that is not archived, or **Edit method** in its row menu, opens `DeliveryMethodSheet` on it; **Add method** opens it empty. The sheet has these fields, in sections:
+
+| Field                                   | What it takes                                                                                                                                                                                                                                                                                |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Type**                                | **Courier**, **Parcel locker** or **Pickup in person**; only when adding                                                                                                                                                                                                                     |
+| **Carrier**                             | An existing carrier, or **New carrier** with its **Carrier name** (up to 60 characters); only when adding. A parcel locker always uses InPost, and for a carrier that is not InPost the sheet warns that its parcels are booked on its own site, with the tracking number saved on the order |
+| **Name in Polish**, **Name in English** | Both required, up to 80 characters each, with counters; shoppers see the name in their language                                                                                                                                                                                              |
+| **Price**                               | In PLN; 0 makes the method free                                                                                                                                                                                                                                                              |
+| **Status**                              | **Offered** or **Hidden**; a hidden method stays in the list, out of the checkout                                                                                                                                                                                                            |
+
+When editing, the sheet shows the method's type and carrier under the title, since neither can change. A wrong field is marked with its message under it, from the same zod paths the server checks.
+
+The row menu of a method that is not archived also has **Archive method**, which asks for confirmation first: the method disappears from the checkout, and orders already placed with it keep it. An archived method's menu has **Restore method**, which brings it back switched off, so it is offered again only once it is turned on.
 
 A refused change is shown as a toast in the panel's language: a second offered parcel locker or pickup method, switching off or archiving the last offered method (the toast points to the sales switch on the dashboard instead), a parcel locker with another carrier, and an edit of a method someone changed in the meantime, which asks to reload the page. `useDeliveryMethodActions` refreshes the Settings list and the checkout's list after every change, and every change reaches other admin tabs, storefront tabs and open checkouts through realtime invalidation.
 
 ### Free delivery
 
-`SettingsFreeDeliveryCard` reads `getAdminFreeDeliveryQuery()`. **Offer free delivery** turns the threshold on or off, and **Free delivery from** takes the products' value in PLN from which delivery costs nothing, counted after a discount code and before delivery. **Save** calls `setFreeDeliveryThreshold`, with no value when the switch is off, and toasts **Free delivery saved.**; with the switch on and no value above zero, the field asks for one instead. The checkout then shows delivery as free once a basket reaches the value and tells shoppers how much they have left to spend before that; an open checkout follows a change at once. See [Shipping and delivery: Free delivery](/docs/features/shipping-and-delivery#free-delivery).
+**Free delivery**, in the page header, opens `FreeDeliverySheet`, which reads `getAdminFreeDeliveryQuery()`. Its **Free delivery** field is **Offered** or **Not offered**, and **Free delivery from** takes the products' value in PLN from which delivery costs nothing, counted after a discount code and before delivery. **Save** calls `setFreeDeliveryThreshold`, with no value when free delivery is not offered, toasts **Free delivery saved.** and closes the sheet; when it is offered with no value above zero, the field asks for one instead. The checkout then shows delivery as free once a basket reaches the value and tells shoppers how much they have left to spend before that; an open checkout follows a change at once. See [Shipping and delivery: Free delivery](/docs/features/shipping-and-delivery#free-delivery).
 
 Every change on this tab is recorded in the [audit log](/docs/features/audit-log) under the `settings` category.
 
 ## Team
 
-The Team tab holds two cards, from `src/presentation/components/custom/pages/admin/settings/team/`. It is where admin access is given to an existing customer account and taken away again. Better Auth's own admin endpoints no longer change roles, so this is the only way to do it short of editing D1 (see [Security model](/docs/architecture/security-model#admin-access)).
+The Team tab is a data grid of the admins, from `src/presentation/components/custom/pages/admin/settings/team/`. It is where admin access is given to an existing customer account and taken away again. Better Auth's own admin endpoints no longer change roles, so this is the only way to do it short of editing D1 (see [Security model](/docs/architecture/security-model#admin-access)).
 
 ### Admins
 
-`SettingsTeamCard` reads `listAdminTeamQuery()` and lists every account with the `admin` role, sorted by name. Each row shows the name, a **You** badge on the signed-in admin's own row, a **Two-factor on** or **Two-factor off** badge, the e-mail address, how the account signs in (a password, Google, both, or **No sign-in method**) and its latest sign-in, or **No sign-in recorded**. Where `isAdminTwoFactorRequired()` holds, an admin without two-factor authentication carries a note that it must be turned on before the panel opens, because `requireAdmin` sends that account to `/admin/security` first.
+`TeamTable` reads `listAdminTeamQuery()`, every account with the `admin` role, sorted by name. Four stat cards count the **Admins**, those with **Two-factor on** and **Two-factor off**, and those who **Sign in with Google**; a click filters the grid to them. Where `isAdminTwoFactorRequired()` holds, the **Two-factor off** card says that the panel stays closed for them until it is on, because `requireAdmin` sends such an account to `/admin/security` first.
+
+The grid's columns are the name, with a **You** badge on the signed-in admin's own row, the email address, two-factor authentication (**On**, or **Off**, in red where it is required), how the account signs in (a password, Google, both, or **No sign-in method**) and the latest sign-in, or **No sign-in recorded**. The toolbar has the grid's search, column options, reset, refresh and export, and **Add admin**.
 
 `listAdminTeam` (`src/modules/user/use-cases/list-admin-team.ts`) requires `user: ["list"]`. `listAdminTeamRows` in `src/modules/user/user.team.server.ts` reads the sign-in methods from the account's `account` rows (`credential` and `google`) and the latest sign-in from the newest `auth.login` entry the audit log holds for the account, so an account whose entries the retention clean-up removed shows none. The answer also carries `recentSignIn`, whether the caller's session is younger than 24 hours (`isRecentSignIn` in `auth.middleware.ts`).
 
-**Add admin** sits in the card's header, and every row but your own has **Remove access**. Your own row has none and says that only another admin can change your access. While `recentSignIn` is false, the card says that the last sign-in was more than 24 hours ago, both buttons are off, and **Sign in again** signs the admin out and opens the sign-in page with `redirect` set to the Team tab, so the next sign-in comes back to it.
+Every row's menu has **Remove access**. On your own row it is disabled, with the note that only another admin can change your access. While `recentSignIn` is false, a notice above the grid says that the last sign-in was more than 24 hours ago, **Add admin** and **Remove access** are disabled, and **Sign in again** signs the admin out and opens the sign-in page with `redirect` set to the Team tab, so the next sign-in comes back to it.
 
 ### Adding an admin
 
-**Add admin** opens `AddAdminDialog`. Its field, **Email address or name**, searches from three characters on, 300 ms after the last key, through `searchTeamCandidatesQuery(search)`, which calls `searchTeamCandidates` (`user: ["list"]`). The search covers customer accounts only, matches a part of the e-mail address or the name in any case, and returns at most eight. An account whose address is not confirmed is marked **Email address not confirmed** and a blocked one **Account blocked**; neither can be chosen, and a note under the list says why. When nothing matches, the dialog says that the person needs an account in the shop with a confirmed address first.
+**Add admin** opens `AddAdminSheet`. Its field, **Email address or name**, searches from three characters on, 300 ms after the last key, through `searchTeamCandidatesQuery(search)`, which calls `searchTeamCandidates` (`user: ["list"]`). The search covers customer accounts only, matches a part of the e-mail address or the name in any case, and returns at most eight. An account whose address is not confirmed is marked **Email address not confirmed** and a blocked one **Account blocked**; neither can be chosen, and a note under the list says why. When nothing matches, the sheet says that the person needs an account in the shop with a confirmed address first. Under the search, **How admin access works** lists the rules for the owner in plain words: only an account with a confirmed e-mail address can become an admin; nobody changes their own access, so the shop always keeps an admin; a change needs a sign-in from the last 24 hours; removing access signs the person out on every device; an admin account cannot be deleted until its admin access is removed; and every change is in the audit log with who made it.
 
-**Choose** moves to the confirmation, which lists what the account will be able to do: see and change every order, refund payments and book shipments; edit products, collections, pages and coupons, and pause sales; see every customer's details and delete customer accounts; change the shop's settings, and add and remove admins. Where two-factor authentication is required and the account does not use it yet, it also says that it has to be turned on before the panel opens. **Back** returns to the search, and **Make admin** calls `grantAdminAccess`, toasts that the account's owner is now an admin, by name, and closes.
+**Choose** moves the sheet to the confirmation, which lists what the account will be able to do: see and change every order, refund payments and book shipments; edit products, collections, pages and coupons, and pause sales; see every customer's details and delete customer accounts; change the shop's settings, and add and remove admins. Where two-factor authentication is required and the account does not use it yet, it also says that it has to be turned on before the panel opens. **Back** returns to the search, and **Make admin** calls `grantAdminAccess`, toasts that the account's owner is now an admin, by name, and closes.
 
 ### Removing access
 
-**Remove access** opens `RemoveAdminDialog`, which says that the customer account stays, that it can no longer open the panel and is signed out on every device at once, and that access can be given back later. Its **Remove access** calls `revokeAdminAccess` and toasts, by name, that the person is no longer an admin.
+**Remove access** asks for confirmation in the admin's confirmation dialog, which says that the customer account stays, that it can no longer open the panel and is signed out on every device at once, and that access can be given back later. Its **Remove access** calls `revokeAdminAccess` and toasts, by name, that the person is no longer an admin.
 
 ### The rules
 
@@ -203,10 +228,6 @@ The Team tab holds two cards, from `src/presentation/components/custom/pages/adm
 Each change is one conditional `UPDATE` in `user.team.server.ts`. `grantAdminRole` sets `role` to `admin` only while the account is still a confirmed, unblocked customer. `revokeAdminRole` sets it back to `customer` only while the account is still an admin and the admin making the change is someone else who still holds the role, so the acting admin always remains and two admins removing each other at the same moment cannot both succeed. When the write changes nothing, the use case reads the account again to say why. After a removal, `revokeAdminRole` deletes the account's `session` rows, so it is signed out everywhere; sessions are read from D1 on every request, so the new role applies to the next request either way.
 
 On success, both call `scheduleAdminCustomersInvalidation()`, which refreshes `USER_QUERY_KEYS.ADMIN.TEAM` as well as the customer list in every admin tab, and record `team.admin_granted` or `team.admin_revoked` in the [audit log](/docs/features/audit-log#admin-access) under `settings`. `useTeamAccess` refreshes the team and the customer list after every change and after a refusal too, so a session that went stale while the page was open brings back the sign-in notice. A refusal is a toast in the panel's language.
-
-### How admin access works
-
-`SettingsTeamRulesCard` lists the rules for the owner in plain words: only an account with a confirmed e-mail address can become an admin; nobody changes their own access, so the shop always keeps an admin; a change needs a sign-in from the last 24 hours; removing access signs the person out on every device; an admin account cannot be deleted until its admin access is removed; and every change is in the audit log with who made it.
 
 ## Dialog styling
 

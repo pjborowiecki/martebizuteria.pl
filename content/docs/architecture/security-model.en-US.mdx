@@ -107,7 +107,7 @@ Customer-facing reads and writes never trust an id from the input. They filter b
 where: and(eq(order.id, orderId), eq(order.userId, context.auth.user.id)),
 ```
 
-The same pattern appears in `list-customer-orders.ts`, `list-customer-sessions.ts`, `list-customer-login-history.ts`, `get-customer-overview.ts`, `revoke-customer-session.ts`, `revoke-other-customer-sessions.ts`, `update-customer-phone.ts`, `get-customer-order-withdrawal.ts`, `withdraw-from-customer-order.ts` and all five address use cases. A foreign id returns no row, so there is nothing to filter out afterwards and nothing to leak. The public withdrawal form, `withdraw-from-guest-order.ts`, finds an order only by its number together with the e-mail address it was placed with, returns nothing whether or not it found one, and never returns the order's contents.
+The same pattern appears in `list-customer-orders.ts`, `list-customer-sessions.ts`, `get-customer-login-history-page.ts`, `get-customer-overview.ts`, `revoke-customer-session.ts`, `revoke-other-customer-sessions.ts`, `update-customer-phone.ts`, `get-customer-order-withdrawal.ts`, `withdraw-from-customer-order.ts` and all five address use cases. A foreign id returns no row, so there is nothing to filter out afterwards and nothing to leak. The public withdrawal form, `withdraw-from-guest-order.ts`, finds an order only by its number together with the e-mail address it was placed with, returns nothing whether or not it found one, and never returns the order's contents.
 
 `revoke-customer-session.ts` additionally refuses to revoke the caller's own session, and `delete-customer.ts` refuses to delete the acting admin or any other admin account.
 

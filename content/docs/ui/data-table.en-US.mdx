@@ -36,20 +36,24 @@ interface DataGrid<TData extends RowData> {
 }
 ```
 
-Ten grids exist, each in a `utils/<name>-data-grid.ts` file inside its screen folder under `pages/admin/`:
+Fourteen grids exist, each in a `utils/<name>-data-grid.ts` file inside its screen folder under `pages/admin/`:
 
-| Grid                            | `persistenceKey`               | Mode                                                                                                |
-| ------------------------------- | ------------------------------ | --------------------------------------------------------------------------------------------------- |
-| `ordersDataGrid`                | `admin.orders`                 | Server: manual filtering and pagination                                                             |
-| `customerOrdersDataGrid`        | `admin.customer-orders`        | Server: the orders hook with a `userId`, on the customer detail page                                |
-| `customersDataGrid`             | `admin.customers`              | Server: manual filtering and pagination                                                             |
-| `auditDataGrid`                 | `admin.audit:v3`               | Server: manual filtering and pagination                                                             |
-| `couponsDataGrid`               | `admin.coupons`                | Server: manual pagination; status and type filters held in the hook                                 |
-| `newsletterSubscribersDataGrid` | `admin.newsletter-subscribers` | Server: manual pagination; status filter held in the hook; no row selection                         |
-| `productsDataGrid`              | `admin.catalog.products:v2`    | Server when a list query is present, otherwise in memory; manual sorting too; row reorder in memory |
-| `categoriesDataGrid`            | `admin.catalog.categories`     | In memory, custom global filter, row reorder                                                        |
-| `collectionsDataGrid`           | `admin.catalog.collections`    | In memory, custom global filter, row reorder                                                        |
-| `attributesDataGrid`            | `admin.catalog.attributes:v6`  | In memory, custom global filter, row reorder                                                        |
+| Grid                            | `persistenceKey`                     | Mode                                                                                                |
+| ------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| `ordersDataGrid`                | `admin.orders`                       | Server: manual filtering and pagination                                                             |
+| `customerOrdersDataGrid`        | `admin.customer-orders`              | Server: the orders hook with a `userId`, on the customer detail page                                |
+| `customersDataGrid`             | `admin.customers`                    | Server: manual filtering and pagination                                                             |
+| `auditDataGrid`                 | `admin.audit:v3`                     | Server: manual filtering and pagination                                                             |
+| `couponsDataGrid`               | `admin.coupons`                      | Server: manual pagination; status and type filters held in the hook                                 |
+| `newsletterSubscribersDataGrid` | `admin.newsletter-subscribers`       | Server: manual pagination; status filter held in the hook; no row selection                         |
+| `productsDataGrid`              | `admin.catalog.products:v2`          | Server when a list query is present, otherwise in memory; manual sorting too; row reorder in memory |
+| `categoriesDataGrid`            | `admin.catalog.categories`           | In memory, custom global filter, row reorder                                                        |
+| `collectionsDataGrid`           | `admin.catalog.collections`          | In memory, custom global filter, row reorder                                                        |
+| `attributesDataGrid`            | `admin.catalog.attributes:v6`        | In memory, custom global filter, row reorder                                                        |
+| `deliveryMethodsDataGrid`       | `admin.settings.delivery-methods:v1` | In memory, custom global filter, status column filter, row reorder; no row selection                |
+| `teamDataGrid`                  | `admin.settings.team:v1`             | In memory, custom global filter, stat filter held in the hook; no row selection                     |
+| `sessionsDataGrid`              | `admin.settings.sessions:v1`         | In memory, custom global filter; no row selection                                                   |
+| `loginHistoryDataGrid`          | `admin.settings.login-history:v1`    | Server: manual filtering and pagination; result filter held in the hook; no row selection           |
 
 The `:v2`, `:v3` and `:v6` suffixes are cache busters. Bump the suffix when you change a grid's columns in a way that makes saved layouts meaningless — every visitor then starts from the defaults instead of restoring a stale width or order.
 
@@ -139,7 +143,7 @@ Three things keep that from flashing or drifting:
 
 ## Columns
 
-Column definitions are built by a plain function, and a thin hook supplies translations and the viewer's display preferences, memoised. The orders, customers, audit, coupons and newsletter-subscribers screens keep the builder in `lib/<area>-column-defs.tsx` and the hook in `components/<area>-columns.tsx`; the four catalog screens keep both in `components/<area>-columns.tsx`. The customer orders grid reuses `useOrderColumns` and drops the columns its view hides.
+Column definitions are built by a plain function, and a thin hook supplies translations and the viewer's display preferences, memoised. The orders, customers, audit, coupons and newsletter-subscribers screens keep the builder in `lib/<area>-column-defs.tsx` and the hook in `components/<area>-columns.tsx`; the four catalog screens and the four Settings screens keep both in `components/<area>-columns.tsx`. The customer orders grid reuses `useOrderColumns` and drops the columns its view hides.
 
 ```tsx
 export const useOrderColumns = () => {
@@ -209,7 +213,7 @@ Row actions are a `display` column with `enableHiding: false`, a screen-reader-o
 
 ## Filters
 
-Filters are per-screen components; the shared toolbar has no filter abstraction. Most write into the table's `columnFilters` state — the orders screen supplies `OrdersStatusFilter`, `OrdersPaymentFilter`, `OrdersFulfillmentFilter`, `OrdersNumericColumnFilter` and `OrdersDateColumnFilter`, and the customers screen has its own role, banned, email-verified, numeric and date filters. The audit, coupons and newsletter-subscribers screens keep their filters in the grid hook's state instead and expose an apply function on the context (`applyAuditFilter`, `applyCouponsFilter`, `applyStatusFilter`). `datagrid/lib/` provides the reusable parsing halves: `data-grid-date-filter.ts` and `data-grid-numeric-filter.ts`.
+Filters are per-screen components; the shared toolbar has no filter abstraction. Most write into the table's `columnFilters` state — the orders screen supplies `OrdersStatusFilter`, `OrdersPaymentFilter`, `OrdersFulfillmentFilter`, `OrdersNumericColumnFilter` and `OrdersDateColumnFilter`, and the customers screen has its own role, banned, email-verified, numeric and date filters. The audit, coupons, newsletter-subscribers, team and sign-in history screens keep their filters in the grid hook's state instead and expose an apply function on the context (`applyAuditFilter`, `applyCouponsFilter`, `applyStatusFilter`, `applyStatFilter`). The delivery methods screen's status filter and stat cards both write the status column's filter. `datagrid/lib/` provides the reusable parsing halves: `data-grid-date-filter.ts` and `data-grid-numeric-filter.ts`.
 
 Search is separate. `DataGridSearch` writes to the table's global filter; `useAdminDebouncedTableSearch(table)` returns a debounced copy that server-mode screens feed into their query input. The in-memory catalog grids instead pass a `globalFilterFn` built by `createCatalogTableGlobalFilterFn`, which joins a row's searchable parts into one lowercased haystack:
 
@@ -234,7 +238,7 @@ A server-mode hook owns the query input and hands controlled state to `useDataGr
 - The same filters and debounced search, without the page, memoised as the input `useOrdersExportSource` sends to `exportAdminOrders`.
 - Two options make it reusable: `userId` restricts the list to one customer's orders, and `view` (`OrdersDataGridView`) sets the persistence key, the pinning, the page size and the column ids to leave out. The customer detail page passes `CUSTOMER_ORDERS_VIEW`, which uses `admin.customer-orders`, the default page size of 10 and drops the customer, email and selection columns.
 
-Sorting in server mode is opt-in: only the products grid sets `manualSorting`. The orders grid sets `enableSorting: false` on every column, so the server's ordering is authoritative. The customers, audit, coupons and newsletter-subscribers grids do not set `manualSorting` but leave most columns sortable, so a header sort reorders only the rows of the loaded page.
+Sorting in server mode is opt-in: only the products grid sets `manualSorting`. The orders and sign-in history grids set `enableSorting: false` on every column, so the server's ordering is authoritative. The customers, audit, coupons and newsletter-subscribers grids do not set `manualSorting` but leave most columns sortable, so a header sort reorders only the rows of the loaded page.
 
 The context value may be widened per screen. `OrdersDataGridValue` extends `DataGridContextValue` with `activeStatFilter` and `applyOrderStatFilter`, and `useOrdersDataGridContext()` narrows the base context back to it with a type guard that throws a clear error outside the right `Provider`.
 
@@ -242,7 +246,7 @@ The context value may be widened per screen. `OrdersDataGridValue` extends `Data
 
 `DataGridPagination` renders the rows-per-page select, a range counter, a page indicator and first/previous/next/last buttons. The allowed page sizes are fixed in `data-grid-pagination.constants.ts` as `DATA_GRID_PAGE_SIZE_OPTIONS`, which resolves to `[10, 25, 50, 100, 250]`. The largest option is `LIST_PAGE_SIZE_MAX` from `src/modules/_core/utils/pagination.ts`, which `pageSizeField` also enforces on the server, so a list request cannot ask for a bigger page than the grid offers.
 
-`DATA_GRID_DEFAULT_PAGE_SIZE` is 10; `normalizeDataGridPageSize` rounds any other number up to the next allowed size, and an effect in the component corrects a page size that is not in the list. Screens override it — orders use `ADMIN_ORDERS_PAGE_SIZE` (25), customers `ADMIN_CUSTOMER_PAGE_SIZE` (25), audit `ADMIN_AUDIT_LOG_PAGE_SIZE` (100), coupons `ADMIN_DISCOUNTS_PAGE_SIZE` (25) and newsletter subscribers `ADMIN_NEWSLETTER_PAGE_SIZE` (50); the customer orders grid keeps the default.
+`DATA_GRID_DEFAULT_PAGE_SIZE` is 10; `normalizeDataGridPageSize` rounds any other number up to the next allowed size, and an effect in the component corrects a page size that is not in the list. Screens override it — orders use `ADMIN_ORDERS_PAGE_SIZE` (25), customers `ADMIN_CUSTOMER_PAGE_SIZE` (25), audit `ADMIN_AUDIT_LOG_PAGE_SIZE` (100), coupons `ADMIN_DISCOUNTS_PAGE_SIZE` (25), newsletter subscribers `ADMIN_NEWSLETTER_PAGE_SIZE` (50), delivery methods `ADMIN_DELIVERY_METHODS_PAGE_SIZE` (25), the team `ADMIN_TEAM_PAGE_SIZE` (25) and the sign-in history `CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE` (10); the customer orders and sessions grids keep the default.
 
 In manual mode the total comes from `table.options.rowCount`; otherwise from the filtered row model.
 
@@ -252,13 +256,13 @@ All of the text lives in the `components.datagrid` namespace: `view.label`, `vie
 
 `DataGridExport` (`datagrid/components/data-grid-export.tsx`) is a menu button with CSV, JSON, XML and TXT. Choosing a format runs `useDataGridExport`: it takes the exportable columns from `getDataGridExportColumns(table)` — the visible columns in the order and pinning the grid shows, those whose meta has an `exportValue` — and the rows from `exportSource.loadRows()`, or, for a grid without it, the rows after filtering and sorting from `table.getPrePaginatedRowModel()`. It adds the search to the source's filters — the source's `search` when it loads its rows, the search box otherwise — builds the document, serialises it with `serializeTableExport` from `src/modules/_core/utils/table-export.ts` and saves it with `downloadTextFile`. The button stays disabled while the rows load, and a failed load shows a toast instead of a file.
 
-The orders, customers, newsletter subscribers and audit grids, and the products grid while it queries the server, export through their list's export server function, so a file holds every row of the current selection; the categories, collections and attributes grids, loaded whole, export what they hold. Each `use-<area>-export-source.ts` hook builds the grid's `exportSource`. [Add a data table](/docs/guides/add-a-data-table) walks through making a column and a grid exportable.
+The orders, customers, newsletter subscribers and audit grids, and the products grid while it queries the server, export through their list's export server function, and the sign-in history grid pages through its own list, so a file holds every row of the current selection; the categories, collections, attributes, delivery methods and team grids, loaded whole, export what they hold. Each `use-<area>-export-source.ts` hook builds the grid's `exportSource`. [Add a data table](/docs/guides/add-a-data-table) walks through making a column and a grid exportable.
 
 ## Layout, resizing and reordering
 
 `DataGridTable` measures its scroll container with a `ResizeObserver` (`useDatagridContainerWidth`) and resolves a layout from the column sizing, the pinning state and `fillsRemainingWidth`/`absorbsTrailingSlack`. Column widths are applied as CSS variables rather than inline styles, which is what lets the head script restore them before React runs.
 
-Column reordering is drag and drop via `useColumnReorder` and the `ColumnReorderApi` on the context. Row reordering is opt-in: the four catalog grids provide a `RowReorderApi` (`onRowDragStart`, `onRowDragEnter`, `onRowDrop`, `onRowMove`, `draggingId`, `enabled`), and the others pass `rowReorder: undefined`. Each catalog grid sets `enabled` only while its rows are in their stored order — no sorting, column filter or search is active, and for products no server list query.
+Column reordering is drag and drop via `useColumnReorder` and the `ColumnReorderApi` on the context. Row reordering is opt-in: the four catalog grids and the delivery methods grid provide a `RowReorderApi` (`onRowDragStart`, `onRowDragEnter`, `onRowDrop`, `onRowMove`, `draggingId`, `enabled`), and the others pass `rowReorder: undefined`. Each of them sets `enabled` only while its rows are in their stored order — no sorting, column filter or search is active, and for products no server list query. The delivery methods grid also keeps archived methods out of the order: their handles are off, and only the methods that are not archived are saved.
 
 Row clicks have one subtlety. `DataGridRow` marks cells whose column sets `meta.preventRowClick` with `data-prevent-row-click`, and before firing `onRowClick` it checks `consumeDataGridRowClickSuppression()`. Code that closes a dialog or a menu over the grid calls `suppressNextDataGridRowClick()` (300ms) or `suppressDataGridRowClickAfterDialogDismiss()` (500ms) from `lib/data-grid-row-click.ts`, so dismissing an overlay does not also open the row underneath.
 
