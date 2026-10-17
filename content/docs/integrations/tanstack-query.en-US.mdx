@@ -41,10 +41,10 @@ export const getCategoriesQuery = () =>
   })
 ```
 
-Loaders, components and cache operations all use that same `getCategoriesQuery()`, so a key and a stale time are never written twice. Infinite lists use `infiniteQueryOptions` the same way — `getStorefrontProductsPageQuery(search, scope)` in `src/modules/product/use-cases/get-storefront-products-page.ts` derives its key from the normalized search object:
+Loaders, components and cache operations all use that same `getCategoriesQuery()`, so a key and a stale time are never written twice. Infinite lists use `infiniteQueryOptions` the same way — `getStorefrontProductsPageQuery(search, scope)` in `src/modules/product/use-cases/get-storefront-products-page.ts` derives its key from the request it sends, the normalized search plus the page's `scope` when it has one:
 
 ```ts
-queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, effective],
+queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, request],
 getNextPageParam: (lastPage, _allPages, lastPageParam) =>
   (!filtered && lastPage.hasMore ? lastPageParam + LIST_PAGE_STEP : undefined),
 initialPageParam: LIST_PAGE_FIRST,

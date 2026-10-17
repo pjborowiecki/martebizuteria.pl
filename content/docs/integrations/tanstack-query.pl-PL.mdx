@@ -41,10 +41,10 @@ export const getCategoriesQuery = () =>
   })
 ```
 
-Loadery, komponenty i operacje na cache używają tego samego `getCategoriesQuery()`, więc klucz i czas świeżości nigdy nie są zapisane dwukrotnie. Nieskończone listy używają `infiniteQueryOptions` w ten sam sposób — `getStorefrontProductsPageQuery(search, scope)` w `src/modules/product/use-cases/get-storefront-products-page.ts` wyprowadza swój klucz ze znormalizowanego obiektu wyszukiwania:
+Loadery, komponenty i operacje na cache używają tego samego `getCategoriesQuery()`, więc klucz i czas świeżości nigdy nie są zapisane dwukrotnie. Nieskończone listy używają `infiniteQueryOptions` w ten sam sposób — `getStorefrontProductsPageQuery(search, scope)` w `src/modules/product/use-cases/get-storefront-products-page.ts` wyprowadza swój klucz z wysyłanego żądania, czyli ze znormalizowanego obiektu wyszukiwania i `scope` strony, jeśli go ma:
 
 ```ts
-queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, effective],
+queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, request],
 getNextPageParam: (lastPage, _allPages, lastPageParam) =>
   (!filtered && lastPage.hasMore ? lastPageParam + LIST_PAGE_STEP : undefined),
 initialPageParam: LIST_PAGE_FIRST,

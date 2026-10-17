@@ -22,11 +22,12 @@ import {
 } from "~/src/modules/product/product.constants"
 import {
   type StorefrontCatalogScope,
+  type StorefrontProductsRequest,
   type StorefrontProductsSearch,
   buildEffectiveStorefrontProductsSearch,
   hasActiveStorefrontProductFilters,
-  normalizeStorefrontProductsSearch,
   storefrontCatalogFilterOptions,
+  storefrontCatalogScopeSchema,
   storefrontProductsSearchSchema,
 } from "~/src/modules/product/product.storefront-catalog"
 import { getStorefrontPublishedProductsPage } from "~/src/modules/product/product.storefront-catalog.accessors"
@@ -37,6 +38,7 @@ const CENTS_PER_PLN = 100
 
 const storefrontProductsPageInputSchema = storefrontProductsSearchSchema.extend({
   page: zod.coerce.number().int().min(LIST_PAGE_FIRST).optional(),
+  scope: storefrontCatalogScopeSchema.optional(),
 })
 
 const resolveStorefrontCategoryIdsForSearch = async (categoryHandle: string | undefined): Promise<string[] | undefined> => {
@@ -92,13 +94,13 @@ export const getStorefrontProductsPage = createServerFn({
   .validator((input: zod.input<typeof storefrontProductsPageInputSchema>) => storefrontProductsPageInputSchema.parse(input))
   .handler(async ({ context, data: input }) => {
     const startedAt = performance.now()
-    const search = normalizeStorefrontProductsSearch(input)
+    const search = buildEffectiveStorefrontProductsSearch(input, input.scope)
     if (search.q !== undefined) {
       await assertWithinRateLimit("search-storefront-products", RATE_LIMITS.BROWSING, context.requestHeaders)
     }
 
     const page = input.page ?? LIST_PAGE_FIRST
-    const filtered = hasActiveStorefrontProductFilters(search)
+    const filtered = hasActiveStorefrontProductFilters(search, storefrontCatalogFilterOptions(input.scope))
     const pageSize = filtered ? PRODUCT_STOREFRONT_FILTERED_MAX : PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE
     const listParams = listPaginationParamsFromPage(page, pageSize)
     const filters = await resolveStorefrontCatalogFilters(search)
@@ -137,15 +139,15 @@ export const getStorefrontProductsPage = createServerFn({
   })
 
 export const getStorefrontProductsPageQuery = (search: StorefrontProductsSearch, scope?: StorefrontCatalogScope) => {
-  const normalized = normalizeStorefrontProductsSearch(search)
-  const effective = buildEffectiveStorefrontProductsSearch(normalized, scope)
+  const effective = buildEffectiveStorefrontProductsSearch(search, scope)
   const filtered = hasActiveStorefrontProductFilters(effective, storefrontCatalogFilterOptions(scope))
+  const request: StorefrontProductsRequest = scope === undefined ? effective : { ...effective, scope }
 
   return infiniteQueryOptions<
     StorefrontProductsPage,
     Error,
     InfiniteData<StorefrontProductsPage, number>,
-    readonly [...typeof PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, StorefrontProductsSearch],
+    readonly [...typeof PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, StorefrontProductsRequest],
     number
   >({
     getNextPageParam: (lastPage, _allPages, lastPageParam) => (!filtered && lastPage.hasMore ? lastPageParam + LIST_PAGE_STEP : undefined),
@@ -153,11 +155,11 @@ export const getStorefrontProductsPageQuery = (search: StorefrontProductsSearch,
     queryFn: ({ pageParam }) =>
       getStorefrontProductsPage({
         data: {
-          ...effective,
+          ...request,
           page: pageParam,
         },
       }),
-    queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, effective],
+    queryKey: [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE, request],
     staleTime: PRODUCT_QUERY_STALE_MS,
   })
 }

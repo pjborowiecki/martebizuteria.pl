@@ -46,13 +46,15 @@ export const storefrontScopedCategoryCatalogSearchSchema = storefrontProductsSea
 
 export type StorefrontScopedCategoryCatalogSearch = z.infer<typeof storefrontScopedCategoryCatalogSearchSchema>
 
-export interface StorefrontCatalogScope {
-  readonly categoryHandle?: string
-  readonly collectionHandle?: string
-}
+export const storefrontCatalogScopeSchema = z.object({
+  categoryHandle: storefrontProductsSearchSchema.shape.category,
+  collectionHandle: storefrontProductsSearchSchema.shape.collection,
+})
 
-export interface StorefrontProductsPageInput extends StorefrontProductsSearch {
-  readonly page?: number
+export type StorefrontCatalogScope = z.infer<typeof storefrontCatalogScopeSchema>
+
+export interface StorefrontProductsRequest extends StorefrontProductsSearch {
+  readonly scope?: StorefrontCatalogScope
 }
 
 export const hasActiveStorefrontProductFilters = (
