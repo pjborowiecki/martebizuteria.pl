@@ -35,6 +35,7 @@ export const MIGRATION = {
   SELLER_PLACEHOLDERS: "20261016161000_seller_placeholders",
   STOREFRONT_SEARCH: "20261002100000_storefront_search",
   STORE_SETTINGS: "20261005420000_store_settings",
+  TERMS_OF_SERVICE_NEUTRAL_WORDING: "20261017120000_terms_of_service_neutral_wording",
   TERMS_OF_SERVICE_PAGE: "20261005200000_terms_of_service_page",
   WITHDRAWAL_FUNCTION_LINKS: "20261010231000_withdrawal_function_links",
 } as const
