@@ -10,11 +10,9 @@ import { AuditStats } from "~/src/presentation/components/custom/pages/admin/aud
 import { useAuditDataGrid } from "~/src/presentation/components/custom/pages/admin/audit/hooks/use-audit-data-grid"
 import { auditDataGrid } from "~/src/presentation/components/custom/pages/admin/audit/utils/audit-data-grid"
 
-const AuditTableToolbarActions = (): JSX.Element => <AuditBulkActions />
-
 export const AuditTableContent = (): JSX.Element => {
   const grid = useAuditDataGrid()
-  const toolbarActions = useMemo(() => <AuditTableToolbarActions />, [])
+  const toolbarActions = useMemo(() => <AuditBulkActions />, [])
 
   return (
     <Provider value={grid}>

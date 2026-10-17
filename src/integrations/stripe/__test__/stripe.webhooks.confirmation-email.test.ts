@@ -77,9 +77,9 @@ vi.mock("~/src/modules/store-setting/store-setting.accessors", async () => {
 
   return { readSellerDetails: () => Promise.resolve(sellerDetails.TEST_STORED_SELLER_DETAILS) }
 })
-vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrderDispute: vi.fn() }))
-vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute: vi.fn() }))
-vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder: vi.fn() }))
+vi.mock("~/src/modules/order/use-cases/clear-order-dispute.server", () => ({ clearOrderDispute: vi.fn() }))
+vi.mock("~/src/modules/order/use-cases/flag-order-dispute.server", () => ({ flagOrderDispute: vi.fn() }))
+vi.mock("~/src/modules/order/use-cases/refund-order.server", () => ({ refundOrder: vi.fn() }))
 vi.mock("~/src/modules/checkout/checkout.session-lines.server", async () => {
   const { parseCheckoutSessionFulfillmentLines } = await import("~/src/modules/checkout/checkout-metadata.zod")
 

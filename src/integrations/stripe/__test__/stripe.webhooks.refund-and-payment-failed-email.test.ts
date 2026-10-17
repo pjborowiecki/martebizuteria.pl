@@ -52,10 +52,10 @@ vi.mock("~/src/modules/checkout/checkout.accessors", () => ({ getCheckoutEmailCo
 vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ fulfillCheckout: vi.fn() }))
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderTotalsForEmail: vi.fn() }))
-vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrderDispute: vi.fn() }))
-vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute: vi.fn() }))
-vi.mock("~/src/modules/order/use-cases/refund-order", () => ({ refundOrder }))
-vi.mock("~/src/modules/order/use-cases/undo-failed-refund", () => ({ lowerRefundedAmount: vi.fn(), undoFailedRefund: vi.fn() }))
+vi.mock("~/src/modules/order/use-cases/clear-order-dispute.server", () => ({ clearOrderDispute: vi.fn() }))
+vi.mock("~/src/modules/order/use-cases/flag-order-dispute.server", () => ({ flagOrderDispute: vi.fn() }))
+vi.mock("~/src/modules/order/use-cases/refund-order.server", () => ({ refundOrder }))
+vi.mock("~/src/modules/order/use-cases/undo-failed-refund.server", () => ({ lowerRefundedAmount: vi.fn(), undoFailedRefund: vi.fn() }))
 const { getHeldLinesByTransactionId } = vi.hoisted(() => ({
   getHeldLinesByTransactionId: vi.fn<(transactionId: string) => Promise<{ qty: number; variantId: string }[]>>(),
 }))

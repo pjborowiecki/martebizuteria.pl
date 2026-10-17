@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { clearOrderDispute } from "../clear-order-dispute"
-import { flagOrderDispute } from "../flag-order-dispute"
+import { clearOrderDispute } from "~/src/modules/order/use-cases/clear-order-dispute.server"
+import { flagOrderDispute } from "~/src/modules/order/use-cases/flag-order-dispute.server"
 
 const accessors = vi.hoisted(() => {
   const writes: { metadata: string; orderId: string }[] = []
