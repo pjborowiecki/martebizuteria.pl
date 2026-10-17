@@ -34,6 +34,7 @@ import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import { AdminSecurityPage } from "~/src/presentation/components/custom/pages/admin/security/admin-security-page"
 
+import polishShadcnMessages from "~/messages/pl-PL/components.shadcn.json"
 import polishAccountMessages from "~/messages/pl-PL/pages.account.json"
 import polishAdminMessages from "~/messages/pl-PL/pages.admin.json"
 import { ROUTES } from "~/src/routes"
@@ -182,7 +183,7 @@ describe("admin security page in Polish", () => {
     renderWithProviders(
       <IntlProvider
         locale="pl-PL"
-        messages={{ pages: { account: polishAccountMessages, admin: polishAdminMessages } }}
+        messages={{ components: { shadcn: polishShadcnMessages }, pages: { account: polishAccountMessages, admin: polishAdminMessages } }}
         timeZone={I18N.DEFAULT_TIMEZONE}
       >
         <Suspense fallback={<p>loading</p>}>

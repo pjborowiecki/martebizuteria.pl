@@ -86,7 +86,7 @@ const ActivityFeed = ({
       ) : (
         <div className="divide-y divide-border">
           {activity.map((item) => {
-            const Icon = ACTIVITY_ICONS[item.actionKey] ?? Package
+            const Icon = ACTIVITY_ICONS[item.actionKey]
 
             return (
               <div key={`${item.actionKey}-${item.createdAt.toISOString()}`} className="flex items-center gap-4 py-3.5">
@@ -358,7 +358,7 @@ export const Route = createFileRoute("/account/overview")({
   staleTime: CUSTOMER_ACCOUNT_QUERY_STALE_MS,
 })
 
-const ACTIVITY_ICONS: Record<string, typeof Package> = {
+const ACTIVITY_ICONS: Record<CustomerAccount["activityItem"]["actionKey"], typeof Package> = {
   cartItemAdded: Heart,
   loginFailed: Sparkles,
   loginSuccess: Sparkles,

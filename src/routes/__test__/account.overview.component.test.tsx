@@ -168,12 +168,12 @@ describe("account overview activity feed", () => {
 })
 
 describe("account overview activity icons", () => {
-  it("falls back to the parcel icon for an activity kind it has no icon of its own for", async () => {
-    vi.spyOn(console, "error").mockImplementation(() => {})
+  it("shows sparkles for sign-ins, a heart for the basket and a parcel for orders", async () => {
     overviewRef.current = overview({
       activity: [
         activityItem({ actionKey: "loginSuccess", params: {} }),
-        activityItem({ actionKey: "orderReleased", createdAt: new Date("2026-03-15T10:00:00.000Z") }),
+        activityItem({ actionKey: "cartItemAdded", createdAt: new Date("2026-03-15T10:00:00.000Z"), params: { item: "Aurora" } }),
+        activityItem({ actionKey: "orderShipped", createdAt: new Date("2026-03-16T10:00:00.000Z") }),
       ],
     })
     await renderOverview()
@@ -183,7 +183,9 @@ describe("account overview activity icons", () => {
       throw new Error("the overview rendered no activity section")
     }
 
-    expect(Array.from(feed.querySelectorAll("svg"), (icon) => icon.classList.contains("lucide-package"))).toStrictEqual([false, true])
+    const iconNames = Array.from(feed.querySelectorAll("svg"), (icon) => [...icon.classList].find((name) => name.startsWith("lucide-")))
+
+    expect(iconNames).toStrictEqual(["lucide-sparkles", "lucide-heart", "lucide-package"])
   })
 })
 
