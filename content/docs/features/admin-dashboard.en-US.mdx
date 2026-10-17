@@ -42,7 +42,7 @@ The sidebar's open state is read server-side by `getAdminSidebarDefaultOpen()` f
 | Tools  | Marketing, Coupons, and Content                                                                                               |
 | System | Audit and Settings                                                                                                            |
 
-Catalog starts expanded when the console opens on a catalog route (`defaultOpen`), and pressing it on any other route goes to Products. The sidebar trigger at the start of every `AdminHeader` that has no back link collapses the sidebar to its icons; below 768 pixels (`useIsMobile` in `src/hooks/use-mobile.ts`) the sidebar is a sheet that the same button opens.
+Catalog is expanded whenever the admin is on a catalog route, also after arriving there from another page, and pressing it there folds it away; pressing it on any other route goes to Products. The sidebar trigger at the start of every `AdminHeader` that has no back link collapses the sidebar to its icons; below 768 pixels (`useIsMobile` in `src/hooks/use-mobile.ts`) the sidebar is a sheet that the same button opens.
 
 An item is active while the address contains its path, so **Settings** stays active on every `/admin/settings/*` tab. `/admin/security`, the page where an admin turns two-factor authentication on, is not in the sidebar: the guard sends an admin there when it is off, and once it is on the admin manages it under [Settings](/docs/features/admin-settings).
 

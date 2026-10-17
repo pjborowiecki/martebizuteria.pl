@@ -42,7 +42,7 @@ Stan otwarcia panelu bocznego odczytuje po stronie serwera `getAdminSidebarDefau
 | Tools  | Marketing, Kupony oraz Treść                                                                                          |
 | System | Dziennik zdarzeń i Ustawienia                                                                                         |
 
-Katalog jest od razu rozwinięty, gdy panel otwiera się na trasie katalogu (`defaultOpen`), a kliknięty na każdej innej trasie przechodzi do Produktów. Przycisk panelu bocznego na początku każdego `AdminHeader` bez linku powrotu zwija panel do samych ikon; poniżej 768 pikseli (`useIsMobile` w `src/hooks/use-mobile.ts`) panel boczny jest wysuwanym arkuszem, który otwiera ten sam przycisk.
+Katalog jest rozwinięty zawsze, gdy administrator jest na trasie katalogu, także po przejściu tam z innej strony, a kliknięty tam zwija się; kliknięty na każdej innej trasie przechodzi do Produktów. Przycisk panelu bocznego na początku każdego `AdminHeader` bez linku powrotu zwija panel do samych ikon; poniżej 768 pikseli (`useIsMobile` w `src/hooks/use-mobile.ts`) panel boczny jest wysuwanym arkuszem, który otwiera ten sam przycisk.
 
 Pozycja jest aktywna, dopóki adres zawiera jej ścieżkę, więc **Ustawienia** pozostają aktywne na każdej zakładce `/admin/settings/*`. `/admin/security`, strony, na której administrator włącza uwierzytelnianie dwuskładnikowe, nie ma w panelu bocznym: strażnik kieruje tam administratora, gdy jest ono wyłączone, a po włączeniu administrator zarządza nim w [Ustawieniach](/docs/features/admin-settings).
 
