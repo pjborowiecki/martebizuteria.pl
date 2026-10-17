@@ -2,11 +2,9 @@ import { type JSX } from "react"
 
 import { cleanup, screen } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
-
-import { formatDateToIsoDateLocal } from "~/src/modules/_core/utils/iso-date"
 
 import {
   DataGridHarness,
@@ -36,7 +34,9 @@ const LABELS: AdminDateColumnFilterLabels = {
 
 const FILTER_VALUE_TEST_ID = "created-filter-value"
 
-const TODAY_ISO = formatDateToIsoDateLocal(new Date())
+const HALF_PAST_MIDNIGHT_IN_WARSAW = new Date("2026-10-16T22:30:00.000Z")
+
+const TODAY_ISO = "2026-10-17"
 
 const FilterHarness = (): JSX.Element => (
   <DataGridHarness>
@@ -88,10 +88,13 @@ const applyTodayRange = async (): Promise<void> => {
 
 beforeEach(() => {
   stubResizeObserver()
+  vi.useFakeTimers({ toFake: ["Date"] })
+  vi.setSystemTime(HALF_PAST_MIDNIGHT_IN_WARSAW)
 })
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
 })
 
 describe("AdminDateColumnFilter in range mode", () => {
