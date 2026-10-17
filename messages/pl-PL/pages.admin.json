@@ -60,6 +60,11 @@
         "verified": "E-mail zweryfikowany"
       }
     },
+    "emails": {
+      "title": "Adresy e-mail",
+      "current": "Obecny, od {since}",
+      "former": "Używany {from} – {until}"
+    },
     "notes": {
       "title": "Wewnętrzne notatki",
       "empty": "Brak wewnętrznych notatek."
@@ -73,7 +78,9 @@
       "signedOut": "Wylogowano się",
       "cartItemAdded": "Dodano {product} do koszyka (×{quantity})",
       "cartAbandoned": "Opuszczono sklep z {count} produktami w koszyku",
-      "pageViewed": "Odwiedzono {path}"
+      "pageViewed": "Odwiedzono {path}",
+      "emailChanged": "Zmieniono adres e-mail do logowania z {from} na {to}",
+      "emailChangedWithoutAddresses": "Zmieniono adres e-mail do logowania"
     },
     "form": {
       "title": "Edytuj klienta",

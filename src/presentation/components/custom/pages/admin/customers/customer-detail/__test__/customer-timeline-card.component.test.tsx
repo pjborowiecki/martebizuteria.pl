@@ -56,6 +56,20 @@ describe("CustomerTimelineCard", () => {
     expect(connectors).toStrictEqual([true, true, false])
   })
 
+  it("describes a change of sign-in address with the old and new address when the entry names them", () => {
+    renderWithProviders(
+      <CustomerTimelineCard
+        timeline={[
+          { date: "3 Feb 2026", from: "anna@old.example", kind: "email_changed", to: "anna@new.example" },
+          { date: "2 Feb 2026", kind: "email_changed" },
+        ]}
+      />,
+    )
+
+    expect(screen.getByText("Changed the sign-in email from anna@old.example to anna@new.example")).toBeInTheDocument()
+    expect(screen.getByText("Changed the sign-in email")).toBeInTheDocument()
+  })
+
   it("says so when there is no activity", () => {
     renderWithProviders(<CustomerTimelineCard timeline={[]} />)
 

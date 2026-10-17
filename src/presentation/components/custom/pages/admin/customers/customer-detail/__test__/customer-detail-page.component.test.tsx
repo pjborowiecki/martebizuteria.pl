@@ -33,6 +33,7 @@ const customer: User["adminCustomerDetail"] = {
   createdAt: new Date("2023-03-04T00:00:00.000Z"),
   customTags: [],
   email: "anna@example.com",
+  emailHistory: [],
   emailVerified: true,
   formatLocale: null,
   id: "user-1",

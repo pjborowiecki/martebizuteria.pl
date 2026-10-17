@@ -8,6 +8,7 @@ import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { ADMIN_CUSTOMER_DETAIL_TAGS, ADMIN_CUSTOMER_STAT_FILTER } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 import {
+  buildAdminCustomerEmailHistory,
   buildAdminCustomerMonthlySpendingSeries,
   buildAdminCustomerTimeline,
   computeAdminCustomerStatsFromAggregates,
@@ -510,6 +511,40 @@ describe("buildAdminCustomerTimeline", () => {
     expect(timeline[1]).toMatchObject({ itemCount: 4, kind: "cart_abandoned" })
   })
 
+  it("shows a change of sign-in address with the old and new address, from its metadata or its older text", () => {
+    const changed = { action: AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED, detail: "anna@old.example → anna@new.example" }
+    const timeline = buildAdminCustomerTimeline({
+      auditEvents: [
+        {
+          ...changed,
+          createdAt: new Date(2024, 1, 3),
+          metadata: JSON.stringify({ changed: ["email"], new: { email: "anna@third.example" }, old: { email: "anna@new.example" } }),
+        },
+        { ...changed, createdAt: new Date(2024, 1, 2), metadata: null },
+        { ...changed, createdAt: new Date(2024, 1, 1), detail: null, metadata: null },
+      ],
+      createdAt,
+      orders: [],
+      preferences: PREFERENCES,
+    })
+
+    expect(timeline.slice(0, 3)).toStrictEqual([
+      {
+        date: formatShortDate(new Date(2024, 1, 3), "en-US", PREFERENCES.timeZone),
+        from: "anna@new.example",
+        kind: "email_changed",
+        to: "anna@third.example",
+      },
+      {
+        date: formatShortDate(new Date(2024, 1, 2), "en-US", PREFERENCES.timeZone),
+        from: "anna@old.example",
+        kind: "email_changed",
+        to: "anna@new.example",
+      },
+      { date: formatShortDate(new Date(2024, 1, 1), "en-US", PREFERENCES.timeZone), kind: "email_changed" },
+    ])
+  })
+
   it("leaves no sort key behind on the returned events", () => {
     const [event] = buildAdminCustomerTimeline({ createdAt, orders: [], preferences: PREFERENCES })
 
@@ -599,5 +634,29 @@ describe("maskEmailAddress", () => {
     ["ola@localhost", "o***@***"],
   ])("hides all but the first letters and the top-level domain of %s", (email, masked) => {
     expect(maskEmailAddress(email)).toBe(masked)
+  })
+})
+
+describe("buildAdminCustomerEmailHistory", () => {
+  it("dates each address the account used in the viewer's format, leaving the current one open", () => {
+    const addedAt = new Date(2025, 4, 2)
+    const replacedAt = new Date(2026, 0, 15)
+
+    expect(
+      buildAdminCustomerEmailHistory(
+        [
+          { addedAt: replacedAt, email: "anna@new.example", replacedAt: null },
+          { addedAt, email: "anna@old.example", replacedAt },
+        ],
+        PREFERENCES,
+      ),
+    ).toStrictEqual([
+      { addedOn: formatShortDate(replacedAt, "en-US", PREFERENCES.timeZone), email: "anna@new.example", replacedOn: undefined },
+      {
+        addedOn: formatShortDate(addedAt, "en-US", PREFERENCES.timeZone),
+        email: "anna@old.example",
+        replacedOn: formatShortDate(replacedAt, "en-US", PREFERENCES.timeZone),
+      },
+    ])
   })
 })

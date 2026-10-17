@@ -60,6 +60,11 @@
         "verified": "Verified"
       }
     },
+    "emails": {
+      "title": "Email addresses",
+      "current": "Current, since {since}",
+      "former": "Used {from} – {until}"
+    },
     "notes": {
       "title": "Internal Notes",
       "empty": "No internal notes."
@@ -73,7 +78,9 @@
       "signedOut": "Signed out",
       "cartItemAdded": "Added {product} to cart (×{quantity})",
       "cartAbandoned": "Left with {count} items in cart",
-      "pageViewed": "Viewed {path}"
+      "pageViewed": "Viewed {path}",
+      "emailChanged": "Changed the sign-in email from {from} to {to}",
+      "emailChangedWithoutAddresses": "Changed the sign-in email"
     },
     "form": {
       "title": "Edit customer",

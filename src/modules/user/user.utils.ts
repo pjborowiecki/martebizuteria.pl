@@ -1,4 +1,5 @@
 import { type ColumnFiltersState } from "@tanstack/react-table"
+import { type z } from "zod/v4"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
 import { type DisplayPreferences } from "~/src/integrations/use-intl/i18n.display"
@@ -15,6 +16,7 @@ import {
 } from "~/src/modules/_core/utils/datetime"
 import { parseJsonRecord, readJsonNumber, readJsonString, tryParseJsonRecord } from "~/src/modules/_core/utils/json"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
+import { describeAuditLogDetail } from "~/src/modules/audit-log/audit-log.detail.utils"
 import {
   ADMIN_CUSTOMER_DETAIL_TAGS,
   ADMIN_CUSTOMER_MIN_REPEAT_ORDERS,
@@ -223,6 +225,25 @@ export const resolveAdminCustomerTags = (row: User["select"], orderCount: number
   return tags
 }
 
+const readEmailChange = (
+  { action, detail }: User["adminCustomerAuditTimelineRow"],
+  metadata: Record<string, unknown>,
+): Partial<z.infer<(typeof userZodSchemas)["adminCustomerEmailChange"]>> => {
+  const described = describeAuditLogDetail({ action, detail, metadata })
+
+  return userZodSchemas.adminCustomerEmailChange.safeParse(described?.kind === "changes" ? described.changes[0] : undefined).data ?? {}
+}
+
+export const buildAdminCustomerEmailHistory = (
+  rows: readonly User["emailHistoryRow"][],
+  { formatLocale, timeZone }: DisplayPreferences,
+): User["adminCustomerDetail"]["emailHistory"] =>
+  rows.map(({ addedAt, email, replacedAt }) => ({
+    addedOn: formatShortDate(addedAt, formatLocale, timeZone),
+    email,
+    replacedOn: replacedAt === null ? undefined : formatShortDate(replacedAt, formatLocale, timeZone),
+  }))
+
 const mapAuditRowToTimelineEvent = (
   row: User["adminCustomerAuditTimelineRow"],
   { formatLocale, timeZone }: DisplayPreferences,
@@ -268,6 +289,10 @@ const mapAuditRowToTimelineEvent = (
       kind: "cart_abandoned",
       sortAt,
     }
+  }
+
+  if (row.action === AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED) {
+    return { date, kind: "email_changed", sortAt, ...readEmailChange(row, metadata) }
   }
 
   if (row.action === AUDIT_LOG_ACTION.CUSTOMER_PAGE_VIEWED) {

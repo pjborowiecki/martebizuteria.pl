@@ -21,6 +21,7 @@ const detail = (overrides: Partial<User["adminCustomerDetail"]> = {}): User["adm
   createdAt: new Date(2023, 2, 4),
   customTags: [],
   email: "anna@example.com",
+  emailHistory: [],
   emailVerified: true,
   formatLocale: null,
   id: "user-1",

@@ -12,6 +12,7 @@ const access = vi.hoisted(() => ({
   auditTimeline: vi.fn(),
   categoryBreakdown: vi.fn(),
   defaultAddress: vi.fn(),
+  emailHistory: vi.fn(),
   latestSession: vi.fn(),
   monthlySpending: vi.fn(),
   orderStats: vi.fn(),
@@ -40,6 +41,7 @@ vi.mock("~/src/modules/user/user.accessors", () => ({
   getLatestSessionActivityQuery: access.latestSession,
   getUserById: access.userById,
 }))
+vi.mock("~/src/modules/user-email-history/user-email-history.accessors", () => ({ getUserEmailHistory: access.emailHistory }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -113,6 +115,7 @@ const resetAccessors = (): void => {
   access.auditTimeline.mockResolvedValue([])
   access.categoryBreakdown.mockResolvedValue([])
   access.defaultAddress.mockResolvedValue([])
+  access.emailHistory.mockResolvedValue([])
   access.latestSession.mockResolvedValue([])
   access.monthlySpending.mockResolvedValue([])
   access.orderStats.mockResolvedValue([])
@@ -138,6 +141,7 @@ describe("getAdminCustomer reads", () => {
     expect(access.defaultAddress).toHaveBeenCalledWith("customer-1")
     expect(access.latestSession).toHaveBeenCalledWith("customer-1")
     expect(access.auditTimeline).toHaveBeenCalledWith("customer-1")
+    expect(access.emailHistory).toHaveBeenCalledWith("customer-1")
   })
 
   it("reads the customer's latest sales for the activity timeline only", async () => {
@@ -341,6 +345,20 @@ describe("getAdminCustomer profile", () => {
     expect(result?.id).toBe("customer-1")
     expect(result?.email).toBe("anna@example.com")
     expect(result?.initials).toBe("AK")
+  })
+
+  it("lists the addresses the account has used, newest first", async () => {
+    access.emailHistory.mockResolvedValue([
+      { addedAt: ORDER_AT, email: "anna@example.com", replacedAt: null },
+      { addedAt: CREATED_AT, email: "anna@old.example", replacedAt: ORDER_AT },
+    ])
+
+    const result = await detail()
+
+    expect(result?.emailHistory.map(({ email, replacedOn }) => ({ current: replacedOn === undefined, email }))).toStrictEqual([
+      { current: true, email: "anna@example.com" },
+      { current: false, email: "anna@old.example" },
+    ])
   })
 
   it("has no address or address form without a default address row", async () => {

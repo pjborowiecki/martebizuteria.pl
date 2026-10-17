@@ -1,4 +1,4 @@
-import { type SQL, and, eq, exists, inArray, isNull, ne, sql } from "drizzle-orm"
+import { type SQL, and, desc, eq, exists, inArray, isNull, ne, sql } from "drizzle-orm"
 import { type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -33,6 +33,13 @@ export const getCurrentAddressHolder = (email: string) => {
     where: and(eq(userEmailHistory.email, address), isNull(userEmailHistory.replacedAt)),
   })
 }
+
+export const getUserEmailHistory = (userId: string) =>
+  db
+    .select({ addedAt: userEmailHistory.addedAt, email: userEmailHistory.email, replacedAt: userEmailHistory.replacedAt })
+    .from(userEmailHistory)
+    .where(eq(userEmailHistory.userId, userId))
+    .orderBy(desc(userEmailHistory.addedAt), desc(userEmailHistory.id))
 
 export const accountsWithAddressContaining = (term: string) =>
   db

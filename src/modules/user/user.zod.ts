@@ -69,7 +69,21 @@ const adminCustomerDetailTimelineEventSchema = zod.discriminatedUnion("kind", [
     kind: zod.literal("page_viewed"),
     path: zod.string(),
   }),
+  zod.object({
+    date: zod.string(),
+    from: zod.string().optional(),
+    kind: zod.literal("email_changed"),
+    to: zod.string().optional(),
+  }),
 ])
+
+const adminCustomerEmailChangeSchema = zod.object({ from: zod.string(), to: zod.string() })
+
+const adminCustomerEmailHistoryEntrySchema = zod.object({
+  addedOn: zod.string(),
+  email: zod.string(),
+  replacedOn: zod.string().optional(),
+})
 
 const adminCustomerAddressFormSchema = zod.object({
   address1: zod.string().max(ADMIN_CUSTOMER_FORM_FIELD_MAX.ADDRESS_LINE),
@@ -118,6 +132,7 @@ const adminCustomerDetailSchema = userSelectSchema.extend({
   averageOrderValue: zod.number(),
   categoryBreakdown: zod.array(adminCustomerCategoryBreakdownSchema),
   customTags: zod.array(zod.string()),
+  emailHistory: zod.array(adminCustomerEmailHistoryEntrySchema),
   initials: zod.string(),
   isReturning: zod.boolean(),
   joinDate: zod.string(),
@@ -200,6 +215,7 @@ export const userZodSchemas = {
   adminCustomerDetail: adminCustomerDetailSchema,
   adminCustomerDetailInput: adminCustomerDetailInputSchema,
   adminCustomerDetailTimelineEvent: adminCustomerDetailTimelineEventSchema,
+  adminCustomerEmailChange: adminCustomerEmailChangeSchema,
   adminCustomerFormValues: adminCustomerFormValuesSchema,
   adminCustomerListItem: adminCustomerListItemSchema,
   adminCustomerStats: adminCustomerStatsSchema,

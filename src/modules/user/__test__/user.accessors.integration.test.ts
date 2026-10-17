@@ -86,7 +86,12 @@ beforeEach(() => {
     drop table if exists order_address;
     drop table if exists address;
     drop table if exists payment;
+    drop table if exists user_email_history;
 
+    create table user_email_history (id integer primary key, user_id text not null, email text not null, added_at integer not null, replaced_at integer);
+    insert into user_email_history (user_id, email, added_at, replaced_at) values
+      ('u-anna', 'anna.maiden@example.org', 0, 1),
+      ('u-anna', 'anna@example.com', 1, null);
     create table user (
       id text primary key, name text not null, email text not null, email_verified integer not null default 0,
       phone text, role text not null default 'customer', banned integer default 0, ban_reason text, ban_expires integer,
@@ -291,6 +296,8 @@ describe("getUserIdByEmail", () => {
   })
 })
 
+const ANNA_SEARCHES = [["anna"], ["ANNA"], ["kowalska"], ["+48111"], ["u-anna"], ["anna.maiden"], ["MAIDEN@example.org"]]
+
 describe("getAdminCustomersPage", () => {
   it("lists the newest accounts first with the total count", async () => {
     const result = await getAdminCustomersPage(page)
@@ -327,7 +334,7 @@ describe("getAdminCustomersPage", () => {
     expect(result.total).toBe(4)
   })
 
-  it.each([["anna"], ["ANNA"], ["kowalska"], ["+48111"], ["u-anna"]])("finds the account by %j", async (search) => {
+  it.each(ANNA_SEARCHES)("finds the account by %j", async (search) => {
     const result = await getAdminCustomersPage({ ...page, search })
 
     expect(result.rows.map((row) => row.id)).toContain("u-anna")
