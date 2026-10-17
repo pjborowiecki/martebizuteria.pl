@@ -1,5 +1,7 @@
 import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
+import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants"
+
 export const PRODUCT_COLUMN_LENGTH = {
   description: 1024,
   handle: 255,
@@ -146,7 +148,7 @@ export const PRODUCT_TABLE_COLUMN_SIZE = {
   handle: 160,
   image: 72,
   minPrice: 120,
-  recordId: 320,
+  recordId: CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX,
   sku: 148,
   status: 140,
   stock: 132,

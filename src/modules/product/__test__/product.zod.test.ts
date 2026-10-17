@@ -22,6 +22,8 @@ const OPTION_ID = "0195b6f4-0000-7000-8000-000000000011"
 
 const VARIANT_ID = "0195b6f4-0000-7000-8000-000000000021"
 
+const SIZE_S = { [OPTION_ID]: "S" }
+
 interface Issue {
   readonly message: string
   readonly path: string
@@ -59,6 +61,9 @@ const variantRow = (overrides: Partial<CatalogUpsertInput["variants"][number]> =
   sku: "",
   ...overrides,
 })
+
+const sizeAndColour = (size: string, colour: string): CatalogUpsertInput["variants"][number] =>
+  variantRow({ optionValues: { [OPTION_ID]: size, Kolor: colour } })
 
 const formValues = (overrides: Partial<ProductFormValues> = {}): ProductFormValues => ({
   ...catalogInput(),
@@ -223,58 +228,11 @@ describe("catalogUpsertInput pricing of a variant product", () => {
         hasVariants: true,
         options: [sizeOption],
         status: PRODUCT_ADMIN_STATUS.ACTIVE,
-        variants: [variantRow({ id: VARIANT_ID })],
+        variants: [variantRow({ id: VARIANT_ID, optionValues: SIZE_S })],
       }),
     )
 
     expect(issues).toStrictEqual([])
-  })
-
-  it("rejects an active catalog with an option combination that has no submitted variant price", () => {
-    const input = catalogInput({
-      hasVariants: true,
-      options: [{ ...sizeOption, values: [{ labels: locales("S") }, { labels: locales("M") }] }],
-      status: PRODUCT_ADMIN_STATUS.ACTIVE,
-      variants: [variantRow({ optionValues: { [OPTION_ID]: "S" } })],
-    })
-
-    expect(catalogIssues(input)).toStrictEqual([{ message: PRODUCT_FORM_VALIDATION_KEYS.variantCombinationsRequired, path: "variants" }])
-  })
-
-  it("requires all combinations of multiple options in the active product form", () => {
-    const values = formValues({
-      hasVariants: true,
-      options: [
-        { ...sizeOption, values: [{ labels: locales("S") }, { labels: locales("M") }] },
-        { titles: locales("Kolor", "Color"), values: [{ labels: locales("Złoty", "Gold") }, { labels: locales("Srebrny", "Silver") }] },
-      ],
-      status: PRODUCT_ADMIN_STATUS.ACTIVE,
-      variants: [variantRow(), variantRow()],
-    })
-
-    expect(formIssues(values)).toStrictEqual([{ message: PRODUCT_FORM_VALIDATION_KEYS.variantCombinationsRequired, path: "variants" }])
-    expect(formIssues({ ...values, variants: [variantRow(), variantRow(), variantRow(), variantRow()] })).toStrictEqual([])
-  })
-
-  it("uses normalized option values when counting the active product's required variants", () => {
-    const input = catalogInput({
-      hasVariants: true,
-      options: [{ ...sizeOption, values: [{ labels: locales("S") }, { labels: locales(" S ") }] }],
-      status: PRODUCT_ADMIN_STATUS.ACTIVE,
-      variants: [variantRow()],
-    })
-
-    expect(catalogIssues(input)).toStrictEqual([])
-  })
-
-  it("allows an incomplete set of variant rows while the product is a draft", () => {
-    const input = catalogInput({
-      hasVariants: true,
-      options: [{ ...sizeOption, values: [{ labels: locales("S") }, { labels: locales("M") }] }],
-      variants: [variantRow()],
-    })
-
-    expect(catalogIssues(input)).toStrictEqual([])
   })
 
   it("names the offending row index when an active variant is priced below the minimum", () => {
@@ -283,7 +241,7 @@ describe("catalogUpsertInput pricing of a variant product", () => {
         hasVariants: true,
         options: [sizeOption],
         status: PRODUCT_ADMIN_STATUS.ACTIVE,
-        variants: [variantRow(), variantRow({ price: "1.00" })],
+        variants: [variantRow({ optionValues: SIZE_S }), variantRow({ price: "1.00" })],
       }),
     )
 
@@ -296,7 +254,7 @@ describe("catalogUpsertInput pricing of a variant product", () => {
         hasVariants: true,
         options: [sizeOption],
         status: PRODUCT_ADMIN_STATUS.ACTIVE,
-        variants: [variantRow({ compareAtPrice: "200.00", price: "12,,5" })],
+        variants: [variantRow({ compareAtPrice: "200.00", optionValues: SIZE_S, price: "12,,5" })],
       }),
     )
 
@@ -341,6 +299,98 @@ describe("catalogUpsertInput pricing of a variant product", () => {
     )
 
     expect(issues.map((issue) => issue.path)).toStrictEqual(["options.0.values"])
+  })
+})
+
+describe("catalogUpsertInput option combinations of an active product", () => {
+  it("rejects an active catalog with an option combination that has no submitted variant price", () => {
+    const input = catalogInput({
+      hasVariants: true,
+      options: [{ ...sizeOption, values: [{ labels: locales("S") }, { labels: locales("M") }] }],
+      status: PRODUCT_ADMIN_STATUS.ACTIVE,
+      variants: [variantRow({ optionValues: { [OPTION_ID]: "S" } })],
+    })
+
+    expect(catalogIssues(input)).toStrictEqual([{ message: PRODUCT_FORM_VALIDATION_KEYS.variantCombinationsRequired, path: "variants" }])
+  })
+
+  it("requires all combinations of multiple options in the active product form", () => {
+    const values = formValues({
+      hasVariants: true,
+      options: [
+        { ...sizeOption, values: [{ labels: locales("S") }, { labels: locales("M") }] },
+        { titles: locales("Kolor", "Color"), values: [{ labels: locales("Złoty", "Gold") }, { labels: locales("Srebrny", "Silver") }] },
+      ],
+      status: PRODUCT_ADMIN_STATUS.ACTIVE,
+      variants: [sizeAndColour("S", "Złoty"), sizeAndColour("S", "Srebrny")],
+    })
+
+    expect(formIssues(values)).toStrictEqual([{ message: PRODUCT_FORM_VALIDATION_KEYS.variantCombinationsRequired, path: "variants" }])
+    expect(
+      formIssues({
+        ...values,
+        variants: [sizeAndColour("M", "Srebrny"), sizeAndColour("M", "Złoty"), sizeAndColour("S", "Srebrny"), sizeAndColour("S", "Złoty")],
+      }),
+    ).toStrictEqual([])
+  })
+
+  it("rejects an active catalog whose variants name another combination than its options, even one row per combination", () => {
+    const input = catalogInput({
+      hasVariants: true,
+      options: [{ ...sizeOption, values: [{ labels: locales("S") }, { labels: locales("M") }] }],
+      status: PRODUCT_ADMIN_STATUS.ACTIVE,
+      variants: [variantRow({ optionValues: SIZE_S }), variantRow({ optionValues: { [OPTION_ID]: "L" } })],
+    })
+
+    expect(catalogIssues(input)).toStrictEqual([{ message: PRODUCT_FORM_VALIDATION_KEYS.variantCombinationsRequired, path: "variants" }])
+  })
+
+  it("matches a variant to its combination by option value ids once the values are saved", () => {
+    const smallId = "0195b6f4-0000-7000-8000-000000000031"
+    const mediumId = "0195b6f4-0000-7000-8000-000000000032"
+    const input = catalogInput({
+      hasVariants: true,
+      options: [
+        {
+          ...sizeOption,
+          values: [
+            { id: smallId, labels: locales("S") },
+            { id: mediumId, labels: locales("M") },
+          ],
+        },
+      ],
+      status: PRODUCT_ADMIN_STATUS.ACTIVE,
+      variants: [variantRow({ optionValues: { [OPTION_ID]: mediumId } }), variantRow({ optionValues: SIZE_S })],
+    })
+
+    expect(catalogIssues(input)).toStrictEqual([{ message: PRODUCT_FORM_VALIDATION_KEYS.variantCombinationsRequired, path: "variants" }])
+    expect(
+      catalogIssues({
+        ...input,
+        variants: [variantRow({ optionValues: { [OPTION_ID]: mediumId } }), variantRow({ optionValues: { [OPTION_ID]: smallId } })],
+      }),
+    ).toStrictEqual([])
+  })
+
+  it("uses normalized option values when counting the active product's required variants", () => {
+    const input = catalogInput({
+      hasVariants: true,
+      options: [{ ...sizeOption, values: [{ labels: locales("S") }, { labels: locales(" S ") }] }],
+      status: PRODUCT_ADMIN_STATUS.ACTIVE,
+      variants: [variantRow({ optionValues: SIZE_S })],
+    })
+
+    expect(catalogIssues(input)).toStrictEqual([])
+  })
+
+  it("allows an incomplete set of variant rows while the product is a draft", () => {
+    const input = catalogInput({
+      hasVariants: true,
+      options: [{ ...sizeOption, values: [{ labels: locales("S") }, { labels: locales("M") }] }],
+      variants: [variantRow()],
+    })
+
+    expect(catalogIssues(input)).toStrictEqual([])
   })
 })
 

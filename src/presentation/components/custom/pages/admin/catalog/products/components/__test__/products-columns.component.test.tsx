@@ -10,6 +10,7 @@ import { PRODUCT_TABLE_COLUMN_SIZE } from "~/src/modules/product/product.constan
 import { type Product } from "~/src/modules/product/product.types"
 
 import { type DataGridFeatures, dataGridFeatures } from "~/src/presentation/components/custom/datagrid/lib/data-grid.features"
+import { CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX } from "~/src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants"
 import { useProductColumns } from "~/src/presentation/components/custom/pages/admin/catalog/products/components/products-columns"
 
 vi.mock("~/src/presentation/components/custom/pages/admin/catalog/products/components/products-row-actions", () => ({
@@ -199,6 +200,10 @@ describe("useProductColumns layout", () => {
       expect(column.getCanResize()).toBe(false)
       expect(column.columnDef.size).toBe(size)
     }
+  })
+
+  it("gives the record id column the width every admin grid gives it", () => {
+    expect(columnById(renderColumns(), "recordId").columnDef.size).toBe(CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX)
   })
 
   it("keeps the status and price columns wide enough to read in full", () => {

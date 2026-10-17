@@ -122,11 +122,11 @@ Creating, saving and deleting a product call `scheduleProductCatalogInvalidation
 
 ### The form
 
-`product.zod.ts` is the largest `*.zod.ts` file in the repository, at 479 lines. `productFormSchemaDefinition` extends the shared `catalogUpsertBaseSchema` with the locale maps, the media fields and the read-only `quantityInCheckout` of each variant, and adds three refinements:
+`product.zod.ts` is the largest `*.zod.ts` file in the repository, at 491 lines. `productFormSchemaDefinition` extends the shared `catalogUpsertBaseSchema` with the locale maps, the media fields and the read-only `quantityInCheckout` of each variant, and adds three refinements:
 
 - `refineDuplicateSkusInForm`
 - `refineDuplicateProductAttributes`
-- `refineCatalogUpsert`, which always requires a primary category (`refineOrganizationRelations`). A product without variants needs its `simpleVariant`, priced at least `MIN_PRICE_CENTS` (2 zł, Stripe's minimum charge; `refineSimpleProductPrice`). A product with variants needs at least one option and one variant, and an active one at least as many variants as `buildVariantCombinations` makes of its options. That compares counts, so it does not check that each combination has a variant of its own. For an active product, `refineActiveProductPricing` also checks every price and that a compare-at price is not below its price.
+- `refineCatalogUpsert`, which always requires a primary category (`refineOrganizationRelations`). A product without variants needs its `simpleVariant`, priced at least `MIN_PRICE_CENTS` (2 zł, Stripe's minimum charge; `refineSimpleProductPrice`). A product with variants needs at least one option and one variant, and an active one a variant for every combination `buildVariantCombinations` makes of its options: each combination's `buildVariantCombinationKey` must match the `optionValues` key of a submitted variant, so a variant for a combination the options no longer make does not stand in for a missing one. For an active product, `refineActiveProductPricing` also checks every price and that a compare-at price is not below its price.
 
 All messages are keys from `PRODUCT_FORM_VALIDATION_KEYS`. The editor's status field uses `PRODUCT_ADMIN_STATUS` (`draft`, `active`, `archived`), and `toProductDbStatus` stores `active` as `published`.
 
