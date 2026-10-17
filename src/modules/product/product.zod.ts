@@ -15,7 +15,11 @@ import {
 } from "~/src/modules/_core/utils/zod-fields"
 import { attributeOnProductZodSchemas } from "~/src/modules/attribute-on-product/attribute-on-product.zod"
 import { PRODUCT_IMAGE_COLUMN_LENGTH } from "~/src/modules/product-image/product-image.constants"
-import { MAX_PRODUCT_OPTIONS, buildVariantCombinations } from "~/src/modules/product-variant/product-variant.utils"
+import {
+  MAX_PRODUCT_OPTIONS,
+  buildVariantCombinationKey,
+  buildVariantCombinations,
+} from "~/src/modules/product-variant/product-variant.utils"
 import { collectProductFormSkuEntries, formPathToZodPath } from "~/src/modules/product/product-sku.validation.utils"
 import {
   PRODUCT_ADMIN_STATUS,
@@ -309,6 +313,14 @@ const refineDuplicateProductAttributes = (data: ProductFormValues, ctx: zod.Refi
   })
 }
 
+const coversEveryVariantCombination = (data: zod.infer<typeof catalogUpsertBaseSchema>): boolean => {
+  const submittedKeys = new Set(data.variants.map((variant) => buildVariantCombinationKey(variant.optionValues)))
+
+  return buildVariantCombinations(data.options).every((combination) =>
+    submittedKeys.has(buildVariantCombinationKey(combination.optionValues)),
+  )
+}
+
 const refineCatalogUpsert = (data: zod.infer<typeof catalogUpsertBaseSchema>, ctx: zod.RefinementCtx): void => {
   refineOrganizationRelations(data, ctx)
   if (!data.hasVariants) {
@@ -339,7 +351,7 @@ const refineCatalogUpsert = (data: zod.infer<typeof catalogUpsertBaseSchema>, ct
       message: PRODUCT_FORM_VALIDATION_KEYS.variantsRequired,
       path: ["variants"],
     })
-  } else if (data.status === PRODUCT_ADMIN_STATUS.ACTIVE && data.variants.length < buildVariantCombinations(data.options).length) {
+  } else if (data.status === PRODUCT_ADMIN_STATUS.ACTIVE && !coversEveryVariantCombination(data)) {
     ctx.addIssue({
       code: "custom",
       message: PRODUCT_FORM_VALIDATION_KEYS.variantCombinationsRequired,

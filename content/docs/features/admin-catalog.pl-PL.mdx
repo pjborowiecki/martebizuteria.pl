@@ -122,11 +122,11 @@ Utworzenie, zapis i usunięcie produktu wywołują `scheduleProductCatalogInvali
 
 ### Formularz
 
-`product.zod.ts` to największy plik `*.zod.ts` w repozytorium — 479 linii. `productFormSchemaDefinition` rozszerza wspólny `catalogUpsertBaseSchema` o mapy lokalizacji, pola mediów i tylko do odczytu `quantityInCheckout` każdego wariantu oraz dodaje trzy uściślenia:
+`product.zod.ts` to największy plik `*.zod.ts` w repozytorium — 491 linii. `productFormSchemaDefinition` rozszerza wspólny `catalogUpsertBaseSchema` o mapy lokalizacji, pola mediów i tylko do odczytu `quantityInCheckout` każdego wariantu oraz dodaje trzy uściślenia:
 
 - `refineDuplicateSkusInForm`
 - `refineDuplicateProductAttributes`
-- `refineCatalogUpsert`, które zawsze wymaga kategorii głównej (`refineOrganizationRelations`). Produkt bez wariantów potrzebuje swojego `simpleVariant` z ceną co najmniej `MIN_PRICE_CENTS` (2 zł, minimalna kwota obciążenia w Stripe; `refineSimpleProductPrice`). Produkt z wariantami potrzebuje co najmniej jednej opcji i jednego wariantu, a aktywny co najmniej tylu wariantów, ile kombinacji `buildVariantCombinations` tworzy z jego opcji. To porównanie liczb, więc nie sprawdza, czy każda kombinacja ma własny wariant. Dla produktu aktywnego `refineActiveProductPricing` sprawdza też każdą cenę i to, czy cena regularna nie jest niższa od ceny.
+- `refineCatalogUpsert`, które zawsze wymaga kategorii głównej (`refineOrganizationRelations`). Produkt bez wariantów potrzebuje swojego `simpleVariant` z ceną co najmniej `MIN_PRICE_CENTS` (2 zł, minimalna kwota obciążenia w Stripe; `refineSimpleProductPrice`). Produkt z wariantami potrzebuje co najmniej jednej opcji i jednego wariantu, a aktywny wariantu dla każdej kombinacji, którą `buildVariantCombinations` tworzy z jego opcji: `buildVariantCombinationKey` każdej kombinacji musi odpowiadać kluczowi `optionValues` jednego z przesłanych wariantów, więc wariant kombinacji, której opcje już nie tworzą, nie zastępuje brakującego. Dla produktu aktywnego `refineActiveProductPricing` sprawdza też każdą cenę i to, czy cena regularna nie jest niższa od ceny.
 
 Wszystkie komunikaty to klucze z `PRODUCT_FORM_VALIDATION_KEYS`. Pole statusu w edytorze używa `PRODUCT_ADMIN_STATUS` (`draft`, `active`, `archived`), a `toProductDbStatus` zapisuje `active` jako `published`.
 
