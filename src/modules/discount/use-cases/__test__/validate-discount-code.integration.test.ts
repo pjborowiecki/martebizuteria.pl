@@ -124,13 +124,12 @@ afterAll(() => {
 })
 
 describe("validateDiscountCode against the database", () => {
-  it("reads the code with the typed email's redemptions beside the basket's prices after the rate count, without the session", async () => {
+  it("reads the code with the typed email's redemptions beside the basket's prices after the rate count", async () => {
     await expect(validateDiscountCode({ data: { ...BASKET, code: "once-24", email: "ada@marte.test" } })).resolves.toStrictEqual({
       rejection: DISCOUNT_REJECTION.ALREADY_USED,
     })
     expect(roundTrips).toHaveLength(3)
     expect(roundTrips).toStrictEqual(expect.arrayContaining([RATE_LIMIT_ROUND_TRIP, DISCOUNT_ROUND_TRIP, SELL_PRICES_ROUND_TRIP]))
-    expect(stubs.getRequestSession).not.toHaveBeenCalled()
   })
 
   it("lets an email that never used the code have it", async () => {

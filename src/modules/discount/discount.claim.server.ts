@@ -3,27 +3,28 @@ import { and, count, eq, isNull, ne, or, sql } from "drizzle-orm"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { checkout } from "~/src/modules/checkout/checkout.schema"
+import { claimedForCustomer, redeemedByCustomer } from "~/src/modules/discount/discount.accessors"
 import { discount, discountClaim, discountRedemption } from "~/src/modules/discount/discount.schema"
 import { type Discount } from "~/src/modules/discount/discount.types"
 
 const NO_CLAIM = 0
 
-export const prepareDiscountClaim = ({ checkoutId, discountId, email }: DiscountClaimInput) => {
-  const customerEmail = email.trim().toLowerCase()
+export const prepareDiscountClaim = ({ checkoutId, discountId, email, userId }: DiscountClaimInput) => {
+  const customer = { email, userId }
   const claimsOfOtherCheckouts = and(eq(discountClaim.discountId, discount.id), ne(discountClaim.checkoutId, checkoutId))
   const heldByOtherCheckouts = db.select({ held: count() }).from(discountClaim).where(claimsOfOtherCheckouts)
   const heldForCustomer = db
     .select({ held: count() })
     .from(discountClaim)
-    .where(and(claimsOfOtherCheckouts, eq(sql`lower(${discountClaim.email})`, customerEmail)))
-  const redeemedByCustomer = db
+    .where(and(claimsOfOtherCheckouts, claimedForCustomer(customer)))
+  const customerRedemptions = db
     .select({ redeemed: count() })
     .from(discountRedemption)
-    .where(and(eq(discountRedemption.discountId, discount.id), eq(sql`lower(${discountRedemption.email})`, customerEmail)))
+    .where(and(eq(discountRedemption.discountId, discount.id), redeemedByCustomer(customer)))
   const withinUsageLimit = or(isNull(discount.usageLimit), sql`${discount.usageCount} + ${heldByOtherCheckouts} < ${discount.usageLimit}`)
   const withinCustomerLimit = or(
     isNull(discount.perCustomerLimit),
-    sql`${redeemedByCustomer} + ${heldForCustomer} < ${discount.perCustomerLimit}`,
+    sql`${customerRedemptions} + ${heldForCustomer} < ${discount.perCustomerLimit}`,
   )
   const claimedAt = new Date()
   const claimColumns = {
@@ -62,12 +63,13 @@ export const claimCheckoutDiscount = async ({
   applied,
   checkoutId,
   email,
+  userId,
 }: ClaimCheckoutDiscountInput): Promise<Discount["applied"] | undefined> => {
   if (applied === undefined) {
     return undefined
   }
 
-  const claims = await prepareDiscountClaim({ checkoutId, discountId: applied.discountId, email })
+  const claims = await prepareDiscountClaim({ checkoutId, discountId: applied.discountId, email, userId })
 
   return keepClaimedDiscount(applied, claims.length > NO_CLAIM)
 }
@@ -88,10 +90,12 @@ interface DiscountClaimInput {
   readonly checkoutId: string
   readonly discountId: string
   readonly email: string
+  readonly userId: string | undefined
 }
 
 interface ClaimCheckoutDiscountInput {
   readonly applied: Discount["applied"] | undefined
   readonly checkoutId: string
   readonly email: string
+  readonly userId: string | undefined
 }

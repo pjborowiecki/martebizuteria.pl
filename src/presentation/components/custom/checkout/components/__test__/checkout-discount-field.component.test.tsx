@@ -9,7 +9,7 @@ const { getDiscountByCodeForPreviewQuery, onApplied } = vi.hoisted(() => ({
     vi.fn<
       (lookup: {
         code: string
-        email: string | undefined
+        customer: { email: string | undefined; userId: string | undefined }
         heldSessionId: string | undefined
       }) => Promise<Discount["selectForPreview"] | undefined>
     >(),
@@ -91,7 +91,7 @@ describe("CheckoutDiscountField", () => {
     })
     expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
       code: "SPRING",
-      email: "ada@marte.test",
+      customer: { email: "ada@marte.test", userId: undefined },
       heldSessionId: "cs_test_own",
     })
   })

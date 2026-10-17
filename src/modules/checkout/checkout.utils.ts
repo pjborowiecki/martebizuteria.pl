@@ -102,9 +102,8 @@ export interface ReleaseCheckoutInput {
 }
 
 const prepareCheckoutDiscountClaim = (
-  checkoutId: string,
+  { checkoutId, email, userId }: Readonly<{ checkoutId: string; email: string; userId: string | undefined }>,
   discountId: string | undefined,
-  email: string,
 ): [] | [BatchItem<"sqlite">, BatchItem<"sqlite">] => {
   if (discountId === undefined) {
     return []
@@ -116,7 +115,7 @@ const prepareCheckoutDiscountClaim = (
     .where(and(eq(discountClaim.checkoutId, checkoutId), eq(discountClaim.discountId, discountId)))
 
   return [
-    prepareDiscountClaim({ checkoutId, discountId, email }),
+    prepareDiscountClaim({ checkoutId, discountId, email, userId }),
     db
       .update(checkout)
       .set({ discountId })
@@ -201,7 +200,12 @@ export const prepareCreateCheckoutBatch = ({
 
   return {
     checkoutId,
-    statements: [...clearDefaults, ...addressInserts, checkoutInsert, ...prepareCheckoutDiscountClaim(checkoutId, discountId, userEmail)],
+    statements: [
+      ...clearDefaults,
+      ...addressInserts,
+      checkoutInsert,
+      ...prepareCheckoutDiscountClaim({ checkoutId, email: userEmail, userId }, discountId),
+    ],
   }
 }
 

@@ -227,35 +227,50 @@ describe("hot reads", () => {
   })
 
   it("read a discount by its code and count the customer's redemptions of it from their indexes", async () => {
-    await expect(planSteps(() => getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test"))).resolves.toStrictEqual(
+    await expect(
+      planSteps(() => getDiscountByCodeForCustomerQuery("SPRING-24", { email: "ada@marte.test", userId: "user-1" })),
+    ).resolves.toStrictEqual(
       expect.arrayContaining([
         "SEARCH discount USING INDEX discount_code_unique (code=?)",
-        "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+        "SEARCH discount_redemption USING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+        "SEARCH user USING INDEX user_email_unique (email=?)",
       ]),
     )
   })
 
   it("read a discount by its code for the checkout's preview and count its holds outside the shopper's checkout from their indexes", async () => {
     await expect(
-      planSteps(() => getDiscountByCodeForPreviewQuery({ code: "SPRING-24", email: "ada@marte.test", heldSessionId: "cs_test_own" })),
+      planSteps(() =>
+        getDiscountByCodeForPreviewQuery({
+          code: "SPRING-24",
+          customer: { email: "ada@marte.test", userId: "user-1" },
+          heldSessionId: "cs_test_own",
+        }),
+      ),
     ).resolves.toStrictEqual(
       expect.arrayContaining([
         "SEARCH discount USING INDEX discount_code_unique (code=?)",
         "SEARCH discount_claim USING INDEX discount_claim_discountId_email_idx (discount_id=?)",
         "SEARCH payment USING INDEX payment_transactionId_unique (transaction_id=?)",
-        "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+        "SEARCH discount_redemption USING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+        "SEARCH user USING INDEX user_email_unique (email=?)",
+        "SEARCH checkout USING INDEX checkout_userId_idx (user_id=?)",
       ]),
     )
   })
 
   it("claim a discount use by its id and count the holds and the customer's redemptions of it from their indexes", async () => {
     await expect(
-      planSteps(() => prepareDiscountClaim({ checkoutId: "checkout-1", discountId: "discount-1", email: "ada@marte.test" })),
+      planSteps(() =>
+        prepareDiscountClaim({ checkoutId: "checkout-1", discountId: "discount-1", email: "ada@marte.test", userId: "user-1" }),
+      ),
     ).resolves.toStrictEqual(
       expect.arrayContaining([
         "SEARCH discount USING INDEX sqlite_autoindex_discount_1 (id=?)",
         "SEARCH discount_claim USING INDEX discount_claim_discountId_email_idx (discount_id=?)",
-        "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+        "SEARCH discount_redemption USING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
+        "SEARCH user USING INDEX user_email_unique (email=?)",
+        "SEARCH checkout USING INDEX checkout_userId_idx (user_id=?)",
       ]),
     )
   })

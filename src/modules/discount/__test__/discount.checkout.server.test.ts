@@ -16,7 +16,7 @@ const { resolveCheckoutDiscount } = await import("~/src/modules/discount/discoun
 
 const NOW = new Date("2026-06-01T12:00:00.000Z")
 
-const BASKET = { email: "ada@marte.test", itemsSubtotal: 20_000, shippingTotal: 1500 }
+const BASKET = { email: "ada@marte.test", itemsSubtotal: 20_000, shippingTotal: 1500, userId: "user-ada" }
 
 const discountRow = (overrides: Partial<Discount["selectForCustomer"]> = {}): Discount["selectForCustomer"] => ({
   code: "SPRING-24",
@@ -62,7 +62,10 @@ describe("resolveCheckoutDiscount", () => {
   it("reads the code however the shopper typed it, with the checkout email's redemptions", async () => {
     await resolveCheckoutDiscount({ ...BASKET, code: "  spring-24 " })
 
-    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", "ada@marte.test")
+    expect(stubs.getDiscountByCodeForCustomerQuery).toHaveBeenCalledExactlyOnceWith("SPRING-24", {
+      email: "ada@marte.test",
+      userId: "user-ada",
+    })
   })
 
   it.each([undefined, "   "])("applies nothing and skips the lookup for the code %j", async (code) => {

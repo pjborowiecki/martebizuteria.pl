@@ -689,7 +689,12 @@ describe("checkout session discounts", () => {
 
     await handleUpdateCheckoutSession(updateInput())
 
-    expect(mocked.claimCheckoutDiscount).toHaveBeenCalledExactlyOnceWith({ applied, checkoutId: "checkout-1", email: "anna@example.com" })
+    expect(mocked.claimCheckoutDiscount).toHaveBeenCalledExactlyOnceWith({
+      applied,
+      checkoutId: "checkout-1",
+      email: "anna@example.com",
+      userId: "user-1",
+    })
     expect(mocked.claimCheckoutDiscount).toHaveBeenCalledBefore(mocked.checkoutSessionsCreate)
     expect(mocked.supersedeCheckoutSession).toHaveBeenCalledWith(expect.objectContaining({ discountId: "disc-1" }))
   })

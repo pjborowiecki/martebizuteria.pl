@@ -81,15 +81,16 @@ interface RedemptionSeed {
   readonly discountId: string
   readonly email: string
   readonly id: string
+  readonly userId?: string
 }
 
-const seedRedemption = ({ amount, discountId, email, id }: RedemptionSeed): void => {
+const seedRedemption = ({ amount, discountId, email, id, userId }: RedemptionSeed): void => {
   sqlite
     .prepare(
       `insert into discount_redemption (id, discount_id, order_id, user_id, email, amount, created_at, updated_at)
-       values (?, ?, ?, null, ?, ?, ?, ?)`,
+       values (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(id, discountId, `order-${id}`, email, amount, NOW, NOW)
+    .run(id, discountId, `order-${id}`, userId ?? null, email, amount, NOW, NOW)
 }
 
 const storedRow = (id: string) => sqlite.prepare(`select * from discount where id = ?`).get(id)
@@ -121,6 +122,9 @@ beforeEach(() => {
   sqlite.exec(`
     drop table if exists discount_redemption;
     drop table if exists discount;
+    drop table if exists user;
+    create table user (id text primary key, email text not null);
+    insert into user (id, email) values ('user-ada', 'ada@new.example');
     create table discount (
       id text primary key, code text not null unique, description text, ends_at integer, is_active integer not null default 1,
       max_discount_amount integer, min_order_total integer, per_customer_limit integer, starts_at integer, type text not null,
@@ -188,7 +192,7 @@ describe("getDiscountByCodeForCustomerQuery", () => {
   })
 
   it("reads the discount in its app types with this customer's redemptions of it", async () => {
-    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", "  Ada@MARTE.test ")).resolves.toStrictEqual({
+    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", { email: "  Ada@MARTE.test ", userId: undefined })).resolves.toStrictEqual({
       code: "SPRING-24",
       createdAt: new Date(NOW),
       description: "Spring sale",
@@ -215,31 +219,55 @@ describe("getDiscountByCodeForCustomerQuery", () => {
     ["SUMMER-25", "ada@marte.test"],
     ["SUMMER-25", "grace@marte.test"],
   ])("counts %s redemptions for %j exactly as a separate count of that email would", async (code, email) => {
-    const row = await getDiscountByCodeForCustomerQuery(code, email)
+    const row = await getDiscountByCodeForCustomerQuery(code, { email, userId: undefined })
 
     expect(row?.redeemedByCustomer).toBe(separateRedemptionCount(code, email))
   })
 
   it("reads the discount and the count in one statement", async () => {
-    await getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test")
+    await getDiscountByCodeForCustomerQuery("SPRING-24", { email: "ada@marte.test", userId: undefined })
 
     expect(queries).toHaveLength(1)
   })
 
   it.each([undefined, "   "])("counts nothing for a missing email (%j) without reading redemptions", async (email) => {
-    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", email)).resolves.toMatchObject({ id: "discount-1", redeemedByCustomer: 0 })
+    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", { email, userId: undefined })).resolves.toMatchObject({
+      id: "discount-1",
+      redeemedByCustomer: 0,
+    })
     expect(queries.join("\n")).not.toContain("discount_redemption")
   })
 
-  it("answers inside a batch exactly as it does on its own", async () => {
-    const alone = await getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test")
+  it("also counts the redemptions of the signed-in account and of the account that holds the typed address", async () => {
+    seedRedemption({ amount: 1500, discountId: "discount-1", email: "ada@old.example", id: "r-5", userId: "user-ada" })
 
-    await expect(db.batch([getDiscountByCodeForCustomerQuery("SPRING-24", "ada@marte.test")])).resolves.toStrictEqual([alone])
+    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", { email: "ada@third.example", userId: "user-ada" })).resolves.toMatchObject(
+      {
+        redeemedByCustomer: 1,
+      },
+    )
+    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", { email: "Ada@New.example", userId: undefined })).resolves.toMatchObject({
+      redeemedByCustomer: 1,
+    })
+    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", { email: undefined, userId: "user-ada" })).resolves.toMatchObject({
+      redeemedByCustomer: 1,
+    })
+    await expect(getDiscountByCodeForCustomerQuery("SPRING-24", { email: "ada@old.example", userId: undefined })).resolves.toMatchObject({
+      redeemedByCustomer: 1,
+    })
+  })
+
+  it("answers inside a batch exactly as it does on its own", async () => {
+    const alone = await getDiscountByCodeForCustomerQuery("SPRING-24", { email: "ada@marte.test", userId: undefined })
+
+    await expect(
+      db.batch([getDiscountByCodeForCustomerQuery("SPRING-24", { email: "ada@marte.test", userId: undefined })]),
+    ).resolves.toStrictEqual([alone])
   })
 
   it("matches the stored code exactly and reports nothing for an unknown one", async () => {
-    await expect(getDiscountByCodeForCustomerQuery("spring-24", "ada@marte.test")).resolves.toBeUndefined()
-    await expect(getDiscountByCodeForCustomerQuery("NOPE-99", undefined)).resolves.toBeUndefined()
+    await expect(getDiscountByCodeForCustomerQuery("spring-24", { email: "ada@marte.test", userId: undefined })).resolves.toBeUndefined()
+    await expect(getDiscountByCodeForCustomerQuery("NOPE-99", { email: undefined, userId: undefined })).resolves.toBeUndefined()
   })
 })
 
