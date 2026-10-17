@@ -1,4 +1,4 @@
-import { Suspense } from "react"
+import { type JSX, type ReactNode, Suspense } from "react"
 
 import { QueryClient } from "@tanstack/react-query"
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react"
@@ -27,8 +27,16 @@ vi.mock("~/src/modules/store-setting/use-cases/update-seller-details", () => ({
   updateSellerDetailsMutation: { mutationFn: mocks.save, mutationKey: ["store-setting", "updateSellerDetails"] },
 }))
 
-const { SettingsSellerDetailsCard } =
-  await import("~/src/presentation/components/custom/pages/admin/settings/store/settings-seller-details-card")
+vi.mock("~/src/presentation/components/custom/pages/admin/admin-header", () => ({
+  AdminHeader: ({ actions, title }: Readonly<{ actions?: ReactNode; title: ReactNode }>): JSX.Element => (
+    <header>
+      <h1>{title}</h1>
+      {actions}
+    </header>
+  ),
+}))
+
+const { SettingsStorePage } = await import("~/src/presentation/components/custom/pages/admin/settings/store/settings-store-page")
 
 const LOADED_AT = new Date("2026-10-16T12:00:00.000Z")
 
@@ -52,7 +60,7 @@ const renderCard = () => {
   queryClient.setQueryData(STORE_SETTING_QUERY_KEYS.SELLER_DETAILS, { ...SELLER, updatedAt: LOADED_AT })
   const view = renderWithProviders(
     <Suspense fallback={<p>loading</p>}>
-      <SettingsSellerDetailsCard />
+      <SettingsStorePage />
     </Suspense>,
     { queryClient },
   )
@@ -71,11 +79,12 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
-describe("SettingsSellerDetailsCard", () => {
+describe("SettingsStorePage", () => {
   it("shows the seller's stored details, with the country named in the admin's language", () => {
     renderCard()
 
     expect(screen.getByRole("heading", { name: "Seller details" })).toBeInTheDocument()
+    expect(screen.getByText("31/200")).toBeInTheDocument()
     expect(screen.getByLabelText("Legal name")).toHaveValue(SELLER.legalName)
     expect(screen.getByLabelText("Street and number")).toHaveValue(SELLER.street)
     expect(screen.getByLabelText("Postal code")).toHaveValue(SELLER.postalCode)
@@ -108,13 +117,35 @@ describe("SettingsSellerDetailsCard", () => {
     expect(screen.getByLabelText("NIP")).toHaveValue("5260250274")
   })
 
+  it("saves from the header, saying whether the details are saved, changed or on their way", async () => {
+    const pending = Promise.withResolvers<unknown>()
+    mocks.save.mockReturnValue(pending.promise)
+    renderCard()
+
+    expect(screen.getByText("Saved Oct 16, 2026, 2:00 PM")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Save" })).toHaveAttribute("aria-disabled", "true")
+
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Kraków" } })
+
+    expect(screen.getByText("Unsaved changes")).toBeInTheDocument()
+
+    await save()
+
+    expect(screen.getByText("Saving…")).toBeInTheDocument()
+    expect(screen.getByLabelText("City")).toBeDisabled()
+    pending.resolve({ ...SELLER, city: "Kraków", updatedAt: SAVED_AT })
+    expect(await screen.findByText("Saved Oct 16, 2026, 3:00 PM")).toBeInTheDocument()
+  })
+
   it("sends the time of its own last save with the next one", async () => {
     renderCard()
 
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Kraków" } })
     await save()
     await waitFor(() => {
       expect(mocks.toastSuccess).toHaveBeenCalledOnce()
     })
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Bochnia" } })
     await save()
 
     await waitFor(() => {
@@ -122,7 +153,9 @@ describe("SettingsSellerDetailsCard", () => {
     })
     expect(mocks.save.mock.calls[1]?.[0]).toMatchObject({ expectedUpdatedAt: SAVED_AT })
   })
+})
 
+describe("SettingsStorePage fields", () => {
   it("moves the seller to another country picked from the list", async () => {
     renderCard()
 
@@ -173,7 +206,7 @@ describe("SettingsSellerDetailsCard", () => {
     await save()
     expect(screen.getByText("Enter the city.")).toBeInTheDocument()
 
-    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Bochnia" } })
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Kraków" } })
     await save()
 
     await waitFor(() => {
@@ -185,6 +218,7 @@ describe("SettingsSellerDetailsCard", () => {
   it("tells the admin to reload when someone else saved the details in the meantime", async () => {
     mocks.save.mockRejectedValue(new AppError(ERROR_CODES.CONFLICT))
     renderCard()
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Kraków" } })
 
     await save()
 
@@ -199,6 +233,7 @@ describe("SettingsSellerDetailsCard", () => {
   it("tells the admin when saving fails for another reason", async () => {
     mocks.save.mockRejectedValue(new Error("network down"))
     renderCard()
+    fireEvent.change(screen.getByLabelText("City"), { target: { value: "Kraków" } })
 
     await save()
 

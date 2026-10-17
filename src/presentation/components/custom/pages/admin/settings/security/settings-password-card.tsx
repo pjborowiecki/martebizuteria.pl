@@ -1,5 +1,6 @@
 import { type JSX, useCallback, useState } from "react"
 
+import { KeyRound } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
@@ -20,7 +21,8 @@ export const SettingsPasswordCard = ({ hasPassword }: Readonly<{ hasPassword: bo
     <>
       <SettingsCard
         action={
-          <Button className="shrink-0 self-start" onClick={openDialog} size="sm" variant="outline">
+          <Button className="shrink-0 gap-1.5 self-start" onClick={openDialog} size="sm" variant="outline">
+            <KeyRound className="size-3.5" strokeWidth={1.5} />
             {hasPassword ? t("change") : t("set")}
           </Button>
         }

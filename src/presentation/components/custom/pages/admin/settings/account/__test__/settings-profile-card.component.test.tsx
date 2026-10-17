@@ -1,7 +1,7 @@
 import { type JSX } from "react"
 
 import { QueryClient } from "@tanstack/react-query"
-import { cleanup, screen, waitFor } from "@testing-library/react"
+import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
@@ -59,6 +59,12 @@ const renderCard = (profile: CustomerAccount["profile"] = PROFILE) => {
 
 const user = () => userEvent.setup({ delay: null })
 
+const openSheet = async (): Promise<HTMLElement> => {
+  await user().click(screen.getByRole("button", { name: "Edit profile" }))
+
+  return screen.findByRole("dialog", { name: "Edit profile" })
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.updateUser.mockResolvedValue({ error: null })
@@ -88,86 +94,102 @@ describe("SettingsProfileCard", () => {
   it("opens the email change in the admin's dialog style", async () => {
     renderCard()
 
-    await user().click(screen.getByRole("button", { name: "Change" }))
+    await user().click(screen.getByRole("button", { name: "Change email" }))
 
     expect(screen.getByRole("dialog")).toHaveTextContent("change email for owner@marte.test")
     expect(mocks.emailDialog).toHaveBeenLastCalledWith(expect.objectContaining({ open: true, variant: "default" }))
   })
 
-  it("saves a new name, refreshes the profile and the session, and closes the field", async () => {
+  it("saves a new name from the profile sheet, refreshes the profile and the session, and closes", async () => {
     const { queryClient } = renderCard()
     const invalidate = vi.spyOn(queryClient, "invalidateQueries")
-    const actor = user()
+    const sheet = await openSheet()
+    const field = within(sheet).getByLabelText("Full name")
 
-    await actor.click(screen.getAllByRole("button", { name: "Edit" })[0] ?? document.body)
-    const field = screen.getByLabelText("Full name")
-    await actor.clear(field)
-    await actor.type(field, "  Anna Nowak  ")
-    await actor.click(screen.getByRole("button", { name: "Save" }))
+    fireEvent.change(field, { target: { value: "  Anna Nowak  " } })
+    expect(within(sheet).getByText("14/120")).toBeInTheDocument()
+    await user().click(within(sheet).getByRole("button", { name: "Save" }))
 
     await waitFor(() => {
       expect(mocks.updateUser).toHaveBeenCalledWith({ name: "Anna Nowak" })
     })
+    expect(mocks.updatePhone).not.toHaveBeenCalled()
     expect(mocks.toastSuccess).toHaveBeenCalledWith("Profile saved.")
     expect(invalidate).toHaveBeenCalledWith({ queryKey: CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE })
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["session", "current"] })
-    expect(screen.queryByLabelText("Full name")).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    })
   })
 
   it("explains an empty name instead of saving it", async () => {
     renderCard()
-    const actor = user()
+    const sheet = await openSheet()
 
-    await actor.click(screen.getAllByRole("button", { name: "Edit" })[0] ?? document.body)
-    await actor.clear(screen.getByLabelText("Full name"))
-    await actor.click(screen.getByRole("button", { name: "Save" }))
+    fireEvent.change(within(sheet).getByLabelText("Full name"), { target: { value: "" } })
+    await user().click(within(sheet).getByRole("button", { name: "Save" }))
 
-    expect(await screen.findByText("Please enter your name.")).toBeInTheDocument()
+    expect(await within(sheet).findByText("Please enter your name.")).toBeInTheDocument()
     expect(mocks.updateUser).not.toHaveBeenCalled()
   })
 
-  it("keeps the field open and says so when the name cannot be saved", async () => {
+  it("keeps the sheet open and says so when the name cannot be saved", async () => {
     mocks.updateUser.mockResolvedValue({ error: { message: "nope" } })
     renderCard()
-    const actor = user()
+    const sheet = await openSheet()
 
-    await actor.click(screen.getAllByRole("button", { name: "Edit" })[0] ?? document.body)
-    await actor.click(screen.getByRole("button", { name: "Save" }))
+    fireEvent.change(within(sheet).getByLabelText("Full name"), { target: { value: "Anna Nowak" } })
+    await user().click(within(sheet).getByRole("button", { name: "Save" }))
 
     await waitFor(() => {
       expect(mocks.toastError).toHaveBeenCalledWith("Could not save the profile. Try again.")
     })
-    expect(screen.getByLabelText("Full name")).toBeInTheDocument()
+    expect(screen.getByRole("dialog", { name: "Edit profile" })).toBeInTheDocument()
   })
 
-  it("saves a phone number through the phone action and reports a refused one", async () => {
+  it("saves a new phone number alone and reports a refused one", async () => {
     renderCard()
-    const actor = user()
+    const sheet = await openSheet()
 
-    await actor.click(screen.getAllByRole("button", { name: "Edit" })[1] ?? document.body)
-    await actor.type(screen.getByLabelText("Phone number"), "+48600123456")
-    await actor.click(screen.getByRole("button", { name: "Save" }))
+    fireEvent.change(within(sheet).getByLabelText("Phone number"), { target: { value: "+48600123456" } })
+    expect(within(sheet).getByText("12/32")).toBeInTheDocument()
+    await user().click(within(sheet).getByRole("button", { name: "Save" }))
 
     await waitFor(() => {
       expect(mocks.updatePhone.mock.calls[0]?.[0]).toStrictEqual({ phone: "+48600123456" })
     })
+    expect(mocks.updateUser).not.toHaveBeenCalled()
 
     mocks.updatePhone.mockRejectedValue(new Error("refused"))
-    await actor.click(screen.getAllByRole("button", { name: "Edit" })[1] ?? document.body)
-    await actor.click(screen.getByRole("button", { name: "Save" }))
+    const again = await openSheet()
+    fireEvent.change(within(again).getByLabelText("Phone number"), { target: { value: "+48600999999" } })
+    await user().click(within(again).getByRole("button", { name: "Save" }))
 
     await waitFor(() => {
       expect(mocks.toastError).toHaveBeenCalledWith("Could not save the profile. Try again.")
     })
   })
 
-  it("leaves the stored value untouched when editing is cancelled", async () => {
-    renderCard()
-    const actor = user()
+  it("saves an unchanged stored phone number as it is", async () => {
+    renderCard({ ...PROFILE, phone: "+48600123456" })
+    const sheet = await openSheet()
 
-    await actor.click(screen.getAllByRole("button", { name: "Edit" })[0] ?? document.body)
-    await actor.type(screen.getByLabelText("Full name"), " extra")
-    await actor.click(screen.getByRole("button", { name: "Cancel" }))
+    expect(within(sheet).getByLabelText("Phone number")).toHaveValue("+48600123456")
+    await user().click(within(sheet).getByRole("button", { name: "Save" }))
+
+    await waitFor(() => {
+      expect(mocks.toastSuccess).toHaveBeenCalledWith("Profile saved.")
+    })
+    expect(mocks.updatePhone).not.toHaveBeenCalled()
+    expect(mocks.updateUser).not.toHaveBeenCalled()
+  })
+
+  it("leaves the stored values untouched when editing is cancelled", async () => {
+    renderCard()
+    const sheet = await openSheet()
+
+    fireEvent.change(within(sheet).getByLabelText("Full name"), { target: { value: "Anna extra" } })
+    await user().click(within(sheet).getByRole("button", { name: "Cancel" }))
 
     expect(screen.getByText("Anna Kowalska")).toBeInTheDocument()
     expect(mocks.updateUser).not.toHaveBeenCalled()

@@ -1,11 +1,12 @@
 import zod from "zod/v4"
 
 import { pageField, pageSizeField, searchTermField } from "~/src/modules/_core/utils/zod-fields"
-import { CUSTOMER_ACCOUNT_LOGIN_STATUSES, CUSTOMER_ACCOUNT_ORDER_FILTERS } from "~/src/modules/customer-account/customer-account.constants"
-
-const MAX_PHONE_LENGTH = 32
-
-const MAX_NAME_LENGTH = 120
+import {
+  CUSTOMER_ACCOUNT_LOGIN_STATUSES,
+  CUSTOMER_ACCOUNT_NAME_MAX_LENGTH,
+  CUSTOMER_ACCOUNT_ORDER_FILTERS,
+  CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH,
+} from "~/src/modules/customer-account/customer-account.constants"
 
 const FIRST_ORDERS_PAGE = 1
 
@@ -34,11 +35,11 @@ export const customerAccountZodSchemas = {
     page: zod.coerce.number().int().min(FIRST_ORDERS_PAGE).default(FIRST_ORDERS_PAGE),
   }),
   phoneInput: zod.object({
-    phone: zod.string().trim().max(MAX_PHONE_LENGTH),
+    phone: zod.string().trim().max(CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH),
   }),
   profileForm: zod.object({
-    name: zod.string().trim().min(1, "nameRequired").max(MAX_NAME_LENGTH, "nameMaxLength"),
-    phone: zod.string().trim().max(MAX_PHONE_LENGTH, "phoneMaxLength"),
+    name: zod.string().trim().min(1, "nameRequired").max(CUSTOMER_ACCOUNT_NAME_MAX_LENGTH, "nameMaxLength"),
+    phone: zod.string().trim().max(CUSTOMER_ACCOUNT_PHONE_MAX_LENGTH, "phoneMaxLength"),
   }),
   sessionIdInput: zod.object({
     sessionId: zod.string().min(1),

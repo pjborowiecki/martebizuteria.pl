@@ -21,9 +21,11 @@ const AdminSettingsSecurityRoute = (): JSX.Element => {
 
   return (
     <SettingsPageLayout active="security">
-      <SettingsPasswordCard hasPassword={profile.hasPassword} />
-      <SettingsTwoFactorCard enabled={profile.twoFactorEnabled} hasPassword={profile.hasPassword} />
-      <SettingsSignInMethodsCard hasGoogle={profile.hasGoogle} hasPassword={profile.hasPassword} />
+      <div className="grid gap-5 sm:gap-6 xl:grid-cols-3">
+        <SettingsPasswordCard hasPassword={profile.hasPassword} />
+        <SettingsTwoFactorCard enabled={profile.twoFactorEnabled} hasPassword={profile.hasPassword} />
+        <SettingsSignInMethodsCard hasGoogle={profile.hasGoogle} hasPassword={profile.hasPassword} />
+      </div>
       <SettingsSessionsGrid />
       <SettingsLoginHistoryGrid />
     </SettingsPageLayout>
