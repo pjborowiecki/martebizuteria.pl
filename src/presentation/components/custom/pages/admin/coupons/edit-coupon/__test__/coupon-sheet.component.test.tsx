@@ -298,6 +298,28 @@ describe("CouponSheet for each discount type", () => {
     expect(await createdValues()).toMatchObject({ values: { code: "TENOFF", type: DISCOUNT_TYPE.FIXED_AMOUNT, value: 1500 } })
   })
 
+  it("drops a maximum discount typed for a percentage once the type changes", async () => {
+    renderSheet()
+    fill("Code", "TENOFF")
+    fill("Maximum discount", "50")
+    await choose("Type", "Fixed amount")
+    fill("Amount off", "15")
+    fireEvent.click(createButton())
+
+    expect(await createdValues()).not.toHaveProperty("values.maxDiscountAmount", expect.anything())
+  })
+
+  it("saves a percentage coupon changed to a fixed amount without its maximum discount", async () => {
+    renderSheet(buildCoupon({ maxDiscountAmountMinorUnits: 5000 }))
+    await choose("Type", "Fixed amount")
+    fill("Amount off", "15")
+    fireEvent.click(saveButton())
+
+    const input = await updatedInput()
+    expect(input).toMatchObject({ values: { type: DISCOUNT_TYPE.FIXED_AMOUNT, value: 1500 } })
+    expect(input).not.toHaveProperty("values.maxDiscountAmount", expect.anything())
+  })
+
   it("flags a fixed amount of zero as it is typed once a save has failed", async () => {
     renderSheet()
     fill("Code", "AB")

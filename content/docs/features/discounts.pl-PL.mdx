@@ -77,7 +77,7 @@ export const discountClaim = sqliteTable(
 )
 ```
 
-Trzy typy to `percentage`, `fixed_amount` i `free_shipping` (`DISCOUNT_TYPES` w `discount.constants.ts`). `value` to jedna liczba całkowita: cały procent dla `percentage`, kwota w jednostkach podrzędnych dla `fixed_amount`, a dla `free_shipping` jest ignorowana. Kolumny limitów są nullowalne, a `null` oznacza brak limitu: `usage_limit` ogranicza łączną liczbę wykorzystań, `per_customer_limit` ogranicza ją dla jednego adresu e-mail, `min_order_total` to minimalna suma pozycji w jednostkach podrzędnych, a `max_discount_amount` ogranicza, ile może odjąć rabat procentowy.
+Trzy typy to `percentage`, `fixed_amount` i `free_shipping` (`DISCOUNT_TYPES` w `discount.constants.ts`). `value` to jedna liczba całkowita: cały procent dla `percentage`, kwota w jednostkach podrzędnych dla `fixed_amount`, a dla `free_shipping` jest ignorowana. Kolumny limitów są nullowalne, a `null` oznacza brak limitu: `usage_limit` ogranicza łączną liczbę wykorzystań, `per_customer_limit` ogranicza ją dla jednego adresu e-mail, `min_order_total` to minimalna suma pozycji w jednostkach podrzędnych, a `max_discount_amount` ogranicza, ile może odjąć rabat procentowy. `toDiscountInsertValues` i `toDiscountUpdateValues` (`discount.persist.utils.ts`) zapisują `max_discount_amount` tylko dla kodu `percentage`, a dla dwóch pozostałych typów zostawiają `null`, cokolwiek wyśle formularz.
 
 `discountRelations` deklaruje `many(cart)`, `many(checkout)`, `many(discountClaim)`, `many(order)` i `many(discountRedemption)`. Każda z tabel `cart`, `checkout` i `order` ma kolumnę `discount_id`, a `order` ma dodatkowo `discount_total`. Kolumna `description`, trzy kolumny reguł, indeks `is_active` i tabela `discount_redemption` pochodzą z `20260930200000_discount_rules_and_redemptions.sql`. `20261003130000_query_indexes.sql` usunął potem utworzony przez nią indeks `discount_redemption_discountId_idx`, bo `discount_redemption_discountId_email_idx` zaczyna się od tej samej kolumny, i dodał `discount_redemption_userId_idx` dla klucza obcego `user_id`. `query-plans.integration.test.ts` nie przechodzi, gdy któryś klucz obcy nie ma indeksu, więc usunięcie konta albo kodu nigdy nie skanuje wykorzystań.
 
@@ -111,6 +111,7 @@ src/modules/discount/
     ├── __test__/
     │   ├── create-discount.test.ts
     │   ├── delete-discounts.test.ts
+    │   ├── discount-code-race.integration.test.ts
     │   ├── get-admin-discount-stats.test.ts
     │   ├── get-admin-discounts-page.test.ts
     │   ├── update-discount.test.ts
@@ -126,7 +127,7 @@ src/modules/discount/
 
 Każdy z sześciu use case'ów to jedno `createServerFn`. `validate-discount-code.ts` obsługuje sklep; pozostałe pięć obsługuje `/admin/coupons`.
 
-Zestawy `*.integration.test.ts` wykonują swój SQL na bazie `node:sqlite` w pamięci przez `createTestD1Database` (`src/platform/testing/mocks/d1.ts`). Zestawy rezerwacji, wykorzystania i walidatora budują ją z historii migracji przez `applyMigrationHistory`, więc wyścig o ostatnie wykorzystanie kodu i wykorzystanie kodu usuniętego w trakcie płatności są testowane tym samym SQL, który wykonuje D1.
+Zestawy `*.integration.test.ts` wykonują swój SQL na bazie `node:sqlite` w pamięci przez `createTestD1Database` (`src/platform/testing/mocks/d1.ts`). Zestawy rezerwacji, wykorzystania, walidatora i `discount-code-race` budują ją z historii migracji przez `applyMigrationHistory`, więc wyścig o ostatnie wykorzystanie kodu, wykorzystanie kodu usuniętego w trakcie płatności i dwie osoby z zespołu zapisujące ten sam kod jednocześnie są testowane tym samym SQL, który wykonuje D1.
 
 ## Reguły
 
@@ -283,7 +284,7 @@ Kliknięcie wiersza otwiera panel z tym kodem (`onRowClick` to `openEdit`); kolu
 `CouponSheet` (`edit-coupon/coupon-sheet.tsx`) obejmuje `CouponFormProvider` panelem `CatalogFormSheetContent`, czyli bocznym panelem formularzy katalogu ze zmienną szerokością, i dzieli z nimi zapisaną szerokość (klucz `admin.catalog.form-sheet`). Provider trzyma formularz `react-hook-form` walidowany przez `discountZodSchemas.adminDiscountFormValues`, czyli schemat, który parsują funkcje serwerowe. Wartości początkowe daje `toCouponFormValues`: edytowany wiersz albo aktywny kod procentowy bez wartości. Wysłanie formularza, które schemat odrzuca, oznacza błędne pola i pokazuje komunikat. Formularz ma cztery sekcje w `edit-coupon/_sections/`:
 
 - **Kod** (`DetailsSection`): przy edycji identyfikator tylko do odczytu; kod, wyświetlany wielkimi literami z licznikiem znaków i zamieniany na wielkie litery przez `normalizeDiscountCode` przy zapisie; opis wewnętrzny.
-- **Rabat** (`DiscountSection`): typ, a po nim wartość: cały procent z dopiskiem `%`, kwota dla `fixed_amount` albo informacja, że darmowa dostawa jej nie wymaga. Zmiana typu zeruje wartość. Maksymalny rabat pojawia się tylko przy procencie, minimalna wartość koszyka przy każdym typie.
+- **Rabat** (`DiscountSection`): typ, a po nim wartość: cały procent z dopiskiem `%`, kwota dla `fixed_amount` albo informacja, że darmowa dostawa jej nie wymaga. Zmiana typu zeruje wartość i opróżnia maksymalny rabat, więc limit wpisany dla procentu nie zapisuje się w ukryciu przy innym typie. Maksymalny rabat pojawia się tylko przy procencie, minimalna wartość koszyka przy każdym typie.
 - **Limity** (`LimitsSection`): łączna liczba użyć i liczba użyć na klienta, puste oznacza brak limitu.
 - **Dostępność** (`AvailabilitySection`): aktywny albo wyłączony oraz początek i koniec.
 
@@ -291,13 +292,13 @@ Pola kwot (`CouponMoneyField`) przyjmują złote, nie grosze. `parseMoneyInputTo
 
 ### Funkcje serwerowe
 
-| Use case                      | Zabezpieczenie                      | Skutek                                                                                                                                                                                                                                                             |
-| ----------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `get-admin-discounts-page.ts` | `authorized({ order: ["read"] })`   | Jedna strona kodów od najnowszych, zawężona przez `search`, `status` i `type`; `page` domyślnie 1, a `pageSize` domyślnie `ADMIN_DISCOUNTS_PAGE_SIZE` (25), najwyżej `LIST_PAGE_SIZE_MAX` (250)                                                                    |
-| `get-admin-discount-stats.ts` | `authorized({ order: ["read"] })`   | Wartości czterech kart                                                                                                                                                                                                                                             |
-| `create-discount.ts`          | `authorized({ order: ["update"] })` | Wstawia wiersz ze znormalizowanym kodem; zajęty kod rzuca `CONFLICT` z `DISCOUNT_CODE_TAKEN`; audyt `discount.created`                                                                                                                                             |
-| `update-discount.ts`          | `authorized({ order: ["update"] })` | Nieznany identyfikator rzuca `NOT_FOUND` z `DISCOUNT_NOT_FOUND`, a zmieniony kod, który ma już inny wiersz, rzuca `CONFLICT` z `DISCOUNT_CODE_TAKEN`; w przeciwnym razie aktualizuje wiersz, ustawia opróżnione pola na `null` i zapisuje audyt `discount.updated` |
-| `delete-discounts.ts`         | `authorized({ order: ["update"] })` | Usuwa po identyfikatorach i zwraca, ile usunięto; audyt `discount.deleted` z identyfikatorami                                                                                                                                                                      |
+| Use case                      | Zabezpieczenie                      | Skutek                                                                                                                                                                                                                                                                                                                                |
+| ----------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get-admin-discounts-page.ts` | `authorized({ order: ["read"] })`   | Jedna strona kodów od najnowszych, zawężona przez `search`, `status` i `type`; `page` domyślnie 1, a `pageSize` domyślnie `ADMIN_DISCOUNTS_PAGE_SIZE` (25), najwyżej `LIST_PAGE_SIZE_MAX` (250)                                                                                                                                       |
+| `get-admin-discount-stats.ts` | `authorized({ order: ["read"] })`   | Wartości czterech kart                                                                                                                                                                                                                                                                                                                |
+| `create-discount.ts`          | `authorized({ order: ["update"] })` | Wstawia wiersz ze znormalizowanym kodem; zajęty kod rzuca `CONFLICT` z `DISCOUNT_CODE_TAKEN`, także gdy ktoś inny z zespołu zapisze ten sam kod między sprawdzeniem a wstawieniem, bo `refuseTakenDiscountCode` zamienia naruszenie unikalności na ten sam błąd; audyt `discount.created`                                             |
+| `update-discount.ts`          | `authorized({ order: ["update"] })` | Nieznany identyfikator rzuca `NOT_FOUND` z `DISCOUNT_NOT_FOUND`, a zmieniony kod, który ma już inny wiersz, rzuca `CONFLICT` z `DISCOUNT_CODE_TAKEN`, także gdy ten wiersz powstanie między sprawdzeniem a aktualizacją; w przeciwnym razie aktualizuje wiersz, ustawia opróżnione pola na `null` i zapisuje audyt `discount.updated` |
+| `delete-discounts.ts`         | `authorized({ order: ["update"] })` | Usuwa po identyfikatorach i zwraca, ile usunięto; audyt `discount.deleted` z identyfikatorami                                                                                                                                                                                                                                         |
 
 Klucz zapytania o stronę to `DISCOUNT_QUERY_KEYS.ADMIN.PAGE` z jego danymi wejściowymi, a zapytania o statystyki `DISCOUNT_QUERY_KEYS.ADMIN.STATS`. Oba ustawiają `refetchOnMount` i `refetchOnWindowFocus` na `false`.
 

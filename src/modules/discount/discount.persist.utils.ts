@@ -1,5 +1,7 @@
 import { type SQL, sql } from "drizzle-orm"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
+import { DISCOUNT_ERROR_CODES, DISCOUNT_TYPE } from "~/src/modules/discount/discount.constants"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { normalizeDiscountCode, resolveDiscountStatus } from "~/src/modules/discount/discount.utils"
 
@@ -19,12 +21,26 @@ const trimmedOrUndefined = (value: string | undefined): string | undefined => {
   return trimmed === undefined || trimmed === "" ? undefined : trimmed
 }
 
+const percentageCap = (values: Discount["adminFormValues"]): number | undefined =>
+  values.type === DISCOUNT_TYPE.PERCENTAGE ? values.maxDiscountAmount : undefined
+
+const isTakenDiscountCodeError = (error: unknown): boolean =>
+  error instanceof Error && (error.message.includes(DISCOUNT_CODE_UNIQUE_CONSTRAINT) || isTakenDiscountCodeError(error.cause))
+
+export const refuseTakenDiscountCode = (error: unknown): never => {
+  if (isTakenDiscountCodeError(error)) {
+    throw new AppError(ERROR_CODES.CONFLICT, DISCOUNT_ERROR_CODES.CODE_TAKEN)
+  }
+
+  throw error
+}
+
 export const toDiscountInsertValues = (values: Discount["adminFormValues"]): Omit<Discount["insert"], "id"> => ({
   code: normalizeDiscountCode(values.code),
   description: trimmedOrUndefined(values.description),
   endsAt: parseOptionalDate(values.endsAt),
   isActive: values.isActive,
-  maxDiscountAmount: values.maxDiscountAmount,
+  maxDiscountAmount: percentageCap(values),
   minOrderTotal: values.minOrderTotal,
   perCustomerLimit: values.perCustomerLimit,
   startsAt: parseOptionalDate(values.startsAt),
@@ -38,7 +54,7 @@ export const toDiscountUpdateValues = (values: Discount["adminFormValues"]): Dis
   description: trimmedOrUndefined(values.description) ?? CLEARED,
   endsAt: parseOptionalDate(values.endsAt) ?? CLEARED,
   isActive: values.isActive,
-  maxDiscountAmount: values.maxDiscountAmount ?? CLEARED,
+  maxDiscountAmount: percentageCap(values) ?? CLEARED,
   minOrderTotal: values.minOrderTotal ?? CLEARED,
   perCustomerLimit: values.perCustomerLimit ?? CLEARED,
   startsAt: parseOptionalDate(values.startsAt) ?? CLEARED,
@@ -67,6 +83,8 @@ export const toAdminDiscountListItem = (row: Discount["select"], now: Date): Dis
 })
 
 const CLEARED: SQL = sql`null`
+
+const DISCOUNT_CODE_UNIQUE_CONSTRAINT = "UNIQUE constraint failed: discount.code"
 
 interface DiscountUpdateValues {
   readonly code: string

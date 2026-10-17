@@ -123,6 +123,35 @@ describe("updateDiscount", () => {
     expect(stubs.recordDiscountUpdatedAudit).not.toHaveBeenCalled()
   })
 
+  it("refuses a code another admin took between the check and the rename like one that was already taken", async () => {
+    stubs.updateDiscountById.mockRejectedValue(
+      new Error("Failed query: update discount", {
+        cause: new Error("D1_ERROR: UNIQUE constraint failed: discount.code: SQLITE_CONSTRAINT"),
+      }),
+    )
+
+    await expect(updateDiscount({ data: { id: DISCOUNT_ID, values: { ...FORM_VALUES, code: "summer-25" } } })).rejects.toMatchObject({
+      code: ERROR_CODES.CONFLICT,
+      message: DISCOUNT_ERROR_CODES.CODE_TAKEN,
+    })
+    expect(stubs.recordDiscountUpdatedAudit).not.toHaveBeenCalled()
+  })
+
+  it("reports any other failure to save the code as an internal error", async () => {
+    stubs.updateDiscountById.mockRejectedValue(new Error("D1_ERROR: Network connection lost."))
+
+    await expect(updateDiscount({ data: { id: DISCOUNT_ID, values: FORM_VALUES } })).rejects.toMatchObject({
+      code: ERROR_CODES.INTERNAL_ERROR,
+    })
+    expect(stubs.recordDiscountUpdatedAudit).not.toHaveBeenCalled()
+  })
+
+  it("clears the maximum discount of a code that no longer takes off a percentage", async () => {
+    await updateDiscount({ data: { id: DISCOUNT_ID, values: { ...FORM_VALUES, maxDiscountAmount: 5000 } } })
+
+    expect(stubs.updateDiscountById.mock.lastCall?.[1]["maxDiscountAmount"]).toBeInstanceOf(SQL)
+  })
+
   it("reports a discount that no longer exists as not found", async () => {
     stubs.getDiscountById.mockResolvedValue(undefined)
 
