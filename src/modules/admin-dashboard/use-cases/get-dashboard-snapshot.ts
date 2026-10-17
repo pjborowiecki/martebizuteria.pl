@@ -95,8 +95,6 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
       timeZone,
     })
 
-    const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
-
     return {
       averageOrderValue: buildAdminDashboardKpiStat(currentSalesRow?.averageOrderValue ?? 0, previousSalesRow?.averageOrderValue ?? 0),
       chartPoints1y,
@@ -108,7 +106,7 @@ export const getDashboardSnapshot = createServerFn({ method: "GET" })
       pageViews: buildAdminDashboardKpiStat(currentViewsRow?.count ?? 0, previousViewsRow?.count ?? 0),
       recentOrders: recentOrderRows.map((row) => toAdminOrderListItem({ ...row, itemCount: 0 })),
       revenue: buildAdminDashboardKpiStat(currentSalesRow?.revenue ?? 0, previousSalesRow?.revenue ?? 0),
-      topProducts: validTopProductRows.map((row) => ({
+      topProducts: topProductRows.map((row) => ({
         category: resolveTopProductCategoryLabel(row.categoryTitles, locale),
         currencyCode: row.currencyCode,
         imageUrl: row.thumbnail ?? undefined,

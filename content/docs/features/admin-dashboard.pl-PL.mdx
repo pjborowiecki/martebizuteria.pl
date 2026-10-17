@@ -127,7 +127,7 @@ Kliknięcie w dowolnym innym miejscu wiersza otwiera tę samą stronę zamówien
 
 ## Najlepsze produkty
 
-`topProductsQuery` grupuje `order_item` po `product_id`:
+`topProductsQuery` grupuje `order_item` po `product_id` i pomija pozycje, które go nie mają:
 
 ```ts
 .from(orderItem)
@@ -135,19 +135,15 @@ Kliknięcie w dowolnym innym miejscu wiersza otwiera tę samą stronę zamówien
 .leftJoin(product, eq(product.id, orderItem.productId))
 .leftJoin(categoryOnProduct, and(eq(categoryOnProduct.productId, orderItem.productId), eq(categoryOnProduct.isPrimary, true)))
 .leftJoin(productCategory, eq(productCategory.id, categoryOnProduct.categoryId))
-.where(orderCountsAsSale)
+.where(and(orderCountsAsSale, isNotNull(orderItem.productId)))
 .groupBy(orderItem.productId)
 ```
 
-a migawka odrzuca wiersze z pustym identyfikatorem, który mają tylko pozycje, których wariant zniknął, zanim zapisano ich produkt: pozycje zapisane przed opisanym niżej uzupełnieniem, których wariant usunięto wcześniej, oraz pozycje, których wariant usunięto w trakcie płatności klienta:
-
-```ts
-const validTopProductRows = topProductRows.filter((row): row is typeof row & { productId: string } => row.productId !== null)
-```
+Pusty `product_id` mają tylko pozycje, których wariant zniknął, zanim zapisano ich produkt: pozycje zapisane przed opisanym niżej uzupełnieniem, których wariant usunięto wcześniej, oraz pozycje, których wariant usunięto w trakcie płatności klienta. Zgrupowane razem dałyby jeden wiersz bez żadnego produktu.
 
 `prepareFulfillCheckoutBatch` (`src/modules/checkout/checkout.utils.ts`) zapisuje produkt i wariant każdej pozycji, odczytując je przez wariant pozycji w tym samym insercie, a migracja `20261003120000_order_item_product_backfill.sql` uzupełniła go w pozycjach zapisanych wcześniej, których wariant wciąż istniał. Miniaturę zapytanie odczytuje przez `max(...)` ze zgrupowanych pozycji.
 
-Zapytanie układa produkty według liczby sprzedanych sztuk ze wszystkich sprzedaży, bez okna dat, i zostawia `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` (4) wierszy, zanim odrzuci te z pustym identyfikatorem. Przychód każdego wiersza to suma `order_item.total` jego pozycji, bez odejmowania zwrotów. `resolveTopProductName` i `resolveTopProductCategoryLabel` wybierają język strony z map tytułów w JSON produktu i jego głównej kategorii. Produkt, którego wiersza już nie ma, dostaje zapisane `order_item.title`, a produkt bez głównej kategorii pustą etykietę, którą karta pokazuje jako „Bez kategorii”. Karta pokazuje miniaturę, a bez niej dwie pierwsze litery nazwy, przychód jako cenę i „4 szt.”, a gdy nic się nie sprzedało, „Brak danych o sprzedaży produktów.”.
+Zapytanie układa produkty według liczby sprzedanych sztuk ze wszystkich sprzedaży, bez okna dat, i zostawia pierwsze `ADMIN_DASHBOARD_TOP_PRODUCTS_LIMIT` (4) wiersze. Pozycje bez produktu odpadają przed tym limitem, więc karta pokazuje cztery produkty, ilekroć sprzedały się co najmniej cztery. Przychód każdego wiersza to suma `order_item.total` jego pozycji, bez odejmowania zwrotów. `resolveTopProductName` i `resolveTopProductCategoryLabel` wybierają język strony z map tytułów w JSON produktu i jego głównej kategorii. Produkt, którego wiersza już nie ma, dostaje zapisane `order_item.title`, a produkt bez głównej kategorii pustą etykietę, którą karta pokazuje jako „Bez kategorii”. Karta pokazuje miniaturę, a bez niej dwie pierwsze litery nazwy, przychód jako cenę i „4 szt.”, a gdy nic się nie sprzedało, „Brak danych o sprzedaży produktów.”.
 
 ## Zamówienia tygodniowe
 
