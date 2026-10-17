@@ -76,20 +76,20 @@ Cztery ścieżki żądań kończą się wewnątrz `src/server.ts`, jeszcze przed
 
 Liczby policzone na drzewie roboczym, nie życzeniowe:
 
-| Element                                            | Liczba                                                                                                                                              |
-| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Moduły funkcjonalne                                | 43 w `src/modules/`, łącznie z `_core`                                                                                                              |
-| Tabele w bazie                                     | 41 eksportowanych z `drizzle.schemas.ts` oraz tabela FTS5 `storefront_search`                                                                       |
-| Migracje D1                                        | 104 pliki SQL w `src/integrations/drizzle-orm/migrations/`                                                                                          |
-| Przypadki użycia                                   | 176 plików w `src/modules/*/use-cases/`: 138 funkcji serwerowych i 38 operacji po stronie serwera                                                   |
-| Funkcje serwerowe                                  | 146 wywołań `createServerFn(...)`                                                                                                                   |
-| Integracje                                         | 14 adapterów dostawców w `src/integrations/`                                                                                                        |
-| Pliki tras                                         | 83 w `src/routes/`                                                                                                                                  |
-| Pliki warstwy prezentacji                          | 797 plików nietestowych w `src/presentation/`, w tym 57 komponentów shadcn i 521 komponentów własnych                                               |
-| Przestrzenie nazw tłumaczeń                        | 60 plików JSON na język w `messages/en-US/` i `messages/pl-PL/`                                                                                     |
-| Pliki testowe                                      | 1223 — 477 jednostkowych, 123 integracyjne, 623 komponentowe — oraz 18 specyfikacji Playwright w `e2e/specs/` (14 `*.spec.ts` i 4 `*.shop-wide.ts`) |
-| Komentarze w kodzie pisanym ręcznie                | 5: trzy w TypeScripcie, dwa w CSS                                                                                                                   |
-| Wyłączenia reguł lintera poza plikami generowanymi | 0                                                                                                                                                   |
+| Element                                            | Liczba                                                                                                                                                |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Moduły funkcjonalne                                | 43 w `src/modules/`, łącznie z `_core`                                                                                                                |
+| Tabele w bazie                                     | 41 eksportowanych z `drizzle.schemas.ts` oraz tabela FTS5 `storefront_search`                                                                         |
+| Migracje D1                                        | 104 pliki SQL w `src/integrations/drizzle-orm/migrations/`                                                                                            |
+| Przypadki użycia                                   | 176 plików w `src/modules/*/use-cases/`: 138 funkcji serwerowych i 38 operacji po stronie serwera                                                     |
+| Funkcje serwerowe                                  | 146 wywołań `createServerFn(...)`                                                                                                                     |
+| Integracje                                         | 14 adapterów dostawców w `src/integrations/`                                                                                                          |
+| Pliki tras                                         | 83 w `src/routes/`                                                                                                                                    |
+| Pliki warstwy prezentacji                          | 797 plików nietestowych w `src/presentation/`, w tym 57 komponentów shadcn i 521 komponentów własnych                                                 |
+| Przestrzenie nazw tłumaczeń                        | 60 plików JSON na język w `messages/en-US/` i `messages/pl-PL/`                                                                                       |
+| Pliki testowe                                      | 1228 — 478 jednostkowych, 127 integracyjnych, 623 komponentowe — oraz 18 specyfikacji Playwright w `e2e/specs/` (14 `*.spec.ts` i 4 `*.shop-wide.ts`) |
+| Komentarze w kodzie pisanym ręcznie                | Brak w TypeScripcie i CSS w `src/`                                                                                                                    |
+| Wyłączenia reguł lintera poza plikami generowanymi | 0                                                                                                                                                     |
 
 ## Co działa, a co nie
 
@@ -119,7 +119,7 @@ Cztery konwencje widać już w pierwszym otwartym pliku. To zasady domu pilnowan
 - **Moduł jest właścicielem tabeli.** `src/modules/{feature}/` zawiera tabelę Drizzle, schematy Zod, krotki kluczy zapytań, wywnioskowane typy, czyste funkcje pomocnicze i akcesory dokładnie jednej tabeli. Jedna operacja na plik w `use-cases/`, nazwana `{verb-noun}.ts`, eksportująca funkcję serwerową obok opcji zapytania TanStack Query, które ją pobierają.
 - **Autoryzacja mieszka na funkcji serwerowej.** Funkcja serwerowa jest publicznym endpointem HTTP, więc strażnicy tras nie mogą jej chronić. Middleware `authorized(permission)` z `src/integrations/better-auth/auth.middleware.ts` jest użyte w 116 miejscach — 28 razy jako gołe `authorized()`, które wymaga tylko poprawnej sesji (raz wewnątrz `recentSignIn`, który wymaga też logowania z ostatnich 24 godzin), i 88 razy z uprawnieniem, na przykład `authorized({ order: ["update"] })`, sprawdzanym wobec macierzy ról w `auth.access.ts`, a na produkcji i w testowym buildzie testów end-to-end także wobec uwierzytelniania dwuskładnikowego administratora.
 - **Warstwa prezentacji nigdy nie dotyka bazy.** Wszystko w `src/presentation/` importuje przypadki użycia, nigdy `db`.
-- **Kod nie zawiera narracji.** W całym `src/` istnieje pięć komentarzy, trzy w TypeScripcie i dwa w CSS, każdy opisujący ograniczenie, którego nie da się wyrazić nazwami ani typami. Intencja idzie w nazwy i typy.
+- **Kod nie zawiera narracji.** TypeScript i CSS w `src/` nie zawierają komentarzy. Intencja idzie w nazwy i typy.
 
 Bazowa konfiguracja lintera to sześć kategorii Oxlint ustawionych na błąd — włącznie z `nursery` — z lintowaniem świadomym typów i sprawdzaniem typów, z ostrzeżeniami przerywającymi build oraz twardymi limitami 800 linii na plik, 150 linii na funkcję i 20 instrukcji na funkcję. Zobacz [Konwencje](/docs/reference/conventions) i [Vite+](/docs/tooling/vite-plus).
 

@@ -87,8 +87,8 @@ Counted against the working tree, not aspirational:
 | Route files                               | 83 in `src/routes/`                                                                                                                 |
 | Presentation files                        | 797 non-test files under `src/presentation/`, of which 57 shadcn primitives and 521 custom components                               |
 | Message namespaces                        | 60 JSON files per locale in `messages/en-US/` and `messages/pl-PL/`                                                                 |
-| Test files                                | 1,223 — 477 unit, 123 integration, 623 component — plus 18 Playwright specs in `e2e/specs/` (14 `*.spec.ts` and 4 `*.shop-wide.ts`) |
-| Comments in hand-written source           | 5: three in TypeScript, two in CSS                                                                                                  |
+| Test files                                | 1,228 — 478 unit, 127 integration, 623 component — plus 18 Playwright specs in `e2e/specs/` (14 `*.spec.ts` and 4 `*.shop-wide.ts`) |
+| Comments in hand-written source           | None in the TypeScript and CSS of `src/`                                                                                            |
 | Lint suppressions outside generated files | 0                                                                                                                                   |
 
 ## What works, and what does not
@@ -119,7 +119,7 @@ Four conventions are visible within the first file you open. They are house rule
 - **Modules own tables.** `src/modules/{feature}/` holds the Drizzle table, the Zod schemas, the query-key tuples, the inferred types, the pure helpers and the accessors for exactly one table. One operation per file under `use-cases/`, named `{verb-noun}.ts`, exporting a server function next to the TanStack Query options that fetch it.
 - **Authorization lives on the server function.** A server function is a public HTTP endpoint, so route guards cannot protect it. The `authorized(permission)` middleware in `src/integrations/better-auth/auth.middleware.ts` is applied at 116 call sites — 28 of them as bare `authorized()`, which only requires a valid session (one of them inside `recentSignIn`, which also wants a sign-in from the last 24 hours), and 88 with a permission such as `authorized({ order: ["update"] })`, checked against the role matrix in `auth.access.ts` and, in production and the end-to-end test build, against the admin's two-factor authentication.
 - **The presentation layer never touches the database.** Everything under `src/presentation/` imports use cases, never `db`.
-- **The code carries no narration.** Five comments exist in the whole of `src/`, three in TypeScript and two in CSS, each explaining a constraint that names and types cannot express. Intent goes in names and types.
+- **The code carries no narration.** The TypeScript and CSS of `src/` contain no comments. Intent goes in names and types.
 
 The lint baseline is six Oxlint categories as errors — including `nursery` — with type-aware linting and type checking on, warnings failing the build, and hard limits of 800 lines per file, 150 lines per function and 20 statements per function. See [Conventions](/docs/reference/conventions) and [Vite+](/docs/tooling/vite-plus).
 

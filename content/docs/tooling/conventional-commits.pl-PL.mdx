@@ -45,7 +45,9 @@ Git przekazuje ścieżkę do pliku z komunikatem jako `$1`, a źródło komunika
 | `style`    | 💎    |
 | `test`     | 🚨    |
 
-Jedenaście typów i nic poza nimi — w każdym temacie, który hook waliduje; temat, który już zaczyna się od emoji takiego jak 📚 albo 🐛, nie jest walidowany wcale (zobacz [Czego hook nie rusza](#czego-hook-nie-rusza)). Hook dokleja odpowiednie emoji na początku linii tematu i nie rusza treści commita.
+Jedenaście typów i nic poza nimi. Hook dokleja odpowiednie emoji na początku linii tematu i nie rusza treści commita.
+
+Temat, który już zaczyna się od jednego z tych jedenastu emoji i spacji, jak przy poprawianiu commita albo zmianie jego komunikatu, traci to emoji przed opisanymi niżej sprawdzeniami, a potem dostaje z powrotem emoji swojego typu. Poprawiony commit (przy `--amend`, `-c` i `-C` Git przekazuje źródło `commit`) zachowuje więc swój temat, a temat ze zmienionym typem dostaje pasujące emoji. Każde inne emoji na początku jest zwykłą częścią tematu, więc `🔥 wip` albo `🐛 cokolwiek` nie przechodzi wzorca konwencji jak każdy inny błędny temat.
 
 ## Co powoduje odrzucenie
 
@@ -68,15 +70,12 @@ Dwie rzeczy przerywają commit z kodem wyjścia 1.
 
 ## Czego hook nie rusza
 
-Hook kończy działanie bez zmiany komunikatu w pięciu przypadkach:
+Hook kończy działanie bez zmiany komunikatu w czterech przypadkach:
 
 - źródłem komunikatu jest `squash`, `merge` albo `template`;
 - komunikat jest pusty lub nie ma żadnej linii innej niż komentarz;
-- temat już zaczyna się od znaku z właściwością Unicode `Emoji_Presentation`, co sprawdza `/^\p{Emoji_Presentation}/u`. Obejmuje to 📚, ✨, 🐛, 🚀, 📦, 💎 i 🚨, więc poprawianie commita `docs`, `feat`, `fix`, `perf`, `refactor`, `style` albo `test`, który hook już ozdobił, zostawia jego temat bez zmian. Oznacza to też, że taki temat w ogóle pomija walidację: `🐛 cokolwiek` przechodzi bez zmian;
 - temat pasuje do `/^(?:Merge |Revert "|fixup! |squash! )/`, co pokrywa tematy generowane przez samego Gita;
 - nie przekazano ścieżki do pliku z komunikatem.
-
-Pozostałe cztery emoji, 🛠️, ♻️, ⚙️ i 🗑️, to znaki w stylu tekstowym z selektorem wariantu U+FE0F, do których `Emoji_Presentation` nie pasuje. Poprawianie commita `build`, `chore`, `ci` albo `revert` (przy `--amend`, `-c` i `-C` Git przekazuje źródło `commit`) bez zmiany tematu przepuszcza więc ozdobiony temat przez wzorzec konwencji, który odrzuca początkowe emoji, a hook przerywa commit komunikatem `Commit message does not follow conventional format.` Hook działa, zanim otworzy się edytor, więc podaj temat ponownie bez emoji, na przykład `git commit --amend -m "chore(deps): …"`; hook doda emoji z powrotem.
 
 Jeśli skrypt wyrzuci wyjątek z jakiegokolwiek innego powodu, wypisuje `❌  Failed to process commit message:` i kończy się kodem 1 — zepsuty hook przerywa pracę głośno, zamiast przepuszczać zdeformowany temat.
 

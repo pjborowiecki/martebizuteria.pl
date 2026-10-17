@@ -423,7 +423,7 @@ Coverage thresholds, from `test.coverage.thresholds` in `vite.config.ts`; `bun r
 | Functions  | 100%            |
 | Lines      | 100%            |
 
-1,223 test files — 477 unit, 123 integration and 623 component, in 221 `__test__` folders — use 684 `it.each`, `test.each` and `describe.each` tables across about 192,900 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
+1,228 test files — 478 unit, 127 integration and 623 component, in 223 `__test__` folders — use 691 `it.each`, `test.each` and `describe.each` tables across about 193,500 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
 
 Every configured threshold is 100%, so a change that leaves a statement, branch, function or line uncovered fails `bun run test:coverage` and CI. `autoUpdate` is off, so the thresholds never move on their own.
 
@@ -526,7 +526,7 @@ Both deploy workflows use GitHub `environment: preview` / `environment: producti
 | Secret   | `CLOUDFLARE_ACCOUNT_ID`                                                                                                                                                                                | Account holding the Worker, D1, KV, R2, queue and Durable Object.                              |
 | Secret   | `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | The Worker secrets that `prepare-deploy-secrets.ts` uploads.                                   |
 | Secret   | `RESEND_MANAGEMENT_API_KEY` (optional)                                                                                                                                                                 | Lets `verify-email-sender.ts` read the sender domain's DNS records; never uploaded.            |
-| Variable | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                           | Browser-visible values baked into the client bundle at build time.                             |
+| Variable | `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                           | Browser-visible values baked into the client bundle at build time.                             |
 
 `CLOUDFLARE_ACCESS_TOKEN` also needs the Workers Routes edit and Zone read permissions on the `martebizuteria.pl` zone, because each deploy attaches the custom domains listed under `routes` in `wrangler.jsonc`.
 

@@ -15,11 +15,11 @@ Run them with `bun run test`, not `bun test`. Bun's own runner ignores the Vites
 
 The suite is split by filename, and each split gets its own environment.
 
-| Project       | Files                                                         | Environment | Setup file                      |
-| ------------- | ------------------------------------------------------------- | ----------- | ------------------------------- |
-| `node`        | `src/**/*.{test,spec}.{ts,tsx}` except the two patterns below | `node`      | none                            |
-| `integration` | `src/**/*.integration.test.{ts,tsx}`                          | `node`      | none                            |
-| `component`   | `src/**/*.component.test.{ts,tsx}`                            | `jsdom`     | `src/platform/testing/setup.ts` |
+| Project       | Files                                                                                              | Environment | Setup file                      |
+| ------------- | -------------------------------------------------------------------------------------------------- | ----------- | ------------------------------- |
+| `node`        | `src/**/*.{test,spec}.{ts,tsx}` except the two patterns below, and `scripts/**/__test__/*.test.ts` | `node`      | none                            |
+| `integration` | `src/**/*.integration.test.{ts,tsx}`                                                               | `node`      | none                            |
+| `component`   | `src/**/*.component.test.{ts,tsx}`                                                                 | `jsdom`     | `src/platform/testing/setup.ts` |
 
 ```sh
 bun run test              # vp test run — all three projects
@@ -31,11 +31,11 @@ bun run test:coverage     # vp test run --coverage
 bun run test:all          # bun run test, then test:e2e:smoke
 ```
 
-The repository holds 1,223 test files: 623 component tests, 123 integration tests and 477 unit tests in the `node` project.
+The repository holds 1,228 test files: 623 component tests, 127 integration tests and 478 unit tests in the `node` project, one of them the commit message hook's test in `scripts/__test__/`.
 
 The `integration` project raises the test and hook timeouts to 30 seconds (`INTEGRATION_TEST_TIMEOUT_MS` in `vite.config.ts`). The `component` project's setup file sets its own test timeout of 15 seconds.
 
-> `bun run test:watch` maps to `vp test` with no subcommand. Per `vp test --help`, `vp test` "runs tests once by default" and watch mode is the separate `vp test watch` subcommand, so this script is a second single-shot run rather than a watcher. Use `vp test watch` (or `vp test --watch`) when you want watch mode.
+`bun run test:watch` runs `vp test watch`, which stays open and runs the affected tests again on every change. Plain `vp test` without a subcommand runs the suite once.
 
 ## Shared test configuration
 
@@ -49,9 +49,9 @@ Everything the projects have in common lives in the top-level `test` block and i
 | `maxWorkers`      | `"50%"`                                                                                                           |
 | `isolate`         | `true`                                                                                                            |
 | `passWithNoTests` | `false`                                                                                                           |
-| `exclude`         | `node_modules/**`, `opensrc/**`, `dist/**`, `scripts/**`, `e2e/**`, `src/integrations/drizzle-orm/migrations/**`  |
+| `exclude`         | `node_modules/**`, `opensrc/**`, `dist/**`, `e2e/**`, `src/integrations/drizzle-orm/migrations/**`                |
 
-Because `test.env` loads `.env.test`, no test needs real credentials. `scripts/` is excluded from the suite, so `scripts/commit-msg.ts`, `scripts/verify-build.ts` and friends are not covered by tests.
+Because `test.env` loads `.env.test`, no test needs real credentials. Of the scripts, only the commit message hook has tests: `scripts/__test__/commit-msg.test.ts` runs `scripts/commit-msg.ts` with `bun` against a message file, as `.vite-hooks/prepare-commit-msg` does. `scripts/verify-build.ts` and the other scripts have none, and coverage counts `src/` only.
 
 ## The test platform
 
@@ -70,7 +70,7 @@ Because `test.env` loads `.env.test`, no test needs real credentials. `scripts/`
 | `mocks/seller-details.ts`        | `TEST_SELLER_DETAILS`, `SELLER_DETAILS_QUERIES` and `createSellerDetailsQueryClient` — the seller's details for components and e-mails that name the seller |
 | `mocks/providers.ts`             | `installProviderMocks` and the in-memory Resend, Stripe and InPost ShipX emulators of the test Worker                                                       |
 | `mocks/inpost-points.ts`         | `emulateInpostPoints` — the test Worker's answers to InPost point lookups                                                                                   |
-| `lib/render.tsx`                 | `renderWithProviders`, `TestProviders`, `createTestRouter`                                                                                                  |
+| `lib/render.tsx`                 | `renderWithProviders`, `TestProviders`, `createTestRouter`; the `IntlProvider` in `TestProviders` throws every use-intl error                               |
 | `lib/messages.ts`                | `TEST_LOCALE` (`en-US`) and `TEST_MESSAGES`, built from the real `messages/en-US/*.json` files                                                              |
 | `lib/server-function.ts`         | `withTestRpc` — drives server functions through their real middleware and validation pipeline                                                               |
 | `lib/auth-browser.ts`            | `openAuthBrowser(ip)`, a cookie-keeping `auth.handler` client, and `createPasswordCustomer`                                                                 |
@@ -118,7 +118,7 @@ const { queryClient, router } = renderWithProviders(<ProductCard product={produc
 
 `createTestRouter(path)` builds the memory router; pass a path when the component depends on the current location.
 
-Messages are not fixtures. `lib/messages.ts` globs `messages/en-US/*.json` eagerly and feeds them through the application's own `buildMessageTree` and `toNamespace`, so a missing or renamed translation key fails a component test.
+Messages are not fixtures. `lib/messages.ts` globs `messages/en-US/*.json` eagerly and feeds them through the application's own `buildMessageTree` and `toNamespace`. The `IntlProvider` in `TestProviders` gets an `onError` that throws, so a component asking for a missing or renamed translation key fails its test with `MISSING_MESSAGE` instead of rendering the key path, as use-intl does by default. A test that wraps the tree in its own `IntlProvider`, for example to render Polish, inherits that `onError` and has to pass every namespace the component reads. `lib/__test__/render.component.test.tsx` checks this guard.
 
 ### Testing database code
 

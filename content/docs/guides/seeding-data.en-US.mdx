@@ -35,7 +35,7 @@ Eleven SQL files, listed here in the order `db:seed:preview` runs them — which
 | 10    | `collection-on-product.sql` | `collection_on_product`      | `products.sql`, `product-collections.sql` |
 | 11    | `attribute-on-product.sql`  | `attribute_on_product`       | `products.sql`, `product-attributes.sql`  |
 
-The seven dependent files state their prerequisites in a leading comment, for example `-- Depends on product-variants.sql.` in `inventory.sql`.
+The files carry no note of their own about what they depend on: the order lives in the scripts that run them, `db:seed:preview` and `db:seed:production` in `package.json` and `CATALOG_SEEDS` in `scripts/seed-test.ts`, which all list the files as above. A new seed file goes into all three at its place in that order.
 
 ## The conventions they follow
 
@@ -52,8 +52,6 @@ It seeds three delivery methods against two couriers, each with its Polish `name
 The catalog files are destructive by design. `products.sql` opens with:
 
 ```sql
--- Depends on product-categories.sql (primary_category_id).
-
 DELETE FROM product
 WHERE handle IN ('lapis-lazuli-necklace', 'onyx-necklace')
   AND id NOT IN (

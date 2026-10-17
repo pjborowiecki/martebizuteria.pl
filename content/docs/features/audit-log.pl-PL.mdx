@@ -272,7 +272,7 @@ const hasMore = total === undefined ? items.length === params.limit : params.off
 
 Stała filtrów to `AUDIT_LOG_CATEGORY_FILTER` (kategorie plus `all`). Mapy prezentacji: `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS`, `ACTOR_ROLE_COLORS`, a także `AUDIT_LOG_TABLE_COLUMN_ID`, `_SIZE` i `_PINNING`.
 
-Komponenty leżą w `.../admin/audit/`: `audit-log.tsx`, który renderuje `components/audit-table-content.tsx` (karty statystyk nad wspólną tabelą danych), `components/audit-columns.tsx` z definicjami kolumn w `lib/audit-column-defs.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, `components/audit-row-actions.tsx` (usunięcie jednego wpisu po potwierdzeniu), `components/audit-refresh-action.tsx`, komórki w `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-detail-cell`, `audit-table-cell`), stan tabeli w `hooks/use-audit-data-grid.ts` oraz `audit-stats.config.ts`.
+Komponenty leżą w `.../admin/audit/`: `components/audit-table-content.tsx`, który renderuje trasa (karty statystyk nad wspólną tabelą danych), `components/audit-columns.tsx` z definicjami kolumn w `lib/audit-column-defs.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, `components/audit-row-actions.tsx` (usunięcie jednego wpisu po potwierdzeniu), `components/audit-refresh-action.tsx`, komórki w `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-detail-cell`, `audit-table-cell`), stan tabeli w `hooks/use-audit-data-grid.ts` oraz `audit-stats.config.ts`.
 
 ### Eksport dziennika
 

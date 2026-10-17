@@ -35,7 +35,7 @@ Jedenaście plików SQL, wymienionych tu w kolejności, w jakiej uruchamia je `d
 | 10        | `collection-on-product.sql` | `collection_on_product`      | `products.sql`, `product-collections.sql` |
 | 11        | `attribute-on-product.sql`  | `attribute_on_product`       | `products.sql`, `product-attributes.sql`  |
 
-Siedem zależnych plików podaje swoje wymagania w komentarzu na początku, na przykład `-- Depends on product-variants.sql.` w `inventory.sql`.
+Pliki same nie zapisują, od czego zależą: kolejność trzymają skrypty, które je uruchamiają, czyli `db:seed:preview` i `db:seed:production` w `package.json` oraz `CATALOG_SEEDS` w `scripts/seed-test.ts`, a wszystkie wymieniają pliki tak jak powyżej. Nowy plik danych trafia do wszystkich trzech, na swoje miejsce w tej kolejności.
 
 ## Obowiązujące konwencje
 
@@ -52,8 +52,6 @@ Wstawia trzy metody dostawy dla dwóch kurierów, każdą z polską `name`, z `n
 Pliki katalogowe są celowo destrukcyjne. `products.sql` zaczyna się tak:
 
 ```sql
--- Depends on product-categories.sql (primary_category_id).
-
 DELETE FROM product
 WHERE handle IN ('lapis-lazuli-necklace', 'onyx-necklace')
   AND id NOT IN (

@@ -182,7 +182,7 @@ Sklep, kasa i konto klienta formatują każdą datę, godzinę i cenę przez to 
 
 Funkcje serwerowe, które rozstrzygają, gdzie zaczyna się dzień, albo same formatują etykiety, stosują te same zasady do własnego żądania przez `resolveRequestDisplayPreferences()` z `i18n.display-preferences.ts`. Są to filtry dat na listach w panelu, godziny w dzienniku zdarzeń i jego licznik dzisiejszych wpisów, wykresy pulpitu i szczegóły klienta. Daty biznesowe samego sklepu zostają w czasie polskim: rok w numerze zamówienia i terminy prawne. Zapisanie preferencji unieważnia każde zapytanie w pamięci podręcznej, więc wszystko, co sformatowano albo przypisano do dnia według starej wartości, jest pobierane ponownie.
 
-**Zapomnienie przestrzeni nazw to błąd czasu wykonania**, a nie ciche zastępstwo: `useTranslations` na brakującej przestrzeni rzuca wyjątek. Dodanie strony oznacza dodanie jej przestrzeni nazw do `staticData` trasy.
+**Zapomniana przestrzeń nazw nie rzuca wyjątku.** `TranslationsProvider` nie przekazuje `onError`, więc obowiązuje domyślne zachowanie use-intl: `useTranslations` na przestrzeni, której strona nie wczytała, zapisuje w konsoli błąd `MISSING_MESSAGE` i zamiast tekstu wyświetla ścieżkę klucza, `<przestrzeń>.<klucz>`. Specyfikacje end-to-end kończą się porażką na stronie, która go zapisze. Testy komponentów wczytują wszystkie przestrzenie nazw, więc wyłapują klucz, którego brakuje w katalogu, ale nie przestrzeń, której trasa zapomniała zadeklarować. Dodanie strony oznacza dodanie jej przestrzeni nazw do `staticData` trasy.
 
 ## Poza Reactem
 

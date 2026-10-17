@@ -3,7 +3,7 @@ title: "Pisanie testów"
 description: "Trzy projekty Vitest, gdzie leżą testy, wspólne funkcje pomocnicze, wzorce mockowania funkcji serwerowych i tras, testy na zmigrowanym schemacie, progi pokrycia i zestaw Playwright."
 ---
 
-W `src/` są 1223 pliki testowe. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`. Uruchamiaj je przez `bun run test`, nie `bun test`: własny runner Buna pomija projekty Vitest, środowisko jsdom i plik konfiguracyjny.
+W `src/` jest 1227 plików testowych. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`. Uruchamiaj je przez `bun run test`, nie `bun test`: własny runner Buna pomija projekty Vitest, środowisko jsdom i plik konfiguracyjny.
 
 ## Trzy projekty
 
@@ -12,7 +12,7 @@ W `src/` są 1223 pliki testowe. Testy leżą obok kodu, który pokrywają, w ka
 | Projekt       | Pliki                                              | Środowisko | Plik konfiguracyjny             | Liczba |
 | ------------- | -------------------------------------------------- | ---------- | ------------------------------- | ------ |
 | `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | 477    |
-| `integration` | `*.integration.test.{ts,tsx}`                      | `node`     | brak                            | 123    |
+| `integration` | `*.integration.test.{ts,tsx}`                      | `node`     | brak                            | 127    |
 | `component`   | `*.component.test.{ts,tsx}`                        | `jsdom`    | `src/platform/testing/setup.ts` | 623    |
 
 ```sh
@@ -25,9 +25,9 @@ bun run test:coverage     # wszystkie trzy, z pokryciem
 vp test watch             # tryb obserwowania
 ```
 
-`bun run test:watch` to `vp test` bez podkomendy, a `vp test` uruchamia testy raz, tak jak `bun run test`; Vite+ obserwuje zmiany tylko w `vp test watch` (albo `vp test --watch`).
+`bun run test:watch` to `vp test watch`, który działa dalej i po każdej zmianie ponownie uruchamia testy, których ona dotyczy; `vp test` bez podkomendy uruchamia testy raz, tak jak `bun run test`.
 
-Projekty dziedziczą główny blok `test` (`extends: true`). `passWithNoTests: false` sprawia, że projekt, który nic nie dopasuje, oznacza porażkę. `env: loadEnv("test", ...)` ładuje `.env.test`, zawierający atrapy wszystkich sekretów — dzięki temu moduły uwierzytelniania i Stripe można zaimportować bez prawdziwych danych dostępowych. Wyszukiwanie testów pomija `scripts/`, `e2e/`, `opensrc/`, `dist/` i katalog migracji. Projekt `integration` podnosi limity czasu testów i hooków do 30 s (`INTEGRATION_TEST_TIMEOUT_MS`); plik konfiguracyjny testów komponentów ustawia limit testu na 15 s.
+Projekty dziedziczą główny blok `test` (`extends: true`). `passWithNoTests: false` sprawia, że projekt, który nic nie dopasuje, oznacza porażkę. `env: loadEnv("test", ...)` ładuje `.env.test`, zawierający atrapy wszystkich sekretów — dzięki temu moduły uwierzytelniania i Stripe można zaimportować bez prawdziwych danych dostępowych. Wyszukiwanie testów pomija `e2e/`, `opensrc/`, `dist/` i katalog migracji, a poza `src/` znajduje tylko test hooka komunikatu commita w `scripts/__test__/`, który uruchamia projekt `node`. Projekt `integration` podnosi limity czasu testów i hooków do 30 s (`INTEGRATION_TEST_TIMEOUT_MS`); plik konfiguracyjny testów komponentów ustawia limit testu na 15 s.
 
 ## Nazywanie pliku testowego
 
@@ -99,7 +99,7 @@ it("is rate limited like the other card endpoints", () => {
 
 `withRateLimit` wywołuje się przy imporcie modułu przypadku użycia, więc test kopiuje jego wywołania, zanim `beforeEach` z `vi.clearAllMocks()` je wyczyści.
 
-Resztę wzorca pokazują testy adresów. Z `src/modules/address/use-cases/__test__/address-use-cases.test.ts` (jego własny mock `auth.middleware`, podobnie jak te w `saved-payment-methods.test.ts` i `own-newsletter-subscription.test.ts`, wciąż podstawia `RATE_LIMITS` w starszym kształcie `{ limit, windowSeconds }`; kopiuj kształt z przykładu wyżej, nie ten):
+Resztę wzorca pokazują testy adresów. Z `src/modules/address/use-cases/__test__/address-use-cases.test.ts`, którego własny mock `auth.middleware` używa tego samego kształtu `{ max, window }`:
 
 ```ts
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
@@ -243,7 +243,7 @@ Domyślnie dostajesz świeży `QueryClient` z wyłączonymi ponowieniami zapyta�
 
 Tłumaczenia pochodzą z `src/platform/testing/lib/messages.ts`, które zachłannie globuje **wszystkie** pliki w `messages/en-US/` i buduje całe drzewo przez `buildMessageTree`. Językiem testów jest więc zawsze `en-US`, a strefą czasową `I18N.DEFAULT_TIMEZONE` (`Europe/Warsaw`). Testowe providery nie renderują `DisplayPreferencesContext`, więc `useFormatter()` i `useFormatLocale()` z `src/hooks/use-display-format.ts` sięgają po ten język i tę strefę.
 
-Klucz, którego brakuje w katalogu angielskim, nie rzuca wyjątku. use-intl zgłasza błąd `MISSING_MESSAGE` przez `console.error` i zamiast tekstu renderuje ścieżkę klucza, na przykład `pages.admin.catalog.categories.title`, więc test komponentu wyłapie to tylko wtedy, gdy sprawdza angielski tekst widoczny dla użytkownika. Sprawdzaj widoczny tekst, a nie tylko to, że komponent się renderuje. Zestaw E2E jest surowszy: oblewa test, którego strona zaloguje błąd tłumaczenia (zobacz [Tłumaczenia](/docs/guides/i18n-messages)).
+Klucz, którego brakuje w katalogu angielskim, oblewa test. W aplikacji use-intl tylko zgłasza błąd `MISSING_MESSAGE` przez `console.error` i zamiast tekstu renderuje ścieżkę klucza, na przykład `pages.admin.catalog.categories.title`; `IntlProvider` w `TestProviders` dostaje `onError`, który rzuca każdy błąd use-intl, więc zamiast tego renderowanie kończy się błędem. Test, który owija komponent we własny `IntlProvider`, na przykład żeby wyrenderować wersję polską, dziedziczy ten `onError` i musi przekazać każdą przestrzeń nazw, którą czyta komponent. Zestaw E2E stosuje tę samą zasadę do prawdziwych stron: oblewa test, którego strona zaloguje błąd tłumaczenia (zobacz [Tłumaczenia](/docs/guides/i18n-messages)).
 
 `src/platform/testing/setup.ts` wykonuje się przed każdym testem komponentu. Rozszerza `expect` o matchery jest-dom i podstawia to, czego brakuje w jsdom: `IntersectionObserver`, `ResizeObserver` (atrapa raportuje stałe 1024×768, czego potrzebuje mierzenie kolumn w tabeli), `matchMedia` (zawsze `matches: false`), `showModal` i `close` z `HTMLDialogElement` (ustawiają albo usuwają `open`, a `close` wysyła zdarzenie `close`) oraz `Document.elementFromPoint` (zwraca `null`). Ustawia `asyncUtilTimeout` Testing Library na 5 s i limit testu na 15 s, a po zakończeniu testów pliku czyści każdy pozostawiony przez niego timeout i interwał. Instaluje też dwa globalne mocki:
 

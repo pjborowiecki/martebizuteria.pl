@@ -272,7 +272,7 @@ const hasMore = total === undefined ? items.length === params.limit : params.off
 
 The filter constant is `AUDIT_LOG_CATEGORY_FILTER` (the categories plus `all`). Presentation maps: `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS`, `ACTOR_ROLE_COLORS`, plus `AUDIT_LOG_TABLE_COLUMN_ID`, `_SIZE` and `_PINNING`.
 
-Components live in `.../admin/audit/`: `audit-log.tsx`, which renders `components/audit-table-content.tsx` (the stat cards above the shared data grid), `components/audit-columns.tsx` with the column definitions in `lib/audit-column-defs.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, `components/audit-row-actions.tsx` (delete one entry after a confirmation), `components/audit-refresh-action.tsx`, the cells in `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-detail-cell`, `audit-table-cell`), the grid state in `hooks/use-audit-data-grid.ts`, and `audit-stats.config.ts`.
+Components live in `.../admin/audit/`: `components/audit-table-content.tsx`, which the route renders (the stat cards above the shared data grid), `components/audit-columns.tsx` with the column definitions in `lib/audit-column-defs.tsx`, `components/audit-filters.tsx`, `components/audit-date-filter.tsx`, `components/audit-bulk-actions.tsx`, `components/audit-row-actions.tsx` (delete one entry after a confirmation), `components/audit-refresh-action.tsx`, the cells in `audit-table/` (`audit-actor-cell`, `audit-target-cell`, `audit-detail-cell`, `audit-table-cell`), the grid state in `hooks/use-audit-data-grid.ts`, and `audit-stats.config.ts`.
 
 ### Exporting the log
 

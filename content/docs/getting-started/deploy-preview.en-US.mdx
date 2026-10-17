@@ -163,7 +163,7 @@ The **E2E (full)** workflow also reads `E2E_STRIPE_SECRET_KEY` and `E2E_STRIPE_P
 
 Repository **variables**:
 
-`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY` and `VITE_APP_URL`. The first two are inlined into the client bundle at build time, so they must be variables rather than secrets. `VITE_R2_URL` differs between preview and production, so set it as an environment variable of the GitHub `preview` and `production` environments, which overrides a repository variable of the same name. `VITE_APP_URL` is passed by both workflows but is not read anywhere in `src/` and is not a declared Worker secret — see [Environment variables](/docs/getting-started/environment-variables).
+`VITE_R2_URL` and `VITE_STRIPE_PUBLISHABLE_KEY`. Both are inlined into the client bundle at build time, so they must be variables rather than secrets. `VITE_R2_URL` differs between preview and production, so set it as an environment variable of the GitHub `preview` and `production` environments, which overrides a repository variable of the same name.
 
 ## After deploying
 

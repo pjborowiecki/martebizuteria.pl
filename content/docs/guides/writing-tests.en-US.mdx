@@ -3,7 +3,7 @@ title: "Writing tests"
 description: "The three Vitest projects, where tests live, the shared helpers, the mocking patterns for server functions and routes, tests against the migrated schema, the coverage gates and the Playwright suite."
 ---
 
-There are 1,223 test files in `src/`. Tests live beside the code they cover, in a `__test__/` folder, named after the source file. They run through `vite-plus/test` — always import `describe`, `it`, `expect` and `vi` from there, never from `vitest` directly. Run them with `bun run test`, not `bun test`: Bun's own runner ignores the Vitest projects, the jsdom environment and the setup file.
+There are 1,227 test files in `src/`. Tests live beside the code they cover, in a `__test__/` folder, named after the source file. They run through `vite-plus/test` — always import `describe`, `it`, `expect` and `vi` from there, never from `vitest` directly. Run them with `bun run test`, not `bun test`: Bun's own runner ignores the Vitest projects, the jsdom environment and the setup file.
 
 ## The three projects
 
@@ -12,7 +12,7 @@ There are 1,223 test files in `src/`. Tests live beside the code they cover, in 
 | Project       | Files                                           | Environment | Setup                           | Count |
 | ------------- | ----------------------------------------------- | ----------- | ------------------------------- | ----- |
 | `node`        | `*.test.ts` / `*.test.tsx`, minus the other two | `node`      | none                            | 477   |
-| `integration` | `*.integration.test.{ts,tsx}`                   | `node`      | none                            | 123   |
+| `integration` | `*.integration.test.{ts,tsx}`                   | `node`      | none                            | 127   |
 | `component`   | `*.component.test.{ts,tsx}`                     | `jsdom`     | `src/platform/testing/setup.ts` | 623   |
 
 ```sh
@@ -25,9 +25,9 @@ bun run test:coverage     # all three, with coverage
 vp test watch             # watch mode
 ```
 
-`bun run test:watch` is `vp test` without a subcommand, and `vp test` runs once, like `bun run test`; Vite+ watches only with `vp test watch` (or `vp test --watch`).
+`bun run test:watch` is `vp test watch`, which keeps running and reruns the affected tests on every change; `vp test` without a subcommand runs once, like `bun run test`.
 
-The projects inherit the top-level `test` block (`extends: true`). `passWithNoTests: false` makes a project that matches nothing a failure. `env: loadEnv("test", ...)` loads `.env.test`, which holds dummy values for every secret — so the auth and Stripe modules can be imported without real credentials. Test discovery skips `scripts/`, `e2e/`, `opensrc/`, `dist/` and the migrations folder. The `integration` project raises the test and hook timeouts to 30 s (`INTEGRATION_TEST_TIMEOUT_MS`); the component setup file sets a 15 s test timeout.
+The projects inherit the top-level `test` block (`extends: true`). `passWithNoTests: false` makes a project that matches nothing a failure. `env: loadEnv("test", ...)` loads `.env.test`, which holds dummy values for every secret — so the auth and Stripe modules can be imported without real credentials. Test discovery skips `e2e/`, `opensrc/`, `dist/` and the migrations folder, and outside `src/` it finds only the commit message hook's test in `scripts/__test__/`, which the `node` project runs. The `integration` project raises the test and hook timeouts to 30 s (`INTEGRATION_TEST_TIMEOUT_MS`); the component setup file sets a 15 s test timeout.
 
 ## Naming a test file
 
@@ -99,7 +99,7 @@ it("is rate limited like the other card endpoints", () => {
 
 `withRateLimit` is called when the use-case module is imported, so the test copies its calls before a `beforeEach` with `vi.clearAllMocks()` wipes them.
 
-The address tests show the rest of the pattern. From `src/modules/address/use-cases/__test__/address-use-cases.test.ts` (its own `auth.middleware` mock, like those in `saved-payment-methods.test.ts` and `own-newsletter-subscription.test.ts`, still stubs `RATE_LIMITS` with an older `{ limit, windowSeconds }` shape; copy the shape above, not that one):
+The address tests show the rest of the pattern. From `src/modules/address/use-cases/__test__/address-use-cases.test.ts`, whose own `auth.middleware` mock uses the same `{ max, window }` shape:
 
 ```ts
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
@@ -243,7 +243,7 @@ The defaults are a fresh `QueryClient` with retries off for queries and mutation
 
 Messages come from `src/platform/testing/lib/messages.ts`, which eagerly globs **every** file in `messages/en-US/` and builds the whole tree with `buildMessageTree`. The test locale is therefore always `en-US`, and the time zone `I18N.DEFAULT_TIMEZONE` (`Europe/Warsaw`). The test providers render no `DisplayPreferencesContext`, so `useFormatter()` and `useFormatLocale()` from `src/hooks/use-display-format.ts` fall back to that locale and time zone.
 
-A key missing from the English catalogue does not throw. use-intl reports a `MISSING_MESSAGE` error through `console.error` and renders the key path instead, such as `pages.admin.catalog.categories.title`, so a component test catches it only when it asserts the English text the user sees. Assert on visible text, not only that the component renders. The E2E suite is stricter: it fails a test whose page logs a translation error (see [i18n messages](/docs/guides/i18n-messages)).
+A key missing from the English catalogue fails the test. In the app, use-intl only reports a `MISSING_MESSAGE` error through `console.error` and renders the key path instead, such as `pages.admin.catalog.categories.title`; the `IntlProvider` in `TestProviders` gets an `onError` that throws every use-intl error, so the render fails instead. A test that wraps the component in its own `IntlProvider`, for example to render Polish, inherits that `onError` and has to pass every namespace the component reads. The E2E suite applies the same rule to real pages: it fails a test whose page logs a translation error (see [i18n messages](/docs/guides/i18n-messages)).
 
 `src/platform/testing/setup.ts` runs before every component test. It extends `expect` with the jest-dom matchers and stubs what jsdom lacks: `IntersectionObserver`, `ResizeObserver` (the stub reports a fixed 1024×768, which the data grid's column measurement needs), `matchMedia` (always `matches: false`), `HTMLDialogElement`'s `showModal` and `close` (they set or remove `open`, and `close` dispatches a `close` event) and `Document.elementFromPoint` (returns `null`). It sets Testing Library's `asyncUtilTimeout` to 5 s and the test timeout to 15 s, and clears every timeout and interval a file left pending once its tests finish. It also installs two global mocks:
 

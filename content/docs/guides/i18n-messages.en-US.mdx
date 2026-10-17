@@ -250,7 +250,7 @@ The e-mail use cases, such as `src/modules/verification/use-cases/send-verify-em
 1. Create `messages/pl-PL/<namespace>.json` and `messages/en-US/<namespace>.json` with the same keys.
 2. Add the namespace to `staticData.namespaces` on the route that needs it — the layout route if several pages share it.
 3. Use `useTranslations("<namespace>")` in the component.
-4. Run `bun run test`. `src/integrations/use-intl/__test__/i18n.messages.test.ts` loads every namespace of both locales through the runtime loader and fails when a Polish file is missing or lacks a key its English file has. The component tests build their message tree from every file in `messages/en-US/` through `src/platform/testing/lib/messages.ts`, but a key missing there only renders as its path, so a component test catches it when it asserts the English text.
+4. Run `bun run test`. `src/integrations/use-intl/__test__/i18n.messages.test.ts` loads every namespace of both locales through the runtime loader and fails when a Polish file is missing or lacks a key its English file has. The component tests build their message tree from every file in `messages/en-US/` through `src/platform/testing/lib/messages.ts`, and their `IntlProvider` throws on a missing key, so a component that asks for a key missing there fails its test. Because the tests load every namespace, they cannot catch a namespace a route forgot to declare.
 5. The end-to-end suite is the strict check: the automatic `checkTranslations` fixture in `e2e/fixtures/test.ts` fails any test whose page logs `MISSING_MESSAGE`, `INVALID_MESSAGE`, `FORMATTING_ERROR` or `INVALID_KEY` in the browser console.
 
 ## Related guides

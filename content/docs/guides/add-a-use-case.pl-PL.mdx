@@ -269,8 +269,6 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
 }))
 ```
 
-Trzy testy — `address-use-cases.test.ts`, `saved-payment-methods.test.ts` i `own-newsletter-subscription.test.ts` — wciąż mockują wymyślony kształt `{ limit, windowSeconds }`; nie kopiuj go.
-
 **Uruchom prawdziwy łańcuch.** Żeby sprawdzić prawdziwe middleware i walidator, owiń rzeczywiste `createServerFn` przez `withTestRpc` z `src/platform/testing/lib/server-function.ts` i zastąp tylko sesję oraz warstwę danych, tak jak robi to `src/modules/discount/use-cases/__test__/create-discount.test.ts`:
 
 ```ts

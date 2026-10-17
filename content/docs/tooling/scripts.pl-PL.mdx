@@ -73,11 +73,9 @@ Oba uruchamiają `wrangler deploy` przez `env -u CLOUDFLARE_ENV vp exec`. Co spr
 | `test:e2e:ui`      | `playwright test --ui`                                            |
 | `test:e2e:install` | `playwright install --with-deps chromium webkit`                  |
 | `test:all`         | `test`, a potem `test:e2e:smoke`                                  |
-| `test:watch`       | `vp test`                                                         |
+| `test:watch`       | `vp test watch`                                                   |
 
 `test:e2e` uruchamia wszystkie sześć projektów Playwrighta: `setup`, który loguje seedowanego administratora i klienta, `chromium`, `webkit`, ich dwa projekty ogólnosklepowe i `stripe-test-mode`, który pomija swoje specyfikacje, dopóki nie ustawisz kluczy sandboxa Stripe'a; `test:e2e:stripe` uruchamia sam ten projekt. Zobacz [Tryb testowy Stripe](/docs/tooling/testing#tryb-testowy-stripe).
-
-`test:watch` nie obserwuje — `vp test` bez podkomendy wykonuje jeden przebieg. Użyj `vp test watch`. Zobacz [Testy](/docs/tooling/testing).
 
 ## Baza danych
 

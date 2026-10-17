@@ -9,11 +9,11 @@ description: "Trzy projekty Vitest, uruchamianie funkcji serwerowych w procesie,
 
 | Projekt       | Środowisko | Pliki                                               | Liczba |
 | ------------- | ---------- | --------------------------------------------------- | ------ |
-| `node`        | Node       | `*.{test,spec}.{ts,tsx}`, z wyłączeniem dwóch niżej | 477    |
-| `integration` | Node       | `*.integration.test.{ts,tsx}`                       | 123    |
+| `node`        | Node       | `*.{test,spec}.{ts,tsx}`, z wyłączeniem dwóch niżej | 478    |
+| `integration` | Node       | `*.integration.test.{ts,tsx}`                       | 127    |
 | `component`   | jsdom      | `*.component.test.{ts,tsx}`                         | 623    |
 
-Łącznie 1223 pliki testowe w 221 katalogach `__test__`. Tylko projekt `component` ładuje `src/platform/testing/setup.ts`; testy node i integracyjne importują to, czego potrzebują, jawnie. Projekt `integration` podnosi limity czasu testów i hooków do 30 sekund.
+Łącznie 1228 plików testowych w 223 katalogach `__test__`; wszystkie poza testem hooka komunikatu commita w `scripts/__test__/` leżą w `src/`. Tylko projekt `component` ładuje `src/platform/testing/setup.ts`; testy node i integracyjne importują to, czego potrzebują, jawnie. Projekt `integration` podnosi limity czasu testów i hooków do 30 sekund.
 
 ```sh
 bun run test              # wszystkie trzy projekty
