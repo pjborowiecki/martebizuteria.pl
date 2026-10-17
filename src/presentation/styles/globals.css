@@ -210,7 +210,6 @@
     font-synthesis: none;
   }
 
-  /* Match autofill to the field background; the long transition prevents browser tint from returning. */
   input[data-slot="input"]:-webkit-autofill,
   input[data-slot="input"]:-webkit-autofill:hover,
   input[data-slot="input"]:-webkit-autofill:focus,

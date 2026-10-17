@@ -1,5 +1,3 @@
--- Depends on products.sql.
-
 DELETE FROM product_image
 WHERE product_id IN (
   '019e99d8-9f56-777d-8f3c-95c393be568b',

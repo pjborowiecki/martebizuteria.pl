@@ -35,17 +35,16 @@ try {
     if (result.status !== 0) throw new Error("Skill restore failed; the existing installation has been preserved.")
   }
 
-  // Build and validate the complete replacement before touching installed skills.
-  const grouped = join(staging, "grouped")
+  const stagedReplacement = join(staging, "grouped")
   for (const { name, group } of entries) {
     const flat = join(local ? agentsDirectory : join(staging, ".agents/skills"), name)
     const source = local && !existsSync(join(flat, "SKILL.md")) ? join(agentsDirectory, group, name) : flat
     if (!existsSync(join(source, "SKILL.md"))) throw new Error(`Missing ${name}; the existing installation has been preserved.`)
-    cpSync(source, join(grouped, group, name), { recursive: true })
+    cpSync(source, join(stagedReplacement, group, name), { recursive: true })
   }
 
   rmSync(agentsDirectory, { force: true, recursive: true })
-  cpSync(grouped, agentsDirectory, { recursive: true })
+  cpSync(stagedReplacement, agentsDirectory, { recursive: true })
   rmSync(claudeDirectory, { force: true, recursive: true })
   mkdirSync(claudeDirectory, { recursive: true })
   const roots = [...new Set(entries.map(({ group }) => group.split("/")[0] ?? group))].sort()

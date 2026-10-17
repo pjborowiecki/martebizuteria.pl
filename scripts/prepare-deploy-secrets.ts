@@ -15,16 +15,15 @@ const SECRETS_THAT_MAY_BE_BLANK: ReadonlySet<string> = new Set([
 
 const config = unstable_readConfig({ config: "wrangler.jsonc", env: environment })
 const values = parseEnv(await readFile(`.env.${environment}`, "utf8"))
-const secrets: Record<string, string> = {}
+const declaredWorkerSecrets: Record<string, string> = {}
 for (const name of config.secrets?.required ?? []) {
   const value = process.env[name] ?? values[name]
   if (value === undefined || (!value.trim() && !SECRETS_THAT_MAY_BE_BLANK.has(name))) {
     throw new Error(`Missing ${name} in .env.${environment} or the process environment`)
   }
-  secrets[name] = value
+  declaredWorkerSecrets[name] = value
 }
 
-// Only declared Worker bindings are uploaded; Cloudflare management tokens stay local.
 await mkdir(".wrangler", { recursive: true })
-await writeFile(`.wrangler/secrets.${environment}.json`, JSON.stringify(secrets), { mode: 0o600 })
+await writeFile(`.wrangler/secrets.${environment}.json`, JSON.stringify(declaredWorkerSecrets), { mode: 0o600 })
 process.stdout.write(`Prepared ${environment} Worker secrets without management credentials.\n`)

@@ -1,5 +1,3 @@
--- Depends on products.sql.
-
 DELETE FROM product_variant
 WHERE sku IN ('MRT-0001', 'MRT-0002')
   AND id NOT IN (

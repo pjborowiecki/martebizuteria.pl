@@ -1,5 +1,3 @@
--- Depends on products.sql and product-attributes.sql.
-
 DELETE FROM attribute_on_product
 WHERE product_id IN (
   '019e99d8-9f56-777d-8f3c-95c393be568b',
