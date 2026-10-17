@@ -30,6 +30,8 @@ import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { DISCOUNT_ERROR_CODES, DISCOUNT_QUERY_KEYS, DISCOUNT_TYPE } from "~/src/modules/discount/discount.constants"
 import { type Discount } from "~/src/modules/discount/discount.types"
 
+import { DisplayPreferencesContext } from "~/src/hooks/use-display-format"
+
 import { buildCoupon } from "~/src/presentation/components/custom/pages/admin/coupons/__test__/coupon.fixture"
 import { useCouponForm } from "~/src/presentation/components/custom/pages/admin/coupons/edit-coupon/coupon-form-provider"
 import { CouponSheet } from "~/src/presentation/components/custom/pages/admin/coupons/edit-coupon/coupon-sheet"
@@ -178,7 +180,7 @@ describe("CouponSheet for a new coupon", () => {
     expect(await createdValues()).toMatchObject({ values: { isActive: false } })
   })
 
-  it("saves the chosen start and end as timestamps of the admin's local time", async () => {
+  it("saves the chosen start and end as timestamps of the admin's display time zone", async () => {
     renderSheet()
     fillPercentageCoupon()
     fill("Starts", "2026-11-01T09:00")
@@ -189,10 +191,26 @@ describe("CouponSheet for a new coupon", () => {
     fireEvent.click(createButton())
 
     expect(await createdValues()).toMatchObject({
-      values: {
-        endsAt: new Date(2026, 10, 30, 23, 0).toISOString(),
-        startsAt: new Date(2026, 10, 1, 9, 0).toISOString(),
-      },
+      values: { endsAt: "2026-11-30T22:00:00.000Z", startsAt: "2026-11-01T08:00:00.000Z" },
+    })
+  })
+
+  it("reads the start and end in a display time zone other than the shop's, on each side of its clock change", async () => {
+    renderWithProviders(
+      <DisplayPreferencesContext value={{ formatLocale: "en-US", timeZone: "America/New_York" }}>
+        <CouponSheet coupon={undefined} mode="create" onOpenChange={calls.onOpenChange} open />
+      </DisplayPreferencesContext>,
+    )
+    fillPercentageCoupon()
+    fill("Starts", "2026-03-07T09:00")
+    fill("Ends", "2026-03-09T09:00")
+
+    expect(screen.getByLabelText("Ends")).toHaveValue("2026-03-09T09:00")
+
+    fireEvent.click(createButton())
+
+    expect(await createdValues()).toMatchObject({
+      values: { endsAt: "2026-03-09T13:00:00.000Z", startsAt: "2026-03-07T14:00:00.000Z" },
     })
   })
 
@@ -367,7 +385,7 @@ describe("CouponSheet for each discount type", () => {
 
 describe("CouponSheet for an existing coupon", () => {
   it("titles the sheet for editing and fills every field from the coupon", () => {
-    renderSheet(buildCoupon({ endsAt: new Date(2026, 5, 30, 23, 59), maxDiscountAmountMinorUnits: 5000 }))
+    renderSheet(buildCoupon({ endsAt: new Date("2026-06-30T21:59:00.000Z"), maxDiscountAmountMinorUnits: 5000 }))
 
     expect(screen.getByRole("heading", { name: "Edit coupon" })).toBeInTheDocument()
     expect(screen.getByText("Changes apply to checkouts started from now on.")).toBeInTheDocument()
@@ -382,6 +400,22 @@ describe("CouponSheet for an existing coupon", () => {
     expect(screen.getByLabelText("Starts")).toHaveValue("")
     expect(screen.getByLabelText("Ends")).toHaveValue("2026-06-30T23:59")
     expect(saveButton()).toBeEnabled()
+  })
+
+  it("shows the start and end in the admin's display time zone rather than the browser's", () => {
+    renderWithProviders(
+      <DisplayPreferencesContext value={{ formatLocale: "en-US", timeZone: "America/New_York" }}>
+        <CouponSheet
+          coupon={buildCoupon({ endsAt: new Date("2026-11-01T13:30:00.000Z"), startsAt: new Date("2026-10-31T13:30:00.000Z") })}
+          mode="edit"
+          onOpenChange={calls.onOpenChange}
+          open
+        />
+      </DisplayPreferencesContext>,
+    )
+
+    expect(screen.getByLabelText("Starts")).toHaveValue("2026-10-31T09:30")
+    expect(screen.getByLabelText("Ends")).toHaveValue("2026-11-01T08:30")
   })
 
   it("shows a disabled coupon as disabled", () => {

@@ -7,7 +7,7 @@ import { useTranslations } from "use-intl/react"
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { formatMinorUnitsToMoneyInput, parseMoneyInputToMinorUnits } from "~/src/modules/_core/utils/currency"
 
-import { useFormatLocale } from "~/src/hooks/use-display-format"
+import { useDisplayTimeZone, useFormatLocale } from "~/src/hooks/use-display-format"
 
 import { Field } from "~/src/presentation/components/shadcn/field"
 import { Input } from "~/src/presentation/components/shadcn/input"
@@ -93,13 +93,14 @@ export const CouponIntegerField = ({ hint, label, name, required = false, suffix
 
 export const CouponDateTimeField = ({ label, name }: Readonly<CouponDateTimeFieldProps>): JSX.Element => {
   const t = useTranslations("pages.admin.coupons")
+  const timeZone = useDisplayTimeZone()
   const { control, isPending } = useCouponForm()
   const { field, fieldState } = useController({ control, name })
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
-      field.onChange(toIsoOrUndefined(event.target.value))
+      field.onChange(toIsoOrUndefined(event.target.value, timeZone))
     },
-    [field],
+    [field, timeZone],
   )
 
   return (
@@ -114,7 +115,7 @@ export const CouponDateTimeField = ({ label, name }: Readonly<CouponDateTimeFiel
         onChange={handleChange}
         ref={field.ref}
         type="datetime-local"
-        value={toLocalInputValue(field.value)}
+        value={toLocalInputValue(field.value, timeZone)}
         variant="sheet"
       />
       <CatalogFormFieldError fieldState={fieldState} translate={t} validationKeySet={COUPON_FORM_VALIDATION_KEYS} />
