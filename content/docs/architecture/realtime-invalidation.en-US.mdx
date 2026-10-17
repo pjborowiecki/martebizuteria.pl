@@ -66,7 +66,7 @@ All three lists are built from the modules' own `*_QUERY_KEYS` constants and typ
 | Publisher                                        | Admin keys                                                   | Storefront keys                                                                  |
 | ------------------------------------------------ | ------------------------------------------------------------ | -------------------------------------------------------------------------------- |
 | `scheduleProductCatalogInvalidation`             | product `ADMIN.ALL`, `ADMIN.STATS`                           | the five product keys plus cart availability                                     |
-| `scheduleCategoryCatalogInvalidation`            | category `ADMIN.ALL`, `ADMIN.STATS`                          | category `ALL`, `BY_HANDLE`                                                      |
+| `scheduleCategoryCatalogInvalidation`            | category `ADMIN.ALL`, `ADMIN.STATS`                          | category `ALL`, `BY_HANDLE`, product `STOREFRONT_PAGE`                           |
 | `scheduleCollectionCatalogInvalidation`          | collection `ADMIN.ALL`, `ADMIN.STATS`                        | collection `ALL`, `BY_HANDLE`, product `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
 | `scheduleContentPageInvalidation`                | content page `ADMIN.ALL`, `ADMIN.BY_HANDLE`                  | content page `BY_HANDLE`                                                         |
 | `scheduleProductAttributeCatalogInvalidation`    | attribute `ADMIN.ALL`, `ADMIN.STATS`                         | —                                                                                |

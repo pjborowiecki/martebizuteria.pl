@@ -66,7 +66,7 @@ Wszystkie trzy listy są zbudowane ze stałych `*_QUERY_KEYS` samych modułów i
 | Publikator                                       | Klucze administracyjne                                       | Klucze sklepu                                                                  |
 | ------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
 | `scheduleProductCatalogInvalidation`             | produkt `ADMIN.ALL`, `ADMIN.STATS`                           | pięć kluczy produktu plus dostępność koszyka                                   |
-| `scheduleCategoryCatalogInvalidation`            | kategoria `ADMIN.ALL`, `ADMIN.STATS`                         | kategoria `ALL`, `BY_HANDLE`                                                   |
+| `scheduleCategoryCatalogInvalidation`            | kategoria `ADMIN.ALL`, `ADMIN.STATS`                         | kategoria `ALL`, `BY_HANDLE`, produkt `STOREFRONT_PAGE`                        |
 | `scheduleCollectionCatalogInvalidation`          | kolekcja `ADMIN.ALL`, `ADMIN.STATS`                          | kolekcja `ALL`, `BY_HANDLE`, produkt `LANDING_NEW_ARRIVALS`, `STOREFRONT_PAGE` |
 | `scheduleContentPageInvalidation`                | strona treści `ADMIN.ALL`, `ADMIN.BY_HANDLE`                 | strona treści `BY_HANDLE`                                                      |
 | `scheduleProductAttributeCatalogInvalidation`    | atrybut `ADMIN.ALL`, `ADMIN.STATS`                           | —                                                                              |

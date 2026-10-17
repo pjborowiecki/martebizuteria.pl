@@ -31,7 +31,7 @@ export const scheduleProductCatalogInvalidation = (): void => {
 export const scheduleCategoryCatalogInvalidation = (): void => {
   scheduleRealtimeInvalidation({
     admin: [CATEGORY_QUERY_KEYS.ADMIN.ALL, CATEGORY_QUERY_KEYS.ADMIN.STATS],
-    storefront: [CATEGORY_QUERY_KEYS.ALL, CATEGORY_QUERY_KEYS.BY_HANDLE],
+    storefront: [CATEGORY_QUERY_KEYS.ALL, CATEGORY_QUERY_KEYS.BY_HANDLE, PRODUCT_QUERY_KEYS.STOREFRONT_PAGE],
   })
 }
 
