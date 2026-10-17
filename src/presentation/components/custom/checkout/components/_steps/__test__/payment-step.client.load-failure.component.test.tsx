@@ -286,7 +286,9 @@ describe("PaymentStep notice when the payment form fails", () => {
     renderWithProviders(<PaymentStep />)
 
     expect(await screen.findByRole("alert")).toHaveTextContent(FORM_UNAVAILABLE)
-    expect(screen.getByRole("button", { name: "Try again" })).toHaveFocus()
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Try again" })).toHaveFocus()
+    })
   })
 
   it("gives both ways out finger-sized targets on touch screens", async () => {
