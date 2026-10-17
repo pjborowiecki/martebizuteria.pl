@@ -79,6 +79,7 @@ import { Route as AdminSettingsAccountRouteImport } from './routes/admin.setting
 import { Route as AdminSettingsDeliveryRouteImport } from './routes/admin.settings.delivery'
 import { Route as AdminSettingsSecurityRouteImport } from './routes/admin.settings.security'
 import { Route as AdminSettingsStoreRouteImport } from './routes/admin.settings.store'
+import { Route as AdminSettingsTeamRouteImport } from './routes/admin.settings.team'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth.$'
 import { Route as ApiNewsletterUnsubscribeRouteImport } from './routes/api/newsletter.unsubscribe'
 import { Route as ApiWebhooksInpostRouteImport } from './routes/api/webhooks.inpost'
@@ -453,6 +454,11 @@ const AdminSettingsStoreRoute = AdminSettingsStoreRouteImport.update({
   path: '/store',
   getParentRoute: () => AdminSettingsRoute,
 } as any)
+const AdminSettingsTeamRoute = AdminSettingsTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => AdminSettingsRoute,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -576,6 +582,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings/delivery': typeof AdminSettingsDeliveryRoute
   '/admin/settings/security': typeof AdminSettingsSecurityRoute
   '/admin/settings/store': typeof AdminSettingsStoreRoute
+  '/admin/settings/team': typeof AdminSettingsTeamRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
   '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
@@ -648,6 +655,7 @@ export interface FileRoutesByTo {
   '/admin/settings/delivery': typeof AdminSettingsDeliveryRoute
   '/admin/settings/security': typeof AdminSettingsSecurityRoute
   '/admin/settings/store': typeof AdminSettingsStoreRoute
+  '/admin/settings/team': typeof AdminSettingsTeamRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
   '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
@@ -732,6 +740,7 @@ export interface FileRoutesById {
   '/admin/settings/delivery': typeof AdminSettingsDeliveryRoute
   '/admin/settings/security': typeof AdminSettingsSecurityRoute
   '/admin/settings/store': typeof AdminSettingsStoreRoute
+  '/admin/settings/team': typeof AdminSettingsTeamRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/newsletter/unsubscribe': typeof ApiNewsletterUnsubscribeRoute
   '/api/webhooks/inpost': typeof ApiWebhooksInpostRoute
@@ -816,6 +825,7 @@ export interface FileRouteTypes {
     | '/admin/settings/delivery'
     | '/admin/settings/security'
     | '/admin/settings/store'
+    | '/admin/settings/team'
     | '/api/auth/$'
     | '/api/newsletter/unsubscribe'
     | '/api/webhooks/inpost'
@@ -888,6 +898,7 @@ export interface FileRouteTypes {
     | '/admin/settings/delivery'
     | '/admin/settings/security'
     | '/admin/settings/store'
+    | '/admin/settings/team'
     | '/api/auth/$'
     | '/api/newsletter/unsubscribe'
     | '/api/webhooks/inpost'
@@ -971,6 +982,7 @@ export interface FileRouteTypes {
     | '/admin/settings/delivery'
     | '/admin/settings/security'
     | '/admin/settings/store'
+    | '/admin/settings/team'
     | '/api/auth/$'
     | '/api/newsletter/unsubscribe'
     | '/api/webhooks/inpost'
@@ -1506,6 +1518,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSettingsStoreRouteImport
       parentRoute: typeof AdminSettingsRoute
     }
+    '/admin/settings/team': {
+      id: '/admin/settings/team'
+      path: '/team'
+      fullPath: '/admin/settings/team'
+      preLoaderRoute: typeof AdminSettingsTeamRouteImport
+      parentRoute: typeof AdminSettingsRoute
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -1741,6 +1760,7 @@ interface AdminSettingsRouteChildren {
   AdminSettingsDeliveryRoute: typeof AdminSettingsDeliveryRoute
   AdminSettingsSecurityRoute: typeof AdminSettingsSecurityRoute
   AdminSettingsStoreRoute: typeof AdminSettingsStoreRoute
+  AdminSettingsTeamRoute: typeof AdminSettingsTeamRoute
   AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
 }
 
@@ -1749,6 +1769,7 @@ const AdminSettingsRouteChildren: AdminSettingsRouteChildren = {
   AdminSettingsDeliveryRoute: AdminSettingsDeliveryRoute,
   AdminSettingsSecurityRoute: AdminSettingsSecurityRoute,
   AdminSettingsStoreRoute: AdminSettingsStoreRoute,
+  AdminSettingsTeamRoute: AdminSettingsTeamRoute,
   AdminSettingsIndexRoute: AdminSettingsIndexRoute,
 }
 

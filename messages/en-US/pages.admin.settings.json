@@ -1,11 +1,12 @@
 {
   "title": "Settings",
-  "description": "Your account, its security, the shop's details and its delivery.",
+  "description": "Your account, its security, the shop's details, its delivery and its team.",
   "tabs": {
     "account": "My account",
     "security": "Sign-in & security",
     "store": "Store details",
-    "delivery": "Delivery"
+    "delivery": "Delivery",
+    "team": "Team"
   },
   "account": {
     "profile": {
@@ -192,6 +193,80 @@
         "thresholdInvalid": "Enter a value above 0.",
         "thresholdTooHigh": "Enter a lower value."
       }
+    }
+  },
+  "team": {
+    "admins": {
+      "title": "Admins",
+      "description": "People who can sign in to this admin panel. Every admin can do everything here, including adding and removing other admins.",
+      "add": "Add admin",
+      "you": "You",
+      "twoFactorOn": "Two-factor on",
+      "twoFactorOff": "Two-factor off",
+      "twoFactorPending": "Must turn on two-factor authentication before the panel opens.",
+      "signInMethods": "Signs in with {methods}",
+      "password": "a password",
+      "google": "Google",
+      "noSignInMethod": "No sign-in method",
+      "lastSignIn": "Last sign-in {date}",
+      "neverSignedIn": "No sign-in recorded",
+      "remove": "Remove access",
+      "removeLabel": "Remove admin access for {name}",
+      "ownAccess": "Only another admin can change your access.",
+      "recentSignInNeeded": "To add or remove an admin, sign in again first. Your last sign-in was more than 24 hours ago.",
+      "signInAgain": "Sign in again"
+    },
+    "rules": {
+      "title": "How admin access works",
+      "description": "The rules the shop applies to every change on this page.",
+      "verified": "Only an account with a confirmed email address can become an admin.",
+      "self": "Nobody can change their own access, so the shop always keeps at least one admin.",
+      "recentSignIn": "Adding or removing an admin needs a sign-in from the last 24 hours.",
+      "signOut": "Removing access signs the person out on every device at once. Their customer account stays.",
+      "deletion": "An admin account cannot be deleted. Its admin access has to be removed first.",
+      "audit": "Every change is recorded in the audit log, with who made it."
+    },
+    "add": {
+      "title": "Add an admin",
+      "description": "Find the customer account of the person who will help run the shop. They need an account in the shop already.",
+      "search": "Email address or name",
+      "searchPlaceholder": "e.g. anna@example.com",
+      "searchHint": "Type at least 3 characters.",
+      "searching": "Searching…",
+      "noResults": "No customer account matches. The person needs to create an account in the shop and confirm their email address first.",
+      "unverified": "Email address not confirmed",
+      "unverifiedHint": "Only an account with a confirmed email address can become an admin, so the shop's security emails reach the right person. The address is confirmed through the link in the email the shop sent when the account was created.",
+      "banned": "Account blocked",
+      "bannedHint": "A blocked account cannot become an admin. Unblock it first.",
+      "choose": "Choose",
+      "chooseLabel": "Choose {name}",
+      "confirmTitle": "Make {name} an admin?",
+      "confirmIntro": "The account {email} will be able to:",
+      "allowsOrders": "see and change every order, refund payments and book shipments",
+      "allowsCatalog": "edit products, collections, pages and coupons, and pause sales",
+      "allowsCustomers": "see every customer's details and delete customer accounts",
+      "allowsSettings": "change the shop's settings, and add and remove admins",
+      "twoFactorRequired": "Before the panel opens on this account, two-factor authentication has to be turned on.",
+      "back": "Back",
+      "cancel": "Cancel",
+      "confirm": "Make admin",
+      "granted": "{name} is now an admin."
+    },
+    "remove": {
+      "title": "Remove admin access for {name}?",
+      "description": "The customer account stays, but it can no longer open this panel and is signed out on every device right away. Access can be given back later.",
+      "cancel": "Cancel",
+      "confirm": "Remove access",
+      "removed": "{name} is no longer an admin."
+    },
+    "errors": {
+      "TEAM_ACCOUNT_BANNED": "This account is blocked. Unblock it first.",
+      "TEAM_ACCOUNT_NOT_FOUND": "This account no longer exists. Reload the page.",
+      "TEAM_ALREADY_ADMIN": "This account is an admin already.",
+      "TEAM_EMAIL_NOT_VERIFIED": "This account's email address is not confirmed yet.",
+      "TEAM_LAST_ADMIN": "That would leave the shop without an admin. Reload the page to see the team as it is now.",
+      "TEAM_NOT_ADMIN": "This account is no longer an admin. Reload the page.",
+      "TEAM_OWN_ACCESS": "You cannot change your own admin access."
     }
   }
 }

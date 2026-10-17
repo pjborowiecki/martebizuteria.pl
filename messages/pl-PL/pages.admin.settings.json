@@ -1,11 +1,12 @@
 {
   "title": "Ustawienia",
-  "description": "Twoje konto, jego bezpieczeństwo, dane sklepu i dostawa.",
+  "description": "Twoje konto, jego bezpieczeństwo, dane sklepu, dostawa i zespół.",
   "tabs": {
     "account": "Moje konto",
     "security": "Logowanie i bezpieczeństwo",
     "store": "Dane sklepu",
-    "delivery": "Dostawa"
+    "delivery": "Dostawa",
+    "team": "Zespół"
   },
   "account": {
     "profile": {
@@ -192,6 +193,80 @@
         "thresholdInvalid": "Wpisz wartość większą od 0.",
         "thresholdTooHigh": "Wpisz niższą wartość."
       }
+    }
+  },
+  "team": {
+    "admins": {
+      "title": "Dostęp do panelu",
+      "description": "Osoby, które mogą logować się do tego panelu. Każda z nich może tu zrobić wszystko, także nadawać i odbierać dostęp innym osobom.",
+      "add": "Nadaj dostęp",
+      "you": "Ty",
+      "twoFactorOn": "Dwuskładnikowe: włączone",
+      "twoFactorOff": "Dwuskładnikowe: wyłączone",
+      "twoFactorPending": "Przed otwarciem panelu trzeba włączyć uwierzytelnianie dwuskładnikowe.",
+      "signInMethods": "Logowanie: {methods}",
+      "password": "hasło",
+      "google": "Google",
+      "noSignInMethod": "Brak metody logowania",
+      "lastSignIn": "Ostatnie logowanie: {date}",
+      "neverSignedIn": "Brak zapisanych logowań",
+      "remove": "Odbierz dostęp",
+      "removeLabel": "Odbierz dostęp do panelu: {name}",
+      "ownAccess": "Twój dostęp może zmienić tylko inna osoba z dostępem do panelu.",
+      "recentSignInNeeded": "Aby nadać lub odebrać dostęp, najpierw zaloguj się ponownie. Ostatnie logowanie było ponad 24 godziny temu.",
+      "signInAgain": "Zaloguj się ponownie"
+    },
+    "rules": {
+      "title": "Jak działa dostęp do panelu",
+      "description": "Zasady, które sklep stosuje przy każdej zmianie na tej stronie.",
+      "verified": "Dostęp można nadać tylko kontu z potwierdzonym adresem e-mail.",
+      "self": "Nikt nie zmienia własnego dostępu, więc sklep zawsze ma co najmniej jedną osobę z dostępem do panelu.",
+      "recentSignIn": "Nadanie lub odebranie dostępu wymaga logowania z ostatnich 24 godzin.",
+      "signOut": "Odebranie dostępu od razu wylogowuje konto na wszystkich urządzeniach. Konto klienta pozostaje.",
+      "deletion": "Konta z dostępem do panelu nie da się usunąć. Najpierw trzeba odebrać mu dostęp.",
+      "audit": "Każda zmiana trafia do dziennika zdarzeń razem z informacją, z którego konta ją wprowadzono."
+    },
+    "add": {
+      "title": "Nadaj dostęp do panelu",
+      "description": "Znajdź konto klienta osoby, która ma pomagać w prowadzeniu sklepu. Ta osoba musi mieć już konto w sklepie.",
+      "search": "Adres e-mail lub imię i nazwisko",
+      "searchPlaceholder": "np. anna@example.com",
+      "searchHint": "Wpisz co najmniej 3 znaki.",
+      "searching": "Wyszukiwanie…",
+      "noResults": "Żadne konto klienta nie pasuje. Ta osoba musi najpierw założyć konto w sklepie i potwierdzić adres e-mail.",
+      "unverified": "Adres e-mail niepotwierdzony",
+      "unverifiedHint": "Dostęp można nadać tylko kontu z potwierdzonym adresem e-mail, aby wiadomości o bezpieczeństwie trafiały do właściwej osoby. Adres potwierdza się linkiem z wiadomości, którą sklep wysłał po założeniu konta.",
+      "banned": "Konto zablokowane",
+      "bannedHint": "Zablokowane konto nie może dostać dostępu do panelu. Najpierw trzeba je odblokować.",
+      "choose": "Wybierz",
+      "chooseLabel": "Wybierz konto: {name}",
+      "confirmTitle": "Nadać dostęp do panelu: {name}?",
+      "confirmIntro": "Konto {email} będzie mogło:",
+      "allowsOrders": "przeglądać i zmieniać wszystkie zamówienia, zwracać płatności i nadawać przesyłki",
+      "allowsCatalog": "edytować produkty, kolekcje, strony i kody rabatowe oraz wstrzymywać sprzedaż",
+      "allowsCustomers": "przeglądać dane wszystkich klientów i usuwać ich konta",
+      "allowsSettings": "zmieniać ustawienia sklepu oraz nadawać i odbierać dostęp do panelu",
+      "twoFactorRequired": "Przed otwarciem panelu na tym koncie trzeba włączyć uwierzytelnianie dwuskładnikowe.",
+      "back": "Wstecz",
+      "cancel": "Anuluj",
+      "confirm": "Nadaj dostęp",
+      "granted": "Nadano dostęp do panelu: {name}."
+    },
+    "remove": {
+      "title": "Odebrać dostęp do panelu: {name}?",
+      "description": "Konto klienta pozostanie, ale nie otworzy już tego panelu i od razu zostanie wylogowane na wszystkich urządzeniach. Dostęp można później nadać ponownie.",
+      "cancel": "Anuluj",
+      "confirm": "Odbierz dostęp",
+      "removed": "Odebrano dostęp do panelu: {name}."
+    },
+    "errors": {
+      "TEAM_ACCOUNT_BANNED": "To konto jest zablokowane. Najpierw trzeba je odblokować.",
+      "TEAM_ACCOUNT_NOT_FOUND": "To konto już nie istnieje. Odśwież stronę.",
+      "TEAM_ALREADY_ADMIN": "To konto ma już dostęp do panelu.",
+      "TEAM_EMAIL_NOT_VERIFIED": "Adres e-mail tego konta nie jest jeszcze potwierdzony.",
+      "TEAM_LAST_ADMIN": "Sklep zostałby bez osoby z dostępem do panelu. Odśwież stronę, aby zobaczyć aktualny zespół.",
+      "TEAM_NOT_ADMIN": "To konto nie ma już dostępu do panelu. Odśwież stronę.",
+      "TEAM_OWN_ACCESS": "Nie możesz zmienić własnego dostępu do panelu."
     }
   }
 }
