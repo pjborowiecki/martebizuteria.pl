@@ -121,20 +121,61 @@
     }
   },
   "delivery": {
-    "methods": {
-      "title": "Delivery methods",
-      "description": "What shoppers can choose at checkout, in this order. Each name is shown in the shopper's language.",
+    "title": "Delivery methods",
+    "searchPlaceholder": "Search delivery methods...",
+    "actions": {
       "add": "Add method",
-      "empty": "No delivery methods yet. Add one so shoppers can check out.",
-      "free": "Free",
+      "freeDelivery": "Free delivery",
+      "refresh": "Reload table data"
+    },
+    "stats": {
+      "offered": {
+        "label": "Offered at checkout"
+      },
+      "hidden": {
+        "label": "Hidden"
+      },
+      "archived": {
+        "label": "Archived"
+      },
+      "shareCaption": "{percent}% of all",
+      "freeDelivery": {
+        "label": "Free delivery from",
+        "off": "Off",
+        "onCaption": "Products in the basket, after a discount code",
+        "offCaption": "Every order pays for delivery"
+      }
+    },
+    "filter": {
+      "status": "Filter by status",
+      "allStatuses": "All statuses"
+    },
+    "status": {
+      "offered": "Offered",
       "hidden": "Hidden",
       "hiddenCarrier": "Carrier switched off",
-      "edit": "Edit",
-      "moveUp": "Move {name} up",
-      "moveDown": "Move {name} down",
-      "archived": "Archived methods ({count})",
-      "archivedDescription": "Hidden from the checkout. Orders placed with them keep them.",
-      "restore": "Restore",
+      "archived": "Archived"
+    },
+    "columns": {
+      "name": "Method",
+      "nameIn": "Method ({language})",
+      "type": "Type",
+      "carrier": "Carrier",
+      "price": "Price",
+      "status": "Status",
+      "editedAt": "Last edited"
+    },
+    "reorder": {
+      "handle": "Drag to reorder, or use arrow keys"
+    },
+    "rowActions": {
+      "menu": "Actions for {name}",
+      "edit": "Edit method",
+      "archive": "Archive method",
+      "restore": "Restore method"
+    },
+    "methods": {
+      "free": "Free",
       "types": {
         "courier": "Courier",
         "in_store": "Pickup in person",
@@ -150,6 +191,14 @@
       "addTitle": "Add a delivery method",
       "editTitle": "Edit {name}",
       "description": "Shoppers see the name in their language and the price at checkout.",
+      "sections": {
+        "carrier": "Type and carrier",
+        "carrierDescription": "How the parcel reaches the shopper. Both stay fixed once the method is added.",
+        "name": "Name",
+        "nameDescription": "Shoppers see the name in their language at checkout.",
+        "price": "Price and status",
+        "priceDescription": "What delivery costs and whether the checkout offers it."
+      },
       "type": "Type",
       "carrier": "Carrier",
       "newCarrier": "New carrier",
@@ -160,9 +209,8 @@
       "nameEn": "Name in English",
       "price": "Price",
       "priceHint": "0 makes it free.",
-      "offered": "Offer at checkout",
-      "offeredHint": "Turn off to hide it from the checkout without archiving it.",
-      "archive": "Archive",
+      "status": "Status",
+      "statusHint": "A hidden method stays out of the checkout without being archived.",
       "cancel": "Cancel",
       "save": "Save",
       "create": "Add method"
@@ -190,9 +238,15 @@
     },
     "freeDelivery": {
       "title": "Free delivery",
-      "description": "Delivery costs nothing once the products in the basket reach this value, counted after a discount code and before delivery. The checkout tells shoppers how much they have left to spend.",
-      "enabled": "Offer free delivery",
+      "description": "Delivery costs nothing once the products in the basket reach this value, counted after a discount code and before delivery.",
+      "section": "Threshold",
+      "sectionDescription": "The checkout tells shoppers how much they have left to spend.",
+      "status": "Free delivery",
+      "statusOffered": "Offered",
+      "statusNotOffered": "Not offered",
       "threshold": "Free delivery from",
+      "thresholdHint": "The value of the products in the basket, after a discount code and before delivery.",
+      "cancel": "Cancel",
       "save": "Save",
       "saved": "Free delivery saved.",
       "validation": {

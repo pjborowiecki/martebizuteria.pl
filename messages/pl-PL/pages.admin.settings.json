@@ -121,20 +121,61 @@
     }
   },
   "delivery": {
-    "methods": {
-      "title": "Metody dostawy",
-      "description": "Co kupujący mogą wybrać w kasie, w tej kolejności. Każda nazwa wyświetla się w języku kupującego.",
+    "title": "Metody dostawy",
+    "searchPlaceholder": "Szukaj metody dostawy...",
+    "actions": {
       "add": "Dodaj metodę",
-      "empty": "Nie ma jeszcze metod dostawy. Dodaj jedną, aby można było składać zamówienia.",
-      "free": "Bezpłatnie",
+      "freeDelivery": "Darmowa dostawa",
+      "refresh": "Odśwież dane tabeli"
+    },
+    "stats": {
+      "offered": {
+        "label": "Oferowane w kasie"
+      },
+      "hidden": {
+        "label": "Ukryte"
+      },
+      "archived": {
+        "label": "Zarchiwizowane"
+      },
+      "shareCaption": "{percent}% wszystkich",
+      "freeDelivery": {
+        "label": "Darmowa dostawa od",
+        "off": "Wyłączona",
+        "onCaption": "Produkty w koszyku, po kodzie rabatowym",
+        "offCaption": "Każde zamówienie płaci za dostawę"
+      }
+    },
+    "filter": {
+      "status": "Filtruj według statusu",
+      "allStatuses": "Wszystkie statusy"
+    },
+    "status": {
+      "offered": "Oferowana",
       "hidden": "Ukryta",
       "hiddenCarrier": "Przewoźnik wyłączony",
-      "edit": "Edytuj",
-      "moveUp": "Przesuń {name} w górę",
-      "moveDown": "Przesuń {name} w dół",
-      "archived": "Zarchiwizowane metody ({count})",
-      "archivedDescription": "Ukryte w kasie. Zamówienia złożone z ich wyborem je zachowują.",
-      "restore": "Przywróć",
+      "archived": "Zarchiwizowana"
+    },
+    "columns": {
+      "name": "Metoda",
+      "nameIn": "Metoda ({language})",
+      "type": "Rodzaj",
+      "carrier": "Przewoźnik",
+      "price": "Cena",
+      "status": "Status",
+      "editedAt": "Ostatnia edycja"
+    },
+    "reorder": {
+      "handle": "Przeciągnij, aby zmienić kolejność, lub użyj strzałek"
+    },
+    "rowActions": {
+      "menu": "Działania: {name}",
+      "edit": "Edytuj metodę",
+      "archive": "Archiwizuj metodę",
+      "restore": "Przywróć metodę"
+    },
+    "methods": {
+      "free": "Bezpłatnie",
       "types": {
         "courier": "Kurier",
         "in_store": "Odbiór osobisty",
@@ -150,6 +191,14 @@
       "addTitle": "Dodaj metodę dostawy",
       "editTitle": "Edytuj: {name}",
       "description": "Kupujący widzą w kasie nazwę w swoim języku i cenę.",
+      "sections": {
+        "carrier": "Rodzaj i przewoźnik",
+        "carrierDescription": "Jak przesyłka trafia do kupującego. Po dodaniu metody tych pól nie można zmienić.",
+        "name": "Nazwa",
+        "nameDescription": "Kupujący widzą w kasie nazwę w swoim języku.",
+        "price": "Cena i status",
+        "priceDescription": "Ile kosztuje dostawa i czy kasa ją oferuje."
+      },
       "type": "Rodzaj",
       "carrier": "Przewoźnik",
       "newCarrier": "Nowy przewoźnik",
@@ -160,9 +209,8 @@
       "nameEn": "Nazwa po angielsku",
       "price": "Cena",
       "priceHint": "0 oznacza dostawę bezpłatną.",
-      "offered": "Oferuj w kasie",
-      "offeredHint": "Wyłącz, aby ukryć metodę w kasie bez archiwizowania jej.",
-      "archive": "Archiwizuj",
+      "status": "Status",
+      "statusHint": "Ukryta metoda nie pojawia się w kasie, ale nie trafia do archiwum.",
       "cancel": "Anuluj",
       "save": "Zapisz",
       "create": "Dodaj metodę"
@@ -190,9 +238,15 @@
     },
     "freeDelivery": {
       "title": "Darmowa dostawa",
-      "description": "Dostawa nic nie kosztuje, gdy produkty w koszyku osiągną tę wartość, liczoną po kodzie rabatowym i bez dostawy. Kasa pokazuje kupującym, ile im brakuje.",
-      "enabled": "Oferuj darmową dostawę",
+      "description": "Dostawa nic nie kosztuje, gdy produkty w koszyku osiągną tę wartość, liczoną po kodzie rabatowym i bez dostawy.",
+      "section": "Próg",
+      "sectionDescription": "Kasa pokazuje kupującym, ile im brakuje.",
+      "status": "Darmowa dostawa",
+      "statusOffered": "Oferowana",
+      "statusNotOffered": "Nieoferowana",
       "threshold": "Darmowa dostawa od",
+      "thresholdHint": "Wartość produktów w koszyku po kodzie rabatowym, bez dostawy.",
+      "cancel": "Anuluj",
       "save": "Zapisz",
       "saved": "Zapisano darmową dostawę.",
       "validation": {

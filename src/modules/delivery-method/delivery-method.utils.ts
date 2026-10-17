@@ -1,6 +1,8 @@
 import {
   DELIVERY_METHOD_ERROR,
+  DELIVERY_METHOD_STATUS,
   type DeliveryMethodError,
+  type DeliveryMethodStatus,
   type DeliveryMethodType,
   SINGLE_OFFER_DELIVERY_METHODS,
 } from "~/src/modules/delivery-method/delivery-method.constants"
@@ -31,6 +33,18 @@ interface OfferCandidate {
 interface OfferedMethod {
   readonly id: string
   readonly type: DeliveryMethodType
+}
+
+export const resolveDeliveryMethodStatus = ({
+  archivedAt,
+  courier,
+  isActive,
+}: Readonly<Pick<DeliveryMethod["adminMethod"], "archivedAt" | "courier" | "isActive">>): DeliveryMethodStatus => {
+  if (archivedAt !== undefined) {
+    return DELIVERY_METHOD_STATUS.ARCHIVED
+  }
+
+  return isActive && courier.isActive ? DELIVERY_METHOD_STATUS.OFFERED : DELIVERY_METHOD_STATUS.HIDDEN
 }
 
 export const toDeliveryMethodAuditSnapshot = ({ isActive, names, price }: Readonly<DeliveryMethodAuditSource>) => ({
