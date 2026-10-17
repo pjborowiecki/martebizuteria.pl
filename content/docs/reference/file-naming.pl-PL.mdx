@@ -25,17 +25,17 @@ Moduł w `src/modules/<feature>/` nosi nazwę swojej funkcjonalności, a każdy 
 
 Niektóre moduły potrzebują drugiej osi i łączą dwa sufiksy. Przedostatni segment zawęża zakres:
 
-| Plik                                              | Przeznaczenie                                                               |
-| ------------------------------------------------- | --------------------------------------------------------------------------- |
-| `audit-log/audit-log.diff.utils.ts`               | Helpery porównujące migawki „przed" i „po" w dzienniku zdarzeń              |
-| `audit-log/audit-log.queue.server.ts`             | Producent i konsument kolejki Cloudflare                                    |
-| `audit-log/audit-log.events.server.ts`            | Typowane funkcje rejestrujące, które wywołuje warstwa domenowa              |
-| `inventory/inventory.availability.utils.ts`       | Arytmetyka dostępności, oddzielona od mapowania wierszy                     |
-| `product/product.admin-list.server.ts`            | Zapytanie listy w panelu, osobno od zapytania sklepu                        |
-| `product/product.storefront-catalog.accessors.ts` | Odczyty katalogu dla sklepu                                                 |
-| `product-image/product-image.persist.utils.ts`    | Helpery utrwalania obrazów                                                  |
-| `order/order.settled.server.ts`                   | Wyszukiwanie zamówień, które już zostały rozliczone                         |
-| `order/order.claim.server.ts`                     | Przypisywanie zamówień gości do konta, które zweryfikowało ich adres e-mail |
+| Plik                                              | Przeznaczenie                                                                                                         |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `audit-log/audit-log.diff.utils.ts`               | Helpery porównujące migawki „przed" i „po" w dzienniku zdarzeń                                                        |
+| `audit-log/audit-log.queue.server.ts`             | Producent i konsument kolejki Cloudflare                                                                              |
+| `audit-log/audit-log.events.server.ts`            | Typowane funkcje rejestrujące, które wywołuje warstwa domenowa                                                        |
+| `inventory/inventory.availability.utils.ts`       | Arytmetyka dostępności, oddzielona od mapowania wierszy                                                               |
+| `product/product.admin-list.server.ts`            | Zapytanie listy w panelu, osobno od zapytania sklepu                                                                  |
+| `product/product.storefront-catalog.accessors.ts` | Odczyty katalogu dla sklepu                                                                                           |
+| `product-image/product-image.persist.utils.ts`    | Helpery utrwalania obrazów                                                                                            |
+| `order/order.settled.server.ts`                   | Wyszukiwanie zamówień, które już zostały rozliczone                                                                   |
+| `order/order.claim.server.ts`                     | Przypisywanie zamówień gości do konta, które używało ich adresu e-mail w chwili ich złożenia albo które go weryfikuje |
 
 ## Trasy
 

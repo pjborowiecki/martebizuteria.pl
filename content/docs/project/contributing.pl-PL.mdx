@@ -146,7 +146,7 @@ Każda metryka jest utrzymywana na 100%, więc zmiana, która zostawia jakikolwi
 
 Dwa równoległe zbiory plików muszą iść w parze.
 
-**Teksty interfejsu** leżą w `messages/en-US/` i `messages/pl-PL/`, po 60 plików przestrzeni nazw. `src/integrations/use-intl/__test__/i18n.messages.test.ts` przechodzi po każdym pliku angielskim i sprawdza, że plik polski o tej samej nazwie istnieje i zawiera każdy klucz:
+**Teksty interfejsu** leżą w `messages/en-US/` i `messages/pl-PL/`, po 61 plików przestrzeni nazw. `src/integrations/use-intl/__test__/i18n.messages.test.ts` przechodzi po każdym pliku angielskim i sprawdza, że plik polski o tej samej nazwie istnieje i zawiera każdy klucz:
 
 ```ts
 it.each(Object.entries(localeMessages).filter(([path]) => path.includes("/en-US/")))(

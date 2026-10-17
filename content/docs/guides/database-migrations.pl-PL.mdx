@@ -3,7 +3,7 @@ title: "Migracje bazy danych"
 description: "Bezpieczna zmiana schematu D1: generowanie, przegląd, stosowanie, ręczne pisanie i testowanie migracji, historia, która musi zbudować pustą bazę, oraz radzenie sobie z ograniczeniami SQLite."
 ---
 
-Bazą danych jest Cloudflare D1 (SQLite). Schemat jest zdefiniowany w TypeScripcie w 39 plikach schematów modułów, ponownie eksportowanych z `src/integrations/drizzle-orm/drizzle.schemas.ts` z wyjątkiem tabeli FTS5 `storefront_search`, i stosowany jako zwykłe pliki SQL w `src/integrations/drizzle-orm/migrations/`.
+Bazą danych jest Cloudflare D1 (SQLite). Schemat jest zdefiniowany w TypeScripcie w 40 plikach schematów modułów, ponownie eksportowanych z `src/integrations/drizzle-orm/drizzle.schemas.ts` z wyjątkiem tabeli FTS5 `storefront_search`, i stosowany jako zwykłe pliki SQL w `src/integrations/drizzle-orm/migrations/`.
 
 Ten katalog dzielą dwa narzędzia, a wiedza, które co robi, oszczędza wiele nieporozumień:
 
@@ -87,7 +87,7 @@ W czasie migracji, a także tak długo, jak wydanie pozostaje wycofane, sklep ob
 
 ## Migracje pisane ręcznie
 
-Wiele ze 105 migracji w katalogu napisano ręcznie, a nie wygenerowano, i ich nazwy mówią, co robią, zamiast nieść kryptonim nadany przez drizzle: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` i inne. Tak nazwana jest każda migracja dodana od końca września. Pisanie ręczne jest właściwym wyborem dla:
+Wiele ze 107 migracji w katalogu napisano ręcznie, a nie wygenerowano, i ich nazwy mówią, co robią, zamiast nieść kryptonim nadany przez drizzle: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` i inne. Tak nazwana jest każda migracja dodana od końca września. Pisanie ręczne jest właściwym wyborem dla:
 
 - **Zmian nazw.** drizzle-kit widzi zmianę nazwy jako usunięcie plus dodanie, co niszczy dane. Koniec `20260604232955_curved_wallow.sql` zmienia nazwę tabeli, a potem dopasowuje do niej nazwy jej indeksów:
 
@@ -129,7 +129,7 @@ UPDATE `order` SET `shipped_email_at` = coalesce(`shipped_at`, `delivered_at`, `
 
 Nawyki z nowszych plików warte skopiowania:
 
-- **Bez komentarzy.** Nazwa pliku mówi, co migracja robi, a commit, który ją dodaje, mówi dlaczego. Dwanaście starszych plików, z których ostatni to `20261001090000_newsletter_subscribers.sql`, wciąż ma komentarze `--`; żadna z 38 migracji po nim ich nie ma. Linie `--> statement-breakpoint` to separator, a nie komentarz do treści: drizzle-kit wpisuje je między instrukcje, SQLite pomija je jako komentarze, a pomocnicze funkcje testów dzielą po nich plik.
+- **Bez komentarzy.** Nazwa pliku mówi, co migracja robi, a commit, który ją dodaje, mówi dlaczego. Dwanaście starszych plików, z których ostatni to `20261001090000_newsletter_subscribers.sql`, wciąż ma komentarze `--`; żadna z 44 migracji po nim ich nie ma. Linie `--> statement-breakpoint` to separator, a nie komentarz do treści: drizzle-kit wpisuje je między instrukcje, SQLite pomija je jako komentarze, a pomocnicze funkcje testów dzielą po nich plik.
 - **`IF EXISTS` i `IF NOT EXISTS` wszędzie, gdzie SQLite na to pozwala** — przy `CREATE TABLE`, `CREATE INDEX`, `CREATE TRIGGER` i instrukcjach `DROP` — żeby ponowne uruchomienie migracji na częściowo zmigrowanej bazie nie zawiodło. Dla `ALTER TABLE … ADD` SQLite takiego zabezpieczenia nie ma.
 - **Migracje danych, które przy ponownym uruchomieniu niczego nie zmieniają.** Zawęź `WHERE` do wierszy, które wciąż wymagają zmiany: `20261016140000_claim_past_guest_orders.sql` dotyka tylko zamówień, których `user_id` jest wciąż `NULL`, więc drugie uruchomienie nie ma nic do zrobienia.
 
@@ -150,7 +150,7 @@ Wynikają z tego dwie zasady:
 
 ### Uwaga o dzienniku drizzle
 
-`migrations/meta/_journal.json` wymienia obecnie 52 znaczniki, podczas gdy w katalogu jest 105 plików `.sql`, w tym trzy puste pliki opisane wyżej, a w `meta/` 37 snapshotów. Do dziennika nigdy nie dopisano 53 plików, w tym wszystkich migracji po `20260930151544_collection_short_descriptions.sql`, a kilka generowanych nie ma snapshotu. Wranglerowi to nie przeszkadza — trzyma własny stan w D1. Ale **drizzle-kit to obchodzi**: `bun run db:generate` porównuje z najnowszym snapshotem, `meta/20260930151544_snapshot.json`, który jest starszy niż 47 migracji po nim, więc może wygenerować SQL dla zmian już zastosowanych.
+`migrations/meta/_journal.json` wymienia obecnie 52 znaczniki, podczas gdy w katalogu jest 107 plików `.sql`, w tym trzy puste pliki opisane wyżej, a w `meta/` 37 snapshotów. Do dziennika nigdy nie dopisano 55 plików, w tym wszystkich migracji po `20260930151544_collection_short_descriptions.sql`, a kilka generowanych nie ma snapshotu. Wranglerowi to nie przeszkadza — trzyma własny stan w D1. Ale **drizzle-kit to obchodzi**: `bun run db:generate` porównuje z najnowszym snapshotem, `meta/20260930151544_snapshot.json`, który jest starszy niż 49 migracji po nim, więc może wygenerować SQL dla zmian już zastosowanych.
 
 Przed zaufaniem wygenerowanej migracji albo porównaj ją z aktualnym schematem wdrożonej bazy przez `bun run db:introspect:preview` (co zapisuje `schema.ts` i `relations.ts` do katalogu migracji), albo przeczytaj ją linia po linii. Zarówno `schema.ts`, jak i `relations.ts` w `src/integrations/drizzle-orm/migrations/` są wynikiem introspekcji, a nie kodem utrzymywanym ręcznie.
 
@@ -216,7 +216,7 @@ it("claims nothing more when it runs again", () => {
 
 Pozostałe przypadki obejmują to, co migracja ma zmienić (zamówienia gości, których e-mail, bez względu na wielkość liter, należy do zweryfikowanego konta, oraz starsze konto, gdy dwa mają ten sam adres), to, czego ma nie ruszać (konta niezweryfikowane, zamówienia już przypisane do konta, adresy bez konta), i wpisy audytu, które zapisuje. Dla swojej migracji pokryj te same trzy rzeczy oraz drugie uruchomienie.
 
-Gdy migracja zależy od prawdziwego schematu albo od wierszy z danych startowych, zbuduj schemat przez `applyMigrationHistory`, jak robi to `src/modules/delivery-method/__test__/delivery-method.descriptions-migration.integration.test.ts`. Historia zawiera już testowaną migrację, więc ten test przywraca wiersze, które migracja czyta, i dopiero wtedy nakłada ją ponownie przez `applyMigration`. Wszystkie 61 zestawów, które wywołują `applyMigrationHistory`, otwiera `DatabaseSync` z `enableDoubleQuotedStringLiterals: true`; zrób tak samo.
+Gdy migracja zależy od prawdziwego schematu albo od wierszy z danych startowych, zbuduj schemat przez `applyMigrationHistory`, jak robi to `src/modules/delivery-method/__test__/delivery-method.descriptions-migration.integration.test.ts`. Historia zawiera już testowaną migrację, więc ten test przywraca wiersze, które migracja czyta, i dopiero wtedy nakłada ją ponownie przez `applyMigration`. Wszystkie 65 zestawów, które wywołują `applyMigrationHistory`, otwiera `DatabaseSync` z `enableDoubleQuotedStringLiterals: true`; zrób tak samo.
 
 Umieść test w katalogu `__test__/` modułu, którego tabelę zmienia migracja, i nazwij go `*.integration.test.ts`, żeby trafił do projektu `integration` (`bun run test:integration` oraz `bun run test`).
 

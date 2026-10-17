@@ -106,14 +106,14 @@ Bez nasłuchu proces zakupu wygląda tak, jakby zawieszał się na kroku płatno
 
 ## Podglądanie wiadomości transakcyjnych
 
-`/dev/emails` renderuje siedemnaście z dziewiętnastu szablonów React Email bez wysyłania czegokolwiek, szablon odstąpienia w wersji dla klienta i dla sklepu; `newsletter-confirmation` i `newsletter-campaign` nie mają wpisów podglądu. Strona główna wypisuje każdy szablon z linkami do wersji HTML i tekstowej w obu lokalizacjach:
+`/dev/emails` renderuje osiemnaście z dwudziestu szablonów React Email bez wysyłania czegokolwiek, szablon odstąpienia w wersji dla klienta i dla sklepu; `newsletter-confirmation` i `newsletter-campaign` nie mają wpisów podglądu. Strona główna wypisuje każdy szablon z linkami do wersji HTML i tekstowej w obu lokalizacjach:
 
 ```
 /dev/emails?template=order-confirmation&locale=pl-PL
 /dev/emails?template=order-confirmation&locale=pl-PL&format=text
 ```
 
-Dostępne identyfikatory to `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-delivered`, `order-in-progress`, `order-refunded`, `order-shipped`, `order-tracking`, `order-withdrawal`, `order-withdrawal-notice`, `password-changed`, `payment-failed`, `reset-password` i `verify-email`. `order-in-progress`, `order-shipped`, `order-tracking` i `order-delivered` to e-maile o statusie wysyłane przez kolejne etapy realizacji w panelu: rozpoczęcie realizacji, nadanie paczki, numer przesyłki dodany lub zmieniony po e-mailu o wysyłce oraz doręczenie. Handler `GET` zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdziwe, więc zbudowany Worker nie pokazuje podglądów.
+Dostępne identyfikatory to `account-deleted`, `change-email`, `email-changed`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-delivered`, `order-in-progress`, `order-refunded`, `order-shipped`, `order-tracking`, `order-withdrawal`, `order-withdrawal-notice`, `password-changed`, `payment-failed`, `reset-password` i `verify-email`. `order-in-progress`, `order-shipped`, `order-tracking` i `order-delivered` to e-maile o statusie wysyłane przez kolejne etapy realizacji w panelu: rozpoczęcie realizacji, nadanie paczki, numer przesyłki dodany lub zmieniony po e-mailu o wysyłce oraz doręczenie. Handler `GET` zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdziwe, więc zbudowany Worker nie pokazuje podglądów.
 
 ## Lokalne uruchomienie buildu produkcyjnego
 

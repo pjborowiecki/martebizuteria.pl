@@ -53,7 +53,7 @@ Pasek boczny zaznacza **Ustawienia** jako aktywne na każdej stronie `/admin/set
 
 **Edytuj profil**, akcja karty, otwiera `SettingsProfileSheet` z imieniem i nazwiskiem (wymagane, do 120 znaków) oraz telefonem (do 32), każde z licznikiem. **Zapisz** sprawdza je tym samym `customerAccountZodSchemas.profileForm`, którego używa profil klienta, i pokazuje komunikat błędnego pola pod nim. `useSaveProfile` zapisuje potem tylko to, co się zmieniło: imię i nazwisko przez `authClient.updateUser({ name })` z Better Auth, a telefon przez `updateCustomerPhone`, gdzie pusta wartość usuwa numer. Pokazuje komunikat **Zapisano profil.** albo błąd, a po powodzeniu unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE` i `SESSION_QUERY_KEYS.CURRENT`, bo zapamiętana sesja też zawiera imię; panel się zamyka, a po błędzie zostaje otwarty.
 
-**Zmień adres e-mail**, w wierszu adresu, otwiera `ChangeEmailDialog`. Better Auth wysyła link potwierdzający na obecny adres, a adres zmienia się po jego otwarciu. Potwierdzona zmiana adresu e-mail trafia do [dziennika zdarzeń](/docs/features/audit-log#zdarzenia-bezpieczeństwa-konta) jako `auth.email_changed`.
+**Zmień adres e-mail**, w wierszu adresu, otwiera `ChangeEmailDialog`. Better Auth wysyła link potwierdzający na obecny adres, jego otwarcie wysyła drugi link na nowy adres, a adres zmienia się po otwarciu tego drugiego (zobacz [Konto: Zmiana adresu e-mail](/docs/features/account#zmiana-adresu-e-mail)). Potwierdzona zmiana adresu e-mail trafia do [dziennika zdarzeń](/docs/features/audit-log#zdarzenia-bezpieczeństwa-konta) jako `auth.email_changed`.
 
 ### Preferencje
 

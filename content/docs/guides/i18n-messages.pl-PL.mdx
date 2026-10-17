@@ -3,7 +3,7 @@ title: "Tłumaczenia"
 description: "Dodawanie i zmiana tekstów widocznych dla użytkownika: pliki przestrzeni nazw, deklaracje na trasach, potok ładowania, formatowanie według formatu i strefy czasowej użytkownika oraz ustalanie języka."
 ---
 
-M'Arte jest dwujęzyczne: polski (`pl-PL`) jest domyślny, a angielski (`en-US`) drugorzędny. Tłumaczenia są podzielone na 60 plików przestrzeni nazw na język, w katalogach `messages/pl-PL/` i `messages/en-US/`, ładowanych per trasa i dostarczanych przez `use-intl`.
+M'Arte jest dwujęzyczne: polski (`pl-PL`) jest domyślny, a angielski (`en-US`) drugorzędny. Tłumaczenia są podzielone na 61 plików przestrzeni nazw na język, w katalogach `messages/pl-PL/` i `messages/en-US/`, ładowanych per trasa i dostarczanych przez `use-intl`.
 
 `src/integrations/use-intl/i18n.config.ts` konfiguruje języki:
 
@@ -23,13 +23,13 @@ Wygląd dat, liczb i cen konfiguruje się osobno, w `src/integrations/use-intl/i
 
 Przestrzeń nazw to jeden plik JSON, a jego nazwa _jest_ jego ścieżką z kropkami. `messages/pl-PL/pages.admin.catalog.categories.json` to przestrzeń `pages.admin.catalog.categories`, dostępna jako `useTranslations("pages.admin.catalog.categories")`.
 
-Tych 60 plików dzieli się na pięć grup:
+Tych 61 plików dzieli się na pięć grup:
 
 | Prefiks       | Przykłady                                                                                                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `common`      | `common.json` — tak, nie, potwierdź, anuluj, ładowanie                                                                                                                                |
 | `components.` | `components.custom`, `components.datagrid`, `components.defaults`, `components.shadcn`                                                                                                |
-| `emails.`     | 19 plików, po jednym na szablon e-maila: `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.newsletter-campaign`, …         |
+| `emails.`     | 20 plików, po jednym na szablon e-maila: `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.newsletter-campaign`, …         |
 | `errors`      | `errors.json` — zdania pod `action.<CODE>`                                                                                                                                            |
 | `pages.`      | 35 plików, po jednym na stronę albo jej sekcję: `pages.home`, `pages.product`, `pages.checkout`, `pages.admin`, `pages.admin.catalog.products`, `pages.auth.sign-in`, `pages.docs`, … |
 

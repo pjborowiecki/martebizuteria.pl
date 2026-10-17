@@ -3,7 +3,7 @@ title: "Database migrations"
 description: "Change the D1 schema safely: generate, review, apply, hand-write and test migrations, keep the history able to build an empty database, and what to do about SQLite's limits."
 ---
 
-The database is Cloudflare D1 (SQLite). The schema is defined in TypeScript across 39 module schema files, all but the FTS5 `storefront_search` table re-exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`, and applied as plain SQL files in `src/integrations/drizzle-orm/migrations/`.
+The database is Cloudflare D1 (SQLite). The schema is defined in TypeScript across 40 module schema files, all but the FTS5 `storefront_search` table re-exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`, and applied as plain SQL files in `src/integrations/drizzle-orm/migrations/`.
 
 Two tools share that directory, and knowing which does what saves a lot of confusion:
 
@@ -87,7 +87,7 @@ While the migrations run, and for as long as a release stays rolled back, the pr
 
 ## Hand-written migrations
 
-Many of the 105 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` and others. Every migration added since the end of September is named that way. Hand-writing is the right call for:
+Many of the 107 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` and others. Every migration added since the end of September is named that way. Hand-writing is the right call for:
 
 - **Renames.** drizzle-kit sees a rename as a drop plus an add, which loses the data. The end of `20260604232955_curved_wallow.sql` renames a table and then aligns its index names with the new name:
 
@@ -129,7 +129,7 @@ UPDATE `order` SET `shipped_email_at` = coalesce(`shipped_at`, `delivered_at`, `
 
 Habits worth copying from the recent files:
 
-- **No comments.** The filename says what a migration does, and the commit that adds it says why. Twelve older files, the last of them `20261001090000_newsletter_subscribers.sql`, still carry `--` comments; none of the 38 migrations after it does. The `--> statement-breakpoint` lines are a separator, not commentary: drizzle-kit writes them between statements, SQLite skips them as comments, and the test helpers split a file on them.
+- **No comments.** The filename says what a migration does, and the commit that adds it says why. Twelve older files, the last of them `20261001090000_newsletter_subscribers.sql`, still carry `--` comments; none of the 44 migrations after it does. The `--> statement-breakpoint` lines are a separator, not commentary: drizzle-kit writes them between statements, SQLite skips them as comments, and the test helpers split a file on them.
 - **`IF EXISTS` / `IF NOT EXISTS` wherever SQLite allows it** — on `CREATE TABLE`, `CREATE INDEX`, `CREATE TRIGGER` and the `DROP` statements — so re-running a migration against a partially-migrated database does not fail. SQLite has no such guard for `ALTER TABLE … ADD`.
 - **Data migrations that change nothing when they run again.** Limit the `WHERE` to the rows that still need the change: `20261016140000_claim_past_guest_orders.sql` only touches orders whose `user_id` is still `NULL`, so a second run finds nothing to do.
 
@@ -150,7 +150,7 @@ Two rules follow:
 
 ### A caveat about the drizzle journal
 
-`migrations/meta/_journal.json` currently lists 52 tags while the directory holds 105 `.sql` files, three of them the empty placeholders above, and `meta/` holds 37 snapshots. The 53 files missing from the journal, every migration after `20260930151544_collection_short_descriptions.sql` among them, were never added to it, and several generated ones have no snapshot. Wrangler does not care — it tracks its own state in D1. But **drizzle-kit does**: `bun run db:generate` diffs against the newest snapshot, `meta/20260930151544_snapshot.json`, which predates the 47 migrations after it, so it can emit SQL for changes that are already applied.
+`migrations/meta/_journal.json` currently lists 52 tags while the directory holds 107 `.sql` files, three of them the empty placeholders above, and `meta/` holds 37 snapshots. The 55 files missing from the journal, every migration after `20260930151544_collection_short_descriptions.sql` among them, were never added to it, and several generated ones have no snapshot. Wrangler does not care — it tracks its own state in D1. But **drizzle-kit does**: `bun run db:generate` diffs against the newest snapshot, `meta/20260930151544_snapshot.json`, which predates the 49 migrations after it, so it can emit SQL for changes that are already applied.
 
 Before trusting a generated migration, either compare it against the current live schema with `bun run db:introspect:preview` (which writes `schema.ts` and `relations.ts` into the migrations folder), or read it line by line. Both `schema.ts` and `relations.ts` in `src/integrations/drizzle-orm/migrations/` are introspection output, not hand-maintained code.
 
@@ -216,7 +216,7 @@ it("claims nothing more when it runs again", () => {
 
 Its other cases cover what the migration must change (guest orders whose e-mail matches a verified account, ignoring case, and the older account when two share the address), what it must leave alone (unverified accounts, orders already on an account, addresses with no account) and the audit entries it writes. Cover the same three things for yours, plus a second run.
 
-When a migration depends on the real schema or on seeded rows, build the schema with `applyMigrationHistory` instead, as `src/modules/delivery-method/__test__/delivery-method.descriptions-migration.integration.test.ts` does. The history already contains the migration under test, so that test resets the rows the migration reads and then applies it again with `applyMigration`. All 61 suites that call `applyMigrationHistory` open their `DatabaseSync` with `enableDoubleQuotedStringLiterals: true`; do the same.
+When a migration depends on the real schema or on seeded rows, build the schema with `applyMigrationHistory` instead, as `src/modules/delivery-method/__test__/delivery-method.descriptions-migration.integration.test.ts` does. The history already contains the migration under test, so that test resets the rows the migration reads and then applies it again with `applyMigration`. All 65 suites that call `applyMigrationHistory` open their `DatabaseSync` with `enableDoubleQuotedStringLiterals: true`; do the same.
 
 Put the test in the `__test__/` folder of the module whose table the migration changes and name it `*.integration.test.ts`, so it runs in the `integration` project (`bun run test:integration`, and `bun run test`).
 

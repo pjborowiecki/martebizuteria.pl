@@ -9,11 +9,11 @@ description: "The three Vitest projects, the in-process server-function bridge, 
 
 | Project       | Environment | Files                                             | Count |
 | ------------- | ----------- | ------------------------------------------------- | ----- |
-| `node`        | Node        | `*.{test,spec}.{ts,tsx}`, excluding the two below | 478   |
-| `integration` | Node        | `*.integration.test.{ts,tsx}`                     | 127   |
-| `component`   | jsdom       | `*.component.test.{ts,tsx}`                       | 623   |
+| `node`        | Node        | `*.{test,spec}.{ts,tsx}`, excluding the two below | 482   |
+| `integration` | Node        | `*.integration.test.{ts,tsx}`                     | 136   |
+| `component`   | jsdom       | `*.component.test.{ts,tsx}`                       | 624   |
 
-1,231 test files in total, in 223 `__test__` folders; all but the commit message hook's test in `scripts/__test__/` live under `src/`. Only the `component` project loads `src/platform/testing/setup.ts`; node and integration tests import what they need explicitly. The `integration` project raises the test and hook timeouts to 30 seconds.
+1,242 test files in total, in 224 `__test__` folders; all but the commit message hook's test in `scripts/__test__/` live under `src/`. Only the `component` project loads `src/platform/testing/setup.ts`; node and integration tests import what they need explicitly. The `integration` project raises the test and hook timeouts to 30 seconds.
 
 ```sh
 bun run test              # all three projects
@@ -69,7 +69,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 ```
 
-61 of the 130 integration suites build their schema by replaying every migration file with `applyMigrationHistory` from `src/platform/testing/mocks/migrations.ts`; the others create the tables they need themselves, or apply only the migration under test with `applyMigration`.
+65 of the 136 integration suites build their schema by replaying every migration file with `applyMigrationHistory` from `src/platform/testing/mocks/migrations.ts`; the others create the tables they need themselves, replay the history up to the migration under test with `applyMigrationHistoryBefore`, or apply only that migration with `applyMigration`.
 
 **What this does not emulate:** D1's network latency and its concurrency characteristics. A concurrency result from the integration suite is SQLite's behaviour, not proof about D1 under production load.
 
@@ -87,9 +87,9 @@ Coverage is broad, but the suites that earn their keep are the ones where a sile
 - **Auth storage** — `auth.storage.integration.test.ts` pins the Better Auth configuration, including the absence of `secondaryStorage`, and shows that Better Auth's limiter, counting through `withinRateLimit`, refuses past its maximum and leaves the e-mail caps standing when one of its windows starts again.
 - **Checkout batches** — `checkout-batches.integration.test.ts` runs the create, update-delivery and release batches against in-memory SQLite and asserts the rows they leave: one shared or two separate addresses, the delivery selection and note, the released discount claim, and the payment and checkout failed together.
 - **Query plans** — `query-plans.integration.test.ts` replays the migrations, checks that every foreign key is indexed and that every index the schema declares exists on the same columns, and runs `explain query plan` on the statements of the hot reads, recorded through `onQuery`, to show they use an index instead of scanning a table.
-- **Accessors** — 19 accessor suites run data-access modules against SQLite: account, address, audit-log, category-on-product, checkout, collection-on-product, customer-account, delivery-method, discount, inventory, order (two), product (four), user (two) and wishlist.
+- **Accessors** — 20 accessor suites run data-access modules against SQLite: account, address, audit-log, category-on-product, checkout, collection-on-product, customer-account, delivery-method, discount, inventory, order (two), product (four), user (two), user-email-history and wishlist.
 
-The integration project holds 130 suites in all. Besides those above, the largest groups cover the order module (20 suites), the checkout (14) and Better Auth (12), and some test the data migrations, such as the backfills in `src/modules/order/__test__/`.
+The integration project holds 136 suites in all. Besides those above, the largest groups cover the order module (21 suites), the checkout (14) and Better Auth (13), and some test the data migrations, such as the backfills in `src/modules/order/__test__/`.
 
 ## Coverage
 

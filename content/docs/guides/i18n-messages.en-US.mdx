@@ -3,7 +3,7 @@ title: "i18n messages"
 description: "Add or change user-visible text: namespace files, route declarations, the loading pipeline, formatting in the user's format locale and time zone, and locale resolution."
 ---
 
-M'Arte is bilingual: Polish (`pl-PL`) is the default and English (`en-US`) is secondary. Translations are split into 60 namespace files per locale under `messages/pl-PL/` and `messages/en-US/`, loaded per route and delivered through `use-intl`.
+M'Arte is bilingual: Polish (`pl-PL`) is the default and English (`en-US`) is secondary. Translations are split into 61 namespace files per locale under `messages/pl-PL/` and `messages/en-US/`, loaded per route and delivered through `use-intl`.
 
 `src/integrations/use-intl/i18n.config.ts` configures the languages:
 
@@ -23,13 +23,13 @@ How dates, numbers and prices look is configured separately, in `src/integration
 
 A namespace is one JSON file, and its filename _is_ its dotted namespace path. `messages/pl-PL/pages.admin.catalog.categories.json` is the namespace `pages.admin.catalog.categories`, reached as `useTranslations("pages.admin.catalog.categories")`.
 
-The 60 files fall into five groups:
+The 61 files fall into five groups:
 
 | Prefix        | Examples                                                                                                                                                                      |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `common`      | `common.json` — yes, no, confirm, cancel, loading                                                                                                                             |
 | `components.` | `components.custom`, `components.datagrid`, `components.defaults`, `components.shadcn`                                                                                        |
-| `emails.`     | 19 files, one per e-mail template: `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.newsletter-campaign`, …       |
+| `emails.`     | 20 files, one per e-mail template: `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.newsletter-campaign`, …       |
 | `errors`      | `errors.json` — the `action.<CODE>` sentences                                                                                                                                 |
 | `pages.`      | 35 files, one per page or page section: `pages.home`, `pages.product`, `pages.checkout`, `pages.admin`, `pages.admin.catalog.products`, `pages.auth.sign-in`, `pages.docs`, … |
 
