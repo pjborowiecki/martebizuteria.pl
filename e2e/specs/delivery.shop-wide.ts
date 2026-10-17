@@ -10,20 +10,25 @@ const TEST_METHOD = { carrier: "Test Carrier", english: "Test courier", polish: 
 
 const DELIVERY_SETTINGS = "/en-US/admin/settings/delivery"
 
-const methodRow = (page: Page) =>
-  page.locator("[data-slot=settings-row]").filter({ has: page.getByRole("button", { name: "Edit" }), hasText: TEST_METHOD.english })
+const methodRow = (page: Page) => page.getByRole("row").filter({ hasText: TEST_METHOD.english }).filter({ hasNotText: "Archived" })
 
-const freeDeliverySwitch = (page: Page) => page.getByRole("switch", { name: "Offer free delivery" })
+const FREE_DELIVERY_OFF = "Every order pays for delivery"
 
-const turnOffFreeDelivery = async (page: Page): Promise<void> => {
-  await freeDeliverySwitch(page).click()
-  await page.getByRole("button", { name: "Save", exact: true }).click()
+const saveFreeDelivery = async (page: Page, status: "Not offered" | "Offered", threshold?: string): Promise<void> => {
+  await page.getByRole("button", { exact: true, name: "Free delivery" }).click()
+  const sheet = page.getByRole("dialog", { name: "Free delivery" })
+  await sheet.getByRole("combobox", { name: "Free delivery" }).click()
+  await page.getByRole("option", { exact: true, name: status }).click()
+  if (threshold !== undefined) {
+    await sheet.getByLabel("Free delivery from").fill(threshold)
+  }
+  await sheet.getByRole("button", { exact: true, name: "Save" }).click()
   await expect(new BasePage(page).notification("Free delivery saved.")).toBeVisible()
 }
 
 const archiveTestMethod = async (page: Page): Promise<void> => {
-  await methodRow(page).getByRole("button", { name: "Edit" }).click()
-  await page.getByRole("dialog", { name: `Edit ${TEST_METHOD.english}` }).getByRole("button", { name: "Archive" }).click()
+  await methodRow(page).getByRole("button", { name: `Actions for ${TEST_METHOD.english}` }).click()
+  await page.getByRole("menuitem", { name: "Archive method" }).click()
   await page.getByRole("alertdialog", { name: `Archive ${TEST_METHOD.english}?` }).getByRole("button", { name: "Archive" }).click()
   await expect(methodRow(page)).toHaveCount(0)
 }
@@ -36,8 +41,8 @@ test.describe("delivery settings", { lock: "shop-wide" }, () => {
     if ((await methodRow(page).count()) > 0) {
       await archiveTestMethod(page)
     }
-    if ((await freeDeliverySwitch(page).getAttribute("aria-checked")) === "true") {
-      await turnOffFreeDelivery(page)
+    if ((await page.getByText(FREE_DELIVERY_OFF).count()) === 0) {
+      await saveFreeDelivery(page, "Not offered")
     }
   })
 
@@ -49,7 +54,7 @@ test.describe("delivery settings", { lock: "shop-wide" }, () => {
     await settings.open(DELIVERY_SETTINGS)
     await page.getByRole("button", { name: "Add method" }).click()
     const dialog = page.getByRole("dialog", { name: "Add a delivery method" })
-    await dialog.getByLabel("Carrier", { exact: true }).click()
+    await dialog.getByRole("combobox", { name: "Carrier" }).click()
     await page.getByRole("option", { name: "New carrier" }).click()
     await dialog.getByLabel("Carrier name").fill(TEST_METHOD.carrier)
     await dialog.getByLabel("Name in Polish").fill(TEST_METHOD.polish)
@@ -58,7 +63,9 @@ test.describe("delivery settings", { lock: "shop-wide" }, () => {
     await dialog.getByRole("button", { name: "Add method" }).click()
 
     await expect(settings.notification("Delivery method added.")).toBeVisible()
-    await expect(methodRow(page)).toContainText(`Courier · ${TEST_METHOD.carrier}`)
+    await expect(methodRow(page)).toContainText(TEST_METHOD.carrier)
+    await expect(methodRow(page)).toContainText(`PLN ${TEST_METHOD.price}`)
+    await expect(methodRow(page)).toContainText("Offered")
 
     const shopper = await browser.newContext({
       extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
@@ -91,11 +98,9 @@ test.describe("delivery settings", { lock: "shop-wide" }, () => {
   }, testInfo) => {
     const settings = new BasePage(page)
     await settings.open(DELIVERY_SETTINGS)
-    await freeDeliverySwitch(page).click()
-    await page.getByLabel("Free delivery from").fill("1")
-    await page.getByRole("button", { name: "Save", exact: true }).click()
+    await saveFreeDelivery(page, "Offered", "1")
 
-    await expect(settings.notification("Free delivery saved.")).toBeVisible()
+    await expect(page.getByText("PLN 1.00", { exact: true })).toBeVisible()
 
     const shopper = await browser.newContext({
       extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "shopper") },
@@ -121,7 +126,8 @@ test.describe("delivery settings", { lock: "shop-wide" }, () => {
 
     await expect(checkoutPage.summary()).toContainText("Free")
 
-    await turnOffFreeDelivery(page)
+    await saveFreeDelivery(page, "Not offered")
+    await expect(page.getByText(FREE_DELIVERY_OFF)).toBeVisible()
     await shopper.close()
   })
 })

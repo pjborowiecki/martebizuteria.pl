@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test"
 
 import { DELIVERY_METHOD_ERROR } from "~/src/modules/delivery-method/delivery-method.constants"
 import {
+  resolveDeliveryMethodStatus,
   resolveDeliveryPrice,
   resolveFreeDeliveryShortfall,
   resolveOfferedDeliveryConflict,
@@ -83,6 +84,27 @@ describe("free delivery", () => {
   it("ignores a free shipping code, which takes nothing off the products", () => {
     expect(resolveDeliveryPrice({ discount: FREE_SHIPPING_CODE, freeDeliveryThreshold: 30_000, itemsSubtotal: 30_000, price: 1999 })).toBe(
       0,
+    )
+  })
+})
+
+describe("resolveDeliveryMethodStatus", () => {
+  const ACTIVE_CARRIER = { id: "inpost", internalCode: "inpost", isActive: true, name: "InPost" }
+
+  it("calls a method the checkout shows offered", () => {
+    expect(resolveDeliveryMethodStatus({ archivedAt: undefined, courier: ACTIVE_CARRIER, isActive: true })).toBe("offered")
+  })
+
+  it("calls a method hidden when it or its carrier is switched off", () => {
+    expect(resolveDeliveryMethodStatus({ archivedAt: undefined, courier: ACTIVE_CARRIER, isActive: false })).toBe("hidden")
+    expect(resolveDeliveryMethodStatus({ archivedAt: undefined, courier: { ...ACTIVE_CARRIER, isActive: false }, isActive: true })).toBe(
+      "hidden",
+    )
+  })
+
+  it("calls an archived method archived whatever its switches say", () => {
+    expect(resolveDeliveryMethodStatus({ archivedAt: new Date("2026-10-01T00:00:00.000Z"), courier: ACTIVE_CARRIER, isActive: true })).toBe(
+      "archived",
     )
   })
 })
