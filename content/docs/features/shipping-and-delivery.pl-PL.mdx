@@ -167,7 +167,7 @@ return methods.length > 1 ? `${t("deliverySubsteps.from")} ${price}` : price
 
 Pod kartami, dopóki sklep oferuje darmową dostawę, a koszyk jej nie osiągnął, krok podaje brakującą kwotę przez `checkoutSummary.freeDeliveryShortfall` (zobacz [Darmowa dostawa](#darmowa-dostawa)).
 
-Wybór typu zapisuje `deliveryMethodType` i albo automatycznie wybiera jedyną metodę, albo czyści `deliveryMethod`, żeby wybór nastąpił w podkroku.
+Wybór typu zapisuje `deliveryMethodType` i albo automatycznie wybiera jedyną metodę, albo czyści `deliveryMethod`, żeby wybór nastąpił w podkroku. Przejście dalej bez metody pokazuje `validation.deliveryRequired` pod typami albo pod kurierami, gdy jest kilku do wyboru.
 
 ### Kurier
 

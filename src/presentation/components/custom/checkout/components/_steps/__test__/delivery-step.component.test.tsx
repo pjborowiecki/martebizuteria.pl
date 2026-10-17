@@ -1,14 +1,15 @@
 import { type JSX } from "react"
 
+import { zodResolver } from "@hookform/resolvers/zod"
 import { QueryClient } from "@tanstack/react-query"
-import { cleanup, screen } from "@testing-library/react"
+import { act, cleanup, screen } from "@testing-library/react"
 import { userEvent } from "@testing-library/user-event"
 import { type UseFormReturn, useForm } from "react-hook-form"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
+import { type CheckoutFormSchema, checkoutSchema } from "~/src/modules/checkout/checkout.zod"
 
 interface DeliveryMethodRow {
   readonly id: string
@@ -68,7 +69,10 @@ const method = (overrides: Partial<DeliveryMethodRow> = {}): DeliveryMethodRow =
 const observed: { form?: UseFormReturn<CheckoutFormSchema> } = {}
 
 const DeliveryStepHarness = ({ deliveryMethodType = "" }: Readonly<{ deliveryMethodType?: string }>): JSX.Element => {
-  const form = useForm<CheckoutFormSchema>({ defaultValues: { deliveryMethod: "", deliveryMethodType } })
+  const form = useForm<CheckoutFormSchema>({
+    defaultValues: { deliveryMethod: "", deliveryMethodType },
+    resolver: zodResolver(checkoutSchema),
+  })
   observed.form = form
   Object.assign(checkoutForm, {
     control: form.control,
@@ -91,6 +95,14 @@ const UnsetDeliveryStepHarness = (): JSX.Element => {
   })
 
   return <DeliveryStep />
+}
+
+const DELIVERY_REQUIRED = "Please select a delivery method"
+
+const continueFromDeliveryStep = async (): Promise<void> => {
+  await act(async () => {
+    await observed.form?.trigger(["deliveryMethod", "lockerId"])
+  })
 }
 
 beforeEach(() => {
@@ -333,5 +345,58 @@ describe("DeliveryStep continue button", () => {
     renderWithProviders(<DeliveryStepHarness />)
 
     expect(screen.getByRole("button", { name: /Payment/u })).toBeDisabled()
+  })
+})
+
+describe("DeliveryStep delivery method message", () => {
+  it("tells the shopper to choose a delivery method when they continue without picking a family", async () => {
+    methodsState.rows = [method(), method({ id: "dm-locker", price: 1299, type: "locker" })]
+    renderWithProviders(<DeliveryStepHarness />)
+    await screen.findByRole("radio", { name: /Courier/u })
+
+    await continueFromDeliveryStep()
+
+    expect(screen.getByRole("alert")).toHaveTextContent(DELIVERY_REQUIRED)
+  })
+
+  it("clears the message as soon as the shopper picks a family with a single method", async () => {
+    methodsState.rows = [method(), method({ id: "dm-locker", price: 1299, type: "locker" })]
+    renderWithProviders(<DeliveryStepHarness />)
+    await continueFromDeliveryStep()
+
+    await userEvent.click(await screen.findByRole("radio", { name: /Parcel Locker/u }))
+
+    expect(screen.queryByText(DELIVERY_REQUIRED)).not.toBeInTheDocument()
+    expect(observed.form?.getFieldState("deliveryMethod").invalid).toBe(false)
+  })
+
+  it("leaves the message to the courier list once the courier family offers several couriers", async () => {
+    methodsState.rows = [method(), method({ id: "dm-courier-inpost", price: 1499 })]
+    renderWithProviders(<DeliveryStepHarness />)
+    await continueFromDeliveryStep()
+
+    await userEvent.click(await screen.findByRole("radio", { name: /Courier/u }))
+
+    expect(screen.queryByText(DELIVERY_REQUIRED)).not.toBeInTheDocument()
+    expect(observed.form?.getFieldState("deliveryMethod").error?.message).toBe("validation.deliveryRequired")
+  })
+
+  it("keeps the message beside the families when a courier delivery has no courier left to choose", async () => {
+    methodsState.rows = [method({ id: "dm-locker", price: 1299, type: "locker" })]
+    renderWithProviders(<DeliveryStepHarness deliveryMethodType="courier" />)
+    await screen.findByRole("radio", { name: /Parcel Locker/u })
+
+    await continueFromDeliveryStep()
+
+    expect(screen.getByRole("alert")).toHaveTextContent(DELIVERY_REQUIRED)
+  })
+
+  it("does not judge a family the shopper picks before trying to continue", async () => {
+    methodsState.rows = [method(), method({ id: "dm-courier-inpost", price: 1499 })]
+    renderWithProviders(<DeliveryStepHarness />)
+
+    await userEvent.click(await screen.findByRole("radio", { name: /Courier/u }))
+
+    expect(observed.form?.getFieldState("deliveryMethod").invalid).toBe(false)
   })
 })

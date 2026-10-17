@@ -167,7 +167,7 @@ return methods.length > 1 ? `${t("deliverySubsteps.from")} ${price}` : price
 
 Below the cards, while the shop offers free delivery and the basket has not reached it, the step says how much is missing with `checkoutSummary.freeDeliveryShortfall` (see [Free delivery](#free-delivery)).
 
-Picking a type writes `deliveryMethodType` and either auto-selects the single method or clears `deliveryMethod` so the sub-step must choose.
+Picking a type writes `deliveryMethodType` and either auto-selects the single method or clears `deliveryMethod` so the sub-step must choose. Continuing without a method shows `validation.deliveryRequired` below the types, or below the couriers when there are several to choose from.
 
 ### Courier
 
