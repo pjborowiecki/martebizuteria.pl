@@ -25,18 +25,28 @@ Product photography, category and collection imagery and the marketing assets li
 ```ts
 export const uploadImageFn = createServerFn({ method: "POST" })
   .middleware([authorized({ product: ["update"] })])
-  .validator((data: FormData) => data)
-  .handler(async ({ data }) => {
+  .validator((data: FormData) => {
+    const parsed = uploadImageInputSchema.safeParse(data)
+    if (!parsed.success) {
+      throw new AppError(ERROR_CODES.VALIDATION, parsed.error.issues[0]?.message)
+    }
+
+    return parsed.data
+  })
+  .handler(async ({ data: { file, folder } }) => {
     /* … */
   })
 ```
 
-Authorization is the `product: ["update"]` permission, so only the admin role can upload. The validator passes the `FormData` through — the shape cannot be described by a Zod object, so the handler does the checking itself, in this order:
+Authorization is the `product: ["update"]` permission, so only the admin role can upload. The validator parses the `FormData` with `uploadImageInputSchema` from `media.zod.ts`, which checks, in this order:
 
-1. `data.get("file")` must be a `File`, else `TypeError(INVALID_FILE)`.
-2. `isAcceptedImageMime(file.type)` must hold, else `INVALID_TYPE`.
-3. The size must be greater than zero and at most `MAX_IMAGE_BYTES`, else `TOO_LARGE`.
-4. `data.get("folder")` is used when `isMediaFolder` accepts it, otherwise it silently falls back to `"uploads"`.
+1. The request must be a `FormData` and `data.get("file")` a `File`, else `INVALID_FILE`.
+2. The file name may have at most `MAX_IMAGE_NAME_LENGTH` (255) characters, the most a file system allows, else `INVALID_FILE`.
+3. `isAcceptedImageMime(file.type)` must hold, else `INVALID_TYPE`.
+4. The size must be greater than zero and at most `MAX_IMAGE_BYTES`, else `TOO_LARGE`.
+5. `data.get("folder")` is used when it is one of `MEDIA_FOLDERS`, otherwise it silently falls back to `"uploads"`.
+
+A refused upload throws an `AppError` with `ERROR_CODES.VALIDATION` and the first rule the file broke as its message, so the browser receives a validation error rather than `INTERNAL_ERROR`, and nothing is stored or recorded in the audit log.
 
 Then the key is derived from the bytes:
 
@@ -68,17 +78,19 @@ Every upload, a re-upload of bytes the bucket already holds included, is recorde
 
 ## Rules
 
-`media.zod.ts` holds the constraints. Despite the file name it contains no Zod schema — only constants and two type predicates:
+`media.zod.ts` holds the constraints and the schema the upload is parsed with:
 
-| Export                                 | Value                                                        |
-| -------------------------------------- | ------------------------------------------------------------ |
-| `ACCEPTED_IMAGE_MIME_TYPES`            | `image/jpeg`, `image/png`, `image/webp`, `image/avif`        |
-| `ACCEPTED_IMAGE_ACCEPT_ATTR`           | The same list joined with commas, for the `accept` attribute |
-| `MAX_IMAGE_BYTES`                      | 5 MiB (`5 * 1024 * 1024`)                                    |
-| `MEDIA_FOLDERS`                        | `collections`, `products`, `categories`, `uploads`           |
-| `MIME_EXTENSION`                       | The MIME-to-extension map (`image/jpeg` → `jpg`)             |
-| `MEDIA_ERROR_CODES`                    | `INVALID_FILE`, `INVALID_TYPE`, `TOO_LARGE`, `UNAUTHORIZED`  |
-| `isMediaFolder`, `isAcceptedImageMime` | The predicates the handler and the UI share                  |
+| Export                       | Value                                                                                |
+| ---------------------------- | ------------------------------------------------------------------------------------ |
+| `ACCEPTED_IMAGE_MIME_TYPES`  | `image/jpeg`, `image/png`, `image/webp`, `image/avif`                                |
+| `ACCEPTED_IMAGE_ACCEPT_ATTR` | The same list joined with commas, for the `accept` attribute                         |
+| `MAX_IMAGE_BYTES`            | 5 MiB (`5 * 1024 * 1024`)                                                            |
+| `MAX_IMAGE_NAME_LENGTH`      | 255 characters                                                                       |
+| `MEDIA_FOLDERS`              | `collections`, `products`, `categories`, `uploads`                                   |
+| `MIME_EXTENSION`             | The MIME-to-extension map (`image/jpeg` → `jpg`)                                     |
+| `MEDIA_ERROR_CODES`          | `INVALID_FILE`, `INVALID_TYPE`, `TOO_LARGE`, `UNAUTHORIZED`                          |
+| `isAcceptedImageMime`        | The MIME check the schema and the UI share                                           |
+| `uploadImageInputSchema`     | The `FormData` schema: a `File` within the limits above, and the folder or `uploads` |
 
 ## The admin-side upload flow
 

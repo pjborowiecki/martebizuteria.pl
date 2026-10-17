@@ -4,23 +4,50 @@ import {
   ACCEPTED_IMAGE_ACCEPT_ATTR,
   ACCEPTED_IMAGE_MIME_TYPES,
   MAX_IMAGE_BYTES,
+  MEDIA_ERROR_CODES,
   MEDIA_FOLDERS,
   MIME_EXTENSION,
   isAcceptedImageMime,
-  isMediaFolder,
+  uploadImageInputSchema,
 } from "~/src/integrations/cloudflare-r2/media.zod"
 
-describe("isMediaFolder", () => {
-  it.each(MEDIA_FOLDERS)("accepts the %s folder", (folder) => {
-    expect(isMediaFolder(folder)).toBe(true)
+const uploadOf = (folder?: string): FormData => {
+  const data = new FormData()
+  data.set("file", new File([new Uint8Array([1])], "ring.png", { type: "image/png" }))
+  if (folder !== undefined) {
+    data.set("folder", folder)
+  }
+
+  return data
+}
+
+describe("uploadImageInputSchema", () => {
+  it.each(MEDIA_FOLDERS)("keeps the %s folder", (folder) => {
+    expect(uploadImageInputSchema.parse(uploadOf(folder)).folder).toBe(folder)
   })
 
-  it("rejects a folder name the bucket does not use", () => {
-    expect(isMediaFolder("avatars")).toBe(false)
+  it.each([["avatars"], ["../products"], [undefined]])("stores a %j folder under uploads", (folder) => {
+    expect(uploadImageInputSchema.parse(uploadOf(folder)).folder).toBe("uploads")
   })
 
-  it.each([[null], [undefined], [42], [["products"]], [{ folder: "products" }]])("rejects the non-string value %j", (value) => {
-    expect(isMediaFolder(value)).toBe(false)
+  it("refuses a request that is not a form", () => {
+    expect(uploadImageInputSchema.safeParse({ file: "ring.png" }).error?.issues.map((issue) => issue.message)).toStrictEqual([
+      MEDIA_ERROR_CODES.INVALID_FILE,
+    ])
+  })
+
+  it("hands over the file itself", () => {
+    expect(uploadImageInputSchema.parse(uploadOf()).file).toBeInstanceOf(File)
+  })
+
+  it("names the first rule a file breaks", () => {
+    const data = new FormData()
+    data.set("file", new File([], "notes.txt", { type: "text/plain" }))
+
+    expect(uploadImageInputSchema.safeParse(data).error?.issues.map((issue) => issue.message)).toStrictEqual([
+      MEDIA_ERROR_CODES.INVALID_TYPE,
+      MEDIA_ERROR_CODES.TOO_LARGE,
+    ])
   })
 })
 

@@ -195,7 +195,10 @@ Wartości są dowiązywane przez `src/modules/attribute-on-product`: `get-produc
 
 - akceptowane typy MIME: `image/jpeg`, `image/png`, `image/webp`, `image/avif`
 - maksymalny rozmiar: `MAX_IMAGE_BYTES` = 5 MiB
+- najdłuższa nazwa pliku: `MAX_IMAGE_NAME_LENGTH` = 255 znaków
 - katalogi: `collections`, `products`, `categories`, `uploads` (wartość zapasowa)
+
+Plik łamiący regułę jest odrzucany z `ERROR_CODES.VALIDATION` i regułą jako komunikatem (`INVALID_FILE`, `INVALID_TYPE` albo `TOO_LARGE`), zanim cokolwiek zostanie zapisane.
 
 Klucz jest **adresowany treścią**, co czyni ponowną wysyłkę tego samego pliku darmową:
 

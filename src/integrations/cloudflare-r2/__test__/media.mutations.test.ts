@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { MAX_IMAGE_BYTES, MEDIA_ERROR_CODES } from "~/src/integrations/cloudflare-r2/media.zod"
+import { MAX_IMAGE_BYTES, MAX_IMAGE_NAME_LENGTH, MEDIA_ERROR_CODES } from "~/src/integrations/cloudflare-r2/media.zod"
+
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 
 interface PutCall {
   readonly body: ArrayBuffer
@@ -40,7 +42,7 @@ vi.mock("@tanstack/react-start", () => ({
     let validate = passthrough
     const builder = {
       handler: (handler: (options: { data: unknown }) => unknown) => (options: { data: unknown }) =>
-        handler({ data: validate(options.data) }),
+        Promise.resolve(options.data).then((data) => handler({ data: validate(data) })),
       middleware: () => builder,
       validator: (validator: (data: unknown) => unknown) => {
         validate = validator
@@ -77,27 +79,40 @@ beforeEach(() => {
   bucket.puts.length = 0
 })
 
+const refusedWith = (reason: string) => new AppError(ERROR_CODES.VALIDATION, reason)
+
 describe("uploadImageFn rejections", () => {
-  it("refuses a form entry that is not a file", async () => {
-    await expect(uploadImageFn({ data: formDataWith("not-a-file") })).rejects.toThrow(MEDIA_ERROR_CODES.INVALID_FILE)
+  it("refuses a form entry that is not a file as a validation error the admin can be told about", async () => {
+    await expect(uploadImageFn({ data: formDataWith("not-a-file") })).rejects.toStrictEqual(refusedWith(MEDIA_ERROR_CODES.INVALID_FILE))
   })
 
   it("refuses a file type the store does not accept", async () => {
     const file = new File([PNG_BYTES], "notes.txt", { type: "text/plain" })
 
-    await expect(uploadImageFn({ data: formDataWith(file) })).rejects.toThrow(MEDIA_ERROR_CODES.INVALID_TYPE)
+    await expect(uploadImageFn({ data: formDataWith(file) })).rejects.toStrictEqual(refusedWith(MEDIA_ERROR_CODES.INVALID_TYPE))
   })
 
   it("refuses an empty file", async () => {
     const file = new File([], "empty.png", { type: "image/png" })
 
-    await expect(uploadImageFn({ data: formDataWith(file) })).rejects.toThrow(MEDIA_ERROR_CODES.TOO_LARGE)
+    await expect(uploadImageFn({ data: formDataWith(file) })).rejects.toStrictEqual(refusedWith(MEDIA_ERROR_CODES.TOO_LARGE))
   })
 
-  it("refuses a file over the size ceiling", async () => {
-    const file = new File([new Uint8Array(MAX_IMAGE_BYTES + 1)], "huge.png", { type: "image/png" })
+  it("accepts a file of exactly the size ceiling and refuses one byte more", async () => {
+    const largest = new File([new Uint8Array(MAX_IMAGE_BYTES)], "largest.png", { type: "image/png" })
+    const huge = new File([new Uint8Array(MAX_IMAGE_BYTES + 1)], "huge.png", { type: "image/png" })
 
-    await expect(uploadImageFn({ data: formDataWith(file) })).rejects.toThrow(MEDIA_ERROR_CODES.TOO_LARGE)
+    await expect(uploadImageFn({ data: formDataWith(largest) })).resolves.toHaveProperty("key")
+    await expect(uploadImageFn({ data: formDataWith(huge) })).rejects.toStrictEqual(refusedWith(MEDIA_ERROR_CODES.TOO_LARGE))
+  })
+
+  it("accepts a file name as long as a file system allows and refuses a longer one", async () => {
+    const longestName = `${"r".repeat(MAX_IMAGE_NAME_LENGTH - ".png".length)}.png`
+    const longest = formDataWith(pngFile(longestName))
+    const tooLong = formDataWith(pngFile(`r${longestName}`))
+
+    await expect(uploadImageFn({ data: longest })).resolves.toHaveProperty("key")
+    await expect(uploadImageFn({ data: tooLong })).rejects.toStrictEqual(refusedWith(MEDIA_ERROR_CODES.INVALID_FILE))
   })
 
   it("stores nothing when the upload is rejected", async () => {
