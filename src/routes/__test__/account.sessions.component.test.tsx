@@ -10,7 +10,7 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 import { I18N } from "~/src/integrations/use-intl/i18n.config"
 
 import {
-  CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT,
+  CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE,
   CUSTOMER_ACCOUNT_QUERY_KEYS,
 } from "~/src/modules/customer-account/customer-account.constants"
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
@@ -45,8 +45,18 @@ vi.mock("sonner", () => ({ toast: { error: mutations.toastError, success: mutati
 vi.mock("~/src/modules/customer-account/use-cases/list-customer-sessions", () => ({
   listCustomerSessionsQuery: () => ({ queryFn: () => Promise.resolve(state.sessions), queryKey: ["customer-account", "sessions"] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/list-customer-login-history", () => ({
-  listCustomerLoginHistoryQuery: () => ({ queryFn: () => Promise.resolve(state.history), queryKey: ["customer-account", "login-history"] }),
+vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-page", () => ({
+  getCustomerLoginHistoryPageQuery: (input: { page: number; pageSize: number }) => ({
+    queryFn: () =>
+      Promise.resolve({
+        hasMore: false,
+        items: state.history.slice((input.page - 1) * input.pageSize, input.page * input.pageSize),
+        limit: input.pageSize,
+        offset: (input.page - 1) * input.pageSize,
+        total: state.history.length,
+      }),
+    queryKey: ["customer-account", "login-history", input],
+  }),
 }))
 vi.mock("~/src/modules/customer-account/use-cases/revoke-customer-session", () => ({
   revokeCustomerSessionMutation: { mutationFn: mutations.revokeOne, mutationKey: ["customer-account", "revoke-session"] },
@@ -79,6 +89,7 @@ const session = (overrides: Partial<CustomerAccount["session"]> = {}): CustomerA
 
 const historyEntry = (minutesAgo: number): CustomerAccount["loginHistoryItem"] => ({
   createdAt: new Date(Date.UTC(2026, 1, 1, 10, 0) - minutesAgo * 60_000),
+  id: `audit-${String(minutesAgo)}`,
   ipAddress: "198.51.100.7",
   status: "success",
 })
@@ -279,7 +290,7 @@ describe("account sessions login history", () => {
   })
 
   it("says so when the address behind a sign in was not recorded", async () => {
-    state.history = [{ createdAt: new Date("2026-02-01T10:00:00.000Z"), status: "success" }]
+    state.history = [{ createdAt: new Date("2026-02-01T10:00:00.000Z"), id: "audit-1", status: "success" }]
     renderPage()
 
     expect(await screen.findByText("Address not recorded")).toBeInTheDocument()
@@ -293,38 +304,47 @@ describe("account sessions login history", () => {
     expect(screen.queryByText("Blocked")).toBeNull()
   })
 
-  it("says the history stops at the newest attempts once it reaches the limit", async () => {
-    state.history = Array.from({ length: CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT }, (_, index) => historyEntry(index))
+  it("pages through a history longer than one page, older attempts on the next page", async () => {
+    state.history = Array.from({ length: CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE + 2 }, (_, index) => historyEntry(index))
     renderPage()
 
-    expect(
-      await screen.findByText(`Showing your ${String(CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT)} most recent sign-in attempts.`),
-    ).toBeInTheDocument()
+    expect(await screen.findAllByText("Successful sign-in")).toHaveLength(CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE)
+    expect(screen.getByText("Page 1 of 2")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }))
+
+    expect(await screen.findByText("Page 2 of 2")).toBeInTheDocument()
+    expect(screen.getAllByText("Successful sign-in")).toHaveLength(2)
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled()
+
+    await userEvent.click(screen.getByRole("button", { name: "Previous" }))
+
+    expect(await screen.findByText("Page 1 of 2")).toBeInTheDocument()
   })
 
-  it("adds no limit note to a history shorter than the limit", async () => {
-    state.history = Array.from({ length: CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT - 1 }, (_, index) => historyEntry(index))
+  it("adds no page controls to a history that fits on one page", async () => {
+    state.history = Array.from({ length: CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE }, (_, index) => historyEntry(index))
     renderPage()
 
     await screen.findAllByText("Successful sign-in")
 
-    expect(screen.queryByText(/most recent sign-in attempts/u)).toBeNull()
+    expect(screen.queryByRole("navigation", { name: "Sign-in history pages" })).toBeNull()
   })
 })
 
 describe("account sessions page in Polish", () => {
-  it("names each sign-in outcome once and says the history stops at the newest attempts", async () => {
+  it("names each sign-in outcome once and pages the history in Polish", async () => {
     state.history = [
       { ...historyEntry(0), status: "failed" },
-      ...Array.from({ length: CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT - 1 }, (_, index) => historyEntry(index + 1)),
+      ...Array.from({ length: CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE }, (_, index) => historyEntry(index + 1)),
     ]
     renderPolishPage()
 
-    expect(
-      await screen.findByText(`Pokazujemy ${String(CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT)} ostatnich prób logowania.`),
-    ).toBeInTheDocument()
+    expect(await screen.findByText("Strona 1 z 2")).toBeInTheDocument()
     expect(screen.getAllByText("Nieudana próba logowania")).toHaveLength(1)
-    expect(screen.getAllByText("Udane logowanie")).toHaveLength(CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT - 1)
+    expect(screen.getAllByText("Udane logowanie")).toHaveLength(CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE - 1)
+    expect(screen.getByRole("button", { name: "Następna" })).toBeEnabled()
   })
 
   it("says this is the only device signed in, with nothing to sign out", async () => {

@@ -50,8 +50,8 @@ vi.mock("~/src/modules/order-withdrawal/use-cases/withdraw-from-customer-order",
 vi.mock("~/src/modules/customer-account/use-cases/list-customer-sessions", () => ({
   listCustomerSessionsQuery: () => ({ queryKey: ["customer-account", "sessions"] }),
 }))
-vi.mock("~/src/modules/customer-account/use-cases/list-customer-login-history", () => ({
-  listCustomerLoginHistoryQuery: () => ({ queryKey: ["customer-account", "login-history"] }),
+vi.mock("~/src/modules/customer-account/use-cases/get-customer-login-history-page", () => ({
+  getCustomerLoginHistoryPageQuery: (input: unknown) => ({ queryKey: ["customer-account", "login-history", input] }),
 }))
 vi.mock("~/src/modules/customer-account/use-cases/revoke-customer-session", () => ({ revokeCustomerSessionMutation: {} }))
 vi.mock("~/src/modules/customer-account/use-cases/revoke-other-customer-sessions", () => ({ revokeOtherCustomerSessionsMutation: {} }))
@@ -121,7 +121,10 @@ describe("account page loaders", () => {
     const loaded = load("/account/sessions")
 
     expect(query).toHaveBeenNthCalledWith(1, { queryKey: ["customer-account", "sessions"], staleTime: "static" })
-    expect(query).toHaveBeenNthCalledWith(2, { queryKey: ["customer-account", "login-history"], staleTime: "static" })
+    expect(query).toHaveBeenNthCalledWith(2, {
+      queryKey: ["customer-account", "login-history", { page: 1, pageSize: 10 }],
+      staleTime: "static",
+    })
     sessions.resolve(["session"])
     history.resolve(["login"])
 

@@ -206,7 +206,10 @@
       "success": "Udane logowanie",
       "failed": "Nieudana próba logowania"
     },
-    "loginHistoryLimit": "{count, plural, one {Pokazujemy ostatnią próbę logowania.} few {Pokazujemy # ostatnie próby logowania.} many {Pokazujemy # ostatnich prób logowania.} other {Pokazujemy # ostatniej próby logowania.}}",
+    "historyPagination": "Strony historii logowania",
+    "previousPage": "Poprzednia",
+    "nextPage": "Następna",
+    "pageOf": "Strona {page} z {total}",
     "onlyThisDevice": "Nie masz aktywnych sesji na innych urządzeniach.",
     "revokeSuccess": "Urządzenie zostało wylogowane.",
     "revokeError": "Nie udało się wylogować urządzenia. Spróbuj ponownie.",

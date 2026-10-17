@@ -157,7 +157,7 @@ describe("hot reads", () => {
   it.each([
     ["an order's timeline", () => getAdminOrderTimelineRows("order-1")],
     ["a customer's timeline", () => getCustomerAuditTimelineQuery("user-1")],
-    ["a customer's sign-ins", () => getCustomerLoginAuditRows("user-1")],
+    ["a customer's sign-ins", () => getCustomerLoginAuditRows({ limit: 10, offset: 0, userId: "user-1" })],
     ["a customer's account activity across their orders", () => getCustomerActivityAuditRows("user-1", ["order-1", "order-2"])],
   ])("read %s by resource and action instead of walking every event of those actions", async (_label, read) => {
     await expect(planSteps(read)).resolves.toContain(

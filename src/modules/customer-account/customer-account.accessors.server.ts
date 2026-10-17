@@ -3,12 +3,15 @@ import { and, asc, count, desc, eq, inArray, notInArray, or, sql } from "drizzle
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 
+import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
+import { containsAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import {
-  CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT,
+  CUSTOMER_ACCOUNT_LOGIN_STATUS,
   CUSTOMER_ACCOUNT_ORDERS_LIMIT,
   CUSTOMER_ACCOUNT_RECOMMENDED_CATEGORY_LIMIT,
+  type CustomerAccountLoginStatus,
   type CustomerAccountOrderFilter,
 } from "~/src/modules/customer-account/customer-account.constants"
 import { CUSTOMER_AUDIT_TIMELINE_LIMIT } from "~/src/modules/customer-activity/customer-activity.constants"
@@ -130,19 +133,49 @@ export const getCustomerPurchasedProductIds = async (userId: string): Promise<st
   return rows.map((row) => row.productId)
 }
 
-export const getCustomerLoginAuditRows = (userId: string) =>
+const LOGIN_AUDIT_ACTIONS = {
+  [CUSTOMER_ACCOUNT_LOGIN_STATUS.FAILED]: [AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED],
+  [CUSTOMER_ACCOUNT_LOGIN_STATUS.SUCCESS]: [AUDIT_LOG_ACTION.AUTH_LOGIN],
+} as const
+
+const customerLoginAuditWhere = ({ search, status, userId }: Readonly<CustomerLoginAuditFilter>) =>
+  and(
+    eq(auditLog.resourceId, userId),
+    inArray(
+      auditLog.action,
+      status === undefined ? [AUDIT_LOG_ACTION.AUTH_LOGIN, AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED] : LOGIN_AUDIT_ACTIONS[status],
+    ),
+    search === undefined ? undefined : containsAdminSearchTerm(auditLog.ip, search),
+  )
+
+export const getCustomerLoginAuditRows = ({ limit, offset, ...filter }: Readonly<CustomerLoginAuditFilter & ListPaginationParams>) =>
   db
     .select({
       action: auditLog.action,
       createdAt: auditLog.createdAt,
+      id: auditLog.id,
       ip: auditLog.ip,
     })
     .from(auditLog)
-    .where(
-      and(eq(auditLog.resourceId, userId), inArray(auditLog.action, [AUDIT_LOG_ACTION.AUTH_LOGIN, AUDIT_LOG_ACTION.AUTH_LOGIN_FAILED])),
-    )
-    .orderBy(desc(auditLog.createdAt))
-    .limit(CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT)
+    .where(customerLoginAuditWhere(filter))
+    .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
+    .limit(limit)
+    .offset(offset)
+
+export const getCustomerLoginAuditPage = async (params: Readonly<CustomerLoginAuditFilter & ListPaginationParams>) => {
+  const [[countRow], rows] = await db.batch([
+    db.select({ count: count() }).from(auditLog).where(customerLoginAuditWhere(params)),
+    getCustomerLoginAuditRows(params),
+  ])
+
+  return { rows, total: countRow?.count ?? NO_OFFSET }
+}
+
+interface CustomerLoginAuditFilter {
+  readonly search?: string | undefined
+  readonly status?: CustomerAccountLoginStatus | undefined
+  readonly userId: string
+}
 
 export const getCustomerOrderNumbers = (userId: string) =>
   db

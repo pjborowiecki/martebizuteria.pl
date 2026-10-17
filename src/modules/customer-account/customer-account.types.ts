@@ -3,7 +3,7 @@ import { type z } from "zod/v4"
 import { type InpostLockerPoint } from "~/src/integrations/inpost/inpost.zod"
 
 import { type Address } from "~/src/modules/address/address.types"
-import { type CustomerAccountOrderStatus } from "~/src/modules/customer-account/customer-account.constants"
+import { type CustomerAccountLoginStatus, type CustomerAccountOrderStatus } from "~/src/modules/customer-account/customer-account.constants"
 import { type customerAccountZodSchemas } from "~/src/modules/customer-account/customer-account.zod"
 import { type Order } from "~/src/modules/order/order.types"
 
@@ -136,8 +136,9 @@ interface CustomerAccountSession {
 
 interface CustomerAccountLoginHistoryItem {
   readonly createdAt: Date
+  readonly id: string
   readonly ipAddress?: string | undefined
-  readonly status: "failed" | "success"
+  readonly status: CustomerAccountLoginStatus
 }
 
 export interface CustomerAccount {

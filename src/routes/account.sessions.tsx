@@ -5,9 +5,14 @@ import { createFileRoute } from "@tanstack/react-router"
 import { toast } from "sonner"
 import { useTranslations } from "use-intl/react"
 
-import { CUSTOMER_ACCOUNT_QUERY_KEYS, CUSTOMER_ACCOUNT_QUERY_STALE_MS } from "~/src/modules/customer-account/customer-account.constants"
+import { LIST_PAGE_FIRST } from "~/src/modules/_core/utils/pagination"
+import {
+  CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE,
+  CUSTOMER_ACCOUNT_QUERY_KEYS,
+  CUSTOMER_ACCOUNT_QUERY_STALE_MS,
+} from "~/src/modules/customer-account/customer-account.constants"
 import { accountPageMeta } from "~/src/modules/customer-account/customer-account.meta"
-import { listCustomerLoginHistoryQuery } from "~/src/modules/customer-account/use-cases/list-customer-login-history"
+import { getCustomerLoginHistoryPageQuery } from "~/src/modules/customer-account/use-cases/get-customer-login-history-page"
 import { listCustomerSessionsQuery } from "~/src/modules/customer-account/use-cases/list-customer-sessions"
 import { revokeOtherCustomerSessionsMutation } from "~/src/modules/customer-account/use-cases/revoke-other-customer-sessions"
 
@@ -23,7 +28,6 @@ const SessionsPage = (): JSX.Element => {
   const t = useTranslations("pages.account.sessions")
   const queryClient = useQueryClient()
   const { data: sessions } = useSuspenseQuery(listCustomerSessionsQuery())
-  const { data: loginHistory } = useSuspenseQuery(listCustomerLoginHistoryQuery())
   const revokeOtherDevicesMutation = useMutation({
     ...revokeOtherCustomerSessionsMutation,
     onError: () => {
@@ -72,7 +76,7 @@ const SessionsPage = (): JSX.Element => {
       <section>
         <h2 className="text-[11px] tracking-[0.2em] text-muted-foreground uppercase">{t("loginHistory")}</h2>
         <Separator className="mt-3 mb-0" />
-        <LoginHistoryList entries={loginHistory} />
+        <LoginHistoryList />
       </section>
 
       <Separator className="my-10" />
@@ -100,7 +104,7 @@ export const Route = createFileRoute("/account/sessions")({
         staleTime: "static",
       }),
       context.queryClient.query({
-        ...listCustomerLoginHistoryQuery(),
+        ...getCustomerLoginHistoryPageQuery({ page: LIST_PAGE_FIRST, pageSize: CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE }),
         staleTime: "static",
       }),
     ])
