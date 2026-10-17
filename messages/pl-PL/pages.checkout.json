@@ -161,9 +161,6 @@
     "placeholderItemPrice": "340 PLN",
     "validation": {
       "addressRequired": "Adres jest wymagany",
-      "blikCodeRequired": "Wymagany jest poprawny 6-cyfrowy kod BLIK",
-      "cardholderNameRequired": "Imię i nazwisko posiadacza karty jest wymagane",
-      "cardDetailsRequired": "Proszę podać prawidłowe dane płatności",
       "emailInvalid": "Wprowadź prawidłowy adres e-mail",
       "phoneRequired": "Numer telefonu jest wymagany",
       "phoneInvalid": "Wprowadź prawidłowy numer telefonu",
@@ -177,7 +174,6 @@
       "countryNotDelivered": "Obecnie wysyłamy zamówienia wyłącznie na terenie Polski",
       "deliveryRequired": "Wybierz metodę dostawy",
       "lockerIdRequired": "Wybierz paczkomat",
-      "paymentRequired": "Wybierz metodę płatności",
       "companyNameRequired": "Nazwa firmy jest wymagana",
       "nipRequired": "NIP jest wymagany",
       "nipInvalid": "Wprowadź prawidłowy 10-cyfrowy NIP"
@@ -203,19 +199,6 @@
     "countries": {
       "PL": "Polska"
     }
-  },
-  "validation": {
-    "addressRequired": "Adres jest wymagany.",
-    "cityRequired": "Miasto jest wymagane.",
-    "countryRequired": "Kraj jest wymagany.",
-    "emailInvalid": "Podaj prawidłowy adres e-mail.",
-    "firstNameRequired": "Imię jest wymagane.",
-    "lastNameRequired": "Nazwisko jest wymagane.",
-    "lockerIdRequired": "Wybierz paczkomat.",
-    "paymentFailed": "Nie udało się zrealizować płatności. Spróbuj ponownie.",
-    "phoneInvalid": "Podaj prawidłowy numer telefonu.",
-    "postCodeInvalid": "Podaj prawidłowy kod pocztowy (00-000).",
-    "postCodeRequired": "Kod pocztowy jest wymagany."
   },
   "discount": {
     "label": "Kod rabatowy",

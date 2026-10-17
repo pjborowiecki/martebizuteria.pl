@@ -2,7 +2,7 @@ import { type JSX, type MouseEvent, useCallback } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { ArrowRight, Package, Store, Truck } from "lucide-react"
-import { useWatch } from "react-hook-form"
+import { useFormState, useWatch } from "react-hook-form"
 import { useTranslations } from "use-intl/react"
 
 import { DELIVERY_METHOD, type DeliveryMethodType } from "~/src/modules/delivery-method/delivery-method.constants"
@@ -11,6 +11,7 @@ import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-case
 import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { Button } from "~/src/presentation/components/shadcn/button"
+import { FieldError } from "~/src/presentation/components/shadcn/field"
 import { Skeleton } from "~/src/presentation/components/shadcn/skeleton"
 
 import { DeliveryCourier } from "~/src/presentation/components/custom/checkout/components/_steps/delivery/courier/delivery-courier"
@@ -100,6 +101,9 @@ export const DeliveryStep = (): JSX.Element => {
   const { priceOf, shortfall } = useCheckoutDeliveryPricing()
 
   const deliveryMethodType = useWatch({ control, name: "deliveryMethodType" })
+  const deliveryMethodError = useFormState({ control, name: "deliveryMethod" }).errors.deliveryMethod?.message
+  const showsCourierPicker =
+    deliveryMethodType === DELIVERY_METHOD.COURIER && deliveryMethods.some((method) => method.type === DELIVERY_METHOD.COURIER)
 
   const handleTypeChange = useCallback(
     (type: string) => {
@@ -107,14 +111,15 @@ export const DeliveryStep = (): JSX.Element => {
 
       const methods = deliveryMethods.filter((m) => m.type === type)
       const [firstMethod] = methods
+      const revalidation = { shouldValidate: deliveryMethodError !== undefined }
 
       if (methods.length === 1 && firstMethod !== undefined) {
-        setValue("deliveryMethod", firstMethod.id)
+        setValue("deliveryMethod", firstMethod.id, revalidation)
       } else {
-        setValue("deliveryMethod", "")
+        setValue("deliveryMethod", "", revalidation)
       }
     },
-    [deliveryMethods, setValue],
+    [deliveryMethodError, deliveryMethods, setValue],
   )
 
   const handleContinue = useCallback(
@@ -150,6 +155,8 @@ export const DeliveryStep = (): JSX.Element => {
           })
         )}
       </CheckoutRadioField>
+
+      {!showsCourierPicker && deliveryMethodError !== undefined && <FieldError>{t(deliveryMethodError)}</FieldError>}
 
       {shortfall !== undefined && shortfall > 0 && (
         <p className="text-sm text-muted-foreground">
