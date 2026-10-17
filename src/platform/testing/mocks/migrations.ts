@@ -27,6 +27,7 @@ export const MIGRATION = {
   ORDER_WITHDRAWALS: "20261010230000_order_withdrawals",
   PRICE_HISTORY: "20261010410000_price_history",
   PRIVACY_POLICY_ACCOUNT_DELETION: "20261010210000_privacy_policy_account_deletion",
+  PRIVACY_POLICY_EVERY_COOKIE: "20261017110000_privacy_policy_every_cookie",
   PRIVACY_POLICY_PAGE: "20261010200000_privacy_policy_page",
   PRIVACY_POLICY_WITHOUT_BOT_CHECK: "20261012100000_privacy_policy_without_bot_check",
   RETURNS_AND_COMPLAINTS_PAGE: "20261005210000_returns_and_complaints_page",
