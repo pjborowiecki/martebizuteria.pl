@@ -6,8 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { formatDateToIsoDateLocal } from "~/src/modules/_core/utils/iso-date"
-
 const UNKNOWN_OPERATOR = "sometime"
 
 vi.mock("~/src/presentation/components/custom/pages/admin/lib/admin-date-filter-form", () => ({
@@ -88,7 +86,9 @@ const LABELS: AdminDateColumnFilterLabels = {
 
 const FILTER_VALUE_TEST_ID = "created-filter-value"
 
-const TODAY_ISO = formatDateToIsoDateLocal(new Date())
+const HALF_PAST_MIDNIGHT_IN_WARSAW = new Date("2026-10-16T22:30:00.000Z")
+
+const TODAY_ISO = "2026-10-17"
 
 const FilterHarness = (): JSX.Element => (
   <DataGridHarness>
@@ -121,9 +121,14 @@ const openFilter = async (): Promise<void> => {
 
 beforeEach(() => {
   stubResizeObserver()
+  vi.useFakeTimers({ toFake: ["Date"] })
+  vi.setSystemTime(HALF_PAST_MIDNIGHT_IN_WARSAW)
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+})
 
 describe("AdminDateColumnFilter given an operator it cannot recognise", () => {
   it("keeps the draft on the operator it opened with", async () => {
