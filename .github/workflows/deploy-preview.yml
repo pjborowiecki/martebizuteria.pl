@@ -36,7 +36,6 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_ACCESS_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          VITE_APP_URL: ${{ vars.VITE_APP_URL }}
           VITE_R2_URL: ${{ vars.VITE_R2_URL }}
           VITE_STRIPE_PUBLISHABLE_KEY: ${{ vars.VITE_STRIPE_PUBLISHABLE_KEY }}
           AUTH_SECRET: ${{ secrets.AUTH_SECRET }}

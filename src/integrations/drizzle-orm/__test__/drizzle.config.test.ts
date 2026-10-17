@@ -23,12 +23,17 @@ describe("Drizzle migration configuration", () => {
     })
   })
 
-  it("can load the schema configuration when management credentials are absent", async () => {
-    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", undefined)
-    vi.stubEnv("CLOUDFLARE_DATABASE_ID", undefined)
-    vi.stubEnv("CLOUDFLARE_ACCESS_TOKEN", undefined)
+  it.each([
+    { accountId: undefined, databaseId: undefined, token: undefined },
+    { accountId: "fixture-account", databaseId: undefined, token: "fixture-token" },
+    { accountId: "fixture-account", databaseId: "fixture-database", token: undefined },
+  ])("leaves the D1 credentials out unless all three are supplied: %o", async ({ accountId, databaseId, token }) => {
+    vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", accountId)
+    vi.stubEnv("CLOUDFLARE_DATABASE_ID", databaseId)
+    vi.stubEnv("CLOUDFLARE_ACCESS_TOKEN", token)
     const { default: config } = await import("~/src/integrations/drizzle-orm/drizzle.config")
 
-    expect(config).toHaveProperty("dbCredentials", { accountId: "", databaseId: "", token: "" })
+    expect(config).not.toHaveProperty("dbCredentials")
+    expect(config).toMatchObject({ dialect: "sqlite", driver: "d1-http", schema: "./src/integrations/drizzle-orm/drizzle.schemas.ts" })
   })
 })

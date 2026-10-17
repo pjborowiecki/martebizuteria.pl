@@ -1,11 +1,13 @@
 import { defineConfig } from "drizzle-kit"
 
+const accountId = process.env["CLOUDFLARE_ACCOUNT_ID"]
+const databaseId = process.env["CLOUDFLARE_DATABASE_ID"]
+const token = process.env["CLOUDFLARE_ACCESS_TOKEN"]
+
 export default defineConfig({
-  dbCredentials: {
-    accountId: process.env["CLOUDFLARE_ACCOUNT_ID"] ?? "",
-    databaseId: process.env["CLOUDFLARE_DATABASE_ID"] ?? "",
-    token: process.env["CLOUDFLARE_ACCESS_TOKEN"] ?? "",
-  },
+  ...(accountId === undefined || databaseId === undefined || token === undefined
+    ? {}
+    : { dbCredentials: { accountId, databaseId, token } }),
   dialect: "sqlite",
   driver: "d1-http",
   migrations: {
