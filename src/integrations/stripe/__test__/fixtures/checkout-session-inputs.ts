@@ -36,13 +36,33 @@ export interface CatalogueVariant {
   title: string
 }
 
-export const catalogueProduct = (variants: CatalogueVariant[]) => ({ handle: CART_ITEM.slug, id: "product-1", variants })
+export interface CatalogueImage {
+  url: string
+  variantId: string | null
+}
+
+export const CATALOGUE_IMAGE = "products/aurora.jpg"
+
+export const catalogueProduct = (
+  variants: CatalogueVariant[],
+  {
+    images = [{ url: CATALOGUE_IMAGE, variantId: null }],
+    thumbnail = CATALOGUE_IMAGE,
+  }: { images?: CatalogueImage[]; thumbnail?: string | null } = {},
+) => ({
+  handle: CART_ITEM.slug,
+  id: "product-1",
+  images,
+  thumbnail,
+  titles: { "en-US": "Aurora bracelet", "pl-PL": "Bransoletka Aurora" },
+  variants,
+})
 
 export const availableVariant = (): CatalogueVariant => ({
   id: CART_ITEM.variantId,
   inventory: { id: "inventory-1", quantityAvailable: 5 },
   price: 24_900,
-  title: "Rozmiar M (katalog)",
+  title: "Rozmiar M",
 })
 
 export const createInput = (values: Record<string, unknown> = {}, items: Record<string, unknown>[] = [CART_ITEM]) =>

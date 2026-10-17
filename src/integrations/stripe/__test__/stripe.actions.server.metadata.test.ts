@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 interface SessionParams {
+  line_items: readonly { price_data: { product_data: { name: string } } }[]
   metadata: Record<string, string>
   payment_intent_data: Record<string, unknown> & { metadata: Record<string, string> }
 }
@@ -10,7 +11,7 @@ const mocked = vi.hoisted(() => ({
   checkoutSessionsExpire: vi.fn(),
   checkoutSessionsRetrieve: vi.fn(),
   createCheckout: vi.fn(),
-  createPendingPayment: vi.fn<(input: { lines: readonly { variantId: string }[] }) => Promise<void>>(),
+  createPendingPayment: vi.fn<(input: { lines: readonly { imageUrl?: string | undefined; variantId: string }[] }) => Promise<void>>(),
   ensureStripeCustomerWithEmail: vi.fn(),
   getHeldLinesByTransactionId: vi.fn<(transactionId: string) => Promise<readonly { qty: number; variantId: string }[]>>(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
@@ -86,6 +87,7 @@ vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://
 
 import {
   CART_ITEM,
+  CATALOGUE_IMAGE,
   HELD_LINES,
   availableVariant,
   catalogueProduct,
@@ -134,14 +136,23 @@ const longCart = (size: number) =>
 const stubCatalogueForCart = (cartItems: readonly { slug: string; variantId: string }[]): void => {
   mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue(
     cartItems.map((item) => ({
+      ...catalogueProduct([{ ...availableVariant(), id: item.variantId }]),
       handle: item.slug,
       id: `product-${item.variantId}`,
-      variants: [{ ...availableVariant(), id: item.variantId }],
     })),
   )
 }
 
 const createdSession = (): SessionParams | undefined => mocked.checkoutSessionsCreate.mock.lastCall?.[0]
+
+const recordedLines = () => mocked.createPendingPayment.mock.lastCall?.[0].lines
+
+const FORGED_CART_ITEM = {
+  ...CART_ITEM,
+  image: "https://attacker.test/tracking-pixel.png",
+  title: "Darmowa bransoletka",
+  variantTitle: "<a href='https://attacker.test'>odbierz nagrodę</a>",
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -233,5 +244,79 @@ describe("a cart of the most lines the checkout takes", () => {
     expect(mocked.supersedeCheckoutSession.mock.lastCall?.[0].lines.map((line) => line.variantId)).toStrictEqual(
       cartItems.map((item) => item.variantId),
     )
+  })
+})
+
+describe("the lines a payment, its order and its e-mails record", () => {
+  it("names and pictures each line from the catalogue, whatever title and image the browser sends", async () => {
+    const catalogueLine = {
+      handle: CART_ITEM.slug,
+      imageUrl: `https://assets.test/${CATALOGUE_IMAGE}`,
+      price: 24_900,
+      qty: 2,
+      title: "Bransoletka Aurora — Rozmiar M",
+      variantId: CART_ITEM.variantId,
+    }
+
+    await handleCreateCheckoutSession(createInput({}, [FORGED_CART_ITEM]))
+    await handleUpdateCheckoutSession(updateInput({}, [FORGED_CART_ITEM]))
+
+    expect(recordedLines()).toStrictEqual([catalogueLine])
+    expect(mocked.supersedeCheckoutSession.mock.lastCall?.[0].lines).toStrictEqual([catalogueLine])
+    expect(mocked.checkoutSessionsCreate.mock.calls.map(([params]) => params.line_items[0]?.price_data.product_data.name)).toStrictEqual([
+      catalogueLine.title,
+      catalogueLine.title,
+    ])
+  })
+
+  it("names the line in the language the shopper checks out in", async () => {
+    mocked.requestLocale.value = "en-US"
+
+    await handleCreateCheckoutSession(createInput())
+
+    expect(recordedLines()).toMatchObject([{ title: "Aurora bracelet — Rozmiar M" }])
+  })
+
+  it("names a product sold without options by its title alone", async () => {
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([{ ...availableVariant(), title: "Default" }])])
+
+    await handleCreateCheckoutSession(createInput())
+
+    expect(recordedLines()).toMatchObject([{ title: "Bransoletka Aurora" }])
+  })
+
+  it("shows the picture of the variant bought rather than the product's own", async () => {
+    const images = [
+      { url: CATALOGUE_IMAGE, variantId: null },
+      { url: "products/aurora-other.jpg", variantId: "variant-2" },
+      { url: "products/aurora-m.jpg", variantId: CART_ITEM.variantId },
+    ]
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([catalogueProduct([availableVariant()], { images })])
+
+    await handleCreateCheckoutSession(createInput())
+
+    expect(recordedLines()).toMatchObject([{ imageUrl: "https://assets.test/products/aurora-m.jpg" }])
+  })
+
+  it("falls back to the product's thumbnail when neither the variant nor the product has a picture of its own", async () => {
+    const images = [{ url: "products/aurora-other.jpg", variantId: "variant-2" }]
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([
+      catalogueProduct([availableVariant()], { images, thumbnail: "products/aurora-other.jpg" }),
+    ])
+
+    await handleCreateCheckoutSession(createInput())
+
+    expect(recordedLines()).toMatchObject([{ imageUrl: "https://assets.test/products/aurora-other.jpg" }])
+  })
+
+  it("records no picture for a product the shop has no picture of", async () => {
+    mocked.getPublishedProductsWithInventoryByHandles.mockResolvedValue([
+      catalogueProduct([availableVariant()], { images: [], thumbnail: null }),
+    ])
+
+    await handleCreateCheckoutSession(createInput({}, [FORGED_CART_ITEM]))
+
+    expect(recordedLines()).toHaveLength(1)
+    expect(recordedLines()?.[0]?.imageUrl).toBeUndefined()
   })
 })

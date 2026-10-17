@@ -94,7 +94,7 @@ A guard that matches no row is not an error, so D1 commits the lines that did ma
 
 A checkout update replaces its Stripe session but never lets go of the stock the shopper keeps. `quantitiesBeyond(lines, baselineLines)` compares two sets of lines per variant and keeps of each line only the units the baseline does not already cover, spending the baseline of a variant once across several lines of it. The update uses it both ways:
 
-- `quantitiesBeyond(validatedItems, heldLines)` is what the edited cart adds. It is reserved with `reserveInventoryForItems` on the inventory ids validation returned, before the replacement session is created and before the old one is expired. A refusal leaves the old session, its stock and the checkout as they were.
+- `quantitiesBeyond(lines, heldLines)` is what the edited cart adds. It is reserved with `reserveInventoryForItems` on the inventory ids validation returned, before the replacement session is created and before the old one is expired. A refusal leaves the old session, its stock and the checkout as they were.
 - `quantitiesBeyond(heldLines, reservedLines)` is what the edited cart drops. `supersedeCheckoutSession` releases only that, in the batch that moves the payment.
 
 The units both sessions hold are therefore never released, so another checkout cannot take a one-of-a-kind piece while its shopper changes the delivery address or the quantity.

@@ -111,6 +111,7 @@ vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://
 
 import {
   CART_ITEM,
+  CATALOGUE_IMAGE,
   HELD_LINES,
   availableVariant,
   catalogueProduct,
@@ -127,7 +128,7 @@ import { ERROR_CODES } from "~/src/modules/_core/constants/errors"
 const EXPECTED_LINES = [
   {
     handle: CART_ITEM.slug,
-    imageUrl: `https://assets.test/${CART_ITEM.image}`,
+    imageUrl: `https://assets.test/${CATALOGUE_IMAGE}`,
     price: 24_900,
     qty: 2,
     title: "Bransoletka Aurora — Rozmiar M",
@@ -322,32 +323,20 @@ describe("handleCreateCheckoutSession", () => {
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ metadata }))
   })
 
-  it("reserves the catalogue price, stock row and catalogue variant title, not the values the client sent", async () => {
-    await handleCreateCheckoutSession(createInput())
+  it("reserves the catalogue price, stock row and line title, not the values the client sent", async () => {
+    await handleCreateCheckoutSession(createInput({}, [{ ...CART_ITEM, price: "1,00 zł", title: "Darmowa bransoletka" }]))
 
     expect(mocked.reserveInventoryForItems).toHaveBeenCalledWith([
       {
-        ...CART_ITEM,
+        handle: CART_ITEM.slug,
+        imageUrl: `https://assets.test/${CATALOGUE_IMAGE}`,
         inventoryId: "inventory-1",
-        lineTitle: "Bransoletka Aurora — Rozmiar M",
         priceCents: 24_900,
-        productId: "product-1",
-        variantTitle: "Rozmiar M (katalog)",
+        qty: 2,
+        title: "Bransoletka Aurora — Rozmiar M",
+        variantId: "variant-1",
       },
     ])
-  })
-
-  it("uses the bare product title when the client sent no variant title", async () => {
-    await handleCreateCheckoutSession(createInput({}, [{ ...CART_ITEM, variantTitle: "" }]))
-
-    expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        line_items: [
-          { price_data: { currency: "pln", product_data: { name: "Bransoletka Aurora" }, unit_amount: 24_900 }, quantity: 2 },
-          { price_data: { currency: "pln", product_data: { name: "Dostawa kurierem" }, unit_amount: 1500 }, quantity: 1 },
-        ],
-      }),
-    )
   })
 
   it("registers a pending payment in the store currency against the new session", async () => {

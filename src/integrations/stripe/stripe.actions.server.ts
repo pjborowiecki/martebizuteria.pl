@@ -56,7 +56,10 @@ import {
   getHeldLinesByTransactionId,
   getPaymentContextByTransactionId,
 } from "~/src/modules/payment/payment.accessors"
+import { isProductLevelImage } from "~/src/modules/product-image/product-image.utils"
+import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
 import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
+import { resolveProductTitle } from "~/src/modules/product/product.utils"
 import { isSalesPaused } from "~/src/modules/store-setting/store-setting.accessors"
 
 import { clientAddress } from "~/src/lib/rate-limit"
@@ -85,7 +88,8 @@ type CheckoutSessionValues = CreateCheckoutSessionInput["checkoutValues"]
 
 interface OrderLine {
   handle: string
-  imageUrl: string
+  imageUrl: string | undefined
+  inventoryId: string
   priceCents: number
   qty: number
   title: string
@@ -210,8 +214,24 @@ const resolveVariant = (products: ResolvedProducts, item: CartItem): { product: 
   return { product, variant }
 }
 
-const validateAndCalculateItems = async (items: CartItem[], heldLines: readonly ReleaseLine[]) => {
+const lineTitleOf = (product: ResolvedProduct, variant: ResolvedVariant, locale: string): string => {
+  const title = resolveProductTitle(product.titles, locale)
+
+  return variant.title === DEFAULT_VARIANT_TITLE ? title : `${title} — ${variant.title}`
+}
+
+const lineImageUrlOf = (product: ResolvedProduct, variantId: string): string | undefined => {
+  const image =
+    product.images.find((candidate) => candidate.variantId === variantId) ??
+    product.images.find((candidate) => isProductLevelImage(candidate.variantId))
+  const source = image?.url ?? product.thumbnail
+
+  return typeof source === "string" ? resolveAssetURL(source) : undefined
+}
+
+const validateAndCalculateItems = async (items: CartItem[], heldLines: readonly ReleaseLine[]): Promise<OrderLine[]> => {
   const products = await getPublishedProductsWithInventoryByHandles(items.map((item) => item.slug))
+  const locale = getCurrentLocale()
 
   return items.map((item) => {
     const { product, variant } = resolveVariant(products, item)
@@ -222,13 +242,13 @@ const validateAndCalculateItems = async (items: CartItem[], heldLines: readonly 
     }
 
     return {
-      ...item,
+      handle: product.handle,
+      imageUrl: lineImageUrlOf(product, variant.id),
       inventoryId: inv.id,
-      lineTitle: item.variantTitle === "" ? item.title : `${item.title} — ${item.variantTitle}`,
       priceCents: variant.price,
-      productId: product.id,
+      qty: item.qty,
+      title: lineTitleOf(product, variant, locale),
       variantId: variant.id,
-      variantTitle: variant.title,
     }
   })
 }
@@ -369,20 +389,7 @@ const createStripeSession = async ({
   return { amount, clientSecret: session.client_secret, sessionId: session.id }
 }
 
-type ValidatedCheckoutItem = Awaited<ReturnType<typeof validateAndCalculateItems>>[number]
-
-const toOrderLines = (validatedItems: ValidatedCheckoutItem[]): OrderLine[] =>
-  validatedItems.map((item) => ({
-    handle: item.slug,
-    imageUrl: resolveAssetURL(item.image),
-    priceCents: item.priceCents,
-    qty: item.qty,
-    title: item.lineTitle,
-    variantId: item.variantId,
-  }))
-
-const toReservedLines = (validatedItems: ValidatedCheckoutItem[]): ReleaseLine[] =>
-  validatedItems.map((item) => ({ qty: item.qty, variantId: item.variantId }))
+const toReservedLines = (lines: OrderLine[]): ReleaseLine[] => lines.map((line) => ({ qty: line.qty, variantId: line.variantId }))
 
 interface OpenCheckoutSessionArgs extends CreateSessionArgs {
   reservedLines: ReleaseLine[]
@@ -429,11 +436,10 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
       ? undefined
       : await ensureStripeCustomerWithEmail({ email, name: session.user.name, userId: session.user.id })
 
-  const validatedItems = await validateAndCalculateItems(data.items, [])
-  const lines = toOrderLines(validatedItems)
+  const lines = await validateAndCalculateItems(data.items, [])
   const { applicableDiscount, shippingFor } = await resolveCheckoutPricing({ checkoutValues, deliveryPrice, freeDeliveryThreshold, lines })
 
-  await reserveInventoryForItems(validatedItems)
+  await reserveInventoryForItems(lines)
 
   try {
     const { checkoutId, discountClaimed } = await createCheckout({
@@ -455,7 +461,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
       email,
       lines,
       origin,
-      reservedLines: toReservedLines(validatedItems),
+      reservedLines: toReservedLines(lines),
       shippingCost,
       userId,
     })
@@ -464,7 +470,7 @@ export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInp
 
     return { ...result, ...quoteCheckout({ discount, lines, shippingCost }) }
   } catch (error) {
-    await releaseInventoryForItems(validatedItems).catch((releaseError: unknown) => {
+    await releaseInventoryForItems(lines).catch((releaseError: unknown) => {
       console.error("Failed to release inventory after checkout error:", releaseError)
     })
     console.error("Stripe/DB error:", error)
@@ -603,7 +609,7 @@ const retireCheckoutSession = async ({
 }
 
 interface ReplaceCheckoutSessionArgs extends Omit<RetireCheckoutSessionArgs, "discountId" | "lines" | "replacement"> {
-  addedStock: ValidatedCheckoutItem[]
+  addedStock: OrderLine[]
   session: CreateSessionArgs
 }
 
@@ -654,24 +660,24 @@ interface SaveReplacementDeliveryArgs extends LockerConfirmation {
   checkoutId: string
   checkoutValues: CheckoutFormSchema
   discountId: string | undefined
+  lines: OrderLine[]
   replacementSessionId: string
-  validatedItems: ValidatedCheckoutItem[]
 }
 
 const saveReplacementDelivery = async ({
   checkoutId,
   checkoutValues,
   discountId,
+  lines,
   lockerPoint,
   lockerUnconfirmed,
   replacementSessionId,
-  validatedItems,
 }: SaveReplacementDeliveryArgs): Promise<void> => {
   try {
     await updateCheckoutDelivery(checkoutId, checkoutValues, { discountId, lockerPoint, lockerUnconfirmed })
   } catch (error) {
     console.error("Failed to save the edited delivery during checkout session update:", error)
-    await abandonReplacementCheckout(replacementSessionId, validatedItems)
+    await abandonReplacementCheckout(replacementSessionId, lines)
 
     throw error
   }
@@ -682,8 +688,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   const { checkoutCreatedAt, checkoutId, heldLines, signedInUser } = await resolveUpdatableCheckout(data.sessionId)
   await assertSalesOpen()
   await assertCheckoutStillEditable(data.sessionId, checkoutCreatedAt)
-  const validatedItems = await validateAndCalculateItems(data.items, heldLines)
-  const lines = toOrderLines(validatedItems)
+  const lines = await validateAndCalculateItems(data.items, heldLines)
   const { checkoutValues, deliveryPrice, deliveryType, freeDeliveryThreshold, lockerPoint, lockerUnconfirmed } = await resolveDelivery(
     data.checkoutValues,
   )
@@ -696,10 +701,10 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   const discount = await claimCheckoutDiscount({ applied: applicableDiscount, checkoutId, email: checkoutValues.email })
   const shippingCost = shippingFor(discount)
   const replacement = await replaceCheckoutSession({
-    addedStock: quantitiesBeyond(validatedItems, heldLines),
+    addedStock: quantitiesBeyond(lines, heldLines),
     heldLines,
     oldSessionId: data.sessionId,
-    reservedLines: toReservedLines(validatedItems),
+    reservedLines: toReservedLines(lines),
     session: {
       checkoutId,
       customerId,
@@ -717,10 +722,10 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
     checkoutId,
     checkoutValues,
     discountId: discount?.discountId,
+    lines,
     lockerPoint,
     lockerUnconfirmed,
     replacementSessionId: replacement.sessionId,
-    validatedItems,
   })
   scheduleProductCatalogInvalidation()
 

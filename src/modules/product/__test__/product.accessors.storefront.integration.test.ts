@@ -183,6 +183,16 @@ describe("getPublishedProductsWithInventoryByHandles", () => {
     expect(rows.find((row) => row.id === "p1")?.variants[0]?.inventory.quantityAvailable).toBe(4)
   })
 
+  it("loads each product's pictures in the order the shop set, so checkout can picture the lines from the catalogue", async () => {
+    insertImage({ id: "img-2", productId: "p1", rank: 1, url: "second.jpg" })
+    insertImage({ id: "img-1", productId: "p1", rank: 0, url: "first.jpg" })
+
+    const [row] = await getPublishedProductsWithInventoryByHandles(["silver-ring"])
+
+    expect(row?.images.map((image) => image.url)).toStrictEqual(["first.jpg", "second.jpg"])
+    expect(row?.thumbnail).toBeNull()
+  })
+
   it("leaves out a draft or archived product that still has stock, so checkout cannot sell it", async () => {
     insertProduct({ handle: "archived-brooch", id: "p6", status: "archived", title: "Archived brooch" })
     insertVariant({ id: "v6", price: 3900, productId: "p6", stock: 5 })
