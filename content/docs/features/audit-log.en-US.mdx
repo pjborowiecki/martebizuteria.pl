@@ -233,11 +233,13 @@ Giving and removing admin access under **Settings › Team** is recorded by `gra
 
 It handles three kinds, each recorded against the signed-in customer with their email as the target and their account id as the resource:
 
-| `kind`            | Recorder                           | Detail and metadata                                                                                                                              |
-| ----------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `cart_item_added` | `recordCustomerCartItemAddedAudit` | `"<title> (<variant>) ×<qty>"`, without the variant when it has no title and without `×1`; `{ productTitle, quantity, variantId, variantTitle }` |
-| `cart_abandoned`  | `recordCustomerCartAbandonedAudit` | No detail of its own, so the customer's name; `{ itemCount, lineCount }`, which the admin shows as "3 items in cart" in its language             |
-| `page_viewed`     | `recordCustomerPageViewedAudit`    | The path; `{ path }`                                                                                                                             |
+| `kind`            | Recorder                           | Detail and metadata                                                                                                                                                 |
+| ----------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cart_item_added` | `recordCustomerCartItemAddedAudit` | `"<title> (<variant>) ×<qty>"`, without the variant when it has no title and without `×1`; `{ productTitle, quantity, variantId, variantTitle }`                    |
+| `cart_abandoned`  | `recordCustomerCartAbandonedAudit` | No detail, so nothing about the customer beyond the target and the resource; `{ itemCount, lineCount }`, which the admin shows as "3 items in cart" in its language |
+| `page_viewed`     | `recordCustomerPageViewedAudit`    | The path; `{ path }`                                                                                                                                                |
+
+Abandoned carts recorded before 17 October 2026 repeated the customer's name as their detail. The migration `20261017100000_cart_abandoned_without_name.sql` clears the detail of every `customer.cart_abandoned` entry whose detail is exactly its actor's name (`actor_name`).
 
 The client side is `customer-activity.tracking.ts`, whose `trackCartItemAdded`, `trackCartAbandoned` and `trackPageViewed` are wrapped in `createClientOnlyFn` and swallow their own errors (`fireAndForget`), so tracking can never break a page. Page views and abandonment are de-duplicated per session through `sessionStorage` keys prefixed `customer-activity:page-view:` and `customer-activity:cart-abandoned-sent`.
 

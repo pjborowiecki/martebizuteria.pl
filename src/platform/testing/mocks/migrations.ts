@@ -11,6 +11,7 @@ const MIGRATION_SQL = import.meta.glob<string>("../../../integrations/drizzle-or
 })
 
 export const MIGRATION = {
+  CART_ABANDONED_WITHOUT_NAME: "20261017100000_cart_abandoned_without_name",
   CLAIM_PAST_GUEST_ORDERS: "20261016140000_claim_past_guest_orders",
   CONTENT_PAGES: "20261002120000_content_pages",
   DELIVERY_METHOD_DESCRIPTIONS: "20261010220000_delivery_method_descriptions",

@@ -203,7 +203,7 @@ The links under it depend on whose order it is. `getOrderConfirmation` returns `
 8. `createPendingPayment(...)` — a `payment` row with `status: "pending"`, `transaction_id` set to the Stripe session id, `amount` set to Stripe's `amount_total`, `currency` `PLN`, `lines` set to the priced cart (see [The cart on the payment row](#the-cart-on-the-payment-row)) and `reserved_lines` set to the `{ qty, variantId }` lines step 5 reserved.
 9. `scheduleProductCatalogInvalidation()`.
 
-If anything after step 5 throws, `releaseInventoryForItems` gives the reservation back before the error propagates, and when steps 7 or 8 throw for a checkout holding a code, `releaseDiscountClaims` gives that use back too.
+If anything after step 5 throws, `releaseInventoryForItems` gives the reservation back before the error propagates. When steps 7 or 8 throw, `forgetCheckoutClientAddress` sets the checkout's `client_address` to `NULL`, and for a checkout holding a code `releaseDiscountClaims` gives that use back too.
 
 It returns `clientSecret`, `sessionId` and `amount` (Stripe's `amount_total`, also stored on the payment) with `lines`, each `{ variantId, qty, unitPrice }` at the database price, and `totals` from `computeOrderTotals` over those lines, the shipping cost and the discount. Those are the figures the session's line items and coupon were built from and the ones fulfilment records on the order, and the client shows them in the summary. `handleUpdateCheckoutSession` returns the same for the replacement session.
 
@@ -237,7 +237,7 @@ Guest checkout is open to anyone, and every new checkout holds its stock for up 
 
 A shopper's browser keeps one open checkout and continues it (see [Coming back to the checkout](#coming-back-to-the-checkout)), so a real shopper meets the open-checkout limits only when paying from several browsers or devices at once, or when several shoppers share one address. The count and the reservation are separate statements, so requests that arrive together can each pass the count; the rate limit of ten new checkouts a minute per address bounds how far that goes.
 
-`createCheckout` stores the address in `checkout.client_address`. Fulfilment sets it back to `NULL` when the checkout completes, and the release when it fails, so the address is kept only while the checkout is open.
+`createCheckout` stores the address in `checkout.client_address`. Fulfilment sets it back to `NULL` when the checkout completes, and the release when it fails, so the address is kept only while the checkout is open. A checkout whose payment never opened, because Stripe refused the session or its payment could not be recorded, is never completed or released, so `handleCreateCheckoutSession` clears the address itself in the same compensation that gives back the stock and the code's use. Nothing needs it then: `countOpenCheckouts` counts only checkouts with a pending payment. Should that clearing fail too, the daily clean-up clears the address with the checkout's other personal data 30 days later (see [Data retention](/docs/guides/data-retention#ended-checkouts)).
 
 ## The cart on the payment row
 

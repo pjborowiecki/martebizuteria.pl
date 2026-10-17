@@ -35,6 +35,7 @@ const checkoutRowSchema = z.object({
   billing_address_id: z.string().nullable(),
   billing_company_name: z.string().nullable(),
   billing_nip: z.string().nullable(),
+  client_address: z.string().nullable(),
   customer_note: z.string().nullable(),
   email: z.string(),
   locker_id: z.string().nullable(),
@@ -47,6 +48,7 @@ const ERASED_CHECKOUT = {
   billing_address_id: null,
   billing_company_name: null,
   billing_nip: null,
+  client_address: null,
   customer_note: null,
   email: "",
   locker_id: null,
@@ -59,7 +61,7 @@ const readCheckout = (id: string) =>
   checkoutRowSchema.parse(
     sqlite
       .prepare(
-        "select billing_address_id, billing_company_name, billing_nip, customer_note, email, locker_id, locker_point, shipping_address_id, user_id from checkout where id = ?",
+        "select billing_address_id, billing_company_name, billing_nip, client_address, customer_note, email, locker_id, locker_point, shipping_address_id, user_id from checkout where id = ?",
       )
       .get(id),
   )
@@ -81,8 +83,8 @@ const insertGuestCheckout = (id: string, status: string, updatedAt: number): voi
     insert into address (id, address1, city, country_code, first_name, last_name, phone, postal_code) values
       ('${id}-shipping', 'ul. Floriańska 12', 'Kraków', 'PL', 'Ada', 'Nowak', '+48600100200', '31-019'),
       ('${id}-billing', 'ul. Długa 3', 'Gdańsk', 'PL', 'Ada', 'Nowak', '+48600100200', '80-827');
-    insert into checkout (id, email, status, shipping_address_id, billing_address_id, customer_note, billing_company_name, billing_nip, locker_id, locker_point, created_at, updated_at) values
-      ('${id}', '${id}@marte.test', '${status}', '${id}-shipping', '${id}-billing', 'Leave it with the neighbour', 'Nowak Studio', '5260250274', 'KRA01M', '{"city":"Kraków","postalCode":"31-019","street":"Floriańska"}', ${String(updatedAt)}, ${String(updatedAt)});
+    insert into checkout (id, email, status, shipping_address_id, billing_address_id, client_address, customer_note, billing_company_name, billing_nip, locker_id, locker_point, created_at, updated_at) values
+      ('${id}', '${id}@marte.test', '${status}', '${id}-shipping', '${id}-billing', '203.0.113.7', 'Leave it with the neighbour', 'Nowak Studio', '5260250274', 'KRA01M', '{"city":"Kraków","postalCode":"31-019","street":"Floriańska"}', ${String(updatedAt)}, ${String(updatedAt)});
   `)
 }
 
@@ -144,7 +146,7 @@ describe("anonymizeEndedCheckouts on the migrated schema", () => {
     expect(readCheckout("abandoned")).toStrictEqual(ERASED_CHECKOUT)
   })
 
-  it("anonymises a checkout that never opened a payment and releases the discount it still held", async () => {
+  it("anonymises a checkout that never opened a payment, with the visitor's IP address, and releases the discount it still held", async () => {
     insertGuestCheckout("never-paid", "pending", ENDED_LONG_AGO)
     sqlite.exec(
       "insert into discount_claim (id, checkout_id, discount_id, email) values ('claim-never-paid', 'never-paid', 'discount-welcome', 'never-paid@marte.test')",
@@ -187,7 +189,7 @@ describe("anonymizeEndedCheckouts on the migrated schema", () => {
 
     await expect(anonymize()).resolves.toBe(0)
 
-    expect(readCheckout("open").email).toBe("open@marte.test")
+    expect(readCheckout("open")).toMatchObject({ client_address: "203.0.113.7", email: "open@marte.test" })
     expect(readIds("address")).toStrictEqual(["open-billing", "open-shipping"])
     expect(readClaimedCheckouts()).toStrictEqual(["open"])
   })

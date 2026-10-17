@@ -230,8 +230,8 @@ src/
   routes/                     78 locale-free route files (including __root and the two PDF form routes) + 5 API handlers
   modules/{feature}/          42 domain modules — schema, Zod, types, constants, utils
     *.accessors.ts              unauthenticated data access (reads and writes), 26 files
-    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 175 files
-                                (138 server functions; 37 server-side operations — e-mail senders, webhook steps, retention clean-ups)
+    use-cases/*.ts              createServerFn + validation + authorization + query/mutation options, 176 files
+                                (138 server functions; 38 server-side operations — e-mail senders, webhook steps, retention clean-ups)
   modules/_core/              Shared error codes, HTTP statuses, currency, pagination, table export, column filters
   integrations/{vendor}/      14 vendors: better-auth, stripe, drizzle-orm, resend, cloudflare-r2, inpost, use-intl,
                                 fumadocs, mdxeditor, tanstack-query, realtime-invalidation, gsap, lenis, react-day-picker
@@ -480,7 +480,7 @@ bun run db:generate
 
 Review and commit the SQL under `src/integrations/drizzle-orm/migrations/` together with the schema change. The deploy scripts apply pending migrations right before `wrangler deploy`, while the previous Worker is still serving, so a migration only adds what that Worker can live with; drops and renames wait for a later release. See [Roll back a deploy](content/docs/guides/roll-back-a-deploy.en-US.mdx).
 
-Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **101 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
+Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **102 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
 
 | Command                          | Database affected                                                             |
 | -------------------------------- | ----------------------------------------------------------------------------- |
@@ -624,7 +624,6 @@ Kept here rather than hidden, because an accurate map is more useful than a flat
 - A new checkout counts the open checkouts of its client address and email before it reserves stock, but the count and the reservation are separate statements, so simultaneous requests can each pass it. The per-address rate limit bounds how many get through.
 - Once visitors have made the shop send 50 verification, password-reset and newsletter emails in a day, further ones are skipped until the day rolls over, so a flood of requests can delay real sign-ups for the rest of that day. Each skipped email is recorded in the audit log, and order emails are not affected.
 - Editing an open checkout gives it a fresh 32-minute session, so the server edits a checkout only during the first 32 minutes after it opened and then makes the browser open a fresh checkout, which the open-checkout caps count again. One checkout can therefore hold stock for up to about an hour.
-- Audit-log IP resolution falls back to `x-forwarded-for`, which a client can spoof. Rate limiting is unaffected — it reads only `cf-connecting-ip`.
 - The browser's cached session stays fresh for 60 seconds and does not refetch on window focus or reconnect, so storefront chrome such as the navigation link and the wishlist can show a revoked or ended session, including a sign-out in another tab, until something refetches it. Navigating into `/account` or `/admin` re-checks, and every server-side read revalidates.
 
 **Unfinished or hidden**

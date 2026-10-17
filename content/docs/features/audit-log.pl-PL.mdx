@@ -233,11 +233,13 @@ Nadanie i odebranie dostępu do panelu w **Ustawienia › Zespół** zapisują s
 
 Obsługuje trzy rodzaje zdarzeń, każde zapisywane jako działanie zalogowanego klienta, z jego adresem e-mail jako celem i identyfikatorem konta jako zasobem:
 
-| `kind`            | Rejestrator                        | Szczegół i metadane                                                                                                                              |
-| ----------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `cart_item_added` | `recordCustomerCartItemAddedAudit` | `"<tytuł> (<wariant>) ×<ilość>"`, bez wariantu, gdy nie ma on nazwy, i bez `×1`; `{ productTitle, quantity, variantId, variantTitle }`           |
-| `cart_abandoned`  | `recordCustomerCartAbandonedAudit` | bez własnego szczegółu, więc nazwa klienta; `{ itemCount, lineCount }`, które panel pokazuje jako „3 produkty w koszyku” w języku administratora |
-| `page_viewed`     | `recordCustomerPageViewedAudit`    | ścieżka; `{ path }`                                                                                                                              |
+| `kind`            | Rejestrator                        | Szczegół i metadane                                                                                                                                           |
+| ----------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cart_item_added` | `recordCustomerCartItemAddedAudit` | `"<tytuł> (<wariant>) ×<ilość>"`, bez wariantu, gdy nie ma on nazwy, i bez `×1`; `{ productTitle, quantity, variantId, variantTitle }`                        |
+| `cart_abandoned`  | `recordCustomerCartAbandonedAudit` | bez szczegółu, więc nic o kliencie poza celem i zasobem; `{ itemCount, lineCount }`, które panel pokazuje jako „3 produkty w koszyku” w języku administratora |
+| `page_viewed`     | `recordCustomerPageViewedAudit`    | ścieżka; `{ path }`                                                                                                                                           |
+
+Porzucone koszyki zapisane przed 17 października 2026 powtarzały w szczególe imię i nazwisko klienta. Migracja `20261017100000_cart_abandoned_without_name.sql` czyści szczegół każdego wpisu `customer.cart_abandoned`, którego szczegół jest dokładnie nazwą jego aktora (`actor_name`).
 
 Strona klienta to `customer-activity.tracking.ts`, którego `trackCartItemAdded`, `trackCartAbandoned` i `trackPageViewed` są owinięte w `createClientOnlyFn` i pochłaniają własne błędy (`fireAndForget`), więc śledzenie nigdy nie zepsuje strony. Odsłony i porzucenia są deduplikowane w obrębie sesji przez klucze `sessionStorage` z prefiksami `customer-activity:page-view:` i `customer-activity:cart-abandoned-sent`.
 
