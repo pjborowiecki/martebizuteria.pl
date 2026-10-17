@@ -9,6 +9,10 @@ import {
   toLocalInputValue,
 } from "~/src/presentation/components/custom/pages/admin/coupons/edit-coupon/coupon-form.utils"
 
+const WARSAW = "Europe/Warsaw"
+
+const NEW_YORK = "America/New_York"
+
 describe("toCouponFormValues", () => {
   it("starts a new coupon as an active percentage code with nothing else filled in", () => {
     expect(toCouponFormValues(undefined)).toStrictEqual({
@@ -46,23 +50,42 @@ describe("toCouponFormValues", () => {
 })
 
 describe("toIsoOrUndefined", () => {
-  it("turns a local date and time into a timestamp", () => {
-    expect(toIsoOrUndefined("2026-11-01T09:00")).toBe(new Date(2026, 10, 1, 9, 0).toISOString())
+  it("reads the date and time typed as the wall clock of the admin's display time zone", () => {
+    expect(toIsoOrUndefined("2026-11-01T09:00", WARSAW)).toBe("2026-11-01T08:00:00.000Z")
+    expect(toIsoOrUndefined("2026-11-01T09:00", NEW_YORK)).toBe("2026-11-01T14:00:00.000Z")
+  })
+
+  it("follows the display time zone's offset on each side of a daylight saving change", () => {
+    expect(toIsoOrUndefined("2026-03-28T12:00", WARSAW)).toBe("2026-03-28T11:00:00.000Z")
+    expect(toIsoOrUndefined("2026-03-30T12:00", WARSAW)).toBe("2026-03-30T10:00:00.000Z")
+    expect(toIsoOrUndefined("2026-03-07T09:00", NEW_YORK)).toBe("2026-03-07T14:00:00.000Z")
+    expect(toIsoOrUndefined("2026-03-09T09:00", NEW_YORK)).toBe("2026-03-09T13:00:00.000Z")
+  })
+
+  it("moves a time the clocks skip on by the hour they skip", () => {
+    expect(toIsoOrUndefined("2026-03-29T02:30", WARSAW)).toBe("2026-03-29T01:30:00.000Z")
   })
 
   it("treats a blank or unreadable date as no date", () => {
-    expect(toIsoOrUndefined("  ")).toBeUndefined()
-    expect(toIsoOrUndefined("not a date")).toBeUndefined()
+    expect(toIsoOrUndefined("  ", WARSAW)).toBeUndefined()
+    expect(toIsoOrUndefined("not a date", WARSAW)).toBeUndefined()
   })
 })
 
 describe("toLocalInputValue", () => {
-  it("shows a timestamp as the admin's local date and time", () => {
-    expect(toLocalInputValue(new Date(2026, 5, 30, 23, 59).toISOString())).toBe("2026-06-30T23:59")
+  it("shows a timestamp as the wall clock of the admin's display time zone", () => {
+    expect(toLocalInputValue("2026-06-30T21:59:00.000Z", WARSAW)).toBe("2026-06-30T23:59")
+    expect(toLocalInputValue("2026-06-30T21:59:00.000Z", NEW_YORK)).toBe("2026-06-30T17:59")
+  })
+
+  it("shows the same wall clock it was given on each side of a daylight saving change", () => {
+    expect(toLocalInputValue("2026-10-24T10:00:00.000Z", WARSAW)).toBe("2026-10-24T12:00")
+    expect(toLocalInputValue("2026-10-26T11:00:00.000Z", WARSAW)).toBe("2026-10-26T12:00")
+    expect(toLocalInputValue(toIsoOrUndefined("2026-11-02T09:00", NEW_YORK), NEW_YORK)).toBe("2026-11-02T09:00")
   })
 
   it("shows no date as an empty input", () => {
-    expect(toLocalInputValue(undefined)).toBe("")
-    expect(toLocalInputValue("")).toBe("")
+    expect(toLocalInputValue(undefined, WARSAW)).toBe("")
+    expect(toLocalInputValue("", WARSAW)).toBe("")
   })
 })
