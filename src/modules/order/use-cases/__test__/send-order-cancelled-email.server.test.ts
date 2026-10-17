@@ -46,6 +46,7 @@ const orderRow = {
   email: "anna@example.com",
   metadata: JSON.stringify({ locale: "en-US" }),
   orderNumber: "MRT-2026-00042",
+  recipient: "anna@example.com",
   total: REFUNDED_AMOUNT,
   userId: "user-1",
 }
@@ -174,7 +175,7 @@ describe("sendOrderCancelledEmail", () => {
   })
 
   it.each([[""], ["   "]])("records a cancellation email that has no recipient when the order email is %j", async (email) => {
-    getOrderForRefundEmail.mockResolvedValue({ ...orderRow, email })
+    getOrderForRefundEmail.mockResolvedValue({ ...orderRow, email, recipient: email })
 
     await expect(cancel()).resolves.toBe(false)
 

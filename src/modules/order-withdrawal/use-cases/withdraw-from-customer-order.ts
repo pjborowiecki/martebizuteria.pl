@@ -19,6 +19,7 @@ import { recordOrderWithdrawal, sendOrderWithdrawalEmails } from "~/src/modules/
 import { type OrderWithdrawal } from "~/src/modules/order-withdrawal/order-withdrawal.types"
 import { describeWithdrawnItems, presentText } from "~/src/modules/order-withdrawal/order-withdrawal.utils"
 import { orderWithdrawalZodSchemas } from "~/src/modules/order-withdrawal/order-withdrawal.zod"
+import { orderRecipientEmail } from "~/src/modules/order/order.accessors"
 import { order } from "~/src/modules/order/order.schema"
 
 import { resolveRequestOrigin } from "~/src/lib/request"
@@ -43,7 +44,8 @@ export const withdrawFromCustomerOrder = createServerFn({ method: "POST" })
   .handler(async ({ context, data }): Promise<OrderWithdrawal["result"]> => {
     const origin = resolveRequestOrigin(getRequest())
     const orderRow = await db.query.order.findFirst({
-      columns: { deliveredAt: true, email: true, id: true, orderNumber: true, status: true },
+      columns: { deliveredAt: true, id: true, orderNumber: true, status: true },
+      extras: { recipient: orderRecipientEmail().as("recipient") },
       where: and(eq(order.id, data.orderId), eq(order.userId, context.auth.user.id)),
     })
 
@@ -52,6 +54,7 @@ export const withdrawFromCustomerOrder = createServerFn({ method: "POST" })
     }
 
     const recorded = await recordOrderWithdrawal({
+      email: orderRow.recipient,
       order: orderRow,
       statement: {
         consumerName: data.consumerName,

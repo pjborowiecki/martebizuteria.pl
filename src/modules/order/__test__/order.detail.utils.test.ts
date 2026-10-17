@@ -548,30 +548,51 @@ describe("buildAdminOrderDetailCustomer", () => {
   it("derives the initials and carries the account stats", () => {
     expect(
       buildAdminOrderDetailCustomer({
+        accountEmail: "Anna@Example.com",
         email: "anna@example.com",
         name: "Anna Kowalska",
         orderCount: 3,
         phone: "+48 600 123 456",
+        recipient: "anna@example.com",
         totalSpent: 120_000,
         userId: "user-1",
       }),
     ).toStrictEqual({
+      accountEmail: undefined,
       email: "anna@example.com",
       initials: "AK",
       name: "Anna Kowalska",
       orderCount: 3,
       phone: "+48 600 123 456",
+      recipientEmail: undefined,
       totalSpentMinorUnits: 120_000,
       userId: "user-1",
     })
   })
 
+  it("names the account's address and where the order's e-mails go once the account has replaced the order's address", () => {
+    expect(
+      buildAdminOrderDetailCustomer({
+        accountEmail: "anna@new.example",
+        email: "anna@example.com",
+        name: "Anna Kowalska",
+        orderCount: 3,
+        phone: null,
+        recipient: "anna@new.example",
+        totalSpent: 120_000,
+        userId: "user-1",
+      }),
+    ).toMatchObject({ accountEmail: "anna@new.example", email: "anna@example.com", recipientEmail: "anna@new.example" })
+  })
+
   it("leaves the user id and phone unset for a guest order", () => {
     const guest = buildAdminOrderDetailCustomer({
+      accountEmail: undefined,
       email: "guest@example.com",
       name: null,
       orderCount: 0,
       phone: null,
+      recipient: "guest@example.com",
       totalSpent: 0,
       userId: null,
     })

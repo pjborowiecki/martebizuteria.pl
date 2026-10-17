@@ -25,7 +25,7 @@ const attemptOrderTrackingEmail = async (
     return { failure: "The order could not be found", label: ORDER_TRACKING_LABEL }
   }
 
-  if (orderRow.email.trim() === "") {
+  if (orderRow.recipient.trim() === "") {
     return { failure: "The order has no email address", label: ORDER_TRACKING_LABEL }
   }
 
@@ -45,10 +45,10 @@ const attemptOrderTrackingEmail = async (
       tracking,
     }),
     subject: createTranslator({ locale, messages })("subject"),
-    to: orderRow.email,
+    to: orderRow.recipient,
   })
 
-  return { failure, label: `${ORDER_TRACKING_LABEL} → ${orderRow.email}` }
+  return { failure, label: `${ORDER_TRACKING_LABEL} → ${orderRow.recipient}` }
 }
 
 export const sendOrderTrackingEmail = (email: Readonly<OrderTrackingEmail>): Promise<boolean> =>

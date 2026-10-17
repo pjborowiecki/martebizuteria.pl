@@ -51,7 +51,7 @@ const toInpostShipmentDraft = (row: ShipmentOrderRow, { parcelTemplate, weightKg
 
   return {
     destination,
-    email: row.email,
+    email: row.recipient,
     firstName: address.firstName ?? undefined,
     lastName: address.lastName ?? undefined,
     parcel: { template: parcelTemplate, weightKg },

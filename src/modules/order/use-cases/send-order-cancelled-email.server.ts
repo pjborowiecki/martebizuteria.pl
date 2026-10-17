@@ -26,7 +26,7 @@ const attemptOrderCancelledEmail = async (
     return { failure: "The order could not be found", label: ORDER_CANCELLED_LABEL }
   }
 
-  if (orderRow.email.trim() === "") {
+  if (orderRow.recipient.trim() === "") {
     return { failure: "The order has no email address", label: ORDER_CANCELLED_LABEL }
   }
 
@@ -43,10 +43,10 @@ const attemptOrderCancelledEmail = async (
       refundedAmount,
     }),
     subject: createTranslator({ locale, messages })("subject"),
-    to: orderRow.email,
+    to: orderRow.recipient,
   })
 
-  return { failure, label: `${ORDER_CANCELLED_LABEL} → ${orderRow.email}` }
+  return { failure, label: `${ORDER_CANCELLED_LABEL} → ${orderRow.recipient}` }
 }
 
 export const sendOrderCancelledEmail = (cancellation: Readonly<OrderCancellation>, origin: string): Promise<boolean> =>

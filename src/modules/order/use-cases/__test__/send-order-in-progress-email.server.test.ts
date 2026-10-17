@@ -38,6 +38,7 @@ const orderRow = {
   id: "order-abcdef12",
   metadata: JSON.stringify({ locale: "en-US" }),
   orderNumber: "MRT-2026-00042",
+  recipient: "anna@example.com",
   userId: "user-1",
 }
 
@@ -80,7 +81,7 @@ describe("sendOrderInProgressEmail", () => {
   })
 
   it("records an email that has no recipient", async () => {
-    getOrderForProgressEmail.mockResolvedValueOnce({ ...orderRow, email: "" })
+    getOrderForProgressEmail.mockResolvedValueOnce({ ...orderRow, email: "", recipient: "" })
 
     await expect(sendOrderInProgressEmail("order-abcdef12", ORIGIN)).resolves.toBe(false)
 

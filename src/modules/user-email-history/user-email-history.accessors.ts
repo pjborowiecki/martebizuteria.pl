@@ -1,9 +1,10 @@
-import { type SQL, and, desc, eq, exists, inArray, isNull, ne, sql } from "drizzle-orm"
+import { type SQL, and, desc, eq, exists, inArray, isNotNull, isNull, ne, not, sql } from "drizzle-orm"
 import { type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 
 import { userEmailHistory } from "~/src/modules/user-email-history/user-email-history.schema"
+import { user } from "~/src/modules/user/user.schema"
 
 const historyRowWhere = (condition: SQL | undefined): SQL =>
   exists(db.select({ id: userEmailHistory.id }).from(userEmailHistory).where(condition))
@@ -23,6 +24,24 @@ export const keyedByFormerAddressOf = (userId: SQL | string, { address, at }: Ad
   const heldThen = sql`${at} between ${userEmailHistory.addedAt} and ${userEmailHistory.replacedAt}`
 
   return historyRowWhere(and(eq(userEmailHistory.userId, userId), eq(userEmailHistory.email, address), heldThen))
+}
+
+export const replacedAddressOf = ({ address, userId }: AccountAddress): SQL => {
+  const sameAddressOfAccount = and(eq(userEmailHistory.userId, userId), eq(userEmailHistory.email, address))
+  const heldBefore = historyRowWhere(and(sameAddressOfAccount, isNotNull(userEmailHistory.replacedAt)))
+  const heldNow = historyRowWhere(and(sameAddressOfAccount, isNull(userEmailHistory.replacedAt)))
+
+  return and(heldBefore, not(heldNow))!
+}
+
+export const resolveAccountAddress = async ({ email, userId }: Readonly<{ email: string; userId: string }>): Promise<string> => {
+  const replaced = replacedAddressOf({ address: sql`${email.trim().toLowerCase()}`, userId: user.id })
+  const [account] = await db
+    .select({ email: user.email })
+    .from(user)
+    .where(and(eq(user.id, userId), replaced))
+
+  return account?.email ?? email
 }
 
 export const getCurrentAddressHolder = (email: string) => {
@@ -52,6 +71,11 @@ export const addressesOfAccountsWithAddressContaining = (term: string) =>
     .selectDistinct({ email: userEmailHistory.email })
     .from(userEmailHistory)
     .where(inArray(userEmailHistory.userId, accountsWithAddressContaining(term)))
+
+interface AccountAddress {
+  readonly address: AnySQLiteColumn | SQL
+  readonly userId: AnySQLiteColumn | SQL
+}
 
 interface AddressAtMoment {
   readonly address: AnySQLiteColumn | SQL

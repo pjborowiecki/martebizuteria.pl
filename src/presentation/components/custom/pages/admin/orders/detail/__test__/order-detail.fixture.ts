@@ -38,11 +38,13 @@ export const buildAdminOrderDetail = (overrides: Partial<Order["adminOrderDetail
   createdAt: PLACED_AT,
   currencyCode: "PLN",
   customer: {
+    accountEmail: undefined,
     email: "anna@example.com",
     initials: "AK",
     name: "Anna Kowalska",
     orderCount: 3,
     phone: "+48 600 123 456",
+    recipientEmail: undefined,
     totalSpentMinorUnits: 120_000,
     userId: "user-1",
   },

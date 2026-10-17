@@ -483,8 +483,10 @@ const createPlacedOrderTables = (): void => {
     drop table if exists order_address;
     drop table if exists delivery_method;
     drop table if exists courier;
+    drop table if exists user_email_history;
 
-    create table user (id text primary key, name text not null, phone text);
+    create table user (id text primary key, name text not null, email text not null default '', phone text);
+    create table user_email_history (id integer primary key, user_id text not null, email text not null, added_at integer not null, replaced_at integer);
     create table payment (
       id text primary key, amount integer not null, checkout_id text not null, currency text not null default 'PLN', lines text not null default '[]',
       provider text not null, refunded_amount integer not null default 0, refunded_at integer, reserved_lines text not null default '[]',
@@ -742,6 +744,7 @@ describe("order reads for the confirmation page and the emails", () => {
       discountTotal: 1000,
       email: "anna@example.com",
       orderNumber: "MRT-2024-00001",
+      recipient: "anna@example.com",
       shippingTotal: 1500,
       subtotal: 12_400,
       taxBasisPoints: 2300,

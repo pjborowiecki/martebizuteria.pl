@@ -113,6 +113,7 @@ const orderRow = (overrides: Record<string, unknown> = {}) => ({
   inpostShipmentStatus: null,
   lockerId: "KRA012",
   orderNumber: "MRT-2026-00012",
+  recipient: "anna@example.test",
   status: "processing",
   ...overrides,
 })

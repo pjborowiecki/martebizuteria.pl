@@ -1,6 +1,6 @@
 import { type JSX } from "react"
 
-import { ArrowUpRight, Mail, Phone } from "lucide-react"
+import { ArrowUpRight, AtSign, Mail, Phone } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { formatPrice } from "~/src/modules/_core/utils/currency"
@@ -55,6 +55,17 @@ export const OrderCustomerCard = ({ customer, currencyCode }: Readonly<OrderCust
               {customer.email}
             </span>
           </div>
+          {customer.accountEmail !== undefined && (
+            <div className="flex items-center gap-2.5 text-sm">
+              <AtSign className="size-3.5 shrink-0 text-muted-foreground/40" strokeWidth={1.5} />
+              <span className="truncate text-muted-foreground" title={customer.accountEmail}>
+                {t("orderDetail.customer.accountEmail", { email: customer.accountEmail })}
+              </span>
+            </div>
+          )}
+          {customer.recipientEmail !== undefined && (
+            <p className="text-[12px] text-muted-foreground">{t("orderDetail.customer.emailsGoTo", { email: customer.recipientEmail })}</p>
+          )}
           {customer.phone !== undefined && (
             <div className="flex items-center gap-2.5 text-sm">
               <Phone className="size-3.5 shrink-0 text-muted-foreground/40" strokeWidth={1.5} />

@@ -23,7 +23,7 @@ const attemptOrderInProgressEmail = async (orderId: string, origin: string, idem
     return { failure: "The order could not be found", label: ORDER_IN_PROGRESS_LABEL }
   }
 
-  if (orderRow.email.trim() === "") {
+  if (orderRow.recipient.trim() === "") {
     return { failure: "The order has no email address", label: ORDER_IN_PROGRESS_LABEL }
   }
 
@@ -39,10 +39,10 @@ const attemptOrderInProgressEmail = async (orderId: string, origin: string, idem
     idempotencyKey,
     react: createElement(OrderInProgress, { accountCta, delivery, locale, messages, orderNumber: orderRow.orderNumber }),
     subject: createTranslator({ locale, messages })("subject"),
-    to: orderRow.email,
+    to: orderRow.recipient,
   })
 
-  return { failure, label: `${ORDER_IN_PROGRESS_LABEL} → ${orderRow.email}` }
+  return { failure, label: `${ORDER_IN_PROGRESS_LABEL} → ${orderRow.recipient}` }
 }
 
 export const sendOrderInProgressEmail = (orderId: string, origin: string): Promise<boolean> =>

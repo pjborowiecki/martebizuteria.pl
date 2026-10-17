@@ -23,7 +23,7 @@ const attemptOrderDeliveredEmail = async (orderId: string, origin: string, idemp
     return { failure: "The order could not be found", label: ORDER_DELIVERED_LABEL }
   }
 
-  if (orderRow.email.trim() === "") {
+  if (orderRow.recipient.trim() === "") {
     return { failure: "The order has no email address", label: ORDER_DELIVERED_LABEL }
   }
 
@@ -38,10 +38,10 @@ const attemptOrderDeliveredEmail = async (orderId: string, origin: string, idemp
     idempotencyKey,
     react: createElement(OrderDelivered, { accountCta, links, locale, messages, orderNumber: orderRow.orderNumber, seller }),
     subject: createTranslator({ locale, messages })("subject"),
-    to: orderRow.email,
+    to: orderRow.recipient,
   })
 
-  return { failure, label: `${ORDER_DELIVERED_LABEL} → ${orderRow.email}` }
+  return { failure, label: `${ORDER_DELIVERED_LABEL} → ${orderRow.recipient}` }
 }
 
 export const sendOrderDeliveredEmail = (orderId: string, origin: string): Promise<boolean> =>

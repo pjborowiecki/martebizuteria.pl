@@ -22,7 +22,7 @@ const attemptOrderShippedEmail = async (orderId: string, origin: string, idempot
     return { failure: "The order could not be found", label: ORDER_SHIPPED_LABEL }
   }
 
-  if (orderRow.email.trim() === "") {
+  if (orderRow.recipient.trim() === "") {
     return { failure: "The order has no email address", label: ORDER_SHIPPED_LABEL }
   }
 
@@ -40,10 +40,10 @@ const attemptOrderShippedEmail = async (orderId: string, origin: string, idempot
       orderNumber: orderRow.orderNumber,
     }),
     subject: createTranslator({ locale, messages })("subject"),
-    to: orderRow.email,
+    to: orderRow.recipient,
   })
 
-  return { failure, label: `${ORDER_SHIPPED_LABEL} → ${orderRow.email}` }
+  return { failure, label: `${ORDER_SHIPPED_LABEL} → ${orderRow.recipient}` }
 }
 
 export const sendOrderShippedEmail = (orderId: string, origin: string): Promise<boolean> =>
