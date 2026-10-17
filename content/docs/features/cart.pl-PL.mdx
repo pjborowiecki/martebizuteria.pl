@@ -3,7 +3,7 @@ title: "Koszyk"
 description: "Koszyk to utrwalany store zustand w przeglądarce; serwer odpowiada, co jest na stanie i ile teraz kosztuje."
 ---
 
-M'Arte nie ma koszyka po stronie serwera. Koszyk żyje w `localStorage` pod kluczem `marte-cart`, a tabele `cart` i `cart_item` w bazie są nieużywane. Jedyne odwołanie do serwera to sprawdzenie stanu magazynowego i aktualnych cen.
+M'Arte nie ma koszyka po stronie serwera. Koszyk żyje w `localStorage` pod kluczem `marte-cart`, a tabele `cart` i `cart_item` w bazie są nieużywane. Przed kasą jedyne odwołanie do serwera to sprawdzenie stanu magazynowego i aktualnych cen. Gdy krok płatności otworzy sesję Stripe Checkout, serwer wycenia koszyk według bazy i przechowuje tak wyceniony koszyk w wierszu płatności sesji, w `payment.lines` (zobacz [Kasa: koszyk w wierszu płatności](/docs/features/checkout#koszyk-w-wierszu-płatności)).
 
 ## Store
 
@@ -96,35 +96,38 @@ return {
 
 `checkCartAvailabilityQuery(lines, heldSessionId)` jest `enabled` tylko wtedy, gdy jest co najmniej jedna linia, i używa `staleTime: 0`, więc sprawdzenie jest świeże przy każdym montowaniu. Ustawia `refetchOnWindowFocus: false` i `refetchOnReconnect: false`, więc powrót do karty ani odzyskanie połączenia nie uruchamiają go ponownie. Kupujący, który płaci BLIK-iem na telefonie, opuszcza krok płatności, żeby zatwierdzić płatność w aplikacji banku, i wraca, gdy płatność się kończy. Gdy już się zakończy, sesja nie trzyma już sztuki, więc sprawdzenie uruchomione przy powrocie uznałoby ostatnią sztukę za sprzedaną, a strażnik kasy odesłałby jej nabywcę do koszyka, zanim strona zdążyłaby pokazać potwierdzenie. Gdy telefon w tym czasie odrzuci kartę i strona się przeładuje, kasa pyta `getCheckoutSessionStatus` o zapisaną sesję, zanim strażnik uruchomi jakiekolwiek sprawdzenie, i pokazuje potwierdzenie sesji opłaconej albo czeka na bank przy płatności, którą ten wciąż potwierdza (zobacz [Kasa](/docs/features/checkout)). Klucz to `[...CART_QUERY_KEYS.AVAILABILITY, lines, heldSessionId]` — linie i trzymana sesja są częścią klucza, więc zmiana ilości albo otwarcie sesji wywołuje ponowne zapytanie. `placeholderData: keepPreviousData` zachowuje ostatnią odpowiedź, dopóki nowy klucz jest sprawdzany, więc strażnik kasy nie wraca do pierwszego sprawdzenia i nie odmontowuje formularza, gdy krok płatności zapisuje swoją sesję. `CART_QUERY_KEYS.AVAILABILITY` to `["cart", "availability"]` i występuje w `STOREFRONT_REALTIME_QUERY_PREFIXES`, więc zmiana stanu albo ceny wypchnięta z panelu ponawia sprawdzenie w otwartych kartach, a nowa cena trafia do koszyka i kasy bez przeładowania.
 
-`src/hooks/use-cart-availability.ts` odczytuje trzymaną sesję przez `useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, …)`, bez sesji na serwerze, owija zapytanie i zwraca `{ hasUnavailableItems, isChecking, issues, issuesByVariantId }`. Efekt przekazuje `prices` z każdej odpowiedzi do `applyCurrentPrices`, więc każda strona, która uruchamia sprawdzenie, a dzięki `CartAvailabilityBanner` jest to każda strona sklepu przy niepustym koszyku, utrzymuje ceny w koszyku aktualne. `isChecking` jest prawdziwe, gdy `isPending || isFetching` i jest co najmniej jedna linia.
+`src/hooks/use-cart-availability.ts` odczytuje trzymaną sesję przez `useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, …)`, bez sesji na serwerze, owija zapytanie i zwraca `{ hasUnavailableItems, isChecking, isFirstCheck, issues, issuesByVariantId }`. Efekt przekazuje `prices` z każdej odpowiedzi do `applyCurrentPrices`, więc każda strona, która uruchamia sprawdzenie, a dzięki `CartAvailabilityBanner` jest to każda strona sklepu przy niepustym koszyku, utrzymuje ceny w koszyku aktualne. `isChecking` jest prawdziwe, gdy `isPending || isFetching` i jest co najmniej jedna linia. `isFirstCheck` jest prawdziwe tylko przy `isPending` i co najmniej jednej linii, czyli dopóki zapytanie nie ma żadnej odpowiedzi do pokazania, własnej albo, dzięki `keepPreviousData`, poprzedniego klucza; strażnik kasy czeka tylko na nie, więc późniejsze sprawdzenie nie odmontowuje formularza.
 
 ## Strony i komponenty
 
-| Plik                                                                     | Rola                                                                                                                                                                            |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/routes/_storefront.cart.tsx`                                        | `/cart`; renderuje `EmptyCart`, gdy nie ma linii                                                                                                                                |
-| `.../custom/pages/cart-page/cart-item-card.tsx`                          | jedna linia: zdjęcie, tytuły, zmiana ceny, ilość, usunięcie; przy `CART_LINE_QUANTITY_MAX` przycisk plusa jest wyłączony, a `pages.cart.quantityLimit` mówi, jak zamówić więcej |
-| `.../custom/pages/cart-page/cart-summary.tsx`                            | podsumowanie i odnośnik do kasy                                                                                                                                                 |
-| `.../custom/cart-availability-banner.tsx`                                | banner na całą witrynę, renderowany przez layout `_storefront`                                                                                                                  |
-| `.../custom/sales-paused-banner.tsx`                                     | komunikat o wstrzymanej sprzedaży, nad bannerem                                                                                                                                 |
-| `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | licznik w nagłówku, `items.reduce((sum, item) => sum + item.qty, 0)`                                                                                                            |
+| Plik                                                                     | Rola                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/routes/_storefront.cart.tsx`                                        | `/cart`; renderuje `EmptyCart`, gdy nie ma linii                                                                                                                                                                                                              |
+| `.../custom/pages/cart-page/cart-item-card.tsx`                          | jedna linia: zdjęcie, tytuły, zmiana ceny, informacja o stanie, ilość, cena jednostkowa, usunięcie; przycisk plusa jest wyłączony, gdy linia ma problem ze stanem, i przy `CART_LINE_QUANTITY_MAX`, gdzie `pages.cart.quantityLimit` mówi, jak zamówić więcej |
+| `.../custom/pages/cart-page/cart-summary.tsx`                            | podsumowanie i odnośnik do kasy                                                                                                                                                                                                                               |
+| `.../custom/cart-availability-banner.tsx`                                | banner na całą witrynę, renderowany przez layout `_storefront`                                                                                                                                                                                                |
+| `.../custom/sales-paused-banner.tsx`                                     | komunikat o wstrzymanej sprzedaży, nad bannerem                                                                                                                                                                                                               |
+| `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | licznik w nagłówku, `items.reduce((sum, item) => sum + item.qty, 0)`                                                                                                                                                                                          |
 
-Strona koszyka formatuje własne kwoty, nie korzystając z `useFormatter`:
+Informacja o stanie linii pochodzi ze sprawdzenia dostępności: `pages.cart.availability.itemUnavailable` („Nie jest już dostępny”), gdy nie zostało nic, a w przeciwnym razie `pages.cart.availability.itemLimited` („Pozostało tylko 2 szt.” przy dwóch pozostałych sztukach), gdy koszyk chce więcej, niż zostało.
+
+Ceny są formatowane według formatu dat i liczb kupującego, a nie języka strony (zobacz [Internacjonalizacja](/docs/features/internationalization)). Strona buduje sumę przez
 
 ```ts
-const CENTS_IN_ZLOTY = 100
-const total = cartTotal() / CENTS_IN_ZLOTY
-const subtotal = new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" }).format(total)
+const formatLocale = useFormatLocale()
+const subtotal = formatPrice(cartTotal(), STORE_CURRENCY_CODE, formatLocale)
 ```
 
-**Ten format jest zapisany na stałe jako `pl-PL`**, więc angielska wersja koszyka wciąż pokazuje polskie formatowanie liczb.
+a `CartItemCard` pokazuje cenę jednostkową każdej linii, nie wartość całej linii, przez `useFormatter()`. Oba hooki pochodzą z `src/hooks/use-display-format.ts`.
+
+Poniżej breakpointu `lg` podsumowanie znajduje się pod liniami; od `lg` zajmuje obok nich kolumnę o szerokości 380 pikseli i pozostaje widoczne, gdy linie się przewijają (`lg:sticky lg:top-28`). Odnośnik „Kontynuuj zakupy” stoi obok tytułu od breakpointu `sm`, a na węższych ekranach pod ostatnią linią. Na ekranie dotykowym (`pointer-coarse`) przyciski usuwania i zmiany ilości rosną do 40 pikseli.
 
 ## Podsumowanie to tylko suma częściowa
 
 `cart-summary.tsx` renderuje trzy wiersze — sumę częściową, dostawę i sumę — ale dostawa to komunikat `pages.cart.summary.shippingValue`, a wiersz sumy wypisuje tę samą wartość `subtotal`:
 
 ```tsx
-<div className="flex justify-between">
+<div className="flex justify-between gap-4">
   <span className="font-medium">{t("summary.total")}</span>
   <span className="font-medium">{subtotal}</span>
 </div>
@@ -148,7 +151,7 @@ Wynik sprawdzenia dostępności wykorzystują trzy strażniki:
 
 ## Nieużywane tabele
 
-`cart` i `cart_item` istnieją w `src/modules/cart/cart.schema.ts` oraz `src/modules/cart-item/cart-item.schema.ts`, z kolumnami `discount_id`, `expires_at`, `session_id` i `user_id` oraz standardowymi indeksami, i są eksportowane z `src/integrations/drizzle-orm/drizzle.schemas.ts`. Nic ich nie czyta ani nie zapisuje. To schemat koszyka serwerowego, którego nie zbudowano; `checkout.cart_id` odwołuje się do `cart.id`, ale nigdy nie jest wypełniane.
+`cart` i `cart_item` istnieją w `src/modules/cart/cart.schema.ts` oraz `src/modules/cart-item/cart-item.schema.ts`, z kolumnami `discount_id`, `expires_at`, `session_id` i `user_id` oraz standardowymi indeksami, i są eksportowane z `src/integrations/drizzle-orm/drizzle.schemas.ts`. Nic ich nie czyta ani nie zapisuje. To schemat koszyka serwerowego, którego nie zbudowano; `checkout.cart_id` odwołuje się do `cart.id`, ale nigdy nie jest wypełniane. Wyceniony koszyk, za który płaci checkout, leży zamiast tego w jego wierszu płatności, w `payment.lines`, zapisywanym, gdy krok płatności otwiera albo zastępuje sesję (zobacz [Kasa: koszyk w wierszu płatności](/docs/features/checkout#koszyk-w-wierszu-płatności)).
 
 ## Powiązane strony
 

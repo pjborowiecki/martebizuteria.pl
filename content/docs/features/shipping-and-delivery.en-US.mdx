@@ -134,7 +134,7 @@ In the checkout, `useCheckoutDeliveryPricing` (`src/presentation/components/cust
 
 The server decides the charge itself. `resolveDelivery` returns the method's price with the threshold, and the session handlers price delivery with `resolveDeliveryPrice` for the products and the code the checkout claimed. A free delivery leaves no delivery line on the Stripe session, and the session and its payment intent record the delivery charge as `shippingTotal` in their metadata. Fulfilment takes the order's shipping total from that field, falling back to the method's price only for a session opened before the field existed, so a threshold or price the owner changes while the shopper pays cannot change what the order says was charged (see [Payments](/docs/features/payments#fulfilment)).
 
-Changing the threshold records `settings.updated` with the target `free-delivery` and the old and new `freeDeliveryThreshold` in its metadata, which the audit log shows as amounts of money, and calls `scheduleFreeDeliveryInvalidation()`, which publishes both keys above, so an open checkout applies the new threshold at once. Saving the value the shop already has changes and records nothing.
+Changing the threshold records `settings.updated` with the target `free-delivery` and the old and new `freeDeliveryThreshold` in its metadata, which the audit log shows as amounts of money (see [Audit log](/docs/features/audit-log)), and calls `scheduleFreeDeliveryInvalidation()`, which publishes both keys above, so an open checkout applies the new threshold at once. Saving the value the shop already has changes and records nothing.
 
 ## Seed data
 
@@ -146,7 +146,7 @@ Changing the threshold records `settings.updated` with the target `free-delivery
 | Kurier InPost / InPost courier           | `courier`  | 1999                | 0      | `inpost_courier_standard` |
 | Odbiór w atelier / Pickup at the atelier | `in_store` | 0                   | 2      | `marte_atelier_pickup`    |
 
-The seed uses `INSERT OR IGNORE` with fixed UUIDv7 ids. Do not run `bun run db:seed:preview` against the live database — the seed files lag behind production data. On a live shop the methods are changed in Settings.
+The seed uses `INSERT OR IGNORE` with fixed UUIDv7 ids. Do not run `bun run db:seed:production`, which writes the seed files to the live database: they lag behind production data. On a live shop the methods are changed in Settings.
 
 Each seeded method also has a Polish `description`, which no page shows. The descriptions follow § 7 of the terms of service: up to 4 business days from dispatch for the locker and the courier, and collection from the workshop in Bochnia, ready by the end of the fulfilment time. `20261010220000_delivery_method_descriptions.sql` gives rows seeded before that the same descriptions, replacing the 1–2 day transit and the Warsaw atelier ready in 24 hours. It changes a row only while its description is still the old seeded text, so a description the owner has rewritten stays as it is.
 
@@ -183,10 +183,10 @@ Picking a type writes `deliveryMethodType` and either auto-selects the single me
 
 ## InPost point picker
 
-The integration is four small files in `src/integrations/inpost`:
+`src/integrations/inpost` holds six files: `inpost.api.ts` with the points API calls, `inpost.constants.ts`, `inpost.queries.ts` with the picker's query options, `inpost.utils.ts`, `inpost.zod.ts`, and `inpost.shipx.server.ts`, the ShipX client the admin's shipments use (see [InPost](/docs/integrations/inpost#shipments-through-shipx)). The city search is in `inpost.api.ts`, with `INPOST_POINTS_API_ORIGIN` (`https://api-pl-points.easypack24.net`) from `inpost.constants.ts`:
 
 ```ts
-const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
+const INPOST_API_BASE = `${INPOST_POINTS_API_ORIGIN}/v1/points`
 const MIN_CITY_LENGTH = 3
 
 export const fetchPointsByCity = async (city: string): Promise<InpostPointParsed[]> => {
@@ -229,7 +229,7 @@ The map is `react-map-gl/maplibre` with the Carto Voyager basemap (`https://base
 2. `resolveDelivery` refuses a method the shop does not offer, a locker method without a locker and a locker InPost does not list, keeps `lockerId` only for a locker method, notes whether InPost could be asked about it, and reads the method's `price` and the free delivery threshold.
 3. `prepareCreateCheckoutBatch` writes the method to `checkout.delivery_method_id`, `lockerId` to `checkout.locker_id`, the locker's address InPost returned to `checkout.locker_point` and the unanswered lookup to `checkout.locker_unconfirmed`. `createStripeSession` adds a delivery line item when delivery costs more than zero after free delivery, named for the method's type in the shopper's language (`deliveryLineItem` in `pages.checkout`), and records the delivery charge as `shippingTotal` in the session's metadata.
 4. `fulfillCheckout` takes the order's shipping total from `shippingTotal` in the paid session's metadata, or from the method's current price for a session opened before that field existed, and `prepareFulfillCheckoutBatch` copies `deliveryMethodId`, `lockerId`, `lockerPoint`, `lockerUnconfirmed` and `customerNote` from the checkout snapshot onto the new `order` row.
-5. For a locker or courier order whose method's carrier is InPost, an admin can book the parcel with InPost from the order page. The shipment's id and status land on `order.inpost_shipment_id` and `order.inpost_shipment_status`, its tracking number and link on `order.tracking_number` and `order.tracking_url`, and its PDF label is downloaded from the same card. See [InPost](/docs/integrations/inpost#shipments-through-shipx). A parcel with another carrier is booked on that carrier's site, and the admin saves its tracking number and link on the order.
+5. For a locker or courier order whose method's carrier is InPost, an admin can book the parcel with InPost from the order page. The shipment's id and status land on `order.inpost_shipment_id` and `order.inpost_shipment_status`, its tracking number and link on `order.tracking_number` and `order.tracking_url`, and its PDF label is downloaded from the same card. See [InPost](/docs/integrations/inpost#shipments-through-shipx). Without the ShipX credentials the card says that automatic InPost shipping is not connected: the admin creates the parcel in InPost Manager, then marks the order shipped and pastes its tracking number. `resolveOrderTrackingUrl` (`order.display.utils.ts`) links such a number to InPost's tracking page in the emails and on both order pages, because an order whose method's carrier is InPost, with a number and no stored link, gets `inpostTrackingUrl(number)`. A parcel with another carrier is booked on that carrier's site, and the admin saves its tracking number and link on the order.
 
 The order keeps pointing at its method, so the checkout confirmation, the order in the shopper's account, the admin order page and the orders export name it in the reader's language, resolved from `names` with the request's locale. A method archived later is still named.
 
@@ -239,11 +239,11 @@ The order keeps pointing at its method, so the checkout confirmation, the order 
 
 ```ts
 return locker === undefined
-  ? { address: formatEmailAddress(shippingAddress) ?? unavailable, kind: "address" }
+  ? { address: formatEmailAddress(shippingAddress, locale) ?? unavailable, kind: "address" }
   : { kind: "locker", locker: describeOrderLocker(locker).join("\n"), recipient: formatEmailRecipient(shippingAddress) }
 ```
 
-The confirmation and shipped e-mails render it the same way. The shop's new-order e-mail puts the locker in place of the shipping address, since its customer row already names the shopper.
+`formatEmailAddress` writes the postal code, city, province and country on one line through `formatOrderAddressLocality`, naming the country in the e-mail's language. The confirmation and shipped e-mails render the block the same way. The shop's new-order e-mail puts the locker in place of the shipping address, since its customer row already names the shopper.
 
 The shipped and tracking number e-mails name the carrier, the method's courier, for any courier or locker order, and none for a pickup at the atelier (`resolveOrderTracking`). Their tracking button opens the link stored on the order, or InPost's tracking page for a number on a method whose carrier is InPost; for a number with another carrier and no stored link, the button leads to the account link instead (`buildOrderShippedAccountCta`).
 
@@ -265,7 +265,7 @@ return {
 ## What is not there
 
 - No carrier integration but InPost: shipments, labels and tracking go through InPost's ShipX API only. A method with another carrier is shipped by hand, and an order picked up at the atelier has no shipment.
-- No automatic order updates from the carrier: InPost's status is shown on the order and refreshed on demand or by InPost's webhook, but marking the order shipped and delivered stays with the admin, and booking a parcel does not mark the order shipped, because a booked parcel has not left the atelier yet. Without an InPost shipment, `order.tracking_number` and `order.tracking_url` are what the admin types into the ship dialog. A number InPost assigns after the order was marked shipped is emailed to the customer once.
+- No automatic order updates from the carrier: InPost's status is shown on the order and refreshed on demand or by InPost's webhook, but marking the order shipped and delivered stays with the admin, and booking a parcel does not mark the order shipped, because a booked parcel has not left the atelier yet. Without an InPost shipment, `order.tracking_number` and `order.tracking_url` are what the admin types into the ship dialog, and a number typed without a link on a method whose carrier is InPost is linked to InPost's tracking page by `resolveOrderTrackingUrl`. A number InPost assigns after the order was marked shipped is emailed to the customer once.
 - No shipping rules beyond the free delivery threshold: the price is a flat per-method amount with no weight, size or destination logic. The only destination rule is the `DELIVERY_COUNTRY_CODES` check.
 - No store locations table for `in_store`, and one pickup method offered at a time.
 - No screen for the carriers themselves: Settings adds a carrier with a new method, but renaming one or switching it off is a change in D1. Neither the type nor the carrier of an existing method can be changed; archive it and add another.
