@@ -130,7 +130,7 @@ beforeAll(() => {
 })
 ```
 
-`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje wbudowany moduł Node'a `node:sqlite` do interfejsu `D1Database`, wraz z `batch()` opartym na prawdziwej transakcji. Wzorcem jest `src/modules/_core/utils/__test__/search-conditions.integration.test.ts`. Gdy test potrzebuje prawdziwego schematu, `applyMigrationHistory(sqlite)` z `src/platform/testing/mocks/migrations.ts` buduje go z plików migracji, a test wstawia tylko potrzebne mu wiersze; tak działa 58 zestawów integracyjnych. Zobacz [Pisanie testów](/docs/guides/writing-tests) i [Testowanie migracji danych](/docs/guides/database-migrations#testowanie-migracji-danych).
+`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje wbudowany moduł Node'a `node:sqlite` do interfejsu `D1Database`, wraz z `batch()` opartym na prawdziwej transakcji. Wzorcem jest `src/modules/_core/utils/__test__/search-conditions.integration.test.ts`. Gdy test potrzebuje prawdziwego schematu, `applyMigrationHistory(sqlite)` z `src/platform/testing/mocks/migrations.ts` buduje go z plików migracji, a test wstawia tylko potrzebne mu wiersze; tak działa 61 zestawów integracyjnych. Zobacz [Pisanie testów](/docs/guides/writing-tests) i [Testowanie migracji danych](/docs/guides/database-migrations#testowanie-migracji-danych).
 
 ## Powiązane przewodniki
 

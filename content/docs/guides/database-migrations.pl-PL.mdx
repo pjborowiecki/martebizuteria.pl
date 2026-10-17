@@ -216,7 +216,7 @@ it("claims nothing more when it runs again", () => {
 
 Pozostałe przypadki obejmują to, co migracja ma zmienić (zamówienia gości, których e-mail, bez względu na wielkość liter, należy do zweryfikowanego konta, oraz starsze konto, gdy dwa mają ten sam adres), to, czego ma nie ruszać (konta niezweryfikowane, zamówienia już przypisane do konta, adresy bez konta), i wpisy audytu, które zapisuje. Dla swojej migracji pokryj te same trzy rzeczy oraz drugie uruchomienie.
 
-Gdy migracja zależy od prawdziwego schematu albo od wierszy z danych startowych, zbuduj schemat przez `applyMigrationHistory`, jak robi to `src/modules/delivery-method/__test__/delivery-method.descriptions-migration.integration.test.ts`. Historia zawiera już testowaną migrację, więc ten test przywraca wiersze, które migracja czyta, i dopiero wtedy nakłada ją ponownie przez `applyMigration`. Wszystkie 58 zestawów, które wywołują `applyMigrationHistory`, otwiera `DatabaseSync` z `enableDoubleQuotedStringLiterals: true`; zrób tak samo.
+Gdy migracja zależy od prawdziwego schematu albo od wierszy z danych startowych, zbuduj schemat przez `applyMigrationHistory`, jak robi to `src/modules/delivery-method/__test__/delivery-method.descriptions-migration.integration.test.ts`. Historia zawiera już testowaną migrację, więc ten test przywraca wiersze, które migracja czyta, i dopiero wtedy nakłada ją ponownie przez `applyMigration`. Wszystkie 61 zestawów, które wywołują `applyMigrationHistory`, otwiera `DatabaseSync` z `enableDoubleQuotedStringLiterals: true`; zrób tak samo.
 
 Umieść test w katalogu `__test__/` modułu, którego tabelę zmienia migracja, i nazwij go `*.integration.test.ts`, żeby trafił do projektu `integration` (`bun run test:integration` oraz `bun run test`).
 
