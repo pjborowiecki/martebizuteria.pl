@@ -2,6 +2,12 @@
   "title": "Ustawienia",
   "description": "Twoje konto, jego bezpieczeństwo, dane sklepu, dostawa i zespół.",
   "refresh": "Odśwież dane tabeli",
+  "save": {
+    "save": "Zapisz",
+    "saving": "Zapisywanie…",
+    "unsaved": "Niezapisane zmiany",
+    "saved": "Zapisano {date}"
+  },
   "tabs": {
     "account": "Moje konto",
     "security": "Logowanie i bezpieczeństwo",
@@ -19,8 +25,8 @@
       "phone": "Numer telefonu",
       "phoneEmpty": "Nie podano",
       "memberSince": "Konto założone",
-      "edit": "Edytuj",
-      "change": "Zmień",
+      "edit": "Edytuj profil",
+      "change": "Zmień adres e-mail",
       "save": "Zapisz",
       "cancel": "Anuluj",
       "saved": "Zapisano profil.",
@@ -124,7 +130,6 @@
       "emailHint": "Na ten adres trafiają też odpowiedzi na e-maile sklepu.",
       "phone": "Telefon kontaktowy",
       "phoneHint": "Z numerem kierunkowym kraju, np. +48 600 000 000.",
-      "save": "Zapisz",
       "saved": "Zapisano dane sprzedawcy.",
       "conflict": "W międzyczasie dane sprzedawcy zostały zmienione. Odśwież stronę, aby zobaczyć zmianę.",
       "validation": {
@@ -297,7 +302,7 @@
       "twoFactorOff": "Dwuskładnikowe wyłączone",
       "google": "Logowanie przez Google",
       "shareCaption": "{percent}% wszystkich",
-      "twoFactorRequiredCaption": "Panel otworzy się dopiero po włączeniu"
+      "twoFactorRequiredCaption": "Panel zamknięty do włączenia"
     },
     "columns": {
       "name": "Imię i nazwisko",

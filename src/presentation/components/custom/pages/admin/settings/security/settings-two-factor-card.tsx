@@ -1,6 +1,7 @@
 import { type JSX, useCallback, useState } from "react"
 
 import { useQueryClient } from "@tanstack/react-query"
+import { ShieldCheck, ShieldOff } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { isAdminTwoFactorRequired } from "~/src/integrations/better-auth/auth.access"
@@ -8,11 +9,11 @@ import { isAdminTwoFactorRequired } from "~/src/integrations/better-auth/auth.ac
 import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/customer-account.constants"
 import { SESSION_QUERY_KEYS } from "~/src/modules/session/session.constants"
 
-import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Button } from "~/src/presentation/components/shadcn/button"
 
 import { TwoFactorDialog } from "~/src/presentation/components/custom/pages/account/profile/sections/two-factor-dialog"
 import { SettingsCard } from "~/src/presentation/components/custom/pages/admin/settings/settings-card"
+import { SettingsStatusBadge } from "~/src/presentation/components/custom/pages/admin/settings/settings-status-badge"
 
 export const SettingsTwoFactorCard = ({ enabled, hasPassword }: Readonly<SettingsTwoFactorCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin.settings.security.twoFactor")
@@ -40,8 +41,9 @@ export const SettingsTwoFactorCard = ({ enabled, hasPassword }: Readonly<Setting
       <SettingsCard
         action={
           <div className="flex shrink-0 items-center gap-3 self-start">
-            <Badge variant={enabled ? "default" : "secondary"}>{enabled ? t("on") : t("off")}</Badge>
-            <Button disabled={!hasPassword} onClick={openDialog} size="sm" variant="outline">
+            <SettingsStatusBadge label={enabled ? t("on") : t("off")} tone={enabled ? "positive" : "warning"} />
+            <Button className="gap-1.5" disabled={!hasPassword} onClick={openDialog} size="sm" variant="outline">
+              {enabled ? <ShieldOff className="size-3.5" strokeWidth={1.5} /> : <ShieldCheck className="size-3.5" strokeWidth={1.5} />}
               {enabled ? t("disable") : t("enable")}
             </Button>
           </div>

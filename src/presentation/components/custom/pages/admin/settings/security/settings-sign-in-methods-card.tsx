@@ -2,15 +2,14 @@ import { type JSX } from "react"
 
 import { useTranslations } from "use-intl/react"
 
-import { Badge } from "~/src/presentation/components/shadcn/badge"
-
 import { AdminDialogNote } from "~/src/presentation/components/custom/pages/admin/admin-dialog-note"
 import { SettingsCard, SettingsRow } from "~/src/presentation/components/custom/pages/admin/settings/settings-card"
+import { SettingsStatusBadge } from "~/src/presentation/components/custom/pages/admin/settings/settings-status-badge"
 
 export const SettingsSignInMethodsCard = ({ hasGoogle, hasPassword }: Readonly<SettingsSignInMethodsCardProps>): JSX.Element => {
   const t = useTranslations("pages.admin.settings.security.signInMethods")
   const status = (connected: boolean): JSX.Element => (
-    <Badge variant={connected ? "default" : "secondary"}>{connected ? t("connected") : t("notConnected")}</Badge>
+    <SettingsStatusBadge label={connected ? t("connected") : t("notConnected")} tone={connected ? "positive" : "neutral"} />
   )
 
   return (

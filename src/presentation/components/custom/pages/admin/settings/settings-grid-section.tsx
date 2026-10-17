@@ -8,7 +8,7 @@ export const SettingsGridSection = ({ children, className, description, title }:
   <section className={cn("flex min-h-0 flex-col", className)}>
     <div className={cn(ADMIN_CATALOG_DATAGRID_PAGE_CLASS, "gap-3")}>
       <div className="space-y-0.5">
-        <h2 className="text-sm font-medium text-foreground">{title}</h2>
+        <h2 className="text-[14px] leading-6 font-semibold tracking-tight text-foreground">{title}</h2>
         <p className="text-[13px] leading-relaxed text-muted-foreground">{description}</p>
       </div>
       {children}

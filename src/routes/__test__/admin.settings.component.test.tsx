@@ -92,8 +92,8 @@ vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/comp
 vi.mock("~/src/modules/store-setting/use-cases/get-seller-details", () => ({
   getAdminSellerDetailsQuery: () => ({ queryKey: ["admin", "store-setting", "seller-details"] }),
 }))
-vi.mock("~/src/presentation/components/custom/pages/admin/settings/store/settings-seller-details-card", () => ({
-  SettingsSellerDetailsCard: (): JSX.Element => <section>seller details</section>,
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/store/settings-store-page", () => ({
+  SettingsStorePage: (): JSX.Element => <main data-active="store">store page</main>,
 }))
 vi.mock("~/src/modules/user/use-cases/list-admin-team", () => ({
   listAdminTeamQuery: () => ({ queryKey: ["admin", "users", "team"] }),
@@ -200,9 +200,7 @@ describe("admin settings security route", () => {
 
     expect(main).toHaveAttribute("data-active", "security")
     expect([...main.children].map((section) => section.textContent)).toStrictEqual([
-      "password false",
-      "two-factor true false",
-      "sign-in false true",
+      "password falsetwo-factor true falsesign-in false true",
       "sessions",
       "history",
     ])
@@ -229,13 +227,10 @@ describe("admin settings store route", () => {
     await expect(prefetched("/admin/settings/store")).resolves.toStrictEqual([["admin", "store-setting", "seller-details"]])
   })
 
-  it("shows the seller details under the store tab", () => {
+  it("shows the store page under the store tab", () => {
     render("/admin/settings/store")
 
-    const main = screen.getByRole("main")
-
-    expect(main).toHaveAttribute("data-active", "store")
-    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["seller details"])
+    expect(screen.getByRole("main")).toHaveTextContent("store page")
   })
 })
 

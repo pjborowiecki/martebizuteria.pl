@@ -1,6 +1,7 @@
 import { type JSX } from "react"
 
 import { cn } from "cn"
+import { UsersRound } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { buttonVariants } from "~/src/presentation/components/shadcn/button"
@@ -17,9 +18,10 @@ export const SettingsAccountDeletionCard = (): JSX.Element => {
     <SettingsCard
       action={
         <LocalizedLink
-          className={cn(buttonVariants({ size: "sm", variant: "outline" }), "shrink-0 self-start")}
+          className={cn(buttonVariants({ size: "sm", variant: "outline" }), "shrink-0 gap-1.5 self-start")}
           to={ROUTES.ADMIN_SETTINGS_TEAM}
         >
+          <UsersRound className="size-3.5" strokeWidth={1.5} />
           {t("team")}
         </LocalizedLink>
       }

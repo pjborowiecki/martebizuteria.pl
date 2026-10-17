@@ -1,19 +1,18 @@
-import { type JSX, useId, useMemo } from "react"
+import { type JSX, useMemo } from "react"
 
 import { cn } from "cn"
 import { useLocale, useTranslations } from "use-intl/react"
 
 import { COUNTRIES } from "~/src/modules/_core/constants/country"
 import { formatCountryName } from "~/src/modules/_core/utils/country-name"
-import { type SellerDetailsField } from "~/src/modules/store-setting/store-setting.constants"
+import { SELLER_DETAILS_MAX_LENGTH, type SellerDetailsField } from "~/src/modules/store-setting/store-setting.constants"
 import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 
-import { sheetSelectTriggerClassName } from "~/src/presentation/components/shadcn/_styles/sheet-control.styles"
+import { Field } from "~/src/presentation/components/shadcn/field"
 import { Input } from "~/src/presentation/components/shadcn/input"
-import { Label } from "~/src/presentation/components/shadcn/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/src/presentation/components/shadcn/select"
 
-import { ADMIN_DIALOG_LABEL_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
+import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-label"
 import { type SellerDetailsFieldErrors } from "~/src/presentation/components/custom/pages/admin/settings/store/seller-details-form.utils"
 import { ValidationFieldError } from "~/src/presentation/components/custom/validation-field-error"
 
@@ -33,19 +32,27 @@ const NUMBER_AND_CONTACT_FIELDS = [
   { field: "phone", hint: "phoneHint", type: "tel" },
 ] as const satisfies readonly TextFieldSpec[]
 
-const SellerDetailsTextField = ({ error, onChange, spec, value }: Readonly<SellerDetailsTextFieldProps>): JSX.Element => {
+const fieldMaxLength = (field: TextFieldSpec["field"]): number | undefined =>
+  field === "nip" || field === "regon" ? undefined : SELLER_DETAILS_MAX_LENGTH[field]
+
+const SellerDetailsTextField = ({ disabled, error, onChange, spec, value }: Readonly<SellerDetailsTextFieldProps>): JSX.Element => {
   const t = useTranslations("pages.admin.settings.store.sellerDetails")
-  const id = useId()
+  const maxLength = fieldMaxLength(spec.field)
 
   return (
-    <div className={cn("space-y-2", spec.wide === true && "sm:col-span-2")}>
-      <Label className={ADMIN_DIALOG_LABEL_CLASS} htmlFor={id}>
-        {t(spec.field)}
-      </Label>
+    <Field className={cn("gap-2", spec.wide === true && "sm:col-span-2")} data-invalid={error !== undefined}>
+      <CatalogFormFieldLabel
+        counter={maxLength === undefined ? undefined : `${String(value.length)}/${String(maxLength)}`}
+        hint={spec.hint === undefined ? undefined : t(spec.hint)}
+        label={t(spec.field)}
+        required
+      />
       <Input
         aria-invalid={error !== undefined}
-        id={id}
+        aria-label={t(spec.field)}
+        disabled={disabled}
         inputMode={spec.inputMode}
+        maxLength={maxLength}
         onChange={(event) => {
           onChange({ [spec.field]: event.target.value })
         }}
@@ -53,16 +60,14 @@ const SellerDetailsTextField = ({ error, onChange, spec, value }: Readonly<Selle
         value={value}
         variant="sheet"
       />
-      {spec.hint !== undefined && <p className="text-[12px] text-muted-foreground">{t(spec.hint)}</p>}
       <ValidationFieldError message={error} namespace={VALIDATION_NAMESPACE} />
-    </div>
+    </Field>
   )
 }
 
-const CountryField = ({ error, onChange, value }: Readonly<CountryFieldProps>): JSX.Element => {
+const CountryField = ({ disabled, error, onChange, value }: Readonly<CountryFieldProps>): JSX.Element => {
   const t = useTranslations("pages.admin.settings.store.sellerDetails")
   const locale = useLocale()
-  const id = useId()
   const items = useMemo(
     () =>
       COUNTRIES.map(({ alpha2 }) => ({ label: formatCountryName(alpha2, locale), value: alpha2 })).toSorted((left, right) =>
@@ -72,11 +77,10 @@ const CountryField = ({ error, onChange, value }: Readonly<CountryFieldProps>): 
   )
 
   return (
-    <div className="space-y-2 sm:col-span-2">
-      <Label className={ADMIN_DIALOG_LABEL_CLASS} htmlFor={id}>
-        {t("country")}
-      </Label>
+    <Field className="gap-2 sm:col-span-2" data-invalid={error !== undefined}>
+      <CatalogFormFieldLabel label={t("country")} required />
       <Select
+        disabled={disabled}
         items={items}
         onValueChange={(countryCode) => {
           if (typeof countryCode === "string" && countryCode !== value) {
@@ -85,7 +89,7 @@ const CountryField = ({ error, onChange, value }: Readonly<CountryFieldProps>): 
         }}
         value={value}
       >
-        <SelectTrigger aria-invalid={error !== undefined} className={sheetSelectTriggerClassName} id={id}>
+        <SelectTrigger aria-invalid={error !== undefined} aria-label={t("country")} size="sheet">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -97,18 +101,32 @@ const CountryField = ({ error, onChange, value }: Readonly<CountryFieldProps>): 
         </SelectContent>
       </Select>
       <ValidationFieldError message={error} namespace={VALIDATION_NAMESPACE} />
-    </div>
+    </Field>
   )
 }
 
-export const SellerDetailsFields = ({ errors, onChange, values }: Readonly<SellerDetailsFieldsProps>): JSX.Element => (
-  <div className="grid gap-4 sm:grid-cols-2">
+export const SellerDetailsFields = ({ disabled, errors, onChange, values }: Readonly<SellerDetailsFieldsProps>): JSX.Element => (
+  <div className="grid gap-5 sm:grid-cols-2">
     {NAME_AND_ADDRESS_FIELDS.map((spec) => (
-      <SellerDetailsTextField error={errors[spec.field]} key={spec.field} onChange={onChange} spec={spec} value={values[spec.field]} />
+      <SellerDetailsTextField
+        disabled={disabled}
+        error={errors[spec.field]}
+        key={spec.field}
+        onChange={onChange}
+        spec={spec}
+        value={values[spec.field]}
+      />
     ))}
-    <CountryField error={errors.countryCode} onChange={onChange} value={values.countryCode} />
+    <CountryField disabled={disabled} error={errors.countryCode} onChange={onChange} value={values.countryCode} />
     {NUMBER_AND_CONTACT_FIELDS.map((spec) => (
-      <SellerDetailsTextField error={errors[spec.field]} key={spec.field} onChange={onChange} spec={spec} value={values[spec.field]} />
+      <SellerDetailsTextField
+        disabled={disabled}
+        error={errors[spec.field]}
+        key={spec.field}
+        onChange={onChange}
+        spec={spec}
+        value={values[spec.field]}
+      />
     ))}
   </div>
 )
@@ -122,6 +140,7 @@ interface TextFieldSpec {
 }
 
 interface SellerDetailsTextFieldProps {
+  readonly disabled: boolean
   readonly error: string | undefined
   readonly onChange: (patch: Partial<StoreSetting["sellerDetails"]>) => void
   readonly spec: TextFieldSpec
@@ -129,12 +148,14 @@ interface SellerDetailsTextFieldProps {
 }
 
 interface CountryFieldProps {
+  readonly disabled: boolean
   readonly error: string | undefined
   readonly onChange: (patch: Partial<StoreSetting["sellerDetails"]>) => void
   readonly value: string
 }
 
 interface SellerDetailsFieldsProps {
+  readonly disabled: boolean
   readonly errors: SellerDetailsFieldErrors
   readonly onChange: (patch: Partial<StoreSetting["sellerDetails"]>) => void
   readonly values: StoreSetting["sellerDetails"]

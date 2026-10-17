@@ -2,6 +2,12 @@
   "title": "Settings",
   "description": "Your account, its security, the shop's details, its delivery and its team.",
   "refresh": "Reload table data",
+  "save": {
+    "save": "Save",
+    "saving": "Saving…",
+    "unsaved": "Unsaved changes",
+    "saved": "Saved {date}"
+  },
   "tabs": {
     "account": "My account",
     "security": "Sign-in & security",
@@ -19,8 +25,8 @@
       "phone": "Phone number",
       "phoneEmpty": "Not given",
       "memberSince": "Account created",
-      "edit": "Edit",
-      "change": "Change",
+      "edit": "Edit profile",
+      "change": "Change email",
       "save": "Save",
       "cancel": "Cancel",
       "saved": "Profile saved.",
@@ -124,7 +130,6 @@
       "emailHint": "Replies to the shop's emails go to this address too.",
       "phone": "Contact phone",
       "phoneHint": "With the country code, e.g. +48 600 000 000.",
-      "save": "Save",
       "saved": "Seller details saved.",
       "conflict": "Someone changed the seller details in the meantime. Reload the page to see the change.",
       "validation": {
@@ -297,7 +302,7 @@
       "twoFactorOff": "Two-factor off",
       "google": "Sign in with Google",
       "shareCaption": "{percent}% of all",
-      "twoFactorRequiredCaption": "The panel opens only once it is on"
+      "twoFactorRequiredCaption": "Panel closed until it is on"
     },
     "columns": {
       "name": "Name",

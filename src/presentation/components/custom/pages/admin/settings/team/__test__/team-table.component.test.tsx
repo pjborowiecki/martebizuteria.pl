@@ -150,7 +150,7 @@ describe("TeamTable list", () => {
 
     expect(screen.getByRole("button", { name: /^Admins 2/u })).toHaveAttribute("aria-pressed", "true")
     expect(screen.getByRole("button", { name: /^Two-factor on 1/u })).toHaveTextContent("50% of all")
-    expect(screen.getByRole("button", { name: /^Two-factor off 1/u })).toHaveTextContent("The panel opens only once it is on")
+    expect(screen.getByRole("button", { name: /^Two-factor off 1/u })).toHaveTextContent("Panel closed until it is on")
     expect(screen.getByRole("button", { name: /^Sign in with Google 1/u })).toBeInTheDocument()
   })
 
