@@ -73,11 +73,9 @@ Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](
 | `test:e2e:ui`      | `playwright test --ui`                                            |
 | `test:e2e:install` | `playwright install --with-deps chromium webkit`                  |
 | `test:all`         | `test`, then `test:e2e:smoke`                                     |
-| `test:watch`       | `vp test`                                                         |
+| `test:watch`       | `vp test watch`                                                   |
 
 `test:e2e` runs all six Playwright projects: `setup`, which signs in the seeded admin and customer, `chromium`, `webkit`, their two shop-wide projects and `stripe-test-mode`, which skips its specs unless Stripe sandbox keys are set; `test:e2e:stripe` runs that project alone. See [Stripe test mode](/docs/tooling/testing#stripe-test-mode).
-
-`test:watch` does not watch — `vp test` with no subcommand runs once. Use `vp test watch`. See [Testing](/docs/tooling/testing).
 
 ## Database
 

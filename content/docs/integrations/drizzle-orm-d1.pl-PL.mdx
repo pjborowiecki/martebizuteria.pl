@@ -158,12 +158,14 @@ Wyjątkiem jest `test`. Jego powiązanie ma `"remote": false`, a identyfikator j
 `drizzle.config.ts` korzysta ze sterownika HTTP, więc drizzle-kit dosięga D1 z Twojej maszyny bez Wranglera:
 
 ```ts
+const accountId = process.env["CLOUDFLARE_ACCOUNT_ID"]
+const databaseId = process.env["CLOUDFLARE_DATABASE_ID"]
+const token = process.env["CLOUDFLARE_ACCESS_TOKEN"]
+
 export default defineConfig({
-  dbCredentials: {
-    accountId: process.env["CLOUDFLARE_ACCOUNT_ID"] ?? "",
-    databaseId: process.env["CLOUDFLARE_DATABASE_ID"] ?? "",
-    token: process.env["CLOUDFLARE_ACCESS_TOKEN"] ?? "",
-  },
+  ...(accountId === undefined || databaseId === undefined || token === undefined
+    ? {}
+    : { dbCredentials: { accountId, databaseId, token } }),
   dialect: "sqlite",
   driver: "d1-http",
   migrations: { prefix: "timestamp", schema: "public", table: "__drizzle_migrations__" },
@@ -174,7 +176,7 @@ export default defineConfig({
 })
 ```
 
-Te trzy zmienne pochodzą z pliku środowiska — dlatego skrypty `db:*` przekazują `--env-file=.env.development`, `.env.preview` lub `.env.production`. Są to dane uwierzytelniające do zarządzania i żyją wyłącznie w lokalnym oprzyrządowaniu; nie są sekretami Workera.
+Te trzy zmienne pochodzą z pliku środowiska — dlatego skrypty `db:*` przekazują `--env-file=.env.development`, `.env.preview` lub `.env.production`. Są to dane uwierzytelniające do zarządzania i żyją wyłącznie w lokalnym oprzyrządowaniu; nie są sekretami Workera. Konfiguracja przekazuje je tylko wtedy, gdy ustawione są wszystkie trzy: `db:generate` ich nie potrzebuje, a `db:push`, `db:studio` i `db:introspect` bez nich kończą się komunikatem drizzle-kit, który wymienia brakujące `accountId`, `databaseId` i `token`.
 
 ## Skrypty
 

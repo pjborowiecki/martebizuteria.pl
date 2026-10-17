@@ -9,11 +9,11 @@ description: "The three Vitest projects, the in-process server-function bridge, 
 
 | Project       | Environment | Files                                             | Count |
 | ------------- | ----------- | ------------------------------------------------- | ----- |
-| `node`        | Node        | `*.{test,spec}.{ts,tsx}`, excluding the two below | 477   |
-| `integration` | Node        | `*.integration.test.{ts,tsx}`                     | 123   |
+| `node`        | Node        | `*.{test,spec}.{ts,tsx}`, excluding the two below | 478   |
+| `integration` | Node        | `*.integration.test.{ts,tsx}`                     | 127   |
 | `component`   | jsdom       | `*.component.test.{ts,tsx}`                       | 623   |
 
-1,223 test files in total, in 221 `__test__` folders. Only the `component` project loads `src/platform/testing/setup.ts`; node and integration tests import what they need explicitly. The `integration` project raises the test and hook timeouts to 30 seconds.
+1,228 test files in total, in 223 `__test__` folders; all but the commit message hook's test in `scripts/__test__/` live under `src/`. Only the `component` project loads `src/platform/testing/setup.ts`; node and integration tests import what they need explicitly. The `integration` project raises the test and hook timeouts to 30 seconds.
 
 ```sh
 bun run test              # all three projects

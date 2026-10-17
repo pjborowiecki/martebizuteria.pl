@@ -269,8 +269,6 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
 }))
 ```
 
-Three tests — `address-use-cases.test.ts`, `saved-payment-methods.test.ts` and `own-newsletter-subscription.test.ts` — still mock an invented `{ limit, windowSeconds }` shape; do not copy it.
-
 **Run the real chain.** To exercise the real middleware and validator, wrap the actual `createServerFn` with `withTestRpc` from `src/platform/testing/lib/server-function.ts` and stub only the session and the data layer, as `src/modules/discount/use-cases/__test__/create-discount.test.ts` does:
 
 ```ts

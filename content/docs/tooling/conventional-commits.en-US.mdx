@@ -45,7 +45,9 @@ Git passes the message file path as `$1` and the message source as `$2`. `script
 | `style`    | 💎    |
 | `test`     | 🚨    |
 
-Eleven types, and nothing else, for every subject the hook validates; a subject that already starts with an emoji such as 📚 or 🐛 is not validated at all (see [What is left alone](#what-is-left-alone)). The hook prefixes the matching emoji to the subject line and leaves the body untouched.
+Eleven types, and nothing else. The hook prefixes the matching emoji to the subject line and leaves the body untouched.
+
+A subject that already starts with one of these eleven emojis and a space, as an amended or reworded commit does, has that emoji taken off before the checks below, and the emoji of its type is written back. Amending a commit (Git passes the source `commit` for `--amend`, `-c` and `-C`) therefore leaves its subject as it was, and changing a subject's type swaps in the matching emoji. Any other leading emoji is simply part of the subject, so `🔥 wip` or `🐛 anything` fails the conventional pattern like any other malformed subject.
 
 ## What fails
 
@@ -68,15 +70,12 @@ Two things abort the commit with exit code 1.
 
 ## What is left alone
 
-The hook returns without touching the message in five cases:
+The hook returns without touching the message in four cases:
 
 - the message source is `squash`, `merge` or `template`;
 - the message is empty, or has no non-comment line;
-- the subject already starts with a character that has the Unicode `Emoji_Presentation` property, tested with `/^\p{Emoji_Presentation}/u`. That covers 📚, ✨, 🐛, 🚀, 📦, 💎 and 🚨, so amending a `docs`, `feat`, `fix`, `perf`, `refactor`, `style` or `test` commit the hook already decorated leaves its subject as it is. It also means such a subject skips validation entirely: `🐛 anything` is accepted unchanged;
 - the subject matches `/^(?:Merge |Revert "|fixup! |squash! )/`, which covers the subjects Git generates itself;
 - no message file path was passed.
-
-The other four emojis, 🛠️, ♻️, ⚙️ and 🗑️, are text-style characters followed by the variation selector U+FE0F, and `Emoji_Presentation` does not match them. Amending a `build`, `chore`, `ci` or `revert` commit (Git passes the source `commit` for `--amend`, `-c` and `-C`) without changing its subject therefore sends the decorated subject through the conventional pattern, which fails on the leading emoji, and the hook aborts with `Commit message does not follow conventional format.` The hook runs before the editor opens, so give the subject again without the emoji, for example `git commit --amend -m "chore(deps): …"`; the hook adds the emoji back.
 
 If the script throws for any other reason it prints `❌  Failed to process commit message:` and exits 1, so a broken hook fails loudly rather than letting a malformed subject through.
 

@@ -111,7 +111,7 @@ Istnieje pięć wąskich wyjątków (`overrides`) i są to jedyne odstępstwa w 
 
 Nie dodawaj szóstego wyjątku i nie dodawaj wyłączeń wstawianych w kodzie. Poza plikami generowanymi — `src/routeTree.gen.ts` i `src/types/worker-configuration.d.ts`, które linter pomija — repozytorium zawiera **zero** wyłączeń reguł i dokładnie jedno rzutowanie `as unknown as`, w atrapie D1 w `src/platform/testing/mocks/d1.ts:93`, i właśnie dlatego ten wyjątek istnieje. Jeśli reguła naprawdę blokuje poprawny kod, podziel funkcję albo nazwij wartość — prawie zawsze to jest właściwa poprawka.
 
-Ta sama zasada dotyczy komentarzy, choć nie sprawdza ich żadna reguła lintera. W TypeScripcie w `src/` są trzy, a w jego CSS dwa, każdy opisuje ograniczenie, którego typy nie przeniosą — na przykład w `src/modules/checkout/checkout.utils.ts`, gdzie `INSERT ... SELECT` zależy od fizycznej kolejności kolumn w tabeli. Narrację kodu, banery sekcji i powtórzenia nazwy usuwa recenzja.
+Ta sama zasada dotyczy komentarzy, choć nie sprawdza ich żadna reguła lintera. TypeScript i CSS w `src/` nie mają żadnego. Gdy ograniczenie nie jest oczywiste, wyraża je nazwa — na przykład `columnsInTableOrder` w `src/modules/checkout/checkout.utils.ts`, gdzie `INSERT ... SELECT` zależy od fizycznej kolejności kolumn w tabeli. Narrację kodu, banery sekcji i powtórzenia nazwy usuwa recenzja.
 
 Kolejność importów też nie jest kwestią gustu: `vite.config.ts` deklaruje 17 własnych grup importów, uporządkowanych warstwami, a formatter je stosuje. Nigdy nie sortuj importów ręcznie — uruchom `bun run check:fix`.
 
@@ -180,7 +180,7 @@ Po edycji dokumentacji uruchom `bun run content`, żeby przegenerować `.source/
 | `build` | 🛠️    | `chore`    | ♻️    |
 | `ci`    | ⚙️    |            |       |
 
-Skrypt zostawia temat w spokoju, jeśli już zaczyna się emoji, jeśli źródłem commita jest `squash`, `merge` lub `template`, albo jeśli temat wygenerował sam git (`Merge …`, `Revert "…`, `fixup! …`, `squash! …`).
+Skrypt zostawia temat w spokoju, jeśli źródłem commita jest `squash`, `merge` lub `template` albo jeśli temat wygenerował sam git (`Merge …`, `Revert "…`, `fixup! …`, `squash! …`). Temat, który już zaczyna się od jednego z powyższych emoji, jak w poprawianym commicie, jest sprawdzany bez niego i dostaje z powrotem emoji swojego typu.
 
 Czyli `docs(project): document the licence and roadmap` zamienia się w `📚 docs(project): document the licence and roadmap`. Zobacz [Commity konwencjonalne](/docs/tooling/conventional-commits).
 

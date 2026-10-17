@@ -68,11 +68,7 @@ The distinction matters more here than the list of names does.
 
 `VITE_R2_URL` is deliberately in both lists. It is not a secret; it is the public R2 base URL, and both the SSR render and the browser need it, so it is uploaded as a Worker binding _and_ inlined into the client bundle. Each environment points it at its own bucket: the `r2.dev` address of `martebizuteria-preview` in `.env.development` and `.env.preview`, and the custom domain `https://images.martebizuteria.pl` in `.env.production`, where images are resized through Cloudflare Image Transformations. [Image delivery](/docs/guides/image-delivery) sets them up.
 
-**3. Local tooling credentials.** These are never uploaded. `scripts/prepare-deploy-secrets.ts` copies only the names under `secrets.required`, and its comment says why:
-
-```ts
-// Only declared Worker bindings are uploaded; Cloudflare management tokens stay local.
-```
+**3. Local tooling credentials.** These are never uploaded. `scripts/prepare-deploy-secrets.ts` copies only the names under `secrets.required` into `declaredWorkerSecrets`, so the Cloudflare management tokens stay on the machine that deploys:
 
 | Variable                    | Used by                                                                                                                                                                                                    |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -81,7 +77,7 @@ The distinction matters more here than the list of names does.
 | `CLOUDFLARE_ACCESS_TOKEN`   | The same, as the API token                                                                                                                                                                                 |
 | `RESEND_MANAGEMENT_API_KEY` | `scripts/verify-email-sender.ts`, optional: a Resend Full access key that reads the sender domain's DNS records when `RESEND_API_KEY` may only send, see [Resend](/docs/integrations/resend#sender-domain) |
 
-The three `CLOUDFLARE_*` values are read through `process.env` in the Drizzle config and default to `""`, so a missing value surfaces as an authentication failure from the D1 HTTP API rather than a clear error.
+The Drizzle config reads the three `CLOUDFLARE_*` values from `process.env` and passes them as `dbCredentials` only when all three are set. `db:generate` needs none of them. Without them, `db:push`, `db:studio` and `db:introspect` stop with drizzle-kit's own message listing the missing `accountId`, `databaseId` and `token`.
 
 ## Plain vars, not secrets
 
@@ -152,14 +148,9 @@ Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.
 
 On a deployed Worker, `<host>` is its `workers.dev` name, or on preview its custom domain `preview.martebizuteria.pl`; production gets `martebizuteria.pl` when the shop goes live. The auth handler is `src/routes/api/auth.$.ts`, mounted at `/api/auth/$`; the Stripe handler is `src/routes/api/webhooks.stripe.ts` and accepts `POST` only. The InPost handler is `src/routes/api/webhooks.inpost.ts`; it answers `GET` with 200 for InPost Manager's address check and acts on a `POST`, up to 120 a minute from one address. The host the Stripe endpoint is registered on does not change any email: the order confirmation links to the address the checkout was made on, which the session's `return_url` carries.
 
-## Declared but not wired
+## Read but not declared
 
-Two names exist in the repository without a matching consumer. They are listed here so you do not spend time hunting for the code that reads them:
-
-| Name                    | Where it appears                                                             | Status                                                                                                                                                      |
-| ----------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `VITE_APP_URL`          | `env:` in `.github/workflows/deploy-preview.yml` and `deploy-production.yml` | Not in `.env.example`, not a declared secret, and not read anywhere in `src/`. The canonical URL comes from `APP_URL` in `src/presentation/branding/app.ts` |
-| `VITE_IMAGE_CDN_DOMAIN` | Read in `src/lib/image.ts` by `resolveImageCdnDomain()`                      | Absent from `.env.example`. When unset it falls back to the hostname of `APP_URL`, which is the normal case                                                 |
+`VITE_IMAGE_CDN_DOMAIN` is read in `src/lib/image.ts` by `resolveImageCdnDomain()`, but it is absent from `.env.example`, `.env.test`, `wrangler.jsonc` and the deploy workflows. When unset it falls back to the hostname of `APP_URL` in `src/presentation/branding/app.ts`, which is the normal case.
 
 ## Related
 

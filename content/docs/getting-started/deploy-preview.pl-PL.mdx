@@ -163,7 +163,7 @@ Workflow **E2E (full)** czyta też `E2E_STRIPE_SECRET_KEY` i `E2E_STRIPE_PUBLISH
 
 **Zmienne** repozytorium:
 
-`VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY` i `VITE_APP_URL`. Dwie pierwsze są wstawiane do bundle'a klienckiego na etapie budowania, więc muszą być zmiennymi, nie sekretami. `VITE_R2_URL` różni się między preview a produkcją, więc ustaw go jako zmienną środowisk GitHub `preview` i `production`, która ma pierwszeństwo przed zmienną repozytorium o tej samej nazwie. `VITE_APP_URL` jest przekazywany przez oba workflow, ale nie jest odczytywany nigdzie w `src/` i nie jest zadeklarowanym sekretem Workera — zobacz [Zmienne środowiskowe](/docs/getting-started/environment-variables).
+`VITE_R2_URL` i `VITE_STRIPE_PUBLISHABLE_KEY`. Obie są wstawiane do bundle'a klienckiego na etapie budowania, więc muszą być zmiennymi, nie sekretami. `VITE_R2_URL` różni się między preview a produkcją, więc ustaw go jako zmienną środowisk GitHub `preview` i `production`, która ma pierwszeństwo przed zmienną repozytorium o tej samej nazwie.
 
 ## Po wdrożeniu
 
