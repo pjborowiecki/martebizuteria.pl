@@ -17,7 +17,7 @@ export const SettingsPreferencesCard = (): JSX.Element => {
 
   return (
     <SettingsCard description={t("description")} title={t("title")}>
-      <div className="space-y-5 px-4 py-5 lg:px-5">
+      <div className="grid gap-5 px-4 py-5 md:grid-cols-2 lg:px-5">
         <SettingsLanguageField />
         <DisplayPreferenceField
           choice={options.timeZone}

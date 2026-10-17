@@ -25,7 +25,7 @@ The account loader prefetches `getCustomerProfileQuery()`. The security loader p
 
 ## Layout
 
-`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renders the admin header with the title, description and `SettingsTabs`, which are `AdminHeaderTabLink`s marked active by the route. The body is a single column, at most `max-w-3xl` wide, of `SettingsCard`s. A card has a title, a description, an optional action on the right and, below a divider, its rows; `SettingsRow` is one labelled row with an optional value and action.
+`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renders the admin header with the title, description and `SettingsTabs`, which are `AdminHeaderTabLink`s marked active by the route. The body is a single column of `SettingsCard`s across the full width of the page body, as on the other admin pages; a card lays its form fields out in two columns from medium screens up. A card has a title, a description, an optional action on the right and, below a divider, its rows; `SettingsRow` is one labelled row with an optional value and action.
 
 The sidebar marks **Settings** active on every `/admin/settings/*` page.
 
