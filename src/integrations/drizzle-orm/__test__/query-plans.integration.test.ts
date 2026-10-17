@@ -28,6 +28,8 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   }
 })
 
+vi.mock("~/src/modules/audit-log/audit-log.events.server", () => ({ recordCustomerOrdersClaimedAudit: vi.fn() }))
+
 const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
 const { pageViewsQuery } = await import("~/src/modules/admin-dashboard/admin-dashboard.accessors")
@@ -39,6 +41,7 @@ const { getDiscountByCodeForCustomerQuery, getDiscountByCodeForPreviewQuery } = 
 const { prepareDiscountClaim } = await import("~/src/modules/discount/discount.claim.server")
 const { getAdminSubscribersPage } = await import("~/src/modules/newsletter/newsletter.accessors")
 const { getAdminOrderTimelineRows, getOrderByTransactionId } = await import("~/src/modules/order/order.accessors")
+const { claimGuestOrdersForUser } = await import("~/src/modules/order/order.claim.server")
 const { getPriceReductions } = await import("~/src/modules/price-history/price-history.accessors")
 const { getPublishedProductsByCategoryIds, getPublishedProductsByCollectionHandle, getPublishedRelatedProducts } =
   await import("~/src/modules/product/product.accessors")
@@ -255,6 +258,20 @@ describe("hot reads", () => {
         "SEARCH discount_redemption USING COVERING INDEX discount_redemption_discountId_email_idx (discount_id=?)",
       ]),
     )
+  })
+})
+
+describe("claiming guest orders", () => {
+  it("files the redemptions of the account's orders under it through those orders instead of every guest redemption", async () => {
+    const paths = await planPaths(() => claimGuestOrdersForUser({ email: "ada@marte.test", userId: "user-1" }))
+
+    expect(paths).toStrictEqual(
+      expect.arrayContaining([
+        "SEARCH discount_redemption USING INDEX discount_redemption_orderId_unique (order_id=?)",
+        "LIST SUBQUERY 1 > SEARCH order USING INDEX order_userId_status_idx (user_id=?)",
+      ]),
+    )
+    expect(paths).not.toContain("SEARCH discount_redemption USING INDEX discount_redemption_userId_idx (user_id=?)")
   })
 })
 

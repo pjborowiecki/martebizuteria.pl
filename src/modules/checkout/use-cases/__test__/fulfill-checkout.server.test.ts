@@ -12,7 +12,6 @@ interface DiscountRedemptionInput {
   email: string
   orderId: string
   redeemed: { amountMinorUnits: number; discountId: string } | undefined
-  userId: string | null
 }
 
 const {
@@ -213,7 +212,6 @@ describe("fulfillCheckout", () => {
       email: "buyer@example.com",
       orderId: "order-1",
       redeemed: { amountMinorUnits: 2000, discountId: "disc-1" },
-      userId: null,
     })
   })
 

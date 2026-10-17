@@ -87,7 +87,7 @@ While the migrations run, and for as long as a release stays rolled back, the pr
 
 ## Hand-written migrations
 
-Many of the 104 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` and others. Every migration added since the end of September is named that way. Hand-writing is the right call for:
+Many of the 105 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` and others. Every migration added since the end of September is named that way. Hand-writing is the right call for:
 
 - **Renames.** drizzle-kit sees a rename as a drop plus an add, which loses the data. The end of `20260604232955_curved_wallow.sql` renames a table and then aligns its index names with the new name:
 
@@ -150,7 +150,7 @@ Two rules follow:
 
 ### A caveat about the drizzle journal
 
-`migrations/meta/_journal.json` currently lists 52 tags while the directory holds 104 `.sql` files, three of them the empty placeholders above, and `meta/` holds 37 snapshots. The 52 files missing from the journal, every migration after `20260930151544_collection_short_descriptions.sql` among them, were never added to it, and several generated ones have no snapshot. Wrangler does not care — it tracks its own state in D1. But **drizzle-kit does**: `bun run db:generate` diffs against the newest snapshot, `meta/20260930151544_snapshot.json`, which predates the 46 migrations after it, so it can emit SQL for changes that are already applied.
+`migrations/meta/_journal.json` currently lists 52 tags while the directory holds 105 `.sql` files, three of them the empty placeholders above, and `meta/` holds 37 snapshots. The 53 files missing from the journal, every migration after `20260930151544_collection_short_descriptions.sql` among them, were never added to it, and several generated ones have no snapshot. Wrangler does not care — it tracks its own state in D1. But **drizzle-kit does**: `bun run db:generate` diffs against the newest snapshot, `meta/20260930151544_snapshot.json`, which predates the 47 migrations after it, so it can emit SQL for changes that are already applied.
 
 Before trusting a generated migration, either compare it against the current live schema with `bun run db:introspect:preview` (which writes `schema.ts` and `relations.ts` into the migrations folder), or read it line by line. Both `schema.ts` and `relations.ts` in `src/integrations/drizzle-orm/migrations/` are introspection output, not hand-maintained code.
 

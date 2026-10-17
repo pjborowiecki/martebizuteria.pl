@@ -46,6 +46,17 @@ const readRedemptions = () =>
 const readOrderTotals = () =>
   z.object({ discount_total: z.number(), total: z.number() }).parse(sqlite.prepare('select discount_total, total from "order"').get())
 
+const readAccounts = () =>
+  z
+    .object({ order: z.string().nullable(), redemption: z.string().nullable() })
+    .parse(
+      sqlite
+        .prepare(
+          'select "order".user_id as "order", discount_redemption.user_id as redemption from "order" join discount_redemption on discount_redemption.order_id = "order".id',
+        )
+        .get(),
+    )
+
 const readClaimedCheckouts = () =>
   z
     .array(z.object({ checkout_id: z.string() }))
@@ -63,6 +74,7 @@ beforeEach(() => {
     delete from discount_redemption;
     delete from order_item;
     delete from "order";
+    delete from user;
     delete from payment;
     delete from checkout;
     delete from discount;
@@ -153,5 +165,23 @@ describe("fulfilling a paid session whose code changed while the shopper paid", 
 
     expect(readOrderTotals()).toStrictEqual({ discount_total: DISCOUNT_AMOUNT, total: PRICE - DISCOUNT_AMOUNT })
     expect(readRedemptions()).toStrictEqual([])
+  })
+})
+
+describe("fulfilling a guest checkout paid with the e-mail of a verified account", () => {
+  it("files the order and the code it redeemed under that account", async () => {
+    sqlite.exec(`
+      insert into user (id, name, email, email_verified, created_at, updated_at) values ('user-anna', 'Anna', 'anna@example.com', 1, 0, 0)
+    `)
+
+    await fulfillCheckout(paidSession)
+
+    expect(readAccounts()).toStrictEqual({ order: "user-anna", redemption: "user-anna" })
+  })
+
+  it("leaves both without an account when no verified account has that e-mail", async () => {
+    await fulfillCheckout(paidSession)
+
+    expect(readAccounts()).toStrictEqual({ order: null, redemption: null })
   })
 })
