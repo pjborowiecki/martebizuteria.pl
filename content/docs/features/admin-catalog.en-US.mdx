@@ -195,7 +195,10 @@ Values are attached through `src/modules/attribute-on-product`: `get-product-att
 
 - accepted MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/avif`
 - maximum size: `MAX_IMAGE_BYTES` = 5 MiB
+- longest file name: `MAX_IMAGE_NAME_LENGTH` = 255 characters
 - folders: `collections`, `products`, `categories`, `uploads` (the fallback)
+
+A file that breaks a rule is refused with `ERROR_CODES.VALIDATION` and the rule as the message (`INVALID_FILE`, `INVALID_TYPE` or `TOO_LARGE`), before anything is stored.
 
 The key is **content-addressed**, which makes re-uploading the same file free:
 

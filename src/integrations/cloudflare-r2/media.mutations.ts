@@ -3,14 +3,9 @@ import { env } from "cloudflare:workers"
 import { createServerFn } from "@tanstack/react-start"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
-import {
-  MAX_IMAGE_BYTES,
-  MEDIA_ERROR_CODES,
-  MIME_EXTENSION,
-  isAcceptedImageMime,
-  isMediaFolder,
-} from "~/src/integrations/cloudflare-r2/media.zod"
+import { MIME_EXTENSION, uploadImageInputSchema } from "~/src/integrations/cloudflare-r2/media.zod"
 
+import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { recordImageUploadedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 
 const bufferToHex = (buffer: ArrayBuffer): string => {
@@ -33,23 +28,15 @@ export const uploadImageFn = createServerFn({
   method: "POST",
 })
   .middleware([authorized({ product: ["update"] })])
-  .validator((data: FormData) => data)
-  .handler(async ({ data }) => {
-    const file = data.get("file")
-    if (!(file instanceof File)) {
-      throw new TypeError(MEDIA_ERROR_CODES.INVALID_FILE)
+  .validator((data: FormData) => {
+    const parsed = uploadImageInputSchema.safeParse(data)
+    if (!parsed.success) {
+      throw new AppError(ERROR_CODES.VALIDATION, parsed.error.issues[0]?.message)
     }
 
-    if (!isAcceptedImageMime(file.type)) {
-      throw new Error(MEDIA_ERROR_CODES.INVALID_TYPE)
-    }
-
-    if (file.size === 0 || file.size > MAX_IMAGE_BYTES) {
-      throw new Error(MEDIA_ERROR_CODES.TOO_LARGE)
-    }
-
-    const folderRaw = data.get("folder")
-    const folder: string = isMediaFolder(folderRaw) ? folderRaw : "uploads"
+    return parsed.data
+  })
+  .handler(async ({ data: { file, folder } }) => {
     const buffer = await file.arrayBuffer()
     const digest = await crypto.subtle.digest("SHA-256", buffer)
     const key = `${folder}/${bufferToHex(digest)}.${MIME_EXTENSION[file.type]}`

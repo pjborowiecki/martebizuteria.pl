@@ -25,18 +25,28 @@ Plik `media.mutations.ts` eksportuje jedną funkcję serwerową:
 ```ts
 export const uploadImageFn = createServerFn({ method: "POST" })
   .middleware([authorized({ product: ["update"] })])
-  .validator((data: FormData) => data)
-  .handler(async ({ data }) => {
+  .validator((data: FormData) => {
+    const parsed = uploadImageInputSchema.safeParse(data)
+    if (!parsed.success) {
+      throw new AppError(ERROR_CODES.VALIDATION, parsed.error.issues[0]?.message)
+    }
+
+    return parsed.data
+  })
+  .handler(async ({ data: { file, folder } }) => {
     /* … */
   })
 ```
 
-Autoryzacja to uprawnienie `product: ["update"]`, więc wysyłać może wyłącznie rola administratora. Walidator przepuszcza `FormData` — tego kształtu nie da się opisać obiektem Zod, więc handler sam wykonuje sprawdzenia, w tej kolejności:
+Autoryzacja to uprawnienie `product: ["update"]`, więc wysyłać może wyłącznie rola administratora. Walidator parsuje `FormData` schematem `uploadImageInputSchema` z `media.zod.ts`, który sprawdza, w tej kolejności:
 
-1. `data.get("file")` musi być typu `File`, w przeciwnym razie `TypeError(INVALID_FILE)`.
-2. `isAcceptedImageMime(file.type)` musi być spełnione, w przeciwnym razie `INVALID_TYPE`.
-3. Rozmiar musi być większy od zera i nie większy niż `MAX_IMAGE_BYTES`, w przeciwnym razie `TOO_LARGE`.
-4. `data.get("folder")` używane jest, gdy `isMediaFolder` je przyjmie; w przeciwnym razie po cichu przyjmowana jest wartość `"uploads"`.
+1. Żądanie musi być typu `FormData`, a `data.get("file")` typu `File`, w przeciwnym razie `INVALID_FILE`.
+2. Nazwa pliku może mieć najwyżej `MAX_IMAGE_NAME_LENGTH` (255) znaków, tyle, ile pozwala system plików, w przeciwnym razie `INVALID_FILE`.
+3. `isAcceptedImageMime(file.type)` musi być spełnione, w przeciwnym razie `INVALID_TYPE`.
+4. Rozmiar musi być większy od zera i nie większy niż `MAX_IMAGE_BYTES`, w przeciwnym razie `TOO_LARGE`.
+5. `data.get("folder")` używane jest, gdy jest jednym z `MEDIA_FOLDERS`; w przeciwnym razie po cichu przyjmowana jest wartość `"uploads"`.
+
+Odrzucona wysyłka rzuca `AppError` z `ERROR_CODES.VALIDATION` i pierwszą regułą, którą plik złamał, jako komunikatem, więc przeglądarka dostaje błąd walidacji, a nie `INTERNAL_ERROR`, i nic nie jest zapisywane ani odnotowywane w dzienniku audytu.
 
 Następnie klucz wyprowadzany jest z bajtów:
 
@@ -68,17 +78,19 @@ Każda wysyłka, także ponowna wysyłka bajtów, które bucket już ma, jest za
 
 ## Reguły
 
-Plik `media.zod.ts` trzyma ograniczenia. Wbrew nazwie nie zawiera żadnego schematu Zod — tylko stałe i dwa predykaty typu:
+Plik `media.zod.ts` trzyma ograniczenia i schemat, którym parsowana jest wysyłka:
 
-| Eksport                                | Wartość                                                            |
-| -------------------------------------- | ------------------------------------------------------------------ |
-| `ACCEPTED_IMAGE_MIME_TYPES`            | `image/jpeg`, `image/png`, `image/webp`, `image/avif`              |
-| `ACCEPTED_IMAGE_ACCEPT_ATTR`           | Ta sama lista połączona przecinkami, na potrzeby atrybutu `accept` |
-| `MAX_IMAGE_BYTES`                      | 5 MiB (`5 * 1024 * 1024`)                                          |
-| `MEDIA_FOLDERS`                        | `collections`, `products`, `categories`, `uploads`                 |
-| `MIME_EXTENSION`                       | Mapa typu MIME na rozszerzenie (`image/jpeg` → `jpg`)              |
-| `MEDIA_ERROR_CODES`                    | `INVALID_FILE`, `INVALID_TYPE`, `TOO_LARGE`, `UNAUTHORIZED`        |
-| `isMediaFolder`, `isAcceptedImageMime` | Predykaty współdzielone przez handler i interfejs                  |
+| Eksport                      | Wartość                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------------- |
+| `ACCEPTED_IMAGE_MIME_TYPES`  | `image/jpeg`, `image/png`, `image/webp`, `image/avif`                         |
+| `ACCEPTED_IMAGE_ACCEPT_ATTR` | Ta sama lista połączona przecinkami, na potrzeby atrybutu `accept`            |
+| `MAX_IMAGE_BYTES`            | 5 MiB (`5 * 1024 * 1024`)                                                     |
+| `MAX_IMAGE_NAME_LENGTH`      | 255 znaków                                                                    |
+| `MEDIA_FOLDERS`              | `collections`, `products`, `categories`, `uploads`                            |
+| `MIME_EXTENSION`             | Mapa typu MIME na rozszerzenie (`image/jpeg` → `jpg`)                         |
+| `MEDIA_ERROR_CODES`          | `INVALID_FILE`, `INVALID_TYPE`, `TOO_LARGE`, `UNAUTHORIZED`                   |
+| `isAcceptedImageMime`        | Sprawdzenie typu MIME współdzielone przez schemat i interfejs                 |
+| `uploadImageInputSchema`     | Schemat `FormData`: `File` w powyższych granicach oraz katalog albo `uploads` |
 
 ## Przepływ wysyłki po stronie panelu
 
