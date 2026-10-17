@@ -1,4 +1,4 @@
-import { QueryClient } from "@tanstack/react-query"
+import { QueryClient, hashKey } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
@@ -200,6 +200,42 @@ describe("getStorefrontProductsPage", () => {
   })
 })
 
+describe("getStorefrontProductsPage on a category or collection page", () => {
+  it("keeps the catalog page size on a category page, whose category is not a shopper's filter", async () => {
+    access.categoryByHandle.mockResolvedValue({ id: "cat-root" })
+    access.hierarchy.mockResolvedValue([{ id: "cat-root", parentId: null }])
+
+    await getStorefrontProductsPage({ data: { category: "rings", page: 2, scope: { categoryHandle: "rings" } } })
+
+    expect(access.page.mock.calls[0]?.[0]).toMatchObject({ categoryIds: ["cat-root"], limit: 12, offset: 12 })
+  })
+
+  it("lists the scope's own category even when the search names another", async () => {
+    access.categoryByHandle.mockResolvedValue({ id: "cat-root" })
+    access.hierarchy.mockResolvedValue([{ id: "cat-root", parentId: null }])
+
+    await getStorefrontProductsPage({ data: { category: "earrings", scope: { categoryHandle: "rings" } } })
+
+    expect(access.categoryByHandle).toHaveBeenCalledExactlyOnceWith({ handle: "rings" })
+  })
+
+  it("keeps the catalog page size on a collection page", async () => {
+    access.collectionByHandle.mockResolvedValue({ id: "collection-1" })
+
+    await getStorefrontProductsPage({ data: { collection: "bestsellers", scope: { collectionHandle: "bestsellers" } } })
+
+    expect(access.page.mock.calls[0]?.[0]).toMatchObject({ collectionId: "collection-1", limit: 12 })
+  })
+
+  it("raises a scoped page to the filtered page size once the shopper adds a filter", async () => {
+    access.collectionByHandle.mockResolvedValue({ id: "collection-1" })
+
+    await getStorefrontProductsPage({ data: { collection: "bestsellers", maxPrice: 300, scope: { collectionHandle: "bestsellers" } } })
+
+    expect(access.page.mock.calls[0]?.[0]).toMatchObject({ limit: 100, maxPriceCents: 30_000 })
+  })
+})
+
 describe("getStorefrontProductsPage search limits", () => {
   it("counts a search against the client address's catalog search budget", async () => {
     await getStorefrontProductsPage({ data: { q: "ring" } })
@@ -244,10 +280,17 @@ describe("getStorefrontProductsPageQuery", () => {
     expect(options.staleTime).toBe(60_000)
   })
 
-  it("folds the scope handles into the effective search", () => {
+  it("folds the scope handles into the effective search and keeps the scope beside it", () => {
     const options = getStorefrontProductsPageQuery({ q: "ring" }, { categoryHandle: "rings" })
 
-    expect(options.queryKey[2]).toStrictEqual({ category: "rings", q: "ring" })
+    expect(options.queryKey[2]).toStrictEqual({ category: "rings", q: "ring", scope: { categoryHandle: "rings" } })
+  })
+
+  it("caches a category page apart from the catalogue filtered by the same category, since they page differently", () => {
+    const filtered = getStorefrontProductsPageQuery({ category: "rings" })
+    const scoped = getStorefrontProductsPageQuery({}, { categoryHandle: "rings" })
+
+    expect(hashKey(filtered.queryKey)).not.toBe(hashKey(scoped.queryKey))
   })
 
   it("pages forward while nothing but the scope filters the catalog", () => {
@@ -266,6 +309,25 @@ describe("getStorefrontProductsPageQuery", () => {
     const options = getStorefrontProductsPageQuery({ q: "ring" })
 
     expect(options.getNextPageParam({ hasMore: true, items: [], limit: 100, offset: 0, total: 500 }, [], 1, [1])).toBeUndefined()
+  })
+
+  it("lists every product of a scoped page once, page after page", async () => {
+    const catalogue = Array.from({ length: 30 }, (_, index) => ({
+      handle: `ring-${index}`,
+      id: `product-${index}`,
+      title: `Ring ${index}`,
+    }))
+    access.categoryByHandle.mockResolvedValue({ id: "cat-root" })
+    access.hierarchy.mockResolvedValue([{ id: "cat-root", parentId: null }])
+    access.page.mockImplementation(({ limit, offset }: { readonly limit: number; readonly offset: number }) =>
+      Promise.resolve({ items: catalogue.slice(offset, offset + limit), total: catalogue.length }),
+    )
+    const options = getStorefrontProductsPageQuery({}, { categoryHandle: "rings" })
+
+    const data = await new QueryClient().infiniteQuery({ ...options, pages: 4 })
+
+    expect(data.pageParams).toStrictEqual([1, 2, 3])
+    expect(data.pages.flatMap((page) => page.items)).toStrictEqual(catalogue)
   })
 
   it("fetches each page through the server function", async () => {
