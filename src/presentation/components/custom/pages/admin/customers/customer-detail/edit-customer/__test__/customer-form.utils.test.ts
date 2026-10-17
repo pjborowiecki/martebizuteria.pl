@@ -19,6 +19,7 @@ const customerDetail = (overrides: Partial<User["adminCustomerDetail"]> = {}): U
   createdAt: JOINED_AT,
   customTags: ["vip", "wholesale"],
   email: "anna@example.com",
+  emailHistory: [],
   emailVerified: true,
   formatLocale: null,
   id: "usr_1",

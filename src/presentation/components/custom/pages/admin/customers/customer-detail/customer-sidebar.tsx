@@ -19,6 +19,7 @@ import {
   CUSTOMER_DETAIL_CARD_CLASS,
   CUSTOMER_DETAIL_COLUMN_CLASS,
 } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/_styles/customer-detail.styles"
+import { CustomerEmailHistory } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-email-history"
 import { CustomerTimelineCard } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-timeline-card"
 
 export const CustomerSidebar = ({ customer }: CustomerSidebarProps): JSX.Element => (
@@ -28,6 +29,8 @@ export const CustomerSidebar = ({ customer }: CustomerSidebarProps): JSX.Element
         <CustomerIdentity customer={customer} />
         <Separator className={SECTION_SEPARATOR_CLASS} />
         <CustomerFacts customer={customer} />
+        <Separator className={SECTION_SEPARATOR_CLASS} />
+        <CustomerEmailHistory emailHistory={customer.emailHistory} />
         <Separator className={SECTION_SEPARATOR_CLASS} />
         <CustomerTags customTags={customer.customTags} tags={customer.tags} />
         <Separator className={SECTION_SEPARATOR_CLASS} />

@@ -1,7 +1,7 @@
 import { type JSX } from "react"
 
 import { cn } from "cn"
-import { Eye, LogIn, LogOut, type LucideIcon, ShoppingBag, ShoppingCart, UserRound } from "lucide-react"
+import { AtSign, Eye, LogIn, LogOut, type LucideIcon, ShoppingBag, ShoppingCart, UserRound } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { type User } from "~/src/modules/user/user.types"
@@ -49,6 +49,12 @@ const resolveTimelineDescription = (
     })
   }
 
+  if (event.kind === "email_changed") {
+    return event.from === undefined || event.to === undefined
+      ? t("timeline.emailChangedWithoutAddresses")
+      : t("timeline.emailChanged", { from: event.from, to: event.to })
+  }
+
   return t("timeline.accountCreated")
 }
 
@@ -67,6 +73,10 @@ const resolveTimelineEventKey = (event: User["adminCustomerDetail"]["timeline"][
 
   if (event.kind === "page_viewed") {
     return `${event.date}-${event.kind}-${event.path}`
+  }
+
+  if (event.kind === "email_changed") {
+    return [event.date, event.kind, event.from, event.to].join("-")
   }
 
   return `${event.date}-${event.kind}`
@@ -118,6 +128,7 @@ const TIMELINE_ICONS: Record<User["adminCustomerDetail"]["timeline"][number]["ki
   account_created: UserRound,
   cart_abandoned: ShoppingBag,
   cart_item_added: ShoppingCart,
+  email_changed: AtSign,
   order_placed: ShoppingBag,
   page_viewed: Eye,
   signed_in: LogIn,

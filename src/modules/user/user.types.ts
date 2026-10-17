@@ -8,6 +8,7 @@ import { type NumericInput } from "~/src/modules/_core/utils/datetime"
 import { type address } from "~/src/modules/address/address.schema"
 import { type auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { type order } from "~/src/modules/order/order.schema"
+import { type userEmailHistory } from "~/src/modules/user-email-history/user-email-history.schema"
 import { type AdminCustomerStatFilter } from "~/src/modules/user/user.constants"
 import { type user } from "~/src/modules/user/user.schema"
 import { type userZodSchemas } from "~/src/modules/user/user.zod"
@@ -112,6 +113,7 @@ export interface User {
   customerAddressRow: CustomerAddressRow
   customerLocationRow: CustomerLocationRow
   customerOrderStats: CustomerOrderStats
+  emailHistoryRow: Pick<typeof userEmailHistory.$inferSelect, "addedAt" | "email" | "replacedAt">
   insert: typeof user.$inferInsert
   select: typeof user.$inferSelect
   teamCandidate: TeamCandidate

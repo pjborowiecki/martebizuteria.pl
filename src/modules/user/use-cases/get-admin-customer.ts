@@ -14,6 +14,7 @@ import { type CalendarPeriod, formatShortDate } from "~/src/modules/_core/utils/
 import { type AdminDashboardChartWindow, resolveAdminDashboardMonths } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { resolveCategoryTitle } from "~/src/modules/product-category/product-category.utils"
 import { resolveCollectionTitle } from "~/src/modules/product-collection/product-collection.utils"
+import { getUserEmailHistory } from "~/src/modules/user-email-history/user-email-history.accessors"
 import {
   getAdminCustomerOrderRowsQuery,
   getCustomerAuditTimelineQuery,
@@ -34,6 +35,7 @@ import {
 } from "~/src/modules/user/user.constants"
 import { type User } from "~/src/modules/user/user.types"
 import {
+  buildAdminCustomerEmailHistory,
   buildAdminCustomerMonthlySpendingSeries,
   buildAdminCustomerTimeline,
   formatAdminCustomerFullAddress,
@@ -88,6 +90,7 @@ const loadAdminCustomerDetailQueryResult = async (
     preferredCollectionRows,
     orderRows,
     auditRows,
+    emailHistoryRows,
   ] = await Promise.all([
     getCustomerOrderStatsQuery([userId]),
     getDefaultCustomerAddressFullQuery(userId),
@@ -98,6 +101,7 @@ const loadAdminCustomerDetailQueryResult = async (
     getCustomerPreferredCollectionQuery(userId),
     getAdminCustomerOrderRowsQuery(userId),
     getCustomerAuditTimelineQuery(userId),
+    getUserEmailHistory(userId),
   ])
 
   const statsByUserId = mapCustomerOrderStats(orderStatsRows)
@@ -106,6 +110,7 @@ const loadAdminCustomerDetailQueryResult = async (
     addressRow: addressRows[0],
     auditRows,
     categoryBreakdownRows,
+    emailHistoryRows,
     monthlySpendingRows,
     orderRows,
     orderStats: statsByUserId.get(userId),
@@ -158,6 +163,7 @@ const buildAdminCustomerDetailPayload = (input: BuildAdminCustomerDetailPayloadI
     averageOrderValue,
     categoryBreakdown,
     customTags: adminMetadata.tags ?? [],
+    emailHistory: buildAdminCustomerEmailHistory(queryResult.emailHistoryRows, preferences),
     initials: resolveAdminCustomerInitials(userRow.name),
     isReturning,
     joinDate: formatShortDate(userRow.createdAt, preferences.formatLocale, preferences.timeZone),
@@ -191,6 +197,7 @@ type AdminCustomerOrderRow = Awaited<ReturnType<typeof getAdminCustomerOrderRows
 interface AdminCustomerDetailQueryResult {
   readonly addressRow: Awaited<ReturnType<typeof getDefaultCustomerAddressFullQuery>>[number] | undefined
   readonly categoryBreakdownRows: Awaited<ReturnType<typeof getCustomerCategoryBreakdownQuery>>
+  readonly emailHistoryRows: readonly User["emailHistoryRow"][]
   readonly monthlySpendingRows: Awaited<ReturnType<typeof getCustomerMonthlySpendingQuery>>
   readonly orderRows: AdminCustomerOrderRow[]
   readonly orderStats: User["customerOrderStats"] | undefined

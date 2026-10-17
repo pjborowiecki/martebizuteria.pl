@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, getTableColumns, gte, inArray, isNotNull, lt, max, sql } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, getTableColumns, gte, inArray, isNotNull, lt, max, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { calendarPeriodKey, inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -6,7 +6,7 @@ import { calendarPeriodKey, inJsonList } from "~/src/integrations/drizzle-orm/dr
 import { buildAdminNumericFilterSql } from "~/src/modules/_core/utils/column-filters.server"
 import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-column-filter.server"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
-import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
+import { buildAdminSearchOrCondition, normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { address } from "~/src/modules/address/address.schema"
 import { type AdminDashboardChartWindow } from "~/src/modules/admin-dashboard/admin-dashboard.utils"
 import { AUDIT_LOG_ACTION } from "~/src/modules/audit-log/audit-log.constants"
@@ -22,6 +22,7 @@ import { payment } from "~/src/modules/payment/payment.schema"
 import { productCategory } from "~/src/modules/product-category/product-category.schema"
 import { productCollection } from "~/src/modules/product-collection/product-collection.schema"
 import { session } from "~/src/modules/session/session.schema"
+import { accountsWithAddressContaining } from "~/src/modules/user-email-history/user-email-history.accessors"
 import {
   ADMIN_CUSTOMER_DETAIL_ORDERS_LIMIT,
   ADMIN_CUSTOMER_MIN_REPEAT_ORDERS,
@@ -56,14 +57,17 @@ const customerOrderRollupSubquery = () =>
     .groupBy(order.userId)
     .as("customer_order_rollup")
 
+const SEARCHED_CUSTOMER_COLUMNS = [user.name, user.email, user.phone, user.id, user.stripeCustomerId]
+
 const buildAdminCustomersUserConditions = (
   params: Pick<AdminCustomersListParams, "search" | "statFilter" | "filters" | "timeZone">,
 ): SQL[] => {
   const conditions: SQL[] = []
   const filters = params.filters ?? {}
-  const searchCondition = buildAdminSearchOrCondition(params.search, [user.name, user.email, user.phone, user.id, user.stripeCustomerId])
-  if (searchCondition !== undefined) {
-    conditions.push(searchCondition)
+  const term = normalizeAdminSearchTerm(params.search)
+  if (term !== undefined) {
+    const usedMatchingAddress = inArray(user.id, accountsWithAddressContaining(term))
+    conditions.push(or(buildAdminSearchOrCondition(term, SEARCHED_CUSTOMER_COLUMNS), usedMatchingAddress)!)
   }
 
   if (params.statFilter === ADMIN_CUSTOMER_STAT_FILTER.RETURNING) {
@@ -498,6 +502,7 @@ export const getCustomerAuditTimelineQuery = (userId: string) =>
 const TOP_CATEGORY_LIMIT = 5
 
 const CUSTOMER_AUDIT_TIMELINE_ACTIONS = [
+  AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED,
   AUDIT_LOG_ACTION.AUTH_LOGIN,
   AUDIT_LOG_ACTION.AUTH_LOGOUT,
   AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED,
