@@ -5,15 +5,20 @@ description: "Zestaw narzędzi vp: serwer deweloperski, kompilacje, testy, lint,
 
 Vite+ (pakiet `vite-plus`, komenda `vp`) łączy Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt i Vite Task za jednym CLI. Jeden plik — `vite.config.ts` — konfiguruje je wszystkie: kompilację, formater, linter, stos wtyczek, serwer deweloperski, reguły dla plików w przechowalni i projekty testowe.
 
-`package.json` przypina zestaw narzędzi w trzech miejscach:
+`package.json` przypina zestaw narzędzi w czterech miejscach:
 
 ```json
-"devDependencies": { "vite-plus": "1.0.0-rc.0" },
+"devDependencies": {
+  "@vitest/coverage-v8": "5.0.3",
+  "vite-plus": "1.1.0"
+},
 "overrides": {
-  "vite": "npm:@voidzero-dev/vite-plus-core@1.0.0-rc.0",
-  "vitest": "5.0.1"
+  "vite": "npm:@voidzero-dev/vite-plus-core@1.1.0",
+  "vitest": "5.0.3"
 }
 ```
+
+`5.0.3` to wersja Vitesta, od której zależy sam `vite-plus` 1.1.0, więc nadpisanie i dostawca pokrycia pasują do runnera dostarczanego przez Vite+.
 
 Binarka `vp` na Twojej maszynie to cienki globalny launcher; rozwiązuje przypięty w projekcie pakiet `vite-plus`. Uruchom `vp toolchain`, aby wypisać wersje i ich zależności, `vp toolchain --global`, aby pominąć lokalny pakiet, oraz `vp why <package>`, aby zobaczyć graf zależności. Jeśli konfiguracja, środowisko uruchomieniowe albo menedżer pakietów zachowują się dziwnie, `vp env doctor` to pierwsza rzecz do uruchomienia i pierwsza rzecz do wklejenia, gdy prosisz o pomoc.
 
@@ -21,20 +26,20 @@ Binarka `vp` na Twojej maszynie to cienki globalny launcher; rozwiązuje przypi�
 
 `vp <nazwa>` uruchamia wbudowaną komendę Vite+. `vp run <nazwa>` uruchamia skrypt z `package.json` albo zadanie z `vite.config.ts`. Skrypty nie mogą przesłonić komend wbudowanych, więc `vp dev` i `vp run dev` to dwie różne rzeczy — druga to własny skrypt `dev` repozytorium, który dodatkowo odtwarza kolekcje dokumentacji i ustawia `CLOUDFLARE_ENV`. Do wszystkiego, co definiuje repozytorium, używaj `bun run <skrypt>`.
 
-| Komenda      | Skrypty, które jej używają                                                                               |
-| ------------ | -------------------------------------------------------------------------------------------------------- |
-| `vp dev`     | `dev`                                                                                                    |
-| `vp build`   | `build:preview`, `build:production`                                                                      |
-| `vp preview` | `start` (oraz `preview`, będący aliasem `start`)                                                         |
-| `vp test`    | `test`, `test:unit`, `test:integration`, `test:component`, `test:changed`, `test:coverage`, `test:watch` |
-| `vp check`   | `check`, `check:fix`                                                                                     |
-| `vp lint`    | `lint`                                                                                                   |
-| `vp fmt`     | `format`, `format:check`                                                                                 |
-| `vp staged`  | `check:pre-commit`, `check:staged`, `lint:staged`                                                        |
-| `vp config`  | `prepare`, uruchamiany przy każdym `bun install` i instalujący hooki Gita                                |
-| `vp exec`    | `cf-typegen`, wszystkie skrypty `db:*` z Wranglerem, `deploy:preview`, `deploy:production`               |
+| Komenda      | Skrypty, które jej używają                                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| `vp dev`     | `dev`                                                                                                                         |
+| `vp build`   | `build:preview`, `build:production`, `build:test`                                                                             |
+| `vp preview` | `start` (oraz `preview`, będący aliasem `start`), `start:test`                                                                |
+| `vp test`    | `test`, `test:unit`, `test:integration`, `test:component`, `test:changed`, `test:coverage`, `test:watch`                      |
+| `vp check`   | `check`, `check:fix`                                                                                                          |
+| `vp lint`    | `lint`                                                                                                                        |
+| `vp fmt`     | `format`, `format:check`                                                                                                      |
+| `vp staged`  | `check:pre-commit`, `check:staged`, `lint:staged`                                                                             |
+| `vp config`  | `prepare`, uruchamiany przy każdym `bun install` i instalujący hooki Gita                                                     |
+| `vp exec`    | `cf-typegen`, `db:generate`, wszystkie skrypty `db:*` z Wranglerem poza `db:seed:test`, `deploy:preview`, `deploy:production` |
 
-`vp exec <komenda>` uruchamia binarkę z lokalnego `node_modules/.bin`. Tak wywoływane są `wrangler` i `drizzle-kit`, więc repozytorium zawsze korzysta z wersji zapisanych w `bun.lock`, a nie z tego, co jest zainstalowane globalnie.
+`vp exec <komenda>` uruchamia binarkę z lokalnego `node_modules/.bin`. Tak skrypty wywołują `wrangler`, a `db:generate` — `drizzle-kit`, więc te komendy korzystają z wersji zapisanych w `bun.lock`, a nie z tego, co jest zainstalowane globalnie. Skrypty drizzle-kita, które łączą się z bazą, uruchamiają zamiast tego `bun --env-file=.env.<środowisko> run drizzle-kit`, żeby Bun wczytał plik środowiska, a `db:seed:test` uruchamia `scripts/seed-test.ts`, który wywołuje `bun x wrangler`.
 
 ## vite.config.ts
 
@@ -51,7 +56,7 @@ Plik eksportuje `defineConfig({ … })` z `vite-plus` i jest podzielony następu
 | `staged`  | `{ "*": ["vp check --fix"] }`                                                                                                         |
 | `test`    | Pokrycie, środowisko, trzy projekty Vitest — zobacz [Testy](/docs/tooling/testing)                                                    |
 
-Jedna tablica `ignorePatterns` zadeklarowana na początku pliku jest używana zarówno przez `fmt`, jak i `lint`. Obejmuje drzewa generowane i vendorowane: `.source`, `node_modules`, `dist`, `coverage`, `opensrc`, `scripts`, `.tanstack`, `.wrangler`, `.vite-hooks`, `.vscode`, `.agents`, `.claude`, `.codex`, `bun.lock`, `**/*.d.ts`, `**/*.tsbuildinfo`, `src/routeTree.gen.ts` oraz `src/integrations/**/migrations/**`.
+Jedna tablica `ignorePatterns` zadeklarowana na początku pliku jest używana zarówno przez `fmt`, jak i `lint`. Obejmuje drzewa generowane i vendorowane, raporty z kompilacji i testów oraz dwa drzewa pisane ręcznie, `e2e` i `scripts`, które przez to nie są ani formatowane, ani lintowane: `.source`, `node_modules`, `dist`, `coverage`, `blob-report`, `dist-ssr`, `e2e`, `playwright/.cache`, `playwright-report`, `test-results`, `opensrc`, `scripts`, `.tanstack`, `.wrangler`, `.vite-hooks`, `.vscode`, `.agents`, `.claude`, `.codex`, `bun.lock`, `**/*.d.ts`, `**/*.tsbuildinfo`, `src/routeTree.gen.ts` oraz `src/integrations/**/migrations/**`.
 
 `resolve.tsconfigPaths` sprawia, że działają oba aliasy z `tsconfig.json`: `~/*` rozwiązuje się od katalogu głównego repozytorium (dlatego importy wyglądają jak `~/src/modules/order/order.schema`), a `collections/*` wskazuje na `./.source/*`, gdzie Fumadocs zapisuje skompilowaną kolekcję dokumentacji.
 
@@ -69,7 +74,7 @@ Pod Vitestem ładują się wyłącznie `@vitejs/plugin-react` i `fumadocs-mdx/vi
 
 Poza Vitestem kolejność jest taka:
 
-1. **`@cloudflare/vite-plugin`** — `cloudflare({ inspectorPort: false, remoteBindings: process.env["CLOUDFLARE_ENV"] === "development", viteEnvironment: { name: "ssr" } })`. Worker działa w środowisku SSR, inspektor jest wyłączony, a **zdalne bindingi są włączone tylko dla środowiska `development`** — dlatego `bun run dev` czyta i zapisuje prawdziwe D1, KV i R2 preview.
+1. **`@cloudflare/vite-plugin`** — `cloudflare({ inspectorPort: false, persistState: process.env["CLOUDFLARE_ENV"] === "test" ? { path: ".wrangler/test" } : true, remoteBindings: process.env["CLOUDFLARE_ENV"] === "development", viteEnvironment: { name: "ssr" } })`. Worker działa w środowisku SSR, inspektor jest wyłączony, a **zdalne bindingi są włączone tylko dla środowiska `development`** — dlatego `bun run dev` czyta i zapisuje prawdziwe D1, KV i R2 preview. `persistState` trzyma lokalny stan D1, KV i R2 środowiska `test` w `.wrangler/test`, czyli w katalogu, do którego `db:migrate:test` i `db:seed:test` zapisują przez `--persist-to`, więc `start:test` serwuje bazę zbudowaną przez `db:reset:test`; pozostałe środowiska używają domyślnego katalogu wtyczki, `.wrangler/state`.
 2. **`fumadocs-mdx/vite`** — `fumadocsMdx({ configPath: "./src/integrations/fumadocs/fumadocs.config.ts" })`, kompiluje `content/docs`.
 3. **`@tailwindcss/vite`** — Tailwind CSS 4, sterowany przez `src/presentation/styles/globals.css`.
 4. **`tanstackStart`** — routing i dzielenie kodu. `codeSplittingOptions.defaultBehavior` wydziela `component`, `loader`, `errorComponent` i `notFoundComponent` do osobnych fragmentów, a `routeFileIgnorePattern: "__test__"` trzyma współlokowane katalogi testów wewnątrz `src/routes/` poza wygenerowanym drzewem tras.
@@ -92,7 +97,7 @@ bun run build:preview
 bun run start
 ```
 
-`build:preview` usuwa `dist`, odtwarza kolekcje treści, uruchamia `CLOUDFLARE_ENV=preview vp build --mode preview`, a następnie `bun scripts/verify-build.ts preview` na wyniku. `build:production` robi to samo z `production` w obu miejscach. `bun run start` serwuje ostatnią kompilację komendą `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`.
+`build:preview` usuwa `dist`, odtwarza kolekcje treści, uruchamia `CLOUDFLARE_ENV=preview vp build --mode preview`, a następnie `bun scripts/verify-build.ts preview` na wyniku. `build:production` robi to samo z `production` we wszystkich trzech miejscach. `bun run start` serwuje ostatnią kompilację komendą `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`. `build:test` i `start:test` robią to samo dla lokalnego środowiska `test`, bez `verify-build.ts`; na tej kompilacji działa zestaw end-to-end.
 
 `bunfig.toml` zawiera jedno ustawienie:
 

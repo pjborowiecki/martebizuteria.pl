@@ -40,11 +40,27 @@ Przypadek użycia opakowuje dostęp do danych w endpoint RPC i jest jedynym miej
 ```ts
 export const shipOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
-  .validator((input: zod.input<typeof orderZodSchemas.adminOrderIdInput>) => orderZodSchemas.adminOrderIdInput.parse(input))
-  .handler(async ({ data: { orderId } }) => {
-    // czyta zamówienie, zapisuje fulfillmentStatus, rejestruje audyt, wysyła e-mail o wysyłce
+  .validator((input: zod.input<typeof orderZodSchemas.adminShipOrderInput>) => orderZodSchemas.adminShipOrderInput.parse(input))
+  .handler(async ({ data: { orderId, ...tracking } }) => {
+    const origin = resolveRequestOrigin(getRequest())
+    const trackingNumber = filledOrUndefined(tracking.trackingNumber)
+    assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
+      canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
+    )
+
+    await transitionOrder(orderId, SHIPPABLE_FULFILLMENT_STATUSES, {
+      fulfillmentStatus: "shipped",
+      shippedAt: new Date(),
+      ...trackingColumns(trackingNumber, filledOrUndefined(tracking.trackingUrl)),
+    })
+
+    recordOrderShippedAudit(orderId, { detail: trackingNumber })
+
+    return { email: await announceOrderShipment(orderId, origin), ok: true, orderId }
   })
 ```
+
+`getAdminOrderActionRow`, `assertOrderActionState` i `transitionOrder` pochodzą z `src/modules/order/order.admin-action.server.ts`. `transitionOrder` to warunkowy `UPDATE`, który przesuwa tylko zamówienie, którego status realizacji nadal należy do `SHIPPABLE_FULFILLMENT_STATUSES` i które nie jest anulowane, a gdy żaden wiersz nie pasuje, rzuca błąd konfliktu. `announceOrderShipment` (`use-cases/announce-order-shipment.server.ts`) rezerwuje potem i wysyła e-mail o wysyłce albo — gdy po wcześniejszym e-mailu o wysyłce pojawi się nowy numer przesyłki — e-mail z numerem śledzenia, i zwraca informację o e-mailu, którą akcje zamówień w panelu pokazują jako toast.
 
 Ponieważ istnieje dokładnie jedna warstwa, w której można zapomnieć o `authorized()`, to właśnie ją celują testy. Przypadek użycia czytający dane samego wywołującego wkompilowuje predykat własności w SQL, a nie pobiera i filtruje:
 
@@ -63,7 +79,7 @@ Obce `orderId` nie zwraca żadnego wiersza, więc nie ma czego wyciekać.
 3. `ROUTES.API_REALTIME.ADMIN_WS` i `ROUTES.API_REALTIME.STOREFRONT_WS` — upgrade'y WebSocket przekazywane do `handleRealtimeInvalidationWebSocket`.
 4. Przekierowanie locale z `resolveLocale`, zwracane jako `301` przed czymkolwiek innym.
 
-Wszystko pozostałe jest owinięte w `executionContextStorage.run({ waitUntil }, …)`, żeby praca w tle zaplanowana głęboko w warstwie domenowej wciąż mogła dosięgnąć `ExecutionContext` Workera. Każda odpowiedź poza przejściami na WebSocket, łącznie z dwoma pierwszymi skrótami i przekierowaniem, wychodzi przez `withSecurityHeaders` z `src/lib/security-headers.ts`, z nonce'em Content-Security-Policy wylosowanym dla żądania i przekazanym handlerowi Start w kontekście żądania; zobacz [Model bezpieczeństwa](/docs/architecture/security-model#nagłówki-odpowiedzi). Ten sam plik eksportuje również handler `queue`, który opróżnia kolejkę dziennika zdarzeń, i handler `scheduled`, który uruchamia codzienne [czyszczenie po okresie przechowywania](/docs/guides/data-retention), oraz re-eksportuje klasę `RealtimeInvalidationHub`, żeby Wrangler mógł ją zbindować.
+Wszystko pozostałe jest owinięte w `executionContextStorage.run({ waitUntil }, …)`, żeby praca w tle zaplanowana głęboko w warstwie domenowej wciąż mogła dosięgnąć `ExecutionContext` Workera. Każda odpowiedź poza przejściami na WebSocket, łącznie z dwoma pierwszymi skrótami i przekierowaniem, wychodzi przez `withSecurityHeaders` z `src/lib/security-headers.ts`, z nonce'em Content-Security-Policy wylosowanym dla żądania i przekazanym handlerowi Start w kontekście żądania; zobacz [Model bezpieczeństwa](/docs/architecture/security-model#nagłówki-odpowiedzi). Ten sam plik eksportuje również handler `queue`, który opróżnia kolejki newslettera i dziennika zdarzeń, i handler `scheduled`, który uruchamia codzienne [czyszczenie po okresie przechowywania](/docs/guides/data-retention), oraz re-eksportuje klasę `RealtimeInvalidationHub`, żeby Wrangler mógł ją zbindować.
 
 ## Praca w tle
 
@@ -82,7 +98,7 @@ export const scheduleBackgroundWork = (task: Promise<unknown> | PromiseLike<unkn
 }
 ```
 
-Bez magazynu — konsument kolejki, testy jednostkowe, ścieżki skracane przed wejściem w magazyn — degraduje się do „odpal i zapomnij”, ale odrzucenie jest logowane, a nie milcząco tracone.
+Bez magazynu — konsument kolejki, handler `scheduled`, testy jednostkowe, ścieżki skracane przed wejściem w magazyn — degraduje się do „odpal i zapomnij”, ale odrzucenie jest logowane, a nie milcząco tracone.
 
 ## Spójność bez transakcji
 

@@ -45,7 +45,7 @@ Git przekazuje ścieżkę do pliku z komunikatem jako `$1`, a źródło komunika
 | `style`    | 💎    |
 | `test`     | 🚨    |
 
-Jedenaście typów i nic poza nimi. Hook dokleja odpowiednie emoji na początku linii tematu i nie rusza treści commita.
+Jedenaście typów i nic poza nimi — w każdym temacie, który hook waliduje; temat, który już zaczyna się od emoji takiego jak 📚 albo 🐛, nie jest walidowany wcale (zobacz [Czego hook nie rusza](#czego-hook-nie-rusza)). Hook dokleja odpowiednie emoji na początku linii tematu i nie rusza treści commita.
 
 ## Co powoduje odrzucenie
 
@@ -72,9 +72,11 @@ Hook kończy działanie bez zmiany komunikatu w pięciu przypadkach:
 
 - źródłem komunikatu jest `squash`, `merge` albo `template`;
 - komunikat jest pusty lub nie ma żadnej linii innej niż komentarz;
-- temat już zaczyna się od emoji, co sprawdza `/^\p{Emoji_Presentation}/u` — dzięki temu poprawianie commita, który hook już ozdobił, jest idempotentne;
+- temat już zaczyna się od znaku z właściwością Unicode `Emoji_Presentation`, co sprawdza `/^\p{Emoji_Presentation}/u`. Obejmuje to 📚, ✨, 🐛, 🚀, 📦, 💎 i 🚨, więc poprawianie commita `docs`, `feat`, `fix`, `perf`, `refactor`, `style` albo `test`, który hook już ozdobił, zostawia jego temat bez zmian. Oznacza to też, że taki temat w ogóle pomija walidację: `🐛 cokolwiek` przechodzi bez zmian;
 - temat pasuje do `/^(?:Merge |Revert "|fixup! |squash! )/`, co pokrywa tematy generowane przez samego Gita;
 - nie przekazano ścieżki do pliku z komunikatem.
+
+Pozostałe cztery emoji, 🛠️, ♻️, ⚙️ i 🗑️, to znaki w stylu tekstowym z selektorem wariantu U+FE0F, do których `Emoji_Presentation` nie pasuje. Poprawianie commita `build`, `chore`, `ci` albo `revert` (przy `--amend`, `-c` i `-C` Git przekazuje źródło `commit`) bez zmiany tematu przepuszcza więc ozdobiony temat przez wzorzec konwencji, który odrzuca początkowe emoji, a hook przerywa commit komunikatem `Commit message does not follow conventional format.` Hook działa, zanim otworzy się edytor, więc podaj temat ponownie bez emoji, na przykład `git commit --amend -m "chore(deps): …"`; hook doda emoji z powrotem.
 
 Jeśli skrypt wyrzuci wyjątek z jakiegokolwiek innego powodu, wypisuje `❌  Failed to process commit message:` i kończy się kodem 1 — zepsuty hook przerywa pracę głośno, zamiast przepuszczać zdeformowany temat.
 
@@ -88,18 +90,18 @@ bun run check:pre-commit
 
 To `vp staged`, który stosuje blok `staged` z `vite.config.ts` — `vp check --fix` na każdym pliku w przechowalni. Commita nie da się więc utworzyć, dopóki pliki w przechowalni nie przejdą formatowania, lintu i kontroli typów.
 
-Nie obchodź hooków przez `--no-verify`. Przepływy wdrożeniowe uruchamiają `bun run check` ponownie, więc commit, który pominął hook, wysypie się później i drożej.
+Nie pomijaj kontroli przed commitem przez `--no-verify`. Pomija ono tylko `.vite-hooks/pre-commit`; Git nie wyłącza nim `prepare-commit-msg`, więc temat i tak jest walidowany i ozdabiany. `ci.yml` i `deploy-preview.yml` uruchamiają `bun run check` ponownie, więc commit, który pominął kontrolę, wysypie się tam, później i drożej.
 
 Oba hooki instaluje `vp config --no-agent`, uruchamiany przez `bun install` w skrypcie `prepare`. `vp hooks status` pokaże, czy są aktywne w Twoim klonie.
 
 ## Zakresy w praktyce
 
-Zakresy nie są walidowane, ale repozytorium ma faktycznie używane słownictwo wzięte ze struktury katalogów — `app`, `ui`, `admin/orders`, `admin/catalog/products`, `checkout`, `auth`, `docs`. Używaj modułu albo obszaru tras, do którego należy zmiana, a gdy zmiana jest węższa niż cały obszar, użyj zakresu zagnieżdżonego:
+Zakresy nie są walidowane. Najnowsza historia używa przeważnie jednego płaskiego zakresu na obszar funkcjonalny; najczęstsze to `checkout`, `orders`, `account`, `admin`, `auth`, `catalog`, `audit` i `email`, a commity `docs` podają obszar dokumentacji, który zmieniają, na przykład `docs(testing)` albo `docs(payments)`. Zakresy zagnieżdżone, takie jak `admin/orders` czy `admin/catalog/products`, pojawiają się w historii, ale rzadko. Używaj obszaru funkcjonalnego, do którego należy zmiana:
 
 ```sh
-git commit -m "feat(admin/catalog/products): allow bulk status changes"
-git commit -m "refactor(app): move rate limiting into src/lib"
-git commit -m "docs(tooling): document the deploy secret pipeline"
+git commit -m "fix(orders): show the admin order's VAT as included in the total"
+git commit -m "feat(i18n): resolve each user's time zone and format locale, their own choice first"
+git commit -m "docs(testing): state the current test counts and coverage thresholds"
 ```
 
 ## Powiązane strony

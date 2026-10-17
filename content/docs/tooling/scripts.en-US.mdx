@@ -21,7 +21,7 @@ CI installs with `--ignore-scripts` and then calls `typegen` itself, so no hooks
 | `dev`              | `bun run content`, then `CLOUDFLARE_ENV=development vp dev --mode development` on http://localhost:3000                   |
 | `build`            | Alias for `build:preview`                                                                                                 |
 | `build:preview`    | `rm -rf dist`, `bun run content`, `CLOUDFLARE_ENV=preview vp build --mode preview`, `bun scripts/verify-build.ts preview` |
-| `build:production` | The same three stages with `production` in each place                                                                     |
+| `build:production` | The same four stages with `production` in each place                                                                      |
 | `build:test`       | `rm -rf dist`, `bun run content`, `CLOUDFLARE_ENV=test vp build --mode test` — the local end-to-end Worker                |
 | `start`            | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                                           |
 | `preview`          | Alias for `start`                                                                                                         |
@@ -32,13 +32,13 @@ CI installs with `--ignore-scripts` and then calls `typegen` itself, so no hooks
 
 ## Deploy
 
-| Script              | Runs                                                                                                                                                                                                                                                                                                        |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `deploy:preview`    | `verify-bindings.ts preview` → `verify-stripe-keys.ts preview` → `verify-email-sender.ts preview` → `build:preview` → `prepare-deploy-secrets.ts preview` → `db:migrate:preview` → `wrangler deploy` with `dist/server/wrangler.json` and `.wrangler/secrets.preview.json` → `verify-deployment.ts preview` |
-| `deploy:production` | The same chain for `production`                                                                                                                                                                                                                                                                             |
-| `email:verify`      | `bun scripts/verify-email-sender.ts <environment>`: asks Resend whether it would send as `RESEND_EMAIL_FROM` with `RESEND_API_KEY`, for `development`, `preview` or `production`                                                                                                                            |
+| Script              | Runs                                                                                                                                                                                                                                                                                                                                           |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `deploy:preview`    | `verify-bindings.ts preview` → `verify-stripe-keys.ts preview` → `verify-email-sender.ts preview` → `build:preview` → `prepare-deploy-secrets.ts preview` → `db:migrate:preview` → `wrangler deploy` with `dist/server/wrangler.json` and `.wrangler/secrets.preview.json` → `verify-deployment.ts preview`                                    |
+| `deploy:production` | The same chain for `production`                                                                                                                                                                                                                                                                                                                |
+| `email:verify`      | `bun scripts/verify-email-sender.ts <environment>`: asks Resend whether it would send as `RESEND_EMAIL_FROM` with `RESEND_API_KEY`, for `development`, `preview` or `production`; with a sending-only key it reads the domain with `RESEND_MANAGEMENT_API_KEY` when that is set, and otherwise sends one test e-mail to `delivered@resend.dev` |
 
-Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](/docs/tooling/ci-cd) for what each stage checks. `email:verify` is the deploy's sender check on its own, for example `bun run email:verify development` after changing `.env.development`; it calls the real Resend API, and [Resend](/docs/integrations/resend#sender-domain) lists what it refuses. `bun scripts/verify-stripe-keys.ts <environment>` is the deploy's Stripe key check on its own; it reads only the key prefixes and calls no service, and [Stripe](/docs/integrations/stripe#secrets) lists which keys each environment takes. `bun scripts/verify-deployment.ts <preview|production>` is the deploy's last stage on its own: it asks the live Worker for the home page, the product listing, `robots.txt` and the Stripe webhook route, and changes nothing. [Roll back a deploy](/docs/guides/roll-back-a-deploy) covers what to do when it fails.
+Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](/docs/tooling/ci-cd) for what each stage checks. `email:verify` is the deploy's sender check on its own, for example `bun run email:verify development` after changing `.env.development`; it calls the real Resend API, and [Resend](/docs/integrations/resend#sender-domain) lists what it refuses. `bun scripts/verify-stripe-keys.ts <environment>` is the deploy's Stripe key check on its own; it reads only the key prefixes and calls no service, and [Stripe](/docs/integrations/stripe#secrets) lists which keys each environment takes. `bun scripts/verify-deployment.ts <preview|production>` is the deploy's last stage on its own: it asks the live Worker for the home page, the product listing, `robots.txt`, the Stripe webhook route and `/api/health`, which answers `200` only when D1, KV and R2 all answer, and changes nothing. [Roll back a deploy](/docs/guides/roll-back-a-deploy) covers what to do when it fails.
 
 ## Checks
 
@@ -75,7 +75,7 @@ Both run `wrangler deploy` through `env -u CLOUDFLARE_ENV vp exec`. See [CI/CD](
 | `test:all`         | `test`, then `test:e2e:smoke`                                     |
 | `test:watch`       | `vp test`                                                         |
 
-`test:e2e` runs Chromium, WebKit, their shop-wide projects and the `stripe-test-mode` project, which skips its specs unless Stripe sandbox keys are set; `test:e2e:stripe` runs that project alone. See [Stripe test mode](/docs/tooling/testing#stripe-test-mode).
+`test:e2e` runs all six Playwright projects: `setup`, which signs in the seeded admin and customer, `chromium`, `webkit`, their two shop-wide projects and `stripe-test-mode`, which skips its specs unless Stripe sandbox keys are set; `test:e2e:stripe` runs that project alone. See [Stripe test mode](/docs/tooling/testing#stripe-test-mode).
 
 `test:watch` does not watch — `vp test` with no subcommand runs once. Use `vp test watch`. See [Testing](/docs/tooling/testing).
 
@@ -114,7 +114,7 @@ Every `db:*` script targets a named environment. The unsuffixed aliases are not 
 | `db:seed:production`        | The same against production                                                             |
 | `db:seed:test`              | `bun scripts/seed-test.ts` — the catalog seeds and the three end-to-end accounts, local |
 
-The drizzle-kit scripts run through `bun --env-file=.env.<environment>` because `bunfig.toml` sets `env = false`; the Wrangler scripts run through `vp exec` and read `wrangler.jsonc` instead.
+The drizzle-kit scripts that reach a database run through `bun --env-file=.env.<environment>` because `bunfig.toml` sets `env = false`; `db:generate` needs no credentials and runs through `vp exec`. The Wrangler scripts run through `vp exec` and read `wrangler.jsonc` instead, except `db:seed:test`: `scripts/seed-test.ts` writes the eleven catalog seeds, the three end-to-end accounts and the admin's two-factor secret into one SQL file and applies it with `bun x wrangler d1 execute DB --env test --local --persist-to .wrangler/test`.
 
 > Do not run `db:seed`, `db:seed:preview` or `db:seed:production`. The seed files are stale against the live catalog and would reintroduce removed fixture rows.
 
@@ -126,16 +126,16 @@ The drizzle-kit scripts run through `bun --env-file=.env.<environment>` because 
 | `cf-typegen` | `vp exec wrangler types --env development src/types/worker-configuration.d.ts`                                  |
 | `typegen`    | `cf-typegen`, then `content`                                                                                    |
 
-Both outputs are gitignored. `src/types/worker-configuration.d.ts` is what gives `env.DB`, `env.CACHE`, `env.IMAGES`, `env.AUDIT_LOG_QUEUE`, `env.NEWSLETTER_QUEUE` and `env.REALTIME_INVALIDATION_HUB` their types, so run `bun run cf-typegen` after changing any binding in `wrangler.jsonc`. Never edit or commit it. `.source/` is what the `collections/*` import alias resolves to, so `bun run content` after adding or renaming an MDX file.
+Both outputs are gitignored. `src/types/worker-configuration.d.ts` is what gives `env.DB`, `env.CACHE`, `env.IMAGES`, `env.ASSETS`, `env.AUDIT_LOG_QUEUE`, `env.NEWSLETTER_QUEUE` and `env.REALTIME_INVALIDATION_HUB` their types, so run `bun run cf-typegen` after changing any binding in `wrangler.jsonc`. Never edit or commit it. `.source/` is what the `collections/*` import alias resolves to, so `bun run content` after adding or renaming an MDX file.
 
 ## Agent skills
 
-| Script          | Runs                                                                             |
-| --------------- | -------------------------------------------------------------------------------- |
-| `skills:sync`   | `bun scripts/sync-skills.ts` — restores `.agents/skills` from `skills-lock.json` |
-| `skills:update` | `bunx --bun skills update --project --yes`, then `skills:sync`                   |
+| Script          | Runs                                                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `skills:sync`   | `bun scripts/sync-skills.ts` — restores `.agents/skills` from `skills-lock.json` and recreates the `.claude/skills` symlinks into it |
+| `skills:update` | `bunx --bun skills update --project --yes`, then `skills:sync`                                                                       |
 
-See [Agent skills](/docs/tooling/agent-skills).
+`bun scripts/sync-skills.ts --local` regroups the skills already under `.agents/skills` and relinks `.claude/skills` without downloading anything. See [Agent skills](/docs/tooling/agent-skills).
 
 ## Cleaning
 
@@ -145,7 +145,7 @@ See [Agent skills](/docs/tooling/agent-skills).
 | `clean:deep`     | `clean` plus `node_modules`                                                                                                                                                                                                                       |
 | `clean:hardcore` | `clean:deep` plus `bun.lock` and `opensrc`                                                                                                                                                                                                        |
 
-`clean` deletes `.wrangler`, which holds the local D1 database used by `db:migrate:local` as well as the generated `secrets.*.json` files. After any `clean` you need `bun install` (or at least `bun run typegen`) before `bun run check` will pass, because it removes both generated type sources.
+`clean` deletes `.wrangler`, which holds the local D1 database used by `db:migrate:local`, the local `test` environment's state in `.wrangler/test` and the generated `secrets.*.json` files. After any `clean` you need `bun install` (or at least `bun run typegen`) before `bun run check` will pass, because it removes both generated type sources.
 
 `clean:hardcore` removes `opensrc/`, the vendored dependency sources described in `AGENTS.md`. Restore them with `npx opensrc <package>`.
 

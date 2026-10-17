@@ -3,36 +3,37 @@ title: "Warstwa prezentacji"
 description: "Gdzie mieszkają komponenty, style, motyw, branding i szablony e-mail oraz jakie zasady obowiązują każdy komponent."
 ---
 
-`src/presentation` zawiera 650 plików i jest największym katalogiem w repozytorium. Nic w nim nie czyta bazy danych ani sekretu.
+`src/presentation` zawiera 797 plików poza katalogami `__test__` (1446 razem z nimi) i jest największym katalogiem w repozytorium. Nic w nim nie czyta bazy danych ani sekretu.
 
 ## Katalogi
 
-| Katalog              | Zawiera                                                                                        |
-| -------------------- | ---------------------------------------------------------------------------------------------- |
-| `components/shadcn`  | 57 prymitywów shadcn/ui plus `_styles/sheet-control.styles.ts` — regeneruj, nie edytuj ręcznie |
-| `components/custom`  | 570 komponentów aplikacji                                                                      |
-| `emails`             | Szablony React Email, `email-layout.tsx`, `email-highlight-box.tsx`, `_styles/email-styles.ts` |
-| `pdf`                | `withdrawal-form.ts`, `complaint-form.ts` i ich układ A4, `form-document.ts`                   |
-| `styles`             | `globals.css`, `storefront.css`, `admin.css`, `fonts.css`, `critical-fonts.css`                |
-| `theme`              | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                           |
-| `branding`           | `app.ts`, `socials.ts`                                                                         |
-| `document-assets.ts` | `getCriticalFontPreloads(locale)`                                                              |
+| Katalog              | Zawiera                                                                                                                     |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `components/shadcn`  | 57 prymitywów shadcn/ui plus `_styles/dialog.styles.ts` i `_styles/sheet-control.styles.ts` — regeneruj, nie edytuj ręcznie |
+| `components/custom`  | 701 plików komponentów, hooków i helperów aplikacji                                                                         |
+| `emails`             | 19 szablonów React Email, `email-layout.tsx`, `email-highlight-box.tsx`, `email-previews.tsx`, `_styles/email-styles.ts`    |
+| `styles`             | `globals.css`, `storefront.css`, `admin.css`, `fonts.css`, `critical-fonts.css`                                             |
+| `theme`              | `theme-init.ts`, `sidebar-preference.ts`, `use-admin-light-theme.ts`                                                        |
+| `pdf`                | `withdrawal-form.ts`, `complaint-form.ts` i ich układ A4, `form-document.ts`                                                |
+| `branding`           | `app.ts`, `socials.ts`                                                                                                      |
+| `document-assets.ts` | `getCriticalFontPreloads(locale)`                                                                                           |
 
 ## Organizacja komponentów
 
-- **Komponenty współdzielone to płaskie pliki** w `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `seller-contact-details.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`.
-- **Przekrojowe widżety dostają katalog**, gdy są systemem, a nie komponentem: `datagrid/`, `image-upload/`, `checkout/`, `defaults/`.
-- **Komponenty stron i obszarów leżą w `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `content-page/`, `auth/`, `account/`, `admin/`.
-- **Każda strona administracyjna ma własny katalog** w `pages/admin`: `orders/`, `customers/`, `catalog/products/`, `catalog/categories/`, `catalog/collections/`, `catalog/attributes/`, `audit/`, `dashboard/`, `settings/`, `content/`, `coupons/`, `marketing/`.
+- **Komponenty współdzielone to płaskie pliki** w `components/custom`: `product-card.tsx`, `image.tsx`, `localized-link.tsx`, `mdx.tsx`, `docs-mdx.tsx`, `floating-field.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `seller-contact-details.tsx`, `storefront-critical-fonts-head.tsx`, `validation-field-error.tsx`, `icons.tsx`, `docs-content.tsx`, `product-price.tsx`, `sales-paused-banner.tsx`.
+- **Przekrojowe widżety dostają katalog**, gdy są systemem, a nie komponentem: `datagrid/`, `image-upload/`, `checkout/`, `defaults/` oraz `display-preferences/`, czyli pola locale formatowania i strefy czasowej wspólne dla profilu konta i ustawień panelu.
+- **Komponenty stron i obszarów leżą w `components/custom/pages/<area>`**: `landing-page/`, `product-page/`, `products-catalog/`, `categories/`, `collections/`, `cart-page/`, `docs/`, `content-page/`, `newsletter/`, `withdrawal/`, `auth/`, `account/`, `admin/`.
+- **Każda strona administracyjna ma własny katalog** w `pages/admin`: `orders/`, `customers/`, `catalog/products/`, `catalog/categories/`, `catalog/collections/`, `catalog/attributes/`, `audit/`, `dashboard/`, `settings/`, `security/`, `content/`, `coupons/`, `marketing/`. Na najwyższym poziomie `pages/admin` leżą wspólne dla całego panelu komponenty nagłówka, paska bocznego i statystyk obok plików `dashboard-*.tsx` strony przeglądu; `lib/` zawiera współdzielone filtry kolumn i `admin-route.ts`, a `_styles/` klasy layoutu.
 
 Większe obszary zagnieżdżają się dalej, w podkatalogi `components/`, `hooks/`, `lib/`, `utils/`, `sections/` i `_sections/` — na przykład `pages/admin/audit/{audit-table,components,hooks,lib,utils}` oraz `pages/landing-page/navigation/{components,constants,hooks,store}`. To świadome odejście od bardziej płaskiego układu projektów referencyjnych: panel administracyjny jest na tyle duży, że płaski katalog przestał być czytelny.
 
 ## Zasady dotyczące komponentów
 
 - Komponent sam odczytuje swoje tłumaczenia i dane. Woła `useTranslations` raz, nazywa translator `t` i pobiera dane przez `useSuspenseQuery` na wyeksportowanych opcjach zapytania modułu albo przez `Route.useLoaderData()`. Nie przyjmuje propsów z etykietami ani danymi, które rodzic mógł odczytać sam.
-- Pliki tras tylko komponują. Widżet, dialog, formularz albo definicja kolumn to jeden plik.
+- Pliki tras tylko komponują. Widżet, dialog, formularz albo definicja kolumn to jeden plik. `account.addresses.tsx` i `account.overview.tsx` to dwa pliki tras, które nadal definiują komponenty swojej strony u siebie.
 - Komponenty nigdy nie importują `db`, `auth` z `auth.server.ts` ani serwerowego klienta Stripe. Wołają opcje zapytań i mutacji wyeksportowane przez przypadki użycia.
 - Warunkowe klasy używają `cn` z paczki `cn`. Kolejność klas Tailwind ustawia `bun run format`, skonfigurowany w `vite.config.ts` w `fmt.sortTailwindcss` względem `src/presentation/styles/globals.css`.
+- Daty, liczby i ceny formatuje `useFormatter()` z `src/hooks/use-display-format.ts`, który buduje formater use-intl dla locale formatowania i strefy czasowej osoby oglądającej; `useFormatLocale()` i `useDisplayTimeZone()` zwracają każdą z tych wartości osobno. Żaden komponent nie bierze `useFormatter` bezpośrednio z use-intl.
 - Formularze używają react-hook-form z `zodResolver` i schematem Zod modułu. To świadome odejście od projektów referencyjnych, które używają TanStack Form.
 
 ## Style
@@ -59,7 +60,7 @@ Na trasach sklepu `StorefrontCriticalFontsHead` wstawia krytyczne reguły `@font
 
 ## Branding
 
-`branding/app.ts` zawiera `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR` i stałe obrazu Open Graph, a `socials.ts` — `SOCIALS`. Dane prawne i kontaktowe sklepu nie są stałymi marki: są zapisane w wierszu `store_setting` i zmienia się je w Ustawienia → Dane sklepu (zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu)). Zarówno `src/lib/seo.ts`, jak i `_core/constants/api.ts` czytają z nich, dlatego lista dozwolonych hostów dla każdego trybu builda wynika z `APP_DOMAIN`. `APP_URL` to kanoniczny adres produkcyjny wyłącznie dla metadanych SEO. Linki w e-mailach i adres powrotu ze Stripe używają zamiast niego originu, na którym był klient albo administrator, przez `resolveRequestOrigin` i `resolveDeploymentOrigin` w `src/lib/request.ts`.
+`branding/app.ts` zawiera `APP_NAME`, `APP_DOMAIN`, `APP_URL`, `APP_ICON`, `THEME_COLOR`, stałe obrazu Open Graph oraz `DEFAULT_R2_PUBLIC_URL`, adres CDN zasobów, do którego `getAssetCdnBase` w `src/lib/url.ts` wraca, gdy `VITE_R2_URL` nie jest ustawione albo wciąż jest placeholderem, a `socials.ts` — `SOCIALS`. Dane prawne i kontaktowe sklepu nie są stałymi marki: są zapisane w wierszu `store_setting` i zmienia się je w Ustawienia → Dane sklepu (zobacz [Ustawienia panelu](/docs/features/admin-settings#dane-sklepu)). Zarówno `src/lib/seo.ts`, jak i `_core/constants/api.ts` czytają z nich, dlatego lista dozwolonych hostów dla każdego trybu builda wynika z `APP_DOMAIN`. `APP_URL` to kanoniczny adres produkcyjny wyłącznie dla metadanych SEO. Linki w e-mailach i adres powrotu ze Stripe używają zamiast niego originu, na którym był klient albo administrator, przez `resolveRequestOrigin` i `resolveDeploymentOrigin` w `src/lib/request.ts`.
 
 ## E-maile
 
@@ -69,7 +70,7 @@ Szablon w `presentation/emails` zawiera wyłącznie markup i eksportuje swoją p
 export const VERIFY_EMAIL_NAMESPACE = "emails.verify-email"
 ```
 
-Tłumaczy przez `createTranslator` z use-intl, otrzymując `locale` i `messages` jako propsy. Wywołujący — przypadek użycia `send-*-email.server.ts` modułu, do którego należy dany e-mail, na przykład `src/modules/verification/use-cases/send-verify-email.server.ts` dla e-maila weryfikacyjnego, `src/modules/order/use-cases/send-order-shipped-email.server.ts` dla powiadomienia o wysyłce albo `src/modules/checkout/use-cases/send-payment-failed-email.server.ts` dla powiadomienia o nieudanej płatności, oraz `src/lib/incident-alert.server.ts` dla alertów sklepu o incydentach — ładuje przestrzeń nazw przez `loadNamespace` i renderuje element. Szablony: `verify-email`, `reset-password`, `change-email`, `password-changed`, `account-deleted`, `order-confirmation`, `order-shipped`, `order-cancelled`, `order-refunded`, `payment-failed`, `new-order`, `order-withdrawal`, `incident-alert`. `src/routes/dev.emails.tsx` pokazuje ich podglądy na podstawie `src/presentation/emails/email-previews.tsx`.
+Tłumaczy przez `createTranslator` z use-intl, otrzymując `locale` i `messages` jako propsy. Wywołujący — przypadek użycia `send-*-email.server.ts` modułu, do którego należy dany e-mail, na przykład `src/modules/verification/use-cases/send-verify-email.server.ts` dla e-maila weryfikacyjnego, `src/modules/order/use-cases/send-order-shipped-email.server.ts` dla powiadomienia o wysyłce albo `src/modules/checkout/use-cases/send-payment-failed-email.server.ts` dla powiadomienia o nieudanej płatności, `src/modules/newsletter-campaign/use-cases/send-newsletter-batch.server.ts` dla kampanii newslettera oraz `src/lib/incident-alert.server.ts` dla alertów sklepu o incydentach — ładuje przestrzeń nazw przez `loadNamespace` i renderuje element. 19 szablonów: `verify-email`, `reset-password`, `change-email`, `password-changed`, `account-deleted`, `order-confirmation`, `order-in-progress`, `order-shipped`, `order-tracking`, `order-delivered`, `order-cancelled`, `order-refunded`, `payment-failed`, `new-order`, `order-withdrawal`, `newsletter-confirmation`, `newsletter-already-subscribed`, `newsletter-campaign`, `incident-alert`. `src/routes/dev.emails.tsx` pokazuje ich podglądy na podstawie `src/presentation/emails/email-previews.tsx`.
 
 ## Siatka danych panelu administracyjnego
 

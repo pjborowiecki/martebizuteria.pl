@@ -15,7 +15,7 @@ description: "Pięć przepływów GitHub Actions, jedna wspólna akcja setup, na
 
 ## Akcja setup
 
-`.github/actions/setup/action.yml` to cztery kroki i jedno wejście:
+`.github/actions/setup/action.yml` to pięć kroków, w tym jeden warunkowy, i jedno wejście:
 
 ```yaml
 - uses: oven-sh/setup-bun@v2
@@ -26,14 +26,21 @@ description: "Pięć przepływów GitHub Actions, jedna wspólna akcja setup, na
     node-version: "24"
     cache: true
     run-install: false
-- run: bun install --frozen-lockfile --ignore-scripts
-- run: bun run typegen # gdy test-environment == 'true', poprzedzone kopiowaniem .env.test
+- name: Install dependencies
+  run: bun install --frozen-lockfile --ignore-scripts
+- name: Configure test environment
+  if: inputs.test-environment == 'true'
+  run: |
+    cp .env.test .env.development
+    cp .env.test .env.preview
+- name: Generate binding types
+  run: bun run typegen
 ```
 
 Dwa szczegóły mają znaczenie:
 
 - **`--ignore-scripts`** oznacza, że skrypty cyklu życia `prepare` i `postinstall` się nie uruchamiają, więc na runnerze nie instalują się hooki Gita, a `typegen` wywoływany jest jawnie jako osobny krok. `typegen` to `bun run cf-typegen && bun run content`, co zapisuje `src/types/worker-configuration.d.ts` i `.source/`. Oba są w `.gitignore`, a `bun run check` nie wykona kontroli typów bez nich.
-- **`test-environment`** (domyślnie `"false"`) kopiuje `.env.test` na `.env.development` i `.env.preview`, gdy ma wartość `"true"`. `ci.yml` to ustawia; dwa przepływy wdrożeniowe nie, bo wstrzykują prawdziwe wartości jako zmienne środowiskowe.
+- **`test-environment`** (domyślnie `"false"`) kopiuje `.env.test` na `.env.development` i `.env.preview`, gdy ma wartość `"true"`. Ustawiają je zadanie `verify` w `ci.yml`, `e2e-reusable.yml` i zadanie `stripe-test-mode` w `e2e-full.yml`; dwa przepływy wdrożeniowe nie, bo wstrzykują prawdziwe wartości jako zmienne środowiskowe.
 
 ## ci.yml
 
@@ -53,11 +60,11 @@ Krok kompilacji działa na atrapowym `.env.preview`, który akcja setup skopiowa
 
 ## Przepływy end-to-end
 
-`e2e-reusable.yml` przyjmuje wejście `browser` i opcjonalną ścieżkę `suite` (domyślnie `e2e/specs`). Uruchamia akcję setup z `test-environment: "true"`, następnie `bun run db:reset:test`, które tworzy i seeduje lokalną bazę D1, `bun run build:test`, przywraca pamięć podręczną przeglądarek Playwrighta z kluczem złożonym z przeglądarki i `bun.lock`, instaluje przeglądarkę z zależnościami systemowymi i uruchamia `bunx playwright test <suite> --project=<browser> --project=<browser>-shop-wide` z limitem 30 minut, więc specyfikacje ogólnosklepowe działają po zestawie danej przeglądarki (zobacz [Testowanie](/docs/tooling/testing#projekty)). Przy ustawionym `CI` Playwright tylko uruchamia zbudowanego Workera, powtarza nieudany test dwa razy i pracuje na dwóch workerach. Po błędzie wysyła na siedem dni `playwright-report/` i `test-results/` ze śladami, zrzutami ekranu i nagraniami.
+`e2e-reusable.yml` przyjmuje wejście `browser` i opcjonalną ścieżkę `suite` (domyślnie `e2e/specs`). Uruchamia akcję setup z `test-environment: "true"`, następnie `bun run db:reset:test`, które tworzy i seeduje lokalną bazę D1, `bun run build:test`, przywraca pamięć podręczną przeglądarek Playwrighta (klucz `<os>-playwright-chromium-<browser>-<skrót bun.lock>`), instaluje Chromium i wskazaną przeglądarkę z ich zależnościami systemowymi (`bunx playwright install --with-deps chromium <browser>`; Chromium jest potrzebne zawsze, bo działa na nim projekt `setup`, który loguje seedowanego administratora i klienta) i uruchamia `bunx playwright test <suite> --project=<browser> --project=<browser>-shop-wide` z limitem 30 minut, więc specyfikacje ogólnosklepowe działają po zestawie danej przeglądarki (zobacz [Testowanie](/docs/tooling/testing#projekty)). Przy ustawionym `CI` Playwright tylko uruchamia zbudowanego Workera, powtarza nieudany test dwa razy i pracuje na dwóch workerach. Po błędzie wysyła na siedem dni `playwright-report/` i `test-results/` ze śladami, zrzutami ekranu i nagraniami.
 
-`e2e-full.yml` uruchamia ten sam przepływ jako macierz z `fail-fast: false`: po pushu do `main` w WebKicie, bo pull request przeszedł już Chromium, a w cotygodniowym harmonogramie lub ręcznie w obu przeglądarkach.
+`e2e-full.yml` uruchamia ten sam przepływ jako macierz z `fail-fast: false`: po pushu do `main` w WebKicie, bo pull request przeszedł już Chromium, a w cotygodniowym harmonogramie lub ręcznie w obu przeglądarkach. Ma ten sam blok `concurrency` co `ci.yml` (grupa `${{ github.workflow }}-${{ github.ref }}`, `cancel-in-progress: true`), więc nowszy przebieg na `main`, czy to po pushu, z harmonogramu, czy uruchomiony ręcznie, anuluje trwający, i nadaje wyłącznie `contents: read`.
 
-Jego drugie zadanie, `stripe-test-mode`, przy każdym uruchomieniu przepływu płaci przez sandbox Stripe'a: kartą, kartami odrzucanymi i wymagającymi 3D Secure, BLIK-iem i przez Przelewy24. Ustawia dla całego zadania `STRIPE_SECRET_KEY` i `VITE_STRIPE_PUBLISHABLE_KEY` z sekretów repozytorium `E2E_STRIPE_SECRET_KEY` i `E2E_STRIPE_PUBLISHABLE_KEY`, więc `bun run build:test` wpisuje klucz publiczny sandboxa do pakietu klienta i daje testowemu Workerowi jego klucz tajny. Potem zadanie instaluje Chromium i uruchamia `bun run test:e2e:stripe`. Bez tych sekretów build i tak się wykonuje, Playwright zgłasza każdą specyfikację jako pominiętą z podanym powodem, a zadanie kończy się sukcesem, więc krok zaraz po pobraniu repozytorium, **Report missing Stripe sandbox keys**, dodaje wtedy do podsumowania uruchomienia ostrzeżenie, że żadna płatność nie dotarła do Stripe'a. Gdy testowy Worker już działa, specyfikacje sięgają poza runner tylko do API Stripe'a, Stripe.js, jego ramek i testowych stron płatności Stripe'a; opisuje ją [Tryb testowy Stripe](/docs/tooling/testing#tryb-testowy-stripe). Po błędzie zadanie wysyła swój raport jako `playwright-report-stripe-test-mode`.
+Jego drugie zadanie, `stripe-test-mode`, przy każdym uruchomieniu przepływu płaci przez sandbox Stripe'a: kartą, kartami odrzucanymi i wymagającymi 3D Secure, BLIK-iem i przez Przelewy24. Ustawia dla całego zadania `STRIPE_SECRET_KEY` i `VITE_STRIPE_PUBLISHABLE_KEY` z sekretów repozytorium `E2E_STRIPE_SECRET_KEY` i `E2E_STRIPE_PUBLISHABLE_KEY`. Tak jak `e2e-reusable.yml` ma limit 30 minut, uruchamia akcję setup z `test-environment: "true"` i tworzy oraz seeduje lokalną bazę D1 przez `bun run db:reset:test`; potem `bun run build:test` wpisuje klucz publiczny sandboxa do pakietu klienta i daje testowemu Workerowi jego klucz tajny. Zadanie przywraca własną pamięć podręczną Playwrighta (klucz `<os>-playwright-chromium-<skrót bun.lock>`), instaluje Chromium i uruchamia `bun run test:e2e:stripe`. Oba sekrety są ustawione, więc każde uruchomienie płaci przez sandbox. Krok zaraz po pobraniu repozytorium, **Report missing Stripe sandbox keys**, działa tylko wtedy, gdy któryś sekret jest pusty: build i tak by się wtedy wykonał, Playwright zgłosiłby każdą specyfikację jako pominiętą z podanym powodem, a zadanie zakończyłoby się sukcesem, więc krok dodaje do podsumowania uruchomienia ostrzeżenie, że żadna płatność nie dotarła do Stripe'a. Gdy testowy Worker już działa, przeglądarka nie sięga do żadnego zewnętrznego hosta poza tymi w domenach `stripe.com`, `stripe.network`, `stripecdn.com` i `hcaptcha.com` (`STRIPE_ORIGINS` w `e2e/fixtures/stripe-test-mode.ts`), które serwują API Stripe'a, Stripe.js, jego ramki i testowe strony płatności Stripe'a; wspólna fikstura blokuje każde inne żądanie na zewnątrz. Specyfikacje opisuje [Tryb testowy Stripe](/docs/tooling/testing#tryb-testowy-stripe). Po błędzie zadanie wysyła swój raport jako `playwright-report-stripe-test-mode`.
 
 ## Przepływy wdrożeniowe
 
@@ -127,7 +134,7 @@ Działa przed kompilacją, żeby nadawca, którego Resend by odrzucił, zatrzyma
 
 ### 4. kompilacja
 
-`bun run build:preview` usuwa `dist`, odtwarza `.source/`, uruchamia `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `bun scripts/verify-build.ts preview`. `verify-build.ts` czyta `.wrangler/deploy/config.json`, idzie za jego `configPath` i sprawdza, że wskazuje dokładnie na `dist/server/wrangler.json`; że `vars.APP_ENV` skompilowanej konfiguracji odpowiada celowi, a jej `name` to `martebizuteria-preview` (albo `martebizuteria` dla produkcji); że istnieją `main` i `dist/client`; że istnieje `dist/client/fonts`; że `dist/client/assets` zawiera co najmniej jeden plik `.js` i jeden `.css`; a na koniec skanuje każdy plik `.js` klienta przez `new Bun.Transpiler({ loader: "js" })` i przerywa przy jakimkolwiek imporcie `cloudflare:workers` lub modułu `node:`.
+`bun run build:preview` usuwa `dist`, odtwarza `.source/`, uruchamia `CLOUDFLARE_ENV=preview vp build --mode preview`, a potem `bun scripts/verify-build.ts preview`. `verify-build.ts` czyta `.wrangler/deploy/config.json`, idzie za jego `configPath` i sprawdza, że wskazuje dokładnie na `dist/server/wrangler.json`; że `vars.APP_ENV` skompilowanej konfiguracji odpowiada celowi, a jej `name` to `martebizuteria-preview` (albo `martebizuteria` dla produkcji); że istnieje jej `main`, a katalog zasobów wskazuje na `dist/client`; że istnieje `dist/client/fonts`; że `dist/client/assets` zawiera co najmniej jeden plik `.js` i jeden `.css`; a na koniec skanuje każdy plik `.js` klienta przez `new Bun.Transpiler({ loader: "js" })` i przerywa przy jakimkolwiek imporcie `cloudflare:workers` lub modułu `node:`.
 
 ### 5. prepare-deploy-secrets.ts
 
@@ -153,20 +160,23 @@ env -u CLOUDFLARE_ENV vp exec wrangler deploy --config dist/server/wrangler.json
 
 Wywołuje `verifyDeployment` z `src/lib/deployment.ts`, które pyta własny host `workers.dev` środowiska, z `WORKERS_DEV_HOSTS` w `src/modules/_core/constants/api.ts`, o pięć ścieżek, bez podążania za przekierowaniami. `/` i `/products` muszą odpowiedzieć `200` z `text/html`, `/robots.txt` musi odpowiedzieć `200` z `text/plain`, `/api/webhooks/stripe` musi odrzucić `GET` kodem `405` z `text/plain`, co pokazuje, że żądanie dotarło do własnego handlera trasy, a nie do wyrenderowanej strony, a `/api/health` musi odpowiedzieć `200` z `application/json`, co robi tylko wtedy, gdy odpowiadają D1, KV i R2; jej `503` przerywa wdrożenie. Każde żądanie rezygnuje po 15 sekundach, a o stronę, która zawiedzie, kontrola pyta łącznie najwyżej trzy razy, co pięć sekund. Strona, która dalej zawodzi, przerywa wdrożenie, a komunikat ma po jednym wierszu na stronę. Nowa wersja działa już wtedy na żywo, więc następnym krokiem jest [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
-Kontrola tylko czyta publiczne strony: nikogo nie loguje, nie otwiera zamówienia i niczego nie zapisuje. Pyta host `workers.dev`, który `workers_dev: true` w `wrangler.jsonc` zostawia włączony obok domeny własnej, więc kontrola nie zależy od DNS strefy ani od certyfikatu, który Cloudflare może jeszcze wystawiać dla świeżo podłączonej domeny.
+Kontrola tylko czyta publiczne strony: nikogo nie loguje, nie otwiera zamówienia i niczego nie zapisuje. Pyta host `workers.dev`, który `workers_dev: true` w `wrangler.jsonc` zostawia włączony w obu środowiskach, obok domeny własnej preview `preview.martebizuteria.pl` (lista `routes` produkcji jest pusta), więc kontrola nie zależy od DNS strefy ani od certyfikatu, który Cloudflare może jeszcze wystawiać dla świeżo podłączonej domeny.
 
 ## Konfiguracja repozytorium
 
-| Rodzaj                | Nazwy                                                                                                                                                                                                                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Secrets** w Actions | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
-| **Vars** w Actions    | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                                                               |
+| Rodzaj                                                     | Nazwy                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Secrets** w Actions                                      | `CLOUDFLARE_ACCESS_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `RESEND_MANAGEMENT_API_KEY` (opcjonalny), `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` |
+| **Secrets** w Actions dla zadania trybu testowego Stripe'a | `E2E_STRIPE_SECRET_KEY`, `E2E_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                                                                                                                |
+| **Vars** w Actions                                         | `VITE_APP_URL`, `VITE_R2_URL`, `VITE_STRIPE_PUBLISHABLE_KEY`                                                                                                                                                                                                                                         |
 
-`CLOUDFLARE_ACCESS_TOKEN` jest przekazywany do kroku jako `CLOUDFLARE_API_TOKEN`, bo taką nazwę czyta Wrangler. Poza wdrażaniem Workera token potrzebuje uprawnienia do edycji D1, bo wdrożenie nakłada nim migracje, oraz uprawnień Workers Routes (edycja) i Zone (odczyt) do strefy `martebizuteria.pl`, bo wdrożenie podłącza domeny własne z `routes` w `wrangler.jsonc`. Oba przepływy wdrożeniowe korzystają ze środowisk GitHuba (`preview`, `production`), więc sekrety można tam zawęzić do środowiska.
+`CLOUDFLARE_ACCESS_TOKEN` jest przekazywany do kroku jako `CLOUDFLARE_API_TOKEN`, bo taką nazwę czyta Wrangler. Poza wdrażaniem Workera token potrzebuje uprawnienia do edycji D1, bo wdrożenie nakłada nim migracje, oraz, przy wdrożeniu podglądu, uprawnień Workers Routes (edycja) i Zone (odczyt) do strefy `martebizuteria.pl`, bo to wdrożenie podłącza domenę własną `preview.martebizuteria.pl` z `routes` środowiska preview w `wrangler.jsonc`. Lista `routes` produkcji jest pusta, więc wdrożenie produkcyjne nie podłącza żadnej domeny własnej. Oba przepływy wdrożeniowe korzystają ze środowisk GitHuba (`preview`, `production`), więc sekrety można tam zawęzić do środowiska.
 
-Zadanie trybu testowego Stripe'a czyta dwa sekrety repozytorium spoza tych środowisk: `E2E_STRIPE_SECRET_KEY`, klucz tajny sandboxa Stripe'a (`sk_test_`), oraz `E2E_STRIPE_PUBLISHABLE_KEY`, klucz `pk_test_` tego samego sandboxa. Weź je z sandboxa bez endpointu webhooka i z włączonymi w ustawieniach metod płatności kartami, BLIK-iem i Przelewy24, a nie z konta, którego używa preview, żeby płatności testowe nie trafiały na konto preview ani do jego dziennika zdarzeń. Endpoint wskazujący Workera preview i tak tylko zalogowałby i potwierdził ich zdarzenia, bo ich metadane `deployment` wskazują `martebizuteria-test` (zobacz [Płatności: punkt końcowy webhooka](/docs/features/payments#punkt-końcowy-webhooka)).
+Zadanie trybu testowego Stripe'a czyta dwa sekrety repozytorium spoza tych środowisk i oba są ustawione: `E2E_STRIPE_SECRET_KEY`, klucz tajny sandboxa Stripe'a (`sk_test_`), oraz `E2E_STRIPE_PUBLISHABLE_KEY`, klucz `pk_test_` tego samego sandboxa. Weź je z sandboxa bez endpointu webhooka i z włączonymi w ustawieniach metod płatności kartami, BLIK-iem i Przelewy24, a nie z konta, którego używa preview, żeby płatności testowe nie trafiały na konto preview ani do jego dziennika zdarzeń. Endpoint wskazujący Workera preview i tak tylko zalogowałby i potwierdził ich zdarzenia, bo ich metadane `deployment` wskazują `martebizuteria-test` (zobacz [Płatności: punkt końcowy webhooka](/docs/features/payments#punkt-końcowy-webhooka)).
 
 `VITE_R2_URL` jest wymieniony w `secrets.required` w `wrangler.jsonc`, ale dostarczany z **vars** Actions, a nie z secrets — to publiczny adres zasobnika, który dodatkowo musi być widoczny dla pakietu klienta przez przedrostek `VITE_`. `prepare-deploy-secrets.ts` czyta go z `process.env`, więc to działa. Preview i produkcja czytają różne zasobniki, więc ustaw go w środowiskach GitHub `preview` i `production`, a nie raz dla repozytorium; wartości wymienia [Dostarczanie zdjęć](/docs/guides/image-delivery).
+
+`VITE_APP_URL` jest przekazywany do obu kroków wdrożeniowych, ale nic go nie czyta: nie ma go w `secrets.required` i nie używa go żaden kod w `src/` ani `scripts/`. Kanoniczny adres sklepu to `APP_URL` z `src/presentation/branding/app.ts`.
 
 ## Migracje a CI
 

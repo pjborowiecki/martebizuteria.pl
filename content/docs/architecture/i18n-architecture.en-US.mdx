@@ -18,16 +18,18 @@ export const I18N = {
 } as const
 ```
 
-`SupportedLocale` is derived from `SUPPORTED_LOCALES`, so adding a locale is a one-line change followed by a new `messages/<locale>` folder, a new `.mdx` file for every page in `content/docs`, and a value for the new locale in every `content_page` row.
+`SupportedLocale` is derived from `SUPPORTED_LOCALES`, so adding a locale starts with a one-line change. It also needs a new `messages/<locale>` folder, a new `.mdx` file for every page in `content/docs`, a value for the new locale in every `content_page` row, and an entry in every map typed `Record<SupportedLocale, …>`, which the type check then reports: the react-day-picker locale in `react-day-picker.locale.ts`, the Stripe Elements locale in `stripe.client.ts`, the title separator in `src/lib/seo.ts`, the fallback messages in `default-messages.ts` and the catalog form fields in `catalog-locale-fields.tsx`. A few places name `pl-PL` and `en-US` directly, such as the admin catalog forms, the newsletter composer and `src/presentation/document-assets.ts`, which picks the Latin Extended font subset for `pl-PL`.
 
 ## URLs
 
-| File                 | Exports                                                                                                                                           |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `i18n.paths.ts`      | `localizePathname`, `deLocalizePathname`, `canonicalizePathname`, `extractLocaleFromPath`, `isSupportedLocale`, `shouldIgnorePath`, `localeLinks` |
-| `i18n.utils.ts`      | `getCurrentLocale`, `getCurrentPathname`, `localizeUrl`, `deLocalizeUrl`, `parseLocaleCookie`                                                     |
-| `i18n.middleware.ts` | `resolveLocale`, used by the Worker for the redirect and the cookie                                                                               |
-| `i18n.messages.ts`   | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`, `isMessagesQuery`      |
+| File                          | Exports                                                                                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `i18n.paths.ts`               | `localizePathname`, `deLocalizePathname`, `canonicalizePathname`, `extractLocaleFromPath`, `isSupportedLocale`, `shouldIgnorePath`, `localeLinks` |
+| `i18n.utils.ts`               | `getCurrentLocale`, `getCurrentPathname`, `localizeUrl`, `deLocalizeUrl`, `parseLocaleCookie`                                                     |
+| `i18n.middleware.ts`          | `resolveLocale`, used by the Worker for the redirect and the cookie                                                                               |
+| `i18n.messages.ts`            | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`, `isMessagesQuery`      |
+| `i18n.display.ts`             | `detectDisplayPreferences`, `toSavedDisplayPreferences`, `resolveDisplayPreferences`, `TIME_ZONE_COOKIE_NAME`, `FORMAT_LOCALES`, the fallbacks    |
+| `i18n.display-preferences.ts` | `getDisplayPreferences`, `displayPreferencesQuery`, `resolveRequestDisplayPreferences`                                                            |
 
 `shouldIgnorePath` excludes `/api`, `/rpc`, `/_serverFn`, `/assets` and `/forms` from all locale handling.
 
@@ -60,11 +62,27 @@ Server functions that return localized content take the locale as an explicit in
 export const localeField = zod.enum(I18N.SUPPORTED_LOCALES)
 ```
 
-`getProductQuery(handle, locale)` and `getDocsPage({ locale, slugs })` both follow that pattern, and the locale is part of the query key so switching language does not serve a cached translation.
+`getProductQuery(handle, locale)` follows that pattern, and the locale is part of its query key so switching language does not serve a cached translation. The documentation routes call `loadDocsPage(splat)` and `loadDocsNavigation()` from `fumadocs.docs.ts`, which pass `getCurrentLocale()` to the `getDocsPage` and `getDocsNavigation` server functions as `localeField` input; neither goes through the query cache.
+
+## Display preferences
+
+Dates, times and numbers are formatted with a **formatting locale** and a **time zone** that are separate from the interface language. `src/integrations/use-intl/i18n.display.ts` holds the rules:
+
+- `detectDisplayPreferences({ acceptLanguage, cookieHeader, edgeTimeZone })` reads the request. The formatting locale is the first `Accept-Language` entry the runtime's `Intl` supports, else `FALLBACK_FORMAT_LOCALE` (`en-US`). The time zone is the first valid one of the `marte_time_zone` cookie (`TIME_ZONE_COOKIE_NAME`) and the Cloudflare edge time zone (`RequestContext.edgeTimeZone`, `request.cf?.timezone`), else `FALLBACK_TIME_ZONE` (`UTC`).
+- `toSavedDisplayPreferences(user)` reads the signed-in user's `formatLocale` and `timezone` (the `format_locale` and `timezone` columns of `user`) and ignores a value `Intl` does not accept.
+- `resolveDisplayPreferences({ detected, saved })` lets a saved value win over a detected one.
+
+The time zone is therefore the saved preference, then the `marte_time_zone` cookie, then the edge time zone, then `UTC`; the formatting locale is the saved preference, then `Accept-Language`, then `en-US`.
+
+`src/integrations/use-intl/i18n.display-preferences.ts` serves them. `getDisplayPreferences` is a `GET` server function that returns `{ detected, saved }`, and `displayPreferencesQuery` caches it under `DISPLAY_PREFERENCES_QUERY_KEY` (`["i18n", "displayPreferences"]`); the root `beforeLoad` loads it and `TranslationsProvider` reads it, see [Caching and SSR](/docs/architecture/caching-and-ssr). `resolveRequestDisplayPreferences` is a server-only function that returns the resolved `{ formatLocale, timeZone }` to the admin use cases that filter or group by date: the dashboard snapshot and chart range, the admin order, customer and product pages and their exports, the admin customer, and the audit log list and stats.
+
+`TranslationsProvider` passes the resolved time zone to `IntlProvider` and the resolved pair to `DisplayPreferencesContext`, which `src/hooks/use-display-format.ts` reads with `useDisplayPreferences`, `useFormatLocale`, `useDisplayTimeZone` and `useFormatter`, a use-intl `createFormatter` bound to both. In the browser it writes the browser's IANA time zone into the `marte_time_zone` cookie (`Secure` on HTTPS) and, when that zone differs from the detected one, patches `detected.timeZone` in the cached query, so the page switches to the visitor's zone after hydration and the next request detects it on the server.
+
+A signed-in user can override both. `updateDisplayPreference` in `src/modules/user/use-cases/update-display-preference.ts` (`withRateLimit("update-display-preference", RATE_LIMITS.SENSITIVE)` and `authorized()`) writes `formatLocale` or `timezone`; an empty value stores `NULL`, which means automatic. The fields in `src/presentation/components/custom/display-preferences/` offer the 18 `FORMAT_LOCALES` and the `TIMEZONES` from `src/modules/_core/constants/timezone.ts`, appear in the account profile and the admin settings, and invalidate every query once a choice is saved.
 
 ## Messages
 
-Translations live in `messages/<locale>/<namespace>.json` — 56 files per locale. The file name **is** the namespace, and dots are nesting: `pages.admin.catalog.products.json` is read by `useTranslations("pages.admin.catalog.products")`. `buildMessageTree` expands each dotted namespace back into a nested object and merges them, so the provider sees one message tree.
+Translations live in `messages/<locale>/<namespace>.json` — 60 files per locale. The file name **is** the namespace, and dots are nesting: `pages.admin.catalog.products.json` is read by `useTranslations("pages.admin.catalog.products")`. `buildMessageTree` expands each dotted namespace back into a nested object and merges them, so the provider sees one message tree.
 
 Namespace families:
 
@@ -76,7 +94,7 @@ Namespace families:
 | `pages.*`      | One per page or area, e.g. `pages.product`, `pages.checkout`, `pages.admin`, `pages.docs` |
 | `emails.*`     | One per template, e.g. `emails.order-confirmation`                                        |
 
-Page namespaces carry their own `metadata.title` and `metadata.description`, which the loader reads for the head tags.
+Page namespaces also carry the strings their loaders turn into the page's `title` and `description`, under keys that vary by namespace: top-level `title` and `description` (`pages.products`, `pages.cart`), a `meta` object (`pages.landing` and the `pages.auth.*` forms), a `metadata` object (`pages.withdrawal`, or nested as in `pages.newsletter`), `metaTitle` and `metaDescription` (`pages.categories`; `metaTitle` alone, as a template, in `pages.product`), or `index.title` and `index.description` (`pages.blog`).
 
 ## Loading
 
@@ -88,7 +106,7 @@ Page namespaces carry their own `metadata.title` and `metadata.description`, whi
 
 A page therefore ships the six root namespaces plus what its own route and its layout ancestors declared — not the whole catalogue.
 
-The catalogues also survive a change of user. When the session switches to a different user, `clearCacheOnUserChange` removes every cached query except the session and the queries matched by `isMessagesQuery`, so the translations do not load again; see [Caching and SSR](/docs/architecture/caching-and-ssr).
+The catalogues also survive a change of user. When the session switches to a different user, `clearCacheOnUserChange` removes every cached query except the session, the display preferences and the queries matched by `isMessagesQuery`, so the translations do not load again, and then invalidates the display preferences so the new user's saved ones load; see [Caching and SSR](/docs/architecture/caching-and-ssr).
 
 ## Documentation and legal content
 

@@ -18,16 +18,18 @@ export const I18N = {
 } as const
 ```
 
-Typ `SupportedLocale` jest wyprowadzany z `SUPPORTED_LOCALES`, więc dodanie locale to zmiana jednej linii, a potem nowy katalog `messages/<locale>`, nowy plik `.mdx` dla każdej strony w `content/docs` i wartość dla nowego locale w każdym wierszu `content_page`.
+Typ `SupportedLocale` jest wyprowadzany z `SUPPORTED_LOCALES`, więc dodanie locale zaczyna się od zmiany jednej linii. Potrzebny jest też nowy katalog `messages/<locale>`, nowy plik `.mdx` dla każdej strony w `content/docs`, wartość dla nowego locale w każdym wierszu `content_page` oraz wpis w każdej mapie typu `Record<SupportedLocale, …>`, które wskaże sprawdzanie typów: locale react-day-picker w `react-day-picker.locale.ts`, locale Stripe Elements w `stripe.client.ts`, separator tytułu w `src/lib/seo.ts`, zapasowe komunikaty w `default-messages.ts` i pola formularzy katalogu w `catalog-locale-fields.tsx`. Kilka miejsc wymienia `pl-PL` i `en-US` wprost, na przykład formularze katalogu w panelu, kompozytor newslettera i `src/presentation/document-assets.ts`, który wybiera podzbiór fontu Latin Extended dla `pl-PL`.
 
 ## URL-e
 
-| Plik                 | Eksportuje                                                                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `i18n.paths.ts`      | `localizePathname`, `deLocalizePathname`, `canonicalizePathname`, `extractLocaleFromPath`, `isSupportedLocale`, `shouldIgnorePath`, `localeLinks` |
-| `i18n.utils.ts`      | `getCurrentLocale`, `getCurrentPathname`, `localizeUrl`, `deLocalizeUrl`, `parseLocaleCookie`                                                     |
-| `i18n.middleware.ts` | `resolveLocale`, używane przez Workera do przekierowania i cookie                                                                                 |
-| `i18n.messages.ts`   | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`, `isMessagesQuery`      |
+| Plik                          | Eksportuje                                                                                                                                         |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `i18n.paths.ts`               | `localizePathname`, `deLocalizePathname`, `canonicalizePathname`, `extractLocaleFromPath`, `isSupportedLocale`, `shouldIgnorePath`, `localeLinks`  |
+| `i18n.utils.ts`               | `getCurrentLocale`, `getCurrentPathname`, `localizeUrl`, `deLocalizeUrl`, `parseLocaleCookie`                                                      |
+| `i18n.middleware.ts`          | `resolveLocale`, używane przez Workera do przekierowania i cookie                                                                                  |
+| `i18n.messages.ts`            | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`, `isMessagesQuery`       |
+| `i18n.display.ts`             | `detectDisplayPreferences`, `toSavedDisplayPreferences`, `resolveDisplayPreferences`, `TIME_ZONE_COOKIE_NAME`, `FORMAT_LOCALES`, wartości zapasowe |
+| `i18n.display-preferences.ts` | `getDisplayPreferences`, `displayPreferencesQuery`, `resolveRequestDisplayPreferences`                                                             |
 
 `shouldIgnorePath` wyklucza `/api`, `/rpc`, `/_serverFn`, `/assets` i `/forms` z całej obsługi locale.
 
@@ -60,11 +62,27 @@ Funkcje serwerowe zwracające zlokalizowaną treść przyjmują locale jako jawn
 export const localeField = zod.enum(I18N.SUPPORTED_LOCALES)
 ```
 
-`getProductQuery(handle, locale)` i `getDocsPage({ locale, slugs })` idą tym wzorcem, a locale jest częścią klucza zapytania, więc zmiana języka nie zwróci zapisanej w cache'u wersji w innym języku.
+`getProductQuery(handle, locale)` idzie tym wzorcem, a locale jest częścią jego klucza zapytania, więc zmiana języka nie zwróci zapisanej w cache'u wersji w innym języku. Trasy dokumentacji wołają `loadDocsPage(splat)` i `loadDocsNavigation()` z `fumadocs.docs.ts`, które przekazują `getCurrentLocale()` funkcjom serwerowym `getDocsPage` i `getDocsNavigation` jako wejście `localeField`; żadna z nich nie przechodzi przez cache zapytań.
+
+## Preferencje wyświetlania
+
+Daty, godziny i liczby są formatowane według **locale formatowania** i **strefy czasowej**, niezależnych od języka interfejsu. Reguły zawiera `src/integrations/use-intl/i18n.display.ts`:
+
+- `detectDisplayPreferences({ acceptLanguage, cookieHeader, edgeTimeZone })` czyta żądanie. Locale formatowania to pierwszy wpis `Accept-Language`, który obsługuje `Intl` środowiska uruchomieniowego, a w przeciwnym razie `FALLBACK_FORMAT_LOCALE` (`en-US`). Strefa czasowa to pierwsza poprawna z cookie `marte_time_zone` (`TIME_ZONE_COOKIE_NAME`) i strefy czasowej brzegu Cloudflare (`RequestContext.edgeTimeZone`, `request.cf?.timezone`), a w przeciwnym razie `FALLBACK_TIME_ZONE` (`UTC`).
+- `toSavedDisplayPreferences(user)` czyta `formatLocale` i `timezone` zalogowanego użytkownika (kolumny `format_locale` i `timezone` tabeli `user`) i pomija wartość, której `Intl` nie przyjmuje.
+- `resolveDisplayPreferences({ detected, saved })` daje zapisanej wartości pierwszeństwo przed wykrytą.
+
+Strefa czasowa to więc zapisana preferencja, potem cookie `marte_time_zone`, potem strefa brzegu, a na końcu `UTC`; locale formatowania to zapisana preferencja, potem `Accept-Language`, a na końcu `en-US`.
+
+Udostępnia je `src/integrations/use-intl/i18n.display-preferences.ts`. `getDisplayPreferences` to funkcja serwerowa `GET`, która zwraca `{ detected, saved }`, a `displayPreferencesQuery` przechowuje ją w cache'u pod `DISPLAY_PREFERENCES_QUERY_KEY` (`["i18n", "displayPreferences"]`); ładuje ją root `beforeLoad`, a czyta `TranslationsProvider`, zobacz [Cache i SSR](/docs/architecture/caching-and-ssr). `resolveRequestDisplayPreferences` to funkcja wyłącznie serwerowa, która zwraca rozstrzygnięte `{ formatLocale, timeZone }` przypadkom użycia panelu, które filtrują albo grupują po dacie: migawce i zakresowi wykresu przeglądu, stronom zamówień, klientów i produktów w panelu oraz ich eksportom, klientowi w panelu oraz liście i statystykom dziennika zdarzeń.
+
+`TranslationsProvider` przekazuje rozstrzygniętą strefę czasową do `IntlProvider`, a rozstrzygniętą parę do `DisplayPreferencesContext`, który `src/hooks/use-display-format.ts` czyta przez `useDisplayPreferences`, `useFormatLocale`, `useDisplayTimeZone` i `useFormatter`, czyli `createFormatter` z use-intl związany z obiema wartościami. W przeglądarce zapisuje strefę czasową IANA przeglądarki w cookie `marte_time_zone` (`Secure` przy HTTPS), a gdy ta strefa różni się od wykrytej, poprawia `detected.timeZone` w cache'owanym zapytaniu, więc strona przechodzi na strefę odwiedzającego po hydratacji, a następne żądanie wykrywa ją już na serwerze.
+
+Zalogowany użytkownik może nadpisać obie wartości. `updateDisplayPreference` w `src/modules/user/use-cases/update-display-preference.ts` (`withRateLimit("update-display-preference", RATE_LIMITS.SENSITIVE)` i `authorized()`) zapisuje `formatLocale` albo `timezone`; pusta wartość zapisuje `NULL`, co oznacza ustawienie automatyczne. Pola w `src/presentation/components/custom/display-preferences/` oferują 18 `FORMAT_LOCALES` i `TIMEZONES` z `src/modules/_core/constants/timezone.ts`, występują w profilu konta i w ustawieniach panelu, a po zapisaniu wyboru unieważniają wszystkie zapytania.
 
 ## Tłumaczenia
 
-Tłumaczenia leżą w `messages/<locale>/<namespace>.json` — 56 plików na locale. Nazwa pliku **jest** przestrzenią nazw, a kropki oznaczają zagnieżdżenie: `pages.admin.catalog.products.json` odczytuje `useTranslations("pages.admin.catalog.products")`. `buildMessageTree` rozwija każdą kropkowaną przestrzeń nazw z powrotem w zagnieżdżony obiekt i scala je, więc provider widzi jedno drzewo wiadomości.
+Tłumaczenia leżą w `messages/<locale>/<namespace>.json` — 60 plików na locale. Nazwa pliku **jest** przestrzenią nazw, a kropki oznaczają zagnieżdżenie: `pages.admin.catalog.products.json` odczytuje `useTranslations("pages.admin.catalog.products")`. `buildMessageTree` rozwija każdą kropkowaną przestrzeń nazw z powrotem w zagnieżdżony obiekt i scala je, więc provider widzi jedno drzewo wiadomości.
 
 Rodziny przestrzeni nazw:
 
@@ -76,7 +94,7 @@ Rodziny przestrzeni nazw:
 | `pages.*`      | Po jednej na stronę lub obszar, np. `pages.product`, `pages.checkout`, `pages.admin`, `pages.docs` |
 | `emails.*`     | Po jednej na szablon, np. `emails.order-confirmation`                                              |
 
-Przestrzenie nazw stron zawierają własne `metadata.title` i `metadata.description`, które loader odczytuje na potrzeby tagów head.
+Przestrzenie nazw stron zawierają też teksty, które loadery zamieniają w `title` i `description` strony, pod kluczami różnymi w zależności od przestrzeni nazw: `title` i `description` na najwyższym poziomie (`pages.products`, `pages.cart`), obiekt `meta` (`pages.landing` i formularze `pages.auth.*`), obiekt `metadata` (`pages.withdrawal` albo zagnieżdżony, jak w `pages.newsletter`), `metaTitle` i `metaDescription` (`pages.categories`; samo `metaTitle`, jako szablon, w `pages.product`) albo `index.title` i `index.description` (`pages.blog`).
 
 ## Ładowanie
 
@@ -88,7 +106,7 @@ Przestrzenie nazw stron zawierają własne `metadata.title` i `metadata.descript
 
 Strona wysyła więc sześć przestrzeni nazw root plus to, co zadeklarowała jej trasa i jej layouty przodków — a nie cały katalog tłumaczeń.
 
-Katalogi przetrwają też zmianę użytkownika. Gdy sesja przełączy się na innego użytkownika, `clearCacheOnUserChange` usuwa z cache'u wszystkie zapytania poza sesją i zapytaniami rozpoznawanymi przez `isMessagesQuery`, więc tłumaczenia nie ładują się ponownie; zobacz [Cache i SSR](/docs/architecture/caching-and-ssr).
+Katalogi przetrwają też zmianę użytkownika. Gdy sesja przełączy się na innego użytkownika, `clearCacheOnUserChange` usuwa z cache'u wszystkie zapytania poza sesją, preferencjami wyświetlania i zapytaniami rozpoznawanymi przez `isMessagesQuery`, więc tłumaczenia nie ładują się ponownie, a potem unieważnia preferencje wyświetlania, żeby wczytały się te zapisane przez nowego użytkownika; zobacz [Cache i SSR](/docs/architecture/caching-and-ssr).
 
 ## Dokumentacja i treści prawne
 

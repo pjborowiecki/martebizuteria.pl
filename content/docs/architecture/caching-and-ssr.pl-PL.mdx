@@ -24,25 +24,28 @@ Loadery zapełniają cache przez `context.queryClient.query({ ...options, staleT
 
 Loadery `/categories/$handle` i `/collections/$handle` czytają swój wiersz z czasem świeżości samego zapytania: `getStorefrontCategoryQuery(handle)` i `getStorefrontCollectionQuery(handle)` pozostają świeże przez 60 sekund. Żaden komponent nie czyta tych zapytań, więc przy `"static"` zapisany wiersz obsługiwałby każde kolejne sortowanie, filtr i wizytę tak długo, jak długo zostawałby w cache. Zobacz [Katalog i wyszukiwanie](/docs/features/catalog-and-search).
 
-Komponent, który czyta przez `useQuery(options)`, też dostaje dane z loadera, jeśli loader wypełnia ten sam klucz. `NewsletterField` czyta `getOwnNewsletterSubscriptionQuery()`, które loader `/account/profile` ładuje razem z profilem, więc potwierdzony subskrybent widzi status subskrypcji już przy pierwszym renderze. Formularz zamówienia czyta `listDeliveryMethodsQuery()` i `getFreeDeliveryQuery()`, które ładuje loader strony `/checkout/`, podczas gdy loader layoutu `/checkout` czyta teksty zamówienia, bo router uruchamia oba loadery jednocześnie. Loader strony zależy tylko od `success` i pomija odczyty na potwierdzeniu, na które wraca Stripe i na którym nie ma formularza. `ImageShowcase` w pełnoekranowym menu czyta `getCollectionsQuery()`, które ładuje każdy layout renderujący `Navigation`: `_storefront.tsx`, `account.tsx`, `auth.tsx` i `docs.tsx`. Bez tego każde z tych zapytań ruszałoby dopiero po wyrenderowaniu strony, o jedno zapytanie do serwera później.
+Komponent, który czyta przez `useQuery(options)`, też dostaje dane z loadera, jeśli loader wypełnia ten sam klucz. `NewsletterField` czyta `getOwnNewsletterSubscriptionQuery()`, które loader `/account/profile` ładuje razem z profilem, więc potwierdzony subskrybent widzi status subskrypcji już przy pierwszym renderze. Formularz zamówienia czyta `listDeliveryMethodsQuery()` i `getFreeDeliveryQuery()`, które ładuje loader strony `/checkout/`, podczas gdy loader layoutu `/checkout` czyta teksty zamówienia, bo router uruchamia oba loadery jednocześnie. Loader strony zależy tylko od `success` i pomija odczyty na potwierdzeniu, na które wraca Stripe i na którym nie ma formularza. `ImageShowcase` w pełnoekranowym menu czyta `getCollectionsQuery()`, które ładuje każdy layout renderujący `Navigation`: `_storefront.tsx`, `account.tsx`, `auth.tsx` i `docs.tsx`. `SalesPausedBanner` czyta `getSalesStatusQuery()`, które ładują renderujące go layouty `_storefront.tsx`, `account.tsx` i `docs.tsx`, a loader strony `/checkout/` ładuje je dla `CheckoutGuard` razem z metodami dostawy i progiem darmowej dostawy. Bez tego każde z tych zapytań ruszałoby dopiero po wyrenderowaniu strony, o jedno zapytanie do serwera później.
 
-Strona wyrenderuje się bez każdego z tych trzech zapytań, więc każdy loader kończy odczyt wywołaniem `.catch(noop)` (`noop` z `@tanstack/react-query`). Nieudany odczyt zostawia zapytanie w stanie `error`, a loader i tak się kończy. Integracja SSR dehydratuje ten stan, a `useQuery` komponentu ponawia zapytanie po zamontowaniu, tak jak zanim loader zaczął wypełniać ten klucz. Dane, bez których strona się nie wyrenderuje, na przykład profil na `/account/profile`, loader nadal czyta samym `query()`, więc ich błąd pokazuje komponent błędu trasy.
+Strona wyrenderuje się bez każdego z tych zapytań, więc każdy loader kończy odczyt wywołaniem `.catch(noop)` (`noop` z `@tanstack/react-query`). Nieudany odczyt zostawia zapytanie w stanie `error`, a loader i tak się kończy. Integracja SSR dehydratuje ten stan, a `useQuery` komponentu ponawia zapytanie po zamontowaniu, tak jak zanim loader zaczął wypełniać ten klucz. Dane, bez których strona się nie wyrenderuje, na przykład profil na `/account/profile`, loader nadal czyta samym `query()`, więc ich błąd pokazuje komponent błędu trasy.
 
 `defaultPreloadStaleTime: 0` jest celowe: najechanie na link naprawdę uruchamia loader, zamiast korzystać z zapisanego wyniku, i właśnie to czyni wstępne pobieranie obrazów w sklepie użytecznym. `ImagePrefetchService` z `src/lib/image.ts` jest tworzony raz na router i przekazywany w kontekście routera, a loadery wołają `prefetchSingleProductImage(data, context.imagePrefetchService)`.
 
 ## Nadpisania dla poszczególnych zapytań
 
-| Zapytanie                                     | Zachowanie                                                                            |
-| --------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `messagesQueryOptions({ locale, namespace })` | `staleTime: Infinity`, `gcTime: Infinity` — przestrzeń nazw ładowana raz              |
-| `getCurrentSessionQuery`                      | `staleTime` 60 s, `retry: false`, brak odświeżania na focus i reconnect               |
-| `checkCartAvailabilityQuery`                  | `staleTime: 0`, zachowuje poprzednią odpowiedź, brak odświeżania na focus i reconnect |
-| Zapytania list administracyjnych              | `*_QUERY_STALE_MS` modułu, `refetchOnMount: false`, brak odświeżania na focus         |
-| Publiczne zapytania katalogu                  | Domyślne routera; unieważniane przez hub realtime, nie odpytywane cyklicznie          |
+| Zapytanie                                     | Zachowanie                                                                                |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `messagesQueryOptions({ locale, namespace })` | `staleTime: Infinity`, `gcTime: Infinity` — przestrzeń nazw ładowana raz                  |
+| `getCurrentSessionQuery`                      | `staleTime` 60 s, `retry: false`, brak odświeżania na focus i reconnect                   |
+| `displayPreferencesQuery`                     | `staleTime: Infinity`, brak odświeżania na focus i reconnect; ładuje je root `beforeLoad` |
+| `checkCartAvailabilityQuery`                  | `staleTime: 0`, zachowuje poprzednią odpowiedź, brak odświeżania na focus i reconnect     |
+| Zapytania list administracyjnych              | `*_QUERY_STALE_MS` modułu, `refetchOnMount: false`, brak odświeżania na focus             |
+| Publiczne zapytania katalogu                  | Domyślne routera; unieważniane przez hub realtime, nie odpytywane cyklicznie              |
+
+`displayPreferencesQuery` przechowuje locale formatowania i strefę czasową wykryte dla żądania oraz te zapisane u zalogowanego użytkownika (zobacz [Preferencje wyświetlania](/docs/architecture/i18n-architecture#preferencje-wyświetlania)). Samo nigdy się nie przeterminowuje: zapisanie preferencji wywołuje `queryClient.invalidateQueries()` bez filtra, więc ono i każde zapytanie na ekranie pobierają się ponownie, łącznie z zapytaniami panelu, których funkcje serwerowe czytają rozstrzygnięte preferencje przez `resolveRequestDisplayPreferences`, żeby filtrować i grupować po dacie.
 
 Listy administracyjne świadomie nie odświeżają się przy montowaniu ani przy powrocie do okna. Świeżość zapewnia hub Durable Object — zobacz [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation) — więc zmiana drugiego administratora przychodzi jako push, a nie jako odpytywanie.
 
-Guardy tras i komponenty dzielą zapytanie o sesję. Guardy `/account` i `/admin` ładują je przez `context.queryClient.query`, nadpisując przy nawigacji `staleTime` na 0; wstępne ładowanie linku i guard `/auth` korzystają z sesji młodszej niż 60 sekund. Wpis zostaje w cache'u, więc render na serwerze serializuje go do strony, a strony `/account` i `/admin` renderują się jako zalogowane. Link konta w nawigacji, strefa czasowa tłumaczeń, lista życzeń i wstępne wypełnienie checkoutu czytają tę samą wartość przez `useQuery(getCurrentSessionQuery)`.
+Guardy tras i komponenty dzielą zapytanie o sesję. Guardy `/account` i `/admin` ładują je przez `context.queryClient.query`, nadpisując przy nawigacji `staleTime` na 0; wstępne ładowanie linku i guard `/auth` korzystają z sesji młodszej niż 60 sekund. Wpis zostaje w cache'u, więc render na serwerze serializuje go do strony, a strony `/account` i `/admin` renderują się jako zalogowane. Link konta w nawigacji, lista życzeń, wstępne wypełnienie checkoutu, śledzenie aktywności klienta i akcje wierszy klientów w panelu czytają tę samą wartość przez `useQuery(getCurrentSessionQuery)`.
 
 Guardy jedynie czytają sesję. Zmianę użytkownika obsługuje jedno miejsce, `clearCacheOnUserChange(queryClient)` w `src/integrations/better-auth/auth.session.ts`. `getRouter` instaluje je wyłącznie w przeglądarce, obok `setupQueryClientInvalidationBroadcast`; renderowanie na serwerze je pomija, bo każde żądanie zaczyna od pustego `QueryClient`. Subskrybuje ono cache zapytań:
 
@@ -57,14 +60,18 @@ export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) =
     }
 
     if ("session" in seen && seen.session?.user.id !== session?.user.id) {
-      queryClient.removeQueries({ predicate: (cached) => cached.queryHash !== SESSION_QUERY_HASH && !isMessagesQuery(cached) })
+      queryClient.removeQueries({
+        predicate: (cached) =>
+          cached.queryHash !== SESSION_QUERY_HASH && cached.queryHash !== DISPLAY_PREFERENCES_QUERY_HASH && !isMessagesQuery(cached),
+      })
+      void queryClient.invalidateQueries({ exact: true, queryKey: DISPLAY_PREFERENCES_QUERY_KEY })
     }
     seen.session = session
   })
 }
 ```
 
-Za każdym razem, gdy dane zapytania o sesję przełączą się na inny identyfikator użytkownika, także z niezalogowanego na zalogowanego i z powrotem, usuwa z cache'u wszystkie zapytania poza samą sesją i katalogami komunikatów tłumaczeń, rozpoznawanymi przez `isMessagesQuery` w `src/integrations/use-intl/i18n.messages.ts`. Pomija pierwszą sesję, jaką zobaczy, oraz usunięcie wpisu sesji. Ponieważ obserwuje cache, a nie konkretnego wywołującego, wychwytuje zmianę niezależnie od tego, kto pobrał sesję: guard, komponent, ponowne pobranie po unieważnieniu czy hydratacja.
+Za każdym razem, gdy dane zapytania o sesję przełączą się na inny identyfikator użytkownika, także z niezalogowanego na zalogowanego i z powrotem, usuwa z cache'u wszystkie zapytania poza samą sesją, preferencjami wyświetlania i katalogami komunikatów tłumaczeń, rozpoznawanymi przez `isMessagesQuery` w `src/integrations/use-intl/i18n.messages.ts`. Potem unieważnia preferencje wyświetlania, które `TranslationsProvider` ma na ekranie, więc pobierają się ponownie z zapisanymi przez nowego użytkownika locale formatowania i strefą czasową, zamiast zniknąć mu spod ręki. Pomija pierwszą sesję, jaką zobaczy, oraz usunięcie wpisu sesji. Ponieważ obserwuje cache, a nie konkretnego wywołującego, wychwytuje zmianę niezależnie od tego, kto pobrał sesję: guard, komponent, ponowne pobranie po unieważnieniu czy hydratacja.
 
 Po zalogowaniu `usePostAuthRedirect` usuwa wyłącznie wpis sesji, więc guard `/auth` pobiera świeżą sesję, a `clearCacheOnUserChange` zapomina to, co trafiło do cache'u przed zalogowaniem. Wylogowanie wykonuje pełne przeładowanie strony, które porzuca cache.
 
@@ -88,17 +95,20 @@ export const getProductImagesQuery = db.query.productImage
 Nic w `vite.config.ts` nie włącza prerenderingu TanStack Start i żadna trasa nie ma opcji `prerender`. Każda odpowiedź HTML jest renderowana na serwerze per żądanie. Konsekwencje warte zapamiętania:
 
 - Strony sklepu odzwierciedlają katalog w momencie żądania, bez kroku czyszczenia cache'u.
-- Przed aplikacją nie ma fallbacku ze statycznych zasobów; `ASSETS` serwuje wyłącznie `public/`.
+- Przed aplikacją nie ma fallbacku ze statycznych zasobów; `ASSETS` serwuje wyłącznie build klienta. `wrangler.jsonc` wskazuje `./public`, a build zapisuje `dist/server/wrangler.json` z `dist/client`, czyli bundlami z hashem w `assets/` i plikami skopiowanymi z `public/`, co sprawdza `scripts/verify-build.ts`.
 - Cache-control dla HTML-a pozostawiono domyślnym ustawieniom platformy, więc przy zmianie produktu nie ma czego unieważniać.
 
-Odpowiedzi, które jawnie ustawiają `Cache-Control`, to `/sitemap.xml` i `/robots.txt` — obie `public, max-age=86400` — dwa formularze PDF, z `public, max-age=300, must-revalidate` i `ETag` z ostatniego zapisu danych sprzedawcy (zobacz [Strony prawne](/docs/features/legal-pages#jak-powstają-formularze)), oraz obiekty uploadowane do R2, zapisywane z `public, max-age=31536000, immutable`.
+Odpowiedzi, które jawnie ustawiają `Cache-Control`, to `/sitemap.xml` i `/robots.txt` — obie `public, max-age=86400`; `/api/health` — `no-store`; dwa formularze PDF, z `public, max-age=300, must-revalidate` i `ETag` z ostatniego zapisu danych sprzedawcy (zobacz [Strony prawne](/docs/features/legal-pages#jak-powstają-formularze)); obiekty uploadowane do R2, zapisywane z `public, max-age=31536000, immutable`; oraz, przez `public/_headers`, bundle w `/assets/` i fonty w `/fonts/` (`public, max-age=31536000, immutable`) oraz `/favicon.svg` i `/og.png` (`public, max-age=86400`).
 
 ## Stan po stronie przeglądarki
 
-- **`localStorage`** przechowuje motyw (`@wrksz/themes`, klucz z `theme-init.ts`), preferencję panelu bocznego panelu administracyjnego i szerokości kolumn każdej siatki danych. Wszystkie trzy są czytane przez blokujące skrypty w `<head>` przed pierwszym renderem.
+- **`localStorage`** przechowuje motyw (`@wrksz/themes`, klucz z `theme-init.ts`), preferencję panelu bocznego panelu administracyjnego (`sidebar_state`) oraz kolejność, szerokości i widoczność kolumn każdej siatki danych (klucze `marte:datagrid:v1:`). Wszystkie trzy są czytane przez blokujące skrypty w `<head>` przed pierwszym renderem; skrypt siatki danych stosuje szerokości kolumn.
+- **`localStorage`** przechowuje też szerokość, do której przeciągnięto arkusz formularza katalogu, pod kluczami `admin-sheet-width:`.
 - **`localStorage`** przechowuje też `marte-checkout-session`: identyfikator otwartej sesji Checkout przeglądarki razem z koszykiem, dla którego ją otwarto. Zapisuje go krok płatności, a odczytują sprawdzenie sesji na stronie kasy, sprawdzenie dostępności i kolejny krok płatności (zobacz [Kasa](/docs/features/checkout)). Nic nie czyta go przed pierwszym renderem. Serwer ufa mu tylko na tyle, na ile istnieje płatność o tym identyfikatorze: oczekująca dla sprawdzenia dostępności i ścieżki aktualizacji, a dowolna dla sprawdzenia sesji i potwierdzenia, które uznają posiadanie identyfikatora za dowód rozpoczęcia checkoutu.
-- **Zustand z `persist`** przechowuje koszyk w `src/modules/cart/cart.store.ts`, z `CART_PERSIST_VERSION` równym 2 i type guardem per pozycja, więc nieaktualny kształt jest odrzucany, a nie rehydratowany.
-- **`BroadcastChannel`** (`marte-query-invalidation` w `query.sync.ts`) przekazuje do innych kart tej samej przeglądarki unieważnienia tych nielicznych lokalnych mutacji, których nie przenosi hub realtime: kuponów i akcji na zamówieniach. Ramki huba nie są na nim powielane, bo każda karta sklepu i panelu odbiera je przez własne gniazdo.
+- **`sessionStorage`** przechowuje `marte-checkout-draft`, niewysłane wartości formularza zamówienia, oraz flagi aktywności klienta: `customer-activity:page-view:` ze ścieżką, żeby wyświetlenie strony było zapisane raz na sesję karty, i `customer-activity:cart-abandoned-sent`, żeby porzucony koszyk był zgłoszony raz.
+- **Cookie `marte_time_zone`** przechowuje strefę czasową IANA przeglądarki. `TranslationsProvider` zapisuje je po stronie klienta, żeby serwer przy następnym żądaniu formatował daty w tej strefie; zobacz [Preferencje wyświetlania](/docs/architecture/i18n-architecture#preferencje-wyświetlania).
+- **Zustand z `persist`** przechowuje koszyk w `src/modules/cart/cart.store.ts`, z `CART_PERSIST_VERSION` równym 3 i type guardem per pozycja, więc nieaktualny kształt jest odrzucany, a nie rehydratowany.
+- **`BroadcastChannel`** (`marte-query-invalidation` w `query.sync.ts`) przekazuje do innych kart tej samej przeglądarki unieważnienia kilku mutacji panelu: zmian kuponów, których nie przenosi hub realtime, oraz akcji na subskrybentach newslettera, zamówieniach i przesyłkach InPost. Ramki huba nie są na nim powielane, bo każda karta sklepu i panelu odbiera je przez własne gniazdo.
 
 Żadne z tych miejsc nie jest źródłem prawdy. Koszyk jest ponownie walidowany po stronie serwera przez `check-cart-availability.ts`, a potem jeszcze raz w `handleCreateCheckoutSession`, które ponownie czyta ceny i stany magazynowe z D1 i odrzuca checkout, jeśli cokolwiek się zmieniło.
 
@@ -106,7 +116,7 @@ Odpowiedzi, które jawnie ustawiają `Cache-Control`, to `/sitemap.xml` i `/robo
 
 - **Sesje.** Podpisany cache cookie w Better Auth jest wyłączony, a `getRequestSession` dodatkowo przekazuje `disableCookieCache: true`, więc każde serwerowe sprawdzenie czyta D1. Kosztem jest jeden odczyt D1 na żądanie; korzyścią to, że zbanowany lub wylogowany użytkownik nie przejedzie na zapisanym cookie. Żeby nie zamieniło się to w N odczytów, wynik jest memoizowany w `WeakMap` kluczowanej obiektem `Request` — nie globalną zmienną modułu — więc współbieżne loadery i funkcje serwerowe jednego żądania dzielą jedno wyszukanie, a nowe żądanie zawsze rewaliduje. Przeglądarka czyta sesję tak samo: komponenty używają `useQuery(getCurrentSessionQuery)`, którego `getCurrentSession` przechodzi przez `getRequestSession` i pomija cache cookie. Przeglądarka przechowuje jedynie wynik tego zapytania, według opisanych wyżej zasad. `auth.client.ts` nie eksportuje już `useSession` z Better Auth: uruchamiało się ono podczas renderowania na serwerze, czego ochrona importów TanStack Start zabrania plikom `*.client.*` w buildzie serwerowym, i wysyłało drugie żądanie o sesję.
 - **Uprawnienia.** `hasPermission` jest wyliczane z roli w sesji przy każdym wywołaniu. Żadna decyzja nie jest podejmowana na podstawie cache'owanych danych.
-- **KV.** Namespace `CACHE` jest zbindowany we wszystkich trzech środowiskach i weryfikowany przez `scripts/verify-bindings.ts`. Nie przechowuje stron ani danych: jedynym kluczem jest flaga nadawcy e-maili, którą zapisuje `markEmailSenderUnavailable`, a czyta blokada w Better Auth (zobacz [Resend](/docs/integrations/resend)).
+- **KV.** Namespace `CACHE` jest zbindowany we wszystkich czterech środowiskach (development, preview, test i production), a `scripts/verify-bindings.ts` sprawdza, że preview i produkcja wskazują prawdziwy namespace. Nie przechowuje stron ani danych. Jego klucze to flaga nadawcy e-maili `email-sender-unavailable:<APP_ENV>`, którą `markEmailSenderUnavailable` zapisuje na pięć minut, a czyta blokada w Better Auth (zobacz [Resend](/docs/integrations/resend)), oraz znaczniki `incident-alert:<APP_ENV>:<kind>:<reference>`, dzięki którym `sendIncidentAlert` wysyła e-mail o każdym incydencie raz (na godzinę albo na trzy dni dla nieudanego zdarzenia Stripe). `GET /api/health` czyta `health-check`, klucz, którego nic nie zapisuje.
 
 ## Powiązane strony
 

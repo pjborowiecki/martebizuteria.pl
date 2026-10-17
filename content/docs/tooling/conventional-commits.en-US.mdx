@@ -45,7 +45,7 @@ Git passes the message file path as `$1` and the message source as `$2`. `script
 | `style`    | 💎    |
 | `test`     | 🚨    |
 
-Eleven types, and nothing else. The hook prefixes the matching emoji to the subject line and leaves the body untouched.
+Eleven types, and nothing else, for every subject the hook validates; a subject that already starts with an emoji such as 📚 or 🐛 is not validated at all (see [What is left alone](#what-is-left-alone)). The hook prefixes the matching emoji to the subject line and leaves the body untouched.
 
 ## What fails
 
@@ -72,9 +72,11 @@ The hook returns without touching the message in five cases:
 
 - the message source is `squash`, `merge` or `template`;
 - the message is empty, or has no non-comment line;
-- the subject already starts with an emoji, tested with `/^\p{Emoji_Presentation}/u` — so amending a commit the hook already decorated is idempotent;
+- the subject already starts with a character that has the Unicode `Emoji_Presentation` property, tested with `/^\p{Emoji_Presentation}/u`. That covers 📚, ✨, 🐛, 🚀, 📦, 💎 and 🚨, so amending a `docs`, `feat`, `fix`, `perf`, `refactor`, `style` or `test` commit the hook already decorated leaves its subject as it is. It also means such a subject skips validation entirely: `🐛 anything` is accepted unchanged;
 - the subject matches `/^(?:Merge |Revert "|fixup! |squash! )/`, which covers the subjects Git generates itself;
 - no message file path was passed.
+
+The other four emojis, 🛠️, ♻️, ⚙️ and 🗑️, are text-style characters followed by the variation selector U+FE0F, and `Emoji_Presentation` does not match them. Amending a `build`, `chore`, `ci` or `revert` commit (Git passes the source `commit` for `--amend`, `-c` and `-C`) without changing its subject therefore sends the decorated subject through the conventional pattern, which fails on the leading emoji, and the hook aborts with `Commit message does not follow conventional format.` The hook runs before the editor opens, so give the subject again without the emoji, for example `git commit --amend -m "chore(deps): …"`; the hook adds the emoji back.
 
 If the script throws for any other reason it prints `❌  Failed to process commit message:` and exits 1, so a broken hook fails loudly rather than letting a malformed subject through.
 
@@ -88,18 +90,18 @@ bun run check:pre-commit
 
 That is `vp staged`, which applies the `staged` block from `vite.config.ts` — `vp check --fix` over every staged file. A commit therefore cannot be created unless the staged files format, lint and type check.
 
-Do not bypass the hooks with `--no-verify`. The deploy workflows run `bun run check` again, so a commit that skipped the hook fails later and more expensively.
+Do not skip the pre-commit check with `--no-verify`. It skips `.vite-hooks/pre-commit` only; Git does not suppress `prepare-commit-msg` with it, so the subject is still validated and decorated. `ci.yml` and `deploy-preview.yml` run `bun run check` again, so a commit that skipped the check fails there, later and more expensively.
 
 Both hooks are installed by `vp config --no-agent`, which `bun install` runs through the `prepare` script. `vp hooks status` shows whether they are active in your clone.
 
 ## Scopes in practice
 
-Scopes are not validated, but the repository has a de facto vocabulary drawn from the directory structure — `app`, `ui`, `admin/orders`, `admin/catalog/products`, `checkout`, `auth`, `docs`. Use the module or route area the change belongs to, and use a nested scope when the change is narrower than a whole area:
+Scopes are not validated. Recent history mostly uses one flat scope per feature area; `checkout`, `orders`, `account`, `admin`, `auth`, `catalog`, `audit` and `email` are the most frequent, and `docs` commits name the area of the docs they change, such as `docs(testing)` or `docs(payments)`. Nested scopes such as `admin/orders` or `admin/catalog/products` appear in the history but are rare. Use the feature area the change belongs to:
 
 ```sh
-git commit -m "feat(admin/catalog/products): allow bulk status changes"
-git commit -m "refactor(app): move rate limiting into src/lib"
-git commit -m "docs(tooling): document the deploy secret pipeline"
+git commit -m "fix(orders): show the admin order's VAT as included in the total"
+git commit -m "feat(i18n): resolve each user's time zone and format locale, their own choice first"
+git commit -m "docs(testing): state the current test counts and coverage thresholds"
 ```
 
 ## Related pages

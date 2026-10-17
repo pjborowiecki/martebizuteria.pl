@@ -3,7 +3,7 @@ title: "Moduły i przypadki użycia"
 description: "Jak zbudowany jest moduł funkcjonalny, co oznacza każdy sufiks pliku i jaki kształt ma każdy przypadek użycia."
 ---
 
-## 43 moduły
+## Moduły
 
 ```text
 _core                   account                 address
@@ -27,56 +27,56 @@ wishlist
 
 ## Sufiksy plików
 
-| Plik                       | Zawiera                                                                        |
-| -------------------------- | ------------------------------------------------------------------------------ |
-| `<feature>.schema.ts`      | Definicję `sqliteTable`, jej indeksy i `relations`                             |
-| `<feature>.zod.ts`         | Schematy wejścia wspólne dla react-hook-form i walidatorów funkcji serwerowych |
-| `<feature>.constants.ts`   | Klucze zapytań i mutacji, enumy, rozmiary stron, czasy stale, metadane kolumn  |
-| `<feature>.types.ts`       | Typy wiersza i wejścia wyprowadzone ze schematu i kształtów Zod                |
-| `<feature>.utils.ts`       | Czyste helpery bez dostępu do bazy i żądania                                   |
-| `<feature>.accessors.ts`   | Dostęp do danych: zapytania Drizzle, prepared statements, buildery batchy      |
-| `<feature>.*.server.ts`    | Helpery wyłącznie serwerowe, które nie są endpointami RPC                      |
-| `use-cases/<verb-noun>.ts` | Jedno `createServerFn` plus opcje zapytania lub mutacji, które je wołają       |
+| Plik                              | Zawiera                                                                              |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| `<feature>.schema.ts`             | Definicję `sqliteTable`, jej indeksy i `relations`                                   |
+| `<feature>.zod.ts`                | Schematy wejścia wspólne dla react-hook-form i walidatorów funkcji serwerowych       |
+| `<feature>.constants.ts`          | Klucze zapytań i mutacji, enumy, rozmiary stron, czasy stale, metadane kolumn        |
+| `<feature>.types.ts`              | Typy wiersza i wejścia wyprowadzone ze schematu i kształtów Zod                      |
+| `<feature>.utils.ts`              | Czyste helpery bez dostępu do bazy i żądania                                         |
+| `<feature>.accessors.ts`          | Dostęp do danych: zapytania Drizzle, prepared statements, buildery batchy            |
+| `<feature>.*.server.ts`           | Helpery wyłącznie serwerowe, które nie są endpointami RPC                            |
+| `use-cases/<verb-noun>.ts`        | Jedno `createServerFn` plus opcje zapytania lub mutacji, które je wołają             |
+| `use-cases/<verb-noun>.server.ts` | Jedną operację wyłącznie serwerową, wołaną przez inny kod serwera; bez endpointu RPC |
 
-`order` to dobry moduł do przeczytania od początku do końca: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` i trzynaście plików w `use-cases/`.
+`order` to dobry moduł do przeczytania od początku do końca: `order.schema.ts`, `order.zod.ts`, `order.constants.ts`, `order.types.ts`, `order.utils.ts`, `order.totals.ts`, `order.display.utils.ts`, `order.detail.utils.ts`, `order.email.utils.ts`, `order.fulfillment-time.utils.ts`, `order.accessors.ts`, `order.admin-action.server.ts`, `order.admin-actions.utils.ts`, `order.settled.server.ts`, `order.number.server.ts`, `order.claim.server.ts`, `order.email-delivery.server.ts`, `order.refund.server.ts`, `order.restock.server.ts`, `order.shipment.server.ts`, `order-audit.utils.ts`, `order.admin-list-filters.ts` i trzydzieści plików w `use-cases/`.
 
 ## Przypadek użycia mutujący
 
 ```ts
-const trimmedOrNull = (value: string | undefined) => {
+const filledOrUndefined = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim()
 
-  return trimmed === undefined || trimmed === "" ? sql`null` : trimmed
+  return trimmed === "" ? undefined : trimmed
+}
+
+const trackingColumns = (trackingNumber: string | undefined, trackingUrl: string | undefined) => {
+  if (trackingNumber !== undefined) {
+    return { trackingNumber, trackingUrl: trackingUrl ?? sql`null` }
+  }
+
+  return trackingUrl === undefined ? {} : { trackingUrl }
 }
 
 export const shipOrder = createServerFn({ method: "POST" })
   .middleware([authorized({ order: ["update"] })])
   .validator((input: zod.input<typeof orderZodSchemas.adminShipOrderInput>) => orderZodSchemas.adminShipOrderInput.parse(input))
-  .handler(async ({ data: { orderId, trackingNumber, trackingUrl } }) => {
+  .handler(async ({ data: { orderId, ...tracking } }) => {
     const origin = resolveRequestOrigin(getRequest())
+    const trackingNumber = filledOrUndefined(tracking.trackingNumber)
     assertOrderActionState(await getAdminOrderActionRow(orderId), (snapshot) =>
       canMarkAdminOrderShipped({ fulfillmentStatus: snapshot.fulfillmentStatus, paymentUiKey: "paid", status: snapshot.status }),
     )
 
-    await db
-      .update(order)
-      .set({
-        fulfillmentStatus: "shipped",
-        shippedAt: new Date(),
-        trackingNumber: trimmedOrNull(trackingNumber),
-        trackingUrl: trimmedOrNull(trackingUrl),
-        updatedAt: new Date(),
-      })
-      .where(eq(order.id, orderId))
-
-    recordOrderShippedAudit(orderId, {
-      detail: trackingNumber?.trim() === "" ? undefined : trackingNumber?.trim(),
+    await transitionOrder(orderId, SHIPPABLE_FULFILLMENT_STATUSES, {
+      fulfillmentStatus: "shipped",
+      shippedAt: new Date(),
+      ...trackingColumns(trackingNumber, filledOrUndefined(tracking.trackingUrl)),
     })
-    const shippedEmailDelivery = sendOrderShippedEmail(orderId, origin)
-    scheduleBackgroundWork(shippedEmailDelivery)
-    const shippedEmailSent = await shippedEmailDelivery
 
-    return { ok: true, orderId, shippedEmailSent }
+    recordOrderShippedAudit(orderId, { detail: trackingNumber })
+
+    return { email: await announceOrderShipment(orderId, origin), ok: true, orderId }
   })
 
 export const shipOrderMutation = mutationOptions({
@@ -87,11 +87,11 @@ export const shipOrderMutation = mutationOptions({
 
 Każdy element jest tu istotny:
 
-- **Middleware** pochodzi z `src/integrations/better-auth/auth.middleware.ts`. `withRequest` przechwytuje nagłówki żądania i normalizuje błędy; `authorized()` wymaga sesji; `authorized({ order: ["update"] })` sprawdza dodatkowo uprawnienie roli z `auth.access.ts`; `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` liczy próby na operację i adres IP.
+- **Middleware** pochodzi z `src/integrations/better-auth/auth.middleware.ts`. `withRequest` przechwytuje nagłówki żądania i normalizuje błędy; `authorized()` wymaga sesji; `authorized({ order: ["update"] })` sprawdza dodatkowo uprawnienie roli z `auth.access.ts` i odmawia z `FORBIDDEN`, dopóki zachodzi `needsTwoFactorSetup` — czyli dla konta z rolą administracyjną bez uwierzytelniania dwuskładnikowego w buildzie, który go wymaga (production i test); `withRateLimit(kind, RATE_LIMITS.SENSITIVE)` liczy próby na operację i adres IP.
 - **Walidacja** parsuje wejście schematem Zod modułu przed uruchomieniem handlera, więc handler otrzymuje typy `zod.output`.
-- **Guardy stanu** mieszkają w module, nie w komponencie. `assertOrderActionState` odrzuca przejścia, które `order.admin-actions.utils.ts` uznaje za niemożliwe.
+- **Guardy stanu** mieszkają w module, nie w komponencie. `assertOrderActionState` odrzuca przejścia, które `order.admin-actions.utils.ts` uznaje za niemożliwe, a `transitionOrder` z `order.admin-action.server.ts` powtarza to sprawdzenie w samym zapisie: jego `UPDATE` pasuje tylko do zamówienia, którego status realizacji nadal należy do `SHIPPABLE_FULFILLMENT_STATUSES` i które nie jest anulowane, a gdy żaden wiersz nie pasuje, rzuca błąd konfliktu.
 - **Linki idą za żądaniem.** `resolveRequestOrigin(getRequest())` działa na samym początku, więc żądanie na host, którego ten build nie obsługuje, jest odrzucane z `FORBIDDEN`, zanim zamówienie się zmieni, a e-mail o wysyłce linkuje do wdrożenia, z którego korzysta administrator. Zobacz [Model bezpieczeństwa](/docs/architecture/security-model).
-- **Audyt to praca w tle, a na e-mail handler czeka.** Rejestrator wysyła zdarzenie do kolejki Cloudflare, więc nie opóźnia odpowiedzi. Na e-mail handler czeka, bo administrator dowiaduje się, czy wyszedł: `sendOrderShippedEmail` zapisuje porażkę przy zamówieniu i zwraca `false` zamiast rzucać wyjątek, więc odrzucony e-mail nigdy nie cofa wysyłki zamówienia. Ta sama obietnica trafia też do `scheduleBackgroundWork`, więc wysyłka i jej wpis w audycie kończą się nawet wtedy, gdy administrator wcześniej się rozłączy.
+- **Audyt to praca w tle, a na e-mail handler czeka.** Rejestrator wysyła zdarzenie do kolejki Cloudflare, więc nie opóźnia odpowiedzi. Na e-mail handler czeka, bo administrator dowiaduje się, czy wyszedł. `announceOrderShipment` najpierw rezerwuje e-mail warunkowym `UPDATE` (`shippedEmailAt` dla e-maila o wysyłce, `trackingEmailNumber` dla późniejszego e-maila z numerem śledzenia), więc powtórne wywołanie zgłasza `alreadySent` zamiast wysyłać drugi raz. `sendOrderShippedEmail` przechodzi przez `deliverOrderEmail` z `order.email-delivery.server.ts`, który zapisuje wynik w dzienniku zdarzeń i zwraca `false` zamiast rzucać wyjątek; nieudana wysyłka jest ponawiana dwa razy w tle, a potem wywołuje alert o incydencie, i odrzucony e-mail nigdy nie cofa wysyłki zamówienia. `awaitOrderEmailNotice` przekazuje obietnicę wysyłki do `scheduleBackgroundWork`, więc wysyłka kończy się nawet wtedy, gdy administrator wcześniej się rozłączy, i zwraca `{ kind, status }` ze `status` równym `sent` lub `failed`, co akcje zamówień w panelu pokazują jako toast.
 - **Opcje mutacji są eksportowane obok funkcji**, z kluczem `ORDER_MUTATION_KEYS.SHIP`.
 
 ## Przypadek użycia odczytujący
@@ -111,22 +111,27 @@ export const getAdminOrdersPageQuery = (input: Order["adminPageInput"]) =>
 
 Wszystkie paginowane listy administracyjne zwracają `{ hasMore, items, limit, offset, total }` przez `buildListPaginationResult` i `listPaginationParamsFromPage` z `src/modules/_core/utils/pagination.ts`, więc siatka danych nie musi wiedzieć, jaką encję pokazuje.
 
-Publiczne odczyty sklepu używają samego `withRequest` — sesja nie jest wymagana — i zwracają `false` zamiast rzucać wyjątek, gdy nic nie pasuje. Tak `get-product.ts` odróżnia „nie ma takiego opublikowanego produktu” od błędu:
+Publiczne odczyty sklepu nie wymagają sesji: większość używa samego `withRequest`, a `search-storefront.ts` zamiast niego `withRateLimit()`. Odczyty produktu, kategorii i kolekcji zwracają `false` zamiast rzucać wyjątek, gdy nic nie pasuje. Tak `get-product.ts` odróżnia „nie ma takiego opublikowanego produktu” od błędu:
 
 ```ts
 export const getProduct = createServerFn({ method: "GET" })
   .middleware([withRequest])
   .validator((input: zod.input<typeof productZodSchemas.productByHandleInput>) => productZodSchemas.productByHandleInput.parse(input))
   .handler(async ({ data }) => {
-    const prod = await getPublishedProductByHandleQuery.execute({ handle: data.handle })
+    const { handle } = data
+    const locale = data.locale ?? I18N.DEFAULT_LOCALE
+
+    const prod = await getPublishedProductByHandleQuery.execute({ handle })
 
     if (prod === undefined || !isProductInStock(prod.variants)) {
       return false
     }
 
-    return mapPublishedProductForStorefront(prod, data.locale ?? I18N.DEFAULT_LOCALE)
+    return attachPriceReductions(mapPublishedProductForStorefront(prod, locale), await getPriceReductions(prod.variants))
   })
 ```
+
+`getPriceReductions` czyta historię cen wariantów, których cena jest obniżona, a `attachPriceReductions` ustawia `priceReduction` każdego wariantu w zmapowanym produkcie; obie funkcje pochodzą z modułu `price-history`.
 
 ## Klucze zapytań
 
@@ -152,7 +157,7 @@ Przy przenoszeniu kodu zachowuj wartości krotek. Z tych samych stałych korzyst
 
 ## Funkcje serwerowe bez granicy RPC
 
-Nie każda operacja jest funkcją serwerową. Dziewięć plików w `src/modules/checkout/use-cases/*.server.ts` eksportuje zwykłe funkcje asynchroniczne. `fulfillCheckout` i `sendPaymentFailedEmail` wołane są wyłącznie z handlera webhooka Stripe, który jest już uwierzytelniony weryfikacją podpisu. `createCheckout`, `supersedeCheckoutSession` i `updateCheckoutDelivery` wołane są z `src/integrations/stripe/stripe.actions.server.ts`, za objętymi limitem żądań `createCheckoutSessionFn` i `updateCheckoutSessionFn`. `countOpenCheckouts` wołany jest z tego samego pliku przed utworzeniem nowego checkoutu, aby policzyć otwarte checkouty adresu i e-maila kupującego. `releaseCheckout` wołany jest z obu miejsc: przez handler webhooka, przez aktualizację checkoutu, która nie powiodła się po wygaszeniu starej sesji, oraz przez taką, która zastaje starą sesję już wygaszoną przez Stripe. `getCheckoutSessionStatus` dociera do tej ostatniej ścieżki przez `releaseExpiredCheckoutSession`, za własnym limitem żądań. `anonymizeEndedCheckouts` wołany jest wyłącznie przez codzienne czyszczenie w `src/lib/retention.ts`, które uruchamia handler `scheduled` Workera. `expireCheckoutsHoldingVariants` wołany jest z `updateCompleteProduct`, za jego `authorized({ product: ["update"] })`, gdy zapis wycofuje produkt ze sprzedaży, i tą samą drogą dociera do `releaseCheckout` dla każdej sesji, którą wygasi. Wystawienie którejkolwiek z nich jako osobnego endpointu tylko poszerzyłoby powierzchnię ataku. E-maile wysyłane przez inne moduły to przypadki użycia tego samego rodzaju, działające tylko na serwerze, na przykład `src/modules/order/use-cases/send-order-shipped-email.server.ts`, wołane przez przypadki użycia, webhooki i konsumentów kolejek, które uznają, że e-mail ma wyjść.
+Nie każda operacja jest funkcją serwerową. Dziewięć plików w `src/modules/checkout/use-cases/*.server.ts` eksportuje zwykłe funkcje asynchroniczne. `sendPaymentFailedEmail` wołany jest wyłącznie z handlera webhooka Stripe, który jest już uwierzytelniony weryfikacją podpisu. `fulfillCheckout` wołany jest z tego handlera oraz ze strony potwierdzenia zamówienia: gdy `getOrderConfirmation` zastaje płatność wciąż w stanie `pending`, sprawdza limit żądań `checkout-status` i woła `fulfillReturnedCheckoutSession` z `src/integrations/stripe/stripe.fulfillment.server.ts`, który pobiera sesję ze Stripe i tworzy zamówienie tylko wtedy, gdy Stripe zgłasza ją jako zakończoną i opłaconą. `createCheckout`, `supersedeCheckoutSession` i `updateCheckoutDelivery` wołane są z `src/integrations/stripe/stripe.actions.server.ts`, za objętymi limitem żądań `createCheckoutSessionFn` i `updateCheckoutSessionFn`. `countOpenCheckouts` wołany jest z tego samego pliku przed utworzeniem nowego checkoutu, aby policzyć otwarte checkouty adresu i e-maila kupującego. `releaseCheckout` wołany jest z obu miejsc: przez handler webhooka, przez aktualizację checkoutu, która nie powiodła się po wygaszeniu starej sesji, oraz przez taką, która zastaje starą sesję już wygaszoną przez Stripe. `getCheckoutSessionStatus` dociera do tej ostatniej ścieżki przez `releaseExpiredCheckoutSession`, za własnym limitem żądań. `anonymizeEndedCheckouts` wołany jest wyłącznie przez codzienne czyszczenie w `src/lib/retention.ts`, które uruchamia handler `scheduled` Workera. `expireCheckoutsHoldingVariants` wołany jest z `updateCompleteProduct`, za jego `authorized({ product: ["update"] })`, gdy zapis wycofuje produkt ze sprzedaży, i tą samą drogą dociera do `releaseCheckout` dla każdej sesji, którą wygasi. Cztery przypadki użycia zamówień bez sufiksu `.server` to zwykłe funkcje tego samego rodzaju: `refund-order.ts`, `flag-order-dispute.ts`, `clear-order-dispute.ts` i `undo-failed-refund.ts` wołane są wyłącznie z handlera webhooka Stripe w `src/integrations/stripe/stripe.webhooks.ts`. Wystawienie którejkolwiek z nich jako osobnego endpointu tylko poszerzyłoby powierzchnię ataku. E-maile wysyłane przez inne moduły to przypadki użycia tego samego rodzaju, działające tylko na serwerze, na przykład `src/modules/order/use-cases/send-order-shipped-email.server.ts`, wołane przez przypadki użycia, webhooki i konsumentów kolejek, które uznają, że e-mail ma wyjść.
 
 ## Wywołanie przypadku użycia z komponentu
 

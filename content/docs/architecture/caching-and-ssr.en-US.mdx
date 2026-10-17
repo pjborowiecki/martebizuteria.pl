@@ -24,25 +24,28 @@ Loaders fill the cache with `context.queryClient.query({ ...options, staleTime: 
 
 The `/categories/$handle` and `/collections/$handle` loaders read their row with the query's own stale time instead: `getStorefrontCategoryQuery(handle)` and `getStorefrontCollectionQuery(handle)` stay fresh for 60 seconds. No component reads those queries, so with `"static"` a cached row would serve every later sort, filter and visit for as long as it stayed in the cache. See [Catalog and search](/docs/features/catalog-and-search).
 
-A component that reads with `useQuery(options)` still gets its data from the loader when the loader warms the same key. `NewsletterField` reads `getOwnNewsletterSubscriptionQuery()`, which the `/account/profile` loader loads together with the profile, so a confirmed subscriber is shown as subscribed on the first render. The checkout form reads `listDeliveryMethodsQuery()` and `getFreeDeliveryQuery()`, which the `/checkout/` page loader loads while the `/checkout` layout loader reads the checkout messages, because the router runs both loaders at the same time. The page loader keys on `success` alone and skips the reads on the confirmation Stripe returns to, where no form is shown. The full-screen menu's `ImageShowcase` reads `getCollectionsQuery()`, which every layout that renders `Navigation` loads: `_storefront.tsx`, `account.tsx`, `auth.tsx` and `docs.tsx`. Without that, each of those queries would start one round trip after the page had rendered.
+A component that reads with `useQuery(options)` still gets its data from the loader when the loader warms the same key. `NewsletterField` reads `getOwnNewsletterSubscriptionQuery()`, which the `/account/profile` loader loads together with the profile, so a confirmed subscriber is shown as subscribed on the first render. The checkout form reads `listDeliveryMethodsQuery()` and `getFreeDeliveryQuery()`, which the `/checkout/` page loader loads while the `/checkout` layout loader reads the checkout messages, because the router runs both loaders at the same time. The page loader keys on `success` alone and skips the reads on the confirmation Stripe returns to, where no form is shown. The full-screen menu's `ImageShowcase` reads `getCollectionsQuery()`, which every layout that renders `Navigation` loads: `_storefront.tsx`, `account.tsx`, `auth.tsx` and `docs.tsx`. `SalesPausedBanner` reads `getSalesStatusQuery()`, which the layouts that render it, `_storefront.tsx`, `account.tsx` and `docs.tsx`, load, and the `/checkout/` page loader loads it for `CheckoutGuard`, together with the delivery methods and the free delivery threshold. Without that, each of those queries would start one round trip after the page had rendered.
 
-The page can render without any of these three, so each loader ends its read with `.catch(noop)` (`noop` from `@tanstack/react-query`). A failed read leaves the query in the `error` state and lets the loader resolve. The SSR integration dehydrates that state, and the component's `useQuery` starts the request again when it mounts, as it did before the loader warmed the key. Data the page cannot render without, such as the profile on `/account/profile`, is still read with a bare `query()`, so its failure shows the route's error component.
+The page can render without any of these, so each loader ends its read with `.catch(noop)` (`noop` from `@tanstack/react-query`). A failed read leaves the query in the `error` state and lets the loader resolve. The SSR integration dehydrates that state, and the component's `useQuery` starts the request again when it mounts, as it did before the loader warmed the key. Data the page cannot render without, such as the profile on `/account/profile`, is still read with a bare `query()`, so its failure shows the route's error component.
 
 `defaultPreloadStaleTime: 0` is deliberate: hovering a link runs the loader for real rather than reusing a cached result, which is what makes the storefront's on-intent image prefetching useful. `ImagePrefetchService` from `src/lib/image.ts` is created once per router and passed in the router context, and loaders call `prefetchSingleProductImage(data, context.imagePrefetchService)`.
 
 ## Per-query overrides
 
-| Query                                         | Behaviour                                                                   |
-| --------------------------------------------- | --------------------------------------------------------------------------- |
-| `messagesQueryOptions({ locale, namespace })` | `staleTime: Infinity`, `gcTime: Infinity` — a namespace is loaded once      |
-| `getCurrentSessionQuery`                      | 60 s `staleTime`, `retry: false`, no refetch on focus or reconnect          |
-| `checkCartAvailabilityQuery`                  | `staleTime: 0`, keeps the previous answer, no refetch on focus or reconnect |
-| Admin list queries                            | Module `*_QUERY_STALE_MS`, `refetchOnMount: false`, no refetch on focus     |
-| Public catalog queries                        | Router defaults; invalidated over the realtime hub instead of polled        |
+| Query                                         | Behaviour                                                                                |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `messagesQueryOptions({ locale, namespace })` | `staleTime: Infinity`, `gcTime: Infinity` — a namespace is loaded once                   |
+| `getCurrentSessionQuery`                      | 60 s `staleTime`, `retry: false`, no refetch on focus or reconnect                       |
+| `displayPreferencesQuery`                     | `staleTime: Infinity`, no refetch on focus or reconnect; loaded by the root `beforeLoad` |
+| `checkCartAvailabilityQuery`                  | `staleTime: 0`, keeps the previous answer, no refetch on focus or reconnect              |
+| Admin list queries                            | Module `*_QUERY_STALE_MS`, `refetchOnMount: false`, no refetch on focus                  |
+| Public catalog queries                        | Router defaults; invalidated over the realtime hub instead of polled                     |
+
+`displayPreferencesQuery` holds the formatting locale and time zone detected for the request and the ones saved on the signed-in user (see [Display preferences](/docs/architecture/i18n-architecture#display-preferences)). It never goes stale on its own: saving a preference calls `queryClient.invalidateQueries()` with no filter, so it and every query on screen refetch, including the admin queries whose server functions read the resolved preferences with `resolveRequestDisplayPreferences` to filter and group by date.
 
 Admin lists deliberately do not refetch on mount or on window focus. Freshness comes from the Durable Object hub instead — see [Realtime invalidation](/docs/architecture/realtime-invalidation) — so a second admin's change arrives as a push rather than as a poll.
 
-The route guards and the components share the session query. The `/account` and `/admin` guards load it with `context.queryClient.query`, overriding `staleTime` to 0 on a navigation; a link preload and the `/auth` guard reuse a session younger than 60 seconds. The entry stays in the cache, so a server render serializes it into the page and `/account` and `/admin` pages render signed-in. The navigation's account link, the translations time zone, the wishlist and the checkout prefill read the same value with `useQuery(getCurrentSessionQuery)`.
+The route guards and the components share the session query. The `/account` and `/admin` guards load it with `context.queryClient.query`, overriding `staleTime` to 0 on a navigation; a link preload and the `/auth` guard reuse a session younger than 60 seconds. The entry stays in the cache, so a server render serializes it into the page and `/account` and `/admin` pages render signed-in. The navigation's account link, the wishlist, the checkout prefill, the customer activity tracker and the admin customer row actions read the same value with `useQuery(getCurrentSessionQuery)`.
 
 The guards only read the session. A change of user is handled in one place, `clearCacheOnUserChange(queryClient)` in `src/integrations/better-auth/auth.session.ts`. `getRouter` installs it in the browser only, next to `setupQueryClientInvalidationBroadcast`; server rendering skips it because every request starts with an empty `QueryClient`. It subscribes to the query cache:
 
@@ -57,14 +60,18 @@ export const clearCacheOnUserChange = (queryClient: QueryClient): (() => void) =
     }
 
     if ("session" in seen && seen.session?.user.id !== session?.user.id) {
-      queryClient.removeQueries({ predicate: (cached) => cached.queryHash !== SESSION_QUERY_HASH && !isMessagesQuery(cached) })
+      queryClient.removeQueries({
+        predicate: (cached) =>
+          cached.queryHash !== SESSION_QUERY_HASH && cached.queryHash !== DISPLAY_PREFERENCES_QUERY_HASH && !isMessagesQuery(cached),
+      })
+      void queryClient.invalidateQueries({ exact: true, queryKey: DISPLAY_PREFERENCES_QUERY_KEY })
     }
     seen.session = session
   })
 }
 ```
 
-Whenever the session query's data switches to a different user id, including from signed out to signed in and back, it removes every cached query except the session itself and the translation message catalogues, matched by `isMessagesQuery` in `src/integrations/use-intl/i18n.messages.ts`. It ignores the first session it sees and the session entry being removed. Because it watches the cache rather than any one caller, it catches the change whoever fetched the session: a guard, a component, a refetch after an invalidation, or hydration.
+Whenever the session query's data switches to a different user id, including from signed out to signed in and back, it removes every cached query except the session itself, the display preferences and the translation message catalogues, matched by `isMessagesQuery` in `src/integrations/use-intl/i18n.messages.ts`. It then invalidates the display preferences, which `TranslationsProvider` has on screen, so they refetch with the new user's saved formatting locale and time zone instead of being removed from under it. It ignores the first session it sees and the session entry being removed. Because it watches the cache rather than any one caller, it catches the change whoever fetched the session: a guard, a component, a refetch after an invalidation, or hydration.
 
 After a sign-in, `usePostAuthRedirect` removes only the session entry, so the `/auth` guard fetches the fresh session and `clearCacheOnUserChange` forgets what was cached while signed out. Signing out does a full page load, which discards the cache.
 
@@ -88,17 +95,20 @@ export const getProductImagesQuery = db.query.productImage
 Nothing in `vite.config.ts` enables TanStack Start's prerendering, and there is no `prerender` option on any route. Every HTML response is server-rendered per request. Consequences worth knowing:
 
 - Storefront pages reflect the catalog at request time with no purge step.
-- There is no static-asset fallback in front of the application; `ASSETS` serves `public/` only.
+- There is no static-asset fallback in front of the application; `ASSETS` serves only the client build. `wrangler.jsonc` names `./public`, and the build writes `dist/server/wrangler.json` with `dist/client`, the hashed bundles under `assets/` plus the files copied from `public/`, which `scripts/verify-build.ts` checks.
 - Cache-control on HTML is left to the platform default, so there is nothing to invalidate when a product changes.
 
-The responses that do set `Cache-Control` explicitly are `/sitemap.xml` and `/robots.txt`, both `public, max-age=86400`, the two PDF forms, `public, max-age=300, must-revalidate` with an `ETag` from the last save of the seller details (see [Legal pages](/docs/features/legal-pages#how-the-forms-are-made)), and uploaded R2 objects, written `public, max-age=31536000, immutable`.
+The responses that set `Cache-Control` explicitly are `/sitemap.xml` and `/robots.txt`, both `public, max-age=86400`; `/api/health`, `no-store`; the two PDF forms, `public, max-age=300, must-revalidate` with an `ETag` from the last save of the seller details (see [Legal pages](/docs/features/legal-pages#how-the-forms-are-made)); uploaded R2 objects, written `public, max-age=31536000, immutable`; and, through `public/_headers`, the bundles under `/assets/` and the fonts under `/fonts/` (`public, max-age=31536000, immutable`) and `/favicon.svg` and `/og.png` (`public, max-age=86400`).
 
 ## Browser-side state
 
-- **`localStorage`** holds the theme (`@wrksz/themes`, key from `theme-init.ts`), the admin sidebar preference, and each data grid's column sizing. All three are read by blocking head scripts before first paint.
+- **`localStorage`** holds the theme (`@wrksz/themes`, key from `theme-init.ts`), the admin sidebar preference (`sidebar_state`), and each data grid's column order, sizing and visibility (`marte:datagrid:v1:` keys). All three are read by blocking head scripts before first paint; the data-grid script applies the column widths.
+- **`localStorage`** also holds the width an admin dragged a catalog form sheet to, under `admin-sheet-width:` keys.
 - **`localStorage`** also holds `marte-checkout-session`, the id of the browser's open Checkout Session together with the basket it was opened for, which the payment step writes and the checkout page's session check, the availability check and the next payment step read (see [Checkout](/docs/features/checkout)). Nothing reads it before first paint. The server trusts it only as far as a payment with that id exists: a pending one for the availability check and the update path, and any one for the session check and the confirmation, which treat holding the id as proof of having started the checkout.
-- **Zustand with `persist`** holds the cart in `src/modules/cart/cart.store.ts`, with a `CART_PERSIST_VERSION` of 2 and a per-item type guard so a stale shape is dropped rather than rehydrated.
-- **`BroadcastChannel`** (`marte-query-invalidation` in `query.sync.ts`) mirrors to other tabs of the same browser the invalidations of the few local mutations the realtime hub does not carry, coupons and order actions. Hub frames are not echoed on it, because every storefront and admin tab receives them on its own socket.
+- **`sessionStorage`** holds `marte-checkout-draft`, the checkout form's unsent values, and the customer activity flags: `customer-activity:page-view:` plus the path, so a page view is recorded once per tab session, and `customer-activity:cart-abandoned-sent`, so an abandoned cart is reported once.
+- **The `marte_time_zone` cookie** holds the browser's IANA time zone. `TranslationsProvider` writes it on the client so the server can format dates in that zone on the next request; see [Display preferences](/docs/architecture/i18n-architecture#display-preferences).
+- **Zustand with `persist`** holds the cart in `src/modules/cart/cart.store.ts`, with a `CART_PERSIST_VERSION` of 3 and a per-item type guard so a stale shape is dropped rather than rehydrated.
+- **`BroadcastChannel`** (`marte-query-invalidation` in `query.sync.ts`) mirrors to other tabs of the same browser the invalidations of a few admin mutations: coupon changes, which the realtime hub does not carry, and the newsletter subscriber, order and InPost shipment actions. Hub frames are not echoed on it, because every storefront and admin tab receives them on its own socket.
 
 None of these is a source of truth. The cart is re-validated server-side by `check-cart-availability.ts` and again inside `handleCreateCheckoutSession`, which re-reads prices and inventory from D1 and refuses the checkout if anything moved.
 
@@ -106,7 +116,7 @@ None of these is a source of truth. The cart is re-validated server-side by `che
 
 - **Sessions.** Better Auth's signed cookie cache is turned off, and `getRequestSession` also passes `disableCookieCache: true`, so every server-side check reads D1. The cost is one D1 read per request; the benefit is that a banned or signed-out user cannot ride a cached cookie. To keep that from becoming N reads, the lookup is memoized in a `WeakMap` keyed on the `Request` object — not a module global — so concurrent loaders and server functions in one request share one lookup and a new request always revalidates. The browser reads the session the same way: components use `useQuery(getCurrentSessionQuery)`, whose `getCurrentSession` goes through `getRequestSession` and skips the cookie cache. What the browser keeps is that query's result, under the rules above. `auth.client.ts` no longer exports Better Auth's `useSession`: it ran during server rendering, which TanStack Start's import protection rejects for `*.client.*` files in the server build, and it sent a second session request.
 - **Permissions.** `hasPermission` is evaluated from the session's role on every call. No decision is made from cached data.
-- **KV.** The `CACHE` namespace is bound in all three environments and verified by `scripts/verify-bindings.ts`. It caches no pages or data: its only key is the email sender flag that `markEmailSenderUnavailable` writes and the Better Auth gate reads (see [Resend](/docs/integrations/resend)).
+- **KV.** The `CACHE` namespace is bound in all four environments (development, preview, test and production), and `scripts/verify-bindings.ts` checks that preview and production name a real namespace. It caches no pages or data. Its keys are the email sender flag `email-sender-unavailable:<APP_ENV>`, which `markEmailSenderUnavailable` writes for five minutes and the Better Auth gate reads (see [Resend](/docs/integrations/resend)), and the `incident-alert:<APP_ENV>:<kind>:<reference>` markers that let `sendIncidentAlert` mail each incident once (an hour, or three days for a failed Stripe event). `GET /api/health` reads `health-check`, a key that is never written.
 
 ## Related pages
 

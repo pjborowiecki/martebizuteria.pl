@@ -5,12 +5,17 @@ description: "The token sets in globals.css, the pre-paint init scripts, the adm
 
 ## Where the tokens live
 
-`src/presentation/styles/globals.css` is the only Tailwind entry point. It imports the fonts, runs Tailwind over the whole repository, and declares every design token twice — once in `:root` and once in `.dark`:
+`src/presentation/styles/globals.css` is the only Tailwind entry point. It imports the fonts, runs Tailwind over the repository minus a few excluded paths, defines the project's custom variants and utilities, and declares every design token twice — once in `:root` and once in `.dark`:
 
 ```css
 @import "./fonts.css";
 
 @import "tailwindcss" source("../../");
+
+@source not "../../**/*.{test,spec}.{ts,tsx}";
+@source not "../../**/__test__/**";
+@source not "../../platform/testing/**";
+@source not "../components/shadcn/{alert,button-group,context-menu,drawer,empty,hover-card,input-otp,kbd,menubar,navigation-menu,pagination,progress,resizable,scroll-area,slider,toggle-group,toggle,typography}.tsx";
 
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -21,7 +26,11 @@ description: "The token sets in globals.css, the pre-paint init scripts, the adm
 }
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant autofill-preview (&:autofill[value=""]);
+@custom-variant peer-floated (&:is(:where(.peer):is(:focus, :not(:placeholder-shown), :autofill) ~ *));
 ```
+
+The `@source not` lines keep tests, `__test__/` folders, `src/platform/testing/` and eighteen shadcn primitives that no application file imports out of the class scan, so their class names never reach the stylesheet. Besides `dark`, two custom variants serve the floating-label fields: `autofill-preview` matches an autofilled input whose `value` attribute is still empty — the browser's autofill preview — and is used by `shadcn/input.tsx`, `shadcn/input-group.tsx` and `custom/floating-field.tsx`; `peer-floated` styles a label that follows a `.peer` input which is focused, filled or autofilled, and is used by `floating-field.tsx` and the checkout's `checkout-fields.tsx`.
 
 Two families of variables sit side by side in `:root`.
 
@@ -62,7 +71,33 @@ Two details are worth knowing:
 }
 ```
 
-`max-w-400` is the standard page container: it caps at `100rem` and otherwise leaves a `0.75rem` gutter on each side. Use it instead of hand-rolling `mx-auto max-w-[...] px-6`.
+`max-w-400` caps a block at `100rem` and otherwise leaves a `0.75rem` gutter on each side.
+
+## Utilities
+
+`globals.css` defines two `@utility` classes of its own:
+
+```css
+@utility touch-target {
+  position: relative;
+
+  @media (pointer: coarse) {
+    &::before {
+      content: "";
+      position: absolute;
+      inset: min(0px, (100% - 2.5rem) / 2);
+    }
+  }
+}
+
+@utility storefront-container {
+  @apply mx-auto px-4 sm:max-w-400 sm:px-6 lg:px-12;
+}
+```
+
+`storefront-container` is the storefront's page container: full width with `1rem` padding on phones, capped by `max-w-400` from `sm` up, with `1.5rem` padding from `sm` and `3rem` from `lg`. The landing-page sections, the product and catalog pages, the navigation header, the search overlay, the cart, categories, collections and about pages and the checkout layout use it — use it instead of hand-rolling `mx-auto max-w-[...] px-6`. `max-w-400` on its own appears where only the cap is wanted: the `account.tsx` and `docs.tsx` layouts, the full-screen menu and the desktop categories section.
+
+`touch-target` enlarges the hit area of a small control on touch screens without changing its layout: on a coarse pointer a `::before` pseudo-element extends the element to at least `2.5rem` square. The button's `account-icon` and `account-sm` sizes and its `account-ghost` variant include it, and the compact links and controls on the account pages — order rows, order pagination, saved cards, the overview page — add it directly.
 
 ## Light and dark
 
@@ -87,11 +122,11 @@ The class is set in two places:
 
 `THEME_STORAGE_KEY` is `` `${APP_NAME}-theme` `` — literally `M'Arte-theme` in `localStorage`. `enableSystem` is off, so there is no `system` theme: only `light` and `dark`, defaulting to `light`.
 
-There is currently **no theme switcher in the interface.** Nothing in `src/presentation` calls `setTheme`; the only consumers of `useTheme` are `shadcn/sonner.tsx` (to theme toasts) and the Stripe payment step (to pick the Stripe Elements appearance). The dark token set is complete and the plumbing works, but until a switch is added the storefront renders light unless someone sets `M'Arte-theme` to `dark` by hand.
+There is currently **no theme switcher in the interface.** Nothing in `src/presentation` calls `setTheme`; the only consumers of `useTheme` are `shadcn/sonner.tsx` (to theme toasts), the checkout's Stripe payment step and the account's add-card form (both to pick the Stripe Elements appearance). The dark token set is complete and the plumbing works, but until a switch is added the storefront renders light unless someone sets `M'Arte-theme` to `dark` by hand.
 
 ## The admin override
 
-`src/presentation/styles/admin.css` is a small stylesheet loaded by the `/admin` route as a `?url` link. It opens with `@reference "./globals.css"`, which lets Tailwind resolve the theme without re-emitting the framework, and then overrides tokens with plain CSS — there is no `@apply` and no second utility build:
+`src/presentation/styles/admin.css` is a small stylesheet loaded by the `/admin` route as a `?url` link. Its first line imports the MDXEditor stylesheet into the `components` layer (`@import "@mdxeditor/editor/style.css" layer(components);`). It then declares `@reference "./globals.css"`, which lets Tailwind resolve the theme without re-emitting the framework, and overrides tokens with plain CSS — there is no `@apply` and no second utility build:
 
 ```css
 @layer base {
@@ -102,6 +137,10 @@ There is currently **no theme switcher in the interface.** Nothing in `src/prese
   }
 
   [data-admin-main] {
+    --radius-sm: max(0px, calc(var(--radius) - 2px));
+    --radius-md: var(--radius);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) + 2px);
     --background: oklch(1 0 0);
     --foreground: oklch(0.141 0.005 285.823);
     /* … card, popover, muted, secondary, accent, border, input, ring … */
@@ -118,7 +157,7 @@ So the console is always light regardless of the stored theme. Three things coop
 | `adminShellCriticalStyle(pathname)`                 | Emits the same background as an inline `<style>` in `head`               |
 | `useAdminLightTheme()` (`use-admin-light-theme.ts`) | Removes `dark` on mount and restores it on unmount when leaving `/admin` |
 
-`admin.css` also styles the data-grid scrollbars and re-skins Sonner toasts inside the admin shell so they use the sidebar palette. `admin-layout.styles.ts` holds the shared class strings — `ADMIN_LAYOUT_BG_CLASS` (`bg-zinc-100`), `ADMIN_CARD_CLASS`, the `ADMIN_STAT_*` set and the two catalog page classes.
+`admin.css` also styles the data-grid scrollbars, re-skins Sonner toasts inside the admin shell so they use the sidebar palette, and maps MDXEditor's `--base*` and `--accent*` variables onto the shadcn tokens for `.content-editor` and `.mdxeditor-popup-container`, with a focus ring and a wrapping toolbar for the content editor. `src/presentation/components/custom/pages/admin/_styles/admin-layout.styles.ts` holds `ADMIN_SHELL_CHROME_BG` and the shared class strings — `ADMIN_LAYOUT_BG_CLASS` (`bg-zinc-100`), `ADMIN_CARD_CLASS`, the `ADMIN_STAT_*` set, the page-body classes (`ADMIN_PAGE_BODY_CLASS` and the two catalog page classes), the header button classes, the dashboard grid and card classes, and the dialog label and native-select classes.
 
 The storefront's route stylesheet, `storefront.css`, is much smaller: it sets the pre-animation state of `.reveal` and `.line-reveal` under `[data-landing-page]` and flattens both under `prefers-reduced-motion: reduce`.
 
@@ -135,6 +174,8 @@ Three inline scripts run in `head`, in this order, from `src/routes/__root.tsx`:
 The sidebar script only acts on `/admin` paths. It copies `sidebar_state` from `localStorage` into a one-year `Path=/` cookie so the server can read it, and sets `data-sidebar-collapsed` on `html` when the value is `0`. `adminSidebarCollapsedCriticalStyle(pathname)` then emits inline CSS pinning the sidebar gap and container to `4rem`, which removes the expand-then-collapse jump on a hard reload. On the server, `getAdminSidebarDefaultOpen()` — a `createIsomorphicFn` that reads the request cookie on the server and `localStorage` in the browser — feeds `defaultOpen` on `SidebarProvider`.
 
 The data-grid script rewrites saved column widths into CSS custom properties named `--marte-dg-<persistence-key-slug>-<column-id>` on `documentElement`, so a resized column keeps its width through SSR. See [Data grid](/docs/ui/data-table).
+
+Two more preferences are written after hydration rather than by an inline script: the admin catalog sheets store their resized width in `localStorage` under `admin-sheet-width:<persistence-key>`, and `TranslationsProvider` writes the browser's IANA time zone into the `marte_time_zone` cookie, which the server reads as the visitor's detected time zone (see [Internationalization](/docs/architecture/i18n-architecture)).
 
 ## Toasts
 

@@ -22,7 +22,7 @@ description: "The Base UI primitives in src/presentation/components/shadcn, the 
 }
 ```
 
-The `utils` alias is the bare package name `cn` — `cn@0.3` from the shadcn project, a compiled `clsx` + `tailwind-merge` replacement — so every component does `import { cn } from "cn"`, not from a local file.
+The `utils` alias is the bare package name `cn` — `cn@0.4` from the shadcn project, a compiled `clsx` + `tailwind-merge` replacement — so every component does `import { cn } from "cn"`, not from a local file.
 
 ## What wraps what
 
@@ -88,7 +88,7 @@ const menuTrigger = useMemo(() => <DropdownMenuTrigger render={button} />, [butt
 
 ## Variants worth knowing
 
-`Button` (`button.tsx`) is the widest primitive. Variants: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive`, plus the storefront account set `account`, `account-outline`, `account-ghost`, `account-destructive`. Sizes: `xs`, `sm`, `default`, `lg`, `xl`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`, `account`, `account-sm`. The admin console uses `outline` with `icon-lg` or `icon-sm`; the storefront uses the `account-*` set, which is uppercase with wide tracking. `account-ghost` is bare text with `h-auto p-0`, a target about 16.5 px tall, so a transparent `after:` layer (`after:absolute after:inset-x-0 after:-inset-y-1`) reaches 4 px above and below it. That gives a target of about 24 px, the WCAG 2.5.8 minimum, without moving the layout or the focus ring. A press on the label's top row also stays on the button while `active:translate-y-px` moves it down a pixel. The address form's **Cancel** relies on it, and `e2e/specs/account.spec.ts` presses just above the label.
+`Button` (`button.tsx`) is the widest primitive. Variants: `default`, `secondary`, `outline`, `ghost`, `link`, `destructive`, plus the storefront account set `account`, `account-outline`, `account-ghost`, `account-destructive`. Sizes: `xs`, `sm`, `default`, `lg`, `xl`, `icon-xs`, `icon-sm`, `icon`, `icon-lg`, `account`, `account-sm`, `account-icon`. The admin console uses `outline` with `icon-lg` or `icon-sm`; the storefront uses the `account-*` set, which is uppercase with wide tracking. `account-ghost` is bare text with `h-auto p-0`, a target about 16.5 px tall, so a transparent `after:` layer (`after:absolute after:inset-x-0 after:-inset-y-1`) reaches 4 px above and below it. That gives a target of about 24 px, the WCAG 2.5.8 minimum, without moving the layout or the focus ring. A press on the label's top row also stays on the button while `active:translate-y-px` moves it down a pixel. The address form's **Cancel** relies on it, and `e2e/specs/account.spec.ts` presses just above the label. The `account-ghost` variant and the `account-sm` and `account-icon` sizes also carry the `touch-target` utility (see [Theme](/docs/ui/theme)), so on a touch screen a `::before` layer grows each of them to at least 2.5rem (40px) square; `account-icon` is a 24px icon button, used for the copy button beside a tracking number, the profile field actions and the session cards.
 
 `Input` (`input.tsx`) has six variants and no default border radius — the shop's inputs are underlines, not boxes:
 
@@ -152,14 +152,14 @@ For server-side and shared validation messages use `ValidationFieldError` (`cust
 
 ## Translations
 
-Primitives that need words read them themselves from the `components.shadcn` namespace: `breadcrumb.navLabel`, `carousel.nextSlide`, `dialog.close`, `command.title`, `pagination.*` and `sheet.close`. Never pass a label into a primitive as a prop when the primitive already has a key. Add new strings to `messages/en-US/components.shadcn.json` **and** `messages/pl-PL/components.shadcn.json`.
+Primitives that need words read them themselves from the `components.shadcn` namespace: `breadcrumb.navLabel` and `breadcrumb.more`, `carousel.carouselLabel`, `carousel.previousSlide` and `carousel.nextSlide`, `command.title` and `command.description`, `dialog.close`, `pagination.*`, `sheet.close`, and `sidebar.title`, `sidebar.description` and `sidebar.toggle`. `sheet.resizePanel` is the one key read outside the primitives: the admin catalog's product and catalog form sheets use it to label their resize handle. Never pass a label into a primitive as a prop when the primitive already has a key. Add new strings to `messages/en-US/components.shadcn.json` **and** `messages/pl-PL/components.shadcn.json`.
 
 ## CSS size
 
 `globals.css` excludes unused primitives from Tailwind's source scan, so their classes are never compiled:
 
 ```css
-@source not "../components/shadcn/{alert,button-group,context-menu,drawer,empty,hover-card,input-otp,item,kbd,menubar,native-select,navigation-menu,pagination,progress,resizable,scroll-area,slider,tabs,toggle-group,toggle,typography}.tsx";
+@source not "../components/shadcn/{alert,button-group,context-menu,drawer,empty,hover-card,input-otp,kbd,menubar,navigation-menu,pagination,progress,resizable,scroll-area,slider,toggle-group,toggle,typography}.tsx";
 ```
 
 It also excludes `**/*.{test,spec}.{ts,tsx}`, `**/__test__/**` and `platform/testing/**`.

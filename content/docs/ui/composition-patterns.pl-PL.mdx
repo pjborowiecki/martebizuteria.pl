@@ -49,7 +49,8 @@ Arkusze tras importuje się przez `?url` i dołącza z `head`. Zawierają zwykł
 
 Komponent pobiera to, czego potrzebuje, zamiast to otrzymywać. W praktyce oznacza to:
 
-- **Teksty** przez `useTranslations("<przestrzeń>")` z `use-intl/react`, a formatowanie przez `useLocale()` albo własny formater modułu, jak `formatAdminOrderDate`.
+- **Teksty** przez `useTranslations("<przestrzeń>")` z `use-intl/react`. `useLocale()` zwraca język interfejsu, który wybiera komunikaty i zlokalizowane treści.
+- **Formatowanie** dat, liczb i cen przez hooki preferencji wyświetlania z `src/hooks/use-display-format.ts`: `useFormatter()` zwraca formater use-intl związany z językiem formatowania i strefą czasową oglądającego, a `useFormatLocale()` i `useDisplayTimeZone()` zwracają te dwie wartości dla własnego formatera modułu, jak `formatAdminOrderDate(createdAt, { formatLocale, timeZone })`.
 - **Dane zapytań** przez `useQuery` / `useSuspenseQuery` na tych samych opcjach zapytania, które loader trasy już przygotował — na przykład `getAdminOrdersPageQuery(pageInput)` z `src/modules/order/use-cases/get-admin-orders-page.ts`.
 - **Dane trasy** przez `Route.useLoaderData()` w pliku trasy albo `getRouteApi("…")` poza nim.
 
@@ -58,7 +59,7 @@ export const NewArrivalsSection = (): JSX.Element => {
   const t = useTranslations("pages.landing.newArrivalsSection")
 
   return (
-    <section id="nowosci" className="mx-auto max-w-400 space-y-10 px-6 pt-20 pb-20 lg:px-12 lg:pt-28 lg:pb-28">
+    <section id="nowosci" className="storefront-container space-y-10 pt-20 pb-20 lg:pt-28 lg:pb-28">
       …
       <Suspense fallback={NEW_ARRIVALS_GRID_SUSPENSE_FALLBACK}>
         <NewArrivalsProductGrid />
@@ -81,23 +82,24 @@ Małe obszary to płaskie pliki. Większe dzielą się dalej, i podział jest ko
 | `lib/`        | Czyste funkcje pomocnicze i definicje kolumn tego ekranu                                 |
 | `utils/`      | Singletony ekranu, takie jak obiekt z `createDataGrid`                                   |
 | `detail/`     | Części strony szczegółów, gdy lista i szczegóły dzielą obszar                            |
-| `sections/`   | Sekcje strony głównej i strony produktu                                                  |
+| `sections/`   | Sekcje stron: strony głównej, strony produktu, profilu konta                             |
+| `_styles/`    | Wielokrotnie używane łańcuchy klas w plikach `*.styles.ts`                               |
 | `__test__/`   | Po jednym teście na plik siostrzany oraz współdzielone obudowy testowe                   |
 
-`pages/admin/orders/` używa wszystkich z nich; `pages/cart-page/` to po prostu `cart-item-card.tsx`, `cart-summary.tsx` i `__test__/`. Zaczynaj płasko i dziel tylko wtedy, gdy obszar naprawdę rośnie.
+`pages/admin/orders/` ma `components/`, `hooks/`, `lib/`, `utils/`, `detail/` i `__test__/`, a do tego `summary/` dla podsumowania zamówienia do druku pod `/admin/orders/$orderId/summary`; `pages/cart-page/` to po prostu `cart-item-card.tsx`, `cart-summary.tsx` i `__test__/`. Zaczynaj płasko i dziel tylko wtedy, gdy obszar naprawdę rośnie.
 
-Komponenty współdzielone przez więcej niż jeden obszar leżą bezpośrednio w `custom/`: `image.tsx`, `product-card.tsx`, `localized-link.tsx`, `icons.tsx`, `mdx.tsx`, `floating-field.tsx`, `validation-field-error.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `customer-activity-tracker.tsx`, `seller-contact-details.tsx`, `storefront-critical-fonts-head.tsx`.
+Komponenty współdzielone przez obszary albo montowane przez layout lub trasę główną leżą bezpośrednio w `custom/`: `image.tsx`, `product-card.tsx`, `product-price.tsx`, `localized-link.tsx`, `icons.tsx`, `mdx.tsx`, `docs-content.tsx`, `docs-mdx.tsx`, `floating-field.tsx`, `validation-field-error.tsx`, `smooth-scroll.tsx`, `cart-availability-banner.tsx`, `sales-paused-banner.tsx`, `customer-activity-tracker.tsx`, `seller-contact-details.tsx`, `storefront-critical-fonts-head.tsx`.
 
 ## Bez komentarzy
 
-W źródłach TypeScript i TSX nie ma komentarzy, i jest to decyzja świadoma: intencję wyrażają nazwy i typy. Dla kompozycji ma to dwie konsekwencje:
+Konwencja jest taka, że nie pisze się komentarzy: intencję wyrażają nazwy i typy. Żadna reguła lintera nie zabrania komentarzy, więc konwencji pilnuje przegląd kodu. Dla kompozycji ma to dwie konsekwencje:
 
 - Nazywaj rzecz, nie opisuj jej. `closeMenuAndRequestDeleteConfirm`, `suppressDataGridRowClickAfterDialogDismiss` i `ADMIN_CATALOG_DATAGRID_PAGE_CLASS` czytają się jak zdania.
-- Gdy zachowanie naprawdę wymaga wyjaśnienia, trafia ono do tej dokumentacji albo do nazwy testu, nie nad kod. Jedyne komentarze w repozytorium są w CSS, gdzie reguła nie może nazwać sama siebie — na przykład blok autouzupełniania w `globals.css`.
+- Gdy zachowanie naprawdę wymaga wyjaśnienia, trafia ono do tej dokumentacji albo do nazwy testu, nie nad kod.
 
 ## Stałe na poziomie modułu, nie obiekty tworzone w renderze
 
-Wszystko, co jest stabilnym obiektem albo elementem, definiuje się raz na poziomie modułu, poniżej komponentu, który tego używa. To nawyk wymuszany przez lintera tak samo jak kwestia wydajności:
+Wszystko, co jest stabilnym obiektem albo elementem, definiuje się raz na poziomie modułu, poniżej komponentu, który tego używa. To konwencja, a nie reguła lintera, i zachowuje tożsamość obiektów oraz elementów między renderami:
 
 ```tsx
 const NEW_ARRIVALS_GRID_SUSPENSE_FALLBACK = <NewArrivalsProductGridSkeleton />
@@ -171,7 +173,7 @@ Używaj `custom/image.tsx`, nie surowego `<img>`. Komponent opakowuje `@unpic/re
 
 ## Dostawcy kontekstu
 
-Istnieją tylko dwa i oba montowane są raz, w `src/routes/__root.tsx`, wokół ciała dokumentu:
+Istnieją tylko dwaj dostawcy aplikacji i obaj montowani są raz, w `src/routes/__root.tsx`, wokół ciała dokumentu:
 
 ```tsx
 <body>
@@ -181,6 +183,8 @@ Istnieją tylko dwa i oba montowane są raz, w `src/routes/__root.tsx`, wokół 
   <Scripts />
 </body>
 ```
+
+`TranslationsProvider` renderuje `IntlProvider` z use-intl z językiem trasy, wczytanymi komunikatami i strefą czasową oglądającego, a w nim `DisplayPreferencesContext` z `{ formatLocale, timeZone }` rozstrzygniętymi z `displayPreferencesQuery`. Z tego kontekstu czytają `useFormatter`, `useFormatLocale` i `useDisplayTimeZone`. `QueryClientProvider` nie jest montowany ręcznie: opakowuje nim router `setupRouterSsrQueryIntegration` w `src/router.tsx`.
 
 `Tooltip.Provider` z Base UI opakowuje outlet w `RootComponent`, a `SmoothScroll` tylko poza `/admin`:
 
@@ -214,7 +218,7 @@ modules  routes  hooks  constants  types  lib  branding
 components-shadcn  components-custom  components-other  styles  relative  unknown
 ```
 
-Grupa `constants` obejmuje `~/src/data/**` i `~/src/presentation/theme/**`. Nic z tego nie utrzymujesz ręcznie — robi to `bun run format`. Ale ta kolejność jest też kierunkiem zależności: prezentacja importuje z modułów i integracji, nigdy odwrotnie.
+Grupa `constants` obejmuje `~/src/data/**` i `~/src/presentation/theme/**`. Nic z tego nie utrzymujesz ręcznie — robi to `bun run format`. Kolejność odpowiada też głównemu kierunkowi zależności: prezentacja importuje z modułów i integracji. Odwrotny kierunek ogranicza się do kilku rodzajów importów: przypadki użycia wysyłające e-maile importują szablony z `src/presentation/emails/`, moduły i integracje czytają stałe marki z `src/presentation/branding/`, sześć plików `*.constants.ts` modułów współdzieli stałe tabel katalogu z `pages/admin/catalog/lib/catalog-admin-datagrid.constants.ts`, a `fumadocs.docs.ts` ładuje `custom/docs-content.tsx` dynamicznym importem.
 
 ## Kontrole
 

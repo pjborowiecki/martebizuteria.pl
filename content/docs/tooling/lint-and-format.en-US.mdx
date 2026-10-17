@@ -13,7 +13,7 @@ bun run format       # vp fmt
 bun run format:check # vp fmt --check
 ```
 
-`bun run check` is the gate. CI runs it in all three workflows, and the pre-commit hook runs the staged-file equivalent.
+`bun run check` is the gate. Of the five workflows, `ci.yml` and `deploy-preview.yml` run it, and the pre-commit hook runs the staged-file equivalent.
 
 ## Formatting
 
@@ -131,7 +131,7 @@ The `only-throw-error` exception exists because TanStack Router signals a 404 an
 
 ### Overrides
 
-Five narrow overrides relax specific rules for specific trees. Nothing else is exempt.
+Five narrow overrides relax specific rules for specific trees. Beyond them, only the paths in `ignorePatterns` escape the rules: that list keeps generated and vendored trees, test reports, `e2e/` and `scripts/` out of both formatting and linting (see [Vite+](/docs/tooling/vite-plus)).
 
 | Files                                                                     | Rules turned off                                                                   |
 | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -141,13 +141,13 @@ Five narrow overrides relax specific rules for specific trees. Nothing else is e
 | `src/routes/**`                                                           | `sort-keys`                                                                        |
 | `vite.config.ts`                                                          | `max-lines`                                                                        |
 
-Tests need literal numbers and `null` fixtures and sequential awaits. Component code returns `undefined` from some branches by design. The Cloudflare mocks assert their shape once, at the boundary (`createTestD1Database` ends with `client as unknown as D1Database`), which is the only place that assertion is allowed. Route files are ordered by TanStack's own option conventions rather than alphabetically. And `vite.config.ts` is itself over 800 lines' worth of configuration.
+Tests need literal numbers and `null` fixtures and sequential awaits. Component code returns `undefined` from some branches by design. The Cloudflare mocks assert their shape once, at the boundary (`createTestD1Database` ends with `client as unknown as D1Database`), which is the only place that assertion is allowed. Route files are ordered by TanStack's own option conventions rather than alphabetically. `vite.config.ts` turns `max-lines` off for itself, although the file is under 300 lines, far below the 800-line limit, so that override currently changes nothing.
 
 ## The rule about suppressions
 
 Fix the cause. Do not add `// oxlint-disable`, `@ts-expect-error`, `@ts-nocheck`, `any`, `as never` or `as unknown as` to get past a rule. `reportUnusedDisableDirectives` is an error precisely so that suppressions cannot accumulate quietly, and `denyWarnings` means there is no gradual-adoption path to hide behind. If a rule genuinely does not apply to a whole tree, add a documented override to `vite.config.ts` instead of a comment in a file.
 
-The same applies to comments in general: this repository has no explanatory comments in TypeScript or TSX. Intent is carried by names and types.
+Comments in general are a review convention rather than a lint rule: no rule forbids them — `capitalized-comments` only requires a capital first letter — but explanatory comments are avoided and reviews remove them. Intent is carried by names and types, and explanations belong in these docs and in the tests.
 
 ## Staged checks
 
@@ -162,8 +162,8 @@ The `*` pattern means every staged file, not just TypeScript. `bun run check:pre
 `bun run check:fix` runs `vp check --fix` across the whole repository. It will happily reformat files you never touched, so read its diff before committing. To fix only what you changed, pass paths to `vp` directly:
 
 ```sh
-vp fmt src/modules/order/use-cases/create-order.ts
-vp lint --fix src/modules/order/use-cases/create-order.ts
+vp fmt src/modules/order/use-cases/cancel-order.ts
+vp lint --fix src/modules/order/use-cases/cancel-order.ts
 ```
 
 > `bun run check:staged` and `bun run lint:staged` are both `vp staged --no-fmt`, but `--no-fmt` is not an option of `vp staged` (it belongs to `vp check`). Running either script fails immediately with `error: unexpected argument '--no-fmt' found`. Use `bun run check:pre-commit`, which is plain `vp staged`.

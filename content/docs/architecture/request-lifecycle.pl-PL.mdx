@@ -7,9 +7,9 @@ description: "Kroki, przez które przechodzi żądanie strony, wywołanie funkcj
 
 1. **Cztery skróty.** `src/server.ts` najpierw sprawdza ścieżkę. `/sitemap.xml` i `/robots.txt` są generowane z `src/lib/seo.ts`, mapa witryny ze stron, które `listSitemapPages` w `src/lib/sitemap.ts` czyta z D1. `ROUTES.API_REALTIME.ADMIN_WS` i `ROUTES.API_REALTIME.STOREFRONT_WS` trafiają do `handleRealtimeInvalidationWebSocket`. Żaden z nich nie ładuje Reacta.
 2. **Kanonizacja locale.** `resolveLocale` uruchamia się dla żądań dokumentu `GET` i `HEAD` — rozpoznawanych po `sec-fetch-dest`, z nagłówkiem `Accept` jako wartością zapasową — poza `/api`, `/rpc`, `/_serverFn`, `/assets` i `/forms`. Prefiks samego języka lub zbędny prefiks domyślnego locale jest przekierowywany kodem `301` do formy kanonicznej: `/pl/products` i `/pl-PL/products` stają się `/products`. Gdy locale z URL-a różni się od cookie `marte_locale`, zamiast przekierowania kolejkowane jest ustawienie cookie w odpowiedzi.
-3. **Przechwycenie kontekstu wykonania.** `src/server.ts` losuje dla żądania nowy nonce Content-Security-Policy. Handler Start jest wywoływany wewnątrz `executionContextStorage.run({ waitUntil }, …)` i otrzymuje `{ env, nonce, passThroughOnException, waitUntil }` jako kontekst żądania oraz `responseLinkHeader: true`.
+3. **Przechwycenie kontekstu wykonania.** `src/server.ts` losuje dla żądania nowy nonce Content-Security-Policy. Handler Start jest wywoływany wewnątrz `executionContextStorage.run({ waitUntil }, …)` i otrzymuje `{ edgeTimeZone, env, nonce, passThroughOnException, waitUntil }` jako kontekst żądania oraz `responseLinkHeader: true`. `edgeTimeZone` to `request.cf?.timezone`, strefa czasowa IANA, którą brzeg Cloudflare przypisuje lokalizacji odwiedzającego.
 4. **Routing.** `getRouter` tworzy nowy router i nowy `QueryClient` oraz kopiuje nonce żądania do `ssr.nonce`, żeby Start nadał go każdemu skryptowi, który renderuje. `rewrite.input` routera usuwa prefiks locale przed dopasowaniem, więc `/en-US/products` pasuje do trasy `/_storefront/products`, a `rewrite.output` przywraca prefiks przy generowaniu linków.
-5. **Root `beforeLoad`.** `__root.tsx` ustala locale przez `getCurrentLocale()`, zbiera przestrzenie nazw każdej dopasowanej trasy przez `getRouteNamespaces(matches)` i wstępnie ładuje je do `QueryClient` tego żądania. Zwraca `{ internalPathname, locale }` jako kontekst trasy root.
+5. **Root `beforeLoad`.** `__root.tsx` ustala locale przez `getCurrentLocale()`, zbiera przestrzenie nazw każdej dopasowanej trasy przez `getRouteNamespaces(matches)` i wstępnie ładuje je do `QueryClient` tego żądania. Równolegle czeka na `context.queryClient.query(displayPreferencesQuery)`, które zwraca locale formatowania i strefę czasową wykryte z żądania (`Accept-Language`, cookie `marte_time_zone`, `edgeTimeZone`) oraz te zapisane u zalogowanego użytkownika; zobacz [Preferencje wyświetlania](/docs/architecture/i18n-architecture#preferencje-wyświetlania). Zwraca `{ internalPathname, locale }` jako kontekst trasy root.
 6. **Guardy.** Następnie uruchamiają się funkcje `beforeLoad` layoutów: `requireAdmin` na `/admin`, `requireCustomer` na `/account`, `redirectIfSignedIn` na `/auth`. Jedynie czytają sesję, przez `loadRouteSession`, które woła `context.queryClient.query` z `getCurrentSessionQuery`, i rzucają `redirect`, gdy dostęp nie jest dozwolony; w przeciwnym razie `requireAdmin` i `requireCustomer` zwracają `{ user }` jako kontekst trasy. Sesja zostaje w `QueryClient` tego żądania, więc jest serializowana razem z resztą cache'u, a strona `/account` lub `/admin` renderuje się na serwerze jako zalogowana.
 7. **Loadery** działają równolegle. Typowy loader rozwiązuje razem przestrzeń nazw metadanych strony i zapytania o dane, oznaczając zapytanie danymi jako `staleTime: "static"`, żeby nie było odświeżane w tym samym renderze:
 
@@ -22,16 +22,16 @@ description: "Kroki, przez które przechodzi żądanie strony, wywołanie funkcj
 
    Loadery zwracają `{ title, description }` — z `satisfies PageMeta` — które `pageHead` z `src/lib/seo.ts` zamienia w `<title>`, opis i tagi Open Graph strony; opcjonalne `image` staje się obrazem strony w mediach społecznościowych, a opcjonalne `structuredData` jej JSON-LD. Dane wtórne można odłożyć przez `defer()` i poczekać na nie w komponencie przez `<Await>`, jak robi to strona produktu dla produktów powiązanych.
 
-8. **Renderowanie.** `RootDocument` renderuje `<html lang={locale}>`, wstawia skrypty inicjujące motyw, panel boczny i siatkę danych, dodaje krytyczne fonty sklepu na trasach nieadministracyjnych, a potem `<HeadContent />`. Body jest owinięte w `TranslationsProvider` i `ThemesProvider`. `setupRouterSsrQueryIntegration` serializuje serwerowy cache zapytań do HTML-a.
+8. **Renderowanie.** `RootDocument` renderuje `<html lang={locale}>`, wstawia skrypty inicjujące motyw, panel boczny i siatkę danych, dodaje krytyczne fonty sklepu na trasach nieadministracyjnych, a potem `<HeadContent />`. Body jest owinięte w `TranslationsProvider` i `ThemesProvider`. `TranslationsProvider` czyta `displayPreferencesQuery` przez `useSuspenseQuery`, rozstrzyga je (zapisana preferencja wygrywa z wykrytą), przekazuje strefę czasową do `IntlProvider` z use-intl jako `timeZone` i udostępnia locale formatowania oraz strefę czasową przez `DisplayPreferencesContext`. `setupRouterSsrQueryIntegration` serializuje serwerowy cache zapytań do HTML-a.
 9. **Nagłówki odpowiedzi.** `responseLinkHeader: true` sprawia, że handler Start emituje nagłówek `Link` z preloadami zasobów, o których wie. Jeśli `resolveLocale` poprosił o cookie, `src/server.ts` klonuje odpowiedź i dopisuje `Set-Cookie`. Następnie `withSecurityHeaders` kopiuje odpowiedź jeszcze raz i ustawia Content-Security-Policy dopuszczający nonce tego żądania, nagłówki ramek, sniffingu, referrera i uprawnień oraz HSTS w środowisku wdrożonym. Mapa strony, `robots.txt` i przekierowanie locale dostają te same nagłówki; pomijają je tylko przejścia na WebSocket. Zobacz [Model bezpieczeństwa](/docs/architecture/security-model#nagłówki-odpowiedzi).
-10. **Hydratacja.** Przeglądarka hydratuje z serializowanego cache'u. `TranslationsProvider` zapisuje cookie locale również po stronie klienta, więc locale osiągnięte nawigacją kliencką pozostaje utrwalone. W przeglądarce `getRouter` instaluje też `clearCacheOnUserChange`, które usuwa z cache'u wszystkie zapytania poza sesją i katalogami komunikatów, gdy sesja przełączy się na innego użytkownika; serwer je pomija, bo każde żądanie zaczyna od pustego `QueryClient`. Kolejne nawigacje uruchamiają guardy i loadery w przeglądarce i pobierają dane przez funkcje serwerowe.
+10. **Hydratacja.** Przeglądarka hydratuje z serializowanego cache'u. `TranslationsProvider` zapisuje cookie locale również po stronie klienta, więc locale osiągnięte nawigacją kliencką pozostaje utrwalone. Zapisuje też strefę czasową IANA przeglądarki w cookie `marte_time_zone`, żeby następny render na serwerze ją wykrył, a gdy ta strefa różni się od wykrytej, poprawia `detected.timeZone` w cache'owanym `displayPreferencesQuery`. W przeglądarce `getRouter` instaluje też `clearCacheOnUserChange`, które usuwa z cache'u wszystkie zapytania poza sesją, preferencjami wyświetlania i katalogami komunikatów, gdy sesja przełączy się na innego użytkownika, a potem unieważnia preferencje wyświetlania, żeby wczytały się te zapisane przez nowego użytkownika; serwer je pomija, bo każde żądanie zaczyna od pustego `QueryClient`. Kolejne nawigacje uruchamiają guardy i loadery w przeglądarce i pobierają dane przez funkcje serwerowe.
 
 ```text
 GET /en-US/products/pierscionek-z-perla
   src/server.ts          sitemap? robots? ws? → nie; resolveLocale → kanoniczny
   executionContextStorage.run({ waitUntil })
   router rewrite.input   /products/pierscionek-z-perla
-  __root beforeLoad      getCurrentLocale, preloadNamespaces(root + trasa)
+  __root beforeLoad      getCurrentLocale, preloadNamespaces(root + trasa), displayPreferencesQuery
   _storefront            brak guarda, ładuje storefront.css
   loader trasy           getProductQuery (staleTime: "static") + wiadomości pages.product
                          defer(getRelatedProductsQuery)
@@ -42,7 +42,7 @@ GET /en-US/products/pierscionek-z-perla
 ## Wywołanie funkcji serwerowej
 
 1. Build zastąpił wywołanie po stronie przeglądarki żądaniem RPC. `shouldIgnorePath` dopasowuje `/_serverFn`, więc `resolveLocale` je pomija, a `getCurrentLocale()` sięga do cookie `marte_locale` zamiast do URL-a.
-2. Middleware działa w zadeklarowanej kolejności. `withRequest` przechwytuje `getRequest().headers` do kontekstu i owija resztę w `.catch(handleRequestError)`. `withRateLimit(kind, limit)` liczy próbę. `authorized(permission?)` ładuje sesję i sprawdza uprawnienie.
+2. Middleware działa w zadeklarowanej kolejności. `withRequest` przechwytuje `getRequest().headers` do kontekstu i owija resztę w `.catch(handleRequestError)`. `withRateLimit(kind, limit)` liczy próbę. `authorized(permission?)` ładuje sesję i bez niej odpowiada `UNAUTHORIZED`. Z uprawnieniem odpowiada `FORBIDDEN`, gdy rola go nie ma albo gdy `needsTwoFactorSetup` wskazuje administratora bez włączonego uwierzytelniania dwuskładnikowego w buildzie, który go wymaga (produkcja i testowy build E2E).
 3. Walidator parsuje wejście schematem Zod modułu.
 4. Handler odpytuje D1 albo woła dostawcę, planuje pracę audytową w tle i zwraca zwykłe dane. Na e-mail, o którym mówi odpowiedź, handler czeka, a tę samą obietnicę przekazuje do `waitUntil`, więc wysyłka kończy się także wtedy, gdy wywołujący się rozłączy.
 5. Błędy są normalizowane po drodze na zewnątrz. `handleRequestError` najpierw rzuca dalej bez zmian `notFound()` TanStack (`isNotFound`), więc trasa odpowiada kodem 404 zamiast 500. Potem ponownie rzuca `AppError` z jego kodem oraz, gdy komunikat jest kodem przyczyny, takim jak `WISHLIST_FULL`, z tą przyczyną, mapuje błąd API Better Auth na `AUTH_API_ERROR` z kluczem tłumaczenia, mapuje `ZodError` na `VALIDATION`, a wszystko inne zamienia na `INTERNAL_ERROR` po zalogowaniu oryginału.
@@ -52,14 +52,17 @@ GET /en-US/products/pierscionek-z-perla
 POST /_serverFn/…  (shipOrder)
   withRequest      przechwyć nagłówki, zainstaluj normalizator błędów
   authorized({ order: ["update"] })
-                   getRequestSession → hasPermission → context.auth
-  validator        orderZodSchemas.adminOrderIdInput.parse
-  handler          assertOrderActionState → UPDATE order
+                   getRequestSession → hasPermission, needsTwoFactorSetup → context.auth
+  validator        orderZodSchemas.adminShipOrderInput.parse
+  handler          assertOrderActionState → transitionOrder (warunkowy UPDATE order)
                    recordOrderShippedAudit      → AUDIT_LOG_QUEUE (waitUntil)
-                   sendOrderShippedEmail         → Resend, wynik → AUDIT_LOG_QUEUE
-                                                   (waitUntil, potem await)
-  odpowiedź        { ok: true, orderId, shippedEmailSent }  albo kod AppError
+                   announceOrderShipment        → sendOrderShippedEmail → Resend,
+                                                  wynik → AUDIT_LOG_QUEUE
+                                                  (waitUntil, potem await)
+  odpowiedź        { email: { kind, status }, ok: true, orderId }  albo kod AppError
 ```
+
+`transitionOrder` zmienia wiersz tylko wtedy, gdy status realizacji jest jednym z oczekiwanych (`SHIPPABLE_FULFILLMENT_STATUSES` przy wysyłce), a zamówienie nie jest anulowane, więc z dwóch administratorów wysyłających naraz jeden dostaje `CONFLICT` z `ORDER_INVALID_STATE`. `announceOrderShipment` przed wysyłką zajmuje e-mail o nadaniu w wierszu (`shippedEmailAt`); gdy został już wysłany, wysyła e-mail ze śledzeniem dla numeru przesyłki, o którym klient jeszcze nie wie, albo zgłasza `alreadySent`. `email.status` to `sent`, `failed` albo `alreadySent`.
 
 ## Żądanie webhooka
 
@@ -67,12 +70,17 @@ POST /_serverFn/…  (shipOrder)
 
 1. Handler wymaga nagłówka `stripe-signature` oraz `env.STRIPE_WEBHOOK_SECRET`; brak któregokolwiek to `400`.
 2. `stripe.webhooks.constructEventAsync` weryfikuje podpis. Niepowodzenie jest logowane i zwracane jako `400`.
-3. Typ zdarzenia jest wyszukiwany w `webhookHandlers`. Nieobsługiwany typ jest logowany przez `console.info` i potwierdzany odpowiedzią `{ received: true }`, więc Stripe przestaje go ponawiać.
-4. Handler, który rzuci wyjątek, jest logowany i zwraca `500`, co sprawia, że Stripe ponawia próbę. Po drodze `sendIncidentAlert` trafia do `scheduleBackgroundWork`, więc `RESEND_EMAIL_FROM` dowiaduje się o każdym nieudanym zdarzeniu raz, niezależnie od tego, ile razy Stripe je ponowi, bez opóźniania odpowiedzi.
+3. Zdarzenie z drugiego trybu Stripe jest potwierdzane odpowiedzią `{ received: true }` bez obsługi: `requiredStripeMode` przyjmuje na produkcji tylko zdarzenia live, a wszędzie indziej tylko testowe, a niezgodność jest logowana przez `console.error`. Zdarzenie testowe, którego obiekt niesie `metadata.deployment` wskazujące inne wdrożenie, jest potwierdzane tak samo i logowane przez `console.info`; `createStripeSession` stempluje `stripeDeploymentOf(env.APP_ENV)` na każdej sesji Checkout i jej PaymentIntent, a development i preview dzielą `martebizuteria-preview`.
+4. Typ zdarzenia jest wyszukiwany w `webhookHandlers`. Nieobsługiwany typ jest logowany przez `console.info` i potwierdzany odpowiedzią `{ received: true }`, więc Stripe przestaje go ponawiać.
+5. Handler, który rzuci wyjątek, jest logowany i zwraca `500`, co sprawia, że Stripe ponawia próbę. Po drodze `sendIncidentAlert` trafia do `scheduleBackgroundWork`, więc `RESEND_EMAIL_FROM` dowiaduje się o każdym nieudanym zdarzeniu raz, niezależnie od tego, ile razy Stripe je ponowi, bez opóźniania odpowiedzi.
 
-`GET /api/health` odczytuje D1, KV i R2 i odpowiada `200` albo `503` dla monitora dostępności; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts).
+`GET /api/webhooks/stripe` odpowiada `405 Method Not Allowed` z `Allow: POST`.
 
-`GET|POST /api/auth/$` to trzeci handler. Deleguje do `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.server.ts`, które owija `auth.handler(request)`: przed wywołaniem klonuje ciało żądania, żeby odczytać e-mail logowania, i ustala sesję, która właśnie zostanie zniszczona; po wywołaniu nieudany `POST /sign-in/email` staje się zdarzeniem `auth.login_failed`, a udany `POST /sign-out` — zdarzeniem `auth.logout`. Zdarzenie udanego logowania powstaje w innym miejscu — w hooku „after” wtyczki `signInAudit` w `auth.audit.server.ts`, który zapisuje logowanie za każdym razem, gdy ścieżka logowania tworzy sesję, chyba że ta sesja jedynie kontynuuje tę, z którą przyszło żądanie (potwierdzona zmiana adresu e-mail albo konfiguracja uwierzytelniania dwuskładnikowego).
+`GET /api/health` odczytuje D1, KV i R2 i odpowiada `200` albo `503` z `Cache-Control: no-store` dla monitora dostępności; zobacz [Monitorowanie i alerty](/docs/guides/monitoring-and-alerts).
+
+`GET|POST /api/auth/$` deleguje do `handleAuthRequestWithAudit` w `src/modules/audit-log/audit-log.auth.server.ts`, które owija `auth.handler(request)`: przed wywołaniem klonuje ciało żądania, żeby odczytać e-mail logowania, i ustala sesję, która właśnie zostanie zniszczona; po wywołaniu nieudany `POST /sign-in/email` staje się zdarzeniem `auth.login_failed`, a udany `POST /sign-out` — zdarzeniem `auth.logout`. Zdarzenie udanego logowania powstaje w innym miejscu — w hooku „after” wtyczki `signInAudit` w `auth.audit.server.ts`, który zapisuje logowanie za każdym razem, gdy ścieżka logowania tworzy sesję, chyba że ta sesja jedynie kontynuuje tę, z którą przyszło żądanie (potwierdzona zmiana adresu e-mail albo konfiguracja uwierzytelniania dwuskładnikowego).
+
+Pozostałe handlery HTTP to `POST /api/webhooks/inpost`, który przyjmuje zdarzenia statusu ShipX dla skonfigurowanej organizacji InPost (`GET` odpowiada `{ ready: true }`), oraz `POST /api/newsletter/unsubscribe`, cel jednego kliknięcia z nagłówka `List-Unsubscribe` newslettera, który bierze token subskrybenta z query stringa.
 
 ## Wiadomość z kolejki
 
@@ -81,7 +89,7 @@ Dziennik zdarzeń zapisuje konsument kolejki, a nie żądanie, które wygenerowa
 1. Rejestrator woła `scheduleAuditLog` albo `scheduleAuditLogFromRequest`, które generuje identyfikator wiersza przez `uuidv7()`, chyba że nadaje go rejestrator, i stempluje `createdAt` wartością `Date.now()` w momencie wysłania do kolejki, żeby kolejność przetrwała grupowanie w batche.
 2. `scheduleBackgroundWork` przekazuje obietnicę `env.AUDIT_LOG_QUEUE.send(...)` do `waitUntil`.
 3. Cloudflare dostarcza batch do 50 wiadomości do eksportu `queue` w `src/server.ts`.
-4. `processAuditLogQueueBatch` wstawia cały batch przez `insertAuditLogs`, które pomija identyfikator już zapisany, potwierdza każdą wiadomość, a następnie publikuje unieważnienie realtime dla `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` i `.STATS`, a także dla `ORDER_QUERY_KEYS.ADMIN.ORDERS`, gdy batch zawiera akcję z osi czasu zamówienia, więc otwarte karty panelu pobierają ponownie listę zamówień, statystyki i stronę zamówienia, a ta pokazuje nieudany e-mail o zamówieniu. Jeśli wstawienie rzuci wyjątek, każda wiadomość jest ponawiana, a na `RESEND_EMAIL_FROM` idzie e-mail, najwyżej raz na godzinę dla kolejki. Po trzech ponowieniach wiadomości trafiają do kolejki martwych listów, której konsument przepuszcza każdą osobno przez tę samą funkcję, więc reszta batcha zapisuje się nawet wtedy, gdy jednej wiadomości zapisać się nie da, a wiadomość dostarczona ponownie po zapisaniu jej wiersza jest pomijana zamiast zawodzić; wiadomość, która i tam trzy razy się nie zapisze, przepada.
+4. `processAuditLogQueueBatch` wstawia cały batch przez `insertAuditLogs`, które pomija identyfikator już zapisany, potwierdza każdą wiadomość, a następnie publikuje unieważnienie realtime dla `AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE` i `.STATS`, a także dla `ORDER_CHANGE_ADMIN_QUERY_KEYS` (`ORDER_QUERY_KEYS.ADMIN.ORDERS` i `ADMIN_DASHBOARD_QUERY_KEYS.ALL`), gdy batch zawiera akcję z osi czasu zamówienia, więc otwarte karty panelu pobierają ponownie listę zamówień, statystyki, stronę zamówienia i przegląd, a strona zamówienia pokazuje nieudany e-mail o zamówieniu. Jeśli wstawienie rzuci wyjątek, każda wiadomość jest ponawiana, a na `RESEND_EMAIL_FROM` idzie e-mail, najwyżej raz na godzinę dla kolejki. Po trzech ponowieniach wiadomości trafiają do kolejki martwych listów, której konsument przepuszcza każdą osobno przez tę samą funkcję, więc reszta batcha zapisuje się nawet wtedy, gdy jednej wiadomości zapisać się nie da, a wiadomość dostarczona ponownie po zapisaniu jej wiersza jest pomijana zamiast zawodzić; wiadomość, która i tam trzy razy się nie zapisze, przepada.
 
 ## Powiązane strony
 
