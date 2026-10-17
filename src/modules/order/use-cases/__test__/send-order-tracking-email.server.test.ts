@@ -52,6 +52,7 @@ const orderRow = {
   lockerId: null,
   metadata: JSON.stringify({ locale: "en-US" }),
   orderNumber: "MRT-2026-00042",
+  recipient: "anna@example.com",
   trackingNumber: "TRK-43",
   trackingUrl: "https://tracking.test/TRK-43",
   userId: "user-1",
@@ -101,7 +102,7 @@ describe("sendOrderTrackingEmail", () => {
   })
 
   it("records a tracking email that has no recipient", async () => {
-    getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, email: " " })
+    getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, email: " ", recipient: " " })
 
     await expect(send()).resolves.toBe(false)
 

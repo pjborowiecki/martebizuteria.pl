@@ -27,6 +27,7 @@ import { type Order } from "~/src/modules/order/order.types"
 import { payment } from "~/src/modules/payment/payment.schema"
 import { productVariant } from "~/src/modules/product-variant/product-variant.schema"
 import { product } from "~/src/modules/product/product.schema"
+import { replacedAddressOf } from "~/src/modules/user-email-history/user-email-history.accessors"
 import { user } from "~/src/modules/user/user.schema"
 
 export const orderCountsAsSale = inArray(order.status, [...ORDER_SALE_STATUSES])
@@ -284,6 +285,7 @@ export const getAdminOrderStats = async (): Promise<Order["adminStats"]> => {
 
 export const getAdminOrderDetailRow = (orderId: string) =>
   db.query.order.findFirst({
+    extras: { recipient: orderRecipientEmail().as("recipient") },
     where: eq(order.id, orderId),
     with: {
       addresses: true,
@@ -310,6 +312,7 @@ export const getAdminOrderDetailRow = (orderId: string) =>
       payment: true,
       user: {
         columns: {
+          email: true,
           id: true,
           name: true,
           phone: true,
@@ -443,6 +446,18 @@ export const getOrderByTransactionId = (transactionId: string) =>
     },
   })
 
+const accountAddressOfOrder = (): SQL<string | null> =>
+  sql<string | null>`(${db.select({ email: user.email }).from(user).where(eq(user.id, order.userId))})`
+
+export const orderRecipientEmail = (): SQL<string> => {
+  const orderAddressReplaced = replacedAddressOf({ address: sql`lower(${order.email})`, userId: order.userId })
+
+  return sql<string>`case when ${orderAddressReplaced} then ${accountAddressOfOrder()} else ${order.email} end`
+}
+
+export const orderReachableAt = (email: string): SQL =>
+  or(eq(sql`lower(${orderRecipientEmail()})`, email), eq(accountAddressOfOrder(), email))!
+
 export const getOrderTotalsForEmail = (orderId: string) =>
   db.query.order.findFirst({
     columns: {
@@ -456,6 +471,7 @@ export const getOrderTotalsForEmail = (orderId: string) =>
       total: true,
       userId: true,
     },
+    extras: { recipient: orderRecipientEmail().as("recipient") },
     where: eq(order.id, orderId),
   })
 
@@ -472,6 +488,7 @@ export const getOrderForShippedEmail = (orderId: string) =>
       trackingUrl: true,
       userId: true,
     },
+    extras: { recipient: orderRecipientEmail().as("recipient") },
     where: eq(order.id, orderId),
     with: {
       addresses: true,
@@ -509,6 +526,7 @@ export const getOrderForProgressEmail = (orderId: string) =>
       orderNumber: true,
       userId: true,
     },
+    extras: { recipient: orderRecipientEmail().as("recipient") },
     where: eq(order.id, orderId),
     with: {
       deliveryMethod: {
@@ -530,6 +548,7 @@ export const getOrderForRefundEmail = (orderId: string) =>
       total: true,
       userId: true,
     },
+    extras: { recipient: orderRecipientEmail().as("recipient") },
     where: eq(order.id, orderId),
   })
 

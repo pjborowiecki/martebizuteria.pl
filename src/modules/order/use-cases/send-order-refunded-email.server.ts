@@ -34,7 +34,7 @@ const attemptOrderRefundedEmail = async (
     return { failure: "The order could not be found", label: ORDER_REFUNDED_LABEL }
   }
 
-  if (orderRow.email.trim() === "") {
+  if (orderRow.recipient.trim() === "") {
     return { failure: "The order has no email address", label: ORDER_REFUNDED_LABEL }
   }
 
@@ -53,10 +53,10 @@ const attemptOrderRefundedEmail = async (
       refundedAmount: refund.amount,
     }),
     subject: createTranslator({ locale, messages })("subject"),
-    to: orderRow.email,
+    to: orderRow.recipient,
   })
 
-  return { failure, label: `${ORDER_REFUNDED_LABEL} → ${orderRow.email}` }
+  return { failure, label: `${ORDER_REFUNDED_LABEL} → ${orderRow.recipient}` }
 }
 
 const refundEmailIdempotencyKey = ({ orderId, refundId, refundedTotal }: Order["refundEmail"]): string =>

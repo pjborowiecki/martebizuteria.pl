@@ -71,10 +71,12 @@ const buildAdminOrderDetail = ({
     createdAt: orderRow.createdAt,
     currencyCode: orderRow.currencyCode,
     customer: buildAdminOrderDetailCustomer({
+      accountEmail: orderRow.user?.email,
       email: orderRow.email,
       name: orderRow.user?.name,
       orderCount: customerStats.orderCount,
       phone: orderRow.user?.phone,
+      recipient: orderRow.recipient,
       totalSpent: customerStats.totalSpent,
       userId: orderRow.userId,
     }),

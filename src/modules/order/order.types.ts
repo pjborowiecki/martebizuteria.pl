@@ -79,11 +79,13 @@ interface AdminOrderDetailAddress {
 }
 
 interface AdminOrderDetailCustomer {
+  readonly accountEmail: string | undefined
   readonly email: string
   readonly initials: string
   readonly name: string
   readonly orderCount: number
   readonly phone: string | undefined
+  readonly recipientEmail: string | undefined
   readonly totalSpentMinorUnits: number
   readonly userId: string | undefined
 }

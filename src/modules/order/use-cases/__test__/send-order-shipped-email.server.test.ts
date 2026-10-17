@@ -64,6 +64,7 @@ const orderRow = {
   lockerId: null,
   metadata: JSON.stringify({ locale: "en-US" }),
   orderNumber: "MRT-2026-00042",
+  recipient: "anna@example.com",
   trackingNumber: null,
   trackingUrl: null,
   userId: "user-1",
@@ -121,7 +122,7 @@ describe("sendOrderShippedEmail", () => {
   })
 
   it.each([[""], ["   "]])("records a shipped email that has no recipient when the order email is %j", async (email) => {
-    getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, email })
+    getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, email, recipient: email })
 
     await expect(sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)).resolves.toBe(false)
 
@@ -133,6 +134,15 @@ describe("sendOrderShippedEmail", () => {
       orderId: "order-abcdef12",
       willRetry: true,
     })
+  })
+
+  it("writes to the account's current address once the account has replaced the address the order was placed with", async () => {
+    getOrderForShippedEmail.mockResolvedValueOnce({ ...orderRow, email: "anna@example.com", recipient: "anna@new.example" })
+
+    await sendOrderShippedEmail("order-abcdef12", PREVIEW_ORIGIN)
+
+    expect(sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: "anna@new.example" }))
+    expect(recordOrderEmailOutcome).toHaveBeenCalledWith(expect.objectContaining({ label: "Order shipped → anna@new.example" }))
   })
 
   it("emails the shopper in the locale the order was placed in", async () => {

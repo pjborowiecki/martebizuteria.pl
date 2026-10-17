@@ -41,6 +41,7 @@ const mocked = vi.hoisted(() => ({
   releaseUnappliedDiscountClaims: vi.fn((_checkoutId: string) => Promise.resolve()),
   requestLocale: { value: "pl-PL" },
   reserveInventoryForItems: vi.fn(),
+  resolveAccountAddress: vi.fn(({ email }: { email: string; userId: string }) => Promise.resolve(email)),
   resolveCheckoutDiscount: vi.fn<() => Promise<{ amountMinorUnits: number; code: string; discountId: string } | undefined>>(),
   scheduleProductCatalogInvalidation: vi.fn(),
   supersedeCheckoutSession: vi.fn(),
@@ -107,6 +108,7 @@ vi.mock("~/src/modules/checkout/use-cases/count-open-checkouts.server", () => ({
   countOpenCheckouts: () => Promise.resolve({ byClientAddress: 0, byEmail: 0 }),
 }))
 vi.mock("~/src/lib/rate-limit", () => ({ clientAddress: () => "203.0.113.7" }))
+vi.mock("~/src/modules/user-email-history/user-email-history.accessors", () => ({ resolveAccountAddress: mocked.resolveAccountAddress }))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
 import {
@@ -321,6 +323,24 @@ describe("handleCreateCheckoutSession", () => {
     expect(createArgs).toMatchObject({ userEmail: "anna@example.com", userId: undefined })
     expect(createArgs?.checkoutValues).toMatchObject({ email: "anna@example.com" })
     expect(mocked.checkoutSessionsCreate).toHaveBeenCalledWith(expect.objectContaining({ metadata }))
+  })
+
+  it("uses the account's current address when a signed-in shopper checks out with an address the account has replaced", async () => {
+    mocked.resolveAccountAddress.mockResolvedValueOnce("anna@new.example")
+
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.resolveAccountAddress).toHaveBeenCalledExactlyOnceWith({ email: "anna@example.com", userId: "user-1" })
+    expect(mocked.createCheckout.mock.calls[0]?.[0]).toMatchObject({ userEmail: "anna@new.example", userId: "user-1" })
+    expect(mocked.ensureStripeCustomerWithEmail).toHaveBeenCalledWith(expect.objectContaining({ email: "anna@new.example" }))
+  })
+
+  it("keeps a guest's address as typed", async () => {
+    mocked.getRequestSession.mockResolvedValue(undefined)
+
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.resolveAccountAddress).not.toHaveBeenCalled()
   })
 
   it("reserves the catalogue price, stock row and line title, not the values the client sent", async () => {

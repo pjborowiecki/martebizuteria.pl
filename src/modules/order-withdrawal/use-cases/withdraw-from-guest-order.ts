@@ -1,7 +1,7 @@
 import { mutationOptions } from "@tanstack/react-query"
 import { createServerFn } from "@tanstack/react-start"
 import { getRequest } from "@tanstack/react-start/server"
-import { and, eq, sql } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import type * as zod from "zod"
 
 import { RATE_LIMITS, withRateLimit } from "~/src/integrations/better-auth/auth.middleware"
@@ -16,6 +16,7 @@ import {
 import { recordOrderWithdrawal, sendOrderWithdrawalEmails } from "~/src/modules/order-withdrawal/order-withdrawal.record.server"
 import { presentText } from "~/src/modules/order-withdrawal/order-withdrawal.utils"
 import { orderWithdrawalZodSchemas } from "~/src/modules/order-withdrawal/order-withdrawal.zod"
+import { orderReachableAt, orderRecipientEmail } from "~/src/modules/order/order.accessors"
 import { order } from "~/src/modules/order/order.schema"
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
@@ -28,8 +29,9 @@ export const withdrawFromGuestOrder = createServerFn({ method: "POST" })
     const origin = resolveRequestOrigin(getRequest())
     const email = data.email.toLowerCase()
     const orderRow = await db.query.order.findFirst({
-      columns: { deliveredAt: true, email: true, id: true, orderNumber: true, status: true },
-      where: and(eq(order.orderNumber, data.orderNumber), eq(sql`lower(${order.email})`, email)),
+      columns: { deliveredAt: true, id: true, orderNumber: true, status: true },
+      extras: { recipient: orderRecipientEmail().as("recipient") },
+      where: and(eq(order.orderNumber, data.orderNumber), orderReachableAt(email)),
     })
 
     if (orderRow === undefined) {
@@ -37,6 +39,7 @@ export const withdrawFromGuestOrder = createServerFn({ method: "POST" })
     }
 
     const recorded = await recordOrderWithdrawal({
+      email: orderRow.recipient,
       order: orderRow,
       statement: {
         consumerName: data.consumerName,
@@ -48,7 +51,7 @@ export const withdrawFromGuestOrder = createServerFn({ method: "POST" })
 
     if (
       recorded.outcome === ORDER_WITHDRAWAL_OUTCOME.RECORDED &&
-      (await admitPublicEmail({ kind: PUBLIC_EMAIL_KINDS.WITHDRAWAL, to: orderRow.email }))
+      (await admitPublicEmail({ kind: PUBLIC_EMAIL_KINDS.WITHDRAWAL, to: orderRow.recipient }))
     ) {
       scheduleBackgroundWork(sendOrderWithdrawalEmails({ order: orderRow, origin, withdrawal: recorded.withdrawal }))
     }

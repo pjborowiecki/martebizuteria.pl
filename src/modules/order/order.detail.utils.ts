@@ -224,15 +224,20 @@ export const resolveAdminOrderCustomerName = (name: string | null | undefined, e
   return trimmed === undefined || trimmed === "" ? email : trimmed
 }
 
+const differentAddress = (address: string | undefined, orderEmail: string): string | undefined =>
+  address === undefined || address.toLowerCase() === orderEmail.toLowerCase() ? undefined : address
+
 export const buildAdminOrderDetailCustomer = (snapshot: AdminOrderCustomerSnapshot): Order["adminOrderDetail"]["customer"] => {
   const name = resolveAdminOrderCustomerName(snapshot.name, snapshot.email)
 
   return {
+    accountEmail: differentAddress(snapshot.accountEmail, snapshot.email),
     email: snapshot.email,
     initials: resolveAdminCustomerInitials(name),
     name,
     orderCount: snapshot.orderCount,
     phone: snapshot.phone ?? undefined,
+    recipientEmail: differentAddress(snapshot.recipient, snapshot.email),
     totalSpentMinorUnits: snapshot.totalSpent,
     userId: snapshot.userId ?? undefined,
   }
@@ -361,10 +366,12 @@ interface AdminOrderTagSnapshot {
 }
 
 interface AdminOrderCustomerSnapshot {
+  readonly accountEmail: string | undefined
   readonly email: string
   readonly name: string | null | undefined
   readonly orderCount: number
   readonly phone: string | null | undefined
+  readonly recipient: string
   readonly totalSpent: number
   readonly userId: string | null
 }

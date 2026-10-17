@@ -13,6 +13,7 @@ import { type Order } from "~/src/modules/order/order.types"
 import { scheduleBackgroundWork } from "~/src/lib/background"
 
 export const recordOrderWithdrawal = async ({
+  email,
   order: orderRow,
   statement,
 }: Readonly<OrderWithdrawalSubmission>): Promise<OrderWithdrawal["recording"]> => {
@@ -24,12 +25,12 @@ export const recordOrderWithdrawal = async ({
     return { outcome: ORDER_WITHDRAWAL_OUTCOME.ALREADY_WITHDRAWN }
   }
 
-  const withdrawal = { ...statement, email: orderRow.email, submittedAt: new Date() }
+  const withdrawal = { ...statement, email, submittedAt: new Date() }
   await insertOrderWithdrawal(orderRow.id, withdrawal)
   scheduleAdminOrdersInvalidation()
   recordOrderWithdrawalReceivedAudit(
     orderRow.id,
-    { email: orderRow.email, name: statement.consumerName, role: "customer" },
+    { email, name: statement.consumerName, role: "customer" },
     { detail: orderRow.orderNumber, metadata: { scope: statement.scope } },
   )
 
@@ -53,7 +54,8 @@ export const sendOrderWithdrawalEmails = async ({
 }
 
 interface OrderWithdrawalSubmission {
-  readonly order: Pick<Order["select"], "deliveredAt" | "email" | "id" | "orderNumber" | "status">
+  readonly email: string
+  readonly order: Pick<Order["select"], "deliveredAt" | "id" | "orderNumber" | "status">
   readonly statement: Pick<OrderWithdrawal["statement"], "consumerName" | "items" | "reason" | "scope">
 }
 

@@ -53,6 +53,7 @@ const orderRow = {
   email: "anna@example.com",
   metadata: JSON.stringify({ locale: "en-US" }),
   orderNumber: "MRT-2026-00042",
+  recipient: "anna@example.com",
   total: ORDER_TOTAL,
   userId: "user-1",
 }
@@ -204,7 +205,7 @@ describe("sendOrderRefundedEmail", () => {
   })
 
   it("records a refund email that has no recipient", async () => {
-    getOrderForRefundEmail.mockResolvedValue({ ...orderRow, email: " " })
+    getOrderForRefundEmail.mockResolvedValue({ ...orderRow, email: " ", recipient: " " })
 
     await expect(sendOrderRefundedEmail(PARTIAL_REFUND, RETURN_URL)).resolves.toBe(false)
 

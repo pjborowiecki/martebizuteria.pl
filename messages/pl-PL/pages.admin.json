@@ -826,6 +826,8 @@
       }
     },
     "customer": {
+      "accountEmail": "Obecny e-mail konta: {email}",
+      "emailsGoTo": "Konto nie używa już adresu, z którego złożono to zamówienie, więc wiadomości o zamówieniu trafiają na {email}.",
       "title": "Klient",
       "guest": "Zamówienie bez konta",
       "ordersCount": "{count} zamówień",

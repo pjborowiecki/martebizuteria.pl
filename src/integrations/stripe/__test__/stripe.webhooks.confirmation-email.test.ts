@@ -123,6 +123,7 @@ const PLACED_ORDER = {
   discountTotal: 0,
   email: "anna@example.com",
   orderNumber: "MRT-2026-00042",
+  recipient: "anna@example.com",
   shippingTotal: SHIPPING_TOTAL,
   subtotal: ITEMS_TOTAL,
   taxBasisPoints: 2300,
@@ -522,7 +523,12 @@ describe("order confirmation email delivery", () => {
   })
 
   it("sends a signed-in shopper's confirmation to the order's address, not to the one Stripe now holds for the account", async () => {
-    getOrderTotalsForEmail.mockResolvedValue({ ...PLACED_ORDER, email: "first-tab@example.com", userId: "user-1" })
+    getOrderTotalsForEmail.mockResolvedValue({
+      ...PLACED_ORDER,
+      email: "first-tab@example.com",
+      recipient: "first-tab@example.com",
+      userId: "user-1",
+    })
     const session = checkoutSession({
       amountTotal: AMOUNT_TOTAL,
       customerDetails: {
@@ -541,6 +547,14 @@ describe("order confirmation email delivery", () => {
     await dispatch(checkoutSessionCompletedEvent(session))
 
     expect(sentEmail().to).toBe("first-tab@example.com")
+  })
+
+  it("sends the confirmation to the account's current address once the account has replaced the order's", async () => {
+    getOrderTotalsForEmail.mockResolvedValue({ ...PLACED_ORDER, email: "old@example.com", recipient: "new@example.com", userId: "user-1" })
+
+    await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
+
+    expect(sentEmail().to).toBe("new@example.com")
   })
 
   it("records a confirmation that could not be prepared against the order instead of failing the webhook", async () => {

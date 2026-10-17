@@ -16,7 +16,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
   return { db: drizzle(createTestD1Database(sqlite), { schema }) }
 })
 
-const { getUserEmailHistory } = await import("~/src/modules/user-email-history/user-email-history.accessors")
+const { getUserEmailHistory, resolveAccountAddress } = await import("~/src/modules/user-email-history/user-email-history.accessors")
 
 beforeAll(() => {
   applyMigrationHistory(sqlite)
@@ -44,5 +44,17 @@ describe("getUserEmailHistory", () => {
       { current: false, email: "anna@old.example" },
     ])
     expect(history[1]?.addedAt).toStrictEqual(new Date(1000))
+  })
+})
+
+describe("resolveAccountAddress", () => {
+  it.each([
+    { email: " Anna@Old.example", expected: "anna@new.example", name: "an address the account has replaced", userId: "anna" },
+    { email: "anna@new.example", expected: "anna@new.example", name: "the account's current address", userId: "anna" },
+    { email: "gift@example.test", expected: "gift@example.test", name: "an address the account never used", userId: "anna" },
+    { email: "ola@example.test", expected: "ola@example.test", name: "another account's address", userId: "anna" },
+    { email: "ewa@example.test", expected: "ewa@example.test", name: "an address the account came back to", userId: "ewa" },
+  ])("answers $name with the address the account's mail should go to", async ({ email, expected, userId }) => {
+    await expect(resolveAccountAddress({ email, userId })).resolves.toBe(expected)
   })
 })

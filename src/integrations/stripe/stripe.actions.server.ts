@@ -61,6 +61,7 @@ import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-var
 import { getPublishedProductsWithInventoryByHandles } from "~/src/modules/product/product.accessors"
 import { resolveProductTitle } from "~/src/modules/product/product.utils"
 import { isSalesPaused } from "~/src/modules/store-setting/store-setting.accessors"
+import { resolveAccountAddress } from "~/src/modules/user-email-history/user-email-history.accessors"
 
 import { clientAddress } from "~/src/lib/rate-limit"
 import { resolveRequestOrigin } from "~/src/lib/request"
@@ -423,13 +424,16 @@ const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenChecko
   }
 }
 
+const withAccountAddress = async (checkoutValues: CheckoutSessionValues, userId: string | undefined): Promise<CheckoutSessionValues> =>
+  userId === undefined ? checkoutValues : { ...checkoutValues, email: await resolveAccountAddress({ email: checkoutValues.email, userId }) }
+
 export const handleCreateCheckoutSession = async (data: CreateCheckoutSessionInput) => {
   const { origin, visitorAddress } = await admitNewCheckout(data)
-  const { checkoutValues, deliveryPrice, deliveryType, freeDeliveryThreshold, lockerPoint, lockerUnconfirmed } = await resolveDelivery(
-    data.checkoutValues,
-  )
   const session = await getRequestSession()
   const userId = session?.user.id
+  const { checkoutValues, deliveryPrice, deliveryType, freeDeliveryThreshold, lockerPoint, lockerUnconfirmed } = await resolveDelivery(
+    await withAccountAddress(data.checkoutValues, userId),
+  )
   const { email } = checkoutValues
   const customerId =
     session?.user === undefined
@@ -690,7 +694,7 @@ export const handleUpdateCheckoutSession = async (data: UpdateCheckoutSessionInp
   await assertCheckoutStillEditable(data.sessionId, checkoutCreatedAt)
   const lines = await validateAndCalculateItems(data.items, heldLines)
   const { checkoutValues, deliveryPrice, deliveryType, freeDeliveryThreshold, lockerPoint, lockerUnconfirmed } = await resolveDelivery(
-    data.checkoutValues,
+    await withAccountAddress(data.checkoutValues, signedInUser?.id),
   )
   const { applicableDiscount, shippingFor } = await resolveCheckoutPricing({ checkoutValues, deliveryPrice, freeDeliveryThreshold, lines })
 

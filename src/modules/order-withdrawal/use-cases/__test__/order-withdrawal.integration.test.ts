@@ -158,6 +158,10 @@ const updateAnnaOrder = (assignments: string): void => {
   sqlite.prepare(`update "order" set ${assignments} where id = ?`).run(ANNA_ORDER_ID)
 }
 
+const moveAnnasAccountTo = (email: string): void => {
+  sqlite.prepare("update user set email = ? where id = 'user-anna'").run(email)
+}
+
 beforeAll(() => {
   applyMigrationHistory(sqlite)
 })
@@ -185,6 +189,7 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
+  moveAnnasAccountTo("anna@example.com")
   vi.useRealTimers()
   await Promise.all(background.splice(0))
 })
@@ -388,6 +393,37 @@ describe("withdrawing from an order as a guest", () => {
     ])
   })
 
+  it("accepts the account's current address once the account has replaced the order's, and acknowledges it there", async () => {
+    moveAnnasAccountTo("anna@new.example")
+
+    await guestWithdrawal({ email: "Anna@New.example" })
+    await Promise.all(background)
+
+    expect(readWithdrawals()).toStrictEqual([expect.objectContaining({ email: "anna@new.example", order_id: ANNA_ORDER_ID })])
+    expect(sentTo("anna@new.example")).toBeDefined()
+    expect(sentTo("Anna@Example.com")).toBeUndefined()
+  })
+
+  it("no longer accepts the address the account replaced, which may belong to someone else now", async () => {
+    moveAnnasAccountTo("anna@new.example")
+
+    await guestWithdrawal({ email: "anna@example.com" })
+    await Promise.all(background)
+
+    expect(readWithdrawals()).toStrictEqual([])
+    expect(sentEmails()).toStrictEqual([])
+  })
+
+  it("accepts both the address an account order was placed with and the account's own, and acknowledges to the order's", async () => {
+    updateAnnaOrder("email = 'gift@example.com'")
+
+    await guestWithdrawal({ email: "gift@example.com", items: "Kolczyki Luna × 1", scope: "items" })
+    await guestWithdrawal({ email: "anna@example.com" })
+    await Promise.all(background)
+
+    expect(readWithdrawals().map(({ email }) => email)).toStrictEqual(["gift@example.com", "gift@example.com"])
+  })
+
   it("drops a product list typed before the guest chose the whole order", async () => {
     await guestWithdrawal({ items: "Kolczyki Luna × 1" })
 
@@ -455,6 +491,17 @@ describe("withdrawing from an order as a guest", () => {
     await expect(mutationFn?.(statement, context)).resolves.toBeUndefined()
     expect(readWithdrawals()).toHaveLength(1)
     expect(withdrawFromGuestOrderMutation.mutationKey).toStrictEqual(ORDER_WITHDRAWAL_MUTATION_KEYS.WITHDRAW_FROM_GUEST_ORDER)
+  })
+})
+
+describe("withdrawing from an order whose address the account has replaced", () => {
+  it("acknowledges the statement and shows the function with the account's current address", async () => {
+    moveAnnasAccountTo("anna@new.example")
+
+    await expect(getCustomerOrderWithdrawal({ data: { orderId: ANNA_ORDER_ID } })).resolves.toMatchObject({ email: "anna@new.example" })
+    await expect(customerWithdrawal()).resolves.toMatchObject({ receipt: { email: "anna@new.example" } })
+    await Promise.all(background)
+    expect(sentTo("anna@new.example")).toBeDefined()
   })
 })
 

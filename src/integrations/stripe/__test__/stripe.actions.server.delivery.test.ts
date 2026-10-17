@@ -90,6 +90,9 @@ vi.mock("~/src/modules/checkout/use-cases/count-open-checkouts.server", () => ({
   countOpenCheckouts: () => Promise.resolve({ byClientAddress: 0, byEmail: 0 }),
 }))
 vi.mock("~/src/lib/rate-limit", () => ({ clientAddress: () => "203.0.113.7" }))
+vi.mock("~/src/modules/user-email-history/user-email-history.accessors", () => ({
+  resolveAccountAddress: ({ email }: { email: string }) => Promise.resolve(email),
+}))
 vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://assets.test/${source}` }))
 
 import {

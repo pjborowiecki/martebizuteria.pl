@@ -826,6 +826,8 @@
       }
     },
     "customer": {
+      "accountEmail": "Account email now: {email}",
+      "emailsGoTo": "The account no longer uses the address this order was placed with, so emails about the order go to {email}.",
       "title": "Customer",
       "guest": "Guest checkout",
       "ordersCount": "{count} orders",
