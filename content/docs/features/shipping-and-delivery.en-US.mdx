@@ -28,7 +28,7 @@ Only the carrier whose `internal_code` is `inpost` (`INPOST_COURIER_CODE` in `sr
 | `type`             | `locker \| courier \| in_store`, not null                                                                                                        |
 | `api_service_code` | Not null; a carrier service identifier, currently informational only                                                                             |
 | `rank`             | Integer, default `0`; the method's place in the checkout's list                                                                                  |
-| `is_active`        | Boolean, default `true`; **Offer at checkout** in Settings                                                                                       |
+| `is_active`        | Boolean, default `true`; the **Status** of a method in Settings, **Offered** or **Hidden**                                                       |
 | `archived_at`      | Nullable timestamp; set while the method is archived                                                                                             |
 
 `api_service_code` is stored but never read. A method added in Settings gets `<carrier internal_code>_<type>`. An InPost shipment booked from the admin takes its ShipX service from the method's `type` instead: `inpost_locker_standard` for `locker` and `inpost_courier_standard` for `courier` (see [InPost](/docs/integrations/inpost#shipments-through-shipx)).

@@ -48,16 +48,16 @@ beforeLoad: () => {
 
 ## The eight pages
 
-| Route                 | File                       | Query                                                              | Status |
-| --------------------- | -------------------------- | ------------------------------------------------------------------ | ------ |
-| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                                 | Live   |
-| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`, `getOwnNewsletterSubscriptionQuery()` | Live   |
-| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                        | Live   |
-| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`, `getCustomerOrderWithdrawalQuery(id)` | Live   |
-| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                         | Live   |
-| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `listCustomerLoginHistoryQuery()`   | Live   |
-| `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                   | Live   |
-| `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                   | Live   |
+| Route                 | File                       | Query                                                               | Status |
+| --------------------- | -------------------------- | ------------------------------------------------------------------- | ------ |
+| `/account/overview`   | `account.overview.tsx`     | `getCustomerOverviewQuery(locale)`                                  | Live   |
+| `/account/profile`    | `account.profile.tsx`      | `getCustomerProfileQuery()`, `getOwnNewsletterSubscriptionQuery()`  | Live   |
+| `/account/orders`     | `account.orders.index.tsx` | `listCustomerOrdersQuery({ filter, page })`                         | Live   |
+| `/account/orders/$id` | `account.orders.$id.tsx`   | `getCustomerOrderQuery(id)`, `getCustomerOrderWithdrawalQuery(id)`  | Live   |
+| `/account/addresses`  | `account.addresses.tsx`    | `listUserAddressesQuery()`                                          | Live   |
+| `/account/sessions`   | `account.sessions.tsx`     | `listCustomerSessionsQuery()`, `getCustomerLoginHistoryPageQuery()` | Live   |
+| `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                    | Live   |
+| `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                    | Live   |
 
 The sidebar order is `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`); the order page `/account/orders/$id` has no entry of its own and keeps **Orders** highlighted. The sidebar's sign-out button calls `signOut` and then does a full page load of `/`, which discards the query cache. When signing out fails, it shows the `signOutError` toast and the customer stays on the page.
 
@@ -193,7 +193,7 @@ Each records `auth.sessions_revoked` against the customer, with the address they
 
 The page labels the bulk action "Sign out other devices" and renders it only while the list holds a session other than the current one. With a single device signed in there is nothing for it to do, so the list says the customer is signed in on this device only instead. Signing out of the current device stays with the account sidebar's sign-out button.
 
-`listCustomerLoginHistory` reuses the same audit rows and keeps only `auth.login` and `auth.login_failed`, mapping the failure to `status: "failed"`. So the login history is a view over [the audit log](/docs/features/audit-log), not a separate table, and it reaches back at most 12 months, after which the daily [retention clean-up](/docs/guides/data-retention) deletes the entries. `getCustomerLoginAuditRows` returns the newest `CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT` (20) rows; when the list reaches that limit, a note under it says only the most recent attempts are shown. Each row states its outcome once — "Successful sign-in" or "Failed sign-in attempt" — with the address and the date beside it.
+`getCustomerLoginHistoryPage` reads the login history a page at a time from the same audit rows, keeping only `auth.login` and `auth.login_failed` and mapping the failure to `status: "failed"`. So the login history is a view over [the audit log](/docs/features/audit-log), not a separate table, and it reaches back at most 12 months, after which the daily [retention clean-up](/docs/guides/data-retention) deletes the entries. `getCustomerLoginAuditPage` returns one page of rows, newest first, with the total count, optionally only the successful or only the failed attempts or those from an IP address; the admin's [Sign-in history grid](/docs/features/admin-settings#sign-in-history) uses the same function. The page shows ten attempts at a time (`CUSTOMER_ACCOUNT_LOGIN_HISTORY_PAGE_SIZE`) with **Previous**, **Page n of m** and **Next** under the list once there is more than one page, so every attempt can be read and the page never grows with the history. Each row states its outcome once — "Successful sign-in" or "Failed sign-in attempt" — with the address and the date beside it.
 
 Closing the account is not offered here. It lives only on the profile page, where `CloseAccountSection` opens the confirmation dialog that calls Better Auth's `deleteUser`; see [Closing the account](#closing-the-account).
 

@@ -15,17 +15,33 @@ Ustawienia to miejsce, w którym administrator zarządza własnym kontem, danymi
 | `/admin/settings/security` | `admin.settings.security.tsx` | **Logowanie i bezpieczeństwo**: hasło, dwa składniki, metody logowania, sesje i historia |
 | `/admin/settings/store`    | `admin.settings.store.tsx`    | **Dane sklepu**: dane sprzedawcy                                                         |
 | `/admin/settings/delivery` | `admin.settings.delivery.tsx` | **Dostawa**: metody dostawy i darmowa dostawa                                            |
-| `/admin/settings/team`     | `admin.settings.team.tsx`     | **Zespół**: osoby z dostępem do panelu i zasady tego dostępu                             |
+| `/admin/settings/team`     | `admin.settings.team.tsx`     | **Zespół**: konta z dostępem do panelu i nadawanie tego dostępu                          |
 
 Ścieżki to `ROUTES.ADMIN_SETTINGS`, `ROUTES.ADMIN_SETTINGS_ACCOUNT`, `ROUTES.ADMIN_SETTINGS_SECURITY`, `ROUTES.ADMIN_SETTINGS_STORE`, `ROUTES.ADMIN_SETTINGS_DELIVERY` i `ROUTES.ADMIN_SETTINGS_TEAM` w `src/routes.ts`. Wszystkie leżą w layoucie `/admin`, więc strzeże ich `requireAdmin`, a administratora bez uwierzytelniania dwuskładnikowego najpierw odsyła na `/admin/security` (zobacz [Pulpit admina](/docs/features/admin-dashboard#layout)).
 
 Layout deklaruje `staticData.namespaces: ["pages.admin.settings", "pages.account", "pages.auth.errors", "pages.auth.validations"]`. `pages.admin.settings` zawiera teksty samej strony; pozostałe trzy są potrzebne, bo ustawienia używają okien konta, które czytają z nich swoje teksty i komunikaty walidacji.
 
-Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loader zakładki bezpieczeństwa wczytuje go razem z `listCustomerSessionsQuery()` i `listCustomerLoginHistoryQuery()`, loader zakładki danych sklepu wczytuje `getAdminSellerDetailsQuery()`, loader zakładki dostawy wczytuje `listAdminDeliveryMethodsQuery()` i `getAdminFreeDeliveryQuery()`, a loader zakładki zespołu wczytuje `listAdminTeamQuery()`, więc każda zakładka renderuje się bez stanu ładowania.
+Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loader zakładki bezpieczeństwa wczytuje go razem z `listCustomerSessionsQuery()` i pierwszą stroną historii logowania, `getCustomerLoginHistoryPageQuery({ page: 1, pageSize: 10 })`, loader zakładki danych sklepu wczytuje `getAdminSellerDetailsQuery()`, loader zakładki dostawy wczytuje `listAdminDeliveryMethodsQuery()` i `getAdminFreeDeliveryQuery()`, a loader zakładki zespołu wczytuje `listAdminTeamQuery()`, więc każda zakładka renderuje się bez stanu ładowania.
 
 ## Układ
 
-`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renderuje nagłówek panelu z tytułem, opisem i `SettingsTabs`, czyli linkami `AdminHeaderTabLink`, z których trasa zaznacza aktywny. Treść to jedna kolumna kart `SettingsCard` na całą szerokość treści strony, jak na pozostałych stronach panelu; od średnich ekranów karta układa pola formularza w dwóch kolumnach. Karta ma tytuł, opis, opcjonalną akcję po prawej i, pod linią podziału, swoje wiersze; `SettingsRow` to jeden opisany wiersz z opcjonalną wartością i akcją.
+`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renderuje nagłówek panelu z tytułem, opisem i `SettingsTabs`, czyli linkami `AdminHeaderTabLink`, z których trasa zaznacza aktywny, oraz akcjami nagłówka, które zakładka przekazuje w `actions`. Jego `body` decyduje o tym, jak przewija się strona poniżej:
+
+- `body="form"`, domyślne, to `ADMIN_PAGE_BODY_CLASS`: kolumna kart na całą szerokość treści strony, przewijana jak jedna strona. Używają go **Moje konto**, **Logowanie i bezpieczeństwo** oraz **Dane sklepu**.
+- `body="grid"` to `ADMIN_CATALOG_PAGE_BODY_CLASS`, treść stron katalogu, kodów rabatowych i dziennika zdarzeń: karty statystyk nad jedną tabelą danych, która na komputerze wypełnia resztę ekranu i przewija się w środku. Używają go **Dostawa** i **Zespół**.
+
+Zakładki korzystają z wzorców reszty panelu, a nie z własnych:
+
+| Wzorzec                              | Gdzie jeszcze występuje                                          | W ustawieniach                                                                                                      |
+| ------------------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Tabela danych z kartami statystyk    | Atrybuty, produkty, kody rabatowe, klienci, dziennik zdarzeń     | Metody dostawy, konta z dostępem, zalogowane urządzenia i historia logowania ([Tabela danych](/docs/ui/data-table)) |
+| Przycisk dodawania na pasku narzędzi | `CatalogToolbarAddButton` w tabelach katalogu i kodów rabatowych | **Dodaj metodę**, **Nadaj dostęp**                                                                                  |
+| Menu wiersza                         | `…RowActions` z `CatalogDeleteConfirmDialog`                     | Edycja, archiwizacja i przywrócenie metody; odebranie dostępu; wylogowanie urządzenia                               |
+| Panel boczny z formularzem           | Panele atrybutu, kategorii, kodu rabatowego i klienta            | Dodanie i edycja metody dostawy, darmowa dostawa, nadanie dostępu, edycja profilu (`SettingsSheet`)                 |
+| Akcja strony w nagłówku              | **Edytuj** u klienta, **Zapisz** na stronie treści               | **Darmowa dostawa** w Dostawie; **Zapisz** ze stanem zapisu w Danych sklepu (`SettingsSaveActions`)                 |
+| Plakietka statusu                    | Plakietki statusu produktów, kodów rabatowych i zamówień         | `SettingsStatusBadge`: zielona, bursztynowa, czerwona albo szara                                                    |
+
+Karta (`SettingsCard`) ma tytuł, opis, opcjonalną akcję i, pod linią podziału, swoje wiersze; `SettingsRow` to jeden opisany wiersz z opcjonalną wartością i akcją. Karta jest kontenerem zapytań: gdy jest wąska, jak trzy karty bezpieczeństwa obok siebie, jej akcja przechodzi pod tekst. Przyciski w karcie to małe przyciski z obramowaniem, ikoną i etykietą, takie jak na kartach strony zamówienia. Formularz w panelu bocznym używa `SettingsFormSection` (ikona, tytuł i opis, jak sekcje paneli katalogu), katalogowego `CatalogFormFieldLabel` z podpowiedzią w dymku informacyjnym, oznaczeniem pola wymaganego i licznikiem znaków oraz `ValidationFieldError` pod polem.
 
 Pasek boczny zaznacza **Ustawienia** jako aktywne na każdej stronie `/admin/settings/*`.
 
@@ -33,16 +49,11 @@ Pasek boczny zaznacza **Ustawienia** jako aktywne na każdej stronie `/admin/set
 
 ### Profil
 
-`SettingsProfileCard` czyta profil z `getCustomerProfileQuery()` i pokazuje cztery wiersze:
+`SettingsProfileCard` czyta profil z `getCustomerProfileQuery()` i pokazuje cztery wiersze: **Imię i nazwisko**, **Adres e-mail** (z plakietką **Niepotwierdzony**, dopóki adres nie jest zweryfikowany), **Numer telefonu** (**Nie podano**, dopóki go nie ma) oraz **Konto założone**, czyli `createdAt` konta w formacie i strefie czasowej administratora.
 
-| Wiersz          | Działanie                                                                                                                                                                                         |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Imię i nazwisko | **Edytuj** zmienia wiersz w pole. **Zapisz** wywołuje `authClient.updateUser({ name })` z Better Auth                                                                                             |
-| Adres e-mail    | **Zmień** otwiera `ChangeEmailDialog`. Better Auth wysyła link potwierdzający na obecny adres, a adres zmienia się po jego otwarciu. Plakietka **Niepotwierdzony** oznacza niezweryfikowany adres |
-| Numer telefonu  | **Edytuj**, jak przy imieniu, zapis przez `updateCustomerPhone`. Pusta wartość usuwa numer; dopóki go nie ma, widać **Nie podano**                                                                |
-| Konto założone  | `createdAt` konta, w formacie i strefie czasowej administratora                                                                                                                                   |
+**Edytuj profil**, akcja karty, otwiera `SettingsProfileSheet` z imieniem i nazwiskiem (wymagane, do 120 znaków) oraz telefonem (do 32), każde z licznikiem. **Zapisz** sprawdza je tym samym `customerAccountZodSchemas.profileForm`, którego używa profil klienta, i pokazuje komunikat błędnego pola pod nim. `useSaveProfile` zapisuje potem tylko to, co się zmieniło: imię i nazwisko przez `authClient.updateUser({ name })` z Better Auth, a telefon przez `updateCustomerPhone`, gdzie pusta wartość usuwa numer. Pokazuje komunikat **Zapisano profil.** albo błąd, a po powodzeniu unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE` i `SESSION_QUERY_KEYS.CURRENT`, bo zapamiętana sesja też zawiera imię; panel się zamyka, a po błędzie zostaje otwarty.
 
-Przed zapisem `SettingsEditableRow` sprawdza pole tym samym `customerAccountZodSchemas.profileForm`, którego używa profil klienta, i pokazuje błąd pod polem. `useSaveProfileField` wykonuje wywołanie, pokazuje komunikat **Zapisano profil.** albo błąd, a po powodzeniu unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.PROFILE` i `SESSION_QUERY_KEYS.CURRENT`, bo zapamiętana sesja też zawiera imię. Potwierdzona zmiana adresu e-mail trafia do [dziennika zdarzeń](/docs/features/audit-log#zdarzenia-bezpieczeństwa-konta) jako `auth.email_changed`.
+**Zmień adres e-mail**, w wierszu adresu, otwiera `ChangeEmailDialog`. Better Auth wysyła link potwierdzający na obecny adres, a adres zmienia się po jego otwarciu. Potwierdzona zmiana adresu e-mail trafia do [dziennika zdarzeń](/docs/features/audit-log#zdarzenia-bezpieczeństwa-konta) jako `auth.email_changed`.
 
 ### Preferencje
 
@@ -57,7 +68,7 @@ Przed zapisem `SettingsEditableRow` sprawdza pole tym samym `customerAccountZodS
 
 ## Logowanie i bezpieczeństwo
 
-Trasa bezpieczeństwa czyta profil raz i przekazuje kartom `hasPassword`, `hasGoogle` i `twoFactorEnabled` jako propsy.
+Trasa bezpieczeństwa czyta profil raz i przekazuje kartom `hasPassword`, `hasGoogle` i `twoFactorEnabled` jako propsy. Karty hasła, dwóch składników i metod logowania stoją na szerokich ekranach obok siebie (trzy kolumny od `xl`), a na mniejszych jedna pod drugą, nad tabelami zalogowanych urządzeń i prób logowania.
 
 ### Hasło
 
@@ -65,7 +76,7 @@ Dla konta z hasłem `SettingsPasswordCard` proponuje **Zmień hasło**, co otwie
 
 ### Uwierzytelnianie dwuskładnikowe
 
-`SettingsTwoFactorCard` pokazuje **Włączone** albo **Wyłączone** i przycisk **Włącz** albo **Wyłącz**, który otwiera `TwoFactorDialog`: przy włączaniu hasło, potem kod QR albo klucz konfiguracji, sześciocyfrowy kod i kody odzyskiwania, a przy wyłączaniu hasło. Po zamknięciu okna karta unieważnia profil, sesję i `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, bo Better Auth zastępuje bieżącą sesję, gdy uwierzytelnianie dwuskładnikowe się zmienia.
+`SettingsTwoFactorCard` pokazuje plakietkę **Włączone** albo **Wyłączone** i przycisk **Włącz** albo **Wyłącz**, który otwiera `TwoFactorDialog`: przy włączaniu hasło, potem kod QR albo klucz konfiguracji, sześciocyfrowy kod i kody odzyskiwania, a przy wyłączaniu hasło. Po zamknięciu okna karta unieważnia profil, sesję i `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, bo Better Auth zastępuje bieżącą sesję, gdy uwierzytelnianie dwuskładnikowe się zmienia.
 
 Pod kartą mogą pojawić się dwie uwagi:
 
@@ -78,9 +89,15 @@ Pod kartą mogą pojawić się dwie uwagi:
 
 Gdy Google jest połączone, karta ostrzega, że logowanie przez Google nie prosi o sześciocyfrowy kod sklepu. Wtyczka `twoFactor` z Better Auth sprawdza kod tylko na ścieżkach logowania hasłem, więc przy logowaniu przez Google miejsce kodu sklepu zajmuje weryfikacja dwuetapowa samego konta Google (zobacz [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów)). Właściciel sklepu postanowił zostawić administratorom logowanie przez Google i powiedzieć o tym tutaj, zamiast je blokować.
 
-### Aktywne sesje i historia logowania
+### Aktywne sesje
 
-`SettingsSessionsCard` wymienia zalogowane urządzenia przez `ActiveSessionList` ze strony sesji konta. Dopóki zalogowane jest jakiekolwiek inne urządzenie, karta proponuje **Wyloguj pozostałe urządzenia**, co wywołuje `revokeOtherCustomerSessions`, pokazuje wynik i unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. `SettingsLoginHistoryCard` wymienia ostatnie udane i nieudane logowania przez `LoginHistoryList`. Obie czytają te same zapytania co `/account/sessions`.
+`SettingsSessionsGrid` wypisuje zalogowane urządzenia z `listCustomerSessionsQuery()` w tabeli danych takiej jak w reszcie panelu: urządzenie z ikoną i plakietką **To urządzenie** przy bieżącym, przeglądarkę, adres IP (**Nie zapisano**, gdy go nie ma), ostatnią aktywność (**Aktywne teraz** przez ostatnie pięć minut) i chwilę zalogowania. Pasek narzędzi ma wyszukiwanie tabeli, wybór kolumn, reset i odświeżanie, a dopóki zalogowane jest jakiekolwiek inne urządzenie, także **Wyloguj pozostałe urządzenia**, co wywołuje `revokeOtherCustomerSessions`, pokazuje wynik i unieważnia `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`. Menu wiersza każdego innego urządzenia ma **Wyloguj to urządzenie**, które wywołuje `revokeCustomerSession`; wiersz bieżącego urządzenia nie ma menu.
+
+### Historia logowania
+
+`SettingsLoginHistoryGrid` to tabela danych stronicowana na serwerze, jak w dzienniku zdarzeń: data i godzina każdej próby, jej wynik (**Udane logowanie** albo **Nieudana próba**) i adres IP, od najnowszych, domyślnie dziesięć na stronę. Stopka ma wybór liczby wierszy (od 10 do 250), zakres i łączną liczbę oraz przyciski stron; na komputerze treść tabeli przewija się w ograniczonej wysokości, więc strona nie rośnie razem z historią. Pasek narzędzi szuka po adresie IP na serwerze, filtruje według wyniku, odświeża i eksportuje wszystkie pasujące strony, nie tylko widoczną.
+
+Każdą stronę zwraca `getCustomerLoginHistoryPage` (`src/modules/customer-account/use-cases/get-customer-login-history-page.ts`), którego strzeże `authorized()` i które czyta tylko wpisy samego wywołującego. Przyjmuje `page`, `pageSize`, opcjonalny `status` (`success` albo `failed`) i opcjonalne `search`, a odpowiada elementami strony i łączną liczbą. Czyta te same wpisy dziennika co [strona sesji](/docs/features/account#sesje) klienta, która też przegląda je stronami, po dziesięć.
 
 ## Dane sklepu
 
@@ -88,7 +105,7 @@ Zakładka Dane sklepu ma jedną kartę, **Dane sprzedawcy**, z `src/presentation
 
 ### Dane sprzedawcy
 
-`SettingsSellerDetailsCard` czyta `getAdminSellerDetailsQuery()`, a `SellerDetailsFields` (`seller-details-fields.tsx`) pokazuje te pola, każde z komunikatem pod spodem, gdy jest błędne:
+`SettingsStorePage` czyta `getAdminSellerDetailsQuery()`, a `SellerDetailsFields` (`seller-details-fields.tsx`) pokazuje te pola w stylu pól panelu, każde z oznaczeniem pola wymaganego, licznikiem tam, gdzie pole ma limit długości, podpowiedzią w dymku informacyjnym i komunikatem pod spodem, gdy jest błędne:
 
 | Pole                   | Co przyjmuje                                                                                                                 |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
@@ -102,7 +119,7 @@ Zakładka Dane sklepu ma jedną kartę, **Dane sprzedawcy**, z `src/presentation
 | **E-mail kontaktowy**  | Prawidłowy adres do 254 znaków. Podpowiedź mówi, że trafiają na niego też odpowiedzi na e-maile sklepu                       |
 | **Telefon kontaktowy** | Do 30 znaków, prawidłowy numer zapisany z numerem kierunkowym kraju, na przykład `+48 600 000 000`                           |
 
-Każde pole jest wymagane. Reguły to `storeSettingZodSchemas.sellerDetails` w `src/modules/store-setting/store-setting.zod.ts`. Sprawdzenia NIP i REGON to `isValidNip` i `isValidRegon` w `src/modules/_core/utils/polish-business-ids.ts`, których używa też NIP do faktury na firmę w kasie, a sprawdzenie telefonu to `isValidPhoneNumber` z `libphonenumber-js`. Nazwy krajów pochodzą z `formatCountryName` w `src/modules/_core/utils/country-name.ts`. **Zapisz** najpierw uruchamia ten sam schemat w przeglądarce (`toSellerDetailsSubmission` w `seller-details-form.utils.ts`), więc błędne pole jest oznaczone, zanim cokolwiek zostanie wysłane, a serwer jeszcze raz parsuje dane wejściowe.
+Każde pole jest wymagane. Reguły to `storeSettingZodSchemas.sellerDetails` w `src/modules/store-setting/store-setting.zod.ts`. Sprawdzenia NIP i REGON to `isValidNip` i `isValidRegon` w `src/modules/_core/utils/polish-business-ids.ts`, których używa też NIP do faktury na firmę w kasie, a sprawdzenie telefonu to `isValidPhoneNumber` z `libphonenumber-js`. Nazwy krajów pochodzą z `formatCountryName` w `src/modules/_core/utils/country-name.ts`. **Zapisz**, w nagłówku strony, najpierw uruchamia ten sam schemat w przeglądarce (`toSellerDetailsSubmission` w `seller-details-form.utils.ts`), więc błędne pole jest oznaczone, zanim cokolwiek zostanie wysłane, a serwer jeszcze raz parsuje dane wejściowe.
 
 **Zapisz** wywołuje `updateSellerDetails` (`src/modules/store-setting/use-cases/update-seller-details.ts`), które wymaga `settings: ["manage"]`, z danymi i czasem ich ostatniego zapisu jako `expectedUpdatedAt`. Przypadek użycia:
 
@@ -112,7 +129,7 @@ Każde pole jest wymagane. Reguły to `storeSettingZodSchemas.sellerDetails` w `
 4. odrzuca zapis z `CONFLICT`, gdy inny administrator zapisał dane po otwarciu formularza, a karta pokazuje komunikat **W międzyczasie ktoś zmienił dane sprzedawcy. Odśwież stronę, aby zobaczyć zmianę.**;
 5. publikuje `scheduleSellerDetailsInvalidation()`, a gdy datował stronę, także `scheduleContentPageInvalidation()`, i zapisuje w [dzienniku zdarzeń](/docs/features/audit-log) `settings.updated` z celem `seller-details` i zmienionymi polami, starymi i nowymi.
 
-Po powodzeniu karta wypełnia formularz zapisanymi danymi, odświeża `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` i `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS` i pokazuje komunikat **Zapisano dane sprzedawcy.** Unieważnienie wysyła klucz panelu do huba panelu, a klucz sklepu do huba sklepu, więc inne karty panelu oraz otwarte karty sklepu i kasy pokazują nowe dane bez przeładowania. Strony konta i dokumentacja, które nie śledzą unieważniania w czasie rzeczywistym, pokazują je przy następnym wczytaniu, a dwa formularze PDF zawierają je przy następnym otwarciu, bo ich `ETag` to chwila zapisu.
+Obok **Zapisz** nagłówek pokazuje **Niezapisane zmiany**, gdy któreś pole różni się od zapisanego, **Zapisywanie…** w trakcie żądania, a w pozostałych chwilach **Zapisano** z datą i godziną ostatniego zapisu, tak jak edytor stron treści; **Zapisz** działa tylko wtedy, gdy coś się zmieniło, a na czas zapisu pola są zablokowane. Po powodzeniu strona wypełnia formularz zapisanymi danymi, odświeża `STORE_SETTING_QUERY_KEYS.ADMIN.SELLER_DETAILS` i `STORE_SETTING_QUERY_KEYS.SELLER_DETAILS` i pokazuje komunikat **Zapisano dane sprzedawcy.** Unieważnienie wysyła klucz panelu do huba panelu, a klucz sklepu do huba sklepu, więc inne karty panelu oraz otwarte karty sklepu i kasy pokazują nowe dane bez przeładowania. Strony konta i dokumentacja, które nie śledzą unieważniania w czasie rzeczywistym, pokazują je przy następnym wczytaniu, a dwa formularze PDF zawierają je przy następnym otwarciu, bo ich `ETag` to chwila zapisu.
 
 ### Gdzie widać te dane
 
@@ -136,53 +153,61 @@ Niektóre miejsca nadal mają dane sprzedawcy poza ustawieniami i wymagają osob
 
 ## Dostawa
 
-Zakładka Dostawa ma dwie karty z `src/presentation/components/custom/pages/admin/settings/delivery/`. Reguły, które stosuje serwer, i to, co robi z nimi kasa, opisuje strona [Wysyłka i dostawa](/docs/features/shipping-and-delivery#zarządzanie-metodami-dostawy).
+Zakładka Dostawa to tabela danych metod dostawy z `src/presentation/components/custom/pages/admin/settings/delivery/`, zbudowana jak tabela atrybutów. Reguły, które stosuje serwer, i to, co robi z nimi kasa, opisuje strona [Wysyłka i dostawa](/docs/features/shipping-and-delivery#zarządzanie-metodami-dostawy).
 
 ### Metody dostawy
 
-`SettingsDeliveryMethodsCard` czyta `listAdminDeliveryMethodsQuery()` i wymienia niezarchiwizowane metody w kolejności, w jakiej oferuje je kasa. Każdy wiersz pokazuje ikonę typu, nazwę w języku panelu, typ i przewoźnika (na przykład **Kurier · InPost**), cenę albo **Bezpłatnie**, plakietkę **Ukryta** przy metodzie, której kasa nie oferuje, i **Przewoźnik wyłączony** przy metodzie, której przewoźnik jest wyłączony w D1. Strzałki przesuwają metodę w górę albo w dół; nowa kolejność zapisuje się od razu, komunikat brzmi **Zapisano kolejność w kasie.**, a kasa wymienia rodziny dostawy w tej kolejności.
+`DeliveryMethodsTable` czyta `listAdminDeliveryMethodsQuery()`. Nad tabelą stoją cztery karty statystyk: **Oferowane w kasie**, **Ukryte** i **Zarchiwizowane** liczą metody o tym statusie, każda z udziałem we wszystkich metodach, a kliknięcie karty zawęża do nich tabelę (drugie kliknięcie znów pokazuje wszystkie); **Darmowa dostawa od** pokazuje próg albo **Wyłączona**.
 
-**Dodaj metodę** otwiera `DeliveryMethodDialog` z tymi polami:
+Tabela wypisuje niezarchiwizowane metody w kolejności, w jakiej oferuje je kasa, a po nich zarchiwizowane. Jej kolumny to uchwyt przeciągania, nazwa metody w języku panelu (oraz nazwa w każdym języku, ukryta, dopóki nie włączy się jej w wyborze kolumn), rodzaj, przewoźnik, cena albo **Bezpłatnie**, status i ostatnia edycja (domyślnie ukryta). Status to **Oferowana**, **Ukryta** przy metodzie, której kasa nie oferuje, **Przewoźnik wyłączony** przy metodzie, której przewoźnik jest wyłączony w D1, albo **Zarchiwizowana**. Pasek narzędzi ma wyszukiwanie tabeli (po każdej z nazw, rodzaju, przewoźniku albo statusie), wybór kolumn, reset, odświeżanie i eksport, filtr statusu z pozycjami **Wszystkie statusy**, **Oferowana**, **Ukryta** i **Zarchiwizowana** oraz **Dodaj metodę**.
 
-| Pole                                        | Co przyjmuje                                                                                                                                                                                                                                                               |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rodzaj**                                  | **Kurier**, **Paczkomat** albo **Odbiór osobisty**                                                                                                                                                                                                                         |
-| **Przewoźnik**                              | Istniejący przewoźnik albo **Nowy przewoźnik** z polem **Nazwa przewoźnika** (do 60 znaków). Paczkomat zawsze korzysta z InPostu, a przy przewoźniku innym niż InPost okno ostrzega, że jego przesyłki nadaje się na jego stronie, a numer przesyłki zapisuje w zamówieniu |
-| **Nazwa po polsku**, **Nazwa po angielsku** | Obie wymagane, każda do 80 znaków; kupujący widzą nazwę w swoim języku                                                                                                                                                                                                     |
-| **Cena**                                    | W PLN; 0 oznacza dostawę bezpłatną                                                                                                                                                                                                                                         |
-| **Oferuj w kasie**                          | Wyłączone zostawia metodę na liście, ukrytą w kasie                                                                                                                                                                                                                        |
+Kolejność w kasie ustala się, przeciągając uchwyt metody na inny wiersz albo ustawiając fokus na uchwycie i naciskając strzałkę w górę lub w dół, jak w tabeli atrybutów (`useDeliveryMethodOrdering`). Upuszczenie zapisuje przez `reorderDeliveryMethods` nową kolejność niezarchiwizowanych metod, komunikat brzmi **Zapisano kolejność w kasie.**, a kasa wymienia rodziny dostawy w tej kolejności. Zmiana kolejności jest wyłączona, gdy tabela jest posortowana, przefiltrowana albo przeszukana, a uchwyt zarchiwizowanej metody jest wyłączony, bo nie ma ona miejsca w kasie.
 
-**Edytuj** otwiera to samo okno dla istniejącej metody, z jej rodzajem i przewoźnikiem pod tytułem, bo żadnego z nich nie da się zmienić, i proponuje nazwy, cenę i **Oferuj w kasie**. Przycisk **Archiwizuj** najpierw prosi o potwierdzenie: metoda znika z kasy, a zamówienia już z nią złożone ją zachowują. Zarchiwizowane metody są wymienione pod listą w sekcji **Zarchiwizowane metody**, każda z przyciskiem **Przywróć**, który przywraca metodę wyłączoną, więc wraca do oferty dopiero po włączeniu.
+Kliknięcie niezarchiwizowanej metody albo **Edytuj metodę** w menu jej wiersza otwiera na niej `DeliveryMethodSheet`; **Dodaj metodę** otwiera go pustego. Panel ma te pola, w sekcjach:
+
+| Pole                                        | Co przyjmuje                                                                                                                                                                                                                                                                                      |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rodzaj**                                  | **Kurier**, **Paczkomat** albo **Odbiór osobisty**; tylko przy dodawaniu                                                                                                                                                                                                                          |
+| **Przewoźnik**                              | Istniejący przewoźnik albo **Nowy przewoźnik** z polem **Nazwa przewoźnika** (do 60 znaków); tylko przy dodawaniu. Paczkomat zawsze korzysta z InPostu, a przy przewoźniku innym niż InPost panel ostrzega, że jego przesyłki nadaje się na jego stronie, a numer przesyłki zapisuje w zamówieniu |
+| **Nazwa po polsku**, **Nazwa po angielsku** | Obie wymagane, każda do 80 znaków, z licznikami; kupujący widzą nazwę w swoim języku                                                                                                                                                                                                              |
+| **Cena**                                    | W PLN; 0 oznacza dostawę bezpłatną                                                                                                                                                                                                                                                                |
+| **Status**                                  | **Oferowana** albo **Ukryta**; ukryta metoda zostaje na liście, poza kasą                                                                                                                                                                                                                         |
+
+Przy edycji panel pokazuje pod tytułem rodzaj i przewoźnika metody, bo żadnego z nich nie da się zmienić. Błędne pole ma komunikat pod spodem, ze ścieżek zod, które sprawdza też serwer.
+
+Menu wiersza niezarchiwizowanej metody ma też **Archiwizuj metodę**, która najpierw prosi o potwierdzenie: metoda znika z kasy, a zamówienia już z nią złożone ją zachowują. Menu zarchiwizowanej metody ma **Przywróć metodę**, która przywraca ją wyłączoną, więc wraca do oferty dopiero po włączeniu.
 
 Odrzucona zmiana pojawia się jako komunikat w języku panelu: druga oferowana metoda z paczkomatem albo z odbiorem osobistym, wyłączenie albo zarchiwizowanie ostatniej oferowanej metody (komunikat odsyła zamiast tego do przełącznika sprzedaży na pulpicie), paczkomat z innym przewoźnikiem oraz edycja metody zmienionej w międzyczasie, z prośbą o odświeżenie strony. `useDeliveryMethodActions` po każdej zmianie odświeża listę w ustawieniach i listę w kasie, a każda zmiana dociera do innych kart panelu i sklepu oraz do otwartych kas przez unieważnianie w czasie rzeczywistym.
 
 ### Darmowa dostawa
 
-`SettingsFreeDeliveryCard` czyta `getAdminFreeDeliveryQuery()`. **Oferuj darmową dostawę** włącza i wyłącza próg, a **Darmowa dostawa od** przyjmuje w PLN wartość produktów, od której dostawa nic nie kosztuje, liczoną po kodzie rabatowym i bez dostawy. **Zapisz** wywołuje `setFreeDeliveryThreshold`, bez wartości, gdy przełącznik jest wyłączony, i pokazuje komunikat **Zapisano darmową dostawę.**; przy włączonym przełączniku i braku wartości większej od zera pole prosi o nią zamiast zapisu. Kasa pokazuje wtedy dostawę jako darmową, gdy koszyk osiągnie tę wartość, a wcześniej podaje kupującym, ile im brakuje; otwarta kasa od razu śledzi zmianę. Zobacz [Wysyłka i dostawa: Darmowa dostawa](/docs/features/shipping-and-delivery#darmowa-dostawa).
+**Darmowa dostawa**, w nagłówku strony, otwiera `FreeDeliverySheet`, który czyta `getAdminFreeDeliveryQuery()`. Jego pole **Darmowa dostawa** przyjmuje **Oferowana** albo **Nieoferowana**, a **Darmowa dostawa od** przyjmuje w PLN wartość produktów, od której dostawa nic nie kosztuje, liczoną po kodzie rabatowym i bez dostawy. **Zapisz** wywołuje `setFreeDeliveryThreshold`, bez wartości, gdy darmowa dostawa nie jest oferowana, pokazuje komunikat **Zapisano darmową dostawę.** i zamyka panel; gdy jest oferowana, a brakuje wartości większej od zera, pole prosi o nią zamiast zapisu. Kasa pokazuje wtedy dostawę jako darmową, gdy koszyk osiągnie tę wartość, a wcześniej podaje kupującym, ile im brakuje; otwarta kasa od razu śledzi zmianę. Zobacz [Wysyłka i dostawa: Darmowa dostawa](/docs/features/shipping-and-delivery#darmowa-dostawa).
 
 Każda zmiana na tej zakładce trafia do [dziennika zdarzeń](/docs/features/audit-log) w kategorii `settings`.
 
 ## Zespół
 
-Zakładka Zespół ma dwie karty z `src/presentation/components/custom/pages/admin/settings/team/`. To tu istniejące konto klienta dostaje dostęp do panelu i tu ten dostęp się odbiera. Własne endpointy administracyjne Better Auth nie zmieniają już ról, więc poza edycją D1 nie ma na to innej drogi (zobacz [Model bezpieczeństwa](/docs/architecture/security-model#dostęp-administracyjny)).
+Zakładka Zespół to tabela danych kont z dostępem do panelu z `src/presentation/components/custom/pages/admin/settings/team/`. To tu istniejące konto klienta dostaje dostęp do panelu i tu ten dostęp się odbiera. Własne endpointy administracyjne Better Auth nie zmieniają już ról, więc poza edycją D1 nie ma na to innej drogi (zobacz [Model bezpieczeństwa](/docs/architecture/security-model#dostęp-administracyjny)).
 
 ### Dostęp do panelu
 
-`SettingsTeamCard` czyta `listAdminTeamQuery()` i wypisuje każde konto z rolą `admin`, w kolejności nazw. Każdy wiersz pokazuje imię i nazwisko, plakietkę **Ty** we własnym wierszu zalogowanej osoby, plakietkę **Dwuskładnikowe: włączone** albo **Dwuskładnikowe: wyłączone**, adres e-mail, sposób logowania (hasło, Google, oba albo **Brak metody logowania**) i ostatnie logowanie albo **Brak zapisanych logowań**. Tam, gdzie obowiązuje `isAdminTwoFactorRequired()`, konto bez uwierzytelniania dwuskładnikowego ma uwagę, że trzeba je włączyć przed otwarciem panelu, bo `requireAdmin` najpierw odsyła takie konto na `/admin/security`.
+`TeamTable` czyta `listAdminTeamQuery()`, czyli każde konto z rolą `admin`, w kolejności nazw. Cztery karty statystyk liczą **Konta z dostępem**, te z **Dwuskładnikowe włączone** i **Dwuskładnikowe wyłączone** oraz te z **Logowanie przez Google**; kliknięcie zawęża do nich tabelę. Tam, gdzie obowiązuje `isAdminTwoFactorRequired()`, karta **Dwuskładnikowe wyłączone** mówi, że panel otworzy się tym kontom dopiero po włączeniu, bo `requireAdmin` najpierw odsyła takie konto na `/admin/security`.
+
+Kolumny tabeli to imię i nazwisko z plakietką **Ty** we własnym wierszu zalogowanej osoby, adres e-mail, uwierzytelnianie dwuskładnikowe (**Włączone** albo **Wyłączone**, na czerwono tam, gdzie jest wymagane), sposób logowania (hasło, Google, oba albo **Brak metody logowania**) i ostatnie logowanie albo **Brak zapisanych logowań**. Pasek narzędzi ma wyszukiwanie tabeli, wybór kolumn, reset, odświeżanie i eksport oraz **Nadaj dostęp**.
 
 `listAdminTeam` (`src/modules/user/use-cases/list-admin-team.ts`) wymaga `user: ["list"]`. `listAdminTeamRows` w `src/modules/user/user.team.server.ts` czyta metody logowania z wierszy `account` konta (`credential` i `google`), a ostatnie logowanie z najnowszego wpisu `auth.login`, jaki dziennik zdarzeń ma dla tego konta, więc konto, którego wpisy usunęło czyszczenie po okresie przechowywania, nie pokazuje żadnego. Odpowiedź zawiera też `recentSignIn`, czyli to, czy sesja wywołującego jest młodsza niż 24 godziny (`isRecentSignIn` w `auth.middleware.ts`).
 
-**Nadaj dostęp** jest w nagłówku karty, a każdy wiersz poza własnym ma **Odbierz dostęp**. Własny wiersz go nie ma i mówi, że ten dostęp może zmienić tylko inna osoba z dostępem do panelu. Dopóki `recentSignIn` jest fałszywe, karta mówi, że ostatnie logowanie było ponad 24 godziny temu, oba przyciski są wyłączone, a **Zaloguj się ponownie** wylogowuje i otwiera stronę logowania z `redirect` ustawionym na zakładkę Zespół, więc następne logowanie do niej wraca.
+Menu każdego wiersza ma **Odbierz dostęp**. We własnym wierszu ta pozycja jest wyłączona, z uwagą, że ten dostęp może zmienić tylko inna osoba z dostępem do panelu. Dopóki `recentSignIn` jest fałszywe, uwaga nad tabelą mówi, że ostatnie logowanie było ponad 24 godziny temu, **Nadaj dostęp** i **Odbierz dostęp** są wyłączone, a **Zaloguj się ponownie** wylogowuje i otwiera stronę logowania z `redirect` ustawionym na zakładkę Zespół, więc następne logowanie do niej wraca.
 
 ### Nadanie dostępu
 
-**Nadaj dostęp** otwiera `AddAdminDialog`. Jego pole, **Adres e-mail lub imię i nazwisko**, szuka od trzech znaków, 300 ms po ostatnim klawiszu, przez `searchTeamCandidatesQuery(search)`, które wywołuje `searchTeamCandidates` (`user: ["list"]`). Wyszukiwanie obejmuje tylko konta klientów, dopasowuje fragment adresu e-mail albo imienia i nazwiska bez względu na wielkość liter i zwraca najwyżej osiem kont. Konto z niepotwierdzonym adresem ma oznaczenie **Adres e-mail niepotwierdzony**, a zablokowane **Konto zablokowane**; żadnego z nich nie da się wybrać, a uwaga pod listą wyjaśnia dlaczego. Gdy nic nie pasuje, okno mówi, że ta osoba musi najpierw mieć w sklepie konto z potwierdzonym adresem.
+**Nadaj dostęp** otwiera `AddAdminSheet`. Jego pole, **Adres e-mail lub imię i nazwisko**, szuka od trzech znaków, 300 ms po ostatnim klawiszu, przez `searchTeamCandidatesQuery(search)`, które wywołuje `searchTeamCandidates` (`user: ["list"]`). Wyszukiwanie obejmuje tylko konta klientów, dopasowuje fragment adresu e-mail albo imienia i nazwiska bez względu na wielkość liter i zwraca najwyżej osiem kont. Konto z niepotwierdzonym adresem ma oznaczenie **Adres e-mail niepotwierdzony**, a zablokowane **Konto zablokowane**; żadnego z nich nie da się wybrać, a uwaga pod listą wyjaśnia dlaczego. Gdy nic nie pasuje, panel mówi, że ta osoba musi najpierw mieć w sklepie konto z potwierdzonym adresem. Pod wyszukiwaniem sekcja **Jak działa dostęp do panelu** wymienia zasady prostymi słowami: dostęp można nadać tylko kontu z potwierdzonym adresem e-mail; nikt nie zmienia własnego dostępu, więc sklep zawsze ma osobę z dostępem do panelu; zmiana wymaga logowania z ostatnich 24 godzin; odebranie dostępu wylogowuje konto na wszystkich urządzeniach; konta z dostępem do panelu nie da się usunąć, dopóki ten dostęp nie zostanie odebrany; a każda zmiana trafia do dziennika zdarzeń razem z informacją, z którego konta ją wprowadzono.
 
-**Wybierz** przechodzi do potwierdzenia, które wymienia, co konto będzie mogło: przeglądać i zmieniać wszystkie zamówienia, zwracać płatności i nadawać przesyłki; edytować produkty, kolekcje, strony i kody rabatowe oraz wstrzymywać sprzedaż; przeglądać dane wszystkich klientów i usuwać ich konta; zmieniać ustawienia sklepu oraz nadawać i odbierać dostęp do panelu. Tam, gdzie uwierzytelnianie dwuskładnikowe jest wymagane, a konto jeszcze go nie używa, mówi też, że trzeba je włączyć przed otwarciem panelu. **Wstecz** wraca do wyszukiwania, a **Nadaj dostęp** wywołuje `grantAdminAccess`, pokazuje komunikat o nadaniu dostępu z imieniem i nazwiskiem z konta i zamyka okno.
+**Wybierz** przenosi panel do potwierdzenia, które wymienia, co konto będzie mogło: przeglądać i zmieniać wszystkie zamówienia, zwracać płatności i nadawać przesyłki; edytować produkty, kolekcje, strony i kody rabatowe oraz wstrzymywać sprzedaż; przeglądać dane wszystkich klientów i usuwać ich konta; zmieniać ustawienia sklepu oraz nadawać i odbierać dostęp do panelu. Tam, gdzie uwierzytelnianie dwuskładnikowe jest wymagane, a konto jeszcze go nie używa, mówi też, że trzeba je włączyć przed otwarciem panelu. **Wstecz** wraca do wyszukiwania, a **Nadaj dostęp** wywołuje `grantAdminAccess`, pokazuje komunikat o nadaniu dostępu z imieniem i nazwiskiem z konta i zamyka panel.
 
 ### Odebranie dostępu
 
-**Odbierz dostęp** otwiera `RemoveAdminDialog`, który mówi, że konto klienta pozostanie, ale nie otworzy już panelu i od razu zostanie wylogowane na wszystkich urządzeniach, a dostęp można później nadać ponownie. Jego **Odbierz dostęp** wywołuje `revokeAdminAccess` i pokazuje komunikat o odebraniu dostępu z imieniem i nazwiskiem z konta.
+**Odbierz dostęp** prosi o potwierdzenie w oknie potwierdzenia panelu, które mówi, że konto klienta pozostanie, ale nie otworzy już panelu i od razu zostanie wylogowane na wszystkich urządzeniach, a dostęp można później nadać ponownie. Jego **Odbierz dostęp** wywołuje `revokeAdminAccess` i pokazuje komunikat o odebraniu dostępu z imieniem i nazwiskiem z konta.
 
 ### Zasady
 
@@ -203,10 +228,6 @@ Zakładka Zespół ma dwie karty z `src/presentation/components/custom/pages/adm
 Każda zmiana to jedno warunkowe `UPDATE` w `user.team.server.ts`. `grantAdminRole` ustawia `role` na `admin` tylko wtedy, gdy konto nadal jest potwierdzonym, niezablokowanym kontem klienta. `revokeAdminRole` ustawia ją z powrotem na `customer` tylko wtedy, gdy konto nadal ma dostęp do panelu, a osoba wprowadzająca zmianę jest kimś innym i sama wciąż ma tę rolę, więc ta osoba zawsze zostaje, a dwie osoby odbierające sobie nawzajem dostęp w tej samej chwili nie mogą obie odnieść skutku. Gdy zapis niczego nie zmienia, przypadek użycia czyta konto jeszcze raz, żeby podać powód. Po odebraniu dostępu `revokeAdminRole` usuwa wiersze `session` konta, więc zostaje ono wylogowane wszędzie; sesje są czytane z D1 przy każdym żądaniu, więc nowa rola i tak obowiązuje od następnego żądania.
 
 Po powodzeniu oba wywołują `scheduleAdminCustomersInvalidation()`, które odświeża w każdej karcie panelu `USER_QUERY_KEYS.ADMIN.TEAM` razem z listą klientów, i zapisują `team.admin_granted` albo `team.admin_revoked` w [dzienniku zdarzeń](/docs/features/audit-log#dostęp-do-panelu) w kategorii `settings`. `useTeamAccess` odświeża zespół i listę klientów po każdej zmianie, a także po odmowie, więc sesja, która zestarzała się przy otwartej stronie, przywraca uwagę o logowaniu. Odmowa to komunikat w języku panelu.
-
-### Jak działa dostęp do panelu
-
-`SettingsTeamRulesCard` wymienia te zasady prostymi słowami: dostęp można nadać tylko kontu z potwierdzonym adresem e-mail; nikt nie zmienia własnego dostępu, więc sklep zawsze ma osobę z dostępem do panelu; zmiana wymaga logowania z ostatnich 24 godzin; odebranie dostępu wylogowuje konto na wszystkich urządzeniach; konta z dostępem do panelu nie da się usunąć, dopóki ten dostęp nie zostanie odebrany; a każda zmiana trafia do dziennika zdarzeń razem z informacją, z którego konta ją wprowadzono.
 
 ## Wygląd okien
 

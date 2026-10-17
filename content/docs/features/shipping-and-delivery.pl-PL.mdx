@@ -28,7 +28,7 @@ InPostem jest tylko przewoźnik z `internal_code` równym `inpost` (`INPOST_COUR
 | `type`             | `locker \| courier \| in_store`, not null                                                                                                            |
 | `api_service_code` | not null; identyfikator usługi przewoźnika, obecnie wyłącznie informacyjny                                                                           |
 | `rank`             | całkowita, domyślnie `0`; miejsce metody na liście w kasie                                                                                           |
-| `is_active`        | boolean, domyślnie `true`; **Oferuj w kasie** w ustawieniach                                                                                         |
+| `is_active`        | boolean, domyślnie `true`; **Status** metody w ustawieniach, **Oferowana** albo **Ukryta**                                                           |
 | `archived_at`      | nullowalny znacznik czasu; ustawiony, dopóki metoda jest zarchiwizowana                                                                              |
 
 `api_service_code` jest zapisywany, ale nigdy nie czytany. Metoda dodana w ustawieniach dostaje `<internal_code przewoźnika>_<type>`. Przesyłka InPost nadana z panelu bierze usługę ShipX z `type` metody: `inpost_locker_standard` dla `locker` i `inpost_courier_standard` dla `courier` (zobacz [InPost](/docs/integrations/inpost#przesyłki-przez-shipx)).
