@@ -90,7 +90,7 @@ interface CustomerAccountOverviewStats {
 }
 
 interface CustomerAccountActivityItem {
-  readonly actionKey: string
+  readonly actionKey: "cartItemAdded" | "loginFailed" | "loginSuccess" | "logout" | "orderDelivered" | "orderPlaced" | "orderShipped"
   readonly createdAt: Date
   readonly params: Record<string, string>
 }

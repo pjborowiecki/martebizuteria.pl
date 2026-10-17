@@ -27,7 +27,7 @@ const middleware = vi.hoisted(() => {
 })
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
-  RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
+  RATE_LIMITS: { SENSITIVE: { max: 3, window: 60 } },
   authorized: () => ({}),
   withRateLimit: (...args: unknown[]) => {
     middleware.rateLimitCalls.push(args)
@@ -97,7 +97,7 @@ describe("createUserAddress", () => {
   })
 
   it("rate limits the sensitive address creation endpoint", () => {
-    expect(middleware.rateLimitCalls).toContainEqual(["create-user-address", { limit: 5, windowSeconds: 60 }])
+    expect(middleware.rateLimitCalls).toContainEqual(["create-user-address", { max: 3, window: 60 }])
   })
 
   it.each([

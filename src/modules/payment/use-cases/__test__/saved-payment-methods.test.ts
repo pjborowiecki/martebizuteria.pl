@@ -19,7 +19,7 @@ const stripeCalls = vi.hoisted(() => ({
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
-  RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
+  RATE_LIMITS: { SENSITIVE: { max: 3, window: 60 } },
   authorized: () => ({}),
   withRateLimit: () => ({}),
 }))
