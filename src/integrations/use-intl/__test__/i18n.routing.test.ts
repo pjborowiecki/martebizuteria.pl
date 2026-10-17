@@ -32,7 +32,7 @@ describe("locale routing", () => {
     expect(resolveLocale(currentRequest())).toStrictEqual({ setCookie: { name: "marte_locale", value: "pl-PL" } })
   })
 
-  it.each(["/api/auth/get-session", "/rpc/checkout", "/_serverFn/checkout", "/assets/messages.js"])(
+  it.each(["/api/auth/get-session", "/rpc/checkout", "/_serverFn/checkout", "/assets/messages.js", "/forms/formularz_zwrotu.pdf"])(
     "does not prefix or reset locale on %s",
     (pathname) => {
       const url = new URL(pathname, "https://store.test")

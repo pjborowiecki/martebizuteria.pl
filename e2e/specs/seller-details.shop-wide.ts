@@ -1,5 +1,7 @@
 import { type Page } from "@playwright/test"
 
+import { readPdf } from "~/src/platform/testing/lib/pdf"
+
 import { STORAGE_STATE } from "../data/storage-state"
 import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
 import { BasePage } from "../pages"
@@ -63,5 +65,32 @@ test.describe("store details settings", { lock: "shop-wide" }, () => {
 
     await expect(terms).toContainText(CHANGED.street)
     await expect(terms.getByRole("link", { name: CHANGED.phone })).toHaveAttribute("href", "tel:+48600700800")
+  })
+
+  test("the withdrawal and complaint forms are made from the seller details saved in Settings, and a saved change replaces a cached copy", async ({
+    page,
+    request,
+  }) => {
+    const published = await request.get("/forms/formularz_zwrotu.pdf")
+    const etag = String(published.headers()["etag"])
+
+    expect(published.headers()).toMatchObject({
+      "content-disposition": 'inline; filename="formularz_zwrotu.pdf"',
+      "content-type": "application/pdf",
+    })
+    expect((await readPdf(await published.body())).lines.join(" ")).toContain(`${PUBLISHED.street},`)
+    expect((await request.get("/forms/formularz_zwrotu.pdf", { headers: { "if-none-match": etag } })).status()).toBe(304)
+
+    await new BasePage(page).open(STORE_SETTINGS)
+    await saveSellerDetails(page, CHANGED)
+
+    const changed = await request.get("/forms/formularz_zwrotu.pdf", { headers: { "if-none-match": etag } })
+    const complaint = await request.get("/forms/formularz_reklamacji.pdf")
+
+    expect(changed.status()).toBe(200)
+    expect(changed.headers()["etag"]).not.toBe(etag)
+    expect((await readPdf(await changed.body())).lines.join(" ")).toContain(`${CHANGED.street},`)
+    expect(complaint.headers()["content-disposition"]).toBe('inline; filename="formularz_reklamacji.pdf"')
+    expect((await readPdf(await complaint.body())).lines.join(" ")).toContain(`${CHANGED.street},`)
   })
 })

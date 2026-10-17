@@ -30,11 +30,12 @@ describe("production address", () => {
     expect(filesMatching(/\bAPP_URL\b/u)).toStrictEqual(["lib/image.ts", "lib/seo.ts", DEFINING_FILE, "routes/__root.tsx"])
   })
 
-  it("leaves APP_DOMAIN to the deployment host list and the sender check", () => {
+  it("leaves APP_DOMAIN to the deployment host list, the sender check and the address printed on the PDF forms", () => {
     expect(filesMatching(/\bAPP_DOMAIN\b/u)).toStrictEqual([
       "integrations/resend/resend.sender.ts",
       "modules/_core/constants/api.ts",
       DEFINING_FILE,
+      "presentation/pdf/form-document.ts",
     ])
   })
 

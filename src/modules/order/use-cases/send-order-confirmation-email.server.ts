@@ -91,7 +91,7 @@ const buildOrderConfirmationEmailPayload = async (
   const { orderNumber } = placedOrder
 
   return {
-    attachments: [await loadWithdrawalFormAttachment(origin), ...inlineImages.attachments],
+    attachments: [await loadWithdrawalFormAttachment(seller, origin), ...inlineImages.attachments],
     email: placedOrder.email,
     locale,
     react: createElement(OrderConfirmation, {
