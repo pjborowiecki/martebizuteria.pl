@@ -1,6 +1,6 @@
 ---
 title: "Add an admin page"
-description: "Add a route to the admin console: the file route, the guard, the header, the sidebar entry, message namespaces and query prefetching."
+description: "Add a route to the admin console: the file route, the guard, the header, the sidebar entry, message namespaces, query prefetching, live updates and display formatting."
 ---
 
 The admin console lives under `/admin` and is a separate visual shell from the storefront: light theme only, a dark sidebar, its own stylesheet and its own realtime subscription. `src/routes/admin.tsx` is the layout every admin page inherits; everything you add slots into it.
@@ -32,13 +32,15 @@ export const Route = createFileRoute("/admin")({
 
 Inherited for free by every child route:
 
-- **The guard.** `requireAdmin` from `src/integrations/better-auth/auth.routes.ts` reads the session with `context.queryClient.query(getCurrentSessionQuery)`, re-checking it on every real navigation into `/admin`. It redirects to `/auth/sign-in` (with the requested path in `?redirect`) when there is no session, to `/account/overview` when the user is not an admin, and to `/admin/security` when the admin has not turned on two-factor authentication. It resolves to `{ user }`, which becomes route context, so a page reads the signed-in admin with `Route.useRouteContext().user`. This protects the _page_, not the data — see [Server functions](/docs/guides/server-functions).
+- **The guard.** `requireAdmin` from `src/integrations/better-auth/auth.routes.ts` reads the session with `context.queryClient.query(getCurrentSessionQuery)`, re-checking it on every real navigation into `/admin`. It redirects to `/auth/sign-in` (with the requested path in `?redirect`) when there is no session, to `/account/overview` when the user is not an admin, and to `/admin/security` when the admin has not turned on two-factor authentication. That last redirect happens only in production builds and in the `test` build the E2E suite runs against (`isAdminTwoFactorRequired()` in `src/integrations/better-auth/auth.access.ts`); in development and preview two-factor authentication is optional. It resolves to `{ user }`, which becomes route context, so a page reads the signed-in admin with `Route.useRouteContext().user`. This protects the _page_, not the data — see [Server functions](/docs/guides/server-functions).
 - **The stylesheet.** `src/presentation/styles/admin.css`, loaded as a route `link`.
 - **The light theme.** `useAdminLightTheme()` removes the `dark` class on mount and restores the visitor's storefront preference on unmount.
-- **The realtime subscription.** `useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })` opens the admin WebSocket and invalidates any query whose key prefix appears in a published message.
+- **The realtime subscription.** `useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })` opens the admin WebSocket. When the server publishes query keys, it invalidates only cached queries covered by the prefixes listed in `ADMIN_REALTIME_QUERY_PREFIXES` — see step 6.
 - **The sidebar.** `AdminSidebar`, with its open/closed state restored from the `sidebar_state` cookie before hydration.
 - **The message namespaces.** `pages.admin` and `components.datagrid`, so `t("nav.orders")` works anywhere inside.
-- **The frame.** A `div[data-admin-main]` that is `h-svh`, `flex flex-col` and `overflow-hidden`. Your page owns the scrolling inside it.
+- **The frame.** A `div[data-admin-main]` with `flex min-h-svh min-w-0 flex-col`. From `lg` up it is also `h-svh` and `overflow-hidden`, so the header stays in place and your page owns the scrolling inside it. Below `lg` the frame grows with its content and the whole document scrolls.
+
+A route file whose name starts with `admin_.` is not nested under this layout. `admin_.orders.$orderId.summary.tsx`, the printable order summary, gets no sidebar, no `admin.css`, no realtime subscription and none of the layout's namespaces, so it declares its own `beforeLoad: requireAdmin` and `staticData.namespaces`.
 
 ## 1. Create the route file
 
@@ -54,7 +56,8 @@ const AdminOverviewPage = (): JSX.Element => {
     <>
       <AdminHeader title={t("dashboard.title")} description={t("dashboard.description")} />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-8">
+      <div className={cn(ADMIN_PAGE_BODY_CLASS, "space-y-4 lg:space-y-6")}>
+        <DashboardSalesSwitch />
         <DashboardOverviewContent />
       </div>
     </>
@@ -64,16 +67,21 @@ const AdminOverviewPage = (): JSX.Element => {
 export const Route = createFileRoute("/admin/overview")({
   component: AdminOverviewPage,
   loader: ({ context }) =>
-    context.queryClient.query({
-      ...getDashboardSnapshotQuery({ locale: context.locale }),
-      staleTime: "static",
-    }),
+    Promise.all([
+      context.queryClient.query({
+        ...getDashboardSnapshotQuery({
+          locale: context.locale,
+        }),
+        staleTime: "static",
+      }),
+      context.queryClient.query(getAdminSalesStatusQuery()),
+    ]),
   shouldReload: false,
   staleTime: ADMIN_DASHBOARD_QUERY_STALE_MS,
 })
 ```
 
-The `<div className="min-h-0 flex-1 overflow-y-auto p-8">` is the pattern: the header is sticky, the body scrolls. `min-h-0` is required — without it the flex child refuses to shrink and the page scrolls as a whole.
+The body wrapper is the pattern. `ADMIN_PAGE_BODY_CLASS` lives with the other admin class strings in `src/presentation/components/custom/pages/admin/_styles/admin-layout.styles.ts` and is `min-h-0 flex-1 p-4 sm:p-6 lg:overflow-y-auto lg:p-8`: from `lg` up the header stays in place and the body scrolls; below `lg` the document scrolls. `min-h-0` is required — without it the flex child cannot shrink below its content, so on `lg` screens the body overflows the frame instead of scrolling. A page whose body is a data grid uses `ADMIN_CATALOG_PAGE_BODY_CLASS` from the same file instead, a flex column that does not scroll itself because the grid scrolls inside its own card — see [Add a data table](/docs/guides/add-a-data-table).
 
 `shouldReload: false` with a `staleTime` stops the loader from re-running on every navigation back to the page. Use the module's own stale-time constant rather than a literal.
 
@@ -85,36 +93,26 @@ Every path the code links to comes from the `ROUTES` object, sorted alphabetical
 ADMIN_COUPONS: "/admin/coupons",
 ```
 
-Nothing hard-codes a URL string. Links use `LocalizedLink`, whose `to` is typed as `FileRouteTypes["to"]` from the generated route tree, so a path that does not exist will not type check.
+Do not hard-code a URL string. Links use `LocalizedLink`, whose `to` is typed as `FileRouteTypes["to"]` from the generated route tree, so a path that does not exist will not type check.
 
 ## 3. Add the header
 
-`AdminHeader` from `src/presentation/components/custom/pages/admin/admin-header.tsx` renders the sticky 64px bar. Its props:
+`AdminHeader` from `src/presentation/components/custom/pages/admin/admin-header.tsx` renders the dark top bar. It is at least 56px tall on phones and 64px from `sm`; from `lg` up it is a fixed 64px and sticks to the top of the frame. Its props:
 
-| Prop          | Effect                                                                  |
-| ------------- | ----------------------------------------------------------------------- |
-| `title`       | The page heading. A string, or a node for a composed title              |
-| `description` | A second line under the title                                           |
-| `breadcrumbs` | `{ href?, label }[]`, rendered before the title on `sm` and up          |
-| `actions`     | Buttons on the right of the bar                                         |
-| `backHref`    | Replaces the sidebar trigger with a back arrow — use it on detail pages |
-| `tabs`        | A node rendered in a second row under the bar                           |
+| Prop          | Effect                                                                         |
+| ------------- | ------------------------------------------------------------------------------ |
+| `title`       | The page heading. A string, or a node for a composed title                     |
+| `description` | A second line under the title, hidden below `sm`                               |
+| `breadcrumbs` | `{ href?, label }[]`, rendered before the title from `lg` up only              |
+| `actions`     | Buttons on the right of the bar                                                |
+| `backHref`    | Replaces the sidebar trigger with a back arrow — use it on detail pages        |
+| `tabs`        | A node rendered under the bar, normally `AdminHeaderTabs` with tab links in it |
 
-`src/routes/admin.coupons.tsx` shows breadcrumbs:
+`src/routes/admin.content.index.tsx` shows breadcrumbs:
 
 ```tsx
-const bcList = useMemo(
-  () => [
-    {
-      href: ROUTES.ADMIN,
-      label: t("nav.dashboard"),
-    } satisfies {
-      href: LocalizedTo
-      label: string
-    },
-  ],
-  [t],
-)
+const t = useTranslations("pages.admin")
+const breadcrumbs = useMemo(() => [{ href: ROUTES.ADMIN, label: t("nav.dashboard") }], [t])
 ```
 
 Memoise `actions`, `tabs` and `breadcrumbs` — they are nodes and arrays passed on every render.
@@ -132,7 +130,7 @@ export const Route = createFileRoute("/admin/catalog")({
 })
 ```
 
-`src/routes/admin.catalog.categories.tsx` contributes the header and the tab strip, and its `index` child renders only the table:
+`src/routes/admin.catalog.categories.tsx` contributes the header, the tab strip and the categories namespaces, and its `index` child renders only the table:
 
 ```tsx
 const CategoriesSectionLayoutRoute = (): JSX.Element => {
@@ -151,7 +149,7 @@ const CategoriesSectionLayoutRoute = (): JSX.Element => {
 }
 ```
 
-`CatalogTabs` in `src/presentation/components/custom/pages/admin/catalog/catalog-tabs.tsx` takes `active: "products" | "categories" | "collections" | "attributes"`. Adding a fifth catalog section means adding a `TabLink` there and widening that union.
+`CatalogTabs` in `src/presentation/components/custom/pages/admin/catalog/catalog-tabs.tsx` takes `active: "products" | "categories" | "collections" | "attributes"`. Adding a fifth catalog section means adding an `AdminHeaderTabLink` there and widening that union. `AdminHeaderTabs` and `AdminHeaderTabLink` (`{ href, isActive, label }`) live in `src/presentation/components/custom/pages/admin/admin-header-tabs.tsx`; `MarketingTabs` in `.../admin/marketing/marketing-tabs.tsx` builds the marketing section's strip from them the same way.
 
 ## 5. Prefetch the queries
 
@@ -175,11 +173,40 @@ export const Route = createFileRoute("/admin/catalog/categories/")({
 
 The router context is created in `src/router.tsx` and carries `queryClient` and `imagePrefetchService`; the root route's `beforeLoad` adds `locale` and `internalPathname`.
 
-## 6. Declare the message namespaces
+## 6. Keep the data live
 
-A route lists the namespaces its subtree needs in `staticData.namespaces`. `getRouteNamespaces` in `src/integrations/use-intl/i18n.messages.ts` unions them across all matched routes and adds the root namespaces, and `TranslationsProvider` loads exactly that set. A namespace you forget to declare makes `useTranslations` throw at render time, not at build time. See [i18n messages](/docs/guides/i18n-messages).
+A change made in one admin tab reaches the other open admin tabs through the realtime hub, but only for keys the layout subscribes to. A published key invalidates the cached queries under it when it falls under one of the prefixes in `ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`); a broader key invalidates the listed prefixes beneath it; any other key is ignored. When the page shows a feature whose data should refresh without a reload:
 
-## 7. Add the sidebar entry
+- add the feature's admin key prefix, such as `NEWSLETTER_QUERY_KEYS.ADMIN.PAGE`, to `ADMIN_REALTIME_QUERY_PREFIXES`;
+- publish it from the server after the write, with `scheduleRealtimeInvalidation({ admin: [...] })` from `realtime-invalidation.publish.server.ts` or one of the `schedule...Invalidation` helpers in `realtime-invalidation.catalog.server.ts`.
+
+The tab that made the change still invalidates its own cache in the mutation hook's `onSettled`. See [Realtime invalidation](/docs/architecture/realtime-invalidation).
+
+## 7. Declare the message namespaces
+
+A route lists the namespaces its subtree needs in `staticData.namespaces`. `getRouteNamespaces` in `src/integrations/use-intl/i18n.messages.ts` unions them across all matched routes and adds the root namespaces, and `TranslationsProvider` loads exactly that set. A namespace you forget to declare is not caught at build time, and it does not throw either: use-intl reports a `MISSING_MESSAGE` error in the console and renders `<namespace>.<key>` (for example `pages.admin.customers.title`) in place of the text. Each file in `messages/<locale>/` is one namespace; a nested key inside a loaded file, such as `pages.admin.coupons`, needs no declaration of its own. See [i18n messages](/docs/guides/i18n-messages).
+
+## 8. Format dates, numbers and prices
+
+Format with the admin's display preferences — a format locale and a time zone, saved on the user or detected from the request — not with the UI language. The hooks live in `src/hooks/use-display-format.ts`:
+
+- `useFormatter()` — a use-intl formatter (`createFormatter`) bound to the format locale and the time zone. Use it instead of use-intl's own `useFormatter` from `use-intl/react`.
+- `useFormatLocale()` — the format locale string, for `formatPrice(amountInMinorUnits, currency, locale)` from `src/modules/_core/utils/currency.ts` and for `toLocaleString`.
+- `useDisplayTimeZone()` — the IANA time zone, for day boundaries and other date arithmetic.
+
+From `src/presentation/components/custom/pages/admin/orders/detail/order-meta-strip.tsx`:
+
+```tsx
+const format = useFormatter()
+const formatLocale = useFormatLocale()
+
+format.dateTime(order.createdAt, { day: "numeric", hour: "2-digit", minute: "2-digit", month: "short", year: "numeric" })
+formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale)
+```
+
+`useLocale()` from `use-intl/react` is still the right call for picking translated content, such as `resolveCategoryTitle(row.titles, locale)`. A server function that filters by date resolves the same time zone with `resolveRequestDisplayPreferences()` — see [Add a data table](/docs/guides/add-a-data-table).
+
+## 9. Add the sidebar entry
 
 `src/presentation/components/custom/pages/admin/admin-sidebar.tsx` holds four arrays at the bottom of the file:
 
@@ -190,11 +217,13 @@ A route lists the namespaces its subtree needs in `staticData.namespaces`. `getR
 | `TOOLS_NAV`   | Marketing, Coupons, Content                                          |
 | `SYSTEM_NAV`  | Audit, Settings                                                      |
 
-A `NavItem` is `{ href: LocalizedTo, icon, labelKey }`. The icon is a `lucide-react` component, and `labelKey` resolves inside `pages.admin`, so `nav.coupons` reads from `messages/{locale}/pages.admin.json`. An item is active while the address contains its `href`, so one item covers a page with header tabs, such as Settings. There is no disabled state: leave a page out of the sidebar until it works.
+Dashboard and the collapsible Catalog entry are rendered directly by `AdminSidebarMainGroup`, followed by `SIMPLE_NAV_ITEMS` — `SIMPLE_NAV` with Dashboard filtered out. `TOOLS_NAV` renders under the Tools label and `SYSTEM_NAV` in a group at the bottom of the sidebar, so a new page normally means one more `NavItem` in the array of its group. An item is highlighted while the current path contains its `href` (the overview must match at the end), so it stays active on the section's child pages, and one item covers a page with header tabs, such as Settings.
 
-## 8. Test the route
+A `NavItem` is `{ href: LocalizedTo, icon, labelKey }`. The icon is a `lucide-react` component, and `labelKey` resolves inside `pages.admin`, so `nav.coupons` reads from `messages/{locale}/pages.admin.json`. There is no disabled state: leave a page out of the sidebar until it works.
 
-Route tests live in `src/routes/__test__/`, named `<route>.component.test.tsx` for a rendering test or `<route>.loader.test.ts` for a loader test. They intercept `createFileRoute` to capture the options object:
+## 10. Test the route
+
+Route tests live in `src/routes/__test__/`, named `<route>.component.test.tsx` for a rendering test or `<route>.loader.test.ts` for a loader test, where `<route>` is the file name without `$` and without the underscore of `admin_` — `admin.customers.$id.tsx` is tested by `admin.customers.id.component.test.tsx`. They intercept `createFileRoute` to capture the options object:
 
 ```tsx
 vi.mock("@tanstack/react-router", async (importOriginal) => {

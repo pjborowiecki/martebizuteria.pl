@@ -1,15 +1,21 @@
 ---
 title: "Dane startowe"
-description: "Co zawiera jedenaście plików seed, w jakiej kolejności muszą się wykonać i dlaczego nie wolno ich dziś uruchamiać na bazie produkcyjnej."
+description: "Co zawiera i robi jedenaście plików seed, w jakiej kolejności muszą się wykonać, lokalna baza testowa, którą wypełnia zestaw E2E, i dlaczego nie wolno ich dziś uruchamiać na działających bazach."
 ---
 
 ## Przeczytaj to najpierw
 
 **Nie uruchamiaj `bun run db:seed`, `bun run db:seed:preview` ani `bun run db:seed:production`.**
 
-Pliki seed w `src/integrations/drizzle-orm/seeds/` napisano dla wcześniejszego stanu katalogu. Bazy preview i produkcyjna były od tamtej pory edytowane przez panel administracyjny. Każdy plik seed zaczyna się instrukcją `DELETE` zawężoną po handle'u albo SKU, więc uruchomienie któregokolwiek teraz usunęłoby prawdziwe wiersze katalogu i zastąpiło je przeterminowanymi danymi z repozytorium.
+Pliki seed w `src/integrations/drizzle-orm/seeds/` napisano dla wcześniejszego stanu katalogu. Działające bazy preview i produkcyjna były od tamtej pory edytowane przez panel administracyjny. Dziesięć z jedenastu plików zaczyna się instrukcją `DELETE`, a potem zapisuje swoje wiersze przez upsert, więc uruchomienie któregokolwiek teraz usunęłoby prawdziwe wiersze i nadpisało zmiany z panelu danymi z repozytorium:
 
-Pliki zostają w repozytorium z dwóch dobrych powodów: dokumentują wzorcowy kształt katalogu i są punktem startowym dla całkiem nowej bazy. Nie są przyciskiem „przywróć znany stan” dla środowiska, w którym są prawdziwe dane. Pamiętaj też, że `development` i `preview` wskazują na **tę samą** bazę D1 (`martebizuteria-preview`), więc nie ma bezpiecznego środowiska do ćwiczeń.
+- `product-categories.sql`, `product-collections.sql`, `product-attributes.sql` i `products.sql` usuwają każdy wiersz, który ma jeden z ich handle'i, ale nie jeden z ich identyfikatorów, a `product-variants.sql` robi to samo po SKU.
+- `inventory.sql`, `product-images.sql` i `attribute-on-product.sql` usuwają te wiersze wariantów albo produktów z danych startowych, które nie są ich własne, a `category-on-product.sql` i `collection-on-product.sql` usuwają każde powiązanie dwóch produktów startowych z kategoriami i kolekcjami.
+- Każdy z tych plików zapisuje potem swoje wiersze przez `ON CONFLICT(id) DO UPDATE` albo `INSERT OR REPLACE`, co w wierszu startowym edytowanym od tamtej pory przywraca wartości z pliku — tytuły, opisy, cenę, status czy zdjęcia.
+
+Tylko `delivery-methods.sql` niczego nie usuwa ani nie nadpisuje; używa `INSERT OR IGNORE`.
+
+Pliki zostają w repozytorium z trzech dobrych powodów: dokumentują wzorcowy kształt katalogu, są punktem startowym dla całkiem nowej bazy, a buduje się z nich lokalną bazę testową, na której działa zestaw E2E (zobacz [Lokalna baza testowa](#lokalna-baza-testowa)). Nie są przyciskiem „przywróć znany stan” dla środowiska, w którym są prawdziwe dane. Pamiętaj też, że `development` i `preview` wskazują na **tę samą** bazę D1 (`martebizuteria-preview`), więc jedynym bezpiecznym miejscem do ćwiczeń jest lokalna baza `test`.
 
 ## Pliki
 
@@ -29,11 +35,11 @@ Jedenaście plików SQL, wymienionych tu w kolejności, w jakiej uruchamia je `d
 | 10        | `collection-on-product.sql` | `collection_on_product`      | `products.sql`, `product-collections.sql` |
 | 11        | `attribute-on-product.sql`  | `attribute_on_product`       | `products.sql`, `product-attributes.sql`  |
 
-Każdy zależny plik podaje swoje wymagania w komentarzu na początku, na przykład `-- Depends on product-variants.sql.` w `inventory.sql`.
+Siedem zależnych plików podaje swoje wymagania w komentarzu na początku, na przykład `-- Depends on product-variants.sql.` w `inventory.sql`.
 
 ## Obowiązujące konwencje
 
-Przeczytaj jeden, zanim napiszesz własny. `delivery-methods.sql` jest najprostszy i używa `INSERT OR IGNORE`, więc ponowne uruchomienie jest nieszkodliwe:
+Przeczytaj jeden, zanim napiszesz własny. `delivery-methods.sql` jest najprostszy i używa `INSERT OR IGNORE`, więc ponowne uruchomienie jest nieszkodliwe — ale też niczego nie zmienia w bazie, która ma już jego wiersze:
 
 ```sql
 INSERT OR IGNORE INTO courier (id, internal_code, is_active, logo, name, created_at, updated_at) VALUES
@@ -56,12 +62,12 @@ WHERE handle IN ('lapis-lazuli-necklace', 'onyx-necklace')
   );
 ```
 
-Wzorzec to „usuń każdy wiersz z moim handle'em, który nie jest moim wierszem, a potem wstaw moje wiersze” — idempotentny, dopóki identyfikatory w pliku się nie zmieniają, i destrukcyjny w chwili, gdy w katalogu produkcyjnym pojawią się inne wiersze o tym samym handle'u.
+Potem wstawia swoje dwa produkty z `ON CONFLICT(id) DO UPDATE SET handle = excluded.handle, titles = excluded.titles, …`, co w istniejącym już wierszu nadpisuje każdą wymienioną kolumnę. Wzorzec to „usuń każdy wiersz z moim handle'em, który nie jest moim wierszem, a potem zapisz moje wiersze przez upsert” — idempotentny, dopóki identyfikatory w pliku się nie zmieniają, i destrukcyjny w chwili, gdy w działającym katalogu pojawią się inne wiersze o tym samym handle'u albo ktoś zmieni jeden z wierszy startowych.
 
 Inne konwencje warte naśladowania:
 
-- **Ustalone identyfikatory UUIDv7, zapisane w całości.** Identyfikator wiersza seed jest częścią kontraktu pliku, bo odwołują się do niego pliki zależne. Identyfikatory w stylu `019f4a10-0001-7000-8000-000000000001` są komponowane ręcznie, nie generowane, więc czyta się je jako oczywiście sztuczne.
-- **Znaczniki czasu jako `unixepoch() * 1000`**, zgodnie z trybem `timestamp_ms` używanym w schemacie.
+- **Ustalone identyfikatory, zapisane w całości.** Identyfikator wiersza seed jest częścią kontraktu pliku, bo odwołują się do niego pliki zależne, a także dane E2E w `e2e/data/catalog.ts`, które podają produkty, SKU, ceny i identyfikatory metod dostawy z danych startowych. Tylko `delivery-methods.sql` używa identyfikatorów komponowanych ręcznie, takich jak `019f4a10-0001-7000-8000-000000000001`, które czyta się jako oczywiście sztuczne; pliki katalogowe mają identyfikatory generowane, UUIDv7, a dla zdjęć produktów UUIDv4.
+- **Znaczniki czasu w milisekundach**, zgodnie z trybem `timestamp_ms` używanym w schemacie: `delivery-methods.sql` zapisuje `unixepoch() * 1000`, pliki katalogowe stałe wartości, takie jak `1780698778000`.
 - **Wartości logiczne jako `1` i `0`.**
 - **Kolumny tłumaczone jako `json_object`:**
 
@@ -77,28 +83,41 @@ Oba klucze językowe są zawsze obecne, z pełnymi znacznikami BCP 47.
 
 ## Co zawiera katalog startowy
 
-Tyle, żeby przetestować każdą powierzchnię witryny i panelu, a nie realistyczny asortyment: siedem polskich kategorii produktów (naszyjniki, kolczyki, chokery, bransoletki, bransoletki urodzeniowe, pierścionki, biżuteria z odciskami), zestaw kolekcji i atrybutów produktu, dwa produkty (`lapis-lazuli-necklace` i `onyx-necklace`) z dwoma wariantami (`MRT-0001`, `MRT-0002`), ich wiersze stanów magazynowych, obrazy i wiersze łączące, które umieszczają je w kategoriach, kolekcjach i zestawach atrybutów.
+Tyle, żeby przetestować każdą powierzchnię witryny i panelu, a nie realistyczny asortyment: siedem polskich kategorii produktów (naszyjniki, kolczyki, chokery, bransoletki, bransoletki urodzeniowe, pierścionki, biżuteria z odciskami), trzy kolekcje (Nowości, Srebro 925, Złoto 585), piętnaście atrybutów produktu, dwa produkty (`lapis-lazuli-necklace` i `onyx-necklace`) z jednym wariantem każdy (`MRT-0001`, `MRT-0002`, 379,00 zł), 99 sztuk na stanie na wariant, pięć zdjęć produktów oraz wiersze łączące, które umieszczają oba produkty w Naszyjnikach, Nowościach i Srebrze 925 i nadają im wartości atrybutów. Uzupełniają go trzy metody dostawy.
 
 Oba produkty mają pełne polskie i angielskie tytuły oraz długie opisy, co czyni je przydatnymi do sprawdzania przełączania języka na stronie produktu.
 
-## Zasilanie nowej bazy
+## Lokalna baza testowa
 
-Dla naprawdę pustej bazy D1 — nowego środowiska albo świeżej instancji lokalnej — kolejność jest taka:
+Lokalna baza środowiska `test` to miejsce, w którym pliki seed wykonują się w całości, i miejsce, w którym warto wypróbować ich zmianę:
 
 ```sh
-bun run db:migrate:local      # albo skrypt migracji właściwy dla środowiska
+bun run db:reset:test   # rm -rf .wrangler/test, potem db:migrate:test, potem db:seed:test
 ```
 
-a następnie uruchom jedenaście plików w kolejności z tabeli powyżej przez `wrangler d1 execute`. Skrypty w `package.json` łączą dokładnie to operatorem `&&`, więc możesz skopiować komendę i zmienić flagę `--env`, ale najpierw dwukrotnie sprawdź, na którą bazę wskazujesz. Wybieraj `--local`, chyba że masz pewność.
+`db:migrate:test` nakłada każdą migrację na pustą lokalną bazę D1 w `.wrangler/test`. `db:seed:test` uruchamia `scripts/seed-test.ts`, który:
+
+1. czyta jedenaście plików seed w kolejności z tabeli powyżej;
+2. dodaje trzy konta E2E z `e2e/data/accounts.ts` — `admin` (`admin@marte.example.test`), `adminWithoutTwoFactor` (`new-admin@marte.example.test`) i `customer` (`customer@marte.example.test`) — każde ze zweryfikowanym e-mailem i kontem z hasłem `TEST_PASSWORD`, zahaszowanym przez `hashPassword` z Better Auth;
+3. włącza uwierzytelnianie dwuskładnikowe dla `admin`, bo build `test`, tak jak produkcja, wymaga go od administratorów: ustawia `two_factor_enabled` i zapisuje wiersz `two_factor`, którego sekret, `ADMIN_TOTP_SECRET`, i pustą listę kodów zapasowych szyfruje `symmetricEncrypt` z Better Auth kluczem `AUTH_SECRET` odczytanym z `.env.test`, tym samym, którym odszyfrowuje je testowy Worker. Konfiguracja E2E loguje się kodem wyliczonym z tego samego sekretu. `adminWithoutTwoFactor` zostaje bez niego, na potrzeby testów administratora, który dopiero musi je skonfigurować;
+4. ustawia zapisaną strefę czasową klienta na `Europe/Warsaw`;
+5. zapisuje to wszystko w jednym tymczasowym pliku SQL, wykonuje go jednym `bun x wrangler d1 execute DB --env test --local --persist-to .wrangler/test --file <plik>` i usuwa.
+
+Serwer WWW Playwrighta uruchamia `db:reset:test` przed lokalnym przebiegiem E2E, chyba że na porcie 3000 odpowiada już serwer, którego wtedy używa. W CI każde zadanie E2E uruchamia `db:reset:test` jako krok — zadanie pull requesta, zadania przeglądarek w „E2E (full)” i jego zadanie trybu testowego Stripe — więc plik seed, który przestał pasować do schematu, zawodzi właśnie tam.
+
+## Zasilanie innej nowej bazy
+
+Dla każdej innej naprawdę pustej bazy D1, na przykład nowego środowiska, najpierw nałóż migracje skryptem migracji właściwym dla środowiska, a następnie uruchom jedenaście plików w kolejności z tabeli powyżej przez `wrangler d1 execute`. `db:seed:preview` i `db:seed:production` łączą dokładnie to operatorem `&&`, po jednym `--file` na plik seed, więc możesz skopiować komendę i zmienić flagę `--env`, ale najpierw dwukrotnie sprawdź, na którą bazę wskazujesz.
 
 ## Zmiana pliku seed
 
-Jeśli jednak go zmieniasz, zachowaj spójność ze schematem produkcyjnym:
+Jeśli jednak go zmieniasz, zachowaj spójność z aktualnym schematem:
 
-- Listy kolumn muszą dokładnie odpowiadać aktualnej tabeli. `product-categories.sql`, `product-collections.sql`, `product-attributes.sql`, `products.sql` i `delivery-methods.sql` były modyfikowane znacznie później niż pozostałe, więc starsze pliki mają większe szanse na rozjechanie się ze schematem.
-- Zachowaj stałe identyfikatory albo zaktualizuj każdy plik, który się do nich odwołuje.
+- Listy kolumn muszą dokładnie odpowiadać aktualnej tabeli; `bun run db:reset:test` zawodzi na takiej, która nie odpowiada. Kolumna dodana po napisaniu pliku dostaje wartość domyślną, więc sprawdź, czy wiersze startowe potrzebują wartości: `product-variants.sql`, `product-images.sql` i trzy pliki łączące zmieniono ostatnio w czerwcu, `inventory.sql` i `delivery-methods.sql` w październiku, a pozostałe pod koniec września.
+- Zachowaj stałe identyfikatory albo zaktualizuj każdy plik, który się do nich odwołuje, oraz `e2e/data/catalog.ts`.
 - Zachowaj oba klucze językowe w każdym `json_object`.
-- Pliki seed są wyłączone z lintu i z zestawu testów, więc nic ich automatycznie nie weryfikuje. Jedyną prawdziwą kontrolą jest zastosowanie ich na pustej bazie i otwarcie witryny.
+- Żaden linter nie czyta SQL, a testy jednostkowe i integracyjne wczytują tylko `delivery-methods.sql`, w teście migracji opisów metod dostawy. Pliki seed sprawdzają `bun run db:reset:test` i testy E2E, które opierają się na katalogu startowym, więc po zmianie uruchom jedno i drugie.
+- Zmieniony plik seed trafia tylko do nowych baz. Baza, która ma już te wiersze, potrzebuje jeszcze migracji: commit b77f58dd przepisał opisy metod dostawy w `delivery-methods.sql` i dodał `20261010220000_delivery_method_descriptions.sql`, który aktualizuje istniejące wiersze, razem z jego testem.
 
 ## Zamiast tego: dane testowe
 
@@ -113,7 +132,7 @@ beforeAll(() => {
 })
 ```
 
-`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje wbudowany moduł Node'a `node:sqlite` do interfejsu `D1Database`, wraz z `batch()` opartym na prawdziwej transakcji. Wzorcem jest `src/modules/_core/utils/__test__/search-conditions.integration.test.ts`. Zobacz [Pisanie testów](/docs/guides/writing-tests).
+`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje wbudowany moduł Node'a `node:sqlite` do interfejsu `D1Database`, wraz z `batch()` opartym na prawdziwej transakcji. Wzorcem jest `src/modules/_core/utils/__test__/search-conditions.integration.test.ts`. Gdy test potrzebuje prawdziwego schematu, `applyMigrationHistory(sqlite)` z `src/platform/testing/mocks/migrations.ts` buduje go z plików migracji, a test wstawia tylko potrzebne mu wiersze; tak działa 58 zestawów integracyjnych. Zobacz [Pisanie testów](/docs/guides/writing-tests) i [Testowanie migracji danych](/docs/guides/database-migrations#testowanie-migracji-danych).
 
 ## Powiązane przewodniki
 

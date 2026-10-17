@@ -3,7 +3,7 @@ title: "Przewodniki"
 description: "Praktyczne przepisy na zmiany w M'Arte: moduły, przypadki użycia, strony panelu, tabele danych, formularze, tłumaczenia, migracje, testy i bezpieczeństwo wdrożeń."
 ---
 
-Każda strona w tym rozdziale to przepis na jedno konkretne zadanie, napisany na podstawie kodu w jego aktualnym stanie. Jeśli przewodnik pokazuje plik — ten plik istnieje; jeśli pokazuje komendę — ta komenda jest w `package.json`. Jeśli najpierw potrzebujesz szerszego obrazu, czyli jak przebiega żądanie i dlaczego warstwy są rozdzielone właśnie tak, zacznij od [Architektury](/docs/architecture) i wróć tutaj.
+Każda strona w tym rozdziale to przepis na jedno konkretne zadanie, napisany na podstawie kodu w jego aktualnym stanie. Jeśli przewodnik pokazuje plik — ten plik istnieje; jeśli pokazuje komendę `bun run` — ten skrypt jest w `package.json`; inne komendy, takie jak `vp exec wrangler ...`, wywołują narzędzie bezpośrednio. Jeśli najpierw potrzebujesz szerszego obrazu, czyli jak przebiega żądanie i dlaczego warstwy są rozdzielone właśnie tak, zacznij od [Architektury](/docs/architecture) i wróć tutaj.
 
 ## Wybierz przewodnik
 
@@ -35,27 +35,32 @@ Każda strona w tym rozdziale to przepis na jedno konkretne zadanie, napisany na
 Większość zmian w tym repozytorium dotyka czterech miejsc, w tej kolejności:
 
 1. **Moduł** — `src/modules/{feature}/`. Tabela Drizzle, schematy Zod, stałe (klucze zapytań, limity długości kolumn, krotki wartości wyliczeniowych), typy wywnioskowane z tabeli oraz czyste funkcje pomocnicze.
-2. **Przypadek użycia** — `src/modules/{feature}/use-cases/{verb-noun}.ts`. Jedna operacja na plik: `createServerFn` plus `queryOptions` albo `mutationOptions`, które loadery i komponenty rozwijają operatorem spread.
+2. **Przypadek użycia** — `src/modules/{feature}/use-cases/{verb-noun}.ts`. Jedna operacja na plik: `createServerFn` plus `queryOptions` albo `mutationOptions`, które loadery i komponenty rozwijają operatorem spread. Praca, którą wywołuje tylko inny kod serwerowy — wysyłka e-maila, zaplanowane sprzątanie — leży obok, w `{verb-noun}.server.ts`, bez funkcji serwerowej i bez opcji zapytania.
 3. **Warstwa prezentacji** — `src/presentation/`. Komponenty, hooki, style, branding, szablony e-mail. Nic tutaj nie rozmawia bezpośrednio z bazą danych — wszystko importuje przypadki użycia.
 4. **Trasa** — `src/routes/`. Trasa plikowa, która pilnuje dostępu, wstępnie ładuje zapytania w swoim `loaderze`, deklaruje przestrzenie nazw tłumaczeń w `staticData.namespaces` i renderuje komponent z warstwy prezentacji.
 
-Testy leżą obok kodu, który pokrywają, w katalogach `__test__/`, i nazywają się od pliku źródłowego.
+Testy leżą obok kodu, który pokrywają, w katalogach `__test__/`, i nazywają się od pliku źródłowego. Przyrostek wybiera projekt Vitest: `.integration.test.ts` dla zestawu, który potrzebuje bazy danych, `.component.test.tsx` (albo `.ts`) dla zestawu uruchamianego w jsdom, a zwykłe `.test.ts` dla całej reszty, która trafia do projektu `node`.
 
 ## Zasady obowiązujące w każdym przewodniku
 
-Te reguły wymusza `bun run check`, a nie przegląd kodu:
+`bun run check` wymusza poniższe reguły lintera, typów i rozmiaru. Żadne narzędzie nie szuka komentarzy, plików typu barrel ani strony dokumentacji brakującej w jednym języku, więc tych pilnuje przegląd kodu:
 
-- **Żadnych komentarzy w TypeScript ani TSX.** Intencję wyrażają nazwy i typy. Proza należy do plików `.mdx`, takich jak ten.
-- **Żadnego `any`, `as never`, `as unknown as`, `@ts-nocheck` ani wyciszania reguł lintera.** `vite.config.ts` podnosi wszystkie sześć kategorii oxlint — w tym `nursery` — do poziomu błędu, z lintowaniem świadomym typów i `denyWarnings: true`. Nieużywana dyrektywa wyciszająca sama jest błędem.
+- **Żadnych komentarzy w TypeScript ani TSX.** Intencję wyrażają nazwy i typy. Proza należy do plików `.mdx`, takich jak ten. Żadna reguła lintera nie szuka komentarzy; to reguła przeglądu kodu.
+- **Żadnego `any`, `as never`, `as unknown as`, `@ts-nocheck` ani wyciszania reguł lintera.** `vite.config.ts` podnosi wszystkie sześć włączonych kategorii oxlint — `correctness`, `nursery`, `pedantic`, `perf`, `style` i `suspicious` — do poziomu błędu, z lintowaniem świadomym typów, kontrolą typów i `denyWarnings: true`. Reguły `typescript/no-unsafe-*`, świadome typów, odrzucają wartość typu `any` wszędzie, gdzie jest zwracana, przypisywana, przekazywana albo wywoływana, `typescript/no-unsafe-type-assertion` odrzuca zawężające rzutowania, takie jak `as never` i `as unknown as`, a `typescript/ban-ts-comment` odrzuca `@ts-nocheck`. Nieużywana dyrektywa wyciszająca sama jest błędem (`reportUnusedDisableDirectives: "error"`).
+- **Wąskie wyjątki zamiast wyciszeń.** Nieliczne miejsca, w których wspólna reguła nie pasuje, są wymienione w `overrides` w `vite.config.ts`, każde zawężone do plików, których dotyczy: testy, katalogi `__test__/` i `src/platform/testing/**` wyłączają `no-await-in-loop`, `no-magic-numbers` i `unicorn/no-null`; `src/platform/testing/mocks/**` wyłącza `require-await`, `typescript/require-await` i `typescript/no-unsafe-type-assertion` (atrapa D1 zwraca swojego klienta jako `as unknown as D1Database` właśnie dzięki temu wyjątkowi); `src/presentation/**` i `src/hooks/**` wyłączają `typescript/consistent-return`; `src/routes/**` wyłącza `sort-keys`; a sam `vite.config.ts` wyłącza `max-lines`. `scripts/`, `e2e/`, `*.d.ts`, `src/routeTree.gen.ts` i migracje w ogóle nie są lintowane. Nowy wyjątek trafia tam, opisany w miejscu, którego dotyczy, nigdy do komentarza wyłączającego regułę.
 - **Limity rozmiaru.** 800 linii na plik, 150 linii na funkcję, 20 instrukcji na funkcję. Kiedy natrafisz na limit, wydziel funkcję pomocniczą do pliku obok, zamiast rozluźniać regułę.
 - **Import z pliku definiującego.** Nie ma plików typu barrel. `src/modules/_core` przechowuje wspólne elementy, ale każdy importuje się z jego własnej ścieżki.
-- **Zawsze oba języki.** Każda przestrzeń nazw tłumaczeń istnieje w `messages/pl-PL/` i `messages/en-US/`; każda strona dokumentacji istnieje jako `<slug>.pl-PL.mdx` i `<slug>.en-US.mdx`.
+- **Zawsze oba języki.** Każda przestrzeń nazw tłumaczeń istnieje w `messages/pl-PL/` i `messages/en-US/`; każda strona dokumentacji istnieje jako `<slug>.pl-PL.mdx` i `<slug>.en-US.mdx`. W przypadku tłumaczeń `src/integrations/use-intl/__test__/i18n.messages.test.ts` sprawdza, czy każdy angielski plik przestrzeni nazw ma polski odpowiednik z co najmniej tymi samymi kluczami. Stron dokumentacji nic nie porównuje, więc dodawaj oba pliki w tej samej zmianie.
 
 ## Przed otwarciem pull requesta
 
 ```sh
-bun run check      # formatowanie, lint i kontrola typów
-bun run test       # wszystkie trzy projekty Vitest
+bun run check            # formatowanie, lint i kontrola typów
+bun run test             # wszystkie trzy projekty Vitest
+bun run build:preview    # build Workera preview, który uruchamia CI
+bun run test:e2e:pr      # projekty Playwright, które CI uruchamia dla pull requesta
 ```
 
 `bun run check` uruchamia `vp check`, które formatuje kod Oxfmt (razem z kolejnością grup importów i sortowaniem klas Tailwind), lintuje Oxlintem i sprawdza typy TypeScriptem. `bun run test` uruchamia projekty `node`, `integration` i `component` zdefiniowane w `vite.config.ts`. Hook `.vite-hooks/pre-commit` wywołuje `bun run check:pre-commit` na plikach w staging area, więc zepsuty commit zwykle zostaje wyłapany jeszcze przed CI.
+
+Workflow CI (`.github/workflows/ci.yml`) uruchamia dla każdego pull requesta `bun run check`, `bun run test:coverage` i `bun run build:preview`, a także projekty Playwright `chromium` i `chromium-shop-wide` na lokalnym Workerze `test`. `bun run test:e2e:pr` uruchamia te same dwa projekty; lokalnie Playwright najpierw wykonuje `db:reset:test` i `build:test`, a potem serwuje build przez `start:test`, chyba że na porcie 3000 odpowiada już serwer — wtedy używa go ponownie. Zobacz [Testy](/docs/tooling/testing) i [CI/CD](/docs/tooling/ci-cd).

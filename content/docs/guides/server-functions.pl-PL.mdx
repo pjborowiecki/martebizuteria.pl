@@ -3,7 +3,17 @@ title: "Funkcje serwerowe"
 description: "Elementy wspólne dla każdej operacji: createServerFn, trzy middleware, AppError, praca w tle i klient D1."
 ---
 
-Każda operacja serwerowa w M'Arte to funkcja serwerowa TanStack Start utworzona przez `createServerFn` z `@tanstack/react-start`. Dla danych aplikacji nie ma warstwy REST — istnieją tylko dwie prawdziwe trasy HTTP (`src/routes/api/auth.$.ts` i `src/routes/api/webhooks.stripe.ts`), a poza nimi ścieżki WebSocket, sitemap i robots obsługiwane bezpośrednio w `src/server.ts`. Wszystko inne to wywołanie RPC z przeglądarki do funkcji serwerowej.
+Każda operacja serwerowa w M'Arte, którą wywołuje przeglądarka, to funkcja serwerowa TanStack Start utworzona przez `createServerFn` z `@tanstack/react-start`. Dla danych aplikacji nie ma warstwy REST. W `src/routes/api/` jest pięć tras HTTP, każda dla wywołującego, który nie może wykonać wywołania RPC:
+
+| Trasa                         | Metody                                     | Wywołujący                                                                  |
+| ----------------------------- | ------------------------------------------ | --------------------------------------------------------------------------- |
+| `/api/auth/$` (`auth.$.ts`)   | `GET`, `POST`                              | Klient Better Auth i przekierowania OAuth                                   |
+| `/api/webhooks/stripe`        | `POST` (`GET` odpowiada 405)               | Stripe, weryfikowany podpisem                                               |
+| `/api/webhooks/inpost`        | `POST` oraz `GET` do sprawdzenia gotowości | InPost ShipX                                                                |
+| `/api/newsletter/unsubscribe` | `POST`                                     | Wypisanie jednym kliknięciem w programach pocztowych, z tokenem w `?token=` |
+| `/api/health`                 | `GET`                                      | Weryfikacja wdrożenia; sprawdza D1, KV i R2                                 |
+
+`src/routes/dev.emails.tsx` dodaje handler `GET` z podglądem e-maili, który poza `vp dev` odpowiada 404, a ścieżki WebSocket, sitemap i robots są obsługiwane bezpośrednio w `src/server.ts`. Wszystko inne to wywołanie RPC z przeglądarki do funkcji serwerowej.
 
 ## Łańcuch budowniczego
 
@@ -44,7 +54,7 @@ export const withRequest = createMiddleware({ type: "function" }).server(({ next
 
 Ostatni wiersz jest najważniejszy: nieoczekiwany błąd nigdy nie wypuszcza do przeglądarki swojej treści, stosu wywołań ani SQL-a. Sprawdzenie `isNotFound` wykonuje się jako pierwsze, więc trasa, której funkcja serwerowa rzuci `notFound()`, odpowiada 404 zamiast 500.
 
-Rzadko wymienia się `withRequest` samodzielnie. Oba poniższe middleware już je zawierają.
+Chroniona funkcja nie wymienia `withRequest` sama: oba poniższe middleware już je zawierają. Funkcja publiczna bez innego middleware wymienia je bezpośrednio, żeby jej błędy były tłumaczone tak samo — 14 publicznych odczytów, na przykład `getProduct`, `getCategories` i `getContentPage`, używa `.middleware([withRequest])`.
 
 ### `authorized(permission?)`
 
@@ -60,7 +70,7 @@ export const authorized = (permission?: Permission) =>
         throw new AppError(ERROR_CODES.UNAUTHORIZED)
       }
 
-      if (permission !== undefined && !hasPermission({ permission, role: session.user.role })) {
+      if (permission !== undefined && (!hasPermission({ permission, role: session.user.role }) || needsTwoFactorSetup(session.user))) {
         throw new AppError(ERROR_CODES.FORBIDDEN)
       }
 
@@ -69,9 +79,11 @@ export const authorized = (permission?: Permission) =>
 ```
 
 - `authorized()` — dowolny zalogowany użytkownik. Tego używa wszystko pod `/account`.
-- `authorized({ product: ["read"] })` — zalogowany użytkownik, którego rola przyznaje tę akcję.
+- `authorized({ product: ["read"] })` — zalogowany użytkownik, którego rola przyznaje tę akcję i który nie ma zaległej konfiguracji uwierzytelniania dwuskładnikowego.
 
-Słownik uprawnień definiuje `src/integrations/better-auth/auth.access.ts`. Zasoby to `order`, `product`, `settings` i `user`; akcje to `create`, `read`, `update`, `delete`, `publish`, `refund` i `manage`. `ROLES_CONFIG` przyznaje roli `admin` uprawnienia `order: [read, update, refund]`, `product: [create, read, update, delete, publish]`, `settings: [manage]` oraz własne `adminAc.statements` z Better Auth, a roli `customer` nie przyznaje niczego.
+`needsTwoFactorSetup(user)` z `auth.access.ts` zwraca prawdę dla administratora, którego konto nie ma `twoFactorEnabled`, ale tylko wtedy, gdy zachodzi `isAdminTwoFactorRequired()`: gdy `import.meta.env.MODE` to `production` albo `test`, co obejmuje build produkcyjny, build testowy, na którym działa zestaw E2E, oraz Vitest. W buildach preview i development uwierzytelnianie dwuskładnikowe jest dla administratorów opcjonalne i ta połowa warunku nigdy nie zadziała. `authorized()` bez uprawnienia w ogóle nie sprawdza drugiego składnika. Własne punkty końcowe administracyjne Better Auth podlegają tej samej regule przez `guardAuthRequest` w `auth.hooks.server.ts`, który odrzuca je z `ADMIN_TWO_FACTOR_REQUIRED`.
+
+Słownik uprawnień definiuje `src/integrations/better-auth/auth.access.ts`. Własne zasoby sklepu to `content` (`read`, `update`), `order` (`read`, `update`, `refund`), `product` (`create`, `read`, `update`, `delete`, `publish`) i `settings` (`manage`). `PERMISSIONS_STATEMENTS` dokłada `defaultStatements` z Better Auth, czyli zasoby `user` i `session` z akcjami takimi jak `list`, `get`, `update` i `delete`; sprawdzają je funkcje klientów i subskrybentów newslettera, na przykład `authorized({ user: ["list"] })`. `ROLES_CONFIG` przyznaje roli `admin` wszystkie akcje sklepu oraz `adminAc.statements` z Better Auth, a roli `customer` nie przyznaje niczego.
 
 **Strażnik trasy nie jest autoryzacją.** `beforeLoad: requireAdmin` w trasie układu jedynie powstrzymuje przeglądarkę od wyrenderowania strony; punkt końcowy RPC pozostaje osiągalny. Każda chroniona funkcja serwerowa musi nieść własne `authorized(...)`.
 
@@ -81,20 +93,20 @@ Słownik uprawnień definiuje `src/integrations/better-auth/auth.access.ts`. Zas
 .middleware([withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE), authorized()])
 ```
 
-Cztery gotowe zestawy, wszystkie w oknie 60 sekund:
+`RATE_LIMITS` zawiera cztery gotowe zestawy o kształcie `{ max, window }`, wszystkie z `window: RATE_LIMIT_WINDOW_SECONDS.REQUEST` (60 sekund):
 
-| Zestaw      | Maks. żądań | Stosowany do                                       |
-| ----------- | ----------- | -------------------------------------------------- |
-| `SENSITIVE` | 3           | Zapisy adresów, operacje tokenopodobne             |
-| `TOKEN`     | 5           | Zużywanie tokenów                                  |
-| `CHECKOUT`  | 10          | Operacje w procesie zamówienia                     |
-| `BROWSING`  | 120         | Wyszukiwarka sklepu i śledzenie aktywności klienta |
+| Zestaw      | Maks. żądań | Stosowany do                                                                                                                                                                     |
+| ----------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SENSITIVE` | 3           | Zapisy konta i płatności (dodanie adresu, telefon, preferencje wyświetlania, hasło, sesje, zapisane karty), odstąpienia od umowy, zapis, potwierdzenie i wypisanie z newslettera |
+| `TOKEN`     | 5           | Zdefiniowany, ale dziś nieużywany przez żadną funkcję                                                                                                                            |
+| `CHECKOUT`  | 10          | Tworzenie i aktualizacja sesji zamówienia, jej status, potwierdzenie zamówienia, sprawdzanie kodów rabatowych                                                                    |
+| `BROWSING`  | 120         | Wyszukiwarka sklepu, listy produktów z frazą wyszukiwania, śledzenie aktywności klienta                                                                                          |
 
 Kluczem licznika jest `` `${kind}:${clientAddress(context.requestHeaders)}` ``, gdzie `clientAddress` czyta nagłówek `cf-connecting-ip` przez `getIP` z Better Auth, a w razie braku zwraca literał `"unknown"`. Liczniki żyją w tabeli D1 `rate_limit`; `withinRateLimit` w `src/lib/rate-limit.ts` realizuje okno jednym `INSERT ... ON CONFLICT DO UPDATE` z klauzulą `setWhere`, więc wystarcza jedno odwołanie do bazy. Jeśli ten zapis rzuci wyjątek, funkcja zapisuje błąd w logu i zwraca `false` — czyli domyślnie odmawia.
 
-Gdy liczyć się ma tylko część wywołań funkcji, handler sam wywołuje `assertWithinRateLimit(kind, limit, context.requestHeaders)`, które kluczuje i odmawia dokładnie tak jak middleware. W ten sposób `getStorefrontProductsPage` liczy listing z parametrem `q`, a zwykłego przeglądania nie liczy.
+Gdy liczyć się ma tylko część wywołań funkcji, handler sam wywołuje `assertWithinRateLimit(kind, limit, context.requestHeaders)`, które kluczuje i odmawia dokładnie tak jak middleware. W ten sposób `getStorefrontProductsPage` liczy listing z parametrem `q`, a zwykłego przeglądania nie liczy, a `getOrderConfirmation` dolicza wywołanie do licznika `"checkout-status"` tylko wtedy, gdy płatność wciąż oczekuje i funkcja musi sama sfinalizować sesję Stripe.
 
-Better Auth stosuje własny ogranicznik do `/api/auth/*`, liczony tym samym `withinRateLimit` przez `customStorage: authRateLimitStorage`, z regułami: logowanie 5, rejestracja 3, żądanie resetu hasła 3 oraz reset hasła 5 na minutę.
+Better Auth stosuje własny ogranicznik do `/api/auth/*`, liczony tym samym `withinRateLimit` przez `customStorage: authRateLimitStorage`: domyślnie 100 żądań na minutę, z własnymi regułami: logowanie 5, rejestracja 3, żądanie resetu hasła 3 oraz reset hasła 5 na minutę.
 
 ## Błędy
 
@@ -123,7 +135,7 @@ export class AppError extends Error {
 }
 ```
 
-Opcjonalny drugi argument to szczegół specyficzny dla modułu, na przykład `CATEGORY_ERROR_CODES.DUPLICATE_HANDLE`. Staje się on `message` błędu i przetrwa serializację — właśnie w ten sposób formularze przypinają konflikt do pola `handle`. `errorCode(error)` z tego samego pliku odczytuje właściwość `code` z nieznanej wartości i tego używa kod klienta do rozgałęziania:
+Opcjonalny drugi argument to przyczyna specyficzna dla modułu, na przykład `CATEGORY_ERROR_CODES.DUPLICATE_HANDLE`. Staje się ona `message` błędu i przetrwa serializację, o ile jest kodem przyczyny pisanym wielkimi literami: `handleRequestError` zachowuje komunikat tylko wtedy, gdy pasuje do `/^[A-Z][A-Z\d_]*$/`, a w przeciwnym razie zastępuje go kodem, więc dowolny tekst nigdy nie trafia do przeglądarki. `errorCode(error)` z tego samego pliku odczytuje właściwość `code` z nieznanej wartości (pusty napis, gdy jej nie ma) i tego używa kod klienta do rozgałęziania — tak formularz kategorii przypina konflikt do pola `handle`:
 
 ```ts
 const code = errorCode(error)
@@ -132,7 +144,9 @@ if (code === ERROR_CODES.CONFLICT) {
 }
 ```
 
-Każdy kod ma tłumaczenie pod `errors.action.<CODE>` w `messages/{locale}/errors.json`. `useActionError` wybiera właściwe.
+Przyczynę porównuje się natomiast z `error.message`, na przykład `error.message === ORDER_ERROR_CODES.OPEN_DISPUTE`.
+
+Każdy kod ma tłumaczenie pod `errors.action.<CODE>` w `messages/{locale}/errors.json`. `useActionError` wybiera właściwe dla kodu, ale nie dla przyczyny z modułu; jak obsłużyć oba przypadki, pokazuje [Dodawanie przypadku użycia](/docs/guides/add-a-use-case).
 
 ## Klient bazy danych
 
@@ -150,20 +164,48 @@ import * as schema from "~/src/integrations/drizzle-orm/drizzle.schemas"
 export const db = drizzle(env.DB, { schema })
 ```
 
-Import `@tanstack/react-start/server-only` to zabezpieczenie na etapie budowania: żaden moduł, który sięga do tego pliku bezpośrednio lub pośrednio, nie może trafić do paczki klienckiej. `src/lib/rate-limit.ts`, `src/lib/background.ts` i każdy plik `*.server.ts` niosą ten sam import z tego samego powodu.
+Import `@tanstack/react-start/server-only` oznacza plik jako wyłącznie serwerowy, więc build kliencki go odrzuca (zobacz następną sekcję). Niesie go sześć plików: `drizzle.database.ts` oraz, w `src/lib/`, `background.ts`, `rate-limit.ts`, `request.ts`, `retention.ts` i `sitemap.ts`.
 
-D1 nie ma transakcji interaktywnych. Kiedy kilka instrukcji musi zostać wykonanych razem, użyj `runDrizzleBatch` z `src/integrations/drizzle-orm/drizzle.batch.ts` — tak robi `createCheckout` w `src/modules/checkout/use-cases/create-checkout.server.ts`:
+D1 nie ma transakcji interaktywnych. Kiedy kilka instrukcji musi zostać wykonanych razem, wyślij je w jednym `db.batch`, który D1 wykonuje jako jedną transakcję. `runDrizzleBatch` z `src/integrations/drizzle-orm/drizzle.batch.ts` robi to dla listy budowanej w czasie działania i pomija listę pustą; `createCompleteProduct` w `src/modules/product/use-cases/create-complete-product.ts` używa go, żeby wstawić produkt, jego zdjęcia i atrybuty naraz:
 
 ```ts
-export const createCheckout = async (checkoutValues: CheckoutFormSchema, userId: string | undefined, userEmail: string) => {
-  const { checkoutId, statements } = prepareCreateCheckoutBatch(checkoutValues, userId, userEmail)
-  await runDrizzleBatch(statements)
+await runDrizzleBatch([
+  ...prepareProductInsertBatch(productId, data, rank),
+  ...prepareProductImagesBatch(productId, data.images),
+  ...prepareAttributeOnProductBatch(productId, attributeRows),
+])
+```
 
-  return checkoutId
+Wywołujący, który potrzebuje wyników instrukcji, woła `db.batch` bezpośrednio. Tak robi `createCheckout` w `src/modules/checkout/use-cases/create-checkout.server.ts`, żeby dowiedzieć się, czy zajęcie kodu rabatowego się powiodło:
+
+```ts
+export const createCheckout = async (input: CreateCheckoutInput): Promise<CreatedCheckout> => {
+  const { checkoutId, statements } = prepareCreateCheckoutBatch(input)
+  const [first, ...rest] = statements
+  const results = await db.batch([first, ...rest])
+  const discountedCheckout: unknown = results.at(-1)
+
+  return {
+    checkoutId,
+    discountClaimed: input.discountId !== undefined && Array.isArray(discountedCheckout) && discountedCheckout.length > 0,
+  }
 }
 ```
 
-Zapytania przygotowane — budowane przez `.prepare()` Drizzle i wywoływane przez `.execute()` — mieszkają w plikach `*.server.ts`, na przykład `getCategoryByHandleQuery` i `getNextRankForParent` w `src/modules/product-category/product-category.server.ts`.
+D1 ogranicza też instrukcję do 100 parametrów wiązanych (`D1_MAX_BOUND_PARAMETERS`); `chunkByBoundParameters` i `insertRowChunks` w `drizzle.batch.ts` dzielą duży insert na mieszczące się instrukcje.
+
+Zapytania przygotowane — budowane przez `.prepare()` Drizzle i wywoływane przez `.execute()` — mieszkają w pliku `*.server.ts` albo w pliku akcesorów modułu, na przykład `getCategoryByHandleQuery` i `getAdminCategoriesQuery` w `src/modules/product-category/product-category.server.ts` albo `getProductCountsQuery` w `category-on-product.accessors.ts`. Zapytanie, którego kształt zależy od wejścia, jest budowane przy każdym wywołaniu, jak `getNextRankForParent` w `product-category.server.ts`, którego `where` to albo `eq(parentId)`, albo `isNull(parentId)`.
+
+## Kod serwerowy poza pakietem klienta
+
+Plik przypadku użycia trafia także do przeglądarki — komponenty importują jego opcje zapytań i mutacji — więc ma znaczenie, co on importuje. Wtyczka Vite TanStack Start załatwia to w dwóch krokach:
+
+1. Jej kompilator zastępuje w buildzie klienckim każde `createServerFn(...).handler(...)` zaślepką RPC, która nie zawiera ciała handlera. Importy używane tylko w handlerach stają się wtedy po stronie klienta nieużywane i wypadają przy tree-shakingu.
+2. Jej ochrona importów, domyślnie włączona (`vite.config.ts` nie przekazuje opcji `importProtection`), odrzuca w środowisku klienckim trzy rzeczy: każdy plik pasujący do `**/*.server.*`, punkt wejścia `@tanstack/react-start/server` oraz każdy moduł importujący znacznik `@tanstack/react-start/server-only`. W `vp build` taki import, który przetrwa tree-shaking i trafi do pakietu klienta, przerywa build; w `vp dev` zostaje zastąpiony modułem-atrapą i zgłoszony.
+
+Przypadek użycia może więc zaimportować na początku pliku `db`, pomocnika `*.server.ts` albo `getRequest` z `@tanstack/react-start/server`, o ile używa ich tylko wewnątrz handlera: tak `create-category.ts` importuje `product-category.server.ts` i `audit-log.events.server.ts`. Użycie ich w kodzie, który zostaje po stronie klienta — w opcjach zapytania, w stałej na poziomie modułu, w komponencie — psuje build. Nowy plik, do którego ma sięgać tylko kod serwerowy, nazwij `*.server.ts`, a do pliku wyłącznie serwerowego, którego nazwa nie kończy się na `.server.ts`, dodaj import `server-only`, tak jak sześć plików wymienionych wyżej.
+
+`createServerOnlyFn`, którego używają `resolveRequestDisplayPreferences` i `assertWithinRateLimit`, to ta sama idea dla pojedynczej funkcji: w buildzie klienckim kompilator zastępuje jej ciało takim, które rzuca wyjątek, więc można ją importować wszędzie, ale wywołać tylko na serwerze.
 
 ## Praca w tle
 
@@ -186,14 +228,16 @@ export const scheduleBackgroundWork = (task: Promise<unknown> | PromiseLike<unkn
 
 ## Punkt wejścia Workera
 
-`src/server.ts` wykonuje się przed handlerem TanStack Start i odpowiada za cztery rzeczy, których router nigdy nie widzi:
+`src/server.ts` wykonuje się przed handlerem TanStack Start i odpowiada za rzeczy, których router nigdy nie widzi:
 
+- Dwie ścieżki uaktualnienia połączenia do WebSocket z `ROUTES.API_REALTIME`, przekazywane do Durable Object `RealtimeInvalidationHub`, zanim wykona się cokolwiek innego.
 - `/sitemap.xml` i `/robots.txt`, generowane przez `src/lib/seo.ts`, mapa witryny ze stron, które `src/lib/sitemap.ts` czyta z D1, i cache'owane na dobę.
-- Dwie ścieżki uaktualnienia połączenia do WebSocket z `ROUTES.API_REALTIME`, przekazywane do Durable Object `RealtimeInvalidationHub`.
 - Ustalenie języka — `resolveLocale(request)` z `src/integrations/use-intl/i18n.middleware.ts` może zwrócić przekierowanie albo ciasteczko do dołączenia do odpowiedzi.
+- Nagłówki bezpieczeństwa: każde żądanie dostaje świeży nonce z `createContentSecurityPolicyNonce()`, a `withSecurityHeaders` z `src/lib/security-headers.ts` dodaje do każdej odpowiedzi poza uaktualnieniami WebSocket nagłówek Content-Security-Policy zbudowany z tym nonce, `Permissions-Policy`, `Referrer-Policy`, `X-Content-Type-Options`, `X-Frame-Options` oraz, przez HTTPS i gdy `APP_ENV` nie jest ani `development`, ani `test`, `Strict-Transport-Security`.
 - Handler `queue`, który opróżnia partie z `AUDIT_LOG_QUEUE` przez `processAuditLogQueueBatch` i wysyła partie z `NEWSLETTER_QUEUE` przez `processNewsletterQueueBatch`, wybierając po nazwie kolejki.
+- Handler `scheduled`, który uruchamia `enforceRetentionPeriods` z `src/lib/retention.ts` według wyzwalacza cron (`0 3 * * *` w środowiskach preview i production w `wrangler.jsonc`).
 
-Plik ponownie eksportuje też klasę Durable Object i deklaruje interfejs `RequestContext`, którego używa typ `Register` z TanStack Start.
+Plik ponownie eksportuje też klasę Durable Object i deklaruje `RequestContext`, którego używa typ `Register` z TanStack Start: `env`, `waitUntil`, `passThroughOnException`, `nonce` dla CSP oraz `edgeTimeZone`, czyli strefę czasową, którą Cloudflare podaje dla żądania (`request.cf?.timezone`) i na którą wraca wykrywanie preferencji wyświetlania.
 
 ## Powiązane przewodniki
 

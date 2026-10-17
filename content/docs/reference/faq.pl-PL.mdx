@@ -5,7 +5,7 @@ description: "Krótkie odpowiedzi na pytania, które pojawiają się jako pierws
 
 ## Co uruchamia tę aplikację?
 
-Jeden Worker Cloudflare. `src/server.ts` jest punktem wejścia; wszystkim, co nie zostanie obsłużone wcześniej, zajmuje się TanStack Start. Dane leżą w D1, media w R2, dziennik zdarzeń podróżuje przez kolejkę Cloudflare, unieważnianie realtime idzie przez Durable Object, a `CACHE` to przestrzeń KV zadeklarowana w każdym środowisku.
+Jeden Worker Cloudflare. `src/server.ts` jest punktem wejścia; wszystkim, co nie zostanie obsłużone wcześniej, zajmuje się TanStack Start. Dane leżą w D1, media w R2, dziennik zdarzeń i newsletter podróżują przez kolejki Cloudflare, każda z kolejką martwych listów, unieważnianie realtime idzie przez Durable Object, a `CACHE`, przestrzeń KV, przechowuje kilka krótko żyjących kluczy: flagę nadawcy e-maili, deduplikację alertów o incydentach i sondę kontroli stanu.
 
 Bun instaluje pakiety i uruchamia skrypty z `package.json`. Vite+ (`vp`) dostarcza serwer developerski, budowanie, formatter, linter i runner testów — wszystko konfigurowane w `vite.config.ts`.
 
@@ -15,11 +15,15 @@ Bun instaluje pakiety i uruchamia skrypty z `package.json`. Vite+ (`vp`) dostarc
 
 ## Czy potrzebuję konta Cloudflare, żeby programować?
 
-Do `bun run dev` — tak. Środowisko Wranglera `development` używa zdalnych powiązań: rozmawia z prawdziwą bazą D1 preview, prawdziwym bucketem R2 preview i prawdziwą przestrzenią KV. Do testów — nie: działają przeciwko bazie `node:sqlite` w pamięci za transportem w kształcie D1 i czytają atrapy z zacommitowanego `.env.test`.
+Do `bun run dev` — tak. Środowisko Wranglera `development` używa zdalnych powiązań: rozmawia z prawdziwą bazą D1 preview, prawdziwym bucketem R2 preview i prawdziwą przestrzenią KV. Do testów — nie: działają przeciwko bazie `node:sqlite` w pamięci za transportem w kształcie D1 i czytają atrapy z zacommitowanego `.env.test`. Do testów end-to-end również nie, bo działają na lokalnym środowisku Wranglera `test`.
 
 ## Która lokalizacja jest domyślna?
 
-`pl-PL`. Jest serwowana bez prefiksu, więc `/products` to wersja polska. `en-US` jest serwowana pod `/en-US`. Obie są zadeklarowane w `src/integrations/use-intl/i18n.config.ts`, razem z nazwą cookie `marte_locale` i `Europe/Warsaw` jako domyślną strefą czasową. Nadmiarowy adres `/pl-PL/...` dostaje 301 na czystą ścieżkę już w Workerze.
+`pl-PL`. Jest serwowana bez prefiksu, więc `/products` to wersja polska. `en-US` jest serwowana pod `/en-US`. Obie są zadeklarowane w `src/integrations/use-intl/i18n.config.ts`, razem z nazwą cookie `marte_locale` i `Europe/Warsaw` jako strefą czasową samego sklepu. Nadmiarowy adres `/pl-PL/...` dostaje 301 na czystą ścieżkę już w Workerze.
+
+## W jakiej strefie czasowej i formacie liczb jest strona?
+
+W tych osoby, która ją ogląda, a nie wynikających z języka strony. `getDisplayPreferences` w `src/integrations/use-intl/i18n.display-preferences.ts` ustala je przy każdym żądaniu, a `TranslationsProvider` przekazuje je do `IntlProvider`. Strefa czasowa to zapisany wybór zalogowanego użytkownika, w przeciwnym razie ciasteczko `marte_time_zone`, które przeglądarka zapisuje z `Intl.DateTimeFormat().resolvedOptions().timeZone`, potem przypuszczenie Cloudflare dla żądania (`request.cf.timezone`), a na końcu `UTC`. Format regionalny, od którego zależy zapis dat, cen i liczb, to zapisany wybór użytkownika, w przeciwnym razie pierwszy obsługiwany wpis `Accept-Language`, a na końcu `en-US`. Użytkownik wybiera oba w sekcji Preferencje na `/account/profile`. `Europe/Warsaw` pozostaje strefą samego sklepu dla roku w numerach zamówień i terminów ustawowych.
 
 ## Gdzie trafia nowa operacja?
 
@@ -53,7 +57,7 @@ Cache cookie w Better Auth jest wyłączony, a `getRequestSession` dodatkowo prz
 
 Bo funkcja serwerowa jest publicznym endpointem HTTP. Można ją wywołać bezpośrednio, bez załadowania trasy, która zwykle ją wywołuje — więc strażnik w `beforeLoad` nie może jej chronić, a dodatkowo strażnicy działają też w przeglądarce. Middleware `authorized` działa na serwerze, przed jakimkolwiek dostępem do bazy. Strażnicy tras istnieją wyłącznie dla nawigacji.
 
-Test w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` to wymusza: każdy przypadek użycia z `createServerFn` musi zawierać `authorized(`, o ile nie jest na liście publicznej liczącej 21 pozycji.
+Test w `src/integrations/better-auth/__test__/use-case-authorization.test.ts` to wymusza: każdy przypadek użycia z `createServerFn` musi zawierać `authorized(`, o ile nie jest na liście publicznej liczącej 24 pozycje.
 
 ## Dlaczego nie ma transakcji bazodanowych?
 
@@ -77,15 +81,23 @@ Ta osoba zakłada konto w sklepie i potwierdza adres e-mail. Potem w **Ustawieni
 
 ## Jak zmiana w jednej karcie przeglądarki dociera na ekran innego administratora?
 
-Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 22 dla panelu, 15 dla sklepu, 3 dla kasy — i odrzucają komunikaty, które się nie pokrywają.
+Przez Durable Object `RealtimeInvalidationHub`. Mutacja wywołuje helper `schedule*Invalidation` (na przykład `scheduleCategoryCatalogInvalidation`), Worker wywołuje `hub.notifyInvalidation(prefixes)` jako natywną metodę RPC po `getByName(hubName)`, a hub rozgłasza do każdego gniazda tej publiczności. Karty subskrybują ustaloną listę prefiksów — 23 dla panelu, 15 dla sklepu, 3 dla kasy — i odrzucają komunikaty, które się nie pokrywają.
 
 ## Jak podejrzeć e-mail transakcyjny?
 
-Uruchom serwer developerski i otwórz `/dev/emails`. Trasa jest zdefiniowana w `src/routes/dev.emails.tsx` i nic nie renderuje, jeśli `import.meta.env.DEV` jest fałszywe. Same szablony leżą w `src/presentation/emails/`, a każdy z nich czyta własną przestrzeń `emails.*`.
+Uruchom serwer developerski i otwórz `/dev/emails`. Trasa jest zdefiniowana w `src/routes/dev.emails.tsx`, a jej handler `GET` zwraca 404, jeśli `import.meta.env.DEV` jest fałszywe. Same szablony leżą w `src/presentation/emails/`, a każdy z nich czyta własną przestrzeń `emails.*`.
 
 ## Co jest zaczęte, ale niedokończone?
 
-Przesyłki InPost nadaje się, drukuje ich etykiety i śledzi ze strony zamówienia w panelu, ale status InPost nie zmienia zamówienia; administrator nadal oznacza je jako wysłane i dostarczone. `cart` i `cart_item` są zarejestrowane w schemacie Drizzle, ale nieużywane. `/admin/settings` obejmuje własne konto administratora i bezpieczeństwo logowania oraz metody dostawy i darmową dostawę w sklepie; innych ustawień całego sklepu, takich jak dane sklepu i zespół administratorów, jeszcze w nim nie ma.
+Przesyłki InPost nadaje się, drukuje ich etykiety i śledzi ze strony zamówienia w panelu, ale status InPost nie zmienia zamówienia; administrator nadal oznacza je jako wysłane i dostarczone. Bez danych dostępowych ShipX strona zamówienia wyjaśnia, jak nadać paczkę ręcznie w Managerze Paczek InPost i wkleić numer przesyłki. `cart` i `cart_item` są zarejestrowane w schemacie Drizzle, ale nieużywane. `/admin/settings` obejmuje własne konto administratora i bezpieczeństwo logowania, dane sprzedawcy, metody dostawy i darmową dostawę w sklepie oraz zespół administratorów; samych przewoźników i powiadomień dla obsługi jeszcze w nim nie ma.
+
+## Co dzieje się z zamówieniami złożonymi przez gościa?
+
+Pozostają zamówieniami gościa, dopóki jakieś konto nie zweryfikuje tego samego adresu e-mail. Checkout gościa opłacony adresem już zweryfikowanego konta trafia do tego konta przy realizacji, a konto, które zweryfikuje adres później, przejmuje wcześniejsze zamówienia gościa z tym adresem przez `claimGuestOrdersForUser` w `src/modules/order/order.claim.server.ts`. Porównanie ignoruje wielkość liter, a każde przypisanie jest zapisywane jako `customer.orders_claimed`. Migracja `20261016140000_claim_past_guest_orders.sql` zrobiła to samo jednorazowo dla zamówień złożonych, zanim to istniało.
+
+## Jak uruchomić testy end-to-end?
+
+Raz `bun run test:e2e:install`, a potem `bun run test:e2e:pr` dla projektów Chromium uruchamianych w CI albo `bun run test:e2e` dla wszystkich. Playwright sam buduje i serwuje lokalnego Workera `test` z bazą po migracjach i z danymi startowymi w `.wrangler/test` oraz z emulowanymi Stripe, Resend i InPost ShipX, więc konto Cloudflare nie jest potrzebne; najpierw trzeba zatrzymać `bun run dev`, bo serwer działający już na porcie 3000 jest używany ponownie. `bun run test:e2e:stripe` płaci w prawdziwym Payment Element Stripe i wymaga testowych kluczy piaskownicy Stripe. Zobacz [Skrypty projektu](/docs/getting-started/project-scripts#testy-end-to-end).
 
 ## Jak zorganizowana jest sama dokumentacja?
 
@@ -100,7 +112,7 @@ bun run check
 bun run test
 ```
 
-`check` to formatowanie, linting i sprawdzanie typów; CI dodaje jeszcze `test:coverage` i `build:preview`. Hook pre-commit już uruchamia `vp staged` na zmienionych plikach, a `prepare-commit-msg` waliduje typ Conventional Commit i dokleja jego emoji.
+`check` to formatowanie, linting i sprawdzanie typów; CI dodaje jeszcze `test:coverage` i `build:preview` oraz zadanie end-to-end w Chromium, które odtwarza `bun run test:e2e:pr`. Hook pre-commit już uruchamia `vp staged` na zmienionych plikach, a `prepare-commit-msg` waliduje typ Conventional Commit i dokleja jego emoji.
 
 ## Powiązane strony
 

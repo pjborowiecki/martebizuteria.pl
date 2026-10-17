@@ -17,7 +17,7 @@ A module in `src/modules/<feature>/` is named after its feature and every file i
 | `<feature>.types.ts`                | Types derived from the table, usually one interface with `select`/`insert` | `address/address.types.ts`                        |
 | `<feature>.zod.ts`                  | Zod schemas, mostly built from `drizzle-zod`                               | `product/product.zod.ts`                          |
 | `<feature>.constants.ts`            | Column lengths, status enums, error codes, query and mutation keys         | `product-category/product-category.constants.ts`  |
-| `<feature>.utils.ts`                | Pure helpers with no I/O                                                   | `inventory/inventory.utils.ts`                    |
+| `<feature>.utils.ts`                | Pure helpers with no I/O                                                   | `order/order.admin-actions.utils.ts`              |
 | `<feature>.accessors.ts`            | Data access with no authorization: reads and writes against `db`           | `payment/payment.accessors.ts`                    |
 | `<feature>.server.ts`               | Server-only helpers, typically prepared statements                         | `product-collection/product-collection.server.ts` |
 | `use-cases/<verb>-<noun>.ts`        | One operation, exporting its server function and query options             | `order/use-cases/ship-order.ts`                   |
@@ -25,16 +25,17 @@ A module in `src/modules/<feature>/` is named after its feature and every file i
 
 Some modules need a second axis and stack two suffixes. The second-to-last segment narrows the concern:
 
-| File                                              | Purpose                                                |
-| ------------------------------------------------- | ------------------------------------------------------ |
-| `audit-log/audit-log.diff.utils.ts`               | Helpers for diffing before/after audit snapshots       |
-| `audit-log/audit-log.queue.server.ts`             | The Cloudflare Queue producer and consumer             |
-| `audit-log/audit-log.events.server.ts`            | The typed recorder functions the domain layer calls    |
-| `inventory/inventory.availability.utils.ts`       | Availability arithmetic separated from row mapping     |
-| `product/product.admin-list.server.ts`            | The admin list query, separate from the storefront one |
-| `product/product.storefront-catalog.accessors.ts` | Storefront catalog reads                               |
-| `product-image/product-image.persist.utils.ts`    | Image persistence helpers                              |
-| `order/order.settled.server.ts`                   | Lookups for orders that have already settled           |
+| File                                              | Purpose                                                                 |
+| ------------------------------------------------- | ----------------------------------------------------------------------- |
+| `audit-log/audit-log.diff.utils.ts`               | Helpers for diffing before/after audit snapshots                        |
+| `audit-log/audit-log.queue.server.ts`             | The Cloudflare Queue producer and consumer                              |
+| `audit-log/audit-log.events.server.ts`            | The typed recorder functions the domain layer calls                     |
+| `inventory/inventory.availability.utils.ts`       | Availability arithmetic separated from row mapping                      |
+| `product/product.admin-list.server.ts`            | The admin list query, separate from the storefront one                  |
+| `product/product.storefront-catalog.accessors.ts` | Storefront catalog reads                                                |
+| `product-image/product-image.persist.utils.ts`    | Image persistence helpers                                               |
+| `order/order.settled.server.ts`                   | Lookups for orders that have already settled                            |
+| `order/order.claim.server.ts`                     | Files guest orders under the account that verified their e-mail address |
 
 ## Routes
 
@@ -85,7 +86,7 @@ The prefix is the vendor's short name rather than the folder name, which is why 
 
 ## Tests
 
-Tests live in a `__test__` folder beside the code they cover — there are 184 such folders. The suffix picks the Vitest project.
+Tests live in a `__test__` folder beside the code they cover — there are 221 such folders. The suffix picks the Vitest project.
 
 | Pattern                               | Vitest project | Environment                                   |
 | ------------------------------------- | -------------- | --------------------------------------------- |
@@ -97,15 +98,26 @@ A test file is named after the file it covers: `src/modules/address/__test__/` h
 
 `routeFileIgnorePattern: "__test__"` in `vite.config.ts` keeps the route generator from treating `src/routes/__test__` as routes.
 
+Browser tests are the exception to living beside their code. They sit in `e2e/` at the repository root and run with Playwright, which picks the project by suffix:
+
+| Pattern                               | Playwright project                                          | Example                                   |
+| ------------------------------------- | ----------------------------------------------------------- | ----------------------------------------- |
+| `e2e/specs/<area>.spec.ts`            | `chromium` and `webkit`                                     | `e2e/specs/checkout.spec.ts`              |
+| `e2e/specs/*stripe-test-mode.spec.ts` | `stripe-test-mode`, against a Stripe sandbox                | `e2e/specs/blik.stripe-test-mode.spec.ts` |
+| `e2e/specs/<area>.shop-wide.ts`       | `chromium-shop-wide` and `webkit-shop-wide`, after the rest | `e2e/specs/sales.shop-wide.ts`            |
+| `e2e/specs/<name>.setup.ts`           | `setup`, before the browser projects                        | `e2e/specs/auth.setup.ts`                 |
+
+Page objects live in `e2e/pages/<name>-page.ts`, fixtures in `e2e/fixtures/`, and the seeded accounts and catalogue the specs expect in `e2e/data/`.
+
 ## Content and messages
 
-| Pattern                                   | Meaning                                                              |
-| ----------------------------------------- | -------------------------------------------------------------------- |
-| `content/docs/<path>/<page>.<locale>.mdx` | One documentation page in one locale                                 |
-| `content/docs/<path>/meta.<locale>.json`  | Navigation order and title for that folder, per locale               |
-| `messages/<locale>/<namespace>.json`      | One translation namespace, named after it: `pages.admin.orders.json` |
+| Pattern                                   | Meaning                                                                        |
+| ----------------------------------------- | ------------------------------------------------------------------------------ |
+| `content/docs/<path>/<page>.<locale>.mdx` | One documentation page in one locale                                           |
+| `content/docs/<path>/meta.<locale>.json`  | Navigation order and title for that folder, per locale                         |
+| `messages/<locale>/<namespace>.json`      | One translation namespace, named after it: `pages.admin.catalog.products.json` |
 
-The locale suffix is parsed by Fumadocs with `parser: "dot"` and `hideLocale: "always"`, configured in `src/integrations/fumadocs/fumadocs.i18n.ts`. Both locales must carry the same slugs. The terms of service, the privacy policy and the exchanges-and-returns page are not files: they are rows in the `content_page` table, edited at `/admin/content`.
+The locale suffix is parsed by Fumadocs with `parser: "dot"` and `hideLocale: "always"`, configured in `src/integrations/fumadocs/fumadocs.i18n.ts`. Both locales must carry the same slugs. The terms of service, the privacy policy, the exchanges-and-returns page and the FAQ are not files: they are rows in the `content_page` table, edited at `/admin/content`.
 
 ## Database
 
@@ -117,7 +129,7 @@ The locale suffix is parsed by Fumadocs with `parser: "dot"` and `hideLocale: "a
 
 ## Scripts
 
-`scripts/<verb>-<noun>.ts`, run with `bun scripts/<name>.ts`: `commit-msg.ts`, `prepare-deploy-secrets.ts`, `sync-skills.ts`, `verify-bindings.ts`, `verify-build.ts`, `verify-deployment.ts`, `verify-email-sender.ts`, `verify-stripe-keys.ts`.
+`scripts/<verb>-<noun>.ts`, run with `bun scripts/<name>.ts`: `commit-msg.ts`, `prepare-deploy-secrets.ts`, `seed-test.ts`, `sync-skills.ts`, `verify-bindings.ts`, `verify-build.ts`, `verify-deployment.ts`, `verify-email-sender.ts`, `verify-stripe-keys.ts`.
 
 ## Related pages
 

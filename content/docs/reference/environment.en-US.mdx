@@ -3,7 +3,7 @@ title: "Environment and bindings"
 description: "Environment files, variables, secrets and Cloudflare bindings for every Wrangler environment."
 ---
 
-There are three real environments — `development`, `preview` and `production` — plus a `test` set of dummy values. Each real environment has a matching Vite mode, a matching `.env.<name>` file and a matching `env` block in `wrangler.jsonc`. There is no Wrangler `test` environment; tests get their values from `.env.test` through Vitest.
+There are four environments — `development`, `preview`, `production` and `test` — each with a matching Vite mode and a matching `env` block in `wrangler.jsonc`. The first three have a gitignored `.env.<name>` file and real Cloudflare resources. `test` takes its values from the committed `.env.test`, which also feeds the Vitest projects, binds only local resources and exists for the Playwright suite: its Worker, `martebizuteria-test`, runs `src/platform/testing/worker.ts`, which installs in-memory emulators for Stripe, Resend and InPost ShipX before handing requests to `src/server.ts`. `bun run build:test` and `bun run start:test` build and serve it, `bun run db:migrate:test`, `db:seed:test` and `db:reset:test` prepare its database under `.wrangler/test`, and no script deploys it.
 
 Bun's automatic env loading is switched off in `bunfig.toml`:
 
@@ -16,13 +16,13 @@ so nothing is ever loaded implicitly. Vite and Wrangler pick the file from the r
 
 ## Environment files
 
-| File               | Committed | Used by                                                                                                            |
-| ------------------ | --------- | ------------------------------------------------------------------------------------------------------------------ |
-| `.env.example`     | Yes       | The template; lists every variable with a placeholder or empty value                                               |
-| `.env.development` | No        | `bun run dev`, `email:verify development`, `verify-stripe-keys.ts development`, the `:development` Drizzle scripts |
-| `.env.preview`     | No        | `build:preview`, `deploy:preview`, `email:verify preview`, the `:preview` Drizzle scripts                          |
-| `.env.production`  | No        | `build:production`, `deploy:production`, `email:verify production`, the `:production` Drizzle scripts              |
-| `.env.test`        | Yes       | Vitest, via `env: loadEnv("test", import.meta.dirname, "")` in `vite.config.ts`; dummy values only                 |
+| File               | Committed | Used by                                                                                                                                                                                                                                                                                                                     |
+| ------------------ | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Yes       | The template; lists every variable with a placeholder or empty value                                                                                                                                                                                                                                                        |
+| `.env.development` | No        | `bun run dev`, `email:verify development`, `verify-stripe-keys.ts development`, the `:development` Drizzle scripts                                                                                                                                                                                                          |
+| `.env.preview`     | No        | `build:preview`, `deploy:preview`, `email:verify preview`, the `:preview` Drizzle scripts                                                                                                                                                                                                                                   |
+| `.env.production`  | No        | `build:production`, `deploy:production`, `email:verify production`, the `:production` Drizzle scripts                                                                                                                                                                                                                       |
+| `.env.test`        | Yes       | Vitest, via `env: loadEnv("test", import.meta.dirname, "")` in `vite.config.ts`; `vp build --mode test` for the end-to-end test Worker; `scripts/seed-test.ts`, for the `AUTH_SECRET` that encrypts the seeded admin's two-factor secret; CI, which copies it over `.env.development` and `.env.preview`. Dummy values only |
 
 Start from the template:
 
@@ -70,27 +70,28 @@ interface ImportMetaEnv {
 
 ## Bindings
 
-`wrangler.jsonc` gives every environment the same six bindings, `ASSETS` included, so `wrangler types --env development` declares it on `Env`. Only the underlying resources differ.
+`wrangler.jsonc` gives every environment the same seven bindings, `ASSETS` included, so `wrangler types --env development` declares all of them on `Env`. Only the underlying resources differ.
 
-| Binding                     | Type           | `development`                           | `preview`                               | `production`                |
-| --------------------------- | -------------- | --------------------------------------- | --------------------------------------- | --------------------------- |
-| `DB`                        | D1             | `martebizuteria-preview`, remote        | `martebizuteria-preview`, remote        | `martebizuteria`, remote    |
-| `CACHE`                     | KV             | `d6727c71…`, remote                     | `d6727c71…`, remote                     | `4126270a…`, remote         |
-| `IMAGES`                    | R2             | bucket `martebizuteria-preview`, remote | bucket `martebizuteria-preview`, remote | bucket `martebizuteria`     |
-| `AUDIT_LOG_QUEUE`           | Queue producer | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log`  |
-| `NEWSLETTER_QUEUE`          | Queue producer | `martebizuteria-newsletter-preview`     | `martebizuteria-newsletter-preview`     | `martebizuteria-newsletter` |
-| `REALTIME_INVALIDATION_HUB` | Durable Object | class `RealtimeInvalidationHub`         | same                                    | same                        |
-| `ASSETS`                    | Static assets  | `./public`, in each environment block   | same                                    | same                        |
+| Binding                     | Type           | `development`                           | `preview`                               | `test`                              | `production`                |
+| --------------------------- | -------------- | --------------------------------------- | --------------------------------------- | ----------------------------------- | --------------------------- |
+| `DB`                        | D1             | `martebizuteria-preview`, remote        | `martebizuteria-preview`, remote        | `martebizuteria-test`, local        | `martebizuteria`, remote    |
+| `CACHE`                     | KV             | `d6727c71…`, remote                     | `d6727c71…`, remote                     | placeholder id, local               | `4126270a…`, remote         |
+| `IMAGES`                    | R2             | bucket `martebizuteria-preview`, remote | bucket `martebizuteria-preview`, remote | bucket `martebizuteria-test`, local | bucket `martebizuteria`     |
+| `AUDIT_LOG_QUEUE`           | Queue producer | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log-test`     | `martebizuteria-audit-log`  |
+| `NEWSLETTER_QUEUE`          | Queue producer | `martebizuteria-newsletter-preview`     | `martebizuteria-newsletter-preview`     | `martebizuteria-newsletter-test`    | `martebizuteria-newsletter` |
+| `REALTIME_INVALIDATION_HUB` | Durable Object | class `RealtimeInvalidationHub`         | same                                    | same                                | same                        |
+| `ASSETS`                    | Static assets  | `./public`, in each environment block   | same                                    | same                                | same                        |
 
-`development` and `preview` point at the **same** D1 database, KV namespace and Queue. `bun run dev` therefore writes to the preview database, and `vite.config.ts` turns remote bindings on only for that mode:
+`development` and `preview` point at the **same** D1 database, KV namespace, R2 bucket and queues. `bun run dev` therefore writes to the preview database, and `vite.config.ts` turns remote bindings on only for that mode, and keeps the `test` environment's local state in its own folder:
 
 ```ts
-remoteBindings: process.env["CLOUDFLARE_ENV"] === "development"
+persistState: process.env["CLOUDFLARE_ENV"] === "test" ? { path: ".wrangler/test" } : true,
+remoteBindings: process.env["CLOUDFLARE_ENV"] === "development",
 ```
 
-Each environment also declares one plain variable, `vars.APP_ENV`, set to its own name. `src/server.ts` passes it to `generateRobotsTxt`, so only production serves an indexable `robots.txt`.
+Each environment also declares one plain variable, `vars.APP_ENV`, set to its own name. `src/server.ts` passes it to `generateRobotsTxt`, so only production serves an indexable `robots.txt`; it also decides the accepted Stripe mode and the Checkout Sessions' `deployment` metadata, the ShipX API, `Strict-Transport-Security` and the prefix of the KV and e-mail rate-limit keys, as [Environment variables](/docs/getting-started/environment-variables#plain-vars-not-secrets) lists. Only `preview` and `production` declare a Cron Trigger, `0 3 * * *`, which runs the daily retention clean-up.
 
-The Worker's queue consumer is declared alongside the producer with `max_batch_size: 50`, `max_batch_timeout: 5`, `max_retries: 3` and a `dead_letter_queue` named after the queue with `-dlq`, which the Worker consumes one message at a time (`max_batch_size: 1`, `max_retries: 3`, `retry_delay: 300`); the `queue` export in `src/server.ts` handles both. The Durable Object class is created by migration tag `v1` (`new_sqlite_classes: ["RealtimeInvalidationHub"]`).
+Each environment declares four queue consumers, all handled by the `queue` export in `src/server.ts`. The audit-log queue is consumed in batches (`max_batch_size: 50`, `max_batch_timeout: 5`, or `1` in `test`, `max_retries: 3`) with a `dead_letter_queue` named after it with `-dlq`, which the Worker consumes one message at a time (`max_batch_size: 1`, `max_retries: 3`, `retry_delay: 300`). The newsletter queue, whose every message is one batch of up to 100 recipients, is consumed one message at a time and never in parallel (`max_batch_size: 1`, `max_concurrency: 1`, `max_retries: 3`), with its own `-dlq` consumed the same way after a `retry_delay` of 300 seconds. The Durable Object class is created by migration tag `v1` (`new_sqlite_classes: ["RealtimeInvalidationHub"]`).
 
 Other top-level settings worth knowing: `compatibility_date` is `2026-04-18` with the `nodejs_compat` flag, `keep_vars` is on, observability is enabled with Workers Issues (`observability.issues.enabled`) and `placement.mode` is `smart`.
 

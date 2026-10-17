@@ -3,7 +3,9 @@ title: "Dodawanie przypadku użycia"
 description: "Dodaj jedną operację: funkcję serwerową z middleware, walidatorem, opcjami zapytania lub mutacji, śladem audytowym i unieważnianiem cache'u."
 ---
 
-Przypadek użycia to jedna operacja w jednym module. Mieszka w `src/modules/{feature}/use-cases/{verb-noun}.ts` i eksportuje dwie rzeczy: funkcję serwerową oraz opcje TanStack Query, których loadery tras i komponenty używają, żeby ją wywołać. Nic innego w repozytorium nie buduje własnych `queryOptions` dla danych modułu — moduł jest ich właścicielem.
+Przypadek użycia to jedna operacja w jednym module. Mieszka w `src/modules/{feature}/use-cases/{verb-noun}.ts` i zwykle eksportuje dwie rzeczy: funkcję serwerową oraz opcje TanStack Query, których loadery tras i komponenty używają, żeby ją wywołać. Nic innego w repozytorium nie buduje własnych `queryOptions` dla danych modułu — moduł jest ich właścicielem.
+
+Istnieją dwa warianty. 21 ze 128 plików `{verb-noun}.ts` nie eksportuje opcji zapytania ani mutacji, bo ich wywołujący sięgają po funkcję bezpośrednio — na przykład funkcję z `create-category.ts` provider formularza kategorii owija we własne `useMutation`. Operacja, którą wywołuje wyłącznie inny kod serwerowy — webhook, konsument kolejki, sprzątanie danych — w ogóle nie jest funkcją serwerową, tylko zwykłą funkcją async w `{verb-noun}.server.ts`; opisuje je [Dodawanie modułu](/docs/guides/add-a-module).
 
 Szczegóły middleware, błędów i kontekstu, których używa ta strona, opisują [Funkcje serwerowe](/docs/guides/server-functions).
 
@@ -79,7 +81,42 @@ export const getAdminProductsPageQuery = (input: Product["adminProductsPageInput
   })
 ```
 
-Jego handler zamienia numer strony na offset i limit przy pomocy `listPaginationParamsFromPage`, a wynik owija w `buildListPaginationResult` — obie funkcje pochodzą z `src/modules/_core/utils/pagination.ts`. Wynik zawiera `items`, `total`, `limit`, `offset` i `hasMore`, czyli dokładnie to, czego oczekuje ręczne stronicowanie tabeli danych.
+Jego handler:
+
+```ts
+.handler(async ({ data }) => {
+  const { timeZone } = await resolveRequestDisplayPreferences()
+  const params = buildAdminProductsListParams(data, timeZone)
+  const { rows, total } = await productGetAdminProductsPage(params)
+  const aggregates = await loadAdminListAggregates(rows)
+  const items = rows.map((row) => toAdminProductListItem(row, aggregates.statsByProductId, aggregates.skuSummaryByProductId))
+
+  return buildListPaginationResult(items, total, params)
+})
+```
+
+`buildAdminProductsListParams`, zdefiniowane w tym samym pliku, zamienia numer strony na offset i limit przy pomocy `listPaginationParamsFromPage` i dokłada filtry; `buildListPaginationResult` owija wiersze. Obie funkcje pomocnicze pochodzą z `src/modules/_core/utils/pagination.ts`. Wynik zawiera `items`, `total`, `limit`, `offset` i `hasMore`, czyli dokładnie to, czego oczekuje ręczne stronicowanie tabeli danych.
+
+### Filtry dat działają w strefie czasowej administratora
+
+Filtr kolumny daty (`dateColumnFilterField` albo `dateTimeColumnFilterField` tam, gdzie liczy się minuta, jak w dzienniku audytu) przychodzi jako dzień kalendarzowy lub minuta czasu lokalnego, bez strefy. „Utworzone 3 marca” oznacza 3 marca tam, gdzie jest administrator, a nie w UTC, więc handler filtrujący po dacie robi dwie rzeczy:
+
+1. Wywołuje `resolveRequestDisplayPreferences()` z `src/integrations/use-intl/i18n.display-preferences.ts` — `createServerOnlyFn`, który zwraca `{ formatLocale, timeZone }` dla bieżącego żądania: zapisane preferencje zalogowanego użytkownika, a w ich braku te wykryte z żądania (dla strefy: ciasteczko `marte_time_zone`, potem strefa czasowa, którą Cloudflare podaje dla żądania, a na końcu `UTC`).
+2. Przekazuje `timeZone` do akcesora, który buduje warunek przez `buildAdminDateTimeFilterSql(column, filter, timeZone)` z `src/modules/_core/utils/datetime-column-filter.server.ts`, tak jak robi to `product.accessors.ts`:
+
+```ts
+if (params.createdAt !== undefined) {
+  conditions.push(buildAdminDateTimeFilterSql(product.createdAt, params.createdAt, params.timeZone))
+}
+```
+
+`buildAdminDateTimeFilterSql` zamienia każdy dzień na chwilę, w której się zaczyna, i chwilę, w której zaczyna się dzień następny w tej strefie, więc „w dniu”, „przed”, „po” i „pomiędzy” odpowiadają kalendarzowi administratora. Nie porównuj filtra z północą UTC na własną rękę.
+
+`resolveRequestDisplayPreferences()` wywołuje jedenaście przypadków użycia panelu. Strony list zamówień, produktów, klientów i dziennika audytu oraz eksporty zamówień, produktów i klientów przekazują strefę do swoich filtrów dat; `src/modules/audit-log/use-cases/list-audit-logs.ts` przekazuje też cały obiekt `preferences` do `toAdminAuditListItem`, żeby sformatować każdy wiersz. Migawka pulpitu, zakres wykresu pulpitu, statystyki dziennika audytu i szczegóły klienta używają strefy do wyznaczania granic dni i miesięcy. Testy podmieniają ten moduł na fiksturę z `src/platform/testing/mocks/display-preferences.ts`, która odpowiada `{ formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }`:
+
+```ts
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
+```
 
 ## Napisz mutację
 
@@ -136,8 +173,8 @@ return { handle: data.handle, id }
 
 Trzy obowiązki:
 
-1. **Najpierw sprawdzenie unikalności i spójności odwołań.** Zduplikowany handle rzuca `AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)`; brakujący rodzic rzuca `AppError(ERROR_CODES.VALIDATION, CATEGORY_ERROR_CODES.INVALID_PARENT)`. Drugi argument to kod specyficzny dla modułu, którego formularz używa, żeby przypiąć błąd do właściwego pola.
-2. **Unieważnianie w czasie rzeczywistym.** `scheduleCategoryCatalogInvalidation()` z `src/integrations/realtime-invalidation/realtime-invalidation.catalog.server.ts` publikuje prefiksy kluczy zapytań panelu i witryny do Durable Object `RealtimeInvalidationHub`, żeby każda inna otwarta karta pobrała dane ponownie. Pozostałe funkcje w tym pliku to `scheduleProductCatalogInvalidation`, `scheduleCollectionCatalogInvalidation`, `scheduleProductAttributeCatalogInvalidation`, `scheduleAdminCustomersInvalidation` i `scheduleAdminOrdersInvalidation`.
+1. **Najpierw sprawdzenie unikalności i spójności odwołań.** Zduplikowany handle rzuca `AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)`; brakujący rodzic rzuca `AppError(ERROR_CODES.VALIDATION, CATEGORY_ERROR_CODES.INVALID_PARENT)`. Drugi argument to przyczyna specyficzna dla modułu. Formularz kategorii przypina błąd do właściwego pola na podstawie pierwszego argumentu, czyli kodu: `CONFLICT` oznacza `handle`, a `VALIDATION` — `parentId`.
+2. **Unieważnianie w czasie rzeczywistym.** `scheduleCategoryCatalogInvalidation()` z `src/integrations/realtime-invalidation/realtime-invalidation.catalog.server.ts` publikuje prefiksy kluczy zapytań panelu i witryny do Durable Object `RealtimeInvalidationHub`, żeby każda inna otwarta karta pobrała dane ponownie. Pozostałe funkcje w tym pliku to `scheduleProductCatalogInvalidation`, `scheduleCollectionCatalogInvalidation`, `scheduleContentPageInvalidation`, `scheduleProductAttributeCatalogInvalidation`, `scheduleAdminCustomersInvalidation`, `scheduleAdminNewsletterSubscribersInvalidation`, `scheduleAdminAuditLogInvalidation`, `scheduleAdminOrdersInvalidation` (publikuje `ORDER_CHANGE_ADMIN_QUERY_KEYS`, czyli prefiksy zamówień i pulpitu) oraz `scheduleSalesStatusInvalidation`. Każda z nich owija jedno wywołanie `scheduleRealtimeInvalidation({ admin, storefront })` z `realtime-invalidation.publish.server.ts`, które przypadek użycia może też wywołać bezpośrednio z własnymi kluczami, jak robi to `send-newsletter-campaign.ts`. Karta pobiera ponownie tylko klucze objęte jej listą subskrypcji — `ADMIN_REALTIME_QUERY_PREFIXES` albo `STOREFRONT_REALTIME_QUERY_PREFIXES` w `realtime-invalidation.subscriptions.ts` — więc prefiks nowego modułu trzeba dopisać także tam. Zobacz [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation).
 3. **Ślad audytowy.** `recordCatalogCategoryCreatedAudit(...)` z `src/modules/audit-log/audit-log.events.server.ts` wstawia wiadomość do kolejki `AUDIT_LOG_QUEUE` przez `scheduleBackgroundWork`, które przekazuje ją do `waitUntil` Workera. Żadne z tych wywołań nie jest oczekiwane i żadne nie może zepsuć żądania.
 
 Oba są celowo w trybie „wyślij i zapomnij”. Nie dodawaj do nich `await` ani nie owijaj ich w `try`.
@@ -149,6 +186,18 @@ Rozwiń wyeksportowane opcje operatorem spread. Zapytanie w komponencie używa `
 ```tsx
 const { data: categories, isFetching } = useSuspenseQuery(getAdminCategoriesQuery())
 ```
+
+Handlery zwykle zwracają surowe wartości — znaczniki czasu jako `Date`, ceny w jednostkach podrzędnych — a komponent formatuje je według preferencji wyświetlania oglądającego, które są niezależne od języka interfejsu. `src/hooks/use-display-format.ts` udostępnia `useFormatter()`, formatter use-intl zbudowany dla formatu regionalnego i strefy czasowej oglądającego (importuj go z tego pliku, nie z `use-intl`), oraz `useFormatLocale()`, czyli napis z formatem regionalnym, który przyjmuje `formatPrice(amountInMinorUnits, currency, locale)` z `src/modules/_core/utils/currency.ts`. `src/presentation/components/custom/checkout/components/checkout-success.tsx` używa obu:
+
+```tsx
+const format = useFormatter()
+const formatLocale = useFormatLocale()
+
+<p className="mt-1 text-sm">{format.dateTime(order.createdAt, { day: "numeric", month: "long", year: "numeric" })}</p>
+<SummaryRow label={t("subtotalLabel")} value={formatPrice(order.subtotalMinorUnits, order.currencyCode, formatLocale)} />
+```
+
+Handler, który sam musi zwrócić sformatowany tekst, bierze format regionalny i strefę z `resolveRequestDisplayPreferences()`, tak jak `getAdminCustomer` przy dacie dołączenia klienta.
 
 Mutacja rozwija `mutationOptions`, tłumaczy błąd i unieważnia tylko to, co się zmieniło:
 
@@ -167,7 +216,29 @@ const setDefault = useMutation({
 })
 ```
 
-`useActionError` w `src/hooks/use-action-error.ts` mapuje wartość z `ERROR_CODES` na `errors.action.<CODE>`, klucz błędu Better Auth na `pages.auth.errors.<key>`, błąd Zoda lub walidacji na `errors.action.VALIDATION`, a wszystko nierozpoznane na `errors.action.INTERNAL_ERROR`. Nigdy nie pokazuj `error.message` bezpośrednio.
+`useActionError` w `src/hooks/use-action-error.ts` czyta `message` błędu: wartość z `ERROR_CODES` zamienia na `errors.action.<CODE>`, a klucz komunikatu Better Auth (to, co niesie `AppError(AUTH_API_ERROR, key)`) na `pages.auth.errors.<key>`. Błąd o nazwie `ZodError` lub `ValidationError` daje `errors.action.VALIDATION`, błąd, którego `code` jest kodem błędu Better Auth, daje swój wpis w `pages.auth.errors`, a wszystko inne — `errors.action.INTERNAL_ERROR`. Nigdy nie pokazuj `error.message` bezpośrednio.
+
+Ta kolejność ma znaczenie, gdy handler rzuca przyczynę specyficzną dla modułu. `AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)` dociera z `DUPLICATE_HANDLE` jako komunikatem, którego `useActionError` nie zna, więc pokazałby ogólne zdanie o błędzie wewnętrznym. Rozgałęź się na przyczynie i kodzie samodzielnie, zanim sięgniesz po ogólny komunikat, tak jak robi to `src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions.ts`:
+
+```ts
+const resolveOrderActionErrorMessage = (error: Error, t: ReturnType<typeof useTranslations<"pages.admin.orders.rowActions">>): string => {
+  const code = errorCode(error)
+
+  if (code === ERROR_CODES.NOT_FOUND) {
+    return t("toast.notFoundDescription")
+  }
+
+  if (error.message === ORDER_ERROR_CODES.OPEN_DISPUTE) {
+    return t("toast.openDisputeDescription")
+  }
+
+  if (code === ERROR_CODES.CONFLICT) {
+    return t("toast.invalidStateDescription")
+  }
+
+  return t("toast.errorDescription")
+}
+```
 
 ## Pobierz z wyprzedzeniem w loaderze trasy
 
@@ -186,21 +257,46 @@ const prefetchCategoriesQueries = async (context: { queryClient: QueryClient }):
 
 ## Przetestuj
 
-Dodaj test w `use-cases/__test__/`. Wzorzec z `src/modules/address/use-cases/__test__/address-use-cases.test.ts` mockuje moduł middleware, moduł bazy danych i moduł akcesorów, a `createServerFn` zastępuje budowniczym, który wstrzykuje ustalone `context.auth.user.id`:
+Dodaj test w `use-cases/__test__/`. Do handlera można dotrzeć na dwa sposoby.
+
+**Zastąp budowniczego.** `src/modules/address/use-cases/__test__/address-use-cases.test.ts` i `src/modules/payment/use-cases/__test__/create-card-setup-intent.test.ts` mockują moduł middleware i moduły wywoływane przez handler, a `createServerFn` zastępują budowniczym, który wstrzykuje ustalone `context.auth`. Mock `auth.middleware`, który dostarcza `RATE_LIMITS`, powinien odwzorowywać prawdziwy kształt `{ max, window }`, tak jak w `create-card-setup-intent.test.ts`:
 
 ```ts
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
-  RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
+  RATE_LIMITS: { SENSITIVE: { max: 3, window: 60 } },
   authorized: () => ({}),
-  withRateLimit: (...args: unknown[]) => {
-    middleware.rateLimitCalls.push(args)
-
-    return {}
-  },
+  withRateLimit: calls.withRateLimit,
 }))
 ```
 
-Pokryj ścieżkę powodzenia, każdy kod rzucany przez handler, fakt, że identyfikator wywołującego pochodzi z sesji, a nie z wejścia, oraz — jak robi to ten plik — że ogranicznik żądań został skonfigurowany z oczekiwanym rodzajem i limitami. Zobacz [Pisanie testów](/docs/guides/writing-tests).
+Trzy testy — `address-use-cases.test.ts`, `saved-payment-methods.test.ts` i `own-newsletter-subscription.test.ts` — wciąż mockują wymyślony kształt `{ limit, windowSeconds }`; nie kopiuj go.
+
+**Uruchom prawdziwy łańcuch.** Żeby sprawdzić prawdziwe middleware i walidator, owiń rzeczywiste `createServerFn` przez `withTestRpc` z `src/platform/testing/lib/server-function.ts` i zastąp tylko sesję oraz warstwę danych, tak jak robi to `src/modules/discount/use-cases/__test__/create-discount.test.ts`:
+
+```ts
+vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
+  const actual = await importOriginal()
+  const { withTestRpc } = await import("~/src/platform/testing/lib/server-function")
+
+  return {
+    ...actual,
+    createServerFn: new Proxy(actual.createServerFn, {
+      apply: (target, thisArg, args: unknown[]) => withTestRpc(Reflect.apply(target, thisArg, args)),
+    }),
+  }
+})
+vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
+  const actual = await importOriginal()
+
+  return { ...actual, getRequest: () => new Request("https://marte.test/admin/coupons") }
+})
+vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: stubs.getRequestSession }))
+vi.mock("~/src/lib/rate-limit", () => ({}))
+```
+
+`withTestRpc` uruchamia każde wywołanie w kontekście żądania TanStack Start, więc `authorized(...)`, walidator i tłumaczenie błędów z `withRequest` działają tak jak w Workerze: sesja `null` dostaje `UNAUTHORIZED`, klient — `FORBIDDEN`, a nieprawidłowe wejście — `VALIDATION`. Vitest działa z `import.meta.env.MODE` równym `"test"`, czyli w jednym z trybów, w których administrator musi mieć uwierzytelnianie dwuskładnikowe, więc atrapa sesji administratora potrzebuje `twoFactorEnabled: true`, inaczej każde sprawdzenie uprawnień odpowie `FORBIDDEN`. Plik konfiguracyjny projektu testów komponentów, `src/platform/testing/setup.ts`, nakłada tę samą otoczkę `withTestRpc` na każdy test komponentu.
+
+Pokryj ścieżkę powodzenia, każdy kod rzucany przez handler, fakt, że identyfikator wywołującego pochodzi z sesji, a nie z wejścia, oraz to, że ogranicznik żądań został skonfigurowany z oczekiwanym rodzajem i limitami. Zobacz [Pisanie testów](/docs/guides/writing-tests).
 
 ## Powiązane przewodniki
 

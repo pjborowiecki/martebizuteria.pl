@@ -1,29 +1,35 @@
 ---
 title: "Local debugging"
-description: "Run the app, inspect queries, replay a Stripe webhook, preview an email, read the database and diagnose a broken toolchain."
+description: "Run the app against the shared preview resources or a local test Worker with emulated providers, inspect queries, replay a Stripe webhook, preview an email, read the database and diagnose a broken toolchain."
 ---
 
 ## Getting the app running
 
 ```sh
 bun install       # postinstall runs bun run typegen
-bun run dev       # http://127.0.0.1:3000
+bun run dev       # http://localhost:3000
 ```
 
 `bun run dev` is `bun run content && CLOUDFLARE_ENV=development vp dev --mode development`. Two things happen before Vite starts:
 
-1. `bun run content` runs `fumadocs-mdx` over `src/integrations/fumadocs/fumadocs.config.ts` and writes `.source/`. Without it, the `collections/browser` and `collections/server` imports that back `/docs` and the legal pages do not resolve.
+1. `bun run content` runs `fumadocs-mdx` over `src/integrations/fumadocs/fumadocs.config.ts` and writes `.source/`. Without it, the `collections/browser` and `collections/server` imports that back the `/docs` pages do not resolve. (The legal pages are not MDX: they are rows of the `content_page` table.)
 2. `CLOUDFLARE_ENV=development` selects the `development` block in `wrangler.jsonc`, and `vite.config.ts` turns on `remoteBindings` for exactly that value.
 
-The port is fixed: `server: { port: 3000, strictPort: true }`. If 3000 is occupied the dev server refuses to start rather than picking another port — Stripe's webhook forwarding and Better Auth's host allow-list both assume 3000.
+The port is fixed: `server: { port: 3000, strictPort: true }`. If 3000 is occupied the dev server refuses to start rather than picking another port — `bun run stripe:listen` forwards to `localhost:3000`, and Better Auth's allowed hosts outside preview and production are `localhost:3000` and `127.0.0.1:3000`.
 
 ### You are on the real preview database
 
-`remoteBindings: true` means `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE` and `REALTIME_INVALIDATION_HUB` all point at the live Cloudflare resources for the `development` environment — and that environment's D1 database is `martebizuteria-preview`, the same one the preview deployment uses. There is no local SQLite file and no local R2: `IMAGES` is the remote `martebizuteria-preview` bucket, which has to exist before the dev server can reach it (see [Image delivery](/docs/guides/image-delivery)). A product you delete while developing is deleted for real. See [Seeding data](/docs/guides/seeding-data) for why the seed scripts are off limits.
+`remoteBindings: true` connects the bindings marked `remote: true` in the `development` block to the live Cloudflare resources: `DB` is the D1 database `martebizuteria-preview`, the same one the preview deployment uses, `IMAGES` is the R2 bucket `martebizuteria-preview`, and `CACHE` is preview's KV namespace. Wrangler must be signed in to the account (`vp exec wrangler login`). There is no local SQLite file and no local R2, and the bucket has to exist before the dev server can reach it (see [Image delivery](/docs/guides/image-delivery)). A product you delete while developing is deleted for real. See [Seeding data](/docs/guides/seeding-data) for why the seed scripts are off limits.
+
+The rest run locally in Miniflare, with their state under `.wrangler/`: the `AUDIT_LOG_QUEUE` and `NEWSLETTER_QUEUE` queues with their consumers, and the `REALTIME_INVALIDATION_HUB` Durable Object. Their effects are still real: the audit-log consumer writes to the shared database, and the newsletter consumer sends through the Resend key in `.env.development`.
+
+To reproduce something without touching shared data or real providers, use [the local test environment](#the-local-test-environment) instead.
 
 ### Environment files
 
-`.env.development` is what `bun run dev` reads. Copy `.env.example` and fill it in; the file is gitignored. The private half needs `AUTH_SECRET`, the Google OAuth pair, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the three `CLOUDFLARE_*` values the Drizzle CLI needs. The public half is `VITE_STRIPE_PUBLISHABLE_KEY` and `VITE_R2_URL`, the `r2.dev` address of `martebizuteria-preview`.
+`.env.development` is what `bun run dev` reads. Copy `.env.example` and fill it in; the file is gitignored. The private half needs `AUTH_SECRET`, the Google OAuth pair, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and the three `CLOUDFLARE_*` values the Drizzle CLI needs. `.env.example` also lists three that may stay empty: `RESEND_MANAGEMENT_API_KEY`, which only `scripts/verify-email-sender.ts` (`bun run email:verify` and the deploy scripts) uses to read a domain's DNS records, and `INPOST_API_TOKEN` and `INPOST_ORGANIZATION_ID`, without which the admin order page ships InPost parcels by hand (see [InPost](/docs/integrations/inpost)). The public half is `VITE_STRIPE_PUBLISHABLE_KEY` and `VITE_R2_URL`.
+
+`.env.example` comes with `VITE_R2_URL` set to `DEFAULT_R2_PUBLIC_URL`, the production bucket's `r2.dev` address. Replace it with the `r2.dev` address of `martebizuteria-preview`, the bucket development writes to; otherwise every stored image resolves onto the production bucket, and an image uploaded while developing does not show. An empty value falls back to the same production address.
 
 Without a verified domain of your own, set `RESEND_EMAIL_FROM=onboarding@resend.dev` and sign up with the Resend account owner's address, the only one that sender delivers to. `bun run email:verify development` asks Resend whether it accepts the key and sender in `.env.development`, and prints the DNS records a custom domain still lacks; see [Resend](/docs/integrations/resend#sender-domain).
 
@@ -38,6 +44,42 @@ bun run content     # .source/ from the Fumadocs collections
 ```
 
 `src/types/worker-configuration.d.ts` is generated and must not be edited or committed — it is in `.gitignore` and in the `clean` script. Run `bun run typegen` after changing a binding in `wrangler.jsonc`, or `Env` will not have your new property.
+
+## The local test environment
+
+```sh
+bun run db:reset:test   # rm -rf .wrangler/test, apply every migration locally, run scripts/seed-test.ts
+bun run build:test      # rm -rf dist, content, CLOUDFLARE_ENV=test vp build --mode test
+bun run start:test      # vp preview --mode test on http://127.0.0.1:3000
+```
+
+This is the build the end-to-end suite runs against. The `test` environment in `wrangler.jsonc` is never deployed: its D1, R2 and KV are local (`remote: false`) and persisted in `.wrangler/test`, its queues and Durable Object run in Miniflare, its secrets come from the committed `.env.test`, and its `main` is `src/platform/testing/worker.ts`. That test Worker installs `src/platform/testing/mocks/providers.ts` before it loads the app, so nothing leaves the machine:
+
+- **Resend.** Sends to `api.resend.com` are captured, not delivered.
+- **Stripe.** Calls made with the `.env.test` key, `sk_test_local_fixture`, are answered by an in-memory emulator of Checkout Sessions, coupons, customers, payment intents and methods, setup intents and refunds.
+- **InPost.** Shipments on the ShipX sandbox host, which every environment but production calls, and the point lookups on `api-pl-points.easypack24.net` are emulated.
+
+Use it to replay a checkout, an order e-mail, a refund or a shipment without real accounts or shared data. The seed loads the catalogue and three verified accounts from `e2e/data/accounts.ts`, all with the password `TEST_PASSWORD` from that file: `customer@marte.example.test`, `admin@marte.example.test` and `new-admin@marte.example.test`. Two-factor authentication is required for admins in the `test` build, so the first admin has it on, and the second is asked to set it up before the panel opens. Print the first admin's current code with:
+
+```sh
+bun -e 'import { currentTotpCode } from "./e2e/fixtures/totp"; import { ADMIN_TOTP_SECRET } from "./e2e/data/accounts"; console.log(currentTotpCode(ADMIN_TOTP_SECRET))'
+```
+
+The test Worker also answers these routes, which the specs drive it through:
+
+| Route                                                                                                     | What it does                                                                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /__test/emails?to=<address>`                                                                         | The captured e-mails to that address, with subject, HTML and headers                                                                                                                                          |
+| `POST` or `DELETE /__test/emails/refusals?to=<address>`                                                   | Makes the Resend emulator refuse every send to that address, or accept them again                                                                                                                             |
+| `GET /__test/stripe/checkout-sessions?email=<address>`                                                    | The emulated Checkout Sessions for a customer e-mail                                                                                                                                                          |
+| `POST /__test/stripe/checkout-sessions/<cs_id>/complete`, `…/dispute`, `…/expire`                         | Settles the session in the emulator and answers `{ payload, signature }`: the `checkout.session.completed`, `charge.dispute.created` or `checkout.session.expired` event, signed with `STRIPE_WEBHOOK_SECRET` |
+| `POST /__test/stripe/checkout-sessions/<cs_id>/await-blik-approval`, `…/decline-blik-approval`            | Leaves the session's BLIK payment waiting for the bank, or declines it                                                                                                                                        |
+| `GET /__test/stripe/customers?email=<address>`                                                            | The emulated Stripe customers with that e-mail                                                                                                                                                                |
+| `GET /__test/stripe/setup-intents?email=<address>`, `POST /__test/stripe/setup-intents/<seti_id>/succeed` | The emulated card setup intents, and completing one                                                                                                                                                           |
+
+A settled session's event is not delivered on its own: post the `payload` to `/api/webhooks/stripe` with the `signature` as the `stripe-signature` header, as `e2e/fixtures/stripe.ts` does, and the real webhook handler fulfils the order.
+
+Three things differ from `bun run dev`. It is a production build, so `import.meta.env.DEV` is false: no React Query Devtools, no `/dev/emails`, no `[catalog]` logs. Catalogue images do not load, because `.env.test` sets `VITE_R2_URL` to `https://images.example.test` and the local bucket is empty. And the browser holds the dummy publishable key `pk_test_local_fixture`, so a payment is settled through the routes above, not in Stripe's form. `bun run db:reset:test` starts from a clean database again; the shop's daily limit on e-mails visitors can request is stored there too. [Testing](/docs/tooling/testing#the-test-worker) describes the emulators in full.
 
 ## Inspecting queries
 
@@ -85,26 +127,26 @@ That is `stripe listen --latest --forward-to localhost:3000/api/webhooks/stripe`
 Reading the handler in `src/routes/api/webhooks.stripe.ts` tells you how to interpret what you see:
 
 - 400 `Missing signature or webhook secret` — the header or the env value is absent.
-- 400 `Webhook Error: Invalid Signature` — the secret does not match the listener's.
+- 400 `Webhook Error: Invalid Signature`, with `[Stripe] Signature verification failed` in the log — the secret does not match the listener's.
 - 200 with `[Stripe] Ignoring live event <id> (<type>): development accepts only test events` in the log — the event came from live mode, and every environment but production acts only on test events.
 - 200 with `[Stripe] Ignoring event <id> (<type>): its checkout belongs to martebizuteria-test, while development keeps its checkouts in martebizuteria-preview` in the log — the session was opened by a local test run, such as the Stripe E2E suite, which shares the test account. Stripe sends its events to every endpoint, but only that run's database holds the checkout. Events of preview's sessions carry `martebizuteria-preview` like development's own, so the development server handles them against the shared database (see [Payments](/docs/features/payments#the-webhook-endpoint)).
 - 200 with `[Stripe] Safely ignoring unhandled event: <type>` in the log — the event type has no entry in `webhookHandlers`.
-- 500 `Internal Server Error` with `[Stripe] Domain logic failed for <type>` — your handler threw. Stripe will retry, so the handler must be idempotent.
+- 500 `Internal Server Error` with `[Stripe] Domain logic failed for <type>` — your handler threw. The route also sends a `stripeWebhookFailed` incident alert, and Stripe will retry, so the handler must be idempotent.
 
 ## Previewing emails
 
 ```
-http://127.0.0.1:3000/dev/emails
+http://localhost:3000/dev/emails
 ```
 
-`src/routes/dev.emails.tsx` returns `notFound()` unless `import.meta.env.DEV`. With no query parameters it renders an index of every template in `EMAIL_PREVIEWS`, with four links each: HTML and plain text, in Polish and English. Direct URLs:
+`src/routes/dev.emails.tsx` answers 404 unless `import.meta.env.DEV`, so the page exists only under `bun run dev`. With no query parameters it renders an index of every entry in `EMAIL_PREVIEWS`, with four links each: HTML and plain text, in Polish and English. Direct URLs:
 
 ```
 /dev/emails?template=<slug>&locale=pl-PL
 /dev/emails?template=<slug>&locale=en-US&format=text
 ```
 
-The seventeen previewed templates are `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-delivered`, `order-in-progress`, `order-refunded`, `order-shipped`, `order-tracking`, `order-withdrawal`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`; `newsletter-confirmation` has no preview entry, and `order-withdrawal-notice` previews the shop's version of the withdrawal e-mail. This renders the real component with the real message catalogue, so it catches a missing translation key or a broken layout without sending anything.
+The eighteen entries are `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-delivered`, `order-in-progress`, `order-refunded`, `order-shipped`, `order-tracking`, `order-withdrawal`, `order-withdrawal-notice` (the shop's version of the withdrawal e-mail), `password-changed`, `payment-failed`, `reset-password` and `verify-email`. `newsletter-confirmation` and `newsletter-campaign` have no preview entry. This renders the real component with the real message catalogue, so a missing translation key shows up as its key path and a broken layout shows up as it would in an inbox, without sending anything. The order confirmation preview links its product images instead of embedding them.
 
 ## Reading the database
 
@@ -114,13 +156,13 @@ bun run db:migrations:preview     # which migrations have been applied
 bun run db:introspect:preview     # dump the live schema to schema.ts / relations.ts
 ```
 
-For a one-off query, go through Wrangler and be explicit about the environment:
+The Drizzle commands reach D1 over its HTTP API with the `CLOUDFLARE_*` values in the matching `.env.<environment>` file, and `db:introspect:*` writes `schema.ts` and `relations.ts` into `src/integrations/drizzle-orm/migrations/`. For a one-off query, go through Wrangler and be explicit about the environment:
 
 ```sh
 vp exec wrangler d1 execute DB --env preview --remote --command "select handle, status from product limit 10"
 ```
 
-Use `--command` for reads. `--file` runs a whole SQL file, which is how the seed scripts work — and why you should be careful with it.
+Use `--command` for reads. `--file` runs a whole SQL file, which is how the seed scripts work — and why you should be careful with it. The local test database answers the same commands with `--env test --local --persist-to .wrangler/test` in place of `--env preview --remote`.
 
 ## Watching the Worker in a deployed environment
 
@@ -128,23 +170,31 @@ Use `--command` for reads. `--file` runs a whole SQL file, which is how the seed
 vp exec wrangler tail --env preview
 ```
 
-`observability.enabled: true` in `wrangler.jsonc` means logs are retained in the Cloudflare dashboard as well, and `observability.issues.enabled: true` groups the failures among them into Workers Issues; [Monitoring and alerts](/docs/guides/monitoring-and-alerts) covers both, the `/api/health` check and the e-mails the shop sends itself. The log lines worth knowing, all from code quoted elsewhere in these guides:
+`observability.enabled: true` in `wrangler.jsonc` means logs are retained in the Cloudflare dashboard as well, and `observability.issues.enabled: true` groups the failures among them into Workers Issues; [Monitoring and alerts](/docs/guides/monitoring-and-alerts) covers both, the `/api/health` check and the e-mails the shop sends itself. The log lines worth knowing:
 
-| Prefix                                                  | Source                                                                                                                                                            |
-| ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Server function failed`                                | `withRequest` caught an unexpected error                                                                                                                          |
-| `Rate-limit storage unavailable`                        | `withinRateLimit` could not write to D1                                                                                                                           |
-| `[Background Work Failed]:`                             | `runSafely` in `src/lib/background.ts`                                                                                                                            |
-| `[Stripe] …`                                            | The webhook route                                                                                                                                                 |
-| `[Health] … did not answer:`                            | `/api/health` could not read D1, KV or R2 and answered 503                                                                                                        |
-| `[Alert] …`                                             | `sendIncidentAlert` could not send an incident alert to `RESEND_EMAIL_FROM`                                                                                       |
-| `[Auth] Failed to send … email`                         | `recordAuthEmailFailure` in `auth.email-delivery.server.ts`; also an `email.failed` entry in `/admin/audit`                                                       |
-| `[Better Auth]: Failed to run background task:`         | An auth email hook Better Auth ran in the background threw; the `[Auth]` line before it has the Resend error                                                      |
-| `[Resend] Email sender availability unreadable`         | `isEmailSenderUnavailable` could not read the `CACHE` KV flag; the Better Auth gate let the request through                                                       |
-| `[Newsletter] Failed to send …`                         | `subscribeToNewsletter` in `subscribe-to-newsletter.ts`; also an `email.failed` entry in `/admin/audit`                                                           |
-| `Order confirmation … failed for order …`               | `recordOrderEmailOutcome` (the shipped email logs `Order shipped …`); also an `email.deferred` entry in the order's activity, or `email.failed` after the retries |
-| `Order confirmation for order … could not be prepared:` | `deliverOrderEmail` caught an error before the send, logged with its stack (`Order shipped …` for the shipped email); the `failed for order` line follows         |
-| `[catalog] …`                                           | `catalogDebugLog`, development only                                                                                                                               |
+| Prefix                                          | Source                                                                                                                                                                                    |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Server function failed`                        | `withRequest` caught an unexpected error; the caller receives `INTERNAL_ERROR`                                                                                                            |
+| `Rate-limit storage unavailable`                | `withinRateLimit` could not write to D1, and refused the request                                                                                                                          |
+| `[Background Work Failed]:`                     | `runSafely` in `src/lib/background.ts`                                                                                                                                                    |
+| `[Stripe] …`                                    | The Stripe webhook route                                                                                                                                                                  |
+| `[InPost] …`                                    | The ShipX client in `inpost.shipx.server.ts` (`ShipX did not answer`, `ShipX refused`) and the InPost webhook route                                                                       |
+| `[Health] … did not answer:`                    | `/api/health` could not read D1, KV or R2 and answered 503                                                                                                                                |
+| `[Alert] …`                                     | `sendIncidentAlert` could not send an incident alert to `RESEND_EMAIL_FROM`                                                                                                               |
+| `[Auth] Failed to send … email`                 | `recordAuthEmailFailure` in `auth.email-delivery.server.ts`; also an `email.failed` entry in `/admin/audit`                                                                               |
+| `[Better Auth]: Failed to run background task:` | An auth email hook Better Auth ran in the background threw; the `[Auth]` line before it has the Resend error                                                                              |
+| `[Resend] Email sender availability unreadable` | `isEmailSenderUnavailable` could not read the `CACHE` KV flag; the Better Auth gate let the request through                                                                               |
+| `[Email] Skipped a … email to …`                | `admitPublicEmail` held back an e-mail a visitor asked for: the address reached its hourly limit, or the shop its daily limit                                                             |
+| `[Email] Could not read … to embed it`          | `embedEmailImages` could not read an image from `IMAGES`, so the order confirmation links it instead                                                                                      |
+| `[Newsletter] …`                                | `subscribeToNewsletter` (`Failed to send …`, also an `email.failed` entry in `/admin/audit`), the test send, and the campaign queue (`Campaign … will retry`, `stopped after … attempts`) |
+| `[AuditLog Queue] Batch insert failed:`         | The audit-log queue consumer could not write its batch; every message in it is retried                                                                                                    |
+| `[Retention] …`                                 | The scheduled cleanup in `src/lib/retention.ts`: `<kind>: <n> cleared`, or `could not be cleared`; see [Data retention](/docs/guides/data-retention)                                      |
+| `[Account deletion] Kept user …`                | `user.erasure.server.ts` kept an account whose Stripe customer could not be deleted                                                                                                       |
+| `<label> failed for order <id>: …`              | `recordOrderEmailOutcome`; also an `email.deferred` entry in the order's activity, or `email.failed` once the retries are spent                                                           |
+| `<label> for order <id> could not be prepared:` | `deliverOrderEmail` caught an error before the send and logged it with its stack; the `failed for order` line follows                                                                     |
+| `[catalog] …`                                   | `catalogDebugLog`, development only                                                                                                                                                       |
+
+`<label>` names the e-mail `deliverOrderEmail` sent: `Order confirmation`, `New order notification`, `Order in progress`, `Order shipped`, `Tracking number`, `Order delivered`, `Order cancelled`, `Order refunded`, `Payment failed`, `Withdrawal acknowledgement` or `Withdrawal notice`, followed by `→ <recipient>` when Resend refused the send. When the last retry fails as well, the shop also sends itself an `orderEmailFailed` incident alert.
 
 ## Running the production build locally
 
@@ -153,7 +203,7 @@ bun run build:preview   # rm -rf dist, content, vp build --mode preview, verify-
 bun run start           # vp preview --mode preview --host 127.0.0.1 --port 3000
 ```
 
-`bun run preview` is an alias for `start`. `scripts/verify-build.ts` runs as part of the build and fails it unless `.wrangler/deploy/config.json` points at `dist/server/wrangler.json`, the built Worker targets the right `APP_ENV` and name, the assets directory is `dist/client`, `dist/client/fonts` exists and `dist/client/assets` contains both JS and CSS. So a build that "succeeded" really did produce a servable Worker.
+`bun run preview` is an alias for `start`. `scripts/verify-build.ts` runs as part of the preview and production builds and fails them unless `.wrangler/deploy/config.json` points at `dist/server/wrangler.json`, the built Worker targets the right `APP_ENV` and name, its entry file exists, the assets directory is `dist/client`, `dist/client/fonts` exists, `dist/client/assets` contains both JS and CSS, and no client JavaScript file imports `cloudflare:workers` or a `node:` module. So a build that "succeeded" really did produce a servable Worker. `build:test` does not run it.
 
 `scripts/verify-bindings.ts` runs before a deploy and checks that `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE` and the `RealtimeInvalidationHub` Durable Object are all configured for the target environment, with each queue having a matching consumer and that consumer's dead-letter queue a consumer of its own. A placeholder id made of zeros is rejected, and so is a production `IMAGES` bucket that is the one preview binds. `scripts/verify-stripe-keys.ts` runs right after it and stops the deploy unless `VITE_STRIPE_PUBLISHABLE_KEY` and `STRIPE_SECRET_KEY` are both live keys for production or both test keys for preview, and `scripts/verify-email-sender.ts` then stops it when Resend would refuse `RESEND_EMAIL_FROM`.
 
@@ -175,14 +225,14 @@ bun run clean:deep     # clean + node_modules
 bun run clean:hardcore # clean:deep + bun.lock + opensrc
 ```
 
-After any of them, `bun install` (whose `postinstall` re-runs `typegen`) puts you back.
+After any of them, `bun install` (whose `postinstall` re-runs `typegen`) puts you back. `bun run clean` also deletes `.wrangler`, and with it the local test database.
 
 Symptoms and first moves:
 
 - **`collections/browser` or `collections/server` will not resolve** — run `bun run content`.
 - **`Env` has no property for your new binding** — run `bun run typegen`.
 - **A route does not exist, or `FileRouteTypes["to"]` rejects a valid path** — `src/routeTree.gen.ts` is stale; restart `bun run dev`, which regenerates it. Never hand-edit it.
-- **`useTranslations` throws about a missing message** — the namespace is not in any matched route's `staticData.namespaces`. See [i18n messages](/docs/guides/i18n-messages).
+- **A text shows as its key path, such as `pages.products.title`, and the console logs `MISSING_MESSAGE`** — the key is missing from the catalogue, or its namespace is not in any matched route's `staticData.namespaces`. use-intl does not throw; it logs the error and renders the path. See [i18n messages](/docs/guides/i18n-messages).
 - **Port 3000 is taken** — free it; `strictPort: true` will not fall back.
 - **A lint error you cannot see the cause of** — `bun run check:fix` applies what is auto-fixable. It will not let you suppress the rest: `denyWarnings: true` and `reportUnusedDisableDirectives: "error"`.
 

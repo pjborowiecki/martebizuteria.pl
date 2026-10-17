@@ -3,7 +3,7 @@ title: "Documentation"
 description: "Architecture, guides, features and reference for the M'Arte jewellery storefront and admin console."
 ---
 
-M'Arte is the source of martebizuteria.pl: one TanStack Start application that serves the public storefront, the customer account area and the admin console from a single Cloudflare Worker, backed by D1, KV, R2, Durable Objects, Better Auth, Stripe, InPost, Resend, use-intl and Fumadocs.
+M'Arte is the source of martebizuteria.pl: one TanStack Start application that serves the public storefront, the customer account area and the admin console from a single Cloudflare Worker, backed by D1, KV, R2, Queues, Durable Objects, Better Auth, Stripe, InPost, Resend, use-intl and Fumadocs.
 
 These pages document the whole repository: where each piece of code lives, how a request travels through it, how the shop behaves, and what to change when you need to add or alter something. Every page exists in Polish and English as `<slug>.<locale>.mdx`, and Polish is the default locale, so `/docs` serves Polish and `/en-US/docs` serves English.
 
@@ -23,17 +23,17 @@ These pages document the whole repository: where each piece of code lives, how a
 
 ## Chapters
 
-| Chapter         | Contents                                                                                           |
-| --------------- | -------------------------------------------------------------------------------------------------- |
-| Project         | About the shop, repository layout, conventions, contributing, licence                              |
-| Getting started | Prerequisites, installation, environment files, first run, everyday scripts                        |
-| Architecture    | Routes, modules and use cases, integrations, presentation, request lifecycle, i18n, security       |
-| Features        | Catalog, cart, checkout and payments, orders, inventory, accounts, admin console, audit, realtime  |
-| Guides          | Adding a module or use case, admin pages, data grids, forms, emails, messages, migrations, tests   |
-| Integrations    | TanStack Start, Better Auth, Drizzle and D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, GSAP |
-| UI system       | Design tokens, shadcn primitives, custom components, styles, fonts, branding, emails               |
-| Tooling         | Vite+, environments, Wrangler, Vitest projects, coverage, git hooks, CI and deployment workflows   |
-| Reference       | Route table, environment variables, message catalogues, database schema, scripts, glossary         |
+| Chapter         | Contents                                                                                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Project         | About the shop, roadmap, contributing, licence                                                                                                                                                                                                   |
+| Getting started | Prerequisites, installation, environment variables, first run, project scripts, preview deployment                                                                                                                                               |
+| Architecture    | Directory structure, layering and dependency rules, modules and use cases, the presentation, integrations and platform layers, request lifecycle, caching and SSR, i18n, security, realtime invalidation, testing                                |
+| Features        | Landing page, catalog and search, product page, cart, checkout, payments, orders, inventory, shipping and delivery, discounts, accounts, the admin dashboard, catalog and customers, audit log, legal pages, email, internationalization         |
+| Guides          | Modules, use cases, server functions, forms, admin pages, data tables, URL state, messages, theming, migrations, seeding, tests, the security checklist, local debugging, rollback, monitoring, image delivery, backups, data retention, go-live |
+| Integrations    | TanStack Start and Query, Drizzle and D1, Better Auth, Stripe, InPost, Resend, Cloudflare R2, use-intl, Fumadocs, realtime invalidation, GSAP and Lenis                                                                                          |
+| UI system       | Theme, fonts and branding, shadcn components, the data table, composition patterns                                                                                                                                                               |
+| Tooling         | Vite+, scripts, lint and format, testing with Vitest and Playwright, the database, CI/CD, conventional commits, agent skills                                                                                                                     |
+| Reference       | Conventions, file naming, module catalog, routes, environment and bindings, permissions, glossary, troubleshooting, frequently asked questions                                                                                                   |
 
 ## How the application is laid out
 
@@ -41,9 +41,11 @@ These pages document the whole repository: where each piece of code lives, how a
 
 `src/modules/{feature}` holds feature logic. Each feature keeps its operations in `use-cases/{verb-noun}.ts`, exporting a server function together with the query options that loaders and components use. `src/modules/_core` holds the shared primitives those use cases build on.
 
-`src/integrations/{vendor}` wraps every third party behind a small adapter: Better Auth, Drizzle ORM against D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, Fumadocs, MDXEditor, GSAP, Lenis and the realtime invalidation hub.
+`src/integrations/{vendor}` wraps every third party behind a small adapter: Better Auth, Drizzle ORM against D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, TanStack Query, Fumadocs, MDXEditor, React Day Picker, GSAP, Lenis and the realtime invalidation hub.
 
-`src/presentation` owns everything visual: `components/shadcn` primitives, `components/custom` application components, `styles` with the Tailwind layers, `theme`, `branding`, `emails` and the document assets. `src/platform/testing` holds shared test infrastructure, `src/lib` holds small request-scoped helpers, `src/durable-objects` holds the realtime and rate-limit objects, and `src/providers` holds the React context providers.
+`src/presentation` owns everything visual: `components/shadcn` primitives, `components/custom` application components, `styles` with the Tailwind layers, `theme`, `branding`, `emails` and the document assets. `src/platform/testing` holds shared test infrastructure, `src/lib` holds small request-scoped helpers, `src/durable-objects` holds `RealtimeInvalidationHub`, the one Durable Object, and `src/providers` holds the React context providers. Rate limits are counted in the D1 `rate_limit` table, not in a Durable Object.
+
+`src/server.ts` is the Worker entry. Besides answering requests, it consumes the audit-log and newsletter queues and their dead-letter queues, and its `scheduled` handler runs the daily retention clean-up.
 
 Content lives outside `src`: `content/docs` holds these pages and `messages/{locale}` holds the UI message catalogues. The customer legal pages and the FAQ are not files: they are rows in the D1 `content_page` table, edited at `/admin/content`.
 
@@ -53,4 +55,4 @@ Pages live in `content/docs` as `<slug>.<locale>.mdx`, one file per locale, and 
 
 `bun run content` regenerates `.source/` from the `content/docs` collection, and `bun run dev` runs it for you. After editing, `bun run format` and `bun run check` keep the repository clean and `bun run test` covers the docs source alongside everything else.
 
-Internal links such as `/docs/architecture/routing` pick up the reader's locale prefix automatically, so always write them without one.
+Internal links such as `/docs/architecture/layering` pick up the reader's locale prefix automatically, so always write them without one.

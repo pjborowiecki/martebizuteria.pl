@@ -3,13 +3,14 @@ title: "Przegląd"
 description: "Od świeżego klonu repozytorium M'Arte do działającego sklepu i wdrożonego Workera."
 ---
 
-M'Arte to jedna aplikacja TanStack Start, która z pojedynczego Workera Cloudflare obsługuje sklep, panel klienta, panel administracyjny i tę dokumentację. Wszystko, czego aplikacja potrzebuje w czasie działania, to bindingi Cloudflare: D1 na dane, R2 na zdjęcia produktów, KV jako pamięć podręczna, kolejka na dziennik zdarzeń oraz Durable Object do unieważniania pamięci podręcznej w czasie rzeczywistym.
+M'Arte to jedna aplikacja TanStack Start, która z pojedynczego Workera Cloudflare obsługuje sklep, panel klienta, panel administracyjny i tę dokumentację. Wszystko, czego aplikacja potrzebuje w czasie działania, to bindingi Cloudflare: D1 na dane, R2 na zdjęcia produktów, KV na kilka krótko żyjących kluczy (znacznik niedostępnego nadawcy e-maili, deduplikację alertów o incydentach i sondę kontroli stanu), dwie kolejki — dziennika zdarzeń i newslettera, każda z kolejką martwych wiadomości — oraz Durable Object do unieważniania pamięci podręcznej w czasie rzeczywistym.
 
-Ma to jedną konsekwencję, o której warto wiedzieć przed rozpoczęciem pracy: **nie ma w pełni offline'owego trybu pracy**. `bun run dev` ustawia `CLOUDFLARE_ENV=development`, a `vite.config.ts` włącza zdalne bindingi wtyczki Cloudflare dokładnie dla tej wartości:
+Ma to jedną konsekwencję, o której warto wiedzieć przed rozpoczęciem pracy: **serwer deweloperski nie ma trybu offline**. `bun run dev` ustawia `CLOUDFLARE_ENV=development`, a `vite.config.ts` włącza zdalne bindingi wtyczki Cloudflare dokładnie dla tej wartości:
 
 ```ts
 ...cloudflare({
   inspectorPort: false,
+  persistState: process.env["CLOUDFLARE_ENV"] === "test" ? { path: ".wrangler/test" } : true,
   remoteBindings: process.env["CLOUDFLARE_ENV"] === "development",
   viteEnvironment: { name: "ssr" },
 }),
@@ -17,7 +18,9 @@ Ma to jedną konsekwencję, o której warto wiedzieć przed rozpoczęciem pracy:
 
 Serwer deweloperski rozmawia więc z prawdziwą bazą D1 środowiska preview, z prawdziwym zasobnikiem R2 `martebizuteria-preview` i z prawdziwą przestrzenią nazw KV. Środowiska `development` i `preview` w `wrangler.jsonc` deklarują ten sam `database_id` i ten sam zasobnik, co oznacza, że **zapisy wykonane w trybie deweloperskim trafiają do bazy preview**. Traktuj ją jak bazę współdzieloną, nie jak brudnopis.
 
-Drugi sposób uruchomienia aplikacji to `bun run start`, który serwuje gotowy build z `CLOUDFLARE_ENV=preview`. Skoro ta wartość nie jest równa `development`, zdalne bindingi są wyłączone i używane są lokalne, symulowane D1, R2 i KV z katalogu `.wrangler/state/`. To najbliższa dostępna wersja odizolowanego uruchomienia lokalnego — startuje jednak z pustą bazą danych.
+Drugi sposób uruchomienia aplikacji to `bun run start`, który serwuje gotowy build z `CLOUDFLARE_ENV=preview`. Skoro ta wartość nie jest równa `development`, zdalne bindingi są wyłączone i używane są lokalne, symulowane D1, R2 i KV z katalogu `.wrangler/state/`. Startuje z pustą bazą danych.
+
+Odizolowane uruchomienie lokalne zapewnia czwarte środowisko Wranglera, `test`, z którego korzystają testy end-to-end. `bun run db:reset:test` tworzy w `.wrangler/test` bazę D1 po migracjach i z danymi startowymi (dane katalogu oraz konta testowe z `e2e/data/accounts.ts`), `bun run build:test` buduje aplikację z `--mode test`, a `bun run start:test` serwuje ten build pod `127.0.0.1:3000`. Jego punkt wejścia, `src/platform/testing/worker.ts`, odpowiada za Stripe, Resend i InPost ShipX z emulatorów w pamięci, więc nic nie opuszcza komputera. Zobacz [Skrypty projektu](/docs/getting-started/project-scripts#testy-end-to-end) i [Testy](/docs/tooling/testing).
 
 ## Kolejność tych stron
 

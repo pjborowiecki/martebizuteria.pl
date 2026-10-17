@@ -64,7 +64,7 @@ The CC BY-NC grant in `LICENSE.md` is written about the project's source code. S
 
 The project is provided "as is", without warranty of any kind, express or implied, including merchantability, fitness for a particular purpose and non-infringement. The authors are not liable for any claim, damages or other liability arising from its use.
 
-That disclaimer is not boilerplate here. [About](/docs/project/about) and [Roadmap](/docs/project/roadmap) list the parts that are unfinished, and some of them — a best-effort inventory rollback, an order status nothing ever writes — would matter in a live shop. Read those pages before you take this code near real money.
+That disclaimer is not boilerplate here. [About](/docs/project/about) and [Roadmap](/docs/project/roadmap) list the parts that are unfinished, and some of them — a best-effort inventory rollback, a partial return with no restock path — would matter in a live shop. Read those pages before you take this code near real money.
 
 ## Commercial licensing
 
@@ -79,13 +79,14 @@ For commercial use, contact the author:
 
 ## Not the same as the shop's legal pages
 
-This page is about the licence on the code. The shop's own legal documents are separate content, written for customers and stored as Markdown in the D1 `content_page` table, one row per document:
+This page is about the licence on the code. The shop's own legal documents, and its FAQ, are separate content, written for customers and stored as Markdown in the D1 `content_page` table, one row per page:
 
-| Document              | Handle                  | Route                    |
-| --------------------- | ----------------------- | ------------------------ |
-| Terms of service      | `terms-of-service`      | `/terms-of-service`      |
-| Privacy policy        | `privacy-policy`        | `/privacy-policy`        |
-| Exchanges and returns | `exchanges-and-returns` | `/exchanges-and-returns` |
+| Document                   | Handle                  | Route                    |
+| -------------------------- | ----------------------- | ------------------------ |
+| Terms of service           | `terms-of-service`      | `/terms-of-service`      |
+| Privacy policy             | `privacy-policy`        | `/privacy-policy`        |
+| Exchanges and returns      | `exchanges-and-returns` | `/exchanges-and-returns` |
+| Frequently asked questions | `faq`                   | `/faq`                   |
 
 Admins edit them at `/admin/content`, and a save publishes immediately. A save that changes a locale's title or body moves that locale's "Last updated" date, so a change to a customer-facing legal document cannot be published without dating it.
 

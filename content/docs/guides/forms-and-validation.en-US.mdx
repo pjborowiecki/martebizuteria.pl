@@ -3,7 +3,9 @@ title: "Forms and validation"
 description: "React Hook Form with a Zod resolver, translated field errors, message keys as error messages, and mapping server error codes onto fields."
 ---
 
-Every form in M'Arte is React Hook Form driven by a Zod resolver. The Zod schema lives with the data it validates — in the module's `{feature}.zod.ts`, or in `src/integrations/better-auth/auth.zod.ts` for the auth forms — never inside the component.
+Forms in M'Arte that validate what the user types are React Hook Form driven by a Zod resolver. The Zod schema lives with the data it validates — in the module's `{feature}.zod.ts`, or in `src/integrations/better-auth/auth.zod.ts` for the auth forms — never inside the component.
+
+A few small forms are built without React Hook Form and leave validation to the server function they call: the account address form in `src/routes/account.addresses.tsx` and the admin order ship and tracking dialogs keep their fields in `useState`, and the InPost shipment dialog reads `FormData` on submit. The card and checkout payment forms are Stripe's `PaymentElement`, which validates itself.
 
 The one rule that shapes everything else: **a Zod message is a translation key, not a sentence.** The schema says `"passwordMinLength"`; the field component turns that into text in the reader's language.
 
@@ -22,7 +24,7 @@ const form = useForm<SignInFormValues>({
 })
 ```
 
-`"onTouched"` checks a field when the customer leaves it, then again on every change. That suits a form on its own page. A form inside a `Dialog` uses `mode: "onChange"` instead, as the account dialogs do (see [Account](/docs/features/account)): leaving a field to press **Cancel** or the close button would add an error line under it, the centred dialog would grow, and its footer would move away from the pointer before the button is released, so the press would be lost.
+`"onTouched"` checks a field when the customer leaves it, then again on every change. That suits a form on its own page. A form inside a `Dialog` uses `mode: "onChange"` instead, as the account dialogs do (see [Account](/docs/features/account)): leaving a field to press **Cancel** or the close button would add an error line under it, the centred dialog would grow, and its footer would move away from the pointer before the button is released, so the press would be lost. The order withdrawal dialog in `src/presentation/components/custom/pages/account/orders/order-withdrawal-dialog.tsx` is the exception and uses `"onTouched"`.
 
 Its schema, in `auth.zod.ts`, carries keys rather than prose:
 
@@ -52,30 +54,45 @@ const handleFormSubmit = useCallback(
 
 ## Rendering a field
 
-Fields are built on `useController`, not on `register`, so the field knows its own validity. `AuthTextField` in `src/presentation/components/custom/pages/auth/auth-fields.tsx` composes four pieces:
+Floating-label fields are built on `useController`, not on `register`, so the field knows its own validity. `AuthTextField` in `src/presentation/components/custom/pages/auth/auth-fields.tsx` composes four pieces:
 
 ```tsx
-<Field className="relative" data-invalid={fieldState.invalid}>
-  <Input
-    {...rest}
-    {...field}
-    value={valueStr}
-    id={id}
-    variant="floating"
-    placeholder=" "
-    aria-invalid={fieldState.invalid}
-    aria-required={required}
-    className={cn("peer", showValid && VALID_INPUT_CLASS, className)}
-  />
-  <FloatingLabel htmlFor={id} label={label} required={required} />
-  <ValidCheck show={showValid} />
-  <ValidationFieldError message={fieldState.error?.message} namespace={AUTH_VALIDATION_NAMESPACE} params={AUTH_VALIDATION_PARAMS} />
-</Field>
+const { field, fieldState } = useController({
+  control,
+  name,
+})
+const handleChange = useAutofillAwareChange(field, fieldState)
+
+const valueStr = toStringValue(field.value)
+const showValid = isFieldValid(fieldState, valueStr)
+
+return (
+  <Field className="relative" data-invalid={fieldState.invalid}>
+    <Input
+      {...rest}
+      {...field}
+      onChange={handleChange}
+      value={valueStr}
+      id={id}
+      variant="floating"
+      placeholder=" "
+      aria-invalid={fieldState.invalid}
+      aria-required={required}
+      className={cn("peer", showValid && VALID_INPUT_CLASS, className)}
+    />
+    <FloatingLabel htmlFor={id} label={label} required={required} />
+    <ValidCheck show={showValid} />
+    <ValidationFieldError message={fieldState.error?.message} namespace={validationNamespace} params={AUTH_VALIDATION_PARAMS} />
+  </Field>
+)
 ```
 
 - `Field` is the shadcn wrapper in `src/presentation/components/shadcn/field.tsx`.
-- `FloatingLabel`, `VALID_INPUT_CLASS`, `ValidCheck`, `isFieldValid` and `toStringValue` come from `src/presentation/components/custom/floating-field.tsx`. The floating-label effect is pure CSS driven by the `peer` class and `placeholder=" "`; do not replace the placeholder with real text or the label will not lift.
-- `ValidationFieldError` resolves the key.
+- `FloatingLabel`, `FLOATING_LABEL_CLASS`, `VALID_INPUT_CLASS`, `ValidCheck`, `isFieldValid`, `toStringValue` and `useAutofillAwareChange` come from `src/presentation/components/custom/floating-field.tsx`. The floating-label effect is pure CSS driven by the `peer` class and `placeholder=" "`; do not replace the placeholder with real text or the label will not lift.
+- `useAutofillAwareChange(field, fieldState)` returns the input's `onChange`. It passes the event to `field.onChange` and then also calls `field.onBlur` when the field is invalid but not yet touched — a submit, or the button that moves on to the next checkout step, flagged it before the customer left it — or when the change did not come from the focused element, which is how browser autofill arrives. The `onBlur` call validates the field and marks it touched, so a corrected value clears its error at once instead of when the customer leaves the field. `AuthPasswordField` and the checkout's `CheckoutTextField` and `CheckoutPhoneField` use it the same way.
+- `ValidationFieldError` resolves the key. `validationNamespace` defaults to `pages.auth.validations`; forms outside the auth pages pass their own, such as `WITHDRAWAL_VALIDATION_NAMESPACE` in the withdrawal forms.
+
+A few plain inputs without a floating label use `form.register` instead: the checkout discount code (`checkout-discount-field.tsx`), the landing-page newsletter sign-up (`newsletter-section.tsx`), and the per-locale inputs of the content-page editor (title, description) and the newsletter composer (subject). The content-page fields still render `ValidationFieldError` with the message from `form.formState.errors`.
 
 ## Translating a field error
 
@@ -101,11 +118,12 @@ It looks up `<namespace>.<message>` and, if that key does not exist, falls back 
 
 ## The admin catalog form pattern
 
-Admin forms are larger: they are multi-locale, they live in a sheet, they upload images, and they share state across several section components. `src/presentation/components/custom/pages/admin/catalog/categories/add-category/` is the reference implementation, and the same structure repeats for collections, attributes and products.
+Admin forms are larger: they are multi-locale, they live in a sheet, they upload images, and they share state across several section components. `src/presentation/components/custom/pages/admin/catalog/categories/add-category/` is the reference implementation, and the same structure repeats for collections (`add-collection/`) and attributes (`add-attribute/`). The product editor in `product-editor/` follows the same provider, sheet and footer split, with its sections as `product-editor-*.tsx` files instead of a `_sections/` folder.
 
 | File                              | Role                                                                     |
 | --------------------------------- | ------------------------------------------------------------------------ |
 | `category-sheet.tsx`              | The sheet shell, opened by the table's row click or its Add button       |
+| `category-sheet-footer.tsx`       | Cancel and the create/save submit button, bound to the form by its id    |
 | `category-form-provider.tsx`      | `useForm`, the create/update mutation, the context that sections consume |
 | `category-form-section.tsx`       | The section wrapper used by each `_sections/*` file                      |
 | `_sections/*.tsx`                 | Basic details, parent category, media, status                            |
@@ -258,6 +276,7 @@ useEffect(() => {
 - The Zod schema lives in the module's `.zod.ts` (or `auth.zod.ts`), with message **keys**, and limits imported from the constants file.
 - Both message catalogues have an entry for every key the schema can emit.
 - Fields use `useController` and render `ValidationFieldError` with the right namespace.
+- Floating-label text inputs pass `useAutofillAwareChange(field, fieldState)` as their `onChange`, so autofill and corrections clear an error straight away.
 - `mode` is `"onTouched"` for a short form on its own page, `"onChange"` for a form inside a `Dialog`, so that leaving a field never moves the dialog's footer while a button is held, and `"onSubmit"` for a long multi-locale one.
 - Submit handlers `void` the promise and never return it to the DOM.
 - The error handler maps `errorCode(error)` onto a field where it can, and falls back to `useActionError`.

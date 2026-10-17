@@ -11,12 +11,14 @@ Skrypt wdrożeniowy to jeden łańcuch `&&`, więc zatrzymuje się na pierwszym 
 
 | Etap, który zawiódł                                                    | Co działa na żywo                                                              | Co zrobić                                                                            |
 | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| Kontrola przed kompilacją, kompilacja albo `prepare-deploy-secrets.ts` | Poprzedni Worker na poprzednim schemacie; nic zdalnego się nie zmieniło        | Usunąć przyczynę i wdrożyć ponownie                                                  |
+| Kontrola przed kompilacją, kompilacja albo `prepare-deploy-secrets.ts` | Poprzedni Worker na poprzednim schemacie; w Cloudflare nic się nie zmieniło    | Usunąć przyczynę i wdrożyć ponownie                                                  |
 | `db:migrate:<środowisko>`                                              | Poprzedni Worker; migracje przed tą, która zawiodła, są nałożone, ona sama nie | Odczytać w logu instrukcję, która zawiodła, naprawić ją do przodu i wdrożyć ponownie |
 | `wrangler deploy`                                                      | Poprzedni Worker na nowym schemacie                                            | Usunąć przyczynę i wdrożyć ponownie                                                  |
 | `verify-deployment.ts`                                                 | Nowy Worker                                                                    | Wycofać Workera, potem szukać przyczyny                                              |
 
-`scripts/verify-deployment.ts` wywołuje `verifyDeployment` z `src/lib/deployment.ts`, które pyta host `workers.dev` danego środowiska o `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` i `/api/health`, bez podążania za przekierowaniami. Strona główna i lista produktów muszą odpowiedzieć `200` z HTML-em, `robots.txt` musi odpowiedzieć `200` ze zwykłym tekstem, trasa webhooka Stripe musi odrzucić `GET` kodem `405`, a kontrola stanu musi odpowiedzieć `200`, co robi tylko wtedy, gdy odpowiadają D1, KV i R2. O stronę, która odpowie inaczej, kontrola pyta ponownie, łącznie najwyżej trzy razy, co pięć sekund, żeby wersji, która jeszcze rozchodzi się po lokalizacjach Cloudflare, nie uznać za zepsutą. Komunikat błędu podaje każdą stronę i jej odpowiedź:
+Kontrole przed kompilacją to `verify-bindings.ts`, `verify-stripe-keys.ts` i `verify-email-sender.ts`. Tylko odczytują, z jednym wyjątkiem: gdy `RESEND_API_KEY` jest kluczem tylko do wysyłki, a `RESEND_MANAGEMENT_API_KEY` nie jest ustawiony, Resend nie pokaże listy domen, więc `verify-email-sender.ts` wysyła jeden testowy e-mail do testowej skrzynki Resend, `delivered@resend.dev`, żeby sprawdzić, czy Resend przyjmuje nadawcę.
+
+`scripts/verify-deployment.ts` wywołuje `verifyDeployment` z `src/lib/deployment.ts`, które pyta host `workers.dev` danego środowiska o `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` i `/api/health`, bez podążania za przekierowaniami i z limitem 15 sekund na każde żądanie. Strona główna i lista produktów muszą odpowiedzieć `200` z HTML-em, `robots.txt` musi odpowiedzieć `200` ze zwykłym tekstem, trasa webhooka Stripe musi odrzucić `GET` kodem `405` ze zwykłym tekstem, a kontrola stanu musi odpowiedzieć `200` z JSON-em, co robi tylko wtedy, gdy odpowiadają D1, KV i R2. O stronę, która odpowie inaczej, kontrola pyta ponownie, łącznie najwyżej trzy razy, co pięć sekund, żeby wersji, która jeszcze rozchodzi się po lokalizacjach Cloudflare, nie uznać za zepsutą. Komunikat błędu podaje każdą stronę i jej odpowiedź:
 
 ```text
 The production Worker at https://martebizuteria.pjborowiecki.workers.dev is deployed but does not answer like the shop:
@@ -25,7 +27,7 @@ GET https://martebizuteria.pjborowiecki.workers.dev/products answered 500 text/h
 
 ## Wycofanie Workera
 
-`wrangler rollback` sprawia, że cały ruch znowu obsługuje wcześniejsza wersja Workera. Nie zmienia żadnego bindingu: D1, R2, KV, kolejka audytu i Durable Object zachowują dane, a schemat zostaje taki, jak zostawiły go migracje.
+`wrangler rollback` sprawia, że cały ruch znowu obsługuje wcześniejsza wersja Workera. Nie zmienia żadnego bindingu: D1, R2, KV, kolejki dziennika zdarzeń i newslettera oraz Durable Object zachowują dane, a schemat zostaje taki, jak zostawiły go migracje.
 
 ```sh
 vp exec wrangler deployments list --env production
@@ -40,7 +42,7 @@ vp exec wrangler rollback <version-id> --env production --message "<powód>"
 
 Wrangler pokazuje wersję i prosi o potwierdzenie. Obie komendy biorą nazwę Workera z `wrangler.jsonc`, `martebizuteria` dla `production` i `martebizuteria-preview` dla `preview`, i potrzebują tego samego logowania do Cloudflare co wdrożenie: `vp exec wrangler login` albo `CLOUDFLARE_API_TOKEN` i `CLOUDFLARE_ACCOUNT_ID` w powłoce.
 
-Wersja Workera zachowuje sekrety, z którymi została wdrożona, więc wycofanie przywraca też ich wcześniejsze wartości. Gdy sekret zmienił się od tamtej wersji, Wrangler go wymienia i pyta jeszcze raz. Jeśli zmieniłeś go, bo wyciekł, odpowiedz „nie” i zamiast tego wdróż ponownie commit, co wyśle bieżące wartości.
+Wersja Workera zachowuje sekrety, z którymi została wdrożona, więc wycofanie przywraca też ich wcześniejsze wartości. Gdy sekret zmienił się od tamtej wersji, Wrangler go wymienia i pyta jeszcze raz. Jeśli wymiana nastąpiła, bo sekret wyciekł, odpowiedz „nie” i zamiast tego wdróż ponownie commit, co wyśle bieżące wartości.
 
 Wycofanie nie zmienia `main`, a następny push do `main` znowu wdroży `main`. Po wycofaniu otwórz pull request, który odwraca albo naprawia commit, przez który strona przestała działać.
 

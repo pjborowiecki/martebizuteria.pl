@@ -3,22 +3,36 @@ title: "URL state"
 description: "Put filters, sorting, steps and tokens in the query string with TanStack Router's validateSearch, loaderDeps and typed navigation."
 ---
 
-M'Arte keeps shareable state in the URL and ephemeral state in React. The URL is validated by a Zod schema on the route, typed end to end, and used as a loader dependency so a filter change refetches exactly once.
+M'Arte keeps shareable state in the URL and ephemeral state in React. The URL is validated by a Zod schema on the route, typed end to end, and — where the loader depends on it — used as a loader dependency so a filter change refetches exactly once.
 
 There is no separate query-state library in play. `nuqs` appears in `package.json` but nothing in `src/` imports it; all URL state goes through TanStack Router's `validateSearch`.
 
-## The five routes that own search params
+## The twelve routes that own search params
 
-| Route                                 | Schema                                          | Params                                                        |
-| ------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------- |
-| `_storefront.products.index.tsx`      | `storefrontProductsSearchSchema`                | `category`, `collection`, `minPrice`, `maxPrice`, `q`, `sort` |
-| `_storefront.categories.$handle.tsx`  | `storefrontScopedCategoryCatalogSearchSchema`   | The same, minus `category`                                    |
-| `_storefront.collections.$handle.tsx` | `storefrontScopedCollectionCatalogSearchSchema` | The same, minus `collection`                                  |
-| `checkout.tsx`                        | Inline `checkoutSearchSchema`                   | `step`, `success`                                             |
-| `auth.reset-password.tsx`             | Inline `resetPasswordSearchSchema`              | `token`                                                       |
-| `admin.catalog.attributes.index.tsx`  | Inline `attributesIndexSearchSchema`            | `create`                                                      |
+| Route                                    | Schema                                          | Params                                                        |
+| ---------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------- |
+| `_storefront.products.index.tsx`         | `storefrontProductsSearchSchema`                | `category`, `collection`, `minPrice`, `maxPrice`, `q`, `sort` |
+| `_storefront.categories.$handle.tsx`     | `storefrontScopedCategoryCatalogSearchSchema`   | The same, minus `category`                                    |
+| `_storefront.collections.$handle.tsx`    | `storefrontScopedCollectionCatalogSearchSchema` | The same, minus `collection`                                  |
+| `_storefront.newsletter.confirm.tsx`     | `z.object` written in `validateSearch`          | `token`                                                       |
+| `_storefront.newsletter.unsubscribe.tsx` | `z.object` written in `validateSearch`          | `token`                                                       |
+| `_storefront.withdraw-from-contract.tsx` | `z.object` written in `validateSearch`          | `order`                                                       |
+| `checkout.tsx`                           | Inline `checkoutSearchSchema`                   | `session_id`, `step`, `success`                               |
+| `account.orders.index.tsx`               | Inline `ordersSearchSchema`                     | `filter`, `page`                                              |
+| `auth.sign-in.tsx`                       | `zod.object` written in `validateSearch`        | `redirect`                                                    |
+| `auth.reset-password.tsx`                | Inline `resetPasswordSearchSchema`              | `token`                                                       |
+| `admin.catalog.attributes.index.tsx`     | Inline `attributesIndexSearchSchema`            | `create`                                                      |
+| `admin.marketing.subscribers.tsx`        | Inline `subscribersSearchSchema`                | `status`                                                      |
 
 Storefront catalog schemas are shared, so they live in the module: `src/modules/product/product.storefront-catalog.ts`. Single-purpose schemas stay inline in the route file.
+
+What the less obvious ones carry:
+
+- The two newsletter routes read the `token` from the e-mail link and put it in `loaderDeps`, so the loader confirms or unsubscribes once per token. Both trim it and cap it at `TOKEN_MAX_LENGTH`.
+- `order` pre-fills the order number on the withdrawal form.
+- `account.orders.index.tsx` keeps the customer's order-history filter (`filter`, an enum defaulting to `"all"`) and page (`page`, coerced to an integer of at least 1) in the URL; its filter and pagination controls are `LocalizedLink`s with a `search` prop, and both values are the loader's `loaderDeps`.
+- `redirect` on the sign-in page is written by the route guards (`requireSignedIn` in `auth.routes.ts`). After sign-in, the `/auth` layout's `redirectIfSignedIn` follows it, but only when it is a same-site path.
+- `create` on the attributes page and `status` on the subscribers page seed admin state from a link — see below.
 
 ## Declaring the schema
 
@@ -30,14 +44,19 @@ export const storefrontProductsSearchSchema = z.object({
   collection: z.string().trim().nonempty().optional(),
   maxPrice: z.coerce.number().nonnegative().optional(),
   minPrice: z.coerce.number().nonnegative().optional(),
-  q: z.string().trim().nonempty().optional(),
+  q: z
+    .string()
+    .trim()
+    .nonempty()
+    .overwrite((term) => term.slice(0, STOREFRONT_SEARCH_MAX_LENGTH).trimEnd())
+    .optional(),
   sort: z.enum(STOREFRONT_PRODUCTS_SORTS).optional(),
 })
 
 export type StorefrontProductsSearch = z.infer<typeof storefrontProductsSearchSchema>
 ```
 
-`z.coerce.number()` matters: a query string is always text, so a numeric parameter must coerce or every price filter arrives as a string. The `sort` enum comes from `STOREFRONT_PRODUCTS_SORTS`, which is `["rank", "newest", "price_asc", "price_desc"]`, so a hand-typed `?sort=cheapest` is rejected rather than passed to the database.
+`z.coerce.number()` matters: a query string is always text, so a numeric parameter must coerce or every price filter arrives as a string. `q` is cut to `STOREFRONT_SEARCH_MAX_LENGTH` (100 characters, from `src/modules/storefront-search/storefront-search.constants.ts`) and trimmed again, so an over-long search term in a URL is shortened rather than rejected. The `sort` enum comes from `STOREFRONT_PRODUCTS_SORTS`, which is `["rank", "newest", "price_asc", "price_desc"]`, so a hand-typed `?sort=cheapest` is rejected rather than passed to the database.
 
 The category and collection pages reuse the same schema with the parameter that the path already fixes removed:
 
@@ -61,14 +80,17 @@ const coerceStep = (value: unknown): number => {
 const coerceSuccess = (value: unknown): boolean | undefined => (value === true || value === "true" ? true : undefined)
 
 const checkoutSearchSchema = z.object({
+  session_id: z.string().trim().max(CHECKOUT_SESSION_ID_MAX_LENGTH).optional(),
   step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
   success: z.preprocess(coerceSuccess, z.boolean().optional()),
 })
 ```
 
-`step` falls back to 1 for anything out of range, so `?step=99` cannot break the checkout flow.
+`step` falls back to 1 for anything outside 1–4, so `?step=99` cannot break the checkout flow. `session_id` and `success` come back from Stripe: the return URL built in `src/integrations/stripe/stripe.actions.server.ts` ends in `?success=true&session_id={CHECKOUT_SESSION_ID}`, and `checkout.index.tsx` shows `CheckoutSuccess` for that session. `checkout.tsx` is the checkout's layout route, so its child `checkout.index.tsx` reads these values with `useSearch({ from: "/checkout" })`.
 
 ## Wiring the route
+
+From `src/routes/_storefront.products.index.tsx`, with the `head` function left out:
 
 ```ts
 export const Route = createFileRoute("/_storefront/products/")({
@@ -79,7 +101,13 @@ export const Route = createFileRoute("/_storefront/products/")({
       prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
     ])
 
-    return { description: messages.description, title: messages.title }
+    const t = createTranslator({ locale: context.locale, messages })
+
+    return {
+      description: messages.description,
+      structuredData: buildBreadcrumbStructuredData({ leaf: messages.title, locale: context.locale, sections: [] }),
+      title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
+    }
   },
   loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
   staticData: { namespaces: ["pages.products"] },
@@ -102,6 +130,8 @@ export const normalizeStorefrontProductsSearch = (search: StorefrontProductsSear
 
 Without that normalisation, `{ q: "ring", sort: undefined }` and `{ sort: undefined, q: "ring" }` would be different dependency values and the loader would fire twice for the same visible state.
 
+Because `deps` is the validated search, the loader can use it for more than data: here a search term turns the document title into the search-results title, and `head` (not shown) writes that title, the description and the breadcrumb structured data into the page.
+
 ## Reading it in the component
 
 ```tsx
@@ -109,7 +139,7 @@ const search = Route.useSearch()
 const navigate = Route.useNavigate()
 ```
 
-`Route.useSearch()` is typed from the schema, so `search.sort` narrows to the enum. `Route.useNavigate()` is scoped to the route, so `search` updaters are typed too.
+`Route.useSearch()` is typed from the schema, so `search.sort` narrows to the enum. `Route.useNavigate()` is scoped to the route, so `search` updaters are typed too. A component outside the route file — or a child route reading its parent's params, as `checkout.index.tsx` does — uses `useSearch({ from: "<route id>" })` instead; see below.
 
 ## Updating it
 
@@ -139,7 +169,7 @@ if ("category" in patch) {
 }
 ```
 
-So `{ category: undefined }` clears the filter, while `{}` leaves it alone. `{ clearAll: true }` returns `{}` and drops every filter. The result always goes through `normalizeStorefrontProductsSearch` before it reaches the URL.
+So `{ category: undefined }` clears the filter, while `{}` leaves it alone. `{ clearAll: true }` returns `{}` and drops every filter; any other patch result goes through `normalizeStorefrontProductsSearch` before it reaches the URL.
 
 `replace: true` is deliberate: adjusting a filter should not add a history entry, so the browser Back button leaves the catalog rather than stepping through every slider nudge.
 
@@ -153,9 +183,9 @@ The same file exports the helpers the filter UI needs:
 - `buildEffectiveStorefrontProductsSearch(search, scope)` — merges the path-derived scope into the search before it is handed to the query, which is how `/categories/rings?q=silver` becomes a query for silver rings in the rings category.
 - `isStorefrontProductsSort(value)` — a type guard for a sort value coming from outside.
 
-## Opening a sheet from the URL
+## Seeding admin state from the URL
 
-The admin attributes page accepts `?create=1` so a link can land the user directly on the create form. The route declares it:
+The admin attributes page accepts `?create=1` so a link can land the user directly on the create form — the product editor's attribute panel links to it that way. The route declares it:
 
 ```ts
 const attributesIndexSearchSchema = z.object({
@@ -179,15 +209,18 @@ useEffect(() => {
 
 Note that this is one-way: the sheet's own open/closed state lives in `useAttributesSheetState` (plain `useState`), and closing the sheet does not remove `create=1` from the URL. That is the deliberate split — a deep link _into_ a sheet is shareable state, but the sheet's subsequent open/closed state is not.
 
-`useSearch({ from: "..." })` is the form to use when a component sits below the route that owns the parameter; `Route.useSearch()` only works in the route file itself.
+The subscribers grid follows the same one-way pattern with `?status=`. The status cards on the Marketing page link to `/admin/marketing/subscribers` with `search={{ status: config.status }}`. The route prefetches the first page for that status (`loaderDeps: ({ search }) => ({ status: search.status })`) and renders the table with `initialStatus={status}` and `key={status ?? "all"}`, so a new link remounts the grid with that filter. Changing the filter inside the grid stays in React state and does not update the URL.
+
+`useSearch({ from: "..." })` is the form to use when a component sits below the route that owns the parameter. `Route.useSearch()` needs the route's `Route` object, and components do not import route files, so it is used only inside the route file itself.
 
 ## What does not go in the URL
 
 - Data-grid column order, widths and visibility — persisted in `localStorage` under `marte:datagrid:v1:<persistenceKey>`.
 - Sidebar open/closed — the `sidebar_state` cookie, so the server can render the right width.
 - Theme — `localStorage` under `` `${APP_NAME}-theme` ``.
-- Admin grid sorting, filtering and pagination — React state inside the grid hooks, even for the server-paginated products grid.
+- Admin grid sorting, filtering and pagination — React state inside the grid hooks, even for the server-paginated grids. The subscribers page's `?status=` only seeds the initial filter.
 - Form values — React Hook Form.
+- Display preferences (the format locale and time zone used for dates, numbers and prices) — the user's saved `formatLocale` and `timezone`, otherwise detected per request: the format locale from `Accept-Language`, the time zone from the `marte_time_zone` cookie (which `src/providers/translations-provider.tsx` writes with the browser's own time zone) or from the edge.
 
 ## Locale and the URL
 
@@ -200,7 +233,7 @@ rewrite: {
 },
 ```
 
-This is why you always write `to={ROUTES.PRODUCTS}` and never `to="/en-US/products"` — the prefix is added on the way out. `src/integrations/use-intl/i18n.paths.ts` holds the whole implementation, including `localizePathname`, `deLocalizePathname`, `canonicalizePathname` (which also resolves a bare `/pl` or `/en` to the full tag) and `localeLinks` for the canonical and `hreflang` tags.
+This is why you always write `to={ROUTES.PRODUCTS}` and never `to="/en-US/products"` — the prefix is added on the way out. `deLocalizeUrl` and `localizeUrl` live in `src/integrations/use-intl/i18n.utils.ts` and wrap the pathname functions of `src/integrations/use-intl/i18n.paths.ts`, which holds the rest of the implementation, including `localizePathname`, `deLocalizePathname`, `canonicalizePathname` (which also resolves a bare `/pl` or `/en` to the full tag) and `localeLinks` for the canonical and `hreflang` tags.
 
 ## Related guides
 

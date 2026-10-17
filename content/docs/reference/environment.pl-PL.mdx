@@ -3,7 +3,7 @@ title: "Środowisko i powiązania"
 description: "Pliki środowiskowe, zmienne, sekrety i powiązania Cloudflare dla każdego środowiska Wranglera."
 ---
 
-Istnieją trzy prawdziwe środowiska — `development`, `preview` i `production` — oraz zestaw atrap w `test`. Każde prawdziwe środowisko ma odpowiadający mu tryb Vite, plik `.env.<nazwa>` i blok `env` w `wrangler.jsonc`. Nie ma środowiska `test` w Wranglerze; testy pobierają swoje wartości z `.env.test` przez Vitest.
+Istnieją cztery środowiska — `development`, `preview`, `production` i `test` — każde z odpowiadającym mu trybem Vite i blokiem `env` w `wrangler.jsonc`. Trzy pierwsze mają ignorowany przez Git plik `.env.<nazwa>` i prawdziwe zasoby Cloudflare. `test` bierze wartości z wersjonowanego `.env.test`, z którego korzystają też projekty Vitest, korzysta wyłącznie z zasobów lokalnych i istnieje dla zestawu Playwrighta: jego Worker, `martebizuteria-test`, uruchamia `src/platform/testing/worker.ts`, który instaluje emulatory Stripe, Resend i InPost ShipX w pamięci, zanim przekaże żądania do `src/server.ts`. `bun run build:test` i `bun run start:test` budują go i serwują, `bun run db:migrate:test`, `db:seed:test` i `db:reset:test` przygotowują jego bazę w `.wrangler/test`, a żaden skrypt go nie wdraża.
 
 Automatyczne ładowanie zmiennych przez Buna jest wyłączone w `bunfig.toml`:
 
@@ -16,13 +16,13 @@ więc nic nie wczytuje się niejawnie. Vite i Wrangler wybierają plik na podsta
 
 ## Pliki środowiskowe
 
-| Plik               | W repozytorium | Używany przez                                                                                                  |
-| ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------- |
-| `.env.example`     | Tak            | Szablon; wymienia każdą zmienną z wartością zastępczą lub pustą                                                |
-| `.env.development` | Nie            | `bun run dev`, `email:verify development`, `verify-stripe-keys.ts development`, skrypty Drizzle `:development` |
-| `.env.preview`     | Nie            | `build:preview`, `deploy:preview`, `email:verify preview`, skrypty Drizzle `:preview`                          |
-| `.env.production`  | Nie            | `build:production`, `deploy:production`, `email:verify production`, skrypty Drizzle `:production`              |
-| `.env.test`        | Tak            | Vitest, przez `env: loadEnv("test", import.meta.dirname, "")` w `vite.config.ts`; wyłącznie atrapy             |
+| Plik               | W repozytorium | Używany przez                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Tak            | Szablon; wymienia każdą zmienną z wartością zastępczą lub pustą                                                                                                                                                                                                                                                                                                |
+| `.env.development` | Nie            | `bun run dev`, `email:verify development`, `verify-stripe-keys.ts development`, skrypty Drizzle `:development`                                                                                                                                                                                                                                                 |
+| `.env.preview`     | Nie            | `build:preview`, `deploy:preview`, `email:verify preview`, skrypty Drizzle `:preview`                                                                                                                                                                                                                                                                          |
+| `.env.production`  | Nie            | `build:production`, `deploy:production`, `email:verify production`, skrypty Drizzle `:production`                                                                                                                                                                                                                                                              |
+| `.env.test`        | Tak            | Vitest, przez `env: loadEnv("test", import.meta.dirname, "")` w `vite.config.ts`; `vp build --mode test` dla Workera testów end-to-end; `scripts/seed-test.ts`, który bierze z niego `AUTH_SECRET` do zaszyfrowania sekretu dwuskładnikowego administratora z danych startowych; CI, które kopiuje go na `.env.development` i `.env.preview`. Wyłącznie atrapy |
 
 Zacznij od szablonu:
 
@@ -70,27 +70,28 @@ interface ImportMetaEnv {
 
 ## Powiązania
 
-`wrangler.jsonc` daje każdemu środowisku te same sześć powiązań, łącznie z `ASSETS`, więc `wrangler types --env development` deklaruje je w `Env`. Różnią się tylko zasoby pod spodem.
+`wrangler.jsonc` daje każdemu środowisku te same siedem powiązań, łącznie z `ASSETS`, więc `wrangler types --env development` deklaruje wszystkie w `Env`. Różnią się tylko zasoby pod spodem.
 
-| Powiązanie                  | Typ               | `development`                           | `preview`                               | `production`                |
-| --------------------------- | ----------------- | --------------------------------------- | --------------------------------------- | --------------------------- |
-| `DB`                        | D1                | `martebizuteria-preview`, zdalna        | `martebizuteria-preview`, zdalna        | `martebizuteria`, zdalna    |
-| `CACHE`                     | KV                | `d6727c71…`, zdalna                     | `d6727c71…`, zdalna                     | `4126270a…`, zdalna         |
-| `IMAGES`                    | R2                | bucket `martebizuteria-preview`, zdalny | bucket `martebizuteria-preview`, zdalny | bucket `martebizuteria`     |
-| `AUDIT_LOG_QUEUE`           | Producent kolejki | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log`  |
-| `NEWSLETTER_QUEUE`          | Producent kolejki | `martebizuteria-newsletter-preview`     | `martebizuteria-newsletter-preview`     | `martebizuteria-newsletter` |
-| `REALTIME_INVALIDATION_HUB` | Durable Object    | klasa `RealtimeInvalidationHub`         | ta sama                                 | ta sama                     |
-| `ASSETS`                    | Zasoby statyczne  | `./public`, w każdym środowisku         | to samo                                 | to samo                     |
+| Powiązanie                  | Typ               | `development`                           | `preview`                               | `test`                                | `production`                |
+| --------------------------- | ----------------- | --------------------------------------- | --------------------------------------- | ------------------------------------- | --------------------------- |
+| `DB`                        | D1                | `martebizuteria-preview`, zdalna        | `martebizuteria-preview`, zdalna        | `martebizuteria-test`, lokalna        | `martebizuteria`, zdalna    |
+| `CACHE`                     | KV                | `d6727c71…`, zdalna                     | `d6727c71…`, zdalna                     | zastępczy identyfikator, lokalna      | `4126270a…`, zdalna         |
+| `IMAGES`                    | R2                | bucket `martebizuteria-preview`, zdalny | bucket `martebizuteria-preview`, zdalny | bucket `martebizuteria-test`, lokalny | bucket `martebizuteria`     |
+| `AUDIT_LOG_QUEUE`           | Producent kolejki | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log-preview`      | `martebizuteria-audit-log-test`       | `martebizuteria-audit-log`  |
+| `NEWSLETTER_QUEUE`          | Producent kolejki | `martebizuteria-newsletter-preview`     | `martebizuteria-newsletter-preview`     | `martebizuteria-newsletter-test`      | `martebizuteria-newsletter` |
+| `REALTIME_INVALIDATION_HUB` | Durable Object    | klasa `RealtimeInvalidationHub`         | ta sama                                 | ta sama                               | ta sama                     |
+| `ASSETS`                    | Zasoby statyczne  | `./public`, w każdym środowisku         | to samo                                 | to samo                               | to samo                     |
 
-`development` i `preview` wskazują na **tę samą** bazę D1, tę samą przestrzeń KV i tę samą kolejkę. `bun run dev` zapisuje więc do bazy preview, a `vite.config.ts` włącza zdalne powiązania tylko dla tego trybu:
+`development` i `preview` wskazują na **tę samą** bazę D1, tę samą przestrzeń KV, ten sam bucket R2 i te same kolejki. `bun run dev` zapisuje więc do bazy preview, a `vite.config.ts` włącza zdalne powiązania tylko dla tego trybu i trzyma lokalny stan środowiska `test` w osobnym katalogu:
 
 ```ts
-remoteBindings: process.env["CLOUDFLARE_ENV"] === "development"
+persistState: process.env["CLOUDFLARE_ENV"] === "test" ? { path: ".wrangler/test" } : true,
+remoteBindings: process.env["CLOUDFLARE_ENV"] === "development",
 ```
 
-Każde środowisko deklaruje też jedną zwykłą zmienną, `vars.APP_ENV`, ustawioną na własną nazwę. `src/server.ts` przekazuje ją do `generateRobotsTxt`, więc tylko produkcja serwuje indeksowalny `robots.txt`.
+Każde środowisko deklaruje też jedną zwykłą zmienną, `vars.APP_ENV`, ustawioną na własną nazwę. `src/server.ts` przekazuje ją do `generateRobotsTxt`, więc tylko produkcja serwuje indeksowalny `robots.txt`; decyduje ona też o przyjmowanym trybie Stripe i metadanych `deployment` sesji Checkout, o API ShipX, o `Strict-Transport-Security` i o prefiksie kluczy KV i limitów e-maili, co wymieniają [Zmienne środowiskowe](/docs/getting-started/environment-variables#zwykłe-zmienne-nie-sekrety). Tylko `preview` i `production` deklarują Cron Trigger, `0 3 * * *`, który uruchamia codzienne czyszczenie danych po okresie przechowywania.
 
-Konsument kolejki Workera jest zadeklarowany obok producenta z `max_batch_size: 50`, `max_batch_timeout: 5`, `max_retries: 3` i `dead_letter_queue` nazwaną od kolejki z przyrostkiem `-dlq`, którą Worker konsumuje po jednej wiadomości (`max_batch_size: 1`, `max_retries: 3`, `retry_delay: 300`); obie obsługuje eksport `queue` w `src/server.ts`. Klasę Durable Object tworzy migracja o tagu `v1` (`new_sqlite_classes: ["RealtimeInvalidationHub"]`).
+Każde środowisko deklaruje czterech konsumentów kolejek, wszystkich obsługuje eksport `queue` w `src/server.ts`. Kolejka dziennika zdarzeń jest konsumowana partiami (`max_batch_size: 50`, `max_batch_timeout: 5`, w `test` `1`, `max_retries: 3`) z `dead_letter_queue` nazwaną od niej z przyrostkiem `-dlq`, którą Worker konsumuje po jednej wiadomości (`max_batch_size: 1`, `max_retries: 3`, `retry_delay: 300`). Kolejka newslettera, w której każda wiadomość to jedna partia do 100 odbiorców, jest konsumowana po jednej wiadomości i nigdy równolegle (`max_batch_size: 1`, `max_concurrency: 1`, `max_retries: 3`), z własną kolejką `-dlq` konsumowaną tak samo po `retry_delay` 300 sekund. Klasę Durable Object tworzy migracja o tagu `v1` (`new_sqlite_classes: ["RealtimeInvalidationHub"]`).
 
 Inne ustawienia najwyższego poziomu warte zapamiętania: `compatibility_date` to `2026-04-18` z flagą `nodejs_compat`, `keep_vars` jest włączone, obserwowalność jest włączona razem z Workers Issues (`observability.issues.enabled`), a `placement.mode` ma wartość `smart`.
 

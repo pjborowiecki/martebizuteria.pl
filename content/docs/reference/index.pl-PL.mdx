@@ -23,21 +23,21 @@ Wszystko tutaj pochodzi wprost z repozytorium. Jeśli tabela podaje ścieżkę, 
 
 ## Kształt repozytorium w jednej tabeli
 
-| Katalog                      | Za co odpowiada                                                                                    |
-| ---------------------------- | -------------------------------------------------------------------------------------------------- |
-| `src/routes`                 | Trasy plikowe TanStack Start, handlery HTTP w `api/`, strażnicy tras i loadery                     |
-| `src/routes.ts`              | `ROUTES` — jedna tabela literałów ścieżek, którą importuje reszta kodu                             |
-| `src/modules/{feature}`      | Logika domenowa: tabele Drizzle, schematy Zod, stałe, akcesory i `use-cases/`                      |
-| `src/modules/_core`          | Wspólne elementy bez własnej tabeli: `AppError`, waluta, eksport tabel, paginacja                  |
-| `src/integrations/{vendor}`  | Jeden katalog na dostawcę: Better Auth, Stripe, Drizzle, R2, Resend, InPost, use-intl              |
-| `src/presentation`           | Całe UI: `components/shadcn`, `components/custom`, `styles`, `theme`, `branding`, `emails`         |
-| `src/platform/testing`       | Wspólna infrastruktura testowa: mock D1, helpery renderujące, plik setup dla Vitest                |
-| `src/lib`                    | Małe helpery w zasięgu zapytania: cookies, rate limiting, SEO, adresy obrazów, `waitUntil`         |
-| `src/durable-objects`        | `RealtimeInvalidationHub` — obiekt rozgłaszający zdarzenia po WebSocketach                         |
-| `src/hooks`, `src/providers` | Wspólne hooki React i dwa providery aplikacji                                                      |
-| `src/data`                   | Statyczne fikstury, na których wciąż opiera się kilka niedokończonych stron panelu                 |
-| `src/server.ts`              | Wejście Workera: sitemap, robots, upgrade WebSocket, przekierowanie lokalizacji, konsument kolejki |
-| `content/`, `messages/`      | Treści MDX (`docs`) i katalogi tłumaczeń podzielone na przestrzenie nazw                           |
+| Katalog                      | Za co odpowiada                                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/routes`                 | Trasy plikowe TanStack Start, handlery HTTP w `api/`, strażnicy tras i loadery                                                                                                                                            |
+| `src/routes.ts`              | `ROUTES` — jedna tabela literałów ścieżek, którą importuje reszta kodu                                                                                                                                                    |
+| `src/modules/{feature}`      | Logika domenowa: tabele Drizzle, schematy Zod, stałe, akcesory i `use-cases/`                                                                                                                                             |
+| `src/modules/_core`          | Wspólne elementy bez własnej tabeli: `AppError`, waluta, eksport tabel, paginacja                                                                                                                                         |
+| `src/integrations/{vendor}`  | Jeden katalog na dostawcę: Better Auth, Stripe, Drizzle, R2, Resend, InPost, use-intl                                                                                                                                     |
+| `src/presentation`           | Całe UI: `components/shadcn`, `components/custom`, `styles`, `theme`, `branding`, `emails`                                                                                                                                |
+| `src/platform/testing`       | Wspólna infrastruktura testowa: mock D1, helpery renderujące, plik setup dla Vitest oraz `worker.ts`, Worker testów end-to-end z emulatorami dostawców                                                                    |
+| `src/lib`                    | Małe helpery w zasięgu zapytania: cookies, rate limiting, SEO, adresy obrazów, `waitUntil`                                                                                                                                |
+| `src/durable-objects`        | `RealtimeInvalidationHub` — obiekt rozgłaszający zdarzenia po WebSocketach                                                                                                                                                |
+| `src/hooks`, `src/providers` | Wspólne hooki React i dwa providery aplikacji                                                                                                                                                                             |
+| `src/data`                   | Dane statyczne: lista artykułów bloga, ścieżki mediów strony głównej i statyczne strony mapy witryny                                                                                                                      |
+| `src/server.ts`              | Wejście Workera: sitemap, robots, upgrade WebSocket, przekierowanie lokalizacji, nagłówki bezpieczeństwa, konsumenci obu kolejek i ich kolejek martwych listów oraz codzienne czyszczenie danych w procedurze `scheduled` |
+| `content/`, `messages/`      | Treści MDX (`docs`) i katalogi tłumaczeń podzielone na przestrzenie nazw                                                                                                                                                  |
 
 ## Konwencje tych stron
 

@@ -20,35 +20,36 @@ curl -fsSL https://vite.plus | bash
 
 On Windows use `irm https://vite.plus/ps1 | iex`. Then open a new shell and check the installation with `vp help`. The global CLI also manages the Node.js runtime and the package manager, so you do not have to install Node or Bun separately.
 
-Vite+ ships two CLIs: the global `vp` and the project-local `vite-plus` package (pinned here to `1.0.0-rc.0` in `devDependencies`). `vp` in this repository resolves to the local package, which is why `bun run check` and `vp check` behave identically.
+Vite+ ships two CLIs: the global `vp` and the project-local `vite-plus` package (pinned here to `1.1.0` in `devDependencies`). `vp` in this repository resolves to the local package, which is why `bun run check` and `vp check` behave identically.
 
 `wrangler`, `drizzle-kit`, `shadcn`, `jsdom` and the Vitest coverage provider are all `devDependencies`. Run them through the package scripts, or directly with `vp exec wrangler …` / `bunx wrangler …` — never a globally installed copy, because the version would differ from the one CI uses.
 
 ### Optional
 
-| Tool           | Why                                                                                                               |
-| -------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Stripe CLI     | `bun run stripe:listen` forwards live test webhooks to `localhost:3000/api/webhooks/stripe` during development    |
-| Drizzle Studio | Started by `bun run db:studio`; needs the three `CLOUDFLARE_*` values in your `.env` file, not a separate install |
+| Tool                | Why                                                                                                                  |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Stripe CLI          | `bun run stripe:listen` forwards live test webhooks to `localhost:3000/api/webhooks/stripe` during development       |
+| Drizzle Studio      | Started by `bun run db:studio`; needs the three `CLOUDFLARE_*` values in your `.env` file, not a separate install    |
+| Playwright browsers | `bun run test:e2e:install` downloads Chromium and WebKit for the end-to-end suite, which needs no Cloudflare account |
 
 ## Accounts
 
 ### Cloudflare — required
 
-The application cannot start without its bindings. `wrangler.jsonc` declares five for every environment:
+The application cannot start without its bindings. `wrangler.jsonc` declares the same seven in every environment: the six below, plus `ASSETS`, which serves the static files in `./public`.
 
-| Binding                     | Resource                                                                                       | Used for                                          |
-| --------------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| `DB`                        | D1 database                                                                                    | All application data — 41 tables                  |
-| `IMAGES`                    | R2 bucket: `martebizuteria` in production, `martebizuteria-preview` in development and preview | Product image uploads                             |
-| `CACHE`                     | KV namespace                                                                                   | Holds the email sender availability flag          |
-| `AUDIT_LOG_QUEUE`           | Cloudflare Queue                                                                               | Audit events, written by the queue consumer       |
-| `NEWSLETTER_QUEUE`          | Cloudflare Queue                                                                               | Newsletter batches, sent by the queue consumer    |
-| `REALTIME_INVALIDATION_HUB` | Durable Object                                                                                 | WebSocket fan-out for realtime cache invalidation |
+| Binding                     | Resource                                                                                                                                        | Used for                                                                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `DB`                        | D1 database                                                                                                                                     | All application data — 41 tables plus the `storefront_search` FTS5 index                                                  |
+| `IMAGES`                    | R2 bucket: `martebizuteria` in production, `martebizuteria-preview` in development and preview, a local `martebizuteria-test` in the test build | Product image uploads                                                                                                     |
+| `CACHE`                     | KV namespace                                                                                                                                    | The email sender availability flag, the keys that limit incident alerts to one per incident, and the health check's probe |
+| `AUDIT_LOG_QUEUE`           | Cloudflare Queue                                                                                                                                | Audit events, written by the queue consumer                                                                               |
+| `NEWSLETTER_QUEUE`          | Cloudflare Queue                                                                                                                                | Newsletter batches, sent by the queue consumer                                                                            |
+| `REALTIME_INVALIDATION_HUB` | Durable Object                                                                                                                                  | WebSocket fan-out for realtime cache invalidation                                                                         |
 
 Two caveats worth knowing before you provision anything:
 
-- Cloudflare Queues is not available on every Workers plan. If your account cannot create a queue, a deploy will fail at `scripts/verify-bindings.ts`, which requires both a producer and a matching consumer for `AUDIT_LOG_QUEUE` and for `NEWSLETTER_QUEUE`, and a consumed dead-letter queue for each consumer.
+- Cloudflare Queues is not available on every Workers plan. If your account cannot create a queue, a deploy will fail at `scripts/verify-bindings.ts`, which requires both a producer and a matching consumer for `AUDIT_LOG_QUEUE` and for `NEWSLETTER_QUEUE`, and a consumed dead-letter queue for each consumer. Each environment therefore needs four queues: `…-audit-log`, `…-audit-log-dlq`, `…-newsletter` and `…-newsletter-dlq`.
 - `placement: { mode: "smart" }` in `wrangler.jsonc` is also a paid-plan feature. It is a hint, not a requirement, so it is safe to remove locally if your account rejects it.
 
 The Durable Object needs no provisioning step. It is created by the `v1` migration in `wrangler.jsonc`, which declares `RealtimeInvalidationHub` under `new_sqlite_classes`.
@@ -72,31 +73,40 @@ Email and password sign-in is enabled with verification enforced:
 ```ts
 emailAndPassword: {
   enabled: true,
+  maxPasswordLength: PASSWORD_MAX_LENGTH,
+  minPasswordLength: PASSWORD_MIN_LENGTH,
+  onPasswordReset: handlePasswordReset,
   requireEmailVerification: true,
+  revokeSessionsOnPasswordReset: true,
   sendResetPassword: sendResetPasswordEmail,
 },
 emailVerification: {
+  afterEmailVerification: handleEmailVerified,
   autoSignInAfterVerification: true,
   sendOnSignUp: true,
   sendVerificationEmail: sendVerifyEmail,
 },
 ```
 
-Without a working `RESEND_API_KEY` and a verified `RESEND_EMAIL_FROM` sender, the verification email never arrives and the account can never sign in. There is no seeded admin account and no way to skip verification from the UI, so this is a hard prerequisite for reaching `/admin` — see [First run](/docs/getting-started/first-run). Locally, `onboarding@resend.dev` works without a domain of your own as long as you sign up with the Resend account owner's address; preview and production need a domain verified with the DNS records listed in [Resend](/docs/integrations/resend#sender-domain). `bun run email:verify development` checks the key and sender in `.env.development`.
+Without a working `RESEND_API_KEY` and a verified `RESEND_EMAIL_FROM` sender, the verification email never arrives and the account can never sign in. Outside the local `test` environment of the end-to-end suite there is no seeded admin account and no way to skip verification from the UI, so this is a hard prerequisite for reaching `/admin` — see [First run](/docs/getting-started/first-run). Locally, `onboarding@resend.dev` works without a domain of your own as long as you sign up with the Resend account owner's address; preview and production need a domain verified with the DNS records listed in [Resend](/docs/integrations/resend#sender-domain). `bun run email:verify development` checks the key and sender in `.env.development`.
 
 ### Stripe — required for checkout
 
 You need a test-mode secret key, the matching publishable key, and a webhook signing secret. Payment succeeds in the browser but the order is only created by the webhook handler at `/api/webhooks/stripe`, which verifies the signature with `STRIPE_WEBHOOK_SECRET` and rejects anything it cannot verify.
+
+The opt-in `stripe-test-mode` browser tests, which pay by card, BLIK and Przelewy24 in Stripe's real Payment Element, need the keys of a separate Stripe sandbox with no webhook endpoint and with Cards, BLIK and Przelewy24 turned on. CI reads them from the `E2E_STRIPE_SECRET_KEY` and `E2E_STRIPE_PUBLISHABLE_KEY` repository secrets; see [Testing](/docs/tooling/testing#stripe-test-mode).
 
 ### InPost — an account only for shipments
 
 The parcel-locker picker calls the public points API directly from `src/integrations/inpost/inpost.api.ts`, with no account:
 
 ```ts
-const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
+const INPOST_API_BASE = `${INPOST_POINTS_API_ORIGIN}/v1/points`
 ```
 
-Booking shipments, printing labels and reading their status from the admin order page goes through InPost's ShipX API and needs an InPost Manager account: its API section (My Account, API) gives the token for `INPOST_API_TOKEN` and the organisation id for `INPOST_ORGANIZATION_ID`. Development and preview call InPost's sandbox, which has its own account at `https://sandbox-manager.paczkomaty.pl`. Both values may stay blank, and the order page then explains that automatic InPost shipping is not connected and how to ship by hand: create the parcel in InPost Manager, then mark the order shipped with its tracking number. See [InPost](/docs/integrations/inpost#credentials). The points API, which the checkout searches for lockers and asks to confirm the chosen one, needs no account.
+`INPOST_POINTS_API_ORIGIN` is `https://api-pl-points.easypack24.net`, in `src/integrations/inpost/inpost.constants.ts`.
+
+Booking shipments, printing labels and reading their status from the admin order page goes through InPost's ShipX API and needs an InPost Manager account: its API section (My Account, API) gives the token for `INPOST_API_TOKEN` and the organisation id for `INPOST_ORGANIZATION_ID`. Development and preview call InPost's sandbox, which has its own account at `https://sandbox-manager.paczkomaty.pl`. Both values may stay blank, and the order page then explains that automatic InPost shipping is not connected and how to ship by hand: create the parcel in InPost Manager, then mark the order shipped with its tracking number. The customer's email, the account's order page and the admin's order page link that number to InPost's tracking page through `resolveOrderTrackingUrl`. See [InPost](/docs/integrations/inpost#credentials). The points API, which the checkout searches for lockers and asks to confirm the chosen one, needs no account.
 
 ## Next
 

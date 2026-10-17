@@ -17,7 +17,7 @@ Moduł w `src/modules/<feature>/` nosi nazwę swojej funkcjonalności, a każdy 
 | `<feature>.types.ts`                           | Typy wyprowadzone z tabeli, zwykle jeden interfejs z `select`/`insert` | `address/address.types.ts`                        |
 | `<feature>.zod.ts`                             | Schematy Zod, głównie budowane przez `drizzle-zod`                     | `product/product.zod.ts`                          |
 | `<feature>.constants.ts`                       | Długości kolumn, enumy statusów, kody błędów, klucze zapytań i mutacji | `product-category/product-category.constants.ts`  |
-| `<feature>.utils.ts`                           | Czyste helpery bez operacji wejścia/wyjścia                            | `inventory/inventory.utils.ts`                    |
+| `<feature>.utils.ts`                           | Czyste helpery bez operacji wejścia/wyjścia                            | `order/order.admin-actions.utils.ts`              |
 | `<feature>.accessors.ts`                       | Dostęp do danych bez autoryzacji: odczyty i zapisy do `db`             | `payment/payment.accessors.ts`                    |
 | `<feature>.server.ts`                          | Helpery wyłącznie serwerowe, zwykle przygotowane zapytania             | `product-collection/product-collection.server.ts` |
 | `use-cases/<czasownik>-<rzeczownik>.ts`        | Jedną operację, eksportującą funkcję serwerową i opcje zapytania       | `order/use-cases/ship-order.ts`                   |
@@ -25,16 +25,17 @@ Moduł w `src/modules/<feature>/` nosi nazwę swojej funkcjonalności, a każdy 
 
 Niektóre moduły potrzebują drugiej osi i łączą dwa sufiksy. Przedostatni segment zawęża zakres:
 
-| Plik                                              | Przeznaczenie                                                  |
-| ------------------------------------------------- | -------------------------------------------------------------- |
-| `audit-log/audit-log.diff.utils.ts`               | Helpery porównujące migawki „przed" i „po" w dzienniku zdarzeń |
-| `audit-log/audit-log.queue.server.ts`             | Producent i konsument kolejki Cloudflare                       |
-| `audit-log/audit-log.events.server.ts`            | Typowane funkcje rejestrujące, które wywołuje warstwa domenowa |
-| `inventory/inventory.availability.utils.ts`       | Arytmetyka dostępności, oddzielona od mapowania wierszy        |
-| `product/product.admin-list.server.ts`            | Zapytanie listy w panelu, osobno od zapytania sklepu           |
-| `product/product.storefront-catalog.accessors.ts` | Odczyty katalogu dla sklepu                                    |
-| `product-image/product-image.persist.utils.ts`    | Helpery utrwalania obrazów                                     |
-| `order/order.settled.server.ts`                   | Wyszukiwanie zamówień, które już zostały rozliczone            |
+| Plik                                              | Przeznaczenie                                                               |
+| ------------------------------------------------- | --------------------------------------------------------------------------- |
+| `audit-log/audit-log.diff.utils.ts`               | Helpery porównujące migawki „przed" i „po" w dzienniku zdarzeń              |
+| `audit-log/audit-log.queue.server.ts`             | Producent i konsument kolejki Cloudflare                                    |
+| `audit-log/audit-log.events.server.ts`            | Typowane funkcje rejestrujące, które wywołuje warstwa domenowa              |
+| `inventory/inventory.availability.utils.ts`       | Arytmetyka dostępności, oddzielona od mapowania wierszy                     |
+| `product/product.admin-list.server.ts`            | Zapytanie listy w panelu, osobno od zapytania sklepu                        |
+| `product/product.storefront-catalog.accessors.ts` | Odczyty katalogu dla sklepu                                                 |
+| `product-image/product-image.persist.utils.ts`    | Helpery utrwalania obrazów                                                  |
+| `order/order.settled.server.ts`                   | Wyszukiwanie zamówień, które już zostały rozliczone                         |
+| `order/order.claim.server.ts`                     | Przypisywanie zamówień gości do konta, które zweryfikowało ich adres e-mail |
 
 ## Trasy
 
@@ -85,7 +86,7 @@ Prefiks to krótka nazwa dostawcy, nie nazwa katalogu — dlatego katalog `use-i
 
 ## Testy
 
-Testy leżą w katalogu `__test__` obok kodu, który pokrywają — takich katalogów jest 184. Sufiks wybiera projekt Vitest.
+Testy leżą w katalogu `__test__` obok kodu, który pokrywają — takich katalogów jest 221. Sufiks wybiera projekt Vitest.
 
 | Wzorzec                                | Projekt Vitest | Środowisko                                 |
 | -------------------------------------- | -------------- | ------------------------------------------ |
@@ -97,15 +98,26 @@ Plik testu nosi nazwę pliku, który pokrywa: `src/modules/address/__test__/` za
 
 Ustawienie `routeFileIgnorePattern: "__test__"` w `vite.config.ts` powstrzymuje generator tras od traktowania `src/routes/__test__` jako tras.
 
+Wyjątkiem od zasady „obok kodu” są testy przeglądarkowe. Leżą w `e2e/` w katalogu głównym repozytorium i działają w Playwrighcie, który wybiera projekt po sufiksie:
+
+| Wzorzec                               | Projekt Playwrighta                                       | Przykład                                  |
+| ------------------------------------- | --------------------------------------------------------- | ----------------------------------------- |
+| `e2e/specs/<obszar>.spec.ts`          | `chromium` i `webkit`                                     | `e2e/specs/checkout.spec.ts`              |
+| `e2e/specs/*stripe-test-mode.spec.ts` | `stripe-test-mode`, na piaskownicy Stripe                 | `e2e/specs/blik.stripe-test-mode.spec.ts` |
+| `e2e/specs/<obszar>.shop-wide.ts`     | `chromium-shop-wide` i `webkit-shop-wide`, po pozostałych | `e2e/specs/sales.shop-wide.ts`            |
+| `e2e/specs/<nazwa>.setup.ts`          | `setup`, przed projektami przeglądarek                    | `e2e/specs/auth.setup.ts`                 |
+
+Obiekty stron leżą w `e2e/pages/<nazwa>-page.ts`, fikstury w `e2e/fixtures/`, a konta i katalog z danych startowych, na które liczą specyfikacje, w `e2e/data/`.
+
 ## Treści i tłumaczenia
 
-| Wzorzec                                        | Znaczenie                                                                   |
-| ---------------------------------------------- | --------------------------------------------------------------------------- |
-| `content/docs/<ścieżka>/<strona>.<locale>.mdx` | Jedna strona dokumentacji w jednej lokalizacji                              |
-| `content/docs/<ścieżka>/meta.<locale>.json`    | Kolejność nawigacji i tytuł tego katalogu, per lokalizacja                  |
-| `messages/<locale>/<namespace>.json`           | Jedna przestrzeń nazw tłumaczeń, nazwana jak ona: `pages.admin.orders.json` |
+| Wzorzec                                        | Znaczenie                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `content/docs/<ścieżka>/<strona>.<locale>.mdx` | Jedna strona dokumentacji w jednej lokalizacji                                        |
+| `content/docs/<ścieżka>/meta.<locale>.json`    | Kolejność nawigacji i tytuł tego katalogu, per lokalizacja                            |
+| `messages/<locale>/<namespace>.json`           | Jedna przestrzeń nazw tłumaczeń, nazwana jak ona: `pages.admin.catalog.products.json` |
 
-Sufiks lokalizacji parsuje Fumadocs z ustawieniami `parser: "dot"` i `hideLocale: "always"`, skonfigurowanymi w `src/integrations/fumadocs/fumadocs.i18n.ts`. Obie lokalizacje muszą mieć te same slugi. Regulamin, polityka prywatności i strona „Wymiana i zwroty” nie są plikami: to wiersze tabeli `content_page`, edytowane w `/admin/content`.
+Sufiks lokalizacji parsuje Fumadocs z ustawieniami `parser: "dot"` i `hideLocale: "always"`, skonfigurowanymi w `src/integrations/fumadocs/fumadocs.i18n.ts`. Obie lokalizacje muszą mieć te same slugi. Regulamin, polityka prywatności, strona „Wymiana i zwroty” i FAQ nie są plikami: to wiersze tabeli `content_page`, edytowane w `/admin/content`.
 
 ## Baza danych
 
@@ -117,7 +129,7 @@ Sufiks lokalizacji parsuje Fumadocs z ustawieniami `parser: "dot"` i `hideLocale
 
 ## Skrypty
 
-`scripts/<czasownik>-<rzeczownik>.ts`, uruchamiane przez `bun scripts/<nazwa>.ts`: `commit-msg.ts`, `prepare-deploy-secrets.ts`, `sync-skills.ts`, `verify-bindings.ts`, `verify-build.ts`, `verify-deployment.ts`, `verify-email-sender.ts`, `verify-stripe-keys.ts`.
+`scripts/<czasownik>-<rzeczownik>.ts`, uruchamiane przez `bun scripts/<nazwa>.ts`: `commit-msg.ts`, `prepare-deploy-secrets.ts`, `seed-test.ts`, `sync-skills.ts`, `verify-bindings.ts`, `verify-build.ts`, `verify-deployment.ts`, `verify-email-sender.ts`, `verify-stripe-keys.ts`.
 
 ## Powiązane strony
 

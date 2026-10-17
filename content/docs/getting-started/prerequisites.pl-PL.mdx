@@ -20,35 +20,36 @@ curl -fsSL https://vite.plus | bash
 
 W systemie Windows użyj `irm https://vite.plus/ps1 | iex`. Następnie otwórz nową powłokę i sprawdź instalację poleceniem `vp help`. Globalne CLI zarządza też środowiskiem Node.js i menedżerem pakietów, więc nie musisz instalować Node ani Buna osobno.
 
-Vite+ dostarcza dwa CLI: globalne `vp` oraz lokalny pakiet `vite-plus` (tu przypięty do wersji `1.0.0-rc.0` w `devDependencies`). W tym repozytorium `vp` korzysta z lokalnego pakietu — dlatego `bun run check` i `vp check` działają identycznie.
+Vite+ dostarcza dwa CLI: globalne `vp` oraz lokalny pakiet `vite-plus` (tu przypięty do wersji `1.1.0` w `devDependencies`). W tym repozytorium `vp` korzysta z lokalnego pakietu — dlatego `bun run check` i `vp check` działają identycznie.
 
 `wrangler`, `drizzle-kit`, `shadcn`, `jsdom` i dostawca pokrycia dla Vitest są zależnościami deweloperskimi. Uruchamiaj je przez skrypty pakietu albo bezpośrednio przez `vp exec wrangler …` / `bunx wrangler …` — nigdy przez kopię zainstalowaną globalnie, bo jej wersja różniłaby się od tej używanej przez CI.
 
 ### Opcjonalnie
 
-| Narzędzie      | Do czego                                                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Stripe CLI     | `bun run stripe:listen` przekazuje testowe webhooki na `localhost:3000/api/webhooks/stripe` podczas pracy deweloperskiej |
-| Drizzle Studio | Uruchamiane przez `bun run db:studio`; wymaga trzech wartości `CLOUDFLARE_*` w pliku `.env`, a nie osobnej instalacji    |
+| Narzędzie               | Do czego                                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Stripe CLI              | `bun run stripe:listen` przekazuje testowe webhooki na `localhost:3000/api/webhooks/stripe` podczas pracy deweloperskiej |
+| Drizzle Studio          | Uruchamiane przez `bun run db:studio`; wymaga trzech wartości `CLOUDFLARE_*` w pliku `.env`, a nie osobnej instalacji    |
+| Przeglądarki Playwright | `bun run test:e2e:install` pobiera Chromium i WebKit dla testów end-to-end, które nie wymagają konta Cloudflare          |
 
 ## Konta
 
 ### Cloudflare — wymagane
 
-Aplikacja nie uruchomi się bez swoich bindingów. `wrangler.jsonc` deklaruje pięć dla każdego środowiska:
+Aplikacja nie uruchomi się bez swoich bindingów. `wrangler.jsonc` deklaruje te same siedem w każdym środowisku: sześć poniższych oraz `ASSETS`, który serwuje pliki statyczne z `./public`.
 
-| Binding                     | Zasób                                                                                          | Do czego                                                    |
-| --------------------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| `DB`                        | baza D1                                                                                        | Wszystkie dane aplikacji — 41 tabel                         |
-| `IMAGES`                    | zasobnik R2: `martebizuteria` na produkcji, `martebizuteria-preview` w developmencie i preview | Wysyłanie zdjęć produktów                                   |
-| `CACHE`                     | przestrzeń nazw KV                                                                             | Przechowuje flagę dostępności nadawcy e-maili               |
-| `AUDIT_LOG_QUEUE`           | kolejka Cloudflare Queues                                                                      | Zdarzenia audytu, zapisywane przez konsumenta kolejki       |
-| `NEWSLETTER_QUEUE`          | kolejka Cloudflare Queues                                                                      | Partie newslettera, wysyłane przez konsumenta kolejki       |
-| `REALTIME_INVALIDATION_HUB` | Durable Object                                                                                 | Rozgłaszanie unieważnień pamięci podręcznej przez WebSocket |
+| Binding                     | Zasób                                                                                                                                             | Do czego                                                                                                     |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `DB`                        | baza D1                                                                                                                                           | Wszystkie dane aplikacji — 41 tabel oraz indeks FTS5 `storefront_search`                                     |
+| `IMAGES`                    | zasobnik R2: `martebizuteria` na produkcji, `martebizuteria-preview` w developmencie i preview, lokalny `martebizuteria-test` w buildzie testowym | Wysyłanie zdjęć produktów                                                                                    |
+| `CACHE`                     | przestrzeń nazw KV                                                                                                                                | Flaga dostępności nadawcy e-maili, klucze ograniczające alerty do jednego na incydent i sonda kontroli stanu |
+| `AUDIT_LOG_QUEUE`           | kolejka Cloudflare Queues                                                                                                                         | Zdarzenia audytu, zapisywane przez konsumenta kolejki                                                        |
+| `NEWSLETTER_QUEUE`          | kolejka Cloudflare Queues                                                                                                                         | Partie newslettera, wysyłane przez konsumenta kolejki                                                        |
+| `REALTIME_INVALIDATION_HUB` | Durable Object                                                                                                                                    | Rozgłaszanie unieważnień pamięci podręcznej przez WebSocket                                                  |
 
 Dwie rzeczy warte uwagi, zanim zaczniesz tworzyć zasoby:
 
-- Cloudflare Queues nie jest dostępne w każdym planie Workers. Jeśli Twoje konto nie może utworzyć kolejki, wdrożenie zatrzyma się na `scripts/verify-bindings.ts`, który wymaga zarówno producenta, jak i pasującego konsumenta dla `AUDIT_LOG_QUEUE` i dla `NEWSLETTER_QUEUE`, a dla każdego konsumenta konsumowanej kolejki martwych listów.
+- Cloudflare Queues nie jest dostępne w każdym planie Workers. Jeśli Twoje konto nie może utworzyć kolejki, wdrożenie zatrzyma się na `scripts/verify-bindings.ts`, który wymaga zarówno producenta, jak i pasującego konsumenta dla `AUDIT_LOG_QUEUE` i dla `NEWSLETTER_QUEUE`, a dla każdego konsumenta konsumowanej kolejki martwych listów. Każde środowisko potrzebuje więc czterech kolejek: `…-audit-log`, `…-audit-log-dlq`, `…-newsletter` i `…-newsletter-dlq`.
 - `placement: { mode: "smart" }` w `wrangler.jsonc` to również funkcja planu płatnego. Jest to wskazówka, a nie wymóg, więc lokalnie można ją bezpiecznie usunąć, jeśli konto ją odrzuca.
 
 Durable Object nie wymaga osobnego kroku przygotowania. Tworzy go migracja `v1` w `wrangler.jsonc`, która deklaruje `RealtimeInvalidationHub` w `new_sqlite_classes`.
@@ -72,31 +73,40 @@ Logowanie e-mailem i hasłem jest włączone z wymuszoną weryfikacją adresu:
 ```ts
 emailAndPassword: {
   enabled: true,
+  maxPasswordLength: PASSWORD_MAX_LENGTH,
+  minPasswordLength: PASSWORD_MIN_LENGTH,
+  onPasswordReset: handlePasswordReset,
   requireEmailVerification: true,
+  revokeSessionsOnPasswordReset: true,
   sendResetPassword: sendResetPasswordEmail,
 },
 emailVerification: {
+  afterEmailVerification: handleEmailVerified,
   autoSignInAfterVerification: true,
   sendOnSignUp: true,
   sendVerificationEmail: sendVerifyEmail,
 },
 ```
 
-Bez działającego `RESEND_API_KEY` i zweryfikowanego nadawcy `RESEND_EMAIL_FROM` wiadomość weryfikacyjna nigdy nie dotrze, a konto nigdy nie będzie mogło się zalogować. Nie ma konta administratora tworzonego przez seed ani sposobu pominięcia weryfikacji z interfejsu, więc to twarde wymaganie, by dostać się do `/admin` — zobacz [Pierwsze uruchomienie](/docs/getting-started/first-run). Lokalnie `onboarding@resend.dev` działa bez własnej domeny, o ile rejestrujesz się adresem właściciela konta Resend; preview i produkcja potrzebują domeny zweryfikowanej rekordami DNS wymienionymi w [Resend](/docs/integrations/resend#domena-nadawcy). `bun run email:verify development` sprawdza klucz i nadawcę z `.env.development`.
+Bez działającego `RESEND_API_KEY` i zweryfikowanego nadawcy `RESEND_EMAIL_FROM` wiadomość weryfikacyjna nigdy nie dotrze, a konto nigdy nie będzie mogło się zalogować. Poza lokalnym środowiskiem `test` testów end-to-end nie ma konta administratora tworzonego przez seed ani sposobu pominięcia weryfikacji z interfejsu, więc to twarde wymaganie, by dostać się do `/admin` — zobacz [Pierwsze uruchomienie](/docs/getting-started/first-run). Lokalnie `onboarding@resend.dev` działa bez własnej domeny, o ile rejestrujesz się adresem właściciela konta Resend; preview i produkcja potrzebują domeny zweryfikowanej rekordami DNS wymienionymi w [Resend](/docs/integrations/resend#domena-nadawcy). `bun run email:verify development` sprawdza klucz i nadawcę z `.env.development`.
 
 ### Stripe — wymagane do zamówień
 
 Potrzebujesz testowego klucza tajnego, pasującego klucza publicznego i sekretu podpisu webhooka. Płatność kończy się sukcesem w przeglądarce, ale zamówienie tworzy dopiero handler webhooka pod `/api/webhooks/stripe`, który weryfikuje podpis za pomocą `STRIPE_WEBHOOK_SECRET` i odrzuca wszystko, czego nie potrafi zweryfikować.
+
+Opcjonalne testy przeglądarkowe `stripe-test-mode`, które płacą kartą, BLIK-iem i Przelewy24 w prawdziwym Payment Element Stripe, potrzebują kluczy osobnej piaskownicy Stripe bez endpointu webhooka, z włączonymi metodami Cards, BLIK i Przelewy24. CI czyta je z sekretów repozytorium `E2E_STRIPE_SECRET_KEY` i `E2E_STRIPE_PUBLISHABLE_KEY`; zobacz [Testy](/docs/tooling/testing#tryb-testowy-stripe).
 
 ### InPost — konto tylko do przesyłek
 
 Wybór paczkomatu odpytuje publiczne API punktów bezpośrednio z `src/integrations/inpost/inpost.api.ts`, bez konta:
 
 ```ts
-const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
+const INPOST_API_BASE = `${INPOST_POINTS_API_ORIGIN}/v1/points`
 ```
 
-Nadawanie przesyłek, drukowanie etykiet i odczyt ich statusu ze strony zamówienia w panelu idą przez API ShipX i wymagają konta w Managerze Paczek InPost: jego sekcja API (Moje konto, API) daje token do `INPOST_API_TOKEN` i identyfikator organizacji do `INPOST_ORGANIZATION_ID`. Środowisko deweloperskie i podgląd wywołują piaskownicę InPost, która ma osobne konto pod `https://sandbox-manager.paczkomaty.pl`. Obie wartości mogą zostać puste, a strona zamówienia wyjaśnia wtedy, że automatyczne nadawanie przez InPost nie jest połączone, i jak wysłać paczkę ręcznie: nadać ją w Managerze Paczek InPost, a potem oznaczyć zamówienie jako wysłane z numerem przesyłki. Zobacz [InPost](/docs/integrations/inpost#dane-dostępowe). API punktów, w którym kasa wyszukuje paczkomaty i potwierdza wybrany, nie wymaga konta.
+`INPOST_POINTS_API_ORIGIN` to `https://api-pl-points.easypack24.net`, zdefiniowany w `src/integrations/inpost/inpost.constants.ts`.
+
+Nadawanie przesyłek, drukowanie etykiet i odczyt ich statusu ze strony zamówienia w panelu idą przez API ShipX i wymagają konta w Managerze Paczek InPost: jego sekcja API (Moje konto, API) daje token do `INPOST_API_TOKEN` i identyfikator organizacji do `INPOST_ORGANIZATION_ID`. Środowisko deweloperskie i podgląd wywołują piaskownicę InPost, która ma osobne konto pod `https://sandbox-manager.paczkomaty.pl`. Obie wartości mogą zostać puste, a strona zamówienia wyjaśnia wtedy, że automatyczne nadawanie przez InPost nie jest połączone, i jak wysłać paczkę ręcznie: nadać ją w Managerze Paczek InPost, a potem oznaczyć zamówienie jako wysłane z numerem przesyłki. E-mail do klienta, strona zamówienia na koncie klienta i strona zamówienia w panelu linkują ten numer do strony śledzenia InPost przez `resolveOrderTrackingUrl`. Zobacz [InPost](/docs/integrations/inpost#dane-dostępowe). API punktów, w którym kasa wyszukuje paczkomaty i potwierdza wybrany, nie wymaga konta.
 
 ## Dalej
 

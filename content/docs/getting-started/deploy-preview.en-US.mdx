@@ -3,13 +3,13 @@ title: "Deploy a preview"
 description: "Provision the Cloudflare resources, then build, verify and deploy the preview Worker."
 ---
 
-The `preview` environment deploys a Worker named `martebizuteria-preview`, which Cloudflare serves at `https://preview.martebizuteria.pl` and at `https://martebizuteria-preview.pjborowiecki.workers.dev`, the URL the preview workflow posts on each pull request. Production deploys `martebizuteria`, served at `https://martebizuteria.pl` and at `https://martebizuteria.pjborowiecki.workers.dev`.
+The `preview` environment deploys a Worker named `martebizuteria-preview`, which Cloudflare serves at `https://preview.martebizuteria.pl` and at `https://martebizuteria-preview.pjborowiecki.workers.dev`, the URL the preview workflow posts on each pull request. Production deploys `martebizuteria`, which until the shop goes live is served only at `https://martebizuteria.pjborowiecki.workers.dev`; `https://martebizuteria.pl` is attached at go-live.
 
-`preview` in `wrangler.jsonc` attaches its custom domain through `routes` with `custom_domain: true`, `production` keeps its `routes` empty until the shop goes live on `martebizuteria.pl`, and both set `workers_dev: true`, because Wrangler would otherwise turn the `workers.dev` hostname off for a Worker with routes, and the deploy's live-site check asks that hostname. The custom domains are the hosts besides `workers.dev` that `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts` accepts for auth, email links and the Stripe return URL, and `src/modules/_core/constants/__test__/api.test.ts` fails when the two disagree. No `www` hostname is attached: `APP_URL`, and with it every canonical link, is the bare `https://martebizuteria.pl`.
+`preview` in `wrangler.jsonc` attaches its custom domain through `routes` with `custom_domain: true`, `production` keeps its `routes` empty until the shop goes live on `martebizuteria.pl`, and both set `workers_dev: true`, because Wrangler would otherwise turn the `workers.dev` hostname off for a Worker with routes, and the deploy's live-site check asks that hostname. Preview's custom domain is the host besides `workers.dev` that `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts` accepts for auth, email links and the Stripe return URL. `HOSTS_BY_MODE` already accepts `martebizuteria.pl` for production, but nothing serves it yet. `src/modules/_core/constants/__test__/api.test.ts` fails when preview's `routes` and hosts disagree, or when production's `routes` is not empty. No `www` hostname is attached: `APP_URL`, and with it every canonical link, is the bare `https://martebizuteria.pl`.
 
 ## Provision the resources
 
-`bun run deploy:preview` starts with `scripts/verify-bindings.ts`, which reads the same JSONC that Wrangler reads and throws unless all five bindings resolve and the audit queue's consumer names a dead-letter queue that the Worker consumes too. So provision first:
+`bun run deploy:preview` starts with `scripts/verify-bindings.ts`, which reads the same JSONC that Wrangler reads and throws unless six bindings resolve — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE` and `REALTIME_INVALIDATION_HUB`; it does not check `ASSETS` — and the consumer of each producer queue names a dead-letter queue that the Worker consumes too. So provision first:
 
 ```sh
 bunx wrangler login
@@ -25,18 +25,18 @@ bunx wrangler queues create martebizuteria-newsletter-preview-dlq
 
 Then put the ids into `wrangler.jsonc`, under both `development` and `preview` if you want them to share resources as the committed configuration does:
 
-| Field                                  | Where                                    |
-| -------------------------------------- | ---------------------------------------- |
-| `d1_databases[].database_id`           | `env.development` and `env.preview`      |
-| `d1_databases[].database_name`         | The same two                             |
-| `kv_namespaces[].id`                   | The same two                             |
-| `r2_buckets[].bucket_name`             | The same two                             |
-| `queues.producers[].queue`             | Must match `queues.consumers[].queue`    |
-| `queues.consumers[].dead_letter_queue` | Must match the second consumer's `queue` |
+| Field                                  | Where                                                                                                                  |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `d1_databases[].database_id`           | `env.development` and `env.preview`                                                                                    |
+| `d1_databases[].database_name`         | The same two                                                                                                           |
+| `kv_namespaces[].id`                   | The same two                                                                                                           |
+| `r2_buckets[].bucket_name`             | The same two                                                                                                           |
+| `queues.producers[].queue`             | Must match `queues.consumers[].queue`                                                                                  |
+| `queues.consumers[].dead_letter_queue` | Each producer queue's consumer names its `-dlq` queue, which has a consumer of its own: four consumers per environment |
 
 The preview bucket starts empty, while the preview database points at the seed and marketing images. Copy them into it before the first deploy and set `VITE_R2_URL` to the address `dev-url enable` prints, as [Image delivery](/docs/guides/image-delivery) describes.
 
-Keep the binding names exactly as they are — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE`, `REALTIME_INVALIDATION_HUB` — and keep `migrations_dir` pointing at `./src/integrations/drizzle-orm/migrations`. The binding names are what `src/types/worker-configuration.d.ts` is generated from and what the whole server layer is typed against.
+Keep the binding names exactly as they are — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE`, `REALTIME_INVALIDATION_HUB`, `ASSETS` — and keep `migrations_dir` pointing at `./src/integrations/drizzle-orm/migrations`. The binding names are what `src/types/worker-configuration.d.ts` is generated from and what the whole server layer is typed against.
 
 The Durable Object needs no provisioning. It is created by the migration already in the file:
 
@@ -146,6 +146,8 @@ That last one is the interesting check. It scans each client bundle with `Bun.Tr
 | `ci.yml`                | Pull requests, and pushes to `main`           | none         |
 | `deploy-preview.yml`    | Pull requests to `main`                       | `preview`    |
 | `deploy-production.yml` | `ci.yml` passing for a push to `main`; manual | `production` |
+| `e2e-full.yml`          | Pushes to `main`, Mondays 03:15 UTC, manual   | none         |
+| `e2e-reusable.yml`      | Called by `ci.yml` and `e2e-full.yml`         | none         |
 
 Both deploy workflows use `.github/actions/setup`, then `touch .env.<env>` and run the deploy script with every value supplied through the job environment. The preview workflow runs `bun run check` first; the production workflow starts only once `ci.yml` has passed for a push of the same commit to `main` and deploys it only while it is still the tip of `main`, or by hand for such a commit, see [CI/CD](/docs/tooling/ci-cd). `verify-stripe-keys.ts`, `verify-email-sender.ts` and `prepare-deploy-secrets.ts` prefer `process.env` over the file, so the empty file is intentional — it exists only so the `readFile` call in `prepare-deploy-secrets.ts` succeeds.
 
@@ -155,7 +157,9 @@ The preview workflow finishes by posting or updating a comment on the pull reque
 
 Repository **secrets**:
 
-`CLOUDFLARE_ACCESS_TOKEN` (passed to Wrangler as `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+`CLOUDFLARE_ACCESS_TOKEN` (passed to Wrangler as `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, and optionally `RESEND_MANAGEMENT_API_KEY`, which `verify-email-sender.ts` uses to read the sender domain's DNS records and which is never uploaded. The two InPost secrets may be empty; the order page then explains how to ship by hand.
+
+The **E2E (full)** workflow also reads `E2E_STRIPE_SECRET_KEY` and `E2E_STRIPE_PUBLISHABLE_KEY`, the test keys of a separate Stripe sandbox. Both are set, so its Stripe test-mode job pays by card, BLIK and Przelewy24 in every run; see [Testing](/docs/tooling/testing#stripe-test-mode).
 
 Repository **variables**:
 
@@ -165,7 +169,7 @@ Repository **variables**:
 
 The deploy's last step has already asked the new Worker for the home page, the product listing, `robots.txt`, the Stripe webhook route and the health check. When it fails, the new version is live but not answering like the shop; [Roll back a deploy](/docs/guides/roll-back-a-deploy) covers what to do.
 
-Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google` and the Stripe endpoint at `/api/webhooks/stripe`, which is `https://preview.martebizuteria.pl/api/webhooks/stripe` on preview and `https://martebizuteria.pl/api/webhooks/stripe` in production. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ. The endpoint's host does not decide where the order confirmation links: it links to the address the checkout was made on, taken from the session's `return_url`.
+Register the provider callbacks for the new host, as listed in [Environment variables](/docs/getting-started/environment-variables): `/api/auth/callback/google` and the Stripe endpoint at `/api/webhooks/stripe`, which is `https://preview.martebizuteria.pl/api/webhooks/stripe` on preview and, until the shop goes live, `https://martebizuteria.pjborowiecki.workers.dev/api/webhooks/stripe` in production. Create each endpoint on API version `2026-09-30.endive`, the `STRIPE_API_VERSION` in `src/integrations/stripe/stripe.constants.ts`, and enable the ten events the handlers cover: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `payment_intent.payment_failed`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`, `refund.failed` and `refund.updated`. The current endpoints are `we_1URCKtKoub4YqqV84bxHLS0D` for preview and `we_1URCUkJhNVr9Gkhk2gFlLYQD` for production; older endpoints, including those on the previous `dahlia` API version, are disabled. Stripe issues a different signing secret per endpoint, so the preview and production `STRIPE_WEBHOOK_SECRET` values differ. The endpoint's host does not decide where the order confirmation links: it links to the address the checkout was made on, taken from the session's `return_url`.
 
 ## Related
 

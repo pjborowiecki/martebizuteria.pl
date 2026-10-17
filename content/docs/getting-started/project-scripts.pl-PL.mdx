@@ -53,38 +53,67 @@ Instrukcja, gałąź, funkcja albo linia bez pokrycia przerywa `bun run test:cov
 
 Używaj `bun run test`, nigdy `bun test` — to drugie to własny runner Buna, który nie wie nic o projektach Vitest, o pliku setup ani o wartościach środowiska `test` wczytywanych przez `loadEnv("test", …)`.
 
+## Testy end-to-end
+
+Playwright steruje zbudowanym Workerem w prawdziwych przeglądarkach. Konfiguracja to `playwright.config.ts`; specyfikacje leżą w `e2e/specs/`, a obiekty stron, fikstury i dane obok nich w `e2e/`.
+
+| Zadanie                             | Polecenie                                        | Uruchamia                                         |
+| ----------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Jednorazowa instalacja przeglądarek | `bun run test:e2e:install`                       | `playwright install --with-deps chromium webkit`  |
+| Wszystkie projekty                  | `bun run test:e2e`                               | `playwright test`                                 |
+| Projekty Chromium uruchamiane w CI  | `bun run test:e2e:pr`                            | `--project=chromium --project=chromium-shop-wide` |
+| Płatności w piaskownicy Stripe      | `bun run test:e2e:stripe`                        | `--project=stripe-test-mode`                      |
+| Tylko specyfikacja smoke            | `bun run test:e2e:smoke`                         | `e2e/specs/smoke.spec.ts` w Chromium              |
+| Vitest, a potem specyfikacja smoke  | `bun run test:all`                               | `bun run test && bun run test:e2e:smoke`          |
+| Podgląd przeglądarki albo interfejs | `bun run test:e2e:headed`, `bun run test:e2e:ui` | `--headed`, `--ui`                                |
+
+Testy działają na czwartym środowisku Wranglera, `test`, nigdy na zasobach zdalnych:
+
+| Zadanie                         | Polecenie                 | Uruchamia                                                                        |
+| ------------------------------- | ------------------------- | -------------------------------------------------------------------------------- |
+| Build testowego Workera         | `bun run build:test`      | `rm -rf dist` → `content` → `CLOUDFLARE_ENV=test vp build --mode test`           |
+| Serwowanie go                   | `bun run start:test`      | `CLOUDFLARE_ENV=test vp preview --mode test --host 127.0.0.1 --port 3000`        |
+| Migracje lokalnej bazy testowej | `bun run db:migrate:test` | `wrangler d1 migrations apply DB --env test --local --persist-to .wrangler/test` |
+| Wypełnienie jej danymi          | `bun run db:seed:test`    | `bun scripts/seed-test.ts`                                                       |
+| Odtworzenie jej od zera         | `bun run db:reset:test`   | `rm -rf .wrangler/test`, potem `db:migrate:test` i `db:seed:test`                |
+
+Poza CI `webServer` Playwrighta sam uruchamia `bun run db:reset:test && bun run build:test`, a potem `start:test`, chyba że na porcie 3000 już odpowiada serwer — wtedy używa go ponownie, więc najpierw trzeba zatrzymać `bun run dev`. `scripts/seed-test.ts` wczytuje jedenaście plików danych startowych katalogu i konta testowe z `e2e/data/accounts.ts`, w tym administratora z już włączonym uwierzytelnianiem dwuskładnikowym, bo build `test` wymaga go tak jak produkcja. Punkt wejścia Workera, `src/platform/testing/worker.ts`, odpowiada za Stripe, Resend i InPost ShipX z emulatorów w pamięci. Wyjątkiem, który łączy się ze Stripe, jest `test:e2e:stripe`: jego specyfikacje płacą kartą, BLIK-iem i Przelewy24 w prawdziwym Payment Element, gdy `STRIPE_SECRET_KEY` i `VITE_STRIPE_PUBLISHABLE_KEY` zawierają testowe klucze piaskownicy, a w przeciwnym razie są pomijane. Zobacz [Testy](/docs/tooling/testing#testy-end-to-end).
+
 ## Baza danych
 
 Wszystko to znajduje się w `src/integrations/drizzle-orm/`. Pliki migracji trafiają do `migrations/`, zbiorczy plik schematu to `drizzle.schemas.ts`, a konfiguracja CLI to `drizzle.config.ts`.
 
-| Zadanie                            | Polecenie                                                | Uwagi                                                           |
-| ---------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------- |
-| Wygenerowanie migracji ze schematu | `bun run db:generate`                                    | `drizzle-kit generate`, prefiks czasowy, zapis do `migrations/` |
-| Nałożenie migracji zdalnie         | `bun run db:migrate:{development,preview,production}`    | `wrangler d1 migrations apply DB --env <env> --remote`          |
-| Nałożenie migracji na lokalną bazę | `bun run db:migrate:local`                               | `--env development --local`, dla `bun run start`                |
-| Lista nałożonych migracji          | `bun run db:migrations:{development,preview,production}` | Tylko odczyt                                                    |
-| Otwarcie Drizzle Studio            | `bun run db:studio:{development,preview,production}`     | Używa wartości `CLOUDFLARE_*` z odpowiedniego pliku `.env`      |
-| Wypchnięcie schematu bez migracji  | `bun run db:push:{development,preview,production}`       | Bezpośrednia synchronizacja; unikaj dla trwałych zmian          |
-| Introspekcja istniejącej bazy      | `bun run db:introspect:{development,preview,production}` | Zapisuje `migrations/schema.ts` i `relations.ts`                |
-| Wypełnienie danymi słownikowymi    | `bun run db:seed:{preview,production}`                   | **Zapisuje do zdalnej bazy.** Zobacz ostrzeżenie poniżej        |
+| Zadanie                                             | Polecenie                                                  | Uwagi                                                                            |
+| --------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Wygenerowanie migracji ze schematu                  | `bun run db:generate`                                      | `drizzle-kit generate`, prefiks czasowy, zapis do `migrations/`                  |
+| Nałożenie migracji zdalnie                          | `bun run db:migrate:{development,preview,production}`      | `wrangler d1 migrations apply DB --env <env> --remote`                           |
+| Nałożenie migracji na lokalną bazę                  | `bun run db:migrate:local`                                 | `--env development --local`, dla `bun run start`                                 |
+| Lista nałożonych migracji                           | `bun run db:migrations:{development,preview,production}`   | Tylko odczyt                                                                     |
+| Otwarcie Drizzle Studio                             | `bun run db:studio:{development,preview,production}`       | Używa wartości `CLOUDFLARE_*` z odpowiedniego pliku `.env`                       |
+| Wypchnięcie schematu bez migracji                   | `bun run db:push:{development,preview,production}`         | Bezpośrednia synchronizacja; unikaj dla trwałych zmian                           |
+| Introspekcja istniejącej bazy                       | `bun run db:introspect:{development,preview,production}`   | Zapisuje `migrations/schema.ts` i `relations.ts`                                 |
+| Wypełnienie danymi słownikowymi                     | `bun run db:seed:{preview,production}`                     | **Zapisuje do zdalnej bazy.** Zobacz ostrzeżenie poniżej                         |
+| Migracje, dane i odtworzenie bazy testów end-to-end | `bun run db:migrate:test`, `db:seed:test`, `db:reset:test` | Tylko lokalnie, w `.wrangler/test`; zobacz [Testy end-to-end](#testy-end-to-end) |
 
 Skrócone aliasy: `db:migrate` → preview, `db:studio` → development, `db:push` → development, `db:pull` → `db:introspect:development`, `db:seed` → preview.
 
-Skrypty wypełniające wykonują po kolei jedenaście wywołań `wrangler d1 execute … --remote` na żywej bazie — najpierw kurierzy i metody dostawy, potem kategorie, kolekcje, atrybuty, produkty, warianty, stany magazynowe, zdjęcia i trzy tabele łączące. Nie są zsynchronizowane z żywym katalogiem. Nie uruchamiaj ich na bazie z prawdziwymi danymi.
+Skrypty wypełniające wykonują po kolei jedenaście wywołań `wrangler d1 execute … --remote` na żywej bazie — najpierw kurierzy i metody dostawy, potem kategorie, kolekcje, atrybuty, produkty, warianty, stany magazynowe, zdjęcia i trzy tabele łączące. Nie są zsynchronizowane z żywym katalogiem, a dziesięć z nich najpierw usuwa wiersze kolidujące z danymi startowymi, a potem nadpisuje każdą zmianę w wierszu startowym (zobacz [Pierwsze uruchomienie](/docs/getting-started/first-run#tryb-deweloperski-zapisuje-do-bazy-preview)). Nie uruchamiaj ich na bazie z prawdziwymi danymi.
 
 Migracje nakłada `wrangler d1 migrations apply` w kolejności nazw plików. Obecnie w `migrations/` jest 101 plików `.sql`, natomiast własny `meta/_journal.json` Drizzle wymienia 52 pozycje — dziennik nie jest już źródłem prawdy, a faktyczną kolejność wyznaczają nazwy plików.
 
 ## Build, podglądy i wdrożenia
 
-| Zadanie                      | Polecenie                   | Uruchamia                                                                                                |
-| ---------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Build Workera preview        | `bun run build:preview`     | `rm -rf dist` → `content` → `CLOUDFLARE_ENV=preview vp build --mode preview` → `verify-build.ts preview` |
-| Build Workera produkcyjnego  | `bun run build:production`  | To samo z `production`                                                                                   |
-| Build (alias)                | `bun run build`             | `build:preview`                                                                                          |
-| Serwowanie ostatniego buildu | `bun run start`             | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                          |
-| Serwowanie buildu (alias)    | `bun run preview`           | `start`                                                                                                  |
-| Wdrożenie preview            | `bun run deploy:preview`    | Zobacz [Wdrożenie podglądu](/docs/getting-started/deploy-preview)                                        |
-| Wdrożenie produkcyjne        | `bun run deploy:production` | To samo dla środowiska `production`                                                                      |
+| Zadanie                         | Polecenie                   | Uruchamia                                                                                                |
+| ------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Build Workera preview           | `bun run build:preview`     | `rm -rf dist` → `content` → `CLOUDFLARE_ENV=preview vp build --mode preview` → `verify-build.ts preview` |
+| Build Workera produkcyjnego     | `bun run build:production`  | To samo z `production`                                                                                   |
+| Build (alias)                   | `bun run build`             | `build:preview`                                                                                          |
+| Serwowanie ostatniego buildu    | `bun run start`             | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                          |
+| Serwowanie buildu (alias)       | `bun run preview`           | `start`                                                                                                  |
+| Build Workera testów end-to-end | `bun run build:test`        | `rm -rf dist` → `content` → `CLOUDFLARE_ENV=test vp build --mode test`, bez `verify-build.ts`            |
+| Serwowanie go                   | `bun run start:test`        | `CLOUDFLARE_ENV=test vp preview --mode test --host 127.0.0.1 --port 3000`                                |
+| Wdrożenie preview               | `bun run deploy:preview`    | Zobacz [Wdrożenie podglądu](/docs/getting-started/deploy-preview)                                        |
+| Wdrożenie produkcyjne           | `bun run deploy:production` | To samo dla środowiska `production`                                                                      |
 
 Oba buildy kończą się skryptem weryfikującym, a nie ostrzeżeniem. `scripts/verify-build.ts` przerywa pracę, jeśli zbudowany Worker celuje w niewłaściwe środowisko, jeśli brakuje `dist/client/fonts`, jeśli nie ma klienckiego JavaScriptu lub CSS, albo jeśli którykolwiek zasób kliencki nadal importuje `cloudflare:workers` lub wbudowany moduł `node:`.
 
@@ -127,7 +156,7 @@ bun run test:coverage
 bun run build:preview
 ```
 
-Uruchom te trzy polecenia przed otwarciem pull requesta i nie powinno być niespodzianek. Wdrożenie podglądu ponownie uruchamia `bun run check` przed buildem, a produkcja wdraża tylko commit, którego CI przeszło, więc potknięcie w formatowaniu blokuje zarówno merge, jak i wdrożenie.
+To zadanie `verify`. Drugie zadanie, `e2e`, wywołuje `.github/workflows/e2e-reusable.yml` dla Chromium: `bun run db:reset:test`, `bun run build:test`, a potem projekty `chromium` i `chromium-shop-wide`, które lokalnie odtwarza `bun run test:e2e:pr`. Uruchom wszystkie cztery przed otwarciem pull requesta i nie powinno być niespodzianek. Workflow **E2E (full)** dokłada WebKit przy każdym pushu do `main` (a także Chromium w harmonogramie w poniedziałki o 03:15 UTC i przy ręcznym uruchomieniu) i uruchamia projekt `stripe-test-mode` z kluczami piaskownicy z sekretów repozytorium `E2E_STRIPE_SECRET_KEY` i `E2E_STRIPE_PUBLISHABLE_KEY`. Wdrożenie podglądu ponownie uruchamia `bun run check` przed buildem, a produkcja wdraża tylko commit, którego CI przeszło, więc potknięcie w formatowaniu blokuje zarówno merge, jak i wdrożenie.
 
 ## Powiązane
 

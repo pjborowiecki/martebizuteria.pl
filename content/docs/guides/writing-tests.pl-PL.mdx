@@ -1,9 +1,9 @@
 ---
 title: "Pisanie testów"
-description: "Trzy projekty Vitest, gdzie leżą testy, wspólne funkcje pomocnicze, wzorce mockowania funkcji serwerowych i tras oraz progi pokrycia."
+description: "Trzy projekty Vitest, gdzie leżą testy, wspólne funkcje pomocnicze, wzorce mockowania funkcji serwerowych i tras, testy na zmigrowanym schemacie, progi pokrycia i zestaw Playwright."
 ---
 
-W `src/` są 1104 pliki testowe. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`.
+W `src/` są 1223 pliki testowe. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`. Uruchamiaj je przez `bun run test`, nie `bun test`: własny runner Buna pomija projekty Vitest, środowisko jsdom i plik konfiguracyjny.
 
 ## Trzy projekty
 
@@ -11,31 +11,34 @@ W `src/` są 1104 pliki testowe. Testy leżą obok kodu, który pokrywają, w ka
 
 | Projekt       | Pliki                                              | Środowisko | Plik konfiguracyjny             | Liczba |
 | ------------- | -------------------------------------------------- | ---------- | ------------------------------- | ------ |
-| `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | 426    |
-| `integration` | `*.integration.test.ts`                            | `node`     | brak                            | 98     |
-| `component`   | `*.component.test.ts` / `*.component.test.tsx`     | `jsdom`    | `src/platform/testing/setup.ts` | 576    |
+| `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | 477    |
+| `integration` | `*.integration.test.{ts,tsx}`                      | `node`     | brak                            | 123    |
+| `component`   | `*.component.test.{ts,tsx}`                        | `jsdom`    | `src/platform/testing/setup.ts` | 623    |
 
 ```sh
 bun run test              # wszystkie trzy
 bun run test:unit         # tylko node
 bun run test:integration  # tylko integration
 bun run test:component    # tylko component
-bun run test:watch        # tryb obserwowania
 bun run test:changed      # tylko testy dotknięte Twoimi zmianami
 bun run test:coverage     # wszystkie trzy, z pokryciem
+vp test watch             # tryb obserwowania
 ```
 
-Ustawione jest `passWithNoTests: false`, więc projekt, który nic nie dopasuje, oznacza porażkę. `env: loadEnv("test", ...)` ładuje `.env.test`, zawierający atrapy wszystkich sekretów — dzięki temu moduły uwierzytelniania i Stripe można zaimportować bez prawdziwych danych dostępowych.
+`bun run test:watch` to `vp test` bez podkomendy, a `vp test` uruchamia testy raz, tak jak `bun run test`; Vite+ obserwuje zmiany tylko w `vp test watch` (albo `vp test --watch`).
+
+Projekty dziedziczą główny blok `test` (`extends: true`). `passWithNoTests: false` sprawia, że projekt, który nic nie dopasuje, oznacza porażkę. `env: loadEnv("test", ...)` ładuje `.env.test`, zawierający atrapy wszystkich sekretów — dzięki temu moduły uwierzytelniania i Stripe można zaimportować bez prawdziwych danych dostępowych. Wyszukiwanie testów pomija `scripts/`, `e2e/`, `opensrc/`, `dist/` i katalog migracji. Projekt `integration` podnosi limity czasu testów i hooków do 30 s (`INTEGRATION_TEST_TIMEOUT_MS`); plik konfiguracyjny testów komponentów ustawia limit testu na 15 s.
 
 ## Nazywanie pliku testowego
 
-| Źródło                                          | Test                                                                     |
-| ----------------------------------------------- | ------------------------------------------------------------------------ |
-| `src/modules/_core/utils/download.ts`           | `src/modules/_core/utils/__test__/download.test.ts`                      |
-| `src/modules/address/use-cases/*.ts`            | `src/modules/address/use-cases/__test__/address-use-cases.test.ts`       |
-| `src/routes/admin.catalog.categories.index.tsx` | `src/routes/__test__/admin.catalog.categories.index.component.test.tsx`  |
-| Loader testowany osobno od komponentu           | `src/routes/__test__/account.addresses.loader.test.ts`                   |
-| Zapytanie wymagające prawdziwego SQL-a          | `src/modules/_core/utils/__test__/search-conditions.integration.test.ts` |
+| Źródło                                                                               | Test                                                                             |
+| ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
+| `src/modules/_core/utils/download.ts`                                                | `src/modules/_core/utils/__test__/download.test.ts`                              |
+| `src/modules/address/use-cases/*.ts`                                                 | `src/modules/address/use-cases/__test__/address-use-cases.test.ts`               |
+| `src/routes/admin.catalog.categories.index.tsx`                                      | `src/routes/__test__/admin.catalog.categories.index.component.test.tsx`          |
+| Loader testowany osobno od komponentu                                                | `src/routes/__test__/account.addresses.loader.test.ts`                           |
+| Zapytanie wymagające prawdziwego SQL-a                                               | `src/modules/_core/utils/__test__/search-conditions.integration.test.ts`         |
+| `src/integrations/drizzle-orm/migrations/20261016140000_claim_past_guest_orders.sql` | `src/modules/order/__test__/order.past-guest-claim-backfill.integration.test.ts` |
 
 Małe moduły umieszczają wszystkie operacje w jednym pliku; duże dzielą się tematycznie, jak testy `_core/utils` (`currency.test.ts`, `currency.configuration.test.ts`, `currency.zero-decimal.test.ts` oraz `table-export.csv.test.ts`, `table-export.json.test.ts`, `table-export.xml.component.test.ts` i `table-export.txt.test.ts` obok `table-export.test.ts`). Wspólne dane testowe leżą w tym samym katalogu, bez przyrostka `.test`, jak `table-export.fixtures.ts`.
 
@@ -68,18 +71,37 @@ vi.stubGlobal("document", { createElement: vi.fn(() => anchor) })
 
 ## Testowanie funkcji serwerowej
 
-Testy przypadków użycia mockują trzy rzeczy: moduł middleware, moduł bazy danych i moduł akcesorów. Następnie zastępują `createServerFn` sztucznym budowniczym wstrzykującym znaną sesję. Z `src/modules/address/use-cases/__test__/address-use-cases.test.ts`:
+Testy przypadków użycia mockują moduły, do których sięga handler — zawsze moduł middleware, a do tego moduły bazy danych, akcesorów albo dostawców, które wywołuje — i zastępują `createServerFn` sztucznym budowniczym wstrzykującym znaną sesję.
+
+Mockuj `auth.middleware` z `RATE_LIMITS` o kształcie prawdziwej stałej, `{ max, window }` (`SENSITIVE` to `{ max: 3, window: 60 }`), i śledź `withRateLimit`, żeby sprawdzić regułę, którą stosuje przypadek użycia. Z `src/modules/payment/use-cases/__test__/remove-duplicate-saved-cards.test.ts`:
 
 ```ts
-vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
-  RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
-  authorized: () => ({}),
-  withRateLimit: (...args: unknown[]) => {
-    middleware.rateLimitCalls.push(args)
-
-    return {}
-  },
+const calls = vi.hoisted(() => ({
+  detach: vi.fn<(id: string) => Promise<unknown>>(),
+  getCustomerId: vi.fn<(userId: string) => Promise<string | undefined>>(),
+  list: vi.fn<(params: object) => Promise<{ data: StoredCard[] }>>(),
+  retrieve: vi.fn<(id: string) => Promise<StoredCard>>(),
+  withRateLimit: vi.fn<(kind: string, limit: object) => object>(() => ({})),
 }))
+
+vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
+  RATE_LIMITS: { SENSITIVE: { max: 3, window: 60 } },
+  authorized: () => ({}),
+  withRateLimit: calls.withRateLimit,
+}))
+
+const rateLimitsAppliedOnLoad = [...calls.withRateLimit.mock.calls]
+
+it("is rate limited like the other card endpoints", () => {
+  expect(rateLimitsAppliedOnLoad).toStrictEqual([["remove-duplicate-saved-cards", { max: 3, window: 60 }]])
+})
+```
+
+`withRateLimit` wywołuje się przy imporcie modułu przypadku użycia, więc test kopiuje jego wywołania, zanim `beforeEach` z `vi.clearAllMocks()` je wyczyści.
+
+Resztę wzorca pokazują testy adresów. Z `src/modules/address/use-cases/__test__/address-use-cases.test.ts` (jego własny mock `auth.middleware`, podobnie jak te w `saved-payment-methods.test.ts` i `own-newsletter-subscription.test.ts`, wciąż podstawia `RATE_LIMITS` w starszym kształcie `{ limit, windowSeconds }`; kopiuj kształt z przykładu wyżej, nie ten):
+
+```ts
 vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => ({
   db: { query: { address: { findMany: database.findMany } } },
 }))
@@ -127,13 +149,19 @@ Co taki test powinien pokryć:
 
 - **Użytkownika dostarcza sesja, nie wejście.** `expect(accessors.create).toHaveBeenCalledExactlyOnceWith({ ...fields, userId: USER_ID })`.
 - **Pola opcjonalne przechodzą dalej.** Przekaż `phone` i `postalCode` i sprawdź, że dotarły do akcesora.
-- **Ogranicznik żądań jest skonfigurowany.** `expect(middleware.rateLimitCalls).toContainEqual(["create-user-address", { limit: 5, windowSeconds: 60 }])`.
+- **Ogranicznik żądań jest skonfigurowany.** `expect(rateLimitsAppliedOnLoad).toStrictEqual([["remove-duplicate-saved-cards", { max: 3, window: 60 }]])`.
 - **Nieprawidłowe wejście jest odrzucane**, przy pomocy `it.each` po błędnych przypadkach.
 - **Każdy kod rzucany przez handler.** Brakujący wiersz musi dać `NOT_FOUND`, zduplikowany handle `CONFLICT`, i tak dalej.
 
+Funkcja serwerowa, która filtruje albo formatuje według daty, czyta strefę czasową administratora przez `resolveRequestDisplayPreferences()`. Zastąp ją stałymi preferencjami z `src/platform/testing/mocks/display-preferences.ts` (`{ formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }`):
+
+```ts
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
+```
+
 ## Testowanie z prawdziwym SQL-em
 
-Dla zapytania, w którym poprawność _tkwi_ w SQL-u — znaki specjalne, semantyka `LIKE`, kolejność zależna od indeksu — napisz test integracyjny na prawdziwej bazie SQLite w pamięci:
+Dla zapytania, w którym poprawność _tkwi_ w SQL-u — escapowanie znaków specjalnych, semantyka `LIKE`, kolejność zależna od indeksu — napisz test integracyjny na prawdziwej bazie SQLite w pamięci:
 
 ```ts
 import { drizzle } from "drizzle-orm/d1"
@@ -150,9 +178,58 @@ const sqlite = new DatabaseSync(":memory:")
 const database = drizzle(createTestD1Database(sqlite))
 ```
 
-`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje moduł Node'a `node:sqlite` do interfejsu `D1Database` — `prepare`, `bind`, `all`, `run`, `raw` oraz `batch`, które owija instrukcje w prawdziwe `begin`/`commit`/`rollback`. Przyjmuje też opcjonalne wywołanie zwrotne `onQuery`, więc test może sprawdzić, jaki SQL faktycznie poszedł do bazy, oraz opcjonalne `onRoundTrip`, wywoływane raz na każde `batch` i raz na każdą instrukcję wykonaną poza nim, więc test może sprawdzić, ile żądań dotarło do D1.
+`createTestD1Database` w `src/platform/testing/mocks/d1.ts` dostosowuje moduł Node'a `node:sqlite` do interfejsu `D1Database` — `prepare`, `bind`, `all`, `run`, `raw` oraz `batch`, które owija instrukcje w prawdziwe `begin`/`commit`/`rollback` i wykonuje jedną paczkę naraz. Egzekwuje dwa limity D1, których lokalny SQLite by nie postawił: `bind` rzuca `D1_ERROR` przy więcej niż 100 parametrach, a wzorce `LIKE` są ograniczone do 50 bajtów. Przyjmuje też opcjonalne wywołanie zwrotne `onQuery`, więc test może sprawdzić, jaki SQL faktycznie poszedł do bazy, oraz opcjonalne `onRoundTrip`, wywoływane raz na każde `batch` i raz na każdą instrukcję wykonaną poza nim, więc test może sprawdzić, ile żądań dotarło do D1.
 
 Deklaruj tabelę lokalnie, zamiast importować schemat produkcyjny, kiedy potrzebujesz tylko kilku kolumn, utwórz ją w `beforeAll` i zamknij bazę przez `sqlite.close()` w `afterAll`. Wspomniany test wyszukiwania dobrze pokazuje, _do czego_ służą testy integracyjne: podaje `100%`, `ring_1`, `path\`, `%_\` i `x' OR 1=1 --` i sprawdza, że każdy z nich jest dopasowywany jako dosłowny tekst.
+
+### Na zmigrowanym schemacie
+
+Gdy test potrzebuje prawdziwych tabel, odtwórz migracje zamiast deklarować tabele. `src/platform/testing/mocks/migrations.ts` czyta każdy plik `.sql` z `src/integrations/drizzle-orm/migrations/` i eksportuje:
+
+- `applyMigrationHistory(sqlite)`, które wykonuje je wszystkie w kolejności nazw plików, dzieląc każdy plik po `--> statement-breakpoint`, więc baza ma ten sam schemat co produkcja;
+- `applyMigration(sqlite, MIGRATION.CLAIM_PAST_GUEST_ORDERS)`, które wykonuje jedną; `MIGRATION` nazywa migracje, które testy odtwarzają osobno.
+
+Korzysta z nich 78 plików testowych. `src/modules/verification/use-cases/__test__/delete-expired-verifications.integration.test.ts` podmienia instancję Drizzle na taką, która działa na zmigrowanej bazie w pamięci, i wywołuje prawdziwy przypadek użycia:
+
+```ts
+const { sqlite } = await vi.hoisted(async () => {
+  const { DatabaseSync } = await import("node:sqlite")
+
+  return { sqlite: new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true }) }
+})
+
+vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
+  const { drizzle } = await import("drizzle-orm/d1")
+  const schema = await import("~/src/integrations/drizzle-orm/drizzle.schemas")
+  const { createTestD1Database } = await import("~/src/platform/testing/mocks/d1")
+
+  return { db: drizzle(createTestD1Database(sqlite), { schema }) }
+})
+
+beforeAll(() => {
+  applyMigrationHistory(sqlite)
+})
+```
+
+Otwieraj bazę z `enableDoubleQuotedStringLiterals: true`, tak jak każdy test odtwarzający historię.
+
+### Testowanie migracji danych
+
+Migracja, która zmienia wiersze, dostaje test integracyjny i wpis w `MIGRATION`. `src/modules/order/__test__/order.past-guest-claim-backfill.integration.test.ts` pokrywa `20261016140000_claim_past_guest_orders.sql`: `beforeEach` tworzy tylko kolumny, które migracja czyta i zapisuje, i wstawia przypadki, każdy test wykonuje `applyMigration(database.sqlite, MIGRATION.CLAIM_PAST_GUEST_ORDERS)` i odczytuje wiersze zwykłym SQL-em, parsując je przez Zod. Jego cztery testy to dobra lista kontrolna — wiersze, które musi zmienić, wiersze, które musi zostawić, wpisy audytu, które zapisuje, i to, że ponowne uruchomienie niczego nie zmienia:
+
+```ts
+it("claims nothing more when it runs again", () => {
+  applyMigration(database.sqlite, MIGRATION.CLAIM_PAST_GUEST_ORDERS)
+  const ordersAfterFirstRun = readOrders()
+
+  applyMigration(database.sqlite, MIGRATION.CLAIM_PAST_GUEST_ORDERS)
+
+  expect(readOrders()).toStrictEqual(ordersAfterFirstRun)
+  expect(readClaims()).toHaveLength(2)
+})
+```
+
+Samą migrację opisuje przewodnik [Migracje bazy danych](/docs/guides/database-migrations).
 
 ## Testowanie komponentu
 
@@ -162,11 +239,13 @@ Deklaruj tabelę lokalnie, zamiast importować schemat produkcyjny, kiedy potrze
 const { queryClient, router } = renderWithProviders(<CategoriesTable />)
 ```
 
-Domyślnie dostajesz świeży `QueryClient` z wyłączonymi ponowieniami i router na historii w pamięci pod `/`. Przekaż `queryClient` albo `router`, żeby to nadpisać, a `createTestRouter("/some/path")` dla innej ścieżki startowej.
+Domyślnie dostajesz świeży `QueryClient` z wyłączonymi ponowieniami zapytań i mutacji oraz router na historii w pamięci pod `/`. Przekaż `queryClient` albo `router`, żeby to nadpisać, a `createTestRouter("/some/path")` dla innej ścieżki startowej. Dla hooka owiń `renderHook` w `TestProviders` z tego samego pliku, tak jak `src/hooks/__test__/use-cart-availability.component.test.tsx`.
 
-Tłumaczenia pochodzą z `src/platform/testing/lib/messages.ts`, które zachłannie globuje **wszystkie** pliki w `messages/en-US/` i buduje całe drzewo przez `buildMessageTree`. Językiem testów jest więc zawsze `en-US`. Praktyczna konsekwencja: komponent używający klucza, którego brakuje w katalogu angielskim, zawodzi w swoim teście komponentu — i to jest główne zabezpieczenie repozytorium przed nieprzetłumaczonymi napisami.
+Tłumaczenia pochodzą z `src/platform/testing/lib/messages.ts`, które zachłannie globuje **wszystkie** pliki w `messages/en-US/` i buduje całe drzewo przez `buildMessageTree`. Językiem testów jest więc zawsze `en-US`, a strefą czasową `I18N.DEFAULT_TIMEZONE` (`Europe/Warsaw`). Testowe providery nie renderują `DisplayPreferencesContext`, więc `useFormatter()` i `useFormatLocale()` z `src/hooks/use-display-format.ts` sięgają po ten język i tę strefę.
 
-`src/platform/testing/setup.ts` wykonuje się przed każdym testem komponentu i podstawia to, czego brakuje w jsdom: `IntersectionObserver`, `ResizeObserver` (atrapa raportuje stałe 1024×768, czego potrzebuje mierzenie kolumn w tabeli) oraz `matchMedia` (zawsze `matches: false`). Instaluje też dwa globalne mocki:
+Klucz, którego brakuje w katalogu angielskim, nie rzuca wyjątku. use-intl zgłasza błąd `MISSING_MESSAGE` przez `console.error` i zamiast tekstu renderuje ścieżkę klucza, na przykład `pages.admin.catalog.categories.title`, więc test komponentu wyłapie to tylko wtedy, gdy sprawdza angielski tekst widoczny dla użytkownika. Sprawdzaj widoczny tekst, a nie tylko to, że komponent się renderuje. Zestaw E2E jest surowszy: oblewa test, którego strona zaloguje błąd tłumaczenia (zobacz [Tłumaczenia](/docs/guides/i18n-messages)).
+
+`src/platform/testing/setup.ts` wykonuje się przed każdym testem komponentu. Rozszerza `expect` o matchery jest-dom i podstawia to, czego brakuje w jsdom: `IntersectionObserver`, `ResizeObserver` (atrapa raportuje stałe 1024×768, czego potrzebuje mierzenie kolumn w tabeli), `matchMedia` (zawsze `matches: false`), `showModal` i `close` z `HTMLDialogElement` (ustawiają albo usuwają `open`, a `close` wysyła zdarzenie `close`) oraz `Document.elementFromPoint` (zwraca `null`). Ustawia `asyncUtilTimeout` Testing Library na 5 s i limit testu na 15 s, a po zakończeniu testów pliku czyści każdy pozostawiony przez niego timeout i interwał. Instaluje też dwa globalne mocki:
 
 ```ts
 vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
@@ -183,6 +262,16 @@ vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
 ```
 
 `withTestRpc` w `src/platform/testing/lib/server-function.ts` owija każdą funkcję serwerową tak, że jej wywołanie uruchamia handler w tym samym procesie, wewnątrz `runWithStartContext`, zamiast próbować wykonać żądanie HTTP. `getRequest` jest również mockowane i zwraca ustalone `Request` dla `http://127.0.0.1:3000/`. Zatem w teście komponentu funkcja serwerowa **wykonuje się naprawdę, przez swoje prawdziwe middleware i walidator** — jeśli chcesz, żeby się nie wykonała, zamockuj jej moduł.
+
+### Inne funkcje pomocnicze
+
+| Plik                              | Co daje testowi                                                                                                                                                                                |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib/auth-browser.ts`             | `openAuthBrowser(ip)`, klienta zachowującego ciasteczka między wywołaniami `auth.handler` z Better Auth, oraz `createPasswordCustomer(email)`; używają ich testy integracyjne uwierzytelniania |
+| `lib/cut-text.ts`                 | `markAsCut(element)`, które podrabia `clientWidth` i `scrollWidth`, żeby kod je porównujący, jak `catalog-truncated-text-cell.tsx`, widział tekst jako ucięty (jsdom niczego nie układa)       |
+| `mocks/display-preferences.ts`    | `resolveRequestDisplayPreferences`, które odpowiada `{ formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }`                                                                                     |
+| `mocks/broadcast-channel.ts`      | `StubBroadcastChannel`, którego statyczny szpieg `posted` zapisuje każde `postMessage`; podstaw go przez `vi.stubGlobal("BroadcastChannel", StubBroadcastChannel)`                             |
+| `mocks/providers.ts`, `worker.ts` | Emulatory Stripe, Resend i InPost oraz testowy Worker, na którym działa zestaw end-to-end                                                                                                      |
 
 ## Testowanie trasy
 
@@ -228,7 +317,7 @@ vi.mock("~/src/presentation/components/custom/pages/admin/catalog/categories/com
 })
 ```
 
-Ta atrapa renderuje badany stan jako tekst, więc asercja to jedno `screen.getByText("create|true")`.
+Ta atrapa renderuje badany stan jako tekst, więc asercja to jedno `screen.getByText("closed|false")`.
 
 ## Pokrycie
 
@@ -244,9 +333,9 @@ thresholds: {
 }
 ```
 
-Z pokrycia wyłączone są: pliki testowe, katalogi `__test__/`, pliki `.d.ts`, `src/routeTree.gen.ts`, `src/presentation/components/shadcn/**` (komponenty podstawowe skopiowane z zewnątrz) oraz `src/platform/testing/**`. Każdy próg wynosi 100, więc zmiana, która zostawia jakikolwiek kod bez pokrycia, nie przechodzi; dopisz testy albo usuń gałąź, do której nie prowadzi żadne wejście, zamiast obniżać próg. `autoUpdate: false` sprawia, że liczby nie zmieniają się same.
+Pokrycie liczy `src/**/*.{ts,tsx}`, z wyłączeniem plików testowych, katalogów `__test__/`, plików `.d.ts`, `src/routeTree.gen.ts`, `src/integrations/**/migrations/**`, `src/presentation/components/shadcn/**` (komponenty podstawowe skopiowane z zewnątrz) oraz `src/platform/testing/**`. Każdy próg wynosi 100, więc zmiana, która zostawia jakikolwiek kod bez pokrycia, nie przechodzi; dopisz testy albo usuń gałąź, do której nie prowadzi żadne wejście, zamiast obniżać próg. `autoUpdate: false` sprawia, że liczby nie zmieniają się same.
 
-CI (`.github/workflows/ci.yml`) uruchamia `bun run check`, potem `bun run test:coverage`, potem `bun run build:preview`, i wysyła raport pokrycia jako artefakt.
+CI (`.github/workflows/ci.yml`) uruchamia `bun run check`, potem `bun run test:coverage`, potem `bun run build:preview`, i wysyła raport pokrycia jako artefakt. Drugie zadanie w tym samym przepływie uruchamia zestaw end-to-end w Chromium.
 
 ## Asercje warte poznania
 
@@ -255,8 +344,34 @@ CI (`.github/workflows/ci.yml`) uruchamia `bun run check`, potem `bun run test:c
 - `it.each([...])("refuses the incomplete address %j", (data) => ...)` dla przypadków sterowanych tabelą.
 - Matchery jsdom z `@testing-library/jest-dom` są rozszerzane w pliku konfiguracyjnym i typowane przez `src/platform/testing/vitest-env.d.ts`, więc `toBeInTheDocument()` i pokrewne działają w testach komponentów.
 
+## Testy end-to-end
+
+Playwright steruje zbudowaną kopią sklepu w Chromium i WebKit. Specyfikacje leżą w `e2e/specs/`, obiekty stron w `e2e/pages/`, a fikstury w `e2e/fixtures/`; specyfikacja importuje `test` i `expect` z `e2e/fixtures/test.ts`.
+
+```sh
+bun run test:e2e:install  # raz: przeglądarki Chromium i WebKit
+bun run test:e2e          # wszystkie projekty
+bun run test:e2e:pr       # chromium i chromium-shop-wide, tak jak CI na pull requestach
+bun run test:e2e:smoke    # e2e/specs/smoke.spec.ts w Chromium
+bun run test:e2e:stripe   # projekt stripe-test-mode
+bun run test:all          # bun run test, potem test:e2e:smoke
+```
+
+`playwright.config.ts` definiuje sześć projektów: `setup` loguje zaseedowanego administratora i klienta; `chromium` i `webkit` uruchamiają każdy `*.spec.ts` poza specyfikacjami trybu testowego Stripe; `stripe-test-mode` uruchamia tylko `*stripe-test-mode.spec.ts`, na sandboksie Stripe; a `chromium-shop-wide` i `webkit-shop-wide` uruchamiają specyfikacje `*.shop-wide.ts`, które zmieniają stan czytany przez wszystkie inne, po zestawie swojej przeglądarki.
+
+Zestaw działa na testowym Workerze, nie na serwerze deweloperskim. Poza CI `webServer` Playwrighta uruchamia `bun run db:reset:test && bun run build:test && bun run start:test`: świeże lokalne D1 w `.wrangler/test` z każdą migracją i danymi z `scripts/seed-test.ts`, build `--mode test`, którego punktem wejścia Workera jest `src/platform/testing/worker.ts`, serwowany pod `http://127.0.0.1:3000`. Ten Worker odpowiada za Stripe, Resend i InPost z emulatorów w pamięci i serwuje trasy `/__test/...`, przez które specyfikacje czytają przechwycone e-maile i rozliczają płatności. Playwright używa ponownie serwera, który już odpowiada pod tym adresem, więc najpierw zatrzymaj `bun run dev` albo starsze `start:test`. [Debugowanie lokalne](/docs/guides/local-debugging#lokalne-środowisko-testowe) uruchamia ten sam build ręcznie.
+
+CI uruchamia zestaw w dwóch miejscach:
+
+- `ci.yml`, przy każdym pull requeście i pushu do `main`: zadanie „Build and E2E” uruchamia projekty `chromium` i `chromium-shop-wide` przez `e2e-reusable.yml`.
+- „E2E (full)” (`e2e-full.yml`), przy każdym pushu do `main` (WebKit, bo Chromium przeszło już w CI), co tydzień i na żądanie (obie przeglądarki). Każdy przebieg ma też zadanie `stripe-test-mode`, które buduje testowego Workera z sekretami repozytorium `E2E_STRIPE_SECRET_KEY` i `E2E_STRIPE_PUBLISHABLE_KEY` i uruchamia `bun run test:e2e:stripe`. Sekrety są ustawione, więc zadanie płaci przez sandbox przy każdym przebiegu; bez nich zgłosiłoby ostrzeżenie, a specyfikacje zostałyby pominięte.
+
+[Testy](/docs/tooling/testing#testy-end-to-end) opisują projekty, emulatory, tryb testowy Stripe, dane startowe i zasady pisania specyfikacji.
+
 ## Powiązane przewodniki
 
 - [Dodawanie przypadku użycia](/docs/guides/add-a-use-case)
 - [Dodawanie tabeli danych](/docs/guides/add-a-data-table)
+- [Migracje bazy danych](/docs/guides/database-migrations)
 - [Debugowanie lokalne](/docs/guides/local-debugging)
+- [Testy](/docs/tooling/testing)

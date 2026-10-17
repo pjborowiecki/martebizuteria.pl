@@ -7,8 +7,8 @@ Almost every rule on this page is enforced by a tool, not by review. `bun run ch
 
 ## Code
 
-- **Comments are for non-obvious constraints only.** Intent is carried by names and types; there is no code narration, no decorative separators and no comment that restates what a name already says. In practice `src` contains three comments in total, each pinning a constraint the code cannot express — for example that `INSERT ... SELECT` in `checkout/checkout.utils.ts` must follow the table's column order. Prose belongs in `.mdx` files like this one.
-- **No escape hatches.** No `any`, no `as never`, no `as unknown as`, no `@ts-nocheck`, no `@ts-expect-error` and no lint suppressions added to make a rule pass. Fix the cause instead. `reportUnusedDisableDirectives: "error"` means even a stale suppression fails the build.
+- **Comments are for non-obvious constraints only.** Intent is carried by names and types; there is no code narration, no decorative separators and no comment that restates what a name already says. No lint rule checks this; review does. In practice the TypeScript in `src` contains three comments in total, and its CSS two, each pinning a constraint the code cannot express — for example that `INSERT ... SELECT` in `checkout/checkout.utils.ts` must follow the table's column order. Prose belongs in `.mdx` files like this one.
+- **No escape hatches.** No `any`, no `as never`, no `as unknown as`, no `@ts-nocheck`, no `@ts-expect-error` and no lint suppressions added to make a rule pass. The one `as unknown as` in the repository is the D1 test double in `src/platform/testing/mocks/d1.ts`, under the override for that folder. Fix the cause instead. `reportUnusedDisableDirectives: "error"` means even a stale suppression fails the build.
 - **No barrels.** Import from the file that defines the symbol. There is no `index.ts` re-export layer, and no object whose only job is to collect unrelated functions.
 - **No forwarding layers.** A component that only passes its props through, a function that only calls one other function, or an alias for a plain `0` or `1` all get rejected in review and usually by `max-lines` pressure anyway.
 - **Magic numbers become named constants.** `no-magic-numbers` allows only `-1`, `0` and `1`, plus array indexes, default values and type indexes. That is why files carry constants such as `MS_PER_SECOND`, `SINGLE_REQUEST` and `UUID_STRING_LENGTH`.
@@ -138,7 +138,7 @@ Server code throws `AppError` from `src/modules/_core/constants/errors.ts` with 
 
 ## Translations
 
-Message files are one JSON file per namespace under `messages/<locale>/`, named after the namespace: `pages.admin.catalog.products.json` is the namespace `pages.admin.catalog.products`. There are 56 namespaces and both locales carry all of them.
+Message files are one JSON file per namespace under `messages/<locale>/`, named after the namespace: `pages.admin.catalog.products.json` is the namespace `pages.admin.catalog.products`. There are 60 namespaces and both locales carry all of them.
 
 The root namespaces — `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors`, `pages.auth.toast` — are preloaded for every route. Everything else is declared per route in `staticData.namespaces`. A test in `src/integrations/use-intl/__test__/i18n.messages.test.ts` asserts that Polish contains every key English has, and that no `emails.*` namespace leaks into the root set.
 
@@ -162,7 +162,7 @@ Commit messages follow Conventional Commits: `<type>(<scope>): <description>`. T
 
 Merge, revert, `fixup!`, `squash!` and template-sourced messages are skipped, and a subject that already starts with an emoji is left alone.
 
-The `pre-commit` hook runs `bun run check:pre-commit`, which is `vp staged`; `vite.config.ts` configures staged to run `vp check --fix` over changed files. On a pull request the CI workflow runs `bun run check`, then `bun run test:coverage`, then `bun run build:preview`.
+The `pre-commit` hook runs `bun run check:pre-commit`, which is `vp staged`; `vite.config.ts` configures staged to run `vp check --fix` over changed files. On a pull request the CI workflow runs `bun run check`, then `bun run test:coverage`, then `bun run build:preview`, and in a second job builds the local `test` Worker and runs the Playwright suite in Chromium.
 
 ## Related pages
 

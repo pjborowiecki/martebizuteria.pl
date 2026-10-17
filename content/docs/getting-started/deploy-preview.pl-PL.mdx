@@ -3,13 +3,13 @@ title: "Wdrożenie podglądu"
 description: "Przygotowanie zasobów Cloudflare, a potem zbudowanie, weryfikacja i wdrożenie Workera preview."
 ---
 
-Środowisko `preview` wdraża Workera o nazwie `martebizuteria-preview`, którego Cloudflare udostępnia pod adresem `https://preview.martebizuteria.pl` oraz `https://martebizuteria-preview.pjborowiecki.workers.dev` — ten drugi adres workflow podglądu publikuje w komentarzu przy każdym pull requeście. Produkcja wdraża Workera `martebizuteria`, dostępnego pod `https://martebizuteria.pl` oraz `https://martebizuteria.pjborowiecki.workers.dev`.
+Środowisko `preview` wdraża Workera o nazwie `martebizuteria-preview`, którego Cloudflare udostępnia pod adresem `https://preview.martebizuteria.pl` oraz `https://martebizuteria-preview.pjborowiecki.workers.dev` — ten drugi adres workflow podglądu publikuje w komentarzu przy każdym pull requeście. Produkcja wdraża Workera `martebizuteria`, który do startu sprzedaży jest dostępny wyłącznie pod `https://martebizuteria.pjborowiecki.workers.dev`; `https://martebizuteria.pl` zostanie podłączony przy starcie.
 
-`preview` w `wrangler.jsonc` podłącza swoją domenę własną przez `routes` z `custom_domain: true`, `production` ma puste `routes` do startu sprzedaży na `martebizuteria.pl`, a oba ustawiają `workers_dev: true`, bo bez tego Wrangler wyłączyłby nazwę `workers.dev` Workerowi, który ma trasy, a kontrola działania po wdrożeniu pyta właśnie tę nazwę. Domeny własne to hosty inne niż `workers.dev`, które `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts` akceptuje dla uwierzytelniania, linków w e-mailach i adresu powrotu ze Stripe, a `src/modules/_core/constants/__test__/api.test.ts` nie przechodzi, gdy te dwie listy się rozjadą. Nazwa `www` nie jest podłączona: `APP_URL`, a z nim każdy link kanoniczny, to sam `https://martebizuteria.pl`.
+`preview` w `wrangler.jsonc` podłącza swoją domenę własną przez `routes` z `custom_domain: true`, `production` ma puste `routes` do startu sprzedaży na `martebizuteria.pl`, a oba ustawiają `workers_dev: true`, bo bez tego Wrangler wyłączyłby nazwę `workers.dev` Workerowi, który ma trasy, a kontrola działania po wdrożeniu pyta właśnie tę nazwę. Domena własna preview to host inny niż `workers.dev`, który `HOSTS_BY_MODE` w `src/modules/_core/constants/api.ts` akceptuje dla uwierzytelniania, linków w e-mailach i adresu powrotu ze Stripe. `HOSTS_BY_MODE` akceptuje już `martebizuteria.pl` dla produkcji, ale na razie nic go nie obsługuje. `src/modules/_core/constants/__test__/api.test.ts` nie przechodzi, gdy `routes` preview rozjedzie się z jego hostami albo gdy `routes` produkcji nie jest puste. Nazwa `www` nie jest podłączona: `APP_URL`, a z nim każdy link kanoniczny, to sam `https://martebizuteria.pl`.
 
 ## Przygotowanie zasobów
 
-`bun run deploy:preview` zaczyna od `scripts/verify-bindings.ts`, który czyta ten sam plik JSONC co Wrangler i przerywa pracę, jeśli którykolwiek z pięciu bindingów się nie rozwiąże albo konsument kolejki audytu nie wskazuje kolejki martwych listów, którą Worker również konsumuje. Zasoby trzeba więc utworzyć najpierw:
+`bun run deploy:preview` zaczyna od `scripts/verify-bindings.ts`, który czyta ten sam plik JSONC co Wrangler i przerywa pracę, jeśli nie rozwiąże się któryś z sześciu bindingów — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE` i `REALTIME_INVALIDATION_HUB`; `ASSETS` nie jest sprawdzany — albo konsument którejś kolejki producenta nie wskazuje kolejki martwych listów, którą Worker również konsumuje. Zasoby trzeba więc utworzyć najpierw:
 
 ```sh
 bunx wrangler login
@@ -25,18 +25,18 @@ bunx wrangler queues create martebizuteria-newsletter-preview-dlq
 
 Następnie wpisz identyfikatory do `wrangler.jsonc` — pod `development` i `preview`, jeśli mają współdzielić zasoby tak, jak robi to konfiguracja w repozytorium:
 
-| Pole                                   | Gdzie                                          |
-| -------------------------------------- | ---------------------------------------------- |
-| `d1_databases[].database_id`           | `env.development` i `env.preview`              |
-| `d1_databases[].database_name`         | Te same dwa                                    |
-| `kv_namespaces[].id`                   | Te same dwa                                    |
-| `r2_buckets[].bucket_name`             | Te same dwa                                    |
-| `queues.producers[].queue`             | Musi zgadzać się z `queues.consumers[].queue`  |
-| `queues.consumers[].dead_letter_queue` | Musi zgadzać się z `queue` drugiego konsumenta |
+| Pole                                   | Gdzie                                                                                                                                        |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `d1_databases[].database_id`           | `env.development` i `env.preview`                                                                                                            |
+| `d1_databases[].database_name`         | Te same dwa                                                                                                                                  |
+| `kv_namespaces[].id`                   | Te same dwa                                                                                                                                  |
+| `r2_buckets[].bucket_name`             | Te same dwa                                                                                                                                  |
+| `queues.producers[].queue`             | Musi zgadzać się z `queues.consumers[].queue`                                                                                                |
+| `queues.consumers[].dead_letter_queue` | Konsument każdej kolejki producenta wskazuje jej kolejkę `-dlq`, która ma własnego konsumenta: w każdym środowisku jest czterech konsumentów |
 
 Bucket preview startuje pusty, a baza preview wskazuje na zdjęcia z plików seed i grafiki marketingowe. Skopiuj je do niego przed pierwszym wdrożeniem i ustaw `VITE_R2_URL` na adres wypisany przez `dev-url enable`, tak jak opisuje [Dostarczanie zdjęć](/docs/guides/image-delivery).
 
-Zostaw nazwy bindingów dokładnie takie, jakie są — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE`, `REALTIME_INVALIDATION_HUB` — i nie ruszaj `migrations_dir`, który wskazuje na `./src/integrations/drizzle-orm/migrations`. Z nazw bindingów generowany jest `src/types/worker-configuration.d.ts` i względem nich typowana jest cała warstwa serwerowa.
+Zostaw nazwy bindingów dokładnie takie, jakie są — `DB`, `CACHE`, `IMAGES`, `AUDIT_LOG_QUEUE`, `NEWSLETTER_QUEUE`, `REALTIME_INVALIDATION_HUB`, `ASSETS` — i nie ruszaj `migrations_dir`, który wskazuje na `./src/integrations/drizzle-orm/migrations`. Z nazw bindingów generowany jest `src/types/worker-configuration.d.ts` i względem nich typowana jest cała warstwa serwerowa.
 
 Durable Object nie wymaga przygotowania. Tworzy go migracja już obecna w pliku:
 
@@ -49,7 +49,7 @@ Durable Object nie wymaga przygotowania. Tworzy go migracja już obecna w pliku:
 ],
 ```
 
-Oto dokładnie to, czego wymaga `verify-bindings.ts`, żebyś wiedział, kiedy skończyłeś. `audit` i `newsletter` to producenci `AUDIT_LOG_QUEUE` i `NEWSLETTER_QUEUE`, a `hasDeadLetterConsumer` jest spełnione, gdy kolejka ma konsumenta, który wskazuje `dead_letter_queue` konsumowaną także przez Workera:
+Oto dokładnie to, czego wymaga `verify-bindings.ts`, żeby było wiadomo, kiedy przygotowania są zakończone. `audit` i `newsletter` to producenci `AUDIT_LOG_QUEUE` i `NEWSLETTER_QUEUE`, a `hasDeadLetterConsumer` jest spełnione, gdy kolejka ma konsumenta, który wskazuje `dead_letter_queue` konsumowaną także przez Workera:
 
 ```ts
 const consumerOf = (queue: string | undefined) => config.queues.consumers.find((consumer) => consumer.queue === queue)
@@ -141,11 +141,13 @@ Ta ostatnia kontrola jest najciekawsza. Skanuje każdy bundle kliencki przy uży
 
 ## Wdrożenia automatyczne
 
-| Workflow                | Wyzwalacz                                   | Środowisko   |
-| ----------------------- | ------------------------------------------- | ------------ |
-| `ci.yml`                | Pull requesty oraz pushe do `main`          | brak         |
-| `deploy-preview.yml`    | Pull requesty do `main`                     | `preview`    |
-| `deploy-production.yml` | Udany `ci.yml` dla pusha do `main`; ręcznie | `production` |
+| Workflow                | Wyzwalacz                                        | Środowisko   |
+| ----------------------- | ------------------------------------------------ | ------------ |
+| `ci.yml`                | Pull requesty oraz pushe do `main`               | brak         |
+| `deploy-preview.yml`    | Pull requesty do `main`                          | `preview`    |
+| `deploy-production.yml` | Udany `ci.yml` dla pusha do `main`; ręcznie      | `production` |
+| `e2e-full.yml`          | Pushe do `main`, poniedziałki 03:15 UTC, ręcznie | brak         |
+| `e2e-reusable.yml`      | Wywoływany przez `ci.yml` i `e2e-full.yml`       | brak         |
 
 Oba workflow wdrożeniowe korzystają z `.github/actions/setup`, a potem wykonują `touch .env.<env>` i uruchamiają skrypt wdrożeniowy z wszystkimi wartościami podanymi przez środowisko zadania. Workflow podglądu najpierw uruchamia `bun run check`; workflow produkcyjny startuje dopiero wtedy, gdy `ci.yml` przeszedł dla pusha tego samego commita do `main`, i wdraża go tylko wtedy, gdy wciąż jest najnowszym commitem na `main`, albo ręcznie dla takiego commita, zobacz [CI/CD](/docs/tooling/ci-cd). `verify-stripe-keys.ts`, `verify-email-sender.ts` i `prepare-deploy-secrets.ts` wolą `process.env` od pliku, więc pusty plik jest celowy — istnieje tylko po to, żeby wywołanie `readFile` w `prepare-deploy-secrets.ts` się udało.
 
@@ -155,7 +157,9 @@ Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull 
 
 **Sekrety** repozytorium:
 
-`CLOUDFLARE_ACCESS_TOKEN` (przekazywany Wranglerowi jako `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+`CLOUDFLARE_ACCESS_TOKEN` (przekazywany Wranglerowi jako `CLOUDFLARE_API_TOKEN`), `CLOUDFLARE_ACCOUNT_ID`, `AUTH_SECRET`, `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `INPOST_API_TOKEN`, `INPOST_ORGANIZATION_ID`, `RESEND_API_KEY`, `RESEND_EMAIL_FROM`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` oraz opcjonalnie `RESEND_MANAGEMENT_API_KEY`, którym `verify-email-sender.ts` odczytuje rekordy DNS domeny nadawcy i który nigdy nie trafia do Workera. Oba sekrety InPost mogą być puste; strona zamówienia wyjaśnia wtedy, jak nadać paczkę ręcznie.
+
+Workflow **E2E (full)** czyta też `E2E_STRIPE_SECRET_KEY` i `E2E_STRIPE_PUBLISHABLE_KEY`, testowe klucze osobnej piaskownicy Stripe. Oba są ustawione, więc jego zadanie trybu testowego Stripe płaci kartą, BLIK-iem i Przelewy24 przy każdym uruchomieniu; zobacz [Testy](/docs/tooling/testing#tryb-testowy-stripe).
 
 **Zmienne** repozytorium:
 
@@ -165,7 +169,7 @@ Workflow podglądu kończy się dodaniem lub zaktualizowaniem komentarza w pull 
 
 Ostatni krok wdrożenia zapytał już nowego Workera o stronę główną, listę produktów, `robots.txt`, trasę webhooka Stripe i kontrolę stanu. Gdy zawiedzie, nowa wersja działa na żywo, ale nie odpowiada jak sklep; co wtedy zrobić, opisuje [Wycofanie wdrożenia](/docs/guides/roll-back-a-deploy).
 
-Zarejestruj adresy zwrotne dostawców dla nowego hosta, zgodnie z listą w [Zmiennych środowiskowych](/docs/getting-started/environment-variables): `/api/auth/callback/google` oraz punkt końcowy Stripe pod `/api/webhooks/stripe`, czyli `https://preview.martebizuteria.pl/api/webhooks/stripe` na preview i `https://martebizuteria.pl/api/webhooks/stripe` na produkcji. Stripe wydaje osobny sekret podpisu dla każdego punktu końcowego, więc wartości `STRIPE_WEBHOOK_SECRET` dla preview i produkcji się różnią. Host punktu końcowego nie decyduje, dokąd linkuje potwierdzenie zamówienia: linkuje ono pod adres, na którym złożono zamówienie, wzięty z `return_url` sesji.
+Zarejestruj adresy zwrotne dostawców dla nowego hosta, zgodnie z listą w [Zmiennych środowiskowych](/docs/getting-started/environment-variables): `/api/auth/callback/google` oraz punkt końcowy Stripe pod `/api/webhooks/stripe`, czyli `https://preview.martebizuteria.pl/api/webhooks/stripe` na preview i, do startu sprzedaży, `https://martebizuteria.pjborowiecki.workers.dev/api/webhooks/stripe` na produkcji. Każdy punkt końcowy trzeba utworzyć w wersji API `2026-09-30.endive`, czyli `STRIPE_API_VERSION` z `src/integrations/stripe/stripe.constants.ts`, z włączonymi dziesięcioma zdarzeniami, które obsługują handlery: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `payment_intent.payment_failed`, `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed`, `refund.failed` i `refund.updated`. Obecne punkty końcowe to `we_1URCKtKoub4YqqV84bxHLS0D` dla preview i `we_1URCUkJhNVr9Gkhk2gFlLYQD` dla produkcji; starsze punkty końcowe, w tym te w poprzedniej wersji API `dahlia`, są wyłączone. Stripe wydaje osobny sekret podpisu dla każdego punktu końcowego, więc wartości `STRIPE_WEBHOOK_SECRET` dla preview i produkcji się różnią. Host punktu końcowego nie decyduje, dokąd linkuje potwierdzenie zamówienia: linkuje ono pod adres, na którym złożono zamówienie, wzięty z `return_url` sesji.
 
 ## Powiązane
 

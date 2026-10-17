@@ -34,20 +34,25 @@ Worth repeating, because it surprises people: the `development` and `preview` en
 
 Two related warnings:
 
-- **Do not run `bun run db:seed:preview` or `db:seed:production` against a database that holds real data.** Both scripts execute `wrangler d1 execute … --remote` against the live database. The SQL files in `src/integrations/drizzle-orm/seeds/` use `INSERT OR IGNORE`, so they will not overwrite rows with matching ids, but they are not maintained in step with the live catalogue and running them is not a read-only operation.
+- **Do not run `bun run db:seed:preview` or `db:seed:production` against a database that holds real data.** Both scripts execute `wrangler d1 execute … --remote` against the live database. Only `delivery-methods.sql` in `src/integrations/drizzle-orm/seeds/` uses `INSERT OR IGNORE`. The other ten first `DELETE` the rows that collide with the fixtures — a category, collection, attribute or product reusing a seed handle under another id, a variant reusing a seed SKU, and the images, stock rows, attribute values and category and collection links of the two seed products — and then upsert the fixtures with `ON CONFLICT(id) DO UPDATE` or `INSERT OR REPLACE`, which overwrites every admin edit to a seeded row. They are not maintained in step with the live catalogue. `bun run db:seed:test` loads the same files into the local end-to-end database, where that is harmless.
 - `bun run db:push:*` applies schema changes directly without a migration file. Use `bun run db:generate` and the migrate scripts instead for anything you intend to keep.
 
 ## Creating an account
 
-There is no seeded user. Sign up at `/auth/sign-up` with an email address you can read, because verification is mandatory:
+The remote databases have no seeded user; only the local `test` database of the end-to-end suite has seeded accounts (see [below](#a-seeded-local-run)). Sign up at `/auth/sign-up` with an email address you can read, because verification is mandatory:
 
 ```ts
 emailAndPassword: {
   enabled: true,
+  maxPasswordLength: PASSWORD_MAX_LENGTH,
+  minPasswordLength: PASSWORD_MIN_LENGTH,
+  onPasswordReset: handlePasswordReset,
   requireEmailVerification: true,
+  revokeSessionsOnPasswordReset: true,
   sendResetPassword: sendResetPasswordEmail,
 },
 emailVerification: {
+  afterEmailVerification: handleEmailVerified,
   autoSignInAfterVerification: true,
   sendOnSignUp: true,
   sendVerificationEmail: sendVerifyEmail,
@@ -56,7 +61,7 @@ emailVerification: {
 
 With `sendOnSignUp: true` the verification email is sent immediately, and `autoSignInAfterVerification: true` means clicking the link both verifies the address and signs you in. If `RESEND_API_KEY` is wrong or the sending domain is not verified in Resend, nothing arrives; `bun run email:verify development` tells you which, and [Resend](/docs/integrations/resend#sender-domain) lists the DNS records a domain needs. The row still exists in `user` with `email_verified` at `0`, and the refusal is in `/admin/audit` as `email.failed`. Once a newsletter, order or account-deleted email meets the same refusal, sign-up, password reset, resend-verification and change-email answer for the next five minutes that emails cannot be sent. Once the sender works, sign in with the new account: the sign-in page refuses the unconfirmed address and offers **Send the confirmation link again**.
 
-Google sign-in bypasses the verification email, so a working OAuth app is the faster route if your Resend sender is not ready. Once you promote that account to admin, though, it signs in with a password only, so give it one with **Forgot password?**.
+Google sign-in bypasses the verification email, so a working OAuth app is the faster route if your Resend sender is not ready. Such an account has no password. It can keep signing in with Google after you promote it to admin, and it adds a password with **Set** next to the password in its security section (`setAccountPassword`), which accepts only a session signed in within the last 24 hours; turning on two-factor authentication asks for that password.
 
 ### Promoting yourself to admin
 
@@ -79,7 +84,9 @@ bun run db:studio:development
 
 Open the `user` table, find your row, set `role` to `admin`, then sign out and back in with your password. After sign-in the `/auth` guard sends an admin to `/admin`. The `/admin` layout uses `requireAdmin` from `src/integrations/better-auth/auth.routes.ts` as its `beforeLoad`, and the guard calls `hasAdminAccess(user.role)`; a customer hitting `/admin` is redirected to `/account/overview` rather than shown an error.
 
-The first time, the guard sends you to `/admin/security` instead, because the admin panel needs two-factor authentication. Choose **Enable**, confirm your password, scan the QR code with an authenticator app (or type the setup key), enter the six-digit code and keep the recovery codes; then **Go to the admin panel**. From then on you sign in with your password and a code. Signing in with Google also works, but the `twoFactor` plugin does not ask for the shop's code on that path, so keep 2-Step Verification on for that Google account. If you signed up with Google, the account has no password yet: choose **Set** on the same page to give it one before **Enable**. Afterwards you manage the password, two-factor authentication, signed-in devices, the panel language and your time zone under **Settings** in the sidebar (see [Admin settings](/docs/features/admin-settings)). See [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins).
+In production and in the end-to-end test build the admin panel also requires two-factor authentication: `isAdminTwoFactorRequired` in `auth.access.ts` holds only when the build's mode is `production` or `test`. In development and preview it is optional, and the panel opens without it.
+
+Where it is required, the guard sends you to `/admin/security` the first time instead. Choose **Enable**, confirm your password, scan the QR code with an authenticator app (or type the setup key), enter the six-digit code and keep the recovery codes; then **Go to the admin panel**. From then on you sign in with your password and a code, or with Google: the `twoFactor` plugin does not ask for the shop's code on that path, so the Google account's own 2-Step Verification takes its place; keep it on for that Google account. If you signed up with Google, the account has no password yet: choose **Set** on the same page to give it one before **Enable**, because enabling two-factor authentication asks for it. Afterwards you manage the password, two-factor authentication, signed-in devices, the panel language and your time zone under **Settings** in the sidebar (see [Admin settings](/docs/features/admin-settings)). See [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins).
 
 Only the first admin is made in D1. Every further admin signs up and confirms their address like any customer, and an admin then gives that account access under **Settings › Team**, which also takes it away again (see [Admin settings: Team](/docs/features/admin-settings#team)). Setting `role` by hand skips the team's rules, so keep it for the first admin, or for the shop's last admin should that account be lost.
 
@@ -106,7 +113,7 @@ Without the listener the checkout flow appears to hang at the payment step: Stri
 /dev/emails?template=order-confirmation&locale=pl-PL&format=text
 ```
 
-The available slugs are `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `order-withdrawal`, `order-withdrawal-notice`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`. The handler returns 404 unless `import.meta.env.DEV` is true, so the route does not exist in a built Worker.
+The available slugs are `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-delivered`, `order-in-progress`, `order-refunded`, `order-shipped`, `order-tracking`, `order-withdrawal`, `order-withdrawal-notice`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`. `order-in-progress`, `order-shipped`, `order-tracking` and `order-delivered` are the status e-mails the admin's fulfilment steps send: work started, parcel sent, a tracking number added or changed after the shipped e-mail, and delivery. The `GET` handler answers 404 unless `import.meta.env.DEV` is true, so a built Worker shows no previews.
 
 ## Running a production-shaped build locally
 
@@ -117,7 +124,17 @@ bun run start
 
 `start` serves the build with `CLOUDFLARE_ENV=preview` on `http://127.0.0.1:3000`. Because `remoteBindings` in `vite.config.ts` is enabled only for `CLOUDFLARE_ENV=development`, this run uses Wrangler's local simulated D1, R2 and KV under `.wrangler/state/` instead of the remote resources. That gives you an isolated environment, but it starts empty; `bun run db:migrate:local` applies the migrations to the local D1 store.
 
-This is also the only local way to exercise the built artifact — `bun run build:preview` ends with `scripts/verify-build.ts`, which is the same check CI runs.
+`bun run build:preview` ends with `scripts/verify-build.ts`, the same check CI runs on the built artifact.
+
+## A seeded local run
+
+```sh
+bun run db:reset:test
+bun run build:test
+bun run start:test
+```
+
+This is the run the end-to-end suite uses, and the only one with data and no remote resource. `db:reset:test` deletes `.wrangler/test`, applies the migrations to the local `martebizuteria-test` database and runs `scripts/seed-test.ts`, which loads the catalogue seeds and three accounts from `e2e/data/accounts.ts`: an admin with two-factor authentication already on, an admin without it and a customer, all with the same known password and verified e-mail addresses. `build:test` builds with `--mode test` and `.env.test`, so admin two-factor authentication is enforced as in production. `start:test` serves the build at `http://127.0.0.1:3000` through `src/platform/testing/worker.ts`, which answers Stripe, Resend and InPost ShipX from in-memory emulators. See [Testing](/docs/tooling/testing#end-to-end-tests).
 
 ## Related
 

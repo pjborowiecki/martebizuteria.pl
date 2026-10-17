@@ -3,22 +3,36 @@ title: "Stan w adresie URL"
 description: "Umieszczaj filtry, sortowanie, kroki i tokeny w query stringu przy pomocy validateSearch, loaderDeps i typowanej nawigacji z TanStack Router."
 ---
 
-M'Arte trzyma w adresie URL stan, który da się udostępnić, a stan ulotny w React. Adres URL jest walidowany schematem Zod na poziomie trasy, typowany od początku do końca i używany jako zależność loadera, żeby zmiana filtra pobierała dane dokładnie raz.
+M'Arte trzyma w adresie URL stan, który da się udostępnić, a stan ulotny w React. Adres URL jest walidowany schematem Zod na poziomie trasy, typowany od początku do końca i — tam, gdzie loader od niego zależy — używany jako zależność loadera, żeby zmiana filtra pobierała dane dokładnie raz.
 
 Nie ma tu osobnej biblioteki do stanu w adresie. `nuqs` występuje w `package.json`, ale nic w `src/` go nie importuje; cały stan w adresie URL przechodzi przez `validateSearch` z TanStack Router.
 
-## Pięć tras, które mają własne parametry zapytania
+## Dwanaście tras, które mają własne parametry zapytania
 
-| Trasa                                 | Schemat                                         | Parametry                                                     |
-| ------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------- |
-| `_storefront.products.index.tsx`      | `storefrontProductsSearchSchema`                | `category`, `collection`, `minPrice`, `maxPrice`, `q`, `sort` |
-| `_storefront.categories.$handle.tsx`  | `storefrontScopedCategoryCatalogSearchSchema`   | To samo, bez `category`                                       |
-| `_storefront.collections.$handle.tsx` | `storefrontScopedCollectionCatalogSearchSchema` | To samo, bez `collection`                                     |
-| `checkout.tsx`                        | Wbudowany `checkoutSearchSchema`                | `step`, `success`                                             |
-| `auth.reset-password.tsx`             | Wbudowany `resetPasswordSearchSchema`           | `token`                                                       |
-| `admin.catalog.attributes.index.tsx`  | Wbudowany `attributesIndexSearchSchema`         | `create`                                                      |
+| Trasa                                    | Schemat                                         | Parametry                                                     |
+| ---------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------- |
+| `_storefront.products.index.tsx`         | `storefrontProductsSearchSchema`                | `category`, `collection`, `minPrice`, `maxPrice`, `q`, `sort` |
+| `_storefront.categories.$handle.tsx`     | `storefrontScopedCategoryCatalogSearchSchema`   | To samo, bez `category`                                       |
+| `_storefront.collections.$handle.tsx`    | `storefrontScopedCollectionCatalogSearchSchema` | To samo, bez `collection`                                     |
+| `_storefront.newsletter.confirm.tsx`     | `z.object` zapisany w `validateSearch`          | `token`                                                       |
+| `_storefront.newsletter.unsubscribe.tsx` | `z.object` zapisany w `validateSearch`          | `token`                                                       |
+| `_storefront.withdraw-from-contract.tsx` | `z.object` zapisany w `validateSearch`          | `order`                                                       |
+| `checkout.tsx`                           | Wbudowany `checkoutSearchSchema`                | `session_id`, `step`, `success`                               |
+| `account.orders.index.tsx`               | Wbudowany `ordersSearchSchema`                  | `filter`, `page`                                              |
+| `auth.sign-in.tsx`                       | `zod.object` zapisany w `validateSearch`        | `redirect`                                                    |
+| `auth.reset-password.tsx`                | Wbudowany `resetPasswordSearchSchema`           | `token`                                                       |
+| `admin.catalog.attributes.index.tsx`     | Wbudowany `attributesIndexSearchSchema`         | `create`                                                      |
+| `admin.marketing.subscribers.tsx`        | Wbudowany `subscribersSearchSchema`             | `status`                                                      |
 
 Schematy katalogu witryny sklepowej są wspólne, więc mieszkają w module: `src/modules/product/product.storefront-catalog.ts`. Schematy jednorazowego użytku zostają w pliku trasy.
+
+Co niosą te mniej oczywiste:
+
+- Obie trasy newslettera czytają `token` z odnośnika w e-mailu i umieszczają go w `loaderDeps`, więc loader potwierdza albo wypisuje dokładnie raz na token. Obie obcinają spacje i ograniczają go do `TOKEN_MAX_LENGTH`.
+- `order` wstępnie wypełnia numer zamówienia w formularzu odstąpienia od umowy.
+- `account.orders.index.tsx` trzyma w adresie filtr historii zamówień klienta (`filter`, wartość wyliczeniowa z domyślnym `"all"`) i stronę (`page`, konwertowaną na liczbę całkowitą nie mniejszą niż 1); kontrolki filtra i stronicowania to `LocalizedLink` z właściwością `search`, a obie wartości są `loaderDeps` loadera.
+- `redirect` na stronie logowania zapisują strażnicy tras (`requireSignedIn` w `auth.routes.ts`). Po zalogowaniu podąża za nim `redirectIfSignedIn` z układu `/auth`, ale tylko wtedy, gdy to ścieżka w obrębie tej samej witryny.
+- `create` na stronie atrybutów i `status` na stronie subskrybentów ustawiają stan panelu z odnośnika — zobacz niżej.
 
 ## Deklarowanie schematu
 
@@ -30,14 +44,19 @@ export const storefrontProductsSearchSchema = z.object({
   collection: z.string().trim().nonempty().optional(),
   maxPrice: z.coerce.number().nonnegative().optional(),
   minPrice: z.coerce.number().nonnegative().optional(),
-  q: z.string().trim().nonempty().optional(),
+  q: z
+    .string()
+    .trim()
+    .nonempty()
+    .overwrite((term) => term.slice(0, STOREFRONT_SEARCH_MAX_LENGTH).trimEnd())
+    .optional(),
   sort: z.enum(STOREFRONT_PRODUCTS_SORTS).optional(),
 })
 
 export type StorefrontProductsSearch = z.infer<typeof storefrontProductsSearchSchema>
 ```
 
-`z.coerce.number()` ma znaczenie: query string jest zawsze tekstem, więc parametr liczbowy musi zostać przekonwertowany — inaczej każdy filtr ceny przychodzi jako napis. Wartości wyliczeniowe `sort` pochodzą z `STOREFRONT_PRODUCTS_SORTS`, czyli `["rank", "newest", "price_asc", "price_desc"]`, więc wpisane ręcznie `?sort=cheapest` zostaje odrzucone, a nie przekazane do bazy.
+`z.coerce.number()` ma znaczenie: query string jest zawsze tekstem, więc parametr liczbowy musi zostać przekonwertowany — inaczej każdy filtr ceny przychodzi jako napis. `q` jest przycinane do `STOREFRONT_SEARCH_MAX_LENGTH` (100 znaków, z `src/modules/storefront-search/storefront-search.constants.ts`) i ponownie oczyszczane ze spacji, więc zbyt długa fraza w adresie zostaje skrócona, a nie odrzucona. Wartości wyliczeniowe `sort` pochodzą z `STOREFRONT_PRODUCTS_SORTS`, czyli `["rank", "newest", "price_asc", "price_desc"]`, więc wpisane ręcznie `?sort=cheapest` zostaje odrzucone, a nie przekazane do bazy.
 
 Strony kategorii i kolekcji używają tego samego schematu z usuniętym parametrem, który ustala już ścieżka:
 
@@ -61,14 +80,17 @@ const coerceStep = (value: unknown): number => {
 const coerceSuccess = (value: unknown): boolean | undefined => (value === true || value === "true" ? true : undefined)
 
 const checkoutSearchSchema = z.object({
+  session_id: z.string().trim().max(CHECKOUT_SESSION_ID_MAX_LENGTH).optional(),
   step: z.preprocess(coerceStep, z.number().int().min(MIN_STEP).max(MAX_STEP).default(DEFAULT_STEP)),
   success: z.preprocess(coerceSuccess, z.boolean().optional()),
 })
 ```
 
-`step` wraca do jedynki przy każdej wartości spoza zakresu, więc `?step=99` nie może zepsuć procesu zamówienia.
+`step` wraca do jedynki przy każdej wartości spoza zakresu 1–4, więc `?step=99` nie może zepsuć procesu zamówienia. `session_id` i `success` wracają ze Stripe: adres powrotu budowany w `src/integrations/stripe/stripe.actions.server.ts` kończy się na `?success=true&session_id={CHECKOUT_SESSION_ID}`, a `checkout.index.tsx` pokazuje dla tej sesji `CheckoutSuccess`. `checkout.tsx` jest trasą układu procesu zamówienia, więc jej trasa potomna `checkout.index.tsx` czyta te wartości przez `useSearch({ from: "/checkout" })`.
 
 ## Podłączenie trasy
+
+Z `src/routes/_storefront.products.index.tsx`, z pominięciem funkcji `head`:
 
 ```ts
 export const Route = createFileRoute("/_storefront/products/")({
@@ -79,7 +101,13 @@ export const Route = createFileRoute("/_storefront/products/")({
       prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
     ])
 
-    return { description: messages.description, title: messages.title }
+    const t = createTranslator({ locale: context.locale, messages })
+
+    return {
+      description: messages.description,
+      structuredData: buildBreadcrumbStructuredData({ leaf: messages.title, locale: context.locale, sections: [] }),
+      title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
+    }
   },
   loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
   staticData: { namespaces: ["pages.products"] },
@@ -102,6 +130,8 @@ export const normalizeStorefrontProductsSearch = (search: StorefrontProductsSear
 
 Bez tej normalizacji `{ q: "ring", sort: undefined }` i `{ sort: undefined, q: "ring" }` byłyby różnymi wartościami zależności i loader uruchomiłby się dwukrotnie dla tego samego widocznego stanu.
 
+Ponieważ `deps` to zwalidowane parametry, loader może ich użyć nie tylko do danych: tutaj fraza wyszukiwania zamienia tytuł dokumentu na tytuł wyników wyszukiwania, a `head` (niepokazane) zapisuje ten tytuł, opis i dane strukturalne okruszków na stronie.
+
 ## Czytanie w komponencie
 
 ```tsx
@@ -109,7 +139,7 @@ const search = Route.useSearch()
 const navigate = Route.useNavigate()
 ```
 
-`Route.useSearch()` jest typowane na podstawie schematu, więc `search.sort` zawęża się do wartości wyliczeniowych. `Route.useNavigate()` jest powiązane z trasą, więc funkcje aktualizujące `search` też są typowane.
+`Route.useSearch()` jest typowane na podstawie schematu, więc `search.sort` zawęża się do wartości wyliczeniowych. `Route.useNavigate()` jest powiązane z trasą, więc funkcje aktualizujące `search` też są typowane. Komponent spoza pliku trasy — albo trasa potomna czytająca parametry rodzica, jak `checkout.index.tsx` — używa zamiast tego `useSearch({ from: "<route id>" })`; zobacz niżej.
 
 ## Aktualizowanie
 
@@ -139,7 +169,7 @@ if ("category" in patch) {
 }
 ```
 
-Zatem `{ category: undefined }` czyści filtr, a `{}` zostawia go w spokoju. `{ clearAll: true }` zwraca `{}` i usuwa wszystkie filtry. Wynik zawsze przechodzi przez `normalizeStorefrontProductsSearch`, zanim trafi do adresu.
+Zatem `{ category: undefined }` czyści filtr, a `{}` zostawia go w spokoju. `{ clearAll: true }` zwraca `{}` i usuwa wszystkie filtry; każdy inny wynik łatki przechodzi przez `normalizeStorefrontProductsSearch`, zanim trafi do adresu.
 
 `replace: true` jest celowe: korekta filtra nie powinna dodawać wpisu w historii, więc przycisk Wstecz wyprowadza z katalogu, a nie przechodzi przez każde drgnięcie suwaka.
 
@@ -153,9 +183,9 @@ Ten sam plik eksportuje funkcje pomocnicze potrzebne interfejsowi filtrów:
 - `buildEffectiveStorefrontProductsSearch(search, scope)` — scala zakres wynikający ze ścieżki z parametrami przed przekazaniem ich do zapytania; w ten sposób `/categories/rings?q=silver` staje się zapytaniem o srebrne pierścionki w kategorii pierścionków.
 - `isStorefrontProductsSort(value)` — strażnik typu dla wartości sortowania przychodzącej z zewnątrz.
 
-## Otwieranie panelu z adresu URL
+## Ustawianie stanu panelu z adresu URL
 
-Strona atrybutów w panelu przyjmuje `?create=1`, żeby odnośnik mógł od razu wprowadzić użytkownika w formularz tworzenia. Trasa to deklaruje:
+Strona atrybutów w panelu przyjmuje `?create=1`, żeby odnośnik mógł od razu wprowadzić użytkownika w formularz tworzenia — tak linkuje do niej panel atrybutów w edytorze produktu. Trasa to deklaruje:
 
 ```ts
 const attributesIndexSearchSchema = z.object({
@@ -179,15 +209,18 @@ useEffect(() => {
 
 Zwróć uwagę, że działa to jednokierunkowo: stan otwarcia samego panelu żyje w `useAttributesSheetState` (zwykły `useState`), a zamknięcie panelu nie usuwa `create=1` z adresu. To celowy podział — odnośnik prowadzący _do_ panelu jest stanem, który da się udostępnić, ale kolejne otwarcia i zamknięcia panelu już nie.
 
-`useSearch({ from: "..." })` to forma, której należy użyć, gdy komponent znajduje się poniżej trasy będącej właścicielem parametru; `Route.useSearch()` działa tylko w samym pliku trasy.
+Tabela subskrybentów działa według tego samego jednokierunkowego wzorca z `?status=`. Karty statusów na stronie Marketingu linkują do `/admin/marketing/subscribers` z `search={{ status: config.status }}`. Trasa pobiera z wyprzedzeniem pierwszą stronę dla tego statusu (`loaderDeps: ({ search }) => ({ status: search.status })`) i renderuje tabelę z `initialStatus={status}` oraz `key={status ?? "all"}`, więc nowy odnośnik montuje tabelę od nowa z tym filtrem. Zmiana filtra wewnątrz tabeli zostaje w stanie React i nie aktualizuje adresu.
+
+`useSearch({ from: "..." })` to forma, której należy użyć, gdy komponent znajduje się poniżej trasy będącej właścicielem parametru. `Route.useSearch()` wymaga obiektu `Route` trasy, a komponenty nie importują plików tras, więc używa się go wyłącznie w samym pliku trasy.
 
 ## Co nie trafia do adresu URL
 
 - Kolejność, szerokości i widoczność kolumn tabeli — zapamiętywane w `localStorage` pod `marte:datagrid:v1:<persistenceKey>`.
 - Otwarcie menu bocznego — ciasteczko `sidebar_state`, żeby serwer mógł wyrenderować właściwą szerokość.
 - Motyw — `localStorage` pod `` `${APP_NAME}-theme` ``.
-- Sortowanie, filtrowanie i stronicowanie tabel w panelu — stan React wewnątrz hooków tabeli, także dla tabeli produktów stronicowanej po stronie serwera.
+- Sortowanie, filtrowanie i stronicowanie tabel w panelu — stan React wewnątrz hooków tabeli, także dla tabel stronicowanych po stronie serwera. `?status=` na stronie subskrybentów ustawia jedynie początkowy filtr.
 - Wartości formularza — React Hook Form.
+- Preferencje wyświetlania (lokalizacja formatu i strefa czasowa używane do dat, liczb i cen) — zapisane u użytkownika `formatLocale` i `timezone`, a w ich braku wykrywane przy każdym żądaniu: lokalizacja formatu z `Accept-Language`, strefa czasowa z ciasteczka `marte_time_zone` (które `src/providers/translations-provider.tsx` zapisuje ze strefą czasową przeglądarki) albo z krawędzi sieci.
 
 ## Język i adres URL
 
@@ -200,7 +233,7 @@ rewrite: {
 },
 ```
 
-Dlatego zawsze piszemy `to={ROUTES.PRODUCTS}`, a nigdy `to="/en-US/products"` — prefiks dokłada się na wyjściu. `src/integrations/use-intl/i18n.paths.ts` zawiera całą implementację, w tym `localizePathname`, `deLocalizePathname`, `canonicalizePathname` (które rozwiązuje też samo `/pl` albo `/en` na pełny znacznik języka) oraz `localeLinks` dla znaczników canonical i `hreflang`.
+Dlatego zawsze piszemy `to={ROUTES.PRODUCTS}`, a nigdy `to="/en-US/products"` — prefiks dokłada się na wyjściu. `deLocalizeUrl` i `localizeUrl` leżą w `src/integrations/use-intl/i18n.utils.ts` i opakowują funkcje ścieżek z `src/integrations/use-intl/i18n.paths.ts`, który zawiera resztę implementacji, w tym `localizePathname`, `deLocalizePathname`, `canonicalizePathname` (które rozwiązuje też samo `/pl` albo `/en` na pełny znacznik języka) oraz `localeLinks` dla znaczników canonical i `hreflang`.
 
 ## Powiązane przewodniki
 

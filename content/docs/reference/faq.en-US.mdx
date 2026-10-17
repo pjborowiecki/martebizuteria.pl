@@ -5,7 +5,7 @@ description: "Short answers to the questions that come up first when working on 
 
 ## What runs this application?
 
-One Cloudflare Worker. `src/server.ts` is the entry point; TanStack Start handles everything that is not short-circuited before it. Data is in D1, media in R2, the audit log travels through a Cloudflare Queue, realtime invalidation goes through a Durable Object, and `CACHE` is a KV namespace declared in every environment.
+One Cloudflare Worker. `src/server.ts` is the entry point; TanStack Start handles everything that is not short-circuited before it. Data is in D1, media in R2, the audit log and the newsletter travel through Cloudflare Queues, each with a dead-letter queue, realtime invalidation goes through a Durable Object, and `CACHE`, a KV namespace, holds a few short-lived keys: the e-mail sender flag, incident-alert deduplication and the health probe.
 
 Bun installs packages and runs `package.json` scripts. Vite+ (`vp`) provides the dev server, the build, the formatter, the linter and the test runner, all configured in `vite.config.ts`.
 
@@ -15,11 +15,15 @@ Bun installs packages and runs `package.json` scripts. Vite+ (`vp`) provides the
 
 ## Do I need a Cloudflare account to develop?
 
-For `bun run dev`, yes. The `development` Wrangler environment uses remote bindings — it talks to the real preview D1 database, the real preview R2 bucket and the real KV namespace. For tests, no: they run against an in-memory `node:sqlite` database behind a D1-shaped transport and read dummy values from the committed `.env.test`.
+For `bun run dev`, yes. The `development` Wrangler environment uses remote bindings — it talks to the real preview D1 database, the real preview R2 bucket and the real KV namespace. For tests, no: they run against an in-memory `node:sqlite` database behind a D1-shaped transport and read dummy values from the committed `.env.test`. Nor for the end-to-end suite, which runs the local `test` Wrangler environment.
 
 ## Which locale is the default?
 
-`pl-PL`. It is served with no prefix, so `/products` is Polish. `en-US` is served under `/en-US`. Both are declared in `src/integrations/use-intl/i18n.config.ts`, along with the `marte_locale` cookie name and `Europe/Warsaw` as the default timezone. A redundant `/pl-PL/...` URL is 301'd to the bare path in the Worker.
+`pl-PL`. It is served with no prefix, so `/products` is Polish. `en-US` is served under `/en-US`. Both are declared in `src/integrations/use-intl/i18n.config.ts`, along with the `marte_locale` cookie name and `Europe/Warsaw` as the shop's own time zone. A redundant `/pl-PL/...` URL is 301'd to the bare path in the Worker.
+
+## Which time zone and number format does a page use?
+
+The viewer's own, not the page language's. `getDisplayPreferences` in `src/integrations/use-intl/i18n.display-preferences.ts` resolves them on every request, and `TranslationsProvider` passes them to `IntlProvider`. The time zone is the signed-in user's saved choice, else the `marte_time_zone` cookie the browser writes from `Intl.DateTimeFormat().resolvedOptions().timeZone`, else Cloudflare's guess for the request (`request.cf.timezone`), else `UTC`. The format locale, which shapes dates, prices and numbers, is the user's saved choice, else the first supported `Accept-Language` entry, else `en-US`. Users pick both under Preferences on `/account/profile`. `Europe/Warsaw` remains the shop's own zone for order-number years and legal deadlines.
 
 ## Where does a new operation go?
 
@@ -53,7 +57,7 @@ Better Auth's cookie cache is turned off, and `getRequestSession` also passes `d
 
 Because a server function is a public HTTP endpoint. It can be called directly, without the route that normally calls it ever being loaded, so a `beforeLoad` guard cannot protect it — and guards also run in the browser. The `authorized` middleware runs on the server, before any database access. Route guards exist for navigation only.
 
-A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` enforces this: every use case with a `createServerFn` must contain `authorized(` unless it is on the 21-entry public allowlist.
+A test in `src/integrations/better-auth/__test__/use-case-authorization.test.ts` enforces this: every use case with a `createServerFn` must contain `authorized(` unless it is on the 24-entry public allowlist.
 
 ## Why are there no database transactions?
 
@@ -77,15 +81,23 @@ The person creates an account in the shop and confirms their e-mail address. The
 
 ## How does a change in one browser tab reach another admin's screen?
 
-Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 22 for admin, 15 for storefront, 3 for the checkout — and discard messages that do not overlap.
+Through the `RealtimeInvalidationHub` Durable Object. A mutation calls a `schedule*Invalidation` helper, the Worker invokes `hub.notifyInvalidation(prefixes)` as a native RPC method, and the hub broadcasts to every socket in that audience. Tabs subscribe to a fixed prefix list — 23 for admin, 15 for storefront, 3 for the checkout — and discard messages that do not overlap.
 
 ## How do I preview a transactional email?
 
-Run the dev server and open `/dev/emails`. The route is defined in `src/routes/dev.emails.tsx` and renders nothing unless `import.meta.env.DEV`. The templates themselves are in `src/presentation/emails/`, and each one reads its own `emails.*` namespace.
+Run the dev server and open `/dev/emails`. The route is defined in `src/routes/dev.emails.tsx`, and its `GET` handler answers 404 unless `import.meta.env.DEV`. The templates themselves are in `src/presentation/emails/`, and each one reads its own `emails.*` namespace.
 
 ## What is scaffolded but not finished?
 
-InPost shipments are booked, labelled and tracked from the admin order page, but InPost's status does not move the order; the admin still marks it shipped and delivered. `cart` and `cart_item` are registered in the Drizzle schema but unused. `/admin/settings` covers the admin's own account and sign-in security and the shop's delivery methods and free delivery; other shop-wide settings, such as the shop's details and the team of admins, are not in it yet.
+InPost shipments are booked, labelled and tracked from the admin order page, but InPost's status does not move the order; the admin still marks it shipped and delivered. Without ShipX credentials the order page explains how to ship by hand in InPost Manager and paste the tracking number. `cart` and `cart_item` are registered in the Drizzle schema but unused. `/admin/settings` covers the admin's own account and sign-in security, the seller's details, the shop's delivery methods and free delivery, and the team of admins; the carriers themselves and staff notifications are not in it yet.
+
+## What happens to orders placed as a guest?
+
+They stay guest orders until an account verifies the same e-mail address. A guest checkout paid with the address of an already verified account is filed under that account at fulfilment, and an account that verifies its address later takes over the earlier guest orders with it, through `claimGuestOrdersForUser` in `src/modules/order/order.claim.server.ts`. Matching ignores case, and each claim is recorded as `customer.orders_claimed`. The `20261016140000_claim_past_guest_orders.sql` migration did the same once for orders placed before this existed.
+
+## How do I run the end-to-end tests?
+
+`bun run test:e2e:install` once, then `bun run test:e2e:pr` for the Chromium projects CI runs or `bun run test:e2e` for all of them. Playwright builds and serves the local `test` Worker itself, with a migrated and seeded database under `.wrangler/test` and Stripe, Resend and InPost ShipX emulated, so no Cloudflare account is needed; stop `bun run dev` first, because a server already on port 3000 is reused. `bun run test:e2e:stripe` pays in Stripe's real Payment Element and needs a Stripe sandbox's test keys. See [Project scripts](/docs/getting-started/project-scripts#end-to-end-tests).
 
 ## How are the docs themselves organized?
 
@@ -100,7 +112,7 @@ bun run check
 bun run test
 ```
 
-`check` is format, lint and type check; CI then adds `test:coverage` and `build:preview`. The pre-commit hook already runs `vp staged` over changed files, and `prepare-commit-msg` validates the Conventional Commit type and prefixes its emoji.
+`check` is format, lint and type check; CI then adds `test:coverage` and `build:preview`, and a Chromium end-to-end job that `bun run test:e2e:pr` reproduces. The pre-commit hook already runs `vp staged` over changed files, and `prepare-commit-msg` validates the Conventional Commit type and prefixes its emoji.
 
 ## Related pages
 

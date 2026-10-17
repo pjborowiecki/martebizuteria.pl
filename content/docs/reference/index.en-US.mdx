@@ -23,21 +23,21 @@ Everything here is derived from the repository itself. When a table lists a path
 
 ## The shape of the repository in one table
 
-| Directory                    | Owns                                                                                         |
-| ---------------------------- | -------------------------------------------------------------------------------------------- |
-| `src/routes`                 | TanStack Start file routes, `api/` HTTP handlers, route guards and loaders                   |
-| `src/routes.ts`              | `ROUTES`, the single table of path literals the rest of the code imports                     |
-| `src/modules/{feature}`      | Domain logic: Drizzle tables, Zod schemas, constants, accessors and `use-cases/`             |
-| `src/modules/_core`          | Shared primitives with no table of their own: `AppError`, currency, table export, pagination |
-| `src/integrations/{vendor}`  | One folder per third party: Better Auth, Stripe, Drizzle, R2, Resend, InPost, use-intl       |
-| `src/presentation`           | All UI: `components/shadcn`, `components/custom`, `styles`, `theme`, `branding`, `emails`    |
-| `src/platform/testing`       | Shared test infrastructure: the D1 mock, render helpers, the Vitest setup file               |
-| `src/lib`                    | Small request-scoped helpers: cookies, rate limiting, SEO, image URLs, `waitUntil`           |
-| `src/durable-objects`        | `RealtimeInvalidationHub`, the WebSocket fan-out object                                      |
-| `src/hooks`, `src/providers` | Shared React hooks and the two application providers                                         |
-| `src/data`                   | Static fixtures still backing a few unfinished admin pages                                   |
-| `src/server.ts`              | The Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, queue consumer       |
-| `content/`, `messages/`      | MDX content (`docs`) and the per-namespace message catalogues                                |
+| Directory                    | Owns                                                                                                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/routes`                 | TanStack Start file routes, `api/` HTTP handlers, route guards and loaders                                                                                                                        |
+| `src/routes.ts`              | `ROUTES`, the single table of path literals the rest of the code imports                                                                                                                          |
+| `src/modules/{feature}`      | Domain logic: Drizzle tables, Zod schemas, constants, accessors and `use-cases/`                                                                                                                  |
+| `src/modules/_core`          | Shared primitives with no table of their own: `AppError`, currency, table export, pagination                                                                                                      |
+| `src/integrations/{vendor}`  | One folder per third party: Better Auth, Stripe, Drizzle, R2, Resend, InPost, use-intl                                                                                                            |
+| `src/presentation`           | All UI: `components/shadcn`, `components/custom`, `styles`, `theme`, `branding`, `emails`                                                                                                         |
+| `src/platform/testing`       | Shared test infrastructure: the D1 mock, render helpers, the Vitest setup file, and `worker.ts`, the end-to-end test Worker with its provider emulators                                           |
+| `src/lib`                    | Small request-scoped helpers: cookies, rate limiting, SEO, image URLs, `waitUntil`                                                                                                                |
+| `src/durable-objects`        | `RealtimeInvalidationHub`, the WebSocket fan-out object                                                                                                                                           |
+| `src/hooks`, `src/providers` | Shared React hooks and the two application providers                                                                                                                                              |
+| `src/data`                   | Static data: the blog's article list, the landing page's media paths and the sitemap's static pages                                                                                               |
+| `src/server.ts`              | The Worker entry: sitemap, robots, WebSocket upgrades, locale redirect, security headers, the consumers of both queues and their dead-letter queues, and the daily `scheduled` retention clean-up |
+| `content/`, `messages/`      | MDX content (`docs`) and the per-namespace message catalogues                                                                                                                                     |
 
 ## Conventions used in these pages
 

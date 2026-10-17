@@ -3,19 +3,23 @@ title: "Theming and branding"
 description: "Change colours, typography, fonts and the shop's identity: the token layers, the two shells, the theme bootstrap and the branding constants."
 ---
 
-Everything visual lives under `src/presentation/`. Styles are in `styles/`, theme mechanics in `theme/`, identity constants in `branding/`, and email styling in `emails/`. Nothing outside `src/presentation` declares a colour, a font or a brand fact; the seller's details are data, edited under Settings → Store details.
+Everything visual lives under `src/presentation/`. Styles are in `styles/`, theme mechanics in `theme/`, identity constants in `branding/`, and email styling in `emails/`. Style constants — class strings and inline style objects that several components share — sit in a `_styles/` folder beside the components that use them, for example `components/custom/pages/admin/_styles/admin-layout.styles.ts`, `components/custom/datagrid/lib/_styles/data-grid-header.styles.ts` and `emails/_styles/email-styles.ts`. The seller's details are not constants: they are data, edited under Settings → Store details.
 
-## The three stylesheets
+The rule is that nothing outside `src/presentation` declares a colour, a font or a brand fact; the seller's details are data in D1. The code has known exceptions a palette change must also visit: the status badge and dot colour maps in module constants (`ORDER_STATUS_BADGE_STYLES`, `PAYMENT_BADGE_STYLES` and `FULFILLMENT_DOT_COLORS` in `order.constants.ts`; `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS` and `ACTOR_ROLE_COLORS` in `audit-log.constants.ts`; `NEWSLETTER_STATUS_BADGE_STYLES` in `newsletter.constants.ts`; `NEWSLETTER_CAMPAIGN_STATUS_BADGE_STYLES` in `newsletter-campaign.constants.ts`), and the Stripe Elements appearance for the checkout's payment step in `src/integrations/stripe/stripe.appearance.ts`, which carries its own hex colours and loads Manrope from Google Fonts.
 
-| File                 | Lines | Loaded by                                      | Scope                                 |
-| -------------------- | ----- | ---------------------------------------------- | ------------------------------------- |
-| `globals.css`        | 233   | `src/routes/__root.tsx` as a route `link`      | Tokens, base layer, shared components |
-| `admin.css`          | 84    | `src/routes/admin.tsx` as a route `link`       | The admin shell only                  |
-| `storefront.css`     | 20    | `src/routes/_storefront.tsx` as a route `link` | Landing-page reveal animations        |
-| `fonts.css`          | 84    | `@import` at the top of `globals.css`          | Non-critical `@font-face` rules       |
-| `critical-fonts.css` | 60    | Inlined into `<head>` with `?raw`              | The two fonts above the fold          |
+## The five stylesheets
+
+| File                 | Lines | Loaded by                                      | Scope                                                   |
+| -------------------- | ----- | ---------------------------------------------- | ------------------------------------------------------- |
+| `globals.css`        | 253   | `src/routes/__root.tsx` as a route `link`      | Tokens, base layer, shared components                   |
+| `admin.css`          | 137   | `src/routes/admin.tsx` as a route `link`       | The admin shell and the content editor                  |
+| `storefront.css`     | 20    | `src/routes/_storefront.tsx` as a route `link` | Starting state of the landing page's reveal animations  |
+| `fonts.css`          | 84    | `@import` at the top of `globals.css`          | Non-critical `@font-face` rules                         |
+| `critical-fonts.css` | 60    | Inlined into `<head>` with `?raw`              | The first-paint faces of both typefaces, plus fallbacks |
 
 Keep the split. A rule that only the admin console needs belongs in `admin.css`; a rule that only the landing page needs belongs in `storefront.css`. `globals.css` is for what both shells share.
+
+Besides the tokens, `globals.css` imports `tailwindcss`, `tw-animate-css`, `shadcn/tailwind.css` and Lenis's stylesheet, and registers the typography plugin under the class name `wysiwyg`. Its `@source not` lines keep Tailwind from scanning tests, `src/platform/testing/` and the shadcn components the app does not use; if you start using one of those listed components, remove it from the list, or Tailwind will not see its class names.
 
 ## The token layers
 
@@ -38,7 +42,7 @@ Keep the split. A rule that only the admin console needs belongs in `admin.css`;
 
 These are hand-picked hex and `rgba` values used by the storefront's bespoke sections.
 
-**The shadcn semantic tokens** — `--background`, `--foreground`, `--card`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--success`, `--border`, `--input`, `--ring`, `--chart-1` to `--chart-5`, `--radius` and the eight `--sidebar-*` tokens. These are in `oklch(...)` and are what every shadcn primitive reads.
+**The shadcn semantic tokens** — `--background`, `--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--success`, `--border`, `--input`, `--ring`, `--chart-1` to `--chart-5`, `--radius` and the eight `--sidebar-*` tokens; `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent` and `--destructive` each come with a `-foreground` pair. These are in `oklch(...)` and are what every shadcn primitive reads.
 
 **The Tailwind theme** — `@theme inline` maps each semantic token to a Tailwind utility, so `bg-card` resolves to `var(--card)`:
 
@@ -56,7 +60,9 @@ These are hand-picked hex and `rgba` values used by the storefront's bespoke sec
 }
 ```
 
-Note `--radius: 0.25rem` — the whole product uses a tight radius, and `--radius-md` and `--radius-lg` are deliberately equal to it. Three custom scale entries exist: `max-w-400` for the site container, and `spacing-18` and `spacing-54`.
+Note `--radius: 0.25rem` — the whole product uses a tight radius, and `--radius-md` and `--radius-lg` are deliberately equal to it (`--radius-xl` is 2px larger). Three custom scale entries exist: `max-w-400` for the site container, and `spacing-18` and `spacing-54`.
+
+`globals.css` also defines two utilities and three custom variants. `storefront-container` is the storefront's page container (`mx-auto px-4 sm:max-w-400 sm:px-6 lg:px-12`), and `touch-target` widens an element's hit area to at least 2.5rem on coarse pointers. The variants are `dark`, `autofill-preview` (an autofilled input whose `value` attribute is empty) and `peer-floated` (a sibling after a focused, filled or autofilled `.peer` — the floating-label pattern).
 
 **To change a colour**, change the token in `:root` and in `.dark`. Never write a literal colour in a component's `className`.
 
@@ -90,7 +96,7 @@ export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(THEME_S
 
 `__root.tsx` also sets `data-admin-shell` server-side on the `<html>` element and emits `adminShellCriticalStyle(path)` inline, so the dark chrome is painted before any stylesheet loads.
 
-**2. `admin.css` redeclares the tokens.** Inside `[data-admin-main]` it resets `--background`, `--foreground`, `--card`, `--muted`, `--border`, `--input`, `--ring` and the radii to their light values and sets `color-scheme: light`. `html[data-admin-shell]` gets `background-color: var(--sidebar)` — the dark chrome the sidebar sits on.
+**2. `admin.css` redeclares the tokens.** It starts with `@reference "./globals.css"`, so it can use the shared theme without emitting it a second time. Inside `[data-admin-main]` it resets the radii (`--radius-sm` to `--radius-xl`), `--background`, `--foreground`, `--card`, `--popover`, `--muted`, `--secondary` and `--accent` (each with its `-foreground` pair), `--border`, `--input` and `--ring` to their light values and sets `color-scheme: light`. `html[data-admin-shell]` and its `body` get `background-color: var(--sidebar)` — the dark chrome the sidebar sits on — and `color-scheme: light`.
 
 **3. `useAdminLightTheme`.** The hook in `src/presentation/theme/use-admin-light-theme.ts` removes the `dark` class on mount and, in its cleanup, restores the visitor's stored preference:
 
@@ -112,7 +118,7 @@ useEffect(() => {
 }, [])
 ```
 
-`admin.css` also styles the Sonner toasts inside `html[data-admin-shell]` to match the dark sidebar, and gives the data-grid scroll container thin custom scrollbars. `src/presentation/components/custom/pages/admin/admin-layout.styles.ts` holds the reusable admin class strings — `ADMIN_LAYOUT_BG_CLASS`, `ADMIN_CARD_CLASS`, the `ADMIN_STAT_*` set — so a page never repeats them.
+`admin.css` also styles the Sonner toasts inside `html[data-admin-shell]` to match the dark sidebar and gives the data-grid scroll container thin custom scrollbars. For the content page editor it imports `@mdxeditor/editor/style.css` into the `components` layer and maps MDXEditor's colour variables on `.content-editor` and `.mdxeditor-popup-container` to the shadcn tokens. `src/presentation/components/custom/pages/admin/_styles/admin-layout.styles.ts` holds the reusable admin class strings — `ADMIN_LAYOUT_BG_CLASS`, `ADMIN_CARD_CLASS`, the `ADMIN_STAT_*` set, the page body classes — and `ADMIN_SHELL_CHROME_BG`, the chrome colour the bootstrap script paints, so a page never repeats them.
 
 ## Typography
 
@@ -121,7 +127,7 @@ Two typefaces, both self-hosted from `public/fonts/`:
 - **Manrope** for `font-sans` — variable weight.
 - **Cormorant Garamond** for `font-serif` — used for every heading.
 
-`critical-fonts.css` is inlined, not linked. It contains the metric-adjusted fallbacks (`Manrope Fallback` from Arial, `Cormorant Garamond Fallback` from Times New Roman, with `size-adjust`, `ascent-override`, `descent-override` and `line-gap-override`) plus the two `@font-face` rules the first paint needs. `fonts.css` carries the remaining weights and the italics and is imported normally.
+`critical-fonts.css` is inlined, not linked. It contains the metric-adjusted fallbacks (`Manrope Fallback` from Arial, `Cormorant Garamond Fallback` from Times New Roman, with `size-adjust`, `ascent-override`, `descent-override` and `line-gap-override`) plus the four `@font-face` rules the first paint needs: Manrope's variable 200–800 face and Cormorant Garamond 400 normal, each in a `latin` and a `latin-ext` subset. `fonts.css` carries the other eight Cormorant Garamond faces — 400 italic, 500, 500 italic and 600, in both subsets — and is imported normally.
 
 `StorefrontCriticalFontsHead` emits the preloads and inlines that CSS with `?raw`:
 
@@ -149,18 +155,18 @@ export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriti
 ```ts
 export const APP_DOMAIN = "martebizuteria.pl"
 export const APP_URL = `https://${APP_DOMAIN}`
-export const APP_NAME = "M'Arte"
-export const APP_ICON = "/favicon.svg"
-export const THEME_COLOR = "#e7f3ec"
-export const OG_IMAGE_PATH = "/og.png"
-export const OG_IMAGE_WIDTH = "1200"
-export const OG_IMAGE_HEIGHT = "630"
-export const DEFAULT_R2_PUBLIC_URL = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev"
 export const APP_GITHUB_OWNER = "pjborowiecki"
 export const APP_GITHUB_REPO = APP_DOMAIN
+export const APP_ICON = "/favicon.svg"
+export const APP_NAME = "M'Arte"
+export const DEFAULT_R2_PUBLIC_URL = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev"
+export const OG_IMAGE_HEIGHT = "630"
+export const OG_IMAGE_PATH = "/og.png"
+export const OG_IMAGE_WIDTH = "1200"
+export const THEME_COLOR = "#e7f3ec"
 ```
 
-`APP_NAME` feeds the document title, the Better Auth `appName`, the two-factor issuer and the theme storage key. `THEME_COLOR` is the `theme-color` meta tag and matches `--bg-base`. `APP_DOMAIN` feeds `appHostsForMode` in `src/modules/_core/constants/api.ts`, which is Better Auth's `baseURL.allowedHosts` — so changing the domain changes the auth host allow-list too, and with it the hosts `resolveRequestOrigin` accepts for email links and the Stripe return URL. `APP_URL` itself is only the canonical production address used in SEO metadata; emails link to the host the request came in on.
+`APP_NAME` feeds the document title, the Better Auth `appName`, the two-factor issuer, the theme storage key, the sender name of the shop's e-mails (`shopSender()` in `src/integrations/resend/resend.send.ts`) and the Stripe client's `appInfo`. `THEME_COLOR` is the `theme-color` meta tag and matches `--bg-base`. `APP_DOMAIN` feeds `appHostsForMode` in `src/modules/_core/constants/api.ts`, which is Better Auth's `baseURL.allowedHosts` — so changing the domain changes the auth host allow-list too, and with it the hosts `resolveRequestOrigin` accepts for email links and the Stripe return URL. `APP_URL` itself is the canonical production address used in SEO metadata, and the fallback host for Cloudflare image transformations in `src/lib/image.ts` when `VITE_IMAGE_CDN_DOMAIN` is not set; emails link to the host the request came in on.
 
 `socials.ts` — the Facebook and Instagram URLs.
 
@@ -168,13 +174,15 @@ The legal entity is not a constant. Its legal name, address, NIP, REGON, contact
 
 ## Emails
 
-Email styling is separate: no Tailwind, no CSS variables, because mail clients support neither reliably. `src/presentation/emails/_styles/email-styles.ts` holds inline style objects, `email-layout.tsx` is the shared shell and `email-highlight-box.tsx` the one shared block. The thirteen templates are `account-deleted`, `change-email`, `new-order`, `newsletter-already-subscribed`, `newsletter-confirmation`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`. Each takes its `locale` and `messages` as props. Preview them at `/dev/emails`.
+Email styling is separate from the site's: no CSS variables and no site stylesheets, because mail clients do not support them reliably. `email-layout.tsx` is the shared shell. It wraps every message in react-email's `<Tailwind>` component, which turns the utility classes into inline styles, with its own `EMAIL_TAILWIND_CONFIG`: the colours `cream`, `gold`, `ink`, `line`, `muted`, `paper` and `wash` as literal hex values, and web-safe serif and sans stacks instead of the site fonts. `src/presentation/emails/_styles/email-styles.ts` holds the inline style objects (body, container, highlight box, product image, Markdown) and the matching colour constants. `email-highlight-box.tsx` holds the shared blocks — `EmailBorderedSection`, `EmailHighlightBox`, `EmailBodyText` and `EmailDetailRow` — and the shared CTA and text class strings.
+
+The nineteen templates are `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `newsletter-campaign`, `newsletter-confirmation`, `order-cancelled`, `order-confirmation`, `order-delivered`, `order-in-progress`, `order-refunded`, `order-shipped`, `order-tracking`, `order-withdrawal`, `password-changed`, `payment-failed`, `reset-password` and `verify-email`. Each takes its `locale` and `messages` as props. Preview them at `/dev/emails` on the dev server (`bun run dev`); other builds answer 404 there. See [Transactional email](/docs/features/email).
 
 ## Checklist for a visual change
 
-- A colour changes in `:root` **and** `.dark` in `globals.css`, never in a component.
+- A colour changes in `:root` **and** `.dark` in `globals.css`, never in a component. A palette change also checks the module badge colour maps and `stripe.appearance.ts` listed at the top of this page, and the e-mail palette in `EMAIL_TAILWIND_CONFIG` and `email-styles.ts`.
 - An admin-only rule goes in `admin.css`, scoped to `[data-admin-main]` or `html[data-admin-shell]`.
-- A repeated admin class string goes in `admin-layout.styles.ts`.
+- A repeated admin class string goes in `_styles/admin-layout.styles.ts`; a class string shared only within one feature goes in a `_styles/` folder beside that feature's components.
 - A brand fact goes in `branding/`, and the component imports it from there. The seller's details come from `getSellerDetailsQuery()`, never from a constant.
 - Font changes keep the critical/non-critical split and update the fallback metrics.
 - `bun run format` sorts your Tailwind classes — `vite.config.ts` points the sorter at `globals.css`, so a custom utility you add there is understood.

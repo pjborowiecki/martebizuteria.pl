@@ -1,6 +1,6 @@
 ---
 title: "Dodawanie strony panelu"
-description: "Dodaj trasę do panelu administracyjnego: plik trasy, strażnika, nagłówek, wpis w menu bocznym, przestrzenie nazw tłumaczeń i wstępne pobieranie zapytań."
+description: "Dodaj trasę do panelu administracyjnego: plik trasy, strażnika, nagłówek, wpis w menu bocznym, przestrzenie nazw tłumaczeń, wstępne pobieranie zapytań, aktualizacje na żywo i formatowanie wyświetlanych wartości."
 ---
 
 Panel administracyjny mieszka pod `/admin` i jest osobną powłoką wizualną niż witryna sklepowa: wyłącznie jasny motyw, ciemne menu boczne, własny arkusz stylów i własna subskrypcja czasu rzeczywistego. `src/routes/admin.tsx` to układ, który dziedziczy każda strona panelu; wszystko, co dodasz, wpasowuje się w niego.
@@ -32,13 +32,15 @@ export const Route = createFileRoute("/admin")({
 
 Każda trasa potomna dostaje to za darmo:
 
-- **Strażnik.** `requireAdmin` z `src/integrations/better-auth/auth.routes.ts` czyta sesję przez `context.queryClient.query(getCurrentSessionQuery)` i sprawdza ją ponownie przy każdej rzeczywistej nawigacji do `/admin`. Przekierowuje na `/auth/sign-in` (z żądaną ścieżką w `?redirect`), gdy sesji nie ma, na `/account/overview`, gdy użytkownik nie jest administratorem, oraz na `/admin/security`, gdy administrator nie włączył uwierzytelniania dwuskładnikowego. Zwraca `{ user }`, które staje się kontekstem trasy, więc strona odczytuje zalogowanego administratora przez `Route.useRouteContext().user`. To chroni _stronę_, nie dane — zobacz [Funkcje serwerowe](/docs/guides/server-functions).
+- **Strażnik.** `requireAdmin` z `src/integrations/better-auth/auth.routes.ts` czyta sesję przez `context.queryClient.query(getCurrentSessionQuery)` i sprawdza ją ponownie przy każdej rzeczywistej nawigacji do `/admin`. Przekierowuje na `/auth/sign-in` (z żądaną ścieżką w `?redirect`), gdy sesji nie ma, na `/account/overview`, gdy użytkownik nie jest administratorem, oraz na `/admin/security`, gdy administrator nie ma włączonego uwierzytelniania dwuskładnikowego. To ostatnie przekierowanie działa tylko w buildach produkcyjnych i w buildzie `test`, na którym uruchamiany jest zestaw E2E (`isAdminTwoFactorRequired()` w `src/integrations/better-auth/auth.access.ts`); w środowisku deweloperskim i preview uwierzytelnianie dwuskładnikowe jest opcjonalne. Zwraca `{ user }`, które staje się kontekstem trasy, więc strona odczytuje zalogowanego administratora przez `Route.useRouteContext().user`. To chroni _stronę_, nie dane — zobacz [Funkcje serwerowe](/docs/guides/server-functions).
 - **Arkusz stylów.** `src/presentation/styles/admin.css`, ładowany jako `link` trasy.
 - **Jasny motyw.** `useAdminLightTheme()` usuwa klasę `dark` przy montowaniu i przywraca preferencję gościa dla witryny sklepowej przy odmontowaniu.
-- **Subskrypcja czasu rzeczywistego.** `useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })` otwiera WebSocket panelu i unieważnia każde zapytanie, którego prefiks klucza pojawi się w opublikowanej wiadomości.
+- **Subskrypcja czasu rzeczywistego.** `useRealtimeQuerySync({ hub: REALTIME_INVALIDATION_HUB.ADMIN, subscriptions: ADMIN_REALTIME_QUERY_PREFIXES })` otwiera WebSocket panelu. Gdy serwer publikuje klucze zapytań, unieważnia wyłącznie zapytania w pamięci podręcznej objęte prefiksami wymienionymi w `ADMIN_REALTIME_QUERY_PREFIXES` — zobacz krok 6.
 - **Menu boczne.** `AdminSidebar`, ze stanem otwarcia odtworzonym z ciasteczka `sidebar_state` jeszcze przed hydratacją.
 - **Przestrzenie nazw tłumaczeń.** `pages.admin` i `components.datagrid`, więc `t("nav.orders")` działa w dowolnym miejscu wewnątrz.
-- **Rama.** `div[data-admin-main]` z `h-svh`, `flex flex-col` i `overflow-hidden`. Za przewijanie wewnątrz odpowiada Twoja strona.
+- **Rama.** `div[data-admin-main]` z `flex min-h-svh min-w-0 flex-col`. Od `lg` w górę ma też `h-svh` i `overflow-hidden`, więc nagłówek zostaje na miejscu, a za przewijanie wewnątrz odpowiada Twoja strona. Poniżej `lg` rama rośnie razem z treścią i przewija się cały dokument.
+
+Plik trasy, którego nazwa zaczyna się od `admin_.`, nie jest zagnieżdżony w tym układzie. `admin_.orders.$orderId.summary.tsx`, czyli podsumowanie zamówienia do druku, nie dostaje menu bocznego, `admin.css`, subskrypcji czasu rzeczywistego ani przestrzeni nazw układu, więc sam deklaruje `beforeLoad: requireAdmin` i `staticData.namespaces`.
 
 ## 1. Utwórz plik trasy
 
@@ -54,7 +56,8 @@ const AdminOverviewPage = (): JSX.Element => {
     <>
       <AdminHeader title={t("dashboard.title")} description={t("dashboard.description")} />
 
-      <div className="min-h-0 flex-1 overflow-y-auto p-8">
+      <div className={cn(ADMIN_PAGE_BODY_CLASS, "space-y-4 lg:space-y-6")}>
+        <DashboardSalesSwitch />
         <DashboardOverviewContent />
       </div>
     </>
@@ -64,16 +67,21 @@ const AdminOverviewPage = (): JSX.Element => {
 export const Route = createFileRoute("/admin/overview")({
   component: AdminOverviewPage,
   loader: ({ context }) =>
-    context.queryClient.query({
-      ...getDashboardSnapshotQuery({ locale: context.locale }),
-      staleTime: "static",
-    }),
+    Promise.all([
+      context.queryClient.query({
+        ...getDashboardSnapshotQuery({
+          locale: context.locale,
+        }),
+        staleTime: "static",
+      }),
+      context.queryClient.query(getAdminSalesStatusQuery()),
+    ]),
   shouldReload: false,
   staleTime: ADMIN_DASHBOARD_QUERY_STALE_MS,
 })
 ```
 
-`<div className="min-h-0 flex-1 overflow-y-auto p-8">` to obowiązujący wzorzec: nagłówek jest przyklejony, a treść się przewija. `min-h-0` jest konieczne — bez niego element flex nie chce się zmniejszyć i przewija się cała strona.
+Obowiązującym wzorcem jest opakowanie treści. `ADMIN_PAGE_BODY_CLASS` leży razem z innymi napisami klas panelu w `src/presentation/components/custom/pages/admin/_styles/admin-layout.styles.ts` i ma wartość `min-h-0 flex-1 p-4 sm:p-6 lg:overflow-y-auto lg:p-8`: od `lg` w górę nagłówek zostaje na miejscu, a przewija się treść; poniżej `lg` przewija się dokument. `min-h-0` jest konieczne — bez niego element flex nie może zmniejszyć się poniżej swojej zawartości, więc na ekranach `lg` treść wylewa się poza ramę, zamiast się przewijać. Strona, której treścią jest tabela danych, używa zamiast tego `ADMIN_CATALOG_PAGE_BODY_CLASS` z tego samego pliku — kolumny flex, która sama się nie przewija, bo tabela przewija się we własnej karcie. Zobacz [Dodawanie tabeli danych](/docs/guides/add-a-data-table).
 
 `shouldReload: false` razem z `staleTime` sprawia, że loader nie uruchamia się ponownie przy każdym powrocie na stronę. Użyj stałej czasu świeżości z modułu, a nie literału.
 
@@ -85,36 +93,26 @@ Każda ścieżka, do której kod się odwołuje, pochodzi z obiektu `ROUTES`, po
 ADMIN_COUPONS: "/admin/coupons",
 ```
 
-Nigdzie nie wpisujemy adresu URL na sztywno. Odnośniki używają `LocalizedLink`, którego `to` ma typ `FileRouteTypes["to"]` z wygenerowanego drzewa tras, więc nieistniejąca ścieżka nie przejdzie kontroli typów.
+Nie wpisuj adresu URL na sztywno. Odnośniki używają `LocalizedLink`, którego `to` ma typ `FileRouteTypes["to"]` z wygenerowanego drzewa tras, więc nieistniejąca ścieżka nie przejdzie kontroli typów.
 
 ## 3. Dodaj nagłówek
 
-`AdminHeader` z `src/presentation/components/custom/pages/admin/admin-header.tsx` renderuje przyklejony pasek o wysokości 64 px. Jego właściwości:
+`AdminHeader` z `src/presentation/components/custom/pages/admin/admin-header.tsx` renderuje ciemny górny pasek. Na telefonach ma co najmniej 56 px wysokości, od `sm` 64 px; od `lg` w górę ma stałe 64 px i przykleja się do górnej krawędzi ramy. Jego właściwości:
 
-| Właściwość    | Działanie                                                                           |
-| ------------- | ----------------------------------------------------------------------------------- |
-| `title`       | Nagłówek strony. Napis albo węzeł dla złożonego tytułu                              |
-| `description` | Druga linia pod tytułem                                                             |
-| `breadcrumbs` | `{ href?, label }[]`, renderowane przed tytułem od szerokości `sm` w górę           |
-| `actions`     | Przyciski po prawej stronie paska                                                   |
-| `backHref`    | Zamienia przycisk menu bocznego na strzałkę powrotu — używaj na stronach szczegółów |
-| `tabs`        | Węzeł renderowany w drugim rzędzie pod paskiem                                      |
+| Właściwość    | Działanie                                                                               |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `title`       | Nagłówek strony. Napis albo węzeł dla złożonego tytułu                                  |
+| `description` | Druga linia pod tytułem, ukryta poniżej `sm`                                            |
+| `breadcrumbs` | `{ href?, label }[]`, renderowane przed tytułem dopiero od `lg` w górę                  |
+| `actions`     | Przyciski po prawej stronie paska                                                       |
+| `backHref`    | Zamienia przycisk menu bocznego na strzałkę powrotu — używaj na stronach szczegółów     |
+| `tabs`        | Węzeł renderowany pod paskiem, zwykle `AdminHeaderTabs` z odnośnikami zakładek w środku |
 
-`src/routes/admin.coupons.tsx` pokazuje okruszki:
+`src/routes/admin.content.index.tsx` pokazuje okruszki:
 
 ```tsx
-const bcList = useMemo(
-  () => [
-    {
-      href: ROUTES.ADMIN,
-      label: t("nav.dashboard"),
-    } satisfies {
-      href: LocalizedTo
-      label: string
-    },
-  ],
-  [t],
-)
+const t = useTranslations("pages.admin")
+const breadcrumbs = useMemo(() => [{ href: ROUTES.ADMIN, label: t("nav.dashboard") }], [t])
 ```
 
 Memoizuj `actions`, `tabs` i `breadcrumbs` — to węzły i tablice przekazywane przy każdym renderowaniu.
@@ -132,7 +130,7 @@ export const Route = createFileRoute("/admin/catalog")({
 })
 ```
 
-`src/routes/admin.catalog.categories.tsx` dostarcza nagłówek i pasek zakładek, a jego trasa `index` renderuje wyłącznie tabelę:
+`src/routes/admin.catalog.categories.tsx` dostarcza nagłówek, pasek zakładek i przestrzenie nazw kategorii, a jego trasa `index` renderuje wyłącznie tabelę:
 
 ```tsx
 const CategoriesSectionLayoutRoute = (): JSX.Element => {
@@ -151,7 +149,7 @@ const CategoriesSectionLayoutRoute = (): JSX.Element => {
 }
 ```
 
-`CatalogTabs` w `src/presentation/components/custom/pages/admin/catalog/catalog-tabs.tsx` przyjmuje `active: "products" | "categories" | "collections" | "attributes"`. Dodanie piątej sekcji katalogu oznacza dopisanie tam `TabLink` i rozszerzenie tej unii.
+`CatalogTabs` w `src/presentation/components/custom/pages/admin/catalog/catalog-tabs.tsx` przyjmuje `active: "products" | "categories" | "collections" | "attributes"`. Dodanie piątej sekcji katalogu oznacza dopisanie tam `AdminHeaderTabLink` i rozszerzenie tej unii. `AdminHeaderTabs` i `AdminHeaderTabLink` (`{ href, isActive, label }`) leżą w `src/presentation/components/custom/pages/admin/admin-header-tabs.tsx`; `MarketingTabs` w `.../admin/marketing/marketing-tabs.tsx` buduje z nich w ten sam sposób pasek sekcji marketingu.
 
 ## 5. Pobierz zapytania z wyprzedzeniem
 
@@ -175,26 +173,57 @@ export const Route = createFileRoute("/admin/catalog/categories/")({
 
 Kontekst routera tworzy `src/router.tsx` i niesie on `queryClient` oraz `imagePrefetchService`; `beforeLoad` trasy głównej dokłada `locale` i `internalPathname`.
 
-## 6. Zadeklaruj przestrzenie nazw tłumaczeń
+## 6. Utrzymuj dane na bieżąco
 
-Trasa wymienia przestrzenie nazw potrzebne jej poddrzewu w `staticData.namespaces`. `getRouteNamespaces` w `src/integrations/use-intl/i18n.messages.ts` łączy je ze wszystkich dopasowanych tras i dokłada przestrzenie główne, a `TranslationsProvider` ładuje dokładnie ten zbiór. Zapomniana przestrzeń nazw sprawia, że `useTranslations` rzuca wyjątek przy renderowaniu, a nie przy budowaniu. Zobacz [Tłumaczenia](/docs/guides/i18n-messages).
+Zmiana wprowadzona w jednej karcie panelu dociera do pozostałych otwartych kart panelu przez hub czasu rzeczywistego, ale tylko dla kluczy, które subskrybuje układ. Opublikowany klucz unieważnia zapytania w pamięci podręcznej pod nim, gdy mieści się pod jednym z prefiksów w `ADMIN_REALTIME_QUERY_PREFIXES` (`src/integrations/realtime-invalidation/realtime-invalidation.subscriptions.ts`); szerszy klucz unieważnia wymienione prefiksy leżące pod nim; każdy inny klucz jest ignorowany. Gdy strona pokazuje funkcję, której dane mają się odświeżać bez przeładowania:
 
-## 7. Dodaj wpis do menu bocznego
+- dopisz prefiks klucza panelu tej funkcji, na przykład `NEWSLETTER_QUERY_KEYS.ADMIN.PAGE`, do `ADMIN_REALTIME_QUERY_PREFIXES`;
+- opublikuj go z serwera po zapisie, przez `scheduleRealtimeInvalidation({ admin: [...] })` z `realtime-invalidation.publish.server.ts` albo jedną z funkcji `schedule...Invalidation` w `realtime-invalidation.catalog.server.ts`.
+
+Karta, która wprowadziła zmianę, nadal sama unieważnia swoją pamięć podręczną w `onSettled` hooka mutacji. Zobacz [Unieważnianie w czasie rzeczywistym](/docs/architecture/realtime-invalidation).
+
+## 7. Zadeklaruj przestrzenie nazw tłumaczeń
+
+Trasa wymienia przestrzenie nazw potrzebne jej poddrzewu w `staticData.namespaces`. `getRouteNamespaces` w `src/integrations/use-intl/i18n.messages.ts` łączy je ze wszystkich dopasowanych tras i dokłada przestrzenie główne, a `TranslationsProvider` ładuje dokładnie ten zbiór. Zapomniana przestrzeń nazw nie zostanie wychwycona przy budowaniu, ale też nie rzuca wyjątku: use-intl zgłasza w konsoli błąd `MISSING_MESSAGE` i zamiast tekstu renderuje `<namespace>.<key>` (na przykład `pages.admin.customers.title`). Każdy plik w `messages/<locale>/` to jedna przestrzeń nazw; zagnieżdżony klucz w załadowanym pliku, taki jak `pages.admin.coupons`, nie wymaga osobnej deklaracji. Zobacz [Tłumaczenia](/docs/guides/i18n-messages).
+
+## 8. Formatuj daty, liczby i ceny
+
+Formatuj według preferencji wyświetlania administratora — lokalizacji formatu i strefy czasowej, zapisanych na koncie albo wykrytych z żądania — a nie według języka interfejsu. Hooki leżą w `src/hooks/use-display-format.ts`:
+
+- `useFormatter()` — formatter use-intl (`createFormatter`) związany z lokalizacją formatu i strefą czasową. Używaj go zamiast `useFormatter` z `use-intl/react`.
+- `useFormatLocale()` — napis lokalizacji formatu, dla `formatPrice(amountInMinorUnits, currency, locale)` z `src/modules/_core/utils/currency.ts` i dla `toLocaleString`.
+- `useDisplayTimeZone()` — strefa czasowa IANA, dla granic dni i innych obliczeń na datach.
+
+Z `src/presentation/components/custom/pages/admin/orders/detail/order-meta-strip.tsx`:
+
+```tsx
+const format = useFormatter()
+const formatLocale = useFormatLocale()
+
+format.dateTime(order.createdAt, { day: "numeric", hour: "2-digit", minute: "2-digit", month: "short", year: "numeric" })
+formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale)
+```
+
+`useLocale()` z `use-intl/react` nadal służy do wyboru przetłumaczonej treści, na przykład `resolveCategoryTitle(row.titles, locale)`. Funkcja serwerowa filtrująca po dacie ustala tę samą strefę czasową przez `resolveRequestDisplayPreferences()` — zobacz [Dodawanie tabeli danych](/docs/guides/add-a-data-table).
+
+## 9. Dodaj wpis do menu bocznego
 
 `src/presentation/components/custom/pages/admin/admin-sidebar.tsx` przechowuje cztery tablice na końcu pliku:
 
 | Tablica       | Zawartość                                                             |
 | ------------- | --------------------------------------------------------------------- |
-| `SIMPLE_NAV`  | Pulpit, Zamówienia, Klienci                                           |
+| `SIMPLE_NAV`  | Podsumowanie, Zamówienia, Klienci                                     |
 | `CATALOG_SUB` | Produkty, Kategorie, Kolekcje, Atrybuty — zagnieżdżone pod Katalogiem |
-| `TOOLS_NAV`   | Marketing, Kupony, Treści                                             |
+| `TOOLS_NAV`   | Marketing, Kupony, Treść                                              |
 | `SYSTEM_NAV`  | Dziennik zdarzeń, Ustawienia                                          |
 
-`NavItem` to `{ href: LocalizedTo, icon, labelKey }`. Ikona jest komponentem z `lucide-react`, a `labelKey` rozwiązuje się wewnątrz `pages.admin`, więc `nav.coupons` czyta z `messages/{locale}/pages.admin.json`. Pozycja jest aktywna, dopóki adres zawiera jej `href`, więc jedna pozycja obejmuje stronę z zakładkami w nagłówku, taką jak Ustawienia. Stanu wyłączonego nie ma: nie dodawaj strony do paska bocznego, dopóki nie działa.
+Podsumowanie i rozwijany wpis Katalogu renderuje bezpośrednio `AdminSidebarMainGroup`, a po nich `SIMPLE_NAV_ITEMS` — czyli `SIMPLE_NAV` z odfiltrowanym Podsumowaniem. `TOOLS_NAV` renderuje się pod etykietą Narzędzia, a `SYSTEM_NAV` w grupie na dole menu bocznego, więc nowa strona zwykle oznacza jeden `NavItem` więcej w tablicy jej grupy. Wpis jest podświetlony, dopóki bieżąca ścieżka zawiera jego `href` (Podsumowanie musi pasować na końcu ścieżki), więc pozostaje aktywny także na stronach podrzędnych sekcji, a jeden wpis obejmuje stronę z zakładkami w nagłówku, taką jak Ustawienia.
 
-## 8. Przetestuj trasę
+`NavItem` to `{ href: LocalizedTo, icon, labelKey }`. Ikona jest komponentem z `lucide-react`, a `labelKey` rozwiązuje się wewnątrz `pages.admin`, więc `nav.coupons` czyta z `messages/{locale}/pages.admin.json`. Stanu wyłączonego nie ma: stronę dodaje się do paska bocznego dopiero wtedy, gdy działa.
 
-Testy tras leżą w `src/routes/__test__/` i nazywają się `<route>.component.test.tsx` dla testu renderowania albo `<route>.loader.test.ts` dla testu loadera. Przechwytują `createFileRoute`, żeby uchwycić obiekt opcji:
+## 10. Przetestuj trasę
+
+Testy tras leżą w `src/routes/__test__/` i nazywają się `<route>.component.test.tsx` dla testu renderowania albo `<route>.loader.test.ts` dla testu loadera, gdzie `<route>` to nazwa pliku bez `$` i bez podkreślenia z `admin_` — `admin.customers.$id.tsx` testuje `admin.customers.id.component.test.tsx`. Przechwytują `createFileRoute`, żeby uchwycić obiekt opcji:
 
 ```tsx
 vi.mock("@tanstack/react-router", async (importOriginal) => {

@@ -42,6 +42,7 @@ interface __BaseEnv_Env {
   DB: D1Database
   AUDIT_LOG_QUEUE: Queue
   NEWSLETTER_QUEUE: Queue
+  ASSETS: Fetcher
   APP_ENV: "development"
   AUTH_GOOGLE_CLIENT_ID: string
   // …the rest of secrets.required…
@@ -59,7 +60,7 @@ fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source
 
 This compiles `content/docs`, the only MDX collection declared in `src/integrations/fumadocs/fumadocs.config.ts`, into `.source/browser.ts`, `.source/server.ts` and `.source/dynamic.ts`. Those are the modules `src/presentation/components/custom/docs-content.tsx` and `src/integrations/fumadocs/fumadocs.docs.ts` import as `collections/browser` and `collections/server`.
 
-Without `.source/`, type checking fails and the `/docs` routes cannot resolve their content. `/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns` do not depend on it: their content lives in the D1 `content_page` table. `bun run dev` and both build scripts run `bun run content` first, so in normal use you do not have to think about it.
+Without `.source/`, type checking fails and the `/docs` routes cannot resolve their content. `/terms-of-service`, `/privacy-policy`, `/exchanges-and-returns` and `/faq` do not depend on it: their content lives in the D1 `content_page` table. `bun run dev` and both build scripts run `bun run content` first, so in normal use you do not have to think about it.
 
 ## Installing the way CI does
 
@@ -84,6 +85,12 @@ bun run skills:sync
 
 Restores the vendored agent skills into `.agents/skills` and `.claude/skills` from `skills-lock.json` using `scripts/sync-skills.ts`. Both directories are generated vendor groups — `bun run skills:update` is the only intended way to change their contents.
 
+```sh
+bun run test:e2e:install
+```
+
+Runs `playwright install --with-deps chromium webkit`: the two browsers and their system libraries, needed only for the end-to-end suite. See [Project scripts](/docs/getting-started/project-scripts#end-to-end-tests).
+
 ## Cleaning up
 
 Three levels, from `package.json`:
@@ -94,7 +101,7 @@ Three levels, from `package.json`:
 | `bun run clean:deep`     | The above plus `node_modules`                                                                                                                          |
 | `bun run clean:hardcore` | The above plus `bun.lock` and `opensrc`                                                                                                                |
 
-Note that `bun run clean` removes `.wrangler`, which is where the local simulated D1, R2 and KV state lives. After a clean, a local run starts from an empty database again.
+Note that `bun run clean` removes `.wrangler`, which is where the local simulated D1, R2 and KV state lives, including the end-to-end database under `.wrangler/test`. After a clean, a local run starts from an empty database again, and `bun run db:reset:test` rebuilds the end-to-end one.
 
 ## Next
 

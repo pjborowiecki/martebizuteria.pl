@@ -1,15 +1,21 @@
 ---
 title: "Seeding data"
-description: "What the eleven seed files contain, the order they must run in, and why you must not run them against the live database today."
+description: "What the eleven seed files contain and do, the order they must run in, the local test database the E2E suite seeds, and why you must not run them against the live databases today."
 ---
 
 ## Read this first
 
 **Do not run `bun run db:seed`, `bun run db:seed:preview` or `bun run db:seed:production`.**
 
-The seed files in `src/integrations/drizzle-orm/seeds/` were written against an earlier state of the catalog. The live preview and production databases have since been edited through the admin console. Each seed file opens with a `DELETE` statement scoped by handle or SKU, so running one now would remove real catalog rows and replace them with the stale fixtures checked into the repository.
+The seed files in `src/integrations/drizzle-orm/seeds/` were written against an earlier state of the catalog. The live preview and production databases have since been edited through the admin console. Ten of the eleven files open with a `DELETE` and then write their rows with an upsert, so running one now would remove real rows and overwrite admin edits with the fixtures checked into the repository:
 
-They stay in the repository for two good reasons: they document the reference catalog shape, and they are the starting point for a brand-new database. They are not a "reset to a known state" button for an environment that has real data in it. Remember also that `development` and `preview` point at the **same** D1 database (`martebizuteria-preview`), so there is no safe environment to practise on.
+- `product-categories.sql`, `product-collections.sql`, `product-attributes.sql` and `products.sql` delete every row that has one of their handles but not one of their ids, and `product-variants.sql` does the same by SKU.
+- `inventory.sql`, `product-images.sql` and `attribute-on-product.sql` delete the rows of the seed variants or products that are not their own, and `category-on-product.sql` and `collection-on-product.sql` delete every category and collection link of the two seed products.
+- Each of these files then writes its rows with `ON CONFLICT(id) DO UPDATE` or `INSERT OR REPLACE`, which puts a seeded row edited since — its titles, descriptions, price, status or images — back to the file's values.
+
+Only `delivery-methods.sql` deletes and overwrites nothing; it uses `INSERT OR IGNORE`.
+
+They stay in the repository for three good reasons: they document the reference catalog shape, they are the starting point for a brand-new database, and the local test database the E2E suite runs against is built from them (see [The local test database](#the-local-test-database)). They are not a "reset to a known state" button for an environment that has real data in it. Remember also that `development` and `preview` point at the **same** D1 database (`martebizuteria-preview`), so the only safe place to practise is the local `test` database.
 
 ## The files
 
@@ -29,11 +35,11 @@ Eleven SQL files, listed here in the order `db:seed:preview` runs them — which
 | 10    | `collection-on-product.sql` | `collection_on_product`      | `products.sql`, `product-collections.sql` |
 | 11    | `attribute-on-product.sql`  | `attribute_on_product`       | `products.sql`, `product-attributes.sql`  |
 
-Each dependent file states its prerequisites in a leading comment, for example `-- Depends on product-variants.sql.` in `inventory.sql`.
+The seven dependent files state their prerequisites in a leading comment, for example `-- Depends on product-variants.sql.` in `inventory.sql`.
 
 ## The conventions they follow
 
-Read one before writing one. `delivery-methods.sql` is the simplest, and it uses `INSERT OR IGNORE`, so re-running it is harmless:
+Read one before writing one. `delivery-methods.sql` is the simplest, and it uses `INSERT OR IGNORE`, so re-running it is harmless — and also changes nothing in a database that already has its rows:
 
 ```sql
 INSERT OR IGNORE INTO courier (id, internal_code, is_active, logo, name, created_at, updated_at) VALUES
@@ -56,12 +62,12 @@ WHERE handle IN ('lapis-lazuli-necklace', 'onyx-necklace')
   );
 ```
 
-The pattern is "delete any row with one of my handles that is not one of my rows, then insert my rows" — idempotent as long as the file's own ids never change, and destructive as soon as the live catalog has other rows sharing a handle.
+It then inserts its two products with `ON CONFLICT(id) DO UPDATE SET handle = excluded.handle, titles = excluded.titles, …`, which overwrites every column it lists on a row that already exists. The pattern is "delete any row with one of my handles that is not one of my rows, then upsert my rows" — idempotent as long as the file's own ids never change, and destructive as soon as the live catalog has other rows sharing a handle or has edited one of the seeded rows.
 
 Other conventions worth matching:
 
-- **Fixed UUIDv7 ids, written out in full.** A seed row's id is part of the file's contract, because dependent files reference it. `019f4a10-0001-7000-8000-000000000001` style ids are hand-composed rather than generated, so they read as obviously synthetic.
-- **Timestamps as `unixepoch() * 1000`**, matching the `timestamp_ms` mode the schema uses.
+- **Fixed ids, written out in full.** A seed row's id is part of the file's contract, because dependent files reference it, and so do the E2E fixtures in `e2e/data/catalog.ts`, which name the seeded products, SKUs, prices and delivery-method ids. Only `delivery-methods.sql` uses hand-composed ids such as `019f4a10-0001-7000-8000-000000000001`, which read as obviously synthetic; the catalog files carry generated ids, UUIDv7 and, for product images, UUIDv4.
+- **Timestamps in milliseconds**, matching the `timestamp_ms` mode the schema uses: `delivery-methods.sql` writes `unixepoch() * 1000`, the catalog files fixed values such as `1780698778000`.
 - **Booleans as `1` and `0`.**
 - **Translated columns as `json_object`:**
 
@@ -77,28 +83,41 @@ Both locale keys are always present, with full BCP 47 tags.
 
 ## What the seed catalog contains
 
-Enough to exercise every storefront and admin surface, not a realistic inventory: seven Polish product categories (naszyjniki, kolczyki, chokery, bransoletki, bransoletki urodzeniowe, pierścionki, biżuteria z odciskami), a set of collections and product attributes, two products (`lapis-lazuli-necklace` and `onyx-necklace`) with two variants (`MRT-0001`, `MRT-0002`), their inventory rows, their images, and the join rows that place them in categories, collections and attribute sets.
+Enough to exercise every storefront and admin surface, not a realistic inventory: seven Polish product categories (naszyjniki, kolczyki, chokery, bransoletki, bransoletki urodzeniowe, pierścionki, biżuteria z odciskami), three collections (Nowości, Srebro 925, Złoto 585), fifteen product attributes, two products (`lapis-lazuli-necklace` and `onyx-necklace`) with one variant each (`MRT-0001`, `MRT-0002`, 379,00 zł), 99 pieces of stock per variant, five product images, and the join rows that place both products in Naszyjniki, Nowości and Srebro 925 and give them their attribute values. Three delivery methods complete it.
 
 Both products carry full Polish and English titles and long descriptions, which is what makes them useful for checking the locale switch on the product page.
 
-## Seeding a new database
+## The local test database
 
-For a genuinely empty D1 database — a new environment, or a fresh local one — the sequence is:
+The `test` environment's local database is where the seed files run as a whole, and the place to try a change to them:
 
 ```sh
-bun run db:migrate:local      # or the environment's own migrate script
+bun run db:reset:test   # rm -rf .wrangler/test, then db:migrate:test, then db:seed:test
 ```
 
-then run the eleven files in the table order above with `wrangler d1 execute`. The scripts in `package.json` chain exactly that with `&&`, so you can copy the command and change the `--env` flag, but check twice which database you are pointing at first. Prefer `--local` unless you are certain.
+`db:migrate:test` applies every migration to an empty local D1 database in `.wrangler/test`. `db:seed:test` runs `scripts/seed-test.ts`, which:
+
+1. reads the eleven seed files in the table order above;
+2. adds the three E2E accounts from `e2e/data/accounts.ts` — `admin` (`admin@marte.example.test`), `adminWithoutTwoFactor` (`new-admin@marte.example.test`) and `customer` (`customer@marte.example.test`) — each with a verified e-mail and a credential account whose password is `TEST_PASSWORD`, hashed with Better Auth's `hashPassword`;
+3. turns on two-factor authentication for `admin`, because the `test` build requires it of admins as production does: it sets `two_factor_enabled` and writes a `two_factor` row whose secret, `ADMIN_TOTP_SECRET`, and empty backup-code list are encrypted with Better Auth's `symmetricEncrypt` under the `AUTH_SECRET` read from `.env.test`, the key the test Worker decrypts them with. The E2E setup signs in with a code computed from the same secret. `adminWithoutTwoFactor` stays without it, for the specs about an admin who still has to set it up;
+4. sets the customer's saved time zone to `Europe/Warsaw`;
+5. writes all of it into one temporary SQL file, executes that file with a single `bun x wrangler d1 execute DB --env test --local --persist-to .wrangler/test --file <file>`, and deletes it.
+
+Playwright's web server runs `db:reset:test` before a local E2E run, unless a server already answers on port 3000, which it reuses. In CI, every E2E job runs `db:reset:test` as a step — the pull-request job, the browser jobs of "E2E (full)" and its Stripe test-mode job — so a seed file that no longer fits the schema fails there.
+
+## Seeding another new database
+
+For any other genuinely empty D1 database, such as a new environment, apply the migrations with that environment's migrate script first, then run the eleven files in the table order above with `wrangler d1 execute`. `db:seed:preview` and `db:seed:production` chain exactly that with `&&`, one `--file` per seed, so you can copy the command and change the `--env` flag, but check twice which database you are pointing at first.
 
 ## Changing a seed file
 
-If you do change one, keep it consistent with the live schema:
+If you do change one, keep it consistent with the current schema:
 
-- Column lists must match the current table exactly. `product-categories.sql`, `product-collections.sql`, `product-attributes.sql`, `products.sql` and `delivery-methods.sql` were last touched well after the others, so the older files are the more likely to have drifted.
-- Keep the ids stable, or update every file that references them.
+- Column lists must match the current table exactly; `bun run db:reset:test` fails on one that does not. A column added after a file was written takes its default, so check whether the seeded rows need a value: `product-variants.sql`, `product-images.sql` and the three join files were last changed in June, `inventory.sql` and `delivery-methods.sql` in October, and the others at the end of September.
+- Keep the ids stable, or update every file that references them, and `e2e/data/catalog.ts`.
 - Keep both locale keys in every `json_object`.
-- Seed files are excluded from lint and from the test suite, so nothing verifies them automatically. The only real check is applying them to an empty database and loading the storefront.
+- No linter reads the SQL, and the unit and integration suites load only `delivery-methods.sql`, in the delivery-method descriptions migration test. What checks the seed files is `bun run db:reset:test` and the E2E specs that rely on the seeded catalog, so run both after a change.
+- A changed seed file reaches only new databases. A database that already has the rows needs a migration as well: commit b77f58dd rewrote the delivery-method descriptions in `delivery-methods.sql` and added `20261010220000_delivery_method_descriptions.sql`, with its test, to update the existing rows.
 
 ## Adding test fixtures instead
 
@@ -113,7 +132,7 @@ beforeAll(() => {
 })
 ```
 
-`createTestD1Database` in `src/platform/testing/mocks/d1.ts` adapts Node's built-in `node:sqlite` to the `D1Database` interface, including `batch()` with a real transaction. `src/modules/_core/utils/__test__/search-conditions.integration.test.ts` is the model. See [Writing tests](/docs/guides/writing-tests).
+`createTestD1Database` in `src/platform/testing/mocks/d1.ts` adapts Node's built-in `node:sqlite` to the `D1Database` interface, including `batch()` with a real transaction. `src/modules/_core/utils/__test__/search-conditions.integration.test.ts` is the model. When a test needs the real schema, `applyMigrationHistory(sqlite)` from `src/platform/testing/mocks/migrations.ts` builds it from the migration files, and the test inserts only the rows it needs; 58 integration suites work that way. See [Writing tests](/docs/guides/writing-tests) and [Testing a data migration](/docs/guides/database-migrations#testing-a-data-migration).
 
 ## Related guides
 

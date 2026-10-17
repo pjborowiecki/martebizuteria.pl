@@ -53,38 +53,67 @@ A statement, branch, function or line left uncovered fails `bun run test:coverag
 
 Use `bun run test`, never `bun test` — the latter is Bun's own runner and knows nothing about the Vitest projects, the setup file or the `test` environment values loaded by `loadEnv("test", …)`.
 
+## End-to-end tests
+
+Playwright drives a built Worker in real browsers. The configuration is `playwright.config.ts`; the specs live in `e2e/specs/`, with page objects, fixtures and data beside them in `e2e/`.
+
+| Task                             | Command                                          | Runs                                              |
+| -------------------------------- | ------------------------------------------------ | ------------------------------------------------- |
+| Install the browsers once        | `bun run test:e2e:install`                       | `playwright install --with-deps chromium webkit`  |
+| Every project                    | `bun run test:e2e`                               | `playwright test`                                 |
+| The Chromium projects CI runs    | `bun run test:e2e:pr`                            | `--project=chromium --project=chromium-shop-wide` |
+| Payments in a Stripe sandbox     | `bun run test:e2e:stripe`                        | `--project=stripe-test-mode`                      |
+| The smoke spec only              | `bun run test:e2e:smoke`                         | `e2e/specs/smoke.spec.ts` in Chromium             |
+| Vitest, then the smoke spec      | `bun run test:all`                               | `bun run test && bun run test:e2e:smoke`          |
+| Watch the browser, or use the UI | `bun run test:e2e:headed`, `bun run test:e2e:ui` | `--headed`, `--ui`                                |
+
+The suite runs against the fourth Wrangler environment, `test`, never against a remote resource:
+
+| Task                            | Command                   | Runs                                                                             |
+| ------------------------------- | ------------------------- | -------------------------------------------------------------------------------- |
+| Build the test Worker           | `bun run build:test`      | `rm -rf dist` → `content` → `CLOUDFLARE_ENV=test vp build --mode test`           |
+| Serve it                        | `bun run start:test`      | `CLOUDFLARE_ENV=test vp preview --mode test --host 127.0.0.1 --port 3000`        |
+| Migrate the local test database | `bun run db:migrate:test` | `wrangler d1 migrations apply DB --env test --local --persist-to .wrangler/test` |
+| Seed it                         | `bun run db:seed:test`    | `bun scripts/seed-test.ts`                                                       |
+| Recreate it                     | `bun run db:reset:test`   | `rm -rf .wrangler/test`, then `db:migrate:test` and `db:seed:test`               |
+
+Outside CI, Playwright's `webServer` runs `bun run db:reset:test && bun run build:test` and then `start:test` itself, unless a server already answers on port 3000, which it reuses — so stop `bun run dev` first. `scripts/seed-test.ts` loads the eleven catalogue seeds and the test accounts from `e2e/data/accounts.ts`, including an admin whose two-factor authentication is already on, because the `test` build requires it as production does. The Worker's entry, `src/platform/testing/worker.ts`, answers Stripe, Resend and InPost ShipX from in-memory emulators. `test:e2e:stripe` is the exception that reaches Stripe: its specs pay by card, BLIK and Przelewy24 in the real Payment Element when `STRIPE_SECRET_KEY` and `VITE_STRIPE_PUBLISHABLE_KEY` hold a sandbox's test keys, and are skipped otherwise. See [Testing](/docs/tooling/testing#end-to-end-tests).
+
 ## Database
 
 All of these live in `src/integrations/drizzle-orm/`. Migration files go to `migrations/`, the schema barrel is `drizzle.schemas.ts`, and the CLI config is `drizzle.config.ts`.
 
-| Task                                 | Command                                                  | Notes                                                                |
-| ------------------------------------ | -------------------------------------------------------- | -------------------------------------------------------------------- |
-| Generate a migration from the schema | `bun run db:generate`                                    | `drizzle-kit generate`, timestamp-prefixed, written to `migrations/` |
-| Apply migrations, remote             | `bun run db:migrate:{development,preview,production}`    | `wrangler d1 migrations apply DB --env <env> --remote`               |
-| Apply migrations to the local store  | `bun run db:migrate:local`                               | `--env development --local`, for `bun run start`                     |
-| List applied migrations              | `bun run db:migrations:{development,preview,production}` | Read-only                                                            |
-| Open Drizzle Studio                  | `bun run db:studio:{development,preview,production}`     | Uses the `CLOUDFLARE_*` values from the matching `.env` file         |
-| Push the schema without a migration  | `bun run db:push:{development,preview,production}`       | Direct schema sync; avoid for anything you want to keep              |
-| Introspect an existing database      | `bun run db:introspect:{development,preview,production}` | Writes `migrations/schema.ts` and `relations.ts`                     |
-| Seed reference data                  | `bun run db:seed:{preview,production}`                   | **Writes to the remote database.** See the warning below             |
+| Task                                              | Command                                                    | Notes                                                                      |
+| ------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Generate a migration from the schema              | `bun run db:generate`                                      | `drizzle-kit generate`, timestamp-prefixed, written to `migrations/`       |
+| Apply migrations, remote                          | `bun run db:migrate:{development,preview,production}`      | `wrangler d1 migrations apply DB --env <env> --remote`                     |
+| Apply migrations to the local store               | `bun run db:migrate:local`                                 | `--env development --local`, for `bun run start`                           |
+| List applied migrations                           | `bun run db:migrations:{development,preview,production}`   | Read-only                                                                  |
+| Open Drizzle Studio                               | `bun run db:studio:{development,preview,production}`       | Uses the `CLOUDFLARE_*` values from the matching `.env` file               |
+| Push the schema without a migration               | `bun run db:push:{development,preview,production}`         | Direct schema sync; avoid for anything you want to keep                    |
+| Introspect an existing database                   | `bun run db:introspect:{development,preview,production}`   | Writes `migrations/schema.ts` and `relations.ts`                           |
+| Seed reference data                               | `bun run db:seed:{preview,production}`                     | **Writes to the remote database.** See the warning below                   |
+| Migrate, seed or recreate the end-to-end database | `bun run db:migrate:test`, `db:seed:test`, `db:reset:test` | Local only, in `.wrangler/test`; see [End-to-end tests](#end-to-end-tests) |
 
 Bare aliases: `db:migrate` → preview, `db:studio` → development, `db:push` → development, `db:pull` → `db:introspect:development`, `db:seed` → preview.
 
-The seed scripts run eleven `wrangler d1 execute … --remote` calls in sequence against the live database — couriers and delivery methods, then categories, collections, attributes, products, variants, inventory, images and the three junction tables. They are not synchronised with the live catalogue. Do not run them against a database that holds real data.
+The seed scripts run eleven `wrangler d1 execute … --remote` calls in sequence against the live database — couriers and delivery methods, then categories, collections, attributes, products, variants, inventory, images and the three junction tables. They are not synchronised with the live catalogue, and ten of them first delete the rows that collide with the fixtures and then overwrite every edit to a seeded row (see [First run](/docs/getting-started/first-run#development-writes-to-the-preview-database)). Do not run them against a database that holds real data.
 
 Migrations are applied by `wrangler d1 migrations apply` in filename order. There are currently 101 `.sql` files in `migrations/`, while Drizzle's own `meta/_journal.json` lists 52 entries — the journal is no longer authoritative, and the filename order is what actually runs.
 
 ## Build, preview and deploy
 
-| Task                           | Command                     | Runs                                                                                                     |
-| ------------------------------ | --------------------------- | -------------------------------------------------------------------------------------------------------- |
-| Build the preview Worker       | `bun run build:preview`     | `rm -rf dist` → `content` → `CLOUDFLARE_ENV=preview vp build --mode preview` → `verify-build.ts preview` |
-| Build the production Worker    | `bun run build:production`  | The same with `production`                                                                               |
-| Build (alias)                  | `bun run build`             | `build:preview`                                                                                          |
-| Serve the latest build         | `bun run start`             | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                          |
-| Serve the latest build (alias) | `bun run preview`           | `start`                                                                                                  |
-| Deploy preview                 | `bun run deploy:preview`    | See [Deploy a preview](/docs/getting-started/deploy-preview)                                             |
-| Deploy production              | `bun run deploy:production` | The same against the `production` environment                                                            |
+| Task                             | Command                     | Runs                                                                                                     |
+| -------------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Build the preview Worker         | `bun run build:preview`     | `rm -rf dist` → `content` → `CLOUDFLARE_ENV=preview vp build --mode preview` → `verify-build.ts preview` |
+| Build the production Worker      | `bun run build:production`  | The same with `production`                                                                               |
+| Build (alias)                    | `bun run build`             | `build:preview`                                                                                          |
+| Serve the latest build           | `bun run start`             | `CLOUDFLARE_ENV=preview vp preview --mode preview --host 127.0.0.1 --port 3000`                          |
+| Serve the latest build (alias)   | `bun run preview`           | `start`                                                                                                  |
+| Build the end-to-end test Worker | `bun run build:test`        | `rm -rf dist` → `content` → `CLOUDFLARE_ENV=test vp build --mode test`, without `verify-build.ts`        |
+| Serve it                         | `bun run start:test`        | `CLOUDFLARE_ENV=test vp preview --mode test --host 127.0.0.1 --port 3000`                                |
+| Deploy preview                   | `bun run deploy:preview`    | See [Deploy a preview](/docs/getting-started/deploy-preview)                                             |
+| Deploy production                | `bun run deploy:production` | The same against the `production` environment                                                            |
 
 Both builds end in a verification script rather than a warning. `scripts/verify-build.ts` fails if the built Worker targets the wrong environment, if `dist/client/fonts` is missing, if there is no client JavaScript or CSS, or if any client asset still imports `cloudflare:workers` or a `node:` builtin.
 
@@ -127,7 +156,7 @@ bun run test:coverage
 bun run build:preview
 ```
 
-Run those three before opening a pull request and there should be no surprises. The preview deploy re-runs `bun run check` before building, and production deploys only a commit whose CI passed, so a formatting slip blocks a deploy as well as a merge.
+That is the `verify` job. Its second job, `e2e`, calls `.github/workflows/e2e-reusable.yml` for Chromium: `bun run db:reset:test`, `bun run build:test`, then the `chromium` and `chromium-shop-wide` projects, which `bun run test:e2e:pr` reproduces locally. Run all four before opening a pull request and there should be no surprises. The **E2E (full)** workflow adds WebKit on every push to `main` (Chromium too on its Monday 03:15 UTC schedule and when started by hand) and runs the `stripe-test-mode` project with the sandbox keys in the `E2E_STRIPE_SECRET_KEY` and `E2E_STRIPE_PUBLISHABLE_KEY` repository secrets. The preview deploy re-runs `bun run check` before building, and production deploys only a commit whose CI passed, so a formatting slip blocks a deploy as well as a merge.
 
 ## Related
 

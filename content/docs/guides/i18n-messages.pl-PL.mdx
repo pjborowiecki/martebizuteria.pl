@@ -1,11 +1,11 @@
 ---
 title: "Tłumaczenia"
-description: "Dodawanie i zmiana tekstów widocznych dla użytkownika: pliki przestrzeni nazw, deklaracje na trasach, potok ładowania, formatowanie i ustalanie języka."
+description: "Dodawanie i zmiana tekstów widocznych dla użytkownika: pliki przestrzeni nazw, deklaracje na trasach, potok ładowania, formatowanie według formatu i strefy czasowej użytkownika oraz ustalanie języka."
 ---
 
-M'Arte jest dwujęzyczne: polski (`pl-PL`) jest domyślny, a angielski (`en-US`) drugorzędny. Tłumaczenia są podzielone na 56 plików przestrzeni nazw na język, w katalogach `messages/pl-PL/` i `messages/en-US/`, ładowanych per trasa i dostarczanych przez `use-intl`.
+M'Arte jest dwujęzyczne: polski (`pl-PL`) jest domyślny, a angielski (`en-US`) drugorzędny. Tłumaczenia są podzielone na 60 plików przestrzeni nazw na język, w katalogach `messages/pl-PL/` i `messages/en-US/`, ładowanych per trasa i dostarczanych przez `use-intl`.
 
-`src/integrations/use-intl/i18n.config.ts` to cała konfiguracja:
+`src/integrations/use-intl/i18n.config.ts` konfiguruje języki:
 
 ```ts
 const COOKIE_NAME = "marte_locale"
@@ -17,19 +17,21 @@ const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
 const DEFAULT_TIMEZONE = "Europe/Warsaw"
 ```
 
+Wygląd dat, liczb i cen konfiguruje się osobno, w `src/integrations/use-intl/i18n.display.ts` — zobacz [Formatowanie liczb, dat i pieniędzy](#formatowanie-liczb-dat-i-pieniędzy). `DEFAULT_TIMEZONE` do tego nie należy: używają go tylko testowe providery i znacznik czasu w e-mailu o odstąpieniu od umowy.
+
 ## Przestrzenie nazw
 
 Przestrzeń nazw to jeden plik JSON, a jego nazwa _jest_ jego ścieżką z kropkami. `messages/pl-PL/pages.admin.catalog.categories.json` to przestrzeń `pages.admin.catalog.categories`, dostępna jako `useTranslations("pages.admin.catalog.categories")`.
 
-Tych 56 plików dzieli się na pięć grup:
+Tych 60 plików dzieli się na pięć grup:
 
-| Prefiks       | Przykłady                                                                                                                                                                  |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `common`      | `common.json` — tak, nie, potwierdź, anuluj, ładowanie                                                                                                                     |
-| `components.` | `components.custom`, `components.datagrid`, `components.defaults`, `components.shadcn`                                                                                     |
-| `emails.`     | `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.change-email`, `emails.account-deleted`                       |
-| `errors`      | `errors.json` — zdania pod `action.<CODE>`                                                                                                                                 |
-| `pages.`      | Po jednym na stronę albo jej sekcję: `pages.home`, `pages.product`, `pages.checkout`, `pages.admin`, `pages.admin.catalog.products`, `pages.auth.sign-in`, `pages.docs`, … |
+| Prefiks       | Przykłady                                                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common`      | `common.json` — tak, nie, potwierdź, anuluj, ładowanie                                                                                                                                |
+| `components.` | `components.custom`, `components.datagrid`, `components.defaults`, `components.shadcn`                                                                                                |
+| `emails.`     | 19 plików, po jednym na szablon e-maila: `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.newsletter-campaign`, …         |
+| `errors`      | `errors.json` — zdania pod `action.<CODE>`                                                                                                                                            |
+| `pages.`      | 35 plików, po jednym na stronę albo jej sekcję: `pages.home`, `pages.product`, `pages.checkout`, `pages.admin`, `pages.admin.catalog.products`, `pages.auth.sign-in`, `pages.docs`, … |
 
 Oba katalogi językowe zawsze trzymają dokładnie ten sam zestaw nazw plików. Dodanie pliku tylko do jednego oznacza, że `loadNamespace` rzuci wyjątek dla brakującego języka:
 
@@ -75,11 +77,11 @@ export const Route = createFileRoute("/admin/catalog/categories")({
 
 `getRouteNamespaces(matches)` łączy deklaracje wszystkich dopasowanych tras z `ROOT_NAMESPACES`, więc strona dziedziczy przestrzenie swoich układów. `/admin/catalog/categories` dostaje sześć przestrzeni głównych, plus `pages.admin` i `components.datagrid` z `admin.tsx`, plus `pages.admin.catalog` i `pages.admin.catalog.localePicker` z `admin.catalog.tsx`, plus własne trzy.
 
-**Zapomniana deklaracja przestrzeni nazw zawodzi przy renderowaniu, nie przy budowaniu.** Jeśli `t("cokolwiek")` zgłasza brak komunikatu, deklaracja przestrzeni nazw jest pierwszą rzeczą do sprawdzenia.
+**Zapomniana deklaracja przestrzeni nazw wychodzi przy renderowaniu, nie przy budowaniu.** use-intl nie rzuca wyjątku: `IntlProvider` nie ustawia `onError` ani `getMessageFallback`, więc domyślne zachowanie use-intl zgłasza błąd `MISSING_MESSAGE` przez `console.error` i zamiast tekstu renderuje ścieżkę klucza, na przykład `pages.admin.catalog.categories.title`. Gdy strona pokazuje ścieżki kluczy, deklaracja przestrzeni nazw jest pierwszą rzeczą do sprawdzenia, a sam klucz drugą.
 
 ## Jak tłumaczenia docierają do komponentu
 
-1. `beforeLoad` trasy głównej wywołuje `preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient })`, które rozgrzewa po jednym zapytaniu na przestrzeń nazw.
+1. `beforeLoad` trasy głównej wywołuje `preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient })`, które rozgrzewa po jednym zapytaniu na przestrzeń nazw, a obok ładuje `displayPreferencesQuery`.
 2. Każda przestrzeń to wpis TanStack Query z `gcTime: Infinity` i `staleTime: Infinity`, kluczowany `["messages", locale, namespace]`. Przestrzeń pobiera się raz na język na sesję.
 3. `TranslationsProvider` w `src/providers/translations-provider.tsx` odczytuje dopasowane przestrzenie przy każdej nawigacji i składa je razem:
 
@@ -95,7 +97,7 @@ const messages = useSuspenseQueries({
 ```
 
 4. `buildMessageTree` zamienia płaską listę par `["pages.admin.catalog.categories", {...}]` w zagnieżdżony obiekt, jakiego oczekuje `use-intl`, dzieląc każdą przestrzeń po kropkach, zagnieżdżając od środka i scalając głęboko.
-5. `IntlProvider` otrzymuje to drzewo, język i strefę czasową wyznaczoną z `displayPreferencesQuery`.
+5. `IntlProvider` otrzymuje to drzewo, język i strefę czasową wyznaczoną z `displayPreferencesQuery`; wewnątrz niego `DisplayPreferencesContext` przekazuje wyznaczony format i strefę czasową hookom formatującym.
 
 Ponieważ właściwy JSON ładuje się przez `import.meta.glob`, każda przestrzeń nazw jest osobnym fragmentem paczki. Gość witryny sklepowej nigdy nie pobiera napisów katalogu w panelu.
 
@@ -109,9 +111,9 @@ t("columns.createdAt")
 t("form.validation.titleTooLong")
 ```
 
-`useTranslations()` bez argumentu zwraca tłumacza głównego przyjmującego pełne ścieżki — tego używają `useActionError` i `ValidationFieldError`, żeby dostać się do `errors.action.*` i `pages.auth.validations.*` z dowolnego miejsca.
+`useTranslations()` bez argumentu zwraca tłumacza głównego przyjmującego pełne ścieżki. `useActionError` używa go, żeby z dowolnego miejsca dostać się do `errors.action.*` i `pages.auth.errors.*`, a `ValidationFieldError` — żeby dostać się do `<namespace>.<message>` w przekazanej mu przestrzeni walidacji, na przykład `pages.auth.validations`.
 
-`t.has(key)` sprawdza istnienie klucza przed użyciem — `ValidationFieldError` opiera się na tym, żeby sięgnąć po komunikat ogólny, zamiast rzucić wyjątek.
+`t.has(key)` sprawdza istnienie klucza przed użyciem — `ValidationFieldError` opiera się na tym, żeby sięgnąć po ogólne zdanie `errors.action.VALIDATION`, zamiast wyrenderować ścieżkę klucza.
 
 Placeholdery ICU działają normalnie:
 
@@ -123,7 +125,17 @@ tLocale("incompleteToastDescription", {
 
 ## Formatowanie liczb, dat i pieniędzy
 
-Nigdy nie wywołuj `Intl` bezpośrednio w komponencie. `useFormatter()` z `src/hooks/use-display-format.ts` formatuje według formatu i strefy czasowej użytkownika, które mogą się różnić od języka strony; własne `useFormatter` z use-intl użyłoby języka strony:
+Język strony i format wyświetlania to osobne ustawienia. Język, `pl-PL` albo `en-US`, wynika ze ścieżki i wybiera tłumaczenia. **Format**, który decyduje o wyglądzie dat i liczb, oraz **strefa czasowa** to osobne preferencje wyświetlania, więc odwiedzający może czytać polską witrynę z brytyjskimi datami albo angielską w czasie warszawskim.
+
+Nigdy nie wywołuj `Intl` bezpośrednio w komponencie. Używaj hooków z `src/hooks/use-display-format.ts`:
+
+| Hook                   | Zwraca                                                                        | Do czego                                                                   |
+| ---------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `useFormatter()`       | `createFormatter({ locale: formatLocale, timeZone })` z use-intl, memoizowane | Daty, godziny, liczby                                                      |
+| `useFormatLocale()`    | Format, na przykład `en-GB`                                                   | Funkcje pomocnicze przyjmujące locale, na przykład `formatPrice`           |
+| `useDisplayTimeZone()` | Strefę czasową IANA, na przykład `Europe/Warsaw`                              | Rachunki kalendarzowe, na przykład który dzień jest dla użytkownika „dziś” |
+
+Importuj `useFormatter` z tego pliku, nie z `use-intl/react`: własne `useFormatter` z use-intl formatuje według języka strony.
 
 ```tsx
 const format = useFormatter()
@@ -131,23 +143,86 @@ const format = useFormatter()
 format.dateTime(new Date(getValue()), { dateStyle: "medium" })
 ```
 
-Dla pieniędzy używaj funkcji z `src/modules/_core/utils/currency.ts` razem ze stałymi z `src/modules/_core/constants/currency.ts`, gdzie `CURRENCIES` przechowuje kod numeryczny i wykładnik ISO każdej waluty. Ceny są zapisywane jako całkowite jednostki podrzędne — `1499` to 14,99 zł — więc formatowanie jest przeliczeniem, nie rzutowaniem.
+Ceny są zapisywane jako całkowite jednostki podrzędne — `1499` to 14,99 zł — więc formatowanie jest przeliczeniem, nie rzutowaniem. Formatuj je przez `formatPrice(amountInMinorUnits, currency, locale)` z `src/modules/_core/utils/currency.ts`, przekazując format, tak jak `src/presentation/components/custom/checkout/components/checkout-success.tsx`:
+
+```tsx
+const formatLocale = useFormatLocale()
+
+formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale)
+```
+
+Pozostałe funkcje walutowe leżą w tym samym pliku, a stałe w `src/modules/_core/constants/currency.ts`, gdzie `CURRENCIES` przechowuje kod numeryczny i wykładnik ISO każdej waluty.
+
+Dla daty, którą się oblicza, a nie wyświetla, bierz strefę z `useDisplayTimeZone()`. Wybór własnego zakresu na pulpicie panelu ustala z nim „dziś” użytkownika:
+
+```tsx
+const timeZone = useDisplayTimeZone()
+const todayIso = formatCalendarDateToIsoDate(toCalendarDate(new Date(), timeZone))
+```
+
+### Skąd biorą się preferencje
+
+`src/integrations/use-intl/i18n.display.ts` przechowuje konfigurację wyświetlania:
+
+```ts
+export const FALLBACK_FORMAT_LOCALE = "en-US"
+
+export const FALLBACK_TIME_ZONE = "UTC"
+
+export const TIME_ZONE_COOKIE_NAME = "marte_time_zone"
+```
+
+Eksportuje też `FORMAT_LOCALES`, osiemnaście formatów do wyboru dla użytkownika. `resolveDisplayPreferences` wyznacza każdą preferencję osobno, w tej kolejności:
+
+1. **Zapisana** u zalogowanego użytkownika, w kolumnach `formatLocale` i `timezone`. `toSavedDisplayPreferences` pomija wartość, której nie przyjmuje `Intl`.
+2. **Wykryta** z żądania przez `detectDisplayPreferences`: format z pierwszego użytecznego wpisu `Accept-Language`, a strefa czasowa z ciasteczka `marte_time_zone`, a w jego braku ze strefy, którą Cloudflare podaje dla lokalizacji odwiedzającego (`request.cf.timezone`).
+3. **Wartości zastępcze**: `en-US` i `UTC`.
+
+Przeglądarka poprawia wykrytą strefę. Po hydratacji strony `TranslationsProvider` zapisuje własną strefę przeglądarki w ciasteczku `marte_time_zone`, a gdy różni się ona od wykrytej, aktualizuje zapisane w pamięci podręcznej `displayPreferencesQuery` (klucz `["i18n", "displayPreferences"]`). Użytkownik bez zapisanej strefy od razu widzi czas w strefie przeglądarki, a następny render na serwerze wykrywa ją z ciasteczka.
+
+Użytkownik zmienia preferencje na stronie profilu konta, `/account/profile`, w sekcji **Preferencje**, w polach **Strefa czasowa** i **Format dat i liczb**; każde z nich ma opcję **Automatycznie (…)**, która podaje wykrytą wartość. Wybór wartości zapisuje ją przez `updateDisplayPreference` (`src/modules/user/use-cases/update-display-preference.ts`); wybór opcji automatycznej czyści zapisaną wartość. Zapis unieważnia wszystkie zapytania, więc dane sformatowane przez serwer są pobierane ponownie w nowym formacie.
+
+### Na serwerze
+
+Funkcja serwerowa, która formatuje datę albo filtruje po niej, czyta te same preferencje przez `resolveRequestDisplayPreferences()` z `src/integrations/use-intl/i18n.display-preferences.ts`, czyli `createServerOnlyFn` zwracające `{ formatLocale, timeZone }` dla bieżącego żądania: preferencje zapisane, a w ich braku wykryte. Filtry dat przekazują strefę czasową do `buildAdminDateTimeFilterSql(column, filter, timeZone)` z `src/modules/_core/utils/datetime-column-filter.server.ts`, więc „3 października” obejmuje 3 października od północy do północy w strefie czasowej administratora. Z `src/modules/audit-log/use-cases/list-audit-logs.ts`:
+
+```ts
+.handler(async ({ data }): Promise<AdminAuditLogsPageResult> => {
+  const preferences = await resolveRequestDisplayPreferences()
+  const params = buildAdminAuditLogsListParams(data, preferences.timeZone)
+  const { rows, total } = await auditLogGetAdminAuditLogsPage(params)
+  const items = rows.map((row) => toAdminAuditListItem(row, preferences))
+
+  return buildAdminAuditLogsPageResult(items, total, params)
+})
+```
+
+Ten sam wzorzec stosują przypadki użycia list, eksportów, pulpitu i klientów w panelu. Ich testy zastępują tę funkcję przez `src/platform/testing/mocks/display-preferences.ts`; zobacz [Pisanie testów](/docs/guides/writing-tests#testowanie-funkcji-serwerowej).
 
 ## Typowanie pliku tłumaczeń
 
-Kiedy loader potrzebuje wartości komunikatu, a nie tłumacza w komponencie, zaimportuj plik angielski jako **typ** i przekaż go do `messagesQueryOptions`:
+Kiedy loader potrzebuje wartości komunikatu, a nie tłumacza w komponencie, zaimportuj plik angielski jako **typ** i przekaż go do `messagesQueryOptions`. Z `src/routes/_storefront.products.index.tsx`:
 
 ```ts
 import type productsMessages from "~/messages/en-US/pages.products.json"
 
 const [messages] = await Promise.all([
   context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
+  prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, {
+    search: deps,
+  }),
 ])
 
-return { description: messages.description, title: messages.title }
+const t = createTranslator({ locale: context.locale, messages })
+
+return {
+  description: messages.description,
+  structuredData: buildBreadcrumbStructuredData({ leaf: messages.title, locale: context.locale, sections: [] }),
+  title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
+}
 ```
 
-Plik angielski jest źródłem typów dla obu języków, co jest kolejnym powodem, żeby oba katalogi pozostały strukturalnie identyczne. W ten sposób tłumaczą się tytuły stron i opisy meta — zobacz `src/routes/_storefront.products.index.tsx`.
+Plik angielski jest źródłem typów dla obu języków, co jest kolejnym powodem, żeby oba katalogi pozostały strukturalnie identyczne. W ten sposób tłumaczą się tytuły stron, opisy meta i dane strukturalne; `createTranslator` z `use-intl` obsługuje komunikat z placeholderami, tutaj tytuł wyników wyszukiwania.
 
 ## Ustalanie języka
 
@@ -175,10 +250,13 @@ Przypadki użycia wysyłające e-maile, na przykład `src/modules/verification/u
 1. Utwórz `messages/pl-PL/<namespace>.json` i `messages/en-US/<namespace>.json` z tymi samymi kluczami.
 2. Dodaj przestrzeń nazw do `staticData.namespaces` na trasie, która jej potrzebuje — na trasie układu, jeśli dzieli ją kilka stron.
 3. Użyj `useTranslations("<namespace>")` w komponencie.
-4. Uruchom `bun run test`. Testy i18n w `src/integrations/use-intl/__test__/` pokrywają potok ładowania, a testy komponentów budują swoje drzewo tłumaczeń ze wszystkich plików w `messages/en-US/` przez `src/platform/testing/lib/messages.ts` — więc klucz używany przez komponent, którego brakuje w katalogu, tam zawiedzie.
+4. Uruchom `bun run test`. `src/integrations/use-intl/__test__/i18n.messages.test.ts` ładuje każdą przestrzeń nazw obu języków przez loader używany w aplikacji i zawodzi, gdy brakuje pliku polskiego albo brakuje w nim klucza, który ma plik angielski. Testy komponentów budują swoje drzewo tłumaczeń ze wszystkich plików w `messages/en-US/` przez `src/platform/testing/lib/messages.ts`, ale brakujący tam klucz renderuje się tylko jako jego ścieżka, więc test komponentu wyłapie go wtedy, gdy sprawdza angielski tekst.
+5. Ścisłym sprawdzianem jest zestaw end-to-end: automatyczna fikstura `checkTranslations` w `e2e/fixtures/test.ts` oblewa każdy test, którego strona zaloguje w konsoli przeglądarki `MISSING_MESSAGE`, `INVALID_MESSAGE`, `FORMATTING_ERROR` albo `INVALID_KEY`.
 
 ## Powiązane przewodniki
 
 - [Formularze i walidacja](/docs/guides/forms-and-validation)
 - [Dodawanie strony panelu](/docs/guides/add-an-admin-page)
 - [Stan w adresie URL](/docs/guides/url-state)
+- [Pisanie testów](/docs/guides/writing-tests)
+- [Internacjonalizacja](/docs/features/internationalization)
