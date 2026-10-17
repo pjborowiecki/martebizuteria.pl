@@ -1,4 +1,4 @@
-import { type JSX, useId, useState } from "react"
+import { type JSX, useState } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 import { useTranslations } from "use-intl/react"
@@ -9,13 +9,13 @@ import { type User } from "~/src/modules/user/user.types"
 
 import { useDebounce } from "~/src/hooks/use-debounce"
 
-import { Badge } from "~/src/presentation/components/shadcn/badge"
 import { Button } from "~/src/presentation/components/shadcn/button"
+import { Field, FieldDescription } from "~/src/presentation/components/shadcn/field"
 import { Input } from "~/src/presentation/components/shadcn/input"
-import { Label } from "~/src/presentation/components/shadcn/label"
 
-import { ADMIN_DIALOG_LABEL_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminDialogNote } from "~/src/presentation/components/custom/pages/admin/admin-dialog-note"
+import { CatalogFormFieldLabel } from "~/src/presentation/components/custom/pages/admin/catalog/form/components/catalog-form-field-label"
+import { SettingsStatusBadge } from "~/src/presentation/components/custom/pages/admin/settings/settings-status-badge"
 
 const SEARCH_DEBOUNCE_MS = 300
 
@@ -29,8 +29,8 @@ const CandidateRow = ({ candidate, onChoose }: Readonly<CandidateRowProps>): JSX
       <div className="min-w-0 space-y-1">
         <p className="truncate text-[13px] leading-5 font-medium text-foreground">{candidate.name}</p>
         <p className="truncate text-[12px] text-muted-foreground">{candidate.email}</p>
-        {!candidate.emailVerified && <Badge variant="secondary">{t("unverified")}</Badge>}
-        {candidate.banned && <Badge variant="destructive">{t("banned")}</Badge>}
+        {!candidate.emailVerified && <SettingsStatusBadge label={t("unverified")} tone="warning" />}
+        {candidate.banned && <SettingsStatusBadge label={t("banned")} tone="negative" />}
       </div>
       <Button
         aria-label={t("chooseLabel", { name: candidate.name })}
@@ -75,32 +75,30 @@ const CandidateResults = ({ candidates, onChoose }: Readonly<CandidateResultsPro
 
 export const TeamCandidateSearch = ({ onChoose }: Readonly<Pick<CandidateRowProps, "onChoose">>): JSX.Element => {
   const t = useTranslations("pages.admin.settings.team.add")
-  const inputId = useId()
   const [search, setSearch] = useState("")
   const term = useDebounce(search, SEARCH_DEBOUNCE_MS).trim()
   const searching = term.length >= TEAM_CANDIDATE_SEARCH_MIN_LENGTH
   const { data: candidates } = useQuery({ ...searchTeamCandidatesQuery(term), enabled: searching })
 
   return (
-    <div className="space-y-4 py-4">
-      <div className="space-y-2">
-        <Label className={ADMIN_DIALOG_LABEL_CLASS} htmlFor={inputId}>
-          {t("search")}
-        </Label>
+    <>
+      <Field className="gap-2">
+        <CatalogFormFieldLabel label={t("search")} required />
         <Input
+          aria-label={t("search")}
           autoComplete="off"
-          id={inputId}
           onChange={(event) => {
             setSearch(event.target.value)
           }}
           placeholder={t("searchPlaceholder")}
           type="search"
           value={search}
+          variant="sheet"
         />
-        <p className="text-[12px] text-muted-foreground">{t("searchHint")}</p>
-      </div>
+        <FieldDescription>{t("searchHint")}</FieldDescription>
+      </Field>
       {searching && <CandidateResults candidates={candidates} onChoose={onChoose} />}
-    </div>
+    </>
   )
 }
 

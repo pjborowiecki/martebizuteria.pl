@@ -2,6 +2,7 @@ import { type JSX, useCallback } from "react"
 
 import { useRouter } from "@tanstack/react-router"
 import { createClientOnlyFn } from "@tanstack/react-start"
+import { LogIn } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
 import { signOut } from "~/src/integrations/better-auth/auth.client"
@@ -28,7 +29,8 @@ export const SignInAgainButton = (): JSX.Element => {
   }, [router])
 
   return (
-    <Button className="shrink-0" onClick={signInAgain} size="sm" type="button" variant="outline">
+    <Button className="shrink-0 gap-1.5" onClick={signInAgain} size="sm" type="button" variant="outline">
+      <LogIn className="size-3.5" strokeWidth={1.5} />
       {t("signInAgain")}
     </Button>
   )
