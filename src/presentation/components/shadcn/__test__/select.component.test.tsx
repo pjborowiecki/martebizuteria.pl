@@ -82,3 +82,23 @@ describe("SelectContent on a page driven by Lenis", () => {
     expect(isWheelLeftToTheBrowser(screen.getByText("Page copy"))).toBe(false)
   })
 })
+
+describe("Select sizing", () => {
+  it("lets the open list grow to its longest option, so a long label never runs under the check mark", async () => {
+    renderSelectOnSmoothPage({ defaultOpen: true })
+
+    const list = await screen.findByRole("listbox")
+
+    expect(list.closest("[data-slot=select-content]")).toHaveClass(
+      "w-max",
+      "max-w-(--available-width)",
+      "min-w-[max(var(--anchor-width),9rem)]",
+    )
+  })
+
+  it("cuts a chosen value too long for the field off with an ellipsis", () => {
+    renderSelectOnSmoothPage({ defaultOpen: false })
+
+    expect(screen.getByRole("combobox", { name: "Zone" }).querySelector("[data-slot=select-value]")).toHaveClass("min-w-0", "truncate")
+  })
+})
