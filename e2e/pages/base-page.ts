@@ -62,7 +62,7 @@ export class BasePage {
     await expect(async () => {
       await this.page.mouse.wheel(0, WHEEL_STEP_PX)
       await expect(target).toBeVisible({ timeout: WHEEL_STEP_SETTLE_MS })
-    }).toPass({ timeout: SCROLL_TO_TIMEOUT_MS })
+    }).toPass({ intervals: [0], timeout: SCROLL_TO_TIMEOUT_MS })
   }
 
   async leaveTab(): Promise<void> {
