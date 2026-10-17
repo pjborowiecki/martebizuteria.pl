@@ -25,7 +25,7 @@ Loader zakładki konta wczytuje z wyprzedzeniem `getCustomerProfileQuery()`. Loa
 
 ## Układ
 
-`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renderuje nagłówek panelu z tytułem, opisem i `SettingsTabs`, czyli linkami `AdminHeaderTabLink`, z których trasa zaznacza aktywny. Treść to jedna kolumna kart `SettingsCard` o szerokości najwyżej `max-w-3xl`. Karta ma tytuł, opis, opcjonalną akcję po prawej i, pod linią podziału, swoje wiersze; `SettingsRow` to jeden opisany wiersz z opcjonalną wartością i akcją.
+`SettingsPageLayout` (`src/presentation/components/custom/pages/admin/settings/settings-page-layout.tsx`) renderuje nagłówek panelu z tytułem, opisem i `SettingsTabs`, czyli linkami `AdminHeaderTabLink`, z których trasa zaznacza aktywny. Treść to jedna kolumna kart `SettingsCard` na całą szerokość treści strony, jak na pozostałych stronach panelu; od średnich ekranów karta układa pola formularza w dwóch kolumnach. Karta ma tytuł, opis, opcjonalną akcję po prawej i, pod linią podziału, swoje wiersze; `SettingsRow` to jeden opisany wiersz z opcjonalną wartością i akcją.
 
 Pasek boczny zaznacza **Ustawienia** jako aktywne na każdej stronie `/admin/settings/*`.
 

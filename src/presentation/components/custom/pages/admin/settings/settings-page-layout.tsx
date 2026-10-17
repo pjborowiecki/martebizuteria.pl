@@ -14,7 +14,7 @@ export const SettingsPageLayout = ({ active, children }: Readonly<SettingsPageLa
     <>
       <AdminHeader description={t("description")} tabs={tabs} title={t("title")} />
       <div className={ADMIN_PAGE_BODY_CLASS}>
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-5 sm:gap-6">{children}</div>
+        <div className="flex w-full flex-col gap-5 sm:gap-6">{children}</div>
       </div>
     </>
   )
