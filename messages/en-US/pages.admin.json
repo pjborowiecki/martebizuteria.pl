@@ -1232,7 +1232,7 @@
       "selected": "{count} selected",
       "delete": "Delete ({count})",
       "confirmTitle": "Delete coupons?",
-      "confirmDescription": "{count} code(s) will stop working immediately. Orders that already used them are unaffected.",
+      "confirmDescription": "{count} code(s) will stop working immediately. Orders that used them keep their discount, but their uses no longer count in the Redemptions and Given away statistics.",
       "cancel": "Cancel",
       "confirm": "Delete"
     },
@@ -1305,7 +1305,7 @@
     },
     "deleteDialog": {
       "title": "Delete this coupon?",
-      "description": "{code} will stop working immediately. Orders that already used it are unaffected.",
+      "description": "{code} will stop working immediately. Orders that used it keep their discount, but its uses no longer count in the Redemptions and Given away statistics.",
       "cancel": "Keep coupon",
       "confirm": "Delete coupon"
     }

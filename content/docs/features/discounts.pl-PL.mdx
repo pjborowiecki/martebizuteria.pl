@@ -91,6 +91,7 @@ src/modules/discount/
 │   ├── discount.accessors.integration.test.ts
 │   ├── discount.checkout.server.test.ts
 │   ├── discount.claim.server.integration.test.ts
+│   ├── discount.delete.integration.test.ts
 │   ├── discount.persist.utils.test.ts
 │   ├── discount.redeem.server.integration.test.ts
 │   ├── discount.redemption-account-migration.integration.test.ts
@@ -313,7 +314,7 @@ To szwy, które zostawia obecny kod, a nie rekomendacje produktowe:
 1. **Kolumna koszyka.** `cart.discount_id` nie jest ani zapisywana, ani czytana; zastosowany kod żyje tylko w formularzu kasy.
 2. **Uprawnienia.** W `src/integrations/better-auth/auth.access.ts` nie ma zasobu `discount`, więc funkcje kuponów korzystają z uprawnień `order` do odczytu i aktualizacji.
 3. **Unieważnianie w czasie rzeczywistym.** `ADMIN_REALTIME_QUERY_PREFIXES` nie ma wpisu `DISCOUNT_QUERY_KEYS`, a w `realtime-invalidation.catalog.server.ts` nie ma `scheduleDiscountInvalidation()`, więc ani zmiana wprowadzona w innej przeglądarce, ani wykorzystanie zapisane przez opłacony checkout nie docierają do już otwartej strony kuponów; odświeża ją przycisk odświeżania.
-4. **Usuwanie.** Usunięcie kodu usuwa też jego wiersze `discount_redemption` i `discount_claim` (`onDelete: "cascade"`), więc jego wykorzystania znikają też z kart wykorzystań i udzielonych rabatów. `checkout.discount_id` i `order.discount_id` nie mają klucza obcego i zachowują stary identyfikator. Checkout opłacony kodem usuniętym w międzyczasie zapisuje rabat odjęty przez Stripe, ale bez wykorzystania.
+4. **Usuwanie.** Usunięcie kodu usuwa też jego wiersze `discount_redemption` i `discount_claim` (`onDelete: "cascade"`), więc jego wykorzystania znikają też z kart wykorzystań i udzielonych rabatów. Oba okna usuwania to mówią: kod przestaje działać od razu, a zamówienia, w których go użyto, zachowują rabat, ale te wykorzystania przestają się liczyć w tych statystykach. `checkout.discount_id` i `order.discount_id` nie mają klucza obcego i zachowują stary identyfikator, a `order.discount_total` i sumy zamówienia się nie zmieniają, co sprawdza `discount.delete.integration.test.ts`. Checkout opłacony kodem usuniętym w międzyczasie zapisuje rabat odjęty przez Stripe, ale bez wykorzystania. Gdy wykorzystań już nie ma, baza sklepu nie zapisuje, którego kodu użyło zamówienie; zostaje to tylko w metadanych `discountCode` jego sesji Stripe. Zachowanie tej historii wymagałoby archiwizowania kodu zamiast usuwania.
 5. **Rezerwacje w panelu.** Strona kuponów liczy tylko wykorzystania: kolumna wykorzystania, status i karta aktywnych kodów czytają `usage_count`, więc kod, którego wszystkie pozostałe wykorzystania rezerwują otwarte checkouty, nadal wygląda, jakby miał wolne wykorzystania.
 
 ## Powiązane strony
