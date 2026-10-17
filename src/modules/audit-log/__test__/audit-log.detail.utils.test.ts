@@ -157,6 +157,33 @@ describe("describeAuditLogDetail for changes", () => {
     })
   })
 
+  it("reads what an edit of a delivery method changed: its names, price and whether the checkout offers it", () => {
+    expect(
+      describeRow(AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED, null, {
+        changed: ["nameEn", "price", "availability"],
+        new: { availability: "hidden", nameEn: "Express courier", namePl: "Kurier InPost", price: 2499 },
+        old: { availability: "offered", nameEn: "InPost courier", namePl: "Kurier InPost", price: 1999 },
+      }),
+    ).toStrictEqual({
+      changes: [
+        { field: "nameEn", from: "InPost courier", to: "Express courier" },
+        { field: "price", from: 1999, to: 2499 },
+        { field: "availability", from: "offered", to: "hidden" },
+      ],
+      kind: "changes",
+    })
+  })
+
+  it("reads a changed shop setting, such as a free delivery threshold turned on", () => {
+    expect(
+      describeRow(AUDIT_LOG_ACTION.SETTINGS_UPDATED, null, {
+        changed: ["freeDeliveryThreshold"],
+        new: { freeDeliveryThreshold: 30_000 },
+        old: {},
+      }),
+    ).toStrictEqual({ changes: [{ field: "freeDeliveryThreshold", from: undefined, to: 30_000 }], kind: "changes" })
+  })
+
   it("keeps the text of a change entry without change metadata", () => {
     expect(describeRow(AUDIT_LOG_ACTION.PRODUCT_UPDATED, "Changed the price")).toStrictEqual({ kind: "text", text: "Changed the price" })
   })
