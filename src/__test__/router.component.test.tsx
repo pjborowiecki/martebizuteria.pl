@@ -6,11 +6,12 @@ import type * as StartServer from "@tanstack/react-start/server"
 import { cleanup, render, screen } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { currentRequest, devtools, requestContext, session, sync } = vi.hoisted(() => ({
+const { currentRequest, devtools, requestContext, session, staleChunk, sync } = vi.hoisted(() => ({
   currentRequest: vi.fn<() => Request>(() => new Request("https://marte.test/cart")),
   devtools: vi.fn(() => null),
   requestContext: vi.fn<() => { nonce: string } | undefined>(() => ({ nonce: "cmVxdWVzdC1ub25jZQ==" })),
   session: { clearCacheOnUserChange: vi.fn() },
+  staleChunk: { listenForStaleChunks: vi.fn() },
   sync: { setupQueryClientInvalidationBroadcast: vi.fn() },
 }))
 
@@ -32,6 +33,7 @@ vi.mock("~/src/lib/url", () => ({
 }))
 vi.mock("~/src/integrations/tanstack-query/query.sync", () => sync)
 vi.mock("~/src/integrations/better-auth/auth.session", () => session)
+vi.mock("~/src/lib/stale-chunk", () => staleChunk)
 vi.mock("@tanstack/react-query-devtools", () => ({ ReactQueryDevtools: devtools }))
 vi.mock("~/src/routeTree.gen", async () => {
   const { createRootRoute } = await import("@tanstack/react-router")
@@ -160,6 +162,18 @@ describe("router cache", () => {
     getRouter()
 
     expect(session.clearCacheOnUserChange).not.toHaveBeenCalled()
+  })
+
+  it("reloads a tab whose code chunks a later deploy replaced, and only in the browser", () => {
+    getRouter()
+
+    expect(staleChunk.listenForStaleChunks).toHaveBeenCalledOnce()
+
+    staleChunk.listenForStaleChunks.mockClear()
+    vi.stubEnv("SSR", true)
+    getRouter()
+
+    expect(staleChunk.listenForStaleChunks).not.toHaveBeenCalled()
   })
 })
 
