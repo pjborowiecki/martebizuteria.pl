@@ -32,6 +32,7 @@ import { type ReleaseLine } from "~/src/modules/checkout/checkout.utils"
 import { type CheckoutFormSchema } from "~/src/modules/checkout/checkout.zod"
 import { countOpenCheckouts } from "~/src/modules/checkout/use-cases/count-open-checkouts.server"
 import { createCheckout } from "~/src/modules/checkout/use-cases/create-checkout.server"
+import { forgetCheckoutClientAddress } from "~/src/modules/checkout/use-cases/forget-checkout-client-address.server"
 import { releaseCheckout } from "~/src/modules/checkout/use-cases/release-checkout.server"
 import { supersedeCheckoutSession } from "~/src/modules/checkout/use-cases/supersede-checkout-session.server"
 import { updateCheckoutDelivery } from "~/src/modules/checkout/use-cases/update-checkout-delivery.server"
@@ -402,6 +403,9 @@ const openCheckoutSession = async ({ reservedLines, ...sessionArgs }: OpenChecko
 
     return result
   } catch (error) {
+    await forgetCheckoutClientAddress(sessionArgs.checkoutId).catch((forgetError: unknown) => {
+      console.error("Failed to clear the client address after checkout error:", forgetError)
+    })
     if (sessionArgs.discount !== undefined) {
       await releaseDiscountClaims(sessionArgs.checkoutId).catch((releaseError: unknown) => {
         console.error("Failed to release the discount claim after checkout error:", releaseError)

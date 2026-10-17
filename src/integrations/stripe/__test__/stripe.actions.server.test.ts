@@ -28,6 +28,7 @@ const mocked = vi.hoisted(() => ({
     >(),
   createPendingPayment: vi.fn(),
   ensureStripeCustomerWithEmail: vi.fn<() => Promise<string>>(),
+  forgetCheckoutClientAddress: vi.fn((_checkoutId: string) => Promise.resolve()),
   getHeldLinesByTransactionId: vi.fn(),
   getOfferedDeliveryMethodByIdQuery: vi.fn(),
   getPaymentContextByTransactionId: vi.fn(),
@@ -69,6 +70,9 @@ vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({
 }))
 vi.mock("~/src/integrations/use-intl/i18n.utils", () => ({ getCurrentLocale: () => mocked.requestLocale.value }))
 vi.mock("~/src/modules/checkout/use-cases/create-checkout.server", () => ({ createCheckout: mocked.createCheckout }))
+vi.mock("~/src/modules/checkout/use-cases/forget-checkout-client-address.server", () => ({
+  forgetCheckoutClientAddress: mocked.forgetCheckoutClientAddress,
+}))
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout: mocked.releaseCheckout }))
 vi.mock("~/src/modules/checkout/use-cases/supersede-checkout-session.server", () => ({
   supersedeCheckoutSession: mocked.supersedeCheckoutSession,
@@ -587,6 +591,22 @@ describe("checkout session saved cards", () => {
   })
 })
 
+describe("checkout session client address", () => {
+  it("keeps the visitor's address on a checkout whose payment opened, for the open-checkout limit", async () => {
+    await handleCreateCheckoutSession(createInput())
+
+    expect(mocked.forgetCheckoutClientAddress).not.toHaveBeenCalled()
+  })
+
+  it("still reports the session failure when forgetting the visitor's address fails", async () => {
+    mocked.checkoutSessionsCreate.mockRejectedValue(new Error("stripe down"))
+    mocked.forgetCheckoutClientAddress.mockRejectedValueOnce(new Error("d1 down"))
+
+    await expect(handleCreateCheckoutSession(createInput())).rejects.toThrow("stripe down")
+    expect(console.error).toHaveBeenCalledWith("Failed to clear the client address after checkout error:", expect.any(Error))
+  })
+})
+
 describe("checkout session discounts", () => {
   it("expresses an applied discount as a one-shot Stripe coupon tagged with its checkout", async () => {
     mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
@@ -627,20 +647,22 @@ describe("checkout session discounts", () => {
   it.each([
     { failure: "Stripe refuses the session", stub: () => mocked.checkoutSessionsCreate.mockRejectedValue(new Error("stripe down")) },
     { failure: "its payment cannot be recorded", stub: () => mocked.createPendingPayment.mockRejectedValue(new Error("d1 down")) },
-  ])("gives back the claimed use and the stock when $failure", async ({ stub }) => {
+  ])("gives back the claimed use and the stock and forgets the visitor's address when $failure", async ({ stub }) => {
     mocked.resolveCheckoutDiscount.mockResolvedValue({ amountMinorUnits: 2000, code: "SPRING", discountId: "disc-1" })
     stub()
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toThrow(/down/u)
     expect(mocked.releaseDiscountClaims).toHaveBeenCalledExactlyOnceWith("checkout-1")
+    expect(mocked.forgetCheckoutClientAddress).toHaveBeenCalledExactlyOnceWith("checkout-1")
     expect(mocked.releaseInventoryForItems).toHaveBeenCalledOnce()
   })
 
-  it("has no use to give back when a checkout without a code fails", async () => {
+  it("has no use to give back when a checkout without a code fails, but still forgets the visitor's address", async () => {
     mocked.checkoutSessionsCreate.mockRejectedValue(new Error("stripe down"))
 
     await expect(handleCreateCheckoutSession(createInput())).rejects.toThrow("stripe down")
     expect(mocked.releaseDiscountClaims).not.toHaveBeenCalled()
+    expect(mocked.forgetCheckoutClientAddress).toHaveBeenCalledExactlyOnceWith("checkout-1")
   })
 
   it("still reports the session failure when giving back the use fails", async () => {

@@ -23,15 +23,15 @@ Wpis liczy się od swojego `created_at`. Checkout liczy się od `updated_at`, kt
 
 ### Zakończone checkouty
 
-Checkout jest zakończony, gdy ma status `failed`, gdy jest `abandoned` (status dopuszczony przez schemat, którego dziś nic nie ustawia) albo gdy nadal jest `pending`, ale nie ma wiersza `payment`. Ten ostatni to checkout, którego płatność nigdy się nie otworzyła: `handleCreateCheckoutSession` najpierw zapisuje checkout, a gdy Stripe odmówi sesji albo nie da się zapisać oczekującej płatności, zwalnia stan magazynowy i rabat, ale zostawia wiersz, którego nic już nie wznowi.
+Checkout jest zakończony, gdy ma status `failed`, gdy jest `abandoned` (status dopuszczony przez schemat, którego dziś nic nie ustawia) albo gdy nadal jest `pending`, ale nie ma wiersza `payment`. Ten ostatni to checkout, którego płatność nigdy się nie otworzyła: `handleCreateCheckoutSession` najpierw zapisuje checkout, a gdy Stripe odmówi sesji albo nie da się zapisać oczekującej płatności, zwalnia stan magazynowy i rabat oraz czyści adres IP odwiedzającego, ale zostawia wiersz, którego nic już nie wznowi.
 
 Wiersz checkoutu zostaje, z jego statusem, metodą dostawy, rabatem i znacznikami czasu, bo wskazuje na niego wiersz `payment`, a płatności nigdy się nie usuwa. Znikają z niego dane osobowe:
 
-- `email` staje się pustym napisem, bo kolumna nie może być `NULL`; `customer_note`, `billing_company_name`, `billing_nip`, `locker_id`, `locker_point` i `user_id` stają się `NULL`.
+- `email` staje się pustym napisem, bo kolumna nie może być `NULL`; `client_address`, `customer_note`, `billing_company_name`, `billing_nip`, `locker_id`, `locker_point` i `user_id` stają się `NULL`.
 - Wiersze `address`, na które wskazuje, są usuwane, gdy nie należą do żadnego konta (`user_id` jest `NULL`), a `shipping_address_id` i `billing_address_id` stają się `NULL`. Adres zapisany przez zalogowanego klienta na koncie zostaje przy koncie.
 - Usuwany jest każdy wiersz `discount_claim`, który checkout jeszcze trzyma. Zwolnienie zwykle już go usuwa; wiersz pozostawiony przez nieudane zwolnienie trzymałby na zawsze jedno użycie kodu i adres e-mail klienta.
 
-Anonimizacja nie zmienia `client_address`. Ta kolumna przechowuje adres IP odwiedzającego, który `handleCreateCheckoutSession` zapisuje, żeby `countOpenCheckouts` mogło ograniczyć liczbę checkoutów otwartych przez jednego odwiedzającego. Batch zwolnienia ustawia ją na `NULL`, gdy oznacza checkout jako `failed`, a batch zamówienia robi to samo, gdy oznacza go jako `completed`, więc checkout, którego płatność nigdy się nie otworzyła, zachowuje ją także po anonimizacji.
+Kolumna `client_address` przechowuje adres IP odwiedzającego, który `handleCreateCheckoutSession` zapisuje, żeby `countOpenCheckouts` mogło ograniczyć liczbę checkoutów otwartych przez jednego odwiedzającego. Batch zwolnienia ustawia ją na `NULL`, gdy oznacza checkout jako `failed`, batch zamówienia, gdy oznacza go jako `completed`, a `handleCreateCheckoutSession`, gdy Stripe odmówi sesji nowego checkoutu albo nie da się zapisać jego płatności, więc zakończony checkout zwykle nie trzyma adresu. To uruchomienie czyści go również, dla checkoutu, w którym to czyszczenie się nie powiodło albo który zakończył się, zanim proces zamówienia zaczął je wykonywać.
 
 Zanonimizowany checkout ma pusty `email` i po tym następne uruchomienie poznaje, że ma go pominąć.
 

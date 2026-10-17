@@ -203,7 +203,7 @@ Odnośniki pod nim zależą od tego, czyje to zamówienie. `getOrderConfirmation
 8. `createPendingPayment(...)` — wiersz `payment` ze `status: "pending"`, `transaction_id` równym identyfikatorowi sesji Stripe, `amount` równym `amount_total` ze Stripe, `currency` `PLN`, `lines` z wycenionym koszykiem (zobacz [Koszyk w wierszu płatności](#koszyk-w-wierszu-płatności)) i `reserved_lines` z liniami `{ qty, variantId }` zarezerwowanymi w kroku 5.
 9. `scheduleProductCatalogInvalidation()`.
 
-Jeśli cokolwiek po kroku 5 rzuci wyjątek, `releaseInventoryForItems` zwraca rezerwację przed propagacją błędu, a gdy wyjątek rzucą kroki 7 lub 8 dla checkoutu z kodem, `releaseDiscountClaims` oddaje też to wykorzystanie.
+Jeśli cokolwiek po kroku 5 rzuci wyjątek, `releaseInventoryForItems` zwraca rezerwację przed propagacją błędu. Gdy wyjątek rzucą kroki 7 lub 8, `forgetCheckoutClientAddress` ustawia `client_address` checkoutu na `NULL`, a dla checkoutu z kodem `releaseDiscountClaims` oddaje też to wykorzystanie.
 
 Zwraca `clientSecret`, `sessionId` i `amount` (`amount_total` ze Stripe, zapisywane też w płatności) razem z `lines`, każda `{ variantId, qty, unitPrice }` po cenie z bazy, oraz `totals` z `computeOrderTotals` dla tych linii, kosztu dostawy i rabatu. To kwoty, z których zbudowano pozycje i kupon sesji, i te same, które realizacja zapisuje w zamówieniu, a klient pokazuje je w podsumowaniu. `handleUpdateCheckoutSession` zwraca to samo dla sesji zastępczej.
 
@@ -237,7 +237,7 @@ Zakupy bez konta są otwarte dla każdego, a każdy nowy checkout trzyma swój t
 
 Przeglądarka kupującego trzyma jeden otwarty checkout i go kontynuuje (zobacz [Powrót do kasy](#powrót-do-kasy)), więc prawdziwy kupujący trafia na limity otwartych checkoutów tylko wtedy, gdy płaci naraz z kilku przeglądarek lub urządzeń, albo gdy kilku kupujących dzieli jeden adres. Liczenie i rezerwacja to osobne instrukcje, więc żądania, które przyjdą jednocześnie, mogą każde przejść liczenie; limit dziesięciu nowych checkoutów na minutę na adres ogranicza, jak daleko to sięga.
 
-`createCheckout` zapisuje adres w `checkout.client_address`. Realizacja zamówienia ustawia go z powrotem na `NULL`, gdy checkout zostaje opłacony, a zwolnienie, gdy kończy się niepowodzeniem, więc adres jest przechowywany tylko, dopóki checkout jest otwarty.
+`createCheckout` zapisuje adres w `checkout.client_address`. Realizacja zamówienia ustawia go z powrotem na `NULL`, gdy checkout zostaje opłacony, a zwolnienie, gdy kończy się niepowodzeniem, więc adres jest przechowywany tylko, dopóki checkout jest otwarty. Checkout, którego płatność nigdy się nie otworzyła, bo Stripe odmówił sesji albo nie dało się zapisać płatności, nie zostaje ani opłacony, ani zwolniony, więc `handleCreateCheckoutSession` sam czyści jego adres w tej samej kompensacji, która zwraca towar i wykorzystanie kodu. Adres nie jest już wtedy potrzebny: `countOpenCheckouts` liczy tylko checkouty z oczekującą płatnością. Gdyby i to czyszczenie się nie powiodło, adres wraz z pozostałymi danymi osobowymi checkoutu czyści codzienne sprzątanie po 30 dniach (zobacz [Okresy przechowywania danych](/docs/guides/data-retention#zakończone-checkouty)).
 
 ## Koszyk w wierszu płatności
 

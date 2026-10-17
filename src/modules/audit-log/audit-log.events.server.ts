@@ -519,6 +519,7 @@ export const recordCustomerCartAbandonedAudit = (actor: AuditLogActorInput, opti
     ip: options?.ip,
     severity: "warning",
     ...targetFields,
+    detail: options?.detail,
   })
 }
 

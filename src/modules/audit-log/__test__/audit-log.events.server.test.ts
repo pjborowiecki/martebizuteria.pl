@@ -237,6 +237,19 @@ describe("actor targeted audit events", () => {
     expect(record.scheduleAuditLog).toHaveBeenCalledWith(expect.objectContaining({ metadata: undefined, target: "Ada Lovelace" }))
   })
 
+  it("records an abandoned cart against the customer's address and id, without their name as the detail", () => {
+    recordCustomerCartAbandonedAudit(actor, { metadata: { itemCount: 3 } })
+
+    expect(record.scheduleAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        detail: undefined,
+        metadata: { email: "ada@example.test", itemCount: 3 },
+        resourceId: "user-7",
+        target: "ada@example.test",
+      }),
+    )
+  })
+
   it("prefers an explicit detail and resource id over the actor fields", () => {
     recordCustomerCartAbandonedAudit(actor, { detail: "3 items left behind", resourceId: "cart-3" })
 

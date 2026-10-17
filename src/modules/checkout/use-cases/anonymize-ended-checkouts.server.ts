@@ -45,6 +45,7 @@ export const anonymizeEndedCheckouts = async ({ endedBefore, limit }: AnonymizeE
         billingAddressId: ERASED,
         billingCompanyName: ERASED,
         billingNip: ERASED,
+        clientAddress: ERASED,
         customerNote: ERASED,
         email: ERASED_EMAIL,
         lockerId: ERASED,

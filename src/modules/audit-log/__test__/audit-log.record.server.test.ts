@@ -104,16 +104,16 @@ describe("resolveRequestAuditActor", () => {
 })
 
 describe("resolveRequestAuditIp", () => {
-  it("prefers the Cloudflare connecting ip", () => {
+  it("takes the Cloudflare connecting ip", () => {
     state.request.headers = { "cf-connecting-ip": "203.0.113.7", "x-forwarded-for": "198.51.100.1" }
 
     expect(resolveRequestAuditIp()).toBe("203.0.113.7")
   })
 
-  it("falls back to the first forwarded address", () => {
+  it("records no ip from a forwarded chain the client could have written", () => {
     state.request.headers = { "x-forwarded-for": "198.51.100.1, 203.0.113.9" }
 
-    expect(resolveRequestAuditIp()).toBe("198.51.100.1")
+    expect(resolveRequestAuditIp()).toBeUndefined()
   })
 
   it("has no ip when the request carries no address headers", () => {
