@@ -218,7 +218,7 @@ The list has three columns hidden until the column menu shows them: **Company** 
 | `order-meta-strip.tsx`          | `status`, `paymentUiKey`, `fulfillmentUiKey`, `createdAt`, `totalMinorUnits`                                                                                            |
 | `order-withdrawals-card.tsx`    | `withdrawals`, shown only when the customer sent a statement of withdrawal                                                                                              |
 | `order-fulfillment-tracker.tsx` | `fulfillmentSteps` from `buildAdminOrderFulfillmentSteps`, `canceledAt`                                                                                                 |
-| `order-line-items-card.tsx`     | `items`, `delivery` and the five `*MinorUnits` totals; the VAT shows under the total as "Including VAT {rate}%", not as a summand                                       |
+| `order-line-items-card.tsx`     | `items`, `delivery` and the five `*MinorUnits` totals; the VAT shows under the total as `Including VAT {rate}%`, not as a summand                                       |
 | `order-timeline-card.tsx`       | `id`, and `timeline` from `mapAdminOrderTimeline` with `resendable` from `resolveResendableOrderEmails`                                                                 |
 | `order-customer-card.tsx`       | `customer` from `buildAdminOrderDetailCustomer`                                                                                                                         |
 | `order-shipping-card.tsx`       | `delivery`, including `lockerUnconfirmed`, `shippingAddress`, `trackingNumber`, `trackingUrl`                                                                           |
@@ -245,7 +245,7 @@ The timeline includes the order's email entries. An `email.deferred` row reads "
 `OrderSummaryPage` (`src/presentation/components/custom/pages/admin/orders/summary/`) calls `useAdminLightTheme`, shows the order number and date, and has a Back to order link and a Print button that calls `globalThis.print()`; both are hidden when printing.
 
 - `order-summary-parties.tsx` names the seller with the details saved under Settings → Store details (legal name, address, country in the admin's language, NIP and email; see [Admin settings](/docs/features/admin-settings#store-details)) and the buyer: the company name and `NIP <digits>` when the order has them, then the billing address, or the customer's name when the order kept none, and the customer's email. `order-summary-delivery.tsx` adds a Delivery section with the method and where the parcel goes: the parcel locker and the recipient for a locker order, otherwise the shipping address.
-- `order-summary-lines.tsx` lists each line with its variant, quantity, unit price and line total, then the subtotal, the discount when there is one, shipping with the delivery method, the gross total and "Including VAT {rate}%" with `taxTotalMinorUnits`, the rate coming from the order's `tax_basis_points` through `taxBasisPoints`.
+- `order-summary-lines.tsx` lists each line with its variant, quantity, unit price and line total, then the subtotal, the discount when there is one, shipping with the delivery method, the gross total and `Including VAT {rate}%` with `taxTotalMinorUnits`, the rate coming from the order's `tax_basis_points` through `taxBasisPoints`.
 
 ## Customer order history
 
