@@ -1,16 +1,16 @@
 import { QueryClient } from "@tanstack/react-query"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-const { recordPasswordChanged, requestHeaders, session, setCredential } = vi.hoisted(() => ({
+const { recordPasswordChanged, requestHeaders, setCredential } = vi.hoisted(() => ({
   recordPasswordChanged: vi.fn<(actor: unknown, options: unknown) => void>(),
   requestHeaders: new Headers({ "cf-connecting-ip": "203.0.113.7", cookie: "better-auth.session_token=signed" }),
-  session: { createdAt: new Date() },
   setCredential: vi.fn<(input: { body: Readonly<Record<string, string>>; headers: Headers }) => Promise<{ status: boolean }>>(),
 }))
 
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   RATE_LIMITS: { SENSITIVE: { max: 3, window: 60 } },
   authorized: () => ({}),
+  recentSignIn: {},
   withRateLimit: () => ({}),
 }))
 vi.mock("~/src/integrations/better-auth/auth.server", () => ({ auth: { api: { setPassword: setCredential } } }))
@@ -25,7 +25,7 @@ vi.mock("@tanstack/react-start", () => ({
       handler: (handler: (options: { context: unknown; data: unknown }) => unknown) => (options: { data: unknown }) =>
         Promise.resolve(options.data)
           .then((data) => (state.validator === undefined ? data : state.validator(data)))
-          .then((data) => handler({ context: { auth: { session, user: { id: "user-1" } }, requestHeaders }, data })),
+          .then((data) => handler({ context: { auth: { user: { id: "user-1" } }, requestHeaders }, data })),
       middleware: () => builder,
       validator: (validator: (input: unknown) => unknown) => {
         state.validator = validator
@@ -43,11 +43,8 @@ import { setAccountPassword, setAccountPasswordMutation } from "~/src/modules/ac
 
 const NEW_PASSWORD = "GooglePassword1!"
 
-const HOUR_MS = 3_600_000
-
 beforeEach(() => {
   vi.clearAllMocks()
-  session.createdAt = new Date(Date.now() - HOUR_MS)
   setCredential.mockResolvedValue({ status: true })
 })
 
@@ -67,16 +64,6 @@ describe("setAccountPassword", () => {
   it("refuses a password that breaks the shop's password rules before it reaches Better Auth", async () => {
     await expect(setAccountPassword({ data: { newPassword: "short" } })).rejects.toThrow()
 
-    expect(setCredential).not.toHaveBeenCalled()
-    expect(recordPasswordChanged).not.toHaveBeenCalled()
-  })
-
-  it("asks for a fresh sign-in when the session is a day old, so a stolen cookie cannot add a lasting password", async () => {
-    session.createdAt = new Date(Date.now() - 25 * HOUR_MS)
-
-    await expect(setAccountPassword({ data: { newPassword: NEW_PASSWORD } })).rejects.toMatchObject({
-      body: { code: "SESSION_NOT_FRESH" },
-    })
     expect(setCredential).not.toHaveBeenCalled()
     expect(recordPasswordChanged).not.toHaveBeenCalled()
   })

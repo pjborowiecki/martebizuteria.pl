@@ -33,7 +33,6 @@ const audit = vi.hoisted(() => ({
   recordAuthLoginAudit: vi.fn(),
   recordAuthPasswordChangedAudit: vi.fn(),
   recordAuthPasswordResetAudit: vi.fn(),
-  recordAuthRoleChangedAudit: vi.fn(),
   recordAuthSessionsRevokedAudit: vi.fn(),
   recordAuthTwoFactorDisabledAudit: vi.fn(),
   recordAuthTwoFactorEnabledAudit: vi.fn(),
@@ -317,7 +316,6 @@ describe("devices a customer signs out through Better Auth's own endpoints", () 
 
 describe("an admin changing another account through Better Auth's admin endpoints", () => {
   it.each([
-    { body: { role: "admin" }, path: "/admin/set-role", record: audit.recordAuthRoleChangedAudit, recorded: { detail: "admin" } },
     {
       body: { banReason: "Chargebacks" },
       path: "/admin/ban-user",
@@ -353,11 +351,10 @@ describe("an admin changing another account through Better Auth's admin endpoint
     const credited = { actor: `actor:${admin.userId}`, ip: "203.0.113.11" }
 
     await admin.browser.post("/admin/update-user", {
-      data: { banReason: "Fraud", banned: true, email: "renamed@marte.test", role: "admin" },
+      data: { banReason: "Fraud", banned: true, email: "renamed@marte.test" },
       userId: customerId,
     })
 
-    expect(audit.recordAuthRoleChangedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${customerId}`, { ...credited, detail: "admin" })
     expect(audit.recordAuthUserBannedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${customerId}`, { ...credited, detail: "Fraud" })
     expect(audit.recordAuthEmailChangedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${customerId}`, credited)
     expect(audit.recordAuthUserUnbannedAudit).not.toHaveBeenCalled()
@@ -367,14 +364,13 @@ describe("an admin changing another account through Better Auth's admin endpoint
     expect(audit.recordAuthUserUnbannedAudit).toHaveBeenCalledExactlyOnceWith(`actor:${customerId}`, credited)
   })
 
-  it("records nothing for an update that touches no role, ban or address", async () => {
+  it("records nothing for an update that touches no ban or address", async () => {
     const admin = await signedInAdmin("admin-rename@marte.test", "203.0.113.12")
     const customerId = await createPasswordCustomer("customer-rename@marte.test")
 
     const response = await admin.browser.post("/admin/update-user", { data: { name: "Grace" }, userId: customerId })
 
     expect(response.status).toBe(200)
-    expect(audit.recordAuthRoleChangedAudit).not.toHaveBeenCalled()
     expect(audit.recordAuthUserBannedAudit).not.toHaveBeenCalled()
     expect(audit.recordAuthUserUnbannedAudit).not.toHaveBeenCalled()
     expect(audit.recordAuthEmailChangedAudit).not.toHaveBeenCalled()

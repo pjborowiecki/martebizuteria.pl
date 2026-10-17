@@ -441,8 +441,12 @@ export const recordAuthSessionsRevokedAudit = (account: AuditLogActorInput, opti
   scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_SESSIONS_REVOKED, category: "auth", severity: "info" }, account, options)
 }
 
-export const recordAuthRoleChangedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
-  scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED, category: "auth", severity: "warning" }, account, options)
+export const recordTeamAccessAudit = (
+  action: typeof AUDIT_LOG_ACTION.TEAM_ADMIN_GRANTED | typeof AUDIT_LOG_ACTION.TEAM_ADMIN_REVOKED,
+  account: AuditLogActorInput,
+  options: AuditEventOptions,
+): void => {
+  scheduleAccountAudit({ action, category: "settings", severity: "warning" }, account, options)
 }
 
 export const recordAuthUserBannedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {

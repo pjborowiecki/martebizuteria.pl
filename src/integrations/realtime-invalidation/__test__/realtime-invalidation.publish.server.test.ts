@@ -203,7 +203,11 @@ describe("invalidation topics by publisher", () => {
       [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL, PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.STATS],
     ],
     ["audit log", scheduleAdminAuditLogInvalidation, [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS]],
-    ["customers", scheduleAdminCustomersInvalidation, [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE]],
+    [
+      "customers",
+      scheduleAdminCustomersInvalidation,
+      [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.CUSTOMERS_PAGE, USER_QUERY_KEYS.ADMIN.TEAM],
+    ],
     [
       "newsletter subscribers",
       scheduleAdminNewsletterSubscribersInvalidation,
@@ -280,7 +284,7 @@ describe("invalidation topics by publisher", () => {
     ],
     ["attribute", scheduleProductAttributeCatalogInvalidation, { admin: [PRODUCT_ATTRIBUTE_QUERY_KEYS.ADMIN.ALL] }],
     ["audit log", scheduleAdminAuditLogInvalidation, { admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS] }],
-    ["customers", scheduleAdminCustomersInvalidation, { admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS] }],
+    ["customers", scheduleAdminCustomersInvalidation, { admin: [USER_QUERY_KEYS.ADMIN.CUSTOMERS, USER_QUERY_KEYS.ADMIN.TEAM] }],
     [
       "newsletter subscribers",
       scheduleAdminNewsletterSubscribersInvalidation,

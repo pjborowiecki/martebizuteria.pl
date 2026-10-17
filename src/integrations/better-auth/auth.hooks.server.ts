@@ -7,9 +7,13 @@ import {
   ADMIN_TWO_FACTOR_REQUIRED,
   EMAIL_DELIVERY_UNAVAILABLE,
   EMAIL_SENDING_AUTH_PATHS,
+  ROLE_FIELD_ADMIN_PATHS,
+  ROLE_MANAGED_IN_TEAM_SETTINGS,
+  SET_ROLE_PATH,
   STRIPE_CUSTOMER_NOT_DELETED,
 } from "~/src/integrations/better-auth/auth.constants"
 import { recordAuthEmailFailure } from "~/src/integrations/better-auth/auth.email-delivery.server"
+import { adminRoleFieldsSchema } from "~/src/integrations/better-auth/auth.zod"
 import { scheduleAdminCustomersInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 import { isEmailSenderUnavailable } from "~/src/integrations/resend/resend.availability.server"
 
@@ -30,6 +34,9 @@ import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { auditRequestIp, resolveRequestOrigin } from "~/src/lib/request"
 
+const requestsRoleChange = ({ body, path }: Readonly<{ body: unknown; path: string }>): boolean =>
+  path === SET_ROLE_PATH || (ROLE_FIELD_ADMIN_PATHS.has(path) && adminRoleFieldsSchema.safeParse(body).data === true)
+
 export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
   if (EMAIL_SENDING_AUTH_PATHS.has(ctx.path) && (await isEmailSenderUnavailable())) {
     throw APIError.from("SERVICE_UNAVAILABLE", EMAIL_DELIVERY_UNAVAILABLE)
@@ -37,6 +44,10 @@ export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
 
   if (!ctx.path.startsWith(ADMIN_PLUGIN_PATH_PREFIX)) {
     return
+  }
+
+  if (requestsRoleChange(ctx)) {
+    throw APIError.from("FORBIDDEN", ROLE_MANAGED_IN_TEAM_SETTINGS)
   }
 
   const caller = await getSessionFromCtx<{ role?: string | null; twoFactorEnabled?: boolean | null }>(ctx)

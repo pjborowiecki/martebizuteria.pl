@@ -105,6 +105,22 @@ export const ADMIN_CUSTOMER_FORM_FIELD_MAX = {
   PROVINCE: 256,
 } as const
 
+export const TEAM_CANDIDATE_SEARCH_MIN_LENGTH = 3
+
+export const TEAM_CANDIDATE_SEARCH_MAX_LENGTH = 320
+
+export const TEAM_CANDIDATE_LIMIT = 8
+
+export const TEAM_ERROR = {
+  ACCOUNT_BANNED: "TEAM_ACCOUNT_BANNED",
+  ALREADY_ADMIN: "TEAM_ALREADY_ADMIN",
+  EMAIL_NOT_VERIFIED: "TEAM_EMAIL_NOT_VERIFIED",
+  LAST_ADMIN: "TEAM_LAST_ADMIN",
+  NOT_ADMIN: "TEAM_NOT_ADMIN",
+  NOT_FOUND: "TEAM_ACCOUNT_NOT_FOUND",
+  OWN_ACCESS: "TEAM_OWN_ACCESS",
+} as const
+
 export const USER_ERROR_CODES = {
   CANNOT_DELETE_ADMIN: "CANNOT_DELETE_ADMIN",
   CANNOT_DELETE_SELF: "CANNOT_DELETE_SELF",
@@ -118,11 +134,15 @@ export const USER_QUERY_KEYS = {
     CUSTOMERS_PAGE: ["admin", "users", "customers", "page"] as const,
     CUSTOMER_BY_ID: ["admin", "users", "customers", "detail"] as const,
     CUSTOMER_STATS: ["admin", "users", "customers", "stats"] as const,
+    TEAM: ["admin", "users", "team"] as const,
+    TEAM_CANDIDATES: ["admin", "users", "team", "candidates"] as const,
   },
 } as const
 
 export const USER_MUTATION_KEYS = {
   DELETE_CUSTOMER: ["user", "deleteCustomer"] as const,
+  GRANT_ADMIN_ACCESS: ["user", "grantAdminAccess"] as const,
+  REVOKE_ADMIN_ACCESS: ["user", "revokeAdminAccess"] as const,
   UPDATE_CUSTOMER: ["user", "updateCustomer"] as const,
   UPDATE_DISPLAY_PREFERENCE: ["user", "updateDisplayPreference"] as const,
 } as const

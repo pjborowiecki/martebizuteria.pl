@@ -21,7 +21,6 @@ import {
   recordAuthEmailChangedAudit,
   recordAuthLoginAudit,
   recordAuthPasswordChangedAudit,
-  recordAuthRoleChangedAudit,
   recordAuthSessionsRevokedAudit,
   recordAuthTwoFactorDisabledAudit,
   recordAuthTwoFactorEnabledAudit,
@@ -94,10 +93,6 @@ const recordAdminUserUpdate = (
   options: AuditEventOptions,
   { data }: z.infer<typeof adminAccountChangeSchema>,
 ): void => {
-  if (data?.role !== undefined) {
-    recordAuthRoleChangedAudit(account, { ...options, detail: data.role })
-  }
-
   if (data?.banned === true) {
     recordAuthUserBannedAudit(account, { ...options, detail: data.banReason })
   }
@@ -120,11 +115,6 @@ const recordAdminAccountChange = ({ account, change, path }: AdminAccountChange,
     }
     case ADMIN_PATHS.REVOKE_USER_SESSIONS: {
       recordAuthSessionsRevokedAudit(account, options)
-
-      return
-    }
-    case ADMIN_PATHS.SET_ROLE: {
-      recordAuthRoleChangedAudit(account, { ...options, detail: change.role })
 
       return
     }
