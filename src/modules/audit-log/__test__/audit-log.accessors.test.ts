@@ -1,4 +1,4 @@
-import { SQL } from "drizzle-orm"
+import { SQL, sql } from "drizzle-orm"
 import { SQLiteSyncDialect } from "drizzle-orm/sqlite-core"
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
@@ -68,6 +68,11 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", () => {
   }
 })
 
+vi.mock("~/src/modules/user-email-history/user-email-history.accessors", () => ({
+  accountsWithAddressContaining: (term: string) => sql`(select accounts using ${term})`,
+  addressesOfAccountsWithAddressContaining: (term: string) => sql`(select addresses using ${term})`,
+}))
+
 const dialect = new SQLiteSyncDialect()
 
 const lastWhere = (): SQL => {
@@ -126,7 +131,17 @@ describe("getAdminAuditLogsPage where clause", () => {
 
     expect(query.sql).toContain('instr(lower(cast("audit_log"."action" as text)), lower(?)) > 0')
     expect(query.sql).toContain('instr(lower(cast("audit_log"."ip" as text)), lower(?)) > 0')
-    expect(query.params).toStrictEqual(["ada", "ada", "ada", "ada", "ada"])
+    expect(query.params).toStrictEqual(["ada", "ada", "ada", "ada", "ada", "Ada", "Ada", "Ada"])
+  })
+
+  it("also finds every entry of an account that has used a matching address, under any of its addresses", async () => {
+    await getAdminAuditLogsPage({ ...listParams, search: "ada@old.example" })
+
+    const { sql: where } = dialect.sqlToQuery(lastWhere())
+
+    expect(where).toContain('"audit_log"."resource_id" in (select accounts using ?)')
+    expect(where).toContain('"audit_log"."actor_id" in (select accounts using ?)')
+    expect(where).toContain('"audit_log"."resource_id" in (select addresses using ?)')
   })
 
   it("ignores a blank search term", async () => {
@@ -141,7 +156,7 @@ describe("getAdminAuditLogsPage where clause", () => {
     const query = dialect.sqlToQuery(lastWhere())
 
     expect(query.sql).toContain(" and ")
-    expect(query.params).toStrictEqual(["warning", "auth", "ada", "ada", "ada", "ada", "ada"])
+    expect(query.params).toStrictEqual(["warning", "auth", "ada", "ada", "ada", "ada", "ada", "ada", "ada", "ada"])
   })
 
   it("bounds a created at filter to the day in Poland", async () => {

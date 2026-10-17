@@ -54,7 +54,10 @@ export const admitPublicEmail = async (email: PublicEmail): Promise<boolean> => 
   if (!(await withinDailyLimit())) {
     const reason = `the shop reached its daily limit of ${String(PUBLIC_EMAILS_DAILY_MAX)} emails that visitors can request`
     console.error(`[Email] Skipped a ${email.kind} email to ${email.to}: ${reason}`)
-    recordEmailFailedAudit(email.to, { metadata: { dailyLimit: PUBLIC_EMAILS_DAILY_MAX, emailKind: PUBLIC_EMAIL_AUDIT_KINDS[email.kind] } })
+    recordEmailFailedAudit(email.to, {
+      metadata: { dailyLimit: PUBLIC_EMAILS_DAILY_MAX, emailKind: PUBLIC_EMAIL_AUDIT_KINDS[email.kind] },
+      resourceId: email.userId,
+    })
 
     return false
   }
@@ -65,4 +68,5 @@ export const admitPublicEmail = async (email: PublicEmail): Promise<boolean> => 
 interface PublicEmail {
   readonly kind: (typeof PUBLIC_EMAIL_KINDS)[keyof typeof PUBLIC_EMAIL_KINDS]
   readonly to: string
+  readonly userId?: string | undefined
 }

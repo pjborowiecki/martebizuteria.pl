@@ -40,7 +40,7 @@ const { sendChangeEmailConfirmationEmail } = await import("~/src/modules/account
 
 const LOCALE = "pl-PL"
 
-const user = { email: "shopper@marte.test", name: "Ada" }
+const user = { email: "shopper@marte.test", id: "user-ada", name: "Ada" }
 
 const sentEmail = (): SentEmail | undefined => stubs.sendEmail.mock.calls[0]?.[0]
 

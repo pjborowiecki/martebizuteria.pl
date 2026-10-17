@@ -116,7 +116,11 @@ export const handleUserUpdated = async (updated: User): Promise<void> => {
 export const handlePasswordReset = async ({ user }: { readonly user: User }, request: Request | undefined): Promise<void> => {
   recordAuthPasswordResetAudit(resolveAuthAuditActor(user), { ip: auditRequestIp(request?.headers) })
   if (request === undefined) {
-    recordAuthEmailFailure("password-changed", user.email, "The reset came with no request to link the sign-in page from")
+    recordAuthEmailFailure("password-changed", {
+      failure: "The reset came with no request to link the sign-in page from",
+      to: user.email,
+      userId: user.id,
+    })
 
     return
   }
@@ -142,7 +146,10 @@ export const prepareSelfServiceDeletion = async (deleting: User & { readonly rol
 
 export const handleSelfServiceDeletion = async (deleted: User, request: Request | undefined): Promise<void> => {
   if (request === undefined) {
-    recordAuthEmailFailure("account-deleted", deleted.email, "The deletion came with no request to link the storefront from")
+    recordAuthEmailFailure("account-deleted", {
+      failure: "The deletion came with no request to link the storefront from",
+      to: deleted.email,
+    })
 
     return
   }
@@ -150,7 +157,7 @@ export const handleSelfServiceDeletion = async (deleted: User, request: Request 
   try {
     await sendAccountDeletedEmail({ email: deleted.email, name: deleted.name, origin: resolveRequestOrigin(request) })
   } catch (error) {
-    recordAuthEmailFailure("account-deleted", deleted.email, String(error))
+    recordAuthEmailFailure("account-deleted", { failure: String(error), to: deleted.email })
   }
 }
 

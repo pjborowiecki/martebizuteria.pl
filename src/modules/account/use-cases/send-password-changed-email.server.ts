@@ -28,9 +28,10 @@ export const sendPasswordChangedEmail = async ({ request, user }: PasswordChange
       }),
       subject: createTranslator({ locale, messages })("subject"),
       to: user.email,
+      userId: user.id,
     })
   } catch (error) {
-    recordAuthEmailFailure("password-changed", user.email, String(error))
+    recordAuthEmailFailure("password-changed", { failure: String(error), to: user.email, userId: user.id })
   }
 }
 

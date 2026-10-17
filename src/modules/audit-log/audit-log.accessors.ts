@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, lte } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, inArray, lte, or } from "drizzle-orm"
 
 import { insertRowChunks, runDrizzleBatch } from "~/src/integrations/drizzle-orm/drizzle.batch"
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -7,11 +7,15 @@ import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 import { type DateTimeColumnFilterValue } from "~/src/modules/_core/utils/datetime-column-filter"
 import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-column-filter.server"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
-import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
+import { buildAdminSearchOrCondition, normalizeAdminSearchTerm } from "~/src/modules/_core/utils/search-conditions.server"
 import { type AuditLogCategory, type AuditLogSeverity } from "~/src/modules/audit-log/audit-log.constants"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { buildAuditLogDayFilter } from "~/src/modules/audit-log/audit-log.utils"
+import {
+  accountsWithAddressContaining,
+  addressesOfAccountsWithAddressContaining,
+} from "~/src/modules/user-email-history/user-email-history.accessors"
 
 export interface AdminAuditLogsFilterParams {
   readonly category?: AuditLogCategory | undefined
@@ -61,6 +65,18 @@ const adminAuditLogListColumns = {
   target: auditLog.target,
 } as const
 
+const SEARCHED_COLUMNS = [auditLog.action, auditLog.target, auditLog.detail, auditLog.actorName, auditLog.ip]
+
+const entriesOfAccountsWithAddressContaining = (term: string): SQL | undefined => {
+  const accounts = accountsWithAddressContaining(term)
+
+  return or(
+    inArray(auditLog.resourceId, accounts),
+    inArray(auditLog.actorId, accounts),
+    inArray(auditLog.resourceId, addressesOfAccountsWithAddressContaining(term)),
+  )
+}
+
 const buildAdminAuditLogsWhere = (params: AdminAuditLogsFilterParams): SQL | undefined => {
   const conditions: SQL[] = []
 
@@ -80,16 +96,9 @@ const buildAdminAuditLogsWhere = (params: AdminAuditLogsFilterParams): SQL | und
     conditions.push(lte(auditLog.createdAt, params.until))
   }
 
-  const searchCondition = buildAdminSearchOrCondition(params.search, [
-    auditLog.action,
-    auditLog.target,
-    auditLog.detail,
-    auditLog.actorName,
-    auditLog.ip,
-  ])
-
-  if (searchCondition !== undefined) {
-    conditions.push(searchCondition)
+  const term = normalizeAdminSearchTerm(params.search)
+  if (term !== undefined) {
+    conditions.push(or(buildAdminSearchOrCondition(term, SEARCHED_COLUMNS), entriesOfAccountsWithAddressContaining(term))!)
   }
 
   if (conditions.length === 0) {

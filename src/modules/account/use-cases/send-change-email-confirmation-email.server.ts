@@ -21,5 +21,6 @@ export const sendChangeEmailConfirmationEmail = async ({ user, url }: AuthEmailP
     }),
     subject: createTranslator({ locale, messages })("subject"),
     to: user.email,
+    userId: user.id,
   })
 }

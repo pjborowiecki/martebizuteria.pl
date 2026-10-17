@@ -55,6 +55,8 @@ const storedDetail = (id: string): string | null =>
 beforeEach(() => {
   sqlite.exec(`
     drop table if exists audit_log;
+    drop table if exists user_email_history;
+    create table user_email_history (id integer primary key, user_id text not null, email text not null, added_at integer not null, replaced_at integer);
     create table audit_log (
       action text not null, actor_id text, actor_name text not null, actor_role text not null, category text not null,
       created_at integer not null, detail text, id text primary key, ip text, metadata text, resource_id text,
@@ -192,4 +194,46 @@ describe("reading the audit log up to a moment on D1", () => {
     expect(rows.map(({ id }) => id)).toStrictEqual(["log-15-oct-00-10", "log-14-oct-23-35", "log-14-oct-02-00"])
     expect(total).toBe(3)
   })
+})
+
+const searchedEntry = (id: string, fields: Partial<AuditLogInsertRow>): AuditLogInsertRow => ({
+  action: "auth.login",
+  actorName: "Anna Kowalska",
+  actorRole: "customer",
+  category: "auth",
+  createdAt: 1_790_000_000_000,
+  id,
+  severity: "info",
+  target: "anna@new.example",
+  ...fields,
+})
+
+describe("searching the audit log by an address on D1", () => {
+  beforeEach(async () => {
+    sqlite.exec(`
+      insert into user_email_history (user_id, email, added_at, replaced_at) values
+        ('user-anna', 'anna@old.example', 0, 1),
+        ('user-anna', 'anna@new.example', 1, null),
+        ('user-ola', 'ola@example.test', 0, null);
+    `)
+    await insertAuditLogs([
+      searchedEntry("anna-sign-in", { resourceId: "user-anna" }),
+      searchedEntry("anna-as-actor", { action: "customer.updated", actorId: "user-anna", resourceId: "order-1", target: "MRT-2026-00001" }),
+      searchedEntry("anna-old-newsletter", {
+        action: "newsletter.subscriber_confirmed",
+        resourceId: "anna@old.example",
+        target: "anna@old.example",
+      }),
+      searchedEntry("ola-sign-in", { resourceId: "user-ola", target: "ola@example.test" }),
+    ])
+  })
+
+  it.each(["anna@old.example", "ANNA@NEW", "anna@"])(
+    "finds every entry of the account that has used an address matching %s",
+    async (search) => {
+      const { rows } = await getAdminAuditLogsPage({ limit: 50, offset: 0, search, timeZone: "Europe/Warsaw" })
+
+      expect(rows.map(({ id }) => id).toSorted()).toStrictEqual(["anna-as-actor", "anna-old-newsletter", "anna-sign-in"])
+    },
+  )
 })

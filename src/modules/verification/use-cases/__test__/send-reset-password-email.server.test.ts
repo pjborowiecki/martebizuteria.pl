@@ -50,7 +50,7 @@ const { sendResetPasswordEmail } = await import("~/src/modules/verification/use-
 
 const LOCALE = "pl-PL"
 
-const user = { email: "shopper@marte.test", name: "Ada" }
+const user = { email: "shopper@marte.test", id: "user-ada", name: "Ada" }
 
 const sentEmail = (): SentEmail | undefined => stubs.sendEmail.mock.calls[0]?.[0]
 
@@ -69,7 +69,7 @@ describe("account emails", () => {
 
     expect(sentEmail()?.subject).toBe(resetPasswordPolish.subject)
     expect(sentProp("resetPasswordUrl")).toBe("https://marte.test/reset")
-    expect(stubs.admitPublicEmail).toHaveBeenCalledExactlyOnceWith({ kind: "password-reset", to: user.email })
+    expect(stubs.admitPublicEmail).toHaveBeenCalledExactlyOnceWith({ kind: "password-reset", to: user.email, userId: user.id })
   })
 
   it("sends no reset-password link, and answers as if it had, once the limits refuse the email", async () => {

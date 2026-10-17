@@ -329,6 +329,7 @@ describe("account emails", () => {
     expect(stubs.recordEmailFailedAudit).toHaveBeenCalledWith(createdUser.email, {
       detail: "The reset came with no request to link the sign-in page from",
       metadata: { emailKind: "password-changed" },
+      resourceId: createdUser.id,
     })
   })
 

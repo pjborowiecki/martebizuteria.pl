@@ -301,6 +301,25 @@ describe("eraseNewsletterSubscriber", () => {
     ])
   })
 
+  it("also deletes the consent entries the subscription left under its account's earlier address while the account held it", async () => {
+    sqlite.exec(`
+      delete from user;
+      insert into user (id, name, email, created_at, updated_at) values ('user-anna', 'Anna', 'anna.old@example.com', 0, 0);
+      update user set email = 'anna@example.com' where id = 'user-anna';
+      update user_email_history set replaced_at = 1000 where user_id = 'user-anna' and replaced_at is not null;
+      update newsletter_subscriber set user_id = 'user-anna' where id = '${SUBSCRIBER.ANNA}';
+    `)
+    seedAuditEntry({ action: "newsletter.subscriber_confirmed", id: "anna-confirmed-at-old-address", resourceId: "anna.old@example.com" })
+    sqlite.exec(`
+      insert into audit_log (id, action, actor_name, actor_role, category, created_at, resource_id, severity, target)
+      values ('next-holder-confirmed', 'newsletter.subscriber_confirmed', 'System', 'system', 'email', 2000, 'anna.old@example.com', 'info', 'anna.old@example.com');
+    `)
+
+    await eraseNewsletterSubscriber({ data: { id: SUBSCRIBER.ANNA } })
+
+    expect(remainingAuditEntries()).toStrictEqual(["next-holder-confirmed"])
+  })
+
   it("says the subscriber is gone when the record was already erased, deleting nothing else", async () => {
     await eraseNewsletterSubscriber({ data: { id: SUBSCRIBER.ANNA } })
     vi.clearAllMocks()

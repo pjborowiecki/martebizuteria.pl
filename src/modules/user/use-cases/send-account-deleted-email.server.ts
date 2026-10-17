@@ -30,7 +30,7 @@ export const sendAccountDeletedEmail = async ({ email, locale, name, origin }: A
       to: email,
     })
   } catch (error) {
-    recordAuthEmailFailure("account-deleted", email, String(error))
+    recordAuthEmailFailure("account-deleted", { failure: String(error), to: email })
 
     return false
   }

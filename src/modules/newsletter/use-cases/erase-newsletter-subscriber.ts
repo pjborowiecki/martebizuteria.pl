@@ -17,6 +17,7 @@ import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
 import { NEWSLETTER_ERROR_CODES, NEWSLETTER_MUTATION_KEYS } from "~/src/modules/newsletter/newsletter.constants"
 import { newsletterSubscriber } from "~/src/modules/newsletter/newsletter.schema"
 import { newsletterZodSchemas } from "~/src/modules/newsletter/newsletter.zod"
+import { keyedByFormerAddressOf } from "~/src/modules/user-email-history/user-email-history.accessors"
 
 const SUBSCRIBER_EMAIL_KINDS = [
   AUDIT_EMAIL_KIND.NEWSLETTER_ALREADY_SUBSCRIBED,
@@ -34,8 +35,13 @@ const newsletterAuditEntriesOf = (subscriberId: string) => {
   const emailKind = sql`json_extract(${auditLog.metadata}, '$.emailKind')`
   const subscriptionChange = inArray(auditLog.action, SUBSCRIPTION_CHANGE_ACTIONS)
 
+  const subscriberAccount = sql`(${db.select({ userId: newsletterSubscriber.userId }).from(newsletterSubscriber).where(eq(newsletterSubscriber.id, subscriberId))})`
+
   return and(
-    inArray(auditLog.resourceId, subscriberEmail),
+    or(
+      inArray(auditLog.resourceId, subscriberEmail),
+      keyedByFormerAddressOf(subscriberAccount, { address: auditLog.resourceId, at: auditLog.createdAt }),
+    ),
     inArray(auditLog.action, [...SUBSCRIPTION_CHANGE_ACTIONS, AUDIT_LOG_ACTION.EMAIL_FAILED]),
     or(subscriptionChange, inArray(emailKind, SUBSCRIBER_EMAIL_KINDS)),
   )
