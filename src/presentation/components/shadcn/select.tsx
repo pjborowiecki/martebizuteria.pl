@@ -12,7 +12,7 @@ const SelectGroup = ({ className, ...props }: Readonly<SelectPrimitive.Group.Pro
 )
 
 const SelectValue = ({ className, ...props }: Readonly<SelectPrimitive.Value.Props>): JSX.Element => (
-  <SelectPrimitive.Value data-slot="select-value" className={cn("flex flex-1 text-left", className)} {...props} />
+  <SelectPrimitive.Value data-slot="select-value" className={cn("min-w-0 flex-1 truncate text-left", className)} {...props} />
 )
 
 const SelectTrigger = ({ className, size = "default", children, ...props }: Readonly<SelectTriggerProps>): JSX.Element => {
@@ -59,7 +59,7 @@ const SelectContent = ({
         data-slot="select-content"
         data-align-trigger={alignItemWithTrigger}
         className={cn(
-          "relative isolate z-50 max-h-[min(var(--available-height),20rem)] w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto overscroll-contain rounded-none border border-border bg-background text-popover-foreground shadow-md ring-0 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "relative isolate z-50 max-h-[min(var(--available-height),20rem)] w-max max-w-(--available-width) min-w-[max(var(--anchor-width),9rem)] origin-(--transform-origin) overflow-x-hidden overflow-y-auto overscroll-contain rounded-none border border-border bg-background text-popover-foreground shadow-md ring-0 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className,
         )}
         {...props}
@@ -140,7 +140,7 @@ const DEFAULT_ALIGN_OFFSET = 0
 const Select = SelectPrimitive.Root
 
 const selectTriggerVariants = cva(
-  "flex items-center justify-between gap-1.5 whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-1.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "flex items-center justify-between gap-1.5 whitespace-nowrap transition-colors outline-none select-none focus-visible:ring-1 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-1 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     defaultVariants: {
       size: "default",
