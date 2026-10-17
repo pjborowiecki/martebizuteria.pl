@@ -4,8 +4,8 @@ import { createServerFn } from "@tanstack/react-start"
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
 import { getStripeCustomerId } from "~/src/integrations/stripe/stripe.customer.server"
 import { stripe } from "~/src/integrations/stripe/stripe.server"
+import { resolveRequestDisplayPreferences } from "~/src/integrations/use-intl/i18n.display-preferences"
 
-import { resolveTimezoneCode } from "~/src/modules/_core/constants/timezone"
 import { PAYMENT_METHOD_QUERY_KEYS, PAYMENT_METHOD_QUERY_STALE_MS, SAVED_CARDS_PAGE_LIMIT } from "~/src/modules/payment/payment.constants"
 import { type Payment } from "~/src/modules/payment/payment.types"
 import { isCardExpired } from "~/src/modules/payment/payment.utils"
@@ -19,7 +19,7 @@ export const listSavedPaymentMethods = createServerFn({ method: "GET" })
     }
 
     const methods = await stripe.paymentMethods.list({ customer: customerId, limit: SAVED_CARDS_PAGE_LIMIT, type: "card" })
-    const timeZone = resolveTimezoneCode(context.auth.user.timezone)
+    const { timeZone } = await resolveRequestDisplayPreferences()
 
     return methods.data.flatMap((method) => {
       const { card } = method

@@ -203,7 +203,7 @@ Application code formats through this `useFormatter`. `use-intl`'s own `useForma
 
 ### On the server
 
-`resolveRequestDisplayPreferences()`, a `createServerOnlyFn` in `i18n.display-preferences.ts`, makes the same reads for the current request and returns the resolved `{ formatLocale, timeZone }`. Server functions call it when their answer depends on where a day begins or holds a date or label they format themselves: the admin orders, customers and products pages and their exports, the audit log list and its count for today, the dashboard snapshot and chart range, and the customer detail. Use-case tests mock `i18n.display-preferences.ts` with `src/platform/testing/mocks/display-preferences.ts`, whose `resolveRequestDisplayPreferences` answers `pl-PL` and `Europe/Warsaw`.
+`resolveRequestDisplayPreferences()`, a `createServerOnlyFn` in `i18n.display-preferences.ts`, makes the same reads for the current request and returns the resolved `{ formatLocale, timeZone }`. Server functions call it when their answer depends on where a day begins or holds a date or label they format themselves: the admin orders, customers and products pages and their exports, the audit log list and its count for today, the dashboard snapshot and chart range, the customer detail, and the saved cards on the account's payment page, whose expiry it judges. Use-case tests mock `i18n.display-preferences.ts` with `src/platform/testing/mocks/display-preferences.ts`, whose `resolveRequestDisplayPreferences` answers `pl-PL` and `Europe/Warsaw`.
 
 ### Saving a preference
 

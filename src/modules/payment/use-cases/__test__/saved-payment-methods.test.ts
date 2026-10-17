@@ -9,7 +9,7 @@ import { listSavedPaymentMethods, listSavedPaymentMethodsQuery } from "../list-s
 
 const USER_ID = "user-1"
 
-const caller = vi.hoisted(() => ({ timezone: undefined as string | undefined }))
+const display = vi.hoisted(() => ({ timeZone: "Europe/Warsaw" }))
 
 const stripeCalls = vi.hoisted(() => ({
   detach: vi.fn<(id: string) => Promise<unknown>>(),
@@ -24,6 +24,9 @@ vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
   withRateLimit: () => ({}),
 }))
 vi.mock("~/src/integrations/stripe/stripe.customer.server", () => ({ getStripeCustomerId: stripeCalls.getCustomerId }))
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => ({
+  resolveRequestDisplayPreferences: () => Promise.resolve({ formatLocale: "pl-PL", timeZone: display.timeZone }),
+}))
 vi.mock("~/src/integrations/stripe/stripe.server", () => ({
   stripe: { paymentMethods: { detach: stripeCalls.detach, list: stripeCalls.list, retrieve: stripeCalls.retrieve } },
 }))
@@ -31,14 +34,12 @@ vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
       handler: (handler: (options: { context: unknown; data: unknown }) => unknown) => (options?: { data?: unknown }) =>
-        handler({ context: { auth: { user: { id: USER_ID, timezone: caller.timezone } } }, data: options?.data }),
+        handler({ context: { auth: { user: { id: USER_ID } } }, data: options?.data }),
       middleware: () => builder,
       validator: (validate: (input: unknown) => unknown) => {
         const validating = {
           handler: (handler: (options: { context: unknown; data: unknown }) => unknown) => (options?: { data?: unknown }) =>
-            Promise.resolve(options?.data).then((data) =>
-              handler({ context: { auth: { user: { id: USER_ID, timezone: caller.timezone } } }, data: validate(data) }),
-            ),
+            Promise.resolve(options?.data).then((data) => handler({ context: { auth: { user: { id: USER_ID } } }, data: validate(data) })),
           middleware: () => validating,
           validator: () => validating,
         }
@@ -59,7 +60,7 @@ const cardMethod = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
-  caller.timezone = undefined
+  display.timeZone = "Europe/Warsaw"
   vi.useFakeTimers()
   vi.setSystemTime(new Date("2026-10-01T00:00:00.000Z"))
   stripeCalls.getCustomerId.mockResolvedValue("cus_1")
@@ -125,8 +126,8 @@ describe("listSavedPaymentMethods", () => {
     expect(method?.isExpired).toBe(false)
   })
 
-  it("keeps a card usable while its expiry month is still running in the customer's own calendar", async () => {
-    caller.timezone = "Pacific/Honolulu"
+  it("keeps a card usable while its expiry month is still running in the shopper's own calendar", async () => {
+    display.timeZone = "Pacific/Honolulu"
     vi.setSystemTime(new Date("2026-10-01T00:30:00.000Z"))
     stripeCalls.list.mockResolvedValue({ data: [cardMethod({ card: { brand: "visa", exp_month: 9, exp_year: 2026, last4: "4242" } })] })
 
@@ -135,7 +136,17 @@ describe("listSavedPaymentMethods", () => {
     expect(method?.isExpired).toBe(false)
   })
 
-  it("falls back to the store calendar for a customer who saved no time zone", async () => {
+  it("flags a card as soon as the next month starts in a shopper's zone ahead of Warsaw", async () => {
+    display.timeZone = "Pacific/Auckland"
+    vi.setSystemTime(new Date("2026-09-30T12:00:00.000Z"))
+    stripeCalls.list.mockResolvedValue({ data: [cardMethod({ card: { brand: "visa", exp_month: 9, exp_year: 2026, last4: "4242" } })] })
+
+    const [method] = await listSavedPaymentMethods()
+
+    expect(method?.isExpired).toBe(true)
+  })
+
+  it("follows the Warsaw calendar for a shopper shown Warsaw time", async () => {
     vi.setSystemTime(new Date("2026-09-30T23:30:00.000Z"))
     stripeCalls.list.mockResolvedValue({ data: [cardMethod({ card: { brand: "visa", exp_month: 9, exp_year: 2026, last4: "4242" } })] })
 

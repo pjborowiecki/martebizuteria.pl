@@ -203,7 +203,7 @@ Kod aplikacji formatuje przez ten `useFormatter`. Własny `useFormatter` z `use-
 
 ### Na serwerze
 
-`resolveRequestDisplayPreferences()`, `createServerOnlyFn` z `i18n.display-preferences.ts`, wykonuje te same odczyty dla bieżącego żądania i zwraca ustalone `{ formatLocale, timeZone }`. Funkcje serwerowe wywołują ją, gdy ich odpowiedź zależy od tego, gdzie zaczyna się dzień, albo zawiera datę lub etykietę, którą formatują same: strony zamówień, klientów i produktów w panelu oraz ich eksporty, lista dziennika zdarzeń i jej licznik dzisiejszych wpisów, migawka i zakres wykresów panelu oraz szczegóły klienta. Testy przypadków użycia mockują `i18n.display-preferences.ts` modułem `src/platform/testing/mocks/display-preferences.ts`, którego `resolveRequestDisplayPreferences` odpowiada `pl-PL` i `Europe/Warsaw`.
+`resolveRequestDisplayPreferences()`, `createServerOnlyFn` z `i18n.display-preferences.ts`, wykonuje te same odczyty dla bieżącego żądania i zwraca ustalone `{ formatLocale, timeZone }`. Funkcje serwerowe wywołują ją, gdy ich odpowiedź zależy od tego, gdzie zaczyna się dzień, albo zawiera datę lub etykietę, którą formatują same: strony zamówień, klientów i produktów w panelu oraz ich eksporty, lista dziennika zdarzeń i jej licznik dzisiejszych wpisów, migawka i zakres wykresów panelu, szczegóły klienta oraz zapisane karty na stronie płatności w koncie, których ważność ocenia. Testy przypadków użycia mockują `i18n.display-preferences.ts` modułem `src/platform/testing/mocks/display-preferences.ts`, którego `resolveRequestDisplayPreferences` odpowiada `pl-PL` i `Europe/Warsaw`.
 
 ### Zapisanie preferencji
 
