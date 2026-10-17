@@ -46,6 +46,8 @@ import { Route as CheckoutIndexRouteImport } from './routes/checkout.index'
 import { Route as DevEmailsRouteImport } from './routes/dev.emails'
 import { Route as DocsIndexRouteImport } from './routes/docs.index'
 import { Route as DocsSplatRouteImport } from './routes/docs.$'
+import { Route as FormsFormularz_reklamacjiDotpdfRouteImport } from './routes/forms.formularz_reklamacji[.]pdf'
+import { Route as FormsFormularz_zwrotuDotpdfRouteImport } from './routes/forms.formularz_zwrotu[.]pdf'
 import { Route as StorefrontBlogIndexRouteImport } from './routes/_storefront.blog.index'
 import { Route as StorefrontBlogSlugRouteImport } from './routes/_storefront.blog.$slug'
 import { Route as StorefrontCategoriesIndexRouteImport } from './routes/_storefront.categories.index'
@@ -276,6 +278,18 @@ const DocsSplatRoute = DocsSplatRouteImport.update({
   path: '/$',
   getParentRoute: () => DocsRoute,
 } as any)
+const FormsFormularz_reklamacjiDotpdfRoute =
+  FormsFormularz_reklamacjiDotpdfRouteImport.update({
+    id: '/forms/formularz_reklamacji.pdf',
+    path: '/forms/formularz_reklamacji.pdf',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const FormsFormularz_zwrotuDotpdfRoute =
+  FormsFormularz_zwrotuDotpdfRouteImport.update({
+    id: '/forms/formularz_zwrotu.pdf',
+    path: '/forms/formularz_zwrotu.pdf',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const StorefrontBlogIndexRoute = StorefrontBlogIndexRouteImport.update({
   id: '/blog/',
   path: '/blog/',
@@ -536,6 +550,8 @@ export interface FileRoutesByFullPath {
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/emails': typeof DevEmailsRoute
   '/docs/$': typeof DocsSplatRoute
+  '/forms/formularz_reklamacji.pdf': typeof FormsFormularz_reklamacjiDotpdfRoute
+  '/forms/formularz_zwrotu.pdf': typeof FormsFormularz_zwrotuDotpdfRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/checkout/': typeof CheckoutIndexRoute
@@ -609,6 +625,8 @@ export interface FileRoutesByTo {
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/emails': typeof DevEmailsRoute
   '/docs/$': typeof DocsSplatRoute
+  '/forms/formularz_reklamacji.pdf': typeof FormsFormularz_reklamacjiDotpdfRoute
+  '/forms/formularz_zwrotu.pdf': typeof FormsFormularz_zwrotuDotpdfRoute
   '/': typeof StorefrontIndexRoute
   '/account': typeof AccountIndexRoute
   '/admin': typeof AdminIndexRoute
@@ -687,6 +705,8 @@ export interface FileRoutesById {
   '/auth/sign-up': typeof AuthSignUpRoute
   '/dev/emails': typeof DevEmailsRoute
   '/docs/$': typeof DocsSplatRoute
+  '/forms/formularz_reklamacji.pdf': typeof FormsFormularz_reklamacjiDotpdfRoute
+  '/forms/formularz_zwrotu.pdf': typeof FormsFormularz_zwrotuDotpdfRoute
   '/_storefront/': typeof StorefrontIndexRoute
   '/account/': typeof AccountIndexRoute
   '/admin/': typeof AdminIndexRoute
@@ -770,6 +790,8 @@ export interface FileRouteTypes {
     | '/auth/sign-up'
     | '/dev/emails'
     | '/docs/$'
+    | '/forms/formularz_reklamacji.pdf'
+    | '/forms/formularz_zwrotu.pdf'
     | '/account/'
     | '/admin/'
     | '/checkout/'
@@ -843,6 +865,8 @@ export interface FileRouteTypes {
     | '/auth/sign-up'
     | '/dev/emails'
     | '/docs/$'
+    | '/forms/formularz_reklamacji.pdf'
+    | '/forms/formularz_zwrotu.pdf'
     | '/'
     | '/account'
     | '/admin'
@@ -920,6 +944,8 @@ export interface FileRouteTypes {
     | '/auth/sign-up'
     | '/dev/emails'
     | '/docs/$'
+    | '/forms/formularz_reklamacji.pdf'
+    | '/forms/formularz_zwrotu.pdf'
     | '/_storefront/'
     | '/account/'
     | '/admin/'
@@ -979,6 +1005,8 @@ export interface RootRouteChildren {
   AdminSecurityRoute: typeof AdminSecurityRoute
   ApiHealthRoute: typeof ApiHealthRoute
   DevEmailsRoute: typeof DevEmailsRoute
+  FormsFormularz_reklamacjiDotpdfRoute: typeof FormsFormularz_reklamacjiDotpdfRoute
+  FormsFormularz_zwrotuDotpdfRoute: typeof FormsFormularz_zwrotuDotpdfRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiNewsletterUnsubscribeRoute: typeof ApiNewsletterUnsubscribeRoute
   ApiWebhooksInpostRoute: typeof ApiWebhooksInpostRoute
@@ -1246,6 +1274,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/docs/$'
       preLoaderRoute: typeof DocsSplatRouteImport
       parentRoute: typeof DocsRoute
+    }
+    '/forms/formularz_reklamacji.pdf': {
+      id: '/forms/formularz_reklamacji.pdf'
+      path: '/forms/formularz_reklamacji.pdf'
+      fullPath: '/forms/formularz_reklamacji.pdf'
+      preLoaderRoute: typeof FormsFormularz_reklamacjiDotpdfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forms/formularz_zwrotu.pdf': {
+      id: '/forms/formularz_zwrotu.pdf'
+      path: '/forms/formularz_zwrotu.pdf'
+      fullPath: '/forms/formularz_zwrotu.pdf'
+      preLoaderRoute: typeof FormsFormularz_zwrotuDotpdfRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_storefront/blog/': {
       id: '/_storefront/blog/'
@@ -1802,6 +1844,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminSecurityRoute: AdminSecurityRoute,
   ApiHealthRoute: ApiHealthRoute,
   DevEmailsRoute: DevEmailsRoute,
+  FormsFormularz_reklamacjiDotpdfRoute: FormsFormularz_reklamacjiDotpdfRoute,
+  FormsFormularz_zwrotuDotpdfRoute: FormsFormularz_zwrotuDotpdfRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiNewsletterUnsubscribeRoute: ApiNewsletterUnsubscribeRoute,
   ApiWebhooksInpostRoute: ApiWebhooksInpostRoute,

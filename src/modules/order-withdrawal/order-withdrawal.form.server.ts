@@ -1,21 +1,17 @@
-import { env } from "cloudflare:workers"
-
 import { Buffer } from "node:buffer"
 import { type Attachment } from "resend"
 
-const WITHDRAWAL_FORM_PATH = "/forms/formularz_zwrotu.pdf"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 
-const WITHDRAWAL_FORM_FILENAME = "formularz_zwrotu.pdf"
-
-export const loadWithdrawalFormAttachment = async (origin: string): Promise<Attachment> => {
-  const response = await env.ASSETS.fetch(new URL(WITHDRAWAL_FORM_PATH, origin))
-  if (!response.ok) {
-    throw new Error(`The withdrawal form ${WITHDRAWAL_FORM_PATH} could not be read from the static assets: HTTP ${response.status}`)
-  }
+export const loadWithdrawalFormAttachment = async (seller: StoreSetting["storedSellerDetails"], origin: string): Promise<Attachment> => {
+  const [{ loadFormFonts }, { WITHDRAWAL_FORM }] = await Promise.all([
+    import("~/src/modules/content-page/content-page.forms.server"),
+    import("~/src/presentation/pdf/withdrawal-form"),
+  ])
 
   return {
-    content: Buffer.from(await response.arrayBuffer()).toString("base64"),
+    content: Buffer.from(await WITHDRAWAL_FORM.render(seller, await loadFormFonts(origin))).toString("base64"),
     contentType: "application/pdf",
-    filename: WITHDRAWAL_FORM_FILENAME,
+    filename: WITHDRAWAL_FORM.fileName,
   }
 }

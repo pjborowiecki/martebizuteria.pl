@@ -1,6 +1,6 @@
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-const IGNORED_PATHS_REGEX = /^\/(?:api|rpc|_serverFn|assets)(?:\/|$)/u
+const IGNORED_PATHS_REGEX = /^\/(?:api|rpc|_serverFn|assets|forms)(?:\/|$)/u
 
 const LOCALE_SEGMENT_REGEX = /^\/(?<locale>[a-zA-Z-]+)(?:\/|$)/u
 

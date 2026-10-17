@@ -4,7 +4,10 @@ import { type Attachment } from "resend"
 import type Stripe from "stripe"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
+import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
+
 import { type FulfillmentTimeAttribute } from "~/src/modules/attribute-on-product/attribute-on-product.server"
+import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
 
 type OrderConfirmationElement = ReactElement<ComponentProps<typeof OrderConfirmation>>
 
@@ -27,7 +30,7 @@ const {
   getFulfillmentTimeAttributesByVariantId:
     vi.fn<(variantIds: readonly string[]) => Promise<ReadonlyMap<string, FulfillmentTimeAttribute>>>(),
   getOrderTotalsForEmail: vi.fn<(orderId: string) => Promise<Record<string, unknown> | undefined>>(),
-  loadWithdrawalFormAttachment: vi.fn<(origin: string) => Promise<Attachment>>(),
+  loadWithdrawalFormAttachment: vi.fn<(seller: StoreSetting["storedSellerDetails"], origin: string) => Promise<Attachment>>(),
   paymentIntentsRetrieve: vi.fn<(id: string, params: object) => Promise<{ payment_method: { type: string } | null }>>(),
   recordOrderEmailOutcome: vi.fn(),
   recordOrderPaymentCapturedAudit: vi.fn(),
@@ -70,9 +73,9 @@ vi.mock("~/src/modules/checkout/use-cases/fulfill-checkout.server", () => ({ ful
 vi.mock("~/src/modules/checkout/use-cases/release-checkout.server", () => ({ releaseCheckout: vi.fn() }))
 vi.mock("~/src/modules/order/order.accessors", () => ({ getOrderTotalsForEmail }))
 vi.mock("~/src/modules/store-setting/store-setting.accessors", async () => {
-  const { TEST_STORED_SELLER_DETAILS } = await import("~/src/platform/testing/mocks/seller-details")
+  const sellerDetails = await import("~/src/platform/testing/mocks/seller-details")
 
-  return { readSellerDetails: () => Promise.resolve(TEST_STORED_SELLER_DETAILS) }
+  return { readSellerDetails: () => Promise.resolve(sellerDetails.TEST_STORED_SELLER_DETAILS) }
 })
 vi.mock("~/src/modules/order/use-cases/clear-order-dispute", () => ({ clearOrderDispute: vi.fn() }))
 vi.mock("~/src/modules/order/use-cases/flag-order-dispute", () => ({ flagOrderDispute: vi.fn() }))
@@ -377,10 +380,10 @@ describe("order confirmation email as the confirmation of the contract", () => {
     expect(sentEmail().react.props.inlineImageSources).toBe(sources)
   })
 
-  it("attaches the model withdrawal form read from the deployment the order was placed on", async () => {
+  it("attaches the model withdrawal form made from the stored seller details, with fonts from the deployment the order was placed on", async () => {
     await dispatch(checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata })))
 
-    expect(loadWithdrawalFormAttachment).toHaveBeenCalledExactlyOnceWith("http://127.0.0.1:3000")
+    expect(loadWithdrawalFormAttachment).toHaveBeenCalledExactlyOnceWith(TEST_STORED_SELLER_DETAILS, "http://127.0.0.1:3000")
     expect(sentEmail().attachments).toStrictEqual([WITHDRAWAL_FORM])
   })
 
@@ -410,7 +413,7 @@ describe("order confirmation email links", () => {
     expect(sentEmail().react.props.accountCta.href).toBe(`${origin}/en-US/auth/sign-up`)
     expect(sentEmail().react.props.items[0]?.productUrl).toBe(`${origin}/en-US/products/bransoletka-aurora`)
     expect(sentEmail().react.props.legalLinks.termsOfService).toBe(`${origin}/en-US/terms-of-service`)
-    expect(loadWithdrawalFormAttachment).toHaveBeenCalledExactlyOnceWith(origin)
+    expect(loadWithdrawalFormAttachment).toHaveBeenCalledExactlyOnceWith(TEST_STORED_SELLER_DETAILS, origin)
   })
 
   it.each(["preview", "production"])(
@@ -552,7 +555,7 @@ describe("order confirmation email delivery", () => {
 
   it("records the confirmation as unsent rather than sending it without the withdrawal form", async () => {
     loadWithdrawalFormAttachment.mockRejectedValue(
-      new Error("The withdrawal form /forms/formularz_zwrotu.pdf could not be read from the static assets: HTTP 404"),
+      new Error("The form font /fonts/forms/manrope-400-normal.ttf could not be read from the static assets: HTTP 404"),
     )
     const event = checkoutSessionCompletedEvent(paidSession({ items: itemsMetadata }))
 
@@ -562,7 +565,7 @@ describe("order confirmation email delivery", () => {
     expect(sendEmail).not.toHaveBeenCalled()
     expect(recordOrderEmailOutcome).toHaveBeenCalledExactlyOnceWith({
       ...UNSENT_CONFIRMATION,
-      failure: "The withdrawal form /forms/formularz_zwrotu.pdf could not be read from the static assets: HTTP 404",
+      failure: "The form font /fonts/forms/manrope-400-normal.ttf could not be read from the static assets: HTTP 404",
     })
   })
 
