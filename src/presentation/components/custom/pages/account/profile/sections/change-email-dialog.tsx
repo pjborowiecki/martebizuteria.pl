@@ -47,6 +47,7 @@ export const ChangeEmailDialog = ({
   const onSubmit = useCallback(
     async (values: ChangeEmailFormValues) => {
       await changeEmailRequest({
+        callbackURL: globalThis.location.pathname,
         fetchOptions: {
           onError: (ctx: ErrorContext) => {
             toast.error(t("errorTitle"), { description: actionError(ctx.error) })

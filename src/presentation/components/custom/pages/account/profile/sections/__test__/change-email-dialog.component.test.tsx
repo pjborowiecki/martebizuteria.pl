@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 interface ChangeEmailRequest {
+  readonly callbackURL: string
   readonly fetchOptions: { readonly onError: (context: { error: unknown }) => void; readonly onSuccess: () => void }
   readonly newEmail: string
 }
@@ -202,5 +203,18 @@ describe("ChangeEmailDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Open from a trigger" }))
 
     expect(onOpenChange).toHaveBeenCalledWith(true)
+  })
+})
+
+describe("ChangeEmailDialog links", () => {
+  it("brings both confirmation links back to the page the change started from, in its language", async () => {
+    globalThis.history.pushState(null, "", "/en-US/account/profile")
+    renderDialog()
+
+    await submitNewEmail("anna.nowak@example.com")
+
+    await waitFor(() => {
+      expect(calls.changeEmail.mock.calls[0]?.[0].callbackURL).toBe("/en-US/account/profile")
+    })
   })
 })
