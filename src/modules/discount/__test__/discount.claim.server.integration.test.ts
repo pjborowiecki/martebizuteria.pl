@@ -16,6 +16,7 @@ vi.mock(import("~/src/integrations/drizzle-orm/drizzle.database"), async () => {
 })
 
 const { applyMigrationHistory } = await import("~/src/platform/testing/mocks/migrations")
+const { getDiscountByCodeForPreviewQuery } = await import("~/src/modules/discount/discount.accessors")
 const { DISCOUNT_TYPE } = await import("~/src/modules/discount/discount.constants")
 const { claimCheckoutDiscount, keepClaimedDiscount, prepareDiscountClaim, releaseDiscountClaims, releaseUnappliedDiscountClaims } =
   await import("~/src/modules/discount/discount.claim.server")
@@ -30,7 +31,13 @@ const readClaims = () =>
   claimRowSchema.parse(sqlite.prepare("select checkout_id, discount_id, email from discount_claim order by checkout_id, discount_id").all())
 
 const claim = async (checkoutId: string, discountId: string, email = "ada@marte.test"): Promise<boolean> => {
-  const claims = await prepareDiscountClaim({ checkoutId, discountId, email })
+  const claims = await prepareDiscountClaim({ checkoutId, discountId, email, userId: undefined })
+
+  return claims.length > 0
+}
+
+const claimSignedIn = async (checkoutId: string, { email, userId }: Readonly<{ email: string; userId: string }>): Promise<boolean> => {
+  const claims = await prepareDiscountClaim({ checkoutId, discountId: "disc-once", email, userId })
 
   return claims.length > 0
 }
@@ -143,23 +150,62 @@ describe("prepareDiscountClaim against the per-customer limit", () => {
   })
 })
 
+describe("prepareDiscountClaim for a customer who changed their address", () => {
+  beforeEach(() => {
+    sqlite.exec(`
+      delete from user;
+      insert into user (id, name, email, created_at, updated_at) values ('user-ada', 'Ada', 'ada@new.example', 0, 0);
+      update checkout set user_id = 'user-ada' where id = 'chk-ada';
+    `)
+  })
+
+  it("counts what the account redeemed under its old address, signed in with any address or as a guest with its new one", async () => {
+    sqlite.exec(`
+      insert into discount_redemption (id, discount_id, email, user_id, amount, created_at, updated_at)
+        values ('redemption-1', 'disc-once', 'ada@marte.test', 'user-ada', 3000, ${AT}, ${AT})
+    `)
+
+    await expect(claimSignedIn("chk-ada-again", { email: "ada@third.example", userId: "user-ada" })).resolves.toBe(false)
+    await expect(claim("chk-grace", "disc-once", "Ada@New.example")).resolves.toBe(false)
+    await expect(claim("chk-grace", "disc-once", "grace@marte.test")).resolves.toBe(true)
+  })
+
+  it("counts a use another of the account's checkouts holds under a different address", async () => {
+    await claim("chk-ada", "disc-once", "ada@marte.test")
+
+    await expect(claimSignedIn("chk-ada-again", { email: "ada@new.example", userId: "user-ada" })).resolves.toBe(false)
+  })
+
+  it("shows the signed-in account the use its checkouts hold before an address is typed", async () => {
+    await claim("chk-ada", "disc-once", "ada@marte.test")
+
+    await expect(
+      getDiscountByCodeForPreviewQuery({ code: "ONCE", customer: { email: undefined, userId: "user-ada" }, heldSessionId: undefined }),
+    ).resolves.toMatchObject({ heldForCustomer: 1, redeemedByCustomer: 0 })
+  })
+})
+
 describe("claimCheckoutDiscount", () => {
   it("keeps the discount it claimed for the checkout", async () => {
-    await expect(claimCheckoutDiscount({ applied: LAST_USE, checkoutId: "chk-ada", email: "ada@marte.test" })).resolves.toStrictEqual(
-      LAST_USE,
-    )
+    await expect(
+      claimCheckoutDiscount({ applied: LAST_USE, checkoutId: "chk-ada", email: "ada@marte.test", userId: undefined }),
+    ).resolves.toStrictEqual(LAST_USE)
     expect(readClaims()).toHaveLength(1)
   })
 
   it("drops a discount another checkout holds, and says why", async () => {
     await claim("chk-grace", "disc-last", "grace@marte.test")
 
-    await expect(claimCheckoutDiscount({ applied: LAST_USE, checkoutId: "chk-ada", email: "ada@marte.test" })).resolves.toBeUndefined()
+    await expect(
+      claimCheckoutDiscount({ applied: LAST_USE, checkoutId: "chk-ada", email: "ada@marte.test", userId: undefined }),
+    ).resolves.toBeUndefined()
     expect(console.info).toHaveBeenCalledWith("Discount LAST-ONE not applied to checkout: other checkouts hold the uses its limits allow.")
   })
 
   it("claims nothing when no discount applies", async () => {
-    await expect(claimCheckoutDiscount({ applied: undefined, checkoutId: "chk-ada", email: "ada@marte.test" })).resolves.toBeUndefined()
+    await expect(
+      claimCheckoutDiscount({ applied: undefined, checkoutId: "chk-ada", email: "ada@marte.test", userId: undefined }),
+    ).resolves.toBeUndefined()
     expect(readClaims()).toStrictEqual([])
   })
 })

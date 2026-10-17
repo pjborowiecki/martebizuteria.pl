@@ -83,7 +83,9 @@ const resetSchema = (): void => {
       drop table if exists discount_claim;
       drop table if exists discount_redemption;
       drop table if exists discount;
+      drop table if exists user;
 
+      create table user (id text primary key, email text not null);
       create table address (
         id text primary key, address1 text not null, address2 text, city text not null, country_code text not null,
         first_name text, last_name text, phone text, postal_code text, province text, user_id text,
@@ -97,7 +99,7 @@ const resetSchema = (): void => {
       create table discount (
         id text primary key, usage_count integer not null default 0, usage_limit integer, per_customer_limit integer
       );
-      create table discount_redemption (id text primary key, discount_id text not null, email text not null);
+      create table discount_redemption (id text primary key, discount_id text not null, email text not null, user_id text);
       create table discount_claim (
         id text primary key, checkout_id text not null, discount_id text not null, email text not null,
         created_at integer, updated_at integer, unique (checkout_id, discount_id)

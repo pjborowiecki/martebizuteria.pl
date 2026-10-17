@@ -1,4 +1,4 @@
-import { type SQL, and, count, desc, eq, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm"
+import { type SQL, and, count, desc, eq, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
@@ -6,10 +6,12 @@ import { inJsonList } from "~/src/integrations/drizzle-orm/drizzle.utils"
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
+import { checkout } from "~/src/modules/checkout/checkout.schema"
 import { DISCOUNT_STATUS, type DiscountStatus, type DiscountType } from "~/src/modules/discount/discount.constants"
 import { discount, discountClaim, discountRedemption } from "~/src/modules/discount/discount.schema"
 import { type Discount } from "~/src/modules/discount/discount.types"
 import { payment } from "~/src/modules/payment/payment.schema"
+import { user } from "~/src/modules/user/user.schema"
 
 const NO_ROWS = 0
 
@@ -29,21 +31,55 @@ const normalizeCustomerEmail = (email: string | undefined): string | undefined =
   return normalizedEmail === "" ? undefined : normalizedEmail
 }
 
-const customerRedemptionCount = (email: string | undefined): SQL<number> => {
+const customerAccounts = ({ email, userId }: DiscountCustomer) =>
+  db
+    .select({ id: user.id })
+    .from(user)
+    .where(or(userId === undefined ? undefined : eq(user.id, userId), email === undefined ? undefined : eq(user.email, email)))
+
+export const redeemedByCustomer = ({ email, userId }: DiscountCustomer): SQL | undefined => {
   const normalizedEmail = normalizeCustomerEmail(email)
-  if (normalizedEmail === undefined) {
+  if (normalizedEmail === undefined && userId === undefined) {
+    return undefined
+  }
+
+  return or(
+    normalizedEmail === undefined ? undefined : eq(sql`lower(${discountRedemption.email})`, normalizedEmail),
+    inArray(discountRedemption.userId, customerAccounts({ email: normalizedEmail, userId })),
+  )
+}
+
+export const claimedForCustomer = ({ email, userId }: DiscountCustomer): SQL | undefined => {
+  const normalizedEmail = normalizeCustomerEmail(email)
+  if (normalizedEmail === undefined && userId === undefined) {
+    return undefined
+  }
+
+  const accountCheckouts = db
+    .select({ id: checkout.id })
+    .from(checkout)
+    .where(inArray(checkout.userId, customerAccounts({ email: normalizedEmail, userId })))
+
+  return or(
+    normalizedEmail === undefined ? undefined : eq(sql`lower(${discountClaim.email})`, normalizedEmail),
+    inArray(discountClaim.checkoutId, accountCheckouts),
+  )
+}
+
+const customerRedemptionCount = (customer: DiscountCustomer): SQL<number> => {
+  const redeemed = redeemedByCustomer(customer)
+  if (redeemed === undefined) {
     return sql<number>`${NO_ROWS}`
   }
 
   const sameDiscount = eq(discountRedemption.discountId, discount.id)
-  const sameEmail = eq(sql`lower(${discountRedemption.email})`, normalizedEmail)
 
-  return sql<number>`${db.select({ used: count() }).from(discountRedemption).where(and(sameDiscount, sameEmail))}`
+  return sql<number>`${db.select({ used: count() }).from(discountRedemption).where(and(sameDiscount, redeemed))}`
 }
 
-export const getDiscountByCodeForCustomerQuery = (code: string, email: string | undefined) =>
+export const getDiscountByCodeForCustomerQuery = (code: string, customer: DiscountCustomer) =>
   db.query.discount.findFirst({
-    extras: { redeemedByCustomer: customerRedemptionCount(email).as("redeemed_by_customer") },
+    extras: { redeemedByCustomer: customerRedemptionCount(customer).as("redeemed_by_customer") },
     where: eq(discount.code, code),
   })
 
@@ -60,23 +96,20 @@ const claimsOfOtherCheckouts = (heldSessionId: string | undefined): SQL | undefi
 
 const claimCount = (claims: SQL | undefined): SQL<number> => sql<number>`${db.select({ held: count() }).from(discountClaim).where(claims)}`
 
-const customerClaimCount = (claims: SQL | undefined, email: string | undefined): SQL<number> => {
-  const normalizedEmail = normalizeCustomerEmail(email)
-  if (normalizedEmail === undefined) {
-    return sql<number>`${NO_ROWS}`
-  }
+const customerClaimCount = (claims: SQL | undefined, customer: DiscountCustomer): SQL<number> => {
+  const claimed = claimedForCustomer(customer)
 
-  return claimCount(and(claims, eq(sql`lower(${discountClaim.email})`, normalizedEmail)))
+  return claimed === undefined ? sql<number>`${NO_ROWS}` : claimCount(and(claims, claimed))
 }
 
-export const getDiscountByCodeForPreviewQuery = ({ code, email, heldSessionId }: DiscountPreviewLookup) => {
+export const getDiscountByCodeForPreviewQuery = ({ code, customer, heldSessionId }: DiscountPreviewLookup) => {
   const otherCheckoutsClaims = claimsOfOtherCheckouts(heldSessionId)
 
   return db.query.discount.findFirst({
     extras: {
       heldByOtherCheckouts: claimCount(otherCheckoutsClaims).as("held_by_other_checkouts"),
-      heldForCustomer: customerClaimCount(otherCheckoutsClaims, email).as("held_for_customer"),
-      redeemedByCustomer: customerRedemptionCount(email).as("redeemed_by_customer"),
+      heldForCustomer: customerClaimCount(otherCheckoutsClaims, customer).as("held_for_customer"),
+      redeemedByCustomer: customerRedemptionCount(customer).as("redeemed_by_customer"),
     },
     where: eq(discount.code, code),
   })
@@ -163,9 +196,14 @@ export const deleteDiscountsByIds = async (ids: readonly string[]): Promise<numb
 
 type DiscountUpdateSet = Parameters<ReturnType<typeof db.update<typeof discount>>["set"]>[0]
 
+export interface DiscountCustomer {
+  readonly email: string | undefined
+  readonly userId: string | undefined
+}
+
 interface DiscountPreviewLookup {
   readonly code: string
-  readonly email: string | undefined
+  readonly customer: DiscountCustomer
   readonly heldSessionId: string | undefined
 }
 

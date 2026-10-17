@@ -11,7 +11,7 @@ const { getDiscountByCodeForPreviewQuery, getSellPricesByVariantIds, search } = 
     vi.fn<
       (lookup: {
         code: string
-        email: string | undefined
+        customer: { email: string | undefined; userId: string | undefined }
         heldSessionId: string | undefined
       }) => Promise<Discount["selectForPreview"] | undefined>
     >(),
@@ -479,7 +479,11 @@ describe("CheckoutSummary discount code and the shopper's email", () => {
     renderSummary()
 
     expect(await screen.findByText("Discount")).toBeInTheDocument()
-    expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({ code: "SPRING", email: undefined, heldSessionId: undefined })
+    expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
+      code: "SPRING",
+      customer: { email: undefined, userId: undefined },
+      heldSessionId: undefined,
+    })
   })
 
   it("does not check the code again while the shopper types an email", async () => {
@@ -507,7 +511,7 @@ describe("CheckoutSummary discount code and the shopper's email", () => {
     expect(await screen.findByText("You have already used that code.")).toBeInTheDocument()
     expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
       code: "SPRING",
-      email: "ada@marte.test",
+      customer: { email: "ada@marte.test", userId: undefined },
       heldSessionId: undefined,
     })
     expect(screen.queryByText("Discount")).not.toBeInTheDocument()
@@ -549,7 +553,7 @@ describe("CheckoutSummary discount code and the server's own figures", () => {
 
     expect(getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
       code: "SPRING",
-      email: undefined,
+      customer: { email: undefined, userId: undefined },
       heldSessionId: "cs_test_own",
     })
   })
@@ -568,7 +572,7 @@ describe("CheckoutSummary discount code and the server's own figures", () => {
     await vi.waitFor(() => {
       expect(getDiscountByCodeForPreviewQuery).toHaveBeenLastCalledWith({
         code: "SPRING",
-        email: undefined,
+        customer: { email: undefined, userId: undefined },
         heldSessionId: "cs_test_opened",
       })
     })

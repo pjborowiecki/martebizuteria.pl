@@ -26,7 +26,7 @@ const stubs = vi.hoisted(() => ({
       }) => Promise<Discount["selectForPreview"] | undefined>
     >(),
   getOfferedDeliveryMethodByIdQuery: vi.fn<(id: string) => Promise<{ price: number; type: string } | undefined>>(),
-  getRequestSession: vi.fn<() => Promise<{ user: { email: string } } | null>>(),
+  getRequestSession: vi.fn<() => Promise<{ user: { email: string; id: string } } | null>>(),
   getSellPricesByVariantIds: vi.fn<(variantIds: readonly string[]) => Promise<Map<string, number>>>(),
   withinRateLimit: vi.fn<(input: { key: string; limit: number; windowSeconds: number }) => Promise<boolean>>(),
 }))
@@ -138,7 +138,11 @@ describe("validateDiscountCode", () => {
   it("looks the code up however the shopper typed it", async () => {
     await validateDiscountCode({ data: { ...BASKET, code: " spring-24 " } })
 
-    expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledWith({ code: "SPRING-24", email: undefined, heldSessionId: undefined })
+    expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledWith({
+      code: "SPRING-24",
+      customer: { email: undefined, userId: undefined },
+      heldSessionId: undefined,
+    })
   })
 
   it("says a code that matches no discount was not found", async () => {
@@ -157,33 +161,32 @@ describe("validateDiscountCode", () => {
     })
   })
 
-  it("counts earlier redemptions against the email typed at checkout without reading the session", async () => {
-    stubs.getRequestSession.mockResolvedValue({ user: { email: "account@marte.test" } })
+  it("counts earlier redemptions against the email typed at checkout and the signed-in account", async () => {
+    stubs.getRequestSession.mockResolvedValue({ user: { email: "account@marte.test", id: "user-1" } })
 
     await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", email: "ada@marte.test" } })
 
     expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
       code: "SPRING-24",
-      email: "ada@marte.test",
+      customer: { email: "ada@marte.test", userId: "user-1" },
       heldSessionId: undefined,
     })
-    expect(stubs.getRequestSession).not.toHaveBeenCalled()
   })
 
   it("counts earlier redemptions against the signed-in account when no email was typed", async () => {
-    stubs.getRequestSession.mockResolvedValue({ user: { email: "account@marte.test" } })
+    stubs.getRequestSession.mockResolvedValue({ user: { email: "account@marte.test", id: "user-1" } })
 
     await validateDiscountCode({ data: { ...BASKET, code: "SPRING-24", email: "" } })
 
     expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
       code: "SPRING-24",
-      email: "account@marte.test",
+      customer: { email: "account@marte.test", userId: "user-1" },
       heldSessionId: undefined,
     })
   })
 
   it("waits for the session before it reads the discount when no email was typed", async () => {
-    const session = Promise.withResolvers<{ user: { email: string } } | null>()
+    const session = Promise.withResolvers<{ user: { email: string; id: string } } | null>()
     stubs.getRequestSession.mockReturnValue(session.promise)
 
     const validation = validateDiscountCode({ data: { ...BASKET, code: "SPRING-24" } })
@@ -192,11 +195,11 @@ describe("validateDiscountCode", () => {
     })
 
     expect(stubs.getDiscountByCodeForPreviewQuery).not.toHaveBeenCalled()
-    session.resolve({ user: { email: "account@marte.test" } })
+    session.resolve({ user: { email: "account@marte.test", id: "user-1" } })
     await validation
     expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
       code: "SPRING-24",
-      email: "account@marte.test",
+      customer: { email: "account@marte.test", userId: "user-1" },
       heldSessionId: undefined,
     })
   })
@@ -206,7 +209,7 @@ describe("validateDiscountCode", () => {
 
     expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
       code: "SPRING-24",
-      email: undefined,
+      customer: { email: undefined, userId: undefined },
       heldSessionId: undefined,
     })
   })
@@ -297,7 +300,7 @@ describe("validateDiscountCode counts the uses open checkouts hold", () => {
 
     expect(stubs.getDiscountByCodeForPreviewQuery).toHaveBeenCalledExactlyOnceWith({
       code: "SPRING-24",
-      email: undefined,
+      customer: { email: undefined, userId: undefined },
       heldSessionId: "cs_test_own",
     })
   })

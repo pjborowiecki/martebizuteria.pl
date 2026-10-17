@@ -49,10 +49,10 @@ export const validateDiscountCode = createServerFn({ method: "POST" })
   .middleware([withRateLimit("discount-validate", RATE_LIMITS.CHECKOUT)])
   .validator((input: ValidateDiscountInput) => discountZodSchemas.validateDiscountInput.parse(input))
   .handler(async ({ data }): Promise<Discount["validation"]> => {
-    const session = data.email === undefined ? await getRequestSession() : undefined
-    const email = data.email ?? session?.user.email
+    const session = await getRequestSession()
+    const customer = { email: data.email ?? session?.user.email, userId: session?.user.id }
     const [row, priceByVariantId] = await Promise.all([
-      getDiscountByCodeForPreviewQuery({ code: normalizeDiscountCode(data.code), email, heldSessionId: data.heldSessionId }),
+      getDiscountByCodeForPreviewQuery({ code: normalizeDiscountCode(data.code), customer, heldSessionId: data.heldSessionId }),
       getSellPricesByVariantIds(data.lines.map((line) => line.variantId)),
     ])
     if (row === undefined) {

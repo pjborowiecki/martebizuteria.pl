@@ -7,6 +7,7 @@ export const resolveCheckoutDiscount = async ({
   email,
   itemsSubtotal,
   shippingTotal,
+  userId,
 }: ResolveCheckoutDiscountInput): Promise<Discount["applied"] | undefined> => {
   const normalized = code === undefined ? "" : normalizeDiscountCode(code)
   if (normalized === "") {
@@ -16,7 +17,7 @@ export const resolveCheckoutDiscount = async ({
   return resolveAppliedCheckoutDiscount({
     itemsSubtotal,
     now: new Date(),
-    row: await getDiscountByCodeForCustomerQuery(normalized, email),
+    row: await getDiscountByCodeForCustomerQuery(normalized, { email, userId }),
     shippingTotal,
   })
 }
@@ -26,4 +27,5 @@ interface ResolveCheckoutDiscountInput {
   readonly email: string | undefined
   readonly itemsSubtotal: number
   readonly shippingTotal: number
+  readonly userId: string | undefined
 }
