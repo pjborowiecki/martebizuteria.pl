@@ -260,7 +260,7 @@ export default defineConfig({
     },
     env: loadEnv("test", import.meta.dirname, ""),
     environment: "node",
-    exclude: ["node_modules/**", "opensrc/**", "dist/**", "scripts/**", "e2e/**", "src/integrations/drizzle-orm/migrations/**"],
+    exclude: ["node_modules/**", "opensrc/**", "dist/**", "e2e/**", "src/integrations/drizzle-orm/migrations/**"],
     isolate: true,
     maxWorkers: "50%",
     passWithNoTests: false,
@@ -270,7 +270,7 @@ export default defineConfig({
         extends: true,
         test: {
           exclude: ["src/**/*.component.test.{ts,tsx}", "src/**/*.integration.test.{ts,tsx}"],
-          include: ["src/**/*.{test,spec}.{ts,tsx}"],
+          include: ["src/**/*.{test,spec}.{ts,tsx}", "scripts/**/__test__/*.test.ts"],
           name: "node",
         },
       },

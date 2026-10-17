@@ -15,10 +15,15 @@ const COMMIT_EMOJIS: Readonly<Record<string, string>> = {
 }
 
 const CONVENTIONAL_PATTERN = /^([a-z]+)(?:\([^)]*\))?!?:\s/
-const EMOJI_PRESENTATION = /^\p{Emoji_Presentation}/u
 const GIT_GENERATED_SUBJECT = /^(?:Merge |Revert "|fixup! |squash! )/
 
 const SKIP_SOURCES = new Set(["squash", "merge", "template"])
+
+function withoutCommitEmoji(subject: string): string {
+  const emoji = Object.values(COMMIT_EMOJIS).find((value) => subject.startsWith(`${value} `))
+
+  return emoji === undefined ? subject : subject.slice(emoji.length + 1)
+}
 
 function getFirstNonCommentLine(raw: string): string | undefined {
   for (const line of raw.split("\n")) {
@@ -46,12 +51,13 @@ function run(): void {
   }
 
   const raw = readFileSync(msgFile, "utf-8")
-  const subject = getFirstNonCommentLine(raw)
+  const firstLine = getFirstNonCommentLine(raw)
 
-  if (subject === undefined || subject.length === 0 || EMOJI_PRESENTATION.test(subject)) {
+  if (firstLine === undefined) {
     return
   }
 
+  const subject = withoutCommitEmoji(firstLine)
   const match = CONVENTIONAL_PATTERN.exec(subject)
 
   if (match === null) {
@@ -85,7 +91,7 @@ function run(): void {
     }
 
     updated = true
-    return `${emoji} ${line.trimEnd()}`
+    return `${emoji} ${subject}`
   })
 
   writeFileSync(msgFile, `${nextLines.join("\n").replace(/\n?$/, "\n")}`)
