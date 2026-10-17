@@ -98,7 +98,7 @@ The cookie is the fallback for exactly the paths the middleware ignores — an A
 
 ## Message catalogues
 
-`messages/{locale}/{namespace}.json`, 60 files per locale and the two directories are identical in filenames. The namespace is the filename: `pages.landing.json` is the namespace `pages.landing`, and `buildMessageTree` splits it on dots to nest it, so `useTranslations("pages.landing.heroSection")` works.
+`messages/{locale}/{namespace}.json`, 61 files per locale and the two directories are identical in filenames. The namespace is the filename: `pages.landing.json` is the namespace `pages.landing`, and `buildMessageTree` splits it on dots to nest it, so `useTranslations("pages.landing.heroSection")` works.
 
 `src/integrations/use-intl/i18n.messages.ts` loads them with a Vite glob:
 
@@ -298,12 +298,12 @@ The Stripe Elements form is localised separately, by mapping the app locale to a
 
 - **No locale switcher on the storefront.** Nothing in the shop's navigation, the footer or the account area changes language; a visitor has to edit the URL. The only control is the admin's **Admin panel language** in [Settings → My account](/docs/features/admin-settings#preferences), which reloads the same page under the other locale's prefix.
 - No per-user language preference. The time zone and the format locale are stored per user, but the page's language always follows the URL.
-- No message-catalogue parity check. The two directories currently hold the same 60 filenames, but nothing in `bun run check` verifies that the keys inside them match.
+- No message-catalogue parity check. The two directories currently hold the same 61 filenames, but nothing in `bun run check` verifies that the keys inside them match.
 
 ## Adding a locale
 
 1. Add the code to `SUPPORTED_LOCALES` in `i18n.config.ts`.
-2. Create `messages/<locale>/` with all 60 files. `loadNamespace` throws on a missing one, so this is not optional.
+2. Create `messages/<locale>/` with all 61 files. `loadNamespace` throws on a missing one, so this is not optional.
 3. Add the locale to every `*.<locale>.mdx` set in `content/docs`, and to each `meta.<locale>.json`.
 4. Add the new locale to the `titles`, `descriptions`, `bodies` and `revised_ats` maps of every `content_page` row in a migration, starting from the Polish text. Then translate every page in the editor at `/admin/content`, which will not save a page until every locale has all three fields.
 5. Backfill the JSON locale maps in D1, `delivery_method.names` included; `coerceProductLocaleMap` keeps existing rows readable in the meantime, and `resolveLocalizedString` falls back to Polish. The delivery method form in Settings has one name field per locale in `NAME_FIELDS` (`delivery-method-fields.tsx`), so it needs one for the new locale too.

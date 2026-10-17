@@ -82,7 +82,7 @@ A signed-in user can override both. `updateDisplayPreference` in `src/modules/us
 
 ## Messages
 
-Translations live in `messages/<locale>/<namespace>.json` — 60 files per locale. The file name **is** the namespace, and dots are nesting: `pages.admin.catalog.products.json` is read by `useTranslations("pages.admin.catalog.products")`. `buildMessageTree` expands each dotted namespace back into a nested object and merges them, so the provider sees one message tree.
+Translations live in `messages/<locale>/<namespace>.json` — 61 files per locale. The file name **is** the namespace, and dots are nesting: `pages.admin.catalog.products.json` is read by `useTranslations("pages.admin.catalog.products")`. `buildMessageTree` expands each dotted namespace back into a nested object and merges them, so the provider sees one message tree.
 
 Namespace families:
 

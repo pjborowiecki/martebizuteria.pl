@@ -31,11 +31,11 @@ export { productVariant, productVariantRelations } from "~/src/modules/product-v
 export { inventory, inventoryRelations } from "~/src/modules/inventory/inventory.schema"
 ```
 
-Zbiorczy eksport udostępnia 41 tabel. Drizzle potrzebuje jednego grafu obiektów do rozwiązania relacji, a drizzle-kit jednego punktu wejścia — dlatego ten plik istnieje, mimo ogólnej zasady projektu, by nie tworzyć zbiorczych eksportów.
+Zbiorczy eksport udostępnia 42 tabele. Drizzle potrzebuje jednego grafu obiektów do rozwiązania relacji, a drizzle-kit jednego punktu wejścia — dlatego ten plik istnieje, mimo ogólnej zasady projektu, by nie tworzyć zbiorczych eksportów.
 
 | Obszar              | Tabele                                                                                                                                                                                            |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tożsamość           | `user`, `session`, `account`, `verification`, `two_factor`, `rate_limit`                                                                                                                          |
+| Tożsamość           | `user`, `user_email_history`, `session`, `account`, `verification`, `two_factor`, `rate_limit`                                                                                                    |
 | Katalog             | `product`, `product_variant`, `product_image`, `product_option`, `product_option_value`, `option_on_variant`, `product_category`, `product_collection`, `product_attribute`                       |
 | Powiązania katalogu | `category_on_product`, `collection_on_product`, `attribute_on_product`                                                                                                                            |
 | Ceny                | `price_history`                                                                                                                                                                                   |
@@ -48,6 +48,8 @@ Zbiorczy eksport udostępnia 41 tabel. Drizzle potrzebuje jednego grafu obiektó
 `storefront_search`, indeks FTS5 stojący za wyszukiwarką sklepu, to jedyna tabela pominięta w zbiorczym eksporcie. `storefront-search.schema.ts` deklaruje ją na potrzeby akcesorów wyszukiwania, a ręcznie napisana migracja `20261002100000_storefront_search.sql` tworzy ją razem z wyzwalaczami, które utrzymują ją w zgodzie z `product`, `product_category` i `product_collection`.
 
 `price_history` jest zarejestrowana jak każda inna tabela, ale nie zapisuje do niej żaden kod aplikacji. `20261010410000_price_history.sql` tworzy ją razem z dwoma wyzwalaczami na `product_variant`, `price_history_variant_insert` i `price_history_variant_update`, które dodają wiersz przy każdym utworzeniu wariantu i każdej zmianie jego `price` albo `compare_at_price`, i zaczyna ją od obecnych cen każdego wariantu. Migracja, która przebudowuje `product_variant`, usuwa te wyzwalacze razem ze starą tabelą i musi utworzyć je na nowo.
+
+`user_email_history` też jest zarejestrowana jak każda inna tabela i też nie zapisuje do niej żaden kod aplikacji. `20261017140000_user_email_history.sql` tworzy ją razem z dwoma wyzwalaczami na `user`, `user_email_history_user_insert` i `user_email_history_user_update`, które dodają wiersz z adresem nowego konta, a gdy `email` zmienia się inaczej niż tylko wielkością liter, w tej samej instrukcji zamykają bieżący wiersz i otwierają wiersz nowego adresu, i zaczyna ją od obecnego adresu każdego konta oraz wcześniejszych adresów, które dziennik zdarzeń jeszcze zapisywał. Migracja, która przebudowuje `user`, usuwa te wyzwalacze razem ze starą tabelą i musi utworzyć je na nowo. Zobacz [Konto: Adresy używane przez konto](/docs/features/account#adresy-używane-przez-konto).
 
 Definicja tabeli wygląda tak, a długości kolumn, wartości domyślne i indeksy pochodzą ze stałych własnego modułu:
 
@@ -199,9 +201,9 @@ Pliki `migrations/schema.ts` i `migrations/relations.ts` są wynikiem introspekc
 
 ## Katalog migracji
 
-`src/integrations/drizzle-orm/migrations/` zawiera 105 plików `.sql`. Wrangler stosuje je w kolejności nazw plików i zapisuje zastosowane migracje we własnej tabeli `d1_migrations`; plik `meta/_journal.json` Drizzle czytany jest wyłącznie przez `drizzle-kit generate` przy obliczaniu kolejnej różnicy.
+`src/integrations/drizzle-orm/migrations/` zawiera 107 plików `.sql`. Wrangler stosuje je w kolejności nazw plików i zapisuje zastosowane migracje we własnej tabeli `d1_migrations`; plik `meta/_journal.json` Drizzle czytany jest wyłącznie przez `drizzle-kit generate` przy obliczaniu kolejnej różnicy.
 
-Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc pięćdziesięciu trzech plików z katalogu w nim nie ma:
+Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc pięćdziesięciu pięciu plików z katalogu w nim nie ma:
 
 ```
 20260604143000_product_status_updated_at_idx
@@ -257,9 +259,11 @@ Te dwa widoki się rozjechały. Dziennik wymienia 52 wpisy, więc pięćdziesię
 20261017110000_privacy_policy_every_cookie
 20261017120000_terms_of_service_neutral_wording
 20261017130000_discount_redemption_order_account
+20261017140000_user_email_history
+20261017150000_privacy_policy_former_addresses
 ```
 
-Migracje pisane ręcznie, takie jak `20260927120000_fix_silver_collection_handle.sql`, są w tym repozytorium normalne: naprawy danych, zmiany dotyczące wyłącznie indeksów i nowsze tabele, takie jak `order_number_sequence`, `discount_redemption`, `discount_claim`, `newsletter_subscriber`, `wishlist_item`, `storefront_search`, `content_page`, `store_setting`, `order_withdrawal`, `price_history` i `newsletter_campaign`, pisze się bezpośrednio i stosuje Wranglerem. Dziennikowi brakuje jednak także całego indeksu 38 (numeracja biegnie 0–52 z luką), a najnowszy zrzut, `meta/20260930151544_snapshot.json`, jest starszy od każdej z tych tabel, co oznacza, że `drizzle-kit generate` liczy różnicę ze zrzutu, który nie obejmuje wszystkiego, co faktycznie jest w bazie. Po `db:generate` przeczytaj wygenerowane SQL przed zastosowaniem i usuń wszystko, co ponownie tworzy już istniejący obiekt.
+Migracje pisane ręcznie, takie jak `20260927120000_fix_silver_collection_handle.sql`, są w tym repozytorium normalne: naprawy danych, zmiany dotyczące wyłącznie indeksów i nowsze tabele, takie jak `order_number_sequence`, `discount_redemption`, `discount_claim`, `newsletter_subscriber`, `wishlist_item`, `storefront_search`, `content_page`, `store_setting`, `order_withdrawal`, `price_history`, `newsletter_campaign` i `user_email_history`, pisze się bezpośrednio i stosuje Wranglerem. Dziennikowi brakuje jednak także całego indeksu 38 (numeracja biegnie 0–52 z luką), a najnowszy zrzut, `meta/20260930151544_snapshot.json`, jest starszy od każdej z tych tabel, co oznacza, że `drizzle-kit generate` liczy różnicę ze zrzutu, który nie obejmuje wszystkiego, co faktycznie jest w bazie. Po `db:generate` przeczytaj wygenerowane SQL przed zastosowaniem i usuń wszystko, co ponownie tworzy już istniejący obiekt.
 
 ## Dane początkowe
 

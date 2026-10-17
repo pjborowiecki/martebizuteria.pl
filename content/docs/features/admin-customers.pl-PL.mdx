@@ -56,6 +56,8 @@ filters: {
 
 `createdAt` i `lastOrderAt` są filtrowane według dnia w strefie administratora przez `buildAdminDateTimeFilterSql`, tak jak na stronie zamówień i w dzienniku zdarzeń.
 
+Fraza wyszukiwania pasuje do imienia i nazwiska, adresu e-mail, telefonu, identyfikatora i identyfikatora klienta Stripe, a także do każdego konta, które kiedykolwiek używało adresu zawierającego tę frazę (`accountsWithAddressContaining` na `user_email_history`, zobacz [Konto: Adresy używane przez konto](/docs/features/account#adresy-używane-przez-konto)), więc klienta da się znaleźć po adresie, którym już się nie loguje. Eksport stosuje to samo wyszukiwanie.
+
 Akcesor zwraca pięć rzeczy — `rows`, `orderStats`, `defaultAddresses`, `latestShippingAddresses` i `total` — a use case zszywa je po stronie aplikacji:
 
 ```ts
@@ -70,7 +72,7 @@ Liczba zamówień klienta, łączne wydatki, średnia wartość zamówienia i wa
 
 Identyfikatory kolumn, szerokości, domyślna widoczność i przypięcia leżą w `user.constants.ts` pod `ADMIN_CUSTOMER_TABLE_COLUMN_ID`, `ADMIN_CUSTOMER_TABLE_COLUMN_SIZE`, `ADMIN_CUSTOMER_TABLE_DEFAULT_COLUMN_VISIBILITY` i obiektem przypięć. Kolumny to `select`, `customer` (imię i nazwisko z adresem e-mail pod spodem), `recordId`, `stripeCustomerId`, `role`, `phone`, `emailVerified`, `banned`, `location`, `orderCount`, `totalSpent`, `averageOrderValue`, `lastOrderAt`, `createdAt` i `actions`; `recordId` i `stripeCustomerId` są na początku ukryte. Kwoty i daty są zapisane w formacie i strefie czasowej administratora.
 
-Siatka to `customersDataGrid` (`utils/customers-data-grid.ts`), której kolejność kolumn, szerokości i widoczność są zapamiętywane pod `admin.customers`, a steruje nią `useCustomersDataGrid` (`hooks/use-customers-data-grid.ts`) ze stronicowaniem po stronie serwera i wyszukiwaniem z opóźnieniem po imieniu i nazwisku, adresie e-mail, telefonie, identyfikatorze i identyfikatorze klienta Stripe. Kliknięcie wiersza otwiera `/admin/customers/$id`. Menu wiersza oferuje szczegóły, kopiowanie identyfikatora, adresu e-mail albo identyfikatora klienta Stripe oraz **Usuń konto**, wyszarzone w wierszu każdego konta z dostępem do panelu (zobacz [Dwie mutacje](#dwie-mutacje)).
+Siatka to `customersDataGrid` (`utils/customers-data-grid.ts`), której kolejność kolumn, szerokości i widoczność są zapamiętywane pod `admin.customers`, a steruje nią `useCustomersDataGrid` (`hooks/use-customers-data-grid.ts`) ze stronicowaniem po stronie serwera i wyszukiwaniem z opóźnieniem po imieniu i nazwisku, adresie e-mail, telefonie, identyfikatorze i identyfikatorze klienta Stripe oraz po adresach, których każde konto używało wcześniej. Kliknięcie wiersza otwiera `/admin/customers/$id`. Menu wiersza oferuje szczegóły, kopiowanie identyfikatora, adresu e-mail albo identyfikatora klienta Stripe oraz **Usuń konto**, wyszarzone w wierszu każdego konta z dostępem do panelu (zobacz [Dwie mutacje](#dwie-mutacje)).
 
 Komponenty leżą w `.../admin/customers/components/`: `customers-table.tsx`, `customers-columns.tsx` (z definicjami kolumn w `lib/customers-column-defs.tsx`), filtry (`customers-role-filter`, `customers-banned-filter`, `customers-email-verified-filter`, `customers-date-column-filter` wraz z `customers-date-filter-form`, `customers-numeric-column-filter`), plakietki (`customer-role-badge`, `customer-banned-badge`, `customer-email-verified-badge`), `customer-name-cell`, `customer-table-cells`, `customers-row-actions`, `customers-stats` z `customer-stat-card` oraz akcja odświeżenia; eksport to wspólny `Export` z `customersDataGrid`. Karty są skonfigurowane w `.../admin/customers/customers-stats.config.ts`, a usunięcie obsługuje `hooks/use-delete-customer.ts`.
 
@@ -100,7 +102,7 @@ return computeAdminCustomerStatsFromAggregates({
 
 `/admin/customers/$id` czyta `getAdminCustomerQuery(id, locale)` przez `useSuspenseQuery` i rzuca `notFound()` przez `ensureAdminCustomerDetail`, gdy wiersza brak.
 
-`getAdminCustomer` (`authorized({ user: ["get"] })`) to najszerszy odczyt w całym kodzie — dziesięć akcesorów z `user.accessors.ts`, najpierw `getUserById`, a potem równolegle dziewięć pozostałych:
+`getAdminCustomer` (`authorized({ user: ["get"] })`) to najszerszy odczyt w całym kodzie — jedenaście odczytów, najpierw `getUserById`, a potem równolegle dziesięć pozostałych: dziewięć kolejnych akcesorów z `user.accessors.ts` i `getUserEmailHistory` z `user-email-history.accessors.ts`:
 
 | Akcesor                               | Zasila                                                                                                               |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -114,6 +116,7 @@ return computeAdminCustomerStatsFromAggregates({
 | `getDefaultCustomerAddressFullQuery`  | `formatAdminCustomerFullAddress` i pola adresu w edytorze                                                            |
 | `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                                                                                      |
 | `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                                                                                         |
+| `getUserEmailHistory`                 | `buildAdminCustomerEmailHistory`: każdy adres, którego konto używało, od najnowszego                                 |
 
 „Ostatnia aktywność” to `updatedAt` najnowszej sesji, a gdy żadna sesja nie została, ostatnie zamówienie albo `updatedAt` wiersza, zapisane przez `formatRelativeFromNow`: przez tydzień jako czas względny w języku strony, potem jako data.
 
@@ -147,9 +150,11 @@ export const resolveAdminCustomerTags = (row: User["select"], orderCount: number
 
 `ADMIN_CUSTOMER_MIN_REPEAT_ORDERS` to 2. Tagi własne dodane przez administratora pochodzą z kolumny metadanych i są scalane osobno.
 
-`buildAdminCustomerTimeline` łączy trzy źródła, od najnowszych: utworzenie konta, wpisy „Złożono zamówienie” dla najwyżej dziesięciu zamówień sprzedażowych z ich numerami i kwotami oraz najwyżej `CUSTOMER_AUDIT_TIMELINE_LIMIT` (50, `customer-activity.constants.ts`) wierszy `audit_log`, których zasobem jest użytkownik, ograniczonych do `auth.login`, `auth.logout`, `customer.cart_item_added`, `customer.cart_abandoned` i `customer.page_viewed`. Zobacz [Dziennik zdarzeń](/docs/features/audit-log).
+`buildAdminCustomerTimeline` łączy trzy źródła, od najnowszych: utworzenie konta, wpisy „Złożono zamówienie” dla najwyżej dziesięciu zamówień sprzedażowych z ich numerami i kwotami oraz najwyżej `CUSTOMER_AUDIT_TIMELINE_LIMIT` (50, `customer-activity.constants.ts`) wierszy `audit_log`, których zasobem jest użytkownik, ograniczonych do `auth.email_changed`, `auth.login`, `auth.logout`, `customer.cart_item_added`, `customer.cart_abandoned` i `customer.page_viewed`. Zmiana adresu brzmi „Zmieniono adres e-mail do logowania z X na Y”, z oboma adresami wziętymi z metadanych zmiany we wpisie albo, dla starszego wpisu, z jego szczegółu `stary → nowy`, a wpis, który nie podaje żadnego z nich, brzmi „Zmieniono adres e-mail do logowania”. Zobacz [Dziennik zdarzeń](/docs/features/audit-log).
 
-Interfejs leży w `.../admin/customers/customer-detail/`: `customer-detail-page.tsx` układa `customer-kpis.tsx`, `customer-charts.tsx` i `customer-orders.tsx` w głównej kolumnie, a obok `customer-sidebar.tsx`, który kończy się `customer-timeline-card.tsx`; edytorem jest `edit-customer/customer-sheet.tsx`. Poniżej progu `xl` panel boczny jest pod główną kolumną, a od `xl` to kolumna o szerokości 340 px. Na ekranie `2xl` o wysokości co najmniej 57rem strona mieści się w oknie, a każda kolumna przewija się osobno.
+Sekcja Adresy e-mail w panelu bocznym (`customer-email-history.tsx`) wymienia wiersze z `getUserEmailHistory` od najnowszego: obecny adres z „Obecny, od” i dniem, w którym konto zaczęło go używać, a każdy wcześniejszy z „Używany” i dniami, w których konto zaczęło go używać i z niego zrezygnowało, w formacie regionalnym i strefie czasowej administratora.
+
+Interfejs leży w `.../admin/customers/customer-detail/`: `customer-detail-page.tsx` układa `customer-kpis.tsx`, `customer-charts.tsx` i `customer-orders.tsx` w głównej kolumnie, a obok `customer-sidebar.tsx`, który pod danymi klienta zawiera `customer-email-history.tsx` i kończy się `customer-timeline-card.tsx`; edytorem jest `edit-customer/customer-sheet.tsx`. Poniżej progu `xl` panel boczny jest pod główną kolumną, a od `xl` to kolumna o szerokości 340 px. Na ekranie `2xl` o wysokości co najmniej 57rem strona mieści się w oknie, a każda kolumna przewija się osobno.
 
 ## Notatki i tagi w `metadata`
 
@@ -186,7 +191,7 @@ Kolumna zawierająca zwykły tekst, a nie JSON, jest traktowana jako notatka, wi
 - upsertuje domyślny adres przez `upsertDefaultAddressForUser`, ale tylko gdy przejdzie `hasAddressInput` — `address1` i `city` muszą być niepuste
 - gdy przysłany `countryCode` jest pusty, używa kraju z istniejącego domyślnego adresu, a nie zapisuje pustego napisu, i całkowicie pomija zapis adresu, jeśli kraju wciąż nie ma
 
-**Nie** zmienia adresu e-mail, nazwy, roli ani stanu bana; to operacje Better Auth. Po zapisach zapisuje `customer.updated` przypisane administratorowi, z adresem e-mail klienta jako celem i jego identyfikatorem jako zasobem. Zapisuje wiersz bezpośrednio, a nie przez Better Auth, więc żaden hook `databaseHooks.user` się nie uruchamia: `CustomerFormProvider` unieważnia szczegóły, siatkę i statystyki w przeglądarce edytującego administratora.
+**Nie** zmienia adresu e-mail, nazwy, roli ani stanu bana. Adres e-mail zmienia się tylko na stronie samego konta, z potwierdzeniem z obu adresów (zobacz [Konto: Zmiana adresu e-mail](/docs/features/account#zmiana-adresu-e-mail)); pozostałe to operacje Better Auth. Po zapisach zapisuje `customer.updated` przypisane administratorowi, z adresem e-mail klienta jako celem i jego identyfikatorem jako zasobem. Zapisuje wiersz bezpośrednio, a nie przez Better Auth, więc żaden hook `databaseHooks.user` się nie uruchamia: `CustomerFormProvider` unieważnia szczegóły, siatkę i statystyki w przeglądarce edytującego administratora.
 
 `deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, ma cztery zabezpieczenia:
 
@@ -219,7 +224,7 @@ return { goodbyeEmailSent, ok: true as const, userId }
 
 `eraseAccountData` to ten sam krok, który przy usunięciu konta przez klienta uruchamia `beforeDelete` w Better Auth: usuwa klienta Stripe powiązanego z kontem razem z zapisanymi kartami, a potem wpisy konta w dzienniku zdarzeń i subskrypcję newslettera (zobacz [Konto: Usunięcie konta](/docs/features/account#usunięcie-konta)). Gdy Stripe nie może usunąć klienta, nic nie zostaje usunięte, zapisuje się `customer.deletion_failed`, a `useDeleteCustomer` pokazuje „Stripe nie usunął profilu klienta ani zapisanych kart, więc konto nie zostało usunięte. Spróbuj ponownie za kilka minut. Błąd zapisano w dzienniku zdarzeń.” Okno potwierdzenia, `rowActions.deleteDescription`, wymienia, co zostanie usunięte, i mówi, że zamówienia i płatności pozostaną w dokumentacji księgowej przez 5 lat.
 
-Ponieważ usunięcie idzie przez Better Auth, jego `databaseHooks.user.delete.after` zapisuje `customer.deleted` przypisane administratorowi, którego sesja wywołała `removeUser`, z adresem e-mail usuniętego klienta jako celem, i działają kaskady na `session`, `account`, `address`, `wishlist_item` i `two_factor`, natomiast `order.user_id`, `checkout.user_id` i `discount_redemption.user_id` mają `onDelete: "set null"` — zamówienia przeżywają więc jako zamówienia gościa. Jeśli później jakieś konto zweryfikuje ten sam adres e-mail, `claimGuestOrdersForUser` przypisze mu te zamówienia jak każde inne zamówienie gościa (zobacz [Konto: zamówienia gości na koncie](/docs/features/account#zamówienia-gości-na-koncie)).
+Ponieważ usunięcie idzie przez Better Auth, jego `databaseHooks.user.delete.after` zapisuje `customer.deleted` przypisane administratorowi, którego sesja wywołała `removeUser`, z adresem e-mail usuniętego klienta jako celem, i działają kaskady na `session`, `account`, `address`, `wishlist_item`, `two_factor` i `user_email_history`, natomiast `order.user_id`, `checkout.user_id` i `discount_redemption.user_id` mają `onDelete: "set null"` — zamówienia przeżywają więc jako zamówienia gościa. Jeśli później jakieś konto zweryfikuje ostatni adres usuniętego konta, `claimGuestOrdersForUser` przypisze mu zamówienia złożone z tego adresu jak każde inne zamówienie gościa; zamówienia złożone z wcześniejszego adresu mają `keptFromClaims` i zostają nieprzypisane (zobacz [Konto: zamówienia gości na koncie](/docs/features/account#zamówienia-gości-na-koncie)).
 
 ## Eksport
 

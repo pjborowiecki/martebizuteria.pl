@@ -1,6 +1,6 @@
 ---
 title: "E-maile transakcyjne"
-description: "Dziewiętnaście szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach, oraz newsletter, który właściciel wysyła potwierdzonym subskrybentom."
+description: "Dwadzieścia szablonów React Email renderowanych w Workerze, wysyłanych przez Resend, zapisywanych w audycie i podglądanych pod /dev/emails w obu językach, oraz newsletter, który właściciel wysyła potwierdzonym subskrybentom."
 ---
 
 ## Wysyłka
@@ -72,7 +72,7 @@ Część tych e-maili trafia na dowolny adres wpisany przez odwiedzającego: e-m
 
 Klientem jest `src/integrations/resend/resend.config.ts`, jednolinijkowe `new Resend(env.RESEND_API_KEY)`. Domyślne `from` to `APP_NAME <RESEND_EMAIL_FROM>`. Zarówno `RESEND_API_KEY`, jak i `RESEND_EMAIL_FROM` są na liście `secrets.required` każdego środowiska w `wrangler.jsonc`. Domena nadawcy musi być zweryfikowana w Resend, a wdrożenie zatrzymuje się przed kompilacją, gdy nie jest; zobacz [Resend](/docs/integrations/resend#domena-nadawcy).
 
-## Dziewiętnaście szablonów
+## Dwadzieścia szablonów
 
 Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane po stronie serwera wewnątrz Workera:
 
@@ -81,6 +81,7 @@ Wszystkie w `src/presentation/emails/`, zbudowane na `react-email` i renderowane
 | `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerifyEmail` (Better Auth)                                                                                                                                                                                                                                  |
 | `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPasswordEmail` (Better Auth)                                                                                                                                                                                                                           |
 | `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmationEmail` (Better Auth)                                                                                                                                                                                                                 |
+| `email-changed.tsx`                 | `EMAIL_CHANGED_NAMESPACE`                 | `sendEmailChangedEmail`, na stary adres, przekazywane do `scheduleBackgroundWork` przez `hooks.after` z Better Auth, czyli `finishEmailChange`, gdy zmiana adresu się zakończy                                                                                   |
 | `password-changed.tsx`              | `PASSWORD_CHANGED_NAMESPACE`              | `sendPasswordChangedEmail`, z `onPasswordReset` w Better Auth                                                                                                                                                                                                    |
 | `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, wywoływany przez `deleteCustomer` i `afterDelete` z oczekiwaniem na wynik                                                                                                                                                             |
 | `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `sendOrderConfirmationEmail`, z webhooka Stripe albo ze strony powrotu, zależnie od tego, kto złoży zamówienie                                                                                                                                                   |
@@ -112,6 +113,7 @@ await requireAuthEmailDelivery("verification", {
   react: createElement(VerifyEmail, { locale, messages, name: user.name, verificationUrl }),
   subject: createTranslator({ locale, messages })("subject"),
   to: user.email,
+  userId: user.id,
 })
 ```
 
@@ -121,7 +123,7 @@ await requireAuthEmailDelivery("verification", {
 
 | Wyzwalacz                                                      | Skąd język                                                                                |
 | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| e-maile Better Auth                                            | `getCurrentLocale()` — z żądania wykonywanego przez użytkownika                           |
+| e-maile Better Auth, informacja o zmianie adresu e-mail        | `getCurrentLocale()` — z żądania wykonywanego przez użytkownika                           |
 | `sendAccountDeletedEmail`                                      | `locale` zapamiętany przed usunięciem, z fallbackiem na `getCurrentLocale()`              |
 | e-maile newslettera                                            | `locale` przesłany z zapisem, z fallbackiem na `getCurrentLocale()`                       |
 | kampania newslettera                                           | `newsletter_subscriber.locale` każdego subskrybenta; wysyłka testowa renderuje oba języki |
@@ -173,7 +175,7 @@ Layout wymusza też renderowanie w trybie jasnym:
 
 To najbardziej złożony szablon. `sendOrderConfirmationEmail` w `src/modules/order/use-cases/send-order-confirmation-email.server.ts` buduje go w `buildOrderConfirmationEmailPayload`:
 
-1. `getOrderTotalsForEmail(orderId)` odczytuje wiersz zamówienia, a odbiorcą jest jego `email`, adres wpisany w kroku danych kontaktowych. Adres z sesji nie jest używany: sesja zalogowanego kupującego podaje adres e-mail jego klienta Stripe taki, jaki jest w chwili potwierdzenia płatności, a mógł go od tego czasu zmienić inny checkout, który to samo konto trzyma otwarty (zobacz [Stripe](/docs/integrations/stripe)). Jeśli zamówienia nie da się odczytać, nic nie jest budowane, a przy zamówieniu zapisywana jest porażka `Order <id> was not found`. Wcześniej `attemptOrderConfirmationEmail` bierze origin linków z `session.return_url` przez `resolveDeploymentOrigin`. Sesja bez tego adresu zapisuje `The Stripe session has no return URL to link the email to`, a sesja na hoście, którego nie obsługuje żadne wdrożenie, zapisuje `FORBIDDEN`.
+1. `getOrderTotalsForEmail(orderId)` odczytuje wiersz zamówienia, a odbiorcą jest jego `recipient`: `email` zamówienia, adres wpisany w kroku danych kontaktowych, chyba że konto zamówienia od tego czasu go zastąpiło, co zauważy ponowna wysyłka po zmianie adresu (zobacz [Zamówienia: Dokąd trafiają e-maile zamówienia](/docs/features/orders#dokąd-trafiają-e-maile-zamówienia)). Adres z sesji nie jest używany: sesja zalogowanego kupującego podaje adres e-mail jego klienta Stripe taki, jaki jest w chwili potwierdzenia płatności, a mógł go od tego czasu zmienić inny checkout, który to samo konto trzyma otwarty (zobacz [Stripe](/docs/integrations/stripe)). Jeśli zamówienia nie da się odczytać, nic nie jest budowane, a przy zamówieniu zapisywana jest porażka `Order <id> was not found`. Wcześniej `attemptOrderConfirmationEmail` bierze origin linków z `session.return_url` przez `resolveDeploymentOrigin`. Sesja bez tego adresu zapisuje `The Stripe session has no return URL to link the email to`, a sesja na hoście, którego nie obsługuje żadne wdrożenie, zapisuje `FORBIDDEN`.
 2. `getCheckoutEmailContext(checkoutId)` wczytuje adresy, metodę dostawy, identyfikator i adres paczkomatu, uwagę klienta oraz firmę, na którą kupujący chce fakturę. Gdy checkout ma nazwę firmy lub NIP, `describeCompanyInvoice` umieszcza nazwę nad `NIP <cyfry>`, a blok szczegółów pokazuje je pod „Faktura na firmę” po adresie rozliczeniowym; w przeciwnym razie wiersza nie ma.
 3. `resolveStripePaymentMethodLabel(session, messages)` zamienia metodę płatności Stripe w przetłumaczoną etykietę.
 4. `getFulfillmentTimeAttributesByVariantId(variantIds)` czyta atrybut `czas-realizacji`, który pokazuje strona produktu każdego zamówionego wariantu, a `resolveOrderLineFulfillmentTimes(order.lines, attributes, locale)` zamienia go na etykietę w języku zamówienia. Potem `buildOrderConfirmationDetails({ context, fulfillmentTimes, messages, paymentMethod })` składa blok szczegółów.
@@ -277,7 +279,11 @@ E-maile o wysyłce i o numerze przesyłki podają przewoźnika, czyli kuriera me
 
 ## Odstąpienie od umowy
 
-`order-withdrawal.tsx` eksportuje dwa e-maile korzystające z jednego katalogu komunikatów, `emails.order-withdrawal`, bo oba powtarzają to samo oświadczenie. `OrderWithdrawalReceived` (`received`) to potwierdzenie na trwałym nośniku, którego wymaga art. 11a dyrektywy w sprawie praw konsumentów: trafia na adres e-mail zamówienia w języku żądania, potwierdza otrzymanie oświadczenia i powtarza jego treść, a potem mówi, dokąd odesłać produkty, czyli adres sprzedawcy z Ustawienia → Dane sklepu, i jak wygląda zwrot płatności. `OrderWithdrawalNotice` (`notice`) trafia na `RESEND_EMAIL_FROM` w języku sklepu z linkiem do zamówienia w panelu. Budują je `sendWithdrawalConfirmationEmail` i `sendNewWithdrawalEmail` w `src/modules/order-withdrawal/use-cases/`, a w audycie zapisują się jako `Withdrawal acknowledgement → <adres>` i `Withdrawal notice → <adres>`. Wychodzą przez `deliverOrderEmail` jak e-maile dotyczące zamówienia, pod kluczami `order-withdrawal/<id zamówienia>/<czas oświadczenia>` i `order-withdrawal-notice/<id zamówienia>/<czas oświadczenia>`, więc odrzucony jest ponawiany jeszcze dwa razy, a potem wywołuje alert na `RESEND_EMAIL_FROM`; żaden nie niesie tego, czego potrzebuje **Wyślij ponownie**, więc karta „Aktywność” nigdy ich nie oferuje. Data i godzina są zapisane w czasie polskim przez `Intl.DateTimeFormat`, bo Worker działa w UTC. Odstąpienie z użyciem numeru zamówienia na `/withdraw-from-contract` wysyła oba tylko wtedy, gdy `admitPublicEmail` dopuści e-mail rodzaju `withdrawal` na adres zamówienia, tak jak pozostałe e-maile, o które może poprosić odwiedzający; odstąpienie na koncie wysyła je zawsze. Zobacz [Strony prawne: Funkcja odstąpienia od umowy](/docs/features/legal-pages#funkcja-odstąpienia-od-umowy).
+`order-withdrawal.tsx` eksportuje dwa e-maile korzystające z jednego katalogu komunikatów, `emails.order-withdrawal`, bo oba powtarzają to samo oświadczenie. `OrderWithdrawalReceived` (`received`) to potwierdzenie na trwałym nośniku, którego wymaga art. 11a dyrektywy w sprawie praw konsumentów: trafia na adres, na który idą e-maile zamówienia (zobacz [Zamówienia: Dokąd trafiają e-maile zamówienia](/docs/features/orders#dokąd-trafiają-e-maile-zamówienia)), w języku żądania, potwierdza otrzymanie oświadczenia i powtarza jego treść, a potem mówi, dokąd odesłać produkty, czyli adres sprzedawcy z Ustawienia → Dane sklepu, i jak wygląda zwrot płatności. `OrderWithdrawalNotice` (`notice`) trafia na `RESEND_EMAIL_FROM` w języku sklepu z linkiem do zamówienia w panelu. Budują je `sendWithdrawalConfirmationEmail` i `sendNewWithdrawalEmail` w `src/modules/order-withdrawal/use-cases/`, a w audycie zapisują się jako `Withdrawal acknowledgement → <adres>` i `Withdrawal notice → <adres>`. Wychodzą przez `deliverOrderEmail` jak e-maile dotyczące zamówienia, pod kluczami `order-withdrawal/<id zamówienia>/<czas oświadczenia>` i `order-withdrawal-notice/<id zamówienia>/<czas oświadczenia>`, więc odrzucony jest ponawiany jeszcze dwa razy, a potem wywołuje alert na `RESEND_EMAIL_FROM`; żaden nie niesie tego, czego potrzebuje **Wyślij ponownie**, więc karta „Aktywność” nigdy ich nie oferuje. Data i godzina są zapisane w czasie polskim przez `Intl.DateTimeFormat`, bo Worker działa w UTC. Odstąpienie z użyciem numeru zamówienia na `/withdraw-from-contract` wysyła oba tylko wtedy, gdy `admitPublicEmail` dopuści e-mail rodzaju `withdrawal` na ten adres, tak jak pozostałe e-maile, o które może poprosić odwiedzający; odstąpienie na koncie wysyła je zawsze. Zobacz [Strony prawne: Funkcja odstąpienia od umowy](/docs/features/legal-pages#funkcja-odstąpienia-od-umowy).
+
+## Informacja o zmianie adresu e-mail
+
+`email-changed.tsx` (`EMAIL_CHANGED_NAMESPACE`, komunikaty w `emails.email-changed`) informuje poprzedni adres konta, że konto loguje się teraz innym adresem. `finishEmailChange` przekazuje `sendEmailChangedEmail` (`src/modules/user/use-cases/send-email-changed-email.server.ts`) do `scheduleBackgroundWork`, gdy zmiana adresu się zakończy (zobacz [Konto: Zmiana adresu e-mail](/docs/features/account#zmiana-adresu-e-mail)). E-mail trafia na poprzedni adres w języku żądania, które zakończyło zmianę, i podaje nowy adres tylko zamaskowany przez `maskEmailAddress` z `src/modules/user/user.utils.ts`: pierwsza litera, `***`, `@`, pierwsza litera domeny, `***` i domena od ostatniej kropki, więc `nowy@example.com` wygląda jak `n***@e***.com`. Mówi, że zmianę potwierdzono z obu adresów, że wiadomości o koncie i zamówieniach trafiają teraz na nowy adres, a na ten już żadne, oraz że zamówienia, zapisane adresy i pozostałe dane zostają na koncie. Osobę, od której zmiana nie pochodzi, prosi o odpowiedź na wiadomość, e-mail na adres kontaktowy sklepu albo telefon pod jego numer, oba odczytane przez `readSellerDetails`. E-mail jest wysyłany jeden raz i nie przechodzi przez `admitPublicEmail`. Zapisuje `email.sent` albo `email.failed` z `emailKind` `email-changed` („Informacja o zmianie adresu e-mail na poprzedni adres”), poprzednim adresem jako celem i kontem jako `resource_id`, a porażka trafia też do logu jako `[Auth] Failed to tell <address> that the account's email changed:`. Jego identyfikator podglądu to `email-changed`.
 
 ## Dane sprzedawcy w e-mailach
 
@@ -288,6 +294,7 @@ E-maile, które podają sprzedawcę, dostają dane zapisane w Ustawienia → Dan
 | `OrderConfirmation`       | Blok Sprzedawcy (nazwę, adres pocztowy z krajem, NIP oraz e-mail i telefon jako odnośniki) i adres do odstąpień i reklamacji | `sendOrderConfirmationEmail`         |
 | `OrderDelivered`          | E-mail kontaktowy i telefon                                                                                                  | `sendOrderDeliveredEmail`            |
 | `OrderWithdrawalReceived` | Adres, na który odesłać produkty                                                                                             | `sendWithdrawalConfirmationEmail`    |
+| `EmailChanged`            | E-mail kontaktowy i telefon                                                                                                  | `sendEmailChangedEmail`              |
 | `NewsletterCampaignEmail` | Nadawcę: nazwę, adres pocztowy z krajem i e-mail                                                                             | `sendNewsletterBatch`, raz na partię |
 
 `formatSellerPostalAddress` w `src/modules/store-setting/store-setting.utils.ts` zapisuje adres jako nazwę firmy, ulicę, kod pocztowy z miejscowością i kraj, nazwany na podstawie zapisanego kodu kraju w języku e-maila, więc pliki komunikatów nie mają własnego „Poland” ani „Polska”. Podglądy pod `/dev/emails` też czytają zapisane dane. Każdy e-mail wysyłany przez `sendEmail` ma e-mail kontaktowy w `Reply-To`, o ile dane dają się odczytać (zobacz [Wysyłka](#wysyłka)).
@@ -346,30 +353,30 @@ E-mail newslettera odrzucony przez Resend również trafia do audytu. `subscribe
 Pięć e-maili Better Auth trafia do audytu w ten sam sposób, przez `recordAuthEmailFailure` w `auth.email-delivery.server.ts`:
 
 ```ts
-export const recordAuthEmailFailure = (kind: AuditEmailKind, recipient: string, failure: string): void => {
-  console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
-  recordEmailFailedAudit(recipient, { detail: failure, metadata: { emailKind: kind } })
+export const recordAuthEmailFailure = (kind: AuditEmailKind, { failure, to, userId }: Readonly<AuthEmailFailure>): void => {
+  console.error(`[Auth] Failed to send ${kind} email to ${to}: ${failure}`)
+  recordEmailFailedAudit(to, { detail: failure, metadata: { emailKind: kind }, resourceId: userId })
 }
 
-export const deliverAuthEmail = async (kind: AuditEmailKind, email: Parameters<typeof sendEmail>[0]): Promise<boolean> => {
+export const deliverAuthEmail = async (kind: AuditEmailKind, { userId, ...email }: Readonly<AuthEmail>): Promise<boolean> => {
   const failure = await sendEmail(email)
   if (failure === undefined) {
     return true
   }
 
-  recordAuthEmailFailure(kind, email.to, failure)
+  recordAuthEmailFailure(kind, { failure, to: email.to, userId })
 
   return false
 }
 ```
 
-Celem wpisu jest adres odbiorcy, szczegółem błąd Resend albo powód, dla którego e-maila nie udało się przygotować, a `emailKind` nazywa e-mail: `verification`, `reset-password`, `change-email`, `password-changed` albo `account-deleted`. `/admin/audit` pokazuje go w języku administratora, na przykład „Resetowanie hasła — The example.com domain is not verified”. Link weryfikacyjny ani link do zmiany hasła nigdy nie trafia do audytu, bo jest poświadczeniem. To, czy osoba dowie się o porażce, zależy od punktu końcowego; [Better Auth](/docs/integrations/better-auth) opisuje odpowiedź każdego z nich.
+Celem wpisu jest adres odbiorcy, a e-maile weryfikacyjny, resetu hasła, potwierdzenia zmiany adresu i o zmianie hasła przekazują identyfikator konta jako `userId`, który staje się `resource_id` wpisu, więc porażka zostaje w historii konta po zmianie jego adresu i znika razem z kontem, gdy zostanie ono usunięte. Dzienny limit zapisuje odmowę e-maila weryfikacyjnego albo resetu hasła pod kontem w ten sam sposób. E-mail pożegnalny usuniętego konta nie ma już konta i zachowuje swój adres jako `resource_id`. Szczegółem jest błąd Resend albo powód, dla którego e-maila nie udało się przygotować, a `emailKind` nazywa e-mail: `verification`, `reset-password`, `change-email`, `password-changed` albo `account-deleted`. `/admin/audit` pokazuje go w języku administratora, na przykład „Resetowanie hasła — The example.com domain is not verified”. Link weryfikacyjny ani link do zmiany hasła nigdy nie trafia do audytu, bo jest poświadczeniem. To, czy osoba dowie się o porażce, zależy od punktu końcowego; [Better Auth](/docs/integrations/better-auth) opisuje odpowiedź każdego z nich.
 
 `email.deferred` zapisuje tylko `deliverOrderEmail`. Pozostałe e-maile zapisują odmowę jako `email.failed`: e-maile Better Auth i e-maile zapisu do newslettera od razu, kampania newslettera wtedy, gdy zawiedzie trzecia próba partii.
 
 ## Czekanie na wysyłkę
 
-Własne wysyłki sklepu czekają na odpowiedź Resend, więc wynik trafia do tego, kto na niego patrzy. Wyjątkiem są hooki rejestracji, resetu hasła i zmiany adresu w Better Auth: Better Auth uruchamia je przez `advanced.backgroundTasks`, czyli `scheduleBackgroundWork` (`src/lib/background.ts`, `waitUntil` Workera), co opisuje [Better Auth](/docs/integrations/better-auth). Drugim wyjątkiem jest e-mail o zmianie hasła: `onPasswordReset` sam przekazuje `sendPasswordChangedEmail` do `scheduleBackgroundWork` i na niego nie czeka, bo Better Auth wylogowuje wszystkie urządzenia dopiero po powrocie z hooka.
+Własne wysyłki sklepu czekają na odpowiedź Resend, więc wynik trafia do tego, kto na niego patrzy. Wyjątkiem są hooki rejestracji, resetu hasła i zmiany adresu w Better Auth: Better Auth uruchamia je przez `advanced.backgroundTasks`, czyli `scheduleBackgroundWork` (`src/lib/background.ts`, `waitUntil` Workera), co opisuje [Better Auth](/docs/integrations/better-auth). Drugim wyjątkiem jest e-mail o zmianie hasła: `onPasswordReset` sam przekazuje `sendPasswordChangedEmail` do `scheduleBackgroundWork` i na niego nie czeka, bo Better Auth wylogowuje wszystkie urządzenia dopiero po powrocie z hooka. `finishEmailChange` robi to samo z informacją o zmianie adresu e-mail, więc link, który kończy zmianę adresu, nigdy nie czeka na Resend.
 
 `shipOrder`, `cancelOrder`, `deleteCustomer` i webhook Stripe przekazują też wysyłkę, na którą czekają, do `scheduleBackgroundWork`, zanim zaczną na nią czekać. Dla e-maili o postępie zamówienia robi to `awaitOrderEmailNotice` w `order.email-delivery.server.ts`:
 
@@ -426,9 +433,9 @@ Menu wiersza ma też **Wypisz**, dla adresu, który jeszcze się nie wypisał, o
 
 Obie odpowiadają `NEWSLETTER_SUBSCRIBER_NOT_FOUND`, gdy wiersza już nie ma, a tabela wtedy się odświeża. Obie trafiają do dziennika zdarzeń w kategorii `email`, jako `newsletter.subscriber_unsubscribed` i `newsletter.subscriber_erased`, z adresem jako celem i zasobem. Wypisanie zapisuje samo `unsubscribeSubscriber`, więc link, trasa jednego kliknięcia i preferencje konta też je zapisują, z przypisaniem do osoby, która o nie poprosiła, a link potwierdzający tak samo zapisuje `newsletter.subscriber_confirmed`. Wszystkie te wpisy niosą adres, więc usunięcie konta klienta z tym adresem usuwa je razem z pozostałymi wpisami konta. Tak jak inne mutacje panelu nie mają limitu żądań.
 
-**Usuń dane** usuwa wiersz, a w tym samym batchu D1 także wpisy dziennika zdarzeń dotyczące newslettera tego adresu: `newsletter.subscriber_confirmed`, `newsletter.subscriber_unsubscribed` oraz wpisy `email.failed`, których `emailKind` to `newsletter-confirmation`, `newsletter-already-subscribed` albo `newsletter-subscription`, czyli niewysłane e-maile potwierdzające, powiadomienia o istniejącej subskrypcji i odmowy z powodu dziennego limitu. Pozostałe wpisy adresu, na przykład logowania i e-maile uwierzytelniania konta klienta, zostają. Wpis o usunięciu powstaje potem i zachowuje adres w dzienniku zdarzeń przez jego 24 miesiące jako ślad, że prośbę spełniono, tak jak `customer.deleted` zachowuje adres usuniętego konta. Wpis zapisany kilka sekund przed usunięciem może jeszcze być w kolejce dziennika i trafić do niego później. Lista subskrybentów i dziennik zdarzeń odświeżają się w każdej otwartej karcie panelu.
+**Usuń dane** usuwa wiersz, a w tym samym batchu D1 także wpisy dziennika zdarzeń dotyczące newslettera tego adresu: `newsletter.subscriber_confirmed`, `newsletter.subscriber_unsubscribed` oraz wpisy `email.failed`, których `emailKind` to `newsletter-confirmation`, `newsletter-already-subscribed` albo `newsletter-subscription`, czyli niewysłane e-maile potwierdzające, powiadomienia o istniejącej subskrypcji i odmowy z powodu dziennego limitu. Gdy subskrypcja jest powiązana z kontem, batch usuwa też takie wpisy, które konto zostawiło pod swoim wcześniejszym adresem w czasie, gdy go używało (`keyedByFormerAddressOf`). Pozostałe wpisy adresu, na przykład logowania i e-maile uwierzytelniania konta klienta, zostają. Wpis o usunięciu powstaje potem i zachowuje adres w dzienniku zdarzeń przez jego 24 miesiące jako ślad, że prośbę spełniono, tak jak `customer.deleted` zachowuje adres usuniętego konta. Wpis zapisany kilka sekund przed usunięciem może jeszcze być w kolejce dziennika i trafić do niego później. Lista subskrybentów i dziennik zdarzeń odświeżają się w każdej otwartej karcie panelu.
 
-Każda zmiana wiersza subskrybenta wywołuje `scheduleAdminNewsletterSubscribersInvalidation()`: zapis, także ponowny, potwierdzenie, wypisanie przez `unsubscribeSubscriber`, z którego korzystają link do wypisania się, trasa jednego kliknięcia, preferencje konta i panel, usunięcie danych oraz `eraseAccountData`. Karta, która pokazuje listę albo jej liczniki, pobiera je ponownie, a karta, która ma je tylko w pamięci podręcznej, je odrzuca, więc ponowne otwarcie listy wczytuje aktualne statusy.
+Każda zmiana wiersza subskrybenta wywołuje `scheduleAdminNewsletterSubscribersInvalidation()`: zapis, także ponowny, potwierdzenie, wypisanie przez `unsubscribeSubscriber`, z którego korzystają link do wypisania się, trasa jednego kliknięcia, preferencje konta i panel, usunięcie danych, zakończona zmiana adresu konta (`followAccountAddressChange`) oraz `eraseAccountData`. Karta, która pokazuje listę albo jej liczniki, pobiera je ponownie, a karta, która ma je tylko w pamięci podręcznej, je odrzuca, więc ponowne otwarcie listy wczytuje aktualne statusy.
 
 ### Newslettery a poczta transakcyjna
 

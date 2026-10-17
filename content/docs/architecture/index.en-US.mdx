@@ -8,7 +8,7 @@ M'Arte is a single TanStack Start application deployed as one Cloudflare Worker.
 The code is split by responsibility, not by page:
 
 - **Routes** (`src/routes`) compose pages. A route file declares its translation namespaces, its guard, its loader and its `head` tags, then renders components. Route files carry no locale segment — the router rewrites the URL instead.
-- **Modules** (`src/modules/{feature}`) own domain logic. 42 feature folders hold Zod schemas, constants, types, helpers, plain data **accessors** and the **use cases** that wrap them in a server function. 39 of them own a Drizzle table; `admin-dashboard`, `customer-account` and `customer-activity` have no table of their own and work over the tables of other modules.
+- **Modules** (`src/modules/{feature}`) own domain logic. 43 feature folders hold Zod schemas, constants, types, helpers, plain data **accessors** and the **use cases** that wrap them in a server function. 39 of them own a Drizzle table; `admin-dashboard`, `customer-account` and `customer-activity` have no table of their own and work over the tables of other modules.
 - **Integrations** (`src/integrations/{vendor}`) configure third parties: Better Auth, Drizzle against D1, Cloudflare R2, Stripe, Resend, InPost, use-intl, Fumadocs, GSAP, Lenis, react-day-picker, TanStack Query, MDXEditor and the realtime invalidation hub.
 - **Presentation** (`src/presentation`) owns everything visual: the shadcn primitives, the application components, the React Email templates, the Tailwind layers, the theme and the branding constants.
 - **Platform** (`src/platform/testing`) holds shared test infrastructure and the Worker entry of the local `test` environment, and `src/durable-objects` holds the WebSocket invalidation hub.
@@ -19,7 +19,7 @@ src/
 ├── routes.ts            The ROUTES path table
 ├── router.tsx           getRouter: router, per-request QueryClient, locale rewrite
 ├── server.ts            Worker entry: fetch, realtime WebSockets, queues, cron
-├── modules/             42 feature folders, plus _core
+├── modules/             43 feature folders, plus _core
 ├── integrations/        14 vendor folders
 ├── presentation/        Components, emails, styles, theme, branding
 ├── providers/           TranslationsProvider, ThemesProvider

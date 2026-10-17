@@ -3,7 +3,7 @@ title: "Pisanie testów"
 description: "Trzy projekty Vitest, gdzie leżą testy, wspólne funkcje pomocnicze, wzorce mockowania funkcji serwerowych i tras, testy na zmigrowanym schemacie, progi pokrycia i zestaw Playwright."
 ---
 
-W `src/` jest 1227 plików testowych. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`. Uruchamiaj je przez `bun run test`, nie `bun test`: własny runner Buna pomija projekty Vitest, środowisko jsdom i plik konfiguracyjny.
+W `src/` jest 1241 plików testowych. Testy leżą obok kodu, który pokrywają, w katalogu `__test__/`, i nazywają się od pliku źródłowego. Uruchamiają się przez `vite-plus/test` — `describe`, `it`, `expect` i `vi` importuj zawsze stamtąd, nigdy wprost z `vitest`. Uruchamiaj je przez `bun run test`, nie `bun test`: własny runner Buna pomija projekty Vitest, środowisko jsdom i plik konfiguracyjny.
 
 ## Trzy projekty
 
@@ -11,9 +11,9 @@ W `src/` jest 1227 plików testowych. Testy leżą obok kodu, który pokrywają,
 
 | Projekt       | Pliki                                              | Środowisko | Plik konfiguracyjny             | Liczba |
 | ------------- | -------------------------------------------------- | ---------- | ------------------------------- | ------ |
-| `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | 477    |
-| `integration` | `*.integration.test.{ts,tsx}`                      | `node`     | brak                            | 127    |
-| `component`   | `*.component.test.{ts,tsx}`                        | `jsdom`    | `src/platform/testing/setup.ts` | 623    |
+| `node`        | `*.test.ts` / `*.test.tsx`, poza dwoma pozostałymi | `node`     | brak                            | 481    |
+| `integration` | `*.integration.test.{ts,tsx}`                      | `node`     | brak                            | 136    |
+| `component`   | `*.component.test.{ts,tsx}`                        | `jsdom`    | `src/platform/testing/setup.ts` | 624    |
 
 ```sh
 bun run test              # wszystkie trzy

@@ -8,7 +8,7 @@ M'Arte to jedna aplikacja TanStack Start wdrożona jako pojedynczy Cloudflare Wo
 Kod jest podzielony według odpowiedzialności, nie według stron:
 
 - **Trasy** (`src/routes`) komponują strony. Plik trasy deklaruje swoje przestrzenie nazw tłumaczeń, guard, loader i tagi `head`, a następnie renderuje komponenty. Pliki tras nie zawierają segmentu locale — router przepisuje URL za nie.
-- **Moduły** (`src/modules/{feature}`) są właścicielami logiki domenowej. 42 katalogi funkcjonalne zawierają schematy Zod, stałe, typy, helpery, zwykłe **akcesory** danych oraz **przypadki użycia**, które opakowują je w funkcję serwerową. 39 z nich jest właścicielem tabeli Drizzle; `admin-dashboard`, `customer-account` i `customer-activity` nie mają własnej tabeli i operują na tabelach innych modułów.
+- **Moduły** (`src/modules/{feature}`) są właścicielami logiki domenowej. 43 katalogi funkcjonalne zawierają schematy Zod, stałe, typy, helpery, zwykłe **akcesory** danych oraz **przypadki użycia**, które opakowują je w funkcję serwerową. 39 z nich jest właścicielem tabeli Drizzle; `admin-dashboard`, `customer-account` i `customer-activity` nie mają własnej tabeli i operują na tabelach innych modułów.
 - **Integracje** (`src/integrations/{vendor}`) konfigurują zewnętrzne usługi: Better Auth, Drizzle na D1, Cloudflare R2, Stripe, Resend, InPost, use-intl, Fumadocs, GSAP, Lenis, react-day-picker, TanStack Query, MDXEditor i hub unieważniania w czasie rzeczywistym.
 - **Warstwa prezentacji** (`src/presentation`) odpowiada za wszystko, co widoczne: prymitywy shadcn, komponenty aplikacji, szablony React Email, warstwy Tailwind, motyw i stałe brandingowe.
 - **Platforma** (`src/platform/testing`) zawiera współdzieloną infrastrukturę testową i punkt wejścia Workera lokalnego środowiska `test`, a `src/durable-objects` — hub unieważniania oparty na WebSocket.
@@ -19,7 +19,7 @@ src/
 ├── routes.ts            Tablica ścieżek ROUTES
 ├── router.tsx           getRouter: router, QueryClient na żądanie, rewrite locale
 ├── server.ts            Punkt wejścia Workera: fetch, WebSockety, kolejki, cron
-├── modules/             42 katalogi funkcjonalne plus _core
+├── modules/             43 katalogi funkcjonalne plus _core
 ├── integrations/        14 katalogów dostawców
 ├── presentation/        Komponenty, e-maile, style, motyw, branding
 ├── providers/           TranslationsProvider, ThemesProvider

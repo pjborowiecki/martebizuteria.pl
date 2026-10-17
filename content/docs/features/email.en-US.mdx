@@ -1,6 +1,6 @@
 ---
 title: "Transactional email"
-description: "Nineteen React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales, and the newsletter the owner sends to confirmed subscribers."
+description: "Twenty React Email templates rendered in the Worker, sent through Resend, audited, and previewable at /dev/emails in both locales, and the newsletter the owner sends to confirmed subscribers."
 ---
 
 ## Sending
@@ -72,7 +72,7 @@ Some of the emails go to any address a visitor types in: the verification email,
 
 The client is `src/integrations/resend/resend.config.ts`, a one-line `new Resend(env.RESEND_API_KEY)`. The default `from` is `APP_NAME <RESEND_EMAIL_FROM>`. Both `RESEND_API_KEY` and `RESEND_EMAIL_FROM` are in the `secrets.required` list of every environment in `wrangler.jsonc`. The sender's domain must be verified in Resend, and a deploy stops before the build when it is not; see [Resend](/docs/integrations/resend#sender-domain).
 
-## The nineteen templates
+## The twenty templates
 
 All under `src/presentation/emails/`, built with `react-email` and rendered server-side inside the Worker:
 
@@ -81,6 +81,7 @@ All under `src/presentation/emails/`, built with `react-email` and rendered serv
 | `verify-email.tsx`                  | `VERIFY_EMAIL_NAMESPACE`                  | `sendVerifyEmail` (Better Auth)                                                                                                                                                                                                                                                         |
 | `reset-password.tsx`                | `RESET_PASSWORD_NAMESPACE`                | `sendResetPasswordEmail` (Better Auth)                                                                                                                                                                                                                                                  |
 | `change-email.tsx`                  | `CHANGE_EMAIL_NAMESPACE`                  | `sendChangeEmailConfirmationEmail` (Better Auth)                                                                                                                                                                                                                                        |
+| `email-changed.tsx`                 | `EMAIL_CHANGED_NAMESPACE`                 | `sendEmailChangedEmail`, to the old address, handed to `scheduleBackgroundWork` by Better Auth's `hooks.after`, `finishEmailChange`, once a change of address completes                                                                                                                 |
 | `password-changed.tsx`              | `PASSWORD_CHANGED_NAMESPACE`              | `sendPasswordChangedEmail`, from Better Auth's `onPasswordReset`                                                                                                                                                                                                                        |
 | `account-deleted.tsx`               | `ACCOUNT_DELETED_NAMESPACE`               | `sendAccountDeletedEmail`, awaited by `deleteCustomer` and `afterDelete`                                                                                                                                                                                                                |
 | `order-confirmation.tsx`            | `ORDER_CONFIRMATION_NAMESPACE`            | `sendOrderConfirmationEmail`, from the Stripe webhook or the return page, whichever places the order                                                                                                                                                                                    |
@@ -112,6 +113,7 @@ await requireAuthEmailDelivery("verification", {
   react: createElement(VerifyEmail, { locale, messages, name: user.name, verificationUrl }),
   subject: createTranslator({ locale, messages })("subject"),
   to: user.email,
+  userId: user.id,
 })
 ```
 
@@ -121,7 +123,7 @@ Where the locale comes from differs by trigger:
 
 | Trigger                                                 | Locale source                                                                        |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Better Auth emails                                      | `getCurrentLocale()` — the request the user is making                                |
+| Better Auth emails, the email change notice             | `getCurrentLocale()` — the request the user is making                                |
 | `sendAccountDeletedEmail`                               | The `locale` captured before the deletion, falling back to `getCurrentLocale()`      |
 | Newsletter emails                                       | The `locale` sent with the subscription, falling back to `getCurrentLocale()`        |
 | Newsletter campaign                                     | Each subscriber's `newsletter_subscriber.locale`; a test send renders both languages |
@@ -173,7 +175,7 @@ The layout also forces light rendering:
 
 This is the most involved template. `sendOrderConfirmationEmail` in `src/modules/order/use-cases/send-order-confirmation-email.server.ts` builds it in `buildOrderConfirmationEmailPayload`:
 
-1. `getOrderTotalsForEmail(orderId)` reads the order row, and the recipient is its `email`, the address typed in the contact step. The session's address is not used: a signed-in shopper's session reports the email of their Stripe customer as it stands when the payment is confirmed, which another checkout the same account keeps open may have changed since (see [Stripe](/docs/integrations/stripe)). If the order cannot be read, nothing is built and the failure `Order <id> was not found` is recorded against it. Before that, `attemptOrderConfirmationEmail` takes the link origin from `session.return_url` with `resolveDeploymentOrigin`. A session without one records `The Stripe session has no return URL to link the email to`, and one on a host no deployment serves records `FORBIDDEN`.
+1. `getOrderTotalsForEmail(orderId)` reads the order row, and the recipient is its `recipient`: the order's `email`, the address typed in the contact step, unless the order's account has replaced that address since, as a resend after a change of address finds (see [Orders: Where an order's e-mails go](/docs/features/orders#where-an-orders-e-mails-go)). The session's address is not used: a signed-in shopper's session reports the email of their Stripe customer as it stands when the payment is confirmed, which another checkout the same account keeps open may have changed since (see [Stripe](/docs/integrations/stripe)). If the order cannot be read, nothing is built and the failure `Order <id> was not found` is recorded against it. Before that, `attemptOrderConfirmationEmail` takes the link origin from `session.return_url` with `resolveDeploymentOrigin`. A session without one records `The Stripe session has no return URL to link the email to`, and one on a host no deployment serves records `FORBIDDEN`.
 2. `getCheckoutEmailContext(checkoutId)` loads the addresses, the delivery method, the locker id and the locker's address, the customer note and the company a business buyer asked to be invoiced. When the checkout has a company name or NIP, `describeCompanyInvoice` puts the name above `NIP <digits>`, and the details block shows them under "Invoice for a company" after the billing address; otherwise the row is left out.
 3. `resolveStripePaymentMethodLabel(session, messages)` turns the Stripe payment method into a translated label.
 4. `getFulfillmentTimeAttributesByVariantId(variantIds)` reads the `czas-realizacji` attribute each ordered variant's product page shows, and `resolveOrderLineFulfillmentTimes(order.lines, attributes, locale)` labels it in the order's locale. `buildOrderConfirmationDetails({ context, fulfillmentTimes, messages, paymentMethod })` then assembles the details block.
@@ -277,7 +279,11 @@ The shipped and tracking number emails name the carrier, the method's courier, f
 
 ## Withdrawal from the contract
 
-`order-withdrawal.tsx` exports two e-mails over one message catalogue, `emails.order-withdrawal`, because both repeat the same statement. `OrderWithdrawalReceived` (`received`) is the acknowledgement on a durable medium that Article 11a of the Consumer Rights Directive requires: it goes to the order's e-mail address in the language of the request, states that the statement arrived and repeats its content, then says where to send the products back, the seller's address from Settings → Store details, and how the refund works. `OrderWithdrawalNotice` (`notice`) goes to `RESEND_EMAIL_FROM` in the shop's language with a link to the order in the admin. They are built by `sendWithdrawalConfirmationEmail` and `sendNewWithdrawalEmail` in `src/modules/order-withdrawal/use-cases/` and recorded as `Withdrawal acknowledgement → <address>` and `Withdrawal notice → <address>`. They go out through `deliverOrderEmail` like the order emails, under the keys `order-withdrawal/<order id>/<statement time>` and `order-withdrawal-notice/<order id>/<statement time>`, so a refused one is tried twice more and then alerts `RESEND_EMAIL_FROM`; neither carries what **Resend email** needs, so the Activity card never offers them. The date and time are written out in Polish time with `Intl.DateTimeFormat`, because the Worker runs in UTC. A withdrawal sent by order number from `/withdraw-from-contract` sends both only when `admitPublicEmail` admits a `withdrawal` e-mail to the order's address, like the other e-mails a visitor can ask for; one from the account always sends them. See [Legal pages: The withdrawal function](/docs/features/legal-pages#the-withdrawal-function).
+`order-withdrawal.tsx` exports two e-mails over one message catalogue, `emails.order-withdrawal`, because both repeat the same statement. `OrderWithdrawalReceived` (`received`) is the acknowledgement on a durable medium that Article 11a of the Consumer Rights Directive requires: it goes to the order's e-mail recipient (see [Orders: Where an order's e-mails go](/docs/features/orders#where-an-orders-e-mails-go)) in the language of the request, states that the statement arrived and repeats its content, then says where to send the products back, the seller's address from Settings → Store details, and how the refund works. `OrderWithdrawalNotice` (`notice`) goes to `RESEND_EMAIL_FROM` in the shop's language with a link to the order in the admin. They are built by `sendWithdrawalConfirmationEmail` and `sendNewWithdrawalEmail` in `src/modules/order-withdrawal/use-cases/` and recorded as `Withdrawal acknowledgement → <address>` and `Withdrawal notice → <address>`. They go out through `deliverOrderEmail` like the order emails, under the keys `order-withdrawal/<order id>/<statement time>` and `order-withdrawal-notice/<order id>/<statement time>`, so a refused one is tried twice more and then alerts `RESEND_EMAIL_FROM`; neither carries what **Resend email** needs, so the Activity card never offers them. The date and time are written out in Polish time with `Intl.DateTimeFormat`, because the Worker runs in UTC. A withdrawal sent by order number from `/withdraw-from-contract` sends both only when `admitPublicEmail` admits a `withdrawal` e-mail to that recipient, like the other e-mails a visitor can ask for; one from the account always sends them. See [Legal pages: The withdrawal function](/docs/features/legal-pages#the-withdrawal-function).
+
+## The email change notice
+
+`email-changed.tsx` (`EMAIL_CHANGED_NAMESPACE`, messages in `emails.email-changed`) tells an account's previous address that the account now signs in with another one. `finishEmailChange` hands `sendEmailChangedEmail` (`src/modules/user/use-cases/send-email-changed-email.server.ts`) to `scheduleBackgroundWork` once a change of address completes (see [Account: Changing the email address](/docs/features/account#changing-the-email-address)). It goes to the previous address in the language of the request that completed the change, and names the new address only masked, by `maskEmailAddress` in `src/modules/user/user.utils.ts`: the first letter, `***`, `@`, the first letter of the domain, `***` and the domain from its last dot, so `nowy@example.com` reads `n***@e***.com`. It says that the change was confirmed from both addresses, that messages about the account and its orders now go to the new address and none to this one, and that the orders, saved addresses and the rest of the account stay with the account. Someone who did not make the change is asked to reply, write to the shop's contact e-mail or call its phone, both read with `readSellerDetails`. The email is tried once and does not go through `admitPublicEmail`. It records `email.sent` or `email.failed` with `emailKind` `email-changed` ("Email change notice to the old address"), the previous address as the target and the account as the `resource_id`, and a failure is also logged as `[Auth] Failed to tell <address> that the account's email changed:`. Its preview slug is `email-changed`.
 
 ## Seller details in e-mails
 
@@ -288,6 +294,7 @@ The e-mails that name the seller take the details saved under Settings → Store
 | `OrderConfirmation`       | The seller block (legal name, postal address with the country, NIP, and the e-mail and phone as links) and the address for withdrawals and complaints | `sendOrderConfirmationEmail`          |
 | `OrderDelivered`          | The contact e-mail and phone                                                                                                                          | `sendOrderDeliveredEmail`             |
 | `OrderWithdrawalReceived` | The address to send the products back to                                                                                                              | `sendWithdrawalConfirmationEmail`     |
+| `EmailChanged`            | The contact e-mail and phone                                                                                                                          | `sendEmailChangedEmail`               |
 | `NewsletterCampaignEmail` | The sender: legal name, postal address with the country, and the e-mail                                                                               | `sendNewsletterBatch`, once per batch |
 
 `formatSellerPostalAddress` in `src/modules/store-setting/store-setting.utils.ts` writes the address as the legal name, the street, the postal code with the city and the country, named from the stored country code in the e-mail's language, so the message files hold no "Poland" or "Polska" of their own. The previews at `/dev/emails` read the stored details too. Every e-mail `sendEmail` sends has the contact e-mail as its `Reply-To` whenever the details can be read (see [Sending](#sending)).
@@ -346,30 +353,30 @@ A newsletter email that Resend refuses is audited as well. `subscribeToNewslette
 Better Auth's five emails are audited the same way, through `recordAuthEmailFailure` in `auth.email-delivery.server.ts`:
 
 ```ts
-export const recordAuthEmailFailure = (kind: AuditEmailKind, recipient: string, failure: string): void => {
-  console.error(`[Auth] Failed to send ${kind} email to ${recipient}: ${failure}`)
-  recordEmailFailedAudit(recipient, { detail: failure, metadata: { emailKind: kind } })
+export const recordAuthEmailFailure = (kind: AuditEmailKind, { failure, to, userId }: Readonly<AuthEmailFailure>): void => {
+  console.error(`[Auth] Failed to send ${kind} email to ${to}: ${failure}`)
+  recordEmailFailedAudit(to, { detail: failure, metadata: { emailKind: kind }, resourceId: userId })
 }
 
-export const deliverAuthEmail = async (kind: AuditEmailKind, email: Parameters<typeof sendEmail>[0]): Promise<boolean> => {
+export const deliverAuthEmail = async (kind: AuditEmailKind, { userId, ...email }: Readonly<AuthEmail>): Promise<boolean> => {
   const failure = await sendEmail(email)
   if (failure === undefined) {
     return true
   }
 
-  recordAuthEmailFailure(kind, email.to, failure)
+  recordAuthEmailFailure(kind, { failure, to: email.to, userId })
 
   return false
 }
 ```
 
-The target is the recipient's address, the detail is the Resend error or the reason the email could not be prepared, and `emailKind` names the email: `verification`, `reset-password`, `change-email`, `password-changed` or `account-deleted`. `/admin/audit` shows it in the admin's language, for example "Password reset — The example.com domain is not verified". The verification or reset link never goes into the audit log, because it is a credential. Whether the person is told depends on the endpoint; [Better Auth](/docs/integrations/better-auth) lists what each one answers.
+The target is the recipient's address, and the verification, reset, change-email confirmation and password-changed emails pass the account's id as `userId`, which becomes the entry's `resource_id`, so a failure stays in the account's history after the account changes its address and goes with the account when it is deleted. The daily limit files its refusal of a verification or reset email under the account the same way. The goodbye email of a deleted account has no account left and keeps its address as the `resource_id`. The detail is the Resend error or the reason the email could not be prepared, and `emailKind` names the email: `verification`, `reset-password`, `change-email`, `password-changed` or `account-deleted`. `/admin/audit` shows it in the admin's language, for example "Password reset — The example.com domain is not verified". The verification or reset link never goes into the audit log, because it is a credential. Whether the person is told depends on the endpoint; [Better Auth](/docs/integrations/better-auth) lists what each one answers.
 
 Only `deliverOrderEmail` writes `email.deferred`. The other emails record a refusal as `email.failed`: Better Auth's emails and the newsletter sign-up emails at once, a newsletter campaign when its third batch attempt fails.
 
 ## Waiting for the send
 
-The shop's own senders wait for Resend's answer, so the result reaches whoever is looking. Better Auth's sign-up, password reset and change-email hooks are the exception: Better Auth runs them through `advanced.backgroundTasks`, which is `scheduleBackgroundWork` (`src/lib/background.ts`, the Worker's `waitUntil`), as [Better Auth](/docs/integrations/better-auth) describes. The password-changed email is the other exception: `onPasswordReset` hands `sendPasswordChangedEmail` to `scheduleBackgroundWork` itself and does not wait for it, because Better Auth signs every device out only after the hook returns.
+The shop's own senders wait for Resend's answer, so the result reaches whoever is looking. Better Auth's sign-up, password reset and change-email hooks are the exception: Better Auth runs them through `advanced.backgroundTasks`, which is `scheduleBackgroundWork` (`src/lib/background.ts`, the Worker's `waitUntil`), as [Better Auth](/docs/integrations/better-auth) describes. The password-changed email is the other exception: `onPasswordReset` hands `sendPasswordChangedEmail` to `scheduleBackgroundWork` itself and does not wait for it, because Better Auth signs every device out only after the hook returns. `finishEmailChange` does the same with the email change notice, so the link that completes a change of address never waits for Resend.
 
 `shipOrder`, `cancelOrder`, `deleteCustomer` and the Stripe webhook also hand the send they wait for to `scheduleBackgroundWork` before awaiting it. For the order progress emails `awaitOrderEmailNotice` in `order.email-delivery.server.ts` does it:
 
@@ -426,9 +433,9 @@ The row menu also has **Unsubscribe**, for an address that has not unsubscribed 
 
 Both answer `NEWSLETTER_SUBSCRIBER_NOT_FOUND` when the row is already gone, and the table then refreshes. Both are recorded in the audit log under `email`, as `newsletter.subscriber_unsubscribed` and `newsletter.subscriber_erased`, with the address as both the target and the resource. `unsubscribeSubscriber` records the unsubscribe itself, so the link, the one-click route and the account preferences record it too, credited to whoever asked, and the confirmation link records `newsletter.subscriber_confirmed` the same way. These entries all carry the address, so deleting a customer account with that address deletes them along with the account's other entries. Like the other admin mutations they are not rate-limited.
 
-**Erase data** deletes the row and, in the same D1 batch, the audit entries about that address's newsletter: `newsletter.subscriber_confirmed`, `newsletter.subscriber_unsubscribed` and the `email.failed` entries whose `emailKind` is `newsletter-confirmation`, `newsletter-already-subscribed` or `newsletter-subscription`, the confirmation emails, already-subscribed notices and daily-limit refusals that did not go out. The address's other entries, such as a customer account's sign-ins and auth emails, stay. The erasure entry is written afterwards and keeps the address in the audit log for its 24 months as the record that the request was carried out, the way `customer.deleted` keeps the address of a deleted account. An entry recorded in the few seconds before the erasure can still be in the audit queue and land after it. Both the subscriber list and the audit log refresh in every open admin tab.
+**Erase data** deletes the row and, in the same D1 batch, the audit entries about that address's newsletter: `newsletter.subscriber_confirmed`, `newsletter.subscriber_unsubscribed` and the `email.failed` entries whose `emailKind` is `newsletter-confirmation`, `newsletter-already-subscribed` or `newsletter-subscription`, the confirmation emails, already-subscribed notices and daily-limit refusals that did not go out. When the subscription is linked to an account, the batch also deletes those entries the account left under an earlier address of its own, from the time it held that address (`keyedByFormerAddressOf`). The address's other entries, such as a customer account's sign-ins and auth emails, stay. The erasure entry is written afterwards and keeps the address in the audit log for its 24 months as the record that the request was carried out, the way `customer.deleted` keeps the address of a deleted account. An entry recorded in the few seconds before the erasure can still be in the audit queue and land after it. Both the subscriber list and the audit log refresh in every open admin tab.
 
-Every change to a subscriber row calls `scheduleAdminNewsletterSubscribersInvalidation()`: a sign-up, including a repeated one, a confirmation, an unsubscribe through `unsubscribeSubscriber`, which the unsubscribe link, the one-click route, the account preferences and the admin share, an erasure, and `eraseAccountData`. A tab showing the list or its counts refetches them, and a tab that only has them cached drops them, so opening the list again loads the current statuses.
+Every change to a subscriber row calls `scheduleAdminNewsletterSubscribersInvalidation()`: a sign-up, including a repeated one, a confirmation, an unsubscribe through `unsubscribeSubscriber`, which the unsubscribe link, the one-click route, the account preferences and the admin share, an erasure, a completed change of an account's address (`followAccountAddressChange`), and `eraseAccountData`. A tab showing the list or its counts refetches them, and a tab that only has them cached drops them, so opening the list again loads the current statuses.
 
 ### Newsletters and the transactional mail
 

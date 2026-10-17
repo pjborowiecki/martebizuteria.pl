@@ -56,6 +56,8 @@ filters: {
 
 `createdAt` and `lastOrderAt` are filtered by the day in the admin's time zone through `buildAdminDateTimeFilterSql`, as on the orders page and in the audit log.
 
+The search term matches the name, email, phone, id and Stripe customer id, and also every account that has ever used an address containing it (`accountsWithAddressContaining` over `user_email_history`, see [Account: The addresses an account has used](/docs/features/account#the-addresses-an-account-has-used)), so a customer is found by an address they no longer sign in with. The export applies the same search.
+
 The accessor returns five things — `rows`, `orderStats`, `defaultAddresses`, `latestShippingAddresses` and `total` — and the use case stitches them together client-side of the database:
 
 ```ts
@@ -70,7 +72,7 @@ A customer's order count, total spent, average order value and lifetime value us
 
 The column ids, widths, default visibility and pinning are all in `user.constants.ts` under `ADMIN_CUSTOMER_TABLE_COLUMN_ID`, `ADMIN_CUSTOMER_TABLE_COLUMN_SIZE`, `ADMIN_CUSTOMER_TABLE_DEFAULT_COLUMN_VISIBILITY` and the pinning object. The columns are `select`, `customer` (the name, with the email address under it), `recordId`, `stripeCustomerId`, `role`, `phone`, `emailVerified`, `banned`, `location`, `orderCount`, `totalSpent`, `averageOrderValue`, `lastOrderAt`, `createdAt` and `actions`; `recordId` and `stripeCustomerId` start hidden. Amounts and dates are written in the admin's format locale and time zone.
 
-The grid is `customersDataGrid` (`utils/customers-data-grid.ts`), whose column order, widths and visibility persist under `admin.customers`, and `useCustomersDataGrid` (`hooks/use-customers-data-grid.ts`) drives it with server-side pagination and a debounced search over the name, email, phone, id and Stripe customer id. Clicking a row opens `/admin/customers/$id`. The row menu offers the details, copying the id, the email or the Stripe customer id, and **Delete account**, greyed out on every admin's row (see [The two mutations](#the-two-mutations)).
+The grid is `customersDataGrid` (`utils/customers-data-grid.ts`), whose column order, widths and visibility persist under `admin.customers`, and `useCustomersDataGrid` (`hooks/use-customers-data-grid.ts`) drives it with server-side pagination and a debounced search over the name, email, phone, id and Stripe customer id, and the addresses each account has used before. Clicking a row opens `/admin/customers/$id`. The row menu offers the details, copying the id, the email or the Stripe customer id, and **Delete account**, greyed out on every admin's row (see [The two mutations](#the-two-mutations)).
 
 Components are in `.../admin/customers/components/`: `customers-table.tsx`, `customers-columns.tsx` (with the column definitions in `lib/customers-column-defs.tsx`), the filters (`customers-role-filter`, `customers-banned-filter`, `customers-email-verified-filter`, `customers-date-column-filter` with `customers-date-filter-form`, `customers-numeric-column-filter`), the badges (`customer-role-badge`, `customer-banned-badge`, `customer-email-verified-badge`), `customer-name-cell`, `customer-table-cells`, `customers-row-actions`, `customers-stats` with `customer-stat-card`, and the refresh action; the export is the shared `Export` of `customersDataGrid`. The cards are configured in `.../admin/customers/customers-stats.config.ts`, and `hooks/use-delete-customer.ts` runs the deletion.
 
@@ -100,7 +102,7 @@ return computeAdminCustomerStatsFromAggregates({
 
 `/admin/customers/$id` reads `getAdminCustomerQuery(id, locale)` with `useSuspenseQuery` and throws `notFound()` through `ensureAdminCustomerDetail` when the row is missing.
 
-`getAdminCustomer` (`authorized({ user: ["get"] })`) is the widest read in the codebase — ten accessors from `user.accessors.ts`, `getUserById` first and the other nine in parallel:
+`getAdminCustomer` (`authorized({ user: ["get"] })`) is the widest read in the codebase — eleven reads, `getUserById` first and the other ten in parallel: nine more accessors from `user.accessors.ts` and `getUserEmailHistory` from `user-email-history.accessors.ts`:
 
 | Accessor                              | Feeds                                                                                                    |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -114,6 +116,7 @@ return computeAdminCustomerStatsFromAggregates({
 | `getDefaultCustomerAddressFullQuery`  | `formatAdminCustomerFullAddress` and the editor's address fields                                         |
 | `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                                                                          |
 | `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                                                                             |
+| `getUserEmailHistory`                 | `buildAdminCustomerEmailHistory`: every address the account has used, newest first                       |
 
 "Last active" is the newest session's `updatedAt`, or the last order when no session is left, or the row's `updatedAt`, written by `formatRelativeFromNow`: a relative time in the page's language for a week, then the date.
 
@@ -147,9 +150,11 @@ export const resolveAdminCustomerTags = (row: User["select"], orderCount: number
 
 `ADMIN_CUSTOMER_MIN_REPEAT_ORDERS` is 2. Custom tags added by an admin come from the metadata column and are merged in separately.
 
-`buildAdminCustomerTimeline` merges three sources, newest first: the account's creation, the "Placed order" entries of up to ten sale orders with their numbers and totals, and up to `CUSTOMER_AUDIT_TIMELINE_LIMIT` (50, `customer-activity.constants.ts`) `audit_log` rows whose resource is the user, limited to `auth.login`, `auth.logout`, `customer.cart_item_added`, `customer.cart_abandoned` and `customer.page_viewed`. See [Audit log](/docs/features/audit-log).
+`buildAdminCustomerTimeline` merges three sources, newest first: the account's creation, the "Placed order" entries of up to ten sale orders with their numbers and totals, and up to `CUSTOMER_AUDIT_TIMELINE_LIMIT` (50, `customer-activity.constants.ts`) `audit_log` rows whose resource is the user, limited to `auth.email_changed`, `auth.login`, `auth.logout`, `customer.cart_item_added`, `customer.cart_abandoned` and `customer.page_viewed`. A change of address reads "Changed the sign-in email from X to Y", with both addresses taken from the entry's change metadata or, for an older entry, from its `old → new` detail, or "Changed the sign-in email" for an entry that names neither. See [Audit log](/docs/features/audit-log).
 
-The UI is `.../admin/customers/customer-detail/`: `customer-detail-page.tsx` lays out `customer-kpis.tsx`, `customer-charts.tsx` and `customer-orders.tsx` in the main column and `customer-sidebar.tsx`, which ends with `customer-timeline-card.tsx`, beside it; `edit-customer/customer-sheet.tsx` is the editor. Below the `xl` breakpoint the sidebar follows the main column; from `xl` it is a 340 px column. On a `2xl` screen at least 57rem high the page fits the window and each column scrolls on its own.
+The sidebar's Email addresses section (`customer-email-history.tsx`) lists the rows of `getUserEmailHistory`, newest first: the current address with "Current, since" and the day the account took it, and each earlier one with "Used" and the days it was taken and given up, in the admin's format locale and time zone.
+
+The UI is `.../admin/customers/customer-detail/`: `customer-detail-page.tsx` lays out `customer-kpis.tsx`, `customer-charts.tsx` and `customer-orders.tsx` in the main column and `customer-sidebar.tsx`, which holds `customer-email-history.tsx` below the customer's details and ends with `customer-timeline-card.tsx`, beside it; `edit-customer/customer-sheet.tsx` is the editor. Below the `xl` breakpoint the sidebar follows the main column; from `xl` it is a 340 px column. On a `2xl` screen at least 57rem high the page fits the window and each column scrolls on its own.
 
 ## Notes and tags in `metadata`
 
@@ -186,7 +191,7 @@ A column that holds plain text rather than JSON is treated as notes, so a legacy
 - upserts the default address through `upsertDefaultAddressForUser`, but only when `hasAddressInput` passes — `address1` and `city` must both be non-blank
 - when the submitted `countryCode` is blank it reuses the existing default address's country rather than writing an empty string, and skips the address write entirely if there is still no country
 
-It does **not** change email, name, role or ban state; those are Better Auth operations. Once the writes are done it records `customer.updated` against the admin, with the customer's email address as the target and their id as the resource. It writes the row directly rather than through Better Auth, so no `databaseHooks.user` hook runs: `CustomerFormProvider` invalidates the detail, the grid and the stats in the editing admin's own browser.
+It does **not** change email, name, role or ban state. The email address changes only when its owner changes it from the account page, with confirmations from both addresses (see [Account: Changing the email address](/docs/features/account#changing-the-email-address)); the others are Better Auth operations. Once the writes are done it records `customer.updated` against the admin, with the customer's email address as the target and their id as the resource. It writes the row directly rather than through Better Auth, so no `databaseHooks.user` hook runs: `CustomerFormProvider` invalidates the detail, the grid and the stats in the editing admin's own browser.
 
 `deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, has four guards:
 
@@ -219,7 +224,7 @@ return { goodbyeEmailSent, ok: true as const, userId }
 
 `eraseAccountData` is the step a customer's own deletion runs in Better Auth's `beforeDelete`: it deletes the account's Stripe customer with its saved cards, then the account's audit log entries and newsletter subscription (see [Account: Closing the account](/docs/features/account#closing-the-account)). When Stripe cannot delete the customer, nothing is deleted, `customer.deletion_failed` is recorded, and `useDeleteCustomer` shows "Stripe could not delete the customer's profile and saved cards, so the account was not deleted. Try again in a few minutes. The error is recorded in the audit log." The confirmation dialog, `rowActions.deleteDescription`, lists what is deleted and that the orders and payments stay in the accounting records for 5 years.
 
-Because deletion goes through Better Auth, its `databaseHooks.user.delete.after` records `customer.deleted` against the admin whose session made the `removeUser` call, with the deleted customer's email address as the target, and the cascades on `session`, `account`, `address`, `wishlist_item` and `two_factor` apply, while `order.user_id`, `checkout.user_id` and `discount_redemption.user_id` are `onDelete: "set null"` — so the orders survive as guest orders. If an account later verifies the same email address, `claimGuestOrdersForUser` files those orders under it like any other guest order (see [Account: Guest orders in the account](/docs/features/account#guest-orders-in-the-account)).
+Because deletion goes through Better Auth, its `databaseHooks.user.delete.after` records `customer.deleted` against the admin whose session made the `removeUser` call, with the deleted customer's email address as the target, and the cascades on `session`, `account`, `address`, `wishlist_item`, `two_factor` and `user_email_history` apply, while `order.user_id`, `checkout.user_id` and `discount_redemption.user_id` are `onDelete: "set null"` — so the orders survive as guest orders. If an account later verifies the deleted account's last address, `claimGuestOrdersForUser` files the orders placed with that address under it like any other guest order; the orders placed with an earlier address carry `keptFromClaims` and stay unclaimed (see [Account: Guest orders in the account](/docs/features/account#guest-orders-in-the-account)).
 
 ## Export
 

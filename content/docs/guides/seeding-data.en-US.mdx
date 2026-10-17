@@ -130,7 +130,7 @@ beforeAll(() => {
 })
 ```
 
-`createTestD1Database` in `src/platform/testing/mocks/d1.ts` adapts Node's built-in `node:sqlite` to the `D1Database` interface, including `batch()` with a real transaction. `src/modules/_core/utils/__test__/search-conditions.integration.test.ts` is the model. When a test needs the real schema, `applyMigrationHistory(sqlite)` from `src/platform/testing/mocks/migrations.ts` builds it from the migration files, and the test inserts only the rows it needs; 61 integration suites work that way. See [Writing tests](/docs/guides/writing-tests) and [Testing a data migration](/docs/guides/database-migrations#testing-a-data-migration).
+`createTestD1Database` in `src/platform/testing/mocks/d1.ts` adapts Node's built-in `node:sqlite` to the `D1Database` interface, including `batch()` with a real transaction. `src/modules/_core/utils/__test__/search-conditions.integration.test.ts` is the model. When a test needs the real schema, `applyMigrationHistory(sqlite)` from `src/platform/testing/mocks/migrations.ts` builds it from the migration files, and the test inserts only the rows it needs; 65 integration suites work that way. See [Writing tests](/docs/guides/writing-tests) and [Testing a data migration](/docs/guides/database-migrations#testing-a-data-migration).
 
 ## Related guides
 

@@ -25,17 +25,17 @@ A module in `src/modules/<feature>/` is named after its feature and every file i
 
 Some modules need a second axis and stack two suffixes. The second-to-last segment narrows the concern:
 
-| File                                              | Purpose                                                                 |
-| ------------------------------------------------- | ----------------------------------------------------------------------- |
-| `audit-log/audit-log.diff.utils.ts`               | Helpers for diffing before/after audit snapshots                        |
-| `audit-log/audit-log.queue.server.ts`             | The Cloudflare Queue producer and consumer                              |
-| `audit-log/audit-log.events.server.ts`            | The typed recorder functions the domain layer calls                     |
-| `inventory/inventory.availability.utils.ts`       | Availability arithmetic separated from row mapping                      |
-| `product/product.admin-list.server.ts`            | The admin list query, separate from the storefront one                  |
-| `product/product.storefront-catalog.accessors.ts` | Storefront catalog reads                                                |
-| `product-image/product-image.persist.utils.ts`    | Image persistence helpers                                               |
-| `order/order.settled.server.ts`                   | Lookups for orders that have already settled                            |
-| `order/order.claim.server.ts`                     | Files guest orders under the account that verified their e-mail address |
+| File                                              | Purpose                                                                                                        |
+| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `audit-log/audit-log.diff.utils.ts`               | Helpers for diffing before/after audit snapshots                                                               |
+| `audit-log/audit-log.queue.server.ts`             | The Cloudflare Queue producer and consumer                                                                     |
+| `audit-log/audit-log.events.server.ts`            | The typed recorder functions the domain layer calls                                                            |
+| `inventory/inventory.availability.utils.ts`       | Availability arithmetic separated from row mapping                                                             |
+| `product/product.admin-list.server.ts`            | The admin list query, separate from the storefront one                                                         |
+| `product/product.storefront-catalog.accessors.ts` | Storefront catalog reads                                                                                       |
+| `product-image/product-image.persist.utils.ts`    | Image persistence helpers                                                                                      |
+| `order/order.settled.server.ts`                   | Lookups for orders that have already settled                                                                   |
+| `order/order.claim.server.ts`                     | Files guest orders under the account that held their e-mail address when they were placed, or that verifies it |
 
 ## Routes
 
