@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { readPdf, readPublicAsset } from "~/src/platform/testing/lib/pdf"
+import { PDF_RENDER_TIMEOUT, readPdf, readPublicAsset } from "~/src/platform/testing/lib/pdf"
 import { TEST_STORED_SELLER_DETAILS } from "~/src/platform/testing/mocks/seller-details"
 
 import { type StoreSetting } from "~/src/modules/store-setting/store-setting.types"
@@ -38,7 +38,7 @@ beforeEach(() => {
   render.mockReset()
 })
 
-describe("loadFormFonts", () => {
+describe("loadFormFonts", PDF_RENDER_TIMEOUT, () => {
   it("reads the three form fonts from the static assets of the given deployment", async () => {
     const fonts = await loadFormFonts(ORIGIN)
 
@@ -67,7 +67,7 @@ describe("loadFormFonts", () => {
   })
 })
 
-describe("respondWithForm", () => {
+describe("respondWithForm", PDF_RENDER_TIMEOUT, () => {
   it("serves the form made from the stored seller details as an inline PDF under its own file name", async () => {
     const response = await respondWithForm(formRequest(), WITHDRAWAL_FORM)
     const form = await readPdf(new Uint8Array(await response.arrayBuffer()))

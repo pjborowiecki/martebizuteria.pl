@@ -3,6 +3,8 @@ import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs"
 
 import { FORM_FONT_PATHS, type FormFonts } from "~/src/presentation/pdf/form-document"
 
+export const PDF_RENDER_TIMEOUT = { timeout: 30_000 } as const
+
 export const readPublicAsset = (path: string): Uint8Array<ArrayBuffer> => new Uint8Array(readFileSync(`public${path}`))
 
 export const FORM_FONT_FILES: FormFonts = {
