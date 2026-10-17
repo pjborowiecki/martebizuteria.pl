@@ -134,7 +134,7 @@ W kasie `useCheckoutDeliveryPricing` (`src/presentation/components/custom/checko
 
 O opłacie rozstrzyga serwer. `resolveDelivery` zwraca cenę metody wraz z progiem, a obsługa sesji wycenia dostawę przez `resolveDeliveryPrice` dla produktów i kodu zarezerwowanego dla checkoutu. Darmowa dostawa nie zostawia w sesji Stripe pozycji dostawy, a sesja i jej payment intent zapisują opłatę za dostawę jako `shippingTotal` w metadanych. Realizacja bierze koszt dostawy zamówienia z tego pola, a cenę metody tylko dla sesji otwartej, zanim to pole istniało, więc próg ani cena zmienione przez właściciela w trakcie płatności nie zmieniają tego, co zamówienie podaje jako pobraną kwotę (zobacz [Płatności](/docs/features/payments#realizacja)).
 
-Zmiana progu zapisuje `settings.updated` z celem `free-delivery` oraz starym i nowym `freeDeliveryThreshold` w metadanych, które dziennik zdarzeń pokazuje jako kwoty pieniężne, i wywołuje `scheduleFreeDeliveryInvalidation()`, które publikuje oba powyższe klucze, więc otwarta kasa od razu stosuje nowy próg. Zapisanie wartości, którą sklep już ma, niczego nie zmienia ani nie zapisuje.
+Zmiana progu zapisuje `settings.updated` z celem `free-delivery` oraz starym i nowym `freeDeliveryThreshold` w metadanych, które dziennik zdarzeń pokazuje jako kwoty pieniężne (zobacz [Dziennik zdarzeń](/docs/features/audit-log)), i wywołuje `scheduleFreeDeliveryInvalidation()`, które publikuje oba powyższe klucze, więc otwarta kasa od razu stosuje nowy próg. Zapisanie wartości, którą sklep już ma, niczego nie zmienia ani nie zapisuje.
 
 ## Dane startowe
 
@@ -146,7 +146,7 @@ Zmiana progu zapisuje `settings.updated` z celem `free-delivery` oraz starym i n
 | Kurier InPost / InPost courier           | `courier`  | 1999                       | 0      | `inpost_courier_standard` |
 | Odbiór w atelier / Pickup at the atelier | `in_store` | 0                          | 2      | `marte_atelier_pickup`    |
 
-Seed używa `INSERT OR IGNORE` ze stałymi identyfikatorami UUIDv7. Nie uruchamiaj `bun run db:seed:preview` na żywej bazie — pliki seedów są starsze niż dane produkcyjne. W działającym sklepie metody zmienia się w ustawieniach.
+Seed używa `INSERT OR IGNORE` ze stałymi identyfikatorami UUIDv7. Nie uruchamiaj `bun run db:seed:production`, który zapisuje pliki seedów do żywej bazy: są starsze niż dane produkcyjne. W działającym sklepie metody zmienia się w ustawieniach.
 
 Każda metoda z seeda ma też polski `description`, którego nie pokazuje żadna strona. Opisy idą za § 7 regulaminu: do 4 dni roboczych od nadania dla paczkomatu i kuriera oraz odbiór w pracowni w Bochni, gotowy najpóźniej z upływem czasu realizacji. `20261010220000_delivery_method_descriptions.sql` nadaje te same opisy wierszom wstawionym wcześniej, zastępując doręczenie w 1–2 dni i atelier w Warszawie gotowe w 24 godziny. Zmienia wiersz tylko wtedy, gdy jego opis wciąż jest dawnym tekstem z seeda, więc opis przepisany przez właściciela zostaje bez zmian.
 
@@ -183,10 +183,10 @@ Wybór typu zapisuje `deliveryMethodType` i albo automatycznie wybiera jedyną m
 
 ## Wybór punktu InPost
 
-Integracja to cztery małe pliki w `src/integrations/inpost`:
+`src/integrations/inpost` zawiera sześć plików: `inpost.api.ts` z wywołaniami API punktów, `inpost.constants.ts`, `inpost.queries.ts` z opcjami zapytań wyboru punktu, `inpost.utils.ts`, `inpost.zod.ts` oraz `inpost.shipx.server.ts`, klienta ShipX, z którego korzystają przesyłki nadawane w panelu (zobacz [InPost](/docs/integrations/inpost#przesyłki-przez-shipx)). Wyszukiwanie po mieście jest w `inpost.api.ts`, z `INPOST_POINTS_API_ORIGIN` (`https://api-pl-points.easypack24.net`) z `inpost.constants.ts`:
 
 ```ts
-const INPOST_API_BASE = "https://api-pl-points.easypack24.net/v1/points"
+const INPOST_API_BASE = `${INPOST_POINTS_API_ORIGIN}/v1/points`
 const MIN_CITY_LENGTH = 3
 
 export const fetchPointsByCity = async (city: string): Promise<InpostPointParsed[]> => {
@@ -229,7 +229,7 @@ Mapa to `react-map-gl/maplibre` z podkładem Carto Voyager (`https://basemaps.ca
 2. `resolveDelivery` odrzuca metodę, której sklep nie oferuje, metodę paczkomatową bez paczkomatu i paczkomat, którego InPost nie ma na liście, zachowuje `lockerId` tylko dla metody paczkomatowej, zapamiętuje, czy udało się o niego zapytać InPost, i odczytuje `price` metody oraz próg darmowej dostawy.
 3. `prepareCreateCheckoutBatch` zapisuje metodę do `checkout.delivery_method_id`, `lockerId` do `checkout.locker_id`, zwrócony przez InPost adres paczkomatu do `checkout.locker_point`, a nieodpowiedziane zapytanie do `checkout.locker_unconfirmed`. `createStripeSession` dodaje pozycję dostawy, gdy po uwzględnieniu darmowej dostawy kosztuje ona więcej niż zero, nazwaną według typu metody w języku kupującego (`deliveryLineItem` w `pages.checkout`), i zapisuje opłatę za dostawę jako `shippingTotal` w metadanych sesji.
 4. `fulfillCheckout` bierze koszt dostawy zamówienia z `shippingTotal` w metadanych opłaconej sesji albo, dla sesji otwartej, zanim to pole istniało, z obecnej ceny metody, a `prepareFulfillCheckoutBatch` kopiuje `deliveryMethodId`, `lockerId`, `lockerPoint`, `lockerUnconfirmed` i `customerNote` z migawki checkoutu na nowy wiersz `order`.
-5. Przy zamówieniu do paczkomatu albo kurierem, gdy przewoźnikiem metody jest InPost, administrator może nadać paczkę w InPost ze strony zamówienia. Identyfikator i status przesyłki trafiają do `order.inpost_shipment_id` i `order.inpost_shipment_status`, numer do śledzenia i link do `order.tracking_number` i `order.tracking_url`, a etykietę PDF pobiera się z tej samej karty. Zobacz [InPost](/docs/integrations/inpost#przesyłki-przez-shipx). Paczkę innego przewoźnika nadaje się na jego stronie, a administrator zapisuje jej numer i link w zamówieniu.
+5. Przy zamówieniu do paczkomatu albo kurierem, gdy przewoźnikiem metody jest InPost, administrator może nadać paczkę w InPost ze strony zamówienia. Identyfikator i status przesyłki trafiają do `order.inpost_shipment_id` i `order.inpost_shipment_status`, numer do śledzenia i link do `order.tracking_number` i `order.tracking_url`, a etykietę PDF pobiera się z tej samej karty. Zobacz [InPost](/docs/integrations/inpost#przesyłki-przez-shipx). Bez danych dostępowych ShipX karta informuje, że automatyczne nadawanie przez InPost nie jest połączone: administrator nadaje paczkę w Managerze Paczek InPost, a potem oznacza zamówienie jako wysłane i wkleja numer przesyłki. `resolveOrderTrackingUrl` (`order.display.utils.ts`) łączy taki numer ze stroną śledzenia InPost w e-mailach i na obu stronach zamówienia, bo zamówienie z metodą, której przewoźnikiem jest InPost, z numerem, ale bez zapisanego linku, dostaje `inpostTrackingUrl(number)`. Paczkę innego przewoźnika nadaje się na jego stronie, a administrator zapisuje jej numer i link w zamówieniu.
 
 Zamówienie nadal wskazuje na swoją metodę, więc potwierdzenie w kasie, zamówienie na koncie kupującego, strona zamówienia w panelu i eksport zamówień nazywają ją w języku czytającego, z `names` według języka żądania. Metoda zarchiwizowana później nadal jest nazwana.
 
@@ -239,11 +239,11 @@ Zamówienie nadal wskazuje na swoją metodę, więc potwierdzenie w kasie, zamó
 
 ```ts
 return locker === undefined
-  ? { address: formatEmailAddress(shippingAddress) ?? unavailable, kind: "address" }
+  ? { address: formatEmailAddress(shippingAddress, locale) ?? unavailable, kind: "address" }
   : { kind: "locker", locker: describeOrderLocker(locker).join("\n"), recipient: formatEmailRecipient(shippingAddress) }
 ```
 
-E-maile z potwierdzeniem i o wysyłce pokazują to tak samo. E-mail sklepu o nowym zamówieniu podaje paczkomat zamiast adresu dostawy, bo kupującego wymienia już jego wiersz klienta.
+`formatEmailAddress` zapisuje kod pocztowy, miejscowość, województwo i kraj w jednym wierszu przez `formatOrderAddressLocality`, nazywając kraj w języku e-maila. E-maile z potwierdzeniem i o wysyłce pokazują ten blok tak samo. E-mail sklepu o nowym zamówieniu podaje paczkomat zamiast adresu dostawy, bo kupującego wymienia już jego wiersz klienta.
 
 E-maile o wysyłce i z numerem przesyłki podają przewoźnika, czyli przewoźnika metody, przy każdym zamówieniu kurierem albo do paczkomatu, a przy odbiorze w pracowni żadnego (`resolveOrderTracking`). Ich przycisk śledzenia otwiera link zapisany w zamówieniu albo stronę śledzenia InPost dla numeru przy metodzie, której przewoźnikiem jest InPost; przy numerze innego przewoźnika bez zapisanego linku przycisk prowadzi zamiast tego do linku konta (`buildOrderShippedAccountCta`).
 
@@ -265,7 +265,7 @@ Plik `messages/{locale}/emails.order-confirmation.json` ma obiekt `fulfillmentTi
 ## Czego nie ma
 
 - Nie ma integracji z przewoźnikiem innym niż InPost: przesyłki, etykiety i śledzenie idą wyłącznie przez API ShipX. Metodę z innym przewoźnikiem obsługuje się ręcznie, a zamówienie odbierane w pracowni nie ma przesyłki.
-- Nie ma automatycznych zmian zamówienia od przewoźnika: status InPost jest widoczny na zamówieniu i odświeżany na żądanie albo przez webhook InPost, ale oznaczenie zamówienia jako wysłanego i dostarczonego zostaje w rękach administratora, a nadanie przesyłki nie oznacza zamówienia jako wysłanego, bo nadana paczka jeszcze nie opuściła pracowni. Bez przesyłki InPost `order.tracking_number` i `order.tracking_url` to to, co administrator wpisze w oknie wysyłki. Numer, który InPost nada po oznaczeniu zamówienia jako wysłanego, trafia do klienta e-mailem raz.
+- Nie ma automatycznych zmian zamówienia od przewoźnika: status InPost jest widoczny na zamówieniu i odświeżany na żądanie albo przez webhook InPost, ale oznaczenie zamówienia jako wysłanego i dostarczonego zostaje w rękach administratora, a nadanie przesyłki nie oznacza zamówienia jako wysłanego, bo nadana paczka jeszcze nie opuściła pracowni. Bez przesyłki InPost `order.tracking_number` i `order.tracking_url` to to, co administrator wpisze w oknie wysyłki, a numer wpisany bez linku przy metodzie, której przewoźnikiem jest InPost, `resolveOrderTrackingUrl` łączy ze stroną śledzenia InPost. Numer, który InPost nada po oznaczeniu zamówienia jako wysłanego, trafia do klienta e-mailem raz.
 - Nie ma reguł wysyłki poza progiem darmowej dostawy: cena to płaska kwota na metodę, bez logiki wagi, rozmiaru ani miejsca dostawy. Jedyną regułą miejsca dostawy jest sprawdzenie `DELIVERY_COUNTRY_CODES`.
 - Nie ma tabeli lokalizacji sklepów dla `in_store`, a w ofercie jest naraz jedna metoda z odbiorem osobistym.
 - Nie ma ekranu dla samych przewoźników: ustawienia dodają przewoźnika razem z nową metodą, ale zmiana jego nazwy albo wyłączenie go to zmiana w D1. Nie da się też zmienić typu ani przewoźnika istniejącej metody; trzeba ją zarchiwizować i dodać nową.

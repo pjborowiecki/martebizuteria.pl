@@ -3,7 +3,7 @@ title: "Cart"
 description: "The basket is a persisted zustand store in the browser; the server answers what is in stock and what it costs now."
 ---
 
-M'Arte has no server-side cart. The basket lives in `localStorage` under the key `marte-cart` and the database's `cart` and `cart_item` tables are unused. The only server round trip is a check of the stock and the current prices.
+M'Arte has no server-side cart. The basket lives in `localStorage` under the key `marte-cart` and the database's `cart` and `cart_item` tables are unused. Before checkout, the only server round trip is a check of the stock and the current prices. Once the payment step opens a Stripe Checkout Session, the server prices the basket from the database and keeps that priced cart on the session's payment row, in `payment.lines` (see [Checkout: The cart on the payment row](/docs/features/checkout#the-cart-on-the-payment-row)).
 
 ## The store
 
@@ -96,35 +96,38 @@ return {
 
 `checkCartAvailabilityQuery(lines, heldSessionId)` is `enabled` only when there is at least one line and uses `staleTime: 0`, so the check is fresh on every mount. It sets `refetchOnWindowFocus: false` and `refetchOnReconnect: false`, so coming back to the tab or getting the connection back does not run it again. A shopper paying with BLIK on a phone leaves the payment step for the banking app and comes back while the payment completes. Once it has, the session no longer holds the piece, so a check run on the way back would find the last piece sold and the checkout guard would send its buyer to the basket before the page could show the confirmation. When the phone discards the tab meanwhile and the page reloads, the checkout asks `getCheckoutSessionStatus` about the stored session before the guard runs any check, and shows the confirmation of a paid one, or waits for the bank on a payment it is still confirming (see [Checkout](/docs/features/checkout)). Its key is `[...CART_QUERY_KEYS.AVAILABILITY, lines, heldSessionId]` — the lines and the held session are part of the key, so changing a quantity or opening a session refetches. `placeholderData: keepPreviousData` keeps the last answer while a new key is checked, so the checkout guard does not fall back to a first check, and unmount the form, when the payment step stores its session. `CART_QUERY_KEYS.AVAILABILITY` is `["cart", "availability"]` and is in `STOREFRONT_REALTIME_QUERY_PREFIXES`, so a stock or price change pushed from the admin console re-runs the check in open tabs, and a new price reaches the basket and the checkout without a reload.
 
-`src/hooks/use-cart-availability.ts` reads the held session with `useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, …)`, with no session on the server, wraps the query and returns `{ hasUnavailableItems, isChecking, issues, issuesByVariantId }`. An effect passes each answer's `prices` to `applyCurrentPrices`, so every page that runs the check, which through `CartAvailabilityBanner` is every storefront page with a non-empty basket, keeps the basket's prices current. `isChecking` is true while `isPending || isFetching` and there is at least one line.
+`src/hooks/use-cart-availability.ts` reads the held session with `useSyncExternalStore(subscribeToCheckoutSessionId, loadCheckoutSessionId, …)`, with no session on the server, wraps the query and returns `{ hasUnavailableItems, isChecking, isFirstCheck, issues, issuesByVariantId }`. An effect passes each answer's `prices` to `applyCurrentPrices`, so every page that runs the check, which through `CartAvailabilityBanner` is every storefront page with a non-empty basket, keeps the basket's prices current. `isChecking` is true while `isPending || isFetching` and there is at least one line. `isFirstCheck` is true only while `isPending` and there is at least one line, that is until the query has an answer to show, its own or, through `keepPreviousData`, the previous key's; the checkout guard waits for it alone, so a later re-check does not unmount the form.
 
 ## Pages and components
 
-| File                                                                     | Role                                                                                                                                                                        |
-| ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/routes/_storefront.cart.tsx`                                        | `/cart`; renders `EmptyCart` when there are no lines                                                                                                                        |
-| `.../custom/pages/cart-page/cart-item-card.tsx`                          | One line: image, titles, price-change note, quantity, remove; at `CART_LINE_QUANTITY_MAX` the plus button is disabled and `pages.cart.quantityLimit` says how to order more |
-| `.../custom/pages/cart-page/cart-summary.tsx`                            | Totals and the checkout link                                                                                                                                                |
-| `.../custom/cart-availability-banner.tsx`                                | Store-wide banner, rendered by the `_storefront` layout                                                                                                                     |
-| `.../custom/sales-paused-banner.tsx`                                     | Store-wide notice while sales are paused, above the banner                                                                                                                  |
-| `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | The header badge, `items.reduce((sum, item) => sum + item.qty, 0)`                                                                                                          |
+| File                                                                     | Role                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/routes/_storefront.cart.tsx`                                        | `/cart`; renders `EmptyCart` when there are no lines                                                                                                                                                                                        |
+| `.../custom/pages/cart-page/cart-item-card.tsx`                          | One line: image, titles, price-change note, stock note, quantity, unit price, remove; the plus button is disabled while the line has a stock issue and at `CART_LINE_QUANTITY_MAX`, where `pages.cart.quantityLimit` says how to order more |
+| `.../custom/pages/cart-page/cart-summary.tsx`                            | Totals and the checkout link                                                                                                                                                                                                                |
+| `.../custom/cart-availability-banner.tsx`                                | Store-wide banner, rendered by the `_storefront` layout                                                                                                                                                                                     |
+| `.../custom/sales-paused-banner.tsx`                                     | Store-wide notice while sales are paused, above the banner                                                                                                                                                                                  |
+| `.../landing-page/navigation/components/navigation/user-utility-nav.tsx` | The header badge, `items.reduce((sum, item) => sum + item.qty, 0)`                                                                                                                                                                          |
 
-The cart page formats its own totals rather than going through `useFormatter`:
+A line's stock note comes from the availability check: `pages.cart.availability.itemUnavailable` ("No longer available") when nothing is left for it, otherwise `pages.cart.availability.itemLimited` ("Only 2 left in stock" for two pieces left) when the basket asks for more than is left.
+
+Prices are formatted in the shopper's format locale, not the page's language (see [Internationalization](/docs/features/internationalization)). The page builds the total with
 
 ```ts
-const CENTS_IN_ZLOTY = 100
-const total = cartTotal() / CENTS_IN_ZLOTY
-const subtotal = new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" }).format(total)
+const formatLocale = useFormatLocale()
+const subtotal = formatPrice(cartTotal(), STORE_CURRENCY_CODE, formatLocale)
 ```
 
-**That format is hard-coded to `pl-PL`**, so the English cart still shows Polish number formatting.
+and `CartItemCard` shows each line's unit price, not the line total, through `useFormatter()`. Both hooks come from `src/hooks/use-display-format.ts`.
+
+Below the `lg` breakpoint the summary follows the lines; from `lg` it sits in a 380-pixel column beside them and stays in view while they scroll (`lg:sticky lg:top-28`). The "Continue shopping" link sits beside the title from the `sm` breakpoint and under the last line on narrower screens. On a touch screen (`pointer-coarse`) the remove and quantity buttons grow to 40 pixels.
 
 ## The summary is a subtotal only
 
 `cart-summary.tsx` renders three rows — subtotal, shipping and total — but shipping is the message `pages.cart.summary.shippingValue` and the total row prints the same `subtotal` value:
 
 ```tsx
-<div className="flex justify-between">
+<div className="flex justify-between gap-4">
   <span className="font-medium">{t("summary.total")}</span>
   <span className="font-medium">{subtotal}</span>
 </div>
@@ -136,7 +139,7 @@ When `checkoutDisabled` or `salesPaused` is true the checkout link is replaced b
 
 ## Blocking a bad basket
 
-Two guards use the availability result:
+Three guards use the availability result:
 
 - `/cart` disables the checkout link while `hasUnavailableItems || isChecking`, and also while `getSalesStatusQuery()` reports that sales are paused, which it passes to the summary as `salesPaused`. The basket itself stays usable, so a shopper can keep pieces in it until the shop reopens.
 - `CartAvailabilityBanner` renders an `role="alert"` strip with `pages.cart.availability.banner` when lines are unavailable. Above it, `SalesPausedBanner` renders a `role="status"` strip with `pages.cart.salesPaused.banner` on every storefront page while sales are paused; the account and documentation layouts render it under their navigation too. See [Checkout: Pausing sales](/docs/features/checkout#pausing-sales).
@@ -148,7 +151,7 @@ Two guards use the availability result:
 
 ## The unused tables
 
-`cart` and `cart_item` exist in `src/modules/cart/cart.schema.ts` and `src/modules/cart-item/cart-item.schema.ts`, with `discount_id`, `expires_at`, `session_id` and `user_id` columns and the usual indexes, and they are exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`. Nothing reads or writes them. They are the schema for a server-side cart that has not been built; `checkout.cart_id` references `cart.id` but is never populated.
+`cart` and `cart_item` exist in `src/modules/cart/cart.schema.ts` and `src/modules/cart-item/cart-item.schema.ts`, with `discount_id`, `expires_at`, `session_id` and `user_id` columns and the usual indexes, and they are exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`. Nothing reads or writes them. They are the schema for a server-side cart that has not been built; `checkout.cart_id` references `cart.id` but is never populated. The priced cart a checkout is paid for lives on its payment row instead, in `payment.lines`, written when the payment step opens or replaces a session (see [Checkout: The cart on the payment row](/docs/features/checkout#the-cart-on-the-payment-row)).
 
 ## Related pages
 
