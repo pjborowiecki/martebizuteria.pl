@@ -11,12 +11,14 @@ The deploy script is one chain of `&&`, so it stops at the first stage that fail
 
 | Stage that failed                                                   | What is live                                                                                   | What to do                                                             |
 | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| A check before the build, the build, or `prepare-deploy-secrets.ts` | The previous Worker on the previous schema; nothing remote changed                             | Fix the cause and deploy again                                         |
+| A check before the build, the build, or `prepare-deploy-secrets.ts` | The previous Worker on the previous schema; nothing on Cloudflare changed                      | Fix the cause and deploy again                                         |
 | `db:migrate:<environment>`                                          | The previous Worker; the migrations before the failing one are applied, the failing one is not | Read the failing statement in the log, fix it forward and deploy again |
 | `wrangler deploy`                                                   | The previous Worker on the new schema                                                          | Fix the cause and deploy again                                         |
 | `verify-deployment.ts`                                              | The new Worker                                                                                 | Roll the Worker back, then find out why                                |
 
-`scripts/verify-deployment.ts` calls `verifyDeployment` in `src/lib/deployment.ts`, which asks the environment's `workers.dev` host for `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` and `/api/health` without following redirects. The home page and the product listing must answer `200` with HTML, `robots.txt` must answer `200` with plain text, the Stripe webhook route must refuse a `GET` with `405`, and the health check must answer `200`, which it does only when D1, KV and R2 answer. A page that answers anything else is asked again up to three times in all, five seconds apart, so a version still reaching every Cloudflare location is not taken for a broken one. A failure names each page and its answer:
+The checks before the build are `verify-bindings.ts`, `verify-stripe-keys.ts` and `verify-email-sender.ts`. They only read, with one exception: when `RESEND_API_KEY` is a sending-only key and `RESEND_MANAGEMENT_API_KEY` is not set, Resend will not list the domains, so `verify-email-sender.ts` sends one test e-mail to Resend's test inbox, `delivered@resend.dev`, to prove that Resend accepts the sender.
+
+`scripts/verify-deployment.ts` calls `verifyDeployment` in `src/lib/deployment.ts`, which asks the environment's `workers.dev` host for `/`, `/products`, `/robots.txt`, `/api/webhooks/stripe` and `/api/health` without following redirects, each with a 15-second timeout. The home page and the product listing must answer `200` with HTML, `robots.txt` must answer `200` with plain text, the Stripe webhook route must refuse a `GET` with `405` and plain text, and the health check must answer `200` with JSON, which it does only when D1, KV and R2 answer. A page that answers anything else is asked again up to three times in all, five seconds apart, so a version still reaching every Cloudflare location is not taken for a broken one. A failure names each page and its answer:
 
 ```text
 The production Worker at https://martebizuteria.pjborowiecki.workers.dev is deployed but does not answer like the shop:
@@ -25,7 +27,7 @@ GET https://martebizuteria.pjborowiecki.workers.dev/products answered 500 text/h
 
 ## Roll the Worker back
 
-`wrangler rollback` makes an earlier version of the Worker serve all traffic again. It changes no binding: D1, R2, KV, the audit queue and the Durable Object keep their data, and the schema stays as the migrations left it.
+`wrangler rollback` makes an earlier version of the Worker serve all traffic again. It changes no binding: D1, R2, KV, the audit log and newsletter queues and the Durable Object keep their data, and the schema stays as the migrations left it.
 
 ```sh
 vp exec wrangler deployments list --env production

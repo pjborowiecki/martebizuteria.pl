@@ -28,8 +28,10 @@ Checkout jest zakończony, gdy ma status `failed`, gdy jest `abandoned` (status 
 Wiersz checkoutu zostaje, z jego statusem, metodą dostawy, rabatem i znacznikami czasu, bo wskazuje na niego wiersz `payment`, a płatności nigdy się nie usuwa. Znikają z niego dane osobowe:
 
 - `email` staje się pustym napisem, bo kolumna nie może być `NULL`; `customer_note`, `billing_company_name`, `billing_nip`, `locker_id`, `locker_point` i `user_id` stają się `NULL`.
-- Wiersze `address`, na które wskazuje, są usuwane, gdy nie należą do żadnego konta (`user_id` jest `NULL`), a `shipping_address_id` i `billing_address_id` stają się `NULL`. Adres, który zalogowany klient zapisał na swoim koncie, zostaje przy koncie.
+- Wiersze `address`, na które wskazuje, są usuwane, gdy nie należą do żadnego konta (`user_id` jest `NULL`), a `shipping_address_id` i `billing_address_id` stają się `NULL`. Adres zapisany przez zalogowanego klienta na koncie zostaje przy koncie.
 - Usuwany jest każdy wiersz `discount_claim`, który checkout jeszcze trzyma. Zwolnienie zwykle już go usuwa; wiersz pozostawiony przez nieudane zwolnienie trzymałby na zawsze jedno użycie kodu i adres e-mail klienta.
+
+Anonimizacja nie zmienia `client_address`. Ta kolumna przechowuje adres IP odwiedzającego, który `handleCreateCheckoutSession` zapisuje, żeby `countOpenCheckouts` mogło ograniczyć liczbę checkoutów otwartych przez jednego odwiedzającego. Batch zwolnienia ustawia ją na `NULL`, gdy oznacza checkout jako `failed`, a batch zamówienia robi to samo, gdy oznacza go jako `completed`, więc checkout, którego płatność nigdy się nie otworzyła, zachowuje ją także po anonimizacji.
 
 Zanonimizowany checkout ma pusty `email` i po tym następne uruchomienie poznaje, że ma go pominąć.
 
@@ -60,9 +62,12 @@ Trigger wywołuje handler `scheduled` w `src/server.ts`, obok `fetch` i `queue`:
 
 ```ts
 async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  const { enforceRetentionPeriods } = await import("~/src/lib/retention")
   await enforceRetentionPeriods(new Date(controller.scheduledTime))
 },
 ```
+
+Handler importuje `src/lib/retention.ts` dopiero wtedy, gdy uruchomienie się zaczyna, tak samo jak `queue` importuje swoich konsumentów.
 
 `enforceRetentionPeriods` w `src/lib/retention.ts` trzyma okresy, `RETENTION_DAYS` i `RETENTION_MONTHS`, zamienia je na daty graniczne liczone od chwili, na którą zaplanowano uruchomienie, i uruchamia po jednym przypadku użycia na rodzaj wierszy:
 

@@ -1,11 +1,11 @@
 ---
 title: "i18n messages"
-description: "Add or change user-visible text: namespace files, route declarations, the loading pipeline, formatting and locale resolution."
+description: "Add or change user-visible text: namespace files, route declarations, the loading pipeline, formatting in the user's format locale and time zone, and locale resolution."
 ---
 
-M'Arte is bilingual: Polish (`pl-PL`) is the default and English (`en-US`) is secondary. Translations are split into 56 namespace files per locale under `messages/pl-PL/` and `messages/en-US/`, loaded per route and delivered through `use-intl`.
+M'Arte is bilingual: Polish (`pl-PL`) is the default and English (`en-US`) is secondary. Translations are split into 60 namespace files per locale under `messages/pl-PL/` and `messages/en-US/`, loaded per route and delivered through `use-intl`.
 
-`src/integrations/use-intl/i18n.config.ts` is the whole configuration:
+`src/integrations/use-intl/i18n.config.ts` configures the languages:
 
 ```ts
 const COOKIE_NAME = "marte_locale"
@@ -17,19 +17,21 @@ const DEFAULT_LOCALE: SupportedLocale = "pl-PL"
 const DEFAULT_TIMEZONE = "Europe/Warsaw"
 ```
 
+How dates, numbers and prices look is configured separately, in `src/integrations/use-intl/i18n.display.ts` — see [Formatting numbers, dates and money](#formatting-numbers-dates-and-money). `DEFAULT_TIMEZONE` is not part of that: only the test providers and the timestamp in the withdrawal e-mail use it.
+
 ## Namespaces
 
 A namespace is one JSON file, and its filename _is_ its dotted namespace path. `messages/pl-PL/pages.admin.catalog.categories.json` is the namespace `pages.admin.catalog.categories`, reached as `useTranslations("pages.admin.catalog.categories")`.
 
-The 56 files fall into five groups:
+The 60 files fall into five groups:
 
-| Prefix        | Examples                                                                                                                                                            |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `common`      | `common.json` — yes, no, confirm, cancel, loading                                                                                                                   |
-| `components.` | `components.custom`, `components.datagrid`, `components.defaults`, `components.shadcn`                                                                              |
-| `emails.`     | `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.change-email`, `emails.account-deleted`                |
-| `errors`      | `errors.json` — the `action.<CODE>` sentences                                                                                                                       |
-| `pages.`      | One per page or page section: `pages.home`, `pages.product`, `pages.checkout`, `pages.admin`, `pages.admin.catalog.products`, `pages.auth.sign-in`, `pages.docs`, … |
+| Prefix        | Examples                                                                                                                                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common`      | `common.json` — yes, no, confirm, cancel, loading                                                                                                                             |
+| `components.` | `components.custom`, `components.datagrid`, `components.defaults`, `components.shadcn`                                                                                        |
+| `emails.`     | 19 files, one per e-mail template: `emails.order-confirmation`, `emails.order-shipped`, `emails.verify-email`, `emails.reset-password`, `emails.newsletter-campaign`, …       |
+| `errors`      | `errors.json` — the `action.<CODE>` sentences                                                                                                                                 |
+| `pages.`      | 35 files, one per page or page section: `pages.home`, `pages.product`, `pages.checkout`, `pages.admin`, `pages.admin.catalog.products`, `pages.auth.sign-in`, `pages.docs`, … |
 
 Both locale folders always hold exactly the same set of filenames. Adding a file to one and not the other means `loadNamespace` throws for the missing locale:
 
@@ -75,11 +77,11 @@ export const Route = createFileRoute("/admin/catalog/categories")({
 
 `getRouteNamespaces(matches)` unions the declarations of every matched route with `ROOT_NAMESPACES`, so a page inherits its layouts' namespaces. `/admin/catalog/categories` ends up with the root six, plus `pages.admin` and `components.datagrid` from `admin.tsx`, plus `pages.admin.catalog` and `pages.admin.catalog.localePicker` from `admin.catalog.tsx`, plus its own three.
 
-**A namespace you forget to declare fails at render time, not at build time.** If `t("something")` throws about a missing message, the namespace declaration is the first thing to check.
+**A namespace you forget to declare shows up at render time, not at build time.** use-intl does not throw: `IntlProvider` sets no `onError` or `getMessageFallback`, so use-intl's defaults report a `MISSING_MESSAGE` error through `console.error` and render the key path, such as `pages.admin.catalog.categories.title`, in place of the text. When a page shows key paths, the namespace declaration is the first thing to check, and the key itself the second.
 
 ## How messages reach the component
 
-1. The root route's `beforeLoad` calls `preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient })`, which warms one query per namespace.
+1. The root route's `beforeLoad` calls `preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient })`, which warms one query per namespace, and loads `displayPreferencesQuery` alongside.
 2. Each namespace is a TanStack Query entry with `gcTime: Infinity` and `staleTime: Infinity`, keyed `["messages", locale, namespace]`. A namespace is fetched once per locale per session.
 3. `TranslationsProvider` in `src/providers/translations-provider.tsx` re-reads the matched namespaces on every navigation and combines them:
 
@@ -95,7 +97,7 @@ const messages = useSuspenseQueries({
 ```
 
 4. `buildMessageTree` turns the flat list of `["pages.admin.catalog.categories", {...}]` pairs into the nested object `use-intl` expects, by splitting each namespace on `.` and nesting from the inside out, then deep-merging.
-5. `IntlProvider` receives that tree, the locale and the time zone resolved from `displayPreferencesQuery`.
+5. `IntlProvider` receives that tree, the locale and the time zone resolved from `displayPreferencesQuery`; inside it, `DisplayPreferencesContext` carries the resolved format locale and time zone to the formatting hooks.
 
 Because the actual JSON is loaded through `import.meta.glob`, each namespace is a separate chunk. A visitor to the storefront never downloads the admin catalog strings.
 
@@ -109,9 +111,9 @@ t("columns.createdAt")
 t("form.validation.titleTooLong")
 ```
 
-`useTranslations()` with no argument returns a root translator that takes full paths, which is what `useActionError` and `ValidationFieldError` use so they can reach `errors.action.*` and `pages.auth.validations.*` from anywhere.
+`useTranslations()` with no argument returns a root translator that takes full paths. `useActionError` uses it to reach `errors.action.*` and `pages.auth.errors.*` from anywhere, and `ValidationFieldError` to reach `<namespace>.<message>` for the validation namespace it is given, such as `pages.auth.validations`.
 
-`t.has(key)` tests for a key before using it — `ValidationFieldError` relies on it to fall back to a generic message rather than throw.
+`t.has(key)` tests for a key before using it — `ValidationFieldError` relies on it to fall back to the generic `errors.action.VALIDATION` sentence rather than render a key path.
 
 ICU placeholders work as usual:
 
@@ -123,7 +125,17 @@ tLocale("incompleteToastDescription", {
 
 ## Formatting numbers, dates and money
 
-Never call `Intl` directly in a component. `useFormatter()` from `src/hooks/use-display-format.ts` formats in the user's format locale and time zone, which can differ from the page's language; use-intl's own `useFormatter` would use the page's language:
+The page's language and its display format are separate settings. The language, `pl-PL` or `en-US`, comes from the path and picks the messages. The **format locale**, which decides how dates and numbers look, and the **time zone** are display preferences of their own, so a visitor can read the Polish storefront with British dates, or the English one in Warsaw time.
+
+Never call `Intl` directly in a component. Use the hooks in `src/hooks/use-display-format.ts`:
+
+| Hook                   | Returns                                                                    | Use it for                                                     |
+| ---------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `useFormatter()`       | use-intl's `createFormatter({ locale: formatLocale, timeZone })`, memoised | Dates, times, numbers                                          |
+| `useFormatLocale()`    | The format locale, such as `en-GB`                                         | Helpers that take a locale argument, such as `formatPrice`     |
+| `useDisplayTimeZone()` | The IANA time zone, such as `Europe/Warsaw`                                | Calendar arithmetic, such as which day "today" is for the user |
+
+Import `useFormatter` from that file, not from `use-intl/react`: use-intl's own `useFormatter` formats in the page's language.
 
 ```tsx
 const format = useFormatter()
@@ -131,23 +143,86 @@ const format = useFormatter()
 format.dateTime(new Date(getValue()), { dateStyle: "medium" })
 ```
 
-For money, use the currency helpers in `src/modules/_core/utils/currency.ts` with the constants in `src/modules/_core/constants/currency.ts`. Prices are stored as integer minor units — `1499` is 14,99 zł — so formatting is a conversion, not a cast.
+Prices are stored as integer minor units — `1499` is 14,99 zł — so formatting is a conversion, not a cast. Format them with `formatPrice(amountInMinorUnits, currency, locale)` from `src/modules/_core/utils/currency.ts`, passing the format locale, as `src/presentation/components/custom/checkout/components/checkout-success.tsx` does:
+
+```tsx
+const formatLocale = useFormatLocale()
+
+formatPrice(order.totalMinorUnits, order.currencyCode, formatLocale)
+```
+
+The other currency helpers live in the same file, with the constants in `src/modules/_core/constants/currency.ts`, where `CURRENCIES` holds each currency's ISO numeric code and exponent.
+
+For a date computed rather than displayed, take the zone from `useDisplayTimeZone()`. The admin dashboard's custom range picker works out the user's today with it:
+
+```tsx
+const timeZone = useDisplayTimeZone()
+const todayIso = formatCalendarDateToIsoDate(toCalendarDate(new Date(), timeZone))
+```
+
+### Where the preferences come from
+
+`src/integrations/use-intl/i18n.display.ts` holds the display configuration:
+
+```ts
+export const FALLBACK_FORMAT_LOCALE = "en-US"
+
+export const FALLBACK_TIME_ZONE = "UTC"
+
+export const TIME_ZONE_COOKIE_NAME = "marte_time_zone"
+```
+
+It also exports `FORMAT_LOCALES`, the eighteen format locales a user can choose from. `resolveDisplayPreferences` resolves each preference on its own, in this order:
+
+1. **Saved** on the signed-in user, in the `formatLocale` and `timezone` columns. `toSavedDisplayPreferences` ignores a value `Intl` does not accept.
+2. **Detected** from the request by `detectDisplayPreferences`: the format locale from the first usable `Accept-Language` entry, and the time zone from the `marte_time_zone` cookie, else the time zone Cloudflare reports for the visitor's location (`request.cf.timezone`).
+3. **Fallbacks**: `en-US` and `UTC`.
+
+The browser corrects the detected zone. Once the page has hydrated, `TranslationsProvider` writes the browser's own time zone into the `marte_time_zone` cookie and, when it differs from the detected one, updates the cached `displayPreferencesQuery` (key `["i18n", "displayPreferences"]`). A user without a saved zone then sees times in the browser's zone at once, and the next server render detects it from the cookie.
+
+Users change their preferences on the account profile page, `/account/profile`, in its **Preferences** section: **Time zone** and **Date and number format**, each with an **Automatic (…)** option that names the detected value. Choosing a value saves it with `updateDisplayPreference` (`src/modules/user/use-cases/update-display-preference.ts`); choosing Automatic clears the saved value. A save invalidates every query, so data the server formatted is fetched again in the new format.
+
+### On the server
+
+A server function that formats a date or filters by one reads the same preferences with `resolveRequestDisplayPreferences()` from `src/integrations/use-intl/i18n.display-preferences.ts`, a `createServerOnlyFn` that returns `{ formatLocale, timeZone }` for the current request: the saved preferences, else the detected ones. Date filters hand the time zone to `buildAdminDateTimeFilterSql(column, filter, timeZone)` in `src/modules/_core/utils/datetime-column-filter.server.ts`, so "on 3 October" covers the admin's 3 October, from midnight to midnight in their zone. From `src/modules/audit-log/use-cases/list-audit-logs.ts`:
+
+```ts
+.handler(async ({ data }): Promise<AdminAuditLogsPageResult> => {
+  const preferences = await resolveRequestDisplayPreferences()
+  const params = buildAdminAuditLogsListParams(data, preferences.timeZone)
+  const { rows, total } = await auditLogGetAdminAuditLogsPage(params)
+  const items = rows.map((row) => toAdminAuditListItem(row, preferences))
+
+  return buildAdminAuditLogsPageResult(items, total, params)
+})
+```
+
+The admin list, export, dashboard and customer use cases follow the same pattern. Their tests replace the function with `src/platform/testing/mocks/display-preferences.ts`; see [Writing tests](/docs/guides/writing-tests#testing-a-server-function).
 
 ## Typing a message file
 
-When a loader needs a message's value rather than a component's translator, import the English file as a **type** and hand it to `messagesQueryOptions`:
+When a loader needs a message's value rather than a component's translator, import the English file as a **type** and hand it to `messagesQueryOptions`. From `src/routes/_storefront.products.index.tsx`:
 
 ```ts
 import type productsMessages from "~/messages/en-US/pages.products.json"
 
 const [messages] = await Promise.all([
   context.queryClient.query(messagesQueryOptions<typeof productsMessages>({ locale: context.locale, namespace: "pages.products" })),
+  prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, {
+    search: deps,
+  }),
 ])
 
-return { description: messages.description, title: messages.title }
+const t = createTranslator({ locale: context.locale, messages })
+
+return {
+  description: messages.description,
+  structuredData: buildBreadcrumbStructuredData({ leaf: messages.title, locale: context.locale, sections: [] }),
+  title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
+}
 ```
 
-The English file is the type source for both locales, which is another reason the two folders must stay structurally identical. This is how page titles and meta descriptions get translated — see `src/routes/_storefront.products.index.tsx`.
+The English file is the type source for both locales, which is another reason the two folders must stay structurally identical. This is how page titles, meta descriptions and structured data get translated; `createTranslator` from `use-intl` covers a message with placeholders, here the search results title.
 
 ## Locale resolution
 
@@ -175,10 +250,13 @@ The e-mail use cases, such as `src/modules/verification/use-cases/send-verify-em
 1. Create `messages/pl-PL/<namespace>.json` and `messages/en-US/<namespace>.json` with the same keys.
 2. Add the namespace to `staticData.namespaces` on the route that needs it — the layout route if several pages share it.
 3. Use `useTranslations("<namespace>")` in the component.
-4. Run `bun run test`. The i18n tests under `src/integrations/use-intl/__test__/` cover the loading pipeline, and the component tests build their message tree from every file in `messages/en-US/` through `src/platform/testing/lib/messages.ts` — so a key a component uses but the catalogue lacks will fail there.
+4. Run `bun run test`. `src/integrations/use-intl/__test__/i18n.messages.test.ts` loads every namespace of both locales through the runtime loader and fails when a Polish file is missing or lacks a key its English file has. The component tests build their message tree from every file in `messages/en-US/` through `src/platform/testing/lib/messages.ts`, but a key missing there only renders as its path, so a component test catches it when it asserts the English text.
+5. The end-to-end suite is the strict check: the automatic `checkTranslations` fixture in `e2e/fixtures/test.ts` fails any test whose page logs `MISSING_MESSAGE`, `INVALID_MESSAGE`, `FORMATTING_ERROR` or `INVALID_KEY` in the browser console.
 
 ## Related guides
 
 - [Forms and validation](/docs/guides/forms-and-validation)
 - [Add an admin page](/docs/guides/add-an-admin-page)
 - [URL state](/docs/guides/url-state)
+- [Writing tests](/docs/guides/writing-tests)
+- [Internationalization](/docs/features/internationalization)

@@ -1,9 +1,9 @@
 ---
 title: "Add a data table"
-description: "Build an admin grid on the shared datagrid: columns, the grid instance, persisted preferences, toolbar actions, the export and server-side pagination."
+description: "Build an admin grid on the shared datagrid: columns, the grid instance, persisted preferences, toolbar actions, the export, server-side pagination and date filters."
 ---
 
-Every admin list in M'Arte is built on one shared data grid in `src/presentation/components/custom/datagrid/`. It wraps TanStack Table v9 and adds column resizing, drag reordering, pinning, per-user persisted preferences, a skeleton loading state, a debounced search box, row drag-and-drop and pagination.
+Every admin list grid in M'Arte — products, categories, collections, attributes, orders, customers, coupons, newsletter subscribers and the audit log — is built on one shared data grid in `src/presentation/components/custom/datagrid/`. It wraps TanStack Table v9 and adds column resizing, drag reordering, pinning, per-user persisted preferences, a skeleton loading state, a search box, row drag-and-drop and pagination. Short read-only lists, such as the newsletter campaigns (`newsletter-campaigns-table.tsx`) and the dashboard's recent orders, use the plain shadcn `Table` instead.
 
 The clearest end-to-end example is the categories grid, in `src/presentation/components/custom/pages/admin/catalog/categories/`. This guide follows it.
 
@@ -45,11 +45,20 @@ The `persistenceKey` is the storage key. Preferences are saved under `marte:data
 
 ## 2. Define the columns
 
-Columns live in a hook so headers can be translated and cells can use `useFormatter`. From `.../categories/components/categories-columns.tsx`:
+Columns live in a hook so headers can be translated and cells can format with the admin's display preferences. Take `useFormatter` from `~/src/hooks/use-display-format`, not from `use-intl/react`: it is bound to the admin's format locale and time zone. From `.../categories/components/categories-columns.tsx`:
 
 ```tsx
-const columnHelper = createColumnHelper<DataGridFeatures, ProductCategory["adminListItem"]>()
+export const useCategoryColumns = () => {
+  const t = useTranslations("pages.admin.catalog.categories")
+  const tAdmin = useTranslations("pages.admin")
+  const format = useFormatter()
+  const locale = useLocale()
 
+  return useMemo(() => buildCategoryDataGridColumns({ format, locale, t, tAdmin }), [format, locale, t, tAdmin])
+}
+```
+
+```tsx
 columnHelper.accessor("createdAt", {
   cell: ({ getValue }) => <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>,
   header: t("columns.createdAt"),
@@ -63,15 +72,43 @@ columnHelper.accessor("createdAt", {
 })
 ```
 
+`columnHelper` is `createColumnHelper<DataGridFeatures, ProductCategory["adminListItem"]>()`, declared once at the bottom of the file. `useLocale()` is there only to pick the translated title, subtitle and descriptions of each row; it does not format anything.
+
+Prices go through `formatPrice(amountInMinorUnits, currency, locale)` from `src/modules/_core/utils/currency.ts`, with the locale from `useFormatLocale()`. The products grid's price column (`.../catalog/products/components/products-columns.tsx`, where `useProductColumns` reads `const formatLocale = useFormatLocale()`):
+
+```tsx
+columnHelper.accessor("minPrice", {
+  cell: ({ getValue }) => {
+    const price = getValue()
+    if (price === undefined) {
+      return <span className="text-muted-foreground/40">{EMPTY_VALUE}</span>
+    }
+
+    return <span className="block font-mono text-sm font-medium tabular-nums">{formatPrice(price, "PLN", formatLocale)}</span>
+  },
+  filterFn: matchesNumericColumnFilter,
+  header: t("columns.price"),
+  id: PRODUCT_TABLE_COLUMN_ID.minPrice,
+  meta: {
+    skeletonVariant: "number",
+  },
+  minSize: PRODUCT_TABLE_COLUMN_SIZE.minPrice,
+  size: PRODUCT_TABLE_COLUMN_SIZE.minPrice,
+})
+```
+
+The currency argument differs by grid: the products grid passes `"PLN"`, the coupons grid `STORE_CURRENCY_CODE` from `src/modules/_core/constants/currency.ts`, and the orders grid each row's `currencyCode`.
+
 Conventions:
 
 - `id` comes from the module's `*_TABLE_COLUMN_ID` map and `size`/`minSize` from `*_TABLE_COLUMN_SIZE`, both in the module's constants file. The persisted preferences key off the column id, so an id is as durable as a `persistenceKey`.
 - `meta` is typed by `DataGridColumnMeta`. The options are `cellClassName`, `headClassName`, `fillsRemainingWidth`, `absorbsTrailingSlack`, `exportValue`, `filterOnly`, `preventRowClick` and `skeletonVariant`. `exportValue` makes the column exportable; step 5 describes it. `skeletonVariant` picks the placeholder shape while the query is fetching: `badge`, `checkbox`, `date`, `icon`, `iconEnd`, `number`, `recordId`, `text`, `thumbnail` or `title`.
-- Utility columns are `select`, `drag`, `image` and `actions` — the ids listed in `DATAGRID_UTILITY_COLUMN_IDS`. They are never resizable, never reorderable and excluded from persisted sizing. Give them a fixed width with `fixedDataGridColumnWidth(size)`, which returns matching `size`, `minSize` and `maxSize`.
+- Utility columns are `select`, `drag`, `image` and `actions` — the ids listed in `DATAGRID_UTILITY_COLUMN_IDS` in `datagrid/lib/data-grid.utils.ts`. They are always visible and excluded from persisted sizing. Give them a fixed width with `fixedDataGridColumnWidth(size)`, which returns matching `size`, `minSize` and `maxSize` plus `enableResizing: false`.
+- A header can be dragged to reorder only when its column can be hidden, so `enableHiding: false` (set on `drag` and `actions`, and inside `selectionColumn`) also keeps a column in place.
 - The checkbox column is `selectionColumn(columnHelper, { all: t(...), row: t(...) })`, with the labels taken from the module's `*_TABLE_A11Y_KEYS`.
-- Cells are small components declared above the column builder, not inline closures, so they can be memoised and stay under the function-length limit.
+- Most cells are short inline closures. Anything larger is a component: `CategoryImageCell` is declared above the builders, and shared cells such as `CatalogTitleHandleCell`, `CatalogTruncatedTextCell` and `CatalogStatusBadge` come from `pages/admin/catalog/table/components/`.
 
-Because a real catalog grid has more columns than a 150-line function allows, split the builder: `buildCategoryTimestampColumns(context)` and `buildCategoryDataGridColumns(context)` in that file both return `columnHelper.columns([...])` and are composed by the hook.
+Because a real catalog grid has more columns than a 150-line function allows, split the builder: `buildCategoryTimestampColumns(context)` returns the two timestamp columns, and `buildCategoryDataGridColumns(context)` spreads them into its own `columnHelper.columns([...])` before the `actions` column. The hook calls only `buildCategoryDataGridColumns`.
 
 ## 3. Build the grid instance
 
@@ -135,16 +172,27 @@ Passing the translated status label in means a Polish admin can search for "akty
 
 ### Row drag-and-drop
 
-Reorderable grids expose a `RowReorderApi`, and only when the natural order is visible — dragging rows while a sort or a filter is applied would be meaningless:
+Reorderable grids always pass a `RowReorderApi`, but its `enabled` flag is true only while the natural order is visible — dragging rows while a sort or a filter is applied would be meaningless:
 
 ```ts
 const columnFilters = table.atoms.columnFilters.get()
 const sorting = table.atoms.sorting.get()
 const search = String(table.atoms.globalFilter.get() ?? "").trim()
 const naturalOrder = sorting.length === 0 && columnFilters.length === 0 && search === ""
+const rowReorder = useMemo<RowReorderApi>(
+  () => ({
+    draggingId: ordering.draggingId,
+    enabled: naturalOrder,
+    onRowDragEnter: ordering.handleDragEnter,
+    onRowDragStart: ordering.handleDragStart,
+    onRowDrop: ordering.handleDrop,
+    onRowMove: ordering.handleMove,
+  }),
+  [naturalOrder, ordering],
+)
 ```
 
-The drag handlers themselves come from a `use-<entity>-ordering.ts` hook that keeps an optimistic local order and calls the reorder mutation.
+The drag handlers come from a `use-<entity>-ordering.ts` hook that keeps an optimistic local order and persists it through the reorder mutation. The grid hook wires the two together: `const reorder = useReorderCategories()` creates the mutation, and `useCategoryOrdering(categories, reorder)` returns the `items` passed to `useDataGridInstance` as `data`, plus the handlers above. Grids that cannot be reordered pass `rowReorder: undefined`.
 
 ## 4. Compose the table
 
@@ -171,7 +219,9 @@ const { Body, Export, Pagination, Provider, Toolbar } = categoriesDataGrid
 </Provider>
 ```
 
-`DataGridShell` is a card with `grid-rows-[auto_minmax(0,1fr)_auto]`, so the toolbar and pagination keep their height and the body scrolls. The three `Toolbar` slots are `children` (inline controls, rendered next to the search box), `filters` and `actions` (right-aligned). When `hasPreferenceOverrides` is true the toolbar shows a reset control wired to `resetPreferences`.
+`DataGridShell` is a card with `grid-rows-[auto_minmax(0,1fr)_auto]`, so the toolbar and pagination keep their height and the body scrolls. The toolbar's first row always holds the search box, the column visibility menu and a reset-layout button, followed by the `children` slot (inline controls). The `actions` slot sits right-aligned in the same row, and the `filters` slot, when passed, gets its own row underneath. The reset button calls `resetPreferences` and stays disabled until `hasPreferenceOverrides` is true.
+
+The table component also owns the create/edit sheet. `hooks/use-categories-sheet.tsx` exports `useCategoriesSheetState` (plain `useState` holding `mode` — `"closed"`, `"create"` or `"edit"` — and the selected row), `CategoriesSheetProvider` and `useCategoriesSheet`. The route component creates the state and wraps the page in the provider; `CategoriesTableContent` passes `sheet.openEdit` to the grid hook as `onRowClick`, the toolbar's add button calls `openCreate`, the row menu calls `openEdit`, and `CategorySheet` is mounted only while `sheet.open` is true.
 
 ## 5. Let the admin export the table
 
@@ -246,37 +296,78 @@ Files are named `<list>-<YYYY-MM-DD-HHmm>.<ext>` on the admin's clock and saved 
 Each grid has two sibling components:
 
 - `<entity>-row-actions.tsx` — the per-row menu, rendered by the `actions` column with `meta.preventRowClick` so the menu does not also open the edit sheet.
-- `<entity>-bulk-actions.tsx` — reads `table.getSelectedRowModel()` and acts on the selection, passed to the toolbar's `actions` slot.
+- `<entity>-bulk-actions.tsx` — reads `table.getFilteredSelectedRowModel().rows` from `categoriesDataGrid.useDataGrid()` and acts on the selection, rendered in the toolbar's `actions` slot.
 
-Both call a `use-delete-<entity>.ts` or `use-reorder-<entity>.ts` hook that owns the mutation, the toast and the invalidation.
+Both call `use-delete-<entity>.ts`, the hook that owns the delete mutation, its toasts and the cache invalidation. The reorder mutation, `use-reorder-<entity>.ts`, is wired in the grid hook instead — see Row drag-and-drop above.
 
 ## 7. Server-side pagination, if the table is large
 
-Categories, collections and attributes are loaded whole and filtered in the browser. Products are not: `src/routes/admin.catalog.products.index.tsx` drives a server query. The difference is four flags on `useDataGridInstance` plus controlled state:
+Categories, collections and attributes are loaded whole with `useSuspenseQuery` and filtered, sorted and paginated in the browser. Orders, customers, coupons, newsletter subscribers and the audit log page on the server: the grid hook keeps `pagination` and the filters in React state, builds the page query from them with `useQuery({ ...pageQuery, placeholderData: keepPreviousData })`, and hands the current page to `useDataGridInstance`. `.../admin/coupons/hooks/use-coupons-data-grid.ts` is the smallest example:
 
 ```ts
-manualFiltering, manualPagination, manualSorting,
-pagination, sorting, pageCount, rowCount,
-onPaginationChange, onSortingChange, onColumnFiltersChange,
+const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
+  columns,
+  data: [...data.items],
+  defaultColumnVisibility: ADMIN_DISCOUNT_TABLE_DEFAULT_COLUMN_VISIBILITY,
+  defaultPageSize: ADMIN_DISCOUNTS_PAGE_SIZE,
+  getRowId: (row) => row.id,
+  initialColumnOrder,
+  initialColumnPinning: ADMIN_DISCOUNT_TABLE_COLUMN_PINNING,
+  manualPagination: true,
+  onPaginationChange: setPagination,
+  pageCount: Math.ceil(data.total / pagination.pageSize),
+  pagination,
+  persistenceKey: couponsDataGrid.persistenceKey,
+  rowCount: data.total,
+})
 ```
 
-`use-products-list-data.ts` then holds the two queries and switches between them:
+`useDataGridInstance` has three switches for server data — `manualPagination`, `manualFiltering` and `manualSorting` — plus the controlled state they need: `pagination` with `onPaginationChange`, `sorting` with `onSortingChange`, `pageCount`, `rowCount`, and `onColumnFiltersChange` to copy the column filters into the query input. Coupons and subscribers set only `manualPagination`; orders, customers and the audit log also set `manualFiltering`; only the products grid sets `manualSorting`.
+
+The products grid (`src/routes/admin.catalog.products.index.tsx`) is a hybrid. With no search, toolbar filter or column filter it loads every product with `getAdminProductsQuery()` and works in the browser, which keeps row drag-and-drop available. As soon as one is set (`hasProductsServerListQuery`), `use-products-list-data.ts` switches to the page query and the three manual flags follow:
 
 ```ts
 const pageQueryOptions = getAdminProductsPageQuery({
   categoryId: filters.categoryId,
+  collectionId: filters.collectionId,
   createdAt: columnFilters.createdAt,
+  inventoryLevel: filters.inventoryLevel,
+  minPrice: columnFilters.minPrice,
   page: pagination.pageIndex + LIST_PAGE_STEP,
   pageSize: pagination.pageSize,
   search,
   sort,
   status: filters.status,
+  totalStock: columnFilters.totalStock,
+  variantKind: filters.variantKind,
 })
 ```
 
-`LIST_PAGE_STEP` from `src/modules/_core/utils/pagination.ts` is the 0-based-to-1-based conversion. `placeholderData: keepPreviousData` keeps the old page visible while the next one loads. `use-products-server-list-sync.ts` resets `pageIndex` to 0 whenever the search text, the column filters or the sort change — without it, a filter applied on page 7 would show an empty table.
+`LIST_PAGE_STEP` from `src/modules/_core/utils/pagination.ts` is the 0-based-to-1-based conversion. `placeholderData: keepPreviousData` keeps the old page visible while the next one loads. Every change to the result set has to return to the first page — without that, a filter applied on page 7 would show an empty table. The coupons grid resets `pageIndex` to 0 in its search effect and in `applyCouponsFilter`, which also clears the row selection. In the products grid, `use-products-server-list-sync.ts` resets it when a non-empty debounced search arrives and, in server mode, whenever the column filters or the sort change; it also clears the server sort when the grid falls back to browser mode.
 
-Searches are debounced before they reach the query, through `use-admin-debounced-table-search.ts`, which builds on `src/hooks/use-debounce.ts`.
+Server-side searches are debounced before they reach the query: `use-admin-debounced-table-search.ts` reads the grid's global filter and debounces it by 300 ms with `src/hooks/use-debounce.ts`. The search box itself writes the global filter on every keystroke, which is all a browser-side grid needs.
+
+### Date filters in the admin's time zone
+
+A date filter selects calendar days, and a day starts at midnight in the admin's display time zone, not in UTC. `AdminDateColumnFilter` in `src/presentation/components/custom/pages/admin/lib/admin-date-column-filter.tsx` is the shared popover. It writes `{ operator, date }`, or `{ operator: "between", startDate, endDate }`, with ISO dates into the column's filter value; the operators are `on`, `before`, `after` and `between`. It labels the chosen days and finds "today" with `useAdminDateFilterDay()`, which uses `useFormatter()` and `useDisplayTimeZone()`. Each grid wraps it with its own translated labels, as `products-created-at-column-filter.tsx` and `orders-date-column-filter.tsx` do.
+
+- **Filtered in the browser**, the column matches with `filterFn: matchesDateColumnFilterIn(timeZone)` from `datagrid/lib/data-grid-date-filter.ts`, with `timeZone` from `useDisplayTimeZone()` passed into the column builder (the products and customers columns do this).
+- **Filtered on the server**, the filter value goes into the page query input and the server function resolves the time zone itself. From `src/modules/product/use-cases/get-admin-products-page.ts`:
+
+```ts
+const { timeZone } = await resolveRequestDisplayPreferences()
+const params = buildAdminProductsListParams(data, timeZone)
+```
+
+The accessor then turns the filter into SQL with `buildAdminDateTimeFilterSql(column, filter, timeZone)` from `src/modules/_core/utils/datetime-column-filter.server.ts`, as `product.accessors.ts` does:
+
+```ts
+if (params.createdAt !== undefined) {
+  conditions.push(buildAdminDateTimeFilterSql(product.createdAt, params.createdAt, params.timeZone))
+}
+```
+
+The browser never sends a time zone with the filter. `resolveRequestDisplayPreferences()` in `src/integrations/use-intl/i18n.display-preferences.ts` returns the same preferences the page renders with — the admin's saved ones, otherwise those detected from the request. The orders, customers and audit log list use cases follow the same pattern. In tests, replace the module with `src/platform/testing/mocks/display-preferences.ts` (`pl-PL`, `Europe/Warsaw`), as `list-audit-logs-query.test.ts` does.
 
 ## 8. Test it
 

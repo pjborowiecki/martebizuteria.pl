@@ -7,8 +7,8 @@ Prawie każda reguła na tej stronie jest wymuszana przez narzędzia, nie przez 
 
 ## Kod
 
-- **Komentarze tylko dla nieoczywistych ograniczeń.** Intencję przenoszą nazwy i typy; nie ma narracji nad kodem, ozdobnych separatorów ani komentarzy powtarzających to, co mówi już nazwa. W praktyce cały katalog `src` zawiera trzy komentarze, z których każdy utrwala ograniczenie niewyrażalne w kodzie — na przykład to, że `INSERT ... SELECT` w `checkout/checkout.utils.ts` musi zachować kolejność kolumn tabeli. Proza należy do plików `.mdx`, takich jak ten.
-- **Żadnych obejść systemu typów.** Bez `any`, bez `as never`, bez `as unknown as`, bez `@ts-nocheck`, bez `@ts-expect-error` i bez wyciszania reguł lintera, żeby coś przeszło. Naprawiamy przyczynę. Ustawienie `reportUnusedDisableDirectives: "error"` powoduje, że nawet nieaktualne wyciszenie wywala build.
+- **Komentarze tylko dla nieoczywistych ograniczeń.** Intencję przenoszą nazwy i typy; nie ma narracji nad kodem, ozdobnych separatorów ani komentarzy powtarzających to, co mówi już nazwa. Nie sprawdza tego żadna reguła lintera, tylko recenzja. W praktyce TypeScript w katalogu `src` zawiera łącznie trzy komentarze, a jego CSS dwa, i każdy utrwala ograniczenie niewyrażalne w kodzie — na przykład to, że `INSERT ... SELECT` w `checkout/checkout.utils.ts` musi zachować kolejność kolumn tabeli. Proza należy do plików `.mdx`, takich jak ten.
+- **Żadnych obejść systemu typów.** Bez `any`, bez `as never`, bez `as unknown as`, bez `@ts-nocheck`, bez `@ts-expect-error` i bez wyciszania reguł lintera, żeby coś przeszło. Jedyne `as unknown as` w repozytorium to atrapa D1 w `src/platform/testing/mocks/d1.ts`, objęta wyjątkiem dla tego katalogu. Naprawiamy przyczynę. Ustawienie `reportUnusedDisableDirectives: "error"` powoduje, że nawet nieaktualne wyciszenie wywala build.
 - **Żadnych plików zbiorczych (barrels).** Importujemy z pliku, który definiuje symbol. Nie ma warstwy re-eksportów w `index.ts` ani obiektów, których jedynym zadaniem jest zebranie niepowiązanych funkcji.
 - **Żadnych warstw przekazujących.** Komponent, który tylko przekazuje propsy, funkcja, która tylko wywołuje jedną inną funkcję, albo alias na zwykłe `0` czy `1` — wszystko to odpada w recenzji, a zwykle i tak wcześniej pod presją `max-lines`.
 - **Magiczne liczby zamieniamy na nazwane stałe.** Reguła `no-magic-numbers` dopuszcza tylko `-1`, `0` i `1`, a poza tym indeksy tablic, wartości domyślne i indeksy typów. Dlatego w plikach widać stałe takie jak `MS_PER_SECOND`, `SINGLE_REQUEST` i `UUID_STRING_LENGTH`.
@@ -138,7 +138,7 @@ Kod serwerowy rzuca `AppError` z `src/modules/_core/constants/errors.ts` z jedny
 
 ## Tłumaczenia
 
-Pliki tłumaczeń to jeden JSON na przestrzeń nazw w `messages/<locale>/`, nazwany tak jak przestrzeń: `pages.admin.catalog.products.json` to przestrzeń `pages.admin.catalog.products`. Jest 56 przestrzeni i obie lokalizacje mają wszystkie.
+Pliki tłumaczeń to jeden JSON na przestrzeń nazw w `messages/<locale>/`, nazwany tak jak przestrzeń: `pages.admin.catalog.products.json` to przestrzeń `pages.admin.catalog.products`. Jest 60 przestrzeni i obie lokalizacje mają wszystkie.
 
 Przestrzenie korzeniowe — `common`, `components.custom`, `components.shadcn`, `errors`, `pages.auth.errors`, `pages.auth.toast` — są wstępnie ładowane dla każdej trasy. Wszystko inne deklaruje się per trasa w `staticData.namespaces`. Test w `src/integrations/use-intl/__test__/i18n.messages.test.ts` sprawdza, że polski zawiera każdy klucz obecny w angielskim, oraz że żadna przestrzeń `emails.*` nie przecieka do zbioru korzeniowego.
 
@@ -162,7 +162,7 @@ Wiadomości commitów trzymają się Conventional Commits: `<typ>(<zakres>): <op
 
 Wiadomości typu merge, revert, `fixup!`, `squash!` oraz pochodzące z szablonu są pomijane, a temat, który już zaczyna się od emoji, zostaje bez zmian.
 
-Hook `pre-commit` uruchamia `bun run check:pre-commit`, czyli `vp staged`; `vite.config.ts` konfiguruje staged tak, aby uruchamiał `vp check --fix` na zmienionych plikach. W pull requeście workflow CI uruchamia `bun run check`, potem `bun run test:coverage`, a na końcu `bun run build:preview`.
+Hook `pre-commit` uruchamia `bun run check:pre-commit`, czyli `vp staged`; `vite.config.ts` konfiguruje staged tak, aby uruchamiał `vp check --fix` na zmienionych plikach. W pull requeście workflow CI uruchamia `bun run check`, potem `bun run test:coverage`, a na końcu `bun run build:preview`, a w drugim zadaniu buduje lokalnego Workera `test` i uruchamia zestaw Playwrighta w Chromium.
 
 ## Powiązane strony
 

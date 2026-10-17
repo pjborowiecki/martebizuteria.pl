@@ -5,13 +5,14 @@ description: "What holds the shop's data, D1 Time Travel and why a restore erase
 
 Two places hold data the shop cannot rebuild: the production D1 database `martebizuteria` and the production R2 bucket `martebizuteria`. Time Travel protects the database inside Cloudflare, a regular export keeps a copy of it outside Cloudflare, and `rclone` copies the images.
 
-| Store                                    | Holds                                                                                                                                                                     | Protected by                                                                            |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| D1 `martebizuteria`                      | Orders and payments, customers with their accounts, addresses and sessions, the catalogue and its stock, discount codes, the legal pages, the Sales switch, the audit log | [Time Travel](#d1-time-travel) and the [export](#a-regular-export-kept-off-the-account) |
-| R2 `martebizuteria`                      | Product, category, collection and marketing images                                                                                                                        | The [image copy](#copying-the-image-bucket)                                             |
-| KV `CACHE`                               | The incident-alert flags, which expire after an hour, or three days for a failed Stripe event, and the unavailable-sender flag, which expires after five minutes          | Nothing to back up                                                                      |
-| Queue `martebizuteria-audit-log`         | Audit entries for the seconds before the consumer writes them to D1, and in `martebizuteria-audit-log-dlq` for the minutes it retries an entry that failed                | Nothing to back up                                                                      |
-| Durable Object `RealtimeInvalidationHub` | Open WebSocket connections, nothing stored                                                                                                                                | Nothing to back up                                                                      |
+| Store                                    | Holds                                                                                                                                                                                                                                                                                                                             | Protected by                                                                            |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| D1 `martebizuteria`                      | Orders with their payments and withdrawals; customers with their accounts, addresses, sessions, wishlists and newsletter subscriptions; carts and checkouts; the catalogue with its stock and price history; delivery methods; discount codes; newsletter campaigns; the legal pages and the FAQ; the Sales switch; the audit log | [Time Travel](#d1-time-travel) and the [export](#a-regular-export-kept-off-the-account) |
+| R2 `martebizuteria`                      | Product, category, collection and marketing images                                                                                                                                                                                                                                                                                | The [image copy](#copying-the-image-bucket)                                             |
+| KV `CACHE`                               | The incident-alert flags, which expire after an hour, or three days for a failed Stripe event, and the unavailable-sender flag, which expires after five minutes                                                                                                                                                                  | Nothing to back up                                                                      |
+| Queue `martebizuteria-audit-log`         | Audit entries for the seconds before the consumer writes them to D1, and in `martebizuteria-audit-log-dlq` for the minutes it retries an entry that failed                                                                                                                                                                        | Nothing to back up                                                                      |
+| Queue `martebizuteria-newsletter`        | For a campaign that is sending, a message that names the campaign and asks for its next batch of up to 100 subscribers; which subscribers it has reached is kept in D1. `martebizuteria-newsletter-dlq` holds a message the consumer failed on past its retries                                                                   | Nothing to back up                                                                      |
+| Durable Object `RealtimeInvalidationHub` | Open WebSocket connections, nothing stored                                                                                                                                                                                                                                                                                        | Nothing to back up                                                                      |
 
 The code and `wrangler.jsonc` are in Git. The secrets live in the GitHub `production` environment and in `.env.production`, and GitHub never shows a saved secret again, so keep their values in a password manager too.
 
@@ -43,6 +44,7 @@ Only D1 goes back. Everything that happened since the restore point outside the 
 - Cancellations, refunds, shipping marks and tracking numbers since then are gone from the orders, while Stripe still holds the refunds.
 - Accounts created since are gone, and everyone who signed in since is signed out. Accounts deleted since are back, with their addresses, activity log and newsletter subscription, although their saved cards are gone at Stripe; delete each one again from `/admin/customers`, finding them among the account-deleted e-mails Resend sent since the restore point.
 - Withdrawals from the contract sent since then, at `/withdraw-from-contract` or from an account, are gone from their orders, although each still binds the shop. The shop's withdrawal notices in the `RESEND_EMAIL_FROM` mailbox keep their content; handle those withdrawals from the notices.
+- Newsletter sign-ups, confirmations and unsubscribes since then are undone, so an address that unsubscribed since is subscribed again and the next campaign reaches it. Campaigns sent since are gone from `/admin/marketing`, although Resend delivered them.
 - Product, price, discount-code and legal-page edits since then are undone, and the Sales switch is back in the position it had. Images uploaded since stay in R2 with nothing pointing at them.
 - The audit log loses its entries since then, including the record of what went wrong.
 - Rows the daily clean-up deleted or anonymised since then come back, and its next run clears them again; see [Data retention](/docs/guides/data-retention).
@@ -64,6 +66,7 @@ Time Travel is for damage to the whole database, such as a migration that destro
 8. Resend the other events since the restore point too, one type at a time from the event list in the Stripe Dashboard:
    - `checkout.session.expired` and `checkout.session.async_payment_failed`. A checkout that was pending at the restore point is pending again, holding its stock out of sale and its discount code's use, and only these two events release them. Stripe sent them before the restore and does not send them again on its own, so without a resend a one-of-a-kind piece reads as sold out, a discount code with a usage limit stays used up and the checkout stays pending for good. A release changes only a checkout that is still pending together with its payment, so the event of a session that began after the restore point, or that became an order, releases nothing. A release after `checkout.session.async_payment_failed` sends the customer the payment-failed e-mail a second time.
    - `charge.refunded`, `charge.dispute.created` and `charge.dispute.closed`, so the orders show their refunds and disputes again.
+   - `refund.failed` and `refund.updated`. A refund recorded before the restore point that failed or was cancelled after it is recorded again as standing, and only these events undo it: `undoFailedRefund` lowers the order's refunded amount to the refunds that still stand, reopens an order marked refunded and records `order.refund_failed`, and the webhook sends the `refundFailed` alert. A `refund.updated` event for a refund that did not fail or get cancelled changes nothing.
 9. Redo the edits made since the restore point, then reopen sales.
 
 ## A regular export kept off the account
@@ -77,6 +80,8 @@ Time Travel lives inside the Cloudflare account and inside the database. It cann
 While the index is gone, the storefront search and the catalogue's text filter fail, and an export holds back every other query while it runs. Do it at a quiet hour.
 
 The export is two files, the schema and the rows. A single file cannot be restored: it creates the tables in the order they were last rebuilt, so it inserts `product_variant` rows before the `product` table exists, and SQLite refuses them with `no such table: main.product`. Creating every table first and loading the rows afterwards works.
+
+The rows also have to go in before the triggers. The schema file creates the two price-history triggers on `product_variant`, `price_history_variant_insert` and `price_history_variant_update` (see [Product page](/docs/features/product-page)). With them in place, every exported variant the rows file inserts writes a new `price_history` row, and the exported history rows that follow then fail with `UNIQUE constraint failed: price_history.id`. A restore therefore splits the schema file into its tables and its triggers, and loads the tables, the rows and then the triggers.
 
 ### Exporting
 
@@ -132,33 +137,37 @@ Load each new export into a throwaway local database. This runs on your machine 
 
 ```sh
 gpg --decrypt "$HOME/marte-backups/marte-d1-2026-10-10.tar.gz.gpg" | tar -xzf - -C "$HOME/marte-backups"
-bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/schema.sql"
+sed '/^CREATE TRIGGER/,/^END;/d' "$HOME/marte-backups/schema.sql" > "$HOME/marte-backups/tables.sql"
+sed -n '/^CREATE TRIGGER/,/^END;/p' "$HOME/marte-backups/schema.sql" > "$HOME/marte-backups/triggers.sql"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/tables.sql"
 bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/data.sql"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/triggers.sql"
 bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --command 'SELECT count(*) AS orders FROM "order"'
-rm -rf .wrangler/restore-drill "$HOME/marte-backups/schema.sql" "$HOME/marte-backups/data.sql"
+rm -rf .wrangler/restore-drill "$HOME/marte-backups/schema.sql" "$HOME/marte-backups/data.sql" "$HOME/marte-backups/tables.sql" "$HOME/marte-backups/triggers.sql"
 ```
 
-The count should match the number of orders the shop had when you exported. `.wrangler/` is ignored by Git, and the last line deletes the plain copies again.
+The two `sed` lines split the schema: the first keeps everything but the `CREATE TRIGGER … END;` blocks, the second keeps only those blocks. Since the search triggers were dropped before the export, the triggers file holds the two price-history triggers. The count should match the number of orders the shop had when you exported. `.wrangler/` is ignored by Git, and the last line deletes the plain copies again.
 
 ### Restoring from an export
 
 1. Pause sales if the shop still runs.
-2. Decrypt the export as in the rehearsal above.
+2. Decrypt the export and split its schema into `tables.sql` and `triggers.sql`, as in the rehearsal above.
 3. Create a new database. The command prints its `database_id`:
 
    ```sh
    bunx wrangler d1 create martebizuteria-restored
    ```
 
-4. Load the schema, then the rows, then the search index:
+4. Load the tables, then the rows, then the triggers, then the search index:
 
    ```sh
-   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/schema.sql"
+   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/tables.sql"
    bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/data.sql"
+   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/triggers.sql"
    bunx wrangler d1 execute martebizuteria-restored --remote --file=src/integrations/drizzle-orm/migrations/20261002100000_storefront_search.sql
    ```
 
-5. In `wrangler.jsonc`, set `database_name` and `database_id` of the `DB` binding in the `production` environment to the new database. The rows carry Wrangler's own `d1_migrations` table, so `bun run db:migrations:production` lists only the migrations newer than the export; apply them with `bun run db:migrate:production`.
+5. In `wrangler.jsonc`, set `database_name` and `database_id` of the `DB` binding in the `production` environment to the new database, and set `CLOUDFLARE_DATABASE_ID` in `.env.production` to the new `database_id`, since the `:production` Drizzle Kit scripts (`db:introspect:production`, `db:studio:production`, `db:push:production`) read it through `drizzle.config.ts`. The rows carry Wrangler's own `d1_migrations` table, so `bun run db:migrations:production` lists only the migrations newer than the export; apply them with `bun run db:migrate:production`.
 6. Commit the change and deploy production. Leave the old database in place, if it still exists, until you no longer need it.
 7. Reconcile everything since the export with Stripe as steps 7 to 9 of [Restoring](#restoring) describe, then reopen sales.
 
@@ -179,7 +188,7 @@ Time Travel covers D1 only. The images need a copy of their own. The shop never 
 
 ### Putting images back
 
-Create a token with **Object Read & Write** on the bucket for the restore, and delete it afterwards. If the bucket itself is gone, create it again with `bunx wrangler r2 bucket create martebizuteria` and attach `images.martebizuteria.pl` to it as step 4 of [Image delivery](/docs/guides/image-delivery) shows. Images in e-mails that link to `images.martebizuteria.pl` load again once the copy is back; those in e-mails sent while `VITE_R2_URL` was the old bucket's `r2.dev` address stay broken, because a new bucket gets a new one.
+Create a token with **Object Read & Write** on the bucket for the restore, and delete it afterwards. If the bucket itself is gone, create it again with `bunx wrangler r2 bucket create martebizuteria` and attach `images.martebizuteria.pl` to it as step 4 of [Image delivery](/docs/guides/image-delivery) shows. The order confirmation is the only e-mail with images, and it carries its product images inside the message as attachments, up to ten of at most 512 KiB each and 2 MiB together (`embedEmailImages` in `src/integrations/cloudflare-r2/media.email.server.ts`), so those never depend on the bucket. An image it could not embed is linked instead: one that links to `images.martebizuteria.pl` loads again once the copy is back, while one linked while `VITE_R2_URL` was the old bucket's `r2.dev` address stays broken, because a new bucket gets a new one.
 
 ```sh
 rclone copy "$HOME/marte-backups/images" r2:martebizuteria --include "/{products,categories,collections,uploads}/**" --header-upload "Cache-Control: public, max-age=31536000, immutable" --progress

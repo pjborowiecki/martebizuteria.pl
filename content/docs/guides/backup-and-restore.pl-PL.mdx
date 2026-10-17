@@ -5,13 +5,14 @@ description: "Gdzie leżą dane sklepu, D1 Time Travel i dlaczego przywrócenie 
 
 Dane, których sklep nie odtworzy sam, leżą w dwóch miejscach: w produkcyjnej bazie D1 `martebizuteria` i w produkcyjnym buckecie R2 `martebizuteria`. Time Travel chroni bazę wewnątrz Cloudflare, regularny eksport trzyma jej kopię poza Cloudflare, a `rclone` kopiuje zdjęcia.
 
-| Magazyn                                  | Co przechowuje                                                                                                                                                                     | Czym jest chroniony                                                        |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| D1 `martebizuteria`                      | Zamówienia i płatności, klientów z ich kontami, adresami i sesjami, katalog i jego stany, kody rabatowe, strony prawne, przełącznik sprzedaży, dziennik zdarzeń                    | [Time Travel](#d1-time-travel) i [eksport](#regularny-eksport-poza-kontem) |
-| R2 `martebizuteria`                      | Zdjęcia produktów, kategorii, kolekcji i grafiki marketingowe                                                                                                                      | [Kopia zdjęć](#kopia-bucketu-zdjęć)                                        |
-| KV `CACHE`                               | Znaczniki alertów o incydentach, które wygasają po godzinie, a dla nieudanego zdarzenia Stripe po trzech dniach, i znacznik niedostępnego nadawcy, który wygasa po pięciu minutach | Nie wymaga kopii                                                           |
-| Kolejka `martebizuteria-audit-log`       | Wpisy audytu przez kilka sekund, zanim konsument zapisze je w D1, a w `martebizuteria-audit-log-dlq` przez minuty, gdy ponawia wpis, który się nie zapisał                         | Nie wymaga kopii                                                           |
-| Durable Object `RealtimeInvalidationHub` | Otwarte połączenia WebSocket, bez zapisanych danych                                                                                                                                | Nie wymaga kopii                                                           |
+| Magazyn                                  | Co przechowuje                                                                                                                                                                                                                                                                                                    | Czym jest chroniony                                                        |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| D1 `martebizuteria`                      | Zamówienia z ich płatnościami i odstąpieniami; klientów z ich kontami, adresami, sesjami, listami życzeń i zapisami do newslettera; koszyki i checkouty; katalog z jego stanami i historią cen; metody dostawy; kody rabatowe; kampanie newslettera; strony prawne i FAQ; przełącznik sprzedaży; dziennik zdarzeń | [Time Travel](#d1-time-travel) i [eksport](#regularny-eksport-poza-kontem) |
+| R2 `martebizuteria`                      | Zdjęcia produktów, kategorii, kolekcji i grafiki marketingowe                                                                                                                                                                                                                                                     | [Kopia zdjęć](#kopia-bucketu-zdjęć)                                        |
+| KV `CACHE`                               | Znaczniki alertów o incydentach, które wygasają po godzinie, a dla nieudanego zdarzenia Stripe po trzech dniach, i znacznik niedostępnego nadawcy, który wygasa po pięciu minutach                                                                                                                                | Nie wymaga kopii                                                           |
+| Kolejka `martebizuteria-audit-log`       | Wpisy audytu przez kilka sekund, zanim konsument zapisze je w D1, a w `martebizuteria-audit-log-dlq` przez minuty, gdy ponawia wpis, który się nie zapisał                                                                                                                                                        | Nie wymaga kopii                                                           |
+| Kolejka `martebizuteria-newsletter`      | Dla kampanii w trakcie wysyłki wiadomość, która podaje kampanię i prosi o jej następną partię, do 100 subskrybentów; to, do których subskrybentów kampania już dotarła, jest zapisane w D1. `martebizuteria-newsletter-dlq` trzyma wiadomość, na której konsument zawiódł mimo ponowień                           | Nie wymaga kopii                                                           |
+| Durable Object `RealtimeInvalidationHub` | Otwarte połączenia WebSocket, bez zapisanych danych                                                                                                                                                                                                                                                               | Nie wymaga kopii                                                           |
 
 Kod i `wrangler.jsonc` są w Gicie. Sekrety żyją w środowisku GitHub `production` i w `.env.production`, a GitHub nigdy więcej nie pokazuje zapisanego sekretu, więc trzymaj ich wartości także w menedżerze haseł.
 
@@ -41,8 +42,9 @@ Cofa się tylko D1. Wszystko, co od punktu przywrócenia wydarzyło się poza ba
 - Zamówienia opłacone od tamtej chwili znikają z `/admin/orders` i z kont klientów, choć Stripe pobrał od klientów pieniądze, a Resend wysłał im potwierdzenia.
 - Stany magazynowe wracają do tamtej minuty. Sztuka sprzedana w międzyczasie znów jest w sprzedaży, a jedyny egzemplarz może zostać sprzedany dwa razy. Checkout, który w tamtej minucie jeszcze czekał, znów trzyma swój stan i użycie kodu rabatowego, nawet jeśli jego sesja od tego czasu wygasła.
 - Anulowania, zwroty pieniędzy, oznaczenia wysyłki i numery przesyłek z tego czasu znikają z zamówień, choć Stripe nadal ma zwroty.
-- Konta założone w międzyczasie znikają, a każdy, kto się w tym czasie zalogował, zostaje wylogowany. Konta usunięte w międzyczasie wracają, z adresami, dziennikiem aktywności i zapisem do newslettera, choć ich zapisane karty w Stripe już nie istnieją; usuń każde z nich ponownie w `/admin/customers`, znajdując je wśród e-maili o usunięciu konta, które Resend wysłał od punktu przywrócenia.
+- Konta założone w międzyczasie znikają, a każda osoba zalogowana w tym czasie zostaje wylogowana. Konta usunięte w międzyczasie wracają, z adresami, dziennikiem aktywności i zapisem do newslettera, choć ich zapisane karty w Stripe już nie istnieją; usuń każde z nich ponownie w `/admin/customers`, znajdując je wśród e-maili o usunięciu konta, które Resend wysłał od punktu przywrócenia.
 - Odstąpienia od umowy złożone od tamtej chwili, pod `/withdraw-from-contract` albo na koncie, znikają z zamówień, choć każde nadal wiąże sklep. Powiadomienia sklepu o odstąpieniu w skrzynce `RESEND_EMAIL_FROM` zachowują ich treść; obsłuż te odstąpienia na podstawie powiadomień.
+- Zapisy do newslettera, ich potwierdzenia i rezygnacje z tego czasu zostają cofnięte, więc adres, który w międzyczasie zrezygnował, znów jest zapisany i dostanie następną kampanię. Kampanie wysłane w międzyczasie znikają z `/admin/marketing`, choć Resend je doręczył.
 - Zmiany produktów, cen, kodów rabatowych i stron prawnych z tego czasu zostają cofnięte, a przełącznik sprzedaży wraca do swojego ówczesnego położenia. Zdjęcia wysłane w międzyczasie zostają w R2, ale nic na nie nie wskazuje.
 - Dziennik zdarzeń traci wpisy z tego czasu, łącznie z zapisem tego, co poszło źle.
 - Wiersze, które od tamtej chwili usunęło albo zanonimizowało codzienne czyszczenie, wracają, a jego następne uruchomienie znów je czyści; zobacz [Okresy przechowywania danych](/docs/guides/data-retention).
@@ -64,6 +66,7 @@ Time Travel służy do naprawy szkód w całej bazie, takich jak migracja, któr
 8. Wyślij ponownie także pozostałe zdarzenia od punktu przywrócenia, typ po typie, z listy zdarzeń w panelu Stripe:
    - `checkout.session.expired` i `checkout.session.async_payment_failed`. Checkout, który w punkcie przywrócenia czekał, znów czeka, więc trzyma swój stan poza sprzedażą i zajmuje użycie kodu rabatowego, a zwalniają je tylko te dwa zdarzenia. Stripe wysłał je przed przywróceniem i sam nie wyśle ich ponownie, więc bez ponownego wysłania jedyny egzemplarz wygląda na wyprzedany, kod rabatowy z limitem użyć pozostaje zużyty, a checkout czeka na zawsze. Zwolnienie zmienia tylko checkout, który razem ze swoją płatnością nadal czeka, więc zdarzenie sesji rozpoczętej po punkcie przywrócenia albo takiej, z której powstało zamówienie, niczego nie zwalnia. Zwolnienie po `checkout.session.async_payment_failed` drugi raz wysyła klientowi e-mail o nieudanej płatności.
    - `charge.refunded`, `charge.dispute.created` i `charge.dispute.closed`, żeby zamówienia znów pokazywały swoje zwroty pieniędzy i spory.
+   - `refund.failed` i `refund.updated`. Zwrot zapisany przed punktem przywrócenia, który po nim się nie powiódł albo został anulowany, znów figuruje jako obowiązujący, a cofają go tylko te zdarzenia: `undoFailedRefund` obniża kwotę zwrotu zamówienia do zwrotów, które nadal obowiązują, ponownie otwiera zamówienie oznaczone jako zwrócone i zapisuje `order.refund_failed`, a webhook wysyła alert `refundFailed`. Zdarzenie `refund.updated` dla zwrotu, który ani nie zawiódł, ani nie został anulowany, niczego nie zmienia.
 9. Powtórz zmiany wprowadzone od punktu przywrócenia, a potem wznów sprzedaż.
 
 ## Regularny eksport poza kontem
@@ -77,6 +80,8 @@ Time Travel żyje wewnątrz konta Cloudflare i wewnątrz samej bazy. Nie pomoże
 Dopóki indeksu nie ma, wyszukiwarka sklepu i filtr tekstowy katalogu zwracają błąd, a eksport w trakcie działania wstrzymuje wszystkie inne zapytania. Rób to w spokojnej porze.
 
 Eksport to dwa pliki, schemat i wiersze. Jednego pliku nie da się przywrócić: tworzy tabele w kolejności, w jakiej ostatnio je przebudowano, więc wstawia wiersze `product_variant`, zanim powstanie tabela `product`, a SQLite odrzuca je błędem `no such table: main.product`. Utworzenie najpierw wszystkich tabel, a dopiero potem wczytanie wierszy działa.
+
+Wiersze muszą też trafić do bazy przed triggerami. Plik schematu tworzy dwa triggery historii cen na `product_variant`, `price_history_variant_insert` i `price_history_variant_update` (zobacz [Strona produktu](/docs/features/product-page)). Gdy już istnieją, każdy wyeksportowany wariant wstawiony z pliku wierszy dopisuje nowy wiersz `price_history`, a wyeksportowane wiersze historii, które idą po nich, zawodzą z błędem `UNIQUE constraint failed: price_history.id`. Przywracanie dzieli więc plik schematu na tabele i triggery i wczytuje tabele, wiersze, a dopiero potem triggery.
 
 ### Eksport
 
@@ -132,33 +137,37 @@ Wczytaj każdy nowy eksport do jednorazowej lokalnej bazy. To działa wyłączni
 
 ```sh
 gpg --decrypt "$HOME/marte-backups/marte-d1-2026-10-10.tar.gz.gpg" | tar -xzf - -C "$HOME/marte-backups"
-bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/schema.sql"
+sed '/^CREATE TRIGGER/,/^END;/d' "$HOME/marte-backups/schema.sql" > "$HOME/marte-backups/tables.sql"
+sed -n '/^CREATE TRIGGER/,/^END;/p' "$HOME/marte-backups/schema.sql" > "$HOME/marte-backups/triggers.sql"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/tables.sql"
 bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/data.sql"
+bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --file="$HOME/marte-backups/triggers.sql"
 bunx wrangler d1 execute DB --env test --local --persist-to .wrangler/restore-drill --command 'SELECT count(*) AS orders FROM "order"'
-rm -rf .wrangler/restore-drill "$HOME/marte-backups/schema.sql" "$HOME/marte-backups/data.sql"
+rm -rf .wrangler/restore-drill "$HOME/marte-backups/schema.sql" "$HOME/marte-backups/data.sql" "$HOME/marte-backups/tables.sql" "$HOME/marte-backups/triggers.sql"
 ```
 
-Liczba powinna się zgadzać z liczbą zamówień, które sklep miał w chwili eksportu. Git ignoruje `.wrangler/`, a ostatnia linia znów usuwa jawne kopie.
+Dwie linie `sed` dzielą schemat: pierwsza zostawia wszystko poza blokami `CREATE TRIGGER … END;`, druga tylko te bloki. Ponieważ triggery wyszukiwarki zostały usunięte przed eksportem, plik triggerów zawiera dwa triggery historii cen. Liczba powinna się zgadzać z liczbą zamówień, które sklep miał w chwili eksportu. Git ignoruje `.wrangler/`, a ostatnia linia znów usuwa jawne kopie.
 
 ### Przywracanie z eksportu
 
 1. Wstrzymaj sprzedaż, jeśli sklep nadal działa.
-2. Odszyfruj eksport jak w próbie powyżej.
+2. Odszyfruj eksport i podziel jego schemat na `tables.sql` i `triggers.sql`, jak w próbie powyżej.
 3. Utwórz nową bazę. Komenda wypisze jej `database_id`:
 
    ```sh
    bunx wrangler d1 create martebizuteria-restored
    ```
 
-4. Wczytaj schemat, potem wiersze, a na końcu indeks wyszukiwania:
+4. Wczytaj tabele, potem wiersze, potem triggery, a na końcu indeks wyszukiwania:
 
    ```sh
-   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/schema.sql"
+   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/tables.sql"
    bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/data.sql"
+   bunx wrangler d1 execute martebizuteria-restored --remote --file="$HOME/marte-backups/triggers.sql"
    bunx wrangler d1 execute martebizuteria-restored --remote --file=src/integrations/drizzle-orm/migrations/20261002100000_storefront_search.sql
    ```
 
-5. W `wrangler.jsonc` ustaw `database_name` i `database_id` powiązania `DB` w środowisku `production` na nową bazę. Wiersze niosą własną tabelę Wranglera `d1_migrations`, więc `bun run db:migrations:production` pokaże tylko migracje nowsze od eksportu; zastosuj je przez `bun run db:migrate:production`.
+5. W `wrangler.jsonc` ustaw `database_name` i `database_id` powiązania `DB` w środowisku `production` na nową bazę, a w `.env.production` ustaw `CLOUDFLARE_DATABASE_ID` na nowe `database_id`, bo czytają je przez `drizzle.config.ts` skrypty Drizzle Kit z sufiksem `:production` (`db:introspect:production`, `db:studio:production`, `db:push:production`). Wiersze niosą własną tabelę Wranglera `d1_migrations`, więc `bun run db:migrations:production` pokaże tylko migracje nowsze od eksportu; zastosuj je przez `bun run db:migrate:production`.
 6. Zatwierdź zmianę i wdroż produkcję. Starą bazę, jeśli jeszcze istnieje, zostaw, dopóki jest Ci potrzebna.
 7. Uzgodnij ze Stripe wszystko od chwili eksportu, jak opisują kroki 7–9 w sekcji [Przywracanie](#przywracanie), a potem wznów sprzedaż.
 
@@ -179,7 +188,7 @@ Time Travel obejmuje tylko D1. Zdjęcia potrzebują własnej kopii. Sklep nigdy 
 
 ### Przywracanie zdjęć
 
-Na czas przywracania utwórz token z uprawnieniem **Object Read & Write** do bucketu i usuń go potem. Jeśli przepadł sam bucket, utwórz go ponownie przez `bunx wrangler r2 bucket create martebizuteria` i podłącz do niego `images.martebizuteria.pl`, jak pokazuje krok 4 w [Dostarczaniu zdjęć](/docs/guides/image-delivery). Zdjęcia w e-mailach z odnośnikami do `images.martebizuteria.pl` znów się załadują, gdy kopia wróci; te w e-mailach wysłanych, gdy `VITE_R2_URL` był adresem `r2.dev` starego bucketu, zostaną uszkodzone, bo nowy bucket dostaje nowy adres.
+Na czas przywracania utwórz token z uprawnieniem **Object Read & Write** do bucketu i usuń go potem. Jeśli przepadł sam bucket, utwórz go ponownie przez `bunx wrangler r2 bucket create martebizuteria` i podłącz do niego `images.martebizuteria.pl`, jak pokazuje krok 4 w [Dostarczaniu zdjęć](/docs/guides/image-delivery). Potwierdzenie zamówienia to jedyny e-mail ze zdjęciami i niesie zdjęcia produktów w samej wiadomości jako załączniki, do dziesięciu, każde najwyżej 512 KiB i razem najwyżej 2 MiB (`embedEmailImages` w `src/integrations/cloudflare-r2/media.email.server.ts`), więc te nigdy nie zależą od bucketu. Zdjęcie, którego nie dało się osadzić, jest linkowane: takie z odnośnikiem do `images.martebizuteria.pl` znów się załaduje, gdy kopia wróci, a takie zlinkowane, gdy `VITE_R2_URL` był adresem `r2.dev` starego bucketu, zostanie uszkodzone, bo nowy bucket dostaje nowy adres.
 
 ```sh
 rclone copy "$HOME/marte-backups/images" r2:martebizuteria --include "/{products,categories,collections,uploads}/**" --header-upload "Cache-Control: public, max-age=31536000, immutable" --progress

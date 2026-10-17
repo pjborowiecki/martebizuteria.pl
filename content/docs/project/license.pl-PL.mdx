@@ -64,7 +64,7 @@ Udzielenie licencji CC BY-NC w `LICENSE.md` dotyczy kodu źródłowego projektu.
 
 Projekt jest dostarczany „w stanie, w jakim jest”, bez żadnych gwarancji, wyraźnych ani domniemanych, w tym gwarancji przydatności handlowej, przydatności do określonego celu i nienaruszania praw. Autorzy nie ponoszą odpowiedzialności za jakiekolwiek roszczenia, szkody ani inną odpowiedzialność wynikającą z użycia projektu.
 
-To zastrzeżenie nie jest tu formułką. [O projekcie](/docs/project/about) i [Plan rozwoju](/docs/project/roadmap) wymieniają części niedokończone, a niektóre z nich — kompensacja stanów magazynowych działająca „najlepszym staraniem”, status zamówienia, którego nic nigdy nie zapisuje — miałyby znaczenie w działającym sklepie. Przeczytaj te strony, zanim zbliżysz ten kod do prawdziwych pieniędzy.
+To zastrzeżenie nie jest tu formułką. [O projekcie](/docs/project/about) i [Plan rozwoju](/docs/project/roadmap) wymieniają części niedokończone, a niektóre z nich — kompensacja stanów magazynowych działająca „najlepszym staraniem”, brak przywracania na stan przy zwrocie części zamówienia — miałyby znaczenie w działającym sklepie. Przeczytaj te strony, zanim zbliżysz ten kod do prawdziwych pieniędzy.
 
 ## Licencjonowanie komercyjne
 
@@ -79,13 +79,14 @@ W sprawie użycia komercyjnego skontaktuj się z autorem:
 
 ## To nie to samo co strony prawne sklepu
 
-Ta strona dotyczy licencji na kod. Własne dokumenty prawne sklepu to odrębna treść, pisana dla klientów i przechowywana jako Markdown w tabeli D1 `content_page`, po jednym wierszu na dokument:
+Ta strona dotyczy licencji na kod. Własne dokumenty prawne sklepu, a także jego FAQ, to odrębna treść, pisana dla klientów i przechowywana jako Markdown w tabeli D1 `content_page`, po jednym wierszu na stronę:
 
-| Dokument             | Handle                  | Trasa                    |
-| -------------------- | ----------------------- | ------------------------ |
-| Regulamin            | `terms-of-service`      | `/terms-of-service`      |
-| Polityka prywatności | `privacy-policy`        | `/privacy-policy`        |
-| Wymiana i zwroty     | `exchanges-and-returns` | `/exchanges-and-returns` |
+| Dokument                | Handle                  | Trasa                    |
+| ----------------------- | ----------------------- | ------------------------ |
+| Regulamin               | `terms-of-service`      | `/terms-of-service`      |
+| Polityka prywatności    | `privacy-policy`        | `/privacy-policy`        |
+| Wymiana i zwroty        | `exchanges-and-returns` | `/exchanges-and-returns` |
+| Często zadawane pytania | `faq`                   | `/faq`                   |
 
 Administratorzy edytują je w `/admin/content`, a zapis od razu je publikuje. Zapis, który zmienia tytuł lub treść w danym języku, przesuwa datę „Ostatnia aktualizacja” tego języka, więc zmiany w dokumencie prawnym skierowanym do klienta nie da się opublikować bez opatrzenia datą.
 

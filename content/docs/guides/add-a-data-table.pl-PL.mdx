@@ -1,27 +1,27 @@
 ---
 title: "Dodawanie tabeli danych"
-description: "Zbuduj tabelę panelu na wspólnym datagridzie: kolumny, instancja tabeli, zapamiętane preferencje, akcje paska narzędzi, eksport i stronicowanie po stronie serwera."
+description: "Zbuduj tabelę panelu na wspólnym datagridzie: kolumny, instancja tabeli, zapamiętane preferencje, akcje paska narzędzi, eksport, stronicowanie po stronie serwera i filtry dat."
 ---
 
-Każda lista w panelu M'Arte jest zbudowana na jednej wspólnej tabeli danych w `src/presentation/components/custom/datagrid/`. Owija ona TanStack Table v9 i dokłada zmianę szerokości kolumn, przeciąganie kolumn, przypinanie, zapamiętywane per użytkownik preferencje, stan szkieletowy podczas ładowania, pole wyszukiwania z opóźnieniem, przeciąganie wierszy i stronicowanie.
+Każda tabela listy w panelu M'Arte — produkty, kategorie, kolekcje, atrybuty, zamówienia, klienci, kupony, subskrybenci newslettera i dziennik zdarzeń — jest zbudowana na jednej wspólnej tabeli danych w `src/presentation/components/custom/datagrid/`. Owija ona TanStack Table v9 i dokłada zmianę szerokości kolumn, przeciąganie kolumn, przypinanie, zapamiętywane per użytkownik preferencje, stan szkieletowy podczas ładowania, pole wyszukiwania, przeciąganie wierszy i stronicowanie. Krótkie listy tylko do odczytu, takie jak kampanie newslettera (`newsletter-campaigns-table.tsx`) i ostatnie zamówienia na stronie podsumowania panelu, używają zamiast tego zwykłej `Table` z shadcn.
 
 Najczytelniejszym przykładem od początku do końca jest tabela kategorii w `src/presentation/components/custom/pages/admin/catalog/categories/`. Ten przewodnik idzie jej śladem.
 
 ## Elementy
 
-| Plik                                             | Rola                                                              |
-| ------------------------------------------------ | ----------------------------------------------------------------- |
-| `datagrid/components/create-data-grid.tsx`       | `createDataGrid<TRow>({ persistenceKey })` — fabryka              |
-| `datagrid/hooks/use-data-grid-instance.ts`       | `useDataGridInstance` — buduje tabelę TanStack                    |
-| `datagrid/hooks/use-data-grid-preferences.ts`    | Kolejność, szerokość i widoczność kolumn, zapamiętywane           |
-| `datagrid/components/data-grid-shell.tsx`        | `DataGridShell` — karta z trzyrzędowym układem grid               |
-| `datagrid/components/selection-column.tsx`       | `selectionColumn(...)` — kolumna z polami wyboru                  |
-| `datagrid/lib/data-grid.features.ts`             | Zestaw `tableFeatures(...)` oraz funkcje filtrowania i sortowania |
-| `datagrid/lib/data-grid.types.ts`                | `DataGridContextValue`, `DataGridColumnMeta`, API przeciągania    |
-| `datagrid/components/data-grid-export.tsx`       | `DataGridExport` — menu eksportu na pasku narzędzi                |
-| `datagrid/lib/data-grid-export.ts`               | `DataGridExportSource`, eksportowane kolumny i filtry             |
-| `datagrid/lib/catalog-table-global-filter.ts`    | `createCatalogTableGlobalFilterFn`                                |
-| `datagrid/lib/data-grid-pagination.constants.ts` | Rozmiary stron: 10, 25, 50, 100, 250, domyślnie 10                |
+| Plik                                             | Rola                                                                |
+| ------------------------------------------------ | ------------------------------------------------------------------- |
+| `datagrid/components/create-data-grid.tsx`       | `createDataGrid<TRow>({ persistenceKey })` — fabryka                |
+| `datagrid/hooks/use-data-grid-instance.ts`       | `useDataGridInstance` — buduje tabelę TanStack                      |
+| `datagrid/hooks/use-data-grid-preferences.ts`    | Kolejność, szerokość i widoczność kolumn, zapamiętywane             |
+| `datagrid/components/data-grid-shell.tsx`        | `DataGridShell` — karta z trzyrzędowym układem grid                 |
+| `datagrid/components/selection-column.tsx`       | `selectionColumn(...)` — kolumna z polami wyboru                    |
+| `datagrid/lib/data-grid.features.ts`             | Zestaw `tableFeatures(...)` oraz funkcje filtrowania i sortowania   |
+| `datagrid/lib/data-grid.types.ts`                | `DataGridContextValue`, `DataGridColumnMeta`, API zmiany kolejności |
+| `datagrid/components/data-grid-export.tsx`       | `DataGridExport` — menu eksportu na pasku narzędzi                  |
+| `datagrid/lib/data-grid-export.ts`               | `DataGridExportSource`, eksportowane kolumny i filtry               |
+| `datagrid/lib/catalog-table-global-filter.ts`    | `createCatalogTableGlobalFilterFn`                                  |
+| `datagrid/lib/data-grid-pagination.constants.ts` | Rozmiary stron: 10, 25, 50, 100, 250, domyślnie 10                  |
 
 ## 1. Utwórz przestrzeń tabeli
 
@@ -45,11 +45,20 @@ export const categoriesDataGrid = createDataGrid<ProductCategory["adminListItem"
 
 ## 2. Zdefiniuj kolumny
 
-Kolumny mieszkają w hooku, żeby nagłówki dały się tłumaczyć, a komórki mogły korzystać z `useFormatter`. Z `.../categories/components/categories-columns.tsx`:
+Kolumny mieszkają w hooku, żeby nagłówki dały się tłumaczyć, a komórki mogły formatować według preferencji wyświetlania administratora. Bierz `useFormatter` z `~/src/hooks/use-display-format`, a nie z `use-intl/react`: jest związany z lokalizacją formatu i strefą czasową administratora. Z `.../categories/components/categories-columns.tsx`:
 
 ```tsx
-const columnHelper = createColumnHelper<DataGridFeatures, ProductCategory["adminListItem"]>()
+export const useCategoryColumns = () => {
+  const t = useTranslations("pages.admin.catalog.categories")
+  const tAdmin = useTranslations("pages.admin")
+  const format = useFormatter()
+  const locale = useLocale()
 
+  return useMemo(() => buildCategoryDataGridColumns({ format, locale, t, tAdmin }), [format, locale, t, tAdmin])
+}
+```
+
+```tsx
 columnHelper.accessor("createdAt", {
   cell: ({ getValue }) => <span className="text-muted-foreground">{format.dateTime(new Date(getValue()), { dateStyle: "medium" })}</span>,
   header: t("columns.createdAt"),
@@ -63,15 +72,43 @@ columnHelper.accessor("createdAt", {
 })
 ```
 
+`columnHelper` to `createColumnHelper<DataGridFeatures, ProductCategory["adminListItem"]>()`, zadeklarowany raz na końcu pliku. `useLocale()` służy tu wyłącznie do wyboru przetłumaczonego tytułu, podtytułu i opisów wiersza; niczego nie formatuje.
+
+Ceny przechodzą przez `formatPrice(amountInMinorUnits, currency, locale)` z `src/modules/_core/utils/currency.ts`, z lokalizacją z `useFormatLocale()`. Kolumna ceny w tabeli produktów (`.../catalog/products/components/products-columns.tsx`, gdzie `useProductColumns` odczytuje `const formatLocale = useFormatLocale()`):
+
+```tsx
+columnHelper.accessor("minPrice", {
+  cell: ({ getValue }) => {
+    const price = getValue()
+    if (price === undefined) {
+      return <span className="text-muted-foreground/40">{EMPTY_VALUE}</span>
+    }
+
+    return <span className="block font-mono text-sm font-medium tabular-nums">{formatPrice(price, "PLN", formatLocale)}</span>
+  },
+  filterFn: matchesNumericColumnFilter,
+  header: t("columns.price"),
+  id: PRODUCT_TABLE_COLUMN_ID.minPrice,
+  meta: {
+    skeletonVariant: "number",
+  },
+  minSize: PRODUCT_TABLE_COLUMN_SIZE.minPrice,
+  size: PRODUCT_TABLE_COLUMN_SIZE.minPrice,
+})
+```
+
+Argument waluty zależy od tabeli: tabela produktów przekazuje `"PLN"`, tabela kuponów `STORE_CURRENCY_CODE` z `src/modules/_core/constants/currency.ts`, a tabela zamówień `currencyCode` każdego wiersza.
+
 Konwencje:
 
 - `id` pochodzi z mapy `*_TABLE_COLUMN_ID` modułu, a `size` i `minSize` z `*_TABLE_COLUMN_SIZE` — oba w pliku stałych modułu. Zapamiętane preferencje są kluczowane identyfikatorem kolumny, więc identyfikator jest tak trwały jak `persistenceKey`.
 - `meta` ma typ `DataGridColumnMeta`. Dostępne opcje to `cellClassName`, `headClassName`, `fillsRemainingWidth`, `absorbsTrailingSlack`, `exportValue`, `filterOnly`, `preventRowClick` i `skeletonVariant`. `exportValue` włącza kolumnę do eksportu; opisuje go krok 5. `skeletonVariant` wybiera kształt zaślepki podczas pobierania danych: `badge`, `checkbox`, `date`, `icon`, `iconEnd`, `number`, `recordId`, `text`, `thumbnail` albo `title`.
-- Kolumny pomocnicze to `select`, `drag`, `image` i `actions` — identyfikatory wymienione w `DATAGRID_UTILITY_COLUMN_IDS`. Nigdy nie da się zmienić ich szerokości ani kolejności i są wyłączone z zapamiętywanych rozmiarów. Ustaw im stałą szerokość przez `fixedDataGridColumnWidth(size)`, które zwraca spójne `size`, `minSize` i `maxSize`.
+- Kolumny pomocnicze to `select`, `drag`, `image` i `actions` — identyfikatory wymienione w `DATAGRID_UTILITY_COLUMN_IDS` w `datagrid/lib/data-grid.utils.ts`. Są zawsze widoczne i wyłączone z zapamiętywanych rozmiarów. Ustaw im stałą szerokość przez `fixedDataGridColumnWidth(size)`, które zwraca spójne `size`, `minSize` i `maxSize` oraz `enableResizing: false`.
+- Nagłówek da się przeciągnąć w inne miejsce tylko wtedy, gdy kolumnę można ukryć, więc `enableHiding: false` (ustawione na `drag` i `actions` oraz wewnątrz `selectionColumn`) trzyma też kolumnę w miejscu.
 - Kolumna z polami wyboru to `selectionColumn(columnHelper, { all: t(...), row: t(...) })`, z etykietami pobieranymi z `*_TABLE_A11Y_KEYS` modułu.
-- Komórki są małymi komponentami deklarowanymi nad budownikiem kolumn, a nie domknięciami w miejscu — dzięki temu można je memoizować i nie przekraczać limitu długości funkcji.
+- Większość komórek to krótkie domknięcia w miejscu. Wszystko większe jest komponentem: `CategoryImageCell` jest zadeklarowany nad budownikami, a wspólne komórki, takie jak `CatalogTitleHandleCell`, `CatalogTruncatedTextCell` i `CatalogStatusBadge`, pochodzą z `pages/admin/catalog/table/components/`.
 
-Ponieważ prawdziwa tabela katalogu ma więcej kolumn, niż pozwala funkcja o 150 liniach, budownik się dzieli: `buildCategoryTimestampColumns(context)` i `buildCategoryDataGridColumns(context)` w tym pliku zwracają `columnHelper.columns([...])` i są składane przez hook.
+Ponieważ prawdziwa tabela katalogu ma więcej kolumn, niż pozwala funkcja o 150 liniach, budownik się dzieli: `buildCategoryTimestampColumns(context)` zwraca dwie kolumny znaczników czasu, a `buildCategoryDataGridColumns(context)` rozwija je we własnym `columnHelper.columns([...])` przed kolumną `actions`. Hook wywołuje wyłącznie `buildCategoryDataGridColumns`.
 
 ## 3. Zbuduj instancję tabeli
 
@@ -131,20 +168,31 @@ const globalFilterFn = useMemo(
 )
 ```
 
-Przekazanie przetłumaczonej etykiety statusu oznacza, że polski administrator może szukać frazy „aktywna”, a angielski „active”, w tych samych wierszach.
+Przekazanie przetłumaczonej etykiety statusu oznacza, że w panelu po polsku można szukać frazy „aktywna”, a po angielsku „active”, w tych samych wierszach.
 
 ### Przeciąganie wierszy
 
-Tabele z możliwością zmiany kolejności udostępniają `RowReorderApi`, ale tylko wtedy, gdy widoczna jest naturalna kolejność — przeciąganie wierszy przy aktywnym sortowaniu albo filtrze nie miałoby sensu:
+Tabele z możliwością zmiany kolejności zawsze przekazują `RowReorderApi`, ale jego flaga `enabled` jest prawdą tylko wtedy, gdy widoczna jest naturalna kolejność — przeciąganie wierszy przy aktywnym sortowaniu albo filtrze nie miałoby sensu:
 
 ```ts
 const columnFilters = table.atoms.columnFilters.get()
 const sorting = table.atoms.sorting.get()
 const search = String(table.atoms.globalFilter.get() ?? "").trim()
 const naturalOrder = sorting.length === 0 && columnFilters.length === 0 && search === ""
+const rowReorder = useMemo<RowReorderApi>(
+  () => ({
+    draggingId: ordering.draggingId,
+    enabled: naturalOrder,
+    onRowDragEnter: ordering.handleDragEnter,
+    onRowDragStart: ordering.handleDragStart,
+    onRowDrop: ordering.handleDrop,
+    onRowMove: ordering.handleMove,
+  }),
+  [naturalOrder, ordering],
+)
 ```
 
-Same handlery przeciągania pochodzą z hooka `use-<entity>-ordering.ts`, który utrzymuje optymistyczną lokalną kolejność i wywołuje mutację zmieniającą kolejność.
+Handlery przeciągania pochodzą z hooka `use-<entity>-ordering.ts`, który utrzymuje optymistyczną lokalną kolejność i zapisuje ją przez mutację zmieniającą kolejność. Hook tabeli łączy jedno z drugim: `const reorder = useReorderCategories()` tworzy mutację, a `useCategoryOrdering(categories, reorder)` zwraca `items` przekazywane do `useDataGridInstance` jako `data` oraz powyższe handlery. Tabele bez zmiany kolejności przekazują `rowReorder: undefined`.
 
 ## 4. Złóż tabelę
 
@@ -171,7 +219,9 @@ const { Body, Export, Pagination, Provider, Toolbar } = categoriesDataGrid
 </Provider>
 ```
 
-`DataGridShell` to karta z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i stronicowanie zachowują wysokość, a treść się przewija. Trzy slota `Toolbar` to `children` (kontrolki wstawiane obok pola wyszukiwania), `filters` oraz `actions` (wyrównane do prawej). Kiedy `hasPreferenceOverrides` jest prawdą, pasek narzędzi pokazuje przycisk resetu połączony z `resetPreferences`.
+`DataGridShell` to karta z `grid-rows-[auto_minmax(0,1fr)_auto]`, więc pasek narzędzi i stronicowanie zachowują wysokość, a treść się przewija. Pierwszy rząd paska narzędzi zawsze zawiera pole wyszukiwania, menu widoczności kolumn i przycisk resetu układu, a po nich slot `children` (kontrolki w linii). Slot `actions` stoi w tym samym rzędzie, wyrównany do prawej, a slot `filters`, jeśli zostanie przekazany, dostaje własny rząd poniżej. Przycisk resetu wywołuje `resetPreferences` i pozostaje wyłączony, dopóki `hasPreferenceOverrides` nie jest prawdą.
+
+Komponent tabeli jest też właścicielem panelu tworzenia i edycji. `hooks/use-categories-sheet.tsx` eksportuje `useCategoriesSheetState` (zwykły `useState` z `mode` — `"closed"`, `"create"` albo `"edit"` — i wybranym wierszem), `CategoriesSheetProvider` oraz `useCategoriesSheet`. Komponent trasy tworzy stan i owija stronę w dostawcę; `CategoriesTableContent` przekazuje `sheet.openEdit` do hooka tabeli jako `onRowClick`, przycisk dodawania na pasku narzędzi wywołuje `openCreate`, menu wiersza wywołuje `openEdit`, a `CategorySheet` jest montowany tylko wtedy, gdy `sheet.open` jest prawdą.
 
 ## 5. Pozwól wyeksportować tabelę
 
@@ -246,37 +296,78 @@ Pliki mają nazwy `<list>-<RRRR-MM-DD-GGmm>.<rozszerzenie>` według zegara admin
 Każda tabela ma dwa komponenty obok siebie:
 
 - `<entity>-row-actions.tsx` — menu dla jednego wiersza, renderowane przez kolumnę `actions` z `meta.preventRowClick`, żeby otwarcie menu nie otwierało jednocześnie panelu edycji.
-- `<entity>-bulk-actions.tsx` — czyta `table.getSelectedRowModel()` i działa na zaznaczeniu; przekazywane do slotu `actions` paska narzędzi.
+- `<entity>-bulk-actions.tsx` — czyta `table.getFilteredSelectedRowModel().rows` z `categoriesDataGrid.useDataGrid()` i działa na zaznaczeniu; renderowane w slocie `actions` paska narzędzi.
 
-Oba wywołują hook `use-delete-<entity>.ts` albo `use-reorder-<entity>.ts`, który jest właścicielem mutacji, powiadomienia i unieważniania cache'u.
+Oba wywołują `use-delete-<entity>.ts`, hook będący właścicielem mutacji usuwania, jej powiadomień i unieważniania cache'u. Mutacja zmiany kolejności, `use-reorder-<entity>.ts`, jest podłączana w hooku tabeli — zobacz wyżej Przeciąganie wierszy.
 
 ## 7. Stronicowanie po stronie serwera, jeśli tabela jest duża
 
-Kategorie, kolekcje i atrybuty są ładowane w całości i filtrowane w przeglądarce. Produkty nie: `src/routes/admin.catalog.products.index.tsx` napędza zapytanie serwerowe. Różnicę robią cztery flagi w `useDataGridInstance` plus kontrolowany stan:
+Kategorie, kolekcje i atrybuty są ładowane w całości przez `useSuspenseQuery` i filtrowane, sortowane oraz stronicowane w przeglądarce. Zamówienia, klienci, kupony, subskrybenci newslettera i dziennik zdarzeń są stronicowane na serwerze: hook tabeli trzyma `pagination` i filtry w stanie React, buduje z nich zapytanie o stronę przez `useQuery({ ...pageQuery, placeholderData: keepPreviousData })` i przekazuje bieżącą stronę do `useDataGridInstance`. Najmniejszym przykładem jest `.../admin/coupons/hooks/use-coupons-data-grid.ts`:
 
 ```ts
-manualFiltering, manualPagination, manualSorting,
-pagination, sorting, pageCount, rowCount,
-onPaginationChange, onSortingChange, onColumnFiltersChange,
+const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
+  columns,
+  data: [...data.items],
+  defaultColumnVisibility: ADMIN_DISCOUNT_TABLE_DEFAULT_COLUMN_VISIBILITY,
+  defaultPageSize: ADMIN_DISCOUNTS_PAGE_SIZE,
+  getRowId: (row) => row.id,
+  initialColumnOrder,
+  initialColumnPinning: ADMIN_DISCOUNT_TABLE_COLUMN_PINNING,
+  manualPagination: true,
+  onPaginationChange: setPagination,
+  pageCount: Math.ceil(data.total / pagination.pageSize),
+  pagination,
+  persistenceKey: couponsDataGrid.persistenceKey,
+  rowCount: data.total,
+})
 ```
 
-`use-products-list-data.ts` trzyma wtedy dwa zapytania i przełącza się między nimi:
+`useDataGridInstance` ma trzy przełączniki dla danych z serwera — `manualPagination`, `manualFiltering` i `manualSorting` — oraz kontrolowany stan, którego wymagają: `pagination` z `onPaginationChange`, `sorting` z `onSortingChange`, `pageCount`, `rowCount` i `onColumnFiltersChange`, żeby kopiować filtry kolumn do parametrów zapytania. Kupony i subskrybenci ustawiają tylko `manualPagination`; zamówienia, klienci i dziennik zdarzeń dokładają `manualFiltering`; tylko tabela produktów ustawia `manualSorting`.
+
+Tabela produktów (`src/routes/admin.catalog.products.index.tsx`) jest hybrydą. Bez wyszukiwania, filtra paska narzędzi i filtra kolumny ładuje wszystkie produkty przez `getAdminProductsQuery()` i działa w przeglądarce, dzięki czemu przeciąganie wierszy pozostaje dostępne. Gdy tylko któryś z nich zostanie ustawiony (`hasProductsServerListQuery`), `use-products-list-data.ts` przełącza się na zapytanie o stronę, a trzy flagi `manual*` idą za tym:
 
 ```ts
 const pageQueryOptions = getAdminProductsPageQuery({
   categoryId: filters.categoryId,
+  collectionId: filters.collectionId,
   createdAt: columnFilters.createdAt,
+  inventoryLevel: filters.inventoryLevel,
+  minPrice: columnFilters.minPrice,
   page: pagination.pageIndex + LIST_PAGE_STEP,
   pageSize: pagination.pageSize,
   search,
   sort,
   status: filters.status,
+  totalStock: columnFilters.totalStock,
+  variantKind: filters.variantKind,
 })
 ```
 
-`LIST_PAGE_STEP` z `src/modules/_core/utils/pagination.ts` to przeliczenie z numeracji od zera na numerację od jedynki. `placeholderData: keepPreviousData` utrzymuje poprzednią stronę na ekranie, dopóki nie doładuje się następna. `use-products-server-list-sync.ts` resetuje `pageIndex` do zera przy każdej zmianie tekstu wyszukiwania, filtrów kolumn albo sortowania — bez tego filtr zastosowany na siódmej stronie pokazałby pustą tabelę.
+`LIST_PAGE_STEP` z `src/modules/_core/utils/pagination.ts` to przeliczenie z numeracji od zera na numerację od jedynki. `placeholderData: keepPreviousData` utrzymuje poprzednią stronę na ekranie, dopóki nie doładuje się następna. Każda zmiana zbioru wyników musi wracać na pierwszą stronę — bez tego filtr zastosowany na siódmej stronie pokazałby pustą tabelę. Tabela kuponów resetuje `pageIndex` do zera w efekcie wyszukiwania i w `applyCouponsFilter`, które czyści też zaznaczenie wierszy. W tabeli produktów `use-products-server-list-sync.ts` resetuje go, gdy nadejdzie niepuste opóźnione wyszukiwanie, a w trybie serwerowym także przy każdej zmianie filtrów kolumn albo sortowania; czyści też sortowanie serwerowe, gdy tabela wraca do trybu przeglądarki.
 
-Wyszukiwania są opóźniane przed dotarciem do zapytania przez `use-admin-debounced-table-search.ts`, zbudowane na `src/hooks/use-debounce.ts`.
+Wyszukiwania po stronie serwera są opóźniane przed dotarciem do zapytania: `use-admin-debounced-table-search.ts` czyta globalny filtr tabeli i opóźnia go o 300 ms przez `src/hooks/use-debounce.ts`. Samo pole wyszukiwania zapisuje globalny filtr przy każdym naciśnięciu klawisza, co w zupełności wystarcza tabeli działającej w przeglądarce.
+
+### Filtry dat w strefie czasowej administratora
+
+Filtr daty wybiera dni kalendarzowe, a dzień zaczyna się o północy w strefie czasowej wyświetlania administratora, nie w UTC. Wspólnym okienkiem jest `AdminDateColumnFilter` z `src/presentation/components/custom/pages/admin/lib/admin-date-column-filter.tsx`. Zapisuje w wartości filtra kolumny `{ operator, date }` albo `{ operator: "between", startDate, endDate }` z datami ISO; operatory to `on`, `before`, `after` i `between`. Wybrane dni opisuje, a „dzisiaj” wyznacza przez `useAdminDateFilterDay()`, które korzysta z `useFormatter()` i `useDisplayTimeZone()`. Każda tabela owija go własnymi przetłumaczonymi etykietami, jak robią to `products-created-at-column-filter.tsx` i `orders-date-column-filter.tsx`.
+
+- **Przy filtrowaniu w przeglądarce** kolumna dopasowuje wiersze przez `filterFn: matchesDateColumnFilterIn(timeZone)` z `datagrid/lib/data-grid-date-filter.ts`, z `timeZone` z `useDisplayTimeZone()` przekazanym do budownika kolumn (tak robią kolumny produktów i klientów).
+- **Przy filtrowaniu na serwerze** wartość filtra trafia do parametrów zapytania o stronę, a funkcja serwerowa sama ustala strefę czasową. Z `src/modules/product/use-cases/get-admin-products-page.ts`:
+
+```ts
+const { timeZone } = await resolveRequestDisplayPreferences()
+const params = buildAdminProductsListParams(data, timeZone)
+```
+
+Akcesor zamienia potem filtr na SQL przez `buildAdminDateTimeFilterSql(column, filter, timeZone)` z `src/modules/_core/utils/datetime-column-filter.server.ts`, jak w `product.accessors.ts`:
+
+```ts
+if (params.createdAt !== undefined) {
+  conditions.push(buildAdminDateTimeFilterSql(product.createdAt, params.createdAt, params.timeZone))
+}
+```
+
+Przeglądarka nigdy nie wysyła strefy czasowej razem z filtrem. `resolveRequestDisplayPreferences()` z `src/integrations/use-intl/i18n.display-preferences.ts` zwraca te same preferencje, z którymi renderuje się strona — zapisane przez administratora, a w ich braku wykryte z żądania. Przypadki użycia list zamówień, klientów i dziennika zdarzeń działają tak samo. W testach podmień ten moduł na `src/platform/testing/mocks/display-preferences.ts` (`pl-PL`, `Europe/Warsaw`), jak robi to `list-audit-logs-query.test.ts`.
 
 ## 8. Przetestuj
 

@@ -3,25 +3,29 @@ title: "Dodawanie modułu"
 description: "Utwórz moduł funkcjonalny: tabelę Drizzle, schematy Zod, stałe, typy, akcesory i przypadki użycia."
 ---
 
-Moduł to jedna funkcjonalność zbudowana wokół jednej tabeli bazy danych. Mieszka w `src/modules/{feature}/` i jest właścicielem wszystkiego, co jest prawdą o tej tabeli: jej kolumn, reguł walidacji, kluczy zapytań, typów wierszy i operacji. W `src/modules/` są obecnie 43 moduły. Najmniejszy kompletny moduł, od którego warto zacząć lekturę, to `src/modules/address`; najbogatszy to `src/modules/product`.
+Moduł to jedna funkcjonalność zbudowana wokół jednej tabeli bazy danych. Mieszka w `src/modules/{feature}/` i jest właścicielem wszystkiego, co jest prawdą o tej tabeli: jej kolumn, reguł walidacji, kluczy zapytań, typów wierszy i operacji. W `src/modules/` są obecnie 43 foldery: `_core` i 42 moduły funkcjonalne, z których 39 definiuje tabelę w `{feature}.schema.ts`. Najmniejszy kompletny moduł, od którego warto zacząć lekturę, to `src/modules/address`; najbogatszy to `src/modules/order` (53 pliki źródłowe, w tym 30 w `use-cases/`), a po nim `src/modules/product`.
 
-Logika serwerowa, która nie należy do żadnej tabeli, nie dostaje modułu. Funkcje pomocnicze związane z żądaniem trafiają do `src/lib/`, adaptery dostawców do `src/integrations/{vendor}/`, a wspólne elementy potrzebne wielu modułom do `src/modules/_core/`.
+Logika serwerowa, która nie należy do żadnej tabeli, nie dostaje modułu. Funkcje pomocnicze związane z żądaniem trafiają do `src/lib/`, adaptery dostawców do `src/integrations/{vendor}/`, a wspólne elementy potrzebne wielu modułom do `src/modules/_core/`. Trzy istniejące foldery nie mają własnej tabeli — `admin-dashboard` i `customer-account` czytają tabele innych modułów, a `customer-activity` zapisuje zdarzenia klientów do dziennika audytu — więc nie traktuj ich jako wzoru dla nowego folderu.
 
 ## Pliki
 
-| Plik                       | Zawartość                                                                                                |
-| -------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `{feature}.schema.ts`      | Tabela Drizzle `sqliteTable`, jej indeksy i `relations(...)`                                             |
-| `{feature}.zod.ts`         | Schematy insert/select/update z `drizzle-zod` plus po jednym ręcznym schemacie wejścia na operację       |
-| `{feature}.constants.ts`   | Krotki kluczy zapytań i mutacji, limity długości kolumn, krotki wartości wyliczeniowych, czasy świeżości |
-| `{feature}.types.ts`       | Typy wierszy wywnioskowane z tabeli, eksportowane jako jeden interfejs na moduł                          |
-| `{feature}.utils.ts`       | Czyste funkcje — mapowanie wierszy, normalizacja, wyznaczanie etykiet                                    |
-| `{feature}.accessors.ts`   | Wielokrotnie używane odczyty i zapisy do bazy, które niosą prawdziwe zachowanie                          |
-| `{feature}.*.server.ts`    | Funkcje wyłącznie serwerowe: zapytania przygotowane, budowniki filtrów, ładowanie agregatów              |
-| `use-cases/{verb-noun}.ts` | Jedna funkcja serwerowa na plik, razem z opcjami zapytania lub mutacji                                   |
-| `__test__/`                | Testy nazwane od pliku źródłowego                                                                        |
+| Plik                              | Zawartość                                                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `{feature}.schema.ts`             | Tabela Drizzle `sqliteTable`, jej indeksy i `relations(...)`                                                              |
+| `{feature}.zod.ts`                | Schematy insert/select/update z `drizzle-zod` plus po jednym ręcznym schemacie wejścia na operację                        |
+| `{feature}.constants.ts`          | Krotki kluczy zapytań i mutacji, limity długości kolumn, krotki wartości wyliczeniowych, czasy świeżości                  |
+| `{feature}.types.ts`              | Typy wierszy wywnioskowane z tabeli, eksportowane jako jeden interfejs na moduł                                           |
+| `{feature}.utils.ts`              | Czyste funkcje — mapowanie wierszy, normalizacja, wyznaczanie etykiet                                                     |
+| `{feature}.accessors.ts`          | Wielokrotnie używane odczyty i zapisy do bazy, które niosą prawdziwe zachowanie                                           |
+| `{feature}.accessors.server.ts`   | To samo, ale wyłącznie serwerowe dzięki nazwie (`customer-account`, `storefront-search`)                                  |
+| `{feature}.*.server.ts`           | Funkcje wyłącznie serwerowe: zapytania przygotowane, budowniki filtrów, ładowanie agregatów, obsługa audytu i e-maili     |
+| `use-cases/{verb-noun}.ts`        | Jedna funkcja serwerowa na plik, razem z opcjami zapytania lub mutacji                                                    |
+| `use-cases/{verb-noun}.server.ts` | Jedna operacja wyłącznie serwerowa na plik, eksportowana jako zwykła funkcja async: e-maile, sprzątanie, kroki zamówienia |
+| `__test__/`                       | Testy nazwane od pliku źródłowego                                                                                         |
 
-Nie każdy moduł potrzebuje wszystkich plików. `src/modules/payment` ma tylko `payment.schema.ts` i `payment.accessors.ts`, bo nic więcej nie jest o nim jeszcze prawdą.
+`.server.` w nazwie pliku to nie tylko etykieta: ochrona importów TanStack Start odrzuca każdy plik `*.server.*` w buildzie klienckim, więc taki plik można importować tylko z kodu, który wykonuje się na serwerze. Co to umożliwia, wyjaśniają [Funkcje serwerowe](/docs/guides/server-functions#kod-serwerowy-poza-pakietem-klienta).
+
+Nie każdy moduł potrzebuje wszystkich plików. `src/modules/two-factor` i `src/modules/courier` to po jednym pliku `{feature}.schema.ts`, a `src/modules/session` to schemat, plik stałych i jeden przypadek użycia wyłącznie serwerowy (`delete-expired-sessions.server.ts`), bo nic więcej nie jest o nich jeszcze prawdą.
 
 ## 1. Zdefiniuj tabelę
 
@@ -42,8 +46,13 @@ export const address = sqliteTable(
     address2: text("address2", { length: 512 }),
     city: text("city", { length: 256 }).notNull(),
     countryCode: text("country_code", { length: 2 }).notNull(),
+    firstName: text("first_name", { length: 256 }),
     id: text("id").primaryKey(),
     isDefault: integer("is_default", { mode: "boolean" }).default(false).notNull(),
+    lastName: text("last_name", { length: 256 }),
+    phone: text("phone", { length: 32 }),
+    postalCode: text("postal_code", { length: 32 }),
+    province: text("province", { length: 256 }),
     userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
     ...timestamps(),
   },
@@ -60,9 +69,9 @@ export const addressRelations = relations(address, ({ one }) => ({
 
 Konwencje obowiązujące w całym schemacie:
 
-- Nazwy kolumn zapisujemy w snake_case, a właściwości TypeScriptu w camelCase. Właściwości są posortowane alfabetycznie, a `...timestamps()` jest na końcu — kolejność wymusza reguła `sort-keys` Oxfmta.
-- `id` to klucz główny typu `text` wypełniany przez `v7()` z pakietu `uuid` (w większości plików importowany jako `v7 as uuidv7`). Nigdy nie pozwalamy generować go SQLite.
-- `createdAt` i `updatedAt` pochodzą z `timestamps()` w `src/integrations/drizzle-orm/drizzle.utils.ts`. Oba to `integer(..., { mode: "timestamp_ms" })` z domyślną wartością `(unixepoch() * 1000)`, a `updatedAt` dodatkowo ma `$onUpdateFn(() => new Date())`.
+- Nazwy kolumn zapisujemy w snake_case, a właściwości TypeScriptu w camelCase. Właściwości są posortowane alfabetycznie — wymusza to reguła `sort-keys` Oxlinta wszędzie poza `src/routes/` — a `...timestamps()` jest na końcu.
+- `id` to klucz główny typu `text` wypełniany przez `v7()` z pakietu `uuid`, importowany jako `v7 as uuidv7`. Nigdy nie pozwalamy generować go SQLite.
+- `createdAt` i `updatedAt` pochodzą z `timestamps()` w `src/integrations/drizzle-orm/drizzle.utils.ts`. Oba to niepuste kolumny `integer(..., { mode: "timestamp_ms" })` z domyślną wartością SQL `(unixepoch() * 1000)` i z `$defaultFn(() => new Date())`, które Drizzle stosuje przy wstawianiu, a `updatedAt` dodatkowo ma `$onUpdateFn(() => new Date())`.
 - Wartości logiczne to `integer(..., { mode: "boolean" })`.
 - Klucze obce używają `.references(() => other.id, { onDelete: "cascade" })`, a `relations(...)` deklaruje złączenia, którymi może chodzić `db.query.<table>`.
 - Nazwy indeksów mają wzór `<table>_<column>_idx`, a złożone wymieniają wszystkie kolumny: `address_userId_isDefault_idx`.
@@ -75,7 +84,7 @@ Konwencje obowiązujące w całym schemacie:
 export { address, addressRelations } from "~/src/modules/address/address.schema"
 ```
 
-Kolejność w tym pliku to kolejność zależności — `user` przed `address`, `product` przed `productVariant` — więc dopisz swój eksport obok tabel, do których się odwołuje. Bez tej linii tabela jest niewidoczna dla `db.query`, dla `bun run db:generate` i dla `bun run db:push`.
+Ten plik nie jest ułożony w kolejności zależności — `account` stoi przed `user`, a `productVariant` przed `product` — więc umieść swój eksport obok tabel, z którymi jest związany. Bez tej linii tabela jest niewidoczna dla `db.query`, dla `bun run db:generate` i dla `bun run db:push`, bo `drizzle.database.ts` przekazuje ten moduł do `drizzle(env.DB, { schema })`, a `src/integrations/drizzle-orm/drizzle.config.ts` wskazuje go drizzle-kitowi jako `schema`.
 
 ## 3. Napisz schematy Zod
 
@@ -101,9 +110,15 @@ export const addressZodSchemas = {
 
 export const addressFieldsSchema = zod.object({
   address1: zod.string().min(1),
+  address2: zod.string().optional(),
   city: zod.string().min(1),
   countryCode: zod.string().length(COUNTRY_CODE_LENGTH),
+  firstName: zod.string().optional(),
   isDefault: zod.boolean().optional(),
+  lastName: zod.string().optional(),
+  phone: zod.string().optional(),
+  postalCode: zod.string().optional(),
+  province: zod.string().optional(),
 })
 
 export const addressIdInputSchema = zod.object({ addressId: zod.string().min(1) })
@@ -123,7 +138,7 @@ const categoryCreateInputSchema = zod.object({
 
 ## 4. Zadeklaruj stałe
 
-`{feature}.constants.ts` przechowuje wartości, co do których pozostałe warstwy muszą się zgadzać. Nic w tym pliku nie powinno importować z `src/presentation` — `product-category.constants.ts` importuje `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX`, ale to wyjątek, nie wzorzec.
+`{feature}.constants.ts` przechowuje wartości, co do których pozostałe warstwy muszą się zgadzać. Nic w tym pliku nie może importować z `src/presentation`. Jedynym istniejącym wyjątkiem jest `CATALOG_ADMIN_RECORD_ID_COLUMN_WIDTH_PX` — zwykła liczba z `src/presentation/components/custom/pages/admin/catalog/lib/catalog-admin-datagrid.constants.ts`, której sześć plików stałych (`discount`, `newsletter`, `product-attribute`, `product-category`, `product-collection` i `user`) używa jako szerokości kolumny z identyfikatorem rekordu w swojej tabeli panelu; to nie jest wzorzec do naśladowania.
 
 ```ts
 export const ADDRESS_QUERY_KEYS = {
@@ -193,7 +208,20 @@ Akcesory zwracają wartości domenowe — wiersz, `undefined`, wartość logiczn
 
 ## 7. Napisz przypadki użycia
 
-Jedna operacja na plik w `use-cases/`, nazwana `{verb-noun}.ts`: `create-user-address.ts`, `list-user-addresses.ts`, `set-default-user-address.ts`. Pełny przepis znajdziesz w [Dodawaniu przypadku użycia](/docs/guides/add-a-use-case).
+Jedna operacja na plik w `use-cases/`, nazwana `{verb-noun}.ts`: `create-user-address.ts`, `list-user-addresses.ts`, `set-default-user-address.ts`. Każda z nich to funkcja serwerowa, którą może wywołać przeglądarka. Pełny przepis znajdziesz w [Dodawaniu przypadku użycia](/docs/guides/add-a-use-case).
+
+Operacja, którą wywołuje wyłącznie inny kod serwerowy — webhook, konsument kolejki, codzienne sprzątanie danych albo inny przypadek użycia — nie jest funkcją serwerową. Trafia do `use-cases/{verb-noun}.server.ts` i eksportuje zwykłą funkcję async bez middleware i bez opcji zapytania, więc nigdy nie staje się punktem końcowym RPC. `src/modules/session/use-cases/delete-expired-sessions.server.ts`, wywoływany przez sprzątanie w `src/lib/retention.ts`, pokazuje cały wzorzec:
+
+```ts
+export const deleteExpiredSessions = async ({ expiredBefore, limit }: DeleteExpiredSessionsInput): Promise<number> => {
+  const expired = db.select({ id: session.id }).from(session).where(lt(session.expiresAt, expiredBefore)).limit(limit)
+  const deleted = await db.delete(session).where(inArray(session.id, expired)).returning({ id: session.id })
+
+  return deleted.length
+}
+```
+
+E-maile wysyłane przez poszczególne moduły to pliki tego samego rodzaju, na przykład `src/modules/order/use-cases/send-order-shipped-email.server.ts`. Takich plików jest dziś 33.
 
 ## 8. Wygeneruj migrację
 
@@ -207,7 +235,7 @@ To zapisze nowy plik SQL w `src/integrations/drizzle-orm/migrations/` oraz snaps
 
 ## 9. Przetestuj
 
-Dodaj `__test__/{feature}.schema.test.ts` i `__test__/{feature}.zod.test.ts` dla powierzchni modułu oraz `use-cases/__test__/` dla operacji. `src/modules/address/use-cases/__test__/address-use-cases.test.ts` pokrywa wszystkie pięć operacji adresowych w jednym pliku, co jest konwencją dla małych modułów. [Pisanie testów](/docs/guides/writing-tests) wyjaśnia trzy projekty Vitest i funkcje pomocnicze do mockowania.
+Dodaj `__test__/{feature}.schema.test.ts` i `__test__/{feature}.zod.test.ts` dla powierzchni modułu oraz `use-cases/__test__/` dla operacji. `src/modules/address/use-cases/__test__/address-use-cases.test.ts` pokrywa wszystkie pięć operacji adresowych w jednym pliku, co jest konwencją dla małych modułów. Testy wykonujące prawdziwy SQL mają nazwy `*.integration.test.ts` i działają w projekcie Vitest `integration`: `src/modules/address/__test__/address.accessors.integration.test.ts` mockuje `drizzle.database` bazą `node:sqlite` w pamięci, opakowaną przez `createTestD1Database` z `src/platform/testing/mocks/d1.ts`, i uruchamia na niej prawdziwe akcesory. [Pisanie testów](/docs/guides/writing-tests) wyjaśnia trzy projekty Vitest i funkcje pomocnicze do mockowania.
 
 ## Powiązane przewodniki
 

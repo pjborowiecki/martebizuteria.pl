@@ -5,7 +5,7 @@ description: "How to set up, branch, check, test, commit and open a pull request
 
 There is no `CONTRIBUTING.md` in the repository, and no issue or pull-request templates under `.github/`. This page is the process.
 
-The gates are mechanical rather than social. `bun run check` and `bun run test` decide whether a change is acceptable in shape, the pre-commit hook runs the first of those on your staged files, and the three GitHub Actions workflows re-run everything before anything is deployed. Review is for behaviour and intent; the machine already checked the rest.
+The gates are mechanical rather than social. `bun run check` and `bun run test` decide whether a change is acceptable in shape, the pre-commit hook runs the first of those on your staged files, and the GitHub Actions workflows — CI with its Chromium end-to-end job, the full end-to-end run on `main`, and the preview and production deploys — re-run everything before anything is deployed. Review is for behaviour and intent; the machine already checked the rest.
 
 ## Before you start
 
@@ -43,7 +43,7 @@ The gates are mechanical rather than social. `bun run check` and `bun run test` 
    cp .env.example .env.development
    ```
 
-4. Apply migrations before the first run, because `bun run dev` uses remote bindings and talks to the real development D1:
+4. Apply migrations before the first run, because `bun run dev` uses remote bindings and talks to the real D1 database that development shares with preview:
 
    ```sh
    bun run db:migrate:development
@@ -58,24 +58,25 @@ Branch from `main`. Never push to `main` directly: once `ci.yml` passes for a pu
 
 Open the pull request against `main`. That gives you two things:
 
-- `ci.yml` runs `bun run check`, then `bun run test:coverage`, then `bun run build:preview`, and uploads the coverage report as an artifact.
+- `ci.yml` runs `bun run check`, then `bun run test:coverage`, then `bun run build:preview`, and uploads the coverage report as an artifact. Its second job builds the local `test` Worker and runs the Playwright suite in Chromium, as `bun run test:e2e:pr` does.
 - `deploy-preview.yml` runs `bun run check`, deploys to the preview environment and comments the preview URL on the pull request, updating the same comment on each push.
 
 The preview deploy re-runs the full check before building, and production waits for CI, so a change that passes locally and fails in CI means your local tree is not clean.
 
 ## The loop
 
-| Command                 | What it does                                                               |
-| ----------------------- | -------------------------------------------------------------------------- |
-| `bun run dev`           | `vp dev --mode development` with remote bindings, on port 3000 (strict)    |
-| `bun run check`         | `vp check` — format, lint and type check. The gate CI runs                 |
-| `bun run check:fix`     | The same, applying every fix it can                                        |
-| `bun run test`          | All three Vitest projects                                                  |
-| `bun run test:watch`    | Watch mode                                                                 |
-| `bun run test:changed`  | Only the suites affected by your working tree                              |
-| `bun run test:coverage` | Coverage report, and the thresholds that CI enforces                       |
-| `bun run build:preview` | Builds the preview Worker and runs `scripts/verify-build.ts`               |
-| `bun run stripe:listen` | Forwards live Stripe test webhooks to `localhost:3000/api/webhooks/stripe` |
+| Command                 | What it does                                                                |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `bun run dev`           | `vp dev --mode development` with remote bindings, on port 3000 (strict)     |
+| `bun run check`         | `vp check` — format, lint and type check. The gate CI runs                  |
+| `bun run check:fix`     | The same, applying every fix it can                                         |
+| `bun run test`          | All three Vitest projects                                                   |
+| `bun run test:watch`    | Watch mode                                                                  |
+| `bun run test:changed`  | Only the suites affected by your working tree                               |
+| `bun run test:coverage` | Coverage report, and the thresholds that CI enforces                        |
+| `bun run test:e2e:pr`   | The Playwright projects CI runs, in Chromium, against the local test Worker |
+| `bun run build:preview` | Builds the preview Worker and runs `scripts/verify-build.ts`                |
+| `bun run stripe:listen` | Forwards live Stripe test webhooks to `localhost:3000/api/webhooks/stripe`  |
 
 Run `bun run check` and `bun run test` before every commit. The pre-commit hook runs `bun run check:pre-commit`, which is `vp staged` — and `vite.config.ts` configures `staged: { "*": ["vp check --fix"] }`, so the hook formats, lints and type checks the staged files and rewrites them in place. It is a safety net, not a substitute: it sees only what you staged.
 
@@ -108,9 +109,9 @@ Five narrow overrides exist, and they are the only exceptions in the repository:
 | `src/routes/**`                                                    | `sort-keys`                                                                        |
 | `vite.config.ts`                                                   | `max-lines`                                                                        |
 
-Do not add a sixth override, and do not add an inline suppression. Outside generated files — `src/routeTree.gen.ts` and `src/types/worker-configuration.d.ts`, both of which the linter ignores — the repository contains **zero** suppressions, and exactly one `as unknown as` cast, in the D1 test mock at `src/platform/testing/mocks/d1.ts:60`, which is why that override exists. If a rule genuinely blocks correct code, split the function or name the value; that is almost always the actual fix.
+Do not add a sixth override, and do not add an inline suppression. Outside generated files — `src/routeTree.gen.ts` and `src/types/worker-configuration.d.ts`, both of which the linter ignores — the repository contains **zero** suppressions, and exactly one `as unknown as` cast, in the D1 test mock at `src/platform/testing/mocks/d1.ts:93`, which is why that override exists. If a rule genuinely blocks correct code, split the function or name the value; that is almost always the actual fix.
 
-The same principle applies to comments. There are three in the whole of `src/`, each stating a constraint the types cannot carry — for example in `src/modules/checkout/checkout.utils.ts`, where an `INSERT ... SELECT` depends on the table's physical column order. Code narration, section banners and restatements of a name are removed by review.
+The same principle applies to comments, although no lint rule checks them. There are three in the TypeScript of `src/` and two in its CSS, each stating a constraint the types cannot carry — for example in `src/modules/checkout/checkout.utils.ts`, where an `INSERT ... SELECT` depends on the table's physical column order. Code narration, section banners and restatements of a name are removed by review.
 
 Import order is not a matter of taste either: `vite.config.ts` declares 17 custom import groups, ordered by layer, and the formatter applies them. Never hand-sort imports; run `bun run check:fix`.
 
@@ -126,6 +127,8 @@ Tests live beside the code they cover, in a `__test__/` directory, named after t
 
 Import from `vite-plus/test`, not from `vitest`. Component tests load `src/platform/testing/setup.ts`. Database suites run against `node:sqlite` behind the D1-shaped transport in `src/platform/testing/mocks/d1.ts`; mock external providers and use local fixtures, so that no test needs network access or a remote database.
 
+Browser tests live in `e2e/` and run with Playwright against the local `test` Worker, whose entry `src/platform/testing/worker.ts` emulates Stripe, Resend and InPost ShipX. CI runs the Chromium projects on every pull request, so a change to a page or a flow should pass `bun run test:e2e:pr` locally first; [Project scripts](/docs/getting-started/project-scripts#end-to-end-tests) lists the commands.
+
 Coverage thresholds, configured with `autoUpdate: false`:
 
 | Metric     | Threshold |
@@ -135,7 +138,7 @@ Coverage thresholds, configured with `autoUpdate: false`:
 | Functions  | 100       |
 | Branches   | 100       |
 
-Every metric is held at 100%, so a change that leaves any code uncovered fails `bun run test:coverage`. Cover new code in the same pull request, or remove a branch no input can reach, rather than lowering a threshold. `src/presentation/components/shadcn/**`, `src/platform/testing/**`, `src/routeTree.gen.ts`, `src/integrations/**/migrations/**` and the test files themselves are excluded from the measurement.
+Every metric is held at 100%, so a change that leaves any code uncovered fails `bun run test:coverage`. Cover new code in the same pull request, or remove a branch no input can reach, rather than lowering a threshold. `src/presentation/components/shadcn/**`, `src/platform/testing/**`, `src/routeTree.gen.ts`, `src/integrations/**/migrations/**`, declaration files and the test files themselves are excluded from the measurement.
 
 [Testing architecture](/docs/architecture/testing-architecture) explains what the suites are aimed at; [Testing](/docs/tooling/testing) covers running them.
 
@@ -143,7 +146,7 @@ Every metric is held at 100%, so a change that leaves any code uncovered fails `
 
 Two parallel sets of files must stay in step.
 
-**UI strings** live in `messages/en-US/` and `messages/pl-PL/`, 56 namespace files each. `src/integrations/use-intl/__test__/i18n.messages.test.ts` iterates over every English file and asserts that the Polish file with the same name exists and contains every key:
+**UI strings** live in `messages/en-US/` and `messages/pl-PL/`, 60 namespace files each. `src/integrations/use-intl/__test__/i18n.messages.test.ts` iterates over every English file and asserts that the Polish file with the same name exists and contains every key:
 
 ```ts
 it.each(Object.entries(localeMessages).filter(([path]) => path.includes("/en-US/")))(
@@ -207,7 +210,7 @@ Never hand-edit a generated file. Regenerate it. Migrations are the exception in
 
 ## Things that have gone wrong before
 
-- **Do not run `bun run db:seed:preview` or `db:seed:production`.** The seed files in `src/integrations/drizzle-orm/seeds/` are stale against the live databases, and running them overwrites real catalog data. They exist for bootstrapping an empty database and nothing else. See [Database](/docs/tooling/database).
+- **Do not run `bun run db:seed:preview` or `db:seed:production`.** The seed files in `src/integrations/drizzle-orm/seeds/` are stale against the live databases, and running them overwrites real catalog data. They exist for bootstrapping an empty database, which is what `bun run db:seed:test` does for the local end-to-end database, and nothing else. See [Database](/docs/tooling/database).
 - **Do not run a regex or `sed` rename across multiple files.** This has corrupted the repository twice. Rename per call site, and let the type checker find what you missed.
 - **Do not point local tooling at production.** `bun run db:studio` defaults to the development environment for that reason; the `:production` variants exist but are a deliberate act.
 - **Do not commit an `.env` file.** `.gitignore` allows only `.env.example` and `.env.test`, and `.env.test` holds dummy values that CI copies over `.env.development` and `.env.preview`.

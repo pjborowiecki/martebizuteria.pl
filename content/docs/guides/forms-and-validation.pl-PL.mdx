@@ -3,7 +3,9 @@ title: "Formularze i walidacja"
 description: "React Hook Form z resolverem Zod, przetłumaczone błędy pól, klucze tłumaczeń jako komunikaty błędów i mapowanie kodów błędów serwera na pola."
 ---
 
-Każdy formularz w M'Arte to React Hook Form napędzany resolverem Zod. Schemat Zod mieszka razem z danymi, które waliduje — w `{feature}.zod.ts` modułu albo w `src/integrations/better-auth/auth.zod.ts` dla formularzy uwierzytelniania — nigdy w samym komponencie.
+Formularze w M'Arte, które walidują to, co wpisuje użytkownik, to React Hook Form napędzany resolverem Zod. Schemat Zod mieszka razem z danymi, które waliduje — w `{feature}.zod.ts` modułu albo w `src/integrations/better-auth/auth.zod.ts` dla formularzy uwierzytelniania — nigdy w samym komponencie.
+
+Kilka małych formularzy powstało bez React Hook Form i zostawia walidację wywoływanej funkcji serwerowej: formularz adresu na koncie w `src/routes/account.addresses.tsx` oraz okna wysyłki i numeru przesyłki zamówienia w panelu trzymają pola w `useState`, a okno przesyłki InPost czyta `FormData` przy wysyłce. Formularze karty i płatności w procesie zamówienia to `PaymentElement` Stripe'a, który waliduje się sam.
 
 Jedna zasada kształtuje wszystko pozostałe: **komunikat w Zodzie to klucz tłumaczenia, a nie zdanie.** Schemat mówi `"passwordMinLength"`; komponent pola zamienia to na tekst w języku czytelnika.
 
@@ -22,7 +24,7 @@ const form = useForm<SignInFormValues>({
 })
 ```
 
-`"onTouched"` sprawdza pole, gdy klient je opuszcza, a potem przy każdej zmianie. Pasuje to do formularza na osobnej stronie. Formularz w `Dialog` używa zamiast tego `mode: "onChange"`, tak jak okna konta (zobacz [Konto](/docs/features/account)): opuszczenie pola, by nacisnąć **Anuluj** albo przycisk zamknięcia, dodałoby pod nim komunikat błędu, wyśrodkowane okno urosłoby, a jego stopka odsunęłaby się spod kursora, zanim przycisk zostanie puszczony, więc naciśnięcie by przepadło.
+`"onTouched"` sprawdza pole, gdy klient je opuszcza, a potem przy każdej zmianie. Pasuje to do formularza na osobnej stronie. Formularz w `Dialog` używa zamiast tego `mode: "onChange"`, tak jak okna konta (zobacz [Konto](/docs/features/account)): opuszczenie pola, by nacisnąć **Anuluj** albo przycisk zamknięcia, dodałoby pod nim komunikat błędu, wyśrodkowane okno urosłoby, a jego stopka odsunęłaby się spod kursora, zanim przycisk zostanie puszczony, więc naciśnięcie by przepadło. Wyjątkiem jest okno odstąpienia od umowy w `src/presentation/components/custom/pages/account/orders/order-withdrawal-dialog.tsx`, które używa `"onTouched"`.
 
 Jego schemat w `auth.zod.ts` niesie klucze, nie prozę:
 
@@ -52,30 +54,45 @@ const handleFormSubmit = useCallback(
 
 ## Renderowanie pola
 
-Pola budujemy na `useController`, nie na `register`, żeby pole znało swoją poprawność. `AuthTextField` w `src/presentation/components/custom/pages/auth/auth-fields.tsx` składa cztery elementy:
+Pola z unoszącą się etykietą budujemy na `useController`, nie na `register`, żeby pole znało swoją poprawność. `AuthTextField` w `src/presentation/components/custom/pages/auth/auth-fields.tsx` składa cztery elementy:
 
 ```tsx
-<Field className="relative" data-invalid={fieldState.invalid}>
-  <Input
-    {...rest}
-    {...field}
-    value={valueStr}
-    id={id}
-    variant="floating"
-    placeholder=" "
-    aria-invalid={fieldState.invalid}
-    aria-required={required}
-    className={cn("peer", showValid && VALID_INPUT_CLASS, className)}
-  />
-  <FloatingLabel htmlFor={id} label={label} required={required} />
-  <ValidCheck show={showValid} />
-  <ValidationFieldError message={fieldState.error?.message} namespace={AUTH_VALIDATION_NAMESPACE} params={AUTH_VALIDATION_PARAMS} />
-</Field>
+const { field, fieldState } = useController({
+  control,
+  name,
+})
+const handleChange = useAutofillAwareChange(field, fieldState)
+
+const valueStr = toStringValue(field.value)
+const showValid = isFieldValid(fieldState, valueStr)
+
+return (
+  <Field className="relative" data-invalid={fieldState.invalid}>
+    <Input
+      {...rest}
+      {...field}
+      onChange={handleChange}
+      value={valueStr}
+      id={id}
+      variant="floating"
+      placeholder=" "
+      aria-invalid={fieldState.invalid}
+      aria-required={required}
+      className={cn("peer", showValid && VALID_INPUT_CLASS, className)}
+    />
+    <FloatingLabel htmlFor={id} label={label} required={required} />
+    <ValidCheck show={showValid} />
+    <ValidationFieldError message={fieldState.error?.message} namespace={validationNamespace} params={AUTH_VALIDATION_PARAMS} />
+  </Field>
+)
 ```
 
 - `Field` to opakowanie shadcn z `src/presentation/components/shadcn/field.tsx`.
-- `FloatingLabel`, `VALID_INPUT_CLASS`, `ValidCheck`, `isFieldValid` i `toStringValue` pochodzą z `src/presentation/components/custom/floating-field.tsx`. Efekt unoszącej się etykiety jest w czystym CSS, napędzany klasą `peer` i `placeholder=" "`; nie zamieniaj placeholdera na prawdziwy tekst, bo etykieta przestanie się podnosić.
-- `ValidationFieldError` rozwiązuje klucz.
+- `FloatingLabel`, `FLOATING_LABEL_CLASS`, `VALID_INPUT_CLASS`, `ValidCheck`, `isFieldValid`, `toStringValue` i `useAutofillAwareChange` pochodzą z `src/presentation/components/custom/floating-field.tsx`. Efekt unoszącej się etykiety jest w czystym CSS, napędzany klasą `peer` i `placeholder=" "`; nie zamieniaj placeholdera na prawdziwy tekst, bo etykieta przestanie się podnosić.
+- `useAutofillAwareChange(field, fieldState)` zwraca `onChange` pola. Przekazuje zdarzenie do `field.onChange`, a potem wywołuje też `field.onBlur`, gdy pole jest nieprawidłowe, ale jeszcze niedotknięte — oznaczyła je wysyłka albo przycisk przejścia do następnego kroku zamówienia, przed opuszczeniem pola przez klienta — albo gdy zmiana nie pochodzi z elementu z fokusem, bo tak przychodzi autouzupełnianie przeglądarki. Wywołanie `onBlur` waliduje pole i oznacza je jako dotknięte, więc poprawiona wartość od razu usuwa błąd, zamiast dopiero po opuszczeniu pola. Tak samo używają go `AuthPasswordField` oraz `CheckoutTextField` i `CheckoutPhoneField` z procesu zamówienia.
+- `ValidationFieldError` rozwiązuje klucz. `validationNamespace` ma domyślnie wartość `pages.auth.validations`; formularze spoza stron uwierzytelniania przekazują własną, na przykład `WITHDRAWAL_VALIDATION_NAMESPACE` w formularzach odstąpienia od umowy.
+
+Kilka zwykłych pól bez unoszącej się etykiety używa zamiast tego `form.register`: kod rabatowy w procesie zamówienia (`checkout-discount-field.tsx`), zapis do newslettera na stronie głównej (`newsletter-section.tsx`) oraz pola poszczególnych języków w edytorze stron treści (tytuł, opis) i w kreatorze newslettera (temat). Pola stron treści nadal renderują `ValidationFieldError` z komunikatem z `form.formState.errors`.
 
 ## Tłumaczenie błędu pola
 
@@ -101,11 +118,12 @@ Szuka klucza `<namespace>.<message>`, a jeśli go nie ma, sięga po ogólny komu
 
 ## Wzorzec formularza katalogowego w panelu
 
-Formularze w panelu są większe: obsługują wiele języków, mieszkają w panelu wysuwanym, wysyłają obrazy i dzielą stan między kilka komponentów sekcji. `src/presentation/components/custom/pages/admin/catalog/categories/add-category/` to implementacja wzorcowa i ta sama struktura powtarza się dla kolekcji, atrybutów i produktów.
+Formularze w panelu są większe: obsługują wiele języków, mieszkają w panelu wysuwanym, wysyłają obrazy i dzielą stan między kilka komponentów sekcji. `src/presentation/components/custom/pages/admin/catalog/categories/add-category/` to implementacja wzorcowa i ta sama struktura powtarza się dla kolekcji (`add-collection/`) i atrybutów (`add-attribute/`). Edytor produktu w `product-editor/` zachowuje ten sam podział na provider, panel i stopkę, ale jego sekcje to pliki `product-editor-*.tsx` zamiast folderu `_sections/`.
 
 | Plik                              | Rola                                                                                  |
 | --------------------------------- | ------------------------------------------------------------------------------------- |
 | `category-sheet.tsx`              | Powłoka panelu wysuwanego, otwierana kliknięciem wiersza tabeli lub przyciskiem Dodaj |
+| `category-sheet-footer.tsx`       | Przycisk Anuluj i przycisk tworzenia/zapisu, powiązany z formularzem przez jego id    |
 | `category-form-provider.tsx`      | `useForm`, mutacja tworzenia/aktualizacji, kontekst konsumowany przez sekcje          |
 | `category-form-section.tsx`       | Opakowanie sekcji używane przez każdy plik `_sections/*`                              |
 | `_sections/*.tsx`                 | Podstawowe dane, kategoria nadrzędna, multimedia, status                              |
@@ -258,6 +276,7 @@ useEffect(() => {
 - Schemat Zod mieszka w `.zod.ts` modułu (albo w `auth.zod.ts`), z **kluczami** komunikatów i limitami importowanymi z pliku stałych.
 - Oba katalogi tłumaczeń mają wpis dla każdego klucza, jaki schemat może wyemitować.
 - Pola używają `useController` i renderują `ValidationFieldError` z właściwą przestrzenią nazw.
+- Pola tekstowe z unoszącą się etykietą przekazują `useAutofillAwareChange(field, fieldState)` jako swoje `onChange`, żeby autouzupełnianie i poprawki od razu usuwały błąd.
 - `mode` to `"onTouched"` dla krótkiego formularza na osobnej stronie, `"onChange"` dla formularza w `Dialog`, aby opuszczenie pola nigdy nie przesuwało stopki okna, gdy przycisk jest wciśnięty, i `"onSubmit"` dla długiego, wielojęzycznego.
 - Handlery wysyłki używają `void` na obietnicy i nigdy nie zwracają jej do DOM.
 - Handler błędu mapuje `errorCode(error)` na pole tam, gdzie może, a w pozostałych przypadkach sięga po `useActionError`.

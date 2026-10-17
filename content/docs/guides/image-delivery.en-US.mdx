@@ -29,6 +29,8 @@ if (environment === "production" && images.bucket_name === previewImages?.bucket
 
 `VITE_R2_URL` is read twice: the server takes it from the Worker secret of that name, and the browser bundle has it inlined at build time. Both come from the same `.env.<environment>` file or GitHub variable, so set it once per environment.
 
+When the value is empty, or still contains the placeholder host `your-production-cdn-domain.com`, `getAssetCdnBase` in `src/lib/url.ts` falls back to `DEFAULT_R2_PUBLIC_URL` from `src/presentation/branding/app.ts`, `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`, the production bucket's `r2.dev` address, on the server and in the browser alike. `.env.example` ships with that address too. A development or preview environment left on it shows production's images, and an image uploaded to `martebizuteria-preview` does not appear.
+
 ## How an image URL is built
 
 The database holds two shapes of image reference, and both resolve against the current `VITE_R2_URL`:
@@ -36,7 +38,7 @@ The database holds two shapes of image reference, and both resolve against the c
 - **A bucket key**, such as `products/<sha256>.webp`. `uploadImageFn` answers with the key alone, and the admin forms store it in `product.thumbnail`, `product_image.url` and the category and collection `image` columns.
 - **An `r2.dev` URL**, such as `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp`. Rows written before uploads stored keys, and every seed file, look like this.
 
-`resolveAssetURL` in `src/lib/url.ts` turns a key into `${VITE_R2_URL}/<key>`, and moves an `r2.dev` URL onto `VITE_R2_URL`, keeping its path, which is the object key. Pointing `VITE_R2_URL` at another host therefore needs no rewrite of the stored data, and the `r2.dev` URLs in the seeds work in every environment. Any other absolute URL is left as it is.
+`resolveAssetURL` in `src/lib/url.ts` turns a key, or any value without `http://` or `https://`, into `${VITE_R2_URL}/<key>`, and moves an `r2.dev` URL onto `VITE_R2_URL`, keeping its path, which is the object key. Pointing `VITE_R2_URL` at another host therefore needs no rewrite of the stored data, and the `r2.dev` URLs in the seeds work in every environment. Any other absolute URL is left as it is.
 
 `getOptimizedImageUrl` in `src/lib/image.ts` then decides how the browser fetches it:
 
@@ -45,13 +47,15 @@ The database holds two shapes of image reference, and both resolve against the c
 | The `VITE_R2_URL` host, when it is a custom host | Resized on that host: `https://images.martebizuteria.pl/cdn-cgi/image/width=600,height=750,quality=75,onerror=redirect,fit=cover,f=auto/products/<sha256>.webp` |
 | An `r2.dev` host                                 | As stored, at full size                                                                                                                                         |
 | An Unsplash host                                 | As stored, since Unsplash resizes its own images                                                                                                                |
-| Any other host, or a relative path               | Resized through the shop's own host, `martebizuteria.pl`, or `VITE_IMAGE_CDN_DOMAIN` when it is set                                                             |
+| Any other host                                   | Resized through the shop's own host, `martebizuteria.pl`, or `VITE_IMAGE_CDN_DOMAIN` when it is set, with the full URL as the source                            |
 
-The source in the transformation URL is the object's path on the same host, so Cloudflare fetches it from the bucket on the same zone and the zone needs no permission to resize images from other origins. `<Image>` in `src/presentation/components/custom/image.tsx` hands the URL to `@unpic/react`, which recognises the `/cdn-cgi/image/` format and writes a `srcset` with one width per breakpoint, so a phone downloads a phone-sized file. `fit=cover` crops each file to the width and height the component asks for.
+The table describes the URL the storefront writes. Whether the browser loads it is up to the page's Content-Security-Policy, whose `img-src` in `src/lib/security-headers.ts` lists `'self'`, `data:`, `blob:`, the origin of `DEFAULT_R2_PUBLIC_URL` and the origin of `VITE_R2_URL`. An Unsplash URL is not among them, and an image transformed through `martebizuteria.pl` is admitted only on a page served from that host. Keep images in the bucket.
+
+For an image on the `VITE_R2_URL` host, the source in the transformation URL is the object's path on the same host, so Cloudflare fetches it from the bucket on the same zone and the zone needs no permission to resize images from other origins. `<Image>` in `src/presentation/components/custom/image.tsx` hands the URL to `@unpic/react`, which recognises the `/cdn-cgi/image/` format and writes a `srcset` with one width per breakpoint, so a phone downloads a phone-sized file. `fit=cover` crops each file to the width and height the component asks for.
 
 Every transformation also asks for `onerror=redirect`. When Cloudflare cannot transform an image, for example once the account's free transformations for the month are used up, it redirects the browser to the original object on the same host, and the image shows at full size instead of broken. Cloudflare follows `onerror` only when the source is on the zone that transforms it, as an image on the custom domain is; an image from another host, resized through the shop's own host, has no such fallback.
 
-E-mails and Stripe Checkout get the plain resolved URL, `${VITE_R2_URL}/<key>`, without a transformation.
+Stripe receives no images: the Checkout Session's line items carry only a name and an amount. The order confirmation, the only e-mail that shows product images, takes each line's image as the plain resolved URL, `${VITE_R2_URL}/<key>`, without a transformation, and embeds it: `embedEmailImages` in `src/integrations/cloudflare-r2/media.email.server.ts` reads up to ten distinct images on the asset host straight from the `IMAGES` bucket, attaches them inline with a content id, and the template shows them through `cid:` references, so they appear even in mail apps that block remote images. An image larger than 512 KiB, one that would take the attachments past 2 MiB together, any image after the tenth, and one the bucket cannot return keep the plain resolved URL; a read error is logged as `[Email] Could not read … to embed it`.
 
 ## One-time setup
 
@@ -108,11 +112,11 @@ The zone `martebizuteria.pl` has to be on the same Cloudflare account. In the da
 bunx wrangler r2 bucket domain add martebizuteria --domain images.martebizuteria.pl --zone-id <ZONE_ID> --min-tls 1.2
 ```
 
-Leave the bucket's `r2.dev` address enabled. Order confirmation e-mails already sent carry `r2.dev` image URLs, and they keep loading only while it stays on.
+Leave the bucket's `r2.dev` address enabled. Order confirmations sent while production used it link their images there — all of them in e-mails sent before the confirmation began embedding images, and any image it did not embed since — and those images keep loading only while the address stays on.
 
 ### 5. Turn on Image Transformations for the zone
 
-In the dashboard open **Images**, **Transformations**, select the zone `martebizuteria.pl`, and choose **Enable for zone**. Keep the default that resizes only images from the zone itself: the storefront never asks it for an image on another origin.
+In the dashboard open **Images**, **Transformations**, select the zone `martebizuteria.pl`, and choose **Enable for zone**. Keep the default that resizes only images from the zone itself. Uploads store bucket keys and the seeds hold `r2.dev` URLs, and both resolve onto `VITE_R2_URL`, so every catalogue image is transformed on the custom domain from a source on the same zone. Only an absolute URL on some other host, the last row of the table in [How an image URL is built](#how-an-image-url-is-built), would be transformed from another origin; with this default Cloudflare refuses it, and it has no `onerror` fallback.
 
 Cloudflare counts unique transformations per calendar month: every width, height and quality of an image counts once a month, however often it is requested. The Images Free plan includes 5,000 a month and answers every further new transformation with error `9422`; the Images Paid plan includes the same 5,000 and bills each further 1,000. The storefront asks for one image at many sizes: a product card's `srcset` has 7 widths, and the product page's 11, five of them shared with the card; the thumbnails in the cart, checkout, orders, search and the admin console add about a dozen more, at one and two times their size; and the prefetch adds two. A product's main image therefore comes to about 25 to 30 transformations a month once visitors on different screens have seen it, and each further gallery image to up to 11, so 200 products can use up the free allowance in a month.
 

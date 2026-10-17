@@ -3,13 +3,14 @@ title: "Overview"
 description: "From a fresh clone of the M'Arte repository to a running shop and a deployed Worker."
 ---
 
-M'Arte is one TanStack Start application that serves the storefront, the customer account area, the admin console and this documentation site from a single Cloudflare Worker. Everything the application needs at runtime is a Cloudflare binding: D1 for data, R2 for product images, KV for the cache, a Queue for the audit log and a Durable Object for realtime cache invalidation.
+M'Arte is one TanStack Start application that serves the storefront, the customer account area, the admin console and this documentation site from a single Cloudflare Worker. Everything the application needs at runtime is a Cloudflare binding: D1 for data, R2 for product images, KV for a few short-lived keys (the e-mail sender flag, incident-alert deduplication and the health probe), two Queues — the audit log and the newsletter, each with a dead-letter queue — and a Durable Object for realtime cache invalidation.
 
-That has one consequence you should know before you start: **there is no fully offline mode**. `bun run dev` sets `CLOUDFLARE_ENV=development`, and `vite.config.ts` enables the Cloudflare plugin's remote bindings for exactly that value:
+That has one consequence you should know before you start: **the dev server has no offline mode**. `bun run dev` sets `CLOUDFLARE_ENV=development`, and `vite.config.ts` enables the Cloudflare plugin's remote bindings for exactly that value:
 
 ```ts
 ...cloudflare({
   inspectorPort: false,
+  persistState: process.env["CLOUDFLARE_ENV"] === "test" ? { path: ".wrangler/test" } : true,
   remoteBindings: process.env["CLOUDFLARE_ENV"] === "development",
   viteEnvironment: { name: "ssr" },
 }),
@@ -17,7 +18,9 @@ That has one consequence you should know before you start: **there is no fully o
 
 So the dev server talks to the real preview D1 database, the real `martebizuteria-preview` R2 bucket and the real preview KV namespace. The `development` and `preview` environments in `wrangler.jsonc` declare the same `database_id` and the same bucket, which means **development writes land in the preview database**. Treat it as shared, not scratch.
 
-The other way to run the application is `bun run start`, which serves a finished build with `CLOUDFLARE_ENV=preview`. Because that value is not `development`, remote bindings are off and Wrangler's local simulated D1, R2 and KV under `.wrangler/state/` are used instead. That is the closest thing to an isolated local run, and it starts with an empty database.
+The other way to run the application is `bun run start`, which serves a finished build with `CLOUDFLARE_ENV=preview`. Because that value is not `development`, remote bindings are off and Wrangler's local simulated D1, R2 and KV under `.wrangler/state/` are used instead. It starts with an empty database.
+
+The isolated local run is the fourth Wrangler environment, `test`, which the end-to-end suite uses. `bun run db:reset:test` creates a migrated and seeded D1 database under `.wrangler/test` (the catalogue seeds plus the test accounts of `e2e/data/accounts.ts`), `bun run build:test` builds with `--mode test`, and `bun run start:test` serves that build at `127.0.0.1:3000`. Its entry point, `src/platform/testing/worker.ts`, answers Stripe, Resend and InPost ShipX from in-memory emulators, so nothing leaves the machine. See [Project scripts](/docs/getting-started/project-scripts#end-to-end-tests) and [Testing](/docs/tooling/testing).
 
 ## The path through these pages
 

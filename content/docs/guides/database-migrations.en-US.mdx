@@ -1,6 +1,6 @@
 ---
 title: "Database migrations"
-description: "Change the D1 schema safely: generate, review, apply and hand-write migrations, and what to do about SQLite's limits."
+description: "Change the D1 schema safely: generate, review, apply, hand-write and test migrations, keep the history able to build an empty database, and what to do about SQLite's limits."
 ---
 
 The database is Cloudflare D1 (SQLite). The schema is defined in TypeScript across 39 module schema files, all but the FTS5 `storefront_search` table re-exported from `src/integrations/drizzle-orm/drizzle.schemas.ts`, and applied as plain SQL files in `src/integrations/drizzle-orm/migrations/`.
@@ -12,15 +12,18 @@ Two tools share that directory, and knowing which does what saves a lot of confu
 
 ## Environments
 
-There are two physical databases, and three Wrangler environments pointing at them:
+There are two remote databases and one local test database, and four Wrangler environments pointing at them:
 
-| Environment   | D1 database name         | Used by                                           |
-| ------------- | ------------------------ | ------------------------------------------------- |
-| `development` | `martebizuteria-preview` | `bun run dev` (with `remoteBindings: true`)       |
-| `preview`     | `martebizuteria-preview` | `bun run build:preview`, `bun run deploy:preview` |
-| `production`  | `martebizuteria`         | `bun run deploy:production`                       |
+| Environment   | D1 database name                                   | Used by                                                                  |
+| ------------- | -------------------------------------------------- | ------------------------------------------------------------------------ |
+| `development` | `martebizuteria-preview` (remote)                  | `bun run dev` (with `remoteBindings: true`)                              |
+| `preview`     | `martebizuteria-preview` (remote)                  | `bun run build:preview`, `bun run deploy:preview`                        |
+| `test`        | `martebizuteria-test` (local, in `.wrangler/test`) | `bun run db:reset:test`, `bun run build:test`, `bun run start:test`, E2E |
+| `production`  | `martebizuteria` (remote)                          | `bun run deploy:production`                                              |
 
-**`development` and `preview` are the same database.** Local development runs against the remote preview D1 instance — `vite.config.ts` sets `remoteBindings: process.env["CLOUDFLARE_ENV"] === "development"`, so there is no local SQLite file to play in. Anything you write while developing is visible to the preview deployment, and anything you drop is really dropped.
+**`development` and `preview` are the same database.** Local development runs against the remote preview D1 instance — the `development` binding is `remote: true` and `vite.config.ts` sets `remoteBindings: process.env["CLOUDFLARE_ENV"] === "development"`, so `bun run dev` has no local SQLite file to play in. Anything you write while developing is visible to the preview deployment, and anything you drop is really dropped. `bun run db:migrate:local` does build a local copy under `.wrangler/state`, but `bun run dev` reads the remote database, not that copy.
+
+**`test` is the database you can throw away.** Its binding is `remote: false`, and its scripts keep it in `.wrangler/test`: `db:migrate:test` applies the migrations there, and `db:reset:test` deletes the folder, applies the whole history to the empty database and seeds it (see [Seeding data](/docs/guides/seeding-data#the-local-test-database)). `build:test` and `start:test` build the test Worker and serve it on `127.0.0.1:3000` against that database. Playwright's web server runs all three before a local E2E run; in CI the E2E workflows run the first two as steps. The `test` environment is never deployed.
 
 ## Generating a migration
 
@@ -34,6 +37,11 @@ That runs `drizzle-kit generate` with `src/integrations/drizzle-orm/drizzle.conf
 
 ```ts
 export default defineConfig({
+  dbCredentials: {
+    accountId: process.env["CLOUDFLARE_ACCOUNT_ID"] ?? "",
+    databaseId: process.env["CLOUDFLARE_DATABASE_ID"] ?? "",
+    token: process.env["CLOUDFLARE_ACCESS_TOKEN"] ?? "",
+  },
   dialect: "sqlite",
   driver: "d1-http",
   migrations: {
@@ -48,7 +56,9 @@ export default defineConfig({
 })
 ```
 
-`prefix: "timestamp"` is why files are named `20260612120000_product_variants_enhanced.sql`. The timestamp determines apply order, so never rename a migration that has been applied anywhere.
+`db:generate` only compares files, so it runs without those credentials; the commands in [Inspecting the live schema](#inspecting-the-live-schema) need them.
+
+`prefix: "timestamp"` is why files are named `20260612120000_product_variants_enhanced.sql`. The timestamp determines apply order, so never rename a migration that has been applied anywhere (see [The history must build an empty database](#the-history-must-build-an-empty-database)).
 
 **Read the generated SQL before you apply it.** In particular, check for a table rebuild: SQLite cannot change a column's type or add a `NOT NULL` column with no default, so drizzle-kit emits a create-copy-drop-rename sequence. On a table with real rows that is a data migration, not a schema migration, and it needs thought about foreign keys and indexes.
 
@@ -59,6 +69,7 @@ bun run db:migrate:local         # wrangler d1 migrations apply DB --env develop
 bun run db:migrate:development   # --env development --remote
 bun run db:migrate:preview       # --env preview --remote   (bun run db:migrate is an alias for this)
 bun run db:migrate:production    # --env production --remote
+bun run db:migrate:test          # --env test --local --persist-to .wrangler/test
 ```
 
 Check what is pending or applied first:
@@ -74,17 +85,24 @@ While the migrations run, and for as long as a release stays rolled back, the pr
 
 ## Hand-written migrations
 
-Several of the 101 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260606120000_rename_attribute_to_product_attribute.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql` and others. Hand-writing is the right call for:
+Many of the 101 migrations in the directory were written by hand rather than generated, and their filenames say what they do instead of carrying a drizzle codename: `20260604120000_catalog_indexes_and_integrity.sql`, `20260924120000_checkout_idempotency_constraints.sql`, `20260925000000_locale_maps_bcp47.sql`, `20261016140000_claim_past_guest_orders.sql` and others. Every migration added since the end of September is named that way. Hand-writing is the right call for:
 
-- **Renames.** drizzle-kit sees a rename as a drop plus an add, which loses the data.
-- **Index name alignment.** `20260604232955_curved_wallow.sql` is a good short example:
+- **Renames.** drizzle-kit sees a rename as a drop plus an add, which loses the data. The end of `20260604232955_curved_wallow.sql` renames a table and then aligns its index names with the new name:
 
 ```sql
--- Align index names with product_attribute (table/columns already migrated in 20260605120000 + 20260606120000).
+ALTER TABLE `attribute` RENAME TO `product_attribute`;
 DROP INDEX IF EXISTS `attribute_handle_unique`;
 DROP INDEX IF EXISTS `attribute_rank_idx`;
 CREATE UNIQUE INDEX IF NOT EXISTS `product_attribute_handle_unique` ON `product_attribute` (`handle`);
 CREATE INDEX IF NOT EXISTS `product_attribute_rank_idx` ON `product_attribute` (`rank`);
+```
+
+- **Index changes.** `20261015100000_newsletter_subscriber_status_index.sql` replaces an index with a wider one:
+
+```sql
+DROP INDEX IF EXISTS `newsletter_subscriber_status_idx`;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `newsletter_subscriber_status_createdAt_idx` ON `newsletter_subscriber` (`status`,`created_at`);
 ```
 
 - **Data repair.** `20260927120000_fix_silver_collection_handle.sql` fixes one typo in one row:
@@ -97,13 +115,40 @@ SET handle = 'srebro-925',
 WHERE handle = 'serbro-925';
 ```
 
-Two habits worth copying from these files: a leading `--` comment stating intent (migration SQL is the one place in this repository where comments are expected, since the file is the only record of _why_), and `IF EXISTS` / `IF NOT EXISTS` everywhere, so re-running a migration against a partially-migrated database does not fail.
+- **Backfills.** A new column usually needs values for the rows that already exist. `20261015150000_order_shipped_email.sql` adds two columns and fills them for the orders already shipped:
 
-To hand-write one, create `src/integrations/drizzle-orm/migrations/<YYYYMMDDHHMMSS>_<description>.sql`. Wrangler picks it up by filename; there is nothing to register.
+```sql
+ALTER TABLE `order` ADD `shipped_email_at` integer;
+--> statement-breakpoint
+ALTER TABLE `order` ADD `tracking_email_number` text;
+--> statement-breakpoint
+UPDATE `order` SET `shipped_email_at` = coalesce(`shipped_at`, `delivered_at`, `updated_at`), `tracking_email_number` = `tracking_number` WHERE `fulfillment_status` IN ('shipped', 'delivered');
+```
+
+Habits worth copying from the recent files:
+
+- **No comments.** The filename says what a migration does, and the commit that adds it says why. Twelve older files, the last of them `20261001090000_newsletter_subscribers.sql`, still carry `--` comments; none of the 38 migrations after it does. The `--> statement-breakpoint` lines are a separator, not commentary: drizzle-kit writes them between statements, SQLite skips them as comments, and the test helpers split a file on them.
+- **`IF EXISTS` / `IF NOT EXISTS` wherever SQLite allows it** — on `CREATE TABLE`, `CREATE INDEX`, `CREATE TRIGGER` and the `DROP` statements — so re-running a migration against a partially-migrated database does not fail. SQLite has no such guard for `ALTER TABLE … ADD`.
+- **Data migrations that change nothing when they run again.** Limit the `WHERE` to the rows that still need the change: `20261016140000_claim_past_guest_orders.sql` only touches orders whose `user_id` is still `NULL`, so a second run finds nothing to do.
+
+To hand-write one, create `src/integrations/drizzle-orm/migrations/<YYYYMMDDHHMMSS>_<description>.sql` with a timestamp later than every existing file. Wrangler picks it up by filename; there is nothing to register for Wrangler. A data migration also gets an entry in the test helpers' `MIGRATION` map and a test (see [Testing a data migration](#testing-a-data-migration)).
+
+### The history must build an empty database
+
+Wrangler applies the files in filename order to a database that has none of them: the local test database on every `bun run db:reset:test`, or the database of a new environment. The deployed databases cannot show whether that works, because they applied each file once, in the order the files were written. Those two orders once disagreed: three hand-written catalog migrations had been applied to preview and production before the generated `20260604232955_curved_wallow.sql` and `20260606084825_fuzzy_miek.sql`, which already assumed their changes. In filename order `curved_wallow` runs before all three, so an empty database stopped there with `no such table: product_attribute`. Commit 5801445b moved the hand-written statements into the files where filename order first needs them and left the three original files empty, so their names stay recorded:
+
+- `20260605120000_attribute_titles_and_allowed_values.sql`
+- `20260606120000_rename_attribute_to_product_attribute.sql`
+- `20260608120000_product_locale_maps.sql`
+
+Two rules follow:
+
+- Give a new migration a timestamp later than every existing file, and never rename or delete an applied one. Wrangler records migrations by name in `d1_migrations`, so a renamed file is a new migration and runs again.
+- Editing an applied migration does not run it again anywhere; it only changes what a new database gets. That is how a broken history is repaired, and why such an edit needs `bun run db:reset:test` to prove the history again.
 
 ### A caveat about the drizzle journal
 
-`migrations/meta/_journal.json` currently lists 52 tags while the directory holds 101 `.sql` files, and `meta/` holds 37 snapshots. The hand-written migrations were never added to the journal, and several generated ones have no snapshot. Wrangler does not care — it tracks its own state in D1. But **drizzle-kit does**: `bun run db:generate` diffs against the newest snapshot, which is older than the live schema, so it can emit SQL for changes that are already applied.
+`migrations/meta/_journal.json` currently lists 52 tags while the directory holds 101 `.sql` files, three of them the empty placeholders above, and `meta/` holds 37 snapshots. The 49 files missing from the journal, every migration after `20260930151544_collection_short_descriptions.sql` among them, were never added to it, and several generated ones have no snapshot. Wrangler does not care — it tracks its own state in D1. But **drizzle-kit does**: `bun run db:generate` diffs against the newest snapshot, `meta/20260930151544_snapshot.json`, which predates the 43 migrations after it, so it can emit SQL for changes that are already applied.
 
 Before trusting a generated migration, either compare it against the current live schema with `bun run db:introspect:preview` (which writes `schema.ts` and `relations.ts` into the migrations folder), or read it line by line. Both `schema.ts` and `relations.ts` in `src/integrations/drizzle-orm/migrations/` are introspection output, not hand-maintained code.
 
@@ -131,10 +176,47 @@ bun run db:push:development
 - Give every column a length: `text("handle", { length: 255 })`. The lengths come from the module's `*_COLUMN_LENGTH` constant, so the Zod schema and the column agree.
 - Put timestamps in with `...timestamps()`, so `created_at` and `updated_at` are always `integer(..., { mode: "timestamp_ms" })` defaulting to `(unixepoch() * 1000)`.
 - Add a new column as nullable, or with a default. A `NOT NULL` column without a default forces a table rebuild.
-- Name indexes `<table>_<column>_idx`, uniques `<table>_<column>_unique`. Several migrations exist purely to fix index names that did not follow this.
+- Name indexes `<table>_<column>_idx`, uniques `<table>_<column>_unique`. Most schemas write the column part as its TypeScript property name, so names read like `order_userId_status_idx` or `inventory_variantId_unique`. Several migrations exist purely to fix index names that did not follow this.
 - Declare `.references(..., { onDelete: "cascade" })` so deletes clean up. SQLite enforces foreign keys only when the pragma is on — D1 has it on — so a missing cascade shows up as orphan rows, not as an error.
-- Store translated text as a JSON map keyed by BCP 47 locale (`json_object('pl-PL', …, 'en-US', …)`), which is what `titles`, `subtitles`, `descriptions` and `short_descriptions` do on products, categories and collections. `20260925000000_locale_maps_bcp47.sql` migrated those keys from bare language codes to full tags.
+- Store translated text as a JSON map keyed by BCP 47 locale (`json_object('pl-PL', …, 'en-US', …)`): `titles`, `subtitles` and `descriptions` on products; `titles`, `subtitles`, `short_descriptions` and `descriptions` on categories; `titles`, `short_descriptions` and `descriptions` on collections. `20260925000000_locale_maps_bcp47.sql` migrated those keys from bare language codes to full tags.
 - Store money as integer minor units. Delivery methods carry `price` as `1499`, meaning 14,99 zł.
+
+## Testing a data migration
+
+A migration that updates or inserts rows gets an integration test, because nothing else checks what it does to existing data. The helpers live in `src/platform/testing/mocks/migrations.ts`:
+
+- `MIGRATION` names each migration file a test applies on its own. Add an entry for yours, as `CLAIM_PAST_GUEST_ORDERS: "20261016140000_claim_past_guest_orders"` was added with that migration.
+- `applyMigration(sqlite, MIGRATION.CLAIM_PAST_GUEST_ORDERS)` reads the file through `import.meta.glob`, splits it on `--> statement-breakpoint` and executes each part on a `node:sqlite` `DatabaseSync`.
+- `applyMigrationHistory(sqlite)` executes every migration file in filename order, the order Wrangler uses, which builds the full schema.
+
+`src/modules/order/__test__/order.past-guest-claim-backfill.integration.test.ts`, added in the same commit as `20261016140000_claim_past_guest_orders.sql`, is the model. It creates only the tables and columns the migration reads and writes, inserts one row per case, applies the migration and compares the result:
+
+```ts
+beforeEach(() => {
+  database.sqlite = new DatabaseSync(":memory:", { enableDoubleQuotedStringLiterals: true })
+  database.sqlite.exec(`
+    create table user (id text primary key, email text not null unique, email_verified integer not null, created_at integer not null);
+    create table "order" (id text primary key, email text not null, user_id text, updated_at integer not null);
+    …
+  `)
+})
+
+it("claims nothing more when it runs again", () => {
+  applyMigration(database.sqlite, MIGRATION.CLAIM_PAST_GUEST_ORDERS)
+  const ordersAfterFirstRun = readOrders()
+
+  applyMigration(database.sqlite, MIGRATION.CLAIM_PAST_GUEST_ORDERS)
+
+  expect(readOrders()).toStrictEqual(ordersAfterFirstRun)
+  expect(readClaims()).toHaveLength(2)
+})
+```
+
+Its other cases cover what the migration must change (guest orders whose e-mail matches a verified account, ignoring case, and the older account when two share the address), what it must leave alone (unverified accounts, orders already on an account, addresses with no account) and the audit entries it writes. Cover the same three things for yours, plus a second run.
+
+When a migration depends on the real schema or on seeded rows, build the schema with `applyMigrationHistory` instead, as `src/modules/delivery-method/__test__/delivery-method.descriptions-migration.integration.test.ts` does. The history already contains the migration under test, so that test resets the rows the migration reads and then applies it again with `applyMigration`. All 58 suites that call `applyMigrationHistory` open their `DatabaseSync` with `enableDoubleQuotedStringLiterals: true`; do the same.
+
+Put the test in the `__test__/` folder of the module whose table the migration changes and name it `*.integration.test.ts`, so it runs in the `integration` project (`bun run test:integration`, and `bun run test`).
 
 ## Migration checklist
 
@@ -142,14 +224,18 @@ bun run db:push:development
 - [ ] `bun run db:generate` ran, and you have read every line of the output.
 - [ ] Nothing in it rebuilds a populated table by accident.
 - [ ] Index and constraint names follow the convention.
+- [ ] The file's timestamp is later than every existing migration, and no applied migration was renamed or deleted.
+- [ ] A data migration has an integration test that applies it with `applyMigration` and checks what it changes, what it leaves alone and that a second run changes nothing.
+- [ ] The whole history still builds an empty database: `bun run db:reset:test` applies every migration in filename order to a fresh local database, as the E2E job does on every pull request.
 - [ ] The pull request's preview deploy applied it, and `bun run db:migrations:preview` confirms it.
 - [ ] The app was exercised against preview before production.
 - [ ] It only adds what the Worker deployed before it can live with, and drops or renames nothing that Worker still reads.
-- [ ] `bun run check` and `bun run test` pass — `vite.config.ts` excludes the migrations directory from both lint and test, so a broken `.sql` file will not be caught for you.
+- [ ] `bun run check` and `bun run test` pass. `vite.config.ts` keeps the migrations directory out of lint, formatting and test discovery, so the SQL is checked only where it is applied: by the integration suites built on `applyMigrationHistory`, by your migration's own test and by `db:reset:test`.
 
 ## Related guides
 
 - [Add a module](/docs/guides/add-a-module)
 - [Seeding data](/docs/guides/seeding-data)
+- [Writing tests](/docs/guides/writing-tests)
 - [Local debugging](/docs/guides/local-debugging)
 - [Roll back a deploy](/docs/guides/roll-back-a-deploy)

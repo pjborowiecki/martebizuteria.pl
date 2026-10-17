@@ -42,6 +42,7 @@ interface __BaseEnv_Env {
   DB: D1Database
   AUDIT_LOG_QUEUE: Queue
   NEWSLETTER_QUEUE: Queue
+  ASSETS: Fetcher
   APP_ENV: "development"
   AUTH_GOOGLE_CLIENT_ID: string
   // …pozostałe pozycje z secrets.required…
@@ -59,7 +60,7 @@ fumadocs-mdx ./src/integrations/fumadocs/fumadocs.config.ts .source
 
 To polecenie kompiluje `content/docs`, jedyną kolekcję MDX zadeklarowaną w `src/integrations/fumadocs/fumadocs.config.ts`, do plików `.source/browser.ts`, `.source/server.ts` i `.source/dynamic.ts`. To właśnie te moduły importują `src/presentation/components/custom/docs-content.tsx` oraz `src/integrations/fumadocs/fumadocs.docs.ts` jako `collections/browser` i `collections/server`.
 
-Bez katalogu `.source/` kontrola typów kończy się błędem, a trasy `/docs` nie mogą znaleźć swojej treści. `/terms-of-service`, `/privacy-policy` i `/exchanges-and-returns` od niego nie zależą: ich treść leży w tabeli D1 `content_page`. `bun run dev` i oba skrypty budujące uruchamiają `bun run content` jako pierwszy krok, więc przy normalnej pracy nie musisz o tym pamiętać.
+Bez katalogu `.source/` kontrola typów kończy się błędem, a trasy `/docs` nie mogą znaleźć swojej treści. `/terms-of-service`, `/privacy-policy`, `/exchanges-and-returns` i `/faq` od niego nie zależą: ich treść leży w tabeli D1 `content_page`. `bun run dev` i oba skrypty budujące uruchamiają `bun run content` jako pierwszy krok, więc przy normalnej pracy nie musisz o tym pamiętać.
 
 ## Instalacja tak, jak robi to CI
 
@@ -84,6 +85,12 @@ bun run skills:sync
 
 Przywraca dołączone umiejętności agentów do `.agents/skills` i `.claude/skills` na podstawie `skills-lock.json`, przy użyciu `scripts/sync-skills.ts`. Oba katalogi są generowanymi grupami zewnętrznymi — `bun run skills:update` jest jedynym przewidzianym sposobem zmiany ich zawartości.
 
+```sh
+bun run test:e2e:install
+```
+
+Uruchamia `playwright install --with-deps chromium webkit`: obie przeglądarki wraz z bibliotekami systemowymi, potrzebne tylko do testów end-to-end. Zobacz [Skrypty projektu](/docs/getting-started/project-scripts#testy-end-to-end).
+
 ## Porządki
 
 Trzy poziomy, zdefiniowane w `package.json`:
@@ -94,7 +101,7 @@ Trzy poziomy, zdefiniowane w `package.json`:
 | `bun run clean:deep`     | To, co powyżej, oraz `node_modules`                                                                                                                      |
 | `bun run clean:hardcore` | To, co powyżej, oraz `bun.lock` i `opensrc`                                                                                                              |
 
-Zwróć uwagę, że `bun run clean` usuwa katalog `.wrangler`, w którym żyje lokalny, symulowany stan D1, R2 i KV. Po takim wyczyszczeniu lokalne uruchomienie znowu startuje z pustą bazą danych.
+Zwróć uwagę, że `bun run clean` usuwa katalog `.wrangler`, w którym żyje lokalny, symulowany stan D1, R2 i KV, w tym baza testów end-to-end w `.wrangler/test`. Po takim wyczyszczeniu lokalne uruchomienie znowu startuje z pustą bazą danych, a `bun run db:reset:test` odtwarza bazę testów end-to-end.
 
 ## Dalej
 

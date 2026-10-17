@@ -3,7 +3,9 @@ title: "Add a use case"
 description: "Add one operation: a server function with its middleware, validator, query or mutation options, audit trail and cache invalidation."
 ---
 
-A use case is one operation on one module. It lives in `src/modules/{feature}/use-cases/{verb-noun}.ts` and exports two things: the server function, and the TanStack Query options that route loaders and components use to call it. Nothing else in the repository builds its own `queryOptions` for a module's data — the module owns them.
+A use case is one operation on one module. It lives in `src/modules/{feature}/use-cases/{verb-noun}.ts` and normally exports two things: the server function, and the TanStack Query options that route loaders and components use to call it. Nothing else in the repository builds its own `queryOptions` for a module's data — the module owns them.
+
+Two variations exist. 21 of the 128 `{verb-noun}.ts` files export no query or mutation options, because their callers invoke the function directly — `create-category.ts`, for example, is wrapped in the category form provider's own `useMutation`. An operation that only other server code calls — a webhook, a queue consumer, the retention run — is not a server function at all but a plain async function in `{verb-noun}.server.ts`; [Add a module](/docs/guides/add-a-module) describes those.
 
 Read [Server functions](/docs/guides/server-functions) for the middleware, error and context details this page uses.
 
@@ -79,7 +81,42 @@ export const getAdminProductsPageQuery = (input: Product["adminProductsPageInput
   })
 ```
 
-Its handler turns the page number into offset/limit with `listPaginationParamsFromPage` and wraps the result with `buildListPaginationResult`, both from `src/modules/_core/utils/pagination.ts`. The result carries `items`, `total`, `limit`, `offset` and `hasMore`, which is what the data grid's manual pagination expects.
+Its handler:
+
+```ts
+.handler(async ({ data }) => {
+  const { timeZone } = await resolveRequestDisplayPreferences()
+  const params = buildAdminProductsListParams(data, timeZone)
+  const { rows, total } = await productGetAdminProductsPage(params)
+  const aggregates = await loadAdminListAggregates(rows)
+  const items = rows.map((row) => toAdminProductListItem(row, aggregates.statsByProductId, aggregates.skuSummaryByProductId))
+
+  return buildListPaginationResult(items, total, params)
+})
+```
+
+`buildAdminProductsListParams`, defined in the same file, turns the page number into offset/limit with `listPaginationParamsFromPage` and adds the filters; `buildListPaginationResult` wraps the rows. Both helpers come from `src/modules/_core/utils/pagination.ts`. The result carries `items`, `total`, `limit`, `offset` and `hasMore`, which is what the data grid's manual pagination expects.
+
+### Date filters use the admin's time zone
+
+A date column filter (`dateColumnFilterField`, or `dateTimeColumnFilterField` where the minute matters, as in the audit log) arrives as a calendar day or a wall-clock minute with no zone. "Created on 3 March" means 3 March where the admin is, not in UTC, so a handler that filters by date does two things:
+
+1. It calls `resolveRequestDisplayPreferences()` from `src/integrations/use-intl/i18n.display-preferences.ts`, a `createServerOnlyFn` that returns `{ formatLocale, timeZone }` for the current request: the signed-in user's saved preferences, otherwise the ones detected from the request (for the zone: the `marte_time_zone` cookie, then the time zone Cloudflare reports for the request, then `UTC`).
+2. It passes `timeZone` down to the accessor, which builds the condition with `buildAdminDateTimeFilterSql(column, filter, timeZone)` from `src/modules/_core/utils/datetime-column-filter.server.ts`, as `product.accessors.ts` does:
+
+```ts
+if (params.createdAt !== undefined) {
+  conditions.push(buildAdminDateTimeFilterSql(product.createdAt, params.createdAt, params.timeZone))
+}
+```
+
+`buildAdminDateTimeFilterSql` turns each day into the instant it starts and the instant the next day starts in that zone, so "on", "before", "after" and "between" match the admin's calendar. Do not compare a filter against UTC midnight yourself.
+
+Eleven admin use cases call `resolveRequestDisplayPreferences()`. The orders, products, customers and audit-log list pages and the order, product and customer exports pass the zone into their date filters; `src/modules/audit-log/use-cases/list-audit-logs.ts` also hands the whole `preferences` object to `toAdminAuditListItem` to format each row. The dashboard snapshot, the dashboard chart range, the audit-log stats and the customer detail use the zone for their day and month boundaries. Tests replace the module with the fixture in `src/platform/testing/mocks/display-preferences.ts`, which answers `{ formatLocale: "pl-PL", timeZone: "Europe/Warsaw" }`:
+
+```ts
+vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
+```
 
 ## Write a mutation
 
@@ -136,8 +173,8 @@ return { handle: data.handle, id }
 
 Three obligations:
 
-1. **Uniqueness and referential checks first.** A duplicate handle throws `AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)`; a missing parent throws `AppError(ERROR_CODES.VALIDATION, CATEGORY_ERROR_CODES.INVALID_PARENT)`. The second argument is a module-specific code the form uses to attach the error to the right field.
-2. **Realtime invalidation.** `scheduleCategoryCatalogInvalidation()` from `src/integrations/realtime-invalidation/realtime-invalidation.catalog.server.ts` publishes the admin and storefront query-key prefixes to the `RealtimeInvalidationHub` Durable Object, so every other open tab refetches. The other helpers in that file are `scheduleProductCatalogInvalidation`, `scheduleCollectionCatalogInvalidation`, `scheduleProductAttributeCatalogInvalidation`, `scheduleAdminCustomersInvalidation` and `scheduleAdminOrdersInvalidation`.
+1. **Uniqueness and referential checks first.** A duplicate handle throws `AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)`; a missing parent throws `AppError(ERROR_CODES.VALIDATION, CATEGORY_ERROR_CODES.INVALID_PARENT)`. The second argument is a module-specific reason. The category form attaches the error to the right field by the first argument, the code: `CONFLICT` marks `handle`, `VALIDATION` marks `parentId`.
+2. **Realtime invalidation.** `scheduleCategoryCatalogInvalidation()` from `src/integrations/realtime-invalidation/realtime-invalidation.catalog.server.ts` publishes the admin and storefront query-key prefixes to the `RealtimeInvalidationHub` Durable Object, so every other open tab refetches. The other helpers in that file are `scheduleProductCatalogInvalidation`, `scheduleCollectionCatalogInvalidation`, `scheduleContentPageInvalidation`, `scheduleProductAttributeCatalogInvalidation`, `scheduleAdminCustomersInvalidation`, `scheduleAdminNewsletterSubscribersInvalidation`, `scheduleAdminAuditLogInvalidation`, `scheduleAdminOrdersInvalidation` (which publishes `ORDER_CHANGE_ADMIN_QUERY_KEYS`, the orders and dashboard prefixes) and `scheduleSalesStatusInvalidation`. Each wraps one call to `scheduleRealtimeInvalidation({ admin, storefront })` from `realtime-invalidation.publish.server.ts`, which a use case can also call directly with its own keys, as `send-newsletter-campaign.ts` does. A tab only refetches keys that fall under its subscription list — `ADMIN_REALTIME_QUERY_PREFIXES` or `STOREFRONT_REALTIME_QUERY_PREFIXES` in `realtime-invalidation.subscriptions.ts` — so a new module's prefix has to be added there too. See [Realtime invalidation](/docs/architecture/realtime-invalidation).
 3. **Audit trail.** `recordCatalogCategoryCreatedAudit(...)` from `src/modules/audit-log/audit-log.events.server.ts` enqueues a message on the `AUDIT_LOG_QUEUE` binding through `scheduleBackgroundWork`, which hands it to the Worker's `waitUntil`. Neither call is awaited, and neither can fail the request.
 
 Both are fire-and-forget by design. Do not `await` them and do not wrap them in `try`.
@@ -149,6 +186,18 @@ Spread the exported options. A query in a component uses `useSuspenseQuery` when
 ```tsx
 const { data: categories, isFetching } = useSuspenseQuery(getAdminCategoriesQuery())
 ```
+
+Handlers usually return raw values — `Date` timestamps, prices in minor units — and the component formats them with the viewer's display preferences, which are separate from the interface language. `src/hooks/use-display-format.ts` provides `useFormatter()`, a use-intl formatter built for the viewer's format locale and time zone (import it from this file, not from `use-intl`), and `useFormatLocale()`, the locale string that `formatPrice(amountInMinorUnits, currency, locale)` from `src/modules/_core/utils/currency.ts` takes. `src/presentation/components/custom/checkout/components/checkout-success.tsx` uses both:
+
+```tsx
+const format = useFormatter()
+const formatLocale = useFormatLocale()
+
+<p className="mt-1 text-sm">{format.dateTime(order.createdAt, { day: "numeric", month: "long", year: "numeric" })}</p>
+<SummaryRow label={t("subtotalLabel")} value={formatPrice(order.subtotalMinorUnits, order.currencyCode, formatLocale)} />
+```
+
+A handler that has to produce formatted text itself takes the locale and zone from `resolveRequestDisplayPreferences()`, as `getAdminCustomer` does for the customer's join date.
 
 A mutation spreads `mutationOptions`, translates the error and invalidates only what changed:
 
@@ -167,7 +216,29 @@ const setDefault = useMutation({
 })
 ```
 
-`useActionError` in `src/hooks/use-action-error.ts` maps an `ERROR_CODES` value to `errors.action.<CODE>`, a Better Auth error key to `pages.auth.errors.<key>`, a Zod or validation error to `errors.action.VALIDATION`, and anything unrecognised to `errors.action.INTERNAL_ERROR`. Never show `error.message` directly.
+`useActionError` in `src/hooks/use-action-error.ts` reads the error's `message`: an `ERROR_CODES` value becomes `errors.action.<CODE>`, and a Better Auth message key (what `AppError(AUTH_API_ERROR, key)` carries) becomes `pages.auth.errors.<key>`. An error named `ZodError` or `ValidationError` becomes `errors.action.VALIDATION`, an error whose `code` is a Better Auth error code becomes its `pages.auth.errors` entry, and anything else becomes `errors.action.INTERNAL_ERROR`. Never show `error.message` directly.
+
+That order matters when the handler throws a module reason. `AppError(ERROR_CODES.CONFLICT, CATEGORY_ERROR_CODES.DUPLICATE_HANDLE)` arrives with `DUPLICATE_HANDLE` as its message, which `useActionError` does not know, so it would show the generic internal-error sentence. Branch on the reason and the code yourself before any generic fallback, as `src/presentation/components/custom/pages/admin/orders/hooks/use-order-row-actions.ts` does:
+
+```ts
+const resolveOrderActionErrorMessage = (error: Error, t: ReturnType<typeof useTranslations<"pages.admin.orders.rowActions">>): string => {
+  const code = errorCode(error)
+
+  if (code === ERROR_CODES.NOT_FOUND) {
+    return t("toast.notFoundDescription")
+  }
+
+  if (error.message === ORDER_ERROR_CODES.OPEN_DISPUTE) {
+    return t("toast.openDisputeDescription")
+  }
+
+  if (code === ERROR_CODES.CONFLICT) {
+    return t("toast.invalidStateDescription")
+  }
+
+  return t("toast.errorDescription")
+}
+```
 
 ## Prefetch it in the route loader
 
@@ -186,21 +257,46 @@ const prefetchCategoriesQueries = async (context: { queryClient: QueryClient }):
 
 ## Test it
 
-Add a test under `use-cases/__test__/`. The pattern in `src/modules/address/use-cases/__test__/address-use-cases.test.ts` mocks the middleware module, the database module and the accessors module, and replaces `createServerFn` with a builder that injects a fixed `context.auth.user.id`:
+Add a test under `use-cases/__test__/`. There are two ways to reach the handler.
+
+**Stub the builder.** `src/modules/address/use-cases/__test__/address-use-cases.test.ts` and `src/modules/payment/use-cases/__test__/create-card-setup-intent.test.ts` mock the middleware module and the modules the handler calls, and replace `createServerFn` with a builder that injects a fixed `context.auth`. A mock of `auth.middleware` that provides `RATE_LIMITS` should mirror the real shape, `{ max, window }`, as `create-card-setup-intent.test.ts` does:
 
 ```ts
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({
-  RATE_LIMITS: { SENSITIVE: { limit: 5, windowSeconds: 60 } },
+  RATE_LIMITS: { SENSITIVE: { max: 3, window: 60 } },
   authorized: () => ({}),
-  withRateLimit: (...args: unknown[]) => {
-    middleware.rateLimitCalls.push(args)
-
-    return {}
-  },
+  withRateLimit: calls.withRateLimit,
 }))
 ```
 
-Cover the happy path, every code the handler throws, the fact that the caller's id comes from the session rather than the input, and — as that file does — that the rate limiter was configured with the expected kind and limits. See [Writing tests](/docs/guides/writing-tests).
+Three tests — `address-use-cases.test.ts`, `saved-payment-methods.test.ts` and `own-newsletter-subscription.test.ts` — still mock an invented `{ limit, windowSeconds }` shape; do not copy it.
+
+**Run the real chain.** To exercise the real middleware and validator, wrap the actual `createServerFn` with `withTestRpc` from `src/platform/testing/lib/server-function.ts` and stub only the session and the data layer, as `src/modules/discount/use-cases/__test__/create-discount.test.ts` does:
+
+```ts
+vi.mock(import("@tanstack/react-start"), async (importOriginal) => {
+  const actual = await importOriginal()
+  const { withTestRpc } = await import("~/src/platform/testing/lib/server-function")
+
+  return {
+    ...actual,
+    createServerFn: new Proxy(actual.createServerFn, {
+      apply: (target, thisArg, args: unknown[]) => withTestRpc(Reflect.apply(target, thisArg, args)),
+    }),
+  }
+})
+vi.mock(import("@tanstack/react-start/server"), async (importOriginal) => {
+  const actual = await importOriginal()
+
+  return { ...actual, getRequest: () => new Request("https://marte.test/admin/coupons") }
+})
+vi.mock("~/src/integrations/better-auth/auth.session", () => ({ getRequestSession: stubs.getRequestSession }))
+vi.mock("~/src/lib/rate-limit", () => ({}))
+```
+
+`withTestRpc` runs every call inside a TanStack Start request context, so `authorized(...)`, the validator and `withRequest`'s error translation behave as they do in the Worker: a `null` session gets `UNAUTHORIZED`, a customer gets `FORBIDDEN`, and an invalid input gets `VALIDATION`. Vitest runs with `import.meta.env.MODE` set to `"test"`, one of the modes in which admins must have two-factor authentication, so an admin session stub needs `twoFactorEnabled: true` or every permission check answers `FORBIDDEN`. The component test project's setup file, `src/platform/testing/setup.ts`, applies the same `withTestRpc` wrapper to every component test.
+
+Cover the happy path, every code the handler throws, the fact that the caller's id comes from the session rather than the input, and that the rate limiter was configured with the expected kind and limits. See [Writing tests](/docs/guides/writing-tests).
 
 ## Related guides
 

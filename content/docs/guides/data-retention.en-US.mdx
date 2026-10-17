@@ -31,6 +31,8 @@ The checkout row is kept, with its status, delivery method, discount and timesta
 - The `address` rows it points at are deleted when no account owns them (`user_id` is `NULL`), and `shipping_address_id` and `billing_address_id` become `NULL`. An address a signed-in customer saved to their account stays with the account.
 - Any `discount_claim` row the checkout still holds is deleted. The release normally removes it already; one left behind by a release that failed would otherwise hold a use of the code, and the customer's e-mail address, for good.
 
+The anonymisation leaves `client_address` as it is. That column holds the visitor's IP address, which `handleCreateCheckoutSession` stores so that `countOpenCheckouts` can limit how many checkouts one visitor holds open. The release batch sets it to `NULL` when it marks a checkout `failed`, and the order batch does the same when it marks one `completed`, so a checkout that never opened a payment keeps it after the anonymisation.
+
 An anonymised checkout has an empty `email`, which is how the next run knows to pass it over.
 
 ## What it never touches
@@ -60,9 +62,12 @@ The trigger calls the `scheduled` handler in `src/server.ts`, next to `fetch` an
 
 ```ts
 async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  const { enforceRetentionPeriods } = await import("~/src/lib/retention")
   await enforceRetentionPeriods(new Date(controller.scheduledTime))
 },
 ```
+
+The handler imports `src/lib/retention.ts` only when a run starts, the same way `queue` imports its consumers.
 
 `enforceRetentionPeriods` in `src/lib/retention.ts` holds the periods, `RETENTION_DAYS` and `RETENTION_MONTHS`, turns them into cut-off dates from the time the run was scheduled for, and runs one use case per kind of row:
 

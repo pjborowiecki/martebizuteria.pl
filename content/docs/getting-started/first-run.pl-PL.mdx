@@ -34,20 +34,25 @@ Warto to powtórzyć, bo zaskakuje: środowiska `development` i `preview` w `wra
 
 Dwa ostrzeżenia z tym związane:
 
-- **Nie uruchamiaj `bun run db:seed:preview` ani `db:seed:production` na bazie z prawdziwymi danymi.** Oba skrypty wykonują `wrangler d1 execute … --remote` na bazie produkcyjnej lub preview. Pliki SQL w `src/integrations/drizzle-orm/seeds/` używają `INSERT OR IGNORE`, więc nie nadpiszą wierszy o tych samych identyfikatorach, ale nie są utrzymywane w zgodzie z żywym katalogiem i ich uruchomienie nie jest operacją tylko do odczytu.
+- **Nie uruchamiaj `bun run db:seed:preview` ani `db:seed:production` na bazie z prawdziwymi danymi.** Oba skrypty wykonują `wrangler d1 execute … --remote` na bazie produkcyjnej lub preview. Tylko `delivery-methods.sql` w `src/integrations/drizzle-orm/seeds/` używa `INSERT OR IGNORE`. Pozostałe dziesięć najpierw usuwa (`DELETE`) wiersze kolidujące z danymi startowymi — kategorię, kolekcję, atrybut lub produkt z uchwytem z danych startowych, ale innym identyfikatorem, wariant z ich SKU oraz zdjęcia, stany magazynowe, wartości atrybutów i powiązania z kategoriami i kolekcjami dwóch produktów startowych — a potem wstawia dane z `ON CONFLICT(id) DO UPDATE` albo `INSERT OR REPLACE`, co nadpisuje każdą zmianę wprowadzoną w panelu w wierszu startowym. Nie są utrzymywane w zgodzie z żywym katalogiem. `bun run db:seed:test` wczytuje te same pliki do lokalnej bazy testów end-to-end, gdzie nie robi to szkody.
 - `bun run db:push:*` nakłada zmiany schematu bezpośrednio, bez pliku migracji. Do wszystkiego, co ma zostać w repozytorium, użyj `bun run db:generate` i skryptów migracyjnych.
 
 ## Tworzenie konta
 
-Nie ma konta tworzonego przez seed. Zarejestruj się pod `/auth/sign-up`, używając adresu e-mail, do którego masz dostęp, bo weryfikacja jest obowiązkowa:
+Zdalne bazy nie mają kont z danych startowych; konta testowe ma tylko lokalna baza `test` testów end-to-end (zobacz [niżej](#lokalne-uruchomienie-z-danymi)). Zarejestruj się pod `/auth/sign-up`, używając adresu e-mail, do którego masz dostęp, bo weryfikacja jest obowiązkowa:
 
 ```ts
 emailAndPassword: {
   enabled: true,
+  maxPasswordLength: PASSWORD_MAX_LENGTH,
+  minPasswordLength: PASSWORD_MIN_LENGTH,
+  onPasswordReset: handlePasswordReset,
   requireEmailVerification: true,
+  revokeSessionsOnPasswordReset: true,
   sendResetPassword: sendResetPasswordEmail,
 },
 emailVerification: {
+  afterEmailVerification: handleEmailVerified,
   autoSignInAfterVerification: true,
   sendOnSignUp: true,
   sendVerificationEmail: sendVerifyEmail,
@@ -56,7 +61,7 @@ emailVerification: {
 
 Przy `sendOnSignUp: true` wiadomość weryfikacyjna wychodzi natychmiast, a `autoSignInAfterVerification: true` oznacza, że kliknięcie linku jednocześnie potwierdza adres i loguje użytkownika. Jeśli `RESEND_API_KEY` jest nieprawidłowy albo domena nadawcy nie jest zweryfikowana w Resend, nic nie dotrze; `bun run email:verify development` powie, który z tych przypadków zachodzi, a [Resend](/docs/integrations/resend#domena-nadawcy) wymienia rekordy DNS, których potrzebuje domena. Wiersz nadal istnieje w tabeli `user` z `email_verified` równym `0`, a odmowa jest w `/admin/audit` jako `email.failed`. Gdy tę samą odmowę dostanie e-mail newslettera, zamówienia albo o usunięciu konta, przez kolejne pięć minut rejestracja, zmiana hasła, ponowne wysłanie weryfikacji i zmiana adresu odpowiadają, że nie można teraz wysyłać e-maili. Gdy nadawca zacznie działać, zaloguj się na nowe konto: strona logowania odrzuci niepotwierdzony adres i zaproponuje **Wyślij link potwierdzający ponownie**.
 
-Logowanie przez Google pomija wiadomość weryfikacyjną, więc działająca aplikacja OAuth to szybsza droga, jeśli nadawca w Resend nie jest jeszcze gotowy. Gdy jednak nadasz temu kontu rolę administratora, będzie logować się wyłącznie hasłem, więc nadaj mu je przez **Nie pamiętasz hasła?**.
+Logowanie przez Google pomija wiadomość weryfikacyjną, więc działająca aplikacja OAuth to szybsza droga, jeśli nadawca w Resend nie jest jeszcze gotowy. Takie konto nie ma hasła. Po nadaniu mu roli administratora nadal może logować się przez Google, a hasło dodaje przyciskiem **Ustaw** obok hasła w sekcji bezpieczeństwa (`setAccountPassword`), który przyjmuje tylko sesję zalogowaną w ciągu ostatnich 24 godzin; o to hasło prosi włączenie uwierzytelniania dwuskładnikowego.
 
 ### Nadanie sobie roli administratora
 
@@ -79,7 +84,9 @@ bun run db:studio:development
 
 Otwórz tabelę `user`, znajdź swój wiersz, ustaw `role` na `admin`, a potem wyloguj się i zaloguj ponownie hasłem. Po zalogowaniu strażnik `/auth` odsyła administratora na `/admin`. Layout `/admin` używa `requireAdmin` z `src/integrations/better-auth/auth.routes.ts` jako swojego `beforeLoad`, a ten strażnik wywołuje `hasAdminAccess(user.role)`; klient wchodzący na `/admin` jest przekierowywany na `/account/overview`, a nie widzi błędu.
 
-Za pierwszym razem strażnik wyśle cię zamiast tego na `/admin/security`, bo panel wymaga uwierzytelniania dwuskładnikowego. Wybierz **Włącz**, potwierdź hasło, zeskanuj kod QR aplikacją uwierzytelniającą (albo wpisz klucz konfiguracyjny), wpisz sześciocyfrowy kod i zachowaj kody odzyskiwania, a potem **Przejdź do panelu administracyjnego**. Od tej pory logujesz się hasłem i kodem. Logowanie przez Google też działa, ale wtyczka `twoFactor` nie prosi na tej ścieżce o kod sklepu, więc konto Google powinno mieć włączoną weryfikację dwuetapową. Jeśli konto założono przez Google, nie ma ono jeszcze hasła: na tej samej stronie wybierz **Ustaw**, żeby je nadać, a dopiero potem **Włącz**. Później hasłem, uwierzytelnianiem dwuskładnikowym, zalogowanymi urządzeniami, językiem panelu i strefą czasową zarządzasz w **Ustawieniach** w pasku bocznym (zobacz [Ustawienia panelu](/docs/features/admin-settings)). Zobacz [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów).
+Na produkcji i w testowym buildzie testów end-to-end panel wymaga też uwierzytelniania dwuskładnikowego: `isAdminTwoFactorRequired` w `auth.access.ts` jest spełniony tylko w trybach `production` i `test`. W developmencie i na preview jest ono opcjonalne, a panel otwiera się bez niego.
+
+Tam, gdzie jest ono wymagane, strażnik za pierwszym razem wyśle cię zamiast tego na `/admin/security`. Wybierz **Włącz**, potwierdź hasło, zeskanuj kod QR aplikacją uwierzytelniającą (albo wpisz klucz konfiguracyjny), wpisz sześciocyfrowy kod i zachowaj kody odzyskiwania, a potem **Przejdź do panelu administracyjnego**. Od tej pory logujesz się hasłem i kodem albo przez Google: wtyczka `twoFactor` nie prosi na tej ścieżce o kod sklepu, więc jego miejsce zajmuje weryfikacja dwuetapowa samego konta Google; powinna być na tym koncie włączona. Jeśli konto założono przez Google, nie ma ono jeszcze hasła: na tej samej stronie wybierz **Ustaw**, żeby je nadać, a dopiero potem **Włącz**, bo włączenie uwierzytelniania dwuskładnikowego o nie prosi. Później hasłem, uwierzytelnianiem dwuskładnikowym, zalogowanymi urządzeniami, językiem panelu i strefą czasową zarządzasz w **Ustawieniach** w pasku bocznym (zobacz [Ustawienia panelu](/docs/features/admin-settings)). Zobacz [Better Auth](/docs/integrations/better-auth#uwierzytelnianie-dwuskładnikowe-administratorów).
 
 W D1 nadaje się rolę tylko pierwszej osobie z dostępem do panelu. Każda kolejna zakłada konto i potwierdza adres jak każdy klient, a potem osoba z dostępem do panelu nadaje temu kontu dostęp w **Ustawienia › Zespół**, gdzie można go też odebrać (zobacz [Ustawienia panelu: Zespół](/docs/features/admin-settings#zespół)). Ręczne ustawienie `role` omija zasady zespołu, dlatego zostaw je na pierwszą osobę albo na sytuację, w której sklep straci dostęp do konta ostatniej osoby z dostępem do panelu.
 
@@ -106,7 +113,7 @@ Bez nasłuchu proces zakupu wygląda tak, jakby zawieszał się na kroku płatno
 /dev/emails?template=order-confirmation&locale=pl-PL&format=text
 ```
 
-Dostępne identyfikatory to `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `order-withdrawal`, `order-withdrawal-notice`, `password-changed`, `payment-failed`, `reset-password` i `verify-email`. Handler zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdziwe, więc w zbudowanym Workerze ta trasa nie istnieje.
+Dostępne identyfikatory to `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `order-cancelled`, `order-confirmation`, `order-delivered`, `order-in-progress`, `order-refunded`, `order-shipped`, `order-tracking`, `order-withdrawal`, `order-withdrawal-notice`, `password-changed`, `payment-failed`, `reset-password` i `verify-email`. `order-in-progress`, `order-shipped`, `order-tracking` i `order-delivered` to e-maile o statusie wysyłane przez kolejne etapy realizacji w panelu: rozpoczęcie realizacji, nadanie paczki, numer przesyłki dodany lub zmieniony po e-mailu o wysyłce oraz doręczenie. Handler `GET` zwraca 404, jeśli `import.meta.env.DEV` nie jest prawdziwe, więc zbudowany Worker nie pokazuje podglądów.
 
 ## Lokalne uruchomienie buildu produkcyjnego
 
@@ -117,10 +124,20 @@ bun run start
 
 `start` serwuje build z `CLOUDFLARE_ENV=preview` pod adresem `http://127.0.0.1:3000`. Ponieważ `remoteBindings` w `vite.config.ts` włącza się wyłącznie dla `CLOUDFLARE_ENV=development`, to uruchomienie korzysta z lokalnych, symulowanych D1, R2 i KV z katalogu `.wrangler/state/` zamiast z zasobów zdalnych. Daje to odizolowane środowisko, ale startuje ono puste; `bun run db:migrate:local` nakłada migracje na lokalną bazę D1.
 
-To także jedyny lokalny sposób sprawdzenia zbudowanego artefaktu — `bun run build:preview` kończy się uruchomieniem `scripts/verify-build.ts`, czyli tej samej kontroli, którą wykonuje CI.
+`bun run build:preview` kończy się uruchomieniem `scripts/verify-build.ts`, czyli tej samej kontroli zbudowanego artefaktu, którą wykonuje CI.
+
+## Lokalne uruchomienie z danymi
+
+```sh
+bun run db:reset:test
+bun run build:test
+bun run start:test
+```
+
+Z tego uruchomienia korzystają testy end-to-end i tylko ono ma dane, nie dotykając żadnego zdalnego zasobu. `db:reset:test` usuwa `.wrangler/test`, nakłada migracje na lokalną bazę `martebizuteria-test` i uruchamia `scripts/seed-test.ts`, który wczytuje dane startowe katalogu i trzy konta z `e2e/data/accounts.ts`: administratora z już włączonym uwierzytelnianiem dwuskładnikowym, administratora bez niego i klienta, wszystkie z tym samym znanym hasłem i zweryfikowanymi adresami e-mail. `build:test` buduje z `--mode test` i `.env.test`, więc uwierzytelnianie dwuskładnikowe administratora jest wymagane jak na produkcji. `start:test` serwuje build pod `http://127.0.0.1:3000` przez `src/platform/testing/worker.ts`, który odpowiada za Stripe, Resend i InPost ShipX z emulatorów w pamięci. Zobacz [Testy](/docs/tooling/testing#testy-end-to-end).
 
 ## Powiązane
 
 - [Skrypty projektu](/docs/getting-started/project-scripts)
 - [Wdrożenie podglądu](/docs/getting-started/deploy-preview)
-- [Informacje referencyjne](/docs/reference) — pełna tabela tras
+- [Referencje](/docs/reference) — pełna tabela tras

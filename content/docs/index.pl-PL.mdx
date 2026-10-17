@@ -3,37 +3,37 @@ title: "Dokumentacja"
 description: "Architektura, poradniki, funkcje i informacje referencyjne sklepu M'Arte i jego panelu administracyjnego."
 ---
 
-M'Arte to kod źródłowy serwisu martebizuteria.pl: jedna aplikacja TanStack Start, która z jednego Cloudflare Workera obsługuje publiczny sklep, strefę konta klienta i panel administracyjny, wspierana przez D1, KV, R2, Durable Objects, Better Auth, Stripe, InPost, Resend, use-intl i Fumadocs.
+M'Arte to kod źródłowy serwisu martebizuteria.pl: jedna aplikacja TanStack Start, która z jednego Cloudflare Workera obsługuje publiczny sklep, strefę konta klienta i panel administracyjny, wspierana przez D1, KV, R2, Queues, Durable Objects, Better Auth, Stripe, InPost, Resend, use-intl i Fumadocs.
 
 Te strony dokumentują całe repozytorium: gdzie znajduje się każdy fragment kodu, jak przebiega przez niego żądanie, jak zachowuje się sklep i co zmienić, gdy trzeba coś dodać lub poprawić. Każda strona istnieje po polsku i po angielsku jako `<slug>.<locale>.mdx`, a polski jest językiem domyślnym, więc `/docs` podaje wersję polską, a `/en-US/docs` angielską.
 
 ## Od czego zacząć
 
-| Jeśli chcesz                                      | Przeczytaj                  |
-| ------------------------------------------------- | --------------------------- |
-| Zrozumieć, czym jest projekt i kto nim zarządza   | **Projekt**                 |
-| Uruchomić aplikację na swoim komputerze           | **Rozpoczęcie pracy**       |
-| Dowiedzieć się, gdzie znajduje się kod i dlaczego | **Architektura**            |
-| Poznać zachowanie konkretnej części sklepu        | **Funkcje**                 |
-| Wykonać konkretne zadanie krok po kroku           | **Poradniki**               |
-| Skonfigurować lub zdiagnozować adapter dostawcy   | **Integracje**              |
-| Ostylować stronę lub użyć gotowego komponentu     | **System UI**               |
-| Uruchomić kontrole, testy, budowanie i wdrożenie  | **Narzędzia**               |
-| Szybko coś sprawdzić                              | **Informacje referencyjne** |
+| Jeśli chcesz                                      | Przeczytaj         |
+| ------------------------------------------------- | ------------------ |
+| Zrozumieć, czym jest projekt i kto nim zarządza   | **Projekt**        |
+| Uruchomić aplikację na swoim komputerze           | **Pierwsze kroki** |
+| Dowiedzieć się, gdzie znajduje się kod i dlaczego | **Architektura**   |
+| Poznać zachowanie konkretnej części sklepu        | **Funkcje**        |
+| Wykonać konkretne zadanie krok po kroku           | **Przewodniki**    |
+| Skonfigurować lub zdiagnozować adapter dostawcy   | **Integracje**     |
+| Ostylować stronę lub użyć gotowego komponentu     | **System UI**      |
+| Uruchomić kontrole, testy, budowanie i wdrożenie  | **Narzędzia**      |
+| Szybko coś sprawdzić                              | **Referencje**     |
 
 ## Rozdziały
 
-| Rozdział                | Zawartość                                                                                                              |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Projekt                 | O sklepie, układ repozytorium, konwencje, współtworzenie, licencja                                                     |
-| Rozpoczęcie pracy       | Wymagania wstępne, instalacja, pliki środowiskowe, pierwsze uruchomienie, codzienne skrypty                            |
-| Architektura            | Trasy, moduły i przypadki użycia, integracje, warstwa prezentacji, cykl życia żądania, i18n, bezpieczeństwo            |
-| Funkcje                 | Katalog, koszyk, zamówienia i płatności, magazyn, konta, panel administracyjny, dziennik zdarzeń, aktualizacje na żywo |
-| Poradniki               | Dodawanie modułu i przypadku użycia, strony panelu, tabele danych, formularze, e-maile, komunikaty, migracje           |
-| Integracje              | TanStack Start, Better Auth, Drizzle i D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, GSAP                       |
-| System UI               | Tokeny projektowe, prymitywy shadcn, komponenty własne, style, czcionki, branding, e-maile                             |
-| Narzędzia               | Vite+, środowiska, Wrangler, projekty Vitest, pokrycie, hooki gita, procesy CI i wdrożenia                             |
-| Informacje referencyjne | Tabela tras, zmienne środowiskowe, katalogi komunikatów, schemat bazy, skrypty, słownik pojęć                          |
+| Rozdział       | Zawartość                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Projekt        | O sklepie, plan rozwoju, współtworzenie, licencja                                                                                                                                                                                                                                                                                                                                     |
+| Pierwsze kroki | Wymagania wstępne, instalacja, zmienne środowiskowe, pierwsze uruchomienie, skrypty projektu, wdrożenie podglądu                                                                                                                                                                                                                                                                      |
+| Architektura   | Struktura katalogów, warstwy i reguły zależności, moduły i przypadki użycia, warstwy prezentacji, integracji i platformy, cykl życia żądania, cache i SSR, internacjonalizacja, model bezpieczeństwa, unieważnianie w czasie rzeczywistym, architektura testów                                                                                                                        |
+| Funkcje        | Strona główna, katalog i wyszukiwanie, karta produktu, koszyk, kasa, płatności, zamówienia, stany magazynowe, wysyłka i dostawa, rabaty, konto, pulpit admina, katalog i klienci w panelu, dziennik zdarzeń, strony prawne, e-maile transakcyjne, internacjonalizacja                                                                                                                 |
+| Przewodniki    | Moduły, przypadki użycia, funkcje serwerowe, formularze, strony panelu, tabele danych, stan w adresie URL, tłumaczenia, motyw i branding, migracje, dane startowe, testy, lista kontrolna bezpieczeństwa, debugowanie lokalne, wycofanie wdrożenia, monitorowanie i alerty, dostarczanie zdjęć, kopie zapasowe, okresy przechowywania danych, lista kontrolna przed startem sprzedaży |
+| Integracje     | TanStack Start i Query, Drizzle i D1, Better Auth, Stripe, InPost, Resend, Cloudflare R2, use-intl, Fumadocs, unieważnianie w czasie rzeczywistym, GSAP i Lenis                                                                                                                                                                                                                       |
+| System UI      | Motyw, fonty i branding, komponenty shadcn, tabela danych, wzorce kompozycji                                                                                                                                                                                                                                                                                                          |
+| Narzędzia      | Vite+, skrypty projektu, lint i formatowanie, testy w Vitest i Playwright, baza danych, CI/CD, konwencjonalne commity, umiejętności agentów                                                                                                                                                                                                                                           |
+| Referencje     | Konwencje, nazewnictwo plików, katalog modułów, trasy, środowisko i powiązania, uprawnienia, słownik, rozwiązywanie problemów, często zadawane pytania                                                                                                                                                                                                                                |
 
 ## Jak zorganizowana jest aplikacja
 
@@ -41,9 +41,11 @@ Te strony dokumentują całe repozytorium: gdzie znajduje się każdy fragment k
 
 `src/modules/{feature}` zawiera logikę funkcji. Każda funkcja trzyma swoje operacje w `use-cases/{verb-noun}.ts` i eksportuje funkcję serwerową razem z opcjami zapytania używanymi przez loadery i komponenty. `src/modules/_core` zawiera wspólne prymitywy, na których opierają się te przypadki użycia.
 
-`src/integrations/{vendor}` ukrywa każdą usługę zewnętrzną za niewielkim adapterem: Better Auth, Drizzle ORM nad D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, Fumadocs, MDXEditor, GSAP, Lenis oraz hub unieważniania w czasie rzeczywistym.
+`src/integrations/{vendor}` ukrywa każdą usługę zewnętrzną za niewielkim adapterem: Better Auth, Drizzle ORM nad D1, Cloudflare R2, Stripe, InPost, Resend, use-intl, TanStack Query, Fumadocs, MDXEditor, React Day Picker, GSAP, Lenis oraz hub unieważniania w czasie rzeczywistym.
 
-`src/presentation` odpowiada za całą warstwę wizualną: prymitywy `components/shadcn`, komponenty aplikacji `components/custom`, `styles` z warstwami Tailwind, `theme`, `branding`, `emails` oraz zasoby dokumentu. `src/platform/testing` zawiera wspólną infrastrukturę testów, `src/lib` niewielkie pomocniki w zasięgu żądania, `src/durable-objects` obiekty czasu rzeczywistego i limitowania zapytań, a `src/providers` dostawców kontekstu React.
+`src/presentation` odpowiada za całą warstwę wizualną: prymitywy `components/shadcn`, komponenty aplikacji `components/custom`, `styles` z warstwami Tailwind, `theme`, `branding`, `emails` oraz zasoby dokumentu. `src/platform/testing` zawiera wspólną infrastrukturę testów, `src/lib` niewielkie pomocniki w zasięgu żądania, `src/durable-objects` jedyny Durable Object, `RealtimeInvalidationHub`, a `src/providers` dostawców kontekstu React. Limity zapytań są liczone w tabeli D1 `rate_limit`, nie w Durable Object.
+
+`src/server.ts` to punkt wejścia Workera. Poza obsługą żądań odbiera kolejki dziennika zdarzeń i newslettera wraz z ich kolejkami martwych wiadomości, a jego procedura `scheduled` uruchamia codzienne czyszczenie danych po okresie retencji.
 
 Treść znajduje się poza `src`: `content/docs` zawiera te strony, a `messages/{locale}` katalogi komunikatów interfejsu. Strony prawne dla klientów i FAQ nie są plikami: to wiersze tabeli D1 `content_page`, edytowane w `/admin/content`.
 
@@ -53,4 +55,4 @@ Strony znajdują się w `content/docs` jako `<slug>.<locale>.mdx`, po jednym pli
 
 `bun run content` ponownie generuje `.source/` z kolekcji `content/docs`, a `bun run dev` robi to automatycznie. Po edycji `bun run format` i `bun run check` utrzymują porządek w repozytorium, a `bun run test` obejmuje źródło dokumentacji razem z resztą kodu.
 
-Linki wewnętrzne, takie jak `/docs/architecture/routing`, automatycznie otrzymują prefiks języka czytelnika, więc zawsze pisz je bez niego.
+Linki wewnętrzne, takie jak `/docs/architecture/layering`, automatycznie otrzymują prefiks języka czytelnika, więc zawsze pisz je bez niego.

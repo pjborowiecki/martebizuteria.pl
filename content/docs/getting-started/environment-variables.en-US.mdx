@@ -5,13 +5,13 @@ description: "The .env files, which values reach the browser, and which are uplo
 
 ## The environment files
 
-| File               | Tracked by Git | Loaded by                                                                                                                                                                                                         |
-| ------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.env.example`     | Yes            | Nothing — it is the template you copy                                                                                                                                                                             |
-| `.env.development` | No             | `bun run dev` (Vite mode `development`, `CLOUDFLARE_ENV=development`), `bun run email:verify development` and `scripts/verify-stripe-keys.ts development`                                                         |
-| `.env.preview`     | No             | `bun run build:preview`, `bun run start`, `scripts/verify-stripe-keys.ts preview`, `scripts/verify-email-sender.ts preview` and `scripts/prepare-deploy-secrets.ts preview`; `deploy:preview` runs the last three |
-| `.env.production`  | No             | `bun run build:production`, `scripts/verify-stripe-keys.ts production`, `scripts/verify-email-sender.ts production` and `scripts/prepare-deploy-secrets.ts production`; `deploy:production` runs all four         |
-| `.env.test`        | Yes            | `vite.config.ts` via `loadEnv("test", …)` for the Vitest projects, and CI builds                                                                                                                                  |
+| File               | Tracked by Git | Loaded by                                                                                                                                                                                                                                                                                                         |
+| ------------------ | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.env.example`     | Yes            | Nothing — it is the template you copy                                                                                                                                                                                                                                                                             |
+| `.env.development` | No             | `bun run dev` (Vite mode `development`, `CLOUDFLARE_ENV=development`), `bun run email:verify development` and `scripts/verify-stripe-keys.ts development`                                                                                                                                                         |
+| `.env.preview`     | No             | `bun run build:preview`, `bun run start`, `scripts/verify-stripe-keys.ts preview`, `scripts/verify-email-sender.ts preview` and `scripts/prepare-deploy-secrets.ts preview`; `deploy:preview` runs all of them except `start`                                                                                     |
+| `.env.production`  | No             | `bun run build:production`, `scripts/verify-stripe-keys.ts production`, `scripts/verify-email-sender.ts production` and `scripts/prepare-deploy-secrets.ts production`; `deploy:production` runs all four                                                                                                         |
+| `.env.test`        | Yes            | `vite.config.ts` via `loadEnv("test", …)` for the Vitest projects; `bun run build:test` (Vite mode `test`) for the end-to-end test Worker; `scripts/seed-test.ts`, which encrypts the seeded admin's two-factor secret with its `AUTH_SECRET`; and CI, which copies it over `.env.development` and `.env.preview` |
 
 `.gitignore` implements exactly that:
 
@@ -93,21 +93,34 @@ The three `CLOUDFLARE_*` values are read through `process.env` in the Drizzle co
 },
 ```
 
-`APP_ENV` is read in `src/server.ts` to decide what `robots.txt` says, and `scripts/verify-build.ts` asserts that the built Worker's `APP_ENV` matches the environment you asked for. That is the guard that stops a preview build being deployed to production.
+`APP_ENV` is `development`, `preview`, `test` or `production`, and the server reads it wherever behaviour differs by environment:
+
+| Reader                                                                                                      | What `APP_ENV` decides                                                                                                                                                                                                   |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/server.ts`, `generateRobotsTxt` in `src/lib/seo.ts`                                                    | Only `production` lets crawlers in through `robots.txt`                                                                                                                                                                  |
+| `withSecurityHeaders` in `src/lib/security-headers.ts`                                                      | `Strict-Transport-Security` is sent over HTTPS everywhere but `development` and `test`                                                                                                                                   |
+| `src/routes/api/webhooks.stripe.ts`                                                                         | `production` accepts only live Stripe events and every other environment only test events (`requiredStripeMode`)                                                                                                         |
+| `src/integrations/stripe/stripe.deployment.ts`                                                              | The `deployment` metadata stamped on each Checkout Session (`martebizuteria-preview` for development and preview, `martebizuteria-test`, `martebizuteria`), and the check that ignores test events of another deployment |
+| `src/integrations/inpost/inpost.shipx.server.ts`                                                            | `production` books real parcels through ShipX; every other environment uses InPost's sandbox                                                                                                                             |
+| `resend.availability.server.ts`, `resend.public-email-limits.server.ts`, `src/lib/incident-alert.server.ts` | The prefix of their KV and rate-limit keys, so development and preview, which share KV and D1, keep separate e-mail sender flags, e-mail caps and alert deduplication; incident alerts also name the environment         |
+
+`scripts/verify-build.ts` asserts that the built Worker's `APP_ENV` matches the environment you asked for. That is the guard that stops a preview build being deployed to production.
 
 ## Values that live in code, not in the environment
 
 Several settings people expect to find in `.env` are constants:
 
-| What                                                                         | Where                                                                                                            |
-| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, OG image, theme colour, R2 fallback URL | `src/presentation/branding/app.ts`                                                                               |
-| Legal name, NIP, REGON, address, contact e-mail, phone                       | Not in code: the `store_setting` row in D1, edited under Settings → Store details (`/admin/settings/store`)      |
-| Pickup opening hours                                                         | `deliverySubsteps.inStoreText` in `messages/*/pages.checkout.json`, and the terms and FAQ under `/admin/content` |
-| Facebook and Instagram links                                                 | `src/presentation/branding/socials.ts`                                                                           |
-| Hosts each mode serves: auth, email links, the Stripe return URL             | `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts`                                                          |
-| Supported locales, default locale, locale cookie name, timezones             | `src/integrations/use-intl/i18n.config.ts`                                                                       |
-| D1, R2, KV and Queue identifiers, Worker names, custom domains               | `wrangler.jsonc`                                                                                                 |
+| What                                                                                                                      | Where                                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `APP_NAME`, `APP_DOMAIN`, `APP_URL`, OG image, theme colour, R2 fallback URL                                              | `src/presentation/branding/app.ts`                                                                               |
+| Legal name, NIP, REGON, address, contact e-mail, phone                                                                    | Not in code: the `store_setting` row in D1, edited under Settings → Store details (`/admin/settings/store`)      |
+| Pickup opening hours                                                                                                      | `deliverySubsteps.inStoreText` in `messages/*/pages.checkout.json`, and the terms and FAQ under `/admin/content` |
+| Facebook and Instagram links                                                                                              | `src/presentation/branding/socials.ts`                                                                           |
+| Hosts each mode serves: auth, email links, the Stripe return URL                                                          | `HOSTS_BY_MODE` in `src/modules/_core/constants/api.ts`                                                          |
+| Supported locales, default locale, locale cookie name, the shop's `Europe/Warsaw` time zone                               | `src/integrations/use-intl/i18n.config.ts`                                                                       |
+| Time zones users can choose (`TIMEZONES`)                                                                                 | `src/modules/_core/constants/timezone.ts`                                                                        |
+| Format locales users can choose (`FORMAT_LOCALES`), the `marte_time_zone` cookie and how display preferences are detected | `src/integrations/use-intl/i18n.display.ts`                                                                      |
+| D1, R2, KV and Queue identifiers, Worker names, custom domains                                                            | `wrangler.jsonc`                                                                                                 |
 
 `appHostsForMode` is the one to remember when you change domains:
 
@@ -125,17 +138,17 @@ const HOSTS_BY_MODE: Readonly<Record<string, readonly string[]>> = {
 const LOCAL_HOSTS = ["localhost:3000", "127.0.0.1:3000"]
 ```
 
-Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. A host missing from this list will have its auth requests rejected, which looks like sign-in silently failing on a new domain. `WORKERS_DEV_HOSTS` is also where the deploy's live-site check sends its requests, so a Worker renamed in `wrangler.jsonc` needs its new `workers.dev` name there. Every other host of a deployed mode is attached to that Worker as a custom domain by `routes` in `wrangler.jsonc`, so a new domain goes into both files, and `src/modules/_core/constants/__test__/api.test.ts` fails until they agree.
+Better Auth is configured with `baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) }`. A host missing from this list will have its auth requests rejected, which looks like sign-in silently failing on a new domain. `WORKERS_DEV_HOSTS` is also where the deploy's live-site check sends its requests, so a Worker renamed in `wrangler.jsonc` needs its new `workers.dev` name there. Preview's other host, `preview.martebizuteria.pl`, is attached to the preview Worker as a custom domain by `routes` in `wrangler.jsonc`, so a new preview domain goes into both files, and `src/modules/_core/constants/__test__/api.test.ts` fails until they agree. Production keeps `routes: []` until the shop goes live, which the same test asserts, so for now it is served only at its `workers.dev` name even though `martebizuteria.pl` is already in its host list.
 
 `resolveRequestOrigin` (`src/lib/request.ts`) checks the same list before the app builds a link into an email or a Stripe `return_url`, so emails link back to the host the customer or admin used: `localhost:3000` or `127.0.0.1:3000` locally, the preview host on preview, and `martebizuteria.pl` or the production `workers.dev` name in production. A request on a host missing from the list is refused with `FORBIDDEN`. The order confirmation is sent from the Stripe webhook and takes the origin of the session's `return_url`, which `resolveDeploymentOrigin` checks against the hosts of every mode. `LOCAL_HOSTS` pins port 3000, which Vite's `strictPort` already enforces for the dev server.
 
 ## Provider callbacks to register
 
-| Provider | URL                                       | Verified with                                                     |
-| -------- | ----------------------------------------- | ----------------------------------------------------------------- |
-| Google   | `https://<host>/api/auth/callback/google` | Client id and secret                                              |
-| Stripe   | `https://<host>/api/webhooks/stripe`      | `STRIPE_WEBHOOK_SECRET`                                           |
-| InPost   | `https://<host>/api/webhooks/inpost`      | Not verified; the route reads each named shipment back from ShipX |
+| Provider | URL                                                                   | Verified with                                                     |
+| -------- | --------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Google   | `https://<host>/api/auth/callback/google`                             | Client id and secret                                              |
+| Stripe   | `https://<host>/api/webhooks/stripe`, API version `2026-09-30.endive` | `STRIPE_WEBHOOK_SECRET`                                           |
+| InPost   | `https://<host>/api/webhooks/inpost`                                  | Not verified; the route reads each named shipment back from ShipX |
 
 On a deployed Worker, `<host>` is its `workers.dev` name, or on preview its custom domain `preview.martebizuteria.pl`; production gets `martebizuteria.pl` when the shop goes live. The auth handler is `src/routes/api/auth.$.ts`, mounted at `/api/auth/$`; the Stripe handler is `src/routes/api/webhooks.stripe.ts` and accepts `POST` only. The InPost handler is `src/routes/api/webhooks.inpost.ts`; it answers `GET` with 200 for InPost Manager's address check and acts on a `POST`, up to 120 a minute from one address. The host the Stripe endpoint is registered on does not change any email: the order confirmation links to the address the checkout was made on, which the session's `return_url` carries.
 

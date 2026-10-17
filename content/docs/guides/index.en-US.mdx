@@ -3,7 +3,7 @@ title: "Guides"
 description: "Task-shaped recipes for changing M'Arte: modules, use cases, admin pages, data grids, forms, messages, migrations, tests and deployment safety."
 ---
 
-Every page here is a recipe for one concrete job, written against the code as it stands. Where a guide shows a file, that file exists; where it shows a command, that command is in `package.json`. If you need the wider picture first — how a request travels, why the layers are split the way they are — read [Architecture](/docs/architecture) and come back.
+Every page here is a recipe for one concrete job, written against the code as it stands. Where a guide shows a file, that file exists; where it shows a `bun run` command, that script is in `package.json`; other commands, such as `vp exec wrangler ...`, call the tool directly. If you need the wider picture first — how a request travels, why the layers are split the way they are — read [Architecture](/docs/architecture) and come back.
 
 ## Pick a guide
 
@@ -35,27 +35,32 @@ Every page here is a recipe for one concrete job, written against the code as it
 Most changes in this repository touch four places, in this order:
 
 1. **The module** — `src/modules/{feature}/`. The Drizzle table, the Zod schemas, the constants (query keys, column limits, enum tuples), the inferred types, and the pure helpers.
-2. **The use case** — `src/modules/{feature}/use-cases/{verb-noun}.ts`. One operation per file: a `createServerFn` plus the `queryOptions` or `mutationOptions` that loaders and components spread.
+2. **The use case** — `src/modules/{feature}/use-cases/{verb-noun}.ts`. One operation per file: a `createServerFn` plus the `queryOptions` or `mutationOptions` that loaders and components spread. Work that only other server code calls — an e-mail send, a scheduled clean-up — lives beside it in `{verb-noun}.server.ts`, with no server function and no query options.
 3. **The presentation layer** — `src/presentation/`. Components, hooks, styles, branding, email templates. Nothing in here talks to the database directly; it imports use cases.
 4. **The route** — `src/routes/`. A file route that guards access, prefetches queries in its `loader`, declares its message namespaces in `staticData.namespaces`, and renders a presentation component.
 
-Tests live beside the code they cover in `__test__/`, named after the source file.
+Tests live beside the code they cover in `__test__/`, named after the source file. The suffix picks the Vitest project: `.integration.test.ts` for a suite that needs a database, `.component.test.tsx` (or `.ts`) for one that runs in jsdom, and a plain `.test.ts` for everything else, which runs in the `node` project.
 
 ## Rules that apply to every guide
 
-These are enforced by `bun run check`, not by review:
+`bun run check` enforces the lint, type and size rules below. No tool checks for comments, barrel files or a doc page missing in one language, so review keeps those:
 
-- **No comments in TypeScript or TSX.** Names and types carry the intent. Prose belongs in `.mdx` files like this one.
-- **No `any`, no `as never`, no `as unknown as`, no `@ts-nocheck`, no lint suppressions.** `vite.config.ts` turns all six oxlint categories — including `nursery` — into errors, with type-aware linting and `denyWarnings: true`. An unused disable directive is itself an error.
+- **No comments in TypeScript or TSX.** Names and types carry the intent. Prose belongs in `.mdx` files like this one. No lint rule looks for comments; this is a review rule.
+- **No `any`, no `as never`, no `as unknown as`, no `@ts-nocheck`, no lint suppressions.** `vite.config.ts` turns all six enabled oxlint categories — `correctness`, `nursery`, `pedantic`, `perf`, `style` and `suspicious` — into errors, with type-aware linting, type checking and `denyWarnings: true`. The type-aware `typescript/no-unsafe-*` rules reject a value typed `any` wherever it is returned, assigned, passed or called, `typescript/no-unsafe-type-assertion` rejects narrowing casts such as `as never` and `as unknown as`, and `typescript/ban-ts-comment` rejects `@ts-nocheck`. An unused disable directive is itself an error (`reportUnusedDisableDirectives: "error"`).
+- **Narrow overrides, not suppressions.** The few places where a shared rule does not fit are listed in `overrides` in `vite.config.ts`, each scoped to the files it covers: tests, `__test__/` folders and `src/platform/testing/**` turn off `no-await-in-loop`, `no-magic-numbers` and `unicorn/no-null`; `src/platform/testing/mocks/**` turns off `require-await`, `typescript/require-await` and `typescript/no-unsafe-type-assertion` (the D1 mock returns its client `as unknown as D1Database` under that override); `src/presentation/**` and `src/hooks/**` turn off `typescript/consistent-return`; `src/routes/**` turns off `sort-keys`; and `vite.config.ts` itself turns off `max-lines`. `scripts/`, `e2e/`, `*.d.ts`, `src/routeTree.gen.ts` and the migrations are not linted at all. A new exception goes there, documented where it applies, never into a disable comment.
 - **Size limits.** 800 lines per file, 150 lines per function, 20 statements per function. When you hit one, extract a helper into a sibling file rather than loosening the rule.
 - **Import from the defining file.** There are no barrel files. `src/modules/_core` holds shared primitives, but each one is imported from its own path.
-- **Both locales, always.** Every message namespace exists in `messages/pl-PL/` and `messages/en-US/`; every doc page exists as `<slug>.pl-PL.mdx` and `<slug>.en-US.mdx`.
+- **Both locales, always.** Every message namespace exists in `messages/pl-PL/` and `messages/en-US/`; every doc page exists as `<slug>.pl-PL.mdx` and `<slug>.en-US.mdx`. For messages, `src/integrations/use-intl/__test__/i18n.messages.test.ts` checks that every English namespace file has a Polish file with at least its keys. Nothing compares the doc pages, so add both files in the same change.
 
 ## Before you open a pull request
 
 ```sh
-bun run check      # format, lint and type check
-bun run test       # all three Vitest projects
+bun run check            # format, lint and type check
+bun run test             # all three Vitest projects
+bun run build:preview    # the preview Worker build CI runs
+bun run test:e2e:pr      # the Playwright projects CI runs on a pull request
 ```
 
 `bun run check` wraps `vp check`, which formats with Oxfmt (including import group ordering and Tailwind class sorting), lints with Oxlint and type checks with TypeScript. `bun run test` runs the `node`, `integration` and `component` projects defined in `vite.config.ts`. The pre-commit hook in `.vite-hooks/pre-commit` runs `bun run check:pre-commit` over staged files, so a broken commit is usually caught before CI.
+
+The CI workflow (`.github/workflows/ci.yml`) runs `bun run check`, `bun run test:coverage` and `bun run build:preview` on every pull request, and the `chromium` and `chromium-shop-wide` Playwright projects against the local `test` Worker. `bun run test:e2e:pr` runs the same two projects; locally Playwright first runs `db:reset:test` and `build:test`, then serves the build with `start:test`, unless a server already answers on port 3000, which it reuses. See [Testing](/docs/tooling/testing) and [CI/CD](/docs/tooling/ci-cd).

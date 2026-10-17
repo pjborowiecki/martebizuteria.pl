@@ -29,6 +29,8 @@ if (environment === "production" && images.bucket_name === previewImages?.bucket
 
 `VITE_R2_URL` czytany jest dwa razy: serwer bierze go z sekretu Workera o tej nazwie, a do paczki przeglądarkowej trafia wpisany w czasie buildu. Obie wartości pochodzą z tego samego pliku `.env.<środowisko>` albo zmiennej w GitHubie, więc ustawia się go raz na środowisko.
 
+Gdy wartość jest pusta albo wciąż zawiera zastępczy host `your-production-cdn-domain.com`, `getAssetCdnBase` w `src/lib/url.ts` wraca do `DEFAULT_R2_PUBLIC_URL` z `src/presentation/branding/app.ts`, czyli `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev`, adresu `r2.dev` produkcyjnego bucketu — tak samo na serwerze, jak w przeglądarce. Z tym adresem przychodzi też `.env.example`. Środowisko development albo preview, które na nim zostanie, pokazuje zdjęcia z produkcji, a zdjęcie wysłane do `martebizuteria-preview` się nie wyświetla.
+
 ## Jak powstaje adres zdjęcia
 
 Baza przechowuje dwa kształty odwołania do zdjęcia i oba rozwiązywane są względem bieżącego `VITE_R2_URL`:
@@ -36,22 +38,24 @@ Baza przechowuje dwa kształty odwołania do zdjęcia i oba rozwiązywane są wz
 - **Klucz w buckecie**, na przykład `products/<sha256>.webp`. `uploadImageFn` odpowiada samym kluczem, a formularze panelu zapisują go w `product.thumbnail`, `product_image.url` i kolumnach `image` kategorii i kolekcji.
 - **Adres `r2.dev`**, na przykład `https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev/products/<sha256>.webp`. Tak wyglądają wiersze zapisane, zanim wysyłka zaczęła zapisywać klucze, i każdy plik seed.
 
-`resolveAssetURL` w `src/lib/url.ts` zamienia klucz na `${VITE_R2_URL}/<klucz>`, a adres `r2.dev` przenosi na `VITE_R2_URL`, zachowując jego ścieżkę, czyli klucz obiektu. Skierowanie `VITE_R2_URL` na inny host nie wymaga więc przepisywania zapisanych danych, a adresy `r2.dev` z plików seed działają w każdym środowisku. Każdy inny adres bezwzględny zostaje bez zmian.
+`resolveAssetURL` w `src/lib/url.ts` zamienia klucz, a także każdą inną wartość bez `http://` ani `https://`, na `${VITE_R2_URL}/<klucz>`, a adres `r2.dev` przenosi na `VITE_R2_URL`, zachowując jego ścieżkę, czyli klucz obiektu. Skierowanie `VITE_R2_URL` na inny host nie wymaga więc przepisywania zapisanych danych, a adresy `r2.dev` z plików seed działają w każdym środowisku. Każdy inny adres bezwzględny zostaje bez zmian.
 
 `getOptimizedImageUrl` w `src/lib/image.ts` decyduje następnie, jak przeglądarka go pobierze:
 
-| Rozwiązany adres leży na                       | Zdjęcie jest serwowane                                                                                                                                               |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Hoście z `VITE_R2_URL`, gdy to własna domena   | Zmniejszone na tym hoście: `https://images.martebizuteria.pl/cdn-cgi/image/width=600,height=750,quality=75,onerror=redirect,fit=cover,f=auto/products/<sha256>.webp` |
-| Hoście `r2.dev`                                | Tak, jak zapisane, w pełnym rozmiarze                                                                                                                                |
-| Hoście Unsplash                                | Tak, jak zapisane, bo Unsplash sam zmniejsza swoje zdjęcia                                                                                                           |
-| Każdym innym hoście albo jako ścieżka względna | Zmniejszone przez własny host sklepu, `martebizuteria.pl`, albo `VITE_IMAGE_CDN_DOMAIN`, gdy jest ustawiony                                                          |
+| Rozwiązany adres leży na                     | Zdjęcie jest serwowane                                                                                                                                               |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hoście z `VITE_R2_URL`, gdy to własna domena | Zmniejszone na tym hoście: `https://images.martebizuteria.pl/cdn-cgi/image/width=600,height=750,quality=75,onerror=redirect,fit=cover,f=auto/products/<sha256>.webp` |
+| Hoście `r2.dev`                              | Tak, jak zapisane, w pełnym rozmiarze                                                                                                                                |
+| Hoście Unsplash                              | Tak, jak zapisane, bo Unsplash sam zmniejsza swoje zdjęcia                                                                                                           |
+| Każdym innym hoście                          | Zmniejszone przez własny host sklepu, `martebizuteria.pl`, albo `VITE_IMAGE_CDN_DOMAIN`, gdy jest ustawiony, z pełnym adresem jako źródłem                           |
 
-Źródłem w adresie transformacji jest ścieżka obiektu na tym samym hoście, więc Cloudflare pobiera je z bucketu w tej samej strefie, a strefa nie potrzebuje zgody na zmniejszanie obrazów z innych źródeł. `<Image>` w `src/presentation/components/custom/image.tsx` przekazuje adres do `@unpic/react`, które rozpoznaje format `/cdn-cgi/image/` i buduje `srcset` z jedną szerokością na każdy próg, więc telefon pobiera plik na miarę telefonu. `fit=cover` przycina każdy plik do szerokości i wysokości, o które prosi komponent.
+Tabela opisuje adres, który zapisuje sklep. To, czy przeglądarka go załaduje, zależy od Content-Security-Policy strony, której `img-src` w `src/lib/security-headers.ts` wymienia `'self'`, `data:`, `blob:`, origin `DEFAULT_R2_PUBLIC_URL` i origin `VITE_R2_URL`. Adresu Unsplash wśród nich nie ma, a zdjęcie przekształcane przez `martebizuteria.pl` jest dopuszczane tylko na stronie serwowanej z tego hosta. Trzymaj zdjęcia w buckecie.
+
+Dla zdjęcia na hoście z `VITE_R2_URL` źródłem w adresie transformacji jest ścieżka obiektu na tym samym hoście, więc Cloudflare pobiera je z bucketu w tej samej strefie, a strefa nie potrzebuje zgody na zmniejszanie obrazów z innych źródeł. `<Image>` w `src/presentation/components/custom/image.tsx` przekazuje adres do `@unpic/react`, które rozpoznaje format `/cdn-cgi/image/` i buduje `srcset` z jedną szerokością na każdy próg, więc telefon pobiera plik na miarę telefonu. `fit=cover` przycina każdy plik do szerokości i wysokości, o które prosi komponent.
 
 Każda transformacja prosi też o `onerror=redirect`. Gdy Cloudflare nie może przekształcić zdjęcia, na przykład po wyczerpaniu bezpłatnych transformacji konta w danym miesiącu, przekierowuje przeglądarkę do oryginalnego obiektu na tym samym hoście, a zdjęcie wyświetla się w pełnym rozmiarze zamiast jako uszkodzone. Cloudflare respektuje `onerror` tylko wtedy, gdy źródło leży w strefie, która je przekształca, tak jak zdjęcie na własnej domenie; zdjęcie z innego hosta, zmniejszane przez własny host sklepu, nie ma takiego zabezpieczenia.
 
-E-maile i Stripe Checkout dostają zwykły rozwiązany adres, `${VITE_R2_URL}/<klucz>`, bez transformacji.
+Stripe nie dostaje zdjęć: pozycje sesji Checkout niosą tylko nazwę i kwotę. Potwierdzenie zamówienia, jedyny e-mail ze zdjęciami produktów, bierze zdjęcie każdej pozycji jako zwykły rozwiązany adres, `${VITE_R2_URL}/<klucz>`, bez transformacji, i je osadza: `embedEmailImages` w `src/integrations/cloudflare-r2/media.email.server.ts` czyta do dziesięciu różnych zdjęć z hosta zasobów prosto z bucketu `IMAGES`, dołącza je jako załączniki inline z identyfikatorem treści, a szablon pokazuje je przez odwołania `cid:`, więc wyświetlają się nawet w programach pocztowych blokujących zdalne obrazy. Zdjęcie większe niż 512 KiB, takie, które przekroczyłoby łączne 2 MiB załączników, każde po dziesiątym i takie, którego bucket nie zwróci, zostają przy zwykłym rozwiązanym adresie; błąd odczytu trafia do logu jako `[Email] Could not read … to embed it`.
 
 ## Jednorazowa konfiguracja
 
@@ -108,11 +112,11 @@ Strefa `martebizuteria.pl` musi być na tym samym koncie Cloudflare. W panelu ot
 bunx wrangler r2 bucket domain add martebizuteria --domain images.martebizuteria.pl --zone-id <ZONE_ID> --min-tls 1.2
 ```
 
-Zostaw włączony adres `r2.dev` tego bucketu. Wysłane już e-maile z potwierdzeniem zamówienia zawierają adresy zdjęć `r2.dev` i ładują się tylko, dopóki pozostaje on włączony.
+Zostaw włączony adres `r2.dev` tego bucketu. Potwierdzenia zamówień wysłane, gdy produkcja go używała, linkują do niego swoje zdjęcia — wszystkie w e-mailach sprzed osadzania zdjęć w potwierdzeniu, a od tamtej pory każde, którego nie osadziło — i te zdjęcia ładują się tylko, dopóki adres pozostaje włączony.
 
 ### 5. Włącz Image Transformations dla strefy
 
-W panelu otwórz **Images**, **Transformations**, wybierz strefę `martebizuteria.pl` i kliknij **Enable for zone**. Zostaw domyślne ustawienie, które zmniejsza tylko obrazy z tej samej strefy: sklep nigdy nie prosi o obraz z innego źródła.
+W panelu otwórz **Images**, **Transformations**, wybierz strefę `martebizuteria.pl` i kliknij **Enable for zone**. Zostaw domyślne ustawienie, które zmniejsza tylko obrazy z tej samej strefy. Wysyłka zapisuje klucze bucketu, a pliki seed zawierają adresy `r2.dev`, i jedne, i drugie rozwiązują się na `VITE_R2_URL`, więc każde zdjęcie katalogu jest przekształcane na własnej domenie ze źródła w tej samej strefie. Z innego źródła byłby przekształcany tylko adres bezwzględny na jakimś innym hoście, ostatni wiersz tabeli w [Jak powstaje adres zdjęcia](#jak-powstaje-adres-zdjęcia); przy tym ustawieniu Cloudflare odmawia jego przekształcenia, a taki adres nie ma zabezpieczenia `onerror`.
 
 Cloudflare liczy unikalne transformacje w miesiącu kalendarzowym: każda szerokość, wysokość i jakość zdjęcia liczy się raz w miesiącu, niezależnie od liczby żądań. Plan Images Free obejmuje 5000 miesięcznie i na każdą kolejną nową transformację odpowiada błędem `9422`; plan Images Paid obejmuje te same 5000 i nalicza opłatę za każde kolejne 1000. Sklep prosi o jedno zdjęcie w wielu rozmiarach: `srcset` karty produktu ma 7 szerokości, a strony produktu 11, z czego pięć wspólnych z kartą; miniatury w koszyku, kasie, zamówieniach, wyszukiwarce i panelu dodają około tuzina kolejnych, w rozmiarze pojedynczym i podwójnym; a prefetch dodaje jeszcze dwie. Główne zdjęcie produktu daje więc około 25–30 transformacji miesięcznie, gdy obejrzą je odwiedzający na różnych ekranach, a każde kolejne zdjęcie galerii do 11, więc 200 produktów może wyczerpać bezpłatny limit w ciągu miesiąca.
 

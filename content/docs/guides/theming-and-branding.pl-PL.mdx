@@ -3,19 +3,23 @@ title: "Motyw i branding"
 description: "Zmiana kolorów, typografii, krojów pisma i tożsamości sklepu: warstwy tokenów, dwie powłoki, inicjalizacja motywu i stałe brandingowe."
 ---
 
-Wszystko, co wizualne, mieszka pod `src/presentation/`. Style w `styles/`, mechanika motywu w `theme/`, stałe tożsamości w `branding/`, a stylowanie wiadomości e-mail w `emails/`. Nic poza `src/presentation` nie deklaruje koloru, kroju pisma ani danych marki; dane sprzedawcy to dane zapisane w Ustawienia → Dane sklepu.
+Wszystko, co wizualne, mieszka pod `src/presentation/`. Style w `styles/`, mechanika motywu w `theme/`, stałe tożsamości w `branding/`, a stylowanie wiadomości e-mail w `emails/`. Stałe stylów — napisy klas i obiekty stylów inline współdzielone przez kilka komponentów — leżą w folderze `_styles/` obok komponentów, które z nich korzystają, na przykład `components/custom/pages/admin/_styles/admin-layout.styles.ts`, `components/custom/datagrid/lib/_styles/data-grid-header.styles.ts` i `emails/_styles/email-styles.ts`. Dane sprzedawcy nie są stałymi: to dane zapisane w Ustawienia → Dane sklepu.
 
-## Trzy arkusze stylów
+Zasada brzmi: nic poza `src/presentation` nie deklaruje koloru, kroju pisma ani danych marki; dane sprzedawcy to dane w D1. Kod ma znane wyjątki, które zmiana palety też musi uwzględnić: mapy kolorów odznak i kropek statusów w stałych modułów (`ORDER_STATUS_BADGE_STYLES`, `PAYMENT_BADGE_STYLES` i `FULFILLMENT_DOT_COLORS` w `order.constants.ts`; `SEVERITY_DOT_COLORS`, `SEVERITY_BADGE_COLORS` i `ACTOR_ROLE_COLORS` w `audit-log.constants.ts`; `NEWSLETTER_STATUS_BADGE_STYLES` w `newsletter.constants.ts`; `NEWSLETTER_CAMPAIGN_STATUS_BADGE_STYLES` w `newsletter-campaign.constants.ts`) oraz wygląd Stripe Elements dla kroku płatności w `src/integrations/stripe/stripe.appearance.ts`, który ma własne kolory hex i ładuje Manrope z Google Fonts.
 
-| Plik                 | Linie | Ładowany przez                                 | Zakres                                     |
-| -------------------- | ----- | ---------------------------------------------- | ------------------------------------------ |
-| `globals.css`        | 233   | `src/routes/__root.tsx` jako `link` trasy      | Tokeny, warstwa bazowa, wspólne komponenty |
-| `admin.css`          | 84    | `src/routes/admin.tsx` jako `link` trasy       | Wyłącznie powłoka panelu                   |
-| `storefront.css`     | 20    | `src/routes/_storefront.tsx` jako `link` trasy | Animacje odsłaniania na stronie głównej    |
-| `fonts.css`          | 84    | `@import` na początku `globals.css`            | Niekrytyczne reguły `@font-face`           |
-| `critical-fonts.css` | 60    | Wstawiany do `<head>` przez `?raw`             | Dwa kroje widoczne nad linią zgięcia       |
+## Pięć arkuszy stylów
+
+| Plik                 | Linie | Ładowany przez                                 | Zakres                                                  |
+| -------------------- | ----- | ---------------------------------------------- | ------------------------------------------------------- |
+| `globals.css`        | 253   | `src/routes/__root.tsx` jako `link` trasy      | Tokeny, warstwa bazowa, wspólne komponenty              |
+| `admin.css`          | 137   | `src/routes/admin.tsx` jako `link` trasy       | Powłoka panelu i edytor treści                          |
+| `storefront.css`     | 20    | `src/routes/_storefront.tsx` jako `link` trasy | Stan początkowy animacji odsłaniania na stronie głównej |
+| `fonts.css`          | 84    | `@import` na początku `globals.css`            | Niekrytyczne reguły `@font-face`                        |
+| `critical-fonts.css` | 60    | Wstawiany do `<head>` przez `?raw`             | Kroje obu rodzin do pierwszego renderowania i zastępcze |
 
 Zachowaj ten podział. Reguła potrzebna tylko panelowi należy do `admin.css`; reguła potrzebna tylko stronie głównej należy do `storefront.css`. `globals.css` jest dla tego, co obie powłoki dzielą.
+
+Poza tokenami `globals.css` importuje `tailwindcss`, `tw-animate-css`, `shadcn/tailwind.css` i arkusz stylów Lenis oraz rejestruje wtyczkę typografii pod nazwą klasy `wysiwyg`. Jego linie `@source not` wyłączają ze skanowania Tailwinda testy, `src/platform/testing/` i komponenty shadcn, których aplikacja nie używa; jeśli zaczniesz używać któregoś z wymienionych komponentów, usuń go z listy, inaczej Tailwind nie zobaczy jego nazw klas.
 
 ## Warstwy tokenów
 
@@ -38,7 +42,7 @@ Zachowaj ten podział. Reguła potrzebna tylko panelowi należy do `admin.css`; 
 
 To ręcznie dobrane wartości hex i `rgba`, używane przez autorskie sekcje witryny sklepowej.
 
-**Tokeny semantyczne shadcn** — `--background`, `--foreground`, `--card`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--success`, `--border`, `--input`, `--ring`, `--chart-1` do `--chart-5`, `--radius` oraz osiem tokenów `--sidebar-*`. Są w `oklch(...)` i to je czyta każdy komponent podstawowy shadcn.
+**Tokeny semantyczne shadcn** — `--background`, `--foreground`, `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--success`, `--border`, `--input`, `--ring`, `--chart-1` do `--chart-5`, `--radius` oraz osiem tokenów `--sidebar-*`; `--card`, `--popover`, `--primary`, `--secondary`, `--muted`, `--accent` i `--destructive` mają każdy parę `-foreground`. Są w `oklch(...)` i to je czyta każdy komponent podstawowy shadcn.
 
 **Motyw Tailwind** — `@theme inline` mapuje każdy token semantyczny na narzędzie Tailwind, więc `bg-card` rozwiązuje się do `var(--card)`:
 
@@ -56,7 +60,9 @@ To ręcznie dobrane wartości hex i `rgba`, używane przez autorskie sekcje witr
 }
 ```
 
-Zwróć uwagę na `--radius: 0.25rem` — cały produkt używa wąskiego promienia, a `--radius-md` i `--radius-lg` są celowo mu równe. Istnieją trzy własne wpisy skali: `max-w-400` dla kontenera strony oraz `spacing-18` i `spacing-54`.
+Zwróć uwagę na `--radius: 0.25rem` — cały produkt używa wąskiego promienia, a `--radius-md` i `--radius-lg` są celowo mu równe (`--radius-xl` jest o 2px większy). Istnieją trzy własne wpisy skali: `max-w-400` dla kontenera strony oraz `spacing-18` i `spacing-54`.
+
+`globals.css` definiuje też dwa narzędzia i trzy własne warianty. `storefront-container` to kontener strony witryny sklepowej (`mx-auto px-4 sm:max-w-400 sm:px-6 lg:px-12`), a `touch-target` powiększa obszar dotyku elementu do co najmniej 2.5rem przy niedokładnych wskaźnikach. Warianty to `dark`, `autofill-preview` (pole wypełnione automatycznie, którego atrybut `value` jest pusty) i `peer-floated` (element rodzeństwa za `.peer`, który ma fokus, jest wypełniony albo wypełniony automatycznie — wzorzec pływającej etykiety).
 
 **Żeby zmienić kolor**, zmień token w `:root` i w `.dark`. Nigdy nie wpisuj literału koloru w `className` komponentu.
 
@@ -80,7 +86,7 @@ Zwróć uwagę na `--radius: 0.25rem` — cały produkt używa wąskiego promien
 
 ## Dwie powłoki
 
-Panel administracyjny jest zawsze jasny, także dla gościa, który w witrynie sklepowej wybrał motyw ciemny. Działa to bez mignięcia dzięki trzem mechanizmom.
+Panel administracyjny jest zawsze jasny, także dla gościa z motywem ciemnym wybranym w witrynie sklepowej. Działa to bez mignięcia dzięki trzem mechanizmom.
 
 **1. Skrypt inicjalizujący.** `THEME_INIT_SCRIPT` w `src/presentation/theme/theme-init.ts` jest wstawiany do `<head>` przez `__root.tsx` przed czymkolwiek innym. Czyta zapisany motyw, sprawdza, czy ścieżka zawiera `/admin`, i albo ustawia `data-admin-shell` oraz tło chromu na `<html>` i `<body>`, albo dodaje klasę `dark`:
 
@@ -90,7 +96,7 @@ export const THEME_INIT_SCRIPT = `(function(){try{var k=${JSON.stringify(THEME_S
 
 `__root.tsx` ustawia też `data-admin-shell` po stronie serwera na elemencie `<html>` i wstawia w treści `adminShellCriticalStyle(path)`, więc ciemny chrom jest namalowany przed załadowaniem jakiegokolwiek arkusza stylów.
 
-**2. `admin.css` redeklaruje tokeny.** Wewnątrz `[data-admin-main]` resetuje `--background`, `--foreground`, `--card`, `--muted`, `--border`, `--input`, `--ring` i promienie do wartości jasnych oraz ustawia `color-scheme: light`. `html[data-admin-shell]` dostaje `background-color: var(--sidebar)` — ciemny chrom, na którym siedzi menu boczne.
+**2. `admin.css` redeklaruje tokeny.** Zaczyna się od `@reference "./globals.css"`, więc może korzystać ze wspólnego motywu bez emitowania go drugi raz. Wewnątrz `[data-admin-main]` resetuje promienie (`--radius-sm` do `--radius-xl`), `--background`, `--foreground`, `--card`, `--popover`, `--muted`, `--secondary` i `--accent` (każdy z parą `-foreground`), `--border`, `--input` i `--ring` do wartości jasnych oraz ustawia `color-scheme: light`. `html[data-admin-shell]` i jego `body` dostają `background-color: var(--sidebar)` — ciemny chrom, na którym siedzi menu boczne — oraz `color-scheme: light`.
 
 **3. `useAdminLightTheme`.** Hook w `src/presentation/theme/use-admin-light-theme.ts` usuwa klasę `dark` przy montowaniu, a w funkcji porządkującej przywraca zapisaną preferencję gościa:
 
@@ -112,7 +118,7 @@ useEffect(() => {
 }, [])
 ```
 
-`admin.css` stylizuje dodatkowo powiadomienia Sonner wewnątrz `html[data-admin-shell]`, żeby pasowały do ciemnego menu bocznego, oraz nadaje kontenerowi przewijania tabeli cienkie własne paski przewijania. `src/presentation/components/custom/pages/admin/admin-layout.styles.ts` przechowuje wielokrotnie używane napisy klas panelu — `ADMIN_LAYOUT_BG_CLASS`, `ADMIN_CARD_CLASS`, zestaw `ADMIN_STAT_*` — żeby żadna strona ich nie powtarzała.
+`admin.css` stylizuje dodatkowo powiadomienia Sonner wewnątrz `html[data-admin-shell]`, żeby pasowały do ciemnego menu bocznego, oraz nadaje kontenerowi przewijania tabeli cienkie własne paski przewijania. Na potrzeby edytora stron treści importuje `@mdxeditor/editor/style.css` do warstwy `components` i mapuje zmienne kolorów MDXEditora na `.content-editor` i `.mdxeditor-popup-container` na tokeny shadcn. `src/presentation/components/custom/pages/admin/_styles/admin-layout.styles.ts` przechowuje wielokrotnie używane napisy klas panelu — `ADMIN_LAYOUT_BG_CLASS`, `ADMIN_CARD_CLASS`, zestaw `ADMIN_STAT_*`, klasy treści stron — oraz `ADMIN_SHELL_CHROME_BG`, kolor chromu malowany przez skrypt inicjalizujący, żeby żadna strona ich nie powtarzała.
 
 ## Typografia
 
@@ -121,7 +127,7 @@ Dwa kroje pisma, oba hostowane lokalnie z `public/fonts/`:
 - **Manrope** dla `font-sans` — krój zmienny.
 - **Cormorant Garamond** dla `font-serif` — używany w każdym nagłówku.
 
-`critical-fonts.css` jest wstawiany w treść dokumentu, nie linkowany. Zawiera kroje zastępcze dopasowane metrycznie (`Manrope Fallback` z Ariala, `Cormorant Garamond Fallback` z Times New Roman, z `size-adjust`, `ascent-override`, `descent-override` i `line-gap-override`) oraz dwie reguły `@font-face` potrzebne przy pierwszym renderowaniu. `fonts.css` niesie pozostałe grubości i kursywy i jest importowany zwyczajnie.
+`critical-fonts.css` jest wstawiany w treść dokumentu, nie linkowany. Zawiera kroje zastępcze dopasowane metrycznie (`Manrope Fallback` z Ariala, `Cormorant Garamond Fallback` z Times New Roman, z `size-adjust`, `ascent-override`, `descent-override` i `line-gap-override`) oraz cztery reguły `@font-face` potrzebne przy pierwszym renderowaniu: zmienny krój Manrope 200–800 i Cormorant Garamond 400 normal, każdy w podzbiorze `latin` i `latin-ext`. `fonts.css` niesie pozostałe osiem krojów Cormorant Garamond — 400 kursywę, 500, 500 kursywę i 600, w obu podzbiorach — i jest importowany zwyczajnie.
 
 `StorefrontCriticalFontsHead` emituje preloady i wstawia ten CSS przez `?raw`:
 
@@ -149,18 +155,18 @@ export const StorefrontCriticalFontsHead = ({ locale }: Readonly<StorefrontCriti
 ```ts
 export const APP_DOMAIN = "martebizuteria.pl"
 export const APP_URL = `https://${APP_DOMAIN}`
-export const APP_NAME = "M'Arte"
-export const APP_ICON = "/favicon.svg"
-export const THEME_COLOR = "#e7f3ec"
-export const OG_IMAGE_PATH = "/og.png"
-export const OG_IMAGE_WIDTH = "1200"
-export const OG_IMAGE_HEIGHT = "630"
-export const DEFAULT_R2_PUBLIC_URL = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev"
 export const APP_GITHUB_OWNER = "pjborowiecki"
 export const APP_GITHUB_REPO = APP_DOMAIN
+export const APP_ICON = "/favicon.svg"
+export const APP_NAME = "M'Arte"
+export const DEFAULT_R2_PUBLIC_URL = "https://pub-a9ce13f98e72423eb72107a4e696f2e0.r2.dev"
+export const OG_IMAGE_HEIGHT = "630"
+export const OG_IMAGE_PATH = "/og.png"
+export const OG_IMAGE_WIDTH = "1200"
+export const THEME_COLOR = "#e7f3ec"
 ```
 
-`APP_NAME` zasila tytuł dokumentu, `appName` w Better Auth, wystawcę dla uwierzytelniania dwuskładnikowego oraz klucz przechowywania motywu. `THEME_COLOR` to znacznik meta `theme-color` i pokrywa się z `--bg-base`. `APP_DOMAIN` zasila `appHostsForMode` w `src/modules/_core/constants/api.ts`, czyli `baseURL.allowedHosts` w Better Auth — zmiana domeny zmienia więc również listę dozwolonych hostów uwierzytelniania, a wraz z nią hosty, które `resolveRequestOrigin` akceptuje dla linków w e-mailach i adresu powrotu ze Stripe. Sam `APP_URL` to tylko kanoniczny adres produkcyjny używany w metadanych SEO; e-maile linkują do hosta, na który przyszło żądanie.
+`APP_NAME` zasila tytuł dokumentu, `appName` w Better Auth, wystawcę dla uwierzytelniania dwuskładnikowego, klucz przechowywania motywu, nazwę nadawcy e-maili sklepu (`shopSender()` w `src/integrations/resend/resend.send.ts`) oraz `appInfo` klienta Stripe. `THEME_COLOR` to znacznik meta `theme-color` i pokrywa się z `--bg-base`. `APP_DOMAIN` zasila `appHostsForMode` w `src/modules/_core/constants/api.ts`, czyli `baseURL.allowedHosts` w Better Auth — zmiana domeny zmienia więc również listę dozwolonych hostów uwierzytelniania, a wraz z nią hosty, które `resolveRequestOrigin` akceptuje dla linków w e-mailach i adresu powrotu ze Stripe. Sam `APP_URL` to kanoniczny adres produkcyjny używany w metadanych SEO oraz zapasowy host transformacji obrazów Cloudflare w `src/lib/image.ts`, gdy `VITE_IMAGE_CDN_DOMAIN` nie jest ustawione; e-maile linkują do hosta, na który przyszło żądanie.
 
 `socials.ts` — adresy Facebooka i Instagrama.
 
@@ -168,13 +174,15 @@ Podmiot prawny nie jest stałą. Jego pełna nazwa, adres, NIP, REGON, e-mail ko
 
 ## Wiadomości e-mail
 
-Stylowanie e-maili jest osobne: bez Tailwinda i bez zmiennych CSS, bo klienty pocztowe nie wspierają ich niezawodnie. `src/presentation/emails/_styles/email-styles.ts` przechowuje obiekty stylów inline, `email-layout.tsx` to wspólna powłoka, a `email-highlight-box.tsx` jedyny wspólny blok. Trzynaście szablonów to `account-deleted`, `change-email`, `new-order`, `newsletter-already-subscribed`, `newsletter-confirmation`, `order-cancelled`, `order-confirmation`, `order-refunded`, `order-shipped`, `password-changed`, `payment-failed`, `reset-password` i `verify-email`. Każdy przyjmuje `locale` i `messages` jako właściwości. Podejrzysz je pod `/dev/emails`.
+Stylowanie e-maili jest oddzielone od stylów witryny: bez zmiennych CSS i bez arkuszy stylów strony, bo klienty pocztowe nie wspierają ich niezawodnie. `email-layout.tsx` to wspólna powłoka. Owija każdą wiadomość w komponent `<Tailwind>` z react-email, który zamienia klasy narzędziowe na style inline, z własnym `EMAIL_TAILWIND_CONFIG`: kolorami `cream`, `gold`, `ink`, `line`, `muted`, `paper` i `wash` jako literałami hex oraz bezpiecznymi stosami krojów szeryfowych i bezszeryfowych zamiast krojów strony. `src/presentation/emails/_styles/email-styles.ts` przechowuje obiekty stylów inline (treść, kontener, wyróżnione pole, zdjęcie produktu, Markdown) i odpowiadające im stałe kolorów. `email-highlight-box.tsx` zawiera wspólne bloki — `EmailBorderedSection`, `EmailHighlightBox`, `EmailBodyText` i `EmailDetailRow` — oraz wspólne napisy klas przycisków CTA i tekstu.
+
+Dziewiętnaście szablonów to `account-deleted`, `change-email`, `incident-alert`, `new-order`, `newsletter-already-subscribed`, `newsletter-campaign`, `newsletter-confirmation`, `order-cancelled`, `order-confirmation`, `order-delivered`, `order-in-progress`, `order-refunded`, `order-shipped`, `order-tracking`, `order-withdrawal`, `password-changed`, `payment-failed`, `reset-password` i `verify-email`. Każdy przyjmuje `locale` i `messages` jako właściwości. Podejrzysz je pod `/dev/emails` na serwerze deweloperskim (`bun run dev`); pozostałe buildy odpowiadają tam 404. Zobacz [E-maile transakcyjne](/docs/features/email).
 
 ## Lista kontrolna zmiany wizualnej
 
-- Kolor zmienia się w `:root` **i** `.dark` w `globals.css`, nigdy w komponencie.
+- Kolor zmienia się w `:root` **i** `.dark` w `globals.css`, nigdy w komponencie. Zmiana palety sprawdza też mapy kolorów odznak w modułach i `stripe.appearance.ts` wymienione na początku tej strony oraz paletę e-maili w `EMAIL_TAILWIND_CONFIG` i `email-styles.ts`.
 - Reguła tylko dla panelu trafia do `admin.css`, zawężona do `[data-admin-main]` albo `html[data-admin-shell]`.
-- Powtarzający się napis klas panelu trafia do `admin-layout.styles.ts`.
+- Powtarzający się napis klas panelu trafia do `_styles/admin-layout.styles.ts`; napis klas współdzielony tylko w obrębie jednej funkcji trafia do folderu `_styles/` obok komponentów tej funkcji.
 - Dane marki trafiają do `branding/`, a komponent importuje je stamtąd. Dane sprzedawcy pochodzą z `getSellerDetailsQuery()`, nigdy ze stałej.
 - Zmiany krojów pisma zachowują podział na krytyczne i niekrytyczne oraz aktualizują metryki krojów zastępczych.
 - `bun run format` sortuje Twoje klasy Tailwind — `vite.config.ts` wskazuje sorterowi `globals.css`, więc dodane tam własne narzędzie jest rozpoznawane.
