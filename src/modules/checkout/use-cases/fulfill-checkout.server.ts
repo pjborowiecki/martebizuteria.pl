@@ -19,6 +19,20 @@ const reconcileTotals = (totals: OrderTotals, paidAmount: number, transactionId:
   }
 }
 
+const resolveDiscountTotal = (
+  pricedDiscountTotal: number | undefined,
+  discountRow: DiscountAmountRow | null | undefined,
+  { itemsSubtotal, shippingTotal }: Omit<DiscountAmountInput, "row">,
+): number | undefined => {
+  if (pricedDiscountTotal !== undefined) {
+    return pricedDiscountTotal
+  }
+
+  return discountRow === null || discountRow === undefined
+    ? undefined
+    : calculateDiscountAmount({ itemsSubtotal, row: discountRow, shippingTotal })
+}
+
 const findPlacedOrderId = async (checkoutId: string): Promise<string | undefined> => {
   try {
     const placedOrder = await getOrderByCheckoutId(checkoutId)
@@ -66,19 +80,17 @@ export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): P
   const checkoutRow = await getCheckoutForFulfillment(context.checkoutId)
   const itemsSubtotal = sumOrderLineSubtotal(input.lines)
   const shippingTotal = input.shippingTotal ?? checkoutRow?.deliveryMethod?.price ?? NO_AMOUNT
-  const discount =
-    checkoutRow?.discount === null || checkoutRow?.discount === undefined
-      ? undefined
-      : {
-          amountMinorUnits: calculateDiscountAmount({ itemsSubtotal, row: checkoutRow.discount, shippingTotal }),
-          discountId: checkoutRow.discount.id,
-        }
   const totals = computeOrderTotals({
-    discountTotal: discount?.amountMinorUnits,
+    discountTotal: resolveDiscountTotal(input.discountTotal, checkoutRow?.discount, { itemsSubtotal, shippingTotal }),
     itemsSubtotal,
     shippingTotal,
   })
   reconcileTotals(totals, input.paidAmount, input.transactionId)
+  const discountId = checkoutRow?.discountId
+  const discount =
+    discountId === null || discountId === undefined || totals.discountTotal === NO_AMOUNT
+      ? undefined
+      : { amountMinorUnits: totals.discountTotal, discountId }
 
   const { orderId, statements } = prepareFulfillCheckoutBatch(
     context,
@@ -127,6 +139,10 @@ export const fulfillCheckout = async (input: FulfillCheckoutFromSessionInput): P
   return orderId
 }
 
+type DiscountAmountInput = Parameters<typeof calculateDiscountAmount>[0]
+
+type DiscountAmountRow = DiscountAmountInput["row"]
+
 interface FulfillmentCommit {
   readonly checkoutId: string
   readonly orderId: string
@@ -134,6 +150,7 @@ interface FulfillmentCommit {
 }
 
 export interface FulfillCheckoutFromSessionInput extends Pick<FulfillCheckoutInput, "currency" | "lines" | "locale" | "transactionId"> {
+  readonly discountTotal?: number | undefined
   readonly paidAmount: number
   readonly shippingTotal?: number | undefined
 }

@@ -11,6 +11,7 @@ import { formatMinorUnitsAsDecimal } from "~/src/modules/_core/utils/currency"
 import { recordOrderPaymentCapturedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import {
   resolveCheckoutSessionCurrency,
+  resolveCheckoutSessionDiscountTotal,
   resolveCheckoutSessionLocale,
   resolveCheckoutSessionShippingTotal,
 } from "~/src/modules/checkout/checkout-metadata.zod"
@@ -31,6 +32,7 @@ export const formatPaidAmount = (amountMinorUnits: number, currency: string, loc
 export const createOrderFromPaidSession = async (session: StripeType.Checkout.Session): Promise<string | undefined> => {
   const orderId = await fulfillCheckout({
     currency: resolveCheckoutSessionCurrency(session),
+    discountTotal: resolveCheckoutSessionDiscountTotal(session),
     lines: await readCheckoutSessionLines(session),
     locale: resolveCheckoutSessionLocale(session),
     paidAmount: session.amount_total ?? NO_AMOUNT,

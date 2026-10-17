@@ -5,6 +5,7 @@ import { checkoutSession } from "~/src/integrations/stripe/__test__/fixtures/str
 import {
   checkoutFulfillmentLinesSchema,
   parseCheckoutSessionFulfillmentLines,
+  resolveCheckoutSessionDiscountTotal,
   resolveCheckoutSessionShippingTotal,
 } from "~/src/modules/checkout/checkout-metadata.zod"
 
@@ -89,5 +90,24 @@ describe("resolveCheckoutSessionShippingTotal", () => {
 
   it("leaves the charge to the delivery method for a session without metadata", () => {
     expect(resolveCheckoutSessionShippingTotal(checkoutSession({ metadata: null }))).toBeUndefined()
+  })
+})
+
+describe("resolveCheckoutSessionDiscountTotal", () => {
+  it("reads the discount the session was priced with, including none", () => {
+    expect(resolveCheckoutSessionDiscountTotal(sessionWith({ discountCode: "SPRING", discountTotal: "2490" }))).toBe(2490)
+    expect(resolveCheckoutSessionDiscountTotal(sessionWith({ discountCode: "", discountTotal: "0" }))).toBe(0)
+  })
+
+  it.each([
+    ["a session created before the discount was recorded", { checkoutId: "checkout-1" }],
+    ["an empty value", { discountTotal: "" }],
+    ["a value that is not a whole amount", { discountTotal: "24.90" }],
+  ])("leaves the discount to the checkout's code for %s", (_name, metadata) => {
+    expect(resolveCheckoutSessionDiscountTotal(sessionWith(metadata))).toBeUndefined()
+  })
+
+  it("leaves the discount to the checkout's code for a session without metadata", () => {
+    expect(resolveCheckoutSessionDiscountTotal(checkoutSession({ metadata: null }))).toBeUndefined()
   })
 })

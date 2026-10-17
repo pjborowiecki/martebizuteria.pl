@@ -43,6 +43,9 @@ const readRedemptions = () =>
     .array(z.object({ amount: z.number(), email: z.string(), order_id: z.string().nullable() }))
     .parse(sqlite.prepare("select amount, email, order_id from discount_redemption order by created_at").all())
 
+const readOrderTotals = () =>
+  z.object({ discount_total: z.number(), total: z.number() }).parse(sqlite.prepare('select discount_total, total from "order"').get())
+
 const readClaimedCheckouts = () =>
   z
     .array(z.object({ checkout_id: z.string() }))
@@ -126,5 +129,29 @@ describe("fulfilling a paid session that applied a discount code", () => {
     expect(readRedemptions()).toHaveLength(1)
     expect(readUsage()).toBe(3)
     expect(recordDiscountRedeemedAudit).toHaveBeenCalledOnce()
+  })
+})
+
+describe("fulfilling a paid session whose code changed while the shopper paid", () => {
+  it("records the discount Stripe took off, not what the edited code would take off now", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+    sqlite.exec("update discount set type = 'fixed_amount', value = 5000 where id = 'disc-spring'")
+
+    const orderId = await fulfillCheckout({ ...paidSession, discountTotal: DISCOUNT_AMOUNT })
+
+    expect(readOrderTotals()).toStrictEqual({ discount_total: DISCOUNT_AMOUNT, total: PRICE - DISCOUNT_AMOUNT })
+    expect(readRedemptions()).toStrictEqual([{ amount: DISCOUNT_AMOUNT, email: "anna@example.com", order_id: orderId }])
+    expect(readUsage()).toBe(3)
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
+  })
+
+  it("keeps the discount Stripe took off on the order of a code deleted meanwhile", async () => {
+    sqlite.exec("delete from discount where id = 'disc-spring'")
+
+    await fulfillCheckout({ ...paidSession, discountTotal: DISCOUNT_AMOUNT })
+
+    expect(readOrderTotals()).toStrictEqual({ discount_total: DISCOUNT_AMOUNT, total: PRICE - DISCOUNT_AMOUNT })
+    expect(readRedemptions()).toStrictEqual([])
   })
 })

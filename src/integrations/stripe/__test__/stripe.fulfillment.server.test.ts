@@ -79,6 +79,18 @@ describe("fulfillReturnedCheckoutSession for a session Stripe reports paid", () 
     })
   })
 
+  it("hands on the delivery charge and the discount the session was priced with", async () => {
+    mocked.retrieve.mockResolvedValue(
+      returnedSession({
+        metadata: { discountCode: "SPRING", discountTotal: "2490", items: JSON.stringify([NECKLACE_LINE]), shippingTotal: "1500" },
+      }),
+    )
+
+    await fulfillReturnedCheckoutSession("cs_test_returned")
+
+    expect(mocked.fulfillCheckout).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ discountTotal: 2490, shippingTotal: 1500 }))
+  })
+
   it("records the captured payment and refreshes the admin and the catalogue as the webhook would", async () => {
     await fulfillReturnedCheckoutSession("cs_test_returned")
 

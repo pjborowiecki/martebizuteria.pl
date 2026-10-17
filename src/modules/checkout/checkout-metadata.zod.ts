@@ -53,10 +53,16 @@ export const resolveCheckoutSessionLocale = (session: StripeType.Checkout.Sessio
   return typeof raw === "string" && isSupportedLocale(raw) ? raw : I18N.DEFAULT_LOCALE
 }
 
-const shippingTotalSchema = zod.string().regex(/^\d+$/u).transform(Number)
+const minorUnitsSchema = zod.string().regex(/^\d+$/u).transform(Number)
 
 export const resolveCheckoutSessionShippingTotal = (session: StripeType.Checkout.Session): number | undefined => {
-  const parsed = shippingTotalSchema.safeParse(session.metadata?.["shippingTotal"])
+  const parsed = minorUnitsSchema.safeParse(session.metadata?.["shippingTotal"])
+
+  return parsed.success ? parsed.data : undefined
+}
+
+export const resolveCheckoutSessionDiscountTotal = (session: StripeType.Checkout.Session): number | undefined => {
+  const parsed = minorUnitsSchema.safeParse(session.metadata?.["discountTotal"])
 
   return parsed.success ? parsed.data : undefined
 }
