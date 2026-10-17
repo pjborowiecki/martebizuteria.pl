@@ -33,6 +33,12 @@
         "en-US": "English",
         "pl-PL": "Polski"
       }
+    },
+    "deletion": {
+      "title": "Usunięcie konta",
+      "description": "Konta z dostępem do panelu nie da się usunąć, aby sklep przypadkiem nie stracił osób, które go prowadzą.",
+      "howTo": "Aby zamknąć to konto, poproś inną osobę z dostępem do panelu o odebranie Ci dostępu w Ustawieniach › Zespół. Konto stanie się wtedy kontem klienta, które usuniesz na stronie swojego konta w sklepie.",
+      "team": "Przejdź do zespołu"
     }
   },
   "security": {

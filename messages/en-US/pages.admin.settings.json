@@ -33,6 +33,12 @@
         "en-US": "English",
         "pl-PL": "Polski"
       }
+    },
+    "deletion": {
+      "title": "Delete account",
+      "description": "An admin account cannot be deleted, so the shop never loses the people who run it by accident.",
+      "howTo": "To close this account, ask another admin to remove your admin access in Settings › Team. It then becomes a customer account, which you can delete from your account page in the shop.",
+      "team": "Open Team"
     }
   },
   "security": {

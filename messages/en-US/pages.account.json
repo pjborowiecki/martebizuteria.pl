@@ -321,6 +321,7 @@
     "closeDialogAction": "Delete my account",
     "closeAccountError": "We could not delete your account. Please try again, or sign in again first.",
     "closeStripeCustomerError": "We could not delete your saved cards at our payment provider Stripe, so your account has not been deleted. Please try again in a few minutes.",
+    "closeAdminAccountError": "This account has access to the shop's admin panel, so it cannot be deleted. Ask another admin to remove that access first.",
     "closeWrongPassword": "That password is not right.",
     "newsletterPending": "Not confirmed yet",
     "newsletterSubscribeAction": "Subscribe",

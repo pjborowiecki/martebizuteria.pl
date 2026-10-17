@@ -321,6 +321,7 @@
     "closeDialogAction": "Usuń moje konto",
     "closeAccountError": "Nie udało się usunąć konta. Spróbuj ponownie lub zaloguj się jeszcze raz.",
     "closeStripeCustomerError": "Nie udało się usunąć zapisanych kart u naszego operatora płatności Stripe, więc konto nie zostało usunięte. Spróbuj ponownie za kilka minut.",
+    "closeAdminAccountError": "To konto ma dostęp do panelu administracyjnego sklepu, więc nie można go usunąć. Najpierw poproś inną osobę z dostępem do panelu o odebranie tego dostępu.",
     "closeWrongPassword": "To hasło jest nieprawidłowe.",
     "newsletterPending": "Subskrypcja niepotwierdzona",
     "newsletterSubscribeAction": "Zapisz się",

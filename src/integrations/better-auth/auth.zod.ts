@@ -98,6 +98,8 @@ export const adminAccountChangeSchema = z.object({
   userId: z.string(),
 })
 
+export const adminTargetAccountSchema = z.object({ userId: z.string() })
+
 export const adminRoleFieldsSchema = z
   .object({ data: z.object({ role: z.unknown().optional() }).optional(), role: z.unknown().optional() })
   .transform(({ data, role }) => role !== undefined || data?.role !== undefined)

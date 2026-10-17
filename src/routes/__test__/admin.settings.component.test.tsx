@@ -54,6 +54,9 @@ vi.mock("~/src/presentation/components/custom/pages/admin/settings/account/setti
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/account/settings-preferences-card", () => ({
   SettingsPreferencesCard: (): JSX.Element => <section>preferences</section>,
 }))
+vi.mock("~/src/presentation/components/custom/pages/admin/settings/account/settings-account-deletion-card", () => ({
+  SettingsAccountDeletionCard: (): JSX.Element => <section>deletion</section>,
+}))
 vi.mock("~/src/presentation/components/custom/pages/admin/settings/security/settings-password-card", () => ({
   SettingsPasswordCard: ({ hasPassword }: { hasPassword: boolean }): JSX.Element => <section>password {String(hasPassword)}</section>,
 }))
@@ -177,13 +180,13 @@ describe("admin settings account route", () => {
     await expect(prefetched("/admin/settings/account")).resolves.toStrictEqual([["customer-account", "profile"]])
   })
 
-  it("shows the profile and then the preferences under the account tab", () => {
+  it("shows the profile, the preferences and how to delete the account under the account tab", () => {
     render("/admin/settings/account")
 
     const main = screen.getByRole("main")
 
     expect(main).toHaveAttribute("data-active", "account")
-    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["profile", "preferences"])
+    expect([...main.children].map((section) => section.textContent)).toStrictEqual(["profile", "preferences", "deletion"])
   })
 })
 

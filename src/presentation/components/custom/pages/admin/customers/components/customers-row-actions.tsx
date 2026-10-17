@@ -39,7 +39,8 @@ export const CustomersRowActions = ({ customer }: CustomersRowActionsProps): JSX
   )
 
   const { email, id, name, role, stripeCustomerId } = customer
-  const canDelete = session?.user.id !== id && role !== ROLES.ADMIN
+  const isAdmin = role === ROLES.ADMIN
+  const canDelete = session?.user.id !== id && !isAdmin
   const handleViewDetails = useCallback(() => {
     void navigate({
       params: {
@@ -139,6 +140,18 @@ export const CustomersRowActions = ({ customer }: CustomersRowActionsProps): JSX
               <DropdownMenuItem className={ITEM_CLASS} variant="destructive" onClick={runMenuAction(handleDelete)}>
                 <Trash2 className="size-4" strokeWidth={1.5} />
                 {t("delete")}
+              </DropdownMenuItem>
+            </>
+          )}
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator className="my-1.5" />
+              <DropdownMenuItem className={ITEM_CLASS} disabled>
+                <Trash2 className="size-4" strokeWidth={1.5} />
+                <span className="flex flex-col gap-0.5">
+                  <span>{t("delete")}</span>
+                  <span className="text-[11px] text-muted-foreground">{t("deleteAdminHint")}</span>
+                </span>
               </DropdownMenuItem>
             </>
           )}
