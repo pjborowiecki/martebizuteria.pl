@@ -1,6 +1,6 @@
 ---
 title: "Account"
-description: "The seven /account pages, the customer-account and address modules, saved payment methods and the wishlist."
+description: "The eight /account pages, the customer-account and address modules, guest orders joining an account, saved payment methods and the wishlist."
 ---
 
 ## Layout and guard
@@ -32,11 +32,11 @@ const loadRouteSession = ({ context: { queryClient }, preload }: AuthRouteContex
 
 It passes `recheck: true`, so a real navigation into `/account` re-checks the session with `staleTime: 0`; a link preload reuses a cached session younger than 60 seconds. The session stays in the TanStack Query cache and a server render dehydrates it into the page, so the account pages render signed-in on the server.
 
-A change of user is handled in one place: `clearCacheOnUserChange` (`src/integrations/better-auth/auth.session.ts`), which `getRouter` installs in the browser only. It watches the query cache, and whenever the session switches to a different user, signing in or out included, it removes every cached query except the session itself and the translation catalogues, so nothing cached for the previous user is shown.
+A change of user is handled in one place: `clearCacheOnUserChange` (`src/integrations/better-auth/auth.session.ts`), which `getRouter` installs in the browser only. It watches the query cache, and whenever the session switches to a different user, signing in or out included, it removes every cached query except the session itself, the translation catalogues and the display preferences, so nothing cached for the previous user is shown. The display preferences query is kept, so the pages go on formatting dates and prices while it reloads, and invalidated, so it is fetched again with the new user's saved time zone and format locale (see [Internationalization](/docs/features/internationalization)).
 
 An anonymous visitor is redirected to `/auth/sign-in?redirect=<path>`, where `<path>` is the localized public path, such as `/en-US/account/orders/order-1`. It is kept only when it matches `SAME_SITE_PATH_PATTERN`: visible ASCII characters only, a single leading slash and no backslash. After a password, two-factor or Google sign-in, the `/auth` guard sends the visitor back to it. See [Integrations: Better Auth](/docs/integrations/better-auth).
 
-The layout renders the storefront `Navigation`, the paused-sales notice `SalesPausedBanner` under it, a two-column grid and the storefront `Footer`. Its loader reads the `pages.account.meta` messages, `getCollectionsQuery()`, `getSalesStatusQuery()` and `getSellerDetailsQuery()` together, so the full-screen menu's collection pictures, the notice and the seller's details in the footer come with the page (see [Checkout: Pausing sales](/docs/features/checkout#pausing-sales) and [Admin settings](/docs/features/admin-settings#store-details)). A failure to read the seller's details shows the error page. Only the two grid cells are wrapped in `Suspense`: the `AccountSidebar` with the `AccountSidebarFallback` skeleton, and the outlet with the `AccountMainFallback` skeleton. It preloads five namespaces: `pages.account`, `pages.account.meta`, `pages.auth.errors`, `pages.auth.validations` and `pages.cart`, which holds the notice's text.
+The layout renders the storefront `Navigation`, the paused-sales notice `SalesPausedBanner` under it, a grid that has two columns from the `lg` breakpoint, and the storefront `Footer`. Its loader reads the `pages.account.meta` messages, `getCollectionsQuery()`, `getSalesStatusQuery()` and `getSellerDetailsQuery()` together, so the full-screen menu's collection pictures, the notice and the seller's details in the footer come with the page (see [Checkout: Pausing sales](/docs/features/checkout#pausing-sales) and [Admin settings](/docs/features/admin-settings#store-details)). A failure to read the seller's details shows the error page. Only the two grid cells are wrapped in `Suspense`: the `AccountSidebar` with the `AccountSidebarFallback` skeleton, and the outlet with the `AccountMainFallback` skeleton. It preloads five namespaces: `pages.account`, `pages.account.meta`, `pages.auth.errors`, `pages.auth.validations` and `pages.cart`, which holds the notice's text.
 
 `/account` itself only redirects:
 
@@ -46,7 +46,7 @@ beforeLoad: () => {
 },
 ```
 
-## The seven pages
+## The eight pages
 
 | Route                 | File                       | Query                                                              | Status |
 | --------------------- | -------------------------- | ------------------------------------------------------------------ | ------ |
@@ -59,15 +59,29 @@ beforeLoad: () => {
 | `/account/payment`    | `account.payment.tsx`      | `listSavedPaymentMethodsQuery()`                                   | Live   |
 | `/account/wishlist`   | `account.wishlist.tsx`     | `listWishlistItemsQuery(locale)`                                   | Live   |
 
-The sidebar order is `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`). The sidebar's sign-out button calls `signOut` and then does a full page load of `/`, which discards the query cache.
+The sidebar order is `ACCOUNT_OVERVIEW`, `ACCOUNT_PROFILE`, `ACCOUNT_ORDERS`, `ACCOUNT_ADDRESSES`, `ACCOUNT_PAYMENT`, `ACCOUNT_WISHLIST`, `ACCOUNT_SESSIONS` (`account-sidebar.tsx`); the order page `/account/orders/$id` has no entry of its own and keeps **Orders** highlighted. The sidebar's sign-out button calls `signOut` and then does a full page load of `/`, which discards the query cache. When signing out fails, it shows the `signOutError` toast and the customer stays on the page.
 
 Each entry's label comes from `pages.account.sidebar`, and `accountPageMeta` (`customer-account.meta.ts`) reuses it as the page's browser tab title, so the landing page reads "Overview" in English and "Podsumowanie" in Polish in both places. The sidebar heading, which also names the navigation landmark for screen readers, is `pages.account.sidebar.title`: "Your Account", or "Moje konto" in Polish. The Polish account copy follows Polish sentence case rather than English title case, so the profile page is headed "Twój profil" under the eyebrow "Ustawienia konta".
 
-Every route loader prefetches with `staleTime: "static"`. `account.payment.tsx` and `account.wishlist.tsx` leave the route's `staleTime` to the router's `defaultStaleTime`, also 60 000; the other six route files set it to `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
+Below `lg` the grid has a single column and the sidebar becomes a strip of tabs above the page. The strip scrolls sideways with snap points and faded edges, and on every change of path an effect scrolls the active tab to the middle of the strip, so the current page is always in view. The heading is hidden there, while the `<nav>` keeps it as its `aria-label`, and the sign-out button shows only its icon, with "Sign Out" left for screen readers. From `lg` the sidebar is a 220 px column that stays in view (`sticky`) while the page scrolls. The links pass `resetScroll={false}`, so switching between account pages does not jump back to the top of the window.
+
+Every route loader prefetches its page query with `staleTime: "static"`, except `getCustomerOrderWithdrawalQuery(id)` on `/account/orders/$id`, which keeps its own `ORDER_WITHDRAWAL_QUERY_STALE_MS` (60 000). `account.payment.tsx` and `account.wishlist.tsx` leave the route's `staleTime` to the router's `defaultStaleTime`, also 60 000; the other six route files set it to `CUSTOMER_ACCOUNT_QUERY_STALE_MS` (60 000).
+
+Dates, times and amounts on every account page go through `useFormatter()` (`src/hooks/use-display-format.ts`), so they follow the customer's format locale and time zone, saved on the profile page or detected from the request, while the words around them stay in the page's language (see [Internationalization](/docs/features/internationalization)).
 
 ## Authorization pattern
 
 Every use case in `src/modules/customer-account/use-cases/` uses `authorized()` with no permission argument — any signed-in user — and then scopes the query to `context.auth.user.id` itself. There is no route-level ownership check to bypass; the server function is the boundary. `getCustomerOrder`, for example, filters on `and(eq(order.id, orderId), eq(order.userId, context.auth.user.id))`.
+
+## Guest orders in the account
+
+The account pages show only orders whose `user_id` is the customer's. A guest order (`user_id = null`) joins an account once that account has verified the same email address, ignoring case:
+
+- `claimGuestOrdersForUser` (`src/modules/order/order.claim.server.ts`) sets `user_id` on every such guest order. `auth.hooks.server.ts` calls it when a user is created with an address that is already verified, when a verification link confirms the address, for a new account and for a changed address alike, and whenever a verified user is updated. The first two also link the newsletter subscription made with the address to the account (`linkSubscriberToUser`).
+- A guest checkout paid while such an account exists needs no claim: fulfilment writes the verified account's id onto the new order.
+- Guest orders placed before these rules, whose address an account had already verified, were linked once by the migration `20261016140000_claim_past_guest_orders.sql`.
+
+An account that has not verified its address gets nothing, so an order typed with someone else's email is never filed under an account its owner has not proven. Signing in claims nothing either. A claim that links any order records `customer.orders_claimed` against the account, and the claimed orders then count in the overview's totals like any other. The rules, and how a guest who signs in at the payment step keeps the order, are in [Orders: Customer order history](/docs/features/orders#customer-order-history).
 
 ## Overview
 
@@ -91,19 +105,21 @@ Two things to know:
 - **Recommendations follow the customer's orders.** `buildCustomerRecommendations` takes the two categories that appear most in the customer's `processing` and `completed` orders, reads their published, in-stock products with `getPublishedProductsByCategoryIds` and drops every product the customer has already ordered. If any are left, the first three come back with `recommendationsSource: "orders"`. Otherwise it falls back to the first three published, in-stock products of the `nowosci` collection with `recommendationsSource: "newArrivals"`. That fallback is the landing page's new-arrivals read, `getPublishedProductsByCollectionHandle(LANDING_NEW_ARRIVALS_COLLECTION_HANDLE, …)`, so it follows the landing page's rules and returns an empty list while no active collection carries that handle. Each of the two reads is a single D1 statement: a subquery selects the members of those categories or of that collection, and the outer query reads the published, in-stock products among them with their variants. The page picks the grid's heading and description from the source.
 - **`wishlistCount` is real.** `countWishlistItems` counts the customer's `wishlist_item` rows, the same rows `/account/wishlist` lists, so a product that is no longer published still counts.
 
-The activity feed is built from the audit log: `getCustomerActivityAuditRows` reads `audit_log` rows whose `resourceId` is the user or one of the orders from `getCustomerOrderNumbers`, limited to `auth.login`, `auth.login_failed`, `auth.logout`, `customer.cart_item_added`, `order.placed`, `order.shipped` and `order.released`. `mapAuditLogToActivityItem` turns each row into `{ actionKey, params, createdAt }`, putting the order number into `params` for order actions and dropping any row it cannot map. The page maps `actionKey` to an icon through the local `ACTIVITY_ICONS` map and formats the timestamp with `formatRelativeFromNow`.
+The activity feed is built from the audit log: `getCustomerActivityAuditRows` reads `audit_log` rows whose `resourceId` is the user or one of the orders from `getCustomerOrderNumbers`, limited to `auth.login`, `auth.login_failed`, `auth.logout`, `customer.cart_item_added`, `order.placed`, `order.shipped`, `order.delivered` and `order.released`, newest first and at most `CUSTOMER_AUDIT_TIMELINE_LIMIT` (50) rows. `mapAuditLogToActivityItem` turns each row into `{ actionKey, params, createdAt }`, putting the order number into `params` for order actions and dropping any row it cannot map, and the overview keeps the first five. `order.delivered` and `order.released` both become `orderDelivered`: before `order.delivered` existed, marking an order delivered was recorded as `order.released` against the order. Today `order.released` records a checkout whose stock was released, against the checkout session, which never matches the feed. The page maps `actionKey` to an icon through the local `ACTIVITY_ICONS` map and formats the timestamp with `formatRelativeFromNow`, so an entry reads "3 days ago" in the page's language for a week and then shows its date in the customer's format locale and time zone.
 
 ## Profile
 
 `getCustomerProfile` returns `{ createdAt, email, emailVerified, hasGoogle, hasPassword, name, phone, timezone, twoFactorEnabled }` from the `user` row. `hasPassword` and `hasGoogle` come from `listAccountProviderIds` (`src/modules/account/account.accessors.ts`), the `provider_id` of each of the user's `account` rows: `credential` for a password, `google` for a linked Google account.
 
-`account.profile.tsx` passes `profile.twoFactorEnabled` to `SecuritySection` as a prop, so the two-factor status comes from the query the page loader already prefetched. Enabling or disabling two-factor invalidates the profile query, the session query and `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, because Better Auth replaces the current session when it does either. Changing the password invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS` as well, since "Sign out my other devices" deletes every other session; the sessions page never shows a device that is already signed out. Each of these changes, and a confirmed change of email address, is recorded in [the audit log](/docs/features/audit-log#account-security-events) against the account: `auth.two_factor_enabled`, `auth.two_factor_disabled`, `auth.password_changed` (with `auth.sessions_revoked` when the other devices are signed out) and `auth.email_changed`.
+`account.profile.tsx` passes `profile.twoFactorEnabled` and `profile.hasPassword` to `SecuritySection` as props, so the two-factor status comes from the query the page loader already prefetched. Enabling or disabling two-factor invalidates the profile query, the session query and `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS`, because Better Auth replaces the current session when it does either. Changing the password invalidates `CUSTOMER_ACCOUNT_QUERY_KEYS.SESSIONS` as well, since "Sign out my other devices" deletes every other session; the sessions page never shows a device that is already signed out. Each of these changes, and a confirmed change of email address, is recorded in [the audit log](/docs/features/audit-log#account-security-events) against the account: `auth.two_factor_enabled`, `auth.two_factor_disabled`, `auth.password_changed` (with `auth.sessions_revoked` when the other devices are signed out) and `auth.email_changed`. Every verification link that confirms an address, for a new account and for a changed address alike, also records `auth.email_verified`, and may bring in guest orders (see [Guest orders in the account](#guest-orders-in-the-account)). Until the address is confirmed, the email row says it is not verified (`emailUnverified`).
 
-`/admin/security` renders the same `SecuritySection` for an admin, from the same `getCustomerProfileQuery`, because the `/account` layout sends admins to `/admin`. There the admin turns on the two-factor authentication the admin panel requires; see [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins). Afterwards the admin manages the profile, password, two-factor authentication and sessions in [Admin settings](/docs/features/admin-settings), which opens the same dialogs in the admin's style.
+`/admin/security` renders the same `SecuritySection` for an admin, from the same `getCustomerProfileQuery`, because the `/account` layout sends admins to `/admin`. There the admin turns on the two-factor authentication the admin panel requires in the production build and the end-to-end test build; see [Better Auth](/docs/integrations/better-auth#two-factor-authentication-for-admins). Afterwards the admin manages the profile, password, two-factor authentication and sessions in [Admin settings](/docs/features/admin-settings), which opens the same dialogs in the admin's style.
 
 The change-email and change-password dialogs validate as the customer types (`mode: "onChange"`), like the two-factor and close-account dialogs, and never when a field loses focus. Validating on blur would put an error line under the field the customer has just left to press **Cancel** or the close button. The dialog is centred, so its footer would move about 12 px down while the button is held, and a press near the top of **Cancel** would be lost. The cost is that an error shows while the customer is still typing: a new email address is flagged from its first character until it is a complete address, **New password** lists what it still needs, and **Confirm new password** says the passwords must match until they do. Each time an error line appears or goes, the dialog grows or shrinks by one line and the fields move by about 12 px, as they already did in the two-factor and close-account dialogs.
 
-`updateCustomerPhone` is the only field a customer can change here:
+An account that signs in only with Google has no password, so `hasPassword` is `false`: the row offers **Set Password** instead of **Change Password**, and the two-factor button stays disabled with `twoFactorNeedsPassword` saying why, since two-factor authentication protects the password sign-in. **Set** opens `SetPasswordDialog`, which asks for the new password twice and calls `setAccountPassword` (`src/modules/account/use-cases/set-account-password.ts`), behind `withRateLimit("set-account-password", RATE_LIMITS.SENSITIVE)` and `authorized()`, because Better Auth offers `setPassword` only on the server. The function refuses a session created `SESSION_FRESH_AGE_IN_SECONDS` (86 400 seconds) ago or earlier with `SESSION_NOT_FRESH`, which the dialog shows as "sign out and sign in again before making this change". Otherwise it calls `auth.api.setPassword` and records `auth.password_changed`. The dialog invalidates the profile query after a success and after a failure alike, so a password set meanwhile in another tab also turns the row into **Change Password**.
+
+`updateCustomerPhone` is the customer-account module's only write:
 
 ```ts
 export const updateCustomerPhone = createServerFn({ method: "POST" })
@@ -119,33 +135,35 @@ export const updateCustomerPhone = createServerFn({ method: "POST" })
   })
 ```
 
-`RATE_LIMITS.SENSITIVE` is three calls per minute. An empty string clears the column to `NULL` rather than storing `""`. Name, email and password changes go through Better Auth, not through this module.
+`RATE_LIMITS.SENSITIVE` is three calls per minute. An empty string clears the column to `NULL` rather than storing `""`. The name, email and password changes go through Better Auth's client, a first password through `setAccountPassword`, and the time zone and format locale through `updateDisplayPreference` in the `user` module.
 
-`PreferencesSection` starts with the time zone and the date and number format, two `DisplayPreferenceField`s (`src/presentation/components/custom/display-preferences/`) that the admin's **Settings → My account** uses too. Each list opens with Automatic, labelled with what was detected for the customer, and `updateDisplayPreference` saves a choice the same way `updateCustomerPhone` does, with `""` for Automatic (see [Internationalization](/docs/features/internationalization)).
+`PreferencesSection` starts with the time zone and the date and number format, two `DisplayPreferenceField`s (`src/presentation/components/custom/display-preferences/`) that the admin's **Settings → My account** uses too. Each list opens with Automatic, labelled with what was detected for the customer, and `updateDisplayPreference` saves a choice the same way `updateCustomerPhone` does, with `""` for Automatic (see [Internationalization](/docs/features/internationalization)). The time zones come from `TIMEZONES` (`src/modules/_core/constants/timezone.ts`) and the formats from `FORMAT_LOCALES`, each format labelled with its language and a sample date and number written in it. After a save, `useSaveDisplayPreference` invalidates every cached query, so every date and amount on the page is formatted again with the new choice.
 
-`PreferencesSection` also holds `NewsletterField`, which reads `getOwnNewsletterSubscriptionQuery()` and calls `subscribeToNewsletter` with the account's own address and `source: "account"`. A `confirmationSent` answer shows a "check your inbox" toast, `alreadyConfirmed` says the customer is already subscribed, and `confirmationFailed` shows an error toast saying the email could not be sent. While the subscription is `pending`, the status reads "Not confirmed yet" rather than promising an email, and the field offers **Resend email** next to **Unsubscribe**, so a confirmation that failed or never arrived can be sent again with a fresh link. On a narrow screen the two actions wrap below the status. The `account.profile.tsx` loader loads the subscription together with the profile, so the field renders the stored status straight away instead of showing "Not Subscribed" until its own request returns. If the subscription cannot be read, the profile page still opens and the field asks again after it mounts.
+`PreferencesSection` also holds `NewsletterField`, which reads `getOwnNewsletterSubscriptionQuery()` and calls `subscribeToNewsletter` with the account's own address and `source: "account"`. A `confirmationSent` answer shows a "check your inbox" toast, `alreadyConfirmed` says the customer is already subscribed, and `confirmationFailed` shows an error toast saying the email could not be sent. While the subscription is `pending`, the status reads "Not confirmed yet" rather than promising an email, and the field offers **Resend email** next to **Unsubscribe**, so a confirmation that failed or never arrived can be sent again with a fresh link. On a narrow screen the two actions wrap below the status. Confirming through the link in the email records `newsletter.subscriber_confirmed`. **Unsubscribe** calls `unsubscribeOwnNewsletter`, behind `withRateLimit("newsletter-unsubscribe-own", RATE_LIMITS.SENSITIVE)` and `authorized()`, which finds the subscription by the account's own address and ends it through the same `unsubscribeSubscriber` as the link in a newsletter, recording `newsletter.subscriber_unsubscribed`; both entries are the consent record described in [Audit log](/docs/features/audit-log). The `account.profile.tsx` loader loads the subscription together with the profile, so the field renders the stored status straight away instead of showing "Not Subscribed" until its own request returns. If the subscription cannot be read, the profile page still opens and the field asks again after it mounts.
 
 ## Addresses
 
 `src/modules/address` has five use cases, all `authorized()` and all scoped to the current user:
 
-| Use case                      | Middleware                                                                     | Notes                                                   |
-| ----------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------- |
-| `list-user-addresses.ts`      | `authorized()`                                                                 | `findMany` where `userId` matches                       |
-| `create-user-address.ts`      | `withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE)` + `authorized()` | Forces `userId` from the session                        |
-| `update-user-address.ts`      | rate limited + `authorized()`                                                  |                                                         |
-| `delete-user-address.ts`      | `authorized()`                                                                 |                                                         |
-| `set-default-user-address.ts` | `authorized()`                                                                 | Throws `ERROR_CODES.NOT_FOUND` when nothing was updated |
+| Use case                      | Middleware                                                                     | Notes                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `list-user-addresses.ts`      | `authorized()`                                                                 | `findMany` where `userId` matches                                                                       |
+| `create-user-address.ts`      | `withRateLimit("create-user-address", RATE_LIMITS.SENSITIVE)` + `authorized()` | Forces `userId` from the session; `isDefault: true` clears the previous default first                   |
+| `update-user-address.ts`      | `authorized()`                                                                 | Throws `ERROR_CODES.NOT_FOUND` when no address of the user matches; an emptied optional field is `NULL` |
+| `delete-user-address.ts`      | `authorized()`                                                                 | Throws `ERROR_CODES.NOT_FOUND` when no address of the user matches                                      |
+| `set-default-user-address.ts` | `authorized()`                                                                 | Throws `ERROR_CODES.NOT_FOUND` when no address of the user matches; clears the previous default         |
 
 **Cancel** closes the address form with a single press even when the page is still gliding after a wheel or trackpad scroll: `SmoothScroll` stops the glide on any press, so the button stays under the pointer until it is released. See [GSAP and Lenis](/docs/integrations/gsap-and-lenis).
 
 `addressFieldsSchema` (`address.zod.ts`) requires `address1`, `city` and a two-character `countryCode`; `firstName`, `lastName`, `phone`, `postalCode`, `province` and `address2` are optional, matching the nullable columns.
 
-The `address` table (`address.schema.ts`) has `is_default` and two indexes, `address_userId_idx` and `address_userId_isDefault_idx`. Note that checkout also writes `address` rows — with `user_id` null for a guest — and `isDefault` is set from the `saveShippingAddress` / `saveBillingAddress` checkboxes. See [Checkout](/docs/features/checkout).
+The `address` table (`address.schema.ts`) has `is_default` and two indexes, `address_userId_idx` and `address_userId_isDefault_idx`. Checkout also writes `address` rows, and its `saveShippingAddress` / `saveBillingAddress` checkboxes decide what becomes of them. A ticked box gives the row the signed-in customer's `user_id` and `is_default`, and clears the customer's previous default in the same batch, so the address appears here as the new default. An unticked box, or a guest checkout, leaves `user_id` null, so the address is kept only for the order and never listed here. See [Checkout](/docs/features/checkout).
+
+Each address row has icon buttons labelled "Edit address" and, unless it is the default, "Delete address", which appear on hover or keyboard focus. On a touch screen (`pointer-coarse`) they are always visible and stacked, since there is nothing to hover.
 
 ## Sessions
 
-`listCustomerSessions` selects the `session` rows for the user ordered by `updatedAt` descending and enriches each one:
+`listCustomerSessions` selects the user's `session` rows that have not expired yet (`expiresAt` later than now), ordered by `updatedAt` descending, and enriches each one:
 
 ```ts
 return rows.map((row) => {
@@ -164,7 +182,7 @@ return rows.map((row) => {
 })
 ```
 
-`parseUserAgent` is in `customer-account.utils.ts`. `lastActiveAt` is the session row's `updatedAt`.
+`parseUserAgent` is in `customer-account.utils.ts`. `lastActiveAt` is the session row's `updatedAt`. `formatSessionLastActive` shows it as "Active now" within five minutes and otherwise through `formatRelativeFromNow`: a relative time for a week, then the date in the customer's format locale and time zone.
 
 Two revoke mutations:
 
@@ -173,7 +191,7 @@ Two revoke mutations:
 
 Each records `auth.sessions_revoked` against the customer, with the address they asked from, when it deleted a session; a session id that is not the customer's deletes nothing and records nothing.
 
-The page labels the bulk action "Sign out other devices" and renders it only while the list holds a session other than the current one. With a single device signed in there is nothing for it to do, so the list says the customer is signed in on this device only instead. Signing out of the current device stays with the account sidebar's sign-out link.
+The page labels the bulk action "Sign out other devices" and renders it only while the list holds a session other than the current one. With a single device signed in there is nothing for it to do, so the list says the customer is signed in on this device only instead. Signing out of the current device stays with the account sidebar's sign-out button.
 
 `listCustomerLoginHistory` reuses the same audit rows and keeps only `auth.login` and `auth.login_failed`, mapping the failure to `status: "failed"`. So the login history is a view over [the audit log](/docs/features/audit-log), not a separate table, and it reaches back at most 12 months, after which the daily [retention clean-up](/docs/guides/data-retention) deletes the entries. `getCustomerLoginAuditRows` returns the newest `CUSTOMER_ACCOUNT_LOGIN_HISTORY_LIMIT` (20) rows; when the list reaches that limit, a note under it says only the most recent attempts are shown. Each row states its outcome once — "Successful sign-in" or "Failed sign-in attempt" — with the address and the date beside it.
 
@@ -186,7 +204,7 @@ Closing the account is not offered here. It lives only on the profile page, wher
 Better Auth checks the password and then runs `deleteUser.beforeDelete` (`prepareSelfServiceDeletion` in `auth.hooks.server.ts`). For an account with admin access it stops right there with `403 CANNOT_DELETE_ADMIN` (see below). For any other account it calls `eraseAccountData` (`src/modules/user/user.erasure.server.ts`) before anything is deleted:
 
 1. `deleteStripeCustomer` (`stripe.customer.server.ts`) deletes the account's Stripe customer, which deletes its saved cards with it, and clears `stripe_customer_id` while it still holds that id. A customer Stripe answers `resource_missing` for, deleted in the dashboard for example, counts as deleted.
-2. One D1 batch deletes the `audit_log` rows whose `resource_id` is the account's id or email address, which are the activity log, the sign-in history, the registration and the auth emails that failed to reach it, and the `newsletter_subscriber` rows linked to the account or made with its address.
+2. One D1 batch deletes every `audit_log` row whose `resource_id` is the account's id or email address and every `newsletter_subscriber` row linked to the account or made with its address. The audit rows are the account's activity and sign-in history, its security events (password, two-factor, email address and its verification, revoked sessions), its registration, the guest orders it claimed, the newsletter confirmations and unsubscribes under its address and the auth emails that failed to reach it. Entries about its orders, which are keyed by the order, stay with the orders.
 3. `scheduleAdminAuditLogInvalidation` and `scheduleAdminNewsletterSubscribersInvalidation` refresh the admin audit log and the newsletter subscriber list.
 
 Better Auth then deletes the sessions, the `account` rows (the password and the Google link) and the `user` row. The foreign keys delete the addresses, wishlist and two-factor settings with it and set `user_id` to `null` on orders, checkouts and discount redemptions, so the orders stay for the accounting records as guest orders. `claimGuestOrdersForUser` links them to a new account once that account's email address, the same one, is verified. `afterDelete` sends the goodbye email, which repeats what was deleted and what is kept, and `databaseHooks.user.delete.after` records `customer.deleted`, credited to the customer, with the account's address as the target. That entry is written after the erasure, so it stays as the shop's record of the deletion, kept for two years like the rest of the audit log (see [Data retention](/docs/guides/data-retention)).
@@ -240,9 +258,9 @@ A guest gets `customer_email` instead and has no Stripe customer to save a card 
 
 ```ts
 const intent = await stripe.setupIntents.create({
+  allowed_payment_method_types: ["card"],
   customer,
   metadata: { userId },
-  payment_method_types: ["card"],
   usage: "on_session",
 })
 ```
@@ -275,7 +293,7 @@ On success the form calls `removeDuplicateSavedCards` (`src/modules/payment/use-
 
 ### Listing and removing
 
-`listSavedPaymentMethods` (`src/modules/payment/use-cases/list-saved-payment-methods.ts`) is `authorized()` and asks Stripe for the customer's `card` payment methods with `limit: SAVED_CARDS_PAGE_LIMIT` (100, from `payment.constants.ts`), because Stripe's default page holds ten, or returns an empty list when the user has no Stripe customer. Each card becomes `{ brand, expMonth, expYear, id, isExpired, last4 }`. `isExpired` comes from `isCardExpired` (`payment.utils.ts`), which compares the expiry with today's date in the customer's own time zone: the user's `timezone` through `resolveTimezoneCode`, which falls back to `Europe/Warsaw`.
+`listSavedPaymentMethods` (`src/modules/payment/use-cases/list-saved-payment-methods.ts`) is `authorized()` and asks Stripe for the customer's `card` payment methods with `limit: SAVED_CARDS_PAGE_LIMIT` (100, from `payment.constants.ts`), because Stripe's default page holds ten, or returns an empty list when the user has no Stripe customer. Each card becomes `{ brand, expMonth, expYear, id, isExpired, last4 }`. `isExpired` comes from `isCardExpired` (`payment.utils.ts`), which compares the expiry with today's date in the time zone the customer saved: the user's `timezone` through `resolveTimezoneCode`. A customer who keeps Automatic has no saved zone, so the check uses `DEFAULT_TIMEZONE_CODE` (`Europe/Warsaw`) rather than the detected zone the rest of the account formats in. At the turn of a month such a card can therefore read as expired a few hours earlier or later than on the customer's own clock.
 
 `/account/payment` prefetches `listSavedPaymentMethodsQuery()` and renders `SavedCardList`. With no cards it shows a `CreditCard` icon and `pages.account.payment.empty`; otherwise one `SavedCardRow` per card with the brand, the last four digits, the expiry as `MM/YYYY`, an expired badge when `isExpired` is set and a remove button. The heading count is `methods.length`.
 

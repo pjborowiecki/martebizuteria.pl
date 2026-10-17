@@ -18,9 +18,10 @@ Każda strona wskazuje konkretne pliki: trasę w `src/routes`, use case'y w `src
 | Panel admina | [Pulpit](/docs/features/admin-dashboard), [Katalog](/docs/features/admin-catalog), [Klienci](/docs/features/admin-customers), [Ustawienia](/docs/features/admin-settings), [Dziennik zdarzeń](/docs/features/audit-log) |
 | Platforma    | [E-maile transakcyjne](/docs/features/email), [Internacjonalizacja](/docs/features/internationalization), [Strony prawne](/docs/features/legal-pages)                                                                   |
 
+Regulamin, polityka prywatności, strona wymian i zwrotów oraz FAQ też działają: każda z nich to wiersz `content_page` w D1, który administratorzy edytują pod `/admin/content`.
+
 ## Placeholdery
 
-- `/terms-of-service`, `/privacy-policy` i `/exchanges-and-returns` to trzy dokumenty prawne, edytowalne wiersze w D1, a `/faq` to czwarty wiersz. Zobacz [Strony prawne](/docs/features/legal-pages).
 - Blog pod `/blog` jest ukryty: `src/data/blog-posts.ts` nie wymienia żadnych artykułów, więc jego trasy odpowiadają 404, a strona główna i mapa witryny go pomijają. Zobacz [Strona główna](/docs/features/landing-page#sekcja-przewodnika-i-ukryty-blog).
 
 ## Schemat bez zachowania
