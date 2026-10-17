@@ -3,7 +3,7 @@ title: "Catalog and search"
 description: "The /products, /categories and /collections pages, the URL-driven filter state, the SQL behind the listing, and the search overlay."
 ---
 
-Four storefront routes share one catalog component. `/products` is the unscoped listing; `/categories/$handle` and `/collections/$handle` are the same listing with a fixed scope; `/categories` and `/collections` are index grids.
+Three storefront routes share one catalog component. `/products` is the unscoped listing; `/categories/$handle` and `/collections/$handle` are the same listing with a fixed scope; `/categories` and `/collections` are index grids.
 
 ## Routes
 
@@ -59,12 +59,13 @@ Each route passes a `handleSearchChange` callback that navigates with `replace: 
 
 A request that carries `q` is a search, and the handler counts it with `assertWithinRateLimit("search-storefront-products", RATE_LIMITS.BROWSING, context.requestHeaders)` before it resolves a handle or reads a product: 120 searches a minute per client address, in a bucket of its own beside the overlay's. Past the limit it answers `TOO_MANY_REQUESTS`, the loader fails and the router shows `DefaultErrorComponent`. A listing without `q` is not counted, so browsing, filtering and paging through `/products`, a category or a collection, and the crawlers that walk them, add no write to the `rate_limit` table. A shopper sends one search per submitted term and one more for each filter or sort change on the results, which stays far below the limit.
 
-Page size depends on whether any filter is active, using the constants in `product.constants.ts`:
+Page size depends on the filters `countActiveStorefrontProductFilters` counts, using the constants in `product.constants.ts`. The server and the browser count differently: `getStorefrontProductsPage` counts the `category` or `collection` a scoped page fixes as a filter, while `getStorefrontProductsPageQuery` and the grid ignore it (`storefrontCatalogFilterOptions`).
 
-| Situation      | Page size                                   | Paging                                              |
-| -------------- | ------------------------------------------- | --------------------------------------------------- |
-| No filters     | `PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE` (12) | `getNextPageParam` advances, so the grid loads more |
-| Any filter set | `PRODUCT_STOREFRONT_FILTERED_MAX` (100)     | `getNextPageParam` returns `undefined` — one page   |
+| Situation                                                                                                   | Page size                                                                    | Paging                                                                   |
+| ----------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `/products` with no filter                                                                                  | `PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE` (12)                                  | `getNextPageParam` advances, so the grid loads 12 more as it scrolls     |
+| A category or collection page with no other filter                                                          | `PRODUCT_STOREFRONT_FILTERED_MAX` (100), because the server counts the scope | `getNextPageParam` advances, so the grid loads 100 more at a time        |
+| Any other filter: a price, `q`, a sort other than `rank`, or a category or collection the page does not fix | `PRODUCT_STOREFRONT_FILTERED_MAX` (100)                                      | `getNextPageParam` returns `undefined`: one page of at most 100 products |
 
 Before hitting the product table the handler resolves the scope handles into ids:
 
@@ -101,6 +102,8 @@ Scope filters are `inArray(product.id, <subquery>)` against `category_on_product
 
 The `q` parameter searches the `storefront_search` FTS5 index through `storefrontProductMatches(term)` in `src/modules/storefront-search/storefront-search.accessors.server.ts`. `buildStorefrontSearchExpression` folds `ł` to `l`, splits the term into words and turns each word into a prefix query, so `zlo pier` finds "Złoty pierścionek". A term with no letters or digits has nothing to search for, and the page comes back empty.
 
+`storefront_search` is an FTS5 virtual table that `20261002100000_storefront_search.sql` creates with the `unicode61 remove_diacritics 2` tokenizer. Insert, update and delete triggers on `product`, `product_category` and `product_collection` keep one entry per row, marked `product`, `category` or `collection` in its `kind` column. Each indexed column holds the row's Polish and English values side by side, with `ł` folded to `l`, because the tokenizer strips the other Polish diacritics but not that one. A product's entry holds its titles, subtitles, tags, descriptions and handle. A category's holds its titles, subtitles and handle, with its short descriptions and descriptions together in the description column. A collection's holds its titles, its short descriptions as the subtitle, its descriptions and its handle. The triggers name `pl-PL` and `en-US` themselves, so a new locale needs a migration that recreates them and refills the index.
+
 The schema keeps at most the first `STOREFRONT_SEARCH_MAX_LENGTH` (100) characters of the trimmed term and drops a space the cut leaves at its end. The routes validate their search with it and the server function parses its input with it, so the index never receives a longer term, however the request is made. The overlay's field stops at the same length, so only an edited or hand-typed link is ever cut, and such a link opens the results for its first 100 characters instead of an error page.
 
 A product matches when any of these holds:
@@ -115,25 +118,37 @@ A product matches when any of these holds:
 
 `src/presentation/components/custom/pages/products-catalog/`:
 
-| File                                  | Role                                                                 |
-| ------------------------------------- | -------------------------------------------------------------------- |
-| `products-catalog-page.tsx`           | Composes header, filters and grid; reads the infinite query          |
-| `products-catalog-filters.tsx`        | Desktop sidebar: sort, category tree, collection list, price         |
-| `products-catalog-mobile-filters.tsx` | The same filters in a sheet                                          |
-| `products-catalog-price-filter.tsx`   | Min/max price inputs                                                 |
-| `products-catalog-grid.tsx`           | Product grid and the load-more behaviour                             |
-| `products-catalog.loader.ts`          | `prefetchProductsCatalogPage`, called from every route loader        |
-| `products-catalog.utils.ts`           | `flattenStorefrontCategoryFilters`, `mapStorefrontCollectionFilters` |
+| File                                            | Role                                                                                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `products-catalog-page.tsx`                     | Composes header, filters and grid; reads the infinite query                                                          |
+| `products-catalog-filters.tsx`                  | Desktop sidebar: sort, category tree, collection list, price                                                         |
+| `products-catalog-mobile-filters.tsx`           | The same filters in a sheet                                                                                          |
+| `products-catalog-price-filter.tsx`             | Min/max price inputs                                                                                                 |
+| `products-catalog-grid.tsx`                     | Product grid, results toolbar and the infinite-scroll sentinel                                                       |
+| `hooks/use-products-catalog-infinite-scroll.ts` | `useProductsCatalogInfiniteScroll`, which loads the next page when the sentinel nears the viewport                   |
+| `products-catalog-search-clear.tsx`             | The "Clear search" button shown while `q` is set                                                                     |
+| `products-catalog.loader.ts`                    | `prefetchProductsCatalogPage`, called from the `/products`, `/categories/$handle` and `/collections/$handle` loaders |
+| `products-catalog.utils.ts`                     | `flattenStorefrontCategoryFilters`, `mapStorefrontCollectionFilters`                                                 |
 
 `useCatalogFilterSources` hides the category filter on a category page and the collection filter on a collection page, and skips the corresponding query entirely, so a scoped page makes one query fewer.
 
-`prefetchProductsCatalogPage` runs the infinite query and the two filter-source queries in parallel, then calls `prefetchProductThumbnails` on the first page's items.
+`prefetchProductsCatalogPage` runs the infinite query and the filter-source queries the page shows in parallel: both on `/products`, and on a category or collection page only the one its scope does not fix. It then calls `prefetchProductThumbnails` on the first page's items.
 
 The `/categories/$handle` and `/collections/$handle` loaders look up their row and warm the grid in one `Promise.all`, so the lookup and the first products page are requested at the same time. The lookup goes through `getStorefrontCategoryQuery(handle)` or `getStorefrontCollectionQuery(handle)`, keyed under `CATEGORY_QUERY_KEYS.BY_HANDLE` or `COLLECTION_QUERY_KEYS.BY_HANDLE` with the module's 60-second stale time. It reads only `id`, `titles` and `descriptions`, the fields the page and the products handler use, so the row the server render writes into the HTML stays small. A sort, a filter or a hover preload on the same page reuses the cached row and asks the server only for the products. A missing row comes back as `false`, because the query cache cannot hold `undefined`. The category page then throws `notFound`, and the collection page warms the other collections and the new arrivals for its unavailable state. The grid warmed in parallel for a missing handle is the empty page described above.
+
+## Grid and filters in the browser
+
+`ProductsCatalogGrid` lays the cards out in one column, two from `sm` and three from `xl`, and loads the first three card images with priority. While the browser counts no filter, it renders a one-pixel sentinel under the cards, and `useProductsCatalogInfiniteScroll` watches it with an `IntersectionObserver` whose `rootMargin` is 240 px: once the sentinel comes that close to the viewport and no page is loading, it calls `fetchNextPage`, and three skeleton cards stand in for the next page while it loads. Above the cards, the results toolbar shows the total from the first page and a "Clear filters" button. The button is disabled while the browser counts no filter, and it empties every search parameter, `q` included; a scoped page keeps its scope, which is part of the path. With no products, the grid shows only the page's `noProductsFound` message, without the toolbar.
+
+A search reaches the catalog as `/products?q=…`, which the overlay opens when the shopper submits a term. With `q` set, `/products` takes its eyebrow and heading from `pages.products.search` ("Results for “…”") and its document title from `search.pageTitle`, and each of the three pages shows `ProductsCatalogSearchClear` under its heading, a "Clear search" button that removes only `q` and keeps the other filters.
+
+Below `lg` the sidebar is hidden. `ProductsCatalogMobileFilters` puts a full-width Filters button above the grid, with the number of active filters from `countActiveStorefrontProductFilters` in a badge, and opens the same `ProductsCatalogFilters` in a sheet from the left that fills a phone's width and stops at `max-w-md` from `sm`. A choice applies at once, as on a large screen, and the sheet stays open until the shopper presses "Show results" (`closePanel`) or closes it. Each choice is at least 44 px tall there (`min-h-11`), and the price inputs and the clear-filters button grow to 40 px on a touch screen (`pointer-coarse:`). From `lg` the sidebar stays in view while the grid scrolls (`lg:sticky`).
 
 ## Reduced prices on cards
 
 `storefrontListVariantColumns` in `product.stock.server.ts` also reads each variant's `compare_at_price`. `getStorefrontPublishedProductsPage` hands the page's products to `withPriceReductions` (`src/modules/price-history/price-history.accessors.ts`) before it returns them, and `getPublishedProductsAmong` in `product.accessors.ts` does the same for the new arrivals, the related products and the account recommendations. When one of the listed variants is reduced, `withPriceReductions` reads the price history of the reduced variants in one more statement and gives every variant its `priceReduction`, which stays `undefined` unless the price is below the lowest price of the 30 days before the reduction; when none is reduced, it reads nothing, so a listing without reductions costs the statements described above. The catalog grid, the new arrivals, the related products and the unavailable-collection page pass the reduction of the variant each card shows to `ProductCard`, whose `ProductPrice` strikes that lowest price through next to the price and adds "Najniższa cena z 30 dni przed obniżką: …" ("Lowest price in the 30 days before the reduction: …") under it. [Product page](/docs/features/product-page#reduced-prices-and-the-lowest-price-of-the-30-days-before) explains how that lowest price is found. The price filter and the price sorts still work on `price`.
+
+A catalog card shows the price of the first variant the listing returns for its product. The grid formats it with `useFormatter()` from `src/hooks/use-display-format.ts`, and `ProductPrice` formats the lowest price the same way, so both follow the shopper's format locale rather than the page's language (see [Internationalization](/docs/features/internationalization)).
 
 ## Search overlay
 
@@ -141,15 +156,17 @@ The header search is a separate feature backed by `src/modules/storefront-search
 
 `searchStorefront` (`use-cases/search-storefront.ts`) is public, takes `{ locale, query }` and fans out to three accessors in `storefront-search.server.ts`:
 
-| Accessor                      | Table                | Matched columns                                                                                                                  |
-| ----------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `searchStorefrontProducts`    | `product`            | `titles`, `subtitles`, `tags`, `descriptions` and `handle` through the `storefront_search` index, behind `publishedInStockWhere` |
-| `searchStorefrontCategories`  | `product_category`   | `handle`, `titles`, `subtitles`, `shortDescriptions`, status active                                                              |
-| `searchStorefrontCollections` | `product_collection` | `handle`, `titles`, `descriptions`, status active                                                                                |
+| Accessor                      | Table                | Matched columns                                                                            |
+| ----------------------------- | -------------------- | ------------------------------------------------------------------------------------------ |
+| `searchStorefrontProducts`    | `product`            | `titles`, `subtitles`, `tags`, `descriptions` and `handle`, behind `publishedInStockWhere` |
+| `searchStorefrontCategories`  | `product_category`   | `titles`, `subtitles`, `short_descriptions`, `descriptions` and `handle`, status active    |
+| `searchStorefrontCollections` | `product_collection` | `titles`, `short_descriptions`, `descriptions` and `handle`, status active                 |
+
+All three match through the `storefront_search` index: each joins `storefrontSearchMatches(kind, expression)` from `storefront-search.accessors.server.ts`, which searches the entries of its kind, and orders by `bm25` relevance, weighting a match in the title 10, the subtitle 5, the tags 3, the handle 2 and the description 1, then by `rank`. A product's second line is its subtitle or, without one, the title of its primary category.
 
 The overlay's product group matches a product's own text only. Unlike the `q` parameter, it does not reach products through their categories, collections or SKUs.
 
-Each search runs those three index queries, so the function sits behind `withRateLimit("search-storefront", RATE_LIMITS.BROWSING)`: 120 searches a minute per client address, in a bucket of its own. The overlay asks only after a 300 ms pause in typing and caches each term for a minute, so a shopper stays far below that. Past the limit the function answers `TOO_MANY_REQUESTS` and the overlay shows its retryable error. A query longer than `STOREFRONT_SEARCH_MAX_LENGTH` characters after trimming fails validation before the database is read, and the overlay's field takes no more characters than that.
+Each search runs those three index queries, so the function sits behind `withRateLimit("search-storefront", RATE_LIMITS.BROWSING)`: 120 searches a minute per client address, in a bucket of its own. The overlay asks only after a 300 ms pause in typing and caches each term for a minute, so a shopper stays far below that. Past the limit the function answers `TOO_MANY_REQUESTS` and the overlay shows its retryable error. The middleware counts a request before the function validates its input, so a query shorter than two or longer than `STOREFRONT_SEARCH_MAX_LENGTH` characters after trimming still counts against the limit, and then fails validation before the index is searched. The overlay never sends such a query: it asks only from two characters, and its field takes no more than `STOREFRONT_SEARCH_MAX_LENGTH`.
 
 Constants in `storefront-search.constants.ts`:
 

@@ -98,7 +98,7 @@ The cookie is the fallback for exactly the paths the middleware ignores — an A
 
 ## Message catalogues
 
-`messages/{locale}/{namespace}.json`, 56 files per locale and the two directories are identical in filenames. The namespace is the filename: `pages.landing.json` is the namespace `pages.landing`, and `buildMessageTree` splits it on dots to nest it, so `useTranslations("pages.landing.heroSection")` works.
+`messages/{locale}/{namespace}.json`, 60 files per locale and the two directories are identical in filenames. The namespace is the filename: `pages.landing.json` is the namespace `pages.landing`, and `buildMessageTree` splits it on dots to nest it, so `useTranslations("pages.landing.heroSection")` works.
 
 `src/integrations/use-intl/i18n.messages.ts` loads them with a Vite glob:
 
@@ -141,12 +141,15 @@ staticData: {
 },
 ```
 
-`getRouteNamespaces(matches)` unions `ROOT_NAMESPACES` with the `namespaces` of every matched route, so a nested route inherits its layout's declarations. The root route's `beforeLoad` then preloads them all before rendering:
+`getRouteNamespaces(matches)` unions `ROOT_NAMESPACES` with the `namespaces` of every matched route, so a nested route inherits its layout's declarations. The root route's `beforeLoad` then preloads them all before rendering, together with the display preferences described below:
 
 ```ts
 beforeLoad: async ({ context, location, matches }): Promise<RootRouteContext> => {
   const locale = getCurrentLocale()
-  await preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient: context.queryClient })
+  await Promise.all([
+    preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient: context.queryClient }),
+    context.queryClient.query(displayPreferencesQuery),
+  ])
 
   return { internalPathname: location.pathname, locale }
 },
@@ -171,7 +174,7 @@ It also writes the locale cookie in an effect, so a client-side navigation into 
   - **Time zone:** the zone the browser reported in the `marte_time_zone` cookie, then the one Cloudflare derives from the visitor's address (`request.cf.timezone`, carried in the request context as `edgeTimeZone`), then `UTC`.
   - **Format locale:** the first usable language in the `Accept-Language` header, then `en-US`.
 
-A saved value wins over a detected one. After the first render, `TranslationsProvider` reads the browser's own time zone and writes it to `marte_time_zone` for the next request. It switches to that zone straight away when nothing is saved and the request only guessed.
+A saved value wins over a detected one. After the first render, `TranslationsProvider` reads the browser's own time zone and writes it to `marte_time_zone` for the next request. It switches to that zone straight away when nothing is saved and the request only guessed. The cookie holds only the zone's name, such as `Europe/Warsaw`, and like `marte_locale` it is written by script through `serializeCookie` (`src/lib/cookie.ts`): a year long, `Path=/`, `SameSite=Lax`, and `Secure` over HTTPS. The privacy policy stored in `content_page` does not list it yet; see [Legal pages](/docs/features/legal-pages#the-privacy-policy).
 
 `IntlProvider` gets the resulting time zone. The format locale goes to `DisplayPreferencesContext`, which `useFormatter`, `useFormatLocale` and `useDisplayTimeZone` in `src/hooks/use-display-format.ts` read. The provider's own `locale` stays the page's language, because it also decides the plural forms of the messages. A Polish page can therefore show dates and numbers formatted for another country.
 
@@ -215,7 +218,7 @@ descriptions: text("descriptions", { mode: "json" }).$type<Product["localeMap"] 
 tags: text("tags", { mode: "json" }).$type<Product["tagsLocaleMap"] | null>(),
 ```
 
-The same shape appears on `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles`, and the labels inside `allowed_values`), `content_page` (`titles`, `descriptions` and `bodies`, where `bodies` holds the Markdown of `/terms-of-service`, `/privacy-policy` and `/exchanges-and-returns`) and `delivery_method` (`names`, edited under Settings → Delivery, where both languages are required; see [Shipping and delivery](/docs/features/shipping-and-delivery#two-tables)).
+The same shape appears on `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `short_descriptions`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles`, and the labels inside `allowed_values`), `content_page` (`titles`, `descriptions` and `bodies`, where `bodies` holds the Markdown of `/terms-of-service`, `/privacy-policy`, `/exchanges-and-returns` and `/faq`) and `delivery_method` (`names`, edited under Settings → Delivery, where both languages are required; see [Shipping and delivery](/docs/features/shipping-and-delivery#two-tables)).
 
 Reading falls back three times. `resolveLocalizedString` in `src/modules/product-attribute/product-attribute.utils.ts` is the shared implementation:
 
@@ -276,7 +279,7 @@ A product page also returns `image`. `resolveProductSocialImageUrl` in `src/lib/
 
 ## Formatting
 
-Money and dates use `use-intl`'s `useFormatter` in most components:
+Money and dates go through the app's `useFormatter` from `src/hooks/use-display-format.ts`, never `use-intl`'s own. It builds `use-intl`'s `createFormatter` with the format locale and time zone from `DisplayPreferencesContext`, so it formats the way the reader chose rather than in the page's language:
 
 ```ts
 format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" })
@@ -284,10 +287,10 @@ format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "cur
 
 `src/modules/_core/utils/currency.ts` holds the minor-unit arithmetic — `centsToDisplayAmount`, `parseMoneyInputToMinorUnits`, `formatPrice`, `formatMinorUnitsAsDecimal`, `minorUnitsPerMajor` — while `_core/constants/currency.ts` holds the full ISO 4217 exponent table and `getCurrencyExponent`.
 
-Two places bypass the formatter and hard-code Polish:
+Code that formats outside a component takes the preferences as arguments, with no default to fall back on:
 
-- `src/routes/_storefront.cart.tsx` builds its totals with `new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" })`
-- `formatAdminOrderDate` in `order.display.utils.ts` defaults its `locale` argument to `I18N.DEFAULT_LOCALE`
+- `src/routes/_storefront.cart.tsx` formats its totals with `formatPrice(…, STORE_CURRENCY_CODE, formatLocale)`, with `formatLocale` from `useFormatLocale()`
+- `formatAdminOrderDate(createdAt, { formatLocale, timeZone })` in `order.display.utils.ts` requires both, and the order list, its export and the overview's recent orders pass the admin's own
 
 The Stripe Elements form is localised separately, by mapping the app locale to a Stripe locale in `stripe.client.ts` (`pl-PL → pl`, `en-US → en`).
 
@@ -295,12 +298,12 @@ The Stripe Elements form is localised separately, by mapping the app locale to a
 
 - **No locale switcher on the storefront.** Nothing in the shop's navigation, the footer or the account area changes language; a visitor has to edit the URL. The only control is the admin's **Admin panel language** in [Settings → My account](/docs/features/admin-settings#preferences), which reloads the same page under the other locale's prefix.
 - No per-user language preference. The time zone and the format locale are stored per user, but the page's language always follows the URL.
-- No message-catalogue parity check. The two directories currently hold the same 56 filenames, but nothing in `bun run check` verifies that the keys inside them match.
+- No message-catalogue parity check. The two directories currently hold the same 60 filenames, but nothing in `bun run check` verifies that the keys inside them match.
 
 ## Adding a locale
 
 1. Add the code to `SUPPORTED_LOCALES` in `i18n.config.ts`.
-2. Create `messages/<locale>/` with all 56 files. `loadNamespace` throws on a missing one, so this is not optional.
+2. Create `messages/<locale>/` with all 60 files. `loadNamespace` throws on a missing one, so this is not optional.
 3. Add the locale to every `*.<locale>.mdx` set in `content/docs`, and to each `meta.<locale>.json`.
 4. Add the new locale to the `titles`, `descriptions`, `bodies` and `revised_ats` maps of every `content_page` row in a migration, starting from the Polish text. Then translate every page in the editor at `/admin/content`, which will not save a page until every locale has all three fields.
 5. Backfill the JSON locale maps in D1, `delivery_method.names` included; `coerceProductLocaleMap` keeps existing rows readable in the meantime, and `resolveLocalizedString` falls back to Polish. The delivery method form in Settings has one name field per locale in `NAME_FIELDS` (`delivery-method-fields.tsx`), so it needs one for the new locale too.

@@ -33,15 +33,16 @@ Layout `_storefront` w `src/routes/_storefront.tsx` dostarcza nawigację, komuni
 
 ## Co wczytuje loader
 
-Loader uruchamia równolegle trzy zapytania i zwraca metadane strony:
+Loader uruchamia równolegle cztery zapytania i zwraca metadane strony:
 
-| Zapytanie               | Use case                                                   | Używane przez                                         |
-| ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
-| `messagesQueryOptions`  | `src/integrations/use-intl/i18n.messages.ts`               | tytuł i opis w `head`                                 |
-| `getNewArrivalsQuery()` | `src/modules/product/use-cases/get-new-arrivals.ts`        | `NewArrivalsSection`                                  |
-| `getCategoriesQuery()`  | `src/modules/product-category/use-cases/get-categories.ts` | `MobileCategoriesSection`, `DesktopCategoriesSection` |
+| Zapytanie               | Use case                                                      | Używane przez                                         |
+| ----------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
+| `messagesQueryOptions`  | `src/integrations/use-intl/i18n.messages.ts`                  | tytuł i opis w `head` oraz dane strukturalne          |
+| `getNewArrivalsQuery()` | `src/modules/product/use-cases/get-new-arrivals.ts`           | `NewArrivalsSection`                                  |
+| `getCategoriesQuery()`  | `src/modules/product-category/use-cases/get-categories.ts`    | `MobileCategoriesSection`, `DesktopCategoriesSection` |
+| `getCollectionsQuery()` | `src/modules/product-collection/use-cases/get-collections.ts` | `ShopCollectionsSection`                              |
 
-Oba zapytania katalogowe są wykonywane z `staleTime: "static"`, więc render serwerowy nigdy ich nie odświeża. Po ich rozwiązaniu `prefetchProductThumbnails(newArrivals, context.imagePrefetchService)` z `src/lib/image.ts` rozgrzewa miniatury produktów z nowości.
+Trzy zapytania katalogowe są wykonywane z `staleTime: "static"`, więc render serwerowy nigdy ich nie odświeża. Po ich rozwiązaniu `prefetchProductThumbnails(newArrivals, context.imagePrefetchService)` z `src/lib/image.ts` rozgrzewa miniatury produktów z nowości.
 
 ## Nowości
 
@@ -90,31 +91,19 @@ Aby opublikować artykuł, dodaj jego slug do `BLOG_POST_SLUGS` i nadaj mu w obu
 
 ## Statyczne zasoby marketingowe
 
-`src/data/landing.ts` przechowuje adresy zasobów i trzy kafle kolekcji z `ShopCollectionsSection`:
+`src/data/landing.ts` przechowuje tylko zdjęcie w hero i wideo, które nie należą do żadnego wiersza katalogu:
 
 ```ts
 export const LANDING_HERO_IMG = getAssetURL("marketing/hero.webp")
 export const LANDING_VIDEO_POSTER = getAssetURL("placeholder.svg")
 export const LANDING_VIDEO_SRC = getAssetURL("marketing/landing-video.mp4")
-
-export const LANDING_SHOP_COLLECTIONS = [
-  {
-    descKey: "items.newArrivals.description",
-    image: getAssetURL("collections/new_arrivals.webp"),
-    nameKey: "items.newArrivals.name",
-    slug: "nowosci",
-  },
-  {
-    descKey: "items.silver.description",
-    image: getAssetURL("collections/silver925.webp"),
-    nameKey: "items.silver.name",
-    slug: "srebro-925",
-  },
-  { descKey: "items.gold.description", image: getAssetURL("collections/gold585.webp"), nameKey: "items.gold.name", slug: "zloto-585" },
-] as const
 ```
 
-Te trzy slugi to zapisane na stałe handle kolekcji. `getAssetURL` (`src/lib/url.ts`) rozwiązuje je względem publicznego adresu R2.
+`getAssetURL` (`src/lib/url.ts`) rozwiązuje je względem publicznego adresu R2. Zdjęcie pokazuje `HeroSection`, a wideo `VideoExperienceSection`.
+
+## Kolekcje
+
+`ShopCollectionsSection` czyta `getCollectionsQuery()` przez `useSuspenseQuery`, czyli aktywne kolekcje uporządkowane według `rank`, i pokazuje pierwsze `SHOP_COLLECTION_DISPLAY_LIMIT` (3) jako karty. Każda karta bierze zdjęcie z `image` kolekcji przez `getProductImageUrl`, tytuł z `titles` w języku czytelnika, a tekst z `short_descriptions` albo, gdy krótki opis jest pusty, z `descriptions`, i prowadzi do `/collections/$handle`. To, które kolekcje się pojawiają, w jakiej kolejności, z jakim zdjęciem i tekstem, ustala się więc w [panelu katalogu](/docs/features/admin-catalog), a nie w kodzie. Nagłówek sekcji, jej lead i link do `/collections` pochodzą z `shopCollectionsSection` w `pages.landing`. Zapis kolekcji wysyła `COLLECTION_QUERY_KEYS.ALL` przez `scheduleCollectionCatalogInvalidation()`, więc otwarte strony główne pokazują zmianę.
 
 ## Animacja przewijania
 
@@ -158,7 +147,7 @@ Codzienne czyszczenie usuwa wiersz, który jest nadal `pending` 30 dni po ostatn
 
 ## Zakotwiczenia sekcji
 
-`NewArrivalsSection` to jedyna sekcja z atrybutem `id`: `id="nowosci"`. Odnośniki, które mają do niej trafiać, używają tego fragmentu adresu. Pozostałe sekcje nie są adresowalne.
+Pięć sekcji ma atrybut `id`, więc odnośnik taki jak `/#nowosci` przewija do nich stronę: `VideoExperienceSection` (`experience`), `NewArrivalsSection` (`nowosci`), `DesktopCategoriesSection` (`kolekcje`), `SilverPremiumSection` (`srebro`) i `MaisonHeritageSection` (`marka`). `kolekcje` ma tylko desktopowa sekcja kategorii, ukryta poniżej `lg` i przy ograniczonym ruchu, więc ten fragment adresu trafia do kategorii tylko tam, gdzie przewijają się w poziomie. Obecnie nic w aplikacji nie linkuje do tych zakotwiczeń. Pozostałe sekcje nie są adresowalne.
 
 ## Powiązane strony
 

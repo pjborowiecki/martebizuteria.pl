@@ -75,7 +75,7 @@ Note the return type. **A missing product and an out-of-stock product are both `
 | `hasVariants`                              | `inferHasVariants(options, variants.length)`                                                           |
 | `options`                                  | `{ id, title, values: [{ id, label }] }` with labels resolved for the locale                           |
 | `variants[].optionValueIds`                | `resolveVariantOptionValueIds` — a `Record<optionId, valueId>` built from `option_on_variant`          |
-| `variants[].priceReduction`                | `attachPriceReductions` — `{ compareAtPrice, lowestPrice }` for a reduced variant, else `undefined`    |
+| `variants[].priceReduction`                | `attachPriceReductions` — `{ lowestPrice }` for a variant that shows a reduction, else `undefined`     |
 
 ## Variant selection
 

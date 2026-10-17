@@ -98,7 +98,7 @@ Ciasteczko jest fallbackiem dokładnie dla tych ścieżek, które middleware pom
 
 ## Katalogi komunikatów
 
-`messages/{locale}/{namespace}.json`, 56 plików na język, a oba katalogi mają identyczne nazwy plików. Przestrzeń nazw to nazwa pliku: `pages.landing.json` to przestrzeń `pages.landing`, a `buildMessageTree` rozbija ją po kropkach i zagnieżdża, więc `useTranslations("pages.landing.heroSection")` działa.
+`messages/{locale}/{namespace}.json`, 60 plików na język, a oba katalogi mają identyczne nazwy plików. Przestrzeń nazw to nazwa pliku: `pages.landing.json` to przestrzeń `pages.landing`, a `buildMessageTree` rozbija ją po kropkach i zagnieżdża, więc `useTranslations("pages.landing.heroSection")` działa.
 
 `src/integrations/use-intl/i18n.messages.ts` wczytuje je globem Vite:
 
@@ -141,12 +141,15 @@ staticData: {
 },
 ```
 
-`getRouteNamespaces(matches)` sumuje `ROOT_NAMESPACES` z `namespaces` każdej dopasowanej trasy, więc trasa zagnieżdżona dziedziczy deklaracje swojego layoutu. `beforeLoad` trasy głównej wczytuje je wszystkie przed renderem:
+`getRouteNamespaces(matches)` sumuje `ROOT_NAMESPACES` z `namespaces` każdej dopasowanej trasy, więc trasa zagnieżdżona dziedziczy deklaracje swojego layoutu. `beforeLoad` trasy głównej wczytuje je wszystkie przed renderem, razem z opisanymi niżej preferencjami wyświetlania:
 
 ```ts
 beforeLoad: async ({ context, location, matches }): Promise<RootRouteContext> => {
   const locale = getCurrentLocale()
-  await preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient: context.queryClient })
+  await Promise.all([
+    preloadNamespaces({ locale, namespaces: getRouteNamespaces(matches), queryClient: context.queryClient }),
+    context.queryClient.query(displayPreferencesQuery),
+  ])
 
   return { internalPathname: location.pathname, locale }
 },
@@ -164,14 +167,14 @@ beforeLoad: async ({ context, location, matches }): Promise<RootRouteContext> =>
 
 Zapisuje też ciasteczko języka w efekcie, więc nawigacja po stronie klienta do `/en-US` aktualizuje ciasteczko bez żądania.
 
-`timeZone` oraz format dat i liczb pochodzą z `displayPreferencesQuery` (`src/integrations/use-intl/i18n.display-preferences.ts`). Główna trasa wczytuje je przed pierwszym renderowaniem, więc serwer i przeglądarka formatują tak samo. Jej funkcja serwerowa zwraca to, co użytkownik zapisał, i to, co wynika z żądania:
+`timeZone` oraz format dat i liczb pochodzą z `displayPreferencesQuery` (`src/integrations/use-intl/i18n.display-preferences.ts`). Główna trasa wczytuje je przed pierwszym renderowaniem, więc serwer i przeglądarka formatują tak samo. Jej funkcja serwerowa zwraca zapisany wybór użytkownika i to, co wynika z żądania:
 
 - **Zapisane:** `user.timezone` i `user.format_locale`. Zalogowany użytkownik wybiera je w `/account/profile` albo w panelu w [Ustawienia → Moje konto](/docs/features/admin-settings#preferencje), a każda lista zaczyna się od pozycji Automatycznie. `updateDisplayPreference` (`src/modules/user/use-cases/update-display-preference.ts`) zapisuje strefę albo format tylko wtedy, gdy środowisko potrafi według nich formatować, a dla pozycji Automatycznie czyści wartość. Better Auth nie przyjmuje żadnego z tych pól jako danych wejściowych.
 - **Wykryte:**
   - **Strefa czasowa:** strefa, którą przeglądarka zapisała w ciasteczku `marte_time_zone`, potem strefa, którą Cloudflare wyznacza z adresu odwiedzającego (`request.cf.timezone`, przekazywana w kontekście żądania jako `edgeTimeZone`), a na końcu `UTC`.
   - **Format:** pierwszy użyteczny język z nagłówka `Accept-Language`, a na końcu `en-US`.
 
-Wartość zapisana wygrywa z wykrytą. Po pierwszym renderowaniu `TranslationsProvider` odczytuje strefę czasową samej przeglądarki i zapisuje ją w `marte_time_zone` na potrzeby następnego żądania. Przełącza się na nią od razu, gdy nic nie jest zapisane, a żądanie jedynie ją zgadywało.
+Wartość zapisana wygrywa z wykrytą. Po pierwszym renderowaniu `TranslationsProvider` odczytuje strefę czasową samej przeglądarki i zapisuje ją w `marte_time_zone` na potrzeby następnego żądania. Przełącza się na nią od razu, gdy nic nie jest zapisane, a żądanie jedynie ją zgadywało. Ciasteczko przechowuje tylko nazwę strefy, na przykład `Europe/Warsaw`, i tak jak `marte_locale` zapisuje je skrypt przez `serializeCookie` (`src/lib/cookie.ts`): na rok, z `Path=/`, `SameSite=Lax` i `Secure` przy HTTPS. Polityka prywatności zapisana w `content_page` jeszcze go nie wymienia; zobacz [Strony prawne](/docs/features/legal-pages#polityka-prywatności).
 
 `IntlProvider` dostaje wynikową strefę czasową. Format trafia do `DisplayPreferencesContext`, z którego czytają `useFormatter`, `useFormatLocale` i `useDisplayTimeZone` z `src/hooks/use-display-format.ts`. Własne `locale` providera pozostaje językiem strony, bo decyduje też o formach liczby mnogiej w komunikatach. Polska strona może więc pokazywać daty i liczby sformatowane dla innego kraju.
 
@@ -215,7 +218,7 @@ descriptions: text("descriptions", { mode: "json" }).$type<Product["localeMap"] 
 tags: text("tags", { mode: "json" }).$type<Product["tagsLocaleMap"] | null>(),
 ```
 
-Ten sam kształt pojawia się w `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles` oraz etykiety wewnątrz `allowed_values`), `content_page` (`titles`, `descriptions` i `bodies`, przy czym `bodies` zawiera Markdown stron `/terms-of-service`, `/privacy-policy` i `/exchanges-and-returns`) i `delivery_method` (`names`, edytowane w Ustawienia → Dostawa, gdzie oba języki są wymagane; zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery#dwie-tabele)).
+Ten sam kształt pojawia się w `product_category` (`titles`, `subtitles`, `short_descriptions`, `descriptions`), `product_collection` (`titles`, `short_descriptions`, `descriptions`), `product_option` (`titles`), `product_option_value` (`labels`), `product_attribute` (`titles` oraz etykiety wewnątrz `allowed_values`), `content_page` (`titles`, `descriptions` i `bodies`, przy czym `bodies` zawiera Markdown stron `/terms-of-service`, `/privacy-policy`, `/exchanges-and-returns` i `/faq`) i `delivery_method` (`names`, edytowane w Ustawienia → Dostawa, gdzie oba języki są wymagane; zobacz [Wysyłka i dostawa](/docs/features/shipping-and-delivery#dwie-tabele)).
 
 Odczyt ma trzy poziomy fallbacku. `resolveLocalizedString` w `src/modules/product-attribute/product-attribute.utils.ts` to wspólna implementacja:
 
@@ -276,7 +279,7 @@ Strona produktu zwraca też `image`. `resolveProductSocialImageUrl` w `src/lib/i
 
 ## Formatowanie
 
-Kwoty i daty w większości komponentów korzystają z `useFormatter` z `use-intl`:
+Kwoty i daty przechodzą przez aplikacyjny `useFormatter` z `src/hooks/use-display-format.ts`, nigdy przez ten z `use-intl`. Buduje on `createFormatter` z `use-intl` z językiem formatu i strefą czasową z `DisplayPreferencesContext`, więc formatuje tak, jak wybrał czytelnik, a nie w języku strony:
 
 ```ts
 format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "currency" })
@@ -284,10 +287,10 @@ format.number(centsToDisplayAmount(variantPrice), { currency: "PLN", style: "cur
 
 `src/modules/_core/utils/currency.ts` zawiera arytmetykę jednostek podrzędnych — `centsToDisplayAmount`, `parseMoneyInputToMinorUnits`, `formatPrice`, `formatMinorUnitsAsDecimal`, `minorUnitsPerMajor` — natomiast `_core/constants/currency.ts` przechowuje pełną tabelę wykładników ISO 4217 oraz `getCurrencyExponent`.
 
-Dwa miejsca obchodzą formatter i zapisują polski na stałe:
+Kod, który formatuje poza komponentem, dostaje preferencje jako argumenty, bez wartości domyślnej:
 
-- `src/routes/_storefront.cart.tsx` buduje swoje kwoty przez `new Intl.NumberFormat("pl-PL", { currency: "PLN", style: "currency" })`
-- `formatAdminOrderDate` w `order.display.utils.ts` domyślnie ustawia argument `locale` na `I18N.DEFAULT_LOCALE`
+- `src/routes/_storefront.cart.tsx` formatuje swoje kwoty przez `formatPrice(…, STORE_CURRENCY_CODE, formatLocale)`, z `formatLocale` z `useFormatLocale()`
+- `formatAdminOrderDate(createdAt, { formatLocale, timeZone })` w `order.display.utils.ts` wymaga obu, a lista zamówień, jej eksport i ostatnie zamówienia w przeglądzie przekazują własne ustawienia administratora
 
 Formularz Stripe Elements jest lokalizowany osobno, przez mapowanie języka aplikacji na język Stripe w `stripe.client.ts` (`pl-PL → pl`, `en-US → en`).
 
@@ -295,12 +298,12 @@ Formularz Stripe Elements jest lokalizowany osobno, przez mapowanie języka apli
 
 - **Nie ma przełącznika języka w sklepie.** Nic w nawigacji sklepu, stopce ani strefie konta nie zmienia języka; odwiedzający musi edytować adres. Jedyną kontrolką jest **Język panelu** w [Ustawienia → Moje konto](/docs/features/admin-settings#preferencje), który wczytuje tę samą stronę z prefiksem drugiego języka.
 - Nie ma preferencji języka per użytkownik. Strefa czasowa i format dat i liczb są zapisywane dla każdego użytkownika, ale język strony zawsze wynika z adresu URL.
-- Nie ma sprawdzania zgodności katalogów komunikatów. Oba katalogi mają obecnie te same 56 nazw plików, ale nic w `bun run check` nie weryfikuje, czy klucze w środku są zgodne.
+- Nie ma sprawdzania zgodności katalogów komunikatów. Oba katalogi mają obecnie te same 60 nazw plików, ale nic w `bun run check` nie weryfikuje, czy klucze w środku są zgodne.
 
 ## Dodanie języka
 
 1. Dodaj kod do `SUPPORTED_LOCALES` w `i18n.config.ts`.
-2. Utwórz `messages/<locale>/` ze wszystkimi 56 plikami. `loadNamespace` rzuca wyjątek przy brakującym, więc nie jest to opcjonalne.
+2. Utwórz `messages/<locale>/` ze wszystkimi 60 plikami. `loadNamespace` rzuca wyjątek przy brakującym, więc nie jest to opcjonalne.
 3. Dodaj język do każdego zestawu `*.<locale>.mdx` w `content/docs` oraz do każdego `meta.<locale>.json`.
 4. Dodaj nowy język do map `titles`, `descriptions`, `bodies` i `revised_ats` każdego wiersza `content_page` w migracji, zaczynając od polskiego tekstu. Potem przetłumacz każdą stronę w edytorze pod `/admin/content`, który nie zapisze strony, dopóki każdy język nie ma wszystkich trzech pól.
 5. Uzupełnij mapy lokalizacji w JSON w D1, także `delivery_method.names`; `coerceProductLocaleMap` utrzymuje w tym czasie istniejące wiersze czytelnymi, a `resolveLocalizedString` wraca do polskiego. Formularz metody dostawy w ustawieniach ma po jednym polu nazwy na język w `NAME_FIELDS` (`delivery-method-fields.tsx`), więc potrzebuje też pola dla nowego języka.

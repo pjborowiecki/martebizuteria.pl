@@ -3,7 +3,7 @@ title: "Katalog i wyszukiwanie"
 description: "Strony /products, /categories i /collections, stan filtrów trzymany w adresie URL, zapytanie SQL za listingiem oraz nakładka wyszukiwania."
 ---
 
-Cztery trasy witryny współdzielą jeden komponent katalogu. `/products` to listing bez zawężenia; `/categories/$handle` i `/collections/$handle` to ten sam listing z ustalonym zakresem; `/categories` i `/collections` to siatki indeksowe.
+Trzy trasy witryny współdzielą jeden komponent katalogu. `/products` to listing bez zawężenia; `/categories/$handle` i `/collections/$handle` to ten sam listing z ustalonym zakresem; `/categories` i `/collections` to siatki indeksowe.
 
 ## Trasy
 
@@ -59,12 +59,13 @@ Każda trasa przekazuje funkcję `handleSearchChange`, która nawiguje z `replac
 
 Żądanie z parametrem `q` jest wyszukiwaniem, więc handler liczy je przez `assertWithinRateLimit("search-storefront-products", RATE_LIMITS.BROWSING, context.requestHeaders)`, zanim rozwiąże jakikolwiek handle albo przeczyta produkt: 120 wyszukiwań na minutę z jednego adresu klienta, we własnym koszyku limitu, obok koszyka nakładki. Po przekroczeniu limitu odpowiada `TOO_MANY_REQUESTS`, loader zawodzi, a router pokazuje `DefaultErrorComponent`. Listing bez `q` nie jest liczony, więc przeglądanie, filtrowanie i stronicowanie `/products`, kategorii i kolekcji, a także roboty, które po nich chodzą, nie dodają żadnego zapisu do tabeli `rate_limit`. Klient wysyła jedno wyszukiwanie na każdą zatwierdzoną frazę i jedno więcej na każdą zmianę filtra lub sortowania w wynikach, czyli pozostaje daleko poniżej limitu.
 
-Rozmiar strony zależy od tego, czy jakikolwiek filtr jest aktywny; stałe leżą w `product.constants.ts`:
+Rozmiar strony zależy od filtrów, które liczy `countActiveStorefrontProductFilters`; stałe leżą w `product.constants.ts`. Serwer i przeglądarka liczą inaczej: `getStorefrontProductsPage` liczy jako filtr `category` albo `collection` ustalone przez stronę zawężoną, a `getStorefrontProductsPageQuery` i siatka je pomijają (`storefrontCatalogFilterOptions`).
 
-| Sytuacja      | Rozmiar strony                              | Stronicowanie                                          |
-| ------------- | ------------------------------------------- | ------------------------------------------------------ |
-| bez filtrów   | `PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE` (12) | `getNextPageParam` idzie dalej, więc siatka doładowuje |
-| dowolny filtr | `PRODUCT_STOREFRONT_FILTERED_MAX` (100)     | `getNextPageParam` zwraca `undefined` — jedna strona   |
+| Sytuacja                                                                                                      | Rozmiar strony                                                             | Stronicowanie                                                                 |
+| ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `/products` bez filtrów                                                                                       | `PRODUCT_STOREFRONT_CATALOG_PAGE_SIZE` (12)                                | `getNextPageParam` idzie dalej, więc siatka doładowuje po 12 przy przewijaniu |
+| strona kategorii albo kolekcji bez innych filtrów                                                             | `PRODUCT_STOREFRONT_FILTERED_MAX` (100), bo serwer liczy zakres jako filtr | `getNextPageParam` idzie dalej, więc siatka doładowuje po 100                 |
+| każdy inny filtr: cena, `q`, sortowanie inne niż `rank` albo kategoria lub kolekcja, której strona nie ustala | `PRODUCT_STOREFRONT_FILTERED_MAX` (100)                                    | `getNextPageParam` zwraca `undefined`: jedna strona z najwyżej 100 produktami |
 
 Przed odpytaniem tabeli produktów handler rozwiązuje handle zakresu na identyfikatory:
 
@@ -101,6 +102,8 @@ Filtry zakresu to `inArray(product.id, <podzapytanie>)` na tabelach `category_on
 
 Parametr `q` przeszukuje indeks FTS5 `storefront_search` przez `storefrontProductMatches(term)` w `src/modules/storefront-search/storefront-search.accessors.server.ts`. `buildStorefrontSearchExpression` zamienia `ł` na `l`, dzieli frazę na słowa i z każdego słowa robi zapytanie o prefiks, więc `zlo pier` znajduje „Złoty pierścionek”. Fraza bez liter i cyfr nie daje niczego do szukania, a strona wraca pusta.
 
+`storefront_search` to wirtualna tabela FTS5, którą migracja `20261002100000_storefront_search.sql` tworzy z tokenizerem `unicode61 remove_diacritics 2`. Wyzwalacze wstawienia, aktualizacji i usunięcia na `product`, `product_category` i `product_collection` utrzymują jeden wpis na wiersz, oznaczony w kolumnie `kind` jako `product`, `category` albo `collection`. Każda indeksowana kolumna zawiera polską i angielską wartość wiersza obok siebie, z `ł` zamienionym na `l`, bo tokenizer usuwa pozostałe polskie znaki diakrytyczne, ale tego nie. Wpis produktu zawiera jego tytuły, podtytuły, tagi, opisy i handle. Wpis kategorii zawiera jej tytuły, podtytuły i handle, a krótkie opisy razem z opisami w kolumnie opisu. Wpis kolekcji zawiera jej tytuły, krótkie opisy jako podtytuł, opisy i handle. Wyzwalacze same wymieniają `pl-PL` i `en-US`, więc nowy język wymaga migracji, która odtworzy je i ponownie wypełni indeks.
+
 Schemat zostawia najwyżej pierwsze `STOREFRONT_SEARCH_MAX_LENGTH` (100) znaków przyciętej frazy i usuwa spację, którą cięcie zostawi na jej końcu. Trasy walidują nim swoje parametry, a funkcja serwerowa parsuje nim wejście, więc indeks nigdy nie dostaje dłuższej frazy, niezależnie od tego, jak wysłano żądanie. Pole w nakładce kończy się na tej samej długości, więc przycinany bywa tylko zmieniony albo wpisany ręcznie link, a taki link otwiera wyniki dla pierwszych 100 znaków zamiast strony błędu.
 
 Produkt pasuje, gdy spełnia którykolwiek z tych warunków:
@@ -115,25 +118,37 @@ Produkt pasuje, gdy spełnia którykolwiek z tych warunków:
 
 `src/presentation/components/custom/pages/products-catalog/`:
 
-| Plik                                  | Rola                                                                          |
-| ------------------------------------- | ----------------------------------------------------------------------------- |
-| `products-catalog-page.tsx`           | składa nagłówek, filtry i siatkę; czyta zapytanie nieskończone                |
-| `products-catalog-filters.tsx`        | panel boczny na desktopie: sortowanie, drzewo kategorii, lista kolekcji, cena |
-| `products-catalog-mobile-filters.tsx` | te same filtry w arkuszu bocznym                                              |
-| `products-catalog-price-filter.tsx`   | pola ceny minimalnej i maksymalnej                                            |
-| `products-catalog-grid.tsx`           | siatka produktów i doładowywanie kolejnych stron                              |
-| `products-catalog.loader.ts`          | `prefetchProductsCatalogPage`, wywoływany z każdego loadera trasy             |
-| `products-catalog.utils.ts`           | `flattenStorefrontCategoryFilters`, `mapStorefrontCollectionFilters`          |
+| Plik                                            | Rola                                                                                                             |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `products-catalog-page.tsx`                     | składa nagłówek, filtry i siatkę; czyta zapytanie nieskończone                                                   |
+| `products-catalog-filters.tsx`                  | panel boczny na desktopie: sortowanie, drzewo kategorii, lista kolekcji, cena                                    |
+| `products-catalog-mobile-filters.tsx`           | te same filtry w arkuszu bocznym                                                                                 |
+| `products-catalog-price-filter.tsx`             | pola ceny minimalnej i maksymalnej                                                                               |
+| `products-catalog-grid.tsx`                     | siatka produktów, pasek wyników i znacznik przewijania nieskończonego                                            |
+| `hooks/use-products-catalog-infinite-scroll.ts` | `useProductsCatalogInfiniteScroll`, który wczytuje kolejną stronę, gdy znacznik zbliża się do widoku             |
+| `products-catalog-search-clear.tsx`             | przycisk „Wyczyść wyszukiwanie” widoczny, gdy ustawione jest `q`                                                 |
+| `products-catalog.loader.ts`                    | `prefetchProductsCatalogPage`, wywoływany z loaderów `/products`, `/categories/$handle` i `/collections/$handle` |
+| `products-catalog.utils.ts`                     | `flattenStorefrontCategoryFilters`, `mapStorefrontCollectionFilters`                                             |
 
 `useCatalogFilterSources` ukrywa filtr kategorii na stronie kategorii i filtr kolekcji na stronie kolekcji, całkowicie pomijając odpowiednie zapytanie — strona zawężona wykonuje więc o jedno zapytanie mniej.
 
-`prefetchProductsCatalogPage` uruchamia równolegle zapytanie nieskończone i dwa zapytania źródeł filtrów, a następnie wywołuje `prefetchProductThumbnails` na elementach pierwszej strony.
+`prefetchProductsCatalogPage` uruchamia równolegle zapytanie nieskończone i zapytania tych źródeł filtrów, które strona pokazuje: obu na `/products`, a na stronie kategorii albo kolekcji tylko tego, którego jej zakres nie ustala. Następnie wywołuje `prefetchProductThumbnails` na elementach pierwszej strony.
 
 Loadery `/categories/$handle` i `/collections/$handle` wyszukują swój wiersz i rozgrzewają siatkę w jednym `Promise.all`, więc zapytania o wiersz i o pierwszą stronę produktów są wysyłane jednocześnie. Wiersz pobiera `getStorefrontCategoryQuery(handle)` albo `getStorefrontCollectionQuery(handle)` pod kluczem `CATEGORY_QUERY_KEYS.BY_HANDLE` albo `COLLECTION_QUERY_KEYS.BY_HANDLE`, z 60-sekundowym czasem świeżości modułu. Odczyt obejmuje tylko `id`, `titles` i `descriptions`, czyli pola, których używają strona i handler produktów, dzięki czemu wiersz zapisywany przez render po stronie serwera w HTML-u pozostaje mały. Zmiana sortowania, filtra albo wstępne ładowanie po najechaniu na link tej samej strony korzysta z zapisanego wiersza i prosi serwer już tylko o produkty. Brakujący wiersz wraca jako `false`, bo cache zapytań nie przechowuje `undefined`. Strona kategorii rzuca wtedy `notFound`, a strona kolekcji rozgrzewa pozostałe kolekcje i nowości dla widoku niedostępnej kolekcji. Siatka rozgrzana równolegle dla nieistniejącego handle to opisana wyżej pusta strona.
+
+## Siatka i filtry w przeglądarce
+
+`ProductsCatalogGrid` układa karty w jednej kolumnie, w dwóch od `sm` i w trzech od `xl`, a zdjęcia pierwszych trzech kart wczytuje priorytetowo. Dopóki przeglądarka nie liczy żadnego filtra, pod kartami renderuje jednopikselowy znacznik, a `useProductsCatalogInfiniteScroll` obserwuje go przez `IntersectionObserver` z `rootMargin` równym 240 px: gdy znacznik zbliży się na tę odległość do widoku, a żadna strona się nie wczytuje, wywołuje `fetchNextPage`, a trzy szkielety kart zastępują kolejną stronę, dopóki się nie wczyta. Nad kartami pasek wyników pokazuje liczbę wyników z pierwszej strony i przycisk „Wyczyść filtry”. Przycisk jest nieaktywny, dopóki przeglądarka nie liczy żadnego filtra, i czyści wszystkie parametry wyszukiwania, łącznie z `q`; strona zawężona zachowuje swój zakres, bo jest on częścią ścieżki. Bez produktów siatka pokazuje tylko komunikat `noProductsFound` danej strony, bez paska wyników.
+
+Wyszukiwanie trafia do katalogu jako `/products?q=…`, które nakładka otwiera, gdy klient zatwierdzi frazę. Gdy ustawione jest `q`, `/products` bierze nadtytuł i nagłówek z `pages.products.search` (nagłówek: Wyniki dla „…”), a tytuł dokumentu z `search.pageTitle`, a każda z trzech stron pokazuje pod nagłówkiem `ProductsCatalogSearchClear`, przycisk „Wyczyść wyszukiwanie”, który usuwa tylko `q` i zachowuje pozostałe filtry.
+
+Poniżej `lg` panel boczny jest ukryty. `ProductsCatalogMobileFilters` umieszcza nad siatką przycisk Filtry na całą szerokość, z liczbą aktywnych filtrów z `countActiveStorefrontProductFilters` w plakietce, i otwiera te same `ProductsCatalogFilters` w arkuszu z lewej strony, który na telefonie wypełnia szerokość ekranu, a od `sm` kończy się na `max-w-md`. Wybór działa od razu, tak jak na dużym ekranie, a arkusz pozostaje otwarty, dopóki klient nie naciśnie „Pokaż produkty” (`closePanel`) albo go nie zamknie. Każda pozycja ma tam co najmniej 44 px wysokości (`min-h-11`), a pola ceny i przycisk czyszczenia filtrów rosną na ekranie dotykowym do 40 px (`pointer-coarse:`). Od `lg` panel boczny pozostaje w widoku podczas przewijania siatki (`lg:sticky`).
 
 ## Obniżone ceny na kartach
 
 `storefrontListVariantColumns` w `product.stock.server.ts` odczytuje też `compare_at_price` każdego wariantu. `getStorefrontPublishedProductsPage` przed zwróceniem produktów strony przekazuje je do `withPriceReductions` (`src/modules/price-history/price-history.accessors.ts`), a `getPublishedProductsAmong` w `product.accessors.ts` robi to samo dla nowości, produktów powiązanych i rekomendacji na koncie. Gdy któryś z wariantów na liście jest przeceniony, `withPriceReductions` czyta historię cen przecenionych wariantów jedną dodatkową instrukcją i daje każdemu wariantowi jego `priceReduction`, które zostaje `undefined`, chyba że cena jest niższa od najniższej ceny z 30 dni przed obniżką; gdy żaden nie jest przeceniony, nie czyta nic, więc lista bez obniżek kosztuje tyle instrukcji, ile opisano wyżej. Siatka katalogu, nowości, produkty powiązane i strona niedostępnej kolekcji przekazują do `ProductCard` obniżkę wariantu, który pokazuje dana karta, a jego `ProductPrice` przekreśla obok ceny tę najniższą cenę i dokłada pod nią „Najniższa cena z 30 dni przed obniżką: …” („Lowest price in the 30 days before the reduction: …”). Sposób wyznaczania tej najniższej ceny opisuje [Strona produktu](/docs/features/product-page#obniżone-ceny-i-najniższa-cena-z-30-dni-przed-obniżką). Filtr ceny i sortowanie po cenie nadal działają na `price`.
+
+Karta w katalogu pokazuje cenę pierwszego wariantu, który listing zwraca dla jej produktu. Siatka formatuje ją przez `useFormatter()` z `src/hooks/use-display-format.ts`, a `ProductPrice` tak samo formatuje najniższą cenę, więc obie idą za formatem klienta, a nie za językiem strony (zobacz [Internacjonalizacja](/docs/features/internationalization)).
 
 ## Nakładka wyszukiwania
 
@@ -141,15 +156,17 @@ Wyszukiwanie w nagłówku to oddzielna funkcja oparta na `src/modules/storefront
 
 `searchStorefront` (`use-cases/search-storefront.ts`) jest publiczne, przyjmuje `{ locale, query }` i rozchodzi się na trzy akcesory w `storefront-search.server.ts`:
 
-| Akcesor                       | Tabela               | Dopasowywane kolumny                                                                                                         |
-| ----------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `searchStorefrontProducts`    | `product`            | `titles`, `subtitles`, `tags`, `descriptions` i `handle` przez indeks `storefront_search`, za bramką `publishedInStockWhere` |
-| `searchStorefrontCategories`  | `product_category`   | `handle`, `titles`, `subtitles`, `shortDescriptions`, status aktywny                                                         |
-| `searchStorefrontCollections` | `product_collection` | `handle`, `titles`, `descriptions`, status aktywny                                                                           |
+| Akcesor                       | Tabela               | Dopasowywane kolumny                                                                        |
+| ----------------------------- | -------------------- | ------------------------------------------------------------------------------------------- |
+| `searchStorefrontProducts`    | `product`            | `titles`, `subtitles`, `tags`, `descriptions` i `handle`, za bramką `publishedInStockWhere` |
+| `searchStorefrontCategories`  | `product_category`   | `titles`, `subtitles`, `short_descriptions`, `descriptions` i `handle`, status aktywny      |
+| `searchStorefrontCollections` | `product_collection` | `titles`, `short_descriptions`, `descriptions` i `handle`, status aktywny                   |
+
+Wszystkie trzy dopasowują przez indeks `storefront_search`: każdy złącza `storefrontSearchMatches(kind, expression)` z `storefront-search.accessors.server.ts`, które przeszukuje wpisy swojego rodzaju, i porządkuje według trafności `bm25`, w której dopasowanie w tytule waży 10, w podtytule 5, w tagach 3, w handle 2, a w opisie 1, a potem według `rank`. Drugi wiersz produktu to jego podtytuł, a gdy go nie ma, tytuł jego kategorii głównej.
 
 Grupa produktów w nakładce dopasowuje wyłącznie własny tekst produktu. W przeciwieństwie do parametru `q` nie dociera do produktów przez ich kategorie, kolekcje ani SKU.
 
-Każde wyszukiwanie uruchamia te trzy zapytania do indeksu, więc funkcja stoi za `withRateLimit("search-storefront", RATE_LIMITS.BROWSING)`: 120 wyszukiwań na minutę z jednego adresu klienta, we własnym koszyku limitu. Nakładka pyta dopiero po 300 ms przerwy w pisaniu i trzyma każdą frazę w pamięci podręcznej przez minutę, więc klient pozostaje daleko poniżej tego progu. Po przekroczeniu limitu funkcja odpowiada `TOO_MANY_REQUESTS`, a nakładka pokazuje swój błąd z możliwością ponowienia. Fraza dłuższa niż `STOREFRONT_SEARCH_MAX_LENGTH` znaków po przycięciu nie przechodzi walidacji, zanim cokolwiek zostanie odczytane z bazy, a pole w nakładce nie przyjmuje więcej znaków.
+Każde wyszukiwanie uruchamia te trzy zapytania do indeksu, więc funkcja stoi za `withRateLimit("search-storefront", RATE_LIMITS.BROWSING)`: 120 wyszukiwań na minutę z jednego adresu klienta, we własnym koszyku limitu. Nakładka pyta dopiero po 300 ms przerwy w pisaniu i trzyma każdą frazę w pamięci podręcznej przez minutę, więc klient pozostaje daleko poniżej tego progu. Po przekroczeniu limitu funkcja odpowiada `TOO_MANY_REQUESTS`, a nakładka pokazuje swój błąd z możliwością ponowienia. Middleware liczy żądanie, zanim funkcja zwaliduje dane wejściowe, więc fraza krótsza niż dwa znaki albo dłuższa niż `STOREFRONT_SEARCH_MAX_LENGTH` znaków po przycięciu nadal wlicza się do limitu, a potem odpada na walidacji, zanim indeks zostanie przeszukany. Nakładka nigdy nie wysyła takiej frazy: pyta dopiero od dwóch znaków, a jej pole nie przyjmuje więcej niż `STOREFRONT_SEARCH_MAX_LENGTH`.
 
 Stałe w `storefront-search.constants.ts`:
 

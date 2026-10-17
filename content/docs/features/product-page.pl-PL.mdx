@@ -75,7 +75,7 @@ Zwróć uwagę na typ zwracany. **Brak produktu i brak stanu magazynowego to oba
 | `hasVariants`                              | `inferHasVariants(options, variants.length)`                                                          |
 | `options`                                  | `{ id, title, values: [{ id, label }] }` z etykietami rozwiązanymi dla języka                         |
 | `variants[].optionValueIds`                | `resolveVariantOptionValueIds` — `Record<optionId, valueId>` zbudowany z `option_on_variant`          |
-| `variants[].priceReduction`                | `attachPriceReductions` — `{ compareAtPrice, lowestPrice }` przy obniżce, inaczej `undefined`         |
+| `variants[].priceReduction`                | `attachPriceReductions` — `{ lowestPrice }` dla wariantu, który pokazuje obniżkę, inaczej `undefined` |
 
 ## Wybór wariantu
 

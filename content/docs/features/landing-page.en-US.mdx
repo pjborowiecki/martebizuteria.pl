@@ -33,15 +33,16 @@ The `_storefront` layout in `src/routes/_storefront.tsx` supplies the navigation
 
 ## What the loader fetches
 
-The loader runs three queries in parallel and returns the page metadata:
+The loader runs four queries in parallel and returns the page metadata:
 
-| Query                   | Use case                                                   | Used by                                               |
-| ----------------------- | ---------------------------------------------------------- | ----------------------------------------------------- |
-| `messagesQueryOptions`  | `src/integrations/use-intl/i18n.messages.ts`               | `head` title and description                          |
-| `getNewArrivalsQuery()` | `src/modules/product/use-cases/get-new-arrivals.ts`        | `NewArrivalsSection`                                  |
-| `getCategoriesQuery()`  | `src/modules/product-category/use-cases/get-categories.ts` | `MobileCategoriesSection`, `DesktopCategoriesSection` |
+| Query                   | Use case                                                      | Used by                                               |
+| ----------------------- | ------------------------------------------------------------- | ----------------------------------------------------- |
+| `messagesQueryOptions`  | `src/integrations/use-intl/i18n.messages.ts`                  | `head` title and description, and the structured data |
+| `getNewArrivalsQuery()` | `src/modules/product/use-cases/get-new-arrivals.ts`           | `NewArrivalsSection`                                  |
+| `getCategoriesQuery()`  | `src/modules/product-category/use-cases/get-categories.ts`    | `MobileCategoriesSection`, `DesktopCategoriesSection` |
+| `getCollectionsQuery()` | `src/modules/product-collection/use-cases/get-collections.ts` | `ShopCollectionsSection`                              |
 
-Both catalog queries are fetched with `staleTime: "static"`, so the server render never refetches them. After the queries resolve, `prefetchProductThumbnails(newArrivals, context.imagePrefetchService)` from `src/lib/image.ts` warms the thumbnails of the new-arrival products.
+The three catalog queries are fetched with `staleTime: "static"`, so the server render never refetches them. After the queries resolve, `prefetchProductThumbnails(newArrivals, context.imagePrefetchService)` from `src/lib/image.ts` warms the thumbnails of the new-arrival products.
 
 ## New arrivals
 
@@ -90,31 +91,19 @@ To publish an article, add its slug to `BLOG_POST_SLUGS` and give it, in both `m
 
 ## Static marketing assets
 
-`src/data/landing.ts` holds the asset URLs and the three collection tiles of `ShopCollectionsSection`:
+`src/data/landing.ts` holds only the hero picture and the video, which belong to no catalogue row:
 
 ```ts
 export const LANDING_HERO_IMG = getAssetURL("marketing/hero.webp")
 export const LANDING_VIDEO_POSTER = getAssetURL("placeholder.svg")
 export const LANDING_VIDEO_SRC = getAssetURL("marketing/landing-video.mp4")
-
-export const LANDING_SHOP_COLLECTIONS = [
-  {
-    descKey: "items.newArrivals.description",
-    image: getAssetURL("collections/new_arrivals.webp"),
-    nameKey: "items.newArrivals.name",
-    slug: "nowosci",
-  },
-  {
-    descKey: "items.silver.description",
-    image: getAssetURL("collections/silver925.webp"),
-    nameKey: "items.silver.name",
-    slug: "srebro-925",
-  },
-  { descKey: "items.gold.description", image: getAssetURL("collections/gold585.webp"), nameKey: "items.gold.name", slug: "zloto-585" },
-] as const
 ```
 
-Those three slugs are hard-coded collection handles. `getAssetURL` (`src/lib/url.ts`) resolves them against the R2 public URL.
+`getAssetURL` (`src/lib/url.ts`) resolves them against the R2 public URL. `HeroSection` shows the picture and `VideoExperienceSection` the video.
+
+## Collections
+
+`ShopCollectionsSection` reads `getCollectionsQuery()` with `useSuspenseQuery`, the active collections ordered by `rank`, and shows the first `SHOP_COLLECTION_DISPLAY_LIMIT` (3) as cards. Each card takes its picture from the collection's `image` through `getProductImageUrl`, its title from `titles` in the reader's language, and its text from `short_descriptions`, or from `descriptions` when the short one is empty, and links to `/collections/$handle`. Which collections appear, in what order and with what picture and text, is therefore set in [the admin catalog](/docs/features/admin-catalog), not in the code. The section's heading, its lead and the link to `/collections` come from `shopCollectionsSection` in `pages.landing`. Saving a collection pushes `COLLECTION_QUERY_KEYS.ALL` through `scheduleCollectionCatalogInvalidation()`, so open landing pages show the change.
 
 ## Scroll animation
 
@@ -158,7 +147,7 @@ The daily retention clean-up deletes a row still `pending` 30 days after the add
 
 ## Section anchors
 
-`NewArrivalsSection` is the only section with an `id`: `id="nowosci"`. Links elsewhere that need to reach it use that hash. The other sections are not addressable.
+Five sections carry an `id`, so a link such as `/#nowosci` scrolls to them: `VideoExperienceSection` (`experience`), `NewArrivalsSection` (`nowosci`), `DesktopCategoriesSection` (`kolekcje`), `SilverPremiumSection` (`srebro`) and `MaisonHeritageSection` (`marka`). `kolekcje` is on the desktop categories only, which are hidden below `lg` and for reduced motion, so the hash reaches the categories only where they scroll sideways. Nothing in the app links to these anchors today. The other sections are not addressable.
 
 ## Related pages
 
