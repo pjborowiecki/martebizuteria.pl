@@ -29,7 +29,7 @@ Typ `SupportedLocale` jest wyprowadzany z `SUPPORTED_LOCALES`, więc dodanie loc
 | `i18n.middleware.ts` | `resolveLocale`, używane przez Workera do przekierowania i cookie                                                                                 |
 | `i18n.messages.ts`   | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`, `isMessagesQuery`      |
 
-`shouldIgnorePath` wyklucza `/api`, `/rpc`, `/_serverFn` i `/assets` z całej obsługi locale.
+`shouldIgnorePath` wyklucza `/api`, `/rpc`, `/_serverFn`, `/assets` i `/forms` z całej obsługi locale.
 
 `canonicalizePathname` zwija alias samego języka i zbędny prefiks domyślnego locale: `/pl/products` i `/pl-PL/products` kanonizują się do `/products`, a Worker odpowiada kodem `301`. `localeLinks` buduje link `rel="canonical"`, po jednym `rel="alternate"` na locale oraz alternatywę `x-default` — emitują je zarówno `__root.tsx`, jak i `buildPageHead`.
 

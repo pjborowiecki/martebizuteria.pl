@@ -151,7 +151,7 @@ Plik angielski jest źródłem typów dla obu języków, co jest kolejnym powode
 
 ## Ustalanie języka
 
-Język wynika ze ścieżki, nie z nagłówka ani parametru zapytania. `getCurrentLocale` w `src/integrations/use-intl/i18n.utils.ts` jest funkcją izomorficzną: na serwerze czyta URL żądania, na kliencie `location.pathname`, a w obu przypadkach sięga po ciasteczko `marte_locale` dla ścieżek bez języka (`/api`, `/rpc`, `/_serverFn`, `/assets`).
+Język wynika ze ścieżki, nie z nagłówka ani parametru zapytania. `getCurrentLocale` w `src/integrations/use-intl/i18n.utils.ts` jest funkcją izomorficzną: na serwerze czyta URL żądania, na kliencie `location.pathname`, a w obu przypadkach sięga po ciasteczko `marte_locale` dla ścieżek bez języka (`/api`, `/rpc`, `/_serverFn`, `/assets`, `/forms`).
 
 `resolveLocale(request)` w `i18n.middleware.ts` wykonuje się w punkcie wejścia Workera, przed routerem, i robi dwie rzeczy, wyłącznie dla żądań dokumentów:
 

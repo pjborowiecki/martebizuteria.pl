@@ -29,7 +29,7 @@ export const I18N = {
 | `i18n.middleware.ts` | `resolveLocale`, used by the Worker for the redirect and the cookie                                                                               |
 | `i18n.messages.ts`   | `loadNamespace`, `messagesQueryOptions`, `preloadNamespaces`, `ROOT_NAMESPACES`, `getRouteNamespaces`, `buildMessageTree`, `isMessagesQuery`      |
 
-`shouldIgnorePath` excludes `/api`, `/rpc`, `/_serverFn` and `/assets` from all locale handling.
+`shouldIgnorePath` excludes `/api`, `/rpc`, `/_serverFn`, `/assets` and `/forms` from all locale handling.
 
 `canonicalizePathname` collapses a language-only alias and the redundant default prefix: `/pl/products` and `/pl-PL/products` both canonicalize to `/products`, and the Worker answers with a `301`. `localeLinks` builds the `rel="canonical"` link, one `rel="alternate"` per locale and an `x-default` alternate, which `__root.tsx` and `buildPageHead` both emit.
 

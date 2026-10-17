@@ -151,7 +151,7 @@ The English file is the type source for both locales, which is another reason th
 
 ## Locale resolution
 
-The locale is derived from the path, not from a header or a query parameter. `getCurrentLocale` in `src/integrations/use-intl/i18n.utils.ts` is an isomorphic function: on the server it reads the request URL, on the client `location.pathname`, and in both cases falls back to the `marte_locale` cookie for paths that carry no locale (`/api`, `/rpc`, `/_serverFn`, `/assets`).
+The locale is derived from the path, not from a header or a query parameter. `getCurrentLocale` in `src/integrations/use-intl/i18n.utils.ts` is an isomorphic function: on the server it reads the request URL, on the client `location.pathname`, and in both cases falls back to the `marte_locale` cookie for paths that carry no locale (`/api`, `/rpc`, `/_serverFn`, `/assets`, `/forms`).
 
 `resolveLocale(request)` in `i18n.middleware.ts` runs in the Worker entry point, before the router, and does two things for document requests only:
 

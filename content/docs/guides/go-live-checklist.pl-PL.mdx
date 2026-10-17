@@ -80,7 +80,7 @@ Przejdź przez listę po kolei. Każdy punkt mówi, co musi być spełnione, jak
     - `/faq` i `/en-US/faq` opisują to, jak faktura trafia do kupującego i jak klient dowiaduje się, że zamówienie do odbioru jest gotowe, tak, jak robi to sklep, a porady pielęgnacyjne pasują do każdego wykończenia i kamienia, które sklep sprzedaje;
     - każdy opis `delivery_method` w D1 podaje czasy dostawy z § 7 regulaminu; migracja, która je przepisała, pominęła opis edytowany od czasu zasiania;
     - **Ustawienia → Dostawa** oferują metody opisane w § 7, każdą z jej przewoźnikiem, ceną i nazwą po polsku i po angielsku, a darmowa dostawa jest włączona tylko wtedy, gdy sklep chce ją oferować, i od wartości, którą zamierza;
-    - **Ustawienia → Dane sklepu** zawierają pełną nazwę firmy, adres, NIP, REGON, e-mail kontaktowy i telefon tak, jak podaje je rejestr oraz skrzynka i telefon sklepu, regulamin, polityka prywatności, strona zwrotów i FAQ pokazują je tam, gdzie podają sprzedawcę, zdania o odbiorze w § 7 i w FAQ podają właściwą ulicę, a dwa formularze PDF w `public/forms`, w których dane są wydrukowane, dopóki nie są generowane z zapisanych danych, pokazują te same dane.
+    - **Ustawienia → Dane sklepu** zawierają pełną nazwę firmy, adres, NIP, REGON, e-mail kontaktowy i telefon tak, jak podaje je rejestr oraz skrzynka i telefon sklepu, regulamin, polityka prywatności, strona zwrotów i FAQ pokazują je tam, gdzie podają sprzedawcę, zdania o odbiorze w § 7 i w FAQ podają właściwą ulicę, a dwa formularze PDF, `/forms/formularz_zwrotu.pdf` i `/forms/formularz_reklamacji.pdf`, podają sprzedawcę z tymi samymi danymi.
 
     Migracja, która zmienia któreś z tych zdań, pomija język, w którym zdanie edytowano, więc zdanie, którego nadal brakuje, trzeba dopisać ręcznie.
 

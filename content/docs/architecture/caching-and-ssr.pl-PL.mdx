@@ -91,7 +91,7 @@ Nic w `vite.config.ts` nie włącza prerenderingu TanStack Start i żadna trasa 
 - Przed aplikacją nie ma fallbacku ze statycznych zasobów; `ASSETS` serwuje wyłącznie `public/`.
 - Cache-control dla HTML-a pozostawiono domyślnym ustawieniom platformy, więc przy zmianie produktu nie ma czego unieważniać.
 
-Dwie odpowiedzi, które jawnie ustawiają `Cache-Control`, to `/sitemap.xml` i `/robots.txt` — obie `public, max-age=86400` — oraz obiekty uploadowane do R2, zapisywane z `public, max-age=31536000, immutable`.
+Odpowiedzi, które jawnie ustawiają `Cache-Control`, to `/sitemap.xml` i `/robots.txt` — obie `public, max-age=86400` — dwa formularze PDF, z `public, max-age=300, must-revalidate` i `ETag` z ostatniego zapisu danych sprzedawcy (zobacz [Strony prawne](/docs/features/legal-pages#jak-powstają-formularze)), oraz obiekty uploadowane do R2, zapisywane z `public, max-age=31536000, immutable`.
 
 ## Stan po stronie przeglądarki
 

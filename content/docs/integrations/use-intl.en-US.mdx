@@ -32,10 +32,10 @@ export const I18N = { COOKIE_NAME, DEFAULT_LOCALE, DEFAULT_TIMEZONE, SUPPORTED_L
 `i18n.paths.ts` implements the prefix rules. The ignored-path pattern is the important starting point:
 
 ```ts
-const IGNORED_PATHS_REGEX = /^\/(?:api|rpc|_serverFn|assets)(?:\/|$)/u
+const IGNORED_PATHS_REGEX = /^\/(?:api|rpc|_serverFn|assets|forms)(?:\/|$)/u
 ```
 
-Those prefixes never get a locale segment, because they are machine endpoints.
+Those prefixes never get a locale segment, because they are machine endpoints, or, for `/forms`, PDF forms that are the same in every language.
 
 | Export                                   | Behaviour                                                                                        |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------ |

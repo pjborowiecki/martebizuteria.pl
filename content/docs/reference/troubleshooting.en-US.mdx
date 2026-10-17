@@ -88,7 +88,7 @@ which runs `cf-typegen` (`wrangler types --env development`) and then `content`.
 
 **A key renders as its own path.** The key is missing in the active locale, or the component is reading outside the scope of its `useTranslations` call. `src/integrations/use-intl/__test__/i18n.messages.test.ts` asserts that Polish contains every English key, so run the test suite to find the gap.
 
-**Text appears in the wrong language on an API-like path.** `shouldIgnorePath` exempts `/api`, `/rpc`, `/_serverFn` and `/assets` from locale resolution, and `getCurrentLocale` falls back to the `marte_locale` cookie for those paths. Anything deriving a locale from the router's location will see the de-localized path and therefore the default locale — use `getCurrentLocale()` instead.
+**Text appears in the wrong language on an API-like path.** `shouldIgnorePath` exempts `/api`, `/rpc`, `/_serverFn`, `/assets` and `/forms` from locale resolution, and `getCurrentLocale` falls back to the `marte_locale` cookie for those paths. Anything deriving a locale from the router's location will see the de-localized path and therefore the default locale — use `getCurrentLocale()` instead.
 
 ## Documentation
 

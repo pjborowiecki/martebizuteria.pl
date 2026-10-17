@@ -91,7 +91,7 @@ Nothing in `vite.config.ts` enables TanStack Start's prerendering, and there is 
 - There is no static-asset fallback in front of the application; `ASSETS` serves `public/` only.
 - Cache-control on HTML is left to the platform default, so there is nothing to invalidate when a product changes.
 
-The two responses that do set `Cache-Control` explicitly are `/sitemap.xml` and `/robots.txt`, both `public, max-age=86400`, and uploaded R2 objects, written `public, max-age=31536000, immutable`.
+The responses that do set `Cache-Control` explicitly are `/sitemap.xml` and `/robots.txt`, both `public, max-age=86400`, the two PDF forms, `public, max-age=300, must-revalidate` with an `ETag` from the last save of the seller details (see [Legal pages](/docs/features/legal-pages#how-the-forms-are-made)), and uploaded R2 objects, written `public, max-age=31536000, immutable`.
 
 ## Browser-side state
 

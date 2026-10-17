@@ -241,7 +241,7 @@ Hosty obrazów to originy `DEFAULT_R2_PUBLIC_URL` i `getAssetCdnBase()`, więc n
 
 **Sonda eval w Zod.** Zod 4 raz na stronę wywołuje `new Function("")`, żeby zdecydować, czy kompilować parsery obiektów. Polityka nie ma `'unsafe-eval'`, więc przeglądarka odmawia wywołania i zgłasza jedno naruszenie `script-src` dla `eval`; Zod łapie odmowę i parsuje bez kompilacji, tak jak już robi to na Workers. Ustawienie `jitless` w Zod pomija sondę, ale trzeba je ustawić, zanim wykona się pierwszy moduł ze schematem, a bundle klienta wykonuje chunki tras przed każdym modułem, w którym aplikacja mogłaby je ustawić.
 
-**Pliki statyczne.** Pliki z `public/` obsługuje warstwa zasobów i nigdy nie trafiają do Workera. `public/_headers` nadaje każdemu z nich `X-Content-Type-Options: nosniff` i `Referrer-Policy: strict-origin-when-cross-origin`. HSTS zostaje przy odpowiedziach Workera, bo przeglądarka stosuje go do całego hosta.
+**Pliki statyczne.** Pliki z `public/` obsługuje warstwa zasobów i nigdy nie trafiają do Workera. `public/_headers` nadaje każdemu z nich `X-Content-Type-Options: nosniff` i `Referrer-Policy: strict-origin-when-cross-origin`. HSTS zostaje przy odpowiedziach Workera, bo przeglądarka stosuje go do całego hosta. Dwa formularze PDF pod `/forms/…` nie są plikami statycznymi: tworzy je Worker, więc mają te same nagłówki co strona.
 
 `security-headers.test.ts` sprawdza każdy nagłówek i każdą dyrektywę, `server.test.ts` sprawdza, że każda odpowiedź Workera je niesie razem z nonce'em przekazanym aplikacji, a `e2e/specs/smoke.spec.ts` otwiera w przeglądarce stronę główną, produkt, logowanie i dokumentację i kończy się błędem, jeśli się nie zhydratują albo przeglądarka odmówi czegokolwiek poza sondą Zod.
 

@@ -12,7 +12,7 @@ M'Arte uses exactly two families, both self-hosted from `public/fonts` as subset
 | **Manrope**            | Body, UI, navigation, admin | `font-sans`  | One variable file per subset, weight axis `200 800`      |
 | **Cormorant Garamond** | Display headings, editorial | `font-serif` | Static faces at 400, 500 and 600; italics at 400 and 500 |
 
-`public/fonts` holds twelve files. Each family has a `latin` and a `latin-ext` variant of every face, because Polish needs the extended range:
+`public/fonts` holds twelve web font files, and `public/fonts/forms` the three faces the PDF forms embed (see [Fonts in the PDF forms](#fonts-in-the-pdf-forms)). Each family has a `latin` and a `latin-ext` variant of every face, because Polish needs the extended range:
 
 ```
 manrope-latin-wght-normal.woff2
@@ -100,6 +100,20 @@ export const getCriticalFontPreloads = (locale: SupportedLocale) => {
 
 If you add a locale, extend the branch. If you add a third critical face, add it to `critical-fonts.css` _and_ to this function, or it will be fetched late.
 
+## Fonts in the PDF forms
+
+The withdrawal and complaint forms are made in the Worker with `pdf-lib` and `@pdf-lib/fontkit` (see [Legal pages: How the forms are made](/docs/features/legal-pages#how-the-forms-are-made)) and use the same two families, but not the web files above. Every web face is split into a `latin` and a `latin-ext` file, so a Polish word would need two fonts, and Manrope is a variable font, of which fontkit embeds only the default ExtraLight instance. `public/fonts/forms` holds three static TrueType faces instead:
+
+| File                                | Face                                       | Source                                                                                  |
+| ----------------------------------- | ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `manrope-400-normal.ttf`            | Manrope Regular, version 4.504             | The static instance Google Fonts serves                                                 |
+| `manrope-600-normal.ttf`            | Manrope SemiBold, version 4.504            | The static instance Google Fonts serves                                                 |
+| `cormorant-garamond-600-normal.ttf` | Cormorant Garamond SemiBold, version 4.001 | The static instance Google Fonts serves, saved again with every glyph padded to 4 bytes |
+
+Both families are under the SIL Open Font License 1.1 with no reserved font name. The licence must travel with every copy of the fonts, so `public/fonts/forms/OFL.txt` holds it with both copyright notices; it allows embedding the fonts in documents such as the forms. The Cormorant Garamond file is a modified version. Google Fonts stores its glyphs without padding, and fontkit's subsetter writes short `loca` offsets, which can only point at even positions, so most glyphs of the embedded subset came out broken. fontTools saved it again with `font["glyf"].padding = 4`, which changes nothing but the glyph table's padding.
+
+A form embeds only the glyphs it uses, about 15 KB per form. The fonts are static assets, so they add nothing to the Worker's size, and `loadFormFonts` reads them through `ASSETS` each time a form is made. `/fonts/*` is cached for a year as immutable, so a changed form font needs a new file name, and `FORM_FONT_PATHS` in `src/presentation/pdf/form-document.ts` has to name it.
+
 ## Brand constants
 
 `src/presentation/branding/app.ts` is the single source of the brand:
@@ -146,7 +160,7 @@ export const toSellerPhoneHref = (phone: string): string => `tel:${phone.replace
 
 `SellerContactDetails` in `src/presentation/components/custom/seller-contact-details.tsx` renders them in the storefront footer and in the contact section at the end of `/about`, every product page names the seller as the manufacturer in its "Manufacturer" section, the order e-mails and the newsletter name the seller with them, `sendEmail` uses the contact e-mail as every message's reply-to address, and `buildStoreStructuredData` and `buildProductStructuredData` in `src/lib/seo.ts`, handed the details as `seller`, publish the legal name, postal address, e-mail, phone and NIP in the home page's structured data and the legal name, postal address and e-mail as each product's manufacturer, so search engines read the same details customers do. The country is named from the stored code in the reader's language. The legal pages name the seller through store detail placeholders such as `:seller[nip]` (see [Legal pages](/docs/features/legal-pages#store-details-in-the-pages)).
 
-So when the business details change, save them under Settings → Store details, and the storefront, the e-mails and the legal pages follow at once. The pickup sentences in the terms and the FAQ, which write the street and city in words, and the two PDF forms in `public/forms`, which have the details printed in them, still need an edit of their own. `APP_NAME` stays in `app.ts`, because it names the brand rather than the seller.
+So when the business details change, save them under Settings → Store details, and the storefront, the e-mails and the legal pages follow at once. The two PDF forms are made from the stored details each time they are opened. The pickup sentences in the terms and the FAQ, which write the street and city in words, still need an edit of their own. `APP_NAME` stays in `app.ts`, because it names the brand rather than the seller.
 
 `src/presentation/branding/socials.ts` holds the two live profiles:
 
@@ -164,7 +178,7 @@ They are read by `src/lib/seo.ts` (the `sameAs` entries in structured data), the
 - The favicon is `public/favicon.svg`, wired through `APP_ICON`. There is no `.ico`.
 - `public/og.png` is the 1200×630 social card.
 - `src/presentation/components/custom/icons.tsx` holds two inline brand SVGs that Lucide does not cover: `GoogleIcon` and `FacebookIcon`. Everything else comes from `lucide-react`.
-- `public/video/landing-video.mp4` is the landing-page footage; `public/screenshots` holds eight README stills; `public/forms` holds the two Polish returns and complaints PDFs.
+- `public/video/landing-video.mp4` is the landing-page footage; `public/screenshots` holds eight README stills.
 - `public/icons.svg` is an SVG sprite with `bluesky`, `discord`, `documentation`, `github`, `social` and `x` symbols. Nothing in `src` references it; treat it as dead weight rather than an API.
 
 ## Related pages

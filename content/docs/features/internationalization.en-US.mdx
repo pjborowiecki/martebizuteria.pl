@@ -26,7 +26,7 @@ The default locale has **no prefix**. `/products` is Polish, `/en-US/products` i
 | Function                | Behaviour                                                                              |
 | ----------------------- | -------------------------------------------------------------------------------------- |
 | `isSupportedLocale`     | Set membership                                                                         |
-| `shouldIgnorePath`      | True for `/api`, `/rpc`, `/_serverFn` and `/assets`                                    |
+| `shouldIgnorePath`      | True for `/api`, `/rpc`, `/_serverFn`, `/assets` and `/forms`                          |
 | `extractLocaleFromPath` | Returns the prefix **only when it is not the default** — `/pl-PL/x` yields `undefined` |
 | `deLocalizePathname`    | Strips any supported prefix                                                            |
 | `localizePathname`      | Adds the prefix, except for the default locale                                         |
