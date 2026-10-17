@@ -101,7 +101,7 @@ const folderPages = (folder: Folder): Item[] => [
 ]
 ```
 
-This is why `index` must **not** be listed in a folder's `meta.<locale>.json` `pages` array — Fumadocs already treats it as the folder index, and listing it would place it twice.
+Either way the index page appears once. When a folder's `meta.<locale>.json` leaves `index` out of `pages`, Fumadocs makes it `folder.index`. When `pages` lists it, fumadocs-core 16.17.1 removes it from `folder.index` and keeps it among the children at its listed position. Every folder in `content/docs` that has an index page lists `"index"` first, so the index still opens its section.
 
 ## The routes
 
@@ -160,7 +160,7 @@ The legal pages reuse only the link from `mdxComponents`. Their article passes `
 ## Adding a documentation page
 
 1. Create `content/docs/<section>/<slug>.en-US.mdx` **and** `<slug>.pl-PL.mdx`. Frontmatter is `title` and `description`.
-2. Add `"<slug>"` to the `pages` array in **both** `content/docs/<section>/meta.en-US.json` and `meta.pl-PL.json`, in reading order. Do not list `index`.
+2. Add `"<slug>"` to the `pages` array in **both** `content/docs/<section>/meta.en-US.json` and `meta.pl-PL.json`, in reading order. A new folder's `meta` files list `"index"` first, as the existing ones do.
 3. Write plain Markdown. Start the body at `##`. Write internal links without a locale prefix.
 4. Run `bun run content` (or restart `bun run dev`) so `.source` picks the files up.
 5. Run `bun run format`, `bun run check` and `bun run test`.

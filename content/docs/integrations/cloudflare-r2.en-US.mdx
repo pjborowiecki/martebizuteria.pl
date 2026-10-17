@@ -3,7 +3,7 @@ title: "Cloudflare R2"
 description: "Image upload to the IMAGES bucket, content-addressed keys and asset URLs."
 ---
 
-Product photography, category and collection imagery and the marketing assets live in R2, in the bucket bound to the Worker as `IMAGES`: `martebizuteria` in production and `martebizuteria-preview` in development and preview. The adapter in `src/integrations/cloudflare-r2/` has exactly one job: accept an image from the admin console, validate it, and put it in the bucket under a content-addressed key. Reading is not its job — the bucket is served publicly and read through the URL helpers in `src/lib/url.ts`.
+Product photography, category and collection imagery and the marketing assets live in R2, in the bucket bound to the Worker as `IMAGES`: `martebizuteria` in production and `martebizuteria-preview` in development and preview. The adapter in `src/integrations/cloudflare-r2/` has two jobs: accept an image from the admin console, validate it, and put it in the bucket under a content-addressed key; and read the ordered products' images back from the bucket so the order confirmation can carry them as inline attachments. Pages never read through it — the bucket is served publicly and read through the URL helpers in `src/lib/url.ts`.
 
 ## The binding
 
@@ -52,16 +52,19 @@ if ((await env.IMAGES.head(key)) === null) {
     },
   })
 }
+recordImageUploadedAudit(key, { detail: file.name })
 
 return { key }
 ```
 
-Three consequences worth internalizing:
+Four consequences worth internalizing:
 
 - **The key is the SHA-256 of the file contents**, hex-encoded, plus the extension. Uploading the same photograph twice produces the same key.
 - **The `head` check makes the write idempotent.** An existing object is not rewritten, so the upload costs one cheap metadata request.
 - **`Cache-Control: public, max-age=31536000, immutable`** is set at upload time. This is only correct because the key changes whenever the bytes change. Never write a mutable key into this bucket.
 - **Only the key is returned and stored.** No host reaches the database, so serving the bucket from another address needs no data rewrite.
+
+Every upload, a re-upload of bytes the bucket already holds included, is recorded as `image.uploaded` in the `catalog` category by `recordImageUploadedAudit`, with the key as its resource and the file's original name as the detail.
 
 ## Rules
 
@@ -114,6 +117,16 @@ Rows written before uploads stored keys, and every seed file, hold full `r2.dev`
 
 `PLACEHOLDER_IMAGE` is `getAssetURL("placeholder.svg")`, and `src/data/landing.ts` pulls the landing hero, the video and its poster from the same bucket.
 
+## Images in the order confirmation
+
+Many mail clients block remote images until the reader allows them, so the order confirmation embeds its product images. `media.email.server.ts` exports `embedEmailImages(urls)`, which `sendOrderConfirmationEmail` calls with the item image URLs:
+
+- It drops duplicate URLs and every URL `isAssetCdnUrl` does not recognise, then keeps at most `MAX_INLINE_EMAIL_IMAGES` (10).
+- It reads each object from `env.IMAGES` by the URL's path, which is the object's key. An object that is missing or larger than `MAX_INLINE_EMAIL_IMAGE_BYTES` (512 KiB) is skipped, and a read that throws is logged as `[Email] Could not read <url> to embed it, so the email links to it instead`.
+- In order, it embeds each image that still fits within `MAX_INLINE_EMAIL_IMAGES_TOTAL_BYTES` (2 MiB) together with those embedded before it, as a base64 Resend attachment with the content id `image-<n>` and the key's last segment as its file name.
+
+It returns the `attachments`, which go out with the withdrawal form, and `sources`, a map from each embedded URL to its `cid:image-<n>`. `order-confirmation.tsx` uses the `cid:` source where the map has one and the image's URL otherwise, so an image that was not embedded is still linked. No other e-mail embeds images. See [Resend: Attachments](/docs/integrations/resend#attachments).
+
 ## What is missing on purpose
 
 There is **no delete path**. Nothing in the repository calls `env.IMAGES.delete`. Removing a product image removes the `product_image` row and leaves the object in the bucket. Because keys are content hashes this is safe — another product may reference the same bytes — but it does mean the bucket only grows, and pruning is a manual operation against R2.
@@ -122,7 +135,7 @@ There is also no signed-URL or private-object handling: every object in this buc
 
 ## Tests
 
-`src/integrations/cloudflare-r2/__test__/media.mutations.test.ts` and `media.zod.test.ts` cover the validation branches, the `folder` fallback, the hashed key, and the `head`-before-`put` skip.
+`src/integrations/cloudflare-r2/__test__/media.mutations.test.ts` and `media.zod.test.ts` cover the validation branches, the `folder` fallback, the hashed key, and the `head`-before-`put` skip. `media.email.server.test.ts` covers the e-mail images: one attachment per image under its own content id, an image from another host left linked, a missing, oversized or unreadable object left linked, the total size cap and the image limit.
 
 ## Related pages
 

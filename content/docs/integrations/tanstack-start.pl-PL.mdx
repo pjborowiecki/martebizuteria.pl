@@ -59,17 +59,28 @@ Ten sam plik eksportuje klasę Durable Object, handler `queue` i handler `schedu
 ```ts
 export { RealtimeInvalidationHub } from "~/src/durable-objects/realtime-invalidation-hub"
 
-async queue(batch: MessageBatch<AuditLogQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
-  await processAuditLogQueueBatch(batch)
+async queue(batch: MessageBatch<WorkerQueueMessage>, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  if (isNewsletterQueueBatch(batch)) {
+    const { processNewsletterQueueBatch } = await import("~/src/modules/newsletter-campaign/newsletter-campaign.queue.server")
+    await processNewsletterQueueBatch(batch)
+  }
+
+  if (isAuditLogQueueBatch(batch)) {
+    const { processAuditLogQueueBatch } = await import("~/src/modules/audit-log/audit-log.queue.server")
+    await processAuditLogQueueBatch(batch)
+  }
 },
 async scheduled(controller: ScheduledController, _env: Env, _ctx: ExecutionContext): Promise<void> {
+  const { enforceRetentionPeriods } = await import("~/src/lib/retention")
   await enforceRetentionPeriods(new Date(controller.scheduledTime))
 },
 ```
 
-Cron Triggers preview i produkcji wywołują `scheduled` raz dziennie na potrzeby czyszczenia opisanego w [Okresach przechowywania danych](/docs/guides/data-retention).
+`WorkerQueueMessage` to unia wiadomości dziennika zdarzeń i wiadomości kampanii newslettera. Jeden Worker konsumuje obie kolejki, więc `queue` rozróżnia je po nazwie kolejki partii: `isNewsletterQueueBatch` dopasowuje nazwy zaczynające się od `martebizuteria-newsletter`, a każda inna partia należy do dziennika zdarzeń. Każdy procesor, a także kod okresów przechowywania za `scheduled`, importowany jest leniwie, więc zwykłe żądanie niczego z nich nie ładuje.
 
-Typ `RequestContext` jest deklarowany do modułu `@tanstack/react-start` w tym samym pliku, więc `env`, `nonce`, `waitUntil` i `passThroughOnException` są typowane wszędzie tam, gdzie funkcja serwerowa czyta kontekst żądania.
+Cron Triggers preview i produkcji (`0 3 * * *`) wywołują `scheduled` raz dziennie na potrzeby czyszczenia opisanego w [Okresach przechowywania danych](/docs/guides/data-retention).
+
+Typ `RequestContext` jest deklarowany do modułu `@tanstack/react-start` w tym samym pliku, więc `edgeTimeZone`, `env`, `nonce`, `waitUntil` i `passThroughOnException` są typowane wszędzie tam, gdzie funkcja serwerowa czyta kontekst żądania. `edgeTimeZone` to `request.cf?.timezone`, strefa czasowa, którą Cloudflare wyprowadza z adresu odwiedzającego; [use-intl](/docs/integrations/use-intl#preferencje-wyświetlania) korzysta z niej, dopóki przeglądarka nie zgłosi własnej.
 
 ## Trasy plikowe
 
@@ -109,7 +120,13 @@ loader: async ({ context, deps }) => {
     prefetchProductsCatalogPage(context.queryClient, context.imagePrefetchService, { search: deps }),
   ])
 
-  return { description: messages.description, title: messages.title }
+  const t = createTranslator({ locale: context.locale, messages })
+
+  return {
+    description: messages.description,
+    structuredData: buildBreadcrumbStructuredData({ leaf: messages.title, locale: context.locale, sections: [] }),
+    title: deps.q === undefined ? messages.title : t("search.pageTitle", { query: deps.q }),
+  }
 },
 loaderDeps: ({ search }: { search: StorefrontProductsSearch }) => normalizeStorefrontProductsSearch(search),
 staticData: { namespaces: ["pages.products"] },
@@ -118,7 +135,7 @@ validateSearch: storefrontProductsSearchSchema,
 
 Widgety, okna dialogowe, formularze i kolumny tabel mieszkają w `src/presentation/components/custom/` i same czytają swoje tłumaczenia oraz swoje zapytania. Prostsze trasy używają `head: pageHead` z `src/lib/seo.ts`, które zamienia `{ title, description }` z loadera w `<title>`, `description` i dwa odpowiadające im znaczniki Open Graph, a do tego we własne `og:image` i `twitter:image` strony, gdy loader zwraca `image`, oraz skrypt JSON-LD, gdy zwraca `structuredData`.
 
-Plik `src/routes/__root.tsx` odpowiada za powłokę dokumentu: `beforeLoad` ustala język i wstępnie ładuje każdą przestrzeń nazw wymaganą przez dopasowane trasy, `shellComponent` renderuje `<html lang>` wraz ze skryptami inicjującymi motyw, panel boczny i preferencje tabel, a `head` składa odnośniki kanoniczne i `hreflang` z `localeLinks`. Strony sklepu owinięte są w `SmoothScroll`; strony panelu administracyjnego nie.
+Plik `src/routes/__root.tsx` odpowiada za powłokę dokumentu: `beforeLoad` ustala język i w jednym `Promise.all` wstępnie ładuje każdą przestrzeń nazw wymaganą przez dopasowane trasy oraz `displayPreferencesQuery` użytkownika, `shellComponent` renderuje `<html lang>` wraz ze skryptami inicjującymi motyw, panel boczny i preferencje tabel, a `head` składa odnośniki kanoniczne i `hreflang` z `localeLinks`. Strony sklepu owinięte są w `SmoothScroll`; strony panelu administracyjnego nie.
 
 ## Funkcje serwerowe
 
@@ -178,6 +195,6 @@ Punkty końcowe WebSocket dla unieważniania świadomie _nie_ są trasami plikow
 ## Powiązane strony
 
 - [Cykl życia żądania](/docs/architecture/request-lifecycle)
-- [Routing](/docs/architecture/request-lifecycle)
+- [Trasy](/docs/reference/routes)
 - [TanStack Query](/docs/integrations/tanstack-query)
 - [Poradniki](/docs/guides)

@@ -3,7 +3,7 @@ title: "use-intl"
 description: "Języki, prefiksy adresów, przestrzenie nazw komunikatów i sposób, w jaki strona otrzymuje tłumaczenia."
 ---
 
-Sklep jest polski w pierwszej kolejności, a angielski w drugiej. `pl-PL` jest domyślnym językiem i serwowany jest bez prefiksu, więc `/products` jest po polsku, a `/en-US/products` po angielsku. Katalog `src/integrations/use-intl/` zawiera pięć plików, które wspólnie definiują języki, przepisują adresy, ładują przestrzenie nazw komunikatów i przechowują wybór w ciasteczku.
+Sklep jest polski w pierwszej kolejności, a angielski w drugiej. `pl-PL` jest domyślnym językiem i serwowany jest bez prefiksu, więc `/products` jest po polsku, a `/en-US/products` po angielsku. Katalog `src/integrations/use-intl/` zawiera siedem plików. Pięć z nich definiuje języki, przepisuje adresy, ładuje przestrzenie nazw komunikatów i przechowuje wybór w ciasteczku; `i18n.display.ts` i `i18n.display-preferences.ts` ustalają strefę czasową i format, w których każdy użytkownik widzi daty i liczby.
 
 ## Konfiguracja
 
@@ -25,7 +25,7 @@ export const I18N = { COOKIE_NAME, DEFAULT_LOCALE, DEFAULT_TIMEZONE, SUPPORTED_L
 
 Typ `SupportedLocale` wyprowadzany jest z krotki, więc dodanie tu języka sprawia, że system typów domaga się reszty: języka Stripe w `stripe.client.ts`, języka `react-day-picker` w `react-day-picker.locale.ts`, pliku JSON na każdą przestrzeń nazw w `messages/<locale>/`, drugiego pliku MDX dla każdej strony w `content/docs` oraz tytułu, opisu i treści w tym języku dla każdego wiersza `content_page`, wpisywanych w edytorze pod `/admin/content`.
 
-`DEFAULT_TIMEZONE` to strefa czasowa sklepu, z której korzystają testowe providery i formularz odstąpienia. Strefa czasowa i format, w których wyświetla się strona, pochodzą z preferencji użytkownika; listy do wyboru to `TIMEZONES` w `src/modules/_core/constants/timezone.ts` i `FORMAT_LOCALES` w `src/integrations/use-intl/i18n.display.ts` (zobacz [Internacjonalizacja](/docs/features/internationalization)).
+`DEFAULT_TIMEZONE` to strefa czasowa sklepu. Korzystają z niej testowy provider renderowania w `src/platform/testing/lib/render.tsx` oraz szablon e-maila o odstąpieniu, `order-withdrawal.tsx`, który podaje, kiedy złożono oświadczenie. Własne daty biznesowe sklepu używają tej samej strefy przez `DEFAULT_TIMEZONE_CODE` z `src/modules/_core/constants/timezone.ts`: rok w numerze zamówienia i terminy odstąpienia w `polish-deadline.ts`. Strefa czasowa i format, w których wyświetla się strona, pochodzą z preferencji użytkownika (zobacz [Preferencje wyświetlania](#preferencje-wyświetlania)); listy do wyboru to `TIMEZONES` w `src/modules/_core/constants/timezone.ts` i `FORMAT_LOCALES` w `src/integrations/use-intl/i18n.display.ts`.
 
 ## Kształt adresów
 
@@ -97,7 +97,7 @@ Ciasteczko jest czytane wyłącznie dla ścieżek ignorowanych — i to jest wł
 
 ## Komunikaty
 
-`messages/<locale>/<namespace>.json` — 56 przestrzeni nazw na język, o identycznych nazwach plików w obu. Przestrzeń nazw _jest_ nazwą pliku, z kropkami jako zagnieżdżeniem: `pages.admin.catalog.products.json` to `pages.admin.catalog.products`.
+`messages/<locale>/<namespace>.json` — 60 przestrzeni nazw na język, o identycznych nazwach plików w obu. Przestrzeń nazw _jest_ nazwą pliku, z kropkami jako zagnieżdżeniem: `pages.admin.catalog.products.json` to `pages.admin.catalog.products`.
 
 Plik `i18n.messages.ts` robi cztery rzeczy.
 
@@ -146,7 +146,7 @@ export const ROOT_NAMESPACES = [...new Set(rootMessagePaths.map((path) => toName
 </IntlProvider>
 ```
 
-`timeZone` to zapisana strefa czasowa użytkownika, strefa wykryta dla żądania albo `UTC` (zobacz [Internacjonalizacja](/docs/features/internationalization)). Format dat i liczb trafia do `DisplayPreferencesContext` obok providera, a nie do niego, bo `locale` providera wybiera też formy liczby mnogiej w komunikatach.
+`timeZone` to zapisana strefa czasowa użytkownika, strefa wykryta dla żądania albo `UTC`. Format dat i liczb trafia do `DisplayPreferencesContext` wewnątrz providera, a nie do niego, bo `locale` providera wybiera też formy liczby mnogiej w komunikatach. Zobacz [Preferencje wyświetlania](#preferencje-wyświetlania).
 
 Zapisuje też język z powrotem do ciasteczka `marte_locale` w efekcie, więc bezpośrednie wejście na `/en-US/...` jest pamiętane.
 
@@ -163,6 +163,54 @@ const [messages] = await Promise.all([
 
 Zwróć uwagę na argument typu `<typeof productsMessages>`, pobrany z importu wyłącznie typu z angielskiego pliku JSON. To projektowa konwencja typowanego dostępu do komunikatów poza kontekstem Reacta i dlatego klucz obecny po angielsku, a brakujący po polsku, jest błędem typowania.
 
+## Preferencje wyświetlania
+
+Język strony wynika z adresu, ale strefa czasowa i format, czyli ustawienia regionalne decydujące o zapisie dat, godzin i liczb, należą do użytkownika. `i18n.display.ts` zawiera reguły, a `i18n.display-preferences.ts` funkcję serwerową i zapytanie, które dostarczają je stronie. Co widzą kupujący i administrator, opisuje [Internacjonalizacja](/docs/features/internationalization).
+
+### Kolejność wykrywania
+
+`detectDisplayPreferences({ acceptLanguage, cookieHeader, edgeTimeZone })` odczytuje to, co ujawnia żądanie, a `toSavedDisplayPreferences(user)` to, co zalogowany użytkownik ma zapisane w `user.timezone` i `user.format_locale`. `resolveDisplayPreferences({ detected, saved })` pozwala każdej zapisanej wartości wygrać z jej wykrytym odpowiednikiem, niezależnie od drugiej:
+
+| Preferencja    | Kolejność                                                                                                                                                                                                                                                                                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Strefa czasowa | Zapisana `user.timezone`; ciasteczko `marte_time_zone` (`TIME_ZONE_COOKIE_NAME`), w którym przeglądarka zgłasza własną strefę; `edgeTimeZone`, strefa, którą Cloudflare wyprowadza z adresu odwiedzającego (`request.cf?.timezone`, wpisana do kontekstu żądania przez `src/server.ts`); `FALLBACK_TIME_ZONE`, czyli `UTC` |
+| Format         | Zapisany `user.format_locale`; pierwszy wpis `Accept-Language`, w kolejności z nagłówka i bez wag `q`, który przyjmuje `toFormatLocale`; `FALLBACK_FORMAT_LOCALE`, czyli `en-US`                                                                                                                                           |
+
+Każdy kandydat jest sprawdzany przed użyciem, także zapisany, więc wartość, z którą środowisko nie umie formatować, jest pomijana. `isTimeZone` przyjmuje najwyżej 64 znaki, które `Intl.DateTimeFormat` akceptuje jako `timeZone`. `toFormatLocale` kanonizuje najwyżej 35 znaków przez `Intl.getCanonicalLocales` i zachowuje znacznik tylko wtedy, gdy obsługuje go `Intl.DateTimeFormat.supportedLocalesOf`.
+
+### Zapytanie i jego cache
+
+`getDisplayPreferences` to funkcja serwerowa `GET`, która zwraca obie połowy, `{ detected, saved }`: nagłówki czyta przez `getRequest()`, sesję przez `getRequestSession()`, zapamiętywaną na czas żądania, a `edgeTimeZone` przez `getGlobalStartContext()`. Odwiedzający nie ma nic zapisanego. `displayPreferencesQuery` trzyma odpowiedź w cache pod `DISPLAY_PREFERENCES_QUERY_KEY`, czyli `["i18n", "displayPreferences"]`, ze `staleTime: Infinity` i bez ponownego pobierania przy powrocie do okna lub odzyskaniu połączenia. `beforeLoad` w `__root.tsx` czeka na nie w tym samym `Promise.all` co na przestrzenie nazw, więc render na serwerze i strona po hydracji formatują z tymi samymi wartościami.
+
+Wpis zmienia się na trzy sposoby:
+
+- W przeglądarce `useBrowserTimeZone` w `TranslationsProvider` po pierwszym renderze odczytuje `Intl.DateTimeFormat().resolvedOptions().timeZone`. Gdy to poprawna strefa, zapisuje ją w `marte_time_zone`, jeśli ciasteczko ma inną wartość (rok, `Path=/`, `SameSite=Lax`, `Secure` przez HTTPS), a gdy różni się od wykrytej, podmienia `detected.timeZone` we wpisie w cache przez `setQueryData`. Użytkownik bez zapisanej strefy od razu widzi strefę przeglądarki, a następne żądanie wykrywa ją z ciasteczka.
+- Gdy sesja przełącza się na innego użytkownika, `clearCacheOnUserChange` zachowuje wpis i go unieważnia, więc zastępują go wartości zapisane przez nowego użytkownika (zobacz [TanStack Query](/docs/integrations/tanstack-query#preferencje-wyświetlania)).
+- Zapisanie preferencji unieważnia każde zapytanie w cache, co opisano niżej.
+
+### Kontekst i hooki
+
+`TranslationsProvider` przekazuje `IntlProvider` ustaloną `timeZone` i renderuje wewnątrz niego `DisplayPreferencesContext` z `src/hooks/use-display-format.ts`, z ustalonym `{ formatLocale, timeZone }`. Czytają go hooki z tego samego pliku:
+
+| Hook                      | Zwraca                                                                                                |
+| ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `useDisplayPreferences()` | `{ formatLocale, timeZone }`; poza kontekstem język strony i strefę czasową `IntlProvider` albo `UTC` |
+| `useFormatLocale()`       | Format, dla kodu, który formatuje sam, na przykład `formatPrice(amount, currency, formatLocale)`      |
+| `useDisplayTimeZone()`    | Strefę czasową                                                                                        |
+| `useFormatter()`          | `createFormatter({ locale: formatLocale, timeZone })` z `use-intl`, zapamiętany dla obu wartości      |
+
+Kod aplikacji formatuje przez ten `useFormatter`. Własny `useFormatter` z `use-intl` formatowałby w języku strony, bo czyta `locale` z `IntlProvider`.
+
+### Na serwerze
+
+`resolveRequestDisplayPreferences()`, `createServerOnlyFn` z `i18n.display-preferences.ts`, wykonuje te same odczyty dla bieżącego żądania i zwraca ustalone `{ formatLocale, timeZone }`. Funkcje serwerowe wywołują ją, gdy ich odpowiedź zależy od tego, gdzie zaczyna się dzień, albo zawiera datę lub etykietę, którą formatują same: strony zamówień, klientów i produktów w panelu oraz ich eksporty, lista dziennika zdarzeń i jej licznik dzisiejszych wpisów, migawka i zakres wykresów panelu oraz szczegóły klienta. Testy przypadków użycia mockują `i18n.display-preferences.ts` modułem `src/platform/testing/mocks/display-preferences.ts`, którego `resolveRequestDisplayPreferences` odpowiada `pl-PL` i `Europe/Warsaw`.
+
+### Zapisanie preferencji
+
+`updateDisplayPreference` w `src/modules/user/use-cases/update-display-preference.ts` to funkcja serwerowa `POST` za `withRateLimit("update-display-preference", RATE_LIMITS.SENSITIVE)`, trzy wywołania na minutę, i `authorized()`, więc każdy zalogowany użytkownik może zmienić swój wiersz i tylko swój. `userZodSchemas.displayPreferenceInput` przyjmuje `{ preference: "formatLocale" | "timeZone", value }`, gdzie `value` to `""` dla opcji Automatycznie, zapisywane jako `NULL`, albo wartość, którą `toFormatLocale` zwraca bez zmian lub którą przyjmuje `isTimeZone`. Better Auth deklaruje obie kolumny z `input: false`, więc jego własne endpointy nie mogą ich zapisać.
+
+Wyborem jest `DisplayPreferenceField` z `src/presentation/components/custom/display-preferences/`. `useDisplayPreferenceOptions` wymienia najpierw opcję Automatycznie, opisaną wykrytą wartością, potem osiemnaście `FORMAT_LOCALES`, każdy z przykładową datą i liczbą, albo każdą strefę z `TIMEZONES`, a do tego zapisaną wartość, której nie ma na liście. `useSaveDisplayPreference` wysyła wybór, a po sukcesie wywołuje `queryClient.invalidateQueries()` bez filtra, więc każde zapytanie, którego wynik datowano lub sformatowano poprzednią wartością, jest pobierane ponownie.
+
 ## Poza Reactem
 
 E-maile i webhooki renderują się na Workerze bez dostawcy, więc używają `createTranslator({ locale, messages })` z `use-intl` bezpośrednio. Zobacz [Resend](/docs/integrations/resend).
@@ -175,7 +223,7 @@ E-maile i webhooki renderują się na Workerze bez dostawcy, więc używają `cr
 | `src/integrations/react-day-picker/react-day-picker.locale.ts` | `pl-PL` → `pl`, `en-US` → `enUS` dla kalendarza                          |
 | `src/integrations/fumadocs/fumadocs.i18n.ts`                   | Przekazuje `I18N.SUPPORTED_LOCALES` do Fumadocs z `hideLocale: "always"` |
 
-Wszystkie trzy używają `satisfies Record<SupportedLocale, …>` albo jawnego `Record<SupportedLocale, …>`, więc nowy język psuje budowanie do momentu wypełnienia każdego mapowania.
+Pierwsze dwa używają `satisfies Record<SupportedLocale, …>` i jawnego `Record<SupportedLocale, …>`, więc nowy język psuje budowanie do momentu wypełnienia obu mapowań. `fumadocs.i18n.ts` rozwija `I18N.SUPPORTED_LOCALES` do `languages`, więc przyjmuje nowy język bez zmian, a strona bez pliku MDX w tym języku wraca do `pl-PL` (`fallbackLanguage`).
 
 ## Treści tłumaczone w bazie danych
 
@@ -187,7 +235,7 @@ Warto to wiedzieć, zanim zaczniesz go szukać: sklep nie ma kontrolki zmiany j�
 
 ## Testy
 
-Katalog `src/integrations/use-intl/__test__/` zawiera sześć plików obejmujących ustalanie języka na serwerze, ustalanie języka na kliencie, ustalanie ścieżki na kliencie, reguły routingu i kanonizacji, pomocniki nawigacji oraz drzewo komunikatów.
+Katalog `src/integrations/use-intl/__test__/` zawiera osiem plików obejmujących ustalanie języka na serwerze, ustalanie języka na kliencie, ustalanie ścieżki na kliencie, reguły routingu i kanonizacji, pomocniki nawigacji, drzewo komunikatów, reguły preferencji wyświetlania w `i18n.display.ts` oraz funkcję serwerową, ustalanie po stronie serwera i zapytanie z `i18n.display-preferences.ts`.
 
 ## Powiązane strony
 
