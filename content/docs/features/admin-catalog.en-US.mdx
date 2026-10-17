@@ -173,6 +173,8 @@ recordCatalogCategoryCreatedAudit(data.handle)
 
 Ranks are assigned server-side by `getNextRankForParent`, never sent from the client.
 
+A category's `status`, `handle` and parent decide which products the storefront lists under it: a category page lists its whole subtree, and an unknown or inactive handle lists nothing. `scheduleCategoryCatalogInvalidation()` therefore also invalidates `PRODUCT_QUERY_KEYS.STOREFRONT_PAGE`, so an open category page, or a catalogue filtered by a category, refetches its products.
+
 ## Collections
 
 The same eight use cases without the tree: `get-collections`, `get-storefront-collection`, `get-admin-collections`, `get-collection-stats`, `create-collection`, `update-collection`, `delete-collections`, `reorder-collections`. `COLLECTION_ERROR_CODES` has `DUPLICATE_HANDLE` and `HAS_PRODUCTS`.

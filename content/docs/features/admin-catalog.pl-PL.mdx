@@ -173,6 +173,8 @@ recordCatalogCategoryCreatedAudit(data.handle)
 
 Rangi przydziela serwer przez `getNextRankForParent` i nigdy nie są przysyłane z klienta.
 
+Od pól `status` i `handle` kategorii oraz od jej rodzica zależy, które produkty sklep pokazuje w tej kategorii: strona kategorii pokazuje całe jej poddrzewo, a nieznany albo nieaktywny handle nie pokazuje niczego. Dlatego `scheduleCategoryCatalogInvalidation()` unieważnia także `PRODUCT_QUERY_KEYS.STOREFRONT_PAGE`, więc otwarta strona kategorii albo katalog przefiltrowany kategorią pobiera produkty ponownie.
+
 ## Kolekcje
 
 Te same osiem use case'ów, tylko bez drzewa: `get-collections`, `get-storefront-collection`, `get-admin-collections`, `get-collection-stats`, `create-collection`, `update-collection`, `delete-collections`, `reorder-collections`. `COLLECTION_ERROR_CODES` ma `DUPLICATE_HANDLE` i `HAS_PRODUCTS`.

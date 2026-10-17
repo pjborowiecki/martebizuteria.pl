@@ -133,12 +133,14 @@ describe("catalog invalidation scheduling", () => {
     expect(topicsFor("storefront")).toContain(JSON.stringify([...CART_QUERY_KEYS.AVAILABILITY]))
   })
 
-  it("refreshes both category views on a category change", async () => {
+  it("refreshes both category views and the catalogue grid on a category change", async () => {
     scheduleCategoryCatalogInvalidation()
     await Promise.all(background.scheduled)
 
     expect(topicsFor("admin")).toStrictEqual(serialized([[...CATEGORY_QUERY_KEYS.ADMIN.ALL], [...CATEGORY_QUERY_KEYS.ADMIN.STATS]]))
-    expect(topicsFor("storefront")).toStrictEqual(serialized([[...CATEGORY_QUERY_KEYS.ALL], [...CATEGORY_QUERY_KEYS.BY_HANDLE]]))
+    expect(topicsFor("storefront")).toStrictEqual(
+      serialized([[...CATEGORY_QUERY_KEYS.ALL], [...CATEGORY_QUERY_KEYS.BY_HANDLE], [...PRODUCT_QUERY_KEYS.STOREFRONT_PAGE]]),
+    )
   })
 
   it("refreshes the landing new arrivals and the catalogue grid when a collection changes", async () => {
@@ -239,7 +241,10 @@ describe("invalidation topics by publisher", () => {
     [
       "category",
       scheduleCategoryCatalogInvalidation,
-      { admin: [CATEGORY_QUERY_KEYS.ADMIN.ALL], storefront: [CATEGORY_QUERY_KEYS.ALL, CATEGORY_QUERY_KEYS.BY_HANDLE] },
+      {
+        admin: [CATEGORY_QUERY_KEYS.ADMIN.ALL],
+        storefront: [CATEGORY_QUERY_KEYS.ALL, CATEGORY_QUERY_KEYS.BY_HANDLE, PRODUCT_QUERY_KEYS.STOREFRONT_PAGE],
+      },
     ],
     [
       "collection",
