@@ -79,6 +79,7 @@ vi.mock("~/src/lib/url", () => ({ resolveAssetURL: (source: string) => `https://
 
 import {
   CART_ITEM,
+  CATALOGUE_IMAGE,
   CHECKOUT_VALUES,
   HELD_LINES,
   availableVariant,
@@ -271,7 +272,7 @@ describe("handleUpdateCheckoutSession", () => {
       lines: [
         {
           handle: CART_ITEM.slug,
-          imageUrl: `https://assets.test/${CART_ITEM.image}`,
+          imageUrl: `https://assets.test/${CATALOGUE_IMAGE}`,
           price: 24_900,
           qty: 2,
           title: "Bransoletka Aurora — Rozmiar M",

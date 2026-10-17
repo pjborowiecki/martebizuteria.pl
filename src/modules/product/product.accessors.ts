@@ -90,6 +90,9 @@ export const getPublishedProductsWithInventoryByHandles = (handles: readonly str
   db.query.product.findMany({
     where: and(inJsonList(product.handle, handles), eq(product.status, PRODUCT_STATUS.PUBLISHED)),
     with: {
+      images: {
+        orderBy: (images, { asc: ascOrder }) => [ascOrder(images.rank), ascOrder(images.createdAt)],
+      },
       variants: {
         with: {
           inventory: true,

@@ -94,7 +94,7 @@ Warunek, który nie trafia w żaden wiersz, nie jest błędem, więc D1 zatwierd
 
 Aktualizacja checkoutu zastępuje jego sesję Stripe, ale nigdy nie puszcza towaru, który kupujący zatrzymuje. `quantitiesBeyond(lines, baselineLines)` porównuje dwa zestawy linii po wariantach i z każdej linii zostawia tylko sztuki, których linie bazowe jeszcze nie pokrywają; bazę jednego wariantu wydaje raz na wszystkie jego linie. Aktualizacja używa jej w obie strony:
 
-- `quantitiesBeyond(validatedItems, heldLines)` daje sztuki, które edytowany koszyk dokłada. Są rezerwowane przez `reserveInventoryForItems` na identyfikatorach stanu zwróconych przez walidację, zanim powstanie sesja zastępcza i zanim stara wygaśnie. Odmowa zostawia starą sesję, jej towar i checkout bez zmian.
+- `quantitiesBeyond(lines, heldLines)` daje sztuki, które edytowany koszyk dokłada. Są rezerwowane przez `reserveInventoryForItems` na identyfikatorach stanu zwróconych przez walidację, zanim powstanie sesja zastępcza i zanim stara wygaśnie. Odmowa zostawia starą sesję, jej towar i checkout bez zmian.
 - `quantitiesBeyond(heldLines, reservedLines)` daje sztuki, z których edytowany koszyk rezygnuje. `supersedeCheckoutSession` zwalnia tylko je, we wsadzie, który przenosi płatność.
 
 Sztuk trzymanych przez obie sesje nic więc nie zwalnia, a inny checkout nie może przejąć unikatowego egzemplarza, gdy jego kupujący zmienia adres dostawy albo ilość.

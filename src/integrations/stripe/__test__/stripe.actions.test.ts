@@ -64,24 +64,24 @@ const PARSED_CHECKOUT_VALUES = {
   saveShippingAddress: false,
 }
 
-const CART_LINE = {
+const CART_LINE = { qty: 2, slug: "bransoletka-aurora", variantId: "variant-1" }
+
+const CART_ITEM = {
+  ...CART_LINE,
   id: "line-1",
   image: "https://assets.test/bracelet.jpg",
-  qty: 2,
-  slug: "bransoletka-aurora",
+  price: "249,00 zł",
+  rawPrice: 24_900,
   title: "Bransoletka Aurora",
-  variantId: "variant-1",
   variantTitle: "Rozmiar M",
 }
-
-const CART_ITEM = { ...CART_LINE, price: "249,00 zł", rawPrice: 24_900 }
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
 describe("createCheckoutSessionFn", () => {
-  it("hands a valid cart to the server handler, without the prices the browser remembers, and returns its answer", async () => {
+  it("hands the server handler only the variant, its product and the quantity of each line, and returns its answer", async () => {
     const data = { checkoutValues: CHECKOUT_VALUES, items: [CART_ITEM] }
 
     const result = await createCheckoutSessionFn({ data })

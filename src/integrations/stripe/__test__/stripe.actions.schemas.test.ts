@@ -5,8 +5,11 @@ import {
   createCheckoutSessionInputSchema,
   updateCheckoutSessionInputSchema,
 } from "~/src/integrations/stripe/stripe.actions.schemas"
+import { CHECKOUT_SESSION_ID_MAX_LENGTH } from "~/src/integrations/stripe/stripe.constants"
 
 import { CART_LINES_MAX, CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
+import { PRODUCT_VARIANT_COLUMN_LENGTH } from "~/src/modules/product-variant/product-variant.constants"
+import { PRODUCT_COLUMN_LENGTH } from "~/src/modules/product/product.constants"
 
 const checkoutValues = {
   address1: "ul. Mokotowska 12/4",
@@ -20,13 +23,16 @@ const checkoutValues = {
   postalCode: "00-640",
 }
 
-const cartItem = {
+const cartItem = { qty: 2, slug: "bransoletka-aurora", variantId: "variant-1" }
+
+const browserCartItem = {
+  ...cartItem,
   id: "line-1",
   image: "https://assets.test/bracelet.jpg",
-  qty: 2,
-  slug: "bransoletka-aurora",
+  price: "249,00 zł",
+  priceChanged: true,
+  rawPrice: 24_900,
   title: "Bransoletka Aurora",
-  variantId: "variant-1",
   variantTitle: "Rozmiar M",
 }
 
@@ -36,12 +42,29 @@ const firstIssue = (result: { success: boolean; error?: { issues: readonly { mes
   result.error?.issues[0]
 
 describe("cartItemSchema", () => {
-  it("accepts a fully specified cart line", () => {
+  it("accepts a line that names only its product, variant and quantity", () => {
     expect(cartItemSchema.parse(cartItem)).toStrictEqual(cartItem)
   })
 
-  it("drops the prices the browser remembers, so the server can only charge what the catalogue says", () => {
-    expect(cartItemSchema.parse({ ...cartItem, price: "1,00 zł", priceChanged: true, rawPrice: 100 })).toStrictEqual(cartItem)
+  it("drops the title, image and prices a cart in the browser remembers, so the server takes them from the catalogue", () => {
+    expect(cartItemSchema.parse(browserCartItem)).toStrictEqual(cartItem)
+  })
+
+  it("ignores display fields of any size, since none of them reaches the server", () => {
+    const oversized = "x".repeat(100_000)
+
+    expect(cartItemSchema.parse({ ...browserCartItem, image: oversized, title: oversized, variantTitle: oversized })).toStrictEqual(
+      cartItem,
+    )
+  })
+
+  it("refuses a handle or variant id longer than the catalogue stores", () => {
+    const longestHandle = "a".repeat(PRODUCT_COLUMN_LENGTH.handle)
+    const longestVariantId = "v".repeat(PRODUCT_VARIANT_COLUMN_LENGTH.id)
+
+    expect(cartItemSchema.safeParse({ ...cartItem, slug: longestHandle, variantId: longestVariantId }).success).toBe(true)
+    expect(cartItemSchema.safeParse({ ...cartItem, slug: `${longestHandle}a` }).success).toBe(false)
+    expect(cartItemSchema.safeParse({ ...cartItem, variantId: `${longestVariantId}v` }).success).toBe(false)
   })
 
   it("rejects a quantity of zero so an empty line cannot reach Stripe", () => {
@@ -50,15 +73,9 @@ describe("cartItemSchema", () => {
   })
 
   it("requires the identifiers that link the line back to the catalogue", () => {
-    for (const field of ["id", "slug", "variantId"]) {
+    for (const field of ["slug", "variantId"]) {
       expect(cartItemSchema.safeParse({ ...cartItem, [field]: "" }).success).toBe(false)
     }
-  })
-
-  it("allows the display-only fields to be blank", () => {
-    const blankDisplay = { ...cartItem, image: "", title: "", variantTitle: "" }
-
-    expect(cartItemSchema.safeParse(blankDisplay).success).toBe(true)
   })
 
   it("rejects a quantity that is not a number", () => {
@@ -172,5 +189,13 @@ describe("updateCheckoutSessionInputSchema", () => {
 
   it("refuses a blank session id", () => {
     expect(updateCheckoutSessionInputSchema.safeParse({ checkoutValues, items: [cartItem], sessionId: "" }).success).toBe(false)
+  })
+
+  it("refuses a session id longer than the checkout page accepts in its address", () => {
+    const longest = `cs_${"a".repeat(CHECKOUT_SESSION_ID_MAX_LENGTH - 3)}`
+    const tooLong = updateCheckoutSessionInputSchema.safeParse({ checkoutValues, items: [cartItem], sessionId: `${longest}a` })
+
+    expect(updateCheckoutSessionInputSchema.safeParse({ checkoutValues, items: [cartItem], sessionId: longest }).success).toBe(true)
+    expect(firstIssue(tooLong)?.path).toStrictEqual(["sessionId"])
   })
 })
