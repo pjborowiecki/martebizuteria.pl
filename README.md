@@ -423,7 +423,7 @@ Coverage thresholds, from `test.coverage.thresholds` in `vite.config.ts`; `bun r
 | Functions  | 100%            |
 | Lines      | 100%            |
 
-1,228 test files — 478 unit, 127 integration and 623 component, in 223 `__test__` folders — use 691 `it.each`, `test.each` and `describe.each` tables across about 193,500 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
+1,228 test files — 478 unit, 127 integration and 623 component, in 223 `__test__` folders — use 692 `it.each`, `test.each` and `describe.each` tables across about 193,500 lines of test code. Coverage includes all of `src/**/*.{ts,tsx}`, excluding tests and fixtures, test infrastructure, the generated route tree, the migrations folder and declaration files, and the shadcn primitives.
 
 Every configured threshold is 100%, so a change that leaves a statement, branch, function or line uncovered fails `bun run test:coverage` and CI. `autoUpdate` is off, so the thresholds never move on their own.
 

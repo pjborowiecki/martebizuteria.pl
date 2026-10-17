@@ -273,6 +273,44 @@ describe("fulfillCheckout", () => {
   })
 })
 
+describe("fulfillCheckout discount the session was priced with", () => {
+  it("records what Stripe took off although the code was changed while the shopper paid", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {})
+    getCheckoutForFulfillment.mockResolvedValue(discountedCheckoutRow)
+
+    await fulfillCheckout({ ...input, discountTotal: 3000, paidAmount: 18_500, shippingTotal: 1500 })
+
+    expect(batchInput()?.totals).toMatchObject({ discountTotal: 3000, total: 18_500 })
+    expect(prepareDiscountRedemption).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ redeemed: { amountMinorUnits: 3000, discountId: "disc-1" } }),
+    )
+    expect(recordDiscountRedeemedAudit).toHaveBeenCalledExactlyOnceWith("order-1", { detail: "3000" })
+    expect(error).not.toHaveBeenCalled()
+    error.mockRestore()
+  })
+
+  it("keeps the discount Stripe took off for a code deleted while the shopper paid", async () => {
+    getCheckoutForFulfillment.mockResolvedValue({ ...checkoutRow, discountId: "disc-1" })
+
+    await fulfillCheckout({ ...input, discountTotal: 2000, paidAmount: 19_500 })
+
+    expect(batchInput()?.totals).toMatchObject({ discountTotal: 2000, total: 19_500 })
+    expect(prepareDiscountRedemption).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ redeemed: { amountMinorUnits: 2000, discountId: "disc-1" } }),
+    )
+  })
+
+  it("records no discount and no use for a session priced without one", async () => {
+    getCheckoutForFulfillment.mockResolvedValue(discountedCheckoutRow)
+
+    await fulfillCheckout({ ...input, discountTotal: 0 })
+
+    expect(batchInput()?.totals).toMatchObject({ discountTotal: 0, total: 21_500 })
+    expect(prepareDiscountRedemption).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ redeemed: undefined }))
+    expect(recordDiscountRedeemedAudit).not.toHaveBeenCalled()
+  })
+})
+
 describe("fulfillCheckout when the order cannot be looked up after a failed batch", () => {
   it("surfaces the batch's own error", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {})
