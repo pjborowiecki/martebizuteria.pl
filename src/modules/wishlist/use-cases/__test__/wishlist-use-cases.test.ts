@@ -187,8 +187,17 @@ describe("listWishlistItems", () => {
     accessors.getRows.mockResolvedValue([wishlistRow()])
 
     const [item] = await listWishlistItems({ data: undefined })
+    const [itemWithoutLocale] = await listWishlistItems({ data: {} })
 
     expect(item?.title).toBe("Pierścionek Aurora")
+    expect(itemWithoutLocale?.title).toBe("Pierścionek Aurora")
+  })
+
+  it("refuses a locale the shop does not offer before reading the wishlist", async () => {
+    await expect(listWishlistItems({ data: { locale: "de-DE" } })).rejects.toMatchObject({ name: "ZodError" })
+    await expect(listWishlistItems({ data: { locale: "x".repeat(10_000) } })).rejects.toMatchObject({ name: "ZodError" })
+
+    expect(accessors.getRows).not.toHaveBeenCalled()
   })
 
   it("reports a sold-out product as saved but not in stock", async () => {
