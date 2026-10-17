@@ -480,7 +480,7 @@ bun run db:generate
 
 Review and commit the SQL under `src/integrations/drizzle-orm/migrations/` together with the schema change. The deploy scripts apply pending migrations right before `wrangler deploy`, while the previous Worker is still serving, so a migration only adds what that Worker can live with; drops and renames wait for a later release. See [Roll back a deploy](content/docs/guides/roll-back-a-deploy.en-US.mdx).
 
-Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **102 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
+Migrations are applied by `wrangler d1 migrations apply` in filename order, which is the authority here: there are currently **103 `.sql` files**, while Drizzle's `meta/_journal.json` lists 52, because several were hand-written rather than generated. Do not trust the journal count, and do not renumber existing files.
 
 | Command                          | Database affected                                                             |
 | -------------------------------- | ----------------------------------------------------------------------------- |
