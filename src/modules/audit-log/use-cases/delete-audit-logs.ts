@@ -3,10 +3,10 @@ import { createServerFn } from "@tanstack/react-start"
 import type * as zod from "zod"
 
 import { authorized } from "~/src/integrations/better-auth/auth.middleware"
-import { publishRealtimeInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server"
+import { scheduleAdminAuditLogInvalidation } from "~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server"
 
 import { deleteAuditLogs as auditLogDeleteAuditLogs } from "~/src/modules/audit-log/audit-log.accessors"
-import { AUDIT_LOG_MUTATION_KEYS, AUDIT_LOG_QUERY_KEYS } from "~/src/modules/audit-log/audit-log.constants"
+import { AUDIT_LOG_MUTATION_KEYS } from "~/src/modules/audit-log/audit-log.constants"
 import { recordAuditLogsDeletedAudit } from "~/src/modules/audit-log/audit-log.events.server"
 import { auditLogZodSchemas } from "~/src/modules/audit-log/audit-log.zod"
 
@@ -20,9 +20,7 @@ export const deleteAuditLogs = createServerFn({ method: "POST" })
       recordAuditLogsDeletedAudit(String(deletedIds.length), { metadata: { ids: deletedIds } })
     }
 
-    await publishRealtimeInvalidation({
-      admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS],
-    })
+    scheduleAdminAuditLogInvalidation()
 
     return { deleted: deletedIds.length, ok: true as const }
   })

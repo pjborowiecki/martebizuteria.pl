@@ -2,11 +2,17 @@ import zod from "zod/v4"
 
 import { LIST_PAGE_SIZE_MAX } from "~/src/modules/_core/utils/pagination"
 import { dateTimeColumnFilterField, pageField, pageSizeField, uuidField } from "~/src/modules/_core/utils/zod-fields"
-import { AUDIT_EMAIL_KIND, AUDIT_LOG_CATEGORIES, AUDIT_LOG_SEVERITIES } from "~/src/modules/audit-log/audit-log.constants"
+import { AUDIT_EMAIL_KIND, AUDIT_LOG_ACTION, AUDIT_LOG_CATEGORIES, AUDIT_LOG_SEVERITIES } from "~/src/modules/audit-log/audit-log.constants"
 
 const emailKind = zod.enum(AUDIT_EMAIL_KIND)
 
 const count = zod.number().int().nonnegative()
+
+const stripeKeyedAuditLogId = zod.templateLiteral([
+  zod.enum([AUDIT_LOG_ACTION.ORDER_FULFILLMENT_FAILED, AUDIT_LOG_ACTION.ORDER_REFUND_FAILED]),
+  ":",
+  zod.string().regex(/^\w{1,255}$/u),
+])
 
 const adminAuditLogsFilters = zod.object({
   category: zod.enum(AUDIT_LOG_CATEGORIES).optional(),
@@ -31,7 +37,7 @@ export const auditLogZodSchemas = {
     new: zod.record(zod.string(), zod.unknown()),
     old: zod.record(zod.string(), zod.unknown()),
   }),
-  deleteAuditLogsInput: zod.array(uuidField).max(LIST_PAGE_SIZE_MAX),
+  deleteAuditLogsInput: zod.array(zod.union([uuidField, stripeKeyedAuditLogId])).max(LIST_PAGE_SIZE_MAX),
   emailKind,
   emailMetadata: zod.object({
     dailyLimit: count.optional(),

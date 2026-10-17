@@ -12,15 +12,13 @@ const accessors = vi.hoisted(() => ({
   ),
 }))
 
-const publish = vi.hoisted(() => vi.fn(() => Promise.resolve(undefined)))
+const realtime = vi.hoisted(() => ({ scheduleAdminAuditLogInvalidation: vi.fn() }))
 
 const audit = vi.hoisted(() => ({ recordAuditLogsDeletedAudit: vi.fn() }))
 
 vi.mock("~/src/integrations/use-intl/i18n.display-preferences", () => import("~/src/platform/testing/mocks/display-preferences"))
 vi.mock("~/src/integrations/better-auth/auth.middleware", () => ({ authorized: () => ({}) }))
-vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.publish.server", () => ({
-  publishRealtimeInvalidation: publish,
-}))
+vi.mock("~/src/integrations/realtime-invalidation/realtime-invalidation.catalog.server", () => realtime)
 vi.mock("~/src/modules/audit-log/audit-log.accessors", () => ({
   deleteAuditLogs: accessors.deleteAuditLogs,
   getAdminAuditLogsPage: accessors.page,
@@ -127,9 +125,7 @@ describe("deleteAuditLogs", () => {
     expect(accessors.deleteAuditLogs).toHaveBeenCalledWith(["log-1", "log-2"])
     expect(result).toStrictEqual({ deleted: 2, ok: true })
     expect(audit.recordAuditLogsDeletedAudit).toHaveBeenCalledExactlyOnceWith("2", { metadata: { ids: ["log-1", "log-2"] } })
-    expect(publish).toHaveBeenCalledWith({
-      admin: [AUDIT_LOG_QUERY_KEYS.ADMIN.PAGE, AUDIT_LOG_QUERY_KEYS.ADMIN.STATS],
-    })
+    expect(realtime.scheduleAdminAuditLogInvalidation).toHaveBeenCalledExactlyOnceWith()
   })
 
   it("exposes a stable delete mutation key", () => {
