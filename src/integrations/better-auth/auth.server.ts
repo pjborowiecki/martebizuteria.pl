@@ -17,6 +17,7 @@ import {
   SESSION_UPDATE_AGE_IN_SECONDS,
 } from "~/src/integrations/better-auth/auth.constants"
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "~/src/integrations/better-auth/auth.constraints"
+import { finishEmailChange } from "~/src/integrations/better-auth/auth.email-change.server"
 import {
   guardAuthRequest,
   handleEmailVerified,
@@ -85,6 +86,7 @@ export const auth = betterAuth({
     sendVerificationEmail: sendVerifyEmail,
   },
   hooks: {
+    after: finishEmailChange,
     before: guardAuthRequest,
   },
   plugins: [

@@ -1,0 +1,12 @@
+{
+  "subject": "The sign-in email of your M'Arte account has been changed",
+  "preview": "Your M'Arte account now signs in with a different email address.",
+  "heading": "Email address changed",
+  "greeting": "Dear {name},",
+  "message": "The email address you sign in to your M'Arte account with has just been changed to {email}, after the change was confirmed from this address and from the new one.",
+  "messageSecondary": "From now on we will send messages about your account and your orders to the new address, and none to this one. Your orders, saved addresses and the rest of your account stay with the account.",
+  "security": "If you did not make this change, someone may have access to this inbox and to your account. Reply to this email, write to {email} or call {phone} straight away, and we will help you secure the account.",
+  "signoff": "With warm regards,",
+  "sender": "The M'Arte Atelier",
+  "tagline": "Handcrafted Jewelry"
+}

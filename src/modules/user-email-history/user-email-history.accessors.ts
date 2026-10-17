@@ -1,4 +1,4 @@
-import { type SQL, and, eq, exists, ne, sql } from "drizzle-orm"
+import { type SQL, and, eq, exists, isNull, ne, sql } from "drizzle-orm"
 import { type AnySQLiteColumn } from "drizzle-orm/sqlite-core"
 
 import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
@@ -23,6 +23,15 @@ export const keyedByFormerAddressOf = (userId: string, { address, at }: AddressA
   const heldThen = sql`${at} between ${userEmailHistory.addedAt} and ${userEmailHistory.replacedAt}`
 
   return historyRowWhere(and(eq(userEmailHistory.userId, userId), eq(userEmailHistory.email, address), heldThen))
+}
+
+export const getCurrentAddressHolder = (email: string) => {
+  const address = email.trim().toLowerCase()
+
+  return db.query.userEmailHistory.findFirst({
+    columns: { addedAt: true, userId: true },
+    where: and(eq(userEmailHistory.email, address), isNull(userEmailHistory.replacedAt)),
+  })
 }
 
 interface AddressAtMoment {

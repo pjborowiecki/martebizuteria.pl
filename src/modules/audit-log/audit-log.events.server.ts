@@ -425,6 +425,16 @@ export const recordAuthEmailChangedAudit = (account: AuditLogActorInput, options
   scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED, category: "auth", severity: "warning" }, account, options)
 }
 
+export const recordCustomerStripeEmailFailedAudit = (account: AuditLogActorInput, options: AuditEventOptions): void => {
+  scheduleSystemAuditLog({
+    action: AUDIT_LOG_ACTION.CUSTOMER_STRIPE_EMAIL_FAILED,
+    category: "customers",
+    ip: options.ip,
+    severity: "warning",
+    ...resolveActorAuditTarget(account, options),
+  })
+}
+
 export const recordAuthEmailVerifiedAudit = (account: AuditLogActorInput, options?: AuditEventOptions): void => {
   scheduleAccountAudit({ action: AUDIT_LOG_ACTION.AUTH_EMAIL_VERIFIED, category: "auth", severity: "success" }, account, options)
 }

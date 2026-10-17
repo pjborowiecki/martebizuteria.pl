@@ -1,0 +1,12 @@
+{
+  "subject": "Adres e-mail do logowania na Twoim koncie M'Arte został zmieniony",
+  "preview": "Twoje konto M'Arte loguje się teraz innym adresem e-mail.",
+  "heading": "Adres e-mail zmieniony",
+  "greeting": "Witaj {name},",
+  "message": "Adres e-mail, którym logujesz się na konto M'Arte, został przed chwilą zmieniony na {email}. Zmianę potwierdzono z tego adresu i z nowego.",
+  "messageSecondary": "Od teraz wiadomości o koncie i zamówieniach wysyłamy na nowy adres, a na ten już żadnych. Zamówienia, zapisane adresy i pozostałe dane zostają na koncie.",
+  "security": "Jeśli ta zmiana nie pochodzi od Ciebie, ktoś może mieć dostęp do tej skrzynki pocztowej i do Twojego konta. Od razu odpowiedz na tę wiadomość, napisz na {email} lub zadzwoń pod numer {phone} — pomożemy zabezpieczyć konto.",
+  "signoff": "Z serdecznymi pozdrowieniami,",
+  "sender": "Pracownia M'Arte",
+  "tagline": "Ręcznie tworzona biżuteria"
+}

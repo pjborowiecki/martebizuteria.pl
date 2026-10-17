@@ -465,3 +465,14 @@ const ADMIN_CUSTOMER_COLUMN_FILTER_HANDLERS: Partial<Record<string, AdminCustome
   [ADMIN_CUSTOMER_TABLE_COLUMN_ID.role]: applyRoleFilter,
   [ADMIN_CUSTOMER_TABLE_COLUMN_ID.totalSpent]: applyTotalSpentFilter,
 }
+
+export const maskEmailAddress = (email: string): string => {
+  const at = email.lastIndexOf("@")
+  const domain = email.slice(at + 1)
+  const topLevel = domain.lastIndexOf(".")
+  const maskedDomain = topLevel > 0 ? `${domain.slice(0, 1)}${EMAIL_MASK}${domain.slice(topLevel)}` : EMAIL_MASK
+
+  return `${email.slice(0, 1)}${EMAIL_MASK}@${maskedDomain}`
+}
+
+const EMAIL_MASK = "***"

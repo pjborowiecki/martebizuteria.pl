@@ -50,6 +50,13 @@ export const ensureStripeCustomerWithEmail = async (input: EnsureStripeCustomerI
   return existing
 }
 
+export const updateStripeCustomerEmail = async ({ email, userId }: Readonly<{ email: string; userId: string }>): Promise<void> => {
+  const customerId = await getStripeCustomerId(userId)
+  if (customerId !== undefined) {
+    await stripe.customers.update(customerId, { email })
+  }
+}
+
 export const deleteStripeCustomer = async (userId: string): Promise<void> => {
   const customerId = await getStripeCustomerId(userId)
   if (customerId === undefined) {

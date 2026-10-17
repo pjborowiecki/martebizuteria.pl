@@ -414,6 +414,7 @@
       "order_fulfillment_failed": "Paid order not created",
       "customer_tier_upgrade": "Tier upgrade",
       "customer_registered": "Customer registered",
+      "customer_stripe_email_failed": "Stripe email not updated",
       "auth_login": "Login",
       "auth_login_failed": "Login failed",
       "auth_logout": "Logout",
@@ -449,6 +450,7 @@
       "emails": {
         "account-deleted": "Account deletion notice",
         "change-email": "Email change confirmation",
+        "email-changed": "Email change notice to the old address",
         "new-order": "New order notification",
         "newsletter-already-subscribed": "Already subscribed notice",
         "newsletter-campaign": "Newsletter campaign",

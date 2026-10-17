@@ -107,6 +107,18 @@ export const linkSubscriberToUser = async (email: string, userId: string): Promi
   await db.update(newsletterSubscriber).set({ updatedAt: new Date(), userId }).where(and(sameEmail, stillUnlinked))
 }
 
+export const mergeSubscribers = async ({ kept, removedId }: SubscriberMerge): Promise<void> => {
+  await db.batch([
+    db.update(newsletterSubscriber).set(kept.values).where(eq(newsletterSubscriber.id, kept.id)),
+    db.delete(newsletterSubscriber).where(eq(newsletterSubscriber.id, removedId)),
+  ])
+}
+
+interface SubscriberMerge {
+  readonly kept: { readonly id: string; readonly values: SubscriberUpdateSet }
+  readonly removedId: string
+}
+
 type SubscriberUpdateSet = Parameters<ReturnType<typeof db.update<typeof newsletterSubscriber>>["set"]>[0]
 
 export interface AdminSubscribersFilters {

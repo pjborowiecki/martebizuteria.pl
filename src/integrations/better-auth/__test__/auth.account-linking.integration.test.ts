@@ -86,6 +86,9 @@ const providersOf = (customerId: string): string[] =>
 const sessionsOf = (customerId: string): number =>
   sessionCount.parse(sqlite.prepare("select count(*) as sessions from session where user_id = ?").get(customerId)).sessions
 
+const emailOf = (customerId: string): string =>
+  z.object({ email: z.string() }).parse(sqlite.prepare("select email from user where id = ?").get(customerId)).email
+
 beforeAll(() => {
   applyMigrationHistory(sqlite)
 })
@@ -117,5 +120,32 @@ describe("a Google sign-in with the e-mail address of an existing shop account",
     expect(response.headers.get("location")).toBe("/en-US/account/overview")
     expect(providersOf(customerId)).toStrictEqual(["credential", "google"])
     expect(sessionsOf(customerId)).toBe(1)
+  })
+})
+
+describe("a Google sign-in for a shop account that has changed its address", () => {
+  it("still signs in to the account the Google account is linked to, and keeps the address the customer chose", async () => {
+    const customerId = await createPasswordCustomer("google-moved@marte.test")
+    await signInWithGoogle("198.51.100.32", "google-moved@marte.test", true)
+    sqlite.prepare("update user set email = 'moved@marte.test' where id = ?").run(customerId)
+
+    const response = await signInWithGoogle("198.51.100.33", "google-moved@marte.test", true)
+
+    expect(response.headers.get("location")).toBe("/en-US/account/overview")
+    expect(sessionsOf(customerId)).toBe(2)
+    expect(emailOf(customerId)).toBe("moved@marte.test")
+  })
+
+  it("never signs in to the account that took over the old address afterwards", async () => {
+    const customerId = await createPasswordCustomer("google-freed@marte.test")
+    await signInWithGoogle("198.51.100.34", "google-freed@marte.test", true)
+    sqlite.prepare("update user set email = 'freed-moved@marte.test' where id = ?").run(customerId)
+    const nextHolderId = await createPasswordCustomer("google-freed@marte.test")
+
+    await signInWithGoogle("198.51.100.35", "google-freed@marte.test", true)
+
+    expect(sessionsOf(customerId)).toBe(2)
+    expect(sessionsOf(nextHolderId)).toBe(0)
+    expect(providersOf(nextHolderId)).toStrictEqual(["credential"])
   })
 })

@@ -179,7 +179,21 @@ const describeChanges = (source: AuditLogDetailSource): AuditLog["detail"] | und
   return changes.length === 0 ? undefined : { changes, kind: "changes" }
 }
 
+const describeAddressChange = (source: AuditLogDetailSource): AuditLog["detail"] | undefined => {
+  const changes = describeAuditLogChanges(source.metadata)
+  if (changes !== undefined) {
+    return { changes, kind: "changes" }
+  }
+
+  const [from, to, ...rest] = source.detail?.split(EMAIL_RECIPIENT_SEPARATOR) ?? []
+
+  return from === undefined || to === undefined || rest.length > 0
+    ? describeText(source)
+    : { changes: [{ field: "email", from, to }], kind: "changes" }
+}
+
 const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetailDescriber>>> = {
+  [AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED]: describeAddressChange,
   [AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED]: describeRole,
   [AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED]: describeCartItemCount,
   [AUDIT_LOG_ACTION.CUSTOMER_DELETION_FAILED]: describeStripeCustomerKept,

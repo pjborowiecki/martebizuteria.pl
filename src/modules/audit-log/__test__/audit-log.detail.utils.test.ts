@@ -111,6 +111,33 @@ describe("describeAuditLogDetail for e-mails", () => {
   })
 })
 
+describe("describeAuditLogDetail for a changed sign-in address", () => {
+  const CHANGED = { changes: [{ field: "email", from: "ada@old.example", to: "ada@new.example" }], kind: "changes" }
+
+  it("reads the old and new address from the entry's metadata", () => {
+    expect(
+      describeRow(AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED, "ada@old.example → ada@new.example", {
+        changed: ["email"],
+        email: "ada@new.example",
+        new: { email: "ada@new.example" },
+        old: { email: "ada@old.example" },
+      }),
+    ).toStrictEqual(CHANGED)
+  })
+
+  it("reads an entry recorded before the metadata existed from its text", () => {
+    expect(
+      describeRow(AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED, "ada@old.example → ada@new.example", { email: "ada@new.example" }),
+    ).toStrictEqual(CHANGED)
+  })
+
+  it("shows other text as it is and nothing for an entry an admin made without any", () => {
+    expect(describeRow(AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED, "Ada")).toStrictEqual({ kind: "text", text: "Ada" })
+    expect(describeRow(AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED, "a → b → c")).toStrictEqual({ kind: "text", text: "a → b → c" })
+    expect(describeRow(AUDIT_LOG_ACTION.AUTH_EMAIL_CHANGED, null)).toBeUndefined()
+  })
+})
+
 describe("describeAuditLogDetail for changes", () => {
   const STOCK_AND_VARIANTS = {
     changed: ["totalStock", "variants"],
