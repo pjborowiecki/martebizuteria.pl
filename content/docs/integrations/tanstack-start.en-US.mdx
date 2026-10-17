@@ -94,6 +94,8 @@ codeSplittingOptions: {
 }
 ```
 
+Every deploy publishes new, hashed chunk files and drops the old ones, so a tab opened before a deploy can no longer load the chunk of a page, or the message file of a namespace, that it has not loaded yet. Vite's preload helper reports such a failed import with a `vite:preloadError` event. `listenForStaleChunks` (`src/lib/stale-chunk.ts`), which `getRouter()` installs in the browser, reloads the page once on that event, so the tab fetches the current deploy's files instead of showing the error screen. It records the reload in `sessionStorage` and leaves a second failure within ten seconds to the error screen, so a chunk that is really missing cannot reload the page in a loop. Once the page fires `beforeunload` or `pagehide` it reloads nothing, because a browser also reports the imports a navigation away aborts, and reloading then would cancel that navigation; `pageshow` lifts this again for a page the back-forward cache restores.
+
 `src/routes.ts` exports `ROUTES`, the single table of path constants. Links, guards, `head` tags, the sitemap and the WebSocket paths all read from it, so a path is written once:
 
 ```ts

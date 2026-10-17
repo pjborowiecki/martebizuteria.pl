@@ -11,6 +11,7 @@ import { setupQueryClientInvalidationBroadcast } from "~/src/integrations/tansta
 import { deLocalizeUrl, localizeUrl } from "~/src/integrations/use-intl/i18n.utils"
 
 import { ImagePrefetchService } from "~/src/lib/image"
+import { listenForStaleChunks } from "~/src/lib/stale-chunk"
 
 import { DefaultErrorComponent } from "~/src/presentation/components/custom/defaults/default-error-component"
 import { DefaultNotFoundComponent } from "~/src/presentation/components/custom/defaults/default-not-found-component"
@@ -35,6 +36,7 @@ export const getRouter = () => {
   if (!import.meta.env.SSR) {
     setupQueryClientInvalidationBroadcast(queryClient)
     clearCacheOnUserChange(queryClient)
+    listenForStaleChunks()
   }
 
   const router = createRouter({
