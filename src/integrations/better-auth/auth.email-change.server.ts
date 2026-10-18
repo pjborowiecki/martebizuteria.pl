@@ -1,9 +1,11 @@
 import { type GenericEndpointContext } from "better-auth"
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api"
+import { and, eq, ne } from "drizzle-orm"
 
 import { EMAIL_CHANGE_RECENT_SIGN_IN_MINUTES, SESSION_NOT_FRESH, VERIFY_EMAIL_PATH } from "~/src/integrations/better-auth/auth.constants"
 import { readLinkPayload } from "~/src/integrations/better-auth/auth.email-link.server"
 import { confirmedEmailChangeSchema } from "~/src/integrations/better-auth/auth.zod"
+import { db } from "~/src/integrations/drizzle-orm/drizzle.database"
 import { updateStripeCustomerEmail } from "~/src/integrations/stripe/stripe.customer.server"
 
 import {
@@ -12,6 +14,7 @@ import {
   resolveAuthAuditActor,
 } from "~/src/modules/audit-log/audit-log.events.server"
 import { followAccountAddressChange } from "~/src/modules/newsletter/newsletter.address-change.server"
+import { session } from "~/src/modules/session/session.schema"
 import { sendEmailChangedEmail } from "~/src/modules/user/use-cases/send-email-changed-email.server"
 import { deleteVerificationsOfUser } from "~/src/modules/verification/verification.accessors"
 
@@ -45,6 +48,10 @@ const attempt = async (step: string, task: Promise<void>): Promise<void> => {
   }
 }
 
+const endOtherSessions = async ({ account, keptSessionId }: Readonly<CompletedEmailChange>): Promise<void> => {
+  await db.delete(session).where(and(eq(session.userId, account.id), ne(session.id, keptSessionId)))
+}
+
 const syncStripeCustomerEmail = async ({ account, ip }: Readonly<CompletedEmailChange>): Promise<void> => {
   try {
     await updateStripeCustomerEmail({ email: account.email, userId: account.id })
@@ -62,6 +69,7 @@ const followEmailChange = async (change: Readonly<CompletedEmailChange>): Promis
       followAccountAddressChange({ from: previousEmail, to: account.email, userId: account.id }),
     ),
     attempt("Ending the links sent to the old address", deleteVerificationsOfUser(account.id)),
+    attempt("Signing out the other devices", endOtherSessions(change)),
     syncStripeCustomerEmail(change),
   ])
   scheduleBackgroundWork(sendEmailChangedEmail({ email: account.email, name: account.name, previousEmail, userId: account.id }))
@@ -80,11 +88,12 @@ export const finishEmailChange = createAuthMiddleware(async (ctx) => {
     ip,
     metadata: { changed: ["email"], new: { email: link.updateTo }, old: { email: link.email } },
   })
-  await followEmailChange({ account: changed.user, ip, previousEmail: link.email })
+  await followEmailChange({ account: changed.user, ip, keptSessionId: changed.session.id, previousEmail: link.email })
 })
 
 interface CompletedEmailChange {
   readonly account: { readonly email: string; readonly id: string; readonly name: string; readonly role?: string | null | undefined }
   readonly ip: string | undefined
+  readonly keptSessionId: string
   readonly previousEmail: string
 }

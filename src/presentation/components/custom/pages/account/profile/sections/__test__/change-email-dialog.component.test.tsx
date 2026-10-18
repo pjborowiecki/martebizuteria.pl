@@ -88,12 +88,14 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe("ChangeEmailDialog", () => {
-  it("says the confirmation link goes out before the address changes", () => {
+  it("says the confirmation link goes out before the address changes, and that the other devices are then signed out", () => {
     renderDialog()
 
     expect(screen.getByRole("dialog", { name: "Change your email address" })).toBeInTheDocument()
     expect(
-      screen.getByText("We will send a confirmation link to anna@example.com. The address changes once you confirm it."),
+      screen.getByText(
+        "We will send a confirmation link to anna@example.com. The address changes once you confirm it, and every device except the one you finish the change on is then signed out.",
+      ),
     ).toBeInTheDocument()
   })
 

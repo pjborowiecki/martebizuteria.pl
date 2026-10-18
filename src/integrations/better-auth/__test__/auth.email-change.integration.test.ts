@@ -151,6 +151,16 @@ const signedIn = async (email: string, ip: string): Promise<Readonly<{ browser: 
 const askToChangeEmail = (browser: AuthBrowser, newEmail: string): Promise<Response> =>
   browser.post("/change-email", { newEmail, password: CUSTOMER_PASSWORD })
 
+const sessionCountOf = (userId: string): number =>
+  z.object({ sessions: z.number() }).parse(sqlite.prepare("select count(*) as sessions from session where user_id = ?").get(userId))
+    .sessions
+
+const sessionOn = async (browser: AuthBrowser): Promise<unknown> => {
+  const response = await browser.follow(`${AUTH_BASE_URL}/get-session`)
+
+  return response.json()
+}
+
 const signedInWithGoogleOnly = async (email: string, ip: string): Promise<Readonly<{ browser: AuthBrowser; userId: string }>> => {
   const account = await signedIn(email, ip)
   sqlite.prepare("delete from account where user_id = ? and provider_id = 'credential'").run(account.userId)
@@ -337,6 +347,35 @@ describe("a customer changing their sign-in address", () => {
     expect(response.status).toBe(200)
     expect(stubs.sendEmail).not.toHaveBeenCalled()
     expect(currentEmailOf(userId)).toBe("bogna@marte.test")
+  })
+})
+
+describe("the devices of an account whose address changed", () => {
+  it("signs out every other device of the account and keeps the one that finished the change", async () => {
+    const { browser, userId } = await signedIn("natalia@marte.test", "198.51.100.32")
+    const otherDevice = openAuthBrowser("198.51.100.33")
+    await otherDevice.signIn("natalia@marte.test")
+    const before = sessionCountOf(userId)
+
+    await changeEmail(browser, "natalia@marte.test", "natalia@new.example")
+
+    expect(before).toBe(2)
+    await expect(sessionOn(browser)).resolves.toMatchObject({ user: { email: "natalia@new.example" } })
+    await expect(sessionOn(otherDevice)).resolves.toBeNull()
+    expect(sessionCountOf(userId)).toBe(1)
+  })
+
+  it("keeps the device the last link was opened on even when it was not signed in, and signs out the one that asked", async () => {
+    const { browser, userId } = await signedIn("olga@marte.test", "198.51.100.34")
+    await askToChangeEmail(browser, "olga@new.example")
+    await browser.follow(await linkSentTo("olga@marte.test", changeEmailCopy.subject))
+    const phone = openAuthBrowser("198.51.100.35")
+
+    await phone.follow(await linkSentTo("olga@new.example", verifyEmailCopy.subject))
+
+    await expect(sessionOn(phone)).resolves.toMatchObject({ user: { email: "olga@new.example" } })
+    await expect(sessionOn(browser)).resolves.toBeNull()
+    expect(sessionCountOf(userId)).toBe(1)
   })
 })
 
