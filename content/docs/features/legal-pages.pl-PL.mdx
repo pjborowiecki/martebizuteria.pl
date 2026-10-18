@@ -1,22 +1,22 @@
 ---
 title: "Strony prawne"
-description: "Regulamin, polityka prywatności, strona o wymianach i zwrotach oraz FAQ: wiersze Markdown w D1, edytowane w panelu przez MDXEditor i renderowane w sklepie."
+description: "Regulamin, polityka prywatności, strona o wymianach i zwrotach, FAQ oraz strona „O M'Arte”: wiersze Markdown w D1, edytowane w panelu przez MDXEditor i renderowane w sklepie."
 ---
 
-M'Arte ma trzy dokumenty prawne: regulamin pod `/terms-of-service`, politykę prywatności pod `/privacy-policy` i zasady zwrotów pod `/exchanges-and-returns`. Każdy z nich to wiersz w tabeli D1 `content_page`, podobnie jak FAQ pod `/faq`. Administratorzy edytują je pod `/admin/content` w edytorze tekstu sformatowanego, który zapisuje Markdown, a sklep renderuje ten Markdown z tą samą typografią, którą pokazuje edytor.
+M'Arte ma trzy dokumenty prawne: regulamin pod `/terms-of-service`, politykę prywatności pod `/privacy-policy` i zasady zwrotów pod `/exchanges-and-returns`. Każdy z nich to wiersz w tabeli D1 `content_page`, podobnie jak FAQ pod `/faq` i strona „O M'Arte” pod `/about`. Administratorzy edytują je pod `/admin/content` w edytorze tekstu sformatowanego, który zapisuje Markdown, a sklep renderuje ten Markdown z tą samą typografią, którą pokazuje edytor.
 
 ## Tabela
 
 `src/modules/content-page/content-page.schema.ts` definiuje jeden wiersz na stronę:
 
-| Kolumna        | Zawiera                                                                           |
-| -------------- | --------------------------------------------------------------------------------- |
-| `handle`       | `terms-of-service`, `privacy-policy`, `exchanges-and-returns` lub `faq`, unikalny |
-| `titles`       | Mapę JSON z języka na tytuł strony                                                |
-| `descriptions` | Mapę JSON z języka na opis meta                                                   |
-| `bodies`       | Mapę JSON z języka na treść w Markdownie                                          |
-| `revised_ats`  | Mapę JSON z języka na milisekundy epoki ostatniej rzeczywistej zmiany             |
-| `updated_at`   | Ostatni zapis dowolnego rodzaju, używany do wykrywania konfliktujących zapisów    |
+| Kolumna        | Zawiera                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------ |
+| `handle`       | `terms-of-service`, `privacy-policy`, `exchanges-and-returns`, `faq` lub `about`, unikalny |
+| `titles`       | Mapę JSON z języka na tytuł strony                                                         |
+| `descriptions` | Mapę JSON z języka na opis meta                                                            |
+| `bodies`       | Mapę JSON z języka na treść w Markdownie                                                   |
+| `revised_ats`  | Mapę JSON z języka na milisekundy epoki ostatniej rzeczywistej zmiany                      |
+| `updated_at`   | Ostatni zapis dowolnego rodzaju, używany do wykrywania konfliktujących zapisów             |
 
 Kolumna `handle` jest enumem nad `CONTENT_PAGE_HANDLES` z `content-page.constants.ts`, więc strony, której kod nie zna, nie da się zapisać ani pobrać.
 
@@ -39,6 +39,8 @@ Migracja `20261002120000_content_pages.sql` tworzy tabelę i wypełnia politykę
 `20261017150000_privacy_policy_former_addresses.sql` dodaje akapit do części polityki o koncie, w każdym języku zaraz po akapicie o potwierdzeniu adresu i połączeniu z kontem wcześniejszych zamówień złożonych bez logowania oraz subskrypcji newslettera. Mówi, że adres konta zmienia się w jego ustawieniach i że zmiana następuje dopiero po potwierdzeniu jej linkami wysłanymi na dotychczasowy i na nowy adres, po czym dotychczasowy adres dostaje o niej informację; że poprzednie adresy są przechowywane w koncie razem z datami ich używania, aby zamówienia, płatności i zdarzenia z czasu, gdy używany był dany adres, zostały przy koncie, a nie trafiły do osoby, która później zacznie używać tego adresu, oraz aby chronić konto przed przejęciem, na podstawie art. 6 ust. 1 lit. b i f RODO; że wiadomości o zamówieniach złożonych z poprzedniego adresu, subskrypcja newslettera i adres w profilu klienta w Stripe przechodzą na nowy adres; oraz że poprzednie adresy są usuwane razem z kontem. Tak jak we wcześniejszych migracjach polityki, każdy język zmienia się tylko wtedy, gdy jego treść wciąż zawiera dokładnie zdanie, po którym następuje akapit, i jeszcze nie zawiera tego akapitu, więc polityka przepisana przez właściciela zachowuje swój tekst, a zmiana datuje wersję tego języka oraz `updated_at` na 17 października 2026 r., godz. 12:00 UTC.
 
 `20261010232000_faq_page.sql` dodaje FAQ, które dotąd było komunikatem „Strona w budowie”, z `ON CONFLICT(handle) DO NOTHING`, tak jak regulamin, i datuje je na 10 października 2026 r., godz. 14:00 UTC.
+
+`20261018100000_about_page.sql` przenosi do tabeli stronę „O M'Arte”. W obu językach jej tytuł, opis i treść to nagłówek, lead i cztery akapity, które dotąd leżały w `messages/{locale}/pages.about.json`, słowo w słowo, a akapity zostają akapitami Markdownu. Migracja wstawia wiersz z `ON CONFLICT(handle) DO NOTHING` i datuje go na 18 października 2026 r., godz. 10:00 UTC.
 
 Wiążące są dokumenty polskie. Powołują się wprost na polskie przepisy, takie jak 14-dniowe prawo odstąpienia, art. 7a, 38 i 38a ustawy o prawach konsumenta i artykuł RODO dla każdego celu przetwarzania, oraz wskazują administratora danych. Wersje angielskie utrzymuj jako tłumaczenia, a nie osobne teksty.
 
@@ -178,7 +180,7 @@ FAQ podaje adres e-mail i numer telefonu sklepu przez znaczniki danych sklepu, a
 
 ## Strony w sklepie
 
-Wszystkie cztery trasy pobierają stronę jednym zapytaniem i oddają renderowanie wspólnemu artykułowi:
+Trasy regulaminu, polityki prywatności, strony zwrotów i FAQ pobierają stronę jednym zapytaniem i oddają renderowanie wspólnemu artykułowi:
 
 ```tsx
 const PrivacyPolicyPage = (): JSX.Element => <ContentPageArticle handle={CONTENT_PAGE_HANDLE.PRIVACY_POLICY} />
@@ -196,7 +198,7 @@ export const Route = createFileRoute("/_storefront/privacy-policy")({
 
 `getContentPage` w `src/modules/content-page/use-cases/get-content-page.ts` to publiczna funkcja serwerowa `GET`. Zwraca tytuł, opis i treść w żądanym języku, z polskim jako zapasowym, a dla nieznanego `handle` rzuca `notFound()`. Zwraca też `revisedAt`, datę rewizji dla tego języka.
 
-`ContentPageArticle` czyta to samo zapytanie przez `useSuspenseQuery`, więc dane z loadera są użyte ponownie, a nie pobierane drugi raz, a dane sprzedawcy czyta z `getSellerDetailsQuery()`, które z wyprzedzeniem wczytuje layout `_storefront`. Renderuje tytuł jako jedyny `<h1>`, wiersz „Ostatnia aktualizacja”, który aplikacyjny `useFormatter` zapisuje w języku formatu i strefie czasowej czytelnika (zobacz [Internacjonalizacja](/docs/features/internationalization)), oraz treść:
+`ContentPageArticle` czyta to samo zapytanie przez `useSuspenseQuery`, więc dane z loadera są użyte ponownie, a nie pobierane drugi raz. Renderuje tytuł jako jedyny `<h1>`, wiersz „Ostatnia aktualizacja”, który aplikacyjny `useFormatter` zapisuje w języku formatu i strefie czasowej czytelnika (zobacz [Internacjonalizacja](/docs/features/internationalization)), oraz treść przez `ContentPageMarkdown` z `content-page-markdown.tsx`, ten sam renderer, którego używa strona „O M'Arte”. Czyta on dane sprzedawcy z `getSellerDetailsQuery()`, które z wyprzedzeniem wczytuje layout `_storefront`, i renderuje Markdown:
 
 ```tsx
 const { Markdown } = useMemo(
@@ -204,14 +206,14 @@ const { Markdown } = useMemo(
   [locale, seller],
 )
 
-<Markdown components={MARKDOWN_COMPONENTS}>{page.body}</Markdown>
+return <Markdown components={MARKDOWN_COMPONENTS}>{body}</Markdown>
 ```
 
 `createMarkdownRenderer` pochodzi z `fumadocs-core` i kompiluje Markdown w czasie renderowania, a nie budowania. `remarkDirective` i `remarkSellerDetails` wypisują dane sklepu (zobacz [Dane sklepu na stronach](#dane-sklepu-na-stronach)). Surowy HTML w treści jest pomijany, a nie renderowany. `remarkHeading` nadaje każdemu nagłówkowi `id` ze slugiem, więc odnośnik w rodzaju `/exchanges-and-returns#reklamacje` trafia do właściwej sekcji. Jedynym nadpisanym komponentem jest odnośnik, który dodaje prefiks języka czytelnika do ścieżek sklepu i zostawia w spokoju pliki takie jak `/forms/formularz_zwrotu.pdf`.
 
-Typografia leży w `CONTENT_PROSE_CLASS` w `_styles/content-page.styles.ts`. Edytor w panelu nakłada tę samą klasę na obszar edycji, więc administrator widzi podczas pisania to, co zobaczą klienci.
+Typografia leży w `CONTENT_PROSE_CLASS` w `_styles/content-page.styles.ts`. Edytor w panelu nakłada tę samą klasę na obszar edycji, więc administrator widzi podczas pisania to, co zobaczą klienci. Strona „O M'Arte” używa `ABOUT_PROSE_CLASS` z tego samego pliku, która zachowuje reguły nagłówków, list, cytatów, separatorów, wyróżnień i odnośników, a ustawia tylko większe akapity i punkty list, więc na tej stronie tekst jest większy niż w edytorze.
 
-Wszystkie cztery trasy leżą pod `_storefront`, więc mają nawigację, banner dostępności koszyka i stopkę.
+Wszystkie cztery trasy i `/about` leżą pod `_storefront`, więc mają nawigację, banner dostępności koszyka i stopkę.
 
 ## Edycja w panelu
 
@@ -220,7 +222,7 @@ Pozycja **Treść** w bocznym menu panelu otwiera `/admin/content`, gdzie każda
 Strona edytora ma jedną kartę na język. Każda karta zawiera trzy pola:
 
 - **Tytuł**, do 120 znaków, wyświetlany jako nagłówek strony i w karcie przeglądarki.
-- **Opis**, do 300 znaków z licznikiem na żywo, używany w wynikach wyszukiwania i podglądach linków.
+- **Opis**, do 300 znaków z licznikiem na żywo, używany w wynikach wyszukiwania i podglądach linków, a na stronie „O M'Arte” wyświetlany także jako lead pod tytułem.
 - **Treść**, czyli sformatowane ciało strony.
 
 Pole treści to [MDXEditor](https://mdxeditor.dev), zbudowany na Lexicalu. `src/integrations/mdxeditor/mdxeditor.plugins.ts` włącza tylko to, co sklep potrafi pokazać:
@@ -290,11 +292,11 @@ Edytor escapuje dwukropek wpisany przed literą (`Ref\:ABC`), więc samo pisanie
 
 ### W sklepie
 
-`ContentPageArticle` buduje renderer Markdown z `remarkDirective` z `remark-directive` i `remarkSellerDetails` (`src/presentation/components/custom/pages/content-page/remark-seller-details.ts`), któremu przekazuje język strony i dane z `getSellerDetailsQuery()`. Każdy znany znacznik zamienia się w zapisaną wartość: `emailLink` w odnośnik `mailto:`, `phoneLink` w odnośnik `tel:` z cyframi numeru i plusem, a `country` w nazwę kraju w języku strony. Każda inna dyrektywa, na przykład nieznana dana albo tekst, który tylko przypomina znacznik, wyświetla się dokładnie tak, jak ją wpisano.
+`ContentPageMarkdown` buduje renderer Markdown z `remarkDirective` z `remark-directive` i `remarkSellerDetails` (`src/presentation/components/custom/pages/content-page/remark-seller-details.ts`), któremu przekazuje język strony i dane z `getSellerDetailsQuery()`. Każdy znany znacznik zamienia się w zapisaną wartość: `emailLink` w odnośnik `mailto:`, `phoneLink` w odnośnik `tel:` z cyframi numeru i plusem, a `country` w nazwę kraju w języku strony. Każda inna dyrektywa, na przykład nieznana dana albo tekst, który tylko przypomina znacznik, wyświetla się dokładnie tak, jak ją wpisano.
 
 ### Data ostatniej aktualizacji
 
-Zapis danych sprzedawcy przesuwa datę „Ostatnia aktualizacja” na każdej stronie i w każdym języku, których treść pokazuje zmienioną daną, w tej samej partii D1 co same dane. `findLocalesShowingSellerFields` dopasowuje każdy znacznik do pola, które pokazuje (`emailLink` liczy się jako e-mail, `phoneLink` jako telefon, a `country` jako kod kraju), a `revised_ats` strony dostaje w tych językach czas zapisu przez `json_set`. Odrzucony zapis niczego nie datuje, a unieważnienie stron treści odświeża datowane strony w otwartych kartach. Sama zmiana kraju datuje na przykład tylko strony angielskie, bo tylko ich bloki adresowe wypisują kraj. Datowanie strony przesuwa też jej `updated_at`, więc edytor otwarty już na tej stronie przy następnym zapisie zgłasza konflikt i prosi o ponowne wczytanie.
+Zapis danych sprzedawcy przesuwa datę „Ostatnia aktualizacja” na każdej stronie i w każdym języku, których treść pokazuje zmienioną daną, w tej samej partii D1 co same dane. `findLocalesShowingSellerFields` dopasowuje każdy znacznik do pola, które pokazuje (`emailLink` liczy się jako e-mail, `phoneLink` jako telefon, a `country` jako kod kraju), a `revised_ats` strony dostaje w tych językach czas zapisu przez `json_set`. Odrzucony zapis niczego nie datuje, a unieważnienie stron treści odświeża datowane strony w otwartych kartach. Sama zmiana kraju datuje na przykład tylko strony angielskie, bo tylko ich bloki adresowe wypisują kraj. Datowanie strony przesuwa też jej `updated_at`, więc edytor otwarty już na tej stronie przy następnym zapisie zgłasza konflikt i prosi o ponowne wczytanie. Strona „O M'Arte” nie pokazuje daty, a jej zasiana treść nie zawiera żadnej danej sklepu, więc zmiana danych datuje ją dopiero wtedy, gdy właściciel którąś do niej wstawi; unieważnienie odświeża ją wtedy w otwartych kartach jak pozostałe strony.
 
 ### Migracja znaczników
 
@@ -313,7 +315,7 @@ Lista i edytor w panelu obsłużą nową stronę bez zmian.
 
 ## Strona „O M'Arte”
 
-`/about` z kolumny informacyjnej w stopce nie jest stroną treści. `_storefront.about.tsx` renderuje nadtytuł, tytuł, lead i cztery akapity gotowej treści z `messages/{locale}/pages.about.json`, a po nich sekcję danych sprzedawcy.
+`/about` z kolumny informacyjnej w stopce to strona treści o `handle` `about`, więc właściciel edytuje jej tytuł, lead i historię marki pod `/admin/content/about` ze wszystkimi funkcjami edytora. `_storefront.about.tsx` pobiera ją w loaderze przez `getContentPageQuery`, który, jak w FAQ, nadaje dokumentowi tytuł i opis strony, ale zachowuje własny układ zamiast `ContentPageArticle`: nadtytuł „O marce”, tytuł jako `<h1>`, opis jako lead, a potem treść przez `ContentPageMarkdown` w `ABOUT_PROSE_CLASS`, której akapity są wyciszone, w rozmiarze `text-base`, a od `md` `text-lg`, z ostatnim w pełnym kolorze. Nie pokazuje wiersza „Ostatnia aktualizacja”. Opis jest więc jednocześnie opisem w wyszukiwarce i widocznym leadem. W `messages/{locale}/pages.about.json` zostają tylko nadtytuł i dwa teksty sekcji kontaktowej.
 
 Strona „O M'Arte” kończy się sekcją „Dane kontaktowe” o identyfikatorze `ABOUT_CONTACT_HASH` z `src/routes.ts`, więc `/about#contact` przewija do niej stronę. Sekcja renderuje `SellerContactDetails` z `src/presentation/components/custom/seller-contact-details.tsx`: nazwę firmy, adres pocztowy i kraj z `formatSellerPostalAddress` w `store-setting.utils.ts`, NIP i REGON oraz adres e-mail i numer telefonu jako odnośniki `mailto:` i `tel:`. Wszystkie wartości pochodzą z Ustawienia → Dane sklepu przez `getSellerDetailsQuery()`, a kraj jest nazwany w języku czytelnika na podstawie zapisanego kodu; komunikatami w `components.custom.sellerContactDetails` są tylko etykiety NIP i REGON.
 
@@ -351,17 +353,18 @@ Art. 19 unijnego rozporządzenia w sprawie ogólnego bezpieczeństwa produktów 
 - `withdrawal-function-links.integration.test.ts` sprawdza, że strona zwrotów w obu językach zaczyna kroki od formularza online, że strona angielska ogranicza uwagę o języku polskim do formularzy PDF, że § 8 wymienia funkcję w obu językach, że polityka prywatności wymienia odstąpienie z użyciem numeru zamówienia wśród miejsc opisanego wtedy sprawdzenia antybotowego i wśród liczonych e-maili, daty rewizji, że język przepisany przez administratora zostaje bez zmian i że ponowne uruchomienie niczego nie zmienia. Test edytora w obie strony przepuszcza też zmienione strony.
 - `order-withdrawal.integration.test.ts` uruchamia obie funkcje odstąpienia na zmigrowanej bazie: całe zamówienie i wybrane produkty, zamówienie innego klienta, błędny adres e-mail, zamówienie, którego adres konto zastąpiło, znajdowane po obecnym adresie konta, a już nie po zastąpionym, zamówienie konta znajdowane po każdym z jego dwóch adresów, z potwierdzeniem na adres zamówienia, nieznany numer oraz zamówienie zamknięte albo już w całości objęte odstąpieniem, na które gość dostaje tę samą odpowiedź co na zapisane oświadczenie, limity e-maili wywoływanych przez odwiedzających, które wstrzymują oba e-maile, zamówienie doręczone miesiąc temu, anulowane albo zwrócone, ostatnią chwilę terminu, którego czternasty dzień wypada w sobotę, i pierwszą chwilę po nim, drugie oświadczenie dla całego zamówienia, nieudane potwierdzenie, brak adresu sklepu, niezalogowanego odwiedzającego i limit żądań oraz odczyt dla strony w panelu klienta. `polish-deadline.test.ts` obejmuje polską datę doręczenia, soboty, niedziele oraz stałe i ruchome święta, a `order-withdrawal.utils.test.ts` koniec terminu według czasu polskiego, czternasty dzień w sobotę i zmianę czasu na zimowy w trakcie terminu. `order-withdrawal.test.tsx` renderuje oba e-maile w obu językach; okno dialogowe, blok w panelu klienta, publiczny formularz i trasa oraz karta w panelu administracyjnym mają testy komponentów. Dwa testy przeglądarkowe, w Chromium i WebKit, prowadzą klienta przez panel klienta, a gościa od linku w potwierdzeniu zamówienia do potwierdzenia odstąpienia, powiadomienia sklepu i zamówienia w panelu.
 - `faq-page.integration.test.ts` sprawdza, że migracja FAQ publikuje oba języki z tytułami i datą, odpowiada w tych samych siedmiu częściach, podaje fakty wzięte z kasy i regulaminu, w tym limit listy życzeń z `WISHLIST_MAX_ITEMS`, nie wpisuje żadnej ceny dostawy, linkuje regulamin, stronę zwrotów, formularz odstąpienia i formularz reklamacji, przechodzi walidację edytora bez zmian i zachowuje zmianę administratora przy ponownym uruchomieniu. Test edytora w obie strony przepuszcza też oba języki FAQ.
+- `about-page.integration.test.ts` sprawdza, że migracja strony „O M'Arte” przenosi tytuł, lead i cztery akapity słowo w słowo w obu językach, datuje je, nie zawiera żadnej danej sklepu, przechodzi walidację edytora bez zmian i zachowuje zmianę administratora przy ponownym uruchomieniu. Test edytora w obie strony przepuszcza też oba języki tej strony.
 - `seller-placeholders.migration.component.test.tsx` renderuje każdą zasianą stronę w obu językach przed migracją znaczników i po niej i sprawdza, że HTML jest taki sam, że strony podają sprzedawcę tylko przez znaczniki, że zdania o odbiorze zostają słowami, że `revised_ats` i `updated_at` się nie zmieniają i że strona przepisana przez właściciela zostaje bez zmian.
-- `content-page.seller-placeholders.test.ts` obejmuje znajdowanie, usuwanie i wypisywanie znaczników, kraj w języku strony oraz języki, które datuje zmieniona dana. `seller-details.revised-pages.integration.test.ts` sprawdza, że zapis danych sprzedawcy datuje tylko strony i języki pokazujące zmienioną daną, w tej samej partii, i niczego nie datuje, gdy zapis zostaje odrzucony albo żadna strona nie pokazuje tej danej.
+- `content-page.seller-placeholders.test.ts` obejmuje znajdowanie, usuwanie i wypisywanie znaczników, kraj w języku strony oraz języki, które datuje zmieniona dana. `seller-details.revised-pages.integration.test.ts` sprawdza, że zapis danych sprzedawcy datuje tylko strony i języki pokazujące zmienioną daną, w tej samej partii, i niczego nie datuje, gdy zapis zostaje odrzucony albo żadna strona nie pokazuje tej danej; strona „O M'Arte”, która nie pokazuje żadnej, zachowuje swoją datę.
 - `order-confirmation.test.tsx` sprawdza w obu językach, że potwierdzenie podaje Sprzedawcę ze wszystkimi zapisanymi danymi, które dostaje, zasady odstąpienia, odesłania, zwrotu płatności i reklamacji oraz linkuje trzy dokumenty. `order-withdrawal.form.server.test.ts` sprawdza, że dołączony formularz powstaje z danych, które podaje e-mail, z fontami wdrożenia, z którego przyszło zamówienie, i że brak fontu zatrzymuje e-mail.
 - `withdrawal-form.test.ts` i `complaint-form.test.ts` odczytują każdy formularz z powrotem przez pdf.js funkcją `readPdf` z `src/platform/testing/lib/pdf.ts` i sprawdzają każdy wiersz tekstu, metadane, stronę A4, plik poniżej 20 KB oraz to, że długa nazwa, adres i e-mail sprzedawcy łamią się i nadal mieszczą na stronie. `content-page.forms.server.test.ts` obejmuje fonty czytane z zasobów statycznych, brakujący font, nagłówki, nowy `ETag` po zapisie i odpowiedzi `304`, a `forms.test.ts` sprawdza, że każda trasa serwuje swój formularz. Test przeglądarkowy danych sklepu odczytuje oba formularze przed zapisem i po nim i sprawdza podaną w nich ulicę oraz to, że kopia z pamięci podręcznej zostaje zastąpiona.
-- `legal-routes.test.ts` obejmuje cztery trasy sklepu. Test przeglądarkowy smoke otwiera każdą z nich i przechodzi odnośnikiem o pielęgnacji biżuterii ze stopki do FAQ.
+- `legal-routes.test.ts` obejmuje cztery trasy sklepu, a `storefront.about.loader.test.ts` i `storefront.about.component.test.tsx` trasę strony „O M'Arte”: loader i nagłówek dokumentu, nadtytuł, tytuł i lead, treść przez wspólny renderer Markdown z danymi sklepu i odnośnikami, brak daty oraz sekcję kontaktową. Test przeglądarkowy smoke otwiera każdą z pięciu stron, sprawdza, że mapa witryny wymienia `/about` raz, i przechodzi odnośnikiem o pielęgnacji biżuterii ze stopki do FAQ.
 - `seller-contact-details.component.test.tsx` sprawdza w obu językach wszystkie zapisane dane oraz odnośniki `mailto:` i `tel:`; testy stopki, menu pełnoekranowego i strony „O M'Arte” sprawdzają, dokąd prowadzą odnośniki kontaktowe i że dane są widoczne. Test przeglądarkowy smoke przechodzi z koszyka odnośnikiem ze stopki i z menu do przewiniętej sekcji danych kontaktowych.
 - `product-hero-details.component.test.tsx` sprawdza w obu językach, że sekcja „Producent” przy każdym produkcie podaje sprzedawcę z adresem pocztowym i odnośnikiem `mailto:` do zapisanego e-maila kontaktowego. Test przeglądarkowy smoke otwiera ją na polskiej karcie produktu.
 - `silver-premium-section.component.test.tsx` sprawdza, że sekcja srebra na stronie głównej podaje w obu językach ustawową odpowiedzialność za brak zgodności z umową i niczego nie nazywa gwarancją (ani „warranty” czy „guarantee”).
 - `mdxeditor.plugins.component.test.tsx` przepuszcza każdą zasianą stronę, z jej znacznikami danych sklepu, przez prawdziwy edytor w obie strony, razem z przypadkami escapowania, danych sklepu i złamań wiersza, w tym z escapowanym dwukropkiem przed słowem i w odnośniku e-mail.
-- Testy komponentów panelu sprawdzają zapis, walidację, konflikty, zmiany w trakcie zapisu, skrót klawiszowy i okno opuszczania strony. `content-editor.component.test.tsx` sprawdza przycisk **Wstaw dane sklepu**, plakietki, nieznaną daną i wstawienie danej w miejscu kursora.
-- `content-page-article.component.test.tsx` sprawdza renderowanie w sklepie, kotwice nagłówków, lokalizowane odnośniki, pomijany HTML, dane sklepu wypisane z działającymi odnośnikami e-mail i telefonu oraz tekst, który tylko przypomina znacznik, pokazany tak, jak go wpisano.
+- Testy komponentów panelu sprawdzają zapis, walidację, konflikty, zmiany w trakcie zapisu, skrót klawiszowy i okno opuszczania strony, a także stronę „O M'Arte” na liście, w trasie edytora i w edytorze z odnośnikiem **Zobacz stronę**. `content-editor.component.test.tsx` sprawdza przycisk **Wstaw dane sklepu**, plakietki, nieznaną daną i wstawienie danej w miejscu kursora.
+- `content-page-article.component.test.tsx` sprawdza renderowanie w sklepie, kotwice nagłówków, lokalizowane odnośniki, pomijany HTML, dane sklepu wypisane z działającymi odnośnikami e-mail i telefonu oraz tekst, który tylko przypomina znacznik, pokazany tak, jak go wpisano. `content-page-markdown.component.test.tsx` sprawdza, że wspólny renderer wpisuje bloki wprost do swojego kontenera, z danymi sklepu i lokalizowanymi odnośnikami.
 
 ## Powiązane strony
 

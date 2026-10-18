@@ -109,7 +109,7 @@ Set in `src/integrations/better-auth/auth.server.ts`. Keep these if you change t
 
 - [ ] Private paths stay out of search engines. `isNoIndexPathname` in `src/lib/seo.ts` covers `/account`, `/admin` and `/checkout`, and `__root.tsx` emits `noindex, nofollow` for them — and for **every** path when `import.meta.env.MODE` is not `production`.
 - [ ] `generateRobotsTxt` returns a blanket `Disallow: /` for any non-production `APP_ENV`, and in production disallows `/api/`, `/admin`, `/account` and `/checkout`.
-- [ ] `/sitemap.xml` lists `STATIC_PAGES` from `src/data/static-pages.ts` (currently `/`, `/about`, `/products`, `/categories`, `/collections` and `/withdraw-from-contract`; `/blog` joins them once `BLOG_POST_SLUGS` in `src/data/blog-posts.ts` lists an article) plus the legal pages and the FAQ, active categories and collections and sellable products that `listSitemapPages` in `src/lib/sitemap.ts` reads from D1. A new public page belongs there; a private one does not.
+- [ ] `/sitemap.xml` lists `STATIC_PAGES` from `src/data/static-pages.ts` (currently `/`, `/products`, `/categories`, `/collections` and `/withdraw-from-contract`; `/blog` joins them once `BLOG_POST_SLUGS` in `src/data/blog-posts.ts` lists an article) plus the About page, the legal pages and the FAQ, active categories and collections and sellable products that `listSitemapPages` in `src/lib/sitemap.ts` reads from D1. A new public page belongs there; a private one does not.
 
 ## Response headers
 

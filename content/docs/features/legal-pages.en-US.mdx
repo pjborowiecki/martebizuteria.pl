@@ -1,22 +1,22 @@
 ---
 title: "Legal pages"
-description: "The terms of service, the privacy policy, the exchanges-and-returns page and the FAQ: Markdown rows in D1, edited in the admin panel with MDXEditor and rendered on the storefront."
+description: "The terms of service, the privacy policy, the exchanges-and-returns page, the FAQ and the About page: Markdown rows in D1, edited in the admin panel with MDXEditor and rendered on the storefront."
 ---
 
-M'Arte has three legal documents: the terms of service (the regulamin) at `/terms-of-service`, the privacy policy at `/privacy-policy` and the returns policy at `/exchanges-and-returns`. Each one is a row in the D1 `content_page` table, and so is the FAQ at `/faq`. Admins edit them at `/admin/content` in a rich-text editor that writes Markdown, and the storefront renders that Markdown with the same typography the editor shows.
+M'Arte has three legal documents: the terms of service (the regulamin) at `/terms-of-service`, the privacy policy at `/privacy-policy` and the returns policy at `/exchanges-and-returns`. Each one is a row in the D1 `content_page` table, and so are the FAQ at `/faq` and the About page at `/about`. Admins edit them at `/admin/content` in a rich-text editor that writes Markdown, and the storefront renders that Markdown with the same typography the editor shows.
 
 ## The table
 
 `src/modules/content-page/content-page.schema.ts` defines one row per page:
 
-| Column         | Holds                                                                          |
-| -------------- | ------------------------------------------------------------------------------ |
-| `handle`       | `terms-of-service`, `privacy-policy`, `exchanges-and-returns` or `faq`, unique |
-| `titles`       | A JSON map from locale to the page title                                       |
-| `descriptions` | A JSON map from locale to the meta description                                 |
-| `bodies`       | A JSON map from locale to the Markdown body                                    |
-| `revised_ats`  | A JSON map from locale to the epoch milliseconds of the last real change       |
-| `updated_at`   | The last save of any kind, used to detect conflicting saves                    |
+| Column         | Holds                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------- |
+| `handle`       | `terms-of-service`, `privacy-policy`, `exchanges-and-returns`, `faq` or `about`, unique |
+| `titles`       | A JSON map from locale to the page title                                                |
+| `descriptions` | A JSON map from locale to the meta description                                          |
+| `bodies`       | A JSON map from locale to the Markdown body                                             |
+| `revised_ats`  | A JSON map from locale to the epoch milliseconds of the last real change                |
+| `updated_at`   | The last save of any kind, used to detect conflicting saves                             |
 
 The handle column is an enum over `CONTENT_PAGE_HANDLES` in `content-page.constants.ts`, so a page the code does not know about cannot be stored or requested.
 
@@ -39,6 +39,8 @@ The migration `20261002120000_content_pages.sql` creates the table and seeds the
 `20261017150000_privacy_policy_former_addresses.sql` adds a paragraph to the account section of the policy, in each language right after the paragraph on confirming the address and linking the earlier guest orders and the newsletter subscription to the account. It says that the account's address is changed in its settings and that the change takes effect only once it is confirmed with the links sent to the current and the new address, after which the previous address is told of it; that the previous addresses are kept in the account with the dates they were used, so that the orders, payments and events from the time an address was in use stay with the account instead of reaching whoever uses that address later, and to protect the account from takeover, under Article 6(1)(b) and (f) GDPR; that the messages about orders placed with a previous address, the newsletter subscription and the address in the Stripe customer profile move to the new address; and that the previous addresses are deleted with the account. As in the earlier policy migrations, each language changes only while its body still contains the exact sentence the paragraph follows and does not yet contain the paragraph, so a policy the owner has rewritten keeps its text, and the change dates that language's revision and `updated_at` 17 October 2026, 12:00 UTC.
 
 `20261010232000_faq_page.sql` adds the FAQ, which until then was a "Page under construction" message, with `ON CONFLICT(handle) DO NOTHING` like the terms, and dates it 10 October 2026, 14:00 UTC.
+
+`20261018100000_about_page.sql` moves the About page into the table. In both languages its title, description and body are the heading, the lead and the four paragraphs that `messages/{locale}/pages.about.json` held until then, word for word, the paragraphs as Markdown paragraphs. It inserts the row with `ON CONFLICT(handle) DO NOTHING` and dates it 18 October 2026, 10:00 UTC.
 
 The Polish documents are the authoritative ones. They cite Polish statute directly, such as the 14-day right of withdrawal, articles 7a, 38 and 38a of the Consumer Rights Act and the GDPR article for each processing purpose, and they name the data controller. Keep the English versions in step as translations, not as separate texts.
 
@@ -178,7 +180,7 @@ The FAQ gives the shop's e-mail address and phone number through store detail pl
 
 ## The storefront pages
 
-All four routes load the page through one query and hand rendering to a shared article:
+The routes of the terms, the privacy policy, the returns page and the FAQ load the page through one query and hand rendering to a shared article:
 
 ```tsx
 const PrivacyPolicyPage = (): JSX.Element => <ContentPageArticle handle={CONTENT_PAGE_HANDLE.PRIVACY_POLICY} />
@@ -196,7 +198,7 @@ export const Route = createFileRoute("/_storefront/privacy-policy")({
 
 `getContentPage` in `src/modules/content-page/use-cases/get-content-page.ts` is a public `GET` server function. It resolves the title, description and body for the requested locale, falling back to Polish, and throws `notFound()` for an unknown handle. It also returns `revisedAt`, the revision date for that locale.
 
-`ContentPageArticle` reads the same query with `useSuspenseQuery`, so the loader's fetch is reused rather than repeated, and reads the seller's details from `getSellerDetailsQuery()`, which the `_storefront` layout prefetches. It renders the title as the only `<h1>`, a "Last updated" line, which the app's `useFormatter` writes in the reader's format locale and time zone (see [Internationalization](/docs/features/internationalization)), and the body:
+`ContentPageArticle` reads the same query with `useSuspenseQuery`, so the loader's fetch is reused rather than repeated. It renders the title as the only `<h1>`, a "Last updated" line, which the app's `useFormatter` writes in the reader's format locale and time zone (see [Internationalization](/docs/features/internationalization)), and the body through `ContentPageMarkdown` in `content-page-markdown.tsx`, the renderer the About page uses as well. It reads the seller's details from `getSellerDetailsQuery()`, which the `_storefront` layout prefetches, and renders the Markdown:
 
 ```tsx
 const { Markdown } = useMemo(
@@ -204,14 +206,14 @@ const { Markdown } = useMemo(
   [locale, seller],
 )
 
-<Markdown components={MARKDOWN_COMPONENTS}>{page.body}</Markdown>
+return <Markdown components={MARKDOWN_COMPONENTS}>{body}</Markdown>
 ```
 
 `createMarkdownRenderer` comes from `fumadocs-core` and compiles Markdown at render time, not at build time. `remarkDirective` and `remarkSellerDetails` write out the store details (see [Store details in the pages](#store-details-in-the-pages)). Raw HTML in a body is dropped rather than rendered. `remarkHeading` gives every heading a slug `id`, so a link such as `/exchanges-and-returns#complaints` lands on its section. The only component override is the link, which adds the reader's locale prefix to store paths and leaves files such as `/forms/formularz_zwrotu.pdf` alone.
 
-The typography lives in `CONTENT_PROSE_CLASS` in `_styles/content-page.styles.ts`. The admin editor applies the same class to its editable area, so what an admin sees while typing is what customers see.
+The typography lives in `CONTENT_PROSE_CLASS` in `_styles/content-page.styles.ts`. The admin editor applies the same class to its editable area, so what an admin sees while typing is what customers see. The About page uses `ABOUT_PROSE_CLASS` from the same file, which keeps the heading, list, quote, divider, emphasis and link rules and only sets larger paragraphs and list items, so on that page the text is larger than in the editor.
 
-All four routes sit under `_storefront`, so they get the navigation, the cart availability banner and the footer.
+All four routes and `/about` sit under `_storefront`, so they get the navigation, the cart availability banner and the footer.
 
 ## Editing in the admin panel
 
@@ -220,7 +222,7 @@ The **Content** item in the admin sidebar opens `/admin/content`, which lists ev
 The editor page has one tab per locale. Each tab holds three fields:
 
 - **Title**, up to 120 characters, shown as the page heading and in the browser tab.
-- **Description**, up to 300 characters with a live counter, used for search results and link previews.
+- **Description**, up to 300 characters with a live counter, used for search results and link previews, and on the About page also shown as the lead under the title.
 - **Content**, the rich-text body.
 
 The body field is [MDXEditor](https://mdxeditor.dev), which is built on Lexical. `src/integrations/mdxeditor/mdxeditor.plugins.ts` enables only what the storefront can show:
@@ -290,11 +292,11 @@ The editor escapes a colon typed before a letter (`Ref\:ABC`), so typing never c
 
 ### On the storefront
 
-`ContentPageArticle` builds the Markdown renderer with `remarkDirective` from `remark-directive` and `remarkSellerDetails` (`src/presentation/components/custom/pages/content-page/remark-seller-details.ts`), given the page's locale and the details from `getSellerDetailsQuery()`. Each known placeholder becomes the stored value: `emailLink` a `mailto:` link, `phoneLink` a `tel:` link with the number's digits and plus sign, and `country` the country's name in the page's language. Any other directive, such as an unknown detail or text that only looks like one, is shown exactly as written.
+`ContentPageMarkdown` builds the Markdown renderer with `remarkDirective` from `remark-directive` and `remarkSellerDetails` (`src/presentation/components/custom/pages/content-page/remark-seller-details.ts`), given the page's locale and the details from `getSellerDetailsQuery()`. Each known placeholder becomes the stored value: `emailLink` a `mailto:` link, `phoneLink` a `tel:` link with the number's digits and plus sign, and `country` the country's name in the page's language. Any other directive, such as an unknown detail or text that only looks like one, is shown exactly as written.
 
 ### The last updated date
 
-Saving the seller's details moves the "Last updated" date of every page and language whose body shows a detail that changed, in the same D1 batch as the details. `findLocalesShowingSellerFields` matches each placeholder to the field it shows (`emailLink` counts as the e-mail, `phoneLink` as the phone and `country` as the country code), and the page's `revised_ats` gets the save time in those languages through `json_set`. A refused save dates nothing, and the content page invalidation refreshes the dated pages in open tabs. Changing only the country, for example, dates only the English pages, because only their address blocks write the country out. Dating a page also moves its `updated_at`, so an editor already open on that page reports a conflict on its next save and asks to reload.
+Saving the seller's details moves the "Last updated" date of every page and language whose body shows a detail that changed, in the same D1 batch as the details. `findLocalesShowingSellerFields` matches each placeholder to the field it shows (`emailLink` counts as the e-mail, `phoneLink` as the phone and `country` as the country code), and the page's `revised_ats` gets the save time in those languages through `json_set`. A refused save dates nothing, and the content page invalidation refreshes the dated pages in open tabs. Changing only the country, for example, dates only the English pages, because only their address blocks write the country out. Dating a page also moves its `updated_at`, so an editor already open on that page reports a conflict on its next save and asks to reload. The About page shows no date, and its seeded story names no store detail, so the details date it only once the owner adds one to it; the invalidation then refreshes it in open tabs like the other pages.
 
 ### The placeholder migration
 
@@ -311,9 +313,9 @@ Two things stay in words: the pickup sentences in § 7 of the terms and in the F
 
 The admin list and editor pick the new page up without changes.
 
-## The about page
+## The About page
 
-`/about`, in the footer's information column, is not a content page. `_storefront.about.tsx` renders an eyebrow, a title, a lead and four paragraphs of finished copy from `messages/{locale}/pages.about.json`, then the seller contact section.
+`/about`, in the footer's information column, is the content page with the `about` handle, so the owner edits its title, lead and story at `/admin/content/about` with every feature of the editor. `_storefront.about.tsx` loads it with `getContentPageQuery` in its loader, which heads the document with the page's title and description, like the FAQ, but keeps its own layout instead of `ContentPageArticle`: the "About the brand" eyebrow, the title as the `<h1>`, the description as the lead, then the body through `ContentPageMarkdown` in `ABOUT_PROSE_CLASS`, whose paragraphs are muted, `text-base` and `text-lg` from `md`, with the last one in full colour. It shows no "Last updated" line. The description is therefore both the search description and the visible lead. `messages/{locale}/pages.about.json` keeps only the eyebrow and the two texts of the contact section.
 
 The about page ends with a "Contact details" section whose id is `ABOUT_CONTACT_HASH` from `src/routes.ts`, so `/about#contact` scrolls to it. It renders `SellerContactDetails` from `src/presentation/components/custom/seller-contact-details.tsx`: the legal name, postal address and country from `formatSellerPostalAddress` in `store-setting.utils.ts`, the NIP and REGON, and the e-mail address and phone number as `mailto:` and `tel:` links. Every value comes from Settings → Store details through `getSellerDetailsQuery()`, with the country named in the reader's language from the stored code; only the NIP and REGON labels are messages, in `components.custom.sellerContactDetails`.
 
@@ -351,17 +353,18 @@ Article 19 of the EU General Product Safety Regulation (Regulation (EU) 2023/988
 - `withdrawal-function-links.integration.test.ts` checks that the returns page in both languages leads its steps with the online form, that the English page limits the Polish-only note to the PDF forms, that § 8 names the function in both languages, that the privacy policy names the withdrawal by order number among the places of the bot check it then described and among the counted e-mails, the revision dates, that a language an admin has rewritten is left alone and that running it again changes nothing. The editor round-trip test runs the updated pages too.
 - `order-withdrawal.integration.test.ts` runs both withdrawal server functions against the migrated database: the whole order and chosen products, another customer's order, a wrong e-mail address, an order whose address the account has replaced, found by the account's current address and no longer by the replaced one, an account order found by either of its addresses with the acknowledgement going to the order's, an unknown number and a closed or already withdrawn order answering a guest exactly like a recorded statement, the visitor e-mail limits holding back both e-mails, an order delivered a month ago, cancelled or refunded, the last moment of a period whose fourteenth day is a Saturday and the first moment after it, a second statement for the whole order, a failed acknowledgement, no shop address, a signed-out visitor and the rate limit, and the account page's read. `polish-deadline.test.ts` covers the Polish date of the delivery, Saturdays, Sundays and the fixed and Easter-based public holidays, and `order-withdrawal.utils.test.ts` the end of the period in Polish time, a fourteenth day on a Saturday and the change to winter time during the period. `order-withdrawal.test.tsx` renders both e-mails in both languages; the dialog, the account block, the public form and route and the admin card have component tests. Two browser tests, in Chromium and WebKit, follow a customer through the account and a guest from the confirmation e-mail's link to the acknowledgement, the shop's notice and the admin order.
 - `faq-page.integration.test.ts` checks that the FAQ migration publishes both languages with their titles and date, answers in the same seven sections, states the facts it takes from the checkout and the terms, the wishlist limit from `WISHLIST_MAX_ITEMS` included, writes no delivery price, links the terms, the returns page, the withdrawal form and the complaint form, passes the editor's validation unchanged and keeps an admin's edit when it runs again. The editor round-trip test runs both languages of the FAQ too.
+- `about-page.integration.test.ts` checks that the About migration moves the title, the lead and the four paragraphs word for word in both languages, dates them, names no store detail, passes the editor's validation unchanged and keeps an admin's edit when it runs again. The editor round-trip test runs both languages of the About page too.
 - `seller-placeholders.migration.component.test.tsx` renders each seeded page in both languages before and after the placeholder migration and checks that the HTML is the same, that the pages name the seller only through placeholders, that the pickup sentences stay in words, that `revised_ats` and `updated_at` do not move, and that a page the owner rewrote is left as it is.
-- `content-page.seller-placeholders.test.ts` covers finding, removing and writing out the placeholders, the country in the page's language and the languages a changed detail dates. `seller-details.revised-pages.integration.test.ts` checks that saving the seller's details dates only the pages and languages that show a changed detail, in the same batch, and nothing when the save is refused or no page shows the detail.
+- `content-page.seller-placeholders.test.ts` covers finding, removing and writing out the placeholders, the country in the page's language and the languages a changed detail dates. `seller-details.revised-pages.integration.test.ts` checks that saving the seller's details dates only the pages and languages that show a changed detail, in the same batch, and nothing when the save is refused or no page shows the detail; the About page, which shows none, keeps its date.
 - `order-confirmation.test.tsx` checks in both languages that the confirmation names the seller with every stored detail it is given, states the withdrawal, return, refund and complaint rules, and links the three documents. `order-withdrawal.form.server.test.ts` checks that the attached form is made from the details the e-mail names, with the fonts of the deployment the order came from, and that a missing font stops the email.
 - `withdrawal-form.test.ts` and `complaint-form.test.ts` read each form back with pdf.js through `readPdf` in `src/platform/testing/lib/pdf.ts` and check every line of text, the metadata, the A4 page, a file under 20 KB, and that a long seller name, address and e-mail wrap and still fit the page. `content-page.forms.server.test.ts` covers the fonts read from the static assets, a missing font, the headers, a new `ETag` after a save and the `304` answers, and `forms.test.ts` checks that each route serves its form. The store details browser test reads both forms before and after a save and checks the street they name and that a cached copy is replaced.
-- `legal-routes.test.ts` covers the four storefront routes. The smoke browser test opens each one and follows the footer's jewellery care link to the FAQ.
+- `legal-routes.test.ts` covers the four storefront routes, and `storefront.about.loader.test.ts` and `storefront.about.component.test.tsx` the About route: the loader and head, the eyebrow, title and lead, the story through the shared Markdown renderer with store details and links, no date, and the contact section. The smoke browser test opens each of the five, checks that the sitemap lists `/about` once and follows the footer's jewellery care link to the FAQ.
 - `seller-contact-details.component.test.tsx` checks every stored detail in both languages and the `mailto:` and `tel:` links; the footer, the full-screen menu and the about page tests check where the contact links go and that the details are shown. The smoke browser test follows the footer link and the menu link from the cart to the scrolled-in contact section.
 - `product-hero-details.component.test.tsx` checks in both languages that the "Manufacturer" section on every product names the seller with the postal address and a `mailto:` link to the stored contact e-mail. A smoke browser test opens it on a Polish product page.
 - `silver-premium-section.component.test.tsx` checks that the home page's silver section states the statutory liability for lack of conformity in both languages and calls nothing a warranty, a guarantee or a gwarancja.
 - `mdxeditor.plugins.component.test.tsx` round-trips every seeded page, with its store detail placeholders, through the real editor, plus the escaping, store detail and line-break cases, the escaped colon before a word and in an e-mail link included.
-- The admin component tests cover saving, validation, conflicts, edits during a save, the save shortcut and the leave dialog. `content-editor.component.test.tsx` checks the **Insert store detail** button, the chips, an unknown detail and inserting a detail at the caret.
-- `content-page-article.component.test.tsx` covers the storefront rendering, heading anchors, localised links, dropped HTML, the store details written out with working e-mail and phone links, and text that only looks like a placeholder shown as written.
+- The admin component tests cover saving, validation, conflicts, edits during a save, the save shortcut and the leave dialog, and the About page in the list, the editor route and the editor with its **View page** link. `content-editor.component.test.tsx` checks the **Insert store detail** button, the chips, an unknown detail and inserting a detail at the caret.
+- `content-page-article.component.test.tsx` covers the storefront rendering, heading anchors, localised links, dropped HTML, the store details written out with working e-mail and phone links, and text that only looks like a placeholder shown as written. `content-page-markdown.component.test.tsx` checks that the shared renderer writes the blocks straight into its container, with store details and localised links.
 
 ## Related pages
 
