@@ -7,6 +7,7 @@ import {
   COURIER,
   UPDATED_AT,
   renderDelivery,
+  showArchivedMethods,
   user,
 } from "~/src/presentation/components/custom/pages/admin/settings/delivery/__test__/delivery-fixtures"
 
@@ -79,11 +80,13 @@ afterEach(() => {
 describe("DeliveryMethodSheet opening", () => {
   it("opens no editor for an archived method's row, only for a current one", async () => {
     renderDelivery(<DeliveryMethodsTable />)
+    await showArchivedMethods()
 
     await user().click(screen.getByText("Pickup at the atelier"))
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
 
+    await showArchivedMethods()
     await user().click(screen.getByText("InPost courier"))
 
     expect(await screen.findByRole("dialog", { name: "Edit InPost courier" })).toBeInTheDocument()

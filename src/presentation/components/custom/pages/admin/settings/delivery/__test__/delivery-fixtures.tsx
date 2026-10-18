@@ -75,3 +75,5 @@ export const methodRow = (name: string): HTMLElement => {
 }
 
 export const bodyRows = (): HTMLElement[] => screen.getAllByRole("row").filter((row) => row.closest("tbody") !== null)
+
+export const showArchivedMethods = (): Promise<void> => user().click(screen.getByRole("button", { name: /^Archived \d/u }))

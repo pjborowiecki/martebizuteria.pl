@@ -1,10 +1,11 @@
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { useLocale, useTranslations } from "use-intl/react"
 
 import {
   ADMIN_DELIVERY_METHODS_PAGE_SIZE,
+  DELIVERY_METHOD_STATUS,
   DELIVERY_METHOD_STATUSES,
   DELIVERY_METHOD_TABLE_COLUMN_ID,
   DELIVERY_METHOD_TABLE_COLUMN_PINNING,
@@ -30,6 +31,13 @@ import { deliveryMethodsDataGrid } from "~/src/presentation/components/custom/pa
 
 export const DELIVERY_METHODS_EXPORT_LIST = "delivery-methods"
 
+const useArchivedOrCurrentRows = (methods: readonly DeliveryMethod["adminMethod"][]) => {
+  const [archivedShown, setArchivedShown] = useState(false)
+  const rows = useMemo(() => methods.filter((method) => (method.archivedAt !== undefined) === archivedShown), [archivedShown, methods])
+
+  return { archivedShown, rows, setArchivedShown }
+}
+
 export const useDeliveryMethodsDataGrid = ({ onRowClick }: Readonly<UseDeliveryMethodsDataGridOptions>): DeliveryMethodsDataGridValue => {
   const t = useTranslations("pages.admin.settings.delivery")
   const tGrid = useTranslations("components.datagrid")
@@ -44,6 +52,7 @@ export const useDeliveryMethodsDataGrid = ({ onRowClick }: Readonly<UseDeliveryM
   )
   const { reorder } = useDeliveryMethodActions()
   const ordering = useDeliveryMethodOrdering(methods, reorder)
+  const { archivedShown, rows, setArchivedShown } = useArchivedOrCurrentRows(ordering.items)
   const columns = useDeliveryMethodColumns()
   const initialColumnOrder = useMemo(() => getDataGridColumnIds(columns), [columns])
   const globalFilterFn = useMemo(
@@ -60,7 +69,7 @@ export const useDeliveryMethodsDataGrid = ({ onRowClick }: Readonly<UseDeliveryM
 
   const { columnReorder, hasPreferenceOverrides, resetPreferences, table } = useDataGridInstance({
     columns,
-    data: ordering.items,
+    data: rows,
     defaultColumnVisibility: DELIVERY_METHOD_TABLE_DEFAULT_COLUMN_VISIBILITY,
     defaultPageSize: ADMIN_DELIVERY_METHODS_PAGE_SIZE,
     enableRowSelection: false,
@@ -73,10 +82,12 @@ export const useDeliveryMethodsDataGrid = ({ onRowClick }: Readonly<UseDeliveryM
 
   const statusColumn = table.getColumn(DELIVERY_METHOD_TABLE_COLUMN_ID.status)
   const statusFilter = statusColumn?.getFilterValue()
-  const activeStatus = DELIVERY_METHOD_STATUSES.find((status) => status === statusFilter)
+  const activeStatus = archivedShown ? DELIVERY_METHOD_STATUS.ARCHIVED : DELIVERY_METHOD_STATUSES.find((status) => status === statusFilter)
   const applyStatusFilter = useCallback(
     (status?: DeliveryMethodStatus) => {
-      statusColumn?.setFilterValue(status)
+      const archived = status === DELIVERY_METHOD_STATUS.ARCHIVED
+      setArchivedShown(archived)
+      statusColumn?.setFilterValue(archived ? undefined : status)
       table.setPageIndex(0)
     },
     [statusColumn, table],
