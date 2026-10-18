@@ -17,6 +17,8 @@ import { EmailLayout } from "~/src/presentation/emails/email-layout"
 
 export const CHANGE_EMAIL_NAMESPACE = "emails.change-email"
 
+export const SUPPORT_EMAIL_CHANGE_NAMESPACE = "emails.support-email-change"
+
 export const ChangeEmail = ({ locale, messages, name, verificationUrl }: Readonly<ChangeEmailProps>): JSX.Element => {
   const t = createTranslator({ locale, messages: { emails: { "change-email": messages } }, namespace: CHANGE_EMAIL_NAMESPACE })
 

@@ -16,6 +16,8 @@
     },
     "actions": {
       "edit": "Edytuj klienta",
+      "changeEmail": "Zmień e-mail",
+      "changeEmailBlocked": "Wymaga zamówienia złożonego po zalogowaniu na to konto, które pozwoli sprawdzić tożsamość.",
       "createOrder": "Utwórz zamówienie"
     },
     "kpi": {
@@ -139,6 +141,57 @@
         "errorDescription": "Sprawdź formularz i spróbuj ponownie.",
         "successTitle": "Dane klienta zaktualizowane",
         "successDescription": "Zmiany zostały zapisane."
+      }
+    },
+    "emailChange": {
+      "title": "Zmiana adresu e-mail",
+      "description": "Wyślij link potwierdzający nowy adres logowania dla konta {name}, gdy dotychczasowa skrzynka jest niedostępna albo adres zawiera literówkę.",
+      "cancel": "Anuluj",
+      "submit": "Wyślij link",
+      "sent": "Link wysłany na {email}. Adres zmieni się po jego otwarciu.",
+      "verify": {
+        "title": "Sprawdź tożsamość",
+        "description": "Poproś o numer zamówienia złożonego po zalogowaniu na to konto i kod pocztowy, pod który zostało dostarczone. Nigdy nie podpowiadaj ich z listy zamówień.",
+        "orderNumber": "Numer zamówienia",
+        "orderNumberPlaceholder": "MRT-2026-00042",
+        "orderNumberHint": "Tak, jak podaje go klient z potwierdzenia zamówienia. Wielkość liter, spacje i myślniki nie mają znaczenia.",
+        "postalCode": "Kod pocztowy dostawy",
+        "postalCodePlaceholder": "00-000",
+        "postalCodeHint": "Kod pocztowy adresu dostawy z tego samego zamówienia. Wielkość liter, spacje i myślniki nie mają znaczenia, a kod nie jest nigdzie zapisywany."
+      },
+      "address": {
+        "title": "Nowy adres",
+        "description": "Konto zachowuje obecny adres, dopóki nowy nie zostanie potwierdzony.",
+        "current": "Obecny adres",
+        "newEmail": "Nowy adres e-mail",
+        "newEmailPlaceholder": "np. anna@example.com",
+        "newEmailHint": "Na ten adres trafi link. Nie może należeć do innego konta."
+      },
+      "rules": {
+        "title": "Jak działa zmiana",
+        "description": "Zasady, które sklep stosuje przy każdej zmianie adresu klienta.",
+        "link": "Adres zmienia się dopiero po otwarciu linku wysłanego na nowy adres. Link wygasa po 60 minutach.",
+        "notice": "Po zmianie adresu konto zostaje wylogowane na wszystkich pozostałych urządzeniach, a sklep informuje o zmianie dotychczasowy adres.",
+        "signedIn": "Liczy się tylko zamówienie złożone po zalogowaniu na to konto, bo zamówienie z cudzym adresem e-mail można złożyć bez logowania.",
+        "attempts": "Po {max} próbach w ciągu godziny konta nie da się sprawdzić ponownie, dopóki ta godzina nie minie.",
+        "audit": "Każda próba trafia do dziennika zdarzeń z kontem, z którego ją podjęto, i z numerem zamówienia, ale nigdy z kodem pocztowym."
+      },
+      "validation": {
+        "invalidEmail": "Podaj prawidłowy adres e-mail.",
+        "emailMaxLength": "Adres e-mail jest za długi.",
+        "orderNumberRequired": "Wpisz numer zamówienia podany przez klienta.",
+        "orderNumberMaxLength": "Numer zamówienia jest za długi.",
+        "postalCodeRequired": "Wpisz kod pocztowy podany przez klienta.",
+        "postalCodeMaxLength": "Kod pocztowy jest za długi."
+      },
+      "errors": {
+        "CUSTOMER_EMAIL_CHANGE_ACCOUNT_NOT_FOUND": "To konto już nie istnieje. Odśwież stronę.",
+        "CUSTOMER_EMAIL_CHANGE_ADMIN_ACCOUNT": "Konto z dostępem do panelu zmienia swój adres w Ustawieniach › Moje konto.",
+        "CUSTOMER_EMAIL_CHANGE_UNCHANGED": "To jest już adres tego konta.",
+        "CUSTOMER_EMAIL_CHANGE_ADDRESS_TAKEN": "Ten adres należy już do innego konta.",
+        "CUSTOMER_EMAIL_CHANGE_NOT_VERIFIED": "Numer zamówienia i kod pocztowy nie pasują do żadnego zamówienia złożonego po zalogowaniu na to konto. Nic nie zostało wysłane.",
+        "CUSTOMER_EMAIL_CHANGE_TOO_MANY_ATTEMPTS": "Zbyt wiele prób dla tego konta. Spróbuj ponownie za godzinę.",
+        "CUSTOMER_EMAIL_CHANGE_EMAIL_NOT_SENT": "Nie udało się wysłać wiadomości. Spróbuj ponownie za chwilę."
       }
     }
   },
@@ -444,6 +497,8 @@
       "customer_cart_abandoned": "Porzucony koszyk",
       "customer_cart_item_added": "Dodano do koszyka",
       "customer_deletion_failed": "Usunięcie konta nieudane",
+      "customer_email_change_requested": "Wysłano link zmiany adresu e-mail",
+      "customer_email_change_verification_failed": "Nieudana weryfikacja zmiany adresu e-mail",
       "customer_page_viewed": "Odwiedzona strona",
       "auth_email_verified": "Adres e-mail potwierdzony",
       "customer_orders_claimed": "Przypisano zamówienia gościa",
@@ -505,6 +560,9 @@
       "messages": {
         "cartItemCount": "{count, plural, one {# produkt w koszyku} few {# produkty w koszyku} many {# produktów w koszyku} other {# produktu w koszyku}}",
         "claimedOrderCount": "{count, plural, one {# zamówienie} few {# zamówienia} many {# zamówień} other {# zamówienia}}",
+        "emailChangeMismatch": "Zamówienie {orderNumber} nie pasuje — nowy adres {newEmail}",
+        "emailChangeRequested": "Link wysłany na {newEmail}, sprawdzono zamówieniem {orderNumber}",
+        "emailChangeTooManyAttempts": "Odrzucono po zbyt wielu próbach — zamówienie {orderNumber}, nowy adres {newEmail}",
         "recipientCount": "{count, plural, one {# potwierdzony adres} few {# potwierdzone adresy} many {# potwierdzonych adresów} other {# potwierdzonego adresu}}",
         "stripeCustomerKept": "Nie udało się usunąć klienta w Stripe, więc konto zostało zachowane — {error}"
       },

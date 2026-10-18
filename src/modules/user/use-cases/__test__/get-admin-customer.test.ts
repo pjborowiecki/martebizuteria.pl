@@ -18,6 +18,7 @@ const access = vi.hoisted(() => ({
   orderStats: vi.fn(),
   preferredCategory: vi.fn(),
   preferredCollection: vi.fn(),
+  signedInOrders: vi.fn(),
   userById: vi.fn(),
 }))
 
@@ -42,6 +43,7 @@ vi.mock("~/src/modules/user/user.accessors", () => ({
   getUserById: access.userById,
 }))
 vi.mock("~/src/modules/user-email-history/user-email-history.accessors", () => ({ getUserEmailHistory: access.emailHistory }))
+vi.mock("~/src/modules/order/order.accessors", () => ({ getOrdersPlacedWhileSignedIn: access.signedInOrders }))
 vi.mock("@tanstack/react-start", () => ({
   createServerFn: () => {
     const builder = {
@@ -121,6 +123,7 @@ const resetAccessors = (): void => {
   access.orderStats.mockResolvedValue([])
   access.preferredCategory.mockResolvedValue([])
   access.preferredCollection.mockResolvedValue([])
+  access.signedInOrders.mockResolvedValue([])
   access.userById.mockResolvedValue(userRow())
 }
 
@@ -142,6 +145,18 @@ describe("getAdminCustomer reads", () => {
     expect(access.latestSession).toHaveBeenCalledWith("customer-1")
     expect(access.auditTimeline).toHaveBeenCalledWith("customer-1")
     expect(access.emailHistory).toHaveBeenCalledWith("customer-1")
+    expect(access.signedInOrders).toHaveBeenCalledWith("customer-1")
+  })
+
+  it("counts the orders placed while signed in to the account, which support can check a change of address against", async () => {
+    access.signedInOrders.mockResolvedValue([
+      { metadata: null, orderNumber: "MRT-2026-00001", postalCode: "00-001" },
+      { metadata: null, orderNumber: "MRT-2026-00002", postalCode: null },
+    ])
+
+    const result = await detail()
+
+    expect(result?.signedInOrderCount).toBe(2)
   })
 
   it("reads the customer's latest sales for the activity timeline only", async () => {

@@ -16,6 +16,8 @@
     },
     "actions": {
       "edit": "Edit customer",
+      "changeEmail": "Change email",
+      "changeEmailBlocked": "Needs an order placed while signed in to this account, to check who is asking.",
       "createOrder": "Create Order"
     },
     "kpi": {
@@ -139,6 +141,57 @@
         "errorDescription": "Please check the form and try again.",
         "successTitle": "Customer updated",
         "successDescription": "Changes were saved successfully."
+      }
+    },
+    "emailChange": {
+      "title": "Change email address",
+      "description": "Send {name} a link to confirm a new sign-in address, when the current mailbox can no longer be reached or the address has a typo.",
+      "cancel": "Cancel",
+      "submit": "Send link",
+      "sent": "Link sent to {email}. The address changes once the customer opens it.",
+      "verify": {
+        "title": "Check it is the customer",
+        "description": "Ask the customer for the number of an order placed while signed in to this account and the postal code it was delivered to. Never read them out from the order list.",
+        "orderNumber": "Order number",
+        "orderNumberPlaceholder": "MRT-2026-00042",
+        "orderNumberHint": "As the customer reads it from the order confirmation. Letter case, spaces and dashes do not matter.",
+        "postalCode": "Delivery postal code",
+        "postalCodePlaceholder": "00-000",
+        "postalCodeHint": "The postal code of the delivery address on that same order. Letter case, spaces and dashes do not matter, and it is never stored."
+      },
+      "address": {
+        "title": "New address",
+        "description": "The account keeps its current address until the new one is confirmed.",
+        "current": "Current address",
+        "newEmail": "New email address",
+        "newEmailPlaceholder": "e.g. anna@example.com",
+        "newEmailHint": "The link goes to this address. It cannot belong to another account."
+      },
+      "rules": {
+        "title": "How the change works",
+        "description": "The rules the shop applies to every change of a customer's address.",
+        "link": "The address changes only when the link sent to the new address is opened. The link expires after 60 minutes.",
+        "notice": "Once the address changes, every other device signed in to the account is signed out, and the shop tells the previous address about it.",
+        "signedIn": "Only an order placed while signed in to this account counts, because anyone can place an order with someone else's email address.",
+        "attempts": "After {max} attempts within an hour, the account cannot be checked again until the hour has passed.",
+        "audit": "Every attempt is recorded in the audit log, with who made it and the order number used, but never the postal code."
+      },
+      "validation": {
+        "invalidEmail": "Enter a valid email address.",
+        "emailMaxLength": "The email address is too long.",
+        "orderNumberRequired": "Enter the order number the customer gave.",
+        "orderNumberMaxLength": "The order number is too long.",
+        "postalCodeRequired": "Enter the postal code the customer gave.",
+        "postalCodeMaxLength": "The postal code is too long."
+      },
+      "errors": {
+        "CUSTOMER_EMAIL_CHANGE_ACCOUNT_NOT_FOUND": "This account no longer exists. Refresh the page.",
+        "CUSTOMER_EMAIL_CHANGE_ADMIN_ACCOUNT": "An account with admin access changes its own address in Settings › My account.",
+        "CUSTOMER_EMAIL_CHANGE_UNCHANGED": "This is already the account's address.",
+        "CUSTOMER_EMAIL_CHANGE_ADDRESS_TAKEN": "Another account already uses this address.",
+        "CUSTOMER_EMAIL_CHANGE_NOT_VERIFIED": "The order number and postal code do not match an order placed while signed in to this account. Nothing was sent.",
+        "CUSTOMER_EMAIL_CHANGE_TOO_MANY_ATTEMPTS": "Too many attempts for this account. Try again in an hour.",
+        "CUSTOMER_EMAIL_CHANGE_EMAIL_NOT_SENT": "The email could not be sent. Try again in a moment."
       }
     }
   },
@@ -444,6 +497,8 @@
       "customer_cart_abandoned": "Cart abandoned",
       "customer_cart_item_added": "Added to cart",
       "customer_deletion_failed": "Account deletion failed",
+      "customer_email_change_requested": "Email change link sent",
+      "customer_email_change_verification_failed": "Email change check failed",
       "customer_page_viewed": "Page viewed",
       "auth_email_verified": "Email verified",
       "customer_orders_claimed": "Guest orders linked",
@@ -505,6 +560,9 @@
       "messages": {
         "cartItemCount": "{count, plural, one {# item in cart} other {# items in cart}}",
         "claimedOrderCount": "{count, plural, one {# order} other {# orders}}",
+        "emailChangeMismatch": "Order {orderNumber} did not match — new address {newEmail}",
+        "emailChangeRequested": "Link sent to {newEmail}, checked against order {orderNumber}",
+        "emailChangeTooManyAttempts": "Refused after too many attempts — order {orderNumber}, new address {newEmail}",
         "recipientCount": "{count, plural, one {# confirmed subscriber} other {# confirmed subscribers}}",
         "stripeCustomerKept": "Stripe customer not deleted, account kept — {error}"
       },

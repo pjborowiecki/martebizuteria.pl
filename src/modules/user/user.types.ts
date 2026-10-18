@@ -111,6 +111,7 @@ export interface User {
   adminTeamMember: AdminTeamMember
   adminUserMetadata: z.infer<(typeof userZodSchemas)["adminUserMetadata"]>
   customerAddressRow: CustomerAddressRow
+  customerEmailChangeForm: z.infer<(typeof userZodSchemas)["customerEmailChangeForm"]>
   customerLocationRow: CustomerLocationRow
   customerOrderStats: CustomerOrderStats
   emailHistoryRow: Pick<typeof userEmailHistory.$inferSelect, "addedAt" | "email" | "replacedAt">

@@ -29,7 +29,7 @@ import type paymentFailedMessages from "~/messages/en-US/emails.payment-failed.j
 import type resetPasswordMessages from "~/messages/en-US/emails.reset-password.json"
 import type verifyEmailMessages from "~/messages/en-US/emails.verify-email.json"
 import { ACCOUNT_DELETED_NAMESPACE, AccountDeleted } from "~/src/presentation/emails/account-deleted"
-import { CHANGE_EMAIL_NAMESPACE, ChangeEmail } from "~/src/presentation/emails/change-email"
+import { CHANGE_EMAIL_NAMESPACE, ChangeEmail, SUPPORT_EMAIL_CHANGE_NAMESPACE } from "~/src/presentation/emails/change-email"
 import { EMAIL_CHANGED_NAMESPACE, EmailChanged } from "~/src/presentation/emails/email-changed"
 import { INCIDENT_ALERT_NAMESPACE, IncidentAlert } from "~/src/presentation/emails/incident-alert"
 import { NEW_ORDER_NAMESPACE, NewOrder } from "~/src/presentation/emails/new-order"
@@ -418,6 +418,17 @@ export const EMAIL_PREVIEWS = {
       />
     ),
     label: "Reset password",
+  },
+  "support-email-change": {
+    element: async (locale) => (
+      <ChangeEmail
+        locale={locale}
+        messages={await loadNamespace<typeof changeEmailMessages>({ locale, namespace: SUPPORT_EMAIL_CHANGE_NAMESPACE })}
+        name={PREVIEW_NAME}
+        verificationUrl={`https://martebizuteria.pl/api/auth/verify-email?token=12345&callbackURL=%2F${locale}%2Faccount%2Fprofile`}
+      />
+    ),
+    label: "Change email, started by customer care",
   },
   "verify-email": {
     element: async (locale) => (

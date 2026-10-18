@@ -71,6 +71,16 @@ vi.mock("~/src/presentation/components/custom/pages/admin/customers/customer-det
 vi.mock("~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-sheet", () => ({
   CustomerSheet: (): JSX.Element => <p>edit customer sheet</p>,
 }))
+vi.mock("~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-email-change-sheet", () => ({
+  CustomerEmailChangeSheet: ({ customer, onClose }: { customer: { email: string }; onClose: () => void }): JSX.Element => (
+    <div>
+      <p>change email sheet for {customer.email}</p>
+      <button type="button" onClick={onClose}>
+        close change email sheet
+      </button>
+    </div>
+  ),
+}))
 
 await import("~/src/routes/admin.customers.$id")
 
@@ -106,6 +116,7 @@ const detail: User["adminCustomerDetail"] = {
   returningRate: 0,
   role: ROLES.CUSTOMER,
   roleBadgeKey: "roleCustomer",
+  signedInOrderCount: 1,
   stripeCustomerId: null,
   tags: [],
   timeline: [],
@@ -193,6 +204,35 @@ describe("admin customer detail page", () => {
     await userEvent.click(screen.getByRole("button", { name: "Edit customer" }))
 
     expect(screen.getByText("edit customer sheet")).toBeInTheDocument()
+  })
+
+  it("opens the change of email address from the header for a customer with an order placed while signed in", async () => {
+    renderPage()
+
+    await userEvent.click(screen.getByRole("button", { name: "Change email" }))
+
+    expect(screen.getByText("change email sheet for anna@example.com")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("button", { name: "close change email sheet" }))
+    expect(screen.queryByText("change email sheet for anna@example.com")).toBeNull()
+  })
+
+  it("keeps the change of email address disabled, and says why, for an account with no order to check the customer against", async () => {
+    state.detail = { ...detail, signedInOrderCount: 0 }
+    renderPage()
+
+    await userEvent.click(screen.getByRole("button", { name: "Change email" }))
+
+    expect(screen.getByRole("button", { name: "Change email" })).toHaveAttribute("aria-disabled", "true")
+    expect(await screen.findByText("Needs an order placed while signed in to this account, to check who is asking.")).toBeInTheDocument()
+    expect(screen.queryByText("change email sheet for anna@example.com")).toBeNull()
+  })
+
+  it("offers no change of email address on an account with admin access, which changes its own", () => {
+    state.detail = { ...detail, role: ROLES.ADMIN, roleBadgeKey: "roleAdmin" }
+    renderPage()
+
+    expect(screen.queryByRole("button", { name: "Change email" })).toBeNull()
+    expect(screen.getByRole("button", { name: "Edit customer" })).toBeInTheDocument()
   })
 
   it("raises a not found instead of rendering a page for a customer that is gone", () => {

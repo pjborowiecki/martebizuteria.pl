@@ -2,6 +2,7 @@ import { createSchemaFactory } from "drizzle-zod"
 import zod from "zod/v4"
 
 import { ROLES } from "~/src/integrations/better-auth/auth.access"
+import { emailSchema } from "~/src/integrations/better-auth/auth.zod"
 import { isTimeZone, toFormatLocale } from "~/src/integrations/use-intl/i18n.display"
 
 import { dateColumnFilterField, idField, numericColumnFilterField, pageField, pageSizeField } from "~/src/modules/_core/utils/zod-fields"
@@ -145,6 +146,7 @@ const adminCustomerDetailSchema = userSelectSchema.extend({
   preferredCollection: zod.string().optional(),
   returningRate: zod.number(),
   roleBadgeKey: zod.enum(["roleAdmin", "roleCustomer", "returning"]),
+  signedInOrderCount: zod.number(),
   tags: zod.array(adminCustomerDetailTagSchema),
   timeline: zod.array(adminCustomerDetailTimelineEventSchema),
   totalSpent: zod.number(),
@@ -206,6 +208,24 @@ const updateAdminCustomerInputSchema = zod.object({
 
 const teamAccessInputSchema = zod.object({ userId: idField })
 
+const LETTER_OR_DIGIT = /[\p{L}\p{N}]/u
+
+const customerEmailChangeFormSchema = zod.object({
+  newEmail: emailSchema,
+  orderNumber: zod
+    .string()
+    .trim()
+    .regex(LETTER_OR_DIGIT, "orderNumberRequired")
+    .max(ADMIN_CUSTOMER_FORM_FIELD_MAX.ORDER_NUMBER, "orderNumberMaxLength"),
+  postalCode: zod
+    .string()
+    .trim()
+    .regex(LETTER_OR_DIGIT, "postalCodeRequired")
+    .max(ADMIN_CUSTOMER_FORM_FIELD_MAX.POSTAL_CODE, "postalCodeMaxLength"),
+})
+
+const customerEmailChangeInputSchema = customerEmailChangeFormSchema.extend({ userId: idField })
+
 const teamCandidateSearchInputSchema = zod.object({
   search: zod.string().trim().min(TEAM_CANDIDATE_SEARCH_MIN_LENGTH).max(TEAM_CANDIDATE_SEARCH_MAX_LENGTH),
 })
@@ -222,6 +242,8 @@ export const userZodSchemas = {
   adminCustomersExportInput: adminCustomersFiltersSchema,
   adminCustomersPageInput: adminCustomersPageInputSchema,
   adminUserMetadata: adminUserMetadataSchema,
+  customerEmailChangeForm: customerEmailChangeFormSchema,
+  customerEmailChangeInput: customerEmailChangeInputSchema,
   deleteCustomerInput: deleteCustomerInputSchema,
   displayPreferenceInput: displayPreferenceInputSchema,
   insert: userInsertSchema,

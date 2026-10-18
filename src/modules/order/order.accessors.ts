@@ -9,6 +9,8 @@ import { buildAdminDateTimeFilterSql } from "~/src/modules/_core/utils/datetime-
 import { type ListPaginationParams } from "~/src/modules/_core/utils/pagination"
 import { buildAdminSearchOrCondition } from "~/src/modules/_core/utils/search-conditions.server"
 import { auditLog } from "~/src/modules/audit-log/audit-log.schema"
+import { checkout } from "~/src/modules/checkout/checkout.schema"
+import { orderAddress } from "~/src/modules/order-address/order-address.schema"
 import { orderItem } from "~/src/modules/order-item/order-item.schema"
 import {
   ADMIN_ORDER_COUNTABLE_STATUSES,
@@ -370,6 +372,14 @@ export const getAdminOrderCustomerStats = async (userId: string): Promise<AdminO
     totalSpent: row?.totalSpent ?? 0,
   }
 }
+
+export const getOrdersPlacedWhileSignedIn = (userId: string) =>
+  db
+    .select({ metadata: order.metadata, orderNumber: order.orderNumber, postalCode: orderAddress.postalCode })
+    .from(order)
+    .innerJoin(checkout, and(eq(checkout.id, order.checkoutId), eq(checkout.userId, userId)))
+    .leftJoin(orderAddress, and(eq(orderAddress.orderId, order.id), eq(orderAddress.type, "shipping")))
+    .where(eq(order.userId, userId))
 
 export const getAdminOrderRefundTarget = async (orderId: string): Promise<AdminOrderRefundTarget | undefined> => {
   const [row] = await db

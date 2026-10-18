@@ -61,7 +61,7 @@ interface AccountAuditEvent {
   readonly severity: AuditLogSeverity
 }
 
-const scheduleAccountAudit = (
+export const scheduleAccountAudit = (
   { action, category, severity }: AccountAuditEvent,
   account: AuditLogActorInput,
   options?: AuditEventOptions,

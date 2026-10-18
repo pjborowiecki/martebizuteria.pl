@@ -259,6 +259,36 @@ describe("describeAuditLogDetail for counts", () => {
   )
 })
 
+describe("describeAuditLogDetail for a change of address support started", () => {
+  const request = { email: "ada@example.test", newEmail: "ada@new.example", orderNumber: "MRT-2026-00042" }
+
+  it("names the new address and the order the link was sent after", () => {
+    expect(describeRow(AUDIT_LOG_ACTION.CUSTOMER_EMAIL_CHANGE_REQUESTED, "Ada", request)).toStrictEqual({
+      kind: "message",
+      message: "emailChangeRequested",
+      values: { newEmail: "ada@new.example", orderNumber: "MRT-2026-00042" },
+    })
+  })
+
+  it.each([
+    ["mismatch", "emailChangeMismatch"],
+    ["tooManyAttempts", "emailChangeTooManyAttempts"],
+  ])("says why a %s check sent nothing", (refusal, message) => {
+    expect(describeRow(AUDIT_LOG_ACTION.CUSTOMER_EMAIL_CHANGE_VERIFICATION_FAILED, "Ada", { ...request, refusal })).toStrictEqual({
+      kind: "message",
+      message,
+      values: { newEmail: "ada@new.example", orderNumber: "MRT-2026-00042" },
+    })
+  })
+
+  it("keeps the text of an entry without the request's details", () => {
+    expect(describeRow(AUDIT_LOG_ACTION.CUSTOMER_EMAIL_CHANGE_REQUESTED, "Ada", { email: "ada@example.test" })).toStrictEqual({
+      kind: "text",
+      text: "Ada",
+    })
+  })
+})
+
 describe("describeAuditLogDetail for a kept account", () => {
   it.each([["Stripe customer not deleted, account kept — Error: stripe is unreachable"], ["Error: stripe is unreachable"]])(
     "keeps only the Stripe error of %j",
