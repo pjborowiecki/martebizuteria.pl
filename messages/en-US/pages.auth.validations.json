@@ -12,6 +12,7 @@
   "passwordSpecialCharacter": "At least one special character",
   "passwordsMustMatch": "Passwords do not match.",
   "passwordUnchanged": "Choose a password different from your current one.",
+  "passwordIncorrect": "That password is not right.",
   "totpCodeInvalid": "Enter the six digits from your authenticator app.",
   "totpCodeRequired": "Enter a code to continue."
 }

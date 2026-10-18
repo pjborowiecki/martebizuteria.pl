@@ -11,7 +11,7 @@ import { CUSTOMER_ACCOUNT_QUERY_KEYS } from "~/src/modules/customer-account/cust
 import { type CustomerAccount } from "~/src/modules/customer-account/customer-account.types"
 
 const mocks = vi.hoisted(() => ({
-  emailDialog: vi.fn<(props: { currentEmail: string; open: boolean; variant?: string }) => void>(),
+  emailDialog: vi.fn<(props: { currentEmail: string; hasPassword: boolean; open: boolean; variant?: string }) => void>(),
   toastError: vi.fn<(message: string) => void>(),
   toastSuccess: vi.fn<(message: string) => void>(),
   updatePhone: vi.fn<(input: { phone: string }) => Promise<boolean>>(),
@@ -30,7 +30,7 @@ vi.mock("~/src/modules/customer-account/use-cases/get-customer-profile", () => (
   }),
 }))
 vi.mock("~/src/presentation/components/custom/pages/account/profile/sections/change-email-dialog", () => ({
-  ChangeEmailDialog: (props: { currentEmail: string; open: boolean; variant?: string }): JSX.Element | null => {
+  ChangeEmailDialog: (props: { currentEmail: string; hasPassword: boolean; open: boolean; variant?: string }): JSX.Element | null => {
     mocks.emailDialog(props)
 
     return props.open ? <div role="dialog">change email for {props.currentEmail}</div> : null
@@ -97,7 +97,15 @@ describe("SettingsProfileCard", () => {
     await user().click(screen.getByRole("button", { name: "Change email" }))
 
     expect(screen.getByRole("dialog")).toHaveTextContent("change email for owner@marte.test")
-    expect(mocks.emailDialog).toHaveBeenLastCalledWith(expect.objectContaining({ open: true, variant: "default" }))
+    expect(mocks.emailDialog).toHaveBeenLastCalledWith(expect.objectContaining({ hasPassword: true, open: true, variant: "default" }))
+  })
+
+  it("tells the email change when the admin signs in with Google only, so it asks for no password", async () => {
+    renderCard({ ...PROFILE, hasGoogle: true, hasPassword: false })
+
+    await user().click(screen.getByRole("button", { name: "Change email" }))
+
+    expect(mocks.emailDialog).toHaveBeenLastCalledWith(expect.objectContaining({ hasPassword: false, open: true }))
   })
 
   it("saves a new name from the profile sheet, refreshes the profile and the session, and closes", async () => {

@@ -13,8 +13,8 @@ import { AddAdminSheet } from "~/src/presentation/components/custom/pages/admin/
 import { TeamRefreshAction } from "~/src/presentation/components/custom/pages/admin/settings/team/components/team-refresh-action"
 import { TeamStats } from "~/src/presentation/components/custom/pages/admin/settings/team/components/team-stats"
 import { useTeamDataGrid } from "~/src/presentation/components/custom/pages/admin/settings/team/hooks/use-team-data-grid"
-import { SignInAgainButton } from "~/src/presentation/components/custom/pages/admin/settings/team/sign-in-again-button"
 import { teamDataGrid } from "~/src/presentation/components/custom/pages/admin/settings/team/utils/team-data-grid"
+import { SignInAgainButton } from "~/src/presentation/components/custom/pages/auth/sign-in-again-button"
 
 const RecentSignInNotice = (): JSX.Element => {
   const t = useTranslations("pages.admin.settings.team.admins")
@@ -28,7 +28,7 @@ const RecentSignInNotice = (): JSX.Element => {
         <TriangleAlert aria-hidden className="mt-px size-4 shrink-0 text-amber-600 dark:text-amber-400" strokeWidth={1.75} />
         {t("recentSignInNeeded")}
       </p>
-      <SignInAgainButton />
+      <SignInAgainButton label={t("signInAgain")} />
     </div>
   )
 }

@@ -80,9 +80,11 @@ export const signUpWithPasswordSchema = withMatchingPasswords(
   }),
 )
 
-export const changeEmailSchema = z.object({
-  email: emailSchema,
-})
+export const changeEmailSchema = (hasPassword: boolean) =>
+  z.object({
+    email: emailSchema,
+    password: hasPassword ? signInPasswordSchema : z.string(),
+  })
 
 export const passwordChangeSchema = z.object({ revokeOtherSessions: z.boolean().optional() })
 
@@ -119,7 +121,7 @@ export const confirmedEmailChangeSchema = z.object({
   updateTo: z.string(),
 })
 
-export type ChangeEmailFormValues = z.infer<typeof changeEmailSchema>
+export type ChangeEmailFormValues = z.infer<ReturnType<typeof changeEmailSchema>>
 
 export type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>
 

@@ -78,7 +78,13 @@ export const SettingsProfileCard = (): JSX.Element => {
           profile={profile}
         />
       )}
-      <ChangeEmailDialog currentEmail={profile.email} onOpenChange={setChangingEmail} open={changingEmail} variant="default" />
+      <ChangeEmailDialog
+        currentEmail={profile.email}
+        hasPassword={profile.hasPassword}
+        onOpenChange={setChangingEmail}
+        open={changingEmail}
+        variant="default"
+      />
     </SettingsCard>
   )
 }

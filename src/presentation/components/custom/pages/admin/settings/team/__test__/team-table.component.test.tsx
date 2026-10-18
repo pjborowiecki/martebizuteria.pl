@@ -5,7 +5,7 @@ import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/re
 import { userEvent } from "@testing-library/user-event"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { renderWithProviders } from "~/src/platform/testing/lib/render"
+import { createTestRouter, renderWithProviders } from "~/src/platform/testing/lib/render"
 
 import { AppError, ERROR_CODES } from "~/src/modules/_core/constants/errors"
 import { TEAM_ERROR, USER_QUERY_KEYS } from "~/src/modules/user/user.constants"
@@ -82,7 +82,7 @@ const renderTable = (team: Partial<User["adminTeam"]> = {}) => {
     <Suspense fallback={<p>loading</p>}>
       <TeamTable />
     </Suspense>,
-    { queryClient },
+    { queryClient, router: createTestRouter(ROUTES.ADMIN_SETTINGS_TEAM) },
   )
 }
 
@@ -247,8 +247,7 @@ describe("TeamTable access rules", () => {
     await user().click(screen.getByRole("button", { name: "Sign in again" }))
     mocks.signOut.mock.calls[0]?.[0].fetchOptions.onSuccess()
 
-    expect(buildLocation).toHaveBeenNthCalledWith(1, { to: ROUTES.ADMIN_SETTINGS_TEAM })
-    expect(buildLocation).toHaveBeenNthCalledWith(2, { search: { redirect: ROUTES.ADMIN_SETTINGS_TEAM }, to: ROUTES.AUTH_SIGN_IN })
+    expect(buildLocation).toHaveBeenCalledExactlyOnceWith({ search: { redirect: ROUTES.ADMIN_SETTINGS_TEAM }, to: ROUTES.AUTH_SIGN_IN })
   })
 })
 

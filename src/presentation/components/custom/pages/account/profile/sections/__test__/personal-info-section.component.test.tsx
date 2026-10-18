@@ -100,6 +100,25 @@ describe("PersonalInfoSection layout", () => {
     )
   })
 
+  it("asks for the current password when the account has one", async () => {
+    renderWithProviders(<PersonalInfoSection profile={profile} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Change" }))
+
+    expect(await screen.findByLabelText("Current password")).toBeInTheDocument()
+  })
+
+  it("asks a customer who signs in with Google only for a recent sign-in instead of a password", async () => {
+    renderWithProviders(<PersonalInfoSection profile={{ ...profile, hasGoogle: true, hasPassword: false }} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Change" }))
+
+    expect(await screen.findByRole("dialog", { name: "Change your email address" })).toHaveTextContent(
+      "You sign in with Google, so no password is needed.",
+    )
+    expect(screen.queryByLabelText("Current password")).toBeNull()
+  })
+
   it("says when the address on file has not been confirmed", () => {
     renderWithProviders(<PersonalInfoSection profile={{ ...profile, emailVerified: false }} />)
 

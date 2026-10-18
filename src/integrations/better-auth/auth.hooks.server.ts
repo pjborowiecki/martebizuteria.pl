@@ -17,6 +17,7 @@ import {
   STRIPE_CUSTOMER_NOT_DELETED,
   VERIFY_EMAIL_PATH,
 } from "~/src/integrations/better-auth/auth.constants"
+import { confirmEmailChangeOwner } from "~/src/integrations/better-auth/auth.email-change.server"
 import { recordAuthEmailFailure } from "~/src/integrations/better-auth/auth.email-delivery.server"
 import { refuseSupersededEmailLink } from "~/src/integrations/better-auth/auth.email-link.server"
 import { adminAddressFieldsSchema, adminRoleFieldsSchema, adminTargetAccountSchema } from "~/src/integrations/better-auth/auth.zod"
@@ -41,6 +42,8 @@ import { eraseAccountData } from "~/src/modules/user/user.erasure.server"
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { auditRequestIp, resolveRequestOrigin } from "~/src/lib/request"
 
+import { ROUTES } from "~/src/routes"
+
 const requestsRoleChange = ({ body, path }: Readonly<{ body: unknown; path: string }>): boolean =>
   path === SET_ROLE_PATH || (ROLE_FIELD_ADMIN_PATHS.has(path) && adminRoleFieldsSchema.safeParse(body).data === true)
 
@@ -61,6 +64,12 @@ export const guardAuthRequest = createAuthMiddleware(async (ctx) => {
 
   if (ctx.path === VERIFY_EMAIL_PATH) {
     await refuseSupersededEmailLink(ctx)
+
+    return
+  }
+
+  if (ctx.path === ROUTES.API_AUTH.CHANGE_EMAIL) {
+    await confirmEmailChangeOwner(ctx)
 
     return
   }

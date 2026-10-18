@@ -6,18 +6,23 @@ import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
 interface ChangeEmailRequest {
   readonly callbackURL: string
-  readonly fetchOptions: { readonly onError: (context: { error: unknown }) => void; readonly onSuccess: () => void }
+  readonly fetchOptions: {
+    readonly body: { readonly password: string }
+    readonly onError: (context: { error: unknown }) => void
+    readonly onSuccess: () => void
+  }
   readonly newEmail: string
 }
 
 const calls = vi.hoisted(() => ({
   changeEmail: vi.fn<(input: ChangeEmailRequest) => Promise<unknown>>(),
+  signOut: vi.fn<() => Promise<void>>(),
   toastError: vi.fn<(message: string, options: { description: string }) => void>(),
   toastSuccess: vi.fn<(message: string, options: { description: string }) => void>(),
 }))
 
 vi.mock("sonner", () => ({ toast: { error: calls.toastError, success: calls.toastSuccess } }))
-vi.mock("~/src/integrations/better-auth/auth.client", () => ({ authClient: { changeEmail: calls.changeEmail } }))
+vi.mock("~/src/integrations/better-auth/auth.client", () => ({ authClient: { changeEmail: calls.changeEmail }, signOut: calls.signOut }))
 vi.mock(import("~/src/presentation/components/shadcn/dialog"), async (importOriginal) => {
   const actual = await importOriginal()
   const { Dialog: DialogPrimitive } = await import("@base-ui/react/dialog")
@@ -37,20 +42,38 @@ import { ChangeEmailDialog } from "~/src/presentation/components/custom/pages/ac
 
 const CURRENT_EMAIL = "anna@example.com"
 
+const CURRENT_PASSWORD = "correct-horse-battery-staple"
+
 const ALERT_WAIT_MS = 200
 
-const renderDialog = (open = true) => {
+const GOOGLE_NOTE =
+  "You sign in with Google, so no password is needed. If your last sign-in was more than 10 minutes ago, we will ask you to sign in again first."
+
+const renderDialog = ({ hasPassword = true, open = true } = {}) => {
   const onOpenChange = vi.fn<(open: boolean) => void>()
-  renderWithProviders(<ChangeEmailDialog currentEmail={CURRENT_EMAIL} onOpenChange={onOpenChange} open={open} />)
+  renderWithProviders(<ChangeEmailDialog currentEmail={CURRENT_EMAIL} hasPassword={hasPassword} onOpenChange={onOpenChange} open={open} />)
 
   return { onOpenChange }
 }
 
 const emailField = (): HTMLElement => screen.getByLabelText("New email address")
 
+const passwordField = (): HTMLElement => screen.getByLabelText("Current password")
+
+const send = (): Promise<void> => userEvent.click(screen.getByRole("button", { name: "Send confirmation" }))
+
 const submitNewEmail = async (email: string): Promise<void> => {
   await userEvent.type(emailField(), email)
-  await userEvent.click(screen.getByRole("button", { name: "Send confirmation" }))
+  await userEvent.type(passwordField(), CURRENT_PASSWORD)
+  await send()
+}
+
+const refuseWith = (code: string): void => {
+  calls.changeEmail.mockImplementation((input) => {
+    input.fetchOptions.onError({ error: { code } })
+
+    return Promise.resolve({ data: null, error: { code } })
+  })
 }
 
 beforeEach(() => {
@@ -74,7 +97,7 @@ describe("ChangeEmailDialog", () => {
     ).toBeInTheDocument()
   })
 
-  it("asks better-auth to move the account to the new address", async () => {
+  it("asks better-auth to move the account to the new address, with the current password", async () => {
     renderDialog()
 
     await submitNewEmail("anna.nowak@example.com")
@@ -83,6 +106,29 @@ describe("ChangeEmailDialog", () => {
       expect(calls.changeEmail).toHaveBeenCalledOnce()
     })
     expect(calls.changeEmail.mock.calls[0]?.[0].newEmail).toBe("anna.nowak@example.com")
+    expect(calls.changeEmail.mock.calls[0]?.[0].fetchOptions.body).toStrictEqual({ password: CURRENT_PASSWORD })
+  })
+
+  it("asks for the current password before asking the server", async () => {
+    renderDialog()
+
+    await userEvent.type(emailField(), "anna.nowak@example.com")
+    await send()
+
+    expect(await screen.findByText("Password is required.")).toBeInTheDocument()
+    expect(calls.changeEmail).not.toHaveBeenCalled()
+  })
+
+  it("marks a wrong password on its field and keeps the dialog open", async () => {
+    refuseWith("INVALID_PASSWORD")
+    const { onOpenChange } = renderDialog()
+
+    await submitNewEmail("anna.nowak@example.com")
+
+    expect(await screen.findByText("That password is not right.")).toBeInTheDocument()
+    expect(passwordField()).toHaveAttribute("aria-invalid", "true")
+    expect(calls.toastError).not.toHaveBeenCalled()
+    expect(onOpenChange).not.toHaveBeenCalled()
   })
 
   it("says the link was sent only if the new address can take it, then clears the field and closes", async () => {
@@ -99,13 +145,11 @@ describe("ChangeEmailDialog", () => {
     })
     expect(emailField()).toHaveValue("")
   })
+})
 
+describe("ChangeEmailDialog refusals and closing", () => {
   it("explains why the change was refused and keeps the dialog open", async () => {
-    calls.changeEmail.mockImplementation((input) => {
-      input.fetchOptions.onError({ error: { code: "USER_ALREADY_EXISTS" } })
-
-      return Promise.resolve({ data: null, error: { code: "USER_ALREADY_EXISTS" } })
-    })
+    refuseWith("USER_ALREADY_EXISTS")
     const { onOpenChange } = renderDialog()
 
     await submitNewEmail("taken@example.com")
@@ -198,11 +242,55 @@ describe("ChangeEmailDialog", () => {
   })
 
   it("tells its owner when a trigger asks to open it", async () => {
-    const { onOpenChange } = renderDialog(false)
+    const { onOpenChange } = renderDialog({ open: false })
 
     await userEvent.click(screen.getByRole("button", { name: "Open from a trigger" }))
 
     expect(onOpenChange).toHaveBeenCalledWith(true)
+  })
+})
+
+describe("ChangeEmailDialog for an account that signs in with Google only", () => {
+  it("asks for no password and says a recent sign-in is needed instead", async () => {
+    renderDialog({ hasPassword: false })
+
+    expect(screen.getByText(GOOGLE_NOTE)).toBeInTheDocument()
+    expect(screen.queryByLabelText("Current password")).toBeNull()
+    await userEvent.type(emailField(), "anna.nowak@example.com")
+    await send()
+
+    await waitFor(() => {
+      expect(calls.changeEmail).toHaveBeenCalledOnce()
+    })
+    expect(calls.changeEmail.mock.calls[0]?.[0].fetchOptions.body).toStrictEqual({ password: "" })
+  })
+
+  it("offers to sign in again when the last sign-in is too old, and signs out to do it", async () => {
+    refuseWith("SESSION_NOT_FRESH")
+    renderDialog({ hasPassword: false })
+    await userEvent.type(emailField(), "anna.nowak@example.com")
+    await send()
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "To change your email address, sign in again first. Your last sign-in was more than 10 minutes ago.",
+    )
+    expect(calls.toastError).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole("button", { name: "Sign in again" }))
+
+    expect(calls.signOut).toHaveBeenCalledOnce()
+  })
+
+  it("forgets the request to sign in again once the dialog closes", async () => {
+    refuseWith("SESSION_NOT_FRESH")
+    renderDialog({ hasPassword: false })
+    await userEvent.type(emailField(), "anna.nowak@example.com")
+    await send()
+    await screen.findByRole("status")
+
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }))
+
+    expect(screen.queryByRole("status")).toBeNull()
+    expect(screen.getByText(GOOGLE_NOTE)).toBeInTheDocument()
   })
 })
 
