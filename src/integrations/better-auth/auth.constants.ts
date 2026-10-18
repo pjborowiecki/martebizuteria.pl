@@ -141,3 +141,7 @@ export const ROLE_FIELD_ADMIN_PATHS: ReadonlySet<string> = new Set(["/admin/crea
 export const VERIFY_TOTP_PATH = "/two-factor/verify-totp"
 
 export const VERIFY_EMAIL_PATH = "/verify-email"
+
+export const AUTH_BASE_PATH = "/api/auth"
+
+export const CHANGE_EMAIL_VERIFICATION_REQUEST = "change-email-verification"

@@ -9,6 +9,7 @@ import { v7 as uuidv7 } from "uuid"
 import { ADMIN_PANEL_ROLES, DEFAULT_ROLE, ROLES_CONFIG, ac } from "~/src/integrations/better-auth/auth.access"
 import { accountSecurityAudit, signInAudit } from "~/src/integrations/better-auth/auth.audit.server"
 import {
+  AUTH_BASE_PATH,
   MAX_CONCURRENT_SESSIONS,
   RATE_LIMIT_CUSTOM_RULES,
   RATE_LIMIT_MAX_REQUESTS,
@@ -55,6 +56,7 @@ export const auth = betterAuth({
     useSecureCookies: !isLocalMode(import.meta.env.MODE),
   },
   appName: APP_NAME,
+  basePath: AUTH_BASE_PATH,
   baseURL: { allowedHosts: appHostsForMode(import.meta.env.MODE) },
   database: drizzleAdapter(db, { provider: "sqlite", schema }),
   databaseHooks: {

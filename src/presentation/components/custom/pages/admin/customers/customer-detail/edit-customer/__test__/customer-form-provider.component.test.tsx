@@ -52,6 +52,7 @@ const customerDetail = (): User["adminCustomerDetail"] => ({
   returningRate: 0.5,
   role: "customer",
   roleBadgeKey: "roleCustomer",
+  signedInOrderCount: 1,
   stripeCustomerId: null,
   tags: ["verified"],
   timeline: [],

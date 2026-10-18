@@ -19,6 +19,7 @@ import orderWithdrawalCopy from "~/messages/en-US/emails.order-withdrawal.json"
 import passwordChangedCopy from "~/messages/en-US/emails.password-changed.json"
 import paymentFailedCopy from "~/messages/en-US/emails.payment-failed.json"
 import resetPasswordCopy from "~/messages/en-US/emails.reset-password.json"
+import supportEmailChangeCopy from "~/messages/en-US/emails.support-email-change.json"
 import verifyEmailCopy from "~/messages/en-US/emails.verify-email.json"
 import polishIncidentAlertCopy from "~/messages/pl-PL/emails.incident-alert.json"
 import polishNewOrderCopy from "~/messages/pl-PL/emails.new-order.json"
@@ -68,6 +69,7 @@ describe("EMAIL_PREVIEWS", () => {
       ["password-changed", "Password changed"],
       ["payment-failed", "Payment failed"],
       ["reset-password", "Reset password"],
+      ["support-email-change", "Change email, started by customer care"],
       ["verify-email", "Verify email"],
     ])
   })
@@ -112,6 +114,13 @@ describe("renderEmailPreview", () => {
 
   it("renders the change email notice", async () => {
     await expect(text("change-email")).resolves.toContain(changeEmailCopy.highlightTitle)
+  })
+
+  it("renders the change of address that customer care started, with the link back to the profile", async () => {
+    const preview = await text("support-email-change")
+
+    expect(preview).toContain(supportEmailChangeCopy.message)
+    expect(preview).toContain("callbackURL=%2Fen-US%2Faccount%2Fprofile")
   })
 
   it("renders the notice to the old address with the shop's contact details", async () => {

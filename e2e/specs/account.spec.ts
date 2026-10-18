@@ -1,6 +1,6 @@
 import { type Locator, type Page } from "@playwright/test"
 
-import { PRODUCTS } from "../data/catalog"
+import { PRODUCTS, SHIPPING_ADDRESS } from "../data/catalog"
 import { STORAGE_STATE } from "../data/storage-state"
 import { registerCustomer } from "../fixtures/customers"
 import { placeOrder } from "../fixtures/orders"
@@ -117,6 +117,44 @@ test.describe("customer account", () => {
     expect((await sentEmails(request, customer.email)).map(({ subject }) => subject)).not.toContain(
       "We have started preparing your order — M'Arte",
     )
+  })
+
+  test("customer care moves a customer to a new address once they name an order, and the customer confirms it from that address", async ({
+    accountPage,
+    authPage,
+    browser,
+    page,
+    request,
+  }, testInfo) => {
+    const customer = await registerCustomer({ authPage, page, request }, testInfo)
+    const { orderNumber } = await placeOrder({ email: customer.email, handle: PRODUCTS.lapis.handle, page, request })
+    const newEmail = uniqueEmail(testInfo, "support-moved")
+    const admin = await browser.newContext({
+      extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "admin") },
+      storageState: STORAGE_STATE.admin,
+    })
+    await isolateNetwork(admin)
+    const adminPage = await admin.newPage()
+    await new AdminOrderPage(adminPage).gotoOrderFor(customer.email)
+    await adminPage.getByRole("main").getByRole("link", { name: "View profile" }).click()
+    await adminPage.waitForURL(/\/admin\/customers\/[\w-]+$/u)
+
+    await adminPage.getByRole("button", { name: "Change email" }).click()
+    const sheet = adminPage.getByRole("dialog", { name: "Change email address" })
+    await sheet.getByLabel("Order number").fill(orderNumber.toLowerCase())
+    await sheet.getByLabel("Delivery postal code").fill(SHIPPING_ADDRESS.postalCode)
+    await sheet.getByLabel("New email address").fill(newEmail)
+    await sheet.getByRole("button", { name: "Send link" }).click()
+    await expect(sheet).toBeHidden()
+    await expect(adminPage.getByText(`Link sent to ${newEmail}. The address changes once the customer opens it.`)).toBeVisible()
+    await admin.close()
+
+    await page.goto(linkIn(await waitForEmail(request, newEmail, "Confirm your new email address — M'Arte"), /verify-email/u).href)
+    await expect(page).toHaveURL(/\/en-US\/account\/profile$/u)
+    await accountPage.waitForAppReady()
+    await expect(page.getByRole("main")).toContainText(newEmail)
+    const notice = await waitForEmail(request, customer.email, "The sign-in email of your M'Arte account has been changed")
+    expect(notice.html).not.toContain(newEmail)
   })
 
   test("a customer withdraws from part of an order on its page and is emailed the statement", async ({ accountPage, authPage, page, request }, testInfo) => {

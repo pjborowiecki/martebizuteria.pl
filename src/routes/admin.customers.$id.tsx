@@ -2,8 +2,10 @@ import { type JSX, useCallback, useMemo, useState } from "react"
 
 import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute, notFound } from "@tanstack/react-router"
-import { Pencil } from "lucide-react"
+import { Mail, Pencil } from "lucide-react"
 import { useLocale, useTranslations } from "use-intl/react"
+
+import { hasAdminAccess } from "~/src/integrations/better-auth/auth.access"
 
 import { getAdminOrdersPageQuery } from "~/src/modules/order/use-cases/get-admin-orders-page"
 import { getAdminCustomerQuery } from "~/src/modules/user/use-cases/get-admin-customer"
@@ -16,8 +18,10 @@ import { type LocalizedTo } from "~/src/presentation/components/custom/localized
 import { ADMIN_HEADER_SECONDARY_BUTTON_CLASS } from "~/src/presentation/components/custom/pages/admin/_styles/admin-layout.styles"
 import { AdminHeader } from "~/src/presentation/components/custom/pages/admin/admin-header"
 import { CustomerDetailPage } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-detail-page"
+import { CustomerEmailChangeSheet } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/customer-email-change-sheet"
 import { CustomerSheet } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/edit-customer/customer-sheet"
 import { CUSTOMER_ORDERS_VIEW } from "~/src/presentation/components/custom/pages/admin/customers/customer-detail/utils/customer-orders-data-grid"
+import { OrderActionButton } from "~/src/presentation/components/custom/pages/admin/orders/detail/order-action-button"
 
 import { ROUTES } from "~/src/routes"
 
@@ -51,15 +55,34 @@ const AdminCustomerDetailRoute = (): JSX.Element => {
   const handleEditClick = useCallback(() => {
     setSheetOpen(true)
   }, [])
+  const [changingEmail, setChangingEmail] = useState(false)
+  const handleChangeEmailClick = useCallback(() => {
+    setChangingEmail(true)
+  }, [])
+  const handleChangeEmailClose = useCallback(() => {
+    setChangingEmail(false)
+  }, [])
 
   const headerActions = useMemo(
     () => (
-      <Button type="button" variant="outline" size="sm" className={ADMIN_HEADER_SECONDARY_BUTTON_CLASS} onClick={handleEditClick}>
-        <Pencil className="size-3.5" strokeWidth={1.5} />
-        {t("actions.edit")}
-      </Button>
+      <>
+        {!hasAdminAccess(customer.role) && (
+          <OrderActionButton
+            blockedReason={customer.signedInOrderCount === 0 ? t("actions.changeEmailBlocked") : undefined}
+            isPending={false}
+            onClick={handleChangeEmailClick}
+          >
+            <Mail className="size-3.5" strokeWidth={1.5} />
+            {t("actions.changeEmail")}
+          </OrderActionButton>
+        )}
+        <Button type="button" variant="outline" size="sm" className={ADMIN_HEADER_SECONDARY_BUTTON_CLASS} onClick={handleEditClick}>
+          <Pencil className="size-3.5" strokeWidth={1.5} />
+          {t("actions.edit")}
+        </Button>
+      </>
     ),
-    [handleEditClick, t],
+    [customer.role, customer.signedInOrderCount, handleChangeEmailClick, handleEditClick, t],
   )
 
   return (
@@ -69,6 +92,7 @@ const AdminCustomerDetailRoute = (): JSX.Element => {
       <CustomerDetailPage customer={customer} />
 
       {sheetOpen && <CustomerSheet customer={customer} open onOpenChange={setSheetOpen} />}
+      {changingEmail && <CustomerEmailChangeSheet customer={customer} onClose={handleChangeEmailClose} />}
     </>
   )
 }

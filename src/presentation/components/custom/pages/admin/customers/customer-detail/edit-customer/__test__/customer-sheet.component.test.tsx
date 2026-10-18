@@ -49,6 +49,7 @@ const customerDetail = (overrides: Partial<User["adminCustomerDetail"]> = {}): U
   returningRate: 0.5,
   role: "customer",
   roleBadgeKey: "roleCustomer",
+  signedInOrderCount: 1,
   stripeCustomerId: null,
   tags: ["verified", "returning"],
   timeline: [],

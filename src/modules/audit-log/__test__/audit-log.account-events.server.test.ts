@@ -6,6 +6,7 @@ import {
   type AuditLogCategory,
   type AuditLogSeverity,
 } from "~/src/modules/audit-log/audit-log.constants"
+import { recordCustomerEmailChangeAudit } from "~/src/modules/audit-log/audit-log.email-change.server"
 import {
   type AuditEventOptions,
   recordAuthEmailChangedAudit,
@@ -121,6 +122,24 @@ const ACCOUNT_CASES: readonly AccountAuditCase[] = [
     category: "customers",
     name: "a deleted customer",
     record: recordCustomerDeletedAudit,
+    severity: "warning",
+  },
+  {
+    action: AUDIT_LOG_ACTION.CUSTOMER_EMAIL_CHANGE_REQUESTED,
+    category: "customers",
+    name: "a change of address support sent a link for",
+    record: (account, options = {}) => {
+      recordCustomerEmailChangeAudit(AUDIT_LOG_ACTION.CUSTOMER_EMAIL_CHANGE_REQUESTED, account, options)
+    },
+    severity: "warning",
+  },
+  {
+    action: AUDIT_LOG_ACTION.CUSTOMER_EMAIL_CHANGE_VERIFICATION_FAILED,
+    category: "customers",
+    name: "a change of address whose check failed",
+    record: (account, options = {}) => {
+      recordCustomerEmailChangeAudit(AUDIT_LOG_ACTION.CUSTOMER_EMAIL_CHANGE_VERIFICATION_FAILED, account, options)
+    },
     severity: "warning",
   },
 ]

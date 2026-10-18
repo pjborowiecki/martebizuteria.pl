@@ -41,6 +41,7 @@ const detail = (overrides: Partial<User["adminCustomerDetail"]> = {}): User["adm
   returningRate: 0,
   role: ROLES.CUSTOMER,
   roleBadgeKey: "roleCustomer",
+  signedInOrderCount: 1,
   stripeCustomerId: null,
   tags: [],
   timeline: [],

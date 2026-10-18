@@ -1,7 +1,12 @@
 import { STORE_CURRENCY_CODE } from "~/src/modules/_core/constants/currency"
 import { parseMoneyInputToMinorUnits } from "~/src/modules/_core/utils/currency"
 import { describeAuditLogChanges } from "~/src/modules/audit-log/audit-log.changes.utils"
-import { AUDIT_EMAIL_KIND, AUDIT_LOG_ACTION, type AuditEmailKind } from "~/src/modules/audit-log/audit-log.constants"
+import {
+  AUDIT_EMAIL_KIND,
+  AUDIT_LOG_ACTION,
+  type AuditEmailKind,
+  CUSTOMER_EMAIL_CHANGE_REFUSAL,
+} from "~/src/modules/audit-log/audit-log.constants"
 import { type AuditLog } from "~/src/modules/audit-log/audit-log.types"
 import { auditLogZodSchemas } from "~/src/modules/audit-log/audit-log.zod"
 
@@ -113,6 +118,26 @@ const describeClaimedOrderCount = (source: AuditLogDetailSource): AuditLog["deta
     : { kind: "message", message: "claimedOrderCount", values: { count: metadata.orderCount } }
 }
 
+const EMAIL_CHANGE_REFUSAL_MESSAGES = {
+  [CUSTOMER_EMAIL_CHANGE_REFUSAL.MISMATCH]: "emailChangeMismatch",
+  [CUSTOMER_EMAIL_CHANGE_REFUSAL.TOO_MANY_ATTEMPTS]: "emailChangeTooManyAttempts",
+} as const
+
+const describeEmailChangeRequest = (source: AuditLogDetailSource): AuditLog["detail"] | undefined => {
+  const metadata = auditLogZodSchemas.customerEmailChangeMetadata.safeParse(source.metadata).data
+  if (metadata === undefined) {
+    return describeText(source)
+  }
+
+  const { newEmail, orderNumber, refusal } = metadata
+
+  return {
+    kind: "message",
+    message: refusal === undefined ? "emailChangeRequested" : EMAIL_CHANGE_REFUSAL_MESSAGES[refusal],
+    values: { newEmail, orderNumber },
+  }
+}
+
 const describeStripeCustomerKept = ({ detail }: AuditLogDetailSource): AuditLog["detail"] | undefined => {
   if (detail === null) {
     return undefined
@@ -197,6 +222,8 @@ const AUDIT_LOG_DETAIL_DESCRIBERS: Readonly<Partial<Record<string, AuditLogDetai
   [AUDIT_LOG_ACTION.AUTH_ROLE_CHANGED]: describeRole,
   [AUDIT_LOG_ACTION.CUSTOMER_CART_ABANDONED]: describeCartItemCount,
   [AUDIT_LOG_ACTION.CUSTOMER_DELETION_FAILED]: describeStripeCustomerKept,
+  [AUDIT_LOG_ACTION.CUSTOMER_EMAIL_CHANGE_REQUESTED]: describeEmailChangeRequest,
+  [AUDIT_LOG_ACTION.CUSTOMER_EMAIL_CHANGE_VERIFICATION_FAILED]: describeEmailChangeRequest,
   [AUDIT_LOG_ACTION.CUSTOMER_ORDERS_CLAIMED]: describeClaimedOrderCount,
   [AUDIT_LOG_ACTION.DELIVERY_METHOD_UPDATED]: describeChanges,
   [AUDIT_LOG_ACTION.DISCOUNT_REDEEMED]: describeRedeemedAmount,

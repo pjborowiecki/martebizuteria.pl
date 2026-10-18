@@ -23,7 +23,14 @@ interface AuditLogEmailDetail {
 
 interface AuditLogMessageDetail {
   readonly kind: "message"
-  readonly message: "cartItemCount" | "claimedOrderCount" | "recipientCount" | "stripeCustomerKept"
+  readonly message:
+    | "cartItemCount"
+    | "claimedOrderCount"
+    | "emailChangeMismatch"
+    | "emailChangeRequested"
+    | "emailChangeTooManyAttempts"
+    | "recipientCount"
+    | "stripeCustomerKept"
   readonly values: Readonly<Record<string, number | string>>
 }
 

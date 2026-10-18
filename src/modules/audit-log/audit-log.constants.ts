@@ -51,6 +51,8 @@ export const AUDIT_LOG_ACTION = {
   CUSTOMER_CART_ITEM_ADDED: "customer.cart_item_added",
   CUSTOMER_DELETED: "customer.deleted",
   CUSTOMER_DELETION_FAILED: "customer.deletion_failed",
+  CUSTOMER_EMAIL_CHANGE_REQUESTED: "customer.email_change_requested",
+  CUSTOMER_EMAIL_CHANGE_VERIFICATION_FAILED: "customer.email_change_verification_failed",
   CUSTOMER_LIST_EXPORTED: "customer.list_exported",
   CUSTOMER_ORDERS_CLAIMED: "customer.orders_claimed",
   CUSTOMER_PAGE_VIEWED: "customer.page_viewed",
@@ -108,6 +110,11 @@ export const AUDIT_LOG_ACTION = {
 } as const
 
 export type AuditLogAction = (typeof AUDIT_LOG_ACTION)[keyof typeof AUDIT_LOG_ACTION]
+
+export const CUSTOMER_EMAIL_CHANGE_REFUSAL = {
+  MISMATCH: "mismatch",
+  TOO_MANY_ATTEMPTS: "tooManyAttempts",
+} as const
 
 export const AUDIT_EMAIL_KIND = {
   ACCOUNT_DELETED: "account-deleted",
