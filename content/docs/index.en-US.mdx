@@ -47,7 +47,7 @@ These pages document the whole repository: where each piece of code lives, how a
 
 `src/server.ts` is the Worker entry. Besides answering requests, it consumes the audit-log and newsletter queues and their dead-letter queues, and its `scheduled` handler runs the daily retention clean-up.
 
-Content lives outside `src`: `content/docs` holds these pages and `messages/{locale}` holds the UI message catalogues. The customer legal pages and the FAQ are not files: they are rows in the D1 `content_page` table, edited at `/admin/content`.
+Content lives outside `src`: `content/docs` holds these pages and `messages/{locale}` holds the UI message catalogues. The customer legal pages, the FAQ and the About page are not files: they are rows in the D1 `content_page` table, edited at `/admin/content`.
 
 ## Editing these docs
 
