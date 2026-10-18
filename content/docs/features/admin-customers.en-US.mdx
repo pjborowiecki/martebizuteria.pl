@@ -1,6 +1,6 @@
 ---
 title: "Admin customers"
-description: "The customers grid and its stats, the per-customer detail screen with spending charts, the customer's orders grid and an activity timeline, and the two mutations."
+description: "The customers grid and its stats, the per-customer detail screen with spending charts, the customer's orders grid and an activity timeline, the two mutations, and the change of a customer's email address that customer care starts."
 ---
 
 The `user` table is shared with Better Auth, so "customers" is a view over authentication data joined to order aggregates. The module is `src/modules/user`.
@@ -102,7 +102,7 @@ return computeAdminCustomerStatsFromAggregates({
 
 `/admin/customers/$id` reads `getAdminCustomerQuery(id, locale)` with `useSuspenseQuery` and throws `notFound()` through `ensureAdminCustomerDetail` when the row is missing.
 
-`getAdminCustomer` (`authorized({ user: ["get"] })`) is the widest read in the codebase — eleven reads, `getUserById` first and the other ten in parallel: nine more accessors from `user.accessors.ts` and `getUserEmailHistory` from `user-email-history.accessors.ts`:
+`getAdminCustomer` (`authorized({ user: ["get"] })`) is the widest read in the codebase — twelve reads, `getUserById` first and the other eleven in parallel: nine more accessors from `user.accessors.ts`, `getUserEmailHistory` from `user-email-history.accessors.ts` and `getOrdersPlacedWhileSignedIn` from `order.accessors.ts`:
 
 | Accessor                              | Feeds                                                                                                    |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------- |
@@ -117,6 +117,7 @@ return computeAdminCustomerStatsFromAggregates({
 | `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                                                                          |
 | `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                                                                             |
 | `getUserEmailHistory`                 | `buildAdminCustomerEmailHistory`: every address the account has used, newest first                       |
+| `getOrdersPlacedWhileSignedIn`        | `signedInOrderCount`, which enables **Change email** (see [below](#changing-a-customers-email-address))  |
 
 "Last active" is the newest session's `updatedAt`, or the last order when no session is left, or the row's `updatedAt`, written by `formatRelativeFromNow`: a relative time in the page's language for a week, then the date.
 
@@ -191,7 +192,7 @@ A column that holds plain text rather than JSON is treated as notes, so a legacy
 - upserts the default address through `upsertDefaultAddressForUser`, but only when `hasAddressInput` passes — `address1` and `city` must both be non-blank
 - when the submitted `countryCode` is blank it reuses the existing default address's country rather than writing an empty string, and skips the address write entirely if there is still no country
 
-It does **not** change email, name, role or ban state. The email address changes only when its owner changes it from the account page, with confirmations from both addresses (see [Account: Changing the email address](/docs/features/account#changing-the-email-address)); the others are Better Auth operations. Once the writes are done it records `customer.updated` against the admin, with the customer's email address as the target and their id as the resource. It writes the row directly rather than through Better Auth, so no `databaseHooks.user` hook runs: `CustomerFormProvider` invalidates the detail, the grid and the stats in the editing admin's own browser.
+It does **not** change email, name, role or ban state. The email address changes only through a link the new address confirms, sent when its owner changes it from the account page (see [Account: Changing the email address](/docs/features/account#changing-the-email-address)) or when customer care starts the change from this page (see [below](#changing-a-customers-email-address)); the others are Better Auth operations. Once the writes are done it records `customer.updated` against the admin, with the customer's email address as the target and their id as the resource. It writes the row directly rather than through Better Auth, so no `databaseHooks.user` hook runs: `CustomerFormProvider` invalidates the detail, the grid and the stats in the editing admin's own browser.
 
 `deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, has four guards:
 
@@ -225,6 +226,24 @@ return { goodbyeEmailSent, ok: true as const, userId }
 `eraseAccountData` is the step a customer's own deletion runs in Better Auth's `beforeDelete`: it deletes the account's Stripe customer with its saved cards, then the account's audit log entries and newsletter subscription (see [Account: Closing the account](/docs/features/account#closing-the-account)). When Stripe cannot delete the customer, nothing is deleted, `customer.deletion_failed` is recorded, and `useDeleteCustomer` shows "Stripe could not delete the customer's profile and saved cards, so the account was not deleted. Try again in a few minutes. The error is recorded in the audit log." The confirmation dialog, `rowActions.deleteDescription`, lists what is deleted and that the orders and payments stay in the accounting records for 5 years.
 
 Because deletion goes through Better Auth, its `databaseHooks.user.delete.after` records `customer.deleted` against the admin whose session made the `removeUser` call, with the deleted customer's email address as the target, and the cascades on `session`, `account`, `address`, `wishlist_item`, `two_factor` and `user_email_history` apply, while `order.user_id`, `checkout.user_id` and `discount_redemption.user_id` are `onDelete: "set null"` — so the orders survive as guest orders. If an account later verifies the deleted account's last address, `claimGuestOrdersForUser` files the orders placed with that address under it like any other guest order; the orders placed with an earlier address carry `keptFromClaims` and stay unclaimed (see [Account: Guest orders in the account](/docs/features/account#guest-orders-in-the-account)).
+
+## Changing a customer's email address
+
+When a customer can no longer reach the mailbox their account signs in with, or the address has a typo, customer care can move the account to a new address from its page. **Change email** in the header, beside **Edit customer**, opens `customer-email-change-sheet.tsx`, a sheet built like those of Settings › Team (`SettingsSheet`, `SettingsFormSection`, the same fields, buttons and toasts). It is not shown on an account with admin access, which changes its own address under [Settings › My account](/docs/features/admin-settings#my-account), and on an account without an order placed while signed in it stays greyed out with "Needs an order placed while signed in to this account, to check who is asking." as its tooltip, the way the order page explains a blocked action. `signedInOrderCount` in the detail tells the page which case applies.
+
+The sheet asks for the number of one of the customer's orders and the postal code of that order's delivery address, both as the customer gives them, and for the new address beside the current one, and lists the rules the change follows. Only an order placed while signed in to the account counts: one whose `checkout` row carries the account's `user_id` as well as the order. A guest order paid with an account's address joins that account by itself (see [Account: Guest orders in the account](/docs/features/account#guest-orders-in-the-account)), so anyone who knows the address could otherwise place an order, with their own delivery address, and pass the check.
+
+`requestCustomerEmailChange` (`use-cases/request-customer-email-change.ts`), `authorized({ user: ["update"] })`, validates its input with `userZodSchemas.customerEmailChangeInput` and then:
+
+1. refuses an account that does not exist (`ERROR_CODES.NOT_FOUND`), an account with admin access (`FORBIDDEN`), the address the account already has, whatever its letter case (`CONFLICT`), and an address another account holds now according to `getCurrentAddressHolder` (`CONFLICT`), each with its reason from `CUSTOMER_EMAIL_CHANGE_ERROR`;
+2. counts the attempt with `withinRateLimit` under `customer-email-change:<account id>`, `CUSTOMER_EMAIL_CHANGE_ATTEMPTS.MAX` (5) an hour per account, whoever asks, and refuses any further attempt that hour with `TOO_MANY_REQUESTS`, even one with the right details, so the check cannot be used to guess them;
+3. looks among `getOrdersPlacedWhileSignedIn` for an order whose number and delivery postal code both match, compared without letter case, spaces or punctuation, and refuses with `FORBIDDEN` when there is none, without saying which of the two did not match;
+4. signs a link with Better Auth's own `createEmailVerificationToken`, with the payload Better Auth's `changeEmail` gives the second step of a customer's own change — the current address as `email`, the new one as `updateTo` and `requestType: "change-email-verification"` — and Better Auth's lifetime of an hour, to `/api/auth/verify-email` on the request's host, with the customer's profile page as `callbackURL`;
+5. sends it to the new address with `sendSupportEmailChangeEmail`, which renders the `ChangeEmail` template with the copy of `emails.support-email-change` ("Confirm your new email address — M'Arte"), which says customer care started the change, in the language of the order the customer named, and refuses with `INTERNAL_ERROR` when Resend does not take it.
+
+The address does not change yet. Opening the link runs Better Auth's `/verify-email` exactly like the second link of a customer's own change: `guardAuthRequest` refuses it once the account has taken another address since or another account has taken the new one, Better Auth moves the account and signs the customer in, and `finishEmailChange` records `auth.email_changed`, moves the newsletter subscription and the Stripe customer, signs out every other device signed in to the account, keeping only the browser the link was opened in, and tells the old address (see [Account: Changing the email address](/docs/features/account#changing-the-email-address)).
+
+Every attempt that gets past step 1 is recorded against the customer's account and credited to the admin, with the request's address, through `recordCustomerEmailChangeAudit` (`audit-log.email-change.server.ts`), as a warning under `customers`: `customer.email_change_requested` once the link is sent, and `customer.email_change_verification_failed` with `refusal` set to `mismatch` or `tooManyAttempts` when it is not. Both carry the new address and the order number as typed; the postal code is never recorded or logged. The toast names the address the link went to and closes the sheet, and a refusal keeps the sheet open with its reason.
 
 ## Export
 
