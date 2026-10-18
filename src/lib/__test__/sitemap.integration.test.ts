@@ -65,6 +65,7 @@ const insertProduct = (input: {
 beforeAll(() => {
   applyMigrationHistory(sqlite)
   sqlite.exec("delete from product_category; delete from product_collection;")
+  sqlite.prepare("update content_page set updated_at = ? where handle = 'about'").run(day("2026-10-08").getTime())
   sqlite.prepare("update content_page set updated_at = ? where handle = 'exchanges-and-returns'").run(day("2026-10-05").getTime())
   sqlite.prepare("update content_page set updated_at = ? where handle = 'faq'").run(day("2026-10-07").getTime())
   sqlite.prepare("update content_page set updated_at = ? where handle = 'privacy-policy'").run(day("2026-09-29").getTime())
@@ -113,14 +114,14 @@ afterAll(() => {
 })
 
 describe("listSitemapPages", () => {
-  it("lists the storefront's public pages, then the legal pages and the FAQ, active categories and collections and sellable products", async () => {
+  it("lists the storefront's public pages, then the About page, the legal pages and the FAQ, active categories and collections and sellable products", async () => {
     await expect(listSitemapPages()).resolves.toStrictEqual([
       { path: "/" },
-      { path: "/about" },
       { path: "/products" },
       { path: "/categories" },
       { path: "/collections" },
       { path: "/withdraw-from-contract" },
+      { lastModified: day("2026-10-08"), path: "/about" },
       { lastModified: day("2026-10-05"), path: "/exchanges-and-returns" },
       { lastModified: day("2026-10-07"), path: "/faq" },
       { lastModified: day("2026-09-29"), path: "/privacy-policy" },

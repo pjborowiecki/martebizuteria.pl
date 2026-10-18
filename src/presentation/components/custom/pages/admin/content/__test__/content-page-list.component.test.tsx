@@ -7,6 +7,11 @@ import { type ContentPage } from "~/src/modules/content-page/content-page.types"
 
 const PAGES = vi.hoisted((): ContentPage["adminListItem"][] => [
   {
+    handle: "about",
+    titles: { "en-US": "About M'Arte", "pl-PL": "O M'Arte" },
+    updatedAt: new Date("2026-10-18T10:00:00.000Z"),
+  },
+  {
     handle: "exchanges-and-returns",
     titles: { "en-US": "Exchanges and returns", "pl-PL": "Wymiana i zwroty" },
     updatedAt: new Date("2026-09-29T08:00:00.000Z"),
@@ -43,6 +48,7 @@ describe("ContentPageList", () => {
 
     expect(screen.getByRole("link", { name: /Exchanges and returns/u })).toHaveAttribute("href", "/admin/content/exchanges-and-returns")
     expect(screen.getByRole("link", { name: /Privacy policy/u })).toHaveAttribute("href", "/admin/content/privacy-policy")
+    expect(screen.getByRole("link", { name: /About M'Arte/u })).toHaveAttribute("href", "/admin/content/about")
   })
 
   it("shows where each page lives on the storefront and when it last changed", async () => {
@@ -50,6 +56,7 @@ describe("ContentPageList", () => {
 
     expect(screen.getByText("/privacy-policy")).toBeInTheDocument()
     expect(screen.getByText("/exchanges-and-returns")).toBeInTheDocument()
+    expect(screen.getByText("/about")).toBeInTheDocument()
     expect(screen.getByText(/Updated Oct 1, 2026/u)).toBeInTheDocument()
   })
 })

@@ -3,6 +3,7 @@ import { UUID_STRING_LENGTH } from "~/src/integrations/drizzle-orm/drizzle.utils
 import { ROUTES } from "~/src/routes"
 
 export const CONTENT_PAGE_HANDLE = {
+  ABOUT: "about",
   EXCHANGES_AND_RETURNS: "exchanges-and-returns",
   FAQ: "faq",
   PRIVACY_POLICY: "privacy-policy",
@@ -14,11 +15,13 @@ export const CONTENT_PAGE_HANDLES = [
   CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS,
   CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE,
   CONTENT_PAGE_HANDLE.FAQ,
+  CONTENT_PAGE_HANDLE.ABOUT,
 ] as const
 
 export type ContentPageHandle = (typeof CONTENT_PAGE_HANDLES)[number]
 
 export const CONTENT_PAGE_PATHS = {
+  [CONTENT_PAGE_HANDLE.ABOUT]: ROUTES.ABOUT,
   [CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS]: ROUTES.EXCHANGES_AND_RETURNS,
   [CONTENT_PAGE_HANDLE.FAQ]: ROUTES.FAQ,
   [CONTENT_PAGE_HANDLE.PRIVACY_POLICY]: ROUTES.PRIVACY_POLICY,

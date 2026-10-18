@@ -83,7 +83,7 @@ const revisedLocales = (): Record<string, string[]> =>
       ]),
   )
 
-const UNREVISED = { "exchanges-and-returns": [], faq: [], "privacy-policy": [], "terms-of-service": [] }
+const UNREVISED = { about: [], "exchanges-and-returns": [], faq: [], "privacy-policy": [], "terms-of-service": [] }
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -100,6 +100,7 @@ beforeEach(() => {
     MIGRATION.PRIVACY_POLICY_PAGE,
     MIGRATION.FAQ_PAGE,
     MIGRATION.SELLER_PLACEHOLDERS,
+    MIGRATION.ABOUT_PAGE,
   ]) {
     applyMigration(sqlite, migration)
   }
