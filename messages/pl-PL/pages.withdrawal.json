@@ -6,7 +6,7 @@
   "page": {
     "eyebrow": "Prawo odstąpienia od umowy",
     "title": "Odstąp od umowy",
-    "intro": "Jako konsument możesz odstąpić od umowy zawartej w naszym sklepie w ciągu 14 dni od otrzymania produktów, bez podawania przyczyny. Wypełnij ten formularz, aby wysłać nam oświadczenie o odstąpieniu od umowy. Potwierdzimy jego otrzymanie e-mailem na adres, z którego złożono zamówienie.",
+    "intro": "Jako konsument możesz odstąpić od umowy zawartej w naszym sklepie w ciągu 14 dni od otrzymania produktów, bez podawania przyczyny. Wypełnij ten formularz, aby wysłać nam oświadczenie o odstąpieniu od umowy. Potwierdzimy jego otrzymanie e-mailem na adres, z którego złożono zamówienie, albo na nowy adres konta, jeśli od tego czasu go zmieniono.",
     "accountHint": "Masz konto? Możesz też odstąpić od umowy na stronie zamówienia w <link>swoich zamówieniach</link>.",
     "orderNumber": "Numer zamówienia",
     "email": "Adres e-mail podany przy zamówieniu",
@@ -42,7 +42,7 @@
     "closed": "Termin na odstąpienie od umowy dla tego zamówienia minął albo zamówienie zostało anulowane. Jeśli uważasz, że to pomyłka, napisz do nas na adres {shopEmail}.",
     "alreadyWithdrawn": "Odstąpiono już od umowy dla całego tego zamówienia.",
     "submitted": "Dziękujemy za oświadczenie",
-    "submittedDescription": "Jeżeli zamówienie o tym numerze złożono z tego adresu e-mail i można jeszcze od niego odstąpić, zapisaliśmy Twoje oświadczenie o odstąpieniu od umowy i wysyłamy na ten adres potwierdzenie z jego treścią oraz datą i godziną, w której do nas dotarło. Jeżeli potwierdzenie nie dotrze w ciągu kilku minut, sprawdź numer zamówienia i adres e-mail w e-mailu z potwierdzeniem zamówienia i wyślij formularz ponownie albo napisz do nas na adres {shopEmail}."
+    "submittedDescription": "Jeżeli zamówienie o tym numerze złożono z tego adresu e-mail i można jeszcze od niego odstąpić, zapisaliśmy Twoje oświadczenie o odstąpieniu od umowy i wysyłamy potwierdzenie z jego treścią oraz datą i godziną, w której do nas dotarło, na adres, z którego złożono zamówienie, albo na nowy adres konta, jeśli od tego czasu go zmieniono. Jeżeli potwierdzenie nie dotrze w ciągu kilku minut, sprawdź numer zamówienia i adres e-mail w e-mailu z potwierdzeniem zamówienia i wyślij formularz ponownie albo napisz do nas na adres {shopEmail}."
   },
   "validation": {
     "nameRequired": "Podaj imię i nazwisko.",

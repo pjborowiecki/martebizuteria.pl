@@ -455,8 +455,7 @@ export const orderRecipientEmail = (): SQL<string> => {
   return sql<string>`case when ${orderAddressReplaced} then ${accountAddressOfOrder()} else ${order.email} end`
 }
 
-export const orderReachableAt = (email: string): SQL =>
-  or(eq(sql`lower(${orderRecipientEmail()})`, email), eq(accountAddressOfOrder(), email))!
+export const orderReachableAt = (email: string): SQL => or(eq(sql`lower(${order.email})`, email), eq(accountAddressOfOrder(), email))!
 
 export const getOrderTotalsForEmail = (orderId: string) =>
   db.query.order.findFirst({
