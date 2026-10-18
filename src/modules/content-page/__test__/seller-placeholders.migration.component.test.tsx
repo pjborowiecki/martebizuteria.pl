@@ -13,8 +13,6 @@ import { MIGRATION, applyMigration, applyMigrationHistoryBefore } from "~/src/pl
 
 import { I18N, type SupportedLocale } from "~/src/integrations/use-intl/i18n.config"
 
-import { CONTENT_PAGE_HANDLES } from "~/src/modules/content-page/content-page.constants"
-
 import { remarkSellerDetails } from "~/src/presentation/components/custom/pages/content-page/remark-seller-details"
 
 const pageRowsSchema = z.array(z.object({ bodies: z.string(), handle: z.string(), revised_ats: z.string(), updated_at: z.number() }))
@@ -61,7 +59,7 @@ const { Markdown: AsSeeded } = createMarkdownRenderer({ remarkPlugins: [remarkGf
 
 const renderedHtml = (element: JSX.Element): string => render(element).container.innerHTML
 
-const PAGES = CONTENT_PAGE_HANDLES.flatMap((handle) => I18N.SUPPORTED_LOCALES.map((locale) => [handle, locale] as const))
+const PAGES = seeded.flatMap(({ handle }) => I18N.SUPPORTED_LOCALES.map((locale) => [handle, locale] as const))
 
 afterEach(cleanup)
 

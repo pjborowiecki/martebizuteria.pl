@@ -65,6 +65,22 @@ test.describe("smoke", () => {
     })
   }
 
+  test("/en-US/about tells the brand story published in Content, without a last updated date, above the seller's details", async ({
+    page,
+    productPage,
+  }) => {
+    const response = await page.goto("/en-US/about")
+    await productPage.waitForAppReady()
+
+    expect(response?.status()).toBe(200)
+    const main = page.getByRole("main")
+    await expect(main.getByRole("heading", { level: 1 })).toHaveText("About M'Arte")
+    await expect(main.getByText("M'ARTE is jewellery made in Bochnia, in a goldsmith's workshop that has been working since 1978.")).toBeVisible()
+    await expect(main.getByText(/^We also believe the best pieces come about when they can be fitted to a person\./u)).toBeVisible()
+    await expect(main.getByText(/^Last updated /u)).toHaveCount(0)
+    await expect(main.getByRole("region", { name: "Contact details" })).toBeVisible()
+  })
+
   for (const path of PAGES_UNDER_POLICY) {
     test(`${path} hydrates under its content security policy without the browser refusing a script, style or request`, async ({
       page,
@@ -170,7 +186,7 @@ test.describe("smoke", () => {
     expect(await sitemap.text()).toContain('<xhtml:link rel="alternate" hreflang="en-US" href="http://127.0.0.1:3000/en-US"/>')
   })
 
-  test("lists the catalogue, the legal pages, the FAQ and the withdrawal form in the sitemap in both languages and leaves the blog out", async ({ request }) => {
+  test("lists the catalogue, the About page, the legal pages, the FAQ and the withdrawal form in the sitemap in both languages and leaves the blog out", async ({ request }) => {
     const sitemap = await (await request.get("/sitemap.xml")).text()
 
     expect(sitemap).toContain(`<loc>http://127.0.0.1:3000/products/${PRODUCTS.lapis.handle}</loc>`)
@@ -181,6 +197,7 @@ test.describe("smoke", () => {
     expect(sitemap).toContain("<loc>http://127.0.0.1:3000/faq</loc>")
     expect(sitemap).toContain("<loc>http://127.0.0.1:3000/withdraw-from-contract</loc>")
     expect(sitemap.match(/<loc>http:\/\/127\.0\.0\.1:3000\/faq<\/loc>/gu)).toHaveLength(1)
+    expect(sitemap.match(/<loc>http:\/\/127\.0\.0\.1:3000\/about<\/loc>/gu)).toHaveLength(1)
     expect(sitemap).toMatch(/<lastmod>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z<\/lastmod>/u)
     expect(sitemap).not.toContain("/blog")
   })

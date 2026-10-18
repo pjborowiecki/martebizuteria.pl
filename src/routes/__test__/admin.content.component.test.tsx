@@ -114,6 +114,13 @@ describe("the admin content editor route", () => {
     expect(screen.getByTestId("content-page-editor")).toHaveTextContent("privacy-policy")
   })
 
+  it("opens the About page in the same editor as the legal pages", async () => {
+    remote.page.mockResolvedValue({ handle: "about" })
+
+    await expect(loadEditor("about")).resolves.toBe("about")
+    expect(remote.page).toHaveBeenCalledWith("about")
+  })
+
   it("answers not found for a page the store does not have", async () => {
     await expect(loadEditor("terms")).rejects.toSatisfy(isNotFound)
     expect(remote.page).not.toHaveBeenCalledWith("terms")

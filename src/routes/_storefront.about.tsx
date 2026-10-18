@@ -1,33 +1,35 @@
 import { type JSX } from "react"
 
+import { useSuspenseQuery } from "@tanstack/react-query"
 import { createFileRoute } from "@tanstack/react-router"
-import { useTranslations } from "use-intl/react"
+import { useLocale, useTranslations } from "use-intl/react"
 
-import { messagesQueryOptions } from "~/src/integrations/use-intl/i18n.messages"
+import { CONTENT_PAGE_HANDLE } from "~/src/modules/content-page/content-page.constants"
+import { getContentPageQuery } from "~/src/modules/content-page/use-cases/get-content-page"
 
 import { type PageMeta, pageHead } from "~/src/lib/seo"
 
+import { ABOUT_PROSE_CLASS } from "~/src/presentation/components/custom/pages/content-page/_styles/content-page.styles"
+import { ContentPageMarkdown } from "~/src/presentation/components/custom/pages/content-page/content-page-markdown"
 import { SellerContactDetails } from "~/src/presentation/components/custom/seller-contact-details"
 
-import type aboutMessages from "~/messages/en-US/pages.about.json"
 import { ABOUT_CONTACT_HASH } from "~/src/routes"
 
 const AboutPage = (): JSX.Element => {
   const t = useTranslations("pages.about")
+  const locale = useLocale()
+  const { data: page } = useSuspenseQuery(getContentPageQuery(CONTENT_PAGE_HANDLE.ABOUT, locale))
 
   return (
     <main className="storefront-container pt-8 pb-24 lg:pt-10 lg:pb-32">
       <header className="mb-8 max-w-2xl space-y-3 lg:mb-10">
         <p className="text-[10px] tracking-[0.28em] text-muted-foreground uppercase">{t("eyebrow")}</p>
-        <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl lg:text-6xl">{t("about")}</h1>
-        <p className="text-base/relaxed text-foreground md:text-lg/relaxed">{t("description")}</p>
+        <h1 className="font-serif text-4xl leading-tight tracking-tight md:text-5xl lg:text-6xl">{page.title}</h1>
+        <p className="text-base/relaxed text-foreground md:text-lg/relaxed">{page.description}</p>
       </header>
 
-      <div className="max-w-2xl space-y-6">
-        <p className="text-base/relaxed text-muted-foreground md:text-lg/relaxed">{t("paragraph1")}</p>
-        <p className="text-base/relaxed text-muted-foreground md:text-lg/relaxed">{t("paragraph2")}</p>
-        <p className="text-base/relaxed text-muted-foreground md:text-lg/relaxed">{t("paragraph3")}</p>
-        <p className="text-base/relaxed text-foreground md:text-lg/relaxed">{t("paragraph4")}</p>
+      <div className={`max-w-2xl ${ABOUT_PROSE_CLASS}`}>
+        <ContentPageMarkdown body={page.body} />
       </div>
 
       <section
@@ -49,13 +51,9 @@ export const Route = createFileRoute("/_storefront/about")({
   component: AboutPage,
   head: pageHead,
   loader: async ({ context }) => {
-    const { locale } = context
-    const messages = await context.queryClient.query(messagesQueryOptions<typeof aboutMessages>({ locale, namespace: "pages.about" }))
+    const page = await context.queryClient.query(getContentPageQuery(CONTENT_PAGE_HANDLE.ABOUT, context.locale))
 
-    return {
-      description: messages.description,
-      title: messages.about,
-    } satisfies PageMeta
+    return { description: page.description, title: page.title } satisfies PageMeta
   },
   staticData: {
     namespaces: ["pages.about"],

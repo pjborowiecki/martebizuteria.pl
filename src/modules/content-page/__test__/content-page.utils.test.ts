@@ -24,11 +24,12 @@ describe("isContentPageHandle", () => {
     [CONTENT_PAGE_HANDLE.EXCHANGES_AND_RETURNS],
     [CONTENT_PAGE_HANDLE.TERMS_OF_SERVICE],
     [CONTENT_PAGE_HANDLE.FAQ],
+    [CONTENT_PAGE_HANDLE.ABOUT],
   ])("accepts the page handle %s", (handle) => {
     expect(isContentPageHandle(handle)).toBe(true)
   })
 
-  it.each([["about"], [""], ["Privacy-Policy"]])("refuses %j, which no editable page uses", (handle) => {
+  it.each([["products"], [""], ["Privacy-Policy"]])("refuses %j, which no editable page uses", (handle) => {
     expect(isContentPageHandle(handle)).toBe(false)
   })
 })

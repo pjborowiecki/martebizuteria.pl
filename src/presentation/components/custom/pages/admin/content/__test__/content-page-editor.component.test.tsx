@@ -49,11 +49,11 @@ const seededPage = (overrides: Partial<ContentPage["select"]> = {}): ContentPage
   ...overrides,
 })
 
-const renderEditor = async () => {
+const renderEditor = async (handle: ContentPage["select"]["handle"] = "exchanges-and-returns") => {
   const router = createTestRouter()
   renderWithProviders(
     <Suspense fallback={<p>loading</p>}>
-      <ContentPageEditor handle="exchanges-and-returns" />
+      <ContentPageEditor handle={handle} />
     </Suspense>,
     { router },
   )
@@ -96,6 +96,23 @@ describe("ContentPageEditor fields", () => {
 
     await userEvent.click(screen.getByRole("tab", { name: "Polish" }))
     expect(titleInput()).toHaveValue("Zwroty")
+  })
+
+  it("edits the About page like the legal pages and links to it on the storefront in the language being edited", async () => {
+    remote.page = seededPage({
+      bodies: { "en-US": "We make forms in silver and gold.", "pl-PL": "Tworzymy srebrne i złote formy." },
+      descriptions: { "en-US": "Jewellery made in Bochnia.", "pl-PL": "Biżuteria tworzona w Bochni." },
+      handle: "about",
+      titles: { "en-US": "About M'Arte", "pl-PL": "O M'Arte" },
+    })
+    await renderEditor("about")
+
+    expect(screen.getByRole("heading", { level: 1, name: "About M'Arte" })).toBeInTheDocument()
+    expect(titleInput()).toHaveValue("O M'Arte")
+    expect(screen.getByRole("link", { name: "View page" })).toHaveAttribute("href", "/about")
+
+    await userEvent.click(screen.getByRole("tab", { name: "English" }))
+    expect(screen.getByRole("link", { name: "View page" })).toHaveAttribute("href", "/en-US/about")
   })
 })
 

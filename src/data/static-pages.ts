@@ -4,7 +4,6 @@ import { ROUTES } from "~/src/routes"
 
 export const STATIC_PAGES: readonly string[] = [
   ROUTES.HOME,
-  ROUTES.ABOUT,
   ROUTES.PRODUCTS,
   ROUTES.CATEGORIES,
   ROUTES.COLLECTIONS,
