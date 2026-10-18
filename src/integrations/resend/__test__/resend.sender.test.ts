@@ -115,6 +115,30 @@ describe("verifyEmailSender settings", () => {
     expect(emailsSend).not.toHaveBeenCalled()
   })
 
+  it("refuses the shop's own address outside production, so test orders never mail the shop, without calling Resend", async () => {
+    await expect(check({ environment: "preview", from: "kontakt@martebizuteria.pl" })).rejects.toThrow(
+      "kontakt@martebizuteria.pl is the shop's own address. preview sends its e-mails from RESEND_EMAIL_FROM and sends the notices about its test orders to it, so they would reach the shop. Use a developer's address on another domain.",
+    )
+    await expect(check({ environment: "development", from: "sklep@Mail.MarteBizuteria.pl" })).rejects.toThrow(
+      "development sends its e-mails from RESEND_EMAIL_FROM",
+    )
+    expect(domainsList).not.toHaveBeenCalled()
+  })
+
+  it("lets production send as the shop, and preview as an address on a domain that merely ends like the shop's", async () => {
+    domainsList.mockResolvedValue(page([domain("martebizuteria.pl"), domain("notmartebizuteria.pl")]))
+    domainsGet.mockResolvedValue({
+      data: { ...domain("martebizuteria.pl"), object: "domain", records: [], status: "verified" },
+      error: null,
+      headers: {},
+    })
+
+    await expect(check({ from: "kontakt@martebizuteria.pl" })).resolves.toBe(
+      "Resend can send as kontakt@martebizuteria.pl: martebizuteria.pl is verified for sending.",
+    )
+    await expect(check({ environment: "preview", from: "test@notmartebizuteria.pl" })).resolves.toContain("is verified for sending")
+  })
+
   it("accepts Resend's onboarding sender in development once Resend accepts the key", async () => {
     domainsList.mockResolvedValueOnce(page([])).mockResolvedValueOnce(RESTRICTED_KEY)
 
