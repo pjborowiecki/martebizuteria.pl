@@ -84,6 +84,10 @@ const newsletter = await import("~/src/modules/newsletter/newsletter.address-cha
 
 const HOUR_MS = 3_600_000
 
+const ELEVEN_MINUTES_MS = 660_000
+
+const SIGN_IN_ATTEMPTS_PER_MINUTE = 5
+
 const errorBody = z.object({ code: z.string() })
 
 const linkProps = z.object({ verificationUrl: z.string() })
@@ -144,8 +148,18 @@ const signedIn = async (email: string, ip: string): Promise<Readonly<{ browser: 
   return { browser, userId }
 }
 
+const askToChangeEmail = (browser: AuthBrowser, newEmail: string): Promise<Response> =>
+  browser.post("/change-email", { newEmail, password: CUSTOMER_PASSWORD })
+
+const signedInWithGoogleOnly = async (email: string, ip: string): Promise<Readonly<{ browser: AuthBrowser; userId: string }>> => {
+  const account = await signedIn(email, ip)
+  sqlite.prepare("delete from account where user_id = ? and provider_id = 'credential'").run(account.userId)
+
+  return account
+}
+
 const changeEmail = async (browser: AuthBrowser, from: string, to: string): Promise<Response> => {
-  await browser.post("/change-email", { newEmail: to })
+  await askToChangeEmail(browser, to)
   await browser.follow(await linkSentTo(from, changeEmailCopy.subject))
 
   return browser.follow(await linkSentTo(to, verifyEmailCopy.subject))
@@ -318,7 +332,7 @@ describe("a customer changing their sign-in address", () => {
     await createPasswordCustomer("taken@marte.test")
     const { browser, userId } = await signedIn("bogna@marte.test", "198.51.100.13")
 
-    const response = await browser.post("/change-email", { newEmail: "taken@marte.test" })
+    const response = await askToChangeEmail(browser, "taken@marte.test")
 
     expect(response.status).toBe(200)
     expect(stubs.sendEmail).not.toHaveBeenCalled()
@@ -326,10 +340,98 @@ describe("a customer changing their sign-in address", () => {
   })
 })
 
+describe("asking to change the sign-in address", () => {
+  it("refuses without the current password, and sends nothing", async () => {
+    const { browser, userId } = await signedIn("halina@marte.test", "198.51.100.25")
+
+    const response = await browser.post("/change-email", { newEmail: "halina@new.example" })
+
+    expect(response.status).toBe(400)
+    await expect(response.json()).resolves.toMatchObject({ code: "INVALID_PASSWORD" })
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+    expect(currentEmailOf(userId)).toBe("halina@marte.test")
+  })
+
+  it("answers a wrong password the same way whether or not another account has the new address", async () => {
+    const takenAddress = "ignacy-taken@marte.test"
+    await createPasswordCustomer(takenAddress)
+    const { browser } = await signedIn("ignacy@marte.test", "198.51.100.26")
+
+    const answers = await Promise.all(
+      ["ignacy@new.example", takenAddress].map(async (newEmail) => {
+        const response = await browser.post("/change-email", { newEmail, password: `${CUSTOMER_PASSWORD}-wrong` })
+
+        return { body: errorBody.parse(await response.json()), status: response.status }
+      }),
+    )
+
+    expect(answers).toStrictEqual([
+      { body: { code: "INVALID_PASSWORD" }, status: 400 },
+      { body: { code: "INVALID_PASSWORD" }, status: 400 },
+    ])
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it("sends the confirmation to the current address once the password is right", async () => {
+    const { browser } = await signedIn("jadwiga@marte.test", "198.51.100.27")
+
+    const response = await askToChangeEmail(browser, "jadwiga@new.example")
+
+    expect(response.status).toBe(200)
+    await waitForEmail("jadwiga@marte.test", changeEmailCopy.subject)
+  })
+
+  it("counts every attempt against the same limit as signing in, so guessing stops after five a minute", async () => {
+    const { browser } = await signedIn("kamil@marte.test", "198.51.100.28")
+    const guesses: number[] = []
+    for (let attempt = 0; attempt < SIGN_IN_ATTEMPTS_PER_MINUTE; attempt += 1) {
+      const guess = await browser.post("/change-email", {
+        newEmail: "kamil@new.example",
+        password: `${CUSTOMER_PASSWORD}-${String(attempt)}`,
+      })
+      guesses.push(guess.status)
+    }
+
+    const response = await askToChangeEmail(browser, "kamil@new.example")
+
+    expect(guesses).toStrictEqual([400, 400, 400, 400, 400])
+    expect(response.status).toBe(429)
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+  })
+
+  it("leaves a visitor who is not signed in to Better Auth's own refusal", async () => {
+    const response = await openAuthBrowser("198.51.100.29").post("/change-email", { newEmail: "nobody@new.example" })
+
+    expect(response.status).toBe(401)
+  })
+})
+
+describe("asking to change the address of an account without a password", () => {
+  it("needs no password from a session started in the last ten minutes", async () => {
+    const { browser } = await signedInWithGoogleOnly("lena@marte.test", "198.51.100.30")
+
+    const response = await browser.post("/change-email", { newEmail: "lena@new.example" })
+
+    expect(response.status).toBe(200)
+    await waitForEmail("lena@marte.test", changeEmailCopy.subject)
+  })
+
+  it("asks to sign in again once the session is older than ten minutes", async () => {
+    const { browser, userId } = await signedInWithGoogleOnly("marek@marte.test", "198.51.100.31")
+    sqlite.prepare("update session set created_at = ? where user_id = ?").run(Date.now() - ELEVEN_MINUTES_MS, userId)
+
+    const response = await browser.post("/change-email", { newEmail: "marek@new.example" })
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ code: "SESSION_NOT_FRESH" })
+    expect(stubs.sendEmail).not.toHaveBeenCalled()
+  })
+})
+
 describe("a link to confirm an address", () => {
   it("is refused once another account has taken the new address in the meantime", async () => {
     const { browser, userId } = await signedIn("cezary@marte.test", "198.51.100.14")
-    await browser.post("/change-email", { newEmail: "cezary@new.example" })
+    await askToChangeEmail(browser, "cezary@new.example")
     await browser.follow(await linkSentTo("cezary@marte.test", changeEmailCopy.subject))
     const verification = await linkSentTo("cezary@new.example", verifyEmailCopy.subject)
     await createPasswordCustomer("cezary@new.example")

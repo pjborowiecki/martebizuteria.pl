@@ -1,6 +1,7 @@
-import { createAuthMiddleware } from "better-auth/api"
+import { type GenericEndpointContext } from "better-auth"
+import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api"
 
-import { VERIFY_EMAIL_PATH } from "~/src/integrations/better-auth/auth.constants"
+import { EMAIL_CHANGE_RECENT_SIGN_IN_MINUTES, SESSION_NOT_FRESH, VERIFY_EMAIL_PATH } from "~/src/integrations/better-auth/auth.constants"
 import { readLinkPayload } from "~/src/integrations/better-auth/auth.email-link.server"
 import { confirmedEmailChangeSchema } from "~/src/integrations/better-auth/auth.zod"
 import { updateStripeCustomerEmail } from "~/src/integrations/stripe/stripe.customer.server"
@@ -16,6 +17,25 @@ import { deleteVerificationsOfUser } from "~/src/modules/verification/verificati
 
 import { scheduleBackgroundWork } from "~/src/lib/background"
 import { auditRequestIp } from "~/src/lib/request"
+
+const MS_PER_MINUTE = 60_000
+
+const signedInRecently = ({ createdAt }: Readonly<{ createdAt: Date }>): boolean =>
+  Date.now() - createdAt.getTime() < EMAIL_CHANGE_RECENT_SIGN_IN_MINUTES * MS_PER_MINUTE
+
+export const confirmEmailChangeOwner = async (ctx: GenericEndpointContext): Promise<void> => {
+  const requester = await getSessionFromCtx(ctx)
+  if (requester === null) {
+    return
+  }
+
+  const credential = await ctx.context.internalAdapter.findCredentialAccount(requester.user.id)
+  if (typeof credential?.password === "string") {
+    await ctx.context.password.checkPassword(requester.user.id, ctx)
+  } else if (!signedInRecently(requester.session)) {
+    throw APIError.from("FORBIDDEN", SESSION_NOT_FRESH)
+  }
+}
 
 const attempt = async (step: string, task: Promise<void>): Promise<void> => {
   try {

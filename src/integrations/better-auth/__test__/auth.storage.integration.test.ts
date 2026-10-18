@@ -109,6 +109,7 @@ describe("better Auth database storage", () => {
     expect(auth.options.verification.storeInDatabase).toBe(true)
     expect(auth.options.rateLimit).toMatchObject({
       customRules: {
+        "/change-email": { max: 5, window: 60 },
         "/request-password-reset": { max: 3, window: 60 },
         "/reset-password": { max: 5, window: 60 },
         "/sign-in/email": { max: 5, window: 60 },

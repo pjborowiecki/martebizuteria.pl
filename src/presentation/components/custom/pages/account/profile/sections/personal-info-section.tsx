@@ -143,7 +143,12 @@ export const PersonalInfoSection = ({
         />
       </div>
 
-      <ChangeEmailDialog currentEmail={profile.email} onOpenChange={setChangingEmail} open={changingEmail} />
+      <ChangeEmailDialog
+        currentEmail={profile.email}
+        hasPassword={profile.hasPassword}
+        onOpenChange={setChangingEmail}
+        open={changingEmail}
+      />
     </section>
   )
 }
