@@ -1,6 +1,6 @@
 ---
 title: "Klienci w panelu"
-description: "Siatka klientów i jej statystyki, ekran szczegółów z wykresami wydatków, siatką zamówień klienta i osią czasu aktywności oraz dwie mutacje."
+description: "Siatka klientów i jej statystyki, ekran szczegółów z wykresami wydatków, siatką zamówień klienta i osią czasu aktywności, dwie mutacje oraz zmiana adresu e-mail klienta rozpoczynana przez obsługę klienta."
 ---
 
 Tabela `user` jest współdzielona z Better Auth, więc „klienci” to widok na dane uwierzytelniania złączone z agregatami zamówień. Moduł to `src/modules/user`.
@@ -102,7 +102,7 @@ return computeAdminCustomerStatsFromAggregates({
 
 `/admin/customers/$id` czyta `getAdminCustomerQuery(id, locale)` przez `useSuspenseQuery` i rzuca `notFound()` przez `ensureAdminCustomerDetail`, gdy wiersza brak.
 
-`getAdminCustomer` (`authorized({ user: ["get"] })`) to najszerszy odczyt w całym kodzie — jedenaście odczytów, najpierw `getUserById`, a potem równolegle dziesięć pozostałych: dziewięć kolejnych akcesorów z `user.accessors.ts` i `getUserEmailHistory` z `user-email-history.accessors.ts`:
+`getAdminCustomer` (`authorized({ user: ["get"] })`) to najszerszy odczyt w całym kodzie — dwanaście odczytów, najpierw `getUserById`, a potem równolegle jedenaście pozostałych: dziewięć kolejnych akcesorów z `user.accessors.ts`, `getUserEmailHistory` z `user-email-history.accessors.ts` i `getOrdersPlacedWhileSignedIn` z `order.accessors.ts`:
 
 | Akcesor                               | Zasila                                                                                                               |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
@@ -117,6 +117,7 @@ return computeAdminCustomerStatsFromAggregates({
 | `getLatestSessionActivityQuery`       | `formatAdminCustomerLastActive`                                                                                      |
 | `getCustomerAuditTimelineQuery`       | `buildAdminCustomerTimeline`                                                                                         |
 | `getUserEmailHistory`                 | `buildAdminCustomerEmailHistory`: każdy adres, którego konto używało, od najnowszego                                 |
+| `getOrdersPlacedWhileSignedIn`        | `signedInOrderCount`, od którego zależy przycisk **Zmień e-mail** (zobacz [niżej](#zmiana-adresu-e-mail-klienta))    |
 
 „Ostatnia aktywność” to `updatedAt` najnowszej sesji, a gdy żadna sesja nie została, ostatnie zamówienie albo `updatedAt` wiersza, zapisane przez `formatRelativeFromNow`: przez tydzień jako czas względny w języku strony, potem jako data.
 
@@ -191,7 +192,7 @@ Kolumna zawierająca zwykły tekst, a nie JSON, jest traktowana jako notatka, wi
 - upsertuje domyślny adres przez `upsertDefaultAddressForUser`, ale tylko gdy przejdzie `hasAddressInput` — `address1` i `city` muszą być niepuste
 - gdy przysłany `countryCode` jest pusty, używa kraju z istniejącego domyślnego adresu, a nie zapisuje pustego napisu, i całkowicie pomija zapis adresu, jeśli kraju wciąż nie ma
 
-**Nie** zmienia adresu e-mail, nazwy, roli ani stanu bana. Adres e-mail zmienia się tylko na stronie samego konta, z potwierdzeniem z obu adresów (zobacz [Konto: Zmiana adresu e-mail](/docs/features/account#zmiana-adresu-e-mail)); pozostałe to operacje Better Auth. Po zapisach zapisuje `customer.updated` przypisane administratorowi, z adresem e-mail klienta jako celem i jego identyfikatorem jako zasobem. Zapisuje wiersz bezpośrednio, a nie przez Better Auth, więc żaden hook `databaseHooks.user` się nie uruchamia: `CustomerFormProvider` unieważnia szczegóły, siatkę i statystyki w przeglądarce edytującego administratora.
+**Nie** zmienia adresu e-mail, nazwy, roli ani stanu bana. Adres e-mail zmienia się tylko przez link potwierdzony z nowego adresu, wysłany, gdy właściciel konta zmienia adres na stronie konta (zobacz [Konto: Zmiana adresu e-mail](/docs/features/account#zmiana-adresu-e-mail)), albo gdy zmianę rozpoczyna obsługa klienta na tej stronie (zobacz [niżej](#zmiana-adresu-e-mail-klienta)); pozostałe to operacje Better Auth. Po zapisach zapisuje `customer.updated` przypisane administratorowi, z adresem e-mail klienta jako celem i jego identyfikatorem jako zasobem. Zapisuje wiersz bezpośrednio, a nie przez Better Auth, więc żaden hook `databaseHooks.user` się nie uruchamia: `CustomerFormProvider` unieważnia szczegóły, siatkę i statystyki w przeglądarce edytującego administratora.
 
 `deleteCustomer` (`use-cases/delete-customer.ts`), `authorized({ user: ["delete"] })`, ma cztery zabezpieczenia:
 
@@ -225,6 +226,24 @@ return { goodbyeEmailSent, ok: true as const, userId }
 `eraseAccountData` to ten sam krok, który przy usunięciu konta przez klienta uruchamia `beforeDelete` w Better Auth: usuwa klienta Stripe powiązanego z kontem razem z zapisanymi kartami, a potem wpisy konta w dzienniku zdarzeń i subskrypcję newslettera (zobacz [Konto: Usunięcie konta](/docs/features/account#usunięcie-konta)). Gdy Stripe nie może usunąć klienta, nic nie zostaje usunięte, zapisuje się `customer.deletion_failed`, a `useDeleteCustomer` pokazuje „Stripe nie usunął profilu klienta ani zapisanych kart, więc konto nie zostało usunięte. Spróbuj ponownie za kilka minut. Błąd zapisano w dzienniku zdarzeń.” Okno potwierdzenia, `rowActions.deleteDescription`, wymienia, co zostanie usunięte, i mówi, że zamówienia i płatności pozostaną w dokumentacji księgowej przez 5 lat.
 
 Ponieważ usunięcie idzie przez Better Auth, jego `databaseHooks.user.delete.after` zapisuje `customer.deleted` przypisane administratorowi, którego sesja wywołała `removeUser`, z adresem e-mail usuniętego klienta jako celem, i działają kaskady na `session`, `account`, `address`, `wishlist_item`, `two_factor` i `user_email_history`, natomiast `order.user_id`, `checkout.user_id` i `discount_redemption.user_id` mają `onDelete: "set null"` — zamówienia przeżywają więc jako zamówienia gościa. Jeśli później jakieś konto zweryfikuje ostatni adres usuniętego konta, `claimGuestOrdersForUser` przypisze mu zamówienia złożone z tego adresu jak każde inne zamówienie gościa; zamówienia złożone z wcześniejszego adresu mają `keptFromClaims` i zostają nieprzypisane (zobacz [Konto: zamówienia gości na koncie](/docs/features/account#zamówienia-gości-na-koncie)).
+
+## Zmiana adresu e-mail klienta
+
+Gdy klient nie ma już dostępu do skrzynki, którą loguje się na konto, albo adres zawiera literówkę, obsługa klienta może przenieść konto na nowy adres z jego strony. **Zmień e-mail** w nagłówku, obok **Edytuj klienta**, otwiera `customer-email-change-sheet.tsx`, panel zbudowany tak jak w Ustawieniach › Zespół (`SettingsSheet`, `SettingsFormSection`, te same pola, przyciski i komunikaty). Na koncie z dostępem do panelu przycisku nie ma, bo takie konto zmienia adres samo w [Ustawieniach › Moje konto](/docs/features/admin-settings#moje-konto), a na koncie bez zamówienia złożonego po zalogowaniu jest wyszarzony, z podpowiedzią „Wymaga zamówienia złożonego po zalogowaniu na to konto, które pozwoli sprawdzić tożsamość.”, tak jak strona zamówienia objaśnia zablokowaną akcję. Który przypadek zachodzi, mówi stronie `signedInOrderCount` w szczegółach.
+
+Panel prosi o numer jednego z zamówień klienta i kod pocztowy adresu dostawy tego zamówienia, oba tak, jak podaje je klient, oraz o nowy adres obok obecnego, i wymienia zasady, którym podlega zmiana. Liczy się tylko zamówienie złożone po zalogowaniu na to konto: takie, którego wiersz `checkout` ma `user_id` konta, tak jak samo zamówienie. Zamówienie gościa opłacone adresem konta samo do niego dołącza (zobacz [Konto: Zamówienia gości na koncie](/docs/features/account#zamówienia-gości-na-koncie)), więc inaczej wystarczyłoby znać adres konta, żeby złożyć zamówienie z własnym adresem dostawy i przejść sprawdzenie.
+
+`requestCustomerEmailChange` (`use-cases/request-customer-email-change.ts`), `authorized({ user: ["update"] })`, sprawdza dane przez `userZodSchemas.customerEmailChangeInput`, a potem:
+
+1. odrzuca konto, którego nie ma (`ERROR_CODES.NOT_FOUND`), konto z dostępem do panelu (`FORBIDDEN`), adres, który konto już ma, bez względu na wielkość liter (`CONFLICT`), i adres, który według `getCurrentAddressHolder` należy teraz do innego konta (`CONFLICT`), każde z powodem z `CUSTOMER_EMAIL_CHANGE_ERROR`;
+2. liczy próbę przez `withinRateLimit` pod `customer-email-change:<id konta>`, najwyżej `CUSTOMER_EMAIL_CHANGE_ATTEMPTS.MAX` (5) na godzinę na konto, bez względu na to, kto pyta, i odrzuca każdą kolejną próbę w tej godzinie kodem `TOO_MANY_REQUESTS`, nawet z poprawnymi danymi, więc sprawdzenia nie da się użyć do ich zgadywania;
+3. szuka wśród `getOrdersPlacedWhileSignedIn` zamówienia, którego numer i kod pocztowy dostawy pasują jednocześnie, porównane bez wielkości liter, spacji i znaków interpunkcyjnych, a gdy takiego nie ma, odrzuca kodem `FORBIDDEN`, nie mówiąc, która z dwóch danych nie pasuje;
+4. podpisuje link funkcją `createEmailVerificationToken` z samego Better Auth, z treścią, jaką `changeEmail` z Better Auth nadaje drugiemu krokowi zmiany wykonywanej przez klienta — obecny adres jako `email`, nowy jako `updateTo` i `requestType: "change-email-verification"` — i z godzinną ważnością Better Auth, na `/api/auth/verify-email` na hoście żądania, ze stroną profilu klienta jako `callbackURL`;
+5. wysyła go na nowy adres przez `sendSupportEmailChangeEmail`, które renderuje szablon `ChangeEmail` z tekstem z `emails.support-email-change` („Potwierdź nowy adres e-mail — M'Arte”), mówiącym, że zmianę rozpoczęła obsługa klienta, w języku zamówienia podanego przez klienta, i odrzuca kodem `INTERNAL_ERROR`, gdy Resend go nie przyjmie.
+
+Adres jeszcze się nie zmienia. Otwarcie linku uruchamia `/verify-email` z Better Auth dokładnie tak jak drugi link zmiany wykonywanej przez klienta: `guardAuthRequest` odrzuca go, gdy konto zdążyło przyjąć inny adres albo nowy adres zajęło inne konto, Better Auth przenosi konto i loguje klienta, a `finishEmailChange` zapisuje `auth.email_changed`, przenosi subskrypcję newslettera i klienta Stripe, wylogowuje konto na wszystkich pozostałych urządzeniach, zostawiając tylko przeglądarkę, w której otwarto link, i informuje stary adres (zobacz [Konto: Zmiana adresu e-mail](/docs/features/account#zmiana-adresu-e-mail)).
+
+Każda próba, która przejdzie krok 1, trafia do dziennika zdarzeń dla konta klienta i jest przypisana administratorowi, z adresem żądania, przez `recordCustomerEmailChangeAudit` (`audit-log.email-change.server.ts`), jako ostrzeżenie w kategorii `customers`: `customer.email_change_requested`, gdy link zostanie wysłany, i `customer.email_change_verification_failed` z `refusal` równym `mismatch` albo `tooManyAttempts`, gdy nie zostanie. Obie mają nowy adres i numer zamówienia we wpisanej postaci; kod pocztowy nigdy nie jest zapisywany ani logowany. Komunikat podaje adres, na który poszedł link, i zamyka panel, a odmowa zostawia panel otwarty i podaje jej powód.
 
 ## Eksport
 
