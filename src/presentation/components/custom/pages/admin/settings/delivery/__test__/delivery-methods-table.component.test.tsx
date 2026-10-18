@@ -12,6 +12,7 @@ import {
   deliveryMethod,
   methodRow,
   renderDelivery,
+  showArchivedMethods,
   user,
 } from "~/src/presentation/components/custom/pages/admin/settings/delivery/__test__/delivery-fixtures"
 
@@ -75,10 +76,11 @@ afterEach(() => {
 })
 
 describe("DeliveryMethodsTable list", () => {
-  it("lists every method in checkout order with its type, carrier, price and status", () => {
+  it("lists the current methods in checkout order with their type, carrier, price and status, leaving archived ones out", () => {
     renderDelivery(<DeliveryMethodsTable />)
 
-    const [first, second, third] = bodyRows()
+    const [first, second] = bodyRows()
+    expect(bodyRows()).toHaveLength(2)
     expect(first).toHaveTextContent("InPost courier")
     expect(first).toHaveTextContent("Courier")
     expect(first).toHaveTextContent("InPost")
@@ -86,9 +88,19 @@ describe("DeliveryMethodsTable list", () => {
     expect(first).toHaveTextContent("Offered")
     expect(second).toHaveTextContent("InPost parcel locker")
     expect(second).toHaveTextContent("Hidden")
-    expect(third).toHaveTextContent("Pickup at the atelier")
-    expect(third).toHaveTextContent("Free")
-    expect(third).toHaveTextContent("Archived")
+    expect(screen.queryByText("Pickup at the atelier")).not.toBeInTheDocument()
+  })
+
+  it("lists only the archived methods, with their price and status, once the admin asks for them", async () => {
+    renderDelivery(<DeliveryMethodsTable />)
+
+    await showArchivedMethods()
+
+    expect(bodyRows()).toHaveLength(1)
+    expect(bodyRows()[0]).toHaveTextContent("Pickup at the atelier")
+    expect(bodyRows()[0]).toHaveTextContent("Free")
+    expect(bodyRows()[0]).toHaveTextContent("Archived")
+    expect(handle("Pickup at the atelier")).toBeDisabled()
   })
 
   it("says when a method is hidden because its carrier is switched off", () => {
@@ -149,7 +161,7 @@ describe("DeliveryMethodsTable list", () => {
 })
 
 describe("DeliveryMethodsTable filters", () => {
-  it("shows only the hidden methods from their card, and everything again on a second click", async () => {
+  it("shows only the hidden methods from their card, and every current method again on a second click", async () => {
     renderDelivery(<DeliveryMethodsTable />)
     const hiddenCard = screen.getByRole("button", { name: /^Hidden 1/u })
 
@@ -162,33 +174,41 @@ describe("DeliveryMethodsTable filters", () => {
 
     await user().click(hiddenCard)
 
-    expect(bodyRows()).toHaveLength(3)
+    expect(bodyRows()).toHaveLength(2)
   })
 
-  it("filters by status from the toolbar and back to all statuses", async () => {
+  it("filters by status from the toolbar and back to every method but the archived ones", async () => {
     renderDelivery(<DeliveryMethodsTable />)
 
     await user().click(screen.getByRole("combobox", { name: "Filter by status" }))
     await user().click(await screen.findByRole("option", { name: "Archived" }))
 
     expect(bodyRows()).toHaveLength(1)
+    expect(bodyRows()[0]).toHaveTextContent("Pickup at the atelier")
     expect(screen.getByRole("button", { name: /^Archived 1/u })).toHaveAttribute("aria-pressed", "true")
 
     await user().click(screen.getByRole("combobox", { name: "Filter by status" }))
-    await user().click(await screen.findByRole("option", { name: "All statuses" }))
+    await user().click(await screen.findByRole("option", { name: "Offered" }))
 
-    expect(bodyRows()).toHaveLength(3)
+    expect(bodyRows()).toHaveLength(1)
+    expect(bodyRows()[0]).toHaveTextContent("InPost courier")
+
+    await user().click(screen.getByRole("combobox", { name: "Filter by status" }))
+    await user().click(await screen.findByRole("option", { name: "All but archived" }))
+
+    expect(bodyRows()).toHaveLength(2)
+    expect(screen.queryByText("Pickup at the atelier")).not.toBeInTheDocument()
   })
 
   it("finds a method by its name in either language or its carrier, and stops reordering while searching", async () => {
     renderDelivery(<DeliveryMethodsTable />)
 
-    fireEvent.change(screen.getByPlaceholderText("Search delivery methods..."), { target: { value: "atelier" } })
+    fireEvent.change(screen.getByPlaceholderText("Search delivery methods..."), { target: { value: "kurier" } })
 
     await waitFor(() => {
       expect(bodyRows()).toHaveLength(1)
     })
-    expect(handle("Pickup at the atelier")).toBeDisabled()
+    expect(handle("InPost courier")).toBeDisabled()
 
     fireEvent.change(screen.getByPlaceholderText("Search delivery methods..."), { target: { value: "paczkomat" } })
 
@@ -220,18 +240,14 @@ describe("DeliveryMethodsTable reordering", () => {
     })
   })
 
-  it("lists archived methods after the offered ones and keeps them out of the checkout order", async () => {
+  it("keeps archived methods out of the checkout order, wherever the list holds them", async () => {
     renderDelivery(<DeliveryMethodsTable />, { methods: [PICKUP, COURIER, LOCKER] })
 
-    expect(bodyRows()[2]).toHaveTextContent("Pickup at the atelier")
-    expect(handle("Pickup at the atelier")).toBeDisabled()
+    expect(bodyRows()[0]).toHaveTextContent("InPost courier")
+    expect(bodyRows()[1]).toHaveTextContent("InPost parcel locker")
 
     fireEvent.keyDown(handle("InPost parcel locker"), { key: "ArrowDown" })
-    fireEvent.dragStart(handle("InPost courier"), { dataTransfer: { effectAllowed: "", setData: vi.fn() } })
-    fireEvent.dragEnter(methodRow("Pickup at the atelier"))
-    fireEvent.dragEnd(handle("InPost courier"))
 
-    expect(bodyRows()[0]).toHaveTextContent("InPost courier")
     expect(mocks.reorder).not.toHaveBeenCalled()
 
     fireEvent.keyDown(handle("InPost courier"), { key: "ArrowDown" })
@@ -358,6 +374,7 @@ describe("DeliveryMethodsTable row actions", () => {
   it("says why an archived method could not be restored", async () => {
     mocks.archive.mockRejectedValue(new AppError(ERROR_CODES.CONFLICT, "DELIVERY_METHOD_TYPE_ALREADY_OFFERED"))
     renderDelivery(<DeliveryMethodsTable />)
+    await showArchivedMethods()
     const menu = await openRowMenu("Pickup at the atelier")
 
     await user().click(within(menu).getByRole("menuitem", { name: "Restore method" }))
@@ -370,6 +387,7 @@ describe("DeliveryMethodsTable row actions", () => {
 
   it("restores an archived method straight from its menu", async () => {
     renderDelivery(<DeliveryMethodsTable />)
+    await showArchivedMethods()
     const menu = await openRowMenu("Pickup at the atelier")
 
     expect(within(menu).queryByRole("menuitem", { name: "Edit method" })).not.toBeInTheDocument()

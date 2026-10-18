@@ -184,7 +184,7 @@
     },
     "filter": {
       "status": "Filter by status",
-      "allStatuses": "All statuses"
+      "allButArchived": "All but archived"
     },
     "status": {
       "offered": "Offered",

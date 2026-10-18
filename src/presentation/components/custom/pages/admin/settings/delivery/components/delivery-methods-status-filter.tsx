@@ -14,7 +14,7 @@ export const DeliveryMethodsStatusFilter = (): JSX.Element => {
   const { activeStatus, applyStatusFilter } = useDeliveryMethodsDataGridContext()
   const options = useMemo(
     () => [
-      { label: t("filter.allStatuses"), value: ALL_VALUE },
+      { label: t("filter.allButArchived"), value: ALL_VALUE },
       ...DELIVERY_METHOD_STATUSES.map((status) => ({ label: t(`status.${status}`), value: status })),
     ],
     [t],
