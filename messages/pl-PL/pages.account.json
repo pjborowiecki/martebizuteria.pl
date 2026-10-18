@@ -347,7 +347,7 @@
     "emailUnverified": "Ten adres nie został jeszcze potwierdzony.",
     "emailDialog": {
       "title": "Zmień adres e-mail",
-      "description": "Wyślemy link potwierdzający na {email}. Adres zmieni się po potwierdzeniu.",
+      "description": "Wyślemy link potwierdzający na {email}. Adres zmieni się po potwierdzeniu, a wtedy wylogujemy wszystkie urządzenia poza tym, na którym zakończysz zmianę.",
       "newEmail": "Nowy adres e-mail",
       "password": "Obecne hasło",
       "recentSignInNote": "Logujesz się przez Google, więc hasło nie jest potrzebne. Jeśli od ostatniego logowania minęło ponad {minutes} minut, najpierw poprosimy o ponowne zalogowanie.",

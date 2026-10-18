@@ -9,7 +9,7 @@ import { confirmCardSetupIntent, stripeCustomerIds, waitForCardSetupIntent } fro
 import { clientAddressFor, expect, isolateNetwork, test } from "../fixtures/test"
 import { swipeUp } from "../fixtures/touch"
 import { uniqueEmail } from "../fixtures/unique"
-import { AdminOrderPage } from "../pages"
+import { AdminOrderPage, AuthPage } from "../pages"
 
 test.describe("customer account", () => {
   test("a saved piece shows up in the wishlist and can be removed again", async ({ accountPage, authPage, page, productPage, request }, testInfo) => {
@@ -59,7 +59,7 @@ test.describe("customer account", () => {
     await expect(page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") })).toBeVisible()
   })
 
-  test("a customer who changes their sign-in email keeps their orders, the old address is told, and the order's emails follow the new one", async ({
+  test("a customer who changes their sign-in email keeps their orders, is signed out elsewhere, the old address is told, and the order's emails follow the new one", async ({
     accountPage,
     authPage,
     browser,
@@ -69,6 +69,11 @@ test.describe("customer account", () => {
     const customer = await registerCustomer({ authPage, page, request }, testInfo)
     const { orderNumber } = await placeOrder({ email: customer.email, handle: PRODUCTS.lapis.handle, page, request })
     const newEmail = uniqueEmail(testInfo, "moved")
+    const otherDevice = await browser.newContext({ extraHTTPHeaders: { "cf-connecting-ip": clientAddressFor(testInfo, "other-device") } })
+    await isolateNetwork(otherDevice)
+    const otherPage = await otherDevice.newPage()
+    await new AuthPage(otherPage).signIn(customer.email, customer.password)
+    await expect(otherPage).toHaveURL(/\/en-US\/account\/overview$/u)
 
     await accountPage.gotoSection("profile")
     await page.getByRole("button", { exact: true, name: "Change" }).click()
@@ -91,6 +96,9 @@ test.describe("customer account", () => {
     expect(notice.html).toContain("m***@e***.test")
     expect(notice.html).not.toContain(newEmail)
     await expect(page.getByRole("main")).toContainText(newEmail)
+    await otherPage.goto("/en-US/account/profile")
+    await expect(otherPage).toHaveURL(/\/en-US\/auth\/sign-in\?/u)
+    await otherDevice.close()
     await accountPage.gotoSection("orders")
     await expect(page.getByRole("main").getByRole("button", { name: new RegExp(`^${PRODUCTS.lapis.title} ${orderNumber} `, "u") })).toBeVisible()
 

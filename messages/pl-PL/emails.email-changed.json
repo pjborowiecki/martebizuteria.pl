@@ -4,7 +4,7 @@
   "heading": "Adres e-mail zmieniony",
   "greeting": "Witaj {name},",
   "message": "Adres e-mail, którym logujesz się na konto M'Arte, został przed chwilą zmieniony na {email}. Zmianę potwierdzono z tego adresu i z nowego.",
-  "messageSecondary": "Od teraz wiadomości o koncie i zamówieniach wysyłamy na nowy adres, a na ten już żadnych. Zamówienia, zapisane adresy i pozostałe dane zostają na koncie.",
+  "messageSecondary": "Od teraz wiadomości o koncie i zamówieniach wysyłamy na nowy adres, a na ten już żadnych. Zamówienia, zapisane adresy i pozostałe dane zostają na koncie. Konto zostało wylogowane na wszystkich urządzeniach poza tym, na którym zakończono zmianę.",
   "security": "Jeśli ta zmiana nie pochodzi od Ciebie, ktoś może mieć dostęp do tej skrzynki pocztowej i do Twojego konta. Od razu odpowiedz na tę wiadomość, napisz na {email} lub zadzwoń pod numer {phone} — pomożemy zabezpieczyć konto.",
   "signoff": "Z serdecznymi pozdrowieniami,",
   "sender": "Pracownia M'Arte",

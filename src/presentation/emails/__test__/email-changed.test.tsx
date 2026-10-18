@@ -26,6 +26,12 @@ describe("EmailChanged", () => {
     expect(text).toContain(englishCopy.messageSecondary)
   })
 
+  it("says that every other device was signed out", async () => {
+    await expect(renderText()).resolves.toContain(
+      "Every device that was signed in to the account has been signed out, except the one the change was finished on.",
+    )
+  })
+
   it("gives the shop's contact details to a customer who did not make the change", async () => {
     await expect(renderText()).resolves.toContain(
       "Reply to this email, write to kontakt@martebizuteria.pl or call +48 663 150 820 straight away",

@@ -347,7 +347,7 @@
     "emailUnverified": "This address is not confirmed yet.",
     "emailDialog": {
       "title": "Change your email address",
-      "description": "We will send a confirmation link to {email}. The address changes once you confirm it.",
+      "description": "We will send a confirmation link to {email}. The address changes once you confirm it, and every device except the one you finish the change on is then signed out.",
       "newEmail": "New email address",
       "password": "Current password",
       "recentSignInNote": "You sign in with Google, so no password is needed. If your last sign-in was more than {minutes} minutes ago, we will ask you to sign in again first.",
