@@ -168,6 +168,12 @@ const checkSender = async ({ apiKey, environment, from, managementApiKey }: Read
     )
   }
 
+  if (environment !== "production" && `.${sender.domain}`.endsWith(`.${APP_DOMAIN}`)) {
+    throw new Error(
+      `${sender.address} is the shop's own address. ${environment} sends its e-mails from RESEND_EMAIL_FROM and sends the notices about its test orders to it, so they would reach the shop. Use a developer's address on another domain.`,
+    )
+  }
+
   const resend = new Resend(apiKey)
   const firstPage = await request(() => resend.domains.list({ limit: DOMAIN_PAGE_SIZE }))
   if (firstPage.error !== null && firstPage.error.name !== "restricted_api_key") {

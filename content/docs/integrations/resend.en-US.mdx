@@ -333,6 +333,8 @@ Replies never go to that address. `sendEmail` passes the contact e-mail from Set
 
 Both the shop's own notice of each new order and the incident alerts go to `RESEND_EMAIL_FROM` itself, in every environment, so that address needs a mailbox the owner reads as well.
 
+Preview and development therefore send from, and notify, the developer's `hello@pjborowiecki.com`, so test orders never reach the shop's inbox; only production sends as the shop. The [deploy check](#deploy-check) refuses an address at `martebizuteria.pl`, or at one of its subdomains, outside production. The Reply-To still comes from Settings → Store details in that environment's database, so its contact e-mail is set to the developer's address there too.
+
 ### Verifying a domain
 
 1. On [resend.com/domains](https://resend.com/domains), add the domain of `RESEND_EMAIL_FROM` and choose a region. `eu-west-1` (Ireland) keeps the shop's mail in the EU.
@@ -362,6 +364,7 @@ The check fails, with a message that says what to fix, when:
 - `RESEND_API_KEY` is missing or blank;
 - `RESEND_EMAIL_FROM` is missing, carries a display name or spaces, or has no domain;
 - `RESEND_EMAIL_FROM` is on `resend.dev` outside development;
+- `RESEND_EMAIL_FROM` is at `martebizuteria.pl` or one of its subdomains outside production, where the notices about test orders would reach the shop;
 - Resend rejects the key (`invalid_api_key`, `missing_api_key`, `validation_error`, or `restricted_api_key` for the management key), or still cannot list the account's domains after asking twice;
 - the sender's domain is not in the account, compared without case but otherwise exactly, so a subdomain needs its own entry;
 - sending is disabled for the domain;

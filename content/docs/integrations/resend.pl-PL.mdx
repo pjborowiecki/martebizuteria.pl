@@ -333,6 +333,8 @@ Odpowiedzi nigdy nie trafiają na ten adres. `sendEmail` przekazuje przy każdej
 
 Własne powiadomienie sklepu o każdym nowym zamówieniu i alerty sklepu o incydentach trafiają natomiast na sam `RESEND_EMAIL_FROM`, w każdym środowisku, więc ten adres też potrzebuje skrzynki, którą właściciel czyta.
 
+Dlatego środowiska preview i development wysyłają pocztę z adresu dewelopera `hello@pjborowiecki.com` i na niego kierują powiadomienia, żeby testowe zamówienia nigdy nie trafiały do skrzynki sklepu; jako sklep wysyła tylko produkcja. [Kontrola przed wdrożeniem](#kontrola-przed-wdrożeniem) odrzuca poza produkcją adres w domenie `martebizuteria.pl` lub w jednej z jej subdomen. Reply-To nadal pochodzi z Ustawień → Dane sklepu w bazie danego środowiska, więc tam również kontaktowy e-mail ustawia się na adres dewelopera.
+
 ### Weryfikacja domeny
 
 1. Na [resend.com/domains](https://resend.com/domains) dodaj domenę z `RESEND_EMAIL_FROM` i wybierz region. `eu-west-1` (Irlandia) sprawia, że poczta sklepu pozostaje w UE.
@@ -362,6 +364,7 @@ Kontrola przerywa wdrożenie z komunikatem, co poprawić, gdy:
 - brakuje `RESEND_API_KEY` albo jest pusty;
 - brakuje `RESEND_EMAIL_FROM`, zawiera nazwę wyświetlaną lub spacje albo nie ma domeny;
 - `RESEND_EMAIL_FROM` jest w domenie `resend.dev` poza środowiskiem development;
+- `RESEND_EMAIL_FROM` jest poza produkcją w domenie `martebizuteria.pl` lub w jednej z jej subdomen, a wtedy powiadomienia o testowych zamówieniach trafiałyby do sklepu;
 - Resend odrzuca klucz (`invalid_api_key`, `missing_api_key`, `validation_error`, a dla klucza zarządzającego także `restricted_api_key`) albo nadal nie może wypisać domen konta po drugiej próbie;
 - domeny nadawcy nie ma na koncie; wielkość liter nie ma znaczenia, poza tym nazwa musi się zgadzać dokładnie, więc subdomena potrzebuje własnego wpisu;
 - wysyłka jest wyłączona dla tej domeny;
