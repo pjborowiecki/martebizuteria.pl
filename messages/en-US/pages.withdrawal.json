@@ -6,7 +6,7 @@
   "page": {
     "eyebrow": "Right of withdrawal",
     "title": "Withdraw from the contract",
-    "intro": "As a consumer, you may withdraw from a contract concluded in our shop within 14 days of receiving the products, without giving a reason. Fill in this form to send us your statement of withdrawal. We will confirm that we received it by email, to the address you placed the order with.",
+    "intro": "As a consumer, you may withdraw from a contract concluded in our shop within 14 days of receiving the products, without giving a reason. Fill in this form to send us your statement of withdrawal. We will confirm that we received it by email, to the address you placed the order with, or to your account's new address if you have changed it since.",
     "accountHint": "Have an account? You can also withdraw on the order's page in <link>your orders</link>.",
     "orderNumber": "Order number",
     "email": "Email address you ordered with",
@@ -42,7 +42,7 @@
     "closed": "The withdrawal period for this order has ended, or the order was cancelled. If you think this is a mistake, write to us at {shopEmail}.",
     "alreadyWithdrawn": "You have already withdrawn from the contract for the whole of this order.",
     "submitted": "Thank you for your statement",
-    "submittedDescription": "If an order with this number was placed with this email address and can still be withdrawn from, we have recorded your statement of withdrawal and are emailing that address a confirmation with its content and the date and time it reached us. If no confirmation arrives within a few minutes, check the order number and the email address in your order confirmation and send the form again, or write to us at {shopEmail}."
+    "submittedDescription": "If an order with this number was placed with this email address and can still be withdrawn from, we have recorded your statement of withdrawal and are emailing a confirmation with its content and the date and time it reached us to the address you placed the order with, or to your account's new address if you have changed it since. If no confirmation arrives within a few minutes, check the order number and the email address in your order confirmation and send the form again, or write to us at {shopEmail}."
   },
   "validation": {
     "nameRequired": "Enter your full name.",

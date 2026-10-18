@@ -404,7 +404,21 @@ describe("withdrawing from an order as a guest", () => {
     expect(sentTo("Anna@Example.com")).toBeUndefined()
   })
 
-  it("no longer accepts the address the account replaced, which may belong to someone else now", async () => {
+  it("still accepts the address the order was placed with after the account replaced it, and acknowledges to the account's current one", async () => {
+    moveAnnasAccountTo("anna@new.example")
+
+    await guestWithdrawal({ email: "ANNA@example.com" })
+    await Promise.all(background)
+
+    expect(readWithdrawals()).toStrictEqual([expect.objectContaining({ email: "anna@new.example", order_id: ANNA_ORDER_ID })])
+    const recipients = sentEmails().map(({ to }) => to)
+    expect(recipients).toHaveLength(2)
+    expect(recipients).toStrictEqual(expect.arrayContaining(["anna@new.example", SHOP_INBOX]))
+  })
+
+  it("refuses an address the account used before that the order was not placed with", async () => {
+    moveAnnasAccountTo("anna@middle.example")
+    updateAnnaOrder("email = 'anna@middle.example'")
     moveAnnasAccountTo("anna@new.example")
 
     await guestWithdrawal({ email: "anna@example.com" })
