@@ -69,7 +69,7 @@ vi.mock("~/src/integrations/drizzle-orm/drizzle.database", async () => {
     },
   }
 })
-vi.mock("~/src/modules/storefront-search/storefront-search.server", () => ({
+vi.mock("~/src/modules/storefront-search/storefront-search.accessors", () => ({
   searchStorefrontCategories: server.searchCategories,
   searchStorefrontCollections: server.searchCollections,
   searchStorefrontProducts: server.searchProducts,

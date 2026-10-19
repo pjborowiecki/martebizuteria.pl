@@ -17,7 +17,7 @@ import {
   storefrontListVariantColumns,
 } from "~/src/modules/product/product.stock.server"
 import { STOREFRONT_PRODUCTS_SORT, type StorefrontProductsSort } from "~/src/modules/product/product.storefront-catalog"
-import { storefrontProductMatches } from "~/src/modules/storefront-search/storefront-search.accessors.server"
+import { storefrontProductMatches } from "~/src/modules/storefront-search/storefront-search.accessors"
 
 export interface StorefrontPublishedProductsParams extends ListPaginationParams {
   readonly categoryIds?: readonly string[] | undefined
