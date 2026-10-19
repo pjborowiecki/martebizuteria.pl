@@ -165,8 +165,9 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({
 import { buildCheckoutValuesFingerprint } from "~/src/integrations/stripe/stripe.checkout"
 
 import { CART_QUERY_KEYS } from "~/src/modules/cart/cart.constants"
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { CHECKOUT_QUERY_KEYS } from "~/src/modules/checkout/checkout.constants"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { PaymentStep } from "~/src/presentation/components/custom/checkout/components/_steps/payment-step.client"
 import { saveCheckoutSession } from "~/src/presentation/components/custom/checkout/lib/checkout-draft"

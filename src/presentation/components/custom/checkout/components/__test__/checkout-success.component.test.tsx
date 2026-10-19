@@ -25,8 +25,9 @@ vi.mock("~/src/presentation/components/custom/image", () => ({
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { CUSTOMER_ACTIVITY_CART_ABANDONED_STORAGE_KEY } from "~/src/modules/user/user.constants"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { CheckoutSuccess } from "~/src/presentation/components/custom/checkout/components/checkout-success"
 import {

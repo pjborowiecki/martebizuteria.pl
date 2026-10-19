@@ -5,10 +5,11 @@ import { useTranslations } from "use-intl/react"
 
 import { centsToDisplayAmount } from "~/src/modules/_core/utils/currency"
 import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
-import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
-import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
+import { type CartItem } from "~/src/modules/cart/cart.types"
+import { getCartLineUnitPriceCents } from "~/src/modules/cart/cart.utils"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
+import { useCartStore } from "~/src/hooks/use-cart-store"
 import { useFormatter } from "~/src/hooks/use-display-format"
 
 import { getProductImageUrl } from "~/src/lib/image"

@@ -7,7 +7,7 @@ import { useTranslations } from "use-intl/react"
 import { authEntryRouteFor } from "~/src/integrations/better-auth/auth.routes"
 import { getCurrentSessionQuery } from "~/src/integrations/better-auth/auth.session"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { LocalizedLink } from "~/src/presentation/components/custom/localized-link"
 import { useNavigation } from "~/src/presentation/components/custom/pages/landing-page/navigation/components/navigation/navigation-provider"

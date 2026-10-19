@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 
 import { renderWithProviders } from "~/src/platform/testing/lib/render"
 
-import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
+import { type CartItem } from "~/src/modules/cart/cart.types"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { CartAvailabilityBanner } from "~/src/presentation/components/custom/cart-availability-banner"
 

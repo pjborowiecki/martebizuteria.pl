@@ -71,7 +71,7 @@ vi.mock("@stripe/react-stripe-js/checkout", () => ({
   useCheckoutElements: () => ({ type: "loading" }),
 }))
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { PaymentStep } from "~/src/presentation/components/custom/checkout/components/_steps/payment-step.client"
 

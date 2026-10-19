@@ -4,7 +4,8 @@ import { create } from "zustand"
 import { persist } from "zustand/middleware"
 
 import { CART_LINE_QUANTITY_MAX } from "~/src/modules/cart/cart.constants"
-import { type CartUnitPrice, getCartLineTotalCents, getCartLineUnitPriceCents } from "~/src/modules/cart/cart.pricing"
+import { type CartItem, type CartUnitPrice } from "~/src/modules/cart/cart.types"
+import { getCartLineTotalCents, getCartLineUnitPriceCents } from "~/src/modules/cart/cart.utils"
 
 const MIN_QUANTITY = 1
 
@@ -13,19 +14,6 @@ const CART_PERSIST_VERSION = 3
 const toLineQuantity = (qty: number): number => Math.min(CART_LINE_QUANTITY_MAX, Math.max(MIN_QUANTITY, qty))
 
 const withLineQuantityLimit = (item: CartItem): CartItem => ({ ...item, qty: toLineQuantity(item.qty) })
-
-export interface CartItem {
-  readonly id: string
-  readonly variantId: string
-  readonly slug: string
-  readonly title: string
-  readonly variantTitle: string
-  readonly image: string
-  readonly price: string
-  readonly rawPrice: number
-  readonly priceChanged?: boolean
-  qty: number
-}
 
 interface CartActions {
   readonly addItem: (

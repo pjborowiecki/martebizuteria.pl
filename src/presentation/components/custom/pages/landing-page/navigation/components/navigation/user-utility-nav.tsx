@@ -4,7 +4,7 @@ import { cn } from "cn"
 import { Search, ShoppingBag, UserRound } from "lucide-react"
 import { useTranslations } from "use-intl/react"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { Button, buttonVariants } from "~/src/presentation/components/shadcn/button"
 

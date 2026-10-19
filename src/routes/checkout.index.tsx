@@ -3,12 +3,12 @@ import { type JSX, Suspense, useEffect, useMemo } from "react"
 import { noop, useQuery } from "@tanstack/react-query"
 import { ClientOnly, createFileRoute, useNavigate, useSearch } from "@tanstack/react-router"
 
-import { useCartHydrated, useCartStore } from "~/src/modules/cart/cart.store"
 import { listDeliveryMethodsQuery } from "~/src/modules/delivery-method/use-cases/list-delivery-methods"
 import { getFreeDeliveryQuery } from "~/src/modules/store-setting/use-cases/get-free-delivery"
 import { getSalesStatusQuery } from "~/src/modules/store-setting/use-cases/get-sales-status"
 
 import { useCartAvailability } from "~/src/hooks/use-cart-availability"
+import { useCartHydrated, useCartStore } from "~/src/hooks/use-cart-store"
 
 import { CheckoutFormSkeleton } from "~/src/presentation/components/custom/checkout/components/checkout-form-skeleton"
 import { CheckoutForm } from "~/src/presentation/components/custom/checkout/components/checkout-form.client"

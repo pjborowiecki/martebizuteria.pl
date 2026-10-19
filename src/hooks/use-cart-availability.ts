@@ -2,12 +2,13 @@ import { useEffect, useMemo, useSyncExternalStore } from "react"
 
 import { useQuery } from "@tanstack/react-query"
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import {
   type CartAvailabilityIssue,
   type CartAvailabilityLine,
   checkCartAvailabilityQuery,
 } from "~/src/modules/cart/use-cases/check-cart-availability"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import {
   loadCheckoutSessionId,

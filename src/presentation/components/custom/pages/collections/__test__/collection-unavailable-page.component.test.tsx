@@ -50,8 +50,9 @@ vi.mock("~/src/modules/product/use-cases/get-new-arrivals", () => ({
   getNewArrivalsQuery: () => ({ queryFn: () => Promise.resolve(catalogue.newArrivals), queryKey: ["product", "new-arrivals"] }),
 }))
 
-import { useCartStore } from "~/src/modules/cart/cart.store"
 import { DEFAULT_VARIANT_TITLE } from "~/src/modules/product-variant/product-variant.utils"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 import { CollectionUnavailablePage } from "~/src/presentation/components/custom/pages/collections/collection-unavailable-page"
 

@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vite-plus/test"
 
-import { useCartHydrated, useCartStore } from "~/src/modules/cart/cart.store"
+import { useCartHydrated, useCartStore } from "~/src/hooks/use-cart-store"
 
 afterEach(() => {
   vi.restoreAllMocks()

@@ -82,9 +82,11 @@ vi.mock("~/src/presentation/components/custom/checkout/hooks/use-checkout-sessio
   },
 }))
 
-import { type CartItem, useCartStore } from "~/src/modules/cart/cart.store"
+import { type CartItem } from "~/src/modules/cart/cart.types"
 
 import { Route } from "~/src/routes/checkout.index"
+
+import { useCartStore } from "~/src/hooks/use-cart-store"
 
 const cartLine = (overrides: Partial<CartItem> = {}): CartItem => ({
   id: "variant-1",
